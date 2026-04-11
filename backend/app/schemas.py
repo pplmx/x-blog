@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from datetime import datetime
 from typing import Optional, List
 
@@ -13,9 +13,7 @@ class TagCreate(TagBase):
 
 class Tag(TagBase):
     id: int
-
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class CategoryBase(BaseModel):
@@ -28,9 +26,7 @@ class CategoryCreate(CategoryBase):
 
 class Category(CategoryBase):
     id: int
-
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class PostBase(BaseModel):
@@ -62,9 +58,7 @@ class Post(PostBase):
     updated_at: datetime
     category: Optional[Category] = None
     tags: List[Tag] = []
-
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class PostList(BaseModel):
@@ -76,6 +70,4 @@ class PostList(BaseModel):
     created_at: datetime
     category: Optional[Category] = None
     tags: List[Tag] = []
-
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
