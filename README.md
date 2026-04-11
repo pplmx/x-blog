@@ -1,27 +1,53 @@
 # X-Blog
 
-A modern blog built with FastAPI + Next.js.
+<div align="center">
 
-## Tech Stack
+![Next.js](https://img.shields.io/badge/Next.js-16-black?style=for-the-badge&logo=next.js)
+![FastAPI](https://img.shields.io/badge/FastAPI-0.115-009989?style=for-the-badge&logo=fastapi)
+![TypeScript](https://img.shields.io/badge/TypeScript-5.9-3178C6?style=for-the-badge&logo=typescript)
+![Python](https://img.shields.io/badge/Python-3.14-3776AB?style=for-the-badge&logo=python)
 
-- **Backend**: FastAPI, SQLAlchemy, Pydantic, uv
-- **Frontend**: Next.js 14, React 18, Tailwind CSS, pnpm
-- **Linting**: ruff (backend), ESLint + Prettier (frontend)
+A modern full-stack blog application built with FastAPI + Next.js
 
-## Quick Start
+[English](./README.md) · [中文](./README.zh-CN.md)
+
+</div>
+
+## ✨ Features
+
+- 🚀 **Modern Tech Stack** - Next.js 16, FastAPI, TypeScript, Python 3.14
+- 📝 **Markdown Support** - Write posts in Markdown with live preview
+- 🎨 **Beautiful UI** - Clean design with Tailwind CSS + shadcn/ui
+- 📱 **Responsive** - Mobile-friendly responsive layout
+- 🔒 **Admin Panel** - Built-in admin dashboard for content management
+- 🧪 **Well Tested** - pytest (backend) + Vitest (frontend)
+- ✅ **Type Safe** - Full TypeScript support + Pydantic validation
+
+## 🚀 Quick Start
 
 ### Prerequisites
 
-- Python 3.14+
-- Node.js 25+
-- [uv](https://github.com/astral-sh/uv) - `curl -LsSf https://astral.sh/uv/install.sh | sh`
-- [pnpm](https://pnpm.io/) - `npm install -g pnpm`
+| Tool | Version | Install |
+|------|---------|---------|
+| Python | 3.14+ | [uv](https://github.com/astral-sh/uv) |
+| Node.js | 25+ | [nvm](https://github.com/nvm-sh/nvm) |
+| pnpm | 9+ | `npm install -g pnpm` |
+
+```bash
+# Install uv (Python package manager)
+curl -LsSf https://astral.sh/uv/install.sh | sh
+```
 
 ### Installation
 
 ```bash
+# Clone the repository
+git clone https://github.com/pplmx/x-blog.git
+cd x-blog
+
 # Install all dependencies
-make install
+pnpm install
+
 # Or manually:
 cd backend && uv sync
 cd frontend && pnpm install
@@ -31,53 +57,129 @@ cd frontend && pnpm install
 
 ```bash
 # Run both backend and frontend
-make dev
+pnpm dev
 
 # Or run separately:
 make backend  # http://localhost:8000
 make frontend # http://localhost:3000
+
+# View API docs
+# http://localhost:8000/docs
 ```
 
-## Commands
+## 📖 Documentation
+
+- **API Docs**: http://localhost:8000/docs (Swagger)
+- **Admin Panel**: http://localhost:3000/admin
+- **Blog**: http://localhost:3000
+
+## 🛠️ Commands
 
 | Command | Description |
 |---------|-------------|
-| `make install` | Install all dependencies |
-| `make dev` | Run both services |
+| `pnpm install` | Install all dependencies |
+| `pnpm dev` | Run dev servers (backend + frontend) |
 | `make backend` | Run FastAPI server |
 | `make frontend` | Run Next.js dev server |
-| `make lint` | Lint both projects |
+| `make lint` | Lint code (ruff + biome) |
 | `make format` | Format code |
-| `make test` | Run backend tests |
+| `make test` | Run tests |
 | `make clean` | Clean generated files |
 
-## API Endpoints
+## 📡 API Endpoints
 
-- `GET /api/posts` - List posts
-- `GET /api/posts/{id}` - Get post
-- `POST /api/posts` - Create post
-- `PUT /api/posts/{id}` - Update post
-- `DELETE /api/posts/{id}` - Delete post
-- `GET /api/categories` - List categories
-- `GET /api/tags` - List tags
+### Posts
 
-## Project Structure
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/posts` | List posts |
+| GET | `/api/posts/{id}` | Get post by ID |
+| POST | `/api/posts` | Create post |
+| PUT | `/api/posts/{id}` | Update post |
+| DELETE | `/api/posts/{id}` | Delete post |
+
+### Categories & Tags
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/categories` | List categories |
+| GET | `/api/tags` | List tags |
+
+## 🏗️ Project Structure
 
 ```
-├── backend/
+x-blog/
+├── backend/                 # FastAPI backend
 │   ├── app/
-│   │   ├── main.py       # FastAPI app
-│   │   ├── config.py     # Settings
-│   │   ├── database.py   # DB connection
-│   │   ├── models.py     # SQLAlchemy models
-│   │   ├── schemas.py    # Pydantic schemas
-│   │   ├── crud.py       # Database operations
-│   │   └── routers/      # API routes
-│   └── tests/            # Unit tests
-├── frontend/
-│   ├── app/              # Next.js App Router
-│   ├── components/       # React components
-│   ├── lib/              # API client
-│   └── types/            # TypeScript types
-└── Makefile              # Convenience commands
+│   │   ├── main.py         # Application entry
+│   │   ├── config.py       # Configuration
+│   │   ├── database.py     # Database setup
+│   │   ├── models.py       # SQLAlchemy models
+│   │   ├── schemas.py      # Pydantic schemas
+│   │   ├── crud.py         # Database operations
+│   │   └── routers/        # API routes
+│   ├── tests/              # pytest tests
+│   └── pyproject.toml      # Python config
+│
+├── frontend/               # Next.js frontend
+│   ├── app/
+│   │   ├── page.tsx        # Home page
+│   │   ├── admin/          # Admin dashboard
+│   │   ├── posts/          # Post pages
+│   │   └── about/          # About page
+│   ├── components/         # React components
+│   │   ├── ui/             # shadcn/ui components
+│   │   └── *.tsx
+│   ├── lib/                # Utilities & API client
+│   ├── types/              # TypeScript types
+│   └── package.json
+│
+├── docs/                   # Design docs
+├── .husky/                 # Git hooks
+├── Makefile                # Convenience commands
+└── package.json            # Root config
 ```
+
+## 🧰 Tech Stack
+
+### Backend
+
+- **Framework**: [FastAPI](https://fastapi.tiangolo.com/) - Modern Python web framework
+- **ORM**: [SQLAlchemy](https://www.sqlalchemy.org/) - Database ORM
+- **Validation**: [Pydantic](https://docs.pydantic.dev/) - Data validation
+- **Testing**: [pytest](https://pytest.org/) - Python testing
+
+### Frontend
+
+- **Framework**: [Next.js 16](https://nextjs.org/) - React framework
+- **UI**: [shadcn/ui](https://ui.shadcn.com/) - UI components
+- **Styling**: [Tailwind CSS](https://tailwindcss.com/) - CSS framework
+- **Forms**: [React Hook Form](https://react-hook-form.com/) - Form handling
+- **Testing**: [Vitest](https://vitest.dev/) - Unit testing
+
+### DevOps
+
+- **Package Managers**: [uv](https://github.com/astral-sh/uv) (Python), [pnpm](https://pnpm.io/) (Node.js)
+- **Linting**: [ruff](https://docs.astral.sh/ruff/) (Python), [Biome](https://biomejs.dev/) (JS/TS)
+- **Git Hooks**: [Husky](https://typicode.github.io/husky/) + [lint-staged](https://github.com/lint-staged/lint-staged)
+- **Commits**: [Commitlint](https://commitlint.js.org/) - Conventional commits
+
+## 🤝 Contributing
+
+1. Fork the repository
+2. Create your feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes using [Conventional Commits](https://www.conventionalcommits.org/)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
+
+## 📄 License
+
+MIT License - see [LICENSE](LICENSE) for details.
+
+---
+
+<div align="center">
+
+Built with ❤️ using FastAPI + Next.js
+
+</div>
