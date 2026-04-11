@@ -1,0 +1,56 @@
+import { fetchPost } from "@/lib/api";
+import Markdown from "@/components/Markdown";
+import Link from "next/link";
+import { notFound } from "next/navigation";
+import { Tag } from "@/types";
+
+export const dynamic = "force-dynamic";
+
+interface PageProps {
+  params: Promise<{ slug: string }>;
+}
+
+export default async function PostPage({ params }: PageProps) {
+  const { slug } = await params;
+  
+  let post;
+  try {
+    post = await fetchPost(slug);
+  } catch {
+    notFound();
+  }
+
+  const date = new Date(post.created_at).toLocaleDateString("zh-CN");
+
+  return (
+    <article>
+      <Link href="/" className="text-blue-600 hover:underline mb-6 inline-block">
+        ← 返回首页
+      </Link>
+      
+      <header className="mb-8">
+        <h1 className="text-4xl font-bold mb-4">{post.title}</h1>
+        <div className="text-gray-500">
+          <span>{date}</span>
+          {post.category && (
+            <span className="ml-4 px-2 py-1 bg-gray-100 rounded text-sm">
+              {post.category.name}
+            </span>
+          )}
+        </div>
+        <div className="flex gap-2 mt-4">
+          {post.tags.map((tag: Tag) => (
+            <span
+              key={tag.id}
+              className="text-sm px-3 py-1 bg-blue-50 text-blue-600 rounded"
+            >
+              {tag.name}
+            </span>
+          ))}
+        </div>
+      </header>
+      
+      <Markdown content={post.content} />
+    </article>
+  );
+}
