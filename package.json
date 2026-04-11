@@ -7,9 +7,13 @@
     "install:all": "pnpm install",
     "lint": "pnpm -r lint",
     "format": "pnpm -r format",
-    "test": "pnpm -r test"
+    "test": "pnpm -r test",
+    "prepare": "husky"
   },
   "devDependencies": {
+    "@commitlint/cli": "^20.5.0",
+    "@commitlint/config-conventional": "^20.5.0",
+    "husky": "^9.1.0",
     "lint-staged": "^15.0.0"
   },
   "lint-staged": {
