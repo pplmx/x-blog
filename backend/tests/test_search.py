@@ -4,6 +4,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
 from app.database import Base, get_db
+import app.models as models
 from app.main import app
 
 SQLALCHEMY_DATABASE_URL = "sqlite:///./test.db"
@@ -73,3 +74,48 @@ def test_search_no_results(client):
     data = response.json()
     assert len(data["items"]) == 0
     assert data["pagination"]["total"] == 0
+
+
+def test_search_empty_query(client):
+    response = client.get("/api/search?q=%20")
+    assert response.status_code == 200
+    data = response.json()
+    assert "items" in data
+
+
+def test_search_special_characters(client):
+    db = TestingSessionLocal()
+    post = models.Post(
+        title="Test Special",
+        slug="test-special",
+        content="Content with special chars: @#$%^&*()",
+        published=True,
+    )
+    db.add(post)
+    db.commit()
+    db.close()
+
+    response = client.get("/api/search?q=@#$%")
+    assert response.status_code == 200
+
+
+def test_search_case_insensitive(client):
+    db = TestingSessionLocal()
+    post = models.Post(
+        title="Hello World",
+        slug="hello-world",
+        content="Hello content",
+        published=True,
+    )
+    db.add(post)
+    db.commit()
+    db.close()
+
+    response = client.get("/api/search?q=hello")
+    assert response.status_code == 200
+    data = response.json()
+    assert len(data["items"]) == 1
+
+    response_upper = client.get("/api/search?q=HELLO")
+    data_upper = response_upper.json()
+    assert len(data_upper["items"]) == 1
