@@ -4,9 +4,6 @@ import path from "path";
 
 export default defineConfig({
   plugins: [react()],
-  esbuild: {
-    target: "ES2022",
-  },
   test: {
     environment: "jsdom",
     globals: true,
