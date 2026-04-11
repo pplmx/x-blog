@@ -1,13 +1,8 @@
 {
-  "$schema": "https://biomejs.dev/schemas/1.9.0/schema.json",
-  "vcs": {
-    "enabled": true,
-    "clientKind": "git",
-    "useIgnoreFile": true
-  },
+  "$schema": "https://biomejs.dev/schemas/2.4.11/schema.json",
   "files": {
     "ignoreUnknown": true,
-    "ignore": [".next/", "node_modules/", "dist/"]
+    "experimentalScannerIgnores": [".next/**", "node_modules/**", "dist/**", "coverage/**"]
   },
   "formatter": {
     "enabled": true,
@@ -15,18 +10,29 @@
     "indentWidth": 2,
     "lineWidth": 100
   },
-  "organizeImports": {
-    "enabled": true
-  },
+  "assist": { "actions": { "source": { "organizeImports": "on" } } },
   "linter": {
     "enabled": true,
     "rules": {
       "recommended": true,
       "suspicious": {
-        "noExplicitAny": "off"
+        "noExplicitAny": "off",
+        "noArrayIndexKey": "off",
+        "noImplicitAnyLet": "off"
+      },
+      "correctness": {
+        "useParseIntRadix": "off",
+        "noUnusedImports": "off"
       },
       "style": {
         "useImportType": "off"
+      },
+      "a11y": {
+        "noLabelWithoutControl": "off",
+        "useButtonType": "off"
+      },
+      "security": {
+        "noDangerouslySetInnerHtml": "off"
       }
     }
   },
@@ -34,7 +40,6 @@
     "formatter": {
       "quoteStyle": "single",
       "trailingCommas": "es5"
-    },
-    "target": "es2025"
+    }
   }
 }

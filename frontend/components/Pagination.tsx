@@ -1,6 +1,6 @@
-"use client";
+'use client';
 
-import Link from "next/link";
+import Link from 'next/link';
 
 interface PaginationProps {
   currentPage: number;
@@ -26,21 +26,19 @@ export default function Pagination({ currentPage, totalPages, baseUrl }: Paginat
           上一页
         </Link>
       )}
-      
+
       {pages.map((page) => (
         <Link
           key={page}
           href={`${baseUrl}?page=${page}`}
           className={`px-3 py-1 border rounded ${
-            page === currentPage
-              ? "bg-blue-600 text-white"
-              : "hover:bg-gray-100"
+            page === currentPage ? 'bg-blue-600 text-white' : 'hover:bg-gray-100'
           }`}
         >
           {page}
         </Link>
       ))}
-      
+
       {currentPage < totalPages && (
         <Link
           href={`${baseUrl}?page=${currentPage + 1}`}

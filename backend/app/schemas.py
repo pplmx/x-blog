@@ -1,6 +1,6 @@
-from pydantic import BaseModel, ConfigDict
 from datetime import datetime
-from typing import Optional, List
+
+from pydantic import BaseModel, ConfigDict
 
 
 class TagBase(BaseModel):
@@ -33,31 +33,31 @@ class PostBase(BaseModel):
     title: str
     slug: str
     content: str
-    excerpt: Optional[str] = None
+    excerpt: str | None = None
     published: bool = False
-    category_id: Optional[int] = None
+    category_id: int | None = None
 
 
 class PostCreate(PostBase):
-    tags: List[str] = []
+    tags: list[str] = []
 
 
 class PostUpdate(BaseModel):
-    title: Optional[str] = None
-    slug: Optional[str] = None
-    content: Optional[str] = None
-    excerpt: Optional[str] = None
-    published: Optional[bool] = None
-    category_id: Optional[int] = None
-    tags: Optional[List[str]] = None
+    title: str | None = None
+    slug: str | None = None
+    content: str | None = None
+    excerpt: str | None = None
+    published: bool | None = None
+    category_id: int | None = None
+    tags: list[str] | None = None
 
 
 class Post(PostBase):
     id: int
     created_at: datetime
     updated_at: datetime
-    category: Optional[Category] = None
-    tags: List[Tag] = []
+    category: Category | None = None
+    tags: list[Tag] = []
     model_config = ConfigDict(from_attributes=True)
 
 
@@ -65,11 +65,11 @@ class PostList(BaseModel):
     id: int
     title: str
     slug: str
-    excerpt: Optional[str]
+    excerpt: str | None
     published: bool
     created_at: datetime
-    category: Optional[Category] = None
-    tags: List[Tag] = []
+    category: Category | None = None
+    tags: list[Tag] = []
     model_config = ConfigDict(from_attributes=True)
 
 
@@ -81,7 +81,7 @@ class PaginationMeta(BaseModel):
 
 
 class PostListResponse(BaseModel):
-    items: List[PostList]
+    items: list[PostList]
     pagination: PaginationMeta
 
 

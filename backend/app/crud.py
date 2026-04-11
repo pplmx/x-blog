@@ -1,7 +1,7 @@
+from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
-from sqlalchemy import select, or_, func
+
 from app import models, schemas
-from typing import List, Optional, Tuple
 
 
 def get_posts(
@@ -9,13 +9,13 @@ def get_posts(
     skip: int = 0,
     limit: int = 10,
     published: bool = True,
-    category_id: Optional[int] = None,
-    tag_id: Optional[int] = None,
-) -> Tuple[List[models.Post], int]:
+    category_id: int | None = None,
+    tag_id: int | None = None,
+) -> tuple[list[models.Post], int]:
     query = db.query(models.Post)
 
     if published:
-        query = query.filter(models.Post.published == True)
+        query = query.filter(models.Post.published)
 
     if category_id:
         query = query.filter(models.Post.category_id == category_id)
@@ -28,11 +28,11 @@ def get_posts(
     return posts, total
 
 
-def get_post(db: Session, post_id: int) -> Optional[models.Post]:
+def get_post(db: Session, post_id: int) -> models.Post | None:
     return db.query(models.Post).filter(models.Post.id == post_id).first()
 
 
-def get_post_by_slug(db: Session, slug: str) -> Optional[models.Post]:
+def get_post_by_slug(db: Session, slug: str) -> models.Post | None:
     return db.query(models.Post).filter(models.Post.slug == slug).first()
 
 
@@ -71,7 +71,7 @@ def create_post(db: Session, post: schemas.PostCreate) -> models.Post:
     return db_post
 
 
-def update_post(db: Session, post_id: int, post: schemas.PostUpdate) -> Optional[models.Post]:
+def update_post(db: Session, post_id: int, post: schemas.PostUpdate) -> models.Post | None:
     db_post = get_post(db, post_id)
     if not db_post:
         return None
@@ -79,11 +79,7 @@ def update_post(db: Session, post_id: int, post: schemas.PostUpdate) -> Optional
     update_data = post.model_dump(exclude_unset=True)
 
     if "category_id" in update_data and update_data["category_id"] is not None:
-        category = (
-            db.query(models.Category)
-            .filter(models.Category.id == update_data["category_id"])
-            .first()
-        )
+        category = db.query(models.Category).filter(models.Category.id == update_data["category_id"]).first()
         if not category:
             raise ValueError(f"Category with id {update_data['category_id']} not found")
 
@@ -119,11 +115,11 @@ def delete_post(db: Session, post_id: int) -> bool:
     return True
 
 
-def get_categories(db: Session) -> List[models.Category]:
+def get_categories(db: Session) -> list[models.Category]:
     return db.query(models.Category).all()
 
 
-def get_category(db: Session, category_id: int) -> Optional[models.Category]:
+def get_category(db: Session, category_id: int) -> models.Category | None:
     return db.query(models.Category).filter(models.Category.id == category_id).first()
 
 
@@ -135,9 +131,7 @@ def create_category(db: Session, category: schemas.CategoryCreate) -> models.Cat
     return db_category
 
 
-def update_category(
-    db: Session, category_id: int, category: schemas.CategoryCreate
-) -> Optional[models.Category]:
+def update_category(db: Session, category_id: int, category: schemas.CategoryCreate) -> models.Category | None:
     db_category = get_category(db, category_id)
     if not db_category:
         return None
@@ -156,7 +150,7 @@ def delete_category(db: Session, category_id: int) -> bool:
     return True
 
 
-def get_tags(db: Session) -> List[models.Tag]:
+def get_tags(db: Session) -> list[models.Tag]:
     return db.query(models.Tag).all()
 
 
@@ -194,7 +188,7 @@ def delete_tag(db: Session, tag_id: int) -> bool:
     return False
 
 
-def get_comments(db: Session, post_id: int) -> List[models.Comment]:
+def get_comments(db: Session, post_id: int) -> list[models.Comment]:
     return (
         db.query(models.Comment)
         .filter(models.Comment.post_id == post_id)
@@ -244,7 +238,7 @@ def search_posts(db: Session, query: str, page: int = 1, limit: int = 10):
                 models.Post.content.ilike(search_pattern),
             )
         )
-        .where(models.Post.published == True)
+        .where(models.Post.published)
         .order_by(models.Post.title.ilike(search_pattern).desc(), models.Post.created_at.desc())
         .offset(offset)
         .limit(limit)
@@ -260,7 +254,7 @@ def search_posts(db: Session, query: str, page: int = 1, limit: int = 10):
                 models.Post.content.ilike(search_pattern),
             )
         )
-        .where(models.Post.published == True)
+        .where(models.Post.published)
     )
     total = db.execute(count_stmt).scalar()
 

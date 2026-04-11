@@ -1,13 +1,13 @@
-import Link from "next/link"
-import { LayoutDashboard, FileText, Tag, Folder } from "lucide-react"
-import { Button } from "@/components/ui/button"
+import Link from 'next/link';
+import { LayoutDashboard, FileText, Tag, Folder } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
 const navItems = [
-  { href: "/admin", icon: LayoutDashboard, label: "仪表盘" },
-  { href: "/admin/posts", icon: FileText, label: "文章" },
-  { href: "/admin/categories", icon: Folder, label: "分类" },
-  { href: "/admin/tags", icon: Tag, label: "标签" },
-]
+  { href: '/admin', icon: LayoutDashboard, label: '仪表盘' },
+  { href: '/admin/posts', icon: FileText, label: '文章' },
+  { href: '/admin/categories', icon: Folder, label: '分类' },
+  { href: '/admin/tags', icon: Tag, label: '标签' },
+];
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -34,5 +34,5 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       </aside>
       <main className="flex-1 p-6">{children}</main>
     </div>
-  )
+  );
 }

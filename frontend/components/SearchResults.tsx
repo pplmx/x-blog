@@ -1,5 +1,5 @@
-import { PostList } from "@/types";
-import PostCard from "@/components/PostCard";
+import { PostList } from '@/types';
+import PostCard from '@/components/PostCard';
 
 interface SearchResultsProps {
   posts: PostList[];

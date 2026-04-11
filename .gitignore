@@ -49,3 +49,5 @@ coverage/
 .ruff_cache/
 .cache/
 *.egg-info
+**/core.*
+

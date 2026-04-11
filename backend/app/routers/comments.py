@@ -1,13 +1,13 @@
 from fastapi import APIRouter, Depends, Request
 from sqlalchemy.orm import Session
-from typing import List
+
 from app import crud, schemas
 from app.database import get_db
 
 router = APIRouter(prefix="/api/comments", tags=["comments"])
 
 
-@router.get("/post/{post_id}", response_model=List[schemas.Comment])
+@router.get("/post/{post_id}", response_model=list[schemas.Comment])
 def list_comments(post_id: int, db: Session = Depends(get_db)):
     return crud.get_comments(db, post_id)
 

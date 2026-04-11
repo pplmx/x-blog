@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
-from typing import List, Optional
+
 from app import crud, schemas
 from app.database import get_db
 
@@ -11,8 +11,8 @@ router = APIRouter(prefix="/api/posts", tags=["posts"])
 def list_posts(
     page: int = 1,
     limit: int = 10,
-    category_id: Optional[int] = None,
-    tag_id: Optional[int] = None,
+    category_id: int | None = None,
+    tag_id: int | None = None,
     db: Session = Depends(get_db),
 ):
     skip = (page - 1) * limit
@@ -39,10 +39,7 @@ def list_posts(
 
 @router.get("/{post_id}", response_model=schemas.Post)
 def get_post(post_id: str, db: Session = Depends(get_db)):
-    if post_id.isdigit():
-        post = crud.get_post(db, int(post_id))
-    else:
-        post = crud.get_post_by_slug(db, post_id)
+    post = crud.get_post(db, int(post_id)) if post_id.isdigit() else crud.get_post_by_slug(db, post_id)
     if not post:
         raise HTTPException(status_code=404, detail="Post not found")
     return post

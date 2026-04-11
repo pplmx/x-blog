@@ -1,5 +1,5 @@
-import Link from "next/link";
-import SearchBox from "./SearchBox";
+import Link from 'next/link';
+import SearchBox from './SearchBox';
 
 export default function Header() {
   return (

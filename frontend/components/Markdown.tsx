@@ -1,5 +1,5 @@
-import { marked } from "marked";
-import Image from "next/image";
+import { marked } from 'marked';
+import Image from 'next/image';
 
 interface MarkdownProps {
   content: string;
@@ -7,7 +7,7 @@ interface MarkdownProps {
 
 export default function Markdown({ content }: MarkdownProps) {
   const html = marked.parse(content) as string;
-  
+
   const processedHtml = html.replace(
     /<img src="(.*?)" alt="(.*?)" \/>/g,
     `<div class="relative w-full h-64 my-4">
@@ -21,10 +21,5 @@ export default function Markdown({ content }: MarkdownProps) {
     </div>`
   );
 
-  return (
-    <div
-      className="prose max-w-none"
-      dangerouslySetInnerHTML={{ __html: processedHtml }}
-    />
-  );
+  return <div className="prose max-w-none" dangerouslySetInnerHTML={{ __html: processedHtml }} />;
 }

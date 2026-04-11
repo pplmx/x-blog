@@ -1,38 +1,24 @@
-"use client"
+'use client';
 
-import { useEffect, useState } from "react"
-import Link from "next/link"
-import { Button } from "@/components/ui/button"
-import { Plus, Pencil, Trash2 } from "lucide-react"
-
-interface Post {
-  id: number
-  title: string
-  slug: string
-  published: boolean
-  created_at: string
-}
+import Link from 'next/link';
+import { Button } from '@/components/ui/button';
+import { Plus, Pencil, Trash2 } from 'lucide-react';
+import { usePosts, useDeletePost } from '@/lib/hooks';
 
 export default function PostsPage() {
-  const [posts, setPosts] = useState<Post[]>([])
-  const [loading, setLoading] = useState(true)
-
-  useEffect(() => {
-    fetch("/api/posts")
-      .then((res) => res.json())
-      .then((data) => {
-        setPosts(data)
-        setLoading(false)
-      })
-  }, [])
+  const { data, isLoading, error } = usePosts({ limit: 100 });
+  const deletePost = useDeletePost();
 
   const handleDelete = async (id: number) => {
-    if (!confirm("确定要删除这篇文章吗？")) return
-    await fetch(`/api/posts/${id}`, { method: "DELETE" })
-    setPosts(posts.filter((p) => p.id !== id))
-  }
+    if (!confirm('确定要删除这篇文章吗？')) return;
+    await deletePost.mutateAsync(id);
+  };
 
-  if (loading) return <div>加载中...</div>
+  if (isLoading) return <div>加载中...</div>;
+  if (error) return <div>加载失败: {String(error)}</div>;
+  if (!data) return <div>暂无数据</div>;
+
+  const posts = data.items;
 
   return (
     <div>
@@ -63,12 +49,14 @@ export default function PostsPage() {
                 <td className="px-4 py-2">{post.title}</td>
                 <td className="px-4 py-2 text-muted-foreground">{post.slug}</td>
                 <td className="px-4 py-2">
-                  <span className={`px-2 py-1 rounded text-xs ${post.published ? "bg-green-100 text-green-800" : "bg-yellow-100 text-yellow-800"}`}>
-                    {post.published ? "已发布" : "草稿"}
+                  <span
+                    className={`px-2 py-1 rounded text-xs ${post.published ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}`}
+                  >
+                    {post.published ? '已发布' : '草稿'}
                   </span>
                 </td>
                 <td className="px-4 py-2 text-muted-foreground">
-                  {new Date(post.created_at).toLocaleDateString("zh-CN")}
+                  {new Date(post.created_at).toLocaleDateString('zh-CN')}
                 </td>
                 <td className="px-4 py-2 text-right">
                   <Link href={`/admin/posts/${post.id}`}>
@@ -76,7 +64,12 @@ export default function PostsPage() {
                       <Pencil className="h-4 w-4" />
                     </Button>
                   </Link>
-                  <Button variant="ghost" size="sm" onClick={() => handleDelete(post.id)}>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleDelete(post.id)}
+                    disabled={deletePost.isPending}
+                  >
                     <Trash2 className="h-4 w-4" />
                   </Button>
                 </td>
@@ -86,5 +79,5 @@ export default function PostsPage() {
         </table>
       </div>
     </div>
-  )
+  );
 }

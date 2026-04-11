@@ -1,30 +1,26 @@
-"use client";
+'use client';
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { useCreateComment } from '@/lib/hooks';
 
 export default function CommentForm({ postId }: { postId: number }) {
   const router = useRouter();
-  const [nickname, setNickname] = useState("");
-  const [email, setEmail] = useState("");
-  const [content, setContent] = useState("");
-  const [submitting, setSubmitting] = useState(false);
+  const [nickname, setNickname] = useState('');
+  const [email, setEmail] = useState('');
+  const [content, setContent] = useState('');
+
+  const createComment = useCreateComment(postId);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!nickname.trim() || !content.trim()) return;
-    
-    setSubmitting(true);
-    await fetch(`/api/comments/post/${postId}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ nickname, email, content }),
-    });
-    
-    setNickname("");
-    setEmail("");
-    setContent("");
-    setSubmitting(false);
+
+    await createComment.mutateAsync({ author: nickname, content });
+
+    setNickname('');
+    setEmail('');
+    setContent('');
     router.refresh();
   };
 
@@ -61,10 +57,10 @@ export default function CommentForm({ postId }: { postId: number }) {
         </div>
         <button
           type="submit"
-          disabled={submitting}
+          disabled={createComment.isPending}
           className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 disabled:opacity-50"
         >
-          {submitting ? "提交中..." : "提交评论"}
+          {createComment.isPending ? '提交中...' : '提交评论'}
         </button>
       </div>
     </form>

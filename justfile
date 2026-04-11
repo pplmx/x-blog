@@ -3,12 +3,12 @@
 # Install all dependencies
 install:
     cd backend && uv sync
-    cd frontend && pnpm install
+    pnpm --filter x-blog-frontend install
 
 # Run both backend and frontend
 dev:
     cd backend && uv run uvicorn app.main:app --reload --port 8000 &
-    cd frontend && pnpm dev
+    pnpm --filter x-blog-frontend dev
 
 # Run backend only
 backend:
@@ -16,17 +16,17 @@ backend:
 
 # Run frontend only
 frontend:
-    cd frontend && pnpm dev
+    pnpm --filter x-blog-frontend dev
 
 # Lint code
 lint:
-    cd backend && uv run ruff check .
-    cd frontend && pnpm lint
+    cd backend && uvx ruff check . --fix
+    pnpm --filter x-blog-frontend lint
 
 # Format code
 format:
-    cd backend && uv run ruff format .
-    cd frontend && pnpm format
+    cd backend && uvx ruff format .
+    pnpm --filter x-blog-frontend format
 
 # Run all tests
 test: test-backend test-frontend

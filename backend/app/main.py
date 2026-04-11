@@ -1,12 +1,13 @@
 from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
-from app.database import engine, Base
-from app import models
-from app.routers import posts, categories, tags, comments, search
+
+from app.database import Base, engine
+from app.routers import categories, comments, posts, search, tags
 
 
 @asynccontextmanager
-async def lifespan(app: FastAPI):
+async def lifespan(_app: FastAPI):
     Base.metadata.create_all(bind=engine)
     yield
 

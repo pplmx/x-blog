@@ -1,64 +1,45 @@
-"use client"
+'use client';
 
-import { useEffect, useState } from "react"
-import { useRouter } from "next/navigation"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-
-interface Post {
-  id: number
-  title: string
-  slug: string
-  content: string
-  excerpt: string
-  published: boolean
-}
+import { useRouter } from 'next/navigation';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { usePost, useCreatePost, useUpdatePost } from '@/lib/hooks';
 
 export default function PostEditPage({ params }: { params: { id: string } }) {
-  const router = useRouter()
-  const isNew = params.id === "new"
-  const [post, setPost] = useState<Post | null>(null)
-  const [loading, setLoading] = useState(!isNew)
-  const [saving, setSaving] = useState(false)
+  const router = useRouter();
+  const isNew = params.id === 'new';
+  const postId = isNew ? null : parseInt(params.id);
 
-  useEffect(() => {
-    if (!isNew) {
-      fetch(`/api/posts/${params.id}`)
-        .then((res) => res.json())
-        .then((data) => {
-          setPost(data)
-          setLoading(false)
-        })
-    }
-  }, [isNew, params.id])
+  const { data: post, isLoading } = usePost(isNew ? '' : params.id);
+  const createPost = useCreatePost();
+  const updatePost = useUpdatePost();
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault()
-    setSaving(true)
+    e.preventDefault();
 
-    const formData = new FormData(e.currentTarget)
+    const formData = new FormData(e.currentTarget);
     const data = {
-      title: formData.get("title"),
-      slug: formData.get("slug"),
-      content: formData.get("content"),
-      excerpt: formData.get("excerpt"),
-      published: formData.get("published") === "on",
+      title: formData.get('title') as string,
+      slug: formData.get('slug') as string,
+      content: formData.get('content') as string,
+      excerpt: (formData.get('excerpt') as string) || undefined,
+      published: formData.get('published') === 'on',
+    };
+
+    if (isNew) {
+      await createPost.mutateAsync(data);
+    } else if (postId) {
+      await updatePost.mutateAsync({ id: postId, data });
     }
 
-    const method = isNew ? "POST" : "PUT"
-    const url = isNew ? "/api/posts" : `/api/posts/${params.id}`
+    router.push('/admin/posts');
+  };
 
-    await fetch(url, { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(data) })
-
-    setSaving(false)
-    router.push("/admin/posts")
-  }
-
-  if (loading) return <div>加载中...</div>
+  if (!isNew && isLoading) return <div>加载中...</div>;
 
   return (
     <div>
-      <h1 className="text-2xl font-bold mb-6">{isNew ? "新建文章" : "编辑文章"}</h1>
+      <h1 className="text-2xl font-bold mb-6">{isNew ? '新建文章' : '编辑文章'}</h1>
 
       <form onSubmit={handleSubmit} className="space-y-4 max-w-2xl">
         <div>
@@ -73,7 +54,7 @@ export default function PostEditPage({ params }: { params: { id: string } }) {
 
         <div>
           <label className="block text-sm font-medium mb-1">摘要</label>
-          <Input name="excerpt" defaultValue={post?.excerpt} />
+          <Input name="excerpt" defaultValue={post?.excerpt || ''} />
         </div>
 
         <div>
@@ -87,19 +68,24 @@ export default function PostEditPage({ params }: { params: { id: string } }) {
         </div>
 
         <div className="flex items-center gap-2">
-          <input type="checkbox" name="published" id="published" defaultChecked={post?.published ?? false} />
+          <input
+            type="checkbox"
+            name="published"
+            id="published"
+            defaultChecked={post?.published ?? false}
+          />
           <label htmlFor="published">发布</label>
         </div>
 
         <div className="flex gap-2">
-          <Button type="submit" disabled={saving}>
-            {saving ? "保存中..." : "保存"}
+          <Button type="submit" disabled={createPost.isPending || updatePost.isPending}>
+            {createPost.isPending || updatePost.isPending ? '保存中...' : '保存'}
           </Button>
-          <Button type="button" variant="outline" onClick={() => router.push("/admin/posts")}>
+          <Button type="button" variant="outline" onClick={() => router.push('/admin/posts')}>
             取消
           </Button>
         </div>
       </form>
     </div>
-  )
+  );
 }

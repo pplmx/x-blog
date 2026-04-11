@@ -1,52 +1,38 @@
-"use client"
+'use client';
 
-import { useEffect, useState } from "react"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Plus, Trash2 } from "lucide-react"
-
-interface Tag {
-  id: number
-  name: string
-}
+import { useState } from 'react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Plus, Trash2 } from 'lucide-react';
+import { useTags, useCreateTag } from '@/lib/hooks';
 
 export default function TagsPage() {
-  const [tags, setTags] = useState<Tag[]>([])
-  const [loading, setLoading] = useState(true)
-  const [newName, setNewName] = useState("")
-
-  useEffect(() => {
-    fetch("/api/tags")
-      .then((res) => res.json())
-      .then((data) => {
-        setTags(data)
-        setLoading(false)
-      })
-  }, [])
+  const [newName, setNewName] = useState('');
+  const { data: tags, isLoading, error } = useTags();
+  const createTag = useCreateTag();
 
   const handleCreate = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!newName.trim()) return
+    e.preventDefault();
+    if (!newName.trim()) return;
+    await createTag.mutateAsync({ name: newName });
+    setNewName('');
+  };
 
-    const res = await fetch("/api/tags", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name: newName }),
-    })
-    const created = await res.json()
-    setTags([...tags, created])
-    setNewName("")
-  }
-
-  if (loading) return <div>加载中...</div>
+  if (isLoading) return <div>加载中...</div>;
+  if (error) return <div>加载失败: {String(error)}</div>;
+  if (!tags) return <div>暂无数据</div>;
 
   return (
     <div>
       <h1 className="text-2xl font-bold mb-6">标签管理</h1>
 
       <form onSubmit={handleCreate} className="flex gap-2 mb-6">
-        <Input value={newName} onChange={(e) => setNewName(e.target.value)} placeholder="新标签名称" />
-        <Button type="submit">
+        <Input
+          value={newName}
+          onChange={(e) => setNewName(e.target.value)}
+          placeholder="新标签名称"
+        />
+        <Button type="submit" disabled={createTag.isPending}>
           <Plus className="mr-2 h-4 w-4" />
           添加
         </Button>
@@ -56,12 +42,12 @@ export default function TagsPage() {
         {tags.map((tag) => (
           <div key={tag.id} className="flex items-center gap-2 p-2 border rounded-lg">
             <span>{tag.name}</span>
-            <Button variant="ghost" size="sm" onClick={() => setTags(tags.filter((t) => t.id !== tag.id))}>
+            <Button variant="ghost" size="sm">
               <Trash2 className="h-4 w-4" />
             </Button>
           </div>
         ))}
       </div>
     </div>
-  )
+  );
 }

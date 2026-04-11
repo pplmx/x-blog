@@ -1,17 +1,17 @@
-"use client";
+'use client';
 
-import { useState, useRef, useEffect } from "react";
-import { useRouter } from "next/navigation";
-import { searchPosts } from "@/lib/api";
-import { PostList, Category, Tag } from "@/types";
+import { useState, useRef, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import { searchPosts } from '@/lib/api';
+import { PostList, Category, Tag } from '@/types';
 
 interface Suggestion {
-  type: "post" | "category" | "tag";
+  type: 'post' | 'category' | 'tag';
   item: PostList | Category | Tag;
 }
 
 export default function SearchBox() {
-  const [query, setQuery] = useState("");
+  const [query, setQuery] = useState('');
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
   const [show, setShow] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -25,8 +25,8 @@ export default function SearchBox() {
         setShow(false);
       }
     };
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
   useEffect(() => {
@@ -39,7 +39,7 @@ export default function SearchBox() {
       setLoading(true);
       try {
         const result = await searchPosts(query, 1, 5);
-        const posts = result.items.map((p) => ({ type: "post" as const, item: p }));
+        const posts = result.items.map((p) => ({ type: 'post' as const, item: p }));
         setSuggestions(posts.slice(0, 5));
       } catch {
         setSuggestions([]);
@@ -57,7 +57,7 @@ export default function SearchBox() {
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter" && query.trim()) {
+    if (e.key === 'Enter' && query.trim()) {
       handleSearch(query);
     }
   };
@@ -74,7 +74,7 @@ export default function SearchBox() {
         placeholder="搜索文章..."
         className="px-3 py-1.5 border rounded-md text-sm w-48 focus:outline-none focus:ring-2 focus:ring-blue-500"
       />
-      
+
       {show && query.trim() && (
         <div className="absolute top-full mt-1 right-0 w-64 bg-white border rounded-md shadow-lg z-50">
           {loading ? (
@@ -84,10 +84,18 @@ export default function SearchBox() {
               {suggestions.map((s, i) => (
                 <li key={i}>
                   <button
-                    onClick={() => handleSearch(s.type === "post" ? (s.item as PostList).title : (s.item as Category | Tag).name)}
+                    onClick={() =>
+                      handleSearch(
+                        s.type === 'post'
+                          ? (s.item as PostList).title
+                          : (s.item as Category | Tag).name
+                      )
+                    }
                     className="w-full text-left px-3 py-2 text-sm hover:bg-gray-100"
                   >
-                    {s.type === "post" ? (s.item as PostList).title : (s.item as Category | Tag).name}
+                    {s.type === 'post'
+                      ? (s.item as PostList).title
+                      : (s.item as Category | Tag).name}
                   </button>
                 </li>
               ))}

@@ -1,8 +1,8 @@
-import { searchPosts } from "@/lib/api";
-import SearchResults from "@/components/SearchResults";
-import Pagination from "@/components/Pagination";
+import { searchPosts } from '@/lib/api';
+import SearchResults from '@/components/SearchResults';
+import Pagination from '@/components/Pagination';
 
-export const dynamic = "force-static";
+export const dynamic = 'force-static';
 export const revalidate = 60;
 
 interface SearchPageProps {
@@ -11,17 +11,17 @@ interface SearchPageProps {
 
 export async function generateMetadata({ searchParams }: SearchPageProps) {
   const params = await searchParams;
-  const query = params.q || "";
-  
+  const query = params.q || '';
+
   return {
-    title: query ? `搜索: ${query}` : "搜索",
+    title: query ? `搜索: ${query}` : '搜索',
     description: `搜索文章: ${query}`,
   };
 }
 
 export default async function SearchPage({ searchParams }: SearchPageProps) {
   const params = await searchParams;
-  const query = params.q || "";
+  const query = params.q || '';
   const page = params.page ? parseInt(params.page) : 1;
 
   if (!query) {

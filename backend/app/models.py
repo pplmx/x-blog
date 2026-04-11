@@ -1,15 +1,17 @@
+from datetime import UTC, datetime
+
 from sqlalchemy import (
-    Column,
-    Integer,
-    String,
-    Text,
     Boolean,
+    Column,
     DateTime,
     ForeignKey,
+    Integer,
+    String,
     Table,
+    Text,
 )
 from sqlalchemy.orm import relationship
-from datetime import datetime, timezone
+
 from app.database import Base
 
 post_tags = Table(
@@ -29,11 +31,11 @@ class Post(Base):
     content = Column(Text, nullable=False)
     excerpt = Column(String(500))
     published = Column(Boolean, default=False)
-    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    created_at = Column(DateTime, default=lambda: datetime.now(UTC))
     updated_at = Column(
         DateTime,
-        default=lambda: datetime.now(timezone.utc),
-        onupdate=lambda: datetime.now(timezone.utc),
+        default=lambda: datetime.now(UTC),
+        onupdate=lambda: datetime.now(UTC),
     )
     category_id = Column(Integer, ForeignKey("categories.id"))
 
@@ -69,6 +71,6 @@ class Comment(Base):
     email = Column(String(100))
     content = Column(Text, nullable=False)
     ip_address = Column(String(50))
-    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    created_at = Column(DateTime, default=lambda: datetime.now(UTC))
 
     post = relationship("Post", back_populates="comments")
