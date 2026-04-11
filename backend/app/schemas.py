@@ -83,3 +83,21 @@ class PaginationMeta(BaseModel):
 class PostListResponse(BaseModel):
     items: List[PostList]
     pagination: PaginationMeta
+
+
+class CommentBase(BaseModel):
+    nickname: str
+    email: str
+    content: str
+
+
+class CommentCreate(CommentBase):
+    pass
+
+
+class Comment(CommentBase):
+    id: int
+    post_id: int
+    ip_address: str
+    created_at: datetime
+    model_config = ConfigDict(from_attributes=True)
