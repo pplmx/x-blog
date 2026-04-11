@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
-from typing import List
+from typing import List, Optional
 from app import crud, schemas
 from app.database import get_db
 
@@ -8,8 +8,20 @@ router = APIRouter(prefix="/api/posts", tags=["posts"])
 
 
 @router.get("", response_model=List[schemas.PostList])
-def list_posts(skip: int = 0, limit: int = 10, db: Session = Depends(get_db)):
-    posts = crud.get_posts(db, skip=skip, limit=limit)
+def list_posts(
+    skip: int = 0,
+    limit: int = 10,
+    category_id: Optional[int] = None,
+    tag_id: Optional[int] = None,
+    db: Session = Depends(get_db),
+):
+    posts = crud.get_posts(
+        db,
+        skip=skip,
+        limit=limit,
+        category_id=category_id,
+        tag_id=tag_id,
+    )
     return posts
 
 
