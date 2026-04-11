@@ -1,3 +1,4 @@
+/// <reference types="vitest/globals" />
 import { render, screen } from '@testing-library/react';
 import { vi } from 'vitest';
 import { usePathname } from 'next/navigation';

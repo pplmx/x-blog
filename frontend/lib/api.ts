@@ -127,6 +127,7 @@ export interface PostCreate {
   published: boolean;
   category_id?: number;
   tag_ids?: number[];
+  cover_image?: string;
 }
 
 export async function createPost(data: PostCreate): Promise<Post> {
@@ -192,6 +193,7 @@ export interface AdminPostDetail {
   published: boolean;
   category_id: number | null;
   tag_ids: number[];
+  cover_image: string | null;
   created_at: string;
   updated_at: string;
 }
