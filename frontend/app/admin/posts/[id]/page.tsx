@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { ImageUpload } from '@/components/ImageUpload';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   fetchAdminPost,
@@ -29,6 +30,7 @@ export default function PostEditPage({ params }: { params: { id: string } }) {
     published: false,
     category_id: undefined,
     tag_ids: [],
+    cover_image: undefined,
   });
 
   const { data: categories } = useQuery({
@@ -57,6 +59,7 @@ export default function PostEditPage({ params }: { params: { id: string } }) {
         published: post.published,
         category_id: post.category_id ?? undefined,
         tag_ids: post.tag_ids,
+        cover_image: post.cover_image ?? undefined,
       });
     }
   }, [post]);
@@ -95,6 +98,14 @@ export default function PostEditPage({ params }: { params: { id: string } }) {
       <h1 className="text-2xl font-bold mb-6">{isNew ? '新建文章' : '编辑文章'}</h1>
 
       <form onSubmit={handleSubmit} className="space-y-4 max-w-2xl">
+        <div>
+          <label className="block text-sm font-medium mb-1">封面图</label>
+          <ImageUpload
+            value={formData.cover_image || ''}
+            onChange={(url) => setFormData({ ...formData, cover_image: url || undefined })}
+          />
+        </div>
+
         <div>
           <label className="block text-sm font-medium mb-1">标题</label>
           <Input
