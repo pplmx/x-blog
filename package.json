@@ -2,13 +2,6 @@
   "name": "x-blog",
   "version": "0.1.0",
   "private": true,
-  "scripts": {
-    "dev": "just dev",
-    "install:all": "pnpm install",
-    "lint": "just lint",
-    "format": "just format",
-    "test": "just test"
-  },
   "devDependencies": {
     "@commitlint/cli": "^20.5.0",
     "@commitlint/config-conventional": "^20.5.0",
