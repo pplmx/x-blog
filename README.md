@@ -41,10 +41,6 @@ curl -LsSf https://astral.sh/uv/install.sh | sh
 ### Installation
 
 ```bash
-# Clone the repository
-git clone https://github.com/pplmx/x-blog.git
-cd x-blog
-
 # Install all dependencies
 pnpm install
 
@@ -60,18 +56,9 @@ cd frontend && pnpm install
 pnpm dev
 
 # Or run separately:
-make backend  # http://localhost:8000
-make frontend # http://localhost:3000
-
-# View API docs
-# http://localhost:8000/docs
+just backend  # http://localhost:8000
+just frontend # http://localhost:3000
 ```
-
-## 📖 Documentation
-
-- **API Docs**: http://localhost:8000/docs (Swagger)
-- **Admin Panel**: http://localhost:3000/admin
-- **Blog**: http://localhost:3000
 
 ## 🛠️ Commands
 
@@ -79,12 +66,12 @@ make frontend # http://localhost:3000
 |---------|-------------|
 | `pnpm install` | Install all dependencies |
 | `pnpm dev` | Run dev servers (backend + frontend) |
-| `make backend` | Run FastAPI server |
-| `make frontend` | Run Next.js dev server |
-| `make lint` | Lint code (ruff + biome) |
-| `make format` | Format code |
-| `make test` | Run tests |
-| `make clean` | Clean generated files |
+| `just backend` | Run FastAPI server |
+| `just frontend` | Run Next.js dev server |
+| `just lint` | Lint code (ruff + biome) |
+| `just format` | Format code |
+| `just test` | Run tests |
+| `just clean` | Clean generated files |
 
 ## 📡 API Endpoints
 
@@ -136,7 +123,7 @@ x-blog/
 │
 ├── docs/                   # Design docs
 ├── .husky/                 # Git hooks
-├── Makefile                # Convenience commands
+├── justfile                # Task runner
 └── package.json            # Root config
 ```
 

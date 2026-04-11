@@ -41,10 +41,6 @@ curl -LsSf https://astral.sh/uv/install.sh | sh
 ### 安装
 
 ```bash
-# 克隆项目
-git clone https://github.com/pplmx/x-blog.git
-cd x-blog
-
 # 安装所有依赖
 pnpm install
 
@@ -60,18 +56,9 @@ cd frontend && pnpm install
 pnpm dev
 
 # 或者分别运行:
-make backend  # http://localhost:8000
-make frontend # http://localhost:3000
-
-# 查看 API 文档
-# http://localhost:8000/docs
+just backend  # http://localhost:8000
+just frontend # http://localhost:3000
 ```
-
-## 📖 文档
-
-- **API 文档**: http://localhost:8000/docs (Swagger)
-- **管理后台**: http://localhost:3000/admin
-- **博客前台**: http://localhost:3000
 
 ## 🛠️ 命令
 
@@ -79,12 +66,12 @@ make frontend # http://localhost:3000
 |------|------|
 | `pnpm install` | 安装所有依赖 |
 | `pnpm dev` | 运行开发服务器 |
-| `make backend` | 运行 FastAPI 后端 |
-| `make frontend` | 运行 Next.js 前端 |
-| `make lint` | 代码检查 |
-| `make format` | 代码格式化 |
-| `make test` | 运行测试 |
-| `make clean` | 清理生成文件 |
+| `just backend` | 运行 FastAPI 后端 |
+| `just frontend` | 运行 Next.js 前端 |
+| `just lint` | 代码检查 |
+| `just format` | 代码格式化 |
+| `just test` | 运行测试 |
+| `just clean` | 清理生成文件 |
 
 ## 📡 API 接口
 
@@ -136,7 +123,7 @@ x-blog/
 │
 ├── docs/                   # 设计文档
 ├── .husky/                 # Git hooks
-├── Makefile                # 便捷命令
+├── justfile                # 任务运行器
 └── package.json            # 根目录配置
 ```
 

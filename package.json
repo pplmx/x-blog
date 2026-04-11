@@ -3,12 +3,11 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "make dev",
+    "dev": "just dev",
     "install:all": "pnpm install",
-    "lint": "pnpm -r lint",
-    "format": "pnpm -r format",
-    "test": "pnpm -r test",
-    "prepare": "husky"
+    "lint": "just lint",
+    "format": "just format",
+    "test": "just test"
   },
   "devDependencies": {
     "@commitlint/cli": "^20.5.0",
