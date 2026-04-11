@@ -22,6 +22,7 @@ worktrees/
 node_modules/
 .next/
 npm-debug.log*
+*.tsbuildinfo
 
 # Environment
 .env
