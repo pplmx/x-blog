@@ -3,6 +3,8 @@ import Markdown from "@/components/Markdown";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Tag } from "@/types";
+import CommentList from "@/components/CommentList";
+import CommentForm from "@/components/CommentForm";
 
 export const dynamic = "force-dynamic";
 
@@ -51,6 +53,9 @@ export default async function PostPage({ params }: PageProps) {
       </header>
       
       <Markdown content={post.content} />
+      
+      <CommentList postId={post.id} />
+      <CommentForm postId={post.id} />
     </article>
   );
 }
