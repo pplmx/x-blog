@@ -49,3 +49,4 @@ coverage/
 .ruff_cache/
 .cache/
 *.egg-info
+ruff.toml
