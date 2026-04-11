@@ -12,3 +12,31 @@ wheels/
 # Worktrees
 .worktrees/
 worktrees/
+
+# Databases
+*.db
+*.sqlite
+*.sqlite3
+
+# Node.js
+node_modules/
+.next/
+npm-debug.log*
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Testing
+.pytest_cache/
+test.db
+
+# IDE
+.vscode/
+.idea/
+
+# Cache
+.ruff_cache/
+.cache/
+*.egg-info
