@@ -2,7 +2,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { fetchPosts } from "@/lib/api"
 
 export default async function AdminDashboard() {
-  const posts = await fetchPosts()
+  const response = await fetchPosts({ limit: 1000 })
+  const posts = response.items
   const publishedCount = posts.filter((p) => p.published).length
 
   return (
