@@ -28,6 +28,8 @@ def create_post(db: Session, post: schemas.PostCreate) -> models.Post:
             .filter(models.Category.id == post.category_id)
             .first()
         )
+        if not category:
+            raise ValueError(f"Category with id {post.category_id} not found")
 
     tags = []
     for tag_name in post.tags:
@@ -48,8 +50,12 @@ def create_post(db: Session, post: schemas.PostCreate) -> models.Post:
     )
     db_post.tags = tags
     db.add(db_post)
-    db.commit()
-    db.refresh(db_post)
+    try:
+        db.commit()
+        db.refresh(db_post)
+    except Exception:
+        db.rollback()
+        raise
     return db_post
 
 
@@ -61,6 +67,15 @@ def update_post(
         return None
 
     update_data = post.model_dump(exclude_unset=True)
+
+    if "category_id" in update_data and update_data["category_id"] is not None:
+        category = (
+            db.query(models.Category)
+            .filter(models.Category.id == update_data["category_id"])
+            .first()
+        )
+        if not category:
+            raise ValueError(f"Category with id {update_data['category_id']} not found")
 
     if "tags" in update_data:
         tags = []
@@ -76,8 +91,12 @@ def update_post(
     for field, value in update_data.items():
         setattr(db_post, field, value)
 
-    db.commit()
-    db.refresh(db_post)
+    try:
+        db.commit()
+        db.refresh(db_post)
+    except Exception:
+        db.rollback()
+        raise
     return db_post
 
 
