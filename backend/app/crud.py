@@ -123,6 +123,39 @@ def get_categories(db: Session) -> List[models.Category]:
     return db.query(models.Category).all()
 
 
+def get_category(db: Session, category_id: int) -> Optional[models.Category]:
+    return db.query(models.Category).filter(models.Category.id == category_id).first()
+
+
+def create_category(db: Session, category: schemas.CategoryCreate) -> models.Category:
+    db_category = models.Category(name=category.name)
+    db.add(db_category)
+    db.commit()
+    db.refresh(db_category)
+    return db_category
+
+
+def update_category(
+    db: Session, category_id: int, category: schemas.CategoryCreate
+) -> Optional[models.Category]:
+    db_category = get_category(db, category_id)
+    if not db_category:
+        return None
+    db_category.name = category.name
+    db.commit()
+    db.refresh(db_category)
+    return db_category
+
+
+def delete_category(db: Session, category_id: int) -> bool:
+    db_category = get_category(db, category_id)
+    if not db_category:
+        return False
+    db.delete(db_category)
+    db.commit()
+    return True
+
+
 def get_tags(db: Session) -> List[models.Tag]:
     return db.query(models.Tag).all()
 
