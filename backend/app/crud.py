@@ -124,3 +124,40 @@ def get_categories(db: Session) -> List[models.Category]:
 
 def get_tags(db: Session) -> List[models.Tag]:
     return db.query(models.Tag).all()
+
+
+def get_comments(db: Session, post_id: int) -> List[models.Comment]:
+    return (
+        db.query(models.Comment)
+        .filter(models.Comment.post_id == post_id)
+        .order_by(models.Comment.created_at.desc())
+        .all()
+    )
+
+
+def create_comment(
+    db: Session,
+    post_id: int,
+    comment: schemas.CommentCreate,
+    ip_address: str,
+) -> models.Comment:
+    db_comment = models.Comment(
+        post_id=post_id,
+        nickname=comment.nickname,
+        email=comment.email,
+        content=comment.content,
+        ip_address=ip_address,
+    )
+    db.add(db_comment)
+    db.commit()
+    db.refresh(db_comment)
+    return db_comment
+
+
+def delete_comment(db: Session, comment_id: int) -> bool:
+    comment = db.query(models.Comment).filter(models.Comment.id == comment_id).first()
+    if not comment:
+        return False
+    db.delete(comment)
+    db.commit()
+    return True
