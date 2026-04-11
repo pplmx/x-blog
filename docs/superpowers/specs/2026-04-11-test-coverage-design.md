@@ -1,7 +1,7 @@
 # 测试覆盖增强设计
 
 **日期**: 2026-04-11  
-**状态**: 已批准
+**状态**: 待批准
 
 ## 1. 目标
 
@@ -9,7 +9,7 @@
 
 ## 2. 后端测试
 
-### 2.1 修复 admin 测试隔离
+### 2.1 修复 admin 测试隔离 (目标: 15 tests)
 
 **问题**: test_admin.py 与其他测试共享数据库，导致冲突
 
@@ -19,7 +19,9 @@
 SQLALCHEMY_DATABASE_URL = "sqlite:///./test_admin_isolated.db"
 ```
 
-### 2.2 新增 auth 测试 (6 tests)
+包含现有 15 个测试的修复运行
+
+### 2.2 新增 auth 单元测试 (6 tests)
 
 | 测试名 | 描述 |
 |--------|------|
@@ -38,24 +40,36 @@ SQLALCHEMY_DATABASE_URL = "sqlite:///./test_admin_isolated.db"
 | test_search_special_characters | 特殊字符 |
 | test_search_case_insensitive | 大小写不敏感 |
 
+**后端小计**: 修复 15 + 新增 9 = 24 tests (原 21 + 24 = 45)
+
 ## 3. 前端测试
 
-### 3.1 Hooks 测试 (6 tests)
+### 3.1 Hooks 单元测试 (10 tests)
 
-- `usePosts` - 分页、筛选参数
-- `usePost` - 详情获取
-- `useCategories` / `useTags` - 列表
+| Hook | 测试内容 |
+|------|----------|
+| usePosts | 分页、筛选、加载状态 |
+| usePost | 详情获取、404 |
+| useCategories | 列表、加载 |
+| useTags | 列表、加载 |
+| useComments | 评论列表 |
 
-### 3.2 API 测试 (5 tests)
+### 3.2 API 单元测试 (7 tests)
 
-- `fetchPosts` 错误处理
-- `fetchPost` 404 处理
-- `createPost` / `updatePost`
+- fetchPosts 错误处理
+- fetchPost 404 处理
+- createPost 成功/失败
+- updatePost 成功/失败
+- deletePost
 
-### 3.3 组件测试 (4 tests)
+### 3.3 组件集成测试 (4 tests)
 
-- `Header` - 导航链接
-- `Footer` - 链接有效性
+- Header 导航
+- Footer 链接
+- Pagination 交互
+- SearchBox 提交
+
+**前端小计**: 10 + 7 + 4 = 21 tests (原 21 + 21 = 42)
 
 ## 4. 测试配置
 
@@ -73,7 +87,7 @@ def client():
 
 ## 5. 验收标准
 
-- [ ] 后端测试: 21 → 36
-- [ ] 前端测试: 21 → 36
+- [ ] 后端测试: 21 → 45 (+24)
+- [ ] 前端测试: 21 → 42 (+21)
 - [ ] 所有测试通过
 - [ ] lint 通过
