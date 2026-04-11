@@ -1,4 +1,4 @@
-import { Post, PostList, Category, Tag } from "@/types";
+import { Post, PostList, Category, Tag, SearchResult } from "@/types";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
@@ -47,5 +47,23 @@ export async function fetchTags(): Promise<Tag[]> {
 export async function fetchPost(slug: string): Promise<Post> {
   const res = await fetch(`${API_BASE}/api/posts/${slug}`);
   if (!res.ok) throw new Error("Failed to fetch post");
+  return res.json();
+}
+
+export async function searchPosts(
+  query: string,
+  page: number = 1,
+  limit: number = 10
+): Promise<SearchResult> {
+  const params = new URLSearchParams({
+    q: query,
+    page: page.toString(),
+    limit: limit.toString(),
+  });
+  
+  const res = await fetch(`/api/search?${params}`);
+  if (!res.ok) {
+    throw new Error("Search failed");
+  }
   return res.json();
 }

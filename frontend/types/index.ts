@@ -32,3 +32,13 @@ export interface PostList {
   category: Category | null;
   tags: Tag[];
 }
+
+export interface SearchResult {
+  items: PostList[];
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    total_pages: number;
+  };
+}
