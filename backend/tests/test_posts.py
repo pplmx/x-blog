@@ -7,9 +7,7 @@ from app.database import Base, get_db
 
 SQLALCHEMY_DATABASE_URL = "sqlite:///./test.db"
 
-engine = create_engine(
-    SQLALCHEMY_DATABASE_URL, connect_args={"check_same_thread": False}
-)
+engine = create_engine(SQLALCHEMY_DATABASE_URL, connect_args={"check_same_thread": False})
 TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 
@@ -60,7 +58,8 @@ def test_list_posts(client):
     response = client.get("/api/posts")
     assert response.status_code == 200
     data = response.json()
-    assert len(data) == 1
+    assert len(data["items"]) == 1
+    assert data["pagination"]["total"] == 1
 
 
 def test_get_post(client):

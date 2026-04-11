@@ -9,8 +9,9 @@
     "frontend": "cd frontend && pnpm dev",
     "lint": "cd backend && uv run ruff check . && cd frontend && pnpm lint",
     "format": "cd backend && uv run ruff format . && cd frontend && pnpm format",
-    "test": "cd backend && uv run pytest && cd frontend && pnpm test",
-    "clean": "rm -f backend/*.db && rm -rf frontend/.next && rm -rf backend/.pytest_cache && rm -rf .ruff_cache backend/.ruff_cache && rm -rf frontend/node_modules/.vite && rm -rf frontend/coverage"
+    "test": "cd backend && uv run pytest",
+    "clean": "rm -f backend/*.db && rm -rf frontend/.next && rm -rf backend/.pytest_cache && rm -rf .ruff_cache backend/.ruff_cache && rm -rf frontend/node_modules/.vite && rm -rf frontend/coverage",
+    "prepare": "husky"
   },
   "devDependencies": {
     "@commitlint/cli": "^20.5.0",
@@ -19,7 +20,11 @@
     "lint-staged": "^15.0.0"
   },
   "lint-staged": {
-    "*.{js,jsx,ts,tsx}": ["pnpm --filter x-blog-frontend lint"],
-    "*.json": ["pnpm --filter x-blog-frontend format"]
+    "*.{js,jsx,ts,tsx}": [
+      "pnpm --filter x-blog-frontend lint"
+    ],
+    "*.json": [
+      "pnpm --filter x-blog-frontend format"
+    ]
   }
 }
