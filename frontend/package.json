@@ -18,7 +18,7 @@
     "test": "vitest --run",
     "test:ui": "vitest --ui",
     "test:coverage": "vitest --coverage",
-    "test:e2e": "playwright test"
+    "test:e2e": "rm -rf /tmp/e2e-test && mkdir -p /tmp/e2e-test && cd /tmp/e2e-test && pnpm init && pnpm add -D @playwright/test@1.59.1 > /dev/null 2>&1 && cp -r /var/tmp/aurora/frontend/e2e/. . && npx playwright test"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",
@@ -38,7 +38,6 @@
   },
   "devDependencies": {
     "@biomejs/biome": "^2.4.11",
-    "@playwright/test": "^1.59.1",
     "@tailwindcss/postcss": "^4.2.2",
     "@testing-library/dom": "^10.4.1",
     "@testing-library/react": "^16.3.2",
@@ -50,6 +49,7 @@
     "autoprefixer": "^10.4.27",
     "jsdom": "^29.0.2",
     "msw": "^2.13.2",
+    "playwright": "^1.59.1",
     "postcss": "^8.5.9",
     "tailwindcss": "^4.2.2",
     "typescript": "^6.0.2",

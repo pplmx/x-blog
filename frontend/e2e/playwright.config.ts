@@ -1,11 +1,11 @@
-import { defineConfig, devices } from '@playwright/test';
+const { defineConfig, devices } = require('@playwright/test');
 
-export default defineConfig({
-  testDir: './e2e',
+module.exports = defineConfig({
+  testDir: '.',
   fullyParallel: true,
   forbidOnly: false,
   retries: 0,
-  workers: undefined,
+  workers: 1,
   reporter: 'line',
   timeout: 30000,
   expect: {
