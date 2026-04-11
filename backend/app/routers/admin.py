@@ -161,11 +161,16 @@ def admin_update_post(
     if not post:
         raise HTTPException(status_code=404, detail="Post not found")
 
-    post.title = post_data.title
-    post.slug = post_data.slug
-    post.content = post_data.content
-    post.excerpt = post_data.excerpt
-    post.published = post_data.published
+    if post_data.title is not None:
+        post.title = post_data.title
+    if post_data.slug is not None:
+        post.slug = post_data.slug
+    if post_data.content is not None:
+        post.content = post_data.content
+    if post_data.excerpt is not None:
+        post.excerpt = post_data.excerpt
+    if post_data.published is not None:
+        post.published = post_data.published
     post.category_id = post_data.category_id
 
     if post_data.tag_ids is not None:

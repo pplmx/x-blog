@@ -49,7 +49,7 @@ class PostUpdate(BaseModel):
     excerpt: str | None = None
     published: bool | None = None
     category_id: int | None = None
-    tags: list[str] | None = None
+    tag_ids: list[int] | None = None
 
 
 class Post(PostBase):
