@@ -1,6 +1,11 @@
+'use client';
+
 import Link from 'next/link';
-import { LayoutDashboard, FileText, Tag, Folder } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { LayoutDashboard, FileText, Tag, Folder, LogOut } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { useAuth } from '@/lib/auth-context';
+import { useEffect } from 'react';
 
 const navItems = [
   { href: '/admin', icon: LayoutDashboard, label: '仪表盘' },
@@ -10,6 +15,19 @@ const navItems = [
 ];
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
+  const { isAuthenticated, logout } = useAuth();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (!isAuthenticated) {
+      router.push('/admin/login');
+    }
+  }, [isAuthenticated, router]);
+
+  if (!isAuthenticated) {
+    return null;
+  }
+
   return (
     <div className="min-h-screen flex">
       <aside className="w-64 border-r bg-card p-4">
@@ -24,7 +42,18 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             </Link>
           ))}
         </nav>
-        <div className="mt-6 pt-6 border-t">
+        <div className="mt-6 pt-6 border-t space-y-2">
+          <Button
+            variant="outline"
+            className="w-full"
+            onClick={() => {
+              logout();
+              router.push('/admin/login');
+            }}
+          >
+            <LogOut className="mr-2 h-4 w-4" />
+            退出登录
+          </Button>
           <Link href="/">
             <Button variant="outline" className="w-full">
               返回前台

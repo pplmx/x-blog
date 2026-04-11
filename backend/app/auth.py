@@ -1,12 +1,11 @@
 from datetime import UTC, datetime
-from typing import Optional
 
 import bcrypt
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from jose import JWTError, jwt
 from pydantic import BaseModel
-from sqlalchemy import Column, Integer, String, Boolean, DateTime
+from sqlalchemy import Boolean, Column, DateTime, Integer, String
 from sqlalchemy.orm import Session
 
 from app.database import Base, get_db
@@ -28,7 +27,7 @@ class User(Base):
 
 
 class TokenData(BaseModel):
-    user_id: Optional[int] = None
+    user_id: int | None = None
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:

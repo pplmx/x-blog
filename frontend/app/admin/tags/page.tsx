@@ -4,18 +4,43 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Plus, Trash2 } from 'lucide-react';
-import { useTags, useCreateTag } from '@/lib/hooks';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { fetchAdminTags, createAdminTag, deleteAdminTag } from '@/lib/api';
 
 export default function TagsPage() {
   const [newName, setNewName] = useState('');
-  const { data: tags, isLoading, error } = useTags();
-  const createTag = useCreateTag();
+  const queryClient = useQueryClient();
+
+  const { data: tags, isLoading, error } = useQuery({
+    queryKey: ['admin-tags'],
+    queryFn: fetchAdminTags,
+  });
+
+  const createTag = useMutation({
+    mutationFn: createAdminTag,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-tags'] });
+      setNewName('');
+    },
+  });
+
+  const deleteTag = useMutation({
+    mutationFn: deleteAdminTag,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-tags'] });
+    },
+  });
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newName.trim()) return;
-    await createTag.mutateAsync({ name: newName });
+    await createTag.mutateAsync(newName);
     setNewName('');
+  };
+
+  const handleDelete = async (id: number) => {
+    if (!confirm('确定要删除这个标签吗？')) return;
+    await deleteTag.mutateAsync(id);
   };
 
   if (isLoading) return <div>加载中...</div>;
@@ -42,7 +67,12 @@ export default function TagsPage() {
         {tags.map((tag) => (
           <div key={tag.id} className="flex items-center gap-2 p-2 border rounded-lg">
             <span>{tag.name}</span>
-            <Button variant="ghost" size="sm">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => handleDelete(tag.id)}
+              disabled={deleteTag.isPending}
+            >
               <Trash2 className="h-4 w-4" />
             </Button>
           </div>

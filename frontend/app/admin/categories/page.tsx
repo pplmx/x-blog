@@ -4,18 +4,43 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Plus, Trash2 } from 'lucide-react';
-import { useCategories, useCreateCategory } from '@/lib/hooks';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { fetchAdminCategories, createAdminCategory, deleteAdminCategory } from '@/lib/api';
 
 export default function CategoriesPage() {
   const [newName, setNewName] = useState('');
-  const { data: categories, isLoading, error } = useCategories();
-  const createCategory = useCreateCategory();
+  const queryClient = useQueryClient();
+
+  const { data: categories, isLoading, error } = useQuery({
+    queryKey: ['admin-categories'],
+    queryFn: fetchAdminCategories,
+  });
+
+  const createCategory = useMutation({
+    mutationFn: createAdminCategory,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-categories'] });
+      setNewName('');
+    },
+  });
+
+  const deleteCategory = useMutation({
+    mutationFn: deleteAdminCategory,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-categories'] });
+    },
+  });
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newName.trim()) return;
-    await createCategory.mutateAsync({ name: newName });
+    await createCategory.mutateAsync(newName);
     setNewName('');
+  };
+
+  const handleDelete = async (id: number) => {
+    if (!confirm('确定要删除这个分类吗？')) return;
+    await deleteCategory.mutateAsync(id);
   };
 
   if (isLoading) return <div>加载中...</div>;
@@ -42,7 +67,12 @@ export default function CategoriesPage() {
         {categories.map((cat) => (
           <div key={cat.id} className="flex items-center justify-between p-3 border rounded-lg">
             <span>{cat.name}</span>
-            <Button variant="ghost" size="sm">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => handleDelete(cat.id)}
+              disabled={deleteCategory.isPending}
+            >
               <Trash2 className="h-4 w-4" />
             </Button>
           </div>

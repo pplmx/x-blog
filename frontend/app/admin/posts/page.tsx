@@ -3,11 +3,22 @@
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Plus, Pencil, Trash2 } from 'lucide-react';
-import { usePosts, useDeletePost } from '@/lib/hooks';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { fetchAdminPosts, deleteAdminPost } from '@/lib/api';
 
 export default function PostsPage() {
-  const { data, isLoading, error } = usePosts({ limit: 100 });
-  const deletePost = useDeletePost();
+  const queryClient = useQueryClient();
+  const { data: posts, isLoading, error } = useQuery({
+    queryKey: ['admin-posts'],
+    queryFn: fetchAdminPosts,
+  });
+
+  const deletePost = useMutation({
+    mutationFn: deleteAdminPost,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-posts'] });
+    },
+  });
 
   const handleDelete = async (id: number) => {
     if (!confirm('确定要删除这篇文章吗？')) return;
@@ -16,9 +27,7 @@ export default function PostsPage() {
 
   if (isLoading) return <div>加载中...</div>;
   if (error) return <div>加载失败: {String(error)}</div>;
-  if (!data) return <div>暂无数据</div>;
-
-  const posts = data.items;
+  if (!posts) return <div>暂无数据</div>;
 
   return (
     <div>
