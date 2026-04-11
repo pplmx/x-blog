@@ -1,6 +1,6 @@
 from sqlalchemy.orm import Session
 from app import models, schemas
-from typing import List, Optional
+from typing import List, Optional, Tuple
 
 
 def get_posts(
@@ -10,7 +10,7 @@ def get_posts(
     published: bool = True,
     category_id: Optional[int] = None,
     tag_id: Optional[int] = None,
-) -> List[models.Post]:
+) -> Tuple[List[models.Post], int]:
     query = db.query(models.Post)
 
     if published:
@@ -22,7 +22,9 @@ def get_posts(
     if tag_id:
         query = query.join(models.Post.tags).filter(models.Tag.id == tag_id).distinct()
 
-    return query.offset(skip).limit(limit).all()
+    total = query.count()
+    posts = query.offset(skip).limit(limit).all()
+    return posts, total
 
 
 def get_post(db: Session, post_id: int) -> Optional[models.Post]:

@@ -71,3 +71,15 @@ class PostList(BaseModel):
     category: Optional[Category] = None
     tags: List[Tag] = []
     model_config = ConfigDict(from_attributes=True)
+
+
+class PaginationMeta(BaseModel):
+    total: int
+    page: int
+    limit: int
+    total_pages: int
+
+
+class PostListResponse(BaseModel):
+    items: List[PostList]
+    pagination: PaginationMeta

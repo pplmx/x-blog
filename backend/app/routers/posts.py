@@ -7,22 +7,34 @@ from app.database import get_db
 router = APIRouter(prefix="/api/posts", tags=["posts"])
 
 
-@router.get("", response_model=List[schemas.PostList])
+@router.get("", response_model=schemas.PostListResponse)
 def list_posts(
-    skip: int = 0,
+    page: int = 1,
     limit: int = 10,
     category_id: Optional[int] = None,
     tag_id: Optional[int] = None,
     db: Session = Depends(get_db),
 ):
-    posts = crud.get_posts(
+    skip = (page - 1) * limit
+    posts, total = crud.get_posts(
         db,
         skip=skip,
         limit=limit,
         category_id=category_id,
         tag_id=tag_id,
     )
-    return posts
+
+    total_pages = (total + limit - 1) // limit
+
+    return {
+        "items": posts,
+        "pagination": {
+            "total": total,
+            "page": page,
+            "limit": limit,
+            "total_pages": total_pages,
+        },
+    }
 
 
 @router.get("/{post_id}", response_model=schemas.Post)
