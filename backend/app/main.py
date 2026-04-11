@@ -2,7 +2,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from app.database import engine, Base
 from app import models
-from app.routers import posts, categories, tags, comments
+from app.routers import posts, categories, tags, comments, search
 
 
 @asynccontextmanager
@@ -17,6 +17,7 @@ app.include_router(posts.router)
 app.include_router(categories.router)
 app.include_router(tags.router)
 app.include_router(comments.router)
+app.include_router(search.router)
 
 
 @app.get("/")

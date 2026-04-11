@@ -1,4 +1,5 @@
 from sqlalchemy.orm import Session
+from sqlalchemy import select, or_, func
 from app import models, schemas
 from typing import List, Optional, Tuple
 
@@ -161,3 +162,39 @@ def delete_comment(db: Session, comment_id: int) -> bool:
     db.delete(comment)
     db.commit()
     return True
+
+
+def search_posts(db: Session, query: str, page: int = 1, limit: int = 10):
+    offset = (page - 1) * limit
+
+    search_pattern = f"%{query}%"
+
+    stmt = (
+        select(models.Post)
+        .where(
+            or_(
+                models.Post.title.ilike(search_pattern),
+                models.Post.content.ilike(search_pattern),
+            )
+        )
+        .where(models.Post.published == True)
+        .order_by(models.Post.title.ilike(search_pattern).desc(), models.Post.created_at.desc())
+        .offset(offset)
+        .limit(limit)
+    )
+
+    posts = db.execute(stmt).scalars().all()
+
+    count_stmt = (
+        select(func.count(models.Post.id))
+        .where(
+            or_(
+                models.Post.title.ilike(search_pattern),
+                models.Post.content.ilike(search_pattern),
+            )
+        )
+        .where(models.Post.published == True)
+    )
+    total = db.execute(count_stmt).scalar()
+
+    return posts, total
