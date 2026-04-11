@@ -39,13 +39,15 @@ if SECRET_KEY == "x-blog-secret-key-dev-only":
 **依赖**: `slowapi`
 
 ```python
+import os
 from slowapi import Limiter
 from slowapi.util import get_remote_address
 
-limiter = Limiter(key_func=get_remote_remote_address)
+RATE_LIMIT = os.getenv("RATE_LIMIT_PER_MINUTE", "60")
+limiter = Limiter(key_func=get_remote_address)
 
 @app.post("/api/admin/login")
-@limiter.limit("60/minute")
+@limiter.limit(f"{RATE_LIMIT}/minute")
 def login():
     ...
 ```
