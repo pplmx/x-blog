@@ -30,8 +30,8 @@
 | 工具 | 版本 | 安装方式 |
 |------|------|----------|
 | Python | 3.14+ | [uv](https://github.com/astral-sh/uv) |
-| Node.js | 25+ | [nvm](https://github.com/nvm-sh/nvm) |
-| pnpm | 9+ | `npm install -g pnpm` |
+| Node.js | 25+ | [Node.js](https://nodejs.org/) |
+| pnpm | 10+ | `npm install -g pnpm` |
 
 ```bash
 # 安装 uv (Python 包管理器)

@@ -30,8 +30,8 @@ A modern full-stack blog application built with FastAPI + Next.js
 | Tool | Version | Install |
 |------|---------|---------|
 | Python | 3.14+ | [uv](https://github.com/astral-sh/uv) |
-| Node.js | 25+ | [nvm](https://github.com/nvm-sh/nvm) |
-| pnpm | 9+ | `npm install -g pnpm` |
+| Node.js | 25+ | [Node.js](https://nodejs.org/) |
+| pnpm | 10+ | `npm install -g pnpm` |
 
 ```bash
 # Install uv (Python package manager)
