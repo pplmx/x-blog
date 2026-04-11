@@ -14,7 +14,7 @@
     "lint:fix": "biome lint --write .",
     "format": "biome format --write .",
     "type-check": "tsc --noEmit",
-    "test": "vitest",
+    "test": "vitest --run",
     "test:ui": "vitest --ui",
     "test:coverage": "vitest --coverage",
     "prepare": "husky"
