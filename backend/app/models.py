@@ -38,6 +38,7 @@ class Post(Base):
         onupdate=lambda: datetime.now(UTC),
     )
     category_id = Column(Integer, ForeignKey("categories.id"))
+    cover_image = Column(String(500), nullable=True)
 
     category = relationship("Category", back_populates="posts")
     tags = relationship("Tag", secondary=post_tags, back_populates="posts")
