@@ -3,9 +3,16 @@ import Markdown from "@/components/Markdown";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Tag } from "@/types";
-import CommentList from "@/components/CommentList";
-import CommentForm from "@/components/CommentForm";
 import type { Metadata } from "next";
+import dynamic from "next/dynamic";
+
+const CommentList = dynamic(() => import("@/components/CommentList"), {
+  loading: () => <div>加载评论...</div>,
+});
+
+const CommentForm = dynamic(() => import("@/components/CommentForm"), {
+  loading: () => <div>加载表单...</div>,
+});
 
 interface PageProps {
   params: Promise<{ slug: string }>;
