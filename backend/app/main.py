@@ -1,15 +1,17 @@
 import os
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from fastapi.staticfiles import StaticFiles
 from slowapi import Limiter
 from slowapi.errors import RateLimitExceeded
 from slowapi.util import get_remote_address
 
 from app.database import Base, engine
-from app.routers import admin, categories, comments, posts, search, tags
+from app.routers import admin, categories, comments, posts, search, tags, upload
 
 RATE_LIMIT_PER_MINUTE = os.getenv("RATE_LIMIT_PER_MINUTE", "60")
 limiter = Limiter(key_func=get_remote_address)
@@ -59,6 +61,10 @@ app.include_router(tags.router)
 app.include_router(comments.router)
 app.include_router(search.router)
 app.include_router(admin.router)
+app.include_router(upload.router)
+
+static_dir = Path(__file__).parent.parent / "static"
+app.mount("/static", StaticFiles(directory=str(static_dir)), name="static")
 
 
 @app.get("/")
