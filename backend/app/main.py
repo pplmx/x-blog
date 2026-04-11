@@ -1,8 +1,15 @@
+import os
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
+from fastapi.responses import JSONResponse
+from slowapi import Limiter
+from slowapi.util import get_remote_address
 
 from app.database import Base, engine
+
+RATE_LIMIT_PER_MINUTE = os.getenv("RATE_LIMIT_PER_MINUTE", "60")
+limiter = Limiter(key_func=get_remote_address)
 from app.routers import admin, categories, comments, posts, search, tags
 
 
@@ -13,6 +20,17 @@ async def lifespan(_app: FastAPI):
 
 
 app = FastAPI(title="X-Blog Blog API", version="0.1.0", lifespan=lifespan)
+
+app.state.limiter = limiter
+
+
+def rate_limit_exceeded_handler(request: Request, exc: Exception):
+    return JSONResponse(status_code=429, content={"detail": "Too many requests"})
+
+
+from slowapi.errors import RateLimitExceeded
+
+app.add_exception_handler(RateLimitExceeded, rate_limit_exceeded_handler)
 
 app.include_router(posts.router)
 app.include_router(categories.router)
