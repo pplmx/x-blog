@@ -1,4 +1,3 @@
-import pytest
 
 
 def test_search_posts(client):

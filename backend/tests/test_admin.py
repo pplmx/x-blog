@@ -1,5 +1,6 @@
 import pytest
-from app.auth import get_password_hash, User
+
+from app.auth import User, get_password_hash
 
 
 @pytest.fixture
@@ -16,7 +17,8 @@ def admin_user(db_session):
 
 
 @pytest.fixture
-def admin_token(client, admin_user):
+def admin_token(client, admin_user):  # noqa: ARG001
+    # admin_user is required to create the user in DB before login
     response = client.post(
         "/api/admin/login",
         data={"username": "admin", "password": "admin123"},

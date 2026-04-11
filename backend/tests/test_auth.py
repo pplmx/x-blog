@@ -1,11 +1,11 @@
-import pytest
-from app.auth import (
-    verify_password,
-    get_password_hash,
-    create_access_token,
-    TokenData,
-)
 from jose import jwt
+
+from app.auth import (
+    TokenData,
+    create_access_token,
+    get_password_hash,
+    verify_password,
+)
 
 
 class TestAuth:
