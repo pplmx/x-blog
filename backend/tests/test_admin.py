@@ -1,68 +1,17 @@
 import pytest
-from fastapi.testclient import TestClient
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
-
-from app.database import Base, get_db
 from app.auth import get_password_hash, User
-import app.auth
-from app.main import app
-from app import models
-
-SQLALCHEMY_DATABASE_URL = "sqlite:///./test_admin_isolated.db"
-
-engine = create_engine(
-    SQLALCHEMY_DATABASE_URL,
-    connect_args={"check_same_thread": False},
-)
-TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-
-
-def override_get_db():
-    db = TestingSessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
-
-
-app.dependency_overrides[get_db] = override_get_db
-
-
-@pytest.fixture(autouse=True, scope="function")
-def ensure_override():
-    app.dependency_overrides[get_db] = override_get_db
-    yield
-
-
-@pytest.fixture(autouse=True)
-def setup_database():
-    import app.auth
-    import app.models
-
-    Base.metadata.drop_all(bind=engine)
-    Base.metadata.create_all(bind=engine)
-    yield
-    Base.metadata.drop_all(bind=engine)
 
 
 @pytest.fixture
-def client():
-    return TestClient(app)
-
-
-@pytest.fixture
-def admin_user():
-    db = TestingSessionLocal()
+def admin_user(db_session):
     user = User(
         username="admin",
         password=get_password_hash("admin123"),
         is_superuser=True,
     )
-    db.add(user)
-    db.commit()
-    db.refresh(user)
-    db.close()
+    db_session.add(user)
+    db_session.commit()
+    db_session.refresh(user)
     return user
 
 
@@ -105,12 +54,12 @@ class TestAdminLogin:
 
 
 class TestAdminPosts:
-    def test_list_posts(self, client, auth_headers, admin_user):
-        db = TestingSessionLocal()
+    def test_list_posts(self, client, auth_headers, admin_user, db_session):
+        from app import models
+
         post = models.Post(title="Test", slug="test", content="Content", published=True)
-        db.add(post)
-        db.commit()
-        db.close()
+        db_session.add(post)
+        db_session.commit()
 
         response = client.get("/api/admin/posts", headers=auth_headers)
         assert response.status_code == 200
@@ -131,25 +80,25 @@ class TestAdminPosts:
         assert response.status_code == 200
         assert response.json()["id"] == 1
 
-    def test_get_post(self, client, auth_headers):
-        db = TestingSessionLocal()
+    def test_get_post(self, client, auth_headers, db_session):
+        from app import models
+
         post = models.Post(title="Test", slug="test", content="Content", published=True)
-        db.add(post)
-        db.commit()
+        db_session.add(post)
+        db_session.commit()
         post_id = post.id
-        db.close()
 
         response = client.get(f"/api/admin/posts/{post_id}", headers=auth_headers)
         assert response.status_code == 200
         assert response.json()["title"] == "Test"
 
-    def test_update_post(self, client, auth_headers):
-        db = TestingSessionLocal()
+    def test_update_post(self, client, auth_headers, db_session):
+        from app import models
+
         post = models.Post(title="Test", slug="test", content="Content", published=True)
-        db.add(post)
-        db.commit()
+        db_session.add(post)
+        db_session.commit()
         post_id = post.id
-        db.close()
 
         response = client.put(
             f"/api/admin/posts/{post_id}",
@@ -158,13 +107,13 @@ class TestAdminPosts:
         )
         assert response.status_code == 200
 
-    def test_delete_post(self, client, auth_headers):
-        db = TestingSessionLocal()
+    def test_delete_post(self, client, auth_headers, db_session):
+        from app import models
+
         post = models.Post(title="Test", slug="test", content="Content", published=True)
-        db.add(post)
-        db.commit()
+        db_session.add(post)
+        db_session.commit()
         post_id = post.id
-        db.close()
 
         response = client.delete(f"/api/admin/posts/{post_id}", headers=auth_headers)
         assert response.status_code == 200
@@ -175,12 +124,12 @@ class TestAdminPosts:
 
 
 class TestAdminCategories:
-    def test_list_categories(self, client, auth_headers):
-        db = TestingSessionLocal()
+    def test_list_categories(self, client, auth_headers, db_session):
+        from app import models
+
         category = models.Category(name="Test Category")
-        db.add(category)
-        db.commit()
-        db.close()
+        db_session.add(category)
+        db_session.commit()
 
         response = client.get("/api/admin/categories", headers=auth_headers)
         assert response.status_code == 200
@@ -192,25 +141,25 @@ class TestAdminCategories:
         )
         assert response.status_code == 200
 
-    def test_delete_category(self, client, auth_headers):
-        db = TestingSessionLocal()
+    def test_delete_category(self, client, auth_headers, db_session):
+        from app import models
+
         category = models.Category(name="Test")
-        db.add(category)
-        db.commit()
+        db_session.add(category)
+        db_session.commit()
         cat_id = category.id
-        db.close()
 
         response = client.delete(f"/api/admin/categories/{cat_id}", headers=auth_headers)
         assert response.status_code == 200
 
 
 class TestAdminTags:
-    def test_list_tags(self, client, auth_headers):
-        db = TestingSessionLocal()
+    def test_list_tags(self, client, auth_headers, db_session):
+        from app import models
+
         tag = models.Tag(name="Test Tag")
-        db.add(tag)
-        db.commit()
-        db.close()
+        db_session.add(tag)
+        db_session.commit()
 
         response = client.get("/api/admin/tags", headers=auth_headers)
         assert response.status_code == 200
@@ -222,13 +171,13 @@ class TestAdminTags:
         )
         assert response.status_code == 200
 
-    def test_delete_tag(self, client, auth_headers):
-        db = TestingSessionLocal()
+    def test_delete_tag(self, client, auth_headers, db_session):
+        from app import models
+
         tag = models.Tag(name="Test")
-        db.add(tag)
-        db.commit()
+        db_session.add(tag)
+        db_session.commit()
         tag_id = tag.id
-        db.close()
 
         response = client.delete(f"/api/admin/tags/{tag_id}", headers=auth_headers)
         assert response.status_code == 200
