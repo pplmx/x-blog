@@ -33,6 +33,14 @@ npm-debug.log*
 .pytest_cache/
 test.db
 
+# Playwright
+playwright-report/
+test-results/
+playwright/.cache/
+
+# Vitest Coverage
+coverage/
+
 # IDE
 .vscode/
 .idea/
