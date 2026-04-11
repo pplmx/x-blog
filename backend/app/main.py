@@ -5,13 +5,14 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from slowapi import Limiter
+from slowapi.errors import RateLimitExceeded
 from slowapi.util import get_remote_address
 
 from app.database import Base, engine
+from app.routers import admin, categories, comments, posts, search, tags
 
 RATE_LIMIT_PER_MINUTE = os.getenv("RATE_LIMIT_PER_MINUTE", "60")
 limiter = Limiter(key_func=get_remote_address)
-from app.routers import admin, categories, comments, posts, search, tags
 
 
 @asynccontextmanager
@@ -46,11 +47,9 @@ async def add_security_headers(request: Request, call_next):
 app.state.limiter = limiter
 
 
-def rate_limit_exceeded_handler(request: Request, exc: Exception):
+def rate_limit_exceeded_handler(_request: Request, _exc: Exception):
     return JSONResponse(status_code=429, content={"detail": "Too many requests"})
 
-
-from slowapi.errors import RateLimitExceeded
 
 app.add_exception_handler(RateLimitExceeded, rate_limit_exceeded_handler)
 

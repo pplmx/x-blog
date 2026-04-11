@@ -17,7 +17,8 @@ ALGORITHM = "HS256"
 
 if SECRET_KEY == "x-blog-secret-key-dev-only":
     warnings.warn(
-        "JWT_SECRET_KEY not set! Using insecure default. Set JWT_SECRET_KEY environment variable for production."
+        "JWT_SECRET_KEY not set! Using insecure default. Set JWT_SECRET_KEY environment variable for production.",
+        stacklevel=2,
     )
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/admin/login")
