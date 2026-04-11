@@ -5,6 +5,7 @@ build/
 dist/
 wheels/
 *.egg-info
+**/__pycache__/
 
 # Virtual environments
 .venv
@@ -22,6 +23,7 @@ worktrees/
 node_modules/
 .next/
 npm-debug.log*
+pnpm-debug.log*
 *.tsbuildinfo
 
 # Environment
@@ -50,4 +52,14 @@ coverage/
 .cache/
 *.egg-info
 **/core.*
+
+# Core dumps
+core.*
+*.core
+
+# Logs
+*.log
+
+# System
+.DS_Store
 
