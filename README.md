@@ -1,4 +1,4 @@
-# Aurora Blog
+# X-Blog
 
 A modern blog built with FastAPI + Next.js.
 

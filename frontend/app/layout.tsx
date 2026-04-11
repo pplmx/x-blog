@@ -4,7 +4,7 @@ import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 
 export const metadata: Metadata = {
-  title: "Aurora Blog",
+  title: "X-Blog",
   description: "A simple blog built with Next.js and FastAPI",
 };
 
