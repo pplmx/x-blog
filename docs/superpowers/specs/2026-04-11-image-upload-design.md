@@ -1,11 +1,13 @@
 # 图片上传功能设计
 
 **日期**: 2026-04-11  
-**状态**: 已批准
+**状态**: 已批准 (简化版)
 
 ## 1. 目标
 
-为博客系统添加完整的图片上传功能：文章封面图、用户头像、Markdown 图片插入
+为博客系统添加图片上传功能：文章封面图、Markdown 图片插入
+
+**注意**: 个人部署的博客只有管理员一人，用户头像功能不需要
 
 ## 2. 架构
 
@@ -64,13 +66,6 @@ async def upload_image(file: UploadFile = File(...)):
 
 ### 3.2 数据模型
 
-**User 添加 avatar 字段**:
-
-```python
-class User(Base):
-    avatar = Column(String(500), nullable=True)
-```
-
 **Post 添加 cover_image 字段**:
 
 ```python
@@ -98,8 +93,8 @@ class Post(Base):
 ## 4. 文件结构
 
 - Create: `backend/app/routers/upload.py` - 上传 API
-- Modify: `backend/app/models.py` - 添加 avatar, cover_image
-- Modify: `backend/app/main.py` - 注册路由 + 配置静态文件服务
+- Modify: `backend/app/models.py` - 添加 cover_image
+- Modify: `backend/app/main.py` - 注册路由 + 配置静态文件
 
 **静态文件配置** (main.py):
 ```python
@@ -114,7 +109,6 @@ app.mount("/static", StaticFiles(directory="backend/static"), name="static")
 
 - [ ] 图片上传 API 正常工作
 - [ ] 文件类型/大小验证
-- [ ] 用户头像上传
 - [ ] 文章封面图上传
 - [ ] Markdown 图片插入
 - [ ] 测试通过
