@@ -12,8 +12,8 @@ A modern blog built with FastAPI + Next.js.
 
 ### Prerequisites
 
-- Python 3.11+
-- Node.js 18+
+- Python 3.14+
+- Node.js 25+
 - [uv](https://github.com/astral-sh/uv) - `pip install uv`
 - [pnpm](https://pnpm.io/) - `npm install -g pnpm`
 
