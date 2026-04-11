@@ -14,7 +14,7 @@ A modern blog built with FastAPI + Next.js.
 
 - Python 3.14+
 - Node.js 25+
-- [uv](https://github.com/astral-sh/uv) - `pip install uv`
+- [uv](https://github.com/astral-sh/uv) - `curl -LsSf https://astral.sh/uv/install.sh | sh`
 - [pnpm](https://pnpm.io/) - `npm install -g pnpm`
 
 ### Installation
