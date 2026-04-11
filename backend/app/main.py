@@ -1,5 +1,6 @@
 from fastapi import FastAPI
 from app.database import engine, Base
+from app import models
 
 app = FastAPI(title="Aurora Blog API", version="0.1.0")
 
