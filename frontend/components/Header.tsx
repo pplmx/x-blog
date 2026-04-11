@@ -1,4 +1,5 @@
 import Link from "next/link";
+import SearchBox from "./SearchBox";
 
 export default function Header() {
   return (
@@ -7,14 +8,17 @@ export default function Header() {
         <Link href="/" className="text-2xl font-bold">
           X-Blog
         </Link>
-        <nav className="flex gap-6">
-          <Link href="/" className="hover:text-blue-600">
-            首页
-          </Link>
-          <Link href="/about" className="hover:text-blue-600">
-            关于
-          </Link>
-        </nav>
+        <div className="flex items-center gap-6">
+          <SearchBox />
+          <nav className="flex gap-6">
+            <Link href="/" className="hover:text-blue-600">
+              首页
+            </Link>
+            <Link href="/about" className="hover:text-blue-600">
+              关于
+            </Link>
+          </nav>
+        </div>
       </div>
     </header>
   );
