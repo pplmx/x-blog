@@ -66,12 +66,12 @@ just frontend # http://localhost:3000
 |------|------|
 | `pnpm install` | 安装所有依赖 |
 | `pnpm dev` | 运行开发服务器 |
-| `just backend` | 运行 FastAPI 后端 |
-| `just frontend` | 运行 Next.js 前端 |
-| `just lint` | 代码检查 |
-| `just format` | 代码格式化 |
-| `just test` | 运行测试 |
-| `just clean` | 清理生成文件 |
+| `pnpm backend` | 运行 FastAPI 后端 |
+| `pnpm frontend` | 运行 Next.js 前端 |
+| `pnpm lint` | 代码检查 |
+| `pnpm format` | 代码格式化 |
+| `pnpm test` | 运行测试 |
+| `pnpm clean` | 清理生成文件 |
 
 ## 📡 API 接口
 

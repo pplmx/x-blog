@@ -66,12 +66,12 @@ just frontend # http://localhost:3000
 |---------|-------------|
 | `pnpm install` | Install all dependencies |
 | `pnpm dev` | Run dev servers (backend + frontend) |
-| `just backend` | Run FastAPI server |
-| `just frontend` | Run Next.js dev server |
-| `just lint` | Lint code (ruff + biome) |
-| `just format` | Format code |
-| `just test` | Run tests |
-| `just clean` | Clean generated files |
+| `pnpm backend` | Run FastAPI server |
+| `pnpm frontend` | Run Next.js dev server |
+| `pnpm lint` | Lint code (ruff + biome) |
+| `pnpm format` | Format code |
+| `pnpm test` | Run tests |
+| `pnpm clean` | Clean generated files |
 
 ## 📡 API Endpoints
 

@@ -2,6 +2,16 @@
   "name": "x-blog",
   "version": "0.1.0",
   "private": true,
+  "scripts": {
+    "dev": "cd backend && uv run uvicorn app.main:app --reload --port 8000 & cd frontend && pnpm dev",
+    "install:all": "cd backend && uv sync && cd frontend && pnpm install",
+    "backend": "cd backend && uv run uvicorn app.main:app --reload --port 8000",
+    "frontend": "cd frontend && pnpm dev",
+    "lint": "cd backend && uv run ruff check . && cd frontend && pnpm lint",
+    "format": "cd backend && uv run ruff format . && cd frontend && pnpm format",
+    "test": "cd backend && uv run pytest && cd frontend && pnpm test",
+    "clean": "rm -f backend/*.db && rm -rf frontend/.next && rm -rf backend/.pytest_cache && rm -rf .ruff_cache backend/.ruff_cache && rm -rf frontend/node_modules/.vite && rm -rf frontend/coverage"
+  },
   "devDependencies": {
     "@commitlint/cli": "^20.5.0",
     "@commitlint/config-conventional": "^20.5.0",
