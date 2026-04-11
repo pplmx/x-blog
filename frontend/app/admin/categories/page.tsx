@@ -3,12 +3,14 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Plus, Trash2 } from 'lucide-react';
+import { Plus, Trash2, Pencil, Check, X } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { fetchAdminCategories, createAdminCategory, deleteAdminCategory } from '@/lib/api';
+import { fetchAdminCategories, createAdminCategory, deleteAdminCategory, updateAdminCategory } from '@/lib/api';
 
 export default function CategoriesPage() {
   const [newName, setNewName] = useState('');
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [editName, setEditName] = useState('');
   const queryClient = useQueryClient();
 
   const { data: categories, isLoading, error } = useQuery({
@@ -24,6 +26,15 @@ export default function CategoriesPage() {
     },
   });
 
+  const updateCategory = useMutation({
+    mutationFn: ({ id, name }: { id: number; name: string }) => updateAdminCategory(id, name),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-categories'] });
+      setEditingId(null);
+      setEditName('');
+    },
+  });
+
   const deleteCategory = useMutation({
     mutationFn: deleteAdminCategory,
     onSuccess: () => {
@@ -36,6 +47,21 @@ export default function CategoriesPage() {
     if (!newName.trim()) return;
     await createCategory.mutateAsync(newName);
     setNewName('');
+  };
+
+  const handleStartEdit = (id: number, name: string) => {
+    setEditingId(id);
+    setEditName(name);
+  };
+
+  const handleSaveEdit = async () => {
+    if (!editingId || !editName.trim()) return;
+    await updateCategory.mutateAsync({ id: editingId, name: editName });
+  };
+
+  const handleCancelEdit = () => {
+    setEditingId(null);
+    setEditName('');
   };
 
   const handleDelete = async (id: number) => {
@@ -66,15 +92,49 @@ export default function CategoriesPage() {
       <div className="space-y-2">
         {categories.map((cat) => (
           <div key={cat.id} className="flex items-center justify-between p-3 border rounded-lg">
-            <span>{cat.name}</span>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => handleDelete(cat.id)}
-              disabled={deleteCategory.isPending}
-            >
-              <Trash2 className="h-4 w-4" />
-            </Button>
+            {editingId === cat.id ? (
+              <>
+                <Input
+                  value={editName}
+                  onChange={(e) => setEditName(e.target.value)}
+                  className="max-w-xs"
+                />
+                <div className="flex gap-1">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleSaveEdit}
+                    disabled={updateCategory.isPending}
+                  >
+                    <Check className="h-4 w-4" />
+                  </Button>
+                  <Button variant="ghost" size="sm" onClick={handleCancelEdit}>
+                    <X className="h-4 w-4" />
+                  </Button>
+                </div>
+              </>
+            ) : (
+              <>
+                <span>{cat.name}</span>
+                <div className="flex gap-1">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleStartEdit(cat.id, cat.name)}
+                  >
+                    <Pencil className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleDelete(cat.id)}
+                    disabled={deleteCategory.isPending}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
+              </>
+            )}
           </div>
         ))}
       </div>

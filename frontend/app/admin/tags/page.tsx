@@ -3,12 +3,14 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Plus, Trash2 } from 'lucide-react';
+import { Plus, Trash2, Pencil, Check, X } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { fetchAdminTags, createAdminTag, deleteAdminTag } from '@/lib/api';
+import { fetchAdminTags, createAdminTag, deleteAdminTag, updateAdminTag } from '@/lib/api';
 
 export default function TagsPage() {
   const [newName, setNewName] = useState('');
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [editName, setEditName] = useState('');
   const queryClient = useQueryClient();
 
   const { data: tags, isLoading, error } = useQuery({
@@ -24,6 +26,15 @@ export default function TagsPage() {
     },
   });
 
+  const updateTag = useMutation({
+    mutationFn: ({ id, name }: { id: number; name: string }) => updateAdminTag(id, name),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-tags'] });
+      setEditingId(null);
+      setEditName('');
+    },
+  });
+
   const deleteTag = useMutation({
     mutationFn: deleteAdminTag,
     onSuccess: () => {
@@ -36,6 +47,21 @@ export default function TagsPage() {
     if (!newName.trim()) return;
     await createTag.mutateAsync(newName);
     setNewName('');
+  };
+
+  const handleStartEdit = (id: number, name: string) => {
+    setEditingId(id);
+    setEditName(name);
+  };
+
+  const handleSaveEdit = async () => {
+    if (!editingId || !editName.trim()) return;
+    await updateTag.mutateAsync({ id: editingId, name: editName });
+  };
+
+  const handleCancelEdit = () => {
+    setEditingId(null);
+    setEditName('');
   };
 
   const handleDelete = async (id: number) => {
@@ -66,15 +92,45 @@ export default function TagsPage() {
       <div className="flex flex-wrap gap-2">
         {tags.map((tag) => (
           <div key={tag.id} className="flex items-center gap-2 p-2 border rounded-lg">
-            <span>{tag.name}</span>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => handleDelete(tag.id)}
-              disabled={deleteTag.isPending}
-            >
-              <Trash2 className="h-4 w-4" />
-            </Button>
+            {editingId === tag.id ? (
+              <>
+                <Input
+                  value={editName}
+                  onChange={(e) => setEditName(e.target.value)}
+                  className="w-24"
+                />
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleSaveEdit}
+                  disabled={updateTag.isPending}
+                >
+                  <Check className="h-4 w-4" />
+                </Button>
+                <Button variant="ghost" size="sm" onClick={handleCancelEdit}>
+                  <X className="h-4 w-4" />
+                </Button>
+              </>
+            ) : (
+              <>
+                <span>{tag.name}</span>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => handleStartEdit(tag.id, tag.name)}
+                >
+                  <Pencil className="h-4 w-4" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => handleDelete(tag.id)}
+                  disabled={deleteTag.isPending}
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              </>
+            )}
           </div>
         ))}
       </div>
