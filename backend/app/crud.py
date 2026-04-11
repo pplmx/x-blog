@@ -4,11 +4,24 @@ from typing import List, Optional
 
 
 def get_posts(
-    db: Session, skip: int = 0, limit: int = 10, published: bool = True
+    db: Session,
+    skip: int = 0,
+    limit: int = 10,
+    published: bool = True,
+    category_id: Optional[int] = None,
+    tag_id: Optional[int] = None,
 ) -> List[models.Post]:
     query = db.query(models.Post)
+
     if published:
         query = query.filter(models.Post.published == True)
+
+    if category_id:
+        query = query.filter(models.Post.category_id == category_id)
+
+    if tag_id:
+        query = query.join(models.Post.tags).filter(models.Tag.id == tag_id).distinct()
+
     return query.offset(skip).limit(limit).all()
 
 
@@ -23,11 +36,7 @@ def get_post_by_slug(db: Session, slug: str) -> Optional[models.Post]:
 def create_post(db: Session, post: schemas.PostCreate) -> models.Post:
     category = None
     if post.category_id:
-        category = (
-            db.query(models.Category)
-            .filter(models.Category.id == post.category_id)
-            .first()
-        )
+        category = db.query(models.Category).filter(models.Category.id == post.category_id).first()
         if not category:
             raise ValueError(f"Category with id {post.category_id} not found")
 
@@ -59,9 +68,7 @@ def create_post(db: Session, post: schemas.PostCreate) -> models.Post:
     return db_post
 
 
-def update_post(
-    db: Session, post_id: int, post: schemas.PostUpdate
-) -> Optional[models.Post]:
+def update_post(db: Session, post_id: int, post: schemas.PostUpdate) -> Optional[models.Post]:
     db_post = get_post(db, post_id)
     if not db_post:
         return None
