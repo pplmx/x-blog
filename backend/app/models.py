@@ -39,6 +39,7 @@ class Post(Base):
 
     category = relationship("Category", back_populates="posts")
     tags = relationship("Tag", secondary=post_tags, back_populates="posts")
+    comments = relationship("Comment", back_populates="post", cascade="all, delete-orphan")
 
 
 class Category(Base):
@@ -57,3 +58,17 @@ class Tag(Base):
     name = Column(String(50), unique=True, nullable=False)
 
     posts = relationship("Post", secondary=post_tags, back_populates="tags")
+
+
+class Comment(Base):
+    __tablename__ = "comments"
+
+    id = Column(Integer, primary_key=True, index=True)
+    post_id = Column(Integer, ForeignKey("posts.id"), nullable=False)
+    nickname = Column(String(50), nullable=False)
+    email = Column(String(100))
+    content = Column(Text, nullable=False)
+    ip_address = Column(String(50))
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+
+    post = relationship("Post", back_populates="comments")
