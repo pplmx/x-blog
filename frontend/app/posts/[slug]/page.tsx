@@ -5,11 +5,38 @@ import { notFound } from "next/navigation";
 import { Tag } from "@/types";
 import CommentList from "@/components/CommentList";
 import CommentForm from "@/components/CommentForm";
-
-export const dynamic = "force-dynamic";
+import type { Metadata } from "next";
 
 interface PageProps {
   params: Promise<{ slug: string }>;
+}
+
+export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
+  const { slug } = await params;
+  let post;
+  try {
+    post = await fetchPost(slug);
+  } catch {
+    return {};
+  }
+
+  return {
+    title: post.title,
+    description: post.excerpt || post.content.slice(0, 150),
+    openGraph: {
+      title: post.title,
+      description: post.excerpt || post.content.slice(0, 150),
+      type: "article",
+      publishedTime: post.created_at,
+      authors: ["X-Blog"],
+      tags: post.tags.map((t: Tag) => t.name),
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: post.title,
+      description: post.excerpt || post.content.slice(0, 150),
+    },
+  };
 }
 
 export default async function PostPage({ params }: PageProps) {
@@ -56,6 +83,23 @@ export default async function PostPage({ params }: PageProps) {
       
       <CommentList postId={post.id} />
       <CommentForm postId={post.id} />
+      
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify({
+            "@context": "https://schema.org",
+            "@type": "BlogPosting",
+            "headline": post.title,
+            "description": post.excerpt || post.content.slice(0, 150),
+            "datePublished": post.created_at,
+            "author": {
+              "@type": "Person",
+              "name": "X-Blog"
+            }
+          })
+        }}
+      />
     </article>
   );
 }
