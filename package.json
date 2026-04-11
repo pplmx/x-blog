@@ -1,0 +1,19 @@
+{
+  "name": "x-blog",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "make dev",
+    "install:all": "pnpm install",
+    "lint": "pnpm -r lint",
+    "format": "pnpm -r format",
+    "test": "pnpm -r test"
+  },
+  "devDependencies": {
+    "lint-staged": "^15.0.0"
+  },
+  "lint-staged": {
+    "*.{js,jsx,ts,tsx}": ["pnpm --filter x-blog-frontend lint"],
+    "*.json": ["pnpm --filter x-blog-frontend format"]
+  }
+}
