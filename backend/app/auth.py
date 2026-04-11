@@ -1,3 +1,5 @@
+import os
+import warnings
 from datetime import UTC, datetime
 
 import bcrypt
@@ -10,8 +12,13 @@ from sqlalchemy.orm import Session
 
 from app.database import Base, get_db
 
-SECRET_KEY = "x-blog-secret-key-change-in-production"
+SECRET_KEY = os.getenv("JWT_SECRET_KEY", "x-blog-secret-key-dev-only")
 ALGORITHM = "HS256"
+
+if SECRET_KEY == "x-blog-secret-key-dev-only":
+    warnings.warn(
+        "JWT_SECRET_KEY not set! Using insecure default. Set JWT_SECRET_KEY environment variable for production."
+    )
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/admin/login")
 

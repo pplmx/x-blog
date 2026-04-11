@@ -1,6 +1,7 @@
 from jose import jwt
 
 from app.auth import (
+    SECRET_KEY,
     TokenData,
     create_access_token,
     get_password_hash,
@@ -28,7 +29,7 @@ class TestAuth:
         assert token is not None
         assert isinstance(token, str)
 
-        payload = jwt.decode(token, "x-blog-secret-key-change-in-production", algorithms=["HS256"])
+        payload = jwt.decode(token, SECRET_KEY, algorithms=["HS256"])
         assert payload["sub"] == "1"
 
     def test_token_data(self):
