@@ -25,6 +25,7 @@
 ```python
 from fastapi import APIRouter, UploadFile, File, HTTPException
 from pathlib import Path
+from datetime import datetime
 import uuid
 import os
 
@@ -98,10 +99,16 @@ class Post(Base):
 
 - Create: `backend/app/routers/upload.py` - 上传 API
 - Modify: `backend/app/models.py` - 添加 avatar, cover_image
-- Modify: `backend/app/main.py` - 注册路由
+- Modify: `backend/app/main.py` - 注册路由 + 配置静态文件服务
+
+**静态文件配置** (main.py):
+```python
+from fastapi.staticfiles import StaticFiles
+app.mount("/static", StaticFiles(directory="backend/static"), name="static")
+```
 - Create: `frontend/components/ImageUpload.tsx` - 上传组件
+- Create: `frontend/app/admin/profile/page.tsx` - 用户设置页面
 - Modify: `frontend/app/admin/posts/[id]/page.tsx` - 封面图
-- Modify: `frontend/app/admin/profile/page.tsx` - 头像
 
 ## 5. 验收标准
 
