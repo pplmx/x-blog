@@ -9,7 +9,7 @@ from sqlalchemy import (
     Table,
 )
 from sqlalchemy.orm import relationship
-from datetime import datetime
+from datetime import datetime, timezone
 from app.database import Base
 
 post_tags = Table(
@@ -29,8 +29,12 @@ class Post(Base):
     content = Column(Text, nullable=False)
     excerpt = Column(String(500))
     published = Column(Boolean, default=False)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(
+        DateTime,
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
+    )
     category_id = Column(Integer, ForeignKey("categories.id"))
 
     category = relationship("Category", back_populates="posts")
