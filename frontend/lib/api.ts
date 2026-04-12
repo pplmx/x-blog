@@ -75,8 +75,11 @@ export async function searchPosts(
 
 export interface Comment {
   id: number;
-  author: string;
+  post_id: number;
+  nickname: string;
+  email: string;
   content: string;
+  ip_address: string;
   created_at: string;
 }
 
@@ -88,7 +91,7 @@ export async function fetchComments(postId: number): Promise<Comment[]> {
 
 export async function createComment(
   postId: number,
-  data: { author: string; content: string }
+  data: { nickname: string; email: string; content: string }
 ): Promise<Comment> {
   const res = await fetch(`${API_BASE}/api/comments/post/${postId}`, {
     method: 'POST',

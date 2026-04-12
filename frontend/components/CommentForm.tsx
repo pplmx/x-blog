@@ -16,7 +16,7 @@ export default function CommentForm({ postId }: { postId: number }) {
     e.preventDefault();
     if (!nickname.trim() || !content.trim()) return;
 
-    await createComment.mutateAsync({ author: nickname, content });
+    await createComment.mutateAsync({ nickname, email, content });
 
     setNickname('');
     setEmail('');

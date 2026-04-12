@@ -71,7 +71,8 @@ export function useComments(postId: number) {
 export function useCreateComment(postId: number) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (data: { author: string; content: string }) => createComment(postId, data),
+    mutationFn: (data: { nickname: string; email: string; content: string }) =>
+      createComment(postId, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['comments', postId] });
     },

@@ -18,7 +18,7 @@ export default function CommentList({ postId }: { postId: number }) {
         <div className="space-y-4">
           {comments.map((comment) => (
             <div key={comment.id} className="border-b pb-4">
-              <div className="font-semibold">{comment.author}</div>
+              <div className="font-semibold">{comment.nickname}</div>
               <p className="text-gray-700 mt-1">{comment.content}</p>
               <div className="text-sm text-gray-400 mt-2">
                 {new Date(comment.created_at).toLocaleString('zh-CN')}
