@@ -13,6 +13,7 @@
 ## Task 1: PostForm 组件提取
 
 **Files:**
+
 - Create: `frontend/components/PostForm.tsx`
 - Modify: `frontend/app/admin/posts/[id]/page.tsx`
 
@@ -46,7 +47,7 @@ interface PostFormProps {
 export function PostForm({ postId, initialData, onSuccess }: PostFormProps) {
   const router = useRouter();
   const queryClient = useQueryClient();
-  
+
   const [formData, setFormData] = useState<Partial<PostCreate>>({
     title: '',
     slug: '',
@@ -75,10 +76,10 @@ git add frontend/components/PostForm.tsx
 git commit -m "refactor: extract PostForm component"
 ```
 
-
 ## Task 2: CommentSection 组件提取
 
 **Files:**
+
 - Create: `frontend/components/CommentSection.tsx`
 - Modify: `frontend/app/posts/[slug]/page.tsx`
 
@@ -107,10 +108,10 @@ git add frontend/components/CommentSection.tsx
 git commit -m "refactor: extract CommentSection component"
 ```
 
-
 ## Task 3: 类型注解修复
 
 **Files:**
+
 - Modify: 关键文件的类型定义
 
 - [ ] **Step 1: 检查并修复 any 类型**
@@ -125,7 +126,6 @@ Run: `cd /var/tmp/aurora/frontend && pnpm tsc --noEmit 2>&1 | head -20`
 git add frontend/
 git commit -m "types: add missing type annotations"
 ```
-
 
 ## Task 4: 最终验证
 

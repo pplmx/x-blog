@@ -12,7 +12,7 @@
 
 ## 文件结构
 
-```
+```text
 frontend/
 ├── app/
 │   ├── layout.tsx          # 根布局
@@ -42,6 +42,7 @@ frontend/
 ### Task 1: 项目初始化
 
 **Files:**
+
 - Create: `frontend/package.json`
 - Create: `frontend/tsconfig.json`
 - Create: `frontend/next.config.ts`
@@ -180,6 +181,7 @@ git commit -m "feat: init Next.js frontend project"
 ### Task 2: 类型定义和 API 客户端
 
 **Files:**
+
 - Create: `frontend/types/index.ts`
 - Create: `frontend/lib/api.ts`
 
@@ -254,6 +256,7 @@ git commit -m "feat: add types and API client"
 ### Task 3: 公共组件
 
 **Files:**
+
 - Create: `frontend/components/Header.tsx`
 - Create: `frontend/components/Footer.tsx`
 
@@ -311,6 +314,7 @@ git commit -m "feat: add Header and Footer components"
 ### Task 4: Markdown 渲染组件
 
 **Files:**
+
 - Create: `frontend/components/Markdown.tsx`
 
 - [ ] **Step 1: 创建 Markdown 组件**
@@ -346,6 +350,7 @@ git commit -m "feat: add Markdown renderer component"
 ### Task 5: 首页 - 文章列表
 
 **Files:**
+
 - Create: `frontend/app/globals.css`
 - Create: `frontend/app/layout.tsx`
 - Create: `frontend/components/PostCard.tsx`
@@ -412,7 +417,7 @@ interface PostCardProps {
 
 export default function PostCard({ post }: PostCardProps) {
   const date = new Date(post.created_at).toLocaleDateString("zh-CN");
-  
+
   return (
     <article className="border rounded-lg p-6 hover:shadow-lg transition">
       <Link href={`/posts/${post.slug}`}>
@@ -491,6 +496,7 @@ git commit -m "feat: add home page with post list"
 ### Task 6: 文章详情页
 
 **Files:**
+
 - Create: `frontend/app/posts/[slug]/page.tsx`
 
 - [ ] **Step 1: 创建文章详情页**
@@ -508,7 +514,7 @@ interface PageProps {
 
 export default async function PostPage({ params }: PageProps) {
   const { slug } = await params;
-  
+
   let post;
   try {
     post = await fetchPost(slug);
@@ -523,7 +529,7 @@ export default async function PostPage({ params }: PageProps) {
       <Link href="/" className="text-blue-600 hover:underline mb-6 inline-block">
         ← 返回首页
       </Link>
-      
+
       <header className="mb-8">
         <h1 className="text-4xl font-bold mb-4">{post.title}</h1>
         <div className="text-gray-500">
@@ -545,7 +551,7 @@ export default async function PostPage({ params }: PageProps) {
           ))}
         </div>
       </header>
-      
+
       <Markdown content={post.content} />
     </article>
   );
@@ -571,6 +577,7 @@ git commit -m "feat: add post detail page"
 ### Task 7: 关于页面
 
 **Files:**
+
 - Create: `frontend/app/about/page.tsx`
 
 - [ ] **Step 1: 创建关于页面**
@@ -614,6 +621,7 @@ git commit -m "feat: add about page"
 ## 验证
 
 完成所有任务后，验证：
+
 1. 首页 http://localhost:3000 显示文章列表
 2. 文章详情页正常工作
 3. 关于页面可访问

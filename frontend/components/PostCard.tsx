@@ -23,7 +23,7 @@ export default function PostCard({ post }: PostCardProps) {
           <ArrowRight className="w-5 h-5 text-gray-300 group-hover:text-blue-600 group-hover:translate-x-1 transition-all duration-300 shrink-0" />
         </div>
       </Link>
-      
+
       <div className="flex items-center gap-4 text-sm text-gray-500 mb-4">
         <span className="flex items-center gap-1">
           <Calendar className="w-4 h-4" />
@@ -39,17 +39,15 @@ export default function PostCard({ post }: PostCardProps) {
           {post.views || 0}
         </span>
       </div>
-      
+
       {post.excerpt && (
-        <p className="text-gray-600 mb-4 line-clamp-2 leading-relaxed">
-          {post.excerpt}
-        </p>
+        <p className="text-gray-600 mb-4 line-clamp-2 leading-relaxed">{post.excerpt}</p>
       )}
-      
+
       <div className="flex flex-wrap gap-2 pt-2 border-t border-gray-50">
         {post.tags.map((tag) => (
-          <span 
-            key={tag.id} 
+          <span
+            key={tag.id}
             className="text-xs px-3 py-1.5 bg-gradient-to-r from-blue-50 to-indigo-50 text-blue-600 rounded-full font-medium hover:from-blue-100 hover:to-indigo-100 transition-colors duration-200"
           >
             #{tag.name}

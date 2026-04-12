@@ -10,12 +10,12 @@
 
 ## 2. 页面
 
-| 路由 | 功能 |
-|------|------|
-| `/admin` | 仪表盘首页 |
-| `/admin/posts` | 文章 CRUD |
-| `/admin/categories` | 分类 CRUD |
-| `/admin/tags` | 标签 CRUD |
+| 路由                | 功能       |
+| ------------------- | ---------- |
+| `/admin`            | 仪表盘首页 |
+| `/admin/posts`      | 文章 CRUD  |
+| `/admin/categories` | 分类 CRUD  |
+| `/admin/tags`       | 标签 CRUD  |
 
 ## 3. 技术栈
 
@@ -27,17 +27,17 @@
 
 ## 4. API（复用现有）
 
-| Method | Endpoint | 功能 |
-|--------|----------|------|
-| GET | /api/posts | 文章列表 |
-| POST | /api/posts | 创建文章 |
-| GET | /api/posts/{id} | 文章详情 |
-| PUT | /api/posts/{id} | 更新文章 |
+| Method | Endpoint        | 功能     |
+| ------ | --------------- | -------- |
+| GET    | /api/posts      | 文章列表 |
+| POST   | /api/posts      | 创建文章 |
+| GET    | /api/posts/{id} | 文章详情 |
+| PUT    | /api/posts/{id} | 更新文章 |
 | DELETE | /api/posts/{id} | 删除文章 |
-| GET | /api/categories | 分类列表 |
-| POST | /api/categories | 创建分类 |
-| GET | /api/tags | 标签列表 |
-| POST | /api/tags | 创建标签 |
+| GET    | /api/categories | 分类列表 |
+| POST   | /api/categories | 创建分类 |
+| GET    | /api/tags       | 标签列表 |
+| POST   | /api/tags       | 创建标签 |
 
 ## 5. MVP 范围
 

@@ -23,12 +23,36 @@ export default async function AdminDashboard() {
     .slice(0, 5);
 
   const stats = [
-    { title: '文章总数', value: posts.length, icon: FileText, color: 'text-blue-600', bg: 'bg-blue-50' },
-    { title: '已发布', value: publishedCount, icon: CheckCircle, color: 'text-green-600', bg: 'bg-green-50' },
+    {
+      title: '文章总数',
+      value: posts.length,
+      icon: FileText,
+      color: 'text-blue-600',
+      bg: 'bg-blue-50',
+    },
+    {
+      title: '已发布',
+      value: publishedCount,
+      icon: CheckCircle,
+      color: 'text-green-600',
+      bg: 'bg-green-50',
+    },
     { title: '草稿', value: draftCount, icon: Clock, color: 'text-yellow-600', bg: 'bg-yellow-50' },
-    { title: '分类', value: categories.length, icon: Folder, color: 'text-purple-600', bg: 'bg-purple-50' },
+    {
+      title: '分类',
+      value: categories.length,
+      icon: Folder,
+      color: 'text-purple-600',
+      bg: 'bg-purple-50',
+    },
     { title: '标签', value: tags.length, icon: Tag, color: 'text-pink-600', bg: 'bg-pink-50' },
-    { title: '总浏览量', value: totalViews, icon: Eye, color: 'text-orange-600', bg: 'bg-orange-50' },
+    {
+      title: '总浏览量',
+      value: totalViews,
+      icon: Eye,
+      color: 'text-orange-600',
+      bg: 'bg-orange-50',
+    },
   ];
 
   return (

@@ -13,7 +13,11 @@ export default function TagsPage() {
   const [editName, setEditName] = useState('');
   const queryClient = useQueryClient();
 
-  const { data: tags, isLoading, error } = useQuery({
+  const {
+    data: tags,
+    isLoading,
+    error,
+  } = useQuery({
     queryKey: ['admin-tags'],
     queryFn: fetchAdminTags,
   });
@@ -103,8 +107,8 @@ export default function TagsPage() {
       ) : (
         <div className="flex flex-wrap gap-3">
           {tags.map((tag) => (
-            <div 
-              key={tag.id} 
+            <div
+              key={tag.id}
               className="flex items-center gap-2 px-4 py-2 border rounded-xl bg-card hover:border-gray-300 transition-colors"
             >
               {editingId === tag.id ? (
@@ -124,9 +128,9 @@ export default function TagsPage() {
                   >
                     <Check className="h-4 w-4" />
                   </Button>
-                  <Button 
-                    variant="ghost" 
-                    size="sm" 
+                  <Button
+                    variant="ghost"
+                    size="sm"
                     onClick={handleCancelEdit}
                     className="h-8 w-8 p-0 text-gray-500 hover:text-gray-600 hover:bg-gray-100"
                   >

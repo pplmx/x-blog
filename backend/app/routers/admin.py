@@ -331,16 +331,18 @@ def admin_list_comments(
     result = []
     for c in comments:
         post = db.query(models.Post).filter(models.Post.id == c.post_id).first()
-        result.append({
-            "id": c.id,
-            "post_id": c.post_id,
-            "post_title": post.title if post else "Unknown",
-            "nickname": c.nickname,
-            "email": c.email,
-            "content": c.content,
-            "ip_address": c.ip_address,
-            "created_at": c.created_at.isoformat() if c.created_at else None,
-        })
+        result.append(
+            {
+                "id": c.id,
+                "post_id": c.post_id,
+                "post_title": post.title if post else "Unknown",
+                "nickname": c.nickname,
+                "email": c.email,
+                "content": c.content,
+                "ip_address": c.ip_address,
+                "created_at": c.created_at.isoformat() if c.created_at else None,
+            }
+        )
     return result
 
 

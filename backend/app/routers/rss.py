@@ -36,7 +36,7 @@ def generate_rss_feed(posts: list, site_url: str, title: str, description: str) 
     <language>zh-CN</language>
     <lastBuildDate>{datetime.utcnow().strftime("%a, %d %b %Y %H:%M:%S GMT")}</lastBuildDate>
     <atom:link href="{site_url}/rss/feed.xml" rel="self" type="application/rss+xml"/>
-    {''.join(items)}
+    {"".join(items)}
 </channel>
 </rss>"""
     return rss
@@ -46,13 +46,13 @@ def generate_rss_feed(posts: list, site_url: str, title: str, description: str) 
 def get_rss_feed(db: Session = Depends(get_db)):
     """Get RSS 2.0 feed of published posts."""
     posts, _ = crud.get_posts(db, skip=0, limit=20, published=True)
-    
-    site_url = getattr(settings, 'site_url', 'http://localhost:3000')
-    title = getattr(settings, 'site_title', 'X-Blog')
-    description = getattr(settings, 'site_description', 'A modern blog built with FastAPI and Next.js')
-    
+
+    site_url = getattr(settings, "site_url", "http://localhost:3000")
+    title = getattr(settings, "site_title", "X-Blog")
+    description = getattr(settings, "site_description", "A modern blog built with FastAPI and Next.js")
+
     rss_content = generate_rss_feed(posts, site_url, title, description)
-    
+
     return Response(content=rss_content, media_type="application/rss+xml")
 
 
@@ -60,11 +60,11 @@ def get_rss_feed(db: Session = Depends(get_db)):
 def get_atom_feed(db: Session = Depends(get_db)):
     """Get Atom feed of published posts."""
     posts, _ = crud.get_posts(db, skip=0, limit=20, published=True)
-    
-    site_url = getattr(settings, 'site_url', 'http://localhost:3000')
-    title = getattr(settings, 'site_title', 'X-Blog')
-    description = getattr(settings, 'site_description', 'A modern blog built with FastAPI and Next.js')
-    
+
+    site_url = getattr(settings, "site_url", "http://localhost:3000")
+    title = getattr(settings, "site_title", "X-Blog")
+    description = getattr(settings, "site_description", "A modern blog built with FastAPI and Next.js")
+
     items = []
     for post in posts:
         updated = post.updated_at.strftime("%Y-%m-%dT%H:%M:%SZ")
@@ -77,7 +77,7 @@ def get_atom_feed(db: Session = Depends(get_db)):
         <published>{published}</published>
         <summary>{post.excerpt or post.content[:200]}</summary>
     </entry>""")
-    
+
     atom = f"""<?xml version="1.0" encoding="UTF-8"?>
 <feed xmlns="http://www.w3.org/2005/Atom">
     <title>{title}</title>
@@ -86,9 +86,9 @@ def get_atom_feed(db: Session = Depends(get_db)):
     <id>{site_url}/rss/atom.xml</id>
     <subtitle>{description}</subtitle>
     <updated>{datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")}</updated>
-    {''.join(items)}
+    {"".join(items)}
 </feed>"""
-    
+
     return Response(content=atom, media_type="application/atom+xml")
 
 
@@ -99,32 +99,32 @@ def get_sitemap(db: Session = Depends(get_db)):
     posts, _ = crud.get_posts(db, skip=0, limit=1000, published=True)
     categories = crud.get_categories(db)
     tags = crud.get_tags(db)
-    
-    site_url = getattr(settings, 'site_url', 'http://localhost:3000')
-    
+
+    site_url = getattr(settings, "site_url", "http://localhost:3000")
+
     urls = []
-    
+
     # Home page
     urls.append(f"""<url>
     <loc>{site_url}/</loc>
     <changefreq>daily</changefreq>
     <priority>1.0</priority>
 </url>""")
-    
+
     # About page
     urls.append(f"""<url>
     <loc>{site_url}/about</loc>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
 </url>""")
-    
+
     # Search page
     urls.append(f"""<url>
     <loc>{site_url}/search</loc>
     <changefreq>weekly</changefreq>
     <priority>0.3</priority>
 </url>""")
-    
+
     # Posts
     for post in posts:
         updated = post.updated_at.strftime("%Y-%m-%d")
@@ -134,7 +134,7 @@ def get_sitemap(db: Session = Depends(get_db)):
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
 </url>""")
-    
+
     # Categories
     for cat in categories:
         urls.append(f"""<url>
@@ -142,7 +142,7 @@ def get_sitemap(db: Session = Depends(get_db)):
     <changefreq>weekly</changefreq>
     <priority>0.6</priority>
 </url>""")
-    
+
     # Tags
     for tag in tags:
         urls.append(f"""<url>
@@ -150,25 +150,25 @@ def get_sitemap(db: Session = Depends(get_db)):
     <changefreq>weekly</changefreq>
     <priority>0.6</priority>
 </url>""")
-    
+
     sitemap = f"""<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-    {''.join(urls)}
+    {"".join(urls)}
 </urlset>"""
-    
+
     return Response(content=sitemap, media_type="application/xml")
 
 
 @seo_router.get("/robots.txt")
 def get_robots_txt():
     """Get robots.txt file."""
-    site_url = getattr(settings, 'site_url', 'http://localhost:3000')
-    
+    site_url = getattr(settings, "site_url", "http://localhost:3000")
+
     robots = f"""User-agent: *
 Allow: /
 
 Sitemap: {site_url}/sitemap.xml
 RSS: {site_url}/rss/feed.xml
 """
-    
+
     return Response(content=robots, media_type="text/plain")

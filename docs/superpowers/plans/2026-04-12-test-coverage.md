@@ -12,7 +12,7 @@
 
 ## 文件结构
 
-```
+```text
 backend/tests/
 ├── test_posts.py       # 已有 (5 tests)
 ├── test_categories.py  # 新增
@@ -33,6 +33,7 @@ frontend/components/
 ### Task 1: 后端 - Categories API 测试
 
 **Files:**
+
 - Create: `backend/tests/test_categories.py`
 
 - [ ] **Step 1: 创建测试文件**
@@ -108,6 +109,7 @@ git add backend/tests/test_categories.py && git commit -m "test: add categories 
 ### Task 2: 后端 - Tags API 测试
 
 **Files:**
+
 - Create: `backend/tests/test_tags.py`
 
 - [ ] **Step 1: 创建测试文件**
@@ -182,6 +184,7 @@ git add backend/tests/test_tags.py && git commit -m "test: add tags API tests"
 ### Task 3: 后端 - Comments API 测试
 
 **Files:**
+
 - Create: `backend/tests/test_comments.py`
 
 - [ ] **Step 1: 创建测试文件**
@@ -266,6 +269,7 @@ git add backend/tests/test_comments.py && git commit -m "test: add comments API 
 ### Task 4: 后端 - Search API 测试
 
 **Files:**
+
 - Create: `backend/tests/test_search.py`
 
 - [ ] **Step 1: 创建测试文件**
@@ -296,7 +300,7 @@ app.dependency_overrides[get_db] = override_get_db
 def client():
     Base.metadata.create_all(bind=engine)
     client = TestClient(app)
-    
+
     client.post("/api/posts", json={
         "title": "Python Tutorial",
         "slug": "python-tutorial",
@@ -309,7 +313,7 @@ def client():
         "content": "Learn JavaScript",
         "published": True
     })
-    
+
     yield client
     Base.metadata.drop_all(bind=engine)
 
@@ -343,6 +347,7 @@ git add backend/tests/test_search.py && git commit -m "test: add search API test
 ### Task 5: 前端 - CommentList 组件测试
 
 **Files:**
+
 - Create: `frontend/components/CommentList.test.tsx`
 
 - [ ] **Step 1: 创建测试文件**
@@ -376,6 +381,7 @@ describe("CommentList", () => {
 - [ ] **Step 2: 添加 Comment 类型**
 
 在 `frontend/types/index.ts` 添加：
+
 ```typescript
 export interface Comment {
   id: number;
@@ -399,6 +405,7 @@ git commit -m "test: add CommentList component tests"
 ### Task 6: 前端 - CommentForm 组件测试
 
 **Files:**
+
 - Create: `frontend/components/CommentForm.test.tsx`
 
 - [ ] **Step 1: 创建测试文件**
@@ -412,7 +419,7 @@ import CommentForm from "./CommentForm";
 describe("CommentForm", () => {
   it("should render form fields", () => {
     render(<CommentForm postId={1} />);
-    
+
     expect(screen.getByPlaceholderText("你的昵称")).toBeDefined();
     expect(screen.getByPlaceholderText("发表评论")).toBeDefined();
     expect(screen.getByRole("button", { name: /提交评论/i })).toBeDefined();
@@ -421,9 +428,9 @@ describe("CommentForm", () => {
   it("should show validation errors on empty submit", async () => {
     const user = userEvent.setup();
     render(<CommentForm postId={1} />);
-    
+
     await user.click(screen.getByRole("button", { name: /提交评论/i }));
-    
+
     expect(screen.getByText("请输入昵称")).toBeDefined();
     expect(screen.getByText("请输入评论内容")).toBeDefined();
   });
@@ -449,6 +456,7 @@ git commit -m "test: add CommentForm component tests"
 ### Task 7: 前端 - SearchBox 组件测试
 
 **Files:**
+
 - Create: `frontend/components/SearchBox.test.tsx`
 
 - [ ] **Step 1: 创建测试文件**
@@ -473,10 +481,10 @@ describe("SearchBox", () => {
   it("should show input value", async () => {
     const user = userEvent.setup();
     renderWithRouter(<SearchBox />);
-    
+
     const input = screen.getByPlaceholderText("搜索文章...");
     await user.type(input, "test");
-    
+
     expect(input).toHaveValue("test");
   });
 });
@@ -502,6 +510,7 @@ cd frontend && pnpm build
 ```
 
 **目标测试数量：**
+
 - Backend: 5 + 5 + 4 + 3 + 3 = 20 tests
 - Frontend: 14 + 2 + 2 + 2 = 20 tests
 - Total: 40 tests

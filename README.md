@@ -29,12 +29,12 @@ A modern full-stack blog application built with FastAPI + Next.js
 
 ### Prerequisites
 
-| Tool | Version | Install |
-|------|---------|---------|
-| Python | 3.14+ | [uv](https://github.com/astral-sh/uv) |
-| Node.js | 24+ | [Node.js](https://nodejs.org/) |
-| pnpm | 10+ | `npm install -g pnpm` |
-| Docker | 24+ | [Docker](https://docker.com) |
+| Tool    | Version | Install                               |
+| ------- | ------- | ------------------------------------- |
+| Python  | 3.14+   | [uv](https://github.com/astral-sh/uv) |
+| Node.js | 24+     | [Node.js](https://nodejs.org/)        |
+| pnpm    | 10+     | `npm install -g pnpm`                 |
+| Docker  | 24+     | [Docker](https://docker.com)          |
 
 ```bash
 # Install uv (Python package manager)
@@ -84,39 +84,39 @@ See [docs/deployment.md](./docs/deployment.md) for detailed deployment guide.
 
 ## 🛠️ Commands
 
-| Command | Description |
-|---------|-------------|
-| `pnpm install` | Install all dependencies |
-| `pnpm dev` | Run dev servers (backend + frontend) |
-| `pnpm backend` | Run FastAPI server |
-| `pnpm frontend` | Run Next.js dev server |
-| `pnpm lint` | Lint code (ruff + biome) |
-| `pnpm format` | Format code |
-| `pnpm test` | Run tests |
-| `pnpm clean` | Clean generated files |
+| Command         | Description                          |
+| --------------- | ------------------------------------ |
+| `pnpm install`  | Install all dependencies             |
+| `pnpm dev`      | Run dev servers (backend + frontend) |
+| `pnpm backend`  | Run FastAPI server                   |
+| `pnpm frontend` | Run Next.js dev server               |
+| `pnpm lint`     | Lint code (ruff + biome)             |
+| `pnpm format`   | Format code                          |
+| `pnpm test`     | Run tests                            |
+| `pnpm clean`    | Clean generated files                |
 
 ## 📡 API Endpoints
 
 ### Posts
 
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/api/posts` | List posts |
-| GET | `/api/posts/{id}` | Get post by ID |
-| POST | `/api/posts` | Create post |
-| PUT | `/api/posts/{id}` | Update post |
-| DELETE | `/api/posts/{id}` | Delete post |
+| Method | Endpoint          | Description    |
+| ------ | ----------------- | -------------- |
+| GET    | `/api/posts`      | List posts     |
+| GET    | `/api/posts/{id}` | Get post by ID |
+| POST   | `/api/posts`      | Create post    |
+| PUT    | `/api/posts/{id}` | Update post    |
+| DELETE | `/api/posts/{id}` | Delete post    |
 
 ### Categories & Tags
 
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/api/categories` | List categories |
-| GET | `/api/tags` | List tags |
+| Method | Endpoint          | Description     |
+| ------ | ----------------- | --------------- |
+| GET    | `/api/categories` | List categories |
+| GET    | `/api/tags`       | List tags       |
 
 ## 🏗️ Project Structure
 
-```
+```text
 x-blog/
 ├── backend/                 # FastAPI backend
 │   ├── app/
@@ -188,6 +188,7 @@ MIT License - see [LICENSE](LICENSE) for details.
 ## 🚀 Deployment Guide
 
 See [Deployment Guide](./docs/deployment.md) for detailed instructions on:
+
 - Local development setup
 - Docker production deployment
 - Separated backend/frontend deployment

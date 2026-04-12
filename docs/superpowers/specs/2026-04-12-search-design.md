@@ -36,11 +36,12 @@
 
 ### 搜索接口
 
-```
+```text
 GET /api/search?q={query}&type={post|category|tag}&page=1&limit=10
 ```
 
 **响应：**
+
 ```json
 {
   "items": [...],
@@ -65,7 +66,7 @@ GET /api/search?q={query}&type={post|category|tag}&page=1&limit=10
 
 ### 文件结构
 
-```
+```text
 frontend/
 ├── app/
 │   └── search/
@@ -94,7 +95,7 @@ frontend/
 
 ## Data Flow
 
-```
+```text
 用户输入 → SearchBox → 防抖 → API 请求 → 显示建议
                                      ↓
 用户点击 → 跳转 /search?q=xxx → 搜索结果页 → 分页
@@ -123,11 +124,13 @@ frontend/
 ## Files
 
 **Backend:**
+
 - `backend/app/routers/search.py` - 新增
 - `backend/app/main.py` - 注册路由
 - `backend/app/crud.py` - 添加 search_posts 函数
 
 **Frontend:**
+
 - `frontend/components/SearchBox.tsx` - 新增
 - `frontend/components/SearchResults.tsx` - 新增
 - `frontend/app/search/page.tsx` - 新增

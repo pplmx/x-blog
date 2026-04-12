@@ -11,7 +11,7 @@
 
 ## 2. 架构
 
-```
+```text
 ┌──────────┐     ┌───────────┐     ┌──────────────┐
 │ Frontend │────▶│  FastAPI  │────▶│  Local Files │
 │          │     │  /upload  │     │  /static/    │
@@ -41,25 +41,25 @@ async def upload_image(file: UploadFile = File(...)):
     # 验证文件类型
     if file.content_type not in ALLOWED_TYPES:
         raise HTTPException(400, "Unsupported file type")
-    
+
     # 验证文件大小
     contents = await file.read()
     if len(contents) > MAX_SIZE:
         raise HTTPException(400, "File too large (max 5MB)")
-    
+
     # 生成文件名
     ext = file.filename.split(".")[-1]
     filename = f"{uuid.uuid4()}.{ext}"
-    
+
     # 按年月存储
     now = datetime.now()
     upload_dir = Path(f"backend/static/uploads/{now.year}/{now.month:02d}")
     upload_dir.mkdir(parents=True, exist_ok=True)
-    
+
     # 保存文件
     filepath = upload_dir / filename
     filepath.write_bytes(contents)
-    
+
     # 返回 URL
     return {"url": f"/static/uploads/{now.year}/{now.month:02d}/{filename}"}
 ```
@@ -84,10 +84,12 @@ class Post(Base):
 ```
 
 **Admin 文章编辑**:
+
 - 封面图上传按钮
 - Markdown 编辑器图片插入
 
 **Admin 用户设置**:
+
 - 头像上传
 
 ## 4. 文件结构
@@ -97,10 +99,12 @@ class Post(Base):
 - Modify: `backend/app/main.py` - 注册路由 + 配置静态文件
 
 **静态文件配置** (main.py):
+
 ```python
 from fastapi.staticfiles import StaticFiles
 app.mount("/static", StaticFiles(directory="backend/static"), name="static")
 ```
+
 - Create: `frontend/components/ImageUpload.tsx` - 上传组件
 - Create: `frontend/app/admin/profile/page.tsx` - 用户设置页面
 - Modify: `frontend/app/admin/posts/[id]/page.tsx` - 封面图
@@ -115,7 +119,7 @@ app.mount("/static", StaticFiles(directory="backend/static"), name="static")
 
 ## 6. 环境变量
 
-| 变量 | 默认值 | 描述 |
-|------|--------|------|
-| UPLOAD_MAX_SIZE | 5242880 | 最大文件大小 (5MB) |
-| UPLOAD_ALLOWED_TYPES | jpg,png,gif,webp | 允许的文件类型 |
+| 变量                 | 默认值           | 描述               |
+| -------------------- | ---------------- | ------------------ |
+| UPLOAD_MAX_SIZE      | 5242880          | 最大文件大小 (5MB) |
+| UPLOAD_ALLOWED_TYPES | jpg,png,gif,webp | 允许的文件类型     |

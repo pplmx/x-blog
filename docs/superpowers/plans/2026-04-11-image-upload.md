@@ -23,6 +23,7 @@
 ## Task 1: 后端 - 数据模型添加 cover_image
 
 **Files:**
+
 - Modify: `backend/app/models.py`
 
 - [ ] **Step 1: 在 Post 模型中添加 cover_image 字段**
@@ -44,10 +45,10 @@ git add backend/app/models.py
 git commit -m "feat: add cover_image field to Post model"
 ```
 
-
 ## Task 2: 后端 - 上传 API
 
 **Files:**
+
 - Create: `backend/app/routers/upload.py`
 - Modify: `backend/app/main.py`
 
@@ -69,25 +70,25 @@ async def upload_image(file: UploadFile = File(...)):
     # 验证文件类型
     if file.content_type not in ALLOWED_TYPES:
         raise HTTPException(400, detail="Unsupported file type")
-    
+
     # 验证文件大小
     contents = await file.read()
     if len(contents) > MAX_SIZE:
         raise HTTPException(400, detail="File too large (max 5MB)")
-    
+
     # 生成文件名
     ext = file.filename.split(".")[-1] if "." in file.filename else "jpg"
     filename = f"{uuid.uuid4()}.{ext}"
-    
+
     # 按年月存储
     now = datetime.now()
     upload_dir = Path(f"backend/static/uploads/{now.year}/{now.month:02d}")
     upload_dir.mkdir(parents=True, exist_ok=True)
-    
+
     # 保存文件
     filepath = upload_dir / filename
     filepath.write_bytes(contents)
-    
+
     # 返回 URL
     return {"url": f"/static/uploads/{now.year}/{now.month:02d}/{filename}"}
 ```
@@ -114,10 +115,10 @@ git add backend/app/routers/upload.py backend/app/main.py
 git commit -m "feat: add image upload API"
 ```
 
-
 ## Task 3: 前端 - 上传组件
 
 **Files:**
+
 - Create: `frontend/components/ImageUpload.tsx`
 
 - [ ] **Step 1: 创建 ImageUpload 组件**
@@ -233,15 +234,16 @@ git add frontend/components/ImageUpload.tsx
 git commit -m "feat: add ImageUpload component"
 ```
 
-
 ## Task 4: 前端 - 文章编辑页面集成封面图
 
 **Files:**
+
 - Modify: `frontend/app/admin/posts/[id]/page.tsx`
 
 - [ ] **Step 1: 在文章编辑页面添加封面图上传**
 
 在 form 中添加:
+
 ```tsx
 import { ImageUpload } from '@/components/ImageUpload';
 
@@ -255,6 +257,7 @@ import { ImageUpload } from '@/components/ImageUpload';
 ```
 
 同时更新 formData 类型和状态:
+
 ```tsx
 const [formData, setFormData] = useState<Partial<PostCreate>>({
   // ...existing fields
@@ -273,7 +276,6 @@ Expected: All checks passed
 git add frontend/app/admin/posts/[id]/page.tsx
 git commit -m "feat: add cover image upload to post editor"
 ```
-
 
 ## Task 5: 最终验证
 

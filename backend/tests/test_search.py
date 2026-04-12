@@ -1,5 +1,3 @@
-
-
 def test_search_posts(client):
     client.post(
         "/api/posts",

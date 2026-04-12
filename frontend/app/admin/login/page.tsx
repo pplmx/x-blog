@@ -50,9 +50,7 @@ export default function LoginPage() {
           <CardTitle className="text-2xl font-bold bg-gradient-to-r from-gray-900 to-gray-600 bg-clip-text text-transparent">
             X-Blog 管理
           </CardTitle>
-          <CardDescription className="text-gray-500">
-            输入您的账号信息登录管理后台
-          </CardDescription>
+          <CardDescription className="text-gray-500">输入您的账号信息登录管理后台</CardDescription>
         </CardHeader>
         <CardContent className="pt-4">
           <form onSubmit={handleSubmit} className="space-y-5">
@@ -62,7 +60,7 @@ export default function LoginPage() {
                 {error}
               </div>
             )}
-            
+
             <div className="space-y-2">
               <label className="text-sm font-medium text-gray-700">用户名</label>
               <div className="relative">
@@ -76,7 +74,7 @@ export default function LoginPage() {
                 />
               </div>
             </div>
-            
+
             <div className="space-y-2">
               <label className="text-sm font-medium text-gray-700">密码</label>
               <div className="relative">
@@ -91,17 +89,29 @@ export default function LoginPage() {
                 />
               </div>
             </div>
-            
-            <Button 
-              type="submit" 
+
+            <Button
+              type="submit"
               className="w-full h-11 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-lg shadow-blue-600/20"
               disabled={loading}
             >
               {loading ? (
                 <span className="flex items-center gap-2">
                   <svg className="animate-spin w-4 h-4" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                    <circle
+                      className="opacity-25"
+                      cx="12"
+                      cy="12"
+                      r="10"
+                      stroke="currentColor"
+                      strokeWidth="4"
+                      fill="none"
+                    />
+                    <path
+                      className="opacity-75"
+                      fill="currentColor"
+                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
+                    />
                   </svg>
                   登录中...
                 </span>
@@ -113,12 +123,9 @@ export default function LoginPage() {
               )}
             </Button>
           </form>
-          
+
           <div className="mt-6 pt-6 border-t text-center">
-            <Link 
-              href="/" 
-              className="text-sm text-gray-500 hover:text-blue-600 transition-colors"
-            >
+            <Link href="/" className="text-sm text-gray-500 hover:text-blue-600 transition-colors">
               ← 返回博客首页
             </Link>
           </div>

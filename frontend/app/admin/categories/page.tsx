@@ -5,7 +5,12 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Plus, Trash2, Pencil, Check, X } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { fetchAdminCategories, createAdminCategory, deleteAdminCategory, updateAdminCategory } from '@/lib/api';
+import {
+  fetchAdminCategories,
+  createAdminCategory,
+  deleteAdminCategory,
+  updateAdminCategory,
+} from '@/lib/api';
 
 export default function CategoriesPage() {
   const [newName, setNewName] = useState('');
@@ -13,7 +18,11 @@ export default function CategoriesPage() {
   const [editName, setEditName] = useState('');
   const queryClient = useQueryClient();
 
-  const { data: categories, isLoading, error } = useQuery({
+  const {
+    data: categories,
+    isLoading,
+    error,
+  } = useQuery({
     queryKey: ['admin-categories'],
     queryFn: fetchAdminCategories,
   });
@@ -103,8 +112,8 @@ export default function CategoriesPage() {
       ) : (
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {categories.map((cat) => (
-            <div 
-              key={cat.id} 
+            <div
+              key={cat.id}
               className="flex items-center justify-between p-4 border rounded-xl bg-card hover:border-gray-300 transition-colors"
             >
               {editingId === cat.id ? (
@@ -125,9 +134,9 @@ export default function CategoriesPage() {
                     >
                       <Check className="h-4 w-4" />
                     </Button>
-                    <Button 
-                      variant="ghost" 
-                      size="sm" 
+                    <Button
+                      variant="ghost"
+                      size="sm"
                       onClick={handleCancelEdit}
                       className="h-8 w-8 p-0 text-gray-500 hover:text-gray-600 hover:bg-gray-100"
                     >

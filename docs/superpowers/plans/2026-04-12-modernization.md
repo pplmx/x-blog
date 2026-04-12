@@ -4,7 +4,8 @@
 
 **Goal:** 添加三个现代化前端工具：TanStack Query、Playwright E2E、MSW
 
-**Architecture:** 
+**Architecture:**
+
 - TanStack Query 替换手动 fetch，添加缓存和状态管理
 - MSW 提供 API mock，支持独立开发和测试
 - Playwright E2E 测试覆盖关键用户流程
@@ -15,7 +16,7 @@
 
 ## 文件结构
 
-```
+```text
 frontend/
 ├── lib/
 │   └── query-client.ts     # 新增: QueryClient 配置
@@ -37,6 +38,7 @@ frontend/
 ### Task 1: TanStack Query 集成
 
 **Files:**
+
 - Create: `frontend/lib/query-client.ts`
 - Modify: `frontend/app/layout.tsx`
 - Modify: `frontend/package.json`
@@ -102,6 +104,7 @@ git commit -m "feat: add TanStack Query for API state management"
 ### Task 2: MSW 集成
 
 **Files:**
+
 - Create: `frontend/mocks/handlers.ts`
 - Create: `frontend/mocks/browser.ts`
 - Modify: `frontend/package.json`
@@ -217,6 +220,7 @@ git commit -m "feat: add MSW for API mocking"
 ### Task 3: Playwright E2E 测试
 
 **Files:**
+
 - Create: `frontend/e2e/playwright.config.ts`
 - Create: `frontend/e2e/homepage.spec.ts`
 - Create: `frontend/e2e/search.spec.ts`
@@ -289,11 +293,11 @@ import { test, expect } from "@playwright/test";
 
 test("search functionality", async ({ page }) => {
   await page.goto("/");
-  
+
   const searchInput = page.locator('input[placeholder="搜索文章..."]');
   await searchInput.fill("test");
   await searchInput.press("Enter");
-  
+
   await expect(page).toHaveURL(/\/search\?q=test/);
   await expect(page.locator("h1")).toContainText("搜索结果");
 });

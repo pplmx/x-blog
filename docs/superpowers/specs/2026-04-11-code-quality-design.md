@@ -12,11 +12,13 @@
 ### 2.1 组件提取
 
 **PostForm 组件** (`frontend/components/PostForm.tsx`):
+
 - 提取自 `admin/posts/[id]/page.tsx`
 - 包含：标题、slug、内容、摘要、分类、标签、封面图、发布状态
 - 通用 Props: `initialData?`, `onSubmit`, `onCancel`
 
 **CommentSection 组件** (`frontend/components/CommentSection.tsx`):
+
 - 提取自 `posts/[slug]/page.tsx`
 - 包含：评论列表 + 评论表单
 - 通用 Props: `postId`

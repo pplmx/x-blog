@@ -29,8 +29,8 @@ export default function AboutPage() {
   return (
     <div className="max-w-3xl mx-auto">
       {/* 返回按钮 */}
-      <Link 
-        href="/" 
+      <Link
+        href="/"
         className="inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-blue-600 transition-colors mb-8"
       >
         <ArrowLeft className="w-4 h-4" />
@@ -51,10 +51,12 @@ export default function AboutPage() {
       {/* 介绍 */}
       <div className="bg-card border rounded-2xl p-6 sm:p-8 mb-8">
         <p className="text-gray-600 leading-relaxed mb-4">
-          X-Blog 是一个简洁优雅的技术博客系统，采用现代前端与后端技术构建。我们致力于为开发者提供一个轻量、快速、且美观的博客平台。
+          X-Blog
+          是一个简洁优雅的技术博客系统，采用现代前端与后端技术构建。我们致力于为开发者提供一个轻量、快速、且美观的博客平台。
         </p>
         <p className="text-gray-600 leading-relaxed">
-          无论是分享技术心得、记录学习笔记，还是发布项目动态，X-Blog 都能为你提供出色的写作与阅读体验。
+          无论是分享技术心得、记录学习笔记，还是发布项目动态，X-Blog
+          都能为你提供出色的写作与阅读体验。
         </p>
       </div>
 
@@ -70,7 +72,9 @@ export default function AboutPage() {
               key={tech.name}
               className="bg-card border rounded-xl p-4 text-center hover:border-gray-300 transition-colors"
             >
-              <div className={`inline-flex items-center justify-center w-10 h-10 rounded-lg bg-gradient-to-br ${tech.color} mb-3`}>
+              <div
+                className={`inline-flex items-center justify-center w-10 h-10 rounded-lg bg-gradient-to-br ${tech.color} mb-3`}
+              >
                 <tech.icon className="w-5 h-5 text-white" />
               </div>
               <p className="font-medium text-gray-900">{tech.name}</p>

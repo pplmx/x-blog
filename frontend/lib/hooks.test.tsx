@@ -34,14 +34,23 @@ describe('usePosts', () => {
       ok: true,
       json: async () => ({
         items: [
-          { id: 1, title: 'Test Post', slug: 'test-post', excerpt: 'Test', category: 'Test', tags: [], created_at: '', updated_at: '' }
+          {
+            id: 1,
+            title: 'Test Post',
+            slug: 'test-post',
+            excerpt: 'Test',
+            category: 'Test',
+            tags: [],
+            created_at: '',
+            updated_at: '',
+          },
         ],
         pagination: { total: 1, page: 1, limit: 10, total_pages: 1 },
       }),
     });
 
     const { result } = renderHook(() => usePosts({}), { wrapper: createWrapper() });
-    
+
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
     expect(result.current.data).toBeDefined();
   });
@@ -51,14 +60,25 @@ describe('usePosts', () => {
       ok: true,
       json: async () => ({
         items: [
-          { id: 1, title: 'Test Post', slug: 'test-post', excerpt: 'Test', category: 'Test', tags: [], created_at: '', updated_at: '' }
+          {
+            id: 1,
+            title: 'Test Post',
+            slug: 'test-post',
+            excerpt: 'Test',
+            category: 'Test',
+            tags: [],
+            created_at: '',
+            updated_at: '',
+          },
         ],
         pagination: { total: 1, page: 2, limit: 5, total_pages: 1 },
       }),
     });
 
-    const { result } = renderHook(() => usePosts({ page: 2, limit: 5 }), { wrapper: createWrapper() });
-    
+    const { result } = renderHook(() => usePosts({ page: 2, limit: 5 }), {
+      wrapper: createWrapper(),
+    });
+
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
   });
 
@@ -67,14 +87,23 @@ describe('usePosts', () => {
       ok: true,
       json: async () => ({
         items: [
-          { id: 1, title: 'Test Post', slug: 'test-post', excerpt: 'Test', category: 'Test', tags: [], created_at: '', updated_at: '' }
+          {
+            id: 1,
+            title: 'Test Post',
+            slug: 'test-post',
+            excerpt: 'Test',
+            category: 'Test',
+            tags: [],
+            created_at: '',
+            updated_at: '',
+          },
         ],
         pagination: { total: 1, page: 1, limit: 10, total_pages: 1 },
       }),
     });
 
     const { result } = renderHook(() => usePosts({ category_id: 1 }), { wrapper: createWrapper() });
-    
+
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
   });
 });
@@ -98,7 +127,7 @@ describe('usePost', () => {
     });
 
     const { result } = renderHook(() => usePost('test-slug'), { wrapper: createWrapper() });
-    
+
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
   });
 });
@@ -111,7 +140,7 @@ describe('useCategories', () => {
     });
 
     const { result } = renderHook(() => useCategories(), { wrapper: createWrapper() });
-    
+
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
     expect(Array.isArray(result.current.data)).toBe(true);
   });
@@ -125,7 +154,7 @@ describe('useTags', () => {
     });
 
     const { result } = renderHook(() => useTags(), { wrapper: createWrapper() });
-    
+
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
     expect(Array.isArray(result.current.data)).toBe(true);
   });

@@ -1,5 +1,3 @@
-
-
 def test_create_tag(client):
     response = client.post(
         "/api/tags",

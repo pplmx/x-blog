@@ -12,7 +12,7 @@
 
 ## 文件结构
 
-```
+```text
 frontend/
 ├── app/
 │   └── admin/
@@ -43,6 +43,7 @@ frontend/
 ### Task 1: 安装 shadcn/ui 依赖
 
 **Files:**
+
 - Modify: `frontend/package.json`
 
 - [ ] **Step 1: 添加依赖到 package.json**
@@ -116,6 +117,7 @@ git add frontend/package.json frontend/components.json frontend/lib/utils.ts && 
 ### Task 2: 创建基础 UI 组件
 
 **Files:**
+
 - Create: `frontend/components/ui/button.tsx`
 - Create: `frontend/components/ui/input.tsx`
 - Create: `frontend/components/ui/card.tsx`
@@ -265,6 +267,7 @@ git add frontend/components/ui/ && git commit -m "feat: add shadcn/ui base compo
 ### Task 3: Admin 布局
 
 **Files:**
+
 - Create: `frontend/app/admin/layout.tsx`
 - Create: `frontend/app/admin/page.tsx`
 
@@ -368,6 +371,7 @@ git add frontend/app/admin/ && git commit -m "feat: add admin layout and dashboa
 ### Task 4: 文章管理
 
 **Files:**
+
 - Create: `frontend/app/admin/posts/page.tsx`
 - Create: `frontend/app/admin/posts/[id]/page.tsx`
 
@@ -593,6 +597,7 @@ git add frontend/app/admin/posts/ && git commit -m "feat: add posts admin page"
 ### Task 5: 分类管理
 
 **Files:**
+
 - Create: `frontend/app/admin/categories/page.tsx`
 
 - [ ] **Step 1: 创建分类管理页面**
@@ -685,6 +690,7 @@ git add frontend/app/admin/categories/ && git commit -m "feat: add categories ad
 ### Task 6: 标签管理
 
 **Files:**
+
 - Create: `frontend/app/admin/tags/page.tsx`
 
 - [ ] **Step 1: 创建标签管理页面（与分类类似）**
@@ -776,6 +782,7 @@ git add frontend/app/admin/tags/ && git commit -m "feat: add tags admin page"
 ## 验证
 
 完成所有任务后，验证：
+
 1. 访问 http://localhost:3000/admin 查看管理后台
 2. 能查看文章列表
 3. 能创建/编辑/删除文章
