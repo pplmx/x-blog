@@ -54,17 +54,12 @@ pnpm dev
 ### 1. 环境配置
 
 ```bash
-# 复制环境变量模板
-cp .env.example .env
-```
+# 后端配置
+cp backend/.env.example backend/.env
+# 编辑 backend/.env，设置 JWT_SECRET_KEY
 
-编辑 `.env`：
-```env
-# 必须修改
-JWT_SECRET_KEY=your-super-secret-key-change-this
-
-# 可选配置
-DATABASE_URL=sqlite:///./x-blog.db
+# 前端配置 (可选)
+cp frontend/.env.example frontend/.env.local
 ```
 
 ### 2. 一键启动
@@ -74,7 +69,7 @@ DATABASE_URL=sqlite:///./x-blog.db
 docker-compose up -d
 
 # 构建生产镜像
-docker-compose -f docker-compose.yml build
+docker-compose build
 docker-compose up -d
 ```
 
@@ -82,9 +77,9 @@ docker-compose up -d
 
 | 服务 | 地址 |
 |------|------|
-| 前端 | http://localhost |
-| 后端 API | http://localhost/api |
-| API 文档 | http://localhost/docs |
+| 前端 | http://localhost:3000 |
+| 后端 API | http://localhost:8000 |
+| API 文档 | http://localhost:8000/docs |
 
 ---
 
