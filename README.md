@@ -185,6 +185,14 @@ x-blog/
 
 MIT License - see [LICENSE](LICENSE) for details.
 
+## 🚀 Deployment Guide
+
+See [Deployment Guide](./README.deploy.md) for detailed instructions on:
+- Local development setup
+- Docker production deployment
+- Separated backend/frontend deployment
+- Environment configuration
+
 ---
 
 <div align="center">

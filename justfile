@@ -51,3 +51,37 @@ clean:
     rm -rf .ruff_cache backend/.ruff_cache
     rm -rf frontend/node_modules/.vite
     rm -rf frontend/coverage
+
+# Initialize database with sample data
+init:
+    cd backend && uv run python -c "
+import sys
+sys.path.insert(0, '.')
+from app.database import SessionLocal
+from app import models, auth
+
+db = SessionLocal()
+
+# Create admin user
+admin = auth.User(
+    username='admin',
+    password=auth.get_password_hash('admin123'),
+    is_superuser=True
+)
+db.add(admin)
+
+# Categories
+categories = ['前端开发', '后端开发', '技术分享', '学习笔记']
+for name in categories:
+    db.add(models.Category(name=name))
+
+# Tags
+tags = ['React', 'Next.js', 'Python', 'FastAPI', 'TypeScript', 'JavaScript', 'CSS', '数据库']
+for name in tags:
+    db.add(models.Tag(name=name))
+
+db.commit()
+print('✓ Admin user created (admin/admin123)')
+print('✓ Categories and tags created')
+db.close()
+"
