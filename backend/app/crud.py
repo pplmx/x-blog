@@ -59,6 +59,7 @@ def create_post(db: Session, post: schemas.PostCreate) -> models.Post:
         content=post.content,
         excerpt=post.excerpt,
         published=post.published,
+        pinned=post.pinned,
         category_id=post.category_id,
     )
     db_post.tags = tags
