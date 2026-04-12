@@ -3,8 +3,8 @@
 <div align="center">
 
 ![Next.js](https://img.shields.io/badge/Next.js-16-black?style=for-the-badge&logo=next.js)
-![FastAPI](https://img.shields.io/badge/FastAPI-0.115-009989?style=for-the-badge&logo=fastapi)
-![TypeScript](https://img.shields.io/badge/TypeScript-5.9-3178C6?style=for-the-badge&logo=typescript)
+![FastAPI](https://img.shields.io/badge/FastAPI-0.135-009989?style=for-the-badge&logo=fastapi)
+![TypeScript](https://img.shields.io/badge/TypeScript-6-3178C6?style=for-the-badge&logo=typescript)
 ![Python](https://img.shields.io/badge/Python-3.14-3776AB?style=for-the-badge&logo=python)
 
 A modern full-stack blog application built with FastAPI + Next.js
@@ -15,7 +15,7 @@ A modern full-stack blog application built with FastAPI + Next.js
 
 ## ✨ Features
 
-- 🚀 **Modern Tech Stack** - Next.js 16, FastAPI, TypeScript, Python 3.14
+- 🚀 **Modern Tech Stack** - Next.js 16, FastAPI, TypeScript 6, Python 3.14
 - 📝 **Markdown Support** - Write posts with Mermaid diagrams, KaTeX math, code highlighting
 - 🎨 **Beautiful UI** - Clean design with Tailwind CSS v4 + shadcn/ui
 - 📱 **Responsive** - Mobile-friendly responsive layout
