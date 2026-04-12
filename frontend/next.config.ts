@@ -1,18 +1,20 @@
+import type { NextConfig } from 'next';
+
 const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
-const nextConfig = {
-  output: "standalone",
+const nextConfig: NextConfig = {
+  output: 'standalone',
   env: {
     NEXT_PUBLIC_API_URL: apiUrl,
   },
   images: {
     remotePatterns: [
       {
-        protocol: "https",
-        hostname: "**",
+        protocol: 'https',
+        hostname: '**',
       },
     ],
-    formats: ["image/avif", "image/webp"],
+    formats: ['image/avif', 'image/webp'],
     minimumCacheTTL: 60 * 60 * 24, // 1 day
   },
   async rewrites() {
