@@ -40,6 +40,7 @@ class Post(Base):
     category_id = Column(Integer, ForeignKey("categories.id"))
     cover_image = Column(String(500), nullable=True)
     views = Column(Integer, default=0)
+    likes = Column(Integer, default=0)
 
     category = relationship("Category", back_populates="posts")
     tags = relationship("Tag", secondary=post_tags, back_populates="posts")

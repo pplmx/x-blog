@@ -77,7 +77,22 @@ def increment_views(post_id: int, db: Session = Depends(get_db)):
     return post
 
 
+@router.post("/{post_id}/like", response_model=schemas.Post)
+def increment_likes(post_id: int, db: Session = Depends(get_db)):
+    """Increment the like count for a post."""
+    post = crud.increment_likes(db, post_id)
+    if not post:
+        raise HTTPException(status_code=404, detail="Post not found")
+    return post
+
+
 @router.get("/popular/list", response_model=list[schemas.PostList])
 def get_popular_posts(limit: int = 5, db: Session = Depends(get_db)):
     """Get the most popular posts by view count."""
     return crud.get_popular_posts(db, limit=limit)
+
+
+@router.get("/{post_id}/related", response_model=list[schemas.PostList])
+def get_related_posts(post_id: int, limit: int = 5, db: Session = Depends(get_db)):
+    """Get related posts based on category and tags."""
+    return crud.get_related_posts(db, post_id, limit=limit)

@@ -1,6 +1,8 @@
 import { fetchPost } from '@/lib/api';
 import Markdown, { extractToc, TocItem } from '@/components/Markdown';
 import TableOfContents from '@/components/TableOfContents';
+import LikeButton from '@/components/LikeButton';
+import RelatedPosts from '@/components/RelatedPosts';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { Tag } from '@/types';
@@ -95,6 +97,7 @@ function PostContent({ post }: { post: Awaited<ReturnType<typeof fetchPost>> }) 
                 <Eye className="w-4 h-4" />
                 {post.views || 0} 次阅读
               </span>
+              <LikeButton postId={post.id} initialLikes={post.likes || 0} />
             </div>
 
             {/* 分类和标签 */}
@@ -131,6 +134,9 @@ function PostContent({ post }: { post: Awaited<ReturnType<typeof fetchPost>> }) 
           {/* 分割线 */}
           <div className="h-px bg-gradient-to-r from-transparent via-gray-200 dark:via-gray-700 to-transparent mb-8" />
 
+          {/* 相关文章 */}
+          <RelatedPosts postId={post.id} />
+
           {/* 评论区 */}
           <section className="mb-12">
             <h2 className="text-xl font-bold mb-6 flex items-center gap-2 dark:text-gray-100">
@@ -161,11 +167,66 @@ function PostContent({ post }: { post: Awaited<ReturnType<typeof fetchPost>> }) 
             '@type': 'BlogPosting',
             headline: post.title,
             description: post.excerpt || post.content.slice(0, 150),
+            image: post.cover_image || undefined,
             datePublished: post.created_at,
+            dateModified: post.updated_at,
             author: {
               '@type': 'Person',
               name: 'X-Blog',
             },
+            publisher: {
+              '@type': 'Organization',
+              name: 'X-Blog',
+              logo: {
+                '@type': 'ImageObject',
+                url: '/logo.png',
+              },
+            },
+            mainEntityOfPage: {
+              '@type': 'WebPage',
+              '@id': `/posts/${post.slug}`,
+            },
+            articleSection: post.category?.name || 'Blog',
+            keywords: post.tags.map((t: Tag) => t.name).join(', '),
+            wordCount: post.content.length,
+            interactionStatistic: [
+              {
+                '@type': 'InteractionCounter',
+                interactionType: 'https://schema.org/CommentAction',
+                userInteractionCount: 0, // 可后续接入评论数
+              },
+            ],
+          }),
+        }}
+      />
+      
+      {/* Breadcrumb Schema */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify({
+            '@context': 'https://schema.org',
+            '@type': 'BreadcrumbList',
+            itemListElement: [
+              {
+                '@type': 'ListItem',
+                position: 1,
+                name: '首页',
+                item: '/',
+              },
+              {
+                '@type': 'ListItem',
+                position: 2,
+                name: post.category?.name || '文章',
+                item: post.category ? `/?category_id=${post.category.id}` : '/posts',
+              },
+              {
+                '@type': 'ListItem',
+                position: 3,
+                name: post.title,
+                item: `/posts/${post.slug}`,
+              },
+            ],
           }),
         }}
       />

@@ -272,6 +272,48 @@ def increment_views(db: Session, post_id: int) -> models.Post | None:
     return post
 
 
+def increment_likes(db: Session, post_id: int) -> models.Post | None:
+    """Increment the like count for a post."""
+    post = get_post(db, post_id)
+    if not post:
+        return None
+    post.likes = (post.likes or 0) + 1
+    db.commit()
+    db.refresh(post)
+    return post
+
+
 def get_popular_posts(db: Session, limit: int = 5) -> list[models.Post]:
     """Get the most popular posts by view count."""
     return db.query(models.Post).filter(models.Post.published).order_by(models.Post.views.desc()).limit(limit).all()
+
+
+def get_related_posts(db: Session, post_id: int, limit: int = 5) -> list[models.Post]:
+    """Get related posts based on category and tags."""
+    post = get_post(db, post_id)
+    if not post:
+        return []
+    
+    # 查找同分类的文章
+    query = db.query(models.Post).filter(
+        models.Post.published,
+        models.Post.id != post_id
+    )
+    
+    if post.category_id:
+        # 同分类的文章优先
+        query = query.filter(models.Post.category_id == post.category_id)
+    
+    # 按标签匹配数排序
+    all_posts = query.all()
+    
+    def tag_match_count(p: models.Post) -> int:
+        if not post.tags:
+            return 0
+        post_tag_ids = set(t.id for t in p.tags)
+        return len(post_tag_ids.intersection(t.id for t in post.tags))
+    
+    # 排序：标签匹配数 > 创建时间
+    sorted_posts = sorted(all_posts, key=lambda p: (tag_match_count(p), p.created_at), reverse=True)
+    
+    return sorted_posts[:limit]
