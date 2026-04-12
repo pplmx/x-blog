@@ -70,7 +70,7 @@ test: test-backend test-frontend
 
 # Run backend tests
 test-backend:
-    cd backend && uv run pytest
+    cd backend && uv run python -m pytest
 
 # Run frontend tests
 test-frontend:
