@@ -96,12 +96,13 @@ class CommentBase(BaseModel):
 
 
 class CommentCreate(CommentBase):
-    pass
+    parent_id: int | None = None
 
 
 class Comment(CommentBase):
     id: int
     post_id: int
+    parent_id: int | None = None
     ip_address: str
     created_at: datetime
     model_config = ConfigDict(from_attributes=True)

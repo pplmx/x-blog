@@ -1,5 +1,6 @@
 import type { NextConfig } from 'next';
 import { networkInterfaces } from 'os';
+import type { NextConfig as NextPWAConfig } from 'next-pwa';
 
 function getLocalIP(): string {
   const interfaces = networkInterfaces();
@@ -15,8 +16,14 @@ function getLocalIP(): string {
 
 const envOrigins = process.env.NEXT_ALLOWED_DEV_ORIGINS;
 
-const nextConfig: NextConfig = {
+const nextConfig: NextConfig & NextPWAConfig = {
   allowedDevOrigins: envOrigins ? envOrigins.split(',').map((s) => s.trim()) : [getLocalIP()],
+  pwa: {
+    dest: 'public',
+    register: true,
+    skipWaiting: true,
+    disable: process.env.NODE_ENV === 'development',
+  },
 };
 
 export default nextConfig;
