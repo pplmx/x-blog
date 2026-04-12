@@ -259,3 +259,25 @@ def search_posts(db: Session, query: str, page: int = 1, limit: int = 10):
     total = db.execute(count_stmt).scalar()
 
     return posts, total
+
+
+def increment_views(db: Session, post_id: int) -> models.Post | None:
+    """Increment the view count for a post."""
+    post = get_post(db, post_id)
+    if not post:
+        return None
+    post.views = (post.views or 0) + 1
+    db.commit()
+    db.refresh(post)
+    return post
+
+
+def get_popular_posts(db: Session, limit: int = 5) -> list[models.Post]:
+    """Get the most popular posts by view count."""
+    return (
+        db.query(models.Post)
+        .filter(models.Post.published)
+        .order_by(models.Post.views.desc())
+        .limit(limit)
+        .all()
+    )

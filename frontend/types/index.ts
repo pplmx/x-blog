@@ -17,6 +17,7 @@ export interface Post {
   published: boolean;
   created_at: string;
   updated_at: string;
+  views: number;
   category_id: number | null;
   category: Category | null;
   tags: Tag[];
@@ -29,6 +30,7 @@ export interface PostList {
   excerpt: string | null;
   published: boolean;
   created_at: string;
+  views: number;
   category: Category | null;
   tags: Tag[];
 }

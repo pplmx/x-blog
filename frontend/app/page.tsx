@@ -1,4 +1,4 @@
-import { fetchPosts, fetchCategories, fetchTags } from '@/lib/api';
+import { fetchPosts, fetchCategories, fetchTags, fetchPopularPosts } from '@/lib/api';
 import PostCard from '@/components/PostCard';
 import Pagination from '@/components/Pagination';
 import Sidebar from '@/components/Sidebar';
@@ -15,10 +15,11 @@ export default async function Home({
   const tagId = params.tag_id ? parseInt(params.tag_id) : undefined;
   const page = params.page ? parseInt(params.page) : 1;
 
-  const [{ items: posts, pagination }, categories, tags] = await Promise.all([
+  const [{ items: posts, pagination }, categories, tags, popularPosts] = await Promise.all([
     fetchPosts({ category_id: categoryId, tag_id: tagId, page, limit: 10 }),
     fetchCategories(),
     fetchTags(),
+    fetchPopularPosts(5),
   ]);
 
   let baseUrl = '/';
@@ -42,7 +43,7 @@ export default async function Home({
           baseUrl={baseUrl}
         />
       </div>
-      <Sidebar categories={categories} tags={tags} />
+      <Sidebar categories={categories} tags={tags} popularPosts={popularPosts} />
     </div>
   );
 }

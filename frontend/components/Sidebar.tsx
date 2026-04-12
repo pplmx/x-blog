@@ -13,12 +13,20 @@ interface Tag {
   name: string;
 }
 
+interface PostList {
+  id: number;
+  title: string;
+  slug: string;
+  views: number;
+}
+
 interface SidebarProps {
   categories: Category[];
   tags: Tag[];
+  popularPosts?: PostList[];
 }
 
-export default function Sidebar({ categories, tags }: SidebarProps) {
+export default function Sidebar({ categories, tags, popularPosts = [] }: SidebarProps) {
   const searchParams = useSearchParams();
   const router = useRouter();
 
@@ -35,6 +43,25 @@ export default function Sidebar({ categories, tags }: SidebarProps) {
         <button onClick={clearFilters} className="mb-4 text-sm text-blue-600 hover:underline">
           ← 清除筛选
         </button>
+      )}
+
+      {popularPosts.length > 0 && (
+        <div className="mb-6">
+          <h3 className="font-semibold mb-2">热门文章</h3>
+          <div className="space-y-2">
+            {popularPosts.map((post, index) => (
+              <Link
+                key={post.id}
+                href={`/posts/${post.slug}`}
+                className="block text-sm hover:text-blue-600"
+              >
+                <span className="text-gray-400 mr-1">{index + 1}.</span>
+                {post.title}
+                <span className="text-gray-400 text-xs ml-1">({post.views})</span>
+              </Link>
+            ))}
+          </div>
+        </div>
       )}
 
       <div className="mb-6">

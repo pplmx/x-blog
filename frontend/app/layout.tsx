@@ -29,6 +29,9 @@ export const metadata: Metadata = {
     index: true,
     follow: true,
   },
+  other: {
+    'rss-feed': '/rss/feed.xml',
+  },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

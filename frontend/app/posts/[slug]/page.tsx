@@ -5,6 +5,7 @@ import { notFound } from 'next/navigation';
 import { Tag } from '@/types';
 import type { Metadata } from 'next';
 import dynamic from 'next/dynamic';
+import ViewTracker from '@/components/ViewTracker';
 
 const CommentList = dynamic(() => import('@/components/CommentList'), {
   loading: () => <div>加载评论...</div>,
@@ -59,7 +60,9 @@ export default async function PostPage({ params }: PageProps) {
   const date = new Date(post.created_at).toLocaleDateString('zh-CN');
 
   return (
-    <article>
+    <>
+      <ViewTracker postId={post.id} />
+      <article>
       <Link href="/" className="text-blue-600 hover:underline mb-6 inline-block">
         ← 返回首页
       </Link>
@@ -102,6 +105,10 @@ export default async function PostPage({ params }: PageProps) {
           }),
         }}
       />
+      <footer className="mt-8 pt-4 border-t text-gray-500 text-sm">
+        阅读 {post.views || 0} 次
+      </footer>
     </article>
+    </>
   );
 }

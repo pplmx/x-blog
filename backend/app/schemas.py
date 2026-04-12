@@ -56,6 +56,7 @@ class Post(PostBase):
     id: int
     created_at: datetime
     updated_at: datetime
+    views: int = 0
     category: Category | None = None
     tags: list[Tag] = []
     model_config = ConfigDict(from_attributes=True)
@@ -68,6 +69,7 @@ class PostList(BaseModel):
     excerpt: str | None
     published: bool
     created_at: datetime
+    views: int = 0
     category: Category | None = None
     tags: list[Tag] = []
     model_config = ConfigDict(from_attributes=True)

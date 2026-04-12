@@ -312,3 +312,17 @@ export async function deleteAdminTag(id: number): Promise<void> {
   });
   if (!res.ok) throw new Error('Failed to delete tag');
 }
+
+export async function incrementViews(postId: number): Promise<Post> {
+  const res = await fetch(`${API_BASE}/api/posts/${postId}/view`, {
+    method: 'POST',
+  });
+  if (!res.ok) throw new Error('Failed to increment views');
+  return res.json();
+}
+
+export async function fetchPopularPosts(limit: number = 5): Promise<PostList[]> {
+  const res = await fetch(`${API_BASE}/api/posts/popular/list?limit=${limit}`);
+  if (!res.ok) throw new Error('Failed to fetch popular posts');
+  return res.json();
+}

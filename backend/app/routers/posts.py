@@ -66,3 +66,18 @@ def delete_post(post_id: int, db: Session = Depends(get_db)):
     success = crud.delete_post(db, post_id)
     if not success:
         raise HTTPException(status_code=404, detail="Post not found")
+
+
+@router.post("/{post_id}/view", response_model=schemas.Post)
+def increment_views(post_id: int, db: Session = Depends(get_db)):
+    """Increment the view count for a post."""
+    post = crud.increment_views(db, post_id)
+    if not post:
+        raise HTTPException(status_code=404, detail="Post not found")
+    return post
+
+
+@router.get("/popular/list", response_model=list[schemas.PostList])
+def get_popular_posts(limit: int = 5, db: Session = Depends(get_db)):
+    """Get the most popular posts by view count."""
+    return crud.get_popular_posts(db, limit=limit)
