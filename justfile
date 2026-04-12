@@ -1,13 +1,22 @@
 # X-Blog Just Commands
 
-# Initialize database with sample data
-init:
-    cd backend && uv run python scripts/init_db.py
-
-# Install
+# Install all dependencies and git hooks
 install:
     cd backend && uv sync
-    cd frontend && pnpm i
+    cd frontend && pnpm install
+
+# Install git hooks
+hooks:
+    @echo "Installing git hooks..."
+    uv tool install prek
+    uv tool install rumdl
+    uv tool install ruff
+    prek install --hook-type commit-msg --hook-type pre-push
+    @echo "✓ Git hooks installed"
+
+# Initialize database with sample data
+init-db:
+    cd backend && uv run python scripts/init_db.py
 
 # Run both backend and frontend (Windows: run in two terminals)
 # Terminal 1: just backend
@@ -40,6 +49,22 @@ format:
     cd backend && uvx ruff format .
     cd frontend && pnpm format
 
+# Format check (CI style)
+fmt-check:
+    cd backend && uvx ruff format --check .
+    cd frontend && pnpm format --check
+
+# Auto-fix issues
+fix:
+    cd backend && uvx ruff check . --fix
+    cd backend && uvx ruff format .
+    cd frontend && pnpm lint --write
+    cd frontend && pnpm format --write
+    rumdl fmt
+
+# CI: run all checks
+ci: fmt-check lint test
+
 # Run all tests
 test: test-backend test-frontend
 
@@ -67,3 +92,7 @@ clean:
 # Lint and format markdown
 rumdl:
     rumdl fmt
+
+# Show help
+default:
+    @just --list
