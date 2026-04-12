@@ -4,8 +4,8 @@
 import sys
 
 sys.path.insert(0, ".")
+from app import auth, models
 from app.database import SessionLocal
-from app import models, auth
 
 
 def main():

@@ -44,9 +44,10 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     <div className="min-h-screen flex">
       {/* 移动端遮罩 */}
       {sidebarOpen && (
-        <div
-          className="fixed inset-0 bg-black/50 z-40 lg:hidden"
+        <button
+          className="fixed inset-0 bg-black/50 z-40 lg:hidden cursor-default"
           onClick={() => setSidebarOpen(false)}
+          aria-label="关闭菜单"
         />
       )}
 

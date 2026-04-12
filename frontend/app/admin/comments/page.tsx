@@ -9,7 +9,7 @@ import Link from 'next/link';
 
 export default function CommentsPage() {
   const queryClient = useQueryClient();
-  const [filterPostId, setFilterPostId] = useState<number | undefined>(undefined);
+  const [filterPostId, _setFilterPostId] = useState<number | undefined>(undefined);
 
   const {
     data: comments,
