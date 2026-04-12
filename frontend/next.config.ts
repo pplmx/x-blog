@@ -7,6 +7,7 @@ const nextConfig: NextConfig = {
   env: {
     NEXT_PUBLIC_API_URL: apiUrl,
   },
+  allowedDevOrigins: ['local-origin.dev', 'local.x-blog.dev', '172.17.0.2', 'localhost'],
   images: {
     remotePatterns: [
       {
