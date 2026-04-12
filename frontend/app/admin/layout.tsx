@@ -2,10 +2,10 @@
 
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { LayoutDashboard, FileText, Tag, Folder, LogOut } from 'lucide-react';
+import { LayoutDashboard, FileText, Tag, Folder, LogOut, Menu, X, ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/lib/auth-context';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 
 const navItems = [
   { href: '/admin', icon: LayoutDashboard, label: '仪表盘' },
@@ -17,6 +17,7 @@ const navItems = [
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, logout } = useAuth();
   const router = useRouter();
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   useEffect(() => {
     if (!isAuthenticated) {
@@ -30,11 +31,38 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   return (
     <div className="min-h-screen flex">
-      <aside className="w-64 border-r bg-card p-4">
-        <h1 className="text-xl font-bold mb-6 px-2">X-Blog 管理</h1>
+      {/* 移动端遮罩 */}
+      {sidebarOpen && (
+        <div 
+          className="fixed inset-0 bg-black/50 z-40 lg:hidden"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
+
+      {/* 侧边栏 */}
+      <aside className={`
+        fixed lg:static inset-y-0 left-0 z-50 w-64 border-r bg-card p-4 transform transition-transform duration-200
+        ${sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
+      `}>
+        <div className="flex items-center justify-between mb-6 px-2">
+          <Link href="/admin" className="text-xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
+            X-Blog 管理
+          </Link>
+          <button 
+            className="lg:hidden p-1"
+            onClick={() => setSidebarOpen(false)}
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+        
         <nav className="space-y-1">
           {navItems.map((item) => (
-            <Link key={item.href} href={item.href}>
+            <Link 
+              key={item.href} 
+              href={item.href}
+              onClick={() => setSidebarOpen(false)}
+            >
               <Button variant="ghost" className="w-full justify-start">
                 <item.icon className="mr-2 h-4 w-4" />
                 {item.label}
@@ -42,7 +70,14 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             </Link>
           ))}
         </nav>
+        
         <div className="mt-6 pt-6 border-t space-y-2">
+          <Link href="/" onClick={() => setSidebarOpen(false)}>
+            <Button variant="outline" className="w-full">
+              <ArrowLeft className="mr-2 h-4 w-4" />
+              返回前台
+            </Button>
+          </Link>
           <Button
             variant="outline"
             className="w-full"
@@ -54,14 +89,24 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             <LogOut className="mr-2 h-4 w-4" />
             退出登录
           </Button>
-          <Link href="/">
-            <Button variant="outline" className="w-full">
-              返回前台
-            </Button>
-          </Link>
         </div>
       </aside>
-      <main className="flex-1 p-6">{children}</main>
+
+      {/* 主内容区 */}
+      <div className="flex-1 flex flex-col min-h-screen">
+        {/* 移动端顶部栏 */}
+        <header className="lg:hidden border-b bg-card p-4 flex items-center">
+          <button 
+            className="p-2 -ml-2 mr-2"
+            onClick={() => setSidebarOpen(true)}
+          >
+            <Menu className="w-6 h-6" />
+          </button>
+          <span className="font-bold">X-Blog 管理</span>
+        </header>
+        
+        <main className="flex-1 p-4 lg:p-6">{children}</main>
+      </div>
     </div>
   );
 }

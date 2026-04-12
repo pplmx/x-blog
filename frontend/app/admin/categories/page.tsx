@@ -75,69 +75,94 @@ export default function CategoriesPage() {
 
   return (
     <div>
-      <h1 className="text-2xl font-bold mb-6">分类管理</h1>
-
-      <form onSubmit={handleCreate} className="flex gap-2 mb-6">
-        <Input
-          value={newName}
-          onChange={(e) => setNewName(e.target.value)}
-          placeholder="新分类名称"
-        />
-        <Button type="submit" disabled={createCategory.isPending}>
-          <Plus className="mr-2 h-4 w-4" />
-          添加
-        </Button>
-      </form>
-
-      <div className="space-y-2">
-        {categories.map((cat) => (
-          <div key={cat.id} className="flex items-center justify-between p-3 border rounded-lg">
-            {editingId === cat.id ? (
-              <>
-                <Input
-                  value={editName}
-                  onChange={(e) => setEditName(e.target.value)}
-                  className="max-w-xs"
-                />
-                <div className="flex gap-1">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={handleSaveEdit}
-                    disabled={updateCategory.isPending}
-                  >
-                    <Check className="h-4 w-4" />
-                  </Button>
-                  <Button variant="ghost" size="sm" onClick={handleCancelEdit}>
-                    <X className="h-4 w-4" />
-                  </Button>
-                </div>
-              </>
-            ) : (
-              <>
-                <span>{cat.name}</span>
-                <div className="flex gap-1">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => handleStartEdit(cat.id, cat.name)}
-                  >
-                    <Pencil className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => handleDelete(cat.id)}
-                    disabled={deleteCategory.isPending}
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                </div>
-              </>
-            )}
-          </div>
-        ))}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+        <h1 className="text-2xl font-bold">分类管理</h1>
       </div>
+
+      <div className="bg-card border rounded-xl p-4 mb-6">
+        <form onSubmit={handleCreate} className="flex gap-2">
+          <Input
+            value={newName}
+            onChange={(e) => setNewName(e.target.value)}
+            placeholder="新分类名称"
+            className="flex-1"
+          />
+          <Button type="submit" disabled={createCategory.isPending}>
+            <Plus className="mr-2 h-4 w-4" />
+            添加
+          </Button>
+        </form>
+      </div>
+
+      {isLoading ? (
+        <div className="text-center py-8 text-gray-500">加载中...</div>
+      ) : error ? (
+        <div className="text-center py-8 text-red-500">加载失败: {String(error)}</div>
+      ) : categories?.length === 0 ? (
+        <div className="text-center py-8 text-gray-500">暂无分类</div>
+      ) : (
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          {categories.map((cat) => (
+            <div 
+              key={cat.id} 
+              className="flex items-center justify-between p-4 border rounded-xl bg-card hover:border-gray-300 transition-colors"
+            >
+              {editingId === cat.id ? (
+                <>
+                  <Input
+                    value={editName}
+                    onChange={(e) => setEditName(e.target.value)}
+                    className="flex-1 mr-2"
+                    autoFocus
+                  />
+                  <div className="flex gap-1">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={handleSaveEdit}
+                      disabled={updateCategory.isPending}
+                      className="h-8 w-8 p-0 text-green-600 hover:text-green-700 hover:bg-green-50"
+                    >
+                      <Check className="h-4 w-4" />
+                    </Button>
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      onClick={handleCancelEdit}
+                      className="h-8 w-8 p-0 text-gray-500 hover:text-gray-600 hover:bg-gray-100"
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <span className="font-medium">{cat.name}</span>
+                  <div className="flex gap-1">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleStartEdit(cat.id, cat.name)}
+                      className="h-8 w-8 p-0 text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                    >
+                      <Pencil className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleDelete(cat.id)}
+                      disabled={deleteCategory.isPending}
+                      className="h-8 w-8 p-0 text-red-500 hover:text-red-600 hover:bg-red-50"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
