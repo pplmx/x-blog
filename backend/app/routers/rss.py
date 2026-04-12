@@ -1,11 +1,12 @@
 from datetime import datetime
+
 from fastapi import APIRouter, Depends
 from fastapi.responses import Response
 from sqlalchemy.orm import Session
 
 from app import crud
-from app.database import get_db
 from app.config import settings
+from app.database import get_db
 
 # RSS router with /rss prefix
 rss_router = APIRouter(prefix="", tags=["rss"])
