@@ -27,14 +27,14 @@
 ```yaml
 services:
   frontend:
-    build: ./frontend
+    build: frontend
     ports:
       - "3000:3000"
     environment:
       - NEXT_PUBLIC_API_URL=/api
 
   backend:
-    build: ./backend
+    build: backend
     ports:
       - "8000:8000"
     environment:
@@ -66,8 +66,10 @@ services:
 
 ```
 .
-├── Dockerfile              (后端)
-├── Dockerfile.frontend    (前端)
+├── backend/
+│   └── Dockerfile
+├── frontend/
+│   └── Dockerfile
 ├── docker-compose.yml
 ├── nginx.conf
 ├── .dockerignore
