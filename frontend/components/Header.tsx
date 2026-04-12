@@ -3,13 +3,14 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import SearchBox from './SearchBox';
+import ThemeToggle from './ThemeToggle';
 import { Home, User, Menu, X } from 'lucide-react';
 
 export default function Header() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   return (
-    <header className="sticky top-0 z-50 border-b border-gray-100 bg-white/80 backdrop-blur-md">
+    <header className="sticky top-0 z-50 border-b border-gray-100 dark:border-gray-800 bg-white/80 dark:bg-gray-900/80 backdrop-blur-md">
       <div className="container mx-auto px-4 py-4 flex justify-between items-center">
         <Link
           href="/"
@@ -19,8 +20,9 @@ export default function Header() {
         </Link>
 
         {/* 桌面端导航 */}
-        <div className="hidden md:flex items-center gap-6">
+        <div className="hidden md:flex items-center gap-4">
           <SearchBox />
+          <ThemeToggle />
           <nav className="flex gap-5">
             <Link
               href="/"
@@ -50,9 +52,10 @@ export default function Header() {
 
       {/* 移动端菜单 */}
       {mobileMenuOpen && (
-        <div className="md:hidden border-t border-gray-100 bg-white">
-          <div className="px-4 py-3">
+        <div className="md:hidden border-t border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900">
+          <div className="px-4 py-3 flex items-center gap-3">
             <SearchBox />
+            <ThemeToggle />
           </div>
           <nav className="flex flex-col px-4 pb-4">
             <Link
