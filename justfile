@@ -14,12 +14,12 @@ dev:
     @echo "  just frontend"
     @echo ""
     @echo "或使用 VS Code / IntelliJ 的 Run Dashboard"
-    cd backend && uv run uvicorn app.main:app --reload --port 8000 &
+    cd backend && uv run uvicorn app.main:app --reload --host 0.0.0.0 --port 8000 &
     cd frontend && pnpm dev
 
 # Run backend only
 backend:
-    cd backend && uv run uvicorn app.main:app --reload --port 8000
+    cd backend && uv run uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 
 # Run frontend only
 frontend:
