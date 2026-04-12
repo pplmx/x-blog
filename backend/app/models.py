@@ -70,6 +70,7 @@ class Comment(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     post_id = Column(Integer, ForeignKey("posts.id"), nullable=False)
+    parent_id = Column(Integer, ForeignKey("comments.id"), nullable=True)
     nickname = Column(String(50), nullable=False)
     email = Column(String(100))
     content = Column(Text, nullable=False)
@@ -77,3 +78,4 @@ class Comment(Base):
     created_at = Column(DateTime, default=lambda: datetime.now(UTC))
 
     post = relationship("Post", back_populates="comments")
+    parent = relationship("Comment", remote_side=[id], backref="replies")

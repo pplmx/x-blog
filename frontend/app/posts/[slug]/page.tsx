@@ -3,6 +3,7 @@ import Markdown, { extractToc, TocItem } from '@/components/Markdown';
 import TableOfContents from '@/components/TableOfContents';
 import LikeButton from '@/components/LikeButton';
 import RelatedPosts from '@/components/RelatedPosts';
+import ReadingProgress from '@/components/ReadingProgress';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { Tag } from '@/types';
@@ -63,6 +64,7 @@ function PostContent({ post }: { post: Awaited<ReturnType<typeof fetchPost>> }) 
 
   return (
     <>
+      <ReadingProgress />
       <ViewTracker postId={post.id} />
 
       <div className="flex flex-col lg:flex-row gap-8">

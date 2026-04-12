@@ -16,6 +16,9 @@ export default function Footer() {
           </div>
 
           <div className="flex items-center gap-6 text-sm text-gray-500 dark:text-gray-400">
+            <Link href="/tags" className="hover:text-blue-600 transition-colors">
+              标签
+            </Link>
             <Link href="/rss.xml" className="hover:text-orange-500 transition-colors">
               RSS 订阅
             </Link>
