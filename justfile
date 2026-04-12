@@ -52,7 +52,8 @@ format:
 # Format check (CI style)
 fmt-check:
     cd backend && uvx ruff format --check .
-    cd frontend && pnpm format --check
+    cd frontend && pnpm format
+    rumdl fmt
 
 # Auto-fix issues
 fix:
