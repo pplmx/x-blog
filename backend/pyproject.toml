@@ -4,7 +4,7 @@ version = "0.1.0"
 description = "X-Blog Backend"
 requires-python = ">=3.14"
 dependencies = [
-    "fastapi>=0.115.0",
+    "fastapi>=0.135.3,<0.136",
     "uvicorn[standard]>=0.32.0",
     "sqlalchemy>=2.0.0",
     "pydantic>=2.0.0",
