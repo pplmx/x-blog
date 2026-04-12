@@ -1,13 +1,24 @@
 import type { NextConfig } from 'next';
 
-const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+const apiUrl = process.env.NEXT_PUBLIC_API_URL;
+const isRemote = apiUrl && !apiUrl.includes('localhost') && !apiUrl.includes('127.0.0.1');
 
 const nextConfig: NextConfig = {
   output: 'standalone',
   env: {
-    NEXT_PUBLIC_API_URL: apiUrl,
+    NEXT_PUBLIC_API_URL: apiUrl || 'http://localhost:8000',
   },
-  allowedDevOrigins: ['local-origin.dev', 'local.x-blog.dev', '172.17.0.2', 'localhost'],
+  // 自动允许本地开发 origins，如果配置了远程则忽略
+  ...(process.env.NODE_ENV === 'development' && !isRemote
+    ? {
+        allowedDevOrigins: [
+          'localhost',
+          'localhost:3000',
+          '127.0.0.1',
+          '127.0.0.1:3000',
+        ],
+      }
+    : {}),
   images: {
     remotePatterns: [
       {
@@ -19,9 +30,9 @@ const nextConfig: NextConfig = {
     minimumCacheTTL: 60 * 60 * 24, // 1 day
   },
   async rewrites() {
-    // 开发环境：反向代理到本地后端
-    // 生产环境：通过 NEXT_PUBLIC_API_URL 配置
-    if (apiUrl === 'http://localhost:8000') {
+    // 如果配置了远程后端，不使用 rewrites
+    // 本地开发默认使用 localhost:8000
+    if (!isRemote) {
       return [
         {
           source: '/api/:path*',
