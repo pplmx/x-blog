@@ -41,26 +41,26 @@ frontend:
 # Lint code
 lint:
     cd backend && uvx ruff check . --fix
-    cd frontend && pnpm lint
+    cd frontend && pnpm biome check --vcs-use-ignore-file=true --write
     rumdl fmt
 
 # Format code
 format:
     cd backend && uvx ruff format .
-    cd frontend && pnpm format
+    cd frontend && pnpm biome format --vcs-use-ignore-file=true --write
 
 # Format check (CI style)
 fmt-check:
     cd backend && uvx ruff format --check .
-    cd frontend && pnpm format
+    cd frontend && pnpm biome ci --vcs-use-ignore-file=true
     rumdl fmt
 
 # Auto-fix issues
 fix:
     cd backend && uvx ruff check . --fix
     cd backend && uvx ruff format .
-    cd frontend && pnpm lint --write
-    cd frontend && pnpm format
+    cd frontend && pnpm biome check --vcs-use-ignore-file=true --write
+    cd frontend && pnpm biome format --vcs-use-ignore-file=true --write
     rumdl fmt
 
 # CI: run all checks
