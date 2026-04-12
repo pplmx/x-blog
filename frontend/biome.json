@@ -1,16 +1,13 @@
 {
   "$schema": "https://biomejs.dev/schemas/2.4.11/schema.json",
   "files": {
-    "ignoreUnknown": true,
-    "includes": ["app/**", "components/**", "lib/**", "types/**", "mocks/**", "*.ts", "*.tsx", "*.json"]
+    "ignoreUnknown": true
   },
-  "overrides": [
-    {
-      "includes": ["**/*.css"],
-      "linter": { "enabled": false },
-      "formatter": { "enabled": false }
+  "css": {
+    "parser": {
+      "tailwindDirectives": true
     }
-  ],
+  },
   "formatter": {
     "enabled": true,
     "indentStyle": "space",

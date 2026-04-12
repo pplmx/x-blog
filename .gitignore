@@ -26,6 +26,11 @@ npm-debug.log*
 pnpm-debug.log*
 *.tsbuildinfo
 
+# Frontend specific
+frontend/.next/
+frontend/coverage/
+frontend/node_modules/
+
 # Environment
 .env
 .env.local
