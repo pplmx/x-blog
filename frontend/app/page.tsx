@@ -27,7 +27,7 @@ export default async function Home({
   else if (tagId) baseUrl = `/?tag_id=${tagId}`;
 
   return (
-    <div className="flex gap-8">
+    <div className="flex flex-col lg:flex-row gap-8">
       <div className="flex-1">
         <div className="mb-8">
           <h1 className="text-3xl font-bold bg-gradient-to-r from-gray-900 to-gray-600 bg-clip-text text-transparent">
@@ -53,7 +53,10 @@ export default async function Home({
           baseUrl={baseUrl}
         />
       </div>
-      <Sidebar categories={categories} tags={tags} popularPosts={popularPosts} />
+      {/* 侧边栏：桌面端显示，移动端隐藏 */}
+      <div className="hidden lg:block w-64 shrink-0">
+        <Sidebar categories={categories} tags={tags} popularPosts={popularPosts} />
+      </div>
     </div>
   );
 }

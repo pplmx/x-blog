@@ -72,7 +72,7 @@ export default function SearchBox() {
         onKeyDown={handleKeyDown}
         onFocus={() => query.trim() && setShow(true)}
         placeholder="搜索文章..."
-        className="px-3 py-1.5 border rounded-md text-sm w-48 focus:outline-none focus:ring-2 focus:ring-blue-500"
+        className="px-3 py-1.5 border rounded-md text-sm w-32 md:w-48 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:w-40 md:focus:w-48 transition-all"
       />
 
       {show && query.trim() && (

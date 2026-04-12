@@ -8,29 +8,46 @@ import Footer from '@/components/Footer';
 const inter = Inter({ subsets: ['latin'] });
 
 export const metadata: Metadata = {
+  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || 'https://x-blog.example.com'),
   title: {
-    default: 'X-Blog',
+    default: 'X-Blog - 探索技术世界',
     template: '%s | X-Blog',
   },
-  description: 'X-Blog - 一个现代化的博客系统',
-  metadataBase: new URL('https://x-blog.example.com'),
+  description: 'X-Blog - 探索技术世界，分享编程心得、算法解读和项目实践经验',
+  keywords: ['博客', '技术', '编程', '开发', '教程', 'React', 'Next.js', 'Python'],
+  authors: [{ name: 'X-Blog' }],
+  creator: 'X-Blog',
+  publisher: 'X-Blog',
+  formatDetection: {
+    email: false,
+    address: false,
+    telephone: false,
+  },
   openGraph: {
-    title: 'X-Blog',
-    description: 'X-Blog - 一个现代化的博客系统',
+    title: 'X-Blog - 探索技术世界',
+    description: 'X-Blog - 探索技术世界，分享编程心得、算法解读和项目实践经验',
     type: 'website',
     locale: 'zh_CN',
+    siteName: 'X-Blog',
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'X-Blog',
-    description: 'X-Blog - 一个现代化的博客系统',
+    title: 'X-Blog - 探索技术世界',
+    description: 'X-Blog - 探索技术世界，分享编程心得、算法解读和项目实践经验',
   },
   robots: {
     index: true,
     follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      'max-video-preview': -1,
+      'max-image-preview': 'large',
+      'max-snippet': -1,
+    },
   },
   other: {
-    'rss-feed': '/rss/feed.xml',
+    'rss-feed': '/rss.xml',
   },
 };
 

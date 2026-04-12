@@ -1,4 +1,10 @@
 import Link from 'next/link';
+import type { Metadata } from 'next';
+
+export const metadata: Metadata = {
+  title: '关于',
+  description: '关于 X-Blog - 技术博客系统',
+};
 
 export default function AboutPage() {
   return (
