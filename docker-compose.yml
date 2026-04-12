@@ -4,7 +4,7 @@ services:
     ports:
       - "3000:3000"
     environment:
-      - NEXT_PUBLIC_API_URL=/api
+      - NEXT_PUBLIC_API_URL=http://localhost:8000
     restart: unless-stopped
 
   backend:
@@ -12,21 +12,8 @@ services:
     ports:
       - "8000:8000"
     environment:
-      - DATABASE_URL=sqlite:///./aurora.db
-      - JWT_SECRET_KEY=${JWT_SECRET_KEY:-change-me-in-production}
+      - DATABASE_URL=sqlite:///./x-blog.db
+      - JWT_SECRET_KEY=${JWT_SECRET_KEY:-change-this-in-production}
     volumes:
       - ./data:/app/data
-    restart: unless-stopped
-
-  nginx:
-    image: nginx:latest
-    ports:
-      - "80:80"
-      - "443:443"
-    volumes:
-      - ./nginx.conf:/etc/nginx/nginx.conf:ro
-      - ./data/static:/var/www/static:ro
-    depends_on:
-      - frontend
-      - backend
     restart: unless-stopped
