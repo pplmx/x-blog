@@ -44,7 +44,9 @@ playwright/.cache/
 coverage/
 
 # IDE
-.vscode/
+!.vscode/extensions.json
+!.vscode/settings.json
+.vscode/**
 .idea/
 
 # Cache
@@ -62,4 +64,3 @@ core.*
 
 # System
 .DS_Store
-
