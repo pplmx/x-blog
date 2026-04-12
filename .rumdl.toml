@@ -1,7 +1,7 @@
 [global]
 disable = ["MD029", "MD034", "MD036", "MD059", "MD033", "MD025"]
 respect_gitignore = true
-exclude = ["themes"]
+exclude = ["themes", "docs/superpowers"]
 
 [MD007]
 indent = 4
