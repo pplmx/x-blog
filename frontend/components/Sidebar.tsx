@@ -53,8 +53,8 @@ export default function Sidebar({ categories, tags, popularPosts = [] }: Sidebar
 
       {/* 热门文章 */}
       {popularPosts.length > 0 && (
-        <div className="bg-gradient-to-br from-gray-50 to-white rounded-2xl p-5 border border-gray-100">
-          <h3 className="flex items-center gap-2 font-bold text-gray-900 mb-4">
+        <div className="bg-gradient-to-br from-gray-50 dark:from-gray-800 to-white dark:to-gray-900 rounded-2xl p-5 border border-gray-100 dark:border-gray-800">
+          <h3 className="flex items-center gap-2 font-bold text-gray-900 dark:text-gray-100 mb-4">
             <TrendingUp className="w-5 h-5 text-orange-500" />
             热门文章
           </h3>
@@ -63,13 +63,13 @@ export default function Sidebar({ categories, tags, popularPosts = [] }: Sidebar
               <Link
                 key={post.id}
                 href={`/posts/${post.slug}`}
-                className="group flex items-start gap-3 p-2 -mx-2 rounded-xl hover:bg-gray-100 transition-colors duration-200"
+                className="group flex items-start gap-3 p-2 -mx-2 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors duration-200"
               >
-                <span className="flex items-center justify-center w-6 h-6 bg-gradient-to-br from-orange-100 to-red-100 text-orange-600 text-xs font-bold rounded-full group-hover:from-orange-200 group-hover:to-red-200">
+                <span className="flex items-center justify-center w-6 h-6 bg-gradient-to-br from-orange-100 dark:from-orange-900/50 to-red-100 dark:to-red-900/50 text-orange-600 dark:text-orange-400 text-xs font-bold rounded-full group-hover:from-orange-200 group-hover:to-red-200">
                   {index + 1}
                 </span>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-gray-700 group-hover:text-blue-600 transition-colors line-clamp-2">
+                  <p className="text-sm font-medium text-gray-700 dark:text-gray-300 group-hover:text-blue-600 transition-colors line-clamp-2">
                     {post.title}
                   </p>
                   <p className="text-xs text-gray-400 mt-1">{post.views} 次阅读</p>
@@ -81,8 +81,8 @@ export default function Sidebar({ categories, tags, popularPosts = [] }: Sidebar
       )}
 
       {/* 分类 */}
-      <div className="bg-gradient-to-br from-gray-50 to-white rounded-2xl p-5 border border-gray-100">
-        <h3 className="flex items-center gap-2 font-bold text-gray-900 mb-4">
+      <div className="bg-gradient-to-br from-gray-50 dark:from-gray-800 to-white dark:to-gray-900 rounded-2xl p-5 border border-gray-100 dark:border-gray-800">
+        <h3 className="flex items-center gap-2 font-bold text-gray-900 dark:text-gray-100 mb-4">
           <FolderOpen className="w-5 h-5 text-purple-500" />
           分类
         </h3>
@@ -94,7 +94,7 @@ export default function Sidebar({ categories, tags, popularPosts = [] }: Sidebar
               className={`block px-3 py-2 rounded-xl text-sm transition-all duration-200 ${
                 currentCategory === String(cat.id)
                   ? 'bg-gradient-to-r from-purple-500 to-indigo-500 text-white shadow-md'
-                  : 'text-gray-600 hover:bg-gray-100 hover:text-purple-600'
+                  : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-purple-600'
               }`}
             >
               {cat.name}
@@ -104,8 +104,8 @@ export default function Sidebar({ categories, tags, popularPosts = [] }: Sidebar
       </div>
 
       {/* 标签 */}
-      <div className="bg-gradient-to-br from-gray-50 to-white rounded-2xl p-5 border border-gray-100">
-        <h3 className="flex items-center gap-2 font-bold text-gray-900 mb-4">
+      <div className="bg-gradient-to-br from-gray-50 dark:from-gray-800 to-white dark:to-gray-900 rounded-2xl p-5 border border-gray-100 dark:border-gray-800">
+        <h3 className="flex items-center gap-2 font-bold text-gray-900 dark:text-gray-100 mb-4">
           <TagIcon className="w-5 h-5 text-pink-500" />
           标签
         </h3>
@@ -117,7 +117,7 @@ export default function Sidebar({ categories, tags, popularPosts = [] }: Sidebar
               className={`px-3 py-1.5 rounded-full text-sm font-medium transition-all duration-200 ${
                 currentTag === String(tag.id)
                   ? 'bg-gradient-to-r from-pink-500 to-rose-500 text-white shadow-md'
-                  : 'bg-gray-100 text-gray-600 hover:bg-gradient-to-r hover:from-pink-100 hover:to-rose-100 hover:text-pink-600'
+                  : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-gradient-to-r hover:from-pink-100 dark:hover:from-pink-900/50 hover:to-rose-100 dark:hover:to-rose-900/50 hover:text-pink-600'
               }`}
             >
               #{tag.name}

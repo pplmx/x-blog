@@ -66,7 +66,7 @@ export async function searchPosts(
     limit: limit.toString(),
   });
 
-  const res = await fetch(`/api/search?${params}`);
+  const res = await fetch(`${API_BASE}/api/search?${params}`);
   if (!res.ok) {
     throw new Error('Search failed');
   }
