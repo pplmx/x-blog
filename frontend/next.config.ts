@@ -1,47 +1,22 @@
 import type { NextConfig } from 'next';
+import { networkInterfaces } from 'os';
 
-const apiUrl = process.env.NEXT_PUBLIC_API_URL;
-const isRemote = apiUrl && !apiUrl.includes('localhost') && !apiUrl.includes('127.0.0.1');
+function getLocalIP(): string {
+  const interfaces = networkInterfaces();
+  for (const name of Object.keys(interfaces)) {
+    for (const iface of interfaces[name] || []) {
+      if (iface.family === 'IPv4' && !iface.internal) {
+        return iface.address;
+      }
+    }
+  }
+  return 'localhost';
+}
+
+const envOrigins = process.env.NEXT_ALLOWED_DEV_ORIGINS;
 
 const nextConfig: NextConfig = {
-  output: 'standalone',
-  env: {
-    NEXT_PUBLIC_API_URL: apiUrl || 'http://localhost:8000',
-  },
-  // 自动允许本地开发 origins，如果配置了远程则忽略
-  ...(process.env.NODE_ENV === 'development' && !isRemote
-    ? {
-        allowedDevOrigins: [
-          'localhost',
-          'localhost:3000',
-          '127.0.0.1',
-          '127.0.0.1:3000',
-        ],
-      }
-    : {}),
-  images: {
-    remotePatterns: [
-      {
-        protocol: 'https',
-        hostname: '**',
-      },
-    ],
-    formats: ['image/avif', 'image/webp'],
-    minimumCacheTTL: 60 * 60 * 24, // 1 day
-  },
-  async rewrites() {
-    // 如果配置了远程后端，不使用 rewrites
-    // 本地开发默认使用 localhost:8000
-    if (!isRemote) {
-      return [
-        {
-          source: '/api/:path*',
-          destination: 'http://localhost:8000/api/:path*',
-        },
-      ];
-    }
-    return [];
-  },
+  allowedDevOrigins: envOrigins ? envOrigins.split(',').map((s) => s.trim()) : [getLocalIP()],
 };
 
 export default nextConfig;
