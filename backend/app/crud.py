@@ -207,6 +207,7 @@ def create_comment(
 ) -> models.Comment:
     db_comment = models.Comment(
         post_id=post_id,
+        parent_id=comment.parent_id,
         nickname=comment.nickname,
         email=comment.email,
         content=comment.content,
