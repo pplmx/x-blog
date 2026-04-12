@@ -3,8 +3,8 @@
 <div align="center">
 
 ![Next.js](https://img.shields.io/badge/Next.js-16-black?style=for-the-badge&logo=next.js)
-![FastAPI](https://img.shields.io/badge/FastAPI-0.115-009989?style=for-the-badge&logo=fastapi)
-![TypeScript](https://img.shields.io/badge/TypeScript-5.9-3178C6?style=for-the-badge&logo=typescript)
+![FastAPI](https://img.shields.io/badge/FastAPI-0.135-009989?style=for-the-badge&logo=fastapi)
+![TypeScript](https://img.shields.io/badge/TypeScript-6-3178C6?style=for-the-badge&logo=typescript)
 ![Python](https://img.shields.io/badge/Python-3.14-3776AB?style=for-the-badge&logo=python)
 
 现代化的全栈博客系统，基于 FastAPI + Next.js 构建
@@ -15,7 +15,7 @@
 
 ## ✨ 特性
 
-- 🚀 **现代技术栈** - Next.js 16, FastAPI, TypeScript, Python 3.14
+- 🚀 **现代技术栈** - Next.js 16, FastAPI, TypeScript 6, Python 3.14
 - 📝 **Markdown 支持** - 支持 Mermaid 图表、KaTeX 数学公式、代码高亮
 - 🎨 **精美 UI** - Tailwind CSS v4 + shadcn/ui 构建
 - 📱 **响应式设计** - 完美适配移动端
