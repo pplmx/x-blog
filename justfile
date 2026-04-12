@@ -29,6 +29,7 @@ frontend:
 lint:
     cd backend && uvx ruff check . --fix
     cd frontend && pnpm lint
+    rumdl fmt
 
 # Format code
 format:
@@ -62,3 +63,7 @@ clean:
 # Initialize database with sample data
 init:
     cd backend && uv run python scripts/init_db.py
+
+# Lint and format markdown
+rumdl:
+    rumdl fmt
