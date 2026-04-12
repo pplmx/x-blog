@@ -17,13 +17,19 @@ const renderWithProvider = (ui: React.ReactNode) => {
 const mockComments = [
   {
     id: 1,
-    author: 'Alice',
+    post_id: 1,
+    nickname: 'Alice',
+    email: 'alice@example.com',
+    ip_address: '127.0.0.1',
     content: 'Great post!',
     created_at: '2024-01-01T10:00:00Z',
   },
   {
     id: 2,
-    author: 'Bob',
+    post_id: 1,
+    nickname: 'Bob',
+    email: 'bob@example.com',
+    ip_address: '127.0.0.1',
     content: 'Thanks for sharing!',
     created_at: '2024-01-02T11:00:00Z',
   },
