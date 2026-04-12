@@ -153,7 +153,7 @@ just frontend         # 仅启动前端
 just test             # 运行所有测试
 just lint             # 代码检查
 just format           # 代码格式化
-just init             # 初始化数据
+just init-db           # 初始化数据库
 just clean            # 清理缓存
 ```
 
