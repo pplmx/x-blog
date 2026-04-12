@@ -24,7 +24,8 @@ def get_posts(
         query = query.join(models.Post.tags).filter(models.Tag.id == tag_id).distinct()
 
     total = query.count()
-    posts = query.offset(skip).limit(limit).all()
+    # Sort by pinned first, then by created_at
+    posts = query.order_by(models.Post.pinned.desc(), models.Post.created_at.desc()).offset(skip).limit(limit).all()
     return posts, total
 
 

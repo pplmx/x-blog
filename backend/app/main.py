@@ -13,6 +13,7 @@ from slowapi.util import get_remote_address
 from app.database import Base, engine
 from app.routers import admin, categories, comments, posts, search, tags, upload
 from app.routers.rss import rss_router, seo_router
+from app.routers.export import router as export_router
 
 RATE_LIMIT_PER_MINUTE = os.getenv("RATE_LIMIT_PER_MINUTE", "60")
 limiter = Limiter(key_func=get_remote_address)
@@ -63,6 +64,7 @@ app.include_router(comments.router)
 app.include_router(search.router)
 app.include_router(admin.router)
 app.include_router(upload.router)
+app.include_router(export_router)
 app.include_router(rss_router, prefix="/rss")
 app.include_router(seo_router)
 
