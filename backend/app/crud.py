@@ -296,27 +296,24 @@ def get_related_posts(db: Session, post_id: int, limit: int = 5) -> list[models.
     post = get_post(db, post_id)
     if not post:
         return []
-    
+
     # 查找同分类的文章
-    query = db.query(models.Post).filter(
-        models.Post.published,
-        models.Post.id != post_id
-    )
-    
+    query = db.query(models.Post).filter(models.Post.published, models.Post.id != post_id)
+
     if post.category_id:
         # 同分类的文章优先
         query = query.filter(models.Post.category_id == post.category_id)
-    
+
     # 按标签匹配数排序
     all_posts = query.all()
-    
+
     def tag_match_count(p: models.Post) -> int:
         if not post.tags:
             return 0
-        post_tag_ids = set(t.id for t in p.tags)
-        return len(post_tag_ids.intersection(t.id for t in post.tags))
-    
+        post_tag_ids = {t.id for t in p.tags}
+        return len(post_tag_ids.intersection({t.id for t in post.tags}))
+
     # 排序：标签匹配数 > 创建时间
     sorted_posts = sorted(all_posts, key=lambda p: (tag_match_count(p), p.created_at), reverse=True)
-    
+
     return sorted_posts[:limit]

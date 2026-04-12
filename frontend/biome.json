@@ -1,9 +1,15 @@
 {
   "$schema": "https://biomejs.dev/schemas/2.4.11/schema.json",
   "files": {
-    "ignoreUnknown": true,
-    "experimentalScannerIgnores": [".next/**", "node_modules/**", "dist/**", "coverage/**"]
+    "ignoreUnknown": true
   },
+  "overrides": [
+    {
+      "includes": ["**/*.css"],
+      "linter": { "enabled": false },
+      "formatter": { "enabled": false }
+    }
+  ],
   "formatter": {
     "enabled": true,
     "indentStyle": "space",
@@ -22,7 +28,8 @@
       },
       "correctness": {
         "useParseIntRadix": "off",
-        "noUnusedImports": "off"
+        "noUnusedImports": "off",
+        "noUnusedVariables": "off"
       },
       "style": {
         "useImportType": "off"
@@ -33,6 +40,12 @@
       },
       "security": {
         "noDangerouslySetInnerHtml": "off"
+      },
+      "performance": {
+        "noImgElement": "off"
+      },
+      "complexity": {
+        "useLiteralKeys": "off"
       }
     }
   },

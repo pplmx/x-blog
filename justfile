@@ -59,7 +59,7 @@ fix:
     cd backend && uvx ruff check . --fix
     cd backend && uvx ruff format .
     cd frontend && pnpm lint --write
-    cd frontend && pnpm format --write
+    cd frontend && pnpm format
     rumdl fmt
 
 # CI: run all checks

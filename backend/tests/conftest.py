@@ -1,5 +1,6 @@
 import time
-import os
+from contextlib import suppress
+from pathlib import Path
 
 import pytest
 from fastapi.testclient import TestClient
@@ -8,14 +9,6 @@ from sqlalchemy.orm import sessionmaker
 
 from app.database import Base, get_db
 from app.main import app
-
-
-def pytest_configure(config):
-    """Configure pytest with worker info for parallel testing."""
-    worker_id = os.environ.get("PYTEST_XDIST_WORKER", "master")
-    # Use unique database per worker
-    if worker_id != "master":
-        Base.metadata.bind = None
 
 
 @pytest.fixture(scope="session")
@@ -30,11 +23,8 @@ def test_engine(worker_id):
     yield engine
     engine.dispose()
     # Clean up
-    if os.path.exists(f"./{db_name}"):
-        try:
-            os.remove(f"./{db_name}")
-        except:
-            pass
+    with suppress(Exception):
+        Path(db_name).unlink()
 
 
 @pytest.fixture(scope="function")

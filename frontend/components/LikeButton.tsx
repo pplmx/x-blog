@@ -16,7 +16,7 @@ export default function LikeButton({ postId, initialLikes }: LikeButtonProps) {
 
   const handleLike = async () => {
     if (liked || loading) return;
-    
+
     setLoading(true);
     try {
       const updated = await incrementLikes(postId);
@@ -39,11 +39,7 @@ export default function LikeButton({ postId, initialLikes }: LikeButtonProps) {
           : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-red-50 dark:hover:bg-red-900/30 hover:text-red-600 dark:hover:text-red-400'
       }`}
     >
-      <Heart
-        className={`w-4 h-4 transition-all duration-200 ${
-          liked ? 'fill-current' : ''
-        }`}
-      />
+      <Heart className={`w-4 h-4 transition-all duration-200 ${liked ? 'fill-current' : ''}`} />
       <span>{likes}</span>
     </button>
   );

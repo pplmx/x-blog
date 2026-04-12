@@ -48,7 +48,7 @@ describe('Markdown - extractToc', () => {
     const content = `# H1\n\n## H2\n\n### H3\n\n## Another H2`;
     const toc = extractToc(content);
     expect(toc).toHaveLength(4);
-    expect(toc.map(t => t.level)).toEqual([1, 2, 3, 2]);
+    expect(toc.map((t) => t.level)).toEqual([1, 2, 3, 2]);
   });
 });
 

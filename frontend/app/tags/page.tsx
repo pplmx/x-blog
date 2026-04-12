@@ -70,9 +70,7 @@ export default async function TagsPage({ searchParams }: TagsPageProps) {
         <h1 className="text-3xl font-bold mt-2 dark:text-gray-100">
           标签: #{currentTag?.name || tagId}
         </h1>
-        <p className="text-gray-500 dark:text-gray-400 mt-1">
-          共 {pagination.total} 篇文章
-        </p>
+        <p className="text-gray-500 dark:text-gray-400 mt-1">共 {pagination.total} 篇文章</p>
       </div>
 
       {posts.length === 0 ? (

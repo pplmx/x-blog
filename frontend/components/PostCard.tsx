@@ -41,7 +41,9 @@ export default function PostCard({ post }: PostCardProps) {
       </div>
 
       {post.excerpt && (
-        <p className="text-gray-600 dark:text-gray-300 mb-4 line-clamp-2 leading-relaxed">{post.excerpt}</p>
+        <p className="text-gray-600 dark:text-gray-300 mb-4 line-clamp-2 leading-relaxed">
+          {post.excerpt}
+        </p>
       )}
 
       <div className="flex flex-wrap gap-2 pt-2 border-t border-gray-50 dark:border-gray-800">

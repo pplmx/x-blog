@@ -12,8 +12,8 @@ from slowapi.util import get_remote_address
 
 from app.database import Base, engine
 from app.routers import admin, categories, comments, posts, search, tags, upload
-from app.routers.rss import rss_router, seo_router
 from app.routers.export import router as export_router
+from app.routers.rss import rss_router, seo_router
 
 RATE_LIMIT_PER_MINUTE = os.getenv("RATE_LIMIT_PER_MINUTE", "60")
 limiter = Limiter(key_func=get_remote_address)

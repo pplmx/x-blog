@@ -1,4 +1,3 @@
-import pytest
 from app import models
 
 
@@ -71,7 +70,7 @@ def test_like_count_persists(client, db_session):
     client.post(f"/api/posts/{post.id}/like")
     # Second like
     response = client.post(f"/api/posts/{post.id}/like")
-    
+
     assert response.json()["likes"] >= 1
 
 
@@ -108,7 +107,7 @@ def test_related_posts_by_tag(client, db_session):
         published=True,
     )
     post1.tags.append(tag)
-    
+
     post2 = models.Post(
         title="Related by Tag",
         slug="related-by-tag",
@@ -116,7 +115,7 @@ def test_related_posts_by_tag(client, db_session):
         published=True,
     )
     post2.tags.append(tag)
-    
+
     db_session.add(post1)
     db_session.add(post2)
     db_session.commit()
@@ -140,7 +139,7 @@ def test_related_posts_excludes_current(client, db_session):
 
     response = client.get(f"/api/posts/{post.id}/related")
     data = response.json()
-    
+
     for related in data:
         assert related["id"] != post.id
 
@@ -178,7 +177,7 @@ def test_export_posts_csv_with_views_likes(client, db_session):
 
     response = client.get("/api/export/posts.csv")
     content = response.text
-    
+
     assert "Views" in content
     assert "Likes" in content
     assert "500" in content
@@ -247,7 +246,7 @@ def test_post_with_category_in_list(client, db_session):
 
     response = client.get("/api/posts")
     data = response.json()
-    
+
     assert data["items"][0]["category"] is not None
     assert data["items"][0]["category"]["name"] == "Test Category"
 
@@ -271,7 +270,7 @@ def test_post_with_tags_in_list(client, db_session):
 
     response = client.get("/api/posts")
     data = response.json()
-    
+
     assert len(data["items"][0]["tags"]) > 0
     assert data["items"][0]["tags"][0]["name"] == "TestTag"
 
@@ -291,7 +290,7 @@ def test_post_list_pagination(client, db_session):
 
     response = client.get("/api/posts?page=1&limit=10")
     data = response.json()
-    
+
     assert len(data["items"]) == 10
     assert data["pagination"]["total"] == 15
     assert data["pagination"]["total_pages"] == 2
@@ -312,7 +311,7 @@ def test_search_returns_pagination_info(client, db_session):
 
     response = client.get("/api/search?q=test")
     data = response.json()
-    
+
     assert "pagination" in data
 
 
@@ -347,7 +346,7 @@ def test_comment_reply_to_another_comment(client, db_session):
             "parent_id": parent.id,
         },
     )
-    
+
     assert response.status_code == 201
     data = response.json()
     assert data["parent_id"] == parent.id

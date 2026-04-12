@@ -201,7 +201,7 @@ function PostContent({ post }: { post: Awaited<ReturnType<typeof fetchPost>> }) 
           }),
         }}
       />
-      
+
       {/* Breadcrumb Schema */}
       <script
         type="application/ld+json"

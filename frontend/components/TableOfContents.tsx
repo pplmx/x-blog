@@ -46,15 +46,10 @@ export default function TableOfContents({ toc }: TableOfContentsProps) {
 
   return (
     <nav className="sticky top-24">
-      <h4 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-3">
-        目录
-      </h4>
+      <h4 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-3">目录</h4>
       <ul className="space-y-1.5 text-sm">
         {toc.map((item) => (
-          <li
-            key={item.id}
-            style={{ paddingLeft: `${(item.level - 1) * 12}px` }}
-          >
+          <li key={item.id} style={{ paddingLeft: `${(item.level - 1) * 12}px` }}>
             <a
               href={`#${item.id}`}
               onClick={(e) => handleClick(e, item.id)}

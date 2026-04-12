@@ -30,12 +30,12 @@ describe('ReadingProgress', () => {
   it('has correct styling when visible', () => {
     // Mock scroll position
     Object.defineProperty(window, 'scrollY', { value: 500 });
-    
+
     const { container } = render(<ReadingProgress />);
-    
+
     // Advance timers to trigger effect
     vi.advanceTimersByTime(100);
-    
+
     // The progress bar should be rendered
     const progressBar = container.querySelector('.fixed');
     expect(progressBar).toBeDefined();

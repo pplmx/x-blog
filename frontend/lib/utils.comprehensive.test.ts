@@ -8,8 +8,8 @@ describe('Filtering Utilities', () => {
       { id: 2, category: { id: 2, name: 'Life' } },
       { id: 3, category: { id: 1, name: 'Tech' } },
     ];
-    
-    const techPosts = posts.filter(p => p.category.id === 1);
+
+    const techPosts = posts.filter((p) => p.category.id === 1);
     expect(techPosts.length).toBe(2);
   });
 
@@ -17,12 +17,16 @@ describe('Filtering Utilities', () => {
     const posts = [
       { id: 1, tags: [{ id: 1, name: 'React' }] },
       { id: 2, tags: [{ id: 2, name: 'Vue' }] },
-      { id: 3, tags: [{ id: 1, name: 'React' }, { id: 3, name: 'TypeScript' }] },
+      {
+        id: 3,
+        tags: [
+          { id: 1, name: 'React' },
+          { id: 3, name: 'TypeScript' },
+        ],
+      },
     ];
-    
-    const reactPosts = posts.filter(p => 
-      p.tags.some(t => t.name === 'React')
-    );
+
+    const reactPosts = posts.filter((p) => p.tags.some((t) => t.name === 'React'));
     expect(reactPosts.length).toBe(2);
   });
 
@@ -32,10 +36,8 @@ describe('Filtering Utilities', () => {
       { id: 2, category: { id: 2 }, tags: [{ id: 2 }], published: true },
       { id: 3, category: { id: 1 }, tags: [{ id: 1 }], published: false },
     ];
-    
-    const filtered = posts.filter(p => 
-      p.category.id === 1 && p.published
-    );
+
+    const filtered = posts.filter((p) => p.category.id === 1 && p.published);
     expect(filtered.length).toBe(1);
   });
 });
@@ -142,7 +144,7 @@ describe('Date Utilities', () => {
     const formatted = date.toLocaleDateString('zh-CN', {
       year: 'numeric',
       month: 'long',
-      day: 'numeric'
+      day: 'numeric',
     });
     expect(formatted).toContain('2024');
   });
@@ -166,8 +168,8 @@ describe('Date Utilities', () => {
 describe('Array Utilities', () => {
   it('removes duplicates by id', () => {
     const items = [{ id: 1 }, { id: 2 }, { id: 1 }, { id: 3 }];
-    const unique = items.filter((item, index, self) => 
-      index === self.findIndex(t => t.id === item.id)
+    const unique = items.filter(
+      (item, index, self) => index === self.findIndex((t) => t.id === item.id)
     );
     expect(unique.length).toBe(3);
   });
@@ -178,10 +180,14 @@ describe('Array Utilities', () => {
       { category: 'B', name: '2' },
       { category: 'A', name: '3' },
     ];
-    const grouped = items.reduce((acc, item) => {
-      (acc[item.category] = acc[item.category] || []).push(item);
+    const grouped = items.reduce<Record<string, typeof items>>((acc, item) => {
+      const key = item.category;
+      if (!acc[key]) {
+        acc[key] = [];
+      }
+      acc[key].push(item);
       return acc;
-    }, {} as Record<string, typeof items>);
+    }, {});
     expect(Object.keys(grouped)).toContain('A');
     expect(grouped['A'].length).toBe(2);
   });
@@ -228,26 +234,23 @@ describe('Object Utilities', () => {
 // Test string utilities
 describe('String Utilities', () => {
   it('truncates string with ellipsis', () => {
-    const truncate = (str: string, len: number) => 
-      str.length > len ? str.slice(0, len) + '...' : str;
-    
+    const truncate = (str: string, len: number) =>
+      str.length > len ? `${str.slice(0, len)}...` : str;
+
     expect(truncate('hello world', 5)).toBe('hello...');
     expect(truncate('hi', 10)).toBe('hi');
   });
 
   it('capitalizes first letter', () => {
-    const capitalize = (str: string) => 
-      str.charAt(0).toUpperCase() + str.slice(1);
-    
+    const capitalize = (str: string) => str.charAt(0).toUpperCase() + str.slice(1);
+
     expect(capitalize('hello')).toBe('Hello');
   });
 
   it('escapes HTML entities', () => {
-    const escapeHtml = (str: string) => 
-      str.replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;');
-    
+    const escapeHtml = (str: string) =>
+      str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
     expect(escapeHtml('<script>')).toBe('&lt;script&gt;');
   });
 });
