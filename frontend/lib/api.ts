@@ -326,3 +326,32 @@ export async function fetchPopularPosts(limit: number = 5): Promise<PostList[]> 
   if (!res.ok) throw new Error('Failed to fetch popular posts');
   return res.json();
 }
+
+// Admin comments
+export interface AdminComment {
+  id: number;
+  post_id: number;
+  post_title: string;
+  nickname: string;
+  email: string;
+  content: string;
+  ip_address: string;
+  created_at: string;
+}
+
+export async function fetchAdminComments(postId?: number): Promise<AdminComment[]> {
+  const query = postId ? `?post_id=${postId}` : '';
+  const res = await fetch(`${API_BASE}/api/admin/comments${query}`, {
+    headers: { ...getAuthHeaders() },
+  });
+  if (!res.ok) throw new Error('Failed to fetch comments');
+  return res.json();
+}
+
+export async function deleteAdminComment(commentId: number): Promise<void> {
+  const res = await fetch(`${API_BASE}/api/admin/comments/${commentId}`, {
+    method: 'DELETE',
+    headers: { ...getAuthHeaders() },
+  });
+  if (!res.ok) throw new Error('Failed to delete comment');
+}

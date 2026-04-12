@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { LayoutDashboard, FileText, Tag, Folder, LogOut, Menu, X, ArrowLeft } from 'lucide-react';
+import { LayoutDashboard, FileText, Tag, Folder, LogOut, Menu, X, ArrowLeft, MessageCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/lib/auth-context';
 import { useEffect, useState } from 'react';
@@ -10,6 +10,7 @@ import { useEffect, useState } from 'react';
 const navItems = [
   { href: '/admin', icon: LayoutDashboard, label: '仪表盘' },
   { href: '/admin/posts', icon: FileText, label: '文章' },
+  { href: '/admin/comments', icon: MessageCircle, label: '评论' },
   { href: '/admin/categories', icon: Folder, label: '分类' },
   { href: '/admin/tags', icon: Tag, label: '标签' },
 ];

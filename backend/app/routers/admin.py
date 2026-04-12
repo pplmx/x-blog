@@ -315,3 +315,45 @@ def admin_delete_tag(
     db.delete(tag)
     db.commit()
     return {"message": "Tag deleted"}
+
+
+# Comments management
+@router.get("/comments", response_model=list[dict])
+def admin_list_comments(
+    post_id: int | None = None,
+    db: Session = Depends(get_db),
+    _current_user: auth.User = Depends(get_current_admin),
+):
+    query = db.query(models.Comment).order_by(models.Comment.created_at.desc())
+    if post_id:
+        query = query.filter(models.Comment.post_id == post_id)
+    comments = query.all()
+    result = []
+    for c in comments:
+        post = db.query(models.Post).filter(models.Post.id == c.post_id).first()
+        result.append({
+            "id": c.id,
+            "post_id": c.post_id,
+            "post_title": post.title if post else "Unknown",
+            "nickname": c.nickname,
+            "email": c.email,
+            "content": c.content,
+            "ip_address": c.ip_address,
+            "created_at": c.created_at.isoformat() if c.created_at else None,
+        })
+    return result
+
+
+@router.delete("/comments/{comment_id}")
+def admin_delete_comment(
+    comment_id: int,
+    db: Session = Depends(get_db),
+    _current_user: auth.User = Depends(get_current_admin),
+):
+    comment = db.query(models.Comment).filter(models.Comment.id == comment_id).first()
+    if not comment:
+        raise HTTPException(status_code=404, detail="Comment not found")
+
+    db.delete(comment)
+    db.commit()
+    return {"message": "Comment deleted"}
