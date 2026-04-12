@@ -1,0 +1,22 @@
+# Frontend build outputs
+.next/
+dist/
+build/
+
+# Dependencies
+node_modules/
+
+# Testing
+coverage/
+
+# Debug
+npm-debug.log*
+pnpm-debug.log*
+
+# TypeScript
+*.tsbuildinfo
+
+# Environment
+.env
+.env.local
+.env.*.local
