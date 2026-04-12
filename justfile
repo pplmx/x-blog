@@ -3,7 +3,7 @@
 # Install all dependencies
 install:
     cd backend && uv sync
-    pnpm --filter x-blog-frontend install
+    cd frontend && pnpm install
 
 # Run both backend and frontend (Windows: run in two terminals)
 # Terminal 1: just backend
@@ -15,7 +15,7 @@ dev:
     @echo ""
     @echo "或使用 VS Code / IntelliJ 的 Run Dashboard"
     cd backend && uv run uvicorn app.main:app --reload --port 8000 &
-    pnpm --filter x-blog-frontend dev
+    cd frontend && pnpm dev
 
 # Run backend only
 backend:
@@ -23,17 +23,17 @@ backend:
 
 # Run frontend only
 frontend:
-    pnpm --filter x-blog-frontend dev
+    cd frontend && pnpm dev
 
 # Lint code
 lint:
     cd backend && uvx ruff check . --fix
-    pnpm --filter x-blog-frontend lint
+    cd frontend && pnpm lint
 
 # Format code
 format:
     cd backend && uvx ruff format .
-    pnpm --filter x-blog-frontend format
+    cd frontend && pnpm format
 
 # Run all tests
 test: test-backend test-frontend
