@@ -91,57 +91,57 @@ See [docs/deployment.md](./docs/deployment.md) for detailed deployment guide.
 
 ## 🛠️ Commands
 
-| Command              | Description                          |
-| -------------------- | ------------------------------------ |
-| `just install`       | Install all dependencies             |
-| `just dev`           | Run dev servers (backend + frontend) |
-| `just backend`       | Run FastAPI server                   |
-| `just frontend`      | Run Next.js dev server               |
-| `just lint`          | Lint code (ruff + biome)             |
-| `just format`        | Format code                          |
+| Command              | Description                              |
+| -------------------- | ---------------------------------------- |
+| `just install`       | Install all dependencies                 |
+| `just dev`           | Run dev servers (backend + frontend)     |
+| `just backend`       | Run FastAPI server                       |
+| `just frontend`      | Run Next.js dev server                   |
+| `just lint`          | Lint code (ruff + biome)                 |
+| `just format`        | Format code                              |
 | `just test`          | Run all tests (68 backend + 86 frontend) |
-| `just test-backend`  | Run backend tests (parallel)         |
-| `just test-frontend` | Run frontend tests                   |
-| `just fix`           | Auto-fix lint issues                 |
-| `just ci`            | Run lint + format + test             |
-| `just clean`         | Clean generated files                |
+| `just test-backend`  | Run backend tests (parallel)             |
+| `just test-frontend` | Run frontend tests                       |
+| `just fix`           | Auto-fix lint issues                     |
+| `just ci`            | Run lint + format + test                 |
+| `just clean`         | Clean generated files                    |
 
 ## 📡 API Endpoints
 
 ### Posts
 
-| Method | Endpoint              | Description          |
-| ------ | --------------------- | -------------------- |
-| GET    | `/api/posts`          | List posts (paginated) |
-| GET    | `/api/posts/{slug}`   | Get post by slug     |
-| GET    | `/api/posts/{id}/related` | Get related posts |
-| POST   | `/api/posts`          | Create post          |
-| PUT    | `/api/posts/{id}`     | Update post          |
-| DELETE | `/api/posts/{id}`     | Delete post          |
-| POST   | `/api/posts/{id}/like`| Like a post          |
-| POST   | `/api/posts/{id}/view`| Increment view count |
+| Method | Endpoint                  | Description            |
+| ------ | ------------------------- | ---------------------- |
+| GET    | `/api/posts`              | List posts (paginated) |
+| GET    | `/api/posts/{slug}`       | Get post by slug       |
+| GET    | `/api/posts/{id}/related` | Get related posts      |
+| POST   | `/api/posts`              | Create post            |
+| PUT    | `/api/posts/{id}`         | Update post            |
+| DELETE | `/api/posts/{id}`         | Delete post            |
+| POST   | `/api/posts/{id}/like`    | Like a post            |
+| POST   | `/api/posts/{id}/view`    | Increment view count   |
 
 ### Categories & Tags
 
-| Method | Endpoint              | Description          |
-| ------ | --------------------- | -------------------- |
-| GET    | `/api/categories`     | List categories      |
-| GET    | `/api/tags`           | List tags            |
-| GET    | `/api/posts?tag_id=X` | Get posts by tag    |
+| Method | Endpoint                   | Description           |
+| ------ | -------------------------- | --------------------- |
+| GET    | `/api/categories`          | List categories       |
+| GET    | `/api/tags`                | List tags             |
+| GET    | `/api/posts?tag_id=X`      | Get posts by tag      |
 | GET    | `/api/posts?category_id=X` | Get posts by category |
 
 ### Comments
 
-| Method | Endpoint                  | Description          |
-| ------ | ------------------------- | -------------------- |
+| Method | Endpoint                  | Description           |
+| ------ | ------------------------- | --------------------- |
 | GET    | `/api/comments/post/{id}` | Get comments for post |
-| POST   | `/api/comments/post/{id}` | Create comment       |
+| POST   | `/api/comments/post/{id}` | Create comment        |
 
 ### Export
 
-| Method | Endpoint              | Description          |
-| ------ | --------------------- | -------------------- |
-| GET    | `/api/export/posts.csv`   | Export all posts    |
+| Method | Endpoint                   | Description         |
+| ------ | -------------------------- | ------------------- |
+| GET    | `/api/export/posts.csv`    | Export all posts    |
 | GET    | `/api/export/comments.csv` | Export all comments |
 
 ## 🏗️ Project Structure
@@ -223,6 +223,7 @@ just test-frontend-coverage
 ```
 
 **Test Statistics:**
+
 - Backend: 68 tests (pytest + pytest-xdist)
 - Frontend: 86 tests (Vitest)
 - **Total: 154 tests**

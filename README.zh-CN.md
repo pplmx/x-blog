@@ -91,35 +91,35 @@ docker-compose logs -f
 
 ## 🛠️ 命令
 
-| 命令                | 说明                              |
-| ------------------- | --------------------------------- |
-| `just install`      | 安装所有依赖                      |
-| `just dev`          | 运行开发服务器 (后端 + 前端)       |
-| `just backend`      | 运行 FastAPI 后端                 |
-| `just frontend`     | 运行 Next.js 前端                 |
-| `just lint`         | 代码检查 (ruff + biome)           |
-| `just format`       | 代码格式化                        |
-| `just test`         | 运行所有测试 (68 后端 + 86 前端)  |
-| `just test-backend` | 运行后端测试 (并行)               |
-| `just test-frontend`| 运行前端测试                     |
-| `just fix`          | 自动修复代码问题                  |
-| `just ci`           | 运行 lint + format + test         |
-| `just clean`        | 清理生成文件                      |
+| 命令                 | 说明                             |
+| -------------------- | -------------------------------- |
+| `just install`       | 安装所有依赖                     |
+| `just dev`           | 运行开发服务器 (后端 + 前端)     |
+| `just backend`       | 运行 FastAPI 后端                |
+| `just frontend`      | 运行 Next.js 前端                |
+| `just lint`          | 代码检查 (ruff + biome)          |
+| `just format`        | 代码格式化                       |
+| `just test`          | 运行所有测试 (68 后端 + 86 前端) |
+| `just test-backend`  | 运行后端测试 (并行)              |
+| `just test-frontend` | 运行前端测试                     |
+| `just fix`           | 自动修复代码问题                 |
+| `just ci`            | 运行 lint + format + test        |
+| `just clean`         | 清理生成文件                     |
 
 ## 📡 API 接口
 
 ### 文章
 
-| 方法   | 路径                        | 说明              |
-| ------ | --------------------------- | ----------------- |
-| GET    | `/api/posts`                | 获取文章列表      |
-| GET    | `/api/posts/{slug}`         | 根据 slug 获取文章 |
-| GET    | `/api/posts/{id}/related`   | 获取相关文章      |
-| POST   | `/api/posts`                | 创建文章          |
-| PUT    | `/api/posts/{id}`           | 更新文章          |
-| DELETE | `/api/posts/{id}`           | 删除文章          |
-| POST   | `/api/posts/{id}/like`      | 点赞文章          |
-| POST   | `/api/posts/{id}/view`      | 增加浏览量        |
+| 方法   | 路径                      | 说明               |
+| ------ | ------------------------- | ------------------ |
+| GET    | `/api/posts`              | 获取文章列表       |
+| GET    | `/api/posts/{slug}`       | 根据 slug 获取文章 |
+| GET    | `/api/posts/{id}/related` | 获取相关文章       |
+| POST   | `/api/posts`              | 创建文章           |
+| PUT    | `/api/posts/{id}`         | 更新文章           |
+| DELETE | `/api/posts/{id}`         | 删除文章           |
+| POST   | `/api/posts/{id}/like`    | 点赞文章           |
+| POST   | `/api/posts/{id}/view`    | 增加浏览量         |
 
 ### 分类和标签
 
@@ -223,6 +223,7 @@ just test-frontend-coverage
 ```
 
 **测试统计:**
+
 - 后端: 68 个测试 (pytest + pytest-xdist)
 - 前端: 86 个测试 (Vitest)
 - **总计: 154 个测试**
