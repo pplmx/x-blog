@@ -39,8 +39,8 @@ describe('PostCard', () => {
   it('should render all tags', () => {
     render(<PostCard post={mockPost} />);
 
-    expect(screen.getByText('tag1')).toBeDefined();
-    expect(screen.getByText('tag2')).toBeDefined();
+    expect(screen.getByText('#tag1')).toBeDefined();
+    expect(screen.getByText('#tag2')).toBeDefined();
   });
 
   it('should not render excerpt when null', () => {

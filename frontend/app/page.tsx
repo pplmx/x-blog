@@ -29,10 +29,20 @@ export default async function Home({
   return (
     <div className="flex gap-8">
       <div className="flex-1">
-        <h1 className="text-3xl font-bold mb-8">{categoryId || tagId ? '筛选结果' : '最新文章'}</h1>
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold bg-gradient-to-r from-gray-900 to-gray-600 bg-clip-text text-transparent">
+            {categoryId || tagId ? '筛选结果' : '最新文章'}
+          </h1>
+          <p className="text-gray-500 mt-2">
+            {categoryId || tagId ? '以下是符合筛选条件的文章' : '探索最新的技术文章和见解'}
+          </p>
+        </div>
         <div className="grid gap-6">
           {posts.length === 0 ? (
-            <p className="text-gray-500">暂无文章</p>
+            <div className="text-center py-12 text-gray-500">
+              <p className="text-lg">暂无文章</p>
+              <p className="text-sm mt-1">换个筛选条件试试？</p>
+            </div>
           ) : (
             posts.map((post) => <PostCard key={post.id} post={post} />)
           )}
