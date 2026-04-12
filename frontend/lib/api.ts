@@ -330,9 +330,23 @@ export async function incrementViews(postId: number): Promise<Post> {
   return res.json();
 }
 
+export async function incrementLikes(postId: number): Promise<Post> {
+  const res = await fetch(`${API_BASE}/api/posts/${postId}/like`, {
+    method: 'POST',
+  });
+  if (!res.ok) throw new Error('Failed to increment likes');
+  return res.json();
+}
+
 export async function fetchPopularPosts(limit: number = 5): Promise<PostList[]> {
   const res = await fetch(`${API_BASE}/api/posts/popular/list?limit=${limit}`);
   if (!res.ok) throw new Error('Failed to fetch popular posts');
+  return res.json();
+}
+
+export async function fetchRelatedPosts(postId: number, limit: number = 5): Promise<PostList[]> {
+  const res = await fetch(`${API_BASE}/api/posts/${postId}/related?limit=${limit}`);
+  if (!res.ok) throw new Error('Failed to fetch related posts');
   return res.json();
 }
 

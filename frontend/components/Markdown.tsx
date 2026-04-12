@@ -1,9 +1,11 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { oneDark } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import { Copy, Check } from 'lucide-react';
+import mermaid from 'mermaid';
+import katex from 'katex';
 
 interface CodeBlockProps {
   language: string;
@@ -58,19 +60,98 @@ function CodeBlock({ language, code }: CodeBlockProps) {
   );
 }
 
+function MermaidBlock({ code }: { code: string }) {
+  const [svg, setSvg] = useState<string>('');
+  const [error, setError] = useState<string>('');
+
+  useEffect(() => {
+    mermaid.initialize({
+      startOnLoad: false,
+      theme: 'default',
+      securityLevel: 'loose',
+    });
+
+    const renderMermaid = async () => {
+      try {
+        const id = `mermaid-${Math.random().toString(36).substring(7)}`;
+        const { svg: rendered } = await mermaid.render(id, code);
+        setSvg(rendered);
+        setError('');
+      } catch (err) {
+        setError('图表渲染失败');
+        console.error('Mermaid error:', err);
+      }
+    };
+
+    if (code) {
+      renderMermaid();
+    }
+  }, [code]);
+
+  if (error) {
+    return (
+      <div className="p-4 my-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg text-red-600 dark:text-red-400 text-sm">
+        <pre className="whitespace-pre-wrap">{code}</pre>
+        <p className="mt-2 font-medium">{error}</p>
+      </div>
+    );
+  }
+
+  return (
+    <div
+      className="my-4 p-4 bg-gray-50 dark:bg-gray-800/50 rounded-lg overflow-x-auto flex justify-center"
+      dangerouslySetInnerHTML={{ __html: svg }}
+    />
+  );
+}
+
+// KaTeX 公式组件
+function KatexFormula({ formula, displayMode }: { formula: string; displayMode: boolean }) {
+  const [html, setHtml] = useState<string>('');
+  const [error, setError] = useState<string>('');
+
+  useEffect(() => {
+    try {
+      const rendered = katex.renderToString(formula, {
+        displayMode,
+        throwOnError: false,
+        trust: true,
+      });
+      setHtml(rendered);
+      setError('');
+    } catch (err) {
+      setError('公式渲染失败');
+      console.error('KaTeX error:', err);
+    }
+  }, [formula, displayMode]);
+
+  if (error) {
+    return (
+      <div className="p-2 my-2 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded text-red-600 dark:text-red-400 text-sm">
+        {formula}
+      </div>
+    );
+  }
+
+  return (
+    <span
+      className={displayMode ? 'block my-4 text-center' : 'inline'}
+      dangerouslySetInnerHTML={{ __html: html }}
+    />
+  );
+}
+
 function LazyImage({ src, alt }: { src: string; alt: string }) {
   const [loaded, setLoaded] = useState(false);
 
   return (
     <div className="relative w-full h-64 my-4 overflow-hidden rounded-lg bg-gray-100 dark:bg-gray-800">
-      {/* 模糊占位符 */}
       <div
         className={`absolute inset-0 bg-cover bg-center transition-opacity duration-500 ${
           loaded ? 'opacity-0' : 'opacity-100'
         }`}
         style={{ backgroundImage: `url(${src})`, filter: 'blur(20px)', transform: 'scale(1.1)' }}
       />
-      {/* 实际图片 */}
       <img
         src={src}
         alt={alt}
@@ -84,10 +165,45 @@ function LazyImage({ src, alt }: { src: string; alt: string }) {
   );
 }
 
+// 处理数学公式
+function processMathContent(content: string): { hasMath: boolean; blocks: { formula: string; displayMode: boolean }[] } {
+  const mathBlocks: { formula: string; displayMode: boolean }[] = [];
+  let hasMath = false;
+
+  // 检测块级公式 $$...$$
+  content = content.replace(/\$\$([\s\S]*?)\$\$/g, (_, formula) => {
+    hasMath = true;
+    mathBlocks.push({ formula: formula.trim(), displayMode: true });
+    return `<div class="math-block-placeholder" data-index="${mathBlocks.length - 1}"></div>`;
+  });
+
+  // 检测行内公式 $...$ (但不匹配 $$)
+  content = content.replace(/\$([^\$\n]+?)\$/g, (_, formula) => {
+    hasMath = true;
+    mathBlocks.push({ formula: formula.trim(), displayMode: false });
+    return `<span class="math-inline-placeholder" data-index="${mathBlocks.length - 1}"></span>`;
+  });
+
+  return { hasMath, blocks: mathBlocks };
+}
+
 export default function Markdown({ content }: MarkdownProps) {
+  // 处理数学公式
+  const { blocks: mathBlocks } = processMathContent(content);
+
+  // 提取 mermaid 代码块
+  const mermaidBlocks: string[] = [];
+  let processedContent = content.replace(
+    /```mermaid\n([\s\S]*?)```/g,
+    (_, code) => {
+      mermaidBlocks.push(code.trim());
+      return `<div class="mermaid-placeholder" data-index="${mermaidBlocks.length - 1}"></div>`;
+    }
+  );
+
   // 提取代码块
   const codeBlocks: { lang: string; code: string }[] = [];
-  let processedContent = content.replace(
+  processedContent = processedContent.replace(
     /```(\w*)\n([\s\S]*?)```/g,
     (_, lang, code) => {
       codeBlocks.push({ lang: lang || 'text', code: code.trim() });
@@ -120,6 +236,12 @@ export default function Markdown({ content }: MarkdownProps) {
   return (
     <div className="prose dark:prose-invert max-w-none">
       <div dangerouslySetInnerHTML={{ __html: processedContent }} />
+      {mathBlocks.map((block, index) => (
+        <KatexFormula key={`math-${index}`} formula={block.formula} displayMode={block.displayMode} />
+      ))}
+      {mermaidBlocks.map((code, index) => (
+        <MermaidBlock key={`mermaid-${index}`} code={code} />
+      ))}
       {codeBlocks.map((block, index) => (
         <CodeBlock key={index} language={block.lang} code={block.code} />
       ))}
