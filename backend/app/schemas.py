@@ -35,6 +35,7 @@ class PostBase(BaseModel):
     content: str
     excerpt: str | None = None
     published: bool = False
+    pinned: bool = False
     category_id: int | None = None
 
 
@@ -69,6 +70,7 @@ class PostList(BaseModel):
     slug: str
     excerpt: str | None
     published: bool
+    pinned: bool = False
     created_at: datetime
     views: int = 0
     likes: int = 0
