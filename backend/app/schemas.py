@@ -49,6 +49,7 @@ class PostUpdate(BaseModel):
     content: str | None = None
     excerpt: str | None = None
     published: bool | None = None
+    pinned: bool | None = None
     category_id: int | None = None
     tag_ids: list[int] | None = None
 
