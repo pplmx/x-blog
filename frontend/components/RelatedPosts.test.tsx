@@ -70,7 +70,7 @@ describe('RelatedPosts', () => {
     await waitFor(() => {
       expect(container.firstChild).toBeNull();
     });
-    
+
     emptyServer.close();
   });
 });

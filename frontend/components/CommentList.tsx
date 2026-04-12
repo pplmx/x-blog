@@ -23,7 +23,9 @@ function CommentItem({ comment, postId, onReply, depth = 0 }: CommentItemProps) 
   const canReply = depth < maxDepth;
 
   return (
-    <div className={`${depth > 0 ? 'ml-8 pl-4 border-l-2 border-gray-100 dark:border-gray-700' : ''}`}>
+    <div
+      className={`${depth > 0 ? 'ml-8 pl-4 border-l-2 border-gray-100 dark:border-gray-700' : ''}`}
+    >
       <div className="py-4">
         <div className="flex items-center gap-2 mb-2">
           <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center">
@@ -82,9 +84,14 @@ export default function CommentList({ postId }: { postId: number }) {
 
     // 构建树
     comments.forEach((comment) => {
-      const node = commentMap.get(comment.id)!;
+      const node = commentMap.get(comment.id);
+      if (!node) return;
+
       if (comment.parent_id && commentMap.has(comment.parent_id)) {
-        commentMap.get(comment.parent_id)!.replies!.push(node);
+        const parent = commentMap.get(comment.parent_id);
+        if (parent?.replies) {
+          parent.replies.push(node);
+        }
       } else {
         roots.push(node);
       }
@@ -107,20 +114,13 @@ export default function CommentList({ postId }: { postId: number }) {
 
   return (
     <div className="mt-8">
-      <h2 className="text-2xl font-bold mb-4 dark:text-gray-100">
-        评论 ({comments.length})
-      </h2>
+      <h2 className="text-2xl font-bold mb-4 dark:text-gray-100">评论 ({comments.length})</h2>
       {comments.length === 0 ? (
         <p className="text-gray-500 dark:text-gray-400">暂无评论，快来抢沙发！</p>
       ) : (
         <div className="divide-y divide-gray-100 dark:divide-gray-800">
           {commentTree.map((comment) => (
-            <CommentItem
-              key={comment.id}
-              comment={comment}
-              postId={postId}
-              onReply={handleReply}
-            />
+            <CommentItem key={comment.id} comment={comment} postId={postId} onReply={handleReply} />
           ))}
         </div>
       )}

@@ -12,7 +12,9 @@ export default function Footer() {
               X-Blog
             </span>
             <span className="text-gray-400">·</span>
-            <span className="text-gray-500 dark:text-gray-400 text-sm">© {currentYear} All rights reserved.</span>
+            <span className="text-gray-500 dark:text-gray-400 text-sm">
+              © {currentYear} All rights reserved.
+            </span>
           </div>
 
           <div className="flex items-center gap-6 text-sm text-gray-500 dark:text-gray-400">

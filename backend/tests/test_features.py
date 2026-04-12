@@ -1,4 +1,3 @@
-import pytest
 from app import models
 
 
@@ -30,7 +29,7 @@ def test_pinned_posts_appear_first(client, db_session):
         pinned=False,
     )
     db_session.add(regular)
-    
+
     # Create pinned post
     pinned = models.Post(
         title="Pinned Post",
@@ -45,7 +44,7 @@ def test_pinned_posts_appear_first(client, db_session):
     response = client.get("/api/posts")
     assert response.status_code == 200
     data = response.json()
-    
+
     # Pinned post should be first
     assert data["items"][0]["pinned"] is True
 
@@ -90,7 +89,7 @@ def test_related_posts_endpoint(client, db_session):
         category_id=category.id,
     )
     post2 = models.Post(
-        title="Post 2", 
+        title="Post 2",
         slug="post-2",
         content="Content 2",
         published=True,

@@ -16,16 +16,30 @@ const server = setupServer(
   http.get('http://localhost:8000/api/posts', ({ request }) => {
     const url = new URL(request.url);
     const tagId = url.searchParams.get('tag_id');
-    
+
     if (tagId === '1') {
       return HttpResponse.json({
         items: [
-          { id: 1, title: 'React Post', slug: 'react-post', excerpt: null, published: true, created_at: '2024-01-01', views: 100, likes: 0, category: null, tags: [] }
+          {
+            id: 1,
+            title: 'React Post',
+            slug: 'react-post',
+            excerpt: null,
+            published: true,
+            created_at: '2024-01-01',
+            views: 100,
+            likes: 0,
+            category: null,
+            tags: [],
+          },
         ],
-        pagination: { total: 1, page: 1, limit: 10, total_pages: 1 }
+        pagination: { total: 1, page: 1, limit: 10, total_pages: 1 },
       });
     }
-    return HttpResponse.json({ items: [], pagination: { total: 0, page: 1, limit: 10, total_pages: 0 } });
+    return HttpResponse.json({
+      items: [],
+      pagination: { total: 0, page: 1, limit: 10, total_pages: 0 },
+    });
   })
 );
 

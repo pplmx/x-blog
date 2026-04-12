@@ -1,11 +1,12 @@
-from fastapi import APIRouter, Depends
-from sqlalchemy.orm import Session
-from fastapi.responses import StreamingResponse
 import csv
 import io
 
-from app.database import get_db
+from fastapi import APIRouter, Depends
+from fastapi.responses import StreamingResponse
+from sqlalchemy.orm import Session
+
 from app import crud
+from app.database import get_db
 
 router = APIRouter(prefix="/api/export", tags=["export"])
 
@@ -20,17 +21,19 @@ def export_posts_csv(db: Session = Depends(get_db)):
     writer.writerow(["ID", "Title", "Slug", "Excerpt", "Category", "Tags", "Views", "Likes", "Created At"])
 
     for post in posts:
-        writer.writerow([
-            post.id,
-            post.title,
-            post.slug,
-            post.excerpt or "",
-            post.category.name if post.category else "",
-            ",".join(t.name for t in post.tags),
-            post.views or 0,
-            post.likes or 0,
-            post.created_at.isoformat() if post.created_at else "",
-        ])
+        writer.writerow(
+            [
+                post.id,
+                post.title,
+                post.slug,
+                post.excerpt or "",
+                post.category.name if post.category else "",
+                ",".join(t.name for t in post.tags),
+                post.views or 0,
+                post.likes or 0,
+                post.created_at.isoformat() if post.created_at else "",
+            ]
+        )
 
     output.seek(0)
     return StreamingResponse(
@@ -50,14 +53,16 @@ def export_comments_csv(db: Session = Depends(get_db)):
     writer.writerow(["ID", "Post ID", "Nickname", "Email", "Content", "Created At"])
 
     for comment in comments:
-        writer.writerow([
-            comment.id,
-            comment.post_id,
-            comment.nickname,
-            comment.email or "",
-            comment.content,
-            comment.created_at.isoformat() if comment.created_at else "",
-        ])
+        writer.writerow(
+            [
+                comment.id,
+                comment.post_id,
+                comment.nickname,
+                comment.email or "",
+                comment.content,
+                comment.created_at.isoformat() if comment.created_at else "",
+            ]
+        )
 
     output.seek(0)
     return StreamingResponse(

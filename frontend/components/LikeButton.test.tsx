@@ -34,9 +34,9 @@ describe('LikeButton', () => {
   it('displays different styles when liked', async () => {
     render(<LikeButton postId={1} initialLikes={0} />);
     const button = screen.getByRole('button');
-    
+
     fireEvent.click(button);
-    
+
     await waitFor(() => {
       expect(screen.getByText('1')).toBeDefined();
     });

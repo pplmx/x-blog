@@ -166,7 +166,10 @@ function LazyImage({ src, alt }: { src: string; alt: string }) {
 }
 
 // 处理数学公式
-function processMathContent(content: string): { hasMath: boolean; blocks: { formula: string; displayMode: boolean }[] } {
+function processMathContent(content: string): {
+  hasMath: boolean;
+  blocks: { formula: string; displayMode: boolean }[];
+} {
   const mathBlocks: { formula: string; displayMode: boolean }[] = [];
   let hasMath = false;
 
@@ -178,7 +181,7 @@ function processMathContent(content: string): { hasMath: boolean; blocks: { form
   });
 
   // 检测行内公式 $...$ (但不匹配 $$)
-  content = content.replace(/\$([^\$\n]+?)\$/g, (_, formula) => {
+  content = content.replace(/\$([^$\n]+?)\$/g, (_, formula) => {
     hasMath = true;
     mathBlocks.push({ formula: formula.trim(), displayMode: false });
     return `<span class="math-inline-placeholder" data-index="${mathBlocks.length - 1}"></span>`;
@@ -193,23 +196,17 @@ export default function Markdown({ content }: MarkdownProps) {
 
   // 提取 mermaid 代码块
   const mermaidBlocks: string[] = [];
-  let processedContent = content.replace(
-    /```mermaid\n([\s\S]*?)```/g,
-    (_, code) => {
-      mermaidBlocks.push(code.trim());
-      return `<div class="mermaid-placeholder" data-index="${mermaidBlocks.length - 1}"></div>`;
-    }
-  );
+  let processedContent = content.replace(/```mermaid\n([\s\S]*?)```/g, (_, code) => {
+    mermaidBlocks.push(code.trim());
+    return `<div class="mermaid-placeholder" data-index="${mermaidBlocks.length - 1}"></div>`;
+  });
 
   // 提取代码块
   const codeBlocks: { lang: string; code: string }[] = [];
-  processedContent = processedContent.replace(
-    /```(\w*)\n([\s\S]*?)```/g,
-    (_, lang, code) => {
-      codeBlocks.push({ lang: lang || 'text', code: code.trim() });
-      return `<div class="code-block-placeholder" data-index="${codeBlocks.length - 1}"></div>`;
-    }
-  );
+  processedContent = processedContent.replace(/```(\w*)\n([\s\S]*?)```/g, (_, lang, code) => {
+    codeBlocks.push({ lang: lang || 'text', code: code.trim() });
+    return `<div class="code-block-placeholder" data-index="${codeBlocks.length - 1}"></div>`;
+  });
 
   // 处理图片 - 使用 LazyImage 组件
   const images: { src: string; alt: string }[] = [];
@@ -237,7 +234,11 @@ export default function Markdown({ content }: MarkdownProps) {
     <div className="prose dark:prose-invert max-w-none">
       <div dangerouslySetInnerHTML={{ __html: processedContent }} />
       {mathBlocks.map((block, index) => (
-        <KatexFormula key={`math-${index}`} formula={block.formula} displayMode={block.displayMode} />
+        <KatexFormula
+          key={`math-${index}`}
+          formula={block.formula}
+          displayMode={block.displayMode}
+        />
       ))}
       {mermaidBlocks.map((code, index) => (
         <MermaidBlock key={`mermaid-${index}`} code={code} />
@@ -257,8 +258,13 @@ export function extractToc(content: string) {
   const toc: { id: string; text: string; level: number }[] = [];
   const headingRegex = /^(#{1,3})\s+(.+)$/gm;
   let match;
+  const lastIndex = 0;
+  const results: { level: number; text: string; id: string }[] = [];
 
-  while ((match = headingRegex.exec(content)) !== null) {
+  while (true) {
+    match = headingRegex.exec(content);
+    if (!match) break;
+
     const level = match[1].length;
     const text = match[2].trim();
     const id = text
@@ -266,10 +272,10 @@ export function extractToc(content: string) {
       .replace(/[^\u4e00-\u9fa5a-z0-9]+/g, '-')
       .replace(/^-+|-+$/g, '');
 
-    toc.push({ id, text, level });
+    results.push({ level, text, id });
   }
 
-  return toc;
+  return results;
 }
 
 export interface TocItem {
