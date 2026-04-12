@@ -1,9 +1,13 @@
 # X-Blog Just Commands
 
-# Install all dependencies
+# Initialize database with sample data
+init:
+    cd backend && uv run python scripts/init_db.py
+
+# Install
 install:
     cd backend && uv sync
-    cd frontend && pnpm install
+    cd frontend && pnpm i
 
 # Run both backend and frontend (Windows: run in two terminals)
 # Terminal 1: just backend
@@ -59,10 +63,6 @@ clean:
     rm -rf .ruff_cache backend/.ruff_cache
     rm -rf frontend/node_modules/.vite
     rm -rf frontend/coverage
-
-# Initialize database with sample data
-init:
-    cd backend && uv run python scripts/init_db.py
 
 # Lint and format markdown
 rumdl:
