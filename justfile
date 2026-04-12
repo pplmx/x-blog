@@ -70,11 +70,11 @@ test: test-backend test-frontend
 
 # Run backend tests
 test-backend:
-    cd backend && uv run pytest
-
-# Run backend tests in parallel
-test-backend-parallel:
     cd backend && uv run pytest -n auto
+
+# Run backend tests sequentially (debug)
+test-backend-seq:
+    cd backend && uv run pytest
 
 # Run frontend tests
 test-frontend:
