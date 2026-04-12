@@ -22,6 +22,8 @@
 - 🔒 **管理后台** - 内置内容管理后台
 - 🧪 **完善测试** - pytest (后端) + Vitest (前端)
 - ✅ **类型安全** - 完整 TypeScript 支持 + Pydantic 验证
+- 🐳 **Docker 支持** - Docker + Docker Compose 部署
+- ☁️ **云端部署** - CI/CD + GitHub Actions
 
 ## 🚀 快速开始
 
@@ -30,8 +32,9 @@
 | 工具 | 版本 | 安装方式 |
 |------|------|----------|
 | Python | 3.14+ | [uv](https://github.com/astral-sh/uv) |
-| Node.js | 25+ | [Node.js](https://nodejs.org/) |
+| Node.js | 24+ | [Node.js](https://nodejs.org/) |
 | pnpm | 10+ | `npm install -g pnpm` |
+| Docker | 24+ | [Docker](https://docker.com) |
 
 ```bash
 # 安装 uv (Python 包管理器)
@@ -59,6 +62,25 @@ pnpm dev
 just backend  # http://localhost:8000
 just frontend # http://localhost:3000
 ```
+
+### 🐳 Docker 部署
+
+```bash
+# 克隆并启动
+git clone https://github.com/your-username/x-blog.git
+cd x-blog
+
+# 配置环境变量
+cp backend/.env.example backend/.env
+
+# 使用 Docker Compose 启动
+docker-compose up -d
+
+# 查看日志
+docker-compose logs -f
+```
+
+详细部署指南见 [docs/deployment.md](./docs/deployment.md)
 
 ## 🛠️ 命令
 
