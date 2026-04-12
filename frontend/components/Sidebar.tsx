@@ -42,8 +42,8 @@ export default function Sidebar({ categories, tags, popularPosts = [] }: Sidebar
     <aside className="w-64 shrink-0 space-y-6">
       {/* 清除筛选按钮 */}
       {(currentCategory || currentTag) && (
-        <button 
-          onClick={clearFilters} 
+        <button
+          onClick={clearFilters}
           className="flex items-center gap-1 text-sm text-blue-600 hover:text-blue-800 transition-colors mb-2"
         >
           <X className="w-4 h-4" />
@@ -72,9 +72,7 @@ export default function Sidebar({ categories, tags, popularPosts = [] }: Sidebar
                   <p className="text-sm font-medium text-gray-700 group-hover:text-blue-600 transition-colors line-clamp-2">
                     {post.title}
                   </p>
-                  <p className="text-xs text-gray-400 mt-1">
-                    {post.views} 次阅读
-                  </p>
+                  <p className="text-xs text-gray-400 mt-1">{post.views} 次阅读</p>
                 </div>
               </Link>
             ))}
@@ -94,8 +92,8 @@ export default function Sidebar({ categories, tags, popularPosts = [] }: Sidebar
               key={cat.id}
               href={`/?category_id=${cat.id}`}
               className={`block px-3 py-2 rounded-xl text-sm transition-all duration-200 ${
-                currentCategory === String(cat.id) 
-                  ? 'bg-gradient-to-r from-purple-500 to-indigo-500 text-white shadow-md' 
+                currentCategory === String(cat.id)
+                  ? 'bg-gradient-to-r from-purple-500 to-indigo-500 text-white shadow-md'
                   : 'text-gray-600 hover:bg-gray-100 hover:text-purple-600'
               }`}
             >

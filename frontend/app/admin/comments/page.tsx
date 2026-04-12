@@ -11,7 +11,11 @@ export default function CommentsPage() {
   const queryClient = useQueryClient();
   const [filterPostId, setFilterPostId] = useState<number | undefined>(undefined);
 
-  const { data: comments, isLoading, error } = useQuery({
+  const {
+    data: comments,
+    isLoading,
+    error,
+  } = useQuery({
     queryKey: ['admin-comments', filterPostId],
     queryFn: () => fetchAdminComments(filterPostId),
   });
@@ -47,11 +51,7 @@ export default function CommentsPage() {
   }
 
   if (error) {
-    return (
-      <div className="text-center py-12 text-red-500">
-        加载失败: {String(error)}
-      </div>
-    );
+    return <div className="text-center py-12 text-red-500">加载失败: {String(error)}</div>;
   }
 
   return (
@@ -59,9 +59,7 @@ export default function CommentsPage() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
         <div>
           <h1 className="text-2xl font-bold">评论管理</h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            共 {comments?.length || 0} 条评论
-          </p>
+          <p className="text-sm text-muted-foreground mt-1">共 {comments?.length || 0} 条评论</p>
         </div>
       </div>
 
@@ -87,12 +85,10 @@ export default function CommentsPage() {
                       <span className="font-medium">{comment.nickname}</span>
                     </div>
                     {comment.email && (
-                      <span className="text-xs text-muted-foreground">
-                        {comment.email}
-                      </span>
+                      <span className="text-xs text-muted-foreground">{comment.email}</span>
                     )}
                   </div>
-                  
+
                   {/* 所属文章 */}
                   <div className="mb-2">
                     <Link
@@ -102,14 +98,12 @@ export default function CommentsPage() {
                       文章: {comment.post_title}
                     </Link>
                   </div>
-                  
+
                   {/* 评论内容 */}
                   <div className="bg-muted/50 rounded-lg p-3 mb-3">
-                    <p className="text-sm text-gray-700 whitespace-pre-wrap">
-                      {comment.content}
-                    </p>
+                    <p className="text-sm text-gray-700 whitespace-pre-wrap">{comment.content}</p>
                   </div>
-                  
+
                   {/* 元信息 */}
                   <div className="flex items-center gap-4 text-xs text-muted-foreground">
                     <span className="flex items-center gap-1">
@@ -122,7 +116,7 @@ export default function CommentsPage() {
                     </span>
                   </div>
                 </div>
-                
+
                 {/* 操作按钮 */}
                 <Button
                   variant="ghost"

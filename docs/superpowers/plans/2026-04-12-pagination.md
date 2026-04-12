@@ -12,7 +12,7 @@
 
 ## 文件结构
 
-```
+```text
 backend/
 ├── app/
 │   ├── schemas.py       # 修改: 添加分页响应 schema
@@ -31,6 +31,7 @@ frontend/
 ### Task 1: 后端 - 添加分页 Schema
 
 **Files:**
+
 - Modify: `backend/app/schemas.py`
 
 - [ ] **Step 1: 添加分页响应 Schema**
@@ -58,6 +59,7 @@ git add backend/app/schemas.py && git commit -m "feat: add pagination schema"
 ### Task 2: 后端 - CRUD 返回总数
 
 **Files:**
+
 - Modify: `backend/app/crud.py`
 
 - [ ] **Step 1: 修改 get_posts 返回总数**
@@ -76,19 +78,19 @@ def get_posts(
     tag_id: Optional[int] = None,
 ) -> Tuple[List[models.Post], int]:
     query = db.query(models.Post)
-    
+
     if published:
         query = query.filter(models.Post.published == True)
-    
+
     if category_id:
         query = query.filter(models.Post.category_id == category_id)
-    
+
     if tag_id:
         query = query.join(models.Post.tags).filter(models.Tag.id == tag_id).distinct()
-    
+
     total = query.count()
     posts = query.offset(skip).limit(limit).all()
-    
+
     return posts, total
 ```
 
@@ -103,6 +105,7 @@ git add backend/app/crud.py && git commit -m "feat: get_posts returns total coun
 ### Task 3: 后端 - 路由返回分页元数据
 
 **Files:**
+
 - Modify: `backend/app/routers/posts.py`
 
 - [ ] **Step 1: 修改 list_posts**
@@ -124,9 +127,9 @@ def list_posts(
         category_id=category_id,
         tag_id=tag_id,
     )
-    
+
     total_pages = (total + limit - 1) // limit
-    
+
     return {
         "items": posts,
         "pagination": {
@@ -155,6 +158,7 @@ git add backend/app/routers/posts.py && git commit -m "feat: add pagination to p
 ### Task 4: 前端 - API 更新
 
 **Files:**
+
 - Modify: `frontend/lib/api.ts`
 
 - [ ] **Step 1: 更新 fetchPosts**
@@ -181,10 +185,10 @@ export async function fetchPosts(filters?: {
   if (filters?.tag_id) params.set("tag_id", String(filters.tag_id));
   if (filters?.page) params.set("page", String(filters.page));
   if (filters?.limit) params.set("limit", String(filters.limit));
-  
+
   const query = params.toString();
   const url = query ? `/api/posts?${query}` : "/api/posts";
-  
+
   const res = await fetch(url);
   if (!res.ok) throw new Error("Failed to fetch posts");
   return res.json();
@@ -202,6 +206,7 @@ git add frontend/lib/api.ts && git commit -m "feat: update fetchPosts for pagina
 ### Task 5: 前端 - 分页组件
 
 **Files:**
+
 - Create: `frontend/components/Pagination.tsx`
 
 - [ ] **Step 1: 创建 Pagination 组件**
@@ -235,7 +240,7 @@ export default function Pagination({ currentPage, totalPages, baseUrl }: Paginat
           上一页
         </Link>
       )}
-      
+
       {pages.map((page) => (
         <Link
           key={page}
@@ -249,7 +254,7 @@ export default function Pagination({ currentPage, totalPages, baseUrl }: Paginat
           {page}
         </Link>
       ))}
-      
+
       {currentPage < totalPages && (
         <Link
           href={`${baseUrl}?page=${currentPage + 1}`}
@@ -274,6 +279,7 @@ git add frontend/components/Pagination.tsx && git commit -m "feat: add Paginatio
 ### Task 6: 前端 - 首页集成
 
 **Files:**
+
 - Modify: `frontend/app/page.tsx`
 
 - [ ] **Step 1: 更新首页**
@@ -346,6 +352,7 @@ git add frontend/app/page.tsx && git commit -m "feat: integrate pagination to ho
 ## 验证
 
 完成所有任务后，验证：
+
 1. 访问 http://localhost:3000
 2. 文章分页显示
 3. 点击页码能切换

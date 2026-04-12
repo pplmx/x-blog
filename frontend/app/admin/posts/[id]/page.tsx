@@ -93,9 +93,7 @@ export default function PostEditPage({ params }: { params: { id: string } }) {
   return (
     <div>
       <div className="mb-6">
-        <h1 className="text-2xl font-bold">
-          {isNew ? '新建文章' : '编辑文章'}
-        </h1>
+        <h1 className="text-2xl font-bold">{isNew ? '新建文章' : '编辑文章'}</h1>
         <p className="text-sm text-muted-foreground mt-1">
           {isNew ? '创建一个新的博客文章' : '修改文章内容和设置'}
         </p>

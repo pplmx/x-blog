@@ -2,6 +2,7 @@
 """Initialize database with sample data."""
 
 import sys
+
 sys.path.insert(0, ".")
 from app.database import SessionLocal
 from app import models, auth

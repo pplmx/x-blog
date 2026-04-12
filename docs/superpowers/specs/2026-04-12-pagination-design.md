@@ -13,13 +13,13 @@
 
 ### 现有端点扩展
 
-| Method | Endpoint | 参数 |
-|--------|----------|------|
-| GET | /api/posts | page, limit |
+| Method | Endpoint   | 参数        |
+| ------ | ---------- | ----------- |
+| GET    | /api/posts | page, limit |
 
 ### 示例
 
-```
+```text
 /api/posts?page=1&limit=10   # 第1页，每页10篇
 /api/posts?page=2&limit=10   # 第2页，每页10篇
 /api/posts?page=1&limit=5    # 第1页，每页5篇
@@ -42,18 +42,22 @@ API 需要返回总数：
 ## 4. 前端
 
 ### 组件
+
 - `Pagination.tsx` - 分页组件
 
 ### URL 同步
+
 - 页码通过 URL 参数同步
 - 支持刷新后保持分页状态
 
 ## 5. 实现
 
 ### 后端
+
 - 修改 schemas 返回总数
 - 路由添加分页参数
 
 ### 前端
+
 - 创建分页组件
 - 更新首页集成

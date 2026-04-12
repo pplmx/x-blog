@@ -274,10 +274,4 @@ def increment_views(db: Session, post_id: int) -> models.Post | None:
 
 def get_popular_posts(db: Session, limit: int = 5) -> list[models.Post]:
     """Get the most popular posts by view count."""
-    return (
-        db.query(models.Post)
-        .filter(models.Post.published)
-        .order_by(models.Post.views.desc())
-        .limit(limit)
-        .all()
-    )
+    return db.query(models.Post).filter(models.Post.published).order_by(models.Post.views.desc()).limit(limit).all()

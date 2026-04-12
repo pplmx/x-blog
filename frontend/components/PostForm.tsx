@@ -65,7 +65,9 @@ export function PostForm({
             onChange={(e) => setFormData({ ...formData, slug: e.target.value })}
             placeholder="article-slug"
           />
-          <p className="text-xs text-muted-foreground mt-1">URL: /posts/{formData.slug || 'slug'}</p>
+          <p className="text-xs text-muted-foreground mt-1">
+            URL: /posts/{formData.slug || 'slug'}
+          </p>
         </div>
 
         <div>
@@ -91,7 +93,10 @@ export function PostForm({
             className="w-full rounded-lg border border-input bg-transparent px-3 py-2.5 text-sm focus:ring-2 focus:ring-blue-500"
             value={formData.category_id ?? ''}
             onChange={(e) =>
-              setFormData({ ...formData, category_id: e.target.value ? parseInt(e.target.value) : undefined })
+              setFormData({
+                ...formData,
+                category_id: e.target.value ? parseInt(e.target.value) : undefined,
+              })
             }
           >
             <option value="">选择分类</option>
@@ -116,9 +121,10 @@ export function PostForm({
                   key={tag.id}
                   className={`
                     flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm cursor-pointer transition-all
-                    ${formData.tag_ids?.includes(tag.id) 
-                      ? 'bg-blue-100 text-blue-700 border border-blue-200' 
-                      : 'bg-gray-50 text-gray-600 border border-gray-100 hover:border-gray-200'
+                    ${
+                      formData.tag_ids?.includes(tag.id)
+                        ? 'bg-blue-100 text-blue-700 border border-blue-200'
+                        : 'bg-gray-50 text-gray-600 border border-gray-100 hover:border-gray-200'
                     }
                   `}
                 >

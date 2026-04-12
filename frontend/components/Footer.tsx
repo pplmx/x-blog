@@ -2,7 +2,7 @@ import Link from 'next/link';
 
 export default function Footer() {
   const currentYear = new Date().getFullYear();
-  
+
   return (
     <footer className="border-t border-gray-100 mt-12 bg-gradient-to-b from-white to-gray-50">
       <div className="container mx-auto px-4 py-8">
@@ -12,11 +12,9 @@ export default function Footer() {
               X-Blog
             </span>
             <span className="text-gray-400">·</span>
-            <span className="text-gray-500 text-sm">
-              © {currentYear} All rights reserved.
-            </span>
+            <span className="text-gray-500 text-sm">© {currentYear} All rights reserved.</span>
           </div>
-          
+
           <div className="flex items-center gap-6 text-sm text-gray-500">
             <Link href="/rss.xml" className="hover:text-orange-500 transition-colors">
               RSS 订阅

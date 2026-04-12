@@ -160,7 +160,10 @@ export async function deletePost(id: number): Promise<void> {
   if (!res.ok) throw new Error('Failed to delete post');
 }
 
-export async function adminLogin(username: string, password: string): Promise<{ access_token: string }> {
+export async function adminLogin(
+  username: string,
+  password: string
+): Promise<{ access_token: string }> {
   const formData = new URLSearchParams();
   formData.set('username', username);
   formData.set('password', password);
@@ -227,7 +230,10 @@ export async function createAdminPost(data: PostCreate): Promise<{ id: number }>
   return res.json();
 }
 
-export async function updateAdminPost(id: number, data: Partial<PostCreate>): Promise<{ id: number }> {
+export async function updateAdminPost(
+  id: number,
+  data: Partial<PostCreate>
+): Promise<{ id: number }> {
   const res = await fetch(`${API_BASE}/api/admin/posts/${id}`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
@@ -263,10 +269,13 @@ export async function createAdminCategory(name: string): Promise<Category> {
 }
 
 export async function updateAdminCategory(id: number, name: string): Promise<Category> {
-  const res = await fetch(`${API_BASE}/api/admin/categories/${id}?name=${encodeURIComponent(name)}`, {
-    method: 'PUT',
-    headers: { ...getAuthHeaders() },
-  });
+  const res = await fetch(
+    `${API_BASE}/api/admin/categories/${id}?name=${encodeURIComponent(name)}`,
+    {
+      method: 'PUT',
+      headers: { ...getAuthHeaders() },
+    }
+  );
   if (!res.ok) throw new Error('Failed to update category');
   return res.json();
 }

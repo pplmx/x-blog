@@ -9,7 +9,7 @@
 
 ## 2. 架构
 
-```
+```text
 ┌─────────────┐     ┌──────────────────┐     ┌─────────────┐
 │  Client     │────▶│  FastAPI (中间件) │────▶│  Handlers   │
 └─────────────┘     │  - Rate Limit    │     └─────────────┘
@@ -80,11 +80,11 @@ app.add_middleware(
 
 ## 4. 环境变量
 
-| 变量 | 默认值 | 描述 |
-|------|--------|------|
-| JWT_SECRET_KEY | (警告) | JWT 签名密钥 |
-| ALLOWED_ORIGINS | localhost:3000 | 允许的域名 |
-| RATE_LIMIT_PER_MINUTE | 60 | 每分钟请求限制 |
+| 变量                  | 默认值         | 描述           |
+| --------------------- | -------------- | -------------- |
+| JWT_SECRET_KEY        | (警告)         | JWT 签名密钥   |
+| ALLOWED_ORIGINS       | localhost:3000 | 允许的域名     |
+| RATE_LIMIT_PER_MINUTE | 60             | 每分钟请求限制 |
 
 ## 5. 验收标准
 

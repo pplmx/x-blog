@@ -12,7 +12,7 @@
 
 ## 文件结构
 
-```
+```text
 frontend/
 ├── next.config.mjs       # 更新: 图片配置
 ├── components/
@@ -28,6 +28,7 @@ frontend/
 ### Task 1: 图片优化
 
 **Files:**
+
 - Modify: `frontend/next.config.mjs`
 - Modify: `frontend/components/Markdown.tsx`
 
@@ -68,7 +69,7 @@ import Image from "next/image";
 
 export default function Markdown({ content }: { content: string }) {
   const html = marked(content);
-  
+
   // 处理图片添加 next/image 支持
   const processedHtml = html.replace(
     /<img src="(.*?)" alt="(.*?)" \/>/g,
@@ -103,6 +104,7 @@ git add frontend/next.config.mjs frontend/components/Markdown.tsx && git commit 
 ### Task 2: 缓存优化
 
 **Files:**
+
 - Modify: `frontend/app/page.tsx`
 
 - [ ] **Step 1: 更新首页支持静态生成**
@@ -143,6 +145,7 @@ git add frontend/app/page.tsx && git commit -m "perf: add static generation with
 ### Task 3: 代码分割和预加载
 
 **Files:**
+
 - Modify: `frontend/app/layout.tsx`
 - Modify: `frontend/app/posts/[slug]/page.tsx`
 
@@ -183,6 +186,7 @@ git add frontend/app/posts/\[slug\]/page.tsx && git commit -m "perf: lazy load c
 ## 验证
 
 完成所有任务后：
+
 1. 构建检查通过
 2. Lighthouse 性能评分提升
 

@@ -8,7 +8,11 @@ import { fetchAdminPosts, deleteAdminPost } from '@/lib/api';
 
 export default function PostsPage() {
   const queryClient = useQueryClient();
-  const { data: posts, isLoading, error } = useQuery({
+  const {
+    data: posts,
+    isLoading,
+    error,
+  } = useQuery({
     queryKey: ['admin-posts'],
     queryFn: fetchAdminPosts,
   });
@@ -54,9 +58,13 @@ export default function PostsPage() {
               <thead className="bg-muted/50">
                 <tr>
                   <th className="px-4 py-3 text-left text-sm font-medium">标题</th>
-                  <th className="px-4 py-3 text-left text-sm font-medium hidden md:table-cell">Slug</th>
+                  <th className="px-4 py-3 text-left text-sm font-medium hidden md:table-cell">
+                    Slug
+                  </th>
                   <th className="px-4 py-3 text-left text-sm font-medium">状态</th>
-                  <th className="px-4 py-3 text-left text-sm font-medium hidden sm:table-cell">日期</th>
+                  <th className="px-4 py-3 text-left text-sm font-medium hidden sm:table-cell">
+                    日期
+                  </th>
                   <th className="px-4 py-3 text-right text-sm font-medium">操作</th>
                 </tr>
               </thead>
@@ -72,8 +80,8 @@ export default function PostsPage() {
                     <td className="px-4 py-3">
                       <span
                         className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                          post.published 
-                            ? 'bg-green-100 text-green-800' 
+                          post.published
+                            ? 'bg-green-100 text-green-800'
                             : 'bg-yellow-100 text-yellow-800'
                         }`}
                       >
@@ -86,7 +94,11 @@ export default function PostsPage() {
                     <td className="px-4 py-3 text-right">
                       <div className="flex items-center justify-end gap-1">
                         <Link href={`/admin/posts/${post.id}`}>
-                          <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-blue-600 hover:text-blue-700 hover:bg-blue-50">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-8 w-8 p-0 text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                          >
                             <Pencil className="h-4 w-4" />
                           </Button>
                         </Link>

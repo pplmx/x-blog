@@ -1,5 +1,3 @@
-
-
 def test_create_post(client):
     response = client.post(
         "/api/posts",

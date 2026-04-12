@@ -7,7 +7,7 @@
 
 ### 1.1 Docker 架构
 
-```
+```text
 ┌─────────────────────────────────────────────┐
 │              Nginx Reverse Proxy            │
 │  - :80  → Frontend (Next.js)            │
@@ -57,14 +57,14 @@ services:
 
 ## 2. 文档
 
-| 文档 | 内容 |
-|------|------|
-| README.md | 补充 Docker 启动方式 |
-| docs/deployment.md | 服务器部署指南 |
+| 文档               | 内容                 |
+| ------------------ | -------------------- |
+| README.md          | 补充 Docker 启动方式 |
+| docs/deployment.md | 服务器部署指南       |
 
 ## 3. 文件结构
 
-```
+```text
 .
 ├── backend/
 │   └── Dockerfile

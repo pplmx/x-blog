@@ -29,12 +29,12 @@
 
 ### 环境要求
 
-| 工具 | 版本 | 安装方式 |
-|------|------|----------|
-| Python | 3.14+ | [uv](https://github.com/astral-sh/uv) |
-| Node.js | 24+ | [Node.js](https://nodejs.org/) |
-| pnpm | 10+ | `npm install -g pnpm` |
-| Docker | 24+ | [Docker](https://docker.com) |
+| 工具    | 版本  | 安装方式                              |
+| ------- | ----- | ------------------------------------- |
+| Python  | 3.14+ | [uv](https://github.com/astral-sh/uv) |
+| Node.js | 24+   | [Node.js](https://nodejs.org/)        |
+| pnpm    | 10+   | `npm install -g pnpm`                 |
+| Docker  | 24+   | [Docker](https://docker.com)          |
 
 ```bash
 # 安装 uv (Python 包管理器)
@@ -84,39 +84,39 @@ docker-compose logs -f
 
 ## 🛠️ 命令
 
-| 命令 | 说明 |
-|------|------|
-| `pnpm install` | 安装所有依赖 |
-| `pnpm dev` | 运行开发服务器 |
-| `pnpm backend` | 运行 FastAPI 后端 |
+| 命令            | 说明              |
+| --------------- | ----------------- |
+| `pnpm install`  | 安装所有依赖      |
+| `pnpm dev`      | 运行开发服务器    |
+| `pnpm backend`  | 运行 FastAPI 后端 |
 | `pnpm frontend` | 运行 Next.js 前端 |
-| `pnpm lint` | 代码检查 |
-| `pnpm format` | 代码格式化 |
-| `pnpm test` | 运行测试 |
-| `pnpm clean` | 清理生成文件 |
+| `pnpm lint`     | 代码检查          |
+| `pnpm format`   | 代码格式化        |
+| `pnpm test`     | 运行测试          |
+| `pnpm clean`    | 清理生成文件      |
 
 ## 📡 API 接口
 
 ### 文章
 
-| 方法 | 路径 | 说明 |
-|------|------|------|
-| GET | `/api/posts` | 获取文章列表 |
-| GET | `/api/posts/{id}` | 获取文章详情 |
-| POST | `/api/posts` | 创建文章 |
-| PUT | `/api/posts/{id}` | 更新文章 |
-| DELETE | `/api/posts/{id}` | 删除文章 |
+| 方法   | 路径              | 说明         |
+| ------ | ----------------- | ------------ |
+| GET    | `/api/posts`      | 获取文章列表 |
+| GET    | `/api/posts/{id}` | 获取文章详情 |
+| POST   | `/api/posts`      | 创建文章     |
+| PUT    | `/api/posts/{id}` | 更新文章     |
+| DELETE | `/api/posts/{id}` | 删除文章     |
 
 ### 分类和标签
 
-| 方法 | 路径 | 说明 |
-|------|------|------|
-| GET | `/api/categories` | 获取分类列表 |
-| GET | `/api/tags` | 获取标签列表 |
+| 方法 | 路径              | 说明         |
+| ---- | ----------------- | ------------ |
+| GET  | `/api/categories` | 获取分类列表 |
+| GET  | `/api/tags`       | 获取标签列表 |
 
 ## 🏗️ 项目结构
 
-```
+```text
 x-blog/
 ├── backend/                 # FastAPI 后端
 │   ├── app/

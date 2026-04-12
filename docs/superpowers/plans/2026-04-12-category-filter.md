@@ -12,7 +12,7 @@
 
 ## 文件结构
 
-```
+```text
 backend/
 ├── app/
 │   ├── crud.py            # 修改: get_posts 添加筛选参数
@@ -33,6 +33,7 @@ frontend/
 ### Task 1: 后端 - 更新 CRUD 支持筛选
 
 **Files:**
+
 - Modify: `backend/app/crud.py`
 
 - [ ] **Step 1: 更新 get_posts 函数**
@@ -49,16 +50,16 @@ def get_posts(
     tag_id: Optional[int] = None,
 ) -> List[models.Post]:
     query = db.query(models.Post)
-    
+
     if published:
         query = query.filter(models.Post.published == True)
-    
+
     if category_id:
         query = query.filter(models.Post.category_id == category_id)
-    
+
     if tag_id:
         query = query.join(models.Post.tags).filter(models.Tag.id == tag_id).distinct()
-    
+
     return query.offset(skip).limit(limit).all()
 ```
 
@@ -73,6 +74,7 @@ git add backend/app/crud.py && git commit -m "feat: add category/tag filter to g
 ### Task 2: 后端 - 更新路由支持查询参数
 
 **Files:**
+
 - Modify: `backend/app/routers/posts.py`
 
 - [ ] **Step 1: 更新 list_posts 函数**
@@ -99,6 +101,7 @@ def list_posts(
 ```
 
 注意：需要添加 `Optional` 导入：
+
 ```python
 from typing import List, Optional
 ```
@@ -124,6 +127,7 @@ git add backend/app/routers/posts.py && git commit -m "feat: add query params fo
 ### Task 3: 前端 - 更新 API 客户端
 
 **Files:**
+
 - Modify: `frontend/lib/api.ts`
 
 - [ ] **Step 1: 更新 fetchPosts 函数**
@@ -138,10 +142,10 @@ export async function fetchPosts(filters?: {
   const params = new URLSearchParams();
   if (filters?.category_id) params.set("category_id", String(filters.category_id));
   if (filters?.tag_id) params.set("tag_id", String(filters.tag_id));
-  
+
   const query = params.toString();
   const url = query ? `/api/posts?${query}` : "/api/posts";
-  
+
   const res = await fetch(url);
   if (!res.ok) throw new Error("Failed to fetch posts");
   return res.json();
@@ -159,6 +163,7 @@ git add frontend/lib/api.ts && git commit -m "feat: add filter params to fetchPo
 ### Task 4: 前端 - 创建侧边栏组件
 
 **Files:**
+
 - Create: `frontend/components/Sidebar.tsx`
 
 - [ ] **Step 1: 创建 Sidebar 组件**
@@ -187,7 +192,7 @@ interface SidebarProps {
 export default function Sidebar({ categories, tags }: SidebarProps) {
   const searchParams = useSearchParams();
   const router = useRouter();
-  
+
   const currentCategory = searchParams.get("category_id");
   const currentTag = searchParams.get("tag_id");
 
@@ -205,7 +210,7 @@ export default function Sidebar({ categories, tags }: SidebarProps) {
           ← 清除筛选
         </button>
       )}
-      
+
       <div className="mb-6">
         <h3 className="font-semibold mb-2">分类</h3>
         <div className="space-y-1">
@@ -222,7 +227,7 @@ export default function Sidebar({ categories, tags }: SidebarProps) {
           ))}
         </div>
       </div>
-      
+
       <div>
         <h3 className="font-semibold mb-2">标签</h3>
         <div className="flex flex-wrap gap-1">
@@ -257,6 +262,7 @@ git add frontend/components/Sidebar.tsx && git commit -m "feat: add Sidebar comp
 ### Task 5: 前端 - 更新首页集成筛选
 
 **Files:**
+
 - Modify: `frontend/app/page.tsx`
 - Modify: `frontend/lib/api.ts`
 
@@ -335,6 +341,7 @@ git add frontend/app/page.tsx frontend/lib/api.ts && git commit -m "feat: integr
 ## 验证
 
 完成所有任务后，验证：
+
 1. 访问 http://localhost:3000
 2. 侧边栏显示分类和标签
 3. 点击分类/标签，文章列表筛选

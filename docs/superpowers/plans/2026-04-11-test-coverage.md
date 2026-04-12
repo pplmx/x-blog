@@ -13,12 +13,14 @@
 ## 文件结构
 
 ### 后端
+
 - `backend/tests/test_auth.py` (新建)
 - `backend/tests/test_admin.py` (修复)
 - `backend/app/auth.py` (依赖)
 - `backend/app/routers/search.py` (测试)
 
 ### 前端
+
 - `frontend/lib/hooks.test.ts` (新建)
 - `frontend/lib/api.test.ts` (新建)
 - `frontend/components/Header.test.tsx` (新建)
@@ -32,6 +34,7 @@
 ### Task 1: 修复 admin 测试隔离
 
 **Files:**
+
 - Create: `backend/tests/test_admin.py`
 - Modify: `backend/pyproject.toml`
 - Test: `backend/tests/test_admin.py`
@@ -285,10 +288,10 @@ git add backend/tests/test_admin.py
 git commit -m "test: add admin tests with isolated database"
 ```
 
-
 ### Task 2: 添加 auth 单元测试
 
 **Files:**
+
 - Create: `backend/tests/test_auth.py`
 - Modify: `backend/app/auth.py`
 - Test: `backend/tests/test_auth.py`
@@ -356,10 +359,10 @@ git add backend/tests/test_auth.py
 git commit -m "test: add auth unit tests"
 ```
 
-
 ### Task 3: 添加 search 边界测试
 
 **Files:**
+
 - Modify: `backend/tests/test_search.py`
 - Test: `backend/tests/test_search.py`
 
@@ -425,12 +428,12 @@ git add backend/tests/test_search.py
 git commit -m "test: add search edge case tests"
 ```
 
-
 ## 阶段 2: 前端测试 (21 tests)
 
 ### Task 4: 添加前端 hooks 测试
 
 **Files:**
+
 - Create: `frontend/lib/hooks.test.ts`
 - Modify: `frontend/lib/hooks.ts`
 - Test: `frontend/lib/hooks.test.ts`
@@ -456,20 +459,20 @@ const createWrapper = () => {
 describe('usePosts', () => {
   it('fetches posts with default params', async () => {
     const { result } = renderHook(() => usePosts({}), { wrapper: createWrapper() });
-    
+
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
     expect(result.current.data).toBeDefined();
   });
 
   it('fetches posts with pagination', async () => {
     const { result } = renderHook(() => usePosts({ page: 2, limit: 5 }), { wrapper: createWrapper() });
-    
+
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
   });
 
   it('fetches posts with category filter', async () => {
     const { result } = renderHook(() => usePosts({ category_id: 1 }), { wrapper: createWrapper() });
-    
+
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
   });
 });
@@ -477,7 +480,7 @@ describe('usePosts', () => {
 describe('usePost', () => {
   it('fetches single post by slug', async () => {
     const { result } = renderHook(() => usePost('test-slug'), { wrapper: createWrapper() });
-    
+
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
   });
 });
@@ -485,7 +488,7 @@ describe('usePost', () => {
 describe('useCategories', () => {
   it('fetches categories', async () => {
     const { result } = renderHook(() => useCategories(), { wrapper: createWrapper() });
-    
+
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
     expect(Array.isArray(result.current.data)).toBe(true);
   });
@@ -494,7 +497,7 @@ describe('useCategories', () => {
 describe('useTags', () => {
   it('fetches tags', async () => {
     const { result } = renderHook(() => useTags(), { wrapper: createWrapper() });
-    
+
     await waitFor(() => expect(result.current.isSuccess).toBe(true});
     expect(Array.isArray(result.current.data)).toBe(true);
   });
@@ -513,10 +516,10 @@ git add frontend/lib/hooks.test.ts
 git commit -m "test: add hooks unit tests"
 ```
 
-
 ### Task 5: 添加前端 API 测试
 
 **Files:**
+
 - Create: `frontend/lib/api.test.ts`
 - Test: `frontend/lib/api.test.ts`
 
@@ -537,7 +540,7 @@ describe('API Error Handling', () => {
 
   it('fetchPosts handles errors gracefully', async () => {
     mockFetch.mockRejectedValueOnce(new Error('Network error'));
-    
+
     await expect(fetchPosts({})).rejects.toThrow('Network error');
   });
 
@@ -546,7 +549,7 @@ describe('API Error Handling', () => {
       ok: false,
       status: 404,
     });
-    
+
     const result = await fetchPost('nonexistent');
     expect(result).toBeNull();
   });
@@ -556,7 +559,7 @@ describe('API Error Handling', () => {
       ok: false,
       status: 400,
     });
-    
+
     await expect(createPost({ title: 'Test', slug: 'test', content: 'Content' }))
       .rejects.toThrow();
   });
@@ -575,10 +578,10 @@ git add frontend/lib/api.test.ts
 git commit -m "test: add API error handling tests"
 ```
 
-
 ### Task 6: 添加前端组件测试
 
 **Files:**
+
 - Create: `frontend/components/Header.test.tsx`
 - Create: `frontend/components/Footer.test.tsx`
 - Test: `frontend/components/*.test.tsx`
@@ -638,7 +641,6 @@ Expected: 3 passed
 git add frontend/components/Header.test.tsx frontend/components/Footer.test.tsx
 git commit -m "test: add Header and Footer component tests"
 ```
-
 
 ## 验收
 

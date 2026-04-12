@@ -11,15 +11,16 @@
 
 ## 2. API 设计
 
-| Method | Endpoint | 功能 |
-|--------|----------|------|
-| GET | /api/posts/{post_id}/comments | 获取文章评论 |
-| POST | /api/posts/{post_id}/comments | 添加评论 |
-| DELETE | /api/comments/{id} | 删除评论 |
+| Method | Endpoint                      | 功能         |
+| ------ | ----------------------------- | ------------ |
+| GET    | /api/posts/{post_id}/comments | 获取文章评论 |
+| POST   | /api/posts/{post_id}/comments | 添加评论     |
+| DELETE | /api/comments/{id}            | 删除评论     |
 
 ## 3. 数据模型
 
 ### Comment
+
 - id: int (PK)
 - post_id: int (FK)
 - nickname: str (昵称)
@@ -31,9 +32,11 @@
 ## 4. 前端
 
 ### 页面
+
 - 文章详情页 `/posts/{slug}` 底部显示评论列表和评论表单
 
 ### 组件
+
 - CommentList - 评论列表
 - CommentForm - 评论表单
 

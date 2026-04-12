@@ -69,11 +69,11 @@ export default async function PostPage({ params }: PageProps) {
   return (
     <>
       <ViewTracker postId={post.id} />
-      
+
       <article className="max-w-3xl mx-auto">
         {/* 返回按钮 */}
-        <Link 
-          href="/" 
+        <Link
+          href="/"
           className="inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-blue-600 transition-colors mb-6"
         >
           <ArrowLeft className="w-4 h-4" />
@@ -85,7 +85,7 @@ export default async function PostPage({ params }: PageProps) {
           <h1 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-4 leading-tight">
             {post.title}
           </h1>
-          
+
           {/* 元信息 */}
           <div className="flex flex-wrap items-center gap-4 text-sm text-gray-500">
             <span className="flex items-center gap-1.5">
@@ -119,8 +119,7 @@ export default async function PostPage({ params }: PageProps) {
                 href={`/?tag_id=${tag.id}`}
                 className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-blue-50 to-indigo-50 text-blue-700 rounded-full text-sm font-medium hover:from-blue-100 hover:to-indigo-100 transition-colors"
               >
-                <TagIcon className="w-3.5 h-3.5" />
-                #{tag.name}
+                <TagIcon className="w-3.5 h-3.5" />#{tag.name}
               </Link>
             ))}
           </div>

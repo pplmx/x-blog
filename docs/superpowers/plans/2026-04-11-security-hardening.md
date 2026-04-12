@@ -22,6 +22,7 @@
 ## Task 1: 添加 slowapi 依赖
 
 **Files:**
+
 - Modify: `backend/pyproject.toml`
 - Test: `backend/pyproject.toml`
 
@@ -53,10 +54,10 @@ git add backend/pyproject.toml
 git commit -m "deps: add slowapi and python-dotenv for security"
 ```
 
-
 ## Task 2: JWT Secret 环境变量
 
 **Files:**
+
 - Modify: `backend/app/auth.py:13`
 
 - [ ] **Step 1: 修改 auth.py 从环境变量读取 SECRET_KEY**
@@ -88,10 +89,10 @@ git add backend/app/auth.py
 git commit -m "security: add JWT_SECRET_KEY env var support"
 ```
 
-
 ## Task 3: 频率限制
 
 **Files:**
+
 - Modify: `backend/app/main.py`
 
 - [ ] **Step 1: 在 main.py 添加频率限制**
@@ -144,10 +145,10 @@ git add backend/app/main.py backend/app/routers/admin.py
 git commit -m "security: add rate limiting with slowapi"
 ```
 
-
 ## Task 4: 安全 Headers 中间件
 
 **Files:**
+
 - Modify: `backend/app/main.py`
 
 - [ ] **Step 1: 添加安全 Headers 中间件**
@@ -175,10 +176,10 @@ git add backend/app/main.py
 git commit -m "security: add security headers middleware"
 ```
 
-
 ## Task 5: CORS 配置
 
 **Files:**
+
 - Modify: `backend/app/main.py`
 - Modify: `backend/.env.example`
 
@@ -224,7 +225,6 @@ Expected: 46 passed
 git add backend/app/main.py backend/.env.example
 git commit -m "security: add CORS configuration"
 ```
-
 
 ## Task 6: 最终验证
 

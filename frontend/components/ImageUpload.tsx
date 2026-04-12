@@ -66,14 +66,15 @@ export function ImageUpload({ value, onChange, disabled }: ImageUploadProps) {
           className={`border-2 border-dashed rounded-lg p-8 text-center ${
             dragActive ? 'border-primary' : 'border-muted'
           }`}
-          onDragOver={(e) => { e.preventDefault(); setDragActive(true); }}
+          onDragOver={(e) => {
+            e.preventDefault();
+            setDragActive(true);
+          }}
           onDragLeave={() => setDragActive(false)}
           onDrop={handleDrop}
         >
           <Upload className="mx-auto h-8 w-8 text-muted-foreground mb-2" />
-          <p className="text-sm text-muted-foreground">
-            拖拽图片到这里，或点击选择
-          </p>
+          <p className="text-sm text-muted-foreground">拖拽图片到这里，或点击选择</p>
           <input
             type="file"
             accept="image/*"

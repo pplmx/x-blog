@@ -11,13 +11,16 @@
 ## 1. TanStack Query
 
 ### 作用
+
 替换手动 fetch，实现：
+
 - 自动缓存
 - 后台重新获取
 - 加载/错误状态
 - 乐观更新
 
 ### 实现
+
 ```typescript
 // lib/query-client.ts
 import { QueryClient } from "@tanstack/react-query";
@@ -39,10 +42,10 @@ function PostList() {
     queryKey: ["posts"],
     queryFn: () => fetchPosts(),
   });
-  
+
   if (isLoading) return <div>加载中...</div>;
   if (error) return <div>错误</div>;
-  
+
   return data.items.map(post => <PostCard key={post.id} post={post} />);
 }
 ```
@@ -52,15 +55,18 @@ function PostList() {
 ## 2. Playwright E2E
 
 ### 作用
+
 端到端测试，覆盖真实用户交互流程
 
 ### 测试用例
+
 - 首页加载
 - 文章列表分页
 - 搜索功能
 - 评论提交
 
 ### 配置
+
 ```yaml
 # playwright.config.ts
 export default defineConfig({
@@ -79,14 +85,17 @@ export default defineConfig({
 ## 3. MSW (Mock Service Worker)
 
 ### 作用
+
 在前端模拟 API 响应，脱离后端依赖
 
 ### 使用场景
+
 - 独立开发前端
 - 单元测试
 - E2E 测试
 
 ### 配置
+
 ```typescript
 // mocks/handlers.ts
 import { http, HttpResponse } from "msw";

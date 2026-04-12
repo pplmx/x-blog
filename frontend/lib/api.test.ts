@@ -12,7 +12,7 @@ describe('API Error Handling', () => {
 
   it('fetchPosts handles errors gracefully', async () => {
     mockFetch.mockRejectedValueOnce(new Error('Network error'));
-    
+
     await expect(fetchPosts({})).rejects.toThrow('Network error');
   });
 
@@ -21,7 +21,7 @@ describe('API Error Handling', () => {
       ok: false,
       status: 404,
     } as Response);
-    
+
     await expect(fetchPost('nonexistent')).rejects.toThrow('Failed to fetch post');
   });
 
@@ -30,9 +30,10 @@ describe('API Error Handling', () => {
       ok: false,
       status: 400,
     } as Response);
-    
-    await expect(createPost({ title: 'Test', slug: 'test', content: 'Content', published: false }))
-      .rejects.toThrow('Failed to create post');
+
+    await expect(
+      createPost({ title: 'Test', slug: 'test', content: 'Content', published: false })
+    ).rejects.toThrow('Failed to create post');
   });
 
   it('updatePost throws on error', async () => {
@@ -40,7 +41,7 @@ describe('API Error Handling', () => {
       ok: false,
       status: 400,
     } as Response);
-    
+
     await expect(updatePost(1, { title: 'Updated' })).rejects.toThrow('Failed to update post');
   });
 
@@ -49,7 +50,7 @@ describe('API Error Handling', () => {
       ok: false,
       status: 404,
     } as Response);
-    
+
     await expect(deletePost(999)).rejects.toThrow('Failed to delete post');
   });
 });

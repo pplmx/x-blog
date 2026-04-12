@@ -12,7 +12,7 @@
 
 ## 文件结构
 
-```
+```text
 backend/
 ├── app/
 │   ├── __init__.py
@@ -36,6 +36,7 @@ backend/
 ### Task 1: 项目初始化
 
 **Files:**
+
 - Create: `backend/pyproject.toml`
 - Create: `backend/app/__init__.py`
 - Create: `backend/app/main.py`
@@ -104,6 +105,7 @@ git commit -m "feat: init FastAPI backend project"
 ### Task 2: 数据库配置和模型
 
 **Files:**
+
 - Create: `backend/app/config.py`
 - Create: `backend/app/models.py`
 - Create: `backend/app/database.py`
@@ -116,7 +118,7 @@ from pydantic_settings import BaseSettings
 
 class Settings(BaseSettings):
     database_url: str = "sqlite:///./aurora.db"
-    
+
     class Config:
         env_file = ".env"
 
@@ -164,7 +166,7 @@ post_tags = Table(
 
 class Post(Base):
     __tablename__ = "posts"
-    
+
     id = Column(Integer, primary_key=True, index=True)
     title = Column(String(200), nullable=False)
     slug = Column(String(200), unique=True, index=True, nullable=False)
@@ -174,24 +176,24 @@ class Post(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     category_id = Column(Integer, ForeignKey("categories.id"))
-    
+
     category = relationship("Category", back_populates="posts")
     tags = relationship("Tag", secondary=post_tags, back_populates="posts")
 
 class Category(Base):
     __tablename__ = "categories"
-    
+
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String(50), unique=True, nullable=False)
-    
+
     posts = relationship("Post", back_populates="category")
 
 class Tag(Base):
     __tablename__ = "tags"
-    
+
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String(50), unique=True, nullable=False)
-    
+
     posts = relationship("Post", secondary=post_tags, back_populates="tags")
 ```
 
@@ -233,6 +235,7 @@ git commit -m "feat: add database config and models"
 ### Task 3: Pydantic Schemas
 
 **Files:**
+
 - Create: `backend/app/schemas.py`
 
 - [ ] **Step 1: 创建 Pydantic schemas**
@@ -251,7 +254,7 @@ class TagCreate(TagBase):
 
 class Tag(TagBase):
     id: int
-    
+
     class Config:
         from_attributes = True
 
@@ -263,7 +266,7 @@ class CategoryCreate(CategoryBase):
 
 class Category(CategoryBase):
     id: int
-    
+
     class Config:
         from_attributes = True
 
@@ -293,7 +296,7 @@ class Post(PostBase):
     updated_at: datetime
     category: Optional[Category] = None
     tags: List[Tag] = []
-    
+
     class Config:
         from_attributes = True
 
@@ -306,7 +309,7 @@ class PostList(BaseModel):
     created_at: datetime
     category: Optional[Category] = None
     tags: List[Tag] = []
-    
+
     class Config:
         from_attributes = True
 ```
@@ -323,6 +326,7 @@ git commit -m "feat: add pydantic schemas"
 ### Task 4: CRUD 操作
 
 **Files:**
+
 - Create: `backend/app/crud.py`
 
 - [ ] **Step 1: 创建 CRUD 操作**
@@ -350,7 +354,7 @@ def create_post(db: Session, post: schemas.PostCreate) -> models.Post:
     category = None
     if post.category_id:
         category = db.query(models.Category).filter(models.Category.id == post.category_id).first()
-    
+
     # 处理标签
     tags = []
     for tag_name in post.tags:
@@ -360,7 +364,7 @@ def create_post(db: Session, post: schemas.PostCreate) -> models.Post:
             db.add(tag)
             db.flush()
         tags.append(tag)
-    
+
     db_post = models.Post(
         title=post.title,
         slug=post.slug,
@@ -379,9 +383,9 @@ def update_post(db: Session, post_id: int, post: schemas.PostUpdate) -> Optional
     db_post = get_post(db, post_id)
     if not db_post:
         return None
-    
+
     update_data = post.model_dump(exclude_unset=True)
-    
+
     # 处理标签更新
     if "tags" in update_data:
         tags = []
@@ -393,10 +397,10 @@ def update_post(db: Session, post_id: int, post: schemas.PostUpdate) -> Optional
                 db.flush()
             tags.append(tag)
         db_post.tags = tags
-    
+
     for field, value in update_data.items():
         setattr(db_post, field, value)
-    
+
     db.commit()
     db.refresh(db_post)
     return db_post
@@ -428,6 +432,7 @@ git commit -m "feat: add CRUD operations"
 ### Task 5: API 路由
 
 **Files:**
+
 - Create: `backend/app/routers/__init__.py`
 - Create: `backend/app/routers/posts.py`
 - Modify: `backend/app/main.py`
@@ -532,6 +537,7 @@ git commit -m "feat: add posts API routes"
 ### Task 6: 分类和标签路由
 
 **Files:**
+
 - Create: `backend/app/routers/categories.py`
 - Create: `backend/app/routers/tags.py`
 - Modify: `backend/app/main.py`
@@ -612,6 +618,7 @@ git commit -m "feat: add categories and tags API routes"
 ### Task 7: 单元测试
 
 **Files:**
+
 - Create: `backend/tests/__init__.py`
 - Create: `backend/tests/test_posts.py`
 
@@ -680,7 +687,7 @@ def test_list_posts(client):
             "published": True
         }
     )
-    
+
     response = client.get("/api/posts")
     assert response.status_code == 200
     data = response.json()
@@ -698,7 +705,7 @@ def test_get_post(client):
         }
     )
     post_id = create_response.json()["id"]
-    
+
     response = client.get(f"/api/posts/{post_id}")
     assert response.status_code == 200
     assert response.json()["title"] == "Test Post"
@@ -715,7 +722,7 @@ def test_update_post(client):
         }
     )
     post_id = create_response.json()["id"]
-    
+
     response = client.put(
         f"/api/posts/{post_id}",
         json={"title": "Updated Title"}
@@ -735,10 +742,10 @@ def test_delete_post(client):
         }
     )
     post_id = create_response.json()["id"]
-    
+
     response = client.delete(f"/api/posts/{post_id}")
     assert response.status_code == 204
-    
+
     # 验证删除
     get_response = client.get(f"/api/posts/{post_id}")
     assert get_response.status_code == 404
@@ -764,6 +771,7 @@ git commit -m "test: add posts API tests"
 ## 验证
 
 完成所有任务后，验证：
+
 1. API 端点正常工作
 2. 测试全部通过
 3. 代码能正常启动
