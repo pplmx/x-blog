@@ -22,6 +22,8 @@ A modern full-stack blog application built with FastAPI + Next.js
 - 🔒 **Admin Panel** - Built-in admin dashboard for content management
 - 🧪 **Well Tested** - pytest (backend) + Vitest (frontend)
 - ✅ **Type Safe** - Full TypeScript support + Pydantic validation
+- 🐳 **Docker Ready** - Docker + Docker Compose support
+- ☁️ **Cloud Ready** - CI/CD with GitHub Actions
 
 ## 🚀 Quick Start
 
@@ -30,8 +32,9 @@ A modern full-stack blog application built with FastAPI + Next.js
 | Tool | Version | Install |
 |------|---------|---------|
 | Python | 3.14+ | [uv](https://github.com/astral-sh/uv) |
-| Node.js | 25+ | [Node.js](https://nodejs.org/) |
+| Node.js | 24+ | [Node.js](https://nodejs.org/) |
 | pnpm | 10+ | `npm install -g pnpm` |
+| Docker | 24+ | [Docker](https://docker.com) |
 
 ```bash
 # Install uv (Python package manager)
@@ -59,6 +62,25 @@ pnpm dev
 just backend  # http://localhost:8000
 just frontend # http://localhost:3000
 ```
+
+### 🐳 Docker Deployment
+
+```bash
+# Clone and start
+git clone https://github.com/your-username/x-blog.git
+cd x-blog
+
+# Configure environment
+cp backend/.env.example backend/.env
+
+# Start with Docker Compose
+docker-compose up -d
+
+# View logs
+docker-compose logs -f
+```
+
+See [docs/deployment.md](./docs/deployment.md) for detailed deployment guide.
 
 ## 🛠️ Commands
 
