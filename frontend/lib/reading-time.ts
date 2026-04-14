@@ -8,35 +8,80 @@ const CHINESE_CHAR_WEIGHT = 1; // 中文字符权重
 const ENGLISH_WORD_WEIGHT = 0.5; // 英文单词权重（折算为中文字符数）
 
 /**
+ * 移除 markdown 语法，获得纯文本
+ */
+function stripMarkdown(content: string): string {
+  return (
+    content
+      // 移除代码块
+      .replace(/```[\s\S]*?```/g, '')
+      // 移除行内代码
+      .replace(/`[^`]+`/g, '')
+      // 移除图片语法
+      .replace(/!\[[^\]]*\]\([^)]*\)/g, '')
+      // 移除链接语法，保留文字
+      .replace(/\[([^\]]+)\]\([^)]*\)/g, '$1')
+      // 移除 markdown 标题符号
+      .replace(/^#+\s+/gm, '')
+      // 移除加粗、斜体语法
+      .replace(/\*\*([^*]+)\*\*/g, '$1')
+      .replace(/\*([^*]+)\*/g, '$1')
+      .replace(/__([^_]+)__/g, '$1')
+      .replace(/_([^_]+)_/g, '$1')
+      // 移除引用符号
+      .replace(/^>\s+/gm, '')
+      // 移除列表符号
+      .replace(/^[-*+]\s+/gm, '')
+      .replace(/^\d+\.\s+/gm, '')
+      // 移除水平线
+      .replace(/^[-*_]{3,}$/gm, '')
+  );
+}
+
+/**
+ * 计算纯文本字数
+ * @param content 文章内容
+ * @returns 字数统计对象
+ */
+export function countWords(content: string): { chinese: number; english: number; total: number } {
+  const plainText = stripMarkdown(content);
+
+  // 统计中文字符数
+  const chineseChars = (plainText.match(/[\u4e00-\u9fa5]/g) || []).length;
+
+  // 统计英文单词数（简单按空格分割）
+  const englishWords = (plainText.match(/[a-zA-Z]+/g) || []).length;
+
+  // 计算总"字数"（中文 + 英文折算）
+  const totalChars = Math.round(chineseChars + englishWords * ENGLISH_WORD_WEIGHT);
+
+  return {
+    chinese: chineseChars,
+    english: englishWords,
+    total: totalChars,
+  };
+}
+
+/**
+ * 格式化字数统计
+ * @param count 字数统计对象
+ * @returns 格式化字符串
+ */
+export function formatWordCount(count: {
+  chinese: number;
+  english: number;
+  total: number;
+}): string {
+  return `${count.total.toLocaleString()} 字`;
+}
+
+/**
  * 计算文本的阅读时间（分钟）
  * @param content 文章内容
  * @returns 阅读时间（分钟），最少1分钟
  */
 export function calculateReadingTime(content: string): number {
-  // 移除 markdown 语法以获得更准确的字数
-  const plainText = content
-    // 移除代码块
-    .replace(/```[\s\S]*?```/g, '')
-    // 移除行内代码
-    .replace(/`[^`]+`/g, '')
-    // 移除图片语法
-    .replace(/!\[[^\]]*\]\([^)]*\)/g, '')
-    // 移除链接语法，保留文字
-    .replace(/\[([^\]]+)\]\([^)]*\)/g, '$1')
-    // 移除 markdown 标题符号
-    .replace(/^#+\s+/gm, '')
-    // 移除加粗、斜体语法
-    .replace(/\*\*([^*]+)\*\*/g, '$1')
-    .replace(/\*([^*]+)\*/g, '$1')
-    .replace(/__([^_]+)__/g, '$1')
-    .replace(/_([^_]+)_/g, '$1')
-    // 移除引用符号
-    .replace(/^>\s+/gm, '')
-    // 移除列表符号
-    .replace(/^[-*+]\s+/gm, '')
-    .replace(/^\d+\.\s+/gm, '')
-    // 移除水平线
-    .replace(/^[-*_]{3,}$/gm, '');
+  const plainText = stripMarkdown(content);
 
   // 统计中文字符数
   const chineseChars = (plainText.match(/[\u4e00-\u9fa5]/g) || []).length;
