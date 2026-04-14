@@ -11,12 +11,32 @@ from starlette.middleware.base import BaseHTTPMiddleware
 
 def setup_logging() -> None:
     """Setup structured logging for the application."""
-    logging.basicConfig(
-        level=logging.INFO,
-        format="%(message)s",
-    )
-    # Configure uvicorn access log
+    # Configure root logger
+    root_logger = logging.getLogger()
+    root_logger.setLevel(logging.INFO)
+
+    # Remove existing handlers
+    for handler in root_logger.handlers[:]:
+        root_logger.removeHandler(handler)
+
+    # Add JSON-like formatter
+    handler = logging.StreamHandler()
+    handler.setFormatter(logging.Formatter("%(message)s"))
+    root_logger.addHandler(handler)
+
+    # Silence uvicorn access log
     logging.getLogger("uvicorn.access").setLevel(logging.WARNING)
+
+
+class StructuredLogAdapter(logging.LoggerAdapter):
+    """Custom logger adapter for structured logging."""
+
+    def process(self, msg, kwargs):
+        # Extract extra kwargs and merge with adapter extra
+        extra = kwargs.pop("extra", {})
+        extra.update(self.extra)
+        kwargs["extra"] = extra
+        return msg, kwargs
 
 
 class RequestLoggingMiddleware(BaseHTTPMiddleware):
@@ -30,15 +50,18 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
         # Record start time
         start_time = time.perf_counter()
 
-        # Log incoming request
+        # Create adapter with request context
         logger = logging.getLogger("xblog")
-        logger.info(
-            "request_started",
-            request_id=request_id,
-            method=request.method,
-            path=request.url.path,
-            client_ip=request.client.host if request.client else "unknown",
-        )
+        extra = {
+            "request_id": request_id,
+            "method": request.method,
+            "path": request.url.path,
+            "client_ip": request.client.host if request.client else "unknown",
+        }
+        adapter = StructuredLogAdapter(logger, extra)
+
+        # Log incoming request
+        adapter.info("request_started")
 
         # Process request
         try:
@@ -46,17 +69,15 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
             duration_ms = (time.perf_counter() - start_time) * 1000
 
             # Log completed request
-            log_level = logging.WARNING if duration_ms > 1000 else logging.INFO
-            logger.log(
-                log_level,
-                "request_completed",
-                request_id=request_id,
-                method=request.method,
-                path=request.url.path,
-                status=response.status_code,
-                duration_ms=round(duration_ms, 2),
-                client_ip=request.client.host if request.client else "unknown",
-            )
+            log_data = {
+                "status": response.status_code,
+                "duration_ms": round(duration_ms, 2),
+            }
+
+            if duration_ms > 1000:
+                adapter.warning("request_completed", extra=log_data)
+            else:
+                adapter.info("request_completed", extra=log_data)
 
             # Add request ID to response headers
             response.headers["X-Request-ID"] = request_id
@@ -65,16 +86,12 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
         except Exception as e:
             duration_ms = (time.perf_counter() - start_time) * 1000
 
-            # Log error
-            logger.error(
-                "request_failed",
-                request_id=request_id,
-                method=request.method,
-                path=request.url.path,
-                error=str(e),
-                duration_ms=round(duration_ms, 2),
-                client_ip=request.client.host if request.client else "unknown",
-            )
+            # Log error with extra data
+            log_data = {
+                "error": str(e),
+                "duration_ms": round(duration_ms, 2),
+            }
+            adapter.error("request_failed", extra=log_data)
             raise
 
 
