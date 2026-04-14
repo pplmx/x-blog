@@ -11,8 +11,10 @@ from slowapi.errors import RateLimitExceeded
 from slowapi.util import get_remote_address
 
 from app.database import Base, engine
+from app.middleware import RequestLoggingMiddleware, setup_logging
 from app.routers import admin, categories, comments, posts, search, tags, upload
 from app.routers.export import router as export_router
+from app.routers.health import router as health_router
 from app.routers.rss import rss_router, seo_router
 
 RATE_LIMIT_PER_MINUTE = os.getenv("RATE_LIMIT_PER_MINUTE", "60")
@@ -21,11 +23,20 @@ limiter = Limiter(key_func=get_remote_address)
 
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
+    # Initialize logging on startup
+    setup_logging()
+    # Create database tables
     Base.metadata.create_all(bind=engine)
     yield
 
 
-app = FastAPI(title="X-Blog Blog API", version="0.1.0", lifespan=lifespan)
+app = FastAPI(
+    title="X-Blog Blog API",
+    version="0.1.0",
+    lifespan=lifespan,
+    docs_url="/docs",
+    redoc_url="/redoc",
+)
 
 ALLOWED_ORIGINS = os.getenv("ALLOWED_ORIGINS", "http://localhost:3000").split(",")
 
@@ -36,6 +47,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Add request logging middleware
+app.add_middleware(RequestLoggingMiddleware)
 
 
 @app.middleware("http")
@@ -57,6 +71,7 @@ def rate_limit_exceeded_handler(_request: Request, _exc: Exception):
 
 app.add_exception_handler(RateLimitExceeded, rate_limit_exceeded_handler)
 
+app.include_router(health_router)
 app.include_router(posts.router)
 app.include_router(categories.router)
 app.include_router(tags.router)
