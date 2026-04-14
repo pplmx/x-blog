@@ -30,17 +30,17 @@ class Post(Base):
     slug = Column(String(200), unique=True, index=True, nullable=False)
     content = Column(Text, nullable=False)
     excerpt = Column(String(500))
-    published = Column(Boolean, default=False)
+    published = Column(Boolean, default=False, index=True)
     pinned = Column(Boolean, default=False)
-    created_at = Column(DateTime, default=lambda: datetime.now(UTC))
+    created_at = Column(DateTime, default=lambda: datetime.now(UTC), index=True)
     updated_at = Column(
         DateTime,
         default=lambda: datetime.now(UTC),
         onupdate=lambda: datetime.now(UTC),
     )
-    category_id = Column(Integer, ForeignKey("categories.id"))
+    category_id = Column(Integer, ForeignKey("categories.id"), index=True)
     cover_image = Column(String(500), nullable=True)
-    views = Column(Integer, default=0)
+    views = Column(Integer, default=0, index=True)
     likes = Column(Integer, default=0)
 
     category = relationship("Category", back_populates="posts")
@@ -70,7 +70,7 @@ class Comment(Base):
     __tablename__ = "comments"
 
     id = Column(Integer, primary_key=True, index=True)
-    post_id = Column(Integer, ForeignKey("posts.id"), nullable=False)
+    post_id = Column(Integer, ForeignKey("posts.id"), nullable=False, index=True)
     parent_id = Column(Integer, ForeignKey("comments.id"), nullable=True)
     nickname = Column(String(50), nullable=False)
     email = Column(String(100))
