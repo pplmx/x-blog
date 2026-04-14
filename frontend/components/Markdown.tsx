@@ -1,9 +1,9 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { oneDark } from 'react-syntax-highlighter/dist/esm/styles/prism';
-import { Copy, Check } from 'lucide-react';
+import { Copy, Check, FileCode } from 'lucide-react';
 import mermaid from 'mermaid';
 import katex from 'katex';
 import { useImageLightbox } from './ImageLightboxContext';
@@ -11,52 +11,104 @@ import { useImageLightbox } from './ImageLightboxContext';
 interface CodeBlockProps {
   language: string;
   code: string;
+  highlightLines?: number[];
 }
 
-function CodeBlock({ language, code }: CodeBlockProps) {
+function CodeBlock({ language, code, highlightLines = [] }: CodeBlockProps) {
   const [copied, setCopied] = useState(false);
+  const codeRef = useRef<HTMLElement>(null);
 
   const handleCopy = async () => {
-    await navigator.clipboard.writeText(code);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+    try {
+      await navigator.clipboard.writeText(code);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch (err) {
+      console.error('Copy failed:', err);
+    }
   };
 
+  // Generate line numbers
+  const lineCount = code.split('\n').length;
+
   return (
-    <div className="relative group rounded-lg overflow-hidden my-4">
-      <div className="flex items-center justify-between px-4 py-2 bg-gray-800 dark:bg-gray-950 text-gray-400 text-xs">
-        <span className="font-mono">{language || 'text'}</span>
+    <div className="relative group rounded-lg overflow-hidden my-4 border border-gray-200 dark:border-gray-800">
+      {/* Header */}
+      <div className="flex items-center justify-between px-4 py-2.5 bg-gray-800 dark:bg-gray-950 text-gray-300 text-sm border-b border-gray-700">
+        <div className="flex items-center gap-2">
+          <FileCode className="w-4 h-4 opacity-60" />
+          <span className="font-mono font-medium">{language || 'text'}</span>
+        </div>
         <button
           onClick={handleCopy}
-          className="flex items-center gap-1 hover:text-white transition-colors"
+          className={`
+            flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs
+            transition-all duration-200
+            ${
+              copied
+                ? 'bg-green-600/20 text-green-400'
+                : 'hover:bg-gray-700 hover:text-white text-gray-400'
+            }
+          `}
+          title="复制代码"
         >
           {copied ? (
             <>
-              <Check className="w-4 h-4" />
+              <Check className="w-3.5 h-3.5" />
               <span>已复制</span>
             </>
           ) : (
             <>
-              <Copy className="w-4 h-4" />
+              <Copy className="w-3.5 h-3.5" />
               <span>复制</span>
             </>
           )}
         </button>
       </div>
-      <SyntaxHighlighter
-        language={language || 'text'}
-        style={oneDark}
-        customStyle={{
-          margin: 0,
-          borderRadius: '0 0 0.5rem 0.5rem',
-          padding: '1rem',
-          fontSize: '0.875rem',
-          background: '#1a1b26',
-        }}
-        showLineNumbers
-      >
-        {code}
-      </SyntaxHighlighter>
+
+      {/* Code content with line numbers */}
+      <div className="flex bg-[#1a1b26]">
+        {/* Line numbers */}
+        <div
+          className="py-4 pr-4 pl-4 text-right select-none text-gray-500 text-xs font-mono leading-6 border-r border-gray-700/50"
+          aria-hidden="true"
+        >
+          {Array.from({ length: lineCount }, (_, i) => (
+            <div
+              key={i}
+              className={
+                highlightLines.includes(i + 1) ? 'bg-yellow-900/20 -mx-4 px-4 text-gray-300' : ''
+              }
+            >
+              {i + 1}
+            </div>
+          ))}
+        </div>
+
+        {/* Code */}
+        <div className="flex-1 overflow-x-auto">
+          <SyntaxHighlighter
+            ref={codeRef as React.RefObject<never>}
+            language={language || 'text'}
+            style={oneDark}
+            customStyle={{
+              margin: 0,
+              padding: '1rem',
+              paddingLeft: '1.5rem',
+              fontSize: '0.875rem',
+              lineHeight: '1.5rem',
+              background: 'transparent',
+            }}
+            showLineNumbers={false}
+            wrapLines
+            lineProps={{
+              style: { display: 'block' },
+            }}
+          >
+            {code}
+          </SyntaxHighlighter>
+        </div>
+      </div>
     </div>
   );
 }

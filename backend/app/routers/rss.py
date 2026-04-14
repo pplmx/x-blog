@@ -15,12 +15,34 @@ rss_router = APIRouter(prefix="", tags=["rss"])
 seo_router = APIRouter(tags=["seo"])
 
 
-def generate_rss_feed(posts: list, site_url: str, title: str, description: str) -> str:
-    """Generate RSS 2.0 feed."""
+def generate_rss_feed(posts: list, site_url: str, title: str, description: str, full_content: bool = False) -> str:
+    """Generate RSS 2.0 feed.
+
+    Args:
+        posts: List of posts to include
+        site_url: Base URL of the site
+        title: Feed title
+        description: Feed description
+        full_content: If True, include full post content. If False, use excerpt.
+    """
     items = []
     for post in posts:
         pub_date = post.created_at.strftime("%a, %d %b %Y %H:%M:%S GMT")
-        items.append(f"""<item>
+
+        if full_content:
+            # Full content RSS
+            content = f"<content:encoded><![CDATA[{post.content}]]></content:encoded>"
+            items.append(f"""<item>
+        <title><![CDATA[{post.title}]]></title>
+        <link>{site_url}/posts/{post.slug}</link>
+        <guid isPermaLink="true">{site_url}/posts/{post.slug}</guid>
+        <pubDate>{pub_date}</pubDate>
+        <description><![CDATA[{post.excerpt or ""}]]></description>
+        {content}
+    </item>""")
+        else:
+            # Excerpt RSS (default)
+            items.append(f"""<item>
         <title><![CDATA[{post.title}]]></title>
         <link>{site_url}/posts/{post.slug}</link>
         <guid isPermaLink="true">{site_url}/posts/{post.slug}</guid>
@@ -29,7 +51,7 @@ def generate_rss_feed(posts: list, site_url: str, title: str, description: str) 
     </item>""")
 
     rss = f"""<?xml version="1.0" encoding="UTF-8"?>
-<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom" xmlns:content="http://purl.org/rss/1.0/modules/content/">
 <channel>
     <title>{title}</title>
     <link>{site_url}</link>
@@ -44,15 +66,19 @@ def generate_rss_feed(posts: list, site_url: str, title: str, description: str) 
 
 
 @rss_router.get("/feed.xml")
-def get_rss_feed(db: Session = Depends(get_db)):
-    """Get RSS 2.0 feed of published posts."""
+def get_rss_feed(full: bool = False, db: Session = Depends(get_db)):
+    """Get RSS 2.0 feed of published posts.
+
+    Args:
+        full: If True, include full post content instead of excerpt.
+    """
     posts, _ = crud.get_posts(db, skip=0, limit=20, published=True)
 
     site_url = getattr(settings, "site_url", "http://localhost:3000")
     title = getattr(settings, "site_title", "X-Blog")
     description = getattr(settings, "site_description", "A modern blog built with FastAPI and Next.js")
 
-    rss_content = generate_rss_feed(posts, site_url, title, description)
+    rss_content = generate_rss_feed(posts, site_url, title, description, full_content=full)
 
     return Response(content=rss_content, media_type="application/rss+xml")
 
