@@ -11,6 +11,7 @@ import type { Metadata } from 'next';
 import dynamic from 'next/dynamic';
 import ViewTracker from '@/components/ViewTracker';
 import { Calendar, Folder, Tag as TagIcon, Eye, ArrowLeft, Share2, Clock } from 'lucide-react';
+import { calculateReadingTime, formatReadingTime } from '@/lib/reading-time';
 
 const CommentList = dynamic(() => import('@/components/CommentList'), {
   loading: () => <div className="animate-pulse h-32 bg-gray-50 rounded-xl" />,
@@ -59,7 +60,8 @@ function PostContent({ post }: { post: Awaited<ReturnType<typeof fetchPost>> }) 
     day: 'numeric',
   });
 
-  const readTime = Math.max(1, Math.ceil(post.content.length / 500));
+  const readTime = calculateReadingTime(post.content);
+  const readTimeText = formatReadingTime(readTime);
   const toc: TocItem[] = extractToc(post.content);
 
   return (
@@ -93,7 +95,7 @@ function PostContent({ post }: { post: Awaited<ReturnType<typeof fetchPost>> }) 
               </span>
               <span className="flex items-center gap-1.5">
                 <Clock className="w-4 h-4" />
-                {readTime} 分钟阅读
+                {readTimeText}
               </span>
               <span className="flex items-center gap-1.5">
                 <Eye className="w-4 h-4" />
