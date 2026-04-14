@@ -11,7 +11,13 @@ import type { Metadata } from 'next';
 import dynamic from 'next/dynamic';
 import ViewTracker from '@/components/ViewTracker';
 import { Calendar, Folder, Tag as TagIcon, Eye, ArrowLeft, Share2, Clock } from 'lucide-react';
-import { calculateReadingTime, formatReadingTime } from '@/lib/reading-time';
+import {
+  calculateReadingTime,
+  formatReadingTime,
+  countWords,
+  formatWordCount,
+} from '@/lib/reading-time';
+import { Type } from 'lucide-react';
 import ShareButtons from '@/components/ShareButtons';
 
 const CommentList = dynamic(() => import('@/components/CommentList'), {
@@ -63,6 +69,8 @@ function PostContent({ post }: { post: Awaited<ReturnType<typeof fetchPost>> }) 
 
   const readTime = calculateReadingTime(post.content);
   const readTimeText = formatReadingTime(readTime);
+  const wordCount = countWords(post.content);
+  const wordCountText = formatWordCount(wordCount);
   const toc: TocItem[] = extractToc(post.content);
 
   return (
@@ -97,6 +105,10 @@ function PostContent({ post }: { post: Awaited<ReturnType<typeof fetchPost>> }) 
               <span className="flex items-center gap-1.5">
                 <Clock className="w-4 h-4" />
                 {readTimeText}
+              </span>
+              <span className="flex items-center gap-1.5">
+                <Type className="w-4 h-4" />
+                {wordCountText}
               </span>
               <span className="flex items-center gap-1.5">
                 <Eye className="w-4 h-4" />
