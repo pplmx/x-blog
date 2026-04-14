@@ -18,6 +18,7 @@ from app.routers import admin, categories, comments, posts, search, tags, upload
 from app.routers.export import router as export_router
 from app.routers.health import router as health_router
 from app.routers.rss import rss_router, seo_router
+from app.routers.stats import router as stats_router
 
 RATE_LIMIT_PER_MINUTE = os.getenv("RATE_LIMIT_PER_MINUTE", "60")
 limiter = Limiter(key_func=get_remote_address)
@@ -149,6 +150,7 @@ async def http_exception_handler(_request: Request, exc: HTTPException):
 app.add_exception_handler(RateLimitExceeded, rate_limit_exceeded_handler)
 
 app.include_router(health_router)
+app.include_router(stats_router)
 app.include_router(posts.router)
 app.include_router(categories.router)
 app.include_router(tags.router)

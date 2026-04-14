@@ -2,7 +2,7 @@ from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 
 from app import models, schemas
-from app.cache import categories_cache, tags_cache, clear_posts_cache, clear_categories_cache, clear_tags_cache
+from app.cache import categories_cache, clear_categories_cache, clear_posts_cache, clear_tags_cache, tags_cache
 
 
 def get_posts(
