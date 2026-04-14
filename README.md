@@ -20,14 +20,13 @@ A modern full-stack blog application built with FastAPI + Next.js
 - 🎨 **Beautiful UI** - Clean design with Tailwind CSS v4 + shadcn/ui
 - 📱 **Responsive** - Mobile-friendly responsive layout
 - 🔒 **Admin Panel** - Built-in admin dashboard for content management
-- 🧪 **Well Tested** - 154 tests (68 backend + 86 frontend)
+- 🧪 **Well Tested** - 151 tests (68 backend + 83 frontend)
 - ✅ **Type Safe** - Full TypeScript support + Pydantic validation
 - 🔍 **Full-text Search** - Post search functionality
 - 🌙 **Dark Mode** - System preference aware dark mode
 - 📊 **Reading Analytics** - View counts, like counts, reading progress
 - 💬 **Comments** - Nested comment support with replies
 - 🏷️ **Tags & Categories** - Organize posts with tags and categories
-- 📱 **PWA Support** - Installable as a web app
 - 🎯 **SEO Optimized** - Open Graph, JSON-LD structured data
 - ⬆️ **Pinned Posts** - Pin important posts to top
 - 📤 **Data Export** - Export posts/comments as CSV
@@ -99,7 +98,7 @@ See [docs/deployment.md](./docs/deployment.md) for detailed deployment guide.
 | `just frontend`      | Run Next.js dev server                   |
 | `just lint`          | Lint code (ruff + biome)                 |
 | `just format`        | Format code                              |
-| `just test`          | Run all tests (68 backend + 86 frontend) |
+| `just test`          | Run all tests (68 backend + 83 frontend) |
 | `just test-backend`  | Run backend tests (parallel)             |
 | `just test-frontend` | Run frontend tests                       |
 | `just fix`           | Auto-fix lint issues                     |
@@ -225,8 +224,8 @@ just test-frontend-coverage
 **Test Statistics:**
 
 - Backend: 68 tests (pytest + pytest-xdist)
-- Frontend: 86 tests (Vitest)
-- **Total: 154 tests**
+- Frontend: 83 tests (Vitest)
+- **Total: 151 tests**
 
 ## 🤝 Contributing
 
