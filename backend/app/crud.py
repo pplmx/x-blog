@@ -2,6 +2,7 @@ from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 
 from app import models, schemas
+from app.cache import categories_cache, tags_cache, clear_posts_cache, clear_categories_cache, clear_tags_cache
 
 
 def get_posts(
@@ -70,6 +71,11 @@ def create_post(db: Session, post: schemas.PostCreate) -> models.Post:
     except Exception:
         db.rollback()
         raise
+
+    # Clear cache
+    clear_posts_cache()
+    clear_tags_cache()
+
     return db_post
 
 
@@ -105,6 +111,11 @@ def update_post(db: Session, post_id: int, post: schemas.PostUpdate) -> models.P
     except Exception:
         db.rollback()
         raise
+
+    # Clear cache
+    clear_posts_cache()
+    clear_tags_cache()
+
     return db_post
 
 
@@ -114,11 +125,25 @@ def delete_post(db: Session, post_id: int) -> bool:
         return False
     db.delete(db_post)
     db.commit()
+
+    # Clear cache
+    clear_posts_cache()
+
     return True
 
 
 def get_categories(db: Session) -> list[models.Category]:
-    return db.query(models.Category).all()
+    # Check cache first
+    cache_key = "all_categories"
+    if cache_key in categories_cache:
+        return categories_cache[cache_key]
+
+    # Query database
+    categories = db.query(models.Category).all()
+
+    # Cache the result
+    categories_cache[cache_key] = categories
+    return categories
 
 
 def get_category(db: Session, category_id: int) -> models.Category | None:
@@ -130,6 +155,8 @@ def create_category(db: Session, category: schemas.CategoryCreate) -> models.Cat
     db.add(db_category)
     db.commit()
     db.refresh(db_category)
+    # Clear cache
+    clear_categories_cache()
     return db_category
 
 
@@ -140,6 +167,8 @@ def update_category(db: Session, category_id: int, category: schemas.CategoryCre
     db_category.name = category.name
     db.commit()
     db.refresh(db_category)
+    # Clear cache
+    clear_categories_cache()
     return db_category
 
 
@@ -149,11 +178,23 @@ def delete_category(db: Session, category_id: int) -> bool:
         return False
     db.delete(db_category)
     db.commit()
+    # Clear cache
+    clear_categories_cache()
     return True
 
 
 def get_tags(db: Session) -> list[models.Tag]:
-    return db.query(models.Tag).all()
+    # Check cache first
+    cache_key = "all_tags"
+    if cache_key in tags_cache:
+        return tags_cache[cache_key]
+
+    # Query database
+    tags = db.query(models.Tag).all()
+
+    # Cache the result
+    tags_cache[cache_key] = tags
+    return tags
 
 
 def get_tag(db: Session, tag_id: int) -> models.Tag:
@@ -169,6 +210,8 @@ def create_tag(db: Session, tag: schemas.TagCreate) -> models.Tag:
     db.add(db_tag)
     db.commit()
     db.refresh(db_tag)
+    # Clear cache
+    clear_tags_cache()
     return db_tag
 
 
@@ -178,6 +221,8 @@ def update_tag(db: Session, tag_id: int, tag: schemas.TagCreate) -> models.Tag:
         db_tag.name = tag.name
         db.commit()
         db.refresh(db_tag)
+        # Clear cache
+        clear_tags_cache()
     return db_tag
 
 
@@ -186,6 +231,8 @@ def delete_tag(db: Session, tag_id: int) -> bool:
     if db_tag:
         db.delete(db_tag)
         db.commit()
+        # Clear cache
+        clear_tags_cache()
         return True
     return False
 
