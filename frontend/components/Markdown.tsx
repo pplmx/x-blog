@@ -6,6 +6,7 @@ import { oneDark } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import { Copy, Check } from 'lucide-react';
 import mermaid from 'mermaid';
 import katex from 'katex';
+import { useImageLightbox } from './ImageLightboxContext';
 
 interface CodeBlockProps {
   language: string;
@@ -141,11 +142,31 @@ function KatexFormula({ formula, displayMode }: { formula: string; displayMode: 
   );
 }
 
-function LazyImage({ src, alt }: { src: string; alt: string }) {
+function LazyImage({
+  src,
+  alt,
+  index,
+  images,
+}: {
+  src: string;
+  alt: string;
+  index: number;
+  images: { src: string; alt: string }[];
+}) {
   const [loaded, setLoaded] = useState(false);
+  const { openLightbox } = useImageLightbox();
+
+  const handleClick = () => {
+    openLightbox(images, index);
+  };
 
   return (
-    <div className="relative w-full h-64 my-4 overflow-hidden rounded-lg bg-gray-100 dark:bg-gray-800">
+    <button
+      type="button"
+      aria-label={`查看图片: ${alt}`}
+      className="relative w-full h-64 my-4 overflow-hidden rounded-lg bg-gray-100 dark:bg-gray-800 cursor-zoom-in border-0 p-0"
+      onClick={handleClick}
+    >
       <div
         className={`absolute inset-0 bg-cover bg-center transition-opacity duration-500 ${
           loaded ? 'opacity-0' : 'opacity-100'
@@ -161,7 +182,7 @@ function LazyImage({ src, alt }: { src: string; alt: string }) {
         loading="lazy"
         onLoad={() => setLoaded(true)}
       />
-    </div>
+    </button>
   );
 }
 
@@ -247,7 +268,7 @@ export default function Markdown({ content }: MarkdownProps) {
         <CodeBlock key={index} language={block.lang} code={block.code} />
       ))}
       {images.map((img, index) => (
-        <LazyImage key={index} src={img.src} alt={img.alt} />
+        <LazyImage key={index} src={img.src} alt={img.alt} index={index} images={images} />
       ))}
     </div>
   );
