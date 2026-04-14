@@ -1,7 +1,9 @@
 """In-memory cache implementation using cachetools."""
 
-from typing import Any, Callable, TypeVar, ParamSpec
+from collections.abc import Callable
 from functools import wraps
+from typing import Any, ParamSpec, TypeVar
+
 from cachetools import TTLCache
 
 from app.middleware.logging import get_logger
@@ -57,6 +59,7 @@ P = ParamSpec("P")
 
 def cached(cache: TTLCache, key_func: Callable[..., Any]):
     """Decorator to cache function results."""
+
     def decorator(func: Callable[P, T]) -> Callable[P, T]:
         @wraps(func)
         def wrapper(*args: P.args, **kwargs: P.kwargs) -> T:
@@ -76,6 +79,7 @@ def cached(cache: TTLCache, key_func: Callable[..., Any]):
             return result
 
         return wrapper
+
     return decorator
 
 
@@ -83,7 +87,11 @@ def get_cache_info() -> dict[str, dict[str, Any]]:
     """Get cache statistics."""
     return {
         "posts": {"size": len(posts_cache), "maxsize": posts_cache.maxsize, "ttl": posts_cache.ttl},
-        "post_detail": {"size": len(post_detail_cache), "maxsize": post_detail_cache.maxsize, "ttl": post_detail_cache.ttl},
+        "post_detail": {
+            "size": len(post_detail_cache),
+            "maxsize": post_detail_cache.maxsize,
+            "ttl": post_detail_cache.ttl,
+        },
         "categories": {"size": len(categories_cache), "maxsize": categories_cache.maxsize, "ttl": categories_cache.ttl},
         "tags": {"size": len(tags_cache), "maxsize": tags_cache.maxsize, "ttl": tags_cache.ttl},
         "stats": {"size": len(stats_cache), "maxsize": stats_cache.maxsize, "ttl": stats_cache.ttl},
