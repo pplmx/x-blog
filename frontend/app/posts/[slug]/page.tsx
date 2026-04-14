@@ -12,6 +12,7 @@ import dynamic from 'next/dynamic';
 import ViewTracker from '@/components/ViewTracker';
 import { Calendar, Folder, Tag as TagIcon, Eye, ArrowLeft, Share2, Clock } from 'lucide-react';
 import { calculateReadingTime, formatReadingTime } from '@/lib/reading-time';
+import ShareButtons from '@/components/ShareButtons';
 
 const CommentList = dynamic(() => import('@/components/CommentList'), {
   loading: () => <div className="animate-pulse h-32 bg-gray-50 rounded-xl" />,
@@ -134,6 +135,9 @@ function PostContent({ post }: { post: Awaited<ReturnType<typeof fetchPost>> }) 
           <div className="prose prose-lg dark:prose-invert max-w-none mb-12">
             <Markdown content={post.content} />
           </div>
+
+          {/* 分享按钮 */}
+          <ShareButtons title={post.title} />
 
           {/* 分割线 */}
           <div className="h-px bg-gradient-to-r from-transparent via-gray-200 dark:via-gray-700 to-transparent mb-8" />
