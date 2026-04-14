@@ -1,3 +1,4 @@
+import asyncio
 import os
 from contextlib import asynccontextmanager
 from pathlib import Path
@@ -11,26 +12,47 @@ from slowapi import Limiter
 from slowapi.errors import RateLimitExceeded
 from slowapi.util import get_remote_address
 
+from app.cache import cache_clear
 from app.database import Base, engine
 from app.exceptions import AppException
-from app.middleware import RequestLoggingMiddleware, setup_logging
+from app.middleware import RequestLoggingMiddleware, get_logger, setup_logging
 from app.routers import admin, categories, comments, posts, search, tags, upload
 from app.routers.export import router as export_router
 from app.routers.health import router as health_router
 from app.routers.rss import rss_router, seo_router
 from app.routers.stats import router as stats_router
 
+logger = get_logger(__name__)
+
 RATE_LIMIT_PER_MINUTE = os.getenv("RATE_LIMIT_PER_MINUTE", "60")
+REQUEST_TIMEOUT = int(os.getenv("REQUEST_TIMEOUT", "30"))
 limiter = Limiter(key_func=get_remote_address)
 
 
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
-    # Initialize logging on startup
+    """Application lifespan handler for startup and shutdown."""
+    # Startup
     setup_logging()
+    logger.info("app_startup", version="0.1.0")
+
     # Create database tables
     Base.metadata.create_all(bind=engine)
+
+    # Register graceful shutdown handler
+    def shutdown_handler():
+        logger.info("app_shutdown_started")
+        cache_clear()
+        engine.dispose()
+        logger.info("app_shutdown_complete")
+
+    # Note: Signal handlers should be registered at the process level
+    # when running with uvicorn --timeout-keep-alive or similar
+
     yield
+
+    # Shutdown
+    shutdown_handler()
 
 
 app = FastAPI(
@@ -63,6 +85,29 @@ async def add_security_headers(request: Request, call_next):
     response.headers["X-XSS-Protection"] = "1; mode=block"
     response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
     return response
+
+
+@app.middleware("http")
+async def timeout_middleware(request: Request, call_next):
+    """Add request timeout handling."""
+    try:
+        response = await asyncio.wait_for(
+            call_next(request),
+            timeout=REQUEST_TIMEOUT,
+        )
+        return response
+    except TimeoutError:
+        logger.warning("request_timeout", path=request.url.path, timeout=REQUEST_TIMEOUT)
+        return JSONResponse(
+            status_code=504,
+            content={
+                "error": {
+                    "code": "GATEWAY_TIMEOUT",
+                    "message": "Request timeout",
+                    "details": {"timeout_seconds": REQUEST_TIMEOUT},
+                }
+            },
+        )
 
 
 app.state.limiter = limiter
