@@ -31,6 +31,7 @@ export interface PostList {
   published: boolean;
   created_at: string;
   views: number;
+  cover_image: string | null;
   category: Category | null;
   tags: Tag[];
 }
