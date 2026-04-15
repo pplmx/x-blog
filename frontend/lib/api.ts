@@ -138,7 +138,7 @@ export async function fetchComments(postId: number): Promise<Comment[]> {
 
 export async function createComment(
   postId: number,
-  data: { nickname: string; email: string; content: string }
+  data: { nickname: string; email: string; content: string; parent_id?: number | null }
 ): Promise<Comment> {
   const res = await fetchWithTimeout(`${API_BASE}/api/comments/post/${postId}`, {
     method: 'POST',

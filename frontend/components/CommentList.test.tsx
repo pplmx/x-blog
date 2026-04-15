@@ -1,7 +1,15 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import CommentList from './CommentList';
+
+// Mock next/navigation
+vi.mock('next/navigation', () => ({
+  useRouter: () => ({
+    refresh: vi.fn(),
+  }),
+}));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -43,7 +51,7 @@ describe('CommentList', () => {
 
   it('should render loading state', async () => {
     renderWithProvider(<CommentList postId={1} />);
-    expect(screen.getByText('加载中...')).toBeDefined();
+    expect(screen.getByText('评论加载中...')).toBeDefined();
   });
 
   it('should render comments when loaded', async () => {
