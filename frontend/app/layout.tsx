@@ -68,9 +68,22 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <ImageLightboxProvider>
           <Providers>
             <ErrorBoundary>
+              {/* Skip to main content (keyboard accessibility) */}
+              <a
+                href="#main-content"
+                className="sr-only focus:not-sr-only focus:fixed focus:top-4 focus:left-4 focus:z-[100] focus:px-4 focus:py-2 focus:bg-blue-600 focus:text-white focus:rounded-md focus:font-medium focus:shadow-lg"
+              >
+                跳转到主要内容
+              </a>
               <div className="min-h-screen flex flex-col">
                 <Header />
-                <main className="flex-1 container mx-auto px-4 py-8">{children}</main>
+                <main
+                  id="main-content"
+                  className="flex-1 container mx-auto px-4 py-8"
+                  tabIndex={-1}
+                >
+                  {children}
+                </main>
                 <Footer />
                 <BackToTop />
               </div>

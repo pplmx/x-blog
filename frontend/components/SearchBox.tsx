@@ -51,6 +51,8 @@ export default function SearchBox() {
     return () => clearTimeout(timer);
   }, [query]);
 
+  const listboxId = 'search-suggestions';
+
   const handleSearch = (q: string) => {
     setShow(false);
     router.push(`/search?q=${encodeURIComponent(q)}`);
@@ -59,6 +61,10 @@ export default function SearchBox() {
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && query.trim()) {
       handleSearch(query);
+    }
+    if (show && suggestions.length > 0 && e.key === 'Escape') {
+      setShow(false);
+      inputRef.current?.blur();
     }
   };
 
@@ -72,17 +78,31 @@ export default function SearchBox() {
         onKeyDown={handleKeyDown}
         onFocus={() => query.trim() && setShow(true)}
         placeholder="搜索文章..."
+        role="combobox"
+        aria-label="搜索文章"
+        aria-expanded={show && suggestions.length > 0}
+        aria-haspopup="listbox"
+        aria-controls={listboxId}
+        aria-autocomplete="list"
         className="px-3 py-1.5 border rounded-md text-sm w-32 md:w-48 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:w-40 md:focus:w-48 transition-all"
       />
 
       {show && query.trim() && (
-        <div className="absolute top-full mt-1 right-0 w-64 bg-white border rounded-md shadow-lg z-50">
+        <div
+          id={listboxId}
+          role="listbox"
+          aria-label="搜索建议"
+          className="absolute top-full mt-1 right-0 w-64 bg-white border rounded-md shadow-lg z-50"
+        >
           {loading ? (
-            <div className="p-3 text-sm text-gray-500">加载中...</div>
+            <div className="p-3 text-sm text-gray-500" role="status" aria-live="polite">
+              加载中...
+            </div>
           ) : suggestions.length > 0 ? (
             <ul>
               {suggestions.map((s, i) => (
-                <li key={i}>
+                // biome-ignore lint/a11y/noNoninteractiveElementToInteractiveRole: <li role="option"> is valid combobox pattern
+                <li key={i} role="option" tabIndex={0}>
                   <button
                     onClick={() =>
                       handleSearch(
@@ -101,7 +121,9 @@ export default function SearchBox() {
               ))}
             </ul>
           ) : (
-            <div className="p-3 text-sm text-gray-500">无结果</div>
+            <div className="p-3 text-sm text-gray-500" role="status">
+              无结果
+            </div>
           )}
         </div>
       )}
