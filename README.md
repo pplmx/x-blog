@@ -90,20 +90,20 @@ See [docs/deployment.md](./docs/deployment.md) for detailed deployment guide.
 
 ## 🛠️ Commands
 
-| Command              | Description                              |
-| -------------------- | ---------------------------------------- |
-| `just install`       | Install all dependencies                 |
-| `just dev`           | Run dev servers (backend + frontend)     |
-| `just backend`       | Run FastAPI server                       |
-| `just frontend`      | Run Next.js dev server                   |
-| `just lint`          | Lint code (ruff + biome)                 |
-| `just format`        | Format code                              |
+| Command              | Description                                |
+| -------------------- | ------------------------------------------ |
+| `just install`       | Install all dependencies                   |
+| `just dev`           | Run dev servers (backend + frontend)       |
+| `just backend`       | Run FastAPI server                         |
+| `just frontend`      | Run Next.js dev server                     |
+| `just lint`          | Lint code (ruff + biome)                   |
+| `just format`        | Format code                                |
 | `just test`          | Run all tests (169 backend + 113 frontend) |
-| `just test-backend`  | Run backend tests (parallel)             |
-| `just test-frontend` | Run frontend tests                       |
-| `just fix`           | Auto-fix lint issues                     |
-| `just ci`            | Run lint + format + test                 |
-| `just clean`         | Clean generated files                    |
+| `just test-backend`  | Run backend tests (parallel)               |
+| `just test-frontend` | Run frontend tests                         |
+| `just fix`           | Auto-fix lint issues                       |
+| `just ci`            | Run lint + format + test                   |
+| `just clean`         | Clean generated files                      |
 
 ## 📡 API Endpoints
 

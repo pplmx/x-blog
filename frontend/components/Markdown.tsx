@@ -6,7 +6,24 @@ import { oneDark } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import { Copy, Check, FileCode } from 'lucide-react';
 import mermaid from 'mermaid';
 import katex from 'katex';
+import DOMPurify from 'dompurify';
 import { useImageLightbox } from './ImageLightboxContext';
+
+// Allowed URL schemes and hostname whitelist (blog's own domain)
+const ALLOWED_SCHEMES = ['https:', 'http:', 'mailto:'];
+const ALLOWED_HOSTNAMES = [window.location.hostname];
+
+/** Sanitize a URL: reject javascript:, data:, vbscript: and external hosts */
+function sanitizeUrl(href: string): string {
+  try {
+    const url = new URL(href, window.location.origin);
+    if (!ALLOWED_SCHEMES.includes(url.protocol)) return '#blocked';
+    if (url.hostname !== window.location.hostname) return '#external';
+    return url.href;
+  } catch {
+    return '#invalid';
+  }
+}
 
 interface CodeBlockProps {
   language: string;
@@ -291,11 +308,17 @@ export default function Markdown({ content }: MarkdownProps) {
     }
   );
 
-  // 简单的 markdown 转换
+  // Markdown 转换（链接走白名单）
   processedContent = processedContent
     .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
     .replace(/\*(.+?)\*/g, '<em>$1</em>')
-    .replace(/\[(.+?)\]\((.+?)\)/g, '<a href="$2" class="text-blue-600 hover:underline">$1</a>')
+    .replace(/\[(.+?)\]\((.+?)\)/g, (_, text, href) => {
+      const safe = sanitizeUrl(href);
+      if (safe === '#external') {
+        return `<a href="${safe}" class="text-blue-600 hover:underline" rel="noopener noreferrer nofollow" target="_blank">${text}</a>`;
+      }
+      return `<a href="${safe}" class="text-blue-600 hover:underline">${text}</a>`;
+    })
     .replace(/^### (.+)$/gm, '<h3 id="$1" class="text-xl font-bold mt-6 mb-3">$1</h3>')
     .replace(/^## (.+)$/gm, '<h2 id="$1" class="text-2xl font-bold mt-8 mb-4">$1</h2>')
     .replace(/^# (.+)$/gm, '<h1 id="$1" class="text-3xl font-bold mt-8 mb-4">$1</h1>')
@@ -303,9 +326,34 @@ export default function Markdown({ content }: MarkdownProps) {
     .replace(/^\d+\. (.+)$/gm, '<li class="ml-4 list-decimal">$1</li>')
     .replace(/\n\n/g, '</p><p class="my-4">');
 
+  // DOMPurify 二次净化（防御遗漏的 XSS 向量）
+  const sanitizedHtml = DOMPurify.sanitize(processedContent, {
+    ALLOWED_TAGS: [
+      'p',
+      'strong',
+      'em',
+      'a',
+      'h1',
+      'h2',
+      'h3',
+      'li',
+      'ul',
+      'ol',
+      'blockquote',
+      'code',
+      'pre',
+      'br',
+      'hr',
+    ],
+    ALLOWED_ATTR: ['href', 'class', 'id', 'target', 'rel', 'data-index'],
+    ALLOW_DATA_ATTR: true,
+    FORBID_TAGS: ['script', 'style', 'iframe', 'object', 'embed', 'form', 'input'],
+    FORBID_ATTR: ['onerror', 'onload', 'onclick', 'onmouseover', 'onfocus'],
+  });
+
   return (
     <div className="prose dark:prose-invert max-w-none">
-      <div dangerouslySetInnerHTML={{ __html: processedContent }} />
+      <div dangerouslySetInnerHTML={{ __html: sanitizedHtml }} />
       {mathBlocks.map((block, index) => (
         <KatexFormula
           key={`math-${index}`}
