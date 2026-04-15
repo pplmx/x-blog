@@ -5,7 +5,7 @@
 # -----------------------------------------------------------------------------
 # Stage 1: Base - Node.js with pnpm
 # -----------------------------------------------------------------------------
-FROM node:24-alpine AS base
+FROM node:24.8.1-alpine3.20 AS base
 
 # Install pnpm
 RUN corepack enable && corepack prepare pnpm@latest --activate
