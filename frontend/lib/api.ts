@@ -63,7 +63,7 @@ async function fetchWithTimeout(url: string, options: FetchOptions = {}): Promis
     // Retry on failure
     if (attempt < retries) {
       // Exponential backoff
-      const delay = RETRY_DELAY * Math.pow(2, attempt);
+      const delay = RETRY_DELAY * 2 ** attempt;
       await new Promise((resolve) => setTimeout(resolve, delay));
     }
   }

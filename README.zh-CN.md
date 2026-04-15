@@ -90,20 +90,20 @@ docker-compose logs -f
 
 ## 🛠️ 命令
 
-| 命令                 | 说明                             |
-| -------------------- | -------------------------------- |
-| `just install`       | 安装所有依赖                     |
-| `just dev`           | 运行开发服务器 (后端 + 前端)     |
-| `just backend`       | 运行 FastAPI 后端                |
-| `just frontend`      | 运行 Next.js 前端                |
-| `just lint`          | 代码检查 (ruff + biome)          |
-| `just format`        | 代码格式化                       |
+| 命令                 | 说明                               |
+| -------------------- | ---------------------------------- |
+| `just install`       | 安装所有依赖                       |
+| `just dev`           | 运行开发服务器 (后端 + 前端)       |
+| `just backend`       | 运行 FastAPI 后端                  |
+| `just frontend`      | 运行 Next.js 前端                  |
+| `just lint`          | 代码检查 (ruff + biome)            |
+| `just format`        | 代码格式化                         |
 | `just test`          | 运行所有测试 (169 后端 + 113 前端) |
-| `just test-backend`  | 运行后端测试 (并行)              |
-| `just test-frontend` | 运行前端测试                     |
-| `just fix`           | 自动修复代码问题                 |
-| `just ci`            | 运行 lint + format + test        |
-| `just clean`         | 清理生成文件                     |
+| `just test-backend`  | 运行后端测试 (并行)                |
+| `just test-frontend` | 运行前端测试                       |
+| `just fix`           | 自动修复代码问题                   |
+| `just ci`            | 运行 lint + format + test          |
+| `just clean`         | 清理生成文件                       |
 
 ## 📡 API 接口
 
