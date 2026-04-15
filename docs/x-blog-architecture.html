@@ -32,7 +32,7 @@
       padding: 1.5rem;
       overflow-x: auto;
     }
-    svg { width: 100%; min-width: 960px; display: block; }
+    svg { width: 100%; min-width: 1100px; display: block; }
     .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1rem; margin-top: 2rem; }
     .card {
       background: rgba(15, 23, 42, 0.5);
@@ -47,10 +47,21 @@
     .card-dot.violet { background: #a78bfa; }
     .card-dot.amber { background: #fbbf24; }
     .card-dot.rose { background: #fb7185; }
+    .card-dot.orange { background: #fb923c; }
     .card h3 { font-size: 0.875rem; font-weight: 600; }
     .card ul { list-style: none; color: #94a3b8; font-size: 0.75rem; }
     .card li { margin-bottom: 0.375rem; }
     .footer { text-align: center; margin-top: 1.5rem; color: #475569; font-size: 0.75rem; }
+    .badge {
+      display: inline-block;
+      padding: 0.1rem 0.4rem;
+      border-radius: 4px;
+      font-size: 0.6rem;
+      font-weight: 600;
+      margin-left: 0.25rem;
+    }
+    .badge.new { background: rgba(34, 197, 94, 0.2); color: #4ade80; border: 1px solid rgba(34,197,94,0.3); }
+    .badge.updated { background: rgba(251, 191, 36, 0.2); color: #fbbf24; border: 1px solid rgba(251,191,36,0.3); }
   </style>
 </head>
 <body>
@@ -59,18 +70,31 @@
       <div class="header-row">
         <div class="pulse-dot"></div>
         <h1>X-Blog Architecture</h1>
+        <span style="font-size:0.7rem;color:#475569;margin-left:0.5rem;">Updated 2026-04</span>
       </div>
-      <p class="subtitle">FastAPI + Next.js 16 Blog System • SQLite + React 19 + Tailwind CSS</p>
+      <p class="subtitle">FastAPI + Next.js 16 · SQLite · React 19 · Tailwind CSS · 282 Tests</p>
     </div>
 
     <div class="diagram-container">
-      <svg viewBox="0 0 1000 720">
+      <svg viewBox="0 0 1100 820">
         <defs>
           <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
             <polygon points="0 0, 10 3.5, 0 7" fill="#64748b" />
           </marker>
           <marker id="arrowhead2" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
             <polygon points="0 0, 10 3.5, 0 7" fill="#94a3b8" />
+          </marker>
+          <marker id="arrowhead-cyan" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+            <polygon points="0 0, 10 3.5, 0 7" fill="#22d3ee" />
+          </marker>
+          <marker id="arrowhead-emerald" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+            <polygon points="0 0, 10 3.5, 0 7" fill="#34d399" />
+          </marker>
+          <marker id="arrowhead-amber" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+            <polygon points="0 0, 10 3.5, 0 7" fill="#fb923c" />
+          </marker>
+          <marker id="arrowhead-rose" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+            <polygon points="0 0, 10 3.5, 0 7" fill="#fb7185" />
           </marker>
           <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
             <path d="M 40 0 L 0 0 0 40" fill="none" stroke="#1e293b" stroke-width="0.5"/>
@@ -80,226 +104,382 @@
         <!-- Background Grid -->
         <rect width="100%" height="100%" fill="url(#grid)" />
 
-        <!-- === BOUNDARIES === -->
+        <!-- ==================== BOUNDARIES ==================== -->
+
+        <!-- Frontend Region -->
+        <rect x="20" y="20" width="320" height="520" rx="12" fill="rgba(8, 51, 68, 0.03)" stroke="#22d3ee" stroke-width="1" stroke-dasharray="5,4"/>
+        <text x="34" y="38" fill="#22d3ee" font-size="9" font-weight="600">Frontend Cluster (Next.js 16)</text>
 
         <!-- Backend Region -->
-        <rect x="340" y="30" width="620" height="420" rx="12" fill="rgba(34, 197, 94, 0.03)" stroke="#34d399" stroke-width="1" stroke-dasharray="6,4"/>
-        <text x="354" y="48" fill="#34d399" font-size="9" font-weight="600">Backend Cluster</text>
+        <rect x="360" y="20" width="720" height="380" rx="12" fill="rgba(6, 78, 59, 0.03)" stroke="#34d399" stroke-width="1" stroke-dasharray="5,4"/>
+        <text x="374" y="38" fill="#34d399" font-size="9" font-weight="600">Backend Cluster (FastAPI)</text>
 
         <!-- Admin Zone -->
-        <rect x="340" y="478" width="300" height="200" rx="12" fill="rgba(251, 146, 60, 0.05)" stroke="#fb923c" stroke-width="1" stroke-dasharray="5,4"/>
-        <text x="354" y="496" fill="#fb923c" font-size="9" font-weight="600">Admin Zone</text>
+        <rect x="20" y="560" width="320" height="220" rx="12" fill="rgba(251, 146, 60, 0.04)" stroke="#fb923c" stroke-width="1" stroke-dasharray="5,4"/>
+        <text x="34" y="578" fill="#fb923c" font-size="9" font-weight="600">Admin Zone</text>
 
-        <!-- === ARROWS (behind components) === -->
+        <!-- Infra Zone -->
+        <rect x="360" y="420" width="720" height="360" rx="12" fill="rgba(120, 53, 15, 0.03)" stroke="#fbbf24" stroke-width="1" stroke-dasharray="5,4"/>
+        <text x="374" y="438" fill="#fbbf24" font-size="9" font-weight="600">Infrastructure / Data Layer</text>
+
+        <!-- ==================== ARROWS ==================== -->
 
         <!-- User -> Next.js -->
-        <line x1="120" y1="130" x2="198" y2="130" stroke="#22d3ee" stroke-width="1.5" marker-end="url(#arrowhead2)"/>
-        <text x="159" y="124" fill="#94a3b8" font-size="8" text-anchor="middle">HTTP/S</text>
-        <!-- User -> Admin -->
-        <line x1="120" y1="160" x2="218" y2="160" stroke="#fb923c" stroke-width="1.5" marker-end="url(#arrowhead2)"/>
-        <text x="169" y="154" fill="#94a3b8" font-size="8" text-anchor="middle">Auth</text>
+        <line x1="120" y1="100" x2="198" y2="100" stroke="#22d3ee" stroke-width="1.5" marker-end="url(#arrowhead2)"/>
+        <text x="159" y="94" fill="#94a3b8" font-size="8" text-anchor="middle">HTTP/S</text>
+
         <!-- Next.js -> API -->
-        <line x1="348" y1="130" x2="378" y2="130" stroke="#22d3ee" stroke-width="1.5" marker-end="url(#arrowhead)"/>
-        <text x="363" y="124" fill="#94a3b8" font-size="8" text-anchor="middle">REST</text>
-        <!-- Next.js -> SQLite -->
-        <path d="M 300 175 L 300 380 Q 300 410 410 410 L 430 410" fill="none" stroke="#a78bfa" stroke-width="1.5" stroke-dasharray="4,3" marker-end="url(#arrowhead)"/>
-        <text x="370" y="398" fill="#a78bfa" font-size="8" text-anchor="middle">SQLAlchemy ORM</text>
-        <!-- Next.js -> Search -->
-        <line x1="280" y1="95" x2="280" y2="60" stroke="#22d3ee" stroke-width="1" stroke-dasharray="3,3" marker-end="url(#arrowhead2)"/>
-        <!-- Next.js -> RSS -->
-        <line x1="300" y1="95" x2="500" y2="60" stroke="#22d3ee" stroke-width="1" stroke-dasharray="3,3" marker-end="url(#arrowhead2)"/>
-        <!-- Next.js -> Sitemap -->
-        <line x1="320" y1="95" x2="700" y2="60" stroke="#22d3ee" stroke-width="1" stroke-dasharray="3,3" marker-end="url(#arrowhead2)"/>
+        <line x1="320" y1="100" x2="358" y2="100" stroke="#22d3ee" stroke-width="1.5" marker-end="url(#arrowhead-cyan)"/>
+        <text x="339" y="94" fill="#94a3b8" font-size="8" text-anchor="middle">REST API</text>
 
-        <!-- === USERS === -->
-        <rect x="30" y="80" width="100" height="110" rx="6" fill="rgba(30, 41, 59, 0.5)" stroke="#94a3b8" stroke-width="1.5"/>
-        <text x="80" y="104" fill="white" font-size="11" font-weight="600" text-anchor="middle">Users</text>
-        <text x="80" y="118" fill="#94a3b8" font-size="8" text-anchor="middle">Browser /</text>
-        <text x="80" y="130" fill="#94a3b8" font-size="8" text-anchor="middle">Mobile / RSS</text>
-        <text x="80" y="145" fill="#94a3b8" font-size="8" text-anchor="middle">Crawler</text>
-        <text x="80" y="174" fill="#94a3b8" font-size="7" text-anchor="middle">Read · Comment · Like</text>
+        <!-- User -> Admin (Auth) -->
+        <line x1="120" y1="130" x2="198" y2="130" stroke="#fb923c" stroke-width="1.5" marker-end="url(#arrowhead2)"/>
+        <text x="159" y="124" fill="#94a3b8" font-size="8" text-anchor="middle">Auth</text>
 
-        <!-- === NEXT.JS FRONTEND === -->
-        <rect x="210" y="40" width="150" height="185" rx="8" fill="rgba(8, 51, 68, 0.4)" stroke="#22d3ee" stroke-width="1.5"/>
-        <text x="285" y="63" fill="#22d3ee" font-size="12" font-weight="600" text-anchor="middle">Next.js 16</text>
-        <text x="285" y="78" fill="#94a3b8" font-size="8" text-anchor="middle">App Router · TypeScript 6</text>
-        <text x="285" y="93" fill="#94a3b8" font-size="8" text-anchor="middle">React 19 + Tailwind CSS</text>
-        <text x="285" y="108" fill="#94a3b8" font-size="7" text-anchor="middle">Vitest · Biome · MSW</text>
-        <!-- Sub-pages -->
-        <rect x="218" y="120" width="134" height="98" rx="4" fill="rgba(8, 51, 68, 0.2)" stroke="#22d3ee" stroke-width="0.5" stroke-dasharray="3,3"/>
-        <text x="285" y="135" fill="#22d3ee" font-size="8" text-anchor="middle">Pages</text>
-        <text x="285" y="149" fill="#94a3b8" font-size="8" text-anchor="middle">/  /posts/[slug]</text>
-        <text x="285" y="163" fill="#94a3b8" font-size="8" text-anchor="middle">/search  /tags</text>
-        <text x="285" y="177" fill="#94a3b8" font-size="8" text-anchor="middle">/rss.xml  /sitemap.xml</text>
-        <text x="285" y="194" fill="#94a3b8" font-size="7" text-anchor="middle">/about</text>
-        <!-- Key features row -->
-        <text x="285" y="210" fill="#64748b" font-size="7" text-anchor="middle">DarkMode · SEO · ReadingProgress ·</text>
-        <text x="285" y="222" fill="#64748b" font-size="7" text-anchor="middle">Like · Mermaid · Pagination</text>
+        <!-- Auth: User -> JWT -> Admin API -->
+        <path d="M 80 160 L 80 250 Q 80 270 100 270 L 360 270" fill="none" stroke="#fb7185" stroke-width="1.2" stroke-dasharray="4,3"/>
+        <text x="220" y="264" fill="#fb7185" font-size="8" text-anchor="middle">JWT Bearer Token</text>
 
-        <!-- === FASTAPI BACKEND === -->
-        <rect x="390" y="40" width="560" height="185" rx="8" fill="rgba(6, 78, 59, 0.4)" stroke="#34d399" stroke-width="1.5"/>
-        <text x="670" y="63" fill="#34d399" font-size="12" font-weight="600" text-anchor="middle">FastAPI Backend</text>
-        <text x="670" y="78" fill="#94a3b8" font-size="8" text-anchor="middle">Python 3.14 · uvicorn · SQLAlchemy · Pydantic</text>
-        <text x="670" y="93" fill="#94a3b8" font-size="8" text-anchor="middle">Ruff · SlowAPI (Rate Limit) · GZip · CORS</text>
+        <!-- API -> Database -->
+        <path d="M 490 340 L 490 420 Q 490 440 520 440 L 550 440" fill="none" stroke="#a78bfa" stroke-width="1.5" stroke-dasharray="4,3" marker-end="url(#arrowhead)"/>
+        <text x="520" y="434" fill="#a78bfa" font-size="8" text-anchor="middle">SQLAlchemy ORM</text>
 
-        <!-- Routers column 1 -->
-        <rect x="400" y="108" width="85" height="104" rx="4" fill="rgba(6, 78, 59, 0.2)" stroke="#34d399" stroke-width="0.5"/>
-        <text x="442" y="123" fill="#34d399" font-size="8" text-anchor="middle">Routers</text>
-        <text x="442" y="138" fill="#94a3b8" font-size="8" text-anchor="middle">posts</text>
-        <text x="442" y="152" fill="#94a3b8" font-size="8" text-anchor="middle">comments</text>
-        <text x="442" y="166" fill="#94a3b8" font-size="8" text-anchor="middle">categories</text>
-        <text x="442" y="180" fill="#94a3b8" font-size="8" text-anchor="middle">tags</text>
-        <text x="442" y="194" fill="#94a3b8" font-size="8" text-anchor="middle">search</text>
-        <text x="442" y="208" fill="#94a3b8" font-size="8" text-anchor="middle">stats</text>
+        <!-- Admin Panel -> Admin API -->
+        <line x1="250" y1="640" x2="358" y2="640" stroke="#fb923c" stroke-width="1.5" marker-end="url(#arrowhead-amber)"/>
+        <text x="304" y="634" fill="#94a3b8" font-size="8" text-anchor="middle">JWT + REST</text>
 
-        <!-- Routers column 2 -->
-        <rect x="495" y="108" width="85" height="104" rx="4" fill="rgba(6, 78, 59, 0.2)" stroke="#34d399" stroke-width="0.5"/>
-        <text x="537" y="123" fill="#34d399" font-size="8" text-anchor="middle">Features</text>
-        <text x="537" y="138" fill="#94a3b8" font-size="8" text-anchor="middle">admin</text>
-        <text x="537" y="152" fill="#94a3b8" font-size="8" text-anchor="middle">upload</text>
-        <text x="537" y="166" fill="#94a3b8" font-size="8" text-anchor="middle">health</text>
-        <text x="537" y="180" fill="#94a3b8" font-size="8" text-anchor="middle">export</text>
-        <text x="537" y="194" fill="#94a3b8" font-size="8" text-anchor="middle">rss</text>
+        <!-- Next.js -> Static Assets (RSS/Sitemap) -->
+        <path d="M 285 230 L 285 20 Q 285 8 360 8 L 900 8" fill="none" stroke="#22d3ee" stroke-width="0.8" stroke-dasharray="3,3"/>
+        <path d="M 285 230 L 285 8" fill="none" stroke="#22d3ee" stroke-width="0.8" stroke-dasharray="3,3"/>
+        <text x="590" y="18" fill="#475569" font-size="7" text-anchor="middle">/rss.xml /sitemap.xml /robots.txt</text>
+
+        <!-- ViewTracker -> API -->
+        <line x1="80" y1="240" x2="80" y2="300" stroke="#22d3ee" stroke-width="1" stroke-dasharray="3,3" marker-end="url(#arrowhead2)"/>
+        <text x="84" y="278" fill="#475569" font-size="7">POST /posts/:id/view</text>
+
+        <!-- ==================== USERS ==================== -->
+
+        <rect x="30" y="50" width="100" height="115" rx="6" fill="rgba(30, 41, 59, 0.5)" stroke="#94a3b8" stroke-width="1.5"/>
+        <text x="80" y="74" fill="white" font-size="11" font-weight="600" text-anchor="middle">Users</text>
+        <text x="80" y="90" fill="#94a3b8" font-size="8" text-anchor="middle">Browser /</text>
+        <text x="80" y="102" fill="#94a3b8" font-size="8" text-anchor="middle">Mobile / RSS</text>
+        <text x="80" y="114" fill="#94a3b8" font-size="8" text-anchor="middle">Crawler</text>
+        <text x="80" y="148" fill="#94a3b8" font-size="7" text-anchor="middle">Read · Comment · Like</text>
+        <text x="80" y="158" fill="#475569" font-size="7" text-anchor="middle">Share · Subscribe</text>
+
+        <!-- ==================== NEXT.JS FRONTEND ==================== -->
+
+        <!-- Next.js main box -->
+        <rect x="210" y="35" width="130" height="200" rx="6" fill="rgba(8, 51, 68, 0.4)" stroke="#22d3ee" stroke-width="1.5"/>
+        <text x="275" y="56" fill="#22d3ee" font-size="11" font-weight="600" text-anchor="middle">Next.js 16</text>
+        <text x="275" y="70" fill="#94a3b8" font-size="7.5" text-anchor="middle">TypeScript 6</text>
+        <text x="275" y="82" fill="#94a3b8" font-size="7.5" text-anchor="middle">React 19</text>
+        <text x="275" y="94" fill="#94a3b8" font-size="7.5" text-anchor="middle">Tailwind CSS</text>
+        <text x="275" y="106" fill="#94a3b8" font-size="7.5" text-anchor="middle">App Router</text>
+        <text x="275" y="118" fill="#94a3b8" font-size="7.5" text-anchor="middle">Vitest · Biome</text>
+
+        <!-- Pages sub-box -->
+        <rect x="218" y="130" width="114" height="98" rx="4" fill="rgba(8, 51, 68, 0.2)" stroke="#22d3ee" stroke-width="0.5" stroke-dasharray="3,3"/>
+        <text x="275" y="145" fill="#22d3ee" font-size="8" text-anchor="middle">Pages</text>
+        <text x="275" y="159" fill="#94a3b8" font-size="8" text-anchor="middle">/  /posts/[slug]</text>
+        <text x="275" y="173" fill="#94a3b8" font-size="8" text-anchor="middle">/search  /tags</text>
+        <text x="275" y="187" fill="#94a3b8" font-size="8" text-anchor="middle">/about  /admin</text>
+        <text x="275" y="201" fill="#94a3b8" font-size="8" text-anchor="middle">/rss.xml /sitemap</text>
+        <text x="275" y="215" fill="#94a3b8" font-size="7.5" text-anchor="middle">/robots.txt</text>
+        <text x="275" y="228" fill="#4ade80" font-size="7" text-anchor="middle">↑ 35 components</text>
+
+        <!-- Rich Content Components (right of Next.js) -->
+        <rect x="350" y="35" width="150" height="200" rx="6" fill="rgba(8, 51, 68, 0.25)" stroke="#22d3ee" stroke-width="1"/>
+        <text x="425" y="53" fill="#22d3ee" font-size="9" font-weight="600" text-anchor="middle">Rich Content</text>
+
+        <!-- Markdown + Mermaid -->
+        <rect x="358" y="64" width="134" height="36" rx="3" fill="rgba(8, 51, 68, 0.15)" stroke="#22d3ee" stroke-width="0.5" stroke-dasharray="2,2"/>
+        <text x="425" y="79" fill="#94a3b8" font-size="8" text-anchor="middle">Markdown + Mermaid</text>
+        <text x="425" y="91" fill="#475569" font-size="7" text-anchor="middle">code highlight · diagrams</text>
+
+        <!-- TableOfContents + ReadingProgress -->
+        <rect x="358" y="108" width="134" height="36" rx="3" fill="rgba(8, 51, 68, 0.15)" stroke="#22d3ee" stroke-width="0.5" stroke-dasharray="2,2"/>
+        <text x="425" y="123" fill="#94a3b8" font-size="8" text-anchor="middle">ToC + ReadingProgress</text>
+        <text x="425" y="135" fill="#475569" font-size="7" text-anchor="middle">scroll tracking</text>
+
+        <!-- ImageLightbox -->
+        <rect x="358" y="152" width="134" height="30" rx="3" fill="rgba(8, 51, 68, 0.15)" stroke="#22d3ee" stroke-width="0.5" stroke-dasharray="2,2"/>
+        <text x="425" y="167" fill="#94a3b8" font-size="8" text-anchor="middle">ImageLightbox</text>
+        <text x="425" y="178" fill="#475569" font-size="7" text-anchor="middle">full-size preview</text>
+
+        <!-- ShareButtons + LikeButton -->
+        <rect x="358" y="190" width="134" height="36" rx="3" fill="rgba(8, 51, 68, 0.15)" stroke="#22d3ee" stroke-width="0.5" stroke-dasharray="2,2"/>
+        <text x="425" y="205" fill="#94a3b8" font-size="8" text-anchor="middle">ShareButtons + LikeButton</text>
+        <text x="425" y="217" fill="#475569" font-size="7" text-anchor="middle">social · likes</text>
+
+        <!-- Core UI Components (below Next.js) -->
+        <rect x="210" y="245" width="290" height="175" rx="6" fill="rgba(8, 51, 68, 0.25)" stroke="#22d3ee" stroke-width="1"/>
+        <text x="355" y="263" fill="#22d3ee" font-size="9" font-weight="600" text-anchor="middle">Core Components</text>
+
+        <!-- Row 1 -->
+        <rect x="218" y="273" width="88" height="34" rx="3" fill="rgba(8, 51, 68, 0.15)" stroke="#22d3ee" stroke-width="0.5" stroke-dasharray="2,2"/>
+        <text x="262" y="287" fill="#94a3b8" font-size="7.5" text-anchor="middle">Header</text>
+        <text x="262" y="298" fill="#475569" font-size="7" text-anchor="middle">ARIA nav</text>
+
+        <rect x="314" y="273" width="88" height="34" rx="3" fill="rgba(8, 51, 68, 0.15)" stroke="#22d3ee" stroke-width="0.5" stroke-dasharray="2,2"/>
+        <text x="358" y="287" fill="#94a3b8" font-size="7.5" text-anchor="middle">Footer</text>
+        <text x="358" y="298" fill="#475569" font-size="7" text-anchor="middle">links · meta</text>
+
+        <rect x="410" y="273" width="82" height="34" rx="3" fill="rgba(8, 51, 68, 0.15)" stroke="#22d3ee" stroke-width="0.5" stroke-dasharray="2,2"/>
+        <text x="451" y="287" fill="#94a3b8" font-size="7.5" text-anchor="middle">ThemeToggle</text>
+        <text x="451" y="298" fill="#475569" font-size="7" text-anchor="middle">dark/light</text>
+
+        <!-- Row 2 -->
+        <rect x="218" y="315" width="88" height="34" rx="3" fill="rgba(8, 51, 68, 0.15)" stroke="#22d3ee" stroke-width="0.5" stroke-dasharray="2,2"/>
+        <text x="262" y="329" fill="#94a3b8" font-size="7.5" text-anchor="middle">SearchBox</text>
+        <text x="262" y="340" fill="#475569" font-size="7" text-anchor="middle">aria-combobox</text>
+
+        <rect x="314" y="315" width="88" height="34" rx="3" fill="rgba(8, 51, 68, 0.15)" stroke="#22d3ee" stroke-width="0.5" stroke-dasharray="2,2"/>
+        <text x="358" y="329" fill="#94a3b8" font-size="7.5" text-anchor="middle">Pagination</text>
+        <text x="358" y="340" fill="#475569" font-size="7" text-anchor="middle">aria-nav</text>
+
+        <rect x="410" y="315" width="82" height="34" rx="3" fill="rgba(8, 51, 68, 0.15)" stroke="#22d3ee" stroke-width="0.5" stroke-dasharray="2,2"/>
+        <text x="451" y="329" fill="#94a3b8" font-size="7.5" text-anchor="middle">TagCloud</text>
+        <text x="451" y="340" fill="#475569" font-size="7" text-anchor="middle">/tags page</text>
+
+        <!-- Row 3 -->
+        <rect x="218" y="357" width="88" height="34" rx="3" fill="rgba(8, 51, 68, 0.15)" stroke="#22d3ee" stroke-width="0.5" stroke-dasharray="2,2"/>
+        <text x="262" y="371" fill="#94a3b8" font-size="7.5" text-anchor="middle">PostCard</text>
+        <text x="262" y="382" fill="#475569" font-size="7" text-anchor="middle">cover img</text>
+
+        <rect x="314" y="357" width="88" height="34" rx="3" fill="rgba(8, 51, 68, 0.15)" stroke="#22d3ee" stroke-width="0.5" stroke-dasharray="2,2"/>
+        <text x="358" y="371" fill="#94a3b8" font-size="7.5" text-anchor="middle">RelatedPosts</text>
+        <text x="358" y="382" fill="#4ade80" font-size="7" text-anchor="middle">new</text>
+
+        <rect x="410" y="357" width="82" height="34" rx="3" fill="rgba(8, 51, 68, 0.15)" stroke="#22d3ee" stroke-width="0.5" stroke-dasharray="2,2"/>
+        <text x="451" y="371" fill="#94a3b8" font-size="7.5" text-anchor="middle">SearchResults</text>
+        <text x="451" y="382" fill="#475569" font-size="7" text-anchor="middle">search page</text>
+
+        <!-- Row 4 -->
+        <rect x="218" y="399" width="88" height="34" rx="3" fill="rgba(8, 51, 68, 0.15)" stroke="#22d3ee" stroke-width="0.5" stroke-dasharray="2,2"/>
+        <text x="262" y="413" fill="#94a3b8" font-size="7.5" text-anchor="middle">CommentForm</text>
+        <text x="262" y="424" fill="#94a3b8" font-size="7" text-anchor="middle">aria-label</text>
+
+        <rect x="314" y="399" width="88" height="34" rx="3" fill="rgba(8, 51, 68, 0.15)" stroke="#22d3ee" stroke-width="0.5" stroke-dasharray="2,2"/>
+        <text x="358" y="413" fill="#94a3b8" font-size="7.5" text-anchor="middle">CommentList</text>
+        <text x="358" y="424" fill="#475569" font-size="7" text-anchor="middle">threaded</text>
+
+        <rect x="410" y="399" width="82" height="34" rx="3" fill="rgba(8, 51, 68, 0.15)" stroke="#22d3ee" stroke-width="0.5" stroke-dasharray="2,2"/>
+        <text x="451" y="413" fill="#94a3b8" font-size="7.5" text-anchor="middle">BackToTop</text>
+        <text x="451" y="424" fill="#475569" font-size="7" text-anchor="middle">scroll</text>
+
+        <!-- Infrastructure within frontend cluster -->
+        <rect x="210" y="440" width="130" height="88" rx="4" fill="rgba(8, 51, 68, 0.3)" stroke="#64748b" stroke-width="0.8"/>
+        <text x="275" y="456" fill="#64748b" font-size="8" text-anchor="middle">Infra</text>
+        <text x="275" y="470" fill="#94a3b8" font-size="7.5" text-anchor="middle">ErrorBoundary</text>
+        <text x="275" y="482" fill="#94a3b8" font-size="7.5" text-anchor="middle">ThemeProvider</text>
+        <text x="275" y="494" fill="#94a3b8" font-size="7.5" text-anchor="middle">Skeleton</text>
+        <text x="275" y="506" fill="#94a3b8" font-size="7.5" text-anchor="middle">ViewTracker</text>
+        <text x="275" y="518" fill="#4ade80" font-size="7" text-anchor="middle">skip nav + a11y</text>
+
+        <rect x="350" y="440" width="150" height="88" rx="4" fill="rgba(8, 51, 68, 0.3)" stroke="#64748b" stroke-width="0.8"/>
+        <text x="425" y="456" fill="#64748b" font-size="8" text-anchor="middle">Providers</text>
+        <text x="425" y="470" fill="#94a3b8" font-size="7.5" text-anchor="middle">next/font (Inter)</text>
+        <text x="425" y="482" fill="#94a3b8" font-size="7.5" text-anchor="middle">ImageLightboxContext</text>
+        <text x="425" y="494" fill="#94a3b8" font-size="7.5" text-anchor="middle">ErrorBoundary</text>
+        <text x="425" y="506" fill="#94a3b8" font-size="7.5" text-anchor="middle">Suspense fallback</text>
+        <text x="425" y="518" fill="#4ade80" font-size="7" text-anchor="middle">a11y: ARIA landmarks</text>
+
+        <!-- ==================== FASTAPI BACKEND ==================== -->
+
+        <rect x="370" y="35" width="490" height="355" rx="8" fill="rgba(6, 78, 59, 0.4)" stroke="#34d399" stroke-width="1.5"/>
+        <text x="615" y="56" fill="#34d399" font-size="11" font-weight="600" text-anchor="middle">FastAPI Backend</text>
+        <text x="615" y="70" fill="#94a3b8" font-size="7.5" text-anchor="middle">Python 3.14 · uvicorn · SQLAlchemy · Pydantic v2</text>
+        <text x="615" y="82" fill="#94a3b8" font-size="7.5" text-anchor="middle">Ruff · GZip · SlowAPI · Graceful Shutdown</text>
+
+        <!-- Public Routers -->
+        <rect x="380" y="96" width="120" height="118" rx="4" fill="rgba(6, 78, 59, 0.2)" stroke="#34d399" stroke-width="0.5"/>
+        <text x="440" y="111" fill="#34d399" font-size="8" text-anchor="middle">Public API</text>
+        <text x="440" y="125" fill="#94a3b8" font-size="7.5" text-anchor="middle">posts (CRUD+slug)</text>
+        <text x="440" y="137" fill="#94a3b8" font-size="7.5" text-anchor="middle">categories</text>
+        <text x="440" y="149" fill="#94a3b8" font-size="7.5" text-anchor="middle">tags</text>
+        <text x="440" y="161" fill="#94a3b8" font-size="7.5" text-anchor="middle">comments</text>
+        <text x="440" y="173" fill="#94a3b8" font-size="7.5" text-anchor="middle">search</text>
+        <text x="440" y="185" fill="#94a3b8" font-size="7.5" text-anchor="middle">stats</text>
+        <text x="440" y="197" fill="#4ade80" font-size="7" text-anchor="middle">/posts/popular</text>
+        <text x="440" y="208" fill="#4ade80" font-size="7" text-anchor="middle">/posts/:id/related</text>
+
+        <!-- New endpoints -->
+        <rect x="380" y="222" width="120" height="60" rx="4" fill="rgba(6, 78, 59, 0.15)" stroke="#4ade80" stroke-width="0.5" stroke-dasharray="2,2"/>
+        <text x="440" y="238" fill="#4ade80" font-size="7.5" text-anchor="middle">New Endpoints</text>
+        <text x="440" y="252" fill="#94a3b8" font-size="7.5" text-anchor="middle">POST /posts/:id/view</text>
+        <text x="440" y="264" fill="#94a3b8" font-size="7.5" text-anchor="middle">POST /posts/:id/like</text>
+        <text x="440" y="276" fill="#4ade80" font-size="7" text-anchor="middle">tracked views · likes</text>
+
+        <!-- Admin Routers -->
+        <rect x="510" y="96" width="120" height="118" rx="4" fill="rgba(251, 146, 60, 0.15)" stroke="#fb923c" stroke-width="0.5"/>
+        <text x="570" y="111" fill="#fb923c" font-size="8" text-anchor="middle">Admin API</text>
+        <text x="570" y="125" fill="#94a3b8" font-size="7.5" text-anchor="middle">/auth/login</text>
+        <text x="570" y="137" fill="#94a3b8" font-size="7.5" text-anchor="middle">admin/posts CRUD</text>
+        <text x="570" y="149" fill="#94a3b8" font-size="7.5" text-anchor="middle">admin/categories</text>
+        <text x="570" y="161" fill="#94a3b8" font-size="7.5" text-anchor="middle">admin/tags</text>
+        <text x="570" y="173" fill="#94a3b8" font-size="7.5" text-anchor="middle">admin/comments</text>
+        <text x="570" y="185" fill="#94a3b8" font-size="7.5" text-anchor="middle">admin/users</text>
+
+        <!-- Upload + Export -->
+        <rect x="510" y="222" width="120" height="60" rx="4" fill="rgba(251, 146, 60, 0.1)" stroke="#fb923c" stroke-width="0.5" stroke-dasharray="2,2"/>
+        <text x="570" y="238" fill="#fb923c" font-size="7.5" text-anchor="middle">Upload · Export</text>
+        <text x="570" y="252" fill="#94a3b8" font-size="7.5" text-anchor="middle">POST /upload</text>
+        <text x="570" y="264" fill="#94a3b8" font-size="7.5" text-anchor="middle">/export/posts.csv</text>
+
+        <!-- SEO Routers -->
+        <rect x="640" y="96" width="100" height="118" rx="4" fill="rgba(8, 51, 68, 0.2)" stroke="#22d3ee" stroke-width="0.5"/>
+        <text x="690" y="111" fill="#22d3ee" font-size="8" text-anchor="middle">SEO Routers</text>
+        <text x="690" y="125" fill="#94a3b8" font-size="7.5" text-anchor="middle">/rss.xml (full)</text>
+        <text x="690" y="137" fill="#94a3b8" font-size="7.5" text-anchor="middle">/feed (Atom)</text>
+        <text x="690" y="149" fill="#94a3b8" font-size="7.5" text-anchor="middle">/sitemap.xml</text>
+        <text x="690" y="161" fill="#94a3b8" font-size="7.5" text-anchor="middle">/robots.txt</text>
+        <text x="690" y="173" fill="#94a3b8" font-size="7.5" text-anchor="middle">/health</text>
+        <text x="690" y="185" fill="#94a3b8" font-size="7.5" text-anchor="middle">/ready</text>
+        <text x="690" y="197" fill="#94a3b8" font-size="7.5" text-anchor="middle">/cache/stats</text>
 
         <!-- Middleware column -->
-        <rect x="590" y="108" width="85" height="104" rx="4" fill="rgba(6, 78, 59, 0.2)" stroke="#34d399" stroke-width="0.5"/>
-        <text x="632" y="123" fill="#34d399" font-size="8" text-anchor="middle">Middleware</text>
-        <text x="632" y="138" fill="#94a3b8" font-size="8" text-anchor="middle">CORS</text>
-        <text x="632" y="152" fill="#94a3b8" font-size="8" text-anchor="middle">GZip</text>
-        <text x="632" y="166" fill="#94a3b8" font-size="8" text-anchor="middle">RateLimit</text>
-        <text x="632" y="180" fill="#94a3b8" font-size="8" text-anchor="middle">RequestLog</text>
-        <text x="632" y="194" fill="#94a3b8" font-size="8" text-anchor="middle">StaticFiles</text>
+        <rect x="750" y="96" width="100" height="186" rx="4" fill="rgba(6, 78, 59, 0.2)" stroke="#34d399" stroke-width="0.5"/>
+        <text x="800" y="111" fill="#34d399" font-size="8" text-anchor="middle">Middleware</text>
+        <text x="800" y="125" fill="#94a3b8" font-size="7.5" text-anchor="middle">CORS</text>
+        <text x="800" y="137" fill="#94a3b8" font-size="7.5" text-anchor="middle">GZip</text>
+        <text x="800" y="149" fill="#94a3b8" font-size="7.5" text-anchor="middle">RateLimit</text>
+        <text x="800" y="161" fill="#94a3b8" font-size="7.5" text-anchor="middle">RequestLog</text>
+        <text x="800" y="173" fill="#94a3b8" font-size="7.5" text-anchor="middle">SecurityHdrs</text>
+        <text x="800" y="185" fill="#94a3b8" font-size="7.5" text-anchor="middle">Timeout (30s)</text>
+        <text x="800" y="197" fill="#4ade80" font-size="7" text-anchor="middle">Graceful shutdown</text>
+        <text x="800" y="208" fill="#94a3b8" font-size="7" text-anchor="middle">StaticFiles</text>
+        <text x="800" y="220" fill="#94a3b8" font-size="7" text-anchor="middle">Exception handlers</text>
+        <text x="800" y="232" fill="#94a3b8" font-size="7" text-anchor="middle">validation errors</text>
+        <text x="800" y="244" fill="#94a3b8" font-size="7" text-anchor="middle">lifespan ctx</text>
 
         <!-- Core modules -->
-        <rect x="685" y="108" width="85" height="104" rx="4" fill="rgba(6, 78, 59, 0.2)" stroke="#34d399" stroke-width="0.5"/>
-        <text x="727" y="123" fill="#34d399" font-size="8" text-anchor="middle">Core</text>
-        <text x="727" y="138" fill="#94a3b8" font-size="8" text-anchor="middle">auth.py</text>
-        <text x="727" y="152" fill="#94a3b8" font-size="8" text-anchor="middle">cache.py</text>
-        <text x="727" y="166" fill="#94a3b8" font-size="8" text-anchor="middle">crud.py</text>
-        <text x="727" y="180" fill="#94a3b8" font-size="8" text-anchor="middle">schemas</text>
-        <text x="727" y="194" fill="#94a3b8" font-size="8" text-anchor="middle">config</text>
+        <rect x="380" y="292" width="100" height="90" rx="4" fill="rgba(6, 78, 59, 0.2)" stroke="#34d399" stroke-width="0.5"/>
+        <text x="430" y="307" fill="#34d399" font-size="8" text-anchor="middle">Core</text>
+        <text x="430" y="321" fill="#94a3b8" font-size="7.5" text-anchor="middle">auth.py</text>
+        <text x="430" y="333" fill="#94a3b8" font-size="7.5" text-anchor="middle">cache.py (TTL)</text>
+        <text x="430" y="345" fill="#94a3b8" font-size="7.5" text-anchor="middle">crud.py</text>
+        <text x="430" y="357" fill="#94a3b8" font-size="7.5" text-anchor="middle">schemas.py</text>
+        <text x="430" y="369" fill="#94a3b8" font-size="7.5" text-anchor="middle">config.py</text>
+        <text x="430" y="381" fill="#4ade80" font-size="7" text-anchor="middle">exceptions.py</text>
 
-        <!-- Auth arrow -->
-        <path d="M 80 160 L 80 240 Q 80 260 100 260 L 390 260" fill="none" stroke="#fb7185" stroke-width="1.2" stroke-dasharray="4,3"/>
-        <text x="235" y="254" fill="#fb7185" font-size="8" text-anchor="middle">JWT Bearer Token</text>
+        <!-- Auth box -->
+        <rect x="490" y="292" width="360" height="90" rx="6" fill="rgba(136, 19, 55, 0.4)" stroke="#fb7185" stroke-width="1.5"/>
+        <text x="670" y="310" fill="white" font-size="10" font-weight="600" text-anchor="middle">Auth &amp; Security</text>
+        <text x="670" y="325" fill="#94a3b8" font-size="7.5" text-anchor="middle">JWT (PyJWT) · bcrypt password hashing · HTTPBearer</text>
+        <text x="670" y="337" fill="#94a3b8" font-size="7.5" text-anchor="middle">Role-based guards · Token expiry · Cookie storage (admin)</text>
+        <text x="670" y="349" fill="#94a3b8" font-size="7.5" text-anchor="middle">Security headers: X-Frame-Options · HSTS · X-XSS-Protection</text>
+        <text x="670" y="361" fill="#4ade80" font-size="7" text-anchor="middle">Consistent JSON error format · AppException handler</text>
+        <text x="670" y="373" fill="#fb7185" font-size="7" text-anchor="middle">Rate limit: 60 req/min · Request timeout: 30s</text>
 
-        <!-- Auth Component -->
-        <rect x="770" y="108" width="170" height="104" rx="6" fill="rgba(136, 19, 55, 0.4)" stroke="#fb7185" stroke-width="1.5"/>
-        <text x="855" y="128" fill="white" font-size="11" font-weight="600" text-anchor="middle">Auth</text>
-        <text x="855" y="143" fill="#94a3b8" font-size="8" text-anchor="middle">JWT (PyJWT) · bcrypt</text>
-        <text x="855" y="158" fill="#94a3b8" font-size="8" text-anchor="middle">HTTPBearer · Role Guard</text>
-        <text x="855" y="175" fill="#94a3b8" font-size="8" text-anchor="middle">Admin: /admin/*</text>
-        <text x="855" y="189" fill="#94a3b8" font-size="8" text-anchor="middle">Public: /api/posts · /api/comments</text>
-        <text x="855" y="206" fill="#fb7185" font-size="7" text-anchor="middle">Token expiry · Refresh flow</text>
+        <!-- ==================== INFRASTRUCTURE ==================== -->
 
-        <!-- === DATABASE === -->
-        <rect x="430" y="390" width="140" height="50" rx="6" fill="rgba(76, 29, 149, 0.4)" stroke="#a78bfa" stroke-width="1.5"/>
-        <text x="500" y="412" fill="white" font-size="11" font-weight="600" text-anchor="middle">SQLite</text>
-        <text x="500" y="428" fill="#94a3b8" font-size="9" text-anchor="middle">x-blog.db</text>
+        <!-- SQLite -->
+        <rect x="380" y="440" width="140" height="65" rx="6" fill="rgba(76, 29, 149, 0.4)" stroke="#a78bfa" stroke-width="1.5"/>
+        <text x="450" y="462" fill="white" font-size="11" font-weight="600" text-anchor="middle">SQLite</text>
+        <text x="450" y="477" fill="#94a3b8" font-size="9" text-anchor="middle">x-blog.db</text>
+        <text x="450" y="492" fill="#4ade80" font-size="7.5" text-anchor="middle">pinned · views · likes</text>
+        <text x="450" y="504" fill="#94a3b8" font-size="7" text-anchor="middle">PostgreSQL-ready</text>
 
         <!-- Models -->
-        <rect x="590" y="370" width="80" height="90" rx="4" fill="rgba(76, 29, 149, 0.2)" stroke="#a78bfa" stroke-width="0.5"/>
-        <text x="630" y="385" fill="#a78bfa" font-size="8" text-anchor="middle">Models</text>
-        <text x="630" y="399" fill="#94a3b8" font-size="8" text-anchor="middle">Post</text>
-        <text x="630" y="413" fill="#94a3b8" font-size="8" text-anchor="middle">Category</text>
-        <text x="630" y="427" fill="#94a3b8" font-size="8" text-anchor="middle">Tag</text>
-        <text x="630" y="441" fill="#94a3b8" font-size="8" text-anchor="middle">Comment</text>
-        <text x="630" y="455" fill="#94a3b8" font-size="8" text-anchor="middle">post_tags</text>
+        <rect x="530" y="440" width="80" height="100" rx="4" fill="rgba(76, 29, 149, 0.2)" stroke="#a78bfa" stroke-width="0.5"/>
+        <text x="570" y="455" fill="#a78bfa" font-size="8" text-anchor="middle">Models</text>
+        <text x="570" y="469" fill="#94a3b8" font-size="7.5" text-anchor="middle">Post</text>
+        <text x="570" y="481" fill="#94a3b8" font-size="7.5" text-anchor="middle">Category</text>
+        <text x="570" y="493" fill="#94a3b8" font-size="7.5" text-anchor="middle">Tag</text>
+        <text x="570" y="505" fill="#94a3b8" font-size="7.5" text-anchor="middle">Comment</text>
+        <text x="570" y="517" fill="#94a3b8" font-size="7.5" text-anchor="middle">post_tags</text>
+        <text x="570" y="529" fill="#94a3b8" font-size="7" text-anchor="middle">(N:N)</text>
 
         <!-- Relationships -->
-        <text x="578" y="416" fill="#a78bfa" font-size="8" text-anchor="middle">1:N</text>
-        <text x="578" y="430" fill="#a78bfa" font-size="8" text-anchor="middle">N:N</text>
+        <text x="518" y="470" fill="#a78bfa" font-size="8" text-anchor="middle">1:N</text>
+        <text x="518" y="483" fill="#a78bfa" font-size="8" text-anchor="middle">N:N</text>
 
-        <!-- === ADMIN ZONE === -->
+        <!-- Cache -->
+        <rect x="620" y="440" width="130" height="65" rx="4" fill="rgba(76, 29, 149, 0.2)" stroke="#a78bfa" stroke-width="0.5" stroke-dasharray="3,3"/>
+        <text x="685" y="455" fill="#a78bfa" font-size="8" text-anchor="middle">In-Memory Cache</text>
+        <text x="685" y="469" fill="#94a3b8" font-size="7.5" text-anchor="middle">TTL-based</text>
+        <text x="685" y="481" fill="#94a3b8" font-size="7.5" text-anchor="middle">posts · categories · tags</text>
+        <text x="685" y="493" fill="#94a3b8" font-size="7.5" text-anchor="middle">clear on write</text>
+        <text x="685" y="504" fill="#4ade80" font-size="7" text-anchor="middle">N+1 resolved</text>
 
-        <!-- Admin Router -->
-        <rect x="360" y="510" width="90" height="48" rx="4" fill="rgba(251, 146, 60, 0.3)" stroke="#fb923c" stroke-width="1.5"/>
-        <text x="405" y="528" fill="white" font-size="10" font-weight="600" text-anchor="middle">admin.py</text>
-        <text x="405" y="544" fill="#94a3b8" font-size="8" text-anchor="middle">JWT required</text>
+        <!-- Docker Compose -->
+        <rect x="760" y="440" width="120" height="65" rx="4" fill="rgba(30, 58, 138, 0.4)" stroke="#60a5fa" stroke-width="1.5"/>
+        <text x="820" y="458" fill="white" font-size="9" font-weight="600" text-anchor="middle">Docker Compose</text>
+        <text x="820" y="472" fill="#94a3b8" font-size="7.5" text-anchor="middle">Multi-stage build</text>
+        <text x="820" y="484" fill="#94a3b8" font-size="7.5" text-anchor="middle">Health checks</text>
+        <text x="820" y="496" fill="#94a3b8" font-size="7.5" text-anchor="middle">Health checks</text>
 
-        <!-- Admin Page: Dashboard -->
-        <rect x="480" y="500" width="130" height="58" rx="4" fill="rgba(251, 146, 60, 0.3)" stroke="#fb923c" stroke-width="1.5"/>
-        <text x="545" y="518" fill="white" font-size="11" font-weight="600" text-anchor="middle">Dashboard</text>
-        <text x="545" y="533" fill="#94a3b8" font-size="8" text-anchor="middle">Posts · Comments</text>
-        <text x="545" y="548" fill="#94a3b8" font-size="8" text-anchor="middle">Categories · Tags</text>
+        <!-- CI/CD -->
+        <rect x="890" y="440" width="120" height="65" rx="4" fill="rgba(30, 58, 138, 0.4)" stroke="#60a5fa" stroke-width="1.5"/>
+        <text x="950" y="458" fill="white" font-size="9" font-weight="600" text-anchor="middle">CI / Tooling</text>
+        <text x="950" y="472" fill="#94a3b8" font-size="7.5" text-anchor="middle">GitHub Actions</text>
+        <text x="950" y="484" fill="#94a3b8" font-size="7.5" text-anchor="middle">commitizen · rumdl</text>
+        <text x="950" y="496" fill="#94a3b8" font-size="7.5" text-anchor="middle">E2E (Playwright)</text>
+        <text x="950" y="508" fill="#4ade80" font-size="7" text-anchor="middle">282 tests</text>
 
-        <!-- Admin: Post Management -->
-        <rect x="480" y="570" width="130" height="48" rx="4" fill="rgba(251, 146, 60, 0.3)" stroke="#fb923c" stroke-width="1.5"/>
-        <text x="545" y="588" fill="white" font-size="11" font-weight="600" text-anchor="middle">Posts CRUD</text>
-        <text x="545" y="604" fill="#94a3b8" font-size="8" text-anchor="middle">Markdown · CoverImg</text>
+        <!-- justfile / package managers -->
+        <rect x="760" y="515" width="250" height="48" rx="4" fill="rgba(30, 58, 138, 0.2)" stroke="#60a5fa" stroke-width="0.5"/>
+        <text x="885" y="532" fill="#94a3b8" font-size="8" text-anchor="middle">justfile · uv · pnpm · Ruff · Biome · Vitest · Pytest</text>
+        <text x="885" y="546" fill="#94a3b8" font-size="7.5" text-anchor="middle">pre-commit hooks · endofstring-fixer · trim trailing ws · check merge conflicts</text>
 
-        <!-- Admin: Comment Management -->
-        <rect x="620" y="500" width="130" height="58" rx="4" fill="rgba(251, 146, 60, 0.3)" stroke="#fb923c" stroke-width="1.5"/>
-        <text x="685" y="518" fill="white" font-size="11" font-weight="600" text-anchor="middle">Comments</text>
-        <text x="685" y="533" fill="#94a3b8" font-size="8" text-anchor="middle">Review · Delete</text>
-        <text x="685" y="548" fill="#94a3b8" font-size="8" text-anchor="middle">IP Address Log</text>
+        <!-- ==================== ADMIN ZONE ==================== -->
 
-        <!-- Admin: Category & Tags -->
-        <rect x="620" y="570" width="130" height="48" rx="4" fill="rgba(251, 146, 60, 0.3)" stroke="#fb923c" stroke-width="1.5"/>
-        <text x="685" y="588" fill="white" font-size="11" font-weight="600" text-anchor="middle">Cat + Tags</text>
-        <text x="685" y="604" fill="#94a3b8" font-size="8" text-anchor="middle">Create · Merge</text>
+        <rect x="30" y="570" width="300" height="200" rx="6" fill="rgba(30, 41, 59, 0.5)" stroke="#94a3b8" stroke-width="1"/>
+        <text x="44" y="588" fill="#94a3b8" font-size="9" font-weight="600">Admin Panel (Next.js)</text>
+
+        <!-- Admin Dashboard -->
+        <rect x="40" y="600" width="120" height="50" rx="4" fill="rgba(251, 146, 60, 0.3)" stroke="#fb923c" stroke-width="1.5"/>
+        <text x="100" y="618" fill="white" font-size="10" font-weight="600" text-anchor="middle">Dashboard</text>
+        <text x="100" y="632" fill="#94a3b8" font-size="7.5" text-anchor="middle">Stats · Posts · Comments</text>
+        <text x="100" y="644" fill="#94a3b8" font-size="7.5" text-anchor="middle">Categories · Tags</text>
+
+        <!-- Posts CRUD -->
+        <rect x="40" y="658" width="120" height="46" rx="4" fill="rgba(251, 146, 60, 0.3)" stroke="#fb923c" stroke-width="1.5"/>
+        <text x="100" y="676" fill="white" font-size="10" font-weight="600" text-anchor="middle">Posts CRUD</text>
+        <text x="100" y="690" fill="#94a3b8" font-size="7.5" text-anchor="middle">Markdown · CoverImg</text>
+        <text x="100" y="702" fill="#4ade80" font-size="7" text-anchor="middle">ImageUpload</text>
+
+        <!-- Admin Comments -->
+        <rect x="170" y="600" width="120" height="50" rx="4" fill="rgba(251, 146, 60, 0.3)" stroke="#fb923c" stroke-width="1.5"/>
+        <text x="230" y="618" fill="white" font-size="10" font-weight="600" text-anchor="middle">Comments</text>
+        <text x="230" y="632" fill="#94a3b8" font-size="7.5" text-anchor="middle">Review · Delete</text>
+        <text x="230" y="644" fill="#94a3b8" font-size="7.5" text-anchor="middle">IP tracking</text>
+
+        <!-- Admin Category + Tags -->
+        <rect x="170" y="658" width="120" height="46" rx="4" fill="rgba(251, 146, 60, 0.3)" stroke="#fb923c" stroke-width="1.5"/>
+        <text x="230" y="676" fill="white" font-size="10" font-weight="600" text-anchor="middle">Cat + Tags</text>
+        <text x="230" y="690" fill="#94a3b8" font-size="7.5" text-anchor="middle">Create · Edit · Delete</text>
 
         <!-- Login Page -->
-        <rect x="780" y="500" width="150" height="58" rx="4" fill="rgba(136, 19, 55, 0.4)" stroke="#fb7185" stroke-width="1.5"/>
-        <text x="855" y="518" fill="white" font-size="11" font-weight="600" text-anchor="middle">Login Page</text>
-        <text x="855" y="533" fill="#94a3b8" font-size="8" text-anchor="middle">Username + Password</text>
-        <text x="855" y="548" fill="#94a3b8" font-size="8" text-anchor="middle">JWT stored in cookie</text>
+        <rect x="40" y="712" width="250" height="48" rx="4" fill="rgba(136, 19, 55, 0.4)" stroke="#fb7185" stroke-width="1.5"/>
+        <text x="165" y="730" fill="white" font-size="10" font-weight="600" text-anchor="middle">Login Page</text>
+        <text x="165" y="744" fill="#94a3b8" font-size="7.5" text-anchor="middle">Username + Password · JWT in cookie · redirect</text>
+        <text x="165" y="756" fill="#fb7185" font-size="7" text-anchor="middle">Protected routes with middleware</text>
 
         <!-- Admin flows -->
-        <line x1="450" y1="534" x2="478" y2="534" stroke="#fb923c" stroke-width="1.2" marker-end="url(#arrowhead2)"/>
-        <line x1="610" y1="534" x2="618" y2="534" stroke="#fb923c" stroke-width="1.2" marker-end="url(#arrowhead2)"/>
-        <line x1="610" y1="529" x2="618" y2="570" stroke="#fb923c" stroke-width="1.2"/>
-        <line x1="618" y1="570" x2="618" y2="600" stroke="#fb923c" stroke-width="1.2" marker-end="url(#arrowhead2)"/>
-        <text x="760" y="530" fill="#94a3b8" font-size="8" text-anchor="middle">POST /auth/login</text>
+        <line x1="160" y1="640" x2="358" y2="640" stroke="#fb923c" stroke-width="1" marker-end="url(#arrowhead-amber)"/>
 
-        <!-- === CI/CD / TOOLING === -->
+        <!-- ==================== LEGEND ==================== -->
 
-        <!-- Dev Tools Bar -->
-        <rect x="30" y="420" width="300" height="130" rx="6" fill="rgba(30, 41, 59, 0.5)" stroke="#94a3b8" stroke-width="1" stroke-dasharray="4,4"/>
-        <text x="44" y="438" fill="#94a3b8" font-size="9" font-weight="600">DevOps / Tooling</text>
+        <text x="40" y="790" fill="white" font-size="9" font-weight="600">Legend</text>
+        <rect x="40" y="802" width="12" height="8" rx="2" fill="rgba(8, 51, 68, 0.4)" stroke="#22d3ee" stroke-width="1"/>
+        <text x="58" y="809" fill="#94a3b8" font-size="8">Frontend</text>
+        <rect x="120" y="802" width="12" height="8" rx="2" fill="rgba(6, 78, 59, 0.4)" stroke="#34d399" stroke-width="1"/>
+        <text x="138" y="809" fill="#94a3b8" font-size="8">Backend</text>
+        <rect x="200" y="802" width="12" height="8" rx="2" fill="rgba(76, 29, 149, 0.4)" stroke="#a78bfa" stroke-width="1"/>
+        <text x="218" y="809" fill="#94a3b8" font-size="8">Data</text>
+        <rect x="260" y="802" width="12" height="8" rx="2" fill="rgba(251, 146, 60, 0.3)" stroke="#fb923c" stroke-width="1"/>
+        <text x="278" y="809" fill="#94a3b8" font-size="8">Admin</text>
+        <rect x="325" y="802" width="12" height="8" rx="2" fill="rgba(136, 19, 55, 0.4)" stroke="#fb7185" stroke-width="1"/>
+        <text x="343" y="809" fill="#94a3b8" font-size="8">Auth</text>
+        <rect x="385" y="802" width="12" height="8" rx="2" fill="rgba(30, 58, 138, 0.4)" stroke="#60a5fa" stroke-width="1"/>
+        <text x="403" y="809" fill="#94a3b8" font-size="8">Infra</text>
+        <line x1="440" y1="806" x2="455" y2="806" stroke="#fb7185" stroke-width="1.2" stroke-dasharray="4,3"/>
+        <text x="462" y="809" fill="#94a3b8" font-size="8">Auth flow</text>
+        <line x1="515" y1="806" x2="530" y2="806" stroke="#22d3ee" stroke-width="1.2" stroke-dasharray="3,3"/>
+        <text x="537" y="809" fill="#94a3b8" font-size="8">New/Updated</text>
 
-        <!-- Docker -->
-        <rect x="40" y="448" width="80" height="46" rx="4" fill="rgba(30, 58, 138, 0.4)" stroke="#60a5fa" stroke-width="1.5"/>
-        <text x="80" y="465" fill="white" font-size="9" font-weight="600" text-anchor="middle">Docker</text>
-        <text x="80" y="481" fill="#94a3b8" font-size="8" text-anchor="middle">Compose · Multi-stage</text>
-
-        <!-- justfile -->
-        <rect x="130" y="448" width="80" height="46" rx="4" fill="rgba(30, 58, 138, 0.4)" stroke="#60a5fa" stroke-width="1.5"/>
-        <text x="170" y="465" fill="white" font-size="9" font-weight="600" text-anchor="middle">justfile</text>
-        <text x="170" y="481" fill="#94a3b8" font-size="8" text-anchor="middle">Tasks runner</text>
-
-        <!-- uv + pnpm -->
-        <rect x="220" y="448" width="100" height="46" rx="4" fill="rgba(30, 58, 138, 0.4)" stroke="#60a5fa" stroke-width="1.5"/>
-        <text x="270" y="465" fill="white" font-size="9" font-weight="600" text-anchor="middle">uv + pnpm</text>
-        <text x="270" y="481" fill="#94a3b8" font-size="8" text-anchor="middle">Package managers</text>
-
-        <!-- Linting / Testing row 2 -->
-        <rect x="40" y="502" width="80" height="40" rx="4" fill="rgba(6, 78, 59, 0.3)" stroke="#34d399" stroke-width="1"/>
-        <text x="80" y="518" fill="#34d399" font-size="8" font-weight="600" text-anchor="middle">Ruff</text>
-        <text x="80" y="532" fill="#94a3b8" font-size="7" text-anchor="middle">Backend lint</text>
-
-        <rect x="130" y="502" width="80" height="40" rx="4" fill="rgba(6, 78, 59, 0.3)" stroke="#34d399" stroke-width="1"/>
-        <text x="170" y="518" fill="#34d399" font-size="8" font-weight="600" text-anchor="middle">Biome</text>
-        <text x="170" y="532" fill="#94a3b8" font-size="7" text-anchor="middle">Frontend fmt</text>
-
-        <rect x="220" y="502" width="100" height="40" rx="4" fill="rgba(6, 78, 59, 0.3)" stroke="#34d399" stroke-width="1"/>
-        <text x="270" y="518" fill="#34d399" font-size="8" font-weight="600" text-anchor="middle">Vitest + Pytest</text>
-        <text x="270" y="532" fill="#94a3b8" font-size="7" text-anchor="middle">169 + 113 tests</text>
-
-        <!-- Legend -->
-        <text x="380" y="688" fill="white" font-size="10" font-weight="600">Legend</text>
-        <rect x="380" y="700" width="14" height="9" rx="2" fill="rgba(8, 51, 68, 0.4)" stroke="#22d3ee" stroke-width="1"/>
-        <text x="400" y="708" fill="#94a3b8" font-size="8">Frontend (Next.js)</text>
-        <rect x="510" y="700" width="14" height="9" rx="2" fill="rgba(6, 78, 59, 0.4)" stroke="#34d399" stroke-width="1"/>
-        <text x="530" y="708" fill="#94a3b8" font-size="8">Backend (FastAPI)</text>
-        <rect x="640" y="700" width="14" height="9" rx="2" fill="rgba(76, 29, 149, 0.4)" stroke="#a78bfa" stroke-width="1"/>
-        <text x="660" y="708" fill="#94a3b8" font-size="8">Database</text>
-        <rect x="730" y="700" width="14" height="9" rx="2" fill="rgba(251, 146, 60, 0.3)" stroke="#fb923c" stroke-width="1"/>
-        <text x="750" y="708" fill="#94a3b8" font-size="8">Admin</text>
-        <rect x="810" y="700" width="14" height="9" rx="2" fill="rgba(136, 19, 55, 0.4)" stroke="#fb7185" stroke-width="1"/>
-        <text x="830" y="708" fill="#94a3b8" font-size="8">Auth</text>
-        <line x1="380" y1="720" x2="394" y2="720" stroke="#fb7185" stroke-width="1.2" stroke-dasharray="4,3"/>
-        <text x="400" y="723" fill="#94a3b8" font-size="8">Auth Flow</text>
       </svg>
     </div>
 
@@ -311,54 +491,54 @@
           <h3>Backend API (12 Routers)</h3>
         </div>
         <ul>
-          <li>• posts: CRUD, slug, publish, views</li>
-          <li>• comments: create, reply, IP tracking</li>
-          <li>• categories: nested structure</li>
-          <li>• tags: post-tag many-to-many</li>
-          <li>• search: full-text post search</li>
-          <li>• stats: views + likes counter</li>
-          <li>• admin: JWT-protected operations</li>
-          <li>• rss, sitemap, health, export, upload</li>
+          <li>• posts: CRUD + slug + view/like + popular + related</li>
+          <li>• comments: create + threaded reply + IP tracking</li>
+          <li>• categories: nested structure (1:N)</li>
+          <li>• tags: N:N via post_tags table</li>
+          <li>• search: full-text title/content search</li>
+          <li>• stats: aggregated views + likes</li>
+          <li>• admin: JWT-protected CRUD (posts/cat/tags/comments/users)</li>
+          <li>• rss (full) · sitemap · robots.txt · health · export · upload</li>
         </ul>
       </div>
 
       <div class="card">
         <div class="card-header">
           <div class="card-dot cyan"></div>
-          <h3>Frontend (Next.js 16)</h3>
+          <h3>Frontend (Next.js 16 · 35+ components)</h3>
         </div>
         <ul>
-          <li>• App Router with TypeScript 6</li>
-          <li>• React 19 + Tailwind CSS</li>
-          <li>• 40+ reusable components</li>
-          <li>• Mermaid, Markdown, Dark mode</li>
-          <li>• MSW mock for API testing</li>
-          <li>• Vitest 113 test cases</li>
-          <li>• Biome CI linting</li>
-          <li>• SEO: robots.txt, sitemap, RSS</li>
+          <li>• App Router + TypeScript 6 + React 19 + Tailwind CSS</li>
+          <li>• Rich: Markdown + Mermaid · ToC · ReadingProgress</li>
+          <li>• Interaction: ImageLightbox · ShareButtons · LikeButton</li>
+          <li>• Social: RelatedPosts · TagCloud · BackToTop</li>
+          <li>• DX: ThemeToggle (dark/light) · Skeleton · ErrorBoundary</li>
+          <li>• A11y: ARIA nav · skip-nav · combobox · pagination nav</li>
+          <li>• SEO: robots.txt · sitemap.xml · RSS · JSON-LD · OpenGraph</li>
+          <li>• Test: 113 Vitest cases · MSW mock · Biome CI</li>
         </ul>
       </div>
 
       <div class="card">
         <div class="card-header">
           <div class="card-dot violet"></div>
-          <h3>Data Model</h3>
+          <h3>Data Model + Performance</h3>
         </div>
         <ul>
-          <li>• Post: title, slug, markdown, excerpt</li>
+          <li>• Post: title · slug · markdown · excerpt · cover_img · pinned · views · likes</li>
           <li>• Category: 1:N → Posts</li>
-          <li>• Tag: N:N ↔ Posts (post_tags)</li>
-          <li>• Comment: 1:N thread (parent_id)</li>
-          <li>• SQLite (SQLAlchemy ORM)</li>
-          <li>• Pydantic v2 schemas</li>
-          <li>• Rate limiting: SlowAPI</li>
-          <li>• Cache: TTL-based in-memory</li>
+          <li>• Tag: N:N ↔ Posts (post_tags via SQLAlchemy)</li>
+          <li>• Comment: threaded (parent_id) · IP · email</li>
+          <li>• SQLite (x-blog.db) · SQLAlchemy ORM · Pydantic v2</li>
+          <li>• TTL in-memory cache · cache-aside on reads</li>
+          <li>• SlowAPI rate-limit (60/min) · GZip compression</li>
+          <li>• N+1 resolved · graceful shutdown · request timeout</li>
         </ul>
       </div>
     </div>
 
     <p class="footer">
-      X-Blog · FastAPI 0.135 + Next.js 16 + SQLite · uv + pnpm · Docker Compose
+      X-Blog · FastAPI 0.135 + Next.js 16 + React 19 + SQLite + Tailwind CSS · 282 tests · uv + pnpm + Docker Compose
     </p>
   </div>
 </body>
