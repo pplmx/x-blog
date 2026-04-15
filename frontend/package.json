@@ -18,7 +18,7 @@
     "test": "vitest --run",
     "test:ui": "vitest --ui",
     "test:coverage": "vitest --coverage",
-    "test:e2e": "rm -rf /tmp/e2e-test && mkdir -p /tmp/e2e-test && cd /tmp/e2e-test && pnpm init && pnpm add -D @playwright/test@1.59.1 > /dev/null 2>&1 && cp -r /var/tmp/aurora/frontend/e2e/. . && npx playwright test"
+    "test:e2e": "pnpm playwright test --config e2e/playwright.config.ts"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",

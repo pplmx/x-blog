@@ -85,6 +85,24 @@ test-frontend:
 test-frontend-coverage:
     cd frontend && pnpm test:coverage
 
+# Run e2e tests (requires just dev running in separate terminals)
+# Or use: just test-e2e for self-contained mode
+test-e2e:
+    cd frontend && pnpm test:e2e
+
+# Run e2e tests against live dev servers (auto-starts backend + frontend)
+e2e:
+    @echo "Starting backend..."
+    cd backend && uv run uvicorn app.main:app --host 0.0.0.0 --port 8000 &
+    @sleep 3 && curl -sf http://localhost:8000/health > /dev/null || (echo "Backend failed to start" && exit 1)
+    @echo "Starting frontend..."
+    cd frontend && pnpm dev &
+    @sleep 5 && curl -sf http://localhost:3000 > /dev/null || (echo "Frontend failed to start" && exit 1)
+    @echo "Running e2e tests..."
+    cd frontend && pnpm playwright test
+    @echo "Stopping services..."
+    @pkill -f "uvicorn app.main:app" 2>/dev/null; pkill -f "next dev" 2>/dev/null; echo "done"
+
 # Clean generated files
 clean:
     rm -f backend/*.db
