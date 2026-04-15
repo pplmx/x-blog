@@ -145,9 +145,9 @@ See [docs/deployment.md](./docs/deployment.md) for detailed deployment guide.
 
 ## 🏗️ Architecture
 
-![Architecture Diagram](./docs/x-blog-architecture.html)
+![Architecture Diagram](./docs/x-blog-architecture.png)
 
-> Interactive SVG architecture diagram — open in browser to view. Covers: Next.js Frontend, FastAPI Backend, SQLite DB, JWT Auth, Admin Zone, and DevOps tooling.
+> 📁 [Interactive HTML version](./docs/x-blog-architecture.html) — open locally in browser for zoom/pan. SVG diagram covering: Next.js Frontend, FastAPI Backend, SQLite DB, JWT Auth, Admin Zone, and DevOps tooling.
 
 ## 🗂️ Project Structure
 
