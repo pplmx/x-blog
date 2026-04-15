@@ -1,14 +1,56 @@
-__pycache__/
+# Git
+.git
+.gitignore
+
+# IDE
+.idea
+.vscode
+*.swp
+*.swo
+
+# Build artifacts
+__pycache__
 *.pyc
 *.pyo
-.venv/
-.pytest_cache/
-*.db
-.git/
-.gitignore
+*.pyd
+.Python
+*.so
+*.egg
+*.egg-info
+dist
+build
+
+# Virtual environments
+.venv
+venv
+env
+
+# Test files
+tests
+test
+*.test.py
+*.spec.py
+
+# Documentation
+docs
+*.md
+LICENSE
+
+# Docker
+Dockerfile
+docker-compose*.yml
+.dockerignore
+
+# CI/CD
+.github
+.gitlab-ci.yml
+.travis.yml
+
+# Misc
 .env
 .env.*
-*.md
-README*
-docs/
-tests/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
