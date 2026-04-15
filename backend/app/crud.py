@@ -270,6 +270,25 @@ def get_comments(db: Session, post_id: int) -> list[models.Comment]:
     )
 
 
+def get_comments_paginated(
+    db: Session,
+    post_id: int,
+    page: int = 1,
+    limit: int = 20,
+) -> tuple[list[models.Comment], int]:
+    """Get paginated comments for a post.
+
+    Returns:
+        Tuple of (comments list, total count)
+    """
+    query = db.query(models.Comment).filter(models.Comment.post_id == post_id)
+
+    total = query.count()
+    comments = query.order_by(models.Comment.created_at.desc()).offset((page - 1) * limit).limit(limit).all()
+
+    return comments, total
+
+
 def create_comment(
     db: Session,
     post_id: int,
