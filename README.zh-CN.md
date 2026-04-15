@@ -20,7 +20,7 @@
 - 🎨 **精美 UI** - Tailwind CSS v4 + shadcn/ui 构建
 - 📱 **响应式设计** - 完美适配移动端
 - 🔒 **管理后台** - 内置内容管理后台
-- 🧪 **完善测试** - 151 个测试 (后端 68 + 前端 83)
+- 🧪 **完善测试** - 282 个测试 (后端 169 + 前端 113)
 - ✅ **类型安全** - 完整 TypeScript 支持 + Pydantic 验证
 - 🔍 **全文搜索** - 文章搜索功能
 - 🌙 **深色模式** - 跟随系统偏好的深色模式
@@ -98,7 +98,7 @@ docker-compose logs -f
 | `just frontend`      | 运行 Next.js 前端                |
 | `just lint`          | 代码检查 (ruff + biome)          |
 | `just format`        | 代码格式化                       |
-| `just test`          | 运行所有测试 (68 后端 + 83 前端) |
+| `just test`          | 运行所有测试 (169 后端 + 113 前端) |
 | `just test-backend`  | 运行后端测试 (并行)              |
 | `just test-frontend` | 运行前端测试                     |
 | `just fix`           | 自动修复代码问题                 |
@@ -143,7 +143,13 @@ docker-compose logs -f
 | GET  | `/api/export/posts.csv`   | 导出所有文章      |
 | GET  | `/api/export/comments.csv`| 导出所有评论      |
 
-## 🏗️ 项目结构
+## 🏗️ 系统架构
+
+![架构图](./docs/x-blog-architecture.html)
+
+> 交互式 SVG 架构图，浏览器打开可查看完整内容。涵盖：Next.js 前端、FastAPI 后端、SQLite 数据库、JWT 认证、管理后台、DevOps 工具链。
+
+## 🗂️ 项目结构
 
 ```text
 x-blog/
@@ -156,7 +162,7 @@ x-blog/
 │   │   ├── schemas.py      # Pydantic schemas
 │   │   ├── crud.py         # 数据库操作
 │   │   └── routers/        # API 路由
-│   ├── tests/              # 单元测试 (68 个)
+│   ├── tests/              # pytest 测试 (169 个)
 │   └── pyproject.toml      # Python 配置
 │
 ├── frontend/               # Next.js 前端
@@ -223,9 +229,9 @@ just test-frontend-coverage
 
 **测试统计:**
 
-- 后端: 68 个测试 (pytest + pytest-xdist)
-- 前端: 83 个测试 (Vitest)
-- **总计: 151 个测试**
+- 后端: 169 个测试 (pytest + pytest-xdist)
+- 前端: 113 个测试 (Vitest)
+- **总计: 282 个测试**
 
 ## 🤝 贡献
 
