@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Heart } from 'lucide-react';
 import { incrementLikes } from '@/lib/api';
 
@@ -14,6 +14,16 @@ export default function LikeButton({ postId, initialLikes }: LikeButtonProps) {
   const [liked, setLiked] = useState(false);
   const [loading, setLoading] = useState(false);
 
+  // Load liked state from localStorage on mount
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const stored = localStorage.getItem(`liked_${postId}`);
+      if (stored === 'true') {
+        setLiked(true);
+      }
+    }
+  }, [postId]);
+
   const handleLike = async () => {
     if (liked || loading) return;
 
@@ -22,6 +32,8 @@ export default function LikeButton({ postId, initialLikes }: LikeButtonProps) {
       const updated = await incrementLikes(postId);
       setLikes(updated.likes);
       setLiked(true);
+      // Persist to localStorage
+      localStorage.setItem(`liked_${postId}`, 'true');
     } catch (error) {
       console.error('Failed to like post:', error);
     } finally {

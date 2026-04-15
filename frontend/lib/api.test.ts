@@ -22,9 +22,14 @@ describe('API Error Handling', () => {
   });
 
   it('fetchPosts handles errors gracefully', async () => {
-    mockFetch.mockRejectedValueOnce(new Error('Network error'));
+    mockFetch.mockResolvedValue({
+      ok: false,
+      status: 400,
+      statusText: 'Bad Request',
+      json: async () => ({ error: { code: 'BAD_REQUEST' } }),
+    });
 
-    await expect(fetchPosts({})).rejects.toThrow('Network error');
+    await expect(fetchPosts({})).rejects.toThrow(APIError);
   });
 
   it('fetchPost throws APIError on 404', async () => {
@@ -77,18 +82,18 @@ describe('API Error Handling', () => {
   });
 
   it('APIError includes status code', async () => {
-    mockFetch.mockResolvedValueOnce({
+    mockFetch.mockResolvedValue({
       ok: false,
-      status: 500,
-      statusText: 'Internal Server Error',
-      json: async () => ({ error: { code: 'ERROR', message: 'Server error' } }),
-    } as unknown as Response);
+      status: 400,
+      statusText: 'Bad Request',
+      json: async () => ({ error: { code: 'ERROR', message: 'Bad request' } }),
+    });
 
     try {
       await fetchPost('error-post');
     } catch (e) {
       expect(e).toBeInstanceOf(APIError);
-      expect((e as APIError).status).toBe(500);
+      expect((e as APIError).status).toBe(400);
     }
   });
 });

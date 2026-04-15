@@ -4,6 +4,7 @@ from fastapi import APIRouter, status
 from pydantic import BaseModel
 from sqlalchemy import text
 
+from app.cache import get_cache_info
 from app.database import engine
 
 
@@ -20,6 +21,16 @@ class ReadyResponse(BaseModel):
 
     status: str
     checks: dict[str, str]
+
+
+class CacheStatsResponse(BaseModel):
+    """Cache statistics response model."""
+
+    posts: dict[str, int | float]
+    post_detail: dict[str, int | float]
+    categories: dict[str, int | float]
+    tags: dict[str, int | float]
+    stats: dict[str, int | float]
 
 
 router = APIRouter(tags=["Health"])
@@ -70,3 +81,21 @@ async def readiness_check() -> ReadyResponse:
 async def liveness_check() -> dict[str, str]:
     """Liveness check - returns 200 if the process is alive."""
     return {"status": "alive"}
+
+
+@router.get(
+    "/health/cache",
+    response_model=CacheStatsResponse,
+    summary="Cache Statistics",
+    description="Get cache hit/miss statistics and current cache status.",
+)
+async def cache_stats() -> CacheStatsResponse:
+    """Get cache statistics for monitoring and debugging."""
+    cache_info = get_cache_info()
+    return CacheStatsResponse(
+        posts=cache_info["posts"],
+        post_detail=cache_info["post_detail"],
+        categories=cache_info["categories"],
+        tags=cache_info["tags"],
+        stats=cache_info["stats"],
+    )

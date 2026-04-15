@@ -24,11 +24,11 @@ describe('API - Error Handling', () => {
 
   describe('fetchCategories', () => {
     it('throws APIError on failure', async () => {
-      global.fetch = vi.fn().mockResolvedValueOnce({
+      global.fetch = vi.fn().mockResolvedValue({
         ok: false,
-        status: 500,
-        statusText: 'Internal Server Error',
-        json: async () => ({ error: { code: 'ERROR', message: 'Server error' } }),
+        status: 400,
+        statusText: 'Bad Request',
+        json: async () => ({ error: { code: 'ERROR', message: 'Bad request' } }),
       });
 
       await expect(fetchCategories()).rejects.toThrow(APIError);

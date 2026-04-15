@@ -2,6 +2,8 @@ import { Post, PostList, Category, Tag, SearchResult } from '@/types';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 const REQUEST_TIMEOUT = 10000; // 10 seconds
+const MAX_RETRIES = 3;
+const RETRY_DELAY = 1000; // 1 second
 
 // Custom error class with status code
 export class APIError extends Error {
@@ -17,23 +19,57 @@ export class APIError extends Error {
 
 interface FetchOptions extends RequestInit {
   timeout?: number;
+  retries?: number;
 }
 
 async function fetchWithTimeout(url: string, options: FetchOptions = {}): Promise<Response> {
-  const { timeout = REQUEST_TIMEOUT, ...fetchOptions } = options;
+  const { timeout = REQUEST_TIMEOUT, retries = MAX_RETRIES, ...fetchOptions } = options;
 
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), timeout);
 
-  try {
-    const response = await fetch(url, {
-      ...fetchOptions,
-      signal: controller.signal,
-    });
-    return response;
-  } finally {
-    clearTimeout(timeoutId);
+  let lastError: Error | null = null;
+
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    try {
+      const response = await fetch(url, {
+        ...fetchOptions,
+        signal: controller.signal,
+      });
+      clearTimeout(timeoutId);
+
+      // Don't retry on 4xx errors (except 429 Too Many Requests)
+      if (response.status >= 400 && response.status < 500 && response.status !== 429) {
+        return response;
+      }
+
+      // Return success or 5xx errors for retry
+      if (response.ok) {
+        return response;
+      }
+
+      // 5xx errors or 429 - retry
+      lastError = new Error(`HTTP ${response.status}`);
+    } catch (error) {
+      lastError = error as Error;
+
+      // Don't retry on abort (timeout)
+      if (error instanceof DOMException && error.name === 'AbortError') {
+        clearTimeout(timeoutId);
+        throw error;
+      }
+    }
+
+    // Retry on failure
+    if (attempt < retries) {
+      // Exponential backoff
+      const delay = RETRY_DELAY * Math.pow(2, attempt);
+      await new Promise((resolve) => setTimeout(resolve, delay));
+    }
   }
+
+  clearTimeout(timeoutId);
+  throw lastError;
 }
 
 function getAuthHeaders(): HeadersInit {
