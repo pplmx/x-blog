@@ -37,6 +37,7 @@ class PostBase(BaseModel):
     published: bool = False
     pinned: bool = False
     category_id: int | None = None
+    cover_image: str | None = None
 
 
 class PostCreate(PostBase):
@@ -75,6 +76,7 @@ class PostList(BaseModel):
     created_at: datetime
     views: int = 0
     likes: int = 0
+    cover_image: str | None = None
     category: Category | None = None
     tags: list[Tag] = []
     model_config = ConfigDict(from_attributes=True)

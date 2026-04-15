@@ -332,12 +332,16 @@ def search_posts(db: Session, query: str, page: int = 1, limit: int = 10):
             )
         )
         .where(models.Post.published)
+        .options(
+            joinedload(models.Post.category),
+            joinedload(models.Post.tags),
+        )
         .order_by(models.Post.title.ilike(search_pattern).desc(), models.Post.created_at.desc())
         .offset(offset)
         .limit(limit)
     )
 
-    posts = db.execute(stmt).scalars().all()
+    posts = db.execute(stmt).unique().scalars().all()
 
     count_stmt = (
         select(func.count(models.Post.id))
@@ -378,32 +382,96 @@ def increment_likes(db: Session, post_id: int) -> models.Post | None:
 
 def get_popular_posts(db: Session, limit: int = 5) -> list[models.Post]:
     """Get the most popular posts by view count."""
-    return db.query(models.Post).filter(models.Post.published).order_by(models.Post.views.desc()).limit(limit).all()
+    return (
+        db.query(models.Post)
+        .filter(models.Post.published)
+        .options(
+            joinedload(models.Post.category),
+            joinedload(models.Post.tags),
+        )
+        .order_by(models.Post.views.desc())
+        .limit(limit)
+        .all()
+    )
 
 
 def get_related_posts(db: Session, post_id: int, limit: int = 5) -> list[models.Post]:
-    """Get related posts based on category and tags."""
+    """Get related posts based on category and tags.
+
+    Uses SQL-based tag matching for better performance.
+    """
     post = get_post(db, post_id)
-    if not post:
-        return []
+    if not post or not post.tags:
+        # Fallback: just get recent posts in same category
+        query = db.query(models.Post).filter(
+            models.Post.published,
+            models.Post.id != post_id,
+        )
+        if post and post.category_id:
+            query = query.filter(models.Post.category_id == post.category_id)
+        return (
+            query.options(
+                joinedload(models.Post.category),
+                joinedload(models.Post.tags),
+            )
+            .order_by(models.Post.created_at.desc())
+            .limit(limit)
+            .all()
+        )
 
-    # 查找同分类的文章
-    query = db.query(models.Post).filter(models.Post.published, models.Post.id != post_id)
+    # Get tag IDs of the source post
+    source_tag_ids = [t.id for t in post.tags]
 
+    # SQL-based matching: find posts sharing tags, prioritize same category
+    # Use a subquery to count matching tags
+    from sqlalchemy import case
+
+    # Access the post_tags table from models
+    post_tags_table = models.post_tags
+
+    tag_match_count_subq = (
+        db.query(post_tags_table.c.post_id, func.count(post_tags_table.c.tag_id).label("match_count"))
+        .filter(post_tags_table.c.tag_id.in_(source_tag_ids))
+        .group_by(post_tags_table.c.post_id)
+        .subquery()
+    )
+
+    # Build main query with tag match count and eager loading
+    query = (
+        db.query(models.Post, tag_match_count_subq.c.match_count)
+        .outerjoin(tag_match_count_subq, models.Post.id == tag_match_count_subq.c.post_id)
+        .filter(
+            models.Post.published,
+            models.Post.id != post_id,
+        )
+        .options(
+            joinedload(models.Post.category),
+            joinedload(models.Post.tags),
+        )
+    )
+
+    # Same category gets higher priority (add 100 to match_count)
     if post.category_id:
-        # 同分类的文章优先
-        query = query.filter(models.Post.category_id == post.category_id)
+        query = query.add_columns(
+            case(
+                (models.Post.category_id == post.category_id, tag_match_count_subq.c.match_count + 100),
+                else_=tag_match_count_subq.c.match_count,
+            ).label("priority")
+        )
+        query = query.order_by(
+            case(
+                (models.Post.category_id == post.category_id, tag_match_count_subq.c.match_count + 100),
+                else_=tag_match_count_subq.c.match_count,
+            ).desc(),
+            models.Post.created_at.desc(),
+        )
+    else:
+        query = query.order_by(
+            tag_match_count_subq.c.match_count.desc().nullslast(),
+            models.Post.created_at.desc(),
+        )
 
-    # 按标签匹配数排序
-    all_posts = query.all()
+    results = query.limit(limit).all()
 
-    def tag_match_count(p: models.Post) -> int:
-        if not post.tags:
-            return 0
-        post_tag_ids = {t.id for t in p.tags}
-        return len(post_tag_ids.intersection({t.id for t in post.tags}))
-
-    # 排序：标签匹配数 > 创建时间
-    sorted_posts = sorted(all_posts, key=lambda p: (tag_match_count(p), p.created_at), reverse=True)
-
-    return sorted_posts[:limit]
+    # Extract posts from results (strip the extra columns)
+    return [row[0] for row in results]
