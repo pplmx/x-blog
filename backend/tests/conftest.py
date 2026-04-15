@@ -1,3 +1,8 @@
+import os
+
+# Set test environment variables before importing app modules
+os.environ.setdefault("JWT_SECRET_KEY", "test-secret-key-for-testing-only")
+
 import time
 from contextlib import suppress
 from pathlib import Path

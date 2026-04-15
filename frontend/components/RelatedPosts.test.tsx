@@ -13,6 +13,10 @@ const mockPosts = [
 const server = setupServer(
   http.get('http://localhost:8000/api/posts/1/related', () => {
     return HttpResponse.json(mockPosts);
+  }),
+  // Default handler for unmatched requests - return empty array
+  http.get(/\/api\/posts\/\d+\/related/, () => {
+    return HttpResponse.json([]);
   })
 );
 
@@ -54,12 +58,8 @@ describe('RelatedPosts', () => {
   });
 
   it('returns null when no related posts', async () => {
-    const emptyServer = setupServer(
-      http.get('http://localhost:8000/api/posts/999/related', () => {
-        return HttpResponse.json([]);
-      })
-    );
-    emptyServer.listen();
+    // Reset query client to ensure clean state
+    queryClient.clear();
 
     const { container } = render(
       <QueryClientProvider client={queryClient}>
@@ -70,7 +70,5 @@ describe('RelatedPosts', () => {
     await waitFor(() => {
       expect(container.firstChild).toBeNull();
     });
-
-    emptyServer.close();
   });
 });
