@@ -52,8 +52,9 @@ export default function CommentForm({ postId, replyTo, onCancelReply }: CommentF
             type="button"
             onClick={onCancelReply}
             className="text-blue-500 hover:text-blue-700 dark:hover:text-blue-400 p-1 rounded-full hover:bg-blue-100 dark:hover:bg-blue-900/40 transition-colors"
+            aria-label="取消回复"
           >
-            <X className="w-4 h-4" />
+            <X className="w-4 h-4" aria-hidden="true" />
           </button>
         </div>
       )}
@@ -64,22 +65,34 @@ export default function CommentForm({ postId, replyTo, onCancelReply }: CommentF
         </h3>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-              昵称 <span className="text-red-500">*</span>
+            <label
+              htmlFor="comment-nickname"
+              className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+            >
+              昵称{' '}
+              <span className="text-red-500" aria-hidden="true">
+                *
+              </span>
             </label>
             <input
+              id="comment-nickname"
               value={nickname}
               onChange={(e) => setNickname(e.target.value)}
               placeholder="你的昵称"
               className="w-full border border-gray-200 dark:border-gray-700 rounded-xl px-4 py-2.5 bg-gray-50 dark:bg-gray-800 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
               required
+              aria-required="true"
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+            <label
+              htmlFor="comment-email"
+              className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+            >
               邮箱 <span className="text-gray-400">(选填)</span>
             </label>
             <input
+              id="comment-email"
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
@@ -89,10 +102,17 @@ export default function CommentForm({ postId, replyTo, onCancelReply }: CommentF
           </div>
         </div>
         <div className="mb-4">
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-            评论内容 <span className="text-red-500">*</span>
+          <label
+            htmlFor="comment-content"
+            className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+          >
+            评论内容{' '}
+            <span className="text-red-500" aria-hidden="true">
+              *
+            </span>
           </label>
           <textarea
+            id="comment-content"
             ref={textareaRef}
             value={content}
             onChange={(e) => setContent(e.target.value)}
@@ -100,6 +120,7 @@ export default function CommentForm({ postId, replyTo, onCancelReply }: CommentF
             className="w-full border border-gray-200 dark:border-gray-700 rounded-xl px-4 py-3 bg-gray-50 dark:bg-gray-800 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all resize-none"
             rows={4}
             required
+            aria-required="true"
           />
         </div>
         <div className="flex justify-end">
@@ -107,8 +128,9 @@ export default function CommentForm({ postId, replyTo, onCancelReply }: CommentF
             type="submit"
             disabled={createComment.isPending || !nickname.trim() || !content.trim()}
             className="inline-flex items-center gap-2 px-6 py-2.5 bg-gradient-to-r from-blue-500 to-indigo-600 text-white rounded-xl font-medium hover:from-blue-600 hover:to-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 shadow-lg shadow-blue-500/25 hover:shadow-blue-500/40"
+            aria-disabled={createComment.isPending || !nickname.trim() || !content.trim()}
           >
-            <Send className="w-4 h-4" />
+            <Send className="w-4 h-4" aria-hidden="true" />
             {createComment.isPending ? '提交中...' : replyTo ? '发表回复' : '发表评论'}
           </button>
         </div>

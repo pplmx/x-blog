@@ -17,11 +17,12 @@ export default function Pagination({ currentPage, totalPages, baseUrl }: Paginat
   }
 
   return (
-    <div className="flex items-center justify-center gap-2 mt-8">
+    <nav aria-label="分页导航" className="flex items-center justify-center gap-2 mt-8">
       {currentPage > 1 && (
         <Link
           href={`${baseUrl}?page=${currentPage - 1}`}
           className="px-3 py-1 border rounded hover:bg-gray-100"
+          aria-label="上一页"
         >
           上一页
         </Link>
@@ -34,6 +35,8 @@ export default function Pagination({ currentPage, totalPages, baseUrl }: Paginat
           className={`px-3 py-1 border rounded ${
             page === currentPage ? 'bg-blue-600 text-white' : 'hover:bg-gray-100'
           }`}
+          aria-label={`第 ${page} 页`}
+          aria-current={page === currentPage ? 'page' : undefined}
         >
           {page}
         </Link>
@@ -43,10 +46,11 @@ export default function Pagination({ currentPage, totalPages, baseUrl }: Paginat
         <Link
           href={`${baseUrl}?page=${currentPage + 1}`}
           className="px-3 py-1 border rounded hover:bg-gray-100"
+          aria-label="下一页"
         >
           下一页
         </Link>
       )}
-    </div>
+    </nav>
   );
 }
