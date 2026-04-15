@@ -1,9 +1,62 @@
-node_modules/
-.next/
-.git/
-.env*
+# Git
+.git
+.gitignore
+
+# IDE
+.idea
+.vscode
+*.swp
+*.swo
+
+# Dependencies
+node_modules
+.pnpm-store
+
+# Build artifacts
+.next
+out
+dist
+build
+
+# Test files
+**/*.test.ts
+**/*.test.tsx
+**/*.spec.ts
+**/*.spec.tsx
+__tests__
+tests
+coverage
+
+# Documentation
+docs
 *.md
-README*
-docs/
-e2e/
-mocks/
+LICENSE
+
+# Docker
+Dockerfile
+docker-compose*.yml
+.dockerignore
+
+# CI/CD
+.github
+.gitlab-ci.yml
+.travis.yml
+
+# Environment files
+.env
+.env.*
+.env.local
+.env.development
+.env.production
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Misc
+.DS_Store
+*.local
+.nyc_output
