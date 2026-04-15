@@ -44,8 +44,41 @@ def test_list_comments(client, post):
     response = client.get(f"/api/comments/post/{post['id']}")
     assert response.status_code == 200
     data = response.json()
-    assert len(data) == 1
-    assert data[0]["nickname"] == "Test User"
+    assert "items" in data
+    assert len(data["items"]) == 1
+    assert data["items"][0]["nickname"] == "Test User"
+    assert data["total"] == 1
+    assert data["page"] == 1
+    assert data["limit"] == 20
+
+
+def test_list_comments_pagination(client, post):
+    # Create 5 comments
+    for i in range(5):
+        client.post(
+            f"/api/comments/post/{post['id']}",
+            json={
+                "nickname": f"User {i}",
+                "email": f"user{i}@example.com",
+                "content": f"Comment {i}",
+            },
+        )
+
+    # Get first page with limit 2
+    response = client.get(f"/api/comments/post/{post['id']}?page=1&limit=2")
+    assert response.status_code == 200
+    data = response.json()
+    assert len(data["items"]) == 2
+    assert data["total"] == 5
+    assert data["page"] == 1
+    assert data["limit"] == 2
+    assert data["total_pages"] == 3
+
+    # Get second page
+    response = client.get(f"/api/comments/post/{post['id']}?page=2&limit=2")
+    data = response.json()
+    assert len(data["items"]) == 2
+    assert data["page"] == 2
 
 
 def test_delete_comment(client, post):
@@ -61,4 +94,4 @@ def test_delete_comment(client, post):
     response = client.delete(f"/api/comments/{comment_id}")
     assert response.status_code == 204
     list_response = client.get(f"/api/comments/post/{post['id']}")
-    assert len(list_response.json()) == 0
+    assert len(list_response.json()["items"]) == 0

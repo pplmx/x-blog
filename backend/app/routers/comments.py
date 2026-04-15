@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, Request
+from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from app import crud, schemas
@@ -7,9 +8,34 @@ from app.database import get_db
 router = APIRouter(prefix="/api/comments", tags=["comments"])
 
 
-@router.get("/post/{post_id}", response_model=list[schemas.Comment])
-def list_comments(post_id: int, db: Session = Depends(get_db)):
-    return crud.get_comments(db, post_id)
+class CommentListResponse(BaseModel):
+    """Paginated comment list response."""
+
+    items: list[schemas.Comment]
+    total: int
+    page: int
+    limit: int
+    total_pages: int
+
+
+@router.get("/post/{post_id}", response_model=CommentListResponse)
+def list_comments(
+    post_id: int,
+    page: int = 1,
+    limit: int = 20,
+    db: Session = Depends(get_db),
+):
+    """Get paginated comments for a post."""
+    comments, total = crud.get_comments_paginated(db, post_id, page=page, limit=limit)
+    total_pages = (total + limit - 1) // limit if limit > 0 else 0
+
+    return CommentListResponse(
+        items=comments,
+        total=total,
+        page=page,
+        limit=limit,
+        total_pages=total_pages,
+    )
 
 
 @router.post("/post/{post_id}", response_model=schemas.Comment, status_code=201)
