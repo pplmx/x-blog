@@ -1,21 +1,75 @@
 import { Post, PostList, Category, Tag, SearchResult } from '@/types';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+const REQUEST_TIMEOUT = 10000; // 10 seconds
+
+// Custom error class with status code
+export class APIError extends Error {
+  constructor(
+    message: string,
+    public status: number,
+    public details?: unknown
+  ) {
+    super(message);
+    this.name = 'APIError';
+  }
+}
+
+interface FetchOptions extends RequestInit {
+  timeout?: number;
+}
+
+async function fetchWithTimeout(url: string, options: FetchOptions = {}): Promise<Response> {
+  const { timeout = REQUEST_TIMEOUT, ...fetchOptions } = options;
+
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeout);
+
+  try {
+    const response = await fetch(url, {
+      ...fetchOptions,
+      signal: controller.signal,
+    });
+    return response;
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
 
 function getAuthHeaders(): HeadersInit {
-  const token = typeof window !== 'undefined' ? localStorage.getItem('admin_token') : null;
+  if (typeof window === 'undefined') return {};
+  const token = localStorage.getItem('admin_token');
   return token ? { Authorization: `Bearer ${token}` } : {};
+}
+
+async function handleResponse<T>(res: Response): Promise<T> {
+  if (!res.ok) {
+    let details: unknown;
+    try {
+      const body = await res.json();
+      details = body.error || body;
+    } catch {
+      details = await res.text();
+    }
+
+    throw new APIError(`Request failed: ${res.statusText}`, res.status, details);
+  }
+  return res.json();
+}
+
+export interface PaginationInfo {
+  total: number;
+  page: number;
+  limit: number;
+  total_pages: number;
 }
 
 export interface PostListResponse {
   items: PostList[];
-  pagination: {
-    total: number;
-    page: number;
-    limit: number;
-    total_pages: number;
-  };
+  pagination: PaginationInfo;
 }
+
+// ============ Public API ============
 
 export async function fetchPosts(filters?: {
   category_id?: number;
@@ -32,27 +86,23 @@ export async function fetchPosts(filters?: {
   const query = params.toString();
   const url = query ? `${API_BASE}/api/posts?${query}` : `${API_BASE}/api/posts`;
 
-  const res = await fetch(url, { cache: 'no-store' });
-  if (!res.ok) throw new Error('Failed to fetch posts');
-  return res.json();
+  const res = await fetchWithTimeout(url, { cache: 'no-store' });
+  return handleResponse<PostListResponse>(res);
 }
 
 export async function fetchCategories(): Promise<Category[]> {
-  const res = await fetch(`${API_BASE}/api/categories`);
-  if (!res.ok) throw new Error('Failed to fetch categories');
-  return res.json();
+  const res = await fetchWithTimeout(`${API_BASE}/api/categories`);
+  return handleResponse<Category[]>(res);
 }
 
 export async function fetchTags(): Promise<Tag[]> {
-  const res = await fetch(`${API_BASE}/api/tags`);
-  if (!res.ok) throw new Error('Failed to fetch tags');
-  return res.json();
+  const res = await fetchWithTimeout(`${API_BASE}/api/tags`);
+  return handleResponse<Tag[]>(res);
 }
 
 export async function fetchPost(slug: string): Promise<Post> {
-  const res = await fetch(`${API_BASE}/api/posts/${slug}`);
-  if (!res.ok) throw new Error('Failed to fetch post');
-  return res.json();
+  const res = await fetchWithTimeout(`${API_BASE}/api/posts/${slug}`);
+  return handleResponse<Post>(res);
 }
 
 export async function searchPosts(
@@ -66,13 +116,11 @@ export async function searchPosts(
     limit: limit.toString(),
   });
 
-  const res = await fetch(`${API_BASE}/api/search?${params}`);
-  if (!res.ok) {
-    throw new Error('Search failed');
-  }
-  return res.json();
+  const res = await fetchWithTimeout(`${API_BASE}/api/search?${params}`);
+  return handleResponse<SearchResult>(res);
 }
 
+// Re-export Comment type
 export interface Comment {
   id: number;
   post_id: number;
@@ -84,98 +132,47 @@ export interface Comment {
 }
 
 export async function fetchComments(postId: number): Promise<Comment[]> {
-  const res = await fetch(`${API_BASE}/api/comments/post/${postId}`);
-  if (!res.ok) throw new Error('Failed to fetch comments');
-  return res.json();
+  const res = await fetchWithTimeout(`${API_BASE}/api/comments/post/${postId}`);
+  return handleResponse<Comment[]>(res);
 }
 
 export async function createComment(
   postId: number,
   data: { nickname: string; email: string; content: string }
 ): Promise<Comment> {
-  const res = await fetch(`${API_BASE}/api/comments/post/${postId}`, {
+  const res = await fetchWithTimeout(`${API_BASE}/api/comments/post/${postId}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data),
   });
-  if (!res.ok) throw new Error('Failed to create comment');
-  return res.json();
+  return handleResponse<Comment>(res);
 }
 
-export async function createCategory(data: { name: string }): Promise<Category> {
-  const res = await fetch(`${API_BASE}/api/categories`, {
+export async function incrementViews(postId: number): Promise<Post> {
+  const res = await fetchWithTimeout(`${API_BASE}/api/posts/${postId}/view`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(data),
   });
-  if (!res.ok) throw new Error('Failed to create category');
-  return res.json();
+  return handleResponse<Post>(res);
 }
 
-export async function createTag(data: { name: string }): Promise<Tag> {
-  const res = await fetch(`${API_BASE}/api/tags`, {
+export async function incrementLikes(postId: number): Promise<Post> {
+  const res = await fetchWithTimeout(`${API_BASE}/api/posts/${postId}/like`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(data),
   });
-  if (!res.ok) throw new Error('Failed to create tag');
-  return res.json();
+  return handleResponse<Post>(res);
 }
 
-export interface PostCreate {
-  title: string;
-  slug: string;
-  content: string;
-  excerpt?: string;
-  published: boolean;
-  category_id?: number;
-  tag_ids?: number[];
-  cover_image?: string;
+export async function fetchPopularPosts(limit: number = 5): Promise<PostList[]> {
+  const res = await fetchWithTimeout(`${API_BASE}/api/posts/popular/list?limit=${limit}`);
+  return handleResponse<PostList[]>(res);
 }
 
-export async function createPost(data: PostCreate): Promise<Post> {
-  const res = await fetch(`${API_BASE}/api/posts`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(data),
-  });
-  if (!res.ok) throw new Error('Failed to create post');
-  return res.json();
+export async function fetchRelatedPosts(postId: number, limit: number = 5): Promise<PostList[]> {
+  const res = await fetchWithTimeout(`${API_BASE}/api/posts/${postId}/related?limit=${limit}`);
+  return handleResponse<PostList[]>(res);
 }
 
-export async function updatePost(id: number, data: Partial<PostCreate>): Promise<Post> {
-  const res = await fetch(`${API_BASE}/api/posts/${id}`, {
-    method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(data),
-  });
-  if (!res.ok) throw new Error('Failed to update post');
-  return res.json();
-}
-
-export async function deletePost(id: number): Promise<void> {
-  const res = await fetch(`${API_BASE}/api/posts/${id}`, {
-    method: 'DELETE',
-  });
-  if (!res.ok) throw new Error('Failed to delete post');
-}
-
-export async function adminLogin(
-  username: string,
-  password: string
-): Promise<{ access_token: string }> {
-  const formData = new URLSearchParams();
-  formData.set('username', username);
-  formData.set('password', password);
-
-  const res = await fetch(`${API_BASE}/api/admin/login`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: formData,
-  });
-  if (!res.ok) throw new Error('Login failed');
-  return res.json();
-}
+// ============ Admin API ============
 
 export interface AdminPost {
   id: number;
@@ -204,150 +201,130 @@ export interface AdminPostDetail {
   updated_at: string;
 }
 
+export interface PostCreate {
+  title: string;
+  slug: string;
+  content: string;
+  excerpt?: string;
+  published: boolean;
+  category_id?: number;
+  tag_ids?: number[];
+  cover_image?: string;
+}
+
 export async function fetchAdminPosts(): Promise<AdminPost[]> {
-  const res = await fetch(`${API_BASE}/api/admin/posts`, {
+  const res = await fetchWithTimeout(`${API_BASE}/api/admin/posts`, {
     headers: { ...getAuthHeaders() },
   });
-  if (!res.ok) throw new Error('Failed to fetch admin posts');
-  return res.json();
+  return handleResponse<AdminPost[]>(res);
 }
 
 export async function fetchAdminPost(id: number): Promise<AdminPostDetail> {
-  const res = await fetch(`${API_BASE}/api/admin/posts/${id}`, {
+  const res = await fetchWithTimeout(`${API_BASE}/api/admin/posts/${id}`, {
     headers: { ...getAuthHeaders() },
   });
-  if (!res.ok) throw new Error('Failed to fetch admin post');
-  return res.json();
+  return handleResponse<AdminPostDetail>(res);
 }
 
 export async function createAdminPost(data: PostCreate): Promise<{ id: number }> {
-  const res = await fetch(`${API_BASE}/api/admin/posts`, {
+  const res = await fetchWithTimeout(`${API_BASE}/api/admin/posts`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
     body: JSON.stringify(data),
   });
-  if (!res.ok) throw new Error('Failed to create post');
-  return res.json();
+  return handleResponse<{ id: number }>(res);
 }
 
 export async function updateAdminPost(
   id: number,
   data: Partial<PostCreate>
 ): Promise<{ id: number }> {
-  const res = await fetch(`${API_BASE}/api/admin/posts/${id}`, {
+  const res = await fetchWithTimeout(`${API_BASE}/api/admin/posts/${id}`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
     body: JSON.stringify(data),
   });
-  if (!res.ok) throw new Error('Failed to update post');
-  return res.json();
+  return handleResponse<{ id: number }>(res);
 }
 
 export async function deleteAdminPost(id: number): Promise<void> {
-  const res = await fetch(`${API_BASE}/api/admin/posts/${id}`, {
+  const res = await fetchWithTimeout(`${API_BASE}/api/admin/posts/${id}`, {
     method: 'DELETE',
     headers: { ...getAuthHeaders() },
   });
-  if (!res.ok) throw new Error('Failed to delete post');
+  if (!res.ok) {
+    throw new APIError('Failed to delete post', res.status);
+  }
 }
 
 export async function fetchAdminCategories(): Promise<Category[]> {
-  const res = await fetch(`${API_BASE}/api/admin/categories`, {
+  const res = await fetchWithTimeout(`${API_BASE}/api/admin/categories`, {
     headers: { ...getAuthHeaders() },
   });
-  if (!res.ok) throw new Error('Failed to fetch categories');
-  return res.json();
+  return handleResponse<Category[]>(res);
 }
 
 export async function createAdminCategory(name: string): Promise<Category> {
-  const res = await fetch(`${API_BASE}/api/admin/categories?name=${encodeURIComponent(name)}`, {
+  const res = await fetchWithTimeout(`${API_BASE}/api/admin/categories`, {
     method: 'POST',
-    headers: { ...getAuthHeaders() },
+    headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+    body: JSON.stringify({ name }),
   });
-  if (!res.ok) throw new Error('Failed to create category');
-  return res.json();
+  return handleResponse<Category>(res);
 }
 
 export async function updateAdminCategory(id: number, name: string): Promise<Category> {
-  const res = await fetch(
-    `${API_BASE}/api/admin/categories/${id}?name=${encodeURIComponent(name)}`,
-    {
-      method: 'PUT',
-      headers: { ...getAuthHeaders() },
-    }
-  );
-  if (!res.ok) throw new Error('Failed to update category');
-  return res.json();
+  const res = await fetchWithTimeout(`${API_BASE}/api/admin/categories/${id}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+    body: JSON.stringify({ name }),
+  });
+  return handleResponse<Category>(res);
 }
 
 export async function deleteAdminCategory(id: number): Promise<void> {
-  const res = await fetch(`${API_BASE}/api/admin/categories/${id}`, {
+  const res = await fetchWithTimeout(`${API_BASE}/api/admin/categories/${id}`, {
     method: 'DELETE',
     headers: { ...getAuthHeaders() },
   });
-  if (!res.ok) throw new Error('Failed to delete category');
+  if (!res.ok) {
+    throw new APIError('Failed to delete category', res.status);
+  }
 }
 
 export async function fetchAdminTags(): Promise<Tag[]> {
-  const res = await fetch(`${API_BASE}/api/admin/tags`, {
+  const res = await fetchWithTimeout(`${API_BASE}/api/admin/tags`, {
     headers: { ...getAuthHeaders() },
   });
-  if (!res.ok) throw new Error('Failed to fetch tags');
-  return res.json();
+  return handleResponse<Tag[]>(res);
 }
 
 export async function createAdminTag(name: string): Promise<Tag> {
-  const res = await fetch(`${API_BASE}/api/admin/tags?name=${encodeURIComponent(name)}`, {
+  const res = await fetchWithTimeout(`${API_BASE}/api/admin/tags`, {
     method: 'POST',
-    headers: { ...getAuthHeaders() },
+    headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+    body: JSON.stringify({ name }),
   });
-  if (!res.ok) throw new Error('Failed to create tag');
-  return res.json();
+  return handleResponse<Tag>(res);
 }
 
 export async function updateAdminTag(id: number, name: string): Promise<Tag> {
-  const res = await fetch(`${API_BASE}/api/admin/tags/${id}?name=${encodeURIComponent(name)}`, {
+  const res = await fetchWithTimeout(`${API_BASE}/api/admin/tags/${id}`, {
     method: 'PUT',
-    headers: { ...getAuthHeaders() },
+    headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+    body: JSON.stringify({ name }),
   });
-  if (!res.ok) throw new Error('Failed to update tag');
-  return res.json();
+  return handleResponse<Tag>(res);
 }
 
 export async function deleteAdminTag(id: number): Promise<void> {
-  const res = await fetch(`${API_BASE}/api/admin/tags/${id}`, {
+  const res = await fetchWithTimeout(`${API_BASE}/api/admin/tags/${id}`, {
     method: 'DELETE',
     headers: { ...getAuthHeaders() },
   });
-  if (!res.ok) throw new Error('Failed to delete tag');
-}
-
-export async function incrementViews(postId: number): Promise<Post> {
-  const res = await fetch(`${API_BASE}/api/posts/${postId}/view`, {
-    method: 'POST',
-  });
-  if (!res.ok) throw new Error('Failed to increment views');
-  return res.json();
-}
-
-export async function incrementLikes(postId: number): Promise<Post> {
-  const res = await fetch(`${API_BASE}/api/posts/${postId}/like`, {
-    method: 'POST',
-  });
-  if (!res.ok) throw new Error('Failed to increment likes');
-  return res.json();
-}
-
-export async function fetchPopularPosts(limit: number = 5): Promise<PostList[]> {
-  const res = await fetch(`${API_BASE}/api/posts/popular/list?limit=${limit}`);
-  if (!res.ok) throw new Error('Failed to fetch popular posts');
-  return res.json();
-}
-
-export async function fetchRelatedPosts(postId: number, limit: number = 5): Promise<PostList[]> {
-  const res = await fetch(`${API_BASE}/api/posts/${postId}/related?limit=${limit}`);
-  if (!res.ok) throw new Error('Failed to fetch related posts');
-  return res.json();
+  if (!res.ok) {
+    throw new APIError('Failed to delete tag', res.status);
+  }
 }
 
 // Admin comments
@@ -364,17 +341,35 @@ export interface AdminComment {
 
 export async function fetchAdminComments(postId?: number): Promise<AdminComment[]> {
   const query = postId ? `?post_id=${postId}` : '';
-  const res = await fetch(`${API_BASE}/api/admin/comments${query}`, {
+  const res = await fetchWithTimeout(`${API_BASE}/api/admin/comments${query}`, {
     headers: { ...getAuthHeaders() },
   });
-  if (!res.ok) throw new Error('Failed to fetch comments');
-  return res.json();
+  return handleResponse<AdminComment[]>(res);
 }
 
 export async function deleteAdminComment(commentId: number): Promise<void> {
-  const res = await fetch(`${API_BASE}/api/admin/comments/${commentId}`, {
+  const res = await fetchWithTimeout(`${API_BASE}/api/admin/comments/${commentId}`, {
     method: 'DELETE',
     headers: { ...getAuthHeaders() },
   });
-  if (!res.ok) throw new Error('Failed to delete comment');
+  if (!res.ok) {
+    throw new APIError('Failed to delete comment', res.status);
+  }
+}
+
+// Admin auth
+export async function adminLogin(
+  username: string,
+  password: string
+): Promise<{ access_token: string }> {
+  const formData = new URLSearchParams();
+  formData.set('username', username);
+  formData.set('password', password);
+
+  const res = await fetchWithTimeout(`${API_BASE}/api/admin/login`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: formData,
+  });
+  return handleResponse<{ access_token: string }>(res);
 }
