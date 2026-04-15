@@ -20,7 +20,7 @@ A modern full-stack blog application built with FastAPI + Next.js
 - 🎨 **Beautiful UI** - Clean design with Tailwind CSS v4 + shadcn/ui
 - 📱 **Responsive** - Mobile-friendly responsive layout
 - 🔒 **Admin Panel** - Built-in admin dashboard for content management
-- 🧪 **Well Tested** - 151 tests (68 backend + 83 frontend)
+- 🧪 **Well Tested** - 282 tests (169 backend + 113 frontend)
 - ✅ **Type Safe** - Full TypeScript support + Pydantic validation
 - 🔍 **Full-text Search** - Post search functionality
 - 🌙 **Dark Mode** - System preference aware dark mode
@@ -98,7 +98,7 @@ See [docs/deployment.md](./docs/deployment.md) for detailed deployment guide.
 | `just frontend`      | Run Next.js dev server                   |
 | `just lint`          | Lint code (ruff + biome)                 |
 | `just format`        | Format code                              |
-| `just test`          | Run all tests (68 backend + 83 frontend) |
+| `just test`          | Run all tests (169 backend + 113 frontend) |
 | `just test-backend`  | Run backend tests (parallel)             |
 | `just test-frontend` | Run frontend tests                       |
 | `just fix`           | Auto-fix lint issues                     |
@@ -143,7 +143,13 @@ See [docs/deployment.md](./docs/deployment.md) for detailed deployment guide.
 | GET    | `/api/export/posts.csv`    | Export all posts    |
 | GET    | `/api/export/comments.csv` | Export all comments |
 
-## 🏗️ Project Structure
+## 🏗️ Architecture
+
+![Architecture Diagram](./docs/x-blog-architecture.html)
+
+> Interactive SVG architecture diagram — open in browser to view. Covers: Next.js Frontend, FastAPI Backend, SQLite DB, JWT Auth, Admin Zone, and DevOps tooling.
+
+## 🗂️ Project Structure
 
 ```text
 x-blog/
@@ -223,9 +229,9 @@ just test-frontend-coverage
 
 **Test Statistics:**
 
-- Backend: 68 tests (pytest + pytest-xdist)
-- Frontend: 83 tests (Vitest)
-- **Total: 151 tests**
+- Backend: 169 tests (pytest + pytest-xdist)
+- Frontend: 113 tests (Vitest)
+- **Total: 282 tests**
 
 ## 🤝 Contributing
 
