@@ -1,5 +1,5 @@
 from sqlalchemy import func, or_, select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 
 from app import models, schemas
 from app.cache import categories_cache, clear_categories_cache, clear_posts_cache, clear_tags_cache, tags_cache
@@ -24,18 +24,42 @@ def get_posts(
     if tag_id:
         query = query.join(models.Post.tags).filter(models.Tag.id == tag_id).distinct()
 
+    # Count before pagination
     total = query.count()
+
+    # Eager load relationships to avoid N+1 queries
+    query = query.options(
+        joinedload(models.Post.category),
+        joinedload(models.Post.tags),
+    )
+
     # Sort by pinned first, then by created_at
     posts = query.order_by(models.Post.pinned.desc(), models.Post.created_at.desc()).offset(skip).limit(limit).all()
     return posts, total
 
 
 def get_post(db: Session, post_id: int) -> models.Post | None:
-    return db.query(models.Post).filter(models.Post.id == post_id).first()
+    return (
+        db.query(models.Post)
+        .options(
+            joinedload(models.Post.category),
+            joinedload(models.Post.tags),
+        )
+        .filter(models.Post.id == post_id)
+        .first()
+    )
 
 
 def get_post_by_slug(db: Session, slug: str) -> models.Post | None:
-    return db.query(models.Post).filter(models.Post.slug == slug).first()
+    return (
+        db.query(models.Post)
+        .options(
+            joinedload(models.Post.category),
+            joinedload(models.Post.tags),
+        )
+        .filter(models.Post.slug == slug)
+        .first()
+    )
 
 
 def create_post(db: Session, post: schemas.PostCreate) -> models.Post:

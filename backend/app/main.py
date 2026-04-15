@@ -6,6 +6,7 @@ from pathlib import Path
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 from slowapi import Limiter
@@ -26,6 +27,7 @@ logger = get_logger(__name__)
 
 RATE_LIMIT_PER_MINUTE = os.getenv("RATE_LIMIT_PER_MINUTE", "60")
 REQUEST_TIMEOUT = int(os.getenv("REQUEST_TIMEOUT", "30"))
+GZIP_MINIMUM_SIZE = int(os.getenv("GZIP_MINIMUM_SIZE", "500"))
 limiter = Limiter(key_func=get_remote_address)
 
 
@@ -72,6 +74,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Add GZip compression for responses > 500 bytes
+app.add_middleware(GZipMiddleware, minimum_size=GZIP_MINIMUM_SIZE)
 
 # Add request logging middleware
 app.add_middleware(RequestLoggingMiddleware)
