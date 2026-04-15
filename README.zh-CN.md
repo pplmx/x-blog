@@ -145,9 +145,9 @@ docker-compose logs -f
 
 ## 🏗️ 系统架构
 
-![架构图](./docs/x-blog-architecture.html)
+![架构图](./docs/x-blog-architecture.png)
 
-> 交互式 SVG 架构图，浏览器打开可查看完整内容。涵盖：Next.js 前端、FastAPI 后端、SQLite 数据库、JWT 认证、管理后台、DevOps 工具链。
+> 📁 [交互式 HTML 版本](./docs/x-blog-architecture.html) — 本地浏览器打开可缩放查看。涵盖：Next.js 前端、FastAPI 后端、SQLite 数据库、JWT 认证、管理后台、DevOps 工具链。
 
 ## 🗂️ 项目结构
 
