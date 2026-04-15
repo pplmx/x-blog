@@ -5,6 +5,7 @@ import LikeButton from '@/components/LikeButton';
 import RelatedPosts from '@/components/RelatedPosts';
 import ReadingProgress from '@/components/ReadingProgress';
 import Link from 'next/link';
+import Image from 'next/image';
 import { notFound } from 'next/navigation';
 import { Tag } from '@/types';
 import type { Metadata } from 'next';
@@ -51,11 +52,13 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
       publishedTime: post.created_at,
       authors: ['X-Blog'],
       tags: post.tags.map((t: Tag) => t.name),
+      images: post.cover_image ? [{ url: post.cover_image, width: 1200, height: 630 }] : [],
     },
     twitter: {
       card: 'summary_large_image',
       title: post.title,
       description: post.excerpt || post.content.slice(0, 150),
+      images: post.cover_image ? [post.cover_image] : [],
     },
   };
 }
@@ -89,6 +92,20 @@ function PostContent({ post }: { post: Awaited<ReturnType<typeof fetchPost>> }) 
             <ArrowLeft className="w-4 h-4" />
             返回首页
           </Link>
+
+          {/* 封面图 */}
+          {post.cover_image && (
+            <div className="relative w-full h-[300px] sm:h-[400px] rounded-2xl overflow-hidden mb-8 shadow-xl">
+              <Image
+                src={post.cover_image}
+                alt={post.title}
+                fill
+                className="object-cover"
+                priority
+                sizes="(max-width: 768px) 100vw, 800px"
+              />
+            </div>
+          )}
 
           {/* 文章头部 */}
           <header className="mb-8">
@@ -208,7 +225,8 @@ function PostContent({ post }: { post: Awaited<ReturnType<typeof fetchPost>> }) 
             },
             articleSection: post.category?.name || 'Blog',
             keywords: post.tags.map((t: Tag) => t.name).join(', '),
-            wordCount: post.content.length,
+            wordCount: wordCount.total,
+            timeRequired: `PT${readTime}M`,
             interactionStatistic: [
               {
                 '@type': 'InteractionCounter',

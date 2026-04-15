@@ -38,12 +38,12 @@ describe('API - Enhanced Features', () => {
     });
 
     it('throws APIError when fetch fails', async () => {
-      mockFetch.mockResolvedValueOnce({
+      mockFetch.mockResolvedValue({
         ok: false,
-        status: 500,
-        statusText: 'Internal Server Error',
+        status: 400,
+        statusText: 'Bad Request',
         json: async () => ({ error: { code: 'ERROR' } }),
-      } as unknown as Response);
+      });
 
       await expect(fetchRelatedPosts(1)).rejects.toThrow(APIError);
     });
@@ -66,12 +66,12 @@ describe('API - Enhanced Features', () => {
     });
 
     it('throws APIError on failure', async () => {
-      mockFetch.mockResolvedValueOnce({
+      mockFetch.mockResolvedValue({
         ok: false,
-        status: 500,
-        statusText: 'Internal Server Error',
+        status: 400,
+        statusText: 'Bad Request',
         json: async () => ({ error: { code: 'ERROR' } }),
-      } as unknown as Response);
+      });
 
       await expect(incrementLikes(1)).rejects.toThrow(APIError);
     });
@@ -93,12 +93,12 @@ describe('API - Enhanced Features', () => {
     });
 
     it('throws APIError on failure', async () => {
-      mockFetch.mockResolvedValueOnce({
+      mockFetch.mockResolvedValue({
         ok: false,
-        status: 500,
-        statusText: 'Internal Server Error',
+        status: 400,
+        statusText: 'Bad Request',
         json: async () => ({ error: { code: 'ERROR' } }),
-      } as unknown as Response);
+      });
 
       await expect(fetchPopularPosts()).rejects.toThrow(APIError);
     });
