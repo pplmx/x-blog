@@ -1,16 +1,13 @@
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.security import OAuth2PasswordRequestForm
 from pydantic import BaseModel, ConfigDict
-from slowapi import Limiter
-from slowapi.util import get_remote_address
 from sqlalchemy.orm import Session
 
 from app import auth, crud, models
 from app.auth import get_current_admin
 from app.database import get_db
+from app.limiter import RATE_LIMIT_AUTH, limiter
 from app.schemas import PostCreate, PostUpdate
-
-limiter = Limiter(key_func=get_remote_address)
 
 router = APIRouter(prefix="/api/admin", tags=["admin"])
 
@@ -34,7 +31,7 @@ class UserResponse(BaseModel):
 
 
 @router.post("/login", response_model=LoginResponse)
-@limiter.limit("60/minute")
+@limiter.limit(f"{RATE_LIMIT_AUTH}/minute")
 def login(
     request: Request,  # noqa: ARG001
     form_data: OAuth2PasswordRequestForm = Depends(),

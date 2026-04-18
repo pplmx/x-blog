@@ -1,8 +1,9 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.orm import Session
 
 from app import crud, schemas
 from app.database import get_db
+from app.limiter import RATE_LIMIT_READ, RATE_LIMIT_WRITE, limiter
 
 router = APIRouter(prefix="/api/posts", tags=["posts"])
 
@@ -46,7 +47,8 @@ def get_post(post_id: str, db: Session = Depends(get_db)):
 
 
 @router.post("", response_model=schemas.Post, status_code=status.HTTP_201_CREATED)
-def create_post(post: schemas.PostCreate, db: Session = Depends(get_db)):
+@limiter.limit(f"{RATE_LIMIT_WRITE}/minute")
+def create_post(request: Request, post: schemas.PostCreate, db: Session = Depends(get_db)):  # noqa: ARG001
     existing = crud.get_post_by_slug(db, post.slug)
     if existing:
         raise HTTPException(status_code=400, detail="Slug already exists")
@@ -54,7 +56,8 @@ def create_post(post: schemas.PostCreate, db: Session = Depends(get_db)):
 
 
 @router.put("/{post_id}", response_model=schemas.Post)
-def update_post(post_id: int, post: schemas.PostUpdate, db: Session = Depends(get_db)):
+@limiter.limit(f"{RATE_LIMIT_WRITE}/minute")
+def update_post(request: Request, post_id: int, post: schemas.PostUpdate, db: Session = Depends(get_db)):  # noqa: ARG001
     db_post = crud.update_post(db, post_id, post)
     if not db_post:
         raise HTTPException(status_code=404, detail="Post not found")
@@ -62,14 +65,16 @@ def update_post(post_id: int, post: schemas.PostUpdate, db: Session = Depends(ge
 
 
 @router.delete("/{post_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_post(post_id: int, db: Session = Depends(get_db)):
+@limiter.limit(f"{RATE_LIMIT_WRITE}/minute")
+def delete_post(request: Request, post_id: int, db: Session = Depends(get_db)):  # noqa: ARG001
     success = crud.delete_post(db, post_id)
     if not success:
         raise HTTPException(status_code=404, detail="Post not found")
 
 
 @router.post("/{post_id}/view", response_model=schemas.Post)
-def increment_views(post_id: int, db: Session = Depends(get_db)):
+@limiter.limit(f"{RATE_LIMIT_READ}/minute")
+def increment_views(request: Request, post_id: int, db: Session = Depends(get_db)):  # noqa: ARG001
     """Increment the view count for a post."""
     post = crud.increment_views(db, post_id)
     if not post:
@@ -78,7 +83,8 @@ def increment_views(post_id: int, db: Session = Depends(get_db)):
 
 
 @router.post("/{post_id}/like", response_model=schemas.Post)
-def increment_likes(post_id: int, db: Session = Depends(get_db)):
+@limiter.limit(f"{RATE_LIMIT_READ}/minute")
+def increment_likes(request: Request, post_id: int, db: Session = Depends(get_db)):  # noqa: ARG001
     """Increment the like count for a post."""
     post = crud.increment_likes(db, post_id)
     if not post:

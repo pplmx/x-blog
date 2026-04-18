@@ -1,18 +1,20 @@
 import csv
 import io
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Request
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 
 from app import crud
 from app.database import get_db
+from app.limiter import RATE_LIMIT_EXPORT, limiter
 
 router = APIRouter(prefix="/api/export", tags=["export"])
 
 
 @router.get("/posts.csv")
-def export_posts_csv(db: Session = Depends(get_db)):
+@limiter.limit(f"{RATE_LIMIT_EXPORT}/minute")
+def export_posts_csv(request: Request, db: Session = Depends(get_db)):  # noqa: ARG001
     """Export all published posts to CSV."""
     posts, _ = crud.get_posts(db, published=True, limit=10000)
 
@@ -44,7 +46,8 @@ def export_posts_csv(db: Session = Depends(get_db)):
 
 
 @router.get("/comments.csv")
-def export_comments_csv(db: Session = Depends(get_db)):
+@limiter.limit(f"{RATE_LIMIT_EXPORT}/minute")
+def export_comments_csv(request: Request, db: Session = Depends(get_db)):  # noqa: ARG001
     """Export all comments to CSV."""
     comments = db.query(crud.models.Comment).all()
 
