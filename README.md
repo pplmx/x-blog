@@ -20,7 +20,7 @@ A modern full-stack blog application built with FastAPI + Next.js
 - 🎨 **Beautiful UI** - Clean design with Tailwind CSS v4 + shadcn/ui
 - 📱 **Responsive** - Mobile-friendly responsive layout
 - 🔒 **Admin Panel** - Built-in admin dashboard for content management
-- 🧪 **Well Tested** - 301 tests (187 backend + 114 frontend)
+- 🧪 **Well Tested** - 612 tests (346 backend + 266 frontend), 85% backend coverage
 - ✅ **Type Safe** - Full TypeScript support + Pydantic validation
 - 🔍 **Full-text Search** - Post search functionality
 - 🌙 **Dark Mode** - System preference aware dark mode
@@ -98,7 +98,7 @@ See [docs/deployment.md](./docs/deployment.md) for detailed deployment guide.
 | `just frontend`      | Run Next.js dev server                     |
 | `just lint`          | Lint code (ruff + biome)                   |
 | `just format`        | Format code                                |
-| `just test`          | Run all tests (187 backend + 114 frontend) |
+| `just test`          | Run all tests (346 backend + 266 frontend) |
 | `just test-backend`  | Run backend tests (parallel)               |
 | `just test-frontend` | Run frontend tests                         |
 | `just fix`           | Auto-fix lint issues                       |
@@ -173,7 +173,7 @@ x-blog/
 │   │   ├── schemas.py      # Pydantic schemas
 │   │   ├── crud.py         # Database operations
 │   │   └── routers/        # API routes
-│   ├── tests/              # pytest tests (187 tests)
+│   ├── tests/              # pytest tests (346 tests)
 │   └── pyproject.toml      # Python config
 │
 ├── frontend/               # Next.js frontend
@@ -240,9 +240,9 @@ just test-frontend-coverage
 
 **Test Statistics:**
 
-- Backend: 187 tests (pytest + pytest-xdist)
-- Frontend: 114 tests (Vitest)
-- **Total: 301 tests**
+- Backend: 346 tests (pytest + pytest-xdist), 85.1% coverage
+- Frontend: 266 tests (Vitest), 62.64% coverage
+- **Total: 612 tests**
 
 ## 🤝 Contributing
 

@@ -20,7 +20,7 @@
 - 🎨 **精美 UI** - Tailwind CSS v4 + shadcn/ui 构建
 - 📱 **响应式设计** - 完美适配移动端
 - 🔒 **管理后台** - 内置内容管理后台
-- 🧪 **完善测试** - 301 个测试 (后端 187 + 前端 114)
+- 🧪 **完善测试** - 612 个测试 (后端 346 + 前端 266), 后端覆盖率 85%
 - ✅ **类型安全** - 完整 TypeScript 支持 + Pydantic 验证
 - 🔍 **全文搜索** - 文章搜索功能
 - 🌙 **深色模式** - 跟随系统偏好的深色模式
@@ -98,7 +98,7 @@ docker-compose logs -f
 | `just frontend`      | 运行 Next.js 前端                  |
 | `just lint`          | 代码检查 (ruff + biome)            |
 | `just format`        | 代码格式化                         |
-| `just test`          | 运行所有测试 (187 后端 + 114 前端) |
+| `just test`          | 运行所有测试 (346 后端 + 266 前端) |
 | `just test-backend`  | 运行后端测试 (并行)                |
 | `just test-frontend` | 运行前端测试                       |
 | `just fix`           | 自动修复代码问题                   |
@@ -172,7 +172,7 @@ x-blog/
 │   │   ├── schemas.py      # Pydantic schemas
 │   │   ├── crud.py         # 数据库操作
 │   │   └── routers/        # API 路由
-│   ├── tests/              # pytest 测试 (187 个)
+│   ├── tests/              # pytest 测试 (346 个)
 │   └── pyproject.toml      # Python 配置
 │
 ├── frontend/               # Next.js 前端
@@ -239,9 +239,9 @@ just test-frontend-coverage
 
 **测试统计:**
 
-- 后端: 187 个测试 (pytest + pytest-xdist)
-- 前端: 114 个测试 (Vitest)
-- **总计: 301 个测试**
+- 后端: 346 个测试 (pytest + pytest-xdist), 85.1% 覆盖率
+- 前端: 266 个测试 (Vitest), 62.64% 覆盖率
+- **总计: 612 个测试**
 
 ## 🤝 贡献
 
