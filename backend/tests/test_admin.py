@@ -5,8 +5,6 @@ Uses shared fixtures from conftest.py: admin_user, admin_token, auth_headers.
 Credentials: username="testadmin", password="testpass123"
 """
 
-import pytest
-
 from app import models
 
 

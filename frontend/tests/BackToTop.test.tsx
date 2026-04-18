@@ -17,7 +17,7 @@ describe('BackToTop', () => {
     it('should register scroll event listener on mount', () => {
       const addSpy = vi.spyOn(window, 'addEventListener');
       render(<BackToTop />);
-      
+
       expect(addSpy).toHaveBeenCalledWith(
         'scroll',
         expect.any(Function),
@@ -29,7 +29,7 @@ describe('BackToTop', () => {
       const removeSpy = vi.spyOn(window, 'removeEventListener');
       const { unmount } = render(<BackToTop />);
       unmount();
-      
+
       expect(removeSpy).toHaveBeenCalledWith(
         'scroll',
         expect.any(Function)
@@ -41,7 +41,7 @@ describe('BackToTop', () => {
     it('should render null initially when scroll position is not set', () => {
       // By default jsdom has scrollY = 0
       const { container } = render(<BackToTop />);
-      
+
       // Component renders nothing on initial render (before useEffect updates state)
       expect(container.firstChild).toBeNull();
     });
@@ -49,19 +49,19 @@ describe('BackToTop', () => {
     it('should return null when scrollY is 0', () => {
       Object.defineProperty(window, 'scrollY', { value: 0 });
       vi.advanceTimersByTime(100);
-      
+
       const { container } = render(<BackToTop />);
       vi.advanceTimersByTime(100);
-      
+
       expect(container.firstChild).toBeNull();
     });
 
     it('should return null when scrollY is at boundary (300)', () => {
       Object.defineProperty(window, 'scrollY', { value: 300 });
-      
+
       const { container } = render(<BackToTop />);
       vi.advanceTimersByTime(100);
-      
+
       expect(container.firstChild).toBeNull();
     });
   });

@@ -1,11 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach, afterAll } from 'vitest';
 import { HttpResponse, http } from 'msw';
 import { setupServer } from 'msw/node';
-import {
-  mockTagList,
-  mockPost,
-  mockPostListResponse,
-} from '@/tests/test-utils';
+import { mockTagList, mockPost, mockPostListResponse } from '@/tests/test-utils';
 
 const mockTags = mockTagList(3);
 
@@ -30,7 +26,7 @@ const server = setupServer(
       );
     }
     return HttpResponse.json(mockPostListResponse([]));
-  }),
+  })
 );
 
 describe('Tags Page', () => {

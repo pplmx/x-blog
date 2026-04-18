@@ -24,6 +24,7 @@ class TestTagSchemas:
 
     def test_tag_response_valid(self):
         """Test Tag response schema with ORM object."""
+
         class MockTag:
             id = 1
             name = "fastapi"
@@ -49,6 +50,7 @@ class TestCategorySchemas:
 
     def test_category_response_valid(self):
         """Test Category response schema with ORM object."""
+
         class MockCategory:
             id = 1
             name = "Programming"
@@ -185,6 +187,7 @@ class TestPostResponseSchema:
 
     def test_post_response_with_relationships(self):
         """Test Post response schema with category and tags."""
+
         class MockCategory:
             id = 1
             name = "Tech"
@@ -225,6 +228,7 @@ class TestPostListSchema:
 
     def test_post_list_minimal(self):
         """Test PostList with minimal data."""
+
         class MockPost:
             id = 1
             title = "Minimal Post"
@@ -246,6 +250,7 @@ class TestPostListSchema:
 
     def test_post_list_with_relations(self):
         """Test PostList with category and tags."""
+
         class MockCategory:
             id = 2
             name = "Science"
@@ -321,6 +326,7 @@ class TestPostListResponseSchema:
 
     def test_post_list_response_with_items(self):
         """Test PostListResponse with items."""
+
         class MockPost:
             id = 1
             title = "Test"
@@ -394,6 +400,7 @@ class TestCommentSchemas:
 
     def test_comment_response_valid(self):
         """Test Comment response schema with ORM object."""
+
         class MockComment:
             id = 1
             post_id = 5
