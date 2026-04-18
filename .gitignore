@@ -75,4 +75,4 @@ core.*
 sentry-release.yml
 
 # Static files (uploaded)
-static/uploads/
+**/static/uploads/
