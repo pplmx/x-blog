@@ -2,12 +2,11 @@
  *
  * Locale detection priority:
  * 1. URL path prefix (/en/*)
- * 2. Cookie (i18n_locale)
- * 3. Accept-Language header (handled in middleware)
- * 4. Default: zh-CN
+ * 2. localStorage preference
+ * 3. Default: zh-CN
  *
  * Usage:
- *   import { useTranslations } from '@/lib/i18n';
+ *   import { useTranslations } from '@/lib/use-translations';
  *   const t = useTranslations();
  *   t('nav.home')  // => "首页" or "Home"
  */
@@ -22,10 +21,7 @@ export const localeNames: Record<Locale, string> = {
   en: 'English',
 };
 
-export const localeFlags: Record<Locale, string> = {
-  'zh-CN': '🇨🇳',
-  en: '🇺🇸',
-};
+export type { Locale };
 
 // ─────────────────────────────────────────────────────────────
 // Translation dictionaries
