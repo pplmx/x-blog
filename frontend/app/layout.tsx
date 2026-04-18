@@ -63,6 +63,20 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <meta name="theme-color" content="#ffffff" />
         <meta name="dark-theme-color" content="#0a0a0a" />
         <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+        {/* SEO autodiscovery */}
+        <link rel="alternate" type="application/rss+xml" title="X-Blog RSS Feed" href="/rss.xml" />
+        <link
+          rel="alternate"
+          type="application/atom+xml"
+          title="X-Blog Atom Feed"
+          href="/atom.xml"
+        />
+        <link
+          rel="search"
+          type="application/opensearchdescription+xml"
+          title="X-Blog Search"
+          href="/opensearch.xml"
+        />
       </head>
       <body className={inter.className}>
         <ImageLightboxProvider>
