@@ -372,6 +372,7 @@ export interface AdminComment {
   email: string;
   content: string;
   ip_address: string;
+  is_approved: boolean;
   created_at: string;
 }
 
@@ -391,6 +392,18 @@ export async function deleteAdminComment(commentId: number): Promise<void> {
   if (!res.ok) {
     throw new APIError('Failed to delete comment', res.status);
   }
+}
+
+export async function approveAdminComment(
+  commentId: number,
+  approved: boolean
+): Promise<AdminComment> {
+  const res = await fetchWithTimeout(`${API_BASE}/api/comments/${commentId}/approve`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+    body: JSON.stringify({ approved }),
+  });
+  return handleResponse<AdminComment>(res);
 }
 
 // Admin auth
