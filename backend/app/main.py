@@ -21,6 +21,7 @@ from app.routers.export import router as export_router
 from app.routers.health import router as health_router
 from app.routers.rss import rss_router, seo_router
 from app.routers.stats import router as stats_router
+from app.sentry import setup_sentry
 
 logger = get_logger(__name__)
 
@@ -33,6 +34,7 @@ async def lifespan(_app: FastAPI):
     """Application lifespan handler for startup and shutdown."""
     # Startup
     setup_logging()
+    setup_sentry()
     logger.info("app_startup", version="0.1.0")
 
     # Create database tables

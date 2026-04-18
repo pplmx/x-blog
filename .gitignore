@@ -73,3 +73,6 @@ core.*
 # Sentry
 .sentryclirc
 sentry-release.yml
+
+# Static files (uploaded)
+static/uploads/

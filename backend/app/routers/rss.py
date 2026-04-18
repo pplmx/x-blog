@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import UTC, datetime
 
 from fastapi import APIRouter, Depends
 from fastapi.responses import Response
@@ -57,7 +57,7 @@ def generate_rss_feed(posts: list, site_url: str, title: str, description: str, 
     <link>{site_url}</link>
     <description>{description}</description>
     <language>zh-CN</language>
-    <lastBuildDate>{datetime.utcnow().strftime("%a, %d %b %Y %H:%M:%S GMT")}</lastBuildDate>
+    <lastBuildDate>{datetime.now(UTC).strftime("%a, %d %b %Y %H:%M:%S GMT")}</lastBuildDate>
     <atom:link href="{site_url}/rss/feed.xml" rel="self" type="application/rss+xml"/>
     {"".join(items)}
 </channel>
@@ -112,7 +112,7 @@ def get_atom_feed(db: Session = Depends(get_db)):
     <link href="{site_url}/rss/atom.xml" rel="self"/>
     <id>{site_url}/rss/atom.xml</id>
     <subtitle>{description}</subtitle>
-    <updated>{datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")}</updated>
+    <updated>{datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")}</updated>
     {"".join(items)}
 </feed>"""
 
