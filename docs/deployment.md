@@ -10,7 +10,7 @@
 | ------- | ----- | -------------------- |
 | Node.js | ≥24   | 前端运行             |
 | pnpm    | ≥8    | 前端包管理           |
-| Python  | ≥3.11 | 后端运行             |
+| Python  | ≥3.14 | 后端运行             |
 | uv      | -     | Python 包管理 (推荐) |
 
 ---
@@ -21,7 +21,7 @@
 
 ```bash
 # 1. 克隆项目
-git clone https://github.com/your-repo/x-blog.git
+git clone https://github.com/pplmx/x-blog.git
 cd x-blog
 
 # 2. 安装依赖
@@ -114,7 +114,7 @@ pnpm dev
 
 ```bash
 # 创建管理员账号、分类、标签、示例文章
-just init
+just init-db
 ```
 
 默认管理员账号：`admin` / `admin123`
@@ -136,8 +136,7 @@ x-blog/
 │   ├── components/   # 组件
 │   └── package.json
 ├── docker-compose.yml
-├── nginx.conf        # Nginx 配置
-├── justfile          # 任务脚本
+├── justfile                # 任务脚本
 └── README.md
 ```
 
@@ -153,7 +152,7 @@ just frontend         # 仅启动前端
 just test             # 运行所有测试
 just lint             # 代码检查
 just format           # 代码格式化
-just init-db           # 初始化数据库
+just init-db          # 初始化数据库
 just clean            # 清理缓存
 ```
 

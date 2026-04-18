@@ -20,7 +20,7 @@ A modern full-stack blog application built with FastAPI + Next.js
 - 🎨 **Beautiful UI** - Clean design with Tailwind CSS v4 + shadcn/ui
 - 📱 **Responsive** - Mobile-friendly responsive layout
 - 🔒 **Admin Panel** - Built-in admin dashboard for content management
-- 🧪 **Well Tested** - 282 tests (169 backend + 113 frontend)
+- 🧪 **Well Tested** - 301 tests (187 backend + 114 frontend)
 - ✅ **Type Safe** - Full TypeScript support + Pydantic validation
 - 🔍 **Full-text Search** - Post search functionality
 - 🌙 **Dark Mode** - System preference aware dark mode
@@ -73,7 +73,7 @@ just frontend # http://localhost:3000
 
 ```bash
 # Clone and start
-git clone https://github.com/your-username/x-blog.git
+git clone https://github.com/pplmx/x-blog.git
 cd x-blog
 
 # Configure environment
@@ -98,7 +98,7 @@ See [docs/deployment.md](./docs/deployment.md) for detailed deployment guide.
 | `just frontend`      | Run Next.js dev server                     |
 | `just lint`          | Lint code (ruff + biome)                   |
 | `just format`        | Format code                                |
-| `just test`          | Run all tests (169 backend + 113 frontend) |
+| `just test`          | Run all tests (187 backend + 114 frontend) |
 | `just test-backend`  | Run backend tests (parallel)               |
 | `just test-frontend` | Run frontend tests                         |
 | `just fix`           | Auto-fix lint issues                       |
@@ -120,28 +120,39 @@ See [docs/deployment.md](./docs/deployment.md) for detailed deployment guide.
 | POST   | `/api/posts/{id}/like`    | Like a post            |
 | POST   | `/api/posts/{id}/view`    | Increment view count   |
 
-### Categories & Tags
+### Comments (Moderated)
 
-| Method | Endpoint                   | Description           |
-| ------ | -------------------------- | --------------------- |
-| GET    | `/api/categories`          | List categories       |
-| GET    | `/api/tags`                | List tags             |
-| GET    | `/api/posts?tag_id=X`      | Get posts by tag      |
-| GET    | `/api/posts?category_id=X` | Get posts by category |
+| Method | Endpoint                       | Description           |
+| ------ | ------------------------------ | --------------------- |
+| GET    | `/api/comments/post/{id}`      | Get approved comments |
+| POST   | `/api/comments/post/{id}`      | Create comment        |
+| DELETE | `/api/comments/{id}`           | Delete comment (admin)|
+| PATCH  | `/api/comments/{id}/approve`   | Approve/reject (admin)|
 
-### Comments
+### Admin
 
-| Method | Endpoint                  | Description           |
-| ------ | ------------------------- | --------------------- |
-| GET    | `/api/comments/post/{id}` | Get comments for post |
-| POST   | `/api/comments/post/{id}` | Create comment        |
+| Method | Endpoint                       | Description              |
+| ------ | ------------------------------ | ------------------------ |
+| POST   | `/api/admin/login`             | Admin login              |
+| GET    | `/api/admin/stats`             | Dashboard analytics      |
+| GET    | `/api/posts?all=true`          | List all (incl. drafts)  |
+| GET    | `/api/comments?approved=false` | List pending comments    |
+| PATCH  | `/api/comments/{id}/approve`   | Approve comment          |
+| POST   | `/api/upload`                  | Upload image             |
+| GET    | `/api/export/posts.csv`        | Export posts             |
+| GET    | `/api/export/comments.csv`     | Export comments          |
 
-### Export
+### Search, SEO & Stats
 
-| Method | Endpoint                   | Description         |
-| ------ | -------------------------- | ------------------- |
-| GET    | `/api/export/posts.csv`    | Export all posts    |
-| GET    | `/api/export/comments.csv` | Export all comments |
+| Method | Endpoint              | Description                    |
+| ------ | --------------------- | ------------------------------ |
+| GET    | `/api/search?q=`      | Full-text search               |
+| GET    | `/api/stats`          | Blog statistics                |
+| GET    | `/rss/feed.xml`       | RSS 2.0 feed                   |
+| GET    | `/rss/atom.xml`       | Atom feed                      |
+| GET    | `/sitemap.xml`        | XML sitemap                    |
+| GET    | `/robots.txt`         | robots.txt                     |
+| GET    | `/health`             | Health check                   |
 
 ## 🏗️ Architecture
 
@@ -162,7 +173,7 @@ x-blog/
 │   │   ├── schemas.py      # Pydantic schemas
 │   │   ├── crud.py         # Database operations
 │   │   └── routers/        # API routes
-│   ├── tests/              # pytest tests (68 tests)
+│   ├── tests/              # pytest tests (187 tests)
 │   └── pyproject.toml      # Python config
 │
 ├── frontend/               # Next.js frontend
@@ -229,9 +240,9 @@ just test-frontend-coverage
 
 **Test Statistics:**
 
-- Backend: 169 tests (pytest + pytest-xdist)
-- Frontend: 113 tests (Vitest)
-- **Total: 282 tests**
+- Backend: 187 tests (pytest + pytest-xdist)
+- Frontend: 114 tests (Vitest)
+- **Total: 301 tests**
 
 ## 🤝 Contributing
 

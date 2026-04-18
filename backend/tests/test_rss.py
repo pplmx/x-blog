@@ -1,8 +1,6 @@
 """Tests for RSS, Atom, Sitemap, and robots.txt endpoints."""
 
 
-
-
 def test_rss_feed_returns_xml(client):
     """RSS feed should return valid XML with correct content-type."""
     response = client.get("/rss/feed.xml")

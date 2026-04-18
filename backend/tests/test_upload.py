@@ -1,7 +1,6 @@
 """Tests for file upload endpoint."""
 
 
-
 def test_upload_image_success(client):
     """Should successfully upload a valid image file."""
     file_content = b"\x89PNG\r\n\x1a\n" + b"\x00" * 100  # Fake PNG header
