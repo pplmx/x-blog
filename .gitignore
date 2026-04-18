@@ -19,6 +19,7 @@ worktrees/
 *.db
 *.sqlite
 *.sqlite3
+*.db-journal
 
 # Node.js
 node_modules/
