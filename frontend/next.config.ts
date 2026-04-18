@@ -1,5 +1,6 @@
 import type { NextConfig } from 'next';
 import { networkInterfaces } from 'os';
+import { withSentryConfig } from '@sentry/nextjs';
 
 function getLocalIP(): string {
   const interfaces = networkInterfaces();
@@ -35,4 +36,8 @@ const nextConfig: NextConfig = {
   },
 };
 
-export default nextConfig;
+const sentryConfig = {
+  silent: true, // Suppress build output for Sentry
+};
+
+export default withSentryConfig(nextConfig, sentryConfig);

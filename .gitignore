@@ -69,3 +69,7 @@ core.*
 
 # System
 .DS_Store
+
+# Sentry
+.sentryclirc
+sentry-release.yml
