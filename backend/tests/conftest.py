@@ -38,6 +38,9 @@ def db_session(test_engine):
     transaction = connection.begin()
     session = sessionmaker(bind=connection)()
 
+    # Create all tables for tests using db_session directly
+    Base.metadata.create_all(bind=test_engine)
+
     yield session
 
     session.close()
