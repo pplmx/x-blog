@@ -4,6 +4,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import SearchBox from './SearchBox';
 import ThemeToggle from './ThemeToggle';
+import LanguageSwitcher from './LanguageSwitcher';
 import { Home, User, Menu, X } from 'lucide-react';
 
 export default function Header() {
@@ -23,6 +24,7 @@ export default function Header() {
         <div className="hidden md:flex items-center gap-4">
           <SearchBox />
           <ThemeToggle />
+          <LanguageSwitcher />
           <nav aria-label="主导航">
             <ul className="flex gap-5 list-none m-0 p-0">
               <li>
