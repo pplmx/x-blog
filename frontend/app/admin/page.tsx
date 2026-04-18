@@ -2,6 +2,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { fetchPosts, fetchCategories, fetchTags } from '@/lib/api';
 import Link from 'next/link';
 import { FileText, CheckCircle, Clock, Folder, Tag, Eye } from 'lucide-react';
+import { TopPostsChart, CategoryPieChart } from '@/components/AnalyticsCharts';
 
 export default async function AdminDashboard() {
   // 并行获取所有数据
@@ -74,6 +75,27 @@ export default async function AdminDashboard() {
             </CardContent>
           </Card>
         ))}
+      </div>
+
+      {/* 图表区域 */}
+      <div className="grid gap-6 lg:grid-cols-2 mb-8">
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg">热门文章 (浏览量)</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <TopPostsChart posts={posts} />
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg">文章分类分布</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <CategoryPieChart categories={categories} posts={posts} />
+          </CardContent>
+        </Card>
       </div>
 
       {/* 最近文章 */}
