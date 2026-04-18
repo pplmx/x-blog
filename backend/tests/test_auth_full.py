@@ -1,24 +1,11 @@
 # ruff: noqa: ARG001
-"""Tests for authentication and authorization."""
+"""Tests for authentication and authorization.
+
+Uses shared fixtures from conftest.py: admin_user, admin_token, auth_headers.
+Credentials: username="testadmin", password="testpass123"
+"""
 
 import pytest
-
-from app.auth import User, get_password_hash
-
-
-@pytest.fixture
-def admin_user(db_session):
-    """Create admin user in database."""
-    user = User(
-        username="admin",
-        password=get_password_hash("admin123"),
-        is_superuser=True,
-    )
-    db_session.add(user)
-    db_session.commit()
-    db_session.refresh(user)
-    return user
-
 
 # ============ Login Tests ============
 
@@ -28,8 +15,8 @@ def test_login_success(client, admin_user):
     response = client.post(
         "/api/admin/login",
         data={
-            "username": "admin",
-            "password": "admin123",
+            "username": "testadmin",
+            "password": "testpass123",
         },
     )
     assert response.status_code == 200
@@ -43,7 +30,7 @@ def test_login_wrong_password(client, admin_user):
     response = client.post(
         "/api/admin/login",
         data={
-            "username": "admin",
+            "username": "testadmin",
             "password": "wrongpassword",
         },
     )
@@ -56,7 +43,7 @@ def test_login_wrong_username(client):
         "/api/admin/login",
         data={
             "username": "wronguser",
-            "password": "admin123",
+            "password": "testpass123",
         },
     )
     assert response.status_code == 401
@@ -72,7 +59,7 @@ def test_login_missing_password(client):
     """Missing password should return 422."""
     response = client.post(
         "/api/admin/login",
-        data={"username": "admin"},
+        data={"username": "testadmin"},
     )
     assert response.status_code == 422
 
@@ -81,7 +68,7 @@ def test_login_missing_username(client):
     """Missing username should return 422."""
     response = client.post(
         "/api/admin/login",
-        data={"password": "admin123"},
+        data={"password": "testpass123"},
     )
     assert response.status_code == 422
 
@@ -90,7 +77,7 @@ def test_login_invalid_content_type(client, admin_user):
     """Invalid content type should return 422."""
     response = client.post(
         "/api/admin/login",
-        json={"username": "admin", "password": "admin123"},
+        json={"username": "testadmin", "password": "testpass123"},
     )
     assert response.status_code == 422
 
@@ -102,7 +89,7 @@ def test_token_format(client, admin_user):
     """Token should be a non-empty string."""
     response = client.post(
         "/api/admin/login",
-        data={"username": "admin", "password": "admin123"},
+        data={"username": "testadmin", "password": "testpass123"},
     )
     token = response.json()["access_token"]
     assert isinstance(token, str)
@@ -197,35 +184,25 @@ def test_admin_comments_requires_auth(client):
     assert response.status_code == 401
 
 
-# ============ Authenticated Operations ============
+# ============ Authenticated Operations (uses shared auth_headers) ============
 
 
-@pytest.fixture(scope="function")
-def auth_token(client, admin_user):
-    """Get authentication token."""
-    response = client.post(
-        "/api/admin/login",
-        data={"username": "admin", "password": "admin123"},
-    )
-    return response.json()["access_token"]
-
-
-def test_admin_list_posts_with_auth(client, auth_token):
+def test_admin_list_posts_with_auth(client, auth_headers):
     """Admin posts list works with valid token."""
     response = client.get(
         "/api/admin/posts",
-        headers={"Authorization": f"Bearer {auth_token}"},
+        headers=auth_headers,
     )
     assert response.status_code == 200
     assert isinstance(response.json(), list)
 
 
-def test_admin_create_post_with_auth(client, auth_token):
+def test_admin_create_post_with_auth(client, auth_headers):
     """Creating posts works with valid token."""
     response = client.post(
         "/api/admin/posts",
         headers={
-            "Authorization": f"Bearer {auth_token}",
+            **auth_headers,
             "Content-Type": "application/json",
         },
         json={
@@ -235,18 +212,17 @@ def test_admin_create_post_with_auth(client, auth_token):
             "published": False,
         },
     )
-    # Returns 201 (created) or 200 depending on implementation
     assert response.status_code in [200, 201]
     data = response.json()
     assert "id" in data
 
 
-def test_admin_create_category_with_auth(client, auth_token):
+def test_admin_create_category_with_auth(client, auth_headers):
     """Creating categories works with valid token."""
     response = client.post(
         "/api/admin/categories?name=Auth+Category",
         headers={
-            "Authorization": f"Bearer {auth_token}",
+            **auth_headers,
             "Content-Type": "application/x-www-form-urlencoded",
         },
     )
@@ -255,12 +231,12 @@ def test_admin_create_category_with_auth(client, auth_token):
     assert "id" in data
 
 
-def test_admin_create_tag_with_auth(client, auth_token):
+def test_admin_create_tag_with_auth(client, auth_headers):
     """Creating tags works with valid token."""
     response = client.post(
         "/api/admin/tags?name=AuthTag",
         headers={
-            "Authorization": f"Bearer {auth_token}",
+            **auth_headers,
             "Content-Type": "application/x-www-form-urlencoded",
         },
     )
@@ -269,13 +245,13 @@ def test_admin_create_tag_with_auth(client, auth_token):
     assert "id" in data
 
 
-def test_admin_delete_category_with_auth(client, auth_token):
+def test_admin_delete_category_with_auth(client, auth_headers):
     """Deleting categories works with valid token."""
     # Create a category first
     create_response = client.post(
         "/api/admin/categories?name=DeleteMe",
         headers={
-            "Authorization": f"Bearer {auth_token}",
+            **auth_headers,
             "Content-Type": "application/x-www-form-urlencoded",
         },
     )
@@ -285,18 +261,18 @@ def test_admin_delete_category_with_auth(client, auth_token):
     # Delete it
     response = client.delete(
         f"/api/admin/categories/{category_id}",
-        headers={"Authorization": f"Bearer {auth_token}"},
+        headers=auth_headers,
     )
     assert response.status_code in [204, 200]
 
 
-def test_admin_delete_tag_with_auth(client, auth_token):
+def test_admin_delete_tag_with_auth(client, auth_headers):
     """Deleting tags works with valid token."""
     # Create a tag first
     create_response = client.post(
         "/api/admin/tags?name=DeleteMeTag",
         headers={
-            "Authorization": f"Bearer {auth_token}",
+            **auth_headers,
             "Content-Type": "application/x-www-form-urlencoded",
         },
     )
@@ -306,7 +282,7 @@ def test_admin_delete_tag_with_auth(client, auth_token):
     # Delete it
     response = client.delete(
         f"/api/admin/tags/{tag_id}",
-        headers={"Authorization": f"Bearer {auth_token}"},
+        headers=auth_headers,
     )
     assert response.status_code in [204, 200]
 
@@ -318,10 +294,9 @@ def test_token_with_extra_characters(client, admin_user):
     """Token with extra characters should be invalid."""
     response = client.post(
         "/api/admin/login",
-        data={"username": "admin", "password": "admin123"},
+        data={"username": "testadmin", "password": "testpass123"},
     )
     token = response.json()["access_token"]
-    # Add extra character
     invalid_token = token + "x"
 
     response = client.get(
@@ -335,10 +310,9 @@ def test_token_with_truncated_value(client, admin_user):
     """Truncated token should be invalid."""
     response = client.post(
         "/api/admin/login",
-        data={"username": "admin", "password": "admin123"},
+        data={"username": "testadmin", "password": "testpass123"},
     )
     token = response.json()["access_token"]
-    # Take only first half
     invalid_token = token[: len(token) // 2]
 
     response = client.get(
@@ -355,27 +329,26 @@ def test_multiple_login_requests(client, admin_user):
     """Multiple login requests should each return valid token."""
     response1 = client.post(
         "/api/admin/login",
-        data={"username": "admin", "password": "admin123"},
+        data={"username": "testadmin", "password": "testpass123"},
     )
     response2 = client.post(
         "/api/admin/login",
-        data={"username": "admin", "password": "admin123"},
+        data={"username": "testadmin", "password": "testpass123"},
     )
 
     assert response1.status_code == 200
     assert response2.status_code == 200
     assert "access_token" in response1.json()
     assert "access_token" in response2.json()
-    # Tokens can be same or different depending on implementation
 
 
-def test_concurrent_requests_with_same_token(client, auth_token):
+def test_concurrent_requests_with_same_token(client, auth_headers):
     """Multiple concurrent requests with same token should all succeed."""
     responses = []
     for _ in range(5):
         response = client.get(
             "/api/admin/posts",
-            headers={"Authorization": f"Bearer {auth_token}"},
+            headers=auth_headers,
         )
         responses.append(response)
 
