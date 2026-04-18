@@ -4,6 +4,7 @@ from sqlalchemy.orm import Session
 
 from app import crud, schemas
 from app.database import get_db
+from app.limiter import RATE_LIMIT_COMMENT, limiter
 
 router = APIRouter(prefix="/api/comments", tags=["comments"])
 
@@ -39,6 +40,7 @@ def list_comments(
 
 
 @router.post("/post/{post_id}", response_model=schemas.Comment, status_code=201)
+@limiter.limit(f"{RATE_LIMIT_COMMENT}/minute")
 def create_comment(
     post_id: int,
     comment: schemas.CommentCreate,

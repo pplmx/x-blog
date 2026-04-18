@@ -9,13 +9,12 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
-from slowapi import Limiter
 from slowapi.errors import RateLimitExceeded
-from slowapi.util import get_remote_address
 
 from app.cache import cache_clear
 from app.database import Base, engine
 from app.exceptions import AppException
+from app.limiter import limiter
 from app.middleware import RequestLoggingMiddleware, get_logger, setup_logging
 from app.routers import admin, categories, comments, posts, search, tags, upload
 from app.routers.export import router as export_router
@@ -25,10 +24,8 @@ from app.routers.stats import router as stats_router
 
 logger = get_logger(__name__)
 
-RATE_LIMIT_PER_MINUTE = os.getenv("RATE_LIMIT_PER_MINUTE", "60")
 REQUEST_TIMEOUT = int(os.getenv("REQUEST_TIMEOUT", "30"))
 GZIP_MINIMUM_SIZE = int(os.getenv("GZIP_MINIMUM_SIZE", "500"))
-limiter = Limiter(key_func=get_remote_address)
 
 
 @asynccontextmanager
