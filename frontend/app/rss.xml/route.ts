@@ -1,8 +1,7 @@
 import { fetchPosts } from '@/lib/api';
 
-const siteUrl = 'https://x-blog.example.com';
-
 export async function GET() {
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000';
   const { items: posts } = await fetchPosts({ limit: 50 });
 
   const rss = `<?xml version="1.0" encoding="UTF-8"?>
@@ -10,7 +9,7 @@ export async function GET() {
   <channel>
     <title>X-Blog</title>
     <link>${siteUrl}</link>
-    <description>X-Blog - 一个现代化的博客系统</description>
+    <description>X-Blog - 探索技术世界，分享编程心得</description>
     <language>zh-CN</language>
     <atom:link href="${siteUrl}/rss.xml" rel="self" type="application/rss+xml"/>
     ${posts
