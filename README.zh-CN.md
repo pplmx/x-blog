@@ -20,7 +20,7 @@
 - 🎨 **精美 UI** - Tailwind CSS v4 + shadcn/ui 构建
 - 📱 **响应式设计** - 完美适配移动端
 - 🔒 **管理后台** - 内置内容管理后台
-- 🧪 **完善测试** - 282 个测试 (后端 169 + 前端 113)
+- 🧪 **完善测试** - 301 个测试 (后端 187 + 前端 114)
 - ✅ **类型安全** - 完整 TypeScript 支持 + Pydantic 验证
 - 🔍 **全文搜索** - 文章搜索功能
 - 🌙 **深色模式** - 跟随系统偏好的深色模式
@@ -73,7 +73,7 @@ just frontend # http://localhost:3000
 
 ```bash
 # 克隆并启动
-git clone https://github.com/your-username/x-blog.git
+git clone https://github.com/pplmx/x-blog.git
 cd x-blog
 
 # 配置环境变量
@@ -98,7 +98,7 @@ docker-compose logs -f
 | `just frontend`      | 运行 Next.js 前端                  |
 | `just lint`          | 代码检查 (ruff + biome)            |
 | `just format`        | 代码格式化                         |
-| `just test`          | 运行所有测试 (169 后端 + 113 前端) |
+| `just test`          | 运行所有测试 (187 后端 + 114 前端) |
 | `just test-backend`  | 运行后端测试 (并行)                |
 | `just test-frontend` | 运行前端测试                       |
 | `just fix`           | 自动修复代码问题                   |
@@ -120,28 +120,38 @@ docker-compose logs -f
 | POST   | `/api/posts/{id}/like`    | 点赞文章           |
 | POST   | `/api/posts/{id}/view`    | 增加浏览量         |
 
-### 分类和标签
+### 评论（需审核）
 
-| 方法 | 路径                         | 说明              |
-| ---- | ---------------------------- | ----------------- |
-| GET  | `/api/categories`            | 获取分类列表      |
-| GET  | `/api/tags`                  | 获取标签列表      |
-| GET  | `/api/posts?tag_id=X`        | 根据标签获取文章  |
-| GET  | `/api/posts?category_id=X`   | 根据分类获取文章  |
+| 方法   | 路径                         | 说明              |
+| ------ | ---------------------------- | ----------------- |
+| GET    | `/api/comments/post/{id}`    | 获取已审核评论    |
+| POST   | `/api/comments/post/{id}`    | 发表评论          |
+| DELETE | `/api/comments/{id}`         | 删除评论 (管理员) |
+| PATCH  | `/api/comments/{id}/approve` | 审核通过/拒绝     |
 
-### 评论
+### 管理后台
 
-| 方法 | 路径                        | 说明              |
-| ---- | --------------------------- | ----------------- |
-| GET  | `/api/comments/post/{id}`   | 获取文章评论      |
-| POST | `/api/comments/post/{id}`   | 发表评论          |
+| 方法 | 路径                           | 说明               |
+| ---- | ------------------------------ | ------------------ |
+| POST | `/api/admin/login`             | 管理员登录         |
+| GET  | `/api/admin/stats`             | 仪表盘统计         |
+| GET  | `/api/posts?all=true`          | 列出全部（含草稿） |
+| GET  | `/api/comments?approved=false` | 待审核评论列表     |
+| POST | `/api/upload`                  | 上传图片           |
+| GET  | `/api/export/posts.csv`        | 导出文章           |
+| GET  | `/api/export/comments.csv`     | 导出评论           |
 
-### 导出
+### 搜索、SEO 与统计
 
-| 方法 | 路径                      | 说明              |
-| ---- | ------------------------- | ----------------- |
-| GET  | `/api/export/posts.csv`   | 导出所有文章      |
-| GET  | `/api/export/comments.csv`| 导出所有评论      |
+| 方法 | 路径                  | 说明                   |
+| ---- | --------------------- | ---------------------- |
+| GET  | `/api/search?q=`      | 全文搜索               |
+| GET  | `/api/stats`          | 博客统计               |
+| GET  | `/rss/feed.xml`       | RSS 2.0 订阅源         |
+| GET  | `/rss/atom.xml`       | Atom 订阅源            |
+| GET  | `/sitemap.xml`        | XML 站点地图           |
+| GET  | `/robots.txt`         | robots.txt             |
+| GET  | `/health`             | 健康检查               |
 
 ## 🏗️ 系统架构
 
@@ -162,7 +172,7 @@ x-blog/
 │   │   ├── schemas.py      # Pydantic schemas
 │   │   ├── crud.py         # 数据库操作
 │   │   └── routers/        # API 路由
-│   ├── tests/              # pytest 测试 (169 个)
+│   ├── tests/              # pytest 测试 (187 个)
 │   └── pyproject.toml      # Python 配置
 │
 ├── frontend/               # Next.js 前端
@@ -229,9 +239,9 @@ just test-frontend-coverage
 
 **测试统计:**
 
-- 后端: 169 个测试 (pytest + pytest-xdist)
-- 前端: 113 个测试 (Vitest)
-- **总计: 282 个测试**
+- 后端: 187 个测试 (pytest + pytest-xdist)
+- 前端: 114 个测试 (Vitest)
+- **总计: 301 个测试**
 
 ## 🤝 贡献
 
