@@ -1,8 +1,9 @@
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from app import crud, schemas
+from app.auth import get_current_admin
 from app.database import get_db
 from app.limiter import RATE_LIMIT_COMMENT, limiter
 
@@ -19,6 +20,12 @@ class CommentListResponse(BaseModel):
     total_pages: int
 
 
+class CommentApproval(BaseModel):
+    """Comment approval request."""
+
+    approved: bool
+
+
 @router.get("/post/{post_id}", response_model=CommentListResponse)
 def list_comments(
     post_id: int,
@@ -26,7 +33,7 @@ def list_comments(
     limit: int = 20,
     db: Session = Depends(get_db),
 ):
-    """Get paginated comments for a post."""
+    """Get paginated approved comments for a post."""
     comments, total = crud.get_comments_paginated(db, post_id, page=page, limit=limit)
     total_pages = (total + limit - 1) // limit if limit > 0 else 0
 
@@ -49,6 +56,20 @@ def create_comment(
 ):
     ip_address = request.client.host if request.client else "unknown"
     return crud.create_comment(db, post_id, comment, ip_address)
+
+
+@router.patch("/{comment_id}/approve", response_model=schemas.Comment)
+def approve_comment(
+    comment_id: int,
+    approval: CommentApproval,
+    _: None = Depends(get_current_admin),
+    db: Session = Depends(get_db),
+):
+    """Approve or reject a comment. Admin only."""
+    comment = crud.approve_comment(db, comment_id, approved=approval.approved)
+    if not comment:
+        raise HTTPException(status_code=404, detail="Comment not found")
+    return comment
 
 
 @router.delete("/{comment_id}", status_code=204)

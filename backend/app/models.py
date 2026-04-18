@@ -76,6 +76,7 @@ class Comment(Base):
     email = Column(String(100))
     content = Column(Text, nullable=False)
     ip_address = Column(String(50))
+    is_approved = Column(Boolean, default=True, index=True)
     created_at = Column(DateTime, default=lambda: datetime.now(UTC))
 
     post = relationship("Post", back_populates="comments")

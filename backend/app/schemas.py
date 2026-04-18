@@ -102,6 +102,7 @@ class CommentBase(BaseModel):
 
 class CommentCreate(CommentBase):
     parent_id: int | None = None
+    is_approved: bool = True
 
 
 class Comment(CommentBase):
@@ -109,5 +110,6 @@ class Comment(CommentBase):
     post_id: int
     parent_id: int | None = None
     ip_address: str
+    is_approved: bool = True
     created_at: datetime
     model_config = ConfigDict(from_attributes=True)

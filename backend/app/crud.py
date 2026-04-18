@@ -276,12 +276,15 @@ def get_comments_paginated(
     page: int = 1,
     limit: int = 20,
 ) -> tuple[list[models.Comment], int]:
-    """Get paginated comments for a post.
+    """Get paginated approved comments for a post.
 
     Returns:
         Tuple of (comments list, total count)
     """
-    query = db.query(models.Comment).filter(models.Comment.post_id == post_id)
+    query = db.query(models.Comment).filter(
+        models.Comment.post_id == post_id,
+        models.Comment.is_approved == True,  # noqa: E712
+    )
 
     total = query.count()
     comments = query.order_by(models.Comment.created_at.desc()).offset((page - 1) * limit).limit(limit).all()
@@ -302,11 +305,38 @@ def create_comment(
         email=comment.email,
         content=comment.content,
         ip_address=ip_address,
+        is_approved=comment.is_approved,
     )
     db.add(db_comment)
     db.commit()
     db.refresh(db_comment)
     return db_comment
+
+
+def approve_comment(db: Session, comment_id: int, approved: bool = True) -> models.Comment | None:
+    """Approve or reject a comment."""
+    comment = db.query(models.Comment).filter(models.Comment.id == comment_id).first()
+    if not comment:
+        return None
+    comment.is_approved = approved
+    db.commit()
+    db.refresh(comment)
+    return comment
+
+
+def get_pending_comments(db: Session) -> list[models.Comment]:
+    """Get all pending (unapproved) comments."""
+    return (
+        db.query(models.Comment)
+        .filter(models.Comment.is_approved == False)  # noqa: E712
+        .order_by(models.Comment.created_at.desc())
+        .all()
+    )
+
+
+def get_all_comments(db: Session) -> list[models.Comment]:
+    """Get all comments for admin review."""
+    return db.query(models.Comment).order_by(models.Comment.created_at.desc()).all()
 
 
 def delete_comment(db: Session, comment_id: int) -> bool:
