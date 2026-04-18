@@ -30,7 +30,7 @@ describe('TableOfContents', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     observerCallback = null;
-    
+
     // Mock IntersectionObserver
     Object.defineProperty(window, 'IntersectionObserver', {
       value: createIntersectionObserverMock(),
@@ -142,7 +142,7 @@ describe('TableOfContents', () => {
   describe('Scroll spy behavior', () => {
     it('should have scroll listener available', () => {
       render(<TableOfContents toc={mockToc} />);
-      
+
       // Just verify the component rendered with links (listener is internal)
       const links = document.querySelectorAll('a');
       expect(links.length).toBe(mockToc.length);

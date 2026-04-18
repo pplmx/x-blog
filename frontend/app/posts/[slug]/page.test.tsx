@@ -5,11 +5,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach, afterAll } from 'vitest';
 import { HttpResponse, http } from 'msw';
 import { setupServer } from 'msw/node';
-import {
-  mockPost,
-  mockPostList,
-  mockCommentList,
-} from '@/tests/test-utils';
+import { mockPost, mockPostList, mockCommentList } from '@/tests/test-utils';
 
 // Mock data
 const mockSinglePost = mockPost({
@@ -59,7 +55,7 @@ const server = setupServer(
   }),
   http.post('http://localhost:8000/api/posts/1/like', () => {
     return HttpResponse.json({ id: 1, likes: 57 });
-  }),
+  })
 );
 
 describe('Post Detail Page', () => {

@@ -31,7 +31,7 @@ const server = setupServer(
   }),
   http.get('http://localhost:8000/api/posts/popular', () => {
     return HttpResponse.json(mockPopularPosts);
-  }),
+  })
 );
 
 describe('Homepage', () => {
@@ -109,9 +109,7 @@ describe('Homepage', () => {
           const categoryId = url.searchParams.get('category_id');
 
           if (categoryId === '1') {
-            const filtered = mockPosts.filter(
-              (p) => p.category?.id === parseInt(categoryId)
-            );
+            const filtered = mockPosts.filter((p) => p.category?.id === parseInt(categoryId));
             return HttpResponse.json(mockPostListResponse(filtered));
           }
           return HttpResponse.json(mockPostListResponse([]));

@@ -11,22 +11,22 @@ os.environ.setdefault("RATE_LIMIT_COMMENT_PER_MINUTE", "9999")
 os.environ.setdefault("RATE_LIMIT_EXPORT_PER_MINUTE", "9999")
 
 import time
+from collections.abc import Generator
 from contextlib import suppress
 from pathlib import Path
-from typing import Generator
 
 import pytest
 from fastapi.testclient import TestClient
-from sqlalchemy import create_engine, text
+from sqlalchemy import create_engine
 from sqlalchemy.orm import Session, sessionmaker
 
 from app.database import Base, get_db
 from app.main import app
 
-
 # ---------------------------------------------------------------------------
 # Engine & database (session-scoped, worker-aware)
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture(scope="session")
 def worker_id(request: pytest.FixtureRequest) -> str:
@@ -57,8 +57,9 @@ def test_engine(worker_id: str):
 # Database sessions
 # ---------------------------------------------------------------------------
 
+
 @pytest.fixture
-def db_session(test_engine) -> Generator[Session, None, None]:
+def db_session(test_engine) -> Generator[Session]:
     """
     Isolated transaction per test.
     All changes (including fixture commits) are rolled back after the test.
@@ -70,7 +71,7 @@ def db_session(test_engine) -> Generator[Session, None, None]:
         yield session
     finally:
         session.close()
-        connection.rollback()   # undo everything this test did
+        connection.rollback()  # undo everything this test did
         connection.close()
 
 
@@ -78,9 +79,11 @@ def db_session(test_engine) -> Generator[Session, None, None]:
 # FastAPI test client
 # ---------------------------------------------------------------------------
 
+
 @pytest.fixture
-def client(db_session: Session, test_engine) -> TestClient:
+def client(db_session: Session) -> TestClient:
     """Test client with isolated DB session injected via dependency override."""
+
     def override_get_db():
         try:
             yield db_session
@@ -97,6 +100,7 @@ def client(db_session: Session, test_engine) -> TestClient:
 # Shared admin user fixtures (per-module, not shared across modules)
 # ---------------------------------------------------------------------------
 
+
 @pytest.fixture
 def admin_user(db_session: Session):
     """
@@ -111,13 +115,16 @@ def admin_user(db_session: Session):
         is_superuser=True,
     )
     db_session.add(user)
-    db_session.flush()   # make id available, but stay inside transaction
+    db_session.flush()  # make id available, but stay inside transaction
     return user
 
 
 @pytest.fixture
-def admin_token(client: TestClient, admin_user) -> str:
-    """Return a fresh JWT token for the admin user."""
+def admin_token(client: TestClient, admin_user) -> str:  # noqa: ARG001
+    """Return a fresh JWT token for the admin user.
+
+    admin_user param ensures the test admin exists in the database before login.
+    """
     response = client.post(
         "/api/admin/login",
         data={"username": "testadmin", "password": "testpass123"},

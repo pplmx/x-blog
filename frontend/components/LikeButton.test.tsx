@@ -4,10 +4,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import LikeButton from './LikeButton';
 import { HttpResponse, http } from 'msw';
 import { setupServer } from 'msw/node';
-import {
-  createQueryWrapper,
-  createLocalStorageMock,
-} from '@/tests/test-utils';
+import { createQueryWrapper, createLocalStorageMock } from '@/tests/test-utils';
 
 const localStorageMock = createLocalStorageMock({});
 
@@ -18,14 +15,12 @@ const server = setupServer(
   }),
   http.post('http://localhost:8000/api/posts/2/like', () => {
     return HttpResponse.json({ id: 2, likes: 1 });
-  }),
+  })
 );
 
 function renderWithProviders(ui: React.ReactElement) {
   const queryClient = createQueryWrapper();
-  return render(
-    <QueryClientProvider client={queryClient}>{ui}</QueryClientProvider>
-  );
+  return render(<QueryClientProvider client={queryClient}>{ui}</QueryClientProvider>);
 }
 
 describe('LikeButton', () => {

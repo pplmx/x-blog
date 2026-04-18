@@ -4,10 +4,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import RelatedPosts from './RelatedPosts';
 import { HttpResponse, http } from 'msw';
 import { setupServer } from 'msw/node';
-import {
-  createQueryWrapper,
-  mockPost,
-} from '@/tests/test-utils';
+import { createQueryWrapper, mockPost } from '@/tests/test-utils';
 
 const mockPosts = [
   mockPost({ id: 1, title: 'Related Post 1', slug: 'related-post-1' }),
@@ -22,14 +19,12 @@ const server = setupServer(
   // Default handler for unmatched requests - return empty array
   http.get(/\/api\/posts\/\d+\/related/, () => {
     return HttpResponse.json([]);
-  }),
+  })
 );
 
 function renderWithProviders(ui: React.ReactElement) {
   const queryClient = createQueryWrapper();
-  return render(
-    <QueryClientProvider client={queryClient}>{ui}</QueryClientProvider>
-  );
+  return render(<QueryClientProvider client={queryClient}>{ui}</QueryClientProvider>);
 }
 
 describe('RelatedPosts', () => {

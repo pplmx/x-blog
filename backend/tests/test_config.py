@@ -3,8 +3,6 @@
 import os
 from unittest.mock import patch
 
-import pytest
-
 
 class TestSettingsDefaults:
     """Tests for Settings default values."""
@@ -82,9 +80,7 @@ class TestSettingsEnvironmentVariables:
         """Test site_description can be set via environment variable."""
         from app.config import Settings
 
-        with patch.dict(
-            os.environ, {"SITE_DESCRIPTION": "A custom blog description"}
-        ):
+        with patch.dict(os.environ, {"SITE_DESCRIPTION": "A custom blog description"}):
             settings = Settings()
             assert settings.site_description == "A custom blog description"
 
@@ -92,9 +88,7 @@ class TestSettingsEnvironmentVariables:
         """Test sentry_dsn can be set via environment variable."""
         from app.config import Settings
 
-        with patch.dict(
-            os.environ, {"SENTRY_DSN": "https://key@sentry.io/123"}
-        ):
+        with patch.dict(os.environ, {"SENTRY_DSN": "https://key@sentry.io/123"}):
             settings = Settings()
             assert settings.sentry_dsn == "https://key@sentry.io/123"
 
@@ -103,7 +97,7 @@ class TestSettingsEnvironmentVariables:
         from app.config import Settings
 
         with patch.dict(os.environ, {"SENTRY_DSN": ""}):
-            settings = Settings()
+            _settings = Settings()
             # pydantic-settings treats empty string differently from None
             # It may remain as empty string or be coerced to None depending on config
 
