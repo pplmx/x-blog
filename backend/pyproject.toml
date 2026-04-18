@@ -24,6 +24,7 @@ dev = [
     "pytest>=8.0.0",
     "httpx>=0.27.0",
     "pytest-asyncio>=0.23.0",
+    "pytest-cov>=6.0.0",
     "ruff>=0.8.0",
 ]
 
@@ -43,3 +44,49 @@ filterwarnings = [
     "ignore::DeprecationWarning:slowapi",
     "ignore::DeprecationWarning:_pytest",
 ]
+
+[tool.cov.report]
+precision = 2
+show_missing = true
+skip_covered = false
+
+[tool.cov.run]
+branch = true
+source = ["app"]
+omit = [
+    "*/tests/*",
+    "*/test_*.py",
+    "*/__pycache__/*",
+    "*/migrations/*",
+]
+
+[tool.cov.html]
+directory = "htmlcov"
+
+[tool.coverage.report]
+precision = 2
+show_missing = true
+skip_covered = false
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if __name__ == .__main__.:",
+    "if TYPE_CHECKING:",
+    "@abstractmethod",
+    "type: ignore",
+    "pragma: no cover",
+    # Pydantic excluded patterns
+    "if field_value is ...:",
+    "raise ValueError",
+]
+
+[tool.coverage.branches]
+fail_under = 50
+
+[tool.coverage.functions]
+fail_under = 50
+
+[tool.coverage.lines]
+fail_under = 60

@@ -1,19 +1,26 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import SearchBox from './SearchBox';
 import * as api from '@/lib/api';
 
+// Mock next/navigation at module level
 vi.mock('next/navigation', () => ({
   useRouter: () => ({
     push: vi.fn(),
   }),
 }));
 
+// Mock the API module
 vi.mock('@/lib/api', () => ({
-  searchPosts: vi.fn(),
+  searchPosts: vi.fn().mockResolvedValue([]),
 }));
 
 describe('SearchBox', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.mocked(api.searchPosts).mockResolvedValue([]);
+  });
+
   it('should render search input', () => {
     render(<SearchBox />);
 

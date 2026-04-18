@@ -4,15 +4,18 @@ import { vi } from 'vitest';
 import { usePathname } from 'next/navigation';
 import Header from './Header';
 
+// Mock next/navigation at module level
 vi.mock('next/navigation', () => ({
   usePathname: vi.fn(),
   useRouter: () => ({
     push: vi.fn(),
+    refresh: vi.fn(),
   }),
 }));
 
 describe('Header', () => {
   beforeEach(() => {
+    vi.clearAllMocks();
     vi.mocked(usePathname).mockReturnValue('/');
   });
 

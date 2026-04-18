@@ -1,14 +1,15 @@
-import { describe, it, expect, vi } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { describe, it, expect, vi, beforeEach, afterEach, afterAll } from 'vitest';
 import { HttpResponse, http } from 'msw';
 import { setupServer } from 'msw/node';
+import {
+  mockTagList,
+  mockPost,
+  mockPostListResponse,
+} from '@/tests/test-utils';
 
-const mockTags = [
-  { id: 1, name: 'React' },
-  { id: 2, name: 'Python' },
-  { id: 3, name: 'TypeScript' },
-];
+const mockTags = mockTagList(3);
 
+// Create server with handlers - each test gets fresh instance via beforeEach
 const server = setupServer(
   http.get('http://localhost:8000/api/tags', () => {
     return HttpResponse.json(mockTags);
@@ -18,38 +19,33 @@ const server = setupServer(
     const tagId = url.searchParams.get('tag_id');
 
     if (tagId === '1') {
-      return HttpResponse.json({
-        items: [
-          {
+      return HttpResponse.json(
+        mockPostListResponse([
+          mockPost({
             id: 1,
             title: 'React Post',
             slug: 'react-post',
-            excerpt: null,
-            published: true,
-            created_at: '2024-01-01',
-            views: 100,
-            likes: 0,
-            category: null,
-            tags: [],
-          },
-        ],
-        pagination: { total: 1, page: 1, limit: 10, total_pages: 1 },
-      });
+          }),
+        ])
+      );
     }
-    return HttpResponse.json({
-      items: [],
-      pagination: { total: 0, page: 1, limit: 10, total_pages: 0 },
-    });
-  })
+    return HttpResponse.json(mockPostListResponse([]));
+  }),
 );
 
 describe('Tags Page', () => {
   beforeEach(() => {
+    vi.clearAllMocks();
     server.listen();
   });
 
   afterEach(() => {
+    server.resetHandlers();
     server.close();
+  });
+
+  afterAll(() => {
+    vi.restoreAllMocks();
   });
 
   it('renders tags page title', async () => {

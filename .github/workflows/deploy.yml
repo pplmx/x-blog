@@ -29,7 +29,7 @@ jobs:
         run: |
           cd backend
           uv sync
-          uv run pytest
+          uv run pytest --cov=app --cov-report=term-missing --cov-fail-under=50
 
       - name: Frontend tests
         run: |
