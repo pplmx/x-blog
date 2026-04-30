@@ -65,9 +65,7 @@ export default function MobileFilterBar({ categories, tags }: MobileFilterBarPro
         >
           <Filter className="w-4 h-4" />
           筛选
-          {hasFilters && (
-            <span className="w-2 h-2 bg-blue-500 rounded-full" />
-          )}
+          {hasFilters && <span className="w-2 h-2 bg-blue-500 rounded-full" />}
         </button>
       </div>
 

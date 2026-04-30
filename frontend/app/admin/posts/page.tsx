@@ -56,8 +56,20 @@ export default function PostsPage() {
         <div className="text-center py-12">
           <div className="inline-flex items-center gap-2 text-gray-500">
             <svg aria-label="加载中" className="animate-spin w-5 h-5" viewBox="0 0 24 24">
-              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
-              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+              <circle
+                className="opacity-25"
+                cx="12"
+                cy="12"
+                r="10"
+                stroke="currentColor"
+                strokeWidth="4"
+                fill="none"
+              />
+              <path
+                className="opacity-75"
+                fill="currentColor"
+                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
+              />
             </svg>
             加载中...
           </div>
@@ -125,9 +137,11 @@ export default function PostsPage() {
                             : 'bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400'
                         }`}
                       >
-                        <span className={`w-1.5 h-1.5 rounded-full mr-1.5 ${
-                          post.published ? 'bg-green-500' : 'bg-amber-500'
-                        }`} />
+                        <span
+                          className={`w-1.5 h-1.5 rounded-full mr-1.5 ${
+                            post.published ? 'bg-green-500' : 'bg-amber-500'
+                          }`}
+                        />
                         {post.published ? '已发布' : '草稿'}
                       </span>
                     </td>
