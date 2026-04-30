@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Plus, Trash2, Pencil, Check, X } from 'lucide-react';
+import { Plus, Trash2, Pencil, Check, X, Tag as TagIcon } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { fetchAdminTags, createAdminTag, deleteAdminTag, updateAdminTag } from '@/lib/api';
 
@@ -73,51 +73,81 @@ export default function TagsPage() {
     await deleteTag.mutateAsync(id);
   };
 
-  if (isLoading) return <div>加载中...</div>;
-  if (error) return <div>加载失败: {String(error)}</div>;
-  if (!tags) return <div>暂无数据</div>;
-
   return (
     <div>
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
-        <h1 className="text-2xl font-bold">标签管理</h1>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
+        <div>
+          <h1 className="text-2xl font-bold bg-gradient-to-r from-gray-900 dark:from-gray-100 to-gray-600 dark:to-gray-400 bg-clip-text text-transparent">
+            标签管理
+          </h1>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+            共 {tags?.length || 0} 个标签
+          </p>
+        </div>
       </div>
 
-      <div className="bg-card border rounded-xl p-4 mb-6">
-        <form onSubmit={handleCreate} className="flex gap-2">
-          <Input
-            value={newName}
-            onChange={(e) => setNewName(e.target.value)}
-            placeholder="新标签名称"
-            className="flex-1"
-          />
-          <Button type="submit" disabled={createTag.isPending}>
+      {/* 添加表单 */}
+      <div className="bg-gradient-to-br from-gray-50 dark:from-gray-800/50 to-white dark:to-gray-900 rounded-2xl p-5 mb-6 border border-gray-100 dark:border-gray-800">
+        <form onSubmit={handleCreate} className="flex gap-3">
+          <div className="relative flex-1">
+            <TagIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+            <Input
+              value={newName}
+              onChange={(e) => setNewName(e.target.value)}
+              placeholder="新标签名称"
+              className="pl-10 h-11"
+            />
+          </div>
+          <Button
+            type="submit"
+            disabled={createTag.isPending}
+            className="bg-gradient-to-r from-pink-500 to-rose-500 hover:from-pink-600 hover:to-rose-600 shadow-md shadow-pink-500/20"
+          >
             <Plus className="mr-2 h-4 w-4" />
             添加
           </Button>
         </form>
       </div>
 
+      {/* 标签列表 */}
       {isLoading ? (
-        <div className="text-center py-8 text-gray-500">加载中...</div>
+        <div className="text-center py-12">
+          <div className="inline-flex items-center gap-2 text-gray-500">
+            <svg className="animate-spin w-5 h-5" viewBox="0 0 24 24">
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+            </svg>
+            加载中...
+          </div>
+        </div>
       ) : error ? (
-        <div className="text-center py-8 text-red-500">加载失败: {String(error)}</div>
+        <div className="text-center py-12 text-red-500">{String(error)}</div>
       ) : tags?.length === 0 ? (
-        <div className="text-center py-8 text-gray-500">暂无标签</div>
+        <div className="flex flex-col items-center justify-center py-16 bg-gradient-to-br from-gray-50 dark:from-gray-800/50 to-white dark:to-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800">
+          <div className="w-16 h-16 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center mb-4">
+            <TagIcon className="w-8 h-8 text-gray-400" />
+          </div>
+          <h3 className="text-lg font-medium text-gray-700 dark:text-gray-300 mb-1">暂无标签</h3>
+          <p className="text-sm text-gray-500 dark:text-gray-400">添加你的第一个标签吧</p>
+        </div>
       ) : (
         <div className="flex flex-wrap gap-3">
           {tags.map((tag) => (
             <div
               key={tag.id}
-              className="flex items-center gap-2 px-4 py-2 border rounded-xl bg-card hover:border-gray-300 transition-colors"
+              className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 hover:border-pink-200 dark:hover:border-pink-800 hover:shadow-md transition-all duration-200"
             >
               {editingId === tag.id ? (
                 <>
                   <Input
                     value={editName}
                     onChange={(e) => setEditName(e.target.value)}
-                    className="w-28"
+                    className="w-32 h-8"
                     autoFocus
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') handleSaveEdit();
+                      if (e.key === 'Escape') handleCancelEdit();
+                    }}
                   />
                   <Button
                     variant="ghost"
@@ -139,24 +169,31 @@ export default function TagsPage() {
                 </>
               ) : (
                 <>
-                  <span className="font-medium">#{tag.name}</span>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => handleStartEdit(tag.id, tag.name)}
-                    className="h-8 w-8 p-0 text-blue-600 hover:text-blue-700 hover:bg-blue-50"
-                  >
-                    <Pencil className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => handleDelete(tag.id)}
-                    disabled={deleteTag.isPending}
-                    className="h-8 w-8 p-0 text-red-500 hover:text-red-600 hover:bg-red-50"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
+                  <div className="flex items-center gap-2">
+                    <div className="w-7 h-7 rounded-lg bg-pink-50 dark:bg-pink-900/30 flex items-center justify-center">
+                      <TagIcon className="w-3.5 h-3.5 text-pink-500" />
+                    </div>
+                    <span className="font-medium text-gray-700 dark:text-gray-300">#{tag.name}</span>
+                  </div>
+                  <div className="flex gap-0.5 ml-1">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleStartEdit(tag.id, tag.name)}
+                      className="h-7 w-7 p-0 text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                    >
+                      <Pencil className="h-3.5 w-3.5" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleDelete(tag.id)}
+                      disabled={deleteTag.isPending}
+                      className="h-7 w-7 p-0 text-red-500 hover:text-red-600 hover:bg-red-50"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
                 </>
               )}
             </div>
