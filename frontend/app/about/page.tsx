@@ -39,22 +39,22 @@ export default function AboutPage() {
 
       {/* 头部 */}
       <div className="text-center mb-12">
-        <div className="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-2xl shadow-lg shadow-blue-600/20 mb-6">
-          <Sparkles className="w-10 h-10 text-white" />
+        <div className="inline-flex items-center justify-center w-24 h-24 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-3xl shadow-xl shadow-blue-600/25 mb-6">
+          <Sparkles className="w-12 h-12 text-white" />
         </div>
-        <h1 className="text-3xl sm:text-4xl font-bold bg-gradient-to-r from-gray-900 to-gray-600 bg-clip-text text-transparent mb-3">
+        <h1 className="text-3xl sm:text-4xl font-bold bg-gradient-to-r from-gray-900 dark:from-gray-100 to-gray-600 dark:to-gray-400 bg-clip-text text-transparent mb-3">
           关于 X-Blog
         </h1>
-        <p className="text-gray-500">一个现代化的技术博客系统</p>
+        <p className="text-gray-500 dark:text-gray-400">一个现代化的技术博客系统</p>
       </div>
 
       {/* 介绍 */}
-      <div className="bg-card border rounded-2xl p-6 sm:p-8 mb-8">
-        <p className="text-gray-600 leading-relaxed mb-4">
+      <div className="bg-gradient-to-br from-gray-50 dark:from-gray-800/50 to-white dark:to-gray-900 rounded-2xl p-6 sm:p-8 mb-8 border border-gray-100 dark:border-gray-800">
+        <p className="text-gray-600 dark:text-gray-300 leading-relaxed mb-4">
           X-Blog
           是一个简洁优雅的技术博客系统，采用现代前端与后端技术构建。我们致力于为开发者提供一个轻量、快速、且美观的博客平台。
         </p>
-        <p className="text-gray-600 leading-relaxed">
+        <p className="text-gray-600 dark:text-gray-300 leading-relaxed">
           无论是分享技术心得、记录学习笔记，还是发布项目动态，X-Blog
           都能为你提供出色的写作与阅读体验。
         </p>
@@ -62,7 +62,7 @@ export default function AboutPage() {
 
       {/* 技术栈 */}
       <div className="mb-8">
-        <h2 className="text-lg font-bold mb-4 flex items-center gap-2">
+        <h2 className="text-lg font-bold mb-4 flex items-center gap-2 text-gray-900 dark:text-gray-100">
           <Code2 className="w-5 h-5 text-blue-600" />
           技术栈
         </h2>
@@ -70,15 +70,15 @@ export default function AboutPage() {
           {techStack.map((tech) => (
             <div
               key={tech.name}
-              className="bg-card border rounded-xl p-4 text-center hover:border-gray-300 transition-colors"
+              className="bg-white dark:bg-gray-900 rounded-xl p-4 text-center border border-gray-100 dark:border-gray-800 hover:shadow-lg hover:border-gray-200 dark:hover:border-gray-700 transition-all duration-200"
             >
               <div
-                className={`inline-flex items-center justify-center w-10 h-10 rounded-lg bg-gradient-to-br ${tech.color} mb-3`}
+                className={`inline-flex items-center justify-center w-12 h-12 rounded-xl bg-gradient-to-br ${tech.color} mb-3 shadow-md`}
               >
-                <tech.icon className="w-5 h-5 text-white" />
+                <tech.icon className="w-6 h-6 text-white" />
               </div>
-              <p className="font-medium text-gray-900">{tech.name}</p>
-              <p className="text-xs text-gray-500">{tech.desc}</p>
+              <p className="font-semibold text-gray-900 dark:text-gray-100">{tech.name}</p>
+              <p className="text-xs text-gray-500 dark:text-gray-400">{tech.desc}</p>
             </div>
           ))}
         </div>
@@ -86,12 +86,12 @@ export default function AboutPage() {
 
       {/* 功能列表 */}
       <div className="mb-8">
-        <h2 className="text-lg font-bold mb-4">核心功能</h2>
+        <h2 className="text-lg font-bold mb-4 text-gray-900 dark:text-gray-100">核心功能</h2>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           {features.map((feature) => (
             <div
               key={feature}
-              className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-100 rounded-lg px-4 py-2.5 text-sm text-blue-700 font-medium text-center"
+              className="bg-gradient-to-r from-blue-50 dark:from-blue-900/30 to-indigo-50 dark:to-indigo-900/30 border border-blue-100 dark:border-blue-900/50 rounded-xl px-4 py-3 text-sm text-blue-700 dark:text-blue-300 font-medium text-center hover:shadow-md transition-shadow"
             >
               {feature}
             </div>
@@ -100,9 +100,9 @@ export default function AboutPage() {
       </div>
 
       {/* 页脚 */}
-      <div className="text-center pt-8 border-t">
-        <p className="text-gray-500 text-sm flex items-center justify-center gap-1.5">
-          Made with <Heart className="w-4 h-4 text-red-500" /> for developers
+      <div className="text-center pt-8 border-t border-gray-100 dark:border-gray-800">
+        <p className="text-gray-500 dark:text-gray-400 text-sm flex items-center justify-center gap-2">
+          Made with <Heart className="w-4 h-4 text-red-500 animate-pulse" /> for developers
         </p>
       </div>
     </div>
