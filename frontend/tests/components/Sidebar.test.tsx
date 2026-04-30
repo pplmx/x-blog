@@ -40,8 +40,8 @@ describe('Sidebar', () => {
 
   it('renders categories list as links', () => {
     render(<Sidebar categories={mockCategories} tags={mockTags} />);
-    
-    const categoryLinks = screen.getAllByRole('link').filter(link => 
+
+    const categoryLinks = screen.getAllByRole('link').filter(link =>
       link.getAttribute('href')?.includes('category_id')
     );
     expect(categoryLinks.length).toBe(mockCategories.length);
@@ -49,14 +49,14 @@ describe('Sidebar', () => {
 
   it('renders tags list as links', () => {
     render(<Sidebar categories={mockCategories} tags={mockTags} />);
-    
+
     expect(screen.getByText('#javascript')).toBeInTheDocument();
     expect(screen.getByText('#react')).toBeInTheDocument();
   });
 
   it('renders popular posts list when provided', () => {
     render(<Sidebar categories={mockCategories} tags={mockTags} popularPosts={mockPopularPosts} />);
-    
+
     expect(screen.getByText('热门文章')).toBeInTheDocument();
     expect(screen.getByText('Popular Post 1')).toBeInTheDocument();
     expect(screen.getByText('Popular Post 2')).toBeInTheDocument();
@@ -64,32 +64,32 @@ describe('Sidebar', () => {
 
   it('does not render popular posts section when empty', () => {
     render(<Sidebar categories={mockCategories} tags={mockTags} popularPosts={[]} />);
-    
+
     expect(screen.queryByText('热门文章')).not.toBeInTheDocument();
   });
 
   it('clicking a category link navigates with correct query param', async () => {
     const user = userEvent.setup();
     render(<Sidebar categories={mockCategories} tags={mockTags} />);
-    
+
     const categoryLink = screen.getByRole('link', { name: 'Tech' });
     await user.click(categoryLink);
-    
+
     expect(categoryLink).toHaveAttribute('href', '/?category_id=1');
   });
 
   it('clicking a tag link navigates with correct query param', async () => {
     const user = userEvent.setup();
     render(<Sidebar categories={mockCategories} tags={mockTags} />);
-    
+
     const tagLink = screen.getByRole('link', { name: '#javascript' });
-    
+
     expect(tagLink).toHaveAttribute('href', '/?tag_id=1');
   });
 
   it('renders popular post links with correct href', () => {
     render(<Sidebar categories={mockCategories} tags={mockTags} popularPosts={mockPopularPosts} />);
-    
+
     const popularLink = screen.getByRole('link', { name: /Popular Post 1/i });
     expect(popularLink).toHaveAttribute('href', '/posts/popular-post-1');
   });
@@ -107,7 +107,7 @@ describe('Sidebar with active filters', () => {
     vi.mocked(useSearchParams).mockReturnValue(new URLSearchParams('category_id=1'));
 
     render(<Sidebar categories={mockCategories} tags={mockTags} />);
-    
+
     expect(screen.getByText('清除筛选')).toBeInTheDocument();
   });
 
@@ -115,20 +115,20 @@ describe('Sidebar with active filters', () => {
     vi.mocked(useSearchParams).mockReturnValue(new URLSearchParams('tag_id=1'));
 
     render(<Sidebar categories={mockCategories} tags={mockTags} />);
-    
+
     expect(screen.getByText('清除筛选')).toBeInTheDocument();
   });
 
   it('clear filters button navigates to home', async () => {
     const user = userEvent.setup();
-    
+
     vi.mocked(useSearchParams).mockReturnValue(new URLSearchParams('category_id=1'));
 
     render(<Sidebar categories={mockCategories} tags={mockTags} />);
-    
+
     const clearButton = screen.getByRole('button', { name: /清除筛选/i });
     await user.click(clearButton);
-    
+
     expect(mockPush).toHaveBeenCalledWith('/');
   });
 });
