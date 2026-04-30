@@ -3,10 +3,10 @@ import PostCard from '@/components/PostCard';
 
 interface SearchResultsProps {
   posts: PostList[];
-  query: string;
+  query?: string;
 }
 
-export default function SearchResults({ posts, query }: SearchResultsProps) {
+export default function SearchResults({ posts }: SearchResultsProps) {
   if (posts.length === 0) {
     return null; // 空状态已在页面处理
   }

@@ -75,9 +75,12 @@ export default function MobileFilterBar({ categories, tags }: MobileFilterBarPro
       {isOpen && (
         <>
           {/* 背景遮罩 */}
-          <div
-            className="fixed inset-0 bg-black/50 z-50 lg:hidden"
+          <button
+            type="button"
+            className="fixed inset-0 bg-black/50 z-50 lg:hidden cursor-default"
             onClick={() => setIsOpen(false)}
+            onKeyDown={(e) => e.key === 'Escape' && setIsOpen(false)}
+            aria-label="关闭筛选面板"
           />
 
           {/* 底部弹出面板 */}
