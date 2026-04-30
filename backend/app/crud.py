@@ -1,4 +1,4 @@
-from sqlalchemy import func, or_, select
+from sqlalchemy import func, or_, select, update
 from sqlalchemy.orm import Session, joinedload
 
 from app import models, schemas
@@ -144,7 +144,7 @@ def update_post(db: Session, post_id: int, post: schemas.PostUpdate) -> models.P
 
 
 def delete_post(db: Session, post_id: int) -> bool:
-    db_post = get_post(db, post_id)
+    db_post = db.get(models.Post, post_id)
     if not db_post:
         return False
     db.delete(db_post)
@@ -389,25 +389,31 @@ def search_posts(db: Session, query: str, page: int = 1, limit: int = 10):
 
 
 def increment_views(db: Session, post_id: int) -> models.Post | None:
-    """Increment the view count for a post."""
-    post = get_post(db, post_id)
-    if not post:
-        return None
-    post.views = (post.views or 0) + 1
+    """Increment the view count for a post using atomic SQL update."""
+    stmt = (
+        update(models.Post)
+        .where(models.Post.id == post_id)
+        .values(views=models.Post.views + 1)
+    )
+    result = db.execute(stmt)
     db.commit()
-    db.refresh(post)
-    return post
+    if result.rowcount == 0:
+        return None
+    return db.get(models.Post, post_id)
 
 
 def increment_likes(db: Session, post_id: int) -> models.Post | None:
-    """Increment the like count for a post."""
-    post = get_post(db, post_id)
-    if not post:
-        return None
-    post.likes = (post.likes or 0) + 1
+    """Increment the like count for a post using atomic SQL update."""
+    stmt = (
+        update(models.Post)
+        .where(models.Post.id == post_id)
+        .values(likes=models.Post.likes + 1)
+    )
+    result = db.execute(stmt)
     db.commit()
-    db.refresh(post)
-    return post
+    if result.rowcount == 0:
+        return None
+    return db.get(models.Post, post_id)
 
 
 def get_popular_posts(db: Session, limit: int = 5) -> list[models.Post]:
