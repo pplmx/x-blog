@@ -31,34 +31,34 @@ describe('SearchResults', () => {
 
   it('renders posts as PostCard grid', () => {
     render(<SearchResults posts={mockPosts} />);
-    
+
     expect(screen.getByText('First Post')).toBeInTheDocument();
     expect(screen.getByText('Second Post')).toBeInTheDocument();
   });
 
   it('shows result count', () => {
     render(<SearchResults posts={mockPosts} />);
-    
+
     expect(screen.getByText('2')).toBeInTheDocument();
     expect(screen.getByText('个搜索结果')).toBeInTheDocument();
   });
 
   it('shows single result count correctly', () => {
     render(<SearchResults posts={[mockPosts[0]]} />);
-    
+
     expect(screen.getByText('1')).toBeInTheDocument();
     expect(screen.getByText('个搜索结果')).toBeInTheDocument();
   });
 
   it('returns null for empty posts', () => {
     const { container } = render(<SearchResults posts={[]} />);
-    
+
     expect(container.firstChild).toBeNull();
   });
 
   it('renders query prop but does not use it for display', () => {
     render(<SearchResults posts={mockPosts} query="test" />);
-    
+
     // Query prop is defined but not used in the component
     expect(screen.getByText('First Post')).toBeInTheDocument();
     // Query text should not appear in the results
@@ -67,13 +67,13 @@ describe('SearchResults', () => {
 
   it('renders posts with category information', () => {
     render(<SearchResults posts={mockPosts} />);
-    
+
     expect(screen.getByText('Tech')).toBeInTheDocument();
   });
 
   it('renders posts with tags', () => {
     render(<SearchResults posts={mockPosts} />);
-    
+
     expect(screen.getByText('#react')).toBeInTheDocument();
   });
 });

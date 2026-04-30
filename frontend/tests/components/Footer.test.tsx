@@ -19,13 +19,13 @@ vi.mock('lucide-react', async () => {
 describe('Footer', () => {
   it('renders site name', () => {
     render(<Footer />);
-    
+
     expect(screen.getByText('X-Blog')).toBeInTheDocument();
   });
 
   it('renders navigation links', () => {
     render(<Footer />);
-    
+
     expect(screen.getByText('首页')).toBeInTheDocument();
     expect(screen.getByText('标签')).toBeInTheDocument();
     expect(screen.getByText('关于')).toBeInTheDocument();
@@ -33,7 +33,7 @@ describe('Footer', () => {
 
   it('renders RSS link', () => {
     render(<Footer />);
-    
+
     const links = screen.getAllByRole('link');
     const rssLink = links.find(link => link.getAttribute('href') === '/rss.xml');
     expect(rssLink).toBeInTheDocument();
@@ -42,7 +42,7 @@ describe('Footer', () => {
 
   it('renders Atom link', () => {
     render(<Footer />);
-    
+
     const links = screen.getAllByRole('link');
     const atomLink = links.find(link => link.getAttribute('href') === '/atom.xml');
     expect(atomLink).toBeInTheDocument();
@@ -50,7 +50,7 @@ describe('Footer', () => {
 
   it('renders GitHub link as external with correct attributes', () => {
     render(<Footer />);
-    
+
     const links = screen.getAllByRole('link');
     const githubLink = links.find(link => link.getAttribute('href') === 'https://github.com');
     expect(githubLink).toBeInTheDocument();
@@ -60,11 +60,11 @@ describe('Footer', () => {
 
   it('renders copyright text with current year', () => {
     render(<Footer />);
-    
+
     const currentYear = new Date().getFullYear();
     // Find the copyright span that contains the year
     const allSpans = document.querySelectorAll('footer span');
-    const copyrightSpan = Array.from(allSpans).find(span => 
+    const copyrightSpan = Array.from(allSpans).find(span =>
       span.textContent?.includes(String(currentYear)) && span.textContent?.includes('All rights')
     );
     expect(copyrightSpan).toBeDefined();
@@ -73,7 +73,7 @@ describe('Footer', () => {
 
   it('renders sitemap link', () => {
     render(<Footer />);
-    
+
     const links = screen.getAllByRole('link');
     const sitemapLink = links.find(link => link.getAttribute('href') === '/sitemap.xml');
     expect(sitemapLink).toBeInTheDocument();
@@ -82,7 +82,7 @@ describe('Footer', () => {
 
   it('renders privacy policy link', () => {
     render(<Footer />);
-    
+
     const links = screen.getAllByRole('link');
     const privacyLink = links.find(link => link.getAttribute('href') === '/privacy');
     expect(privacyLink).toBeInTheDocument();
@@ -91,7 +91,7 @@ describe('Footer', () => {
 
   it('home link has correct href', () => {
     render(<Footer />);
-    
+
     const links = screen.getAllByRole('link');
     const homeLink = links.find(link => link.getAttribute('href') === '/' && link.textContent === '首页');
     expect(homeLink).toBeInTheDocument();
@@ -99,7 +99,7 @@ describe('Footer', () => {
 
   it('tags link has correct href', () => {
     render(<Footer />);
-    
+
     const links = screen.getAllByRole('link');
     const tagsLink = links.find(link => link.getAttribute('href') === '/tags' && link.textContent === '标签');
     expect(tagsLink).toBeInTheDocument();
@@ -107,7 +107,7 @@ describe('Footer', () => {
 
   it('about link has correct href', () => {
     render(<Footer />);
-    
+
     const links = screen.getAllByRole('link');
     const aboutLink = links.find(link => link.getAttribute('href') === '/about' && link.textContent === '关于');
     expect(aboutLink).toBeInTheDocument();
