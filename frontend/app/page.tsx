@@ -1,7 +1,10 @@
+import { Suspense } from 'react';
 import { fetchPosts, fetchCategories, fetchTags, fetchPopularPosts } from '@/lib/api';
 import PostCard from '@/components/PostCard';
 import Pagination from '@/components/Pagination';
 import Sidebar from '@/components/Sidebar';
+import MobileFilterBar from '@/components/MobileFilterBar';
+import Loading from './loading';
 
 export const revalidate = 60;
 
@@ -37,6 +40,11 @@ export default async function Home({
             {categoryId || tagId ? '以下是符合筛选条件的文章' : '探索最新的技术文章和见解'}
           </p>
         </div>
+
+        {/* 移动端筛选栏 */}
+        <Suspense fallback={null}>
+          <MobileFilterBar categories={categories} tags={tags} />
+        </Suspense>
         <div className="grid gap-6">
           {posts.length === 0 ? (
             <div className="text-center py-12 text-gray-500 dark:text-gray-400">
