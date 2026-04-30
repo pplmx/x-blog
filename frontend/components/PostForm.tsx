@@ -31,9 +31,9 @@ export function PostForm({
   return (
     <form onSubmit={onSubmit} className="space-y-6 max-w-3xl">
       {/* 封面图 */}
-      <div className="bg-card border rounded-xl p-4">
-        <label className="flex items-center gap-2 text-sm font-medium mb-3">
-          <Image className="w-4 h-4" />
+      <div className="bg-gradient-to-br from-gray-50 dark:from-gray-800/50 to-white dark:to-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl p-5">
+        <label className="flex items-center gap-2 text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">
+          <Image className="w-4 h-4 text-blue-500" />
           封面图
         </label>
         <ImageUpload
@@ -43,35 +43,46 @@ export function PostForm({
       </div>
 
       {/* 基本信息 */}
-      <div className="bg-card border rounded-xl p-4 space-y-4">
+      <div className="bg-gradient-to-br from-gray-50 dark:from-gray-800/50 to-white dark:to-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl p-5 space-y-5">
         <div>
-          <label className="flex items-center gap-2 text-sm font-medium mb-2">
-            <FileText className="w-4 h-4" />
-            标题
+          <label className="flex items-center gap-2 text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+            <FileText className="w-4 h-4 text-blue-500" />
+            标题 <span className="text-red-500">*</span>
           </label>
           <Input
             value={formData.title}
             onChange={(e) => setFormData({ ...formData, title: e.target.value })}
             placeholder="输入文章标题"
-            className="text-lg"
+            className="text-lg h-12"
             required
           />
         </div>
 
         <div>
-          <label className="block text-sm font-medium mb-2">Slug</label>
+          <label className="flex items-center gap-2 text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+            <svg className="w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+            </svg>
+            Slug
+          </label>
           <Input
             value={formData.slug}
             onChange={(e) => setFormData({ ...formData, slug: e.target.value })}
             placeholder="article-slug"
+            className="font-mono"
           />
-          <p className="text-xs text-muted-foreground mt-1">
+          <p className="text-xs text-gray-400 dark:text-gray-500 mt-1.5">
             URL: /posts/{formData.slug || 'slug'}
           </p>
         </div>
 
         <div>
-          <label className="block text-sm font-medium mb-2">摘要</label>
+          <label className="flex items-center gap-2 text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+            <svg className="w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h7" />
+            </svg>
+            摘要
+          </label>
           <Textarea
             value={formData.excerpt}
             onChange={(e) => setFormData({ ...formData, excerpt: e.target.value })}
@@ -84,13 +95,13 @@ export function PostForm({
       {/* 分类和标签 */}
       <div className="grid gap-4 sm:grid-cols-2">
         {/* 分类 */}
-        <div className="bg-card border rounded-xl p-4">
-          <label className="flex items-center gap-2 text-sm font-medium mb-3">
-            <Folder className="w-4 h-4" />
+        <div className="bg-gradient-to-br from-purple-50 dark:from-purple-900/20 to-white dark:to-gray-900 border border-purple-100 dark:border-purple-900/30 rounded-2xl p-5">
+          <label className="flex items-center gap-2 text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">
+            <Folder className="w-4 h-4 text-purple-500" />
             分类
           </label>
           <select
-            className="w-full rounded-lg border border-input bg-transparent px-3 py-2.5 text-sm focus:ring-2 focus:ring-blue-500"
+            className="w-full rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-2.5 text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
             value={formData.category_id ?? ''}
             onChange={(e) =>
               setFormData({
@@ -109,9 +120,9 @@ export function PostForm({
         </div>
 
         {/* 标签 */}
-        <div className="bg-card border rounded-xl p-4">
-          <label className="flex items-center gap-2 text-sm font-medium mb-3">
-            <TagIcon className="w-4 h-4" />
+        <div className="bg-gradient-to-br from-pink-50 dark:from-pink-900/20 to-white dark:to-gray-900 border border-pink-100 dark:border-pink-900/30 rounded-2xl p-5">
+          <label className="flex items-center gap-2 text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">
+            <TagIcon className="w-4 h-4 text-pink-500" />
             标签
           </label>
           {tags && tags.length > 0 ? (
@@ -123,8 +134,8 @@ export function PostForm({
                     flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm cursor-pointer transition-all
                     ${
                       formData.tag_ids?.includes(tag.id)
-                        ? 'bg-blue-100 text-blue-700 border border-blue-200'
-                        : 'bg-gray-50 text-gray-600 border border-gray-100 hover:border-gray-200'
+                        ? 'bg-gradient-to-r from-pink-500 to-rose-500 text-white shadow-md'
+                        : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-pink-100 dark:hover:bg-pink-900/50'
                     }
                   `}
                 >
@@ -145,14 +156,19 @@ export function PostForm({
               ))}
             </div>
           ) : (
-            <p className="text-sm text-muted-foreground">暂无标签</p>
+            <p className="text-sm text-gray-400 dark:text-gray-500">暂无标签</p>
           )}
         </div>
       </div>
 
       {/* 内容 */}
-      <div className="bg-card border rounded-xl p-4">
-        <label className="block text-sm font-medium mb-2">内容 (Markdown)</label>
+      <div className="bg-gradient-to-br from-gray-50 dark:from-gray-800/50 to-white dark:to-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl p-5">
+        <label className="flex items-center gap-2 text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">
+          <svg className="w-4 h-4 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+          </svg>
+          内容 (Markdown) <span className="text-red-500">*</span>
+        </label>
         <Textarea
           value={formData.content}
           onChange={(e) => setFormData({ ...formData, content: e.target.value })}
@@ -160,22 +176,22 @@ export function PostForm({
           className="font-mono text-sm min-h-[300px]"
           required
         />
-        <p className="text-xs text-muted-foreground mt-2">
+        <p className="text-xs text-gray-400 dark:text-gray-500 mt-2">
           支持 Markdown 语法：标题、列表、代码块、链接等
         </p>
       </div>
 
       {/* 发布选项 */}
-      <div className="bg-card border rounded-xl p-4">
-        <label className="flex items-center gap-3 cursor-pointer">
+      <div className="bg-gradient-to-br from-gray-50 dark:from-gray-800/50 to-white dark:to-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl p-5">
+        <label className="flex items-center gap-3 cursor-pointer group">
           <input
             type="checkbox"
             id="published"
             checked={formData.published}
             onChange={(e) => setFormData({ ...formData, published: e.target.checked })}
-            className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+            className="w-5 h-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
           />
-          <span className="text-sm font-medium">
+          <span className="text-sm font-medium text-gray-700 dark:text-gray-300 group-hover:text-blue-600 transition-colors">
             {formData.published ? '✅ 文章已发布' : '📝 保存为草稿'}
           </span>
         </label>
@@ -183,7 +199,12 @@ export function PostForm({
 
       {/* 提交按钮 */}
       <div className="flex items-center gap-3 pt-2">
-        <Button type="submit" disabled={isSubmitting} size="lg">
+        <Button
+          type="submit"
+          disabled={isSubmitting}
+          size="lg"
+          className="bg-gradient-to-r from-blue-500 to-indigo-500 hover:from-blue-600 hover:to-indigo-600 shadow-lg shadow-blue-500/20"
+        >
           <Save className="mr-2 h-4 w-4" />
           {isSubmitting ? '保存中...' : '保存文章'}
         </Button>
