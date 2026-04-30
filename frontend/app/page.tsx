@@ -47,9 +47,24 @@ export default async function Home({
         </Suspense>
         <div className="grid gap-6">
           {posts.length === 0 ? (
-            <div className="text-center py-12 text-gray-500 dark:text-gray-400">
-              <p className="text-lg">暂无文章</p>
-              <p className="text-sm mt-1">换个筛选条件试试？</p>
+            <div className="flex flex-col items-center justify-center py-16 px-4">
+              <div className="w-24 h-24 mb-6 rounded-full bg-gradient-to-br from-gray-50 dark:from-gray-800 to-gray-100 dark:to-gray-700 flex items-center justify-center">
+                <svg className="w-12 h-12 text-gray-300 dark:text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z" />
+                </svg>
+              </div>
+              <h3 className="text-xl font-semibold text-gray-700 dark:text-gray-300 mb-2">暂无文章</h3>
+              <p className="text-gray-500 dark:text-gray-400 text-center max-w-sm">
+                {categoryId || tagId ? '当前筛选条件下没有文章，试试其他分类或标签吧' : '这里还没有文章，敬请期待'}
+              </p>
+              {(categoryId || tagId) && (
+                <Link
+                  href="/"
+                  className="mt-6 px-6 py-2.5 bg-gradient-to-r from-blue-500 to-indigo-500 text-white rounded-xl font-medium hover:from-blue-600 hover:to-indigo-600 transition-all shadow-md shadow-blue-500/25"
+                >
+                  查看全部文章
+                </Link>
+              )}
             </div>
           ) : (
             posts.map((post) => <PostCard key={post.id} post={post} />)
