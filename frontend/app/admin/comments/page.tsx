@@ -118,11 +118,13 @@ export default function CommentsPage() {
             >
               {mode === 'all' ? '全部' : mode === 'pending' ? '待审核' : '已通过'}
               {mode === 'pending' && pendingCount > 0 && (
-                <span className={`ml-1.5 text-xs rounded-full px-1.5 py-0.5 ${
-                  filterMode === mode
-                    ? 'bg-white/20 text-white'
-                    : 'bg-orange-100 text-orange-600 dark:bg-orange-900/50'
-                }`}>
+                <span
+                  className={`ml-1.5 text-xs rounded-full px-1.5 py-0.5 ${
+                    filterMode === mode
+                      ? 'bg-white/20 text-white'
+                      : 'bg-orange-100 text-orange-600 dark:bg-orange-900/50'
+                  }`}
+                >
                   {pendingCount}
                 </span>
               )}

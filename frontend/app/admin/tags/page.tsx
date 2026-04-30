@@ -114,8 +114,20 @@ export default function TagsPage() {
         <div className="text-center py-12">
           <div className="inline-flex items-center gap-2 text-gray-500">
             <svg aria-label="加载中" className="animate-spin w-5 h-5" viewBox="0 0 24 24">
-              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
-              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+              <circle
+                className="opacity-25"
+                cx="12"
+                cy="12"
+                r="10"
+                stroke="currentColor"
+                strokeWidth="4"
+                fill="none"
+              />
+              <path
+                className="opacity-75"
+                fill="currentColor"
+                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
+              />
             </svg>
             加载中...
           </div>
@@ -173,7 +185,9 @@ export default function TagsPage() {
                     <div className="w-7 h-7 rounded-lg bg-pink-50 dark:bg-pink-900/30 flex items-center justify-center">
                       <TagIcon className="w-3.5 h-3.5 text-pink-500" />
                     </div>
-                    <span className="font-medium text-gray-700 dark:text-gray-300">#{tag.name}</span>
+                    <span className="font-medium text-gray-700 dark:text-gray-300">
+                      #{tag.name}
+                    </span>
                   </div>
                   <div className="flex gap-0.5 ml-1">
                     <Button

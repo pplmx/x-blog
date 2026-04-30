@@ -72,7 +72,9 @@ export default async function AdminDashboard() {
             className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 p-5 hover:shadow-lg hover:border-gray-200 dark:hover:border-gray-700 transition-all duration-200"
           >
             <div className="flex items-center justify-between mb-3">
-              <span className="text-sm font-medium text-gray-500 dark:text-gray-400">{stat.title}</span>
+              <span className="text-sm font-medium text-gray-500 dark:text-gray-400">
+                {stat.title}
+              </span>
               <div className={`p-2.5 rounded-xl ${stat.bg}`}>
                 <stat.icon className={`h-5 w-5 ${stat.color}`} />
               </div>
