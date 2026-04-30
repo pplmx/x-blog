@@ -4,6 +4,13 @@ import { ImageUpload } from '@/components/ImageUpload';
 
 global.fetch = vi.fn();
 
+vi.mock('next/image', () => ({
+  default: (props: { src: string; alt: string; [key: string]: unknown }) => (
+    // eslint-disable-next-line @next/next/no-img-element
+    <img src={props.src} alt={props.alt} />
+  ),
+}));
+
 describe('ImageUpload', () => {
   beforeEach(() => {
     vi.clearAllMocks();
