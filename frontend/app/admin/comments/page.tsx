@@ -91,10 +91,12 @@ export default function CommentsPage() {
   return (
     <div>
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
         <div>
-          <h1 className="text-2xl font-bold">评论管理</h1>
-          <p className="text-sm text-muted-foreground mt-1">
+          <h1 className="text-2xl font-bold bg-gradient-to-r from-gray-900 dark:from-gray-100 to-gray-600 dark:to-gray-400 bg-clip-text text-transparent">
+            评论管理
+          </h1>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
             共 {allComments?.length || 0} 条评论
             {pendingCount > 0 && (
               <span className="ml-2 text-orange-500 font-medium">· {pendingCount} 条待审核</span>
@@ -103,20 +105,24 @@ export default function CommentsPage() {
         </div>
 
         {/* Filter tabs */}
-        <div className="flex gap-1 bg-muted rounded-lg p-1">
+        <div className="flex gap-1 bg-gradient-to-r from-gray-100 dark:from-gray-800 to-white dark:to-gray-900 rounded-xl p-1.5 border border-gray-100 dark:border-gray-800">
           {(['all', 'pending', 'approved'] as FilterMode[]).map((mode) => (
             <button
               key={mode}
               onClick={() => setFilterMode(mode)}
-              className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
                 filterMode === mode
-                  ? 'bg-background text-foreground shadow-sm'
-                  : 'text-muted-foreground hover:text-foreground'
+                  ? 'bg-gradient-to-r from-blue-500 to-indigo-500 text-white shadow-md shadow-blue-500/25'
+                  : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
               }`}
             >
               {mode === 'all' ? '全部' : mode === 'pending' ? '待审核' : '已通过'}
               {mode === 'pending' && pendingCount > 0 && (
-                <span className="ml-1.5 bg-orange-100 text-orange-600 text-xs rounded-full px-1.5 py-0.5">
+                <span className={`ml-1.5 text-xs rounded-full px-1.5 py-0.5 ${
+                  filterMode === mode
+                    ? 'bg-white/20 text-white'
+                    : 'bg-orange-100 text-orange-600 dark:bg-orange-900/50'
+                }`}>
                   {pendingCount}
                 </span>
               )}
@@ -126,12 +132,14 @@ export default function CommentsPage() {
       </div>
 
       {filteredComments.length === 0 ? (
-        <div className="text-center py-12 text-gray-500 bg-card rounded-xl border p-8">
-          <MessageCircle className="w-12 h-12 mx-auto mb-4 text-gray-300" />
-          <p className="text-lg font-medium">
+        <div className="flex flex-col items-center justify-center py-16 bg-gradient-to-br from-gray-50 dark:from-gray-800/50 to-white dark:to-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800">
+          <div className="w-16 h-16 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center mb-4">
+            <MessageCircle className="w-8 h-8 text-gray-400" />
+          </div>
+          <h3 className="text-lg font-medium text-gray-700 dark:text-gray-300 mb-1">
             {filterMode === 'pending' ? '暂无待审核评论' : '暂无评论'}
-          </p>
-          <p className="text-sm mt-1">
+          </h3>
+          <p className="text-sm text-gray-500 dark:text-gray-400">
             {filterMode === 'pending' ? '所有评论都已审核完毕' : '等待读者留下评论'}
           </p>
         </div>
