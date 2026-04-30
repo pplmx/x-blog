@@ -109,39 +109,49 @@ function PostContent({ post }: { post: Awaited<ReturnType<typeof fetchPost>> }) 
 
           {/* 文章头部 */}
           <header className="mb-8">
-            <h1 className="text-3xl sm:text-4xl font-bold text-gray-900 dark:text-gray-100 mb-4 leading-tight">
+            <h1 className="text-3xl sm:text-4xl font-bold text-gray-900 dark:text-gray-100 mb-6 leading-tight">
               {post.title}
             </h1>
 
-            {/* 元信息 */}
-            <div className="flex flex-wrap items-center gap-4 text-sm text-gray-500 dark:text-gray-400">
-              <span className="flex items-center gap-1.5">
-                <Calendar className="w-4 h-4" />
-                {date}
-              </span>
-              <span className="flex items-center gap-1.5">
-                <Clock className="w-4 h-4" />
-                {readTimeText}
-              </span>
-              <span className="flex items-center gap-1.5">
-                <Type className="w-4 h-4" />
-                {wordCountText}
-              </span>
-              <span className="flex items-center gap-1.5">
-                <Eye className="w-4 h-4" />
-                {post.views || 0} 次阅读
-              </span>
-              <LikeButton postId={post.id} initialLikes={post.likes || 0} />
+            {/* 元信息卡片 */}
+            <div className="bg-gradient-to-br from-gray-50 dark:from-gray-800/50 to-white dark:to-gray-900 rounded-2xl p-5 mb-6 border border-gray-100 dark:border-gray-800">
+              <div className="flex flex-wrap items-center gap-x-6 gap-y-3 text-sm">
+                <span className="flex items-center gap-2 text-gray-600 dark:text-gray-300">
+                  <div className="w-8 h-8 rounded-lg bg-blue-50 dark:bg-blue-900/30 flex items-center justify-center">
+                    <Calendar className="w-4 h-4 text-blue-500" />
+                  </div>
+                  {date}
+                </span>
+                <span className="flex items-center gap-2 text-gray-600 dark:text-gray-300">
+                  <div className="w-8 h-8 rounded-lg bg-green-50 dark:bg-green-900/30 flex items-center justify-center">
+                    <Clock className="w-4 h-4 text-green-500" />
+                  </div>
+                  {readTimeText}
+                </span>
+                <span className="flex items-center gap-2 text-gray-600 dark:text-gray-300">
+                  <div className="w-8 h-8 rounded-lg bg-purple-50 dark:bg-purple-900/30 flex items-center justify-center">
+                    <Type className="w-4 h-4 text-purple-500" />
+                  </div>
+                  {wordCountText}
+                </span>
+                <span className="flex items-center gap-2 text-gray-600 dark:text-gray-300">
+                  <div className="w-8 h-8 rounded-lg bg-orange-50 dark:bg-orange-900/30 flex items-center justify-center">
+                    <Eye className="w-4 h-4 text-orange-500" />
+                  </div>
+                  {post.views || 0} 次阅读
+                </span>
+                <LikeButton postId={post.id} initialLikes={post.likes || 0} />
+              </div>
             </div>
 
             {/* 分类和标签 */}
-            <div className="flex flex-wrap items-center gap-3 mt-4">
+            <div className="flex flex-wrap items-center gap-3">
               {post.category && (
                 <Link
                   href={`/?category_id=${post.category.id}`}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-purple-50 dark:from-purple-900/30 to-indigo-50 dark:to-indigo-900/30 text-purple-700 dark:text-purple-300 rounded-full text-sm font-medium hover:from-purple-100 dark:hover:from-purple-900/50 hover:to-indigo-100 dark:hover:to-indigo-900/50 transition-colors"
+                  className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-purple-500 to-indigo-500 text-white rounded-xl text-sm font-medium hover:from-purple-600 hover:to-indigo-600 transition-all shadow-md shadow-purple-500/25"
                 >
-                  <Folder className="w-3.5 h-3.5" />
+                  <Folder className="w-4 h-4" />
                   {post.category.name}
                 </Link>
               )}
