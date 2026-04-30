@@ -1,4 +1,3 @@
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { fetchPosts, fetchCategories, fetchTags } from '@/lib/api';
 import Link from 'next/link';
 import { FileText, CheckCircle, Clock, Folder, Tag, Eye } from 'lucide-react';
@@ -58,78 +57,83 @@ export default async function AdminDashboard() {
 
   return (
     <div>
-      <h1 className="text-2xl font-bold mb-6">仪表盘</h1>
+      <div className="mb-8">
+        <h1 className="text-2xl font-bold bg-gradient-to-r from-gray-900 dark:from-gray-100 to-gray-600 dark:to-gray-400 bg-clip-text text-transparent">
+          仪表盘
+        </h1>
+        <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">博客数据总览</p>
+      </div>
 
       {/* 统计卡片 */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 mb-8">
         {stats.map((stat) => (
-          <Card key={stat.title}>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">{stat.title}</CardTitle>
-              <div className={`p-2 rounded-lg ${stat.bg}`}>
-                <stat.icon className={`h-4 w-4 ${stat.color}`} />
+          <div
+            key={stat.title}
+            className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 p-5 hover:shadow-lg hover:border-gray-200 dark:hover:border-gray-700 transition-all duration-200"
+          >
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-sm font-medium text-gray-500 dark:text-gray-400">{stat.title}</span>
+              <div className={`p-2.5 rounded-xl ${stat.bg}`}>
+                <stat.icon className={`h-5 w-5 ${stat.color}`} />
               </div>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{stat.value}</div>
-            </CardContent>
-          </Card>
+            </div>
+            <div className="text-3xl font-bold text-gray-900 dark:text-gray-100">{stat.value}</div>
+          </div>
         ))}
       </div>
 
       {/* 图表区域 */}
       <div className="grid gap-6 lg:grid-cols-2 mb-8">
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-lg">热门文章 (浏览量)</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <TopPostsChart posts={posts} />
-          </CardContent>
-        </Card>
+        <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 p-5">
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4 flex items-center gap-2">
+            <FileText className="w-5 h-5 text-blue-500" />
+            热门文章 (浏览量)
+          </h3>
+          <TopPostsChart posts={posts} />
+        </div>
 
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-lg">文章分类分布</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <CategoryPieChart categories={categories} posts={posts} />
-          </CardContent>
-        </Card>
+        <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 p-5">
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4 flex items-center gap-2">
+            <Folder className="w-5 h-5 text-purple-500" />
+            文章分类分布
+          </h3>
+          <CategoryPieChart categories={categories} posts={posts} />
+        </div>
       </div>
 
       {/* 最近文章 */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-lg">最近发布的文章</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {recentPosts.length === 0 ? (
-            <p className="text-muted-foreground text-sm">暂无已发布的文章</p>
-          ) : (
-            <div className="space-y-3">
-              {recentPosts.map((post) => (
-                <Link
-                  key={post.id}
-                  href={`/admin/posts/${post.id}`}
-                  className="flex items-center justify-between p-2 rounded-lg hover:bg-muted transition-colors"
-                >
-                  <div>
-                    <p className="font-medium">{post.title}</p>
-                    <p className="text-sm text-muted-foreground">
-                      {new Date(post.created_at).toLocaleDateString('zh-CN')}
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <Eye className="h-4 w-4" />
-                    {post.views || 0}
-                  </div>
-                </Link>
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
+      <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 p-5">
+        <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4 flex items-center gap-2">
+          <Clock className="w-5 h-5 text-green-500" />
+          最近发布的文章
+        </h3>
+        {recentPosts.length === 0 ? (
+          <p className="text-gray-500 dark:text-gray-400 text-sm">暂无已发布的文章</p>
+        ) : (
+          <div className="space-y-2">
+            {recentPosts.map((post) => (
+              <Link
+                key={post.id}
+                href={`/admin/posts/${post.id}`}
+                className="flex items-center justify-between p-4 rounded-xl hover:bg-gradient-to-r hover:from-blue-50 hover:to-indigo-50 dark:hover:from-blue-900/10 dark:hover:to-indigo-900/10 transition-colors group"
+              >
+                <div>
+                  <p className="font-medium text-gray-900 dark:text-gray-100 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
+                    {post.title}
+                  </p>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">
+                    {new Date(post.created_at).toLocaleDateString('zh-CN')}
+                  </p>
+                </div>
+                <div className="flex items-center gap-2 text-sm text-gray-400 dark:text-gray-500">
+                  <Eye className="w-4 h-4" />
+                  {post.views || 0}
+                </div>
+              </Link>
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
