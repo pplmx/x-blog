@@ -9,6 +9,7 @@
       "types/**",
       "mocks/**",
       "public/**",
+      "tests/**",
       "*.ts",
       "*.tsx",
       "*.json",

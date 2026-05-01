@@ -6,7 +6,6 @@ import Mermaid from '@/components/Mermaid';
 const mocks = testMocks.mermaidRender;
 
 describe('Mermaid', () => {
-
   it('renders error state when code is empty', async () => {
     render(<Mermaid code="" />);
     await waitFor(() => {
@@ -33,7 +32,7 @@ describe('Mermaid', () => {
 
   it('renders with long code without crash', async () => {
     mocks.mockResolvedValue({ svg: '<svg>long</svg>' });
-    const longCode = 'graph TD;\n' + 'A-->B;\n'.repeat(50);
+    const longCode = `graph TD;\n${'A-->B;\n'.repeat(50)}`;
     render(<Mermaid code={longCode} />);
     await waitFor(() => {
       expect(screen.getByText('long')).toBeInTheDocument();

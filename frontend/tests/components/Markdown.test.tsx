@@ -92,17 +92,25 @@ describe('Markdown basic rendering', () => {
 // ─────────────────────────────────────────────────────────────────
 describe('Markdown code blocks', () => {
   it('renders code block with language label', async () => {
-    render(<Markdown content={`\`\`\`python
+    render(
+      <Markdown
+        content={`\`\`\`python
 print('hello')
-\`\`\``} />);
+\`\`\``}
+      />
+    );
     await waitFor(() => expect(document.querySelector('.relative.group')).toBeInTheDocument());
     expect(screen.getByText('python')).toBeInTheDocument();
   });
 
   it('renders code block without language as text', async () => {
-    render(<Markdown content={`\`\`\`
+    render(
+      <Markdown
+        content={`\`\`\`
 plain text code
-\`\`\``} />);
+\`\`\``}
+      />
+    );
     await waitFor(() => expect(document.querySelector('.relative.group')).toBeInTheDocument());
     expect(screen.getByText('text')).toBeInTheDocument();
   });
@@ -115,9 +123,13 @@ plain text code
       configurable: true,
     });
     const user = userEvent.setup();
-    render(<Markdown content={`\`\`\`bash
+    render(
+      <Markdown
+        content={`\`\`\`bash
 echo hello
-\`\`\``} />);
+\`\`\``}
+      />
+    );
     await waitFor(() => expect(document.querySelector('.relative.group')).toBeInTheDocument());
     await user.click(screen.getByRole('button', { name: /复制/ }));
     // Just verify the UI feedback — clipboard writeText verification is unreliable in JSDOM
@@ -126,9 +138,13 @@ echo hello
 
   it('copy button shows copied feedback', async () => {
     const user = userEvent.setup();
-    render(<Markdown content={`\`\`\`js
+    render(
+      <Markdown
+        content={`\`\`\`js
 const x = 1
-\`\`\``} />);
+\`\`\``}
+      />
+    );
     await waitFor(() => expect(screen.getByRole('button', { name: /复制/ })).toBeInTheDocument());
     const copyBtn = screen.getByRole('button', { name: /复制/ });
     await user.click(copyBtn);
@@ -152,10 +168,14 @@ console.log(2)
   });
 
   it('renders code block with line numbers', async () => {
-    render(<Markdown content={`\`\`\`js
+    render(
+      <Markdown
+        content={`\`\`\`js
 const a = 1
 const b = 2
-\`\`\``} />);
+\`\`\``}
+      />
+    );
     await waitFor(() => expect(document.querySelector('.relative.group')).toBeInTheDocument());
     expect(document.querySelectorAll('.relative.group')).toHaveLength(1);
   });
@@ -166,10 +186,14 @@ const b = 2
 // ─────────────────────────────────────────────────────────────────
 describe('Markdown mermaid diagrams', () => {
   it('renders mermaid diagram as SVG after async render', async () => {
-    render(<Markdown content={`\`\`\`mermaid
+    render(
+      <Markdown
+        content={`\`\`\`mermaid
 graph TD
   A --> B
-\`\`\``} />);
+\`\`\``}
+      />
+    );
 
     await waitFor(
       () => {
@@ -180,10 +204,14 @@ graph TD
   });
 
   it('initializes mermaid with correct config', async () => {
-    render(<Markdown content={`\`\`\`mermaid
+    render(
+      <Markdown
+        content={`\`\`\`mermaid
 graph TD
   A --> B
-\`\`\``} />);
+\`\`\``}
+      />
+    );
 
     await waitFor(
       () => {
@@ -238,9 +266,13 @@ describe('Markdown KaTeX math', () => {
   });
 
   it('renders block math formula', async () => {
-    render(<Markdown content={`$$
+    render(
+      <Markdown
+        content={`$$
 a^2 + b^2 = c^2
-$$`} />);
+$$`}
+      />
+    );
 
     await waitFor(
       () => {
@@ -251,9 +283,13 @@ $$`} />);
   });
 
   it('renders block math with centered layout', () => {
-    render(<Markdown content={`$$
+    render(
+      <Markdown
+        content={`$$
 E = mc^2
-$$`} />);
+$$`}
+      />
+    );
     expect(document.querySelector('span.block')).toBeInTheDocument();
   });
 });
@@ -275,10 +311,7 @@ describe('Markdown images', () => {
 
     const btn = await screen.findByRole('button', { name: /查看图片.*Test image/ });
     await user.click(btn);
-    expect(lightboxMock).toHaveBeenCalledWith(
-      [{ src: '/uploads/test.png', alt: 'Test image' }],
-      0
-    );
+    expect(lightboxMock).toHaveBeenCalledWith([{ src: '/uploads/test.png', alt: 'Test image' }], 0);
   });
 
   it('renders multiple images with correct indices', async () => {

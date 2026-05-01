@@ -35,7 +35,7 @@ describe('Footer', () => {
     render(<Footer />);
 
     const links = screen.getAllByRole('link');
-    const rssLink = links.find(link => link.getAttribute('href') === '/rss.xml');
+    const rssLink = links.find((link) => link.getAttribute('href') === '/rss.xml');
     expect(rssLink).toBeInTheDocument();
     expect(rssLink?.getAttribute('title')).toBe('RSS 订阅');
   });
@@ -44,7 +44,7 @@ describe('Footer', () => {
     render(<Footer />);
 
     const links = screen.getAllByRole('link');
-    const atomLink = links.find(link => link.getAttribute('href') === '/atom.xml');
+    const atomLink = links.find((link) => link.getAttribute('href') === '/atom.xml');
     expect(atomLink).toBeInTheDocument();
   });
 
@@ -52,7 +52,7 @@ describe('Footer', () => {
     render(<Footer />);
 
     const links = screen.getAllByRole('link');
-    const githubLink = links.find(link => link.getAttribute('href') === 'https://github.com');
+    const githubLink = links.find((link) => link.getAttribute('href') === 'https://github.com');
     expect(githubLink).toBeInTheDocument();
     expect(githubLink).toHaveAttribute('target', '_blank');
     expect(githubLink).toHaveAttribute('rel', 'noopener noreferrer');
@@ -64,8 +64,9 @@ describe('Footer', () => {
     const currentYear = new Date().getFullYear();
     // Find the copyright span that contains the year
     const allSpans = document.querySelectorAll('footer span');
-    const copyrightSpan = Array.from(allSpans).find(span =>
-      span.textContent?.includes(String(currentYear)) && span.textContent?.includes('All rights')
+    const copyrightSpan = Array.from(allSpans).find(
+      (span) =>
+        span.textContent?.includes(String(currentYear)) && span.textContent?.includes('All rights')
     );
     expect(copyrightSpan).toBeDefined();
     expect(copyrightSpan?.textContent).toContain('X-Blog');
@@ -75,7 +76,7 @@ describe('Footer', () => {
     render(<Footer />);
 
     const links = screen.getAllByRole('link');
-    const sitemapLink = links.find(link => link.getAttribute('href') === '/sitemap.xml');
+    const sitemapLink = links.find((link) => link.getAttribute('href') === '/sitemap.xml');
     expect(sitemapLink).toBeInTheDocument();
     expect(screen.getByText('网站地图')).toBeInTheDocument();
   });
@@ -84,7 +85,7 @@ describe('Footer', () => {
     render(<Footer />);
 
     const links = screen.getAllByRole('link');
-    const privacyLink = links.find(link => link.getAttribute('href') === '/privacy');
+    const privacyLink = links.find((link) => link.getAttribute('href') === '/privacy');
     expect(privacyLink).toBeInTheDocument();
     expect(screen.getByText('隐私政策')).toBeInTheDocument();
   });
@@ -93,7 +94,9 @@ describe('Footer', () => {
     render(<Footer />);
 
     const links = screen.getAllByRole('link');
-    const homeLink = links.find(link => link.getAttribute('href') === '/' && link.textContent === '首页');
+    const homeLink = links.find(
+      (link) => link.getAttribute('href') === '/' && link.textContent === '首页'
+    );
     expect(homeLink).toBeInTheDocument();
   });
 
@@ -101,7 +104,9 @@ describe('Footer', () => {
     render(<Footer />);
 
     const links = screen.getAllByRole('link');
-    const tagsLink = links.find(link => link.getAttribute('href') === '/tags' && link.textContent === '标签');
+    const tagsLink = links.find(
+      (link) => link.getAttribute('href') === '/tags' && link.textContent === '标签'
+    );
     expect(tagsLink).toBeInTheDocument();
   });
 
@@ -109,7 +114,9 @@ describe('Footer', () => {
     render(<Footer />);
 
     const links = screen.getAllByRole('link');
-    const aboutLink = links.find(link => link.getAttribute('href') === '/about' && link.textContent === '关于');
+    const aboutLink = links.find(
+      (link) => link.getAttribute('href') === '/about' && link.textContent === '关于'
+    );
     expect(aboutLink).toBeInTheDocument();
   });
 });

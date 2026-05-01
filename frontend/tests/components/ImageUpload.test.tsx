@@ -71,7 +71,7 @@ describe('ImageUpload', () => {
   it('shows loading state during upload', async () => {
     const onChange = vi.fn();
     (global.fetch as ReturnType<typeof vi.fn>).mockImplementation(
-      () => new Promise(() => {}), // never resolves
+      () => new Promise(() => {}) // never resolves
     );
 
     render(<ImageUpload onChange={onChange} />);

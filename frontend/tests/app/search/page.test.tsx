@@ -183,7 +183,7 @@ describe('Search Page', () => {
 
       // Clear and render with query
       mockSearchPosts.mockClear();
-      
+
       await SearchPage({
         searchParams: Promise.resolve({ q: 'test' }),
       });

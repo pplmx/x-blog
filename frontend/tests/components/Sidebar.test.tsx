@@ -41,9 +41,9 @@ describe('Sidebar', () => {
   it('renders categories list as links', () => {
     render(<Sidebar categories={mockCategories} tags={mockTags} />);
 
-    const categoryLinks = screen.getAllByRole('link').filter(link =>
-      link.getAttribute('href')?.includes('category_id')
-    );
+    const categoryLinks = screen
+      .getAllByRole('link')
+      .filter((link) => link.getAttribute('href')?.includes('category_id'));
     expect(categoryLinks.length).toBe(mockCategories.length);
   });
 

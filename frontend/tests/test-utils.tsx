@@ -120,16 +120,18 @@ export function mockIntersectionObserver() {
     takeRecords: vi.fn().mockReturnValue([]),
     // Trigger callback with mock entry
     __trigger: (entry: Partial<IntersectionObserverEntry> = {}) => {
-      callback([{
-        boundingClientRect: {},
-        intersectionRatio: 0,
-        intersectionRect: {},
-        isIntersecting: true,
-        rootBounds: null,
-        target: {} as Element,
-        time: Date.now(),
-        ...entry,
-      }]);
+      callback([
+        {
+          boundingClientRect: {},
+          intersectionRatio: 0,
+          intersectionRect: {},
+          isIntersecting: true,
+          rootBounds: null,
+          target: {} as Element,
+          time: Date.now(),
+          ...entry,
+        },
+      ]);
     },
   }));
 
@@ -156,20 +158,22 @@ export function createMSWServer(handlers: Parameters<typeof setupServer>[0] = []
 /**
  * Creates a mock post object
  */
-export function mockPost(overrides: Partial<{
-  id: number;
-  title: string;
-  slug: string;
-  content: string;
-  excerpt: string | null;
-  published: boolean;
-  created_at: string;
-  updated_at: string;
-  views: number;
-  likes: number;
-  category: { id: number; name: string } | null;
-  tags: Array<{ id: number; name: string }>;
-}> = {}): {
+export function mockPost(
+  overrides: Partial<{
+    id: number;
+    title: string;
+    slug: string;
+    content: string;
+    excerpt: string | null;
+    published: boolean;
+    created_at: string;
+    updated_at: string;
+    views: number;
+    likes: number;
+    category: { id: number; name: string } | null;
+    tags: Array<{ id: number; name: string }>;
+  }> = {}
+): {
   id: number;
   title: string;
   slug: string;
@@ -203,7 +207,10 @@ export function mockPost(overrides: Partial<{
 /**
  * Creates a list of mock posts
  */
-export function mockPostList(count: number = 3, baseOverrides: Partial<Parameters<typeof mockPost>[0]> = {}): ReturnType<typeof mockPost>[] {
+export function mockPostList(
+  count: number = 3,
+  baseOverrides: Partial<Parameters<typeof mockPost>[0]> = {}
+): ReturnType<typeof mockPost>[] {
   return Array.from({ length: count }, (_, i) =>
     mockPost({
       id: i + 1,
@@ -217,13 +224,15 @@ export function mockPostList(count: number = 3, baseOverrides: Partial<Parameter
 /**
  * Creates a mock category object
  */
-export function mockCategory(overrides: Partial<{
-  id: number;
-  name: string;
-  slug: string;
-  description: string | null;
-  post_count: number;
-}> = {}): {
+export function mockCategory(
+  overrides: Partial<{
+    id: number;
+    name: string;
+    slug: string;
+    description: string | null;
+    post_count: number;
+  }> = {}
+): {
   id: number;
   name: string;
   slug: string;
@@ -258,12 +267,14 @@ export function mockCategoryList(count: number = 3): ReturnType<typeof mockCateg
 /**
  * Creates a mock tag object
  */
-export function mockTag(overrides: Partial<{
-  id: number;
-  name: string;
-  slug: string;
-  post_count: number;
-}> = {}): {
+export function mockTag(
+  overrides: Partial<{
+    id: number;
+    name: string;
+    slug: string;
+    post_count: number;
+  }> = {}
+): {
   id: number;
   name: string;
   slug: string;
@@ -296,14 +307,16 @@ export function mockTagList(count: number = 3): ReturnType<typeof mockTag>[] {
 /**
  * Creates a mock comment object
  */
-export function mockComment(overrides: Partial<{
-  id: number;
-  post_id: number;
-  nickname: string;
-  email: string;
-  content: string;
-  created_at: string;
-}> = {}): {
+export function mockComment(
+  overrides: Partial<{
+    id: number;
+    post_id: number;
+    nickname: string;
+    email: string;
+    content: string;
+    created_at: string;
+  }> = {}
+): {
   id: number;
   post_id: number;
   nickname: string;
@@ -325,7 +338,10 @@ export function mockComment(overrides: Partial<{
 /**
  * Creates a list of mock comments
  */
-export function mockCommentList(count: number = 2, postId: number = 1): ReturnType<typeof mockComment>[] {
+export function mockCommentList(
+  count: number = 2,
+  postId: number = 1
+): ReturnType<typeof mockComment>[] {
   const names = ['Alice', 'Bob', 'Charlie', 'Diana', 'Eve'];
   return Array.from({ length: count }, (_, i) =>
     mockComment({
@@ -342,12 +358,14 @@ export function mockCommentList(count: number = 2, postId: number = 1): ReturnTy
 /**
  * Creates mock pagination info
  */
-export function mockPagination(overrides: Partial<{
-  total: number;
-  page: number;
-  limit: number;
-  total_pages: number;
-}> = {}): {
+export function mockPagination(
+  overrides: Partial<{
+    total: number;
+    page: number;
+    limit: number;
+    total_pages: number;
+  }> = {}
+): {
   total: number;
   page: number;
   limit: number;
@@ -365,7 +383,10 @@ export function mockPagination(overrides: Partial<{
 /**
  * Creates a mock post list response
  */
-export function mockPostListResponse(posts: ReturnType<typeof mockPost>[] = mockPostList(), pagination?: Partial<Parameters<typeof mockPagination>[0]>): {
+export function mockPostListResponse(
+  posts: ReturnType<typeof mockPost>[] = mockPostList(),
+  pagination?: Partial<Parameters<typeof mockPagination>[0]>
+): {
   items: ReturnType<typeof mockPost>[];
   pagination: ReturnType<typeof mockPagination>;
 } {
@@ -382,10 +403,12 @@ export function mockPostListResponse(posts: ReturnType<typeof mockPost>[] = mock
 /**
  * Creates mock search results
  */
-export function mockSearchResults(overrides: Partial<{
-  posts: ReturnType<typeof mockPost>[];
-  total: number;
-}> = {}): {
+export function mockSearchResults(
+  overrides: Partial<{
+    posts: ReturnType<typeof mockPost>[];
+    total: number;
+  }> = {}
+): {
   posts: ReturnType<typeof mockPost>[];
   total: number;
 } {
@@ -413,27 +436,23 @@ export function createPostsHandler(posts: ReturnType<typeof mockPost>[] = mockPo
  * Creates an MSW handler for getting a single post
  */
 export function createPostHandler(post: ReturnType<typeof mockPost>) {
-  return http.get(`http://localhost:8000/api/posts/${post.slug}`, () =>
-    HttpResponse.json(post)
-  );
+  return http.get(`http://localhost:8000/api/posts/${post.slug}`, () => HttpResponse.json(post));
 }
 
 /**
  * Creates an MSW handler for getting categories
  */
-export function createCategoriesHandler(categories: ReturnType<typeof mockCategory>[] = mockCategoryList()) {
-  return http.get('http://localhost:8000/api/categories', () =>
-    HttpResponse.json(categories)
-  );
+export function createCategoriesHandler(
+  categories: ReturnType<typeof mockCategory>[] = mockCategoryList()
+) {
+  return http.get('http://localhost:8000/api/categories', () => HttpResponse.json(categories));
 }
 
 /**
  * Creates an MSW handler for getting tags
  */
 export function createTagsHandler(tags: ReturnType<typeof mockTag>[] = mockTagList()) {
-  return http.get('http://localhost:8000/api/tags', () =>
-    HttpResponse.json(tags)
-  );
+  return http.get('http://localhost:8000/api/tags', () => HttpResponse.json(tags));
 }
 
 /**
@@ -448,7 +467,10 @@ export function createLikeHandler(postId: number, likes: number = 1) {
 /**
  * Creates an MSW handler for getting related posts
  */
-export function createRelatedPostsHandler(postId: number, relatedPosts: ReturnType<typeof mockPost>[] = mockPostList(2)) {
+export function createRelatedPostsHandler(
+  postId: number,
+  relatedPosts: ReturnType<typeof mockPost>[] = mockPostList(2)
+) {
   return http.get(`http://localhost:8000/api/posts/${postId}/related`, () =>
     HttpResponse.json(relatedPosts)
   );
@@ -457,7 +479,10 @@ export function createRelatedPostsHandler(postId: number, relatedPosts: ReturnTy
 /**
  * Creates an MSW handler for getting comments
  */
-export function createCommentsHandler(postId: number, comments: ReturnType<typeof mockComment>[] = mockCommentList()) {
+export function createCommentsHandler(
+  postId: number,
+  comments: ReturnType<typeof mockComment>[] = mockCommentList()
+) {
   return http.get(`http://localhost:8000/api/posts/${postId}/comments`, () =>
     HttpResponse.json(comments)
   );
