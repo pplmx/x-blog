@@ -5,9 +5,7 @@ import Pagination from '@/components/Pagination';
 describe('Pagination', () => {
   describe('Rendering', () => {
     it('should return null when totalPages <= 1', () => {
-      const { container } = render(
-        <Pagination currentPage={1} totalPages={1} baseUrl="/posts" />
-      );
+      const { container } = render(<Pagination currentPage={1} totalPages={1} baseUrl="/posts" />);
       expect(container.firstChild).toBeNull();
     });
 

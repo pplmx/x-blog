@@ -6,7 +6,9 @@ import { TopPostsChart, CategoryPieChart } from '@/components/AnalyticsCharts';
 
 vi.mock('recharts', () => ({
   BarChart: ({ children }: { children: React.ReactNode }) => (
-    <svg data-testid="bar-chart">{children}</svg>
+    <svg role="img" aria-label="Bar chart" data-testid="bar-chart">
+      {children}
+    </svg>
   ),
   Bar: () => <g data-testid="bar" />,
   XAxis: () => <g data-testid="x-axis" />,
@@ -17,11 +19,11 @@ vi.mock('recharts', () => ({
     <div data-testid="responsive-container">{children}</div>
   ),
   PieChart: ({ children }: { children: React.ReactNode }) => (
-    <svg data-testid="pie-chart">{children}</svg>
+    <svg role="img" aria-label="Pie chart" data-testid="pie-chart">
+      {children}
+    </svg>
   ),
-  Pie: ({ children }: { children: React.ReactNode }) => (
-    <g data-testid="pie">{children}</g>
-  ),
+  Pie: ({ children }: { children: React.ReactNode }) => <g data-testid="pie">{children}</g>,
   Cell: () => <g data-testid="cell" />,
 }));
 
@@ -39,9 +41,7 @@ describe('AnalyticsCharts', () => {
     });
 
     it('returns null when all posts have zero views', () => {
-      const { container } = render(
-        <TopPostsChart posts={[{ title: 'Zero Post', views: 0 }]} />,
-      );
+      const { container } = render(<TopPostsChart posts={[{ title: 'Zero Post', views: 0 }]} />);
       expect(container.firstChild).toBeNull();
     });
 
@@ -68,7 +68,7 @@ describe('AnalyticsCharts', () => {
         <CategoryPieChart
           categories={[{ id: 1, name: 'Tech' }]}
           posts={[{ category_id: 1, published: true }]}
-        />,
+        />
       );
       expect(screen.getByTestId('responsive-container')).toBeInTheDocument();
       expect(screen.getByTestId('pie-chart')).toBeInTheDocument();
@@ -76,14 +76,14 @@ describe('AnalyticsCharts', () => {
 
     it('returns null when no categories with published posts', () => {
       const { container } = render(
-        <CategoryPieChart categories={[{ id: 1, name: 'Tech' }]} posts={[]} />,
+        <CategoryPieChart categories={[{ id: 1, name: 'Tech' }]} posts={[]} />
       );
       expect(container.firstChild).toBeNull();
     });
 
     it('returns null when no categories', () => {
       const { container } = render(
-        <CategoryPieChart categories={[]} posts={[{ category_id: null, published: true }]} />,
+        <CategoryPieChart categories={[]} posts={[{ category_id: null, published: true }]} />
       );
       expect(container.firstChild).toBeNull();
     });
@@ -93,7 +93,7 @@ describe('AnalyticsCharts', () => {
         <CategoryPieChart
           categories={[{ id: 1, name: 'Tech' }]}
           posts={[{ category_id: 1, published: true }]}
-        />,
+        />
       );
       expect(screen.getByText('Tech')).toBeInTheDocument();
       expect(screen.getByText('1')).toBeInTheDocument(); // post count

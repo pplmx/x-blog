@@ -30,10 +30,7 @@ describe('BackToTop', () => {
       const { unmount } = render(<BackToTop />);
       unmount();
 
-      expect(removeSpy).toHaveBeenCalledWith(
-        'scroll',
-        expect.any(Function)
-      );
+      expect(removeSpy).toHaveBeenCalledWith('scroll', expect.any(Function));
     });
   });
 

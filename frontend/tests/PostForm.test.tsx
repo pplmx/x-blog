@@ -22,13 +22,7 @@ vi.mock('@/components/ImageUpload', () => ({
 // Mock Button component
 vi.mock('@/components/ui/button', () => ({
   Button: ({ children, disabled, type, onClick, size }: any) => (
-    <button
-      type={type}
-      disabled={disabled}
-      onClick={onClick}
-      data-size={size}
-      data-testid="button"
-    >
+    <button type={type} disabled={disabled} onClick={onClick} data-size={size} data-testid="button">
       {children}
     </button>
   ),
@@ -162,7 +156,7 @@ describe('PostForm', () => {
       renderForm();
 
       const buttons = document.querySelectorAll('button');
-      const submitButton = Array.from(buttons).find(b => b.textContent?.includes('保存文章'));
+      const submitButton = Array.from(buttons).find((b) => b.textContent?.includes('保存文章'));
       expect(submitButton).toBeDefined();
     });
   });
@@ -171,21 +165,27 @@ describe('PostForm', () => {
     it('should display title value', () => {
       renderForm({ formData: { ...defaultFormData, title: 'Test Title' } });
 
-      const titleInput = document.querySelector('input[placeholder="输入文章标题"]') as HTMLInputElement;
+      const titleInput = document.querySelector(
+        'input[placeholder="输入文章标题"]'
+      ) as HTMLInputElement;
       expect(titleInput.value).toBe('Test Title');
     });
 
     it('should display content value', () => {
       renderForm({ formData: { ...defaultFormData, content: 'Test content' } });
 
-      const contentTextarea = document.querySelector('textarea[placeholder*="Markdown"]') as HTMLTextAreaElement;
+      const contentTextarea = document.querySelector(
+        'textarea[placeholder*="Markdown"]'
+      ) as HTMLTextAreaElement;
       expect(contentTextarea.value).toBe('Test content');
     });
 
     it('should call setFormData when title changes', () => {
       const { setFormData } = renderForm();
 
-      const titleInput = document.querySelector('input[placeholder="输入文章标题"]') as HTMLInputElement;
+      const titleInput = document.querySelector(
+        'input[placeholder="输入文章标题"]'
+      ) as HTMLInputElement;
       fireEvent.change(titleInput, { target: { value: 'New Title' } });
 
       expect(setFormData).toHaveBeenCalled();
@@ -194,7 +194,9 @@ describe('PostForm', () => {
     it('should call setFormData when content changes', () => {
       const { setFormData } = renderForm();
 
-      const contentTextarea = document.querySelector('textarea[placeholder*="Markdown"]') as HTMLTextAreaElement;
+      const contentTextarea = document.querySelector(
+        'textarea[placeholder*="Markdown"]'
+      ) as HTMLTextAreaElement;
       fireEvent.change(contentTextarea, { target: { value: 'New content' } });
 
       expect(setFormData).toHaveBeenCalled();
@@ -203,7 +205,9 @@ describe('PostForm', () => {
     it('should display slug value', () => {
       renderForm({ formData: { ...defaultFormData, slug: 'test-slug' } });
 
-      const slugInput = document.querySelector('input[placeholder="article-slug"]') as HTMLInputElement;
+      const slugInput = document.querySelector(
+        'input[placeholder="article-slug"]'
+      ) as HTMLInputElement;
       expect(slugInput.value).toBe('test-slug');
     });
 
@@ -228,7 +232,7 @@ describe('PostForm', () => {
     it('should display selected category', () => {
       renderForm({
         categories: mockCategories,
-        formData: { ...defaultFormData, category_id: 1 }
+        formData: { ...defaultFormData, category_id: 1 },
       });
 
       const select = document.querySelector('select') as HTMLSelectElement;
@@ -255,10 +259,12 @@ describe('PostForm', () => {
     it('should check selected tags', () => {
       renderForm({
         tags: mockTags,
-        formData: { ...defaultFormData, tag_ids: [1, 3] }
+        formData: { ...defaultFormData, tag_ids: [1, 3] },
       });
 
-      const checkboxes = document.querySelectorAll('input[type="checkbox"]') as NodeListOf<HTMLInputElement>;
+      const checkboxes = document.querySelectorAll(
+        'input[type="checkbox"]'
+      ) as NodeListOf<HTMLInputElement>;
       expect(checkboxes[0].checked).toBe(true);
       expect(checkboxes[1].checked).toBe(false);
       expect(checkboxes[2].checked).toBe(true);
@@ -267,7 +273,9 @@ describe('PostForm', () => {
     it('should call setFormData when tag is toggled', () => {
       const { setFormData } = renderForm({ tags: mockTags });
 
-      const checkboxes = document.querySelectorAll('input[type="checkbox"]') as NodeListOf<HTMLInputElement>;
+      const checkboxes = document.querySelectorAll(
+        'input[type="checkbox"]'
+      ) as NodeListOf<HTMLInputElement>;
       fireEvent.click(checkboxes[0]);
 
       expect(setFormData).toHaveBeenCalled();
@@ -278,14 +286,18 @@ describe('PostForm', () => {
     it('should have required attribute on title input', () => {
       renderForm();
 
-      const titleInput = document.querySelector('input[placeholder="输入文章标题"]') as HTMLInputElement;
+      const titleInput = document.querySelector(
+        'input[placeholder="输入文章标题"]'
+      ) as HTMLInputElement;
       expect(titleInput.required).toBe(true);
     });
 
     it('should have required attribute on content textarea', () => {
       renderForm();
 
-      const contentTextarea = document.querySelector('textarea[placeholder*="Markdown"]') as HTMLTextAreaElement;
+      const contentTextarea = document.querySelector(
+        'textarea[placeholder*="Markdown"]'
+      ) as HTMLTextAreaElement;
       expect(contentTextarea.required).toBe(true);
     });
   });

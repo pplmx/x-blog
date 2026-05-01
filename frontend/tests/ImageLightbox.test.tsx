@@ -153,9 +153,7 @@ describe('ImageLightbox', () => {
     it('should update counter when index changes', () => {
       const { rerender } = renderLightbox({ ...defaultProps, currentIndex: 0 });
 
-      rerender(
-        <ImageLightbox {...defaultProps} currentIndex={2} />
-      );
+      rerender(<ImageLightbox {...defaultProps} currentIndex={2} />);
 
       const counter = document.querySelector('[aria-live="polite"]');
       expect(counter?.textContent).toBe('3 / 3');
@@ -166,10 +164,7 @@ describe('ImageLightbox', () => {
     it('should register keyboard event listener on mount', () => {
       renderLightbox();
 
-      expect(document.addEventListener).toHaveBeenCalledWith(
-        'keydown',
-        expect.any(Function)
-      );
+      expect(document.addEventListener).toHaveBeenCalledWith('keydown', expect.any(Function));
     });
 
     it('should remove keyboard event listener on unmount', () => {
@@ -177,10 +172,7 @@ describe('ImageLightbox', () => {
 
       unmount();
 
-      expect(document.removeEventListener).toHaveBeenCalledWith(
-        'keydown',
-        expect.any(Function)
-      );
+      expect(document.removeEventListener).toHaveBeenCalledWith('keydown', expect.any(Function));
     });
 
     it('should navigate to previous image with ArrowLeft', () => {
