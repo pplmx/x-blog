@@ -494,4 +494,75 @@ describe("Post Detail Page", () => {
       expect(links.length).toBeGreaterThanOrEqual(2);
     });
   });
+
+  describe("Related posts data flow", () => {
+    it("fetches related posts with the correct post ID (not 0)", async () => {
+      let relatedPostsUrl = "";
+
+      vi.stubGlobal("useRuntimeConfig", () => ({
+        public: {
+          apiUrl: "http://localhost:18888",
+        },
+      }));
+
+      vi.stubGlobal("useRoute", () => ({
+        params: { slug: "test-article-post" },
+        query: {},
+      }));
+
+      vi.stubGlobal("navigateTo", vi.fn());
+
+      vi.stubGlobal("useFetch", vi.fn((url: string) => {
+        if (typeof url === "string" && url.includes("/related")) {
+          relatedPostsUrl = url;
+          return {
+            data: ref(mockRelatedPosts),
+            pending: ref(false),
+            error: ref(null),
+            refresh: vi.fn(),
+          };
+        }
+        return {
+          data: ref(mockPost),
+          pending: ref(false),
+          error: ref(null),
+          refresh: vi.fn(),
+        };
+      }));
+
+      const { default: PostPage } = await import("@/pages/posts/[slug].vue");
+
+      const SuspenseWrapper: any = {
+        components: { PostPage },
+        template:
+          `<Suspense>` +
+          `<template #default><PostPage /></template>` +
+          `<template #fallback>Loading...</template>` +
+          `</Suspense>`,
+      };
+
+      const wrapper = mount(SuspenseWrapper, {
+        global: {
+          stubs: {
+            NuxtLink: {
+              template: '<a :href="to"><slot/></a>',
+              props: ["to"],
+            },
+            Icon: {
+              template: '<svg class="iconstub" :data-icon="icon"></svg>',
+              props: ["icon"],
+            },
+          },
+        },
+      });
+
+      await flushPromises();
+
+      // Verify related posts were fetched with post ID 1 (from mockPost.id)
+      expect(relatedPostsUrl).toContain("/related");
+      expect(relatedPostsUrl).toContain("1");
+      // Should NOT have been called with ID 0 (the fallback for undefined post ID)
+      expect(relatedPostsUrl).not.toMatch(/\/0\/related/);
+    });
+  });
 });
