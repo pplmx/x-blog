@@ -168,3 +168,72 @@ def test_approve_comment_unauthorized(client, post):
         json={"approved": True},
     )
     assert response.status_code == 401
+
+
+def test_create_comment_on_nonexistent_post(client):
+    """Creating a comment on a non-existent post should return 400."""
+    response = client.post(
+        "/api/comments/post/99999",
+        json={
+            "nickname": "Test User",
+            "email": "test@example.com",
+            "content": "Test comment",
+        },
+    )
+    assert response.status_code == 400
+    assert "not found" in response.json()["error"]["message"]
+
+
+def test_create_comment_with_parent_from_different_post(client, post, auth_headers):
+    """Replying to a parent comment from a different post should return 400."""
+    # Create a second post
+    other_post = client.post(
+        "/api/posts",
+        json={
+            "title": "Another Post",
+            "slug": "another-post",
+            "content": "More content",
+            "published": True,
+        },
+        headers=auth_headers,
+    )
+    assert other_post.status_code in (200, 201), f"Failed to create second post: {other_post.json()}"
+
+    # Create a comment on the original post
+    parent_response = client.post(
+        f"/api/comments/post/{post['id']}",
+        json={
+            "nickname": "Parent",
+            "email": "parent@example.com",
+            "content": "Parent comment",
+        },
+    )
+    parent_id = parent_response.json()["id"]
+
+    # Try to create a reply on the other post referencing the parent
+    response = client.post(
+        f"/api/comments/post/{other_post.json()['id']}",
+        json={
+            "nickname": "Child",
+            "email": "child@example.com",
+            "content": "Reply to parent",
+            "parent_id": parent_id,
+        },
+    )
+    assert response.status_code == 400
+    assert "Parent comment does not belong to this post" in response.json()["error"]["message"]
+
+
+def test_create_comment_with_nonexistent_parent(client, post):
+    """Replying to a non-existent parent comment should return 400."""
+    response = client.post(
+        f"/api/comments/post/{post['id']}",
+        json={
+            "nickname": "Child",
+            "email": "child@example.com",
+            "content": "Reply",
+            "parent_id": 99999,
+        },
+    )
+    assert response.status_code == 400
+    assert "Parent comment with id 99999 not found" in response.json()["error"]["message"]

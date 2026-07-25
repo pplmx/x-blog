@@ -338,6 +338,19 @@ def create_comment(
     comment: schemas.CommentCreate,
     ip_address: str,
 ) -> models.Comment:
+    # Validate that the post exists
+    post = db.get(models.Post, post_id)
+    if not post:
+        raise ValueError(f"Post with id {post_id} not found")
+
+    # Validate parent comment (for threaded replies)
+    if comment.parent_id is not None:
+        parent = db.get(models.Comment, comment.parent_id)
+        if not parent:
+            raise ValueError(f"Parent comment with id {comment.parent_id} not found")
+        if parent.post_id != post_id:
+            raise ValueError("Parent comment does not belong to this post")
+
     db_comment = models.Comment(
         post_id=post_id,
         parent_id=comment.parent_id,
@@ -348,8 +361,12 @@ def create_comment(
         is_approved=comment.is_approved,
     )
     db.add(db_comment)
-    db.commit()
-    db.refresh(db_comment)
+    try:
+        db.commit()
+        db.refresh(db_comment)
+    except IntegrityError:
+        db.rollback()
+        raise ValueError("Failed to create comment")
     return db_comment
 
 
