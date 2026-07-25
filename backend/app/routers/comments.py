@@ -3,7 +3,7 @@ from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from app import crud, schemas
-from app.auth import get_current_admin
+from app.auth import User, get_current_admin
 from app.database import get_db
 from app.limiter import RATE_LIMIT_COMMENT, limiter
 
@@ -59,10 +59,12 @@ def create_comment(
 
 
 @router.patch("/{comment_id}/approve", response_model=schemas.Comment)
+@limiter.limit(f"{RATE_LIMIT_COMMENT}/minute")
 def approve_comment(
+    request: Request,  # noqa: ARG001
     comment_id: int,
     approval: CommentApproval,
-    _: None = Depends(get_current_admin),
+    _current_user: User = Depends(get_current_admin),
     db: Session = Depends(get_db),
 ):
     """Approve or reject a comment. Admin only."""
