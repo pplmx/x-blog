@@ -10,6 +10,18 @@ export default defineNuxtConfig({
       viewport: "width=device-width, initial-scale=1",
     },
   },
+  runtimeConfig: {
+    public: {
+      apiUrl: process.env.NUXT_API_URL || "http://localhost:18888",
+    },
+  },
+  components: [
+    {
+      prefix: "",
+      path: "~/components",
+      pathPrefix: false,
+    },
+  ],
   postcss: {
     plugins: {
       "@tailwindcss/postcss": {},

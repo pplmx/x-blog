@@ -49,11 +49,11 @@ ENV PATH="/app/.venv/bin:$PATH" \
 # Switch to non-root user
 USER appuser
 
-EXPOSE 8000
+EXPOSE 18888
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=5s --start-period=5s --retries=3 \
-    CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"
+    CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:18888/health')"
 
 # Run with graceful shutdown
-CMD ["sh", "-c", "uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 2"]
+CMD ["sh", "-c", "uvicorn app.main:app --host 0.0.0.0 --port 18888 --workers 2"]

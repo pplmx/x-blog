@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { Rss, MapPin, Github, Twitter, Mail } from 'lucide-react';
+import { Rss, MapPin, GitBranch, Mail } from 'lucide-react';
 
 export default function Footer() {
   const currentYear = new Date().getFullYear();
@@ -88,7 +88,7 @@ export default function Footer() {
                 className="flex items-center justify-center w-10 h-10 rounded-xl bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-gray-200 transition-all"
                 title="GitHub"
               >
-                <Github className="w-5 h-5" />
+                <GitBranch className="w-5 h-5" />
               </a>
             </div>
           </div>

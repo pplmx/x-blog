@@ -35,7 +35,7 @@ async def lifespan(_app: FastAPI):
     # Startup
     setup_logging()
     setup_sentry()
-    logger.info("app_startup", version="0.1.0")
+    logger.info("app_startup", extra={"version": "0.1.0"})
 
     # Create database tables
     Base.metadata.create_all(bind=engine)

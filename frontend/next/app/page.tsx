@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { Suspense } from 'react';
 import { fetchPosts, fetchCategories, fetchTags, fetchPopularPosts } from '@/lib/api';
 import PostCard from '@/components/PostCard';
