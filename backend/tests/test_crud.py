@@ -1006,3 +1006,61 @@ class TestUpdatePostTagIds:
 
         assert result is not None
         assert len(result.tags) == 0
+
+
+class TestIntegrityErrorHandling:
+    """Tests for IntegrityError handling in category/tag CRUD operations."""
+
+    def test_create_category_duplicate_integrity_error(self, db_session):
+        """Test create_category raises ValueError on duplicate name (IntegrityError)."""
+        category = models.Category(name="Duplicate Cat")
+        db_session.add(category)
+        db_session.commit()
+
+        category_data = schemas.CategoryCreate(name="Duplicate Cat")
+        with (
+            patch("app.crud.clear_categories_cache"),
+            pytest.raises(ValueError, match="already exists"),
+        ):
+            crud.create_category(db_session, category_data)
+
+    def test_update_category_duplicate_integrity_error(self, db_session):
+        """Test update_category raises ValueError on duplicate name (IntegrityError)."""
+        cat1 = models.Category(name="Category One")
+        cat2 = models.Category(name="Category Two")
+        db_session.add_all([cat1, cat2])
+        db_session.commit()
+
+        update_data = schemas.CategoryCreate(name="Category One")
+        with (
+            patch("app.crud.clear_categories_cache"),
+            pytest.raises(ValueError, match="already exists"),
+        ):
+            crud.update_category(db_session, cat2.id, update_data)
+
+    def test_create_tag_duplicate_integrity_error(self, db_session):
+        """Test create_tag raises ValueError on duplicate name (IntegrityError)."""
+        tag = models.Tag(name="Duplicate Tag")
+        db_session.add(tag)
+        db_session.commit()
+
+        tag_data = schemas.TagCreate(name="Duplicate Tag")
+        with (
+            patch("app.crud.clear_tags_cache"),
+            pytest.raises(ValueError, match="already exists"),
+        ):
+            crud.create_tag(db_session, tag_data)
+
+    def test_update_tag_duplicate_integrity_error(self, db_session):
+        """Test update_tag raises ValueError on duplicate name (IntegrityError)."""
+        tag1 = models.Tag(name="Tag One")
+        tag2 = models.Tag(name="Tag Two")
+        db_session.add_all([tag1, tag2])
+        db_session.commit()
+
+        update_data = schemas.TagCreate(name="Tag One")
+        with (
+            patch("app.crud.clear_tags_cache"),
+            pytest.raises(ValueError, match="already exists"),
+        ):
+            crud.update_tag(db_session, tag2.id, update_data)
