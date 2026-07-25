@@ -1,75 +1,26 @@
-# Nuxt Minimal Starter
+# Nuxt Alternative Frontend
 
-Look at the [Nuxt documentation](https://nuxt.com/docs/getting-started/introduction) to learn more.
+A Nuxt 4 alternative frontend for X-Blog, running in parallel with the Next.js app.
 
-## Setup
-
-Make sure to install dependencies:
+## Development
 
 ```bash
-# npm
-npm install
-
-# pnpm
+# Install dependencies
 pnpm install
 
-# yarn
-yarn install
-
-# bun
-bun install
+# Start dev server (port 13334)
+NUXT_API_URL=http://localhost:18888 pnpm dev
 ```
 
-## Development Server
+## Environment Variables
 
-Start the development server on `http://localhost:3000`:
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `NUXT_API_URL` | `http://localhost:18888` | Backend API URL |
 
-```bash
-# npm
-npm run dev
-
-# pnpm
-pnpm dev
-
-# yarn
-yarn dev
-
-# bun
-bun run dev
-```
-
-## Production
-
-Build the application for production:
+## Build
 
 ```bash
-# npm
-npm run build
-
-# pnpm
 pnpm build
-
-# yarn
-yarn build
-
-# bun
-bun run build
-```
-
-Locally preview production build:
-
-```bash
-# npm
-npm run preview
-
-# pnpm
 pnpm preview
-
-# yarn
-yarn preview
-
-# bun
-bun run preview
 ```
-
-Check out the [deployment documentation](https://nuxt.com/docs/getting-started/deployment) for more information.

@@ -7,7 +7,7 @@ import Footer from '@/components/Footer';
 import BackToTop from '@/components/BackToTop';
 import ErrorBoundary from '@/components/ErrorBoundary';
 import { ImageLightboxProvider } from '@/components/ImageLightboxContext';
-import LocaleSync from '@/components/LocaleSync';
+import { LocaleSync } from '@/components/LocaleSync';
 
 const inter = Inter({ subsets: ['latin'] });
 

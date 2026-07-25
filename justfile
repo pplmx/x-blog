@@ -27,16 +27,16 @@ dev:
     @echo "  just frontend"
     @echo ""
     @echo "或使用 VS Code / IntelliJ 的 Run Dashboard"
-    cd backend && uv run uvicorn app.main:app --reload --host 0.0.0.0 --port 8000 &
-    cd frontend/next && pnpm dev
+    cd backend && uv run uvicorn app.main:app --reload --host 0.0.0.0 --port 18888 &
+    cd frontend/next && pnpm dev --port 13333
 
 # Run backend only
 backend:
-    cd backend && uv run uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+    cd backend && uv run uvicorn app.main:app --reload --host 0.0.0.0 --port 18888
 
 # Run frontend only
 frontend:
-    cd frontend/next && pnpm dev
+    cd frontend/next && pnpm dev --port 13333
 
 # Lint code
 lint:
@@ -93,11 +93,11 @@ test-e2e:
 # Run e2e tests against live dev servers (auto-starts backend + frontend)
 e2e:
     @echo "Starting backend..."
-    cd backend && uv run uvicorn app.main:app --host 0.0.0.0 --port 8000 &
-    @sleep 3 && curl -sf http://localhost:8000/health > /dev/null || (echo "Backend failed to start" && exit 1)
+    cd backend && uv run uvicorn app.main:app --host 0.0.0.0 --port 18888 &
+    @sleep 3 && curl -sf http://localhost:18888/health > /dev/null || (echo "Backend failed to start" && exit 1)
     @echo "Starting frontend..."
-    cd frontend/next && pnpm dev &
-    @sleep 5 && curl -sf http://localhost:3000 > /dev/null || (echo "Frontend failed to start" && exit 1)
+    cd frontend/next && pnpm dev --port 13333 &
+    @sleep 5 && curl -sf http://localhost:13333 > /dev/null || (echo "Frontend failed to start" && exit 1)
     @echo "Running e2e tests..."
     cd frontend/next && pnpm playwright test
     @echo "Stopping services..."
