@@ -453,20 +453,34 @@ def increment_views(db: Session, post_id: int) -> models.Post | None:
     """Increment the view count for a post using atomic SQL update."""
     stmt = update(models.Post).where(models.Post.id == post_id).values(views=models.Post.views + 1)
     result = db.execute(stmt)
-    db.commit()
+    try:
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise
     if result.rowcount == 0:
         return None
-    return db.get(models.Post, post_id)
+    post = db.get(models.Post, post_id)
+    if post:
+        db.refresh(post)
+    return post
 
 
 def increment_likes(db: Session, post_id: int) -> models.Post | None:
     """Increment the like count for a post using atomic SQL update."""
     stmt = update(models.Post).where(models.Post.id == post_id).values(likes=models.Post.likes + 1)
     result = db.execute(stmt)
-    db.commit()
+    try:
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise
     if result.rowcount == 0:
         return None
-    return db.get(models.Post, post_id)
+    post = db.get(models.Post, post_id)
+    if post:
+        db.refresh(post)
+    return post
 
 
 def get_popular_posts(db: Session, limit: int = 5) -> list[models.Post]:
