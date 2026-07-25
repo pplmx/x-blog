@@ -164,9 +164,7 @@ class TestAdminDeleteForeignKey:
         db_session.add(post)
         db_session.commit()
 
-        response = client.delete(
-            f"/api/admin/categories/{category.id}", headers=auth_headers
-        )
+        response = client.delete(f"/api/admin/categories/{category.id}", headers=auth_headers)
         assert response.status_code == 400
         data = response.json()
         assert "error" in data
@@ -178,9 +176,7 @@ class TestAdminDeleteForeignKey:
         db_session.commit()
         cat_id = category.id
 
-        response = client.delete(
-            f"/api/admin/categories/{cat_id}", headers=auth_headers
-        )
+        response = client.delete(f"/api/admin/categories/{cat_id}", headers=auth_headers)
         assert response.status_code in [200, 204]
 
     def test_delete_tag_with_posts_returns_400(self, client, auth_headers, db_session):
@@ -198,9 +194,7 @@ class TestAdminDeleteForeignKey:
         db_session.add(post)
         db_session.commit()
 
-        response = client.delete(
-            f"/api/admin/tags/{tag.id}", headers=auth_headers
-        )
+        response = client.delete(f"/api/admin/tags/{tag.id}", headers=auth_headers)
         assert response.status_code == 400
         data = response.json()
         assert "error" in data
@@ -212,23 +206,17 @@ class TestAdminDeleteForeignKey:
         db_session.commit()
         tag_id = tag.id
 
-        response = client.delete(
-            f"/api/admin/tags/{tag_id}", headers=auth_headers
-        )
+        response = client.delete(f"/api/admin/tags/{tag_id}", headers=auth_headers)
         assert response.status_code in [200, 204]
 
     def test_delete_category_not_found(self, client, auth_headers):
         """Test deleting a non-existent category returns 404."""
-        response = client.delete(
-            "/api/admin/categories/99999", headers=auth_headers
-        )
+        response = client.delete("/api/admin/categories/99999", headers=auth_headers)
         assert response.status_code == 404
 
     def test_delete_tag_not_found(self, client, auth_headers):
         """Test deleting a non-existent tag returns 404."""
-        response = client.delete(
-            "/api/admin/tags/99999", headers=auth_headers
-        )
+        response = client.delete("/api/admin/tags/99999", headers=auth_headers)
         assert response.status_code == 404
 
 
@@ -255,9 +243,7 @@ class TestAdminPostNotFoundPaths:
 
     def test_delete_post_not_found(self, client, auth_headers):
         """Test deleting a non-existent post returns 404."""
-        response = client.delete(
-            "/api/admin/posts/99999", headers=auth_headers
-        )
+        response = client.delete("/api/admin/posts/99999", headers=auth_headers)
         assert response.status_code == 404
         data = response.json()
         assert data["error"]["code"] == "NOT_FOUND"
@@ -351,9 +337,7 @@ class TestAdminComments:
         assert comments[0]["post_id"] == post.id
         assert comments[0]["post_title"] == post.title
 
-    def test_list_comments_filtered_by_post_id(
-        self, client, auth_headers, db_session
-    ):
+    def test_list_comments_filtered_by_post_id(self, client, auth_headers, db_session):
         """Test listing comments filtered by post_id."""
         post1 = models.Post(title="Post One", slug="post-one", content="Content", published=True)
         post2 = models.Post(title="Post Two", slug="post-two", content="Content", published=True)
@@ -363,9 +347,7 @@ class TestAdminComments:
         self._create_comment(db_session, post1, nickname="Alice", content="First post!")
         self._create_comment(db_session, post2, nickname="Bob", content="Second post!")
 
-        response = client.get(
-            f"/api/admin/comments?post_id={post1.id}", headers=auth_headers
-        )
+        response = client.get(f"/api/admin/comments?post_id={post1.id}", headers=auth_headers)
         assert response.status_code == 200
         comments = response.json()
         assert len(comments) == 1
@@ -383,17 +365,13 @@ class TestAdminComments:
         """Test deleting an existing comment."""
         comment, _ = self._create_comment(db_session)
 
-        response = client.delete(
-            f"/api/admin/comments/{comment.id}", headers=auth_headers
-        )
+        response = client.delete(f"/api/admin/comments/{comment.id}", headers=auth_headers)
         assert response.status_code == 200
         assert response.json()["message"] == "Comment deleted"
 
     def test_delete_comment_not_found(self, client, auth_headers):
         """Test deleting a non-existent comment returns 404."""
-        response = client.delete(
-            "/api/admin/comments/99999", headers=auth_headers
-        )
+        response = client.delete("/api/admin/comments/99999", headers=auth_headers)
         assert response.status_code == 404
         data = response.json()
         assert data["error"]["code"] == "NOT_FOUND"
@@ -422,6 +400,7 @@ class TestAdminUserManagement:
     def test_create_user_already_exists(self, client, auth_headers, db_session):
         """Test creating a user with existing username returns 400."""
         from app.auth import User, get_password_hash
+
         user = User(username="existing", password=get_password_hash("pass123"), is_superuser=False)
         db_session.add(user)
         db_session.commit()
@@ -442,26 +421,21 @@ class TestAdminUserManagement:
     def test_delete_user(self, client, auth_headers, db_session):
         """Test deleting another user."""
         from app.auth import User, get_password_hash
+
         user = User(username="to_delete", password=get_password_hash("pass"), is_superuser=False)
         db_session.add(user)
         db_session.commit()
         user_id = user.id
 
-        response = client.delete(
-            f"/api/admin/users/{user_id}", headers=auth_headers
-        )
+        response = client.delete(f"/api/admin/users/{user_id}", headers=auth_headers)
         assert response.status_code == 200
 
     def test_delete_user_not_found(self, client, auth_headers):
         """Test deleting a non-existent user returns 404."""
-        response = client.delete(
-            "/api/admin/users/99999", headers=auth_headers
-        )
+        response = client.delete("/api/admin/users/99999", headers=auth_headers)
         assert response.status_code == 404
 
     def test_delete_self_user(self, client, auth_headers, admin_user):
         """Test deleting the current user returns 400."""
-        response = client.delete(
-            f"/api/admin/users/{admin_user.id}", headers=auth_headers
-        )
+        response = client.delete(f"/api/admin/users/{admin_user.id}", headers=auth_headers)
         assert response.status_code == 400
