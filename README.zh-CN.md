@@ -55,7 +55,7 @@ just install
 
 # 或者手动安装:
 cd backend && uv sync
-cd frontend && pnpm install
+cd frontend/next && pnpm install
 ```
 
 ### 开发
@@ -175,20 +175,23 @@ x-blog/
 │   ├── tests/              # pytest 测试 (346 个)
 │   └── pyproject.toml      # Python 配置
 │
-├── frontend/               # Next.js 前端
-│   ├── app/
-│   │   ├── page.tsx        # 首页
-│   │   ├── admin/          # 管理后台
-│   │   ├── posts/          # 文章页面
-│   │   ├── tags/           # 标签页面
-│   │   └── about/          # 关于页面
-│   ├── components/         # React 组件
-│   │   ├── ui/             # shadcn/ui 组件
-│   │   └── *.tsx
-│   ├── lib/                # 工具函数 & API 客户端
-│   ├── types/              # TypeScript 类型
-│   └── package.json
-│
+├── frontend/
+│   ├── next/               # Next.js 应用 (当前生产版本)
+│   │   ├── app/
+│   │   │   ├── page.tsx        # 首页
+│   │   │   ├── admin/          # 管理后台
+│   │   │   ├── posts/          # 文章页面
+│   │   │   ├── tags/           # 标签页面
+│   │   │   └── about/          # 关于页面
+│   │   ├── components/         # React 组件
+│   │   │   ├── ui/             # shadcn/ui 组件
+│   │   │   └── *.tsx
+│   │   ├── lib/                # 工具函数 & API 客户端
+│   │   ├── types/              # TypeScript 类型
+│   │   ├── package.json
+│   │   └── Dockerfile
+│   └── nuxt/               # Nuxt 替代方案 (并行开发)
+│       └── app/
 ├── docs/                   # 文档
 ├── justfile                # 任务运行器 (推荐)
 └── package.json            # 根目录配置 (pnpm workspaces)

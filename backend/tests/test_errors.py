@@ -108,3 +108,29 @@ def test_unauthorized_error_format(client):
     assert response.status_code in [401, 422]
     data = response.json()
     assert "error" in data
+
+
+def test_root_endpoint(client):
+    """Test root endpoint returns API message."""
+    response = client.get("/")
+    assert response.status_code == 200
+    data = response.json()
+    assert data["message"] == "X-Blog Blog API"
+
+
+def test_security_headers(client):
+    """Test security headers are set on all responses."""
+    response = client.get("/health")
+    assert response.status_code == 200
+    assert response.headers.get("X-Content-Type-Options") == "nosniff"
+    assert response.headers.get("X-Frame-Options") == "DENY"
+    assert response.headers.get("X-XSS-Protection") == "1; mode=block"
+    assert "max-age=31536000" in response.headers.get("Strict-Transport-Security", "")
+
+
+def test_security_headers_on_error(client):
+    """Test security headers are set even on error responses."""
+    response = client.get("/api/posts/99999")
+    assert response.status_code == 404
+    assert response.headers.get("X-Content-Type-Options") == "nosniff"
+    assert response.headers.get("X-Frame-Options") == "DENY"

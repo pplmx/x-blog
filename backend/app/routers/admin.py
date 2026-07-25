@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.security import OAuth2PasswordRequestForm
 from pydantic import BaseModel, ConfigDict
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app import auth, crud, models
@@ -252,8 +253,23 @@ def admin_delete_category(
     if not category:
         raise HTTPException(status_code=404, detail="Category not found")
 
+    # Check for posts referencing this category
+    post_count = db.query(models.Post).filter(models.Post.category_id == category_id).count()
+    if post_count > 0:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Cannot delete category: {post_count} post(s) reference it",
+        )
+
     db.delete(category)
-    db.commit()
+    try:
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(
+            status_code=400,
+            detail="Cannot delete category: it is referenced by posts",
+        )
     return {"message": "Category deleted"}
 
 
@@ -309,8 +325,23 @@ def admin_delete_tag(
     if not tag:
         raise HTTPException(status_code=404, detail="Tag not found")
 
+    # Check for posts referencing this tag
+    post_count = db.query(models.Post).filter(models.Post.tags.any(id=tag_id)).count()
+    if post_count > 0:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Cannot delete tag: {post_count} post(s) reference it",
+        )
+
     db.delete(tag)
-    db.commit()
+    try:
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(
+            status_code=400,
+            detail="Cannot delete tag: it is referenced by posts",
+        )
     return {"message": "Tag deleted"}
 
 

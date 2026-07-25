@@ -39,6 +39,6 @@ jobs:
 
       - name: Frontend tests
         run: |
-          cd frontend
+          cd frontend/next
           pnpm install
           pnpm test

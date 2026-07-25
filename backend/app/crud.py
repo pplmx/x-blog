@@ -1,4 +1,5 @@
 from sqlalchemy import func, or_, select, update
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, joinedload
 
 from app import models, schemas
@@ -115,15 +116,15 @@ def update_post(db: Session, post_id: int, post: schemas.PostUpdate) -> models.P
         if not category:
             raise ValueError(f"Category with id {update_data['category_id']} not found")
 
-    if "tags" in update_data:
-        tags = []
-        for tag_name in update_data.pop("tags"):
-            tag = db.query(models.Tag).filter(models.Tag.name == tag_name).first()
-            if not tag:
-                tag = models.Tag(name=tag_name)
-                db.add(tag)
-                db.flush()
-            tags.append(tag)
+    if "tag_ids" in update_data:
+        tag_id_list = update_data.pop("tag_ids")
+        tags = (
+            db.query(models.Tag)
+            .filter(models.Tag.id.in_(tag_id_list))
+            .all()
+            if tag_id_list
+            else []
+        )
         db_post.tags = tags
 
     for field, value in update_data.items():
@@ -148,11 +149,13 @@ def delete_post(db: Session, post_id: int) -> bool:
     if not db_post:
         return False
     db.delete(db_post)
-    db.commit()
-
+    try:
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        raise
     # Clear cache
     clear_posts_cache()
-
     return True
 
 
@@ -200,8 +203,16 @@ def delete_category(db: Session, category_id: int) -> bool:
     db_category = get_category(db, category_id)
     if not db_category:
         return False
+    # Check for posts referencing this category (proactive FK check)
+    post_count = db.query(models.Post).filter(models.Post.category_id == category_id).count()
+    if post_count > 0:
+        raise ValueError("Cannot delete category: it is referenced by posts")
     db.delete(db_category)
-    db.commit()
+    try:
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        raise ValueError("Cannot delete category: it is referenced by posts")
     # Clear cache
     clear_categories_cache()
     return True
@@ -253,8 +264,16 @@ def update_tag(db: Session, tag_id: int, tag: schemas.TagCreate) -> models.Tag:
 def delete_tag(db: Session, tag_id: int) -> bool:
     db_tag = get_tag(db, tag_id)
     if db_tag:
+        # Check for posts referencing this tag (proactive FK check)
+        post_count = db.query(models.Post).filter(models.Post.tags.any(id=tag_id)).count()
+        if post_count > 0:
+            raise ValueError("Cannot delete tag: it is referenced by posts")
         db.delete(db_tag)
-        db.commit()
+        try:
+            db.commit()
+        except IntegrityError:
+            db.rollback()
+            raise ValueError("Cannot delete tag: it is referenced by posts")
         # Clear cache
         clear_tags_cache()
         return True
