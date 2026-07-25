@@ -1,10 +1,12 @@
 <script setup lang="ts">
-import { usePosts } from '../../composables/useApi';
+import { usePosts, usePopularPosts } from '../../composables/useApi';
 
 const { data: posts, pending, error, refresh } = await usePosts({
   page: 1,
   limit: 10,
 });
+
+const { data: popularPosts } = await usePopularPosts();
 
 const route = useRoute();
 const page = computed(() => parseInt(route.query.page || '1', 10));
@@ -21,6 +23,32 @@ function fetchPosts(pageNum: number) {
     <div class="text-center mb-12">
       <h1 class="text-4xl font-bold mb-3">X-Blog</h1>
       <p class="text-gray-500">一个现代化的技术博客系统</p>
+    </div>
+
+    <!-- Popular Posts -->
+    <div
+      v-if="popularPosts?.length"
+      class="mb-12"
+    >
+      <h2 class="text-xl font-bold mb-4 text-gray-900 dark:text-gray-100">
+        热门文章
+      </h2>
+      <div class="space-y-4">
+        <div
+          v-for="post in popularPosts"
+          :key="post.id"
+          class="border border-gray-100 rounded-lg p-4 hover:shadow-md transition-shadow"
+        >
+          <NuxtLink
+            :to="`/posts/${post.slug}`"
+            class="font-bold hover:text-blue-600"
+          >{{ post.title }}</NuxtLink>
+          <div class="flex gap-4 mt-2 text-sm text-gray-500">
+            <span v-if="post.category">{{ post.category.name }}</span>
+            <span>{{ post.views }} 次阅读</span>
+          </div>
+        </div>
+      </div>
     </div>
 
     <!-- Posts -->

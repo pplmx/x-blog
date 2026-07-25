@@ -51,6 +51,33 @@ const mockPostListResponse = {
   },
 };
 
+const mockPopularPosts = [
+  {
+    id: 3,
+    title: "Popular Post",
+    slug: "popular-post",
+    excerpt: "A popular post excerpt.",
+    published: true,
+    created_at: "2024-03-01T10:00:00Z",
+    views: 999,
+    cover_image: null,
+    category: { id: 1, name: "Tech" },
+    tags: [],
+  },
+  {
+    id: 4,
+    title: "Another Popular",
+    slug: "another-popular",
+    excerpt: "Another popular post.",
+    published: true,
+    created_at: "2024-03-05T14:00:00Z",
+    views: 888,
+    cover_image: null,
+    category: { id: 1, name: "Tech" },
+    tags: [],
+  },
+];
+
 const mockEmptyResponse = {
   items: [],
   pagination: {
@@ -87,12 +114,23 @@ async function mountIndexPage({
   // The index page uses `computed` without importing it (Nuxt auto-imports it)
   vi.stubGlobal("computed", computed);
 
-  vi.stubGlobal("useFetch", vi.fn(() => ({
-    data: ref(posts),
-    pending: ref(pending),
-    error: ref(error),
-    refresh: vi.fn(),
-  })));
+  // Mock useFetch - return popular posts for /popular/list endpoint, post list otherwise
+  vi.stubGlobal("useFetch", vi.fn((url: string, options?: Record<string, unknown>) => {
+    if (typeof url === "string" && url.includes("/popular/list")) {
+      return {
+        data: ref(mockPopularPosts),
+        pending: ref(false),
+        error: ref(null),
+        refresh: vi.fn(),
+      };
+    }
+    return {
+      data: ref(posts),
+      pending: ref(pending),
+      error: ref(error),
+      refresh: vi.fn(),
+    };
+  }));
 
   const { default: IndexPage } = await import("../../app/pages/index.vue");
 
@@ -204,6 +242,38 @@ describe("Index Page", () => {
       const wrapper = await mountIndexPage();
       expect(wrapper.text()).toContain("1");
       expect(wrapper.text()).toContain("2");
+    });
+  });
+
+  describe("Popular Posts", () => {
+    it("renders the popular posts section header", async () => {
+      const wrapper = await mountIndexPage();
+      expect(wrapper.text()).toContain("热门文章");
+    });
+
+    it("renders popular post titles", async () => {
+      const wrapper = await mountIndexPage();
+      expect(wrapper.text()).toContain("Popular Post");
+      expect(wrapper.text()).toContain("Another Popular");
+    });
+
+    it("renders popular post view counts", async () => {
+      const wrapper = await mountIndexPage();
+      expect(wrapper.text()).toContain("999");
+      expect(wrapper.text()).toContain("888");
+    });
+
+    it("renders popular post category names", async () => {
+      const wrapper = await mountIndexPage();
+      const text = wrapper.text();
+      // Both popular posts have category "Tech"
+      expect(text).toContain("Tech");
+    });
+
+    it("renders links to popular posts", async () => {
+      const wrapper = await mountIndexPage();
+      const links = wrapper.findAll('a[href^="/posts/"]');
+      expect(links.length).toBeGreaterThanOrEqual(4);
     });
   });
 });
