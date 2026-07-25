@@ -1,11 +1,12 @@
 """Health check endpoints."""
 
-from fastapi import APIRouter, status
+from fastapi import APIRouter, Request, status
 from pydantic import BaseModel
 from sqlalchemy import text
 
 from app.cache import get_cache_info
 from app.database import engine
+from app.limiter import RATE_LIMIT_READ, limiter
 
 
 class HealthResponse(BaseModel):
@@ -89,7 +90,8 @@ async def liveness_check() -> dict[str, str]:
     summary="Cache Statistics",
     description="Get cache hit/miss statistics and current cache status.",
 )
-async def cache_stats() -> CacheStatsResponse:
+@limiter.limit(f"{RATE_LIMIT_READ}/minute")
+def cache_stats(request: Request) -> CacheStatsResponse:  # noqa: ARG001
     """Get cache statistics for monitoring and debugging."""
     cache_info = get_cache_info()
     return CacheStatsResponse(

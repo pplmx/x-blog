@@ -1,12 +1,13 @@
 """Statistics endpoint for blog metrics."""
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Request
 from pydantic import BaseModel
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app import models
 from app.database import get_db
+from app.limiter import RATE_LIMIT_READ, limiter
 
 
 class BlogStatsResponse(BaseModel):
@@ -24,7 +25,8 @@ router = APIRouter(prefix="/api/stats", tags=["Stats"])
 
 
 @router.get("", response_model=BlogStatsResponse)
-def get_blog_stats(db: Session = Depends(get_db)) -> BlogStatsResponse:
+@limiter.limit(f"{RATE_LIMIT_READ}/minute")
+def get_blog_stats(request: Request, db: Session = Depends(get_db)):  # noqa: ARG001
     """Get blog statistics."""
     # Total posts
     total_posts = db.query(func.count(models.Post.id)).scalar() or 0
