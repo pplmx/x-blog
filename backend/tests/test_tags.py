@@ -103,3 +103,43 @@ def test_create_tag_requires_auth(client):
 def test_delete_tag_requires_auth(client):
     response = client.delete("/api/tags/999")
     assert response.status_code == 401
+
+
+def test_delete_tag_with_posts_returns_400(client, auth_headers, db_session):
+    """Test deleting a tag with posts returns 400, not 500."""
+    from app import models
+
+    tag = models.Tag(name="Protected Public Tag")
+    db_session.add(tag)
+    db_session.flush()
+
+    post = models.Post(
+        title="Post with Tag",
+        slug="public-protected-tag-post",
+        content="Content",
+    )
+    post.tags.append(tag)
+    db_session.add(post)
+    db_session.commit()
+
+    response = client.delete(f"/api/tags/{tag.id}", headers=auth_headers)
+    assert response.status_code == 400
+    assert "referenced by posts" in response.json()["error"]["message"]
+
+
+def test_update_tag_duplicate_name_returns_400(client, auth_headers, db_session):
+    """Test updating a tag to a duplicate name returns 400, not 500."""
+    from app import models
+
+    tag1 = models.Tag(name="pub_tag_a")
+    tag2 = models.Tag(name="pub_tag_b")
+    db_session.add_all([tag1, tag2])
+    db_session.commit()
+
+    response = client.put(
+        f"/api/tags/{tag2.id}",
+        json={"name": "pub_tag_a"},
+        headers=auth_headers,
+    )
+    assert response.status_code == 400
+    assert "already exists" in response.json()["error"]["message"]

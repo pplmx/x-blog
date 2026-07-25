@@ -139,3 +139,32 @@ def test_update_post_with_cover_image(client, auth_headers):
     )
     assert update_response.status_code == 200
     assert update_response.json()["cover_image"] == "https://example.com/new-cover.jpg"
+
+
+def test_delete_post_with_conflicting_data_returns_error_not_500(client, auth_headers, db_session):
+    """Test that post update/delete errors are handled gracefully, not 500."""
+    from app import models
+
+    # Test update with duplicate slug returns 400
+    post1 = models.Post(
+        title="Post A",
+        slug="post-a-slug",
+        content="Content",
+        published=True,
+    )
+    post2 = models.Post(
+        title="Post B",
+        slug="post-b-slug",
+        content="Content",
+        published=True,
+    )
+    db_session.add_all([post1, post2])
+    db_session.commit()
+
+    response = client.put(
+        f"/api/posts/{post2.id}",
+        json={"slug": "post-a-slug"},
+        headers=auth_headers,
+    )
+    assert response.status_code == 400
+    assert "already exists" in response.json()["error"]["message"]
