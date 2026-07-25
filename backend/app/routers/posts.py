@@ -40,7 +40,11 @@ def list_posts(
 
 @router.get("/{post_id}", response_model=schemas.Post)
 def get_post(post_id: str, db: Session = Depends(get_db)):
-    post = crud.get_post(db, int(post_id)) if post_id.isdigit() else crud.get_post_by_slug(db, post_id)
+    post = (
+        crud.get_post(db, int(post_id))
+        if post_id.isdigit() and post_id.isascii()
+        else crud.get_post_by_slug(db, post_id)
+    )
     if not post:
         raise HTTPException(status_code=404, detail="Post not found")
     return post

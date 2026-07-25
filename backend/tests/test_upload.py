@@ -66,3 +66,31 @@ def test_upload_no_file(client):
     """Should return 422 when no file is provided."""
     response = client.post("/api/upload", files={})
     assert response.status_code == 422
+
+
+def test_upload_filename_path_traversal(client):
+    """Should strip path traversal characters from filename extensions."""
+    file_content = b"\x89PNG\r\n\x1a\n" + b"\x00" * 100
+    # Filename with path traversal attempt in the extension
+    response = client.post(
+        "/api/upload",
+        files={"file": ("../../../etc/passwd.png", file_content, "image/png")},
+    )
+    assert response.status_code == 200
+    data = response.json()
+    # The URL should be a safe UUID-based filename, not contain traversal chars
+    assert data["url"].startswith("/static/uploads/")
+    assert ".." not in data["url"]
+    assert "/etc/" not in data["url"]
+
+
+def test_upload_filename_no_extension(client):
+    """Should fall back to content-type-derived extension when filename has no ext."""
+    file_content = b"\x89PNG\r\n\x1a\n" + b"\x00" * 100
+    response = client.post(
+        "/api/upload",
+        files={"file": ("noextension", file_content, "image/png")},
+    )
+    assert response.status_code == 200
+    data = response.json()
+    assert data["url"].endswith(".png")
