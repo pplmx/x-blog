@@ -78,3 +78,15 @@ def test_delete_post(client):
     assert response.status_code == 204
     get_response = client.get(f"/api/posts/{post_id}")
     assert get_response.status_code == 404
+
+
+def test_get_post_unicode_digit_not_treated_as_id(client):
+    """Unicode superscript digits should be treated as slugs, not post IDs.
+
+    str.isdigit() returns True for Unicode digits like '²', but int('²')
+    raises ValueError. The endpoint should not crash on such input.
+    """
+    response = client.get("/api/posts/%C2%B2")  # '²' URL-encoded
+    # Should not be 500 (internal server error); either 404 or treated as slug
+    assert response.status_code != 500
+    assert response.status_code in (200, 404)

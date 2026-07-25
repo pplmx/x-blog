@@ -9,6 +9,17 @@ router = APIRouter(prefix="/api/upload", tags=["upload"])
 ALLOWED_TYPES = {"image/jpeg", "image/png", "image/gif", "image/webp"}
 MAX_SIZE = 5 * 1024 * 1024  # 5MB
 
+# Whitelist of allowed file extensions for uploaded images
+ALLOWED_EXTENSIONS = {"jpg", "jpeg", "png", "gif", "webp"}
+
+# Map content types to file extensions
+ALLOWED_TYPES_MAP = {
+    "image/jpeg": "jpg",
+    "image/png": "png",
+    "image/gif": "gif",
+    "image/webp": "webp",
+}
+
 STATIC_DIR = Path(__file__).parent.parent.parent / "static"
 
 
@@ -21,7 +32,10 @@ async def upload_image(file: UploadFile = File(...)):
     if len(contents) > MAX_SIZE:
         raise HTTPException(400, detail="File too large (max 5MB)")
 
-    ext = file.filename.split(".")[-1] if "." in file.filename else "jpg"
+    # Safely extract file extension — guards against path traversal via filename
+    safe_ext = Path(file.filename or "").suffix.lstrip(".").lower()
+    # Fall back to content-type-derived extension if suffix is missing or unsafe
+    ext = ALLOWED_TYPES_MAP.get(file.content_type, "jpg") if safe_ext not in ALLOWED_EXTENSIONS else safe_ext
     filename = f"{uuid.uuid4()}.{ext}"
 
     now = datetime.now()
