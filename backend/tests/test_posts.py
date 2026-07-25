@@ -99,3 +99,43 @@ def test_get_post_unicode_digit_not_treated_as_id(client):
     # Should not be 500 (internal server error); either 404 or treated as slug
     assert response.status_code != 500
     assert response.status_code in (200, 404)
+
+
+def test_create_post_with_cover_image(client, auth_headers):
+    """Creating a post with cover_image should save it."""
+    response = client.post(
+        "/api/posts",
+        json={
+            "title": "Cover Image API Post",
+            "slug": "cover-image-api-post",
+            "content": "Test content",
+            "published": True,
+            "cover_image": "https://example.com/cover.jpg",
+        },
+        headers=auth_headers,
+    )
+    assert response.status_code == 201
+    assert response.json()["cover_image"] == "https://example.com/cover.jpg"
+
+
+def test_update_post_with_cover_image(client, auth_headers):
+    """Updating a post with cover_image should persist it."""
+    create_response = client.post(
+        "/api/posts",
+        json={
+            "title": "Update Cover Post",
+            "slug": "update-cover-post",
+            "content": "Test content",
+            "published": True,
+        },
+        headers=auth_headers,
+    )
+    post_id = create_response.json()["id"]
+
+    update_response = client.put(
+        f"/api/posts/{post_id}",
+        json={"cover_image": "https://example.com/new-cover.jpg"},
+        headers=auth_headers,
+    )
+    assert update_response.status_code == 200
+    assert update_response.json()["cover_image"] == "https://example.com/new-cover.jpg"

@@ -33,7 +33,10 @@ def create_category(
     existing = crud.get_category_by_name(db, category.name)
     if existing:
         raise HTTPException(status_code=400, detail="Category already exists")
-    return crud.create_category(db, category)
+    try:
+        return crud.create_category(db, category)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
 
 @router.put("/{category_id}", response_model=schemas.Category)
@@ -45,7 +48,10 @@ def update_category(
     _current_user: User = Depends(get_current_admin),
     db: Session = Depends(get_db),
 ):
-    db_category = crud.update_category(db, category_id, category)
+    try:
+        db_category = crud.update_category(db, category_id, category)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
     if not db_category:
         raise HTTPException(status_code=404, detail="Category not found")
     return db_category

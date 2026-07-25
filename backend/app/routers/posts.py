@@ -61,7 +61,10 @@ def create_post(
     existing = crud.get_post_by_slug(db, post.slug)
     if existing:
         raise HTTPException(status_code=400, detail="Slug already exists")
-    return crud.create_post(db, post)
+    try:
+        return crud.create_post(db, post)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
 
 @router.put("/{post_id}", response_model=schemas.Post)
