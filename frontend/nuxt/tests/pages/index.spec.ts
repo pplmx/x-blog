@@ -244,8 +244,9 @@ describe("Index Page", () => {
       expect(wrapper.text()).toContain("2");
     });
 
-    it("calls navigateTo with correct page when clicking a pagination button", async () => {
+    it("calls navigateTo and refresh when clicking a pagination button", async () => {
       const navigateToMock = vi.fn();
+      const refreshMock = vi.fn();
 
       vi.stubGlobal("useRuntimeConfig", () => ({
         public: {
@@ -263,6 +264,79 @@ describe("Index Page", () => {
         if (typeof url === "string" && url.includes("/popular/list")) {
           return {
             data: ref(mockPopularPosts),
+            pending: ref(false),
+            error: ref(null),
+            refresh: vi.fn(),
+          };
+        }
+        return {
+          data: ref(mockPostListResponse),
+          pending: ref(false),
+          error: ref(null),
+          refresh: refreshMock,
+        };
+      }));
+
+      const { default: IndexPage } = await import("@/pages/index.vue");
+
+      const SuspenseWrapper: any = {
+        components: { IndexPage },
+        template:
+          `<Suspense>` +
+          `<template #default><IndexPage /></template>` +
+          `<template #fallback>Loading...</template>` +
+          `</Suspense>`,
+      };
+
+      const wrapper = mount(SuspenseWrapper, {
+        global: {
+          stubs: {
+            NuxtLink: {
+              template: '<a :href="to"><slot/></a>',
+              props: ["to"],
+            },
+            Icon: {
+              template: '<svg class="iconstub" data-icon="icon"></svg>',
+              props: ["icon"],
+            },
+          },
+        },
+      });
+
+      await flushPromises();
+
+      // Find the page 2 button and click it
+      const pageButtons = wrapper.findAll("button").filter((b) => /\d/.test(b.text()));
+      expect(pageButtons.length).toBeGreaterThan(1);
+
+      await pageButtons[1].trigger("click");
+
+      // Verify navigateTo was called with page 2
+      expect(navigateToMock).toHaveBeenCalledWith({ query: { page: 2 } });
+
+      // Verify refresh was called to re-fetch posts for the new page
+      expect(refreshMock).toHaveBeenCalled();
+    });
+  });
+
+  describe("Popular Posts Section Visibility", () => {
+    it("does not render popular posts section when there are no popular posts", async () => {
+      vi.stubGlobal("useRuntimeConfig", () => ({
+        public: {
+          apiUrl: "http://localhost:18888",
+        },
+      }));
+
+      vi.stubGlobal("useRoute", () => reactive({ query: {} }));
+
+      vi.stubGlobal("navigateTo", vi.fn());
+
+      vi.stubGlobal("computed", computed);
+
+      vi.stubGlobal("useFetch", vi.fn((url: string) => {
+        if (typeof url === "string" && url.includes("/popular/list")) {
+          return {
+            data: ref([]),
             pending: ref(false),
             error: ref(null),
             refresh: vi.fn(),
@@ -304,14 +378,9 @@ describe("Index Page", () => {
 
       await flushPromises();
 
-      // Find the page 2 button and click it
-      const pageButtons = wrapper.findAll("button").filter((b) => /\d/.test(b.text()));
-      expect(pageButtons.length).toBeGreaterThan(1);
-
-      await pageButtons[1].trigger("click");
-
-      // Verify navigateTo was called with page 2
-      expect(navigateToMock).toHaveBeenCalledWith({ query: { page: 2 } });
+      // Popular posts section should NOT be rendered when list is empty
+      expect(wrapper.text()).not.toContain("热门文章");
+      expect(wrapper.text()).not.toContain("Popular Post");
     });
   });
 
