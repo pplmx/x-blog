@@ -142,6 +142,228 @@ describe("Post Detail Page", () => {
     vi.restoreAllMocks();
   });
 
+  describe("View tracking", () => {
+    it("calls usePostView (POST to /view endpoint) when post loads", async () => {
+      let viewPostCalled = false;
+      let viewPostUrl = "";
+
+      vi.stubGlobal("useRuntimeConfig", () => ({
+        public: {
+          apiUrl: "http://localhost:18888",
+        },
+      }));
+
+      vi.stubGlobal("useRoute", () => ({
+        params: { slug: "test-article-post" },
+        query: {},
+      }));
+
+      vi.stubGlobal("navigateTo", vi.fn());
+
+      vi.stubGlobal("useFetch", vi.fn((url: string, options?: Record<string, unknown>) => {
+        if (typeof url === "string" && url.includes("/related")) {
+          return {
+            data: ref(mockRelatedPosts),
+            pending: ref(false),
+            error: ref(null),
+            refresh: vi.fn(),
+          };
+        }
+        // Track POST to /view endpoint (usePostView side effect)
+        if (typeof url === "string" && url.includes("/view")) {
+          viewPostCalled = true;
+          viewPostUrl = url;
+          return {
+            data: ref(null),
+            pending: ref(false),
+            error: ref(null),
+            refresh: vi.fn(),
+          };
+        }
+        return {
+          data: ref(mockPost),
+          pending: ref(false),
+          error: ref(null),
+          refresh: vi.fn(),
+        };
+      }));
+
+      const { default: PostPage } = await import("@/pages/posts/[slug].vue");
+
+      const SuspenseWrapper: any = {
+        components: { PostPage },
+        template:
+          `<Suspense>` +
+          `<template #default><PostPage /></template>` +
+          `<template #fallback>Loading...</template>` +
+          `</Suspense>`,
+      };
+
+      const wrapper = mount(SuspenseWrapper, {
+        global: {
+          stubs: {
+            NuxtLink: {
+              template: '<a :href="to"><slot/></a>',
+              props: ["to"],
+            },
+            Icon: {
+              template: '<svg class="iconstub" :data-icon="icon"></svg>',
+              props: ["icon"],
+            },
+          },
+        },
+      });
+
+      await flushPromises();
+
+      expect(viewPostCalled).toBe(true);
+      expect(viewPostUrl).toContain("/view");
+      expect(viewPostUrl).toContain("1");
+    });
+
+    it("does NOT call usePostView when post fails to load (error state)", async () => {
+      let viewPostCalled = false;
+
+      vi.stubGlobal("useRuntimeConfig", () => ({
+        public: {
+          apiUrl: "http://localhost:18888",
+        },
+      }));
+
+      vi.stubGlobal("useRoute", () => ({
+        params: { slug: "nonexistent-post" },
+        query: {},
+      }));
+
+      vi.stubGlobal("navigateTo", vi.fn());
+
+      vi.stubGlobal("useFetch", vi.fn((url: string) => {
+        // Track POST to /view endpoint (usePostView side effect)
+        if (typeof url === "string" && url.includes("/view")) {
+          viewPostCalled = true;
+          return {
+            data: ref(null),
+            pending: ref(false),
+            error: ref(null),
+            refresh: vi.fn(),
+          };
+        }
+        return {
+          data: ref(null),
+          pending: ref(false),
+          error: ref({ message: "Failed to load post" }),
+          refresh: vi.fn(),
+        };
+      }));
+
+      const { default: PostPage } = await import("@/pages/posts/[slug].vue");
+
+      const SuspenseWrapper: any = {
+        components: { PostPage },
+        template:
+          `<Suspense>` +
+          `<template #default><PostPage /></template>` +
+          `<template #fallback>Loading...</template>` +
+          `</Suspense>`,
+      };
+
+      const wrapper = mount(SuspenseWrapper, {
+        global: {
+          stubs: {
+            NuxtLink: {
+              template: '<a :href="to"><slot/></a>',
+              props: ["to"],
+            },
+            Icon: {
+              template: '<svg class="iconstub" :data-icon="icon"></svg>',
+              props: ["icon"],
+            },
+          },
+        },
+      });
+
+      await flushPromises();
+
+      // Post failed to load, so usePostView should NOT have been called
+      expect(viewPostCalled).toBe(false);
+    });
+
+    it("does NOT call usePostView when post is not found (null post)", async () => {
+      let viewPostCalled = false;
+
+      vi.stubGlobal("useRuntimeConfig", () => ({
+        public: {
+          apiUrl: "http://localhost:18888",
+        },
+      }));
+
+      vi.stubGlobal("useRoute", () => ({
+        params: { slug: "nonexistent-post" },
+        query: {},
+      }));
+
+      vi.stubGlobal("navigateTo", vi.fn());
+
+      vi.stubGlobal("useFetch", vi.fn((url: string) => {
+        if (typeof url === "string" && url.includes("/view")) {
+          viewPostCalled = true;
+          return {
+            data: ref(null),
+            pending: ref(false),
+            error: ref(null),
+            refresh: vi.fn(),
+          };
+        }
+        // Return related posts for /related endpoint
+        if (typeof url === "string" && url.includes("/related")) {
+          return {
+            data: ref(mockRelatedPosts),
+            pending: ref(false),
+            error: ref(null),
+            refresh: vi.fn(),
+          };
+        }
+        return {
+          data: ref(null),
+          pending: ref(false),
+          error: ref(null),
+          refresh: vi.fn(),
+        };
+      }));
+
+      const { default: PostPage } = await import("@/pages/posts/[slug].vue");
+
+      const SuspenseWrapper: any = {
+        components: { PostPage },
+        template:
+          `<Suspense>` +
+          `<template #default><PostPage /></template>` +
+          `<template #fallback>Loading...</template>` +
+          `</Suspense>`,
+      };
+
+      const wrapper = mount(SuspenseWrapper, {
+        global: {
+          stubs: {
+            NuxtLink: {
+              template: '<a :href="to"><slot/></a>',
+              props: ["to"],
+            },
+            Icon: {
+              template: '<svg class="iconstub" :data-icon="icon"></svg>',
+              props: ["icon"],
+            },
+          },
+        },
+      });
+
+      await flushPromises();
+
+      // Post is null (not found), so usePostView should NOT have been called
+      expect(viewPostCalled).toBe(false);
+    });
+  });
+
   describe("Loading state", () => {
     it("renders loading skeletons when post is pending", async () => {
       const wrapper = await mountPostPage({ pending: true, post: null });

@@ -243,6 +243,76 @@ describe("Index Page", () => {
       expect(wrapper.text()).toContain("1");
       expect(wrapper.text()).toContain("2");
     });
+
+    it("calls navigateTo with correct page when clicking a pagination button", async () => {
+      const navigateToMock = vi.fn();
+
+      vi.stubGlobal("useRuntimeConfig", () => ({
+        public: {
+          apiUrl: "http://localhost:18888",
+        },
+      }));
+
+      vi.stubGlobal("useRoute", () => reactive({ query: {} }));
+
+      vi.stubGlobal("navigateTo", navigateToMock);
+
+      vi.stubGlobal("computed", computed);
+
+      vi.stubGlobal("useFetch", vi.fn((url: string) => {
+        if (typeof url === "string" && url.includes("/popular/list")) {
+          return {
+            data: ref(mockPopularPosts),
+            pending: ref(false),
+            error: ref(null),
+            refresh: vi.fn(),
+          };
+        }
+        return {
+          data: ref(mockPostListResponse),
+          pending: ref(false),
+          error: ref(null),
+          refresh: vi.fn(),
+        };
+      }));
+
+      const { default: IndexPage } = await import("@/pages/index.vue");
+
+      const SuspenseWrapper: any = {
+        components: { IndexPage },
+        template:
+          `<Suspense>` +
+          `<template #default><IndexPage /></template>` +
+          `<template #fallback>Loading...</template>` +
+          `</Suspense>`,
+      };
+
+      const wrapper = mount(SuspenseWrapper, {
+        global: {
+          stubs: {
+            NuxtLink: {
+              template: '<a :href="to"><slot/></a>',
+              props: ["to"],
+            },
+            Icon: {
+              template: '<svg class="iconstub" data-icon="icon"></svg>',
+              props: ["icon"],
+            },
+          },
+        },
+      });
+
+      await flushPromises();
+
+      // Find the page 2 button and click it
+      const pageButtons = wrapper.findAll("button").filter((b) => /\d/.test(b.text()));
+      expect(pageButtons.length).toBeGreaterThan(1);
+
+      await pageButtons[1].trigger("click");
+
+      // Verify navigateTo was called with page 2
+      expect(navigateToMock).toHaveBeenCalledWith({ query: { page: 2 } });
+    });
   });
 
   describe("Popular Posts", () => {

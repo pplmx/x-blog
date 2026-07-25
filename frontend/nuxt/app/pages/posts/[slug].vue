@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { usePost, usePostView, useRelatedPosts } from '../../../composables/useApi';
 
 const route = useRoute();
 const { data: post, pending, error } = await usePost(route.params.slug as string);

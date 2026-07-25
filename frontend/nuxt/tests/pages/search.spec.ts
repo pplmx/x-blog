@@ -72,6 +72,8 @@ async function mountSearchPage({
   query?: string;
   routeQuery?: Record<string, string>;
 } = {}) {
+  const navigateToMock = vi.fn();
+
   vi.stubGlobal("useRuntimeConfig", () => ({
     public: {
       apiUrl: "http://localhost:18888",
@@ -80,7 +82,7 @@ async function mountSearchPage({
 
   vi.stubGlobal("useRoute", () => reactive({ query: routeQuery }));
 
-  vi.stubGlobal("navigateTo", vi.fn());
+  vi.stubGlobal("navigateTo", navigateToMock);
 
   // The search page uses `computed` without importing it (Nuxt auto-imports it)
   vi.stubGlobal("computed", computed);
@@ -228,6 +230,69 @@ describe("Search Page", () => {
       const buttons = wrapper.findAll("button");
       const pageButtons = buttons.filter((b) => /\d/.test(b.text()));
       expect(pageButtons.length).toBeGreaterThan(0);
+    });
+
+    it("calls navigateTo with correct query when clicking a pagination button", async () => {
+      const navigateToMock = vi.fn();
+
+      vi.stubGlobal("useRuntimeConfig", () => ({
+        public: {
+          apiUrl: "http://localhost:18888",
+        },
+      }));
+
+      vi.stubGlobal("useRoute", () => reactive({ query: { q: "test query" } }));
+
+      vi.stubGlobal("navigateTo", navigateToMock);
+
+      vi.stubGlobal("useFetch", vi.fn(() => ({
+        data: ref(mockSearchResult),
+        pending: ref(false),
+        error: ref(null),
+        refresh: vi.fn(),
+      })));
+
+      const { default: SearchPage } = await import("@/pages/search.vue");
+
+      const SuspenseWrapper: any = {
+        components: { SearchPage },
+        template:
+          `<Suspense>` +
+          `<template #default><SearchPage /></template>` +
+          `<template #fallback>Loading...</template>` +
+          `</Suspense>`,
+      };
+
+      const wrapper = mount(SuspenseWrapper, {
+        global: {
+          stubs: {
+            NuxtLink: {
+              template: '<a :href="to"><slot/></a>',
+              props: ["to"],
+            },
+            Icon: {
+              template: '<svg class="iconstub" :data-icon="icon"></svg>',
+              props: ["icon"],
+            },
+          },
+          mocks: {
+            navigateTo: navigateToMock,
+          },
+        },
+      });
+
+      await flushPromises();
+
+      // Find the page 2 button and click it
+      const pageButtons = wrapper.findAll("button").filter((b) => /\d/.test(b.text()));
+      expect(pageButtons.length).toBeGreaterThan(1);
+
+      await pageButtons[1].trigger("click");
+
+      // Verify navigateTo was called with the search query and page 2
+      expect(navigateToMock).toHaveBeenCalledWith({
+        query: { q: "test query", page: 2 },
+      });
     });
   });
 });
