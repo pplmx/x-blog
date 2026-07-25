@@ -11,6 +11,23 @@ def test_create_category(client):
     assert "id" in data
 
 
+def test_create_category_duplicate(client):
+    client.post(
+        "/api/categories",
+        json={
+            "name": "Tech",
+        },
+    )
+    response = client.post(
+        "/api/categories",
+        json={
+            "name": "Tech",
+        },
+    )
+    assert response.status_code == 400
+    assert response.json()["error"]["code"] == "BAD_REQUEST"
+
+
 def test_list_categories(client):
     client.post(
         "/api/categories",

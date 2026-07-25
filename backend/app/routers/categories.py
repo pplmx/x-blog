@@ -1,8 +1,9 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.orm import Session
 
 from app import crud, schemas
 from app.database import get_db
+from app.limiter import RATE_LIMIT_WRITE, limiter
 
 router = APIRouter(prefix="/api/categories", tags=["categories"])
 
@@ -21,12 +22,19 @@ def get_category(category_id: int, db: Session = Depends(get_db)):
 
 
 @router.post("", response_model=schemas.Category, status_code=status.HTTP_201_CREATED)
-def create_category(category: schemas.CategoryCreate, db: Session = Depends(get_db)):
+@limiter.limit(f"{RATE_LIMIT_WRITE}/minute")
+def create_category(request: Request, category: schemas.CategoryCreate, db: Session = Depends(get_db)):  # noqa: ARG001
+    existing = crud.get_category_by_name(db, category.name)
+    if existing:
+        raise HTTPException(status_code=400, detail="Category already exists")
     return crud.create_category(db, category)
 
 
 @router.put("/{category_id}", response_model=schemas.Category)
-def update_category(category_id: int, category: schemas.CategoryCreate, db: Session = Depends(get_db)):
+@limiter.limit(f"{RATE_LIMIT_WRITE}/minute")
+def update_category(
+    request: Request, category_id: int, category: schemas.CategoryCreate, db: Session = Depends(get_db)
+):  # noqa: ARG001
     db_category = crud.update_category(db, category_id, category)
     if not db_category:
         raise HTTPException(status_code=404, detail="Category not found")
@@ -34,7 +42,8 @@ def update_category(category_id: int, category: schemas.CategoryCreate, db: Sess
 
 
 @router.delete("/{category_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_category(category_id: int, db: Session = Depends(get_db)):
+@limiter.limit(f"{RATE_LIMIT_WRITE}/minute")
+def delete_category(request: Request, category_id: int, db: Session = Depends(get_db)):  # noqa: ARG001
     success = crud.delete_category(db, category_id)
     if not success:
         raise HTTPException(status_code=404, detail="Category not found")

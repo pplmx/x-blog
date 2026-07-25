@@ -118,13 +118,7 @@ def update_post(db: Session, post_id: int, post: schemas.PostUpdate) -> models.P
 
     if "tag_ids" in update_data:
         tag_id_list = update_data.pop("tag_ids")
-        tags = (
-            db.query(models.Tag)
-            .filter(models.Tag.id.in_(tag_id_list))
-            .all()
-            if tag_id_list
-            else []
-        )
+        tags = db.query(models.Tag).filter(models.Tag.id.in_(tag_id_list)).all() if tag_id_list else []
         db_post.tags = tags
 
     for field, value in update_data.items():
@@ -177,10 +171,18 @@ def get_category(db: Session, category_id: int) -> models.Category | None:
     return db.query(models.Category).filter(models.Category.id == category_id).first()
 
 
+def get_category_by_name(db: Session, name: str) -> models.Category | None:
+    return db.query(models.Category).filter(models.Category.name == name).first()
+
+
 def create_category(db: Session, category: schemas.CategoryCreate) -> models.Category:
     db_category = models.Category(name=category.name)
     db.add(db_category)
-    db.commit()
+    try:
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        raise ValueError(f"Category with name '{category.name}' already exists")
     db.refresh(db_category)
     # Clear cache
     clear_categories_cache()
@@ -243,7 +245,11 @@ def get_tag_by_name(db: Session, name: str) -> models.Tag:
 def create_tag(db: Session, tag: schemas.TagCreate) -> models.Tag:
     db_tag = models.Tag(name=tag.name)
     db.add(db_tag)
-    db.commit()
+    try:
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        raise ValueError(f"Tag with name '{tag.name}' already exists")
     db.refresh(db_tag)
     # Clear cache
     clear_tags_cache()
@@ -413,11 +419,7 @@ def search_posts(db: Session, query: str, page: int = 1, limit: int = 10):
 
 def increment_views(db: Session, post_id: int) -> models.Post | None:
     """Increment the view count for a post using atomic SQL update."""
-    stmt = (
-        update(models.Post)
-        .where(models.Post.id == post_id)
-        .values(views=models.Post.views + 1)
-    )
+    stmt = update(models.Post).where(models.Post.id == post_id).values(views=models.Post.views + 1)
     result = db.execute(stmt)
     db.commit()
     if result.rowcount == 0:
@@ -427,11 +429,7 @@ def increment_views(db: Session, post_id: int) -> models.Post | None:
 
 def increment_likes(db: Session, post_id: int) -> models.Post | None:
     """Increment the like count for a post using atomic SQL update."""
-    stmt = (
-        update(models.Post)
-        .where(models.Post.id == post_id)
-        .values(likes=models.Post.likes + 1)
-    )
+    stmt = update(models.Post).where(models.Post.id == post_id).values(likes=models.Post.likes + 1)
     result = db.execute(stmt)
     db.commit()
     if result.rowcount == 0:
