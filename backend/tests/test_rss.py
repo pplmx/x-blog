@@ -13,7 +13,7 @@ def test_rss_feed_returns_xml(client):
     assert "<title>" in content
 
 
-def test_rss_feed_with_posts(client):
+def test_rss_feed_with_posts(client, auth_headers):
     """RSS feed should include published posts."""
     # Create a published post
     client.post(
@@ -25,6 +25,7 @@ def test_rss_feed_with_posts(client):
             "excerpt": "RSS excerpt",
             "published": True,
         },
+        headers=auth_headers,
     )
     response = client.get("/rss/feed.xml")
     assert response.status_code == 200
@@ -33,7 +34,7 @@ def test_rss_feed_with_posts(client):
     assert "rss-test-post" in content
 
 
-def test_rss_feed_full_content_flag(client):
+def test_rss_feed_full_content_flag(client, auth_headers):
     """RSS feed with full=true should include content:encoded."""
     client.post(
         "/api/posts",
@@ -43,6 +44,7 @@ def test_rss_feed_full_content_flag(client):
             "content": "Full post content here",
             "published": True,
         },
+        headers=auth_headers,
     )
     response = client.get("/rss/feed.xml?full=true")
     assert response.status_code == 200
@@ -51,7 +53,7 @@ def test_rss_feed_full_content_flag(client):
     assert "Full post content here" in content
 
 
-def test_rss_feed_excerpt_only_by_default(client):
+def test_rss_feed_excerpt_only_by_default(client, auth_headers):
     """RSS feed by default should use excerpt, not full content."""
     client.post(
         "/api/posts",
@@ -62,6 +64,7 @@ def test_rss_feed_excerpt_only_by_default(client):
             "excerpt": "Short excerpt",
             "published": True,
         },
+        headers=auth_headers,
     )
     response = client.get("/rss/feed.xml")
     assert response.status_code == 200
@@ -82,7 +85,7 @@ def test_atom_feed_returns_xml(client):
     assert "<title>" in content
 
 
-def test_atom_feed_with_posts(client):
+def test_atom_feed_with_posts(client, auth_headers):
     """Atom feed should include published posts."""
     client.post(
         "/api/posts",
@@ -92,6 +95,7 @@ def test_atom_feed_with_posts(client):
             "content": "Atom feed content",
             "published": True,
         },
+        headers=auth_headers,
     )
     response = client.get("/rss/atom.xml")
     assert response.status_code == 200
@@ -122,7 +126,7 @@ def test_sitemap_includes_static_pages(client):
     assert "/search" in content
 
 
-def test_sitemap_includes_posts(client):
+def test_sitemap_includes_posts(client, auth_headers):
     """Sitemap should include published posts."""
     client.post(
         "/api/posts",
@@ -132,6 +136,7 @@ def test_sitemap_includes_posts(client):
             "content": "Sitemap content",
             "published": True,
         },
+        headers=auth_headers,
     )
     response = client.get("/sitemap.xml")
     assert response.status_code == 200
@@ -139,15 +144,17 @@ def test_sitemap_includes_posts(client):
     assert "sitemap-test-post" in content
 
 
-def test_sitemap_includes_categories_and_tags(client):
+def test_sitemap_includes_categories_and_tags(client, auth_headers):
     """Sitemap should include category and tag URLs."""
     cat_resp = client.post(
         "/api/categories",
         json={"name": "Test Category", "slug": "test-category"},
+        headers=auth_headers,
     )
     tag_resp = client.post(
         "/api/tags",
         json={"name": "Test Tag", "slug": "test-tag"},
+        headers=auth_headers,
     )
     assert cat_resp.status_code == 201
     assert tag_resp.status_code == 201

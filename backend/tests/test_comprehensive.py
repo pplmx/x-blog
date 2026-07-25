@@ -2,7 +2,7 @@ from app import models
 
 
 # ============== Pinned Posts Tests ==============
-def test_update_post_pinned_status(client, db_session):
+def test_update_post_pinned_status(client, db_session, auth_headers):
     """Test updating pinned status of a post."""
     post = models.Post(
         title="Test Post",
@@ -17,6 +17,7 @@ def test_update_post_pinned_status(client, db_session):
     response = client.put(
         f"/api/posts/{post.id}",
         json={"pinned": True},
+        headers=auth_headers,
     )
     assert response.status_code == 200
     assert response.json()["pinned"] is True

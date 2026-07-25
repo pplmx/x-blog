@@ -1,7 +1,7 @@
 from app import models
 
 
-def test_pinned_post_creation(client):
+def test_pinned_post_creation(client, auth_headers):
     """Test creating a pinned post."""
     response = client.post(
         "/api/posts",
@@ -12,6 +12,7 @@ def test_pinned_post_creation(client):
             "published": True,
             "pinned": True,
         },
+        headers=auth_headers,
     )
     assert response.status_code == 201
     data = response.json()

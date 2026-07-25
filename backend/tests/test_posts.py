@@ -1,4 +1,4 @@
-def test_create_post(client):
+def test_create_post(client, auth_headers):
     response = client.post(
         "/api/posts",
         json={
@@ -7,6 +7,7 @@ def test_create_post(client):
             "content": "Test content",
             "published": True,
         },
+        headers=auth_headers,
     )
     assert response.status_code == 201
     data = response.json()
@@ -14,7 +15,7 @@ def test_create_post(client):
     assert data["slug"] == "test-post"
 
 
-def test_list_posts(client):
+def test_list_posts(client, auth_headers):
     client.post(
         "/api/posts",
         json={
@@ -23,6 +24,7 @@ def test_list_posts(client):
             "content": "Test content",
             "published": True,
         },
+        headers=auth_headers,
     )
     response = client.get("/api/posts")
     assert response.status_code == 200
@@ -31,7 +33,7 @@ def test_list_posts(client):
     assert data["pagination"]["total"] == 1
 
 
-def test_get_post(client):
+def test_get_post(client, auth_headers):
     create_response = client.post(
         "/api/posts",
         json={
@@ -40,6 +42,7 @@ def test_get_post(client):
             "content": "Test content",
             "published": True,
         },
+        headers=auth_headers,
     )
     post_id = create_response.json()["id"]
     response = client.get(f"/api/posts/{post_id}")
@@ -47,7 +50,7 @@ def test_get_post(client):
     assert response.json()["title"] == "Test Post"
 
 
-def test_update_post(client):
+def test_update_post(client, auth_headers):
     create_response = client.post(
         "/api/posts",
         json={
@@ -56,14 +59,19 @@ def test_update_post(client):
             "content": "Test content",
             "published": True,
         },
+        headers=auth_headers,
     )
     post_id = create_response.json()["id"]
-    response = client.put(f"/api/posts/{post_id}", json={"title": "Updated Title"})
+    response = client.put(
+        f"/api/posts/{post_id}",
+        json={"title": "Updated Title"},
+        headers=auth_headers,
+    )
     assert response.status_code == 200
     assert response.json()["title"] == "Updated Title"
 
 
-def test_delete_post(client):
+def test_delete_post(client, auth_headers):
     create_response = client.post(
         "/api/posts",
         json={
@@ -72,9 +80,10 @@ def test_delete_post(client):
             "content": "Test content",
             "published": True,
         },
+        headers=auth_headers,
     )
     post_id = create_response.json()["id"]
-    response = client.delete(f"/api/posts/{post_id}")
+    response = client.delete(f"/api/posts/{post_id}", headers=auth_headers)
     assert response.status_code == 204
     get_response = client.get(f"/api/posts/{post_id}")
     assert get_response.status_code == 404

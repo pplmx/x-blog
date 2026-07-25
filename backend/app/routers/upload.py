@@ -2,8 +2,9 @@ import uuid
 from datetime import datetime
 from pathlib import Path
 
-from fastapi import APIRouter, File, HTTPException, Request, UploadFile
+from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile
 
+from app.auth import User, get_current_admin
 from app.limiter import RATE_LIMIT_WRITE, limiter
 
 router = APIRouter(prefix="/api/upload", tags=["upload"])
@@ -27,10 +28,13 @@ STATIC_DIR = Path(__file__).parent.parent.parent / "static"
 
 @router.post("")
 @limiter.limit(f"{RATE_LIMIT_WRITE}/minute")
-async def upload_image(request: Request, file: UploadFile = File(...)):  # noqa: ARG001
+async def upload_image(
+    request: Request,  # noqa: ARG001
+    file: UploadFile = File(...),
+    _current_user: User = Depends(get_current_admin),
+):
     if file.content_type not in ALLOWED_TYPES:
         raise HTTPException(400, detail="Unsupported file type")
-
     contents = await file.read()
     if len(contents) > MAX_SIZE:
         raise HTTPException(400, detail="File too large (max 5MB)")

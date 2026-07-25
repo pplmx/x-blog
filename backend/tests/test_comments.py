@@ -2,7 +2,7 @@ import pytest
 
 
 @pytest.fixture(scope="function")
-def post(client):
+def post(client, auth_headers):
     response = client.post(
         "/api/posts",
         json={
@@ -11,6 +11,7 @@ def post(client):
             "content": "Test content",
             "published": True,
         },
+        headers=auth_headers,
     )
     return response.json()
 
@@ -81,7 +82,35 @@ def test_list_comments_pagination(client, post):
     assert data["page"] == 2
 
 
-def test_delete_comment(client, post):
+def test_delete_comment(client, post, auth_headers):
+    create_response = client.post(
+        f"/api/comments/post/{post['id']}",
+        json={
+            "nickname": "Test User",
+            "email": "test@example.com",
+            "content": "Test comment",
+        },
+    )
+    comment_id = create_response.json()["id"]
+    response = client.delete(
+        f"/api/comments/{comment_id}",
+        headers=auth_headers,
+    )
+    assert response.status_code == 204
+    list_response = client.get(f"/api/comments/post/{post['id']}")
+    assert len(list_response.json()["items"]) == 0
+
+
+def test_delete_comment_not_found(client, auth_headers):
+    response = client.delete(
+        "/api/comments/99999",
+        headers=auth_headers,
+    )
+    assert response.status_code == 404
+    assert response.json()["error"]["code"] == "NOT_FOUND"
+
+
+def test_delete_comment_requires_auth(client, post):
     create_response = client.post(
         f"/api/comments/post/{post['id']}",
         json={
@@ -92,15 +121,7 @@ def test_delete_comment(client, post):
     )
     comment_id = create_response.json()["id"]
     response = client.delete(f"/api/comments/{comment_id}")
-    assert response.status_code == 204
-    list_response = client.get(f"/api/comments/post/{post['id']}")
-    assert len(list_response.json()["items"]) == 0
-
-
-def test_delete_comment_not_found(client):
-    response = client.delete("/api/comments/99999")
-    assert response.status_code == 404
-    assert response.json()["error"]["code"] == "NOT_FOUND"
+    assert response.status_code == 401
 
 
 def test_approve_comment(client, post, auth_headers):

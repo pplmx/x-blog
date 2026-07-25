@@ -13,9 +13,9 @@ def test_error_response_format_not_found(client):
     assert "details" in data["error"]
 
 
-def test_error_response_format_validation(client):
+def test_error_response_format_validation(client, auth_headers):
     """Test validation error returns proper format."""
-    response = client.post("/api/posts", json={"invalid": "data"})
+    response = client.post("/api/posts", json={"invalid": "data"}, headers=auth_headers)
 
     assert response.status_code == 422
     data = response.json()
@@ -24,9 +24,9 @@ def test_error_response_format_validation(client):
     assert "errors" in data["error"]["details"]
 
 
-def test_error_response_format_bad_request(client):
+def test_error_response_format_bad_request(client, auth_headers):
     """Test 400 error returns proper format."""
-    response = client.post("/api/posts", json={})
+    response = client.post("/api/posts", json={}, headers=auth_headers)
 
     assert response.status_code == 422
     data = response.json()
@@ -85,7 +85,7 @@ def test_health_endpoints_structure(client):
     assert "database" in data["checks"]
 
 
-def test_error_code_mapping(client):
+def test_error_code_mapping(client, auth_headers):
     """Test error codes are properly mapped."""
     # 404 -> NOT_FOUND
     response = client.get("/api/posts/99999")
@@ -94,7 +94,7 @@ def test_error_code_mapping(client):
     assert data["error"]["code"] == "NOT_FOUND"
 
     # 422 -> VALIDATION_ERROR
-    response = client.post("/api/posts", json={"bad": "data"})
+    response = client.post("/api/posts", json={"bad": "data"}, headers=auth_headers)
     assert response.status_code == 422
     data = response.json()
     assert data["error"]["code"] == "VALIDATION_ERROR"

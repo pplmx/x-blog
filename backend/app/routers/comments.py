@@ -76,7 +76,12 @@ def approve_comment(
 
 @router.delete("/{comment_id}", status_code=204)
 @limiter.limit(f"{RATE_LIMIT_COMMENT}/minute")
-def delete_comment(request: Request, comment_id: int, db: Session = Depends(get_db)):  # noqa: ARG001
+def delete_comment(
+    request: Request,  # noqa: ARG001
+    comment_id: int,
+    _current_user: User = Depends(get_current_admin),
+    db: Session = Depends(get_db),
+):
     success = crud.delete_comment(db, comment_id)
     if not success:
         raise HTTPException(status_code=404, detail="Comment not found")
