@@ -33,8 +33,11 @@ def create_category(request: Request, category: schemas.CategoryCreate, db: Sess
 @router.put("/{category_id}", response_model=schemas.Category)
 @limiter.limit(f"{RATE_LIMIT_WRITE}/minute")
 def update_category(
-    request: Request, category_id: int, category: schemas.CategoryCreate, db: Session = Depends(get_db)
-):  # noqa: ARG001
+    request: Request,  # noqa: ARG001
+    category_id: int,
+    category: schemas.CategoryCreate,
+    db: Session = Depends(get_db),
+):
     db_category = crud.update_category(db, category_id, category)
     if not db_category:
         raise HTTPException(status_code=404, detail="Category not found")
@@ -43,7 +46,11 @@ def update_category(
 
 @router.delete("/{category_id}", status_code=status.HTTP_204_NO_CONTENT)
 @limiter.limit(f"{RATE_LIMIT_WRITE}/minute")
-def delete_category(request: Request, category_id: int, db: Session = Depends(get_db)):  # noqa: ARG001
+def delete_category(
+    request: Request,  # noqa: ARG001
+    category_id: int,
+    db: Session = Depends(get_db),
+):
     success = crud.delete_category(db, category_id)
     if not success:
         raise HTTPException(status_code=404, detail="Category not found")
