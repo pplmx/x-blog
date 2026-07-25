@@ -5,7 +5,7 @@ import pytest
 
 
 @pytest.fixture(scope="function")
-def sample_posts(client):
+def sample_posts(client, auth_headers):
     """Create sample posts for search testing."""
     posts = []
     test_posts = [
@@ -36,7 +36,7 @@ def sample_posts(client):
     ]
 
     for post_data in test_posts:
-        response = client.post("/api/posts", json=post_data)
+        response = client.post("/api/posts", json=post_data, headers=auth_headers)
         if response.status_code == 201:
             posts.append(response.json())
 
@@ -147,16 +147,17 @@ def test_search_special_characters(client, sample_posts):
     assert response.status_code == 200
 
 
-def test_search_unicode(client):
+def test_search_unicode(client, auth_headers):
     """Search with unicode characters works."""
     client.post(
         "/api/posts",
         json={
             "title": "Unicode 测试 🎉",
-            "slug": "unicode-test",
+            "slug": "unicode-test-search",
             "content": "Content 测试",
             "published": True,
         },
+        headers=auth_headers,
     )
     response = client.get("/api/search?q=测试")
     assert response.status_code == 200
@@ -191,7 +192,7 @@ def test_search_results_valid_structure(client, sample_posts):
 # ============ Performance Tests ============
 
 
-def test_search_handles_multiple_results(client):
+def test_search_handles_multiple_results(client, auth_headers):
     """Search handles posts with many matches."""
     # Create posts with the same keyword - all published
     for i in range(10):
@@ -199,10 +200,11 @@ def test_search_handles_multiple_results(client):
             "/api/posts",
             json={
                 "title": f"Python Tutorial Part {i}",
-                "slug": f"python-tutorial-{i}",
+                "slug": f"python-tutorial-search-{i}",
                 "content": "Python programming tutorial content.",
                 "published": True,
             },
+            headers=auth_headers,
         )
 
     # Verify posts were created

@@ -70,9 +70,9 @@ def test_readiness_check_database_error(client):
         assert "error" in data["checks"]["database"]
 
 
-def test_validation_error_format(client):
+def test_validation_error_format(client, auth_headers):
     """Test validation errors return standardized format."""
-    response = client.post("/api/posts", json={"invalid": "data"})
+    response = client.post("/api/posts", json={"invalid": "data"}, headers=auth_headers)
     assert response.status_code == 422
     data = response.json()
     assert "error" in data

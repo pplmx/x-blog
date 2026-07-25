@@ -41,7 +41,10 @@ def export_posts_csv(request: Request, db: Session = Depends(get_db)):  # noqa: 
     return StreamingResponse(
         iter([output.getvalue()]),
         media_type="text/csv",
-        headers={"Content-Disposition": "attachment; filename=posts.csv"},
+        headers={
+            "Content-Disposition": "attachment; filename=posts.csv",
+            "X-Content-Type-Options": "nosniff",
+        },
     )
 
 
@@ -71,5 +74,8 @@ def export_comments_csv(request: Request, db: Session = Depends(get_db)):  # noq
     return StreamingResponse(
         iter([output.getvalue()]),
         media_type="text/csv",
-        headers={"Content-Disposition": "attachment; filename=comments.csv"},
+        headers={
+            "Content-Disposition": "attachment; filename=comments.csv",
+            "X-Content-Type-Options": "nosniff",
+        },
     )

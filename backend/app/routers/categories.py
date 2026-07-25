@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.orm import Session
 
 from app import crud, schemas
+from app.auth import User, get_current_admin
 from app.database import get_db
 from app.limiter import RATE_LIMIT_WRITE, limiter
 
@@ -23,7 +24,12 @@ def get_category(category_id: int, db: Session = Depends(get_db)):
 
 @router.post("", response_model=schemas.Category, status_code=status.HTTP_201_CREATED)
 @limiter.limit(f"{RATE_LIMIT_WRITE}/minute")
-def create_category(request: Request, category: schemas.CategoryCreate, db: Session = Depends(get_db)):  # noqa: ARG001
+def create_category(
+    request: Request,  # noqa: ARG001
+    category: schemas.CategoryCreate,
+    _current_user: User = Depends(get_current_admin),
+    db: Session = Depends(get_db),
+):
     existing = crud.get_category_by_name(db, category.name)
     if existing:
         raise HTTPException(status_code=400, detail="Category already exists")
@@ -36,6 +42,7 @@ def update_category(
     request: Request,  # noqa: ARG001
     category_id: int,
     category: schemas.CategoryCreate,
+    _current_user: User = Depends(get_current_admin),
     db: Session = Depends(get_db),
 ):
     db_category = crud.update_category(db, category_id, category)
@@ -49,6 +56,7 @@ def update_category(
 def delete_category(
     request: Request,  # noqa: ARG001
     category_id: int,
+    _current_user: User = Depends(get_current_admin),
     db: Session = Depends(get_db),
 ):
     success = crud.delete_category(db, category_id)

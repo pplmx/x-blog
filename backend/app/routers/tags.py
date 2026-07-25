@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.orm import Session
 
 from app import crud, schemas
+from app.auth import User, get_current_admin
 from app.database import get_db
 from app.limiter import RATE_LIMIT_WRITE, limiter
 
@@ -23,7 +24,12 @@ def get_tag(tag_id: int, db: Session = Depends(get_db)):
 
 @router.post("", response_model=schemas.Tag, status_code=status.HTTP_201_CREATED)
 @limiter.limit(f"{RATE_LIMIT_WRITE}/minute")
-def create_tag(request: Request, tag: schemas.TagCreate, db: Session = Depends(get_db)):  # noqa: ARG001
+def create_tag(
+    request: Request,  # noqa: ARG001
+    tag: schemas.TagCreate,
+    _current_user: User = Depends(get_current_admin),
+    db: Session = Depends(get_db),
+):
     existing = crud.get_tag_by_name(db, tag.name)
     if existing:
         raise HTTPException(status_code=400, detail="Tag already exists")
@@ -32,7 +38,13 @@ def create_tag(request: Request, tag: schemas.TagCreate, db: Session = Depends(g
 
 @router.put("/{tag_id}", response_model=schemas.Tag)
 @limiter.limit(f"{RATE_LIMIT_WRITE}/minute")
-def update_tag(request: Request, tag_id: int, tag: schemas.TagCreate, db: Session = Depends(get_db)):  # noqa: ARG001
+def update_tag(
+    request: Request,  # noqa: ARG001
+    tag_id: int,
+    tag: schemas.TagCreate,
+    _current_user: User = Depends(get_current_admin),
+    db: Session = Depends(get_db),
+):
     db_tag = crud.update_tag(db, tag_id, tag)
     if not db_tag:
         raise HTTPException(status_code=404, detail="Tag not found")
@@ -41,7 +53,12 @@ def update_tag(request: Request, tag_id: int, tag: schemas.TagCreate, db: Sessio
 
 @router.delete("/{tag_id}", status_code=status.HTTP_204_NO_CONTENT)
 @limiter.limit(f"{RATE_LIMIT_WRITE}/minute")
-def delete_tag(request: Request, tag_id: int, db: Session = Depends(get_db)):  # noqa: ARG001
+def delete_tag(
+    request: Request,  # noqa: ARG001
+    tag_id: int,
+    _current_user: User = Depends(get_current_admin),
+    db: Session = Depends(get_db),
+):
     success = crud.delete_tag(db, tag_id)
     if not success:
         raise HTTPException(status_code=404, detail="Tag not found")
