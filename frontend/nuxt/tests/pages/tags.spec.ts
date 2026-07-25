@@ -229,4 +229,106 @@ describe("Tags Page", () => {
       expect(wrapper.text()).toContain("暂无文章");
     });
   });
+
+  describe("Pagination navigation", () => {
+    it("calls navigateTo with correct query when clicking a pagination button", async () => {
+      const navigateToMock = vi.fn();
+
+      const mockMultiPagePosts = {
+        items: [{
+          id: 1,
+          title: "Tagged Post One",
+          slug: "tagged-post-one",
+          excerpt: "First tagged post excerpt.",
+          published: true,
+          created_at: "2024-01-20T10:00:00Z",
+          views: 100,
+          cover_image: null,
+          category: { id: 1, name: "Tech" },
+          tags: [],
+        }],
+        pagination: {
+          total: 2,
+          page: 1,
+          limit: 10,
+          total_pages: 2,
+        },
+      };
+
+      vi.stubGlobal("useRuntimeConfig", () => ({
+        public: {
+          apiUrl: "http://localhost:18888",
+        },
+      }));
+
+      vi.stubGlobal("useRoute", () => reactive({ query: { tag_id: "1" } }));
+
+      vi.stubGlobal("useFetch", vi.fn((url: string) => {
+        if (url.includes("/api/tags") && !url.includes("/posts")) {
+          return {
+            data: ref(mockTags),
+            pending: ref(false),
+            error: ref(null),
+            refresh: vi.fn(),
+          };
+        }
+        if (url.includes("/api/posts")) {
+          return {
+            data: ref(mockMultiPagePosts),
+            pending: ref(false),
+            error: ref(null),
+            refresh: vi.fn(),
+          };
+        }
+        return {
+          data: ref(null),
+          pending: ref(false),
+          error: ref(null),
+          refresh: vi.fn(),
+        };
+      }));
+
+      const { default: TagsPage } = await import("@/pages/tags.vue");
+
+      const SuspenseWrapper: any = {
+        components: { TagsPage },
+        template:
+          `<Suspense>` +
+          `<template #default><TagsPage /></template>` +
+          `<template #fallback>Loading...</template>` +
+          `</Suspense>`,
+      };
+
+      const wrapper = mount(SuspenseWrapper, {
+        global: {
+          stubs: {
+            NuxtLink: {
+              template: '<a :href="to"><slot/></a>',
+              props: ["to"],
+            },
+            Icon: {
+              template: '<svg class="iconstub" :data-icon="icon"></svg>',
+              props: ["icon"],
+            },
+          },
+          mocks: {
+            navigateTo: navigateToMock,
+          },
+        },
+      });
+
+      await flushPromises();
+
+      // Find the page 2 button and click it
+      const pageButtons = wrapper.findAll("button").filter((b) => /\d/.test(b.text()));
+      expect(pageButtons.length).toBeGreaterThan(1);
+
+      await pageButtons[1].trigger("click");
+
+      // Verify navigateTo was called with tag_id and page 2
+      expect(navigateToMock).toHaveBeenCalledWith({
+        query: { tag_id: "1", page: 2 },
+      });
+    });
+  });
 });

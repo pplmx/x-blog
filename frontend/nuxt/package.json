@@ -26,6 +26,7 @@
     "@vue/test-utils": "^2.4.11",
     "autoprefixer": "^10.5.4",
     "happy-dom": "^20.11.1",
+    "unplugin-auto-import": "^21.0.0",
     "vitest": "^4.1.10"
   }
 }
