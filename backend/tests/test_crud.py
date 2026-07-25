@@ -716,8 +716,8 @@ class TestRelatedPosts:
         # The source post itself should NOT be in the results
         assert source_post.id not in post_ids
 
-class TestPopularPosts:
 
+class TestPopularPosts:
     """Tests for get_popular_posts function."""
 
     def test_get_popular_posts(self, db_session):
