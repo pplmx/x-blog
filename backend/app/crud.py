@@ -194,7 +194,11 @@ def update_category(db: Session, category_id: int, category: schemas.CategoryCre
     if not db_category:
         return None
     db_category.name = category.name
-    db.commit()
+    try:
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        raise ValueError(f"Category with name '{category.name}' already exists")
     db.refresh(db_category)
     # Clear cache
     clear_categories_cache()
@@ -260,7 +264,11 @@ def update_tag(db: Session, tag_id: int, tag: schemas.TagCreate) -> models.Tag:
     db_tag = get_tag(db, tag_id)
     if db_tag:
         db_tag.name = tag.name
-        db.commit()
+        try:
+            db.commit()
+        except IntegrityError:
+            db.rollback()
+            raise ValueError(f"Tag with name '{tag.name}' already exists")
         db.refresh(db_tag)
         # Clear cache
         clear_tags_cache()
