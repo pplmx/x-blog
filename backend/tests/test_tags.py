@@ -10,6 +10,23 @@ def test_create_tag(client):
     assert data["name"] == "Test Tag"
 
 
+def test_create_tag_duplicate(client):
+    client.post(
+        "/api/tags",
+        json={
+            "name": "Test Tag",
+        },
+    )
+    response = client.post(
+        "/api/tags",
+        json={
+            "name": "Test Tag",
+        },
+    )
+    assert response.status_code == 400
+    assert response.json()["error"]["code"] == "BAD_REQUEST"
+
+
 def test_list_tags(client):
     client.post(
         "/api/tags",
