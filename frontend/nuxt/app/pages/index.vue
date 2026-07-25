@@ -1,10 +1,9 @@
 <script setup lang="ts">
-const config = useRuntimeConfig();
-const apiUrl = config.public.apiUrl;
+import { usePosts } from '../../composables/useApi';
 
-const { data: posts, pending, error, refresh } = await useFetch('/api/posts', {
-  baseURL: apiUrl,
-  query: { page: 1, limit: 10 },
+const { data: posts, pending, error, refresh } = await usePosts({
+  page: 1,
+  limit: 10,
 });
 
 const route = useRoute();
