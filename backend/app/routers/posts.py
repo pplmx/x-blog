@@ -76,7 +76,10 @@ def update_post(
     _current_user: User = Depends(get_current_admin),
     db: Session = Depends(get_db),
 ):
-    db_post = crud.update_post(db, post_id, post)
+    try:
+        db_post = crud.update_post(db, post_id, post)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
     if not db_post:
         raise HTTPException(status_code=404, detail="Post not found")
     return db_post
@@ -90,7 +93,10 @@ def delete_post(
     _current_user: User = Depends(get_current_admin),
     db: Session = Depends(get_db),
 ):
-    success = crud.delete_post(db, post_id)
+    try:
+        success = crud.delete_post(db, post_id)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
     if not success:
         raise HTTPException(status_code=404, detail="Post not found")
 

@@ -65,6 +65,9 @@ def delete_category(
     _current_user: User = Depends(get_current_admin),
     db: Session = Depends(get_db),
 ):
-    success = crud.delete_category(db, category_id)
+    try:
+        success = crud.delete_category(db, category_id)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
     if not success:
         raise HTTPException(status_code=404, detail="Category not found")

@@ -121,3 +121,43 @@ def test_update_category_requires_auth(client):
 def test_delete_category_requires_auth(client):
     response = client.delete("/api/categories/999")
     assert response.status_code == 401
+
+
+def test_delete_category_with_posts_returns_400(client, auth_headers, db_session):
+    """Test deleting a category with posts returns 400, not 500."""
+    from app import models
+
+    category = models.Category(name="Protected Public Cat")
+    db_session.add(category)
+    db_session.flush()
+
+    post = models.Post(
+        title="Post with Cat",
+        slug="public-protected-cat-post",
+        content="Content",
+        category_id=category.id,
+    )
+    db_session.add(post)
+    db_session.commit()
+
+    response = client.delete(f"/api/categories/{category.id}", headers=auth_headers)
+    assert response.status_code == 400
+    assert "referenced by posts" in response.json()["error"]["message"]
+
+
+def test_update_category_duplicate_name_returns_400(client, auth_headers, db_session):
+    """Test updating a category to a duplicate name returns 400, not 500."""
+    from app import models
+
+    cat1 = models.Category(name="pub_cat_a")
+    cat2 = models.Category(name="pub_cat_b")
+    db_session.add_all([cat1, cat2])
+    db_session.commit()
+
+    response = client.put(
+        f"/api/categories/{cat2.id}",
+        json={"name": "pub_cat_a"},
+        headers=auth_headers,
+    )
+    assert response.status_code == 400
+    assert "already exists" in response.json()["error"]["message"]

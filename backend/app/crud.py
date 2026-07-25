@@ -94,6 +94,9 @@ def create_post(db: Session, post: schemas.PostCreate) -> models.Post:
     try:
         db.commit()
         db.refresh(db_post)
+    except IntegrityError:
+        db.rollback()
+        raise ValueError(f"Slug '{post.slug}' already exists")
     except Exception:
         db.rollback()
         raise
@@ -128,6 +131,9 @@ def update_post(db: Session, post_id: int, post: schemas.PostUpdate) -> models.P
     try:
         db.commit()
         db.refresh(db_post)
+    except IntegrityError:
+        db.rollback()
+        raise ValueError("Slug or unique constraint already exists")
     except Exception:
         db.rollback()
         raise
@@ -148,7 +154,7 @@ def delete_post(db: Session, post_id: int) -> bool:
         db.commit()
     except IntegrityError:
         db.rollback()
-        raise
+        raise ValueError("Cannot delete post: it has dependent records")
     # Clear cache
     clear_posts_cache()
     return True
