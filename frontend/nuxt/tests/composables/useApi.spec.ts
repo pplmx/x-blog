@@ -134,6 +134,7 @@ describe("usePost", () => {
   it("passes custom options through to useFetch", () => {
     usePost("test-slug", { server: true });
     expect(useFetchCalls[0].options.baseURL).toBe("http://localhost:18888");
+    expect(useFetchCalls[0].options.server).toBe(true);
   });
 
   it("uses the correct baseURL from config for slug", () => {
