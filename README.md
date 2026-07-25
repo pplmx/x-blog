@@ -55,7 +55,7 @@ just install
 
 # Or manually:
 cd backend && uv sync
-cd frontend && pnpm install
+cd frontend/next && pnpm install
 ```
 
 ### Development
@@ -176,20 +176,23 @@ x-blog/
 │   ├── tests/              # pytest tests (346 tests)
 │   └── pyproject.toml      # Python config
 │
-├── frontend/               # Next.js frontend
-│   ├── app/
-│   │   ├── page.tsx        # Home page
-│   │   ├── admin/          # Admin dashboard
-│   │   ├── posts/          # Post pages
-│   │   ├── tags/           # Tags page
-│   │   └── about/          # About page
-│   ├── components/         # React components
-│   │   ├── ui/             # shadcn/ui components
-│   │   └── *.tsx
-│   ├── lib/                # Utilities & API client
-│   ├── types/              # TypeScript types
-│   └── package.json
-│
+├── frontend/
+│   ├── next/               # Next.js app (current production)
+│   │   ├── app/
+│   │   │   ├── page.tsx        # Home page
+│   │   │   ├── admin/          # Admin dashboard
+│   │   │   ├── posts/          # Post pages
+│   │   │   ├── tags/          # Tags page
+│   │   │   └── about/          # About page
+│   │   ├── components/         # React components
+│   │   │   ├── ui/             # shadcn/ui components
+│   │   │   └── *.tsx
+│   │   ├── lib/                # Utilities & API client
+│   │   ├── types/              # TypeScript types
+│   │   ├── package.json
+│   │   └── Dockerfile
+│   └── nuxt/               # Nuxt alternative (parallel dev)
+│       └── app/
 ├── docs/                   # Documentation
 ├── justfile                # Task runner (recommended)
 └── package.json            # Root config (for pnpm workspaces)

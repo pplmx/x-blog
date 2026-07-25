@@ -32,10 +32,10 @@ class StructuredLogAdapter(logging.LoggerAdapter):
     """Custom logger adapter for structured logging."""
 
     def process(self, msg, kwargs):
-        # Extract extra kwargs and merge with adapter extra
-        extra = kwargs.pop("extra", {})
-        extra.update(self.extra)
-        kwargs["extra"] = extra
+        # Merge adapter extra with caller's extra (caller takes priority)
+        extra = self.extra or {}
+        caller_extra = kwargs.pop("extra", {})
+        kwargs["extra"] = {**extra, **caller_extra}
         return msg, kwargs
 
 

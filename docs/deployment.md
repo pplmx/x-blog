@@ -42,7 +42,7 @@ uv sync
 uv run uvicorn app.main:app --reload --port 8000
 
 # 终端 2 - 前端
-cd frontend
+cd frontend/next
 pnpm install
 pnpm dev
 ```
@@ -59,7 +59,7 @@ cp backend/.env.example backend/.env
 # 编辑 backend/.env，设置 JWT_SECRET_KEY
 
 # 前端配置 (可选)
-cp frontend/.env.example frontend/.env.local
+cp frontend/next/.env.example frontend/next/.env.local
 ```
 
 ### 2. 一键启动
@@ -99,9 +99,9 @@ uv run uvicorn app.main:app --host 0.0.0.0 --port 8000
 
 ```bash
 # 创建环境变量文件
-echo "NEXT_PUBLIC_API_URL=http://<后端IP>:8000" > frontend/.env.local
+echo "NEXT_PUBLIC_API_URL=http://<后端IP>:8000" > frontend/next/.env.local
 
-cd frontend
+cd frontend/next
 pnpm install
 pnpm dev
 ```
@@ -131,9 +131,9 @@ x-blog/
 │   │   ├── models/   # 数据模型
 │   │   └── main.py   # 入口
 │   └── pyproject.toml
-├── frontend/          # Next.js 前端
-│   ├── app/          # App Router 页面
-│   ├── components/   # 组件
+├── frontend/          # 前端 (Next.js + Nuxt 并行开发)
+│   ├── next/          # Next.js 应用
+│   ├── nuxt/          # Nuxt 替代方案
 │   └── package.json
 ├── docker-compose.yml
 ├── justfile                # 任务脚本

@@ -22,7 +22,7 @@ interface FetchOptions extends RequestInit {
   retries?: number;
 }
 
-async function fetchWithTimeout(url: string, options: FetchOptions = {}): Promise<Response> {
+export async function fetchWithTimeout(url: string, options: FetchOptions = {}): Promise<Response> {
   const { timeout = REQUEST_TIMEOUT, retries = MAX_RETRIES, ...fetchOptions } = options;
 
   const controller = new AbortController();

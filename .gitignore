@@ -29,8 +29,9 @@ pnpm-debug.log*
 *.tsbuildinfo
 
 # Frontend specific
-frontend/.next/
-frontend/coverage/
+frontend/next/.next/
+frontend/nuxt/.output/
+frontend/nuxt/.nuxt/
 frontend/node_modules/
 
 # Environment

@@ -308,13 +308,12 @@ class TestUpdatePost:
         db_session.add(post)
         db_session.commit()
 
-        # PostUpdate uses tag_ids (list of ints), not tags (list of strings)
         update_data = schemas.PostUpdate(tag_ids=[tag1.id, tag2.id])
         with patch("app.crud.clear_posts_cache"), patch("app.crud.clear_tags_cache"):
             result = crud.update_post(db_session, post.id, update_data)
 
-        # Note: Current implementation doesn't process tag_ids, but schema accepts it
         assert result is not None
+        assert len(result.tags) == 2
 
     def test_update_post_with_category(self, db_session):
         """Test update_post with category change."""
@@ -663,8 +662,62 @@ class TestRelatedPosts:
         posts = crud.get_related_posts(db_session, source_post.id)
         assert isinstance(posts, list)
 
+    def test_get_related_posts_with_tags_and_category(self, db_session):
+        """Test get_related_posts with tags and category priority branch."""
+        category = models.Category(name="Tag Related Category")
+        db_session.add(category)
+        db_session.flush()
+
+        tag1 = models.Tag(name="related-tag-1")
+        tag2 = models.Tag(name="related-tag-2")
+        db_session.add_all([tag1, tag2])
+        db_session.flush()
+
+        # Source post with tags and category
+        source_post = models.Post(
+            title="Source Post With Tags",
+            slug="source-with-tags",
+            content="Source content",
+            published=True,
+            category_id=category.id,
+        )
+        source_post.tags.extend([tag1, tag2])
+        db_session.add(source_post)
+        db_session.commit()
+
+        # Related post in same category with shared tag
+        related_post = models.Post(
+            title="Related By Tags",
+            slug="related-by-tags",
+            content="Related content",
+            published=True,
+            category_id=category.id,
+        )
+        related_post.tags.append(tag1)
+        db_session.add(related_post)
+        db_session.commit()
+
+        # Unrelated post (different category, no shared tags)
+        other_post = models.Post(
+            title="Unrelated Post",
+            slug="unrelated-post",
+            content="Other content",
+            published=True,
+        )
+        db_session.add(other_post)
+        db_session.commit()
+
+        posts = crud.get_related_posts(db_session, source_post.id, limit=5)
+        assert isinstance(posts, list)
+        assert len(posts) >= 1
+        # The related post should be in the results
+        post_ids = [p.id for p in posts]
+        assert related_post.id in post_ids
+        # The source post itself should NOT be in the results
+        assert source_post.id not in post_ids
 
 class TestPopularPosts:
+
     """Tests for get_popular_posts function."""
 
     def test_get_popular_posts(self, db_session):
@@ -771,3 +824,185 @@ class TestIncrementViewsAndLikes:
         result = crud.increment_likes(db_session, post.id)
         assert result is not None
         assert result.likes == 6
+
+
+class TestDeletePostForeignKey:
+    """Tests for delete_post with foreign key constraints."""
+
+    def test_delete_post_with_comments(self, db_session):
+        """Test delete_post successfully deletes post with associated comments (cascade)."""
+        post = models.Post(title="Cascade Delete Post", slug="cascade-delete-post", content="Content")
+        db_session.add(post)
+        db_session.flush()
+
+        comment = models.Comment(
+            post_id=post.id,
+            nickname="Commenter",
+            email="c@test.com",
+            content="A comment",
+        )
+        db_session.add(comment)
+        db_session.commit()
+        post_id = post.id
+
+        with patch("app.crud.clear_posts_cache"):
+            result = crud.delete_post(db_session, post_id)
+
+        assert result is True
+        # Comments should be cascade-deleted
+        deleted_comment = db_session.get(models.Comment, comment.id)
+        assert deleted_comment is None
+
+    def test_delete_post_not_found(self, db_session):
+        """Test delete_post returns False for non-existent post."""
+        result = crud.delete_post(db_session, 99999)
+        assert result is False
+
+
+class TestDeleteCategoryForeignKey:
+    """Tests for delete_category with foreign key constraints."""
+
+    def test_delete_category_with_posts_raises_error(self, db_session):
+        """Test delete_category raises ValueError when category has posts."""
+        category = models.Category(name="Protected Category")
+        db_session.add(category)
+        db_session.flush()
+
+        post = models.Post(
+            title="Post with Category",
+            slug="post-with-category",
+            content="Content",
+            category_id=category.id,
+        )
+        db_session.add(post)
+        db_session.commit()
+
+        with pytest.raises(ValueError, match="posts"):
+            crud.delete_category(db_session, category.id)
+
+    def test_delete_category_without_posts(self, db_session):
+        """Test delete_category succeeds when category has no posts."""
+        category = models.Category(name="Empty Category")
+        db_session.add(category)
+        db_session.commit()
+        cat_id = category.id
+
+        with patch("app.crud.clear_categories_cache"):
+            result = crud.delete_category(db_session, cat_id)
+
+        assert result is True
+        assert crud.get_category(db_session, cat_id) is None
+
+
+class TestDeleteTagForeignKey:
+    """Tests for delete_tag with foreign key constraints."""
+
+    def test_delete_tag_with_posts_raises_error(self, db_session):
+        """Test delete_tag raises ValueError when tag is used in posts."""
+        tag = models.Tag(name="Protected Tag")
+        db_session.add(tag)
+        db_session.flush()
+
+        post = models.Post(
+            title="Post with Tag",
+            slug="post-with-tag",
+            content="Content",
+        )
+        post.tags.append(tag)
+        db_session.add(post)
+        db_session.commit()
+
+        with pytest.raises(ValueError, match="posts"):
+            crud.delete_tag(db_session, tag.id)
+
+    def test_delete_tag_without_posts(self, db_session):
+        """Test delete_tag succeeds when tag has no posts."""
+        tag = models.Tag(name="Unused Tag")
+        db_session.add(tag)
+        db_session.commit()
+        tag_id = tag.id
+
+        with patch("app.crud.clear_tags_cache"):
+            result = crud.delete_tag(db_session, tag_id)
+
+        assert result is True
+        assert crud.get_tag(db_session, tag_id) is None
+
+
+class TestUpdatePostTagIds:
+    """Tests for update_post with tag_ids field."""
+
+    def test_update_post_with_new_tag_ids(self, db_session):
+        """Test update_post with tag_ids assigns tags to post."""
+        tag1 = models.Tag(name="updated-tag-1")
+        tag2 = models.Tag(name="updated-tag-2")
+        db_session.add_all([tag1, tag2])
+        db_session.commit()
+
+        post = models.Post(
+            title="Tag IDs Update Test",
+            slug="tag-ids-update-test",
+            content="Content",
+        )
+        db_session.add(post)
+        db_session.commit()
+
+        update_data = schemas.PostUpdate(tag_ids=[tag1.id, tag2.id])
+        with patch("app.crud.clear_posts_cache"), patch("app.crud.clear_tags_cache"):
+            result = crud.update_post(db_session, post.id, update_data)
+
+        assert result is not None
+        assert len(result.tags) == 2
+        tag_ids = [t.id for t in result.tags]
+        assert tag1.id in tag_ids
+        assert tag2.id in tag_ids
+
+    def test_update_post_replace_tag_ids(self, db_session):
+        """Test update_post with tag_ids replaces existing tags."""
+        old_tag = models.Tag(name="old-tag")
+        new_tag = models.Tag(name="new-tag")
+        db_session.add_all([old_tag, new_tag])
+        db_session.commit()
+
+        post = models.Post(
+            title="Replace Tags Test",
+            slug="replace-tags-test",
+            content="Content",
+        )
+        post.tags.append(old_tag)
+        db_session.add(post)
+        db_session.commit()
+
+        assert len(post.tags) == 1
+
+        update_data = schemas.PostUpdate(tag_ids=[new_tag.id])
+        with patch("app.crud.clear_posts_cache"), patch("app.crud.clear_tags_cache"):
+            result = crud.update_post(db_session, post.id, update_data)
+
+        assert result is not None
+        assert len(result.tags) == 1
+        assert result.tags[0].id == new_tag.id
+
+    def test_update_post_clear_tag_ids(self, db_session):
+        """Test update_post with empty tag_ids removes all tags."""
+        tag1 = models.Tag(name="clear-tag-1")
+        db_session.add(tag1)
+        db_session.commit()
+
+        post = models.Post(
+            title="Clear Tags Test",
+            slug="clear-tags-test",
+            content="Content",
+        )
+        post.tags.append(tag1)
+        db_session.add(post)
+        db_session.commit()
+
+        assert len(post.tags) == 1
+
+        update_data = schemas.PostUpdate(tag_ids=[])
+        with patch("app.crud.clear_posts_cache"), patch("app.crud.clear_tags_cache"):
+            result = crud.update_post(db_session, post.id, update_data)
+
+        assert result is not None
+        assert len(result.tags) == 0

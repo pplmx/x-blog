@@ -3,7 +3,7 @@
 # Install all dependencies and git hooks
 install:
     cd backend && uv sync
-    cd frontend && pnpm install
+    cd frontend/next && pnpm install
 
 # Install git hooks
 hooks:
@@ -28,7 +28,7 @@ dev:
     @echo ""
     @echo "或使用 VS Code / IntelliJ 的 Run Dashboard"
     cd backend && uv run uvicorn app.main:app --reload --host 0.0.0.0 --port 8000 &
-    cd frontend && pnpm dev
+    cd frontend/next && pnpm dev
 
 # Run backend only
 backend:
@@ -36,31 +36,31 @@ backend:
 
 # Run frontend only
 frontend:
-    cd frontend && pnpm dev
+    cd frontend/next && pnpm dev
 
 # Lint code
 lint:
     cd backend && uvx ruff check . --fix
-    cd frontend && pnpm biome check --write
+    cd frontend/next && pnpm biome check --write
     rumdl fmt
 
 # Format code
 format:
     cd backend && uvx ruff format .
-    cd frontend && pnpm biome format --write
+    cd frontend/next && pnpm biome format --write
 
 # Format check (CI style)
 fmt-check:
     cd backend && uvx ruff format --check .
-    cd frontend && pnpm biome ci
+    cd frontend/next && pnpm biome ci
     rumdl fmt
 
 # Auto-fix issues
 fix:
     cd backend && uvx ruff check . --fix
     cd backend && uvx ruff format .
-    cd frontend && pnpm biome check --write
-    cd frontend && pnpm biome format --write
+    cd frontend/next && pnpm biome check --write
+    cd frontend/next && pnpm biome format --write
     rumdl fmt
 
 # CI: run all checks
@@ -79,16 +79,16 @@ test-backend-seq:
 
 # Run frontend tests
 test-frontend:
-    cd frontend && pnpm test
+    cd frontend/next && pnpm test
 
 # Run frontend tests with coverage
 test-frontend-coverage:
-    cd frontend && pnpm test:coverage
+    cd frontend/next && pnpm test:coverage
 
 # Run e2e tests (requires just dev running in separate terminals)
 # Or use: just test-e2e for self-contained mode
 test-e2e:
-    cd frontend && pnpm test:e2e
+    cd frontend/next && pnpm test:e2e
 
 # Run e2e tests against live dev servers (auto-starts backend + frontend)
 e2e:
@@ -96,21 +96,21 @@ e2e:
     cd backend && uv run uvicorn app.main:app --host 0.0.0.0 --port 8000 &
     @sleep 3 && curl -sf http://localhost:8000/health > /dev/null || (echo "Backend failed to start" && exit 1)
     @echo "Starting frontend..."
-    cd frontend && pnpm dev &
+    cd frontend/next && pnpm dev &
     @sleep 5 && curl -sf http://localhost:3000 > /dev/null || (echo "Frontend failed to start" && exit 1)
     @echo "Running e2e tests..."
-    cd frontend && pnpm playwright test
+    cd frontend/next && pnpm playwright test
     @echo "Stopping services..."
     @pkill -f "uvicorn app.main:app" 2>/dev/null; pkill -f "next dev" 2>/dev/null; echo "done"
 
 # Clean generated files
 clean:
     rm -f backend/*.db
-    rm -rf frontend/.next
+    rm -rf frontend/next/.next
     rm -rf backend/.pytest_cache
     rm -rf .ruff_cache backend/.ruff_cache
     rm -rf frontend/node_modules/.vite
-    rm -rf frontend/coverage
+    rm -rf frontend/next/coverage
 
 # Lint and format markdown
 rumdl:
