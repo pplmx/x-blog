@@ -55,7 +55,10 @@ def create_comment(
     db: Session = Depends(get_db),
 ):
     ip_address = request.client.host if request.client else "unknown"
-    return crud.create_comment(db, post_id, comment, ip_address)
+    try:
+        return crud.create_comment(db, post_id, comment, ip_address)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
 
 @router.patch("/{comment_id}/approve", response_model=schemas.Comment)
