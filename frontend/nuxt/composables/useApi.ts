@@ -42,6 +42,12 @@ export interface Tag {
   name: string;
 }
 
+export interface Post extends PostList {
+  content: string;
+  likes: number;
+  updated_at: string;
+}
+
 /**
  * Core fetch helper that targets the backend API.
  * Uses Nuxt's useFetch with the configured API base URL.
@@ -92,4 +98,35 @@ export async function useCategories() {
  */
 export async function useTags() {
   return useApi<Tag[]>('/api/tags');
+}
+
+/**
+ * Fetch a single post by slug or numeric ID.
+ * Uses the backend's /api/posts/{slug_or_id} endpoint which accepts
+ * either a slug string or a numeric ID.
+ */
+export async function usePost(
+  slugOrId: string | number,
+  options: Parameters<typeof useFetch>[1] = {},
+) {
+  return useApi<Post>(`/api/posts/${slugOrId}`, options);
+}
+
+/**
+ * Search posts by keyword.
+ * Uses the backend's /api/search endpoint.
+ * Returns the same shape as PostListResponse.
+ */
+export async function useSearch(
+  query: string,
+  page: number = 1,
+  limit: number = 10,
+) {
+  const params = new URLSearchParams();
+  params.set('q', query);
+  params.set('page', String(page));
+  params.set('limit', String(limit));
+
+  const url = `/api/search?${params.toString()}`;
+  return useApi<PostListResponse>(url);
 }

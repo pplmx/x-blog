@@ -1,0 +1,172 @@
+/**
+ * API composable tests
+ * Tests useApi, usePosts, useCategories, useTags composables.
+ * Mocks Nuxt's useFetch and useRuntimeConfig to verify URL construction,
+ * base URL configuration, and query parameter building.
+ */
+import { describe, it, expect, vi, beforeEach, afterEach, type Mock } from "vitest";
+
+import { useApi, usePosts, useCategories, useTags, usePost, useSearch } from "../../composables/useApi";
+
+// Capture what useFetch is called with
+let useFetchCalls: Array<{
+  url: string;
+  options: Record<string, unknown>;
+}>;
+
+beforeEach(() => {
+  useFetchCalls = [];
+
+  vi.stubGlobal("useRuntimeConfig", () => ({
+    public: {
+      apiUrl: "http://localhost:18888",
+    },
+  }));
+
+  vi.stubGlobal("useFetch", ((url: string, options: Record<string, unknown> = {}) => {
+    useFetchCalls.push({ url, options });
+    // Return a mock ref-like object with the resolved URL for test assertions
+    return {
+      url,
+      options,
+      pending: false,
+      error: null,
+      data: null,
+      refresh: vi.fn(),
+    };
+  }) as Mock);
+});
+
+afterEach(() => {
+  vi.unstubAllGlobals();
+});
+
+describe("useApi", () => {
+  it("passes the baseURL from runtime config", () => {
+    useApi("/api/posts");
+    expect(useFetchCalls[0].options.baseURL).toBe("http://localhost:18888");
+  });
+
+  it("passes custom options through to useFetch", () => {
+    useApi("/api/posts", { query: { page: 2 } });
+    expect(useFetchCalls[0].options.query).toEqual({ page: 2 });
+    expect(useFetchCalls[0].options.baseURL).toBe("http://localhost:18888");
+  });
+
+  it("passes the url through unchanged", () => {
+    useApi("/api/categories");
+    expect(useFetchCalls[0].url).toBe("/api/categories");
+  });
+});
+
+describe("usePosts", () => {
+  it("fetches the posts endpoint with no filters", () => {
+    usePosts();
+    expect(useFetchCalls[0].url).toBe("/api/posts");
+    expect(useFetchCalls[0].options.baseURL).toBe("http://localhost:18888");
+  });
+
+  it("fetches the posts endpoint with empty filters object", () => {
+    usePosts({});
+    expect(useFetchCalls[0].url).toBe("/api/posts");
+  });
+
+  it("appends category_id to the query string", () => {
+    usePosts({ category_id: 5 });
+    expect(useFetchCalls[0].url).toBe("/api/posts?category_id=5");
+  });
+
+  it("appends tag_id to the query string", () => {
+    usePosts({ tag_id: 3 });
+    expect(useFetchCalls[0].url).toContain("tag_id=3");
+  });
+
+  it("appends page and limit to the query string", () => {
+    usePosts({ page: 2, limit: 10 });
+    expect(useFetchCalls[0].url).toContain("page=2");
+    expect(useFetchCalls[0].url).toContain("limit=10");
+  });
+
+  it("combines multiple filters in the query string", () => {
+    usePosts({ category_id: 1, tag_id: 2, page: 3, limit: 5 });
+    const url = useFetchCalls[0].url;
+    expect(url).toContain("category_id=1");
+    expect(url).toContain("tag_id=2");
+    expect(url).toContain("page=3");
+    expect(url).toContain("limit=5");
+  });
+
+  it("uses the correct baseURL from config", () => {
+    usePosts({ page: 1 });
+    expect(useFetchCalls[0].options.baseURL).toBe("http://localhost:18888");
+  });
+});
+
+describe("useCategories", () => {
+  it("fetches the categories endpoint", () => {
+    useCategories();
+    expect(useFetchCalls[0].url).toBe("/api/categories");
+    expect(useFetchCalls[0].options.baseURL).toBe("http://localhost:18888");
+  });
+});
+
+describe("useTags", () => {
+  it("fetches the tags endpoint", () => {
+    useTags();
+    expect(useFetchCalls[0].url).toBe("/api/tags");
+    expect(useFetchCalls[0].options.baseURL).toBe("http://localhost:18888");
+  });
+});
+
+describe("usePost", () => {
+  it("fetches a post by slug", () => {
+    usePost("my-first-post");
+    expect(useFetchCalls[0].url).toBe("/api/posts/my-first-post");
+    expect(useFetchCalls[0].options.baseURL).toBe("http://localhost:18888");
+  });
+
+  it("fetches a post by numeric ID", () => {
+    usePost(42);
+    expect(useFetchCalls[0].url).toBe("/api/posts/42");
+    expect(useFetchCalls[0].options.baseURL).toBe("http://localhost:18888");
+  });
+
+  it("passes custom options through to useFetch", () => {
+    usePost("test-slug", { server: true });
+    expect(useFetchCalls[0].options.baseURL).toBe("http://localhost:18888");
+  });
+
+  it("uses the correct baseURL from config for slug", () => {
+    usePost("hello-world");
+    expect(useFetchCalls[0].options.baseURL).toBe("http://localhost:18888");
+  });
+});
+
+describe("useSearch", () => {
+  it("fetches the search endpoint with a query", () => {
+    useSearch("test query");
+    expect(useFetchCalls[0].url).toContain("/api/search");
+    expect(useFetchCalls[0].url).toContain("q=test+query");
+    expect(useFetchCalls[0].options.baseURL).toBe("http://localhost:18888");
+  });
+
+  it("includes page and limit in the query string", () => {
+    useSearch("hello", 2, 5);
+    const url = useFetchCalls[0].url;
+    expect(url).toContain("q=hello");
+    expect(url).toContain("page=2");
+    expect(url).toContain("limit=5");
+  });
+
+  it("uses default page and limit when not specified", () => {
+    useSearch("test");
+    const url = useFetchCalls[0].url;
+    expect(url).toContain("page=1");
+    expect(url).toContain("limit=10");
+  });
+
+  it("handles multi-word queries with special characters", () => {
+    useSearch("hello world & test");
+    expect(useFetchCalls[0].url).toContain("q=hello+world+%26+test");
+  });
+});

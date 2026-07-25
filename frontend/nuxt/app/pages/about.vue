@@ -86,7 +86,7 @@
 
 <script setup lang="ts">
 const techStack = [
-  { icon: "lucide:globe", name: "Next.js", desc: "前端框架", color: "from-black to-gray-800" },
+  { icon: "lucide:globe", name: "Nuxt", desc: "前端框架", color: "from-black to-gray-800" },
   { icon: "lucide:code-2", name: "FastAPI", desc: "后端框架", color: "from-green-500 to-green-700" },
   { icon: "lucide:database", name: "SQLAlchemy", desc: "ORM", color: "from-orange-500 to-red-500" },
   { icon: "lucide:sparkles", name: "TypeScript", desc: "语言", color: "from-blue-500 to-blue-700" },

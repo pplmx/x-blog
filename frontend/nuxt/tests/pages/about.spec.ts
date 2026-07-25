@@ -49,7 +49,7 @@ describe("About Page", () => {
     it("renders all tech stack items", () => {
       const wrapper = mountAboutPage();
       const text = wrapper.text();
-      expect(text).toContain("Next.js");
+      expect(text).toContain("Nuxt");
       expect(text).toContain("FastAPI");
       expect(text).toContain("SQLAlchemy");
       expect(text).toContain("TypeScript");
