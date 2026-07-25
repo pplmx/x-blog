@@ -71,10 +71,10 @@ class TestCreateAdmin:
             patch("app.init_admin.SessionLocal", mock_session_local),
             patch("app.init_admin.Base.metadata.create_all"),
         ):
-            try:
+            from contextlib import suppress
+
+            with suppress(Exception):
                 create_admin()
-            except Exception:
-                pass
 
         # Verify db was closed despite error
         mock_db.close.assert_called_once()

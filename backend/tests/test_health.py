@@ -52,8 +52,9 @@ def test_cache_stats(client):
 
 def test_readiness_check_database_error(client):
     """Test readiness check returns not_ready when database is unavailable."""
+    from unittest.mock import MagicMock, patch
+
     from app.routers import health
-    from unittest.mock import patch, MagicMock
 
     mock_conn = MagicMock()
     mock_conn.execute.side_effect = Exception("Database connection failed")

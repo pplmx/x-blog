@@ -93,23 +93,11 @@ class TestRequestLoggingMiddleware:
     @pytest.mark.asyncio
     async def test_dispatch_logs_request_and_response(self):
         """Test middleware logs request and response."""
-        from fastapi import Request
         from starlette.responses import JSONResponse
 
         async def app(scope, receive, send):
             response = JSONResponse({"ok": True})
             await response(scope, receive, send)
-
-        from starlette.types import Scope
-
-        scope: Scope = {
-            "type": "http",
-            "method": "GET",
-            "path": "/test",
-            "headers": [],
-            "query_string": b"",
-            "client": ("127.0.0.1", 12345),
-        }
 
         # Verify middleware can be instantiated
         middleware = RequestLoggingMiddleware(app)  # type: ignore[arg-type]
