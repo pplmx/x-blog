@@ -215,19 +215,36 @@ export function PostForm({
       </div>
 
       {/* 发布选项 */}
-      <div className="bg-gradient-to-br from-gray-50 dark:from-gray-800/50 to-white dark:to-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl p-5">
-        <label className="flex items-center gap-3 cursor-pointer group">
+      <div className="bg-gradient-to-br from-gray-50 dark:from-gray-800/50 to-white dark:to-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl p-5 space-y-4">
+        <div className="flex items-start gap-3">
           <input
             type="checkbox"
             id="published"
             checked={formData.published}
             onChange={(e) => setFormData({ ...formData, published: e.target.checked })}
-            className="w-5 h-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+            className="w-5 h-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500 mt-0.5"
           />
-          <span className="text-sm font-medium text-gray-700 dark:text-gray-300 group-hover:text-blue-600 transition-colors">
-            {formData.published ? '✅ 文章已发布' : '📝 保存为草稿'}
-          </span>
-        </label>
+          <label htmlFor="published" className="cursor-pointer">
+            <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+              {formData.published ? '✅ 文章已发布' : '📝 保存为草稿'}
+            </span>
+          </label>
+        </div>
+
+        <div className="flex items-start gap-3">
+          <input
+            type="checkbox"
+            id="pinned"
+            checked={formData.pinned ?? false}
+            onChange={(e) => setFormData({ ...formData, pinned: e.target.checked })}
+            className="w-5 h-5 rounded border-gray-300 text-amber-600 focus:ring-amber-500 mt-0.5"
+          />
+          <label htmlFor="pinned" className="cursor-pointer">
+            <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+              {formData.pinned ? '📌 已置顶' : '📌 置顶文章'}
+            </span>
+          </label>
+        </div>
       </div>
 
       {/* 提交按钮 */}

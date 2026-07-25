@@ -15,9 +15,12 @@ export interface Post {
   content: string;
   excerpt: string | null;
   published: boolean;
+  pinned: boolean;
+  cover_image: string | null;
+  views: number;
+  likes: number;
   created_at: string;
   updated_at: string;
-  views: number;
   category_id: number | null;
   category: Category | null;
   tags: Tag[];
@@ -29,8 +32,10 @@ export interface PostList {
   slug: string;
   excerpt: string | null;
   published: boolean;
+  pinned: boolean;
   created_at: string;
   views: number;
+  likes: number;
   cover_image: string | null;
   category: Category | null;
   tags: Tag[];

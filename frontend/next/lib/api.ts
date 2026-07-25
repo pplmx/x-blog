@@ -217,6 +217,8 @@ export interface AdminPost {
   content: string;
   excerpt: string;
   published: boolean;
+  pinned: boolean;
+  cover_image: string | null;
   category: string | null;
   tags: string[];
   created_at: string;
@@ -230,9 +232,10 @@ export interface AdminPostDetail {
   content: string;
   excerpt: string;
   published: boolean;
+  pinned: boolean;
+  cover_image: string | null;
   category_id: number | null;
   tag_ids: number[];
-  cover_image: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -243,6 +246,7 @@ export interface PostCreate {
   content: string;
   excerpt?: string;
   published: boolean;
+  pinned?: boolean;
   category_id?: number;
   tag_ids?: number[];
   cover_image?: string;
