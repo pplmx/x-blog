@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.security import OAuth2PasswordRequestForm
 from pydantic import BaseModel, ConfigDict
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 
 from app import auth, crud, models
 from app.auth import get_current_admin
@@ -109,7 +109,13 @@ def admin_list_posts(
     skip: int = 0,
     limit: int = 20,
 ):
-    posts = db.query(models.Post).offset(skip).limit(limit).all()
+    posts = (
+        db.query(models.Post)
+        .options(joinedload(models.Post.category), joinedload(models.Post.tags))
+        .offset(skip)
+        .limit(limit)
+        .all()
+    )
     return [
         {
             "id": p.id,
@@ -133,7 +139,12 @@ def admin_get_post(
     db: Session = Depends(get_db),
     _current_user: auth.User = Depends(get_current_admin),
 ):
-    post = db.query(models.Post).filter(models.Post.id == post_id).first()
+    post = (
+        db.query(models.Post)
+        .options(joinedload(models.Post.category), joinedload(models.Post.tags))
+        .filter(models.Post.id == post_id)
+        .first()
+    )
     if not post:
         raise HTTPException(status_code=404, detail="Post not found")
     return {
@@ -387,18 +398,21 @@ def admin_list_comments(
     db: Session = Depends(get_db),
     _current_user: auth.User = Depends(get_current_admin),
 ):
-    query = db.query(models.Comment).order_by(models.Comment.created_at.desc())
+    query = (
+        db.query(models.Comment, models.Post.title)
+        .join(models.Post, models.Post.id == models.Comment.post_id)
+        .order_by(models.Comment.created_at.desc())
+    )
     if post_id:
         query = query.filter(models.Comment.post_id == post_id)
-    comments = query.all()
+    comment_rows = query.all()
     result = []
-    for c in comments:
-        post = db.query(models.Post).filter(models.Post.id == c.post_id).first()
+    for c, post_title in comment_rows:
         result.append(
             {
                 "id": c.id,
                 "post_id": c.post_id,
-                "post_title": post.title if post else "Unknown",
+                "post_title": post_title,
                 "nickname": c.nickname,
                 "email": c.email,
                 "content": c.content,
