@@ -1,8 +1,13 @@
 <script setup lang="ts">
-import { usePost } from '../../../composables/useApi';
+import { usePost, usePostView } from '../../../composables/useApi';
 
 const route = useRoute();
 const { data: post, pending, error } = await usePost(route.params.slug as string);
+
+// Track view count when post is loaded
+if (post.value?.id) {
+  await usePostView(post.value.id);
+}
 </script>
 
 <template>

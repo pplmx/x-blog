@@ -6,7 +6,7 @@
  */
 import { describe, it, expect, vi, beforeEach, afterEach, type Mock } from "vitest";
 
-import { useApi, usePosts, useCategories, useTags, usePost, useSearch } from "../../composables/useApi";
+import { useApi, usePosts, useCategories, useTags, usePost, useSearch, usePostView, usePostLike, usePopularPosts } from "../../composables/useApi";
 
 // Capture what useFetch is called with
 let useFetchCalls: Array<{
@@ -168,5 +168,41 @@ describe("useSearch", () => {
   it("handles multi-word queries with special characters", () => {
     useSearch("hello world & test");
     expect(useFetchCalls[0].url).toContain("q=hello+world+%26+test");
+  });
+});
+
+describe("usePostView", () => {
+  it("posts to the view increment endpoint", () => {
+    usePostView(42);
+    expect(useFetchCalls[0].url).toBe("/api/posts/42/view");
+    expect(useFetchCalls[0].options.method).toBe("POST");
+    expect(useFetchCalls[0].options.baseURL).toBe("http://localhost:18888");
+  });
+
+  it("uses the correct baseURL from config", () => {
+    usePostView(1);
+    expect(useFetchCalls[0].options.baseURL).toBe("http://localhost:18888");
+  });
+});
+
+describe("usePostLike", () => {
+  it("posts to the like increment endpoint", () => {
+    usePostLike(42);
+    expect(useFetchCalls[0].url).toBe("/api/posts/42/like");
+    expect(useFetchCalls[0].options.method).toBe("POST");
+    expect(useFetchCalls[0].options.baseURL).toBe("http://localhost:18888");
+  });
+});
+
+describe("usePopularPosts", () => {
+  it("fetches popular posts with default limit", () => {
+    usePopularPosts();
+    expect(useFetchCalls[0].url).toBe("/api/posts/popular/list");
+    expect(useFetchCalls[0].options.baseURL).toBe("http://localhost:18888");
+  });
+
+  it("passes the limit as a query parameter", () => {
+    usePopularPosts(10);
+    expect(useFetchCalls[0].options.query).toEqual({ limit: 10 });
   });
 });

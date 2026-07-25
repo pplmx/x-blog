@@ -123,10 +123,40 @@ export async function useSearch(
   limit: number = 10,
 ) {
   const params = new URLSearchParams();
-  params.set('q', query);
-  params.set('page', String(page));
-  params.set('limit', String(limit));
+  params.set("q", query);
+  params.set("page", String(page));
+  params.set("limit", String(limit));
 
   const url = `/api/search?${params.toString()}`;
   return useApi<PostListResponse>(url);
+}
+
+/**
+ * Increment the view count for a post.
+ * Uses the backend's POST /api/posts/{post_id}/view endpoint.
+ */
+export async function usePostView(postId: number) {
+  return useApi<Post>(`/api/posts/${postId}/view`, {
+    method: "POST",
+  });
+}
+
+/**
+ * Increment the like count for a post.
+ * Uses the backend's POST /api/posts/{post_id}/like endpoint.
+ */
+export async function usePostLike(postId: number) {
+  return useApi<Post>(`/api/posts/${postId}/like`, {
+    method: "POST",
+  });
+}
+
+/**
+ * Fetch the most popular posts by view count.
+ * Uses the backend's GET /api/posts/popular/list endpoint.
+ */
+export async function usePopularPosts(limit: number = 5) {
+  return useApi<PostList[]>("/api/posts/popular/list", {
+    query: { limit },
+  });
 }
