@@ -74,4 +74,6 @@ def approve_comment(
 
 @router.delete("/{comment_id}", status_code=204)
 def delete_comment(comment_id: int, db: Session = Depends(get_db)):
-    crud.delete_comment(db, comment_id)
+    success = crud.delete_comment(db, comment_id)
+    if not success:
+        raise HTTPException(status_code=404, detail="Comment not found")
