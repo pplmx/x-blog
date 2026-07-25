@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from sqlalchemy.orm import Session
 
 from app import crud, schemas
@@ -10,8 +10,8 @@ router = APIRouter(prefix="/api/posts", tags=["posts"])
 
 @router.get("", response_model=schemas.PostListResponse)
 def list_posts(
-    page: int = 1,
-    limit: int = 10,
+    page: int = Query(1, ge=1),
+    limit: int = Query(10, ge=1, le=100),
     category_id: int | None = None,
     tag_id: int | None = None,
     db: Session = Depends(get_db),
@@ -97,12 +97,12 @@ def increment_likes(request: Request, post_id: int, db: Session = Depends(get_db
 
 
 @router.get("/popular/list", response_model=list[schemas.PostList])
-def get_popular_posts(limit: int = 5, db: Session = Depends(get_db)):
+def get_popular_posts(limit: int = Query(5, ge=1, le=50), db: Session = Depends(get_db)):
     """Get the most popular posts by view count."""
     return crud.get_popular_posts(db, limit=limit)
 
 
 @router.get("/{post_id}/related", response_model=list[schemas.PostList])
-def get_related_posts(post_id: int, limit: int = 5, db: Session = Depends(get_db)):
+def get_related_posts(post_id: int, limit: int = Query(5, ge=1, le=50), db: Session = Depends(get_db)):
     """Get related posts based on category and tags."""
     return crud.get_related_posts(db, post_id, limit=limit)
