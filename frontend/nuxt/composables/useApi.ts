@@ -160,3 +160,14 @@ export async function usePopularPosts(limit: number = 5) {
     query: { limit },
   });
 }
+
+/**
+ * Fetch related posts for a given post.
+ * Uses the backend's GET /api/posts/{post_id}/related endpoint.
+ * Returns a list of related posts based on category and tags.
+ */
+export async function useRelatedPosts(postId: number, limit: number = 5) {
+  return useApi<PostList[]>(`/api/posts/${postId}/related`, {
+    query: { limit },
+  });
+}

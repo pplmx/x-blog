@@ -34,16 +34,46 @@ const mockPost = {
   ],
 };
 
+// Mock related posts data
+const mockRelatedPosts = [
+  {
+    id: 10,
+    title: "Related Post One",
+    slug: "related-post-one",
+    excerpt: "A related post excerpt.",
+    published: true,
+    created_at: "2024-03-01T10:00:00Z",
+    views: 50,
+    cover_image: null,
+    category: { id: 1, name: "Tech" },
+    tags: [],
+  },
+  {
+    id: 11,
+    title: "Related Post Two",
+    slug: "related-post-two",
+    excerpt: "Another related post excerpt.",
+    published: true,
+    created_at: "2024-03-05T14:00:00Z",
+    views: 30,
+    cover_image: null,
+    category: { id: 1, name: "Tech" },
+    tags: [],
+  },
+];
+
 async function mountPostPage({
   post = mockPost,
   pending = false,
   error = null,
   slug = "test-article-post",
+  relatedPosts = mockRelatedPosts,
 }: {
   post?: typeof mockPost | null;
   pending?: boolean;
   error?: { message: string } | null;
   slug?: string;
+  relatedPosts?: typeof mockRelatedPosts | null;
 } = {}) {
   vi.stubGlobal("useRuntimeConfig", () => ({
     public: {
@@ -58,13 +88,23 @@ async function mountPostPage({
 
   vi.stubGlobal("navigateTo", vi.fn());
 
-  // Mock useFetch (used by useApi/usePost internally)
-  vi.stubGlobal("useFetch", vi.fn(() => ({
-    data: ref(post),
-    pending: ref(pending),
-    error: ref(error),
-    refresh: vi.fn(),
-  })));
+  // Mock useFetch - return related posts for /related endpoint, post data otherwise
+  vi.stubGlobal("useFetch", vi.fn((url: string, options?: Record<string, unknown>) => {
+    if (typeof url === "string" && url.includes("/related")) {
+      return {
+        data: ref(relatedPosts),
+        pending: ref(false),
+        error: ref(null),
+        refresh: vi.fn(),
+      };
+    }
+    return {
+      data: ref(post),
+      pending: ref(pending),
+      error: ref(error),
+      refresh: vi.fn(),
+    };
+  }));
 
   const { default: PostPage } = await import("@/pages/posts/[slug].vue");
 
@@ -206,6 +246,30 @@ describe("Post Detail Page", () => {
     it("renders a footer element when tags exist", async () => {
       const wrapper = await mountPostPage();
       expect(wrapper.find("footer").exists()).toBe(true);
+    });
+  });
+
+  describe("Related Posts", () => {
+    it("renders the related posts section header", async () => {
+      const wrapper = await mountPostPage();
+      expect(wrapper.text()).toContain("相关文章");
+    });
+
+    it("renders related post titles", async () => {
+      const wrapper = await mountPostPage();
+      expect(wrapper.text()).toContain("Related Post One");
+      expect(wrapper.text()).toContain("Related Post Two");
+    });
+
+    it("renders related post excerpts", async () => {
+      const wrapper = await mountPostPage();
+      expect(wrapper.text()).toContain("A related post excerpt.");
+    });
+
+    it("renders links to related posts", async () => {
+      const wrapper = await mountPostPage();
+      const links = wrapper.findAll('a[href^="/posts/related"]');
+      expect(links.length).toBeGreaterThanOrEqual(2);
     });
   });
 });
