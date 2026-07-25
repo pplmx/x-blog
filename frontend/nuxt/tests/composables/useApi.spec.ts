@@ -6,7 +6,7 @@
  */
 import { describe, it, expect, vi, beforeEach, afterEach, type Mock } from "vitest";
 
-import { useApi, usePosts, useCategories, useTags, usePost, useSearch, usePostView, usePostLike, usePopularPosts } from "../../composables/useApi";
+import { useApi, usePosts, useCategories, useTags, usePost, useSearch, usePostView, usePostLike, usePopularPosts, useRelatedPosts } from "../../composables/useApi";
 
 // Capture what useFetch is called with
 let useFetchCalls: Array<{
@@ -204,5 +204,24 @@ describe("usePopularPosts", () => {
   it("passes the limit as a query parameter", () => {
     usePopularPosts(10);
     expect(useFetchCalls[0].options.query).toEqual({ limit: 10 });
+  });
+});
+
+describe("useRelatedPosts", () => {
+  it("fetches related posts for a given post ID", () => {
+    useRelatedPosts(42);
+    expect(useFetchCalls[0].url).toBe("/api/posts/42/related");
+    expect(useFetchCalls[0].options.baseURL).toBe("http://localhost:18888");
+  });
+
+  it("passes the limit as a query parameter", () => {
+    useRelatedPosts(1, 5);
+    expect(useFetchCalls[0].options.query).toEqual({ limit: 5 });
+  });
+
+  it("uses default limit when not specified", () => {
+    useRelatedPosts(7);
+    const url = useFetchCalls[0].url;
+    expect(url).toContain("/api/posts/7/related");
   });
 });

@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { usePost, usePostView } from '../../../composables/useApi';
+import { usePost, usePostView, useRelatedPosts } from '../../../composables/useApi';
 
 const route = useRoute();
 const { data: post, pending, error } = await usePost(route.params.slug as string);
+const { data: relatedPosts } = await useRelatedPosts(post.value?.id || 0);
 
 // Track view count when post is loaded
 if (post.value?.id) {
@@ -82,6 +83,33 @@ if (post.value?.id) {
         class="mt-8 text-gray-800 leading-relaxed"
         v-html="post.content"
       ></div>
+
+      <!-- Related Posts -->
+      <section v-if="post.id && relatedPosts?.length" class="mt-12">
+        <h2 class="text-xl font-bold mb-6 text-gray-900 dark:text-gray-100">
+          相关文章
+        </h2>
+        <div class="space-y-4">
+          <div
+            v-for="relatedPost in relatedPosts"
+            :key="relatedPost.id"
+            class="border border-gray-100 rounded-lg p-4 hover:shadow-md transition-shadow"
+          >
+            <NuxtLink
+              :to="`/posts/${relatedPost.slug}`"
+              class="text-lg font-bold hover:text-blue-600"
+            >
+              {{ relatedPost.title }}
+            </NuxtLink>
+            <p
+              v-if="relatedPost.excerpt"
+              class="text-gray-600 mt-1 text-sm line-clamp-2"
+            >
+              {{ relatedPost.excerpt }}
+            </p>
+          </div>
+        </div>
+      </section>
 
       <!-- Tags -->
       <footer v-if="post.tags && post.tags.length" class="mt-12 pt-8 border-t border-gray-200">
