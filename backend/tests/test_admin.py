@@ -439,3 +439,203 @@ class TestAdminUserManagement:
         """Test deleting the current user returns 400."""
         response = client.delete(f"/api/admin/users/{admin_user.id}", headers=auth_headers)
         assert response.status_code == 400
+
+
+class TestAdminIntegrityErrorHandling:
+    """Tests for IntegrityError handling on admin write endpoints.
+
+    These test the TOCTOU race condition where two concurrent requests
+    pass the duplicate check but the second INSERT hits a unique constraint.
+    """
+
+    def test_create_user_duplicate_integrity_error(self, client, auth_headers, db_session):
+        """Test creating a user with a duplicate username returns 400, not 500."""
+        from app.auth import User, get_password_hash
+
+        existing = User(
+            username="duplicate_user",
+            password=get_password_hash("pass"),
+            is_superuser=False,
+        )
+        db_session.add(existing)
+        db_session.commit()
+
+        response = client.post(
+            "/api/admin/users",
+            headers={**auth_headers, "Content-Type": "application/json"},
+            json={"username": "duplicate_user", "password": "password123"},
+        )
+        assert response.status_code == 400
+        assert "already exists" in response.json()["error"]["message"]
+
+    def test_create_category_duplicate_integrity_error(self, client, auth_headers, db_session):
+        """Test creating a category with a duplicate name returns 400, not 500."""
+        from app import models
+
+        existing = models.Category(name="dup_category")
+        db_session.add(existing)
+        db_session.commit()
+
+        response = client.post(
+            "/api/admin/categories?name=dup_category",
+            headers={**auth_headers, "Content-Type": "application/x-www-form-urlencoded"},
+        )
+        assert response.status_code == 400
+        assert "already exists" in response.json()["error"]["message"]
+
+    def test_create_tag_duplicate_integrity_error(self, client, auth_headers, db_session):
+        """Test creating a tag with a duplicate name returns 400, not 500."""
+        from app import models
+
+        existing = models.Tag(name="dup_tag")
+        db_session.add(existing)
+        db_session.commit()
+
+        response = client.post(
+            "/api/admin/tags?name=dup_tag",
+            headers={**auth_headers, "Content-Type": "application/x-www-form-urlencoded"},
+        )
+        assert response.status_code == 400
+        assert "already exists" in response.json()["error"]["message"]
+
+    def test_update_category_duplicate_integrity_error(self, client, auth_headers, db_session):
+        """Test updating a category to a duplicate name returns 400, not 500."""
+        from app import models
+
+        cat1 = models.Category(name="cat_a")
+        cat2 = models.Category(name="cat_b")
+        db_session.add_all([cat1, cat2])
+        db_session.commit()
+
+        response = client.put(
+            f"/api/admin/categories/{cat2.id}?name=cat_a",
+            headers={**auth_headers, "Content-Type": "application/x-www-form-urlencoded"},
+        )
+        assert response.status_code == 400
+        assert "already exists" in response.json()["error"]["message"]
+
+    def test_update_tag_duplicate_integrity_error(self, client, auth_headers, db_session):
+        """Test updating a tag to a duplicate name returns 400, not 500."""
+        from app import models
+
+        tag1 = models.Tag(name="tag_a")
+        tag2 = models.Tag(name="tag_b")
+        db_session.add_all([tag1, tag2])
+        db_session.commit()
+
+        response = client.put(
+            f"/api/admin/tags/{tag2.id}?name=tag_a",
+            headers={**auth_headers, "Content-Type": "application/x-www-form-urlencoded"},
+        )
+        assert response.status_code == 400
+        assert "already exists" in response.json()["error"]["message"]
+
+    def test_update_post_duplicate_slug_integrity_error(self, client, auth_headers, db_session):
+        """Test updating a post to a duplicate slug returns 400, not 500."""
+        from app import models
+
+        post1 = models.Post(title="Post A", slug="post-a", content="Content", published=True)
+        post2 = models.Post(title="Post B", slug="post-b", content="Content", published=True)
+        db_session.add_all([post1, post2])
+        db_session.commit()
+
+        response = client.put(
+            f"/api/admin/posts/{post2.id}",
+            headers={**auth_headers, "Content-Type": "application/json"},
+            json={"slug": "post-a"},
+        )
+        assert response.status_code == 400
+        assert "Slug already exists" in response.json()["error"]["message"]
+
+    def test_admin_get_post_includes_pinned_and_cover_image(self, client, auth_headers, db_session):
+        """Test admin post detail includes pinned and cover_image fields."""
+        from app import models
+
+        post = models.Post(
+            title="Full Detail Post",
+            slug="full-detail-post",
+            content="Content",
+            published=True,
+            pinned=True,
+            cover_image="https://example.com/cover.jpg",
+        )
+        db_session.add(post)
+        db_session.commit()
+
+        response = client.get(f"/api/admin/posts/{post.id}", headers=auth_headers)
+        assert response.status_code == 200
+        data = response.json()
+        assert data["pinned"] is True
+        assert data["cover_image"] == "https://example.com/cover.jpg"
+
+    def test_admin_list_posts_includes_pinned_and_cover_image(self, client, auth_headers, db_session):
+        """Test admin post list includes pinned and cover_image fields."""
+        from app import models
+
+        post = models.Post(
+            title="List Post",
+            slug="list-post",
+            content="Content",
+            published=True,
+            pinned=True,
+            cover_image="https://example.com/list.jpg",
+        )
+        db_session.add(post)
+        db_session.commit()
+
+        response = client.get("/api/admin/posts", headers=auth_headers)
+        assert response.status_code == 200
+        posts = response.json()
+        post_data = next(p for p in posts if p["id"] == post.id)
+        assert post_data["pinned"] is True
+        assert post_data["cover_image"] == "https://example.com/list.jpg"
+
+    def test_admin_update_post_pinned_field(self, client, auth_headers, db_session):
+        """Test admin can update the pinned field on a post."""
+        from app import models
+
+        post = models.Post(
+            title="Pin Test",
+            slug="pin-test",
+            content="Content",
+            published=True,
+            pinned=False,
+        )
+        db_session.add(post)
+        db_session.commit()
+
+        response = client.put(
+            f"/api/admin/posts/{post.id}",
+            headers={**auth_headers, "Content-Type": "application/json"},
+            json={"pinned": True},
+        )
+        assert response.status_code == 200
+
+        # Verify the pinned field was updated
+        response = client.get(f"/api/admin/posts/{post.id}", headers=auth_headers)
+        assert response.json()["pinned"] is True
+
+    def test_admin_update_post_cover_image_field(self, client, auth_headers, db_session):
+        """Test admin can update the cover_image field on a post."""
+        from app import models
+
+        post = models.Post(
+            title="Cover Test",
+            slug="cover-test",
+            content="Content",
+            published=True,
+            cover_image=None,
+        )
+        db_session.add(post)
+        db_session.commit()
+
+        response = client.put(
+            f"/api/admin/posts/{post.id}",
+            headers={**auth_headers, "Content-Type": "application/json"},
+            json={"cover_image": "https://example.com/new-cover.jpg"},
+        )
+        assert response.status_code == 200
+
+        # Verify the cover_image field was updated
+        response = client.get(f"/api/admin/posts/{post.id}", headers=auth_headers)
+        assert response.json()["cover_image"] == "https://example.com/new-cover.jpg"

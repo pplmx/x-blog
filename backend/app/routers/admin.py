@@ -66,7 +66,11 @@ def create_user(
         is_superuser=False,
     )
     db.add(user)
-    db.commit()
+    try:
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(status_code=400, detail="Username already exists")
     db.refresh(user)
     return user
 
@@ -112,6 +116,8 @@ def admin_list_posts(
             "title": p.title,
             "slug": p.slug,
             "published": p.published,
+            "pinned": p.pinned,
+            "cover_image": p.cover_image,
             "category": p.category.name if p.category else None,
             "tags": [t.name for t in p.tags],
             "created_at": p.created_at.isoformat() if p.created_at else None,
@@ -137,6 +143,8 @@ def admin_get_post(
         "content": post.content,
         "excerpt": post.excerpt,
         "published": post.published,
+        "pinned": post.pinned,
+        "cover_image": post.cover_image,
         "category_id": post.category_id,
         "tag_ids": [t.id for t in post.tags],
         "created_at": post.created_at.isoformat() if post.created_at else None,
@@ -150,7 +158,10 @@ def admin_create_post(
     db: Session = Depends(get_db),
     _current_user: auth.User = Depends(get_current_admin),
 ):
-    post = crud.create_post(db, post_data)
+    try:
+        post = crud.create_post(db, post_data)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
     return {"id": post.id}
 
 
@@ -175,13 +186,21 @@ def admin_update_post(
         post.excerpt = post_data.excerpt
     if post_data.published is not None:
         post.published = post_data.published
+    if post_data.pinned is not None:
+        post.pinned = post_data.pinned
+    if post_data.cover_image is not None:
+        post.cover_image = post_data.cover_image
     post.category_id = post_data.category_id
 
     if post_data.tag_ids is not None:
         tags = db.query(models.Tag).filter(models.Tag.id.in_(post_data.tag_ids)).all()
         post.tags = tags
 
-    db.commit()
+    try:
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(status_code=400, detail="Slug already exists")
     db.refresh(post)
     return {"id": post.id}
 
@@ -222,7 +241,11 @@ def admin_create_category(
 
     category = models.Category(name=name)
     db.add(category)
-    db.commit()
+    try:
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(status_code=400, detail="Category already exists")
     db.refresh(category)
     return {"id": category.id, "name": category.name}
 
@@ -239,7 +262,11 @@ def admin_update_category(
         raise HTTPException(status_code=404, detail="Category not found")
 
     category.name = name
-    db.commit()
+    try:
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(status_code=400, detail="Category already exists")
     return {"id": category.id, "name": category.name}
 
 
@@ -294,7 +321,11 @@ def admin_create_tag(
 
     tag = models.Tag(name=name)
     db.add(tag)
-    db.commit()
+    try:
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(status_code=400, detail="Tag already exists")
     db.refresh(tag)
     return {"id": tag.id, "name": tag.name}
 
@@ -311,7 +342,11 @@ def admin_update_tag(
         raise HTTPException(status_code=404, detail="Tag not found")
 
     tag.name = name
-    db.commit()
+    try:
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(status_code=400, detail="Tag already exists")
     return {"id": tag.id, "name": tag.name}
 
 

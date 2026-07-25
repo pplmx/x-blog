@@ -33,7 +33,10 @@ def create_tag(
     existing = crud.get_tag_by_name(db, tag.name)
     if existing:
         raise HTTPException(status_code=400, detail="Tag already exists")
-    return crud.create_tag(db, tag)
+    try:
+        return crud.create_tag(db, tag)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
 
 @router.put("/{tag_id}", response_model=schemas.Tag)
@@ -45,7 +48,10 @@ def update_tag(
     _current_user: User = Depends(get_current_admin),
     db: Session = Depends(get_db),
 ):
-    db_tag = crud.update_tag(db, tag_id, tag)
+    try:
+        db_tag = crud.update_tag(db, tag_id, tag)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
     if not db_tag:
         raise HTTPException(status_code=404, detail="Tag not found")
     return db_tag

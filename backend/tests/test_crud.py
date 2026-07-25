@@ -238,7 +238,7 @@ class TestCreatePost:
         assert post.published is True
         assert post.pinned is True
         assert post.excerpt == "Short excerpt"
-        # Note: cover_image is in schema but not handled in create_post crud function
+        assert post.cover_image == "https://example.com/image.jpg"
         assert len(post.tags) == 2
 
 
@@ -1064,3 +1064,55 @@ class TestIntegrityErrorHandling:
             pytest.raises(ValueError, match="already exists"),
         ):
             crud.update_tag(db_session, tag2.id, update_data)
+
+
+class TestCreatePostCoverImage:
+    """Tests for cover_image handling in create_post."""
+
+    def test_create_post_with_cover_image(self, db_session):
+        """Test creating a post with cover_image saves it correctly."""
+        post_data = schemas.PostCreate(
+            title="Cover Image Post",
+            slug="cover-image-post-test",
+            content="Content",
+            cover_image="https://example.com/cover.jpg",
+        )
+
+        with patch("app.crud.clear_posts_cache"), patch("app.crud.clear_tags_cache"):
+            post = crud.create_post(db_session, post_data)
+
+        assert post.cover_image == "https://example.com/cover.jpg"
+
+    def test_create_post_without_cover_image_defaults_none(self, db_session):
+        """Test creating a post without cover_image defaults to None."""
+        post_data = schemas.PostCreate(
+            title="No Cover Post",
+            slug="no-cover-post-test",
+            content="Content",
+        )
+
+        with patch("app.crud.clear_posts_cache"), patch("app.crud.clear_tags_cache"):
+            post = crud.create_post(db_session, post_data)
+
+        assert post.cover_image is None
+
+
+class TestUpdatePostCoverImage:
+    """Tests for cover_image handling in update_post."""
+
+    def test_update_post_with_cover_image(self, db_session):
+        """Test updating a post's cover_image via update_post."""
+        post = models.Post(
+            title="Update Cover Post",
+            slug="update-cover-post",
+            content="Content",
+        )
+        db_session.add(post)
+        db_session.commit()
+
+        update_data = schemas.PostUpdate(cover_image="https://example.com/updated.jpg")
+        with patch("app.crud.clear_posts_cache"), patch("app.crud.clear_tags_cache"):
+            result = crud.update_post(db_session, post.id, update_data)
+
+        assert result is not None
+        assert result.cover_image == "https://example.com/updated.jpg"

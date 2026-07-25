@@ -87,6 +87,7 @@ def create_post(db: Session, post: schemas.PostCreate) -> models.Post:
         published=post.published,
         pinned=post.pinned,
         category_id=post.category_id,
+        cover_image=post.cover_image,
     )
     db_post.tags = tags
     db.add(db_post)
@@ -238,11 +239,11 @@ def get_tags(db: Session) -> list[models.Tag]:
     return tags
 
 
-def get_tag(db: Session, tag_id: int) -> models.Tag:
+def get_tag(db: Session, tag_id: int) -> models.Tag | None:
     return db.query(models.Tag).filter(models.Tag.id == tag_id).first()
 
 
-def get_tag_by_name(db: Session, name: str) -> models.Tag:
+def get_tag_by_name(db: Session, name: str) -> models.Tag | None:
     return db.query(models.Tag).filter(models.Tag.name == name).first()
 
 
@@ -260,7 +261,7 @@ def create_tag(db: Session, tag: schemas.TagCreate) -> models.Tag:
     return db_tag
 
 
-def update_tag(db: Session, tag_id: int, tag: schemas.TagCreate) -> models.Tag:
+def update_tag(db: Session, tag_id: int, tag: schemas.TagCreate) -> models.Tag | None:
     db_tag = get_tag(db, tag_id)
     if db_tag:
         db_tag.name = tag.name
