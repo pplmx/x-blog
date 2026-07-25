@@ -101,3 +101,49 @@ def test_delete_comment_not_found(client):
     response = client.delete("/api/comments/99999")
     assert response.status_code == 404
     assert response.json()["error"]["code"] == "NOT_FOUND"
+
+
+def test_approve_comment(client, post, auth_headers):
+    create_response = client.post(
+        f"/api/comments/post/{post['id']}",
+        json={
+            "nickname": "Test User",
+            "email": "test@example.com",
+            "content": "Test comment",
+        },
+    )
+    comment_id = create_response.json()["id"]
+    response = client.patch(
+        f"/api/comments/{comment_id}/approve",
+        json={"approved": True},
+        headers=auth_headers,
+    )
+    assert response.status_code == 200
+    assert response.json()["is_approved"] is True
+
+
+def test_approve_comment_not_found(client, auth_headers):
+    response = client.patch(
+        "/api/comments/99999/approve",
+        json={"approved": True},
+        headers=auth_headers,
+    )
+    assert response.status_code == 404
+    assert response.json()["error"]["code"] == "NOT_FOUND"
+
+
+def test_approve_comment_unauthorized(client, post):
+    create_response = client.post(
+        f"/api/comments/post/{post['id']}",
+        json={
+            "nickname": "Test User",
+            "email": "test@example.com",
+            "content": "Test comment",
+        },
+    )
+    comment_id = create_response.json()["id"]
+    response = client.patch(
+        f"/api/comments/{comment_id}/approve",
+        json={"approved": True},
+    )
+    assert response.status_code == 401
