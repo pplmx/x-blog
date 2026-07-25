@@ -95,3 +95,9 @@ def test_delete_comment(client, post):
     assert response.status_code == 204
     list_response = client.get(f"/api/comments/post/{post['id']}")
     assert len(list_response.json()["items"]) == 0
+
+
+def test_delete_comment_not_found(client):
+    response = client.delete("/api/comments/99999")
+    assert response.status_code == 404
+    assert response.json()["error"]["code"] == "NOT_FOUND"

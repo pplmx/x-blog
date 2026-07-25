@@ -363,7 +363,11 @@ def delete_comment(db: Session, comment_id: int) -> bool:
     if not comment:
         return False
     db.delete(comment)
-    db.commit()
+    try:
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        raise ValueError("Cannot delete comment: it has dependent records")
     return True
 
 
