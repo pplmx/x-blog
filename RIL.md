@@ -5,7 +5,7 @@
 ## Project Overview
 
 **Stack**: FastAPI (Python 3.14) + Next.js 16 (production) + Nuxt 4 (parallel dev) + SQLite
-**Status**: Clean working tree, all tests passing (except 1 pre-existing Next.js failure)
+**Status**: Clean working tree, all 1195 tests passing (464 backend + 150 Nuxt + 581 Next.js)
 
 ## Key Findings
 
@@ -29,11 +29,10 @@
 
 ### Test Infrastructure
 
-- **Backend**: 464 tests, `uv run pytest -n auto` (pytest-xdist parallel)
-- **Next.js**: 580/581 tests pass (1 pre-existing failure: `lib/api.retry.test.ts`
-  "does not retry on abort error" — DOMException unrelated to recent changes)
-- **Nuxt**: 148 tests, `npx vitest --run` (was 142, added 6)
-- All three test suites verified passing after changes
+- **Backend**: 464 tests, `uv run pytest -n auto` (pytest-xdist parallel), 85% coverage
+- **Next.js**: 581 tests pass (was 580/581 — fixed PostForm checkbox test for pinned field)
+- **Nuxt**: 150 test files pass (was 142, added 8 new tests across 3 rounds)
+- All three test suites verified passing — total 1195 tests, 0 failures
 
 ### Git Hooks
 
