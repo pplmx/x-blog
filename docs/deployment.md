@@ -42,7 +42,7 @@ uv sync
 uv run uvicorn app.main:app --reload --port 8000
 
 # 终端 2 - 前端
-cd frontend/nuxt
+cd frontend/aura
 pnpm install
 pnpm dev
 ```
@@ -98,9 +98,9 @@ uv run uvicorn app.main:app --host 0.0.0.0 --port 8000
 
 ```bash
 # 创建环境变量文件
-echo "NUXT_API_URL=http://<后端IP>:18888" > frontend/nuxt/.env
+echo "NUXT_API_URL=http://<后端IP>:18888" > frontend/aura/.env
 
-cd frontend/nuxt
+cd frontend/aura
 pnpm install
 pnpm dev
 ```
@@ -131,7 +131,7 @@ x-blog/
 │   │   └── main.py   # 入口
 │   └── pyproject.toml
 ├── frontend/          # 前端 (Nuxt 4)
-│   └── nuxt/          # Nuxt 应用
+│   └── aura/          # Nuxt 应用
 └── package.json
 ├── docker-compose.yml
 ├── justfile                # 任务脚本

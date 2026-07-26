@@ -22,7 +22,7 @@ jobs:
 
       - name: Backend tests with coverage
         run: |
-          cd backend
+          cd backend/nova
           uv sync
           uv run pytest --cov=app --cov-report=term-missing --cov-fail-under=50
 
@@ -42,24 +42,8 @@ jobs:
         with:
           version: '9'
 
-  nuxt-test:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Setup Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: '24'
-          cache: 'pnpm'
-
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          version: '9'
-
-      - name: Nuxt tests
+      - name: Frontend tests
         run: |
-          cd frontend/nuxt
+          cd frontend/aura
           pnpm install
           pnpm test

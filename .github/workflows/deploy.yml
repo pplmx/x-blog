@@ -31,13 +31,13 @@ jobs:
 
       - name: Backend tests
         run: |
-          cd backend
+          cd backend/nova
           uv sync
           uv run pytest --cov=app --cov-report=term-missing --cov-fail-under=50
 
-      - name: Nuxt tests
+      - name: Frontend tests
         run: |
-          cd frontend/nuxt
+          cd frontend/aura
           pnpm install
           pnpm test
 
@@ -63,16 +63,16 @@ jobs:
       - name: Build and push backend
         uses: docker/build-push-action@v7
         with:
-          context: ./backend
+          context: ./backend/nova
           push: true
           tags: ghcr.io/${{ github.repository }}/backend:${{ github.sha }}
 
-      - name: Build and push nuxt
+      - name: Build and push frontend
         uses: docker/build-push-action@v7
         with:
-          context: ./frontend/nuxt
+          context: ./frontend/aura
           push: true
-          tags: ghcr.io/${{ github.repository }}/nuxt:${{ github.sha }}
+          tags: ghcr.io/${{ github.repository }}/frontend:${{ github.sha }}
 
   deploy:
     needs: build-and-push

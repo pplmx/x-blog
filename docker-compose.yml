@@ -1,7 +1,7 @@
 services:
   frontend:
     build:
-      context: ./frontend/nuxt
+      context: ./frontend/aura
       target: runner
     ports:
       - "13334:3000"
@@ -20,7 +20,7 @@ services:
 
   backend:
     build:
-      context: ./backend
+      context: ./backend/nova
       target: production
     ports:
       - "18888:18888"

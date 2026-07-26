@@ -55,7 +55,7 @@ just install
 
 # Or manually:
 cd backend && uv sync
-cd frontend/nuxt && pnpm install
+cd frontend/aura && pnpm install
 ```
 
 ### Development

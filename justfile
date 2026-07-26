@@ -2,8 +2,8 @@
 
 # Install all dependencies and git hooks
 install:
-    cd backend && uv sync
-    cd frontend/nuxt && pnpm install
+    cd backend/nova && uv sync
+    cd frontend/aura && pnpm install
 
 # Install git hooks
 hooks:
@@ -16,7 +16,7 @@ hooks:
 
 # Initialize database with sample data
 init-db:
-    cd backend && uv run python scripts/init_db.py
+    cd backend/nova && uv run python scripts/init_db.py
 
 # Run both backend and frontend (Windows: run in two terminals)
 # Terminal 1: just backend
@@ -27,42 +27,42 @@ dev:
     @echo "  just nuxt        (Nuxt on :13334)"
     @echo ""
     @echo "或使用 VS Code / IntelliJ 的 Run Dashboard"
-    cd backend && uv run uvicorn app.main:app --reload --host 0.0.0.0 --port 18888 &
-    cd frontend/nuxt && pnpm dev --port 13334
+    cd backend/nova && uv run uvicorn app.main:app --reload --host 0.0.0.0 --port 18888 &
+    cd frontend/aura && pnpm dev --port 13334
 
 # Run backend + Nuxt dev server (alias for `dev`)
 dev-nuxt: dev
 
 # Run backend only
 backend:
-    cd backend && uv run uvicorn app.main:app --reload --host 0.0.0.0 --port 18888
+    cd backend/nova && uv run uvicorn app.main:app --reload --host 0.0.0.0 --port 18888
 
 # Run frontend (alias for nuxt)
 frontend:
-    cd frontend/nuxt && pnpm dev --port 13334
+    cd frontend/aura && pnpm dev --port 13334
 
 # Run Nuxt dev server
 nuxt:
-    cd frontend/nuxt && pnpm dev --port 13334
+    cd frontend/aura && pnpm dev --port 13334
 
 # Lint code
 lint:
-    cd backend && uvx ruff check . --fix
+    cd backend/nova && uvx ruff check . --fix
     rumdl fmt
 
 # Format code
 format:
-    cd backend && uvx ruff format .
+    cd backend/nova && uvx ruff format .
 
 # Format check (CI style)
 fmt-check:
-    cd backend && uvx ruff format --check .
+    cd backend/nova && uvx ruff format --check .
     rumdl fmt
 
 # Auto-fix issues
 fix:
-    cd backend && uvx ruff check . --fix
-    cd backend && uvx ruff format .
+    cd backend/nova && uvx ruff check . --fix
+    cd backend/nova && uvx ruff format .
     rumdl fmt
 
 # CI: run all checks
@@ -73,42 +73,42 @@ test: test-backend test-nuxt
 
 # Run backend tests
 test-backend:
-    cd backend && uv run pytest -n auto
+    cd backend/nova && uv run pytest -n auto
 
 # Run backend tests sequentially (debug)
 test-backend-seq:
-    cd backend && uv run pytest
+    cd backend/nova && uv run pytest
 
 # Run frontend tests (alias for test-nuxt)
 test-frontend:
-    cd frontend/nuxt && pnpm test
+    cd frontend/aura && pnpm test
 
 # Run frontend tests with coverage (alias for test-nuxt-coverage)
 test-frontend-coverage:
-    cd frontend/nuxt && pnpm test:coverage
+    cd frontend/aura && pnpm test:coverage
 
 # Run Nuxt tests
 test-nuxt:
-    cd frontend/nuxt && pnpm test
+    cd frontend/aura && pnpm test
 
 # Run Nuxt tests with coverage
 test-nuxt-coverage:
-    cd frontend/nuxt && pnpm test:coverage
+    cd frontend/aura && pnpm test:coverage
 
 # Run e2e tests (alias for e2e-nuxt)
 test-e2e:
-    cd frontend/nuxt && pnpm test:e2e
+    cd frontend/aura && pnpm test:e2e
 
 # Run e2e tests against live Nuxt dev server (auto-starts backend + Nuxt)
 e2e:
     @echo "Starting backend..."
-    cd backend && uv run uvicorn app.main:app --host 0.0.0.0 --port 18888 &
+    cd backend/nova && uv run uvicorn app.main:app --host 0.0.0.0 --port 18888 &
     @sleep 3 && curl -sf http://localhost:18888/health > /dev/null || (echo "Backend failed to start" && exit 1)
     @echo "Starting Nuxt..."
-    cd frontend/nuxt && pnpm dev --port 13334 &
+    cd frontend/aura && pnpm dev --port 13334 &
     @sleep 8 && curl -sf http://localhost:13334 > /dev/null || (echo "Nuxt failed to start" && exit 1)
     @echo "Running e2e tests..."
-    cd frontend/nuxt && pnpm test:e2e
+    cd frontend/aura && pnpm test:e2e
     @echo "Stopping services..."
     @pkill -f "uvicorn app.main:app" 2>/dev/null; pkill -f "nuxt dev" 2>/dev/null; echo "done"
 
@@ -117,12 +117,12 @@ e2e-nuxt: e2e
 
 # Clean generated files
 clean:
-    rm -f backend/*.db
-    rm -rf frontend/nuxt/.output
-    rm -rf frontend/nuxt/.nuxt
-    rm -rf backend/.pytest_cache
-    rm -rf .ruff_cache backend/.ruff_cache
-    rm -rf frontend/nuxt/coverage
+    rm -f backend/nova/*.db
+    rm -rf frontend/aura/.output
+    rm -rf frontend/aura/.nuxt
+    rm -rf backend/nova/.pytest_cache
+    rm -rf .ruff_cache backend/nova/.ruff_cache
+    rm -rf frontend/aura/coverage
 
 # Lint and format markdown
 rumdl:
