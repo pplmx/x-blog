@@ -74,6 +74,8 @@ async function mountTagsPage({
 
   vi.stubGlobal("navigateTo", vi.fn());
 
+  vi.stubGlobal("useHead", vi.fn());
+
   // The tags page uses computed without importing it (Nuxt auto-imports it)
   vi.stubGlobal("computed", computed);
 
@@ -262,6 +264,8 @@ describe("Tags Page", () => {
       }));
 
       vi.stubGlobal("useRoute", () => reactive({ query: { tag_id: "1" } }));
+
+      vi.stubGlobal("useHead", vi.fn());
 
       vi.stubGlobal("useFetch", vi.fn((url: string) => {
         if (url.includes("/api/tags") && !url.includes("/posts")) {
