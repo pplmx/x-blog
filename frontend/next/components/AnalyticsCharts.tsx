@@ -65,13 +65,13 @@ export function CategoryPieChart({
   posts,
 }: {
   categories: { id: number; name: string }[];
-  posts: { category_id: number | null; published: boolean }[];
+  posts: { category: { id: number } | null; published: boolean }[];
 }) {
   const publishedPosts = posts.filter((p) => p.published);
   const data = categories
     .map((cat) => ({
       name: cat.name,
-      value: publishedPosts.filter((p) => p.category_id === cat.id).length,
+      value: publishedPosts.filter((p) => p.category?.id === cat.id).length,
     }))
     .filter((d) => d.value > 0);
 

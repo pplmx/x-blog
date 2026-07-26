@@ -67,7 +67,7 @@ describe('AnalyticsCharts', () => {
       render(
         <CategoryPieChart
           categories={[{ id: 1, name: 'Tech' }]}
-          posts={[{ category_id: 1, published: true }]}
+          posts={[{ category: { id: 1 }, published: true }]}
         />
       );
       expect(screen.getByTestId('responsive-container')).toBeInTheDocument();
@@ -83,7 +83,7 @@ describe('AnalyticsCharts', () => {
 
     it('returns null when no categories', () => {
       const { container } = render(
-        <CategoryPieChart categories={[]} posts={[{ category_id: null, published: true }]} />
+        <CategoryPieChart categories={[]} posts={[{ category: null, published: true }]} />
       );
       expect(container.firstChild).toBeNull();
     });
@@ -92,7 +92,7 @@ describe('AnalyticsCharts', () => {
       render(
         <CategoryPieChart
           categories={[{ id: 1, name: 'Tech' }]}
-          posts={[{ category_id: 1, published: true }]}
+          posts={[{ category: { id: 1 }, published: true }]}
         />
       );
       expect(screen.getByText('Tech')).toBeInTheDocument();

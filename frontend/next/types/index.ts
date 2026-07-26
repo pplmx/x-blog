@@ -34,6 +34,7 @@ export interface PostList {
   published: boolean;
   pinned: boolean;
   created_at: string;
+  updated_at: string;
   views: number;
   likes: number;
   cover_image: string | null;
