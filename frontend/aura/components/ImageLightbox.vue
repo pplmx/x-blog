@@ -97,7 +97,7 @@ onUnmounted(() => {
         :src="currentImage.src"
         :alt="currentImage.alt"
         class="max-w-full max-h-[90vh] object-contain rounded-lg shadow-2xl"
-      />
+      >
     </div>
 
     <!-- Navigation buttons -->

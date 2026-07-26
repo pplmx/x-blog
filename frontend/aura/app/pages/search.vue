@@ -57,7 +57,7 @@ function handleSearchInput() {
             placeholder="输入关键词..."
             class="w-full pl-10 pr-4 py-3 border border-gray-200 dark:border-gray-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
             @keydown.enter="handleSearchInput"
-          />
+          >
           <Icon
             icon="lucide:search"
             class="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400"
@@ -68,12 +68,12 @@ function handleSearchInput() {
 
     <!-- Loading state -->
     <div v-else-if="pending" class="space-y-4">
-      <div class="bg-gray-100 animate-pulse h-8 rounded-lg mb-4 w-1/3"></div>
+      <div class="bg-gray-100 animate-pulse h-8 rounded-lg mb-4 w-1/3" />
       <div
         v-for="i in 3"
         :key="i"
         class="bg-gray-100 animate-pulse h-24 rounded-lg"
-      ></div>
+      />
     </div>
 
     <!-- Error state -->

@@ -8,7 +8,6 @@ const { data: posts, pending, error, refresh } = await usePosts({
 const { data: popularPosts } = await usePopularPosts();
 
 const route = useRoute();
-const page = computed(() => parseInt(route.query.page || '1', 10));
 
 function fetchPosts(pageNum: number) {
   navigateTo({ query: { page: pageNum } });
@@ -52,7 +51,9 @@ useHead({
           <NuxtLink
             :to="`/posts/${post.slug}`"
             class="font-bold hover:text-blue-600"
-          >{{ post.title }}</NuxtLink>
+          >
+            {{ post.title }}
+          </NuxtLink>
           <div class="flex gap-4 mt-2 text-sm text-gray-500">
             <span v-if="post.category">{{ post.category.name }}</span>
             <span>{{ post.views }} 次阅读</span>
@@ -63,7 +64,7 @@ useHead({
 
     <!-- Posts -->
     <div v-if="pending" class="space-y-4">
-      <div v-for="i in 3" :key="i" class="bg-gray-100 animate-pulse h-24 rounded-lg"></div>
+      <div v-for="i in 3" :key="i" class="bg-gray-100 animate-pulse h-24 rounded-lg" />
     </div>
 
     <div v-else-if="error" class="text-center py-12 text-gray-500">
@@ -79,11 +80,15 @@ useHead({
         <NuxtLink
           :to="`/posts/${post.slug}`"
           class="text-xl font-bold hover:text-blue-600"
-        >{{ post.title }}</NuxtLink>
+        >
+          {{ post.title }}
+        </NuxtLink>
         <p
           v-if="post.excerpt"
           class="text-gray-600 mt-2 line-clamp-2"
-        >{{ post.excerpt }}</p>
+        >
+          {{ post.excerpt }}
+        </p>
         <div class="flex gap-4 mt-3 text-sm text-gray-500">
           <span v-if="post.category">{{ post.category.name }}</span>
           <span>{{ new Date(post.created_at).toLocaleDateString() }}</span>
@@ -106,7 +111,9 @@ useHead({
               : 'border hover:bg-gray-50',
           ]"
           @click="fetchPosts(pg)"
-        >{{ pg }}</button>
+        >
+          {{ pg }}
+        </button>
       </div>
     </div>
 

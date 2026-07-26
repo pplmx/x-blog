@@ -69,7 +69,6 @@ import { ref, onMounted, watch } from 'vue';
 
 // Dark mode toggle
 const isDark = ref(false);
-let stopWatch: (() => void) | null = null;
 
 function updateDarkClass() {
   if (typeof document === 'undefined') return;
@@ -94,11 +93,11 @@ onMounted(() => {
     updateDarkClass();
 
     // Save preference to localStorage when it changes
-    stopWatch = watch(isDark, (newVal) => {
+    watch(isDark, (newVal) => {
       updateDarkClass();
       localStorage.setItem('theme', newVal ? 'dark' : 'light');
     });
-  } catch (e) {
+  } catch {
     // localStorage or matchMedia not available (e.g., in test env)
     isDark.value = false;
     updateDarkClass();

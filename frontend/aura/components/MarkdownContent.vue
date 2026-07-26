@@ -147,7 +147,7 @@ function lineNumbers(code: string): number[] {
         v-if="seg.type === 'html'"
         v-html="seg.html"
         class="contents"
-      ></div>
+      />
 
       <!-- Code block with line numbers + copy button -->
       <div
@@ -182,8 +182,7 @@ function lineNumbers(code: string): number[] {
           <div class="flex-1 overflow-x-auto">
             <pre
               class="m-0 p-4 pl-6 text-sm leading-6 font-mono text-gray-200 whitespace-pre-wrap break-words"
-              ><code :data-lang="seg.lang">{{ seg.code }}</code></pre
-            >
+            ><code :data-lang="seg.lang">{{ seg.code }}</code></pre>
           </div>
         </div>
       </div>
@@ -194,7 +193,7 @@ function lineNumbers(code: string): number[] {
         class="my-4 p-4 bg-gray-50 dark:bg-gray-800/50 rounded-lg overflow-x-auto flex justify-center"
         :data-mermaid-key="seg.key"
         ref="el => { if (el) renderMermaid(seg.code, el, seg.key) }"
-      ></div>
+      />
 
       <!-- Math (inline or display) -->
       <component
@@ -203,7 +202,7 @@ function lineNumbers(code: string): number[] {
         :class="seg.displayMode ? 'block my-4 text-center' : 'inline'"
         :data-math-key="seg.key"
         ref="el => { if (el) renderKatex(seg.formula, el, seg.displayMode, seg.key) }"
-      ></component>
+      />
 
       <!-- Image (lazy + lightbox-ready) -->
       <div
@@ -215,11 +214,11 @@ function lineNumbers(code: string): number[] {
           :alt="seg.alt"
           class="absolute inset-0 w-full h-full object-cover transition-opacity duration-500"
           loading="lazy"
-        />
+        >
       </div>
 
       <!-- Unknown segment type — render nothing -->
-      <template v-else></template>
+      <template v-else />
     </template>
   </div>
 </template>

@@ -21,6 +21,16 @@ export default defineConfig({
     globals: true,
     setupFiles: ["./tests/setup.ts"],
     exclude: ["e2e/**", "node_modules/**", "playwright.config.ts"],
+    coverage: {
+      reporter: ["text", "json", "html"],
+      exclude: ["e2e/**", "tests/**", "**/*.d.ts"],
+      thresholds: {
+        lines: 80,
+        functions: 79,
+        branches: 80,
+        statements: 80,
+      },
+    },
   },
   resolve: {
     alias: {

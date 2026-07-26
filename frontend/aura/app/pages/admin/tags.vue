@@ -83,7 +83,7 @@ async function handleDelete(id: number) {
           type="text"
           placeholder="标签名称"
           class="flex-1 px-4 py-3 border border-gray-200 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
-        />
+        >
         <button
           type="button"
           :disabled="!newTagName.trim() || isProcessing"
@@ -127,7 +127,7 @@ async function handleDelete(id: number) {
             type="text"
             class="w-full px-3 py-2 border border-gray-200 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
             @keydown.enter="confirmEdit(tag.id)"
-          />
+          >
           <button
             type="button"
             class="px-2 py-1 text-sm text-green-600 hover:bg-green-50 dark:hover:bg-green-900/30 rounded-lg transition-colors"

@@ -65,7 +65,7 @@ async function handleLogin() {
         <div>
           <label
             class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
-            >用户名
+          >用户名
           </label>
           <input
             v-model="username"
@@ -73,13 +73,13 @@ async function handleLogin() {
             placeholder="用户名"
             required
             class="w-full px-4 py-3 border border-gray-200 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
-          />
+          >
         </div>
 
         <div>
           <label
             class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
-            >密码
+          >密码
           </label>
           <input
             v-model="password"
@@ -87,7 +87,7 @@ async function handleLogin() {
             placeholder="密码"
             required
             class="w-full px-4 py-3 border border-gray-200 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
-          />
+          >
         </div>
 
         <div v-if="error" class="p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
