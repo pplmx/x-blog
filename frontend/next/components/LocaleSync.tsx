@@ -2,7 +2,7 @@
 
 import { useEffect } from 'react';
 import { usePathname } from 'next/navigation';
-import { localeFromPath, localizedPath, type Locale } from '@/lib/i18n';
+import { localeFromPath, localizedPath, type Locale, defaultLocale } from '@/lib/i18n';
 
 const STORAGE_KEY = 'x-blog-locale';
 
@@ -36,6 +36,5 @@ export function LocaleSync() {
 }
 
 // Re-export utilities for convenience
-export { localeFromPath, localizedPath };
+export { localeFromPath, localizedPath, defaultLocale };
 export type { Locale };
-export type { defaultLocale };
