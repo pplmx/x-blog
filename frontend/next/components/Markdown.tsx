@@ -286,17 +286,23 @@ export default function Markdown({ content }: { content: string }) {
 
   // 提取 mermaid 代码块
   const mermaidBlocks: string[] = [];
-  let processedContent = content.replace(/```mermaid\n([\s\S]*?)```/g, (_match: string, code: string) => {
-    mermaidBlocks.push(code.trim());
-    return `<div class="mermaid-placeholder" data-index="${mermaidBlocks.length - 1}"></div>`;
-  });
+  let processedContent = content.replace(
+    /```mermaid\n([\s\S]*?)```/g,
+    (_match: string, code: string) => {
+      mermaidBlocks.push(code.trim());
+      return `<div class="mermaid-placeholder" data-index="${mermaidBlocks.length - 1}"></div>`;
+    }
+  );
 
   // 提取代码块
   const codeBlocks: { lang: string; code: string }[] = [];
-  processedContent = processedContent.replace(/```(\w*)\n([\s\S]*?)```/g, (_match: string, lang: string, code: string) => {
-    codeBlocks.push({ lang: lang || 'text', code: code.trim() });
-    return `<div class="code-block-placeholder" data-index="${codeBlocks.length - 1}"></div>`;
-  });
+  processedContent = processedContent.replace(
+    /```(\w*)\n([\s\S]*?)```/g,
+    (_match: string, lang: string, code: string) => {
+      codeBlocks.push({ lang: lang || 'text', code: code.trim() });
+      return `<div class="code-block-placeholder" data-index="${codeBlocks.length - 1}"></div>`;
+    }
+  );
 
   // 处理图片 - 使用 LazyImage 组件
   const images: { src: string; alt: string }[] = [];

@@ -21,7 +21,6 @@ export const localeNames: Record<Locale, string> = {
   en: 'English',
 };
 
-
 // ─────────────────────────────────────────────────────────────
 // Translation dictionaries
 // ─────────────────────────────────────────────────────────────

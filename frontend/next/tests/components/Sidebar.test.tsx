@@ -35,7 +35,9 @@ describe('Sidebar', () => {
 
   beforeEach(() => {
     mockPush.mockClear();
-    vi.mocked(useSearchParams).mockReturnValue(new URLSearchParams() as unknown as ReturnType<typeof useSearchParams>);
+    vi.mocked(useSearchParams).mockReturnValue(
+      new URLSearchParams() as unknown as ReturnType<typeof useSearchParams>
+    );
   });
 
   it('renders categories list as links', () => {
@@ -104,7 +106,9 @@ describe('Sidebar with active filters', () => {
   });
 
   it('shows clear filters button when category_id is in params', () => {
-    vi.mocked(useSearchParams).mockReturnValue(new URLSearchParams('category_id=1') as unknown as ReturnType<typeof useSearchParams>);
+    vi.mocked(useSearchParams).mockReturnValue(
+      new URLSearchParams('category_id=1') as unknown as ReturnType<typeof useSearchParams>
+    );
 
     render(<Sidebar categories={mockCategories} tags={mockTags} />);
 
@@ -112,7 +116,9 @@ describe('Sidebar with active filters', () => {
   });
 
   it('shows clear filters button when tag_id is in params', () => {
-    vi.mocked(useSearchParams).mockReturnValue(new URLSearchParams('tag_id=1') as unknown as ReturnType<typeof useSearchParams>);
+    vi.mocked(useSearchParams).mockReturnValue(
+      new URLSearchParams('tag_id=1') as unknown as ReturnType<typeof useSearchParams>
+    );
 
     render(<Sidebar categories={mockCategories} tags={mockTags} />);
 
@@ -122,7 +128,9 @@ describe('Sidebar with active filters', () => {
   it('clear filters button navigates to home', async () => {
     const user = userEvent.setup();
 
-    vi.mocked(useSearchParams).mockReturnValue(new URLSearchParams('category_id=1') as unknown as ReturnType<typeof useSearchParams>);
+    vi.mocked(useSearchParams).mockReturnValue(
+      new URLSearchParams('category_id=1') as unknown as ReturnType<typeof useSearchParams>
+    );
 
     render(<Sidebar categories={mockCategories} tags={mockTags} />);
 

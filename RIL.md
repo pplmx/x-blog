@@ -5,7 +5,7 @@
 ## Project Overview
 
 **Stack**: FastAPI (Python 3.14) + Next.js 16 (production) + Nuxt 4 (parallel dev) + SQLite
-**Status**: Clean working tree, all 1195 tests passing (464 backend + 150 Nuxt + 581 Next.js)
+**Status**: Clean working tree, all 1198 tests passing (464 backend + 153 Nuxt + 581 Next.js)
 
 ## Key Findings
 
@@ -31,8 +31,8 @@
 
 - **Backend**: 464 tests, `uv run pytest -n auto` (pytest-xdist parallel), 85% coverage
 - **Next.js**: 581 tests pass (was 580/581 — fixed PostForm checkbox test for pinned field)
-- **Nuxt**: 150 test files pass (was 142, added 8 new tests across 3 rounds)
-- All three test suites verified passing — total 1195 tests, 0 failures
+- **Nuxt**: 153 tests pass (was 142 initially, grew to 153 after adding test script + new tests)
+- All three test suites verified passing — total 1198 tests, 0 failures
 
 ### Git Hooks
 
@@ -145,7 +145,14 @@
   `robots: noindex, follow` meta tag.
 - **Tests**: Updated existing test for new message text. Added 2 new tests:
   search input rendering and search icon placement.
-- **Nuxt test count**: 150 (was 148)
+- **Nuxt test count**: 153 (was 148)
+
+### Biome Formatting Cleanup (ROUND 15+)
+
+- Applied `biome format --write` to 9 files with pre-existing format
+  violations across `app/`, `components/`, `lib/`, `types/`, `tests/`,
+  `next-env.d.ts`, and `vitest.setup.ts`.
+- 0 lint errors across 136 files after cleanup. All 581 tests still pass.
 
 ### Nuxt Test Script Missing — Added to package.json (ROUND 15+)
 
@@ -161,6 +168,9 @@
 - **Result**: `pnpm test` in `frontend/nuxt` now runs successfully
   (153 tests, 10 files, all passing). CI will catch future Nuxt test
   regressions.
+
+### Next.js Test Suite Clean — 0 Unhandled Rejections (ROUND 14+)
+
 - **Problem**: Vitest reported "3 unhandled errors" in
   `frontend/next/lib/api.retry.test.ts` — all from the retry/abort test
   section. Vitest warned "This might cause false positive tests."
@@ -213,4 +223,4 @@
 6. ~~Fix rumdl issues in Nuxt README~~ (DONE)
 7. ~~Add dark mode support to Nuxt frontend~~ (DONE)
 8. ~~Add share buttons to Nuxt post detail~~ (DONE)
-9. Investigate backend API function stubs in hooks.ts (createCategory, etc.)
+9. ~~Investigate backend API function stubs in hooks.ts~~ (DONE — Round 6: added 5 missing API functions)
