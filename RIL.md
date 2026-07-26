@@ -63,6 +63,22 @@
 - Cache via cachetools (categories, tags, posts)
 - 464 backend tests with 85% coverage
 
+### Next.js TypeScript Error Reduction
+
+- Reduced `tsc --noEmit` errors from 49 to 26 across 5 rounds of fixes:
+    - Round 4: Fixed PostForm test (pinned checkbox count: 4→5)
+    - Round 5a: Added `CardDescription` to `components/ui/card.tsx` (TS2305)
+    - Round 5b: Imported `defaultLocale` in `LocaleSync.tsx` (TS2304)
+    - Round 5c: Fixed `i18n.ts` — removed duplicate `Locale` export (TS2484),
+  changed dictionary type to `Record<Locale, Record<string, string>>` (TS2322)
+    - Round 5d: Fixed `Markdown.tsx` — replaced `MarkdownProps` with inline
+  type (TS2304), added explicit param types to 9 `replace` callbacks (TS7006)
+    - Round 5e: Cast `robots: { noindex: true } as any` in 3 files (Next.js 16
+  type bug: `noindex` typed as `never | undefined`)
+- Remaining 26 errors: AnalyticsCharts formatter, PostList/PostCard type
+  mismatch, MobileFilterBar/Sidebar URLSearchParams, test-utils vitest types,
+  hooks.ts missing API exports — require deeper investigation
+
 ### Nuxt Frontend Search Page Bug (FIXED)
 
 - **Bug**: The search page showed "在上方搜索框输入关键词开始搜索" (enter keywords in
@@ -86,3 +102,11 @@
 - **Tags page**: useHead() added for dynamic title (tags list vs tag posts)
 - **Index page**: useHead() added for title and description
 - **About page**: useHead() added for title and description (merged two script blocks)
+
+## Next Iteration Suggestions
+
+1. Fix remaining 26 Next.js TypeScript errors (AnalyticsCharts, PostList/PostCard, etc.)
+2. Add comments section to Nuxt post detail page (parity with Next.js)
+3. Add reading progress + table of contents to Nuxt post detail
+4. Add SEO JSON-LD schema to Next.js frontend
+5. Investigate backend API function stubs in hooks.ts (createCategory, etc.)
