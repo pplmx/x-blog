@@ -171,3 +171,47 @@ export async function useRelatedPosts(postId: number, limit: number = 5) {
     query: { limit },
   });
 }
+
+/**
+ * Comment type matching the backend Comment schema.
+ */
+export interface Comment {
+  id: number;
+  post_id: number;
+  parent_id: number | null;
+  nickname: string;
+  email: string;
+  content: string;
+  is_approved: boolean;
+  ip_address: string;
+  created_at: string;
+}
+
+/**
+ * Fetch paginated comments for a post.
+ * Uses the backend's GET /api/comments/post/{post_id} endpoint.
+ */
+export async function fetchComments(
+  postId: number,
+  page: number = 1,
+  limit: number = 20
+) {
+  return useApi<{ items: Comment[]; total: number; page: number; limit: number; total_pages: number }>(
+    `/api/comments/post/${postId}`,
+    { query: { page, limit } }
+  );
+}
+
+/**
+ * Create a new comment for a post.
+ * Uses the backend's POST /api/comments/post/{post_id} endpoint.
+ */
+export async function createComment(
+  postId: number,
+  data: { nickname: string; email: string; content: string; parent_id?: number | null }
+) {
+  return useApi<Comment>(`/api/comments/post/${postId}`, {
+    method: 'POST',
+    body: data,
+  });
+}
