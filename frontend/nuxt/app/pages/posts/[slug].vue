@@ -52,6 +52,19 @@ async function handleLike() {
   }
 }
 
+// Reading progress: track scroll position and update progress bar
+const scrollProgress = ref(0);
+onMounted(() => {
+  const updateProgress = () => {
+    const scrolled = window.scrollY;
+    const maxScroll = document.body.scrollHeight - window.innerHeight;
+    scrollProgress.value = maxScroll > 0 ? (scrolled / maxScroll) * 100 : 0;
+  };
+  window.addEventListener('scroll', updateProgress);
+  updateProgress();
+  onUnmounted(() => window.removeEventListener('scroll', updateProgress));
+});
+
 // Smooth scroll to heading element
 function scrollToHeading(event: MouseEvent) {
   const href = (event.currentTarget as HTMLAnchorElement)?.getAttribute('href');
@@ -66,6 +79,14 @@ function scrollToHeading(event: MouseEvent) {
 
 <template>
   <div class="max-w-3xl mx-auto">
+    <!-- Reading progress bar -->
+    <div class="fixed top-0 left-0 right-0 h-1 bg-gray-200 z-20">
+      <div
+        class="h-full bg-blue-600 transition-all duration-150 ease-out"
+        :style="{ width: scrollProgress + '%' }"
+      ></div>
+    </div>
+
     <!-- Back link -->
     <NuxtLink
       to="/"
