@@ -52,8 +52,13 @@
 
 - **Next.js** (`frontend/next/`): Production frontend, feature-complete with comments,
   share buttons, table of contents, reading progress, SEO JSON-LD schema, etc.
-- **Nuxt** (`frontend/nuxt/`): Simpler parallel dev alternative — basic pages only
-  (index, about, search, tags, post detail, 404). Missing many Next.js features.
+  Built with Next.js 16, React, TypeScript, Tailwind CSS v4, shadcn/ui.
+- **Nuxt** (`frontend/nuxt/`): **Migration target** — being progressively built as a
+  Vue/Vite/Rolldown ecosystem alternative. Currently simpler with basic pages only
+  (index, about, search, tags, post detail, 404). The goal is to eventually migrate
+  fully from Next.js/React to Nuxt 4/Vue 3/Vite or Rolldown, leveraging the Vue
+  ecosystem. Improvements made to the Nuxt version are incremental steps toward
+  feature parity with the Next.js version.
 
 ### Backend
 
