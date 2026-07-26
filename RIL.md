@@ -93,6 +93,27 @@
   `createTag`, `createPost`, `updatePost`, `deletePost`) — were referenced by
   `hooks.ts` but never defined (TS2305 errors)
 
+### Nuxt TOC + Comments (COMPLETED)
+
+- **Round 8**: Added table of contents to post detail page
+    - Created `composables/useToc.ts` with `extractToc()` function that parses
+  HTML heading tags (h1-h6) and returns `{ id, level, text }` items
+    - Fixed regex group mapping bug: `match[1]`=level, `match[2]`=text (was swapped)
+    - Added desktop-only TOC sidebar (`<nav v-if="toc.length > 1">`) with heading
+  links and smooth scroll via `scrollToHeading()`
+    - Explicitly imported `extractToc` and `computed` (auto-import path issues)
+    - Added 3 tests: multiple headings render TOC, single heading skips TOC,
+  no headings skips TOC
+
+- **Round 9**: Added comments section to post detail page
+    - Added `Comment` interface and `fetchComments`/`createComment` API functions
+  in `composables/useApi.ts` (backend API already supports these endpoints)
+    - Created `CommentList.vue`: paginated comment list with loading/empty states
+  and pagination navigation
+    - Created `CommentForm.vue`: comment submission form with nickname/email/content
+  fields, validation, loading state, and success/error feedback
+    - Integrated both components into `posts/[slug].vue` (v-if post.id for safety)
+
 ### Nuxt Frontend Search Page Bug (FIXED)
 
 - **Bug**: The search page showed "在上方搜索框输入关键词开始搜索" (enter keywords in
@@ -119,8 +140,12 @@
 
 ## Next Iteration Suggestions
 
-1. Fix remaining 26 Next.js TypeScript errors (AnalyticsCharts, PostList/PostCard, etc.)
-2. Add comments section to Nuxt post detail page (parity with Next.js)
-3. Add reading progress + table of contents to Nuxt post detail
-4. Add SEO JSON-LD schema to Next.js frontend
+1. ~~Fix remaining 26 Next.js TypeScript errors~~ (DONE — reduced from 49 to 0)
+2. ~~Add comments section to Nuxt post detail page~~ (DONE)
+3. ~~Add reading progress + table of contents to Nuxt post detail~~ (TOC DONE, reading progress pending)
+4. ~~Add SEO JSON-LD schema to Next.js frontend~~ (already exists in Next.js)
+5. Add reading progress indicator to Nuxt post detail page
+6. Fix rumdl issues in `frontend/nuxt/README.md` (MD060 table alignment)
+7. Add dark mode support to Nuxt frontend
+8. Add share buttons to Nuxt post detail page (parity with Next.js)
 5. Investigate backend API function stubs in hooks.ts (createCategory, etc.)
