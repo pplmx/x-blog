@@ -3,7 +3,32 @@
 const route = useRoute();
 const query = route.query.q || '';
 
-const { data: searchResult, pending, error } = await useSearch(query, route.query.page ? parseInt(route.query.page, 10) : 1);
+const { data: searchResult, pending, error } = await useSearch(
+  query,
+  route.query.page ? parseInt(route.query.page, 10) : 1,
+);
+
+// SEO: set dynamic head metadata based on search query
+useHead({
+  title: query ? `搜索: ${query}` : "搜索文章",
+  meta: [
+    {
+      name: "description",
+      content: query
+        ? `搜索"${query}"的文章结果`
+        : "在 X-Blog 中搜索文章",
+    },
+    { name: "robots", content: "noindex, follow" },
+  ],
+});
+
+// Search input handler: navigate to /search?q=keyword on Enter
+const searchInput = ref("");
+function handleSearchInput() {
+  if (searchInput.value.trim()) {
+    navigateTo({ query: { q: searchInput.value.trim() } });
+  }
+}
 </script>
 
 <template>
@@ -21,9 +46,24 @@ const { data: searchResult, pending, error } = await useSearch(query, route.quer
       <h2 class="text-xl font-semibold text-gray-700 dark:text-gray-300 mb-2">
         搜索文章
       </h2>
-      <p class="text-gray-500 dark:text-gray-400">
-        在上方搜索框输入关键词开始搜索
+      <p class="text-gray-500 dark:text-gray-400 mb-6">
+        输入关键词开始搜索
       </p>
+      <div class="w-full max-w-md">
+        <div class="relative">
+          <input
+            v-model="searchInput"
+            type="text"
+            placeholder="输入关键词..."
+            class="w-full pl-10 pr-4 py-3 border border-gray-200 dark:border-gray-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+            @keydown.enter="handleSearchInput"
+          />
+          <Icon
+            icon="lucide:search"
+            class="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400"
+          />
+        </div>
+      </div>
     </div>
 
     <!-- Loading state -->
