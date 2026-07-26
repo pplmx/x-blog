@@ -5,7 +5,7 @@
 ## Project Overview
 
 **Stack**: FastAPI (Python 3.14) + Next.js 16 (production) + Nuxt 4 (parallel dev) + SQLite
-**Status**: Clean working tree, all tests passing (475 backend + 590 Next.js + 341 Nuxt = 1406 total)
+**Status**: Clean working tree, all tests passing (475 backend + 590 Next.js + 342 Nuxt = 1407 total)
 
 ## Key Findings
 
@@ -74,7 +74,7 @@
 - **Next.js**: 590 tests pass (was 581, grew through TypeScript fixes, new API function tests, retry tests)
 - **Nuxt**: 339 tests pass (was 142 initially, grew through test infrastructure improvements, composable tests,
   component tests for CommentList/CommentForm/ShareButtons/MarkdownContent, page tests, admin panel tests)
-- All three test suites verified passing — total 1406 tests, 0 failures
+- All three test suites verified passing — total 1407 tests, 0 failures
 
 ### Git Hooks
 
@@ -476,7 +476,25 @@ This iteration reconciled a stale/in-progress repository state and committed ver
   renders the error in red text next to the like button. Also clears the error on retry.
 - **Test**: Added "displays an error message when liking fails" test that stubs `useFetch` to
   throw on the `/like` endpoint, clicks the like button, and verifies the error message renders.
-- **Result**: 340 Nuxt tests pass (was 339, +1 new). 1405 total tests, 0 failures.
+- **Result**: 341 Nuxt tests pass (was 340, +1 new). 1406 total tests, 0 failures.
+
+### Nuxt admin dashboard category distribution drafts bug (FIXED)
+
+- **Bug**: In `frontend/nuxt/app/pages/admin/index.vue`, `postsInCategory()` counted ALL posts
+  (including drafts) for the category distribution. The Next.js production equivalent
+  (`frontend/next/components/AnalyticsCharts.tsx` `CategoryPieChart`) filters to published posts
+  only (`posts.filter((p) => p.published)`). This caused draft posts to inflate category counts
+  in the admin dashboard, showing misleading distribution data.
+- **Fix**: Guarded the filter with `&& p.published`, matching the Next.js `CategoryPieChart`
+  behavior. Category distribution now shows only published post counts.
+- **Tests**: Replaced the weak \"renders post counts per category\" test (asserted `toContain('2')`
+  which passed regardless due to other counts sharing the number 2) with two stronger tests:
+  1. \"renders published post counts per category (drafts excluded)\" — verifies Tech and Design
+     appear and the draft post title is not counted.
+  2. \"excludes drafts from category distribution counts\" — uses draft-only-post mock data and
+     verifies the category count span shows \"0\" (published only), not \"1\". This test FAILS
+     without the fix (count is \"1\") and PASSES with the fix (count is \"0\").
+- **Result**: 342 Nuxt tests pass (was 341, +1 net new). 1407 total tests, 0 failures.
 
 ### Nuxt post detail SEO JSON-LD structured data (FIXED)
 
