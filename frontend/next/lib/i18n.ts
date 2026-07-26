@@ -59,7 +59,9 @@ const zhCN = {
   'comment.email': '邮箱（不公开）',
   'comment.submit': '发表评论',
   'comment.reply': '回复',
+  'comment.replyTo': '回复 {name}',
   'comment.delete': '删除',
+  'comment.deleteConfirm': '确定删除 {name}？{name} 的评论将被永久删除。',
   // Tags
   'tags.title': '标签列表',
   'tags.allPosts': '全部文章',
@@ -115,7 +117,9 @@ const en = {
   'comment.email': 'Email (not public)',
   'comment.submit': 'Post Comment',
   'comment.reply': 'Reply',
+  'comment.replyTo': 'Reply to {name}',
   'comment.delete': 'Delete',
+  'comment.deleteConfirm': 'Delete {name}? The comment by {name} will be permanently deleted.',
   // Tags
   'tags.title': 'Tags',
   'tags.allPosts': 'All Posts',
@@ -162,7 +166,9 @@ export function createTranslator(locale: Locale): Translator {
     let text = dict[key] ?? key;
     if (params) {
       for (const [k, v] of Object.entries(params)) {
-        text = text.replace(`{${k}}`, String(v));
+        // Use replaceAll to replace ALL occurrences of a placeholder,
+        // not just the first (String.replace only replaces the first match).
+        text = text.replaceAll(`{${k}}`, String(v));
       }
     }
     return text;

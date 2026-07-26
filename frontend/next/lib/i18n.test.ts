@@ -90,6 +90,24 @@ describe('createTranslator', () => {
     expect(t('post.views' as never, { count: 42 })).toBe('阅读');
   });
 
+  it('replaces ALL occurrences of a parameter (not just the first)', () => {
+    // String.replace (single) only replaces the FIRST occurrence of a
+    // placeholder, leaving subsequent {name} literals visible in the UI.
+    // createTranslator must use replaceAll (global) so that a translation
+    // value with a placeholder appearing more than once has ALL replaced.
+    //
+    // 'comment.deleteConfirm' = 'Delete {name}? The comment by {name}...'
+    // has {name} TWICE. With replace (first-only), the second {name}
+    // would remain as a literal string in the output — a visible UI bug.
+    const t = createTranslator('zh-CN');
+    // zhCN version: '确定删除 {name}？{name} 的评论将被永久删除。'
+    const result = t('comment.deleteConfirm' as never, { name: 'Alice' });
+    // Both {name} occurrences must be replaced:
+    expect(result).toBe('确定删除 Alice？Alice 的评论将被永久删除。');
+    // No literal placeholder should remain in the output:
+    expect(result).not.toContain('{name}');
+  });
+
   it('handles missing parameters gracefully', () => {
     const t = createTranslator('en');
     expect(t('common.next' as never)).toBe('Next');
