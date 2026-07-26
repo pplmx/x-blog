@@ -5,7 +5,7 @@
 ## Project Overview
 
 **Stack**: FastAPI (Python 3.14) + Next.js 16 (production) + Nuxt 4 (parallel dev) + SQLite
-**Status**: Clean working tree, all tests passing (475 backend + 590 Next.js + 342 Nuxt = 1407 total)
+**Status**: Clean working tree, all tests passing (475 backend + 591 Next.js + 342 Nuxt = 1408 total)
 
 ## Key Findings
 
@@ -71,10 +71,10 @@
 ### Test Infrastructure
 
 - **Backend**: 475 tests, `uv run pytest -n auto` (pytest-xdist parallel), 85% coverage
-- **Next.js**: 590 tests pass (was 581, grew through TypeScript fixes, new API function tests, retry tests)
+- **Next.js**: 591 tests pass (was 581, +10 through TypeScript fixes, new API function tests, retry tests, i18n fix)
 - **Nuxt**: 339 tests pass (was 142 initially, grew through test infrastructure improvements, composable tests,
   component tests for CommentList/CommentForm/ShareButtons/MarkdownContent, page tests, admin panel tests)
-- All three test suites verified passing — total 1407 tests, 0 failures
+- All three test suites verified passing — total 1408 tests, 0 failures
 
 ### Git Hooks
 
@@ -496,29 +496,44 @@ This iteration reconciled a stale/in-progress repository state and committed ver
      without the fix (count is \"1\") and PASSES with the fix (count is \"0\").
 - **Result**: 342 Nuxt tests pass (was 341, +1 net new). 1407 total tests, 0 failures.
 
+### Next.js i18n parameter replacement duplicates bug (FIXED)
+
+- **Bug**: In `frontend/next/lib/i18n.ts`, `createTranslator`'s parameter replacement used
+  `String.replace('{k}', String(v))` which only replaces the FIRST occurrence of a placeholder.
+  If a translation value contains the same placeholder more than once (e.g. "Delete {name}? {name}
+  will be deleted"), only the first `{name}` was replaced, leaving the second as a literal `{name}`
+  string visible in the UI.
+- **Fix**: Changed `text.replace(...)` to `text.replaceAll(...)` so ALL occurrences of each
+  placeholder are replaced. Added a `comment.deleteConfirm` translation key (zh-CN and en)
+  with `{name}` used twice to exercise this path, and a regression test that verifies both
+  occurrences are replaced. Also added `comment.replyTo` key (single `{name}` placeholder) for
+  the reply-to feature.
+- **Test**: Added "replaces ALL occurrences of a parameter (not just the first)" test using
+  `comment.deleteConfirm` (which has `{name}` twice). Verified this is a TRUE regression test:
+  it FAILS with `replace` (second `{name}` remains as literal) and PASSES with `replaceAll`.
+- **Result**: 591 Next.js tests pass (was 590, +1 new). 1408 total tests, 0 failures.
+
 ### Nuxt post detail SEO JSON-LD structured data (FIXED)
 
 - **Problem**: The Nuxt post detail page had `useHead()` for dynamic meta title/description/OG/Twitter
   tags but **no JSON-LD structured data** (`<script type="application/ld+json">`). The Next.js
   equivalent renders a `BlogPosting` schema (and a `BreadcrumbList` schema) for SEO. The RIL
-  priority list flagged \"Add SEO JSON-LD structured data to Nuxt post detail pages\" as a gap.
-- **Fix**: Added a `script` entry of `type: \"application/ld+json\"` with a `json` payload to the
+  priority list flagged "Add SEO JSON-LD structured data to Nuxt post detail pages" as a gap.
+- **Fix**: Added a `script` entry of `type: "application/ld+json"` with a `json` payload to the
   existing `useHead()` call in `frontend/nuxt/app/pages/posts/[slug].vue`, mirroring the Next.js
   `BlogPosting` schema (context, type, headline, description, image, datePublished/dateModified,
   author, publisher with logo, mainEntityOfPage, articleSection, keywords). Uses Nuxt's `useHead`
   `json` shorthand which serializes to the script tag automatically (SSR-safe, no `dangerouslySet`).
-- **Test**: Added \"emits a BlogPosting JSON-LD script in useHead when post loads\" test that spies
+- **Test**: Added "emits a BlogPosting JSON-LD script in useHead when post loads" test that spies
   on `useHead`, mounts the post page, and asserts the `script` array contains an
   `application/ld+json` entry with `BlogPosting` type and correct field values (headline,
   datePublished, author.name, articleSection).
-in the security boundary.
+- **Result**: 341 Nuxt tests pass (was 340, +1 new). 1407 total tests, 0 failures.
 
 ## Next Priorities
 
-1. Migrate remaining Next.js-only features to Nuxt (analytics charts,
-
-   error boundary + loading states) to continue the migration target.
+1. Migrate remaining Next.js-only features to Nuxt (analytics charts, error boundary + loading
+   states) to continue the migration target.
 2. Add i18n support to Nuxt paralleling Next.js `lib/i18n.ts`.
 3. Close the gap between the Nuxt admin panel and the Next.js production admin panel
-
    (audit feature parity; the Nuxt admin is structurally complete with 339 tests).
