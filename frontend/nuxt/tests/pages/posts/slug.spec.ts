@@ -131,6 +131,12 @@ async function mountPostPage({
           template: '<svg class="iconstub" :data-icon="icon"></svg>',
           props: ["icon"],
         },
+        // Stub MarkdownContent so tests don't need to load mermaid/katex/dompurify.
+        // Renders the content prop as plain HTML so test assertions still work.
+        MarkdownContent: {
+          template: '<div class="markdown-content"><div v-html="content"></div></div>',
+          props: ["content"],
+        },
       },
     },
   });
@@ -412,11 +418,11 @@ describe("Post Detail Page", () => {
       expect(wrapper.text()).toContain("This is a test excerpt for the article.");
     });
 
-    it("renders the post content via v-html", async () => {
+    it("renders the post content via MarkdownContent", async () => {
       const wrapper = await mountPostPage();
-      const contentDiv = wrapper.find("div.mt-8.text-gray-800");
-      expect(contentDiv.exists()).toBe(true);
-      expect(contentDiv.text()).toContain("Introduction");
+      const contentWrapper = wrapper.find("div.markdown-content");
+      expect(contentWrapper.exists()).toBe(true);
+      expect(contentWrapper.text()).toContain("Introduction");
     });
 
     it("renders a back to home link", async () => {

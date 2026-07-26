@@ -25,10 +25,14 @@
   "devDependencies": {
     "@iconify-json/lucide": "^1.2.119",
     "@testing-library/vue": "^8.1.0",
+    "@types/dompurify": "^3.2.0",
     "@vitejs/plugin-vue": "^6.0.8",
     "@vue/test-utils": "^2.4.11",
     "autoprefixer": "^10.5.4",
+    "dompurify": "^3.4.12",
     "happy-dom": "^20.11.1",
+    "katex": "^0.18.1",
+    "mermaid": "^11.16.0",
     "unplugin-auto-import": "^21.0.0",
     "vitest": "^4.1.10"
   }

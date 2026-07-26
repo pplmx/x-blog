@@ -215,3 +215,250 @@ export async function createComment(
     body: data,
   });
 }
+
+// ============================================================================
+// Admin API
+// ============================================================================
+
+export interface AdminPost {
+  id: number;
+  title: string;
+  slug: string;
+  content: string;
+  excerpt: string;
+  published: boolean;
+  pinned: boolean;
+  cover_image: string | null;
+  category: string | null;
+  tags: string[];
+  created_at: string;
+  updated_at: string;
+}
+
+export interface AdminPostDetail {
+  id: number;
+  title: string;
+  slug: string;
+  content: string;
+  excerpt: string;
+  published: boolean;
+  pinned: boolean;
+  cover_image: string | null;
+  category_id: number | null;
+  tag_ids: number[];
+  created_at: string;
+  updated_at: string;
+}
+
+export interface PostCreate {
+  title: string;
+  slug: string;
+  content: string;
+  excerpt?: string;
+  published: boolean;
+  pinned?: boolean;
+  category_id?: number;
+  tag_ids?: number[];
+  cover_image?: string;
+}
+
+export interface AdminComment {
+  id: number;
+  post_id: number;
+  post_title: string;
+  nickname: string;
+  email: string;
+  content: string;
+  ip_address: string;
+  is_approved: boolean;
+  created_at: string;
+}
+
+/** Get auth headers from localStorage (admin token). */
+function getAuthHeaders(): HeadersInit {
+  if (typeof localStorage === 'undefined') return {};
+  const token = localStorage.getItem('admin_token');
+  return token ? { Authorization: `Bearer ${token}` } : {};
+}
+
+/** Fetch all posts for admin panel (includes drafts, auth required). */
+export async function fetchAdminPosts() {
+  const config = useRuntimeConfig();
+  const apiUrl = config.public.apiUrl;
+  return useFetch<AdminPost[]>(`${apiUrl}/api/admin/posts`, {
+    headers: getAuthHeaders(),
+  });
+}
+
+/** Fetch a single post by ID for editing (auth required). */
+export async function fetchAdminPost(id: number) {
+  const config = useRuntimeConfig();
+  const apiUrl = config.public.apiUrl;
+  return useFetch<AdminPostDetail>(`${apiUrl}/api/admin/posts/${id}`, {
+    headers: getAuthHeaders(),
+  });
+}
+
+/** Create a new post (auth required). */
+export async function createAdminPost(data: PostCreate) {
+  const config = useRuntimeConfig();
+  const apiUrl = config.public.apiUrl;
+  return useFetch<{ id: number }>(`${apiUrl}/api/admin/posts`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+    body: data,
+  });
+}
+
+/** Update an existing post (auth required). */
+export async function updateAdminPost(id: number, data: Partial<PostCreate>) {
+  const config = useRuntimeConfig();
+  const apiUrl = config.public.apiUrl;
+  return useFetch<{ id: number }>(`${apiUrl}/api/admin/posts/${id}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+    body: data,
+  });
+}
+
+/** Delete a post (auth required). */
+export async function deleteAdminPost(id: number) {
+  const config = useRuntimeConfig();
+  const apiUrl = config.public.apiUrl;
+  return useFetch(`${apiUrl}/api/admin/posts/${id}`, {
+    method: 'DELETE',
+    headers: getAuthHeaders(),
+  });
+}
+
+/** Fetch all categories (admin, auth required). */
+export async function fetchAdminCategories() {
+  const config = useRuntimeConfig();
+  const apiUrl = config.public.apiUrl;
+  return useFetch<Category[]>(`${apiUrl}/api/admin/categories`, {
+    headers: getAuthHeaders(),
+  });
+}
+
+/** Create a category (auth required). */
+export async function createAdminCategory(name: string) {
+  const config = useRuntimeConfig();
+  const apiUrl = config.public.apiUrl;
+  return useFetch<Category>(`${apiUrl}/api/admin/categories`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+    body: { name },
+  });
+}
+
+/** Update a category (auth required). */
+export async function updateAdminCategory(id: number, name: string) {
+  const config = useRuntimeConfig();
+  const apiUrl = config.public.apiUrl;
+  return useFetch<Category>(`${apiUrl}/api/admin/categories/${id}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+    body: { name },
+  });
+}
+
+/** Delete a category (auth required). */
+export async function deleteAdminCategory(id: number) {
+  const config = useRuntimeConfig();
+  const apiUrl = config.public.apiUrl;
+  return useFetch(`${apiUrl}/api/admin/categories/${id}`, {
+    method: 'DELETE',
+    headers: getAuthHeaders(),
+  });
+}
+
+/** Fetch all tags (admin, auth required). */
+export async function fetchAdminTags() {
+  const config = useRuntimeConfig();
+  const apiUrl = config.public.apiUrl;
+  return useFetch<Tag[]>(`${apiUrl}/api/admin/tags`, {
+    headers: getAuthHeaders(),
+  });
+}
+
+/** Create a tag (auth required). */
+export async function createAdminTag(name: string) {
+  const config = useRuntimeConfig();
+  const apiUrl = config.public.apiUrl;
+  return useFetch<Tag>(`${apiUrl}/api/admin/tags`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+    body: { name },
+  });
+}
+
+/** Update a tag (auth required). */
+export async function updateAdminTag(id: number, name: string) {
+  const config = useRuntimeConfig();
+  const apiUrl = config.public.apiUrl;
+  return useFetch<Tag>(`${apiUrl}/api/admin/tags/${id}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+    body: { name },
+  });
+}
+
+/** Delete a tag (auth required). */
+export async function deleteAdminTag(id: number) {
+  const config = useRuntimeConfig();
+  const apiUrl = config.public.apiUrl;
+  return useFetch(`${apiUrl}/api/admin/tags/${id}`, {
+    method: 'DELETE',
+    headers: getAuthHeaders(),
+  });
+}
+
+/** Fetch all comments for admin panel (auth required). */
+export async function fetchAdminComments(postId?: number) {
+  const config = useRuntimeConfig();
+  const apiUrl = config.public.apiUrl;
+  const query = postId ? `?post_id=${postId}` : '';
+  return useFetch<AdminComment[]>(`${apiUrl}/api/admin/comments${query}`, {
+    headers: getAuthHeaders(),
+  });
+}
+
+/** Delete a comment (auth required). */
+export async function deleteAdminComment(commentId: number) {
+  const config = useRuntimeConfig();
+  const apiUrl = config.public.apiUrl;
+  return useFetch(`${apiUrl}/api/admin/comments/${commentId}`, {
+    method: 'DELETE',
+    headers: getAuthHeaders(),
+  });
+}
+
+/** Approve or reject a comment (auth required). */
+export async function approveAdminComment(commentId: number, approved: boolean) {
+  const config = useRuntimeConfig();
+  const apiUrl = config.public.apiUrl;
+  return useFetch<AdminComment>(`${apiUrl}/api/comments/${commentId}/approve`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+    body: { approved },
+  });
+}
+
+/** Admin login — returns access token. */
+export async function adminLogin(
+  username: string,
+  password: string
+) {
+  const config = useRuntimeConfig();
+  const apiUrl = config.public.apiUrl;
+  const formData = new URLSearchParams();
+  formData.set('username', username);
+  formData.set('password', password);
+
+  return useFetch<{ access_token: string }>('admin/login', {
+    baseURL: apiUrl,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: formData,
+  });
+}

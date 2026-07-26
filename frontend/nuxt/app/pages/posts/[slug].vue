@@ -200,11 +200,9 @@ function scrollToHeading(event: MouseEvent) {
       </div>
 
       <!-- Markdown content -->
-      <div
-        v-if="post.content"
-        class="mt-8 text-gray-800 leading-relaxed"
-        v-html="post.content"
-      ></div>
+      <div v-if="post.content" class="mt-8">
+        <MarkdownContent :content="post.content" />
+      </div>
 
       <!-- Like button -->
       <div class="mt-8 pt-6 border-t border-gray-200 flex items-center gap-4">
