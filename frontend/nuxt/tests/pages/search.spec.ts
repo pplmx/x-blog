@@ -84,6 +84,8 @@ async function mountSearchPage({
 
   vi.stubGlobal("navigateTo", navigateToMock);
 
+  vi.stubGlobal("useHead", vi.fn());
+
   // The search page uses `computed` without importing it (Nuxt auto-imports it)
   vi.stubGlobal("computed", computed);
 
@@ -135,13 +137,26 @@ describe("Search Page", () => {
     it("renders the search prompt when no query", async () => {
       const wrapper = await mountSearchPage({ query: "", routeQuery: {} });
       expect(wrapper.text()).toContain("搜索文章");
-      expect(wrapper.text()).toContain("在上方搜索框输入关键词开始搜索");
+      expect(wrapper.text()).toContain("输入关键词开始搜索");
     });
 
     it("renders a search icon", async () => {
       const wrapper = await mountSearchPage({ query: "", routeQuery: {} });
       const svg = wrapper.find("svg");
       expect(svg.exists()).toBe(true);
+    });
+
+    it("renders a search input field", async () => {
+      const wrapper = await mountSearchPage({ query: "", routeQuery: {} });
+      const input = wrapper.find('input[type="text"]');
+      expect(input.exists()).toBe(true);
+      expect(input.attributes("placeholder")).toContain("关键词");
+    });
+
+    it("renders a search button inside the input area", async () => {
+      const wrapper = await mountSearchPage({ query: "", routeQuery: {} });
+      const icon = wrapper.find(".iconstub");
+      expect(icon.exists()).toBe(true);
     });
   });
 
