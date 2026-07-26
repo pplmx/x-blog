@@ -195,7 +195,6 @@ def get_robots_txt():
 Allow: /
 
 Sitemap: {site_url}/sitemap.xml
-RSS: {site_url}/rss/feed.xml
 """
 
     return Response(content=robots, media_type="text/plain")
