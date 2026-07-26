@@ -201,7 +201,8 @@ def admin_update_post(
         post.pinned = post_data.pinned
     if post_data.cover_image is not None:
         post.cover_image = post_data.cover_image
-    post.category_id = post_data.category_id
+    if post_data.category_id is not None:
+        post.category_id = post_data.category_id
 
     if post_data.tag_ids is not None:
         tags = db.query(models.Tag).filter(models.Tag.id.in_(post_data.tag_ids)).all()
