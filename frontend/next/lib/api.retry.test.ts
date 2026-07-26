@@ -62,7 +62,12 @@ describe('API - Retry Logic and fetchWithTimeout', () => {
   describe('fetchWithTimeout - retry on 5xx', () => {
     it('retries on 5xx errors and succeeds on retry', async () => {
       mockFetch
-        .mockRejectedValueOnce(new Error('Network error'))
+        .mockResolvedValueOnce(
+          mockResponse(
+            { error: 'server error' },
+            { status: 500, statusText: 'Internal Server Error' }
+          )
+        )
         .mockResolvedValueOnce(mockResponse({ data: 'ok' }));
 
       const promise = fetchWithTimeout('http://localhost:8000/api/posts');
@@ -76,20 +81,33 @@ describe('API - Retry Logic and fetchWithTimeout', () => {
     });
 
     it('retries up to MAX_RETRIES times then throws last error', async () => {
-      mockFetch.mockRejectedValue(new Error('Network error'));
+      // Use 500 responses to trigger retry logic without creating rejected promises
+      // from mockRejectedValue (which causes Vitest unhandledRejection warnings).
+      // Attach .catch() before advancing fake timers to prevent unhandled rejection
+      // detection (throw lastError happens synchronously during advanceTimersByTimeAsync)
+      mockFetch.mockResolvedValue(
+        mockResponse(
+          { error: 'server error' },
+          { status: 500, statusText: 'Internal Server Error' }
+        )
+      );
 
       const promise = fetchWithTimeout('http://localhost:8000/api/posts');
 
       // Advance through all retry delays: 1000 + 2000 + 4000 = 7000ms
+      // Attach catch handler first to prevent unhandled rejection during timer advancement
+      promise.catch(() => {});
       await vi.advanceTimersByTimeAsync(7000);
 
-      await expect(promise).rejects.toThrow('Network error');
+      await expect(promise).rejects.toThrow('HTTP 500');
       // Initial attempt + 3 retries = 4 calls
       expect(mockFetch).toHaveBeenCalledTimes(4);
     });
 
     it('does not retry on 4xx errors (except 429)', async () => {
-      mockFetch.mockResolvedValue(mockResponse({ error: 'bad' }, { status: 400, statusText: 'Bad Request' }));
+      mockFetch.mockResolvedValue(
+        mockResponse({ error: 'bad' }, { status: 400, statusText: 'Bad Request' })
+      );
 
       const result = await fetchWithTimeout('http://localhost:8000/api/posts');
 
@@ -99,7 +117,9 @@ describe('API - Retry Logic and fetchWithTimeout', () => {
 
     it('retries on 429 Too Many Requests', async () => {
       mockFetch
-        .mockResolvedValueOnce(mockResponse({ error: 'too many' }, { status: 429, statusText: 'Too Many Requests' }))
+        .mockResolvedValueOnce(
+          mockResponse({ error: 'too many' }, { status: 429, statusText: 'Too Many Requests' })
+        )
         .mockResolvedValueOnce(mockResponse({ data: 'ok' }));
 
       const promise = fetchWithTimeout('http://localhost:8000/api/posts');
@@ -112,34 +132,44 @@ describe('API - Retry Logic and fetchWithTimeout', () => {
 
     it('throws on abort (timeout)', async () => {
       // Mock fetch that rejects when the abort signal fires (simulating timeout)
+      // Attach .catch() before advancing fake timers to prevent unhandled rejection
+      // detection (the rejection happens synchronously during advanceTimersByTimeAsync)
       mockFetch.mockImplementation((_url: string, options?: RequestInit) => {
-        return new Promise((_, reject) => {
-          const signal = (options as { signal?: AbortSignal })?.signal;
-          if (signal) {
-            if (signal.aborted) {
-              reject(new DOMException('The operation was aborted', 'AbortError'));
-            } else {
-              signal.addEventListener('abort', () => {
-                reject(new DOMException('The operation was aborted', 'AbortError'));
-              });
-            }
-          }
-        });
+        const abortError = new DOMException('The operation was aborted', 'AbortError');
+        const signal = (options as { signal?: AbortSignal })?.signal;
+        if (signal?.aborted) {
+          return Promise.reject(abortError);
+        }
+        if (signal) {
+          return new Promise((_, reject) => {
+            signal.addEventListener('abort', () => {
+              reject(abortError);
+            });
+          });
+        }
+        return Promise.reject(abortError);
       });
 
-      const promise = fetchWithTimeout('http://localhost:8000/api/posts', { timeout: 100, retries: 0 });
-
+      const promise = fetchWithTimeout('http://localhost:8000/api/posts', {
+        timeout: 100,
+        retries: 0,
+      });
+      // Attach catch handler first to prevent unhandled rejection during timer advancement
+      promise.catch(() => {});
       await vi.advanceTimersByTimeAsync(100);
 
       await expect(promise).rejects.toThrow();
     });
 
     it('does not retry on abort error', async () => {
+      // Attach .catch() before advancing fake timers to prevent unhandled rejection
+      // detection (mockRejectedValue creates rejected promises that Vitest detects
+      // during advanceTimersByTimeAsync before fetchWithTimeout's try/catch processes them)
       const abortError = new DOMException('The operation was aborted', 'AbortError');
       mockFetch.mockRejectedValue(abortError);
 
       const promise = fetchWithTimeout('http://localhost:8000/api/posts', { timeout: 100 });
-
+      promise.catch(() => {});
       await vi.advanceTimersByTimeAsync(100);
 
       await expect(promise).rejects.toBe(abortError);
@@ -177,10 +207,20 @@ describe('API - Comment Functions', () => {
 
   describe('createComment', () => {
     it('creates a comment with POST method and JSON body', async () => {
-      const mockComment = { id: 1, post_id: 1, nickname: 'Alice', email: 'a@test.com', content: 'Great!' };
+      const mockComment = {
+        id: 1,
+        post_id: 1,
+        nickname: 'Alice',
+        email: 'a@test.com',
+        content: 'Great!',
+      };
       mockFetch.mockResolvedValue(mockResponse(mockComment));
 
-      const result = await createComment(1, { nickname: 'Alice', email: 'a@test.com', content: 'Great!' });
+      const result = await createComment(1, {
+        nickname: 'Alice',
+        email: 'a@test.com',
+        content: 'Great!',
+      });
 
       expect(result).toEqual(mockComment);
       expect(mockFetch).toHaveBeenCalledWith(
@@ -188,13 +228,25 @@ describe('API - Comment Functions', () => {
         expect.objectContaining({
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ nickname: 'Alice', email: 'a@test.com', content: 'Great!', parent_id: undefined }),
+          body: JSON.stringify({
+            nickname: 'Alice',
+            email: 'a@test.com',
+            content: 'Great!',
+            parent_id: undefined,
+          }),
         })
       );
     });
 
     it('includes parent_id when provided', async () => {
-      const mockComment = { id: 2, post_id: 1, nickname: 'Bob', email: 'b@test.com', content: 'Reply', parent_id: 1 };
+      const mockComment = {
+        id: 2,
+        post_id: 1,
+        nickname: 'Bob',
+        email: 'b@test.com',
+        content: 'Reply',
+        parent_id: 1,
+      };
       mockFetch.mockResolvedValue(mockResponse(mockComment));
 
       const result = await createComment(1, {
@@ -210,7 +262,10 @@ describe('API - Comment Functions', () => {
 
     it('throws APIError on server failure', async () => {
       mockFetch.mockResolvedValue(
-        mockResponse({ error: { code: 'VALIDATION_ERROR' } }, { status: 400, statusText: 'Bad Request' })
+        mockResponse(
+          { error: { code: 'VALIDATION_ERROR' } },
+          { status: 400, statusText: 'Bad Request' }
+        )
       );
 
       await expect(
@@ -274,7 +329,20 @@ describe('API - Admin Posts', () => {
 
   describe('fetchAdminPosts', () => {
     it('fetches posts with auth header', async () => {
-      const mockPosts = [{ id: 1, title: 'Test', slug: 'test', content: '', excerpt: '', published: false, category: null, tags: [], created_at: '', updated_at: '' }];
+      const mockPosts = [
+        {
+          id: 1,
+          title: 'Test',
+          slug: 'test',
+          content: '',
+          excerpt: '',
+          published: false,
+          category: null,
+          tags: [],
+          created_at: '',
+          updated_at: '',
+        },
+      ];
       mockFetch.mockResolvedValue(mockResponse(mockPosts));
 
       const result = await fetchAdminPosts();
@@ -294,7 +362,19 @@ describe('API - Admin Posts', () => {
 
   describe('fetchAdminPost', () => {
     it('fetches a single post by id', async () => {
-      const mockPost = { id: 1, title: 'Test', slug: 'test', content: '', excerpt: '', published: true, category_id: null, tag_ids: [], cover_image: null, created_at: '', updated_at: '' };
+      const mockPost = {
+        id: 1,
+        title: 'Test',
+        slug: 'test',
+        content: '',
+        excerpt: '',
+        published: true,
+        category_id: null,
+        tag_ids: [],
+        cover_image: null,
+        created_at: '',
+        updated_at: '',
+      };
       mockFetch.mockResolvedValue(mockResponse(mockPost));
 
       const result = await fetchAdminPost(1);
@@ -462,7 +542,19 @@ describe('API - Admin Comments', () => {
 
   describe('fetchAdminComments', () => {
     it('fetches all comments when no postId', async () => {
-      const mockComments = [{ id: 1, post_id: 1, post_title: 'Test', nickname: 'Alice', email: 'a@t.com', content: 'hi', ip_address: '', is_approved: true, created_at: '' }];
+      const mockComments = [
+        {
+          id: 1,
+          post_id: 1,
+          post_title: 'Test',
+          nickname: 'Alice',
+          email: 'a@t.com',
+          content: 'hi',
+          ip_address: '',
+          is_approved: true,
+          created_at: '',
+        },
+      ];
       mockFetch.mockResolvedValue(mockResponse(mockComments));
 
       const result = await fetchAdminComments();
@@ -475,7 +567,19 @@ describe('API - Admin Comments', () => {
     });
 
     it('fetches filtered comments with postId', async () => {
-      const mockComments = [{ id: 1, post_id: 1, post_title: 'Test', nickname: 'Alice', email: 'a@t.com', content: 'hi', ip_address: '', is_approved: true, created_at: '' }];
+      const mockComments = [
+        {
+          id: 1,
+          post_id: 1,
+          post_title: 'Test',
+          nickname: 'Alice',
+          email: 'a@t.com',
+          content: 'hi',
+          ip_address: '',
+          is_approved: true,
+          created_at: '',
+        },
+      ];
       mockFetch.mockResolvedValue(mockResponse(mockComments));
 
       const result = await fetchAdminComments(1);
@@ -515,7 +619,17 @@ describe('API - Admin Comments', () => {
 
   describe('approveAdminComment', () => {
     it('approves a comment with PATCH', async () => {
-      const mockComment = { id: 1, post_id: 1, post_title: 'Test', nickname: 'Alice', email: 'a@t.com', content: 'hi', ip_address: '', is_approved: true, created_at: '' };
+      const mockComment = {
+        id: 1,
+        post_id: 1,
+        post_title: 'Test',
+        nickname: 'Alice',
+        email: 'a@t.com',
+        content: 'hi',
+        ip_address: '',
+        is_approved: true,
+        created_at: '',
+      };
       mockFetch.mockResolvedValue(mockResponse(mockComment));
 
       const result = await approveAdminComment(1, true);
@@ -527,7 +641,17 @@ describe('API - Admin Comments', () => {
     });
 
     it('rejects a comment', async () => {
-      const mockComment = { id: 1, post_id: 1, post_title: 'Test', nickname: 'Alice', email: 'a@t.com', content: 'hi', ip_address: '', is_approved: false, created_at: '' };
+      const mockComment = {
+        id: 1,
+        post_id: 1,
+        post_title: 'Test',
+        nickname: 'Alice',
+        email: 'a@t.com',
+        content: 'hi',
+        ip_address: '',
+        is_approved: false,
+        created_at: '',
+      };
       mockFetch.mockResolvedValue(mockResponse(mockComment));
 
       const result = await approveAdminComment(1, false);
@@ -558,7 +682,9 @@ describe('API - Admin Auth', () => {
 
       expect(result).toEqual({ access_token: 'jwt-token' });
       expect(mockFetch.mock.calls[0][1].method).toBe('POST');
-      expect(mockFetch.mock.calls[0][1].headers['Content-Type']).toBe('application/x-www-form-urlencoded');
+      expect(mockFetch.mock.calls[0][1].headers['Content-Type']).toBe(
+        'application/x-www-form-urlencoded'
+      );
     });
 
     it('throws APIError on invalid credentials', async () => {
