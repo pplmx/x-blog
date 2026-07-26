@@ -5,7 +5,7 @@
 ## Project Overview
 
 **Stack**: FastAPI (Python 3.14) + Next.js 16 (production) + Nuxt 4 (parallel dev) + SQLite
-**Status**: Clean working tree, all tests passing (478 backend + 591 Next.js + 345 Nuxt = 1414 total, 92.78% backend coverage)
+**Status**: Clean working tree, all tests passing (478 backend + 591 Next.js + 364 Nuxt = 1433 total, 92.78% backend coverage)
 
 ## Key Findings
 
@@ -624,6 +624,26 @@ This iteration reconciled a stale/in-progress repository state and committed ver
   var is used when set. Updated existing tests for new warning message.
 - **Verification**: 478 backend tests pass (477 + 1 new), ruff check + format clean, 92.78%
   backend coverage.
+:::
+
+::: note | Iteration: Nuxt Admin Post Editor
+**Date**: 2026-07-26
+
+- **Problem**: The Nuxt admin posts list page (`admin/posts.vue`) linked to
+  `/admin/posts/new` and `/admin/posts/:id` for creating and editing posts, but these
+  editor pages **did not exist** — a critical feature gap. Users clicking "新建文章" or
+  "编辑" would hit a 404. The Next.js equivalent had a full post editor at
+  `app/admin/posts/[id]/page.tsx` using the `PostForm` component.
+- **Fix**: Created `app/pages/admin/posts/[id].vue` — a Vue 3 post editor handling both
+  create and edit modes. Features: title, slug, content (Markdown), excerpt, category
+  dropdown, tag checkboxes, published/pinned toggles, auto-generate slug, loading/error
+  states, and cancel navigation. Uses existing `useApi.ts` composables
+  (fetchAdminPost, createAdminPost, updateAdminPost, fetchAdminCategories, fetchAdminTags).
+- **Tests**: Added 19 tests in `tests/admin/posts-id.spec.ts` covering: create mode rendering,
+  edit mode data loading, form interactions, tag toggling, slug preview, publish options,
+  submit handling (create/update), loading state, and error state.
+- **Verification**: 364 Nuxt tests pass (345 + 19 new, 0 failures). No regressions in
+  backend (478) or Next.js (591) suites. Total: 1433 tests, 0 failures.
 :::
 
 ## Next Priorities
