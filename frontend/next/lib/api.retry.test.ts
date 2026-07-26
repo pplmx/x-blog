@@ -70,7 +70,7 @@ describe('API - Retry Logic and fetchWithTimeout', () => {
         )
         .mockResolvedValueOnce(mockResponse({ data: 'ok' }));
 
-      const promise = fetchWithTimeout('http://localhost:8000/api/posts');
+      const promise = fetchWithTimeout('http://localhost:18888/api/posts');
 
       // Advance past the exponential backoff delay (RETRY_DELAY * 2^0 = 1000ms)
       await vi.advanceTimersByTimeAsync(1000);
@@ -92,7 +92,7 @@ describe('API - Retry Logic and fetchWithTimeout', () => {
         )
       );
 
-      const promise = fetchWithTimeout('http://localhost:8000/api/posts');
+      const promise = fetchWithTimeout('http://localhost:18888/api/posts');
 
       // Advance through all retry delays: 1000 + 2000 + 4000 = 7000ms
       // Attach catch handler first to prevent unhandled rejection during timer advancement
@@ -109,7 +109,7 @@ describe('API - Retry Logic and fetchWithTimeout', () => {
         mockResponse({ error: 'bad' }, { status: 400, statusText: 'Bad Request' })
       );
 
-      const result = await fetchWithTimeout('http://localhost:8000/api/posts');
+      const result = await fetchWithTimeout('http://localhost:18888/api/posts');
 
       expect(result.status).toBe(400);
       expect(mockFetch).toHaveBeenCalledTimes(1);
@@ -122,7 +122,7 @@ describe('API - Retry Logic and fetchWithTimeout', () => {
         )
         .mockResolvedValueOnce(mockResponse({ data: 'ok' }));
 
-      const promise = fetchWithTimeout('http://localhost:8000/api/posts');
+      const promise = fetchWithTimeout('http://localhost:18888/api/posts');
       await vi.advanceTimersByTimeAsync(1000);
       const result = await promise;
 
@@ -150,7 +150,7 @@ describe('API - Retry Logic and fetchWithTimeout', () => {
         return Promise.reject(abortError);
       });
 
-      const promise = fetchWithTimeout('http://localhost:8000/api/posts', {
+      const promise = fetchWithTimeout('http://localhost:18888/api/posts', {
         timeout: 100,
         retries: 0,
       });
@@ -168,7 +168,7 @@ describe('API - Retry Logic and fetchWithTimeout', () => {
       const abortError = new DOMException('The operation was aborted', 'AbortError');
       mockFetch.mockRejectedValue(abortError);
 
-      const promise = fetchWithTimeout('http://localhost:8000/api/posts', { timeout: 100 });
+      const promise = fetchWithTimeout('http://localhost:18888/api/posts', { timeout: 100 });
       promise.catch(() => {});
       await vi.advanceTimersByTimeAsync(100);
 
@@ -196,7 +196,7 @@ describe('API - Retry Logic and fetchWithTimeout', () => {
         return Promise.resolve(mockResponse({ data: 'ok' }));
       });
 
-      const promise = fetchWithTimeout('http://localhost:8000/api/posts', {
+      const promise = fetchWithTimeout('http://localhost:18888/api/posts', {
         timeout: 10000,
         retries: 1,
       });
@@ -260,7 +260,7 @@ describe('API - Comment Functions', () => {
 
       expect(result).toEqual(mockComment);
       expect(mockFetch).toHaveBeenCalledWith(
-        'http://localhost:8000/api/comments/post/1',
+        'http://localhost:18888/api/comments/post/1',
         expect.objectContaining({
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -319,7 +319,7 @@ describe('API - Comment Functions', () => {
 
       expect(result).toEqual(mockPost);
       expect(mockFetch).toHaveBeenCalledWith(
-        'http://localhost:8000/api/posts/1/view',
+        'http://localhost:18888/api/posts/1/view',
         expect.objectContaining({ method: 'POST' })
       );
     });
@@ -342,7 +342,7 @@ describe('API - Comment Functions', () => {
 
       expect(result).toEqual(mockPost);
       expect(mockFetch).toHaveBeenCalledWith(
-        'http://localhost:8000/api/posts/1/like',
+        'http://localhost:18888/api/posts/1/like',
         expect.objectContaining({ method: 'POST' })
       );
     });
@@ -417,7 +417,7 @@ describe('API - Admin Posts', () => {
 
       expect(result).toEqual(mockPost);
       expect(mockFetch).toHaveBeenCalledWith(
-        'http://localhost:8000/api/admin/posts/1',
+        'http://localhost:18888/api/admin/posts/1',
         expect.objectContaining({ headers: { Authorization: 'Bearer admin-token' } })
       );
     });
@@ -597,7 +597,7 @@ describe('API - Admin Comments', () => {
 
       expect(result).toEqual(mockComments);
       expect(mockFetch).toHaveBeenCalledWith(
-        'http://localhost:8000/api/admin/comments',
+        'http://localhost:18888/api/admin/comments',
         expect.objectContaining({ headers: { Authorization: 'Bearer admin-token' } })
       );
     });
@@ -622,7 +622,7 @@ describe('API - Admin Comments', () => {
 
       expect(result).toEqual(mockComments);
       expect(mockFetch).toHaveBeenCalledWith(
-        'http://localhost:8000/api/admin/comments?post_id=1',
+        'http://localhost:18888/api/admin/comments?post_id=1',
         expect.objectContaining({ headers: { Authorization: 'Bearer admin-token' } })
       );
     });

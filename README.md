@@ -65,8 +65,8 @@ cd frontend/next && pnpm install
 just dev
 
 # Or run separately:
-just backend  # http://localhost:8000
-just frontend # http://localhost:3000
+just backend  # http://localhost:18888
+just frontend # http://localhost:13333
 ```
 
 ### 🐳 Docker Deployment

@@ -10,10 +10,10 @@ const localStorageMock = createLocalStorageMock({});
 
 // Create server with handlers - each test gets fresh instance via beforeEach
 const server = setupServer(
-  http.post('http://localhost:8000/api/posts/1/like', () => {
+  http.post('http://localhost:18888/api/posts/1/like', () => {
     return HttpResponse.json({ id: 1, likes: 1 });
   }),
-  http.post('http://localhost:8000/api/posts/2/like', () => {
+  http.post('http://localhost:18888/api/posts/2/like', () => {
     return HttpResponse.json({ id: 2, likes: 1 });
   })
 );

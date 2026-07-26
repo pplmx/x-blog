@@ -13,7 +13,7 @@ const mockPosts = [
 
 // Create server with handlers - each test gets fresh instance via beforeEach
 const server = setupServer(
-  http.get('http://localhost:8000/api/posts/1/related', () => {
+  http.get('http://localhost:18888/api/posts/1/related', () => {
     return HttpResponse.json(mockPosts);
   }),
   // Default handler for unmatched requests - return empty array

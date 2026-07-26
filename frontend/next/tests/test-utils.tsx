@@ -427,7 +427,7 @@ export function mockSearchResults(
  * Creates an MSW handler for getting posts with optional filtering
  */
 export function createPostsHandler(posts: ReturnType<typeof mockPost>[] = mockPostList()) {
-  return http.get('http://localhost:8000/api/posts', () =>
+  return http.get('http://localhost:18888/api/posts', () =>
     HttpResponse.json(mockPostListResponse(posts))
   );
 }
@@ -436,7 +436,7 @@ export function createPostsHandler(posts: ReturnType<typeof mockPost>[] = mockPo
  * Creates an MSW handler for getting a single post
  */
 export function createPostHandler(post: ReturnType<typeof mockPost>) {
-  return http.get(`http://localhost:8000/api/posts/${post.slug}`, () => HttpResponse.json(post));
+  return http.get(`http://localhost:18888/api/posts/${post.slug}`, () => HttpResponse.json(post));
 }
 
 /**
@@ -445,21 +445,21 @@ export function createPostHandler(post: ReturnType<typeof mockPost>) {
 export function createCategoriesHandler(
   categories: ReturnType<typeof mockCategory>[] = mockCategoryList()
 ) {
-  return http.get('http://localhost:8000/api/categories', () => HttpResponse.json(categories));
+  return http.get('http://localhost:18888/api/categories', () => HttpResponse.json(categories));
 }
 
 /**
  * Creates an MSW handler for getting tags
  */
 export function createTagsHandler(tags: ReturnType<typeof mockTag>[] = mockTagList()) {
-  return http.get('http://localhost:8000/api/tags', () => HttpResponse.json(tags));
+  return http.get('http://localhost:18888/api/tags', () => HttpResponse.json(tags));
 }
 
 /**
  * Creates an MSW handler for liking a post
  */
 export function createLikeHandler(postId: number, likes: number = 1) {
-  return http.post(`http://localhost:8000/api/posts/${postId}/like`, () =>
+  return http.post(`http://localhost:18888/api/posts/${postId}/like`, () =>
     HttpResponse.json({ id: postId, likes })
   );
 }
@@ -471,7 +471,7 @@ export function createRelatedPostsHandler(
   postId: number,
   relatedPosts: ReturnType<typeof mockPost>[] = mockPostList(2)
 ) {
-  return http.get(`http://localhost:8000/api/posts/${postId}/related`, () =>
+  return http.get(`http://localhost:18888/api/posts/${postId}/related`, () =>
     HttpResponse.json(relatedPosts)
   );
 }
@@ -483,7 +483,7 @@ export function createCommentsHandler(
   postId: number,
   comments: ReturnType<typeof mockComment>[] = mockCommentList()
 ) {
-  return http.get(`http://localhost:8000/api/posts/${postId}/comments`, () =>
+  return http.get(`http://localhost:18888/api/posts/${postId}/comments`, () =>
     HttpResponse.json(comments)
   );
 }

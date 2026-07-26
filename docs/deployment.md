@@ -75,11 +75,11 @@ docker-compose up -d
 
 ### 3. 访问服务
 
-| 服务     | 地址                       |
-| -------- | -------------------------- |
-| 前端     | http://localhost:3000      |
-| 后端 API | http://localhost:8000      |
-| API 文档 | http://localhost:8000/docs |
+| 服务     | 地址                        |
+| -------- | --------------------------- |
+| 前端     | http://localhost:13333      |
+| 后端 API | http://localhost:18888      |
+| API 文档 | http://localhost:18888/docs |
 
 ---
 

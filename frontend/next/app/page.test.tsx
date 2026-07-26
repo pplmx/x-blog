@@ -20,16 +20,16 @@ const mockPopularPosts = mockPostList(3);
 
 // Create server with handlers
 const server = setupServer(
-  http.get('http://localhost:8000/api/posts', () => {
+  http.get('http://localhost:18888/api/posts', () => {
     return HttpResponse.json(mockPostListResponse(mockPosts));
   }),
-  http.get('http://localhost:8000/api/categories', () => {
+  http.get('http://localhost:18888/api/categories', () => {
     return HttpResponse.json(mockCategories);
   }),
-  http.get('http://localhost:8000/api/tags', () => {
+  http.get('http://localhost:18888/api/tags', () => {
     return HttpResponse.json(mockTags);
   }),
-  http.get('http://localhost:8000/api/posts/popular', () => {
+  http.get('http://localhost:18888/api/posts/popular', () => {
     return HttpResponse.json(mockPopularPosts);
   })
 );
@@ -51,7 +51,7 @@ describe('Homepage', () => {
 
   describe('Basic Rendering', () => {
     it('renders the homepage with page title', async () => {
-      const response = await fetch('http://localhost:8000/api/posts');
+      const response = await fetch('http://localhost:18888/api/posts');
       const data = await response.json();
 
       expect(data.items).toHaveLength(5);
@@ -60,7 +60,7 @@ describe('Homepage', () => {
     });
 
     it('renders posts list structure', async () => {
-      const response = await fetch('http://localhost:8000/api/posts');
+      const response = await fetch('http://localhost:18888/api/posts');
       const data = await response.json();
 
       expect(data).toHaveProperty('items');
@@ -71,7 +71,7 @@ describe('Homepage', () => {
 
   describe('Categories', () => {
     it('fetches categories for sidebar', async () => {
-      const response = await fetch('http://localhost:8000/api/categories');
+      const response = await fetch('http://localhost:18888/api/categories');
       const data = await response.json();
 
       expect(data).toHaveLength(4);
@@ -82,7 +82,7 @@ describe('Homepage', () => {
 
   describe('Tags', () => {
     it('fetches tags for sidebar', async () => {
-      const response = await fetch('http://localhost:8000/api/tags');
+      const response = await fetch('http://localhost:18888/api/tags');
       const data = await response.json();
 
       expect(data).toHaveLength(6);
@@ -92,7 +92,7 @@ describe('Homepage', () => {
 
   describe('Popular Posts', () => {
     it('fetches popular posts for sidebar', async () => {
-      const response = await fetch('http://localhost:8000/api/posts/popular');
+      const response = await fetch('http://localhost:18888/api/posts/popular');
       const data = await response.json();
 
       expect(data).toHaveLength(3);
@@ -104,7 +104,7 @@ describe('Homepage', () => {
   describe('Filtering', () => {
     it('fetches filtered posts by category', async () => {
       server.use(
-        http.get('http://localhost:8000/api/posts', ({ request }) => {
+        http.get('http://localhost:18888/api/posts', ({ request }) => {
           const url = new URL(request.url);
           const categoryId = url.searchParams.get('category_id');
 
@@ -116,7 +116,7 @@ describe('Homepage', () => {
         })
       );
 
-      const response = await fetch('http://localhost:8000/api/posts?category_id=1');
+      const response = await fetch('http://localhost:18888/api/posts?category_id=1');
       const data = await response.json();
 
       expect(data.items).toBeDefined();
@@ -124,7 +124,7 @@ describe('Homepage', () => {
 
     it('fetches filtered posts by tag', async () => {
       server.use(
-        http.get('http://localhost:8000/api/posts', ({ request }) => {
+        http.get('http://localhost:18888/api/posts', ({ request }) => {
           const url = new URL(request.url);
           const tagId = url.searchParams.get('tag_id');
 
@@ -135,7 +135,7 @@ describe('Homepage', () => {
         })
       );
 
-      const response = await fetch('http://localhost:8000/api/posts?tag_id=1');
+      const response = await fetch('http://localhost:18888/api/posts?tag_id=1');
       const data = await response.json();
 
       expect(data.items).toHaveLength(2);
@@ -145,7 +145,7 @@ describe('Homepage', () => {
   describe('Pagination', () => {
     it('fetches paginated posts', async () => {
       server.use(
-        http.get('http://localhost:8000/api/posts', ({ request }) => {
+        http.get('http://localhost:18888/api/posts', ({ request }) => {
           const url = new URL(request.url);
           const page = url.searchParams.get('page') || '1';
 
@@ -156,7 +156,7 @@ describe('Homepage', () => {
         })
       );
 
-      const response = await fetch('http://localhost:8000/api/posts?page=2');
+      const response = await fetch('http://localhost:18888/api/posts?page=2');
       const data = await response.json();
 
       expect(data.pagination.page).toBe(2);
