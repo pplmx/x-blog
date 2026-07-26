@@ -220,6 +220,43 @@ describe('MarkdownContent', () => {
     });
   });
 
+  describe('Copy to clipboard', () => {
+    it('has a copy button on code blocks', async () => {
+      const wrapper = mountMarkdown('```ts\nconst x = 1;\n```');
+      await flushPromises();
+      const copyButton = wrapper.find('button');
+      expect(copyButton.exists()).toBe(true);
+    });
+
+    it('calls navigator.clipboard.writeText when copy button is clicked', async () => {
+      const writeText = vi.fn().mockResolvedValue(undefined);
+      Object.defineProperty(navigator, 'clipboard', {
+        value: { writeText },
+        configurable: true,
+      });
+
+      const wrapper = mountMarkdown('```ts\nconst x = 1;\n```');
+      await flushPromises();
+
+      const copyButton = wrapper.find('button');
+      await copyButton.trigger('click');
+      await flushPromises();
+
+      expect(writeText).toHaveBeenCalledWith('const x = 1;');
+    });
+  });
+
+  describe('Mermaid diagrams', () => {
+    it('renders mermaid diagram container', async () => {
+      const wrapper = mountMarkdown('```mermaid\ngraph TD\nA --> B\n```');
+      await flushPromises();
+
+      // The mermaid segment should be rendered in the DOM
+      const mermaidContainer = wrapper.find('[data-mermaid-key]');
+      expect(mermaidContainer.exists()).toBe(true);
+    });
+  });
+
   describe('CSS classes', () => {
     it('uses dark:prose-invert for dark mode', () => {
       const wrapper = mountMarkdown('<p>test</p>');

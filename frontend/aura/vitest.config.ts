@@ -26,7 +26,7 @@ export default defineConfig({
       exclude: ["e2e/**", "tests/**", "**/*.d.ts"],
       thresholds: {
         lines: 80,
-        functions: 79,
+        functions: 80,
         branches: 80,
         statements: 80,
       },
