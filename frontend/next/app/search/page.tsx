@@ -20,7 +20,7 @@ export async function generateMetadata({ searchParams }: SearchPageProps): Promi
     description: query ? `搜索"${query}"的文章结果` : '搜索文章',
     robots: {
       noindex: true,
-    },
+    } as any,
   };
 }
 
