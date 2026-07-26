@@ -7,24 +7,24 @@
   Follows the same form structure as the Next.js PostForm component.
 -->
 <script setup lang="ts">
-import { ref, watch } from 'vue';
-import { PostCreate, AdminPostDetail } from '~/composables/useApi';
+import { ref, watch } from "vue";
+import type { AdminPostDetail, PostCreate } from "~/composables/useApi";
 
 const route = useRoute();
-const isNew = route.params.id === 'new';
-const postId = isNew ? null : parseInt(route.params.id as string);
+const isNew = route.params.id === "new";
+const postId = isNew ? null : Number.parseInt(route.params.id as string, 10);
 
 // Form data
 const formData = ref<Partial<PostCreate>>({
-  title: '',
-  slug: '',
-  content: '',
-  excerpt: '',
-  published: false,
-  pinned: false,
-  category_id: undefined,
-  tag_ids: [],
-  cover_image: undefined,
+	title: "",
+	slug: "",
+	content: "",
+	excerpt: "",
+	published: false,
+	pinned: false,
+	category_id: undefined,
+	tag_ids: [],
+	cover_image: undefined,
 });
 const isSubmitting = ref(false);
 const submitError = ref<string | null>(null);
@@ -36,75 +36,99 @@ const existingPost = ref<AdminPostDetail | null>(null);
 const { data: catsData } = await fetchAdminCategories();
 const { data: tagsData } = await fetchAdminTags();
 
-watch(() => catsData.value, (val) => { if (val) categories.value = val; }, { immediate: true });
-watch(() => tagsData.value, (val) => { if (val) tags.value = val; }, { immediate: true });
+watch(
+	() => catsData.value,
+	(val) => {
+		if (val) categories.value = val;
+	},
+	{ immediate: true },
+);
+watch(
+	() => tagsData.value,
+	(val) => {
+		if (val) tags.value = val;
+	},
+	{ immediate: true },
+);
 
 // Fetch existing post if editing
-const { data: postData, pending: postPending, error: postError } = postId
-  ? await fetchAdminPost(postId)
-  : { data: ref(null) as any, pending: ref(false) as any, error: ref(null) as any };
+const {
+	data: postData,
+	pending: postPending,
+	error: postError,
+} = postId
+	? await fetchAdminPost(postId)
+	: {
+			data: ref(null) as any,
+			pending: ref(false) as any,
+			error: ref(null) as any,
+		};
 
-watch(() => postData.value, (val) => {
-  if (val) {
-    existingPost.value = val;
-    formData.value = {
-      title: val.title || '',
-      slug: val.slug || '',
-      content: val.content || '',
-      excerpt: val.excerpt || '',
-      published: val.published || false,
-      pinned: val.pinned || false,
-      category_id: val.category_id || undefined,
-      tag_ids: val.tag_ids || [],
-      cover_image: val.cover_image || undefined,
-    };
-  }
-}, { immediate: true });
+watch(
+	() => postData.value,
+	(val) => {
+		if (val) {
+			existingPost.value = val;
+			formData.value = {
+				title: val.title || "",
+				slug: val.slug || "",
+				content: val.content || "",
+				excerpt: val.excerpt || "",
+				published: val.published,
+				pinned: val.pinned,
+				category_id: val.category_id || undefined,
+				tag_ids: val.tag_ids || [],
+				cover_image: val.cover_image || undefined,
+			};
+		}
+	},
+	{ immediate: true },
+);
 
 // Generate slug from title (basic implementation)
 function generateSlug(title: string) {
-  return title
-    .toLowerCase()
-    .replace(/[^\w\s-]/g, '')
-    .replace(/\s+/g, '-')
-    .replace(/-+/g, '-')
-    .trim();
+	return title
+		.toLowerCase()
+		.replace(/[^\w\s-]/g, "")
+		.replace(/\s+/g, "-")
+		.replace(/-+/g, "-")
+		.trim();
 }
 
 // Handle form submission
 async function handleSubmit(e: Event) {
-  e.preventDefault();
-  isSubmitting.value = true;
-  submitError.value = null;
+	e.preventDefault();
+	isSubmitting.value = true;
+	submitError.value = null;
 
-  try {
-    if (isNew) {
-      await createAdminPost(formData.value);
-    } else if (postId) {
-      await updateAdminPost(postId, formData.value);
-    }
-    navigateTo('/admin/posts', { replace: true });
-  } catch (err) {
-    submitError.value = '保存文章失败，请重试。';
-    console.error('Failed to save post:', err);
-  } finally {
-    isSubmitting.value = false;
-  }
+	try {
+		if (isNew) {
+			await createAdminPost(formData.value);
+		} else if (postId) {
+			await updateAdminPost(postId, formData.value);
+		}
+		navigateTo("/admin/posts", { replace: true });
+	} catch (err) {
+		submitError.value = "保存文章失败，请重试。";
+		console.error("Failed to save post:", err);
+	} finally {
+		isSubmitting.value = false;
+	}
 }
 
 // Handle cancel
 function handleCancel() {
-  navigateTo('/admin/posts', { replace: true });
+	navigateTo("/admin/posts", { replace: true });
 }
 
 // Toggle tag selection
 function toggleTag(tagId: number) {
-  const current = formData.value.tag_ids || [];
-  if (current.includes(tagId)) {
-    formData.value.tag_ids = current.filter((id) => id !== tagId);
-  } else {
-    formData.value.tag_ids = [...current, tagId];
-  }
+	const current = formData.value.tag_ids || [];
+	if (current.includes(tagId)) {
+		formData.value.tag_ids = current.filter((id) => id !== tagId);
+	} else {
+		formData.value.tag_ids = [...current, tagId];
+	}
 }
 </script>
 

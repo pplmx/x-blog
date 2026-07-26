@@ -4,43 +4,40 @@
   Uses useAdminAuth composable for token storage + navigation.
 -->
 <script setup lang="ts">
-import { ref } from 'vue';
-import { useAdminAuth, adminLoginRequest } from '~/composables/useAdminAuth';
+import { ref } from "vue";
+import { adminLoginRequest, useAdminAuth } from "~/composables/useAdminAuth";
 
 const { login } = useAdminAuth();
-const username = ref('');
-const password = ref('');
+const username = ref("");
+const password = ref("");
 const error = ref<string | null>(null);
 const isPending = ref(false);
 
 async function handleLogin() {
-  if (!username.value || !password.value) return;
+	if (!(username.value && password.value)) return;
 
-  error.value = null;
-  isPending.value = true;
+	error.value = null;
+	isPending.value = true;
 
-  try {
-    const { data, error: fetchError } = await adminLoginRequest(
-      username.value,
-      password.value
-    );
+	try {
+		const { data, error: fetchError } = await adminLoginRequest(username.value, password.value);
 
-    if (fetchError.value) {
-      error.value = '登录失败：用户名或密码错误';
-      return;
-    }
+		if (fetchError.value) {
+			error.value = "登录失败：用户名或密码错误";
+			return;
+		}
 
-    if (data.value?.access_token) {
-      login(data.value.access_token);
-      navigateTo('/admin/posts', { replace: true });
-    } else {
-      error.value = '登录失败：未收到访问令牌';
-    }
-  } catch (e) {
-    error.value = '登录失败：网络错误';
-  } finally {
-    isPending.value = false;
-  }
+		if (data.value?.access_token) {
+			login(data.value.access_token);
+			navigateTo("/admin/posts", { replace: true });
+		} else {
+			error.value = "登录失败：未收到访问令牌";
+		}
+	} catch (e) {
+		error.value = "登录失败：网络错误";
+	} finally {
+		isPending.value = false;
+	}
 }
 </script>
 

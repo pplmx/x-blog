@@ -4,58 +4,58 @@
   Uses Nuxt's useFetch for data fetching (no React Query needed).
 -->
 <script setup lang="ts">
-import { ref } from 'vue';
+import { ref } from "vue";
 import {
-  fetchAdminTags,
-  createAdminTag,
-  updateAdminTag,
-  deleteAdminTag,
-} from '~/composables/useApi';
+	createAdminTag,
+	deleteAdminTag,
+	fetchAdminTags,
+	updateAdminTag,
+} from "~/composables/useApi";
 
 const { data: tags, pending, error, refresh } = await fetchAdminTags();
-const newTagName = ref('');
+const newTagName = ref("");
 const isProcessing = ref(false);
 const editingId = ref<number | null>(null);
-const editingName = ref('');
+const editingName = ref("");
 
 async function handleCreate() {
-  if (!newTagName.value.trim()) return;
-  isProcessing.value = true;
-  try {
-    await createAdminTag(newTagName.value.trim());
-    newTagName.value = '';
-    await refresh();
-  } finally {
-    isProcessing.value = false;
-  }
+	if (!newTagName.value.trim()) return;
+	isProcessing.value = true;
+	try {
+		await createAdminTag(newTagName.value.trim());
+		newTagName.value = "";
+		await refresh();
+	} finally {
+		isProcessing.value = false;
+	}
 }
 
 async function startEdit(tag: { id: number; name: string }) {
-  editingId.value = tag.id;
-  editingName.value = tag.name;
+	editingId.value = tag.id;
+	editingName.value = tag.name;
 }
 
 async function confirmEdit(id: number) {
-  if (!editingName.value.trim()) return;
-  isProcessing.value = true;
-  try {
-    await updateAdminTag(id, editingName.value.trim());
-    editingId.value = null;
-    await refresh();
-  } finally {
-    isProcessing.value = false;
-  }
+	if (!editingName.value.trim()) return;
+	isProcessing.value = true;
+	try {
+		await updateAdminTag(id, editingName.value.trim());
+		editingId.value = null;
+		await refresh();
+	} finally {
+		isProcessing.value = false;
+	}
 }
 
 async function handleDelete(id: number) {
-  if (!confirm('确定要删除这个标签吗？')) return;
-  isProcessing.value = true;
-  try {
-    await deleteAdminTag(id);
-    await refresh();
-  } finally {
-    isProcessing.value = false;
-  }
+	if (!confirm("确定要删除这个标签吗？")) return;
+	isProcessing.value = true;
+	try {
+		await deleteAdminTag(id);
+		await refresh();
+	} finally {
+		isProcessing.value = false;
+	}
 }
 </script>
 

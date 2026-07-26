@@ -11,298 +11,297 @@
  * Uses a <Suspense> wrapper since the page uses
  * `await fetchAdminCategories()` in <script setup>.
  */
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { flushPromises } from '@vue/test-utils';
-import { ref } from 'vue';
-import { mountWithSuspense } from './helpers';
+
+import { flushPromises } from "@vue/test-utils";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { ref } from "vue";
+import { mountWithSuspense } from "./helpers.ts";
 
 const {
-  mockFetchAdminCategories,
-  mockCreateAdminCategory,
-  mockUpdateAdminCategory,
-  mockDeleteAdminCategory,
+	mockFetchAdminCategories,
+	mockCreateAdminCategory,
+	mockUpdateAdminCategory,
+	mockDeleteAdminCategory,
 } = vi.hoisted(() => ({
-  mockFetchAdminCategories: vi.fn(),
-  mockCreateAdminCategory: vi.fn(),
-  mockUpdateAdminCategory: vi.fn(),
-  mockDeleteAdminCategory: vi.fn(),
+	mockFetchAdminCategories: vi.fn(),
+	mockCreateAdminCategory: vi.fn(),
+	mockUpdateAdminCategory: vi.fn(),
+	mockDeleteAdminCategory: vi.fn(),
 }));
 
-vi.mock('~/composables/useApi', () => ({
-  fetchAdminCategories: mockFetchAdminCategories,
-  createAdminCategory: mockCreateAdminCategory,
-  updateAdminCategory: mockUpdateAdminCategory,
-  deleteAdminCategory: mockDeleteAdminCategory,
+vi.mock("~/composables/useApi", () => ({
+	fetchAdminCategories: mockFetchAdminCategories,
+	createAdminCategory: mockCreateAdminCategory,
+	updateAdminCategory: mockUpdateAdminCategory,
+	deleteAdminCategory: mockDeleteAdminCategory,
 }));
 
-vi.stubGlobal('useRuntimeConfig', () => ({
-  public: { apiUrl: 'http://localhost:18888' },
+vi.stubGlobal("useRuntimeConfig", () => ({
+	public: { apiUrl: "http://localhost:18888" },
 }));
-vi.stubGlobal('navigateTo', vi.fn());
+vi.stubGlobal("navigateTo", vi.fn());
 
 const originalConfirm = window.confirm;
 
 const mockCategories = [
-  { id: 1, name: 'Technology' },
-  { id: 2, name: 'Design' },
+	{ id: 1, name: "Technology" },
+	{ id: 2, name: "Design" },
 ];
 
 async function loadPage() {
-  const { default: CategoriesPage } = await import('@/pages/admin/categories.vue');
-  return CategoriesPage;
+	const { default: CategoriesPage } = await import("@/pages/admin/categories.vue");
+	return CategoriesPage;
 }
 
-describe('Admin Categories Page', () => {
-  afterEach(() => {
-    vi.restoreAllMocks();
-    vi.clearAllMocks();
-    window.confirm = originalConfirm;
-  });
+describe("Admin Categories Page", () => {
+	afterEach(() => {
+		vi.restoreAllMocks();
+		vi.clearAllMocks();
+		window.confirm = originalConfirm;
+	});
 
-  describe('Loading state', () => {
-    it('renders loading message when categories are pending', async () => {
-      mockFetchAdminCategories.mockReturnValue({
-        data: ref(null),
-        pending: ref(true),
-        error: ref(null),
-        refresh: vi.fn(),
-      });
+	describe("Loading state", () => {
+		it("renders loading message when categories are pending", async () => {
+			mockFetchAdminCategories.mockReturnValue({
+				data: ref(null),
+				pending: ref(true),
+				error: ref(null),
+				refresh: vi.fn(),
+			});
 
-      const CategoriesPage = await loadPage();
-      const wrapper = await mountWithSuspense(CategoriesPage);
-      expect(wrapper.text()).toContain('加载中');
-    });
-  });
+			const CategoriesPage = await loadPage();
+			const wrapper = await mountWithSuspense(CategoriesPage);
+			expect(wrapper.text()).toContain("加载中");
+		});
+	});
 
-  describe('Error state', () => {
-    it('renders error message when fetch fails', async () => {
-      mockFetchAdminCategories.mockReturnValue({
-        data: ref(null),
-        pending: ref(false),
-        error: ref({ message: 'Fetch error' }),
-        refresh: vi.fn(),
-      });
+	describe("Error state", () => {
+		it("renders error message when fetch fails", async () => {
+			mockFetchAdminCategories.mockReturnValue({
+				data: ref(null),
+				pending: ref(false),
+				error: ref({ message: "Fetch error" }),
+				refresh: vi.fn(),
+			});
 
-      const CategoriesPage = await loadPage();
-      const wrapper = await mountWithSuspense(CategoriesPage);
-      expect(wrapper.text()).toContain('Fetch error');
-    });
-  });
+			const CategoriesPage = await loadPage();
+			const wrapper = await mountWithSuspense(CategoriesPage);
+			expect(wrapper.text()).toContain("Fetch error");
+		});
+	});
 
-  describe('Empty state', () => {
-    it('renders empty state when no categories exist', async () => {
-      mockFetchAdminCategories.mockReturnValue({
-        data: ref([]),
-        pending: ref(false),
-        error: ref(null),
-        refresh: vi.fn(),
-      });
+	describe("Empty state", () => {
+		it("renders empty state when no categories exist", async () => {
+			mockFetchAdminCategories.mockReturnValue({
+				data: ref([]),
+				pending: ref(false),
+				error: ref(null),
+				refresh: vi.fn(),
+			});
 
-      const CategoriesPage = await loadPage();
-      const wrapper = await mountWithSuspense(CategoriesPage);
-      expect(wrapper.text()).toContain('还没有任何分类');
-    });
-  });
+			const CategoriesPage = await loadPage();
+			const wrapper = await mountWithSuspense(CategoriesPage);
+			expect(wrapper.text()).toContain("还没有任何分类");
+		});
+	});
 
-  describe('Populated state', () => {
-    beforeEach(() => {
-      mockFetchAdminCategories.mockReturnValue({
-        data: ref(mockCategories),
-        pending: ref(false),
-        error: ref(null),
-        refresh: vi.fn(),
-      });
-    });
+	describe("Populated state", () => {
+		beforeEach(() => {
+			mockFetchAdminCategories.mockReturnValue({
+				data: ref(mockCategories),
+				pending: ref(false),
+				error: ref(null),
+				refresh: vi.fn(),
+			});
+		});
 
-    afterEach(() => {
-      vi.clearAllMocks();
-    });
+		afterEach(() => {
+			vi.clearAllMocks();
+		});
 
-    it('renders the page heading', async () => {
-      const CategoriesPage = await loadPage();
-      const wrapper = await mountWithSuspense(CategoriesPage);
-      expect(wrapper.text()).toContain('分类管理');
-    });
+		it("renders the page heading", async () => {
+			const CategoriesPage = await loadPage();
+			const wrapper = await mountWithSuspense(CategoriesPage);
+			expect(wrapper.text()).toContain("分类管理");
+		});
 
-    it('renders the category count', async () => {
-      const CategoriesPage = await loadPage();
-      const wrapper = await mountWithSuspense(CategoriesPage);
-      expect(wrapper.text()).toContain('2 个分类');
-    });
+		it("renders the category count", async () => {
+			const CategoriesPage = await loadPage();
+			const wrapper = await mountWithSuspense(CategoriesPage);
+			expect(wrapper.text()).toContain("2 个分类");
+		});
 
-    it('renders existing category names', async () => {
-      const CategoriesPage = await loadPage();
-      const wrapper = await mountWithSuspense(CategoriesPage);
-      expect(wrapper.text()).toContain('Technology');
-      expect(wrapper.text()).toContain('Design');
-    });
+		it("renders existing category names", async () => {
+			const CategoriesPage = await loadPage();
+			const wrapper = await mountWithSuspense(CategoriesPage);
+			expect(wrapper.text()).toContain("Technology");
+			expect(wrapper.text()).toContain("Design");
+		});
 
-    it('renders the create form input', async () => {
-      const CategoriesPage = await loadPage();
-      const wrapper = await mountWithSuspense(CategoriesPage);
-      const input = wrapper.find('input[type="text"]');
-      expect(input.exists()).toBe(true);
-      expect(input.attributes('placeholder')).toContain('分类名称');
-    });
+		it("renders the create form input", async () => {
+			const CategoriesPage = await loadPage();
+			const wrapper = await mountWithSuspense(CategoriesPage);
+			const input = wrapper.find('input[type="text"]');
+			expect(input.exists()).toBe(true);
+			expect(input.attributes("placeholder")).toContain("分类名称");
+		});
 
-    it('creates a category when name is entered and button is clicked', async () => {
-      mockCreateAdminCategory.mockResolvedValue({});
+		it("creates a category when name is entered and button is clicked", async () => {
+			mockCreateAdminCategory.mockResolvedValue({});
 
-      const CategoriesPage = await loadPage();
-      const wrapper = await mountWithSuspense(CategoriesPage);
+			const CategoriesPage = await loadPage();
+			const wrapper = await mountWithSuspense(CategoriesPage);
 
-      const input = wrapper.find('input[type="text"]');
-      await input.setValue('New Category');
-      await wrapper.find('button').trigger('click');
-      await flushPromises();
+			const input = wrapper.find('input[type="text"]');
+			await input.setValue("New Category");
+			await wrapper.find("button").trigger("click");
+			await flushPromises();
 
-      expect(mockCreateAdminCategory).toHaveBeenCalledWith('New Category');
-    });
+			expect(mockCreateAdminCategory).toHaveBeenCalledWith("New Category");
+		});
 
-    it('does NOT create a category when name is empty', async () => {
-      const CategoriesPage = await loadPage();
-      const wrapper = await mountWithSuspense(CategoriesPage);
+		it("does NOT create a category when name is empty", async () => {
+			const CategoriesPage = await loadPage();
+			const wrapper = await mountWithSuspense(CategoriesPage);
 
-      // Click the create button with empty input
-      const createButton = wrapper.findAll('button').find((b) =>
-        b.text().includes('创建'),
-      );
-      expect(createButton).toBeDefined();
-      expect(createButton!.attributes('disabled')).toBeDefined();
-    });
+			// Click the create button with empty input
+			const createButton = wrapper.findAll("button").find((b) => b.text().includes("创建"));
+			expect(createButton).toBeDefined();
+			expect(createButton?.attributes("disabled")).toBeDefined();
+		});
 
-    it('clears the input after creating a category', async () => {
-      mockCreateAdminCategory.mockResolvedValue({});
+		it("clears the input after creating a category", async () => {
+			mockCreateAdminCategory.mockResolvedValue({});
 
-      const refreshMock = vi.fn();
-      mockFetchAdminCategories.mockReturnValue({
-        data: ref(mockCategories),
-        pending: ref(false),
-        error: ref(null),
-        refresh: refreshMock,
-      });
+			const refreshMock = vi.fn();
+			mockFetchAdminCategories.mockReturnValue({
+				data: ref(mockCategories),
+				pending: ref(false),
+				error: ref(null),
+				refresh: refreshMock,
+			});
 
-      const CategoriesPage = await loadPage();
-      const wrapper = await mountWithSuspense(CategoriesPage);
+			const CategoriesPage = await loadPage();
+			const wrapper = await mountWithSuspense(CategoriesPage);
 
-      const input = wrapper.find('input[type="text"]');
-      await input.setValue('New Category');
-      await wrapper.find('button').trigger('click');
-      await flushPromises();
+			const input = wrapper.find('input[type="text"]');
+			await input.setValue("New Category");
+			await wrapper.find("button").trigger("click");
+			await flushPromises();
 
-      expect(input.element).toBeInstanceOf(HTMLInputElement);
-      expect((input.element as HTMLInputElement).value).toBe('');
-    });
+			expect(input.element).toBeInstanceOf(HTMLInputElement);
+			expect((input.element as HTMLInputElement).value).toBe("");
+		});
 
-    it('renders edit buttons for each category', async () => {
-      const CategoriesPage = await loadPage();
-      const wrapper = await mountWithSuspense(CategoriesPage);
-      const editButtons = wrapper.findAll('button');
-      const editBtn = editButtons.find((b) => b.text().includes('编辑'));
-      expect(editBtn).toBeDefined();
-    });
+		it("renders edit buttons for each category", async () => {
+			const CategoriesPage = await loadPage();
+			const wrapper = await mountWithSuspense(CategoriesPage);
+			const editButtons = wrapper.findAll("button");
+			const editBtn = editButtons.find((b) => b.text().includes("编辑"));
+			expect(editBtn).toBeDefined();
+		});
 
-    it('enters edit mode when edit button is clicked', async () => {
-      const CategoriesPage = await loadPage();
-      const wrapper = await mountWithSuspense(CategoriesPage);
+		it("enters edit mode when edit button is clicked", async () => {
+			const CategoriesPage = await loadPage();
+			const wrapper = await mountWithSuspense(CategoriesPage);
 
-      const editButtons = wrapper.findAll('button');
-      const editBtn = editButtons.find((b) => b.text().includes('编辑'));
-      await editBtn!.trigger('click');
-      await flushPromises();
+			const editButtons = wrapper.findAll("button");
+			const editBtn = editButtons.find((b) => b.text().includes("编辑"));
+			await editBtn?.trigger("click");
+			await flushPromises();
 
-      // Should show a save button (checkmark) in edit mode
-      const saveButtons = wrapper.findAll('button');
-      const saveBtn = saveButtons.find((b) => b.text().includes('确认'));
-      expect(saveBtn).toBeDefined();
-    });
+			// Should show a save button (checkmark) in edit mode
+			const saveButtons = wrapper.findAll("button");
+			const saveBtn = saveButtons.find((b) => b.text().includes("确认"));
+			expect(saveBtn).toBeDefined();
+		});
 
-    it('saves edited category name on confirm', async () => {
-      mockUpdateAdminCategory.mockResolvedValue({});
+		it("saves edited category name on confirm", async () => {
+			mockUpdateAdminCategory.mockResolvedValue({});
 
-      // Set up a working refresh mock
-      const refreshMock = vi.fn();
-      mockFetchAdminCategories.mockReturnValue({
-        data: ref(mockCategories),
-        pending: ref(false),
-        error: ref(null),
-        refresh: refreshMock,
-      });
+			// Set up a working refresh mock
+			const refreshMock = vi.fn();
+			mockFetchAdminCategories.mockReturnValue({
+				data: ref(mockCategories),
+				pending: ref(false),
+				error: ref(null),
+				refresh: refreshMock,
+			});
 
-      const CategoriesPage = await loadPage();
-      const wrapper = await mountWithSuspense(CategoriesPage);
+			const CategoriesPage = await loadPage();
+			const wrapper = await mountWithSuspense(CategoriesPage);
 
-      // Enter edit mode for Technology (id=1)
-      const editButtons = wrapper.findAll('button');
-      const editBtn = editButtons.find((b) => b.text().includes('编辑'));
-      await editBtn!.trigger('click');
-      await flushPromises();
+			// Enter edit mode for Technology (id=1)
+			const editButtons = wrapper.findAll("button");
+			const editBtn = editButtons.find((b) => b.text().includes("编辑"));
+			await editBtn?.trigger("click");
+			await flushPromises();
 
-      // Find the edit input (second input on the page, after the create form input)
-      const allInputs = wrapper.findAll('input[type="text"]');
-      const editInput = allInputs[1]; // First is create form, second is edit
-      expect(editInput.exists()).toBe(true);
-      await editInput.setValue('Updated Category');
-      await flushPromises();
+			// Find the edit input (second input on the page, after the create form input)
+			const allInputs = wrapper.findAll('input[type="text"]');
+			const editInput = allInputs[1]; // First is create form, second is edit
+			expect(editInput.exists()).toBe(true);
+			await editInput.setValue("Updated Category");
+			await flushPromises();
 
-      // Click save
-      const saveButton = wrapper.findAll('button').find((b) => b.text().includes('确认'));
-      expect(saveButton).toBeDefined();
-      await saveButton!.trigger('click');
-      await flushPromises();
+			// Click save
+			const saveButton = wrapper.findAll("button").find((b) => b.text().includes("确认"));
+			expect(saveButton).toBeDefined();
+			await saveButton?.trigger("click");
+			await flushPromises();
 
-      expect(mockUpdateAdminCategory).toHaveBeenCalledWith(1, 'Updated Category');
-    });
+			expect(mockUpdateAdminCategory).toHaveBeenCalledWith(1, "Updated Category");
+		});
 
-    it('shows confirm button but no cancel button in edit mode', async () => {
-      const CategoriesPage = await loadPage();
-      const wrapper = await mountWithSuspense(CategoriesPage);
+		it("shows confirm button but no cancel button in edit mode", async () => {
+			const CategoriesPage = await loadPage();
+			const wrapper = await mountWithSuspense(CategoriesPage);
 
-      // Enter edit mode
-      const editButtons = wrapper.findAll('button');
-      const editBtn = editButtons.find((b) => b.text().includes('编辑'));
-      await editBtn!.trigger('click');
-      await flushPromises();
+			// Enter edit mode
+			const editButtons = wrapper.findAll("button");
+			const editBtn = editButtons.find((b) => b.text().includes("编辑"));
+			await editBtn?.trigger("click");
+			await flushPromises();
 
-      // Confirm button should be present
-      const confirmButtons = wrapper.findAll('button');
-      const confirmBtn = confirmButtons.find((b) => b.text().includes('确认'));
-      expect(confirmBtn).toBeDefined();
+			// Confirm button should be present
+			const confirmButtons = wrapper.findAll("button");
+			const confirmBtn = confirmButtons.find((b) => b.text().includes("确认"));
+			expect(confirmBtn).toBeDefined();
 
-      // No cancel button exists in the categories page edit mode
-      const cancelButtons = wrapper.findAll('button');
-      const cancelButton = cancelButtons.find((b) => b.text().includes('取消'));
-      expect(cancelButton).toBeFalsy();
-    });
+			// No cancel button exists in the categories page edit mode
+			const cancelButtons = wrapper.findAll("button");
+			const cancelButton = cancelButtons.find((b) => b.text().includes("取消"));
+			expect(cancelButton).toBeFalsy();
+		});
 
-    it('deletes a category with confirmation', async () => {
-      window.confirm = vi.fn(() => true);
-      mockDeleteAdminCategory.mockResolvedValue({});
+		it("deletes a category with confirmation", async () => {
+			window.confirm = vi.fn(() => true);
+			mockDeleteAdminCategory.mockResolvedValue({});
 
-      const CategoriesPage = await loadPage();
-      const wrapper = await mountWithSuspense(CategoriesPage);
+			const CategoriesPage = await loadPage();
+			const wrapper = await mountWithSuspense(CategoriesPage);
 
-      const deleteButtons = wrapper.findAll('button');
-      const deleteBtn = deleteButtons.find((b) => b.text().includes('删除'));
-      expect(deleteBtn).toBeDefined();
-      await deleteBtn!.trigger('click');
-      await flushPromises();
+			const deleteButtons = wrapper.findAll("button");
+			const deleteBtn = deleteButtons.find((b) => b.text().includes("删除"));
+			expect(deleteBtn).toBeDefined();
+			await deleteBtn?.trigger("click");
+			await flushPromises();
 
-      expect(window.confirm).toHaveBeenCalledWith('确定要删除这个分类吗？');
-      expect(mockDeleteAdminCategory).toHaveBeenCalledWith(1);
-    });
+			expect(window.confirm).toHaveBeenCalledWith("确定要删除这个分类吗？");
+			expect(mockDeleteAdminCategory).toHaveBeenCalledWith(1);
+		});
 
-    it('does NOT delete a category when confirmation is cancelled', async () => {
-      window.confirm = vi.fn(() => false);
+		it("does NOT delete a category when confirmation is cancelled", async () => {
+			window.confirm = vi.fn(() => false);
 
-      const CategoriesPage = await loadPage();
-      const wrapper = await mountWithSuspense(CategoriesPage);
+			const CategoriesPage = await loadPage();
+			const wrapper = await mountWithSuspense(CategoriesPage);
 
-      const deleteButtons = wrapper.findAll('button');
-      const deleteBtn = deleteButtons.find((b) => b.text().includes('删除'));
-      await deleteBtn!.trigger('click');
+			const deleteButtons = wrapper.findAll("button");
+			const deleteBtn = deleteButtons.find((b) => b.text().includes("删除"));
+			await deleteBtn?.trigger("click");
 
-      expect(mockDeleteAdminCategory).not.toHaveBeenCalled();
-    });
-  });
+			expect(mockDeleteAdminCategory).not.toHaveBeenCalled();
+		});
+	});
 });

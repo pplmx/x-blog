@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import type { PostList } from '~/composables/useApi';
+import type { PostList } from "~/composables/useApi";
 
 interface Props {
-  post: PostList;
+	post: PostList;
 }
 
 const props = withDefaults(defineProps<Props>(), {});
@@ -10,23 +10,23 @@ const { post } = toRefs(props);
 
 // Default placeholder gradient based on post title hash
 function getGradientFromTitle(title: string): string {
-  const gradients = [
-    'from-blue-500 to-indigo-600',
-    'from-emerald-500 to-teal-600',
-    'from-orange-500 to-red-600',
-    'from-purple-500 to-pink-600',
-    'from-cyan-500 to-blue-600',
-  ];
-  const hash = title.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
-  return gradients[hash % gradients.length];
+	const gradients = [
+		"from-blue-500 to-indigo-600",
+		"from-emerald-500 to-teal-600",
+		"from-orange-500 to-red-600",
+		"from-purple-500 to-pink-600",
+		"from-cyan-500 to-blue-600",
+	];
+	const hash = title.split("").reduce((acc, char) => acc + char.charCodeAt(0), 0);
+	return gradients[hash % gradients.length];
 }
 
 const date = computed(() =>
-  new Date(props.post.created_at).toLocaleDateString('zh-CN', {
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric',
-  })
+	new Date(props.post.created_at).toLocaleDateString("zh-CN", {
+		year: "numeric",
+		month: "long",
+		day: "numeric",
+	}),
 );
 </script>
 

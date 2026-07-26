@@ -13,6 +13,16 @@ node_modules
 logs
 *.log
 
+# Test coverage
+coverage
+
+# Test files
+tests
+e2e
+
+# Content (Markdown posts)
+content
+
 # Misc
 .DS_Store
 .fleet

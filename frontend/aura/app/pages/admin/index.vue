@@ -4,13 +4,13 @@
   Fetches posts, categories, and tags in parallel for an overview dashboard.
 -->
 <script setup lang="ts">
-import { fetchPosts, useCategories, useTags } from '~/composables/useApi';
+import { fetchPosts, useCategories, useTags } from "~/composables/useApi";
 
 // Fetch all data in parallel
 const [postsResponse, categoriesResult, tagsResult] = await Promise.all([
-  fetchPosts({ limit: 1000 }),
-  useCategories(),
-  useTags(),
+	fetchPosts({ limit: 1000 }),
+	useCategories(),
+	useTags(),
 ]);
 
 const posts = postsResponse.items;
@@ -23,30 +23,61 @@ const totalViews = posts.reduce((sum, p) => sum + (p.views || 0), 0);
 
 // Recent 5 published posts sorted by date (newest first)
 const recentPosts = posts
-  .filter((p) => p.published)
-  .sort(
-    (a, b) =>
-      new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
-  )
-  .slice(0, 5);
+	.filter((p) => p.published)
+	.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+	.slice(0, 5);
 
 // Top 5 posts by view count
-const topPosts = [...posts].sort(
-  (a, b) => (b.views || 0) - (a.views || 0),
-);
+const topPosts = [...posts].sort((a, b) => (b.views || 0) - (a.views || 0));
 
 // Helper: count published posts per category (matches Next.js CategoryPieChart)
 function postsInCategory(catId: number): number {
-  return posts.filter((p) => p.category?.id === catId && p.published).length;
+	return posts.filter((p) => p.category?.id === catId && p.published).length;
 }
 
 const stats = [
-  { title: '文章总数', value: posts.length, icon: 'lucide:file-text', color: 'text-blue-600', bg: 'bg-blue-50' },
-  { title: '已发布', value: publishedCount, icon: 'lucide:check-circle', color: 'text-green-600', bg: 'bg-green-50' },
-  { title: '草稿', value: draftCount, icon: 'lucide:clock', color: 'text-yellow-600', bg: 'bg-yellow-50' },
-  { title: '分类', value: categories?.length || 0, icon: 'lucide:folder', color: 'text-purple-600', bg: 'bg-purple-50' },
-  { title: '标签', value: tags?.length || 0, icon: 'lucide:tag', color: 'text-pink-600', bg: 'bg-pink-50' },
-  { title: '总浏览量', value: totalViews, icon: 'lucide:eye', color: 'text-orange-600', bg: 'bg-orange-50' },
+	{
+		title: "文章总数",
+		value: posts.length,
+		icon: "lucide:file-text",
+		color: "text-blue-600",
+		bg: "bg-blue-50",
+	},
+	{
+		title: "已发布",
+		value: publishedCount,
+		icon: "lucide:check-circle",
+		color: "text-green-600",
+		bg: "bg-green-50",
+	},
+	{
+		title: "草稿",
+		value: draftCount,
+		icon: "lucide:clock",
+		color: "text-yellow-600",
+		bg: "bg-yellow-50",
+	},
+	{
+		title: "分类",
+		value: categories?.length || 0,
+		icon: "lucide:folder",
+		color: "text-purple-600",
+		bg: "bg-purple-50",
+	},
+	{
+		title: "标签",
+		value: tags?.length || 0,
+		icon: "lucide:tag",
+		color: "text-pink-600",
+		bg: "bg-pink-50",
+	},
+	{
+		title: "总浏览量",
+		value: totalViews,
+		icon: "lucide:eye",
+		color: "text-orange-600",
+		bg: "bg-orange-50",
+	},
 ];
 </script>
 

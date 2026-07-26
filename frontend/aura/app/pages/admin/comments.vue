@@ -3,30 +3,30 @@
   Migrated from Next.js /app/admin/comments/page.tsx to Nuxt 4 / Vue 3.
 -->
 <script setup lang="ts">
-import { fetchAdminComments, deleteAdminComment, approveAdminComment } from '~/composables/useApi';
+import { approveAdminComment, deleteAdminComment, fetchAdminComments } from "~/composables/useApi";
 
 const { data: comments, pending, error, refresh } = await fetchAdminComments();
 const isProcessing = ref(false);
 
 async function handleDelete(id: number) {
-  if (!confirm('确定要删除这条评论吗？')) return;
-  isProcessing.value = true;
-  try {
-    await deleteAdminComment(id);
-    await refresh();
-  } finally {
-    isProcessing.value = false;
-  }
+	if (!confirm("确定要删除这条评论吗？")) return;
+	isProcessing.value = true;
+	try {
+		await deleteAdminComment(id);
+		await refresh();
+	} finally {
+		isProcessing.value = false;
+	}
 }
 
 async function handleApprove(id: number, approved: boolean) {
-  isProcessing.value = true;
-  try {
-    await approveAdminComment(id, approved);
-    await refresh();
-  } finally {
-    isProcessing.value = false;
-  }
+	isProcessing.value = true;
+	try {
+		await approveAdminComment(id, approved);
+		await refresh();
+	} finally {
+		isProcessing.value = false;
+	}
 }
 </script>
 

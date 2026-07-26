@@ -39,37 +39,39 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue';
+import { ref } from "vue";
 
 interface Props {
-  title: string;
-  url?: string;
+	title: string;
+	url?: string;
 }
 
 const props = defineProps<Props>();
 
 const copied = ref(false);
 
-const currentUrl = props.url || (typeof window !== 'undefined' ? window.location.href : '');
+const currentUrl = props.url || (typeof window === "undefined" ? "" : window.location.href);
 const encodedUrl = encodeURIComponent(currentUrl);
 const encodedTitle = encodeURIComponent(props.title);
 
 function shareToWeibo() {
-  if (typeof window === 'undefined') return;
-  window.open(
-    `https://service.weibo.com/share/share.php?url=${encodedUrl}&title=${encodedTitle}`,
-    '_blank',
-    'width=550,height=450'
-  );
+	if (typeof window === "undefined") return;
+	window.open(
+		`https://service.weibo.com/share/share.php?url=${encodedUrl}&title=${encodedTitle}`,
+		"_blank",
+		"width=550,height=450",
+	);
 }
 
 async function handleCopyLink() {
-  try {
-    await navigator.clipboard.writeText(currentUrl);
-    copied.value = true;
-    setTimeout(() => { copied.value = false; }, 2000);
-  } catch (e) {
-    console.error('Failed to copy link:', e);
-  }
+	try {
+		await navigator.clipboard.writeText(currentUrl);
+		copied.value = true;
+		setTimeout(() => {
+			copied.value = false;
+		}, 2000);
+	} catch (e) {
+		console.error("Failed to copy link:", e);
+	}
 }
 </script>

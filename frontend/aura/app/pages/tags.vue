@@ -1,25 +1,27 @@
 <script setup lang="ts">
-
 const route = useRoute();
-const tagId = route.query.tag_id ? parseInt(route.query.tag_id as string, 10) : undefined;
+const tagId = route.query.tag_id ? Number.parseInt(route.query.tag_id as string, 10) : undefined;
 
 const { data: tags, pending: tagsPending } = await useTags();
 const { data: posts, pending: postsPending } = await usePosts(
-  tagId ? { tag_id: tagId, page: route.query.page ? parseInt(route.query.page as string, 10) : 1 } : undefined,
+	tagId
+		? {
+				tag_id: tagId,
+				page: route.query.page ? Number.parseInt(route.query.page as string, 10) : 1,
+			}
+		: undefined,
 );
 const pending = computed(() => tagsPending.value || postsPending.value);
 
 // SEO: set dynamic head metadata based on view state
 useHead({
-  title: tagId ? "标签文章" : "所有标签",
-  meta: [
-    {
-      name: "description",
-      content: tagId
-        ? "浏览指定标签下的所有文章"
-        : "浏览 X-Blog 中的所有标签",
-    },
-  ],
+	title: tagId ? "标签文章" : "所有标签",
+	meta: [
+		{
+			name: "description",
+			content: tagId ? "浏览指定标签下的所有文章" : "浏览 X-Blog 中的所有标签",
+		},
+	],
 });
 </script>
 

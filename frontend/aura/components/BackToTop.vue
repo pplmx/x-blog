@@ -1,27 +1,27 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from 'vue';
+import { onMounted, onUnmounted, ref } from "vue";
 
 const isVisible = ref(false);
 const isHovered = ref(false);
 
 function toggleVisibility() {
-  // Show button when scrolled down 300px
-  isVisible.value = window.scrollY > 300;
+	// Show button when scrolled down 300px
+	isVisible.value = window.scrollY > 300;
 }
 
 function scrollToTop() {
-  window.scrollTo({
-    top: 0,
-    behavior: 'smooth',
-  });
+	window.scrollTo({
+		top: 0,
+		behavior: "smooth",
+	});
 }
 
 onMounted(() => {
-  window.addEventListener('scroll', toggleVisibility, { passive: true });
+	window.addEventListener("scroll", toggleVisibility, { passive: true });
 });
 
 onUnmounted(() => {
-  window.removeEventListener('scroll', toggleVisibility);
+	window.removeEventListener("scroll", toggleVisibility);
 });
 </script>
 

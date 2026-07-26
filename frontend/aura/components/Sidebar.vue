@@ -1,14 +1,14 @@
 <script setup lang="ts">
-import type { Category, Tag, PostList } from '~/composables/useApi';
+import type { Category, PostList, Tag } from "~/composables/useApi";
 
 interface Props {
-  categories: Category[];
-  tags: Tag[];
-  popularPosts?: PostList[];
+	categories: Category[];
+	tags: Tag[];
+	popularPosts?: PostList[];
 }
 
 const props = withDefaults(defineProps<Props>(), {
-  popularPosts: () => [],
+	popularPosts: () => [],
 });
 
 const { categories, tags, popularPosts } = toRefs(props);
@@ -18,7 +18,7 @@ const currentCategory = route.query.category_id;
 const currentTag = route.query.tag_id;
 
 function clearFilters() {
-  navigateTo('/');
+	navigateTo("/");
 }
 </script>
 

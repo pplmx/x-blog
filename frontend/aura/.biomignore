@@ -1,0 +1,9 @@
+.nuxt/
+.output/
+node_modules/
+coverage/
+content/
+tests/
+e2e/
+.git/
+.ruff_cache/

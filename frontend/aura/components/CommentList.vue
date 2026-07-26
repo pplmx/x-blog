@@ -63,11 +63,11 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue';
-import { fetchComments } from '~/composables/useApi';
+import { computed, ref } from "vue";
+import { fetchComments } from "~/composables/useApi";
 
 interface Props {
-  postId: number;
+	postId: number;
 }
 
 const props = defineProps<Props>();
@@ -80,28 +80,28 @@ const totalPages = computed(() => commentData.value?.total_pages || 0);
 const currentPage = ref(1);
 
 const visiblePages = computed(() => {
-  const pages = [];
-  const maxVisible = 5;
-  let start = Math.max(1, currentPage.value - Math.floor(maxVisible / 2));
-  let end = Math.min(totalPages.value, start + maxVisible - 1);
-  start = Math.max(1, end - maxVisible + 1);
-  for (let i = start; i <= end; i++) {
-    pages.push(i);
-  }
-  return pages;
+	const pages = [];
+	const maxVisible = 5;
+	let start = Math.max(1, currentPage.value - Math.floor(maxVisible / 2));
+	let end = Math.min(totalPages.value, start + maxVisible - 1);
+	start = Math.max(1, end - maxVisible + 1);
+	for (let i = start; i <= end; i++) {
+		pages.push(i);
+	}
+	return pages;
 });
 
 async function loadPage(page: number) {
-  currentPage.value = page;
-  const result = await fetchComments(props.postId, page, 20);
-  commentData.value = result.data.value;
+	currentPage.value = page;
+	const result = await fetchComments(props.postId, page, 20);
+	commentData.value = result.data.value;
 }
 
 function formatDate(dateStr: string): string {
-  return new Date(dateStr).toLocaleDateString('zh-CN', {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric',
-  });
+	return new Date(dateStr).toLocaleDateString("zh-CN", {
+		year: "numeric",
+		month: "short",
+		day: "numeric",
+	});
 }
 </script>

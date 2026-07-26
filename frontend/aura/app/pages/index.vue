@@ -1,8 +1,12 @@
 <script setup lang="ts">
-
-const { data: posts, pending, error, refresh } = await usePosts({
-  page: 1,
-  limit: 10,
+const {
+	data: posts,
+	pending,
+	error,
+	refresh,
+} = await usePosts({
+	page: 1,
+	limit: 10,
 });
 
 const { data: popularPosts } = await usePopularPosts();
@@ -10,19 +14,19 @@ const { data: popularPosts } = await usePopularPosts();
 const route = useRoute();
 
 function fetchPosts(pageNum: number) {
-  navigateTo({ query: { page: pageNum } });
-  refresh();
+	navigateTo({ query: { page: pageNum } });
+	refresh();
 }
 
 // SEO: set dynamic head metadata
 useHead({
-  title: "首页 — X-Blog",
-  meta: [
-    {
-      name: "description",
-      content: "X-Blog — 一个现代化的技术博客系统。探索最新的技术文章和见解。",
-    },
-  ],
+	title: "首页 — X-Blog",
+	meta: [
+		{
+			name: "description",
+			content: "X-Blog — 一个现代化的技术博客系统。探索最新的技术文章和见解。",
+		},
+	],
 });
 </script>
 

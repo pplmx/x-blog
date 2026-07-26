@@ -1,0 +1,126 @@
+{
+	"$schema": "https://biomejs.dev/schemas/2.5.5/schema.json",
+	"vcs": {
+		"enabled": true,
+		"clientKind": "git",
+		"useIgnoreFile": true
+	},
+	"files": {
+		"ignoreUnknown": false,
+		"includes": ["**/*.{js,cjs,mjs,ts,tsx,jsx,vue,json,css,scss,less}"]
+	},
+	"formatter": {
+		"enabled": true,
+		"indentStyle": "tab",
+		"lineWidth": 100
+	},
+	"linter": {
+		"enabled": true,
+		"rules": {
+			"preset": "recommended",
+			"style": {
+				"useImportType": "off",
+				"useVueMultiWordComponentNames": "off"
+			},
+			"correctness": {
+				"noUnusedVariables": "off"
+			},
+			"suspicious": {
+				"noExplicitAny": "off"
+			}
+		}
+	},
+	"javascript": {
+		"formatter": {
+			"quoteStyle": "double",
+			"trailingCommas": "all"
+		},
+		"globals": [
+			"ref",
+			"reactive",
+			"computed",
+			"watch",
+			"watchEffect",
+			"onMounted",
+			"onUnmounted",
+			"onBeforeMount",
+			"onBeforeUnmount",
+			"getCurrentInstance",
+			"inject",
+			"provide",
+			"toRefs",
+			"toRef",
+			"nextTick",
+			"useHead",
+			"useRoute",
+			"useRouter",
+			"navigateTo",
+			"useAsyncData",
+			"useFetch",
+			"useCookie",
+			"useRequestHeaders",
+			"useState",
+			"useNuxtApp",
+			"definePageMeta",
+			"defineComponent",
+			"defineNuxtConfig",
+			"defineEventHandler",
+			"readBody",
+			"sendError",
+			"createError",
+			"$fetch",
+			"useStorage",
+			"useRuntimeConfig",
+			"defineProps",
+			"defineEmits",
+			"defineExpose",
+			"withDefaults",
+			"useI18n",
+			"usePosts",
+			"usePopularPosts",
+			"usePost",
+			"useRelatedPosts",
+			"usePostView",
+			"usePostLike",
+			"useTags",
+			"useSearch",
+			"fetchAdminCategories",
+			"fetchAdminTags",
+			"fetchAdminPost",
+			"createAdminPost",
+			"updateAdminPost",
+			"fetchAdminPosts",
+			"fetchAdminComments",
+			"approveAdminComment",
+			"deleteAdminComment",
+			"deleteAdminPost",
+			"IconifyIcon"
+		]
+	},
+	"json": {
+		"formatter": {
+			"indentStyle": "tab"
+		}
+	},
+	"css": {
+		"formatter": {
+			"indentStyle": "tab"
+		},
+		"linter": {
+			"enabled": false
+		}
+	},
+	"html": {
+		"formatter": {
+			"indentStyle": "tab"
+		}
+	},
+	"assist": {
+		"enabled": true,
+		"actions": {
+			"source": {
+				"organizeImports": "on"
+			}
+		}
+	}
+}

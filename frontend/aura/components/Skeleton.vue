@@ -1,8 +1,8 @@
 <script setup lang="ts">
 defineProps<{
-  /** Skeleton type to render */
-  type: 'post-list' | 'post-detail' | 'sidebar' | 'page'
-}>()
+	/** Skeleton type to render */
+	type: "post-list" | "post-detail" | "sidebar" | "page";
+}>();
 </script>
 
 <template>

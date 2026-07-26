@@ -63,7 +63,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, watch } from 'vue';
+import { onMounted, ref, watch } from "vue";
 
 // Default layout - no props needed
 
@@ -71,36 +71,36 @@ import { ref, onMounted, watch } from 'vue';
 const isDark = ref(false);
 
 function updateDarkClass() {
-  if (typeof document === 'undefined') return;
-  document.documentElement.classList.toggle('dark', isDark.value);
+	if (typeof document === "undefined") return;
+	document.documentElement.classList.toggle("dark", isDark.value);
 }
 
 function toggleDark() {
-  isDark.value = !isDark.value;
+	isDark.value = !isDark.value;
 }
 
 onMounted(() => {
-  try {
-    // Check for saved preference or system preference
-    const saved = localStorage.getItem('theme');
-    if (saved === 'dark') {
-      isDark.value = true;
-    } else if (saved === 'light') {
-      isDark.value = false;
-    } else if (window.matchMedia) {
-      isDark.value = window.matchMedia('(prefers-color-scheme: dark)').matches;
-    }
-    updateDarkClass();
+	try {
+		// Check for saved preference or system preference
+		const saved = localStorage.getItem("theme");
+		if (saved === "dark") {
+			isDark.value = true;
+		} else if (saved === "light") {
+			isDark.value = false;
+		} else if (window.matchMedia) {
+			isDark.value = window.matchMedia("(prefers-color-scheme: dark)").matches;
+		}
+		updateDarkClass();
 
-    // Save preference to localStorage when it changes
-    watch(isDark, (newVal) => {
-      updateDarkClass();
-      localStorage.setItem('theme', newVal ? 'dark' : 'light');
-    });
-  } catch {
-    // localStorage or matchMedia not available (e.g., in test env)
-    isDark.value = false;
-    updateDarkClass();
-  }
+		// Save preference to localStorage when it changes
+		watch(isDark, (newVal) => {
+			updateDarkClass();
+			localStorage.setItem("theme", newVal ? "dark" : "light");
+		});
+	} catch {
+		// localStorage or matchMedia not available (e.g., in test env)
+		isDark.value = false;
+		updateDarkClass();
+	}
 });
 </script>

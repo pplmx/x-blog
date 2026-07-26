@@ -1,9 +1,9 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
-import { usePostView } from '~/composables/useApi';
+import { onMounted, ref } from "vue";
+import { usePostView } from "~/composables/useApi";
 
 interface Props {
-  postId: number;
+	postId: number;
 }
 
 const props = defineProps<Props>();
@@ -11,11 +11,11 @@ const props = defineProps<Props>();
 const hasTracked = ref(false);
 
 onMounted(() => {
-  if (hasTracked.value) return;
-  hasTracked.value = true;
+	if (hasTracked.value) return;
+	hasTracked.value = true;
 
-  // Increment view count on client side
-  usePostView(props.postId).catch(console.error);
+	// Increment view count on client side
+	usePostView(props.postId).catch(console.error);
 });
 </script>
 
