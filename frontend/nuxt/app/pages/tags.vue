@@ -8,6 +8,19 @@ const { data: posts, pending: postsPending } = await usePosts(
   tagId ? { tag_id: tagId, page: route.query.page ? parseInt(route.query.page as string, 10) : 1 } : undefined,
 );
 const pending = computed(() => tagsPending.value || postsPending.value);
+
+// SEO: set dynamic head metadata based on view state
+useHead({
+  title: tagId ? "标签文章" : "所有标签",
+  meta: [
+    {
+      name: "description",
+      content: tagId
+        ? "浏览指定标签下的所有文章"
+        : "浏览 X-Blog 中的所有标签",
+    },
+  ],
+});
 </script>
 
 <template>
