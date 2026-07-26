@@ -5,7 +5,7 @@
 ## Project Overview
 
 **Stack**: FastAPI (Python 3.14) + Next.js 16 (production) + Nuxt 4 (parallel dev) + SQLite
-**Status**: Clean working tree, all tests passing (472 backend + 590 Next.js = 1062 total)
+**Status**: Clean working tree, all tests passing (473 backend + 590 Next.js = 1063 total)
 
 ## Key Findings
 
@@ -32,6 +32,24 @@
 - **Result**: 590 Next.js tests pass (was 589, +1 new). TypeScript clean (0 errors).
   Biome clean. Backend: 472 tests still pass.
 
+### Backend Admin Update Post Category Bug (FIXED)
+
+- **Bug**: In `backend/app/routers/admin.py`, `admin_update_post` had an unguarded
+  `post.category_id = post_data.category_id` assignment. Since `PostUpdate.category_id`
+  defaults to `None`, any update request that omitted `category_id` would clear the
+  post's existing category association. All other fields were properly guarded with
+  `if post_data.X is not None:` but `category_id` was missed.
+
+- **Fix**: Guarded the assignment with `if post_data.category_id is not None:`,
+  consistent with all other field updates in the same function.
+
+- **Test**: Added `test_update_post_preserves_category_id` that creates a post with a
+  category, sends a PUT request updating only the title, and verifies the category_id
+  is preserved. Confirmed the test fails without the fix (category_id set to None)
+  and passes with the fix.
+
+- **Result**: 473 backend tests pass (was 472, +1 new). Ruff clean.
+
 ### Nuxt Frontend Post Detail Page Bug (FIXED)
 
 - **Bug**: `useRelatedPosts(post.value?.id || 0)` in `frontend/nuxt/app/pages/posts/[slug].vue`
@@ -52,7 +70,7 @@
 
 ### Test Infrastructure
 
-- **Backend**: 472 tests, `uv run pytest -n auto` (pytest-xdist parallel), 85% coverage
+- **Backend**: 473 tests, `uv run pytest -n auto` (pytest-xdist parallel), 85% coverage
 - **Next.js**: 590 tests pass (was 581, grew through TypeScript fixes, new API function tests, retry tests)
 - **Nuxt**: 209 tests pass (was 142 initially, grew to 209 after adding test script, new page tests,
   composables tests, and component tests for CommentList, CommentForm, and ShareButtons)
@@ -90,7 +108,7 @@
 - Atomic SQL UPDATE for increment_views/increment_likes (TOCTOU-safe)
 - Rate limiting via slowapi on write endpoints
 - Cache via cachetools (categories, tags, posts)
-- 472 backend tests with 85% coverage
+- 473 backend tests with 85% coverage
 
 ### Next.js TypeScript Error Reduction (COMPLETED)
 
