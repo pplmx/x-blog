@@ -4,6 +4,7 @@
 install:
     cd backend && uv sync
     cd frontend/next && pnpm install
+    cd frontend/nuxt && pnpm install
 
 # Install git hooks
 hooks:
@@ -67,7 +68,7 @@ fix:
 ci: fmt-check lint test
 
 # Run all tests
-test: test-backend test-frontend
+test: test-backend test-frontend test-nuxt
 
 # Run backend tests
 test-backend:
@@ -84,6 +85,14 @@ test-frontend:
 # Run frontend tests with coverage
 test-frontend-coverage:
     cd frontend/next && pnpm test:coverage
+
+# Run Nuxt tests
+test-nuxt:
+    cd frontend/nuxt && pnpm test
+
+# Run Nuxt tests with coverage
+test-nuxt-coverage:
+    cd frontend/nuxt && pnpm test:coverage
 
 # Run e2e tests (requires just dev running in separate terminals)
 # Or use: just test-e2e for self-contained mode
