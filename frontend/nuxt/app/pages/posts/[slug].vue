@@ -225,6 +225,9 @@ function scrollToHeading(event: MouseEvent) {
         </span>
       </div>
 
+      <!-- Share buttons -->
+      <ShareButtons :title="post.title" v-if="post.title" />
+
       <!-- Comments -->
       <section v-if="post.id" class="mt-12 pt-8 border-t border-gray-200">
         <CommentList :post-id="post.id" />
