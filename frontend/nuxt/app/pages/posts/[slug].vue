@@ -40,13 +40,18 @@ if (post.value) {
 
 // Like handler: toggle like on the current post
 const likeLoading = ref(false);
+const likeError = ref<string | null>(null);
 async function handleLike() {
   if (!post.value?.id || likeLoading.value) return;
   likeLoading.value = true;
+  likeError.value = null;
   try {
     await usePostLike(post.value.id);
     // Force refresh the post data to reflect updated like count
     await usePost(route.params.slug as string);
+  } catch (err) {
+    likeError.value = 'Failed to like post. Please try again.';
+    console.error('Failed to like post:', err);
   } finally {
     likeLoading.value = false;
   }
@@ -220,6 +225,9 @@ function scrollToHeading(event: MouseEvent) {
         </button>
         <span class="text-sm text-gray-500" v-if="post.likes">
           {{ post.likes }} 次喜欢
+        </span>
+        <span v-if="likeError" class="text-sm text-red-500">
+          {{ likeError }}
         </span>
       </div>
 
