@@ -1,5 +1,7 @@
 """Tests for cache module."""
 
+import pytest
+
 from app.cache import (
     cache_clear,
     categories_cache,
@@ -12,6 +14,7 @@ from app.cache import (
     stats_cache,
     tags_cache,
 )
+from app.database import get_db
 
 
 def test_cache_clear():
@@ -71,6 +74,7 @@ def test_get_cache_info():
 
     # Check structure
     assert "posts" in info
+    assert "post_detail" in info
     assert "categories" in info
     assert "tags" in info
     assert "stats" in info
@@ -83,3 +87,17 @@ def test_get_cache_info():
         assert isinstance(cache_info["size"], int)
         assert isinstance(cache_info["maxsize"], int)
         assert isinstance(cache_info["ttl"], int)
+
+
+def test_get_db_yields_session_and_closes():
+    """get_db() should yield a Session instance and close it after use."""
+    db_generator = get_db()
+    db = next(db_generator)
+    assert db is not None
+    assert hasattr(db, "close")
+    assert hasattr(db, "query")
+
+    # The generator should raise StopIteration when exhausted, indicating
+    # the finally block (db.close()) has executed.
+    with pytest.raises(StopIteration):
+        next(db_generator)
