@@ -127,6 +127,13 @@
 
 - **Round 12**: Fixed rumdl table alignment in `frontend/nuxt/README.md`
 
+- **Round 13**: Enabled dark mode support
+    - Added `darkMode: 'class'` to `tailwind.config.js`
+    - Added dark mode toggle button to `default.vue` layout header
+    - Systems preference detection via `window.matchMedia`
+    - Persistence to `localStorage` for preference
+    - Graceful fallback when `localStorage`/`matchMedia` unavailable
+
 ### Nuxt Frontend Search Page Bug (FIXED)
 
 - **Bug**: The search page showed "在上方搜索框输入关键词开始搜索" (enter keywords in
@@ -159,6 +166,6 @@
 4. ~~Add SEO JSON-LD schema to Next.js frontend~~ (already exists in Next.js)
 5. ~~Add reading progress indicator to Nuxt post detail~~ (DONE)
 6. ~~Fix rumdl issues in Nuxt README~~ (DONE)
-7. Add dark mode support to Nuxt frontend
+7. ~~Add dark mode support to Nuxt frontend~~ (DONE)
 8. ~~Add share buttons to Nuxt post detail~~ (DONE)
 9. Investigate backend API function stubs in hooks.ts (createCategory, etc.)
