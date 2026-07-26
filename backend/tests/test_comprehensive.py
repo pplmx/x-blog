@@ -163,7 +163,7 @@ def test_related_posts_empty_for_new_post(client, db_session):
 
 
 # ============== Export Tests ==============
-def test_export_posts_csv_with_views_likes(client, db_session):
+def test_export_posts_csv_with_views_likes(client, auth_headers, db_session):
     """Test exported CSV includes views and likes."""
     post = models.Post(
         title="Export Stats",
@@ -176,7 +176,7 @@ def test_export_posts_csv_with_views_likes(client, db_session):
     db_session.add(post)
     db_session.commit()
 
-    response = client.get("/api/export/posts.csv")
+    response = client.get("/api/export/posts.csv", headers=auth_headers)
     content = response.text
 
     assert "Views" in content
@@ -185,7 +185,7 @@ def test_export_posts_csv_with_views_likes(client, db_session):
     assert "100" in content
 
 
-def test_export_posts_csv_handles_unicode(client, db_session):
+def test_export_posts_csv_handles_unicode(client, auth_headers, db_session):
     """Test CSV export handles Chinese characters."""
     post = models.Post(
         title="中文标题",
@@ -196,7 +196,7 @@ def test_export_posts_csv_handles_unicode(client, db_session):
     db_session.add(post)
     db_session.commit()
 
-    response = client.get("/api/export/posts.csv")
+    response = client.get("/api/export/posts.csv", headers=auth_headers)
     assert response.status_code == 200
     # CSV should contain UTF-8 encoded Chinese
     assert "中文" in response.text
