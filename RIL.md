@@ -147,8 +147,41 @@
   search input rendering and search icon placement.
 - **Nuxt test count**: 150 (was 148)
 
-### Nuxt SEO Metadata Status
+### Next.js Test Suite Clean — 0 Unhandled Rejections (ROUND 14+)
 
+- **Problem**: Vitest reported "3 unhandled errors" in
+  `frontend/next/lib/api.retry.test.ts` — all from the retry/abort test
+  section. Vitest warned "This might cause false positive tests."
+  Exit code was 0 (non-fatal) but represented a real test quality issue.
+- **Root cause**: `vi.useFakeTimers()` + `vi.advanceTimersByTimeAsync()`
+  creates a timing gap where Vitest's process-level `unhandledRejection`
+  handler fires on rejected promises from `mockFetch.mockRejectedValue()`
+  before `fetchWithTimeout`'s `await` + try/catch can process them.
+  This affects any test where the async function under test throws
+  (via `throw lastError` or `Promise.reject()` from abort signal)
+  during fake timer advancement.
+- **Fix pattern**: Two complementary strategies:
+  1. **Avoid rejected promises entirely**: Use `mockResolvedValue()` with
+     5xx status responses instead of `mockRejectedValue()` — the retry
+     logic in `fetchWithTimeout` retries on 5xx without creating rejected
+     promises. (5xx path: `lastError = new Error('HTTP 500')` → retry loop)
+  2. **Pre-attach catch handler**: Call `promise.catch(() => {})` BEFORE
+     `vi.advanceTimersByTimeAsync()` to mark the promise as "handled"
+     for Vitest's unhandledRejection tracking. The `await fetch(...)`
+     in `fetchWithTimeout` still receives the rejection in its try/catch
+     — the side `.catch()` only prevents Vitest from flagging it.
+- **Tests fixed**:
+    - "retries on 5xx and succeeds on retry" — `mockRejectedValueOnce` →
+  `mockResolvedValueOnce` with 500 response
+    - "retries up to MAX_RETRIES then throws" — `mockRejectedValue` →
+  `mockResolvedValue` with 500 + `promise.catch(() => {})` before
+  `advanceTimersByTimeAsync`
+    - "throws on abort (timeout)" — restructured mock to hoist `abortError`
+  variable + `promise.catch(() => {})` before timer advancement
+    - "does not retry on abort error" — `mockRejectedValueOnce` →
+  `mockRejectedValue` + `promise.catch(() => {})` before timer advancement
+- **Result**: All 581 Next.js tests pass, 0 unhandled rejection errors.
+  464 backend tests still pass.
 - **Post detail page**: Dynamic SEO per post (title, description, OG tags,
   Twitter card via `useHead`)
 - **Search page**: Dynamic SEO per query (title, description, robots noindex)
