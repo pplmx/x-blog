@@ -147,8 +147,20 @@
   search input rendering and search icon placement.
 - **Nuxt test count**: 150 (was 148)
 
-### Next.js Test Suite Clean — 0 Unhandled Rejections (ROUND 14+)
+### Nuxt Test Script Missing — Added to package.json (ROUND 15+)
 
+- **Problem**: `frontend/nuxt/package.json` had NO `test` script despite
+  having a full `vitest.config.ts` with 153 tests across 10 test files.
+  `pnpm test` failed silently (no output, exit code 1). CI workflow also
+  only ran `frontend/next` tests, not `frontend/nuxt` tests — so Nuxt
+  test regressions would go undetected.
+- **Fix**: Added `test`, `test:ui`, `test:coverage` scripts to Nuxt
+  package.json (matching Next.js pattern). Added "Nuxt tests" step to
+  `.github/workflows/deploy.yml`. Added `pnpm/action-setup@v4` step for
+  explicit pnpm version management.
+- **Result**: `pnpm test` in `frontend/nuxt` now runs successfully
+  (153 tests, 10 files, all passing). CI will catch future Nuxt test
+  regressions.
 - **Problem**: Vitest reported "3 unhandled errors" in
   `frontend/next/lib/api.retry.test.ts` — all from the retry/abort test
   section. Vitest warned "This might cause false positive tests."
