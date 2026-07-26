@@ -114,6 +114,19 @@
   fields, validation, loading state, and success/error feedback
     - Integrated both components into `posts/[slug].vue` (v-if post.id for safety)
 
+- **Round 10**: Added reading progress indicator
+    - Added scroll-based progress bar (fixed top bar, z-20) with width
+  proportional to scroll position
+    - Uses onMounted/onUnmounted for scroll listener lifecycle
+
+- **Round 11**: Added share buttons to post detail page
+    - Created `ShareButtons.vue` component with Weibo sharing and copy link
+  functionality (parity with Next.js ShareButtons component)
+    - Uses lucide icons (share-2, check, link-2)
+    - Integrated into `posts/[slug].vue` between like button and comments section
+
+- **Round 12**: Fixed rumdl table alignment in `frontend/nuxt/README.md`
+
 ### Nuxt Frontend Search Page Bug (FIXED)
 
 - **Bug**: The search page showed "在上方搜索框输入关键词开始搜索" (enter keywords in
@@ -140,12 +153,12 @@
 
 ## Next Iteration Suggestions
 
-1. ~~Fix remaining 26 Next.js TypeScript errors~~ (DONE — reduced from 49 to 0)
-2. ~~Add comments section to Nuxt post detail page~~ (DONE)
-3. ~~Add reading progress + table of contents to Nuxt post detail~~ (TOC DONE, reading progress pending)
+1. ~~Fix Next.js TypeScript errors~~ (DONE — reduced from 49 to 0)
+2. ~~Add comments section to Nuxt post detail~~ (DONE)
+3. ~~Add reading progress + table of contents to Nuxt post detail~~ (DONE)
 4. ~~Add SEO JSON-LD schema to Next.js frontend~~ (already exists in Next.js)
-5. Add reading progress indicator to Nuxt post detail page
-6. Fix rumdl issues in `frontend/nuxt/README.md` (MD060 table alignment)
+5. ~~Add reading progress indicator to Nuxt post detail~~ (DONE)
+6. ~~Fix rumdl issues in Nuxt README~~ (DONE)
 7. Add dark mode support to Nuxt frontend
-8. Add share buttons to Nuxt post detail page (parity with Next.js)
-5. Investigate backend API function stubs in hooks.ts (createCategory, etc.)
+8. ~~Add share buttons to Nuxt post detail~~ (DONE)
+9. Investigate backend API function stubs in hooks.ts (createCategory, etc.)
