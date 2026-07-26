@@ -5,7 +5,7 @@
 ## Project Overview
 
 **Stack**: FastAPI (Python 3.14) + Next.js 16 (production) + Nuxt 4 (parallel dev) + SQLite
-**Status**: Clean working tree, all tests passing (475 backend + 590 Next.js + 340 Nuxt = 1405 total)
+**Status**: Clean working tree, all tests passing (475 backend + 590 Next.js + 341 Nuxt = 1406 total)
 
 ## Key Findings
 
@@ -74,7 +74,7 @@
 - **Next.js**: 590 tests pass (was 581, grew through TypeScript fixes, new API function tests, retry tests)
 - **Nuxt**: 339 tests pass (was 142 initially, grew through test infrastructure improvements, composable tests,
   component tests for CommentList/CommentForm/ShareButtons/MarkdownContent, page tests, admin panel tests)
-- All three test suites verified passing — total 1404 tests, 0 failures
+- All three test suites verified passing — total 1406 tests, 0 failures
 
 ### Git Hooks
 
@@ -114,7 +114,8 @@
     - 4 composable tests (`tests/composables/useMarkdown.spec.ts`). Updated
   `slug.spec.ts` to stub `MarkdownContent` and update content rendering assertion.
 - **Result**: Nuxt test count grew from 209 to 230 (+21 tests). All 230 pass.
-  Next.js tests unchanged (590 pass). Total project: 1293 tests, 0 failures.
+  Next.js tests unchanged (590 pass). Total project: 1293 tests, 0 failures. (RIL header
+  later reconciled to 1406 after backend + Next.js + Nuxt count corrections.)
 
 ### Nuxt vs Next.js Frontend
 
@@ -295,7 +296,7 @@
 1. ~~Fix Next.js TypeScript errors~~ (DONE — reduced from 49 to 0)
 2. ~~Add comments section to Nuxt post detail~~ (DONE)
 3. ~~Add reading progress + table of contents to Nuxt post detail~~ (DONE)
-4. ~~Add SEO JSON-LD schema to Next.js frontend~~ (already exists in Next.js)
+4. ~~Add SEO JSON-LD schema to Next.js frontend~~ (already exists in Next.js; added to Nuxt)
 5. ~~Add reading progress indicator to Nuxt post detail~~ (DONE)
 6. ~~Fix rumdl issues in Nuxt README~~ (DONE)
 7. ~~Add dark mode support to Nuxt frontend~~ (DONE)
@@ -307,7 +308,7 @@
 
 1. Migrate admin panel from Next.js to Nuxt (`frontend/nuxt/app/pages/admin/`)
 2. Add i18n (internationalization) support to Nuxt (paralleling Next.js `lib/i18n.ts`)
-3. Add SEO JSON-LD structured data to Nuxt post detail pages
+3. ~~Add SEO JSON-LD structured data to Nuxt post detail pages~~ (DONE)
 4. Migrate analytics charts to Nuxt
 5. Add error boundary + loading states to Nuxt
 
@@ -380,7 +381,8 @@
   back-to-foreground link, logout button, active route highlighting
 
 - **Result**: Nuxt test count grew from 230 to 339 (+109 tests). All 339 tests pass.
-  Total project tests: 339 Nuxt + 590 Next.js + 473 backend = 1402, 0 failures.
+  Total project tests: 339 Nuxt + 590 Next.js + 473 backend = 1402, 0 failures. (RIL header
+  later reconciled to 1406 after 4 new tests in subsequent iterations.)
 
 ## Repository Reconciliation (CURRENT ITERATION)
 
@@ -476,10 +478,29 @@ This iteration reconciled a stale/in-progress repository state and committed ver
   throw on the `/like` endpoint, clicks the like button, and verifies the error message renders.
 - **Result**: 340 Nuxt tests pass (was 339, +1 new). 1405 total tests, 0 failures.
 
+### Nuxt post detail SEO JSON-LD structured data (FIXED)
+
+- **Problem**: The Nuxt post detail page had `useHead()` for dynamic meta title/description/OG/Twitter
+  tags but **no JSON-LD structured data** (`<script type="application/ld+json">`). The Next.js
+  equivalent renders a `BlogPosting` schema (and a `BreadcrumbList` schema) for SEO. The RIL
+  priority list flagged \"Add SEO JSON-LD structured data to Nuxt post detail pages\" as a gap.
+- **Fix**: Added a `script` entry of `type: \"application/ld+json\"` with a `json` payload to the
+  existing `useHead()` call in `frontend/nuxt/app/pages/posts/[slug].vue`, mirroring the Next.js
+  `BlogPosting` schema (context, type, headline, description, image, datePublished/dateModified,
+  author, publisher with logo, mainEntityOfPage, articleSection, keywords). Uses Nuxt's `useHead`
+  `json` shorthand which serializes to the script tag automatically (SSR-safe, no `dangerouslySet`).
+- **Test**: Added \"emits a BlogPosting JSON-LD script in useHead when post loads\" test that spies
+  on `useHead`, mounts the post page, and asserts the `script` array contains an
+  `application/ld+json` entry with `BlogPosting` type and correct field values (headline,
+  datePublished, author.name, articleSection).
+in the security boundary.
+
 ## Next Priorities
 
-1. Migrate remaining Next.js-only features to Nuxt (SEO JSON-LD, analytics charts,
+1. Migrate remaining Next.js-only features to Nuxt (analytics charts,
+
    error boundary + loading states) to continue the migration target.
 2. Add i18n support to Nuxt paralleling Next.js `lib/i18n.ts`.
 3. Close the gap between the Nuxt admin panel and the Next.js production admin panel
+
    (audit feature parity; the Nuxt admin is structurally complete with 339 tests).
