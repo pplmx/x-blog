@@ -5,7 +5,7 @@
 ## Project Overview
 
 **Stack**: FastAPI (Python 3.14) + Next.js 16 (production) + Nuxt 4 (parallel dev) + SQLite
-**Status**: Clean working tree, all 1198 tests passing (464 backend + 153 Nuxt + 581 Next.js)
+**Status**: Clean working tree, all 1254 tests passing (464 backend + 209 Nuxt + 581 Next.js)
 
 ## Key Findings
 
@@ -31,8 +31,9 @@
 
 - **Backend**: 464 tests, `uv run pytest -n auto` (pytest-xdist parallel), 85% coverage
 - **Next.js**: 581 tests pass (was 580/581 — fixed PostForm checkbox test for pinned field)
-- **Nuxt**: 153 tests pass (was 142 initially, grew to 153 after adding test script + new tests)
-- All three test suites verified passing — total 1198 tests, 0 failures
+- **Nuxt**: 209 tests pass (was 142 initially, grew to 209 after adding test script, new page tests,
+  composables tests, and component tests for CommentList, CommentForm, and ShareButtons)
+- All three test suites verified passing — total 1254 tests, 0 failures
 
 ### Git Hooks
 
@@ -232,3 +233,24 @@
 7. ~~Add dark mode support to Nuxt frontend~~ (DONE)
 8. ~~Add share buttons to Nuxt post detail~~ (DONE)
 9. ~~Investigate backend API function stubs in hooks.ts~~ (DONE — Round 6: added 5 missing API functions)
+
+### Nuxt Component Test Coverage (ROUND 19+)
+
+- **Problem**: The Nuxt migration frontend had only 1 component test (Icon.spec.ts) despite having
+  3 feature-rich root-level components (CommentList, CommentForm, ShareButtons) with zero test coverage.
+  These components handle comment pagination, form submission with validation, and clipboard/social
+  sharing — all critical user-facing functionality.
+- **Fix**: Added 49 new component tests across 3 new test files:
+    - `tests/components/CommentList.spec.ts` (15 tests): loading/empty/populated states, comment rendering,
+  date formatting, pagination rendering/behavior, page button click handler
+    - `tests/components/CommentForm.spec.ts` (18 tests): form rendering, input binding, validation
+  (empty fields), submission success/error paths, loading state, form clearing
+    - `tests/components/ShareButtons.spec.ts` (16 tests): Weibo share URL construction/encoding,
+  clipboard API integration, copied state toggle, URL prop handling, accessibility
+- **Infrastructure fix**: Added `~/composables` alias to `vitest.config.ts` — Vite's `~` alias resolved
+  to `app/` (which has no `composables/` directory), but components import from `~/composables/useApi`.
+  The alias ensures the Nuxt root-level `composables/` directory is resolved correctly during testing.
+- **Testing pattern**: Components with `await` in `<script setup>` (CommentList) require a `<Suspense>`
+  wrapper for test mounting — same pattern used by page tests. Components without async setup
+  (CommentForm, ShareButtons) mount directly.
+- **Result**: Nuxt test count grew from 160 to 209 (+49 tests). Total project tests: 1254, 0 failures.
