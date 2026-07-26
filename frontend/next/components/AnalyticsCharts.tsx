@@ -51,7 +51,7 @@ export function TopPostsChart({ posts }: { posts: { title: string; views: number
             fontSize: 12,
           }}
           labelStyle={{ fontWeight: 600 }}
-          formatter={(value: number) => [`${value} 次阅读`, '浏览量']}
+          formatter={(value) => [`${value ?? 0} 次阅读`, '浏览量']}
         />
         <Bar dataKey="views" fill="#3b82f6" radius={[0, 4, 4, 0]} />
       </BarChart>
@@ -96,7 +96,7 @@ export function CategoryPieChart({
           </Pie>
           <Tooltip
             contentStyle={{ borderRadius: 8, border: '1px solid rgb(229 231 235)', fontSize: 12 }}
-            formatter={(value: number) => [`${value} 篇`, '文章数']}
+            formatter={(value) => [`${value ?? 0} 篇`, '文章数']}
           />
         </PieChart>
       </ResponsiveContainer>

@@ -184,6 +184,57 @@ export async function createComment(
   return handleResponse<Comment>(res);
 }
 
+export interface CategoryCreate {
+  name: string;
+}
+
+export interface TagCreate {
+  name: string;
+}
+
+export async function createCategory(data: CategoryCreate): Promise<Category> {
+  const res = await fetchWithTimeout(`${API_BASE}/api/categories`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  });
+  return handleResponse<Category>(res);
+}
+
+export async function createTag(data: TagCreate): Promise<Tag> {
+  const res = await fetchWithTimeout(`${API_BASE}/api/tags`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  });
+  return handleResponse<Tag>(res);
+}
+
+export async function createPost(data: PostCreate): Promise<{ id: number }> {
+  const res = await fetchWithTimeout(`${API_BASE}/api/posts`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  });
+  return handleResponse<{ id: number }>(res);
+}
+
+export async function updatePost(id: number, data: Partial<PostCreate>): Promise<Post> {
+  const res = await fetchWithTimeout(`${API_BASE}/api/posts/${id}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  });
+  return handleResponse<Post>(res);
+}
+
+export async function deletePost(id: number): Promise<void> {
+  const res = await fetchWithTimeout(`${API_BASE}/api/posts/${id}`, {
+    method: 'DELETE',
+  });
+  return handleResponse<void>(res);
+}
+
 export async function incrementViews(postId: number): Promise<Post> {
   const res = await fetchWithTimeout(`${API_BASE}/api/posts/${postId}/view`, {
     method: 'POST',
