@@ -43,6 +43,63 @@ class TestAdminPosts:
         posts = response.json()
         assert len(posts) == 1
 
+    def test_admin_list_posts_sorted_by_created_at_desc(self, client, auth_headers, db_session):
+        """Admin post list must return posts sorted by created_at descending.
+
+        Without explicit ordering, SQLite offset/limit pagination is non-deterministic,
+        causing duplicate or missing items across pages.
+        """
+        from datetime import UTC, datetime
+
+        posts = []
+        for i, title in enumerate(["First", "Second", "Third"]):
+            post = models.Post(
+                title=title,
+                slug=f"sort-test-{i}",
+                content="Content",
+                published=True,
+                created_at=datetime(2024, 1, i + 1, 12, 0, 0, tzinfo=UTC),
+            )
+            posts.append(post)
+        db_session.add_all(posts)
+        db_session.commit()
+
+        response = client.get("/api/admin/posts", headers=auth_headers)
+        assert response.status_code == 200
+        result = response.json()
+        titles = [p["title"] for p in result]
+        assert titles == ["Third", "Second", "First"]
+
+    def test_admin_list_posts_pinned_first(self, client, auth_headers, db_session):
+        """Pinned posts must appear before non-pinned posts (matching public listing)."""
+        from datetime import UTC, datetime
+
+        pinned = models.Post(
+            title="Pinned Post",
+            slug="pinned-sort-test",
+            content="Content",
+            published=True,
+            pinned=True,
+            created_at=datetime(2024, 1, 1, 12, 0, 0, tzinfo=UTC),
+        )
+        regular = models.Post(
+            title="Regular Post",
+            slug="regular-sort-test",
+            content="Content",
+            published=True,
+            pinned=False,
+            created_at=datetime(2024, 6, 1, 12, 0, 0, tzinfo=UTC),
+        )
+        db_session.add_all([pinned, regular])
+        db_session.commit()
+
+        response = client.get("/api/admin/posts", headers=auth_headers)
+        assert response.status_code == 200
+        result = response.json()
+        titles = [p["title"] for p in result]
+        assert titles[0] == "Pinned Post"
+        assert "Regular Post" in titles
+
     def test_create_post(self, client, auth_headers):
         response = client.post(
             "/api/admin/posts",

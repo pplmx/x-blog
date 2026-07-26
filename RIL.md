@@ -5,7 +5,7 @@
 ## Project Overview
 
 **Stack**: FastAPI (Python 3.14) + Next.js 16 (production) + Nuxt 4 (parallel dev) + SQLite
-**Status**: Clean working tree, all tests passing (475 backend + 591 Next.js + 342 Nuxt = 1408 total)
+**Status**: Clean working tree, all tests passing (477 backend + 591 Next.js + 342 Nuxt = 1410 total)
 
 ## Key Findings
 
@@ -70,11 +70,11 @@
 
 ### Test Infrastructure
 
-- **Backend**: 475 tests, `uv run pytest -n auto` (pytest-xdist parallel), 85% coverage
+- **Backend**: 477 tests, `uv run pytest -n auto` (pytest-xdist parallel), 85% coverage
 - **Next.js**: 591 tests pass (was 581, +10 through TypeScript fixes, new API function tests, retry tests, i18n fix)
-- **Nuxt**: 339 tests pass (was 142 initially, grew through test infrastructure improvements, composable tests,
+- **Nuxt**: 342 tests pass (was 142 initially, grew through test infrastructure improvements, composable tests,
   component tests for CommentList/CommentForm/ShareButtons/MarkdownContent, page tests, admin panel tests)
-- All three test suites verified passing — total 1408 tests, 0 failures
+- All three test suites verified passing — total 1410 tests, 0 failures
 
 ### Git Hooks
 
@@ -529,6 +529,26 @@ This iteration reconciled a stale/in-progress repository state and committed ver
   `application/ld+json` entry with `BlogPosting` type and correct field values (headline,
   datePublished, author.name, articleSection).
 - **Result**: 341 Nuxt tests pass (was 340, +1 new). 1407 total tests, 0 failures.
+
+### Backend admin post list pagination ordering bug (FIXED)
+
+- **Bug**: `admin_list_posts` in `backend/app/routers/admin.py` used `.offset(skip).limit(limit)`
+  **without any `.order_by()` clause**. Without explicit ordering, SQLite returns rows in
+  insertion order, which makes offset-based pagination non-deterministic — users paging through
+  the admin post list could see duplicate or missing posts across page boundaries. The public
+  `get_posts` CRUD function already sorts by `pinned.desc(), created_at.desc()`, but the admin
+  endpoint (which shows all posts including drafts) had no equivalent ordering.
+- **Fix**: Added `.order_by(models.Post.pinned.desc(), models.Post.created_at.desc())` to the
+  admin query, matching the public listing's priority logic (pinned posts first, then newest).
+- **Also**: Added `id.desc()` tiebreaker to `get_popular_posts` in `crud.py` — posts with equal
+  view counts now have deterministic ordering.
+- **Tests**: Added two regression tests in `tests/test_admin.py`:
+  1. "test_admin_list_posts_sorted_by_created_at_desc" — creates 3 posts with distinct
+     `created_at` timestamps and verifies they return newest-first (FAILS without the fix:
+     returns insertion order).
+  2. "test_admin_list_posts_pinned_first" — verifies pinned posts appear before non-pinned
+     posts, matching the public listing behavior.
+- **Result**: 477 backend tests pass (was 475, +2 new). 1410 total tests, 0 failures. Ruff clean.
 
 ## Next Priorities
 

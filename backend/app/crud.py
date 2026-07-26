@@ -492,7 +492,7 @@ def get_popular_posts(db: Session, limit: int = 5) -> list[models.Post]:
             joinedload(models.Post.category),
             joinedload(models.Post.tags),
         )
-        .order_by(models.Post.views.desc())
+        .order_by(models.Post.views.desc(), models.Post.id.desc())
         .limit(limit)
         .all()
     )

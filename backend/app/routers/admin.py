@@ -112,6 +112,7 @@ def admin_list_posts(
     posts = (
         db.query(models.Post)
         .options(joinedload(models.Post.category), joinedload(models.Post.tags))
+        .order_by(models.Post.pinned.desc(), models.Post.created_at.desc())
         .offset(skip)
         .limit(limit)
         .all()
