@@ -37,6 +37,63 @@ class TestGetPosts:
         """Test get_posts filters by tag_id."""
         posts, total = crud.get_posts(db_session, tag_id=999)
         assert isinstance(posts, list)
+        assert total == 0 or all(p.category_id == 999 for p in posts)
+
+    def test_get_posts_filter_by_tag_correct_count(self, db_session):
+        """Test get_posts returns correct total when filtering by tag_id.
+
+        This catches a potential bug where query.count() after a join()
+        with distinct() could return incorrect counts (counting joined
+        rows instead of distinct parent entities).
+        """
+        # Create a category
+        category = models.Category(name="Tag Filter Category")
+        db_session.add(category)
+        db_session.flush()
+
+        # Create tags
+        tag1 = models.Tag(name="tag-filter-1")
+        tag2 = models.Tag(name="tag-filter-2")
+        db_session.add_all([tag1, tag2])
+        db_session.flush()
+        tag1_id = tag1.id
+        tag2_id = tag2.id
+
+        # Create 3 posts with tag1 (published=True so they appear in default query)
+        for i in range(3):
+            post = models.Post(
+                title=f"Tag Filter Post {i}",
+                slug=f"tag-filter-{i}",
+                content="Content",
+                category_id=category.id,
+                published=True,
+            )
+            post.tags.append(tag1)
+            db_session.add(post)
+
+        # Create 2 posts with tag2
+        for i in range(2):
+            post = models.Post(
+                title=f"Tag2 Filter Post {i}",
+                slug=f"tag2-filter-{i}",
+                content="Content",
+                category_id=category.id,
+                published=True,
+            )
+            post.tags.append(tag2)
+            db_session.add(post)
+
+        db_session.commit()
+
+        # Filter by tag1 — should return exactly 3 posts and total=3
+        posts_tag1, total_tag1 = crud.get_posts(db_session, tag_id=tag1_id)  # type: ignore[arg-type]
+        assert len(posts_tag1) == 3
+        assert total_tag1 == 3
+
+        # Filter by tag2 — should return exactly 2 posts and total=2
+        posts_tag2, total_tag2 = crud.get_posts(db_session, tag_id=tag2_id)  # type: ignore[arg-type]
+        assert len(posts_tag2) == 2
+        assert total_tag2 == 2
 
     def test_get_posts_eager_loads_relations(self, db_session):
         """Test get_posts eager loads category and tags."""
