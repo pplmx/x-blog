@@ -1,3 +1,5 @@
+import os
+
 from sqlalchemy.orm import Session
 
 from app.auth import User, get_password_hash
@@ -7,6 +9,8 @@ from app.database import Base, SessionLocal, engine
 def create_admin():
     Base.metadata.create_all(bind=engine)
 
+    admin_password = os.getenv("ADMIN_PASSWORD", "admin123")
+
     db: Session = SessionLocal()
     try:
         existing = db.query(User).filter(User.username == "admin").first()
@@ -14,12 +18,13 @@ def create_admin():
         if not existing:
             admin = User(
                 username="admin",
-                password=get_password_hash("admin123"),
+                password=get_password_hash(admin_password),
                 is_superuser=True,
             )
             db.add(admin)
             db.commit()
-            print("Admin user created: admin / admin123")
+            print(f"Admin user created: admin / {admin_password}")
+            print("WARNING: Please change this password immediately after first login!")
         else:
             print("Admin user already exists")
     finally:

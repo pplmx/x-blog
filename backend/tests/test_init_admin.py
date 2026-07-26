@@ -30,11 +30,32 @@ class TestCreateAdmin:
         assert created_user.is_superuser is True
         mock_db.commit.assert_called_once()
 
-        # Verify print message
+        # Verify print messages
         mock_print.assert_any_call("Admin user created: admin / admin123")
+        mock_print.assert_any_call("WARNING: Please change this password immediately after first login!")
 
         # Verify db was closed
         mock_db.close.assert_called_once()
+
+    def test_create_admin_uses_env_password(self):
+        """Test create_admin uses ADMIN_PASSWORD env var when set."""
+        mock_db = MagicMock()
+        mock_db.query.return_value.filter.return_value.first.return_value = None
+        mock_session_local = MagicMock(return_value=mock_db)
+
+        with (
+            patch("app.init_admin.SessionLocal", mock_session_local),
+            patch("app.init_admin.Base.metadata.create_all"),
+            patch("app.init_admin.get_password_hash", return_value="hashed_custom"),
+            patch("builtins.print") as mock_print,
+            patch("os.getenv", return_value="custom_pass"),
+        ):
+            create_admin()
+
+        # Verify admin user was created with custom password
+        created_user = mock_db.add.call_args[0][0]
+        assert created_user.password == "hashed_custom"
+        mock_print.assert_any_call("Admin user created: admin / custom_pass")
 
     def test_create_admin_skips_when_exists(self):
         """Test create_admin skips creation when admin already exists."""
