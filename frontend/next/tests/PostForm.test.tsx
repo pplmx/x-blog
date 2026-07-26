@@ -133,9 +133,9 @@ describe('PostForm', () => {
     it('should render tag checkboxes', () => {
       renderForm({ tags: mockTags });
 
-      // 3 tag checkboxes + 1 published checkbox = 4 total
+      // 3 tag checkboxes + 1 published checkbox + 1 pinned checkbox = 5 total
       const checkboxes = document.querySelectorAll('input[type="checkbox"]');
-      expect(checkboxes.length).toBe(mockTags.length + 1); // +1 for published checkbox
+      expect(checkboxes.length).toBe(mockTags.length + 2); // +1 for published, +1 for pinned
     });
 
     it('should render published checkbox', () => {
