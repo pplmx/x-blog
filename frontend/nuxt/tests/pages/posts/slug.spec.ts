@@ -469,6 +469,56 @@ describe("Post Detail Page", () => {
       });
       expect(wrapper.text()).not.toContain("次喜欢");
     });
+
+    it("displays an error message when liking fails", async () => {
+      // Stub useFetch so the POST /like call throws, simulating a network error
+      vi.stubGlobal("useRuntimeConfig", () => ({
+        public: { apiUrl: "http://localhost:18888" },
+      }));
+      vi.stubGlobal("useHead", vi.fn());
+      vi.stubGlobal("useRoute", () => ({
+        params: { slug: "test-article-post" },
+        query: {},
+      }));
+      vi.stubGlobal("navigateTo", vi.fn());
+      vi.stubGlobal("useFetch", vi.fn((url: string) => {
+        if (typeof url === "string" && url.includes("/like")) {
+          throw new Error("Network error");
+        }
+        return {
+          data: ref(mockPost),
+          pending: ref(false),
+          error: ref(null),
+          refresh: vi.fn(),
+        };
+      }));
+
+      const { default: PostPage } = await import("@/pages/posts/[slug].vue");
+      const SuspenseWrapper: any = {
+        components: { PostPage },
+        template:
+          `<Suspense>` +
+          `<template #default><PostPage /></template>` +
+          `<template #fallback>Loading...</template>` +
+          `</Suspense>`,
+      };
+      const wrapper = mount(SuspenseWrapper, {
+        global: {
+          stubs: {
+            NuxtLink: { template: '<a :href="to"><slot/></a>', props: ["to"] },
+            Icon: { template: '<svg class="iconstub" :data-icon="icon"></svg>', props: ["icon"] },
+            MarkdownContent: { template: '<div class="markdown-content"><div v-html="content"></div></div>', props: ["content"] },
+          },
+        },
+      });
+      await flushPromises();
+
+      // Click the like button — usePostLike should throw and trigger the catch block
+      await wrapper.find('button[type="button"]').trigger("click");
+      await flushPromises();
+
+      expect(wrapper.text()).toContain("Failed to like post. Please try again.");
+    });
   });
 
   describe("Post metadata", () => {
