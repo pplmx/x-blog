@@ -202,8 +202,9 @@ describe('Admin Layout', () => {
         query: {},
       }));
 
-      // The layout should show nothing when unauthenticated on non-login routes
-      // (it would redirect in a real Nuxt app)
+      const mockNavigateTo = vi.fn();
+      vi.stubGlobal('navigateTo', mockNavigateTo);
+
       const { default: AdminLayout } = await import('@/layouts/admin.vue');
       const wrapper = mount(AdminLayout, {
         global: {
@@ -212,9 +213,9 @@ describe('Admin Layout', () => {
         slots: { default: '<div>Content</div>' },
       });
 
-      // When unauthenticated and not on login page, the layout renders nothing
-      // (it would call navigateTo in a real app, but in tests the sidebar should
-      // not be visible)
+      // The layout should call navigateTo to redirect to login
+      expect(mockNavigateTo).toHaveBeenCalledWith('/admin/login', { replace: true });
+      // Sidebar should NOT be rendered
       expect(wrapper.text()).not.toContain('X-Blog 管理');
       expect(wrapper.text()).not.toContain('仪表盘');
     });

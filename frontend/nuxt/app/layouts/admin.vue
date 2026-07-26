@@ -14,6 +14,11 @@ const route = useRoute();
 const isLoginPage = route.path === '/admin/login';
 const sidebarOpen = ref(false);
 
+// Redirect unauthenticated users to login page when not already on it
+if (!isAuthenticated.value && !isLoginPage) {
+  navigateTo('/admin/login', { replace: true });
+}
+
 // Close mobile sidebar when route changes
 watch(
   () => route.path,

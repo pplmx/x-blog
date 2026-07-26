@@ -5,7 +5,7 @@
 ## Project Overview
 
 **Stack**: FastAPI (Python 3.14) + Next.js 16 (production) + Nuxt 4 (parallel dev) + SQLite
-**Status**: Clean working tree, all tests passing (477 backend + 591 Next.js + 345 Nuxt = 1413 total)
+**Status**: Clean working tree, all tests passing (477 backend + 591 Next.js + 345 Nuxt = 1414 total)
 
 ## Key Findings
 
@@ -72,9 +72,9 @@
 
 - **Backend**: 477 tests, `uv run pytest -n auto` (pytest-xdist parallel), 85% coverage
 - **Next.js**: 591 tests pass (was 581, +10 through TypeScript fixes, new API function tests, retry tests, i18n fix)
-- **Nuxt**: 345 tests pass (was 142 initially, grew through test infrastructure improvements, composable tests,
+- **Nuxt**: 346 tests pass (was 142 initially, grew through test infrastructure improvements, composable tests,
   component tests for CommentList/CommentForm/ShareButtons/MarkdownContent, page tests, admin panel tests)
-- All three test suites verified passing — total 1413 tests, 0 failures
+- All three test suites verified passing — total 1414 tests, 0 failures
 
 ### Git Hooks
 
@@ -566,7 +566,20 @@ This iteration reconciled a stale/in-progress repository state and committed ver
      `http://localhost:18888/api/admin/login`
   2. "sends credentials as form-urlencoded body" — verifies username/password are in the body
   3. "sets the Content-Type header to application/x-www-form-urlencoded" — verifies headers
-- **Result**: 345 Nuxt tests pass (was 342, +3 new). 1413 total tests, 0 failures.
+- **Result**: 346 Nuxt tests pass (was 345, +1 updated). 1414 total tests, 0 failures.
+
+### Nuxt admin layout missing auth redirect (FIXED)
+
+- **Bug**: The Nuxt admin layout (`app/layouts/admin.vue`) had no `v-else` or redirect for
+  unauthenticated users visiting non-login admin routes. The template used `v-if="isLoginPage"` and
+  `v-else-if="isAuthenticated"`, leaving no branch for `!isLoginPage && !isAuthenticated` — unauthenticated
+  users saw a blank screen instead of being redirected to `/admin/login`. The existing test
+  "redirects to login when unauthenticated on non-login route" only verified the sidebar was
+  hidden, not that a redirect actually occurred.
+- **Fix**: Added `navigateTo('/admin/login', { replace: true })` in the `<script setup>` section
+  when the user is unauthenticated and not on the login page. Updated the test to assert
+  `navigateTo` is called with the correct arguments.
+- **Result**: 346 Nuxt tests pass (was 345, +1 updated test assertion). 1414 total tests, 0 failures.
 
 ## Next Priorities
 
