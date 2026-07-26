@@ -6,7 +6,7 @@
  */
 import { describe, it, expect, vi, beforeEach, afterEach, type Mock } from "vitest";
 
-import { useApi, usePosts, useCategories, useTags, usePost, useSearch, usePostView, usePostLike, usePopularPosts, useRelatedPosts } from "../../composables/useApi";
+import { useApi, usePosts, useCategories, useTags, usePost, useSearch, usePostView, usePostLike, usePopularPosts, useRelatedPosts, fetchComments, createComment } from "../../composables/useApi";
 
 // Capture what useFetch is called with
 let useFetchCalls: Array<{
@@ -224,5 +224,72 @@ describe("useRelatedPosts", () => {
     useRelatedPosts(7);
     const url = useFetchCalls[0].url;
     expect(url).toContain("/api/posts/7/related");
+  });
+});
+
+describe("fetchComments", () => {
+  it("fetches comments for a post with default pagination", () => {
+    fetchComments(42);
+    expect(useFetchCalls[0].url).toBe("/api/comments/post/42");
+    expect(useFetchCalls[0].options.query).toEqual({ page: 1, limit: 20 });
+    expect(useFetchCalls[0].options.baseURL).toBe("http://localhost:18888");
+  });
+
+  it("accepts custom page and limit parameters", () => {
+    fetchComments(10, 3, 5);
+    expect(useFetchCalls[0].options.query).toEqual({ page: 3, limit: 5 });
+  });
+
+  it("returns the comments endpoint URL format", () => {
+    fetchComments(99);
+    expect(useFetchCalls[0].url).toContain("/api/comments/post/99");
+  });
+});
+
+describe("createComment", () => {
+  it("posts to the comment creation endpoint", () => {
+    createComment(42, {
+      nickname: "Alice",
+      email: "alice@test.com",
+      content: "Great post!",
+    });
+    expect(useFetchCalls[0].url).toBe("/api/comments/post/42");
+    expect(useFetchCalls[0].options.method).toBe("POST");
+    expect(useFetchCalls[0].options.baseURL).toBe("http://localhost:18888");
+  });
+
+  it("sends the comment data as the request body", () => {
+    const data = {
+      nickname: "Bob",
+      email: "bob@test.com",
+      content: "Nice article",
+    };
+    createComment(10, data);
+    expect(useFetchCalls[0].options.body).toEqual(data);
+  });
+
+  it("handles parent_id for nested comments", () => {
+    createComment(1, {
+      nickname: "Carol",
+      email: "carol@test.com",
+      content: "Reply to Bob",
+      parent_id: 5,
+    });
+    expect(useFetchCalls[0].options.body).toEqual({
+      nickname: "Carol",
+      email: "carol@test.com",
+      content: "Reply to Bob",
+      parent_id: 5,
+    });
+  });
+
+  it("accepts null parent_id for top-level comments", () => {
+    createComment(1, {
+      nickname: "Dave",
+      email: "dave@test.com",
+      content: "Top level comment",
+      parent_id: null,
+    });
+    expect((useFetchCalls[0].options.body as { parent_id: number | null }).parent_id).toBeNull();
   });
 });
