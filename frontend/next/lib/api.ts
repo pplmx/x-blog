@@ -25,25 +25,25 @@ interface FetchOptions extends RequestInit {
 export async function fetchWithTimeout(url: string, options: FetchOptions = {}): Promise<Response> {
   const { timeout = REQUEST_TIMEOUT, retries = MAX_RETRIES, ...fetchOptions } = options;
 
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), timeout);
-
   let lastError: Error | null = null;
 
   for (let attempt = 0; attempt <= retries; attempt++) {
+    // Fresh AbortController + timeout per attempt so retries are protected
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), timeout);
+
     try {
       const response = await fetch(url, {
         ...fetchOptions,
         signal: controller.signal,
       });
-      clearTimeout(timeoutId);
 
       // Don't retry on 4xx errors (except 429 Too Many Requests)
       if (response.status >= 400 && response.status < 500 && response.status !== 429) {
         return response;
       }
 
-      // Return success or 5xx errors for retry
+      // Return success
       if (response.ok) {
         return response;
       }
@@ -55,9 +55,10 @@ export async function fetchWithTimeout(url: string, options: FetchOptions = {}):
 
       // Don't retry on abort (timeout)
       if (error instanceof DOMException && error.name === 'AbortError') {
-        clearTimeout(timeoutId);
         throw error;
       }
+    } finally {
+      clearTimeout(timeoutId);
     }
 
     // Retry on failure
@@ -68,7 +69,6 @@ export async function fetchWithTimeout(url: string, options: FetchOptions = {}):
     }
   }
 
-  clearTimeout(timeoutId);
   throw lastError;
 }
 

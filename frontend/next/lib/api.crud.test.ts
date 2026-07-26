@@ -8,14 +8,7 @@
  * request body serialization, and response parsing.
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import {
-  createCategory,
-  createTag,
-  createPost,
-  updatePost,
-  deletePost,
-  APIError,
-} from './api';
+import { createCategory, createTag, createPost, updatePost, deletePost, APIError } from './api';
 
 const mockFetch = vi.fn();
 global.fetch = mockFetch;
@@ -66,7 +59,12 @@ describe('Public CRUD API', () => {
 
   describe('createPost', () => {
     it('sends POST to /api/posts with post data in body', async () => {
-      const postData = { title: 'New Post', slug: 'new-post', content: 'Content', published: false };
+      const postData = {
+        title: 'New Post',
+        slug: 'new-post',
+        content: 'Content',
+        published: false,
+      };
       const mockResponse = { id: 42 };
       mockFetch.mockResolvedValue({
         ok: true,
