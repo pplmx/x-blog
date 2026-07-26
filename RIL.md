@@ -84,6 +84,6 @@
 - **Search page**: Dynamic SEO per query (title, description, robots noindex)
 - **App config**: Default SEO metadata for all pages (title, description,
   keywords, OG tags, Twitter card)
-- **Tags page**: Route JSON meta only, no dynamic `useHead` — **TODO**
-- **Index page**: Route JSON meta only — **TODO**
-- **About page**: Route JSON meta only — **TODO**
+- **Tags page**: useHead() added for dynamic title (tags list vs tag posts)
+- **Index page**: useHead() added for title and description
+- **About page**: useHead() added for title and description (merged two script blocks)
