@@ -144,7 +144,7 @@ export default function TagsPage() {
         </div>
       ) : (
         <div className="flex flex-wrap gap-3">
-          {tags.map((tag) => (
+          {(tags || []).map((tag) => (
             <div
               key={tag.id}
               className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 hover:border-pink-200 dark:hover:border-pink-800 hover:shadow-md transition-all duration-200"
