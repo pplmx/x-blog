@@ -18,7 +18,7 @@ export async function generateMetadata({ searchParams }: TagsPageProps): Promise
   if (tagId) {
     return {
       title: '标签文章',
-      robots: { noindex: true },
+      robots: { noindex: true } as any,
     };
   }
 
