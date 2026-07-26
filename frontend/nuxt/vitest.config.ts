@@ -23,6 +23,11 @@ export default defineConfig({
   },
   resolve: {
     alias: {
+      // More specific alias must come before ~ to prevent ~ from matching first
+      // (Vite checks aliases in order, first match wins).
+      // Nuxt resolves ~/composables to the root composables/ directory,
+      // not app/composables/. Mirror that in vitest.
+      "~/composables": resolve(root, "composables"),
       "~": resolve(root, "app"),
       "@": resolve(root, "app"),
     },
