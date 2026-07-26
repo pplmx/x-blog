@@ -29,7 +29,9 @@ describe('MobileFilterBar', () => {
 
   beforeEach(() => {
     mockPush.mockClear();
-    vi.mocked(useSearchParams).mockReturnValue(new URLSearchParams() as unknown as ReturnType<typeof useSearchParams>);
+    vi.mocked(useSearchParams).mockReturnValue(
+      new URLSearchParams() as unknown as ReturnType<typeof useSearchParams>
+    );
   });
 
   afterEach(() => {
@@ -97,7 +99,9 @@ describe('MobileFilterBar with active filters', () => {
 
   it('shows clear all filters button when panel is open with category_id in params', async () => {
     const user = userEvent.setup();
-    vi.mocked(useSearchParams).mockReturnValue(new URLSearchParams('category_id=1') as unknown as ReturnType<typeof useSearchParams>);
+    vi.mocked(useSearchParams).mockReturnValue(
+      new URLSearchParams('category_id=1') as unknown as ReturnType<typeof useSearchParams>
+    );
 
     render(<MobileFilterBar categories={mockCategories} tags={mockTags} />);
 
@@ -109,7 +113,9 @@ describe('MobileFilterBar with active filters', () => {
 
   it('clear all filters button is functional', async () => {
     const user = userEvent.setup();
-    vi.mocked(useSearchParams).mockReturnValue(new URLSearchParams('category_id=1') as unknown as ReturnType<typeof useSearchParams>);
+    vi.mocked(useSearchParams).mockReturnValue(
+      new URLSearchParams('category_id=1') as unknown as ReturnType<typeof useSearchParams>
+    );
 
     render(<MobileFilterBar categories={mockCategories} tags={mockTags} />);
 
@@ -123,7 +129,9 @@ describe('MobileFilterBar with active filters', () => {
   });
 
   it('shows filter indicator when category is active', () => {
-    vi.mocked(useSearchParams).mockReturnValue(new URLSearchParams('category_id=1') as unknown as ReturnType<typeof useSearchParams>);
+    vi.mocked(useSearchParams).mockReturnValue(
+      new URLSearchParams('category_id=1') as unknown as ReturnType<typeof useSearchParams>
+    );
 
     const { container } = render(<MobileFilterBar categories={mockCategories} tags={mockTags} />);
 

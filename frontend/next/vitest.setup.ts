@@ -6,9 +6,14 @@ import { cleanup } from '@testing-library/react';
 // Global browser APIs
 Object.defineProperty(window, 'location', {
   value: { hostname: 'localhost', origin: 'http://localhost' },
-  writable: true, configurable: true,
+  writable: true,
+  configurable: true,
 });
-window.ResizeObserver = class { observe(){} unobserve(){} disconnect(){} } as any;
+window.ResizeObserver = class {
+  observe() {}
+  unobserve() {}
+  disconnect() {}
+} as any;
 
 // vi.hoisted: mocks + references are hoisted together so vi.mock can access them
 const { mermaidInitMock, mermaidRenderMock, openLightboxMock } = vi.hoisted(() => {
@@ -39,7 +44,8 @@ const originalWarn = console.warn.bind(console);
 beforeEach(() => {
   console.error = vi.fn((...args: unknown[]) => {
     const msg = args[0];
-    if (typeof msg === 'string' && (msg.includes('ErrorBoundary') || msg.includes('above error'))) return;
+    if (typeof msg === 'string' && (msg.includes('ErrorBoundary') || msg.includes('above error')))
+      return;
     originalError(...args);
   });
   console.warn = vi.fn((...args: unknown[]) => {
