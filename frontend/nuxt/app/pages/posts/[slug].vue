@@ -2,11 +2,49 @@
 
 const route = useRoute();
 const { data: post, pending, error } = await usePost(route.params.slug as string);
-const { data: relatedPosts } = await useRelatedPosts(post.value?.id || 0);
+
+// Fetch related posts only when the post has been loaded with a valid ID.
+// Previously this used `post.value?.id || 0` which sent a meaningless request
+// to /api/posts/0/related during SSR when the post was still pending or not found.
+const postId = post.value?.id ?? 0;
+const { data: relatedPosts } = postId
+  ? await useRelatedPosts(postId)
+  : { data: ref(null) };
 
 // Track view count when post is loaded
 if (post.value?.id) {
   await usePostView(post.value.id);
+}
+
+// SEO: set dynamic head metadata when the post is available
+if (post.value) {
+  useHead({
+    title: post.value.title,
+    meta: [
+      { name: "description", content: post.value.excerpt || "" },
+      { name: "og:title", content: post.value.title },
+      { name: "og:description", content: post.value.excerpt || "" },
+      { name: "og:type", content: "article" },
+      { name: "og:image", content: post.value.cover_image || "" },
+      { name: "twitter:card", content: "summary_large_image" },
+      { name: "twitter:title", content: post.value.title },
+      { name: "twitter:description", content: post.value.excerpt || "" },
+    ],
+  });
+}
+
+// Like handler: toggle like on the current post
+const likeLoading = ref(false);
+async function handleLike() {
+  if (!post.value?.id || likeLoading.value) return;
+  likeLoading.value = true;
+  try {
+    await usePostLike(post.value.id);
+    // Force refresh the post data to reflect updated like count
+    await usePost(route.params.slug as string);
+  } finally {
+    likeLoading.value = false;
+  }
 }
 </script>
 
@@ -76,12 +114,43 @@ if (post.value?.id) {
         </div>
       </header>
 
+      <!-- Cover image -->
+      <div
+        v-if="post.cover_image"
+        class="relative w-full h-[240px] sm:h-[320px] rounded-2xl overflow-hidden mb-8 shadow-xl"
+      >
+        <img
+          :src="post.cover_image"
+          :alt="post.title"
+          class="w-full h-full object-cover"
+        />
+      </div>
+
       <!-- Markdown content -->
       <div
         v-if="post.content"
         class="mt-8 text-gray-800 leading-relaxed"
         v-html="post.content"
       ></div>
+
+      <!-- Like button -->
+      <div class="mt-8 pt-6 border-t border-gray-200 flex items-center gap-4">
+        <button
+          type="button"
+          @click="handleLike"
+          :disabled="likeLoading"
+          class="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-pink-500 to-red-500 text-white rounded-xl font-medium hover:from-pink-600 hover:to-red-600 transition-all shadow-md disabled:opacity-50"
+        >
+          <Icon
+            :icon="likeLoading ? 'lucide:loader-2' : 'lucide:heart'"
+            class="w-4 h-4"
+          />
+          {{ likeLoading ? '点赞中...' : '喜欢' }}
+        </button>
+        <span class="text-sm text-gray-500" v-if="post.likes">
+          {{ post.likes }} 次喜欢
+        </span>
+      </div>
 
       <!-- Related Posts -->
       <section v-if="post.id && relatedPosts?.length" class="mt-12">
