@@ -455,8 +455,7 @@ export async function adminLogin(
   formData.set('username', username);
   formData.set('password', password);
 
-  return useFetch<{ access_token: string }>('admin/login', {
-    baseURL: apiUrl,
+  return useFetch<{ access_token: string }>(`${apiUrl}/api/admin/login`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     body: formData,
