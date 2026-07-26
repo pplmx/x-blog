@@ -2,12 +2,12 @@
 
 <div align="center">
 
-![Next.js](https://img.shields.io/badge/Next.js-16-black?style=for-the-badge&logo=next.js)
+![Nuxt](https://img.shields.io/badge/Nuxt-4-0F172A?style=for-the-badge&logo=nuxt)
 ![FastAPI](https://img.shields.io/badge/FastAPI-0.135-009989?style=for-the-badge&logo=fastapi)
 ![TypeScript](https://img.shields.io/badge/TypeScript-6-3178C6?style=for-the-badge&logo=typescript)
 ![Python](https://img.shields.io/badge/Python-3.14-3776AB?style=for-the-badge&logo=python)
 
-现代化的全栈博客系统，基于 FastAPI + Next.js 构建
+现代化的全栈博客系统，基于 FastAPI + Nuxt 构建
 
 [English](./README.md) · [中文](./README.zh-CN.md)
 
@@ -15,12 +15,12 @@
 
 ## ✨ 特性
 
-- 🚀 **现代技术栈** - Next.js 16, FastAPI, TypeScript 6, Python 3.14
+- 🚀 **现代技术栈** - Nuxt 4, FastAPI, Vue 3, TypeScript, Python 3.14
 - 📝 **Markdown 支持** - 支持 Mermaid 图表、KaTeX 数学公式、代码高亮
-- 🎨 **精美 UI** - Tailwind CSS v4 + shadcn/ui 构建
+- 🎨 **精美 UI** - Tailwind CSS v4 构建
 - 📱 **响应式设计** - 完美适配移动端
 - 🔒 **管理后台** - 内置内容管理后台
-- 🧪 **完善测试** - 612 个测试 (后端 346 + 前端 266), 后端覆盖率 85%
+- 🧪 **完善测试** - 912 个测试 (后端 475 + Nuxt 前端 437), 后端覆盖率 85%
 - ✅ **类型安全** - 完整 TypeScript 支持 + Pydantic 验证
 - 🔍 **全文搜索** - 文章搜索功能
 - 🌙 **深色模式** - 跟随系统偏好的深色模式
@@ -55,7 +55,7 @@ just install
 
 # 或者手动安装:
 cd backend && uv sync
-cd frontend/next && pnpm install
+cd frontend/nuxt && pnpm install
 ```
 
 ### 开发
@@ -66,7 +66,7 @@ just dev
 
 # 或者分别运行:
 just backend  # http://localhost:18888
-just frontend # http://localhost:13333
+just frontend # http://localhost:13334
 ```
 
 ### 🐳 Docker 部署
@@ -90,20 +90,20 @@ docker-compose logs -f
 
 ## 🛠️ 命令
 
-| 命令                 | 说明                               |
-| -------------------- | ---------------------------------- |
-| `just install`       | 安装所有依赖                       |
-| `just dev`           | 运行开发服务器 (后端 + 前端)       |
-| `just backend`       | 运行 FastAPI 后端                  |
-| `just frontend`      | 运行 Next.js 前端                  |
-| `just lint`          | 代码检查 (ruff + biome)            |
-| `just format`        | 代码格式化                         |
-| `just test`          | 运行所有测试 (346 后端 + 266 前端) |
-| `just test-backend`  | 运行后端测试 (并行)                |
-| `just test-frontend` | 运行前端测试                       |
-| `just fix`           | 自动修复代码问题                   |
-| `just ci`            | 运行 lint + format + test          |
-| `just clean`         | 清理生成文件                       |
+| 命令                 | 说明                         |
+| -------------------- | ---------------------------- |
+| `just install`       | 安装所有依赖                 |
+| `just dev`           | 运行开发服务器 (后端 + 前端) |
+| `just backend`       | 运行 FastAPI 后端            |
+| `just frontend`      | 运行 Nuxt 前端               |
+| `just lint`          | 代码检查 (ruff)              |
+| `just format`        | 代码格式化                   |
+| `just test`          | 运行所有测试 (后端 + Nuxt)   |
+| `just test-backend`  | 运行后端测试 (并行)          |
+| `just test-frontend` | 运行 Nuxt 前端测试           |
+| `just fix`           | 自动修复代码问题             |
+| `just ci`            | 运行 lint + format + test    |
+| `just clean`         | 清理生成文件                 |
 
 ## 📡 API 接口
 
@@ -157,7 +157,7 @@ docker-compose logs -f
 
 ![架构图](./docs/x-blog-architecture.png)
 
-> 📁 [交互式 HTML 版本](./docs/x-blog-architecture.html) — 本地浏览器打开可缩放查看。涵盖：Next.js 前端、FastAPI 后端、SQLite 数据库、JWT 认证、管理后台、DevOps 工具链。
+> 📁 [交互式 HTML 版本](./docs/x-blog-architecture.html) — 本地浏览器打开可缩放查看。涵盖：Nuxt 前端、FastAPI 后端、SQLite 数据库、JWT 认证、管理后台、DevOps 工具链。
 
 ## 🗂️ 项目结构
 
@@ -176,22 +176,15 @@ x-blog/
 │   └── pyproject.toml      # Python 配置
 │
 ├── frontend/
-│   ├── next/               # Next.js 应用 (当前生产版本)
-│   │   ├── app/
-│   │   │   ├── page.tsx        # 首页
-│   │   │   ├── admin/          # 管理后台
-│   │   │   ├── posts/          # 文章页面
-│   │   │   ├── tags/           # 标签页面
-│   │   │   └── about/          # 关于页面
-│   │   ├── components/         # React 组件
-│   │   │   ├── ui/             # shadcn/ui 组件
-│   │   │   └── *.tsx
-│   │   ├── lib/                # 工具函数 & API 客户端
-│   │   ├── types/              # TypeScript 类型
-│   │   ├── package.json
-│   │   └── Dockerfile
-│   └── nuxt/               # Nuxt 替代方案 (并行开发)
-│       └── app/
+│   └── nuxt/               # Nuxt 4 应用 (Vue 前端)
+│       ├── app/            # 页面、布局
+│       ├── components/     # Vue 组件
+│       ├── composables/    # Composables (useApi, useI18n 等)
+│       ├── server/         # 服务端路由 (RSS, sitemap 等)
+│       ├── tests/          # 单元测试
+│       ├── e2e/            # E2E 测试
+│       ├── package.json
+│       └── Dockerfile
 ├── docs/                   # 文档
 ├── justfile                # 任务运行器 (推荐)
 └── package.json            # 根目录配置 (pnpm workspaces)
@@ -210,18 +203,17 @@ x-blog/
 
 ### 前端
 
-- **框架**: [Next.js 16](https://nextjs.org/) - React 框架，使用 App Router
-- **UI**: [shadcn/ui](https://ui.shadcn.com/) - UI 组件库
+- **框架**: [Nuxt 4](https://nuxt.com/) - Vue 框架，支持 SSR/SSG
+- **UI**: 自定义 Vue 组件 + Tailwind CSS
 - **样式**: [Tailwind CSS v4](https://tailwindcss.com/) - CSS 框架
-- **表单**: [React Hook Form](https://react-hook-form.com/) - 表单处理
-- **测试**: [Vitest](https://vitest.dev/) - 单元测试
-- **代码检查**: [Biome](https://biomejs.dev/) - 快速的 JS/TS linter 和格式化工具
+- **测试**: [Vitest](https://vitest.dev/) - 单元测试, [Playwright](https://playwright.dev/) - E2E 测试
+- **图标**: [@iconify/vue](https://icon-sets.iconify.design/) + lucide 图标
 
 ### 开发工具
 
 - **包管理**: [uv](https://github.com/astral.sh/uv) (Python), [pnpm](https://pnpm.io/) (Node.js)
 - **任务运行**: [just](https://github.com/casey/just) - 命令运行器
-- **代码检查**: [ruff](https://docs.astral.sh/ruff/) (Python), [Biome](https://biomejs.dev/) (JS/TS)
+- **代码检查**: [ruff](https://docs.astral.sh/ruff/) (Python)
 - **Git Hooks**: [prek](https://github.com/astral-sh/prek) - Git hooks 管理器
 
 ## 🧪 测试
@@ -273,6 +265,6 @@ MIT License - 查看 [LICENSE](LICENSE) 了解详情。
 
 <div align="center">
 
-使用 ❤️ 基于 FastAPI + Next.js 构建
+使用 ❤️ 基于 FastAPI + Nuxt 构建
 
 </div>

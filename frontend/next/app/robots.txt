@@ -1,5 +1,0 @@
-User-agent: *
-Allow: /
-
-Sitemap: https://x-blog.example.com/sitemap.xml
-RSS: https://x-blog.example.com/rss.xml
