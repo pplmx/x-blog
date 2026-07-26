@@ -204,6 +204,14 @@ function scrollToHeading(event: MouseEvent) {
         </span>
       </div>
 
+      <!-- Comments -->
+      <section v-if="post.id" class="mt-12 pt-8 border-t border-gray-200">
+        <CommentList :post-id="post.id" />
+        <div class="mt-8 pt-8 border-t border-gray-100">
+          <CommentForm :post-id="post.id" />
+        </div>
+      </section>
+
       <!-- Related Posts -->
       <section v-if="post.id && relatedPosts?.length" class="mt-12">
         <h2 class="text-xl font-bold mb-6 text-gray-900 dark:text-gray-100">
