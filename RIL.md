@@ -5,7 +5,7 @@
 ## Project Overview
 
 **Stack**: FastAPI (Python 3.14) + Next.js 16 (production) + Nuxt 4 (parallel dev) + SQLite
-**Status**: Clean working tree, all tests passing (477 backend + 591 Next.js + 345 Nuxt = 1414 total)
+**Status**: Clean working tree, all tests passing (477 backend + 591 Next.js + 346 Nuxt = 1414 total)
 
 ## Key Findings
 
@@ -581,10 +581,34 @@ This iteration reconciled a stale/in-progress repository state and committed ver
   `navigateTo` is called with the correct arguments.
 - **Result**: 346 Nuxt tests pass (was 345, +1 updated test assertion). 1414 total tests, 0 failures.
 
+::: note | Iteration: Port Synchronization Fix
+**Date**: 2026-07-26
+
+- **Problem**: `frontend/next/lib/api.ts` default port was changed from 8000 to 18888 in a
+  prior session, but all test files and MSW handlers still referenced `localhost:8000`. This
+  caused 20 Next.js test failures because API function calls (using `API_BASE=18888`) were
+  not intercepted by MSW handlers configured for port 8000.
+- **Root Cause**: When `api.ts` was updated to use port 18888, the corresponding test files
+  were not synchronized. The `api.ts` change was committed but test updates were missed.
+- **Fix**: Updated all `localhost:8000` → `localhost:18888` references in:
+    - `frontend/next/lib/api.enhanced.test.ts` — API_BASE constant
+    - `frontend/next/lib/api.retry.test.ts` — 13 URL assertions
+    - `frontend/next/tests/test-utils.tsx` — 7 MSW handler URLs
+    - `frontend/next/app/page.test.tsx` — 15 URL references (MSW + direct fetch)
+    - `frontend/next/app/admin/page.test.tsx` — 7 MSW handler URLs
+    - `frontend/next/components/LikeButton.test.tsx` — 2 MSW handler URLs
+    - `frontend/next/components/RelatedPosts.test.tsx` — 1 MSW handler URL
+- **Also**: Updated port references in `README.md`, `README.zh-CN.md`, and
+  `docs/deployment.md` (8000→18888, 3000→13333 for consistency with justfile/docker-compose).
+- **Verification**: 591 Next.js tests pass (was 571 pass + 20 fail), 477 backend tests pass,
+  TypeScript: 0 errors, Biome: clean.
+- **Key Learning**: When changing the default API port in `api.ts`, ALWAYS update all
+  dependent test files and MSW handlers in the same commit. Test failures from port mismatches
+  are silent — the API calls succeed (or fail with network errors) without the tests catching
+  the mismatch.
+:::
+
 ## Next Priorities
 
-1. Migrate remaining Next.js-only features to Nuxt (analytics charts, error boundary + loading
-   states) to continue the migration target.
-2. Add i18n support to Nuxt paralleling Next.js `lib/i18n.ts`.
 3. Close the gap between the Nuxt admin panel and the Next.js production admin panel
    (audit feature parity; the Nuxt admin is structurally complete with 339 tests).
