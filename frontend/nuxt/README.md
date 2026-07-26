@@ -14,8 +14,8 @@ NUXT_API_URL=http://localhost:18888 pnpm dev
 
 ## Environment Variables
 
-| Variable | Default | Description |
-|----------|---------|-------------|
+| Variable       | Default                  | Description     |
+| -------------- | ------------------------ | --------------- |
 | `NUXT_API_URL` | `http://localhost:18888` | Backend API URL |
 
 ## Build
