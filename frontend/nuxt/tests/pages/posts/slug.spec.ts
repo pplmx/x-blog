@@ -81,6 +81,8 @@ async function mountPostPage({
     },
   }));
 
+  vi.stubGlobal("useHead", vi.fn());
+
   vi.stubGlobal("useRoute", () => ({
     params: { slug },
     query: {},
@@ -146,6 +148,8 @@ describe("Post Detail Page", () => {
     it("calls usePostView (POST to /view endpoint) when post loads", async () => {
       let viewPostCalled = false;
       let viewPostUrl = "";
+
+      vi.stubGlobal("useHead", vi.fn());
 
       vi.stubGlobal("useRuntimeConfig", () => ({
         public: {
@@ -224,6 +228,8 @@ describe("Post Detail Page", () => {
     it("does NOT call usePostView when post fails to load (error state)", async () => {
       let viewPostCalled = false;
 
+      vi.stubGlobal("useHead", vi.fn());
+
       vi.stubGlobal("useRuntimeConfig", () => ({
         public: {
           apiUrl: "http://localhost:18888",
@@ -290,6 +296,8 @@ describe("Post Detail Page", () => {
 
     it("does NOT call usePostView when post is not found (null post)", async () => {
       let viewPostCalled = false;
+
+      vi.stubGlobal("useHead", vi.fn());
 
       vi.stubGlobal("useRuntimeConfig", () => ({
         public: {
@@ -416,6 +424,44 @@ describe("Post Detail Page", () => {
       const backLink = wrapper.find('a[href="/"]');
       expect(backLink.exists()).toBe(true);
       expect(backLink.text()).toContain("返回首页");
+    });
+  });
+
+  describe("Cover image", () => {
+    it("renders the cover image when present", async () => {
+      const wrapper = await mountPostPage({
+        post: { ...mockPost, cover_image: "https://example.com/cover.jpg" } as any,
+      });
+      const img = wrapper.find("img[alt='Test Article Post']");
+      expect(img.exists()).toBe(true);
+      expect(img.attributes("src")).toBe("https://example.com/cover.jpg");
+    });
+
+    it("does NOT render a cover image when absent", async () => {
+      const wrapper = await mountPostPage();
+      const img = wrapper.find("img");
+      expect(img.exists()).toBe(false);
+    });
+  });
+
+  describe("Like button", () => {
+    it("renders the like button", async () => {
+      const wrapper = await mountPostPage();
+      const button = wrapper.find('button[type="button"]');
+      expect(button.exists()).toBe(true);
+      expect(button.text()).toContain("喜欢");
+    });
+
+    it("renders the like count when present", async () => {
+      const wrapper = await mountPostPage();
+      expect(wrapper.text()).toContain("56 次喜欢");
+    });
+
+    it("does NOT render like count when zero", async () => {
+      const wrapper = await mountPostPage({
+        post: { ...mockPost, likes: 0 } as any,
+      });
+      expect(wrapper.text()).not.toContain("次喜欢");
     });
   });
 
@@ -563,6 +609,75 @@ describe("Post Detail Page", () => {
       expect(relatedPostsUrl).toContain("1");
       // Should NOT have been called with ID 0 (the fallback for undefined post ID)
       expect(relatedPostsUrl).not.toMatch(/\/0\/related/);
+    });
+
+    it("does NOT call useRelatedPosts when post is not found (null post)", async () => {
+      let relatedPostsUrl = "";
+
+      vi.stubGlobal("useHead", vi.fn());
+
+      vi.stubGlobal("useRuntimeConfig", () => ({
+        public: {
+          apiUrl: "http://localhost:18888",
+        },
+      }));
+
+      vi.stubGlobal("useRoute", () => ({
+        params: { slug: "nonexistent-post" },
+        query: {},
+      }));
+
+      vi.stubGlobal("navigateTo", vi.fn());
+
+      vi.stubGlobal("useFetch", vi.fn((url: string) => {
+        if (typeof url === "string" && url.includes("/related")) {
+          relatedPostsUrl = url;
+          return {
+            data: ref([]),
+            pending: ref(false),
+            error: ref(null),
+            refresh: vi.fn(),
+          };
+        }
+        // Return null post (not found)
+        return {
+          data: ref(null),
+          pending: ref(false),
+          error: ref(null),
+          refresh: vi.fn(),
+        };
+      }));
+
+      const { default: PostPage } = await import("@/pages/posts/[slug].vue");
+
+      const SuspenseWrapper: any = {
+        components: { PostPage },
+        template:
+          `<Suspense>` +
+          `<template #default><PostPage /></template>` +
+          `<template #fallback>Loading...</template>` +
+          `</Suspense>`,
+      };
+
+      const wrapper = mount(SuspenseWrapper, {
+        global: {
+          stubs: {
+            NuxtLink: {
+              template: '<a :href="to"><slot/></a>',
+              props: ["to"],
+            },
+            Icon: {
+              template: '<svg class="iconstub" :data-icon="icon"></svg>',
+              props: ["icon"],
+            },
+          },
+        },
+      });
+
+      await flushPromises();
+
+      // When post is null, useRelatedPosts should NOT be called
+      expect(relatedPostsUrl).toBe("");
     });
   });
 });
