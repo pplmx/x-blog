@@ -5,7 +5,7 @@
 ## Project Overview
 
 **Stack**: FastAPI (Python 3.14) + Next.js 16 (production) + Nuxt 4 (parallel dev) + SQLite
-**Status**: Clean working tree, all tests passing (475 backend + 590 Next.js + 339 Nuxt = 1404 total)
+**Status**: Clean working tree, all tests passing (475 backend + 590 Next.js + 340 Nuxt = 1405 total)
 
 ## Key Findings
 
@@ -463,6 +463,18 @@ This iteration reconciled a stale/in-progress repository state and committed ver
 - **Result**: 475 backend tests pass (was 473, +2 new). Ruff clean. The 4 updated tests still
   validate the same happy-path behavior (CSV format/content) with auth, and the 2 new tests lock
   in the security boundary.
+
+### Nuxt like button error handling (FIXED)
+
+- **Bug**: The Nuxt post detail page's `handleLike` had a `try/finally` (for loading state) but
+  **no `catch`** — a failed like request (network error, 404, 500) was silently swallowed with
+  no user feedback. The Next.js `LikeButton.tsx` counterpart at least `console.error`s the error.
+- **Fix**: Added a `likeError` ref and `catch` block to `handleLike` that sets a visible
+  error message ("Failed to like post. Please try again.") and logs to console. The template
+  renders the error in red text next to the like button. Also clears the error on retry.
+- **Test**: Added "displays an error message when liking fails" test that stubs `useFetch` to
+  throw on the `/like` endpoint, clicks the like button, and verifies the error message renders.
+- **Result**: 340 Nuxt tests pass (was 339, +1 new). 1405 total tests, 0 failures.
 
 ## Next Priorities
 
