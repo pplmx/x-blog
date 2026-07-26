@@ -1,0 +1,269 @@
+/**
+ * Admin Posts Page Tests
+ *
+ * Tests the admin posts list page: loading state, error state,
+ * empty state, and populated state with post table rendering,
+ * status badges, date formatting, and delete functionality.
+ *
+ * Mocks the fetchAdminPosts and deleteAdminPost composables
+ * to test the page in isolation. Uses a <Suspense> wrapper
+ * since the page uses `await fetchAdminPosts()` in <script setup>.
+ */
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { flushPromises } from '@vue/test-utils';
+import { ref } from 'vue';
+import { NuxtLinkStub, IconStub, mountWithSuspense } from './helpers';
+
+const { mockFetchAdminPosts, mockDeleteAdminPost } = vi.hoisted(() => ({
+  mockFetchAdminPosts: vi.fn(),
+  mockDeleteAdminPost: vi.fn(),
+}));
+
+vi.mock('~/composables/useApi', () => ({
+  fetchAdminPosts: mockFetchAdminPosts,
+  deleteAdminPost: mockDeleteAdminPost,
+}));
+
+vi.stubGlobal('useRuntimeConfig', () => ({
+  public: { apiUrl: 'http://localhost:18888' },
+}));
+vi.stubGlobal('navigateTo', vi.fn());
+
+// Mock window.confirm
+const originalConfirm = window.confirm;
+
+const mockPosts = [
+  {
+    id: 1,
+    title: 'First Post',
+    slug: 'first-post',
+    content: '',
+    excerpt: 'First post excerpt',
+    published: true,
+    pinned: false,
+    cover_image: null,
+    category: 'Tech',
+    tags: ['React'],
+    created_at: '2024-01-15T10:30:00Z',
+    updated_at: '2024-01-15T10:30:00Z',
+  },
+  {
+    id: 2,
+    title: 'Draft Post',
+    slug: 'draft-post',
+    content: '',
+    excerpt: 'Draft excerpt',
+    published: false,
+    pinned: false,
+    cover_image: null,
+    category: 'Design',
+    tags: [],
+    created_at: '2024-02-20T14:00:00Z',
+    updated_at: '2024-02-20T14:00:00Z',
+  },
+];
+
+async function loadPage() {
+  const { default: PostsPage } = await import('@/pages/admin/posts.vue');
+  return PostsPage;
+}
+
+describe('Admin Posts Page', () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+    window.confirm = originalConfirm;
+  });
+
+  describe('Loading state', () => {
+    it('renders loading message when posts are pending', async () => {
+      mockFetchAdminPosts.mockReturnValue({
+        data: ref(null),
+        pending: ref(true),
+        error: ref(null),
+        refresh: vi.fn(),
+      });
+
+      const PostsPage = await loadPage();
+      const wrapper = await mountWithSuspense(PostsPage);
+      expect(wrapper.text()).toContain('加载中');
+    });
+  });
+
+  describe('Error state', () => {
+    it('renders error message when fetch fails', async () => {
+      mockFetchAdminPosts.mockReturnValue({
+        data: ref(null),
+        pending: ref(false),
+        error: ref({ message: 'Network error' }),
+        refresh: vi.fn(),
+      });
+
+      const PostsPage = await loadPage();
+      const wrapper = await mountWithSuspense(PostsPage);
+      expect(wrapper.text()).toContain('Network error');
+    });
+  });
+
+  describe('Empty state', () => {
+    it('renders empty state when no posts exist', async () => {
+      mockFetchAdminPosts.mockReturnValue({
+        data: ref([]),
+        pending: ref(false),
+        error: ref(null),
+        refresh: vi.fn(),
+      });
+
+      const PostsPage = await loadPage();
+      const wrapper = await mountWithSuspense(PostsPage);
+      expect(wrapper.text()).toContain('暂无文章');
+      expect(wrapper.text()).toContain('开始创建你的第一篇文章吧');
+    });
+
+    it('renders a link to create new post in empty state', async () => {
+      mockFetchAdminPosts.mockReturnValue({
+        data: ref([]),
+        pending: ref(false),
+        error: ref(null),
+        refresh: vi.fn(),
+      });
+
+      const PostsPage = await loadPage();
+      const wrapper = await mountWithSuspense(PostsPage);
+      const createLink = wrapper.find('a[href="/admin/posts/new"]');
+      expect(createLink.exists()).toBe(true);
+    });
+  });
+
+  describe('Populated state', () => {
+    beforeEach(() => {
+      mockFetchAdminPosts.mockReturnValue({
+        data: ref(mockPosts),
+        pending: ref(false),
+        error: ref(null),
+        refresh: vi.fn(),
+      });
+    });
+
+    afterEach(() => {
+      vi.clearAllMocks();
+    });
+
+    it('renders the page heading', async () => {
+      const PostsPage = await loadPage();
+      const wrapper = await mountWithSuspense(PostsPage);
+      expect(wrapper.text()).toContain('文章管理');
+    });
+
+    it('renders the post count', async () => {
+      const PostsPage = await loadPage();
+      const wrapper = await mountWithSuspense(PostsPage);
+      expect(wrapper.text()).toContain('2 篇文章');
+    });
+
+    it('renders a "new post" link', async () => {
+      const PostsPage = await loadPage();
+      const wrapper = await mountWithSuspense(PostsPage);
+      const createLink = wrapper.find('a[href="/admin/posts/new"]');
+      expect(createLink.exists()).toBe(true);
+      expect(createLink.text()).toContain('新建文章');
+    });
+
+    it('renders post titles in the table', async () => {
+      const PostsPage = await loadPage();
+      const wrapper = await mountWithSuspense(PostsPage);
+      expect(wrapper.text()).toContain('First Post');
+      expect(wrapper.text()).toContain('Draft Post');
+    });
+
+    it('renders post slugs in the table', async () => {
+      const PostsPage = await loadPage();
+      const wrapper = await mountWithSuspense(PostsPage);
+      expect(wrapper.text()).toContain('first-post');
+      expect(wrapper.text()).toContain('draft-post');
+    });
+
+    it('renders published status for published posts', async () => {
+      const PostsPage = await loadPage();
+      const wrapper = await mountWithSuspense(PostsPage);
+      expect(wrapper.text()).toContain('已发布');
+    });
+
+    it('renders draft status for unpublished posts', async () => {
+      const PostsPage = await loadPage();
+      const wrapper = await mountWithSuspense(PostsPage);
+      expect(wrapper.text()).toContain('草稿');
+    });
+
+    it('renders post dates', async () => {
+      const PostsPage = await loadPage();
+      const wrapper = await mountWithSuspense(PostsPage);
+      expect(wrapper.text()).toContain('2024');
+    });
+
+    it('renders edit links for each post', async () => {
+      const PostsPage = await loadPage();
+      const wrapper = await mountWithSuspense(PostsPage);
+      const editLink = wrapper.find('a[href="/admin/posts/1"]');
+      expect(editLink.exists()).toBe(true);
+    });
+
+    it('renders a delete button for each post', async () => {
+      const PostsPage = await loadPage();
+      const wrapper = await mountWithSuspense(PostsPage);
+      // The delete buttons are icon buttons; check they exist
+      const deleteButtons = wrapper.findAll('button');
+      const trashButton = deleteButtons.find((b) => {
+        const svg = b.find('svg[data-icon="lucide:trash-2"]');
+        return svg.exists();
+      });
+      expect(trashButton).toBeDefined();
+    });
+
+    it('calls deleteAdminPost with confirmation when delete is clicked', async () => {
+      window.confirm = vi.fn(() => true);
+      mockDeleteAdminPost.mockResolvedValue({});
+
+      const refreshMock = vi.fn();
+      // Override the mock to include a working refresh
+      mockFetchAdminPosts.mockReturnValue({
+        data: ref(mockPosts),
+        pending: ref(false),
+        error: ref(null),
+        refresh: refreshMock,
+      });
+
+      const PostsPage = await loadPage();
+      const wrapper = await mountWithSuspense(PostsPage);
+
+      // Find and click the delete button for post 1
+      const deleteButtons = wrapper.findAll('button');
+      const trashButton = deleteButtons.find((b) => {
+        const svg = b.find('svg[data-icon="lucide:trash-2"]');
+        return svg.exists();
+      });
+
+      expect(trashButton).toBeDefined();
+      await trashButton!.trigger('click');
+      await flushPromises();
+
+      expect(window.confirm).toHaveBeenCalledWith('确定要删除这篇文章吗？');
+      expect(mockDeleteAdminPost).toHaveBeenCalledWith(1);
+    });
+
+    it('does NOT call deleteAdminPost when confirmation is cancelled', async () => {
+      window.confirm = vi.fn(() => false);
+
+      const PostsPage = await loadPage();
+      const wrapper = await mountWithSuspense(PostsPage);
+
+      const deleteButtons = wrapper.findAll('button');
+      const trashButton = deleteButtons.find((b) => {
+        const svg = b.find('svg[data-icon="lucide:trash-2"]');
+        return svg.exists();
+      });
+
+      await trashButton!.trigger('click');
+      expect(mockDeleteAdminPost).not.toHaveBeenCalled();
+    });
+  });
+});

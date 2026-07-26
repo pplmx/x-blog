@@ -20,7 +20,7 @@ A modern full-stack blog application built with FastAPI + Next.js
 - 🎨 **Beautiful UI** - Clean design with Tailwind CSS v4 + shadcn/ui
 - 📱 **Responsive** - Mobile-friendly responsive layout
 - 🔒 **Admin Panel** - Built-in admin dashboard for content management
-- 🧪 **Well Tested** - 612 tests (346 backend + 266 frontend), 85% backend coverage
+| 🧪 **Well Tested** - 1402 tests (473 backend + 590 Next.js + 339 Nuxt), 85% backend coverage
 - ✅ **Type Safe** - Full TypeScript support + Pydantic validation
 - 🔍 **Full-text Search** - Post search functionality
 - 🌙 **Dark Mode** - System preference aware dark mode
@@ -90,20 +90,20 @@ See [docs/deployment.md](./docs/deployment.md) for detailed deployment guide.
 
 ## 🛠️ Commands
 
-| Command              | Description                                |
-| -------------------- | ------------------------------------------ |
-| `just install`       | Install all dependencies                   |
-| `just dev`           | Run dev servers (backend + frontend)       |
-| `just backend`       | Run FastAPI server                         |
-| `just frontend`      | Run Next.js dev server                     |
-| `just lint`          | Lint code (ruff + biome)                   |
-| `just format`        | Format code                                |
-| `just test`          | Run all tests (346 backend + 266 frontend) |
-| `just test-backend`  | Run backend tests (parallel)               |
-| `just test-frontend` | Run frontend tests                         |
-| `just fix`           | Auto-fix lint issues                       |
-| `just ci`            | Run lint + format + test                   |
-| `just clean`         | Clean generated files                      |
+| Command              | Description                                                 |
+| -------------------- | ----------------------------------------------------------- |
+| `just install`       | Install all dependencies                                    |
+| `just dev`           | Run dev servers (backend + frontend)                        |
+| `just backend`       | Run FastAPI server                                          |
+| `just frontend`      | Run Next.js dev server                                      |
+| `just lint`          | Lint code (ruff + biome)                                    |
+| `just format`        | Format code                                                 |
+| `just test`          | Run all tests (473 backend + 590 Next.js + 339 Nuxt = 1402) |
+| `just test-backend`  | Run backend tests (parallel)                                |
+| `just test-frontend` | Run Next.js frontend tests                                  |
+| `just test-nuxt`     | Run Nuxt frontend tests                                     |
+| `just ci`            | Run lint + format + test                                    |
+| `just clean`         | Clean generated files                                       |
 
 ## 📡 API Endpoints
 
@@ -173,7 +173,7 @@ x-blog/
 │   │   ├── schemas.py      # Pydantic schemas
 │   │   ├── crud.py         # Database operations
 │   │   └── routers/        # API routes
-│   ├── tests/              # pytest tests (346 tests)
+│   ├── tests/              # pytest tests (473 tests)
 │   └── pyproject.toml      # Python config
 │
 ├── frontend/
@@ -243,9 +243,10 @@ just test-frontend-coverage
 
 **Test Statistics:**
 
-- Backend: 346 tests (pytest + pytest-xdist), 85.1% coverage
-- Frontend: 266 tests (Vitest), 62.64% coverage
-- **Total: 612 tests**
+- Backend: 473 tests (pytest + pytest-xdist), 85% coverage
+- Next.js (production frontend): 590 tests (Vitest)
+- Nuxt (migration target): 339 tests (Vitest)
+- **Total: 1402 tests, 0 failures**
 
 ## 🤝 Contributing
 

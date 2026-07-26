@@ -5,7 +5,7 @@
 ## Project Overview
 
 **Stack**: FastAPI (Python 3.14) + Next.js 16 (production) + Nuxt 4 (parallel dev) + SQLite
-**Status**: Clean working tree, all tests passing (473 backend + 590 Next.js = 1063 total)
+**Status**: Clean working tree, all tests passing (473 backend + 590 Next.js + 339 Nuxt = 1402 total)
 
 ## Key Findings
 
@@ -72,9 +72,9 @@
 
 - **Backend**: 473 tests, `uv run pytest -n auto` (pytest-xdist parallel), 85% coverage
 - **Next.js**: 590 tests pass (was 581, grew through TypeScript fixes, new API function tests, retry tests)
-- **Nuxt**: 209 tests pass (was 142 initially, grew to 209 after adding test script, new page tests,
-  composables tests, and component tests for CommentList, CommentForm, and ShareButtons)
-- All three test suites verified passing — total 1271 tests, 0 failures
+- **Nuxt**: 339 tests pass (was 142 initially, grew through test infrastructure improvements, composable tests,
+  component tests for CommentList/CommentForm/ShareButtons/MarkdownContent, page tests, admin panel tests)
+- All three test suites verified passing — total 1402 tests, 0 failures
 
 ### Git Hooks
 
@@ -90,17 +90,44 @@
 
 ## Architecture Notes
 
+### Nuxt Markdown Content Rendering Migration (COMPLETED)
+
+- **Problem**: The Nuxt post detail page rendered `v-html="post.content"` as raw
+  HTML — no code highlighting, no Mermaid diagrams, no KaTeX math, no image
+  lightbox, and no XSS sanitisation. The Next.js equivalent had a rich
+  `Markdown.tsx` component with all these features.
+- **Fix**: Created `components/MarkdownContent.vue` — a Vue 3 idiomatic rewrite
+  of the Next.js `Markdown.tsx` component using:
+    - `composables/useMarkdown.ts` — splits raw HTML into typed segments
+  (HTML, code, mermaid, math, image) using placeholder extraction, replacing
+  the DOM placeholder post-processing pattern from React with a cleaner
+  `v-for` + `:key` approach
+    - DOMPurify for XSS sanitisation (lazy-loaded, SSR-safe fallback)
+    - Mermaid for diagram rendering (dynamically imported, SSR-safe)
+    - KaTeX for math rendering (dynamically imported)
+    - Copy-to-clipboard button on code blocks with line numbers
+    - Lazy-loaded images with zoom container
+- **Also fixed**: `postcss.config.cjs` was using `tailwindcss` directly as a
+  PostCSS plugin, which is incompatible with Tailwind CSS v4. Updated to use
+  `@tailwindcss/postcss` (already in dependencies).
+- **Tests**: Added 17 component tests (`tests/components/MarkdownContent.spec.ts`)
+    - 4 composable tests (`tests/composables/useMarkdown.spec.ts`). Updated
+  `slug.spec.ts` to stub `MarkdownContent` and update content rendering assertion.
+- **Result**: Nuxt test count grew from 209 to 230 (+21 tests). All 230 pass.
+  Next.js tests unchanged (590 pass). Total project: 1293 tests, 0 failures.
+
 ### Nuxt vs Next.js Frontend
 
 - **Next.js** (`frontend/next/`): Production frontend, feature-complete with comments,
   share buttons, table of contents, reading progress, SEO JSON-LD schema, etc.
   Built with Next.js 16, React, TypeScript, Tailwind CSS v4, shadcn/ui.
 - **Nuxt** (`frontend/nuxt/`): **Migration target** — being progressively built as a
-  Vue/Vite/Rolldown ecosystem alternative. Currently simpler with basic pages only
-  (index, about, search, tags, post detail, 404). The goal is to eventually migrate
-  fully from Next.js/React to Nuxt 4/Vue 3/Vite or Rolldown, leveraging the Vue
-  ecosystem. Improvements made to the Nuxt version are incremental steps toward
-  feature parity with the Next.js version.
+  Vue/Vite/Rolldown ecosystem alternative. Currently has basic pages (index, about,
+  search, tags, post detail, 404) with MarkdownContent rendering (code highlighting,
+  Mermaid, KaTeX, comments, share buttons, TOC, reading progress, SEO, dark mode).
+  The goal is to eventually migrate fully from Next.js/React to Nuxt 4/Vue 3/Vite or
+  Rolldown, leveraging the Vue ecosystem. Improvements made to the Nuxt version are
+  incremental steps toward feature parity with the Next.js version.
 
 ### Backend
 
@@ -208,7 +235,7 @@
   `.github/workflows/deploy.yml`. Added `pnpm/action-setup@v4` step for
   explicit pnpm version management.
 - **Result**: `pnpm test` in `frontend/nuxt` now runs successfully
-  (153 tests, 10 files, all passing). CI will catch future Nuxt test
+  (230 tests, 15 files, all passing). CI will catch future Nuxt test
   regressions.
 
 ### Next.js Test Suite Clean — 0 Unhandled Rejections (ROUND 14+)
@@ -274,6 +301,15 @@
 7. ~~Add dark mode support to Nuxt frontend~~ (DONE)
 8. ~~Add share buttons to Nuxt post detail~~ (DONE)
 9. ~~Investigate backend API function stubs in hooks.ts~~ (DONE — Round 6: added 5 missing API functions)
+10. ~~Migrate Markdown rendering to Nuxt (MarkdownContent.vue)~~ (DONE — code highlighting, Mermaid, KaTeX, DOMPurify, lazy images)
+
+### Next Migration Priorities
+
+1. Migrate admin panel from Next.js to Nuxt (`frontend/nuxt/app/pages/admin/`)
+2. Add i18n (internationalization) support to Nuxt (paralleling Next.js `lib/i18n.ts`)
+3. Add SEO JSON-LD structured data to Nuxt post detail pages
+4. Migrate analytics charts to Nuxt
+5. Add error boundary + loading states to Nuxt
 
 ### Nuxt Component Test Coverage (ROUND 19+)
 
@@ -295,3 +331,109 @@
   wrapper for test mounting — same pattern used by page tests. Components without async setup
   (CommentForm, ShareButtons) mount directly.
 - **Result**: Nuxt test count grew from 160 to 209 (+49 tests). Total project tests: 1271, 0 failures.
+
+### Nuxt Admin Panel Migration (COMPLETED)
+
+- **Problem**: The Nuxt frontend had admin page stubs (login, posts, comments, categories)
+  with NO tests and NO tags/dashboard pages. The Next.js admin panel was production-ready
+  but the Nuxt admin was incomplete.
+
+- **Fix**: Completed the Nuxt admin panel migration from Next.js:
+    - **Admin layout** (`app/layouts/admin.vue`): Enhanced with dashboard nav item,
+  back-to-foreground link, mobile sidebar toggle, and active route highlighting
+    - **Admin login** (`app/pages/admin/login.vue`): Added back-to-blog link, already had
+  auth flow with token storage
+    - **Admin dashboard** (`app/pages/admin/index.vue`): NEW — stats cards (post count,
+  published/draft count, categories, tags, total views), top posts by views chart,
+  category distribution with progress bars, recent posts list
+    - **Admin posts** (`app/pages/admin/posts.vue`): Already existed — list with table view,
+  status badges (published/draft), slug display, edit/delete actions
+    - **Admin comments** (`app/pages/admin/comments.vue`): Already existed — comment list
+  with approval status, approve/unapprove toggle, delete action
+    - **Admin categories** (`app/pages/admin/categories.vue`): Already existed — inline edit
+  with confirm/cancel, create, delete with confirmation
+    - **Admin tags** (`app/pages/admin/tags.vue`): NEW — mirror of categories page with
+  inline edit, create, and delete functionality
+
+- **Bug fix**: `String(error)` in admin page error templates produced `[object Object]`
+  because Vue's `String()` doesn't unwrap refs. Changed to `error?.message || String(error)`
+  in all 4 admin pages (posts, comments, categories, tags).
+
+- **Test infrastructure**: Created `tests/admin/helpers.ts` with shared test utilities:
+  `mountWithSuspense()` (wraps page components in `<Suspense>` for async `await` in
+  `<script setup>`), `mockFetchResult()`, `stubNuxtGlobals()`, `NuxtLinkStub`, `IconStub`.
+
+- **Tests added** (109 new tests across 7 files):
+    - `tests/admin/login.spec.ts` (13 tests): rendering, form validation, login flow,
+  error handling, loading state
+    - `tests/admin/posts.spec.ts` (16 tests): loading/error/empty/populated states,
+  post table rendering, status badges, delete with confirmation
+    - `tests/admin/comments.spec.ts` (20 tests): loading/error/empty/populated states,
+  comment rendering, approval toggle, delete with confirmation
+    - `tests/admin/categories.spec.ts` (16 tests): loading/error/empty/populated states,
+  create with validation, inline edit, delete with confirmation
+    - `tests/admin/tags.spec.ts` (16 tests): loading/error/empty/populated states,
+  create with validation, inline edit, delete with confirmation
+    - `tests/admin/dashboard.spec.ts` (19 tests): stats cards, top posts by views,
+  category distribution, recent posts list, empty state
+    - `tests/admin/layout.spec.ts` (9 tests): sidebar navigation, auth guard,
+  back-to-foreground link, logout button, active route highlighting
+
+- **Result**: Nuxt test count grew from 230 to 339 (+109 tests). All 339 tests pass.
+  Total project tests: 339 Nuxt + 590 Next.js + 473 backend = 1402, 0 failures.
+
+## Repository Reconciliation (CURRENT ITERATION)
+
+This iteration reconciled a stale/in-progress repository state and committed verified work.
+
+### Reverted incorrect `justfile` redirect (RISK REDUCTION)
+
+- **Problem**: A prior session redirected `just test-frontend` from the Next.js (production)
+  frontend to Nuxt. Since `just test` runs `test-backend test-frontend test-nuxt`, this
+  redirect caused `just test` to run backend + Nuxt + Nuxt, **silently skipping all 590
+  Next.js production-frontend tests**. Next.js remains the production frontend per the
+  RIL ("Next.js 16 (production)"), so redirecting its test target away from it was a
+  correctness regression.
+- **Fix**: Restored `test-frontend` → `cd frontend/next && pnpm test`. The `test-nuxt`
+  target still runs Nuxt separately, and `just test` now correctly runs backend + Next.js +
+  Nuxt (1402 tests total). Verified `just test-frontend` runs the Next.js suite.
+
+### Committed verified Nuxt admin + MarkdownContent migration
+
+- **Problem**: A large body of verified work (Nuxt admin panel, MarkdownContent.vue,
+  composables/useMarkdown.ts, composables/useAdminAuth.ts, useApi.ts Admin APIs,
+  postcss.config.cjs Tailwind v4 fix, 269+ new Nuxt tests) was left **uncommitted** in
+  the working tree, while the RIL falsely claimed a "clean working tree" with stale
+  counts (230 Nuxt / 1293 total). Uncommitted verified work is at risk of loss and the
+  stale RIL was misleading the autonomous loop.
+- **Fix**: Verified all three suites pass (473 + 590 + 339 = 1402, 0 failures), fixed the
+  `postcss.config.cjs` Tailwind v4 incompatibility (`tailwindcss` → `@tailwindcss/postcss`),
+  ran `rumdl fmt` on README, corrected the stale README/RIL test counts to match reality,
+  and committed the migration as atomic commits gated by the prek/commitizen/rumdl hooks.
+
+### Corrected stale test counts in README and RIL
+
+- **Problem**: README and RIL both claimed 230 Nuxt / 812-1293 total tests, contradicting
+  the verified 339 Nuxt / 1402 total. The RIL header itself claimed "Clean working tree"
+  while the worktree was dirty.
+- **Fix**: Updated README (Features line, Commands table, Project Structure, Test
+  Statistics) and RIL (Project Overview status, Test Infrastructure section) to reflect
+  473 backend + 590 Next.js + 339 Nuxt = 1402 total, 0 failures.
+
+### Outstanding non-fatal test-quality issue (NOT YET FIXED)
+
+- The Nuxt test run prints a dangling `AggregateError` (ENETUNREACH / ETIMEDOUT to
+  external Meta/Facebook IPs on port 443) **after** the "339 passed" summary. Exit code
+  is 0 and all tests pass, but this is an unhandled promise rejection during teardown
+  that should be silenced (Vitest treats unhandled rejections as a test-quality signal).
+  Root cause investigation (which test/component leaves a deferred real-network promise)
+  is the highest-priority remaining item.
+
+## Next Priorities
+
+1. Fix the Nuxt dangling AggregateError / unhandled rejection (audit teardown for a
+   deferred real-network fetch — likely an un-stubbed `useFetch`/`usePostView`/`usePostLike`
+   or a lazy image that escapes stubbing).
+2. Migrate remaining Next.js-only features to Nuxt (SEO JSON-LD, analytics charts,
+   error boundary + loading states) to continue the migration target.
+3. Add i18n support to Nuxt paralleling Next.js `lib/i18n.ts`.
