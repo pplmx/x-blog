@@ -36,8 +36,10 @@ defineProps<{
       </div>
       <div class="h-64 bg-gray-200 dark:bg-gray-700 rounded-lg" />
       <div class="space-y-3">
-        <div v-for="i in 8" :key="i" class="h-4 bg-gray-200 dark:bg-gray-700 rounded"
-          :style="{ width: `${70 + Math.random() * 30}%` }" />
+        <div
+          v-for="i in 8" :key="i" class="h-4 bg-gray-200 dark:bg-gray-700 rounded"
+          :style="{ width: `${70 + Math.random() * 30}%` }"
+        />
       </div>
     </div>
   </article>

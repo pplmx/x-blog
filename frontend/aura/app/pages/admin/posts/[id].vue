@@ -7,7 +7,7 @@
   Follows the same form structure as the Next.js PostForm component.
 -->
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue';
+import { ref, watch } from 'vue';
 import { PostCreate, AdminPostDetail } from '~/composables/useApi';
 
 const route = useRoute();
@@ -161,7 +161,7 @@ function toggleTag(tagId: number) {
             required
             placeholder="输入文章标题"
             class="w-full text-lg h-12 px-4 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-          />
+          >
           <!-- Auto-generate slug if empty -->
           <button
             v-if="!isNew || !formData.slug"
@@ -184,7 +184,7 @@ function toggleTag(tagId: number) {
             type="text"
             placeholder="article-slug"
             class="w-full font-mono px-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-          />
+          >
           <p class="text-xs text-gray-400 dark:text-gray-500 mt-1.5">
             URL: /posts/{{ formData.slug || 'slug' }}
           </p>
@@ -244,7 +244,7 @@ function toggleTag(tagId: number) {
                 class="sr-only"
                 :checked="formData.tag_ids?.includes(tag.id) ?? false"
                 @change="toggleTag(tag.id)"
-              />
+              >
               #{{ tag.name }}
             </label>
           </div>
@@ -278,7 +278,7 @@ function toggleTag(tagId: number) {
             v-model="formData.published"
             type="checkbox"
             class="w-5 h-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500 mt-0.5"
-          />
+          >
           <label for="published" class="cursor-pointer">
             <span class="text-sm font-medium text-gray-700 dark:text-gray-300">
               {{ formData.published ? '✅ 文章已发布' : '📝 保存为草稿' }}
@@ -292,7 +292,7 @@ function toggleTag(tagId: number) {
             v-model="formData.pinned"
             type="checkbox"
             class="w-5 h-5 rounded border-gray-300 text-amber-600 focus:ring-amber-500 mt-0.5"
-          />
+          >
           <label for="pinned" class="cursor-pointer">
             <span class="text-sm font-medium text-gray-700 dark:text-gray-300">
               {{ formData.pinned ? '📌 已置顶' : '📌 置顶文章' }}

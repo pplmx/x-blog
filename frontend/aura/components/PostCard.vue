@@ -39,7 +39,7 @@ const date = computed(() =>
           :src="post.cover_image"
           :alt="post.title"
           class="object-cover w-full h-full group-hover:scale-105 transition-transform duration-500"
-        />
+        >
       </div>
       <div v-else :class="`h-32 bg-gradient-to-br ${getGradientFromTitle(post.title)} opacity-80`">
         <div class="w-full h-full flex items-center justify-center">
@@ -62,8 +62,10 @@ const date = computed(() =>
             <Icon icon="lucide:calendar" class="w-4 h-4" />
             {{ date }}
           </span>
-          <span v-if="post.category"
-            class="px-3 py-1 bg-gradient-to-r from-gray-50 dark:from-gray-800 to-gray-100 dark:to-gray-700 rounded-full text-xs font-medium text-gray-600 dark:text-gray-300">
+          <span
+            v-if="post.category"
+            class="px-3 py-1 bg-gradient-to-r from-gray-50 dark:from-gray-800 to-gray-100 dark:to-gray-700 rounded-full text-xs font-medium text-gray-600 dark:text-gray-300"
+          >
             {{ post.category.name }}
           </span>
           <span class="flex items-center gap-1 ml-auto">
@@ -72,14 +74,18 @@ const date = computed(() =>
           </span>
         </div>
 
-        <p v-if="post.excerpt"
-          class="text-gray-600 dark:text-gray-300 mb-4 line-clamp-2 leading-relaxed">
+        <p
+          v-if="post.excerpt"
+          class="text-gray-600 dark:text-gray-300 mb-4 line-clamp-2 leading-relaxed"
+        >
           {{ post.excerpt }}
         </p>
 
         <div class="flex flex-wrap gap-2 pt-2 border-t border-gray-50 dark:border-gray-800">
-          <span v-for="tag in post.tags" :key="tag.id"
-            class="text-xs px-3 py-1.5 bg-gradient-to-r from-blue-50 dark:from-blue-900/30 to-indigo-50 dark:to-indigo-900/30 text-blue-600 dark:text-blue-400 rounded-full font-medium hover:from-blue-100 dark:hover:from-blue-900/50 hover:to-indigo-100 dark:hover:to-indigo-900/50 transition-colors duration-200">
+          <span
+            v-for="tag in post.tags" :key="tag.id"
+            class="text-xs px-3 py-1.5 bg-gradient-to-r from-blue-50 dark:from-blue-900/30 to-indigo-50 dark:to-indigo-900/30 text-blue-600 dark:text-blue-400 rounded-full font-medium hover:from-blue-100 dark:hover:from-blue-900/50 hover:to-indigo-100 dark:hover:to-indigo-900/50 transition-colors duration-200"
+          >
             #{{ tag.name }}
           </span>
         </div>

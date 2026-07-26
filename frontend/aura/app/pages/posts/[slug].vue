@@ -121,7 +121,7 @@ function scrollToHeading(event: MouseEvent) {
       <div
         class="h-full bg-blue-600 transition-all duration-150 ease-out"
         :style="{ width: scrollProgress + '%' }"
-      ></div>
+      />
     </div>
 
     <!-- Back link -->
@@ -135,11 +135,11 @@ function scrollToHeading(event: MouseEvent) {
 
     <!-- Loading state -->
     <div v-if="pending" class="space-y-4">
-      <div class="bg-gray-100 animate-pulse h-8 rounded-lg w-3/4"></div>
-      <div class="bg-gray-100 animate-pulse h-64 rounded-lg"></div>
-      <div class="bg-gray-100 animate-pulse h-4 rounded-lg"></div>
-      <div class="bg-gray-100 animate-pulse h-4 rounded-lg"></div>
-      <div class="bg-gray-100 animate-pulse h-4 rounded-lg w-5/6"></div>
+      <div class="bg-gray-100 animate-pulse h-8 rounded-lg w-3/4" />
+      <div class="bg-gray-100 animate-pulse h-64 rounded-lg" />
+      <div class="bg-gray-100 animate-pulse h-4 rounded-lg" />
+      <div class="bg-gray-100 animate-pulse h-4 rounded-lg" />
+      <div class="bg-gray-100 animate-pulse h-4 rounded-lg w-5/6" />
     </div>
 
     <!-- Error state -->
@@ -196,126 +196,126 @@ function scrollToHeading(event: MouseEvent) {
 
       <!-- Main content -->
       <article class="prose prose-lg max-w-none">
-      <header class="mb-8">
-        <h1 class="text-3xl sm:text-4xl font-bold text-gray-900 mb-6 leading-tight">
-          {{ post.title }}
-        </h1>
+        <header class="mb-8">
+          <h1 class="text-3xl sm:text-4xl font-bold text-gray-900 mb-6 leading-tight">
+            {{ post.title }}
+          </h1>
 
-        <div class="flex flex-wrap items-center gap-x-6 gap-y-3 text-sm text-gray-600 mb-6">
-          <span v-if="post.category" class="flex items-center gap-2">
-            <Icon icon="lucide:folder" class="w-4 h-4" />
-            {{ post.category.name }}
-          </span>
-          <span class="flex items-center gap-2">
-            <Icon icon="lucide:calendar" class="w-4 h-4" />
-            {{ new Date(post.created_at).toLocaleDateString('zh-CN', { year: 'numeric', month: 'long', day: 'numeric' }) }}
-          </span>
-          <span class="flex items-center gap-2">
-            <Icon icon="lucide:eye" class="w-4 h-4" />
-            {{ post.views }} 次阅读
-          </span>
-        </div>
-
-        <div
-          v-if="post.excerpt"
-          class="text-xl text-gray-600 leading-relaxed mb-6"
-        >
-          {{ post.excerpt }}
-        </div>
-      </header>
-
-      <!-- Cover image -->
-      <div
-        v-if="post.cover_image"
-        class="relative w-full h-[240px] sm:h-[320px] rounded-2xl overflow-hidden mb-8 shadow-xl"
-      >
-        <img
-          :src="post.cover_image"
-          :alt="post.title"
-          class="w-full h-full object-cover"
-        />
-      </div>
-
-      <!-- Markdown content -->
-      <div v-if="post.content" class="mt-8">
-        <MarkdownContent :content="post.content" />
-      </div>
-
-      <!-- Like button -->
-      <div class="mt-8 pt-6 border-t border-gray-200 flex items-center gap-4">
-        <button
-          type="button"
-          @click="handleLike"
-          :disabled="likeLoading"
-          class="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-pink-500 to-red-500 text-white rounded-xl font-medium hover:from-pink-600 hover:to-red-600 transition-all shadow-md disabled:opacity-50"
-        >
-          <Icon
-            :icon="likeLoading ? 'lucide:loader-2' : 'lucide:heart'"
-            class="w-4 h-4"
-          />
-          {{ likeLoading ? '点赞中...' : '喜欢' }}
-        </button>
-        <span class="text-sm text-gray-500" v-if="post.likes">
-          {{ post.likes }} 次喜欢
-        </span>
-        <span v-if="likeError" class="text-sm text-red-500">
-          {{ likeError }}
-        </span>
-      </div>
-
-      <!-- Share buttons -->
-      <ShareButtons :title="post.title" v-if="post.title" />
-
-      <!-- Comments -->
-      <section v-if="post.id" class="mt-12 pt-8 border-t border-gray-200">
-        <CommentList :post-id="post.id" />
-        <div class="mt-8 pt-8 border-t border-gray-100">
-          <CommentForm :post-id="post.id" />
-        </div>
-      </section>
-
-      <!-- Related Posts -->
-      <section v-if="post.id && relatedPosts?.length" class="mt-12">
-        <h2 class="text-xl font-bold mb-6 text-gray-900 dark:text-gray-100">
-          相关文章
-        </h2>
-        <div class="space-y-4">
-          <div
-            v-for="relatedPost in relatedPosts"
-            :key="relatedPost.id"
-            class="border border-gray-100 rounded-lg p-4 hover:shadow-md transition-shadow"
-          >
-            <NuxtLink
-              :to="`/posts/${relatedPost.slug}`"
-              class="text-lg font-bold hover:text-blue-600"
-            >
-              {{ relatedPost.title }}
-            </NuxtLink>
-            <p
-              v-if="relatedPost.excerpt"
-              class="text-gray-600 mt-1 text-sm line-clamp-2"
-            >
-              {{ relatedPost.excerpt }}
-            </p>
+          <div class="flex flex-wrap items-center gap-x-6 gap-y-3 text-sm text-gray-600 mb-6">
+            <span v-if="post.category" class="flex items-center gap-2">
+              <Icon icon="lucide:folder" class="w-4 h-4" />
+              {{ post.category.name }}
+            </span>
+            <span class="flex items-center gap-2">
+              <Icon icon="lucide:calendar" class="w-4 h-4" />
+              {{ new Date(post.created_at).toLocaleDateString('zh-CN', { year: 'numeric', month: 'long', day: 'numeric' }) }}
+            </span>
+            <span class="flex items-center gap-2">
+              <Icon icon="lucide:eye" class="w-4 h-4" />
+              {{ post.views }} 次阅读
+            </span>
           </div>
-        </div>
-      </section>
 
-      <!-- Tags -->
-      <footer v-if="post.tags && post.tags.length" class="mt-12 pt-8 border-t border-gray-200">
-        <div class="flex flex-wrap gap-2">
-          <span
-            v-for="tag in post.tags"
-            :key="tag.id"
-            class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-gray-100 text-gray-700 rounded-full text-sm"
+          <div
+            v-if="post.excerpt"
+            class="text-xl text-gray-600 leading-relaxed mb-6"
           >
-            <Icon icon="lucide:tag" class="w-3.5 h-3.5" />
-            {{ tag.name }}
+            {{ post.excerpt }}
+          </div>
+        </header>
+
+        <!-- Cover image -->
+        <div
+          v-if="post.cover_image"
+          class="relative w-full h-[240px] sm:h-[320px] rounded-2xl overflow-hidden mb-8 shadow-xl"
+        >
+          <img
+            :src="post.cover_image"
+            :alt="post.title"
+            class="w-full h-full object-cover"
+          >
+        </div>
+
+        <!-- Markdown content -->
+        <div v-if="post.content" class="mt-8">
+          <MarkdownContent :content="post.content" />
+        </div>
+
+        <!-- Like button -->
+        <div class="mt-8 pt-6 border-t border-gray-200 flex items-center gap-4">
+          <button
+            type="button"
+            @click="handleLike"
+            :disabled="likeLoading"
+            class="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-pink-500 to-red-500 text-white rounded-xl font-medium hover:from-pink-600 hover:to-red-600 transition-all shadow-md disabled:opacity-50"
+          >
+            <Icon
+              :icon="likeLoading ? 'lucide:loader-2' : 'lucide:heart'"
+              class="w-4 h-4"
+            />
+            {{ likeLoading ? '点赞中...' : '喜欢' }}
+          </button>
+          <span class="text-sm text-gray-500" v-if="post.likes">
+            {{ post.likes }} 次喜欢
+          </span>
+          <span v-if="likeError" class="text-sm text-red-500">
+            {{ likeError }}
           </span>
         </div>
-      </footer>
-    </article>
-  </div>
+
+        <!-- Share buttons -->
+        <ShareButtons :title="post.title" v-if="post.title" />
+
+        <!-- Comments -->
+        <section v-if="post.id" class="mt-12 pt-8 border-t border-gray-200">
+          <CommentList :post-id="post.id" />
+          <div class="mt-8 pt-8 border-t border-gray-100">
+            <CommentForm :post-id="post.id" />
+          </div>
+        </section>
+
+        <!-- Related Posts -->
+        <section v-if="post.id && relatedPosts?.length" class="mt-12">
+          <h2 class="text-xl font-bold mb-6 text-gray-900 dark:text-gray-100">
+            相关文章
+          </h2>
+          <div class="space-y-4">
+            <div
+              v-for="relatedPost in relatedPosts"
+              :key="relatedPost.id"
+              class="border border-gray-100 rounded-lg p-4 hover:shadow-md transition-shadow"
+            >
+              <NuxtLink
+                :to="`/posts/${relatedPost.slug}`"
+                class="text-lg font-bold hover:text-blue-600"
+              >
+                {{ relatedPost.title }}
+              </NuxtLink>
+              <p
+                v-if="relatedPost.excerpt"
+                class="text-gray-600 mt-1 text-sm line-clamp-2"
+              >
+                {{ relatedPost.excerpt }}
+              </p>
+            </div>
+          </div>
+        </section>
+
+        <!-- Tags -->
+        <footer v-if="post.tags && post.tags.length" class="mt-12 pt-8 border-t border-gray-200">
+          <div class="flex flex-wrap gap-2">
+            <span
+              v-for="tag in post.tags"
+              :key="tag.id"
+              class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-gray-100 text-gray-700 rounded-full text-sm"
+            >
+              <Icon icon="lucide:tag" class="w-3.5 h-3.5" />
+              {{ tag.name }}
+            </span>
+          </div>
+        </footer>
+      </article>
+    </div>
   </div>
 </template>
 

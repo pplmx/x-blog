@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from 'vue';
+import { ref, computed, toRefs } from 'vue';
 import type { Category, Tag } from '~/composables/useApi';
 
 interface Props {
@@ -36,7 +36,7 @@ function getActiveTagName() {
 </script>
 
 <template>
-  <>
+  <div>
     <!-- Trigger button (mobile only) -->
     <div class="lg:hidden flex items-center justify-between mb-4">
       <div class="flex items-center gap-2">
@@ -155,7 +155,7 @@ function getActiveTagName() {
         </div>
       </div>
     </transition>
-  </>
+  </div>
 </template>
 
 <style scoped>

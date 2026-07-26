@@ -7,8 +7,8 @@
     <!-- Loading -->
     <div v-if="pending" class="space-y-3">
       <div v-for="i in 3" :key="i" class="animate-pulse">
-        <div class="bg-gray-200 dark:bg-gray-700 h-4 rounded w-3/4 mb-2"></div>
-        <div class="bg-gray-200 dark:bg-gray-700 h-3 rounded w-1/2"></div>
+        <div class="bg-gray-200 dark:bg-gray-700 h-4 rounded w-3/4 mb-2" />
+        <div class="bg-gray-200 dark:bg-gray-700 h-3 rounded w-1/2" />
       </div>
     </div>
 
@@ -63,8 +63,8 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue';
-import { fetchComments, type Comment } from '~/composables/useApi';
+import { ref, computed } from 'vue';
+import { fetchComments } from '~/composables/useApi';
 
 interface Props {
   postId: number;

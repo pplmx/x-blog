@@ -10,14 +10,14 @@
           required
           placeholder="昵称"
           class="px-3 py-2 border border-gray-200 dark:border-gray-700 dark:bg-gray-800 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
-        />
+        >
         <input
           v-model="form.email"
           type="email"
           required
           placeholder="邮箱（不会公开）"
           class="px-3 py-2 border border-gray-200 dark:border-gray-700 dark:bg-gray-800 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
-        />
+        >
       </div>
 
       <textarea
@@ -26,7 +26,7 @@
         rows="4"
         placeholder="写点什么吧..."
         class="w-full px-3 py-2 border border-gray-200 dark:border-gray-700 dark:bg-gray-800 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm resize-y"
-      ></textarea>
+      />
 
       <button
         type="submit"

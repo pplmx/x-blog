@@ -13,7 +13,9 @@
     "test:coverage": "vitest --coverage",
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
-    "test:e2e:headed": "playwright test --headed"
+    "test:e2e:headed": "playwright test --headed",
+    "lint": "eslint . --config lint.config.json",
+    "lint:fix": "eslint . --config lint.config.json --fix"
   },
   "dependencies": {
     "@iconify/vue": "^5.0.1",
@@ -30,14 +32,21 @@
     "@playwright/test": "^1.62.0",
     "@testing-library/vue": "^8.1.0",
     "@types/dompurify": "^3.2.0",
+    "@typescript-eslint/eslint-plugin": "^8.65.0",
+    "@typescript-eslint/parser": "^8.65.0",
     "@vitejs/plugin-vue": "^6.0.8",
+    "@vitest/coverage-v8": "^4.1.10",
     "@vue/test-utils": "^2.4.11",
     "autoprefixer": "^10.5.4",
     "dompurify": "^3.4.12",
+    "eslint": "^8.57.0",
+    "eslint-plugin-vue": "^9.32.0",
+    "globals": "^15.0.0",
     "happy-dom": "^20.11.1",
     "katex": "^0.18.1",
     "mermaid": "^11.16.0",
     "unplugin-auto-import": "^21.0.0",
-    "vitest": "^4.1.10"
+    "vitest": "^4.1.10",
+    "vue-eslint-parser": "^9.4.0"
   }
 }
