@@ -9,7 +9,12 @@ const mockPost: PostList = {
   slug: 'test-post-title',
   excerpt: 'This is a test excerpt for the post',
   published: true,
+  pinned: false,
+  views: 100,
+  likes: 10,
+  cover_image: null,
   created_at: '2024-01-15T10:00:00Z',
+  updated_at: '2024-01-15T10:00:00Z',
   category: { id: 1, name: 'Test Category' },
   tags: [
     { id: 1, name: 'tag1' },
