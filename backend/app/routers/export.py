@@ -52,8 +52,10 @@ def export_posts_csv(request: Request, db: Session = Depends(get_db), _current_u
 @router.get("/comments.csv")
 @limiter.limit(f"{RATE_LIMIT_EXPORT}/minute")
 def export_comments_csv(
-    request: Request, db: Session = Depends(get_db), _current_user: User = Depends(get_current_admin)
-):  # noqa: ARG001
+    request: Request,  # noqa: ARG001
+    db: Session = Depends(get_db),
+    _current_user: User = Depends(get_current_admin),
+):
     """Export all comments to CSV."""
     comments = db.query(crud.models.Comment).all()
 
