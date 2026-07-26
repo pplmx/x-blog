@@ -10,7 +10,10 @@
     "postinstall": "nuxt prepare",
     "test": "vitest --run",
     "test:ui": "vitest --ui",
-    "test:coverage": "vitest --coverage"
+    "test:coverage": "vitest --coverage",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui",
+    "test:e2e:headed": "playwright test --headed"
   },
   "dependencies": {
     "@iconify/vue": "^5.0.1",
@@ -24,6 +27,7 @@
   },
   "devDependencies": {
     "@iconify-json/lucide": "^1.2.119",
+    "@playwright/test": "^1.62.0",
     "@testing-library/vue": "^8.1.0",
     "@types/dompurify": "^3.2.0",
     "@vitejs/plugin-vue": "^6.0.8",
