@@ -264,14 +264,14 @@ function processMathContent(content: string): {
   let hasMath = false;
 
   // 检测块级公式 $$...$$
-  content = content.replace(/\$\$([\s\S]*?)\$\$/g, (_, formula) => {
+  content = content.replace(/\$\$([\s\S]*?)\$\$/g, (_match: string, formula: string) => {
     hasMath = true;
     mathBlocks.push({ formula: formula.trim(), displayMode: true });
     return `<div class="math-block-placeholder" data-index="${mathBlocks.length - 1}"></div>`;
   });
 
   // 检测行内公式 $...$ (但不匹配 $$)
-  content = content.replace(/\$([^$\n]+?)\$/g, (_, formula) => {
+  content = content.replace(/\$([^\$\n]+?)\$/g, (_match: string, formula: string) => {
     hasMath = true;
     mathBlocks.push({ formula: formula.trim(), displayMode: false });
     return `<span class="math-inline-placeholder" data-index="${mathBlocks.length - 1}"></span>`;
@@ -280,20 +280,20 @@ function processMathContent(content: string): {
   return { hasMath, blocks: mathBlocks };
 }
 
-export default function Markdown({ content }: MarkdownProps) {
+export default function Markdown({ content }: { content: string }) {
   // 处理数学公式
   const { blocks: mathBlocks } = processMathContent(content);
 
   // 提取 mermaid 代码块
   const mermaidBlocks: string[] = [];
-  let processedContent = content.replace(/```mermaid\n([\s\S]*?)```/g, (_, code) => {
+  let processedContent = content.replace(/```mermaid\n([\s\S]*?)```/g, (_match: string, code: string) => {
     mermaidBlocks.push(code.trim());
     return `<div class="mermaid-placeholder" data-index="${mermaidBlocks.length - 1}"></div>`;
   });
 
   // 提取代码块
   const codeBlocks: { lang: string; code: string }[] = [];
-  processedContent = processedContent.replace(/```(\w*)\n([\s\S]*?)```/g, (_, lang, code) => {
+  processedContent = processedContent.replace(/```(\w*)\n([\s\S]*?)```/g, (_match: string, lang: string, code: string) => {
     codeBlocks.push({ lang: lang || 'text', code: code.trim() });
     return `<div class="code-block-placeholder" data-index="${codeBlocks.length - 1}"></div>`;
   });
@@ -302,7 +302,7 @@ export default function Markdown({ content }: MarkdownProps) {
   const images: { src: string; alt: string }[] = [];
   processedContent = processedContent.replace(
     /<img src="(.*?)" alt="(.*?)" \/>/g,
-    (_, src, alt) => {
+    (_match: string, src: string, alt: string) => {
       images.push({ src, alt });
       return `<div class="image-placeholder" data-index="${images.length - 1}"></div>`;
     }
@@ -312,7 +312,7 @@ export default function Markdown({ content }: MarkdownProps) {
   processedContent = processedContent
     .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
     .replace(/\*(.+?)\*/g, '<em>$1</em>')
-    .replace(/\[(.+?)\]\((.+?)\)/g, (_, text, href) => {
+    .replace(/\[(.+?)\]\((.+?)\)/g, (_match: string, text: string, href: string) => {
       const safe = sanitizeUrl(href);
       if (safe === '#external') {
         return `<a href="${safe}" class="text-blue-600 hover:underline" rel="noopener noreferrer nofollow" target="_blank">${text}</a>`;
