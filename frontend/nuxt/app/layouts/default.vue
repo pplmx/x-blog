@@ -33,6 +33,19 @@
               </li>
             </ul>
           </nav>
+
+          <!-- Dark mode toggle -->
+          <button
+            type="button"
+            @click="toggleDark"
+            :aria-label="isDark ? '切换到浅色模式' : '切换到深色模式'"
+            class="p-2 rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
+          >
+            <Icon
+              :icon="isDark ? 'lucide:sun' : 'lucide:moon'"
+              class="w-4 h-4"
+            />
+          </button>
         </div>
       </div>
     </header>
@@ -50,5 +63,45 @@
 </template>
 
 <script setup lang="ts">
+import { ref, onMounted, watch } from 'vue';
+
 // Default layout - no props needed
+
+// Dark mode toggle
+const isDark = ref(false);
+let stopWatch: (() => void) | null = null;
+
+function updateDarkClass() {
+  if (typeof document === 'undefined') return;
+  document.documentElement.classList.toggle('dark', isDark.value);
+}
+
+function toggleDark() {
+  isDark.value = !isDark.value;
+}
+
+onMounted(() => {
+  try {
+    // Check for saved preference or system preference
+    const saved = localStorage.getItem('theme');
+    if (saved === 'dark') {
+      isDark.value = true;
+    } else if (saved === 'light') {
+      isDark.value = false;
+    } else if (window.matchMedia) {
+      isDark.value = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    }
+    updateDarkClass();
+
+    // Save preference to localStorage when it changes
+    stopWatch = watch(isDark, (newVal) => {
+      updateDarkClass();
+      localStorage.setItem('theme', newVal ? 'dark' : 'light');
+    });
+  } catch (e) {
+    // localStorage or matchMedia not available (e.g., in test env)
+    isDark.value = false;
+    updateDarkClass();
+  }
+});
 </script>
