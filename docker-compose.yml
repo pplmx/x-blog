@@ -18,6 +18,25 @@ services:
       timeout: 5s
       retries: 3
 
+  nuxt-frontend:
+    build:
+      context: ./frontend/nuxt
+      target: runner
+    ports:
+      - "13334:3000"
+    environment:
+      - NUXT_API_URL=http://backend:18888
+      - NUXT_SITE_URL=http://localhost:13334
+    restart: unless-stopped
+    depends_on:
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
   backend:
     build:
       context: ./backend
@@ -27,7 +46,7 @@ services:
     environment:
       - DATABASE_URL=sqlite:///./x-blog.db
       - JWT_SECRET_KEY=${JWT_SECRET_KEY:-change-me-in-production}
-      - ALLOWED_ORIGINS=http://localhost:13333,http://frontend:3000
+      - ALLOWED_ORIGINS=http://localhost:13333,http://localhost:13334,http://frontend:3000,http://nuxt-frontend:3000
       - RATE_LIMIT_PER_MINUTE=60
       - GZIP_MINIMUM_SIZE=500
     volumes:

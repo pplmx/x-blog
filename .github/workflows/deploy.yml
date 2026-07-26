@@ -79,6 +79,13 @@ jobs:
           push: true
           tags: ghcr.io/${{ github.repository }}/frontend:${{ github.sha }}
 
+      - name: Build and push nuxt
+        uses: docker/build-push-action@v7
+        with:
+          context: ./frontend/nuxt
+          push: true
+          tags: ghcr.io/${{ github.repository }}/nuxt:${{ github.sha }}
+
   deploy:
     needs: build-and-push
     runs-on: ubuntu-latest

@@ -25,11 +25,22 @@ init-db:
 dev:
     @echo "⚠️ Windows 用户请在两个终端分别运行:"
     @echo "  just backend"
-    @echo "  just frontend"
+    @echo "  just frontend    (Next.js on :13333)"
+    @echo "  just nuxt        (Nuxt on :13334)"
     @echo ""
     @echo "或使用 VS Code / IntelliJ 的 Run Dashboard"
     cd backend && uv run uvicorn app.main:app --reload --host 0.0.0.0 --port 18888 &
     cd frontend/next && pnpm dev --port 13333
+
+# Run backend + Nuxt (Windows: run in two terminals)
+dev-nuxt:
+    @echo "⚠️ Windows 用户请在两个终端分别运行:"
+    @echo "  just backend"
+    @echo "  just nuxt"
+    @echo ""
+    @echo "或使用 VS Code / IntelliJ 的 Run Dashboard"
+    cd backend && uv run uvicorn app.main:app --reload --host 0.0.0.0 --port 18888 &
+    cd frontend/nuxt && pnpm dev --port 13334
 
 # Run backend only
 backend:
@@ -38,6 +49,10 @@ backend:
 # Run frontend only
 frontend:
     cd frontend/next && pnpm dev --port 13333
+
+# Run Nuxt dev server
+nuxt:
+    cd frontend/nuxt && pnpm dev --port 13334
 
 # Lint code
 lint:
@@ -112,14 +127,30 @@ e2e:
     @echo "Stopping services..."
     @pkill -f "uvicorn app.main:app" 2>/dev/null; pkill -f "next dev" 2>/dev/null; echo "done"
 
+# Run e2e tests against live Nuxt dev server (auto-starts backend + Nuxt)
+e2e-nuxt:
+    @echo "Starting backend..."
+    cd backend && uv run uvicorn app.main:app --host 0.0.0.0 --port 18888 &
+    @sleep 3 && curl -sf http://localhost:18888/health > /dev/null || (echo "Backend failed to start" && exit 1)
+    @echo "Starting Nuxt..."
+    cd frontend/nuxt && pnpm dev --port 13334 &
+    @sleep 8 && curl -sf http://localhost:13334 > /dev/null || (echo "Nuxt failed to start" && exit 1)
+    @echo "Running e2e tests..."
+    cd frontend/nuxt && pnpm test:e2e
+    @echo "Stopping services..."
+    @pkill -f "uvicorn app.main:app" 2>/dev/null; pkill -f "nuxt dev" 2>/dev/null; echo "done"
+
 # Clean generated files
 clean:
     rm -f backend/*.db
     rm -rf frontend/next/.next
+    rm -rf frontend/nuxt/.output
+    rm -rf frontend/nuxt/.nuxt
     rm -rf backend/.pytest_cache
     rm -rf .ruff_cache backend/.ruff_cache
     rm -rf frontend/node_modules/.vite
     rm -rf frontend/next/coverage
+    rm -rf frontend/nuxt/coverage
 
 # Lint and format markdown
 rumdl:

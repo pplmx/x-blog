@@ -20,6 +20,7 @@ export default defineConfig({
     environment: "happy-dom",
     globals: true,
     setupFiles: ["./tests/setup.ts"],
+    exclude: ["e2e/**", "node_modules/**", "playwright.config.ts"],
   },
   resolve: {
     alias: {
