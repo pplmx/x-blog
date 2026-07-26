@@ -10,72 +10,55 @@ wheels/
 
 # Virtual environments
 .venv
-
 # Worktrees
 .worktrees/
 worktrees/
-
 # Databases
 *.db
 *.sqlite
 *.sqlite3
 *.db-journal
-
 # Node.js
 node_modules/
 .next/
 npm-debug.log*
 pnpm-debug.log*
 *.tsbuildinfo
-
 # Frontend specific
-frontend/next/.next/
-frontend/nuxt/.output/
-frontend/nuxt/.nuxt/
-frontend/node_modules/
-
+frontend/aura/.output/
+frontend/aura/.nuxt/
+frontend/aura/node_modules/
 # Environment
 .env
 .env.local
 .env.*.local
-
 # Testing
 .pytest_cache/
 test.db
-
 # Playwright
 playwright-report/
 test-results/
 playwright/.cache/
-
 # Vitest Coverage
 coverage/
-
 # IDE
 !.vscode/extensions.json
 !.vscode/settings.json
 .vscode/**
 .idea/
-
 # Cache
 .ruff_cache/
 .cache/
-*.egg-info
 **/core.*
-
 # Core dumps
 core.*
 *.core
-
 # Logs
 *.log
-
 # System
 .DS_Store
-
 # Sentry
 .sentryclirc
 sentry-release.yml
-
 # Static files (uploaded)
 **/static/uploads/
