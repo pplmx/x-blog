@@ -5,7 +5,7 @@
 ## Project Overview
 
 **Stack**: FastAPI (Python 3.14) + Next.js 16 (production) + Nuxt 4 (parallel dev) + SQLite
-**Status**: Clean working tree, all tests passing (477 backend + 591 Next.js + 342 Nuxt = 1410 total)
+**Status**: Clean working tree, all tests passing (477 backend + 591 Next.js + 345 Nuxt = 1413 total)
 
 ## Key Findings
 
@@ -72,9 +72,9 @@
 
 - **Backend**: 477 tests, `uv run pytest -n auto` (pytest-xdist parallel), 85% coverage
 - **Next.js**: 591 tests pass (was 581, +10 through TypeScript fixes, new API function tests, retry tests, i18n fix)
-- **Nuxt**: 342 tests pass (was 142 initially, grew through test infrastructure improvements, composable tests,
+- **Nuxt**: 345 tests pass (was 142 initially, grew through test infrastructure improvements, composable tests,
   component tests for CommentList/CommentForm/ShareButtons/MarkdownContent, page tests, admin panel tests)
-- All three test suites verified passing — total 1410 tests, 0 failures
+- All three test suites verified passing — total 1413 tests, 0 failures
 
 ### Git Hooks
 
@@ -548,7 +548,25 @@ This iteration reconciled a stale/in-progress repository state and committed ver
      returns insertion order).
   2. "test_admin_list_posts_pinned_first" — verifies pinned posts appear before non-pinned
      posts, matching the public listing behavior.
-- **Result**: 477 backend tests pass (was 475, +2 new). 1410 total tests, 0 failures. Ruff clean.
+- **Result**: 477 backend tests pass (was 475, +2 new). Ruff clean.
+
+### Nuxt admin login URL bug (FIXED)
+
+- **Bug**: `adminLogin` in `frontend/nuxt/composables/useApi.ts` used
+  `useFetch('admin/login', { baseURL: apiUrl })` where `apiUrl` is `http://localhost:18888`.
+  This resolved to `http://localhost:18888/admin/login` — **missing the `/api` prefix**.
+  The backend login endpoint is at `/api/admin/login`. All other admin API functions in the
+  same file correctly use `${apiUrl}/api/admin/...` (full URL without `baseURL`), but
+  `adminLogin` was the only one using the `baseURL` shorthand with a relative path that
+  omitted `/api`. This made the admin login silently fail in the Nuxt frontend.
+- **Fix**: Changed to `${apiUrl}/api/admin/login` (consistent with all other admin functions),
+  removing the `baseURL` option.
+- **Tests**: Added 3 regression tests in `tests/composables/useApi.spec.ts`:
+  1. "posts to the correct /api/admin/login URL with full baseURL" — verifies the URL is
+     `http://localhost:18888/api/admin/login`
+  2. "sends credentials as form-urlencoded body" — verifies username/password are in the body
+  3. "sets the Content-Type header to application/x-www-form-urlencoded" — verifies headers
+- **Result**: 345 Nuxt tests pass (was 342, +3 new). 1413 total tests, 0 failures.
 
 ## Next Priorities
 

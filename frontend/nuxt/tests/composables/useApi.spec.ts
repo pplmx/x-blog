@@ -6,7 +6,7 @@
  */
 import { describe, it, expect, vi, beforeEach, afterEach, type Mock } from "vitest";
 
-import { useApi, usePosts, useCategories, useTags, usePost, useSearch, usePostView, usePostLike, usePopularPosts, useRelatedPosts, fetchComments, createComment } from "../../composables/useApi";
+import { useApi, usePosts, useCategories, useTags, usePost, useSearch, usePostView, usePostLike, usePopularPosts, useRelatedPosts, fetchComments, createComment, adminLogin } from "../../composables/useApi";
 
 // Capture what useFetch is called with
 let useFetchCalls: Array<{
@@ -291,5 +291,26 @@ describe("createComment", () => {
       parent_id: null,
     });
     expect((useFetchCalls[0].options.body as { parent_id: number | null }).parent_id).toBeNull();
+  });
+});
+
+describe("adminLogin", () => {
+  it("posts to the correct /api/admin/login URL with full baseURL", () => {
+    adminLogin("admin", "secret");
+    expect(useFetchCalls[0].url).toBe("http://localhost:18888/api/admin/login");
+    expect(useFetchCalls[0].options.method).toBe("POST");
+  });
+
+  it("sends credentials as form-urlencoded body", () => {
+    adminLogin("myuser", "mypass");
+    const body = useFetchCalls[0].options.body as URLSearchParams;
+    expect(body.get("username")).toBe("myuser");
+    expect(body.get("password")).toBe("mypass");
+  });
+
+  it("sets the Content-Type header to application/x-www-form-urlencoded", () => {
+    adminLogin("admin", "pass");
+    const headers = useFetchCalls[0].options.headers as Record<string, string>;
+    expect(headers["Content-Type"]).toBe("application/x-www-form-urlencoded");
   });
 });
