@@ -5,7 +5,7 @@
 ## Project Overview
 
 **Stack**: FastAPI (Python 3.14) + Next.js 16 (production) + Nuxt 4 (parallel dev) + SQLite
-**Status**: Clean working tree, all tests passing (477 backend + 591 Next.js + 346 Nuxt = 1414 total)
+**Status**: Clean working tree, all tests passing (477 backend + 591 Next.js + 345 Nuxt = 1413 total)
 
 ## Key Findings
 
