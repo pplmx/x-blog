@@ -21,11 +21,11 @@ const mockCategories = mockCategoryList(3);
 const mockTags = mockTagList(5);
 
 const server = setupServer(
-  http.get('http://localhost:8000/api/posts', () =>
+  http.get('http://localhost:18888/api/posts', () =>
     HttpResponse.json(mockPostListResponse(mockPosts))
   ),
-  http.get('http://localhost:8000/api/categories', () => HttpResponse.json(mockCategories)),
-  http.get('http://localhost:8000/api/tags', () => HttpResponse.json(mockTags))
+  http.get('http://localhost:18888/api/categories', () => HttpResponse.json(mockCategories)),
+  http.get('http://localhost:18888/api/tags', () => HttpResponse.json(mockTags))
 );
 
 beforeAll(() => server.listen({ onUnhandledRequest: 'bypass' }));
@@ -110,7 +110,7 @@ describe('Admin Dashboard', () => {
 
     it('shows empty state when no published posts', async () => {
       server.use(
-        http.get('http://localhost:8000/api/posts', () =>
+        http.get('http://localhost:18888/api/posts', () =>
           HttpResponse.json(mockPostListResponse(mockPostList(2, { published: false })))
         )
       );
@@ -139,11 +139,11 @@ describe('Admin Dashboard', () => {
   describe('Empty state', () => {
     it('handles newly created blog with no posts', async () => {
       server.use(
-        http.get('http://localhost:8000/api/posts', () =>
+        http.get('http://localhost:18888/api/posts', () =>
           HttpResponse.json(mockPostListResponse([]))
         ),
-        http.get('http://localhost:8000/api/categories', () => HttpResponse.json([])),
-        http.get('http://localhost:8000/api/tags', () => HttpResponse.json([]))
+        http.get('http://localhost:18888/api/categories', () => HttpResponse.json([])),
+        http.get('http://localhost:18888/api/tags', () => HttpResponse.json([]))
       );
       const AdminDashboard = (await import('./page')).default;
       await act(async () => {
