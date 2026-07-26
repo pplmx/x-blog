@@ -106,7 +106,7 @@ def test_related_posts_endpoint(client, db_session):
     assert len(data) >= 1
 
 
-def test_export_posts_csv(client, db_session):
+def test_export_posts_csv(client, auth_headers, db_session):
     """Test exporting posts to CSV."""
     post = models.Post(
         title="Export Test",
@@ -118,7 +118,7 @@ def test_export_posts_csv(client, db_session):
     db_session.add(post)
     db_session.commit()
 
-    response = client.get("/api/export/posts.csv")
+    response = client.get("/api/export/posts.csv", headers=auth_headers)
     assert response.status_code == 200
     assert "text/csv" in response.headers["content-type"]
     content = response.text
@@ -126,7 +126,7 @@ def test_export_posts_csv(client, db_session):
     assert "Title" in content  # CSV header
 
 
-def test_export_comments_csv(client, db_session):
+def test_export_comments_csv(client, auth_headers, db_session):
     """Test exporting comments to CSV."""
     post = models.Post(
         title="Test Post",
@@ -146,6 +146,6 @@ def test_export_comments_csv(client, db_session):
     db_session.add(comment)
     db_session.commit()
 
-    response = client.get("/api/export/comments.csv")
+    response = client.get("/api/export/comments.csv", headers=auth_headers)
     assert response.status_code == 200
     assert "text/csv" in response.headers["content-type"]

@@ -5,7 +5,7 @@
 ## Project Overview
 
 **Stack**: FastAPI (Python 3.14) + Next.js 16 (production) + Nuxt 4 (parallel dev) + SQLite
-**Status**: Clean working tree, all tests passing (473 backend + 590 Next.js + 339 Nuxt = 1402 total)
+**Status**: Clean working tree, all tests passing (475 backend + 590 Next.js + 339 Nuxt = 1404 total)
 
 ## Key Findings
 
@@ -70,11 +70,11 @@
 
 ### Test Infrastructure
 
-- **Backend**: 473 tests, `uv run pytest -n auto` (pytest-xdist parallel), 85% coverage
+- **Backend**: 475 tests, `uv run pytest -n auto` (pytest-xdist parallel), 85% coverage
 - **Next.js**: 590 tests pass (was 581, grew through TypeScript fixes, new API function tests, retry tests)
 - **Nuxt**: 339 tests pass (was 142 initially, grew through test infrastructure improvements, composable tests,
   component tests for CommentList/CommentForm/ShareButtons/MarkdownContent, page tests, admin panel tests)
-- All three test suites verified passing — total 1402 tests, 0 failures
+- All three test suites verified passing — total 1404 tests, 0 failures
 
 ### Git Hooks
 
@@ -135,7 +135,7 @@
 - Atomic SQL UPDATE for increment_views/increment_likes (TOCTOU-safe)
 - Rate limiting via slowapi on write endpoints
 - Cache via cachetools (categories, tags, posts)
-- 473 backend tests with 85% coverage
+- 475 backend tests with 85% coverage
 
 ### Next.js TypeScript Error Reduction (COMPLETED)
 
@@ -445,6 +445,24 @@ This iteration reconciled a stale/in-progress repository state and committed ver
   transitive dep) or the Vitest worker pool during shutdown — surfacing as an unhandled
   rejection. It is **not a test-logic bug, not a correctness issue, and not interceptable
   from test code**. No fix applied; documented here to avoid future re-investigation.
+
+## Security: Export Endpoints PII Exposure (FIXED)
+
+- **Bug**: `backend/app/routers/export.py` exposed two CSV export endpoints (`/api/export/posts.csv`,
+  `/api/export/comments.csv`) with **no authentication**. The comments CSV exports commenter
+  `email` and `ip_address` (PII), and the posts CSV exports all post data — all accessible to
+  unauthenticated callers. The README API table listed these under the "Admin" section but the
+  implementation had no `get_current_admin` dependency (unlike every other admin route, which
+  uses `_current_user: User = Depends(get_current_admin)`).
+- **Fix**: Added `User`/`get_current_admin` import and `_current_user: User = Depends(get_current_admin)`
+  to both export endpoints, matching the auth pattern used in `app/routers/admin.py` and `upload.py`.
+- **Tests**: Updated 4 existing export tests in `test_comprehensive.py` and `test_features.py` to
+  pass `auth_headers`; added 2 new security regression tests in `test_export.py` (one per endpoint)
+  verifying unauthenticated requests return `401`.
+- **Docs**: Updated README API table to mark both export endpoints "(admin)".
+- **Result**: 475 backend tests pass (was 473, +2 new). Ruff clean. The 4 updated tests still
+  validate the same happy-path behavior (CSV format/content) with auth, and the 2 new tests lock
+  in the security boundary.
 
 ## Next Priorities
 
