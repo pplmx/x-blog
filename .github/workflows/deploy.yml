@@ -21,6 +21,10 @@ jobs:
         with:
           node-version: '24'
           cache: 'pnpm'
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: '9'
 
       - name: Install uv
         run: pip install uv
@@ -34,6 +38,11 @@ jobs:
       - name: Frontend tests
         run: |
           cd frontend/next
+          pnpm install
+          pnpm test
+      - name: Nuxt tests
+        run: |
+          cd frontend/nuxt
           pnpm install
           pnpm test
 
