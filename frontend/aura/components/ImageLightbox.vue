@@ -1,24 +1,24 @@
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted } from 'vue';
+import { computed, onMounted, onUnmounted } from "vue";
 
 interface LightboxImage {
-  src: string;
-  alt: string;
+	src: string;
+	alt: string;
 }
 
 interface Props {
-  images: LightboxImage[];
-  currentIndex: number;
+	images: LightboxImage[];
+	currentIndex: number;
 }
 
 const props = withDefaults(defineProps<Props>(), {
-  images: () => [],
-  currentIndex: 0,
+	images: () => [],
+	currentIndex: 0,
 });
 
 const emit = defineEmits<{
-  (e: 'close'): void;
-  (e: 'navigate', index: number): void;
+	(e: "close"): void;
+	(e: "navigate", index: number): void;
 }>();
 
 const currentImage = computed(() => props.images[props.currentIndex]);
@@ -26,35 +26,35 @@ const hasPrev = computed(() => props.currentIndex > 0);
 const hasNext = computed(() => props.currentIndex < props.images.length - 1);
 
 function handlePrev() {
-  if (hasPrev.value) emit('navigate', props.currentIndex - 1);
+	if (hasPrev.value) emit("navigate", props.currentIndex - 1);
 }
 
 function handleNext() {
-  if (hasNext.value) emit('navigate', props.currentIndex + 1);
+	if (hasNext.value) emit("navigate", props.currentIndex + 1);
 }
 
 function handleKeyDown(e: KeyboardEvent) {
-  switch (e.key) {
-    case 'Escape':
-      emit('close');
-      break;
-    case 'ArrowLeft':
-      handlePrev();
-      break;
-    case 'ArrowRight':
-      handleNext();
-      break;
-  }
+	switch (e.key) {
+		case "Escape":
+			emit("close");
+			break;
+		case "ArrowLeft":
+			handlePrev();
+			break;
+		case "ArrowRight":
+			handleNext();
+			break;
+	}
 }
 
 onMounted(() => {
-  document.addEventListener('keydown', handleKeyDown);
-  document.body.style.overflow = 'hidden';
+	document.addEventListener("keydown", handleKeyDown);
+	document.body.style.overflow = "hidden";
 });
 
 onUnmounted(() => {
-  document.removeEventListener('keydown', handleKeyDown);
-  document.body.style.overflow = '';
+	document.removeEventListener("keydown", handleKeyDown);
+	document.body.style.overflow = "";
 });
 </script>
 

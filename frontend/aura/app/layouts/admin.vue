@@ -7,33 +7,33 @@
   Uses useAdminAuth composable for auth state + logout.
 -->
 <script setup lang="ts">
-import { useAdminAuth } from '~/composables/useAdminAuth';
+import { useAdminAuth } from "~/composables/useAdminAuth";
 
 const { isAuthenticated, logout } = useAdminAuth();
 const route = useRoute();
-const isLoginPage = route.path === '/admin/login';
+const isLoginPage = route.path === "/admin/login";
 const sidebarOpen = ref(false);
 
 // Redirect unauthenticated users to login page when not already on it
-if (!isAuthenticated.value && !isLoginPage) {
-  navigateTo('/admin/login', { replace: true });
+if (!(isAuthenticated.value || isLoginPage)) {
+	navigateTo("/admin/login", { replace: true });
 }
 
 // Close mobile sidebar when route changes
 watch(
-  () => route.path,
-  () => {
-    sidebarOpen.value = false;
-  },
+	() => route.path,
+	() => {
+		sidebarOpen.value = false;
+	},
 );
 
 // Navigation items matching the Next.js admin layout
 const navItems = [
-  { href: '/admin', label: '仪表盘', icon: 'lucide:layout-dashboard' },
-  { href: '/admin/posts', label: '文章', icon: 'lucide:file-text' },
-  { href: '/admin/comments', label: '评论', icon: 'lucide:message-circle' },
-  { href: '/admin/categories', label: '分类', icon: 'lucide:folder' },
-  { href: '/admin/tags', label: '标签', icon: 'lucide:tag' },
+	{ href: "/admin", label: "仪表盘", icon: "lucide:layout-dashboard" },
+	{ href: "/admin/posts", label: "文章", icon: "lucide:file-text" },
+	{ href: "/admin/comments", label: "评论", icon: "lucide:message-circle" },
+	{ href: "/admin/categories", label: "分类", icon: "lucide:folder" },
+	{ href: "/admin/tags", label: "标签", icon: "lucide:tag" },
 ];
 </script>
 

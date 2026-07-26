@@ -4,21 +4,21 @@
   Uses Nuxt's useFetch for data fetching (no React Query needed).
 -->
 <script setup lang="ts">
-import { ref } from 'vue';
-import { fetchAdminPosts, deleteAdminPost } from '~/composables/useApi';
+import { ref } from "vue";
+import { deleteAdminPost, fetchAdminPosts } from "~/composables/useApi";
 
 const { data: posts, pending, error, refresh } = await fetchAdminPosts();
 const isDeleting = ref(false);
 
 async function handleDelete(id: number) {
-  if (!confirm('确定要删除这篇文章吗？')) return;
-  isDeleting.value = true;
-  try {
-    await deleteAdminPost(id);
-    await refresh();
-  } finally {
-    isDeleting.value = false;
-  }
+	if (!confirm("确定要删除这篇文章吗？")) return;
+	isDeleting.value = true;
+	try {
+		await deleteAdminPost(id);
+		await refresh();
+	} finally {
+		isDeleting.value = false;
+	}
 }
 </script>
 

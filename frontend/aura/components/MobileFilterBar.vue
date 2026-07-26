@@ -1,10 +1,10 @@
 <script setup lang="ts">
-import { ref, computed, toRefs } from 'vue';
-import type { Category, Tag } from '~/composables/useApi';
+import { computed, ref, toRefs } from "vue";
+import type { Category, Tag } from "~/composables/useApi";
 
 interface Props {
-  categories: Category[];
-  tags: Tag[];
+	categories: Category[];
+	tags: Tag[];
 }
 
 const props = defineProps<Props>();
@@ -18,20 +18,20 @@ const currentTag = route.query.tag_id;
 const hasFilters = computed(() => currentCategory || currentTag);
 
 function clearFilters() {
-  navigateTo('/');
-  isOpen.value = false;
+	navigateTo("/");
+	isOpen.value = false;
 }
 
 function getActiveCategoryName() {
-  if (!currentCategory) return null;
-  const cat = props.categories.find((c) => c.id === parseInt(String(currentCategory)));
-  return cat?.name;
+	if (!currentCategory) return null;
+	const cat = props.categories.find((c) => c.id === Number.parseInt(String(currentCategory), 10));
+	return cat?.name;
 }
 
 function getActiveTagName() {
-  if (!currentTag) return null;
-  const tag = props.tags.find((t) => t.id === parseInt(String(currentTag)));
-  return tag?.name;
+	if (!currentTag) return null;
+	const tag = props.tags.find((t) => t.id === Number.parseInt(String(currentTag), 10));
+	return tag?.name;
 }
 </script>
 

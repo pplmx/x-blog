@@ -3,58 +3,58 @@
   Migrated from Next.js /app/admin/categories/page.tsx to Nuxt 4 / Vue 3.
 -->
 <script setup lang="ts">
-import { ref } from 'vue';
+import { ref } from "vue";
 import {
-  fetchAdminCategories,
-  createAdminCategory,
-  updateAdminCategory,
-  deleteAdminCategory,
-} from '~/composables/useApi';
+	createAdminCategory,
+	deleteAdminCategory,
+	fetchAdminCategories,
+	updateAdminCategory,
+} from "~/composables/useApi";
 
 const { data: categories, pending, error, refresh } = await fetchAdminCategories();
-const newCategoryName = ref('');
+const newCategoryName = ref("");
 const isProcessing = ref(false);
 const editingId = ref<number | null>(null);
-const editingName = ref('');
+const editingName = ref("");
 
 async function handleCreate() {
-  if (!newCategoryName.value.trim()) return;
-  isProcessing.value = true;
-  try {
-    await createAdminCategory(newCategoryName.value.trim());
-    newCategoryName.value = '';
-    await refresh();
-  } finally {
-    isProcessing.value = false;
-  }
+	if (!newCategoryName.value.trim()) return;
+	isProcessing.value = true;
+	try {
+		await createAdminCategory(newCategoryName.value.trim());
+		newCategoryName.value = "";
+		await refresh();
+	} finally {
+		isProcessing.value = false;
+	}
 }
 
 async function startEdit(category: { id: number; name: string }) {
-  editingId.value = category.id;
-  editingName.value = category.name;
+	editingId.value = category.id;
+	editingName.value = category.name;
 }
 
 async function confirmEdit(id: number) {
-  if (!editingName.value.trim()) return;
-  isProcessing.value = true;
-  try {
-    await updateAdminCategory(id, editingName.value.trim());
-    editingId.value = null;
-    await refresh();
-  } finally {
-    isProcessing.value = false;
-  }
+	if (!editingName.value.trim()) return;
+	isProcessing.value = true;
+	try {
+		await updateAdminCategory(id, editingName.value.trim());
+		editingId.value = null;
+		await refresh();
+	} finally {
+		isProcessing.value = false;
+	}
 }
 
 async function handleDelete(id: number) {
-  if (!confirm('确定要删除这个分类吗？')) return;
-  isProcessing.value = true;
-  try {
-    await deleteAdminCategory(id);
-    await refresh();
-  } finally {
-    isProcessing.value = false;
-  }
+	if (!confirm("确定要删除这个分类吗？")) return;
+	isProcessing.value = true;
+	try {
+		await deleteAdminCategory(id);
+		await refresh();
+	} finally {
+		isProcessing.value = false;
+	}
 }
 </script>
 

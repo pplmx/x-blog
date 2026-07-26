@@ -18,18 +18,18 @@
   component dispatch instead of placeholder post-processing).
 -->
 <script setup lang="ts">
-import { ref, computed } from 'vue';
-import { useMarkdown, sanitizeHtml } from '~/composables/useMarkdown';
+import { computed, ref } from "vue";
+import { sanitizeHtml, useMarkdown } from "~/composables/useMarkdown";
 
 export interface MarkdownContentProps {
-  /** Raw HTML content string from the backend. */
-  content: string;
-  /** Base URL for sanitising links (defaults to window.location.hostname on client). */
-  baseUrl?: string;
+	/** Raw HTML content string from the backend. */
+	content: string;
+	/** Base URL for sanitising links (defaults to window.location.hostname on client). */
+	baseUrl?: string;
 }
 
 const props = withDefaults(defineProps<MarkdownContentProps>(), {
-  baseUrl: '',
+	baseUrl: "",
 });
 
 // Re-process whenever content changes.
@@ -37,10 +37,8 @@ const props = withDefaults(defineProps<MarkdownContentProps>(), {
 // with HTML segments sanitised via DOMPurify (if available) — falls back to
 // identity when DOMPurify hasn't loaded yet (SSR-safe).
 const segments = computed(() => {
-  const { segments: raw } = useMarkdown(props.content);
-  return raw.map((s) =>
-    s.type === 'html' ? { ...s, html: sanitizeHtml(s.html) } : s
-  );
+	const { segments: raw } = useMarkdown(props.content);
+	return raw.map((s) => (s.type === "html" ? { ...s, html: sanitizeHtml(s.html) } : s));
 });
 const renderingKeys = ref<Set<string>>(new Set());
 
@@ -49,93 +47,100 @@ const renderedMathKeys = ref<Set<string>>(new Set());
 
 // --- Copy-to-clipboard state (per code block) ---
 function makeCopiedState() {
-  return ref(false);
+	return ref(false);
 }
 
 async function copyCode(code: string, copied: { value: boolean }) {
-  try {
-    await navigator.clipboard.writeText(code);
-    copied.value = true;
-    setTimeout(() => {
-      copied.value = false;
-    }, 2000);
-  } catch {
-    // ignore
-  }
+	try {
+		await navigator.clipboard.writeText(code);
+		copied.value = true;
+		setTimeout(() => {
+			copied.value = false;
+		}, 2000);
+	} catch {
+		// ignore
+	}
 }
 
 // --- Mermaid rendering ---
 let mermaidInstance: any = null;
 
 async function initMermaid() {
-  if (mermaidInstance) return mermaidInstance;
-  try {
-    const { default: mermaid } = await import('mermaid');
-    mermaidInstance = mermaid;
-    mermaidInstance.initialize({
-      startOnLoad: false,
-      theme: document?.documentElement?.classList?.contains('dark') ? 'dark' : 'default',
-      securityLevel: 'loose',
-    });
-  } catch {
-    mermaidInstance = null;
-  }
-  return mermaidInstance;
+	if (mermaidInstance) return mermaidInstance;
+	try {
+		const { default: mermaid } = await import("mermaid");
+		mermaidInstance = mermaid;
+		mermaidInstance.initialize({
+			startOnLoad: false,
+			theme: document?.documentElement?.classList?.contains("dark") ? "dark" : "default",
+			securityLevel: "loose",
+		});
+	} catch {
+		mermaidInstance = null;
+	}
+	return mermaidInstance;
 }
 
 async function renderMermaid(code: string, el: HTMLElement | null, segKey: string) {
-  if (!el || renderingKeys.value.has(segKey) || renderedMathKeys.value.has(segKey)) return;
-  renderingKeys.value.add(segKey);
-  const m = await initMermaid();
-  if (!m) {
-    el.innerHTML = `<pre class="p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded text-red-600 dark:text-red-400 text-sm">${escapeHtml(code)}</pre>`;
-    return;
-  }
-  try {
-    const id = `mermaid-${Math.random().toString(36).slice(2)}`;
-    const { svg } = await m.render(id, code);
-    el.innerHTML = svg || '';
-  } catch {
-    el.innerHTML = `<pre class="p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded text-red-600 dark:text-red-400 text-sm">${escapeHtml(code)}</pre>`;
-  }
-  renderingKeys.value.delete(segKey);
+	if (!el || renderingKeys.value.has(segKey) || renderedMathKeys.value.has(segKey)) return;
+	renderingKeys.value.add(segKey);
+	const m = await initMermaid();
+	if (!m) {
+		el.innerHTML = `<pre class="p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded text-red-600 dark:text-red-400 text-sm">${escapeHtml(code)}</pre>`;
+		return;
+	}
+	try {
+		const id = `mermaid-${Math.random().toString(36).slice(2)}`;
+		const { svg } = await m.render(id, code);
+		el.innerHTML = svg || "";
+	} catch {
+		el.innerHTML = `<pre class="p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded text-red-600 dark:text-red-400 text-sm">${escapeHtml(code)}</pre>`;
+	}
+	renderingKeys.value.delete(segKey);
 }
 
 // --- KaTeX rendering ---
-function renderKatex(formula: string, el: HTMLElement | null, displayMode: boolean, segKey: string) {
-  if (!el || renderedMathKeys.value.has(segKey)) return;
-  renderedMathKeys.value.add(segKey);
-  // Lazy-load KaTeX
-  import('katex').then(({ default: katex }) => {
-    if (!el.isConnected) return;
-    try {
-      const html = katex.renderToString(formula, {
-        displayMode,
-        throwOnError: false,
-        trust: true,
-      });
-      el.innerHTML = html;
-    } catch {
-      el.innerHTML = `<span class="text-red-500">[KaTeX render error]</span>`;
-    }
-  }).catch(() => {
-    // KaTeX not available — render formula as plain text so content isn't lost.
-    el.textContent = formula;
-  });
+function renderKatex(
+	formula: string,
+	el: HTMLElement | null,
+	displayMode: boolean,
+	segKey: string,
+) {
+	if (!el || renderedMathKeys.value.has(segKey)) return;
+	renderedMathKeys.value.add(segKey);
+	// Lazy-load KaTeX
+	import("katex")
+		.then(({ default: katex }) => {
+			if (!el.isConnected) return;
+			try {
+				const html = katex.renderToString(formula, {
+					displayMode,
+					throwOnError: false,
+					trust: true,
+				});
+				el.innerHTML = html;
+			} catch {
+				el.innerHTML = `<span class="text-red-500">[KaTeX render error]</span>`;
+			}
+		})
+		.catch(() => {
+			// KaTeX not available — render formula as plain text so content isn't lost.
+			el.textContent = formula;
+		});
 }
 
 function escapeHtml(str: string): string {
-  return str
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;');
+	return str
+		.replace(/&/g, "&amp;")
+		.replace(/</g, "&lt;")
+		.replace(/>/g, "&gt;")
+		.replace(/"/g, "&quot;")
+		.replace(/'/g, "&#39;");
 }
 
 // --- Line numbers for code blocks --
 function lineNumbers(code: string): number[] {
-  return Array.from({ length: code.split('\n').length }, (_, i) => i + 1);
+	return Array.from({ length: code.split("\n").length }, (_, i) => i + 1);
 }
 </script>
 

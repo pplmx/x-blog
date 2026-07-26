@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { computed } from 'vue';
-import { extractToc } from '../../../composables/useToc';
+import { computed } from "vue";
+import { extractToc } from "../../../composables/useToc.ts";
 
 const route = useRoute();
 const { data: post, pending, error } = await usePost(route.params.slug as string);
@@ -12,105 +12,103 @@ const toc = computed(() => (post.value?.content ? extractToc(post.value.content)
 // Previously this used `post.value?.id || 0` which sent a meaningless request
 // to /api/posts/0/related during SSR when the post was still pending or not found.
 const postId = post.value?.id ?? 0;
-const { data: relatedPosts } = postId
-  ? await useRelatedPosts(postId)
-  : { data: ref(null) };
+const { data: relatedPosts } = postId ? await useRelatedPosts(postId) : { data: ref(null) };
 
 // Track view count when post is loaded
 if (post.value?.id) {
-  await usePostView(post.value.id);
+	await usePostView(post.value.id);
 }
 
 // SEO: set dynamic head metadata when the post is available
 if (post.value) {
-  useHead({
-    title: post.value.title,
-    meta: [
-      { name: "description", content: post.value.excerpt || "" },
-      { name: "og:title", content: post.value.title },
-      { name: "og:description", content: post.value.excerpt || "" },
-      { name: "og:type", content: "article" },
-      { name: "og:image", content: post.value.cover_image || "" },
-      { name: "twitter:card", content: "summary_large_image" },
-      { name: "twitter:title", content: post.value.title },
-      { name: "twitter:description", content: post.value.excerpt || "" },
-    ],
-    script: [
-      {
-        type: "application/ld+json",
-        json: {
-          "@context": "https://schema.org",
-          "@type": "BlogPosting",
-          headline: post.value.title,
-          description: post.value.excerpt || "",
-          image: post.value.cover_image || undefined,
-          datePublished: post.value.created_at,
-          dateModified: post.value.updated_at,
-          author: {
-            "@type": "Person",
-            name: "X-Blog",
-          },
-          publisher: {
-            "@type": "Organization",
-            name: "X-Blog",
-            logo: {
-              "@type": "ImageObject",
-              url: "/logo.png",
-            },
-          },
-          mainEntityOfPage: {
-            "@type": "WebPage",
-            "@id": `/posts/${post.value.slug}`,
-          },
-          articleSection: post.value.category?.name || "Blog",
-          keywords: (post.value.tags || []).map((t: { name: string }) => t.name).join(", "),
-        },
-      },
-    ],
-  });
+	useHead({
+		title: post.value.title,
+		meta: [
+			{ name: "description", content: post.value.excerpt || "" },
+			{ name: "og:title", content: post.value.title },
+			{ name: "og:description", content: post.value.excerpt || "" },
+			{ name: "og:type", content: "article" },
+			{ name: "og:image", content: post.value.cover_image || "" },
+			{ name: "twitter:card", content: "summary_large_image" },
+			{ name: "twitter:title", content: post.value.title },
+			{ name: "twitter:description", content: post.value.excerpt || "" },
+		],
+		script: [
+			{
+				type: "application/ld+json",
+				json: {
+					"@context": "https://schema.org",
+					"@type": "BlogPosting",
+					headline: post.value.title,
+					description: post.value.excerpt || "",
+					image: post.value.cover_image || undefined,
+					datePublished: post.value.created_at,
+					dateModified: post.value.updated_at,
+					author: {
+						"@type": "Person",
+						name: "X-Blog",
+					},
+					publisher: {
+						"@type": "Organization",
+						name: "X-Blog",
+						logo: {
+							"@type": "ImageObject",
+							url: "/logo.png",
+						},
+					},
+					mainEntityOfPage: {
+						"@type": "WebPage",
+						"@id": `/posts/${post.value.slug}`,
+					},
+					articleSection: post.value.category?.name || "Blog",
+					keywords: (post.value.tags || []).map((t: { name: string }) => t.name).join(", "),
+				},
+			},
+		],
+	});
 }
 
 // Like handler: toggle like on the current post
 const likeLoading = ref(false);
 const likeError = ref<string | null>(null);
 async function handleLike() {
-  if (!post.value?.id || likeLoading.value) return;
-  likeLoading.value = true;
-  likeError.value = null;
-  try {
-    await usePostLike(post.value.id);
-    // Force refresh the post data to reflect updated like count
-    await usePost(route.params.slug as string);
-  } catch (err) {
-    likeError.value = 'Failed to like post. Please try again.';
-    console.error('Failed to like post:', err);
-  } finally {
-    likeLoading.value = false;
-  }
+	if (!post.value?.id || likeLoading.value) return;
+	likeLoading.value = true;
+	likeError.value = null;
+	try {
+		await usePostLike(post.value.id);
+		// Force refresh the post data to reflect updated like count
+		await usePost(route.params.slug as string);
+	} catch (err) {
+		likeError.value = "Failed to like post. Please try again.";
+		console.error("Failed to like post:", err);
+	} finally {
+		likeLoading.value = false;
+	}
 }
 
 // Reading progress: track scroll position and update progress bar
 const scrollProgress = ref(0);
 onMounted(() => {
-  const updateProgress = () => {
-    const scrolled = window.scrollY;
-    const maxScroll = document.body.scrollHeight - window.innerHeight;
-    scrollProgress.value = maxScroll > 0 ? (scrolled / maxScroll) * 100 : 0;
-  };
-  window.addEventListener('scroll', updateProgress);
-  updateProgress();
-  onUnmounted(() => window.removeEventListener('scroll', updateProgress));
+	const updateProgress = () => {
+		const scrolled = window.scrollY;
+		const maxScroll = document.body.scrollHeight - window.innerHeight;
+		scrollProgress.value = maxScroll > 0 ? (scrolled / maxScroll) * 100 : 0;
+	};
+	window.addEventListener("scroll", updateProgress);
+	updateProgress();
+	onUnmounted(() => window.removeEventListener("scroll", updateProgress));
 });
 
 // Smooth scroll to heading element
 function scrollToHeading(event: MouseEvent) {
-  const href = (event.currentTarget as HTMLAnchorElement)?.getAttribute('href');
-  if (!href || !href.startsWith('#')) return;
-  const id = href.slice(1);
-  const el = document.getElementById(id);
-  if (el) {
-    el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-  }
+	const href = (event.currentTarget as HTMLAnchorElement)?.getAttribute("href");
+	if (!href?.startsWith("#")) return;
+	const id = href.slice(1);
+	const el = document.getElementById(id);
+	if (el) {
+		el.scrollIntoView({ behavior: "smooth", block: "start" });
+	}
 }
 </script>
 

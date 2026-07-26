@@ -1,15 +1,13 @@
 <script setup lang="ts">
-import { Icon as IconifyIcon } from '@iconify/vue';
-
 const props = defineProps<{
-  icon: string;
-  width?: number | string;
-  height?: number | string;
-  class?: string;
+	icon: string;
+	width?: number | string;
+	height?: number | string;
+	class?: string;
 }>();
 
 if (!props.icon) {
-  console.warn('[Icon] Missing icon prop');
+	console.warn("[Icon] Missing icon prop");
 }
 </script>
 

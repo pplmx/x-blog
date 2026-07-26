@@ -162,10 +162,12 @@
 1. **RIL.md itself** — This file is now updated but may need periodic refresh as the
    project evolves. Consider automating RIL updates as part of the commit cycle.
 
-2. **e2e tests** — Only 7 e2e specs for the Nuxt frontend vs 14 specs for the old Next.js.
-   Admin CRUD flows (comments, categories, tags, stats) lack e2e coverage. Priority: add
-   e2e for admin comment management and post editing flows.
+2. **e2e tests** — 8 e2e specs now (added admin-login.spec.ts with 3 tests).
+   Admin CRUD flows (comments, categories, tags, stats) still need e2e coverage.
+   Priority: add e2e for admin comment management, category management, and
+   post editing flows.
 
 ## Next Priorities
 
-1. Add missing e2e tests for Nuxt admin flows (comments, stats, category management)
+1. Add e2e tests for admin comment management, category management, post editing
+2. Add missing e2e tests for Nuxt admin flows (tags, stats)
