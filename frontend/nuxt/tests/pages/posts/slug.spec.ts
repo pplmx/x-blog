@@ -680,4 +680,49 @@ describe("Post Detail Page", () => {
       expect(relatedPostsUrl).toBe("");
     });
   });
+
+  describe("Table of Contents", () => {
+    it("renders TOC sidebar when post has multiple headings", async () => {
+      const postWithHeadings = {
+        ...mockPost,
+        content: '<h1 id="introduction">Introduction</h1>\n<p>Text here.</p>\n<h2 id="getting-started">Getting Started</h2>\n<p>More text.</p>\n<h3 id="basics">Basics</h3>\n<p>Even more.</p>\n<h2 id="advanced">Advanced</h2>\n<p>Final section.</p>',
+      };
+
+      const wrapper = await mountPostPage({ post: postWithHeadings });
+
+      // TOC sidebar should be visible with heading titles
+      const tocLinks = wrapper.findAll('a[href^="#"]');
+      const headingLinks = tocLinks.filter((a) =>
+        ["#introduction", "#getting-started", "#basics", "#advanced"].includes(
+          a.attributes("href")
+        )
+      );
+      expect(headingLinks.length).toBe(4);
+    });
+
+    it("does NOT render TOC sidebar when post has only one heading", async () => {
+      const singleHeadingPost = {
+        ...mockPost,
+        content: "<h1>Only One Heading</h1>\n<p>No other headings here.</p>",
+      };
+
+      const wrapper = await mountPostPage({ post: singleHeadingPost });
+
+      // No heading links should be in TOC
+      const headingLinks = wrapper.findAll('a[href^="#"]');
+      expect(headingLinks.length).toBe(0);
+    });
+
+    it("does NOT render TOC sidebar when post has no headings", async () => {
+      const noHeadingsPost = {
+        ...mockPost,
+        content: "<p>Just some plain text with no headings at all.</p>",
+      };
+
+      const wrapper = await mountPostPage({ post: noHeadingsPost });
+
+      const headingLinks = wrapper.findAll('a[href^="#"]');
+      expect(headingLinks.length).toBe(0);
+    });
+  });
 });
