@@ -5,7 +5,7 @@
 ## Project Overview
 
 **Stack**: FastAPI (Python 3.14) + Next.js 16 (production) + Nuxt 4 (parallel dev) + SQLite
-**Status**: Clean working tree, all tests passing (477 backend + 591 Next.js + 345 Nuxt = 1413 total)
+**Status**: Clean working tree, all tests passing (478 backend + 591 Next.js + 345 Nuxt = 1414 total, 92.78% backend coverage)
 
 ## Key Findings
 
@@ -606,6 +606,24 @@ This iteration reconciled a stale/in-progress repository state and committed ver
   dependent test files and MSW handlers in the same commit. Test failures from port mismatches
   are silent — the API calls succeed (or fail with network errors) without the tests catching
   the mismatch.
+:::
+
+::: note | Iteration: Admin Password Security & Ruff Noqa Fix
+**Date**: 2026-07-26
+
+- **Problem**: `backend/app/init_admin.py` hardcoded the admin password "admin123" in source
+  code. While hashed before storage, this is a security risk (weak known password, visible in
+  git history). Also, `ruff format` on `export.py` introduced a formatting issue where the
+  `# noqa: ARG001` comment was on the wrong line.
+- **Fix**: Made admin password configurable via `ADMIN_PASSWORD` environment variable,
+  defaulting to "admin123" for backward compatibility. Added warning message to change
+  password after first login. Updated `.env.example` to document the variable.
+- **Also**: Fixed `# noqa: ARG001` placement in `export.py` — moved from closing parenthesis
+  line to the correct `request` parameter line.
+- **Test**: Added `test_create_admin_uses_env_password` test verifying `ADMIN_PASSWORD` env
+  var is used when set. Updated existing tests for new warning message.
+- **Verification**: 478 backend tests pass (477 + 1 new), ruff check + format clean, 92.78%
+  backend coverage.
 :::
 
 ## Next Priorities
