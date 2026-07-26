@@ -1,7 +1,7 @@
 # =============================================================================
 # Frontend Dockerfile - Multi-stage build for Nuxt 4 (Nitro server)
 # =============================================================================
-# Modeled on frontend/next/Dockerfile for consistent multi-stage pattern.
+# Multi-stage build for Nuxt 4 (Nitro server).
 
 # -----------------------------------------------------------------------------
 # Stage 1: Base - Node.js with pnpm
