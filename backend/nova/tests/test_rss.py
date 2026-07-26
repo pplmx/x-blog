@@ -167,7 +167,7 @@ def test_sitemap_includes_categories_and_tags(client, auth_headers):
 
 
 def test_robots_txt(client):
-    """robots.txt should return plain text with sitemap and rss links."""
+    """robots.txt should return valid plain text with sitemap directive."""
     response = client.get("/robots.txt")
     assert response.status_code == 200
     assert response.headers["content-type"] == "text/plain; charset=utf-8"
@@ -175,7 +175,8 @@ def test_robots_txt(client):
     assert "User-agent: *" in content
     assert "Allow: /" in content
     assert "Sitemap:" in content
-    assert "RSS:" in content
+    # RSS is not a valid robots.txt directive — should not be present
+    assert "RSS:" not in content
 
 
 def test_rss_feed_empty_database(client):
