@@ -14,6 +14,17 @@ function fetchPosts(pageNum: number) {
   navigateTo({ query: { page: pageNum } });
   refresh();
 }
+
+// SEO: set dynamic head metadata
+useHead({
+  title: "首页 — X-Blog",
+  meta: [
+    {
+      name: "description",
+      content: "X-Blog — 一个现代化的技术博客系统。探索最新的技术文章和见解。",
+    },
+  ],
+});
 </script>
 
 <template>

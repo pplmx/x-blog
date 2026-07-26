@@ -1,3 +1,34 @@
+<script setup lang="ts">
+// SEO: set dynamic head metadata
+useHead({
+  title: "关于 X-Blog",
+  meta: [
+    {
+      name: "description",
+      content: "X-Blog 是一个基于 FastAPI + Nuxt 的现代化技术博客系统，支持 Markdown、Mermaid 图表、KaTeX 数学公式、代码高亮等功能。",
+    },
+  ],
+});
+
+const techStack = [
+  { icon: "lucide:globe", name: "Nuxt", desc: "前端框架", color: "from-black to-gray-800" },
+  { icon: "lucide:code-2", name: "FastAPI", desc: "后端框架", color: "from-green-500 to-green-700" },
+  { icon: "lucide:database", name: "SQLAlchemy", desc: "ORM", color: "from-orange-500 to-red-500" },
+  { icon: "lucide:sparkles", name: "TypeScript", desc: "语言", color: "from-blue-500 to-blue-700" },
+];
+
+const features = [
+  "Markdown 文章支持",
+  "分类与标签管理",
+  "评论系统",
+  "阅读量统计",
+  "RSS 订阅",
+  "SEO 优化",
+  "响应式设计",
+  "管理后台",
+];
+</script>
+
 <template>
   <div class="max-w-3xl mx-auto">
     <!-- 返回按钮 -->
@@ -83,26 +114,6 @@
     </div>
   </div>
 </template>
-
-<script setup lang="ts">
-const techStack = [
-  { icon: "lucide:globe", name: "Nuxt", desc: "前端框架", color: "from-black to-gray-800" },
-  { icon: "lucide:code-2", name: "FastAPI", desc: "后端框架", color: "from-green-500 to-green-700" },
-  { icon: "lucide:database", name: "SQLAlchemy", desc: "ORM", color: "from-orange-500 to-red-500" },
-  { icon: "lucide:sparkles", name: "TypeScript", desc: "语言", color: "from-blue-500 to-blue-700" },
-];
-
-const features = [
-  "Markdown 文章支持",
-  "分类与标签管理",
-  "评论系统",
-  "阅读量统计",
-  "RSS 订阅",
-  "SEO 优化",
-  "响应式设计",
-  "管理后台",
-];
-</script>
 
 <route lang="json">
 {

@@ -2,8 +2,11 @@
  * About page tests
  * Tests the static about page content (Vue/Nuxt migration of page.test.tsx)
  */
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import { mount } from "@vue/test-utils";
+
+// Stub useHead (Nuxt composable) since about.vue uses it in <script setup>
+vi.stubGlobal("useHead", vi.fn());
 
 import AboutPage from "../../app/pages/about.vue";
 
