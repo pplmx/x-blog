@@ -35,9 +35,9 @@ const topPosts = [...posts].sort(
   (a, b) => (b.views || 0) - (a.views || 0),
 );
 
-// Helper: count posts per category
+// Helper: count published posts per category (matches Next.js CategoryPieChart)
 function postsInCategory(catId: number): number {
-  return posts.filter((p) => p.category?.id === catId).length;
+  return posts.filter((p) => p.category?.id === catId && p.published).length;
 }
 
 const stats = [
