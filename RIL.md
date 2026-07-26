@@ -5,9 +5,32 @@
 ## Project Overview
 
 **Stack**: FastAPI (Python 3.14) + Next.js 16 (production) + Nuxt 4 (parallel dev) + SQLite
-**Status**: Clean working tree, all 1254 tests passing (464 backend + 209 Nuxt + 581 Next.js)
+**Status**: Clean working tree, all tests passing (472 backend + 590 Next.js = 1062 total)
 
 ## Key Findings
+
+### Next.js fetchWithTimeout Timeout Management Bug (FIXED)
+
+- **Bug**: In `frontend/next/lib/api.ts`, `fetchWithTimeout` created a single `AbortController`
+  and `setTimeout` before the retry loop. `clearTimeout` was called on response receipt (line 39)
+  or abort (line 58), but NO new timeout was set for retry attempts. This meant:
+  1. Retry fetches had no timeout protection — a hanging retry would never abort.
+  2. The timeout from the first attempt could fire during the backoff delay, corrupting
+     the retry flow.
+
+- **Fix**: Moved `AbortController` + `setTimeout` creation inside the retry loop so each
+  attempt gets its own fresh timeout. Used `try/finally` to ensure `clearTimeout` runs on
+  ALL code paths (success, 4xx return, 5xx retry, abort, generic catch). Removed the
+  manual `clearTimeout` calls from the success/abort paths since `finally` handles them.
+
+- **Test**: Added "creates a fresh AbortController for each retry attempt" test that verifies
+  two distinct `AbortSignal` objects are passed to `fetch` across retry attempts.
+
+- **Also**: Applied Biome formatting to `api.crud.test.ts` (pre-existing format violations
+  in import statement and object literals that were missed in Round 15+ cleanup).
+
+- **Result**: 590 Next.js tests pass (was 589, +1 new). TypeScript clean (0 errors).
+  Biome clean. Backend: 472 tests still pass.
 
 ### Nuxt Frontend Post Detail Page Bug (FIXED)
 
@@ -29,11 +52,11 @@
 
 ### Test Infrastructure
 
-- **Backend**: 464 tests, `uv run pytest -n auto` (pytest-xdist parallel), 85% coverage
-- **Next.js**: 581 tests pass (was 580/581 — fixed PostForm checkbox test for pinned field)
+- **Backend**: 472 tests, `uv run pytest -n auto` (pytest-xdist parallel), 85% coverage
+- **Next.js**: 590 tests pass (was 581, grew through TypeScript fixes, new API function tests, retry tests)
 - **Nuxt**: 209 tests pass (was 142 initially, grew to 209 after adding test script, new page tests,
   composables tests, and component tests for CommentList, CommentForm, and ShareButtons)
-- All three test suites verified passing — total 1254 tests, 0 failures
+- All three test suites verified passing — total 1271 tests, 0 failures
 
 ### Git Hooks
 
@@ -67,7 +90,7 @@
 - Atomic SQL UPDATE for increment_views/increment_likes (TOCTOU-safe)
 - Rate limiting via slowapi on write endpoints
 - Cache via cachetools (categories, tags, posts)
-- 464 backend tests with 85% coverage
+- 472 backend tests with 85% coverage
 
 ### Next.js TypeScript Error Reduction (COMPLETED)
 
@@ -253,4 +276,4 @@
 - **Testing pattern**: Components with `await` in `<script setup>` (CommentList) require a `<Suspense>`
   wrapper for test mounting — same pattern used by page tests. Components without async setup
   (CommentForm, ShareButtons) mount directly.
-- **Result**: Nuxt test count grew from 160 to 209 (+49 tests). Total project tests: 1254, 0 failures.
+- **Result**: Nuxt test count grew from 160 to 209 (+49 tests). Total project tests: 1271, 0 failures.
