@@ -20,7 +20,7 @@ A modern full-stack blog application built with FastAPI + Next.js
 - 🎨 **Beautiful UI** - Clean design with Tailwind CSS v4 + shadcn/ui
 - 📱 **Responsive** - Mobile-friendly responsive layout
 - 🔒 **Admin Panel** - Built-in admin dashboard for content management
-- 🧪 **Well Tested** - 1404 tests (475 backend + 590 Next.js + 339 Nuxt), 85% backend coverage
+- 🧪 **Well Tested** - 1405 tests (475 backend + 590 Next.js + 340 Nuxt), 85% backend coverage
 - ✅ **Type Safe** - Full TypeScript support + Pydantic validation
 - 🔍 **Full-text Search** - Post search functionality
 - 🌙 **Dark Mode** - System preference aware dark mode
@@ -98,7 +98,7 @@ See [docs/deployment.md](./docs/deployment.md) for detailed deployment guide.
 | `just frontend`      | Run Next.js dev server                                      |
 | `just lint`          | Lint code (ruff + biome)                                    |
 | `just format`        | Format code                                                 |
-| `just test`          | Run all tests (475 backend + 590 Next.js + 339 Nuxt = 1404) |
+| `just test`          | Run all tests (475 backend + 590 Next.js + 340 Nuxt = 1405) |
 | `just test-backend`  | Run backend tests (parallel)                                |
 | `just test-frontend` | Run Next.js frontend tests                                  |
 | `just test-nuxt`     | Run Nuxt frontend tests                                     |
@@ -245,8 +245,8 @@ just test-frontend-coverage
 
 - Backend: 475 tests (pytest + pytest-xdist), 85% coverage
 - Next.js (production frontend): 590 tests (Vitest)
-- Nuxt (migration target): 339 tests (Vitest)
-- **Total: 1404 tests, 0 failures**
+- Nuxt (migration target): 340 tests (Vitest)
+- **Total: 1405 tests, 0 failures**
 
 ## 🤝 Contributing
 
