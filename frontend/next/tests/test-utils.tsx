@@ -5,9 +5,9 @@
 import { type ReactNode } from 'react';
 import { render, RenderOptions } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { http, HttpResponse } from 'msw';
+import { http, HttpResponse, type RequestHandler } from 'msw';
 import { setupServer } from 'msw/node';
-import { vi, SpyInstance } from 'vitest';
+import { vi } from 'vitest';
 
 // ============================================================================
 // Query Client Utilities
@@ -147,7 +147,7 @@ export function mockIntersectionObserver() {
  * Creates a new MSW server with the given handlers
  * Use this in each test file to create a fresh server instance
  */
-export function createMSWServer(handlers: Parameters<typeof setupServer>[0] = []) {
+export function createMSWServer(handlers: RequestHandler[] = []) {
   return setupServer(...handlers);
 }
 
@@ -517,7 +517,7 @@ export function setupQueryEnvironment() {
 /**
  * Sets up MSW server environment - creates new server instance each time
  */
-export function setupMSWEnvironment(handlers?: Parameters<typeof setupServer>[0]) {
+export function setupMSWEnvironment(handlers?: RequestHandler[]) {
   const server = setupServer(...(handlers || []));
 
   beforeEach(() => {
