@@ -175,6 +175,42 @@ describe('API - Retry Logic and fetchWithTimeout', () => {
       await expect(promise).rejects.toBe(abortError);
       expect(mockFetch).toHaveBeenCalledTimes(1);
     });
+
+    it('creates a fresh AbortController for each retry attempt (timeout reset)', async () => {
+      // Verify that each retry attempt gets a fresh AbortController/signal.
+      // Bug: timeout was set once before the loop, so retry attempts had no
+      // timeout protection. Fix: AbortController + timeout created per attempt.
+      const signals: AbortSignal[] = [];
+      mockFetch.mockImplementation((_url: string, options?: RequestInit) => {
+        const signal = (options as { signal?: AbortSignal })?.signal;
+        if (signal) signals.push(signal);
+        // First attempt: 5xx to trigger retry. Second: success.
+        if (signals.length === 1) {
+          return Promise.resolve(
+            mockResponse(
+              { error: 'server error' },
+              { status: 500, statusText: 'Internal Server Error' }
+            )
+          );
+        }
+        return Promise.resolve(mockResponse({ data: 'ok' }));
+      });
+
+      const promise = fetchWithTimeout('http://localhost:8000/api/posts', {
+        timeout: 10000,
+        retries: 1,
+      });
+      // Advance past the exponential backoff delay (RETRY_DELAY * 2^0 = 1000ms)
+      // The 10000ms timeout should NOT fire during this window
+      await vi.advanceTimersByTimeAsync(1000);
+      const result = await promise;
+
+      expect(result.ok).toBe(true);
+      expect(mockFetch).toHaveBeenCalledTimes(2);
+      // Each attempt should have a distinct AbortController/signal
+      expect(signals.length).toBe(2);
+      expect(signals[0]).not.toBe(signals[1]);
+    });
   });
 
   describe('getAuthHeaders', () => {
