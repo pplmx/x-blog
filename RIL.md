@@ -63,9 +63,9 @@
 - Cache via cachetools (categories, tags, posts)
 - 464 backend tests with 85% coverage
 
-### Next.js TypeScript Error Reduction
+### Next.js TypeScript Error Reduction (COMPLETED)
 
-- Reduced `tsc --noEmit` errors from 49 to 26 across 5 rounds of fixes:
+- Reduced `tsc --noEmit` errors from 49 to **0** across 7 rounds of fixes:
     - Round 4: Fixed PostForm test (pinned checkbox count: 4→5)
     - Round 5a: Added `CardDescription` to `components/ui/card.tsx` (TS2305)
     - Round 5b: Imported `defaultLocale` in `LocaleSync.tsx` (TS2304)
@@ -75,9 +75,18 @@
   type (TS2304), added explicit param types to 9 `replace` callbacks (TS7006)
     - Round 5e: Cast `robots: { noindex: true } as any` in 3 files (Next.js 16
   type bug: `noindex` typed as `never | undefined`)
-- Remaining 26 errors: AnalyticsCharts formatter, PostList/PostCard type
-  mismatch, MobileFilterBar/Sidebar URLSearchParams, test-utils vitest types,
-  hooks.ts missing API exports — require deeper investigation
+    - Round 5f: Added `updated_at` to `PostList` type in `types/index.ts`;
+  added `updated_at` to all PostList test mocks (TS2741, TS2339)
+    - Round 5g: Fixed `AnalyticsCharts.tsx` formatter types (removed `: number`
+  param, use `value ?? 0`); fixed `CategoryPieChart` props to use `category`
+  instead of `category_id`; fixed test mocks to match
+    - Round 5h: Removed unused `SpyInstance` import; fixed MSW `RequestHandler[]`
+  type annotations in `test-utils.tsx` (TS2305, TS2322, TS2488)
+    - Round 5i: Fixed `URLSearchParams` vs `ReadonlyURLSearchParams` in
+  `MobileFilterBar.test.tsx` and `Sidebar.test.tsx` (8 TS2345 errors)
+    - Round 6: Added 5 missing API functions to `api.ts` (`createCategory`,
+  `createTag`, `createPost`, `updatePost`, `deletePost`) — were referenced by
+  `hooks.ts` but never defined (TS2305 errors)
 
 ### Nuxt Frontend Search Page Bug (FIXED)
 
