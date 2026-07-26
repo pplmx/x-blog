@@ -1,7 +1,12 @@
 <script setup lang="ts">
+import { computed } from 'vue';
+import { extractToc } from '../../../composables/useToc';
 
 const route = useRoute();
 const { data: post, pending, error } = await usePost(route.params.slug as string);
+
+// Extract table of contents from post content
+const toc = computed(() => (post.value?.content ? extractToc(post.value.content) : []));
 
 // Fetch related posts only when the post has been loaded with a valid ID.
 // Previously this used `post.value?.id || 0` which sent a meaningless request
@@ -46,6 +51,17 @@ async function handleLike() {
     likeLoading.value = false;
   }
 }
+
+// Smooth scroll to heading element
+function scrollToHeading(event: MouseEvent) {
+  const href = (event.currentTarget as HTMLAnchorElement)?.getAttribute('href');
+  if (!href || !href.startsWith('#')) return;
+  const id = href.slice(1);
+  const el = document.getElementById(id);
+  if (el) {
+    el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+}
 </script>
 
 <template>
@@ -85,7 +101,43 @@ async function handleLike() {
     </div>
 
     <!-- Post content -->
-    <article v-else class="prose prose-lg max-w-none">
+    <div v-else class="flex gap-8">
+      <!-- TOC sidebar (desktop only) -->
+      <nav
+        v-if="toc.length > 1"
+        class="hidden lg:block w-64 flex-shrink-0"
+      >
+        <div class="sticky top-24">
+          <div class="bg-gray-50 dark:bg-gray-800/50 rounded-xl p-4 border border-gray-100 dark:border-gray-800">
+            <h3 class="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-3 flex items-center gap-2">
+              <Icon icon="lucide:list" class="w-4 h-4" />
+              目录
+            </h3>
+            <ul class="space-y-1">
+              <li
+                v-for="item in toc"
+                :key="item.id"
+                :class="[
+                  'text-sm transition-colors',
+                  item.level === 1 ? 'ml-0' : 'ml-' + (item.level - 1) * 2,
+                  'hover:text-blue-600',
+                ]"
+              >
+                <a
+                  :href="`#${item.id}`"
+                  class="block py-1 text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400"
+                  @click.prevent="scrollToHeading"
+                >
+                  {{ item.text }}
+                </a>
+              </li>
+            </ul>
+          </div>
+        </div>
+      </nav>
+
+      <!-- Main content -->
+      <article class="prose prose-lg max-w-none">
       <header class="mb-8">
         <h1 class="text-3xl sm:text-4xl font-bold text-gray-900 mb-6 leading-tight">
           {{ post.title }}
@@ -193,6 +245,7 @@ async function handleLike() {
         </div>
       </footer>
     </article>
+  </div>
   </div>
 </template>
 
