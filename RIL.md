@@ -64,9 +64,26 @@
 - Cache via cachetools (categories, tags, posts)
 - 464 backend tests with 85% coverage
 
-## Next Iteration Suggestions
+### Nuxt Frontend Search Page Bug (FIXED)
 
-1. Add comments section to Nuxt post detail page (parity with Next.js)
-2. Add reading progress + table of contents to Nuxt post detail
-3. Add SEO JSON-LD schema script to Nuxt post detail
-4. Consider removing or sunsetting the Nuxt frontend if it's not actively used
+- **Bug**: The search page showed "在上方搜索框输入关键词开始搜索" (enter keywords in
+  the search box above) but no search input existed anywhere in the app.
+- **Fix**: Added a search input field with `v-model="searchInput"` and
+  `@keydown.enter="handleSearchInput"` that navigates to `/search?q=keyword`.
+  Updated the message to "输入关键词开始搜索".
+- **SEO**: Added `useHead()` for dynamic title (changes with query) and
+  `robots: noindex, follow` meta tag.
+- **Tests**: Updated existing test for new message text. Added 2 new tests:
+  search input rendering and search icon placement.
+- **Nuxt test count**: 150 (was 148)
+
+### Nuxt SEO Metadata Status
+
+- **Post detail page**: Dynamic SEO per post (title, description, OG tags,
+  Twitter card via `useHead`)
+- **Search page**: Dynamic SEO per query (title, description, robots noindex)
+- **App config**: Default SEO metadata for all pages (title, description,
+  keywords, OG tags, Twitter card)
+- **Tags page**: Route JSON meta only, no dynamic `useHead` — **TODO**
+- **Index page**: Route JSON meta only — **TODO**
+- **About page**: Route JSON meta only — **TODO**
