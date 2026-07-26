@@ -80,6 +80,36 @@ class TestAdminPosts:
         )
         assert response.status_code == 200
 
+    def test_update_post_preserves_category_id(self, client, auth_headers, db_session):
+        """Updating a post without category_id should not clear the existing category."""
+        category = models.Category(name="Tech")
+        db_session.add(category)
+        db_session.commit()
+
+        post = models.Post(
+            title="Test",
+            slug="test",
+            content="Content",
+            published=True,
+            category_id=category.id,
+        )
+        db_session.add(post)
+        db_session.commit()
+        post_id = post.id
+
+        # Update only title — category_id should be preserved
+        response = client.put(
+            f"/api/admin/posts/{post_id}",
+            headers={**auth_headers, "Content-Type": "application/json"},
+            json={"title": "Updated Title"},
+        )
+        assert response.status_code == 200
+
+        # Verify the category_id was not cleared
+        updated = client.get(f"/api/admin/posts/{post_id}", headers=auth_headers)
+        assert updated.status_code == 200
+        assert updated.json()["category_id"] == category.id
+
     def test_delete_post(self, client, auth_headers, db_session):
         post = models.Post(title="Test", slug="test", content="Content", published=True)
         db_session.add(post)
