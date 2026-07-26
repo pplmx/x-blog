@@ -111,6 +111,8 @@ async function mountIndexPage({
 
   vi.stubGlobal("navigateTo", vi.fn());
 
+  vi.stubGlobal("useHead", vi.fn());
+
   // The index page uses `computed` without importing it (Nuxt auto-imports it)
   vi.stubGlobal("computed", computed);
 
@@ -258,6 +260,8 @@ describe("Index Page", () => {
 
       vi.stubGlobal("navigateTo", navigateToMock);
 
+      vi.stubGlobal("useHead", vi.fn());
+
       vi.stubGlobal("computed", computed);
 
       vi.stubGlobal("useFetch", vi.fn((url: string) => {
@@ -330,6 +334,8 @@ describe("Index Page", () => {
       vi.stubGlobal("useRoute", () => reactive({ query: {} }));
 
       vi.stubGlobal("navigateTo", vi.fn());
+
+      vi.stubGlobal("useHead", vi.fn());
 
       vi.stubGlobal("computed", computed);
 
