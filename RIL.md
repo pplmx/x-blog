@@ -204,14 +204,22 @@
   `mockRejectedValue` + `promise.catch(() => {})` before timer advancement
 - **Result**: All 581 Next.js tests pass, 0 unhandled rejection errors.
   464 backend tests still pass.
-- **Post detail page**: Dynamic SEO per post (title, description, OG tags,
-  Twitter card via `useHead`)
-- **Search page**: Dynamic SEO per query (title, description, robots noindex)
-- **App config**: Default SEO metadata for all pages (title, description,
-  keywords, OG tags, Twitter card)
-- **Tags page**: useHead() added for dynamic title (tags list vs tag posts)
-- **Index page**: useHead() added for title and description
-- **About page**: useHead() added for title and description (merged two script blocks)
+
+### Nuxt Post Detail Dark Mode Completeness (ROUND 16+)
+
+- **Problem**: Dark mode toggle was added to `default.vue` layout (Round 13)
+  but the individual post detail components had no `dark:` class variants.
+  Toggling dark mode left ShareButtons, CommentList, CommentForm, and the
+  reading progress bar in light mode while the rest of the page went dark.
+- **Fix**: Added `dark:` variants to 4 files (20 insertions, 20 deletions):
+    - `ShareButtons.vue`: border, text, button bg colors for Weibo/copy buttons
+    - `CommentList.vue`: heading, loading placeholders, empty state, comment
+  borders/text, pagination button backgrounds
+    - `CommentForm.vue`: heading text, input/textarea borders and dark bg,
+  error/success message text colors
+    - `[slug].vue`: reading progress bar background
+- **Result**: Dark mode is now consistent across the entire post detail page.
+  All 153 Nuxt tests still pass.
 
 ## Next Iteration Suggestions
 

@@ -1,6 +1,6 @@
 <template>
   <section>
-    <h2 class="text-xl font-bold text-gray-900 mb-4">发表评论</h2>
+    <h2 class="text-xl font-bold text-gray-900 dark:text-gray-100 mb-4">发表评论</h2>
 
     <form @submit.prevent="handleSubmit" class="space-y-4">
       <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -9,14 +9,14 @@
           type="text"
           required
           placeholder="昵称"
-          class="px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+          class="px-3 py-2 border border-gray-200 dark:border-gray-700 dark:bg-gray-800 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
         />
         <input
           v-model="form.email"
           type="email"
           required
           placeholder="邮箱（不会公开）"
-          class="px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+          class="px-3 py-2 border border-gray-200 dark:border-gray-700 dark:bg-gray-800 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
         />
       </div>
 
@@ -25,7 +25,7 @@
         required
         rows="4"
         placeholder="写点什么吧..."
-        class="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm resize-y"
+        class="w-full px-3 py-2 border border-gray-200 dark:border-gray-700 dark:bg-gray-800 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm resize-y"
       ></textarea>
 
       <button
@@ -41,8 +41,8 @@
         {{ submitting ? '提交中...' : '提交评论' }}
       </button>
 
-      <p v-if="error" class="text-sm text-red-600">{{ error }}</p>
-      <p v-if="success" class="text-sm text-green-600">评论提交成功，等待审核中！</p>
+      <p v-if="error" class="text-sm text-red-600 dark:text-red-400">{{ error }}</p>
+      <p v-if="success" class="text-sm text-green-600 dark:text-green-400">评论提交成功，等待审核中！</p>
     </form>
   </section>
 </template>

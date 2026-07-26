@@ -1,21 +1,21 @@
 <template>
   <section>
     <div class="flex items-center justify-between mb-4">
-      <h2 class="text-xl font-bold text-gray-900">评论 ({{ total }})</h2>
+      <h2 class="text-xl font-bold text-gray-900 dark:text-gray-100">评论 ({{ total }})</h2>
     </div>
 
     <!-- Loading -->
     <div v-if="pending" class="space-y-3">
       <div v-for="i in 3" :key="i" class="animate-pulse">
-        <div class="bg-gray-200 h-4 rounded w-3/4 mb-2"></div>
-        <div class="bg-gray-200 h-3 rounded w-1/2"></div>
+        <div class="bg-gray-200 dark:bg-gray-700 h-4 rounded w-3/4 mb-2"></div>
+        <div class="bg-gray-200 dark:bg-gray-700 h-3 rounded w-1/2"></div>
       </div>
     </div>
 
     <!-- Empty state -->
     <div
       v-else-if="comments.length === 0"
-      class="text-center py-8 text-gray-500"
+      class="text-center py-8 text-gray-500 dark:text-gray-400"
     >
       还没有评论，来发第一个评论吧！
     </div>
@@ -25,15 +25,15 @@
       <li
         v-for="comment in comments"
         :key="comment.id"
-        class="border border-gray-100 rounded-lg p-3"
+        class="border border-gray-100 dark:border-gray-700 rounded-lg p-3"
       >
         <div class="flex items-start gap-2">
           <div class="flex-1">
             <div class="flex items-center gap-2 mb-1">
-              <span class="font-medium text-sm text-gray-900">{{ comment.nickname }}</span>
-              <span class="text-xs text-gray-500">{{ formatDate(comment.created_at) }}</span>
+              <span class="font-medium text-sm text-gray-900 dark:text-gray-100">{{ comment.nickname }}</span>
+              <span class="text-xs text-gray-500 dark:text-gray-400">{{ formatDate(comment.created_at) }}</span>
             </div>
-            <p class="text-sm text-gray-700 whitespace-pre-wrap">{{ comment.content }}</p>
+            <p class="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap">{{ comment.content }}</p>
           </div>
         </div>
       </li>
@@ -53,7 +53,7 @@
           'px-3 py-1 rounded text-sm',
           page === currentPage
             ? 'bg-blue-600 text-white'
-            : 'bg-gray-100 text-gray-700 hover:bg-gray-200',
+            : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700',
         ]"
       >
         {{ page }}

@@ -80,7 +80,7 @@ function scrollToHeading(event: MouseEvent) {
 <template>
   <div class="max-w-3xl mx-auto">
     <!-- Reading progress bar -->
-    <div class="fixed top-0 left-0 right-0 h-1 bg-gray-200 z-20">
+    <div class="fixed top-0 left-0 right-0 h-1 bg-gray-200 dark:bg-gray-700 z-20">
       <div
         class="h-full bg-blue-600 transition-all duration-150 ease-out"
         :style="{ width: scrollProgress + '%' }"

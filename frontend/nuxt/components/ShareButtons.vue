@@ -1,6 +1,6 @@
 <template>
-  <div class="flex items-center justify-center gap-4 py-6 my-8 border-y border-gray-200">
-    <span class="text-sm text-gray-500 flex items-center gap-2">
+  <div class="flex items-center justify-center gap-4 py-6 my-8 border-y border-gray-200 dark:border-gray-700">
+    <span class="text-sm text-gray-500 dark:text-gray-400 flex items-center gap-2">
       <Icon icon="lucide:share-2" class="w-4 h-4" />
       分享到
     </span>
@@ -9,7 +9,7 @@
     <button
       type="button"
       @click="shareToWeibo"
-      class="p-2 rounded-full bg-red-50 text-red-600 hover:bg-red-100 transition-colors"
+      class="p-2 rounded-full bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/40 transition-colors"
       title="分享到微博"
     >
       <svg viewBox="0 0 24 24" fill="currentColor" class="w-5 h-5">
@@ -21,7 +21,7 @@
     <button
       type="button"
       @click="handleCopyLink"
-      class="p-2 rounded-full bg-gray-50 text-gray-600 hover:bg-gray-100 transition-colors"
+      class="p-2 rounded-full bg-gray-50 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
       title="复制链接"
     >
       <Icon
