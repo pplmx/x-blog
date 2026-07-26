@@ -31,7 +31,7 @@ just install
 just dev
 ```
 
-访问 http://localhost:3000
+访问 http://localhost:13334
 
 ### 方式二：分别启动
 
@@ -42,7 +42,7 @@ uv sync
 uv run uvicorn app.main:app --reload --port 8000
 
 # 终端 2 - 前端
-cd frontend/next
+cd frontend/nuxt
 pnpm install
 pnpm dev
 ```
@@ -58,8 +58,7 @@ pnpm dev
 cp backend/.env.example backend/.env
 # 编辑 backend/.env，设置 JWT_SECRET_KEY
 
-# 前端配置 (可选)
-cp frontend/next/.env.example frontend/next/.env.local
+# 前端配置 (可选) - Nuxt 使用 Docker 环境变量
 ```
 
 ### 2. 一键启动
@@ -77,7 +76,7 @@ docker-compose up -d
 
 | 服务     | 地址                        |
 | -------- | --------------------------- |
-| 前端     | http://localhost:13333      |
+| 前端     | http://localhost:13334      |
 | 后端 API | http://localhost:18888      |
 | API 文档 | http://localhost:18888/docs |
 
@@ -99,9 +98,9 @@ uv run uvicorn app.main:app --host 0.0.0.0 --port 8000
 
 ```bash
 # 创建环境变量文件
-echo "NEXT_PUBLIC_API_URL=http://<后端IP>:8000" > frontend/next/.env.local
+echo "NUXT_API_URL=http://<后端IP>:18888" > frontend/nuxt/.env
 
-cd frontend/next
+cd frontend/nuxt
 pnpm install
 pnpm dev
 ```
@@ -131,10 +130,9 @@ x-blog/
 │   │   ├── models/   # 数据模型
 │   │   └── main.py   # 入口
 │   └── pyproject.toml
-├── frontend/          # 前端 (Next.js + Nuxt 并行开发)
-│   ├── next/          # Next.js 应用
-│   ├── nuxt/          # Nuxt 替代方案
-│   └── package.json
+├── frontend/          # 前端 (Nuxt 4)
+│   └── nuxt/          # Nuxt 应用
+└── package.json
 ├── docker-compose.yml
 ├── justfile                # 任务脚本
 └── README.md

@@ -42,12 +42,6 @@ jobs:
         with:
           version: '9'
 
-      - name: Frontend tests
-        run: |
-          cd frontend/next
-          pnpm install
-          pnpm test
-
   nuxt-test:
     runs-on: ubuntu-latest
     steps:

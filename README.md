@@ -2,12 +2,12 @@
 
 <div align="center">
 
-![Next.js](https://img.shields.io/badge/Next.js-16-black?style=for-the-badge&logo=next.js)
+![Nuxt](https://img.shields.io/badge/Nuxt-4-0F172A?style=for-the-badge&logo=nuxt)
 ![FastAPI](https://img.shields.io/badge/FastAPI-0.135-009989?style=for-the-badge&logo=fastapi)
 ![TypeScript](https://img.shields.io/badge/TypeScript-6-3178C6?style=for-the-badge&logo=typescript)
 ![Python](https://img.shields.io/badge/Python-3.14-3776AB?style=for-the-badge&logo=python)
 
-A modern full-stack blog application built with FastAPI + Next.js
+A modern full-stack blog application built with FastAPI + Nuxt
 
 [English](./README.md) · [中文](./README.zh-CN.md)
 
@@ -15,12 +15,12 @@ A modern full-stack blog application built with FastAPI + Next.js
 
 ## ✨ Features
 
-- 🚀 **Modern Tech Stack** - Next.js 16, FastAPI, TypeScript 6, Python 3.14
+- 🚀 **Modern Tech Stack** - Nuxt 4, FastAPI, Vue 3, TypeScript, Python 3.14
 - 📝 **Markdown Support** - Write posts with Mermaid diagrams, KaTeX math, code highlighting
-- 🎨 **Beautiful UI** - Clean design with Tailwind CSS v4 + shadcn/ui
+- 🎨 **Beautiful UI** - Clean design with Tailwind CSS v4
 - 📱 **Responsive** - Mobile-friendly responsive layout
 - 🔒 **Admin Panel** - Built-in admin dashboard for content management
-- 🧪 **Well Tested** - 1407 tests (475 backend + 590 Next.js + 342 Nuxt), 85% backend coverage
+- 🧪 **Well Tested** - 912 tests (475 backend + 437 Nuxt), 85% backend coverage
 - ✅ **Type Safe** - Full TypeScript support + Pydantic validation
 - 🔍 **Full-text Search** - Post search functionality
 - 🌙 **Dark Mode** - System preference aware dark mode
@@ -55,7 +55,7 @@ just install
 
 # Or manually:
 cd backend && uv sync
-cd frontend/next && pnpm install
+cd frontend/nuxt && pnpm install
 ```
 
 ### Development
@@ -66,7 +66,7 @@ just dev
 
 # Or run separately:
 just backend  # http://localhost:18888
-just frontend # http://localhost:13333
+just frontend # http://localhost:13334
 ```
 
 ### 🐳 Docker Deployment
@@ -90,20 +90,19 @@ See [docs/deployment.md](./docs/deployment.md) for detailed deployment guide.
 
 ## 🛠️ Commands
 
-| Command              | Description                                                 |
-| -------------------- | ----------------------------------------------------------- |
-| `just install`       | Install all dependencies                                    |
-| `just dev`           | Run dev servers (backend + frontend)                        |
-| `just backend`       | Run FastAPI server                                          |
-| `just frontend`      | Run Next.js dev server                                      |
-| `just lint`          | Lint code (ruff + biome)                                    |
-| `just format`        | Format code                                                 |
-| `just test`          | Run all tests (475 backend + 590 Next.js + 342 Nuxt = 1407) |
-| `just test-backend`  | Run backend tests (parallel)                                |
-| `just test-frontend` | Run Next.js frontend tests                                  |
-| `just test-nuxt`     | Run Nuxt frontend tests                                     |
-| `just ci`            | Run lint + format + test                                    |
-| `just clean`         | Clean generated files                                       |
+| Command              | Description                          |
+| -------------------- | ------------------------------------ |
+| `just install`       | Install all dependencies             |
+| `just dev`           | Run dev servers (backend + frontend) |
+| `just backend`       | Run FastAPI server                   |
+| `just frontend`      | Run Nuxt dev server                  |
+| `just lint`          | Lint code (ruff)                     |
+| `just format`        | Format code                          |
+| `just test`          | Run all tests (backend + Nuxt)       |
+| `just test-backend`  | Run backend tests (parallel)         |
+| `just test-frontend` | Run Nuxt frontend tests              |
+| `just ci`            | Run lint + format + test             |
+| `just clean`         | Clean generated files                |
 
 ## 📡 API Endpoints
 
@@ -158,7 +157,7 @@ See [docs/deployment.md](./docs/deployment.md) for detailed deployment guide.
 
 ![Architecture Diagram](./docs/x-blog-architecture.png)
 
-> 📁 [Interactive HTML version](./docs/x-blog-architecture.html) — open locally in browser for zoom/pan. SVG diagram covering: Next.js Frontend, FastAPI Backend, SQLite DB, JWT Auth, Admin Zone, and DevOps tooling.
+> 📁 [Interactive HTML version](./docs/x-blog-architecture.html) — open locally in browser for zoom/pan. SVG diagram covering: Nuxt Frontend, FastAPI Backend, SQLite DB, JWT Auth, Admin Zone, and DevOps tooling.
 
 ## 🗂️ Project Structure
 
@@ -177,22 +176,15 @@ x-blog/
 │   └── pyproject.toml      # Python config
 │
 ├── frontend/
-│   ├── next/               # Next.js app (current production)
-│   │   ├── app/
-│   │   │   ├── page.tsx        # Home page
-│   │   │   ├── admin/          # Admin dashboard
-│   │   │   ├── posts/          # Post pages
-│   │   │   ├── tags/          # Tags page
-│   │   │   └── about/          # About page
-│   │   ├── components/         # React components
-│   │   │   ├── ui/             # shadcn/ui components
-│   │   │   └── *.tsx
-│   │   ├── lib/                # Utilities & API client
-│   │   ├── types/              # TypeScript types
-│   │   ├── package.json
-│   │   └── Dockerfile
-│   └── nuxt/               # Nuxt alternative (parallel dev)
-│       └── app/
+│   └── nuxt/               # Nuxt 4 app (Vue-based frontend)
+│       ├── app/            # Pages, layouts
+│       ├── components/     # Vue components
+│       ├── composables/    # Composables (useApi, useI18n, etc.)
+│       ├── server/         # Server routes (RSS, sitemap, etc.)
+│       ├── tests/          # Unit tests
+│       ├── e2e/            # E2E tests
+│       ├── package.json
+│       └── Dockerfile
 ├── docs/                   # Documentation
 ├── justfile                # Task runner (recommended)
 └── package.json            # Root config (for pnpm workspaces)
@@ -211,18 +203,17 @@ x-blog/
 
 ### Frontend
 
-- **Framework**: [Next.js 16](https://nextjs.org/) - React framework with App Router
-- **UI**: [shadcn/ui](https://ui.shadcn.com/) - UI components
+- **Framework**: [Nuxt 4](https://nuxt.com/) - Vue framework with SSR/SSG
+- **UI**: Custom Vue components with Tailwind CSS
 - **Styling**: [Tailwind CSS v4](https://tailwindcss.com/) - CSS framework
-- **Forms**: [React Hook Form](https://react-hook-form.com/) - Form handling
-- **Testing**: [Vitest](https://vitest.dev/) - Unit testing
-- **Linting**: [Biome](https://biomejs.dev/) - Fast JS/TS linter and formatter
+- **Testing**: [Vitest](https://vitest.dev/) - Unit testing, [Playwright](https://playwright.dev/) - E2E testing
+- **Icons**: [@iconify/vue](https://icon-sets.iconify.design/) with lucide icons
 
 ### DevOps
 
 - **Package Managers**: [uv](https://github.com/astral-sh/uv) (Python), [pnpm](https://pnpm.io/) (Node.js)
 - **Task Runner**: [just](https://github.com/casey/just) - Command runner
-- **Linting**: [ruff](https://docs.astral.sh/ruff/) (Python), [Biome](https://biomejs.dev/) (JS/TS)
+- **Linting**: [ruff](https://docs.astral.sh/ruff/) (Python)
 - **Git Hooks**: [prek](https://github.com/astral-sh/prek) - Git hooks manager
 
 ## 🧪 Testing
@@ -244,9 +235,8 @@ just test-frontend-coverage
 **Test Statistics:**
 
 - Backend: 475 tests (pytest + pytest-xdist), 85% coverage
-- Next.js (production frontend): 590 tests (Vitest)
-- Nuxt (migration target): 342 tests (Vitest)
-- **Total: 1407 tests, 0 failures**
+- Nuxt (frontend): 437 tests (Vitest)
+- **Total: 912 tests, 0 failures**
 
 ## 🤝 Contributing
 
@@ -275,6 +265,6 @@ See [Deployment Guide](./docs/deployment.md) for detailed instructions on:
 
 <div align="center">
 
-Built with ❤️ using FastAPI + Next.js
+Built with ❤️ using FastAPI + Nuxt
 
 </div>

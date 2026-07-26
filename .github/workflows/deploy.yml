@@ -35,11 +35,6 @@ jobs:
           uv sync
           uv run pytest --cov=app --cov-report=term-missing --cov-fail-under=50
 
-      - name: Frontend tests
-        run: |
-          cd frontend/next
-          pnpm install
-          pnpm test
       - name: Nuxt tests
         run: |
           cd frontend/nuxt
@@ -71,13 +66,6 @@ jobs:
           context: ./backend
           push: true
           tags: ghcr.io/${{ github.repository }}/backend:${{ github.sha }}
-
-      - name: Build and push frontend
-        uses: docker/build-push-action@v7
-        with:
-          context: ./frontend/next
-          push: true
-          tags: ghcr.io/${{ github.repository }}/frontend:${{ github.sha }}
 
       - name: Build and push nuxt
         uses: docker/build-push-action@v7
