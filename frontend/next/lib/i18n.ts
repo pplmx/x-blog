@@ -21,7 +21,6 @@ export const localeNames: Record<Locale, string> = {
   en: 'English',
 };
 
-export type { Locale };
 
 // ─────────────────────────────────────────────────────────────
 // Translation dictionaries
@@ -138,7 +137,7 @@ const en = {
   'common.cancel': 'Cancel',
 } as const;
 
-const dictionaries: Record<Locale, typeof zhCN> = {
+const dictionaries: Record<Locale, Record<string, string>> = {
   'zh-CN': zhCN,
   en,
 };
