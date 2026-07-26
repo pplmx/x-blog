@@ -35,6 +35,38 @@ if (post.value) {
       { name: "twitter:title", content: post.value.title },
       { name: "twitter:description", content: post.value.excerpt || "" },
     ],
+    script: [
+      {
+        type: "application/ld+json",
+        json: {
+          "@context": "https://schema.org",
+          "@type": "BlogPosting",
+          headline: post.value.title,
+          description: post.value.excerpt || "",
+          image: post.value.cover_image || undefined,
+          datePublished: post.value.created_at,
+          dateModified: post.value.updated_at,
+          author: {
+            "@type": "Person",
+            name: "X-Blog",
+          },
+          publisher: {
+            "@type": "Organization",
+            name: "X-Blog",
+            logo: {
+              "@type": "ImageObject",
+              url: "/logo.png",
+            },
+          },
+          mainEntityOfPage: {
+            "@type": "WebPage",
+            "@id": `/posts/${post.value.slug}`,
+          },
+          articleSection: post.value.category?.name || "Blog",
+          keywords: (post.value.tags || []).map((t: { name: string }) => t.name).join(", "),
+        },
+      },
+    ],
   });
 }
 

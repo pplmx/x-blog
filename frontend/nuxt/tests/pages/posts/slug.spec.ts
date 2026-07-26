@@ -450,6 +450,63 @@ describe("Post Detail Page", () => {
     });
   });
 
+  describe("SEO JSON-LD", () => {
+    it("emits a BlogPosting JSON-LD script in useHead when post loads", async () => {
+      const useHeadSpy = vi.fn();
+      vi.stubGlobal("useHead", useHeadSpy);
+      vi.stubGlobal("useRuntimeConfig", () => ({
+        public: { apiUrl: "http://localhost:18888" },
+      }));
+      vi.stubGlobal("useRoute", () => ({
+        params: { slug: "test-article-post" },
+        query: {},
+      }));
+      vi.stubGlobal("navigateTo", vi.fn());
+      vi.stubGlobal("useFetch", vi.fn((url: string) => {
+        if (typeof url === "string" && url.includes("/related")) {
+          return { data: ref(mockRelatedPosts), pending: ref(false), error: ref(null), refresh: vi.fn() };
+        }
+        if (typeof url === "string" && url.includes("/view")) {
+          return { data: ref(null), pending: ref(false), error: ref(null), refresh: vi.fn() };
+        }
+        return { data: ref(mockPost), pending: ref(false), error: ref(null), refresh: vi.fn() };
+      }));
+
+      const { default: PostPage } = await import("@/pages/posts/[slug].vue");
+      const SuspenseWrapper: any = {
+        components: { PostPage },
+        template:
+          `<Suspense>` +
+          `<template #default><PostPage /></template>` +
+          `<template #fallback>Loading...</template>` +
+          `</Suspense>`,
+      };
+      mount(SuspenseWrapper, {
+        global: {
+          stubs: {
+            NuxtLink: { template: '<a :href="to"><slot/></a>', props: ["to"] },
+            Icon: { template: '<svg class="iconstub" :data-icon="icon"></svg>', props: ["icon"] },
+            MarkdownContent: { template: '<div class="markdown-content"><div v-html="content"></div></div>', props: ["content"] },
+          },
+        },
+      });
+      await flushPromises();
+
+      const callArg = useHeadSpy.mock.calls[0][0];
+      const ldScripts = callArg.script.filter(
+        (s: { type: string }) => s.type === "application/ld+json",
+      );
+      expect(ldScripts.length).toBe(1);
+      const jsonLd = ldScripts[0].json;
+      expect(jsonLd["@context"]).toBe("https://schema.org");
+      expect(jsonLd["@type"]).toBe("BlogPosting");
+      expect(jsonLd.headline).toBe("Test Article Post");
+      expect(jsonLd.datePublished).toBe("2024-01-15T10:30:00Z");
+      expect(jsonLd.author.name).toBe("X-Blog");
+      expect(jsonLd.articleSection).toBe("Tech");
+    });
+  });
+
   describe("Like button", () => {
     it("renders the like button", async () => {
       const wrapper = await mountPostPage();
