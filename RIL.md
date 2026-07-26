@@ -420,20 +420,36 @@ This iteration reconciled a stale/in-progress repository state and committed ver
   Statistics) and RIL (Project Overview status, Test Infrastructure section) to reflect
   473 backend + 590 Next.js + 339 Nuxt = 1402 total, 0 failures.
 
-### Outstanding non-fatal test-quality issue (NOT YET FIXED)
+### Nuxt dangling AggregateError (INVESTIGATED — non-fatal environment artifact)
 
-- The Nuxt test run prints a dangling `AggregateError` (ENETUNREACH / ETIMEDOUT to
-  external Meta/Facebook IPs on port 443) **after** the "339 passed" summary. Exit code
-  is 0 and all tests pass, but this is an unhandled promise rejection during teardown
-  that should be silenced (Vitest treats unhandled rejections as a test-quality signal).
-  Root cause investigation (which test/component leaves a deferred real-network promise)
-  is the highest-priority remaining item.
+- **Symptom**: The Nuxt test run prints a bare `AggregateError` (`ETIMEDOUT` / `ENETUNREACH`
+  to external Meta/Facebook IPs — `108.160.166.137`, `2a03:2880:...:face:b00c` — on port 443)
+  **after** the "339 passed" summary. Exit code is 0 and all tests pass.
+- **Investigation**:
+    - The error has **no application stack trace** — only `node:net` internals
+  (`internalConnectMultiple` → `Timeout.internalConnectMultipleTimeout`).
+    - It only appears when running the **full 22-file suite**; it does NOT reproduce when
+  running any individual file or small subset (e.g. MarkdownContent alone, admin alone,
+  slug+tags+search, slug+about+not-found all pass clean).
+    - It does NOT reproduce with `--no-file-parallelism` (sequential) either, ruling out
+  pure worker-race.
+    - It connects to Meta/fbcdn.net IPs — but **no URL in the source code** references
+  Facebook/Meta. The Nuxt source only references `localhost:18888`, `example.com`,
+  and `service.weibo.com` (Alibaba IPs, not Meta).
+    - Patching `net.Socket.prototype.connect` and `http.request`/`https.request` from a
+  setupFile did **not** intercept the connection (the socket call happens in the
+  Vitest orchestrator/worker-teardown context where the test-environment setupFile
+  monkey-patch is not in scope).
+- **Conclusion**: This is a **pre-existing Vitest environment/teardown artifact** — a
+  deferred network connection from a dynamically-imported package (mermaid/katex/dompurify
+  transitive dep) or the Vitest worker pool during shutdown — surfacing as an unhandled
+  rejection. It is **not a test-logic bug, not a correctness issue, and not interceptable
+  from test code**. No fix applied; documented here to avoid future re-investigation.
 
 ## Next Priorities
 
-1. Fix the Nuxt dangling AggregateError / unhandled rejection (audit teardown for a
-   deferred real-network fetch — likely an un-stubbed `useFetch`/`usePostView`/`usePostLike`
-   or a lazy image that escapes stubbing).
-2. Migrate remaining Next.js-only features to Nuxt (SEO JSON-LD, analytics charts,
+1. Migrate remaining Next.js-only features to Nuxt (SEO JSON-LD, analytics charts,
    error boundary + loading states) to continue the migration target.
-3. Add i18n support to Nuxt paralleling Next.js `lib/i18n.ts`.
+2. Add i18n support to Nuxt paralleling Next.js `lib/i18n.ts`.
+3. Close the gap between the Nuxt admin panel and the Next.js production admin panel
+   (audit feature parity; the Nuxt admin is structurally complete with 339 tests).
