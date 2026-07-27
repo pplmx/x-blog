@@ -40,24 +40,22 @@ function slugify(text: string): string {
 export function extractToc(html: string): TocItem[] {
 	if (!html) return [];
 
-	// Use a simple regex to find all heading tags
-	const headingRegex = /<h([1-6])[^>]*>(.*?)<\/h([1-6])>/gi;
+	// Use a simple regex to find all heading tags. Using String.replace
+	// with a callback avoids both manual RegExp.exec loop state and the
+	// esbuild 0.28.1 transpilation bug with exec+while patterns.
 	const toc: TocItem[] = [];
-	let match: RegExpExecArray | null;
 
-	match = headingRegex.exec(html);
-	while (match !== null) {
-		const level = Number.parseInt(match[1], 10);
-		const rawText = match[2];
-
+	html.replace(/<h([1-6])[^>]*>(.*?)<\/h([1-6])>/gi, (_fullMatch, openLevel: string, rawText: string) => {
+		const level = Number.parseInt(openLevel, 10);
 		// Strip HTML tags from the heading text
 		const text = rawText.replace(/<[^>]+>/g, "").trim();
 
-		if (!text) continue;
-
-		const id = slugify(text);
-		toc.push({ id, level, text });
-	}
+		if (text) {
+			const id = slugify(text);
+			toc.push({ id, level, text });
+		}
+		return _fullMatch;
+	});
 
 	return toc;
 }
