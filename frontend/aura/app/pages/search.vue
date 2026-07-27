@@ -9,15 +9,11 @@ const {
 } = await useSearch(query, route.query.page ? Number.parseInt(route.query.page, 10) : 1);
 
 // SEO: set dynamic head metadata based on search query
-useHead({
+useSeo({
 	title: query ? `搜索: ${query}` : "搜索文章",
-	meta: [
-		{
-			name: "description",
-			content: query ? `搜索"${query}"的文章结果` : "在 X-Blog 中搜索文章",
-		},
-		{ name: "robots", content: "noindex, follow" },
-	],
+	description: query ? `搜索"${query}"的文章结果` : "在 X-Blog 中搜索文章",
+	path: query ? `/search?q=${encodeURIComponent(query)}` : "/search",
+	noindex: true,
 });
 
 // Search input handler: navigate to /search?q=keyword on Enter

@@ -19,14 +19,10 @@ function fetchPosts(pageNum: number) {
 }
 
 // SEO: set dynamic head metadata
-useHead({
+useSeo({
 	title: "首页 — X-Blog",
-	meta: [
-		{
-			name: "description",
-			content: "X-Blog — 一个现代化的技术博客系统。探索最新的技术文章和见解。",
-		},
-	],
+	description: "X-Blog — 一个现代化的技术博客系统。探索最新的技术文章和见解。",
+	path: "/",
 });
 </script>
 

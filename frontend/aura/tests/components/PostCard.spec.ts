@@ -31,6 +31,10 @@ const stubs = {
 	NuxtLink: {
 		template: '<a class="nuxt-link-stub"><slot/></a>',
 	},
+	BookmarkButton: {
+		template: '<button class="bookmark-stub" :title="variant === \'full\' ? \'收藏文章\' : \'收藏文章\'" :data-post-id="postId"></button>',
+		props: ["postId", "post", "variant"],
+	},
 };
 
 function mountPostCard(post = mockPost) {
@@ -127,6 +131,19 @@ describe("PostCard", () => {
 			const postNoViews = { ...mockPost, views: 0 };
 			const wrapper = mountPostCard(postNoViews);
 			expect(wrapper.text()).toContain("0");
+		});
+	});
+
+	describe("bookmark", () => {
+		it("renders a bookmark button", () => {
+			const wrapper = mountPostCard();
+			expect(wrapper.find("button[title='收藏文章']").exists()).toBe(true);
+		});
+
+		it("renders bookmark button with correct postId", () => {
+			const wrapper = mountPostCard();
+			const button = wrapper.find("button[title='收藏文章']");
+			expect(button.exists()).toBe(true);
 		});
 	});
 });

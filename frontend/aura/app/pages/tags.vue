@@ -13,15 +13,14 @@ const { data: posts, pending: postsPending } = await usePosts(
 );
 const pending = computed(() => tagsPending.value || postsPending.value);
 
+// Look up the tag name for SEO when a tag is selected
+const tagName = tagId ? tags.value?.find((t) => t.id === tagId)?.name : undefined;
+
 // SEO: set dynamic head metadata based on view state
-useHead({
-	title: tagId ? "标签文章" : "所有标签",
-	meta: [
-		{
-			name: "description",
-			content: tagId ? "浏览指定标签下的所有文章" : "浏览 X-Blog 中的所有标签",
-		},
-	],
+useSeo({
+	title: tagName ? `标签: ${tagName}` : "所有标签",
+	description: tagName ? `浏览标签 "${tagName}" 下的所有文章` : "浏览 X-Blog 中的所有标签",
+	path: "/tags",
 });
 </script>
 

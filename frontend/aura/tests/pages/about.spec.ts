@@ -6,8 +6,14 @@
 import { mount } from "@vue/test-utils";
 import { describe, expect, it, vi } from "vitest";
 
-// Stub useHead (Nuxt composable) since about.vue uses it in <script setup>
+// Stub Nuxt composables since about.vue uses useSeo (which calls useHead and useRuntimeConfig)
 vi.stubGlobal("useHead", vi.fn());
+vi.stubGlobal("useRuntimeConfig", () => ({
+	public: {
+		apiUrl: "http://localhost:18888",
+		siteUrl: "http://localhost:13334",
+	},
+}));
 
 import AboutPage from "../../app/pages/about.vue";
 
