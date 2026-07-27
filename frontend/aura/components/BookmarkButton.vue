@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { useBookmarks } from "../composables/useBookmarks";
 import type { Bookmark } from "../composables/useBookmarks";
+import { useBookmarks } from "../composables/useBookmarks";
 
 interface Props {
 	postId: number;
