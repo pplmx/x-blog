@@ -27,6 +27,13 @@ describe("localeFromPath", () => {
 		expect(localeFromPath("/en/posts/my-post")).toBe("en");
 	});
 
+	it("returns zh-TW for /zh-TW/* paths", () => {
+		expect(localeFromPath("/zh-TW")).toBe("zh-TW");
+		expect(localeFromPath("/zh-TW/")).toBe("zh-TW");
+		expect(localeFromPath("/zh-TW/about")).toBe("zh-TW");
+		expect(localeFromPath("/zh-TW/posts/my-post")).toBe("zh-TW");
+	});
+
 	it("returns defaultLocale for other paths", () => {
 		expect(localeFromPath("/")).toBe(defaultLocale);
 		expect(localeFromPath("/posts")).toBe(defaultLocale);
@@ -48,10 +55,16 @@ describe("localizedPath", () => {
 
 	it("handles paths without leading slash for non-default locale", () => {
 		expect(localizedPath("posts", "en")).toBe("/en/posts");
+		expect(localizedPath("posts", "zh-TW")).toBe("/zh-TW/posts");
 	});
 
 	it("handles already-localized paths (no dedup)", () => {
 		expect(localizedPath("/en/posts", "en")).toBe("/en/en/posts");
+	});
+
+	it("prepends /zh-TW for zh-TW locale", () => {
+		expect(localizedPath("/posts", "zh-TW")).toBe("/zh-TW/posts");
+		expect(localizedPath("/posts/my-post", "zh-TW")).toBe("/zh-TW/posts/my-post");
 	});
 });
 
@@ -66,6 +79,12 @@ describe("getDictionary", () => {
 		const dict = getDictionary("en");
 		expect(dict["nav.home"]).toBe("Home");
 		expect(dict["home.noPosts"]).toBe("No posts yet");
+	});
+
+	it("returns correct dictionary for zh-TW", () => {
+		const dict = getDictionary("zh-TW");
+		expect(dict["nav.home"]).toBe("首頁");
+		expect(dict["home.noPosts"]).toBe("暫無文章");
 	});
 
 	it("falls back to default locale for unknown locale", () => {
@@ -87,6 +106,13 @@ describe("createTranslator", () => {
 		expect(t("nav.home")).toBe("Home");
 		expect(t("post.views")).toBe("views");
 		expect(t("search.noResults")).toBe("No posts found");
+	});
+
+	it("translates known keys for zh-TW", () => {
+		const t = createTranslator("zh-TW");
+		expect(t("nav.home")).toBe("首頁");
+		expect(t("post.views")).toBe("閱讀");
+		expect(t("search.noResults")).toBe("未找到相關文章");
 	});
 
 	it("returns key for unknown translation key", () => {
@@ -116,12 +142,14 @@ describe("locales and defaults", () => {
 	it("exports all expected locales", () => {
 		expect(locales).toContain("zh-CN");
 		expect(locales).toContain("en");
-		expect(locales).toHaveLength(2);
+		expect(locales).toContain("zh-TW");
+		expect(locales).toHaveLength(3);
 	});
 
-	it("exports locale names for both locales", () => {
+	it("exports locale names for all three locales", () => {
 		expect(localeNames["zh-CN"]).toBe("中文");
 		expect(localeNames.en).toBe("English");
+		expect(localeNames["zh-TW"]).toBe("繁體中文");
 	});
 
 	it("defaultLocale is zh-CN", () => {
@@ -175,10 +203,11 @@ describe("useI18n composable", () => {
 		expect(locale.value).toBe("zh-CN");
 	});
 
-	it("returns localeNames with both locales", () => {
+	it("returns localeNames with all three locales", () => {
 		const { localeNames: names } = useI18n();
 		expect(names["zh-CN"]).toBe("中文");
 		expect(names.en).toBe("English");
+		expect(names["zh-TW"]).toBe("繁體中文");
 	});
 
 	it("switchLocale navigates to the localized path", () => {
