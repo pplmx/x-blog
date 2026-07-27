@@ -7,9 +7,7 @@ interface Props {
 	variant?: "icon" | "full";
 }
 
-interface Emits {
-	(e: "toggle", postId: number): void;
-}
+type Emits = (e: "toggle", postId: number) => void;
 
 const props = withDefaults(defineProps<Props>(), {
 	variant: "icon",

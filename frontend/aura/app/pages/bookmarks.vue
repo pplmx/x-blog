@@ -1,6 +1,5 @@
 <script setup lang="ts">
-const { bookmarks, removeBookmark, clearBookmarks, bookmarkCount } =
-	useBookmarks();
+const { bookmarks, removeBookmark, clearBookmarks, bookmarkCount } = useBookmarks();
 
 useSeo({
 	title: "收藏的文章 — X-Blog",
