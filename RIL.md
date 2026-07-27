@@ -248,10 +248,41 @@
 
 - **Result**: Full test suite now 518 tests passing (506 + 12 new).
 
+## Completed This Iteration: DOMPurify Validation + Test Mock
+
+- **Problem**: DOMPurify's `sanitize` method exists in happy-dom (test
+  environment) but silently fails to strip `<script>` tags. The committed
+  code (`purify = mod.default || mod`) accidentally "worked" because calling
+  the DOMPurify factory function returned a DOMPurify instance (not a
+  sanitized string), and `expect(instance).not.toContain("<script>")`
+  passed by accident (checking property existence on a function).
+
+- **Fix in `useMarkdown.ts`**: `loadPurify()` now validates DOMPurify by
+  testing `DOMPurify.sanitize("<script>alert(1)</script>")` — if the result
+  still contains `<script>`, throws and falls back to the regex-based
+  sanitizer. Improved fallback regex to use `[\s\S]*?` for reliable
+  multi-line tag stripping. `sanitizeHtml()` now has try/catch for runtime
+  error safety.
+
+- **Fix in `tests/setup.ts`**: Mocked `dompurify` module with a regex-based
+  sanitizer that properly strips XSS payloads. This ensures tests verify
+  actual sanitization behavior, not accidental type coercion.
+
+- **Fix in `Icon.vue`**: Changed from `Icon as IconifyIcon` to direct `Icon`
+  import with `void Icon` to satisfy Biome's `noUnusedImports` rule (Vue SFC
+  template usage not detected by Biome).
+
+- **Result**: 535 tests pass (518 + 17 new from previous commit), lint clean,
+  format clean. Backend: 478 tests pass.
+
+### Key Insight: happy-dom + DOMPurify Incompatibility
+
+DOMPurify reports `isSupported: true` in happy-dom but doesn't properly
+sanitize. The only reliable way to detect this is to test the actual
+sanitization result with a known XSS payload, not check `isSupported`
+or function existence.
+
 ## Next Priorities
 
 1. Add e2e tests for admin comment management, category management, post editing
 2. Add missing e2e tests for Nuxt admin flows (tags, stats)
-3. Add missing test coverage for `loadPurify`, `sanitizeHtml`,
-   `useMarkdownSanitised` functions in `useMarkdown.ts` (current coverage
-   ~60% due to only basic extraction being tested)
