@@ -1,4 +1,7 @@
 <script setup lang="ts">
+import { useBookmarks } from "../../composables/useBookmarks";
+import { useSeo } from "../../composables/useSeo";
+
 const { bookmarks, removeBookmark, clearBookmarks, bookmarkCount } = useBookmarks();
 
 useSeo({
