@@ -12,6 +12,7 @@ const props = withDefaults(defineProps<Props>(), {
 });
 
 const { categories, tags, popularPosts } = toRefs(props);
+const { bookmarkCount } = useBookmarks();
 
 const route = useRoute();
 const currentCategory = route.query.category_id;
@@ -91,6 +92,21 @@ function clearFilters() {
         </NuxtLink>
       </div>
     </div>
+
+    <!-- Bookmarks -->
+    <NuxtLink
+      to="/bookmarks"
+      class="flex items-center gap-2 px-3 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-xl transition-colors"
+    >
+      <Icon icon="lucide:bookmark" class="w-4 h-4" />
+      <span>收藏的文章</span>
+      <span
+        v-if="bookmarkCount > 0"
+        class="ml-auto bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 text-xs px-2 py-0.5 rounded-full"
+      >
+        {{ bookmarkCount }}
+      </span>
+    </NuxtLink>
 
     <!-- Tags -->
     <div
