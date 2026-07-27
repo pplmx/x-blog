@@ -44,7 +44,8 @@ describe("LanguageSwitcher", () => {
 		it("renders locale names as options", () => {
 			const wrapper = mount(LanguageSwitcher);
 			const options = wrapper.findAll("option");
-			expect(options.length).toBe(2);
+			expect(options.length).toBe(3);
+				expect(options[2].text()).toBe("繁體中文");
 			expect(options[0].text()).toBe("中文");
 			expect(options[1].text()).toBe("English");
 		});
