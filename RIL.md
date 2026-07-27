@@ -167,14 +167,13 @@
    Priority: add e2e for admin comment management, category management, and
    post editing flows.
 
-3. **Icon.spec.ts failures (8 tests, pre-existing)** — `tests/components/Icon.spec.ts`
-   has 8 failing tests due to `@iconify/vue` SVG not rendering in the happy-dom
-   test environment. The Icon component uses `@iconify/vue` which loads icons
-   dynamically; in tests the SVG element doesn't mount, causing
-   "Cannot call classes/attributes on an empty DOMWrapper" errors. This is a
-   pre-existing issue unrelated to SEO or useMarkdown changes. Fix options:
-   (a) Add a proper mock for @iconify/vue in the test setup, or
-   (b) Configure happy-dom to support the dynamic icon loading.
+3. ~~Icon.spec.ts failures (8 tests, FIXED)~~ — The Icon.vue component used
+   `<IconifyIcon>` in the template without importing it. `IconifyIcon` is a
+   TypeScript TYPE from `@iconify/types`, not a Vue component. The actual
+   component is `Icon` from `@iconify/vue`. Added `import { Icon as
+   IconifyIcon } from "@iconify/vue"` in Icon.vue and mocked `@iconify/vue`
+   in Icon.spec.ts (real Icon loads async via API, unavailable in tests).
+   All 10 Icon tests now pass.
 
 4. **esbuild 0.28.1 + Vitest 4.1.10 transpilation bug** — `RegExp.exec()` loops
    with `/g` flag in `while` patterns can cause `RangeError: Invalid array length`
@@ -182,8 +181,8 @@
    `export async function` with dynamic `import()` statements. Root cause:
    esbuild 0.28.1 (used by Vite 8.1.5) has a code generation bug affecting certain
    file structures. **Workaround**: use `String.replace()` with a callback
-   instead of `RegExp.exec()` + `while` loop. Fixed in `useMarkdown.ts` by
-   refactoring the placeholder regex loop to `String.replace()`.
+   instead of `RegExp.exec()` + `while` loop. Fixed in both `useMarkdown.ts`
+   (placeholder regex) and `useToc.ts` (heading extraction).
 
 ## Completed This Iteration
 
@@ -225,11 +224,34 @@
   needed) and avoids the transpilation bug entirely. All 4 `useMarkdown` tests
   now pass (was 22 failing before the fix).
 
+### useToc Infinite Loop Fix (COMPLETED)
+
+- **Root cause**: `extractToc()` in `composables/useToc.ts` had a fatal
+  `RegExp.exec()` + `while` loop that **never called `exec()` again** inside
+  the loop body — the `match` variable was never updated, creating an
+  INFINITE LOOP. This had 0 test coverage (no `useToc.spec.ts` existed).
+
+- **Impact**: The infinite loop crashed Vitest workers, generating 4-5GB
+  core dump files each time. After 5-6 crashes, the disk filled completely
+  (28GB of core dumps in `frontend/aura/core.*`). This caused 18 tests in
+  `posts/[slug].spec.ts` (which imports a page using `useToc`) to fail
+  silently, and prevented all other tests from running reliably.
+
+- **Fix**: Refactored `extractToc()` to use `String.replace()` with a
+  callback (same approach as the `useMarkdown.ts` fix), eliminating both
+  the infinite loop and the esbuild transpilation bug vulnerability.
+
+- **Tests added**: 12 comprehensive tests in `useToc.spec.ts` covering
+  empty input, h1-h6 extraction, heading order, HTML tag stripping, slug
+  generation, extra attributes, empty text skipping, paragraphs between
+  headings, no headings, and sequential headings.
+
+- **Result**: Full test suite now 518 tests passing (506 + 12 new).
+
 ## Next Priorities
 
 1. Add e2e tests for admin comment management, category management, post editing
 2. Add missing e2e tests for Nuxt admin flows (tags, stats)
-3. Fix Icon.spec.ts failures (pre-existing, see known issues #3)
-4. Add missing test coverage for `loadPurify`, `sanitizeHtml`,
+3. Add missing test coverage for `loadPurify`, `sanitizeHtml`,
    `useMarkdownSanitised` functions in `useMarkdown.ts` (current coverage
    ~60% due to only basic extraction being tested)
