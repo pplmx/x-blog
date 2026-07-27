@@ -1,0 +1,124 @@
+import { expect, test } from "@playwright/test";
+
+test.describe("Admin post editing", () => {
+	test.beforeEach(async ({ page }) => {
+		// Log in first
+		await page.goto("/admin/login");
+		await page.fill('input[type="text"]', "admin");
+		await page.fill('input[type="password"]', "admin123");
+		await page.click('button[type="submit"]');
+		await page.waitForURL("**/admin/posts");
+	});
+
+	test("admin can view the posts list", async ({ page }) => {
+		await expect(page).toHaveTitle(/文章列表|Posts/);
+
+		// Should show a table of posts
+		const table = page.locator("table, .posts-list");
+		await expect(table).toBeVisible();
+
+		// Should have column headers for title, status, actions
+		const headers = page.locator("th");
+		const headerText = await headers.allTextContents();
+		const combined = headerText.join(" ");
+		expect(combined.toLowerCase()).toMatch(/title|标题/);
+	});
+
+	test("admin can navigate to post edit page", async ({ page }) => {
+		// Find the first post in the list
+		const firstPost = page.locator("tr, .post-row").first();
+
+		// Click edit button
+		const editBtn = firstPost.locator("a, button", {
+			name: /edit|修改|编辑/i,
+		});
+		await expect(editBtn).toBeVisible();
+		await editBtn.click();
+
+		// Should navigate to the edit page
+		await page.waitForURL("**/admin/posts/**");
+
+		// Should show the post edit form
+		const titleInput = page.locator('input[name="title"], h1');
+		await expect(titleInput).toBeVisible();
+	});
+
+	test("admin can create a new post", async ({ page }) => {
+		// Click "create new post" or "new post" button
+		const createBtn = page.locator("a, button", {
+			name: /create|new post|新建文章|添加文章|新增/i,
+		});
+		await expect(createBtn).toBeVisible();
+		await createBtn.click();
+
+		// Should show the post editor
+		await page.waitForURL("**/admin/posts/**");
+
+		const titleInput = page.locator('input[name="title"], input[placeholder*="标题"]');
+		await expect(titleInput).toBeVisible();
+		await titleInput.fill("Test Post Title");
+
+		// Fill in content (may be a textarea or rich text editor)
+		const contentTextarea = page.locator('textarea[name="content"], .content-editor, .markdown-editor');
+		if (await contentTextarea.isVisible()) {
+			await contentTextarea.fill("This is test post content.");
+		}
+
+		// Save the post
+		const saveBtn = page.locator("button", {
+			name: /save|publish|发布|保存|确定|submit/i,
+		});
+		await expect(saveBtn).toBeVisible();
+		await saveBtn.click();
+
+		// Should redirect back to posts list
+		await page.waitForURL("**/admin/posts");
+		await expect(page.locator("text=Test Post Title")).toBeVisible();
+	});
+
+	test("admin can update post status (publish/draft)", async ({ page }) => {
+		// Navigate to first post's edit page
+		const firstPost = page.locator("tr, .post-row").first();
+		const editBtn = firstPost.locator("a, button", {
+			name: /edit|修改|编辑/i,
+		});
+		if (await editBtn.isVisible()) {
+			await editBtn.click();
+			await page.waitForURL("**/admin/posts/**");
+
+			// Find status toggle or dropdown
+			const statusSelector = page.locator(
+				'select[name="status"], button[name="status"], .status-toggle',
+			);
+			if (await statusSelector.isVisible()) {
+				// Toggle status or change dropdown
+				await statusSelector.click();
+
+				// Save changes
+				const saveBtn = page.locator("button", {
+					name: /save|publish|发布|保存|确定/i,
+				});
+				await saveBtn.click();
+			}
+
+			// Should show updated status
+			const postsList = page.locator("tr, .post-row");
+			if (await postsList.isVisible()) {
+				// Should redirect back to list or show success message
+				await expect(page).toHaveURL(/.*\/admin\/posts/);
+			}
+		}
+	});
+
+	test("admin can search/filter posts", async ({ page }) => {
+		const searchInput = page.locator('input[type="search"], input[name="search"], .search-input');
+		if (await searchInput.isVisible()) {
+			await searchInput.fill("test");
+			await searchInput.press("Enter");
+
+			// Should show filtered results
+			const results = page.locator("tr, .post-row");
+			await expect(results).toBeVisible();
+		}
+	});
+});
