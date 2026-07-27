@@ -195,6 +195,15 @@ function scrollToHeading(event: MouseEvent) {
           <MarkdownContent :content="post.content" />
         </div>
 
+        <!-- Bookmark button -->
+        <div v-if="post" class="mt-8 pt-6 border-t border-gray-200 flex items-center gap-4">
+          <BookmarkButton
+            :post-id="post.id"
+            :post="post"
+            variant="full"
+          />
+        </div>
+
         <!-- Like button -->
         <div class="mt-8 pt-6 border-t border-gray-200 flex items-center gap-4">
           <button
