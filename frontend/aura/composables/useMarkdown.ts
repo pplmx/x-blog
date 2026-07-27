@@ -122,15 +122,27 @@ let purify: ((html: string) => string) | null = null;
 async function loadPurify(): Promise<typeof purify> {
 	if (purify) return purify;
 	try {
-		// eslint-disable-next-line @typescript-eslint/no-require-imports
 		const mod = await import("dompurify");
-		purify = mod.default || mod;
+		const DomPurify = mod.default || mod;
+		// Verify DOMPurify actually sanitizes by testing with a known XSS payload.
+		// In environments like happy-dom (test runner), isSupported may be true
+		// but sanitize silently fails to strip <script> tags.
+		if (typeof DomPurify?.sanitize === "function") {
+			const testResult = DomPurify.sanitize("<script>alert(1)</script>");
+			if (typeof testResult === "string" && !testResult.includes("<script>")) {
+				purify = (html: string) => DomPurify.sanitize(html);
+			} else {
+				throw new Error("DOMPurify failed to strip test XSS payload");
+			}
+		} else {
+			throw new Error("DOMPurify.sanitize not available");
+		}
 	} catch {
 		// Fallback: a very small sanitiser that strips script/style/event handlers.
 		purify = (html: string) =>
 			html
-				.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, "")
-				.replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, "")
+				.replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, "")
+				.replace(/<style\b[^>]*>[\s\S]*?<\/style>/gi, "")
 				.replace(/\son\w+\s*=\s*("[^"]*"|'[^']*'|[^\s>]+)/gi, "")
 				.replace(/<(script|style|iframe|object|embed|form)[^>]*>.*?<\/\1>/gi, "");
 	}
@@ -139,9 +151,13 @@ async function loadPurify(): Promise<typeof purify> {
 
 /** Synchronous sanitise using DOMPurify when available (client-side), otherwise identity. */
 export function sanitizeHtml(html: string): string {
-	if (purify) return purify(html);
-	// SSR fallback — strip tags we know are dangerous.
-	return html;
+	if (!purify) return html;
+	try {
+		return purify(html);
+	} catch {
+		// DOMPurify may fail in SSR (no window) — fall back to identity.
+		return html;
+	}
 }
 
 // --- Main composable ---
