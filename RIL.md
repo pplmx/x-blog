@@ -284,5 +284,4 @@ or function existence.
 
 ## Next Priorities
 
-1. Add e2e tests for admin comment management, category management, post editing
-2. Add missing e2e tests for Nuxt admin flows (tags, stats)
+1. Add e2e tests for Nuxt admin flows (tags, stats, dashboard)
