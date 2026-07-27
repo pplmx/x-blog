@@ -6,7 +6,7 @@
 
 **Stack**: FastAPI (Python 3.14) + Nuxt 4 (Vue 3) + SQLite + PostgreSQL
 **Directory Structure**: `backend/nova/` (FastAPI), `frontend/aura/` (Nuxt 4)
-**Status**: Clean working tree, all tests passing (478 backend + 437 Nuxt = 915 total, 92.78% backend coverage)
+**Status**: All tests passing (560 Nuxt tests across 34 files, 86.56% statement coverage). Reading list/bookmarks feature complete (useBookmarks composable, BookmarkButton component, /bookmarks page, sidebar integration).
 
 ## Key Findings
 
@@ -284,6 +284,10 @@ or function existence.
 
 ## Next Priorities
 
-None — all known high-priority tasks are complete.
+- Review and address GitHub Dependabot alerts: 38 vulnerabilities detected
+  on default branch (22 high, 8 moderate, 8 low). URL:
+  https://github.com/pplmx/x-blog/security/dependabot
+
+All known high-priority tasks are complete.
 All admin CRUD e2e coverage (comments, categories, posts, tags, dashboard)
 is in place. Next work will come from deep-dive scanning for new issues.
