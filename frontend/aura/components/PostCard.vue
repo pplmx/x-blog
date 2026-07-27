@@ -31,7 +31,14 @@ const date = computed(() =>
 </script>
 
 <template>
-  <article class="group border border-gray-100 dark:border-gray-800 rounded-2xl overflow-hidden hover:border-gray-200 dark:hover:border-gray-700 hover:shadow-xl hover:shadow-gray-100/50 dark:hover:shadow-gray-900/50 transition-all duration-300 bg-white dark:bg-gray-900">
+  <article class="group border border-gray-100 dark:border-gray-800 rounded-2xl overflow-hidden hover:border-gray-200 dark:hover:border-gray-700 hover:shadow-xl hover:shadow-gray-100/50 dark:hover:shadow-gray-900/50 transition-all duration-300 bg-white dark:bg-gray-900 relative">
+    <div class="absolute top-3 right-3 z-10">
+      <BookmarkButton
+        :post-id="post.id"
+        :post="post"
+        variant="icon"
+      />
+    </div>
     <NuxtLink :to="`/posts/${post.slug}`">
       <!-- Cover Image -->
       <div v-if="post.cover_image" class="relative h-48 w-full overflow-hidden">

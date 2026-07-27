@@ -1,14 +1,10 @@
 <script setup lang="ts">
 // SEO: set dynamic head metadata
-useHead({
+useSeo({
 	title: "关于 X-Blog",
-	meta: [
-		{
-			name: "description",
-			content:
-				"X-Blog 是一个基于 FastAPI + Nuxt 的现代化技术博客系统，支持 Markdown、Mermaid 图表、KaTeX 数学公式、代码高亮等功能。",
-		},
-	],
+	description:
+		"X-Blog 是一个基于 FastAPI + Nuxt 的现代化技术博客系统，支持 Markdown、Mermaid 图表、KaTeX 数学公式、代码高亮等功能。",
+	path: "/about",
 });
 
 const techStack = [

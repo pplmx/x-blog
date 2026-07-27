@@ -1,5 +1,13 @@
 // https://nuxt.com/docs/api/configuration/nuxt-config
 import process from "node:process";
+import { buildSiteJsonLd } from "./composables/useSeo";
+
+// Site-wide constants used in both the global head and runtime config.
+const siteUrl = process.env.NUXT_SITE_URL || "http://localhost:3000";
+const siteName = "X-Blog";
+const siteDescription =
+	"X-Blog 是一个基于 FastAPI + Nuxt 的现代化技术博客系统，支持 Markdown、Mermaid 图表、KaTeX 数学公式、代码高亮、文章分类、标签管理、阅读计数、点赞评论等功能。";
+
 export default defineNuxtConfig({
 	compatibilityDate: "2025-07-15",
 	devtools: { enabled: true },
@@ -16,25 +24,42 @@ export default defineNuxtConfig({
 			meta: [
 				{
 					name: "description",
-					content:
-						"X-Blog 是一个基于 FastAPI + Nuxt 的现代化技术博客系统，支持 Markdown、Mermaid 图表、KaTeX 数学公式、代码高亮、文章分类、标签管理、阅读计数、点赞评论等功能。",
+					content: siteDescription,
 				},
 				{
 					name: "keywords",
 					content: "X-Blog, 技术博客, FastAPI, Nuxt, Markdown, Mermaid, KaTeX",
 				},
-				{ name: "og:title", content: "X-Blog — 一个现代化的技术博客系统" },
+				{ property: "og:title", content: "X-Blog — 一个现代化的技术博客系统" },
 				{
-					name: "og:description",
+					property: "og:description",
 					content: "X-Blog 是一个基于 FastAPI + Nuxt 的现代化技术博客系统。",
 				},
-				{ name: "og:type", content: "website" },
-				{ name: "og:locale", content: "zh_CN" },
+				{ property: "og:type", content: "website" },
+				{ property: "og:image", content: `${siteUrl}/logo.png` },
+				{ property: "og:url", content: siteUrl },
+				{ property: "og:locale", content: "zh_CN" },
 				{ name: "twitter:card", content: "summary_large_image" },
 				{ name: "twitter:title", content: "X-Blog — 一个现代化的技术博客系统" },
 				{
 					name: "twitter:description",
 					content: "X-Blog 是一个基于 FastAPI + Nuxt 的现代化技术博客系统。",
+				},
+				{ name: "twitter:image", content: `${siteUrl}/logo.png` },
+				{
+					name: "twitter:image:alt",
+					content: "X-Blog — 一个现代化的技术博客系统",
+				},
+				{ name: "twitter:site", content: "@x_blog" },
+			],
+			script: [
+				{
+					type: "application/ld+json",
+					json: buildSiteJsonLd({
+						url: siteUrl,
+						siteName: siteName,
+						description: siteDescription,
+					}),
 				},
 			],
 		},
@@ -42,6 +67,7 @@ export default defineNuxtConfig({
 	runtimeConfig: {
 		public: {
 			apiUrl: process.env.NUXT_API_URL || "http://localhost:18888",
+			siteUrl: process.env.NUXT_SITE_URL || "http://localhost:3000",
 		},
 	},
 	components: [

@@ -168,16 +168,16 @@ export function useMarkdown(content: string): UseMarkdownResult {
 	}
 
 	const segments: Segment[] = [];
-	// Capture group 1: block type (mermaid|code|image)
-	// Capture group 2: the full key (e.g., 'code-1') up to '--'
+	// Build the ordered segment list by walking placeholders (`<!--type:key-->`)
+	// and emitting HTML chunks between them. Using `String.replace` with a
+	// callback avoids manual `RegExp.exec` loop state, which is more robust
+	// across transpiler versions.
 	const placeholderRegex = /<!--(mermaid|code|image):(.+?)-->/g;
 	let last = 0;
-	let match: RegExpExecArray | null;
 
-	match = placeholderRegex.exec(afterImages);
-	while (match !== null) {
-		if (match.index > last) {
-			const htmlChunk = afterImages.slice(last, match.index);
+	afterImages.replace(placeholderRegex, (fullMatch, _type: string, key: string, offset: number) => {
+		if (offset > last) {
+			const htmlChunk = afterImages.slice(last, offset);
 			if (htmlChunk.trim()) {
 				segments.push({
 					type: "html",
@@ -186,16 +186,16 @@ export function useMarkdown(content: string): UseMarkdownResult {
 				});
 			}
 		}
-		const [, , key] = match;
 		// The key already includes the prefix (e.g., 'code-1'), so look it up directly.
 		const seg = allExtracted.get(key);
 		if (seg) {
 			segments.push(seg);
 		}
-		last = match.index + match[0].length;
-	}
+		last = offset + fullMatch.length;
+		return fullMatch;
+	});
 
-	// Trailing HTML
+	// Trailing HTML after the last placeholder
 	if (last < afterImages.length) {
 		const htmlChunk = afterImages.slice(last);
 		if (htmlChunk.trim()) {
