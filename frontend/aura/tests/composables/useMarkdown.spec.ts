@@ -1,5 +1,5 @@
-import { describe, expect, it } from "vitest";
-import { useMarkdown } from "~/composables/useMarkdown";
+import { beforeAll, describe, expect, it, vi } from "vitest";
+import { sanitizeHtml, sanitizeUrl, useMarkdown, useMarkdownSanitised } from "~/composables/useMarkdown";
 
 describe("useMarkdown debug", () => {
 	it("HTML", () => {
@@ -24,5 +24,112 @@ describe("useMarkdown debug", () => {
 		const r = useMarkdown("<p>Before</p>\n```ts\ncode\n```\n<p>After</p>");
 		console.log("Mixed segments:", JSON.stringify(r.segments));
 		expect(r.segments.length).toBe(3);
+	});
+});
+
+describe("useMarkdown features", () => {
+	it("extracts mermaid blocks", () => {
+		const r = useMarkdown("```mermaid\nflowchart LR\nA-->B\n```");
+		expect(r.segments).toHaveLength(1);
+		expect(r.segments[0].type).toBe("mermaid");
+	});
+
+	it("extracts images with alt text", () => {
+		const r = useMarkdown('<img src="/img.png" alt="My Image" />');
+		expect(r.segments).toHaveLength(1);
+		expect(r.segments[0].type).toBe("image");
+		expect(r.segments[0].alt).toBe("My Image");
+	});
+
+	it("leaves images without src intact", () => {
+		const r = useMarkdown('<img alt="no src" />');
+		expect(r.segments).toHaveLength(1);
+		expect(r.segments[0].type).toBe("html");
+	});
+
+	it("extracts mermaid before code blocks", () => {
+		const r = useMarkdown("```mermaid\nflow\n```\n```ts\ncode\n```");
+		expect(r.segments).toHaveLength(2);
+		expect(r.segments[0].type).toBe("mermaid");
+		expect(r.segments[1].type).toBe("code");
+	});
+});
+
+describe("sanitizeUrl", () => {
+	it("returns '#' for empty input", () => {
+		expect(sanitizeUrl("")).toBe("#");
+	});
+
+	it("passes through relative URLs", () => {
+		expect(sanitizeUrl("/posts/my-post")).toBe("/posts/my-post");
+		expect(sanitizeUrl("relative/path")).toBe("relative/path");
+	});
+
+	it("passes through whitelisted schemes", () => {
+		expect(sanitizeUrl("https://example.com")).toBe("https://example.com/");
+		expect(sanitizeUrl("http://example.com")).toBe("http://example.com/");
+		expect(sanitizeUrl("mailto:test@example.com")).toBe("mailto:test@example.com");
+	});
+
+	it("blocks non-whitelisted schemes", () => {
+		expect(sanitizeUrl("javascript:alert(1)")).toBe("#");
+		expect(sanitizeUrl("data:text/html,<script>alert(1)</script>")).toBe("#");
+	});
+
+	it("returns '#' for invalid URLs", () => {
+		expect(sanitizeUrl("https://[invalid")).toBe("#");
+	});
+
+	it("blocks hostname mismatch when hostname is specified", () => {
+		expect(sanitizeUrl("https://evil.com", "example.com")).toBe("#");
+		expect(sanitizeUrl("https://example.com", "example.com")).toBe("https://example.com/");
+	});
+});
+
+describe("sanitizeHtml", () => {
+	// Trigger loadPurify so the purify variable is set and sanitizeHtml actually sanitizes
+	beforeAll(async () => {
+		await useMarkdownSanitised("");
+	});
+
+	it("strips script tags", () => {
+		const result = sanitizeHtml("<p>Hello</p><script>alert(1)</script>");
+		expect(result).not.toContain("<script>");
+	});
+
+	it("strips style tags", () => {
+		const result = sanitizeHtml("<style>.x{}</style><p>Hi</p>");
+		expect(result).not.toContain("<style>");
+	});
+
+	it("strips event handler attributes", () => {
+		const result = sanitizeHtml('<div onclick="alert(1)">Click</div>');
+		expect(result).not.toContain("onclick");
+	});
+
+	it("does not throw on normal HTML when purify is loaded", () => {
+		expect(() => sanitizeHtml("<p>Safe content</p>")).not.toThrow();
+	});
+});
+
+describe("useMarkdownSanitised", () => {
+	it("sanitizes HTML segments and preserves other types", async () => {
+		const content = "<p>Safe</p><script>bad()</script><p>More safe</p>";
+		const result = await useMarkdownSanitised(content);
+		expect(result.segments.length).toBeGreaterThanOrEqual(1);
+		expect(result.segments[0].type).toBe("html");
+		expect(result.segments[0].html).not.toContain("<script>");
+	});
+
+	it("preserves code and image segments unchanged", async () => {
+		const content = '<img src="img.png" alt="img" />\n```ts\ncode\n```';
+		const result = await useMarkdownSanitised(content);
+		expect(result.segments.some((s) => s.type === "image")).toBe(true);
+		expect(result.segments.some((s) => s.type === "code")).toBe(true);
+	});
+
+	it("handles empty content", async () => {
+		const result = await useMarkdownSanitised("");
+		expect(result.segments).toEqual([]);
 	});
 });
