@@ -284,4 +284,6 @@ or function existence.
 
 ## Next Priorities
 
-1. Add e2e tests for Nuxt admin flows (tags, stats, dashboard)
+None — all known high-priority tasks are complete.
+All admin CRUD e2e coverage (comments, categories, posts, tags, dashboard)
+is in place. Next work will come from deep-dive scanning for new issues.
