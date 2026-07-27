@@ -167,7 +167,69 @@
    Priority: add e2e for admin comment management, category management, and
    post editing flows.
 
+3. **Icon.spec.ts failures (8 tests, pre-existing)** — `tests/components/Icon.spec.ts`
+   has 8 failing tests due to `@iconify/vue` SVG not rendering in the happy-dom
+   test environment. The Icon component uses `@iconify/vue` which loads icons
+   dynamically; in tests the SVG element doesn't mount, causing
+   "Cannot call classes/attributes on an empty DOMWrapper" errors. This is a
+   pre-existing issue unrelated to SEO or useMarkdown changes. Fix options:
+   (a) Add a proper mock for @iconify/vue in the test setup, or
+   (b) Configure happy-dom to support the dynamic icon loading.
+
+4. **esbuild 0.28.1 + Vitest 4.1.10 transpilation bug** — `RegExp.exec()` loops
+   with `/g` flag in `while` patterns can cause `RangeError: Invalid array length`
+   at seemingly unrelated `Array.push` calls when the source file also contains
+   `export async function` with dynamic `import()` statements. Root cause:
+   esbuild 0.28.1 (used by Vite 8.1.5) has a code generation bug affecting certain
+   file structures. **Workaround**: use `String.replace()` with a callback
+   instead of `RegExp.exec()` + `while` loop. Fixed in `useMarkdown.ts` by
+   refactoring the placeholder regex loop to `String.replace()`.
+
+## Completed This Iteration
+
+### SEO Rewrite (COMPLETED)
+
+- **New composable**: `frontend/aura/composables/useSeo.ts` — centralizes all
+  SEO metadata generation. Exports `useSeo()`, `usePostSeo()`, `useSiteUrl()`,
+  plus pure builder functions (`buildCanonicalUrl`, `buildAbsoluteImageUrl`,
+  `buildArticleJsonLd`, `buildSiteJsonLd`) that are testable without Nuxt.
+  Includes `siteConfig` with site-wide defaults (name, title, description,
+  locale, twitter handle). 53 tests cover all builders and composables.
+
+- **Bug fix in nuxt.config.ts**: OpenGraph `og:*` tags were using `name`
+  attribute instead of `property` attribute (incorrect per the OpenGraph
+  protocol). Also added `og:image`, `og:url`, Twitter Card image/alt/site tags,
+  and a global WebSite JSON-LD structured data script via `buildSiteJsonLd`.
+  Added `siteUrl` to `runtimeConfig.public`.
+
+- **Page refactoring**: All 5 pages refactored from inline `useHead()` calls
+  to `useSeo()` / `usePostSeo()`:
+    - `about.vue` — static page SEO with path
+    - `index.vue` — home page SEO with path
+    - `posts/[slug].vue` — full BlogPosting JSON-LD via `usePostSeo`
+    - `search.vue` — dynamic title + `noindex, follow` robots meta
+    - `tags.vue` — dynamic title based on selected tag name
+
+- **Test updates**: `about.spec.ts` updated to stub `useRuntimeConfig` (needed
+  by `useSeo` → `useSiteUrl` → `useRuntimeConfig`).
+
+### useMarkdown Crash Fix (COMPLETED)
+
+- **Root cause**: `RegExp.exec()` + `while` loop pattern in `useMarkdown()`
+  triggered `RangeError: Invalid array length` at `segments.push(seg)` when
+  running under Vitest 4.1.10 with esbuild 0.28.1. The code runs correctly in
+  plain Node.js — the bug is in the transpiler, not the source code.
+
+- **Fix**: Replaced the `RegExp.exec()` while loop with `String.replace()`
+  using a callback. This is cleaner (no manual `last` position tracking
+  needed) and avoids the transpilation bug entirely. All 4 `useMarkdown` tests
+  now pass (was 22 failing before the fix).
+
 ## Next Priorities
 
 1. Add e2e tests for admin comment management, category management, post editing
 2. Add missing e2e tests for Nuxt admin flows (tags, stats)
+3. Fix Icon.spec.ts failures (pre-existing, see known issues #3)
+4. Add missing test coverage for `loadPurify`, `sanitizeHtml`,
+   `useMarkdownSanitised` functions in `useMarkdown.ts` (current coverage
+   ~60% due to only basic extraction being tested)

@@ -7,6 +7,17 @@
 import { mount } from "@vue/test-utils";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+// Mock @iconify/vue — the real Icon component loads icons asynchronously
+// via the Iconify API, which doesn't work in the test environment.
+// The stub renders a simple <svg> so prop-passthrough tests can verify attrs.
+vi.mock("@iconify/vue", () => ({
+	Icon: {
+		name: "Icon",
+		template: '<svg :data-icon="icon" :width="width" :height="height" v-bind="$attrs"></svg>',
+		props: ["icon", "width", "height"],
+	},
+}));
+
 import Icon from "../../components/Icon.vue";
 
 describe("Icon", () => {

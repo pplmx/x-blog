@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { Icon as IconifyIcon } from "@iconify/vue";
+
 const props = defineProps<{
 	icon: string;
 	width?: number | string;

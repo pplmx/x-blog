@@ -32,3 +32,4 @@ content
 .env
 .env.*
 !.env.example
+core*
