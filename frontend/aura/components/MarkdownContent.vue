@@ -46,16 +46,14 @@ const renderingKeys = ref<Set<string>>(new Set());
 const renderedMathKeys = ref<Set<string>>(new Set());
 
 // --- Copy-to-clipboard state (per code block) ---
-function makeCopiedState() {
-	return ref(false);
-}
+const copiedStates = ref<Set<string>>(new Set());
 
-async function copyCode(code: string, copied: { value: boolean }) {
+async function copyCode(code: string) {
 	try {
 		await navigator.clipboard.writeText(code);
-		copied.value = true;
+		copiedStates.value.add(code);
 		setTimeout(() => {
-			copied.value = false;
+			copiedStates.value.delete(code);
 		}, 2000);
 	} catch {
 		// ignore
@@ -165,14 +163,14 @@ function lineNumbers(code: string): number[] {
             <span class="font-mono font-medium">{{ seg.lang }}</span>
           </div>
           <button
-            @click="copyCode(seg.code, makeCopiedState())"
-            :data-copied="makeCopiedState().value"
+            @click="copyCode(seg.code)"
+            :data-copied="copiedStates.has(seg.code)"
             class="flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs transition-all duration-200 hover:bg-gray-700 hover:text-white text-gray-400"
             title="复制代码"
           >
-            <Icon icon="lucide:copy" class="w-3.5 h-3.5" v-if="!makeCopiedState().value" />
+            <Icon icon="lucide:copy" class="w-3.5 h-3.5" v-if="!copiedStates.has(seg.code)" />
             <Icon icon="lucide:check" class="w-3.5 h-3.5" v-else />
-            <span>{{ makeCopiedState().value ? '已复制' : '复制' }}</span>
+            <span>{{ copiedStates.has(seg.code) ? '已复制' : '复制' }}</span>
           </button>
         </div>
         <div class="flex bg-[#1a1b26]">

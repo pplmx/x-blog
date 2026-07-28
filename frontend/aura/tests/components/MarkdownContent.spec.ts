@@ -81,6 +81,7 @@ function mountMarkdown(content: string) {
 describe("MarkdownContent", () => {
 	afterEach(() => {
 		vi.clearAllMocks();
+		vi.useRealTimers();
 	});
 
 	describe("Empty content", () => {
@@ -248,6 +249,33 @@ describe("MarkdownContent", () => {
 			await flushPromises();
 
 			expect(writeText).toHaveBeenCalledWith("const x = 1;");
+		});
+
+		it("toggles copied state and resets after 2 seconds", async () => {
+			vi.useFakeTimers();
+			const writeText = vi.fn().mockResolvedValue(undefined);
+			Object.defineProperty(navigator, "clipboard", {
+				value: { writeText },
+				configurable: true,
+			});
+
+			const wrapper = mountMarkdown("```ts\nconst x = 1;\n```");
+			await flushPromises();
+
+			const copyButton = wrapper.find("button");
+			await copyButton.trigger("click");
+			await flushPromises();
+
+			// Button text should change to "已复制" after click
+			expect(wrapper.text()).toContain("已复制");
+
+			// After 2 seconds, the copied state should reset
+			vi.advanceTimersByTime(2000);
+			await flushPromises();
+
+			expect(wrapper.text()).toContain("复制");
+
+			vi.useRealTimers();
 		});
 	});
 
