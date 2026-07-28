@@ -8,7 +8,55 @@ interface Props {
 const props = withDefaults(defineProps<Props>(), {});
 const { post } = toRefs(props);
 
-// Default placeholder gradient based on post title hash
+/**
+ * Generate algorithmic cover image SVG data URL — no HTTP request needed.
+ * Uses title hash to select a beautiful gradient color scheme.
+ */
+function coverImageSrc(title: string, coverImage?: string): string {
+	if (coverImage) return coverImage;
+
+	const gradients = [
+		["#3b82f6", "#6366f1"], // blue → indigo
+		["#10b981", "#0d9488"], // emerald → teal
+		["#8b5cf6", "#7c3aed"], // purple → violet
+		["#f59e0b", "#d97706"], // amber → orange
+		["#ef4444", "#dc2626"], // red → red-700
+		["#06b6d4", "#0284c7"], // cyan → blue-700
+		["#84cc16", "#65a30d"], // lime → green-700
+		["#f97316", "#ea580c"], // orange → orange-600
+		["#ec4899", "#db2777"], // pink → pink-700
+		["#1e40af", "#1e3a8a"], // blue-800 → blue-900
+	];
+	let hash = 0;
+	for (const char of title) {
+		hash = (hash * 31 + char.charCodeAt(0)) | 0;
+	}
+	const [start, end] = gradients[Math.abs(hash) % gradients.length];
+	const shortTitle = title.length > 28 ? title.slice(0, 28) + "..." : title;
+
+	// Build SVG string and encode once with encodeURIComponent — no HTTP request
+	const svg = `
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="450" viewBox="0 0 800 450">
+  <defs>
+    <linearGradient id="g" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="${start}"/>
+      <stop offset="100%" stop-color="${end}"/>
+    </linearGradient>
+  </defs>
+  <rect width="800" height="450" fill="url(#g)"/>
+  <text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" fill="white" font-size="36" font-weight="700" font-family="Noto Sans SC, -apple-system, BlinkMacSystemFont, sans-serif" textLength="700" lengthAdjust="spacing_andGlyphs">
+    ${shortTitle}
+  </text>
+</svg>`.trim();
+
+	return `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`;
+}
+
+const coverImageUrl = computed(() =>
+	coverImageSrc(post.value.title, post.value.cover_image)
+);
+
+// Default placeholder gradient based on post title hash (fallback)
 function getGradientFromTitle(title: string): string {
 	const gradients = [
 		"from-blue-500 to-indigo-600",
@@ -41,9 +89,9 @@ const date = computed(() =>
     </div>
     <NuxtLink :to="`/posts/${post.slug}`">
       <!-- Cover Image -->
-      <div v-if="post.cover_image" class="relative h-48 w-full overflow-hidden">
+      <div v-if="coverImageUrl" class="relative h-48 w-full overflow-hidden">
         <img
-          :src="post.cover_image"
+          :src="coverImageUrl"
           :alt="post.title"
           class="object-cover w-full h-full group-hover:scale-105 transition-transform duration-500"
         >

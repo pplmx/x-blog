@@ -101,9 +101,13 @@ describe("PostCard", () => {
 	});
 
 	describe("cover image", () => {
-		it("renders gradient placeholder when no cover image", () => {
+		it("renders algorithmic SVG data URI when no cover image", () => {
 			const wrapper = mountPostCard();
-			expect(wrapper.find(".bg-gradient-to-br").exists()).toBe(true);
+			const img = wrapper.find("img");
+			expect(img.exists()).toBe(true);
+			expect(img.attributes("src")).toContain("data:image/svg+xml");
+			// Title is URL-encoded inside the data URI
+			expect(img.attributes("src")).toContain(encodeURIComponent("Test Post Title"));
 		});
 
 		it("renders img element when cover image is provided", () => {
