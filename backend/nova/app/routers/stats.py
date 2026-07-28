@@ -18,6 +18,7 @@ class BlogStatsResponse(BaseModel):
     total_categories: int
     total_tags: int
     total_comments: int
+    pending_comments: int
     total_views: int
 
 
@@ -43,6 +44,11 @@ def get_blog_stats(request: Request, db: Session = Depends(get_db)):  # noqa: AR
     # Total comments
     total_comments = db.query(func.count(models.Comment.id)).scalar() or 0
 
+    # Pending (unapproved) comments
+    pending_comments = db.query(func.count(models.Comment.id)).filter(
+        models.Comment.is_approved == False  # noqa: E712
+    ).scalar() or 0
+
     # Total views
     total_views = db.query(func.sum(models.Post.views)).scalar() or 0
 
@@ -52,5 +58,6 @@ def get_blog_stats(request: Request, db: Session = Depends(get_db)):  # noqa: AR
         total_categories=total_categories,
         total_tags=total_tags,
         total_comments=total_comments,
+        pending_comments=pending_comments,
         total_views=total_views,
     )
