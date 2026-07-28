@@ -1,6 +1,4 @@
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted } from "vue";
-
 interface LightboxImage {
 	src: string;
 	alt: string;
@@ -25,25 +23,27 @@ const currentImage = computed(() => props.images[props.currentIndex]);
 const hasPrev = computed(() => props.currentIndex > 0);
 const hasNext = computed(() => props.currentIndex < props.images.length - 1);
 
-function handlePrev() {
-	if (hasPrev.value) emit("navigate", props.currentIndex - 1);
-}
+const zoomed = ref(false);
+const zoomOrigin = ref({ x: 50, y: 50 });
 
-function handleNext() {
-	if (hasNext.value) emit("navigate", props.currentIndex + 1);
+function handlePrev() { if (hasPrev.value) emit("navigate", props.currentIndex - 1); }
+function handleNext() { if (hasNext.value) emit("navigate", props.currentIndex + 1); }
+function toggleZoom() { zoomed.value = !zoomed.value; }
+
+function handleMouseMove(e: MouseEvent) {
+	if (!zoomed.value) return;
+	const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+	zoomOrigin.value = {
+		x: ((e.clientX - rect.left) / rect.width) * 100,
+		y: ((e.clientY - rect.top) / rect.height) * 100,
+	};
 }
 
 function handleKeyDown(e: KeyboardEvent) {
 	switch (e.key) {
-		case "Escape":
-			emit("close");
-			break;
-		case "ArrowLeft":
-			handlePrev();
-			break;
-		case "ArrowRight":
-			handleNext();
-			break;
+		case "Escape": emit("close"); break;
+		case "ArrowLeft": handlePrev(); break;
+		case "ArrowRight": handleNext(); break;
 	}
 }
 
@@ -59,70 +59,80 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div
-    role="dialog"
-    aria-modal="true"
-    aria-label="图片查看器"
-    class="fixed inset-0 z-[100] bg-black/90 backdrop-blur-sm flex items-center justify-center"
-    @click="emit('close')"
-  >
-    <!-- Close button -->
-    <button
+  <Transition name="lightbox">
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-label="图片查看器"
+      class="fixed inset-0 z-[100] bg-black/85 backdrop-blur-sm flex items-center justify-center"
       @click="emit('close')"
-      class="absolute top-4 right-4 p-2 text-white/80 hover:text-white transition-colors z-10"
-      title="关闭 (ESC)"
-      aria-label="关闭"
     >
-      <Icon icon="lucide:x" class="w-8 h-8" />
-    </button>
-
-    <!-- Image counter -->
-    <div
-      v-if="images.length > 1"
-      class="absolute top-4 left-1/2 -translate-x-1/2 text-white/80 text-sm"
-      aria-live="polite"
-    >
-      {{ currentIndex + 1 }} / {{ images.length }}
-    </div>
-
-    <!-- Image container -->
-    <div
-      v-if="currentImage"
-      role="img"
-      :aria-label="currentImage.alt"
-      class="relative max-w-[90vw] max-h-[90vh]"
-      @click.stop
-    >
-      <img
-        :src="currentImage.src"
-        :alt="currentImage.alt"
-        class="max-w-full max-h-[90vh] object-contain rounded-lg shadow-2xl"
-      >
-    </div>
-
-    <!-- Navigation buttons -->
-    <div v-if="images.length > 1">
       <button
-        @click.stop="handlePrev"
-        :disabled="!hasPrev"
-        class="absolute left-4 top-1/2 -translate-y-1/2 p-3 rounded-full bg-white/10 hover:bg-white/20 transition-colors"
-        :class="[!hasPrev ? 'opacity-30 cursor-not-allowed' : 'text-white']"
-        title="上一张 (←)"
-        aria-label="上一张图片"
+        class="absolute top-4 right-4 p-2 text-white/70 hover:text-white transition-colors z-20 rounded-full hover:bg-white/10"
+        title="关闭 (ESC)"
+        aria-label="关闭"
+        @click="emit('close')"
       >
-        <Icon icon="lucide:chevron-left" class="w-6 h-6" />
+        <Icon icon="lucide:x" class="w-6 h-6" />
       </button>
 
+      <div v-if="images.length > 1" class="absolute top-4 left-1/2 -translate-x-1/2 text-white/60 text-sm z-20 bg-black/30 px-3 py-1 rounded-full">
+        {{ currentIndex + 1 }} / {{ images.length }}
+      </div>
+
+      <!-- Zoom toggle -->
       <button
-        @click.stop="handleNext"
-        :disabled="!hasNext"
-        class="absolute right-4 top-1/2 -translate-y-1/2 p-3 rounded-full bg-white/10 hover:bg-white/20 transition-colors"
-        :class="[!hasNext ? 'opacity-30 cursor-not-allowed' : 'text-white']"
-        title="下一张 (→)"
-        aria-label="下一张图片"
+        class="absolute bottom-4 right-4 p-2 text-white/60 hover:text-white transition-colors z-20 rounded-full hover:bg-white/10"
+        title="点击缩放"
+        @click.stop="toggleZoom"
       >
-        <Icon icon="lucide:chevron-right" class="w-6 h-6" />
+        <Icon :icon="zoomed ? 'lucide:zoom-out' : 'lucide:zoom-in'" class="w-5 h-5" />
       </button>
+
+      <div
+        v-if="currentImage"
+        class="relative max-w-[85vw] max-h-[85vh] flex items-center justify-center"
+        @click.stop
+      >
+        <img
+          :src="currentImage.src"
+          :alt="currentImage.alt"
+          class="max-w-full max-h-[85vh] object-contain rounded-lg select-none transition-transform duration-200 ease-out cursor-crosshair"
+          :class="{ 'scale-150': zoomed }"
+          :style="zoomed ? { transformOrigin: `${zoomOrigin.x}% ${zoomOrigin.y}%` } : {}"
+          draggable="false"
+          @mousemove="handleMouseMove"
+        >
+      </div>
+
+      <!-- Prev/Next -->
+      <div v-if="images.length > 1">
+        <button
+          class="absolute left-4 top-1/2 -translate-y-1/2 p-2 rounded-full bg-white/10 hover:bg-white/20 transition-all text-white/80 hover:text-white disabled:opacity-20 disabled:cursor-not-allowed"
+          :disabled="!hasPrev"
+          title="上一张 (←)"
+          aria-label="上一张图片"
+          @click.stop="handlePrev"
+        >
+          <Icon icon="lucide:chevron-left" class="w-6 h-6" />
+        </button>
+        <button
+          class="absolute right-4 top-1/2 -translate-y-1/2 p-2 rounded-full bg-white/10 hover:bg-white/20 transition-all text-white/80 hover:text-white disabled:opacity-20 disabled:cursor-not-allowed"
+          :disabled="!hasNext"
+          title="下一张 (→)"
+          aria-label="下一张图片"
+          @click.stop="handleNext"
+        >
+          <Icon icon="lucide:chevron-right" class="w-6 h-6" />
+        </button>
+      </div>
     </div>
-  </div>
+  </Transition>
 </template>
+
+<style scoped>
+.lightbox-enter-active { transition: opacity 0.2s ease; }
+.lightbox-leave-active { transition: opacity 0.15s ease; }
+.lightbox-enter-from,
+.lightbox-leave-to { opacity: 0; }
+</style>

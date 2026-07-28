@@ -85,7 +85,7 @@ describe("ImageLightbox", () => {
 			const wrapper = mount(ImageLightbox, {
 				props: { images: mockImages, currentIndex: 0 },
 			});
-			await wrapper.trigger("click");
+			await wrapper.find('[role="dialog"]').trigger("click");
 			expect(wrapper.emitted("close")).toBeTruthy();
 		});
 
@@ -158,15 +158,18 @@ describe("ImageLightbox", () => {
 			const wrapper = mount(ImageLightbox, {
 				props: { images: mockImages, currentIndex: 0 },
 			});
-			expect(wrapper.attributes("role")).toBe("dialog");
-			expect(wrapper.attributes("aria-modal")).toBe("true");
+			const dialog = wrapper.find('[role="dialog"]');
+			expect(dialog.exists()).toBe(true);
+			expect(dialog.attributes("role")).toBe("dialog");
+			expect(dialog.attributes("aria-modal")).toBe("true");
 		});
 
 		it("has aria-label on the dialog", () => {
 			const wrapper = mount(ImageLightbox, {
 				props: { images: mockImages, currentIndex: 0 },
 			});
-			expect(wrapper.attributes("aria-label")).toBe("图片查看器");
+			const dialog = wrapper.find('[role="dialog"]');
+			expect(dialog.attributes("aria-label")).toBe("图片查看器");
 		});
 	});
 

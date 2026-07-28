@@ -92,3 +92,32 @@
 @utility text-balance {
 	text-wrap: balance;
 }
+
+/* Mobile menu slide transition */
+.slide-enter-active,
+.slide-leave-active {
+	transition: all 0.2s ease-out;
+	overflow: hidden;
+}
+
+.slide-enter-from,
+.slide-leave-to {
+	opacity: 0;
+	max-height: 0;
+}
+
+.slide-enter-to,
+.slide-leave-from {
+	opacity: 1;
+	max-height: 500px;
+}
+
+/* Page transition */
+.page-enter-active {
+	transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.page-enter-from {
+	opacity: 0;
+	transform: translateY(8px);
+}

@@ -113,16 +113,16 @@ const navItems = [
           </button>
         </div>
 
-        <nav class="p-3 space-y-1">
+        <nav class="p-3 space-y-0.5">
           <NuxtLink
             v-for="item in navItems"
             :key="item.href"
             :to="item.href"
             :class="[
-              'flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors',
+              'flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium transition-all duration-200',
               route.path === item.href
-                ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400'
-                : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700',
+                ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 shadow-sm'
+                : 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-gray-200',
             ]"
             @click="sidebarOpen = false"
           >
@@ -130,30 +130,29 @@ const navItems = [
             {{ item.label }}
           </NuxtLink>
 
-          <!-- Back to foreground -->
+          <div class="my-3 border-t border-gray-100 dark:border-gray-700/50" />
+
           <NuxtLink
             to="/"
-            class="flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+            class="flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 hover:text-gray-700 dark:hover:text-gray-200 transition-all duration-200"
             @click="sidebarOpen = false"
           >
             <Icon icon="lucide:arrow-left" class="w-4 h-4" />
             返回前台
           </NuxtLink>
 
-          <!-- Change password -->
           <button
             type="button"
-            class="flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium text-gray-600 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-800 transition-colors w-full"
+            class="flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 hover:text-gray-700 dark:hover:text-gray-200 transition-all duration-200 w-full"
             @click="showPasswordModal = true"
           >
             <Icon icon="lucide:key-round" class="w-4 h-4" />
             修改密码
           </button>
 
-          <!-- Logout -->
           <button
             type="button"
-            class="flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/30 transition-colors w-full"
+            class="flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium text-red-500 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30 hover:text-red-600 dark:hover:text-red-400 transition-all duration-200 w-full"
             @click="logout"
           >
             <Icon icon="lucide:log-out" class="w-4 h-4" />

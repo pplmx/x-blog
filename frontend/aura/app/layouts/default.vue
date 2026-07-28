@@ -9,7 +9,7 @@ const navLinks = [
 ];
 
 const isDark = ref(false);
-const mounted = ref(false);
+const mobileMenuOpen = ref(false);
 
 function updateDarkClass() {
 	if (typeof document === "undefined") return;
@@ -20,8 +20,9 @@ function toggleDark() {
 	isDark.value = !isDark.value;
 }
 
+watch(() => route.path, () => { mobileMenuOpen.value = false; });
+
 onMounted(() => {
-	mounted.value = true;
 	try {
 		const saved = localStorage.getItem("theme");
 		if (saved === "dark") isDark.value = true;
@@ -82,13 +83,43 @@ onMounted(() => {
           <!-- Mobile menu button -->
           <button
             type="button"
-            class="md:hidden p-2 rounded-lg text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800"
+            class="md:hidden p-2 rounded-lg text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
             aria-label="打开菜单"
+            @click="mobileMenuOpen = !mobileMenuOpen"
           >
-            <Icon icon="lucide:menu" class="w-5 h-5" />
+            <Icon :icon="mobileMenuOpen ? 'lucide:x' : 'lucide:menu'" class="w-5 h-5 transition-transform duration-200" />
           </button>
         </div>
       </div>
+
+      <!-- Mobile navigation -->
+      <Transition name="slide">
+        <div v-if="mobileMenuOpen" class="md:hidden border-t border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-950">
+          <div class="container mx-auto px-4 py-4 space-y-1">
+            <NuxtLink
+              v-for="link in navLinks"
+              :key="link.to"
+              :to="link.to"
+              class="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200"
+              :class="route.path === link.to
+                ? 'text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/50'
+                : 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800'"
+              @click="mobileMenuOpen = false"
+            >
+              <Icon :icon="link.icon" class="w-4 h-4" />
+              {{ link.label }}
+            </NuxtLink>
+            <button
+              type="button"
+              class="flex items-center gap-3 w-full px-4 py-3 rounded-xl text-sm font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+              @click="toggleDark"
+            >
+              <Icon :icon="isDark ? 'lucide:sun' : 'lucide:moon'" class="w-4 h-4" />
+              {{ isDark ? '浅色模式' : '深色模式' }}
+            </button>
+          </div>
+        </div>
+      </Transition>
     </header>
 
     <!-- Main -->
