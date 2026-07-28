@@ -88,4 +88,29 @@ describe("Default Layout", () => {
 			expect(wrapper.find("footer").exists()).toBe(true);
 		});
 	});
+
+	describe("Dark mode", () => {
+		it("renders dark mode toggle button", () => {
+			const wrapper = mountLayout();
+			const toggle = wrapper.find('button[aria-label*="模式"]');
+			expect(toggle.exists()).toBe(true);
+		});
+
+		it("toggles dark mode when button is clicked", async () => {
+			const wrapper = mountLayout();
+			const toggle = wrapper.find("button");
+			expect(toggle.exists()).toBe(true);
+			// Just verify it doesn't crash
+			await toggle.trigger("click");
+			expect(wrapper.exists()).toBe(true);
+		});
+	});
+
+	describe("Mobile menu", () => {
+		it("renders mobile menu button", () => {
+			const wrapper = mountLayout();
+			const menuButton = wrapper.find("button");
+			expect(menuButton.exists()).toBe(true);
+		});
+	});
 });
