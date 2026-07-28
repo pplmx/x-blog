@@ -727,3 +727,65 @@ class TestAdminIntegrityErrorHandling:
         # Verify the cover_image field was updated
         response = client.get(f"/api/admin/posts/{post.id}", headers=auth_headers)
         assert response.json()["cover_image"] == "https://example.com/new-cover.jpg"
+
+
+class TestAdminBatchApprove:
+    """Tests for batch comment approval/rejection."""
+
+    def test_batch_approve_comments(self, client, auth_headers, db_session):
+        post = models.Post(title="Test", slug="batch-test", content="Content", published=True)
+        db_session.add(post)
+        db_session.flush()
+        c1 = models.Comment(post_id=post.id, nickname="A", content="C1", is_approved=False)
+        c2 = models.Comment(post_id=post.id, nickname="B", content="C2", is_approved=False)
+        db_session.add_all([c1, c2])
+        db_session.commit()
+
+        response = client.post(
+            "/api/admin/comments/batch-approve",
+            headers={"Content-Type": "application/json", **auth_headers},
+            json={"ids": [c1.id, c2.id], "approved": True},
+        )
+        assert response.status_code == 200
+        assert db_session.get(models.Comment, c1.id).is_approved is True
+        assert db_session.get(models.Comment, c2.id).is_approved is True
+
+    def test_batch_reject_comments(self, client, auth_headers, db_session):
+        post = models.Post(title="Test", slug="batch-reject", content="Content", published=True)
+        db_session.add(post)
+        db_session.flush()
+        c = models.Comment(post_id=post.id, nickname="A", content="C1", is_approved=True)
+        db_session.add(c)
+        db_session.commit()
+
+        response = client.post(
+            "/api/admin/comments/batch-approve",
+            headers={"Content-Type": "application/json", **auth_headers},
+            json={"ids": [c.id], "approved": False},
+        )
+        assert response.status_code == 200
+        assert db_session.get(models.Comment, c.id).is_approved is False
+
+
+class TestAdminPasswordChange:
+    """Tests for admin password change."""
+
+    def test_change_password_success(self, client, auth_headers, admin_user, db_session):
+        response = client.post(
+            "/api/admin/password",
+            headers={"Content-Type": "application/json", **auth_headers},
+            json={"current_password": "testpass123", "new_password": "newpass456"},
+        )
+        assert response.status_code == 200
+        db_session.refresh(admin_user)
+        from app.auth import verify_password
+        assert verify_password("newpass456", admin_user.password)
+
+    def test_change_password_wrong_current(self, client, auth_headers):
+        response = client.post(
+            "/api/admin/password",
+            headers={"Content-Type": "application/json", **auth_headers},
+            json={"current_password": "wrongpass", "new_password": "newpass456"},
+        )
+        assert response.status_code == 400
+        assert "Current password is incorrect" in response.text

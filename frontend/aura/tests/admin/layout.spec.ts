@@ -136,6 +136,22 @@ describe("Admin Layout", () => {
 			expect(wrapper.text()).toContain("返回前台");
 		});
 
+		it("renders a password change button", async () => {
+			vi.stubGlobal("useRoute", () => ({
+				path: "/admin",
+				params: {},
+				query: {},
+			}));
+			const { default: AdminLayout } = await import("@/layouts/admin.vue");
+			const wrapper = mount(AdminLayout, {
+				global: {
+					stubs: { Icon: IconStubComponent, NuxtLink: NuxtLinkStub },
+				},
+				slots: { default: "<div>Content</div>" },
+			});
+			expect(wrapper.text()).toContain("修改密码");
+		});
+
 		it("renders a logout button", async () => {
 			vi.stubGlobal("useRoute", () => ({
 				path: "/admin",
