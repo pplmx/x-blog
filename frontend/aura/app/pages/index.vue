@@ -2,19 +2,19 @@
 import { usePopularPosts, usePosts } from "~~/composables/useApi";
 import { useSeo } from "~~/composables/useSeo";
 
+const route = useRoute();
+const currentPage = computed(() => Number(route.query.page) || 1);
+
 const {
 	data: posts,
 	pending,
 	error,
-	refresh,
 } = await usePosts({
-	page: 1,
+	page: currentPage,
 	limit: 10,
 });
 
 const { data: popularPosts } = await usePopularPosts();
-
-const route = useRoute();
 
 useSeo({
 	title: "首页 — X-Blog",
@@ -24,7 +24,6 @@ useSeo({
 
 function fetchPosts(pageNum: number) {
 	navigateTo({ query: { page: pageNum } });
-	refresh();
 }
 
 // Hero stats
