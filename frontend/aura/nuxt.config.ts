@@ -77,6 +77,14 @@ export default defineNuxtConfig({
 			pathPrefix: false,
 		},
 	],
+	vite: {
+		resolve: {
+			alias: {
+				"~/composables": "./composables",
+				"~/components": "./components",
+			},
+		},
+	},
 	postcss: {
 		plugins: {
 			"@tailwindcss/postcss": {},
