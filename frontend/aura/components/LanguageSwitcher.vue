@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { useI18n } from "~/composables/useI18n";
+import { useI18n } from "../composables/useI18n";
 
 const { locale, switchLocale, localeNames } = useI18n();
 </script>
