@@ -112,5 +112,17 @@ describe("Default Layout", () => {
 			const menuButton = wrapper.find("button");
 			expect(menuButton.exists()).toBe(true);
 		});
+
+		it("opens mobile menu when menu button is clicked", async () => {
+			const wrapper = mountLayout();
+			const menuButton = wrapper.find('button[aria-label="打开菜单"]');
+			expect(menuButton.exists()).toBe(true);
+
+			await menuButton.trigger("click");
+			await wrapper.vm.$nextTick();
+
+			// Mobile nav links should be visible
+			expect(wrapper.text()).toContain("首页");
+		});
 	});
 });
