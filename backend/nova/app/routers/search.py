@@ -1,12 +1,43 @@
+import re
+
 from fastapi import APIRouter, Depends, Query, Request
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from ..crud import search_posts
 from ..database import get_db
 from ..limiter import RATE_LIMIT_SEARCH, limiter
+from ..models import Post
 from ..schemas import PostList
 
 router = APIRouter(prefix="/api/search", tags=["search"])
+
+
+def _highlight_sqlite(content: str, query: str) -> str:
+    """Simple regex-based highlighting for SQLite."""
+    words = [re.escape(w) for w in query.split() if w]
+    if not words:
+        return content[:300]
+    pattern = f"({'|'.join(words)})"
+    highlighted = re.sub(pattern, r"<mark>\1</mark>", content, flags=re.IGNORECASE)
+    return highlighted[:500] if len(highlighted) > 500 else highlighted
+
+
+def _build_snippet(post: Post, query: str, is_postgres: bool, db: Session) -> str | None:
+    """Generate a search snippet with highlighted matches."""
+    if not query.strip():
+        return None
+    if is_postgres:
+        ts_query = func.plainto_tsquery("english", query)
+        headline = func.ts_headline(
+            "english",
+            post.content,
+            ts_query,
+            "StartSel=<mark>, StopSel=</mark>, MaxWords=40, MinWords=20, ShortWord=3",
+        )
+        result = db.execute(headline).scalar()
+        return result if result else (post.excerpt or post.content[:200])
+    return _highlight_sqlite(post.excerpt or post.content[:300], query)
 
 
 @router.get("")
@@ -18,10 +49,18 @@ def search(
     limit: int = Query(10, ge=1, le=50),
     db: Session = Depends(get_db),
 ):
+    is_postgres = db.bind.dialect.name == "postgresql"
     posts, total = search_posts(db, query=q, page=page, limit=limit)
 
+    items = []
+    for p in posts:
+        snippet = _build_snippet(p, q, is_postgres, db)
+        post_dict = PostList.model_validate(p).model_dump()
+        post_dict["snippet"] = snippet
+        items.append(post_dict)
+
     return {
-        "items": [PostList.model_validate(p) for p in posts],
+        "items": items,
         "pagination": {
             "page": page,
             "limit": limit,

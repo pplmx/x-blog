@@ -19,6 +19,7 @@ export interface PostList {
 	title: string;
 	slug: string;
 	excerpt: string | null;
+	snippet?: string | null;
 	published: boolean;
 	created_at: string;
 	views: number;

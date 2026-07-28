@@ -74,6 +74,7 @@ class PostList(BaseModel):
     title: str
     slug: str
     excerpt: str | None
+    snippet: str | None = None
     published: bool
     pinned: bool = False
     created_at: datetime

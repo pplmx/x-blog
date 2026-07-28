@@ -128,7 +128,12 @@ function handleSearchInput() {
             {{ post.title }}
           </NuxtLink>
           <p
-            v-if="post.excerpt"
+            v-if="post.snippet"
+            class="text-gray-600 mt-2 line-clamp-3"
+            v-html="post.snippet"
+          />
+          <p
+            v-else-if="post.excerpt"
             class="text-gray-600 mt-2 line-clamp-2"
           >
             {{ post.excerpt }}
