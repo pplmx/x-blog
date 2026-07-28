@@ -260,6 +260,54 @@ describe("MarkdownContent", () => {
 			const mermaidContainer = wrapper.find("[data-mermaid-key]");
 			expect(mermaidContainer.exists()).toBe(true);
 		});
+
+		it("renders mermaid content without crashing when import fails", async () => {
+			// Verify the component handles mermaid content gracefully
+			const wrapper = mountMarkdown("```mermaid\ngraph TD\nA --> B\n```");
+			await flushPromises();
+			await new Promise((r) => setTimeout(r, 10));
+			await flushPromises();
+
+			// Container should still be rendered
+			expect(wrapper.find("[data-mermaid-key]").exists()).toBe(true);
+			// Component should have rendered some content
+			expect(wrapper.find(".markdown-content").exists()).toBe(true);
+		});
+	});
+
+	describe("KaTeX math", () => {
+		it("renders math content without crashing when KaTeX is unavailable", async () => {
+			const wrapper = mountMarkdown("<p>Math: $x^2$</p>");
+			await flushPromises();
+			await new Promise((r) => setTimeout(r, 10));
+			await flushPromises();
+
+			// Component should still render without errors
+			expect(wrapper.find(".markdown-content").exists()).toBe(true);
+		});
+
+		it("renders display math without crashing", async () => {
+			const wrapper = mountMarkdown("<p>$$\\frac{a}{b}$$</p>");
+			await flushPromises();
+			await new Promise((r) => setTimeout(r, 10));
+			await flushPromises();
+
+			expect(wrapper.text()).toContain("frac");
+		});
+
+		it("handles KaTeX render errors gracefully", async () => {
+			katexRenderToString.mockImplementationOnce(() => {
+				throw new Error("KaTeX error");
+			});
+
+			const wrapper = mountMarkdown("<p>Math: $x^2$</p>");
+			await flushPromises();
+			await new Promise((r) => setTimeout(r, 10));
+			await flushPromises();
+
+			// Should not crash
+			expect(wrapper.find(".markdown-content").exists()).toBe(true);
+		});
 	});
 
 	describe("CSS classes", () => {
