@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { Category, PostList, Tag } from "~~/composables/useApi";
+import { useBookmarks } from "~~/composables/useBookmarks";
 
 interface Props {
 	categories: Category[];

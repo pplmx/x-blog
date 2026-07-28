@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed } from "vue";
 import { usePost, usePostView, usePostLike, useRelatedPosts } from "~~/composables/useApi";
+import { usePostSeo } from "~~/composables/useSeo";
 import { extractToc } from "../../../composables/useToc.ts";
 
 const route = useRoute();
