@@ -2,7 +2,7 @@
 import { computed } from "vue";
 import { usePost, usePostView, usePostLike, useRelatedPosts } from "~~/composables/useApi";
 import { usePostSeo } from "~~/composables/useSeo";
-import { extractToc } from "../../../composables/useToc.ts";
+import { extractToc } from "~~/composables/useToc";
 
 const route = useRoute();
 const { data: post, pending, error } = await usePost(route.params.slug as string);

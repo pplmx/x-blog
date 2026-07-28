@@ -1,7 +1,7 @@
 <script setup lang="ts">
 // biome-ignore lint:correctness/noUnusedImports: Locale is used in template type assertions
-import type { Locale } from "../composables/i18n/types";
-import { useI18n } from "../composables/useI18n";
+import type { Locale } from "~~/composables/i18n/types";
+import { useI18n } from "~~/composables/useI18n";
 
 const { locale, switchLocale, localeNames } = useI18n();
 </script>
