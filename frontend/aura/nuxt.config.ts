@@ -70,7 +70,13 @@ export default defineNuxtConfig({
 			siteUrl: process.env.NUXT_SITE_URL || "http://localhost:3000",
 		},
 	},
-	components: true,
+	components: [
+		{
+			prefix: "",
+			path: "~/components",
+			pathPrefix: false,
+		},
+	],
 	vite: {
 		resolve: {
 			alias: {

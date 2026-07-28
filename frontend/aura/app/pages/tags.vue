@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { usePosts, useTags } from "~/composables/useApi";
+
 const route = useRoute();
 const tagId = route.query.tag_id ? Number.parseInt(route.query.tag_id as string, 10) : undefined;
 

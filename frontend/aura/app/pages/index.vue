@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { usePosts, usePopularPosts } from "~/composables/useApi";
+
 const {
 	data: posts,
 	pending,
