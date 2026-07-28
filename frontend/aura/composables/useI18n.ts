@@ -16,8 +16,8 @@
  * Ported from frontend/next/lib/i18n.ts with the same translation keys.
  */
 
-import { en } from "./i18n/locales/en";
 // ─── Translation dictionaries ───────────────────────────────────────
+import { en } from "./i18n/locales/en";
 import { zhCn } from "./i18n/locales/zh-CN";
 import { zhTw } from "./i18n/locales/zh-TW";
 // ─── Types ───────────────────────────────────────────────────────────
@@ -66,11 +66,22 @@ export function localeFromPath(pathname: string): Locale {
 	return defaultLocale;
 }
 
-/** Get the localized path (prepends /locale if locale is non-default). */
+/**
+ * Get the localized path (prepends /locale if locale is non-default).
+ *
+ * Strips an existing locale prefix to prevent double-prefixing (e.g.,
+ * switching from /en/posts to "en" yields /en/posts, not /en/en/posts).
+ */
 export function localizedPath(path: string, locale: Locale): string {
 	if (locale === defaultLocale) return path;
 	// Remove leading slash if present
-	const cleanPath = path.startsWith("/") ? path.slice(1) : path;
+	let cleanPath = path.startsWith("/") ? path.slice(1) : path;
+	// Strip existing locale prefix to avoid double-prefixing
+	const segments = cleanPath.split("/");
+	if (segments[0] && locales.includes(segments[0] as Locale)) {
+		segments.shift();
+	}
+	cleanPath = segments.join("/");
 	return `/${locale}/${cleanPath}`;
 }
 
