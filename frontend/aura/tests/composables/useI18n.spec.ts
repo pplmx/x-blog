@@ -124,7 +124,7 @@ describe("createTranslator", () => {
 
 	it("replaces parameters in translations", () => {
 		const t = createTranslator("zh-CN");
-		expect(t("post.views" as never, { count: 42 })).toBe("阅读");
+		expect(t("comment.replyTo" as never, { name: "Bob" })).toBe("回复 Bob");
 	});
 
 	it("replaces ALL occurrences of a parameter (not just the first)", () => {

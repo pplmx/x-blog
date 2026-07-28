@@ -31,18 +31,50 @@ const dictionaries: Record<Locale, Record<string, string>> = {
 };
 
 // ─────────────────────────────────────────────────────────────
+// Compile-time assertion: all dictionaries must share the same set of keys
+// ─────────────────────────────────────────────────────────────
+type _KeysEqual<T, U> =
+	Exclude<keyof T, keyof U> extends never
+		? Exclude<keyof U, keyof T> extends never
+			? true
+			: false
+		: false;
+
+const _assertEnZhCn: _KeysEqual<typeof en, typeof zhCn> = true;
+const _assertEnZhTw: _KeysEqual<typeof en, typeof zhTw> = true;
+const _assertZhCnZhTw: _KeysEqual<typeof zhCn, typeof zhTw> = true;
+
+// ─────────────────────────────────────────────────────────────
 // Public API (pure functions, no Nuxt dependencies)
 // ─────────────────────────────────────────────────────────────
 
 /** Type-safe translation function. */
 export type Translator = (key: TranslationKey, params?: Record<string, string | number>) => string;
 
-/** Get the translation dictionary for a locale. */
+/**
+ * Get the translation dictionary for a locale.
+ *
+ * Falls back to the default locale dictionary if the requested locale
+ * has no registered dictionary.
+ *
+ * @param locale - The locale to get the dictionary for.
+ * @returns The translation dictionary mapping keys to localized strings.
+ */
 export function getDictionary(locale: Locale): Record<string, string> {
 	return dictionaries[locale] ?? dictionaries[defaultLocale];
 }
 
-/** Create a translator for a specific locale. */
+/**
+ * Create a translator for a specific locale.
+ *
+ * The returned function resolves translation keys using the locale's
+ * dictionary. Parameter placeholders in the form `{name}` are replaced
+ * with the corresponding value from the params object. Missing keys
+ * fall back to returning the key itself.
+ *
+ * @param locale - The locale to create a translator for.
+ * @returns A translator function that resolves keys to localized strings.
+ */
 export function createTranslator(locale: Locale): Translator {
 	const dict = getDictionary(locale);
 	return (key, params) => {
@@ -58,7 +90,15 @@ export function createTranslator(locale: Locale): Translator {
 	};
 }
 
-/** Detect locale from pathname. */
+/**
+ * Detect locale from pathname.
+ *
+ * Examines the first path segment of the given pathname and checks if it
+ * matches a registered locale prefix (e.g., `/en/about` → `en`).
+ *
+ * @param pathname - The URL pathname to inspect.
+ * @returns The detected locale, or the default locale if no prefix is found.
+ */
 export function localeFromPath(pathname: string): Locale {
 	const segments = pathname.split("/").filter(Boolean);
 	const first = segments[0];
