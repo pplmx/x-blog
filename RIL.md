@@ -6,7 +6,7 @@
 
 **Stack**: FastAPI (Python 3.14) + Nuxt 4 (Vue 3) + SQLite + PostgreSQL
 **Directory Structure**: `backend/nova/` (FastAPI), `frontend/aura/` (Nuxt 4)
-**Status**: All tests passing (560 Nuxt tests across 34 files, 86.56% statement coverage). Reading list/bookmarks feature complete (useBookmarks composable, BookmarkButton component, /bookmarks page, sidebar integration).
+**Status**: All tests passing (597 frontend tests across 35 files at 91.56% statement coverage, 478 backend tests at 92.78% coverage). Reading list/bookmarks feature complete (useBookmarks composable, BookmarkButton component, /bookmarks page, sidebar integration). i18n refactoring complete with code review fixes.
 
 ## Key Findings
 
