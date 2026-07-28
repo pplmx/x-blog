@@ -221,15 +221,24 @@ export interface AdminPost {
 	id: number;
 	title: string;
 	slug: string;
-	content: string;
-	excerpt: string;
 	published: boolean;
 	pinned: boolean;
+	publish_at: string | null;
+	views: number;
 	cover_image: string | null;
 	category: string | null;
 	tags: string[];
 	created_at: string;
 	updated_at: string;
+}
+
+export interface AdminPostListResponse {
+	items: AdminPost[];
+	pagination: {
+		total: number;
+		skip: number;
+		limit: number;
+	};
 }
 
 export interface AdminPostDetail {
@@ -280,11 +289,22 @@ function getAuthHeaders(): HeadersInit {
 	return token ? { Authorization: `Bearer ${token}` } : {};
 }
 
-/** Fetch all posts for admin panel (includes drafts, auth required). */
-export async function fetchAdminPosts() {
+/** Fetch posts for admin panel with search, filter, pagination. */
+export async function fetchAdminPosts(params?: {
+	q?: string;
+	status?: string;
+	skip?: number;
+	limit?: number;
+}) {
 	const config = useRuntimeConfig();
 	const apiUrl = config.public.apiUrl;
-	return useFetch<AdminPost[]>(`${apiUrl}/api/admin/posts`, {
+	const query = new URLSearchParams();
+	if (params?.q) query.set("q", params.q);
+	if (params?.status) query.set("status", params.status);
+	if (params?.skip) query.set("skip", String(params.skip));
+	if (params?.limit) query.set("limit", String(params.limit));
+	const qs = query.toString();
+	return useFetch<AdminPostListResponse>(`${apiUrl}/api/admin/posts${qs ? `?${qs}` : ""}`, {
 		headers: getAuthHeaders(),
 	});
 }

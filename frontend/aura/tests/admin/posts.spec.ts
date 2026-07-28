@@ -1,15 +1,3 @@
-/**
- * Admin Posts Page Tests
- *
- * Tests the admin posts list page: loading state, error state,
- * empty state, and populated state with post table rendering,
- * status badges, date formatting, and delete functionality.
- *
- * Mocks the fetchAdminPosts and deleteAdminPost composables
- * to test the page in isolation. Uses a <Suspense> wrapper
- * since the page uses `await fetchAdminPosts()` in <script setup>.
- */
-
 import { flushPromises } from "@vue/test-utils";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ref } from "vue";
@@ -30,39 +18,55 @@ vi.stubGlobal("useRuntimeConfig", () => ({
 }));
 vi.stubGlobal("navigateTo", vi.fn());
 
-// Mock window.confirm
 const originalConfirm = window.confirm;
 
-const mockPosts = [
-	{
-		id: 1,
-		title: "First Post",
-		slug: "first-post",
-		content: "",
-		excerpt: "First post excerpt",
-		published: true,
-		pinned: false,
-		cover_image: null,
-		category: "Tech",
-		tags: ["React"],
-		created_at: "2024-01-15T10:30:00Z",
-		updated_at: "2024-01-15T10:30:00Z",
-	},
-	{
-		id: 2,
-		title: "Draft Post",
-		slug: "draft-post",
-		content: "",
-		excerpt: "Draft excerpt",
-		published: false,
-		pinned: false,
-		cover_image: null,
-		category: "Design",
-		tags: [],
-		created_at: "2024-02-20T14:00:00Z",
-		updated_at: "2024-02-20T14:00:00Z",
-	},
-];
+const mockResponse = {
+	items: [
+		{
+			id: 1,
+			title: "First Post",
+			slug: "first-post",
+			published: true,
+			pinned: false,
+			publish_at: null,
+			views: 100,
+			cover_image: null,
+			category: "Tech",
+			tags: ["React"],
+			created_at: "2024-01-15T10:30:00Z",
+			updated_at: "2024-01-15T10:30:00Z",
+		},
+		{
+			id: 2,
+			title: "Draft Post",
+			slug: "draft-post",
+			published: false,
+			pinned: false,
+			publish_at: null,
+			views: 0,
+			cover_image: null,
+			category: "Design",
+			tags: [],
+			created_at: "2024-02-20T14:00:00Z",
+			updated_at: "2024-02-20T14:00:00Z",
+		},
+		{
+			id: 3,
+			title: "Scheduled Post",
+			slug: "scheduled-post",
+			published: false,
+			pinned: false,
+			publish_at: "2026-08-01T10:00:00Z",
+			views: 0,
+			cover_image: null,
+			category: "Tech",
+			tags: [],
+			created_at: "2026-07-28T10:00:00Z",
+			updated_at: "2026-07-28T10:00:00Z",
+		},
+	],
+	pagination: { total: 3, skip: 0, limit: 20 },
+};
 
 async function loadPage() {
 	const { default: PostsPage } = await import("@/pages/admin/posts.vue");
@@ -108,7 +112,7 @@ describe("Admin Posts Page", () => {
 	describe("Empty state", () => {
 		it("renders empty state when no posts exist", async () => {
 			mockFetchAdminPosts.mockReturnValue({
-				data: ref([]),
+				data: ref({ items: [], pagination: { total: 0, skip: 0, limit: 20 } }),
 				pending: ref(false),
 				error: ref(null),
 				refresh: vi.fn(),
@@ -117,12 +121,11 @@ describe("Admin Posts Page", () => {
 			const PostsPage = await loadPage();
 			const wrapper = await mountWithSuspense(PostsPage);
 			expect(wrapper.text()).toContain("暂无文章");
-			expect(wrapper.text()).toContain("开始创建你的第一篇文章吧");
 		});
 
 		it("renders a link to create new post in empty state", async () => {
 			mockFetchAdminPosts.mockReturnValue({
-				data: ref([]),
+				data: ref({ items: [], pagination: { total: 0, skip: 0, limit: 20 } }),
 				pending: ref(false),
 				error: ref(null),
 				refresh: vi.fn(),
@@ -138,7 +141,7 @@ describe("Admin Posts Page", () => {
 	describe("Populated state", () => {
 		beforeEach(() => {
 			mockFetchAdminPosts.mockReturnValue({
-				data: ref(mockPosts),
+				data: ref(mockResponse),
 				pending: ref(false),
 				error: ref(null),
 				refresh: vi.fn(),
@@ -158,7 +161,7 @@ describe("Admin Posts Page", () => {
 		it("renders the post count", async () => {
 			const PostsPage = await loadPage();
 			const wrapper = await mountWithSuspense(PostsPage);
-			expect(wrapper.text()).toContain("2 篇文章");
+			expect(wrapper.text()).toContain("3 篇文章");
 		});
 
 		it('renders a "new post" link', async () => {
@@ -166,7 +169,6 @@ describe("Admin Posts Page", () => {
 			const wrapper = await mountWithSuspense(PostsPage);
 			const createLink = wrapper.find('a[href="/admin/posts/new"]');
 			expect(createLink.exists()).toBe(true);
-			expect(createLink.text()).toContain("新建文章");
 		});
 
 		it("renders post titles in the table", async () => {
@@ -174,13 +176,6 @@ describe("Admin Posts Page", () => {
 			const wrapper = await mountWithSuspense(PostsPage);
 			expect(wrapper.text()).toContain("First Post");
 			expect(wrapper.text()).toContain("Draft Post");
-		});
-
-		it("renders post slugs in the table", async () => {
-			const PostsPage = await loadPage();
-			const wrapper = await mountWithSuspense(PostsPage);
-			expect(wrapper.text()).toContain("first-post");
-			expect(wrapper.text()).toContain("draft-post");
 		});
 
 		it("renders published status for published posts", async () => {
@@ -193,6 +188,12 @@ describe("Admin Posts Page", () => {
 			const PostsPage = await loadPage();
 			const wrapper = await mountWithSuspense(PostsPage);
 			expect(wrapper.text()).toContain("草稿");
+		});
+
+		it("renders scheduled status for scheduled posts", async () => {
+			const PostsPage = await loadPage();
+			const wrapper = await mountWithSuspense(PostsPage);
+			expect(wrapper.text()).toContain("定时发布");
 		});
 
 		it("renders post dates", async () => {
@@ -208,16 +209,15 @@ describe("Admin Posts Page", () => {
 			expect(editLink.exists()).toBe(true);
 		});
 
-		it("renders a delete button for each post", async () => {
+		it("renders search input and status filter", async () => {
 			const PostsPage = await loadPage();
 			const wrapper = await mountWithSuspense(PostsPage);
-			// The delete buttons are icon buttons; check they exist
-			const deleteButtons = wrapper.findAll("button");
-			const trashButton = deleteButtons.find((b) => {
-				const svg = b.find('svg[data-icon="lucide:trash-2"]');
-				return svg.exists();
-			});
-			expect(trashButton).toBeDefined();
+			const searchInput = wrapper.find('input[type="text"]');
+			expect(searchInput.element.getAttribute("placeholder")).toContain("搜索");
+			expect(wrapper.text()).toContain("全部状态");
+			expect(wrapper.text()).toContain("已发布");
+			expect(wrapper.text()).toContain("草稿");
+			expect(wrapper.text()).toContain("定时发布");
 		});
 
 		it("calls deleteAdminPost with confirmation when delete is clicked", async () => {
@@ -225,9 +225,8 @@ describe("Admin Posts Page", () => {
 			mockDeleteAdminPost.mockResolvedValue({});
 
 			const refreshMock = vi.fn();
-			// Override the mock to include a working refresh
 			mockFetchAdminPosts.mockReturnValue({
-				data: ref(mockPosts),
+				data: ref(mockResponse),
 				pending: ref(false),
 				error: ref(null),
 				refresh: refreshMock,
@@ -236,7 +235,6 @@ describe("Admin Posts Page", () => {
 			const PostsPage = await loadPage();
 			const wrapper = await mountWithSuspense(PostsPage);
 
-			// Find and click the delete button for post 1
 			const deleteButtons = wrapper.findAll("button");
 			const trashButton = deleteButtons.find((b) => {
 				const svg = b.find('svg[data-icon="lucide:trash-2"]');

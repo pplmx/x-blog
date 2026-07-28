@@ -193,7 +193,8 @@ def test_admin_list_posts_with_auth(client, auth_headers):
         headers=auth_headers,
     )
     assert response.status_code == 200
-    assert isinstance(response.json(), list)
+    data = response.json()
+    assert isinstance(data["items"], list)
 
 
 def test_admin_create_post_with_auth(client, auth_headers):

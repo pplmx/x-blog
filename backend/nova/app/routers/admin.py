@@ -1,6 +1,9 @@
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from datetime import UTC, datetime
+
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from fastapi.security import OAuth2PasswordRequestForm
 from pydantic import BaseModel, ConfigDict
+from sqlalchemy import func, or_
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, joinedload
 
@@ -102,36 +105,65 @@ def delete_user(
     return {"message": "User deleted"}
 
 
-@router.get("/posts", response_model=list[dict])
+@router.get("/posts")
 def admin_list_posts(
     db: Session = Depends(get_db),
     _current_user: auth.User = Depends(get_current_admin),
     skip: int = 0,
     limit: int = 20,
+    q: str | None = Query(None, description="Search by title"),
+    status: str | None = Query(None, description="published | draft | scheduled"),
 ):
+    query = db.query(models.Post)
+
+    if q:
+        query = query.filter(models.Post.title.ilike(f"%{q}%"))
+
+    if status == "published":
+        now = datetime.now(UTC)
+        query = query.filter(
+            models.Post.published,
+            or_(models.Post.publish_at.is_(None), models.Post.publish_at <= now),
+        )
+    elif status == "draft":
+        query = query.filter(models.Post.published == False)  # noqa: E712
+    elif status == "scheduled":
+        now = datetime.now(UTC)
+        query = query.filter(models.Post.publish_at > now)
+
+    total = query.count()
+
     posts = (
-        db.query(models.Post)
-        .options(joinedload(models.Post.category), joinedload(models.Post.tags))
+        query.options(joinedload(models.Post.category), joinedload(models.Post.tags))
         .order_by(models.Post.pinned.desc(), models.Post.created_at.desc())
         .offset(skip)
         .limit(limit)
         .all()
     )
-    return [
-        {
-            "id": p.id,
-            "title": p.title,
-            "slug": p.slug,
-            "published": p.published,
-            "pinned": p.pinned,
-            "cover_image": p.cover_image,
-            "category": p.category.name if p.category else None,
-            "tags": [t.name for t in p.tags],
-            "created_at": p.created_at.isoformat() if p.created_at else None,
-            "updated_at": p.updated_at.isoformat() if p.updated_at else None,
-        }
-        for p in posts
-    ]
+    return {
+        "items": [
+            {
+                "id": p.id,
+                "title": p.title,
+                "slug": p.slug,
+                "published": p.published,
+                "pinned": p.pinned,
+                "publish_at": p.publish_at.isoformat() if p.publish_at else None,
+                "views": p.views,
+                "cover_image": p.cover_image,
+                "category": p.category.name if p.category else None,
+                "tags": [t.name for t in p.tags],
+                "created_at": p.created_at.isoformat() if p.created_at else None,
+                "updated_at": p.updated_at.isoformat() if p.updated_at else None,
+            }
+            for p in posts
+        ],
+        "pagination": {
+            "total": total,
+            "skip": skip,
+            "limit": limit,
+        },
+    }
 
 
 @router.get("/posts/{post_id}", response_model=dict)
@@ -394,7 +426,7 @@ def admin_delete_tag(
 
 
 # Comments management
-@router.get("/comments", response_model=list[dict])
+@router.get("/comments")
 def admin_list_comments(
     post_id: int | None = None,
     db: Session = Depends(get_db),

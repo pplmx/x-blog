@@ -40,8 +40,9 @@ class TestAdminPosts:
 
         response = client.get("/api/admin/posts", headers=auth_headers)
         assert response.status_code == 200
-        posts = response.json()
-        assert len(posts) == 1
+        data = response.json()
+        assert len(data["items"]) == 1
+        assert data["pagination"]["total"] == 1
 
     def test_admin_list_posts_sorted_by_created_at_desc(self, client, auth_headers, db_session):
         """Admin post list must return posts sorted by created_at descending.
@@ -67,7 +68,7 @@ class TestAdminPosts:
         response = client.get("/api/admin/posts", headers=auth_headers)
         assert response.status_code == 200
         result = response.json()
-        titles = [p["title"] for p in result]
+        titles = [p["title"] for p in result["items"]]
         assert titles == ["Third", "Second", "First"]
 
     def test_admin_list_posts_pinned_first(self, client, auth_headers, db_session):
@@ -96,7 +97,7 @@ class TestAdminPosts:
         response = client.get("/api/admin/posts", headers=auth_headers)
         assert response.status_code == 200
         result = response.json()
-        titles = [p["title"] for p in result]
+        titles = [p["title"] for p in result["items"]]
         assert titles[0] == "Pinned Post"
         assert "Regular Post" in titles
 
@@ -673,7 +674,7 @@ class TestAdminIntegrityErrorHandling:
         response = client.get("/api/admin/posts", headers=auth_headers)
         assert response.status_code == 200
         posts = response.json()
-        post_data = next(p for p in posts if p["id"] == post.id)
+        post_data = next(p for p in posts["items"] if p["id"] == post.id)
         assert post_data["pinned"] is True
         assert post_data["cover_image"] == "https://example.com/list.jpg"
 
