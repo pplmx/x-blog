@@ -133,6 +133,18 @@ clean:
     rm -rf .ruff_cache backend/nova/.ruff_cache
     rm -rf frontend/aura/coverage
 
+# Generate Alembic migration (auto-detect)
+migration:
+    cd backend/nova && uv run alembic revision --autogenerate -m "describe_your_change"
+
+# Apply pending migrations
+migrate:
+    cd backend/nova && uv run alembic upgrade head
+
+# Show migration history
+migration-history:
+    cd backend/nova && uv run alembic history
+
 # Lint and format markdown
 rumdl:
     rumdl fmt
