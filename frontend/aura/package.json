@@ -38,7 +38,7 @@
 		"@vue/test-utils": "^2.4.11",
 		"autoprefixer": "^10.5.4",
 		"dompurify": "^3.4.12",
-		"globals": "^15.0.0",
+		"globals": "^17.8.0",
 		"happy-dom": "^20.11.1",
 		"katex": "^0.18.1",
 		"mermaid": "^11.16.0",
