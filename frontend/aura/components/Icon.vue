@@ -1,8 +1,5 @@
 <script setup lang="ts">
-import { Icon } from "@iconify/vue";
-
-// Prevent noUnusedImports: Icon is used as a component in <template>
-void Icon;
+import { Icon as IconifyIcon } from "@iconify/vue";
 
 const props = defineProps<{
 	icon: string;
@@ -10,14 +7,10 @@ const props = defineProps<{
 	height?: number | string;
 	class?: string;
 }>();
-
-if (!props.icon) {
-	console.warn("[Icon] Missing icon prop");
-}
 </script>
 
 <template>
-  <Icon
+  <IconifyIcon
     :icon="props.icon"
     :width="props.width"
     :height="props.height"
