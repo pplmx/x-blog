@@ -340,3 +340,25 @@ All items from the second major iteration:
     - JSDoc with `@param`/`@returns` added to exported functions in `useI18n.ts`
     - Misleading test fixed: `comment.replyTo` with `{name}` placeholder now verifies
   actual parameter replacement
+
+### Lint/Format Cleanup (COMPLETED)
+
+- **Backend (ruff)**: Removed unused imports (`text` in crud.py, `func` in admin.py,
+  `os` in env.py), fixed import ordering in migrations/env.py and scripts/init_db.py,
+  applied PEP 8 type annotations (UP007, UP035 in migrations), fixed unused loop
+  variable (B007) and f-string without placeholders (F541) in init_db.py.
+  Applied ruff format to 6 files. All 484 backend tests pass (92.13% coverage).
+
+- **Frontend (biome)**: Fixed `noUnusedImports` in Icon.vue (Icon as IconifyIcon →
+  Icon with void), fixed `useIterableCallbackReturn` in posts/[slug].vue (block body),
+  fixed `useTemplate` in admin/posts/[id].vue (template literals). Applied biome
+  organizeImports and formatting to 8 files. Added `.venv/` to `.biomignore`.
+
+- **CSS restructure**: Moved `@theme` and `@utility` directives from
+  `assets/css/main.css` to `assets/css/theme.pcss` and imported via `@import`.
+  Biome 2.5.5 cannot parse Tailwind v4 directives (`@theme`, `@utility`); the `.pcss`
+  extension is not in biome's `files.includes` pattern, avoiding parse errors.
+  All 585 frontend tests pass.
+
+- **Remaining coverage issue**: Frontend branches (75.76%) and functions (72.09%)
+  are below the 80% threshold. This is pre-existing and not caused by these changes.
