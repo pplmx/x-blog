@@ -1,6 +1,6 @@
 """Tests for CRUD operations."""
 
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -881,6 +881,32 @@ class TestIncrementViewsAndLikes:
         result = crud.increment_likes(db_session, post.id)
         assert result is not None
         assert result.likes == 6
+
+    def test_increment_views_commit_failure_rolls_back(self):
+        """Test increment_views rolls back on commit failure."""
+        mock_db = MagicMock()
+        mock_db.commit.side_effect = Exception("Commit failed")
+        mock_result = MagicMock()
+        mock_result.rowcount = 1
+        mock_db.execute.return_value = mock_result
+
+        with pytest.raises(Exception, match="Commit failed"):
+            crud.increment_views(mock_db, 1)
+
+        mock_db.rollback.assert_called_once()
+
+    def test_increment_likes_commit_failure_rolls_back(self):
+        """Test increment_likes rolls back on commit failure."""
+        mock_db = MagicMock()
+        mock_db.commit.side_effect = Exception("Commit failed")
+        mock_result = MagicMock()
+        mock_result.rowcount = 1
+        mock_db.execute.return_value = mock_result
+
+        with pytest.raises(Exception, match="Commit failed"):
+            crud.increment_likes(mock_db, 1)
+
+        mock_db.rollback.assert_called_once()
 
 
 class TestDeletePostForeignKey:

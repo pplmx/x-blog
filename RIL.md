@@ -6,7 +6,7 @@
 
 **Stack**: FastAPI (Python 3.14) + Nuxt 4 (Vue 3) + SQLite + PostgreSQL
 **Directory Structure**: `backend/nova/` (FastAPI), `frontend/aura/` (Nuxt 4)
-**Status**: 484 backend tests (92.13% coverage), 653 frontend tests (37 files, 81.48% functions / 80%+ threshold met). All CI checks pass: ruff lint/format, Biome, coverage, E2E.
+**Status**: 490 backend tests (92.37% coverage), 653 frontend tests (37 files, 81.48% functions / 80%+ threshold met). All CI checks pass: ruff lint/format, Biome, coverage, E2E.
 
 ## Key Findings
 
