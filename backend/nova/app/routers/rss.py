@@ -66,11 +66,11 @@ def generate_rss_feed(posts: list, site_url: str, title: str, description: str, 
 
 
 @rss_router.get("/feed.xml")
-def get_rss_feed(full: bool = False, db: Session = Depends(get_db)):
+def get_rss_feed(full: bool = True, db: Session = Depends(get_db)):
     """Get RSS 2.0 feed of published posts.
 
     Args:
-        full: If True, include full post content instead of excerpt.
+        full: If True, include full post content instead of excerpt (default: True).
     """
     posts, _ = crud.get_posts(db, skip=0, limit=20, published=True)
 
@@ -96,6 +96,7 @@ def get_atom_feed(db: Session = Depends(get_db)):
     for post in posts:
         updated = post.updated_at.strftime("%Y-%m-%dT%H:%M:%SZ")
         published = post.created_at.strftime("%Y-%m-%dT%H:%M:%SZ")
+        content = post.content[:5000] if len(post.content) > 5000 else post.content
         items.append(f"""<entry>
         <title>{post.title}</title>
         <link href="{site_url}/posts/{post.slug}"/>
@@ -103,6 +104,7 @@ def get_atom_feed(db: Session = Depends(get_db)):
         <updated>{updated}</updated>
         <published>{published}</published>
         <summary>{post.excerpt or post.content[:200]}</summary>
+        <content type="html"><![CDATA[{content}]]></content>
     </entry>""")
 
     atom = f"""<?xml version="1.0" encoding="UTF-8"?>
@@ -155,12 +157,20 @@ def get_sitemap(db: Session = Depends(get_db)):
     # Posts
     for post in posts:
         updated = post.updated_at.strftime("%Y-%m-%d")
-        urls.append(f"""<url>
+        entry = f"""<url>
     <loc>{site_url}/posts/{post.slug}</loc>
     <lastmod>{updated}</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
-</url>""")
+"""
+        if post.cover_image:
+            img_url = post.cover_image if post.cover_image.startswith("http") else f"{site_url}{post.cover_image}"
+            entry += f"""    <image:image>
+        <image:loc>{img_url}</image:loc>
+    </image:image>
+"""
+        entry += "</url>"
+        urls.append(entry)
 
     # Categories
     for cat in categories:
@@ -179,7 +189,8 @@ def get_sitemap(db: Session = Depends(get_db)):
 </url>""")
 
     sitemap = f"""<?xml version="1.0" encoding="UTF-8"?>
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
+        xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">
     {"".join(urls)}
 </urlset>"""
 

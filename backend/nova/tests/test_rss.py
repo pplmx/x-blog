@@ -69,7 +69,27 @@ def test_rss_feed_excerpt_only_by_default(client, auth_headers):
     response = client.get("/rss/feed.xml")
     assert response.status_code == 200
     content = response.text
-    # Should have excerpt, not full content
+    # Should have full content by default
+    assert "Short excerpt" in content
+    assert "content:encoded" in content
+
+
+def test_rss_feed_excerpt_mode(client, auth_headers):
+    """RSS feed can be requested in excerpt-only mode."""
+    client.post(
+        "/api/posts",
+        json={
+            "title": "Excerpt Mode Post",
+            "slug": "excerpt-mode-post",
+            "content": "Full post content here",
+            "excerpt": "Short excerpt",
+            "published": True,
+        },
+        headers=auth_headers,
+    )
+    response = client.get("/rss/feed.xml?full=false")
+    assert response.status_code == 200
+    content = response.text
     assert "Short excerpt" in content
     assert "content:encoded" not in content
 
@@ -124,6 +144,14 @@ def test_sitemap_includes_static_pages(client):
     content = response.text
     assert "/about" in content
     assert "/search" in content
+
+
+def test_sitemap_includes_image_namespace(client):
+    """Sitemap should include image namespace for Google."""
+    response = client.get("/sitemap.xml")
+    assert response.status_code == 200
+    content = response.text
+    assert "sitemap-image/1.1" in content
 
 
 def test_sitemap_includes_posts(client, auth_headers):
