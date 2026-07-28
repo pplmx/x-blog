@@ -58,8 +58,10 @@ describe("localizedPath", () => {
 		expect(localizedPath("posts", "zh-TW")).toBe("/zh-TW/posts");
 	});
 
-	it("handles already-localized paths (no dedup)", () => {
-		expect(localizedPath("/en/posts", "en")).toBe("/en/en/posts");
+	it("strips existing locale prefix to prevent double-prefixing", () => {
+		expect(localizedPath("/en/posts", "en")).toBe("/en/posts");
+		expect(localizedPath("/zh-TW/posts", "en")).toBe("/en/posts");
+		expect(localizedPath("/zh-CN/posts", "en")).toBe("/en/posts");
 	});
 
 	it("prepends /zh-TW for zh-TW locale", () => {
