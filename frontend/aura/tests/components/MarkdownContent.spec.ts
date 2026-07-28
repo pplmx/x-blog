@@ -310,6 +310,53 @@ describe("MarkdownContent", () => {
 		});
 	});
 
+	describe("Copy to clipboard error handling", () => {
+		it("does not crash when clipboard write fails", async () => {
+			Object.defineProperty(navigator, "clipboard", {
+				value: { writeText: vi.fn().mockRejectedValue(new Error("Clipboard error")) },
+				configurable: true,
+			});
+
+			const wrapper = mountMarkdown("```ts\nconst x = 1;\n```");
+			await flushPromises();
+
+			const copyButton = wrapper.find("button");
+			await copyButton.trigger("click");
+			await flushPromises();
+
+			// Should not crash, component should still be alive
+			expect(wrapper.find(".markdown-content").exists()).toBe(true);
+		});
+
+		it("renders line numbers for multi-line code blocks", async () => {
+			const wrapper = mountMarkdown("```js\nconst a = 1;\nconst b = 2;\nconst c = 3;\n```");
+			await flushPromises();
+
+			// Line numbers are in divs inside the .select-none container
+			const lineNumberContainer = wrapper.find(".select-none");
+			expect(lineNumberContainer.exists()).toBe(true);
+			const lineNumberDivs = lineNumberContainer.findAll("div");
+			expect(lineNumberDivs.length).toBe(3);
+
+			// Check that line numbers 1-3 are present
+			const lineNumberTexts = lineNumberDivs.map((d) => d.text().trim());
+			expect(lineNumberTexts).toContain("1");
+			expect(lineNumberTexts).toContain("2");
+			expect(lineNumberTexts).toContain("3");
+		});
+
+		it("renders single line number for single-line code block", async () => {
+			const wrapper = mountMarkdown("```ts\nconst x = 42;\n```");
+			await flushPromises();
+
+			const lineNumberContainer = wrapper.find(".select-none");
+			expect(lineNumberContainer.exists()).toBe(true);
+			const lineNumberDivs = lineNumberContainer.findAll("div");
+			expect(lineNumberDivs.length).toBe(1);
+			expect(lineNumberDivs[0].text().trim()).toBe("1");
+		});
+	});
+
 	describe("CSS classes", () => {
 		it("uses dark:prose-invert for dark mode", () => {
 			const wrapper = mountMarkdown("<p>test</p>");
