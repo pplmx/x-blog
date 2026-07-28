@@ -16,16 +16,20 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { ref } from "vue";
 import { mountWithSuspense } from "./helpers.ts";
 
-const { mockFetchPosts, mockUseCategories, mockUseTags } = vi.hoisted(() => ({
+const { mockFetchPosts, mockUseCategories, mockUseTags, mockFetchAdminComments, mockApproveAdminComment } = vi.hoisted(() => ({
 	mockFetchPosts: vi.fn(),
 	mockUseCategories: vi.fn(),
 	mockUseTags: vi.fn(),
+	mockFetchAdminComments: vi.fn(),
+	mockApproveAdminComment: vi.fn(),
 }));
 
 vi.mock("~/composables/useApi", () => ({
 	fetchPosts: mockFetchPosts,
 	useCategories: mockUseCategories,
 	useTags: mockUseTags,
+	fetchAdminComments: mockFetchAdminComments,
+	approveAdminComment: mockApproveAdminComment,
 }));
 
 vi.stubGlobal("useRuntimeConfig", () => ({
@@ -85,6 +89,42 @@ const mockTags = [
 	{ id: 2, name: "Vue" },
 ];
 
+const mockComments = [
+	{
+		id: 1,
+		post_id: 1,
+		post_title: "Published Post",
+		nickname: "Alice",
+		email: "alice@test.com",
+		content: "Great article!",
+		ip_address: "127.0.0.1",
+		is_approved: false,
+		created_at: "2024-03-15T10:00:00Z",
+	},
+	{
+		id: 2,
+		post_id: 3,
+		post_title: "Another Published",
+		nickname: "Bob",
+		email: "bob@test.com",
+		content: "Nice post, thanks for sharing.",
+		ip_address: "127.0.0.2",
+		is_approved: false,
+		created_at: "2024-03-14T08:00:00Z",
+	},
+	{
+		id: 3,
+		post_id: 1,
+		post_title: "Published Post",
+		nickname: "Charlie",
+		email: "charlie@test.com",
+		content: "I have a question about this topic.",
+		ip_address: "127.0.0.3",
+		is_approved: true,
+		created_at: "2024-03-13T12:00:00Z",
+	},
+];
+
 async function loadPage() {
 	const { default: DashboardPage } = await import("@/pages/admin/index.vue");
 	return DashboardPage;
@@ -107,6 +147,12 @@ describe("Admin Dashboard Page", () => {
 			});
 			mockUseTags.mockReturnValue({
 				data: ref(mockTags),
+				pending: ref(false),
+				error: ref(null),
+				refresh: vi.fn(),
+			});
+			mockFetchAdminComments.mockReturnValue({
+				data: ref(mockComments),
 				pending: ref(false),
 				error: ref(null),
 				refresh: vi.fn(),
@@ -141,6 +187,12 @@ describe("Admin Dashboard Page", () => {
 			});
 			mockUseTags.mockReturnValue({
 				data: ref(mockTags),
+				pending: ref(false),
+				error: ref(null),
+				refresh: vi.fn(),
+			});
+			mockFetchAdminComments.mockReturnValue({
+				data: ref(mockComments),
 				pending: ref(false),
 				error: ref(null),
 				refresh: vi.fn(),
@@ -211,6 +263,12 @@ describe("Admin Dashboard Page", () => {
 				error: ref(null),
 				refresh: vi.fn(),
 			});
+			mockFetchAdminComments.mockReturnValue({
+				data: ref(mockComments),
+				pending: ref(false),
+				error: ref(null),
+				refresh: vi.fn(),
+			});
 		});
 
 		afterEach(() => {
@@ -253,6 +311,12 @@ describe("Admin Dashboard Page", () => {
 			});
 			mockUseTags.mockReturnValue({
 				data: ref(mockTags),
+				pending: ref(false),
+				error: ref(null),
+				refresh: vi.fn(),
+			});
+			mockFetchAdminComments.mockReturnValue({
+				data: ref(mockComments),
 				pending: ref(false),
 				error: ref(null),
 				refresh: vi.fn(),
@@ -324,6 +388,12 @@ describe("Admin Dashboard Page", () => {
 				error: ref(null),
 				refresh: vi.fn(),
 			});
+			mockFetchAdminComments.mockReturnValue({
+				data: ref(mockComments),
+				pending: ref(false),
+				error: ref(null),
+				refresh: vi.fn(),
+			});
 
 			const DashboardPage = await loadPage();
 			const wrapper = await mountWithSuspense(DashboardPage);
@@ -352,6 +422,12 @@ describe("Admin Dashboard Page", () => {
 			});
 			mockUseTags.mockReturnValue({
 				data: ref(mockTags),
+				pending: ref(false),
+				error: ref(null),
+				refresh: vi.fn(),
+			});
+			mockFetchAdminComments.mockReturnValue({
+				data: ref(mockComments),
 				pending: ref(false),
 				error: ref(null),
 				refresh: vi.fn(),
@@ -414,6 +490,83 @@ describe("Admin Dashboard Page", () => {
 			const DashboardPage = await loadPage();
 			const wrapper = await mountWithSuspense(DashboardPage);
 			expect(wrapper.text()).toContain("暂无已发布的文章");
+		});
+	});
+
+	describe("Pending comments widget", () => {
+		beforeEach(() => {
+			mockFetchPosts.mockResolvedValue(mockPostsResponse);
+			mockUseCategories.mockReturnValue({
+				data: ref(mockCategories),
+				pending: ref(false),
+				error: ref(null),
+				refresh: vi.fn(),
+			});
+			mockUseTags.mockReturnValue({
+				data: ref(mockTags),
+				pending: ref(false),
+				error: ref(null),
+				refresh: vi.fn(),
+			});
+			mockFetchAdminComments.mockReturnValue({
+				data: ref(mockComments),
+				pending: ref(false),
+				error: ref(null),
+				refresh: vi.fn(),
+			});
+		});
+
+		afterEach(() => {
+			vi.clearAllMocks();
+		});
+
+		it("renders the pending comments section heading", async () => {
+			const DashboardPage = await loadPage();
+			const wrapper = await mountWithSuspense(DashboardPage);
+			expect(wrapper.text()).toContain("待审核评论");
+		});
+
+		it("renders pending comment count (2)", async () => {
+			const DashboardPage = await loadPage();
+			const wrapper = await mountWithSuspense(DashboardPage);
+			expect(wrapper.text()).toContain("2 条待审核");
+		});
+
+		it("renders pending comment authors and content", async () => {
+			const DashboardPage = await loadPage();
+			const wrapper = await mountWithSuspense(DashboardPage);
+			expect(wrapper.text()).toContain("Alice");
+			expect(wrapper.text()).toContain("Bob");
+			expect(wrapper.text()).toContain("Great article!");
+			expect(wrapper.text()).toContain("Nice post, thanks for sharing.");
+		});
+
+		it("renders approve and reject buttons for each pending comment", async () => {
+			const DashboardPage = await loadPage();
+			const wrapper = await mountWithSuspense(DashboardPage);
+			const approveButtons = wrapper.findAll(".text-green-700");
+			const rejectButtons = wrapper.findAll(".text-red-700");
+			expect(approveButtons.length).toBeGreaterThanOrEqual(2);
+			expect(rejectButtons.length).toBeGreaterThanOrEqual(2);
+		});
+
+		it("renders data freshness timestamp", async () => {
+			const DashboardPage = await loadPage();
+			const wrapper = await mountWithSuspense(DashboardPage);
+			expect(wrapper.text()).toContain("数据更新于");
+		});
+
+		it('shows "暂无待审核评论" when all comments are approved', async () => {
+			const approvedOnly = mockComments.map((c) => ({ ...c, is_approved: true }));
+			mockFetchAdminComments.mockReturnValue({
+				data: ref(approvedOnly),
+				pending: ref(false),
+				error: ref(null),
+				refresh: vi.fn(),
+			});
+			const DashboardPage = await loadPage();
+			const wrapper = await mountWithSuspense(DashboardPage);
+			expect(wrapper.text()).toContain("暂无待审核评论");
 		});
 	});
 });

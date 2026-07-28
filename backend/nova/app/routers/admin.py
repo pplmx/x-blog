@@ -419,6 +419,7 @@ def admin_list_comments(
                 "email": c.email,
                 "content": c.content,
                 "ip_address": c.ip_address,
+                "is_approved": c.is_approved,
                 "created_at": c.created_at.isoformat() if c.created_at else None,
             }
         )
