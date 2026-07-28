@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { usePosts, usePopularPosts } from "~/composables/useApi";
+import { usePosts, usePopularPosts } from "~~/composables/useApi";
 
 const {
 	data: posts,

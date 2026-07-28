@@ -10,7 +10,7 @@ import {
 	deleteAdminTag,
 	fetchAdminTags,
 	updateAdminTag,
-} from "~/composables/useApi";
+} from "~~/composables/useApi";
 
 const { data: tags, pending, error, refresh } = await fetchAdminTags();
 const newTagName = ref("");

@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { deleteAdminPost, fetchAdminPosts } from "~/composables/useApi";
-import type { AdminPost } from "~/composables/useApi";
+import { deleteAdminPost, fetchAdminPosts } from "~~/composables/useApi";
+import type { AdminPost } from "~~/composables/useApi";
 
 const searchQuery = ref("");
 const statusFilter = ref("");

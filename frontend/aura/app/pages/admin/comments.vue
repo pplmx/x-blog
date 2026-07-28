@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { approveAdminComment, batchApproveAdminComment, deleteAdminComment, fetchAdminComments } from "~/composables/useApi";
-import type { AdminComment } from "~/composables/useApi";
+import { approveAdminComment, batchApproveAdminComment, deleteAdminComment, fetchAdminComments } from "~~/composables/useApi";
+import type { AdminComment } from "~~/composables/useApi";
 
 const { data: comments, pending, error, refresh } = await fetchAdminComments();
 const isProcessing = ref(false);

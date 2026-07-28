@@ -1,6 +1,10 @@
 // https://nuxt.com/docs/api/configuration/nuxt-config
 import process from "node:process";
+import { resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 import { buildSiteJsonLd } from "./composables/useSeo";
+
+const rootDir = fileURLToPath(new URL(".", import.meta.url));
 
 // Site-wide constants used in both the global head and runtime config.
 const siteUrl = process.env.NUXT_SITE_URL || "http://localhost:3000";
@@ -80,8 +84,7 @@ export default defineNuxtConfig({
 	vite: {
 		resolve: {
 			alias: {
-				"~/composables": "./composables",
-				"~/components": "./components",
+				"~~": resolve(rootDir),
 			},
 		},
 	},

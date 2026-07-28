@@ -9,7 +9,7 @@ import {
 	deleteAdminCategory,
 	fetchAdminCategories,
 	updateAdminCategory,
-} from "~/composables/useApi";
+} from "~~/composables/useApi";
 
 const { data: categories, pending, error, refresh } = await fetchAdminCategories();
 const newCategoryName = ref("");

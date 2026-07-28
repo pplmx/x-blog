@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { useSearch } from "~/composables/useApi";
+import { useSearch } from "~~/composables/useApi";
 
 const route = useRoute();
 const query = route.query.q || "";

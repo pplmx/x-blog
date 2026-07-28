@@ -1,12 +1,12 @@
 <script setup lang="ts">
-import type { AdminPostDetail, PostCreate } from "~/composables/useApi";
+import type { AdminPostDetail, PostCreate } from "~~/composables/useApi";
 import {
 	createAdminPost,
 	fetchAdminCategories,
 	fetchAdminPost,
 	fetchAdminTags,
 	updateAdminPost,
-} from "~/composables/useApi";
+} from "~~/composables/useApi";
 
 const route = useRoute();
 const isNew = route.params.id === "new";
