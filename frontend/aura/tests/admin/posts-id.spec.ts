@@ -346,5 +346,65 @@ describe("Admin Post Editor Page", () => {
 
 			expect(wrapper.text()).toContain("已发布");
 		});
+
+		it("renders cover image URL input", async () => {
+			const PostEditor = await loadPage();
+			const wrapper = await mountWithSuspense(PostEditor);
+			expect(wrapper.text()).toContain("封面图 URL");
+		});
+	});
+
+	describe("Markdown Toolbar", () => {
+		beforeEach(() => {
+			setupRoute("new");
+			setupMocks();
+		});
+
+		it("renders toolbar buttons (B, I, H1, H2, H3)", async () => {
+			const PostEditor = await loadPage();
+			const wrapper = await mountWithSuspense(PostEditor);
+			const text = wrapper.text();
+			expect(text).toContain("B");
+			expect(text).toContain("I");
+			expect(text).toContain("H1");
+			expect(text).toContain("H2");
+			expect(text).toContain("H3");
+		});
+
+		it("renders image upload button with title attribute", async () => {
+			const PostEditor = await loadPage();
+			const wrapper = await mountWithSuspense(PostEditor);
+			const uploadBtn = wrapper.find('button[title="上传图片"]');
+			expect(uploadBtn.exists()).toBe(true);
+		});
+
+		it("renders preview toggle button", async () => {
+			const PostEditor = await loadPage();
+			const wrapper = await mountWithSuspense(PostEditor);
+			expect(wrapper.text()).toContain("预览");
+		});
+
+		it("toggles to preview mode on button click", async () => {
+			const PostEditor = await loadPage();
+			const wrapper = await mountWithSuspense(PostEditor);
+			await flushPromises();
+
+			const previewBtn = wrapper.find('button[type="button"]');
+			const buttons = wrapper.findAll('button[type="button"]');
+			const toggleBtn = buttons.find((b) => b.text().includes("预览"));
+			expect(toggleBtn).toBeDefined();
+			if (toggleBtn) {
+				await toggleBtn.trigger("click");
+				await flushPromises();
+				expect(wrapper.text()).toContain("编辑");
+			}
+		});
+
+		it("renders image upload file input", async () => {
+			const PostEditor = await loadPage();
+			const wrapper = await mountWithSuspense(PostEditor);
+			const fileInput = wrapper.find('input[type="file"]');
+			expect(fileInput.exists()).toBe(true);
+		});
 	});
 });
