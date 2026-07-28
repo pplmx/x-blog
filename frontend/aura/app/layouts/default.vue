@@ -1,74 +1,15 @@
-<template>
-  <div class="min-h-screen flex flex-col">
-    <header class="sticky top-0 z-50 border-b border-gray-100 dark:border-gray-800 bg-white/80 dark:bg-gray-900/80 backdrop-blur-md">
-      <div class="container mx-auto px-4 py-4 flex justify-between items-center">
-        <NuxtLink
-          to="/"
-          class="text-2xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent hover:from-blue-700 hover:to-indigo-700 transition-all"
-        >
-          X-Blog
-        </NuxtLink>
-
-        <!-- Desktop navigation -->
-        <div class="hidden md:flex items-center gap-4">
-          <nav aria-label="主导航">
-            <ul class="flex gap-5 list-none m-0 p-0">
-              <li>
-                <NuxtLink
-                  to="/"
-                  class="flex items-center gap-1.5 text-gray-600 hover:text-blue-600 transition-colors"
-                >
-                  <Icon icon="lucide:home" class="w-4 h-4" aria-hidden="true" />
-                  <span>首页</span>
-                </NuxtLink>
-              </li>
-              <li>
-                <NuxtLink
-                  to="/about"
-                  class="flex items-center gap-1.5 text-gray-600 hover:text-blue-600 transition-colors"
-                >
-                  <Icon icon="lucide:user" class="w-4 h-4" aria-hidden="true" />
-                  <span>关于</span>
-                </NuxtLink>
-              </li>
-            </ul>
-          </nav>
-
-          <!-- Dark mode toggle -->
-          <button
-            type="button"
-            @click="toggleDark"
-            :aria-label="isDark ? '切换到浅色模式' : '切换到深色模式'"
-            class="p-2 rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
-          >
-            <Icon
-              :icon="isDark ? 'lucide:sun' : 'lucide:moon'"
-              class="w-4 h-4"
-            />
-          </button>
-        </div>
-      </div>
-    </header>
-
-    <main class="container mx-auto px-4 py-8 flex-1">
-      <slot />
-    </main>
-
-    <footer class="border-t border-gray-100 dark:border-gray-800 py-6 mt-auto">
-      <div class="container mx-auto px-4 text-center text-sm text-gray-500 dark:text-gray-400">
-        Made with <Icon icon="lucide:heart" class="w-4 h-4 text-red-500 animate-pulse" /> for developers
-      </div>
-    </footer>
-  </div>
-</template>
-
 <script setup lang="ts">
-import { onMounted, ref, watch } from "vue";
+const route = useRoute();
+const isHome = computed(() => route.path === "/");
 
-// Default layout - no props needed
+const navLinks = [
+	{ to: "/", label: "首页", icon: "lucide:home" },
+	{ to: "/about", label: "关于", icon: "lucide:user" },
+	{ to: "/search", label: "搜索", icon: "lucide:search" },
+];
 
-// Dark mode toggle
 const isDark = ref(false);
+const mounted = ref(false);
 
 function updateDarkClass() {
 	if (typeof document === "undefined") return;
@@ -80,27 +21,98 @@ function toggleDark() {
 }
 
 onMounted(() => {
+	mounted.value = true;
 	try {
-		// Check for saved preference or system preference
 		const saved = localStorage.getItem("theme");
-		if (saved === "dark") {
-			isDark.value = true;
-		} else if (saved === "light") {
-			isDark.value = false;
-		} else if (window.matchMedia) {
-			isDark.value = window.matchMedia("(prefers-color-scheme: dark)").matches;
-		}
+		if (saved === "dark") isDark.value = true;
+		else if (saved === "light") isDark.value = false;
+		else if (window.matchMedia?.("(prefers-color-scheme: dark)").matches) isDark.value = true;
 		updateDarkClass();
-
-		// Save preference to localStorage when it changes
-		watch(isDark, (newVal) => {
-			updateDarkClass();
-			localStorage.setItem("theme", newVal ? "dark" : "light");
-		});
-	} catch {
-		// localStorage or matchMedia not available (e.g., in test env)
-		isDark.value = false;
-		updateDarkClass();
-	}
+		watch(isDark, (v) => { updateDarkClass(); localStorage.setItem("theme", v ? "dark" : "light"); });
+	} catch { isDark.value = false; updateDarkClass(); }
 });
 </script>
+
+<template>
+  <div class="min-h-screen flex flex-col bg-white dark:bg-gray-950 transition-colors duration-300">
+    <!-- Header -->
+    <header
+      class="sticky top-0 z-50 border-b border-gray-100/80 dark:border-gray-800/80"
+      :class="isHome ? 'bg-white/70 dark:bg-gray-950/70 backdrop-blur-xl' : 'bg-white/90 dark:bg-gray-950/90 backdrop-blur-md'"
+    >
+      <div class="container mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="flex items-center justify-between h-16">
+          <!-- Logo -->
+          <NuxtLink
+            to="/"
+            class="text-xl font-bold bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 bg-clip-text text-transparent hover:from-blue-500 hover:via-indigo-500 hover:to-purple-500 transition-all duration-300"
+          >
+            X-Blog
+          </NuxtLink>
+
+          <!-- Desktop nav -->
+          <nav class="hidden md:flex items-center gap-1">
+            <NuxtLink
+              v-for="link in navLinks"
+              :key="link.to"
+              :to="link.to"
+              class="flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200"
+              :class="route.path === link.to
+                ? 'text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/50'
+                : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800'"
+            >
+              <Icon :icon="link.icon" class="w-4 h-4" />
+              {{ link.label }}
+            </NuxtLink>
+
+            <!-- Dark mode toggle -->
+            <div class="w-px h-5 bg-gray-200 dark:bg-gray-700 mx-2" />
+
+            <button
+              type="button"
+              :aria-label="isDark ? '切换到浅色模式' : '切换到深色模式'"
+              class="p-2 rounded-lg text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-700 dark:hover:text-gray-200 transition-all duration-200"
+              @click="toggleDark"
+            >
+              <Icon v-if="isDark" icon="lucide:sun" class="w-4 h-4" />
+              <Icon v-else icon="lucide:moon" class="w-4 h-4" />
+            </button>
+          </nav>
+
+          <!-- Mobile menu button -->
+          <button
+            type="button"
+            class="md:hidden p-2 rounded-lg text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800"
+            aria-label="打开菜单"
+          >
+            <Icon icon="lucide:menu" class="w-5 h-5" />
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <!-- Main -->
+    <main class="flex-1 container mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 lg:py-10">
+      <slot />
+    </main>
+
+    <!-- Footer -->
+    <footer class="border-t border-gray-100 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-900/50">
+      <div class="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div class="flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div class="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
+            <span>© 2026 X-Blog.</span>
+            <span>Made with</span>
+            <Icon icon="lucide:heart" class="w-3.5 h-3.5 text-red-500 fill-red-500" />
+            <span>for developers.</span>
+          </div>
+          <div class="flex items-center gap-4 text-sm text-gray-400 dark:text-gray-500">
+            <NuxtLink to="/" class="hover:text-gray-600 dark:hover:text-gray-300 transition-colors">首页</NuxtLink>
+            <NuxtLink to="/about" class="hover:text-gray-600 dark:hover:text-gray-300 transition-colors">关于</NuxtLink>
+            <a href="https://github.com/pplmx/x-blog" target="_blank" rel="noopener noreferrer" class="hover:text-gray-600 dark:hover:text-gray-300 transition-colors">GitHub</a>
+          </div>
+        </div>
+      </div>
+    </footer>
+  </div>
+</template>
