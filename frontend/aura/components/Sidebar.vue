@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { Category, PostList, Tag } from "~/composables/useApi";
+import type { Category, PostList, Tag } from "~~/composables/useApi";
 
 interface Props {
 	categories: Category[];

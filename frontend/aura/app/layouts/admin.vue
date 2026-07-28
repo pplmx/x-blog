@@ -7,7 +7,7 @@
   Uses useAdminAuth composable for auth state + logout.
 -->
 <script setup lang="ts">
-import { useAdminAuth } from "~/composables/useAdminAuth";
+import { useAdminAuth } from "~~/composables/useAdminAuth";
 
 const { isAuthenticated, logout } = useAdminAuth();
 const route = useRoute();

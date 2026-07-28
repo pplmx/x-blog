@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, toRefs } from "vue";
-import type { Category, Tag } from "~/composables/useApi";
+import type { Category, Tag } from "~~/composables/useApi";
 
 interface Props {
 	categories: Category[];

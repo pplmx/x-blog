@@ -19,7 +19,7 @@
 -->
 <script setup lang="ts">
 import { computed, ref } from "vue";
-import { sanitizeHtml, useMarkdown } from "~/composables/useMarkdown";
+import { sanitizeHtml, useMarkdown } from "~~/composables/useMarkdown";
 
 export interface MarkdownContentProps {
 	/** Raw HTML content string from the backend. */
@@ -229,6 +229,7 @@ function lineNumbers(code: string): number[] {
 </template>
 
 <style scoped>
+@reference "tailwindcss";
 .markdown-content :deep(pre) {
   @apply text-sm leading-6 font-mono text-gray-200;
 }

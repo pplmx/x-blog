@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { onMounted, ref } from "vue";
-import { usePostView } from "~/composables/useApi";
+import { usePostView } from "~~/composables/useApi";
 
 interface Props {
 	postId: number;

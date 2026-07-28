@@ -49,7 +49,7 @@
 
 <script setup lang="ts">
 import { ref } from "vue";
-import { createComment } from "~/composables/useApi";
+import { createComment } from "~~/composables/useApi";
 
 interface Props {
 	postId: number;

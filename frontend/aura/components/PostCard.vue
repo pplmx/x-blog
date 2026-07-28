@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { PostList } from "~/composables/useApi";
+import type { PostList } from "~~/composables/useApi";
 
 interface Props {
 	post: PostList;

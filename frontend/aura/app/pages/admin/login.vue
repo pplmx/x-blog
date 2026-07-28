@@ -5,7 +5,7 @@
 -->
 <script setup lang="ts">
 import { ref } from "vue";
-import { adminLoginRequest, useAdminAuth } from "~/composables/useAdminAuth";
+import { adminLoginRequest, useAdminAuth } from "~~/composables/useAdminAuth";
 
 const { login } = useAdminAuth();
 const username = ref("");
