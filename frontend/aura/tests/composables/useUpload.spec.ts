@@ -96,4 +96,24 @@ describe("useUpload", () => {
 		const callHeaders = (globalThis.fetch as any).mock.calls[0][1].headers;
 		expect(callHeaders).toEqual({});
 	});
+
+	it("handles json parsing errors with fallback error message", async () => {
+		globalThis.fetch = vi.fn().mockResolvedValue({
+			ok: false,
+			status: 500,
+			json: () => Promise.reject(new Error("Invalid JSON")),
+		});
+		localStorage.setItem("admin_token", "test-token");
+
+		const { useUpload } = await import("~/composables/useUpload");
+		const { uploadImage, error, isUploading } = useUpload();
+
+		const file = new File(["fake"], "test.png", { type: "image/png" });
+		const result = await uploadImage(file);
+
+		expect(result).toBeNull();
+		expect(isUploading.value).toBe(false);
+		// The .catch() fallback returns {}, so error should use the generic message
+		expect(error.value).toBe("Upload failed (500)");
+	});
 });

@@ -6,7 +6,7 @@
 
 **Stack**: FastAPI (Python 3.14) + Nuxt 4 (Vue 3) + SQLite + PostgreSQL
 **Directory Structure**: `backend/nova/` (FastAPI), `frontend/aura/` (Nuxt 4)
-**Status**: 484 backend tests (92.13% coverage), 603 frontend tests (36 files, 80%+ coverage threshold). All CI checks pass: ruff lint/format, Biome, coverage, E2E.
+**Status**: 484 backend tests (92.13% coverage), 642 frontend tests (37 files, 80%+ coverage threshold met). All CI checks pass: ruff lint/format, Biome, coverage, E2E.
 
 ## Key Findings
 
@@ -360,9 +360,13 @@ All items from the second major iteration:
   extension is not in biome's `files.includes` pattern, avoiding parse errors.
   All 585 frontend tests pass.
 
-- **Remaining coverage issue**: Frontend branches (75.76%) and functions (72.09%)
-  are below the 80% threshold. This is pre-existing and not caused by these changes.
-  Root cause: `app/pages/index.vue` has 0% coverage because it uses `await` in
-  `<script setup>` which creates a Vue 3 `Suspense` boundary that cannot be resolved
-  in the happy-dom test environment with `@vue/test-utils` `mount`. Attempting to
-  mount the component results in an empty render with no template output.
+- **Coverage threshold fix (COMPLETED)**: Frontend functions coverage was at 75.3%,
+  failing the 80% threshold and breaking CI. Fixed by:
+  1. Rewrote `tests/pages/index.spec.ts` to properly mount `app/pages/index.vue` using
+     a template-based `<Suspense>` wrapper (same pattern as `posts/[slug].spec.ts`),
+     covering all 19 functions in the component (previously 0%).
+  2. Added test for `batchApproveAdminComment` in `useApi.spec.ts` (was uncovered).
+  3. Added test for `.catch()` fallback in `useUpload.spec.ts` (was uncovered).
+        - **Result**: Functions coverage now 80% (324/405), all thresholds pass. 642 tests.
+        - **Cleanup**: Removed 839MB core dump file (`core.1332996`) and stale test database
+  files (`test_debug.db`, `test_fk_debug*.db`).

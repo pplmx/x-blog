@@ -9,6 +9,7 @@ import { afterEach, beforeEach, describe, expect, it, type Mock, vi } from "vite
 import {
 	adminLogin,
 	approveAdminComment,
+	batchApproveAdminComment,
 	createAdminCategory,
 	createAdminPost,
 	createAdminTag,
@@ -195,6 +196,22 @@ describe("admin API functions", () => {
 		expect(useFetchCalls[0].url).toBe("http://localhost:18888/api/comments/25/approve");
 		expect(useFetchCalls[0].options.method).toBe("PATCH");
 		expect(useFetchCalls[0].options.body).toEqual({ approved: true });
+	});
+
+	it("batchApproveAdminComment sends POST with ids and approved status", () => {
+		batchApproveAdminComment([1, 2, 3], true);
+		expect(useFetchCalls[0].url).toBe(
+			"http://localhost:18888/api/admin/comments/batch-approve",
+		);
+		expect(useFetchCalls[0].options.method).toBe("POST");
+		expect(useFetchCalls[0].options.headers).toEqual({
+			"Content-Type": "application/json",
+			Authorization: "Bearer test-token",
+		});
+		expect(useFetchCalls[0].options.body).toEqual({
+			ids: [1, 2, 3],
+			approved: true,
+		});
 	});
 });
 
