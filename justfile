@@ -82,6 +82,12 @@ test-backend:
 test-backend-seq:
     cd backend/nova && uv run pytest
 
+# Run backend tests against a PostgreSQL database
+# Set TEST_DATABASE_URL to your PostgreSQL connection string.
+# Example: TEST_DATABASE_URL=postgresql://user:pass@host:port/dbname just test-backend-postgres
+test-backend-postgres:
+    cd backend/nova && TEST_DATABASE_URL=$$DATABASE_URL uv run pytest -n auto
+
 # Run frontend tests (alias for test-nuxt)
 test-frontend:
     cd frontend/aura && pnpm test

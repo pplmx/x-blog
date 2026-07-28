@@ -232,6 +232,20 @@ just test-frontend
 just test-frontend-coverage
 ```
 
+### 使用 PostgreSQL 测试
+
+后端测试默认使用 SQLite。如需使用 PostgreSQL 进行测试：
+
+```bash
+# 运行后端测试 (PostgreSQL)
+TEST_DATABASE_URL="postgresql://user:password@host:port/dbname" just test-backend-postgres
+
+# 或直接使用 uv
+TEST_DATABASE_URL="postgresql://user:password@host:port/dbname" uv run pytest -n auto
+```
+
+PostgreSQL 测试包含专门的连接验证测试 (`tests/test_postgres_connection.py`)，涵盖连接建立、模式创建、事务、CRUD 操作和并发连接等。
+
 **测试统计:**
 
 - 后端: 346 个测试 (pytest + pytest-xdist), 85.1% 覆盖率

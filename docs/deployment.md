@@ -6,12 +6,49 @@
 
 ## 环境要求
 
-| 依赖    | 版本  | 说明                 |
-| ------- | ----- | -------------------- |
-| Node.js | ≥24   | 前端运行             |
-| pnpm    | ≥8    | 前端包管理           |
-| Python  | ≥3.14 | 后端运行             |
-| uv      | -     | Python 包管理 (推荐) |
+| 依赖              | 版本  | 说明                             |
+| ----------------- | ----- | -------------------------------- |
+| Node.js           | ≥24   | 前端运行                         |
+| pnpm              | ≥8    | 前端包管理                       |
+| Python            | ≥3.14 | 后端运行                         |
+| uv                | -     | Python 包管理 (推荐)             |
+| PostgreSQL (可选) | -     | 生产环境数据库 (默认使用 SQLite) |
+
+---
+
+## 数据库配置
+
+### 默认 (SQLite)
+
+开箱即用，无需额外配置。
+
+### 生产环境 (PostgreSQL)
+
+```bash
+# 安装 psycopg2
+uv pip install psycopg2-binary
+
+# 配置环境变量
+echo "DATABASE_URL=postgresql://user:password@localhost:5432/xblog" > backend/nova/.env
+
+# 初始化数据库
+cd backend/nova && uv run python scripts/init_db.py
+
+# 启动后端
+uv run uvicorn app.main:app --reload --host 0.0.0.0 --port 18888
+```
+
+### 测试 (PostgreSQL)
+
+后端测试默认使用 SQLite，但支持通过 TEST_DATABASE_URL 环境变量切换到 PostgreSQL：
+
+```bash
+# 运行后端测试 (PostgreSQL)
+TEST_DATABASE_URL="postgresql://user:password@host:port/dbname" just test-backend-postgres
+
+# 运行完整测试套件 (PostgreSQL)
+TEST_DATABASE_URL="postgresql://user:password@host:port/dbname" uv run pytest -n auto
+```
 
 ---
 
