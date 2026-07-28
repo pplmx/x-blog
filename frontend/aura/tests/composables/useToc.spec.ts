@@ -7,7 +7,7 @@
 
 import { describe, expect, it } from "vitest";
 
-import { extractToc } from "../../composables/useToc";
+import { extractToc, useToc } from "../../composables/useToc";
 
 describe("extractToc", () => {
 	it("returns empty array for empty input", () => {
@@ -88,5 +88,21 @@ describe("extractToc", () => {
 		expect(result[1].id).toBe("b");
 		expect(result[2].id).toBe("c");
 		expect(result[3].id).toBe("d");
+	});
+});
+
+describe("useToc", () => {
+	it("accepts a plain string", () => {
+		const { toc } = useToc("<h1>Hello</h1><h2>World</h2>");
+		expect(toc.value).toHaveLength(2);
+		expect(toc.value[0].text).toBe("Hello");
+	});
+
+	it("accepts a reactive ref ({ value })", () => {
+		const ref = { value: "<h1>Reactive</h1><h2>Content</h2>" };
+		const { toc } = useToc(ref);
+		expect(toc.value).toHaveLength(2);
+		expect(toc.value[0].text).toBe("Reactive");
+		expect(toc.value[1].level).toBe(2);
 	});
 });
