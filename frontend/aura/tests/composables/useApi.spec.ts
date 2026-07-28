@@ -8,8 +8,23 @@ import { afterEach, beforeEach, describe, expect, it, type Mock, vi } from "vite
 
 import {
 	adminLogin,
+	approveAdminComment,
+	createAdminCategory,
+	createAdminPost,
+	createAdminTag,
 	createComment,
+	deleteAdminCategory,
+	deleteAdminComment,
+	deleteAdminPost,
+	deleteAdminTag,
+	fetchAdminCategories,
+	fetchAdminComments,
+	fetchAdminPosts,
+	fetchAdminTags,
 	fetchComments,
+	updateAdminCategory,
+	updateAdminPost,
+	updateAdminTag,
 	useApi,
 	useCategories,
 	usePopularPosts,
@@ -53,6 +68,134 @@ beforeEach(() => {
 
 afterEach(() => {
 	vi.unstubAllGlobals();
+});
+
+// ─────────────────────────────────────────────────────────────
+// Admin API tests
+// ─────────────────────────────────────────────────────────────
+
+describe("admin API functions", () => {
+	beforeEach(() => {
+		// Mock localStorage for auth token
+		Object.defineProperty(window, "localStorage", {
+			value: {
+				getItem: vi.fn(() => "test-token"),
+				setItem: vi.fn(),
+				removeItem: vi.fn(),
+			},
+			writable: true,
+		});
+	});
+
+	it("fetchAdminPosts constructs the correct URL with auth header", () => {
+		fetchAdminPosts();
+		expect(useFetchCalls[0].url).toBe("http://localhost:18888/api/admin/posts");
+		expect(useFetchCalls[0].options.headers).toEqual({ Authorization: "Bearer test-token" });
+	});
+
+	it("fetchAdminPost constructs URL with post ID", () => {
+		fetchAdminPost(42);
+		expect(useFetchCalls[0].url).toBe("http://localhost:18888/api/admin/posts/42");
+	});
+
+	it("createAdminPost sends POST with body", () => {
+		createAdminPost({
+			title: "New Post",
+			slug: "new-post",
+			content: "# Hello",
+			excerpt: "Hello world",
+			published: true,
+		});
+		expect(useFetchCalls[0].url).toBe("http://localhost:18888/api/admin/posts");
+		expect(useFetchCalls[0].options.method).toBe("POST");
+		expect(useFetchCalls[0].options.headers).toEqual({
+			"Content-Type": "application/json",
+			Authorization: "Bearer test-token",
+		});
+	});
+
+	it("updateAdminPost sends PUT with ID and body", () => {
+		updateAdminPost(10, { title: "Updated" });
+		expect(useFetchCalls[0].url).toBe("http://localhost:18888/api/admin/posts/10");
+		expect(useFetchCalls[0].options.method).toBe("PUT");
+		expect(useFetchCalls[0].options.body).toEqual({ title: "Updated" });
+	});
+
+	it("deleteAdminPost sends DELETE with ID", () => {
+		deleteAdminPost(5);
+		expect(useFetchCalls[0].url).toBe("http://localhost:18888/api/admin/posts/5");
+		expect(useFetchCalls[0].options.method).toBe("DELETE");
+	});
+
+	it("fetchAdminCategories constructs correct URL", () => {
+		fetchAdminCategories();
+		expect(useFetchCalls[0].url).toBe("http://localhost:18888/api/admin/categories");
+	});
+
+	it("createAdminCategory sends POST with name", () => {
+		createAdminCategory("New Category");
+		expect(useFetchCalls[0].options.method).toBe("POST");
+		expect(useFetchCalls[0].options.body).toEqual({ name: "New Category" });
+	});
+
+	it("updateAdminCategory sends PUT with ID and name", () => {
+		updateAdminCategory(3, "Updated Category");
+		expect(useFetchCalls[0].url).toBe("http://localhost:18888/api/admin/categories/3");
+		expect(useFetchCalls[0].options.method).toBe("PUT");
+		expect(useFetchCalls[0].options.body).toEqual({ name: "Updated Category" });
+	});
+
+	it("deleteAdminCategory sends DELETE with ID", () => {
+		deleteAdminCategory(7);
+		expect(useFetchCalls[0].url).toBe("http://localhost:18888/api/admin/categories/7");
+		expect(useFetchCalls[0].options.method).toBe("DELETE");
+	});
+
+	it("fetchAdminTags constructs correct URL", () => {
+		fetchAdminTags();
+		expect(useFetchCalls[0].url).toBe("http://localhost:18888/api/admin/tags");
+	});
+
+	it("createAdminTag sends POST with name", () => {
+		createAdminTag("New Tag");
+		expect(useFetchCalls[0].options.method).toBe("POST");
+		expect(useFetchCalls[0].options.body).toEqual({ name: "New Tag" });
+	});
+
+	it("updateAdminTag sends PUT with ID and name", () => {
+		updateAdminTag(2, "Updated Tag");
+		expect(useFetchCalls[0].url).toBe("http://localhost:18888/api/admin/tags/2");
+		expect(useFetchCalls[0].options.method).toBe("PUT");
+	});
+
+	it("deleteAdminTag sends DELETE with ID", () => {
+		deleteAdminTag(8);
+		expect(useFetchCalls[0].url).toBe("http://localhost:18888/api/admin/tags/8");
+		expect(useFetchCalls[0].options.method).toBe("DELETE");
+	});
+
+	it("fetchAdminComments constructs correct URL", () => {
+		fetchAdminComments();
+		expect(useFetchCalls[0].url).toBe("http://localhost:18888/api/admin/comments");
+	});
+
+	it("fetchAdminComments with postId adds query parameter", () => {
+		fetchAdminComments(15);
+		expect(useFetchCalls[0].url).toBe("http://localhost:18888/api/admin/comments?post_id=15");
+	});
+
+	it("deleteAdminComment sends DELETE with ID", () => {
+		deleteAdminComment(20);
+		expect(useFetchCalls[0].url).toBe("http://localhost:18888/api/admin/comments/20");
+		expect(useFetchCalls[0].options.method).toBe("DELETE");
+	});
+
+	it("approveAdminComment sends PATCH with approved status", () => {
+		approveAdminComment(25, true);
+		expect(useFetchCalls[0].url).toBe("http://localhost:18888/api/comments/25/approve");
+		expect(useFetchCalls[0].options.method).toBe("PATCH");
+		expect(useFetchCalls[0].options.body).toEqual({ approved: true });
+	});
 });
 
 describe("useApi", () => {
