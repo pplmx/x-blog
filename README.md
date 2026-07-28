@@ -232,6 +232,20 @@ just test-frontend
 just test-frontend-coverage
 ```
 
+### Testing with PostgreSQL
+
+The backend tests run on SQLite by default. To test against PostgreSQL:
+
+```bash
+# Run backend tests against a PostgreSQL database
+TEST_DATABASE_URL="postgresql://user:password@host:port/dbname" just test-backend-postgres
+
+# Or directly with uv
+TEST_DATABASE_URL="postgresql://user:password@host:port/dbname" uv run pytest -n auto
+```
+
+The PostgreSQL test suite includes dedicated connection validation tests (`tests/test_postgres_connection.py`) covering connection establishment, schema creation, transactions, CRUD operations, and concurrent connections.
+
 **Test Statistics:**
 
 - Backend: 475 tests (pytest + pytest-xdist), 85% coverage
