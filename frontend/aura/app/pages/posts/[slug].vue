@@ -1,13 +1,21 @@
 <script setup lang="ts">
 import { computed } from "vue";
 import { usePost, usePostLike, usePostView, useRelatedPosts } from "~~/composables/useApi";
-import { usePostSeo } from "~~/composables/useSeo";
+import { coverImageSrc } from "~~/composables/useCoverImage";
+import { buildCoverImageUrl, usePostSeo, useSiteUrl } from "~~/composables/useSeo";
 import { extractToc } from "~~/composables/useToc";
 
 const route = useRoute();
 const { data: post, pending, error } = await usePost(route.params.slug as string);
 
 const toc = computed(() => (post.value?.content ? extractToc(post.value.content) : []));
+
+// Display cover image: use algorithmic SVG data URI (no HTTP request)
+// For OpenGraph og:image, usePostSeo uses buildCoverImageUrl (URL for social crawlers)
+const coverImageUrl = computed(() => {
+	if (!post.value) return "";
+	return coverImageSrc(post.value.title, post.value.cover_image);
+});
 
 const postId = post.value?.id ?? 0;
 const { data: relatedPosts } = postId ? await useRelatedPosts(postId) : { data: ref(null) };
@@ -191,8 +199,8 @@ const readingTime = computed(() => {
         </header>
 
         <!-- Cover image -->
-        <div v-if="post.cover_image" class="relative w-full aspect-[2/1] rounded-2xl overflow-hidden mb-10 shadow-lg">
-          <img :src="post.cover_image" :alt="post.title" class="w-full h-full object-cover" />
+        <div class="relative w-full aspect-[2/1] rounded-2xl overflow-hidden mb-10 shadow-lg">
+          <img :src="coverImageUrl" :alt="post.title" class="w-full h-full object-cover" />
           <div class="absolute inset-0 bg-gradient-to-t from-black/10 to-transparent" />
         </div>
 
