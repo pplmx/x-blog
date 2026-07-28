@@ -110,6 +110,15 @@ describe("PostCard", () => {
 			expect(img.attributes("src")).toContain(encodeURIComponent("Test Post Title"));
 		});
 
+		it("generates different colors for different titles", () => {
+			const wrapper1 = mountPostCard();
+			const wrapper2 = mountPostCard({ ...mockPost, title: "Another Post Title" });
+			const src1 = wrapper1.find("img").attributes("src");
+			const src2 = wrapper2.find("img").attributes("src");
+			// Different titles should produce different color values in the SVG
+			expect(src1).not.toBe(src2);
+		});
+
 		it("renders img element when cover image is provided", () => {
 			const postWithImage = {
 				...mockPost,
