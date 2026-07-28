@@ -6,9 +6,10 @@
  * status badges, date/IP display, approve/unapprove actions,
  * and delete functionality.
  *
- * Mocks the fetchAdminComments, deleteAdminComment, and
- * approveAdminComment composables. Uses a <Suspense> wrapper
- * since the page uses `await fetchAdminComments()` in <script setup>.
+ * Mocks the fetchAdminComments, deleteAdminComment,
+ * approveAdminComment, and batchApproveAdminComment composable.
+ * Uses a <Suspense> wrapper since the page uses
+ * `await fetchAdminComments()` in <script setup>.
  */
 
 import { flushPromises } from "@vue/test-utils";
@@ -16,11 +17,12 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ref } from "vue";
 import { mountWithSuspense } from "./helpers.ts";
 
-const { mockFetchAdminComments, mockDeleteAdminComment, mockApproveAdminComment } = vi.hoisted(
+const { mockFetchAdminComments, mockDeleteAdminComment, mockApproveAdminComment, mockBatchApproveAdminComment } = vi.hoisted(
 	() => ({
 		mockFetchAdminComments: vi.fn(),
 		mockDeleteAdminComment: vi.fn(),
 		mockApproveAdminComment: vi.fn(),
+		mockBatchApproveAdminComment: vi.fn(),
 	}),
 );
 
@@ -28,6 +30,7 @@ vi.mock("~/composables/useApi", () => ({
 	fetchAdminComments: mockFetchAdminComments,
 	deleteAdminComment: mockDeleteAdminComment,
 	approveAdminComment: mockApproveAdminComment,
+	batchApproveAdminComment: mockBatchApproveAdminComment,
 }));
 
 vi.stubGlobal("useRuntimeConfig", () => ({
@@ -280,6 +283,149 @@ describe("Admin Comments Page", () => {
 
 			await trashButton?.trigger("click");
 			expect(mockDeleteAdminComment).not.toHaveBeenCalled();
+		});
+	});
+
+	describe("Batch select and approve", () => {
+		beforeEach(() => {
+			mockFetchAdminComments.mockReturnValue({
+				data: ref(mockComments),
+				pending: ref(false),
+				error: ref(null),
+				refresh: vi.fn(),
+			});
+			mockBatchApproveAdminComment.mockResolvedValue({});
+		});
+
+		it("renders select-all checkbox when pending comments exist", async () => {
+			const CommentsPage = await loadPage();
+			const wrapper = await mountWithSuspense(CommentsPage);
+			const selectAllCheckbox = wrapper.find('input[type="checkbox"][class*="rounded"]');
+			expect(selectAllCheckbox.exists()).toBe(true);
+		});
+
+		it("toggles individual comment selection via checkbox", async () => {
+			const CommentsPage = await loadPage();
+			const wrapper = await mountWithSuspense(CommentsPage);
+
+			// Bob's comment (id=2) is unapproved, has a checkbox
+			const checkboxes = wrapper.findAll('input[type="checkbox"]');
+			// First checkbox is the select-all, second is individual comment checkbox
+			const individualCheckbox = checkboxes[checkboxes.length - 2]; // Bob's checkbox (unapproved)
+			expect(individualCheckbox.exists()).toBe(true);
+
+			await individualCheckbox.setChecked();
+			expect((individualCheckbox.element as HTMLInputElement).checked).toBe(true);
+		});
+
+		it("calls batchApproveAdminComment with approved=true when batch approve clicked", async () => {
+			const CommentsPage = await loadPage();
+			const wrapper = await mountWithSuspense(CommentsPage);
+
+			// Select Bob's checkbox (unapproved comment)
+			const checkboxes = wrapper.findAll('input[type="checkbox"]');
+			const individualCheckbox = checkboxes[checkboxes.length - 2];
+			await individualCheckbox.setChecked();
+
+			// Click batch approve button
+			const batchApproveButton = wrapper
+				.findAll("button")
+				.find((b) => b.text().trim().includes("批量通过"));
+			expect(batchApproveButton).toBeDefined();
+
+			await batchApproveButton?.trigger("click");
+			await flushPromises();
+
+			expect(mockBatchApproveAdminComment).toHaveBeenCalledWith([2], true);
+		});
+
+		it("calls batchApproveAdminComment with approved=false when batch reject clicked", async () => {
+			const CommentsPage = await loadPage();
+			const wrapper = await mountWithSuspense(CommentsPage);
+
+			// Select Bob's checkbox (unapproved comment)
+			const checkboxes = wrapper.findAll('input[type="checkbox"]');
+			const individualCheckbox = checkboxes[checkboxes.length - 2];
+			await individualCheckbox.setChecked();
+
+			// Click batch reject button
+			const batchRejectButton = wrapper
+				.findAll("button")
+				.find((b) => b.text().trim().includes("批量拒绝"));
+			expect(batchRejectButton).toBeDefined();
+
+			await batchRejectButton?.trigger("click");
+			await flushPromises();
+
+			expect(mockBatchApproveAdminComment).toHaveBeenCalledWith([2], false);
+		});
+
+		it("does NOT call batchApproveAdminComment when no comments are selected", async () => {
+			const CommentsPage = await loadPage();
+			const wrapper = await mountWithSuspense(CommentsPage);
+
+			// Click batch approve button without selecting anything
+			const batchApproveButton = wrapper
+				.findAll("button")
+				.find((b) => b.text().trim().includes("批量通过"));
+			expect(batchApproveButton).toBeDefined();
+
+			await batchApproveButton?.trigger("click");
+			await flushPromises();
+
+			expect(mockBatchApproveAdminComment).not.toHaveBeenCalled();
+		});
+
+		it("selects all pending comments via toggleSelectAll then approves", async () => {
+			const CommentsPage = await loadPage();
+			const wrapper = await mountWithSuspense(CommentsPage);
+
+			// Select all via the select-all checkbox (Bob is unapproved, Alice is approved)
+			const checkboxes = wrapper.findAll('input[type="checkbox"]');
+			const selectAllCheckbox = checkboxes[0];
+
+			await selectAllCheckbox.setChecked();
+			expect((selectAllCheckbox.element as HTMLInputElement).checked).toBe(true);
+
+			// Click batch approve
+			const batchApproveButton = wrapper
+				.findAll("button")
+				.find((b) => b.text().trim().includes("批量通过"));
+			await batchApproveButton?.trigger("click");
+			await flushPromises();
+
+			expect(mockBatchApproveAdminComment).toHaveBeenCalledWith([2], true);
+		});
+
+		it("disables batch buttons when no comments are selected", async () => {
+			const CommentsPage = await loadPage();
+			const wrapper = await mountWithSuspense(CommentsPage);
+
+			// Without selecting, batch buttons should be disabled
+			const batchApproveButton = wrapper
+				.findAll("button")
+				.find((b) => b.text().trim().includes("批量通过"));
+			expect(batchApproveButton?.attributes("disabled")).toBeDefined();
+		});
+
+		it("sets isProcessing during batch approve", async () => {
+			const CommentsPage = await loadPage();
+			const wrapper = await mountWithSuspense(CommentsPage);
+
+			// Select Bob's checkbox
+			const checkboxes = wrapper.findAll('input[type="checkbox"]');
+			const individualCheckbox = checkboxes[checkboxes.length - 2];
+			await individualCheckbox.setChecked();
+
+			const batchApproveButton = wrapper
+				.findAll("button")
+				.find((b) => b.text().trim().includes("批量通过"));
+			await batchApproveButton?.trigger("click");
+
+			// Button should be disabled during processing
+			expect(batchApproveButton?.attributes("disabled")).toBeDefined();
+
+			await flushPromises();
 		});
 	});
 });
