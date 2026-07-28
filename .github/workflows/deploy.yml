@@ -33,7 +33,7 @@ jobs:
         run: |
           cd backend/nova
           uv sync
-          uv run pytest --cov=app --cov-report=term-missing --cov-fail-under=50
+          uv run pytest --cov=app --cov-report=term-missing --cov-fail-under=80
 
       - name: Frontend tests
         run: |
@@ -87,6 +87,6 @@ jobs:
           ssh_key: ${{ secrets.SSH_KEY }}
           script: |
             cd /opt/x-blog
-            docker-compose pull
-            docker-compose up -d
+            docker compose pull
+            docker compose up -d
             docker system prune -f
