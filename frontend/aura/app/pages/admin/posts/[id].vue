@@ -19,6 +19,7 @@ const formData = ref<Partial<PostCreate>>({
 	excerpt: "",
 	published: false,
 	pinned: false,
+	publish_at: null,
 	category_id: undefined,
 	tag_ids: [],
 	cover_image: undefined,
@@ -71,6 +72,7 @@ watch(
 				excerpt: val.excerpt || "",
 				published: val.published,
 				pinned: val.pinned,
+				publish_at: val.publish_at || null,
 				category_id: val.category_id || undefined,
 				tag_ids: val.tag_ids || [],
 				cover_image: val.cover_image || undefined,
@@ -94,11 +96,16 @@ async function handleSubmit(e: Event) {
 	isSubmitting.value = true;
 	submitError.value = null;
 
+	const payload = { ...formData.value };
+	if (payload.publish_at) {
+		payload.publish_at = `${payload.publish_at}:00Z`;
+	}
+
 	try {
 		if (isNew) {
-			await createAdminPost(formData.value);
+			await createAdminPost(payload);
 		} else if (postId) {
-			await updateAdminPost(postId, formData.value);
+			await updateAdminPost(postId, payload);
 		}
 		navigateTo("/admin/posts", { replace: true });
 	} catch (err) {
@@ -466,6 +473,18 @@ function handleFileInput(e: Event) {
             <span class="text-sm font-medium text-gray-700 dark:text-gray-300">
               {{ formData.pinned ? '📌 已置顶' : '📌 置顶文章' }}
             </span>
+          </label>
+        </div>
+
+        <div class="flex items-start gap-3">
+          <input
+            id="publish_at"
+            v-model="formData.publish_at"
+            type="datetime-local"
+            class="w-full px-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+          >
+          <label for="publish_at" class="text-sm font-medium text-gray-700 dark:text-gray-300 pt-1.5 whitespace-nowrap">
+            定时发布 (可选)
           </label>
         </div>
 
