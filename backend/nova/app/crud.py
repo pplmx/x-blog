@@ -1,6 +1,6 @@
 from datetime import UTC, datetime
 
-from sqlalchemy import func, or_, select, update
+from sqlalchemy import func, or_, select, text, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, joinedload
 
@@ -418,39 +418,66 @@ def delete_comment(db: Session, comment_id: int) -> bool:
 
 def search_posts(db: Session, query: str, page: int = 1, limit: int = 10):
     offset = (page - 1) * limit
+    is_postgres = db.bind.dialect.name == "postgresql"
 
-    search_pattern = f"%{query}%"
+    if is_postgres:
+        ts_query = func.plainto_tsquery("english", query)
+        ts_vector = func.to_tsvector(
+            "english",
+            models.Post.title + " " + func.coalesce(models.Post.excerpt, "") + " " + models.Post.content,
+        )
 
-    stmt = (
-        select(models.Post)
-        .where(
-            or_(
-                models.Post.title.ilike(search_pattern),
-                models.Post.content.ilike(search_pattern),
+        stmt = (
+            select(models.Post)
+            .where(models.Post.published)
+            .where(ts_vector.op("@@")(ts_query))
+            .order_by(func.ts_rank(ts_vector, ts_query).desc())
+            .options(
+                joinedload(models.Post.category),
+                joinedload(models.Post.tags),
             )
+            .offset(offset)
+            .limit(limit)
         )
-        .where(models.Post.published)
-        .options(
-            joinedload(models.Post.category),
-            joinedload(models.Post.tags),
+
+        count_stmt = (
+            select(func.count(models.Post.id))
+            .where(models.Post.published)
+            .where(ts_vector.op("@@")(ts_query))
         )
-        .order_by(models.Post.title.ilike(search_pattern).desc(), models.Post.created_at.desc())
-        .offset(offset)
-        .limit(limit)
-    )
+    else:
+        search_pattern = f"%{query}%"
+
+        stmt = (
+            select(models.Post)
+            .where(
+                or_(
+                    models.Post.title.ilike(search_pattern),
+                    models.Post.content.ilike(search_pattern),
+                )
+            )
+            .where(models.Post.published)
+            .options(
+                joinedload(models.Post.category),
+                joinedload(models.Post.tags),
+            )
+            .order_by(models.Post.title.ilike(search_pattern).desc(), models.Post.created_at.desc())
+            .offset(offset)
+            .limit(limit)
+        )
+
+        count_stmt = (
+            select(func.count(models.Post.id))
+            .where(
+                or_(
+                    models.Post.title.ilike(search_pattern),
+                    models.Post.content.ilike(search_pattern),
+                )
+            )
+            .where(models.Post.published)
+        )
 
     posts = db.execute(stmt).unique().scalars().all()
-
-    count_stmt = (
-        select(func.count(models.Post.id))
-        .where(
-            or_(
-                models.Post.title.ilike(search_pattern),
-                models.Post.content.ilike(search_pattern),
-            )
-        )
-        .where(models.Post.published)
-    )
     total = db.execute(count_stmt).scalar()
 
     return posts, total
