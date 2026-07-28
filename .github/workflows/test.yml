@@ -52,7 +52,7 @@ jobs:
         run: |
           cd frontend/aura
           pnpm install
-          ./node_modules/.bin/eslint . --config lint.config.json
+          pnpm lint
 
       - name: Frontend tests
         run: |

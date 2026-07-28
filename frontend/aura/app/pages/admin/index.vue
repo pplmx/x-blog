@@ -4,8 +4,14 @@
   Fetches posts, categories, and tags in parallel for an overview dashboard.
 -->
 <script setup lang="ts">
-import { fetchPosts, useCategories, useTags, fetchAdminComments, approveAdminComment } from "~/composables/useApi";
 import type { AdminComment } from "~/composables/useApi";
+import {
+	approveAdminComment,
+	fetchAdminComments,
+	fetchPosts,
+	useCategories,
+	useTags,
+} from "~/composables/useApi";
 
 // Fetch all data in parallel
 const [postsResponse, categoriesResult, tagsResult, commentsResult] = await Promise.all([

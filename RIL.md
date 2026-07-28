@@ -282,15 +282,28 @@ sanitize. The only reliable way to detect this is to test the actual
 sanitization result with a known XSS payload, not check `isSupported`
 or function existence.
 
+## Infrastructure Hardening (COMPLETED)
+
+- **Security upgrades**: python-multipart 0.0.32, starlette 1.3.1, pydantic-settings 2.14.2,
+  urllib3 2.7.0, idna 3.18, cryptography 49.0.0, pyasn1 0.6.4. All 20 Dependabot alerts have
+  been resolved in code (awaiting GitHub re-scan to auto-close).
+- **PostgreSQL production support**: Conditional check_same_thread in database.py, docker-compose
+  with postgres:17-alpine service, pgdata volume, healthcheck chain. Added psycopg2-binary dependency
+  and comprehensive connection validation tests (8 tests, auto-skipped when no PG configured).
+- **Admin dashboard**: Pending comments widget with approve/reject buttons in dashboard, pending
+  comments stat card, data freshness timestamp. Backend stats endpoint now includes pending_comments
+  field. 6 new frontend tests.
+- **httpx2 migration**: Replaced httpx with httpx2 to resolve starlette.testclient deprecation warning.
+- **CI/CD hardening**:
+    - Fixed deploy.yml: `docker-compose` → `docker compose` (v1→v2)
+    - Added ruff lint + format check to test.yml
+    - Added Biome lint check to frontend CI
+    - Raised coverage threshold from 50% → 80% (actual: 92.79%)
+    - Added `.github/dependabot.yml` for weekly auto-PRs on pip and npm dependencies
+
 ## Next Priorities
 
-- Review and address GitHub Dependabot alerts: 38 vulnerabilities detected
-  on default branch (22 high, 8 moderate, 8 low). URL:
-  https://github.com/pplmx/x-blog/security/dependabot
-
-All known high-priority tasks are complete.
-All admin CRUD e2e coverage (comments, categories, posts, tags, dashboard)
-is in place. Next work will come from deep-dive scanning for new issues.
+- Content features: image upload frontend integration, post scheduling (publish_at)
 
 ### i18n Refactoring (COMPLETED)
 
