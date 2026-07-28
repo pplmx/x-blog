@@ -1,3 +1,5 @@
+from datetime import UTC, datetime
+
 from sqlalchemy import func, or_, select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, joinedload
@@ -17,7 +19,11 @@ def get_posts(
     query = db.query(models.Post)
 
     if published:
-        query = query.filter(models.Post.published)
+        now = datetime.now(UTC)
+        query = query.filter(
+            models.Post.published,
+            or_(models.Post.publish_at.is_(None), models.Post.publish_at <= now),
+        )
 
     if category_id:
         query = query.filter(models.Post.category_id == category_id)
@@ -86,6 +92,7 @@ def create_post(db: Session, post: schemas.PostCreate) -> models.Post:
         excerpt=post.excerpt,
         published=post.published,
         pinned=post.pinned,
+        publish_at=post.publish_at,
         category_id=post.category_id,
         cover_image=post.cover_image,
     )

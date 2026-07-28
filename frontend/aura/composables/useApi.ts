@@ -240,6 +240,7 @@ export interface AdminPostDetail {
 	excerpt: string;
 	published: boolean;
 	pinned: boolean;
+	publish_at: string | null;
 	cover_image: string | null;
 	category_id: number | null;
 	tag_ids: number[];
@@ -254,6 +255,7 @@ export interface PostCreate {
 	excerpt?: string;
 	published: boolean;
 	pinned?: boolean;
+	publish_at?: string | null;
 	category_id?: number;
 	tag_ids?: number[];
 	cover_image?: string;

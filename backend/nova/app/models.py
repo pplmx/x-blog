@@ -32,6 +32,7 @@ class Post(Base):
     excerpt = Column(String(500))
     published = Column(Boolean, default=False, index=True)
     pinned = Column(Boolean, default=False)
+    publish_at = Column(DateTime, nullable=True, index=True)
     created_at = Column(DateTime, default=lambda: datetime.now(UTC), index=True)
     updated_at = Column(
         DateTime,

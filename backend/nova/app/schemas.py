@@ -36,6 +36,7 @@ class PostBase(BaseModel):
     excerpt: str | None = None
     published: bool = False
     pinned: bool = False
+    publish_at: datetime | None = None
     category_id: int | None = None
     cover_image: str | None = None
 
@@ -51,6 +52,7 @@ class PostUpdate(BaseModel):
     excerpt: str | None = None
     published: bool | None = None
     pinned: bool | None = None
+    publish_at: datetime | None = None
     category_id: int | None = None
     cover_image: str | None = None
     tag_ids: list[int] | None = None
