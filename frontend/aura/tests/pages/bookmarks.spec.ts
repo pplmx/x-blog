@@ -140,5 +140,29 @@ describe("Bookmarks page", () => {
 			await wrapper.find("button[title='移除收藏']").trigger("click");
 			expect(mockRemoveBookmark).toHaveBeenCalledWith(1);
 		});
+
+		it("calls clearBookmarks when clear all is confirmed", async () => {
+			mockBookmarks.value = [sampleBookmark];
+			mockClearBookmarks.mockClear();
+			vi.stubGlobal("confirm", () => true);
+
+			const wrapper = mountBookmarks();
+			await wrapper.find("button[title='清空全部']").trigger("click");
+
+			expect(mockClearBookmarks).toHaveBeenCalled();
+			vi.unstubAllGlobals();
+		});
+
+		it("does not call clearBookmarks when clear all is cancelled", async () => {
+			mockBookmarks.value = [sampleBookmark];
+			mockClearBookmarks.mockClear();
+			vi.stubGlobal("confirm", () => false);
+
+			const wrapper = mountBookmarks();
+			await wrapper.find("button[title='清空全部']").trigger("click");
+
+			expect(mockClearBookmarks).not.toHaveBeenCalled();
+			vi.unstubAllGlobals();
+		});
 	});
 });
