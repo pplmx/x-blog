@@ -10,6 +10,18 @@ vi.stubGlobal("useHead", vi.fn());
 vi.stubGlobal("useFetch", vi.fn());
 vi.stubGlobal("$fetch", vi.fn());
 
+vi.mock("../../composables/useApi", () => ({
+	usePosts: () => ({
+		data: ref(null),
+		pending: ref(false),
+		error: ref(null),
+		refresh: vi.fn(),
+	}),
+	usePopularPosts: () => ({
+		data: ref([]),
+	}),
+}));
+
 describe("Index Page", () => {
 	it("page module loads successfully", async () => {
 		const mod = await import("../../app/pages/index.vue");

@@ -362,3 +362,7 @@ All items from the second major iteration:
 
 - **Remaining coverage issue**: Frontend branches (75.76%) and functions (72.09%)
   are below the 80% threshold. This is pre-existing and not caused by these changes.
+  Root cause: `app/pages/index.vue` has 0% coverage because it uses `await` in
+  `<script setup>` which creates a Vue 3 `Suspense` boundary that cannot be resolved
+  in the happy-dom test environment with `@vue/test-utils` `mount`. Attempting to
+  mount the component results in an empty render with no template output.
