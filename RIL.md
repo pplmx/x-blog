@@ -291,3 +291,23 @@ or function existence.
 All known high-priority tasks are complete.
 All admin CRUD e2e coverage (comments, categories, posts, tags, dashboard)
 is in place. Next work will come from deep-dive scanning for new issues.
+
+### i18n Refactoring (COMPLETED)
+
+- **Change**: Extracted translation dictionaries (`en`, `zhCn`, `zhTw`) and type
+  definitions (`Locale`, `locales`, `defaultLocale`, `localeNames`, `TranslationKey`)
+  from the monolithic `composables/useI18n.ts` into a dedicated `composables/i18n/`
+  directory structure with separate files for each locale and types.
+- **Fixes applied during code review**:
+    - `localizedPath` double-prefix bug: now strips existing locale prefix before
+  prepending the new one (e.g., `/en/posts` → `/en/posts`, not `/en/en/posts`)
+    - `LanguageSwitcher.vue` hardcoded `'zh-CN' | 'en' | 'zh-TW'` type literals replaced
+  with imported `Locale` type to prevent breakage when adding new locales
+    - Import ordering in `useI18n.ts` fixed (`en` was before the comment header)
+    - `TranslationKey` re-exported from `composables/i18n/types.ts` (was only in
+  `zh-CN.ts`)
+    - Compile-time assertion (`_KeysEqual`) added to verify all three dictionaries
+  share the same set of keys
+    - JSDoc with `@param`/`@returns` added to exported functions in `useI18n.ts`
+    - Misleading test fixed: `comment.replyTo` with `{name}` placeholder now verifies
+  actual parameter replacement

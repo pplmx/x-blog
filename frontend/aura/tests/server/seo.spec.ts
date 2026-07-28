@@ -135,6 +135,15 @@ describe("RSS feed route", () => {
 
 		expect(setHeader).toHaveBeenCalledWith("Content-Type", "application/rss+xml; charset=utf-8");
 	});
+
+	it("should create error when backend fails", async () => {
+		mockFetch.mockRejectedValueOnce(new Error("Failed"));
+		const { default: handler } = await import("~/../server/routes/rss/feed.xml");
+		const { result } = await callRoute(handler);
+
+		expect(result).toBeInstanceOf(Error);
+		expect(result.message).toBe("Failed to fetch RSS feed");
+	});
 });
 
 describe("Atom feed route", () => {
@@ -154,5 +163,14 @@ describe("Atom feed route", () => {
 		const { setHeader } = await callRoute(handler);
 
 		expect(setHeader).toHaveBeenCalledWith("Content-Type", "application/atom+xml; charset=utf-8");
+	});
+
+	it("should create error when backend fails", async () => {
+		mockFetch.mockRejectedValueOnce(new Error("Failed"));
+		const { default: handler } = await import("~/../server/routes/rss/atom.xml");
+		const { result } = await callRoute(handler);
+
+		expect(result).toBeInstanceOf(Error);
+		expect(result.message).toBe("Failed to fetch Atom feed");
 	});
 });
