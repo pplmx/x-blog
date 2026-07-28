@@ -230,48 +230,110 @@ function lineNumbers(code: string): number[] {
 
 <style scoped>
 @reference "tailwindcss";
-.markdown-content :deep(pre) {
-  @apply text-sm leading-6 font-mono text-gray-200;
-}
-
-.markdown-content :deep(code:not(pre) code) {
-  @apply px-1.5 py-0.5 rounded bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200 text-sm font-mono;
-}
-
-.markdown-content :deep(blockquote) {
-  @apply border-l-4 border-gray-200 dark:border-gray-700 pl-4 pr-2 py-1 my-4 italic text-gray-600 dark:text-gray-400;
+.markdown-content {
+  @apply text-gray-800 dark:text-gray-200 leading-7;
+  font-size: 1.0625rem;
 }
 
 .markdown-content :deep(p) {
-  @apply my-4 leading-relaxed text-gray-800 dark:text-gray-200;
+  @apply my-5 leading-7;
 }
 
 .markdown-content :deep(h1) {
-  @apply text-3xl sm:text-4xl font-bold mt-8 mb-4 text-gray-900 dark:text-gray-100;
+  @apply text-3xl sm:text-4xl font-bold mt-10 mb-5 text-gray-900 dark:text-gray-100 leading-tight;
 }
 
 .markdown-content :deep(h2) {
-  @apply text-2xl font-bold mt-8 mb-4 text-gray-900 dark:text-gray-100;
+  @apply text-2xl font-bold mt-10 mb-4 text-gray-900 dark:text-gray-100 leading-tight pb-2 border-b border-gray-100 dark:border-gray-800;
 }
 
 .markdown-content :deep(h3) {
-  @apply text-xl font-bold mt-6 mb-3 text-gray-900 dark:text-gray-100;
+  @apply text-xl font-bold mt-8 mb-3 text-gray-900 dark:text-gray-100 leading-tight;
 }
 
-.markdown-content :deep(h1[id]) {
-  @apply scroll-mt-20;
+.markdown-content :deep(h4) {
+  @apply text-lg font-semibold mt-6 mb-2 text-gray-900 dark:text-gray-100;
+}
+
+.markdown-content :deep(h1[id]),
+.markdown-content :deep(h2[id]),
+.markdown-content :deep(h3[id]) {
+  @apply scroll-mt-24;
 }
 
 .markdown-content :deep(a) {
-  @apply text-blue-600 hover:underline;
+  @apply text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 underline underline-offset-2 decoration-blue-300 dark:decoration-blue-700 decoration-1 hover:decoration-2 transition-all;
 }
 
-.markdown-content :deep(ul),
+.markdown-content :deep(strong) {
+  @apply font-semibold text-gray-900 dark:text-gray-100;
+}
+
+.markdown-content :deep(blockquote) {
+  @apply border-l-[3px] border-blue-400 dark:border-blue-600 pl-5 pr-2 py-2 my-6 text-gray-600 dark:text-gray-400 italic leading-relaxed bg-blue-50/50 dark:bg-blue-950/30 rounded-r-xl;
+}
+
+.markdown-content :deep(ul) {
+  @apply my-5 pl-6 space-y-1.5;
+}
+
 .markdown-content :deep(ol) {
-  @apply my-4;
+  @apply my-5 pl-6 space-y-1.5;
 }
 
 .markdown-content :deep(li) {
-  @apply mb-1;
+  @apply leading-relaxed;
+}
+
+.markdown-content :deep(li::marker) {
+  @apply text-blue-500;
+}
+
+.markdown-content :deep(pre) {
+  @apply text-sm leading-6 font-mono text-gray-200 bg-gray-900 dark:bg-gray-950 rounded-xl overflow-x-auto;
+}
+
+.markdown-content :deep(code):not(pre code) {
+  @apply px-1.5 py-0.5 rounded-md bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200 text-sm font-mono;
+}
+
+.markdown-content :deep(pre code) {
+  @apply text-sm leading-6;
+}
+
+.markdown-content :deep(img) {
+  @apply rounded-xl my-8 mx-auto max-w-full h-auto shadow-md;
+}
+
+.markdown-content :deep(hr) {
+  @apply my-10 border-gray-200 dark:border-gray-800;
+}
+
+.markdown-content :deep(table) {
+  @apply w-full my-6 border-collapse;
+}
+
+.markdown-content :deep(th) {
+  @apply px-4 py-3 bg-gray-50 dark:bg-gray-800 text-left text-sm font-semibold text-gray-700 dark:text-gray-300 border-b border-gray-200 dark:border-gray-700;
+}
+
+.markdown-content :deep(td) {
+  @apply px-4 py-3 text-sm border-b border-gray-100 dark:border-gray-800;
+}
+
+.markdown-content :deep(tr:last-child td) {
+  @apply border-b-0;
+}
+
+.markdown-content :deep(tr:hover td) {
+  @apply bg-gray-50 dark:bg-gray-800/50;
+}
+
+.markdown-content :deep(kbd) {
+  @apply px-1.5 py-0.5 rounded bg-gray-100 dark:bg-gray-800 text-xs font-mono border border-gray-200 dark:border-gray-700;
+}
+
+.markdown-content :deep(.math) {
+  @apply my-6 overflow-x-auto;
 }
 </style>

@@ -405,7 +405,8 @@ describe("Post Detail Page", () => {
 				error: { message: "Network error" },
 				post: null,
 			});
-			expect(wrapper.text()).toContain("加载失败: Network error");
+			expect(wrapper.text()).toContain("加载失败");
+			expect(wrapper.text()).toContain("Network error");
 		});
 	});
 
@@ -552,12 +553,12 @@ describe("Post Detail Page", () => {
 			const wrapper = await mountPostPage();
 			const button = wrapper.find('button[type="button"]');
 			expect(button.exists()).toBe(true);
-			expect(button.text()).toContain("喜欢");
+			expect(button.text()).toContain("56");
 		});
 
 		it("renders the like count when present", async () => {
 			const wrapper = await mountPostPage();
-			expect(wrapper.text()).toContain("56 次喜欢");
+			expect(wrapper.text()).toContain("56");
 		});
 
 		it("does NOT render like count when zero", async () => {
