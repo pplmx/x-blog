@@ -77,7 +77,7 @@ export default defineNuxtConfig({
 	components: [
 		{
 			prefix: "",
-			path: "~/components",
+			path: resolve(rootDir, "components"),
 			pathPrefix: false,
 		},
 	],
