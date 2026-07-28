@@ -35,6 +35,7 @@ frontend/aura/node_modules/
 # Testing
 .pytest_cache/
 test.db
+*coverage*.json
 # Playwright
 playwright-report/
 test-results/
