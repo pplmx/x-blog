@@ -92,8 +92,12 @@ pnpm dev
 
 ```bash
 # 后端配置
-cp backend/.env.example backend/.env
-# 编辑 backend/.env，设置 JWT_SECRET_KEY
+cp backend/nova/.env.example backend/nova/.env
+# 编辑 backend/nova/.env，设置 JWT_SECRET_KEY
+
+# Docker Compose 默认使用 PostgreSQL + 自动建表
+# 如需自定义 PostgreSQL 密码:
+export POSTGRES_PASSWORD=your-strong-password
 
 # 前端配置 (可选) - Nuxt 使用 Docker 环境变量
 ```
@@ -101,13 +105,20 @@ cp backend/.env.example backend/.env
 ### 2. 一键启动
 
 ```bash
-# 开发测试
-docker-compose up -d
+# 启动全部服务 (PostgreSQL + Backend + Frontend)
+docker compose up -d
 
-# 构建生产镜像
-docker-compose build
-docker-compose up -d
+# 查看日志
+docker compose logs -f
+
+# 停止服务
+docker compose down
+
+# 停止并删除数据卷 (清空数据库)
+docker compose down -v
 ```
+
+**注意**: 首次启动时，PostgreSQL 自动创建数据库和用户。FastAPI 在启动时会自动执行 `Base.metadata.create_all()` 创建所有表，无需手动初始化。
 
 ### 3. 访问服务
 
@@ -126,9 +137,9 @@ docker-compose up -d
 ### 后端（服务器/VM）
 
 ```bash
-cd backend
+cd backend/nova
 uv sync
-uv run uvicorn app.main:app --host 0.0.0.0 --port 8000
+uv run uvicorn app.main:app --host 0.0.0.0 --port 18888
 ```
 
 ### 前端（本地 Windows）
@@ -161,17 +172,19 @@ just init-db
 
 ```text
 x-blog/
-├── backend/           # FastAPI 后端
-│   ├── app/
-│   │   ├── routers/  # API 路由
-│   │   ├── models/   # 数据模型
-│   │   └── main.py   # 入口
-│   └── pyproject.toml
-├── frontend/          # 前端 (Nuxt 4)
-│   └── aura/          # Nuxt 应用
-└── package.json
-├── docker-compose.yml
-├── justfile                # 任务脚本
+├── backend/               # 后端实现
+│   └── nova/              # FastAPI (Python)
+│       ├── app/
+│       │   ├── routers/  # API 路由
+│       │   ├── models.py # 数据模型
+│       │   └── main.py   # 入口
+│       └── pyproject.toml
+├── frontend/              # 前端实现
+│   └── aura/              # Nuxt 4 (Vue 3)
+│       ├── app/
+│       └── pages/
+├── docker-compose.yml     # Docker 编排 (PostgreSQL + Backend + Frontend)
+├── justfile               # 任务脚本
 └── README.md
 ```
 
