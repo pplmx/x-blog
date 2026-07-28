@@ -1,5 +1,7 @@
 <script setup lang="ts">
-import { Icon as IconifyIcon } from "@iconify/vue";
+import { Icon } from "@iconify/vue";
+
+void Icon;
 
 defineProps<{
 	icon: string;
@@ -10,7 +12,7 @@ defineProps<{
 </script>
 
 <template>
-  <IconifyIcon
+  <Icon
     :icon="icon"
     :width="width"
     :height="height"

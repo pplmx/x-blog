@@ -153,7 +153,7 @@ function wrapSelection(prefix: string, suffix: string) {
 }
 
 function insertHeading(level: number) {
-	const prefix = "#".repeat(level) + " ";
+	const prefix = `${"#".repeat(level)} `;
 	insertMarkdown(prefix);
 }
 
@@ -165,7 +165,7 @@ function insertLink() {
 	const text = formData.value.content || "";
 	const selected = text.slice(start, end);
 	if (selected) {
-		formData.value.content = text.slice(0, start) + `[${selected}](url)` + text.slice(end);
+		formData.value.content = `${text.slice(0, start)}[${selected}](url)${text.slice(end)}`;
 		requestAnimationFrame(() => {
 			ta.focus();
 			ta.selectionStart = start + selected.length + 3;

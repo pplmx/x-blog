@@ -1,6 +1,6 @@
 from datetime import UTC, datetime
 
-from sqlalchemy import func, or_, select, text, update
+from sqlalchemy import func, or_, select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, joinedload
 
@@ -440,11 +440,7 @@ def search_posts(db: Session, query: str, page: int = 1, limit: int = 10):
             .limit(limit)
         )
 
-        count_stmt = (
-            select(func.count(models.Post.id))
-            .where(models.Post.published)
-            .where(ts_vector.op("@@")(ts_query))
-        )
+        count_stmt = select(func.count(models.Post.id)).where(models.Post.published).where(ts_vector.op("@@")(ts_query))
     else:
         search_pattern = f"%{query}%"
 

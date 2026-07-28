@@ -6,7 +6,7 @@ from datetime import UTC, datetime, timedelta
 
 sys.path.insert(0, ".")
 from app import auth, models
-from app.database import Base, engine, SessionLocal
+from app.database import Base, SessionLocal, engine
 
 DEMO_POSTS = [
     {
@@ -940,7 +940,7 @@ def main():
             print(f"✓ {existing_posts} posts already exist, skipping seed")
         else:
             now = datetime.now(UTC)
-            for i, post_data in enumerate(DEMO_POSTS):
+            for post_data in DEMO_POSTS:
                 slug = post_data["slug"]
                 existing = db.query(models.Post).filter(models.Post.slug == slug).first()
                 if existing:
@@ -984,11 +984,36 @@ def main():
         existing_comments = db.query(models.Comment).count()
         if existing_comments == 0:
             sample_comments = [
-                {"nickname": "张三", "email": "zhangsan@example.com", "content": "写得很棒！特别是关于 FastAPI 依赖注入的部分，让我受益匪浅。", "is_approved": True},
-                {"nickname": "李四", "email": "lisi@example.com", "content": "请问有没有关于性能测试的对比数据？想了解更多实际场景下的表现。", "is_approved": True},
-                {"nickname": "王五", "email": "wangwu@example.com", "content": "建议可以补充一些实际项目中的应用案例。", "is_approved": False},
-                {"nickname": "赵六", "email": "zhaoliu@example.com", "content": "这篇文章写得太好了，已收藏！期待更多类似内容。", "is_approved": True},
-                {"nickname": "spam_bot", "email": "spam@spam.com", "content": "点击这里领取免费比特币！！！http://spam-link.example.com", "is_approved": False},
+                {
+                    "nickname": "张三",
+                    "email": "zhangsan@example.com",
+                    "content": "写得很棒！特别是关于 FastAPI 依赖注入的部分，让我受益匪浅。",
+                    "is_approved": True,
+                },
+                {
+                    "nickname": "李四",
+                    "email": "lisi@example.com",
+                    "content": "请问有没有关于性能测试的对比数据？想了解更多实际场景下的表现。",
+                    "is_approved": True,
+                },
+                {
+                    "nickname": "王五",
+                    "email": "wangwu@example.com",
+                    "content": "建议可以补充一些实际项目中的应用案例。",
+                    "is_approved": False,
+                },
+                {
+                    "nickname": "赵六",
+                    "email": "zhaoliu@example.com",
+                    "content": "这篇文章写得太好了，已收藏！期待更多类似内容。",
+                    "is_approved": True,
+                },
+                {
+                    "nickname": "spam_bot",
+                    "email": "spam@spam.com",
+                    "content": "点击这里领取免费比特币！！！http://spam-link.example.com",
+                    "is_approved": False,
+                },
             ]
             welcome_post = db.query(models.Post).filter(models.Post.slug == "welcome-to-x-blog").first()
             python_post = db.query(models.Post).filter(models.Post.slug == "python-3-14-new-features").first()
@@ -1019,7 +1044,7 @@ def main():
 
         total_posts = db.query(models.Post).count()
         total_comments = db.query(models.Comment).count()
-        print(f"\n✨ Database initialized successfully!")
+        print("\n✨ Database initialized successfully!")
         print(f"   Posts: {total_posts}")
         print(f"   Comments: {total_comments}")
         print(f"   Categories: {len(categories)}")

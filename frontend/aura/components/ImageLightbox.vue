@@ -26,9 +26,15 @@ const hasNext = computed(() => props.currentIndex < props.images.length - 1);
 const zoomed = ref(false);
 const zoomOrigin = ref({ x: 50, y: 50 });
 
-function handlePrev() { if (hasPrev.value) emit("navigate", props.currentIndex - 1); }
-function handleNext() { if (hasNext.value) emit("navigate", props.currentIndex + 1); }
-function toggleZoom() { zoomed.value = !zoomed.value; }
+function handlePrev() {
+	if (hasPrev.value) emit("navigate", props.currentIndex - 1);
+}
+function handleNext() {
+	if (hasNext.value) emit("navigate", props.currentIndex + 1);
+}
+function toggleZoom() {
+	zoomed.value = !zoomed.value;
+}
 
 function handleMouseMove(e: MouseEvent) {
 	if (!zoomed.value) return;
@@ -41,9 +47,15 @@ function handleMouseMove(e: MouseEvent) {
 
 function handleKeyDown(e: KeyboardEvent) {
 	switch (e.key) {
-		case "Escape": emit("close"); break;
-		case "ArrowLeft": handlePrev(); break;
-		case "ArrowRight": handleNext(); break;
+		case "Escape":
+			emit("close");
+			break;
+		case "ArrowLeft":
+			handlePrev();
+			break;
+		case "ArrowRight":
+			handleNext();
+			break;
 	}
 }
 

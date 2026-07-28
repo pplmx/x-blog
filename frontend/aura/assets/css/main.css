@@ -1,33 +1,5 @@
 @import "tailwindcss";
-
-@theme {
-	--color-brand-50: #eff6ff;
-	--color-brand-100: #dbeafe;
-	--color-brand-200: #bfdbfe;
-	--color-brand-300: #93c5fd;
-	--color-brand-400: #60a5fa;
-	--color-brand-500: #3b82f6;
-	--color-brand-600: #2563eb;
-	--color-brand-700: #1d4ed8;
-	--color-brand-800: #1e40af;
-	--color-brand-900: #1e3a8a;
-
-	--font-sans: "Inter", "Noto Sans SC", system-ui, -apple-system, sans-serif;
-	--font-mono: "JetBrains Mono", "Fira Code", monospace;
-
-	--animate-fade-in: fadeIn 0.5s ease-out;
-	--animate-slide-up: slideUp 0.3s ease-out;
-
-	@keyframes fadeIn {
-		0% { opacity: 0; }
-		100% { opacity: 1; }
-	}
-
-	@keyframes slideUp {
-		0% { opacity: 0; transform: translateY(10px); }
-		100% { opacity: 1; transform: translateY(0); }
-	}
-}
+@import "./theme.pcss";
 
 @layer base {
 	html {
@@ -39,7 +11,9 @@
 	body {
 		background-color: var(--color-white);
 		color: var(--color-gray-900);
-		transition: background-color 0.3s, color 0.3s;
+		transition:
+			background-color 0.3s,
+			color 0.3s;
 	}
 
 	.dark body {
@@ -89,10 +63,6 @@
 	}
 }
 
-@utility text-balance {
-	text-wrap: balance;
-}
-
 /* Mobile menu slide transition */
 .slide-enter-active,
 .slide-leave-active {
@@ -114,7 +84,9 @@
 
 /* Page transition */
 .page-enter-active {
-	transition: opacity 0.2s ease, transform 0.2s ease;
+	transition:
+		opacity 0.2s ease,
+		transform 0.2s ease;
 }
 
 .page-enter-from {

@@ -1,16 +1,24 @@
 <script setup lang="ts">
-import { approveAdminComment, batchApproveAdminComment, deleteAdminComment, fetchAdminComments } from "~~/composables/useApi";
 import type { AdminComment } from "~~/composables/useApi";
+import {
+	approveAdminComment,
+	batchApproveAdminComment,
+	deleteAdminComment,
+	fetchAdminComments,
+} from "~~/composables/useApi";
 
 const { data: comments, pending, error, refresh } = await fetchAdminComments();
 const isProcessing = ref(false);
 const selectedIds = ref<Set<number>>(new Set());
 
-const pendingComments = computed(() => (comments.value ?? []).filter((c: AdminComment) => !c.is_approved));
+const pendingComments = computed(() =>
+	(comments.value ?? []).filter((c: AdminComment) => !c.is_approved),
+);
 
 function toggleSelect(id: number) {
 	const s = new Set(selectedIds.value);
-	if (s.has(id)) s.delete(id); else s.add(id);
+	if (s.has(id)) s.delete(id);
+	else s.add(id);
 	selectedIds.value = s;
 }
 

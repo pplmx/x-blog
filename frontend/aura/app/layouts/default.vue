@@ -20,7 +20,12 @@ function toggleDark() {
 	isDark.value = !isDark.value;
 }
 
-watch(() => route.path, () => { mobileMenuOpen.value = false; });
+watch(
+	() => route.path,
+	() => {
+		mobileMenuOpen.value = false;
+	},
+);
 
 onMounted(() => {
 	try {
@@ -29,8 +34,14 @@ onMounted(() => {
 		else if (saved === "light") isDark.value = false;
 		else if (window.matchMedia?.("(prefers-color-scheme: dark)").matches) isDark.value = true;
 		updateDarkClass();
-		watch(isDark, (v) => { updateDarkClass(); localStorage.setItem("theme", v ? "dark" : "light"); });
-	} catch { isDark.value = false; updateDarkClass(); }
+		watch(isDark, (v) => {
+			updateDarkClass();
+			localStorage.setItem("theme", v ? "dark" : "light");
+		});
+	} catch {
+		isDark.value = false;
+		updateDarkClass();
+	}
 });
 </script>
 

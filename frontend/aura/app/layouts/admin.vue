@@ -53,7 +53,9 @@ async function handleChangePassword() {
 		}
 		passwordSuccess.value = true;
 		passwordForm.value = { current_password: "", new_password: "", confirm: "" };
-		setTimeout(() => { showPasswordModal.value = false; }, 1500);
+		setTimeout(() => {
+			showPasswordModal.value = false;
+		}, 1500);
 	} catch (err) {
 		passwordError.value = err instanceof Error ? err.message : "修改密码失败";
 	}

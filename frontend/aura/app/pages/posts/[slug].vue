@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from "vue";
-import { usePost, usePostView, usePostLike, useRelatedPosts } from "~~/composables/useApi";
+import { usePost, usePostLike, usePostView, useRelatedPosts } from "~~/composables/useApi";
 import { usePostSeo } from "~~/composables/useSeo";
 import { extractToc } from "~~/composables/useToc";
 
@@ -60,7 +60,9 @@ onMounted(() => {
 	updateProgress();
 	onMounted(() => {
 		setTimeout(() => {
-			document.querySelectorAll("h1[id], h2[id], h3[id]").forEach((el) => observer.observe(el));
+			document.querySelectorAll("h1[id], h2[id], h3[id]").forEach((el) => {
+				observer.observe(el);
+			});
 		}, 500);
 	});
 	onUnmounted(() => {

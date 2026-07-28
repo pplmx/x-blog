@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { deleteAdminPost, fetchAdminPosts } from "~~/composables/useApi";
 import type { AdminPost } from "~~/composables/useApi";
+import { deleteAdminPost, fetchAdminPosts } from "~~/composables/useApi";
 
 const searchQuery = ref("");
 const statusFilter = ref("");
@@ -8,7 +8,10 @@ const currentPage = ref(0);
 const pageSize = 20;
 
 const queryParams = computed(() => {
-	const params: Record<string, string | number> = { limit: pageSize, skip: currentPage.value * pageSize };
+	const params: Record<string, string | number> = {
+		limit: pageSize,
+		skip: currentPage.value * pageSize,
+	};
 	if (searchQuery.value) params.q = searchQuery.value;
 	if (statusFilter.value) params.status = statusFilter.value;
 	return params;
@@ -22,7 +25,13 @@ const totalPages = computed(() => Math.ceil(total.value / pageSize));
 const isDeleting = ref(false);
 const debounceTimer = ref<ReturnType<typeof setTimeout> | null>(null);
 
-watch(queryParams, () => { refresh(); }, { deep: true });
+watch(
+	queryParams,
+	() => {
+		refresh();
+	},
+	{ deep: true },
+);
 
 function onSearchInput() {
 	if (debounceTimer.value) clearTimeout(debounceTimer.value);
@@ -55,7 +64,8 @@ function statusLabel(post: AdminPost): string {
 }
 
 function statusColor(post: AdminPost): string {
-	if (!post.published && post.publish_at) return "bg-purple-50 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400";
+	if (!post.published && post.publish_at)
+		return "bg-purple-50 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400";
 	if (post.published) return "bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-400";
 	return "bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400";
 }

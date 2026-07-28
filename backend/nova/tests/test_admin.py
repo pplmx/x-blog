@@ -779,6 +779,7 @@ class TestAdminPasswordChange:
         assert response.status_code == 200
         db_session.refresh(admin_user)
         from app.auth import verify_password
+
         assert verify_password("newpass456", admin_user.password)
 
     def test_change_password_wrong_current(self, client, auth_headers):
