@@ -6,7 +6,7 @@
 
 **Stack**: FastAPI (Python 3.14) + Nuxt 4 (Vue 3) + SQLite + PostgreSQL
 **Directory Structure**: `backend/nova/` (FastAPI), `frontend/aura/` (Nuxt 4)
-**Status**: 484 backend tests (92.13% coverage), 615 frontend tests (36 files, 80%+ coverage threshold). All CI checks pass: ruff lint/format, Biome, coverage, E2E.
+**Status**: 484 backend tests (92.13% coverage), 603 frontend tests (36 files, 80%+ coverage threshold). All CI checks pass: ruff lint/format, Biome, coverage, E2E.
 
 ## Key Findings
 
@@ -314,7 +314,7 @@ All items from the second major iteration:
 ## Final Metrics
 
 - **Backend tests**: 484 passed, 8 skipped (92.13% coverage)
-- **Frontend tests**: 615 passed (36 files, 80%+ threshold)
+- **Frontend tests**: 603 passed (36 files, 80%+ threshold)
 - **E2E tests**: 13 specs
 - **CI**: ruff lint + format, Biome, coverage 80%, E2E
 - **Dependencies**: All critical CVEs resolved, Dependabot weekly scans configured
