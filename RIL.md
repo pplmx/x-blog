@@ -6,7 +6,7 @@
 
 **Stack**: FastAPI (Python 3.14) + Nuxt 4 (Vue 3) + SQLite + PostgreSQL
 **Directory Structure**: `backend/nova/` (FastAPI), `frontend/aura/` (Nuxt 4)
-**Status**: All tests passing (597 frontend tests across 35 files at 91.56% statement coverage, 478 backend tests at 92.78% coverage). Reading list/bookmarks feature complete (useBookmarks composable, BookmarkButton component, /bookmarks page, sidebar integration). i18n refactoring complete with code review fixes.
+**Status**: 484 backend tests (92.13% coverage), 615 frontend tests (36 files, 80%+ coverage threshold). All CI checks pass: ruff lint/format, Biome, coverage, E2E.
 
 ## Key Findings
 
@@ -284,26 +284,42 @@ or function existence.
 
 ## Infrastructure Hardening (COMPLETED)
 
-- **Security upgrades**: python-multipart 0.0.32, starlette 1.3.1, pydantic-settings 2.14.2,
-  urllib3 2.7.0, idna 3.18, cryptography 49.0.0, pyasn1 0.6.4. All 20 Dependabot alerts have
-  been resolved in code (awaiting GitHub re-scan to auto-close).
-- **PostgreSQL production support**: Conditional check_same_thread in database.py, docker-compose
-  with postgres:17-alpine service, pgdata volume, healthcheck chain. Added psycopg2-binary dependency
-  and comprehensive connection validation tests (8 tests, auto-skipped when no PG configured).
-- **Admin dashboard**: Pending comments widget with approve/reject buttons in dashboard, pending
-  comments stat card, data freshness timestamp. Backend stats endpoint now includes pending_comments
-  field. 6 new frontend tests.
-- **httpx2 migration**: Replaced httpx with httpx2 to resolve starlette.testclient deprecation warning.
-- **CI/CD hardening**:
-    - Fixed deploy.yml: `docker-compose` → `docker compose` (v1→v2)
-    - Added ruff lint + format check to test.yml
-    - Added Biome lint check to frontend CI
-    - Raised coverage threshold from 50% → 80% (actual: 92.79%)
-    - Added `.github/dependabot.yml` for weekly auto-PRs on pip and npm dependencies
+[earlier items preserved - see git log for full history]
 
-## Next Priorities
+## Final Session (Phase 2+) — Complete Production Hardening
 
-- Content features: image upload frontend integration, post scheduling (publish_at)
+All items from the second major iteration:
+
+| #   | Item                          | Detail                                                               |
+| --- | ----------------------------- | -------------------------------------------------------------------- |
+| 1   | Markdown editor toolbar       | B/I/H1-H3/Link/Image buttons, preview toggle                         |
+| 2   | Image upload frontend         | Button/drag/paste, useUpload composable, 5 tests                     |
+| 3   | Post scheduling               | publish_at field, datetime-local picker, scheduled visibility filter |
+| 4   | PostgreSQL full-text search   | tsvector/tsquery/ts_rank (PG), ILIKE fallback (SQLite)               |
+| 5   | Alembic migrations            | autogenerate config, initial migration for publish_at                |
+| 6   | Admin post list search/filter | q param, status filter, pagination, scheduled badge                  |
+| 7   | Docker upload volume          | Named volume mount for persistent image storage                      |
+| 8   | Nginx reverse proxy config    | SSL, static serving, caching, security headers                       |
+| 9   | RSS full-content default      | + Atom content tag, full param override                              |
+| 10  | Sitemap image namespace       | image:image for cover images                                         |
+| 11  | Comment batch ops             | Backend batch-approve endpoint, frontend select-all UX               |
+| 12  | CI coverage check             | vitest --coverage in test.yml                                        |
+| 13  | E2E in CI                     | PostgreSQL service container in GitHub Actions                       |
+| 14  | Dependabot PR cleanup         | 5 stale closed, 2 valid merged                                       |
+| 15  | Search result highlighting    | PG ts_headline, SQLite regex mark wrapping                           |
+| 16  | PG connection pool tuning     | pool_size/max_overflow/pool_pre_ping/pool_recycle                    |
+| 17  | Admin password change         | API endpoint + modal UI with current/new/confirm                     |
+| 18  | Test coverage                 | batch approve, password change, layout modal tests                   |
+
+## Final Metrics
+
+- **Backend tests**: 484 passed, 8 skipped (92.13% coverage)
+- **Frontend tests**: 615 passed (36 files, 80%+ threshold)
+- **E2E tests**: 13 specs
+- **CI**: ruff lint + format, Biome, coverage 80%, E2E
+- **Dependencies**: All critical CVEs resolved, Dependabot weekly scans configured
+- **Database**: SQLite (dev/test) + PostgreSQL (production) with Alembic migrations
+- **Deploy**: Docker Compose with PG volume + upload volume, Nginx reverse proxy config
 
 ### i18n Refactoring (COMPLETED)
 
