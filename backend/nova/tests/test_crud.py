@@ -1148,6 +1148,36 @@ class TestIntegrityErrorHandling:
         ):
             crud.update_tag(db_session, tag2.id, update_data)
 
+    def test_create_post_duplicate_slug_integrity_error(self, db_session):
+        """Test create_post raises ValueError on duplicate slug (IntegrityError)."""
+        post = models.Post(title="Original Post", slug="duplicate-slug-test", content="Content")
+        db_session.add(post)
+        db_session.commit()
+
+        post_data = schemas.PostCreate(title="Duplicate Post", slug="duplicate-slug-test", content="Other content")
+        with (
+            patch("app.crud.clear_posts_cache"),
+            patch("app.crud.clear_tags_cache"),
+            pytest.raises(ValueError, match="already exists"),
+        ):
+            crud.create_post(db_session, post_data)
+
+    def test_update_post_duplicate_slug_integrity_error(self, db_session):
+        """Test update_post raises ValueError on duplicate slug (IntegrityError)."""
+        post1 = models.Post(title="Post One", slug="post-one-slug", content="Content")
+        post2 = models.Post(title="Post Two", slug="post-two-slug", content="Content")
+        db_session.add(post1)
+        db_session.add(post2)
+        db_session.commit()
+
+        update_data = schemas.PostUpdate(slug="post-one-slug")
+        with (
+            patch("app.crud.clear_posts_cache"),
+            patch("app.crud.clear_tags_cache"),
+            pytest.raises(ValueError, match="already exists"),
+        ):
+            crud.update_post(db_session, post2.id, update_data)
+
 
 class TestCreatePostCoverImage:
     """Tests for cover_image handling in create_post."""
