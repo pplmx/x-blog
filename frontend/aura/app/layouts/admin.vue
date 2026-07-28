@@ -19,6 +19,46 @@ if (!(isAuthenticated.value || isLoginPage)) {
 	navigateTo("/admin/login", { replace: true });
 }
 
+const showPasswordModal = ref(false);
+const passwordForm = ref({ current_password: "", new_password: "", confirm: "" });
+const passwordError = ref<string | null>(null);
+const passwordSuccess = ref(false);
+
+async function handleChangePassword() {
+	passwordError.value = null;
+	passwordSuccess.value = false;
+	if (passwordForm.value.new_password.length < 6) {
+		passwordError.value = "密码至少 6 位";
+		return;
+	}
+	if (passwordForm.value.new_password !== passwordForm.value.confirm) {
+		passwordError.value = "两次输入的密码不一致";
+		return;
+	}
+	try {
+		const config = useRuntimeConfig();
+		const apiUrl = config.public.apiUrl;
+		const token = localStorage.getItem("admin_token");
+		const res = await fetch(`${apiUrl}/api/admin/password`, {
+			method: "POST",
+			headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+			body: JSON.stringify({
+				current_password: passwordForm.value.current_password,
+				new_password: passwordForm.value.new_password,
+			}),
+		});
+		if (!res.ok) {
+			const data = await res.json();
+			throw new Error(data?.detail || "Failed to change password");
+		}
+		passwordSuccess.value = true;
+		passwordForm.value = { current_password: "", new_password: "", confirm: "" };
+		setTimeout(() => { showPasswordModal.value = false; }, 1500);
+	} catch (err) {
+		passwordError.value = err instanceof Error ? err.message : "修改密码失败";
+	}
+}
+
 // Close mobile sidebar when route changes
 watch(
 	() => route.path,
@@ -100,6 +140,16 @@ const navItems = [
             返回前台
           </NuxtLink>
 
+          <!-- Change password -->
+          <button
+            type="button"
+            class="flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium text-gray-600 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-800 transition-colors w-full"
+            @click="showPasswordModal = true"
+          >
+            <Icon icon="lucide:key-round" class="w-4 h-4" />
+            修改密码
+          </button>
+
           <!-- Logout -->
           <button
             type="button"
@@ -132,5 +182,64 @@ const navItems = [
         </main>
       </div>
     </div>
+
+    <!-- Password modal -->
+    <Teleport to="body">
+      <div
+        v-if="showPasswordModal"
+        class="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
+        @click.self="showPasswordModal = false"
+      >
+        <div class="bg-white dark:bg-gray-900 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-700 p-6 w-full max-w-sm mx-4">
+          <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">修改密码</h3>
+
+          <div v-if="passwordSuccess" class="p-3 bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-400 rounded-xl text-sm mb-4">
+            密码修改成功
+          </div>
+
+          <form @submit.prevent="handleChangePassword" class="space-y-4">
+            <div>
+              <label class="text-sm font-medium text-gray-700 dark:text-gray-300 block mb-1">当前密码</label>
+              <input
+                v-model="passwordForm.current_password"
+                type="password"
+                required
+                class="w-full px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+              >
+            </div>
+            <div>
+              <label class="text-sm font-medium text-gray-700 dark:text-gray-300 block mb-1">新密码</label>
+              <input
+                v-model="passwordForm.new_password"
+                type="password"
+                required
+                minlength="6"
+                class="w-full px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+              >
+            </div>
+            <div>
+              <label class="text-sm font-medium text-gray-700 dark:text-gray-300 block mb-1">确认新密码</label>
+              <input
+                v-model="passwordForm.confirm"
+                type="password"
+                required
+                class="w-full px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+              >
+            </div>
+
+            <div v-if="passwordError" class="text-sm text-red-500">{{ passwordError }}</div>
+
+            <div class="flex gap-3 pt-2">
+              <button type="submit" class="flex-1 px-4 py-2 bg-blue-500 text-white rounded-xl text-sm font-medium hover:bg-blue-600 transition-colors">
+                保存
+              </button>
+              <button type="button" class="flex-1 px-4 py-2 border border-gray-200 dark:border-gray-700 rounded-xl text-sm font-medium hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors" @click="showPasswordModal = false">
+                取消
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </Teleport>
   </div>
 </template>

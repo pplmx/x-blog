@@ -476,6 +476,25 @@ def admin_batch_approve_comments(
     return {"message": f"{len(comments)} comments updated"}
 
 
+# Password management
+class PasswordChangeRequest(BaseModel):
+    current_password: str
+    new_password: str
+
+
+@router.post("/password")
+def change_password(
+    body: PasswordChangeRequest,
+    db: Session = Depends(get_db),
+    current_user: auth.User = Depends(get_current_admin),
+):
+    if not auth.verify_password(body.current_password, current_user.password):
+        raise HTTPException(status_code=400, detail="Current password is incorrect")
+    current_user.password = auth.get_password_hash(body.new_password)
+    db.commit()
+    return {"message": "Password updated"}
+
+
 @router.delete("/comments/{comment_id}")
 def admin_delete_comment(
     comment_id: int,
