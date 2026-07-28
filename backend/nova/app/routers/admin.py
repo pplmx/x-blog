@@ -458,6 +458,24 @@ def admin_list_comments(
     return result
 
 
+class BatchApproveRequest(BaseModel):
+    ids: list[int]
+    approved: bool = True
+
+
+@router.post("/comments/batch-approve")
+def admin_batch_approve_comments(
+    body: BatchApproveRequest,
+    db: Session = Depends(get_db),
+    _current_user: auth.User = Depends(get_current_admin),
+):
+    comments = db.query(models.Comment).filter(models.Comment.id.in_(body.ids)).all()
+    for c in comments:
+        c.is_approved = body.approved
+    db.commit()
+    return {"message": f"{len(comments)} comments updated"}
+
+
 @router.delete("/comments/{comment_id}")
 def admin_delete_comment(
     comment_id: int,

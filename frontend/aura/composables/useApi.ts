@@ -442,6 +442,17 @@ export async function fetchAdminComments(postId?: number) {
 	});
 }
 
+/** Batch approve or reject comments (auth required). */
+export async function batchApproveAdminComment(ids: number[], approved: boolean) {
+	const config = useRuntimeConfig();
+	const apiUrl = config.public.apiUrl;
+	return useFetch(`${apiUrl}/api/admin/comments/batch-approve`, {
+		method: "POST",
+		headers: { "Content-Type": "application/json", ...getAuthHeaders() },
+		body: { ids, approved },
+	});
+}
+
 /** Delete a comment (auth required). */
 export async function deleteAdminComment(commentId: number) {
 	const config = useRuntimeConfig();

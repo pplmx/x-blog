@@ -198,18 +198,18 @@ describe("Admin Comments Page", () => {
 			expect(wrapper.text()).toContain("2024");
 		});
 
-		it('renders a "review through" button for unapproved comments', async () => {
+		it('renders approve button for unapproved comments', async () => {
 			const CommentsPage = await loadPage();
 			const wrapper = await mountWithSuspense(CommentsPage);
-			// Bob's comment is unapproved, should have a "审核通过" button
-			expect(wrapper.text()).toContain("审核通过");
+			// Bob's comment is unapproved, should have a "通过" button
+			expect(wrapper.text()).toContain("通过");
 		});
 
-		it('renders a "cancel review" button for approved comments', async () => {
+		it('renders "撤销" button for approved comments', async () => {
 			const CommentsPage = await loadPage();
 			const wrapper = await mountWithSuspense(CommentsPage);
-			// Alice's comment is approved, should have a "取消审核" button
-			expect(wrapper.text()).toContain("取消审核");
+			// Alice's comment is approved, should have a "撤销" button
+			expect(wrapper.text()).toContain("撤销");
 		});
 
 		it("renders delete buttons for all comments", async () => {
@@ -226,9 +226,8 @@ describe("Admin Comments Page", () => {
 			const CommentsPage = await loadPage();
 			const wrapper = await mountWithSuspense(CommentsPage);
 
-			// Find the "审核通过" button (for unapproved comment)
 			const approveButtons = wrapper.findAll("button");
-			const approveButton = approveButtons.find((b) => b.text().includes("审核通过"));
+			const approveButton = approveButtons.find((b) => b.text().trim() === "通过");
 			expect(approveButton).toBeDefined();
 
 			await approveButton?.trigger("click");
@@ -243,9 +242,8 @@ describe("Admin Comments Page", () => {
 			const CommentsPage = await loadPage();
 			const wrapper = await mountWithSuspense(CommentsPage);
 
-			// Find the "取消审核" button (for approved comment)
 			const unapproveButtons = wrapper.findAll("button");
-			const unapproveButton = unapproveButtons.find((b) => b.text().includes("取消审核"));
+			const unapproveButton = unapproveButtons.find((b) => b.text().trim() === "撤销");
 			expect(unapproveButton).toBeDefined();
 
 			await unapproveButton?.trigger("click");

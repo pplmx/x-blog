@@ -54,8 +54,70 @@ jobs:
           pnpm install
           pnpm lint
 
-      - name: Frontend tests
+      - name: Frontend tests with coverage
+        run: |
+          cd frontend/aura
+          pnpm test -- --coverage
+
+  e2e-test:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_DB: xblog_test
+          POSTGRES_USER: xblog
+          POSTGRES_PASSWORD: xblog
+        options: >-
+          --health-cmd pg_isready -U xblog -d xblog_test
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.14'
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: 'pnpm'
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: '9'
+
+      - name: Install uv
+        run: pip install uv
+
+      - name: Start backend
+        run: |
+          cd backend/nova
+          uv sync
+          DATABASE_URL="postgresql://xblog:xblog@localhost:5432/xblog_test" \
+          JWT_SECRET_KEY="test-secret-key-e2e" \
+          uv run uvicorn app.main:app --host 0.0.0.0 --port 18888 &
+          sleep 3
+          curl -sf http://localhost:18888/health > /dev/null || (echo "Backend failed" && exit 1)
+
+      - name: Start frontend
         run: |
           cd frontend/aura
           pnpm install
-          pnpm test
+          NUXT_API_URL=http://localhost:18888 \
+          NUXT_SITE_URL=http://localhost:13334 \
+          pnpm dev --port 13334 &
+          sleep 5
+          curl -sf http://localhost:13334 > /dev/null || echo "Frontend may not be ready"
+
+      - name: Run E2E tests
+        run: |
+          cd frontend/aura
+          pnpm test:e2e
