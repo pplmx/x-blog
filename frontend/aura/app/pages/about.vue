@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { useSeo } from "~~/composables/useSeo";
+
 // SEO: set dynamic head metadata
 useSeo({
 	title: "关于 X-Blog",

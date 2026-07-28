@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { usePosts, usePopularPosts } from "~~/composables/useApi";
+import { useSeo } from "~~/composables/useSeo";
 
 const {
 	data: posts,
