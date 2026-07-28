@@ -24,11 +24,11 @@ init-db:
 dev:
     @echo "⚠️ Windows 用户请在两个终端分别运行:"
     @echo "  just backend"
-    @echo "  just nuxt        (Nuxt on :13334)"
+    @echo "  just nuxt        (Nuxt on :34567)"
     @echo ""
     @echo "或使用 VS Code / IntelliJ 的 Run Dashboard"
     cd backend/nova && uv run uvicorn app.main:app --reload --host 0.0.0.0 --port 18888 &
-    cd frontend/aura && pnpm dev --port 13334
+    cd frontend/aura && pnpm dev --port 34567
 
 # Run backend + Nuxt dev server (alias for `dev`)
 dev-nuxt: dev
@@ -39,11 +39,11 @@ backend:
 
 # Run frontend (alias for nuxt)
 frontend:
-    cd frontend/aura && pnpm dev --port 13334
+    cd frontend/aura && pnpm dev --port 34567
 
 # Run Nuxt dev server
 nuxt:
-    cd frontend/aura && pnpm dev --port 13334
+    cd frontend/aura && pnpm dev --port 34567
 
 # Lint code
 lint:
@@ -114,8 +114,8 @@ e2e:
     cd backend/nova && uv run uvicorn app.main:app --host 0.0.0.0 --port 18888 &
     @sleep 3 && curl -sf http://localhost:18888/health > /dev/null || (echo "Backend failed to start" && exit 1)
     @echo "Starting Nuxt..."
-    cd frontend/aura && pnpm dev --port 13334 &
-    @sleep 8 && curl -sf http://localhost:13334 > /dev/null || (echo "Nuxt failed to start" && exit 1)
+    cd frontend/aura && pnpm dev --port 34567 &
+    @sleep 8 && curl -sf http://localhost:34567 > /dev/null || (echo "Nuxt failed to start" && exit 1)
     @echo "Running e2e tests..."
     cd frontend/aura && pnpm test:e2e
     @echo "Stopping services..."

@@ -68,7 +68,7 @@ just install
 just dev
 ```
 
-访问 http://localhost:13334
+访问 http://localhost:34567
 
 ### 方式二：分别启动
 
@@ -124,7 +124,7 @@ docker compose down -v
 
 | 服务     | 地址                        |
 | -------- | --------------------------- |
-| 前端     | http://localhost:13334      |
+| 前端     | http://localhost:34567      |
 | 后端 API | http://localhost:18888      |
 | API 文档 | http://localhost:18888/docs |
 

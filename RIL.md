@@ -113,7 +113,7 @@
   is now the sole frontend.
 - **Scope**: 163 files deleted. Updated CI/CD to remove Next.js test jobs and build/push
   steps. Updated docker-compose to replace the `frontend` (Next.js) service with the
-  `frontend` (Nuxt) service on port 13334. Updated justfile commands.
+  `frontend` (Nuxt) service on port 34567. Updated justfile commands.
 - **Test counts**: Next.js had 590 tests, which are now gone. Total tests: 915 (478 backend
     - 437 Nuxt). No test coverage lost in areas not yet ported.
 - **Verification**: 437 Nuxt tests pass (29 test files), 478 backend tests pass.

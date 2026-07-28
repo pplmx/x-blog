@@ -66,7 +66,7 @@ just dev
 
 # Or run separately:
 just backend  # http://localhost:18888
-just frontend # http://localhost:13334
+just frontend # http://localhost:34567
 ```
 
 ### 🐳 Docker Deployment

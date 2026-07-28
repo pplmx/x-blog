@@ -12,12 +12,12 @@ export default defineConfig({
 		timeout: 5000,
 	},
 	use: {
-		baseURL: "http://localhost:13334",
+		baseURL: "http://localhost:34567",
 		trace: "on-first-retry",
 	},
 	webServer: {
-		command: "pnpm dev --port 13334",
-		url: "http://localhost:13334",
+		command: "pnpm dev --port 34567",
+		url: "http://localhost:34567",
 		reuseExistingServer: true,
 		timeout: 120_000,
 	},

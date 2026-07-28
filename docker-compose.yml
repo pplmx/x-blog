@@ -23,7 +23,7 @@ services:
     environment:
       DATABASE_URL: postgresql://xblog:${POSTGRES_PASSWORD:-xblog}@postgres:5432/xblog
       JWT_SECRET_KEY: ${JWT_SECRET_KEY:-change-me-in-production}
-      ALLOWED_ORIGINS: http://localhost:13334,http://frontend:3000
+      ALLOWED_ORIGINS: http://localhost:34567,http://frontend:3000
       RATE_LIMIT_PER_MINUTE: "60"
       GZIP_MINIMUM_SIZE: "500"
     volumes:
@@ -43,10 +43,10 @@ services:
       context: ./frontend/aura
       target: runner
     ports:
-      - "13334:3000"
+      - "34567:3000"
     environment:
       NUXT_API_URL: http://backend:18888
-      NUXT_SITE_URL: http://localhost:13334
+      NUXT_SITE_URL: http://localhost:34567
     restart: unless-stopped
     depends_on:
       backend:

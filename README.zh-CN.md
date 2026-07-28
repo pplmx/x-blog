@@ -66,7 +66,7 @@ just dev
 
 # 或者分别运行:
 just backend  # http://localhost:18888
-just frontend # http://localhost:13334
+just frontend # http://localhost:34567
 ```
 
 ### 🐳 Docker 部署

@@ -8,7 +8,7 @@ A Nuxt 4 alternative frontend for X-Blog, running in parallel with the Next.js a
 # Install dependencies
 pnpm install
 
-# Start dev server (port 13334)
+# Start dev server (port 34567)
 NUXT_API_URL=http://localhost:18888 pnpm dev
 ```
 
