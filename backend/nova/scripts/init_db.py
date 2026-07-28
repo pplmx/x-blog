@@ -6,7 +6,7 @@ from datetime import UTC, datetime, timedelta
 
 sys.path.insert(0, ".")
 from app import auth, models
-from app.database import SessionLocal
+from app.database import Base, engine, SessionLocal
 
 DEMO_POSTS = [
     {
@@ -899,9 +899,11 @@ graph LR
 
 
 def main():
+    Base.metadata.create_all(bind=engine)
     db = SessionLocal()
 
     try:
+        # Check if admin already exists
         existing_admin = db.query(auth.User).filter(auth.User.username == "admin").first()
         if existing_admin:
             print("✓ Admin user already exists")
