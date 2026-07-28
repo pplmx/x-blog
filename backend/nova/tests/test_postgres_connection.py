@@ -42,9 +42,7 @@ def test_postgres_version_returned():
     with engine.connect() as conn:
         version = conn.execute(text("SHOW server_version")).scalar()
         assert version, "Expected a non-empty server version string"
-        assert "PostgreSQL" in version or version[0].isdigit(), (
-            f"Expected PostgreSQL version string, got: {version}"
-        )
+        assert "PostgreSQL" in version or version[0].isdigit(), f"Expected PostgreSQL version string, got: {version}"
     engine.dispose()
 
 
@@ -86,17 +84,13 @@ def test_postgres_transaction_rollback():
         trans = conn.begin()
         conn.execute(text("CREATE TABLE _test_txn_rollback (id SERIAL PRIMARY KEY)"))
         # Verify table exists
-        result = conn.execute(
-            text("SELECT to_regclass('_test_txn_rollback')").bindparams()
-        ).scalar()
+        result = conn.execute(text("SELECT to_regclass('_test_txn_rollback')").bindparams()).scalar()
         assert result is not None, "Table should exist before rollback"
         trans.rollback()
 
     # Table should NOT exist after rollback.
     with engine.connect() as conn:
-        result = conn.execute(
-            text("SELECT to_regclass('_test_txn_rollback')")
-        ).scalar()
+        result = conn.execute(text("SELECT to_regclass('_test_txn_rollback')")).scalar()
         assert result is None, "Table should not exist after rollback"
     engine.dispose()
 
@@ -137,9 +131,7 @@ def test_postgres_engine_creation():
     engine: Engine = create_engine(_get_test_url())
     assert engine is not None
     # Verify the engine dialect is PostgreSQL.
-    assert "postgresql" in str(engine.dialect.name), (
-        f"Expected postgresql dialect, got: {engine.dialect.name}"
-    )
+    assert "postgresql" in str(engine.dialect.name), f"Expected postgresql dialect, got: {engine.dialect.name}"
     engine.dispose()
 
 

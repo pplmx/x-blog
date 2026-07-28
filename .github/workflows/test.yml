@@ -20,11 +20,17 @@ jobs:
       - name: Install uv
         run: pip install uv
 
-      - name: Backend tests with coverage
+      - name: Backend lint and format check
         run: |
           cd backend/nova
           uv sync
-          uv run pytest --cov=app --cov-report=term-missing --cov-fail-under=50
+          uvx ruff check .
+          uvx ruff format --check .
+
+      - name: Backend tests with coverage
+        run: |
+          cd backend/nova
+          uv run pytest --cov=app --cov-report=term-missing --cov-fail-under=80
 
   frontend-test:
     runs-on: ubuntu-latest
@@ -41,6 +47,12 @@ jobs:
         uses: pnpm/action-setup@v4
         with:
           version: '9'
+
+      - name: Frontend lint check
+        run: |
+          cd frontend/aura
+          pnpm install
+          ./node_modules/.bin/eslint . --config lint.config.json
 
       - name: Frontend tests
         run: |
