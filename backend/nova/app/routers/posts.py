@@ -1,4 +1,4 @@
-from datetime import UTC, datetime
+from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from sqlalchemy.orm import Session
@@ -49,7 +49,7 @@ def get_post(post_id: str, db: Session = Depends(get_db)):
     )
     if not post:
         raise HTTPException(status_code=404, detail="Post not found")
-    if post.publish_at and post.publish_at > datetime.now(UTC):
+    if post.publish_at and post.publish_at > datetime.now():
         raise HTTPException(status_code=404, detail="Post not found")
     return post
 

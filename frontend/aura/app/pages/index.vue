@@ -10,7 +10,7 @@ const {
 	pending,
 	error,
 } = await usePosts({
-	page: currentPage,
+	page: currentPage.value,
 	limit: 10,
 });
 
