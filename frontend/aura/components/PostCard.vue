@@ -11,19 +11,6 @@ const { post } = toRefs(props);
 
 const coverImageUrl = computed(() => coverImageSrc(post.value.title, post.value.cover_image));
 
-// Default placeholder gradient based on post title hash (fallback)
-function getGradientFromTitle(title: string): string {
-	const gradients = [
-		"from-blue-500 to-indigo-600",
-		"from-emerald-500 to-teal-600",
-		"from-orange-500 to-red-600",
-		"from-purple-500 to-pink-600",
-		"from-cyan-500 to-blue-600",
-	];
-	const hash = title.split("").reduce((acc, char) => acc + char.charCodeAt(0), 0);
-	return gradients[hash % gradients.length];
-}
-
 const date = computed(() =>
 	new Date(props.post.created_at).toLocaleDateString("zh-CN", {
 		year: "numeric",
@@ -44,19 +31,12 @@ const date = computed(() =>
     </div>
     <NuxtLink :to="`/posts/${post.slug}`">
       <!-- Cover Image -->
-      <div v-if="coverImageUrl" class="relative h-48 w-full overflow-hidden">
+      <div class="relative w-full aspect-[2/1] overflow-hidden">
         <img
           :src="coverImageUrl"
           :alt="post.title"
           class="object-cover w-full h-full group-hover:scale-105 transition-transform duration-500"
         >
-      </div>
-      <div v-else :class="`h-32 bg-gradient-to-br ${getGradientFromTitle(post.title)} opacity-80`">
-        <div class="w-full h-full flex items-center justify-center">
-          <span class="text-4xl font-bold text-white/30">
-            {{ post.title.charAt(0).toUpperCase() }}
-          </span>
-        </div>
       </div>
 
       <div class="p-6">
