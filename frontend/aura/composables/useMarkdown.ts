@@ -6,13 +6,6 @@
  * content stored by the backend renders correctly. Code blocks, images, math,
  * and mermaid blocks are extracted as segments before Markdown conversion so
  * their internal syntax is not affected by the Markdown-to-HTML step.
- * segments so that special blocks — fenced code, Mermaid diagrams, inline
- * and display math, and images — can be rendered by dedicated Vue components
- * instead of `v-html`. Every plain-HTML segment is sanitised with DOMPurify
- * to strip XSS vectors.
- *
- * Usage:
- *   const { segments } = useMarkdown(postContent);
  *
  * Segments look like:
  *   { type: 'html',   html: '<p>...</p>' }
@@ -20,7 +13,12 @@
  *   { type: 'mermaid', code: '...' }
  *   { type: 'math',   formula: '...', displayMode: true }
  *   { type: 'image',  src: '...', alt: '...' }
+ *
+ * Usage:
+ *   const { segments } = useMarkdown(postContent);
  */
+
+import { marked } from "marked";
 
 export type Segment =
 	| { type: "html"; html: string; key: string }
@@ -194,28 +192,17 @@ export function sanitizeHtml(html: string): string {
 
 // --- Markdown-to-HTML conversion (marked) ---
 
-let markedFn: ((md: string) => string) | null = null;
-
-async function loadMarked(): Promise<typeof markedFn> {
-	if (markedFn) return markedFn;
-	try {
-		const mod = await import("marked");
-		markedFn = (mod.marked || mod.default?.marked || (mod as any).default) as typeof markedFn;
-	} catch {
-		markedFn = null;
-	}
-	return markedFn;
-}
-
-// Convert remaining Markdown (headings, lists, tables, bold, etc.) to HTML.
-// Preserves HTML comments (placeholders) by wrapping them so marked doesn't touch them.
+/**
+ * Convert remaining Markdown (headings, lists, tables, bold, etc.) to HTML.
+ * Preserves HTML comments (placeholders) by wrapping them so marked doesn't touch them.
+ * Uses `marked` which is imported statically (available for synchronous use).
+ */
 function convertMarkdownToHtml(md: string): string {
-	if (!markedFn) return md;
 	try {
-		const placeholder = "";
+		const placeholder = "";
 		const safeMd = md.replace(/(<!--[\s\S]*?-->)/g, `${placeholder}$1${placeholder}`);
-		const html = markedFn(safeMd);
-		return html.replace(new RegExp(`${placeholder}(<!--[\\s\\S]*?-->)${placeholder}`, "g"), "$1");
+		const html = marked(safeMd);
+		return html.replace(new RegExp(`${placeholder}(<![\\s\\S]*?-->)${placeholder}`, "g"), "$1");
 	} catch {
 		return md;
 	}
@@ -294,7 +281,6 @@ export function useMarkdown(content: string): UseMarkdownResult {
 export async function useMarkdownSanitised(content: string): Promise<UseMarkdownResult> {
 	const result = useMarkdown(content);
 	await loadPurify();
-	await loadMarked();
 	const segments = result.segments.map((s) =>
 		s.type === "html" ? { ...s, html: sanitizeHtml(s.html) } : s,
 	);
