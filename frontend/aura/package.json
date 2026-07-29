@@ -24,6 +24,8 @@
 		"class-variance-authority": "^0.7.1",
 		"clsx": "^2.1.1",
 		"nuxt": "^4.5.0",
+		"satori": "^0.29.0",
+		"sharp": "^0.35.3",
 		"tailwindcss": "^4.3.3",
 		"vue": "^3.5.40",
 		"vue-router": "^5.2.0"
@@ -41,6 +43,7 @@
 		"globals": "^17.8.0",
 		"happy-dom": "^20.11.1",
 		"katex": "^0.18.1",
+		"marked": "^16.3.0",
 		"mermaid": "^11.16.0",
 		"unplugin-auto-import": "^21.0.0",
 		"vitest": "^4.1.10"

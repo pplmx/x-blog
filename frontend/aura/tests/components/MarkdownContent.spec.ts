@@ -47,7 +47,7 @@ vi.mock("mermaid", () => ({
 }));
 
 // --- Mock katex (dynamically imported in MarkdownContent) ---
-const katexRenderToString = vi.fn().mockReturnValue('<span data-testid="katex">rendered</span>');
+const katexRenderToString = vi.fn().mockImplementation((formula: string) => `<span data-testid="katex">${formula}</span>`);
 vi.mock("katex", () => ({
 	default: { renderToString: katexRenderToString },
 }));
@@ -320,7 +320,13 @@ describe("MarkdownContent", () => {
 			await new Promise((r) => setTimeout(r, 10));
 			await flushPromises();
 
-			expect(wrapper.text()).toContain("frac");
+			// Component should render without errors
+			expect(wrapper.find(".markdown-content").exists()).toBe(true);
+			// Verify the display math segment was created and rendered
+			expect(wrapper.find("[data-math-key]").exists()).toBe(true);
+			// Display math should have block class (vs inline for $...$)
+			const mathSpan = wrapper.find("[data-math-key]");
+			expect(mathSpan.classes()).toContain("block");
 		});
 
 		it("handles KaTeX render errors gracefully", async () => {

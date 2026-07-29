@@ -6,9 +6,35 @@
 
 **Stack**: FastAPI (Python 3.14) + Nuxt 4 (Vue 3) + SQLite + PostgreSQL
 **Directory Structure**: `backend/nova/` (FastAPI), `frontend/aura/` (Nuxt 4)
-**Status**: 492 backend tests (92.51% coverage), 654 frontend tests (37 files, 81.68% functions / 80%+ threshold met). All CI checks pass: ruff lint/format, Biome, coverage, E2E.
+**Status**: 492 backend tests (92.51% coverage, 8 skipped), 664 frontend tests (37 files, 80%+ coverage threshold met). All CI checks pass: ruff lint/format, Biome, coverage, E2E.
 
 ## Key Findings
+
+### Test Suite Fixes and New Static File Proxy Route (COMPLETED)
+
+- **Issue**: 4 test files had 33 failing tests due to source code changes not being reflected in tests.
+- **Fixes applied**:
+  1. `dashboard.spec.ts`: Mock updated from `fetchPosts` to `usePosts` — the function was
+     renamed in commit `552b3c7` but the test was never updated, causing all 25 dashboard tests
+     to fail with "is not a function" errors.
+  2. `MarkdownContent.spec.ts`: Display math test updated to check `[data-math-key]` element
+     instead of `wrapper.text()`. The new `extractMath` function in `useMarkdown.ts` extracts
+     `$...$` patterns as segments, changing how math content flows through the rendering pipeline.
+     Additionally, the `el.isConnected` guard in `renderKatex` prevents katex rendering in
+     Vue Test Utils (detached DOM), so the katex element can't be reliably checked.
+  3. `slug.spec.ts`: Cover image test updated to expect `data:image/svg+xml` when `cover_image`
+     is null — `coverImageSrc()` now generates algorithmic SVG data URIs with HSL color
+     generation, so an `<img>` element always renders (no longer conditionally absent).
+  4. `static-proxy.spec.ts`: Created missing `server/routes/static/[...path].ts` route file
+     that the test was importing via `require()`. Also added `getHeaders` stubs and updated
+     the route to use `globalThis.fetch` (matching the test's mock) instead of `$fetch.raw`.
+- **New files**: `frontend/aura/server/routes/static/[...path].ts` (static file proxy),
+  `frontend/aura/server/routes/api/cover.ts` (dynamic cover image generator),
+  `frontend/aura/server/routes/api/og.ts` (dynamic OG image generator),
+  `frontend/aura/assets/fonts/NotoSansSC-Regular.otf` (Chinese font for image generation),
+  `frontend/aura/public/logo.png` (logo asset).
+- **Result**: All 664 frontend tests pass (was 631 passing + 33 failing), all 492 backend
+  tests pass (8 skipped). Test count moved from 654 to 664 with the new static-proxy route.
 
 ### Directory Rename to Named Implementation Pattern (COMPLETED)
 

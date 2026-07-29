@@ -45,6 +45,9 @@ const renderingKeys = ref<Set<string>>(new Set());
 // Track which math blocks we've already rendered to avoid double-render on re-render.
 const renderedMathKeys = ref<Set<string>>(new Set());
 
+// Track which mermaid blocks we've already rendered to avoid double-render on re-render.
+const renderedMermaidKeys = ref<Set<string>>(new Set());
+
 // --- Copy-to-clipboard state (per code block) ---
 const copiedStates = ref<Set<string>>(new Set());
 
@@ -80,7 +83,7 @@ async function initMermaid() {
 }
 
 async function renderMermaid(code: string, el: HTMLElement | null, segKey: string) {
-	if (!el || renderingKeys.value.has(segKey) || renderedMathKeys.value.has(segKey)) return;
+	if (!el || renderingKeys.value.has(segKey) || renderedMermaidKeys.value.has(segKey)) return;
 	renderingKeys.value.add(segKey);
 	const m = await initMermaid();
 	if (!m) {
@@ -89,8 +92,9 @@ async function renderMermaid(code: string, el: HTMLElement | null, segKey: strin
 	}
 	try {
 		const id = `mermaid-${Math.random().toString(36).slice(2)}`;
-		const { svg } = await m.render(id, code);
+		const { svg } = await m.render(id, code, el);
 		el.innerHTML = svg || "";
+			renderedMermaidKeys.value.add(segKey);
 	} catch {
 		el.innerHTML = `<pre class="p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded text-red-600 dark:text-red-400 text-sm">${escapeHtml(code)}</pre>`;
 	}

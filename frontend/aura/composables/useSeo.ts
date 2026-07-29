@@ -80,7 +80,7 @@ export const siteConfig = {
 	title: "X-Blog — 一个现代化的技术博客系统",
 	description:
 		"X-Blog 是一个基于 FastAPI + Nuxt 的现代化技术博客系统，支持 Markdown、Mermaid 图表、KaTeX 数学公式、代码高亮、文章分类、标签管理、阅读计数、点赞评论等功能。",
-	image: "/logo.png",
+	image: "/api/og?title=X-Blog",
 	locale: "zh_CN",
 	twitterHandle: "@x_blog",
 };
@@ -111,6 +111,36 @@ export function buildAbsoluteImageUrl(image: string, siteUrl?: string): string {
 	if (image.startsWith("http://") || image.startsWith("https://")) return image;
 	const base = siteUrl && siteUrl.length > 0 ? siteUrl : DEFAULT_SITE_URL;
 	return `${base}${image.startsWith("/") ? image : `/${image}`}`;
+}
+
+/**
+ * Build an OG image URL for a given title using the dynamic OG image endpoint.
+ * Generates a shareable PNG with proper Chinese font support.
+ *
+ * @param title  The title to render on the OG image
+ * @param siteUrl  The base site URL (defaults to localhost)
+ */
+export function buildOgImageUrl(title: string, siteUrl?: string): string {
+	const base = siteUrl && siteUrl.length > 0 ? siteUrl : DEFAULT_SITE_URL;
+	const encodedTitle = encodeURIComponent(title);
+	return `${base}/api/og?title=${encodedTitle}`;
+}
+
+/**
+ * Build a cover image URL for a post using the dynamic cover image endpoint.
+ * Generates a beautiful PNG with gradient background and title text.
+ *
+ * @param title  The post title to render on the cover image
+ * @param category  Optional category name (used for color scheme selection)
+ * @param siteUrl  The base site URL (defaults to localhost)
+ */
+export function buildCoverImageUrl(title: string, category?: string, siteUrl?: string): string {
+	const base = siteUrl && siteUrl.length > 0 ? siteUrl : DEFAULT_SITE_URL;
+	const encodedTitle = encodeURIComponent(title);
+	const params = category
+		? `?title=${encodedTitle}&category=${encodeURIComponent(category)}`
+		: `?title=${encodedTitle}`;
+	return `${base}/api/cover${params}`;
 }
 
 /**
@@ -279,19 +309,27 @@ export function useSeo(options: SeoOptions): void {
 /**
  * Apply SEO metadata for a blog post.
  * Accepts a post object (matching the Post interface from useApi).
- * Sets title, description, og:image (cover), canonical URL,
+ * Sets title, description, og:image (cover or dynamic OG), canonical URL,
  * and emits a BlogPosting JSON-LD script.
+ *
+ * When the post has a cover_image, it is used as the og:image.
+ * Otherwise, a dynamic OG image is generated with the post title (supports
+ * Chinese characters via Noto Sans SC font).
  */
 export function usePostSeo(post: SeoPostData): void {
 	const siteUrl = useSiteUrl();
 	const path = `/posts/${post.slug}`;
 	const tags = post.tags.map((t) => t.name);
 
+	// Use cover_image if available, otherwise generate a dynamic cover/OG image
+	const category = post.category?.name;
+	const ogImage = post.cover_image || buildCoverImageUrl(post.title, category, siteUrl);
+
 	useSeo({
 		title: post.title,
 		description: post.excerpt || undefined,
 		path,
-		image: post.cover_image || undefined,
+		image: ogImage,
 		tags,
 		article: {
 			datePublished: post.created_at,

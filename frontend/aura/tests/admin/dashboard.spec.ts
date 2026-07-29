@@ -16,8 +16,8 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { ref } from "vue";
 import { mountWithSuspense } from "./helpers.ts";
 
-const { mockFetchPosts, mockUseCategories, mockUseTags, mockFetchAdminComments, mockApproveAdminComment } = vi.hoisted(() => ({
-	mockFetchPosts: vi.fn(),
+const { mockUsePosts, mockUseCategories, mockUseTags, mockFetchAdminComments, mockApproveAdminComment } = vi.hoisted(() => ({
+	mockUsePosts: vi.fn(),
 	mockUseCategories: vi.fn(),
 	mockUseTags: vi.fn(),
 	mockFetchAdminComments: vi.fn(),
@@ -25,7 +25,7 @@ const { mockFetchPosts, mockUseCategories, mockUseTags, mockFetchAdminComments, 
 }));
 
 vi.mock("~/composables/useApi", () => ({
-	fetchPosts: mockFetchPosts,
+	usePosts: mockUsePosts,
 	useCategories: mockUseCategories,
 	useTags: mockUseTags,
 	fetchAdminComments: mockFetchAdminComments,
@@ -138,7 +138,7 @@ describe("Admin Dashboard Page", () => {
 
 	describe("Rendering", () => {
 		beforeEach(() => {
-			mockFetchPosts.mockResolvedValue(mockPostsResponse);
+			mockUsePosts.mockResolvedValue(mockPostsResponse);
 			mockUseCategories.mockReturnValue({
 				data: ref(mockCategories),
 				pending: ref(false),
@@ -178,7 +178,7 @@ describe("Admin Dashboard Page", () => {
 
 	describe("Stats cards", () => {
 		beforeEach(() => {
-			mockFetchPosts.mockResolvedValue(mockPostsResponse);
+			mockUsePosts.mockResolvedValue(mockPostsResponse);
 			mockUseCategories.mockReturnValue({
 				data: ref(mockCategories),
 				pending: ref(false),
@@ -250,7 +250,7 @@ describe("Admin Dashboard Page", () => {
 
 	describe("Top posts by views", () => {
 		beforeEach(() => {
-			mockFetchPosts.mockResolvedValue(mockPostsResponse);
+			mockUsePosts.mockResolvedValue(mockPostsResponse);
 			mockUseCategories.mockReturnValue({
 				data: ref(mockCategories),
 				pending: ref(false),
@@ -302,7 +302,7 @@ describe("Admin Dashboard Page", () => {
 
 	describe("Category distribution", () => {
 		beforeEach(() => {
-			mockFetchPosts.mockResolvedValue(mockPostsResponse);
+			mockUsePosts.mockResolvedValue(mockPostsResponse);
 			mockUseCategories.mockReturnValue({
 				data: ref(mockCategories),
 				pending: ref(false),
@@ -372,7 +372,7 @@ describe("Admin Dashboard Page", () => {
 				category: { id: 1, name: "Tech" },
 				tags: [],
 			};
-			mockFetchPosts.mockResolvedValue({
+			mockUsePosts.mockResolvedValue({
 				items: [draftOnlyPost],
 				pagination: { total: 1, page: 1, limit: 1000, total_pages: 1 },
 			});
@@ -413,7 +413,7 @@ describe("Admin Dashboard Page", () => {
 
 	describe("Recent posts", () => {
 		beforeEach(() => {
-			mockFetchPosts.mockResolvedValue(mockPostsResponse);
+			mockUsePosts.mockResolvedValue(mockPostsResponse);
 			mockUseCategories.mockReturnValue({
 				data: ref(mockCategories),
 				pending: ref(false),
@@ -469,7 +469,7 @@ describe("Admin Dashboard Page", () => {
 		});
 
 		it('renders "no published posts" when no posts are published', async () => {
-			mockFetchPosts.mockResolvedValue({
+			mockUsePosts.mockResolvedValue({
 				items: [
 					{
 						id: 1,
@@ -495,7 +495,7 @@ describe("Admin Dashboard Page", () => {
 
 	describe("Pending comments widget", () => {
 		beforeEach(() => {
-			mockFetchPosts.mockResolvedValue(mockPostsResponse);
+			mockUsePosts.mockResolvedValue(mockPostsResponse);
 			mockUseCategories.mockReturnValue({
 				data: ref(mockCategories),
 				pending: ref(false),

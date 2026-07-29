@@ -24,8 +24,9 @@ def setup_logging() -> None:
     handler.setFormatter(logging.Formatter("%(message)s"))
     root_logger.addHandler(handler)
 
-    # Silence uvicorn access log
+    # Silence uvicorn access log and xblog info-level request logging
     logging.getLogger("uvicorn.access").setLevel(logging.WARNING)
+    logging.getLogger("xblog").setLevel(logging.WARNING)
 
 
 class StructuredLogAdapter(logging.LoggerAdapter):
@@ -60,24 +61,25 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
         }
         adapter = StructuredLogAdapter(logger, extra)
 
-        # Log incoming request
-        adapter.info("request_started")
+        # Log incoming request (debug level to reduce noise)
+        adapter.debug("request_started")
 
         # Process request
         try:
             response = await call_next(request)
             duration_ms = (time.perf_counter() - start_time) * 1000
 
-            # Log completed request
+            # Log completed request (debug level to reduce noise,
+            # only log warnings for slow requests)
             log_data = {
                 "status": response.status_code,
                 "duration_ms": round(duration_ms, 2),
             }
 
             if duration_ms > 1000:
-                adapter.warning("request_completed", extra=log_data)
+                logger.warning("request_completed", extra=log_data)
             else:
-                adapter.info("request_completed", extra=log_data)
+                adapter.debug("request_completed", extra=log_data)
 
             # Add request ID to response headers
             response.headers["X-Request-ID"] = request_id

@@ -460,10 +460,11 @@ describe("Post Detail Page", () => {
 			expect(img.attributes("src")).toBe("https://example.com/cover.jpg");
 		});
 
-		it("does NOT render a cover image when absent", async () => {
+		it("renders an algorithmic SVG data URI when no cover image", async () => {
 			const wrapper = await mountPostPage();
 			const img = wrapper.find("img");
-			expect(img.exists()).toBe(false);
+			expect(img.exists()).toBe(true);
+			expect(img.attributes("src")).toContain("data:image/svg+xml");
 		});
 	});
 

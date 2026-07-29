@@ -57,6 +57,9 @@ RUN addgroup --system --gid 1001 nodejs && \
 COPY --from=builder --chown=nextjs:nodejs /app/.output ./
 COPY --from=builder --chown=nextjs:nodejs /app/public ./public
 
+# Copy font assets needed by the OG image generator
+COPY --from=builder --chown=nextjs:nodejs /app/assets/fonts ./assets/fonts
+
 # Also copy package.json for any runtime-only deps
 COPY --from=builder --chown=nextjs:nodejs /app/package.json ./
 

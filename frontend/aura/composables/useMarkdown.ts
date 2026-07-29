@@ -1,7 +1,11 @@
 /**
  * Markdown content processing composable for Nuxt.
  *
- * Splits raw HTML content (as returned by the backend) into a flat list of
+ * Converts any remaining Markdown (headings, lists, tables, bold, etc.) to HTML
+ * using the `marked` library before splitting into segments, so that Markdown
+ * content stored by the backend renders correctly. Code blocks, images, math,
+ * and mermaid blocks are extracted as segments before Markdown conversion so
+ * their internal syntax is not affected by the Markdown-to-HTML step.
  * segments so that special blocks — fenced code, Mermaid diagrams, inline
  * and display math, and images — can be rendered by dedicated Vue components
  * instead of `v-html`. Every plain-HTML segment is sanitised with DOMPurify
@@ -29,7 +33,7 @@ export interface UseMarkdownResult {
 	segments: Segment[];
 }
 
-// --- URL sanitisation (kept inline for SSR friendliness) ---
+// --- URL Sanitisation (kept inline for SSR friendliness) ---
 
 const ALLOWED_SCHEMES = ["https:", "http:", "mailto:"];
 
@@ -58,7 +62,7 @@ function makeKey(prefix: string, counter: { v: number }): string {
 	return `${prefix}-${counter.v}`;
 }
 
-// --- URL / math regex helpers ---
+// --- Regex helpers ---
 
 /** Extracts ```mermaid ... ``` blocks as segments, replacing with placeholder comments. */
 function extractMermaid(
@@ -74,6 +78,34 @@ function extractMermaid(
 	return { segments, processed };
 }
 
+/**
+ * Extracts math formulas ($$...$$ for display mode, $...$ for inline) as segments,
+ * replacing with placeholder comments. Must run AFTER code block extraction
+ * so that $ characters inside code blocks are not matched as math.
+ */
+function extractMath(
+	content: string,
+	keygen: { v: number },
+): { segments: Segment[]; processed: string } {
+	const segments: Segment[] = [];
+	const processed = content.replace(
+		/\$\$(.*?)\$\$|\$(.*?)\$/g,
+		(_match, displayFormula: string | undefined, inlineFormula: string | undefined) => {
+			const formula = (displayFormula ?? inlineFormula ?? "").trim();
+			if (!formula) return _match;
+			const key = makeKey("math", keygen);
+			segments.push({
+				type: "math",
+				formula,
+				displayMode: displayFormula !== undefined,
+				key,
+			});
+			return `<!--math:${key}-->`;
+		},
+	);
+	return { segments, processed };
+}
+
 /** Extracts generic fenced code blocks (non-mermaid) as segments. */
 function extractCodeBlocks(
 	content: string,
@@ -81,7 +113,7 @@ function extractCodeBlocks(
 ): { segments: Segment[]; processed: string } {
 	const segments: Segment[] = [];
 	const processed = content.replace(
-		/```(\w*)\s*\n([\s\S]*?)```/g,
+		/```([^\s`]*)\s*\n([\s\S]*?)```/g,
 		(_match, lang: string, code: string) => {
 			const key = makeKey("code", keygen);
 			segments.push({
@@ -160,6 +192,34 @@ export function sanitizeHtml(html: string): string {
 	}
 }
 
+// --- Markdown-to-HTML conversion (marked) ---
+
+let markedFn: ((md: string) => string) | null = null;
+
+async function loadMarked(): Promise<typeof markedFn> {
+	if (markedFn) return markedFn;
+	try {
+		const mod = await import("marked");
+		markedFn = (mod.marked || mod.default?.marked || (mod as any).default) as typeof markedFn;
+	} catch {
+		markedFn = null;
+	}
+	return markedFn;
+}
+
+// Convert remaining Markdown (headings, lists, tables, bold, etc.) to HTML.
+// Preserves HTML comments (placeholders) by wrapping them so marked doesn't touch them.
+function convertMarkdownToHtml(md: string): string {
+	if (!markedFn) return md;
+	try {
+		const safeMd = md.replace(/(<!--[\s\S]*?-->)/g, "\x00$1\x00");
+		const html = markedFn(safeMd);
+		return html.replace(/\x00(<!--[\s\S]*?-->)\x00/g, "$1");
+	} catch {
+		return md;
+	}
+}
+
 // --- Main composable ---
 
 export function useMarkdown(content: string): UseMarkdownResult {
@@ -170,16 +230,19 @@ export function useMarkdown(content: string): UseMarkdownResult {
 	// 1. Extract Mermaid blocks
 	const { segments: mermaidSegs, processed: afterMermaid } = extractMermaid(content, keygen);
 
-	// 2. Extract code blocks (non-mermaid)
-	const { segments: codeSegs, processed: afterCode } = extractCodeBlocks(afterMermaid, keygen);
+	// 2. Extract math formulas ($$...$$ and $...$) — before code blocks so $ in code is preserved
+	const { segments: mathSegs, processed: afterMath } = extractMath(afterMermaid, keygen);
 
-	// 3. Extract images
+	// 3. Extract code blocks (non-mermaid)
+	const { segments: codeSegs, processed: afterCode } = extractCodeBlocks(afterMath, keygen);
+
+	// 4. Extract images
 	const { segments: imageSegs, processed: afterImages } = extractImages(afterCode, keygen);
 
-	// 4. Build the ordered segment list. Placeholders are `<!--type:key-->` comments.
+	// 5. Build the ordered segment list. Placeholders are `<!--type:key-->` comments.
 	//    We walk the processed string and split on these markers.
 	const allExtracted = new Map<string, Segment>();
-	for (const s of [...mermaidSegs, ...codeSegs, ...imageSegs]) {
+	for (const s of [...mermaidSegs, ...mathSegs, ...codeSegs, ...imageSegs]) {
 		allExtracted.set(s.key, s);
 	}
 
@@ -188,7 +251,7 @@ export function useMarkdown(content: string): UseMarkdownResult {
 	// and emitting HTML chunks between them. Using `String.replace` with a
 	// callback avoids manual `RegExp.exec` loop state, which is more robust
 	// across transpiler versions.
-	const placeholderRegex = /<!--(mermaid|code|image):(.+?)-->/g;
+	const placeholderRegex = /<!--(mermaid|code|image|math):(.+?)-->/g;
 	let last = 0;
 
 	afterImages.replace(placeholderRegex, (fullMatch, _type: string, key: string, offset: number) => {
@@ -197,7 +260,7 @@ export function useMarkdown(content: string): UseMarkdownResult {
 			if (htmlChunk.trim()) {
 				segments.push({
 					type: "html",
-					html: htmlChunk,
+					html: convertMarkdownToHtml(htmlChunk),
 					key: makeKey("html", keygen),
 				});
 			}
@@ -217,7 +280,7 @@ export function useMarkdown(content: string): UseMarkdownResult {
 		if (htmlChunk.trim()) {
 			segments.push({
 				type: "html",
-				html: htmlChunk,
+				html: convertMarkdownToHtml(htmlChunk),
 				key: makeKey("html", keygen),
 			});
 		}
@@ -230,6 +293,7 @@ export function useMarkdown(content: string): UseMarkdownResult {
 export async function useMarkdownSanitised(content: string): Promise<UseMarkdownResult> {
 	const result = useMarkdown(content);
 	await loadPurify();
+	await loadMarked();
 	const segments = result.segments.map((s) =>
 		s.type === "html" ? { ...s, html: sanitizeHtml(s.html) } : s,
 	);
