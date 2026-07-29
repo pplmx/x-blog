@@ -1,17 +1,30 @@
 <script setup lang="ts">
-import { usePopularPosts, usePosts } from "~~/composables/useApi";
+import { usePopularPosts, type PostListResponse } from "~~/composables/useApi";
 import { useSeo } from "~~/composables/useSeo";
 
 const route = useRoute();
-const currentPage = computed(() => Number(route.query.page) || 1);
 
+// Plain ref for current page — gives us explicit control over re-fetching.
+// Synced from route.query.page on init and when browser back/forward runs.
+const page = ref(Number(route.query.page) || 1);
+
+// Build URL from the page ref.  Because useFetch watches `page`, changes
+// trigger a re-fetch with the new URL.
+const apiUrl = computed(() => {
+	const params = new URLSearchParams();
+	params.set("page", String(page.value));
+	params.set("limit", "10");
+	return `/api/posts?${params.toString()}`;
+});
+
+const config = useRuntimeConfig();
 const {
 	data: posts,
 	pending,
 	error,
-} = await usePosts({
-	page: currentPage.value,
-	limit: 10,
+} = await useFetch<PostListResponse>(apiUrl, {
+	baseURL: config.public.apiUrl,
+	watch: [page],
 });
 
 const { data: popularPosts } = await usePopularPosts();
@@ -23,8 +36,19 @@ useSeo({
 });
 
 function fetchPosts(pageNum: number) {
+	// Update page ref first — this triggers useFetch re-fetch via watch
+	page.value = pageNum;
+	// Then update the URL so the page is bookmarkable
 	navigateTo({ query: { page: pageNum } });
 }
+
+// Sync page ref from URL when browser back / forward changes the route
+watch(() => route.query.page, (newPage) => {
+	const p = Number(newPage) || 1;
+	if (p !== page.value) {
+		page.value = p;
+	}
+});
 
 // Hero stats
 const stats = computed(() => {

@@ -69,11 +69,12 @@ function generateColorScheme(title: string): { start: string; end: string } {
  * No HTTP request needed — the browser renders the SVG directly.
  *
  * Uses title hash to dynamically compute HSL colors for infinite variety.
- * For OpenGraph / social sharing images, use `buildCoverImageUrl` from `useSeo.ts`.
+ * The post's cover_image is NOT used here for display consistency — all
+ * posts render the same style of algorithmic SVG cover on the page.
+ * For OpenGraph / social sharing images, use `buildCoverImageUrl` from `useSeo.ts`
+ * which respects the stored cover_image.
  */
-export function coverImageSrc(title: string, coverImage?: string): string {
-	if (coverImage) return coverImage;
-
+export function coverImageSrc(title: string): string {
 	const colors = generateColorScheme(title);
 	const shortTitle = title.length > 28 ? `${title.slice(0, 28)}...` : title;
 

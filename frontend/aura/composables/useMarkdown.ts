@@ -80,6 +80,9 @@ function extractMermaid(
  * Extracts math formulas ($$...$$ for display mode, $...$ for inline) as segments,
  * replacing with placeholder comments. Must run AFTER code block extraction
  * so that $ characters inside code blocks are not matched as math.
+ *
+ * The display-mode regex uses [\s\S] instead of . so that $$...$$ spanning
+ * multiple lines is correctly matched (.* does not match newlines).
  */
 function extractMath(
 	content: string,
@@ -87,7 +90,7 @@ function extractMath(
 ): { segments: Segment[]; processed: string } {
 	const segments: Segment[] = [];
 	const processed = content.replace(
-		/\$\$(.*?)\$\$|\$(.*?)\$/g,
+		/\$\$(\s*[\s\S]*?\s*)\$\$|\$(.*?)\$/g,
 		(_match, displayFormula: string | undefined, inlineFormula: string | undefined) => {
 			const formula = (displayFormula ?? inlineFormula ?? "").trim();
 			if (!formula) return _match;
@@ -215,17 +218,17 @@ export function useMarkdown(content: string): UseMarkdownResult {
 
 	const keygen = { v: 0 };
 
-	// 1. Extract Mermaid blocks
+	// 1. Extract Mermaid blocks (first, so ```mermaid fences aren't treated as code blocks)
 	const { segments: mermaidSegs, processed: afterMermaid } = extractMermaid(content, keygen);
 
-	// 2. Extract math formulas ($$...$$ and $...$) — before code blocks so $ in code is preserved
-	const { segments: mathSegs, processed: afterMath } = extractMath(afterMermaid, keygen);
+	// 2. Extract code blocks (before math so $ inside code is preserved)
+	const { segments: codeSegs, processed: afterCode } = extractCodeBlocks(afterMermaid, keygen);
 
-	// 3. Extract code blocks (non-mermaid)
-	const { segments: codeSegs, processed: afterCode } = extractCodeBlocks(afterMath, keygen);
+	// 3. Extract math formulas ($$...$$ and $...$) — after code blocks so $ in code is preserved
+	const { segments: mathSegs, processed: afterMath } = extractMath(afterCode, keygen);
 
 	// 4. Extract images
-	const { segments: imageSegs, processed: afterImages } = extractImages(afterCode, keygen);
+	const { segments: imageSegs, processed: afterImages } = extractImages(afterMath, keygen);
 
 	// 5. Build the ordered segment list. Placeholders are `<!--type:key-->` comments.
 	//    We walk the processed string and split on these markers.

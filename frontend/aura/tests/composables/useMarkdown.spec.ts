@@ -53,6 +53,61 @@ describe("useMarkdown features", () => {
 		expect(r.segments[0].type).toBe("mermaid");
 		expect(r.segments[1].type).toBe("code");
 	});
+
+	it("does not extract $ inside code blocks as math", () => {
+		const r = useMarkdown("```js\nconst price = $100;\n```\n\nMath: $x^2$");
+		expect(r.segments.some((s) => s.type === "code")).toBe(true);
+		expect(r.segments.some((s) => s.type === "math")).toBe(true);
+		// The code segment should contain the $ sign, not have it consumed
+		const codeSeg = r.segments.find((s) => s.type === "code") as any;
+		expect(codeSeg.code).toContain("$100");
+		// The math segment should only be the actual math formula
+		const mathSeg = r.segments.find((s) => s.type === "math") as any;
+		expect(mathSeg.formula).toBe("x^2");
+	});
+
+	it("does not extract $$ inside code blocks as display math", () => {
+		const r = useMarkdown("```py\n# Formula: $$a^2 + b^2 = c^2$$\n```\n\nDisplay: $$x = y$$");
+		expect(r.segments.some((s) => s.type === "code")).toBe(true);
+		expect(r.segments.some((s) => s.type === "math")).toBe(true);
+		const codeSeg = r.segments.find((s) => s.type === "code") as any;
+		expect(codeSeg.code).toContain("$$a^2 + b^2 = c^2$$");
+		const mathSeg = r.segments.find((s) => s.type === "math") as any;
+		expect(mathSeg.formula).toBe("x = y");
+		expect(mathSeg.displayMode).toBe(true);
+	});
+
+	it("extracts inline math", () => {
+		const r = useMarkdown("The formula is $E = mc^2$");
+		const mathSeg = r.segments.find((s) => s.type === "math") as any;
+		expect(mathSeg).toBeDefined();
+		expect(mathSeg.formula).toBe("E = mc^2");
+		expect(mathSeg.displayMode).toBe(false);
+	});
+
+	it("extracts single-line display math", () => {
+		const r = useMarkdown("$$\\frac{a}{b}$$");
+		const mathSeg = r.segments.find((s) => s.type === "math") as any;
+		expect(mathSeg).toBeDefined();
+		expect(mathSeg.formula).toBe("\\frac{a}{b}");
+		expect(mathSeg.displayMode).toBe(true);
+	});
+
+	it("extracts multi-line display math", () => {
+		const r = useMarkdown("$$\n\nx = -b / 2a\n\n$$");
+		const mathSeg = r.segments.find((s) => s.type === "math") as any;
+		expect(mathSeg).toBeDefined();
+		expect(mathSeg.displayMode).toBe(true);
+		expect(mathSeg.formula).toContain("x = -b");
+	});
+
+	it("extracts multi-line display math with LaTeX", () => {
+		const r = useMarkdown("$$\n\tx = {-b \\ sqrt{b^2 - 4ac} \\ 2a}\n\n$$");
+		const mathSeg = r.segments.find((s) => s.type === "math") as any;
+		expect(mathSeg).toBeDefined();
+		expect(mathSeg.displayMode).toBe(true);
+		expect(mathSeg.formula).toContain("sqrt");
+	});
 });
 
 describe("sanitizeUrl", () => {

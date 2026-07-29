@@ -119,14 +119,15 @@ describe("PostCard", () => {
 			expect(src1).not.toBe(src2);
 		});
 
-		it("renders img element when cover image is provided", () => {
+		it("renders algorithmic SVG data URI even when cover image is provided", () => {
 			const postWithImage = {
 				...mockPost,
 				cover_image: "https://example.com/image.jpg",
 			};
 			const wrapper = mountPostCard(postWithImage);
 			expect(wrapper.find("img").exists()).toBe(true);
-			expect(wrapper.find("img").attributes("src")).toBe("https://example.com/image.jpg");
+			// All posts now render algorithmic SVG for display consistency
+			expect(wrapper.find("img").attributes("src")).toContain("data:image/svg+xml");
 		});
 	});
 

@@ -31,14 +31,10 @@ const { mockState } = vi.hoisted(() => ({
 	},
 }));
 
-// --- Mock useApi module so we control usePosts/usePopularPosts return values ---
+// --- Mock useApi module so we control usePopularPosts return values ---
+// Note: index.vue no longer uses usePosts — it calls useFetch directly
+// for reactive pagination. Only usePopularPosts is still imported from useApi.
 vi.mock("../../composables/useApi", () => ({
-	usePosts: () => ({
-		data: ref(mockState.posts),
-		pending: ref(mockState.pending),
-		error: ref(mockState.error),
-		refresh: vi.fn(),
-	}),
 	usePopularPosts: () => ({
 		data: ref(mockState.popularPosts),
 	}),
@@ -59,7 +55,16 @@ function setupNuxtStubs() {
 		public: { apiUrl: "http://localhost:18888", siteUrl: "http://localhost:3000" },
 	}));
 	vi.stubGlobal("useHead", vi.fn());
-	vi.stubGlobal("useFetch", vi.fn());
+	// index.vue calls useFetch directly for the posts list with a computed URL
+	vi.stubGlobal(
+		"useFetch",
+		vi.fn(() => ({
+			data: ref(mockState.posts),
+			pending: ref(mockState.pending),
+			error: ref(mockState.error),
+			refresh: vi.fn(),
+		})),
+	);
 	vi.stubGlobal("$fetch", vi.fn());
 }
 

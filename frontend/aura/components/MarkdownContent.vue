@@ -199,7 +199,7 @@ function lineNumbers(code: string): number[] {
         v-else-if="seg.type === 'mermaid'"
         class="my-4 p-4 bg-gray-50 dark:bg-gray-800/50 rounded-lg overflow-x-auto flex justify-center"
         :data-mermaid-key="seg.key"
-        ref="el => { if (el) renderMermaid(seg.code, el, seg.key) }"
+        :ref="(el: HTMLElement | null) => { if (el) renderMermaid(seg.code, el, seg.key) }"
       />
 
       <!-- Math (inline or display) -->
@@ -208,7 +208,7 @@ function lineNumbers(code: string): number[] {
         :is="'span'"
         :class="seg.displayMode ? 'block my-4 text-center' : 'inline'"
         :data-math-key="seg.key"
-        ref="el => { if (el) renderKatex(seg.formula, el, seg.displayMode, seg.key) }"
+        :ref="(el: HTMLElement | null) => { if (el) renderKatex(seg.formula, el, seg.displayMode, seg.key) }"
       />
 
       <!-- Image (lazy + lightbox-ready) -->

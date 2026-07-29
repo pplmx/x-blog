@@ -536,9 +536,11 @@ def get_related_posts(db: Session, post_id: int, limit: int = 5) -> list[models.
     post = get_post(db, post_id)
     if not post or not post.tags:
         # Fallback: just get recent posts in same category
+        now = datetime.now(UTC)
         query = db.query(models.Post).filter(
             models.Post.published,
             models.Post.id != post_id,
+            or_(models.Post.publish_at.is_(None), models.Post.publish_at <= now),
         )
         if post and post.category_id:
             query = query.filter(models.Post.category_id == post.category_id)
@@ -570,12 +572,14 @@ def get_related_posts(db: Session, post_id: int, limit: int = 5) -> list[models.
     )
 
     # Build main query with tag match count and eager loading
+    now = datetime.now(UTC)
     query = (
         db.query(models.Post, tag_match_count_subq.c.match_count)
         .outerjoin(tag_match_count_subq, models.Post.id == tag_match_count_subq.c.post_id)
         .filter(
             models.Post.published,
             models.Post.id != post_id,
+            or_(models.Post.publish_at.is_(None), models.Post.publish_at <= now),
         )
         .options(
             joinedload(models.Post.category),

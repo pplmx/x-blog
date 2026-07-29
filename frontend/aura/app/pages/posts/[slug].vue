@@ -10,11 +10,11 @@ const { data: post, pending, error } = await usePost(route.params.slug as string
 
 const toc = computed(() => (post.value?.content ? extractToc(post.value.content) : []));
 
-// Display cover image: use algorithmic SVG data URI (no HTTP request)
+// Display cover image: use algorithmic SVG data URI (no HTTP request, consistent style)
 // For OpenGraph og:image, usePostSeo uses buildCoverImageUrl (URL for social crawlers)
 const coverImageUrl = computed(() => {
 	if (!post.value) return "";
-	return coverImageSrc(post.value.title, post.value.cover_image);
+	return coverImageSrc(post.value.title);
 });
 
 const postId = post.value?.id ?? 0;

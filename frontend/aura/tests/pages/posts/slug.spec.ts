@@ -448,7 +448,7 @@ describe("Post Detail Page", () => {
 	});
 
 	describe("Cover image", () => {
-		it("renders the cover image when present", async () => {
+		it("renders algorithmic SVG data URI even when cover image is provided", async () => {
 			const wrapper = await mountPostPage({
 				post: {
 					...mockPost,
@@ -457,7 +457,8 @@ describe("Post Detail Page", () => {
 			});
 			const img = wrapper.find("img[alt='Test Article Post']");
 			expect(img.exists()).toBe(true);
-			expect(img.attributes("src")).toBe("https://example.com/cover.jpg");
+			// All posts now render algorithmic SVG for display consistency
+			expect(img.attributes("src")).toContain("data:image/svg+xml");
 		});
 
 		it("renders an algorithmic SVG data URI when no cover image", async () => {

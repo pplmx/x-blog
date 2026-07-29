@@ -9,7 +9,7 @@ interface Props {
 const props = withDefaults(defineProps<Props>(), {});
 const { post } = toRefs(props);
 
-const coverImageUrl = computed(() => coverImageSrc(post.value.title, post.value.cover_image));
+const coverImageUrl = computed(() => coverImageSrc(post.value.title));
 
 const date = computed(() =>
 	new Date(props.post.created_at).toLocaleDateString("zh-CN", {
