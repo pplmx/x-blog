@@ -212,9 +212,10 @@ async function loadMarked(): Promise<typeof markedFn> {
 function convertMarkdownToHtml(md: string): string {
 	if (!markedFn) return md;
 	try {
-		const safeMd = md.replace(/(<!--[\s\S]*?-->)/g, "\x00$1\x00");
+		const placeholder = "";
+		const safeMd = md.replace(/(<!--[\s\S]*?-->)/g, `${placeholder}$1${placeholder}`);
 		const html = markedFn(safeMd);
-		return html.replace(/\x00(<!--[\s\S]*?-->)\x00/g, "$1");
+		return html.replace(new RegExp(`${placeholder}(<!--[\\s\\S]*?-->)${placeholder}`, "g"), "$1");
 	} catch {
 		return md;
 	}

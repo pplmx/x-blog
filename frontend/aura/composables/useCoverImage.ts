@@ -75,7 +75,7 @@ export function coverImageSrc(title: string, coverImage?: string): string {
 	if (coverImage) return coverImage;
 
 	const colors = generateColorScheme(title);
-	const shortTitle = title.length > 28 ? title.slice(0, 28) + "..." : title;
+	const shortTitle = title.length > 28 ? `${title.slice(0, 28)}...` : title;
 
 	// Build SVG string and encode once with encodeURIComponent
 	const svg = `

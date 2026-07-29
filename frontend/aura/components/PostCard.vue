@@ -9,9 +9,7 @@ interface Props {
 const props = withDefaults(defineProps<Props>(), {});
 const { post } = toRefs(props);
 
-const coverImageUrl = computed(() =>
-	coverImageSrc(post.value.title, post.value.cover_image)
-);
+const coverImageUrl = computed(() => coverImageSrc(post.value.title, post.value.cover_image));
 
 // Default placeholder gradient based on post title hash (fallback)
 function getGradientFromTitle(title: string): string {

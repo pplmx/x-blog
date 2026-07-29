@@ -94,7 +94,7 @@ async function renderMermaid(code: string, el: HTMLElement | null, segKey: strin
 		const id = `mermaid-${Math.random().toString(36).slice(2)}`;
 		const { svg } = await m.render(id, code, el);
 		el.innerHTML = svg || "";
-			renderedMermaidKeys.value.add(segKey);
+		renderedMermaidKeys.value.add(segKey);
 	} catch {
 		el.innerHTML = `<pre class="p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded text-red-600 dark:text-red-400 text-sm">${escapeHtml(code)}</pre>`;
 	}

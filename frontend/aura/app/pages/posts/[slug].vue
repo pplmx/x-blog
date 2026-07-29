@@ -2,7 +2,7 @@
 import { computed } from "vue";
 import { usePost, usePostLike, usePostView, useRelatedPosts } from "~~/composables/useApi";
 import { coverImageSrc } from "~~/composables/useCoverImage";
-import { buildCoverImageUrl, usePostSeo, useSiteUrl } from "~~/composables/useSeo";
+import { usePostSeo } from "~~/composables/useSeo";
 import { extractToc } from "~~/composables/useToc";
 
 const route = useRoute();
