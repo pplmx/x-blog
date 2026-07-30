@@ -9,6 +9,11 @@ from sqlalchemy.orm import Session, joinedload
 
 from app import auth, crud, models
 from app.auth import get_current_admin
+from app.cache import (
+    clear_categories_cache,
+    clear_posts_cache,
+    clear_tags_cache,
+)
 from app.database import get_db
 from app.limiter import RATE_LIMIT_AUTH, limiter
 from app.schemas import PostCreate, PostUpdate
@@ -247,6 +252,7 @@ def admin_update_post(
         db.rollback()
         raise HTTPException(status_code=400, detail="Slug already exists")
     db.refresh(post)
+    clear_posts_cache()
     return {"id": post.id}
 
 
@@ -262,6 +268,7 @@ def admin_delete_post(
 
     db.delete(post)
     db.commit()
+    clear_posts_cache()
     return {"message": "Post deleted"}
 
 
@@ -292,6 +299,7 @@ def admin_create_category(
         db.rollback()
         raise HTTPException(status_code=400, detail="Category already exists")
     db.refresh(category)
+    clear_categories_cache()
     return {"id": category.id, "name": category.name}
 
 
@@ -312,6 +320,7 @@ def admin_update_category(
     except IntegrityError:
         db.rollback()
         raise HTTPException(status_code=400, detail="Category already exists")
+    clear_categories_cache()
     return {"id": category.id, "name": category.name}
 
 
@@ -342,6 +351,7 @@ def admin_delete_category(
             status_code=400,
             detail="Cannot delete category: it is referenced by posts",
         )
+    clear_categories_cache()
     return {"message": "Category deleted"}
 
 
@@ -372,6 +382,7 @@ def admin_create_tag(
         db.rollback()
         raise HTTPException(status_code=400, detail="Tag already exists")
     db.refresh(tag)
+    clear_tags_cache()
     return {"id": tag.id, "name": tag.name}
 
 
@@ -392,6 +403,7 @@ def admin_update_tag(
     except IntegrityError:
         db.rollback()
         raise HTTPException(status_code=400, detail="Tag already exists")
+    clear_tags_cache()
     return {"id": tag.id, "name": tag.name}
 
 
@@ -422,6 +434,7 @@ def admin_delete_tag(
             status_code=400,
             detail="Cannot delete tag: it is referenced by posts",
         )
+    clear_tags_cache()
     return {"message": "Tag deleted"}
 
 
