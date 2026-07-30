@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { usePopularPosts, type PostListResponse } from "~~/composables/useApi";
+import { type PostListResponse, usePopularPosts } from "~~/composables/useApi";
 import { useSeo } from "~~/composables/useSeo";
 
 const route = useRoute();
@@ -43,12 +43,15 @@ function fetchPosts(pageNum: number) {
 }
 
 // Sync page ref from URL when browser back / forward changes the route
-watch(() => route.query.page, (newPage) => {
-	const p = Number(newPage) || 1;
-	if (p !== page.value) {
-		page.value = p;
-	}
-});
+watch(
+	() => route.query.page,
+	(newPage) => {
+		const p = Number(newPage) || 1;
+		if (p !== page.value) {
+			page.value = p;
+		}
+	},
+);
 
 // Hero stats
 const stats = computed(() => {

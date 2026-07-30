@@ -1263,7 +1263,7 @@ flowchart LR
         "title": "HTTP 性能优化：从 TCP 到 TLS 的调优策略",
         "slug": "http-performance-optimization",
         "excerpt": "了解 HTTP/1.1、HTTP/2、HTTP/3 的差异，掌握 CDN、缓存和压缩的最佳实践。",
-        "content": """# HTTP 性能优化
+        "content": r"""# HTTP 性能优化
 
 ## HTTP 版本对比
 
@@ -2173,7 +2173,7 @@ flowchart LR
         "title": "测试策略：单元测试到 E2E 的实践",
         "slug": "testing-strategy-from-unit-to-e2e",
         "excerpt": "构建完整的测试体系，掌握单元测试、集成测试、模拟和 E2E 测试的最佳实践。",
-        "content": """# 测试策略实践
+        "content": r"""# 测试策略实践
 
 ## 测试金字塔
 
@@ -3213,7 +3213,7 @@ WebAssembly 和边缘计算将带来更快、更安全、更分布式的 Web 应
         "title": "Python 类型注解进阶：Pydantic V2 实战",
         "slug": "python-type-annotations-pydantic-v2",
         "excerpt": "掌握 Python 类型注解的高级用法，从 Pydantic V2 模型验证到复杂数据结构建模。",
-        "content": """# Python 类型注解进阶
+        "content": r"""# Python 类型注解进阶
 
 ## Pydantic V2
 

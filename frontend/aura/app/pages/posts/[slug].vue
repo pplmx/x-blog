@@ -37,9 +37,8 @@ async function handleLike() {
 	try {
 		await usePostLike(post.value.id);
 		await usePost(route.params.slug as string);
-	} catch (err) {
+	} catch (_err) {
 		likeError.value = "Failed to like post. Please try again.";
-		console.error("Failed to like post:", err);
 	} finally {
 		likeLoading.value = false;
 	}
@@ -66,13 +65,11 @@ onMounted(() => {
 	);
 	window.addEventListener("scroll", updateProgress);
 	updateProgress();
-	onMounted(() => {
-		setTimeout(() => {
-			document.querySelectorAll("h1[id], h2[id], h3[id]").forEach((el) => {
-				observer.observe(el);
-			});
-		}, 500);
-	});
+	setTimeout(() => {
+		document.querySelectorAll("h1[id], h2[id], h3[id]").forEach((el) => {
+			observer.observe(el);
+		});
+	}, 500);
 	onUnmounted(() => {
 		window.removeEventListener("scroll", updateProgress);
 		observer.disconnect();
