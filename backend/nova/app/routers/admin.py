@@ -240,6 +240,9 @@ def admin_update_post(
     if post_data.cover_image is not None:
         post.cover_image = post_data.cover_image
     if post_data.category_id is not None:
+        category = db.query(models.Category).filter(models.Category.id == post_data.category_id).first()
+        if not category:
+            raise HTTPException(status_code=400, detail=f"Category with id {post_data.category_id} not found")
         post.category_id = post_data.category_id
 
     if post_data.tag_ids is not None:

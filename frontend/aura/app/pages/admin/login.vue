@@ -33,7 +33,7 @@ async function handleLogin() {
 		} else {
 			error.value = "登录失败：未收到访问令牌";
 		}
-	} catch (e) {
+	} catch {
 		error.value = "登录失败：网络错误";
 	} finally {
 		isPending.value = false;
