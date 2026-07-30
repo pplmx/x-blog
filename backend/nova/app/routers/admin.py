@@ -249,6 +249,11 @@ def admin_update_post(
         tags = db.query(models.Tag).filter(models.Tag.id.in_(post_data.tag_ids)).all()
         post.tags = tags
 
+    # Handle publish_at separately: must support clearing to None
+    update_fields = post_data.model_dump(exclude_unset=True)
+    if "publish_at" in update_fields:
+        post.publish_at = post_data.publish_at
+
     try:
         db.commit()
     except IntegrityError:

@@ -13,7 +13,6 @@ from slowapi.errors import RateLimitExceeded
 
 from app.cache import cache_clear
 from app.database import Base, engine
-from app.exceptions import AppException
 from app.limiter import limiter
 from app.middleware import RequestLoggingMiddleware, get_logger, setup_logging
 from app.routers import admin, categories, comments, posts, search, tags, upload
@@ -128,17 +127,6 @@ def rate_limit_exceeded_handler(_request: Request, _exc: Exception):
                 "message": "Too many requests. Please try again later.",
                 "details": {},
             }
-        },
-    )
-
-
-@app.exception_handler(AppException)
-async def app_exception_handler(_request: Request, exc: AppException):
-    """Handle custom application exceptions."""
-    return JSONResponse(
-        status_code=exc.status_code,
-        content={
-            "error": exc.to_dict(),
         },
     )
 

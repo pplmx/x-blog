@@ -202,6 +202,54 @@ describe("Admin Post Editor Page", () => {
 			// The slug button should call generateSlug
 			expect(wrapper.text()).toContain("Slug");
 		});
+
+		it("displays submit error when createAdminPost fails", async () => {
+			mockCreateAdminPost.mockRejectedValue(new Error("Network error"));
+
+			const PostEditor = await loadPage();
+			const wrapper = await mountWithSuspense(PostEditor);
+			await flushPromises();
+
+			// Fill in required fields
+			const titleInput = wrapper.find('input[type="text"]');
+			await titleInput.setValue("Test Title");
+
+			const slugInput = wrapper.findAll('input[type="text"]')[1];
+			await slugInput.setValue("test-title");
+
+			const contentTextarea = wrapper.find("textarea");
+			await contentTextarea.setValue("# Content");
+
+			// Submit the form
+			const form = wrapper.find("form");
+			await form.trigger("submit.prevent");
+			await flushPromises();
+
+			expect(wrapper.text()).toContain("保存文章失败，请重试。");
+		});
+
+		it("displays submit error when updateAdminPost fails", async () => {
+			mockUpdateAdminPost.mockRejectedValue(new Error("Network error"));
+
+			setupRoute("1");
+			mockFetchAdminPost.mockReturnValue({
+				data: ref(mockExistingPost),
+				pending: ref(false),
+				error: ref(null),
+				refresh: vi.fn(),
+			});
+
+			const PostEditor = await loadPage();
+			const wrapper = await mountWithSuspense(PostEditor);
+			await flushPromises();
+
+			// Submit the form
+			const form = wrapper.find("form");
+			await form.trigger("submit.prevent");
+			await flushPromises();
+
+			expect(wrapper.text()).toContain("保存文章失败，请重试。");
+		});
 	});
 
 	describe("Edit Mode (id = numeric)", () => {

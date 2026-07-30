@@ -1,6 +1,6 @@
 import os
 import warnings
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 
 import bcrypt
 from fastapi import Depends, HTTPException, status
@@ -14,6 +14,7 @@ from app.database import Base, get_db
 
 SECRET_KEY = os.getenv("JWT_SECRET_KEY", "x-blog-secret-key-dev-only")
 ALGORITHM = "HS256"
+ACCESS_TOKEN_EXPIRE_DAYS = int(os.getenv("JWT_EXPIRE_DAYS", "7"))
 
 if SECRET_KEY == "x-blog-secret-key-dev-only":
     warnings.warn(
@@ -50,6 +51,8 @@ def create_access_token(data: dict) -> str:
     to_encode = data.copy()
     if "sub" in to_encode:
         to_encode["sub"] = str(to_encode["sub"])
+    expire = datetime.now(UTC) + timedelta(days=ACCESS_TOKEN_EXPIRE_DAYS)
+    to_encode["exp"] = expire
     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
     return encoded_jwt
 
