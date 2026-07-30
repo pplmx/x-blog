@@ -108,9 +108,8 @@ async function handleSubmit(e: Event) {
 			await updateAdminPost(postId, payload);
 		}
 		navigateTo("/admin/posts", { replace: true });
-	} catch (err) {
+	} catch (_err) {
 		submitError.value = "保存文章失败，请重试。";
-		console.error("Failed to save post:", err);
 	} finally {
 		isSubmitting.value = false;
 	}
