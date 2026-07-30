@@ -427,3 +427,24 @@ All items from the second major iteration:
     - ruff and Biome both clean on all source files
 
 - **Verification**: 492 backend tests pass (96.26% coverage), 670 frontend tests pass (87%+ coverage), ruff clean, Biome clean, TypeScript clean.
+
+### JWT Expiration, publish_at Fix, Dead Code Cleanup, Test Coverage (COMPLETED)
+
+- **Security: JWT tokens now expire (FIXED)** — `create_access_token` previously set no `exp`
+  claim, meaning tokens were valid forever. A stolen token could be used indefinitely. Added
+  `exp` claim with default 7-day expiration, configurable via `JWT_EXPIRE_DAYS` env var.
+  `jose.jwt.decode` validates `exp` automatically, returning 401 on expired tokens.
+
+- **Correctness: admin_update_post can now clear publish_at (FIXED)** — The `publish_at`
+  field was never handled in `admin_update_post` (no `if post_data.publish_at is not None:`
+  check existed). Used `model_dump(exclude_unset=True)` to detect when the field is explicitly
+  sent as `null`, allowing admins to clear scheduled publish times.
+
+- **Maintainability: Remove dead AppException handler (CLEANED)** — The `AppException` handler
+  was registered in `main.py` but no router code raised `AppException` — all endpoints use
+  `HTTPException` directly. Removed the handler and the import. The exception classes
+  (`exceptions.py`) are kept as they have test coverage and serve as reference.
+
+- **Quality: Admin post editor test coverage (+2 tests)** — Added tests for submit error
+  display when `createAdminPost` or `updateAdminPost` rejects with a network error.
+  Coverage for `admin/posts/[id].vue` improved. Total frontend tests: 672.
