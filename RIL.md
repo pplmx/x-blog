@@ -396,3 +396,34 @@ All items from the second major iteration:
         - **Result**: Functions coverage now 80% (324/405), all thresholds pass. 642 tests.
         - **Cleanup**: Removed 839MB core dump file (`core.1332996`) and stale test database
   files (`test_debug.db`, `test_fk_debug*.db`).
+
+## Session 2026-07-30 — Cache, Lint, and Code Quality Hardening (COMPLETED)
+
+- **Backend: Missing cache invalidation in admin CRUD (FIXED)** — All 8 admin CRUD operations
+  (update/delete posts, create/update/delete categories, create/update/delete tags) directly
+  manipulated the database without clearing the in-memory TTLCache. The public API served stale
+  data after admin modifications. Added `clear_posts_cache()`, `clear_categories_cache()`,
+  and `clear_tags_cache()` calls to the affected endpoints.
+
+- **Backend: Missing category validation in admin_update_post (FIXED)** — `admin_update_post`
+  didn't validate that the assigned `category_id` exists before updating, unlike `crud.update_post`
+  which had this check. Added a database lookup with 400 error for invalid category IDs.
+
+- **Frontend: Nested onMounted lifecycle in [slug].vue (FIXED)** — The TOC heading observer
+  setup was wrapped in a nested `onMounted(() => { setTimeout(...) })` inside the outer
+  `onMounted`. Flattened to direct `setTimeout` for clarity. The `onUnmounted` cleanup was
+  correctly registered at the outer level.
+
+- **Production console.error removed (3 locations)** — Removed `console.error` calls from:
+    - `posts/[slug].vue` (like handler catch block)
+    - `admin/posts/[id].vue` (submit handler catch block)
+    - `admin/login.vue` (unused catch parameter `e` removed)
+
+- **Lint/format cleanup**:
+    - Fixed 4 W605 invalid escape sequence warnings in `scripts/init_db.py` (ruff auto-fix)
+    - Fixed Biome `organizeImports` order in `app/pages/index.vue`
+    - Fixed Biome formatting (multi-line watch callback) in `app/pages/index.vue`
+    - Cleaned up generated `test-results/.last-run.json` file
+    - ruff and Biome both clean on all source files
+
+- **Verification**: 492 backend tests pass (96.26% coverage), 670 frontend tests pass (87%+ coverage), ruff clean, Biome clean, TypeScript clean.
