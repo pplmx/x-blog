@@ -42,6 +42,11 @@ test.describe("Admin post editing", () => {
 	});
 
 	test("admin can create a new post", async ({ page }) => {
+		// Unique title per attempt: the editor auto-generates the slug from
+		// the title, so a fixed title would collide (400 "slug already
+		// exists") with the previous attempt on retry.
+		const postTitle = `Test Post Title ${Date.now()}`;
+
 		// Click "create new post" or "new post" button
 		const createBtn = page.locator(
 			'a:has-text("新建文章"), a:has-text("新建"), button:has-text("新建")',
@@ -56,7 +61,7 @@ test.describe("Admin post editing", () => {
 		// placeholder contains 标题 - the search box)
 		const titleInput = page.locator('input[placeholder="输入文章标题"]');
 		await expect(titleInput).toBeVisible();
-		await titleInput.fill("Test Post Title");
+		await titleInput.fill(postTitle);
 
 		// Fill in content (the markdown editor textarea)
 		const contentTextarea = page.locator('textarea[placeholder*="Markdown"]');
@@ -70,7 +75,7 @@ test.describe("Admin post editing", () => {
 
 		// Should redirect back to posts list
 		await page.waitForURL("**/admin/posts");
-		await expect(page.locator("text=Test Post Title")).toBeVisible();
+		await expect(page.locator(`text=${postTitle}`)).toBeVisible();
 	});
 
 	test("admin can update post status (publish/draft)", async ({ page }) => {

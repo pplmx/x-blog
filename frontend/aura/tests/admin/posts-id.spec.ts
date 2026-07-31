@@ -229,6 +229,36 @@ describe("Admin Post Editor Page", () => {
 			expect(wrapper.text()).toContain("保存文章失败，请重试。");
 		});
 
+		it("shows the backend detail and does not navigate when createAdminPost returns an HTTP error", async () => {
+			// useFetch surfaces HTTP errors in .error (a Ref) instead of
+			// throwing — the editor must not redirect when it's set.
+			const mockNavigateTo = vi.fn();
+			vi.stubGlobal("navigateTo", mockNavigateTo);
+			mockCreateAdminPost.mockResolvedValue({
+				data: ref(null),
+				pending: ref(false),
+				error: ref({ data: { detail: "Slug 'test-title' already exists" } }),
+				refresh: vi.fn(),
+			});
+
+			const PostEditor = await loadPage();
+			const wrapper = await mountWithSuspense(PostEditor);
+			await flushPromises();
+
+			const titleInput = wrapper.find('input[type="text"]');
+			await titleInput.setValue("Test Title");
+
+			const contentTextarea = wrapper.find("textarea");
+			await contentTextarea.setValue("# Content");
+
+			const form = wrapper.find("form");
+			await form.trigger("submit.prevent");
+			await flushPromises();
+
+			expect(wrapper.text()).toContain("Slug 'test-title' already exists");
+			expect(mockNavigateTo).not.toHaveBeenCalled();
+		});
+
 		it("displays submit error when updateAdminPost fails", async () => {
 			mockUpdateAdminPost.mockRejectedValue(new Error("Network error"));
 

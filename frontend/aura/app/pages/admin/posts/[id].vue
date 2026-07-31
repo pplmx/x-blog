@@ -108,14 +108,23 @@ async function handleSubmit(e: Event) {
 	if (payload.publish_at) {
 		payload.publish_at = `${payload.publish_at}:00Z`;
 	}
+	// New posts start with an empty slug, which fails the backend schema
+	// pattern (^[a-z0-9]+(?:-[a-z0-9]+)*$) with a 422. Generate one from the
+	// title so a plain "fill title + content, save" flow always works.
+	if (isNew && !payload.slug && payload.title) {
+		payload.slug = generateSlug(payload.title);
+	}
 
 	try {
-		if (isNew) {
-			await createAdminPost(payload);
-		} else if (postId) {
-			await updateAdminPost(postId, payload);
+		const result = isNew ? await createAdminPost(payload) : await updateAdminPost(postId, payload);
+		// These helpers return useFetch's AsyncData — HTTP errors land in
+		// .error (a Ref) instead of throwing, so check it before redirecting.
+		if (result.error.value) {
+			const detail = result.error.value.data?.detail;
+			submitError.value = typeof detail === "string" ? detail : "保存文章失败，请重试。";
+		} else {
+			navigateTo("/admin/posts", { replace: true });
 		}
-		navigateTo("/admin/posts", { replace: true });
 	} catch (_err) {
 		submitError.value = "保存文章失败，请重试。";
 	} finally {

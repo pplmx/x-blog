@@ -29,6 +29,33 @@ GitHub Actions failed at `actions/setup-node@v4`:
 
 Verified: both workflow YAMLs parse (PyYAML); local `pnpm install --frozen-lockfile` passes.
 
+### Third CI run round (2026-07-31): e2e "create post" failure — root-caused via Playwright artifacts
+
+The e2e job failed at "admin can create a new post" (passed locally — false positive
+masked by stale dev data). Added artifact upload to the e2e job (permanent CI
+improvement) and root-caused from `error-context.md` + `trace.zip`:
+
+1. **422 empty slug**: the editor sent `slug: ""`; `PostBase.slug` requires
+   `^[a-z0-9]+(?:-[a-z0-9]+)*$` → 422. The slug field is manual (a "generate"
+   button), so the plain fill-title-and-save flow always failed. **Fix**: the
+   editor auto-generates the slug from the title on save when empty.
+2. **Silent redirect on failure (HIGH)**: `createAdminPost`/`updateAdminPost`
+   wrap `useFetch`, which surfaces HTTP errors in `.error` instead of throwing —
+   so `handleSubmit` navigated to the list even when the save failed, showing
+   no error to the user. **Fix**: check `result.error.value` before navigating
+   and surface the backend detail (e.g. `Slug '...' already exists`).
+3. **Test determinism**: the e2e test used a fixed title → the retry collided
+   with the first attempt's auto-generated slug (400). Now uses a unique
+   title per attempt (`Test Post Title ${Date.now()}`).
+4. New unit test covers the `.error.value`-set-but-resolved branch (no navigate,
+   backend detail shown).
+
+Also fixed during the loop: my first attempt checked `if (result.error)` —
+but AsyncData's `error` is a Ref, always truthy, which broke the success path
+(editor never redirected). Verified with `.value`.
+
+Verified locally: 662 unit tests, 61 e2e tests (3 skipped), biome clean.
+
 ### Second CI run round (2026-07-31): three more failures fixed
 
 The pushed fix ran; setup-node passed but three new failures surfaced:
