@@ -48,7 +48,7 @@ nuxt:
 # Lint code
 lint:
     cd backend/nova && uvx ruff check . --fix
-    cd frontend/aura && ./node_modules/.bin/eslint . --config lint.config.json --fix
+    cd frontend/aura && pnpm lint:fix
     rumdl fmt
 
 # Format code
@@ -58,14 +58,14 @@ format:
 # Format check (CI style)
 fmt-check:
     cd backend/nova && uvx ruff format --check .
-    cd frontend/aura && ./node_modules/.bin/eslint . --config lint.config.json
+    cd frontend/aura && pnpm lint
     rumdl fmt
 
 # Auto-fix issues
 fix:
     cd backend/nova && uvx ruff check . --fix
     cd backend/nova && uvx ruff format .
-    cd frontend/aura && ./node_modules/.bin/eslint . --config lint.config.json --fix
+    cd frontend/aura && pnpm lint:fix
     rumdl fmt
 
 # CI: run all checks
