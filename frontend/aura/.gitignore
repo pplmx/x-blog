@@ -16,10 +16,6 @@ logs
 # Test coverage
 coverage
 
-# Test files
-tests
-e2e
-
 # Content (Markdown posts)
 content
 
