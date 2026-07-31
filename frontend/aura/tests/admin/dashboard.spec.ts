@@ -16,7 +16,13 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { ref } from "vue";
 import { mountWithSuspense } from "./helpers.ts";
 
-const { mockUsePosts, mockUseCategories, mockUseTags, mockFetchAdminComments, mockApproveAdminComment } = vi.hoisted(() => ({
+const {
+	mockUsePosts,
+	mockUseCategories,
+	mockUseTags,
+	mockFetchAdminComments,
+	mockApproveAdminComment,
+} = vi.hoisted(() => ({
 	mockUsePosts: vi.fn(),
 	mockUseCategories: vi.fn(),
 	mockUseTags: vi.fn(),
@@ -36,6 +42,7 @@ vi.stubGlobal("useRuntimeConfig", () => ({
 	public: { apiUrl: "http://localhost:18888" },
 }));
 vi.stubGlobal("navigateTo", vi.fn());
+	vi.stubGlobal("useHead", vi.fn());
 
 const mockPostsResponse = {
 	items: [

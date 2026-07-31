@@ -17,14 +17,17 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ref } from "vue";
 import { mountWithSuspense } from "./helpers.ts";
 
-const { mockFetchAdminComments, mockDeleteAdminComment, mockApproveAdminComment, mockBatchApproveAdminComment } = vi.hoisted(
-	() => ({
-		mockFetchAdminComments: vi.fn(),
-		mockDeleteAdminComment: vi.fn(),
-		mockApproveAdminComment: vi.fn(),
-		mockBatchApproveAdminComment: vi.fn(),
-	}),
-);
+const {
+	mockFetchAdminComments,
+	mockDeleteAdminComment,
+	mockApproveAdminComment,
+	mockBatchApproveAdminComment,
+} = vi.hoisted(() => ({
+	mockFetchAdminComments: vi.fn(),
+	mockDeleteAdminComment: vi.fn(),
+	mockApproveAdminComment: vi.fn(),
+	mockBatchApproveAdminComment: vi.fn(),
+}));
 
 vi.mock("~/composables/useApi", () => ({
 	fetchAdminComments: mockFetchAdminComments,
@@ -37,6 +40,7 @@ vi.stubGlobal("useRuntimeConfig", () => ({
 	public: { apiUrl: "http://localhost:18888" },
 }));
 vi.stubGlobal("navigateTo", vi.fn());
+	vi.stubGlobal("useHead", vi.fn());
 
 const originalConfirm = window.confirm;
 
@@ -201,7 +205,7 @@ describe("Admin Comments Page", () => {
 			expect(wrapper.text()).toContain("2024");
 		});
 
-		it('renders approve button for unapproved comments', async () => {
+		it("renders approve button for unapproved comments", async () => {
 			const CommentsPage = await loadPage();
 			const wrapper = await mountWithSuspense(CommentsPage);
 			// Bob's comment is unapproved, should have a "通过" button

@@ -7,6 +7,10 @@
 import { ref } from "vue";
 import { adminLoginRequest, useAdminAuth } from "~~/composables/useAdminAuth";
 
+useHead({ title: "管理员登录 - X-Blog" });
+
+
+
 const { login } = useAdminAuth();
 const username = ref("");
 const password = ref("");

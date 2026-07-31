@@ -6,11 +6,15 @@
 <script setup lang="ts">
 import { ref } from "vue";
 import {
+
+
 	createAdminTag,
 	deleteAdminTag,
 	fetchAdminTags,
 	updateAdminTag,
 } from "~~/composables/useApi";
+
+useHead({ title: "标签管理 - X-Blog" });
 
 const { data: tags, pending, error, refresh } = await fetchAdminTags();
 const newTagName = ref("");

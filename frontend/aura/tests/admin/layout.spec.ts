@@ -34,6 +34,7 @@ vi.stubGlobal("useRuntimeConfig", () => ({
 	public: { apiUrl: "http://localhost:18888" },
 }));
 vi.stubGlobal("navigateTo", vi.fn());
+	vi.stubGlobal("useHead", vi.fn());
 
 const IconStubComponent = {
 	props: ["icon", "width", "height", "class"],

@@ -6,12 +6,16 @@
 <script setup lang="ts">
 import type { AdminComment } from "~~/composables/useApi";
 import {
+
+
 	approveAdminComment,
 	fetchAdminComments,
 	useCategories,
 	usePosts,
 	useTags,
 } from "~~/composables/useApi";
+
+useHead({ title: "仪表盘 - X-Blog" });
 
 // Fetch all data in parallel
 const [postsResponse, categoriesResult, tagsResult, commentsResult] = await Promise.all([

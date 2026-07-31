@@ -1,11 +1,15 @@
 <script setup lang="ts">
 import type { AdminComment } from "~~/composables/useApi";
 import {
+
+
 	approveAdminComment,
 	batchApproveAdminComment,
 	deleteAdminComment,
 	fetchAdminComments,
 } from "~~/composables/useApi";
+
+useHead({ title: "评论管理 - X-Blog" });
 
 const { data: comments, pending, error, refresh } = await fetchAdminComments();
 const isProcessing = ref(false);
