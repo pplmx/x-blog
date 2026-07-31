@@ -121,6 +121,19 @@ has-text buttons, disabled-button validation, dialog confirm, editor
 selectors, browser XML-viewer for feeds). All updated. tsc found the
 composables' type errors once the auto-import manifest regenerated — fixed.
 
+## Post-e2e round (2026-07-31) — dead i18n removed, slug validation
+
+- **Dead i18n system removed** (2a1a7d4): useI18n + 3 locale dicts +
+  LanguageSwitcher.vue were never mounted or called by any page (the e2e
+  spec was already deleted). Removed ~680 lines incl. unit tests. If i18n is
+  ever wanted, the locale-data structure was the valuable part.
+- **Slug validation added** (2a1a7d4): PostCreate slugs must match
+  `^[a-z0-9]+(?:-[a-z0-9]+)*$` (lowercase alphanumerics + hyphens). Free-form
+  slugs broke RSS/Atom/sitemap URLs and could never match the public
+  /posts/{slug_or_id} route. Scoped to CREATE (PostUpdate untouched so
+  existing data remains editable). Note: the frontend's generateSlug already
+  produces valid slugs.
+
 ## Prior Findings (preserved)
 
 ## Key Findings
