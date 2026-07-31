@@ -4,8 +4,6 @@ import { deleteAdminPost, fetchAdminPosts } from "~~/composables/useApi";
 
 useHead({ title: "文章管理 - X-Blog" });
 
-
-
 const searchQuery = ref("");
 const statusFilter = ref("");
 const currentPage = ref(0);

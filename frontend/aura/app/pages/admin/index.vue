@@ -6,8 +6,6 @@
 <script setup lang="ts">
 import type { AdminComment } from "~~/composables/useApi";
 import {
-
-
 	approveAdminComment,
 	fetchAdminComments,
 	useCategories,
