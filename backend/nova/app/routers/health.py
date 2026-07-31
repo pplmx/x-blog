@@ -27,11 +27,8 @@ class ReadyResponse(BaseModel):
 class CacheStatsResponse(BaseModel):
     """Cache statistics response model."""
 
-    posts: dict[str, int | float]
-    post_detail: dict[str, int | float]
     categories: dict[str, int | float]
     tags: dict[str, int | float]
-    stats: dict[str, int | float]
 
 
 router = APIRouter(tags=["Health"])
@@ -95,9 +92,6 @@ def cache_stats(request: Request) -> CacheStatsResponse:  # noqa: ARG001
     """Get cache statistics for monitoring and debugging."""
     cache_info = get_cache_info()
     return CacheStatsResponse(
-        posts=cache_info["posts"],
-        post_detail=cache_info["post_detail"],
         categories=cache_info["categories"],
         tags=cache_info["tags"],
-        stats=cache_info["stats"],
     )

@@ -11,7 +11,6 @@ from app import auth, crud, models
 from app.auth import get_current_admin
 from app.cache import (
     clear_categories_cache,
-    clear_posts_cache,
     clear_tags_cache,
 )
 from app.database import get_db
@@ -120,8 +119,8 @@ def delete_user(
 def admin_list_posts(
     db: Session = Depends(get_db),
     _current_user: auth.User = Depends(get_current_admin),
-    skip: int = 0,
-    limit: int = 20,
+    skip: int = Query(0, ge=0),
+    limit: int = Query(20, ge=1, le=100),
     q: str | None = Query(None, description="Search by title"),
     status: str | None = Query(None, description="published | draft | scheduled"),
 ):
@@ -272,7 +271,6 @@ def admin_update_post(
         db.rollback()
         raise HTTPException(status_code=400, detail="Slug already exists")
     db.refresh(post)
-    clear_posts_cache()
     return {"id": post.id}
 
 
@@ -288,7 +286,6 @@ def admin_delete_post(
 
     db.delete(post)
     db.commit()
-    clear_posts_cache()
     return {"message": "Post deleted"}
 
 

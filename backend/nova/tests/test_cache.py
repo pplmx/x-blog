@@ -1,4 +1,10 @@
-"""Tests for cache module."""
+"""Tests for cache module.
+
+The posts/detail/stats caches and the cached() decorator were removed in the
+dead-code cleanup: they were never read by the application, so the earlier
+clear_posts_cache()/clear_stats_cache() calls were no-ops. Only the caches the
+app actually uses (categories, tags) are covered here.
+"""
 
 import pytest
 
@@ -6,12 +12,8 @@ from app.cache import (
     cache_clear,
     categories_cache,
     clear_categories_cache,
-    clear_posts_cache,
-    clear_stats_cache,
     clear_tags_cache,
     get_cache_info,
-    posts_cache,
-    stats_cache,
     tags_cache,
 )
 from app.database import get_db
@@ -20,25 +22,15 @@ from app.database import get_db
 def test_cache_clear():
     """Test clearing all caches."""
     # Add something to cache first
-    posts_cache["test"] = "value"
     categories_cache["test"] = "value"
+    tags_cache["test"] = "value"
 
     # Clear
     cache_clear()
 
     # Verify empty
-    assert len(posts_cache) == 0
     assert len(categories_cache) == 0
-
-
-def test_clear_posts_cache():
-    """Test clearing posts cache specifically."""
-    posts_cache["key1"] = "value1"
-    posts_cache["key2"] = "value2"
-
-    clear_posts_cache()
-
-    assert len(posts_cache) == 0
+    assert len(tags_cache) == 0
 
 
 def test_clear_categories_cache():
@@ -59,25 +51,12 @@ def test_clear_tags_cache():
     assert len(tags_cache) == 0
 
 
-def test_clear_stats_cache():
-    """Test clearing stats cache specifically."""
-    stats_cache["key"] = "value"
-
-    clear_stats_cache()
-
-    assert len(stats_cache) == 0
-
-
 def test_get_cache_info():
     """Test getting cache information."""
     info = get_cache_info()
 
-    # Check structure
-    assert "posts" in info
-    assert "post_detail" in info
-    assert "categories" in info
-    assert "tags" in info
-    assert "stats" in info
+    # Check structure — only caches the app actually reads are reported
+    assert set(info.keys()) == {"categories", "tags"}
 
     # Check each cache has required fields
     for _cache_name, cache_info in info.items():
