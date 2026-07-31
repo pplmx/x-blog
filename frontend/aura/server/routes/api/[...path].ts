@@ -1,4 +1,10 @@
-const BACKEND_URL = process.env.NUXT_API_URL || "http://localhost:18888";
+// Server-side backend target. NUXT_PROXY_TARGET is the server-only variable;
+// NUXT_API_URL is kept as a fallback but is ALSO injected into the client
+// bundle (runtimeConfig.public.apiUrl), so it must never point at a
+// docker-internal hostname (e.g. http://backend:18888) — browsers cannot
+// resolve those, and every search/API call would hit a wrong URL.
+const BACKEND_URL =
+	process.env.NUXT_PROXY_TARGET || process.env.NUXT_API_URL || "http://localhost:18888";
 
 export default defineEventHandler(async (event) => {
 	const path = getRouterParam(event, "path") || "";

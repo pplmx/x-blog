@@ -10,7 +10,8 @@
  * Authorization header must never leak to this unauthenticated proxy.
  */
 
-const BACKEND_URL = process.env.NUXT_API_URL || "http://localhost:18888";
+const BACKEND_URL =
+	process.env.NUXT_PROXY_TARGET || process.env.NUXT_API_URL || "http://localhost:18888";
 
 // Headers that are safe to forward to the backend's static file handler
 const FORWARD_HEADERS = new Set([

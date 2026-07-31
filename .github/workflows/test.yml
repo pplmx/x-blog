@@ -131,7 +131,9 @@ jobs:
       - name: Run E2E tests
         env:
           # Playwright's webServer (port 34567, per playwright.config.ts) inherits these.
-          NUXT_API_URL: http://localhost:18888
+          # The browser must stay same-origin; only the server-side proxy target
+          # may point at the backend port directly.
+          NUXT_PROXY_TARGET: http://localhost:18888
           NUXT_SITE_URL: http://localhost:34567
         run: |
           cd frontend/aura

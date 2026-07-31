@@ -45,7 +45,11 @@ services:
     ports:
       - "34567:3000"
     environment:
-      NUXT_API_URL: http://backend:18888
+      # Browser API requests stay same-origin (/api/* → Nuxt server → proxy).
+      # NUXT_API_URL must NOT be set here: it is baked into the client bundle
+      # and browsers cannot resolve the docker-internal `backend` hostname,
+      # which broke every search/API call with a wrong URL.
+      NUXT_PROXY_TARGET: http://backend:18888
       NUXT_SITE_URL: http://localhost:34567
     restart: unless-stopped
     depends_on:
