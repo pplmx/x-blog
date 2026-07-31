@@ -378,9 +378,7 @@ describe("Index Page", () => {
 
 		it("formats large numbers with toLocaleString", async () => {
 			mockState.posts = {
-				items: [
-					{ ...mockPostsData.items[0], views: 1000000, likes: 500000 },
-				],
+				items: [{ ...mockPostsData.items[0], views: 1000000, likes: 500000 }],
 				pagination: { total: 1, page: 1, limit: 10, total_pages: 1 },
 			};
 			const wrapper = await mountIndexPage();

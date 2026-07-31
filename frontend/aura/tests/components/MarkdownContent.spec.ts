@@ -47,7 +47,9 @@ vi.mock("mermaid", () => ({
 }));
 
 // --- Mock katex (dynamically imported in MarkdownContent) ---
-const katexRenderToString = vi.fn().mockImplementation((formula: string) => `<span data-testid="katex">${formula}</span>`);
+const katexRenderToString = vi
+	.fn()
+	.mockImplementation((formula: string) => `<span data-testid="katex">${formula}</span>`);
 vi.mock("katex", () => ({
 	default: { renderToString: katexRenderToString },
 }));

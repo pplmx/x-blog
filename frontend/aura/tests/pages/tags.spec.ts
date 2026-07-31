@@ -87,7 +87,8 @@ async function mountTagsPage({
 	vi.stubGlobal(
 		"useFetch",
 		vi.fn((url: string | (() => string) | { value: string }) => {
-			const urlStr = typeof url === "function" ? url() : typeof url === "string" ? url : (url.value ?? "");
+			const urlStr =
+				typeof url === "function" ? url() : typeof url === "string" ? url : (url.value ?? "");
 			if (urlStr.includes("/api/tags") && !urlStr.includes("/posts")) {
 				return {
 					data: ref(tags),
@@ -279,7 +280,8 @@ describe("Tags Page", () => {
 			vi.stubGlobal(
 				"useFetch",
 				vi.fn((url: string | (() => string) | { value: string }) => {
-					const urlStr = typeof url === "function" ? url() : typeof url === "string" ? url : (url.value ?? "");
+					const urlStr =
+						typeof url === "function" ? url() : typeof url === "string" ? url : (url.value ?? "");
 					if (urlStr.includes("/api/tags") && !urlStr.includes("/posts")) {
 						return {
 							data: ref(mockTags),

@@ -200,9 +200,7 @@ describe("admin API functions", () => {
 
 	it("batchApproveAdminComment sends POST with ids and approved status", () => {
 		batchApproveAdminComment([1, 2, 3], true);
-		expect(useFetchCalls[0].url).toBe(
-			"http://localhost:18888/api/admin/comments/batch-approve",
-		);
+		expect(useFetchCalls[0].url).toBe("http://localhost:18888/api/admin/comments/batch-approve");
 		expect(useFetchCalls[0].options.method).toBe("POST");
 		expect(useFetchCalls[0].options.headers).toEqual({
 			"Content-Type": "application/json",

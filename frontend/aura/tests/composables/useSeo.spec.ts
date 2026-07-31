@@ -93,7 +93,9 @@ describe("buildAbsoluteImageUrl", () => {
 	});
 
 	it("resolves relative URLs against the site URL", () => {
-		expect(buildAbsoluteImageUrl("/logo.png", "https://site.com")).toBe("https://site.com/logo.png");
+		expect(buildAbsoluteImageUrl("/logo.png", "https://site.com")).toBe(
+			"https://site.com/logo.png",
+		);
 	});
 
 	it("adds a leading slash to bare relative paths", () => {
@@ -132,9 +134,7 @@ describe("buildOgImageUrl", () => {
 	});
 
 	it("uses DEFAULT_SITE_URL when siteUrl is not provided", () => {
-		expect(buildOgImageUrl("Test Post")).toBe(
-			`${DEFAULT_SITE_URL}/api/og?title=Test%20Post`,
-		);
+		expect(buildOgImageUrl("Test Post")).toBe(`${DEFAULT_SITE_URL}/api/og?title=Test%20Post`);
 	});
 });
 
@@ -345,9 +345,7 @@ describe("useSeo composable", () => {
 		});
 
 		const callArg = useHeadSpy.mock.calls[0][0];
-		const desc = callArg.meta.find(
-			(m: { name?: string }) => m.name === "description",
-		);
+		const desc = callArg.meta.find((m: { name?: string }) => m.name === "description");
 		expect(desc?.content).toBe("A description.");
 	});
 
@@ -358,9 +356,7 @@ describe("useSeo composable", () => {
 		});
 
 		const callArg = useHeadSpy.mock.calls[0][0];
-		const desc = callArg.meta.find(
-			(m: { name?: string }) => m.name === "description",
-		);
+		const desc = callArg.meta.find((m: { name?: string }) => m.name === "description");
 		expect(desc?.content).toBe(siteConfig.description);
 	});
 
@@ -372,29 +368,19 @@ describe("useSeo composable", () => {
 		});
 
 		const callArg = useHeadSpy.mock.calls[0][0];
-		const ogTitle = callArg.meta.find(
-			(m: { property?: string }) => m.property === "og:title",
-		);
+		const ogTitle = callArg.meta.find((m: { property?: string }) => m.property === "og:title");
 		expect(ogTitle?.content).toBe("My Page");
 
-		const ogType = callArg.meta.find(
-			(m: { property?: string }) => m.property === "og:type",
-		);
+		const ogType = callArg.meta.find((m: { property?: string }) => m.property === "og:type");
 		expect(ogType?.content).toBe("website");
 
-		const ogImage = callArg.meta.find(
-			(m: { property?: string }) => m.property === "og:image",
-		);
+		const ogImage = callArg.meta.find((m: { property?: string }) => m.property === "og:image");
 		expect(ogImage?.content).toBe("https://my-blog.com/api/og?title=X-Blog");
 
-		const ogUrl = callArg.meta.find(
-			(m: { property?: string }) => m.property === "og:url",
-		);
+		const ogUrl = callArg.meta.find((m: { property?: string }) => m.property === "og:url");
 		expect(ogUrl?.content).toBe("https://my-blog.com/my-page");
 
-		const ogLocale = callArg.meta.find(
-			(m: { property?: string }) => m.property === "og:locale",
-		);
+		const ogLocale = callArg.meta.find((m: { property?: string }) => m.property === "og:locale");
 		expect(ogLocale?.content).toBe("zh_CN");
 	});
 
@@ -406,29 +392,19 @@ describe("useSeo composable", () => {
 		});
 
 		const callArg = useHeadSpy.mock.calls[0][0];
-		const twitterCard = callArg.meta.find(
-			(m: { name?: string }) => m.name === "twitter:card",
-		);
+		const twitterCard = callArg.meta.find((m: { name?: string }) => m.name === "twitter:card");
 		expect(twitterCard?.content).toBe("summary_large_image");
 
-		const twitterTitle = callArg.meta.find(
-			(m: { name?: string }) => m.name === "twitter:title",
-		);
+		const twitterTitle = callArg.meta.find((m: { name?: string }) => m.name === "twitter:title");
 		expect(twitterTitle?.content).toBe("My Page");
 
-		const twitterImage = callArg.meta.find(
-			(m: { name?: string }) => m.name === "twitter:image",
-		);
+		const twitterImage = callArg.meta.find((m: { name?: string }) => m.name === "twitter:image");
 		expect(twitterImage?.content).toBe("https://my-blog.com/api/og?title=X-Blog");
 
-		const twitterAlt = callArg.meta.find(
-			(m: { name?: string }) => m.name === "twitter:image:alt",
-		);
+		const twitterAlt = callArg.meta.find((m: { name?: string }) => m.name === "twitter:image:alt");
 		expect(twitterAlt?.content).toBe("My Page");
 
-		const twitterSite = callArg.meta.find(
-			(m: { name?: string }) => m.name === "twitter:site",
-		);
+		const twitterSite = callArg.meta.find((m: { name?: string }) => m.name === "twitter:site");
 		expect(twitterSite?.content).toBe(siteConfig.twitterHandle);
 	});
 
@@ -440,9 +416,7 @@ describe("useSeo composable", () => {
 		});
 
 		const callArg = useHeadSpy.mock.calls[0][0];
-		const canonical = callArg.link.find(
-			(l: { rel?: string }) => l.rel === "canonical",
-		);
+		const canonical = callArg.link.find((l: { rel?: string }) => l.rel === "canonical");
 		expect(canonical?.href).toBe("https://my-blog.com/my-page");
 	});
 
@@ -455,9 +429,7 @@ describe("useSeo composable", () => {
 		});
 
 		const callArg = useHeadSpy.mock.calls[0][0];
-		const keywords = callArg.meta.find(
-			(m: { name?: string }) => m.name === "keywords",
-		);
+		const keywords = callArg.meta.find((m: { name?: string }) => m.name === "keywords");
 		expect(keywords?.content).toBe("React, Vue");
 	});
 
@@ -469,9 +441,7 @@ describe("useSeo composable", () => {
 		});
 
 		const callArg = useHeadSpy.mock.calls[0][0];
-		const keywords = callArg.meta.find(
-			(m: { name?: string }) => m.name === "keywords",
-		);
+		const keywords = callArg.meta.find((m: { name?: string }) => m.name === "keywords");
 		expect(keywords?.content).toBe("X-Blog, 技术博客, FastAPI, Nuxt");
 	});
 
@@ -484,9 +454,7 @@ describe("useSeo composable", () => {
 		});
 
 		const callArg = useHeadSpy.mock.calls[0][0];
-		const robots = callArg.meta.find(
-			(m: { name?: string }) => m.name === "robots",
-		);
+		const robots = callArg.meta.find((m: { name?: string }) => m.name === "robots");
 		expect(robots?.content).toBe("noindex, follow");
 	});
 
@@ -498,9 +466,7 @@ describe("useSeo composable", () => {
 		});
 
 		const callArg = useHeadSpy.mock.calls[0][0];
-		const robots = callArg.meta.find(
-			(m: { name?: string }) => m.name === "robots",
-		);
+		const robots = callArg.meta.find((m: { name?: string }) => m.name === "robots");
 		expect(robots).toBeUndefined();
 	});
 
@@ -519,9 +485,7 @@ describe("useSeo composable", () => {
 		});
 
 		const callArg = useHeadSpy.mock.calls[0][0];
-		const ogType = callArg.meta.find(
-			(m: { property?: string }) => m.property === "og:type",
-		);
+		const ogType = callArg.meta.find((m: { property?: string }) => m.property === "og:type");
 		expect(ogType?.content).toBe("article");
 	});
 
@@ -577,9 +541,7 @@ describe("useSeo composable", () => {
 		});
 
 		const callArg = useHeadSpy.mock.calls[0][0];
-		const ogImage = callArg.meta.find(
-			(m: { property?: string }) => m.property === "og:image",
-		);
+		const ogImage = callArg.meta.find((m: { property?: string }) => m.property === "og:image");
 		expect(ogImage?.content).toBe("https://cdn.example.com/cover.jpg");
 	});
 });
@@ -608,9 +570,7 @@ describe("usePostSeo composable", () => {
 		const callArg = useHeadSpy.mock.calls[0][0];
 		expect(callArg.title).toBe("Test Article Post");
 
-		const desc = callArg.meta.find(
-			(m: { name?: string }) => m.name === "description",
-		);
+		const desc = callArg.meta.find((m: { name?: string }) => m.name === "description");
 		expect(desc?.content).toBe("This is a test excerpt for the article.");
 	});
 
@@ -618,9 +578,7 @@ describe("usePostSeo composable", () => {
 		usePostSeo(mockPost);
 
 		const callArg = useHeadSpy.mock.calls[0][0];
-		const canonical = callArg.link.find(
-			(l: { rel?: string }) => l.rel === "canonical",
-		);
+		const canonical = callArg.link.find((l: { rel?: string }) => l.rel === "canonical");
 		expect(canonical?.href).toBe("https://my-blog.com/posts/test-article-post");
 	});
 
@@ -628,9 +586,7 @@ describe("usePostSeo composable", () => {
 		usePostSeo(mockPost);
 
 		const callArg = useHeadSpy.mock.calls[0][0];
-		const ogImage = callArg.meta.find(
-			(m: { property?: string }) => m.property === "og:image",
-		);
+		const ogImage = callArg.meta.find((m: { property?: string }) => m.property === "og:image");
 		expect(ogImage?.content).toBe("https://example.com/cover.jpg");
 	});
 
@@ -638,9 +594,7 @@ describe("usePostSeo composable", () => {
 		usePostSeo(mockPostNoCover);
 
 		const callArg = useHeadSpy.mock.calls[0][0];
-		const ogImage = callArg.meta.find(
-			(m: { property?: string }) => m.property === "og:image",
-		);
+		const ogImage = callArg.meta.find((m: { property?: string }) => m.property === "og:image");
 		expect(ogImage?.content).toBe("https://my-blog.com/api/cover?title=Post%20Without%20Cover");
 	});
 
@@ -648,9 +602,7 @@ describe("usePostSeo composable", () => {
 		usePostSeo(mockPostNoCover);
 
 		const callArg = useHeadSpy.mock.calls[0][0];
-		const desc = callArg.meta.find(
-			(m: { name?: string }) => m.name === "description",
-		);
+		const desc = callArg.meta.find((m: { name?: string }) => m.name === "description");
 		expect(desc?.content).toBe(siteConfig.description);
 	});
 
@@ -672,18 +624,14 @@ describe("usePostSeo composable", () => {
 		expect(jsonLd.articleSection).toBe("Tech");
 		expect(jsonLd.keywords).toBe("React, TypeScript");
 		expect(jsonLd.image).toBe("https://example.com/cover.jpg");
-		expect(jsonLd.mainEntityOfPage["@id"]).toBe(
-			"https://my-blog.com/posts/test-article-post",
-		);
+		expect(jsonLd.mainEntityOfPage["@id"]).toBe("https://my-blog.com/posts/test-article-post");
 	});
 
 	it("sets og:type to 'article'", () => {
 		usePostSeo(mockPost);
 
 		const callArg = useHeadSpy.mock.calls[0][0];
-		const ogType = callArg.meta.find(
-			(m: { property?: string }) => m.property === "og:type",
-		);
+		const ogType = callArg.meta.find((m: { property?: string }) => m.property === "og:type");
 		expect(ogType?.content).toBe("article");
 	});
 
@@ -691,9 +639,7 @@ describe("usePostSeo composable", () => {
 		usePostSeo(mockPost);
 
 		const callArg = useHeadSpy.mock.calls[0][0];
-		const keywords = callArg.meta.find(
-			(m: { name?: string }) => m.name === "keywords",
-		);
+		const keywords = callArg.meta.find((m: { name?: string }) => m.name === "keywords");
 		expect(keywords?.content).toBe("React, TypeScript");
 	});
 

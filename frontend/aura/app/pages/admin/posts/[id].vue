@@ -9,6 +9,8 @@ import {
 } from "~~/composables/useApi";
 import { sanitizeHtml } from "~~/composables/useMarkdown";
 
+definePageMeta({ layout: "admin" });
+
 useHead({ title: "编辑文章 - X-Blog" });
 
 // used in template v-html (Biome cannot see template usage)

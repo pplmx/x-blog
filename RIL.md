@@ -70,6 +70,17 @@ Three parallel review agents (security-reviewer, python-reviewer, typescript-rev
 
 Fail-closed imports (3), init_admin fail-closed (2), moderation bypass, draft/scheduled hiding (2), search/popular scheduled exclusion (2), RSS/Atom escaping, comments bounds, stats scheduling, CSV injection, password min-length (2), admin category/tag body + clear (4), regexSanitize (4), static-proxy traversal (3), api-proxy query suite (6), JSON-LD relative cover.
 
+## Production build was broken (FIXED 2026-07-31)
+
+`nuxt build` failed with two pre-existing errors — every production Docker deploy would have failed:
+
+1. **Wrong path alias**: `useAdminAuth.ts` dynamic-imported `"~/composables/useApi"`. In Nuxt 4, `~` = srcDir (`app/`), so it resolved to `app/composables/useApi` (nonexistent). The codebase convention is `~~` (rootDir). Dev tolerated it; the build failed with `Could not load app//composables/useApi`. Fixed to `~~/composables/useApi`. Also `isAdminAuthenticated` had the old partial-localStorage SSR guard.
+2. **Tailwind CSS SSR resolution**: `@import "tailwindcss"` in `assets/css/main.css` resolved to a nonexistent relative path during the SSR CSS build (`ENOENT .../tailwindcss`) — tailwindcss exports its CSS entry only under the `style` condition, which Vite's SSR resolver doesn't apply. Fixed with `vite.resolve.alias.tailwindcss → node_modules/tailwindcss/index.css`.
+
+Also added explicit `postcss-import` config with node resolution in nuxt.config (defensive; the alias is what fixed it).
+
+**E2E infra change**: playwright now runs against a production build (`pnpm build && pnpm preview`) instead of `pnpm dev`. Dev-mode on-demand compilation raced browser dynamic imports (`Failed to fetch dynamically imported module`, 16+/run, every admin test retried). A globalSetup pre-warms all routes (kept — harmless insurance). `just e2e` no longer starts its own Nuxt (Playwright's webServer does; the duplicate caused nuxt.lock conflicts).
+
 ## Known Issues / Technical Debt (updated 2026-07-31)
 
 1. **CI is red on origin/main** — local main is 9 commits ahead with all fixes; CI can't be verified until push. The July 29 failures were: pnpm ordering (fixed), ruff on stale code (fixed locally), docker service exit 125 (possibly transient).

@@ -64,10 +64,13 @@ export async function useApi<T>(
 	const config = useRuntimeConfig();
 	const apiUrl = config.public.apiUrl;
 
-	return useFetch<T>(url, {
-		baseURL: apiUrl,
-		...options,
-	});
+	return useFetch<T>(
+		url as string,
+		{
+			baseURL: apiUrl,
+			...((options as Record<string, unknown>) ?? {}),
+		} as never,
+	);
 }
 
 /**
@@ -322,6 +325,7 @@ export async function fetchAdminPosts(params?: {
 	const qs = query.toString();
 	return useFetch<AdminPostListResponse>(`${apiUrl}/api/admin/posts${qs ? `?${qs}` : ""}`, {
 		headers: getAuthHeaders(),
+		server: false,
 	});
 }
 
@@ -331,6 +335,7 @@ export async function fetchAdminPost(id: number) {
 	const apiUrl = config.public.apiUrl;
 	return useFetch<AdminPostDetail>(`${apiUrl}/api/admin/posts/${id}`, {
 		headers: getAuthHeaders(),
+		server: false,
 	});
 }
 
@@ -372,6 +377,7 @@ export async function fetchAdminCategories() {
 	const apiUrl = config.public.apiUrl;
 	return useFetch<Category[]>(`${apiUrl}/api/admin/categories`, {
 		headers: getAuthHeaders(),
+		server: false,
 	});
 }
 
@@ -413,6 +419,7 @@ export async function fetchAdminTags() {
 	const apiUrl = config.public.apiUrl;
 	return useFetch<Tag[]>(`${apiUrl}/api/admin/tags`, {
 		headers: getAuthHeaders(),
+		server: false,
 	});
 }
 
@@ -455,6 +462,7 @@ export async function fetchAdminComments(postId?: number) {
 	const query = postId ? `?post_id=${postId}` : "";
 	return useFetch<AdminComment[]>(`${apiUrl}/api/admin/comments${query}`, {
 		headers: getAuthHeaders(),
+		server: false,
 	});
 }
 

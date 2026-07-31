@@ -13,6 +13,8 @@ import {
 	useTags,
 } from "~~/composables/useApi";
 
+definePageMeta({ layout: "admin" });
+
 useHead({ title: "仪表盘 - X-Blog" });
 
 // Fetch all data in parallel

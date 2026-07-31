@@ -7,6 +7,8 @@ import {
 	fetchAdminComments,
 } from "~~/composables/useApi";
 
+definePageMeta({ layout: "admin" });
+
 useHead({ title: "评论管理 - X-Blog" });
 
 const { data: comments, pending, error, refresh } = await fetchAdminComments();

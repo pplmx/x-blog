@@ -14,12 +14,12 @@ test.describe("Homepage", () => {
 
 	test("shows popular posts section", async ({ page }) => {
 		await page.goto("/");
-		await expect(page.locator("h2:has-text(\"热门文章\")")).toBeVisible();
+		await expect(page.locator('h2:has-text("热门文章")')).toBeVisible();
 	});
 
 	test("shows posts list section", async ({ page }) => {
 		await page.goto("/");
-		await expect(page.locator("h2:has-text(\"最新文章\")")).toBeVisible();
+		await expect(page.locator('h2:has-text("最新文章")')).toBeVisible();
 	});
 
 	test("search box is visible", async ({ page }) => {

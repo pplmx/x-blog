@@ -1,4 +1,4 @@
-import { type VueWrapper, mount } from "@vue/test-utils";
+import { mount, type VueWrapper } from "@vue/test-utils";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import BookmarkButton from "../../components/BookmarkButton.vue";
@@ -111,15 +111,11 @@ describe("BookmarkButton", () => {
 			// First click: bookmark
 			await button.trigger("click");
 			await wrapper.vm.$nextTick();
-			expect(wrapper.find(".icon-stub").attributes("data-icon")).toBe(
-				"lucide:bookmark-check",
-			);
+			expect(wrapper.find(".icon-stub").attributes("data-icon")).toBe("lucide:bookmark-check");
 			// Second click: unbookmark
 			await button.trigger("click");
 			await wrapper.vm.$nextTick();
-			expect(wrapper.find(".icon-stub").attributes("data-icon")).toBe(
-				"lucide:bookmark",
-			);
+			expect(wrapper.find(".icon-stub").attributes("data-icon")).toBe("lucide:bookmark");
 		});
 
 		it("stops click propagation to prevent navigation", async () => {

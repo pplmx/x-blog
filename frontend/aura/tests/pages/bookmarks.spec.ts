@@ -29,8 +29,8 @@ vi.mock("../../composables/useSeo", () => ({
 	useSeo: vi.fn(),
 }));
 
-import type { Bookmark } from "../../composables/useBookmarks";
 import Bookmarks from "../../app/pages/bookmarks.vue";
+import type { Bookmark } from "../../composables/useBookmarks";
 
 const stubs = {
 	Icon: {

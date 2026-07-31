@@ -190,7 +190,7 @@ class TestCreatePost:
             content="Post content",
         )
 
-        with patch("app.crud.clear_posts_cache"), patch("app.crud.clear_tags_cache"):
+        with patch("app.crud.clear_tags_cache"):
             post = crud.create_post(db_session, post_data)
 
         assert post.id is not None
@@ -212,7 +212,7 @@ class TestCreatePost:
             category_id=category.id,
         )
 
-        with patch("app.crud.clear_posts_cache"), patch("app.crud.clear_tags_cache"):
+        with patch("app.crud.clear_tags_cache"):
             post = crud.create_post(db_session, post_data)
 
         assert post.category_id == category.id
@@ -228,7 +228,7 @@ class TestCreatePost:
 
         with (
             pytest.raises(ValueError) as exc_info,
-            patch("app.crud.clear_posts_cache"),
+
             patch("app.crud.clear_tags_cache"),
         ):
             crud.create_post(db_session, post_data)
@@ -244,7 +244,7 @@ class TestCreatePost:
             tags=["python", "fastapi"],
         )
 
-        with patch("app.crud.clear_posts_cache"), patch("app.crud.clear_tags_cache"):
+        with patch("app.crud.clear_tags_cache"):
             post = crud.create_post(db_session, post_data)
 
         assert len(post.tags) == 2
@@ -265,7 +265,7 @@ class TestCreatePost:
             tags=["reuse-tag"],
         )
 
-        with patch("app.crud.clear_posts_cache"), patch("app.crud.clear_tags_cache"):
+        with patch("app.crud.clear_tags_cache"):
             post = crud.create_post(db_session, post_data)
 
         assert len(post.tags) == 1
@@ -289,7 +289,7 @@ class TestCreatePost:
             tags=["full", "test"],
         )
 
-        with patch("app.crud.clear_posts_cache"), patch("app.crud.clear_tags_cache"):
+        with patch("app.crud.clear_tags_cache"):
             post = crud.create_post(db_session, post_data)
 
         assert post.published is True
@@ -319,7 +319,7 @@ class TestUpdatePost:
         db_session.commit()
 
         update_data = schemas.PostUpdate(title="New Title")
-        with patch("app.crud.clear_posts_cache"), patch("app.crud.clear_tags_cache"):
+        with patch("app.crud.clear_tags_cache"):
             result = crud.update_post(db_session, post.id, update_data)
 
         assert result is not None
@@ -342,7 +342,7 @@ class TestUpdatePost:
             content="Updated content",
             published=True,
         )
-        with patch("app.crud.clear_posts_cache"), patch("app.crud.clear_tags_cache"):
+        with patch("app.crud.clear_tags_cache"):
             result = crud.update_post(db_session, post.id, update_data)
 
         assert result.title == "Updated Title"
@@ -366,7 +366,7 @@ class TestUpdatePost:
         db_session.commit()
 
         update_data = schemas.PostUpdate(tag_ids=[tag1.id, tag2.id])
-        with patch("app.crud.clear_posts_cache"), patch("app.crud.clear_tags_cache"):
+        with patch("app.crud.clear_tags_cache"):
             result = crud.update_post(db_session, post.id, update_data)
 
         assert result is not None
@@ -389,7 +389,7 @@ class TestUpdatePost:
         db_session.commit()
 
         update_data = schemas.PostUpdate(category_id=category2.id)
-        with patch("app.crud.clear_posts_cache"), patch("app.crud.clear_tags_cache"):
+        with patch("app.crud.clear_tags_cache"):
             result = crud.update_post(db_session, post.id, update_data)
 
         assert result.category_id == category2.id
@@ -414,8 +414,7 @@ class TestDeletePost:
         db_session.commit()
         post_id = post.id
 
-        with patch("app.crud.clear_posts_cache"):
-            result = crud.delete_post(db_session, post_id)
+        result = crud.delete_post(db_session, post_id)
 
         assert result is True
         assert crud.get_post(db_session, post_id) is None
@@ -808,14 +807,12 @@ class TestCacheInteraction:
         )
 
         with (
-            patch("app.crud.clear_posts_cache") as mock_clear_posts,
             patch("app.crud.clear_tags_cache") as mock_clear_tags,
             patch.object(db_session, "commit"),
             patch.object(db_session, "refresh"),
         ):
             crud.create_post(db_session, post_data)
 
-        mock_clear_posts.assert_called_once()
         mock_clear_tags.assert_called_once()
 
     def test_create_category_clears_cache(self, db_session):
@@ -928,8 +925,7 @@ class TestDeletePostForeignKey:
         db_session.commit()
         post_id = post.id
 
-        with patch("app.crud.clear_posts_cache"):
-            result = crud.delete_post(db_session, post_id)
+        result = crud.delete_post(db_session, post_id)
 
         assert result is True
         # Comments should be cascade-deleted
@@ -1031,7 +1027,7 @@ class TestUpdatePostTagIds:
         db_session.commit()
 
         update_data = schemas.PostUpdate(tag_ids=[tag1.id, tag2.id])
-        with patch("app.crud.clear_posts_cache"), patch("app.crud.clear_tags_cache"):
+        with patch("app.crud.clear_tags_cache"):
             result = crud.update_post(db_session, post.id, update_data)
 
         assert result is not None
@@ -1059,7 +1055,7 @@ class TestUpdatePostTagIds:
         assert len(post.tags) == 1
 
         update_data = schemas.PostUpdate(tag_ids=[new_tag.id])
-        with patch("app.crud.clear_posts_cache"), patch("app.crud.clear_tags_cache"):
+        with patch("app.crud.clear_tags_cache"):
             result = crud.update_post(db_session, post.id, update_data)
 
         assert result is not None
@@ -1084,7 +1080,7 @@ class TestUpdatePostTagIds:
         assert len(post.tags) == 1
 
         update_data = schemas.PostUpdate(tag_ids=[])
-        with patch("app.crud.clear_posts_cache"), patch("app.crud.clear_tags_cache"):
+        with patch("app.crud.clear_tags_cache"):
             result = crud.update_post(db_session, post.id, update_data)
 
         assert result is not None
@@ -1156,7 +1152,7 @@ class TestIntegrityErrorHandling:
 
         post_data = schemas.PostCreate(title="Duplicate Post", slug="duplicate-slug-test", content="Other content")
         with (
-            patch("app.crud.clear_posts_cache"),
+
             patch("app.crud.clear_tags_cache"),
             pytest.raises(ValueError, match="already exists"),
         ):
@@ -1172,7 +1168,7 @@ class TestIntegrityErrorHandling:
 
         update_data = schemas.PostUpdate(slug="post-one-slug")
         with (
-            patch("app.crud.clear_posts_cache"),
+
             patch("app.crud.clear_tags_cache"),
             pytest.raises(ValueError, match="already exists"),
         ):
@@ -1191,7 +1187,7 @@ class TestCreatePostCoverImage:
             cover_image="https://example.com/cover.jpg",
         )
 
-        with patch("app.crud.clear_posts_cache"), patch("app.crud.clear_tags_cache"):
+        with patch("app.crud.clear_tags_cache"):
             post = crud.create_post(db_session, post_data)
 
         assert post.cover_image == "https://example.com/cover.jpg"
@@ -1204,7 +1200,7 @@ class TestCreatePostCoverImage:
             content="Content",
         )
 
-        with patch("app.crud.clear_posts_cache"), patch("app.crud.clear_tags_cache"):
+        with patch("app.crud.clear_tags_cache"):
             post = crud.create_post(db_session, post_data)
 
         assert post.cover_image is None
@@ -1224,7 +1220,7 @@ class TestUpdatePostCoverImage:
         db_session.commit()
 
         update_data = schemas.PostUpdate(cover_image="https://example.com/updated.jpg")
-        with patch("app.crud.clear_posts_cache"), patch("app.crud.clear_tags_cache"):
+        with patch("app.crud.clear_tags_cache"):
             result = crud.update_post(db_session, post.id, update_data)
 
         assert result is not None

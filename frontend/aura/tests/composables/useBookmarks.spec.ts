@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
-import { useBookmarks, type Bookmark } from "../../composables/useBookmarks.ts";
+import { type Bookmark, useBookmarks } from "../../composables/useBookmarks.ts";
 
 const mockBookmark: Bookmark = {
 	id: 1,

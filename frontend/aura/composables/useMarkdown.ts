@@ -150,8 +150,8 @@ function extractImages(
 		const srcMatch = attrs.match(/src\s*=\s*"([^"]*)"/);
 		const altMatch = attrs.match(/alt\s*=\s*"([^"]*)"/);
 		if (!srcMatch) return _match; // leave intact if no src
-		const src = srcMatch[1];
-		const alt = altMatch ? altMatch[1] : "";
+		const src = srcMatch[1] ?? "";
+		const alt = altMatch ? (altMatch[1] ?? "") : "";
 		const key = makeKey("image", keygen);
 		segments.push({ type: "image", src, alt, key });
 		return `<!--image:${key}-->`;
@@ -220,8 +220,8 @@ export function sanitizeHtml(html: string): string {
 // Markdown heading renderer: emit the same id that useToc.extractToc computes,
 // so TOC anchor links resolve to real heading elements.
 const headingRenderer = new marked.Renderer();
-headingRenderer.heading = function (token: { tokens: unknown; depth: number }) {
-	const html = this.parser.parseInline(token.tokens);
+headingRenderer.heading = function (token: { tokens: unknown[]; depth: number }) {
+	const html = String(this.parser.parseInline(token.tokens as never));
 	const text = html.replace(/<[^>]+>/g, "").trim();
 	return `<h${token.depth} id="${slugify(text)}">${html}</h${token.depth}>`;
 };
@@ -236,7 +236,7 @@ function convertMarkdownToHtml(md: string): string {
 	try {
 		const placeholder = "";
 		const safeMd = md.replace(/(<!--[\s\S]*?-->)/g, `${placeholder}$1${placeholder}`);
-		const html = marked(safeMd);
+		const html = String(marked.parse(safeMd));
 		return html.replace(new RegExp(`${placeholder}(<![\\s\\S]*?-->)${placeholder}`, "g"), "$1");
 	} catch {
 		return md;

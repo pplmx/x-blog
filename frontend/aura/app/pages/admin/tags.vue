@@ -12,6 +12,8 @@ import {
 	updateAdminTag,
 } from "~~/composables/useApi";
 
+definePageMeta({ layout: "admin" });
+
 useHead({ title: "标签管理 - X-Blog" });
 
 const { data: tags, pending, error, refresh } = await fetchAdminTags();

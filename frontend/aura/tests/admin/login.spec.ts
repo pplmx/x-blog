@@ -38,6 +38,7 @@ vi.stubGlobal("useRuntimeConfig", () => ({
 }));
 vi.stubGlobal("navigateTo", vi.fn());
 vi.stubGlobal("useHead", vi.fn());
+vi.stubGlobal("definePageMeta", vi.fn());
 
 // Stub the Icon component used in the login page template
 const IconStubComponent = {

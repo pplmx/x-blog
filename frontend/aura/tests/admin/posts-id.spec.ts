@@ -41,6 +41,7 @@ vi.stubGlobal("useRuntimeConfig", () => ({
 	public: { apiUrl: "http://localhost:18888" },
 }));
 vi.stubGlobal("useHead", vi.fn());
+vi.stubGlobal("definePageMeta", vi.fn());
 
 const mockCategories = [
 	{ id: 1, name: "Tech" },

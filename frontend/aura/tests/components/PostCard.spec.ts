@@ -32,7 +32,8 @@ const stubs = {
 		template: '<a class="nuxt-link-stub"><slot/></a>',
 	},
 	BookmarkButton: {
-		template: '<button class="bookmark-stub" :title="variant === \'full\' ? \'收藏文章\' : \'收藏文章\'" :data-post-id="postId"></button>',
+		template:
+			"<button class=\"bookmark-stub\" :title=\"variant === 'full' ? '收藏文章' : '收藏文章'\" :data-post-id=\"postId\"></button>",
 		props: ["postId", "post", "variant"],
 	},
 };

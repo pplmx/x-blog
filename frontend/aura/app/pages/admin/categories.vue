@@ -11,6 +11,8 @@ import {
 	updateAdminCategory,
 } from "~~/composables/useApi";
 
+definePageMeta({ layout: "admin" });
+
 useHead({ title: "分类管理 - X-Blog" });
 
 const { data: categories, pending, error, refresh } = await fetchAdminCategories();

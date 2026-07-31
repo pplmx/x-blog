@@ -41,6 +41,7 @@ vi.stubGlobal("useRuntimeConfig", () => ({
 }));
 vi.stubGlobal("navigateTo", vi.fn());
 vi.stubGlobal("useHead", vi.fn());
+vi.stubGlobal("definePageMeta", vi.fn());
 
 const originalConfirm = window.confirm;
 
