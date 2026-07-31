@@ -136,3 +136,11 @@ jobs:
         run: |
           cd frontend/aura
           pnpm test:e2e
+
+      - name: Upload Playwright artifacts
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: playwright-artifacts
+          path: frontend/aura/test-results/
+          if-no-files-found: ignore
