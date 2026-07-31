@@ -25,7 +25,14 @@ export default defineEventHandler(async (event) => {
 		headers[key] = value as string;
 	}
 
-	const body = method === "get" || method === "head" ? undefined : await readBody(event);
+	// Pass request bodies through RAW. h3's readBody returns null-prototype
+	// objects for form-urlencoded bodies, which ofetch 1.5.1 (the nitro
+	// runtime's fetch) cannot serialize — every form POST 502'd with
+	// "Cannot convert object to primitive value". Raw passthrough is also
+	// byte-exact, which is what a proxy should be.
+	const hasBody = getRequestHeader(event, "content-type") !== null;
+	const body =
+		method === "get" || method === "head" || !hasBody ? undefined : await readRawBody(event);
 
 	try {
 		const response = await $fetch.raw(url, {
@@ -46,6 +53,12 @@ export default defineEventHandler(async (event) => {
 			setResponseStatus(event, err.response.status);
 			return err.response._data;
 		}
+		console.error(
+			"[api-proxy] backend unavailable:",
+			method,
+			url,
+			err?.cause?.message || err?.message,
+		);
 		throw createError({ statusCode: 502, message: "Backend unavailable" });
 	}
 });

@@ -38,7 +38,8 @@ beforeEach(() => {
 	vi.stubGlobal("getMethod", () => "GET");
 	vi.stubGlobal("getQuery", () => ({}));
 	vi.stubGlobal("getHeaders", () => ({ host: "localhost" }));
-	vi.stubGlobal("readBody", vi.fn().mockResolvedValue({}));
+	vi.stubGlobal("readRawBody", vi.fn().mockResolvedValue("raw-body"));
+	vi.stubGlobal("getRequestHeader", () => "application/json");
 
 	vi.stubGlobal("createError", (opts: Record<string, unknown>) => {
 		const err = new Error(opts.statusMessage as string);
@@ -119,5 +120,36 @@ describe("API proxy", () => {
 
 		const handler = loadHandler();
 		await expect(handler({})).rejects.toThrow("Backend unavailable");
+	});
+});
+
+describe("API proxy request bodies", () => {
+	it("passes form-urlencoded bodies through raw (regression: null-prototype objects)", async () => {
+		const handler = loadHandler();
+		// loadHandler re-stubs the route params; override after loading
+		vi.stubGlobal("getRouterParam", (_event: any, param: string) =>
+			param === "path" ? "admin/login" : "",
+		);
+		vi.stubGlobal("getMethod", () => "POST");
+		vi.stubGlobal("getRequestHeader", () => "application/x-www-form-urlencoded");
+		vi.stubGlobal("readRawBody", vi.fn().mockResolvedValue("username=admin&password=admin123"));
+		await handler({});
+
+		const [url, options] = mockFetchRaw.mock.calls[0] as [string, { body: unknown }];
+		expect(url).toBe(`${backendUrl}/api/admin/login`);
+		// The raw string is forwarded verbatim, not parsed+re-encoded (h3's
+		// parsed form bodies are null-prototype objects that ofetch cannot
+		// serialize, which 502'd every form POST).
+		expect(options.body).toBe("username=admin&password=admin123");
+	});
+
+	it("does not read a body for GET requests", async () => {
+		const handler = loadHandler();
+		vi.stubGlobal("getMethod", () => "GET");
+		const readRawBodyMock = vi.fn();
+		vi.stubGlobal("readRawBody", readRawBodyMock);
+		await handler({});
+
+		expect(readRawBodyMock).not.toHaveBeenCalled();
 	});
 });
