@@ -52,3 +52,23 @@ def test_stats_published_less_than_total(client):
     data = response.json()
 
     assert data["published_posts"] <= data["total_posts"]
+
+
+def test_stats_scheduled_post_not_counted_as_published(client, auth_headers):
+    """A future-dated post must not inflate the published_posts count."""
+    client.post(
+        "/api/posts",
+        json={
+            "title": "Scheduled Stats Post",
+            "slug": "scheduled-stats-post",
+            "content": "Not published yet",
+            "published": True,
+            "publish_at": "2099-01-01T00:00:00",
+        },
+        headers=auth_headers,
+    )
+    response = client.get("/api/stats")
+    assert response.status_code == 200
+    data = response.json()
+    assert data["published_posts"] == 0
+    assert data["total_posts"] == 1

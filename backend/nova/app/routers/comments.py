@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
@@ -29,8 +29,8 @@ class CommentApproval(BaseModel):
 @router.get("/post/{post_id}", response_model=CommentListResponse)
 def list_comments(
     post_id: int,
-    page: int = 1,
-    limit: int = 20,
+    page: int = Query(1, ge=1),
+    limit: int = Query(20, ge=1, le=100),
     db: Session = Depends(get_db),
 ):
     """Get paginated approved comments for a post."""

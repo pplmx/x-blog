@@ -1,14 +1,31 @@
-from datetime import datetime
+from datetime import UTC
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from sqlalchemy.orm import Session
 
 from app import crud, schemas
 from app.auth import User, get_current_admin
+from app.crud import utc_now_naive
 from app.database import get_db
 from app.limiter import RATE_LIMIT_READ, RATE_LIMIT_WRITE, limiter
 
 router = APIRouter(prefix="/api/posts", tags=["posts"])
+
+
+def _is_publicly_visible(post) -> bool:
+    """A post is public only when published and its publish_at (if any) has passed.
+
+    publish_at is stored as naive UTC (see crud.utc_now_naive); compare against
+    naive-UTC now so a non-UTC server host cannot hide or leak scheduled posts.
+    """
+    if not post.published:
+        return False
+    if post.publish_at is None:
+        return True
+    publish_at = post.publish_at
+    if publish_at.tzinfo is not None:
+        publish_at = publish_at.astimezone(UTC).replace(tzinfo=None)
+    return publish_at <= utc_now_naive()
 
 
 @router.get("", response_model=schemas.PostListResponse)
@@ -47,9 +64,8 @@ def get_post(post_id: str, db: Session = Depends(get_db)):
         if post_id.isdigit() and post_id.isascii()
         else crud.get_post_by_slug(db, post_id)
     )
-    if not post:
-        raise HTTPException(status_code=404, detail="Post not found")
-    if post.publish_at and post.publish_at > datetime.now():
+    # Drafts and not-yet-published scheduled posts are invisible to the public.
+    if not post or not _is_publicly_visible(post):
         raise HTTPException(status_code=404, detail="Post not found")
     return post
 
@@ -113,6 +129,10 @@ def increment_views(
     db: Session = Depends(get_db),
 ):
     """Increment the view count for a post."""
+    # Only count views for publicly visible posts (drafts are 404).
+    existing = crud.get_post(db, post_id)
+    if not existing or not _is_publicly_visible(existing):
+        raise HTTPException(status_code=404, detail="Post not found")
     post = crud.increment_views(db, post_id)
     if not post:
         raise HTTPException(status_code=404, detail="Post not found")
@@ -127,6 +147,9 @@ def increment_likes(
     db: Session = Depends(get_db),
 ):
     """Increment the like count for a post."""
+    existing = crud.get_post(db, post_id)
+    if not existing or not _is_publicly_visible(existing):
+        raise HTTPException(status_code=404, detail="Post not found")
     post = crud.increment_likes(db, post_id)
     if not post:
         raise HTTPException(status_code=404, detail="Post not found")

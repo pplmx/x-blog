@@ -50,6 +50,67 @@ def test_get_post(client, auth_headers):
     assert response.json()["title"] == "Test Post"
 
 
+def test_draft_post_hidden_from_public(client, auth_headers):
+    """Drafts must not be readable via the public API by id or slug."""
+    create_response = client.post(
+        "/api/posts",
+        json={
+            "title": "Draft Post",
+            "slug": "draft-post",
+            "content": "Secret draft content",
+            "published": False,
+        },
+        headers=auth_headers,
+    )
+    post_id = create_response.json()["id"]
+
+    by_id = client.get(f"/api/posts/{post_id}")
+    assert by_id.status_code == 404
+
+    by_slug = client.get("/api/posts/draft-post")
+    assert by_slug.status_code == 404
+
+    # Drafts must not count views or likes either
+    view_response = client.post(f"/api/posts/{post_id}/view")
+    assert view_response.status_code == 404
+    like_response = client.post(f"/api/posts/{post_id}/like")
+    assert like_response.status_code == 404
+
+
+def test_scheduled_post_hidden_until_publish_at(client, auth_headers):
+    """Future-dated posts are invisible; past-dated published posts are visible."""
+    future_response = client.post(
+        "/api/posts",
+        json={
+            "title": "Scheduled Post",
+            "slug": "scheduled-post",
+            "content": "Not yet",
+            "published": True,
+            "publish_at": "2099-01-01T00:00:00",
+        },
+        headers=auth_headers,
+    )
+    future_id = future_response.json()["id"]
+    future_get = client.get(f"/api/posts/{future_id}")
+    assert future_get.status_code == 404
+
+    past_response = client.post(
+        "/api/posts",
+        json={
+            "title": "Past Post",
+            "slug": "past-post",
+            "content": "Already out",
+            "published": True,
+            "publish_at": "2000-01-01T00:00:00",
+        },
+        headers=auth_headers,
+    )
+    past_id = past_response.json()["id"]
+    past_get = client.get(f"/api/posts/{past_id}")
+    assert past_get.status_code == 200
+    assert past_get.json()["title"] == "Past Post"
+
+
 def test_update_post(client, auth_headers):
     create_response = client.post(
         "/api/posts",

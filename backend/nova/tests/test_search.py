@@ -195,3 +195,73 @@ def test_build_snippet_sqlite_highlight():
     result = _build_snippet(mock_post, "hello", False, mock_db)
     assert result is not None
     assert "<mark>hello</mark>" in result.lower() or "<mark>Hello</mark>" in result
+
+
+def test_search_excludes_scheduled_posts(client, auth_headers):
+    """Future-dated posts must not appear in search results before publish_at."""
+    client.post(
+        "/api/posts",
+        json={
+            "title": "Future Scheduled Secret",
+            "slug": "future-scheduled-secret",
+            "content": "This should not be searchable yet",
+            "published": True,
+            "publish_at": "2099-01-01T00:00:00",
+        },
+        headers=auth_headers,
+    )
+    client.post(
+        "/api/posts",
+        json={
+            "title": "Regular Searchable Post",
+            "slug": "regular-searchable-post",
+            "content": "This is searchable",
+            "published": True,
+        },
+        headers=auth_headers,
+    )
+
+    response = client.get("/api/search", params={"q": "searchable"})
+    assert response.status_code == 200
+    titles = [item["title"] for item in response.json()["items"]]
+    assert "Regular Searchable Post" in titles
+    assert "Future Scheduled Secret" not in titles
+
+    # Search for the scheduled post's unique content directly
+    response = client.get("/api/search", params={"q": "Future Scheduled Secret"})
+    assert response.status_code == 200
+    assert len(response.json()["items"]) == 0
+
+
+def test_popular_posts_excludes_scheduled(client, auth_headers):
+    """Future-dated posts must not appear in the popular posts list."""
+    client.post(
+        "/api/posts",
+        json={
+            "title": "Future Popular",
+            "slug": "future-popular",
+            "content": "Should not appear",
+            "published": True,
+            "publish_at": "2099-01-01T00:00:00",
+        },
+        headers=auth_headers,
+    )
+    client.post(
+        "/api/posts",
+        json={
+            "title": "Past Popular",
+            "slug": "past-popular",
+            "content": "Should appear",
+            "published": True,
+        },
+        headers=auth_headers,
+    )
+    # Boost the past post's views so it ranks
+    past_id = client.get("/api/search", params={"q": "Past"}).json()["items"][0]["id"]
+    client.post(f"/api/posts/{past_id}/view")
+
+    response = client.get("/api/posts/popular/list")
+    assert response.status_code == 200
+    titles = [item["title"] for item in response.json()]
+    assert "Past Popular" in titles
+    assert "Future Popular" not in titles

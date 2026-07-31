@@ -1,8 +1,10 @@
 """Statistics endpoint for blog metrics."""
 
+from datetime import UTC, datetime
+
 from fastapi import APIRouter, Depends, Request
 from pydantic import BaseModel
-from sqlalchemy import func
+from sqlalchemy import func, or_
 from sqlalchemy.orm import Session
 
 from app import models
@@ -32,8 +34,18 @@ def get_blog_stats(request: Request, db: Session = Depends(get_db)):  # noqa: AR
     # Total posts
     total_posts = db.query(func.count(models.Post.id)).scalar() or 0
 
-    # Published posts
-    published_posts = db.query(func.count(models.Post.id)).filter(models.Post.published).scalar() or 0
+    # Published posts (scheduled posts only count once their publish_at has passed,
+    # matching the public list semantics)
+    now = datetime.now(UTC)
+    published_posts = (
+        db.query(func.count(models.Post.id))
+        .filter(
+            models.Post.published,
+            or_(models.Post.publish_at.is_(None), models.Post.publish_at <= now),
+        )
+        .scalar()
+        or 0
+    )
 
     # Total categories
     total_categories = db.query(func.count(models.Category.id)).scalar() or 0

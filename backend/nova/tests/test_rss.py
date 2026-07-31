@@ -214,3 +214,30 @@ def test_rss_feed_empty_database(client):
     content = response.text
     assert "<rss version=" in content
     assert "<channel>" in content
+
+
+def test_rss_feed_escapes_xml_special_chars(client, auth_headers):
+    """Titles/descriptions with & < > must not produce invalid XML."""
+    import xml.etree.ElementTree as ET
+
+    client.post(
+        "/api/posts",
+        json={
+            "title": "R&D Notes & <Analysis>",
+            "slug": "rd-notes-amp",
+            "content": "Content with ]]&gt; inside CDATA should not break the feed",
+            "excerpt": "A & B < C",
+            "published": True,
+        },
+        headers=auth_headers,
+    )
+
+    rss_response = client.get("/rss/feed.xml")
+    assert rss_response.status_code == 200
+    # Feed must be well-formed XML (no escape errors)
+    ET.fromstring(rss_response.text)
+
+    atom_response = client.get("/rss/atom.xml")
+    assert atom_response.status_code == 200
+    ET.fromstring(atom_response.text)
+    assert "R&amp;D Notes &amp; &lt;Analysis&gt;" in atom_response.text

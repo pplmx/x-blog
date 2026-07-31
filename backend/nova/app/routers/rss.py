@@ -1,4 +1,5 @@
 from datetime import UTC, datetime
+from xml.sax.saxutils import escape
 
 from fastapi import APIRouter, Depends
 from fastapi.responses import Response
@@ -15,6 +16,11 @@ rss_router = APIRouter(prefix="", tags=["rss"])
 seo_router = APIRouter(tags=["seo"])
 
 
+def _cdata(value: str) -> str:
+    """Wrap a value in a CDATA section, safely splitting any embedded ']]>'."""
+    return f"<![CDATA[{value.replace(']]>', ']]]]><![CDATA[>')}]]>"
+
+
 def generate_rss_feed(posts: list, site_url: str, title: str, description: str, full_content: bool = False) -> str:
     """Generate RSS 2.0 feed.
 
@@ -28,37 +34,38 @@ def generate_rss_feed(posts: list, site_url: str, title: str, description: str, 
     items = []
     for post in posts:
         pub_date = post.created_at.strftime("%a, %d %b %Y %H:%M:%S GMT")
+        link = f"{site_url}/posts/{post.slug}"
 
         if full_content:
             # Full content RSS
-            content = f"<content:encoded><![CDATA[{post.content}]]></content:encoded>"
+            content = f"<content:encoded>{_cdata(post.content)}</content:encoded>"
             items.append(f"""<item>
-        <title><![CDATA[{post.title}]]></title>
-        <link>{site_url}/posts/{post.slug}</link>
-        <guid isPermaLink="true">{site_url}/posts/{post.slug}</guid>
+        <title>{_cdata(post.title)}</title>
+        <link>{escape(link)}</link>
+        <guid isPermaLink="true">{escape(link)}</guid>
         <pubDate>{pub_date}</pubDate>
-        <description><![CDATA[{post.excerpt or ""}]]></description>
+        <description>{_cdata(post.excerpt or "")}</description>
         {content}
     </item>""")
         else:
             # Excerpt RSS (default)
             items.append(f"""<item>
-        <title><![CDATA[{post.title}]]></title>
-        <link>{site_url}/posts/{post.slug}</link>
-        <guid isPermaLink="true">{site_url}/posts/{post.slug}</guid>
+        <title>{_cdata(post.title)}</title>
+        <link>{escape(link)}</link>
+        <guid isPermaLink="true">{escape(link)}</guid>
         <pubDate>{pub_date}</pubDate>
-        <description><![CDATA[{post.excerpt or post.content[:200]}]]></description>
+        <description>{_cdata(post.excerpt or post.content[:200])}</description>
     </item>""")
 
     rss = f"""<?xml version="1.0" encoding="UTF-8"?>
 <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom" xmlns:content="http://purl.org/rss/1.0/modules/content/">
 <channel>
-    <title>{title}</title>
-    <link>{site_url}</link>
-    <description>{description}</description>
+    <title>{escape(title)}</title>
+    <link>{escape(site_url)}</link>
+    <description>{escape(description)}</description>
     <language>zh-CN</language>
     <lastBuildDate>{datetime.now(UTC).strftime("%a, %d %b %Y %H:%M:%S GMT")}</lastBuildDate>
-    <atom:link href="{site_url}/rss/feed.xml" rel="self" type="application/rss+xml"/>
+    <atom:link href="{escape(site_url)}/rss/feed.xml" rel="self" type="application/rss+xml"/>
     {"".join(items)}
 </channel>
 </rss>"""
@@ -97,23 +104,24 @@ def get_atom_feed(db: Session = Depends(get_db)):
         updated = post.updated_at.strftime("%Y-%m-%dT%H:%M:%SZ")
         published = post.created_at.strftime("%Y-%m-%dT%H:%M:%SZ")
         content = post.content[:5000] if len(post.content) > 5000 else post.content
+        link = f"{site_url}/posts/{post.slug}"
         items.append(f"""<entry>
-        <title>{post.title}</title>
-        <link href="{site_url}/posts/{post.slug}"/>
-        <id>{site_url}/posts/{post.slug}</id>
+        <title>{escape(post.title)}</title>
+        <link href="{escape(link)}"/>
+        <id>{escape(link)}</id>
         <updated>{updated}</updated>
         <published>{published}</published>
-        <summary>{post.excerpt or post.content[:200]}</summary>
-        <content type="html"><![CDATA[{content}]]></content>
+        <summary>{escape(post.excerpt or post.content[:200])}</summary>
+        <content type="html">{_cdata(content)}</content>
     </entry>""")
 
     atom = f"""<?xml version="1.0" encoding="UTF-8"?>
 <feed xmlns="http://www.w3.org/2005/Atom">
-    <title>{title}</title>
-    <link href="{site_url}"/>
-    <link href="{site_url}/rss/atom.xml" rel="self"/>
-    <id>{site_url}/rss/atom.xml</id>
-    <subtitle>{description}</subtitle>
+    <title>{escape(title)}</title>
+    <link href="{escape(site_url)}"/>
+    <link href="{escape(site_url)}/rss/atom.xml" rel="self"/>
+    <id>{escape(site_url)}/rss/atom.xml</id>
+    <subtitle>{escape(description)}</subtitle>
     <updated>{datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")}</updated>
     {"".join(items)}
 </feed>"""
@@ -158,7 +166,7 @@ def get_sitemap(db: Session = Depends(get_db)):
     for post in posts:
         updated = post.updated_at.strftime("%Y-%m-%d")
         entry = f"""<url>
-    <loc>{site_url}/posts/{post.slug}</loc>
+    <loc>{escape(site_url)}/posts/{escape(post.slug)}</loc>
     <lastmod>{updated}</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
@@ -166,7 +174,7 @@ def get_sitemap(db: Session = Depends(get_db)):
         if post.cover_image:
             img_url = post.cover_image if post.cover_image.startswith("http") else f"{site_url}{post.cover_image}"
             entry += f"""    <image:image>
-        <image:loc>{img_url}</image:loc>
+        <image:loc>{escape(img_url)}</image:loc>
     </image:image>
 """
         entry += "</url>"
