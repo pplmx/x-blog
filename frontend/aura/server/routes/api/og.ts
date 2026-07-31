@@ -96,7 +96,18 @@ function ogTemplate(props: OgTemplateProps): string {
 
 // ─── Handler ──────────────────────────────────────────────────────────
 
+// Public, unauthenticated, CPU-heavy rendering (satori + sharp) — bound
+// volume per IP so one caller cannot pin the server (issue #20).
+const IMAGE_RATE_LIMIT = 30; // requests
+const IMAGE_RATE_WINDOW_MS = 60_000; // per IP per window
+
 export default defineEventHandler(async (event) => {
+	if (
+		isRateLimited(`og:${getRequestIP(event) ?? "unknown"}`, IMAGE_RATE_LIMIT, IMAGE_RATE_WINDOW_MS)
+	) {
+		throw createError({ statusCode: 429, statusMessage: "Too many requests" });
+	}
+
 	const query = getQuery(event);
 	const title = typeof query.title === "string" ? query.title : undefined;
 	const site = typeof query.site === "string" ? query.site : "X-Blog";
@@ -106,11 +117,17 @@ export default defineEventHandler(async (event) => {
 	event.res.setHeader("Cache-Control", "public, max-age=3600, stale-while-revalidate=86400");
 	event.res.setHeader("CDN-Cache-Control", "public, max-age=3600");
 
-	const displayTitle = title && title.length > 0 ? title : "X-Blog — 一个现代化的技术博客系统";
+	// Sanitize + XML-escape before the title reaches the SVG template:
+	// raw input could inject arbitrary SVG markup into the generated image
+	// or break satori's parser (issue #20).
+	const displayTitle = escapeXml(
+		sanitizeImageTitle(title && title.length > 0 ? title : "X-Blog — 一个现代化的技术博客系统"),
+	);
+	const escapedSite = escapeXml(site);
 
 	try {
 		// Generate SVG with satori
-		const svg = await satori(ogTemplate({ title: displayTitle, site, type }), {
+		const svg = await satori(ogTemplate({ title: displayTitle, site: escapedSite, type }), {
 			width: 1200,
 			height: 630,
 			fonts: [
