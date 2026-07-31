@@ -37,16 +37,16 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: '9'
+
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
           node-version: '24'
           cache: 'pnpm'
-
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          version: '9'
 
       - name: Frontend lint check
         run: |
@@ -83,16 +83,16 @@ jobs:
         with:
           python-version: '3.14'
 
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: '9'
+
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
           node-version: '24'
           cache: 'pnpm'
-
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          version: '9'
 
       - name: Install uv
         run: pip install uv
@@ -107,17 +107,16 @@ jobs:
           sleep 3
           curl -sf http://localhost:18888/health > /dev/null || (echo "Backend failed" && exit 1)
 
-      - name: Start frontend
+      - name: Install frontend dependencies
         run: |
           cd frontend/aura
           pnpm install
-          NUXT_API_URL=http://localhost:18888 \
-          NUXT_SITE_URL=http://localhost:13334 \
-          pnpm dev --port 13334 &
-          sleep 5
-          curl -sf http://localhost:13334 > /dev/null || echo "Frontend may not be ready"
 
       - name: Run E2E tests
+        env:
+          # Playwright's webServer (port 34567, per playwright.config.ts) inherits these.
+          NUXT_API_URL: http://localhost:18888
+          NUXT_SITE_URL: http://localhost:34567
         run: |
           cd frontend/aura
           pnpm test:e2e
