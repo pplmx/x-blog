@@ -460,12 +460,14 @@ class TestAdminComments:
 
         response = client.get("/api/admin/comments", headers=auth_headers)
         assert response.status_code == 200
-        comments = response.json()
+        data = response.json()
+        comments = data["items"]
         assert len(comments) == 1
         assert comments[0]["nickname"] == "Commenter"
         assert comments[0]["content"] == "Nice post!"
         assert comments[0]["post_id"] == post.id
         assert comments[0]["post_title"] == post.title
+        assert data["pagination"]["total"] == 1
 
     def test_list_comments_filtered_by_post_id(self, client, auth_headers, db_session):
         """Test listing comments filtered by post_id."""
@@ -479,7 +481,7 @@ class TestAdminComments:
 
         response = client.get(f"/api/admin/comments?post_id={post1.id}", headers=auth_headers)
         assert response.status_code == 200
-        comments = response.json()
+        comments = response.json()["items"]
         assert len(comments) == 1
         assert comments[0]["nickname"] == "Alice"
         assert comments[0]["post_id"] == post1.id
@@ -489,7 +491,38 @@ class TestAdminComments:
         """Test listing comments when no comments exist."""
         response = client.get("/api/admin/comments", headers=auth_headers)
         assert response.status_code == 200
-        assert response.json() == []
+        data = response.json()
+        assert data["items"] == []
+        assert data["pagination"]["total"] == 0
+
+    def test_list_comments_paginated(self, client, auth_headers, db_session):
+        """Pagination bounds the admin comments response (issue #20)."""
+        from datetime import UTC, datetime, timedelta
+
+        post = models.Post(title="Pagination Post", slug="pagination-post", content="Content", published=True)
+        db_session.add(post)
+        db_session.commit()
+        base = datetime(2026, 1, 1, tzinfo=UTC)
+        for i in range(5):
+            db_session.add(
+                models.Comment(
+                    post_id=post.id,
+                    nickname=f"User{i}",
+                    email=f"user{i}@test.com",
+                    content=f"Comment number {i}",
+                    created_at=base + timedelta(minutes=i),
+                )
+            )
+        db_session.commit()
+
+        response = client.get("/api/admin/comments?page=1&limit=2", headers=auth_headers)
+        assert response.status_code == 200
+        data = response.json()
+        assert len(data["items"]) == 2
+        assert data["pagination"]["total"] == 5
+        assert data["pagination"]["total_pages"] == 3
+        # Newest first
+        assert data["items"][0]["content"] == "Comment number 4"
 
     def test_delete_comment(self, client, auth_headers, db_session):
         """Test deleting an existing comment."""
@@ -526,6 +559,16 @@ class TestAdminUserManagement:
         data = response.json()
         assert data["username"] == "newuser"
         assert data["is_superuser"] is False
+
+    def test_create_user_invalid_username_rejected(self, client, auth_headers):
+        """Usernames must match the allowed format (issue #20)."""
+        for bad in ["ab", "has space", "含有中文", "bad!@#$"]:
+            response = client.post(
+                "/api/admin/users",
+                headers={**auth_headers, "Content-Type": "application/json"},
+                json={"username": bad, "password": "password123"},
+            )
+            assert response.status_code == 422, f"username {bad!r} should be rejected"
 
     def test_create_user_already_exists(self, client, auth_headers, db_session):
         """Test creating a user with existing username returns 400."""
@@ -811,6 +854,15 @@ class TestAdminBatchApprove:
         )
         assert response.status_code == 200
         assert db_session.get(models.Comment, c.id).is_approved is False
+
+    def test_batch_approve_too_many_ids_rejected(self, client, auth_headers):
+        """More than 100 ids in one batch request is rejected (issue #20)."""
+        response = client.post(
+            "/api/admin/comments/batch-approve",
+            headers={"Content-Type": "application/json", **auth_headers},
+            json={"ids": list(range(101)), "approved": True},
+        )
+        assert response.status_code == 422
 
 
 class TestAdminPasswordChange:

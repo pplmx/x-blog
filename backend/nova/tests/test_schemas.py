@@ -499,3 +499,63 @@ class TestSchemaValidation:
         )
         assert update.tag_ids == [1, 2, 3]
         assert update.tag_ids is not None
+
+    def test_post_create_cover_image_allows_https(self):
+        """https cover_image URLs are accepted (issue #20)."""
+        post = schemas.PostCreate(
+            title="Test",
+            slug="test-cover",
+            content="Content",
+            cover_image="https://example.com/cover.jpg",
+        )
+        assert post.cover_image == "https://example.com/cover.jpg"
+
+    def test_post_create_cover_image_rejects_unsafe_scheme(self):
+        """javascript: cover_image URLs must be rejected (issue #20)."""
+        with pytest.raises(ValidationError):
+            schemas.PostCreate(
+                title="Test",
+                slug="test-cover",
+                content="Content",
+                cover_image="javascript:alert(1)",
+            )
+
+    def test_post_create_cover_image_allows_relative_url(self):
+        """The upload endpoint returns relative /static/... URLs — must stay valid (issue #20)."""
+        post = schemas.PostCreate(
+            title="Test",
+            slug="test-cover",
+            content="Content",
+            cover_image="/static/uploads/2026/07/uuid.jpg",
+        )
+        assert post.cover_image == "/static/uploads/2026/07/uuid.jpg"
+
+    def test_post_create_cover_image_none_allowed(self):
+        """cover_image=None stays valid (issue #20)."""
+        post = schemas.PostCreate(title="Test", slug="test-cover", content="Content")
+        assert post.cover_image is None
+
+    def test_post_create_cover_image_empty_string_allowed(self):
+        """Empty string clears the cover image from the admin form (issue #20)."""
+        post = schemas.PostCreate(
+            title="Test",
+            slug="test-cover",
+            content="Content",
+            cover_image="",
+        )
+        assert post.cover_image == ""
+
+    def test_post_create_cover_image_rejects_data_scheme(self):
+        """data: cover_image URLs must be rejected (issue #20)."""
+        with pytest.raises(ValidationError):
+            schemas.PostCreate(
+                title="Test",
+                slug="test-cover",
+                content="Content",
+                cover_image="data:image/png;base64,AAAA",
+            )
+
+    def test_post_update_cover_image_rejects_unsafe_scheme(self):
+        """PostUpdate also rejects unsafe cover_image schemes (issue #20)."""
+        with pytest.raises(ValidationError):
+            schemas.PostUpdate(cover_image="javascript:alert(1)")

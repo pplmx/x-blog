@@ -677,6 +677,54 @@ class TestSearchPosts:
         assert isinstance(posts, list)
         assert len(posts) <= 5
 
+    def test_search_posts_percent_wildcard_matches_literally(self, db_session):
+        """A bare % must not match every post — it is escaped (issue #20)."""
+        db_session.add_all(
+            [
+                models.Post(
+                    title="Plain Title",
+                    slug="plain-title",
+                    content="No percent here",
+                    published=True,
+                ),
+                models.Post(
+                    title="50% Off Deal",
+                    slug="percent-deal",
+                    content="Contains a literal percent",
+                    published=True,
+                ),
+            ]
+        )
+        db_session.commit()
+
+        posts, total = crud.search_posts(db_session, "%")
+        assert total == 1
+        assert posts[0].title == "50% Off Deal"
+
+    def test_search_posts_underscore_wildcard_matches_literally(self, db_session):
+        """A bare _ must not act as a single-char wildcard (issue #20)."""
+        db_session.add_all(
+            [
+                models.Post(
+                    title="Title One",
+                    slug="title-one",
+                    content="No underscores",
+                    published=True,
+                ),
+                models.Post(
+                    title="snake_case_note",
+                    slug="snake-case-note",
+                    content="Has underscores",
+                    published=True,
+                ),
+            ]
+        )
+        db_session.commit()
+
+        posts, total = crud.search_posts(db_session, "_")
+        assert total == 1
+        assert posts[0].title == "snake_case_note"
+
 
 class TestRelatedPosts:
     """Tests for get_related_posts function."""

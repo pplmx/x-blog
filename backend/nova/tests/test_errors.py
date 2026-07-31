@@ -134,3 +134,44 @@ def test_security_headers_on_error(client):
     assert response.status_code == 404
     assert response.headers.get("X-Content-Type-Options") == "nosniff"
     assert response.headers.get("X-Frame-Options") == "DENY"
+
+
+def test_unhandled_exception_returns_error_envelope(client):
+    """An unexpected exception must return the standard 500 envelope (issue #20)."""
+    from app.main import app
+
+    @app.get("/api/_test-unhandled")
+    def _crash():
+        raise RuntimeError("boom")
+
+    try:
+        response = client.get("/api/_test-unhandled")
+    finally:
+        app.router.routes = [r for r in app.router.routes if getattr(r, "path", None) != "/api/_test-unhandled"]
+
+    assert response.status_code == 500
+    data = response.json()
+    assert data["error"]["code"] == "INTERNAL_ERROR"
+    assert data["error"]["message"] == "Internal server error"
+    # The raw exception detail must not leak to clients
+    assert "boom" not in response.text
+
+
+def test_cors_preflight_advertises_restricted_methods(client):
+    """CORS preflight must not advertise wildcard methods/headers (issue #20)."""
+    response = client.options(
+        "/api/posts",
+        headers={
+            "Origin": "http://localhost:3000",
+            "Access-Control-Request-Method": "GET",
+            "Access-Control-Request-Headers": "authorization",
+        },
+    )
+    assert response.status_code == 200
+    allow_methods = response.headers.get("access-control-allow-methods", "")
+    assert "*" not in allow_methods
+    for method in ["GET", "POST", "PATCH", "DELETE"]:
+        assert method in allow_methods
+    allow_headers = response.headers.get("access-control-allow-headers", "")
+    assert "authorization" in allow_headers.lower()
+    assert "*" not in allow_headers

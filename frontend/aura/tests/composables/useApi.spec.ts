@@ -177,12 +177,19 @@ describe("admin API functions", () => {
 
 	it("fetchAdminComments constructs correct URL", () => {
 		fetchAdminComments();
-		expect(useFetchCalls[0].url).toBe("http://localhost:18888/api/admin/comments");
+		expect(useFetchCalls[0].url).toBe("http://localhost:18888/api/admin/comments?page=1&limit=20");
 	});
 
 	it("fetchAdminComments with postId adds query parameter", () => {
 		fetchAdminComments(15);
-		expect(useFetchCalls[0].url).toBe("http://localhost:18888/api/admin/comments?post_id=15");
+		expect(useFetchCalls[0].url).toBe(
+			"http://localhost:18888/api/admin/comments?post_id=15&page=1&limit=20",
+		);
+	});
+
+	it("fetchAdminComments passes page and limit through", () => {
+		fetchAdminComments(undefined, 3, 100);
+		expect(useFetchCalls[0].url).toBe("http://localhost:18888/api/admin/comments?page=3&limit=100");
 	});
 
 	it("deleteAdminComment sends DELETE with ID", () => {

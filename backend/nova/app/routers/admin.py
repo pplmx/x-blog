@@ -26,7 +26,13 @@ class LoginResponse(BaseModel):
 
 
 class UserCreate(BaseModel):
-    username: str
+    # max_length 50 matches the User.username VARCHAR(50) column (issue #20).
+    username: str = Field(
+        min_length=3,
+        max_length=50,
+        pattern=r"^[a-zA-Z0-9_.-]+$",
+        description="3-50 chars: letters, digits, underscore, dot, hyphen",
+    )
     password: str = Field(min_length=8, description="Password must be at least 8 characters")
 
 
@@ -127,7 +133,7 @@ def admin_list_posts(
     query = db.query(models.Post)
 
     if q:
-        query = query.filter(models.Post.title.ilike(f"%{q}%"))
+        query = query.filter(models.Post.title.ilike(f"%{crud.escape_like_pattern(q)}%", escape="\\"))
 
     if status == "published":
         now = datetime.now(UTC)
@@ -461,17 +467,26 @@ def admin_delete_tag(
 @router.get("/comments")
 def admin_list_comments(
     post_id: int | None = None,
+    page: int = Query(1, ge=1),
+    limit: int = Query(20, ge=1, le=100),
     db: Session = Depends(get_db),
     _current_user: auth.User = Depends(get_current_admin),
 ):
+    """List comments with pagination (bounded response, issue #20)."""
     query = (
         db.query(models.Comment, models.Post.title)
         .join(models.Post, models.Post.id == models.Comment.post_id)
-        .order_by(models.Comment.created_at.desc())
     )
     if post_id:
         query = query.filter(models.Comment.post_id == post_id)
-    comment_rows = query.all()
+    total = query.count()
+
+    comment_rows = (
+        query.order_by(models.Comment.created_at.desc())
+        .offset((page - 1) * limit)
+        .limit(limit)
+        .all()
+    )
     result = []
     for c, post_title in comment_rows:
         result.append(
@@ -487,11 +502,20 @@ def admin_list_comments(
                 "created_at": c.created_at.isoformat() if c.created_at else None,
             }
         )
-    return result
+    return {
+        "items": result,
+        "pagination": {
+            "total": total,
+            "page": page,
+            "limit": limit,
+            "total_pages": (total + limit - 1) // limit if total > 0 else 0,
+        },
+    }
 
 
 class BatchApproveRequest(BaseModel):
-    ids: list[int]
+    # Cap the batch so one request cannot touch an unbounded number of rows.
+    ids: list[int] = Field(max_length=100)
     approved: bool = True
 
 

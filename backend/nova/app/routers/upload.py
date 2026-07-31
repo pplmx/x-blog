@@ -12,6 +12,28 @@ router = APIRouter(prefix="/api/upload", tags=["upload"])
 ALLOWED_TYPES = {"image/jpeg", "image/png", "image/gif", "image/webp"}
 MAX_SIZE = 5 * 1024 * 1024  # 5MB
 
+# Magic bytes for each allowed image type — the Content-Type header alone is
+# client-controlled and must not be trusted (issue #20).
+_MAGIC_BYTES = {
+    "image/jpeg": (b"\xff\xd8\xff",),
+    "image/png": (b"\x89PNG\r\n\x1a\n",),
+    "image/gif": (b"GIF87a", b"GIF89a"),
+    "image/webp": (b"RIFF",),  # + "WEBP" at offset 8
+}
+
+
+def _has_matching_magic_bytes(content: bytes, content_type: str) -> bool:
+    """Check the file header matches the declared Content-Type."""
+    signatures = _MAGIC_BYTES.get(content_type, ())
+    if not signatures:
+        return False
+    if not content:
+        return False
+    if content_type == "image/webp":
+        # WebP container: RIFF header + WEBP tag at bytes 8..12
+        return content[:4] == b"RIFF" and len(content) >= 12 and content[8:12] == b"WEBP"
+    return content.startswith(signatures)
+
 # Whitelist of allowed file extensions for uploaded images
 ALLOWED_EXTENSIONS = {"jpg", "jpeg", "png", "gif", "webp"}
 
@@ -38,6 +60,8 @@ async def upload_image(
     contents = await file.read()
     if len(contents) > MAX_SIZE:
         raise HTTPException(400, detail="File too large (max 5MB)")
+    if not _has_matching_magic_bytes(contents, file.content_type):
+        raise HTTPException(400, detail="File content does not match the declared image type")
 
     # Safely extract file extension — guards against path traversal via filename
     safe_ext = Path(file.filename or "").suffix.lstrip(".").lower()

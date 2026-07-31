@@ -133,6 +133,12 @@ const mockComments = [
 	},
 ];
 
+/** Envelope returned by the paginated admin comments endpoint. */
+const mockCommentList = {
+	items: mockComments,
+	pagination: { total: 3, page: 1, limit: 100, total_pages: 1 },
+};
+
 async function loadPage() {
 	const { default: DashboardPage } = await import("@/pages/admin/index.vue");
 	return DashboardPage;
@@ -165,7 +171,7 @@ describe("Admin Dashboard Page", () => {
 				refresh: vi.fn(),
 			});
 			mockFetchAdminComments.mockReturnValue({
-				data: ref(mockComments),
+				data: ref(mockCommentList),
 				pending: ref(false),
 				error: ref(null),
 				refresh: vi.fn(),
@@ -210,7 +216,7 @@ describe("Admin Dashboard Page", () => {
 				refresh: vi.fn(),
 			});
 			mockFetchAdminComments.mockReturnValue({
-				data: ref(mockComments),
+				data: ref(mockCommentList),
 				pending: ref(false),
 				error: ref(null),
 				refresh: vi.fn(),
@@ -287,7 +293,7 @@ describe("Admin Dashboard Page", () => {
 				refresh: vi.fn(),
 			});
 			mockFetchAdminComments.mockReturnValue({
-				data: ref(mockComments),
+				data: ref(mockCommentList),
 				pending: ref(false),
 				error: ref(null),
 				refresh: vi.fn(),
@@ -344,7 +350,7 @@ describe("Admin Dashboard Page", () => {
 				refresh: vi.fn(),
 			});
 			mockFetchAdminComments.mockReturnValue({
-				data: ref(mockComments),
+				data: ref(mockCommentList),
 				pending: ref(false),
 				error: ref(null),
 				refresh: vi.fn(),
@@ -422,7 +428,7 @@ describe("Admin Dashboard Page", () => {
 				refresh: vi.fn(),
 			});
 			mockFetchAdminComments.mockReturnValue({
-				data: ref(mockComments),
+				data: ref(mockCommentList),
 				pending: ref(false),
 				error: ref(null),
 				refresh: vi.fn(),
@@ -465,7 +471,7 @@ describe("Admin Dashboard Page", () => {
 				refresh: vi.fn(),
 			});
 			mockFetchAdminComments.mockReturnValue({
-				data: ref(mockComments),
+				data: ref(mockCommentList),
 				pending: ref(false),
 				error: ref(null),
 				refresh: vi.fn(),
@@ -557,7 +563,7 @@ describe("Admin Dashboard Page", () => {
 				refresh: vi.fn(),
 			});
 			mockFetchAdminComments.mockReturnValue({
-				data: ref(mockComments),
+				data: ref(mockCommentList),
 				pending: ref(false),
 				error: ref(null),
 				refresh: vi.fn(),

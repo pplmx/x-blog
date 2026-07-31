@@ -7,9 +7,10 @@ from fastapi import FastAPI, HTTPException, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
 from slowapi.errors import RateLimitExceeded
+from starlette.requests import ClientDisconnect
 
 from app.cache import cache_clear
 from app.database import Base, engine
@@ -71,8 +72,10 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=ALLOWED_ORIGINS,
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    # Restrict to what the frontend actually uses (issue #20); origins are
+    # already an explicit allowlist.
+    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allow_headers=["Content-Type", "Authorization"],
 )
 
 # Add GZip compression for responses > 500 bytes
@@ -187,6 +190,34 @@ async def http_exception_handler(_request: Request, exc: HTTPException):
 
 
 app.add_exception_handler(RateLimitExceeded, rate_limit_exceeded_handler)
+
+
+@app.exception_handler(Exception)
+async def unhandled_exception_handler(request: Request, exc: Exception):
+    """Catch-all: keep the error envelope consistent and log server-side.
+
+    Without this, an unexpected exception leaks Starlette's raw 500 body.
+    Specific handlers (HTTPException, validation, rate limit) take precedence.
+    """
+    if isinstance(exc, ClientDisconnect):
+        # Client aborted mid-request: nothing to respond to, and a full
+        # traceback per aborted connection would just flood the error log.
+        logger.debug("client_disconnected", extra={"path": request.url.path})
+        return Response(status_code=499)
+    logger.exception(
+        "unhandled_exception",
+        extra={"path": request.url.path, "error_type": type(exc).__name__},
+    )
+    return JSONResponse(
+        status_code=500,
+        content={
+            "error": {
+                "code": "INTERNAL_ERROR",
+                "message": "Internal server error",
+                "details": {},
+            }
+        },
+    )
 
 app.include_router(health_router)
 app.include_router(stats_router)

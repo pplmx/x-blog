@@ -11,7 +11,14 @@ definePageMeta({ layout: "admin" });
 
 useHead({ title: "评论管理 - X-Blog" });
 
-const { data: comments, pending, error, refresh } = await fetchAdminComments();
+const PAGE_SIZE = 20;
+const {
+	data: comments,
+	pending,
+	error,
+	refresh,
+} = await fetchAdminComments(undefined, 1, PAGE_SIZE);
+const currentPage = ref(1);
 const isProcessing = ref(false);
 const selectedIds = ref<Set<number>>(new Set());
 const actionError = ref<string | null>(null);
@@ -21,8 +28,19 @@ function getErrorMessage(e: unknown): string {
 	return "操作失败，请重试";
 }
 
+const totalPages = computed(() => comments.value?.pagination?.total_pages ?? 1);
+
+/** Switch to another page of the comments list. */
+async function gotoPage(page: number) {
+	if (page < 1 || page > totalPages.value || page === currentPage.value) return;
+	currentPage.value = page;
+	selectedIds.value = new Set();
+	const res = await fetchAdminComments(undefined, page, PAGE_SIZE);
+	comments.value = res.data.value;
+}
+
 const pendingComments = computed(() =>
-	(comments.value ?? []).filter((c: AdminComment) => !c.is_approved),
+	(comments.value?.items ?? []).filter((c: AdminComment) => !c.is_approved),
 );
 
 function toggleSelect(id: number) {
@@ -33,7 +51,7 @@ function toggleSelect(id: number) {
 }
 
 function toggleSelectAll() {
-	const pendings = (comments.value ?? []).filter((c: AdminComment) => !c.is_approved);
+	const pendings = (comments.value?.items ?? []).filter((c: AdminComment) => !c.is_approved);
 	if (selectedIds.value.size === pendings.length) {
 		selectedIds.value = new Set();
 	} else {
@@ -92,7 +110,7 @@ async function handleApprove(id: number, approved: boolean) {
           评论管理
         </h1>
         <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">
-          共 {{ comments?.length || 0 }} 条评论，<span class="text-amber-600 dark:text-amber-400">{{ pendingComments.length }} 条待审核</span>
+          共 {{ comments?.pagination?.total ?? 0 }} 条评论，<span class="text-amber-600 dark:text-amber-400">本页 {{ pendingComments.length }} 条待审核</span>
         </p>
       </div>
       <div
@@ -142,7 +160,7 @@ async function handleApprove(id: number, approved: boolean) {
       {{ error?.message || String(error) }}
     </div>
 
-    <div v-else-if="!comments || comments.length === 0" class="flex flex-col items-center justify-center py-16 bg-gradient-to-br from-gray-50 dark:from-gray-800/50 to-white dark:to-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800">
+    <div v-else-if="!comments || !comments.items || comments.items.length === 0" class="flex flex-col items-center justify-center py-16 bg-gradient-to-br from-gray-50 dark:from-gray-800/50 to-white dark:to-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800">
       <Icon icon="lucide:message-circle" class="w-12 h-12 text-gray-400 mb-4" />
       <h3 class="text-lg font-medium text-gray-700 dark:text-gray-300 mb-1">
         暂无评论
@@ -154,7 +172,7 @@ async function handleApprove(id: number, approved: boolean) {
 
     <div v-else class="space-y-3">
       <div
-        v-for="comment in comments"
+        v-for="comment in comments.items"
         :key="comment.id"
         class="bg-white dark:bg-gray-900 rounded-xl border border-gray-100 dark:border-gray-800 p-5 shadow-sm"
         :class="{ 'ring-2 ring-amber-300 dark:ring-amber-700': !comment.is_approved }"
@@ -224,6 +242,31 @@ async function handleApprove(id: number, approved: boolean) {
             </button>
           </div>
         </div>
+      </div>
+
+      <div
+        v-if="totalPages > 1"
+        class="flex items-center justify-between pt-6 border-t border-gray-100 dark:border-gray-800"
+      >
+        <button
+          type="button"
+          :disabled="currentPage <= 1"
+          class="px-4 py-2 text-sm bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+          @click="gotoPage(currentPage - 1)"
+        >
+          上一页
+        </button>
+        <span class="text-sm text-gray-500 dark:text-gray-400">
+          第 {{ currentPage }} / {{ totalPages }} 页
+        </span>
+        <button
+          type="button"
+          :disabled="currentPage >= totalPages"
+          class="px-4 py-2 text-sm bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-900/50 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+          @click="gotoPage(currentPage + 1)"
+        >
+          下一页
+        </button>
       </div>
     </div>
   </div>

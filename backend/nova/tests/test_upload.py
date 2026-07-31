@@ -29,7 +29,8 @@ def test_upload_jpeg_success(client, auth_headers):
 
 def test_upload_webp_success(client, auth_headers):
     """Should accept WebP images."""
-    file_content = b"RIFF" + b"\x00" * 100  # Fake WebP header
+    # RIFF container + WEBP tag at bytes 8..12
+    file_content = b"RIFF" + b"\x00" * 4 + b"WEBP" + b"\x00" * 100
     response = client.post(
         "/api/upload",
         files={"file": ("image.webp", file_content, "image/webp")},
@@ -37,6 +38,31 @@ def test_upload_webp_success(client, auth_headers):
     )
     assert response.status_code == 200
     assert "url" in response.json()
+
+
+def test_upload_content_type_mismatch_rejected(client, auth_headers):
+    """A PNG file declared as JPEG must be rejected (issue #20)."""
+    png_bytes = b"\x89PNG\r\n\x1a\n" + b"\x00" * 100
+    response = client.post(
+        "/api/upload",
+        files={"file": ("fake.jpg", png_bytes, "image/jpeg")},
+        headers=auth_headers,
+    )
+    assert response.status_code == 400
+    data = response.json()
+    assert "does not match" in data["error"]["message"]
+
+
+def test_upload_fake_image_content_rejected(client, auth_headers):
+    """Text bytes with an image Content-Type must be rejected (issue #20)."""
+    response = client.post(
+        "/api/upload",
+        files={"file": ("evil.png", b"not an image at all", "image/png")},
+        headers=auth_headers,
+    )
+    assert response.status_code == 400
+    data = response.json()
+    assert "does not match" in data["error"]["message"]
 
 
 def test_upload_unsupported_type(client, auth_headers):

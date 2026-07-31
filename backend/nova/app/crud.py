@@ -424,6 +424,15 @@ def delete_comment(db: Session, comment_id: int) -> bool:
     return True
 
 
+def escape_like_pattern(query: str) -> str:
+    """Escape LIKE metacharacters so user input matches literally.
+
+    % and _ would otherwise act as wildcards and degenerate into full-table
+    matches (issue #20). Must be paired with ``escape="\\"`` on ilike/like.
+    """
+    return query.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+
+
 def search_posts(db: Session, query: str, page: int = 1, limit: int = 10):
     offset = (page - 1) * limit
     is_postgres = db.bind.dialect.name == "postgresql"
@@ -460,14 +469,14 @@ def search_posts(db: Session, query: str, page: int = 1, limit: int = 10):
             .where(ts_vector.op("@@")(ts_query))
         )
     else:
-        search_pattern = f"%{query}%"
+        search_pattern = f"%{escape_like_pattern(query)}%"
 
         stmt = (
             select(models.Post)
             .where(
                 or_(
-                    models.Post.title.ilike(search_pattern),
-                    models.Post.content.ilike(search_pattern),
+                    models.Post.title.ilike(search_pattern, escape="\\"),
+                    models.Post.content.ilike(search_pattern, escape="\\"),
                 )
             )
             .where(models.Post.published)
@@ -476,7 +485,7 @@ def search_posts(db: Session, query: str, page: int = 1, limit: int = 10):
                 joinedload(models.Post.category),
                 joinedload(models.Post.tags),
             )
-            .order_by(models.Post.title.ilike(search_pattern).desc(), models.Post.created_at.desc())
+            .order_by(models.Post.title.ilike(search_pattern, escape="\\").desc(), models.Post.created_at.desc())
             .offset(offset)
             .limit(limit)
         )
@@ -485,8 +494,8 @@ def search_posts(db: Session, query: str, page: int = 1, limit: int = 10):
             select(func.count(models.Post.id))
             .where(
                 or_(
-                    models.Post.title.ilike(search_pattern),
-                    models.Post.content.ilike(search_pattern),
+                    models.Post.title.ilike(search_pattern, escape="\\"),
+                    models.Post.content.ilike(search_pattern, escape="\\"),
                 )
             )
             .where(models.Post.published)

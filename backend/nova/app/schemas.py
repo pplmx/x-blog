@@ -1,12 +1,29 @@
 import re
 from datetime import datetime
+from urllib.parse import urlparse
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 # Slug pattern: lowercase alphanumerics joined by single hyphens. Free-form
 # slugs with spaces/&/CJK produce broken RSS/Atom/sitemap URLs and can never
 # be matched by the public /posts/{slug_or_id} route.
 SLUG_PATTERN = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
+
+_ALLOWED_COVER_SCHEMES = {"http", "https"}
+
+
+def _validate_cover_image_url(value: str | None) -> str | None:
+    """Reject dangerous cover_image URLs (e.g. javascript:) — issue #20.
+
+    Allowed: empty string/None (clears the field), relative paths (the upload
+    endpoint returns /static/uploads/...), and absolute http(s) URLs.
+    """
+    if value is None:
+        return value
+    parsed = urlparse(value)
+    if parsed.scheme and parsed.scheme not in _ALLOWED_COVER_SCHEMES:
+        raise ValueError("cover_image must be an absolute http(s) URL or a /static/... path")
+    return value
 
 
 class TagBase(BaseModel):
@@ -50,6 +67,11 @@ class PostBase(BaseModel):
 class PostCreate(PostBase):
     tags: list[str] = []
 
+    @field_validator("cover_image")
+    @classmethod
+    def check_cover_image_scheme(cls, value: str | None) -> str | None:
+        return _validate_cover_image_url(value)
+
 
 class PostUpdate(BaseModel):
     title: str | None = None
@@ -62,6 +84,11 @@ class PostUpdate(BaseModel):
     category_id: int | None = None
     cover_image: str | None = None
     tag_ids: list[int] | None = None
+
+    @field_validator("cover_image")
+    @classmethod
+    def check_cover_image_scheme(cls, value: str | None) -> str | None:
+        return _validate_cover_image_url(value)
 
 
 class Post(PostBase):

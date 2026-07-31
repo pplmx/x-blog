@@ -455,12 +455,25 @@ export async function deleteAdminTag(id: number) {
 	});
 }
 
-/** Fetch all comments for admin panel (auth required). */
-export async function fetchAdminComments(postId?: number) {
+/** Fetch comments for admin panel (auth required, paginated envelope). */
+export interface AdminCommentListResponse {
+	items: AdminComment[];
+	pagination: {
+		total: number;
+		page: number;
+		limit: number;
+		total_pages: number;
+	};
+}
+
+export async function fetchAdminComments(postId?: number, page = 1, limit = 20) {
 	const config = useRuntimeConfig();
 	const apiUrl = config.public.apiUrl;
-	const query = postId ? `?post_id=${postId}` : "";
-	return useFetch<AdminComment[]>(`${apiUrl}/api/admin/comments${query}`, {
+	const query = new URLSearchParams();
+	if (postId) query.set("post_id", String(postId));
+	query.set("page", String(page));
+	query.set("limit", String(limit));
+	return useFetch<AdminCommentListResponse>(`${apiUrl}/api/admin/comments?${query}`, {
 		headers: getAuthHeaders(),
 		server: false,
 	});

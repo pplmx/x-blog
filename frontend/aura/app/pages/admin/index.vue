@@ -22,7 +22,7 @@ const [postsResponse, categoriesResult, tagsResult, commentsResult] = await Prom
 	usePosts({ limit: 1000 }),
 	useCategories(),
 	useTags(),
-	fetchAdminComments(),
+	fetchAdminComments(undefined, 1, 100),
 ]);
 
 // useFetch resolves to the AsyncData object — the payload is in .data.value,
@@ -30,7 +30,7 @@ const [postsResponse, categoriesResult, tagsResult, commentsResult] = await Prom
 const posts = postsResponse.data.value?.items ?? [];
 const categories = categoriesResult.data.value;
 const tags = tagsResult.data.value;
-const allComments: AdminComment[] = commentsResult.data?.value ?? [];
+const allComments: AdminComment[] = commentsResult.data?.value?.items ?? [];
 
 const publishedCount = posts.filter((p) => p.published).length;
 const draftCount = posts.length - publishedCount;

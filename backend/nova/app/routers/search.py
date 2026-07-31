@@ -1,3 +1,4 @@
+import html
 import re
 
 from fastapi import APIRouter, Depends, Query, Request
@@ -12,14 +13,23 @@ from ..schemas import PostList
 
 router = APIRouter(prefix="/api/search", tags=["search"])
 
+# Cap query length so malicious input cannot drive expensive regex/DB work.
+MAX_QUERY_LENGTH = 200
+
 
 def _highlight_sqlite(content: str, query: str) -> str:
-    """Simple regex-based highlighting for SQLite."""
+    """Simple regex-based highlighting for SQLite.
+
+    Content is HTML-escaped *before* highlighting so the ``<mark>`` tags we
+    inject are the only markup present in the result — article text can never
+    smuggle raw HTML into the snippet.
+    """
     words = [re.escape(w) for w in query.split() if w]
     if not words:
-        return content[:300]
+        return html.escape(content[:300])
     pattern = f"({'|'.join(words)})"
-    highlighted = re.sub(pattern, r"<mark>\1</mark>", content, flags=re.IGNORECASE)
+    escaped = html.escape(content)
+    highlighted = re.sub(pattern, r"<mark>\1</mark>", escaped, flags=re.IGNORECASE)
     return highlighted[:500] if len(highlighted) > 500 else highlighted
 
 
@@ -36,7 +46,13 @@ def _build_snippet(post: Post, query: str, is_postgres: bool, db: Session) -> st
             "StartSel=<mark>, StopSel=</mark>, MaxWords=40, MinWords=20, ShortWord=3",
         )
         result = db.execute(headline).scalar()
-        return result if result else (post.excerpt or post.content[:200])
+        if not result:
+            return post.excerpt or post.content[:200]
+        # ts_headline output is NOT guaranteed HTML-safe (see PostgreSQL docs
+        # "Cross-site Scripting (XSS) Safety"): escape it, then restore only
+        # the <mark> highlight delimiters we configured above.
+        escaped = html.escape(result)
+        return escaped.replace("&lt;mark&gt;", "<mark>").replace("&lt;/mark&gt;", "</mark>")
     return _highlight_sqlite(post.excerpt or post.content[:300], query)
 
 
@@ -44,7 +60,7 @@ def _build_snippet(post: Post, query: str, is_postgres: bool, db: Session) -> st
 @limiter.limit(f"{RATE_LIMIT_SEARCH}/minute")
 def search(
     request: Request,  # noqa: ARG001
-    q: str = Query(..., min_length=1),
+    q: str = Query(..., min_length=1, max_length=MAX_QUERY_LENGTH),
     page: int = Query(1, ge=1),
     limit: int = Query(10, ge=1, le=50),
     db: Session = Depends(get_db),

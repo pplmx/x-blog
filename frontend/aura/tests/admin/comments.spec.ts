@@ -70,6 +70,12 @@ const mockComments = [
 	},
 ];
 
+/** Envelope returned by the paginated admin comments endpoint. */
+const mockCommentList = {
+	items: mockComments,
+	pagination: { total: 2, page: 1, limit: 100, total_pages: 1 },
+};
+
 async function loadPage() {
 	const { default: CommentsPage } = await import("@/pages/admin/comments.vue");
 	return CommentsPage;
@@ -115,7 +121,10 @@ describe("Admin Comments Page", () => {
 	describe("Empty state", () => {
 		it("renders empty state when no comments exist", async () => {
 			mockFetchAdminComments.mockReturnValue({
-				data: ref([]),
+				data: ref({
+					items: [],
+					pagination: { total: 0, page: 1, limit: 20, total_pages: 0 },
+				}),
 				pending: ref(false),
 				error: ref(null),
 				refresh: vi.fn(),
@@ -130,7 +139,7 @@ describe("Admin Comments Page", () => {
 	describe("Populated state", () => {
 		beforeEach(() => {
 			mockFetchAdminComments.mockReturnValue({
-				data: ref(mockComments),
+				data: ref(mockCommentList),
 				pending: ref(false),
 				error: ref(null),
 				refresh: vi.fn(),
@@ -294,7 +303,7 @@ describe("Admin Comments Page", () => {
 	describe("Batch select and approve", () => {
 		beforeEach(() => {
 			mockFetchAdminComments.mockReturnValue({
-				data: ref(mockComments),
+				data: ref(mockCommentList),
 				pending: ref(false),
 				error: ref(null),
 				refresh: vi.fn(),
@@ -431,6 +440,73 @@ describe("Admin Comments Page", () => {
 			expect(batchApproveButton?.attributes("disabled")).toBeDefined();
 
 			await flushPromises();
+		});
+	});
+
+	describe("Pagination", () => {
+		it("shows page navigation and loads the next page", async () => {
+			const page1 = {
+				items: mockComments,
+				pagination: { total: 40, page: 1, limit: 20, total_pages: 2 },
+			};
+			const page2 = {
+				items: [
+					{
+						id: 3,
+						post_id: 30,
+						post_title: "Page Two Post",
+						nickname: "Carol",
+						email: "carol@test.com",
+						content: "Comment from page two",
+						ip_address: "127.0.0.4",
+						is_approved: false,
+						created_at: "2024-03-12T10:00:00Z",
+					},
+				],
+				pagination: { total: 40, page: 2, limit: 20, total_pages: 2 },
+			};
+			mockFetchAdminComments
+				.mockReturnValueOnce({
+					data: ref(page1),
+					pending: ref(false),
+					error: ref(null),
+					refresh: vi.fn(),
+				})
+				.mockReturnValue({
+					data: ref(page2),
+					pending: ref(false),
+					error: ref(null),
+					refresh: vi.fn(),
+				});
+
+			const CommentsPage = await loadPage();
+			const wrapper = await mountWithSuspense(CommentsPage);
+
+			expect(wrapper.text()).toContain("第 1 / 2 页");
+
+			const nextButton = wrapper.findAll("button").find((b) => b.text().trim() === "下一页");
+			expect(nextButton).toBeDefined();
+			await nextButton?.trigger("click");
+			await flushPromises();
+
+			expect(mockFetchAdminComments).toHaveBeenLastCalledWith(undefined, 2, 20);
+			expect(wrapper.text()).toContain("Comment from page two");
+			expect(wrapper.text()).toContain("第 2 / 2 页");
+		});
+
+		it("hides page navigation when there is a single page", async () => {
+			mockFetchAdminComments.mockReturnValue({
+				data: ref(mockCommentList),
+				pending: ref(false),
+				error: ref(null),
+				refresh: vi.fn(),
+			});
+			const CommentsPage = await loadPage();
+			const wrapper = await mountWithSuspense(CommentsPage);
+
+			const nextButton = wrapper.findAll("button").find((b) => b.text().trim() === "下一页");
+			expect(nextButton).toBeUndefined();
+			expect(wrapper.text()).not.toContain("第 1 /");
 		});
 	});
 });

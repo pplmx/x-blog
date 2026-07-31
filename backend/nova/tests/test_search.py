@@ -170,6 +170,24 @@ def test_highlight_sqlite_highlights_matches():
     assert "The " in result
 
 
+def test_build_snippet_postgres_escapes_raw_html():
+    """ts_headline output is not HTML-safe — only our <mark> tags may survive (issue #20)."""
+    from unittest.mock import MagicMock
+
+    from app.routers.search import _build_snippet
+
+    mock_post = MagicMock()
+    mock_post.excerpt = "excerpt"
+    mock_post.content = "content"
+    mock_db = MagicMock()
+    # Simulate ts_headline returning raw article HTML with our markers inserted
+    mock_db.execute.return_value.scalar.return_value = "<script>alert(1)</script><mark>hello</mark>"
+    result = _build_snippet(mock_post, "hello", True, mock_db)
+    assert "<script>" not in result
+    assert "&lt;script&gt;" in result
+    assert "<mark>hello</mark>" in result
+
+
 def test_build_snippet_empty_query_returns_none():
     """Test _build_snippet returns None for empty/whitespace query."""
     from unittest.mock import MagicMock
@@ -265,3 +283,25 @@ def test_popular_posts_excludes_scheduled(client, auth_headers):
     titles = [item["title"] for item in response.json()]
     assert "Past Popular" in titles
     assert "Future Popular" not in titles
+
+
+def test_highlight_sqlite_escapes_html_before_highlighting():
+    """Article HTML must be escaped so it cannot survive into the snippet (issue #20)."""
+    from app.routers.search import _highlight_sqlite
+
+    content = "<script>alert('xss')</script> and <b>bold</b> text"
+    result = _highlight_sqlite(content, "bold")
+    # Raw article markup must not pass through
+    assert "<script>" not in result
+    assert "&lt;script&gt;" in result
+    assert "&lt;b&gt;" in result
+    # Our own highlighting markup is the only raw HTML present
+    assert "<mark>bold</mark>" in result
+
+
+def test_search_query_over_max_length_rejected(client):
+    """Query longer than MAX_QUERY_LENGTH is rejected with 422 (issue #20)."""
+    response = client.get("/api/search", params={"q": "a" * 201})
+    assert response.status_code == 422
+    data = response.json()
+    assert data["error"]["code"] == "VALIDATION_ERROR"

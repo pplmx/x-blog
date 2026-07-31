@@ -73,7 +73,7 @@ $$
 
 ![X-Blog Logo](https://placehold.co/800x400/3b82f6/ffffff?text=X-Blog)
 
-欢迎使用 X-Blog！你可以通过管理后台 `admin` / `admin123` 登录进行管理。
+欢迎使用 X-Blog！部署前请务必通过环境变量 `ADMIN_PASSWORD` 修改管理员密码，详见部署文档。
 """,
         "published": True,
         "pinned": True,
