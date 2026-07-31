@@ -8,28 +8,32 @@ test.describe("Homepage", () => {
 
 	test("displays the blog title", async ({ page }) => {
 		await page.goto("/");
-		await expect(page.locator("h1")).toContainText("X-Blog");
+		// The header brand shows the site name
+		await expect(page.locator("header, nav").first()).toContainText("X-Blog");
 	});
 
 	test("shows popular posts section", async ({ page }) => {
 		await page.goto("/");
-		await expect(page.locator("h2")).toContainText(/热门文章/);
+		await expect(page.locator("h2:has-text(\"热门文章\")")).toBeVisible();
 	});
 
 	test("shows posts list section", async ({ page }) => {
 		await page.goto("/");
-		await expect(page.locator("h2")).toContainText(/最新文章/);
+		await expect(page.locator("h2:has-text(\"最新文章\")")).toBeVisible();
 	});
 
 	test("search box is visible", async ({ page }) => {
 		await page.goto("/");
-		const searchInput = page.getByPlaceholder("搜索文章...");
+		// The hero links to the search page which hosts the input
+		await page.locator('a:has-text("搜索文章")').first().click();
+		await expect(page).toHaveURL(/\/search/);
+		const searchInput = page.getByPlaceholder("输入关键词...");
 		await expect(searchInput).toBeVisible();
 	});
 
 	test("search functionality works", async ({ page }) => {
-		await page.goto("/");
-		const searchInput = page.getByPlaceholder("搜索文章...");
+		await page.goto("/search");
+		const searchInput = page.getByPlaceholder("输入关键词...");
 		await searchInput.fill("test");
 		await searchInput.press("Enter");
 		await expect(page).toHaveURL(/q=test/);

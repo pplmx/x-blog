@@ -20,9 +20,7 @@ test.describe("Bookmarks page", () => {
 		await expect(page.locator("text=去浏览文章")).toBeVisible();
 	});
 
-	test("bookmark a post from homepage and view in bookmarks", async ({
-		page,
-	}) => {
+	test("bookmark a post from homepage and view in bookmarks", async ({ page }) => {
 		await page.goto("/");
 		// Find and click a bookmark button on the homepage
 		const bookmarkButton = page.locator("button[title='收藏文章']").first();
@@ -33,9 +31,9 @@ test.describe("Bookmarks page", () => {
 			await page.goto("/bookmarks");
 			await expect(page.locator("h1")).toContainText("收藏的文章");
 
-			// Should show at least one bookmarked post
-			const articleCount = await page.locator("article").count();
-			expect(articleCount).toBeGreaterThan(0);
+			// Should show at least one bookmarked post (rendered as cards)
+			const bookmarkCount = await page.locator('a[href*="/posts/"]').count();
+			expect(bookmarkCount).toBeGreaterThan(0);
 		}
 	});
 

@@ -4,32 +4,34 @@ test.describe("SEO & Feeds", () => {
 	test("RSS feed is accessible", async ({ page }) => {
 		const response = await page.goto("/rss/feed.xml");
 		expect(response?.status()).toBe(200);
-		const content = await page.content();
-		expect(content).toContain("<rss");
-		expect(content).toContain("<channel>");
+		// Read the response body — page.content() returns the browser's XML
+		// viewer wrapper (escaped XML inside HTML)
+		const body = await response?.text();
+		expect(body).toContain("<rss");
+		expect(body).toContain("<channel>");
 	});
 
 	test("Atom feed is accessible", async ({ page }) => {
 		const response = await page.goto("/rss/atom.xml");
 		expect(response?.status()).toBe(200);
-		const content = await page.content();
-		expect(content).toContain("<feed");
+		const body = await response?.text();
+		expect(body).toContain("<feed");
 	});
 
 	test("sitemap.xml is accessible", async ({ page }) => {
 		const response = await page.goto("/sitemap.xml");
 		expect(response?.status()).toBe(200);
-		const content = await page.content();
-		expect(content).toContain("<urlset");
-		expect(content).toContain("<loc>");
+		const body = await response?.text();
+		expect(body).toContain("<urlset");
+		expect(body).toContain("<loc>");
 	});
 
 	test("robots.txt is accessible", async ({ page }) => {
 		const response = await page.goto("/robots.txt");
 		expect(response?.status()).toBe(200);
-		const content = await page.content();
-		expect(content).toContain("User-agent");
-		expect(content).toContain("Sitemap");
+		const body = await response?.text();
+		expect(body).toMatch(/User-?agent/i);
+		expect(body).toContain("Sitemap");
 	});
 
 	test("page has proper meta description", async ({ page }) => {

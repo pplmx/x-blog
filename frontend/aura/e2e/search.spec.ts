@@ -1,15 +1,15 @@
 import { expect, test } from "@playwright/test";
 
 test.describe("Search", () => {
-	test("search input is visible on homepage", async ({ page }) => {
-		await page.goto("/");
-		const searchInput = page.getByPlaceholder("搜索文章...");
+	test("search input is visible on the search page", async ({ page }) => {
+		await page.goto("/search");
+		const searchInput = page.getByPlaceholder("输入关键词...");
 		await expect(searchInput).toBeVisible();
 	});
 
 	test("search results page shows results", async ({ page }) => {
-		await page.goto("/");
-		const searchInput = page.getByPlaceholder("搜索文章...");
+		await page.goto("/search");
+		const searchInput = page.getByPlaceholder("输入关键词...");
 		await searchInput.fill("test");
 		await searchInput.press("Enter");
 
@@ -23,8 +23,8 @@ test.describe("Search", () => {
 	});
 
 	test("search with no results shows message", async ({ page }) => {
-		await page.goto("/");
-		const searchInput = page.getByPlaceholder("搜索文章...");
+		await page.goto("/search");
+		const searchInput = page.getByPlaceholder("输入关键词...");
 		await searchInput.fill("zzzznotexistingzzzz");
 		await searchInput.press("Enter");
 
@@ -39,7 +39,7 @@ test.describe("Search", () => {
 	test("can navigate to search page directly", async ({ page }) => {
 		await page.goto("/search");
 		await expect(page).toHaveURL("/search");
-		const searchInput = page.getByPlaceholder("搜索文章...");
+		const searchInput = page.getByPlaceholder("输入关键词...");
 		await expect(searchInput).toBeVisible();
 	});
 });
