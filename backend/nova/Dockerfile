@@ -18,7 +18,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 RUN pip install --no-cache-dir uv
 
 # Copy only dependency files first for better caching
-COPY pyproject.toml ./
+# uv sync --frozen requires uv.lock in the context.
+COPY pyproject.toml uv.lock ./
 
 # Install all dependencies (including dev for now)
 RUN uv sync --frozen

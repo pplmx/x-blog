@@ -89,6 +89,8 @@ jobs:
           ssh_key: ${{ secrets.SSH_KEY }}
           script: |
             cd /opt/x-blog
-            docker compose pull
-            docker compose up -d
+            # docker-compose.yml builds both services from source (no image:
+            # refs), so `docker compose pull` has nothing to pull and fails.
+            # Build locally on the server instead.
+            docker compose up -d --build
             docker system prune -f

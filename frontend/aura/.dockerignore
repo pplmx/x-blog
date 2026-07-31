@@ -1,0 +1,47 @@
+# Git
+.git
+.gitignore
+
+# Node dependencies (the deps stage installs its own clean copy; the local
+# node_modules contains platform-specific binaries and would otherwise be
+# baked into the image by `COPY . .`)
+node_modules
+
+# Nuxt dev/build outputs
+.nuxt
+.output
+.nitro
+.data
+.cache
+dist
+.nuxt-ignore
+
+# Test artifacts
+tests
+e2e
+coverage
+test-results
+playwright-report
+*.spec.ts
+*.test.ts
+
+# Local database and env
+*.db
+.env
+.env.*
+!.env.example
+
+# Logs, docs, IDE
+logs
+*.log
+README.md
+LICENSE
+.DS_Store
+.idea
+.vscode
+core*
+
+# Docker
+Dockerfile
+.dockerignore
+docker-compose*.yml
