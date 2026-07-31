@@ -11,6 +11,10 @@ export default defineConfig({
 	expect: {
 		timeout: 5000,
 	},
+	// Pre-compile every page with a real browser before tests start — Nuxt dev
+	// compiles on demand, and dynamic imports issued mid-compile fail with
+	// "Failed to fetch dynamically imported module".
+	globalSetup: "./e2e/global-setup.ts",
 	use: {
 		baseURL: "http://localhost:34567",
 		trace: "on-first-retry",

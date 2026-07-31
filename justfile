@@ -108,20 +108,20 @@ test-nuxt-coverage:
 test-e2e:
     cd frontend/aura && pnpm test:e2e
 
-# Run e2e tests against live Nuxt dev server (auto-starts backend + Nuxt)
+# Run e2e tests against live Nuxt dev server (auto-starts backend + Nuxt).
+# Playwright's webServer (playwright.config.ts) starts the Nuxt dev server
+# itself on :34567 with the right env — do NOT start a second one here (it
+# only causes nuxt.lock conflicts and a poisoned module cache).
 e2e:
     @echo "Seeding database (dev admin: admin/admin123)..."
     cd backend/nova && APP_ENV=development ADMIN_PASSWORD=admin123 uv run python scripts/init_db.py
     @echo "Starting backend..."
     cd backend/nova && APP_ENV=development uv run uvicorn app.main:app --host 0.0.0.0 --port 18888 &
     @sleep 3 && curl -sf http://localhost:18888/health > /dev/null || (echo "Backend failed to start" && exit 1)
-    @echo "Starting Nuxt..."
-    cd frontend/aura && pnpm dev --port 34567 &
-    @sleep 8 && curl -sf http://localhost:34567 > /dev/null || (echo "Nuxt failed to start" && exit 1)
-    @echo "Running e2e tests..."
+    @echo "Running e2e tests (Playwright starts Nuxt on :34567)..."
     cd frontend/aura && pnpm test:e2e
     @echo "Stopping services..."
-    @pkill -f "uvicorn app.main:app" 2>/dev/null; pkill -f "nuxt dev" 2>/dev/null; echo "done"
+    @pkill -f "uvicorn app.main:app" 2>/dev/null; echo "done"
 
 # Run e2e tests against live Nuxt dev server (alias for `e2e`)
 e2e-nuxt: e2e
