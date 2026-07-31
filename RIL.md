@@ -29,6 +29,33 @@ GitHub Actions failed at `actions/setup-node@v4`:
 
 Verified: both workflow YAMLs parse (PyYAML); local `pnpm install --frozen-lockfile` passes.
 
+### Second CI run round (2026-07-31): three more failures fixed
+
+The pushed fix ran; setup-node passed but three new failures surfaced:
+
+1. **e2e-test `docker create` exit 125** — the postgres service's
+   `--health-cmd pg_isready -U xblog -d xblog_test` was unquoted, so docker
+   parsed `-U`/`-d` as its own flags. Quoted to
+   `--health-cmd "pg_isready -U xblog -d xblog_test"` (canonical form).
+2. **backend lint step** — `ruff format --check` failed on `tests/test_crud.py`
+   (stray blank lines in three multi-line `with` blocks). Reformatted with the
+   project-pinned ruff 0.15.10. Root cause of the drift: the file was last
+   formatted with a newer ruff (0.16 comma-tuple style, see
+   python314-except-comma-syntax memory).
+3. **frontend proxy specs** — `api-proxy.spec.ts` / `static-proxy.spec.ts`
+   hardcoded the dev machine's absolute path
+   (`require("/workspace/x-blog/frontend/aura/server/routes/...")`) →
+   MODULE_NOT_FOUND on CI. Now resolved via `path.resolve(__dirname, ...)`.
+4. **dashboard.spec.ts unhandled rejection** — the "excludes drafts from
+   category distribution counts" test mocked `usePosts` with the raw payload
+   (`{items, pagination}`) instead of the AsyncData shape
+   (`{data: ref(...), pending, error, refresh}`), so `admin/index.vue`
+   read `undefined.value` after teardown → vitest "1 error" → ELIFECYCLE red.
+   Would have kept the frontend job red even after the proxy fix.
+
+Verified locally: 504 backend tests pass (8 skipped), 661 frontend tests pass
+with coverage thresholds, ruff check/format + biome clean.
+
 ### Also fixed: `just init-db` couldn't create the dev admin
 
 The recipe ran `init_db.py` without env vars — with `APP_ENV` unset the script fails

@@ -228,7 +228,6 @@ class TestCreatePost:
 
         with (
             pytest.raises(ValueError) as exc_info,
-
             patch("app.crud.clear_tags_cache"),
         ):
             crud.create_post(db_session, post_data)
@@ -1152,7 +1151,6 @@ class TestIntegrityErrorHandling:
 
         post_data = schemas.PostCreate(title="Duplicate Post", slug="duplicate-slug-test", content="Other content")
         with (
-
             patch("app.crud.clear_tags_cache"),
             pytest.raises(ValueError, match="already exists"),
         ):
@@ -1168,7 +1166,6 @@ class TestIntegrityErrorHandling:
 
         update_data = schemas.PostUpdate(slug="post-one-slug")
         with (
-
             patch("app.crud.clear_tags_cache"),
             pytest.raises(ValueError, match="already exists"),
         ):

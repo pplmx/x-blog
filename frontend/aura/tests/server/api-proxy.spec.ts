@@ -59,8 +59,13 @@ const { loadHandler } = vi.hoisted(() => ({
 		vi.stubGlobal("getMethod", () => "GET");
 		vi.stubGlobal("getQuery", () => ({}));
 		vi.stubGlobal("getHeaders", () => ({ host: "localhost" }));
+		// Resolve the route file relative to this spec, so the tests work from
+		// any checkout location (the previous absolute path only existed on the
+		// dev machine and broke CI with MODULE_NOT_FOUND).
 		// eslint-disable-next-line @typescript-eslint/no-require-imports
-		return require("/workspace/x-blog/frontend/aura/server/routes/api/[...path].ts").default;
+		const path = require("node:path");
+		// eslint-disable-next-line @typescript-eslint/no-require-imports
+		return require(path.resolve(__dirname, "../../server/routes/api/[...path].ts")).default;
 	},
 }));
 

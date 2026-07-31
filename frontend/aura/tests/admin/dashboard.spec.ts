@@ -401,8 +401,13 @@ describe("Admin Dashboard Page", () => {
 				tags: [],
 			};
 			mockUsePosts.mockResolvedValue({
-				items: [draftOnlyPost],
-				pagination: { total: 1, page: 1, limit: 1000, total_pages: 1 },
+				data: ref({
+					items: [draftOnlyPost],
+					pagination: { total: 1, page: 1, limit: 1000, total_pages: 1 },
+				}),
+				pending: ref(false),
+				error: ref(null),
+				refresh: vi.fn(),
 			});
 			mockUseCategories.mockReturnValue({
 				data: ref(mockCategories),
