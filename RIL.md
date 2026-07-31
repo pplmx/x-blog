@@ -92,6 +92,35 @@ Also added explicit `postcss-import` config with node resolution in nuxt.config 
 7. **Slug format validation** (L8 backend) — free-form slugs can produce broken feed/sitemap URLs; needs a slug pattern constraint + migration-safe handling.
 8. **RIL.md entry "JWT expiration fix" from 07-30** remains accurate; **"admin password via env var FIXED" entry was inaccurate** — the dev/production distinction did not exist until this session.
 
+## E2E verification (2026-07-31 late) — full suite green
+
+After the admin fixes, the full e2e suite was run against a production build:
+**61 passed, 0 failed** (65 tests after removing 5 dead i18n specs; the
+LanguageSwitcher is never mounted — the i18n system is dead code).
+
+Real defects found and fixed during e2e verification:
+
+1. **Admin pages rendered without the admin layout** (only login.vue declared
+   it) — no sidebar anywhere. All 6 admin pages now declare
+   `definePageMeta({ layout: "admin" })`.
+2. **The layout's SSR auth redirect 302'd logged-in users** (no localStorage
+   token server-side). Now client-only (`typeof window` guard).
+3. **posts.vue + posts/[id].vue formed a parent/child route without
+   `<NuxtPage>`** — /admin/posts/1 and /admin/posts/new showed only the list.
+   Renamed to posts/index.vue (siblings).
+4. **Project composables were never auto-imported** — Nuxt 4 scans
+   srcDir/composables (app/), not rootDir/composables. The editor crashed
+   with "useUpload is not defined". Fixed with
+   `imports.dirs: [resolve(rootDir, "composables")]`.
+5. **public/robots.txt shadowed the backend-proxying route** — deleted.
+6. Admin SSR fetches 401'd (no token server-side) and Nuxt payload dedupe
+   kept the error state — admin reads now use `server: false`.
+
+Also: e2e specs were largely stale vs the redesigned UI (card lists,
+has-text buttons, disabled-button validation, dialog confirm, editor
+selectors, browser XML-viewer for feeds). All updated. tsc found the
+composables' type errors once the auto-import manifest regenerated — fixed.
+
 ## Prior Findings (preserved)
 
 ## Key Findings
