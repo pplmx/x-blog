@@ -155,7 +155,7 @@ describe("Admin Layout", () => {
 
 		const logoutButton = wrapper.findAll("button").find((b) => b.text().includes("退出登录"));
 		expect(logoutButton).toBeDefined();
-		await logoutButton!.trigger("click");
+		await logoutButton?.trigger("click");
 		expect(mockLogout).toHaveBeenCalled();
 		wrapper.unmount();
 	});
@@ -165,8 +165,10 @@ describe("Admin Layout", () => {
 			global: { stubs, slots: { default: "<div>Content</div>" } },
 		});
 
-		const changePasswordButton = wrapper.findAll("button").find((b) => b.text().includes("修改密码"));
-		await changePasswordButton!.trigger("click");
+		const changePasswordButton = wrapper
+			.findAll("button")
+			.find((b) => b.text().includes("修改密码"));
+		await changePasswordButton?.trigger("click");
 
 		// Modal content is rendered via Teleport to document.body
 		const bodyText = document.body.textContent || "";
@@ -187,8 +189,10 @@ describe("Admin Layout", () => {
 		});
 
 		// Open password modal
-		const changePasswordButton = wrapper.findAll("button").find((b) => b.text().includes("修改密码"));
-		await changePasswordButton!.trigger("click");
+		const changePasswordButton = wrapper
+			.findAll("button")
+			.find((b) => b.text().includes("修改密码"));
+		await changePasswordButton?.trigger("click");
 		await wrapper.vm.$nextTick();
 
 		// Fill in short password (new_password is 5 chars, less than 6)
@@ -220,8 +224,10 @@ describe("Admin Layout", () => {
 		});
 
 		// Open password modal
-		const changePasswordButton = wrapper.findAll("button").find((b) => b.text().includes("修改密码"));
-		await changePasswordButton!.trigger("click");
+		const changePasswordButton = wrapper
+			.findAll("button")
+			.find((b) => b.text().includes("修改密码"));
+		await changePasswordButton?.trigger("click");
 		await wrapper.vm.$nextTick();
 
 		// Fill in mismatched passwords
@@ -248,8 +254,10 @@ describe("Admin Layout", () => {
 		});
 
 		// Open password modal
-		const changePasswordButton = wrapper.findAll("button").find((b) => b.text().includes("修改密码"));
-		await changePasswordButton!.trigger("click");
+		const changePasswordButton = wrapper
+			.findAll("button")
+			.find((b) => b.text().includes("修改密码"));
+		await changePasswordButton?.trigger("click");
 		await wrapper.vm.$nextTick();
 
 		// Fill in matching passwords
@@ -285,8 +293,10 @@ describe("Admin Layout", () => {
 		});
 
 		// Open password modal
-		const changePasswordButton = wrapper.findAll("button").find((b) => b.text().includes("修改密码"));
-		await changePasswordButton!.trigger("click");
+		const changePasswordButton = wrapper
+			.findAll("button")
+			.find((b) => b.text().includes("修改密码"));
+		await changePasswordButton?.trigger("click");
 		await wrapper.vm.$nextTick();
 
 		// Fill in matching passwords
@@ -311,8 +321,10 @@ describe("Admin Layout", () => {
 		});
 
 		// Open password modal
-		const changePasswordButton = wrapper.findAll("button").find((b) => b.text().includes("修改密码"));
-		await changePasswordButton!.trigger("click");
+		const changePasswordButton = wrapper
+			.findAll("button")
+			.find((b) => b.text().includes("修改密码"));
+		await changePasswordButton?.trigger("click");
 		await wrapper.vm.$nextTick();
 
 		// Fill in matching passwords
@@ -335,8 +347,10 @@ describe("Admin Layout", () => {
 		});
 
 		// Open password modal
-		const changePasswordButton = wrapper.findAll("button").find((b) => b.text().includes("修改密码"));
-		await changePasswordButton!.trigger("click");
+		const changePasswordButton = wrapper
+			.findAll("button")
+			.find((b) => b.text().includes("修改密码"));
+		await changePasswordButton?.trigger("click");
 		await wrapper.vm.$nextTick();
 
 		// Click cancel using DOMWrapper for proper Vue event handling
@@ -358,7 +372,7 @@ describe("Admin Layout", () => {
 		// The posts nav item should have active styling
 		const postsLink = wrapper.findAll("a").find((a) => a.text().includes("文章"));
 		expect(postsLink).toBeDefined();
-		expect(postsLink!.classes().some((c) => c.includes("blue") || c.includes("active"))).toBe(true);
+		expect(postsLink?.classes().some((c) => c.includes("blue") || c.includes("active"))).toBe(true);
 		wrapper.unmount();
 	});
 

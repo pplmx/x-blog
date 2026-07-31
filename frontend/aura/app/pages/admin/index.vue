@@ -52,13 +52,16 @@ function postsInCategory(catId: number): number {
 	return posts.filter((p) => p.category?.id === catId && p.published).length;
 }
 
+const approveError = ref<string | null>(null);
+
 async function handleApprove(commentId: number, approved: boolean) {
 	try {
 		await approveAdminComment(commentId, approved);
 		const comment = allComments.find((c) => c.id === commentId);
 		if (comment) comment.is_approved = approved;
-	} catch {
-		// silent
+		approveError.value = null;
+	} catch (e) {
+		approveError.value = e instanceof Error ? e.message : "操作失败，请重试";
 	}
 }
 
@@ -249,6 +252,12 @@ const stats = [
             {{ pendingComments.length }} 条待审核
           </span>
         </h3>
+        <div
+          v-if="approveError"
+          class="mb-4 px-4 py-3 rounded-xl border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20 text-sm text-red-600 dark:text-red-400"
+        >
+          {{ approveError }}
+        </div>
         <div v-if="recentPendingComments.length === 0" class="text-gray-500 dark:text-gray-400 text-sm">
           暂无待审核评论
         </div>

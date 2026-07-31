@@ -10,6 +10,12 @@ import {
 const { data: comments, pending, error, refresh } = await fetchAdminComments();
 const isProcessing = ref(false);
 const selectedIds = ref<Set<number>>(new Set());
+const actionError = ref<string | null>(null);
+
+function getErrorMessage(e: unknown): string {
+	if (e instanceof Error) return e.message;
+	return "操作失败，请重试";
+}
 
 const pendingComments = computed(() =>
 	(comments.value ?? []).filter((c: AdminComment) => !c.is_approved),
@@ -34,10 +40,13 @@ function toggleSelectAll() {
 async function batchApprove(approved: boolean) {
 	if (selectedIds.value.size === 0) return;
 	isProcessing.value = true;
+	actionError.value = null;
 	try {
 		await batchApproveAdminComment(Array.from(selectedIds.value), approved);
 		selectedIds.value = new Set();
 		await refresh();
+	} catch (e) {
+		actionError.value = getErrorMessage(e);
 	} finally {
 		isProcessing.value = false;
 	}
@@ -46,9 +55,12 @@ async function batchApprove(approved: boolean) {
 async function handleDelete(id: number) {
 	if (!confirm("确定要删除这条评论吗？")) return;
 	isProcessing.value = true;
+	actionError.value = null;
 	try {
 		await deleteAdminComment(id);
 		await refresh();
+	} catch (e) {
+		actionError.value = getErrorMessage(e);
 	} finally {
 		isProcessing.value = false;
 	}
@@ -56,9 +68,12 @@ async function handleDelete(id: number) {
 
 async function handleApprove(id: number, approved: boolean) {
 	isProcessing.value = true;
+	actionError.value = null;
 	try {
 		await approveAdminComment(id, approved);
 		await refresh();
+	} catch (e) {
+		actionError.value = getErrorMessage(e);
 	} finally {
 		isProcessing.value = false;
 	}
@@ -75,6 +90,12 @@ async function handleApprove(id: number, approved: boolean) {
         <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">
           共 {{ comments?.length || 0 }} 条评论，<span class="text-amber-600 dark:text-amber-400">{{ pendingComments.length }} 条待审核</span>
         </p>
+      </div>
+      <div
+        v-if="actionError"
+        class="mb-6 px-4 py-3 rounded-xl border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20 text-sm text-red-600 dark:text-red-400"
+      >
+        {{ actionError }}
       </div>
       <div v-if="pendingComments.length > 0" class="flex items-center gap-2">
         <button

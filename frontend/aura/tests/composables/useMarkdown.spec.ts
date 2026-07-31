@@ -1,5 +1,11 @@
-import { beforeAll, describe, expect, it, vi } from "vitest";
-import { regexSanitize, sanitizeHtml, sanitizeUrl, useMarkdown, useMarkdownSanitised } from "~/composables/useMarkdown";
+import { beforeAll, describe, expect, it } from "vitest";
+import {
+	regexSanitize,
+	sanitizeHtml,
+	sanitizeUrl,
+	useMarkdown,
+	useMarkdownSanitised,
+} from "~/composables/useMarkdown";
 
 describe("useMarkdown debug", () => {
 	it("HTML", () => {

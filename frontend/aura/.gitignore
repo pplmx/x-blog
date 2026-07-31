@@ -29,3 +29,7 @@ content
 .env.*
 !.env.example
 core*
+
+# Playwright artifacts
+playwright-report/
+test-results/

@@ -64,13 +64,11 @@ async function mountSearchPage({
 	searchResult = mockSearchResult,
 	pending = false,
 	error = null,
-	query = "test query",
 	routeQuery = { q: "test query" },
 }: {
 	searchResult?: typeof mockSearchResult | null;
 	pending?: boolean;
 	error?: { message: string } | null;
-	query?: string;
 	routeQuery?: Record<string, string>;
 } = {}) {
 	const navigateToMock = vi.fn();
@@ -139,26 +137,26 @@ describe("Search Page", () => {
 
 	describe("Empty query state", () => {
 		it("renders the search prompt when no query", async () => {
-			const wrapper = await mountSearchPage({ query: "", routeQuery: {} });
+			const wrapper = await mountSearchPage({ routeQuery: {} });
 			expect(wrapper.text()).toContain("搜索文章");
 			expect(wrapper.text()).toContain("输入关键词开始搜索");
 		});
 
 		it("renders a search icon", async () => {
-			const wrapper = await mountSearchPage({ query: "", routeQuery: {} });
+			const wrapper = await mountSearchPage({ routeQuery: {} });
 			const svg = wrapper.find("svg");
 			expect(svg.exists()).toBe(true);
 		});
 
 		it("renders a search input field", async () => {
-			const wrapper = await mountSearchPage({ query: "", routeQuery: {} });
+			const wrapper = await mountSearchPage({ routeQuery: {} });
 			const input = wrapper.find('input[type="text"]');
 			expect(input.exists()).toBe(true);
 			expect(input.attributes("placeholder")).toContain("关键词");
 		});
 
 		it("renders a search button inside the input area", async () => {
-			const wrapper = await mountSearchPage({ query: "", routeQuery: {} });
+			const wrapper = await mountSearchPage({ routeQuery: {} });
 			const icon = wrapper.find(".iconstub");
 			expect(icon.exists()).toBe(true);
 		});

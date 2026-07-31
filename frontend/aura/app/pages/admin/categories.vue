@@ -16,14 +16,23 @@ const newCategoryName = ref("");
 const isProcessing = ref(false);
 const editingId = ref<number | null>(null);
 const editingName = ref("");
+const actionError = ref<string | null>(null);
+
+function getErrorMessage(e: unknown): string {
+	if (e instanceof Error) return e.message;
+	return "操作失败，请重试";
+}
 
 async function handleCreate() {
 	if (!newCategoryName.value.trim()) return;
 	isProcessing.value = true;
+	actionError.value = null;
 	try {
 		await createAdminCategory(newCategoryName.value.trim());
 		newCategoryName.value = "";
 		await refresh();
+	} catch (e) {
+		actionError.value = getErrorMessage(e);
 	} finally {
 		isProcessing.value = false;
 	}
@@ -37,10 +46,13 @@ async function startEdit(category: { id: number; name: string }) {
 async function confirmEdit(id: number) {
 	if (!editingName.value.trim()) return;
 	isProcessing.value = true;
+	actionError.value = null;
 	try {
 		await updateAdminCategory(id, editingName.value.trim());
 		editingId.value = null;
 		await refresh();
+	} catch (e) {
+		actionError.value = getErrorMessage(e);
 	} finally {
 		isProcessing.value = false;
 	}
@@ -49,9 +61,12 @@ async function confirmEdit(id: number) {
 async function handleDelete(id: number) {
 	if (!confirm("确定要删除这个分类吗？")) return;
 	isProcessing.value = true;
+	actionError.value = null;
 	try {
 		await deleteAdminCategory(id);
 		await refresh();
+	} catch (e) {
+		actionError.value = getErrorMessage(e);
 	} finally {
 		isProcessing.value = false;
 	}
@@ -69,6 +84,14 @@ async function handleDelete(id: number) {
       <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">
         共 {{ categories?.length || 0 }} 个分类
       </p>
+    </div>
+
+    <!-- Action error feedback -->
+    <div
+      v-if="actionError"
+      class="mb-6 px-4 py-3 rounded-xl border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20 text-sm text-red-600 dark:text-red-400"
+    >
+      {{ actionError }}
     </div>
 
     <!-- Create form -->
