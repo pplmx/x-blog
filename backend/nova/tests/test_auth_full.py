@@ -220,11 +220,9 @@ def test_admin_create_post_with_auth(client, auth_headers):
 def test_admin_create_category_with_auth(client, auth_headers):
     """Creating categories works with valid token."""
     response = client.post(
-        "/api/admin/categories?name=Auth+Category",
-        headers={
-            **auth_headers,
-            "Content-Type": "application/x-www-form-urlencoded",
-        },
+        "/api/admin/categories",
+        json={"name": "Auth Category"},
+        headers=auth_headers,
     )
     assert response.status_code in [200, 201]
     data = response.json()
@@ -234,11 +232,9 @@ def test_admin_create_category_with_auth(client, auth_headers):
 def test_admin_create_tag_with_auth(client, auth_headers):
     """Creating tags works with valid token."""
     response = client.post(
-        "/api/admin/tags?name=AuthTag",
-        headers={
-            **auth_headers,
-            "Content-Type": "application/x-www-form-urlencoded",
-        },
+        "/api/admin/tags",
+        json={"name": "AuthTag"},
+        headers=auth_headers,
     )
     assert response.status_code in [200, 201]
     data = response.json()
@@ -249,11 +245,9 @@ def test_admin_delete_category_with_auth(client, auth_headers):
     """Deleting categories works with valid token."""
     # Create a category first
     create_response = client.post(
-        "/api/admin/categories?name=DeleteMe",
-        headers={
-            **auth_headers,
-            "Content-Type": "application/x-www-form-urlencoded",
-        },
+        "/api/admin/categories",
+        json={"name": "DeleteMe"},
+        headers=auth_headers,
     )
     assert create_response.status_code in [200, 201]
     category_id = create_response.json()["id"]
@@ -270,11 +264,9 @@ def test_admin_delete_tag_with_auth(client, auth_headers):
     """Deleting tags works with valid token."""
     # Create a tag first
     create_response = client.post(
-        "/api/admin/tags?name=DeleteMeTag",
-        headers={
-            **auth_headers,
-            "Content-Type": "application/x-www-form-urlencoded",
-        },
+        "/api/admin/tags",
+        json={"name": "DeleteMeTag"},
+        headers=auth_headers,
     )
     assert create_response.status_code in [200, 201]
     tag_id = create_response.json()["id"]

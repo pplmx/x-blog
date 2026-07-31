@@ -2,7 +2,7 @@ from datetime import UTC, datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from fastapi.security import OAuth2PasswordRequestForm
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy import or_
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, joinedload
@@ -28,7 +28,13 @@ class LoginResponse(BaseModel):
 
 class UserCreate(BaseModel):
     username: str
-    password: str
+    password: str = Field(min_length=8, description="Password must be at least 8 characters")
+
+
+class NameRequest(BaseModel):
+    """JSON body for category/tag create and rename (the admin UI sends a body)."""
+
+    name: str
 
 
 class UserResponse(BaseModel):
@@ -239,18 +245,24 @@ def admin_update_post(
         post.pinned = post_data.pinned
     if post_data.cover_image is not None:
         post.cover_image = post_data.cover_image
-    if post_data.category_id is not None:
-        category = db.query(models.Category).filter(models.Category.id == post_data.category_id).first()
-        if not category:
-            raise HTTPException(status_code=400, detail=f"Category with id {post_data.category_id} not found")
-        post.category_id = post_data.category_id
+
+    # Fields that support explicit clearing (null) are handled via
+    # model_dump(exclude_unset=True), which distinguishes "omitted" from
+    # "explicitly null".
+    update_fields = post_data.model_dump(exclude_unset=True)
+    if "category_id" in update_fields:
+        if post_data.category_id is not None:
+            category = db.query(models.Category).filter(models.Category.id == post_data.category_id).first()
+            if not category:
+                raise HTTPException(status_code=400, detail=f"Category with id {post_data.category_id} not found")
+            post.category_id = post_data.category_id
+        else:
+            post.category_id = None
 
     if post_data.tag_ids is not None:
         tags = db.query(models.Tag).filter(models.Tag.id.in_(post_data.tag_ids)).all()
         post.tags = tags
 
-    # Handle publish_at separately: must support clearing to None
-    update_fields = post_data.model_dump(exclude_unset=True)
     if "publish_at" in update_fields:
         post.publish_at = post_data.publish_at
 
@@ -291,10 +303,11 @@ def admin_list_categories(
 
 @router.post("/categories", response_model=dict)
 def admin_create_category(
-    name: str,
+    body: NameRequest,
     db: Session = Depends(get_db),
     _current_user: auth.User = Depends(get_current_admin),
 ):
+    name = body.name
     existing = db.query(models.Category).filter(models.Category.name == name).first()
     if existing:
         raise HTTPException(status_code=400, detail="Category already exists")
@@ -314,7 +327,7 @@ def admin_create_category(
 @router.put("/categories/{category_id}", response_model=dict)
 def admin_update_category(
     category_id: int,
-    name: str,
+    body: NameRequest,
     db: Session = Depends(get_db),
     _current_user: auth.User = Depends(get_current_admin),
 ):
@@ -322,7 +335,7 @@ def admin_update_category(
     if not category:
         raise HTTPException(status_code=404, detail="Category not found")
 
-    category.name = name
+    category.name = body.name
     try:
         db.commit()
     except IntegrityError:
@@ -374,10 +387,11 @@ def admin_list_tags(
 
 @router.post("/tags", response_model=dict)
 def admin_create_tag(
-    name: str,
+    body: NameRequest,
     db: Session = Depends(get_db),
     _current_user: auth.User = Depends(get_current_admin),
 ):
+    name = body.name
     existing = db.query(models.Tag).filter(models.Tag.name == name).first()
     if existing:
         raise HTTPException(status_code=400, detail="Tag already exists")
@@ -397,7 +411,7 @@ def admin_create_tag(
 @router.put("/tags/{tag_id}", response_model=dict)
 def admin_update_tag(
     tag_id: int,
-    name: str,
+    body: NameRequest,
     db: Session = Depends(get_db),
     _current_user: auth.User = Depends(get_current_admin),
 ):
@@ -405,7 +419,7 @@ def admin_update_tag(
     if not tag:
         raise HTTPException(status_code=404, detail="Tag not found")
 
-    tag.name = name
+    tag.name = body.name
     try:
         db.commit()
     except IntegrityError:
@@ -500,11 +514,13 @@ def admin_batch_approve_comments(
 # Password management
 class PasswordChangeRequest(BaseModel):
     current_password: str
-    new_password: str
+    new_password: str = Field(min_length=8, description="New password must be at least 8 characters")
 
 
 @router.post("/password")
+@limiter.limit(f"{RATE_LIMIT_AUTH}/minute")
 def change_password(
+    request: Request,  # noqa: ARG001
     body: PasswordChangeRequest,
     db: Session = Depends(get_db),
     current_user: auth.User = Depends(get_current_admin),
@@ -527,5 +543,12 @@ def admin_delete_comment(
         raise HTTPException(status_code=404, detail="Comment not found")
 
     db.delete(comment)
-    db.commit()
+    try:
+        db.commit()
+    except IntegrityError:
+        # Parent comment with replies: FK violation on Postgres, orphaned
+        # replies on SQLite (FKs off). Reject with a clear 400 like the
+        # public delete path instead of a 500.
+        db.rollback()
+        raise HTTPException(status_code=400, detail="Cannot delete comment: it has dependent records")
     return {"message": "Comment deleted"}

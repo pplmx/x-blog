@@ -193,10 +193,33 @@ class TestAdminCategories:
 
     def test_create_category(self, client, auth_headers):
         response = client.post(
-            "/api/admin/categories?name=New%20Category",
-            headers={**auth_headers, "Content-Type": "application/x-www-form-urlencoded"},
+            "/api/admin/categories",
+            json={"name": "New Category"},
+            headers=auth_headers,
         )
         assert response.status_code in [200, 201]
+        assert response.json()["name"] == "New Category"
+
+    def test_create_category_missing_name(self, client, auth_headers):
+        """Missing body name must be a 422, not a silent query-param read."""
+        response = client.post(
+            "/api/admin/categories",
+            headers=auth_headers,
+        )
+        assert response.status_code == 422
+
+    def test_update_category(self, client, auth_headers, db_session):
+        category = models.Category(name="Old Name")
+        db_session.add(category)
+        db_session.commit()
+
+        response = client.put(
+            f"/api/admin/categories/{category.id}",
+            json={"name": "Renamed"},
+            headers=auth_headers,
+        )
+        assert response.status_code == 200
+        assert response.json()["name"] == "Renamed"
 
     def test_delete_category(self, client, auth_headers, db_session):
         category = models.Category(name="Test")
@@ -219,10 +242,25 @@ class TestAdminTags:
 
     def test_create_tag(self, client, auth_headers):
         response = client.post(
-            "/api/admin/tags?name=NewTag",
-            headers={**auth_headers, "Content-Type": "application/x-www-form-urlencoded"},
+            "/api/admin/tags",
+            json={"name": "NewTag"},
+            headers=auth_headers,
         )
         assert response.status_code in [200, 201]
+        assert response.json()["name"] == "NewTag"
+
+    def test_update_tag(self, client, auth_headers, db_session):
+        tag = models.Tag(name="Old Tag")
+        db_session.add(tag)
+        db_session.commit()
+
+        response = client.put(
+            f"/api/admin/tags/{tag.id}",
+            json={"name": "Renamed Tag"},
+            headers=auth_headers,
+        )
+        assert response.status_code == 200
+        assert response.json()["name"] == "Renamed Tag"
 
     def test_delete_tag(self, client, auth_headers, db_session):
         tag = models.Tag(name="Test")
@@ -347,8 +385,9 @@ class TestAdminCategoryErrors:
         db_session.commit()
 
         response = client.post(
-            "/api/admin/categories?name=Duplicate",
-            headers={**auth_headers, "Content-Type": "application/x-www-form-urlencoded"},
+            "/api/admin/categories",
+            json={"name": "Duplicate"},
+            headers=auth_headers,
         )
         assert response.status_code == 400
         data = response.json()
@@ -357,8 +396,9 @@ class TestAdminCategoryErrors:
     def test_update_category_not_found(self, client, auth_headers):
         """Test updating a non-existent category returns 404."""
         response = client.put(
-            "/api/admin/categories/99999?name=NewName",
-            headers={**auth_headers, "Content-Type": "application/x-www-form-urlencoded"},
+            "/api/admin/categories/99999",
+            json={"name": "NewName"},
+            headers=auth_headers,
         )
         assert response.status_code == 404
         data = response.json()
@@ -375,8 +415,9 @@ class TestAdminTagErrors:
         db_session.commit()
 
         response = client.post(
-            "/api/admin/tags?name=DuplicateTag",
-            headers={**auth_headers, "Content-Type": "application/x-www-form-urlencoded"},
+            "/api/admin/tags",
+            json={"name": "DuplicateTag"},
+            headers=auth_headers,
         )
         assert response.status_code == 400
         data = response.json()
@@ -385,8 +426,9 @@ class TestAdminTagErrors:
     def test_update_tag_not_found(self, client, auth_headers):
         """Test updating a non-existent tag returns 404."""
         response = client.put(
-            "/api/admin/tags/99999?name=NewName",
-            headers={**auth_headers, "Content-Type": "application/x-www-form-urlencoded"},
+            "/api/admin/tags/99999",
+            json={"name": "NewName"},
+            headers=auth_headers,
         )
         assert response.status_code == 404
         data = response.json()
@@ -565,8 +607,9 @@ class TestAdminIntegrityErrorHandling:
         db_session.commit()
 
         response = client.post(
-            "/api/admin/categories?name=dup_category",
-            headers={**auth_headers, "Content-Type": "application/x-www-form-urlencoded"},
+            "/api/admin/categories",
+            json={"name": "dup_category"},
+            headers=auth_headers,
         )
         assert response.status_code == 400
         assert "already exists" in response.json()["error"]["message"]
@@ -580,8 +623,9 @@ class TestAdminIntegrityErrorHandling:
         db_session.commit()
 
         response = client.post(
-            "/api/admin/tags?name=dup_tag",
-            headers={**auth_headers, "Content-Type": "application/x-www-form-urlencoded"},
+            "/api/admin/tags",
+            json={"name": "dup_tag"},
+            headers=auth_headers,
         )
         assert response.status_code == 400
         assert "already exists" in response.json()["error"]["message"]
@@ -596,8 +640,9 @@ class TestAdminIntegrityErrorHandling:
         db_session.commit()
 
         response = client.put(
-            f"/api/admin/categories/{cat2.id}?name=cat_a",
-            headers={**auth_headers, "Content-Type": "application/x-www-form-urlencoded"},
+            f"/api/admin/categories/{cat2.id}",
+            json={"name": "cat_a"},
+            headers=auth_headers,
         )
         assert response.status_code == 400
         assert "already exists" in response.json()["error"]["message"]
@@ -612,8 +657,9 @@ class TestAdminIntegrityErrorHandling:
         db_session.commit()
 
         response = client.put(
-            f"/api/admin/tags/{tag2.id}?name=tag_a",
-            headers={**auth_headers, "Content-Type": "application/x-www-form-urlencoded"},
+            f"/api/admin/tags/{tag2.id}",
+            json={"name": "tag_a"},
+            headers=auth_headers,
         )
         assert response.status_code == 400
         assert "already exists" in response.json()["error"]["message"]
@@ -790,3 +836,57 @@ class TestAdminPasswordChange:
         )
         assert response.status_code == 400
         assert "Current password is incorrect" in response.text
+
+
+class TestAdminPasswordValidation:
+    """Tests for password change validation."""
+
+    def test_change_password_requires_min_length(self, client, auth_headers):
+        """New passwords shorter than 8 characters are rejected with 422."""
+        response = client.post(
+            "/api/admin/password",
+            headers={"Content-Type": "application/json", **auth_headers},
+            json={"current_password": "testpass123", "new_password": "short"},
+        )
+        assert response.status_code == 422
+
+    def test_change_password_ignores_blank_new_password(self, client, auth_headers):
+        """Empty new password is rejected with 422."""
+        response = client.post(
+            "/api/admin/password",
+            headers={"Content-Type": "application/json", **auth_headers},
+            json={"current_password": "testpass123", "new_password": ""},
+        )
+        assert response.status_code == 422
+
+
+class TestAdminPostCategoryClear:
+    """Tests for clearing a post's category via the admin update endpoint."""
+
+    def test_admin_update_post_can_clear_category(self, client, auth_headers, db_session):
+        """Explicit category_id: null must unset the category."""
+        cat = client.post("/api/admin/categories", json={"name": "To Remove"}, headers=auth_headers).json()
+        post = client.post(
+            "/api/admin/posts",
+            json={
+                "title": "Categorized Post",
+                "slug": "categorized-post",
+                "content": "Body",
+                "published": True,
+                "category_id": cat["id"],
+            },
+            headers=auth_headers,
+        ).json()
+
+        detail = client.get(f"/api/admin/posts/{post['id']}", headers=auth_headers).json()
+        assert detail["category_id"] == cat["id"]
+
+        update = client.put(
+            f"/api/admin/posts/{post['id']}",
+            json={"category_id": None},
+            headers=auth_headers,
+        )
+        assert update.status_code == 200
+
+        detail = client.get(f"/api/admin/posts/{post['id']}", headers=auth_headers).json()
+        assert detail["category_id"] is None
