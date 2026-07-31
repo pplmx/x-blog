@@ -7,7 +7,9 @@ test.describe("Admin dashboard and statistics", () => {
 		await page.fill('input[type="text"]', "admin");
 		await page.fill('input[type="password"]', "admin123");
 		await page.click('button[type="submit"]');
-		await page.waitForURL("**/admin");
+		// Login redirects to /admin/posts; navigate to the page under test
+		await page.waitForURL("**/admin/posts");
+		await page.goto("/admin");
 	});
 
 	test("admin can view the dashboard", async ({ page }) => {
@@ -24,7 +26,9 @@ test.describe("Admin dashboard and statistics", () => {
 		await expect(statCards).toHaveCount({ min: 1 });
 
 		// Check for common stat labels
-		const statText = await page.locator(".stat-card, .stats-card, .dashboard-card").allTextContents();
+		const statText = await page
+			.locator(".stat-card, .stats-card, .dashboard-card")
+			.allTextContents();
 		const combined = statText.join(" ").toLowerCase();
 		expect(combined).toMatch(/post|文章|comment|评论|category|分类|tag|标签|views|浏览|user|用户/);
 	});

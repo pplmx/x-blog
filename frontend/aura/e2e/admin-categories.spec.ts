@@ -7,7 +7,9 @@ test.describe("Admin category management", () => {
 		await page.fill('input[type="text"]', "admin");
 		await page.fill('input[type="password"]', "admin123");
 		await page.click('button[type="submit"]');
-		await page.waitForURL("**/admin/categories");
+		// Login redirects to /admin/posts; navigate to the page under test
+		await page.waitForURL("**/admin/posts");
+		await page.goto("/admin/categories");
 	});
 
 	test("admin can view the categories list", async ({ page }) => {
@@ -27,7 +29,9 @@ test.describe("Admin category management", () => {
 		await createBtn.click();
 
 		// Fill in the category form
-		const nameInput = page.locator('input[name="name"], input[placeholder*="名称"], input[placeholder*="name"]');
+		const nameInput = page.locator(
+			'input[name="name"], input[placeholder*="名称"], input[placeholder*="name"]',
+		);
 		await expect(nameInput).toBeVisible();
 		await nameInput.fill("Test Category");
 

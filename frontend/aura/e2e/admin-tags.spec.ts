@@ -7,7 +7,9 @@ test.describe("Admin tag management", () => {
 		await page.fill('input[type="text"]', "admin");
 		await page.fill('input[type="password"]', "admin123");
 		await page.click('button[type="submit"]');
-		await page.waitForURL("**/admin/tags");
+		// Login redirects to /admin/posts; navigate to the page under test
+		await page.waitForURL("**/admin/posts");
+		await page.goto("/admin/tags");
 	});
 
 	test("admin can view the tags list", async ({ page }) => {
