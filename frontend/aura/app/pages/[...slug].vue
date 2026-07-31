@@ -1,3 +1,12 @@
+<script setup lang="ts">
+// Real 404: set the HTTP status (soft-404s get indexed by search engines)
+// and give the page a proper title on the server-rendered response.
+if (import.meta.server) {
+	setResponseStatus(404);
+	useHead({ title: "404 - 页面不存在" });
+}
+</script>
+
 <template>
   <div class="min-h-[70vh] flex items-center justify-center px-4">
     <div class="text-center max-w-md">

@@ -13,23 +13,34 @@
 
 const ADMIN_TOKEN_KEY = "admin_token";
 
+function hasLocalStorage(): boolean {
+	// typeof window guards SSR: on Node ≥22 with the webstorage flag the
+	// localStorage global can exist without getItem being a function, which
+	// crashed admin pages during SSR. Only browsers have a usable localStorage.
+	return (
+		typeof window !== "undefined" &&
+		typeof localStorage !== "undefined" &&
+		typeof localStorage.getItem === "function"
+	);
+}
+
 export function useAdminAuth() {
 	const isAuthenticated = ref(false);
 
 	// Check localStorage on mount (client-side only)
-	if (typeof localStorage !== "undefined") {
+	if (hasLocalStorage()) {
 		isAuthenticated.value = !!localStorage.getItem(ADMIN_TOKEN_KEY);
 	}
 
 	const login = (token: string) => {
-		if (typeof localStorage !== "undefined") {
+		if (hasLocalStorage()) {
 			localStorage.setItem(ADMIN_TOKEN_KEY, token);
 		}
 		isAuthenticated.value = true;
 	};
 
 	const logout = () => {
-		if (typeof localStorage !== "undefined") {
+		if (hasLocalStorage()) {
 			localStorage.removeItem(ADMIN_TOKEN_KEY);
 		}
 		isAuthenticated.value = false;

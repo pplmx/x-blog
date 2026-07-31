@@ -165,7 +165,9 @@ export function buildArticleJsonLd(
 		"@type": "BlogPosting",
 		headline: post.title,
 		description: post.excerpt || "",
-		image: post.cover_image || undefined,
+		// JSON-LD requires absolute image URLs; uploaded covers and the OG
+		// endpoint return site-relative paths that Google would reject.
+		image: post.cover_image ? buildAbsoluteImageUrl(post.cover_image) : undefined,
 		author: {
 			"@type": "Person",
 			name: options.siteName,
@@ -175,7 +177,7 @@ export function buildArticleJsonLd(
 			name: options.siteName,
 			logo: {
 				"@type": "ImageObject",
-				url: siteConfig.image,
+				url: buildAbsoluteImageUrl(siteConfig.image),
 			},
 		},
 		datePublished: post.created_at,

@@ -81,11 +81,14 @@ async function mountTagsPage({
 	vi.stubGlobal("computed", computed);
 
 	// Mock useFetch (used by useApi/useTags/usePosts internally)
-	// Return different data based on URL path
+	// Return different data based on URL path. The URL may be a string or a
+	// reactive getter (the tags page passes a computed URL so it refetches
+	// when route query params change).
 	vi.stubGlobal(
 		"useFetch",
-		vi.fn((url: string) => {
-			if (url.includes("/api/tags") && !url.includes("/posts")) {
+		vi.fn((url: string | (() => string) | { value: string }) => {
+			const urlStr = typeof url === "function" ? url() : typeof url === "string" ? url : (url.value ?? "");
+			if (urlStr.includes("/api/tags") && !urlStr.includes("/posts")) {
 				return {
 					data: ref(tags),
 					pending: ref(false),
@@ -93,7 +96,7 @@ async function mountTagsPage({
 					refresh: vi.fn(),
 				};
 			}
-			if (url.includes("/api/posts")) {
+			if (urlStr.includes("/api/posts")) {
 				return {
 					data: ref(posts),
 					pending: ref(pending),
@@ -275,8 +278,9 @@ describe("Tags Page", () => {
 
 			vi.stubGlobal(
 				"useFetch",
-				vi.fn((url: string) => {
-					if (url.includes("/api/tags") && !url.includes("/posts")) {
+				vi.fn((url: string | (() => string) | { value: string }) => {
+					const urlStr = typeof url === "function" ? url() : typeof url === "string" ? url : (url.value ?? "");
+					if (urlStr.includes("/api/tags") && !urlStr.includes("/posts")) {
 						return {
 							data: ref(mockTags),
 							pending: ref(false),
@@ -284,7 +288,7 @@ describe("Tags Page", () => {
 							refresh: vi.fn(),
 						};
 					}
-					if (url.includes("/api/posts")) {
+					if (urlStr.includes("/api/posts")) {
 						return {
 							data: ref(mockMultiPagePosts),
 							pending: ref(false),

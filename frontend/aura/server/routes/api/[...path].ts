@@ -3,7 +3,21 @@ const BACKEND_URL = process.env.NUXT_API_URL || "http://localhost:18888";
 export default defineEventHandler(async (event) => {
 	const path = getRouterParam(event, "path") || "";
 	const method = getMethod(event).toLowerCase();
-	const url = `${BACKEND_URL}/api/${path}`;
+	// Forward the incoming query string — without it, ?page=2&q=... never
+	// reached the backend, silently breaking pagination/search/filters for
+	// every client using the proxy (apiUrl unset).
+	const query = getQuery(event);
+	const qs = new URLSearchParams();
+	for (const [key, value] of Object.entries(query)) {
+		if (value === undefined) continue;
+		if (Array.isArray(value)) {
+			for (const v of value) qs.append(key, String(v));
+		} else {
+			qs.set(key, String(value));
+		}
+	}
+	const queryString = qs.toString();
+	const url = `${BACKEND_URL}/api/${path}${queryString ? `?${queryString}` : ""}`;
 
 	const headers: Record<string, string> = {};
 	for (const [key, value] of Object.entries(getHeaders(event))) {

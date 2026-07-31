@@ -52,8 +52,15 @@ export interface Post extends PostList {
 /**
  * Core fetch helper that targets the backend API.
  * Uses Nuxt's useFetch with the configured API base URL.
+ *
+ * `url` may be a plain string, a ref, or a getter. When it is reactive,
+ * useFetch re-runs automatically on change (used by search/tags pages to
+ * refetch when route query params change without navigation).
  */
-export async function useApi<T>(url: string, options: Parameters<typeof useFetch>[1] = {}) {
+export async function useApi<T>(
+	url: Parameters<typeof useFetch>[0],
+	options: Parameters<typeof useFetch>[1] = {},
+) {
 	const config = useRuntimeConfig();
 	const apiUrl = config.public.apiUrl;
 
@@ -285,7 +292,15 @@ export interface AdminComment {
 
 /** Get auth headers from localStorage (admin token). */
 function getAuthHeaders(): HeadersInit {
-	if (typeof localStorage === "undefined") return {};
+	// typeof window guards SSR (see useAdminAuth.hasLocalStorage): a partial
+	// localStorage global on Node must not crash admin fetches during SSR.
+	if (
+		typeof window === "undefined" ||
+		typeof localStorage === "undefined" ||
+		typeof localStorage.getItem !== "function"
+	) {
+		return {};
+	}
 	const token = localStorage.getItem("admin_token");
 	return token ? { Authorization: `Bearer ${token}` } : {};
 }

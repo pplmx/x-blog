@@ -1,21 +1,40 @@
 <script setup lang="ts">
-import { useSearch } from "~~/composables/useApi";
+import { computed, onMounted } from "vue";
+import { type PostListResponse, useApi } from "~~/composables/useApi";
+import { loadPurify, sanitizeHtml } from "~~/composables/useMarkdown";
 import { useSeo } from "~~/composables/useSeo";
 
-const route = useRoute();
-const query = route.query.q || "";
+// used in template v-html (Biome cannot see template usage)
+void sanitizeHtml;
 
-const {
-	data: searchResult,
-	pending,
-	error,
-} = await useSearch(query, route.query.page ? Number.parseInt(route.query.page, 10) : 1);
+const route = useRoute();
+// Reactive sources: SPA navigation that only changes query params (e.g.
+// /search?q=a → /search?q=b or page=2) must refetch. The computed URL below
+// is passed to useFetch, which re-runs when its URL changes.
+const query = computed(() => (route.query.q as string) || "");
+const page = computed(() => (route.query.page ? Number.parseInt(String(route.query.page), 10) : 1));
+
+const searchUrl = computed(() => {
+	const params = new URLSearchParams();
+	if (query.value) params.set("q", query.value);
+	params.set("page", String(page.value));
+	params.set("limit", "10");
+	return `/api/search?${params.toString()}`;
+});
+
+const { data: searchResult, pending, error } = await useApi<PostListResponse>(searchUrl);
+
+// Upgrade snippet sanitization to DOMPurify as soon as it loads (results that
+// arrive later re-render through the stronger sanitizer).
+onMounted(() => {
+	void loadPurify();
+});
 
 // SEO: set dynamic head metadata based on search query
 useSeo({
-	title: query ? `搜索: ${query}` : "搜索文章",
-	description: query ? `搜索"${query}"的文章结果` : "在 X-Blog 中搜索文章",
-	path: query ? `/search?q=${encodeURIComponent(query)}` : "/search",
+	title: query.value ? `搜索: ${query.value}` : "搜索文章",
+	description: query.value ? `搜索"${query.value}"的文章结果` : "在 X-Blog 中搜索文章",
+	path: query.value ? `/search?q=${encodeURIComponent(query.value)}` : "/search",
 	noindex: true,
 });
 
@@ -133,7 +152,7 @@ function handleSearchInput() {
           <p
             v-if="post.snippet"
             class="text-gray-600 mt-2 line-clamp-3"
-            v-html="post.snippet"
+            v-html="sanitizeHtml(post.snippet)"
           />
           <p
             v-else-if="post.excerpt"

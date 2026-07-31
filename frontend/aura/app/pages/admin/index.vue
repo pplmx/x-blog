@@ -21,7 +21,9 @@ const [postsResponse, categoriesResult, tagsResult, commentsResult] = await Prom
 	fetchAdminComments(),
 ]);
 
-const posts = postsResponse.items;
+// useFetch resolves to the AsyncData object — the payload is in .data.value,
+// and the list payload's items array is what the dashboard consumes
+const posts = postsResponse.data.value?.items ?? [];
 const categories = categoriesResult.data.value;
 const tags = tagsResult.data.value;
 const allComments: AdminComment[] = commentsResult.data?.value ?? [];

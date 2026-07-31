@@ -3,8 +3,10 @@
  * Proxies to the backend's `/robots.txt` endpoint.
  */
 export default defineEventHandler(async (event) => {
-	const config = useRuntimeConfig();
-	const apiUrl = config.public.apiUrl;
+	// Absolute backend URL: a relative fallback here would make $fetch
+	// recurse into the app's own handlers (localFetch) when NUXT_API_URL
+	// is unset, hanging the request.
+	const apiUrl = process.env.NUXT_API_URL || "http://localhost:18888";
 
 	try {
 		const robots = await $fetch<string>(`${apiUrl}/robots.txt`, {

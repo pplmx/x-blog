@@ -10,7 +10,13 @@ export function useUpload() {
 
 		const config = useRuntimeConfig();
 		const apiUrl = config.public.apiUrl;
-		const token = typeof localStorage !== "undefined" ? localStorage.getItem("admin_token") : null;
+		// typeof window guards SSR (see useAdminAuth.hasLocalStorage)
+		const token =
+			typeof window !== "undefined" &&
+			typeof localStorage !== "undefined" &&
+			typeof localStorage.getItem === "function"
+				? localStorage.getItem("admin_token")
+				: null;
 
 		const formData = new FormData();
 		formData.append("file", file);

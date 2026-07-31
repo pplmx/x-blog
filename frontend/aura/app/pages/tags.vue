@@ -1,28 +1,39 @@
 <script setup lang="ts">
-import { usePosts, useTags } from "~~/composables/useApi";
+import { computed } from "vue";
+import { type PostListResponse, useApi, useTags } from "~~/composables/useApi";
 import { useSeo } from "~~/composables/useSeo";
 
 const route = useRoute();
-const tagId = route.query.tag_id ? Number.parseInt(route.query.tag_id as string, 10) : undefined;
+// Reactive sources so SPA navigation that changes only query params
+// (tag_id / page) refetches — the computed URL drives useFetch.
+const tagId = computed(() =>
+	route.query.tag_id ? Number.parseInt(String(route.query.tag_id), 10) : undefined,
+);
+const page = computed(() => (route.query.page ? Number.parseInt(String(route.query.page), 10) : 1));
+
+const postsUrl = computed(() => {
+	const params = new URLSearchParams();
+	if (tagId.value) params.set("tag_id", String(tagId.value));
+	if (page.value > 1) params.set("page", String(page.value));
+	const qs = params.toString();
+	return qs ? `/api/posts?${qs}` : "/api/posts";
+});
 
 const { data: tags, pending: tagsPending } = await useTags();
-const { data: posts, pending: postsPending } = await usePosts(
-	tagId
-		? {
-				tag_id: tagId,
-				page: route.query.page ? Number.parseInt(route.query.page as string, 10) : 1,
-			}
-		: undefined,
-);
+const { data: posts, pending: postsPending } = await useApi<PostListResponse>(postsUrl);
 const pending = computed(() => tagsPending.value || postsPending.value);
 
 // Look up the tag name for SEO when a tag is selected
-const tagName = tagId ? tags.value?.find((t) => t.id === tagId)?.name : undefined;
+const tagName = computed(() =>
+	tagId.value ? tags.value?.find((t) => t.id === tagId.value)?.name : undefined,
+);
 
 // SEO: set dynamic head metadata based on view state
 useSeo({
-	title: tagName ? `标签: ${tagName}` : "所有标签",
-	description: tagName ? `浏览标签 "${tagName}" 下的所有文章` : "浏览 X-Blog 中的所有标签",
+	title: tagName.value ? `标签: ${tagName.value}` : "所有标签",
+	description: tagName.value
+		? `浏览标签 "${tagName.value}" 下的所有文章`
+		: "浏览 X-Blog 中的所有标签",
 	path: "/tags",
 });
 </script>

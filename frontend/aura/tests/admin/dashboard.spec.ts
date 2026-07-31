@@ -138,7 +138,12 @@ describe("Admin Dashboard Page", () => {
 
 	describe("Rendering", () => {
 		beforeEach(() => {
-			mockUsePosts.mockResolvedValue(mockPostsResponse);
+			mockUsePosts.mockResolvedValue({
+				data: ref(mockPostsResponse),
+				pending: ref(false),
+				error: ref(null),
+				refresh: vi.fn(),
+			});
 			mockUseCategories.mockReturnValue({
 				data: ref(mockCategories),
 				pending: ref(false),
@@ -178,7 +183,12 @@ describe("Admin Dashboard Page", () => {
 
 	describe("Stats cards", () => {
 		beforeEach(() => {
-			mockUsePosts.mockResolvedValue(mockPostsResponse);
+			mockUsePosts.mockResolvedValue({
+				data: ref(mockPostsResponse),
+				pending: ref(false),
+				error: ref(null),
+				refresh: vi.fn(),
+			});
 			mockUseCategories.mockReturnValue({
 				data: ref(mockCategories),
 				pending: ref(false),
@@ -250,7 +260,12 @@ describe("Admin Dashboard Page", () => {
 
 	describe("Top posts by views", () => {
 		beforeEach(() => {
-			mockUsePosts.mockResolvedValue(mockPostsResponse);
+			mockUsePosts.mockResolvedValue({
+				data: ref(mockPostsResponse),
+				pending: ref(false),
+				error: ref(null),
+				refresh: vi.fn(),
+			});
 			mockUseCategories.mockReturnValue({
 				data: ref(mockCategories),
 				pending: ref(false),
@@ -302,7 +317,12 @@ describe("Admin Dashboard Page", () => {
 
 	describe("Category distribution", () => {
 		beforeEach(() => {
-			mockUsePosts.mockResolvedValue(mockPostsResponse);
+			mockUsePosts.mockResolvedValue({
+				data: ref(mockPostsResponse),
+				pending: ref(false),
+				error: ref(null),
+				refresh: vi.fn(),
+			});
 			mockUseCategories.mockReturnValue({
 				data: ref(mockCategories),
 				pending: ref(false),
@@ -413,7 +433,12 @@ describe("Admin Dashboard Page", () => {
 
 	describe("Recent posts", () => {
 		beforeEach(() => {
-			mockUsePosts.mockResolvedValue(mockPostsResponse);
+			mockUsePosts.mockResolvedValue({
+				data: ref(mockPostsResponse),
+				pending: ref(false),
+				error: ref(null),
+				refresh: vi.fn(),
+			});
 			mockUseCategories.mockReturnValue({
 				data: ref(mockCategories),
 				pending: ref(false),
@@ -470,21 +495,26 @@ describe("Admin Dashboard Page", () => {
 
 		it('renders "no published posts" when no posts are published', async () => {
 			mockUsePosts.mockResolvedValue({
-				items: [
-					{
-						id: 1,
-						title: "Draft Only",
-						slug: "draft-only",
-						excerpt: "",
-						published: false,
-						created_at: "2024-01-15T10:30:00Z",
-						views: 0,
-						cover_image: null,
-						category: null,
-						tags: [],
-					},
-				],
-				pagination: { total: 1, page: 1, limit: 1000, total_pages: 1 },
+				data: ref({
+					items: [
+						{
+							id: 1,
+							title: "Draft Only",
+							slug: "draft-only",
+							excerpt: "",
+							published: false,
+							created_at: "2024-01-15T10:30:00Z",
+							views: 0,
+							cover_image: null,
+							category: null,
+							tags: [],
+						},
+					],
+					pagination: { total: 1, page: 1, limit: 1000, total_pages: 1 },
+				}),
+				pending: ref(false),
+				error: ref(null),
+				refresh: vi.fn(),
 			});
 
 			const DashboardPage = await loadPage();
@@ -495,7 +525,12 @@ describe("Admin Dashboard Page", () => {
 
 	describe("Pending comments widget", () => {
 		beforeEach(() => {
-			mockUsePosts.mockResolvedValue(mockPostsResponse);
+			mockUsePosts.mockResolvedValue({
+				data: ref(mockPostsResponse),
+				pending: ref(false),
+				error: ref(null),
+				refresh: vi.fn(),
+			});
 			mockUseCategories.mockReturnValue({
 				data: ref(mockCategories),
 				pending: ref(false),
