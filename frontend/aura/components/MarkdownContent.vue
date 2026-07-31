@@ -18,8 +18,8 @@
   component dispatch instead of placeholder post-processing).
 -->
 <script setup lang="ts">
-import { computed, ref } from "vue";
-import { sanitizeHtml, useMarkdown } from "~~/composables/useMarkdown";
+import { computed, onMounted, ref } from "vue";
+import { loadPurify, sanitizeHtml, useMarkdown } from "~~/composables/useMarkdown";
 
 export interface MarkdownContentProps {
 	/** Raw HTML content string from the backend. */
@@ -33,12 +33,20 @@ const props = withDefaults(defineProps<MarkdownContentProps>(), {
 });
 
 // Re-process whenever content changes.
-// Use a computed so segments are always in sync with content synchronously,
-// with HTML segments sanitised via DOMPurify (if available) — falls back to
-// identity when DOMPurify hasn't loaded yet (SSR-safe).
+// HTML segments are ALWAYS sanitized: the regex fallback is active from the
+// first synchronous render (SSR + first client paint), and DOMPurify upgrades
+// it once loaded. purifyReady forces a recompute after the upgrade so the
+// stronger sanitizer applies to what is already on screen.
+const purifyReady = ref(false);
 const segments = computed(() => {
+	void purifyReady.value;
 	const { segments: raw } = useMarkdown(props.content);
 	return raw.map((s) => (s.type === "html" ? { ...s, html: sanitizeHtml(s.html) } : s));
+});
+
+onMounted(async () => {
+	await loadPurify();
+	purifyReady.value = true;
 });
 const renderingKeys = ref<Set<string>>(new Set());
 
@@ -74,7 +82,10 @@ async function initMermaid() {
 		mermaidInstance.initialize({
 			startOnLoad: false,
 			theme: document?.documentElement?.classList?.contains("dark") ? "dark" : "default",
-			securityLevel: "loose",
+			// "strict" disables HTML labels and click handlers in diagrams —
+			// "loose" would let attacker-controlled diagram labels execute
+			// script via innerHTML.
+			securityLevel: "strict",
 		});
 	} catch {
 		mermaidInstance = null;
@@ -118,7 +129,9 @@ function renderKatex(
 				const html = katex.renderToString(formula, {
 					displayMode,
 					throwOnError: false,
-					trust: true,
+					// trust:false blocks dangerous URL protocols in \href/\url
+					// (e.g. javascript:), preventing XSS via math formulas.
+					trust: false,
 				});
 				el.innerHTML = html;
 			} catch {

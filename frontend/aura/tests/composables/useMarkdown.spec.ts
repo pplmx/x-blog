@@ -1,5 +1,5 @@
 import { beforeAll, describe, expect, it, vi } from "vitest";
-import { sanitizeHtml, sanitizeUrl, useMarkdown, useMarkdownSanitised } from "~/composables/useMarkdown";
+import { regexSanitize, sanitizeHtml, sanitizeUrl, useMarkdown, useMarkdownSanitised } from "~/composables/useMarkdown";
 
 describe("useMarkdown debug", () => {
 	it("HTML", () => {
@@ -186,5 +186,29 @@ describe("useMarkdownSanitised", () => {
 	it("handles empty content", async () => {
 		const result = await useMarkdownSanitised("");
 		expect(result.segments).toEqual([]);
+	});
+});
+
+describe("regexSanitize (always-active fallback)", () => {
+	it("strips script tags without DOMPurify loaded", () => {
+		const result = regexSanitize("<p>Hello</p><script>alert(1)</script>");
+		expect(result).not.toContain("<script>");
+		expect(result).toContain("<p>Hello</p>");
+	});
+
+	it("strips event handler attributes", () => {
+		const result = regexSanitize('<img src=x onerror="alert(1)">');
+		expect(result).not.toContain("onerror");
+	});
+
+	it("strips iframe/object/embed/form elements", () => {
+		const result = regexSanitize('<iframe src="https://evil.example"></iframe><p>ok</p>');
+		expect(result).not.toContain("<iframe");
+	});
+
+	it("preserves mark/em tags used by search snippets", () => {
+		const result = regexSanitize("<mark>hello</mark> <em>world</em>");
+		expect(result).toContain("<mark>hello</mark>");
+		expect(result).toContain("<em>world</em>");
 	});
 });

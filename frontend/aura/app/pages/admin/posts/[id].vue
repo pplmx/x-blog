@@ -7,6 +7,10 @@ import {
 	fetchAdminTags,
 	updateAdminPost,
 } from "~~/composables/useApi";
+import { sanitizeHtml } from "~~/composables/useMarkdown";
+
+// used in template v-html (Biome cannot see template usage)
+void sanitizeHtml;
 
 const route = useRoute();
 const isNew = route.params.id === "new";
@@ -411,7 +415,7 @@ function handleFileInput(e: Event) {
               @paste="onPaste"
             />
             <div class="prose prose-sm dark:prose-invert max-w-none overflow-y-auto rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4">
-              <div v-html="formData.content" />
+              <div v-html="sanitizeHtml(formData.content)" />
             </div>
           </div>
           <textarea

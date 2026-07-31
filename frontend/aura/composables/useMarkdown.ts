@@ -152,8 +152,27 @@ function extractImages(
 
 let purify: ((html: string) => string) | null = null;
 
-async function loadPurify(): Promise<typeof purify> {
-	if (purify) return purify;
+/**
+ * Minimal synchronous sanitizer used until DOMPurify finishes loading (and as
+ * the permanent fallback in environments where DOMPurify cannot run).
+ *
+ * Strips script/style/iframe/object/embed/form elements and all on* event
+ * handler attributes. This is NOT as strong as DOMPurify (e.g. `javascript:`
+ * hrefs and SVG payloads survive), so DOMPurify is always preferred on the
+ * client — but the fallback must never be identity: content rendered through
+ * v-html must always pass through a sanitizer.
+ */
+export function regexSanitize(html: string): string {
+	return html
+		.replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, "")
+		.replace(/<style\b[^>]*>[\s\S]*?<\/style>/gi, "")
+		.replace(/\son\w+\s*=\s*("[^"]*"|'[^']*'|[^\s>]+)/gi, "")
+		.replace(/<(script|style|iframe|object|embed|form)[^>]*>.*?<\/\1>/gi, "");
+}
+
+/** Load DOMPurify (client-side) and verify it actually strips XSS payloads. */
+export async function loadPurify(): Promise<void> {
+	if (purify) return;
 	try {
 		const mod = await import("dompurify");
 		const DomPurify = mod.default || mod;
@@ -164,32 +183,24 @@ async function loadPurify(): Promise<typeof purify> {
 			const testResult = DomPurify.sanitize("<script>alert(1)</script>");
 			if (typeof testResult === "string" && !testResult.includes("<script>")) {
 				purify = (html: string) => DomPurify.sanitize(html);
-			} else {
-				throw new Error("DOMPurify failed to strip test XSS payload");
+				return;
 			}
-		} else {
-			throw new Error("DOMPurify.sanitize not available");
 		}
 	} catch {
-		// Fallback: a very small sanitiser that strips script/style/event handlers.
-		purify = (html: string) =>
-			html
-				.replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, "")
-				.replace(/<style\b[^>]*>[\s\S]*?<\/style>/gi, "")
-				.replace(/\son\w+\s*=\s*("[^"]*"|'[^']*'|[^\s>]+)/gi, "")
-				.replace(/<(script|style|iframe|object|embed|form)[^>]*>.*?<\/\1>/gi, "");
+		// DOMPurify unavailable (SSR / no DOM) — the regex fallback stays active.
 	}
-	return purify;
+	purify = regexSanitize;
 }
 
-/** Synchronous sanitise using DOMPurify when available (client-side), otherwise identity. */
+/**
+ * Synchronous sanitization: DOMPurify when loaded, otherwise the always-active
+ * regex fallback. Never identity — v-html consumers rely on this guarantee.
+ */
 export function sanitizeHtml(html: string): string {
-	if (!purify) return html;
 	try {
-		return purify(html);
+		return purify ? purify(html) : regexSanitize(html);
 	} catch {
-		// DOMPurify may fail in SSR (no window) — fall back to identity.
-		return html;
+		return regexSanitize(html);
 	}
 }
 
