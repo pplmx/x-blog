@@ -14,9 +14,9 @@ hooks:
     prek install --hook-type commit-msg --hook-type pre-push
     @echo "✓ Git hooks installed"
 
-# Initialize database with sample data
+# Initialize database with sample data (dev: creates admin/admin123)
 init-db:
-    cd backend/nova && uv run python scripts/init_db.py
+    cd backend/nova && APP_ENV=development ADMIN_PASSWORD=admin123 uv run python scripts/init_db.py
 
 # Run both backend and frontend (Windows: run in two terminals)
 # Terminal 1: just backend

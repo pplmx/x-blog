@@ -29,6 +29,14 @@ GitHub Actions failed at `actions/setup-node@v4`:
 
 Verified: both workflow YAMLs parse (PyYAML); local `pnpm install --frozen-lockfile` passes.
 
+### Also fixed: `just init-db` couldn't create the dev admin
+
+The recipe ran `init_db.py` without env vars — with `APP_ENV` unset the script fails
+closed (`RuntimeError: ADMIN_PASSWORD is not set. Refusing to create an admin
+account...`), so the documented "seed the database" path was broken in a fresh shell.
+Now sets `APP_ENV=development ADMIN_PASSWORD=admin123` (same invocation as the `e2e`
+recipe). Verified: `just init-db` completes on the dev database.
+
 ## Session 2026-07-31 — Security Review + Deep-Dive Hardening (COMPLETED)
 
 Three parallel review agents (security-reviewer, python-reviewer, typescript-reviewer) audited the whole stack. All CRITICAL/HIGH findings fixed, verified by tests:
