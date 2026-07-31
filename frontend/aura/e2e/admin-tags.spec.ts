@@ -16,42 +16,28 @@ test.describe("Admin tag management", () => {
 		await expect(page).toHaveTitle(/标签|Tags/);
 
 		// Should show a list or table of tags
-		const list = page.locator("table, .tag-list, .tags");
+		const list = page.locator(".flex.flex-wrap.gap-3");
 		await expect(list).toBeVisible();
 	});
 
 	test("admin can create a new tag", async ({ page }) => {
-		// Click the create/new button
-		const createBtn = page.locator("button", {
-			name: /create|new|添加|新建|新增/i,
-		});
-		await expect(createBtn).toBeVisible();
-		await createBtn.click();
-
-		// Fill in the tag form
-		const nameInput = page.locator(
-			'input[name="name"], input[placeholder*="名称"], input[placeholder*="name"]',
-		);
+		// The create form is always visible; fill it and submit
+		const nameInput = page.locator('input[placeholder*="名称"]');
 		await expect(nameInput).toBeVisible();
 		await nameInput.fill("Test Tag");
 
-		// Save
-		const saveBtn = page.locator("button", {
-			name: /save|submit|保存|确定/i,
-		});
-		await saveBtn.click();
+		const createBtn = page.locator('button:has-text("创建")');
+		await expect(createBtn).toBeEnabled();
+		await createBtn.click();
 
-		// Should show the new tag in the list
-		await page.waitForURL("**/admin/tags");
+		// The new tag should appear in the list
 		await expect(page.locator("text=Test Tag")).toBeVisible();
 	});
 
 	test("admin can edit an existing tag", async ({ page }) => {
 		// Find the first tag in the list
-		const firstTag = page.locator("tr, .tag-item").first();
-		const editBtn = firstTag.locator("button, a", {
-			name: /edit|修改|编辑/i,
-		});
+		const firstTag = page.locator(".flex.flex-wrap.gap-3 > div").first();
+		const editBtn = firstTag.locator('button:has-text("编辑")');
 
 		if (await editBtn.isVisible()) {
 			await editBtn.click();
@@ -61,9 +47,7 @@ test.describe("Admin tag management", () => {
 			await expect(nameInput).toBeVisible();
 			await nameInput.fill("Updated Tag Name");
 
-			const saveBtn = page.locator("button", {
-				name: /save|submit|保存|确定/i,
-			});
+			const saveBtn = firstTag.locator('button:has-text("确认")');
 			await saveBtn.click();
 
 			await expect(page.locator("text=Updated Tag Name")).toBeVisible();
@@ -71,14 +55,12 @@ test.describe("Admin tag management", () => {
 	});
 
 	test("admin can delete a tag with confirmation", async ({ page }) => {
-		const tagItems = page.locator("tr, .tag-item");
+		const tagItems = page.locator(".flex.flex-wrap.gap-3 > div");
 		const count = await tagItems.count();
 
 		if (count > 0) {
 			const firstItem = tagItems.first();
-			const deleteBtn = firstItem.locator("button", {
-				name: /delete|删除|trash/i,
-			});
+			const deleteBtn = firstItem.locator('button:has-text("删除")');
 
 			if (await deleteBtn.isVisible()) {
 				await deleteBtn.click();
