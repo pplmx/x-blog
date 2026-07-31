@@ -116,7 +116,9 @@ e2e:
     @echo "Seeding database (dev admin: admin/admin123)..."
     cd backend/nova && APP_ENV=development ADMIN_PASSWORD=admin123 uv run python scripts/init_db.py
     @echo "Starting backend..."
-    cd backend/nova && APP_ENV=development uv run uvicorn app.main:app --host 0.0.0.0 --port 18888 &
+    # RATE_LIMIT_AUTH relaxed: the suite logs in per spec file (~15×/min),
+    # which exhausts the production 10/min per-IP login budget
+    cd backend/nova && APP_ENV=development RATE_LIMIT_AUTH_PER_MINUTE=1000 uv run uvicorn app.main:app --host 0.0.0.0 --port 18888 &
     @sleep 3 && curl -sf http://localhost:18888/health > /dev/null || (echo "Backend failed to start" && exit 1)
     @echo "Running e2e tests (Playwright starts Nuxt on :34567)..."
     cd frontend/aura && pnpm test:e2e
