@@ -20,10 +20,13 @@ export default defineConfig({
 		trace: "on-first-retry",
 	},
 	webServer: {
-		command: "pnpm dev --port 34567",
+		// E2E runs against a production build: dev-mode on-demand compilation
+		// races browser dynamic imports (every admin test failed once per run),
+		// and tests should exercise the same artifact users get.
+		command: "pnpm build && pnpm preview --port 34567",
 		url: "http://localhost:34567",
 		reuseExistingServer: true,
-		timeout: 120_000,
+		timeout: 300_000,
 	},
 	projects: [
 		{

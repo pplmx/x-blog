@@ -58,7 +58,7 @@ export function useAdminAuth() {
  * Returns true if a token exists in localStorage.
  */
 export function isAdminAuthenticated(): boolean {
-	if (typeof localStorage === "undefined") return false;
+	if (typeof window === "undefined" || typeof localStorage?.getItem !== "function") return false;
 	return !!localStorage.getItem(ADMIN_TOKEN_KEY);
 }
 
@@ -67,6 +67,8 @@ export function isAdminAuthenticated(): boolean {
  * Returns `{ data, pending, error }` from useFetch.
  */
 export async function adminLoginRequest(username: string, password: string) {
-	const { adminLogin } = await import("~/composables/useApi");
+	// `~~` = project rootDir (Nuxt 4: `~` is srcDir = app/, which broke the
+	// production build — the import resolved to app/composables/useApi)
+	const { adminLogin } = await import("~~/composables/useApi");
 	return adminLogin(username, password);
 }

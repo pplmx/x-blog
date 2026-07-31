@@ -89,11 +89,28 @@ export default defineNuxtConfig({
 		resolve: {
 			alias: {
 				"~~": resolve(rootDir),
+				// tailwindcss exports its CSS entry only under the "style"
+				// condition; Vite's SSR css import resolution doesn't apply it,
+				// so `@import "tailwindcss"` resolved to a nonexistent
+				// relative path and the production build failed (ENOENT).
+				tailwindcss: resolve(rootDir, "node_modules/tailwindcss/index.css"),
 			},
 		},
 	},
 	postcss: {
 		plugins: {
+			// Explicit postcss-import with node_modules resolution: the SSR
+			// build's css pipeline otherwise tries to open bare specifiers
+			// like "tailwindcss" as relative files and fails the build
+			// (ENOENT .../tailwindcss).
+			"postcss-import": {
+				resolve(id: string, basedir: string) {
+					if (id.startsWith(".") || id.startsWith("/")) {
+						return resolve(basedir, id);
+					}
+					return require.resolve(id, { paths: [basedir] });
+				},
+			},
 			"@tailwindcss/postcss": {},
 			autoprefixer: {},
 		},
