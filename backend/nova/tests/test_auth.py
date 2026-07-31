@@ -1,3 +1,5 @@
+from pathlib import Path
+
 from jose import jwt
 
 from app.auth import (
@@ -45,3 +47,58 @@ class TestAuthEdgeCases:
     def test_create_access_token_empty_sub(self):
         token = create_access_token({})
         assert token is not None
+
+
+class TestFailClosedSecret:
+    """Importing app.auth without JWT_SECRET_KEY must fail closed outside development."""
+
+    def test_import_fails_closed_without_secret(self):
+        """Importing app.auth with no JWT_SECRET_KEY and no APP_ENV raises RuntimeError."""
+        import subprocess
+        import sys
+
+        code = "import os;os.environ.pop('JWT_SECRET_KEY', None);os.environ.pop('APP_ENV', None);import app.auth"
+        result = subprocess.run(
+            [sys.executable, "-c", code],
+            capture_output=True,
+            text=True,
+            cwd=Path(__file__).resolve().parent.parent,
+        )
+        assert result.returncode != 0
+        assert "JWT_SECRET_KEY" in result.stderr
+
+    def test_import_fails_closed_in_production(self):
+        """Importing app.auth with APP_ENV=production and no secret raises RuntimeError."""
+        import subprocess
+        import sys
+
+        code = "import os;os.environ.pop('JWT_SECRET_KEY', None);os.environ['APP_ENV'] = 'production';import app.auth"
+        result = subprocess.run(
+            [sys.executable, "-c", code],
+            capture_output=True,
+            text=True,
+            cwd=Path(__file__).resolve().parent.parent,
+        )
+        assert result.returncode != 0
+        assert "JWT_SECRET_KEY" in result.stderr
+
+    def test_import_allowed_in_development(self):
+        """Importing app.auth without a secret succeeds when APP_ENV=development."""
+        import subprocess
+        import sys
+
+        code = (
+            "import os;"
+            "os.environ.pop('JWT_SECRET_KEY', None);"
+            "os.environ['APP_ENV'] = 'development';"
+            "import app.auth;"
+            "print(app.auth.SECRET_KEY)"
+        )
+        result = subprocess.run(
+            [sys.executable, "-c", code],
+            capture_output=True,
+            text=True,
+            cwd=Path(__file__).resolve().parent.parent,
+        )
+        assert result.returncode == 0, result.stderr
+        assert "x-blog-secret-key-dev-only" in result.stdout

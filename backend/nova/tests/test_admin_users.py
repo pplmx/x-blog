@@ -100,12 +100,12 @@ class TestListUsers:
         # Create a couple of users first
         client.post(
             "/api/admin/users",
-            json={"username": "user1", "password": "pass1"},
+            json={"username": "user1", "password": "password123"},
             headers=auth_headers,
         )
         client.post(
             "/api/admin/users",
-            json={"username": "user2", "password": "pass2"},
+            json={"username": "user2", "password": "password456"},
             headers=auth_headers,
         )
 

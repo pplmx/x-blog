@@ -376,7 +376,8 @@ class TestCommentSchemas:
             content="Nice!",
         )
         assert comment.parent_id is None
-        assert comment.is_approved is True
+        # Approval is server-controlled; clients cannot set is_approved
+        assert not hasattr(comment, "is_approved")
 
     def test_comment_create_with_parent(self):
         """Test CommentCreate with parent_id."""
@@ -388,15 +389,15 @@ class TestCommentSchemas:
         )
         assert comment.parent_id == 42
 
-    def test_comment_create_not_approved(self):
-        """Test CommentCreate with is_approved=False."""
+    def test_comment_create_ignores_client_is_approved(self):
+        """Test that a client-supplied is_approved value is ignored."""
         comment = schemas.CommentCreate(
             nickname="New User",
             email="new@example.com",
             content="Pending comment",
-            is_approved=False,
+            is_approved=True,
         )
-        assert comment.is_approved is False
+        assert not hasattr(comment, "is_approved")
 
     def test_comment_response_valid(self):
         """Test Comment response schema with ORM object."""

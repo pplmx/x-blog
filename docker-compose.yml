@@ -22,7 +22,7 @@ services:
       - "18888:18888"
     environment:
       DATABASE_URL: postgresql://xblog:${POSTGRES_PASSWORD:-xblog}@postgres:5432/xblog
-      JWT_SECRET_KEY: ${JWT_SECRET_KEY:-change-me-in-production}
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:?Set JWT_SECRET_KEY in your .env file}
       ALLOWED_ORIGINS: http://localhost:34567,http://frontend:3000
       RATE_LIMIT_PER_MINUTE: "60"
       GZIP_MINIMUM_SIZE: "500"

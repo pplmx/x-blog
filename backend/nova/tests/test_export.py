@@ -46,3 +46,32 @@ class TestExportCommentsCsv:
         """Comments CSV exposes PII (email + ip_address) and must NOT be public."""
         response = client.get("/api/export/comments.csv")
         assert response.status_code == 401
+
+    def test_export_comments_csv_neutralizes_formula_injection(self, client, auth_headers):
+        """Attacker-controlled comment fields must not become spreadsheet formulas."""
+        create_post = client.post(
+            "/api/posts",
+            json={
+                "title": "CSV Test Post",
+                "slug": "csv-test-post",
+                "content": "Test content",
+                "published": True,
+            },
+            headers=auth_headers,
+        )
+        post_id = create_post.json()["id"]
+        client.post(
+            f"/api/comments/post/{post_id}",
+            json={
+                "nickname": "=cmd|' /C calc'!A0",
+                "email": "@evil.example",
+                "content": '=HYPERLINK("https://evil.example","click")',
+            },
+        )
+        response = client.get("/api/export/comments.csv", headers=auth_headers)
+        assert response.status_code == 200
+        body = response.text
+        # Neutralized cells start with a single quote so Excel renders them as text
+        assert "'=cmd|' /C calc'!A0" in body
+        assert "'@evil.example" in body
+        assert "'=HYPERLINK(" in body

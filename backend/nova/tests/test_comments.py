@@ -33,14 +33,50 @@ def test_create_comment(client, post):
     assert data["post_id"] == post["id"]
 
 
-def test_list_comments(client, post):
-    client.post(
+def test_create_comment_requires_moderation(client, post, auth_headers):
+    """Comments can never self-approve: is_approved is server-controlled."""
+    response = client.post(
+        f"/api/comments/post/{post['id']}",
+        json={
+            "nickname": "Spammer",
+            "email": "spam@example.com",
+            "content": "Buy now!",
+            "is_approved": True,
+        },
+    )
+    assert response.status_code == 201
+    data = response.json()
+    assert data["is_approved"] is False
+
+    # Not visible publicly until an admin approves it
+    list_response = client.get(f"/api/comments/post/{post['id']}")
+    assert len(list_response.json()["items"]) == 0
+
+    approve_response = client.patch(
+        f"/api/comments/{data['id']}/approve",
+        json={"approved": True},
+        headers=auth_headers,
+    )
+    assert approve_response.status_code == 200
+
+    list_response = client.get(f"/api/comments/post/{post['id']}")
+    assert len(list_response.json()["items"]) == 1
+
+
+def test_list_comments(client, post, auth_headers):
+    create_response = client.post(
         f"/api/comments/post/{post['id']}",
         json={
             "nickname": "Test User",
             "email": "test@example.com",
             "content": "Test comment",
         },
+    )
+    # Comments require moderation before appearing publicly
+    client.patch(
+        f"/api/comments/{create_response.json()['id']}/approve",
+        json={"approved": True},
+        headers=auth_headers,
     )
     response = client.get(f"/api/comments/post/{post['id']}")
     assert response.status_code == 200
@@ -53,16 +89,26 @@ def test_list_comments(client, post):
     assert data["limit"] == 20
 
 
-def test_list_comments_pagination(client, post):
+def test_list_comments_pagination(client, post, auth_headers):
     # Create 5 comments
+    comment_ids = []
     for i in range(5):
-        client.post(
+        create_response = client.post(
             f"/api/comments/post/{post['id']}",
             json={
                 "nickname": f"User {i}",
                 "email": f"user{i}@example.com",
                 "content": f"Comment {i}",
             },
+        )
+        comment_ids.append(create_response.json()["id"])
+
+    # Approve all comments so they appear publicly
+    for comment_id in comment_ids:
+        client.patch(
+            f"/api/comments/{comment_id}/approve",
+            json={"approved": True},
+            headers=auth_headers,
         )
 
     # Get first page with limit 2
@@ -237,3 +283,18 @@ def test_create_comment_with_nonexistent_parent(client, post):
     )
     assert response.status_code == 400
     assert "Parent comment with id 99999 not found" in response.json()["error"]["message"]
+
+
+def test_list_comments_rejects_invalid_pagination(client, post):
+    """Negative/zero/oversized limits must be rejected, not 500."""
+    response = client.get(f"/api/comments/post/{post['id']}?limit=-1")
+    assert response.status_code == 422
+
+    response = client.get(f"/api/comments/post/{post['id']}?limit=0")
+    assert response.status_code == 422
+
+    response = client.get(f"/api/comments/post/{post['id']}?limit=1000")
+    assert response.status_code == 422
+
+    response = client.get(f"/api/comments/post/{post['id']}?page=0")
+    assert response.status_code == 422

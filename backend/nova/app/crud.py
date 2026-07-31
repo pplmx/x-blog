@@ -8,6 +8,17 @@ from app import models, schemas
 from app.cache import categories_cache, clear_categories_cache, clear_posts_cache, clear_tags_cache, tags_cache
 
 
+def utc_now_naive() -> datetime:
+    """Current UTC time as a naive datetime.
+
+    `publish_at`/`created_at` are stored as naive UTC in the DateTime columns
+    (clients send naive ISO strings; the ORM default uses datetime.now(UTC)).
+    Comparing against naive-UTC keeps all publish_at guards consistent across
+    hosts, regardless of server local timezone.
+    """
+    return datetime.now(UTC).replace(tzinfo=None)
+
+
 def get_posts(
     db: Session,
     skip: int = 0,
@@ -19,7 +30,7 @@ def get_posts(
     query = db.query(models.Post)
 
     if published:
-        now = datetime.now(UTC)
+        now = utc_now_naive()
         query = query.filter(
             models.Post.published,
             or_(models.Post.publish_at.is_(None), models.Post.publish_at <= now),
@@ -365,7 +376,10 @@ def create_comment(
         email=comment.email,
         content=comment.content,
         ip_address=ip_address,
-        is_approved=comment.is_approved,
+        # Moderation: comments are never auto-approved; an admin must approve
+        # them via the approve/batch-approve endpoints. The client's value is
+        # ignored (CommentCreate no longer accepts is_approved).
+        is_approved=False,
     )
     db.add(db_comment)
     try:
@@ -420,6 +434,10 @@ def search_posts(db: Session, query: str, page: int = 1, limit: int = 10):
     offset = (page - 1) * limit
     is_postgres = db.bind.dialect.name == "postgresql"
 
+    now = utc_now_naive()
+    # Scheduled posts are not searchable before their publish_at (same rule as list)
+    scheduled_filter = or_(models.Post.publish_at.is_(None), models.Post.publish_at <= now)
+
     if is_postgres:
         ts_query = func.plainto_tsquery("english", query)
         ts_vector = func.to_tsvector(
@@ -430,6 +448,7 @@ def search_posts(db: Session, query: str, page: int = 1, limit: int = 10):
         stmt = (
             select(models.Post)
             .where(models.Post.published)
+            .where(scheduled_filter)
             .where(ts_vector.op("@@")(ts_query))
             .order_by(func.ts_rank(ts_vector, ts_query).desc())
             .options(
@@ -440,7 +459,12 @@ def search_posts(db: Session, query: str, page: int = 1, limit: int = 10):
             .limit(limit)
         )
 
-        count_stmt = select(func.count(models.Post.id)).where(models.Post.published).where(ts_vector.op("@@")(ts_query))
+        count_stmt = (
+            select(func.count(models.Post.id))
+            .where(models.Post.published)
+            .where(scheduled_filter)
+            .where(ts_vector.op("@@")(ts_query))
+        )
     else:
         search_pattern = f"%{query}%"
 
@@ -453,6 +477,7 @@ def search_posts(db: Session, query: str, page: int = 1, limit: int = 10):
                 )
             )
             .where(models.Post.published)
+            .where(scheduled_filter)
             .options(
                 joinedload(models.Post.category),
                 joinedload(models.Post.tags),
@@ -471,6 +496,7 @@ def search_posts(db: Session, query: str, page: int = 1, limit: int = 10):
                 )
             )
             .where(models.Post.published)
+            .where(scheduled_filter)
         )
 
     posts = db.execute(stmt).unique().scalars().all()
@@ -515,9 +541,13 @@ def increment_likes(db: Session, post_id: int) -> models.Post | None:
 
 def get_popular_posts(db: Session, limit: int = 5) -> list[models.Post]:
     """Get the most popular posts by view count."""
+    now = utc_now_naive()
     return (
         db.query(models.Post)
-        .filter(models.Post.published)
+        .filter(
+            models.Post.published,
+            or_(models.Post.publish_at.is_(None), models.Post.publish_at <= now),
+        )
         .options(
             joinedload(models.Post.category),
             joinedload(models.Post.tags),
@@ -536,7 +566,7 @@ def get_related_posts(db: Session, post_id: int, limit: int = 5) -> list[models.
     post = get_post(db, post_id)
     if not post or not post.tags:
         # Fallback: just get recent posts in same category
-        now = datetime.now(UTC)
+        now = utc_now_naive()
         query = db.query(models.Post).filter(
             models.Post.published,
             models.Post.id != post_id,
@@ -572,7 +602,7 @@ def get_related_posts(db: Session, post_id: int, limit: int = 5) -> list[models.
     )
 
     # Build main query with tag match count and eager loading
-    now = datetime.now(UTC)
+    now = utc_now_naive()
     query = (
         db.query(models.Post, tag_match_count_subq.c.match_count)
         .outerjoin(tag_match_count_subq, models.Post.id == tag_match_count_subq.c.post_id)
@@ -587,18 +617,27 @@ def get_related_posts(db: Session, post_id: int, limit: int = 5) -> list[models.
         )
     )
 
-    # Same category gets higher priority (add 100 to match_count)
+    # Same category gets higher priority (add 100 to match_count).
+    # coalesce() turns NULL match counts into 0 so posts sharing no tags still
+    # rank below same-category matches (PostgreSQL orders NULLs first in DESC
+    # by default, which inverted the intended ranking).
     if post.category_id:
         query = query.add_columns(
             case(
-                (models.Post.category_id == post.category_id, tag_match_count_subq.c.match_count + 100),
-                else_=tag_match_count_subq.c.match_count,
+                (
+                    models.Post.category_id == post.category_id,
+                    func.coalesce(tag_match_count_subq.c.match_count, 0) + 100,
+                ),
+                else_=func.coalesce(tag_match_count_subq.c.match_count, 0),
             ).label("priority")
         )
         query = query.order_by(
             case(
-                (models.Post.category_id == post.category_id, tag_match_count_subq.c.match_count + 100),
-                else_=tag_match_count_subq.c.match_count,
+                (
+                    models.Post.category_id == post.category_id,
+                    func.coalesce(tag_match_count_subq.c.match_count, 0) + 100,
+                ),
+                else_=func.coalesce(tag_match_count_subq.c.match_count, 0),
             ).desc(),
             models.Post.created_at.desc(),
         )

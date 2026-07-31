@@ -10,15 +10,25 @@ from pydantic import BaseModel
 from sqlalchemy import Boolean, Column, DateTime, Integer, String
 from sqlalchemy.orm import Session
 
+from app.config import is_development
 from app.database import Base, get_db
 
-SECRET_KEY = os.getenv("JWT_SECRET_KEY", "x-blog-secret-key-dev-only")
+DEV_SECRET_KEY = "x-blog-secret-key-dev-only"
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_DAYS = int(os.getenv("JWT_EXPIRE_DAYS", "7"))
 
-if SECRET_KEY == "x-blog-secret-key-dev-only":
+SECRET_KEY = os.getenv("JWT_SECRET_KEY")
+if not SECRET_KEY:
+    if not is_development():
+        raise RuntimeError(
+            "JWT_SECRET_KEY is not set. Refusing to start outside development — "
+            "a publicly known default would let anyone forge admin tokens. "
+            "Set JWT_SECRET_KEY, or set APP_ENV=development to run with the dev default."
+        )
+    SECRET_KEY = DEV_SECRET_KEY
     warnings.warn(
-        "JWT_SECRET_KEY not set! Using insecure default. Set JWT_SECRET_KEY environment variable for production.",
+        "JWT_SECRET_KEY not set. Using the DEVELOPMENT-only default key. "
+        "Never run production with APP_ENV=development.",
         stacklevel=2,
     )
 
@@ -73,7 +83,9 @@ def get_current_user(
         if user_id is None:
             raise credentials_exception
         token_data = TokenData(user_id=user_id)
-    except JWTError:
+    except JWTError, TypeError, ValueError:
+        # JWTError: bad signature/expired token; TypeError/ValueError: malformed
+        # `sub` claim (e.g. non-numeric). Both are authentication failures → 401.
         raise credentials_exception
 
     user = db.query(User).filter(User.id == token_data.user_id).first()

@@ -12,6 +12,20 @@ from app.limiter import RATE_LIMIT_EXPORT, limiter
 
 router = APIRouter(prefix="/api/export", tags=["export"])
 
+# Characters that make a cell a formula in spreadsheet applications
+_CSV_FORMULA_PREFIXES = ("=", "+", "-", "@", "\t", "\r")
+
+
+def _csv_safe(value: object) -> object:
+    """Neutralize spreadsheet formula injection in user-controlled CSV fields.
+
+    Cells beginning with =, +, -, @, tab or CR are treated as formulas by
+    Excel/LibreOffice. Prefixing with a single quote renders them as text.
+    """
+    if isinstance(value, str) and value.startswith(_CSV_FORMULA_PREFIXES):
+        return f"'{value}"
+    return value
+
 
 @router.get("/posts.csv")
 @limiter.limit(f"{RATE_LIMIT_EXPORT}/minute")
@@ -27,11 +41,11 @@ def export_posts_csv(request: Request, db: Session = Depends(get_db), _current_u
         writer.writerow(
             [
                 post.id,
-                post.title,
-                post.slug,
-                post.excerpt or "",
-                post.category.name if post.category else "",
-                ",".join(t.name for t in post.tags),
+                _csv_safe(post.title),
+                _csv_safe(post.slug),
+                _csv_safe(post.excerpt or ""),
+                _csv_safe(post.category.name if post.category else ""),
+                _csv_safe(",".join(t.name for t in post.tags)),
                 post.views or 0,
                 post.likes or 0,
                 post.created_at.isoformat() if post.created_at else "",
@@ -68,9 +82,9 @@ def export_comments_csv(
             [
                 comment.id,
                 comment.post_id,
-                comment.nickname,
-                comment.email or "",
-                comment.content,
+                _csv_safe(comment.nickname),
+                _csv_safe(comment.email or ""),
+                _csv_safe(comment.content),
                 comment.created_at.isoformat() if comment.created_at else "",
             ]
         )

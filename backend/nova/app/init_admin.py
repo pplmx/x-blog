@@ -1,15 +1,32 @@
 import os
+import warnings
 
 from sqlalchemy.orm import Session
 
 from app.auth import User, get_password_hash
+from app.config import is_development
 from app.database import Base, SessionLocal, engine
+
+DEV_ADMIN_PASSWORD = "admin123"
 
 
 def create_admin():
     Base.metadata.create_all(bind=engine)
 
-    admin_password = os.getenv("ADMIN_PASSWORD", "admin123")
+    admin_password = os.getenv("ADMIN_PASSWORD")
+    if not admin_password:
+        if not is_development():
+            raise RuntimeError(
+                "ADMIN_PASSWORD is not set. Refusing to create an admin account with a "
+                "publicly known default password outside development. Set ADMIN_PASSWORD, "
+                "or set APP_ENV=development to use the dev default."
+            )
+        admin_password = DEV_ADMIN_PASSWORD
+        warnings.warn(
+            f"ADMIN_PASSWORD not set. Using the DEVELOPMENT-only default '{DEV_ADMIN_PASSWORD}'. "
+            "Never run production with APP_ENV=development.",
+            stacklevel=2,
+        )
 
     db: Session = SessionLocal()
     try:
@@ -23,7 +40,10 @@ def create_admin():
             )
             db.add(admin)
             db.commit()
-            print(f"Admin user created: admin / {admin_password}")
+            if is_development():
+                print(f"Admin user created: admin / {admin_password}")
+            else:
+                print("Admin user created: admin")
             print("WARNING: Please change this password immediately after first login!")
         else:
             print("Admin user already exists")

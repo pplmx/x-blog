@@ -106,7 +106,6 @@ class CommentBase(BaseModel):
 
 class CommentCreate(CommentBase):
     parent_id: int | None = None
-    is_approved: bool = True
 
 
 class Comment(CommentBase):

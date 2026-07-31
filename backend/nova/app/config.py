@@ -1,4 +1,15 @@
+import os
+
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+
+def is_development() -> bool:
+    """True when APP_ENV is explicitly set to a development value.
+
+    Defaults to production semantics: unset APP_ENV is treated as production so
+    that missing secrets fail closed instead of running with insecure defaults.
+    """
+    return os.getenv("APP_ENV", "production").lower() in ("development", "dev")
 
 
 class Settings(BaseSettings):

@@ -27,7 +27,7 @@ dev:
     @echo "  just nuxt        (Nuxt on :34567)"
     @echo ""
     @echo "或使用 VS Code / IntelliJ 的 Run Dashboard"
-    cd backend/nova && ALLOWED_ORIGINS="http://localhost:34567,http://localhost:3001,http://localhost:3000,http://localhost:3003" uv run uvicorn app.main:app --reload --host 0.0.0.0 --port 18888 &
+    cd backend/nova && APP_ENV=development ALLOWED_ORIGINS="http://localhost:34567,http://localhost:3001,http://localhost:3000,http://localhost:3003" uv run uvicorn app.main:app --reload --host 0.0.0.0 --port 18888 &
     cd frontend/aura && pnpm dev --port 34567
 
 # Run backend + Nuxt dev server (alias for `dev`)
@@ -35,7 +35,7 @@ dev-nuxt: dev
 
 # Run backend only
 backend:
-    cd backend/nova && uv run uvicorn app.main:app --reload --host 0.0.0.0 --port 18888
+    cd backend/nova && APP_ENV=development uv run uvicorn app.main:app --reload --host 0.0.0.0 --port 18888
 
 # Run frontend (alias for nuxt)
 frontend:
@@ -111,7 +111,7 @@ test-e2e:
 # Run e2e tests against live Nuxt dev server (auto-starts backend + Nuxt)
 e2e:
     @echo "Starting backend..."
-    cd backend/nova && uv run uvicorn app.main:app --host 0.0.0.0 --port 18888 &
+    cd backend/nova && APP_ENV=development uv run uvicorn app.main:app --host 0.0.0.0 --port 18888 &
     @sleep 3 && curl -sf http://localhost:18888/health > /dev/null || (echo "Backend failed to start" && exit 1)
     @echo "Starting Nuxt..."
     cd frontend/aura && pnpm dev --port 34567 &
