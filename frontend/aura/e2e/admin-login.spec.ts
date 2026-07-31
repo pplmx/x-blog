@@ -14,7 +14,7 @@ test.describe("Admin authentication and post management", () => {
 
 		// Should redirect to /admin/posts
 		await page.waitForURL("**/admin/posts");
-		await expect(page).toHaveTitle(/文章列表|Posts/);
+		await expect(page).toHaveTitle(/文章列表|文章管理|Posts/);
 
 		// Should show the posts table or list
 		const postsSection = page.locator("h1");
@@ -30,7 +30,7 @@ test.describe("Admin authentication and post management", () => {
 		await page.waitForURL("**/admin/posts");
 
 		// Click logout (should be in the sidebar or header)
-		const logoutButton = page.locator("button", { name: /退出|Logout|登出/ });
+		const logoutButton = page.locator('button:has-text("退出")');
 		if (await logoutButton.isVisible()) {
 			await logoutButton.click();
 			await page.waitForURL("**/admin/login");

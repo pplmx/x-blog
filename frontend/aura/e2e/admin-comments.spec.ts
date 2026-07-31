@@ -15,28 +15,22 @@ test.describe("Admin comment management", () => {
 	test("admin can view the comments list", async ({ page }) => {
 		await expect(page).toHaveTitle(/评论|Comments/);
 
-		// Should show a table or list of comments
-		const table = page.locator("table, .comment-list");
-		await expect(table).toBeVisible();
+		// Comments render as cards in a .space-y-3 list
+		const list = page.locator(".space-y-3");
+		await expect(list).toBeVisible();
 
-		// Should have columns for author, content, status, actions
-		const headerCells = page.locator("th, .comment-header");
-		const headersText = await headerCells.allTextContents();
-		const combined = headersText.join(" ");
-		expect(combined.toLowerCase()).toMatch(/author|评论人|name/);
+		// Cards show moderation status and action buttons
+		const listText = (await list.textContent()) || "";
+		expect(listText).toMatch(/待审核|已审核|通过|删除/);
 	});
 
 	test("admin can approve a pending comment", async ({ page }) => {
 		// Find a pending comment (status = "pending" or "待审核")
-		const pendingRow = page.locator("tr, .comment-row", {
-			has: page.locator("text=/pending|待审核/i"),
-		});
+		const pendingRow = page.locator(".space-y-3 > div", { hasText: "待审核" }).first();
 
 		if (await pendingRow.isVisible()) {
 			// Click approve button
-			const approveBtn = pendingRow.locator("button", {
-				name: /approve|批准|通过/i,
-			});
+			const approveBtn = pendingRow.locator('button:has-text("通过")');
 			if (await approveBtn.isVisible()) {
 				await approveBtn.click();
 
@@ -47,28 +41,20 @@ test.describe("Admin comment management", () => {
 	});
 
 	test("admin can delete a comment with confirmation", async ({ page }) => {
-		const commentRows = page.locator("tr, .comment-row");
+		const commentRows = page.locator(".space-y-3 > div");
 		const count = await commentRows.count();
 
 		if (count > 0) {
 			const firstRow = commentRows.first();
-			const deleteBtn = firstRow.locator("button", {
-				name: /delete|删除|trash/i,
-			});
+			const deleteBtn = firstRow.locator('button:has-text("删除")');
 
 			if (await deleteBtn.isVisible()) {
+				// The page uses window.confirm for delete confirmation
+				page.on("dialog", (dialog) => dialog.accept());
 				await deleteBtn.click();
 
-				// Should show confirmation dialog
-				const confirmBtn = page.locator("button", {
-					name: /confirm|确定|delete anyway/i,
-				});
-				if (await confirmBtn.isVisible()) {
-					await confirmBtn.click();
-
-					// Comment should be removed from the list
-					await expect(commentRows).toHaveCount(count - 1);
-				}
+				// Comment should be removed from the list
+				await expect(commentRows).toHaveCount(count - 1);
 			}
 		}
 	});

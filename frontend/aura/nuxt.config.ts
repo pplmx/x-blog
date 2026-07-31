@@ -78,6 +78,14 @@ export default defineNuxtConfig({
 			siteUrl: process.env.NUXT_SITE_URL || "http://localhost:3000",
 		},
 	},
+	// Nuxt 4's srcDir is app/, so the default composables scan looks in
+	// app/composables and misses the project composables in rootDir/composables
+	// (useUpload, useI18n, useBookmarks, ...). Pages that relied on
+	// auto-import (e.g. the post editor's useUpload) crashed at runtime with
+	// "useUpload is not defined" in the production build.
+	imports: {
+		dirs: [resolve(rootDir, "composables")],
+	},
 	components: [
 		{
 			prefix: "",

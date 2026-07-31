@@ -18,6 +18,7 @@ vi.stubGlobal("useRuntimeConfig", () => ({
 }));
 vi.stubGlobal("navigateTo", vi.fn());
 vi.stubGlobal("useHead", vi.fn());
+vi.stubGlobal("definePageMeta", vi.fn());
 
 const originalConfirm = window.confirm;
 
@@ -70,7 +71,7 @@ const mockResponse = {
 };
 
 async function loadPage() {
-	const { default: PostsPage } = await import("@/pages/admin/posts.vue");
+	const { default: PostsPage } = await import("@/pages/admin/posts/index.vue");
 	return PostsPage;
 }
 

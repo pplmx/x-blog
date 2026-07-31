@@ -15,60 +15,43 @@ test.describe("Admin category management", () => {
 	test("admin can view the categories list", async ({ page }) => {
 		await expect(page).toHaveTitle(/分类|Categories/);
 
-		// Should show a list or table of categories
-		const list = page.locator("table, .category-list, .categories");
+		// Categories render as cards in a .space-y-3 list
+		const list = page.locator(".space-y-3");
 		await expect(list).toBeVisible();
 	});
 
 	test("admin can create a new category", async ({ page }) => {
-		// Click the "create" or "new" button
-		const createBtn = page.locator("button", {
-			name: /create|new|添加|新建|新增/i,
-		});
-		await expect(createBtn).toBeVisible();
-		await createBtn.click();
-
-		// Fill in the category form
-		const nameInput = page.locator(
-			'input[name="name"], input[placeholder*="名称"], input[placeholder*="name"]',
-		);
+		// The create form is always visible; fill it and submit
+		const nameInput = page.locator('input[placeholder*="名称"]');
 		await expect(nameInput).toBeVisible();
 		await nameInput.fill("Test Category");
 
-		// Save
-		const saveBtn = page.locator("button", {
-			name: /save|submit|保存|确定/i,
-		});
-		await expect(saveBtn).toBeVisible();
-		await saveBtn.click();
+		const createBtn = page.locator('button:has-text("创建")');
+		await expect(createBtn).toBeEnabled();
+		await createBtn.click();
 
-		// Should redirect back to categories list and show the new category
-		await page.waitForURL("**/admin/categories");
+		// The new category should appear in the list
 		await expect(page.locator("text=Test Category")).toBeVisible();
 	});
 
 	test("admin can edit an existing category", async ({ page }) => {
 		// Find the first category in the list
-		const firstCategory = page.locator("tr, .category-item").first();
+		const firstCategory = page.locator(".space-y-3 > div").first();
 
 		// Click edit button
-		const editBtn = firstCategory.locator("button", {
-			name: /edit|修改|编辑|pencil/i,
-		});
+		const editBtn = firstCategory.locator('button:has-text("编辑")');
 		if (await editBtn.isVisible()) {
 			await editBtn.click();
 
 			// Should show the edit form
-			const nameInput = page.locator('input[name="name"], input[value]');
+			const nameInput = firstCategory.locator('input[type="text"]');
 			await expect(nameInput).toBeVisible();
 
 			// Change the name
 			await nameInput.fill("Updated Category Name");
 
 			// Save
-			const saveBtn = page.locator("button", {
-				name: /save|submit|保存|确定/i,
-			});
+			const saveBtn = firstCategory.locator('button:has-text("确认")');
 			await saveBtn.click();
 
 			// Should show updated name
@@ -77,46 +60,32 @@ test.describe("Admin category management", () => {
 	});
 
 	test("admin can delete a category with confirmation", async ({ page }) => {
-		const categoryItems = page.locator("tr, .category-item");
+		const categoryItems = page.locator(".space-y-3 > div");
 		const count = await categoryItems.count();
 
 		if (count > 0) {
 			const firstItem = categoryItems.first();
-			const deleteBtn = firstItem.locator("button", {
-				name: /delete|删除|trash/i,
-			});
+			const deleteBtn = firstItem.locator('button:has-text("删除")');
 
 			if (await deleteBtn.isVisible()) {
+				// The page uses window.confirm for delete confirmation
+				page.on("dialog", (dialog) => dialog.accept());
 				await deleteBtn.click();
 
-				// Should show confirmation dialog
-				const confirmBtn = page.locator("button", {
-					name: /confirm|确定|delete anyway/i,
-				});
-				if (await confirmBtn.isVisible()) {
-					await confirmBtn.click();
-
-					// Category count should decrease
-					await expect(categoryItems).toHaveCount(count - 1);
-				}
+				// Category count should decrease
+				await expect(categoryItems).toHaveCount(count - 1);
 			}
 		}
 	});
 
 	test("create form validates required fields", async ({ page }) => {
-		const createBtn = page.locator("button", {
-			name: /create|new|添加|新建|新增/i,
-		});
-		await createBtn.click();
+		const createBtn = page.locator('button:has-text("创建")');
 
-		// Try to save without filling in required fields
-		const saveBtn = page.locator("button", {
-			name: /save|submit|保存|确定/i,
-		});
-		await saveBtn.click();
+		// The create button is disabled while the input is empty
+		await expect(createBtn).toBeDisabled();
 
-		// Should show validation error
-		const errorMessage = page.locator("text=/required|必填|不能为空/i");
-		await expect(errorMessage).toBeVisible();
+		// Filling the input enables it
+		await page.locator('input[placeholder*="名称"]').fill("Validated Category");
+		await expect(createBtn).toBeEnabled();
 	});
 });

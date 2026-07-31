@@ -2,6 +2,8 @@
 import type { AdminPost } from "~~/composables/useApi";
 import { deleteAdminPost, fetchAdminPosts } from "~~/composables/useApi";
 
+definePageMeta({ layout: "admin" });
+
 useHead({ title: "文章管理 - X-Blog" });
 
 const searchQuery = ref("");

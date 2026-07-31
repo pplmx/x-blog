@@ -14,8 +14,11 @@ const route = useRoute();
 const isLoginPage = route.path === "/admin/login";
 const sidebarOpen = ref(false);
 
-// Redirect unauthenticated users to login page when not already on it
-if (!(isAuthenticated.value || isLoginPage)) {
+// Redirect unauthenticated users to the login page — CLIENT-side only
+// (typeof window guard). The token lives in localStorage, which does not
+// exist during SSR; a server-side check would 302-redirect every admin
+// page (including for logged-in users) before the client can read the token.
+if (typeof window !== "undefined" && !(isAuthenticated.value || isLoginPage)) {
 	navigateTo("/admin/login", { replace: true });
 }
 

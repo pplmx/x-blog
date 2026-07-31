@@ -11,7 +11,7 @@ test.describe("Admin post editing", () => {
 	});
 
 	test("admin can view the posts list", async ({ page }) => {
-		await expect(page).toHaveTitle(/文章列表|Posts/);
+		await expect(page).toHaveTitle(/文章列表|文章管理|Posts/);
 
 		// Should show a table of posts
 		const table = page.locator("table, .posts-list");
@@ -26,48 +26,45 @@ test.describe("Admin post editing", () => {
 
 	test("admin can navigate to post edit page", async ({ page }) => {
 		// Find the first post in the list
-		const firstPost = page.locator("tr, .post-row").first();
+		const firstPost = page.locator("tbody tr").first();
 
 		// Click edit button
-		const editBtn = firstPost.locator("a, button", {
-			name: /edit|修改|编辑/i,
-		});
+		const editBtn = firstPost.locator('a[href*="/admin/posts/"]').last();
 		await expect(editBtn).toBeVisible();
 		await editBtn.click();
 
 		// Should navigate to the edit page
-		await page.waitForURL("**/admin/posts/**");
+		await page.waitForURL(/\/admin\/posts\/\d+/);
 
 		// Should show the post edit form
-		const titleInput = page.locator('input[name="title"], h1');
+		const titleInput = page.locator('input[placeholder="输入文章标题"]');
 		await expect(titleInput).toBeVisible();
 	});
 
 	test("admin can create a new post", async ({ page }) => {
 		// Click "create new post" or "new post" button
-		const createBtn = page.locator("a, button", {
-			name: /create|new post|新建文章|添加文章|新增/i,
-		});
+		const createBtn = page.locator(
+			'a:has-text("新建文章"), a:has-text("新建"), button:has-text("新建")',
+		);
 		await expect(createBtn).toBeVisible();
 		await createBtn.click();
 
-		// Should show the post editor
-		await page.waitForURL("**/admin/posts/**");
+		// Should show the post editor (new-post URL)
+		await page.waitForURL("**/admin/posts/new");
 
-		const titleInput = page.locator('input[name="title"], input[placeholder*="标题"]');
+		// Editor-specific title input (the list page also has an input whose
+		// placeholder contains 标题 - the search box)
+		const titleInput = page.locator('input[placeholder="输入文章标题"]');
 		await expect(titleInput).toBeVisible();
 		await titleInput.fill("Test Post Title");
 
-		// Fill in content (may be a textarea or rich text editor)
-		const contentTextarea = page.locator('textarea[name="content"], .content-editor, .markdown-editor');
-		if (await contentTextarea.isVisible()) {
-			await contentTextarea.fill("This is test post content.");
-		}
+		// Fill in content (the markdown editor textarea)
+		const contentTextarea = page.locator('textarea[placeholder*="Markdown"]');
+		await expect(contentTextarea).toBeVisible();
+		await contentTextarea.fill("This is test post content.");
 
-		// Save the post
-		const saveBtn = page.locator("button", {
-			name: /save|publish|发布|保存|确定|submit/i,
-		});
+		// Save the post (type=submit button on the editor form)
+		const saveBtn = page.locator('button[type="submit"]');
 		await expect(saveBtn).toBeVisible();
 		await saveBtn.click();
 
