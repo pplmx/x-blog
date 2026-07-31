@@ -218,3 +218,44 @@ describe("regexSanitize (always-active fallback)", () => {
 		expect(result).toContain("<em>world</em>");
 	});
 });
+
+describe("math extraction guards", () => {
+	it("does not treat prices/prose with dollar signs as math", () => {
+		const r = useMarkdown("原价 $5，现价 $10");
+		const htmlSegs = r.segments.filter((s) => s.type === "html");
+		expect(htmlSegs.length).toBe(1);
+		expect(htmlSegs[0].html).toContain("原价 $5，现价 $10");
+		expect(r.segments.some((s) => s.type === "math")).toBe(false);
+	});
+
+	it("still extracts real inline math", () => {
+		const r = useMarkdown("公式 $a + b$ 结束");
+		const mathSeg = r.segments.find((s) => s.type === "math");
+		expect(mathSeg).toBeDefined();
+		if (mathSeg && mathSeg.type === "math") {
+			expect(mathSeg.formula).toBe("a + b");
+		}
+	});
+
+	it("allows CJK inside \\text{} groups in math", () => {
+		const r = useMarkdown("说明 $x = \\text{价格}$ 完成");
+		const mathSeg = r.segments.find((s) => s.type === "math");
+		expect(mathSeg).toBeDefined();
+	});
+});
+
+describe("heading ids for TOC anchors", () => {
+	it("renders headings with slugified ids", () => {
+		const r = useMarkdown("## Hello World\n\n正文");
+		const htmlSeg = r.segments.find((s) => s.type === "html");
+		expect(htmlSeg?.html).toContain('<h2 id="hello-world">Hello World</h2>');
+	});
+
+	it("heading ids match extractToc slugs", () => {
+		const content = "## 我的 文章\n\n内容";
+		const r = useMarkdown(content);
+		const htmlSeg = r.segments.find((s) => s.type === "html");
+		const toc = extractToc(`<h2>我的 文章</h2>`);
+		expect(htmlSeg?.html).toContain(`id="${toc[0].id}"`);
+	});
+});

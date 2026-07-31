@@ -20,6 +20,8 @@
 
 import { marked } from "marked";
 
+import { slugify } from "./useToc";
+
 export type Segment =
 	| { type: "html"; html: string; key: string }
 	| { type: "code"; lang: string; code: string; key: string }
@@ -94,6 +96,15 @@ function extractMath(
 		(_match, displayFormula: string | undefined, inlineFormula: string | undefined) => {
 			const formula = (displayFormula ?? inlineFormula ?? "").trim();
 			if (!formula) return _match;
+			// Guard against prose with dollar signs (prices, shell vars):
+			// "原价 $5，现价 $10" must not become math "5，现价". Reject inline
+			// formulas that contain CJK characters outside \text{...} groups
+			// (legitimate formulas use \text{中文} for CJK text).
+			if (inlineFormula !== undefined) {
+				const withoutTextGroup = formula.replace(/\\text\{[^}]*\}/g, "");
+				// CJK range: 一-鿿 (common) + 㐀-䶿 (extended)
+				if (/[一-鿿㐀-䶿]/.test(withoutTextGroup)) return _match;
+			}
 			const key = makeKey("math", keygen);
 			segments.push({
 				type: "math",
@@ -205,6 +216,16 @@ export function sanitizeHtml(html: string): string {
 }
 
 // --- Markdown-to-HTML conversion (marked) ---
+
+// Markdown heading renderer: emit the same id that useToc.extractToc computes,
+// so TOC anchor links resolve to real heading elements.
+const headingRenderer = new marked.Renderer();
+headingRenderer.heading = function (token: { tokens: unknown; depth: number }) {
+	const html = this.parser.parseInline(token.tokens);
+	const text = html.replace(/<[^>]+>/g, "").trim();
+	return `<h${token.depth} id="${slugify(text)}">${html}</h${token.depth}>`;
+};
+marked.use({ renderer: headingRenderer });
 
 /**
  * Convert remaining Markdown (headings, lists, tables, bold, etc.) to HTML.

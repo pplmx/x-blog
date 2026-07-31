@@ -22,8 +22,12 @@ export interface TocItem {
 /**
  * Generate a URL-safe slug from heading text.
  * Matches GitHub's algorithm for heading IDs.
+ *
+ * Shared with useMarkdown.ts, whose marked renderer emits these ids on the
+ * rendered headings — the TOC anchors only resolve because both sides use
+ * this exact function.
  */
-function slugify(text: string): string {
+export function slugify(text: string): string {
 	return (
 		text
 			.toLowerCase()
