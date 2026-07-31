@@ -1,6 +1,12 @@
+import re
 from datetime import datetime
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
+
+# Slug pattern: lowercase alphanumerics joined by single hyphens. Free-form
+# slugs with spaces/&/CJK produce broken RSS/Atom/sitemap URLs and can never
+# be matched by the public /posts/{slug_or_id} route.
+SLUG_PATTERN = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
 
 
 class TagBase(BaseModel):
@@ -31,7 +37,7 @@ class Category(CategoryBase):
 
 class PostBase(BaseModel):
     title: str
-    slug: str
+    slug: str = Field(pattern=SLUG_PATTERN.pattern)
     content: str
     excerpt: str | None = None
     published: bool = False

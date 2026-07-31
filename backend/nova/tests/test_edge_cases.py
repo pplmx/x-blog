@@ -274,31 +274,44 @@ def test_create_tag_with_underscore(client, auth_headers):
 # ============ Case Sensitivity ============
 
 
-def test_slug_case_different(client, auth_headers):
-    """Different case slugs are treated as different."""
+def test_slug_must_be_lowercase_slug_format(client, auth_headers):
+    """Slugs are validated: lowercase alphanumerics joined by hyphens."""
     import time
 
-    response1 = client.post(
+    # Uppercase and special characters are rejected
+    bad = client.post(
         "/api/posts",
         json={
-            "title": "Case Test 1",
-            "slug": f"CaseTest{int(time.time())}",
+            "title": "Bad Slug",
+            "slug": f"BadSlug{int(time.time())}",
             "content": "Content",
         },
         headers=auth_headers,
     )
-    response2 = client.post(
+    assert bad.status_code == 422
+
+    bad2 = client.post(
         "/api/posts",
         json={
-            "title": "Case Test 2",
-            "slug": f"casetest{int(time.time())}",
+            "title": "Bad Slug 2",
+            "slug": f"bad_slug_{int(time.time())}",
             "content": "Content",
         },
         headers=auth_headers,
     )
-    # Should both succeed as slugs are different
-    assert response1.status_code == 201
-    assert response2.status_code == 201
+    assert bad2.status_code == 422
+
+    # Valid lowercase slugs are accepted
+    good = client.post(
+        "/api/posts",
+        json={
+            "title": "Good Slug",
+            "slug": f"good-slug-{int(time.time())}",
+            "content": "Content",
+        },
+        headers=auth_headers,
+    )
+    assert good.status_code == 201
 
 
 # ============ Filter Edge Cases ============
