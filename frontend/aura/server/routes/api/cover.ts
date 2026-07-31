@@ -59,7 +59,8 @@ function generateColorScheme(title: string): { start: string; end: string } {
 		hash = (hash * 31 + char.charCodeAt(0)) | 0;
 	}
 	const index = Math.abs(hash) % palettes.length;
-	return { start: palettes[index][0], end: palettes[index][1] };
+	const palette = palettes[index] ?? palettes[0];
+	return { start: palette?.[0] ?? "#3b82f6", end: palette?.[1] ?? "#6366f1" };
 }
 
 // ─── SVG template ─────────────────────────────────────────────────────

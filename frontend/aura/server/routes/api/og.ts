@@ -69,7 +69,8 @@ function ogTemplate(props: OgTemplateProps): string {
 		"from-emerald-500 to-teal-600": ["#10b981", "#0d9488"],
 		"from-orange-500 to-red-600": ["#f97316", "#ef4444"],
 	} as const;
-	const [startColor, endColor] = gradientMap[gradientClasses] || ["#3b82f6", "#6366f1"];
+	const [startColor, endColor] = (gradientClasses &&
+		gradientMap[gradientClasses as keyof typeof gradientMap]) || ["#3b82f6", "#6366f1"];
 
 	return `
 <svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
