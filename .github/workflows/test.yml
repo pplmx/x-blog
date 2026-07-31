@@ -10,10 +10,10 @@ jobs:
   backend-test:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Setup Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v7
         with:
           python-version: '3.14'
 
@@ -35,18 +35,19 @@ jobs:
   frontend-test:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Setup pnpm
-        uses: pnpm/action-setup@v4
+        uses: pnpm/action-setup@v6
         with:
-          version: '9'
+          version: '11'
 
       - name: Setup Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           node-version: '24'
           cache: 'pnpm'
+          cache-dependency-path: frontend/aura/pnpm-lock.yaml
 
       - name: Frontend lint check
         run: |
@@ -76,23 +77,24 @@ jobs:
         ports:
           - 5432:5432
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Setup Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v7
         with:
           python-version: '3.14'
 
       - name: Setup pnpm
-        uses: pnpm/action-setup@v4
+        uses: pnpm/action-setup@v6
         with:
-          version: '9'
+          version: '11'
 
       - name: Setup Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           node-version: '24'
           cache: 'pnpm'
+          cache-dependency-path: frontend/aura/pnpm-lock.yaml
 
       - name: Install uv
         run: pip install uv
@@ -120,6 +122,11 @@ jobs:
         run: |
           cd frontend/aura
           pnpm install
+
+      - name: Install Playwright browser
+        run: |
+          cd frontend/aura
+          pnpm exec playwright install --with-deps chromium
 
       - name: Run E2E tests
         env:

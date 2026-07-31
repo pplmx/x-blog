@@ -6,7 +6,28 @@
 
 **Stack**: FastAPI (Python 3.14) + Nuxt 4 (Vue 3) + SQLite + PostgreSQL
 **Directory Structure**: `backend/nova/` (FastAPI), `frontend/aura/` (Nuxt 4)
-**Status**: 512 backend tests pass (8 skipped), 686 frontend tests (38 files). ruff + Biome + tsc clean. CI on the pushed branch was RED (see "CI" below); local main is 9 commits ahead of origin/main.
+**Status**: 512 backend tests pass (8 skipped), 686 frontend tests (38 files). ruff + Biome + tsc clean. CI on the pushed branch was RED (see "CI" below); local main is 9 commits ahead of origin/main. CI lockfile-cache and Node 20 deprecation issues fixed 2026-07-31 (see Session entry below); green run pending.
+
+## Session 2026-07-31 — CI Fix: pnpm lockfile cache + Node 24 actions (COMPLETED)
+
+GitHub Actions failed at `actions/setup-node@v4`:
+`Error: Dependencies lock file is not found in /home/runner/work/x-blog/x-blog. Supported file patterns: pnpm-lock.yaml`
+
+- **Root cause**: `cache: 'pnpm'` looks for `pnpm-lock.yaml` at the repo root, but the pnpm
+  workspace lives in `frontend/aura/`. Added `cache-dependency-path: frontend/aura/pnpm-lock.yaml`
+  to all three `setup-node` steps (test.yml ×2, deploy.yml ×1).
+- **Node 20 deprecation** (runner now defaults to Node 24): bumped every action to a Node 24
+  runtime — checkout v4→v7, setup-python v5→v7, setup-node v4→v7, pnpm/action-setup v4→v6,
+  docker/login-action v3→v4. Verified `using: node24` in each release's action.yml. buildx v4,
+  build-push v7, and appleboy/ssh-action v1.2.5 were already Node 24/composite.
+- **pnpm 9 → 11**: action-setup pinned pnpm 9, but the workspace is configured for pnpm ≥ 10
+  (`pnpm-approved.json`, `allowBuilds` in pnpm-workspace.yaml); local tooling is 11.18.0 and the
+  frontend Dockerfile already uses `pnpm@latest`. Verified locally: `pnpm install --frozen-lockfile`
+  passes with 11.18.0.
+- **e2e-test**: Playwright browsers were never installed in CI — added
+  `pnpm exec playwright install --with-deps chromium` (config only uses the chromium project).
+
+Verified: both workflow YAMLs parse (PyYAML); local `pnpm install --frozen-lockfile` passes.
 
 ## Session 2026-07-31 — Security Review + Deep-Dive Hardening (COMPLETED)
 
