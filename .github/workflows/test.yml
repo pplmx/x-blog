@@ -97,10 +97,18 @@ jobs:
       - name: Install uv
         run: pip install uv
 
-      - name: Start backend
+      - name: Seed database
         run: |
           cd backend/nova
           uv sync
+          DATABASE_URL="postgresql://xblog:xblog@localhost:5432/xblog_test" \
+          APP_ENV=development \
+          ADMIN_PASSWORD=admin123 \
+          uv run python scripts/init_db.py
+
+      - name: Start backend
+        run: |
+          cd backend/nova
           DATABASE_URL="postgresql://xblog:xblog@localhost:5432/xblog_test" \
           JWT_SECRET_KEY="test-secret-key-e2e" \
           uv run uvicorn app.main:app --host 0.0.0.0 --port 18888 &

@@ -110,6 +110,8 @@ test-e2e:
 
 # Run e2e tests against live Nuxt dev server (auto-starts backend + Nuxt)
 e2e:
+    @echo "Seeding database (dev admin: admin/admin123)..."
+    cd backend/nova && APP_ENV=development ADMIN_PASSWORD=admin123 uv run python scripts/init_db.py
     @echo "Starting backend..."
     cd backend/nova && APP_ENV=development uv run uvicorn app.main:app --host 0.0.0.0 --port 18888 &
     @sleep 3 && curl -sf http://localhost:18888/health > /dev/null || (echo "Backend failed to start" && exit 1)

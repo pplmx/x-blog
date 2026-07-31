@@ -6,7 +6,82 @@
 
 **Stack**: FastAPI (Python 3.14) + Nuxt 4 (Vue 3) + SQLite + PostgreSQL
 **Directory Structure**: `backend/nova/` (FastAPI), `frontend/aura/` (Nuxt 4)
-**Status**: 492 backend tests (92.51% coverage, 8 skipped), 664 frontend tests (37 files, 80%+ coverage threshold met). All CI checks pass: ruff lint/format, Biome, coverage, E2E.
+**Status**: 512 backend tests pass (8 skipped), 686 frontend tests (38 files). ruff + Biome + tsc clean. CI on the pushed branch was RED (see "CI" below); local main is 9 commits ahead of origin/main.
+
+## Session 2026-07-31 — Security Review + Deep-Dive Hardening (COMPLETED)
+
+Three parallel review agents (security-reviewer, python-reviewer, typescript-reviewer) audited the whole stack. All CRITICAL/HIGH findings fixed, verified by tests:
+
+### Backend security (verified by direct code reading before fixing)
+
+- **C1/CRITICAL — forgeable JWT secret**: `JWT_SECRET_KEY` fell back to the publicly-known `"x-blog-secret-key-dev-only"`; anyone could forge admin tokens. Now `auth.py` raises at import when unset outside `APP_ENV=development`; docker-compose requires it (`${JWT_SECRET_KEY:?...}`); justfile dev/e2e targets set `APP_ENV=development`.
+- **C2/CRITICAL — default admin password**: `init_admin.py` AND `scripts/init_db.py` created admin/admin123 unconditionally. Both now fail closed without `ADMIN_PASSWORD` outside development; the password is never printed in production. (`init_db.py` was missed by the earlier "fix" — it had the same hardcoded default.)
+- **H1/HIGH — drafts publicly readable**: `GET /api/posts/{id|slug}` only guarded future `publish_at`, never `published` — drafts (with full content) were served to anyone. Also `search_posts`, `get_popular_posts`, and `/view`/`/like` leaked scheduled posts. All public surfaces now share `_is_publicly_visible` / `scheduled_filter` semantics.
+- **H2/HIGH — moderation bypass**: `CommentCreate.is_approved` (default True) was client-controlled, so every comment self-approved. Field removed from the schema; `create_comment` always stores False.
+- **M1 — password brute-force**: `/api/admin/password` had no rate limit and accepted short passwords; now `RATE_LIMIT_AUTH`-limited with `min_length=8` (also on `UserCreate`).
+- **M2 — CSV injection**: comment/posts export wrote `=`, `+`, `-`, `@`-prefixed attacker-controlled fields verbatim (formula execution in Excel). `_csv_safe()` neutralizes them.
+- **L2 — malformed JWT `sub` → 500**: `int("abc")` escaped the `except JWTError`; now `except (JWTError, TypeError, ValueError)`. **Note**: ruff 0.16 formats this as `except JWTError, TypeError, ValueError:` — the comma form IS valid tuple semantics in Python 3.14 (do not "fix" it back).
+- **L8 — empty/short passwords** accepted on user creation; now rejected.
+
+### Backend correctness (from python-reviewer, verified)
+
+- **Timezone consistency**: `publish_at` is stored naive-UTC; the detail route compared against **local** time (silent ±hours on non-UTC hosts). All comparisons now use `crud.utc_now_naive()`; the router helper normalizes aware values defensively.
+- **M3 — related-posts ranking**: `match_count + 100` was NULL-arithmetic; on PostgreSQL (NULLS FIRST for DESC) zero-match posts ranked above tag matches. `coalesce()` everywhere.
+- **M1 — RSS/Atom malformed XML**: channel title/description and all Atom titles/summaries were raw-interpolated (`&` broke feeds). Everything non-CDATA is `xml.sax.saxutils.escape`d; CDATA sections safely split `]]>`.
+- **M2 — admin comment delete**: unhandled IntegrityError (500 on PG, orphaned replies on SQLite) — now 400 with rollback.
+- **M5 — comments list bounds**: `limit=-1` → 500; now `Query(ge=1, le=100)` like posts.
+- **L4 — stats**: future-scheduled posts counted as published; now excluded.
+- **L2 — admin category clear**: `admin_update_post` couldn't unset `category_id`; now explicit `null` clears it (single `model_dump(exclude_unset=True)`).
+- **L3 — admin pagination bounds**: `skip`/`limit` unbounded; now bounded.
+
+### Backend API contract (found via test-writing, verified end-to-end)
+
+- **HIGH — admin category/tag CRUD broken from the UI**: `admin_create/update_category/tag` took `name` as a **query param**, but the frontend (`createAdminCategory` etc.) sends a JSON body → every create/rename from the admin UI returned 422. Endpoints now accept a `NameRequest` JSON body. This is why the RIL's earlier "admin CRUD works" claims were wrong — backend tests used `?name=` while the UI used a body.
+
+### Backend dead code
+
+- **Cache**: `posts_cache`/`post_detail_cache`/`stats_cache` and the `cached()` decorator were never read by the app — the earlier `clear_posts_cache()` calls were no-ops (the "cache invalidation" fix was cosmetic; posts are never cached, so there was nothing to invalidate). Removed; `/health/cache` now reports only categories/tags. Wiring real posts caching is a future perf path (would need dict serialization — ORM objects detach across sessions).
+
+### Frontend (typescript-reviewer findings, all verified)
+
+- **C1/CRITICAL — sanitization was dead code**: `MarkdownContent.vue` used the synchronous `useMarkdown` path; `sanitizeHtml()` returned input **unchanged** because nothing ever called `loadPurify` (the RIL's "DOMPurify verified" narrative was wrong — tests primed it, production didn't). ALL post HTML rendered unsanitized via v-html. Now: `regexSanitize()` is always active (never identity), `loadPurify()` exported + loaded on mount with a re-render trigger for the DOMPurify upgrade.
+- **C2/CRITICAL — search snippets**: backend-built `<mark>` snippets rendered via `v-html` unsanitized (bypassed even the dead pipeline). Now `sanitizeHtml(post.snippet)`.
+- **C3/CRITICAL — admin dashboard crash**: `await usePosts()` resolves to the AsyncData object; the page read `.items` off it → TypeError on every load. Now `.data.value?.items`; dashboard spec mock corrected.
+- **C4/HIGH — KaTeX `trust: true`** allowed `\href{javascript:...}` XSS → `trust: false`.
+- **C5/HIGH — Mermaid `securityLevel: "loose"`** allowed HTML labels/click handlers → `"strict"`.
+- **C6/HIGH — SSR localStorage guard**: `typeof localStorage !== "undefined"` passes on Node ≥22 with partial webstorage, then `getItem is not a function` 500s admin pages during SSR. Guards now check `typeof window` + `getItem` function (useAdminAuth, useApi.getAuthHeaders, useUpload).
+- **C7/HIGH — API proxy dropped query strings**: `/api/[...path]` built the backend URL from the path param only — `?page=2&q=...` never reached the backend (pagination/search silently broken via the proxy). Now forwards `getQuery` via URLSearchParams.
+- **C8/HIGH — static proxy path traversal**: `/static/..%2fapi/categories` escaped the sandbox to arbitrary backend routes; Authorization header was forwarded. Paths with `..`/absolute forms → 400; only cache headers forwarded.
+- **C9/HIGH — search/tags never refetched**: `route.query` read once at setup; SPA query-only navigation was dead. Pages now pass computed URLs to `useFetch` (refetches on change).
+- **M10 — JSON-LD relative image URLs** (Google rejects) → absolutized via `buildAbsoluteImageUrl` (cover + publisher logo).
+- **M11 — soft-404**: catch-all returned 200 with homepage title → sets `setResponseStatus(404)` + title on SSR.
+- **M16 — admin editor preview** rendered raw content via v-html (self-XSS) → sanitized.
+- **M18 — tsc errors** in cover.ts/og.ts (indexed access on possibly-undefined) → fixed; tsc now exits 0.
+- **M19 — SEO proxy recursion**: with `NUXT_API_URL` unset, `$fetch("/robots.txt")` recursed into the app (hang). All 4 SEO routes now use the absolute backend fallback.
+
+### CI (evidence from failed runs, July 28-29)
+
+- **frontend-test failed**: `actions/setup-node` with `cache: 'pnpm'` ran BEFORE `pnpm/action-setup` — setup-node's cache step can't find pnpm → every frontend job died. Reordered in test.yml (2 jobs) + deploy.yml.
+- **e2e-test**: started an unused Nuxt server on :13334 (Playwright manages its own on :34567 per playwright.config.ts) with no env; removed the dead step, env now set on the E2E step. Deleted the dead `e2e/playwright.config.ts` (nothing referenced it).
+- **e2e admin seeding**: neither CI nor `just e2e` ever ran `init_db.py`, so the admin user (admin/admin123) didn't exist and admin e2e specs could never pass. Both now seed before backend start. `init_db.py` is idempotent.
+- **Repo hygiene**: `frontend/aura/.gitignore` ignored `tests`/`e2e` — new test files silently stayed untracked (useSeo.spec.ts, proxy specs only reached the repo via -f). Un-ignored; CI runs `pnpm test` on a clean checkout.
+
+### Tests added this session (backend +33 → 512, frontend +14 → 686)
+
+Fail-closed imports (3), init_admin fail-closed (2), moderation bypass, draft/scheduled hiding (2), search/popular scheduled exclusion (2), RSS/Atom escaping, comments bounds, stats scheduling, CSV injection, password min-length (2), admin category/tag body + clear (4), regexSanitize (4), static-proxy traversal (3), api-proxy query suite (6), JSON-LD relative cover.
+
+## Known Issues / Technical Debt (updated 2026-07-31)
+
+1. **CI is red on origin/main** — local main is 9 commits ahead with all fixes; CI can't be verified until push. The July 29 failures were: pnpm ordering (fixed), ruff on stale code (fixed locally), docker service exit 125 (possibly transient).
+2. **e2e suite** — 14 specs now (admin login/posts-edit/categories/tags/comments/dashboard all covered). Needs a full local run to confirm green post-fixes.
+3. **`import.meta.server`/`useHead` interplay** — not-found page sets head only on SSR; client-side SPA 404s fall back to route meta.
+4. **init_db.py is the seeding path for e2e/dev** — documented in justfile e2e target.
+5. **Python 3.14 `except A, B, C:`** — valid tuple-form syntax; ruff 0.16 formats it. Don't revert to parenthesized form.
+6. **Wiring real posts caching** — the dead cache removal leaves /api/posts uncached; a dict-serialized cache would be a real perf win (out of scope this session).
+7. **Slug format validation** (L8 backend) — free-form slugs can produce broken feed/sitemap URLs; needs a slug pattern constraint + migration-safe handling.
+8. **RIL.md entry "JWT expiration fix" from 07-30** remains accurate; **"admin password via env var FIXED" entry was inaccurate** — the dev/production distinction did not exist until this session.
+
+## Prior Findings (preserved)
 
 ## Key Findings
 
