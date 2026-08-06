@@ -17,7 +17,7 @@ from pathlib import Path
 
 import pytest
 from fastapi.testclient import TestClient
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, event
 from sqlalchemy.orm import Session, sessionmaker
 
 from app.database import Base, get_db
@@ -45,6 +45,14 @@ def test_engine(worker_id: str):
         connect_args={"check_same_thread": False},
         pool_pre_ping=True,
     )
+    # Enforce foreign keys so SQLite matches PostgreSQL constraint semantics.
+    # Without this, FK violations (e.g. deleting a comment that has replies) are
+    # silently ignored — exactly the path the IntegrityError handlers cover.
+    @event.listens_for(engine, "connect")
+    def _set_sqlite_pragma(dbapi_connection, _connection_record):
+        # pragma persists for the lifetime of this DBAPI connection
+        dbapi_connection.execute("PRAGMA foreign_keys=ON")
+
     # Ensure schema exists once per process
     Base.metadata.create_all(bind=engine)
     yield engine

@@ -5,6 +5,10 @@ Uses shared fixtures from conftest.py: admin_user, admin_token, auth_headers.
 Credentials: username="testadmin", password="testpass123"
 """
 
+from unittest.mock import patch
+
+from sqlalchemy.exc import IntegrityError
+
 from app import models
 
 
@@ -538,6 +542,32 @@ class TestAdminComments:
         assert response.status_code == 404
         data = response.json()
         assert data["error"]["code"] == "NOT_FOUND"
+
+    def test_delete_comment_with_replies_returns_400(self, client, auth_headers, db_session):
+        """Deleting a parent comment that has replies must return 400, not 500.
+
+        On PostgreSQL the self-referential ``parent_id`` FK raises IntegrityError
+        when the route issues a bare ``DELETE`` (the request session only loaded
+        the parent, never the replies). The route catches it, rolls back, and
+        returns a 400.
+
+        The FK violation is reproduced deterministically with a mocked commit:
+        the ORM cascade + SQLite make a real FK-triggered IntegrityError on the
+        delete path DB-dependent (SQLAlchemy nulls child FKs before DELETE when
+        the children are tracked in the same session). Mocking ``commit`` to raise
+        IntegrityError isolates and verifies the handler logic itself.
+        """
+        comment, _ = self._create_comment(db_session)
+
+        with patch.object(
+            type(db_session), "commit", side_effect=IntegrityError("DELETE", {}, Exception("FK"))
+        ):
+            response = client.delete(
+                f"/api/admin/comments/{comment.id}", headers=auth_headers
+            )
+
+        assert response.status_code == 400
+        assert "dependent records" in response.json()["error"]["message"].lower()
 
     def test_list_comments_unauthorized(self, client):
         """Test listing comments without auth returns 401."""
