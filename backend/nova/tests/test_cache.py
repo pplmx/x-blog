@@ -1,9 +1,9 @@
 """Tests for cache module.
 
-The posts/detail/stats caches and the cached() decorator were removed in the
-dead-code cleanup: they were never read by the application, so the earlier
-clear_posts_cache()/clear_stats_cache() calls were no-ops. Only the caches the
-app actually uses (categories, tags) are covered here.
+Covers the in-app caches: categories_cache, tags_cache (30-min TTL), and
+posts_list_cache (5-min TTL, serialized-dict payloads, write-invalidated).
+The posts/detail/stats caches and the cached() decorator were removed in a
+prior dead-code cleanup; only the caches the app actually reads are covered.
 """
 
 import pytest

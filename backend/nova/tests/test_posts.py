@@ -66,6 +66,64 @@ def test_list_posts_cache_invalidated_on_create(client, auth_headers):
     assert second.json()["items"][0]["slug"] == "new-post"
 
 
+def test_list_posts_cache_invalidated_on_update(client, auth_headers):
+    """Updating a post must drop the stale posts list cache."""
+    create = client.post(
+        "/api/posts",
+        json={
+            "title": "Update Me",
+            "slug": "update-me",
+            "content": "C",
+            "published": True,
+        },
+        headers=auth_headers,
+    )
+    post_id = create.json()["id"]
+
+    # Prime the cache with the original title
+    first = client.get("/api/posts")
+    assert first.json()["items"][0]["title"] == "Update Me"
+
+    # Updating the title must invalidate the cache
+    response = client.put(
+        f"/api/admin/posts/{post_id}",
+        json={"title": "Updated Title"},
+        headers={**auth_headers, "Content-Type": "application/json"},
+    )
+    assert response.status_code == 200
+
+    # Cache miss → fresh fetch reflects the new title
+    second = client.get("/api/posts")
+    assert second.json()["items"][0]["title"] == "Updated Title"
+
+
+def test_list_posts_cache_invalidated_on_delete(client, auth_headers):
+    """Deleting a post must drop the stale posts list cache."""
+    create = client.post(
+        "/api/posts",
+        json={
+            "title": "Delete Me",
+            "slug": "delete-me",
+            "content": "C",
+            "published": True,
+        },
+        headers=auth_headers,
+    )
+    post_id = create.json()["id"]
+
+    # Prime the cache with the post present
+    first = client.get("/api/posts")
+    assert first.json()["pagination"]["total"] == 1
+
+    # Deleting must invalidate the cache
+    delete_response = client.delete(f"/api/admin/posts/{post_id}", headers=auth_headers)
+    assert delete_response.status_code in (200, 204)
+
+    # Cache miss → fresh fetch shows the post is gone
+    second = client.get("/api/posts")
+    assert second.json()["pagination"]["total"] == 0
+
+
 def test_list_posts(client, auth_headers):
     client.post(
         "/api/posts",

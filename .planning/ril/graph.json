@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 4,
+  "round": 5,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-08-06T14:10:08+00:00",
+  "updated_at": "2026-08-06T14:50:06+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -76,10 +76,10 @@
       "id": "ISS-003",
       "type": "issue",
       "status": "active",
-      "version": 1,
+      "version": 2,
       "created_at": "2026-08-06T13:24:34+00:00",
-      "updated_at": "2026-08-06T13:24:34+00:00",
-      "touched_round": 1,
+      "updated_at": "2026-08-06T14:17:36+00:00",
+      "touched_round": 5,
       "title": "CI not verified green after local-only fixes",
       "severity": 0.7,
       "description": "RIL.md debt item #1: local main is 9 commits ahead with CI fixes (pnpm cache path, Node 24, proxy specs); CI can't be verified green until pushed. e2e suite needs full local run confirmation post-fixes."
@@ -103,7 +103,7 @@
       "version": 1,
       "created_at": "2026-08-06T13:24:48+00:00",
       "updated_at": "2026-08-06T13:24:48+00:00",
-      "touched_round": 3,
+      "touched_round": 5,
       "title": "posts-list API is bottlenecked by uncached DB reads on the most trafficked endpoint",
       "confidence": 0.7,
       "description": "/api/posts is the hottest public endpoint; caching the list with a TTL would reduce DB load. Risk: SQLAlchemy ORM objects detach across sessions — cache must store serialized dicts."
@@ -128,7 +128,7 @@
       "version": 4,
       "created_at": "2026-08-06T13:25:31+00:00",
       "updated_at": "2026-08-06T14:10:08+00:00",
-      "touched_round": 3,
+      "touched_round": 5,
       "category": "performance",
       "title": "Add TTL response cache for posts list endpoint",
       "severity": 0.6,
@@ -172,11 +172,11 @@
     "TASK-004": {
       "id": "TASK-004",
       "type": "task",
-      "status": "active",
-      "version": 1,
+      "status": "resolved",
+      "version": 4,
       "created_at": "2026-08-06T13:25:31+00:00",
-      "updated_at": "2026-08-06T13:25:31+00:00",
-      "touched_round": 1,
+      "updated_at": "2026-08-06T14:16:26+00:00",
+      "touched_round": 4,
       "category": "dx",
       "title": "Run local test/lint suites to confirm CI-green state",
       "severity": 0.7,
@@ -239,11 +239,11 @@
       "id": "CHG-001",
       "type": "change",
       "status": "active",
-      "version": 1,
+      "version": 2,
       "created_at": "2026-08-06T13:58:42+00:00",
-      "updated_at": "2026-08-06T13:58:42+00:00",
-      "touched_round": 2,
-      "commit": 914240000.0,
+      "updated_at": "2026-08-06T14:42:54+00:00",
+      "touched_round": 5,
+      "commit": "91424e4",
       "title": "Enforce slug pattern on PostUpdate",
       "description": "Added Field(pattern=SLUG_PATTERN.pattern) to PostUpdate.slug + tests for PostBase/PostUpdate slug validation"
     },
@@ -258,6 +258,68 @@
       "source": "backend/nova/app/cache.py: posts_list_cache + clear_posts_list_cache; posts.py list_posts; crud.py write invalidation",
       "title": "Posts list caching implemented and verified",
       "content": "Added posts_list_cache (TTLCache ttl=300, maxsize=256) storing serialized PostListResponse dicts keyed by (page,limit,category_id,tag_id). list_posts returns cached dict on hit (verified crud.get_posts called once for 2 identical requests). Invalidation (clear_posts_list_cache) on create_post/update_post/delete_post — matching existing clear_tags_cache pattern. Did NOT invalidate on increment_views/likes (they don't affect list ordering/content). Autouse fixture clears cache per-test. Full backend suite: 545 passed, 8 skipped. SQLite FK pragma enabled to match PG semantics.",
+      "confidence": 1.0
+    },
+    "EV-005": {
+      "id": "EV-005",
+      "type": "evidence",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-06T14:16:25+00:00",
+      "updated_at": "2026-08-06T14:16:25+00:00",
+      "touched_round": 5,
+      "source": "local verification, round 4",
+      "title": "Local CI-green state confirmed (backend+frontend+lint)",
+      "content": "Backend: 545 passed, 8 skipped (pytest-xdist). Frontend: 678 passed (38 files, vitest). Lint: ruff check+format clean (backend); biome check clean 110 files (frontend). NOTE: origin/main is still 9 commits unpushed (RIL.md debt #1); pushing to main/main requires human confirmation per stop condition #1, so ISS-003 (CI green on remote) is NOT fully resolved — only the local state is verified green.",
+      "confidence": 1.0
+    },
+    "DEC-002": {
+      "id": "DEC-002",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-06T14:16:25+00:00",
+      "updated_at": "2026-08-06T14:16:25+00:00",
+      "touched_round": 4,
+      "title": "CI green confirmation is local-only; remote push deferred to human",
+      "rationale": "Graph-engineering stop condition #1 requires human confirmation before push to main. Local suites verified green, but origin/main remote CI cannot turn green until the commits are pushed by a human. This is recorded as a deferral, not a resolution.",
+      "alternatives_rejected": "Push autonomously (violates stop condition)"
+    },
+    "HYP-003": {
+      "id": "HYP-003",
+      "type": "hypothesis",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-06T14:17:36+00:00",
+      "updated_at": "2026-08-06T14:17:36+00:00",
+      "touched_round": 5,
+      "confidence": 0.95,
+      "title": "Local test/lint suites are green after the 9 unpushed CI-fix commits",
+      "description": "If local green holds, ISS-003 is unblocked only by the human push step (DEC-003 deferral)."
+    },
+    "ISS-005": {
+      "id": "ISS-005",
+      "type": "issue",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-06T14:50:06+00:00",
+      "updated_at": "2026-08-06T14:50:06+00:00",
+      "touched_round": 5,
+      "title": "Admin post update/delete routes bypass crud and skip cache invalidation",
+      "severity": 0.5,
+      "description": "Admin API routes (admin_update_post/admin_delete_post) do direct ORM writes instead of calling crud.update_post/delete_post, so the posts list cache was never invalidated on admin writes — the test_list_posts_cache_invalidated_on_{update,delete} tests caught this. Fixed by adding clear_tags_cache()+clear_posts_list_cache() after commit in both routes."
+    },
+    "EV-006": {
+      "id": "EV-006",
+      "type": "evidence",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-06T14:50:06+00:00",
+      "updated_at": "2026-08-06T14:50:06+00:00",
+      "touched_round": 5,
+      "source": "admin.py:295-296,303-305 (post-fix); test_posts.py test_list_posts_cache_invalidated_on_update/delete",
+      "title": "Admin write routes now invalidate posts_list_cache after commit; tests confirm",
+      "content": "Before fix, admin_update_post/admin_delete_post did db.commit() with no cache clear (crud has the invalidation, but admin routes bypass crud). Added clear_tags_cache()+clear_posts_list_cache() after commit in both routes. test_list_posts_cache_invalidated_on_update (updates title, cache reflects new value) and test_list_posts_cache_invalidated_on_delete (count goes 1->0) now pass. Full suite green.",
       "confidence": 1.0
     }
   },
@@ -299,12 +361,6 @@
       "created_at": "2026-08-06T13:49:58+00:00"
     },
     {
-      "from": "EV-003",
-      "to": "HYP-002",
-      "type": "validates",
-      "created_at": "2026-08-06T13:58:12+00:00"
-    },
-    {
       "from": "DEC-001",
       "to": "TASK-002",
       "type": "governs",
@@ -321,6 +377,24 @@
       "to": "HYP-001",
       "type": "validates",
       "created_at": "2026-08-06T14:10:08+00:00"
+    },
+    {
+      "from": "EV-005",
+      "to": "HYP-003",
+      "type": "validates",
+      "created_at": "2026-08-06T14:17:36+00:00"
+    },
+    {
+      "from": "TASK-001",
+      "to": "ISS-005",
+      "type": "addresses",
+      "created_at": "2026-08-06T14:50:06+00:00"
+    },
+    {
+      "from": "EV-006",
+      "to": "HYP-001",
+      "type": "validates",
+      "created_at": "2026-08-06T14:50:06+00:00"
     }
   ]
 }
