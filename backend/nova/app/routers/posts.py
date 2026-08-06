@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session
 
 from app import crud, schemas
 from app.auth import User, get_current_admin
+from app.cache import posts_list_cache
 from app.crud import utc_now_naive
 from app.database import get_db
 from app.limiter import RATE_LIMIT_READ, RATE_LIMIT_WRITE, limiter
@@ -36,6 +37,11 @@ def list_posts(
     tag_id: int | None = None,
     db: Session = Depends(get_db),
 ):
+    cache_key = (page, limit, category_id, tag_id)
+    cached = posts_list_cache.get(cache_key)
+    if cached is not None:
+        return cached
+
     skip = (page - 1) * limit
     posts, total = crud.get_posts(
         db,
@@ -46,15 +52,26 @@ def list_posts(
     )
 
     total_pages = (total + limit - 1) // limit
-    return {
-        "items": posts,
-        "pagination": {
-            "total": total,
-            "page": page,
-            "limit": limit,
-            "total_pages": total_pages,
-        },
-    }
+    # model_validate (not __init__) applies from_attributes, converting the
+    # ORM Post objects into PostList/PaginationMeta Pydantic models like
+    # FastAPI does internally. We then dump to a plain dict for caching so
+    # no live ORM objects survive across the per-request Session.
+    response = schemas.PostListResponse.model_validate(
+        {
+            "items": posts,
+            "pagination": {
+                "total": total,
+                "page": page,
+                "limit": limit,
+                "total_pages": total_pages,
+            },
+        }
+    )
+    serialized = response.model_dump()
+    posts_list_cache[cache_key] = serialized
+    return serialized
+    posts_list_cache[cache_key] = serialized
+    return serialized
 
 
 @router.get("/{post_id}", response_model=schemas.Post)

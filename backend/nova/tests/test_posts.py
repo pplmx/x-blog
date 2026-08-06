@@ -15,6 +15,57 @@ def test_create_post(client, auth_headers):
     assert data["slug"] == "test-post"
 
 
+def test_list_posts_returns_cached_second_request(client, auth_headers):
+    """The second identical request to /api/posts must serve from the cache.
+
+    We spy on crud.get_posts: the first call queries the DB, the second (cache
+    hit) must NOT call it.
+    """
+    from app import crud
+
+    client.post(
+        "/api/posts",
+        json={"title": "Cached Post", "slug": "cached-post", "content": "C", "published": True},
+        headers=auth_headers,
+    )
+
+    from unittest.mock import patch
+
+    with patch.object(crud, "get_posts", wraps=crud.get_posts) as spy:
+        first = client.get("/api/posts")
+        second = client.get("/api/posts")
+
+    assert first.status_code == 200
+    assert second.status_code == 200
+    assert first.json() == second.json()
+    assert first.json()["pagination"]["total"] == 1
+    # First request populates the cache (DB hit); second serves from cache.
+    assert spy.call_count == 1
+
+
+def test_list_posts_cache_invalidated_on_create(client, auth_headers):
+    """Creating a post must invalidate the posts list cache."""
+    # Prime the cache with an empty list
+    first = client.get("/api/posts")
+    assert first.json()["pagination"]["total"] == 0
+
+    # Creating a published post must drop the stale cache
+    client.post(
+        "/api/posts",
+        json={
+            "title": "New Post",
+            "slug": "new-post",
+            "content": "C",
+            "published": True,
+        },
+        headers=auth_headers,
+    )
+
+    second = client.get("/api/posts")
+    assert second.json()["pagination"]["total"] == 1
+    assert second.json()["items"][0]["slug"] == "new-post"
+
+
 def test_list_posts(client, auth_headers):
     client.post(
         "/api/posts",

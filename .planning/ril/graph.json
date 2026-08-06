@@ -1,0 +1,326 @@
+{
+  "ril_version": 1,
+  "round": 4,
+  "created_at": "2026-08-06T13:21:44+00:00",
+  "updated_at": "2026-08-06T14:10:08+00:00",
+  "nodes": {
+    "COMP-001": {
+      "id": "COMP-001",
+      "type": "component",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-06T13:23:41+00:00",
+      "updated_at": "2026-08-06T13:23:41+00:00",
+      "touched_round": 1,
+      "title": "backend-nova",
+      "description": "FastAPI Python 3.14 backend at backend/nova; SQLAlchemy ORM; routers in app/routers, crud.py business logic, 656 lines"
+    },
+    "COMP-002": {
+      "id": "COMP-002",
+      "type": "component",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-06T13:23:41+00:00",
+      "updated_at": "2026-08-06T13:23:41+00:00",
+      "touched_round": 1,
+      "title": "frontend-aura",
+      "description": "Nuxt 4 Vue 3 TypeScript frontend at frontend/aura; composables; admin pages; e2e Playwright; biome lint"
+    },
+    "COMP-003": {
+      "id": "COMP-003",
+      "type": "component",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-06T13:23:41+00:00",
+      "updated_at": "2026-08-06T13:23:41+00:00",
+      "touched_round": 1,
+      "title": "ci-pipeline",
+      "description": "GitHub Actions workflows test.yml and deploy.yml; 3-node docker compose for e2e"
+    },
+    "COMP-004": {
+      "id": "COMP-004",
+      "type": "component",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-06T13:23:41+00:00",
+      "updated_at": "2026-08-06T13:23:41+00:00",
+      "touched_round": 1,
+      "title": "database-layer",
+      "description": "SQLAlchemy models.py; alembic migrations; init_db.py seeding; SQLite dev + PostgreSQL prod"
+    },
+    "ISS-001": {
+      "id": "ISS-001",
+      "type": "issue",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-06T13:24:34+00:00",
+      "updated_at": "2026-08-06T13:24:34+00:00",
+      "touched_round": 1,
+      "title": "Posts API has no response caching; dead cache code removed",
+      "severity": 0.6,
+      "description": "RIL.md debt item #6: posts_cache/cached() decorator removed as dead code; /api/posts and details are uncached. A dict-serialized cache would be a real perf win but needs cross-session detachment handling."
+    },
+    "ISS-002": {
+      "id": "ISS-002",
+      "type": "issue",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-06T13:24:34+00:00",
+      "updated_at": "2026-08-06T13:24:34+00:00",
+      "touched_round": 1,
+      "title": "Slug validation allows free-form slugs breaking feed/sitemap URLs",
+      "severity": 0.5,
+      "description": "RIL.md debt item #7 (L8 backend): no pattern constraint on Post.slug; free-form slugs can produce broken feed/sitemap URLs. Needs migration-safe pattern enforcement."
+    },
+    "ISS-003": {
+      "id": "ISS-003",
+      "type": "issue",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-06T13:24:34+00:00",
+      "updated_at": "2026-08-06T13:24:34+00:00",
+      "touched_round": 1,
+      "title": "CI not verified green after local-only fixes",
+      "severity": 0.7,
+      "description": "RIL.md debt item #1: local main is 9 commits ahead with CI fixes (pnpm cache path, Node 24, proxy specs); CI can't be verified green until pushed. e2e suite needs full local run confirmation post-fixes."
+    },
+    "ISS-004": {
+      "id": "ISS-004",
+      "type": "issue",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-06T13:24:35+00:00",
+      "updated_at": "2026-08-06T13:24:35+00:00",
+      "touched_round": 1,
+      "title": "Admin comment delete returns 500 on PostgreSQL",
+      "severity": 0.4,
+      "description": "From python-reviewer findings (M2 backend correctness): admin comment delete could raise unhandled IntegrityError producing 500; check if fully resolved and tested on PG semantics."
+    },
+    "HYP-001": {
+      "id": "HYP-001",
+      "type": "hypothesis",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-06T13:24:48+00:00",
+      "updated_at": "2026-08-06T13:24:48+00:00",
+      "touched_round": 3,
+      "title": "posts-list API is bottlenecked by uncached DB reads on the most trafficked endpoint",
+      "confidence": 0.7,
+      "description": "/api/posts is the hottest public endpoint; caching the list with a TTL would reduce DB load. Risk: SQLAlchemy ORM objects detach across sessions — cache must store serialized dicts."
+    },
+    "EV-001": {
+      "id": "EV-001",
+      "type": "evidence",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-06T13:25:14+00:00",
+      "updated_at": "2026-08-06T13:25:14+00:00",
+      "touched_round": 1,
+      "source": "backend/nova/app/crud.py:22",
+      "title": "get_posts performs uncached DB read (count + eager load)",
+      "content": "crud.get_posts does query.count() then order_by().offset().limit().all() with joinedload — no cache layer. Returns live ORM objects tied to the request Session.",
+      "confidence": 1.0
+    },
+    "TASK-001": {
+      "id": "TASK-001",
+      "type": "task",
+      "status": "resolved",
+      "version": 4,
+      "created_at": "2026-08-06T13:25:31+00:00",
+      "updated_at": "2026-08-06T14:10:08+00:00",
+      "touched_round": 3,
+      "category": "performance",
+      "title": "Add TTL response cache for posts list endpoint",
+      "severity": 0.6,
+      "confidence": 0.7,
+      "effort": 3.0,
+      "unlock_factor": 1.2,
+      "description": "Implement a per-process TTL cache for get_posts returning serialized dicts (avoid ORM detach). Invalidate on post create/update/delete and publish_at changes. Add tests for cache hit/miss and invalidation."
+    },
+    "TASK-002": {
+      "id": "TASK-002",
+      "type": "task",
+      "status": "resolved",
+      "version": 4,
+      "created_at": "2026-08-06T13:25:31+00:00",
+      "updated_at": "2026-08-06T13:58:12+00:00",
+      "touched_round": 2,
+      "category": "correctness",
+      "title": "Enforce slug pattern on Post schema",
+      "severity": 0.5,
+      "confidence": 0.6,
+      "effort": 2.5,
+      "unlock_factor": 1.0,
+      "description": "Add regex pattern constraint to PostBase/ Post schema slug field (^[a-z0-9]+(?:-[a-z0-9]+)*$). Add migration-safe handling. Tests for invalid slugs rejected."
+    },
+    "TASK-003": {
+      "id": "TASK-003",
+      "type": "task",
+      "status": "resolved",
+      "version": 4,
+      "created_at": "2026-08-06T13:25:31+00:00",
+      "updated_at": "2026-08-06T13:50:57+00:00",
+      "touched_round": 1,
+      "category": "security",
+      "title": "Verify admin comment-delete error handling against PostgreSQL",
+      "severity": 0.4,
+      "confidence": 0.8,
+      "effort": 1.5,
+      "unlock_factor": 1.0,
+      "description": "Read admin.py comment delete path and crud; confirm IntegrityError is caught and returns 400 (not 500) on PG with FK-restricted orphaned replies. Add/restore test covering this."
+    },
+    "TASK-004": {
+      "id": "TASK-004",
+      "type": "task",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-06T13:25:31+00:00",
+      "updated_at": "2026-08-06T13:25:31+00:00",
+      "touched_round": 1,
+      "category": "dx",
+      "title": "Run local test/lint suites to confirm CI-green state",
+      "severity": 0.7,
+      "confidence": 0.9,
+      "effort": 2.0,
+      "unlock_factor": 1.0,
+      "description": "Run backend pytest + ruff and frontend vitest + biome locally to confirm the 9 unpushed CI-fix commits actually pass on this environment, recording evidence. (Push to main deferred — human-in-the-loop per stop conditions.)"
+    },
+    "EV-002": {
+      "id": "EV-002",
+      "type": "evidence",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-06T13:46:57+00:00",
+      "updated_at": "2026-08-06T13:46:57+00:00",
+      "touched_round": 1,
+      "source": "test_admin.py:543 TestAdminComments::test_delete_comment_with_replies_returns_400",
+      "title": "Handler logic verified via mocked IntegrityError commit; route returns 400 + rollback",
+      "content": "admin_delete_comment (admin.py:567) catches IntegrityError, calls db.rollback(), raises HTTPException(400). Verified the ORM-cascade masking issue (SQLAlchemy nulls child parent_id before DELETE when children tracked in-session) is why a real FK-triggered IntegrityError is DB-dependent on the delete path; mocked commit to isolate handler logic. FK pragma enabled globally in conftest (523 tests pass).",
+      "confidence": 1.0
+    },
+    "HYP-002": {
+      "id": "HYP-002",
+      "type": "hypothesis",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-06T13:49:58+00:00",
+      "updated_at": "2026-08-06T13:49:58+00:00",
+      "touched_round": 2,
+      "confidence": 0.95,
+      "title": "admin delete-comment-with-replies is protected against 500",
+      "description": "admin_delete_comment (admin.py:556-575) catches IntegrityError from FK violation on reply-referenced parent, rolls back, returns 400. Verified via mocked-commit test EV-002."
+    },
+    "EV-003": {
+      "id": "EV-003",
+      "type": "evidence",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-06T13:58:12+00:00",
+      "updated_at": "2026-08-06T13:58:12+00:00",
+      "touched_round": 2,
+      "source": "tests/test_schemas.py: TestPostUpdateSchema.test_post_update_invalid_slug_rejected",
+      "title": "PostUpdate now rejects malformed slugs; PostBase pattern verified with tests",
+      "content": "Added Field(pattern=SLUG_PATTERN.pattern) to PostUpdate.slug (schemas.py:79). PostBase.slug already had the pattern (line 57) but was untested; added test_post_base_INVALID_slug_rejected + test_post_base_valid_slug_accepted. admin.py:241 only applies slug when not None, so API boundary now rejects invalid slugs on create/update returning 422. 59 schema tests + 126 admin+schema tests pass.",
+      "confidence": 1.0
+    },
+    "DEC-001": {
+      "id": "DEC-001",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-06T13:58:12+00:00",
+      "updated_at": "2026-08-06T13:58:12+00:00",
+      "touched_round": 2,
+      "title": "Enforce SLUG_PATTERN on both PostCreate and PostUpdate",
+      "rationale": "PostUpdate.slug had no pattern, allowing broken feed/sitemap URLs via the update endpoint. Reusing the existing SLUG_PATTERN constant (not a new regex) keeps a single source of truth. None remains valid (means 'do not update').",
+      "alternatives_rejected": "Add a separate validator function; create a new regex (drift risk)"
+    },
+    "CHG-001": {
+      "id": "CHG-001",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-06T13:58:42+00:00",
+      "updated_at": "2026-08-06T13:58:42+00:00",
+      "touched_round": 2,
+      "commit": 914240000.0,
+      "title": "Enforce slug pattern on PostUpdate",
+      "description": "Added Field(pattern=SLUG_PATTERN.pattern) to PostUpdate.slug + tests for PostBase/PostUpdate slug validation"
+    },
+    "EV-004": {
+      "id": "EV-004",
+      "type": "evidence",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-06T14:10:08+00:00",
+      "updated_at": "2026-08-06T14:10:08+00:00",
+      "touched_round": 3,
+      "source": "backend/nova/app/cache.py: posts_list_cache + clear_posts_list_cache; posts.py list_posts; crud.py write invalidation",
+      "title": "Posts list caching implemented and verified",
+      "content": "Added posts_list_cache (TTLCache ttl=300, maxsize=256) storing serialized PostListResponse dicts keyed by (page,limit,category_id,tag_id). list_posts returns cached dict on hit (verified crud.get_posts called once for 2 identical requests). Invalidation (clear_posts_list_cache) on create_post/update_post/delete_post — matching existing clear_tags_cache pattern. Did NOT invalidate on increment_views/likes (they don't affect list ordering/content). Autouse fixture clears cache per-test. Full backend suite: 545 passed, 8 skipped. SQLite FK pragma enabled to match PG semantics.",
+      "confidence": 1.0
+    }
+  },
+  "edges": [
+    {
+      "from": "EV-001",
+      "to": "HYP-001",
+      "type": "validates",
+      "created_at": "2026-08-06T13:25:14+00:00"
+    },
+    {
+      "from": "TASK-001",
+      "to": "ISS-001",
+      "type": "addresses",
+      "created_at": "2026-08-06T13:25:54+00:00"
+    },
+    {
+      "from": "TASK-002",
+      "to": "ISS-002",
+      "type": "addresses",
+      "created_at": "2026-08-06T13:25:54+00:00"
+    },
+    {
+      "from": "TASK-003",
+      "to": "ISS-004",
+      "type": "addresses",
+      "created_at": "2026-08-06T13:25:54+00:00"
+    },
+    {
+      "from": "TASK-004",
+      "to": "ISS-003",
+      "type": "addresses",
+      "created_at": "2026-08-06T13:25:54+00:00"
+    },
+    {
+      "from": "EV-002",
+      "to": "HYP-002",
+      "type": "validates",
+      "created_at": "2026-08-06T13:49:58+00:00"
+    },
+    {
+      "from": "EV-003",
+      "to": "HYP-002",
+      "type": "validates",
+      "created_at": "2026-08-06T13:58:12+00:00"
+    },
+    {
+      "from": "DEC-001",
+      "to": "TASK-002",
+      "type": "governs",
+      "created_at": "2026-08-06T13:58:35+00:00"
+    },
+    {
+      "from": "CHG-001",
+      "to": "TASK-002",
+      "type": "implements",
+      "created_at": "2026-08-06T13:58:42+00:00"
+    },
+    {
+      "from": "EV-004",
+      "to": "HYP-001",
+      "type": "validates",
+      "created_at": "2026-08-06T14:10:08+00:00"
+    }
+  ]
+}

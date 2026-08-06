@@ -559,12 +559,8 @@ class TestAdminComments:
         """
         comment, _ = self._create_comment(db_session)
 
-        with patch.object(
-            type(db_session), "commit", side_effect=IntegrityError("DELETE", {}, Exception("FK"))
-        ):
-            response = client.delete(
-                f"/api/admin/comments/{comment.id}", headers=auth_headers
-            )
+        with patch.object(type(db_session), "commit", side_effect=IntegrityError("DELETE", {}, Exception("FK"))):
+            response = client.delete(f"/api/admin/comments/{comment.id}", headers=auth_headers)
 
         assert response.status_code == 400
         assert "dependent records" in response.json()["error"]["message"].lower()

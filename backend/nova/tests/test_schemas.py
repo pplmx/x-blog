@@ -215,14 +215,14 @@ class TestPostUpdateSchema:
     @pytest.mark.parametrize(
         "bad_slug",
         [
-            "With Spaces",          # spaces
-            "UPPER",                # uppercase
-            "under_score",          # underscore not allowed
-            "dotted.slug",          # dot not allowed
-            "café",                 # CJK / non-ascii
-            "trailing-",            # trailing hyphen
-            "-leading",             # leading hyphen
-            "",                     # empty
+            "With Spaces",  # spaces
+            "UPPER",  # uppercase
+            "under_score",  # underscore not allowed
+            "dotted.slug",  # dot not allowed
+            "café",  # CJK / non-ascii
+            "trailing-",  # trailing hyphen
+            "-leading",  # leading hyphen
+            "",  # empty
         ],
     )
     def test_post_update_invalid_slug_rejected(self, bad_slug):
