@@ -11,6 +11,7 @@ from app import auth, crud, models
 from app.auth import get_current_admin
 from app.cache import (
     clear_categories_cache,
+    clear_posts_list_cache,
     clear_tags_cache,
 )
 from app.database import get_db
@@ -277,6 +278,8 @@ def admin_update_post(
         db.rollback()
         raise HTTPException(status_code=400, detail="Slug already exists")
     db.refresh(post)
+    clear_tags_cache()
+    clear_posts_list_cache()
     return {"id": post.id}
 
 
@@ -292,6 +295,8 @@ def admin_delete_post(
 
     db.delete(post)
     db.commit()
+    clear_tags_cache()
+    clear_posts_list_cache()
     return {"message": "Post deleted"}
 
 
@@ -473,20 +478,12 @@ def admin_list_comments(
     _current_user: auth.User = Depends(get_current_admin),
 ):
     """List comments with pagination (bounded response, issue #20)."""
-    query = (
-        db.query(models.Comment, models.Post.title)
-        .join(models.Post, models.Post.id == models.Comment.post_id)
-    )
+    query = db.query(models.Comment, models.Post.title).join(models.Post, models.Post.id == models.Comment.post_id)
     if post_id:
         query = query.filter(models.Comment.post_id == post_id)
     total = query.count()
 
-    comment_rows = (
-        query.order_by(models.Comment.created_at.desc())
-        .offset((page - 1) * limit)
-        .limit(limit)
-        .all()
-    )
+    comment_rows = query.order_by(models.Comment.created_at.desc()).offset((page - 1) * limit).limit(limit).all()
     result = []
     for c, post_title in comment_rows:
         result.append(

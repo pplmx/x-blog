@@ -70,8 +70,6 @@ def list_posts(
     serialized = response.model_dump()
     posts_list_cache[cache_key] = serialized
     return serialized
-    posts_list_cache[cache_key] = serialized
-    return serialized
 
 
 @router.get("/{post_id}", response_model=schemas.Post)

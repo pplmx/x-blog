@@ -1,9 +1,12 @@
 """In-memory cache implementation using cachetools.
 
-Only caches that are actually read by the application live here. The posts
-list/detail paths are deliberately NOT cached (ORM objects would go stale or
-detach across request sessions); the clear_posts_cache() calls that used to
-exist were no-ops and have been removed.
+Caches that are actually read by the application live here:
+- categories_cache / tags_cache: long-lived (30 min) for enum-like data.
+- posts_list_cache: short-lived (5 min TTL) serialized PostListResponse
+  payloads keyed by (page, limit, category_id, tag_id). Values are plain dicts
+  (never live ORM objects) so they survive across per-request Sessions.
+  Invalidated on post create/update/delete (admin writes); views/likes do NOT
+  invalidate it because they don't change the list ordering or content.
 """
 
 from cachetools import TTLCache

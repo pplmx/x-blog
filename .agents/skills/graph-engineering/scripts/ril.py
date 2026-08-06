@@ -211,13 +211,28 @@ def cmd_node_add(args: argparse.Namespace) -> None:
     if ntype == "evidence":
         if "source" not in fields:
             fail("evidence nodes require source=<commit|test|file:line>")
+        if not isinstance(fields["source"], str):
+            # A bare short hash like 91424e4 is valid JSON (scientific notation)
+            # and would be silently coerced to a float, corrupting the source.
+            fail(
+                "evidence.source must be a string; quote short hashes, e.g. "
+                f"--field source=\"91424e4\" (got {fields['source']!r})"
+            )
         fields.setdefault("confidence", 1.0)
     if ntype == "decision":
         for required in ("rationale", "alternatives_rejected"):
             if required not in fields:
                 fail(f"decision nodes require {required}=")
-    if ntype == "change" and "commit" not in fields:
-        fail("change nodes require commit=<hash>")
+    if ntype == "change":
+        if "commit" not in fields:
+            fail("change nodes require commit=<hash>")
+        if not isinstance(fields["commit"], str):
+            # A bare short hash like 91424e4 parses as float 914240000.0 via
+            # json.loads, destroying the real hash. Require a string.
+            fail(
+                "change.commit must be a string; quote short hashes, e.g. "
+                f"--field commit=\"91424e4\" (got {fields['commit']!r})"
+            )
     if ntype == "task" and "category" not in fields and "category_weight" not in fields:
         fail(f"task nodes require category=<{'|'.join(sorted(CATEGORY_WEIGHTS))}>")
     status = fields.pop("status", "active")
@@ -258,6 +273,15 @@ def cmd_node_set(args: argparse.Namespace) -> None:
     if node["type"] == "evidence" and args.field:
         fail("evidence nodes are append-only; add new evidence instead")
     fields = parse_fields(args.field)
+    if (
+        node["type"] == "change"
+        and "commit" in fields
+        and not isinstance(fields["commit"], str)
+    ):
+        fail(
+            "change.commit must be a string; quote short hashes, e.g. "
+            f"--field commit=\"91424e4\" (got {fields['commit']!r})"
+        )
     status = fields.pop("status", None)
     if status is not None:
         if status not in STATUSES:
