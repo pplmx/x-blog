@@ -2,7 +2,7 @@
   "ril_version": 1,
   "round": 6,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-08-06T15:00:02+00:00",
+  "updated_at": "2026-08-06T15:03:24+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -292,7 +292,7 @@
       "version": 1,
       "created_at": "2026-08-06T14:17:36+00:00",
       "updated_at": "2026-08-06T14:17:36+00:00",
-      "touched_round": 5,
+      "touched_round": 6,
       "confidence": 0.95,
       "title": "Local test/lint suites are green after the 9 unpushed CI-fix commits",
       "description": "If local green holds, ISS-003 is unblocked only by the human push step (DEC-003 deferral)."
@@ -358,6 +358,19 @@
       "title": "Remote CI green requires human push to origin/main",
       "rationale": "Stop condition #1: push to main/master requires human confirmation. Local suites verified green (547 backend + 678 frontend, lint clean). The 9 unpushed CI-fix commits + this session's work must be pushed by a human to flip origin/main CI green. Graph-engineering loop will verify locally; production deploy/push is out of autonomous scope.",
       "alternatives_rejected": "Push autonomously with --force (violates stop condition)"
+    },
+    "EV-008": {
+      "id": "EV-008",
+      "type": "evidence",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-06T15:03:24+00:00",
+      "updated_at": "2026-08-06T15:03:24+00:00",
+      "touched_round": 6,
+      "source": "graph-engineering loop completion, round 6",
+      "title": "Loop complete: all stop conditions met",
+      "content": "6 rounds executed. 4 tasks resolved (comment-delete test, slug validation, posts caching+admin invalidation, CI-green verification). 3 commits (91424e4, c29b63f, 9b7178f, 29b0c3e). Backend 547/8sk + frontend 678 tests pass, ruff+biome clean, bandit 0 new findings, coverage >=80% (cache.py 100%). Graph consistent (28 nodes, 16 edges). Remote push deferred to human (DEC-003 governs ci-pipeline).",
+      "confidence": 1.0
     }
   },
   "edges": [
@@ -456,6 +469,12 @@
       "to": "COMP-003",
       "type": "governs",
       "created_at": "2026-08-06T15:00:02+00:00"
+    },
+    {
+      "from": "EV-008",
+      "to": "HYP-003",
+      "type": "validates",
+      "created_at": "2026-08-06T15:03:24+00:00"
     }
   ]
 }
