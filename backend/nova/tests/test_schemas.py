@@ -106,6 +106,25 @@ class TestPostBaseSchemas:
         assert post.category_id == 5
         assert post.cover_image == "https://example.com/image.jpg"
 
+    @pytest.mark.parametrize(
+        "bad_slug",
+        ["With Spaces", "UPPER", "under_score", "café", "trailing-", "-leading"],
+    )
+    def test_post_base_invalid_slug_rejected(self, bad_slug):
+        """PostBase must reject malformed slugs (issue debt #7)."""
+        with pytest.raises(ValidationError):
+            schemas.PostBase(
+                title="T",
+                slug=bad_slug,
+                content="C",
+            )
+
+    def test_post_base_valid_slug_accepted(self):
+        """PostBase accepts the documented slug pattern."""
+        for slug in ["hello", "hello-world", "post-1", "a-b-c-123"]:
+            post = schemas.PostBase(title="T", slug=slug, content="C")
+            assert post.slug == slug
+
 
 class TestPostCreateSchema:
     """Tests for PostCreate schema."""
@@ -180,6 +199,36 @@ class TestPostUpdateSchema:
         assert post.title == "New Title"
         assert post.published is True
         assert post.pinned is False
+
+    def test_post_update_valid_slug_accepted(self):
+        """PostUpdate accepts a valid slug."""
+        post = schemas.PostUpdate(slug="valid-slug-123")
+        assert post.slug == "valid-slug-123"
+
+    def test_post_update_slug_none_means_no_update(self):
+        """PostUpdate with slug omitted / None must NOT trigger a pattern error."""
+        post = schemas.PostUpdate()
+        assert post.slug is None
+        post2 = schemas.PostUpdate(slug=None)
+        assert post2.slug is None
+
+    @pytest.mark.parametrize(
+        "bad_slug",
+        [
+            "With Spaces",          # spaces
+            "UPPER",                # uppercase
+            "under_score",          # underscore not allowed
+            "dotted.slug",          # dot not allowed
+            "café",                 # CJK / non-ascii
+            "trailing-",            # trailing hyphen
+            "-leading",             # leading hyphen
+            "",                     # empty
+        ],
+    )
+    def test_post_update_invalid_slug_rejected(self, bad_slug):
+        """PostUpdate must reject malformed slugs (issue debt #7)."""
+        with pytest.raises(ValidationError):
+            schemas.PostUpdate(slug=bad_slug)
 
 
 class TestPostResponseSchema:

@@ -75,7 +75,9 @@ class PostCreate(PostBase):
 
 class PostUpdate(BaseModel):
     title: str | None = None
-    slug: str | None = None
+    # Same pattern as PostBase.slug so updates can't introduce broken
+    # feed/sitemap URLs (issue debt #7). None = "don't update the field".
+    slug: str | None = Field(default=None, pattern=SLUG_PATTERN.pattern)
     content: str | None = None
     excerpt: str | None = None
     published: bool | None = None
