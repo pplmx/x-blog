@@ -29,6 +29,7 @@ class CacheStatsResponse(BaseModel):
 
     categories: dict[str, int | float]
     tags: dict[str, int | float]
+    posts: dict[str, int | float]
 
 
 router = APIRouter(tags=["Health"])
@@ -94,4 +95,5 @@ def cache_stats(request: Request) -> CacheStatsResponse:  # noqa: ARG001
     return CacheStatsResponse(
         categories=cache_info["categories"],
         tags=cache_info["tags"],
+        posts=cache_info["posts"],
     )

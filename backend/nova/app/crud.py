@@ -5,7 +5,13 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, joinedload
 
 from app import models, schemas
-from app.cache import categories_cache, clear_categories_cache, clear_tags_cache, tags_cache
+from app.cache import (
+    categories_cache,
+    clear_categories_cache,
+    clear_posts_list_cache,
+    clear_tags_cache,
+    tags_cache,
+)
 
 
 def utc_now_naive() -> datetime:
@@ -120,7 +126,7 @@ def create_post(db: Session, post: schemas.PostCreate) -> models.Post:
         raise
 
     clear_tags_cache()
-
+    clear_posts_list_cache()
     return db_post
 
 
@@ -155,7 +161,7 @@ def update_post(db: Session, post_id: int, post: schemas.PostUpdate) -> models.P
         raise
 
     clear_tags_cache()
-
+    clear_posts_list_cache()
     return db_post
 
 
@@ -169,6 +175,8 @@ def delete_post(db: Session, post_id: int) -> bool:
     except IntegrityError:
         db.rollback()
         raise ValueError("Cannot delete post: it has dependent records")
+    clear_tags_cache()
+    clear_posts_list_cache()
     return True
 
 

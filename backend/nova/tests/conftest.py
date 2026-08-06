@@ -20,8 +20,21 @@ from fastapi.testclient import TestClient
 from sqlalchemy import create_engine, event
 from sqlalchemy.orm import Session, sessionmaker
 
+from app.cache import clear_posts_list_cache
 from app.database import Base, get_db
 from app.main import app
+
+# ---------------------------------------------------------------------------
+# The in-memory posts_list_cache survives DB-transaction rollbacks, so without
+# clearing it tests can see rolled-back data. Clear it before every test.
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture(autouse=True)
+def _clear_posts_list_cache():
+    clear_posts_list_cache()
+    yield
+
 
 # ---------------------------------------------------------------------------
 # Engine & database (session-scoped, worker-aware)
@@ -45,6 +58,7 @@ def test_engine(worker_id: str):
         connect_args={"check_same_thread": False},
         pool_pre_ping=True,
     )
+
     # Enforce foreign keys so SQLite matches PostgreSQL constraint semantics.
     # Without this, FK violations (e.g. deleting a comment that has replies) are
     # silently ignored — exactly the path the IntegrityError handlers cover.
