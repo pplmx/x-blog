@@ -12,15 +12,14 @@ dependencies = [
     "python-jose[cryptography]>=3.3.0",
     "bcrypt>=4.0.0",
     "python-multipart>=0.0.31",
-    "psycopg2-binary>=2.9.0",
+    "psycopg2-binary>=2.9.12",
     "slowapi>=0.1.9",
     "python-dotenv>=1.0.0",
     "pytest-xdist>=3.8.0",
     "cachetools>=5.5.0",
     "sentry-sdk>=2.0.0",
-    "psycopg2-binary>=2.9.12",
-    "httpx2>=2.9.1",
     "alembic>=1.18.5",
+    "httpx2>=2.9.1",
 ]
 
 [dependency-groups]
@@ -49,15 +48,22 @@ venv = ".venv"
 testpaths = ["tests"]
 python_files = ["test_*.py"]
 python_functions = ["test_*"]
+# Measure app coverage on every local pytest run so `just test-backend` enforces
+# the same gate CI does; source and fail_under live in [tool.coverage.*] below.
+addopts = "--cov"
 filterwarnings = [
     "ignore::DeprecationWarning:slowapi",
     "ignore::DeprecationWarning:_pytest",
 ]
 
+[tool.coverage.run]
+source = ["app"]
+
 [tool.coverage.report]
 precision = 2
 show_missing = true
 skip_covered = false
+fail_under = 80
 exclude_lines = [
     "pragma: no cover",
     "def __repr__",
@@ -72,12 +78,3 @@ exclude_lines = [
     "if field_value is ...:",
     "raise ValueError",
 ]
-
-[tool.coverage.branches]
-fail_under = 50
-
-[tool.coverage.functions]
-fail_under = 50
-
-[tool.coverage.lines]
-fail_under = 60
