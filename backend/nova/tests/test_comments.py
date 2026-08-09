@@ -59,8 +59,73 @@ def test_create_comment_requires_moderation(client, post, auth_headers):
     )
     assert approve_response.status_code == 200
 
-    list_response = client.get(f"/api/comments/post/{post['id']}")
-    assert len(list_response.json()["items"]) == 1
+
+@pytest.fixture(scope="function")
+def draft_post(client, auth_headers):
+    response = client.post(
+        "/api/posts",
+        json={
+            "title": "Draft Post",
+            "slug": "draft-post",
+            "content": "Not yet public",
+            "published": False,
+        },
+        headers=auth_headers,
+    )
+    return response.json()
+
+
+def test_create_comment_on_draft_post_returns_404(client, draft_post):
+    """Draft posts are invisible publicly, so commenting on them must 404.
+
+    Without this guard the comment endpoint leaked that a hidden post exists
+    (201 for drafts vs 400 "Post not found" for unknown ids) and let visitors
+    queue comments on drafts that surface once the post goes public.
+    """
+    assert client.get(f"/api/posts/{draft_post['id']}").status_code == 404
+    response = client.post(
+        f"/api/comments/post/{draft_post['id']}",
+        json={
+            "nickname": "Probe",
+            "email": "probe@example.com",
+            "content": "Should not be accepted",
+        },
+    )
+    assert response.status_code == 404
+    data = response.json()
+    assert data["error"]["code"] == "NOT_FOUND"
+    # The draft must also not be discoverable via the comment list
+    assert len(client.get(f"/api/comments/post/{draft_post['id']}").json()["items"]) == 0
+
+
+def test_create_comment_on_scheduled_future_post_returns_404(client, auth_headers):
+    """A scheduled post is not public before publish_at, so comments must 404."""
+    future = "2099-01-01T00:00:00"
+    response = client.post(
+        "/api/posts",
+        json={
+            "title": "Scheduled Post",
+            "slug": "scheduled-post",
+            "content": "Coming soon",
+            "published": True,
+            "publish_at": future,
+        },
+        headers=auth_headers,
+    )
+    assert response.status_code == 201
+    post_id = response.json()["id"]
+
+    assert client.get(f"/api/posts/{post_id}").status_code == 404
+    comment = client.post(
+        f"/api/comments/post/{post_id}",
+        json={
+            "nickname": "Probe",
+            "email": "probe@example.com",
+            "content": "Should not be accepted",
+        },
+    )
+    assert comment.status_code == 404
+    assert comment.json()["error"]["code"] == "NOT_FOUND"
 
 
 def test_list_comments(client, post, auth_headers):
@@ -217,7 +282,12 @@ def test_approve_comment_unauthorized(client, post):
 
 
 def test_create_comment_on_nonexistent_post(client):
-    """Creating a comment on a non-existent post should return 400."""
+    """Creating a comment on a non-existent post should return 404.
+
+    404 (not 400) matches the visibility guard: hidden drafts, scheduled
+    posts and nonexistent ids all answer the same way, so the endpoint no
+    longer leaks whether a hidden post exists.
+    """
     response = client.post(
         "/api/comments/post/99999",
         json={
@@ -226,7 +296,7 @@ def test_create_comment_on_nonexistent_post(client):
             "content": "Test comment",
         },
     )
-    assert response.status_code == 400
+    assert response.status_code == 404
     assert "not found" in response.json()["error"]["message"]
 
 

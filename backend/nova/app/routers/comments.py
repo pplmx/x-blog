@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
-from app import crud, schemas
+from app import crud, models, schemas
 from app.auth import User, get_current_admin
 from app.database import get_db
 from app.limiter import RATE_LIMIT_COMMENT, limiter
@@ -54,6 +54,14 @@ def create_comment(
     request: Request,
     db: Session = Depends(get_db),
 ):
+    # Drafts and not-yet-published scheduled posts are invisible to the public
+    # (same rule as the read paths). Without this guard the endpoint became a
+    # draft-existence oracle (201 here vs 400 "Post not found" for unknown ids)
+    # and let visitors queue comments on drafts that surface once public.
+    post = db.get(models.Post, post_id)
+    if not post or not crud.is_publicly_visible(post):
+        raise HTTPException(status_code=404, detail="Post not found")
+
     ip_address = request.client.host if request.client else "unknown"
     try:
         return crud.create_comment(db, post_id, comment, ip_address)

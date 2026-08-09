@@ -25,6 +25,23 @@ def utc_now_naive() -> datetime:
     return datetime.now(UTC).replace(tzinfo=None)
 
 
+def is_publicly_visible(post: models.Post) -> bool:
+    """A post is public only when published and its publish_at (if any) has passed.
+
+    publish_at is stored as naive UTC (see utc_now_naive); compare against
+    naive-UTC now so a non-UTC server host cannot hide or leak scheduled posts.
+    Shared by the public post read paths and the public comment-create guard.
+    """
+    if not post.published:
+        return False
+    if post.publish_at is None:
+        return True
+    publish_at = post.publish_at
+    if publish_at.tzinfo is not None:
+        publish_at = publish_at.astimezone(UTC).replace(tzinfo=None)
+    return publish_at <= utc_now_naive()
+
+
 def get_posts(
     db: Session,
     skip: int = 0,
