@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 6,
+  "round": 9,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-08-06T15:03:24+00:00",
+  "updated_at": "2026-08-09T13:53:56+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -11,7 +11,7 @@
       "version": 1,
       "created_at": "2026-08-06T13:23:41+00:00",
       "updated_at": "2026-08-06T13:23:41+00:00",
-      "touched_round": 1,
+      "touched_round": 9,
       "title": "backend-nova",
       "description": "FastAPI Python 3.14 backend at backend/nova; SQLAlchemy ORM; routers in app/routers, crud.py business logic, 656 lines"
     },
@@ -51,11 +51,11 @@
     "ISS-001": {
       "id": "ISS-001",
       "type": "issue",
-      "status": "active",
-      "version": 1,
+      "status": "resolved",
+      "version": 2,
       "created_at": "2026-08-06T13:24:34+00:00",
-      "updated_at": "2026-08-06T13:24:34+00:00",
-      "touched_round": 1,
+      "updated_at": "2026-08-09T13:42:32+00:00",
+      "touched_round": 7,
       "title": "Posts API has no response caching; dead cache code removed",
       "severity": 0.6,
       "description": "RIL.md debt item #6: posts_cache/cached() decorator removed as dead code; /api/posts and details are uncached. A dict-serialized cache would be a real perf win but needs cross-session detachment handling."
@@ -63,11 +63,11 @@
     "ISS-002": {
       "id": "ISS-002",
       "type": "issue",
-      "status": "active",
-      "version": 1,
+      "status": "resolved",
+      "version": 2,
       "created_at": "2026-08-06T13:24:34+00:00",
-      "updated_at": "2026-08-06T13:24:34+00:00",
-      "touched_round": 1,
+      "updated_at": "2026-08-09T13:42:32+00:00",
+      "touched_round": 7,
       "title": "Slug validation allows free-form slugs breaking feed/sitemap URLs",
       "severity": 0.5,
       "description": "RIL.md debt item #7 (L8 backend): no pattern constraint on Post.slug; free-form slugs can produce broken feed/sitemap URLs. Needs migration-safe pattern enforcement."
@@ -87,11 +87,11 @@
     "ISS-004": {
       "id": "ISS-004",
       "type": "issue",
-      "status": "active",
-      "version": 1,
+      "status": "resolved",
+      "version": 2,
       "created_at": "2026-08-06T13:24:35+00:00",
-      "updated_at": "2026-08-06T13:24:35+00:00",
-      "touched_round": 1,
+      "updated_at": "2026-08-09T13:42:32+00:00",
+      "touched_round": 7,
       "title": "Admin comment delete returns 500 on PostgreSQL",
       "severity": 0.4,
       "description": "From python-reviewer findings (M2 backend correctness): admin comment delete could raise unhandled IntegrityError producing 500; check if fully resolved and tested on PG semantics."
@@ -292,7 +292,7 @@
       "version": 1,
       "created_at": "2026-08-06T14:17:36+00:00",
       "updated_at": "2026-08-06T14:17:36+00:00",
-      "touched_round": 6,
+      "touched_round": 9,
       "confidence": 0.95,
       "title": "Local test/lint suites are green after the 9 unpushed CI-fix commits",
       "description": "If local green holds, ISS-003 is unblocked only by the human push step (DEC-003 deferral)."
@@ -300,11 +300,11 @@
     "ISS-005": {
       "id": "ISS-005",
       "type": "issue",
-      "status": "active",
-      "version": 1,
+      "status": "resolved",
+      "version": 2,
       "created_at": "2026-08-06T14:50:06+00:00",
-      "updated_at": "2026-08-06T14:50:06+00:00",
-      "touched_round": 5,
+      "updated_at": "2026-08-09T13:42:32+00:00",
+      "touched_round": 7,
       "title": "Admin post update/delete routes bypass crud and skip cache invalidation",
       "severity": 0.5,
       "description": "Admin API routes (admin_update_post/admin_delete_post) do direct ORM writes instead of calling crud.update_post/delete_post, so the posts list cache was never invalidated on admin writes — the test_list_posts_cache_invalidated_on_{update,delete} tests caught this. Fixed by adding clear_tags_cache()+clear_posts_list_cache() after commit in both routes."
@@ -370,6 +370,378 @@
       "source": "graph-engineering loop completion, round 6",
       "title": "Loop complete: all stop conditions met",
       "content": "6 rounds executed. 4 tasks resolved (comment-delete test, slug validation, posts caching+admin invalidation, CI-green verification). 3 commits (91424e4, c29b63f, 9b7178f, 29b0c3e). Backend 547/8sk + frontend 678 tests pass, ruff+biome clean, bandit 0 new findings, coverage >=80% (cache.py 100%). Graph consistent (28 nodes, 16 edges). Remote push deferred to human (DEC-003 governs ci-pipeline).",
+      "confidence": 1.0
+    },
+    "HYP-004": {
+      "id": "HYP-004",
+      "type": "hypothesis",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-09T13:23:47+00:00",
+      "updated_at": "2026-08-09T13:23:47+00:00",
+      "touched_round": 6,
+      "confidence": 0.95,
+      "title": "Public comment creation does not check post visibility",
+      "description": "crud.create_comment verifies the post row exists but never checks public visibility; routers/comments.py public endpoint calls it directly. Draft/scheduled posts are hidden from /api/posts but still accept comments."
+    },
+    "EV-009": {
+      "id": "EV-009",
+      "type": "evidence",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-09T13:23:47+00:00",
+      "updated_at": "2026-08-09T13:23:47+00:00",
+      "touched_round": 6,
+      "source": "empirical probe: POST /api/comments/post/{draft_id}->201 vs GET /api/posts/{draft_id}->404 (probe test removed after run)",
+      "title": "Probe: anonymous comment on a draft post succeeds (201)",
+      "description": "Anonymous POST to comment on a published=False post returns 201 while the public read path returns 404. Confirms no visibility check in comment creation.",
+      "confidence": 1.0
+    },
+    "ISS-006": {
+      "id": "ISS-006",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-08-09T13:23:47+00:00",
+      "updated_at": "2026-08-09T13:31:44+00:00",
+      "touched_round": 6,
+      "severity": 0.5,
+      "title": "Public comment endpoint accepts comments on non-visible (draft/scheduled) posts",
+      "description": "create_comment only checks the post row exists, unlike every public read path which enforces _is_publicly_visible. Lets visitors comment on hidden drafts and doubles as an existence oracle for hidden posts (201 vs 400 Post not found)."
+    },
+    "HYP-005": {
+      "id": "HYP-005",
+      "type": "hypothesis",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-09T13:23:55+00:00",
+      "updated_at": "2026-08-09T13:23:55+00:00",
+      "touched_round": 6,
+      "confidence": 0.95,
+      "title": "Admin post update cannot clear cover_image to null",
+      "description": "app/routers/admin.py admin_update_post only assigns cover_image when value is not None, so an explicit null in the request is silently ignored; the public crud.update_post path handles null via model_dump(exclude_unset=True). Inconsistent."
+    },
+    "EV-010": {
+      "id": "EV-010",
+      "type": "evidence",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-09T13:23:55+00:00",
+      "updated_at": "2026-08-09T13:23:55+00:00",
+      "touched_round": 6,
+      "source": "empirical probe: admin PUT cover_image=null leaves old value; public PUT sets None (probe removed after run)",
+      "title": "Probe: admin PUT with cover_image null keeps old URL; public PUT clears it",
+      "description": "After re-setting cover_image, admin PUT /api/admin/posts/{id} with cover_image:null returned 200 but GET showed the previous URL unchanged; public PUT /api/posts/{id} with null returned cover_image=None.",
+      "confidence": 1.0
+    },
+    "ISS-007": {
+      "id": "ISS-007",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-08-09T13:23:55+00:00",
+      "updated_at": "2026-08-09T13:36:11+00:00",
+      "touched_round": 6,
+      "severity": 0.4,
+      "title": "Admin post update cannot clear cover_image (null ignored) unlike public update path",
+      "description": "admin_update_post guards cover_image with 'is not None', so clearing the field is impossible from the admin UI/API while the public PUT allows it. Intended cover removal silently never happens."
+    },
+    "HYP-006": {
+      "id": "HYP-006",
+      "type": "hypothesis",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-09T13:24:10+00:00",
+      "updated_at": "2026-08-09T13:24:10+00:00",
+      "touched_round": 6,
+      "confidence": 0.9,
+      "title": "publish_at guards in admin/stats use tz-aware now against naive column",
+      "description": "app/routers/admin.py:140,148 and app/routers/stats.py:39 compare naive publish_at DateTime column against aware datetime.now(UTC); the codebase convention (crud.utc_now_naive, posts.py _is_publicly_visible) requires naive-UTC for all publish_at guards. Latent wrong results when Postgres session timezone != UTC."
+    },
+    "EV-011": {
+      "id": "EV-011",
+      "type": "evidence",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-09T13:24:10+00:00",
+      "updated_at": "2026-08-09T13:24:10+00:00",
+      "touched_round": 6,
+      "source": "code inspection app/routers/admin.py:140,148; app/routers/stats.py:39; contrast crud.utc_now_naive docstring",
+      "title": "3 call sites bind aware datetime.now(UTC) to naive publish_at column",
+      "description": "grep shows utc_now_naive() used in crud.get_posts/search/popular/related and posts._is_publicly_visible, but admin_list_posts (published/scheduled) and stats.published_posts use datetime.now(UTC) aware. Violates the documented invariant in crud.utc_now_naive docstring.",
+      "confidence": 1.0
+    },
+    "ISS-008": {
+      "id": "ISS-008",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-08-09T13:24:10+00:00",
+      "updated_at": "2026-08-09T13:41:49+00:00",
+      "touched_round": 6,
+      "severity": 0.4,
+      "title": "publish_at timezone guard inconsistency: aware now vs naive column in admin/stats",
+      "description": "admin_list_posts published/scheduled filters and stats.published_posts use aware datetime.now(UTC) while the rest of the codebase deliberately compares naive-UTC. On PostgreSQL with a non-UTC session timezone the published/scheduled counts and filters become wrong. Cheap consistency fix."
+    },
+    "TASK-005": {
+      "id": "TASK-005",
+      "type": "task",
+      "status": "resolved",
+      "version": 3,
+      "created_at": "2026-08-09T13:24:28+00:00",
+      "updated_at": "2026-08-09T13:31:44+00:00",
+      "touched_round": 6,
+      "category": "correctness",
+      "severity": 0.5,
+      "confidence": 0.95,
+      "effort": 1.0,
+      "unlock_factor": 1.0,
+      "priority_score": 4.75,
+      "title": "Reject comments on posts that are not publicly visible",
+      "description": "In routers/comments.py create_comment, enforce the same _is_publicly_visible guard used by public read paths; return 404 'Post not found' for drafts/scheduled-too-late posts so no existence oracle remains. Add tests: anonymous comment on draft -> 404; on published -> 201.",
+      "lock_owner": "graph-loop-s1",
+      "lock_until": "2026-08-09T14:09:46+00:00"
+    },
+    "TASK-006": {
+      "id": "TASK-006",
+      "type": "task",
+      "status": "resolved",
+      "version": 3,
+      "created_at": "2026-08-09T13:24:28+00:00",
+      "updated_at": "2026-08-09T13:36:11+00:00",
+      "touched_round": 6,
+      "category": "correctness",
+      "severity": 0.4,
+      "confidence": 0.95,
+      "effort": 1.0,
+      "unlock_factor": 1.0,
+      "priority_score": 3.8,
+      "title": "Let admin post update clear cover_image to null",
+      "description": "In admin_update_post, treat an explicit cover_image null like category_id/publish_at (via model_dump exclude_unset handling) instead of the current 'is not None' guard, matching crud.update_post. Add test: admin PUT cover_image:null clears the field.",
+      "lock_owner": "graph-loop-s1",
+      "lock_until": "2026-08-09T14:17:11+00:00"
+    },
+    "TASK-007": {
+      "id": "TASK-007",
+      "type": "task",
+      "status": "resolved",
+      "version": 3,
+      "created_at": "2026-08-09T13:24:28+00:00",
+      "updated_at": "2026-08-09T13:41:49+00:00",
+      "touched_round": 6,
+      "category": "correctness",
+      "severity": 0.4,
+      "confidence": 0.9,
+      "effort": 1.0,
+      "unlock_factor": 1.0,
+      "priority_score": 3.6,
+      "title": "Use utc_now_naive consistently for publish_at guards in admin and stats",
+      "description": "Replace aware datetime.now(UTC) with crud.utc_now_naive() in admin_list_posts published/scheduled filters and stats.published_posts, matching the documented convention in crud.utc_now_naive. Add a test asserting scheduled/published admin filtering and stats against naive-UTC boundaries.",
+      "lock_owner": "graph-loop-s1",
+      "lock_until": "2026-08-09T14:21:37+00:00"
+    },
+    "EV-012": {
+      "id": "EV-012",
+      "type": "evidence",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-09T13:31:24+00:00",
+      "updated_at": "2026-08-09T13:31:24+00:00",
+      "touched_round": 6,
+      "source": "pytest full suite: 549 passed, 8 skipped + ruff",
+      "title": "Comment visibility guard implemented and verified",
+      "description": "create_comment now 404s for nonexistent/draft/scheduled posts (no existence oracle, uniform 404). Posts read paths use shared crud.is_publicly_visible. Full backend suite 549 passed, ruff clean.",
+      "confidence": 1.0
+    },
+    "CHG-003": {
+      "id": "CHG-003",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-09T13:32:04+00:00",
+      "updated_at": "2026-08-09T13:32:04+00:00",
+      "touched_round": 6,
+      "commit": "3cac1e990d936f52c17a516c950291ea3d28ae0d",
+      "title": "Reject comments on non-visible posts"
+    },
+    "EV-013": {
+      "id": "EV-013",
+      "type": "evidence",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-09T13:36:11+00:00",
+      "updated_at": "2026-08-09T13:36:11+00:00",
+      "touched_round": 6,
+      "source": "pytest full suite: 550 passed, 8 skipped + ruff",
+      "title": "Admin cover_image null-clear implemented and verified",
+      "description": "admin_update_post now clears cover_image on explicit null via exclude_unset handling; new test passes; 550 passed, ruff clean.",
+      "confidence": 1.0
+    },
+    "CHG-004": {
+      "id": "CHG-004",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-09T13:36:11+00:00",
+      "updated_at": "2026-08-09T13:36:11+00:00",
+      "touched_round": 6,
+      "commit": "9e9d87830657aa7f3f0f37715ce69da30653e655",
+      "title": "Allow admin post update to clear cover_image"
+    },
+    "EV-014": {
+      "id": "EV-014",
+      "type": "evidence",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-09T13:41:49+00:00",
+      "updated_at": "2026-08-09T13:41:49+00:00",
+      "touched_round": 6,
+      "source": "pytest full suite: 552 passed, 8 skipped + ruff",
+      "title": "Naive-UTC publish_at guard fix verified",
+      "description": "admin_list_posts and stats now use crud.utc_now_naive for publish_at comparisons; boundary semantics tests added; 552 passed, ruff clean.",
+      "confidence": 1.0
+    },
+    "CHG-005": {
+      "id": "CHG-005",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-09T13:41:49+00:00",
+      "updated_at": "2026-08-09T13:41:49+00:00",
+      "touched_round": 6,
+      "commit": "16402895131e675895e721120093f30c21a00dec",
+      "title": "Use naive-UTC now for publish_at guards in admin and stats"
+    },
+    "HYP-007": {
+      "id": "HYP-007",
+      "type": "hypothesis",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-09T13:44:21+00:00",
+      "updated_at": "2026-08-09T13:44:21+00:00",
+      "touched_round": 7,
+      "confidence": 0.9,
+      "title": "Write schemas lack max_length matching VARCHAR columns -> DataError 500 on PostgreSQL",
+      "description": "schemas.py fields (Category/Tag name, Post title/slug/excerpt/cover_image, Comment nickname/email) have no max_length while the models use VARCHAR(n). On SQLite over-length rows store fine (CI stays green); on PostgreSQL they raise sqlalchemy DataError, which the crud IntegrityError handlers do not catch -> 500."
+    },
+    "EV-015": {
+      "id": "EV-015",
+      "type": "evidence",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-09T13:44:21+00:00",
+      "updated_at": "2026-08-09T13:44:21+00:00",
+      "touched_round": 7,
+      "source": "code inspection app/schemas.py; app/models.py; app/crud.py",
+      "title": "No max_length on 8 write fields vs VARCHAR(50/100/200/500) columns",
+      "description": "- Post.title/slug VARCHAR(200), excerpt/cover_image VARCHAR(500), Category/Tag.name VARCHAR(50), Comment.nickname VARCHAR(50), email VARCHAR(100). schemas.py declares plain str. crud create/update catch only IntegrityError. Postgres DataError -> unhandled -> 500 envelope.",
+      "confidence": 1.0
+    },
+    "ISS-009": {
+      "id": "ISS-009",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-08-09T13:44:21+00:00",
+      "updated_at": "2026-08-09T13:49:52+00:00",
+      "touched_round": 7,
+      "severity": 0.5,
+      "title": "Over-length write input causes 500 on PostgreSQL (schema/column length mismatch)",
+      "description": "Users can POST over-length nickname/email/title etc.; SQLite stores it silently, PostgreSQL raises 'value too long for type character varying' -> unchecked DataError -> 500 INTERNAL_ERROR, and the value silently accepted on SQLite means tests never catch it. Validation boundary should reject with 422."
+    },
+    "TASK-008": {
+      "id": "TASK-008",
+      "type": "task",
+      "status": "resolved",
+      "version": 4,
+      "created_at": "2026-08-09T13:44:21+00:00",
+      "updated_at": "2026-08-09T13:53:56+00:00",
+      "touched_round": 7,
+      "category": "correctness",
+      "severity": 0.5,
+      "confidence": 0.9,
+      "effort": 1.5,
+      "unlock_factor": 1.0,
+      "priority_score": 3.67,
+      "title": "Enforce max_length on write schemas to match DB VARCHAR columns",
+      "description": "Add max_length to schemas.py (Category/Tag name=50, Post title=200, slug=200, excerpt=500, cover_image=500, Comment nickname=50, email=100) and admin NameRequest.name=50. Postgres then rejects over-length input as 422 at validation instead of DataError->500; SQLite/Postgres behavior converges. Tests: 422 for over-length, 201 for boundary length."
+    },
+    "EV-016": {
+      "id": "EV-016",
+      "type": "evidence",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-09T13:49:52+00:00",
+      "updated_at": "2026-08-09T13:49:52+00:00",
+      "touched_round": 7,
+      "source": "pytest full suite: 568 passed, 8 skipped + ruff",
+      "title": "Schema/column length parity implemented and verified",
+      "description": "max_length now enforced on write schemas matching VARCHAR columns; over-length input -> 422 (previously 201-on-SQLite / 500-on-Postgres); 15 schema tests + 1 endpoint test; 568 passed, ruff clean.",
+      "confidence": 1.0
+    },
+    "CHG-006": {
+      "id": "CHG-006",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-09T13:49:52+00:00",
+      "updated_at": "2026-08-09T13:49:52+00:00",
+      "touched_round": 7,
+      "commit": "3b4867cb3f242b3db2426708f2c39cd6465d2c0e",
+      "title": "Enforce max_length on write schemas to match DB VARCHAR columns"
+    },
+    "DEC-004": {
+      "id": "DEC-004",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-09T13:52:09+00:00",
+      "updated_at": "2026-08-09T13:52:09+00:00",
+      "touched_round": 8,
+      "title": "Accept per-process in-memory caches under multi-worker staleness",
+      "rationale": "Post list (TTL 300s) and categories/tags (TTL 1800s) caches are process-local TTLCache. docker-compose runs uvicorn --workers 2, so each worker invalidates only its own cache on writes; the other worker serves stale entries bounded by TTL (≤5min posts, ≤30min taxonomies). At this blog's scale the worst-case staleness is cosmetic and self-heals; views/likes never invalidate list cache by design (ordering unchanged).",
+      "alternatives_rejected": "Redis-backed shared cache (new infra + ops cost, no multi-node deployment yet); single uvicorn worker (loses concurrency for a latent-cosmetic gain); versioned cache keys with a shared clock (still needs Redis to be correct)."
+    },
+    "TASK-009": {
+      "id": "TASK-009",
+      "type": "task",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-09T13:53:09+00:00",
+      "updated_at": "2026-08-09T13:53:09+00:00",
+      "touched_round": 9,
+      "category": "maintainability",
+      "severity": 0.5,
+      "confidence": 0.9,
+      "effort": 5.0,
+      "unlock_factor": 1.0,
+      "priority_score": 0.6,
+      "title": "Establish alembic migration history (create_all does not ALTER existing tables)",
+      "description": "alembic.ini is configured (script_location=migrations) but no migrations/ directory exists; app relies on Base.metadata.create_all at startup, which creates missing tables but never alters existing ones. A future model change would silently diverge the production Postgres schema. Needs: alembic init + baseline autogenerate, verify env.py, adopt as the schema-change path. Priority intentionally low: not a current defect, no user impact today."
+    },
+    "ISS-010": {
+      "id": "ISS-010",
+      "type": "issue",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-09T13:53:32+00:00",
+      "updated_at": "2026-08-09T13:53:32+00:00",
+      "touched_round": 9,
+      "severity": 0.4,
+      "title": "No alembic migration history; schema evolves only via create_all",
+      "description": "alembic.ini configured (script_location=migrations) but no migrations exist. Startup uses Base.metadata.create_all: creates missing tables but never ALTERs existing ones. A future model change silently diverges production Postgres schema. Maintainability debt, not a current defect."
+    },
+    "EV-017": {
+      "id": "EV-017",
+      "type": "evidence",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-09T13:53:56+00:00",
+      "updated_at": "2026-08-09T13:53:56+00:00",
+      "touched_round": 9,
+      "source": "git log 3cac1e9,9e9d878,1640289,3b4867c + tests",
+      "title": "Loop round 7-9: 4 correctness fixes landed, repo fully green",
+      "description": "Rounds 7&8 fixed 4 evidence-backed backend correctness bugs (comment visibility oracle, admin cover_image clear, naive-UTC publish_at guards, schema/column length parity -> Postgres 500). Round 9 found only sub-threshold tracking (alembic debt). Backend 568 passed/8 skipped, frontend 678 passed, biome & ruff clean. Multi-worker cache staleness documented in DEC-004.",
       "confidence": 1.0
     }
   },
@@ -475,6 +847,174 @@
       "to": "HYP-003",
       "type": "validates",
       "created_at": "2026-08-06T15:03:24+00:00"
+    },
+    {
+      "from": "EV-009",
+      "to": "HYP-004",
+      "type": "validates",
+      "created_at": "2026-08-09T13:24:35+00:00"
+    },
+    {
+      "from": "EV-010",
+      "to": "HYP-005",
+      "type": "validates",
+      "created_at": "2026-08-09T13:24:35+00:00"
+    },
+    {
+      "from": "EV-011",
+      "to": "HYP-006",
+      "type": "validates",
+      "created_at": "2026-08-09T13:24:35+00:00"
+    },
+    {
+      "from": "ISS-006",
+      "to": "COMP-001",
+      "type": "located_in",
+      "created_at": "2026-08-09T13:24:35+00:00"
+    },
+    {
+      "from": "ISS-007",
+      "to": "COMP-001",
+      "type": "located_in",
+      "created_at": "2026-08-09T13:24:35+00:00"
+    },
+    {
+      "from": "ISS-008",
+      "to": "COMP-001",
+      "type": "located_in",
+      "created_at": "2026-08-09T13:24:35+00:00"
+    },
+    {
+      "from": "TASK-005",
+      "to": "ISS-006",
+      "type": "addresses",
+      "created_at": "2026-08-09T13:24:35+00:00"
+    },
+    {
+      "from": "TASK-006",
+      "to": "ISS-007",
+      "type": "addresses",
+      "created_at": "2026-08-09T13:24:35+00:00"
+    },
+    {
+      "from": "TASK-007",
+      "to": "ISS-008",
+      "type": "addresses",
+      "created_at": "2026-08-09T13:24:35+00:00"
+    },
+    {
+      "from": "CHG-003",
+      "to": "TASK-005",
+      "type": "implements",
+      "created_at": "2026-08-09T13:32:04+00:00"
+    },
+    {
+      "from": "CHG-003",
+      "to": "ISS-006",
+      "type": "resolves",
+      "created_at": "2026-08-09T13:32:04+00:00"
+    },
+    {
+      "from": "EV-012",
+      "to": "HYP-004",
+      "type": "validates",
+      "created_at": "2026-08-09T13:32:04+00:00"
+    },
+    {
+      "from": "EV-013",
+      "to": "HYP-005",
+      "type": "validates",
+      "created_at": "2026-08-09T13:36:11+00:00"
+    },
+    {
+      "from": "CHG-004",
+      "to": "TASK-006",
+      "type": "implements",
+      "created_at": "2026-08-09T13:36:11+00:00"
+    },
+    {
+      "from": "CHG-004",
+      "to": "ISS-007",
+      "type": "resolves",
+      "created_at": "2026-08-09T13:36:12+00:00"
+    },
+    {
+      "from": "EV-014",
+      "to": "HYP-006",
+      "type": "validates",
+      "created_at": "2026-08-09T13:41:49+00:00"
+    },
+    {
+      "from": "CHG-005",
+      "to": "TASK-007",
+      "type": "implements",
+      "created_at": "2026-08-09T13:41:49+00:00"
+    },
+    {
+      "from": "CHG-005",
+      "to": "ISS-008",
+      "type": "resolves",
+      "created_at": "2026-08-09T13:41:49+00:00"
+    },
+    {
+      "from": "EV-015",
+      "to": "HYP-007",
+      "type": "validates",
+      "created_at": "2026-08-09T13:44:21+00:00"
+    },
+    {
+      "from": "ISS-009",
+      "to": "COMP-001",
+      "type": "located_in",
+      "created_at": "2026-08-09T13:44:21+00:00"
+    },
+    {
+      "from": "TASK-008",
+      "to": "ISS-009",
+      "type": "addresses",
+      "created_at": "2026-08-09T13:44:21+00:00"
+    },
+    {
+      "from": "EV-016",
+      "to": "HYP-007",
+      "type": "validates",
+      "created_at": "2026-08-09T13:49:52+00:00"
+    },
+    {
+      "from": "CHG-006",
+      "to": "TASK-008",
+      "type": "implements",
+      "created_at": "2026-08-09T13:49:52+00:00"
+    },
+    {
+      "from": "CHG-006",
+      "to": "ISS-009",
+      "type": "resolves",
+      "created_at": "2026-08-09T13:49:52+00:00"
+    },
+    {
+      "from": "DEC-004",
+      "to": "COMP-001",
+      "type": "governs",
+      "created_at": "2026-08-09T13:52:09+00:00"
+    },
+    {
+      "from": "ISS-010",
+      "to": "COMP-001",
+      "type": "located_in",
+      "created_at": "2026-08-09T13:53:32+00:00"
+    },
+    {
+      "from": "TASK-009",
+      "to": "ISS-010",
+      "type": "addresses",
+      "created_at": "2026-08-09T13:53:32+00:00"
+    },
+    {
+      "from": "EV-017",
+      "to": "HYP-003",
+      "type": "validates",
+      "created_at": "2026-08-09T13:53:56+00:00"
     }
   ]
 }
