@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 14,
+  "round": 15,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-08-09T16:42:48+00:00",
+  "updated_at": "2026-08-09T20:21:11+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -11,7 +11,7 @@
       "version": 1,
       "created_at": "2026-08-06T13:23:41+00:00",
       "updated_at": "2026-08-06T13:23:41+00:00",
-      "touched_round": 14,
+      "touched_round": 15,
       "title": "backend-nova",
       "description": "FastAPI Python 3.14 backend at backend/nova; SQLAlchemy ORM; routers in app/routers, crud.py business logic, 656 lines"
     },
@@ -1135,7 +1135,7 @@
       "version": 2,
       "created_at": "2026-08-09T16:29:28+00:00",
       "updated_at": "2026-08-09T16:42:48+00:00",
-      "touched_round": 14,
+      "touched_round": 15,
       "severity": 0.3,
       "title": "Dependency/config drift: dead httpx2, duplicate psycopg2, coverage threshold mismatch, stale biome global",
       "description": "Long-tail hygiene from round-14 sweep: (1) httpx2>=2.9.1 in deps but nothing imports httpx/httpx2 (dead dep, unofficial-mirror source; starlette 1.3.1 TestClient works without it, ratelimit tests pass); (2) duplicate psycopg2-binary entries >=2.9.0 and >=2.9.12; (3) coverage single-source drift: pyproject [tool.coverage.lines] fail_under 60 / branches 50 / functions 50 vs CI --cov-fail-under=80, and local just test-backend runs pytest without coverage; (4) frontend biome.json globals still list useI18n (i18n removed 2026-07-31, zero usages)."
@@ -1237,6 +1237,88 @@
       "title": "Dependency-removal hypotheses must scan tests/ and pass the full suite before commit",
       "rationale": "The httpx2 dead-dependency hypothesis came from grepping app/ and scripts/ only; tests/conftest imports starlette.testclient which imports httpx2, so the dep is load-bearing for the test suite. Only the full-suite VERIFY step exposed this, pre-commit, and the dep was restored without any commit. Rule for future rounds: a removal/refactor hypothesis is refuted if the whole test suite does not stay green; scan all non-venv source (including tests/) before `dead dep` claims.",
       "alternatives_rejected": "Remove httpx2 and add a mypy/pyright exclusion (hides the suite-breaking gap); skip full-suite VERIFY for dependency changes (would commit a broken build for anyone running tests)"
+    },
+    "EV-028": {
+      "id": "EV-028",
+      "type": "evidence",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-09T20:08:07+00:00",
+      "updated_at": "2026-08-09T20:08:07+00:00",
+      "touched_round": 15,
+      "source": "live runtime smoke on a fresh server (port 18888 clear of a stale process): 20+ endpoint probes all 2xx; upload/admin CRUD round-trip; comment guard 404/404/201; export CSV 200",
+      "title": "Runtime integration smoke: all major flows green on current code",
+      "content": "After killing a stale 9-day-old uvicorn squatting 18888 (it served PRE-guard code, masking the round-6/7 comment-visibility fix - probes showed 400/201 until the fresh server showed true 404/404/201), a fresh-current-code smoke passed: health, posts list/detail/related, categories, tags, comments list, search, RSS feed+atom (21 titles, strftime fallback path), sitemap, robots, admin login + posts/categories/tags/comments, export posts.csv (200,7KB), anonymous comment create (published 201 / draft 404 / missing 404), view+like POSTs, upload (200), admin create-update-delete round-trip with public-list cache invalidation (created->visible, deleted->gone). No code regressions found.",
+      "confidence": 1.0
+    },
+    "DEC-013": {
+      "id": "DEC-013",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-09T20:08:07+00:00",
+      "updated_at": "2026-08-09T20:08:07+00:00",
+      "touched_round": 15,
+      "title": "Runtime smoke in VERIFY; stale local dev servers can mask fixes",
+      "rationale": "A July-31 uvicorn had held port 18888 for 9 days and served pre-round-6 code, so live probes showed the (already-fixed) comment-oracle bug until the stale process was killed and a fresh server correctly returned 404/404/201. Rule: before treating a live discrepancy as a code regression, confirm the serving process is current (`ps`/`lsof` on the port and compare start time to the fix commit); add a quick live smoke to future VERIFY where practical.",
+      "alternatives_rejected": "Treat the stale-server 400/201 as a code bug and re-fix the already-fixed guard (wasted work, wrong diff); skip the live lens entirely (would miss integration issues the unit suite cannot see)"
+    },
+    "TASK-017": {
+      "id": "TASK-017",
+      "type": "task",
+      "status": "resolved",
+      "version": 4,
+      "created_at": "2026-08-09T20:08:30+00:00",
+      "updated_at": "2026-08-09T20:21:11+00:00",
+      "touched_round": 15,
+      "category": "maintainability",
+      "severity": 0.3,
+      "confidence": 0.95,
+      "effort": 0.5,
+      "unlock_factor": 1.0,
+      "title": "Move pytest-xdist from runtime deps to the dev group",
+      "description": "pytest-xdist is test tooling sitting in [project] dependencies; it belongs in [dependency-groups].dev with the other test tools (pytest, pytest-cov). Docker already installs dev, so no image impact - this is correctness-of-manifest. uv lock; just test-backend -n auto must stay green."
+    },
+    "TASK-018": {
+      "id": "TASK-018",
+      "type": "task",
+      "status": "resolved",
+      "version": 4,
+      "created_at": "2026-08-09T20:08:30+00:00",
+      "updated_at": "2026-08-09T20:21:11+00:00",
+      "touched_round": 15,
+      "category": "dx",
+      "severity": 0.3,
+      "confidence": 0.9,
+      "effort": 0.5,
+      "unlock_factor": 1.0,
+      "title": "Gate the frontend production build in the fast CI path",
+      "description": "Currently pnpm build only runs inside the e2e job (as Playwright webServer). Add pnpm build to the frontend-test job so a production-build break blocks PRs immediately without waiting on e2e. Verified locally in round 11; re-verify."
+    },
+    "CHG-012": {
+      "id": "CHG-012",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-09T20:21:10+00:00",
+      "updated_at": "2026-08-09T20:21:10+00:00",
+      "touched_round": 15,
+      "commit": "33732ba",
+      "title": "pytest-xdist to dev group; frontend build gate in fast CI",
+      "description": "Moved pytest-xdist from [project] dependencies to [dependency-groups].dev (it is test tooling, not a runtime dep). frontend-test CI job now runs pnpm build after lint/typecheck, so production-build failures gate PRs on the fast path instead of only inside e2e."
+    },
+    "EV-029": {
+      "id": "EV-029",
+      "type": "evidence",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-09T20:21:10+00:00",
+      "updated_at": "2026-08-09T20:21:10+00:00",
+      "touched_round": 15,
+      "source": "uv run pytest -n auto: 568 passed (93.34% coverage); pnpm build exit 0; ruff+pyright clean; commit 33732ba",
+      "title": "TASK-017/018 verified: parallel suite + frontend build both green",
+      "content": "After moving pytest-xdist to dev: `uv run pytest` (parallel) still passes 568 at 93.34%, ruff/pyright clean, test.yml parses. Frontend `pnpm build` passes locally (exit 0), so the new CI build gate is locally proven (remote run needs push). Also encoded this round: full runtime Smoke (EV-028) green once the stale server was cleared.",
+      "confidence": 1.0
     }
   },
   "edges": [
@@ -1749,6 +1831,36 @@
       "to": "COMP-001",
       "type": "governs",
       "created_at": "2026-08-09T16:42:48+00:00"
+    },
+    {
+      "from": "DEC-013",
+      "to": "COMP-001",
+      "type": "governs",
+      "created_at": "2026-08-09T20:08:07+00:00"
+    },
+    {
+      "from": "TASK-018",
+      "to": "ISS-015",
+      "type": "addresses",
+      "created_at": "2026-08-09T20:08:30+00:00"
+    },
+    {
+      "from": "TASK-017",
+      "to": "ISS-015",
+      "type": "addresses",
+      "created_at": "2026-08-09T20:08:49+00:00"
+    },
+    {
+      "from": "CHG-012",
+      "to": "TASK-017",
+      "type": "implements",
+      "created_at": "2026-08-09T20:21:11+00:00"
+    },
+    {
+      "from": "CHG-012",
+      "to": "TASK-018",
+      "type": "implements",
+      "created_at": "2026-08-09T20:21:11+00:00"
     }
   ]
 }
