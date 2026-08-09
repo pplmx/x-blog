@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 12,
+  "round": 13,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-08-09T15:51:05+00:00",
+  "updated_at": "2026-08-09T16:13:05+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -11,7 +11,7 @@
       "version": 1,
       "created_at": "2026-08-06T13:23:41+00:00",
       "updated_at": "2026-08-06T13:23:41+00:00",
-      "touched_round": 12,
+      "touched_round": 13,
       "title": "backend-nova",
       "description": "FastAPI Python 3.14 backend at backend/nova; SQLAlchemy ORM; routers in app/routers, crud.py business logic, 656 lines"
     },
@@ -705,11 +705,11 @@
     "TASK-009": {
       "id": "TASK-009",
       "type": "task",
-      "status": "active",
-      "version": 2,
+      "status": "resolved",
+      "version": 6,
       "created_at": "2026-08-09T13:53:09+00:00",
-      "updated_at": "2026-08-09T14:08:02+00:00",
-      "touched_round": 10,
+      "updated_at": "2026-08-09T16:13:05+00:00",
+      "touched_round": 13,
       "category": "maintainability",
       "severity": 0.5,
       "confidence": 0.9,
@@ -717,16 +717,16 @@
       "unlock_factor": 1.0,
       "priority_score": 0.6,
       "title": "Create full-schema alembic baseline and adopt migrations as the schema-change path",
-      "description": "CORRECTED round 10: alembic is already scaffolded (migrations/ since 0092d44). Remaining work: autogenerate a complete baseline covering all models, verify `alembic upgrade head` works on a fresh SQLite AND Postgres DB, and decide create_all-vs-migration policy for startup/CI seeding. Priority low: not a current defect, no user impact today."
+      "description": "CORRECTED round 10: alembic scaffolded (migrations/ since 0092d44, one migration bf9ccacf5b13 adds publish_at), but never operational - no DB stamped, app uses create_all at startup. Round 13 work: squash a complete baseline migration covering all models (incl. publish_at), verify alembic upgrade head builds a fresh SQLite AND Postgres DB, adopt alembic as the production schema path (Docker entrypoint + init_db for CI e2e on PG), document create_all stays as a dev-only safety net. Low risk: no production DB has alembic_version, so squashing is safe."
     },
     "ISS-010": {
       "id": "ISS-010",
       "type": "issue",
-      "status": "active",
-      "version": 2,
+      "status": "resolved",
+      "version": 3,
       "created_at": "2026-08-09T13:53:32+00:00",
-      "updated_at": "2026-08-09T14:08:02+00:00",
-      "touched_round": 10,
+      "updated_at": "2026-08-09T16:13:05+00:00",
+      "touched_round": 13,
       "severity": 0.4,
       "title": "Alembic scaffolded but not the operational schema path (no baseline; create_all authoritative)",
       "description": "CORRECTED round 10: migrations/ EXISTS since 0092d44 (env.py wired, one migration bf9ccacf5b13 adds publish_at). The real debt: no full-schema baseline migration, lifespan still runs Base.metadata.create_all (main.py:41) so schema changes are never gated by alembic, and alembic upgrade head on a fresh DB fails. Maintainability debt, not a current defect."
@@ -995,7 +995,7 @@
       "version": 1,
       "created_at": "2026-08-09T15:25:43+00:00",
       "updated_at": "2026-08-09T15:25:43+00:00",
-      "touched_round": 12,
+      "touched_round": 13,
       "confidence": 0.9,
       "title": "Modernizing models to SQLAlchemy 2.0 Mapped typing clears the false-positive noise and makes the ~5 real issues actionable",
       "description": "The Column[bool]/Column[str] errors come from legacy Column() class attrs. Converting models.py (84 lines) to Mapped[...] = mapped_column(...) preserves DDL exactly while making instance-attribute types truthful (bool, str, int|None...), collapsing most pyright errors. Remaining real findings (logger kwargs crash, sentry kwargs crash, db.bind, rowcount, SECRET_KEY) are individually small fixes. Comparable to the frontend typecheck round."
@@ -1065,6 +1065,68 @@
       "title": "Backend type gate verified: 55 -> 0, two latent crashes fixed",
       "content": "post-fix pyright on app/ (basic mode, config-driven) reports 0 errors/0 warnings. The two confirmed latent crashes are fixed and now type-visible: (1) main.py request-timeout handler logged with path=/timeout= kwargs on logging.Logger -> TypeError; now positional args; (2) sentry_sdk.init passed max_request_body_size/max_response_body_size (removed in sentry-sdk 2.x) -> TypeError whenever SENTRY_DSN set; kwargs removed with NOTE. Full suite 568 passed / 8 skipped, ruff check+format clean. git show 93a4153.",
       "confidence": 1.0
+    },
+    "EV-024": {
+      "id": "EV-024",
+      "type": "evidence",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-09T15:58:36+00:00",
+      "updated_at": "2026-08-09T15:58:36+00:00",
+      "touched_round": 13,
+      "source": "uvx ty check app on commit 93a4153: ty 0.0.69, 3 diagnostics (all cachetools TTLCache non-generic), exit 0",
+      "title": "Astral ty 0.0.69 probe: runs, but treats TTLCache as non-generic",
+      "content": "`uvx ty check app` on the pyright-clean tree reports exactly 3 errors, all `Cannot subscript non-generic type TTLCache` in app/cache.py - ty does not model cachetools TTLCache generics that pyright accepts. ty reports nothing that pyright already catches (pyright is at 0). At 0.0.x ty is not yet a reliable drop-in gate for this FastAPI+SQLAlchemy stack.",
+      "confidence": 1.0
+    },
+    "DEC-010": {
+      "id": "DEC-010",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-09T15:58:36+00:00",
+      "updated_at": "2026-08-09T15:58:36+00:00",
+      "touched_round": 13,
+      "title": "Keep pyright as the enforced type-check gate; re-evaluate Astral ty when it stabilizes",
+      "rationale": "pyright gate is green after the round-12 Mapped migration (55->0) and covers this stack (SQLAlchemy generics, cachetools). ty 0.0.69 runs but miscategorizes cachetools TTLCache as non-generic (3 false diagnostics) - a 0.0.x tool is not yet a wholesale replacement for a mature 1.1.x checker on a typed ORM codebase. Astral alignment is desirable long-term; revisit when ty reaches stable and passes this codebase at 0 diagnostics.",
+      "alternatives_rejected": "Switch the gate to ty now (loses SQLAlchemy/cachetools typing fidelity for no gain; ty has its own false positives); run both in CI (redundant cost, yets no signal - ty adds only noise today); keep no type gate (status quo bug class)"
+    },
+    "CHG-010": {
+      "id": "CHG-010",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-09T16:12:53+00:00",
+      "updated_at": "2026-08-09T16:12:53+00:00",
+      "touched_round": 13,
+      "commit": "876acee",
+      "title": "Full-schema alembic baseline + adopt migrations as production schema path",
+      "description": "Replaced the never-applied bf9ccacf5b13 with one idempotent baseline (1e0bb4163cc8, down_revision=None) covering all 6 tables + publish_at + every index. Idempotent helpers (has_table guard; suppress duplicate index create) make `alembic upgrade head` safe on BOTH fresh DBs and create_all-era DBs without alembic_version - verified on both scenarios. Adopted as operative path: init_db.py schema step = alembic upgrade head (CI e2e now seeds Postgres through the chain); Dockerfile copies alembic.ini + migrations and CMD runs `alembic upgrade head && exec uvicorn` (no multi-worker migration race); lifespan create_all stays as dev-only safety net; CI backend-test verifies baseline + alembic check on fresh SQLite."
+    },
+    "EV-025": {
+      "id": "EV-025",
+      "type": "evidence",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-09T16:12:53+00:00",
+      "updated_at": "2026-08-09T16:12:53+00:00",
+      "touched_round": 13,
+      "source": "alembic upgrade head+check on fresh and adopted SQLite DBs; pytest 568/8; pyright 0; commit 876acee",
+      "title": "Alembic adoption verified: fresh build, self-adopting legacy DB, zero drift",
+      "content": "Scenario 1 fresh DB: upgrade head creates all 6 tables + 14 indexes + stamps 1e0bb4163cc8; alembic check no drift. Scenario 2 legacy create_all DB (no alembic_version): upgrade head succeeds idempotently, stamps version, alembic check no drift - the self-adoption path works with no manual stamp step. Full pytest 568/8, pyright 0, ruff clean. CI will re-verify on SQLite (new step) and Postgres (e2e init_db now runs migrations).",
+      "confidence": 1.0
+    },
+    "DEC-011": {
+      "id": "DEC-011",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-09T16:12:53+00:00",
+      "updated_at": "2026-08-09T16:12:53+00:00",
+      "touched_round": 13,
+      "title": "Adopt alembic as the schema path via an idempotent self-adopting baseline",
+      "rationale": "One baseline migration (1e0bb4163cc8) with has_table guards + duplicate-index suppression lets `alembic upgrade head` build fresh DBs AND adopt existing create_all-era DBs without a manual `alembic stamp head`, so the production roll-out (Docker CMD upgrade-then-uvicorn) cannot crash on already-populated schemas. create_all stays in lifespan only as a dev safety net (it never ALTERs, so it cannot diverge a migrated DB). Next schema changes go through alembic revision.",
+      "alternatives_rejected": "Require a manual `alembic stamp head` on existing DBs (footgun: container restart fails until a human stamps); non-idempotent baseline + fail-fast (breaks the roll-out); keep create_all forever (no migration history, TASK-009 goal)"
     }
   },
   "edges": [
@@ -1499,6 +1561,36 @@
       "to": "ISS-014",
       "type": "resolves",
       "created_at": "2026-08-09T15:50:55+00:00"
+    },
+    {
+      "from": "DEC-010",
+      "to": "COMP-001",
+      "type": "governs",
+      "created_at": "2026-08-09T15:58:52+00:00"
+    },
+    {
+      "from": "CHG-010",
+      "to": "TASK-009",
+      "type": "implements",
+      "created_at": "2026-08-09T16:12:53+00:00"
+    },
+    {
+      "from": "CHG-010",
+      "to": "ISS-010",
+      "type": "resolves",
+      "created_at": "2026-08-09T16:12:53+00:00"
+    },
+    {
+      "from": "DEC-011",
+      "to": "COMP-001",
+      "type": "governs",
+      "created_at": "2026-08-09T16:12:53+00:00"
+    },
+    {
+      "from": "EV-025",
+      "to": "HYP-010",
+      "type": "validates",
+      "created_at": "2026-08-09T16:12:53+00:00"
     }
   ]
 }
