@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 10,
+  "round": 11,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-08-09T14:17:58+00:00",
+  "updated_at": "2026-08-09T15:13:26+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -22,7 +22,7 @@
       "version": 1,
       "created_at": "2026-08-06T13:23:41+00:00",
       "updated_at": "2026-08-06T13:23:41+00:00",
-      "touched_round": 1,
+      "touched_round": 11,
       "title": "frontend-aura",
       "description": "Nuxt 4 Vue 3 TypeScript frontend at frontend/aura; composables; admin pages; e2e Playwright; biome lint"
     },
@@ -873,6 +873,108 @@
       "title": "Pin ruff at the modern 0.16 minor line and converge repo formatting on it",
       "rationale": "CI gating with uv run surfaced pre-existing drift: uv.lock froze ruff 0.15.10 while PATH/uvx use 0.16.x; 4 files formatted in the older style failed format --check under the pinned version. Single-source-of-truth fix: tighten dev dep to >=0.16.1,<0.17 (lock resolves 0.16.2), reformat the 4 files with the pinned ruff so uv.lock == PATH == uvx style, and gate `uv run ruff format --check` in CI. Makes the lock authoritative and removes the unpinned-uvx drift trap.",
       "alternatives_rejected": "Keep ruff>=0.8.0 + uvx ruff (unpinned: CI result depends on latest ruff at run time, already caused one drift event); pin to 0.15.10 (loses newer 3.14 formatting and fights the 0.16 ecosystem on PATH/uvx)"
+    },
+    "ISS-013": {
+      "id": "ISS-013",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-08-09T14:44:59+00:00",
+      "updated_at": "2026-08-09T15:13:26+00:00",
+      "touched_round": 11,
+      "severity": 0.55,
+      "title": "Frontend TypeScript is never type-checked in dev/test/CI; 18 real type errors surfaced",
+      "description": "No typecheck script, no typescript/vue-tsc deps, pnpm lint is Biome-only, CI runs lint+tests only, vite/esbuild strips types without checking. nuxt typecheck with the compatible pairing (typescript 6.0.3 + vue-tsc 3.3.9, the version the committed pnpm-lock peer resolution was aligned to) surfaced 18 errors across 11 files: Icon class-prop typing conflicts (6); admin/posts/[id] partial-update payload vs PostCreate (3); useSeo.ts missing useRuntimeConfig/useHead (2); MobileFilterBar/Sidebar string[] misuse (4); MarkdownContent template ref callback (1); index.vue post.likes missing on PostList (1, possibly real runtime bug); nuxt.config script.json key (1, possibly silently-dropped JSON-LD)."
+    },
+    "HYP-009": {
+      "id": "HYP-009",
+      "type": "hypothesis",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-09T14:44:59+00:00",
+      "updated_at": "2026-08-09T14:44:59+00:00",
+      "touched_round": 11,
+      "confidence": 0.9,
+      "title": "vue-tsc and typescript compatibility is version-sensitive; lock-aligned pairing works",
+      "description": "vue-tsc 3.3.9 crashes on typescript 7.x (ERR_PACKAGE_PATH_NOT_EXPORTED, native TS dropped ./lib/tsc) and on 5.0.2 (isSatisfiesExpression ReferenceError), but runs with 6.0.3 - the exact version the committed pnpm-lock references in peer resolutions. Modern-ecosystem reality: pin the pairing explicitly rather than chasing latest."
+    },
+    "EV-020": {
+      "id": "EV-020",
+      "type": "evidence",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-09T14:44:59+00:00",
+      "updated_at": "2026-08-09T14:44:59+00:00",
+      "touched_round": 11,
+      "source": "pnpm exec nuxt typecheck with typescript@6.0.3 + vue-tsc@3.3.9 (18 errors in 11 files); failures seen with ts7.0.2 and ts5.0.2",
+      "title": "Typecheck pairing probe: 6.0.3 works, 7.0.2 and 5.0.2 broken",
+      "content": "`pnpm exec nuxt typecheck` with TS 6.0.3 + vue-tsc 3.3.9 exits with the 18 real errors listed in ISS-013, proving the toolchain RUNS and finds real bugs. TS 7.0.2: ERR_PACKAGE_PATH_NOT_EXPORTED ./lib/tsc. TS 5.0.2: ReferenceError isSatisfiesExpression inside vue-language-core. The committed pnpm-lock.yaml peer resolutions reference typescript@6.0.3, so pinning to 6.0.3 also matches the lock.",
+      "confidence": 1.0
+    },
+    "TASK-012": {
+      "id": "TASK-012",
+      "type": "task",
+      "status": "resolved",
+      "version": 4,
+      "created_at": "2026-08-09T14:45:35+00:00",
+      "updated_at": "2026-08-09T15:13:26+00:00",
+      "touched_round": 11,
+      "category": "test-quality",
+      "severity": 0.5,
+      "confidence": 0.95,
+      "effort": 4.0,
+      "unlock_factor": 1.0,
+      "title": "Add frontend typecheck gate (typescript 6.0.3 + vue-tsc): fix 18 errors, pin pairing, wire into CI",
+      "description": "Keep typescript@6.0.3 + vue-tsc@3.3.9 dev deps (compatible pairing, matches pnpm-lock peer resolution), add `typecheck: nuxt typecheck` script, fix the 18 errors surfaced by ISS-013 (Icon class-prop typing, admin update payload partial types, useSeo imports, route-link class misuse, template ref callback, post.likes on PostList, nuxt.config script.json - verify if JSON-LD currently renders), then gate `pnpm typecheck` in CI frontend-test job. Type-only fixes are behavior-neutral; any runtime findings (JSON-LD, likes) get their own issue evidence."
+    },
+    "CHG-008": {
+      "id": "CHG-008",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-09T15:13:02+00:00",
+      "updated_at": "2026-08-09T15:13:02+00:00",
+      "touched_round": 11,
+      "commit": "187054d",
+      "title": "Frontend typecheck gate + 18 type-error fixes incl. JSON-LD real bug",
+      "description": "Pinned typescript@6.0.3 + vue-tsc@3.3.9, added pnpm typecheck script wired into CI, fixed all 18 errors: Icon class fallthrough (attr inheritance), NuxtLink :to query-string misuse in Sidebar/MobileFilterBar x4 (array-wrapped path - broken filter links), admin editor create-cast + postId narrowing (noNonNullAssertion-free), PostList.likes (backend returns it), MarkdownContent mermaid ref callback helper, useSeo node-context typing via pure seo-jsonld module. Uncovered and fixed a real runtime bug: unhead v3 JSON-LD contract uses textContent (json unsupported, children deprecated) so WebSite/BlogPosting structured data was silently absent - now serialized with JSON.stringify and runtime-verified in production HTML."
+    },
+    "EV-021": {
+      "id": "EV-021",
+      "type": "evidence",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-09T15:13:02+00:00",
+      "updated_at": "2026-08-09T15:13:02+00:00",
+      "touched_round": 11,
+      "source": "pnpm typecheck exit=0 (0 errors, from 18); vitest 678/38; biome 0 warnings; nuxt build OK; production HTML contains <script type=\"application/ld+json\">WebSite...",
+      "title": "Frontend typecheck gate verified green end-to-end",
+      "content": "After fixes: nuxt typecheck (ts 6.0.3 + vue-tsc 3.3.9) reports 0 errors (was 18 across 11 files pre-fix). vitest 678 passed/38 files, biome check clean with 0 warnings, nuxt build succeeds, and a production preview curl shows the WebSite JSON-LD now renders in the SSR head - previously the unsupported `json` key meant the script was emitted empty/dropped. The 6 JSON-LD unit tests were updated from the broken `json:` contract to assert `textContent` + JSON.parse (they previously encoded the buggy behavior).",
+      "confidence": 1.0
+    },
+    "DEC-007": {
+      "id": "DEC-007",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-09T15:13:26+00:00",
+      "updated_at": "2026-08-09T15:13:26+00:00",
+      "touched_round": 11,
+      "title": "Frontend JSON-LD structured data uses unhead textContent contract, not json/children",
+      "rationale": "Browser proof: unhead v3.2.3 ScriptInput rejects both `json` (never existed) and `children` (deprecated in v3); the in-package docs require textContent for type=application/ld+json. The previous `json:` usage silently dropped WebSite + BlogPosting JSON-LD from every page. Fix: JSON.stringify(...) into textContent in both nuxt.config (global WebSite) and useSeo.ts (per-article BlogPosting); runtime-verified via production preview.",
+      "alternatives_rejected": "Keep `json` key (never rendered - the bug); use `children` (deprecated, rejected by types); inject JSON-LD via a nitro server route/plugin (heavier, duplicates unhead head management)"
+    },
+    "DEC-008": {
+      "id": "DEC-008",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-09T15:13:26+00:00",
+      "updated_at": "2026-08-09T15:13:26+00:00",
+      "touched_round": 11,
+      "title": "Pin frontend typecheck to typescript 6.0.3 + vue-tsc 3.3.9",
+      "rationale": "vue-tsc 3.3.9 crashes on typescript 7.x (native TS dropped ./lib/tsc, ERR_PACKAGE_PATH_NOT_EXPORTED) and on 5.0.2 (isSatisfiesExpression ReferenceError), but works with 6.0.3 - the exact version the committed pnpm-lock peer resolutions referenced. CI gate must be reproducible, so the pairing is pinned in devDeps; package.json typecheck script + CI step encode it.",
+      "alternatives_rejected": "Use latest typescript (7.0.2) - typecheck toolchain crashes; bypass typechecking entirely (status quo bug class); pick vue-tsc major 4.x (does not exist for this TS line yet)"
     }
   },
   "edges": [
@@ -1217,6 +1319,54 @@
       "to": "COMP-001",
       "type": "governs",
       "created_at": "2026-08-09T14:17:49+00:00"
+    },
+    {
+      "from": "ISS-013",
+      "to": "COMP-002",
+      "type": "located_in",
+      "created_at": "2026-08-09T14:44:59+00:00"
+    },
+    {
+      "from": "EV-020",
+      "to": "HYP-009",
+      "type": "validates",
+      "created_at": "2026-08-09T14:44:59+00:00"
+    },
+    {
+      "from": "TASK-012",
+      "to": "ISS-013",
+      "type": "addresses",
+      "created_at": "2026-08-09T14:45:35+00:00"
+    },
+    {
+      "from": "EV-021",
+      "to": "HYP-009",
+      "type": "validates",
+      "created_at": "2026-08-09T15:13:02+00:00"
+    },
+    {
+      "from": "CHG-008",
+      "to": "TASK-012",
+      "type": "implements",
+      "created_at": "2026-08-09T15:13:02+00:00"
+    },
+    {
+      "from": "CHG-008",
+      "to": "ISS-013",
+      "type": "resolves",
+      "created_at": "2026-08-09T15:13:02+00:00"
+    },
+    {
+      "from": "DEC-007",
+      "to": "COMP-002",
+      "type": "governs",
+      "created_at": "2026-08-09T15:13:26+00:00"
+    },
+    {
+      "from": "DEC-008",
+      "to": "COMP-002",
+      "type": "governs",
+      "created_at": "2026-08-09T15:13:26+00:00"
     }
   ]
 }
