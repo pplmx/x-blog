@@ -997,3 +997,66 @@ class TestAdminPostCategoryClear:
 
         detail = client.get(f"/api/admin/posts/{post['id']}", headers=auth_headers).json()
         assert detail["category_id"] is None
+
+
+class TestAdminPostStatusFilters:
+    """Admin status filters must use naive-UTC publish_at semantics.
+
+    Regresses the tz-aware `datetime.now(UTC)` that was bound against the naive
+    `publish_at` column (app/routers/admin.py): behaviorally invisible on
+    SQLite/UTC, but wrong on PostgreSQL whenever the session timezone is not
+    UTC. The contract is crud.utc_now_naive, the same helper every public
+    publish_at guard uses.
+    """
+
+    def test_admin_list_posts_scheduled_includes_future_publish_at(
+        self, client, auth_headers, db_session
+    ):
+        from datetime import timedelta
+
+        from app.crud import utc_now_naive
+
+        now_naive = utc_now_naive()
+        scheduled = models.Post(
+            title="Future",
+            slug="future-post",
+            content="C",
+            published=True,
+            publish_at=now_naive + timedelta(days=1),
+        )
+        live = models.Post(title="Live", slug="live-post", content="C", published=True)
+        db_session.add_all([scheduled, live])
+        db_session.commit()
+
+        scheduled_titles = [
+            p["title"] for p in client.get("/api/admin/posts?status=scheduled", headers=auth_headers).json()["items"]
+        ]
+        assert scheduled_titles == ["Future"]
+
+        published_titles = [
+            p["title"] for p in client.get("/api/admin/posts?status=published", headers=auth_headers).json()["items"]
+        ]
+        assert "Future" not in published_titles
+        assert "Live" in published_titles
+
+    def test_admin_list_posts_published_includes_boundary_exact_now(
+        self, client, auth_headers, db_session
+    ):
+        from app.crud import utc_now_naive
+
+        now_naive = utc_now_naive()
+        boundary = models.Post(
+            title="Boundary",
+            slug="boundary-post",
+            content="C",
+            published=True,
+            publish_at=now_naive,
+        )
+        db_session.add(boundary)
+        db_session.commit()
+
+        published_titles = [
+            p["title"]
+            for p in client.get("/api/admin/posts?status=published", headers=auth_headers).json()["items"]
+        ]
+        assert "Boundary" in published_titles
