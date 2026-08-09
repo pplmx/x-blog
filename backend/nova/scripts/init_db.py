@@ -7,9 +7,12 @@ import warnings
 from datetime import UTC, datetime, timedelta
 
 sys.path.insert(0, ".")
+from alembic import command
+from alembic.config import Config
+
 from app import auth, models
 from app.config import is_development
-from app.database import Base, SessionLocal, engine
+from app.database import SessionLocal
 
 DEV_ADMIN_PASSWORD = "admin123"
 
@@ -3546,8 +3549,20 @@ flowchart LR
 ]
 
 
+def upgrade_schema() -> None:
+    """Reconcile the schema via alembic migrations (the authoritative path).
+
+    Replaces the old ``Base.metadata.create_all`` so dev seeding and CI (which
+    runs this script on Postgres in the e2e job) exercise the same migration
+    chain the production Docker entrypoint uses. (RIL TASK-009)
+    """
+    cfg = Config("alembic.ini")
+    command.upgrade(cfg, "head")
+    print("✓ Schema up-to-date (alembic upgrade head)")
+
+
 def main():
-    Base.metadata.create_all(bind=engine)
+    upgrade_schema()
     db = SessionLocal()
 
     try:

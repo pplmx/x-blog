@@ -37,7 +37,11 @@ async def lifespan(_app: FastAPI):
     setup_sentry()
     logger.info("app_startup", extra={"version": "0.1.0"})
 
-    # Create database tables
+    # Create database tables. Alembic migrations are the authoritative schema
+    # path (deploy entrypoint runs `alembic upgrade head`; init_db uses it too).
+    # create_all stays here as a dev-only safety net so a fresh checkout can
+    # `just backend` without a manual migrate; it never alters, so it cannot
+    # diverge a migrated database. (RIL TASK-009)
     Base.metadata.create_all(bind=engine)
 
     # Register graceful shutdown handler

@@ -40,6 +40,13 @@ jobs:
           cd backend/nova
           uv run pyright
 
+      - name: Verify alembic baseline builds a fresh DB (no model drift)
+        run: |
+          cd backend/nova
+          DATABASE_URL=sqlite:///./_mig_check.db JWT_SECRET_KEY=ci uv run alembic upgrade head
+          DATABASE_URL=sqlite:///./_mig_check.db JWT_SECRET_KEY=ci uv run alembic check
+          rm -f _mig_check.db
+
       - name: Backend tests with coverage
         run: |
           cd backend/nova

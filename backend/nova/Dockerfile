@@ -40,6 +40,10 @@ COPY --from=builder /app/.venv /app/.venv
 
 # Copy application code
 COPY --chown=appuser:appgroup app ./app
+# Alembic migrations are the production schema path (RIL TASK-009):
+# the entrypoint runs `alembic upgrade head` before uvicorn starts.
+COPY --chown=appuser:appgroup alembic.ini ./
+COPY --chown=appuser:appgroup migrations ./migrations
 
 # Set environment variables
 ENV PATH="/app/.venv/bin:$PATH" \
@@ -56,5 +60,7 @@ EXPOSE 18888
 HEALTHCHECK --interval=30s --timeout=5s --start-period=5s --retries=3 \
     CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:18888/health')"
 
-# Run with graceful shutdown
-CMD ["sh", "-c", "uvicorn app.main:app --host 0.0.0.0 --port 18888 --workers 2"]
+# Run with graceful shutdown. Alembic upgrades the schema first (single-shot,
+# before workers fork, so multi-worker startup can't race migrations); create_all
+# in app.main lifetime stays only as a dev-only safety net (RIL TASK-009).
+CMD ["sh", "-c", "alembic upgrade head && exec uvicorn app.main:app --host 0.0.0.0 --port 18888 --workers 2"]
