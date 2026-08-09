@@ -219,6 +219,7 @@ async def unhandled_exception_handler(request: Request, exc: Exception):
         },
     )
 
+
 app.include_router(health_router)
 app.include_router(stats_router)
 app.include_router(posts.router)
