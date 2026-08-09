@@ -540,7 +540,7 @@ describe("Post Detail Page", () => {
 				(s: { type: string }) => s.type === "application/ld+json",
 			);
 			expect(ldScripts.length).toBe(1);
-			const jsonLd = ldScripts[0].json;
+			const jsonLd = JSON.parse(ldScripts[0].textContent);
 			expect(jsonLd["@context"]).toBe("https://schema.org");
 			expect(jsonLd["@type"]).toBe("BlogPosting");
 			expect(jsonLd.headline).toBe("Test Article Post");

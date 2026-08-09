@@ -10,14 +10,13 @@
  */
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-
+import { buildSiteJsonLd } from "../../composables/seo-jsonld.ts";
 import {
 	buildAbsoluteImageUrl,
 	buildArticleJsonLd,
 	buildCanonicalLink,
 	buildCanonicalUrl,
 	buildOgImageUrl,
-	buildSiteJsonLd,
 	DEFAULT_SITE_URL,
 	siteConfig,
 	usePostSeo,
@@ -509,7 +508,7 @@ describe("useSeo composable", () => {
 		);
 		expect(ldScripts.length).toBe(1);
 
-		const jsonLd = ldScripts[0].json;
+		const jsonLd = JSON.parse(ldScripts[0].textContent);
 		expect(jsonLd["@context"]).toBe("https://schema.org");
 		expect(jsonLd["@type"]).toBe("BlogPosting");
 		expect(jsonLd.headline).toBe("My Post");
@@ -615,7 +614,7 @@ describe("usePostSeo composable", () => {
 		);
 		expect(ldScripts.length).toBe(1);
 
-		const jsonLd = ldScripts[0].json;
+		const jsonLd = JSON.parse(ldScripts[0].textContent);
 		expect(jsonLd["@type"]).toBe("BlogPosting");
 		expect(jsonLd.headline).toBe("Test Article Post");
 		expect(jsonLd.datePublished).toBe("2024-01-15T10:30:00Z");
@@ -650,7 +649,7 @@ describe("usePostSeo composable", () => {
 		const ldScripts = callArg.script.filter(
 			(s: { type: string }) => s.type === "application/ld+json",
 		);
-		const jsonLd = ldScripts[0].json;
+		const jsonLd = JSON.parse(ldScripts[0].textContent);
 		expect(jsonLd.articleSection).toBe("Blog");
 		expect(jsonLd.keywords).toBe("");
 	});

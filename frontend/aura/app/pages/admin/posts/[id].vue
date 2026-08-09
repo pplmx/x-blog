@@ -116,11 +116,17 @@ async function handleSubmit(e: Event) {
 	}
 
 	try {
-		const result = isNew ? await createAdminPost(payload) : await updateAdminPost(postId, payload);
 		// These helpers return useFetch's AsyncData — HTTP errors land in
 		// .error (a Ref) instead of throwing, so check it before redirecting.
+		// Narrowing `postId === null` lets TS treat the other branch as a
+		// number without a non-null assertion (noNonNullAssertion).
+		const result =
+			postId === null
+				? await createAdminPost(payload as PostCreate)
+				: await updateAdminPost(postId, payload);
 		if (result.error.value) {
-			const detail = result.error.value.data?.detail;
+			const err = result.error.value as { data?: { detail?: string } } | null;
+			const detail = err?.data?.detail;
 			submitError.value = typeof detail === "string" ? detail : "保存文章失败，请重试。";
 		} else {
 			navigateTo("/admin/posts", { replace: true });
@@ -428,7 +434,7 @@ function handleFileInput(e: Event) {
               @paste="onPaste"
             />
             <div class="prose prose-sm dark:prose-invert max-w-none overflow-y-auto rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4">
-              <div v-html="sanitizeHtml(formData.content)" />
+              <div v-html="sanitizeHtml(formData.content || '')" />
             </div>
           </div>
           <textarea

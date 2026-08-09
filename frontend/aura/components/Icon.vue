@@ -7,7 +7,6 @@ defineProps<{
 	icon: string;
 	width?: number | string;
 	height?: number | string;
-	class?: string;
 }>();
 </script>
 
@@ -16,6 +15,5 @@ defineProps<{
     :icon="icon"
     :width="width"
     :height="height"
-    :class="class"
   />
 </template>
