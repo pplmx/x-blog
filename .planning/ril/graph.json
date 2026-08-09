@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 9,
+  "round": 10,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-08-09T13:53:56+00:00",
+  "updated_at": "2026-08-09T14:17:58+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -11,7 +11,7 @@
       "version": 1,
       "created_at": "2026-08-06T13:23:41+00:00",
       "updated_at": "2026-08-06T13:23:41+00:00",
-      "touched_round": 9,
+      "touched_round": 10,
       "title": "backend-nova",
       "description": "FastAPI Python 3.14 backend at backend/nova; SQLAlchemy ORM; routers in app/routers, crud.py business logic, 656 lines"
     },
@@ -33,7 +33,7 @@
       "version": 1,
       "created_at": "2026-08-06T13:23:41+00:00",
       "updated_at": "2026-08-06T13:23:41+00:00",
-      "touched_round": 6,
+      "touched_round": 10,
       "title": "ci-pipeline",
       "description": "GitHub Actions workflows test.yml and deploy.yml; 3-node docker compose for e2e"
     },
@@ -706,30 +706,30 @@
       "id": "TASK-009",
       "type": "task",
       "status": "active",
-      "version": 1,
+      "version": 2,
       "created_at": "2026-08-09T13:53:09+00:00",
-      "updated_at": "2026-08-09T13:53:09+00:00",
-      "touched_round": 9,
+      "updated_at": "2026-08-09T14:08:02+00:00",
+      "touched_round": 10,
       "category": "maintainability",
       "severity": 0.5,
       "confidence": 0.9,
       "effort": 5.0,
       "unlock_factor": 1.0,
       "priority_score": 0.6,
-      "title": "Establish alembic migration history (create_all does not ALTER existing tables)",
-      "description": "alembic.ini is configured (script_location=migrations) but no migrations/ directory exists; app relies on Base.metadata.create_all at startup, which creates missing tables but never alters existing ones. A future model change would silently diverge the production Postgres schema. Needs: alembic init + baseline autogenerate, verify env.py, adopt as the schema-change path. Priority intentionally low: not a current defect, no user impact today."
+      "title": "Create full-schema alembic baseline and adopt migrations as the schema-change path",
+      "description": "CORRECTED round 10: alembic is already scaffolded (migrations/ since 0092d44). Remaining work: autogenerate a complete baseline covering all models, verify `alembic upgrade head` works on a fresh SQLite AND Postgres DB, and decide create_all-vs-migration policy for startup/CI seeding. Priority low: not a current defect, no user impact today."
     },
     "ISS-010": {
       "id": "ISS-010",
       "type": "issue",
       "status": "active",
-      "version": 1,
+      "version": 2,
       "created_at": "2026-08-09T13:53:32+00:00",
-      "updated_at": "2026-08-09T13:53:32+00:00",
-      "touched_round": 9,
+      "updated_at": "2026-08-09T14:08:02+00:00",
+      "touched_round": 10,
       "severity": 0.4,
-      "title": "No alembic migration history; schema evolves only via create_all",
-      "description": "alembic.ini configured (script_location=migrations) but no migrations exist. Startup uses Base.metadata.create_all: creates missing tables but never ALTERs existing ones. A future model change silently diverges production Postgres schema. Maintainability debt, not a current defect."
+      "title": "Alembic scaffolded but not the operational schema path (no baseline; create_all authoritative)",
+      "description": "CORRECTED round 10: migrations/ EXISTS since 0092d44 (env.py wired, one migration bf9ccacf5b13 adds publish_at). The real debt: no full-schema baseline migration, lifespan still runs Base.metadata.create_all (main.py:41) so schema changes are never gated by alembic, and alembic upgrade head on a fresh DB fails. Maintainability debt, not a current defect."
     },
     "EV-017": {
       "id": "EV-017",
@@ -743,6 +743,136 @@
       "title": "Loop round 7-9: 4 correctness fixes landed, repo fully green",
       "description": "Rounds 7&8 fixed 4 evidence-backed backend correctness bugs (comment visibility oracle, admin cover_image clear, naive-UTC publish_at guards, schema/column length parity -> Postgres 500). Round 9 found only sub-threshold tracking (alembic debt). Backend 568 passed/8 skipped, frontend 678 passed, biome & ruff clean. Multi-worker cache staleness documented in DEC-004.",
       "confidence": 1.0
+    },
+    "EV-018": {
+      "id": "EV-018",
+      "type": "evidence",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-09T14:07:43+00:00",
+      "updated_at": "2026-08-09T14:07:43+00:00",
+      "touched_round": 10,
+      "source": "git 0092d44 + backend/nova/app/main.py:41 + migrations/env.py",
+      "title": "Alembic is scaffolded and wired, but create_all remains the schema-change path",
+      "content": "migrations/ exists since commit 0092d44 (2026-07-28): alembic.ini script_location=migrations, env.py imports app.models, target_metadata=Base.metadata, reads settings.database_url; one migration bf9ccacf5b13 adds publish_at to posts. main.py:41 lifespan still runs Base.metadata.create_all(bind=engine), so schema evolution is NOT gated by alembic. bf9ccacf5b13 is not a baseline: op.add_column targets posts, a table only create_all pre-creates, so `alembic upgrade head` on a fresh DB fails.",
+      "confidence": 1.0
+    },
+    "HYP-008": {
+      "id": "HYP-008",
+      "type": "hypothesis",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-09T14:07:43+00:00",
+      "updated_at": "2026-08-09T14:07:43+00:00",
+      "touched_round": 10,
+      "confidence": 0.95,
+      "title": "The alembic debt is a missing baseline + adoption gap, not missing setup",
+      "description": "Round-9 ISS-010/TASK-009 claimed no migrations/ directory exists; refuted by committed state (0092d44): alembic is scaffolded and env.py is wired. The real gap: no full-schema baseline migration, create_all is authoritative at startup, and upgrade-head-on-fresh-DB would fail. Corrected this round."
+    },
+    "DEC-005": {
+      "id": "DEC-005",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-09T14:08:02+00:00",
+      "updated_at": "2026-08-09T14:08:02+00:00",
+      "touched_round": 10,
+      "title": "Verify RIL observations against committed state before creating issue/task nodes",
+      "rationale": "Round-9 recorded ISS-010/TASK-009 (no migrations/) from inspection without checking git/committed files; migrations/ has been in-tree since 0092d44. Graph claims must reference observable truth. This round corrected the nodes in place (edge-validated evidence + edited descriptions) rather than deleting, preserving the audit trail.",
+      "alternatives_rejected": "Rewrite/delete round-9 nodes (loses audit trail); leave the wrong nodes intact (pollutes EVALUATE/SELECT with false premises)"
+    },
+    "ISS-011": {
+      "id": "ISS-011",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-08-09T14:08:25+00:00",
+      "updated_at": "2026-08-09T14:17:58+00:00",
+      "touched_round": 10,
+      "severity": 0.3,
+      "title": "Dead/duplicated tool config in pyproject.toml ([tool.ruff] shadowed; [tool.cov.*] not a real section)",
+      "description": "pyproject.toml declares [tool.ruff] (line-length 100, select E,F,I,N,W,UP) that ruff ignores because ruff.toml (line-length 120, broader rule set) takes precedence per ruff discovery order — a drift trap for future edits. Also [tool.cov.*] blocks are not a real tool section (coverage.py/pytest-cov read [tool.coverage]); they duplicate exclude_lines and add nothing. Verified empirically (ruff --show-settings reports 120; rumdl/cov unaffected)."
+    },
+    "ISS-012": {
+      "id": "ISS-012",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-08-09T14:08:25+00:00",
+      "updated_at": "2026-08-09T14:17:58+00:00",
+      "touched_round": 10,
+      "severity": 0.3,
+      "title": "CI toolchain is unpinned (uvx) and does not gate markdown (rumdl absent)",
+      "description": "test.yml/deploy.yml install uv via pip and run `uvx ruff check` (unpinned latest) instead of project-pinned `uv run ruff`; no uv dependency cache (astral-sh/setup-uv); rumdl markdown lint exists locally (just lint, .rumdl.toml, pre-commit hook) but is not enforced in CI, so README/RIL/docs can regress silently."
+    },
+    "TASK-010": {
+      "id": "TASK-010",
+      "type": "task",
+      "status": "resolved",
+      "version": 4,
+      "created_at": "2026-08-09T14:08:25+00:00",
+      "updated_at": "2026-08-09T14:17:58+00:00",
+      "touched_round": 10,
+      "category": "maintainability",
+      "severity": 0.3,
+      "confidence": 0.9,
+      "effort": 1.0,
+      "unlock_factor": 1.0,
+      "title": "Remove dead ruff/cov config from pyproject.toml (single source of truth)",
+      "description": "Delete [tool.ruff] + [tool.ruff.lint] and [tool.cov.*] blocks from backend/nova/pyproject.toml. ruff.toml stays authoritative; keep [tool.coverage.*] and [tool.pytest.ini_options]. Verify `ruff check .` + `ruff format --check .` still exit clean (effective config unchanged) and pytest config parses."
+    },
+    "TASK-011": {
+      "id": "TASK-011",
+      "type": "task",
+      "status": "resolved",
+      "version": 4,
+      "created_at": "2026-08-09T14:08:25+00:00",
+      "updated_at": "2026-08-09T14:17:58+00:00",
+      "touched_round": 10,
+      "category": "dx",
+      "severity": 0.4,
+      "confidence": 0.9,
+      "effort": 2.0,
+      "unlock_factor": 1.0,
+      "title": "Modernize CI: pinned uv run ruff, setup-uv cache, rumdl markdown gate",
+      "description": "In test.yml and deploy.yml: replace `pip install uv` with astral-sh/setup-uv (enable-cache) after setup-python; switch lint step to project-pinned `uv run ruff check .` / `uv run ru format --check .`; add `uv run rumdl check .` to backend-test job so the 11 maintained markdown docs stay lint-clean. Keep e2e/deploy steps otherwise unchanged."
+    },
+    "CHG-007": {
+      "id": "CHG-007",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-09T14:17:29+00:00",
+      "updated_at": "2026-08-09T14:17:29+00:00",
+      "touched_round": 10,
+      "commit": "b9a0c5a",
+      "title": "Toolchain hygiene: pin ruff 0.16 + rumdl dev dep, drop dead config, gate markdown in CI",
+      "description": "Removed dead [tool.ruff]/[tool.cov.*] from pyproject.toml (ruff.toml single source); bumped ruff to >=0.16.1,<0.17 (lock 0.16.2) and added rumdl to dev group; reformatted 4 files to pinned 0.16 style; switched test.yml/deploy.yml to astral-sh/setup-uv with cache + uv-run-pinned ruff + rumdl check gate; justfile uses pinned uv run."
+    },
+    "EV-019": {
+      "id": "EV-019",
+      "type": "evidence",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-09T14:17:29+00:00",
+      "updated_at": "2026-08-09T14:17:29+00:00",
+      "touched_round": 10,
+      "source": "pytest: 568 passed, 8 skipped; ruff check/format clean; rumdl check 11 files clean; workflows YAML parse; commit b9a0c5a",
+      "title": "Round 10 toolchain-hygiene verified locally",
+      "content": "Full backend suite 568 passed/8 skipped (matches EV-016 baseline — no regression). ruff format --check clean on 61 files under pinned 0.16.2 (4 previously-unformatted files converged). ruff check clean. rumdl check . gates 11 maintained markdown docs, 0 issues (superpowers plans/specs excluded via .rumdl.toml). workflow YAMLs parse; justfile recipes resolve. CI-side (setup-uv, rumdl step) cannot be executed locally — requires remote run after push (deferred per stop condition #1).",
+      "confidence": 1.0
+    },
+    "DEC-006": {
+      "id": "DEC-006",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-09T14:17:49+00:00",
+      "updated_at": "2026-08-09T14:17:49+00:00",
+      "touched_round": 10,
+      "title": "Pin ruff at the modern 0.16 minor line and converge repo formatting on it",
+      "rationale": "CI gating with uv run surfaced pre-existing drift: uv.lock froze ruff 0.15.10 while PATH/uvx use 0.16.x; 4 files formatted in the older style failed format --check under the pinned version. Single-source-of-truth fix: tighten dev dep to >=0.16.1,<0.17 (lock resolves 0.16.2), reformat the 4 files with the pinned ruff so uv.lock == PATH == uvx style, and gate `uv run ruff format --check` in CI. Makes the lock authoritative and removes the unpinned-uvx drift trap.",
+      "alternatives_rejected": "Keep ruff>=0.8.0 + uvx ruff (unpinned: CI result depends on latest ruff at run time, already caused one drift event); pin to 0.15.10 (loses newer 3.14 formatting and fights the 0.16 ecosystem on PATH/uvx)"
     }
   },
   "edges": [
@@ -1015,6 +1145,78 @@
       "to": "HYP-003",
       "type": "validates",
       "created_at": "2026-08-09T13:53:56+00:00"
+    },
+    {
+      "from": "EV-018",
+      "to": "HYP-008",
+      "type": "validates",
+      "created_at": "2026-08-09T14:07:43+00:00"
+    },
+    {
+      "from": "TASK-010",
+      "to": "ISS-011",
+      "type": "addresses",
+      "created_at": "2026-08-09T14:08:25+00:00"
+    },
+    {
+      "from": "TASK-011",
+      "to": "ISS-012",
+      "type": "addresses",
+      "created_at": "2026-08-09T14:08:25+00:00"
+    },
+    {
+      "from": "ISS-011",
+      "to": "COMP-001",
+      "type": "located_in",
+      "created_at": "2026-08-09T14:08:25+00:00"
+    },
+    {
+      "from": "ISS-012",
+      "to": "COMP-003",
+      "type": "located_in",
+      "created_at": "2026-08-09T14:08:25+00:00"
+    },
+    {
+      "from": "DEC-005",
+      "to": "COMP-001",
+      "type": "governs",
+      "created_at": "2026-08-09T14:08:25+00:00"
+    },
+    {
+      "from": "EV-019",
+      "to": "HYP-008",
+      "type": "validates",
+      "created_at": "2026-08-09T14:17:30+00:00"
+    },
+    {
+      "from": "CHG-007",
+      "to": "TASK-010",
+      "type": "implements",
+      "created_at": "2026-08-09T14:17:30+00:00"
+    },
+    {
+      "from": "CHG-007",
+      "to": "TASK-011",
+      "type": "implements",
+      "created_at": "2026-08-09T14:17:30+00:00"
+    },
+    {
+      "from": "CHG-007",
+      "to": "ISS-011",
+      "type": "resolves",
+      "created_at": "2026-08-09T14:17:30+00:00"
+    },
+    {
+      "from": "CHG-007",
+      "to": "ISS-012",
+      "type": "resolves",
+      "created_at": "2026-08-09T14:17:30+00:00"
+    },
+    {
+      "from": "DEC-006",
+      "to": "COMP-001",
+      "type": "governs",
+      "created_at": "2026-08-09T14:17:49+00:00"
     }
   ]
 }
