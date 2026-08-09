@@ -101,8 +101,8 @@ def get_atom_feed(db: Session = Depends(get_db)):
 
     items = []
     for post in posts:
-        updated = post.updated_at.strftime("%Y-%m-%dT%H:%M:%SZ")
-        published = post.created_at.strftime("%Y-%m-%dT%H:%M:%SZ")
+        updated = (post.updated_at or crud.utc_now_naive()).strftime("%Y-%m-%dT%H:%M:%SZ")
+        published = (post.created_at or crud.utc_now_naive()).strftime("%Y-%m-%dT%H:%M:%SZ")
         content = post.content[:5000] if len(post.content) > 5000 else post.content
         link = f"{site_url}/posts/{post.slug}"
         items.append(f"""<entry>
@@ -164,7 +164,7 @@ def get_sitemap(db: Session = Depends(get_db)):
 
     # Posts
     for post in posts:
-        updated = post.updated_at.strftime("%Y-%m-%d")
+        updated = (post.updated_at or crud.utc_now_naive()).strftime("%Y-%m-%d")
         entry = f"""<url>
     <loc>{escape(site_url)}/posts/{escape(post.slug)}</loc>
     <lastmod>{updated}</lastmod>

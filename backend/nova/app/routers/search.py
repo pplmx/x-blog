@@ -65,7 +65,7 @@ def search(
     limit: int = Query(10, ge=1, le=50),
     db: Session = Depends(get_db),
 ):
-    is_postgres = db.bind.dialect.name == "postgresql"
+    is_postgres = db.get_bind().dialect.name == "postgresql"
     posts, total = search_posts(db, query=q, page=page, limit=limit)
 
     items = []

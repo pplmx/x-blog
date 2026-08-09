@@ -55,7 +55,7 @@ def get_posts(
     if published:
         now = utc_now_naive()
         query = query.filter(
-            models.Post.published,
+            models.Post.published.is_(True),
             or_(models.Post.publish_at.is_(None), models.Post.publish_at <= now),
         )
 
@@ -458,9 +458,9 @@ def escape_like_pattern(query: str) -> str:
     return query.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
 
 
-def search_posts(db: Session, query: str, page: int = 1, limit: int = 10):
+def search_posts(db: Session, query: str, page: int = 1, limit: int = 10) -> tuple[list[models.Post], int]:
     offset = (page - 1) * limit
-    is_postgres = db.bind.dialect.name == "postgresql"
+    is_postgres = db.get_bind().dialect.name == "postgresql"
 
     now = utc_now_naive()
     # Scheduled posts are not searchable before their publish_at (same rule as list)
@@ -475,7 +475,7 @@ def search_posts(db: Session, query: str, page: int = 1, limit: int = 10):
 
         stmt = (
             select(models.Post)
-            .where(models.Post.published)
+            .where(models.Post.published.is_(True))
             .where(scheduled_filter)
             .where(ts_vector.op("@@")(ts_query))
             .order_by(func.ts_rank(ts_vector, ts_query).desc())
@@ -489,7 +489,7 @@ def search_posts(db: Session, query: str, page: int = 1, limit: int = 10):
 
         count_stmt = (
             select(func.count(models.Post.id))
-            .where(models.Post.published)
+            .where(models.Post.published.is_(True))
             .where(scheduled_filter)
             .where(ts_vector.op("@@")(ts_query))
         )
@@ -504,7 +504,7 @@ def search_posts(db: Session, query: str, page: int = 1, limit: int = 10):
                     models.Post.content.ilike(search_pattern, escape="\\"),
                 )
             )
-            .where(models.Post.published)
+            .where(models.Post.published.is_(True))
             .where(scheduled_filter)
             .options(
                 joinedload(models.Post.category),
@@ -523,12 +523,13 @@ def search_posts(db: Session, query: str, page: int = 1, limit: int = 10):
                     models.Post.content.ilike(search_pattern, escape="\\"),
                 )
             )
-            .where(models.Post.published)
+            .where(models.Post.published.is_(True))
             .where(scheduled_filter)
         )
 
-    posts = db.execute(stmt).unique().scalars().all()
+    posts = list(db.execute(stmt).unique().scalars().all())
     total = db.execute(count_stmt).scalar()
+    assert total is not None  # COUNT(*) always yields one row
 
     return posts, total
 
@@ -536,14 +537,12 @@ def search_posts(db: Session, query: str, page: int = 1, limit: int = 10):
 def increment_views(db: Session, post_id: int) -> models.Post | None:
     """Increment the view count for a post using atomic SQL update."""
     stmt = update(models.Post).where(models.Post.id == post_id).values(views=models.Post.views + 1)
-    result = db.execute(stmt)
+    db.execute(stmt)
     try:
         db.commit()
     except Exception:
         db.rollback()
         raise
-    if result.rowcount == 0:
-        return None
     post = db.get(models.Post, post_id)
     if post:
         db.refresh(post)
@@ -553,14 +552,12 @@ def increment_views(db: Session, post_id: int) -> models.Post | None:
 def increment_likes(db: Session, post_id: int) -> models.Post | None:
     """Increment the like count for a post using atomic SQL update."""
     stmt = update(models.Post).where(models.Post.id == post_id).values(likes=models.Post.likes + 1)
-    result = db.execute(stmt)
+    db.execute(stmt)
     try:
         db.commit()
     except Exception:
         db.rollback()
         raise
-    if result.rowcount == 0:
-        return None
     post = db.get(models.Post, post_id)
     if post:
         db.refresh(post)
@@ -573,7 +570,7 @@ def get_popular_posts(db: Session, limit: int = 5) -> list[models.Post]:
     return (
         db.query(models.Post)
         .filter(
-            models.Post.published,
+            models.Post.published.is_(True),
             or_(models.Post.publish_at.is_(None), models.Post.publish_at <= now),
         )
         .options(
@@ -596,7 +593,7 @@ def get_related_posts(db: Session, post_id: int, limit: int = 5) -> list[models.
         # Fallback: just get recent posts in same category
         now = utc_now_naive()
         query = db.query(models.Post).filter(
-            models.Post.published,
+            models.Post.published.is_(True),
             models.Post.id != post_id,
             or_(models.Post.publish_at.is_(None), models.Post.publish_at <= now),
         )
@@ -635,7 +632,7 @@ def get_related_posts(db: Session, post_id: int, limit: int = 5) -> list[models.
         db.query(models.Post, tag_match_count_subq.c.match_count)
         .outerjoin(tag_match_count_subq, models.Post.id == tag_match_count_subq.c.post_id)
         .filter(
-            models.Post.published,
+            models.Post.published.is_(True),
             models.Post.id != post_id,
             or_(models.Post.publish_at.is_(None), models.Post.publish_at <= now),
         )

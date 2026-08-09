@@ -24,6 +24,8 @@ def setup_sentry() -> None:
             SqlalchemyIntegration(),
         ],
         send_default_pii=False,
-        max_request_body_size="always",
-        max_response_body_size="never",
+        # NOTE: sentry-sdk 2.x removed the max_request_body_size /
+        # max_response_body_size init kwargs; passing them crashed startup with
+        # TypeError whenever SENTRY_DSN was configured. Body-size capture now
+        # uses the client defaults. See ISS-014 / RIL round 12.
     )

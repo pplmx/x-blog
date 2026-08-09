@@ -11,18 +11,31 @@ Caches that are actually read by the application live here:
 
 from cachetools import TTLCache
 
+from app import models
 from app.middleware.logging import get_logger
 
 logger = get_logger(__name__)
 
-# Cache instances
-categories_cache = TTLCache(maxsize=20, ttl=1800)  # 30 minutes for categories
-tags_cache = TTLCache(maxsize=20, ttl=1800)  # 30 minutes for tags
+# Cache instances. Key/value types are explicit (3-arg cachetools generic:
+# key, value, size type) so pyright can type the subscript reads in
+# crud.get_categories/get_tags. The constructor cannot bind KT/VT from its
+# args, so assignments are typed-declared with an ignore; readers see the
+# declared type.
+categories_cache: TTLCache[str, list[models.Category], float] = TTLCache(  # type: ignore[reportAssignmentType]
+    maxsize=20,
+    ttl=1800,  # 30 minutes for categories
+)
+tags_cache: TTLCache[str, list[models.Tag], float] = TTLCache(  # type: ignore[reportAssignmentType]
+    maxsize=20,
+    ttl=1800,  # 30 minutes for tags
+)
 # Serialized PostListResponse payloads keyed by (page, limit, category_id, tag_id).
 # Stores dicts, not ORM objects, so values survive across request Sessions.
 # A 5-minute TTL is a safety net: writes invalidate explicitly, but a scheduled
 # post crossing its publish_at without a write still refreshes within the TTL.
-posts_list_cache: TTLCache = TTLCache(maxsize=256, ttl=300)
+posts_list_cache: TTLCache[tuple, dict, float] = TTLCache(  # type: ignore[reportAssignmentType]
+    maxsize=256, ttl=300
+)
 
 
 def cache_clear():

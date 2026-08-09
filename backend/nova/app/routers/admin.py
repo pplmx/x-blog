@@ -139,7 +139,7 @@ def admin_list_posts(
     if status == "published":
         now = utc_now_naive()
         query = query.filter(
-            models.Post.published,
+            models.Post.published.is_(True),
             or_(models.Post.publish_at.is_(None), models.Post.publish_at <= now),
         )
     elif status == "draft":

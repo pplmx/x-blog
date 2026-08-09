@@ -7,8 +7,8 @@ from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from jose import JWTError, jwt
 from pydantic import BaseModel
-from sqlalchemy import Boolean, Column, DateTime, Integer, String
-from sqlalchemy.orm import Session
+from sqlalchemy import Boolean, DateTime, Integer, String
+from sqlalchemy.orm import Mapped, Session, mapped_column
 
 from app.config import is_development
 from app.database import Base, get_db
@@ -17,20 +17,32 @@ DEV_SECRET_KEY = "x-blog-secret-key-dev-only"
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_DAYS = int(os.getenv("JWT_EXPIRE_DAYS", "7"))
 
-SECRET_KEY = os.getenv("JWT_SECRET_KEY")
-if not SECRET_KEY:
+
+def _load_secret_key() -> str:
+    """JWT signing key: env var, or the development-only fallback, or refuse to start.
+
+    Returns a ``str`` (never ``None``) so ``jwt.encode``/``decode`` receive a real
+    key: outside development a missing JWT_SECRET_KEY is a hard startup error, and
+    in development the well-known default is used with a warning.
+    """
+    key = os.getenv("JWT_SECRET_KEY")
+    if key:
+        return key
     if not is_development():
         raise RuntimeError(
             "JWT_SECRET_KEY is not set. Refusing to start outside development — "
             "a publicly known default would let anyone forge admin tokens. "
             "Set JWT_SECRET_KEY, or set APP_ENV=development to run with the dev default."
         )
-    SECRET_KEY = DEV_SECRET_KEY
     warnings.warn(
         "JWT_SECRET_KEY not set. Using the DEVELOPMENT-only default key. "
         "Never run production with APP_ENV=development.",
         stacklevel=2,
     )
+    return DEV_SECRET_KEY
+
+
+SECRET_KEY = _load_secret_key()
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/admin/login")
 
@@ -38,11 +50,11 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/admin/login")
 class User(Base):
     __tablename__ = "users"
 
-    id = Column(Integer, primary_key=True, index=True)
-    username = Column(String(50), unique=True, nullable=False, index=True)
-    password = Column(String(200), nullable=False)
-    is_superuser = Column(Boolean, default=False)
-    created_at = Column(DateTime, default=lambda: datetime.now(UTC))
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    username: Mapped[str] = mapped_column(String(50), unique=True, nullable=False, index=True)
+    password: Mapped[str] = mapped_column(String(200), nullable=False)
+    is_superuser: Mapped[bool | None] = mapped_column(Boolean, default=False)
+    created_at: Mapped[datetime | None] = mapped_column(DateTime, default=lambda: datetime.now(UTC))
 
 
 class TokenData(BaseModel):
