@@ -34,7 +34,7 @@
 	"devDependencies": {
 		"@biomejs/biome": "^2.5.5",
 		"@iconify-json/lucide": "^1.2.120",
-		"@playwright/test": "^1.62.0",
+		"@playwright/test": "^1.62.1",
 		"@testing-library/vue": "^8.1.0",
 		"@vitejs/plugin-vue": "^6.0.8",
 		"@vitest/coverage-v8": "^4.1.10",
