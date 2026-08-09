@@ -38,7 +38,7 @@ def list_comments(
     total_pages = (total + limit - 1) // limit if limit > 0 else 0
 
     return CommentListResponse(
-        items=comments,
+        items=[schemas.Comment.model_validate(c) for c in comments],
         total=total,
         page=page,
         limit=limit,

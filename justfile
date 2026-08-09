@@ -68,8 +68,12 @@ fix:
     cd frontend/aura && pnpm lint:fix
     uv run --project backend/nova rumdl fmt
 
+# Run Python type checking (pyright, config in backend/nova/pyproject.toml)
+typecheck:
+    cd backend/nova && uv run pyright
+
 # CI: run all checks
-ci: fmt-check lint test
+ci: fmt-check lint typecheck test
 
 # Run all tests
 test: test-backend test-nuxt

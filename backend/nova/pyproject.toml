@@ -30,7 +30,16 @@ dev = [
     "pytest-cov>=6.0.0",
     "ruff>=0.16.1,<0.17",
     "rumdl>=0.2.52,<0.3",
+    "pyright>=1.1.399",
 ]
+
+[tool.pyright]
+# Python type checking. Runs on app/ only (tests/migrations/scripts excluded).
+include = ["app"]
+exclude = ["**/tests/**", "**/migrations/**", "**/scripts/**"]
+pythonVersion = "3.14"
+venvPath = "."
+venv = ".venv"
 
 # Ruff lint/format config lives in ruff.toml (single source of truth). The
 # [tool.ruff] block here was dead config — ruff.toml takes precedence, so the

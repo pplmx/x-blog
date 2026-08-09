@@ -105,7 +105,7 @@ async def timeout_middleware(request: Request, call_next):
         )
         return response
     except TimeoutError:
-        logger.warning("request_timeout", path=request.url.path, timeout=REQUEST_TIMEOUT)
+        logger.warning("request_timeout path=%s timeout=%s", request.url.path, REQUEST_TIMEOUT)
         return JSONResponse(
             status_code=504,
             content={

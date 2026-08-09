@@ -35,6 +35,11 @@ jobs:
           # the tracked docs are scanned, using the project-pinned rumdl.
           uv run --project backend/nova rumdl check .
 
+      - name: Backend type check (pyright)
+        run: |
+          cd backend/nova
+          uv run pyright
+
       - name: Backend tests with coverage
         run: |
           cd backend/nova

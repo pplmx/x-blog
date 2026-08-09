@@ -39,7 +39,7 @@ def get_blog_stats(request: Request, db: Session = Depends(get_db)):  # noqa: AR
     published_posts = (
         db.query(func.count(models.Post.id))
         .filter(
-            models.Post.published,
+            models.Post.published.is_(True),
             or_(models.Post.publish_at.is_(None), models.Post.publish_at <= now),
         )
         .scalar()
