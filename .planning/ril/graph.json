@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 13,
+  "round": 14,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-08-09T16:13:05+00:00",
+  "updated_at": "2026-08-09T16:42:48+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -11,7 +11,7 @@
       "version": 1,
       "created_at": "2026-08-06T13:23:41+00:00",
       "updated_at": "2026-08-06T13:23:41+00:00",
-      "touched_round": 13,
+      "touched_round": 14,
       "title": "backend-nova",
       "description": "FastAPI Python 3.14 backend at backend/nova; SQLAlchemy ORM; routers in app/routers, crud.py business logic, 656 lines"
     },
@@ -1127,6 +1127,116 @@
       "title": "Adopt alembic as the schema path via an idempotent self-adopting baseline",
       "rationale": "One baseline migration (1e0bb4163cc8) with has_table guards + duplicate-index suppression lets `alembic upgrade head` build fresh DBs AND adopt existing create_all-era DBs without a manual `alembic stamp head`, so the production roll-out (Docker CMD upgrade-then-uvicorn) cannot crash on already-populated schemas. create_all stays in lifespan only as a dev safety net (it never ALTERs, so it cannot diverge a migrated DB). Next schema changes go through alembic revision.",
       "alternatives_rejected": "Require a manual `alembic stamp head` on existing DBs (footgun: container restart fails until a human stamps); non-idempotent baseline + fail-fast (breaks the roll-out); keep create_all forever (no migration history, TASK-009 goal)"
+    },
+    "ISS-015": {
+      "id": "ISS-015",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-08-09T16:29:28+00:00",
+      "updated_at": "2026-08-09T16:42:48+00:00",
+      "touched_round": 14,
+      "severity": 0.3,
+      "title": "Dependency/config drift: dead httpx2, duplicate psycopg2, coverage threshold mismatch, stale biome global",
+      "description": "Long-tail hygiene from round-14 sweep: (1) httpx2>=2.9.1 in deps but nothing imports httpx/httpx2 (dead dep, unofficial-mirror source; starlette 1.3.1 TestClient works without it, ratelimit tests pass); (2) duplicate psycopg2-binary entries >=2.9.0 and >=2.9.12; (3) coverage single-source drift: pyproject [tool.coverage.lines] fail_under 60 / branches 50 / functions 50 vs CI --cov-fail-under=80, and local just test-backend runs pytest without coverage; (4) frontend biome.json globals still list useI18n (i18n removed 2026-07-31, zero usages)."
+    },
+    "EV-026": {
+      "id": "EV-026",
+      "type": "evidence",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-09T16:29:28+00:00",
+      "updated_at": "2026-08-09T16:29:28+00:00",
+      "touched_round": 14,
+      "source": "grep imports in app+scripts (no httpx2); uv tree (only httpx2 top-level); starlette TestClient import + test_ratelimit 6 passed without httpx; pyproject lines 15/21/22; grep useI18n biome.json with zero src usage",
+      "title": "Round-14 hygiene probes confirm dead dep and config drift",
+      "content": "httpx2 is imported nowhere; removing it is test-safe (TestClient + 6 ratelimit tests pass without the httpx module). psycopg2-binary appears twice in [project] deps. Coverage gate is configured 3 ways (60/50/50 pyproject vs 80 CI vs none locally). biome globals still list useI18n with no source usage.",
+      "confidence": 1.0
+    },
+    "TASK-014": {
+      "id": "TASK-014",
+      "type": "task",
+      "status": "resolved",
+      "version": 4,
+      "created_at": "2026-08-09T16:29:29+00:00",
+      "updated_at": "2026-08-09T16:42:48+00:00",
+      "touched_round": 14,
+      "category": "maintainability",
+      "severity": 0.3,
+      "confidence": 0.95,
+      "effort": 1.0,
+      "unlock_factor": 1.0,
+      "title": "Remove dead httpx2 dep and dedupe psycopg2-binary in backend deps",
+      "description": "Delete httpx2>=2.9.1 (imported nowhere; supply-chain and lock-weight cleanup) and collapse duplicate psycopg2-binary>=2.9.0 / >=2.9.12 into one >=2.9.12 in backend/nova/pyproject.toml; uv lock/sync; full pytest (568) and pyright must stay green."
+    },
+    "TASK-015": {
+      "id": "TASK-015",
+      "type": "task",
+      "status": "resolved",
+      "version": 4,
+      "created_at": "2026-08-09T16:29:29+00:00",
+      "updated_at": "2026-08-09T16:42:48+00:00",
+      "touched_round": 14,
+      "category": "dx",
+      "severity": 0.3,
+      "confidence": 0.9,
+      "effort": 1.5,
+      "unlock_factor": 1.0,
+      "title": "Make coverage single-source: local pytest --cov == CI 80 (backend)",
+      "description": "Add [tool.pytest.ini_options] addopts=--cov plus [tool.coverage.run] source=[app] and a single [tool.coverage] fail_under=80 (drop per-measure 60/50/50 sections) so local pytest -n auto and CI enforce the same 80 app-coverage gate. Verify local suite passes at >=80."
+    },
+    "TASK-016": {
+      "id": "TASK-016",
+      "type": "task",
+      "status": "abandoned",
+      "version": 4,
+      "created_at": "2026-08-09T16:29:29+00:00",
+      "updated_at": "2026-08-09T16:42:48+00:00",
+      "touched_round": 14,
+      "category": "dx",
+      "severity": 0.15,
+      "confidence": 0.95,
+      "effort": 0.3,
+      "unlock_factor": 1.0,
+      "title": "Remove stale useI18n global from frontend biome.json",
+      "description": "i18n was removed 2026-07-31; useI18n has zero usages but is still declared in biome.json javascript.globals. Delete the entry; biome check must stay clean."
+    },
+    "EV-027": {
+      "id": "EV-027",
+      "type": "evidence",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-09T16:42:48+00:00",
+      "updated_at": "2026-08-09T16:42:48+00:00",
+      "touched_round": 14,
+      "source": "\"pytest -n auto full suite after removing httpx2: RuntimeError \"The starlette.testclient module requires the httpx2 package\" (conftest import); restored; 568 pass at 93.34% coverage; commit 6a17a88\"",
+      "title": "VERIFY refuted the dead-httpx2 hypothesis before commit",
+      "content": "httpx2 looked unused from a grep of app/ and scripts/, but starlette 1.3.1 TestClient imports httpx2 at import time (tests/conftest and test_ratelimit use it). Removing the dep failed the full suite in VERIFY - caught pre-commit - so httpx2 was restored at its locked 2.9.1. The import scan had wrongly excluded tests/. The lasting cleanups stand: psycopg2-binary deduplicated to >=2.9.12, and coverage is single-source (local pytest addopts=--cov + [tool.coverage.run] source=app + fail_under=80 matches CI; local measures 93.34%).",
+      "confidence": 1.0
+    },
+    "CHG-011": {
+      "id": "CHG-011",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-09T16:42:48+00:00",
+      "updated_at": "2026-08-09T16:42:48+00:00",
+      "touched_round": 14,
+      "commit": "6a17a88",
+      "title": "Coverage single-source (local==CI 80) + psycopg2 dep dedupe",
+      "description": "pytest addopts=--cov + coverage.run source=[app] + fail_under=80 replaces the per-measure 60/50/50 stanzas; local and CI now gate the same 80% app coverage (local run: 93.34%). psycopg2-binary duplicate constraints collapsed to >=2.9.12 (uv.lock mirrors, 1-line removal). httpx2 investigation concluded NO change (refuted by full-suite VERIFY - see EV-027)."
+    },
+    "DEC-012": {
+      "id": "DEC-012",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-09T16:42:48+00:00",
+      "updated_at": "2026-08-09T16:42:48+00:00",
+      "touched_round": 14,
+      "title": "Dependency-removal hypotheses must scan tests/ and pass the full suite before commit",
+      "rationale": "The httpx2 dead-dependency hypothesis came from grepping app/ and scripts/ only; tests/conftest imports starlette.testclient which imports httpx2, so the dep is load-bearing for the test suite. Only the full-suite VERIFY step exposed this, pre-commit, and the dep was restored without any commit. Rule for future rounds: a removal/refactor hypothesis is refuted if the whole test suite does not stay green; scan all non-venv source (including tests/) before `dead dep` claims.",
+      "alternatives_rejected": "Remove httpx2 and add a mypy/pyright exclusion (hides the suite-breaking gap); skip full-suite VERIFY for dependency changes (would commit a broken build for anyone running tests)"
     }
   },
   "edges": [
@@ -1591,6 +1701,54 @@
       "to": "HYP-010",
       "type": "validates",
       "created_at": "2026-08-09T16:12:53+00:00"
+    },
+    {
+      "from": "ISS-015",
+      "to": "COMP-001",
+      "type": "located_in",
+      "created_at": "2026-08-09T16:29:28+00:00"
+    },
+    {
+      "from": "TASK-014",
+      "to": "ISS-015",
+      "type": "addresses",
+      "created_at": "2026-08-09T16:29:29+00:00"
+    },
+    {
+      "from": "TASK-015",
+      "to": "ISS-015",
+      "type": "addresses",
+      "created_at": "2026-08-09T16:29:29+00:00"
+    },
+    {
+      "from": "TASK-016",
+      "to": "ISS-015",
+      "type": "addresses",
+      "created_at": "2026-08-09T16:29:29+00:00"
+    },
+    {
+      "from": "CHG-011",
+      "to": "TASK-014",
+      "type": "implements",
+      "created_at": "2026-08-09T16:42:48+00:00"
+    },
+    {
+      "from": "CHG-011",
+      "to": "TASK-015",
+      "type": "implements",
+      "created_at": "2026-08-09T16:42:48+00:00"
+    },
+    {
+      "from": "CHG-011",
+      "to": "ISS-015",
+      "type": "resolves",
+      "created_at": "2026-08-09T16:42:48+00:00"
+    },
+    {
+      "from": "DEC-012",
+      "to": "COMP-001",
+      "type": "governs",
+      "created_at": "2026-08-09T16:42:48+00:00"
     }
   ]
 }
