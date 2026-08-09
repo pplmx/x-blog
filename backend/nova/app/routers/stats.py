@@ -1,13 +1,12 @@
 """Statistics endpoint for blog metrics."""
 
-from datetime import UTC, datetime
-
 from fastapi import APIRouter, Depends, Request
 from pydantic import BaseModel
 from sqlalchemy import func, or_
 from sqlalchemy.orm import Session
 
 from app import models
+from app.crud import utc_now_naive
 from app.database import get_db
 from app.limiter import RATE_LIMIT_READ, limiter
 
@@ -36,7 +35,7 @@ def get_blog_stats(request: Request, db: Session = Depends(get_db)):  # noqa: AR
 
     # Published posts (scheduled posts only count once their publish_at has passed,
     # matching the public list semantics)
-    now = datetime.now(UTC)
+    now = utc_now_naive()
     published_posts = (
         db.query(func.count(models.Post.id))
         .filter(

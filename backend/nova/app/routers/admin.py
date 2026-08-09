@@ -1,5 +1,3 @@
-from datetime import UTC, datetime
-
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from fastapi.security import OAuth2PasswordRequestForm
 from pydantic import BaseModel, ConfigDict, Field
@@ -14,6 +12,7 @@ from app.cache import (
     clear_posts_list_cache,
     clear_tags_cache,
 )
+from app.crud import utc_now_naive
 from app.database import get_db
 from app.limiter import RATE_LIMIT_AUTH, limiter
 from app.schemas import PostCreate, PostUpdate
@@ -137,7 +136,7 @@ def admin_list_posts(
         query = query.filter(models.Post.title.ilike(f"%{crud.escape_like_pattern(q)}%", escape="\\"))
 
     if status == "published":
-        now = datetime.now(UTC)
+        now = utc_now_naive()
         query = query.filter(
             models.Post.published,
             or_(models.Post.publish_at.is_(None), models.Post.publish_at <= now),
@@ -145,7 +144,7 @@ def admin_list_posts(
     elif status == "draft":
         query = query.filter(models.Post.published == False)  # noqa: E712
     elif status == "scheduled":
-        now = datetime.now(UTC)
+        now = utc_now_naive()
         query = query.filter(models.Post.publish_at > now)
 
     total = query.count()
