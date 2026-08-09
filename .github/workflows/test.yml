@@ -17,15 +17,23 @@ jobs:
         with:
           python-version: '3.14'
 
-      - name: Install uv
-        run: pip install uv
+      - name: Setup uv
+        uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+          cache-dependency-glob: backend/nova/uv.lock
 
-      - name: Backend lint and format check
+      - name: Backend lint, format, and markdown check
         run: |
           cd backend/nova
           uv sync
-          uvx ruff check .
-          uvx ruff format --check .
+          uv run ruff check .
+          uv run ruff format --check .
+          cd ../..
+          # rumdl gates the maintained markdown docs (superpowers plans/specs are
+          # excluded via .rumdl.toml). Run from the repo root so .rumdl.toml and
+          # the tracked docs are scanned, using the project-pinned rumdl.
+          uv run --project backend/nova rumdl check .
 
       - name: Backend tests with coverage
         run: |
@@ -96,8 +104,11 @@ jobs:
           cache: 'pnpm'
           cache-dependency-path: frontend/aura/pnpm-lock.yaml
 
-      - name: Install uv
-        run: pip install uv
+      - name: Setup uv
+        uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+          cache-dependency-glob: backend/nova/uv.lock
 
       - name: Seed database
         run: |

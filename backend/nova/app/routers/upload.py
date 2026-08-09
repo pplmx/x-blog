@@ -34,6 +34,7 @@ def _has_matching_magic_bytes(content: bytes, content_type: str) -> bool:
         return content[:4] == b"RIFF" and len(content) >= 12 and content[8:12] == b"WEBP"
     return content.startswith(signatures)
 
+
 # Whitelist of allowed file extensions for uploaded images
 ALLOWED_EXTENSIONS = {"jpg", "jpeg", "png", "gif", "webp"}
 

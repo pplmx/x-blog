@@ -47,26 +47,26 @@ nuxt:
 
 # Lint code
 lint:
-    cd backend/nova && uvx ruff check . --fix
+    cd backend/nova && uv run ruff check . --fix
     cd frontend/aura && pnpm lint:fix
-    rumdl fmt
+    uv run --project backend/nova rumdl fmt
 
 # Format code
 format:
-    cd backend/nova && uvx ruff format .
+    cd backend/nova && uv run ruff format .
 
 # Format check (CI style)
 fmt-check:
-    cd backend/nova && uvx ruff format --check .
+    cd backend/nova && uv run ruff format --check .
     cd frontend/aura && pnpm lint
-    rumdl fmt
+    uv run --project backend/nova rumdl fmt
 
 # Auto-fix issues
 fix:
-    cd backend/nova && uvx ruff check . --fix
-    cd backend/nova && uvx ruff format .
+    cd backend/nova && uv run ruff check . --fix
+    cd backend/nova && uv run ruff format .
     cd frontend/aura && pnpm lint:fix
-    rumdl fmt
+    uv run --project backend/nova rumdl fmt
 
 # CI: run all checks
 ci: fmt-check lint test
@@ -151,7 +151,7 @@ migration-history:
 
 # Lint and format markdown
 rumdl:
-    rumdl fmt
+    uv run --project backend/nova rumdl fmt
 
 # Show help
 default:

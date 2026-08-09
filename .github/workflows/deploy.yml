@@ -28,8 +28,11 @@ jobs:
           cache: 'pnpm'
           cache-dependency-path: frontend/aura/pnpm-lock.yaml
 
-      - name: Install uv
-        run: pip install uv
+      - name: Setup uv
+        uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+          cache-dependency-glob: backend/nova/uv.lock
 
       - name: Backend tests
         run: |

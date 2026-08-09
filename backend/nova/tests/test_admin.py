@@ -1009,9 +1009,7 @@ class TestAdminPostStatusFilters:
     publish_at guard uses.
     """
 
-    def test_admin_list_posts_scheduled_includes_future_publish_at(
-        self, client, auth_headers, db_session
-    ):
+    def test_admin_list_posts_scheduled_includes_future_publish_at(self, client, auth_headers, db_session):
         from datetime import timedelta
 
         from app.crud import utc_now_naive
@@ -1039,9 +1037,7 @@ class TestAdminPostStatusFilters:
         assert "Future" not in published_titles
         assert "Live" in published_titles
 
-    def test_admin_list_posts_published_includes_boundary_exact_now(
-        self, client, auth_headers, db_session
-    ):
+    def test_admin_list_posts_published_includes_boundary_exact_now(self, client, auth_headers, db_session):
         from app.crud import utc_now_naive
 
         now_naive = utc_now_naive()
@@ -1056,7 +1052,6 @@ class TestAdminPostStatusFilters:
         db_session.commit()
 
         published_titles = [
-            p["title"]
-            for p in client.get("/api/admin/posts?status=published", headers=auth_headers).json()["items"]
+            p["title"] for p in client.get("/api/admin/posts?status=published", headers=auth_headers).json()["items"]
         ]
         assert "Boundary" in published_titles

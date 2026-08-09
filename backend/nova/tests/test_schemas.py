@@ -672,7 +672,9 @@ class TestColumnLengthParity:
     def test_post_cover_image_rejects_over_500(self):
         with pytest.raises(ValidationError):
             schemas.PostCreate(
-                title="t", slug="ok-slug", content="c",
+                title="t",
+                slug="ok-slug",
+                content="c",
                 cover_image="https://example.com/" + "x" * 490,
             )
 
