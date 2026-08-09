@@ -608,3 +608,74 @@ class TestSchemaValidation:
         """PostUpdate also rejects unsafe cover_image schemes (issue #20)."""
         with pytest.raises(ValidationError):
             schemas.PostUpdate(cover_image="javascript:alert(1)")
+
+
+class TestColumnLengthParity:
+    """Write schemas must constrain string lengths to the DB VARCHAR columns.
+
+    models.py uses VARCHAR(50/100/200/500). Without matching max_length in the
+    Pydantic fields, over-length input is stored silently on SQLite (CI stays
+    green) but raises an uncaught DataError -> 500 on PostgreSQL. The validation
+    boundary must reject it with 422 on every backend.
+    """
+
+    def test_comment_nickname_rejects_over_50(self):
+        with pytest.raises(ValidationError):
+            schemas.CommentCreate(nickname="n" * 51, email="a@b.c", content="hi")
+
+    def test_comment_nickname_boundary_50_accepted(self):
+        c = schemas.CommentCreate(nickname="n" * 50, email="a@b.c", content="hi")
+        assert len(c.nickname) == 50
+
+    def test_comment_email_rejects_over_100(self):
+        with pytest.raises(ValidationError):
+            schemas.CommentCreate(nickname="ok", email="e" * 101, content="hi")
+
+    def test_comment_email_boundary_100_accepted(self):
+        c = schemas.CommentCreate(nickname="ok", email="e" * 100, content="hi")
+        assert len(c.email) == 100
+
+    def test_category_name_rejects_over_50(self):
+        with pytest.raises(ValidationError):
+            schemas.CategoryCreate(name="c" * 51)
+
+    def test_category_name_boundary_50_accepted(self):
+        assert len(schemas.CategoryCreate(name="c" * 50).name) == 50
+
+    def test_tag_name_rejects_over_50(self):
+        with pytest.raises(ValidationError):
+            schemas.TagCreate(name="t" * 51)
+
+    def test_tag_name_boundary_50_accepted(self):
+        assert len(schemas.TagCreate(name="t" * 50).name) == 50
+
+    def test_post_title_rejects_over_200(self):
+        with pytest.raises(ValidationError):
+            schemas.PostCreate(title="t" * 201, slug="ok-slug", content="c")
+
+    def test_post_title_boundary_200_accepted(self):
+        p = schemas.PostCreate(title="t" * 200, slug="ok-slug", content="c")
+        assert len(p.title) == 200
+
+    def test_post_slug_rejects_over_200(self):
+        with pytest.raises(ValidationError):
+            schemas.PostCreate(title="t", slug="a-" + "b" * 200, content="c")
+
+    def test_post_excerpt_rejects_over_500(self):
+        with pytest.raises(ValidationError):
+            schemas.PostCreate(title="t", slug="ok-slug", content="c", excerpt="e" * 501)
+
+    def test_post_excerpt_boundary_500_accepted(self):
+        p = schemas.PostCreate(title="t", slug="ok-slug", content="c", excerpt="e" * 500)
+        assert len(p.excerpt) == 500
+
+    def test_post_cover_image_rejects_over_500(self):
+        with pytest.raises(ValidationError):
+            schemas.PostCreate(
+                title="t", slug="ok-slug", content="c",
+                cover_image="https://example.com/" + "x" * 490,
+            )
+
+    def test_post_update_cover_image_rejects_over_500(self):
+        with pytest.raises(ValidationError):
+            schemas.PostUpdate(cover_image="https://example.com/" + "x" * 490)

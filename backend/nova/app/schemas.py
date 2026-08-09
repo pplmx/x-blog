@@ -27,7 +27,10 @@ def _validate_cover_image_url(value: str | None) -> str | None:
 
 
 class TagBase(BaseModel):
-    name: str
+    # max_length 50 matches the Tag.name VARCHAR(50) column (issue #20 debt).
+    # Without it, over-length input stores fine on SQLite but raises an
+    # uncaught DataError -> 500 on PostgreSQL.
+    name: str = Field(max_length=50)
 
 
 class TagCreate(TagBase):
@@ -40,7 +43,8 @@ class Tag(TagBase):
 
 
 class CategoryBase(BaseModel):
-    name: str
+    # max_length 50 matches the Category.name VARCHAR(50) column.
+    name: str = Field(max_length=50)
 
 
 class CategoryCreate(CategoryBase):
@@ -53,15 +57,18 @@ class Category(CategoryBase):
 
 
 class PostBase(BaseModel):
-    title: str
-    slug: str = Field(pattern=SLUG_PATTERN.pattern)
+    # max_length values match the Post VARCHAR columns (title/slug 200,
+    # excerpt/cover_image 500) so PostgreSQL rejects over-length input with
+    # 422 instead of an uncaught DataError -> 500.
+    title: str = Field(max_length=200)
+    slug: str = Field(max_length=200, pattern=SLUG_PATTERN.pattern)
     content: str
-    excerpt: str | None = None
+    excerpt: str | None = Field(default=None, max_length=500)
     published: bool = False
     pinned: bool = False
     publish_at: datetime | None = None
     category_id: int | None = None
-    cover_image: str | None = None
+    cover_image: str | None = Field(default=None, max_length=500)
 
 
 class PostCreate(PostBase):
@@ -74,17 +81,17 @@ class PostCreate(PostBase):
 
 
 class PostUpdate(BaseModel):
-    title: str | None = None
+    title: str | None = Field(default=None, max_length=200)
     # Same pattern as PostBase.slug so updates can't introduce broken
     # feed/sitemap URLs (issue debt #7). None = "don't update the field".
-    slug: str | None = Field(default=None, pattern=SLUG_PATTERN.pattern)
+    slug: str | None = Field(default=None, max_length=200, pattern=SLUG_PATTERN.pattern)
     content: str | None = None
-    excerpt: str | None = None
+    excerpt: str | None = Field(default=None, max_length=500)
     published: bool | None = None
     pinned: bool | None = None
     publish_at: datetime | None = None
     category_id: int | None = None
-    cover_image: str | None = None
+    cover_image: str | None = Field(default=None, max_length=500)
     tag_ids: list[int] | None = None
 
     @field_validator("cover_image")
@@ -134,8 +141,11 @@ class PostListResponse(BaseModel):
 
 
 class CommentBase(BaseModel):
-    nickname: str
-    email: str
+    # max_length values match the Comment VARCHAR columns (nickname 50,
+    # email 100) so over-length input is rejected with 422 instead of an
+    # uncaught DataError -> 500 on PostgreSQL.
+    nickname: str = Field(max_length=50)
+    email: str = Field(max_length=100)
     content: str
 
 

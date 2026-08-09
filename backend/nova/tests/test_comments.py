@@ -368,3 +368,24 @@ def test_list_comments_rejects_invalid_pagination(client, post):
 
     response = client.get(f"/api/comments/post/{post['id']}?page=0")
     assert response.status_code == 422
+
+
+def test_create_comment_rejects_overlong_nickname(client, post):
+    """Over-length nickname must be rejected as 422, never stored or 500.
+
+    Regresses the schema/column mismatch: on PostgreSQL an over-length
+    nickname used to surface as an uncaught DataError -> 500; the max_length
+    boundary now rejects it consistently on every backend.
+    """
+    response = client.post(
+        f"/api/comments/post/{post['id']}",
+        json={
+            "nickname": "n" * 51,
+            "email": "test@example.com",
+            "content": "Too long a nickname",
+        },
+    )
+    assert response.status_code == 422
+
+    list_response = client.get(f"/api/comments/post/{post['id']}")
+    assert len(list_response.json()["items"]) == 0
