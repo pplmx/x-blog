@@ -32,7 +32,7 @@
 		"vue-router": "^5.2.0"
 	},
 	"devDependencies": {
-		"@biomejs/biome": "^2.5.5",
+		"@biomejs/biome": "^2.5.7",
 		"@iconify-json/lucide": "^1.2.120",
 		"@playwright/test": "^1.62.0",
 		"@testing-library/vue": "^8.1.0",
