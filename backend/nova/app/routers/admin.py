@@ -39,7 +39,8 @@ class UserCreate(BaseModel):
 class NameRequest(BaseModel):
     """JSON body for category/tag create and rename (the admin UI sends a body)."""
 
-    name: str
+    # max_length 50 matches Category/Tag.name VARCHAR(50).
+    name: str = Field(max_length=50)
 
 
 class UserResponse(BaseModel):
