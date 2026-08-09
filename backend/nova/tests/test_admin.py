@@ -843,6 +843,35 @@ class TestAdminIntegrityErrorHandling:
         response = client.get(f"/api/admin/posts/{post.id}", headers=auth_headers)
         assert response.json()["cover_image"] == "https://example.com/new-cover.jpg"
 
+    def test_admin_update_post_clears_cover_image_with_null(self, client, auth_headers, db_session):
+        """Admin can clear cover_image by sending null, like the public PUT path.
+
+        Regresses the 'is not None' guard: an explicit null used to be ignored,
+        so a cover image could never be removed from the admin UI/API even
+        though the public update endpoint supports it.
+        """
+        from app import models
+
+        post = models.Post(
+            title="Clear Cover Test",
+            slug="clear-cover-test",
+            content="Content",
+            published=True,
+            cover_image="https://example.com/original.jpg",
+        )
+        db_session.add(post)
+        db_session.commit()
+
+        response = client.put(
+            f"/api/admin/posts/{post.id}",
+            headers={**auth_headers, "Content-Type": "application/json"},
+            json={"cover_image": None},
+        )
+        assert response.status_code == 200
+
+        response = client.get(f"/api/admin/posts/{post.id}", headers=auth_headers)
+        assert response.json()["cover_image"] is None
+
 
 class TestAdminBatchApprove:
     """Tests for batch comment approval/rejection."""

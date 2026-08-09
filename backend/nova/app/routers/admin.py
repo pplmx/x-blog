@@ -249,13 +249,15 @@ def admin_update_post(
         post.published = post_data.published
     if post_data.pinned is not None:
         post.pinned = post_data.pinned
-    if post_data.cover_image is not None:
-        post.cover_image = post_data.cover_image
 
     # Fields that support explicit clearing (null) are handled via
     # model_dump(exclude_unset=True), which distinguishes "omitted" from
     # "explicitly null".
     update_fields = post_data.model_dump(exclude_unset=True)
+    if "cover_image" in update_fields:
+        # Explicit null clears the cover image (same semantics as category_id).
+        post.cover_image = post_data.cover_image
+
     if "category_id" in update_fields:
         if post_data.category_id is not None:
             category = db.query(models.Category).filter(models.Category.id == post_data.category_id).first()
