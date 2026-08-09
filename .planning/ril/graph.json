@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 11,
+  "round": 12,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-08-09T15:13:26+00:00",
+  "updated_at": "2026-08-09T15:51:05+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -11,7 +11,7 @@
       "version": 1,
       "created_at": "2026-08-06T13:23:41+00:00",
       "updated_at": "2026-08-06T13:23:41+00:00",
-      "touched_round": 10,
+      "touched_round": 12,
       "title": "backend-nova",
       "description": "FastAPI Python 3.14 backend at backend/nova; SQLAlchemy ORM; routers in app/routers, crud.py business logic, 656 lines"
     },
@@ -975,6 +975,96 @@
       "title": "Pin frontend typecheck to typescript 6.0.3 + vue-tsc 3.3.9",
       "rationale": "vue-tsc 3.3.9 crashes on typescript 7.x (native TS dropped ./lib/tsc, ERR_PACKAGE_PATH_NOT_EXPORTED) and on 5.0.2 (isSatisfiesExpression ReferenceError), but works with 6.0.3 - the exact version the committed pnpm-lock peer resolutions referenced. CI gate must be reproducible, so the pairing is pinned in devDeps; package.json typecheck script + CI step encode it.",
       "alternatives_rejected": "Use latest typescript (7.0.2) - typecheck toolchain crashes; bypass typechecking entirely (status quo bug class); pick vue-tsc major 4.x (does not exist for this TS line yet)"
+    },
+    "ISS-014": {
+      "id": "ISS-014",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-08-09T15:25:43+00:00",
+      "updated_at": "2026-08-09T15:51:05+00:00",
+      "touched_round": 12,
+      "severity": 0.6,
+      "title": "Backend has no Python type checking; pyright surfaces 55 errors incl. 2 latent crashes",
+      "description": "No mypy/pyright config exists. pyright (default basic mode, venv-resolved) on backend/nova/app reports 55 errors: ~50 are false positives from legacy SQLAlchemy `Column()` models (instance attrs typed as Column[T]: truthiness, attribute assignment, len/escape), and ~5 real: logger.warning(extra kwargs) on timeout path crashes (main.py:107), sentry_sdk.init fake body-size kwargs crash on startup when DSN set (sentry.py:27), db.bind on optional Engine (crud/search) - modern Session.get_bind() fix, rowcount on Result[Any], SECRET_KEY str|None typed despite runtime guard (auth.py)."
+    },
+    "HYP-010": {
+      "id": "HYP-010",
+      "type": "hypothesis",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-09T15:25:43+00:00",
+      "updated_at": "2026-08-09T15:25:43+00:00",
+      "touched_round": 12,
+      "confidence": 0.9,
+      "title": "Modernizing models to SQLAlchemy 2.0 Mapped typing clears the false-positive noise and makes the ~5 real issues actionable",
+      "description": "The Column[bool]/Column[str] errors come from legacy Column() class attrs. Converting models.py (84 lines) to Mapped[...] = mapped_column(...) preserves DDL exactly while making instance-attribute types truthful (bool, str, int|None...), collapsing most pyright errors. Remaining real findings (logger kwargs crash, sentry kwargs crash, db.bind, rowcount, SECRET_KEY) are individually small fixes. Comparable to the frontend typecheck round."
+    },
+    "EV-022": {
+      "id": "EV-022",
+      "type": "evidence",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-09T15:25:43+00:00",
+      "updated_at": "2026-08-09T15:25:43+00:00",
+      "touched_round": 12,
+      "source": "uvx pyright --pythonpath .venv app: 27 files, 55 errors, 0 warnings (basic mode, no config)",
+      "title": "Pyright baseline: 55 errors, mostly legacy-Column noise + 5 real",
+      "content": "Full run categorized: ~50 reportGeneralTypeIssues/reportAttributeAccessIssue/reportArgumentType from Column[T] instance-attr typing (truthiness at crud.py:34/387/602/651, auth:97, admin:167-274 assignments, rss:105-176, search:49-55). Real: main.py:107 logger.warning path=/timeout= kwargs (plain logging.Logger -> TypeError on request timeout); sentry.py:27 init import from sentry_sdk 2.58.0 inspect.signature confirms no max_response_body_size/max_request_body_size -> TypeError at startup when SENTRY_DSN set; crud.py:463 + search.py:68 db.bind.dialect on Optional Engine; crud.py:544/561 .rowcount on Result[Any]; auth.py:65/79 SECRET_KEY str|None (runtime guard verified safe - DEV fallback vs prod raise).",
+      "confidence": 1.0
+    },
+    "TASK-013": {
+      "id": "TASK-013",
+      "type": "task",
+      "status": "resolved",
+      "version": 4,
+      "created_at": "2026-08-09T15:26:02+00:00",
+      "updated_at": "2026-08-09T15:51:05+00:00",
+      "touched_round": 12,
+      "category": "maintainability",
+      "severity": 0.6,
+      "confidence": 0.9,
+      "effort": 5.0,
+      "unlock_factor": 1.0,
+      "title": "Backend type modernization: SQLAlchemy 2.0 Mapped models + pyright gate + 5 real fixes",
+      "description": "(1) Convert models.py to Mapped[...] = mapped_column(...) preserving exact DDL nullability; (2) fix real findings: main.py timeout logger kwargs crash, sentry.py invalid body-size kwargs, db.bind -> db.get_bind() x2, drop rowcount checks in increment_views/likes (behavior preserved via subsequent db.get), SECRET_KEY: str guarantee; (3) add [tool.pyright] config + pyright dev dep + CI step + justfile typecheck; (4) keep ruff + 568 tests green."
+    },
+    "DEC-009": {
+      "id": "DEC-009",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-09T15:26:03+00:00",
+      "updated_at": "2026-08-09T15:26:03+00:00",
+      "touched_round": 12,
+      "title": "SQLAlchemy 2.0 Mapped migration is a special refactor with exact-DDL preservation constraint",
+      "rationale": "Converting 84-line models.py from legacy Column() to Mapped[...] = mapped_column() is a type-system refactor: DDL must stay byte-identical (same nullability/defaults/FK/unique/index) so 568 tests and existing DBs are unaffected; nullable legacy columns (published/pinned/views/likes/excerpt/cover_image/category_id/created_at...) become Optional types. Diff expected ~200-260 lines > 300-line normal budget; justified as the special refactor that unlocks a truthful type surface (per graph-engineering section 8).",
+      "alternatives_rejected": "Add mypy/pyright gate around the 55-error baseline without fixing (gate meaningless /伪准); fix the 5 real bugs only and skip Mapped (55 noise stays, no gate possible cleanly); add per-file ignore stubs (hides the surface)"
+    },
+    "CHG-009": {
+      "id": "CHG-009",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-09T15:50:55+00:00",
+      "updated_at": "2026-08-09T15:50:55+00:00",
+      "touched_round": 12,
+      "commit": "93a4153",
+      "title": "Backend SQLAlchemy 2.0 Mapped typing + pyright gate + 2 latent-crash fixes",
+      "description": "Migrated models.py and auth.User to Mapped[...] = mapped_column() preserving exact DDL nullability (per DEC-009). Fixed 2 latent runtime crashes found by pyright: main.py timeout-path logger.warning with unsupported kwargs on a plain logging.Logger (TypeError on slow requests); sentry_sdk.init with body-size kwargs absent in sentry-sdk 2.58.0 (TypeError at startup when SENTRY_DSN configured). Bare bool filters -> .is_(True) x10; db.bind -> db.get_bind(); dropped rowcount branches in increment_views/likes (db.get None preserves behavior); SECRET_KEY -> typed _load_secret_key(); search_posts -> tuple[list, int]; typed TTLCache; comments ORM->schema validation. Added [tool.pyright] + pyright dev dep + CI + just typecheck. pyright 55->0, 568 tests green."
+    },
+    "EV-023": {
+      "id": "EV-023",
+      "type": "evidence",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-09T15:50:55+00:00",
+      "updated_at": "2026-08-09T15:50:55+00:00",
+      "touched_round": 12,
+      "source": "uv run pyright: 0 errors (was 55); pytest 568 passed/8 skipped; ruff clean; commit 93a4153",
+      "title": "Backend type gate verified: 55 -> 0, two latent crashes fixed",
+      "content": "post-fix pyright on app/ (basic mode, config-driven) reports 0 errors/0 warnings. The two confirmed latent crashes are fixed and now type-visible: (1) main.py request-timeout handler logged with path=/timeout= kwargs on logging.Logger -> TypeError; now positional args; (2) sentry_sdk.init passed max_request_body_size/max_response_body_size (removed in sentry-sdk 2.x) -> TypeError whenever SENTRY_DSN set; kwargs removed with NOTE. Full suite 568 passed / 8 skipped, ruff check+format clean. git show 93a4153.",
+      "confidence": 1.0
     }
   },
   "edges": [
@@ -1367,6 +1457,48 @@
       "to": "COMP-002",
       "type": "governs",
       "created_at": "2026-08-09T15:13:26+00:00"
+    },
+    {
+      "from": "ISS-014",
+      "to": "COMP-001",
+      "type": "located_in",
+      "created_at": "2026-08-09T15:25:43+00:00"
+    },
+    {
+      "from": "EV-022",
+      "to": "HYP-010",
+      "type": "validates",
+      "created_at": "2026-08-09T15:25:43+00:00"
+    },
+    {
+      "from": "TASK-013",
+      "to": "ISS-014",
+      "type": "addresses",
+      "created_at": "2026-08-09T15:26:03+00:00"
+    },
+    {
+      "from": "DEC-009",
+      "to": "COMP-001",
+      "type": "governs",
+      "created_at": "2026-08-09T15:26:03+00:00"
+    },
+    {
+      "from": "EV-023",
+      "to": "HYP-010",
+      "type": "validates",
+      "created_at": "2026-08-09T15:50:55+00:00"
+    },
+    {
+      "from": "CHG-009",
+      "to": "TASK-013",
+      "type": "implements",
+      "created_at": "2026-08-09T15:50:55+00:00"
+    },
+    {
+      "from": "CHG-009",
+      "to": "ISS-014",
+      "type": "resolves",
+      "created_at": "2026-08-09T15:50:55+00:00"
     }
   ]
 }
