@@ -57,11 +57,12 @@ jobs:
           cache: 'pnpm'
           cache-dependency-path: frontend/aura/pnpm-lock.yaml
 
-      - name: Frontend lint check
+      - name: Frontend lint and typecheck
         run: |
           cd frontend/aura
           pnpm install
           pnpm lint
+          pnpm typecheck
 
       - name: Frontend tests with coverage
         run: |

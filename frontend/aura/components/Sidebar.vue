@@ -81,7 +81,7 @@ function clearFilters() {
         <NuxtLink
           v-for="cat in categories"
           :key="cat.id"
-          :to="[`?category_id=${cat.id}`]"
+          :to="`?category_id=${cat.id}`"
           :class="[
             'block px-3 py-2 rounded-xl text-sm transition-all duration-200',
             currentCategory === String(cat.id)
@@ -121,7 +121,7 @@ function clearFilters() {
         <NuxtLink
           v-for="tag in tags"
           :key="tag.id"
-          :to="[`?tag_id=${tag.id}`]"
+          :to="`?tag_id=${tag.id}`"
           :class="[
             'px-3 py-1.5 rounded-full text-sm font-medium transition-all duration-200',
             currentTag === String(tag.id)

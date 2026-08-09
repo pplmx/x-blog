@@ -23,6 +23,7 @@ export interface PostList {
 	published: boolean;
 	created_at: string;
 	views: number;
+	likes: number;
 	cover_image: string | null;
 	category: { id: number; name: string } | null;
 	tags: { id: number; name: string }[];

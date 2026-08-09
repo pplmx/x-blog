@@ -8,6 +8,7 @@
 		"generate": "nuxt generate",
 		"preview": "nuxt preview",
 		"postinstall": "nuxt prepare",
+		"typecheck": "nuxt typecheck",
 		"test": "vitest --run",
 		"test:ui": "vitest --ui",
 		"test:coverage": "vitest --coverage",
@@ -45,7 +46,9 @@
 		"katex": "^0.18.1",
 		"marked": "^16.3.0",
 		"mermaid": "^11.16.0",
+		"typescript": "6.0.3",
 		"unplugin-auto-import": "^21.0.0",
-		"vitest": "^4.1.10"
+		"vitest": "^4.1.10",
+		"vue-tsc": "^3.3.9"
 	}
 }

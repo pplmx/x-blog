@@ -18,7 +18,7 @@
   component dispatch instead of placeholder post-processing).
 -->
 <script setup lang="ts">
-import { computed, onMounted, ref } from "vue";
+import { type ComponentPublicInstance, computed, onMounted, ref } from "vue";
 import { loadPurify, sanitizeHtml, useMarkdown } from "~~/composables/useMarkdown";
 
 export interface MarkdownContentProps {
@@ -110,6 +110,18 @@ async function renderMermaid(code: string, el: HTMLElement | null, segKey: strin
 		el.innerHTML = `<pre class="p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded text-red-600 dark:text-red-400 text-sm">${escapeHtml(code)}</pre>`;
 	}
 	renderingKeys.value.delete(segKey);
+}
+
+/**
+ * Template ref callback for mermaid containers. The inline `(el) => ...` form
+ * in the template cannot name the DOM global `HTMLElement` (template expressions
+ * resolve against the component instance scope), so narrow here in script
+ * context where the DOM lib types are in scope.
+ */
+function handleMermaidRef(el: Element | ComponentPublicInstance | null, code: string, key: string) {
+	if (el instanceof HTMLElement) {
+		void renderMermaid(code, el, key);
+	}
 }
 
 // --- KaTeX rendering ---
@@ -212,7 +224,7 @@ function lineNumbers(code: string): number[] {
         v-else-if="seg.type === 'mermaid'"
         class="my-4 p-4 bg-gray-50 dark:bg-gray-800/50 rounded-lg overflow-x-auto flex justify-center"
         :data-mermaid-key="seg.key"
-        :ref="(el: HTMLElement | null) => { if (el) renderMermaid(seg.code, el, seg.key) }"
+        :ref="(el) => handleMermaidRef(el, seg.code, seg.key)"
       />
 
       <!-- Math (inline or display) -->

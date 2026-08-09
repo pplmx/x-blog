@@ -191,27 +191,6 @@ export function buildArticleJsonLd(
 	};
 }
 
-/**
- * Build WebSite JSON-LD structured data for the site (global, site-wide).
- */
-export function buildSiteJsonLd(options: {
-	url: string;
-	siteName: string;
-	description: string;
-}): Record<string, unknown> {
-	return {
-		"@context": "https://schema.org",
-		"@type": "WebSite",
-		name: options.siteName,
-		description: options.description,
-		url: options.url,
-		publisher: {
-			"@type": "Organization",
-			name: options.siteName,
-		},
-	};
-}
-
 // ─── Composables (use Nuxt built-ins) ────────────────────────────────
 
 /**
@@ -283,23 +262,27 @@ export function useSeo(options: SeoOptions): void {
 		headInput.script = [
 			{
 				type: "application/ld+json",
-				json: buildArticleJsonLd(
-					{
-						id: 0,
-						title: options.title,
-						slug: "",
-						excerpt: description,
-						created_at: options.article.datePublished,
-						updated_at: options.article.dateModified,
-						cover_image: options.image || null,
-						category: options.article.section ? { id: 0, name: options.article.section } : null,
-						tags: options.article.tags ? options.article.tags.map((name) => ({ id: 0, name })) : [],
-					},
-					{
-						url: canonicalUrl,
-						siteName: siteConfig.name,
-						locale: siteConfig.locale,
-					},
+				textContent: JSON.stringify(
+					buildArticleJsonLd(
+						{
+							id: 0,
+							title: options.title,
+							slug: "",
+							excerpt: description,
+							created_at: options.article.datePublished,
+							updated_at: options.article.dateModified,
+							cover_image: options.image || null,
+							category: options.article.section ? { id: 0, name: options.article.section } : null,
+							tags: options.article.tags
+								? options.article.tags.map((name) => ({ id: 0, name }))
+								: [],
+						},
+						{
+							url: canonicalUrl,
+							siteName: siteConfig.name,
+							locale: siteConfig.locale,
+						},
+					),
 				),
 			},
 		];

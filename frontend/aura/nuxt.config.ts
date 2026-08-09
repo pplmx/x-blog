@@ -3,7 +3,7 @@
 import { resolve } from "node:path";
 import process from "node:process";
 import { fileURLToPath } from "node:url";
-import { buildSiteJsonLd } from "./composables/useSeo";
+import { buildSiteJsonLd } from "./composables/seo-jsonld";
 
 const rootDir = fileURLToPath(new URL(".", import.meta.url));
 
@@ -63,11 +63,13 @@ export default defineNuxtConfig({
 			script: [
 				{
 					type: "application/ld+json",
-					json: buildSiteJsonLd({
-						url: siteUrl,
-						siteName: siteName,
-						description: siteDescription,
-					}),
+					textContent: JSON.stringify(
+						buildSiteJsonLd({
+							url: siteUrl,
+							siteName: siteName,
+							description: siteDescription,
+						}),
+					),
 				},
 			],
 		},
