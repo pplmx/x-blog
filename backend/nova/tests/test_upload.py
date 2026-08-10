@@ -1,12 +1,27 @@
 """Tests for file upload endpoint."""
 
+from io import BytesIO
+
+from PIL import Image
+
+
+def _image_bytes(image_format: str) -> bytes:
+    """Return a tiny, genuinely decodable image of the given format (Pillow)."""
+    buf = BytesIO()
+    Image.new("RGB", (2, 2), (200, 30, 30)).save(buf, format=image_format)
+    return buf.getvalue()
+
+
+PNG_BYTES = _image_bytes("PNG")
+JPEG_BYTES = _image_bytes("JPEG")
+WEBP_BYTES = _image_bytes("WEBP")
+
 
 def test_upload_image_success(client, auth_headers):
     """Should successfully upload a valid image file."""
-    file_content = b"\x89PNG\r\n\x1a\n" + b"\x00" * 100  # Fake PNG header
     response = client.post(
         "/api/upload",
-        files={"file": ("test.png", file_content, "image/png")},
+        files={"file": ("test.png", PNG_BYTES, "image/png")},
         headers=auth_headers,
     )
     assert response.status_code == 200
@@ -17,10 +32,9 @@ def test_upload_image_success(client, auth_headers):
 
 def test_upload_jpeg_success(client, auth_headers):
     """Should accept JPEG images."""
-    file_content = b"\xff\xd8\xff\xe0" + b"\x00" * 100  # Fake JPEG header
     response = client.post(
         "/api/upload",
-        files={"file": ("photo.jpg", file_content, "image/jpeg")},
+        files={"file": ("photo.jpg", JPEG_BYTES, "image/jpeg")},
         headers=auth_headers,
     )
     assert response.status_code == 200
@@ -29,11 +43,9 @@ def test_upload_jpeg_success(client, auth_headers):
 
 def test_upload_webp_success(client, auth_headers):
     """Should accept WebP images."""
-    # RIFF container + WEBP tag at bytes 8..12
-    file_content = b"RIFF" + b"\x00" * 4 + b"WEBP" + b"\x00" * 100
     response = client.post(
         "/api/upload",
-        files={"file": ("image.webp", file_content, "image/webp")},
+        files={"file": ("image.webp", WEBP_BYTES, "image/webp")},
         headers=auth_headers,
     )
     assert response.status_code == 200
@@ -42,10 +54,9 @@ def test_upload_webp_success(client, auth_headers):
 
 def test_upload_content_type_mismatch_rejected(client, auth_headers):
     """A PNG file declared as JPEG must be rejected (issue #20)."""
-    png_bytes = b"\x89PNG\r\n\x1a\n" + b"\x00" * 100
     response = client.post(
         "/api/upload",
-        files={"file": ("fake.jpg", png_bytes, "image/jpeg")},
+        files={"file": ("fake.jpg", PNG_BYTES, "image/jpeg")},
         headers=auth_headers,
     )
     assert response.status_code == 400
@@ -63,6 +74,23 @@ def test_upload_fake_image_content_rejected(client, auth_headers):
     assert response.status_code == 400
     data = response.json()
     assert "does not match" in data["error"]["message"]
+
+
+def test_upload_corrupt_image_with_valid_magic_rejected(client, auth_headers):
+    """Valid PNG magic bytes but corrupt content must be rejected.
+
+    Magic bytes only prove the header; the Pillow decode check (round 17)
+    rejects files that have the right signature but are not decodable images.
+    """
+    file_content = b"\x89PNG\r\n\x1a\n" + b"\x00" * 200
+    response = client.post(
+        "/api/upload",
+        files={"file": ("broken.png", file_content, "image/png")},
+        headers=auth_headers,
+    )
+    assert response.status_code == 400
+    data = response.json()
+    assert "not a valid image" in data["error"]["message"]
 
 
 def test_upload_unsupported_type(client, auth_headers):
@@ -101,11 +129,10 @@ def test_upload_no_file(client, auth_headers):
 
 def test_upload_filename_path_traversal(client, auth_headers):
     """Should strip path traversal characters from filename extensions."""
-    file_content = b"\x89PNG\r\n\x1a\n" + b"\x00" * 100
     # Filename with path traversal attempt in the extension
     response = client.post(
         "/api/upload",
-        files={"file": ("../../../etc/passwd.png", file_content, "image/png")},
+        files={"file": ("../../../etc/passwd.png", PNG_BYTES, "image/png")},
         headers=auth_headers,
     )
     assert response.status_code == 200
@@ -118,10 +145,9 @@ def test_upload_filename_path_traversal(client, auth_headers):
 
 def test_upload_filename_no_extension(client, auth_headers):
     """Should fall back to content-type-derived extension when filename has no ext."""
-    file_content = b"\x89PNG\r\n\x1a\n" + b"\x00" * 100
     response = client.post(
         "/api/upload",
-        files={"file": ("noextension", file_content, "image/png")},
+        files={"file": ("noextension", PNG_BYTES, "image/png")},
         headers=auth_headers,
     )
     assert response.status_code == 200
@@ -131,9 +157,8 @@ def test_upload_filename_no_extension(client, auth_headers):
 
 def test_upload_requires_auth(client):
     """Should return 401 when no auth token is provided."""
-    file_content = b"\x89PNG\r\n\x1a\n" + b"\x00" * 100
     response = client.post(
         "/api/upload",
-        files={"file": ("test.png", file_content, "image/png")},
+        files={"file": ("test.png", PNG_BYTES, "image/png")},
     )
     assert response.status_code == 401

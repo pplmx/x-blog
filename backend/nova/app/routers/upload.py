@@ -1,8 +1,10 @@
 import uuid
 from datetime import datetime
+from io import BytesIO
 from pathlib import Path
 
 from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile
+from PIL import Image, UnidentifiedImageError
 
 from app.auth import User, get_current_admin
 from app.limiter import RATE_LIMIT_WRITE, limiter
@@ -35,6 +37,17 @@ def _has_matching_magic_bytes(content: bytes, content_type: str) -> bool:
     return content.startswith(signatures)
 
 
+def _verify_image_decodes(contents: bytes) -> None:
+    """Raise if the bytes are not a fully decodable image of an allowed type.
+
+    Magic bytes only prove the header; Pillow decoding proves the file is a
+    real, well-formed image (rejects truncated/corrupt/polyglot uploads that
+    would otherwise be stored and break rendering). (RIL round 17)
+    """
+    with Image.open(BytesIO(contents)) as image:
+        image.load()
+
+
 # Whitelist of allowed file extensions for uploaded images
 ALLOWED_EXTENSIONS = {"jpg", "jpeg", "png", "gif", "webp"}
 
@@ -65,6 +78,10 @@ async def upload_image(
         raise HTTPException(400, detail="File too large (max 5MB)")
     if not _has_matching_magic_bytes(contents, file.content_type):
         raise HTTPException(400, detail="File content does not match the declared image type")
+    try:
+        _verify_image_decodes(contents)
+    except UnidentifiedImageError, OSError, ValueError:
+        raise HTTPException(400, detail="File is not a valid image")
 
     # Safely extract file extension — guards against path traversal via filename
     safe_ext = Path(file.filename or "").suffix.lstrip(".").lower()

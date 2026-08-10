@@ -19,6 +19,7 @@ dependencies = [
     "sentry-sdk>=2.0.0",
     "alembic>=1.18.5",
     "httpx2>=2.9.1",
+    "pillow>=10.0.0",
 ]
 
 [dependency-groups]

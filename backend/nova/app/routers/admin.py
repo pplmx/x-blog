@@ -14,7 +14,7 @@ from app.cache import (
 )
 from app.crud import utc_now_naive
 from app.database import get_db
-from app.limiter import RATE_LIMIT_AUTH, limiter
+from app.limiter import RATE_LIMIT_AUTH, RATE_LIMIT_WRITE, limiter
 from app.schemas import PostCreate, PostUpdate
 
 router = APIRouter(prefix="/api/admin", tags=["admin"])
@@ -69,8 +69,10 @@ def login(
     return {"access_token": access_token, "token_type": "bearer"}
 
 
+@limiter.limit(f"{RATE_LIMIT_WRITE}/minute")
 @router.post("/users", response_model=UserResponse)
 def create_user(
+    request: Request,  # noqa: ARG001
     user_data: UserCreate,
     db: Session = Depends(get_db),
     _current_user: auth.User = Depends(get_current_admin),
@@ -104,8 +106,10 @@ def list_users(
     return users
 
 
+@limiter.limit(f"{RATE_LIMIT_WRITE}/minute")
 @router.delete("/users/{user_id}")
 def delete_user(
+    request: Request,  # noqa: ARG001
     user_id: int,
     db: Session = Depends(get_db),
     _current_user: auth.User = Depends(get_current_admin),
@@ -285,8 +289,10 @@ def admin_update_post(
     return {"id": post.id}
 
 
+@limiter.limit(f"{RATE_LIMIT_WRITE}/minute")
 @router.delete("/posts/{post_id}")
 def admin_delete_post(
+    request: Request,  # noqa: ARG001
     post_id: int,
     db: Session = Depends(get_db),
     _current_user: auth.User = Depends(get_current_admin),
@@ -355,8 +361,10 @@ def admin_update_category(
     return {"id": category.id, "name": category.name}
 
 
+@limiter.limit(f"{RATE_LIMIT_WRITE}/minute")
 @router.delete("/categories/{category_id}")
 def admin_delete_category(
+    request: Request,  # noqa: ARG001
     category_id: int,
     db: Session = Depends(get_db),
     _current_user: auth.User = Depends(get_current_admin),
@@ -439,8 +447,10 @@ def admin_update_tag(
     return {"id": tag.id, "name": tag.name}
 
 
+@limiter.limit(f"{RATE_LIMIT_WRITE}/minute")
 @router.delete("/tags/{tag_id}")
 def admin_delete_tag(
+    request: Request,  # noqa: ARG001
     tag_id: int,
     db: Session = Depends(get_db),
     _current_user: auth.User = Depends(get_current_admin),
@@ -518,8 +528,10 @@ class BatchApproveRequest(BaseModel):
     approved: bool = True
 
 
+@limiter.limit(f"{RATE_LIMIT_WRITE}/minute")
 @router.post("/comments/batch-approve")
 def admin_batch_approve_comments(
+    request: Request,  # noqa: ARG001
     body: BatchApproveRequest,
     db: Session = Depends(get_db),
     _current_user: auth.User = Depends(get_current_admin),
@@ -555,8 +567,10 @@ def change_password(
     return {"message": "Password updated"}
 
 
+@limiter.limit(f"{RATE_LIMIT_WRITE}/minute")
 @router.delete("/comments/{comment_id}")
 def admin_delete_comment(
+    request: Request,  # noqa: ARG001
     comment_id: int,
     db: Session = Depends(get_db),
     _current_user: auth.User = Depends(get_current_admin),
