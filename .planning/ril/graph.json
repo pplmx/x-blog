@@ -2,7 +2,7 @@
   "ril_version": 1,
   "round": 17,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-08-10T02:46:59+00:00",
+  "updated_at": "2026-08-10T02:57:56+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -11,7 +11,7 @@
       "version": 1,
       "created_at": "2026-08-06T13:23:41+00:00",
       "updated_at": "2026-08-06T13:23:41+00:00",
-      "touched_round": 16,
+      "touched_round": 17,
       "title": "backend-nova",
       "description": "FastAPI Python 3.14 backend at backend/nova; SQLAlchemy ORM; routers in app/routers, crud.py business logic, 656 lines"
     },
@@ -1433,11 +1433,11 @@
     "TASK-022": {
       "id": "TASK-022",
       "type": "task",
-      "status": "active",
-      "version": 3,
+      "status": "resolved",
+      "version": 5,
       "created_at": "2026-08-10T01:59:53+00:00",
-      "updated_at": "2026-08-10T02:46:59+00:00",
-      "touched_round": 16,
+      "updated_at": "2026-08-10T02:57:56+00:00",
+      "touched_round": 17,
       "category": "security",
       "severity": 0.3,
       "confidence": 0.8,
@@ -1453,10 +1453,63 @@
       "version": 1,
       "created_at": "2026-08-10T02:01:45+00:00",
       "updated_at": "2026-08-10T02:01:45+00:00",
-      "touched_round": 16,
+      "touched_round": 17,
       "severity": 0.3,
       "title": "Tracked follow-ups from round-16 security audit (low severity, deferred)",
       "description": "Deferred items kept visible so they are not lost: admin write endpoints unrate-limited; SSR first render uses the weaker regex sanitizer until DOMPurify loads (isomorphic-dompurify candidate); uploaded images stored as-is rather than re-encoded (Pillow defense-in-depth)."
+    },
+    "CHG-014": {
+      "id": "CHG-014",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-10T02:50:10+00:00",
+      "updated_at": "2026-08-10T02:50:10+00:00",
+      "touched_round": 17,
+      "commit": "fe36866",
+      "title": "Admin destructive write rate limits + Pillow upload decode validation",
+      "description": "Rate-limited (RATE_LIMIT_WRITE) create-user, delete-user/post/category/tag/comment, batch-approve. Upload now Pillow-decodes after the magic-byte check, rejecting files with a valid header but corrupt/polyglot content (400 not-a-valid-image). Real-image upload tests + corrupt-with-valid-magic rejection test."
+    },
+    "EV-032": {
+      "id": "EV-032",
+      "type": "evidence",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-10T02:50:10+00:00",
+      "updated_at": "2026-08-10T02:50:10+00:00",
+      "touched_round": 17,
+      "source": "backend 578 passed @93.53% (80 gate incl new upload tests); admin write endpoints pass under the limiter decorator; pyright 0; ruff clean; commit fe36866",
+      "title": "Round-17 admin-limit + upload-validation verified",
+      "content": "New decode test: valid-PNG-magic with corrupt body -> 400 not-a-valid-image (previously stored). Admin delete/create/batch endpoints pass 200 with slowapi limits + request param (wiring proven). 578 backend tests at 93.53%, pyright 0, ruff clean. Frontend untouched this round.",
+      "confidence": 1.0
+    },
+    "DEC-015": {
+      "id": "DEC-015",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-10T02:50:10+00:00",
+      "updated_at": "2026-08-10T02:50:10+00:00",
+      "touched_round": 17,
+      "title": "Defer isomorphic-dompurify and upload re-encode (defense-in-depth only)",
+      "rationale": "Both audit LOWs protect a future property, not a current one: no user-controlled content reaches a v-html sink (comments render via text interpolation; v-html is admin-authored or server-escaped), and uploads are now magic-byte + Pillow-decode verified with image-only extensions and nosniff serving. isomorphic-dompurify also risks the happy-dom sanitize-silently-fails case the current loadPurify self-verification exists to catch, and would churn 4 test-mock files for no reachable gain.",
+      "alternatives_rejected": "Adopt isomorphic-dompurify now (happy-dom self-verification proves the failure mode it would guard against; no attacker input reaches v-html today); add Pillow re-encode now (new heavy dep + transparency/animation edge cases for a non-exploitable embedded-payload hypothetical)"
+    },
+    "TASK-023": {
+      "id": "TASK-023",
+      "type": "task",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-10T02:50:10+00:00",
+      "updated_at": "2026-08-10T02:50:10+00:00",
+      "touched_round": 17,
+      "category": "security",
+      "severity": 0.2,
+      "confidence": 0.7,
+      "effort": 3.0,
+      "unlock_factor": 1.0,
+      "title": "Tracked defense-in-depth: isomorphic-dompurify SSR sanitizer + upload re-encode (deferred per DEC-015)",
+      "description": "Formally tracked, not forgotten: switch the markdown HTML sanitizer to isomorphic-dompurify (strong from the first SSR render) and re-encode uploads with Pillow (strip embedded/EXIF payloads). Revisit when a user-content v-html sink or a format-render threat appears; any isomorphic migration must keep the happy-dom silent-failure self-verification."
     }
   },
   "edges": [
@@ -2071,6 +2124,30 @@
       "to": "ISS-017",
       "type": "addresses",
       "created_at": "2026-08-10T02:01:46+00:00"
+    },
+    {
+      "from": "CHG-014",
+      "to": "TASK-022",
+      "type": "implements",
+      "created_at": "2026-08-10T02:50:10+00:00"
+    },
+    {
+      "from": "CHG-014",
+      "to": "ISS-017",
+      "type": "resolves",
+      "created_at": "2026-08-10T02:50:10+00:00"
+    },
+    {
+      "from": "DEC-015",
+      "to": "COMP-001",
+      "type": "governs",
+      "created_at": "2026-08-10T02:50:10+00:00"
+    },
+    {
+      "from": "TASK-023",
+      "to": "ISS-017",
+      "type": "addresses",
+      "created_at": "2026-08-10T02:50:10+00:00"
     }
   ]
 }
