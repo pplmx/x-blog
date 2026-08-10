@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 15,
+  "round": 16,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-08-09T20:21:11+00:00",
+  "updated_at": "2026-08-10T02:01:46+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -11,7 +11,7 @@
       "version": 1,
       "created_at": "2026-08-06T13:23:41+00:00",
       "updated_at": "2026-08-06T13:23:41+00:00",
-      "touched_round": 15,
+      "touched_round": 16,
       "title": "backend-nova",
       "description": "FastAPI Python 3.14 backend at backend/nova; SQLAlchemy ORM; routers in app/routers, crud.py business logic, 656 lines"
     },
@@ -995,7 +995,7 @@
       "version": 1,
       "created_at": "2026-08-09T15:25:43+00:00",
       "updated_at": "2026-08-09T15:25:43+00:00",
-      "touched_round": 13,
+      "touched_round": 16,
       "confidence": 0.9,
       "title": "Modernizing models to SQLAlchemy 2.0 Mapped typing clears the false-positive noise and makes the ~5 real issues actionable",
       "description": "The Column[bool]/Column[str] errors come from legacy Column() class attrs. Converting models.py (84 lines) to Mapped[...] = mapped_column(...) preserves DDL exactly while making instance-attribute types truthful (bool, str, int|None...), collapsing most pyright errors. Remaining real findings (logger kwargs crash, sentry kwargs crash, db.bind, rowcount, SECRET_KEY) are individually small fixes. Comparable to the frontend typecheck round."
@@ -1319,6 +1319,144 @@
       "title": "TASK-017/018 verified: parallel suite + frontend build both green",
       "content": "After moving pytest-xdist to dev: `uv run pytest` (parallel) still passes 568 at 93.34%, ruff/pyright clean, test.yml parses. Frontend `pnpm build` passes locally (exit 0), so the new CI build gate is locally proven (remote run needs push). Also encoded this round: full runtime Smoke (EV-028) green once the stale server was cleared.",
       "confidence": 1.0
+    },
+    "ISS-016": {
+      "id": "ISS-016",
+      "type": "issue",
+      "status": "active",
+      "version": 2,
+      "created_at": "2026-08-10T00:41:55+00:00",
+      "updated_at": "2026-08-10T00:57:13+00:00",
+      "touched_round": 16,
+      "severity": 0.5,
+      "title": "Security audit findings (round 16): fix 3 MEDIUM + cheap LOWs; track deployment-bound items",
+      "description": "Audit complete (EV-030). Fix this round: comment content max_length, JWT lifetime + token_version invalidation, upload streaming cap, markdown image sanitizeUrl, nginx nosniff, trusted-proxy-aware rate-limit key. Track (deployment-bound / low): admin endpoint rate limits, isomorphic-dompurify, upload re-encode."
+    },
+    "EV-030": {
+      "id": "EV-030",
+      "type": "evidence",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-10T00:57:12+00:00",
+      "updated_at": "2026-08-10T00:57:12+00:00",
+      "touched_round": 16,
+      "source": "security-reviewer agent scan of 6 surfaces: no CRITICAL/HIGH; upload/auth/static/proxy/og-cover/markdown verified safe",
+      "title": "Security audit: 3 MEDIUM + 5 LOW confirmed, no critical",
+      "content": "Verified findings: MEDIUM (a) rate-limit bucket collapses behind Nuxt/nginx proxy (limiter keys client.host, ignores XFF -> shared bucket / availability DoS); (b) 7-day JWT + password change does not invalidate existing tokens; (c) public comment content unbounded (no max_length, no body cap in compose). LOW: admin mutating endpoints unrate-limited; upload size checked only after full buffer; nginx /static/uploads drops inherited nosniff; SSR first render uses weaker regex sanitizer; markdown image src/alt not sanitizeUrl-ed. Safe areas confirmed: upload validation (magic bytes+ext allowlist+uuid), JWT algorithm/key, static path traversal, proxies (no open/SSRF), og/cover (no SSRF, escaped+bounded).",
+      "confidence": 1.0
+    },
+    "TASK-019": {
+      "id": "TASK-019",
+      "type": "task",
+      "status": "resolved",
+      "version": 4,
+      "created_at": "2026-08-10T00:57:13+00:00",
+      "updated_at": "2026-08-10T01:59:53+00:00",
+      "touched_round": 16,
+      "category": "security",
+      "severity": 0.6,
+      "confidence": 0.95,
+      "effort": 3.0,
+      "unlock_factor": 1.0,
+      "title": "Harden authn and comment input: 24h JWT + token_version revocation; CommentBase.content max_length",
+      "description": "(1) Default ACCESS_TOKEN_EXPIRE_DAYS 7->1 (JWT_EXPIRE_DAYS env already exists); add users.token_version (Mapped int default 0) via a real alembic migration (exercises the round-13 pipeline), embed claim in create_access_token, enforce in get_current_user, bump on admin password change so old tokens die. (2) CommentBase.content = Field(max_length=5000) matching the public unauthenticated endpoint. Add tests: password-rotate invalidates old token; over-length comment 422."
+    },
+    "TASK-020": {
+      "id": "TASK-020",
+      "type": "task",
+      "status": "resolved",
+      "version": 4,
+      "created_at": "2026-08-10T00:57:13+00:00",
+      "updated_at": "2026-08-10T01:59:53+00:00",
+      "touched_round": 16,
+      "category": "security",
+      "severity": 0.4,
+      "confidence": 0.95,
+      "effort": 2.0,
+      "unlock_factor": 1.0,
+      "title": "Cheap defense-in-depth LOWs: upload streaming size cap, markdown image src sanitizeUrl, nginx uploads nosniff",
+      "description": "upload.py: replace buffered read()+len check with a capped streaming read so a huge body cannot balloon memory pre-reject. MarkdownContent.vue: run image src through the (currently unused) sanitizeUrl helper + add referrerpolicy=no-referrer. deploy/nginx.conf: re-add X-Content-Type-Options nosniff + default_type application/octet-stream in /static/uploads/. All verifiable except nginx (local nginx absent - documented)."
+    },
+    "TASK-021": {
+      "id": "TASK-021",
+      "type": "task",
+      "status": "resolved",
+      "version": 4,
+      "created_at": "2026-08-10T00:57:13+00:00",
+      "updated_at": "2026-08-10T01:59:53+00:00",
+      "touched_round": 16,
+      "category": "security",
+      "severity": 0.4,
+      "confidence": 0.8,
+      "effort": 1.5,
+      "unlock_factor": 1.0,
+      "title": "Trusted-proxy-aware rate-limit key (XFP-aware, default-safe)",
+      "description": "Implement client_rate_key(request) in limiter.py: returns request.client.host by default (no behavior change, no XFF spoofing); when TRUSTED_PROXIES env is set (comma IPs or * for dev topologies where a gateway/Nuxt is the only peer) and the direct peer is trusted, use the leftmost X-Forwarded-For entry. Keeps per-client limits effective behind the Nuxt proxy / nginx while staying spoof-resistant by default. Add unit tests for the 3 cases; document TRUSTED_PROXIES in .env.example + docker-compose."
+    },
+    "CHG-013": {
+      "id": "CHG-013",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-10T01:59:52+00:00",
+      "updated_at": "2026-08-10T01:59:52+00:00",
+      "touched_round": 16,
+      "commit": "14aad30",
+      "title": "Round-16 security fixes: JWT revocation, comment bounds, proxy-aware ratelimit, upload cap, image sanurl",
+      "description": "Implements the confirmed round-16 audit findings: token_version JWT revocation + 1d lifetime; CommentBase.content max 5000; client_rate_key trusted-proxy resolver (TRUSTED_PROXIES); upload streaming size cap; markdown img sanitizeUrl + no-referrer; nginx uploads nosniff. Also moved the 80% coverage gate to full-run recipes (fixes a round-15 DX bug where filtered pytest runs failed spuriously). Migration ac4c74d8c499 added through the round-13 alembic pipeline."
+    },
+    "EV-031": {
+      "id": "EV-031",
+      "type": "evidence",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-10T01:59:52+00:00",
+      "updated_at": "2026-08-10T01:59:52+00:00",
+      "touched_round": 16,
+      "source": "backend 577 passed @93.47% (80% gate) incl +9 new security tests; frontend 678 passed; pyright 0; ruff/biome clean; migration verified fresh+adopted+check; commit 14aad30",
+      "title": "Round-16 security hardening verified green end-to-end",
+      "content": "+2 password-revocation tests (old token 401 after rotate, new login works), +2 comment content-boundary (5001->422 / 5000->201), +5 trusted-proxy resolver cases. Backend full suite 577 passed at 93.47% (80% gate), frontend 678 passed, typecheck 0 both sides, ruff+biome clean. Alembic ac4c74d8c499 verified on a fresh DB (both migrations), an adopted create_all-era DB (column already present -> skipped + stamped), with alembic check reporting no drift.",
+      "confidence": 1.0
+    },
+    "DEC-014": {
+      "id": "DEC-014",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-10T01:59:52+00:00",
+      "updated_at": "2026-08-10T01:59:52+00:00",
+      "touched_round": 16,
+      "title": "Rate limits need TRUSTED_PROXIES configured per deployment to regain per-client buckets",
+      "rationale": "The trusted-proxy resolver ships default-safe (peer key, no XFF spoofing). Its benefit only engages when the operator sets TRUSTED_PROXIES to the actual Nuxt/nginx gateway IP(s) (or * for a single-gateway dev topology). Until then, clients behind a proxy still share one bucket - a documented deploy-time configuration, not a code gap. Deployment round or operator must set TRUSTED_PROXIES; CI/dev channels that hit the backend directly are unaffected.",
+      "alternatives_rejected": "Trust X-Forwarded-For unconditionally (any direct client can spoof a fresh bucket and bypass limits - the exact attack the default-safe design avoids); hard-code the proxy IP family (not portable across compose/nginx deployments)"
+    },
+    "TASK-022": {
+      "id": "TASK-022",
+      "type": "task",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-10T01:59:53+00:00",
+      "updated_at": "2026-08-10T01:59:53+00:00",
+      "touched_round": 16,
+      "category": "security",
+      "severity": 0.3,
+      "confidence": 0.8,
+      "effort": 3.0,
+      "unlock_factor": 1.0,
+      "title": "Round-16 audit follow-ups: admin mutating endpoints rate limits, isomorphic-dompurify SSR sanitizer, upload re-encode",
+      "description": "Deferred low-severity items from the round-16 security audit, kept visible: (1) admin write endpoints (delete user/post, batch-approve) carry no @limiter.limit; (2) SSR/first-paint uses the weaker regexSanitize until DOMPurify loads - adopt isomorphic-dompurify so the strong sanitizer is active from the first render; (3) uploaded images are stored as-is, not re-encoded with Pillow (defense-in-depth against embedded payloads)."
+    },
+    "ISS-017": {
+      "id": "ISS-017",
+      "type": "issue",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-10T02:01:45+00:00",
+      "updated_at": "2026-08-10T02:01:45+00:00",
+      "touched_round": 16,
+      "severity": 0.3,
+      "title": "Tracked follow-ups from round-16 security audit (low severity, deferred)",
+      "description": "Deferred items kept visible so they are not lost: admin write endpoints unrate-limited; SSR first render uses the weaker regex sanitizer until DOMPurify loads (isomorphic-dompurify candidate); uploaded images stored as-is rather than re-encoded (Pillow defense-in-depth)."
     }
   },
   "edges": [
@@ -1861,6 +1999,78 @@
       "to": "TASK-018",
       "type": "implements",
       "created_at": "2026-08-09T20:21:11+00:00"
+    },
+    {
+      "from": "ISS-016",
+      "to": "COMP-001",
+      "type": "located_in",
+      "created_at": "2026-08-10T00:41:55+00:00"
+    },
+    {
+      "from": "EV-030",
+      "to": "HYP-010",
+      "type": "validates",
+      "created_at": "2026-08-10T00:57:12+00:00"
+    },
+    {
+      "from": "TASK-019",
+      "to": "ISS-016",
+      "type": "addresses",
+      "created_at": "2026-08-10T00:57:13+00:00"
+    },
+    {
+      "from": "TASK-020",
+      "to": "ISS-016",
+      "type": "addresses",
+      "created_at": "2026-08-10T00:57:13+00:00"
+    },
+    {
+      "from": "TASK-021",
+      "to": "ISS-016",
+      "type": "addresses",
+      "created_at": "2026-08-10T00:57:13+00:00"
+    },
+    {
+      "from": "CHG-013",
+      "to": "TASK-019",
+      "type": "implements",
+      "created_at": "2026-08-10T01:59:53+00:00"
+    },
+    {
+      "from": "CHG-013",
+      "to": "TASK-020",
+      "type": "implements",
+      "created_at": "2026-08-10T01:59:53+00:00"
+    },
+    {
+      "from": "CHG-013",
+      "to": "TASK-021",
+      "type": "implements",
+      "created_at": "2026-08-10T01:59:53+00:00"
+    },
+    {
+      "from": "CHG-013",
+      "to": "ISS-016",
+      "type": "resolves",
+      "created_at": "2026-08-10T01:59:53+00:00"
+    },
+    {
+      "from": "DEC-014",
+      "to": "COMP-001",
+      "type": "governs",
+      "created_at": "2026-08-10T01:59:53+00:00"
+    },
+    {
+      "from": "ISS-017",
+      "to": "COMP-001",
+      "type": "located_in",
+      "created_at": "2026-08-10T02:01:45+00:00"
+    },
+    {
+      "from": "TASK-022",
+      "to": "ISS-017",
+      "type": "addresses",
+      "created_at": "2026-08-10T02:01:46+00:00"
     }
   ]
 }
