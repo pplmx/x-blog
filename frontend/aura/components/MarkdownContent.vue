@@ -19,7 +19,11 @@
 -->
 <script setup lang="ts">
 import { type ComponentPublicInstance, computed, onMounted, ref } from "vue";
-import { loadPurify, sanitizeHtml, useMarkdown } from "~~/composables/useMarkdown";
+import { loadPurify, sanitizeHtml, sanitizeUrl, useMarkdown } from "~~/composables/useMarkdown";
+
+// sanitizeUrl is referenced in the <img> template binding; keep the helper
+// "used" for Biome (it cannot see template usage).
+void sanitizeUrl;
 
 export interface MarkdownContentProps {
 	/** Raw HTML content string from the backend. */
@@ -242,10 +246,11 @@ function lineNumbers(code: string): number[] {
         class="relative w-full h-64 my-4 overflow-hidden rounded-lg bg-gray-100 dark:bg-gray-800 cursor-zoom-in border-0 p-0"
       >
         <img
-          :src="seg.src"
+          :src="sanitizeUrl(seg.src)"
           :alt="seg.alt"
           class="absolute inset-0 w-full h-full object-cover transition-opacity duration-500"
           loading="lazy"
+          referrerpolicy="no-referrer"
         >
       </div>
 

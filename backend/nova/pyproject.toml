@@ -63,7 +63,9 @@ source = ["app"]
 precision = 2
 show_missing = true
 skip_covered = false
-fail_under = 80
+# The 80% gate is enforced on full runs only (`just test-backend` and CI pass
+# --cov-fail-under=80); a filtered `pytest -k ...` iteration run measures but
+# must not fail on partial coverage.
 exclude_lines = [
     "pragma: no cover",
     "def __repr__",

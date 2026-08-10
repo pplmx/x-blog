@@ -58,7 +58,9 @@ async def upload_image(
 ):
     if file.content_type not in ALLOWED_TYPES:
         raise HTTPException(400, detail="Unsupported file type")
-    contents = await file.read()
+    # Cap memory: read at most MAX_SIZE+1 bytes and reject before an oversized
+    # body balloons RAM (reading the whole stream first would buffer it all).
+    contents = await file.read(MAX_SIZE + 1)
     if len(contents) > MAX_SIZE:
         raise HTTPException(400, detail="File too large (max 5MB)")
     if not _has_matching_magic_bytes(contents, file.content_type):

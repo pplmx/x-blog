@@ -15,7 +15,7 @@ from app.database import Base, get_db
 
 DEV_SECRET_KEY = "x-blog-secret-key-dev-only"
 ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_DAYS = int(os.getenv("JWT_EXPIRE_DAYS", "7"))
+ACCESS_TOKEN_EXPIRE_DAYS = int(os.getenv("JWT_EXPIRE_DAYS", "1"))
 
 
 def _load_secret_key() -> str:
@@ -54,6 +54,9 @@ class User(Base):
     username: Mapped[str] = mapped_column(String(50), unique=True, nullable=False, index=True)
     password: Mapped[str] = mapped_column(String(200), nullable=False)
     is_superuser: Mapped[bool | None] = mapped_column(Boolean, default=False)
+    # Bumped on password change so previously-issued JWTs are invalidated
+    # immediately (checked in get_current_user). (RIL round 16 security audit)
+    token_version: Mapped[int | None] = mapped_column(Integer, default=0)
     created_at: Mapped[datetime | None] = mapped_column(DateTime, default=lambda: datetime.now(UTC))
 
 
@@ -69,10 +72,14 @@ def get_password_hash(password: str) -> str:
     return bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
 
 
-def create_access_token(data: dict) -> str:
+def create_access_token(data: dict, token_version: int = 0) -> str:
+    """Create a signed JWT. ``token_version`` is embedded as the ``ver`` claim so
+    password-change revocation can reject previously issued tokens (see
+    get_current_user)."""
     to_encode = data.copy()
     if "sub" in to_encode:
         to_encode["sub"] = str(to_encode["sub"])
+    to_encode["ver"] = token_version
     expire = datetime.now(UTC) + timedelta(days=ACCESS_TOKEN_EXPIRE_DAYS)
     to_encode["exp"] = expire
     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
@@ -100,8 +107,12 @@ def get_current_user(
         # `sub` claim (e.g. non-numeric). Both are authentication failures → 401.
         raise credentials_exception
 
+    # Tokens signed before this change have no `ver` claim -> treat as 0; the
+    # user's counter is also 0 until a password change, so they still work.
+    # After a password change the counter bumps and every older token is rejected.
+    token_version = payload.get("ver", 0)
     user = db.query(User).filter(User.id == token_data.user_id).first()
-    if user is None:
+    if user is None or token_version != (user.token_version or 0):
         raise credentials_exception
     return user
 

@@ -944,6 +944,47 @@ class TestAdminPasswordChange:
         assert response.status_code == 400
         assert "Current password is incorrect" in response.text
 
+    def test_change_password_invalidates_existing_token(self, client, auth_headers):
+        """A JWT issued before a password change must be rejected afterwards.
+
+        Regresses the token_version revocation: without it a stolen token stays
+        valid for the full lifetime after the admin rotates their password.
+        """
+        assert client.get("/api/admin/posts", headers=auth_headers).status_code == 200
+
+        change = client.post(
+            "/api/admin/password",
+            headers={"Content-Type": "application/json", **auth_headers},
+            json={"current_password": "testpass123", "new_password": "newpass456"},
+        )
+        assert change.status_code == 200
+
+        # The same (old) token must now be rejected — not silently accepted.
+        assert client.get("/api/admin/posts", headers=auth_headers).status_code == 401
+
+    def test_new_login_works_after_password_change(self, client, admin_user):
+        """After rotating the password, only a fresh login with the new password authenticates."""
+        old_token = client.post("/api/admin/login", data={"username": "testadmin", "password": "testpass123"}).json()[
+            "access_token"
+        ]
+
+        change = client.post(
+            "/api/admin/password",
+            headers={"Content-Type": "application/json", "Authorization": f"Bearer {old_token}"},
+            json={"current_password": "testpass123", "new_password": "newpass456"},
+        )
+        assert change.status_code == 200
+
+        new_login = client.post("/api/admin/login", data={"username": "testadmin", "password": "newpass456"})
+        assert new_login.status_code == 200
+        assert (
+            client.get(
+                "/api/admin/posts",
+                headers={"Authorization": f"Bearer {new_login.json()['access_token']}"},
+            ).status_code
+            == 200
+        )
+
 
 class TestAdminPasswordValidation:
     """Tests for password change validation."""

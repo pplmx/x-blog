@@ -146,7 +146,9 @@ class CommentBase(BaseModel):
     # uncaught DataError -> 500 on PostgreSQL.
     nickname: str = Field(max_length=50)
     email: str = Field(max_length=100)
-    content: str
+    # Bounded so the public, unauthenticated comment endpoint cannot bloat the DB
+    # / response with unbounded bodies (security audit round 16).
+    content: str = Field(max_length=5000)
 
 
 class CommentCreate(CommentBase):

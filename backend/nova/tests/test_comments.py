@@ -389,3 +389,33 @@ def test_create_comment_rejects_overlong_nickname(client, post):
 
     list_response = client.get(f"/api/comments/post/{post['id']}")
     assert len(list_response.json()["items"]) == 0
+
+
+def test_create_comment_rejects_overlong_content(client, post):
+    """Over-length comment content is rejected as 422 (bounded CommentBase.content).
+
+    The public comment endpoint is unauthenticated, so an unbounded content field
+    would let anyone bloat the DB/response with multi-MB bodies.
+    """
+    response = client.post(
+        f"/api/comments/post/{post['id']}",
+        json={
+            "nickname": "tester",
+            "email": "test@example.com",
+            "content": "x" * 5001,
+        },
+    )
+    assert response.status_code == 422
+
+
+def test_create_comment_accepts_boundary_length_content(client, post):
+    """Exactly max_length (5000) content is accepted."""
+    response = client.post(
+        f"/api/comments/post/{post['id']}",
+        json={
+            "nickname": "tester",
+            "email": "test@example.com",
+            "content": "x" * 5000,
+        },
+    )
+    assert response.status_code == 201

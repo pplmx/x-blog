@@ -78,9 +78,9 @@ ci: fmt-check lint typecheck test
 # Run all tests
 test: test-backend test-nuxt
 
-# Run backend tests
+# Run backend tests (enforces the 80% app-coverage gate on the full suite)
 test-backend:
-    cd backend/nova && uv run pytest -n auto
+    cd backend/nova && uv run pytest -n auto --cov-fail-under=80
 
 # Run backend tests sequentially (debug)
 test-backend-seq:

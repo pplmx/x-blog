@@ -65,7 +65,7 @@ def login(
             detail="Incorrect username or password",
             headers={"WWW-Authenticate": "Bearer"},
         )
-    access_token = auth.create_access_token(data={"sub": user.id})
+    access_token = auth.create_access_token(data={"sub": user.id}, token_version=user.token_version or 0)
     return {"access_token": access_token, "token_type": "bearer"}
 
 
@@ -548,6 +548,9 @@ def change_password(
     if not auth.verify_password(body.current_password, current_user.password):
         raise HTTPException(status_code=400, detail="Current password is incorrect")
     current_user.password = auth.get_password_hash(body.new_password)
+    # Invalidate every previously-issued JWT for this admin: bump the token
+    # version checked in get_current_user. (RIL round 16 security audit)
+    current_user.token_version = (current_user.token_version or 0) + 1
     db.commit()
     return {"message": "Password updated"}
 
