@@ -1831,7 +1831,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Setup Python
         uses: actions/setup-python@v5
@@ -1878,7 +1878,7 @@ steps:
 
 ```yaml
 - name: Upload coverage
-  uses: codecov/codecov-action@v4
+  uses: codecov/codecov-action@v7
   with:
     files: ./coverage.xml
     token: ${{ secrets.CODECOV_TOKEN }}
@@ -1893,7 +1893,7 @@ deploy:
   if: github.ref == 'refs/heads/main'
 
   steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v7
     - name: Deploy to server
       run: |
         ssh deploy@server "docker-compose pull && docker-compose up -d"
