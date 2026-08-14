@@ -387,6 +387,11 @@ def create_comment(
             raise ValueError(f"Parent comment with id {comment.parent_id} not found")
         if parent.post_id != post_id:
             raise ValueError("Parent comment does not belong to this post")
+        # Only approved parents are publicly visible; blocking replies to
+        # pending/rejected comments prevents an approved reply from being
+        # orphaned under a parent a moderator later rejects.
+        if not parent.is_approved:
+            raise ValueError("Cannot reply to a comment awaiting approval")
 
     db_comment = models.Comment(
         post_id=post_id,

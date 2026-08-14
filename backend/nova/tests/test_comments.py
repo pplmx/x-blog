@@ -355,6 +355,37 @@ def test_create_comment_with_nonexistent_parent(client, post):
     assert "Parent comment with id 99999 not found" in response.json()["error"]["message"]
 
 
+def test_create_comment_rejects_reply_to_unapproved_parent(client, post):
+    """A reply to a pending (awaiting-approval) parent comment must return 400.
+
+    API-created comments are never auto-approved, so a pending parent is not
+    publicly visible; allowing a reply could orphan an approved reply under a
+    parent a moderator later rejects.
+    """
+    parent_response = client.post(
+        f"/api/comments/post/{post['id']}",
+        json={
+            "nickname": "Pending Parent",
+            "email": "parent@example.com",
+            "content": "Awaiting approval",
+        },
+    )
+    assert parent_response.status_code == 201
+    pending_parent_id = parent_response.json()["id"]
+
+    response = client.post(
+        f"/api/comments/post/{post['id']}",
+        json={
+            "nickname": "Child",
+            "email": "child@example.com",
+            "content": "Reply to pending parent",
+            "parent_id": pending_parent_id,
+        },
+    )
+    assert response.status_code == 400
+    assert "Cannot reply to a comment awaiting approval" in response.json()["error"]["message"]
+
+
 def test_list_comments_rejects_invalid_pagination(client, post):
     """Negative/zero/oversized limits must be rejected, not 500."""
     response = client.get(f"/api/comments/post/{post['id']}?limit=-1")
