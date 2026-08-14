@@ -178,6 +178,29 @@ export async function useRelatedPosts(postId: number, limit = 5) {
 }
 
 /**
+ * Blog-level aggregate statistics from the backend /api/stats endpoint.
+ * Exact counts (unlike deriving from a paginated post list, which the
+ * backend caps at limit <= 100 and would silently undercount larger blogs).
+ */
+export interface BlogStats {
+	total_posts: number;
+	published_posts: number;
+	total_categories: number;
+	total_tags: number;
+	total_comments: number;
+	pending_comments: number;
+	total_views: number;
+}
+
+/**
+ * Fetch blog aggregate statistics.
+ * Uses the backend's GET /api/stats endpoint.
+ */
+export async function useBlogStats() {
+	return useApi<BlogStats>("/api/stats");
+}
+
+/**
  * Comment type matching the backend Comment schema.
  */
 export interface Comment {

@@ -8,8 +8,8 @@ import type { AdminComment } from "~~/composables/useApi";
 import {
 	approveAdminComment,
 	fetchAdminComments,
+	useBlogStats,
 	useCategories,
-	usePosts,
 	useTags,
 } from "~~/composables/useApi";
 
@@ -17,13 +17,18 @@ definePageMeta({ layout: "admin" });
 
 useHead({ title: "仪表盘 - X-Blog" });
 
-// Fetch all data in parallel
-const [postsResponse, categoriesResult, tagsResult, commentsResult] = await Promise.all([
-	usePosts({ limit: 1000 }),
-	useCategories(),
-	useTags(),
-	fetchAdminComments(undefined, 1, 100),
-]);
+// Fetch all data in parallel. Aggregate card counts come from the exact
+// /api/stats endpoint — deriving them from the post list would silently
+// undercount once the blog exceeds the backend's limit cap (100), because
+// /api/posts enforces limit <= 100 while the old code requested 1000.
+const [postsResponse, categoriesResult, tagsResult, commentsResult, statsResult] =
+	await Promise.all([
+		usePosts({ limit: 100 }),
+		useCategories(),
+		useTags(),
+		fetchAdminComments(undefined, 1, 100),
+		useBlogStats(),
+	]);
 
 // useFetch resolves to the AsyncData object — the payload is in .data.value,
 // and the list payload's items array is what the dashboard consumes
@@ -31,13 +36,14 @@ const posts = postsResponse.data.value?.items ?? [];
 const categories = categoriesResult.data.value;
 const tags = tagsResult.data.value;
 const allComments: AdminComment[] = commentsResult.data?.value?.items ?? [];
+const blogStats = statsResult.data.value;
 
-const publishedCount = posts.filter((p) => p.published).length;
-const draftCount = posts.length - publishedCount;
-const totalViews = posts.reduce((sum, p) => sum + (p.views || 0), 0);
-
+const publishedCount = blogStats?.published_posts ?? posts.filter((p) => p.published).length;
+const draftCount = (blogStats?.total_posts ?? posts.length) - publishedCount;
+const totalViews = blogStats?.total_views ?? posts.reduce((sum, p) => sum + (p.views || 0), 0);
 const pendingComments = allComments.filter((c) => !c.is_approved);
 const totalComments = allComments.length;
+const pendingCommentsCount = blogStats?.pending_comments ?? pendingComments.length;
 
 // Recent 5 published posts sorted by date (newest first)
 const recentPosts = posts
@@ -74,7 +80,7 @@ const loadedAt = new Date().toLocaleString("zh-CN");
 const stats = [
 	{
 		title: "文章总数",
-		value: posts.length,
+		value: blogStats?.total_posts ?? posts.length,
 		icon: "lucide:file-text",
 		color: "text-blue-600",
 		bg: "bg-blue-50",
@@ -109,7 +115,7 @@ const stats = [
 	},
 	{
 		title: "待审核评论",
-		value: pendingComments.length,
+		value: pendingCommentsCount,
 		icon: "lucide:message-square",
 		color: "text-red-600",
 		bg: "bg-red-50",

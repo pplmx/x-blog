@@ -21,12 +21,14 @@ const {
 	mockUseCategories,
 	mockUseTags,
 	mockFetchAdminComments,
+	mockUseBlogStats,
 	mockApproveAdminComment,
 } = vi.hoisted(() => ({
 	mockUsePosts: vi.fn(),
 	mockUseCategories: vi.fn(),
 	mockUseTags: vi.fn(),
 	mockFetchAdminComments: vi.fn(),
+	mockUseBlogStats: vi.fn(),
 	mockApproveAdminComment: vi.fn(),
 }));
 
@@ -35,6 +37,7 @@ vi.mock("~/composables/useApi", () => ({
 	useCategories: mockUseCategories,
 	useTags: mockUseTags,
 	fetchAdminComments: mockFetchAdminComments,
+	useBlogStats: mockUseBlogStats,
 	approveAdminComment: mockApproveAdminComment,
 }));
 
@@ -139,6 +142,27 @@ const mockCommentList = {
 	pagination: { total: 3, page: 1, limit: 100, total_pages: 1 },
 };
 
+/** Aggregate stats from the /api/stats endpoint (exact counts). */
+const mockStatsResult = {
+	total_posts: 3,
+	published_posts: 2,
+	total_categories: 2,
+	total_tags: 2,
+	total_comments: 3,
+	pending_comments: 2,
+	total_views: 350,
+};
+
+/** Default stub for useBlogStats used by the page for exact aggregate cards. */
+function stubBlogStats() {
+	mockUseBlogStats.mockReturnValue({
+		data: ref(mockStatsResult),
+		pending: ref(false),
+		error: ref(null),
+		refresh: vi.fn(),
+	});
+}
+
 async function loadPage() {
 	const { default: DashboardPage } = await import("@/pages/admin/index.vue");
 	return DashboardPage;
@@ -176,6 +200,7 @@ describe("Admin Dashboard Page", () => {
 				error: ref(null),
 				refresh: vi.fn(),
 			});
+			stubBlogStats();
 		});
 
 		afterEach(() => {
@@ -221,6 +246,7 @@ describe("Admin Dashboard Page", () => {
 				error: ref(null),
 				refresh: vi.fn(),
 			});
+			stubBlogStats();
 		});
 
 		afterEach(() => {
@@ -298,6 +324,7 @@ describe("Admin Dashboard Page", () => {
 				error: ref(null),
 				refresh: vi.fn(),
 			});
+			stubBlogStats();
 		});
 
 		afterEach(() => {
@@ -355,6 +382,7 @@ describe("Admin Dashboard Page", () => {
 				error: ref(null),
 				refresh: vi.fn(),
 			});
+			stubBlogStats();
 		});
 
 		afterEach(() => {
@@ -476,6 +504,7 @@ describe("Admin Dashboard Page", () => {
 				error: ref(null),
 				refresh: vi.fn(),
 			});
+			stubBlogStats();
 		});
 
 		afterEach(() => {
@@ -568,6 +597,7 @@ describe("Admin Dashboard Page", () => {
 				error: ref(null),
 				refresh: vi.fn(),
 			});
+			stubBlogStats();
 		});
 
 		afterEach(() => {
