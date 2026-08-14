@@ -628,6 +628,74 @@ describe("Post Detail Page", () => {
 
 			expect(wrapper.text()).toContain("Failed to like post. Please try again.");
 		});
+
+		it("updates the rendered like count after a successful like", async () => {
+			// Stub useFetch so the POST /like returns a post with an incremented
+			// like count — the UI must reflect the new value (regression guard for
+			// handleLike discarding the updated post, which left the count stale).
+			const likedPost = { ...mockPost, likes: 57 };
+			vi.stubGlobal("useRuntimeConfig", () => ({
+				public: { apiUrl: "http://localhost:18888" },
+			}));
+			vi.stubGlobal("useHead", vi.fn());
+			vi.stubGlobal("useRoute", () => ({
+				params: { slug: "test-article-post" },
+				query: {},
+			}));
+			vi.stubGlobal("navigateTo", vi.fn());
+			vi.stubGlobal(
+				"useFetch",
+				vi.fn((url: string) => {
+					if (typeof url === "string" && url.includes("/like")) {
+						return {
+							data: ref(likedPost),
+							pending: ref(false),
+							error: ref(null),
+							refresh: vi.fn(),
+						};
+					}
+					return {
+						data: ref(mockPost),
+						pending: ref(false),
+						error: ref(null),
+						refresh: vi.fn(),
+					};
+				}),
+			);
+
+			const { default: PostPage } = await import("@/pages/posts/[slug].vue");
+			const SuspenseWrapper: any = {
+				components: { PostPage },
+				template:
+					"<Suspense>" +
+					"<template #default><PostPage /></template>" +
+					"<template #fallback>Loading...</template>" +
+					"</Suspense>",
+			};
+			const wrapper = mount(SuspenseWrapper, {
+				global: {
+					stubs: {
+						NuxtLink: { template: '<a :href="to"><slot/></a>', props: ["to"] },
+						Icon: {
+							template: '<svg class="iconstub" :data-icon="icon"></svg>',
+							props: ["icon"],
+						},
+						MarkdownContent: {
+							template: '<div class="markdown-content"><div v-html="content"></div></div>',
+							props: ["content"],
+						},
+					},
+				},
+			});
+			await flushPromises();
+
+			expect(wrapper.text()).toContain("56");
+
+			await wrapper.find('button[type="button"]').trigger("click");
+			await flushPromises();
+
+			expect(wrapper.text()).toContain("57");
+		});
 	});
 
 	describe("Post metadata", () => {

@@ -35,8 +35,15 @@ async function handleLike() {
 	likeLoading.value = true;
 	likeError.value = null;
 	try {
-		await usePostLike(post.value.id);
-		await usePost(route.params.slug as string);
+		const liked = await usePostLike(post.value.id);
+		// POST /like returns the updated Post (response_model=schemas.Post); use
+		// it to refresh the rendered count instead of a discarded refetch, which
+		// left post.value.likes stale in the UI.
+		if (liked.data?.value) {
+			post.value = liked.data.value;
+		} else {
+			await usePost(route.params.slug as string);
+		}
 	} catch (_err) {
 		likeError.value = "Failed to like post. Please try again.";
 	} finally {
