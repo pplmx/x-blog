@@ -2,7 +2,7 @@
   "ril_version": 1,
   "round": 20,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-08-14T14:05:23+00:00",
+  "updated_at": "2026-08-14T14:14:19+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -1690,6 +1690,34 @@
       "commit": "f2979e5",
       "title": "Dashboard agg stats from /api/stats",
       "description": "admin/index.vue aggregate cards now source from exact /api/stats (BlogStats) via new useBlogStats helper; posts list kept only for recent/top-5/category distribution. Fixes silent undercount >100 posts and always-zero draft count."
+    },
+    "TASK-029": {
+      "id": "TASK-029",
+      "type": "task",
+      "status": "resolved",
+      "version": 4,
+      "created_at": "2026-08-14T14:10:22+00:00",
+      "updated_at": "2026-08-14T14:14:19+00:00",
+      "touched_round": 20,
+      "category": "correctness",
+      "severity": 0.4,
+      "confidence": 1.0,
+      "effort": 1,
+      "unlock_factor": 1,
+      "title": "Block replies to unapproved (pending/rejected) comments",
+      "description": "crud.create_comment validates parent exists + belongs to post but not that it is approved. API-created parents are always is_approved=False at creation. A reply can be approved while its parent stays rejected → orphaned thread rendering an invisible/rejected parent. Guard: parent must be approved (or None). Respond 400 already handled via ValueError→HTTPException(400)."
+    },
+    "CHG-018": {
+      "id": "CHG-018",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-14T14:14:19+00:00",
+      "updated_at": "2026-08-14T14:14:19+00:00",
+      "touched_round": 20,
+      "commit": "5e65da0",
+      "title": "Reject replies to unapproved parents",
+      "description": "crud.create_comment now guards parent.is_approved; ValueError surfaces as 400. Regression test added."
     }
   },
   "edges": [
@@ -2388,6 +2416,12 @@
       "to": "TASK-028",
       "type": "implements",
       "created_at": "2026-08-14T14:05:23+00:00"
+    },
+    {
+      "from": "CHG-018",
+      "to": "TASK-029",
+      "type": "implements",
+      "created_at": "2026-08-14T14:14:19+00:00"
     }
   ]
 }
