@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 20,
+  "round": 22,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-08-14T14:14:19+00:00",
+  "updated_at": "2026-08-14T14:18:18+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -1718,6 +1718,18 @@
       "commit": "5e65da0",
       "title": "Reject replies to unapproved parents",
       "description": "crud.create_comment now guards parent.is_approved; ValueError surfaces as 400. Regression test added."
+    },
+    "DEC-017": {
+      "id": "DEC-017",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-14T14:17:56+00:00",
+      "updated_at": "2026-08-14T14:17:56+00:00",
+      "touched_round": 21,
+      "title": "Round 21 deep-dive: no above-threshold work remains",
+      "rationale": "Scout deep-dive (backend+frontend) produced: 3 confirmed correctness bugs fixed this loop (TASK-027 stale likes UI, TASK-028 dashboard agg stats, TASK-029 unapproved-parent replies). Scout \"fatal SyntaxErrors\" refuted (PEP 758 except-syntax, valid on py3.14). get_posts/related distinct+joinedload+limit pagination footgun refuted empirically (EV-036). Remaining: admin handleDelete missing catch (DX ~0.9), search.vue no purify re-render + regex sanurl gaps (defense-in-depth, deferred per DEC-015) — all below 3.0 threshold. No new above-threshold task from round 21.",
+      "alternatives_rejected": "Force low-value DX fixes to stay busy (violates stop-condition discipline); re-litigate deferred defense-in-depth items already covered by DEC-015."
     }
   },
   "edges": [
