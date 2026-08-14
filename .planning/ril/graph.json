@@ -2,7 +2,7 @@
   "ril_version": 1,
   "round": 20,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-08-14T13:52:08+00:00",
+  "updated_at": "2026-08-14T13:56:57+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -1649,6 +1649,19 @@
       "commit": "223f57e",
       "title": "handleLike uses like response",
       "description": "posts/[slug].vue handleLike assigns usePostLike return to post.value; removed discarded refetch. Added regression test slug.spec.ts: like count updates to 57 after click."
+    },
+    "EV-036": {
+      "id": "EV-036",
+      "type": "evidence",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-14T13:56:57+00:00",
+      "updated_at": "2026-08-14T13:56:57+00:00",
+      "touched_round": 20,
+      "source": "round20 probe script (sqlite in-memory, 11 multi-tag posts)",
+      "title": "distinct+joinedload(tags)+limit pagination is correct on SQLite",
+      "description": "Scout hypothesized ORM footgun (get_posts tag_id + get_related_posts) could duplicate/drop posts across limit boundary. Empirical probe: 11 posts each tagged t1+t2, sweep pages of 5 → all 11 unique across pages, no dup, total=11 correct. Distinct() dedups parent rows; SQLAlchemy uniques collection rows. No bug on SQLite fixture dialect.",
+      "confidence": 1.0
     }
   },
   "edges": [
