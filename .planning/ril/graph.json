@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 22,
+  "round": 23,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-08-14T14:18:18+00:00",
+  "updated_at": "2026-08-14T14:42:20+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -1730,6 +1730,18 @@
       "title": "Round 21 deep-dive: no above-threshold work remains",
       "rationale": "Scout deep-dive (backend+frontend) produced: 3 confirmed correctness bugs fixed this loop (TASK-027 stale likes UI, TASK-028 dashboard agg stats, TASK-029 unapproved-parent replies). Scout \"fatal SyntaxErrors\" refuted (PEP 758 except-syntax, valid on py3.14). get_posts/related distinct+joinedload+limit pagination footgun refuted empirically (EV-036). Remaining: admin handleDelete missing catch (DX ~0.9), search.vue no purify re-render + regex sanurl gaps (defense-in-depth, deferred per DEC-015) — all below 3.0 threshold. No new above-threshold task from round 21.",
       "alternatives_rejected": "Force low-value DX fixes to stay busy (violates stop-condition discipline); re-litigate deferred defense-in-depth items already covered by DEC-015."
+    },
+    "DEC-018": {
+      "id": "DEC-018",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-14T14:42:20+00:00",
+      "updated_at": "2026-08-14T14:42:20+00:00",
+      "touched_round": 23,
+      "title": "Round 23 deep-dive: convergence re-verified, stop conditions met",
+      "rationale": "Fresh round-23 OBSERVE/VERIFY rather than trusting prior rounds: backend pytest 579 passed @93.54% (gate 80%), frontend vitest 679 passed, ril.py check consistent (131 nodes/117 edges). Deep-dive re-confirmed the only cited gaps are below threshold: posts/index.vue handleDelete lacks the catch/actionError that categories/tags/comments have (real DX inconsistency, ~0.9), and search.vue SSR sanitizer gap deferred per DEC-015 (no user input reaches v-html today). Only active tasks TASK-023 (0.81) and TASK-026 (0.35) both defer with recorded decisions; all high-severity issues resolved, ISS-016/17 low-severity with explicit defer decisions. All 5 stop conditions satisfied; no above-threshold work remains.",
+      "alternatives_rejected": "Force a DX commit on posts handleDelete to keep the loop busy (violates stop-condition discipline; DEC-017 already scored it ~0.9); re-litigate deferred isomorphic-dompurify/upload-reencode (DEC-015 rationale unchanged)."
     }
   },
   "edges": [
