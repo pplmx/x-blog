@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 19,
+  "round": 20,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-08-10T05:12:07+00:00",
+  "updated_at": "2026-08-14T13:52:08+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -288,10 +288,10 @@
     "HYP-003": {
       "id": "HYP-003",
       "type": "hypothesis",
-      "status": "active",
-      "version": 1,
+      "status": "stale",
+      "version": 2,
       "created_at": "2026-08-06T14:17:36+00:00",
-      "updated_at": "2026-08-06T14:17:36+00:00",
+      "updated_at": "2026-08-14T13:33:42+00:00",
       "touched_round": 9,
       "confidence": 0.95,
       "title": "Local test/lint suites are green after the 9 unpushed CI-fix commits",
@@ -1453,7 +1453,7 @@
       "version": 1,
       "created_at": "2026-08-10T02:01:45+00:00",
       "updated_at": "2026-08-10T02:01:45+00:00",
-      "touched_round": 18,
+      "touched_round": 20,
       "severity": 0.3,
       "title": "Tracked follow-ups from round-16 security audit (low severity, deferred)",
       "description": "Deferred items kept visible so they are not lost: admin write endpoints unrate-limited; SSR first render uses the weaker regex sanitizer until DOMPurify loads (isomorphic-dompurify candidate); uploaded images stored as-is rather than re-encoded (Pillow defense-in-depth)."
@@ -1608,6 +1608,47 @@
       "source": "full VERIFY rerun round 19: backend pytest 578 passed @93.53%% (80 gate); pyright 0; ruff format/lint clean; biome clean; frontend vitest 678 passed; ril.py check consistent (121 nodes, 112 edges)",
       "content": "Stop-condition evaluation at round 19. (1) Only active tasks are TASK-023 (priority 0.81, deferred per DEC-015) and TASK-026 (0.35, deferred per DEC-016) - neither exceeds the 3.0 threshold. (2) Only active issues ISS-016/ISS-017 are low-severity tracked deferrals with explicit decisions (DEC-014/DEC-015); all high-severity issues resolved. (3) Full VERIFY green: backend 578 passed at 93.53%% coverage (80%% gate), pyright 0/0/0, ruff check+format clean, biome clean, frontend 678 passed. (4) Deep-dive rounds 17 (new tasks 0.81) and 18 (0.35) both failed to surface a task above 3.0. (5) ril.py check reports no orphans/cycles/unproven-hypothesis warnings. Conclusion: SKILL.md section 10 conditions satisfied -> autonomous loop stops; no further EXECUTE performed this round.",
       "confidence": 1.0
+    },
+    "TASK-027": {
+      "id": "TASK-027",
+      "type": "task",
+      "status": "resolved",
+      "version": 4,
+      "created_at": "2026-08-14T13:50:05+00:00",
+      "updated_at": "2026-08-14T13:52:08+00:00",
+      "touched_round": 20,
+      "category": "correctness",
+      "severity": 0.6,
+      "confidence": 1.0,
+      "effort": 1,
+      "unlock_factor": 1,
+      "title": "Fix handleLike stale likes UI",
+      "description": "posts/[slug].vue handleLike 调用 usePostLike 返回更新后的 Post，但随后 await usePost(slug) 结果被丢弃，post.value.likes 永不更新，UI 显示过期计数(模板 :225 绑定 post.likes)。修复：将 usePostLike 返回值赋给 post.value，移除无效 refetch。"
+    },
+    "EV-035": {
+      "id": "EV-035",
+      "type": "evidence",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-14T13:50:09+00:00",
+      "updated_at": "2026-08-14T13:50:09+00:00",
+      "touched_round": 20,
+      "source": "frontend/aura/app/pages/posts/[slug].vue:33-44",
+      "title": "handleLike discards refetch - likes stale in UI",
+      "description": "Scout frontend deep-dive (round 20): handleLike awaits usePostLike then awaits usePost(slug) whose return is discarded; post.value.likes never updates. Template :225 binds post.likes showing stale count. Confirmed by direct read.",
+      "confidence": 1.0
+    },
+    "CHG-016": {
+      "id": "CHG-016",
+      "type": "change",
+      "status": "active",
+      "version": 2,
+      "created_at": "2026-08-14T13:51:58+00:00",
+      "updated_at": "2026-08-14T13:52:05+00:00",
+      "touched_round": 20,
+      "commit": "223f57e",
+      "title": "handleLike uses like response",
+      "description": "posts/[slug].vue handleLike assigns usePostLike return to post.value; removed discarded refetch. Added regression test slug.spec.ts: like count updates to 57 after click."
     }
   },
   "edges": [
@@ -2282,6 +2323,24 @@
       "to": "ISS-017",
       "type": "addresses",
       "created_at": "2026-08-10T04:19:28+00:00"
+    },
+    {
+      "from": "TASK-027",
+      "to": "ISS-017",
+      "type": "addresses",
+      "created_at": "2026-08-14T13:50:12+00:00"
+    },
+    {
+      "from": "CHG-016",
+      "to": "ISS-017",
+      "type": "resolves",
+      "created_at": "2026-08-14T13:52:05+00:00"
+    },
+    {
+      "from": "CHG-016",
+      "to": "TASK-027",
+      "type": "implements",
+      "created_at": "2026-08-14T13:52:05+00:00"
     }
   ]
 }
