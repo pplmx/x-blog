@@ -2,7 +2,7 @@
   "ril_version": 1,
   "round": 20,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-08-14T13:56:57+00:00",
+  "updated_at": "2026-08-14T14:05:23+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -1662,6 +1662,34 @@
       "title": "distinct+joinedload(tags)+limit pagination is correct on SQLite",
       "description": "Scout hypothesized ORM footgun (get_posts tag_id + get_related_posts) could duplicate/drop posts across limit boundary. Empirical probe: 11 posts each tagged t1+t2, sweep pages of 5 → all 11 unique across pages, no dup, total=11 correct. Distinct() dedups parent rows; SQLAlchemy uniques collection rows. No bug on SQLite fixture dialect.",
       "confidence": 1.0
+    },
+    "TASK-028": {
+      "id": "TASK-028",
+      "type": "task",
+      "status": "resolved",
+      "version": 3,
+      "created_at": "2026-08-14T13:59:04+00:00",
+      "updated_at": "2026-08-14T14:05:23+00:00",
+      "touched_round": 20,
+      "category": "correctness",
+      "severity": 0.5,
+      "confidence": 1.0,
+      "effort": 1,
+      "unlock_factor": 1,
+      "title": "Admin dashboard aggregate stats wrong above 100 posts",
+      "description": "frontend admin/index.vue requests usePosts({limit:1000}) but backend /api/posts caps limit le=100 (posts.py:16). publishedCount/draftCount/totalViews/postsInCategory derived from this capped list are silently wrong once >100 posts. Dedicated /api/stats (BlogStatsResponse) returns exact aggregates; cut dashboard over to it for correct counts, keep per-post list only for recent/top-5."
+    },
+    "CHG-017": {
+      "id": "CHG-017",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-14T14:05:23+00:00",
+      "updated_at": "2026-08-14T14:05:23+00:00",
+      "touched_round": 20,
+      "commit": "f2979e5",
+      "title": "Dashboard agg stats from /api/stats",
+      "description": "admin/index.vue aggregate cards now source from exact /api/stats (BlogStats) via new useBlogStats helper; posts list kept only for recent/top-5/category distribution. Fixes silent undercount >100 posts and always-zero draft count."
     }
   },
   "edges": [
@@ -2354,6 +2382,12 @@
       "to": "TASK-027",
       "type": "implements",
       "created_at": "2026-08-14T13:52:05+00:00"
+    },
+    {
+      "from": "CHG-017",
+      "to": "TASK-028",
+      "type": "implements",
+      "created_at": "2026-08-14T14:05:23+00:00"
     }
   ]
 }
