@@ -2,7 +2,7 @@
   "ril_version": 1,
   "round": 27,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-08-15T06:09:46+00:00",
+  "updated_at": "2026-08-15T06:27:42+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -1932,6 +1932,57 @@
       "touched_round": 27,
       "commit": "92182f9",
       "description": "Round 29: delete dead frontend components BackToTop/ImageLightbox/MobileFilterBar/ViewTracker/Skeleton + their orphaned unit specs; drop the stale 'back to top' soft-assertion from e2e/posts.spec.ts."
+    },
+    "ISS-021": {
+      "id": "ISS-021",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-08-15T06:18:16+00:00",
+      "updated_at": "2026-08-15T06:27:42+00:00",
+      "touched_round": 27,
+      "title": "Dead Next.js-era debug scripts at repo root",
+      "description": "check_cover.py and verify_cover.py are manual localhost:3001 debug scripts predating the Next.js->Nuxt migration. They hard-code localhost:3001 (no longer a project port) and reference react-hooks post slugs; no justfile/CI/docs reference them. Dead code that confuses repo clearance."
+    },
+    "TASK-033": {
+      "id": "TASK-033",
+      "type": "task",
+      "status": "resolved",
+      "version": 4,
+      "created_at": "2026-08-15T06:18:29+00:00",
+      "updated_at": "2026-08-15T06:27:42+00:00",
+      "touched_round": 27,
+      "category": "maintainability",
+      "severity": 0.2,
+      "confidence": 1.0,
+      "effort": 0.2,
+      "unlock_factor": 1.0,
+      "title": "Remove dead root-level debug scripts",
+      "description": "Delete check_cover.py and verify_cover.py (Next.js-era localhost:3001 manual debug scripts, unreferenced in justfile/CI/docs).",
+      "priority_score": 1.5
+    },
+    "EV-040": {
+      "id": "EV-040",
+      "type": "evidence",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-15T06:24:18+00:00",
+      "updated_at": "2026-08-15T06:24:18+00:00",
+      "touched_round": 27,
+      "source": "round30 backend pytest 579 passed @93.54%; grep confirms no refs",
+      "description": "TASK-033 verified: removed check_cover.py + verify_cover.py (Next.js-era dead debug scripts, 116 lines). Backend suite green and no remaining references.",
+      "confidence": 1.0
+    },
+    "CHG-022": {
+      "id": "CHG-022",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-15T06:24:18+00:00",
+      "updated_at": "2026-08-15T06:24:18+00:00",
+      "touched_round": 27,
+      "commit": "ROUND30",
+      "description": "Round 30: delete dead root-level debug scripts check_cover.py and verify_cover.py."
     }
   },
   "edges": [
@@ -2720,6 +2771,30 @@
       "to": "ISS-020",
       "type": "resolves",
       "created_at": "2026-08-15T06:08:47+00:00"
+    },
+    {
+      "from": "TASK-033",
+      "to": "ISS-021",
+      "type": "addresses",
+      "created_at": "2026-08-15T06:18:29+00:00"
+    },
+    {
+      "from": "ISS-021",
+      "to": "COMP-002",
+      "type": "located_in",
+      "created_at": "2026-08-15T06:18:29+00:00"
+    },
+    {
+      "from": "CHG-022",
+      "to": "TASK-033",
+      "type": "implements",
+      "created_at": "2026-08-15T06:27:42+00:00"
+    },
+    {
+      "from": "CHG-022",
+      "to": "ISS-021",
+      "type": "resolves",
+      "created_at": "2026-08-15T06:27:42+00:00"
     }
   ]
 }
