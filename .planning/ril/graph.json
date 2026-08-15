@@ -2,7 +2,7 @@
   "ril_version": 1,
   "round": 27,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-08-15T08:00:55+00:00",
+  "updated_at": "2026-08-15T08:02:11+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -2068,11 +2068,11 @@
       "id": "CHG-024",
       "type": "change",
       "status": "active",
-      "version": 1,
+      "version": 2,
       "created_at": "2026-08-15T07:56:46+00:00",
-      "updated_at": "2026-08-15T07:56:46+00:00",
+      "updated_at": "2026-08-15T08:02:11+00:00",
       "touched_round": 27,
-      "commit": "ROUND32",
+      "commit": "9e9bd7d",
       "description": "Round 32: align admin password-change min length with backend (6->8) in admin.vue; +1 test."
     }
   },
