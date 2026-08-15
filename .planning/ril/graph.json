@@ -2,7 +2,7 @@
   "ril_version": 1,
   "round": 27,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-08-15T09:09:10+00:00",
+  "updated_at": "2026-08-15T09:12:58+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -2170,11 +2170,11 @@
       "id": "CHG-026",
       "type": "change",
       "status": "active",
-      "version": 1,
+      "version": 2,
       "created_at": "2026-08-15T09:04:07+00:00",
-      "updated_at": "2026-08-15T09:04:07+00:00",
+      "updated_at": "2026-08-15T09:12:58+00:00",
       "touched_round": 27,
-      "commit": "ROUND34",
+      "commit": "1e3d383",
       "description": "Round 34: bounded API-proxy request bodies — 413 over 6MB pre-buffer; reject chunked (no content-length) with 400. +3 tests."
     }
   },
