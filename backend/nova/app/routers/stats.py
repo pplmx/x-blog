@@ -16,6 +16,11 @@ class BlogStatsResponse(BaseModel):
 
     total_posts: int
     published_posts: int
+    # Posts that are published=True but whose publish_at is in the future: not
+    # yet visible publicly, and distinct from drafts (published=False). Clients
+    # that show a "drafts" bucket must subtract this, not just published_posts,
+    # or scheduled posts silently masquerade as drafts. (RIL TASK-036)
+    scheduled_posts: int
     total_categories: int
     total_tags: int
     total_comments: int
@@ -46,6 +51,18 @@ def get_blog_stats(request: Request, db: Session = Depends(get_db)):  # noqa: AR
         or 0
     )
 
+    # Scheduled posts: published but publish_at is in the future (not yet live).
+    # Mirrors the admin list's "scheduled" status filter semantics.
+    scheduled_posts = (
+        db.query(func.count(models.Post.id))
+        .filter(
+            models.Post.published.is_(True),
+            models.Post.publish_at > now,
+        )
+        .scalar()
+        or 0
+    )
+
     # Total categories
     total_categories = db.query(func.count(models.Category.id)).scalar() or 0
 
@@ -71,6 +88,7 @@ def get_blog_stats(request: Request, db: Session = Depends(get_db)):  # noqa: AR
     return BlogStatsResponse(
         total_posts=total_posts,
         published_posts=published_posts,
+        scheduled_posts=scheduled_posts,
         total_categories=total_categories,
         total_tags=total_tags,
         total_comments=total_comments,

@@ -39,7 +39,11 @@ const allComments: AdminComment[] = commentsResult.data?.value?.items ?? [];
 const blogStats = statsResult.data.value;
 
 const publishedCount = blogStats?.published_posts ?? posts.filter((p) => p.published).length;
-const draftCount = (blogStats?.total_posts ?? posts.length) - publishedCount;
+// Draft = total minus published minus scheduled. The backend only excludes
+// future-publish_at posts from published_posts, so subtracting it alone would
+// fold scheduled posts into the draft bucket (they're a distinct third status).
+const draftCount =
+	(blogStats?.total_posts ?? posts.length) - publishedCount - (blogStats?.scheduled_posts ?? 0);
 const totalViews = blogStats?.total_views ?? posts.reduce((sum, p) => sum + (p.views || 0), 0);
 const pendingComments = allComments.filter((c) => !c.is_approved);
 const totalComments = allComments.length;

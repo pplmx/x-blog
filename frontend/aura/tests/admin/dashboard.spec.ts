@@ -146,6 +146,9 @@ const mockCommentList = {
 const mockStatsResult = {
 	total_posts: 3,
 	published_posts: 2,
+	// The global mock has 2 published + 1 draft (no scheduled): keep the
+	// scheduled count at 0 so the existing draft-count assertions hold.
+	scheduled_posts: 0,
 	total_categories: 2,
 	total_tags: 2,
 	total_comments: 3,
@@ -157,6 +160,16 @@ const mockStatsResult = {
 function stubBlogStats() {
 	mockUseBlogStats.mockReturnValue({
 		data: ref(mockStatsResult),
+		pending: ref(false),
+		error: ref(null),
+		refresh: vi.fn(),
+	});
+}
+
+/** Override useBlogStats with custom aggregate stats. */
+function stubBlogStatsWith(stats: Record<string, number>) {
+	mockUseBlogStats.mockReturnValue({
+		data: ref({ ...mockStatsResult, ...stats }),
 		pending: ref(false),
 		error: ref(null),
 		refresh: vi.fn(),
@@ -274,6 +287,30 @@ describe("Admin Dashboard Page", () => {
 			expect(wrapper.text()).toContain("草稿");
 			// 1 draft post among 3 total
 			expect(wrapper.text()).toContain("1");
+		});
+
+		it("excludes scheduled posts from the draft bucket", async () => {
+			// total 4 = 2 published + 1 scheduled (future publish_at) + 1 draft;
+			// the scheduled post must not inflate the draft count (/api/stats
+			// reports it separately, so 4 - 2 - 1 = 1 draft, not 2).
+			stubBlogStatsWith({ total_posts: 4, published_posts: 2, scheduled_posts: 1 });
+			const DashboardPage = await loadPage();
+			const wrapper = await mountWithSuspense(DashboardPage);
+
+			// Locate the draft stat card (title 草稿) and assert its value === 1
+			// (a scheduled post was subtracted, not lumped into drafts). Each
+			// stat card root owns a .text-3xl value; find the card whose text
+			// includes 草稿 and read that card's own value.
+			const draftCard = [...wrapper.findAll("div")].find((el) => {
+				if (!(el.text() || "").includes("草稿")) return false;
+				const ownValue = el.find(".text-3xl");
+				// Skip ancestor containers: match only the card that directly
+				// owns a .text-3xl child (the outer grid wrapper does not).
+				if (!ownValue) return false;
+				return el.findAll("div").every((child) => !child.find(".text-3xl")?.exists());
+			});
+			expect(draftCard).toBeDefined();
+			expect((draftCard?.find(".text-3xl")?.text() || "").trim()).toBe("1");
 		});
 
 		it("renders category count (2)", async () => {

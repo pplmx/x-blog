@@ -185,6 +185,7 @@ export async function useRelatedPosts(postId: number, limit = 5) {
 export interface BlogStats {
 	total_posts: number;
 	published_posts: number;
+	scheduled_posts: number;
 	total_categories: number;
 	total_tags: number;
 	total_comments: number;
