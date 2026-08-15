@@ -63,25 +63,4 @@ test.describe("Posts", () => {
 			await expect(tagLinks.first()).toBeVisible();
 		}
 	});
-
-	test("back to top button appears on scroll", async ({ page }) => {
-		await page.goto("/");
-		const postLink = page.locator("article a").first();
-
-		if (!(await postLink.isVisible())) {
-			test.skip();
-			return;
-		}
-
-		await postLink.click();
-		await page.waitForURL(/\/posts\//);
-
-		// Scroll down to trigger BackToTop
-		await page.evaluate(() => window.scrollTo(0, 500));
-
-		const backToTop = page.locator("button[title='返回顶部']");
-		if (await backToTop.isVisible()) {
-			await expect(backToTop).toBeVisible();
-		}
-	});
 });

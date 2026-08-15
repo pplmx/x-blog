@@ -2,7 +2,7 @@
   "ril_version": 1,
   "round": 27,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-08-15T05:43:05+00:00",
+  "updated_at": "2026-08-15T06:08:47+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -1881,6 +1881,57 @@
       "touched_round": 27,
       "commit": "1bf6dc1",
       "description": "Round 28: search.vue passes enabled: computed(() => !!query.value) to useApi so an empty query skips the search request entirely (previously fired a guaranteed-422 per bare /search visit, burning a rate-limit slot). +2 tests."
+    },
+    "ISS-020": {
+      "id": "ISS-020",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-08-15T05:56:14+00:00",
+      "updated_at": "2026-08-15T06:08:47+00:00",
+      "touched_round": 27,
+      "title": "5 frontend components are dead code (never rendered anywhere)",
+      "description": "BackToTop.vue, ImageLightbox.vue, MobileFilterBar.vue, ViewTracker.vue, Skeleton.vue have zero references in app/, layouts/, plugins/, composables/ and never appear in the built output. Their own unit tests assert only against the bare component. e2e/posts.spec.ts has a stale 'back to top' soft-assertion that silently passes because the button never renders. ViewTracker is a trap: [slug].vue already increments views via usePostView in setup, so wiring ViewTracker in would double-count."
+    },
+    "TASK-032": {
+      "id": "TASK-032",
+      "type": "task",
+      "status": "resolved",
+      "version": 4,
+      "created_at": "2026-08-15T05:58:14+00:00",
+      "updated_at": "2026-08-15T06:08:47+00:00",
+      "touched_round": 27,
+      "category": "maintainability",
+      "severity": 0.35,
+      "confidence": 1.0,
+      "effort": 0.5,
+      "unlock_factor": 1.0,
+      "title": "Remove dead frontend components and stale e2e assertion",
+      "description": "Delete BackToTop.vue, ImageLightbox.vue, MobileFilterBar.vue, ViewTracker.vue, Skeleton.vue and their orphaned unit spec files; drop the stale 'back to top' block from e2e/posts.spec.ts (it asserts on a component that never renders). Re-run vitest + typecheck + biome to confirm green.",
+      "priority_score": 2.0
+    },
+    "EV-039": {
+      "id": "EV-039",
+      "type": "evidence",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-15T06:08:00+00:00",
+      "updated_at": "2026-08-15T06:08:00+00:00",
+      "touched_round": 27,
+      "source": "round29 frontend vitest 651 passed + nuxt build + typecheck + biome clean",
+      "description": "TASK-032 verified: removed 5 dead components (+3 orphaned spec files, ~630 lines) and the stale e2e back-to-top assertion. Full suite, production build, vue-tsc and biome stay green; no remaining references to any removed component.",
+      "confidence": 1.0
+    },
+    "CHG-021": {
+      "id": "CHG-021",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-15T06:08:47+00:00",
+      "updated_at": "2026-08-15T06:08:47+00:00",
+      "touched_round": 27,
+      "commit": "ROUND29",
+      "description": "Round 29: delete dead frontend components BackToTop/ImageLightbox/MobileFilterBar/ViewTracker/Skeleton + their orphaned unit specs; drop the stale 'back to top' soft-assertion from e2e/posts.spec.ts."
     }
   },
   "edges": [
@@ -2645,6 +2696,30 @@
       "to": "ISS-019",
       "type": "resolves",
       "created_at": "2026-08-15T05:42:16+00:00"
+    },
+    {
+      "from": "TASK-032",
+      "to": "ISS-020",
+      "type": "addresses",
+      "created_at": "2026-08-15T05:58:14+00:00"
+    },
+    {
+      "from": "ISS-020",
+      "to": "COMP-002",
+      "type": "located_in",
+      "created_at": "2026-08-15T05:58:14+00:00"
+    },
+    {
+      "from": "CHG-021",
+      "to": "TASK-032",
+      "type": "implements",
+      "created_at": "2026-08-15T06:08:47+00:00"
+    },
+    {
+      "from": "CHG-021",
+      "to": "ISS-020",
+      "type": "resolves",
+      "created_at": "2026-08-15T06:08:47+00:00"
     }
   ]
 }
