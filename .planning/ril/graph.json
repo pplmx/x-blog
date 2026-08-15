@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 27,
+  "round": 28,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-08-15T09:58:14+00:00",
+  "updated_at": "2026-08-15T10:17:57+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -33,7 +33,7 @@
       "version": 1,
       "created_at": "2026-08-06T13:23:41+00:00",
       "updated_at": "2026-08-06T13:23:41+00:00",
-      "touched_round": 10,
+      "touched_round": 28,
       "title": "ci-pipeline",
       "description": "GitHub Actions workflows test.yml and deploy.yml; 3-node docker compose for e2e"
     },
@@ -2227,6 +2227,57 @@
       "touched_round": 27,
       "commit": "c3f2429",
       "description": "Round 35: align nuxt.config siteUrl default 3001->3000; drop orphaned 3001/3003 from dev CORS allowlist (main.py + justfile)."
+    },
+    "ISS-026": {
+      "id": "ISS-026",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-08-15T10:09:00+00:00",
+      "updated_at": "2026-08-15T10:17:57+00:00",
+      "touched_round": 28,
+      "title": "deploy/nginx.conf references undeclared proxy_cache zone STATIC",
+      "description": "deploy/nginx.conf uses 'proxy_cache STATIC; proxy_cache_valid ...' in the frontend location (line 116-118) but never defines the zone with proxy_cache_path. nginx treats a missing cache zone as a fatal [emerg] and refuses to start ('zone STATIC is not found'), so the shipped reference deployment config cannot boot."
+    },
+    "TASK-039": {
+      "id": "TASK-039",
+      "type": "task",
+      "status": "resolved",
+      "version": 4,
+      "created_at": "2026-08-15T10:09:00+00:00",
+      "updated_at": "2026-08-15T10:17:57+00:00",
+      "touched_round": 28,
+      "category": "correctness",
+      "severity": 0.5,
+      "confidence": 1.0,
+      "effort": 0.3,
+      "unlock_factor": 1.0,
+      "title": "Define proxy_cache_path STATIC in nginx.conf so the config boots",
+      "description": "Add a proxy_cache_path directive (e.g. /var/cache/nginx/static levels=1:2 keys_zone=STATIC:10m max_size=1g inactive=60m) in the http block, matching the referenced zone; comment that the cache dir/permissions are deployment concerns.",
+      "priority_score": 6.0
+    },
+    "EV-046": {
+      "id": "EV-046",
+      "type": "evidence",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-15T10:16:54+00:00",
+      "updated_at": "2026-08-15T10:16:54+00:00",
+      "touched_round": 28,
+      "source": "round36 structural review: braces balanced (15/15), proxy_cache_path keys_zone=STATIC now declared in http context before the referencing server block; no live nginx available for -t",
+      "description": "TASK-039 verified: deploy/nginx.conf declares proxy_cache_path /var/cache/nginx/static levels=1:2 keys_zone=STATIC:10m ... so the previously-undeclared proxy_cache STATIC zone no longer causes a fatal [emerg] at startup. Standard nginx requirement confirmed.",
+      "confidence": 1.0
+    },
+    "CHG-028": {
+      "id": "CHG-028",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-15T10:16:54+00:00",
+      "updated_at": "2026-08-15T10:16:54+00:00",
+      "touched_round": 28,
+      "commit": "ROUND36",
+      "description": "Round 36: add missing proxy_cache_path to deploy/nginx.conf so the referenced STATIC cache zone is declared (config boots)."
     }
   },
   "edges": [
@@ -3153,6 +3204,30 @@
       "to": "ISS-025",
       "type": "resolves",
       "created_at": "2026-08-15T09:53:55+00:00"
+    },
+    {
+      "from": "TASK-039",
+      "to": "ISS-026",
+      "type": "addresses",
+      "created_at": "2026-08-15T10:09:18+00:00"
+    },
+    {
+      "from": "ISS-026",
+      "to": "COMP-003",
+      "type": "located_in",
+      "created_at": "2026-08-15T10:09:18+00:00"
+    },
+    {
+      "from": "CHG-028",
+      "to": "TASK-039",
+      "type": "implements",
+      "created_at": "2026-08-15T10:17:57+00:00"
+    },
+    {
+      "from": "CHG-028",
+      "to": "ISS-026",
+      "type": "resolves",
+      "created_at": "2026-08-15T10:17:57+00:00"
     }
   ]
 }
