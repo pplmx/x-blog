@@ -2,7 +2,7 @@
   "ril_version": 1,
   "round": 27,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-08-15T05:25:42+00:00",
+  "updated_at": "2026-08-15T05:42:26+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -22,7 +22,7 @@
       "version": 1,
       "created_at": "2026-08-06T13:23:41+00:00",
       "updated_at": "2026-08-06T13:23:41+00:00",
-      "touched_round": 11,
+      "touched_round": 27,
       "title": "frontend-aura",
       "description": "Nuxt 4 Vue 3 TypeScript frontend at frontend/aura; composables; admin pages; e2e Playwright; biome lint"
     },
@@ -1830,6 +1830,57 @@
       "touched_round": 27,
       "rationale": "Round 27 deep-dive found real, previously-unrecorded config drift: docker-compose set dead RATE_LIMIT_PER_MINUTE (limiter reads per-endpoint vars only), and TASK-021's promised TRUSTED_PROXIES documentation was never shipped. Root fix: Nuxt proxy overwrites x-forwarded-for/x-real-ip from the socket peer (edge-gate, client-supplied values discarded) so per-client buckets survive the proxy; docker-compose exposes the real per-endpoint vars + TRUSTED_PROXIES passthrough; deployment.md documents the model. Confirmed other rounds' 'no above-threshold scan' missed it because they re-verified test suites but not deploy config.",
       "alternatives_rejected": "(a) Append (not overwrite) XFF to preserve outer chains — rejected: Nuxt is the API edge here, and overwriting from the socket peer is spoof-proof (append would trust client-supplied leftmost XFF on a back-end-only path); (b) hardcode TRUSTED_PROXIES in docker-compose — rejected: container IPs are dynamic; passthrough with docs keeps default-safe behavior."
+    },
+    "ISS-019": {
+      "id": "ISS-019",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-08-15T05:29:02+00:00",
+      "updated_at": "2026-08-15T05:42:26+00:00",
+      "touched_round": 27,
+      "title": "Search page fires a guaranteed-422 backend request on empty-query visits",
+      "description": "frontend search.vue builds searchUrl as /api/search?page=1&limit=10 when q is absent, but backend search requires q (min_length=1), so every SSR+client visit to /search without a query sends a useless 422 request that also burns a RATE_LIMIT_SEARCH slot. UI masks it (v-if='!query' branch), but the wasted call + rate-limit consumption is real."
+    },
+    "TASK-031": {
+      "id": "TASK-031",
+      "type": "task",
+      "status": "resolved",
+      "version": 4,
+      "created_at": "2026-08-15T05:29:32+00:00",
+      "updated_at": "2026-08-15T05:42:26+00:00",
+      "touched_round": 27,
+      "category": "performance",
+      "severity": 0.4,
+      "confidence": 1.0,
+      "effort": 0.5,
+      "unlock_factor": 1.0,
+      "title": "Skip the search API request when the query is empty (search.vue)",
+      "description": "Return null from the searchUrl computed when q is empty/absent so Nuxt useFetch skips the call entirely; the empty-query UI branch already renders regardless. Eliminates a guaranteed-422 request + wasted rate-limit slot on every bare /search visit.",
+      "priority_score": 4.0
+    },
+    "EV-038": {
+      "id": "EV-038",
+      "type": "evidence",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-15T05:42:00+00:00",
+      "updated_at": "2026-08-15T05:42:00+00:00",
+      "touched_round": 27,
+      "source": "round28 frontend vitest 683 passed (2 new enabled-suppression tests) + typecheck/biome clean",
+      "description": "TASK-031 verified: search.vue now passes enabled: computed(() => !!query.value) to useApi, so bare /search visits fire no request at all instead of a guaranteed-422 that burned a RATE_LIMIT_SEARCH slot. New tests assert enabled=false with empty query and true with a query.",
+      "confidence": 1.0
+    },
+    "CHG-020": {
+      "id": "CHG-020",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-15T05:42:16+00:00",
+      "updated_at": "2026-08-15T05:42:16+00:00",
+      "touched_round": 27,
+      "commit": "ROUND28",
+      "description": "Round 28: search.vue passes enabled: computed(() => !!query.value) to useApi so an empty query skips the search request entirely (previously fired a guaranteed-422 per bare /search visit, burning a rate-limit slot). +2 tests."
     }
   },
   "edges": [
@@ -2570,6 +2621,30 @@
       "to": "TASK-030",
       "type": "governs",
       "created_at": "2026-08-15T05:24:48+00:00"
+    },
+    {
+      "from": "TASK-031",
+      "to": "ISS-019",
+      "type": "addresses",
+      "created_at": "2026-08-15T05:29:32+00:00"
+    },
+    {
+      "from": "ISS-019",
+      "to": "COMP-002",
+      "type": "located_in",
+      "created_at": "2026-08-15T05:29:32+00:00"
+    },
+    {
+      "from": "CHG-020",
+      "to": "TASK-031",
+      "type": "implements",
+      "created_at": "2026-08-15T05:42:16+00:00"
+    },
+    {
+      "from": "CHG-020",
+      "to": "ISS-019",
+      "type": "resolves",
+      "created_at": "2026-08-15T05:42:16+00:00"
     }
   ]
 }

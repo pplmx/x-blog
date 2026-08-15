@@ -160,6 +160,28 @@ describe("Search Page", () => {
 			const icon = wrapper.find(".iconstub");
 			expect(icon.exists()).toBe(true);
 		});
+
+		it("skips the search request when there is no query", async () => {
+			// The backend requires q (min_length=1): an empty-query visit used
+			// to fire a guaranteed-422 request, burning a rate-limit slot.
+			await mountSearchPage({ routeQuery: {} });
+			const mockFetch = vi.mocked(useFetch);
+			const [, options] = mockFetch.mock.calls[0] as [
+				unknown,
+				{ enabled?: import("vue").Ref<boolean> },
+			];
+			expect(options.enabled?.value).toBe(false);
+		});
+
+		it("enables the search request when a query is present", async () => {
+			await mountSearchPage({ routeQuery: { q: "nuxt" } });
+			const mockFetch = vi.mocked(useFetch);
+			const [, options] = mockFetch.mock.calls[0] as [
+				unknown,
+				{ enabled?: import("vue").Ref<boolean> },
+			];
+			expect(options.enabled?.value).toBe(true);
+		});
 	});
 
 	describe("Loading state", () => {

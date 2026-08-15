@@ -22,7 +22,17 @@ const searchUrl = computed(() => {
 	return `/api/search?${params.toString()}`;
 });
 
-const { data: searchResult, pending, error } = await useApi<PostListResponse>(searchUrl);
+// With no query there is nothing to search: `enabled: false` makes Nuxt skip
+// the request (reactively re-enabling on SPA nav to ?q=...). Without this the
+// empty URL fired a guaranteed-422 request per bare /search visit (the backend
+// requires q with min_length=1), burning a rate-limit slot on every hit.
+const {
+	data: searchResult,
+	pending,
+	error,
+} = await useApi<PostListResponse>(searchUrl, {
+	enabled: computed(() => !!query.value),
+});
 
 // Upgrade snippet sanitization to DOMPurify as soon as it loads (results that
 // arrive later re-render through the stronger sanitizer).
