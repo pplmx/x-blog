@@ -2,7 +2,7 @@
   "ril_version": 1,
   "round": 27,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-08-15T05:42:26+00:00",
+  "updated_at": "2026-08-15T05:43:05+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -1875,11 +1875,11 @@
       "id": "CHG-020",
       "type": "change",
       "status": "active",
-      "version": 1,
+      "version": 2,
       "created_at": "2026-08-15T05:42:16+00:00",
-      "updated_at": "2026-08-15T05:42:16+00:00",
+      "updated_at": "2026-08-15T05:43:05+00:00",
       "touched_round": 27,
-      "commit": "ROUND28",
+      "commit": "1bf6dc1",
       "description": "Round 28: search.vue passes enabled: computed(() => !!query.value) to useApi so an empty query skips the search request entirely (previously fired a guaranteed-422 per bare /search visit, burning a rate-limit slot). +2 tests."
     }
   },
