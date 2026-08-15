@@ -7,14 +7,10 @@ import {
 	fetchAdminTags,
 	updateAdminPost,
 } from "~~/composables/useApi";
-import { sanitizeHtml } from "~~/composables/useMarkdown";
 
 definePageMeta({ layout: "admin" });
 
 useHead({ title: "编辑文章 - X-Blog" });
-
-// used in template v-html (Biome cannot see template usage)
-void sanitizeHtml;
 
 const route = useRoute();
 const isNew = route.params.id === "new";
@@ -433,8 +429,15 @@ function handleFileInput(e: Event) {
               class="w-full font-mono text-sm px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all resize-none"
               @paste="onPaste"
             />
-            <div class="prose prose-sm dark:prose-invert max-w-none overflow-y-auto rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4">
-              <div v-html="sanitizeHtml(formData.content || '')" />
+            <div
+              class="prose prose-sm dark:prose-invert max-w-none overflow-y-auto rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4"
+            >
+              <!-- Preview must render the SAME way the public article does
+                   (markdown -> segments -> sanitized HTML), otherwise the
+                   editor shows raw markdown source and misleads the author.
+                   MarkdownContent (auto-imported) is exactly the component
+                   /posts/[slug] uses. (RIL TASK-043, ISS-030) -->
+              <MarkdownContent :content="formData.content || ''" />
             </div>
           </div>
           <textarea

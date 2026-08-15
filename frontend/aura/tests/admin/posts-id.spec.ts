@@ -13,6 +13,7 @@
 import { flushPromises } from "@vue/test-utils";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ref } from "vue";
+import MarkdownContent from "~~/components/MarkdownContent.vue";
 import { mountWithSuspense } from "./helpers.ts";
 
 const {
@@ -477,6 +478,35 @@ describe("Admin Post Editor Page", () => {
 				await flushPromises();
 				expect(wrapper.text()).toContain("编辑");
 			}
+		});
+
+		it("preview renders CONVERTED markdown, not raw source (RIL TASK-043, ISS-030)", async () => {
+			const PostEditor = await loadPage();
+			// Register the REAL MarkdownContent (the same component the public
+			// /posts/[slug] page uses) so the preview is exercised for real.
+			const wrapper = await mountWithSuspense(PostEditor, {
+				MarkdownContent,
+			});
+			await flushPromises();
+
+			// Type markdown into the CONTENT textarea (rows=15 — the excerpt
+			// textarea appears first in the DOM), then switch to preview.
+			const textarea = wrapper.find('textarea[rows="15"]');
+			await textarea.setValue("**加粗文本** and `inline code`");
+			await flushPromises();
+
+			const buttons = wrapper.findAll('button[type="button"]');
+			const toggleBtn = buttons.find((b) => b.text().includes("预览"));
+			expect(toggleBtn).toBeDefined();
+			await toggleBtn.trigger("click");
+			await flushPromises();
+
+			const html = wrapper.html();
+			// Converted markdown: **bold** becomes <strong>, not literal source.
+			expect(html).toContain("<strong>加粗文本</strong>");
+			expect(html).not.toContain("**加粗文本**");
+			// Sanitization still applies: dangerous markup in source is stripped.
+			expect(html).not.toContain("<script>");
 		});
 
 		it("renders image upload file input", async () => {
