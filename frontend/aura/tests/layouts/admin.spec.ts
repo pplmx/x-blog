@@ -195,7 +195,9 @@ describe("Admin Layout", () => {
 		await changePasswordButton?.trigger("click");
 		await wrapper.vm.$nextTick();
 
-		// Fill in short password (new_password is 5 chars, less than 6)
+		// Fill in short password (new_password is 5 chars — must match backend
+		// min_length=8, not the old frontend-only 6; a 6-7 char password used
+		// to pass here then 400 from the backend)
 		const passwordInputs = document.body.querySelectorAll('input[type="password"]');
 		expect(passwordInputs.length).toBeGreaterThanOrEqual(3);
 		await new DOMWrapper(passwordInputs[0] as Element).setValue("short");
@@ -214,7 +216,38 @@ describe("Admin Layout", () => {
 
 		// Validation should prevent the API call
 		expect(mockFetch).not.toHaveBeenCalled();
-		expect(document.body.textContent || "").toContain("密码至少 6 位");
+		expect(document.body.textContent || "").toContain("密码至少 8 位");
+		wrapper.unmount();
+	});
+
+	it("rejects a 7-char password that the old 6-char check would have accepted", async () => {
+		const wrapper = mountWithBody({
+			global: { stubs, slots: { default: "<div>Content</div>" } },
+		});
+
+		// Open password modal
+		const changePasswordButton = wrapper
+			.findAll("button")
+			.find((b) => b.text().includes("修改密码"));
+		await changePasswordButton?.trigger("click");
+		await wrapper.vm.$nextTick();
+
+		// 7 chars: passes the old < 6 guard, must now be blocked (backend min 8)
+		const passwordInputs = document.body.querySelectorAll('input[type="password"]');
+		await new DOMWrapper(passwordInputs[0] as Element).setValue("abcdefg");
+		await new DOMWrapper(passwordInputs[1] as Element).setValue("abcdefg");
+		await new DOMWrapper(passwordInputs[2] as Element).setValue("abcdefg");
+		await wrapper.vm.$nextTick();
+
+		const form = document.body.querySelector("form");
+		const submitEvent = new Event("submit", { bubbles: true, cancelable: true });
+		submitEvent.preventDefault = () => {};
+		form?.dispatchEvent(submitEvent);
+		await new Promise((r) => setTimeout(r, 50));
+		await wrapper.vm.$nextTick();
+
+		expect(mockFetch).not.toHaveBeenCalled();
+		expect(document.body.textContent || "").toContain("密码至少 8 位");
 		wrapper.unmount();
 	});
 

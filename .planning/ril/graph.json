@@ -2,7 +2,7 @@
   "ril_version": 1,
   "round": 27,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-08-15T07:32:34+00:00",
+  "updated_at": "2026-08-15T08:00:55+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -2023,6 +2023,57 @@
       "touched_round": 27,
       "commit": "3999ea1",
       "description": "Round 31: add @limiter.limit(RATE_LIMIT_WRITE) to the 6 admin create/update endpoints (closes the ISS-017 tracked unrate-limited admin-write gap). +2 regression tests."
+    },
+    "ISS-022": {
+      "id": "ISS-022",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-08-15T07:38:42+00:00",
+      "updated_at": "2026-08-15T08:00:55+00:00",
+      "touched_round": 27,
+      "title": "Admin password-change form enforces 6 chars, backend requires 8",
+      "description": "frontend app/layouts/admin.vue handleChangePassword checks new_password.length < 6 (message '密码至少 6 位') and the input has minlength=6, but the backend PasswordChangeRequest (admin.py) enforces min_length=8. A 6-7 char new password passes the frontend check, then the API 400s with pydantic's 'String should have at least 8 characters' message — a confusing failed save."
+    },
+    "TASK-035": {
+      "id": "TASK-035",
+      "type": "task",
+      "status": "resolved",
+      "version": 4,
+      "created_at": "2026-08-15T07:38:42+00:00",
+      "updated_at": "2026-08-15T08:00:55+00:00",
+      "touched_round": 27,
+      "category": "correctness",
+      "severity": 0.3,
+      "confidence": 1.0,
+      "effort": 0.2,
+      "unlock_factor": 1.0,
+      "title": "Align admin password-change min length with backend (8)",
+      "description": "Change handleChangePassword check from <6 to <8 and message to 密码至少 8 位; update the new_password input minlength=6 to 8 in admin.vue layout.",
+      "priority_score": 4.0
+    },
+    "EV-042": {
+      "id": "EV-042",
+      "type": "evidence",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-15T07:56:45+00:00",
+      "updated_at": "2026-08-15T07:56:45+00:00",
+      "touched_round": 27,
+      "source": "round32 frontend admin.spec 19 passed (1 new 7-char regression) + biome + vue-tsc clean",
+      "description": "TASK-035 verified: layout password-change guard now enforces 8 chars, matching backend min_length=8; 7-char password blocked pre-API.",
+      "confidence": 1.0
+    },
+    "CHG-024": {
+      "id": "CHG-024",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-15T07:56:46+00:00",
+      "updated_at": "2026-08-15T07:56:46+00:00",
+      "touched_round": 27,
+      "commit": "ROUND32",
+      "description": "Round 32: align admin password-change min length with backend (6->8) in admin.vue; +1 test."
     }
   },
   "edges": [
@@ -2853,6 +2904,30 @@
       "to": "ISS-017",
       "type": "resolves",
       "created_at": "2026-08-15T07:26:52+00:00"
+    },
+    {
+      "from": "TASK-035",
+      "to": "ISS-022",
+      "type": "addresses",
+      "created_at": "2026-08-15T07:47:31+00:00"
+    },
+    {
+      "from": "ISS-022",
+      "to": "COMP-002",
+      "type": "located_in",
+      "created_at": "2026-08-15T07:47:31+00:00"
+    },
+    {
+      "from": "CHG-024",
+      "to": "TASK-035",
+      "type": "implements",
+      "created_at": "2026-08-15T08:00:54+00:00"
+    },
+    {
+      "from": "CHG-024",
+      "to": "ISS-022",
+      "type": "resolves",
+      "created_at": "2026-08-15T08:00:55+00:00"
     }
   ]
 }

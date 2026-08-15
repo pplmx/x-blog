@@ -30,8 +30,8 @@ const passwordSuccess = ref(false);
 async function handleChangePassword() {
 	passwordError.value = null;
 	passwordSuccess.value = false;
-	if (passwordForm.value.new_password.length < 6) {
-		passwordError.value = "密码至少 6 位";
+	if (passwordForm.value.new_password.length < 8) {
+		passwordError.value = "密码至少 8 位";
 		return;
 	}
 	if (passwordForm.value.new_password !== passwordForm.value.confirm) {
@@ -217,7 +217,7 @@ const navItems = [
                 v-model="passwordForm.new_password"
                 type="password"
                 required
-                minlength="6"
+                minlength="8"
                 class="w-full px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
               >
             </div>
