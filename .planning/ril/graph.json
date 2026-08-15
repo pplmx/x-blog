@@ -2,7 +2,7 @@
   "ril_version": 1,
   "round": 27,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-08-15T09:12:58+00:00",
+  "updated_at": "2026-08-15T09:53:55+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -2176,6 +2176,57 @@
       "touched_round": 27,
       "commit": "1e3d383",
       "description": "Round 34: bounded API-proxy request bodies — 413 over 6MB pre-buffer; reject chunked (no content-length) with 400. +3 tests."
+    },
+    "ISS-025": {
+      "id": "ISS-025",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-08-15T09:26:36+00:00",
+      "updated_at": "2026-08-15T09:53:55+00:00",
+      "touched_round": 27,
+      "title": "nuxt.config bakes orphaned localhost:3001 into global SEO head",
+      "description": "nuxt.config.ts falls back to siteUrl='http://localhost:3001' at build time, baking that host into the app.head og:url + WebSite JSON-LD url whenever NUXT_SITE_URL is unset at build (docker-compose sets it at runtime only, so production builds emit the wrong host). Every other default in the repo is localhost:3000 (useSeo.DEFAULT_SITE_URL, runtimeConfig.public.siteUrl), and docker serves :34567. 3001 survives only in the backend dev ALLOWED_ORIGINS list."
+    },
+    "TASK-038": {
+      "id": "TASK-038",
+      "type": "task",
+      "status": "resolved",
+      "version": 4,
+      "created_at": "2026-08-15T09:26:47+00:00",
+      "updated_at": "2026-08-15T09:53:55+00:00",
+      "touched_round": 27,
+      "category": "correctness",
+      "severity": 0.4,
+      "confidence": 1.0,
+      "effort": 0.3,
+      "unlock_factor": 1.0,
+      "title": "Align nuxt.config build-time siteUrl default with the codebase default",
+      "description": "Change nuxt.config.ts siteUrl fallback from http://localhost:3001 to http://localhost:3000 so the build-time baked og:url / WebSite JSON-LD url match useSeo.DEFAULT_SITE_URL and runtimeConfig default. NUXT_SITE_URL still overrides both.",
+      "priority_score": 5.0
+    },
+    "EV-045": {
+      "id": "EV-045",
+      "type": "evidence",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-15T09:50:13+00:00",
+      "updated_at": "2026-08-15T09:50:13+00:00",
+      "touched_round": 27,
+      "source": "round35 backend pytest 582 @93.57% + frontend vitest 656 + nuxt typecheck/build green + ruff/pyright clean",
+      "description": "TASK-038 verified: nuxt.config build-time siteUrl default now localhost:3000 (matching useSeo.DEFAULT_SITE_URL + runtimeConfig), so the baked og:url/WebSite JSON-LD no longer points at orphaned :3001. Dev CORS allowlists in main.py + justfile dropped the unused 3001/3003 ports.",
+      "confidence": 1.0
+    },
+    "CHG-027": {
+      "id": "CHG-027",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-15T09:50:13+00:00",
+      "updated_at": "2026-08-15T09:50:13+00:00",
+      "touched_round": 27,
+      "commit": "ROUND35",
+      "description": "Round 35: align nuxt.config siteUrl default 3001->3000; drop orphaned 3001/3003 from dev CORS allowlist (main.py + justfile)."
     }
   },
   "edges": [
@@ -3078,6 +3129,30 @@
       "to": "ISS-024",
       "type": "resolves",
       "created_at": "2026-08-15T09:09:10+00:00"
+    },
+    {
+      "from": "TASK-038",
+      "to": "ISS-025",
+      "type": "addresses",
+      "created_at": "2026-08-15T09:26:47+00:00"
+    },
+    {
+      "from": "ISS-025",
+      "to": "COMP-002",
+      "type": "located_in",
+      "created_at": "2026-08-15T09:26:47+00:00"
+    },
+    {
+      "from": "CHG-027",
+      "to": "TASK-038",
+      "type": "implements",
+      "created_at": "2026-08-15T09:53:55+00:00"
+    },
+    {
+      "from": "CHG-027",
+      "to": "ISS-025",
+      "type": "resolves",
+      "created_at": "2026-08-15T09:53:55+00:00"
     }
   ]
 }

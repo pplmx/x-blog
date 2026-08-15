@@ -27,7 +27,7 @@ dev:
     @echo "  just nuxt        (Nuxt on :34567)"
     @echo ""
     @echo "或使用 VS Code / IntelliJ 的 Run Dashboard"
-    cd backend/nova && APP_ENV=development ALLOWED_ORIGINS="http://localhost:34567,http://localhost:3001,http://localhost:3000,http://localhost:3003" uv run uvicorn app.main:app --reload --host 0.0.0.0 --port 18888 &
+    cd backend/nova && APP_ENV=development ALLOWED_ORIGINS="http://localhost:34567,http://localhost:3000" uv run uvicorn app.main:app --reload --host 0.0.0.0 --port 18888 &
     cd frontend/aura && pnpm dev --port 34567
 
 # Run backend + Nuxt dev server (alias for `dev`)

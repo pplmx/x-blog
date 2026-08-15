@@ -8,7 +8,12 @@ import { buildSiteJsonLd } from "./composables/seo-jsonld";
 const rootDir = fileURLToPath(new URL(".", import.meta.url));
 
 // Site-wide constants used in both the global head and runtime config.
-const siteUrl = process.env.NUXT_SITE_URL || "http://localhost:3001";
+// Default must match useSeo.DEFAULT_SITE_URL and runtimeConfig.public.siteUrl
+// below — the old "http://localhost:3001" was an orphaned port (survived only
+// here and the backend dev ALLOWED_ORIGINS) that got baked into the global
+// og:url / WebSite JSON-LD url whenever NUXT_SITE_URL was unset at build time
+// (docker-compose sets it at runtime only). NUXT_SITE_URL still overrides.
+const siteUrl = process.env.NUXT_SITE_URL || "http://localhost:3000";
 const siteName = "X-Blog";
 const siteDescription =
 	"X-Blog 是一个基于 FastAPI + Nuxt 的现代化技术博客系统，支持 Markdown、Mermaid 图表、KaTeX 数学公式、代码高亮、文章分类、标签管理、阅读计数、点赞评论等功能。";
