@@ -40,6 +40,7 @@ beforeEach(() => {
 	vi.stubGlobal("getHeaders", () => ({ host: "localhost" }));
 	vi.stubGlobal("readRawBody", vi.fn().mockResolvedValue("raw-body"));
 	vi.stubGlobal("getRequestHeader", () => "application/json");
+	vi.stubGlobal("getRequestIP", () => "203.0.113.9");
 
 	vi.stubGlobal("createError", (opts: Record<string, unknown>) => {
 		const err = new Error(opts.statusMessage as string);
@@ -59,6 +60,7 @@ const { loadHandler } = vi.hoisted(() => ({
 		vi.stubGlobal("getMethod", () => "GET");
 		vi.stubGlobal("getQuery", () => ({}));
 		vi.stubGlobal("getHeaders", () => ({ host: "localhost" }));
+		vi.stubGlobal("getRequestIP", () => "203.0.113.9");
 		// Resolve the route file relative to this spec, so the tests work from
 		// any checkout location (the previous absolute path only existed on the
 		// dev machine and broke CI with MODULE_NOT_FOUND).
@@ -93,6 +95,33 @@ describe("API proxy", () => {
 		const result = await handler({});
 
 		expect(result).toEqual({ ok: true });
+	});
+
+	it("forwards the real client IP to the backend (x-real-ip / x-forwarded-for)", async () => {
+		const handler = loadHandler();
+		vi.stubGlobal("getRequestIP", () => "198.51.100.7");
+		await handler({});
+
+		const [, options] = mockFetchRaw.mock.calls[0] as [string, { headers: Record<string, string> }];
+		expect(options.headers["x-real-ip"]).toBe("198.51.100.7");
+		expect(options.headers["x-forwarded-for"]).toBe("198.51.100.7");
+	});
+
+	it("overwrites a client-forged X-Forwarded-For with the edge peer IP", async () => {
+		const handler = loadHandler();
+		// A client claims a spoofed IP in its request headers; the proxy must
+		// discard it and set the value from the trusted socket peer so a caller
+		// cannot mint a fresh rate-limit bucket.
+		vi.stubGlobal("getHeaders", () => ({
+			host: "localhost",
+			"x-forwarded-for": "1.2.3.4",
+		}));
+		vi.stubGlobal("getRequestIP", () => "203.0.113.9");
+		await handler({});
+
+		const [, options] = mockFetchRaw.mock.calls[0] as [string, { headers: Record<string, string> }];
+		expect(options.headers["x-forwarded-for"]).toBe("203.0.113.9");
+		expect(options.headers["x-real-ip"]).toBe("203.0.113.9");
 	});
 
 	it("forwards the backend response status", async () => {

@@ -25,11 +25,21 @@ export default defineEventHandler(async (event) => {
 	const queryString = qs.toString();
 	const url = `${BACKEND_URL}/api/${path}${queryString ? `?${queryString}` : ""}`;
 
+	// The Nuxt proxy is the API edge in the compose/nginx topology: the browser
+	// talks to Nuxt, and the backend sees the Nuxt container as its peer. Without
+	// forwarding the real client IP here, every user collapses into one backend
+	// rate-limit bucket. Overwrite (not append) x-forwarded-for/x-real-ip from
+	// the socket peer — client-supplied values are discarded so a caller cannot
+	// forge a fresh bucket (the backend only trusts XFF when the *peer* is in
+	// TRUSTED_PROXIES, which gates this edge).
 	const headers: Record<string, string> = {};
 	for (const [key, value] of Object.entries(getHeaders(event))) {
 		if (["host", "connection", "content-length"].includes(key)) continue;
 		headers[key] = value as string;
 	}
+	const edgeIp = getRequestIP(event, { xForwardedFor: false }) || "unknown";
+	headers["x-forwarded-for"] = edgeIp;
+	headers["x-real-ip"] = edgeIp;
 
 	// Pass request bodies through RAW. h3's readBody returns null-prototype
 	// objects for form-urlencoded bodies, which ofetch 1.5.1 (the nitro

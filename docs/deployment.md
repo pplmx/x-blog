@@ -155,6 +155,32 @@ pnpm dev
 
 ---
 
+## 限流与可信代理
+
+所有生产 API 端点都带速率限制（默认按端点区分：读 120/min、写 30/min、登录 10/min、搜索 60/min、评论 20/min、导出 10/min）。每个值都可通过同名环境变量覆盖，例如 `RATE_LIMIT_WRITE_PER_MINUTE=60`。
+
+> **注意**：`RATE_LIMIT_PER_MINUTE` 是历史遗留的无效变量，代码不读取它，请使用上面按端点的变量名。
+
+### 为什么需要 TRUSTED_PROXIES
+
+后端通过 `request.client.host`（TCP 对端）识别客户端。当请求经由代理转发（本仓库的 docker-compose 前端 Nuxt 代理，或 nginx），后端看到的对端是**代理容器/节点的 IP**，而不是真实访客 IP —— 所有访客会共享同一个限流桶，按 IP 的限流保护失效。
+
+`TRUSTED_PROXIES` 让后端信任来自这些代理的 `X-Forwarded-For` 头取回真实客户端 IP：
+
+```bash
+# 逗号分隔的可信代理 IP 列表
+TRUSTED_PROXIES=172.20.0.2,203.0.113.10
+
+# 只有后端端口不对外暴露时，才可对单一网关拓扑使用通配符
+TRUSTED_PROXIES=*
+```
+
+- 不设置时保持默认安全行为：忽略上游 `X-Forwarded-For`，直接访客无法伪造新桶。
+- docker-compose 默认不设置（保持默认安全行为）；若你部署在单网关后且后端端口未公开，可在 `.env` 中设置 `TRUSTED_PROXIES=*` 恢复按客户端的限流桶。
+- 部署在 nginx 后时，把 nginx 的 IP（或 `*`，后端不公开时）填入以恢复按客户端限流。nginx 已透传 `X-Forwarded-For`。
+
+---
+
 ## 初始化数据
 
 首次部署后，运行初始化脚本创建示例数据：

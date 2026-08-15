@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 26,
+  "round": 27,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-08-15T02:20:30+00:00",
+  "updated_at": "2026-08-15T05:24:48+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -11,7 +11,7 @@
       "version": 1,
       "created_at": "2026-08-06T13:23:41+00:00",
       "updated_at": "2026-08-06T13:23:41+00:00",
-      "touched_round": 18,
+      "touched_round": 27,
       "title": "backend-nova",
       "description": "FastAPI Python 3.14 backend at backend/nova; SQLAlchemy ORM; routers in app/routers, crud.py business logic, 656 lines"
     },
@@ -1425,7 +1425,7 @@
       "version": 1,
       "created_at": "2026-08-10T01:59:52+00:00",
       "updated_at": "2026-08-10T01:59:52+00:00",
-      "touched_round": 16,
+      "touched_round": 27,
       "title": "Rate limits need TRUSTED_PROXIES configured per deployment to regain per-client buckets",
       "rationale": "The trusted-proxy resolver ships default-safe (peer key, no XFF spoofing). Its benefit only engages when the operator sets TRUSTED_PROXIES to the actual Nuxt/nginx gateway IP(s) (or * for a single-gateway dev topology). Until then, clients behind a proxy still share one bucket - a documented deploy-time configuration, not a code gap. Deployment round or operator must set TRUSTED_PROXIES; CI/dev channels that hit the backend directly are unaffected.",
       "alternatives_rejected": "Trust X-Forwarded-For unconditionally (any direct client can spoof a fresh bucket and bypass limits - the exact attack the default-safe design avoids); hard-code the proxy IP family (not portable across compose/nginx deployments)"
@@ -1768,6 +1768,68 @@
       "title": "Round 26 re-verification: stop conditions still hold",
       "rationale": "Fresh round-26 OBSERVE/VERIFY rather than trusting round-24: backend pytest 579 passed @93.54% (gate 80%), frontend vitest 679 passed. ril.py check consistent (133 nodes/117 edges, now round 26). Only active tasks TASK-023 (0.81) and TASK-026 (0.35) both far below the 3.0 threshold; only active issues ISS-016 (sev 0.5) and ISS-017 (sev 0.3) are low-severity tracked follow-ups with explicit deferral decision DEC-015. All five stop conditions in SKILL.md hold.",
       "alternatives_rejected": "Continue to force more deep-dive rounds despite no above-threshold task; would churn commits without engineering value."
+    },
+    "ISS-018": {
+      "id": "ISS-018",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-08-15T05:04:50+00:00",
+      "updated_at": "2026-08-15T05:23:26+00:00",
+      "touched_round": 27,
+      "title": "docker-compose rate-limit env drift + missing TRUSTED_PROXIES wiring",
+      "description": "docker-compose.yml sets RATE_LIMIT_PER_MINUTE=60 (dead var — limiter.py only reads RATE_LIMIT_{READ,WRITE,AUTH,SEARCH,COMMENT,EXPORT}_PER_MINUTE), so the deployment's intended 60/min cap silently does nothing. TASK-021 required documenting TRUSTED_PROXIES in .env.example + docker-compose, but neither file (nor docs/deployment.md) mentions it; without it, per-client rate limit buckets collapse behind the Nuxt proxy / nginx (DEC-014 dependency)."
+    },
+    "TASK-030": {
+      "id": "TASK-030",
+      "type": "task",
+      "status": "resolved",
+      "version": 4,
+      "created_at": "2026-08-15T05:05:12+00:00",
+      "updated_at": "2026-08-15T05:24:14+00:00",
+      "touched_round": 27,
+      "category": "security",
+      "severity": 0.6,
+      "confidence": 0.9,
+      "effort": 1.5,
+      "unlock_factor": 1.0,
+      "title": "Align docker-compose rate-limit env vars with limiter.py; wire TRUSTED_PROXIES for per-client buckets",
+      "description": "Fix docker-compose.yml RATE_LIMIT_PER_MINUTE (dead; code reads per-endpoint RATE_LIMIT_*_PER_MINUTE). Replace with the real per-endpoint vars, add TRUSTED_PROXIES passthrough, and document the complete rate-limit + trusted-proxy surface in docker-compose, .env.example, and docs/deployment.md (completes TASK-021's promised TRUSTED_PROXIES documentation).",
+      "priority_score": 3.6
+    },
+    "EV-037": {
+      "id": "EV-037",
+      "type": "evidence",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-15T05:22:51+00:00",
+      "updated_at": "2026-08-15T05:22:51+00:00",
+      "touched_round": 27,
+      "source": "round27 frontend vitest 681 passed (2 new proxy tests) + backend 579 @93.54% + pyright/biome/rumdl clean",
+      "description": "TASK-030 fix verified: Nuxt API proxy now forwards socket-peer IP as x-forwarded-for/x-real-ip (overwriting client-supplied values); docker-compose replaces dead RATE_LIMIT_PER_MINUTE with per-endpoint vars + TRUSTED_PROXIES passthrough; docs/deployment.md documents the trusted-proxy model.",
+      "confidence": 1.0
+    },
+    "CHG-019": {
+      "id": "CHG-019",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-15T05:23:10+00:00",
+      "updated_at": "2026-08-15T05:23:10+00:00",
+      "touched_round": 27,
+      "commit": "PENDING",
+      "description": "Round 27: Nuxt API proxy forwards real client IP (x-forwarded-for/x-real-ip overwrite) so per-client rate-limit buckets survive the proxy; docker-compose swaps dead RATE_LIMIT_PER_MINUTE for the per-endpoint vars the limiter actually reads + adds TRUSTED_PROXIES passthrough; docs/deployment.md gains a rate-limit & trusted-proxy section (completes TASK-021's unshipped TRUSTED_PROXIES documentation)."
+    },
+    "DEC-021": {
+      "id": "DEC-021",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-15T05:24:28+00:00",
+      "updated_at": "2026-08-15T05:24:28+00:00",
+      "touched_round": 27,
+      "rationale": "Round 27 deep-dive found real, previously-unrecorded config drift: docker-compose set dead RATE_LIMIT_PER_MINUTE (limiter reads per-endpoint vars only), and TASK-021's promised TRUSTED_PROXIES documentation was never shipped. Root fix: Nuxt proxy overwrites x-forwarded-for/x-real-ip from the socket peer (edge-gate, client-supplied values discarded) so per-client buckets survive the proxy; docker-compose exposes the real per-endpoint vars + TRUSTED_PROXIES passthrough; deployment.md documents the model. Confirmed other rounds' 'no above-threshold scan' missed it because they re-verified test suites but not deploy config.",
+      "alternatives_rejected": "(a) Append (not overwrite) XFF to preserve outer chains — rejected: Nuxt is the API edge here, and overwriting from the socket peer is spoof-proof (append would trust client-supplied leftmost XFF on a back-end-only path); (b) hardcode TRUSTED_PROXIES in docker-compose — rejected: container IPs are dynamic; passthrough with docs keeps default-safe behavior."
     }
   },
   "edges": [
@@ -2472,6 +2534,42 @@
       "to": "TASK-029",
       "type": "implements",
       "created_at": "2026-08-14T14:14:19+00:00"
+    },
+    {
+      "from": "TASK-030",
+      "to": "ISS-018",
+      "type": "addresses",
+      "created_at": "2026-08-15T05:05:31+00:00"
+    },
+    {
+      "from": "ISS-018",
+      "to": "COMP-001",
+      "type": "located_in",
+      "created_at": "2026-08-15T05:05:31+00:00"
+    },
+    {
+      "from": "DEC-014",
+      "to": "TASK-030",
+      "type": "governs",
+      "created_at": "2026-08-15T05:05:39+00:00"
+    },
+    {
+      "from": "CHG-019",
+      "to": "ISS-018",
+      "type": "resolves",
+      "created_at": "2026-08-15T05:23:19+00:00"
+    },
+    {
+      "from": "CHG-019",
+      "to": "TASK-030",
+      "type": "implements",
+      "created_at": "2026-08-15T05:23:19+00:00"
+    },
+    {
+      "from": "DEC-021",
+      "to": "TASK-030",
+      "type": "governs",
+      "created_at": "2026-08-15T05:24:48+00:00"
     }
   ]
 }

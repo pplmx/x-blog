@@ -24,7 +24,21 @@ services:
       DATABASE_URL: postgresql://xblog:${POSTGRES_PASSWORD:-xblog}@postgres:5432/xblog
       JWT_SECRET_KEY: ${JWT_SECRET_KEY:?Set JWT_SECRET_KEY in your .env file}
       ALLOWED_ORIGINS: http://localhost:34567,http://frontend:3000
-      RATE_LIMIT_PER_MINUTE: "60"
+      # Per-endpoint rate limits (requests/minute), each independently
+      # overridable. NOTE: RATE_LIMIT_PER_MINUTE is legacy dead config — the
+      # limiter reads the per-endpoint vars only (see app/limiter.py).
+      RATE_LIMIT_READ_PER_MINUTE: ${RATE_LIMIT_READ_PER_MINUTE:-120}
+      RATE_LIMIT_WRITE_PER_MINUTE: ${RATE_LIMIT_WRITE_PER_MINUTE:-30}
+      RATE_LIMIT_AUTH_PER_MINUTE: ${RATE_LIMIT_AUTH_PER_MINUTE:-10}
+      RATE_LIMIT_SEARCH_PER_MINUTE: ${RATE_LIMIT_SEARCH_PER_MINUTE:-60}
+      RATE_LIMIT_COMMENT_PER_MINUTE: ${RATE_LIMIT_COMMENT_PER_MINUTE:-20}
+      RATE_LIMIT_EXPORT_PER_MINUTE: ${RATE_LIMIT_EXPORT_PER_MINUTE:-10}
+      # Deployments behind a trusted proxy (this compose's frontend, or nginx)
+      # must list that proxy's IP here to keep per-client rate-limit buckets
+      # (see app/limiter.py client_rate_key + docs/deployment.md). Empty =>
+      # default-safe peer-key behavior. Use "*" only when the backend port is
+      # NOT publicly reachable.
+      TRUSTED_PROXIES: ${TRUSTED_PROXIES:-}
       GZIP_MINIMUM_SIZE: "500"
     volumes:
       - uploads:/app/static/uploads
