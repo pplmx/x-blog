@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 23,
+  "round": 25,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-08-14T14:42:20+00:00",
+  "updated_at": "2026-08-15T00:24:08+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -1742,6 +1742,20 @@
       "title": "Round 23 deep-dive: convergence re-verified, stop conditions met",
       "rationale": "Fresh round-23 OBSERVE/VERIFY rather than trusting prior rounds: backend pytest 579 passed @93.54% (gate 80%), frontend vitest 679 passed, ril.py check consistent (131 nodes/117 edges). Deep-dive re-confirmed the only cited gaps are below threshold: posts/index.vue handleDelete lacks the catch/actionError that categories/tags/comments have (real DX inconsistency, ~0.9), and search.vue SSR sanitizer gap deferred per DEC-015 (no user input reaches v-html today). Only active tasks TASK-023 (0.81) and TASK-026 (0.35) both defer with recorded decisions; all high-severity issues resolved, ISS-016/17 low-severity with explicit defer decisions. All 5 stop conditions satisfied; no above-threshold work remains.",
       "alternatives_rejected": "Force a DX commit on posts handleDelete to keep the loop busy (violates stop-condition discipline; DEC-017 already scored it ~0.9); re-litigate deferred isomorphic-dompurify/upload-reencode (DEC-015 rationale unchanged)."
+    },
+    "DEC-019": {
+      "id": "DEC-019",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-15T00:24:06+00:00",
+      "updated_at": "2026-08-15T00:24:06+00:00",
+      "touched_round": 24,
+      "title": "Round 24 re-verification: stop conditions still hold",
+      "rationale": "Fresh round-24 OBSERVE/VERIFY rather than trusting round-23: backend pytest 579 passed @93.54% (gate 80%), frontend vitest 679 passed, ruff clean, biome clean 111 files, ril.py check consistent (132 nodes/117 edges). Only active tasks TASK-023 (0.81) and TASK-026 (0.35) both far below the 3.0 threshold; only active issues ISS-016 (sev 0.5) and ISS-017 (sev 0.3) are low-severity tracked follow-ups with explicit deferral decisions (DEC-015). Deep-dive re-confirmed the only cited gap (admin/posts/index.vue handleDelete lacks catch/actionError that categories/tags/comments have) is a sub-threshold DX inconsistency per DEC-018. All five stop conditions verified: no active task above threshold, low-severity issues deferred with decision, last VERIFY green, deep-dive produced no above-threshold task for consecutive rounds, graph check clean.",
+      "alternatives_rejected": [
+        "Continue iterating on sub-threshold DX/defense-in-depth items would violate the 3.0 switch threshold and the convergence discipline recorded in DEC-017/DEC-018"
+      ]
     }
   },
   "edges": [
