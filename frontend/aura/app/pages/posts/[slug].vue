@@ -5,6 +5,7 @@ import { coverImageSrc } from "~~/composables/useCoverImage";
 import { usePostSeo } from "~~/composables/useSeo";
 import { extractToc } from "~~/composables/useToc";
 
+const { t } = useLang();
 const route = useRoute();
 const { data: post, pending, error } = await usePost(route.params.slug as string);
 
@@ -45,7 +46,7 @@ async function handleLike() {
 			await usePost(route.params.slug as string);
 		}
 	} catch (_err) {
-		likeError.value = "Failed to like post. Please try again.";
+		likeError.value = t("post.likeError");
 	} finally {
 		likeLoading.value = false;
 	}
@@ -95,10 +96,9 @@ function scrollToHeading(event: MouseEvent) {
 }
 
 const readingTime = computed(() => {
-	if (!post.value?.content) return "1 分钟";
+	if (!post.value?.content) return 1;
 	const words = post.value.content.replace(/[#*`\n]/g, " ").split(/\s+/).length;
-	const minutes = Math.max(1, Math.round(words / 200));
-	return `${minutes} 分钟`;
+	return Math.max(1, Math.round(words / 200));
 });
 </script>
 
@@ -125,13 +125,13 @@ const readingTime = computed(() => {
 
     <div v-else-if="error" class="text-center py-20 text-gray-500">
       <Icon icon="lucide:alert-circle" class="w-12 h-12 mx-auto mb-4 text-gray-300" />
-      <p>加载失败</p>
+      <p>{{ t('common.state.loadFailed') }}</p>
       <p class="text-sm">{{ error.message }}</p>
     </div>
 
     <div v-else-if="!post" class="text-center py-20 text-gray-500">
       <Icon icon="lucide:file-question" class="w-12 h-12 mx-auto mb-4 text-gray-300" />
-      <p>文章不存在</p>
+      <p>{{ t('post.notFound') }}</p>
     </div>
 
     <div v-else class="flex gap-10 relative">
@@ -167,7 +167,7 @@ const readingTime = computed(() => {
         <header class="mb-10">
           <NuxtLink to="/" class="inline-flex items-center gap-1.5 text-sm text-gray-400 hover:text-blue-500 transition-colors mb-6">
             <Icon icon="lucide:arrow-left" class="w-3.5 h-3.5" />
-            返回首页
+            {{ t('common.action.backHome') }}
           </NuxtLink>
 
           <!-- Category badge + meta -->
@@ -178,11 +178,11 @@ const readingTime = computed(() => {
             </span>
             <span class="text-xs text-gray-400 flex items-center gap-1">
               <Icon icon="lucide:clock" class="w-3 h-3" />
-              {{ readingTime }}
+              {{ t('post.readingTime', { count: readingTime }) }}
             </span>
             <span class="text-xs text-gray-400 flex items-center gap-1">
               <Icon icon="lucide:eye" class="w-3 h-3" />
-              {{ post.views }} 次阅读
+              {{ t('post.views', { count: post.views }) }}
             </span>
           </div>
 
@@ -229,7 +229,7 @@ const readingTime = computed(() => {
           <span class="w-px h-6 bg-gray-200 dark:bg-gray-700" />
           <button type="button" :disabled="likeLoading" class="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all duration-200 border border-gray-200 dark:border-gray-700 hover:bg-pink-50 dark:hover:bg-pink-900/20 hover:text-pink-600 dark:hover:text-pink-400 hover:border-pink-200 dark:hover:border-pink-800 active:scale-95" @click="handleLike">
             <Icon :icon="likeLoading ? 'lucide:loader-2' : 'lucide:heart'" class="w-4 h-4" :class="{ 'animate-spin': likeLoading }" />
-            {{ post.likes || "喜欢" }}
+            {{ post.likes || t('post.likes') }}
           </button>
           <span v-if="likeError" class="text-sm text-red-500">{{ likeError }}</span>
         </div>
@@ -251,7 +251,7 @@ const readingTime = computed(() => {
         <section v-if="relatedPosts?.length" class="mt-12 pt-8 border-t border-gray-100 dark:border-gray-800">
           <h2 class="text-xl font-bold text-gray-900 dark:text-gray-100 mb-6 flex items-center gap-2">
             <Icon icon="lucide:file-text" class="w-5 h-5 text-blue-500" />
-            相关文章
+            {{ t('post.related') }}
           </h2>
           <div class="grid gap-4 sm:grid-cols-2">
             <NuxtLink
@@ -268,7 +268,7 @@ const readingTime = computed(() => {
               </p>
               <div class="flex items-center gap-3 mt-3 text-xs text-gray-400">
                 <span>{{ rp.category?.name }}</span>
-                <span>{{ rp.views }} 阅读</span>
+                <span>{{ t('post.views', { count: rp.views }) }}</span>
               </div>
             </NuxtLink>
           </div>

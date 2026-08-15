@@ -1,11 +1,12 @@
 <script setup lang="ts">
 import { useSeo } from "~~/composables/useSeo";
 
+const { t } = useLang();
+
 // SEO: set dynamic head metadata
 useSeo({
-	title: "关于 X-Blog",
-	description:
-		"X-Blog 是一个基于 FastAPI + Nuxt 的现代化技术博客系统，支持 Markdown、Mermaid 图表、KaTeX 数学公式、代码高亮等功能。",
+	title: t("about.seo.title"),
+	description: t("about.seo.description"),
 	path: "/about",
 });
 
@@ -13,53 +14,51 @@ const techStack = [
 	{
 		icon: "lucide:globe",
 		name: "Nuxt",
-		desc: "前端框架",
+		descKey: "about.techStack.desc.frontend",
 		color: "from-black to-gray-800",
 	},
 	{
 		icon: "lucide:code-2",
 		name: "FastAPI",
-		desc: "后端框架",
+		descKey: "about.techStack.desc.backend",
 		color: "from-green-500 to-green-700",
 	},
 	{
 		icon: "lucide:database",
 		name: "SQLAlchemy",
-		desc: "ORM",
+		descKey: "about.techStack.desc.orm",
 		color: "from-orange-500 to-red-500",
 	},
 	{
 		icon: "lucide:sparkles",
 		name: "TypeScript",
-		desc: "语言",
+		descKey: "about.techStack.desc.language",
 		color: "from-blue-500 to-blue-700",
 	},
 ];
 
 const features = [
-	"Markdown 文章支持",
-	"分类与标签管理",
-	"评论系统",
-	"阅读量统计",
-	"RSS 订阅",
-	"SEO 优化",
-	"响应式设计",
-	"管理后台",
+	"about.features.markdown",
+	"about.features.categories",
+	"about.features.comments",
+	"about.features.views",
+	"about.features.rss",
+	"about.features.seo",
+	"about.features.responsive",
+	"about.features.admin",
 ];
 </script>
 
 <template>
   <div class="max-w-3xl mx-auto">
-    <!-- 返回按钮 -->
     <NuxtLink
       to="/"
       class="inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-blue-600 transition-colors mb-8"
     >
       <Icon icon="lucide:arrow-left" class="w-4 h-4" />
-      返回首页
+      {{ t("common.action.backHome") }}
     </NuxtLink>
 
-    <!-- 头部 -->
     <div class="text-center mb-12">
       <div
         class="inline-flex items-center justify-center w-24 h-24 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-3xl shadow-xl shadow-blue-600/25 mb-6"
@@ -69,30 +68,26 @@ const features = [
       <h1
         class="text-3xl sm:text-4xl font-bold bg-gradient-to-r from-gray-900 dark:from-gray-100 to-gray-600 dark:to-gray-400 bg-clip-text text-transparent mb-3"
       >
-        关于 X-Blog
+        {{ t("about.seo.title") }}
       </h1>
-      <p class="text-gray-500 dark:text-gray-400">一个现代化的技术博客系统</p>
+      <p class="text-gray-500 dark:text-gray-400">{{ t("about.tagline") }}</p>
     </div>
 
-    <!-- 介绍 -->
     <div
       class="bg-gradient-to-br from-gray-50 dark:from-gray-800/50 to-white dark:to-gray-900 rounded-2xl p-6 sm:p-8 mb-8 border border-gray-100 dark:border-gray-800"
     >
       <p class="text-gray-600 dark:text-gray-300 leading-relaxed mb-4">
-        X-Blog
-        是一个简洁优雅的技术博客系统，采用现代前端与后端技术构建。我们致力于为开发者提供一个轻量、快速、且美观的博客平台。
+        {{ t("about.intro1") }}
       </p>
       <p class="text-gray-600 dark:text-gray-300 leading-relaxed">
-        无论是分享技术心得、记录学习笔记，还是发布项目动态，X-Blog
-        都能为你提供出色的写作与阅读体验。
+        {{ t("about.intro2") }}
       </p>
     </div>
 
-    <!-- 技术栈 -->
     <div class="mb-8">
       <h2 class="text-lg font-bold mb-4 flex items-center gap-2 text-gray-900 dark:text-gray-100">
         <Icon icon="lucide:code-2" class="w-5 h-5 text-blue-600" />
-        技术栈
+        {{ t("about.techStack.title") }}
       </h2>
       <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
         <div
@@ -106,39 +101,28 @@ const features = [
             <Icon :icon="tech.icon" class="w-6 h-6 text-white" />
           </div>
           <p class="font-semibold text-gray-900 dark:text-gray-100">{{ tech.name }}</p>
-          <p class="text-xs text-gray-500 dark:text-gray-400">{{ tech.desc }}</p>
+          <p class="text-xs text-gray-500 dark:text-gray-400">{{ t(tech.descKey) }}</p>
         </div>
       </div>
     </div>
 
-    <!-- 功能列表 -->
     <div class="mb-8">
-      <h2 class="text-lg font-bold mb-4 text-gray-900 dark:text-gray-100">核心功能</h2>
+      <h2 class="text-lg font-bold mb-4 text-gray-900 dark:text-gray-100">{{ t("about.featuresTitle") }}</h2>
       <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
         <div
           v-for="feature in features"
           :key="feature"
           class="bg-gradient-to-r from-blue-50 dark:from-blue-900/30 to-indigo-50 dark:to-indigo-900/30 border border-blue-100 dark:border-blue-900/50 rounded-xl px-4 py-3 text-sm text-blue-700 dark:text-blue-300 font-medium text-center hover:shadow-md transition-shadow"
         >
-          {{ feature }}
+          {{ t(feature) }}
         </div>
       </div>
     </div>
 
-    <!-- 页脚 -->
     <div class="text-center pt-8 border-t border-gray-100 dark:border-gray-800">
       <p class="text-gray-500 dark:text-gray-400 text-sm flex items-center justify-center gap-2">
-        Made with <Icon icon="lucide:heart" class="w-4 h-4 text-red-500 animate-pulse" /> for developers
+        {{ t("common.footer.madeWith") }} <Icon icon="lucide:heart" class="w-4 h-4 text-red-500 animate-pulse" /> {{ t("common.footer.forDevelopers") }}
       </p>
     </div>
   </div>
 </template>
-
-<route lang="json">
-{
-  "meta": {
-    "title": "关于",
-    "description": "关于 X-Blog - 技术博客系统"
-  }
-}
-</route>

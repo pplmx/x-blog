@@ -1,0 +1,27 @@
+{
+	"search": {
+		"seo": {
+			"title": "Search Articles",
+			"titleWithQuery": "Search: {query}",
+			"description": "Search articles in X-Blog",
+			"descWithQuery": "Search results for \"{query}\""
+		},
+		"empty": {
+			"title": "Search Articles",
+			"hint": "Enter keywords to start searching"
+		},
+		"placeholder": "Enter keywords...",
+		"error": "Failed to load: {message}",
+		"results": {
+			"title": "Search Results",
+			"summary": "Found {count} articles matching \"{query}\""
+		},
+		"noResults": {
+			"title": "No matching articles found",
+			"hint": "Try different keywords"
+		},
+		"posts": {
+			"views": "reads"
+		}
+	}
+}

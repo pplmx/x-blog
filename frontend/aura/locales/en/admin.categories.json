@@ -1,0 +1,17 @@
+{
+	"admin.categories": {
+		"seoTitle": "Categories - X-Blog",
+		"title": "Manage Categories",
+		"summary": "{n} categories total",
+		"createTitle": "New Category",
+		"namePlaceholder": "Category name",
+		"create": "Create",
+		"confirm": "Confirm",
+		"edit": "Edit",
+		"delete": "Delete",
+		"confirmDelete": "Delete this category?",
+		"empty": "No categories yet",
+		"operationFailed": "Operation failed, please retry",
+		"loading": "Loading..."
+	}
+}

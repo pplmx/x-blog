@@ -17,6 +17,9 @@ export default defineConfig({
 	globalSetup: "./e2e/global-setup.ts",
 	use: {
 		baseURL: "http://localhost:34567",
+		// i18n auto-detects from the browser language; pin zh-CN so the
+		// deterministic zh baseline matches the hand-written Chinese assertions.
+		locale: "zh-CN",
 		trace: "on-first-retry",
 	},
 	webServer: {

@@ -15,6 +15,8 @@ const props = withDefaults(defineProps<Props>(), {
 const { categories, tags, popularPosts } = toRefs(props);
 const { bookmarkCount } = useBookmarks();
 
+const { t } = useLang();
+
 const route = useRoute();
 const currentCategory = route.query.category_id;
 const currentTag = route.query.tag_id;
@@ -33,7 +35,7 @@ function clearFilters() {
       class="flex items-center gap-1 text-sm text-blue-600 hover:text-blue-800 transition-colors mb-2"
     >
       <Icon icon="lucide:x" class="w-4 h-4" />
-      清除筛选
+      {{ t('components.sidebar.clearFilters') }}
     </button>
 
     <!-- Popular posts -->
@@ -43,7 +45,7 @@ function clearFilters() {
     >
       <h3 class="flex items-center gap-2 font-bold text-gray-900 dark:text-gray-100 mb-4">
         <Icon icon="lucide:trending-up" class="w-5 h-5 text-orange-500" />
-        热门文章
+        {{ t('components.sidebar.popularPosts') }}
       </h3>
       <div class="space-y-3">
         <NuxtLink
@@ -63,7 +65,7 @@ function clearFilters() {
             >
               {{ post.title }}
             </p>
-            <p class="text-xs text-gray-400 mt-1">{{ post.views }} 次阅读</p>
+            <p class="text-xs text-gray-400 mt-1">{{ t('components.sidebar.views', { count: post.views }) }}</p>
           </div>
         </NuxtLink>
       </div>
@@ -75,7 +77,7 @@ function clearFilters() {
     >
       <h3 class="flex items-center gap-2 font-bold text-gray-900 dark:text-gray-100 mb-4">
         <Icon icon="lucide:folder-open" class="w-5 h-5 text-purple-500" />
-        分类
+        {{ t('components.sidebar.categories') }}
       </h3>
       <div class="space-y-1">
         <NuxtLink
@@ -100,7 +102,7 @@ function clearFilters() {
       class="flex items-center gap-2 px-3 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-xl transition-colors"
     >
       <Icon icon="lucide:bookmark" class="w-4 h-4" />
-      <span>收藏的文章</span>
+      <span>{{ t('components.sidebar.bookmarks') }}</span>
       <span
         v-if="bookmarkCount > 0"
         class="ml-auto bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 text-xs px-2 py-0.5 rounded-full"
@@ -115,7 +117,7 @@ function clearFilters() {
     >
       <h3 class="flex items-center gap-2 font-bold text-gray-900 dark:text-gray-100 mb-4">
         <Icon icon="lucide:tag" class="w-5 h-5 text-pink-500" />
-        标签
+        {{ t('components.sidebar.tags') }}
       </h3>
       <div class="flex flex-wrap gap-2">
         <NuxtLink

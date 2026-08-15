@@ -1,0 +1,31 @@
+{
+	"about": {
+		"seo": {
+			"title": "关于 X-Blog",
+			"description": "X-Blog 是一个基于 FastAPI + Nuxt 的现代化技术博客系统，支持 Markdown、Mermaid 图表、KaTeX 数学公式、代码高亮等功能。"
+		},
+		"tagline": "一个现代化的技术博客系统",
+		"intro1": "X-Blog 是一个简洁优雅的技术博客系统，采用现代前端与后端技术构建。我们致力于为开发者提供一个轻量、快速、且美观的博客平台。",
+		"intro2": "无论是分享技术心得、记录学习笔记，还是发布项目动态，X-Blog 都能为你提供出色的写作与阅读体验。",
+		"techStack": {
+			"title": "技术栈",
+			"desc": {
+				"frontend": "前端框架",
+				"backend": "后端框架",
+				"orm": "ORM",
+				"language": "语言"
+			}
+		},
+		"featuresTitle": "核心功能",
+		"features": {
+			"markdown": "Markdown 文章支持",
+			"categories": "分类与标签管理",
+			"comments": "评论系统",
+			"views": "阅读量统计",
+			"rss": "RSS 订阅",
+			"seo": "SEO 优化",
+			"responsive": "响应式设计",
+			"admin": "管理后台"
+		}
+	}
+}

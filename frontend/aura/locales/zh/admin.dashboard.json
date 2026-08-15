@@ -1,0 +1,35 @@
+{
+	"admin.dashboard": {
+		"seoTitle": "仪表盘 - X-Blog",
+		"title": "仪表盘",
+		"subtitle": "博客数据总览",
+		"stats": {
+			"posts": "文章总数",
+			"published": "已发布",
+			"draft": "草稿",
+			"categories": "分类",
+			"tags": "标签",
+			"pendingComments": "待审核评论",
+			"views": "总浏览量"
+		},
+		"topPosts": {
+			"title": "热门文章 (浏览量)"
+		},
+		"categories": {
+			"title": "文章分类分布"
+		},
+		"recentPosts": {
+			"title": "最近发布的文章",
+			"empty": "暂无已发布的文章"
+		},
+		"pendingComments": {
+			"title": "待审核评论",
+			"count": "{n} 条待审核",
+			"empty": "暂无待审核评论"
+		},
+		"approve": "通过",
+		"reject": "拒绝",
+		"operationFailed": "操作失败，请重试",
+		"updatedAt": "数据更新于 {time}"
+	}
+}

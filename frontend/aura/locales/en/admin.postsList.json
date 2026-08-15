@@ -1,0 +1,33 @@
+{
+	"admin.postsList": {
+		"seoTitle": "Posts - X-Blog",
+		"title": "Manage Posts",
+		"summary": "{n} posts total",
+		"newPost": "New Post",
+		"searchPlaceholder": "Search post titles...",
+		"allStatus": "All statuses",
+		"published": "Published",
+		"draft": "Draft",
+		"scheduled": "Scheduled",
+		"confirmDelete": "Delete this post?",
+		"columns": {
+			"title": "Title",
+			"category": "Category",
+			"status": "Status",
+			"views": "Views",
+			"date": "Date",
+			"actions": "Actions"
+		},
+		"empty": {
+			"noMatchTitle": "No matching posts",
+			"noMatchHint": "Try adjusting your search",
+			"title": "No posts yet",
+			"hint": "Start creating your first post"
+		},
+		"pagination": {
+			"prev": "Previous",
+			"next": "Next"
+		},
+		"loading": "Loading..."
+	}
+}

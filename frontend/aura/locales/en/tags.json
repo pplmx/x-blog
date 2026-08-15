@@ -1,0 +1,14 @@
+{
+	"tags": {
+		"all": "All Tags",
+		"tagTitle": "Tag: {name}",
+		"countLabel": "{count} tags in total",
+		"empty": "No tags yet",
+		"backToAll": "Back to all tags",
+		"tagPosts": "Tag posts",
+		"postsEmpty": "No posts yet",
+		"views": "{count} views",
+		"allDesc": "Browse all tags on X-Blog",
+		"tagDesc": "Browse all articles under tag \"{name}\""
+	}
+}

@@ -1,0 +1,15 @@
+{
+	"post": {
+		"notFound": "Post not found",
+		"related": "Related Posts",
+		"views": "{count} views",
+		"readingTime": "{count} min read",
+		"likes": "Like",
+		"likeError": "Failed to like the post. Please try again.",
+		"notFoundTitle": "404 - Page not found",
+		"notFoundHeading": "The page got lost",
+		"notFoundDesc": "Sorry, the page you are looking for does not exist or has been removed. Why not head back to the homepage to browse the latest articles?",
+		"searchArticles": "Search articles",
+		"about": "About this site"
+	}
+}

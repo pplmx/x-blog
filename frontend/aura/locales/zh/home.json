@@ -1,0 +1,34 @@
+{
+	"home": {
+		"seo": {
+			"title": "首页 — X-Blog",
+			"description": "X-Blog — 一个现代化的技术博客系统。探索最新的技术文章和见解。"
+		},
+		"hero": {
+			"badge": "技术博客",
+			"title": "探索技术的无限可能",
+			"description": "X-Blog 是一个基于 FastAPI + Nuxt 4 构建的现代化技术博客系统，分享前端、后端、架构等领域的实践经验。",
+			"searchAction": "搜索文章",
+			"aboutAction": "关于本站"
+		},
+		"stats": {
+			"posts": "文章",
+			"totalViews": "总阅读",
+			"totalLikes": "总点赞"
+		},
+		"posts": {
+			"views": "阅读"
+		},
+		"sections": {
+			"popular": "热门文章",
+			"latest": "最新文章"
+		},
+		"empty": {
+			"posts": "暂无文章"
+		},
+		"sidebar": {
+			"stats": "站点统计",
+			"quickNav": "快速导航"
+		}
+	}
+}

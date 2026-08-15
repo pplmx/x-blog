@@ -1,0 +1,15 @@
+{
+	"post": {
+		"notFound": "文章不存在",
+		"related": "相关文章",
+		"views": "{count} 次阅读",
+		"readingTime": "{count} 分钟",
+		"likes": "喜欢",
+		"likeError": "点赞失败，请稍后重试。",
+		"notFoundTitle": "404 - 页面不存在",
+		"notFoundHeading": "页面迷路了",
+		"notFoundDesc": "抱歉，你访问的页面不存在或已被移除。不如回到首页看看最新文章？",
+		"searchArticles": "搜索文章",
+		"about": "关于本站"
+	}
+}

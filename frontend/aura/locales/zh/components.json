@@ -1,0 +1,42 @@
+{
+	"components": {
+		"bookmark": {
+			"add": "收藏",
+			"remove": "取消收藏",
+			"added": "已收藏",
+			"article": "收藏文章"
+		},
+		"commentForm": {
+			"title": "发表评论",
+			"nickname": "昵称",
+			"email": "邮箱（不会公开）",
+			"content": "写点什么吧...",
+			"submitting": "提交中...",
+			"submit": "提交评论",
+			"submitFailed": "评论提交失败，请重试。",
+			"submitSuccess": "评论提交成功，等待审核中！"
+		},
+		"commentList": {
+			"title": "评论",
+			"empty": "还没有评论，来发第一个评论吧！"
+		},
+		"share": {
+			"shareTo": "分享到",
+			"weibo": "分享到微博",
+			"copyLink": "复制链接"
+		},
+		"sidebar": {
+			"clearFilters": "清除筛选",
+			"popularPosts": "热门文章",
+			"views": "{count} 次阅读",
+			"categories": "分类",
+			"bookmarks": "收藏的文章",
+			"tags": "标签"
+		},
+		"markdown": {
+			"copy": "复制",
+			"copied": "已复制",
+			"copyCode": "复制代码"
+		}
+	}
+}

@@ -626,7 +626,7 @@ describe("Post Detail Page", () => {
 			await wrapper.find('button[type="button"]').trigger("click");
 			await flushPromises();
 
-			expect(wrapper.text()).toContain("Failed to like post. Please try again.");
+			expect(wrapper.text()).toContain("点赞失败，请稍后重试。");
 		});
 
 		it("updates the rendered like count after a successful like", async () => {

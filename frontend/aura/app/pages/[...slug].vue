@@ -1,10 +1,14 @@
 <script setup lang="ts">
 // Real 404: set the HTTP status (soft-404s get indexed by search engines)
-// and give the page a proper title on the server-rendered response.
+// and give the page a proper localized title/description.
+const { t } = useLang();
 if (import.meta.server) {
 	setResponseStatus(404);
-	useHead({ title: "404 - 页面不存在" });
 }
+useHead({
+	title: t("post.notFoundTitle"),
+	meta: [{ name: "description", content: t("post.notFoundDesc") }],
+});
 </script>
 
 <template>
@@ -20,10 +24,10 @@ if (import.meta.server) {
       </div>
 
       <h2 class="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-3">
-        页面迷路了
+        {{ t('post.notFoundHeading') }}
       </h2>
       <p class="text-gray-500 dark:text-gray-400 mb-8 max-w-sm mx-auto leading-relaxed">
-        抱歉，你访问的页面不存在或已被移除。不如回到首页看看最新文章？
+        {{ t('post.notFoundDesc') }}
       </p>
 
       <div class="flex flex-col sm:flex-row gap-3 justify-center">
@@ -32,32 +36,23 @@ if (import.meta.server) {
           class="inline-flex items-center justify-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-500 to-indigo-500 text-white rounded-xl font-medium hover:from-blue-600 hover:to-indigo-600 transition-all shadow-md hover:shadow-lg active:scale-[0.98]"
         >
           <Icon icon="lucide:home" class="w-4 h-4" />
-          返回首页
+          {{ t('common.action.backHome') }}
         </NuxtLink>
         <NuxtLink
           to="/search"
           class="inline-flex items-center justify-center gap-2 px-6 py-3 border border-gray-200 dark:border-gray-700 rounded-xl font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
         >
           <Icon icon="lucide:search" class="w-4 h-4" />
-          搜索文章
+          {{ t('post.searchArticles') }}
         </NuxtLink>
         <NuxtLink
           to="/about"
           class="inline-flex items-center justify-center gap-2 px-6 py-3 border border-gray-200 dark:border-gray-700 rounded-xl font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
         >
           <Icon icon="lucide:info" class="w-4 h-4" />
-          关于本站
+          {{ t('post.about') }}
         </NuxtLink>
       </div>
     </div>
   </div>
 </template>
-
-<route lang="json">
-{
-  "meta": {
-    "title": "404 - 页面不存在",
-    "description": "X-Blog - 页面未找到"
-  }
-}
-</route>

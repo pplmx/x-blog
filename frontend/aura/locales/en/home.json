@@ -1,0 +1,34 @@
+{
+	"home": {
+		"seo": {
+			"title": "Home — X-Blog",
+			"description": "X-Blog — a modern tech blog system. Explore the latest articles and insights."
+		},
+		"hero": {
+			"badge": "Tech Blog",
+			"title": "Explore the Infinite Possibilities of Technology",
+			"description": "X-Blog is a modern tech blog system built with FastAPI + Nuxt 4, sharing hands-on experience across frontend, backend, architecture and more.",
+			"searchAction": "Search articles",
+			"aboutAction": "About this site"
+		},
+		"stats": {
+			"posts": "Articles",
+			"totalViews": "Total reads",
+			"totalLikes": "Total likes"
+		},
+		"posts": {
+			"views": "reads"
+		},
+		"sections": {
+			"popular": "Popular Articles",
+			"latest": "Latest Articles"
+		},
+		"empty": {
+			"posts": "No articles yet"
+		},
+		"sidebar": {
+			"stats": "Site Stats",
+			"quickNav": "Quick Links"
+		}
+	}
+}

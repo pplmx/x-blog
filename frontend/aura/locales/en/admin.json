@@ -1,0 +1,25 @@
+{
+	"admin": {
+		"title": "X-Blog Admin",
+		"nav": {
+			"dashboard": "Dashboard",
+			"posts": "Posts",
+			"comments": "Comments",
+			"categories": "Categories",
+			"tags": "Tags"
+		},
+		"backToSite": "Back to site",
+		"changePassword": "Change password",
+		"logout": "Log out",
+		"password": {
+			"title": "Change password",
+			"current": "Current password",
+			"new": "New password",
+			"confirm": "Confirm new password",
+			"success": "Password changed successfully",
+			"minLength": "Password must be at least 8 characters",
+			"mismatch": "The two passwords do not match",
+			"failed": "Failed to change password"
+		}
+	}
+}

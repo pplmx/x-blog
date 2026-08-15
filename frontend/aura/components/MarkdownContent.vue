@@ -63,6 +63,8 @@ const renderedMermaidKeys = ref<Set<string>>(new Set());
 // --- Copy-to-clipboard state (per code block) ---
 const copiedStates = ref<Set<string>>(new Set());
 
+const { t } = useLang();
+
 async function copyCode(code: string) {
 	try {
 		await navigator.clipboard.writeText(code);
@@ -199,11 +201,11 @@ function lineNumbers(code: string): number[] {
             @click="copyCode(seg.code)"
             :data-copied="copiedStates.has(seg.code)"
             class="flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs transition-all duration-200 hover:bg-gray-700 hover:text-white text-gray-400"
-            title="复制代码"
+            :title="t('components.markdown.copyCode')"
           >
             <Icon icon="lucide:copy" class="w-3.5 h-3.5" v-if="!copiedStates.has(seg.code)" />
             <Icon icon="lucide:check" class="w-3.5 h-3.5" v-else />
-            <span>{{ copiedStates.has(seg.code) ? '已复制' : '复制' }}</span>
+            <span>{{ copiedStates.has(seg.code) ? t('components.markdown.copied') : t('components.markdown.copy') }}</span>
           </button>
         </div>
         <div class="flex bg-[#1a1b26]">

@@ -1,0 +1,28 @@
+{
+	"admin.comments": {
+		"seoTitle": "Comments - X-Blog",
+		"title": "Manage Comments",
+		"summary": "{total} comments total, ",
+		"pendingSummary": "{n} pending on this page",
+		"batchApprove": "Approve selected ({n})",
+		"batchReject": "Reject selected ({n})",
+		"selectAll": "Select all pending",
+		"empty": {
+			"title": "No comments",
+			"subtitle": "There are no comments yet"
+		},
+		"approved": "Approved",
+		"pending": "Pending",
+		"approve": "Approve",
+		"revoke": "Revoke",
+		"delete": "Delete",
+		"confirmDelete": "Delete this comment?",
+		"operationFailed": "Operation failed, please retry",
+		"pagination": {
+			"prev": "Previous",
+			"next": "Next",
+			"page": "Page {current} / {total}"
+		},
+		"loading": "Loading..."
+	}
+}

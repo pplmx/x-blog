@@ -1,0 +1,36 @@
+{
+	"common": {
+		"nav": {
+			"home": "首页",
+			"about": "关于",
+			"search": "搜索",
+			"github": "GitHub"
+		},
+		"theme": {
+			"light": "浅色模式",
+			"dark": "深色模式",
+			"toggleLight": "切换到浅色模式",
+			"toggleDark": "切换到深色模式"
+		},
+		"menu": {
+			"open": "打开菜单",
+			"close": "关闭菜单"
+		},
+		"footer": {
+			"madeWith": "Made with",
+			"forDevelopers": "for developers"
+		},
+		"action": {
+			"back": "返回",
+			"save": "保存",
+			"cancel": "取消",
+			"backHome": "返回首页",
+			"backToList": "返回列表"
+		},
+		"state": {
+			"loading": "加载中",
+			"loadFailed": "加载失败",
+			"empty": "暂无内容"
+		}
+	}
+}

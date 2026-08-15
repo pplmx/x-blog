@@ -5,9 +5,14 @@
  */
 
 import { mount } from "@vue/test-utils";
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import NotFoundPage from "../../app/pages/[...slug].vue";
+
+// The page applies SEO via useHead; stub it so mounting doesn't throw.
+beforeEach(() => {
+	vi.stubGlobal("useHead", vi.fn());
+});
 
 function mountNotFoundPage() {
 	return mount(NotFoundPage, {

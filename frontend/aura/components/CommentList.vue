@@ -1,7 +1,7 @@
 <template>
   <section>
     <div class="flex items-center justify-between mb-4">
-      <h2 class="text-xl font-bold text-gray-900 dark:text-gray-100">评论 ({{ total }})</h2>
+      <h2 class="text-xl font-bold text-gray-900 dark:text-gray-100">{{ t('components.commentList.title') }} ({{ total }})</h2>
     </div>
 
     <!-- Loading -->
@@ -17,7 +17,7 @@
       v-else-if="comments.length === 0"
       class="text-center py-8 text-gray-500 dark:text-gray-400"
     >
-      还没有评论，来发第一个评论吧！
+      {{ t('components.commentList.empty') }}
     </div>
 
     <!-- Comment list -->
@@ -72,6 +72,8 @@ interface Props {
 
 const props = defineProps<Props>();
 
+const { t, locale } = useLang();
+
 const { data: commentData, pending } = await fetchComments(props.postId, 1, 20);
 
 const comments = computed(() => commentData.value?.items || []);
@@ -98,7 +100,7 @@ async function loadPage(page: number) {
 }
 
 function formatDate(dateStr: string): string {
-	return new Date(dateStr).toLocaleDateString("zh-CN", {
+	return new Date(dateStr).toLocaleDateString(locale.value === "zh" ? "zh-CN" : "en-US", {
 		year: "numeric",
 		month: "short",
 		day: "numeric",

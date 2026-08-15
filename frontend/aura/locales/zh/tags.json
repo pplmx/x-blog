@@ -1,0 +1,14 @@
+{
+	"tags": {
+		"all": "所有标签",
+		"tagTitle": "标签: {name}",
+		"countLabel": "共 {count} 个标签",
+		"empty": "暂无标签",
+		"backToAll": "返回所有标签",
+		"tagPosts": "标签文章",
+		"postsEmpty": "暂无文章",
+		"views": "{count} 次阅读",
+		"allDesc": "浏览 X-Blog 中的所有标签",
+		"tagDesc": "浏览标签 \"{name}\" 下的所有文章"
+	}
+}

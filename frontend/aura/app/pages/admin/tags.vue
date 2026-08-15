@@ -14,7 +14,9 @@ import {
 
 definePageMeta({ layout: "admin" });
 
-useHead({ title: "标签管理 - X-Blog" });
+const { t } = useLang();
+
+useHead({ title: computed(() => t("admin.tags.seoTitle")) });
 
 const { data: tags, pending, error, refresh } = await fetchAdminTags();
 const newTagName = ref("");
@@ -25,7 +27,7 @@ const actionError = ref<string | null>(null);
 
 function getErrorMessage(e: unknown): string {
 	if (e instanceof Error) return e.message;
-	return "操作失败，请重试";
+	return t("admin.tags.operationFailed");
 }
 
 async function handleCreate() {
@@ -64,7 +66,7 @@ async function confirmEdit(id: number) {
 }
 
 async function handleDelete(id: number) {
-	if (!confirm("确定要删除这个标签吗？")) return;
+	if (!confirm(t("admin.tags.confirmDelete"))) return;
 	isProcessing.value = true;
 	actionError.value = null;
 	try {
@@ -84,10 +86,10 @@ async function handleDelete(id: number) {
       <h1
         class="text-2xl font-bold bg-gradient-to-r from-gray-900 dark:from-gray-100 to-gray-600 dark:to-gray-400 bg-clip-text text-transparent"
       >
-        标签管理
+        {{ t("admin.tags.title") }}
       </h1>
       <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">
-        共 {{ tags?.length || 0 }} 个标签
+        {{ t("admin.tags.summary", { n: tags?.length || 0 }) }}
       </p>
     </div>
 
@@ -102,13 +104,13 @@ async function handleDelete(id: number) {
     <!-- Create form -->
     <div class="bg-white dark:bg-gray-900 rounded-xl border border-gray-100 dark:border-gray-800 p-6 mb-6">
       <h2 class="text-lg font-medium text-gray-900 dark:text-gray-100 mb-4">
-        新建标签
+        {{ t("admin.tags.createTitle") }}
       </h2>
       <div class="flex gap-3">
         <input
           v-model="newTagName"
           type="text"
-          placeholder="标签名称"
+          :placeholder="t('admin.tags.namePlaceholder')"
           class="flex-1 px-4 py-3 border border-gray-200 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
         >
         <button
@@ -117,7 +119,7 @@ async function handleDelete(id: number) {
           class="px-6 py-3 bg-pink-500 text-white rounded-xl font-medium hover:bg-pink-600 disabled:opacity-50 transition-colors"
           @click="handleCreate"
         >
-          创建
+          {{ t("admin.tags.create") }}
         </button>
       </div>
     </div>
@@ -125,7 +127,7 @@ async function handleDelete(id: number) {
     <!-- Tags list -->
     <div v-if="pending" class="text-center py-12">
       <Icon icon="lucide:loader-2" class="w-5 h-5 animate-spin inline-block mr-2" />
-      加载中...
+      {{ t("admin.tags.loading") }}
     </div>
 
     <div v-else-if="error" class="text-center py-12 text-red-500">
@@ -138,7 +140,7 @@ async function handleDelete(id: number) {
     >
       <Icon icon="lucide:tag" class="w-12 h-12 text-gray-400 mb-4 mx-auto" />
       <p class="text-gray-500 dark:text-gray-400">
-        还没有任何标签
+        {{ t("admin.tags.empty") }}
       </p>
     </div>
 

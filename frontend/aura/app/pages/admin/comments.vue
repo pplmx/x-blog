@@ -9,7 +9,9 @@ import {
 
 definePageMeta({ layout: "admin" });
 
-useHead({ title: "评论管理 - X-Blog" });
+const { t } = useLang();
+
+useHead({ title: computed(() => t("admin.comments.seoTitle")) });
 
 const PAGE_SIZE = 20;
 const {
@@ -25,7 +27,7 @@ const actionError = ref<string | null>(null);
 
 function getErrorMessage(e: unknown): string {
 	if (e instanceof Error) return e.message;
-	return "操作失败，请重试";
+	return t("admin.comments.operationFailed");
 }
 
 const totalPages = computed(() => comments.value?.pagination?.total_pages ?? 1);
@@ -75,7 +77,7 @@ async function batchApprove(approved: boolean) {
 }
 
 async function handleDelete(id: number) {
-	if (!confirm("确定要删除这条评论吗？")) return;
+	if (!confirm(t("admin.comments.confirmDelete"))) return;
 	isProcessing.value = true;
 	actionError.value = null;
 	try {
@@ -107,10 +109,10 @@ async function handleApprove(id: number, approved: boolean) {
     <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
       <div>
         <h1 class="text-2xl font-bold bg-gradient-to-r from-gray-900 dark:from-gray-100 to-gray-600 dark:to-gray-400 bg-clip-text text-transparent">
-          评论管理
+          {{ t("admin.comments.title") }}
         </h1>
         <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">
-          共 {{ comments?.pagination?.total ?? 0 }} 条评论，<span class="text-amber-600 dark:text-amber-400">本页 {{ pendingComments.length }} 条待审核</span>
+          {{ t("admin.comments.summary", { total: comments?.pagination?.total ?? 0 }) }}<span class="text-amber-600 dark:text-amber-400">{{ t("admin.comments.pendingSummary", { n: pendingComments.length }) }}</span>
         </p>
       </div>
       <div
@@ -126,7 +128,7 @@ async function handleApprove(id: number, approved: boolean) {
           class="px-4 py-2 text-sm bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-400 rounded-lg hover:bg-green-100 dark:hover:bg-green-900/50 transition-colors disabled:opacity-40"
           @click="batchApprove(true)"
         >
-          批量通过 ({{ selectedIds.size }})
+          {{ t("admin.comments.batchApprove", { n: selectedIds.size }) }}
         </button>
         <button
           type="button"
@@ -134,7 +136,7 @@ async function handleApprove(id: number, approved: boolean) {
           class="px-4 py-2 text-sm bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 rounded-lg hover:bg-red-100 dark:hover:bg-red-900/50 transition-colors disabled:opacity-40"
           @click="batchApprove(false)"
         >
-          批量拒绝 ({{ selectedIds.size }})
+          {{ t("admin.comments.batchReject", { n: selectedIds.size }) }}
         </button>
         <label class="flex items-center gap-1.5 text-sm text-gray-500 dark:text-gray-400 cursor-pointer select-none">
           <input
@@ -144,7 +146,7 @@ async function handleApprove(id: number, approved: boolean) {
             :indeterminate="selectedIds.size > 0 && selectedIds.size < pendingComments.length"
             @change="toggleSelectAll"
           >
-          全选待审核
+          {{ t("admin.comments.selectAll") }}
         </label>
       </div>
     </div>
@@ -152,7 +154,7 @@ async function handleApprove(id: number, approved: boolean) {
     <div v-if="pending" class="text-center py-12">
       <div class="inline-flex items-center gap-2 text-gray-500">
         <Icon icon="lucide:loader-2" class="w-5 h-5 animate-spin" />
-        加载中...
+        {{ t("admin.comments.loading") }}
       </div>
     </div>
 
@@ -163,10 +165,10 @@ async function handleApprove(id: number, approved: boolean) {
     <div v-else-if="!comments || !comments.items || comments.items.length === 0" class="flex flex-col items-center justify-center py-16 bg-gradient-to-br from-gray-50 dark:from-gray-800/50 to-white dark:to-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800">
       <Icon icon="lucide:message-circle" class="w-12 h-12 text-gray-400 mb-4" />
       <h3 class="text-lg font-medium text-gray-700 dark:text-gray-300 mb-1">
-        暂无评论
+        {{ t("admin.comments.empty.title") }}
       </h3>
       <p class="text-sm text-gray-500 dark:text-gray-400">
-        还没有任何评论
+        {{ t("admin.comments.empty.subtitle") }}
       </p>
     </div>
 
@@ -198,7 +200,7 @@ async function handleApprove(id: number, approved: boolean) {
                   ? 'bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-400'
                   : 'bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400']"
               >
-                {{ comment.is_approved ? '已审核' : '待审核' }}
+                {{ comment.is_approved ? t('admin.comments.approved') : t('admin.comments.pending') }}
               </span>
             </div>
 
@@ -221,7 +223,7 @@ async function handleApprove(id: number, approved: boolean) {
               class="px-3 py-1.5 text-xs bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-400 rounded-lg hover:bg-green-100 dark:hover:bg-green-900/50 transition-colors"
               @click="handleApprove(comment.id, true)"
             >
-              通过
+              {{ t("admin.comments.approve") }}
             </button>
             <button
               v-if="comment.is_approved"
@@ -230,7 +232,7 @@ async function handleApprove(id: number, approved: boolean) {
               class="px-3 py-1.5 text-xs bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 rounded-lg hover:bg-amber-100 dark:hover:bg-amber-900/50 transition-colors"
               @click="handleApprove(comment.id, false)"
             >
-              撤销
+              {{ t("admin.comments.revoke") }}
             </button>
             <button
               type="button"
@@ -238,7 +240,7 @@ async function handleApprove(id: number, approved: boolean) {
               class="px-3 py-1.5 text-xs text-red-500 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-lg transition-colors"
               @click="handleDelete(comment.id)"
             >
-              删除
+              {{ t("admin.comments.delete") }}
             </button>
           </div>
         </div>
@@ -254,10 +256,10 @@ async function handleApprove(id: number, approved: boolean) {
           class="px-4 py-2 text-sm bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
           @click="gotoPage(currentPage - 1)"
         >
-          上一页
+          {{ t("admin.comments.pagination.prev") }}
         </button>
         <span class="text-sm text-gray-500 dark:text-gray-400">
-          第 {{ currentPage }} / {{ totalPages }} 页
+          {{ t("admin.comments.pagination.page", { current: currentPage, total: totalPages }) }}
         </span>
         <button
           type="button"
@@ -265,7 +267,7 @@ async function handleApprove(id: number, approved: boolean) {
           class="px-4 py-2 text-sm bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-900/50 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
           @click="gotoPage(currentPage + 1)"
         >
-          下一页
+          {{ t("admin.comments.pagination.next") }}
         </button>
       </div>
     </div>

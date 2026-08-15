@@ -1,0 +1,14 @@
+{
+	"admin.tags": {
+		"seoTitle": "Tags - X-Blog",
+		"title": "Manage Tags",
+		"summary": "{n} tags total",
+		"createTitle": "New Tag",
+		"namePlaceholder": "Tag name",
+		"create": "Create",
+		"confirmDelete": "Delete this tag?",
+		"empty": "No tags yet",
+		"operationFailed": "Operation failed, please retry",
+		"loading": "Loading..."
+	}
+}

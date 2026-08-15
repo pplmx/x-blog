@@ -10,6 +10,7 @@
 import { useAdminAuth } from "~~/composables/useAdminAuth";
 
 const { isAuthenticated, logout } = useAdminAuth();
+const { t } = useLang();
 const route = useRoute();
 const isLoginPage = route.path === "/admin/login";
 const sidebarOpen = ref(false);
@@ -31,11 +32,11 @@ async function handleChangePassword() {
 	passwordError.value = null;
 	passwordSuccess.value = false;
 	if (passwordForm.value.new_password.length < 8) {
-		passwordError.value = "密码至少 8 位";
+		passwordError.value = t("admin.password.minLength");
 		return;
 	}
 	if (passwordForm.value.new_password !== passwordForm.value.confirm) {
-		passwordError.value = "两次输入的密码不一致";
+		passwordError.value = t("admin.password.mismatch");
 		return;
 	}
 	try {
@@ -60,7 +61,7 @@ async function handleChangePassword() {
 			showPasswordModal.value = false;
 		}, 1500);
 	} catch (err) {
-		passwordError.value = err instanceof Error ? err.message : "修改密码失败";
+		passwordError.value = err instanceof Error ? err.message : t("admin.password.failed");
 	}
 }
 
@@ -74,11 +75,11 @@ watch(
 
 // Navigation items matching the Next.js admin layout
 const navItems = [
-	{ href: "/admin", label: "仪表盘", icon: "lucide:layout-dashboard" },
-	{ href: "/admin/posts", label: "文章", icon: "lucide:file-text" },
-	{ href: "/admin/comments", label: "评论", icon: "lucide:message-circle" },
-	{ href: "/admin/categories", label: "分类", icon: "lucide:folder" },
-	{ href: "/admin/tags", label: "标签", icon: "lucide:tag" },
+	{ href: "/admin", labelKey: "admin.nav.dashboard", icon: "lucide:layout-dashboard" },
+	{ href: "/admin/posts", labelKey: "admin.nav.posts", icon: "lucide:file-text" },
+	{ href: "/admin/comments", labelKey: "admin.nav.comments", icon: "lucide:message-circle" },
+	{ href: "/admin/categories", labelKey: "admin.nav.categories", icon: "lucide:folder" },
+	{ href: "/admin/tags", labelKey: "admin.nav.tags", icon: "lucide:tag" },
 ];
 </script>
 
@@ -106,13 +107,13 @@ const navItems = [
       >
         <div class="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700">
           <h2 class="text-xl font-bold text-gray-900 dark:text-gray-100">
-            X-Blog 管理
+            {{ t('admin.title') }}
           </h2>
           <button
             type="button"
             class="lg:hidden p-1 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
             @click="sidebarOpen = false"
-            aria-label="关闭菜单"
+            :aria-label="t('common.menu.close')"
           >
             <Icon icon="lucide:x" class="w-5 h-5" />
           </button>
@@ -132,7 +133,7 @@ const navItems = [
             @click="sidebarOpen = false"
           >
             <Icon :icon="item.icon" class="w-4 h-4" />
-            {{ item.label }}
+            {{ t(item.labelKey) }}
           </NuxtLink>
 
           <div class="my-3 border-t border-gray-100 dark:border-gray-700/50" />
@@ -143,7 +144,7 @@ const navItems = [
             @click="sidebarOpen = false"
           >
             <Icon icon="lucide:arrow-left" class="w-4 h-4" />
-            返回前台
+            {{ t('admin.backToSite') }}
           </NuxtLink>
 
           <button
@@ -152,7 +153,7 @@ const navItems = [
             @click="showPasswordModal = true"
           >
             <Icon icon="lucide:key-round" class="w-4 h-4" />
-            修改密码
+            {{ t('admin.changePassword') }}
           </button>
 
           <button
@@ -161,7 +162,7 @@ const navItems = [
             @click="logout"
           >
             <Icon icon="lucide:log-out" class="w-4 h-4" />
-            退出登录
+            {{ t('admin.logout') }}
           </button>
         </nav>
       </aside>
@@ -174,11 +175,11 @@ const navItems = [
             type="button"
             class="p-2 -ml-2 mr-2 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"
             @click="sidebarOpen = true"
-            aria-label="打开菜单"
+            :aria-label="t('common.menu.open')"
           >
             <Icon icon="lucide:menu" class="w-6 h-6" />
           </button>
-          <span class="font-bold text-gray-900 dark:text-gray-100">X-Blog 管理</span>
+          <span class="font-bold text-gray-900 dark:text-gray-100">{{ t('admin.title') }}</span>
         </header>
 
         <main class="flex-1 p-6 lg:p-8 overflow-x-auto">
@@ -195,15 +196,15 @@ const navItems = [
         @click.self="showPasswordModal = false"
       >
         <div class="bg-white dark:bg-gray-900 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-700 p-6 w-full max-w-sm mx-4">
-          <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">修改密码</h3>
+          <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">{{ t('admin.password.title') }}</h3>
 
           <div v-if="passwordSuccess" class="p-3 bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-400 rounded-xl text-sm mb-4">
-            密码修改成功
+            {{ t('admin.password.success') }}
           </div>
 
           <form @submit.prevent="handleChangePassword" class="space-y-4">
             <div>
-              <label class="text-sm font-medium text-gray-700 dark:text-gray-300 block mb-1">当前密码</label>
+              <label class="text-sm font-medium text-gray-700 dark:text-gray-300 block mb-1">{{ t('admin.password.current') }}</label>
               <input
                 v-model="passwordForm.current_password"
                 type="password"
@@ -212,7 +213,7 @@ const navItems = [
               >
             </div>
             <div>
-              <label class="text-sm font-medium text-gray-700 dark:text-gray-300 block mb-1">新密码</label>
+              <label class="text-sm font-medium text-gray-700 dark:text-gray-300 block mb-1">{{ t('admin.password.new') }}</label>
               <input
                 v-model="passwordForm.new_password"
                 type="password"
@@ -222,7 +223,7 @@ const navItems = [
               >
             </div>
             <div>
-              <label class="text-sm font-medium text-gray-700 dark:text-gray-300 block mb-1">确认新密码</label>
+              <label class="text-sm font-medium text-gray-700 dark:text-gray-300 block mb-1">{{ t('admin.password.confirm') }}</label>
               <input
                 v-model="passwordForm.confirm"
                 type="password"
@@ -235,10 +236,10 @@ const navItems = [
 
             <div class="flex gap-3 pt-2">
               <button type="submit" class="flex-1 px-4 py-2 bg-blue-500 text-white rounded-xl text-sm font-medium hover:bg-blue-600 transition-colors">
-                保存
+                {{ t('common.action.save') }}
               </button>
               <button type="button" class="flex-1 px-4 py-2 border border-gray-200 dark:border-gray-700 rounded-xl text-sm font-medium hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors" @click="showPasswordModal = false">
-                取消
+                {{ t('common.action.cancel') }}
               </button>
             </div>
           </form>

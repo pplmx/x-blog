@@ -1,0 +1,33 @@
+{
+	"admin.postsList": {
+		"seoTitle": "文章管理 - X-Blog",
+		"title": "文章管理",
+		"summary": "共 {n} 篇文章",
+		"newPost": "新建文章",
+		"searchPlaceholder": "搜索文章标题...",
+		"allStatus": "全部状态",
+		"published": "已发布",
+		"draft": "草稿",
+		"scheduled": "定时发布",
+		"confirmDelete": "确定要删除这篇文章吗？",
+		"columns": {
+			"title": "标题",
+			"category": "分类",
+			"status": "状态",
+			"views": "浏览",
+			"date": "日期",
+			"actions": "操作"
+		},
+		"empty": {
+			"noMatchTitle": "没有匹配的文章",
+			"noMatchHint": "尝试修改搜索条件",
+			"title": "暂无文章",
+			"hint": "开始创建你的第一篇文章吧"
+		},
+		"pagination": {
+			"prev": "上一页",
+			"next": "下一页"
+		},
+		"loading": "加载中..."
+	}
+}

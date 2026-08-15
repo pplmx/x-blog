@@ -1,11 +1,12 @@
 <script setup lang="ts">
 const route = useRoute();
+const { t } = useLang();
 const isHome = computed(() => route.path === "/");
 
 const navLinks = [
-	{ to: "/", label: "首页", icon: "lucide:home" },
-	{ to: "/about", label: "关于", icon: "lucide:user" },
-	{ to: "/search", label: "搜索", icon: "lucide:search" },
+	{ to: "/", labelKey: "common.nav.home", icon: "lucide:home" },
+	{ to: "/about", labelKey: "common.nav.about", icon: "lucide:user" },
+	{ to: "/search", labelKey: "common.nav.search", icon: "lucide:search" },
 ];
 
 const isDark = ref(false);
@@ -74,15 +75,18 @@ onMounted(() => {
                 : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800'"
             >
               <Icon :icon="link.icon" class="w-4 h-4" />
-              {{ link.label }}
+              {{ t(link.labelKey) }}
             </NuxtLink>
+
+            <!-- Language switcher -->
+            <LanguageSwitcher class="mx-2" />
 
             <!-- Dark mode toggle -->
             <div class="w-px h-5 bg-gray-200 dark:bg-gray-700 mx-2" />
 
             <button
               type="button"
-              :aria-label="isDark ? '切换到浅色模式' : '切换到深色模式'"
+              :aria-label="isDark ? t('common.theme.toggleLight') : t('common.theme.toggleDark')"
               class="p-2 rounded-lg text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-700 dark:hover:text-gray-200 transition-all duration-200"
               @click="toggleDark"
             >
@@ -95,7 +99,7 @@ onMounted(() => {
           <button
             type="button"
             class="md:hidden p-2 rounded-lg text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
-            aria-label="打开菜单"
+            :aria-label="t('common.menu.open')"
             @click="mobileMenuOpen = !mobileMenuOpen"
           >
             <Icon :icon="mobileMenuOpen ? 'lucide:x' : 'lucide:menu'" class="w-5 h-5 transition-transform duration-200" />
@@ -118,15 +122,18 @@ onMounted(() => {
               @click="mobileMenuOpen = false"
             >
               <Icon :icon="link.icon" class="w-4 h-4" />
-              {{ link.label }}
+              {{ t(link.labelKey) }}
             </NuxtLink>
+            <div class="px-4 py-2">
+              <LanguageSwitcher />
+            </div>
             <button
               type="button"
               class="flex items-center gap-3 w-full px-4 py-3 rounded-xl text-sm font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
               @click="toggleDark"
             >
               <Icon :icon="isDark ? 'lucide:sun' : 'lucide:moon'" class="w-4 h-4" />
-              {{ isDark ? '浅色模式' : '深色模式' }}
+              {{ isDark ? t('common.theme.light') : t('common.theme.dark') }}
             </button>
           </div>
         </div>
@@ -144,13 +151,13 @@ onMounted(() => {
         <div class="flex flex-col sm:flex-row items-center justify-between gap-4">
           <div class="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
             <span>© 2026 X-Blog.</span>
-            <span>Made with</span>
+            <span>{{ t('common.footer.madeWith') }}</span>
             <Icon icon="lucide:heart" class="w-3.5 h-3.5 text-red-500 fill-red-500" />
-            <span>for developers.</span>
+            <span>{{ t('common.footer.forDevelopers') }}</span>
           </div>
           <div class="flex items-center gap-4 text-sm text-gray-400 dark:text-gray-500">
-            <NuxtLink to="/" class="hover:text-gray-600 dark:hover:text-gray-300 transition-colors">首页</NuxtLink>
-            <NuxtLink to="/about" class="hover:text-gray-600 dark:hover:text-gray-300 transition-colors">关于</NuxtLink>
+            <NuxtLink to="/" class="hover:text-gray-600 dark:hover:text-gray-300 transition-colors">{{ t('common.nav.home') }}</NuxtLink>
+            <NuxtLink to="/about" class="hover:text-gray-600 dark:hover:text-gray-300 transition-colors">{{ t('common.nav.about') }}</NuxtLink>
             <a href="https://github.com/pplmx/x-blog" target="_blank" rel="noopener noreferrer" class="hover:text-gray-600 dark:hover:text-gray-300 transition-colors">GitHub</a>
           </div>
         </div>

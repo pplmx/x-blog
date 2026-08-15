@@ -1,0 +1,19 @@
+{
+	"admin.login": {
+		"seoTitle": "管理员登录 - X-Blog",
+		"title": "管理员登录",
+		"subtitle": "请输入管理员账号密码",
+		"username": "用户名",
+		"usernamePlaceholder": "用户名",
+		"password": "密码",
+		"passwordPlaceholder": "密码",
+		"loggingIn": "登录中...",
+		"login": "登录",
+		"backToBlog": "返回博客首页",
+		"errors": {
+			"invalidCredentials": "登录失败：用户名或密码错误",
+			"noToken": "登录失败：未收到访问令牌",
+			"network": "登录失败：网络错误"
+		}
+	}
+}

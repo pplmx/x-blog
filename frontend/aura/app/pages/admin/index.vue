@@ -15,7 +15,9 @@ import {
 
 definePageMeta({ layout: "admin" });
 
-useHead({ title: "仪表盘 - X-Blog" });
+const { t } = useLang();
+
+useHead({ title: computed(() => t("admin.dashboard.seoTitle")) });
 
 // Fetch all data in parallel. Aggregate card counts come from the exact
 // /api/stats endpoint — deriving them from the post list would silently
@@ -75,63 +77,63 @@ async function handleApprove(commentId: number, approved: boolean) {
 		if (comment) comment.is_approved = approved;
 		approveError.value = null;
 	} catch (e) {
-		approveError.value = e instanceof Error ? e.message : "操作失败，请重试";
+		approveError.value = e instanceof Error ? e.message : t("admin.dashboard.operationFailed");
 	}
 }
 
 const loadedAt = new Date().toLocaleString("zh-CN");
 
-const stats = [
+const stats = computed(() => [
 	{
-		title: "文章总数",
+		labelKey: "admin.dashboard.stats.posts",
 		value: blogStats?.total_posts ?? posts.length,
 		icon: "lucide:file-text",
 		color: "text-blue-600",
 		bg: "bg-blue-50",
 	},
 	{
-		title: "已发布",
+		labelKey: "admin.dashboard.stats.published",
 		value: publishedCount,
 		icon: "lucide:check-circle",
 		color: "text-green-600",
 		bg: "bg-green-50",
 	},
 	{
-		title: "草稿",
+		labelKey: "admin.dashboard.stats.draft",
 		value: draftCount,
 		icon: "lucide:clock",
 		color: "text-yellow-600",
 		bg: "bg-yellow-50",
 	},
 	{
-		title: "分类",
+		labelKey: "admin.dashboard.stats.categories",
 		value: categories?.length || 0,
 		icon: "lucide:folder",
 		color: "text-purple-600",
 		bg: "bg-purple-50",
 	},
 	{
-		title: "标签",
+		labelKey: "admin.dashboard.stats.tags",
 		value: tags?.length || 0,
 		icon: "lucide:tag",
 		color: "text-pink-600",
 		bg: "bg-pink-50",
 	},
 	{
-		title: "待审核评论",
+		labelKey: "admin.dashboard.stats.pendingComments",
 		value: pendingCommentsCount,
 		icon: "lucide:message-square",
 		color: "text-red-600",
 		bg: "bg-red-50",
 	},
 	{
-		title: "总浏览量",
+		labelKey: "admin.dashboard.stats.views",
 		value: totalViews,
 		icon: "lucide:eye",
 		color: "text-orange-600",
 		bg: "bg-orange-50",
 	},
-];
+]);
 </script>
 
 <template>
@@ -140,10 +142,10 @@ const stats = [
       <h1
         class="text-2xl font-bold bg-gradient-to-r from-gray-900 dark:from-gray-100 to-gray-600 dark:to-gray-400 bg-clip-text text-transparent"
       >
-        仪表盘
+        {{ t("admin.dashboard.title") }}
       </h1>
       <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">
-        博客数据总览
+        {{ t("admin.dashboard.subtitle") }}
       </p>
     </div>
 
@@ -151,12 +153,12 @@ const stats = [
     <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 mb-8">
       <div
         v-for="stat in stats"
-        :key="stat.title"
+        :key="stat.labelKey"
         class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 p-5 hover:shadow-lg hover:border-gray-200 dark:hover:border-gray-700 transition-all duration-200"
       >
         <div class="flex items-center justify-between mb-3">
           <span class="text-sm font-medium text-gray-500 dark:text-gray-400">
-            {{ stat.title }}
+            {{ t(stat.labelKey) }}
           </span>
           <div :class="['p-2.5 rounded-xl', stat.bg]">
             <Icon :icon="stat.icon" :class="['h-5 w-5', stat.color]" />
@@ -173,7 +175,7 @@ const stats = [
       <div class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 p-5">
         <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4 flex items-center gap-2">
           <Icon icon="lucide:file-text" class="w-5 h-5 text-blue-500" />
-          热门文章 (浏览量)
+          {{ t("admin.dashboard.topPosts.title") }}
         </h3>
         <div class="space-y-3">
           <div
@@ -196,7 +198,7 @@ const stats = [
       <div class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 p-5">
         <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4 flex items-center gap-2">
           <Icon icon="lucide:folder" class="w-5 h-5 text-purple-500" />
-          文章分类分布
+          {{ t("admin.dashboard.categories.title") }}
         </h3>
         <div class="space-y-3">
           <div
@@ -227,10 +229,10 @@ const stats = [
       <div class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 p-5">
         <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4 flex items-center gap-2">
           <Icon icon="lucide:clock" class="w-5 h-5 text-green-500" />
-          最近发布的文章
+          {{ t("admin.dashboard.recentPosts.title") }}
         </h3>
         <div v-if="recentPosts.length === 0" class="text-gray-500 dark:text-gray-400 text-sm">
-          暂无已发布的文章
+          {{ t("admin.dashboard.recentPosts.empty") }}
         </div>
         <div v-else class="space-y-2">
           <NuxtLink
@@ -261,9 +263,9 @@ const stats = [
       <div class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 p-5">
         <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4 flex items-center gap-2">
           <Icon icon="lucide:message-square" class="w-5 h-5 text-red-500" />
-          待审核评论
+          {{ t("admin.dashboard.pendingComments.title") }}
           <span v-if="pendingComments.length > 0" class="ml-auto text-sm font-normal text-gray-500">
-            {{ pendingComments.length }} 条待审核
+            {{ t("admin.dashboard.pendingComments.count", { n: pendingComments.length }) }}
           </span>
         </h3>
         <div
@@ -273,7 +275,7 @@ const stats = [
           {{ approveError }}
         </div>
         <div v-if="recentPendingComments.length === 0" class="text-gray-500 dark:text-gray-400 text-sm">
-          暂无待审核评论
+          {{ t("admin.dashboard.pendingComments.empty") }}
         </div>
         <div v-else class="space-y-3">
           <div
@@ -298,13 +300,13 @@ const stats = [
                 class="px-3 py-1 text-xs font-medium text-green-700 bg-green-100 dark:bg-green-900/30 dark:text-green-400 rounded-lg hover:bg-green-200 dark:hover:bg-green-900/50 transition-colors"
                 @click="handleApprove(comment.id, true)"
               >
-                通过
+                {{ t("admin.dashboard.approve") }}
               </button>
               <button
                 class="px-3 py-1 text-xs font-medium text-red-700 bg-red-100 dark:bg-red-900/30 dark:text-red-400 rounded-lg hover:bg-red-200 dark:hover:bg-red-900/50 transition-colors"
                 @click="handleApprove(comment.id, false)"
               >
-                拒绝
+                {{ t("admin.dashboard.reject") }}
               </button>
             </div>
           </div>
@@ -314,7 +316,7 @@ const stats = [
 
     <!-- Data freshness -->
     <div class="text-xs text-gray-400 dark:text-gray-600 text-right">
-      数据更新于 {{ loadedAt }}
+      {{ t("admin.dashboard.updatedAt", { time: loadedAt }) }}
     </div>
   </div>
 </template>

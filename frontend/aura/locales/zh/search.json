@@ -1,0 +1,27 @@
+{
+	"search": {
+		"seo": {
+			"title": "搜索文章",
+			"titleWithQuery": "搜索: {query}",
+			"description": "在 X-Blog 中搜索文章",
+			"descWithQuery": "搜索\"{query}\"的文章结果"
+		},
+		"empty": {
+			"title": "搜索文章",
+			"hint": "输入关键词开始搜索"
+		},
+		"placeholder": "输入关键词...",
+		"error": "加载失败: {message}",
+		"results": {
+			"title": "搜索结果",
+			"summary": "找到 \"{query}\" 相关文章 {count} 篇"
+		},
+		"noResults": {
+			"title": "没有找到相关文章",
+			"hint": "试试其他关键词吧"
+		},
+		"posts": {
+			"views": "次阅读"
+		}
+	}
+}

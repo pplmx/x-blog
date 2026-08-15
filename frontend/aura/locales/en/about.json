@@ -1,0 +1,31 @@
+{
+	"about": {
+		"seo": {
+			"title": "About X-Blog",
+			"description": "X-Blog is a modern tech blog system built with FastAPI + Nuxt, supporting Markdown, Mermaid diagrams, KaTeX math, syntax highlighting and more."
+		},
+		"tagline": "A modern tech blog system",
+		"intro1": "X-Blog is a clean and elegant tech blog system built with modern frontend and backend technologies. We are committed to providing developers a lightweight, fast and beautiful blogging platform.",
+		"intro2": "Whether sharing technical insights, keeping study notes, or posting project updates, X-Blog delivers an excellent writing and reading experience.",
+		"techStack": {
+			"title": "Tech Stack",
+			"desc": {
+				"frontend": "Frontend framework",
+				"backend": "Backend framework",
+				"orm": "ORM",
+				"language": "Language"
+			}
+		},
+		"featuresTitle": "Core Features",
+		"features": {
+			"markdown": "Markdown article support",
+			"categories": "Category & tag management",
+			"comments": "Comment system",
+			"views": "Read count tracking",
+			"rss": "RSS subscription",
+			"seo": "SEO optimization",
+			"responsive": "Responsive design",
+			"admin": "Admin panel"
+		}
+	}
+}

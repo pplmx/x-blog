@@ -1,0 +1,42 @@
+{
+	"components": {
+		"bookmark": {
+			"add": "Bookmark",
+			"remove": "Remove bookmark",
+			"added": "Bookmarked",
+			"article": "Bookmark article"
+		},
+		"commentForm": {
+			"title": "Post a comment",
+			"nickname": "Nickname",
+			"email": "Email (won't be published)",
+			"content": "Write something...",
+			"submitting": "Submitting...",
+			"submit": "Post comment",
+			"submitFailed": "Failed to submit comment. Please try again.",
+			"submitSuccess": "Comment submitted successfully, awaiting review!"
+		},
+		"commentList": {
+			"title": "Comments",
+			"empty": "No comments yet — be the first to comment!"
+		},
+		"share": {
+			"shareTo": "Share to",
+			"weibo": "Share to Weibo",
+			"copyLink": "Copy link"
+		},
+		"sidebar": {
+			"clearFilters": "Clear filters",
+			"popularPosts": "Popular posts",
+			"views": "{count} views",
+			"categories": "Categories",
+			"bookmarks": "Bookmarked posts",
+			"tags": "Tags"
+		},
+		"markdown": {
+			"copy": "Copy",
+			"copied": "Copied",
+			"copyCode": "Copy code"
+		}
+	}
+}

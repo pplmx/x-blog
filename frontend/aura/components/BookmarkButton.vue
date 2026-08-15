@@ -16,6 +16,7 @@ const props = withDefaults(defineProps<Props>(), {
 
 const emit = defineEmits<Emits>();
 
+const { t } = useLang();
 const { isBookmarked, toggleBookmark } = useBookmarks();
 
 function handleClick() {
@@ -30,7 +31,7 @@ function handleClick() {
   <button
     type="button"
     @click.stop="handleClick"
-    :title="isBookmarked(postId) ? '取消收藏' : '收藏文章'"
+    :title="isBookmarked(postId) ? t('components.bookmark.remove') : t('components.bookmark.article')"
     :class="[
       'inline-flex items-center justify-center rounded-xl transition-all duration-200',
       variant === 'icon'
@@ -46,7 +47,7 @@ function handleClick() {
       :class="variant === 'full' ? 'w-4 h-4' : 'w-5 h-5'"
     />
     <span v-if="variant === 'full'" class="hidden sm:inline">
-      {{ isBookmarked(postId) ? '已收藏' : '收藏' }}
+      {{ isBookmarked(postId) ? t('components.bookmark.added') : t('components.bookmark.add') }}
     </span>
   </button>
 </template>

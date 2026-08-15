@@ -9,10 +9,12 @@ interface Props {
 const props = withDefaults(defineProps<Props>(), {});
 const { post } = toRefs(props);
 
+const { locale } = useLang();
+
 const coverImageUrl = computed(() => coverImageSrc(post.value.title));
 
 const date = computed(() =>
-	new Date(props.post.created_at).toLocaleDateString("zh-CN", {
+	new Date(props.post.created_at).toLocaleDateString(locale.value === "zh" ? "zh-CN" : "en-US", {
 		year: "numeric",
 		month: "long",
 		day: "numeric",

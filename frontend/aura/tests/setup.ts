@@ -2,6 +2,14 @@
 
 import { vi } from "vitest";
 
+// i18n: the site defaults to zh and auto-detects from the browser language.
+// Tests assert deterministic Chinese UI text, so pin the detect source to
+// zh-CN (happy-dom otherwise reports en-US and pages render English).
+Object.defineProperty(window.navigator, "language", {
+	value: "zh-CN",
+	configurable: true,
+});
+
 // happy-dom (vitest 4.x) doesn't fully implement localStorage —
 // provides the object but getItem/setItem/clear are missing.
 // Install an in-memory mock so tests that use localStorage work.

@@ -10,7 +10,9 @@ import {
 
 definePageMeta({ layout: "admin" });
 
-useHead({ title: "编辑文章 - X-Blog" });
+const { t } = useLang();
+
+useHead({ title: computed(() => t("admin.postEdit.seoTitle")) });
 
 const route = useRoute();
 const isNew = route.params.id === "new";
@@ -123,12 +125,12 @@ async function handleSubmit(e: Event) {
 		if (result.error.value) {
 			const err = result.error.value as { data?: { detail?: string } } | null;
 			const detail = err?.data?.detail;
-			submitError.value = typeof detail === "string" ? detail : "保存文章失败，请重试。";
+			submitError.value = typeof detail === "string" ? detail : t("admin.postEdit.saveError");
 		} else {
 			navigateTo("/admin/posts", { replace: true });
 		}
 	} catch (_err) {
-		submitError.value = "保存文章失败，请重试。";
+		submitError.value = t("admin.postEdit.saveError");
 	} finally {
 		isSubmitting.value = false;
 	}
@@ -247,29 +249,29 @@ function handleFileInput(e: Event) {
   <div class="max-w-4xl">
     <div class="flex items-center justify-between mb-6">
       <h1 class="text-2xl font-bold text-gray-900 dark:text-gray-100">
-        {{ isNew ? '新建文章' : '编辑文章' }}
+        {{ isNew ? t('admin.postEdit.titleNew') : t('admin.postEdit.titleEdit') }}
       </h1>
       <NuxtLink
         to="/admin/posts"
         class="inline-flex items-center gap-2 px-4 py-2 text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 transition-colors"
       >
         <Icon icon="lucide:arrow-left" class="w-4 h-4" />
-        返回文章列表
+        {{ t("admin.postEdit.backToPosts") }}
       </NuxtLink>
     </div>
 
     <div v-if="!isNew && postPending" class="text-center py-12">
       <div class="inline-flex items-center gap-2 text-gray-500">
-        <svg aria-label="加载中" class="animate-spin w-5 h-5" viewBox="0 0 24 24">
+        <svg :aria-label="t('admin.postEdit.loading')" class="animate-spin w-5 h-5" viewBox="0 0 24 24">
           <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none" />
           <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
         </svg>
-        加载中...
+        {{ t("admin.postEdit.loading") }}
       </div>
     </div>
 
     <div v-else-if="!isNew && postError" class="text-center py-12 text-red-500">
-      {{ postError?.message || '加载文章失败' }}
+      {{ postError?.message || t('admin.postEdit.loadErrorFallback') }}
     </div>
 
     <form v-else @submit.prevent="handleSubmit" class="space-y-6">
@@ -281,13 +283,13 @@ function handleFileInput(e: Event) {
         <div>
           <label class="flex items-center gap-2 text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
             <Icon icon="lucide:file-text" class="w-4 h-4 text-blue-500" />
-            标题 <span class="text-red-500">*</span>
+            {{ t("admin.postEdit.title") }} <span class="text-red-500">*</span>
           </label>
           <input
             v-model="formData.title"
             type="text"
             required
-            placeholder="输入文章标题"
+            :placeholder="t('admin.postEdit.titlePlaceholder')"
             class="w-full text-lg h-12 px-4 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
           >
           <button
@@ -296,14 +298,14 @@ function handleFileInput(e: Event) {
             @click="formData.slug = generateSlug(formData.title || '')"
             class="mt-2 text-xs text-blue-600 hover:text-blue-700 dark:text-blue-400"
           >
-            自动生成 Slug
+            {{ t("admin.postEdit.autoSlug") }}
           </button>
         </div>
 
         <div>
           <label class="flex items-center gap-2 text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
             <Icon icon="lucide:link" class="w-4 h-4 text-gray-400" />
-            Slug
+            {{ t("admin.postEdit.slug") }}
           </label>
           <input
             v-model="formData.slug"
@@ -312,19 +314,19 @@ function handleFileInput(e: Event) {
             class="w-full font-mono px-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
           >
           <p class="text-xs text-gray-400 dark:text-gray-500 mt-1.5">
-            URL: /posts/{{ formData.slug || 'slug' }}
+            {{ t("admin.postEdit.urlPreview", { slug: formData.slug || 'slug' }) }}
           </p>
         </div>
 
         <div>
           <label class="flex items-center gap-2 text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
             <Icon icon="lucide:align-left" class="w-4 h-4 text-gray-400" />
-            摘要
+            {{ t("admin.postEdit.excerpt") }}
           </label>
           <textarea
             v-model="formData.excerpt"
             rows="2"
-            placeholder="输入文章摘要（可选）"
+            :placeholder="t('admin.postEdit.excerptPlaceholder')"
             class="w-full px-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all resize-none"
           />
         </div>
@@ -334,13 +336,13 @@ function handleFileInput(e: Event) {
         <div class="bg-gradient-to-br from-purple-50 dark:from-purple-900/20 to-white dark:to-gray-900 border border-purple-100 dark:border-purple-900/30 rounded-2xl p-5">
           <label class="flex items-center gap-2 text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">
             <Icon icon="lucide:folder" class="w-4 h-4 text-purple-500" />
-            分类
+            {{ t("admin.postEdit.category") }}
           </label>
           <select
             v-model="formData.category_id"
             class="w-full rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-2.5 text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
           >
-            <option :value="undefined">选择分类</option>
+            <option :value="undefined">{{ t("admin.postEdit.selectCategory") }}</option>
             <option v-for="cat in categories" :key="cat.id" :value="cat.id">
               {{ cat.name }}
             </option>
@@ -350,7 +352,7 @@ function handleFileInput(e: Event) {
         <div class="bg-gradient-to-br from-pink-50 dark:from-pink-900/20 to-white dark:to-gray-900 border border-pink-100 dark:border-pink-900/30 rounded-2xl p-5">
           <label class="flex items-center gap-2 text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">
             <Icon icon="lucide:tag" class="w-4 h-4 text-pink-500" />
-            标签
+            {{ t("admin.postEdit.tags") }}
           </label>
           <div v-if="tags.length > 0" class="flex flex-wrap gap-2 max-h-32 overflow-y-auto">
             <label
@@ -370,7 +372,7 @@ function handleFileInput(e: Event) {
               #{{ tag.name }}
             </label>
           </div>
-          <p v-else class="text-sm text-gray-400 dark:text-gray-500">暂无标签</p>
+          <p v-else class="text-sm text-gray-400 dark:text-gray-500">{{ t("admin.postEdit.noTags") }}</p>
         </div>
       </div>
 
@@ -378,7 +380,7 @@ function handleFileInput(e: Event) {
         <div class="flex items-center justify-between mb-3">
           <label class="flex items-center gap-2 text-sm font-semibold text-gray-700 dark:text-gray-300">
             <Icon icon="lucide:edit-3" class="w-4 h-4 text-blue-500" />
-            内容 (Markdown) <span class="text-red-500">*</span>
+            {{ t("admin.postEdit.contentLabel") }} <span class="text-red-500">*</span>
           </label>
           <button
             type="button"
@@ -389,26 +391,26 @@ function handleFileInput(e: Event) {
               : 'bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700'"
           >
             <Icon :icon="showPreview ? 'lucide:edit-3' : 'lucide:eye'" class="w-3.5 h-3.5 inline mr-1" />
-            {{ showPreview ? '编辑' : '预览' }}
+            {{ showPreview ? t('admin.postEdit.edit') : t('admin.postEdit.preview') }}
           </button>
         </div>
 
         <div class="flex items-center gap-1 mb-3 flex-wrap">
-          <button type="button" @click="wrapSelection('**', '**')" title="加粗" class="toolbar-btn">
+          <button type="button" @click="wrapSelection('**', '**')" :title="t('admin.postEdit.toolbar.bold')" class="toolbar-btn">
             <b>B</b>
           </button>
-          <button type="button" @click="wrapSelection('*', '*')" title="斜体" class="toolbar-btn italic">
+          <button type="button" @click="wrapSelection('*', '*')" :title="t('admin.postEdit.toolbar.italic')" class="toolbar-btn italic">
             <i>I</i>
           </button>
           <span class="w-px h-5 bg-gray-200 dark:bg-gray-700 mx-1" />
-          <button type="button" @click="insertHeading(1)" title="标题 1" class="toolbar-btn">H1</button>
-          <button type="button" @click="insertHeading(2)" title="标题 2" class="toolbar-btn">H2</button>
-          <button type="button" @click="insertHeading(3)" title="标题 3" class="toolbar-btn">H3</button>
+          <button type="button" @click="insertHeading(1)" :title="t('admin.postEdit.toolbar.heading1')" class="toolbar-btn">H1</button>
+          <button type="button" @click="insertHeading(2)" :title="t('admin.postEdit.toolbar.heading2')" class="toolbar-btn">H2</button>
+          <button type="button" @click="insertHeading(3)" :title="t('admin.postEdit.toolbar.heading3')" class="toolbar-btn">H3</button>
           <span class="w-px h-5 bg-gray-200 dark:bg-gray-700 mx-1" />
-          <button type="button" @click="insertLink()" title="链接" class="toolbar-btn">
+          <button type="button" @click="insertLink()" :title="t('admin.postEdit.toolbar.link')" class="toolbar-btn">
             <Icon icon="lucide:link" class="w-3.5 h-3.5" />
           </button>
-          <button type="button" @click="triggerImagePicker" :disabled="isUploading" title="上传图片" class="toolbar-btn">
+          <button type="button" @click="triggerImagePicker" :disabled="isUploading" :title="t('admin.postEdit.toolbar.uploadImage')" class="toolbar-btn">
             <Icon :icon="isUploading ? 'lucide:loader-2' : 'lucide:image'" :class="{ 'animate-spin': isUploading }" class="w-3.5 h-3.5" />
           </button>
           <input id="image-upload-input" type="file" accept="image/*" class="hidden" @change="handleFileInput">
@@ -425,7 +427,7 @@ function handleFileInput(e: Event) {
               v-model="formData.content"
               rows="15"
               required
-              placeholder="使用 Markdown 编写文章内容..."
+              :placeholder="t('admin.postEdit.contentPlaceholder')"
               class="w-full font-mono text-sm px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all resize-none"
               @paste="onPaste"
             />
@@ -446,7 +448,7 @@ function handleFileInput(e: Event) {
             v-model="formData.content"
             rows="15"
             required
-            placeholder="使用 Markdown 编写文章内容..."
+            :placeholder="t('admin.postEdit.contentPlaceholder')"
             class="w-full font-mono text-sm px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all resize-none"
             @paste="onPaste"
           />
@@ -456,7 +458,7 @@ function handleFileInput(e: Event) {
           >
             <div class="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
               <Icon icon="lucide:loader-2" class="w-5 h-5 animate-spin" />
-              上传中...
+              {{ t("admin.postEdit.uploading") }}
             </div>
           </div>
           <div
@@ -468,7 +470,7 @@ function handleFileInput(e: Event) {
         </div>
 
         <p class="text-xs text-gray-400 dark:text-gray-500 mt-2">
-          支持 Markdown 语法，可拖拽或粘贴图片自动上传
+          {{ t("admin.postEdit.contentHint") }}
         </p>
       </div>
 
@@ -482,7 +484,7 @@ function handleFileInput(e: Event) {
           >
           <label for="published" class="cursor-pointer">
             <span class="text-sm font-medium text-gray-700 dark:text-gray-300">
-              {{ formData.published ? '✅ 文章已发布' : '📝 保存为草稿' }}
+              {{ formData.published ? t('admin.postEdit.publishedOn') : t('admin.postEdit.saveAsDraft') }}
             </span>
           </label>
         </div>
@@ -496,7 +498,7 @@ function handleFileInput(e: Event) {
           >
           <label for="pinned" class="cursor-pointer">
             <span class="text-sm font-medium text-gray-700 dark:text-gray-300">
-              {{ formData.pinned ? '📌 已置顶' : '📌 置顶文章' }}
+              {{ formData.pinned ? t('admin.postEdit.pinned') : t('admin.postEdit.pin') }}
             </span>
           </label>
         </div>
@@ -509,7 +511,7 @@ function handleFileInput(e: Event) {
             class="w-full px-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
           >
           <label for="publish_at" class="text-sm font-medium text-gray-700 dark:text-gray-300 pt-1.5 whitespace-nowrap">
-            定时发布 (可选)
+            {{ t("admin.postEdit.schedulePublish") }}
           </label>
         </div>
 
@@ -522,7 +524,7 @@ function handleFileInput(e: Event) {
             class="w-full px-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
           >
           <label for="cover_image" class="text-sm font-medium text-gray-700 dark:text-gray-300 pt-1.5 whitespace-nowrap">
-            封面图 URL
+            {{ t("admin.postEdit.coverImage") }}
           </label>
         </div>
       </div>
@@ -534,7 +536,7 @@ function handleFileInput(e: Event) {
           class="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-500 to-indigo-500 text-white rounded-xl font-medium hover:from-blue-600 hover:to-indigo-600 shadow-lg shadow-blue-500/20 transition-all disabled:opacity-50"
         >
           <Icon :icon="isSubmitting ? 'lucide:loader-2' : 'lucide:save'" class="w-4 h-4" :class="{ 'animate-spin': isSubmitting }" />
-          {{ isSubmitting ? '保存中...' : '保存文章' }}
+          {{ isSubmitting ? t('admin.postEdit.saving') : t('admin.postEdit.save') }}
         </button>
         <button
           type="button"
@@ -542,7 +544,7 @@ function handleFileInput(e: Event) {
           class="inline-flex items-center gap-2 px-6 py-3 border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 rounded-xl font-medium hover:bg-gray-50 dark:hover:bg-gray-800 transition-all"
         >
           <Icon icon="lucide:x" class="w-4 h-4" />
-          取消
+          {{ t("common.action.cancel") }}
         </button>
       </div>
     </form>

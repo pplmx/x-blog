@@ -1,0 +1,36 @@
+{
+	"common": {
+		"nav": {
+			"home": "Home",
+			"about": "About",
+			"search": "Search",
+			"github": "GitHub"
+		},
+		"theme": {
+			"light": "Light mode",
+			"dark": "Dark mode",
+			"toggleLight": "Switch to light mode",
+			"toggleDark": "Switch to dark mode"
+		},
+		"menu": {
+			"open": "Open menu",
+			"close": "Close menu"
+		},
+		"footer": {
+			"madeWith": "Made with",
+			"forDevelopers": "for developers"
+		},
+		"action": {
+			"back": "Back",
+			"save": "Save",
+			"cancel": "Cancel",
+			"backHome": "Back to home",
+			"backToList": "Back to list"
+		},
+		"state": {
+			"loading": "Loading",
+			"loadFailed": "Failed to load",
+			"empty": "No content yet"
+		}
+	}
+}

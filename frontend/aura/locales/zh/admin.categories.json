@@ -1,0 +1,17 @@
+{
+	"admin.categories": {
+		"seoTitle": "分类管理 - X-Blog",
+		"title": "分类管理",
+		"summary": "共 {n} 个分类",
+		"createTitle": "新建分类",
+		"namePlaceholder": "分类名称",
+		"create": "创建",
+		"confirm": "确认",
+		"edit": "编辑",
+		"delete": "删除",
+		"confirmDelete": "确定要删除这个分类吗？",
+		"empty": "还没有任何分类",
+		"operationFailed": "操作失败，请重试",
+		"loading": "加载中..."
+	}
+}

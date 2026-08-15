@@ -3,6 +3,7 @@ import { computed } from "vue";
 import { type PostListResponse, useApi, useTags } from "~~/composables/useApi";
 import { useSeo } from "~~/composables/useSeo";
 
+const { t } = useLang();
 const route = useRoute();
 // Reactive sources so SPA navigation that changes only query params
 // (tag_id / page) refetches — the computed URL drives useFetch.
@@ -30,10 +31,8 @@ const tagName = computed(() =>
 
 // SEO: set dynamic head metadata based on view state
 useSeo({
-	title: tagName.value ? `标签: ${tagName.value}` : "所有标签",
-	description: tagName.value
-		? `浏览标签 "${tagName.value}" 下的所有文章`
-		: "浏览 X-Blog 中的所有标签",
+	title: tagName.value ? t("tags.tagTitle", { name: tagName.value }) : t("tags.all"),
+	description: tagName.value ? t("tags.tagDesc", { name: tagName.value }) : t("tags.allDesc"),
 	path: "/tags",
 });
 </script>
@@ -58,10 +57,10 @@ useSeo({
         <h1
           class="text-3xl font-bold bg-gradient-to-r from-gray-900 dark:from-gray-100 to-gray-600 dark:to-gray-400 bg-clip-text text-transparent mb-2"
         >
-          所有标签
+          {{ t('tags.all') }}
         </h1>
         <p class="text-gray-500 dark:text-gray-400">
-          共 {{ tags?.length || 0 }} 个标签
+          {{ t('tags.countLabel', { count: tags?.length || 0 }) }}
         </p>
       </div>
 
@@ -83,7 +82,7 @@ useSeo({
         v-else
         class="text-center py-12 text-gray-500"
       >
-        暂无标签
+        {{ t('tags.empty') }}
       </div>
     </div>
 
@@ -95,10 +94,10 @@ useSeo({
           class="inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-blue-600 transition-colors mb-4"
         >
           <Icon icon="lucide:arrow-left" class="w-4 h-4" />
-          返回所有标签
+          {{ t('tags.backToAll') }}
         </NuxtLink>
         <h1 class="text-3xl font-bold bg-gradient-to-r from-gray-900 dark:from-gray-100 to-gray-600 dark:to-gray-400 bg-clip-text text-transparent">
-          标签文章
+          {{ t('tags.tagPosts') }}
         </h1>
       </div>
 
@@ -131,7 +130,7 @@ useSeo({
             <span>
               {{ new Date(post.created_at).toLocaleDateString() }}
             </span>
-            <span>{{ post.views }} 次阅读</span>
+            <span>{{ t('tags.views', { count: post.views }) }}</span>
           </div>
         </div>
 
@@ -161,17 +160,8 @@ useSeo({
         v-else
         class="text-center py-12 text-gray-500"
       >
-        暂无文章
+        {{ t('tags.postsEmpty') }}
       </div>
     </div>
   </div>
 </template>
-
-<route lang="json">
-{
-  "meta": {
-    "title": "标签",
-    "description": "X-Blog - 浏览所有标签"
-  }
-}
-</route>

@@ -1,0 +1,19 @@
+{
+	"admin.login": {
+		"seoTitle": "Admin Login - X-Blog",
+		"title": "Admin Login",
+		"subtitle": "Enter your admin username and password",
+		"username": "Username",
+		"usernamePlaceholder": "Username",
+		"password": "Password",
+		"passwordPlaceholder": "Password",
+		"loggingIn": "Signing in...",
+		"login": "Sign in",
+		"backToBlog": "Back to blog home",
+		"errors": {
+			"invalidCredentials": "Login failed: incorrect username or password",
+			"noToken": "Login failed: no access token received",
+			"network": "Login failed: network error"
+		}
+	}
+}

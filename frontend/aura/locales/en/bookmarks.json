@@ -1,0 +1,13 @@
+{
+	"bookmarks": {
+		"title": "Bookmarked Posts",
+		"countLabel": "{count} articles",
+		"clearAll": "Clear all",
+		"confirmClear": "Are you sure you want to clear all bookmarks?",
+		"empty": "No bookmarked articles yet",
+		"browse": "Browse articles",
+		"remove": "Remove bookmark",
+		"seoTitle": "Bookmarked Posts — X-Blog",
+		"seoDesc": "A list of articles you have bookmarked."
+	}
+}

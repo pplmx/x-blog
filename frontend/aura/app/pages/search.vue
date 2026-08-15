@@ -4,6 +4,7 @@ import { type PostListResponse, useApi } from "~~/composables/useApi";
 import { loadPurify, sanitizeHtml } from "~~/composables/useMarkdown";
 import { useSeo } from "~~/composables/useSeo";
 
+const { t } = useLang();
 // used in template v-html (Biome cannot see template usage)
 void sanitizeHtml;
 
@@ -42,8 +43,12 @@ onMounted(() => {
 
 // SEO: set dynamic head metadata based on search query
 useSeo({
-	title: query.value ? `搜索: ${query.value}` : "搜索文章",
-	description: query.value ? `搜索"${query.value}"的文章结果` : "在 X-Blog 中搜索文章",
+	title: query.value
+		? t("search.seo.titleWithQuery", { query: query.value })
+		: t("search.seo.title"),
+	description: query.value
+		? t("search.seo.descWithQuery", { query: query.value })
+		: t("search.seo.description"),
 	path: query.value ? `/search?q=${encodeURIComponent(query.value)}` : "/search",
 	noindex: true,
 });
@@ -70,17 +75,17 @@ function handleSearchInput() {
         <Icon icon="lucide:search" class="w-10 h-10 text-gray-400" />
       </div>
       <h2 class="text-xl font-semibold text-gray-700 dark:text-gray-300 mb-2">
-        搜索文章
+        {{ t("search.empty.title") }}
       </h2>
       <p class="text-gray-500 dark:text-gray-400 mb-6">
-        输入关键词开始搜索
+        {{ t("search.empty.hint") }}
       </p>
       <div class="w-full max-w-md">
         <div class="relative">
           <input
             v-model="searchInput"
             type="text"
-            placeholder="输入关键词..."
+            :placeholder="t('search.placeholder')"
             class="w-full pl-10 pr-4 py-3 border border-gray-200 dark:border-gray-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
             @keydown.enter="handleSearchInput"
           >
@@ -107,7 +112,7 @@ function handleSearchInput() {
       v-else-if="error"
       class="text-center py-12 text-gray-500"
     >
-      加载失败: {{ error.message }}
+      {{ t("search.error", { message: error.message }) }}
     </div>
 
     <!-- Search results -->
@@ -117,11 +122,10 @@ function handleSearchInput() {
         <h1
           class="text-3xl font-bold bg-gradient-to-r from-gray-900 dark:from-gray-100 to-gray-600 dark:to-gray-400 bg-clip-text text-transparent"
         >
-          搜索结果
+          {{ t("search.results.title") }}
         </h1>
         <p class="text-gray-500 dark:text-gray-400 mt-2">
-          找到 "{{ query }}" 相关文章
-          {{ searchResult?.pagination?.total || 0 }} 篇
+          {{ t("search.results.summary", { query, count: searchResult?.pagination?.total || 0 }) }}
         </p>
       </div>
 
@@ -136,10 +140,10 @@ function handleSearchInput() {
           <Icon icon="lucide:search-x" class="w-8 h-8 text-gray-400" />
         </div>
         <h3 class="text-lg font-medium text-gray-700 dark:text-gray-300 mb-1">
-          没有找到相关文章
+          {{ t("search.noResults.title") }}
         </h3>
         <p class="text-sm text-gray-500 dark:text-gray-400">
-          试试其他关键词吧
+          {{ t("search.noResults.hint") }}
         </p>
       </div>
 
@@ -177,7 +181,7 @@ function handleSearchInput() {
             <span>
               {{ new Date(post.created_at).toLocaleDateString() }}
             </span>
-            <span>{{ post.views }} 次阅读</span>
+            <span>{{ post.views }} {{ t("search.posts.views") }}</span>
           </div>
         </div>
 
@@ -204,12 +208,3 @@ function handleSearchInput() {
     </div>
   </div>
 </template>
-
-<route lang="json">
-{
-  "meta": {
-    "title": "搜索",
-    "description": "X-Blog - 搜索文章"
-  }
-}
-</route>

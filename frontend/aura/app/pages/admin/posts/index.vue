@@ -4,7 +4,9 @@ import { deleteAdminPost, fetchAdminPosts } from "~~/composables/useApi";
 
 definePageMeta({ layout: "admin" });
 
-useHead({ title: "文章管理 - X-Blog" });
+const { t } = useLang();
+
+useHead({ title: computed(() => t("admin.postsList.seoTitle")) });
 
 const searchQuery = ref("");
 const statusFilter = ref("");
@@ -51,7 +53,7 @@ function onStatusChange() {
 }
 
 async function handleDelete(id: number) {
-	if (!confirm("确定要删除这篇文章吗？")) return;
+	if (!confirm(t("admin.postsList.confirmDelete"))) return;
 	isDeleting.value = true;
 	try {
 		await deleteAdminPost(id);
@@ -62,9 +64,9 @@ async function handleDelete(id: number) {
 }
 
 function statusLabel(post: AdminPost): string {
-	if (!post.published && post.publish_at) return "定时发布";
-	if (post.published) return "已发布";
-	return "草稿";
+	if (!post.published && post.publish_at) return t("admin.postsList.scheduled");
+	if (post.published) return t("admin.postsList.published");
+	return t("admin.postsList.draft");
 }
 
 function statusColor(post: AdminPost): string {
@@ -86,10 +88,10 @@ function statusDot(post: AdminPost): string {
     <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
       <div>
         <h1 class="text-2xl font-bold bg-gradient-to-r from-gray-900 dark:from-gray-100 to-gray-600 dark:to-gray-400 bg-clip-text text-transparent">
-          文章管理
+          {{ t("admin.postsList.title") }}
         </h1>
         <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">
-          共 {{ total }} 篇文章
+          {{ t("admin.postsList.summary", { n: total }) }}
         </p>
       </div>
       <NuxtLink
@@ -97,7 +99,7 @@ function statusDot(post: AdminPost): string {
         class="inline-flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-blue-500 to-indigo-500 text-white rounded-xl font-medium hover:from-blue-600 hover:to-indigo-600 shadow-md shadow-blue-500/20 transition-all"
       >
         <Icon icon="lucide:plus" class="w-4 h-4" />
-        新建文章
+        {{ t("admin.postsList.newPost") }}
       </NuxtLink>
     </div>
 
@@ -107,7 +109,7 @@ function statusDot(post: AdminPost): string {
         <input
           v-model="searchQuery"
           type="text"
-          placeholder="搜索文章标题..."
+          :placeholder="t('admin.postsList.searchPlaceholder')"
           class="w-full pl-9 pr-4 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
           @input="onSearchInput"
         />
@@ -117,20 +119,20 @@ function statusDot(post: AdminPost): string {
         class="w-full sm:w-40 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
         @change="onStatusChange"
       >
-        <option value="">全部状态</option>
-        <option value="published">已发布</option>
-        <option value="draft">草稿</option>
-        <option value="scheduled">定时发布</option>
+        <option value="">{{ t("admin.postsList.allStatus") }}</option>
+        <option value="published">{{ t("admin.postsList.published") }}</option>
+        <option value="draft">{{ t("admin.postsList.draft") }}</option>
+        <option value="scheduled">{{ t("admin.postsList.scheduled") }}</option>
       </select>
     </div>
 
     <div v-if="pending" class="text-center py-12">
       <div class="inline-flex items-center gap-2 text-gray-500">
-        <svg aria-label="加载中" class="animate-spin w-5 h-5" viewBox="0 0 24 24">
+        <svg :aria-label="t('admin.postsList.loading')" class="animate-spin w-5 h-5" viewBox="0 0 24 24">
           <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none" />
           <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
         </svg>
-        加载中...
+        {{ t("admin.postsList.loading") }}
       </div>
     </div>
 
@@ -143,15 +145,15 @@ function statusDot(post: AdminPost): string {
         <Icon icon="lucide:file-text" class="w-8 h-8 text-gray-400" />
       </div>
       <h3 class="text-lg font-medium text-gray-700 dark:text-gray-300 mb-1">
-        {{ searchQuery || statusFilter ? '没有匹配的文章' : '暂无文章' }}
+        {{ searchQuery || statusFilter ? t('admin.postsList.empty.noMatchTitle') : t('admin.postsList.empty.title') }}
       </h3>
       <p class="text-sm text-gray-500 dark:text-gray-400 mb-4">
-        {{ searchQuery || statusFilter ? '尝试修改搜索条件' : '开始创建你的第一篇文章吧' }}
+        {{ searchQuery || statusFilter ? t('admin.postsList.empty.noMatchHint') : t('admin.postsList.empty.hint') }}
       </p>
       <NuxtLink v-if="!searchQuery && !statusFilter" to="/admin/posts/new">
         <button type="button" class="inline-flex items-center gap-2 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors">
           <Icon icon="lucide:plus" class="w-4 h-4" />
-          新建文章
+          {{ t("admin.postsList.newPost") }}
         </button>
       </NuxtLink>
     </div>
@@ -161,12 +163,12 @@ function statusDot(post: AdminPost): string {
         <table class="w-full">
           <thead>
             <tr class="bg-gradient-to-r from-gray-50 dark:from-gray-800 to-white dark:to-gray-950 border-b border-gray-100 dark:border-gray-800">
-              <th class="px-5 py-4 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">标题</th>
-              <th class="px-5 py-4 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider hidden md:table-cell">分类</th>
-              <th class="px-5 py-4 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">状态</th>
-              <th class="px-5 py-4 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider hidden sm:table-cell">浏览</th>
-              <th class="px-5 py-4 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider hidden sm:table-cell">日期</th>
-              <th class="px-5 py-4 text-right text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">操作</th>
+              <th class="px-5 py-4 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">{{ t("admin.postsList.columns.title") }}</th>
+              <th class="px-5 py-4 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider hidden md:table-cell">{{ t("admin.postsList.columns.category") }}</th>
+              <th class="px-5 py-4 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">{{ t("admin.postsList.columns.status") }}</th>
+              <th class="px-5 py-4 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider hidden sm:table-cell">{{ t("admin.postsList.columns.views") }}</th>
+              <th class="px-5 py-4 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider hidden sm:table-cell">{{ t("admin.postsList.columns.date") }}</th>
+              <th class="px-5 py-4 text-right text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">{{ t("admin.postsList.columns.actions") }}</th>
             </tr>
           </thead>
           <tbody class="divide-y divide-gray-50 dark:divide-gray-800">
@@ -225,7 +227,7 @@ function statusDot(post: AdminPost): string {
         class="px-3 py-1.5 text-sm rounded-lg border border-gray-200 dark:border-gray-700 disabled:opacity-40 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
         @click="currentPage--; refresh()"
       >
-        上一页
+        {{ t("admin.postsList.pagination.prev") }}
       </button>
       <span class="text-sm text-gray-500 dark:text-gray-400">
         {{ currentPage + 1 }} / {{ totalPages }}
@@ -236,7 +238,7 @@ function statusDot(post: AdminPost): string {
         class="px-3 py-1.5 text-sm rounded-lg border border-gray-200 dark:border-gray-700 disabled:opacity-40 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
         @click="currentPage++; refresh()"
       >
-        下一页
+        {{ t("admin.postsList.pagination.next") }}
       </button>
     </div>
   </div>

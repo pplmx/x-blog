@@ -1,6 +1,6 @@
 <template>
   <section>
-    <h2 class="text-xl font-bold text-gray-900 dark:text-gray-100 mb-4">发表评论</h2>
+    <h2 class="text-xl font-bold text-gray-900 dark:text-gray-100 mb-4">{{ t('components.commentForm.title') }}</h2>
 
     <form @submit.prevent="handleSubmit" class="space-y-4">
       <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -8,14 +8,14 @@
           v-model="form.nickname"
           type="text"
           required
-          placeholder="昵称"
+          :placeholder="t('components.commentForm.nickname')"
           class="px-3 py-2 border border-gray-200 dark:border-gray-700 dark:bg-gray-800 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
         >
         <input
           v-model="form.email"
           type="email"
           required
-          placeholder="邮箱（不会公开）"
+          :placeholder="t('components.commentForm.email')"
           class="px-3 py-2 border border-gray-200 dark:border-gray-700 dark:bg-gray-800 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
         >
       </div>
@@ -24,7 +24,7 @@
         v-model="form.content"
         required
         rows="4"
-        placeholder="写点什么吧..."
+        :placeholder="t('components.commentForm.content')"
         class="w-full px-3 py-2 border border-gray-200 dark:border-gray-700 dark:bg-gray-800 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm resize-y"
       />
 
@@ -38,11 +38,11 @@
           icon="lucide:loader-2"
           class="w-4 h-4 animate-spin"
         />
-        {{ submitting ? '提交中...' : '提交评论' }}
+        {{ submitting ? t('components.commentForm.submitting') : t('components.commentForm.submit') }}
       </button>
 
       <p v-if="error" class="text-sm text-red-600 dark:text-red-400">{{ error }}</p>
-      <p v-if="success" class="text-sm text-green-600 dark:text-green-400">评论提交成功，等待审核中！</p>
+      <p v-if="success" class="text-sm text-green-600 dark:text-green-400">{{ t('components.commentForm.submitSuccess') }}</p>
     </form>
   </section>
 </template>
@@ -56,6 +56,8 @@ interface Props {
 }
 
 const props = defineProps<Props>();
+
+const { t } = useLang();
 
 const form = ref({
 	nickname: "",
@@ -80,10 +82,10 @@ async function handleSubmit() {
 			email: form.value.email,
 			content: form.value.content,
 		});
-		success.value = "评论提交成功，等待审核中！";
+		success.value = t("components.commentForm.submitSuccess");
 		form.value = { nickname: "", email: "", content: "" };
 	} catch (e: any) {
-		error.value = e?.message || "评论提交失败，请重试。";
+		error.value = e?.message || t("components.commentForm.submitFailed");
 	} finally {
 		submitting.value = false;
 	}

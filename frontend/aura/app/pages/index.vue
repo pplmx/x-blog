@@ -2,6 +2,7 @@
 import { type PostListResponse, usePopularPosts } from "~~/composables/useApi";
 import { useSeo } from "~~/composables/useSeo";
 
+const { t } = useLang();
 const route = useRoute();
 
 // Plain ref for current page — gives us explicit control over re-fetching.
@@ -30,8 +31,8 @@ const {
 const { data: popularPosts } = await usePopularPosts();
 
 useSeo({
-	title: "首页 — X-Blog",
-	description: "X-Blog — 一个现代化的技术博客系统。探索最新的技术文章和见解。",
+	title: t("home.seo.title"),
+	description: t("home.seo.description"),
 	path: "/",
 });
 
@@ -60,9 +61,9 @@ const stats = computed(() => {
 	const totalViews = items.reduce((s, p) => s + (p.views || 0), 0);
 	const totalLikes = items.reduce((s, p) => s + (p.likes || 0), 0);
 	return [
-		{ label: "文章", value: total },
-		{ label: "总阅读", value: totalViews.toLocaleString() },
-		{ label: "总点赞", value: totalLikes.toLocaleString() },
+		{ labelKey: "home.stats.posts", value: total },
+		{ labelKey: "home.stats.totalViews", value: totalViews.toLocaleString() },
+		{ labelKey: "home.stats.totalLikes", value: totalLikes.toLocaleString() },
 	];
 });
 </script>
@@ -79,28 +80,28 @@ const stats = computed(() => {
       <div class="relative z-10">
         <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/15 text-white/90 text-xs font-medium mb-6 backdrop-blur-sm">
           <Icon icon="lucide:sparkles" class="w-3.5 h-3.5" />
-          技术博客
+          {{ t("home.hero.badge") }}
         </div>
         <h1 class="text-3xl sm:text-4xl lg:text-5xl font-bold text-white leading-tight mb-4">
-          探索技术的无限可能
+          {{ t("home.hero.title") }}
         </h1>
         <p class="text-lg text-white/80 max-w-xl mb-8 leading-relaxed">
-          X-Blog 是一个基于 FastAPI + Nuxt 4 构建的现代化技术博客系统，分享前端、后端、架构等领域的实践经验。
+          {{ t("home.hero.description") }}
         </p>
         <div class="flex flex-wrap gap-4">
           <NuxtLink to="/search" class="inline-flex items-center gap-2 px-6 py-3 bg-white text-indigo-700 rounded-xl font-semibold hover:bg-indigo-50 transition-all shadow-lg hover:shadow-xl active:scale-[0.98]">
             <Icon icon="lucide:search" class="w-4 h-4" />
-            搜索文章
+            {{ t("home.hero.searchAction") }}
           </NuxtLink>
           <NuxtLink to="/about" class="inline-flex items-center gap-2 px-6 py-3 bg-white/15 text-white rounded-xl font-medium hover:bg-white/25 transition-all backdrop-blur-sm">
             <Icon icon="lucide:info" class="w-4 h-4" />
-            关于本站
+            {{ t("home.hero.aboutAction") }}
           </NuxtLink>
         </div>
         <div class="flex gap-8 mt-8 pt-8 border-t border-white/15">
-          <div v-for="stat in stats" :key="stat.label" class="text-center">
+          <div v-for="stat in stats" :key="stat.labelKey" class="text-center">
             <div class="text-2xl font-bold text-white">{{ stat.value }}</div>
-            <div class="text-xs text-white/60 mt-1">{{ stat.label }}</div>
+            <div class="text-xs text-white/60 mt-1">{{ t(stat.labelKey) }}</div>
           </div>
         </div>
       </div>
@@ -113,7 +114,7 @@ const stats = computed(() => {
         <div v-if="popularPosts?.length" class="mb-10">
           <h2 class="text-lg font-bold text-gray-900 dark:text-gray-100 mb-4 flex items-center gap-2">
             <Icon icon="lucide:trending-up" class="w-5 h-5 text-orange-500" />
-            热门文章
+            {{ t("home.sections.popular") }}
           </h2>
           <div class="grid gap-3 sm:grid-cols-2">
             <NuxtLink
@@ -130,7 +131,7 @@ const stats = computed(() => {
                   <h3 class="text-sm font-semibold text-gray-900 dark:text-gray-100 group-hover:text-orange-600 dark:group-hover:text-orange-400 transition-colors line-clamp-2">
                     {{ post.title }}
                   </h3>
-                  <p class="text-xs text-gray-400 mt-1">{{ post.views }} 阅读</p>
+                  <p class="text-xs text-gray-400 mt-1">{{ post.views }} {{ t("home.posts.views") }}</p>
                 </div>
               </div>
             </NuxtLink>
@@ -140,7 +141,7 @@ const stats = computed(() => {
         <!-- Section heading -->
         <h2 class="text-lg font-bold text-gray-900 dark:text-gray-100 mb-4 flex items-center gap-2">
           <Icon icon="lucide:clock" class="w-5 h-5 text-blue-500" />
-          最新文章
+          {{ t("home.sections.latest") }}
         </h2>
 
         <!-- Loading skeleton -->
@@ -155,7 +156,7 @@ const stats = computed(() => {
 
         <div v-else-if="error" class="text-center py-16 text-gray-500">
           <Icon icon="lucide:alert-circle" class="w-12 h-12 mx-auto mb-3 text-gray-300" />
-          <p>加载失败</p>
+          <p>{{ t("common.state.loadFailed") }}</p>
           <p class="text-sm">{{ error.message }}</p>
         </div>
 
@@ -182,7 +183,7 @@ const stats = computed(() => {
 
         <div v-else class="text-center py-16 text-gray-500">
           <Icon icon="lucide:file-text" class="w-12 h-12 mx-auto mb-3 text-gray-300" />
-          <p>暂无文章</p>
+          <p>{{ t("home.empty.posts") }}</p>
         </div>
       </div>
 
@@ -193,11 +194,11 @@ const stats = computed(() => {
           <div class="rounded-2xl bg-gradient-to-br from-blue-50 dark:from-blue-950/50 to-indigo-50 dark:to-indigo-950/50 border border-blue-100 dark:border-blue-900/30 p-5">
             <h3 class="text-sm font-bold text-gray-900 dark:text-gray-100 mb-4 flex items-center gap-2">
               <Icon icon="lucide:activity" class="w-4 h-4 text-blue-500" />
-              站点统计
+              {{ t("home.sidebar.stats") }}
             </h3>
             <div class="space-y-3">
-              <div v-for="stat in stats" :key="stat.label" class="flex items-center justify-between text-sm">
-                <span class="text-gray-500 dark:text-gray-400">{{ stat.label }}</span>
+              <div v-for="stat in stats" :key="stat.labelKey" class="flex items-center justify-between text-sm">
+                <span class="text-gray-500 dark:text-gray-400">{{ t(stat.labelKey) }}</span>
                 <span class="font-semibold text-gray-900 dark:text-gray-100">{{ stat.value }}</span>
               </div>
             </div>
@@ -207,20 +208,20 @@ const stats = computed(() => {
           <div class="rounded-2xl border border-gray-100 dark:border-gray-800 p-5">
             <h3 class="text-sm font-bold text-gray-900 dark:text-gray-100 mb-3 flex items-center gap-2">
               <Icon icon="lucide:compass" class="w-4 h-4 text-blue-500" />
-              快速导航
+              {{ t("home.sidebar.quickNav") }}
             </h3>
             <div class="space-y-1">
               <NuxtLink to="/" class="flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">
-                <Icon icon="lucide:home" class="w-3.5 h-3.5" />首页
+                <Icon icon="lucide:home" class="w-3.5 h-3.5" />{{ t("common.nav.home") }}
               </NuxtLink>
               <NuxtLink to="/about" class="flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">
-                <Icon icon="lucide:user" class="w-3.5 h-3.5" />关于
+                <Icon icon="lucide:user" class="w-3.5 h-3.5" />{{ t("common.nav.about") }}
               </NuxtLink>
               <NuxtLink to="/search" class="flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">
-                <Icon icon="lucide:search" class="w-3.5 h-3.5" />搜索
+                <Icon icon="lucide:search" class="w-3.5 h-3.5" />{{ t("common.nav.search") }}
               </NuxtLink>
               <a href="https://github.com/pplmx/x-blog" target="_blank" rel="noopener noreferrer" class="flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">
-                <Icon icon="lucide:github" class="w-3.5 h-3.5" />GitHub
+                <Icon icon="lucide:github" class="w-3.5 h-3.5" />{{ t("common.nav.github") }}
               </a>
             </div>
           </div>

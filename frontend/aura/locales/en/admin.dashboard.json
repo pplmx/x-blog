@@ -1,0 +1,35 @@
+{
+	"admin.dashboard": {
+		"seoTitle": "Dashboard - X-Blog",
+		"title": "Dashboard",
+		"subtitle": "Blog overview",
+		"stats": {
+			"posts": "Total posts",
+			"published": "Published",
+			"draft": "Drafts",
+			"categories": "Categories",
+			"tags": "Tags",
+			"pendingComments": "Pending comments",
+			"views": "Total views"
+		},
+		"topPosts": {
+			"title": "Top posts (by views)"
+		},
+		"categories": {
+			"title": "Posts per category"
+		},
+		"recentPosts": {
+			"title": "Recently published",
+			"empty": "No published posts yet"
+		},
+		"pendingComments": {
+			"title": "Pending comments",
+			"count": "{n} pending",
+			"empty": "No pending comments"
+		},
+		"approve": "Approve",
+		"reject": "Reject",
+		"operationFailed": "Operation failed, please retry",
+		"updatedAt": "Updated at {time}"
+	}
+}

@@ -1,0 +1,25 @@
+{
+	"admin": {
+		"title": "X-Blog 管理",
+		"nav": {
+			"dashboard": "仪表盘",
+			"posts": "文章",
+			"comments": "评论",
+			"categories": "分类",
+			"tags": "标签"
+		},
+		"backToSite": "返回前台",
+		"changePassword": "修改密码",
+		"logout": "退出登录",
+		"password": {
+			"title": "修改密码",
+			"current": "当前密码",
+			"new": "新密码",
+			"confirm": "确认新密码",
+			"success": "密码修改成功",
+			"minLength": "密码至少 8 位",
+			"mismatch": "两次输入的密码不一致",
+			"failed": "修改密码失败"
+		}
+	}
+}

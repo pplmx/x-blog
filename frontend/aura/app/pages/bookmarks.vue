@@ -2,16 +2,17 @@
 import { useBookmarks } from "~~/composables/useBookmarks";
 import { useSeo } from "~~/composables/useSeo";
 
+const { t } = useLang();
 const { bookmarks, removeBookmark, clearBookmarks, bookmarkCount } = useBookmarks();
 
 useSeo({
-	title: "收藏的文章 — X-Blog",
-	description: "您收藏的文章列表。",
+	title: t("bookmarks.seoTitle"),
+	description: t("bookmarks.seoDesc"),
 	path: "/bookmarks",
 });
 
 function handleClearAll() {
-	if (confirm("确定要清空所有收藏吗？")) {
+	if (confirm(t("bookmarks.confirmClear"))) {
 		clearBookmarks();
 	}
 }
@@ -25,10 +26,10 @@ function handleClearAll() {
         <h1
           class="text-3xl font-bold bg-gradient-to-r from-gray-900 dark:from-gray-100 to-gray-600 dark:to-gray-400 bg-clip-text text-transparent"
         >
-          收藏的文章
+          {{ t('bookmarks.title') }}
         </h1>
         <p v-if="bookmarkCount > 0" class="text-sm text-gray-500 dark:text-gray-400 mt-2">
-          共 {{ bookmarkCount }} 篇文章
+          {{ t('bookmarks.countLabel', { count: bookmarkCount }) }}
         </p>
       </div>
       <button
@@ -36,10 +37,10 @@ function handleClearAll() {
         type="button"
         @click="handleClearAll"
         class="text-sm text-gray-500 hover:text-red-500 transition-colors"
-        title="清空全部"
+        :title="t('bookmarks.clearAll')"
       >
         <Icon icon="lucide:trash-2" class="w-4 h-4 inline mr-1" />
-        清空全部
+        {{ t('bookmarks.clearAll') }}
       </button>
     </div>
 
@@ -49,13 +50,13 @@ function handleClearAll() {
       class="text-center py-16 text-gray-500 dark:text-gray-400"
     >
       <Icon icon="lucide:bookmark" class="w-12 h-12 mx-auto mb-4 text-gray-300" />
-      <p class="text-lg mb-4">还没有收藏的文章</p>
+      <p class="text-lg mb-4">{{ t('bookmarks.empty') }}</p>
       <NuxtLink
         to="/"
         class="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors"
       >
         <Icon icon="lucide:arrow-left" class="w-4 h-4" />
-        去浏览文章
+        {{ t('bookmarks.browse') }}
       </NuxtLink>
     </div>
 
@@ -112,7 +113,7 @@ function handleClearAll() {
           <button
             type="button"
             @click.stop="removeBookmark(bookmark.id)"
-            title="移除收藏"
+            :title="t('bookmarks.remove')"
             class="shrink-0 p-2 text-gray-400 hover:text-red-500 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-xl transition-colors"
           >
             <Icon icon="lucide:x" class="w-4 h-4" />

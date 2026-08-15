@@ -7,7 +7,9 @@
 import { ref } from "vue";
 import { adminLoginRequest, useAdminAuth } from "~~/composables/useAdminAuth";
 
-useHead({ title: "管理员登录 - X-Blog" });
+const { t } = useLang();
+
+useHead({ title: computed(() => t("admin.login.seoTitle")) });
 
 const { login } = useAdminAuth();
 const username = ref("");
@@ -25,7 +27,7 @@ async function handleLogin() {
 		const { data, error: fetchError } = await adminLoginRequest(username.value, password.value);
 
 		if (fetchError.value) {
-			error.value = "登录失败：用户名或密码错误";
+			error.value = t("admin.login.errors.invalidCredentials");
 			return;
 		}
 
@@ -33,10 +35,10 @@ async function handleLogin() {
 			login(data.value.access_token);
 			navigateTo("/admin/posts", { replace: true });
 		} else {
-			error.value = "登录失败：未收到访问令牌";
+			error.value = t("admin.login.errors.noToken");
 		}
 	} catch {
-		error.value = "登录失败：网络错误";
+		error.value = t("admin.login.errors.network");
 	} finally {
 		isPending.value = false;
 	}
@@ -53,10 +55,10 @@ async function handleLogin() {
           <Icon icon="lucide:lock" class="w-8 h-8 text-white" />
         </div>
         <h1 class="text-2xl font-bold text-gray-900 dark:text-gray-100">
-          管理员登录
+          {{ t("admin.login.title") }}
         </h1>
         <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">
-          请输入管理员账号密码
+          {{ t("admin.login.subtitle") }}
         </p>
       </div>
 
@@ -64,12 +66,12 @@ async function handleLogin() {
         <div>
           <label
             class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
-          >用户名
+          >{{ t("admin.login.username") }}
           </label>
           <input
             v-model="username"
             type="text"
-            placeholder="用户名"
+            :placeholder="t('admin.login.usernamePlaceholder')"
             required
             class="w-full px-4 py-3 border border-gray-200 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
           >
@@ -78,12 +80,12 @@ async function handleLogin() {
         <div>
           <label
             class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
-          >密码
+          >{{ t("admin.login.password") }}
           </label>
           <input
             v-model="password"
             type="password"
-            placeholder="密码"
+            :placeholder="t('admin.login.passwordPlaceholder')"
             required
             class="w-full px-4 py-3 border border-gray-200 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
           >
@@ -102,9 +104,9 @@ async function handleLogin() {
         >
           <span v-if="isPending" class="flex items-center justify-center gap-2">
             <Icon icon="lucide:loader-2" class="w-4 h-4 animate-spin" />
-            登录中...
+            {{ t("admin.login.loggingIn") }}
           </span>
-          <span v-else>登录</span>
+          <span v-else>{{ t("admin.login.login") }}</span>
         </button>
       </form>
       <div class="mt-6 pt-6 border-t text-center">
@@ -112,7 +114,7 @@ async function handleLogin() {
           to="/"
           class="text-sm text-gray-500 hover:text-blue-600 transition-colors"
         >
-          ← 返回博客首页
+          ← {{ t("admin.login.backToBlog") }}
         </NuxtLink>
       </div>
     </div>
