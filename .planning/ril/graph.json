@@ -2,7 +2,7 @@
   "ril_version": 1,
   "round": 28,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-08-15T10:37:52+00:00",
+  "updated_at": "2026-08-15T10:56:46+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -1502,7 +1502,7 @@
       "version": 1,
       "created_at": "2026-08-10T02:50:10+00:00",
       "updated_at": "2026-08-10T02:50:10+00:00",
-      "touched_round": 17,
+      "touched_round": 28,
       "category": "security",
       "severity": 0.2,
       "confidence": 0.7,
@@ -1587,7 +1587,7 @@
       "version": 1,
       "created_at": "2026-08-10T04:19:27+00:00",
       "updated_at": "2026-08-10T04:19:27+00:00",
-      "touched_round": 18,
+      "touched_round": 28,
       "category": "performance",
       "severity": 0.2,
       "confidence": 0.6,
@@ -1764,7 +1764,7 @@
       "version": 1,
       "created_at": "2026-08-15T02:20:30+00:00",
       "updated_at": "2026-08-15T02:20:30+00:00",
-      "touched_round": 26,
+      "touched_round": 28,
       "title": "Round 26 re-verification: stop conditions still hold",
       "rationale": "Fresh round-26 OBSERVE/VERIFY rather than trusting round-24: backend pytest 579 passed @93.54% (gate 80%), frontend vitest 679 passed. ril.py check consistent (133 nodes/117 edges, now round 26). Only active tasks TASK-023 (0.81) and TASK-026 (0.35) both far below the 3.0 threshold; only active issues ISS-016 (sev 0.5) and ISS-017 (sev 0.3) are low-severity tracked follow-ups with explicit deferral decision DEC-015. All five stop conditions in SKILL.md hold.",
       "alternatives_rejected": "Continue to force more deep-dive rounds despite no above-threshold task; would churn commits without engineering value."
@@ -2329,6 +2329,29 @@
       "touched_round": 28,
       "commit": "08d1b28",
       "description": "Round 37: cap public post_id numeric-int path at 15 digits so huge digit strings 404 instead of ValueError 500. +2 tests."
+    },
+    "EV-048": {
+      "id": "EV-048",
+      "type": "evidence",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-15T10:56:20+00:00",
+      "updated_at": "2026-08-15T10:56:20+00:00",
+      "touched_round": 28,
+      "source": "round38 final verify: backend pytest 583 @93.57% (fresh run), frontend 656 from round-35 gate run (no frontend diff since), ruff/pyright/biome/vue-tsc/build all green",
+      "description": "Rounds 27-37 delivered 11 real fixes: proxy client-IP forwarding + dead RATE_LIMIT_PER_MINUTE (TASK-030), empty-query search skip (TASK-031), 5 dead components (TASK-032), 2 dead root scripts (TASK-033), admin create/update write rate limits closing ISS-017 (TASK-034), password minlength 6->8 alignment (TASK-035), scheduled_posts stats so drafts exclude scheduled (TASK-036), 6MB proxy body bound (TASK-037), siteUrl 3001->3000 default + CORS ports (TASK-038), nginx proxy_cache_path (TASK-039), huge post_id -> 404 not 500 (TASK-040).",
+      "confidence": 1.0
+    },
+    "DEC-022": {
+      "id": "DEC-022",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-15T10:56:34+00:00",
+      "updated_at": "2026-08-15T10:56:34+00:00",
+      "touched_round": 28,
+      "rationale": "Rounds 27-37 produced 11 real fixes (above the stalled 21-26 convergence re-verification pattern, which found zero). Remaining active items are decision-tracked deferrals only: TASK-023 (defense-in-depth, DEC-015), TASK-026 (write-on-read debounce, low value). Deep-dive budget: each round now returns marginal finds, so per §8 stop deep-exploration. Stop conditions §10: no task above 3.0 (max 0.81) ✓, ISS-016 high items resolved/deferred-by-decision ✓, VERIFY green (583/656) ✓, graph consistent (178 nodes/162 edges) ✓. Declare convergence.",
+      "alternatives_rejected": "(a) Re-open TASK-023/026 — rejected: both have explicit deferral decisions; doing them now would be scope-creep, not convergence work. (b) Pad rounds with marginal scans to extend the streak — rejected: skill §8 forbids non-converging deep-dive churn; honest stop beats manufactured busywork."
     }
   },
   "edges": [
@@ -3303,6 +3326,24 @@
       "to": "ISS-027",
       "type": "resolves",
       "created_at": "2026-08-15T10:35:48+00:00"
+    },
+    {
+      "from": "DEC-022",
+      "to": "TASK-023",
+      "type": "governs",
+      "created_at": "2026-08-15T10:56:46+00:00"
+    },
+    {
+      "from": "DEC-022",
+      "to": "TASK-026",
+      "type": "governs",
+      "created_at": "2026-08-15T10:56:46+00:00"
+    },
+    {
+      "from": "DEC-022",
+      "to": "DEC-020",
+      "type": "supersedes",
+      "created_at": "2026-08-15T10:56:46+00:00"
     }
   ]
 }
