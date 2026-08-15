@@ -186,4 +186,49 @@ describe("API proxy request bodies", () => {
 
 		expect(readRawBodyMock).not.toHaveBeenCalled();
 	});
+
+	it("rejects oversized request bodies with 413 before reading them", async () => {
+		const handler = loadHandler();
+		vi.stubGlobal("getMethod", () => "POST");
+		// content-length > MAX_PROXY_BODY (6MB), as a browser would send for a
+		// huge upload; the proxy must refuse without buffering the body.
+		vi.stubGlobal("getRequestHeader", () => "7000000");
+		const readRawBodyMock = vi.fn();
+		vi.stubGlobal("readRawBody", readRawBodyMock);
+
+		await expect(handler({})).rejects.toThrow("Request body too large");
+		expect(readRawBodyMock).not.toHaveBeenCalled();
+		expect(mockFetchRaw).not.toHaveBeenCalled();
+	});
+
+	it("allow a ≤6MB upload body through to the backend", async () => {
+		const handler = loadHandler();
+		vi.stubGlobal("getMethod", () => "POST");
+		// multipart upload under the cap: content-length ~3MB, content-type
+		// multipart/form-data
+		vi.stubGlobal("getRequestHeader", () => "3145728");
+		vi.stubGlobal("readRawBody", vi.fn().mockResolvedValue("multipart-body"));
+
+		await handler({});
+
+		const [, options] = mockFetchRaw.mock.calls[0] as [string, { body: unknown }];
+		expect(options.body).toBe("multipart-body");
+	});
+
+	it("rejects chunked request bodies without content-length", async () => {
+		const handler = loadHandler();
+		vi.stubGlobal("getMethod", () => "POST");
+		vi.stubGlobal("getRequestHeader", () => "application/octet-stream");
+		const readRawBodyMock = vi.fn();
+		vi.stubGlobal("readRawBody", readRawBodyMock);
+
+		// Simulate an incoming request with transfer-encoding: chunked (no
+		// content-length) by giving the handler an event with node.req.headers.
+		const chunkedEvent = {
+			node: { req: { headers: { "transfer-encoding": "chunked" } } },
+		};
+		await expect(handler(chunkedEvent)).rejects.toThrow("Chunked request bodies not supported");
+		expect(readRawBodyMock).not.toHaveBeenCalled();
+		expect(mockFetchRaw).not.toHaveBeenCalled();
+	});
 });

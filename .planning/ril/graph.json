@@ -2,7 +2,7 @@
   "ril_version": 1,
   "round": 27,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-08-15T08:30:13+00:00",
+  "updated_at": "2026-08-15T09:09:10+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -2125,6 +2125,57 @@
       "touched_round": 27,
       "commit": "9f339be",
       "description": "Round 33: add scheduled_posts to /api/stats + BlogStats type; fix dashboard draftCount exclusion. +4 tests total."
+    },
+    "ISS-024": {
+      "id": "ISS-024",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-08-15T08:34:55+00:00",
+      "updated_at": "2026-08-15T09:09:10+00:00",
+      "touched_round": 27,
+      "title": "Nuxt API proxy buffers unbounded request bodies (frontend-memory DoS)",
+      "description": "server/routes/api/[...path].ts forwards request bodies via readRawBody(event), which buffers the entire body in the Nitro/Node process. The backend upload endpoint caps uploads at 5MB (MAX_SIZE), but that limit applies only after the proxy has already buffered the whole body. A client can POST a multi-GB body to the public frontend proxy and exhaust its memory before the backend rejects it. No size guard exists in the proxy."
+    },
+    "TASK-037": {
+      "id": "TASK-037",
+      "type": "task",
+      "status": "resolved",
+      "version": 4,
+      "created_at": "2026-08-15T08:35:08+00:00",
+      "updated_at": "2026-08-15T09:09:10+00:00",
+      "touched_round": 27,
+      "category": "security",
+      "severity": 0.6,
+      "confidence": 1.0,
+      "effort": 0.5,
+      "unlock_factor": 1.0,
+      "title": "Bound the API proxy request body size before forwarding",
+      "description": "Cap the body read in server/routes/api/[...path].ts at a safe limit slightly above the largest legitimate body (the backend 5MB upload cap), rejecting larger bodies with 413 via h3's assertBodySize/bodyLimit or a manual content-length+read guard.",
+      "priority_score": 8.0
+    },
+    "EV-044": {
+      "id": "EV-044",
+      "type": "evidence",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-15T09:04:07+00:00",
+      "updated_at": "2026-08-15T09:04:07+00:00",
+      "touched_round": 27,
+      "source": "round34 frontend vitest 656 passed (3 new proxy guard tests) + nuxt build + biome + vue-tsc clean",
+      "description": "TASK-037 verified: proxy now rejects bodies over 6MB with 413 before readRawBody, and chunked bodies with no content-length with 400. The frontend memory-DoS vector (buffering an arbitrarily large request body at the public Nuxt edge before the backend's 5MB upload cap) is closed. Tests cover oversized content-length, an allowed under-cap upload, and chunked rejection.",
+      "confidence": 1.0
+    },
+    "CHG-026": {
+      "id": "CHG-026",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-15T09:04:07+00:00",
+      "updated_at": "2026-08-15T09:04:07+00:00",
+      "touched_round": 27,
+      "commit": "ROUND34",
+      "description": "Round 34: bounded API-proxy request bodies — 413 over 6MB pre-buffer; reject chunked (no content-length) with 400. +3 tests."
     }
   },
   "edges": [
@@ -3003,6 +3054,30 @@
       "to": "ISS-023",
       "type": "resolves",
       "created_at": "2026-08-15T08:28:29+00:00"
+    },
+    {
+      "from": "TASK-037",
+      "to": "ISS-024",
+      "type": "addresses",
+      "created_at": "2026-08-15T08:35:08+00:00"
+    },
+    {
+      "from": "ISS-024",
+      "to": "COMP-002",
+      "type": "located_in",
+      "created_at": "2026-08-15T08:35:08+00:00"
+    },
+    {
+      "from": "CHG-026",
+      "to": "TASK-037",
+      "type": "implements",
+      "created_at": "2026-08-15T09:09:10+00:00"
+    },
+    {
+      "from": "CHG-026",
+      "to": "ISS-024",
+      "type": "resolves",
+      "created_at": "2026-08-15T09:09:10+00:00"
     }
   ]
 }

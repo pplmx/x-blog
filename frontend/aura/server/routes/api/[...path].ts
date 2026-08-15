@@ -1,3 +1,5 @@
+import type { H3Event } from "h3";
+
 // Server-side backend target. NUXT_PROXY_TARGET is the server-only variable;
 // NUXT_API_URL is kept as a fallback but is ALSO injected into the client
 // bundle (runtimeConfig.public.apiUrl), so it must never point at a
@@ -5,6 +7,28 @@
 // resolve those, and every search/API call would hit a wrong URL.
 const BACKEND_URL =
 	process.env.NUXT_PROXY_TARGET || process.env.NUXT_API_URL || "http://localhost:18888";
+
+// Largest legitimate proxied body is a 5MB image upload (backend MAX_SIZE)
+// plus multipart framing; anything well above that is an abuse attempt. The
+// proxy is the public network edge, so a body this large must be rejected HERE
+// — otherwise an attacker can make the frontend buffer an arbitrarily large
+// request in memory (readRawBody reads the whole stream) before the backend's
+// upload cap ever sees it. (RIL TASK-037)
+const MAX_PROXY_BODY = 6 * 1024 * 1024; // 6MB
+
+/** Reject requests whose body exceeds MAX_PROXY_BODY with 413 (before buffering). */
+function assertBodyWithinLimit(event: H3Event): void {
+	const contentLength = getRequestHeader(event, "content-length");
+	if (contentLength && Number.parseInt(contentLength, 10) > MAX_PROXY_BODY) {
+		throw createError({ statusCode: 413, statusMessage: "Request body too large" });
+	}
+	// Chunked bodies carry no content-length. The backend also caps bodies, but
+	// rejecting here avoids draining an unbounded request stream into memory.
+	const declared = event.node?.req?.headers["transfer-encoding"];
+	if (declared?.toString().toLowerCase().includes("chunked")) {
+		throw createError({ statusCode: 400, statusMessage: "Chunked request bodies not supported" });
+	}
+}
 
 export default defineEventHandler(async (event) => {
 	const path = getRouterParam(event, "path") || "";
@@ -46,9 +70,11 @@ export default defineEventHandler(async (event) => {
 	// runtime's fetch) cannot serialize — every form POST 502'd with
 	// "Cannot convert object to primitive value". Raw passthrough is also
 	// byte-exact, which is what a proxy should be.
-	const hasBody = getRequestHeader(event, "content-type") !== null;
-	const body =
-		method === "get" || method === "head" || !hasBody ? undefined : await readRawBody(event);
+	let body: string | undefined;
+	if (method !== "get" && method !== "head" && getRequestHeader(event, "content-type") !== null) {
+		assertBodyWithinLimit(event);
+		body = await readRawBody(event);
+	}
 
 	try {
 		const response = await $fetch.raw(url, {
