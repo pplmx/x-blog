@@ -2,7 +2,7 @@
   "ril_version": 1,
   "round": 30,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-08-15T14:42:16+00:00",
+  "updated_at": "2026-08-15T15:34:28+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -103,7 +103,7 @@
       "version": 2,
       "created_at": "2026-08-06T13:24:48+00:00",
       "updated_at": "2026-08-10T05:08:10+00:00",
-      "touched_round": 5,
+      "touched_round": 30,
       "title": "posts-list API is bottlenecked by uncached DB reads on the most trafficked endpoint",
       "confidence": 0.7,
       "description": "/api/posts is the hottest public endpoint; caching the list with a TTL would reduce DB load. Risk: SQLAlchemy ORM objects detach across sessions — cache must store serialized dicts."
@@ -2530,10 +2530,10 @@
     "TASK-044": {
       "id": "TASK-044",
       "type": "task",
-      "status": "active",
-      "version": 1,
+      "status": "resolved",
+      "version": 2,
       "created_at": "2026-08-15T14:42:07+00:00",
-      "updated_at": "2026-08-15T14:42:07+00:00",
+      "updated_at": "2026-08-15T15:34:28+00:00",
       "touched_round": 30,
       "category": "core-feature",
       "severity": 1,
@@ -2542,6 +2542,29 @@
       "unlock_factor": 1,
       "title": "Implement complete en/zh i18n across the Nuxt frontend (custom composable)",
       "description": "Per DEC-026: build useLang composable + en/zh JSON bundles; extract and replace ~1500 hardcoded UI strings across layouts/pages/components; language switcher in layouts; sync <html lang>; localize site meta/SEO head. Exclude user-authored content. Verify per SKILL §11.4: unit tests for composable, browser + Playwright e2e for switcher, full-suite regression."
+    },
+    "CHG-033": {
+      "id": "CHG-033",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-15T15:34:24+00:00",
+      "updated_at": "2026-08-15T15:34:24+00:00",
+      "touched_round": 30,
+      "commit": "93cfaae",
+      "title": "Complete en/zh i18n across the Nuxt frontend (useLang composable + 17 locale namespaces)"
+    },
+    "EV-049": {
+      "id": "EV-049",
+      "type": "evidence",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-15T15:34:24+00:00",
+      "updated_at": "2026-08-15T15:34:24+00:00",
+      "touched_round": 30,
+      "source": "93cfaae (frontend unit 664 pass, new useLang parity tests; nuxt typecheck 0; biome clean; prod build OK; backend 583/93.57%; e2e/language.spec.ts 3 pass in real chromium)",
+      "title": "Frontend i18n landed and verified: zh default, live switch, cookie persistence",
+      "confidence": 1.0
     }
   },
   "edges": [
@@ -3625,6 +3648,18 @@
       "type": "governs",
       "created_at": "2026-08-15T14:42:16+00:00",
       "note": "i18n feature lives in frontend-aura"
+    },
+    {
+      "from": "CHG-033",
+      "to": "TASK-044",
+      "type": "implements",
+      "created_at": "2026-08-15T15:34:28+00:00"
+    },
+    {
+      "from": "EV-049",
+      "to": "HYP-001",
+      "type": "validates",
+      "created_at": "2026-08-15T15:34:28+00:00"
     }
   ]
 }
