@@ -6,11 +6,12 @@ description: >
   backed by a typed knowledge graph (RIL) as cross-session memory.
   Use when the user wants the agent to keep iterating on the repo by
   itself, asks for autonomous/continuous engineering mode, "graph
-  engineering", "loop engineering", "keep improving the repository", or
-  wants issues tracked as typed nodes and edges with weighted priority
-  scoring. Covers graph schema and lifecycle, cross-session loading,
-  concurrency locking, scoring, deep-dive budgets, human-intervention
-  boundaries, and stop conditions.
+  engineering", "loop engineering", "keep improving the repository",
+  "feature evolution", "功能演进", or wants issues tracked as typed nodes
+  and edges with weighted priority scoring. Covers graph schema and
+  lifecycle, cross-session loading, concurrency locking, scoring,
+  deep-dive budgets, human-intervention boundaries, quality-convergence
+  stop conditions, and a feature-evolution mode (see §11).
 ---
 
 # Graph Engineering（长期自主工程循环）
@@ -21,6 +22,16 @@ description: >
 
 默认行为：**OBSERVE → MODEL → EVALUATE → SELECT → EXECUTE → VERIFY → LEARN → REPEAT**。
 除非触发"人工介入边界"（见第 9 节），不等待确认，不询问"是否继续"。
+
+**运行模式**：引擎有且仅有两种运行模式，共享同一 RIL schema 与骨架：
+
+- **质量收敛模式**（默认）：第 1-8、10 节，反应式 —— 修 bug、还技术债、加固、性能优化；致力于让仓库
+  正确、稳定、安全、可维护（引导到第 10 节停止条件）。
+- **功能演进模式**（第 11 节）：第 10 节 bug 收敛条件全部满足后，若存在"功能演进已启用"的 decision
+  （operator 指令，或用户明示 roadmap），引擎**不停止**，切换为主动交付用户可见的新能力。
+
+两种模式差异仅在 SOURCE（功能/问题从哪来）与验收强度（功能端到端 + 用户可验证）；OBSERVE/EXECUTE/
+VERIFY/LEARN 与图谱写入规则完全一致。切换以不可变 decision 记录在图中。
 
 ## 1. OBSERVE
 
@@ -148,7 +159,9 @@ priority_score = category_weight × severity × confidence × (1 / sqrt(effort))
 
 Commit 时在 message 里引用相关 task/issue 节点 id，保证代码历史和图谱可以互相追溯。
 
-## 8. 深度探索（无明显 TODO 时）
+## 8. 深度探索（无明显 TODO 时）—— 质量收敛模式的兜底
+
+> 本节是**质量收敛模式**（反应式）的兜底扫描。功能演进模式不依赖本节，见第 11 节。
 
 主动做 Repository Intelligence Deep Dive，寻找隐藏 bug、边界问题、并发问题、错误处理缺陷、资源泄漏、性能瓶颈、测试缺口、安全风险、架构耦合、技术债务，优先形成"证据 → 根因 → 修复 → 验证"闭环。
 
@@ -156,7 +169,7 @@ Commit 时在 message 里引用相关 task/issue 节点 id，保证代码历史�
 
 - 单轮深度探索最多产出 3 个新 task 节点，否则说明范围没收敛，需要先合并/归类。
 - 单次 commit 的 diff 不超过某个阈值（默认 300 行，特殊重构除外并需在 decision 中说明理由）。
-- 若连续 2 轮深度探索新增 task 的 priority_score 均低于当前阈值（默认 3.0），停止深度探索，转入停止条件评估。
+- 若连续 2 轮深度探索新增 task 的 priority_score 均低于当前阈值（默认 3.0），停止深度探索，转入停止条件评估（第 10 节）——若评估通过且功能演进已启用，转第 11 节。
 
 ## 9. 人工介入边界
 
@@ -182,3 +195,61 @@ Commit 时在 message 里引用相关 task/issue 节点 id，保证代码历史�
 5. 图谱一致性检查（第 2.2 节）无未处理的孤立/循环节点超过 N 个。
 
 否则继续 REPEAT，直到用户主动中止或以上全部满足。
+
+> 第 1-5 条是**质量收敛**的停止条件。若功能演进已启用（存在对应 decision，见第 11 节），第 1-5 条全部
+> 满足后并不整体停止 —— 而是切换进功能演进模式继续交付能力；功能模式下每轮结束仍须复核第 1-5 条
+> 不变式未被破坏（回归护栏）。
+
+## 11. 功能演进模式（Feature Evolution Mode）
+
+> 本节是主动交付用户可见新能力的模式。仅当质量收敛（第 10 节）已达成**且**存在"功能演进已启用"的
+> decision 时才进入；切换用不可变 decision 记录。
+
+### 11.1 触发与切换
+
+- 默认在质量收敛模式运行（第 1-8、10 节）。当第 10 节的 bug 收敛条件全部满足，且仓库存在
+  `decision` 装载"功能演进已启用"（通常来自 operator 指令或用户明示 roadmap），引擎**不停止**，
+  转入本节。
+- 切换本身必须写一条不可变 `decision`：`rationale`（为什么在此阶段做功能 / 功能来源）
+  与 `alternatives_rejected`（为什么不做别的）。切换不可逆，但可被新的 supersedes decision 中止回退。
+
+### 11.2 功能来源（SOURCING）
+
+功能候选按序优先，来自：
+
+1. **operator 产品方向**：用户明示的 roadmap / 期望能力（最高优先级）；
+2. **图谱 backlog**：`category=core-feature` 的 task 节点（含已记录未排期的功能）；
+3. **差距分析**：对照现有功能面（公开页、admin、评论、搜索、SEO、导出、订阅、国际化、用户体系、
+   分析面板……）找缺失或有明显短板的用户可见能力；
+4. **使用信号**：来自 views / likes / comments / 搜索词等真实信号（若可观测）。
+
+禁止凭空堆砌功能。每个候选必须一句话说清"为哪个用户、解决什么、为什么现在"，否则不进 SELECT。
+
+### 11.3 选择、范围与架构
+
+- 每个功能先用一条 `decision` 固化：范围、目标用户、为什么现在、被拒绝的替代方案。
+- 再建一条 `category=core-feature` 的 task，沿用 priority_score 排序；单轮只聚焦一个功能主线。
+- **垂直切片**：一个功能一次端到端落地（后端 + 前端 + 测试 + 文档），不留半成品。
+- 沿用 §8 diff 预算（默认 300 行/commit，特殊重构在 decision 中说明）；功能过大须拆 rounds，每轮
+  交付可独立验证的切片。
+- 涉及既有架构决策（缓存、认证、数据库）时，先读相关 supersedes decision 链，不得静默违背
+  （如 DEC-004 多 worker 缓存、DEC-009 的 DDL 保持约束）。
+
+### 11.4 验收（比质量模式更严）
+
+功能是用户可见行为，VERIFY 须**同时**满足：
+
+1. 单元/集成测试覆盖新契约与边界（§6 不变，禁削断言、禁删测试）；
+2. **浏览器/UI 验证**：真实驱动页面确认功能可用（不是只看测试通过）；
+3. 端到端（Playwright）覆盖关键用户旅程；
+4. 回归护栏：每轮结束仍跑全量 VERIFY，确保功能演进不破坏既有质量收敛结果。
+
+### 11.5 功能模式的停止条件
+
+满足以下任一即停（不必继续 push 功能）：
+
+1. 图谱中 `active` 的 `core-feature` task 已被 `change` 交付并验证完毕（backlog 空）；
+2. operator 主动中止或改变方向（新增 supersedes decision）；
+3. 连续 2 轮功能候选均因范围/价值被拒，无合适功能可做。
+
+不满足时继续 REPEAT。任一功能轮结束后，仍须确认第 10 节 bug 收敛不变式未被破坏（回归护栏）。

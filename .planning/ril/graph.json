@@ -2,7 +2,7 @@
   "ril_version": 1,
   "round": 30,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-08-15T14:01:48+00:00",
+  "updated_at": "2026-08-15T14:42:16+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -2502,6 +2502,46 @@
       "touched_round": 30,
       "rationale": "Round 30 fresh-eyes sweep over Dockerfiles, cache.py/config/database, crud, logging middleware, admin router authz, useApi composition, CI workflows, and the frontend markdown rendering pipeline. Results: (1) The 2-worker in-memory cache/limiter inconsistency was re-discovered and RE-VERIFIED as already accepted by DEC-004 (posts<=5min / taxonomy<=30min staleness, self-healing; single-worker rejected for concurrency loss) — no re-open, no churn. (2) Genuine new fix: admin editor preview showed raw markdown source instead of the rendered article (TASK-043, 1.71) — now rendered via the same MarkdownContent component the public page uses, +regression test; VERIFY green: backend 583 passed / 93.57%, frontend 657 passed, pyright 0, ruff clean, vue-tsc 0, biome clean. (3) Comment rendering is interpolated text (no v-html) — no XSS surface; MarkdownContent/mermaid-strict/KaTeX-trust-false/sanitizeUrl/Search snippets all sanitized. Remaining active tasks are tracked deferrals only. Stop conditions hold: no task >3.0, no unresolved HIGH issue, VERIFY green, graph consistent, deep-dives exhausted for this round.",
       "alternatives_rejected": "(a) Re-open the multi-worker cache issue as a new task — rejected: explicitly accepted in DEC-004, no new evidence, would re-litigate a made decision. (b) Leave the admin preview broken as too trivial — rejected: it misleads content authors about how their post will render; fix was one component swap + one regression test. (c) Add Redis/shared cache — rejected: no multi-node deployment, infra overhead not warranted at this scale (per DEC-004)."
+    },
+    "DEC-025": {
+      "id": "DEC-025",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-15T14:39:13+00:00",
+      "updated_at": "2026-08-15T14:39:13+00:00",
+      "touched_round": 30,
+      "title": "Switch engine to feature-evolution mode (round 30)",
+      "rationale": "Operator directive: shift the autonomous loop from reactive quality convergence to proactive feature evolution. Quality convergence is reached (see DEC-022/023/024): all >3.0 tasks resolved, high-severity issues closed or deferred-by-decision, VERIFY green, graph consistent; remaining active tasks (TASK-023 0.81, TASK-026 0.35) are decision-tracked deferrals only. The bug deep-dive engine has saturated, so continuing reactive-only rounds would manufacture non-converging churn. SKILL.md now defines §11 Feature Evolution Mode: when bug-convergence conditions (§10) are met and a feature-evolution decision exists, the loop does not stop but actively delivers user-visible features, with stricter acceptance (unit + UI/browser + e2e + full-suite regression guard each round).",
+      "alternatives_rejected": "(a) Keep running reactive deep-dive rounds after convergence - rejected: margin already sub-threshold (DEC-018/020/022), skill SEC8 forbids non-converging churn. (b) Build features without an explicit mode/decision - rejected: would blur reactive-vs-proactive boundaries and skip the stricter feature acceptance gate. (c) Stop the loop entirely at convergence - rejected: operator explicitly wants continued value delivery via feature evolution."
+    },
+    "DEC-026": {
+      "id": "DEC-026",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-15T14:42:07+00:00",
+      "updated_at": "2026-08-15T14:42:07+00:00",
+      "touched_round": 30,
+      "title": "i18n (en/zh) feature-scope decision: custom lightweight composable, keep URL structure",
+      "rationale": "Feature-evolution first feature (per operator direction): add complete en/zh internationalization to the Nuxt frontend. Scope: all UI chrome text (nav, footer, buttons, labels, placeholders, aria-labels, errors, admin) across layouts, pages, components. NOT user-authored content (post/comment bodies). Approach: custom composable (useLang + JSON bundles en.json/zh.json + dot-path $t with {var} interpolation), SSR-safe (default locale from cookie else configured default), locale persisted in localStorage, manual switcher + browser-language auto-detect, <html lang> synced. Rejected @nuxtjs/i18n: adds heavy dep and per-locale route/URL + SEO restructuring to an already-SEO-optimized blog; the chosen direction emphasized no new external deps/infrastructure. ~1500 hardcoded Han chars across 17 files (observed), zero existing i18n infra (nuxt.config imports comment names a nonexistent useI18n).",
+      "alternatives_rejected": "(a) @nuxtjs/i18n module - rejected: rewrites routing/per-locale URLs, restructures existing SEO/sitemap, heavy dep; risk outweighs benefit for a well-indexed blog and contradicts the no-new-deps selection. (b) Translate user content (post/comment bodies) - rejected: authoring-language content, out of UI-i18n scope, would corrupt stored data. (c) Locale-per-route (prefix strategy) - rejected without a module; single SPA-style locale state keeps URL structure stable. (d) Text-DB/auto-translate - rejected: reliability/consistency issues; manual curated JSON bundles preferred."
+    },
+    "TASK-044": {
+      "id": "TASK-044",
+      "type": "task",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-15T14:42:07+00:00",
+      "updated_at": "2026-08-15T14:42:07+00:00",
+      "touched_round": 30,
+      "category": "core-feature",
+      "severity": 1,
+      "confidence": 0.9,
+      "effort": 6,
+      "unlock_factor": 1,
+      "title": "Implement complete en/zh i18n across the Nuxt frontend (custom composable)",
+      "description": "Per DEC-026: build useLang composable + en/zh JSON bundles; extract and replace ~1500 hardcoded UI strings across layouts/pages/components; language switcher in layouts; sync <html lang>; localize site meta/SEO head. Exclude user-authored content. Verify per SKILL §11.4: unit tests for composable, browser + Playwright e2e for switcher, full-suite regression."
     }
   },
   "edges": [
@@ -3578,6 +3618,13 @@
       "to": "DEC-023",
       "type": "supersedes",
       "created_at": "2026-08-15T14:01:48+00:00"
+    },
+    {
+      "from": "DEC-026",
+      "to": "COMP-002",
+      "type": "governs",
+      "created_at": "2026-08-15T14:42:16+00:00",
+      "note": "i18n feature lives in frontend-aura"
     }
   ]
 }
