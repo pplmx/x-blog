@@ -271,6 +271,24 @@ def test_get_post_unicode_digit_not_treated_as_id(client):
     assert response.status_code in (200, 404)
 
 
+def test_get_post_huge_numeric_id_does_not_crash(client):
+    """A very long all-digit path segment must not 500.
+
+    Python 3.14 raises ValueError ('Exceeds the limit (4300 digits)') for
+    int() of >4300-digit strings, and even ~30 digits exceeds the 64-bit
+    BIGINT range the id columns use. With the ≤15-digit numeric-id bound the
+    oversized segment is treated as a slug lookup → 404, never a 500.
+    """
+    huge = "9" * 5000
+    response = client.get(f"/api/posts/{huge}")
+    assert response.status_code == 404
+
+    over_bigint = "9" * 30  # 30 digits: beyond 64-bit, still 'all digits'
+    response = client.get(f"/api/posts/{over_bigint}")
+    assert response.status_code in (200, 404)  # definitely not 500
+    assert response.status_code != 500
+
+
 def test_create_post_with_cover_image(client, auth_headers):
     """Creating a post with cover_image should save it."""
     response = client.post(

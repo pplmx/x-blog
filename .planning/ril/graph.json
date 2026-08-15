@@ -2,7 +2,7 @@
   "ril_version": 1,
   "round": 28,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-08-15T10:18:21+00:00",
+  "updated_at": "2026-08-15T10:35:48+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -11,7 +11,7 @@
       "version": 1,
       "created_at": "2026-08-06T13:23:41+00:00",
       "updated_at": "2026-08-06T13:23:41+00:00",
-      "touched_round": 27,
+      "touched_round": 28,
       "title": "backend-nova",
       "description": "FastAPI Python 3.14 backend at backend/nova; SQLAlchemy ORM; routers in app/routers, crud.py business logic, 656 lines"
     },
@@ -2278,6 +2278,57 @@
       "touched_round": 28,
       "commit": "8f9e273",
       "description": "Round 36: add missing proxy_cache_path to deploy/nginx.conf so the referenced STATIC cache zone is declared (config boots)."
+    },
+    "ISS-027": {
+      "id": "ISS-027",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-08-15T10:19:26+00:00",
+      "updated_at": "2026-08-15T10:35:48+00:00",
+      "touched_round": 28,
+      "title": "Public /api/posts/{id}: huge digit strings cause ValueError 500",
+      "description": "GET /api/posts/{post_id} takes post_id: str; when isdigit() is true it calls int(post_id) then queries Post.id == that value. Python 3.14 raises ValueError for >4300-digit int strings (unhandled -> 500; public unauthenticated route), and even a 30-digit value exceeds BIGINT range on PostgreSQL (bind error). The slug-vs-id discrimination lacks a numeric size bound."
+    },
+    "TASK-040": {
+      "id": "TASK-040",
+      "type": "task",
+      "status": "resolved",
+      "version": 4,
+      "created_at": "2026-08-15T10:19:26+00:00",
+      "updated_at": "2026-08-15T10:35:48+00:00",
+      "touched_round": 28,
+      "category": "correctness",
+      "severity": 0.6,
+      "confidence": 1.0,
+      "effort": 0.3,
+      "unlock_factor": 1.0,
+      "title": "Bound numeric post_id length in public get_post route",
+      "description": "In posts.py get_post(post_id: str): only treat as numeric id when the digit string is short enough to fit a 64-bit id (<=15 digits, matching AUTOINCREMENT BIGINT); otherwise fall through to slug lookup (which 404s) instead of int() crashing. Add test.",
+      "priority_score": 8.0
+    },
+    "EV-047": {
+      "id": "EV-047",
+      "type": "evidence",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-15T10:34:03+00:00",
+      "updated_at": "2026-08-15T10:34:03+00:00",
+      "touched_round": 28,
+      "source": "round37 backend pytest 583 passed @93.57% (2 new) + ruff + pyright clean; manual probe confirmed pre-fix 500 on 5000-digit id",
+      "description": "TASK-040 verified: public get_post now bounds numeric ids to 15 digits (64-bit range); oversized all-digit segments fall back to slug lookup -> 404 instead of Python 3.14 ValueError 500. Manual probe before the fix reproduced the 500 on a 5000-digit id.",
+      "confidence": 1.0
+    },
+    "CHG-029": {
+      "id": "CHG-029",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-15T10:34:03+00:00",
+      "updated_at": "2026-08-15T10:34:03+00:00",
+      "touched_round": 28,
+      "commit": "ROUND37",
+      "description": "Round 37: cap public post_id numeric-int path at 15 digits so huge digit strings 404 instead of ValueError 500. +2 tests."
     }
   },
   "edges": [
@@ -3228,6 +3279,30 @@
       "to": "ISS-026",
       "type": "resolves",
       "created_at": "2026-08-15T10:17:57+00:00"
+    },
+    {
+      "from": "TASK-040",
+      "to": "ISS-027",
+      "type": "addresses",
+      "created_at": "2026-08-15T10:19:34+00:00"
+    },
+    {
+      "from": "ISS-027",
+      "to": "COMP-001",
+      "type": "located_in",
+      "created_at": "2026-08-15T10:19:35+00:00"
+    },
+    {
+      "from": "CHG-029",
+      "to": "TASK-040",
+      "type": "implements",
+      "created_at": "2026-08-15T10:35:48+00:00"
+    },
+    {
+      "from": "CHG-029",
+      "to": "ISS-027",
+      "type": "resolves",
+      "created_at": "2026-08-15T10:35:48+00:00"
     }
   ]
 }

@@ -55,9 +55,15 @@ def list_posts(
 
 @router.get("/{post_id}", response_model=schemas.Post)
 def get_post(post_id: str, db: Session = Depends(get_db)):
+    # Post ids are SQLite/Postgres autoincrement integers, so a "numeric"
+    # segment longer than 15 digits (64-bit int range) is never a real id —
+    # only a slug or garbage. Cap the int() path: Python 3.14 raises
+    # ValueError for >4300-digit int strings (unhandled 500 on a public
+    # route) and Postgres would reject an out-of-range bind otherwise.
+    is_numeric_id = len(post_id) <= 15 and post_id.isdigit() and post_id.isascii()
     post = (
         crud.get_post(db, int(post_id))
-        if post_id.isdigit() and post_id.isascii()
+        if is_numeric_id
         else crud.get_post_by_slug(db, post_id)
     )
     # Drafts and not-yet-published scheduled posts are invisible to the public.
