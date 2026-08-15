@@ -2,7 +2,7 @@
   "ril_version": 1,
   "round": 27,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-08-15T09:53:55+00:00",
+  "updated_at": "2026-08-15T09:58:14+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -2221,11 +2221,11 @@
       "id": "CHG-027",
       "type": "change",
       "status": "active",
-      "version": 1,
+      "version": 2,
       "created_at": "2026-08-15T09:50:13+00:00",
-      "updated_at": "2026-08-15T09:50:13+00:00",
+      "updated_at": "2026-08-15T09:58:14+00:00",
       "touched_round": 27,
-      "commit": "ROUND35",
+      "commit": "c3f2429",
       "description": "Round 35: align nuxt.config siteUrl default 3001->3000; drop orphaned 3001/3003 from dev CORS allowlist (main.py + justfile)."
     }
   },
