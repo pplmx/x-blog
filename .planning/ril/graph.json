@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 28,
+  "round": 29,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-08-15T10:56:46+00:00",
+  "updated_at": "2026-08-15T13:10:28+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -760,10 +760,10 @@
     "HYP-008": {
       "id": "HYP-008",
       "type": "hypothesis",
-      "status": "active",
-      "version": 1,
+      "status": "stale",
+      "version": 2,
       "created_at": "2026-08-09T14:07:43+00:00",
-      "updated_at": "2026-08-09T14:07:43+00:00",
+      "updated_at": "2026-08-15T12:49:31+00:00",
       "touched_round": 10,
       "confidence": 0.95,
       "title": "The alembic debt is a missing baseline + adoption gap, not missing setup",
@@ -889,10 +889,10 @@
     "HYP-009": {
       "id": "HYP-009",
       "type": "hypothesis",
-      "status": "active",
-      "version": 1,
+      "status": "stale",
+      "version": 2,
       "created_at": "2026-08-09T14:44:59+00:00",
-      "updated_at": "2026-08-09T14:44:59+00:00",
+      "updated_at": "2026-08-15T12:49:31+00:00",
       "touched_round": 11,
       "confidence": 0.9,
       "title": "vue-tsc and typescript compatibility is version-sensitive; lock-aligned pairing works",
@@ -991,10 +991,10 @@
     "HYP-010": {
       "id": "HYP-010",
       "type": "hypothesis",
-      "status": "active",
-      "version": 1,
+      "status": "stale",
+      "version": 2,
       "created_at": "2026-08-09T15:25:43+00:00",
-      "updated_at": "2026-08-09T15:25:43+00:00",
+      "updated_at": "2026-08-15T12:49:31+00:00",
       "touched_round": 16,
       "confidence": 0.9,
       "title": "Modernizing models to SQLAlchemy 2.0 Mapped typing clears the false-positive noise and makes the ~5 real issues actionable",
@@ -2071,7 +2071,7 @@
       "version": 2,
       "created_at": "2026-08-15T07:56:46+00:00",
       "updated_at": "2026-08-15T08:02:11+00:00",
-      "touched_round": 27,
+      "touched_round": 29,
       "commit": "9e9bd7d",
       "description": "Round 32: align admin password-change min length with backend (6->8) in admin.vue; +1 test."
     },
@@ -2352,6 +2352,95 @@
       "touched_round": 28,
       "rationale": "Rounds 27-37 produced 11 real fixes (above the stalled 21-26 convergence re-verification pattern, which found zero). Remaining active items are decision-tracked deferrals only: TASK-023 (defense-in-depth, DEC-015), TASK-026 (write-on-read debounce, low value). Deep-dive budget: each round now returns marginal finds, so per §8 stop deep-exploration. Stop conditions §10: no task above 3.0 (max 0.81) ✓, ISS-016 high items resolved/deferred-by-decision ✓, VERIFY green (583/656) ✓, graph consistent (178 nodes/162 edges) ✓. Declare convergence.",
       "alternatives_rejected": "(a) Re-open TASK-023/026 — rejected: both have explicit deferral decisions; doing them now would be scope-creep, not convergence work. (b) Pad rounds with marginal scans to extend the streak — rejected: skill §8 forbids non-converging deep-dive churn; honest stop beats manufactured busywork."
+    },
+    "ISS-028": {
+      "id": "ISS-028",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-08-15T12:59:34+00:00",
+      "updated_at": "2026-08-15T13:04:51+00:00",
+      "touched_round": 29,
+      "title": "nginx edge caps uploads at default 1MB (no client_max_body_size), breaking >1MB uploads",
+      "description": "deploy/nginx.conf has no client_max_body_size anywhere; nginx default is 1m. Backend upload cap is 5MB (MAX_SIZE), Nuxt proxy allows 6MB (TASK-037), so the intended chain accepts >=5MB — but a 1.5MB image 413s at the nginx /api/ location before reaching the backend. Breaks the documented 5MB upload in the nginx deployment topology (deploy/nginx.conf upstream 127.0.0.1:18888).",
+      "severity": 0.55
+    },
+    "ISS-029": {
+      "id": "ISS-029",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-08-15T12:59:38+00:00",
+      "updated_at": "2026-08-15T13:10:28+00:00",
+      "touched_round": 29,
+      "title": "FastAPI /docs /redoc /openapi.json publicly exposed at nginx edge",
+      "description": "deploy/nginx.conf explicitly proxies /docs and /openapi.json to backend; backend enables docs in all envs (main.py docs_url=/docs, redoc_url=/redoc). Full admin API schema (endpoints, param shapes, rate limits) is public. Admin endpoints remain JWT-gated so no direct data breach, but it is OWASP A05 info disclosure / misconfiguration at the public edge.",
+      "severity": 0.25
+    },
+    "TASK-041": {
+      "id": "TASK-041",
+      "type": "task",
+      "status": "resolved",
+      "version": 4,
+      "created_at": "2026-08-15T12:59:44+00:00",
+      "updated_at": "2026-08-15T13:06:43+00:00",
+      "touched_round": 29,
+      "category": "correctness",
+      "severity": 0.55,
+      "confidence": 0.9,
+      "effort": 1.0,
+      "unlock_factor": 1.0,
+      "title": "Bump client_max_body_size in deploy/nginx.conf to match the 5MB upload cap",
+      "description": "Add client_max_body_size 6m; at the http{} or /api/ location level in deploy/nginx.conf so the nginx edge stops 413ing 1-5MB admin image uploads before they reach the backend (backend MAX_SIZE=5MB, Nuxt proxy 6MB). Matches the Nuxt proxy cap (TASK-037). ~6MB covers 5MB content + multipart framing."
+    },
+    "TASK-042": {
+      "id": "TASK-042",
+      "type": "task",
+      "status": "resolved",
+      "version": 4,
+      "created_at": "2026-08-15T12:59:52+00:00",
+      "updated_at": "2026-08-15T13:10:28+00:00",
+      "touched_round": 29,
+      "category": "security",
+      "severity": 0.25,
+      "confidence": 0.9,
+      "effort": 1.5,
+      "unlock_factor": 1.0,
+      "title": "Hide FastAPI docs (/docs /redoc /openapi.json) from the public nginx edge",
+      "description": "Stop nginx from proxying /docs and /openapi.json (fall through to the Nuxt SPA which 404s them), or set docs_url/redoc_url=None behind an env flag for production. Leaks the full admin API schema at the public edge (OWASP A05). Admin routes stay auth-gated, so this is reduce-exposure hardening rather than a data breach fix."
+    },
+    "COMP-005": {
+      "id": "COMP-005",
+      "type": "component",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-15T13:01:27+00:00",
+      "updated_at": "2026-08-15T13:01:27+00:00",
+      "touched_round": 29,
+      "title": "deploy-nginx",
+      "description": "Production nginx edge config (deploy/nginx.conf) and container topology (docker-compose.yml): TLS termination, /api proxy, uploads serving, Nuxt SSR cache, and network exposure."
+    },
+    "CHG-030": {
+      "id": "CHG-030",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-15T13:06:33+00:00",
+      "updated_at": "2026-08-15T13:06:33+00:00",
+      "touched_round": 29,
+      "commit": "407553947cf9feff99cae472bf5cfddcb7d560e4",
+      "title": "Round 38: raise nginx client_max_body_size to 6m so >1MB uploads reach the backend (RIL TASK-041, ISS-028)"
+    },
+    "CHG-031": {
+      "id": "CHG-031",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-15T13:10:27+00:00",
+      "updated_at": "2026-08-15T13:10:27+00:00",
+      "touched_round": 29,
+      "commit": "b4e1a17",
+      "title": "Round 38: stop proxying FastAPI /docs /redoc /openapi.json at public nginx edge (RIL TASK-042, ISS-029)"
     }
   },
   "edges": [
@@ -3344,6 +3433,54 @@
       "to": "DEC-020",
       "type": "supersedes",
       "created_at": "2026-08-15T10:56:46+00:00"
+    },
+    {
+      "from": "ISS-028",
+      "to": "COMP-005",
+      "type": "located_in",
+      "created_at": "2026-08-15T13:01:33+00:00"
+    },
+    {
+      "from": "ISS-029",
+      "to": "COMP-005",
+      "type": "located_in",
+      "created_at": "2026-08-15T13:01:33+00:00"
+    },
+    {
+      "from": "TASK-041",
+      "to": "ISS-028",
+      "type": "addresses",
+      "created_at": "2026-08-15T13:01:33+00:00"
+    },
+    {
+      "from": "TASK-042",
+      "to": "ISS-029",
+      "type": "addresses",
+      "created_at": "2026-08-15T13:01:34+00:00"
+    },
+    {
+      "from": "CHG-030",
+      "to": "ISS-028",
+      "type": "resolves",
+      "created_at": "2026-08-15T13:06:33+00:00"
+    },
+    {
+      "from": "CHG-030",
+      "to": "TASK-041",
+      "type": "implements",
+      "created_at": "2026-08-15T13:06:33+00:00"
+    },
+    {
+      "from": "CHG-031",
+      "to": "ISS-029",
+      "type": "resolves",
+      "created_at": "2026-08-15T13:10:28+00:00"
+    },
+    {
+      "from": "CHG-031",
+      "to": "TASK-042",
+      "type": "implements",
+      "created_at": "2026-08-15T13:10:28+00:00"
     }
   ]
 }
