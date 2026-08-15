@@ -2,7 +2,7 @@
   "ril_version": 1,
   "round": 28,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-08-15T10:35:48+00:00",
+  "updated_at": "2026-08-15T10:37:52+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -2323,11 +2323,11 @@
       "id": "CHG-029",
       "type": "change",
       "status": "active",
-      "version": 1,
+      "version": 2,
       "created_at": "2026-08-15T10:34:03+00:00",
-      "updated_at": "2026-08-15T10:34:03+00:00",
+      "updated_at": "2026-08-15T10:37:52+00:00",
       "touched_round": 28,
-      "commit": "ROUND37",
+      "commit": "08d1b28",
       "description": "Round 37: cap public post_id numeric-int path at 15 digits so huge digit strings 404 instead of ValueError 500. +2 tests."
     }
   },
