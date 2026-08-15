@@ -2,7 +2,7 @@
   "ril_version": 1,
   "round": 27,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-08-15T06:30:37+00:00",
+  "updated_at": "2026-08-15T07:26:52+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -1453,7 +1453,7 @@
       "version": 1,
       "created_at": "2026-08-10T02:01:45+00:00",
       "updated_at": "2026-08-10T02:01:45+00:00",
-      "touched_round": 20,
+      "touched_round": 27,
       "severity": 0.3,
       "title": "Tracked follow-ups from round-16 security audit (low severity, deferred)",
       "description": "Deferred items kept visible so they are not lost: admin write endpoints unrate-limited; SSR first render uses the weaker regex sanitizer until DOMPurify loads (isomorphic-dompurify candidate); uploaded images stored as-is rather than re-encoded (Pillow defense-in-depth)."
@@ -1983,6 +1983,46 @@
       "touched_round": 27,
       "commit": "1014d19",
       "description": "Round 30: delete dead root-level debug scripts check_cover.py and verify_cover.py."
+    },
+    "TASK-034": {
+      "id": "TASK-034",
+      "type": "task",
+      "status": "resolved",
+      "version": 4,
+      "created_at": "2026-08-15T06:36:41+00:00",
+      "updated_at": "2026-08-15T07:26:52+00:00",
+      "touched_round": 27,
+      "category": "security",
+      "severity": 0.5,
+      "confidence": 1.0,
+      "effort": 0.5,
+      "unlock_factor": 1.0,
+      "title": "Rate-limit admin create/update write endpoints (closes ISS-017 tracked gap)",
+      "description": "ISS-017 tracks 'admin write endpoints unrate-limited'. Round-17 limited only destructive admin endpoints (delete user/post/category/tag/comment, batch-approve); admin POST/PUT posts/categories/tags remain unrate-limited while the equivalent public routers limit all writes with RATE_LIMIT_WRITE. Add @limiter.limit(RATE_LIMIT_WRITE/min) to admin_create_post, admin_update_post, admin_create_category, admin_update_category, admin_create_tag, admin_update_tag.",
+      "priority_score": 5.0
+    },
+    "EV-041": {
+      "id": "EV-041",
+      "type": "evidence",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-15T07:26:00+00:00",
+      "updated_at": "2026-08-15T07:26:00+00:00",
+      "touched_round": 27,
+      "source": "round31 backend pytest 581 passed (2 new registry tests) + ruff + pyright clean",
+      "description": "TASK-034 verified: limiter._route_limits now registers admin_create_post/admin_update_post/admin_create_category/admin_update_category/admin_create_tag/admin_update_tag (all previously absent). slowapi emits no X-RateLimit headers in this app (headers_enabled=False default), so the regression test asserts registry presence directly.",
+      "confidence": 1.0
+    },
+    "CHG-023": {
+      "id": "CHG-023",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-15T07:26:00+00:00",
+      "updated_at": "2026-08-15T07:26:00+00:00",
+      "touched_round": 27,
+      "commit": "ROUND31",
+      "description": "Round 31: add @limiter.limit(RATE_LIMIT_WRITE) to the 6 admin create/update endpoints (closes the ISS-017 tracked unrate-limited admin-write gap). +2 regression tests."
     }
   },
   "edges": [
@@ -2795,6 +2835,24 @@
       "to": "ISS-021",
       "type": "resolves",
       "created_at": "2026-08-15T06:27:42+00:00"
+    },
+    {
+      "from": "TASK-034",
+      "to": "ISS-017",
+      "type": "addresses",
+      "created_at": "2026-08-15T06:37:49+00:00"
+    },
+    {
+      "from": "CHG-023",
+      "to": "TASK-034",
+      "type": "implements",
+      "created_at": "2026-08-15T07:26:52+00:00"
+    },
+    {
+      "from": "CHG-023",
+      "to": "ISS-017",
+      "type": "resolves",
+      "created_at": "2026-08-15T07:26:52+00:00"
     }
   ]
 }

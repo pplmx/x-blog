@@ -217,8 +217,10 @@ def admin_get_post(
     }
 
 
+@limiter.limit(f"{RATE_LIMIT_WRITE}/minute")
 @router.post("/posts", response_model=dict)
 def admin_create_post(
+    request: Request,  # noqa: ARG001
     post_data: PostCreate,
     db: Session = Depends(get_db),
     _current_user: auth.User = Depends(get_current_admin),
@@ -230,8 +232,10 @@ def admin_create_post(
     return {"id": post.id}
 
 
+@limiter.limit(f"{RATE_LIMIT_WRITE}/minute")
 @router.put("/posts/{post_id}", response_model=dict)
 def admin_update_post(
+    request: Request,  # noqa: ARG001
     post_id: int,
     post_data: PostUpdate,
     db: Session = Depends(get_db),
@@ -317,8 +321,10 @@ def admin_list_categories(
     return [{"id": c.id, "name": c.name} for c in categories]
 
 
+@limiter.limit(f"{RATE_LIMIT_WRITE}/minute")
 @router.post("/categories", response_model=dict)
 def admin_create_category(
+    request: Request,  # noqa: ARG001
     body: NameRequest,
     db: Session = Depends(get_db),
     _current_user: auth.User = Depends(get_current_admin),
@@ -340,8 +346,10 @@ def admin_create_category(
     return {"id": category.id, "name": category.name}
 
 
+@limiter.limit(f"{RATE_LIMIT_WRITE}/minute")
 @router.put("/categories/{category_id}", response_model=dict)
 def admin_update_category(
+    request: Request,  # noqa: ARG001
     category_id: int,
     body: NameRequest,
     db: Session = Depends(get_db),
@@ -403,8 +411,10 @@ def admin_list_tags(
     return [{"id": t.id, "name": t.name} for t in tags]
 
 
+@limiter.limit(f"{RATE_LIMIT_WRITE}/minute")
 @router.post("/tags", response_model=dict)
 def admin_create_tag(
+    request: Request,  # noqa: ARG001
     body: NameRequest,
     db: Session = Depends(get_db),
     _current_user: auth.User = Depends(get_current_admin),
@@ -426,8 +436,10 @@ def admin_create_tag(
     return {"id": tag.id, "name": tag.name}
 
 
+@limiter.limit(f"{RATE_LIMIT_WRITE}/minute")
 @router.put("/tags/{tag_id}", response_model=dict)
 def admin_update_tag(
+    request: Request,  # noqa: ARG001
     tag_id: int,
     body: NameRequest,
     db: Session = Depends(get_db),
