@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 29,
+  "round": 30,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-08-15T13:15:59+00:00",
+  "updated_at": "2026-08-15T14:01:48+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -22,7 +22,7 @@
       "version": 1,
       "created_at": "2026-08-06T13:23:41+00:00",
       "updated_at": "2026-08-06T13:23:41+00:00",
-      "touched_round": 27,
+      "touched_round": 30,
       "title": "frontend-aura",
       "description": "Nuxt 4 Vue 3 TypeScript frontend at frontend/aura; composables; admin pages; e2e Playwright; biome lint"
     },
@@ -2449,9 +2449,59 @@
       "version": 1,
       "created_at": "2026-08-15T13:15:49+00:00",
       "updated_at": "2026-08-15T13:15:49+00:00",
-      "touched_round": 29,
+      "touched_round": 30,
       "rationale": "Round 29 fresh-eyes re-verification of the DEC-022 convergence claim. Found and fixed TWO real deploy-config issues the prior convergence had NOT caught: (1) nginx default 1m body cap silently 413ing 1-5MB admin uploads (backend MAX_SIZE=5MB, TASK-041/ISS-028, 4.95), (2) FastAPI /docs /redoc /openapi.json proxied at the public edge leaking the full admin schema (TASK-042/ISS-029, 1.84, OWASP A05). Both fixed + verified (VERIFY: backend 583 passed/93.57%, frontend 656 passed, pyright 0, ruff clean). Two deep-dive passes over proxy/upload/search/comments/posts/export/rss/sitemap/auth/limiter/nginx then produced nothing above the 3.0 threshold; remaining active tasks are tracked deferrals only (TASK-023 defense-in-depth 0.81, TASK-026 write-on-read debounce 0.35). Stop conditions: no task >3.0 ✓, no unresolved HIGH issue (ISS-016 umbrella fully resolved, ISS-027/028/029 closed) ✓, VERIFY green ✓, graph consistent (187/173) ✓, deep-dives exhausted ✓. Declare convergence; re-audit deploy artifacts in a future round as new findings warrant.",
       "alternatives_rejected": "(a) Keep piling marginal scans onto round 29 -- rejected, skill SEC8 forbids non-converging churn and DEC-022 precedent stands. (b) Leave the two nginx issues untracked as low-priority -- rejected: ISS-028 is a real functional break of a documented feature and ISS-029 is a genuine public-exposure reduction; both were cheap, config-only fixes with no test impact. (c) Wait for user confirmation before fixing deployment config -- rejected: reproduceable, git-revertible, within repo scope."
+    },
+    "ISS-030": {
+      "id": "ISS-030",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-08-15T13:45:23+00:00",
+      "updated_at": "2026-08-15T14:01:07+00:00",
+      "touched_round": 30,
+      "title": "Admin post editor preview shows raw markdown source, not the rendered article",
+      "location": "frontend/aura/app/pages/admin/posts/[id].vue:437. The preview pane does v-html=sanitizeHtml(formData.content) — sanitizeHtml only strips dangerous tags, it does NOT run marked conversion (convertMarkdownToHtml lives in useMarkdown and is used only by the public MarkdownContent component). Result: preview shows raw markdown markup (e.g. '**bold**', '[text](url)') mixed with any HTML that happens to be in the source — misleading: it does not match the real article rendering on /posts/[slug]. Admin-only, functional/UX correctness bug.",
+      "severity": 0.22
+    },
+    "TASK-043": {
+      "id": "TASK-043",
+      "type": "task",
+      "status": "resolved",
+      "version": 4,
+      "created_at": "2026-08-15T13:45:23+00:00",
+      "updated_at": "2026-08-15T14:01:07+00:00",
+      "touched_round": 30,
+      "category": "correctness",
+      "severity": 0.22,
+      "confidence": 0.95,
+      "effort": 1.5,
+      "unlock_factor": 1.0,
+      "title": "Render admin editor preview with MarkdownContent instead of raw markdown",
+      "description": "Replace the v-html=sanitizeHtml(formData.content) preview div in admin/posts/[id].vue with <MarkdownContent :content='formData.content' /> — the same component the public post page uses, which converts markdown, sanitizes (regex fallback + DOMPurify upgrade), and renders code/mermaid/math/image segments identically. Removes the now-unused sanitizeHtml import. Add a test asserting the preview renders CONVERTED markdown (e.g. **bold** -> <strong>). RIL TASK-044, ISS-031."
+    },
+    "CHG-032": {
+      "id": "CHG-032",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-15T14:01:07+00:00",
+      "updated_at": "2026-08-15T14:01:07+00:00",
+      "touched_round": 30,
+      "commit": "1964d63",
+      "title": "Round 30: render admin editor preview with MarkdownContent (raw source -> converted+sanitized) (RIL TASK-043, ISS-030)"
+    },
+    "DEC-024": {
+      "id": "DEC-024",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-15T14:01:48+00:00",
+      "updated_at": "2026-08-15T14:01:48+00:00",
+      "touched_round": 30,
+      "rationale": "Round 30 fresh-eyes sweep over Dockerfiles, cache.py/config/database, crud, logging middleware, admin router authz, useApi composition, CI workflows, and the frontend markdown rendering pipeline. Results: (1) The 2-worker in-memory cache/limiter inconsistency was re-discovered and RE-VERIFIED as already accepted by DEC-004 (posts<=5min / taxonomy<=30min staleness, self-healing; single-worker rejected for concurrency loss) — no re-open, no churn. (2) Genuine new fix: admin editor preview showed raw markdown source instead of the rendered article (TASK-043, 1.71) — now rendered via the same MarkdownContent component the public page uses, +regression test; VERIFY green: backend 583 passed / 93.57%, frontend 657 passed, pyright 0, ruff clean, vue-tsc 0, biome clean. (3) Comment rendering is interpolated text (no v-html) — no XSS surface; MarkdownContent/mermaid-strict/KaTeX-trust-false/sanitizeUrl/Search snippets all sanitized. Remaining active tasks are tracked deferrals only. Stop conditions hold: no task >3.0, no unresolved HIGH issue, VERIFY green, graph consistent, deep-dives exhausted for this round.",
+      "alternatives_rejected": "(a) Re-open the multi-worker cache issue as a new task — rejected: explicitly accepted in DEC-004, no new evidence, would re-litigate a made decision. (b) Leave the admin preview broken as too trivial — rejected: it misleads content authors about how their post will render; fix was one component swap + one regression test. (c) Add Redis/shared cache — rejected: no multi-node deployment, infra overhead not warranted at this scale (per DEC-004)."
     }
   },
   "edges": [
@@ -3498,6 +3548,36 @@
       "to": "DEC-022",
       "type": "supersedes",
       "created_at": "2026-08-15T13:15:59+00:00"
+    },
+    {
+      "from": "ISS-030",
+      "to": "COMP-002",
+      "type": "located_in",
+      "created_at": "2026-08-15T13:45:36+00:00"
+    },
+    {
+      "from": "TASK-043",
+      "to": "ISS-030",
+      "type": "addresses",
+      "created_at": "2026-08-15T13:45:36+00:00"
+    },
+    {
+      "from": "CHG-032",
+      "to": "ISS-030",
+      "type": "resolves",
+      "created_at": "2026-08-15T14:01:07+00:00"
+    },
+    {
+      "from": "CHG-032",
+      "to": "TASK-043",
+      "type": "implements",
+      "created_at": "2026-08-15T14:01:07+00:00"
+    },
+    {
+      "from": "DEC-024",
+      "to": "DEC-023",
+      "type": "supersedes",
+      "created_at": "2026-08-15T14:01:48+00:00"
     }
   ]
 }
