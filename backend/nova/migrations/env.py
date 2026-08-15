@@ -1,7 +1,7 @@
 from logging.config import fileConfig
 
 from alembic import context
-from sqlalchemy import engine_from_config, pool
+from sqlalchemy import create_engine, pool
 
 import app.auth  # noqa: F401 — ensures User model is in metadata
 import app.models  # noqa: F401
@@ -13,7 +13,12 @@ config = context.config
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
-config.set_main_option("sqlalchemy.url", settings.database_url)
+# Honour an explicit URL (set by app.migrations.run_migrations for tests on a
+# throwaway DB); otherwise fall back to the configured database URL. Without
+# this, passing sqlalchemy.url to the Config would be silently overridden and
+# a test migration could not point at a temp database.
+url = config.get_main_option("sqlalchemy.url") or settings.database_url
+config.set_main_option("sqlalchemy.url", url)
 
 target_metadata = Base.metadata
 
@@ -31,11 +36,13 @@ def run_migrations_offline() -> None:
 
 
 def run_migrations_online() -> None:
-    connectable = engine_from_config(
-        config.get_section(config.config_ini_section, {}),
-        prefix="sqlalchemy.",
-        poolclass=pool.NullPool,
-    )
+    # Build the engine from the explicitly-resolved URL. engine_from_config
+    # reads get_section(), which does NOT include a sqlalchemy.url set via
+    # Config.set_main_option (that populates attributes only) — falling back
+    # to an empty "sqlite:///" would make every online migration fail with
+    # "unable to open database file".
+    url = config.get_main_option("sqlalchemy.url") or settings.database_url
+    connectable = create_engine(url, poolclass=pool.NullPool)
     with connectable.connect() as connection:
         context.configure(connection=connection, target_metadata=target_metadata)
         with context.begin_transaction():
