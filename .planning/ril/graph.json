@@ -2,7 +2,7 @@
   "ril_version": 1,
   "round": 27,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-08-15T05:24:48+00:00",
+  "updated_at": "2026-08-15T05:25:42+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -1813,11 +1813,11 @@
       "id": "CHG-019",
       "type": "change",
       "status": "active",
-      "version": 1,
+      "version": 2,
       "created_at": "2026-08-15T05:23:10+00:00",
-      "updated_at": "2026-08-15T05:23:10+00:00",
+      "updated_at": "2026-08-15T05:25:42+00:00",
       "touched_round": 27,
-      "commit": "PENDING",
+      "commit": "7e6a4bd",
       "description": "Round 27: Nuxt API proxy forwards real client IP (x-forwarded-for/x-real-ip overwrite) so per-client rate-limit buckets survive the proxy; docker-compose swaps dead RATE_LIMIT_PER_MINUTE for the per-endpoint vars the limiter actually reads + adds TRUSTED_PROXIES passthrough; docs/deployment.md gains a rate-limit & trusted-proxy section (completes TASK-021's unshipped TRUSTED_PROXIES documentation)."
     },
     "DEC-021": {
