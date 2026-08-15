@@ -2,7 +2,7 @@
   "ril_version": 1,
   "round": 27,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-08-15T06:27:42+00:00",
+  "updated_at": "2026-08-15T06:30:37+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -1977,11 +1977,11 @@
       "id": "CHG-022",
       "type": "change",
       "status": "active",
-      "version": 1,
+      "version": 2,
       "created_at": "2026-08-15T06:24:18+00:00",
-      "updated_at": "2026-08-15T06:24:18+00:00",
+      "updated_at": "2026-08-15T06:30:37+00:00",
       "touched_round": 27,
-      "commit": "ROUND30",
+      "commit": "1014d19",
       "description": "Round 30: delete dead root-level debug scripts check_cover.py and verify_cover.py."
     }
   },
