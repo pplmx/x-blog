@@ -2,7 +2,7 @@
   "ril_version": 1,
   "round": 29,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-08-15T13:10:28+00:00",
+  "updated_at": "2026-08-15T13:15:59+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -2349,7 +2349,7 @@
       "version": 1,
       "created_at": "2026-08-15T10:56:34+00:00",
       "updated_at": "2026-08-15T10:56:34+00:00",
-      "touched_round": 28,
+      "touched_round": 29,
       "rationale": "Rounds 27-37 produced 11 real fixes (above the stalled 21-26 convergence re-verification pattern, which found zero). Remaining active items are decision-tracked deferrals only: TASK-023 (defense-in-depth, DEC-015), TASK-026 (write-on-read debounce, low value). Deep-dive budget: each round now returns marginal finds, so per §8 stop deep-exploration. Stop conditions §10: no task above 3.0 (max 0.81) ✓, ISS-016 high items resolved/deferred-by-decision ✓, VERIFY green (583/656) ✓, graph consistent (178 nodes/162 edges) ✓. Declare convergence.",
       "alternatives_rejected": "(a) Re-open TASK-023/026 — rejected: both have explicit deferral decisions; doing them now would be scope-creep, not convergence work. (b) Pad rounds with marginal scans to extend the streak — rejected: skill §8 forbids non-converging deep-dive churn; honest stop beats manufactured busywork."
     },
@@ -2441,6 +2441,17 @@
       "touched_round": 29,
       "commit": "b4e1a17",
       "title": "Round 38: stop proxying FastAPI /docs /redoc /openapi.json at public nginx edge (RIL TASK-042, ISS-029)"
+    },
+    "DEC-023": {
+      "id": "DEC-023",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-15T13:15:49+00:00",
+      "updated_at": "2026-08-15T13:15:49+00:00",
+      "touched_round": 29,
+      "rationale": "Round 29 fresh-eyes re-verification of the DEC-022 convergence claim. Found and fixed TWO real deploy-config issues the prior convergence had NOT caught: (1) nginx default 1m body cap silently 413ing 1-5MB admin uploads (backend MAX_SIZE=5MB, TASK-041/ISS-028, 4.95), (2) FastAPI /docs /redoc /openapi.json proxied at the public edge leaking the full admin schema (TASK-042/ISS-029, 1.84, OWASP A05). Both fixed + verified (VERIFY: backend 583 passed/93.57%, frontend 656 passed, pyright 0, ruff clean). Two deep-dive passes over proxy/upload/search/comments/posts/export/rss/sitemap/auth/limiter/nginx then produced nothing above the 3.0 threshold; remaining active tasks are tracked deferrals only (TASK-023 defense-in-depth 0.81, TASK-026 write-on-read debounce 0.35). Stop conditions: no task >3.0 ✓, no unresolved HIGH issue (ISS-016 umbrella fully resolved, ISS-027/028/029 closed) ✓, VERIFY green ✓, graph consistent (187/173) ✓, deep-dives exhausted ✓. Declare convergence; re-audit deploy artifacts in a future round as new findings warrant.",
+      "alternatives_rejected": "(a) Keep piling marginal scans onto round 29 -- rejected, skill SEC8 forbids non-converging churn and DEC-022 precedent stands. (b) Leave the two nginx issues untracked as low-priority -- rejected: ISS-028 is a real functional break of a documented feature and ISS-029 is a genuine public-exposure reduction; both were cheap, config-only fixes with no test impact. (c) Wait for user confirmation before fixing deployment config -- rejected: reproduceable, git-revertible, within repo scope."
     }
   },
   "edges": [
@@ -3481,6 +3492,12 @@
       "to": "TASK-042",
       "type": "implements",
       "created_at": "2026-08-15T13:10:28+00:00"
+    },
+    {
+      "from": "DEC-023",
+      "to": "DEC-022",
+      "type": "supersedes",
+      "created_at": "2026-08-15T13:15:59+00:00"
     }
   ]
 }
