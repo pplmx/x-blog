@@ -2,7 +2,7 @@
   "ril_version": 1,
   "round": 27,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-08-15T08:28:29+00:00",
+  "updated_at": "2026-08-15T08:30:13+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -2119,11 +2119,11 @@
       "id": "CHG-025",
       "type": "change",
       "status": "active",
-      "version": 1,
+      "version": 2,
       "created_at": "2026-08-15T08:28:19+00:00",
-      "updated_at": "2026-08-15T08:28:19+00:00",
+      "updated_at": "2026-08-15T08:30:13+00:00",
       "touched_round": 27,
-      "commit": "ROUND33",
+      "commit": "9f339be",
       "description": "Round 33: add scheduled_posts to /api/stats + BlogStats type; fix dashboard draftCount exclusion. +4 tests total."
     }
   },
