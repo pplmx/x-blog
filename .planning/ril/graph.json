@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 30,
+  "round": 31,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-08-15T15:34:28+00:00",
+  "updated_at": "2026-08-15T16:15:10+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -44,7 +44,7 @@
       "version": 1,
       "created_at": "2026-08-06T13:23:41+00:00",
       "updated_at": "2026-08-06T13:23:41+00:00",
-      "touched_round": 1,
+      "touched_round": 31,
       "title": "database-layer",
       "description": "SQLAlchemy models.py; alembic migrations; init_db.py seeding; SQLite dev + PostgreSQL prod"
     },
@@ -103,7 +103,7 @@
       "version": 2,
       "created_at": "2026-08-06T13:24:48+00:00",
       "updated_at": "2026-08-10T05:08:10+00:00",
-      "touched_round": 30,
+      "touched_round": 31,
       "title": "posts-list API is bottlenecked by uncached DB reads on the most trafficked endpoint",
       "confidence": 0.7,
       "description": "/api/posts is the hottest public endpoint; caching the list with a TTL would reduce DB load. Risk: SQLAlchemy ORM objects detach across sessions — cache must store serialized dicts."
@@ -2565,6 +2565,40 @@
       "source": "93cfaae (frontend unit 664 pass, new useLang parity tests; nuxt typecheck 0; biome clean; prod build OK; backend 583/93.57%; e2e/language.spec.ts 3 pass in real chromium)",
       "title": "Frontend i18n landed and verified: zh default, live switch, cookie persistence",
       "confidence": 1.0
+    },
+    "ISS-031": {
+      "id": "ISS-031",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-08-15T16:15:06+00:00",
+      "updated_at": "2026-08-15T16:15:10+00:00",
+      "touched_round": 31,
+      "severity": 0.6,
+      "title": "Dev SQLite schema drift: create_all never alters existing tables, so stale DBs missing users.token_version break admin login (no such column)"
+    },
+    "CHG-034": {
+      "id": "CHG-034",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-15T16:15:06+00:00",
+      "updated_at": "2026-08-15T16:15:06+00:00",
+      "touched_round": 31,
+      "commit": "3a4b3ed",
+      "title": "Migrate to head via Alembic at startup (single schema path); drop create_all dev safety net (completes DEC-011)"
+    },
+    "EV-050": {
+      "id": "EV-050",
+      "type": "evidence",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-15T16:15:06+00:00",
+      "updated_at": "2026-08-15T16:15:06+00:00",
+      "touched_round": 31,
+      "source": "3a4b3ed (backend 586 pass incl. test_migrations; ruff+pyright clean; live uvicorn startup ran alembic upgrade head and admin login returned a valid JWT, previously \"no such column: users.token_version\")",
+      "title": "Stale dev DB migrated in place at startup; login works after fix",
+      "confidence": 1.0
     }
   },
   "edges": [
@@ -3660,6 +3694,24 @@
       "to": "HYP-001",
       "type": "validates",
       "created_at": "2026-08-15T15:34:28+00:00"
+    },
+    {
+      "from": "CHG-034",
+      "to": "ISS-031",
+      "type": "resolves",
+      "created_at": "2026-08-15T16:15:10+00:00"
+    },
+    {
+      "from": "ISS-031",
+      "to": "COMP-004",
+      "type": "located_in",
+      "created_at": "2026-08-15T16:15:10+00:00"
+    },
+    {
+      "from": "EV-050",
+      "to": "HYP-001",
+      "type": "validates",
+      "created_at": "2026-08-15T16:15:10+00:00"
     }
   ]
 }
