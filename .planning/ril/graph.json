@@ -2,7 +2,7 @@
   "ril_version": 1,
   "round": 57,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-08-16T09:13:23+00:00",
+  "updated_at": "2026-08-16T09:17:33+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -3683,6 +3683,28 @@
       "source": "tests/composables/useLikes.spec.ts (5) + slug.spec like test | 714 frontend unit tests | biome+typecheck clean | browser: like 44->45 + marker [1] + button disabled; 2nd click no-op, DB stays 45",
       "note": "Added useLikes composable (localStorage marker set, shared via useState). Post page marks liked optimistically, disables button, shows Liked state. Browser-verified a repeat click does not double-increment the DB.",
       "confidence": 1.0
+    },
+    "DEC-043": {
+      "id": "DEC-043",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-16T09:17:33+00:00",
+      "updated_at": "2026-08-16T09:17:33+00:00",
+      "touched_round": 57,
+      "rationale": "Maintainability cleanup: components/Sidebar.vue (139 lines, with category/tag filter chips + bookmarks + popular-posts) was dead code — never referenced by any page/component/import. The home page uses an inline <aside> with its own stats/browse/quick-nav cards (rounds 4-5), so Sidebar.vue's behavior is superseded. Remove it to eliminate confusion and dead weight.",
+      "alternatives_rejected": "(a) Wire Sidebar into home - rejected: home already has a richer inline aside; adding both would duplicate. (b) Keep for reuse - rejected: no consumer exists after rounds 4-5."
+    },
+    "TASK-067": {
+      "id": "TASK-067",
+      "type": "task",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-16T09:17:33+00:00",
+      "updated_at": "2026-08-16T09:17:33+00:00",
+      "touched_round": 57,
+      "category": "maintainability",
+      "description": "Remove dead Sidebar.vue component"
     }
   },
   "edges": [
