@@ -336,9 +336,15 @@ const stats = computed(() => [
                 {{ new Date(post.created_at).toLocaleDateString(locale === "zh" ? "zh-CN" : "en-US") }}
               </p>
             </div>
-            <div class="flex items-center gap-2 text-sm text-gray-400 dark:text-gray-500">
-              <Icon icon="lucide:eye" class="w-4 h-4" />
-              {{ post.views || 0 }}
+            <div class="flex items-center gap-3 text-sm text-gray-400 dark:text-gray-500">
+              <span class="flex items-center gap-1">
+                <Icon icon="lucide:eye" class="w-4 h-4" />
+                {{ post.views || 0 }}
+              </span>
+              <span v-if="post.comment_count" class="flex items-center gap-1">
+                <Icon icon="lucide:message-square" class="w-4 h-4" />
+                {{ post.comment_count }}
+              </span>
             </div>
           </NuxtLink>
         </div>

@@ -58,6 +58,7 @@ const mockPostsResponse = {
 			published: true,
 			created_at: "2024-01-15T10:30:00Z",
 			views: 100,
+			comment_count: 7,
 			cover_image: null,
 			category: { id: 1, name: "Tech" },
 			tags: [{ id: 1, name: "React" }],
@@ -596,6 +597,13 @@ describe("Admin Dashboard Page", () => {
 			// 200 and 100 view counts should appear
 			expect(wrapper.text()).toContain("200");
 			expect(wrapper.text()).toContain("100");
+		});
+
+		it("renders comment counts next to recent posts", async () => {
+			const DashboardPage = await loadPage();
+			const wrapper = await mountWithSuspense(DashboardPage);
+			// Published Post has comment_count 7
+			expect(wrapper.text()).toContain("7");
 		});
 
 		it('renders "no published posts" when no posts are published', async () => {

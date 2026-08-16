@@ -2,7 +2,7 @@
   "ril_version": 1,
   "round": 55,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-08-16T08:55:11+00:00",
+  "updated_at": "2026-08-16T08:58:57+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -3593,6 +3593,28 @@
       "source": "tests/test_categories.py + test_tags.py post_count assertions | 587 backend + 708 frontend unit tests | ruff+biome clean | nuxt typecheck",
       "note": "Public GET /api/categories and /api/tags now return post_count via single grouped COUNT each (categories by category_id; tags via post_tags join), cache-safe with schema default 0; /categories and /tags browse chips render the count.",
       "confidence": 1.0
+    },
+    "DEC-042": {
+      "id": "DEC-042",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-16T08:58:57+00:00",
+      "updated_at": "2026-08-16T08:58:57+00:00",
+      "touched_round": 55,
+      "rationale": "Feature consistency gap: round-10 added comment_count to PostList and PostCard, and TASK-063/064 surfaced post counts everywhere, but the admin dashboard recent-posts list still shows only views with no comment count — an admin reviewing content engagement at a glance can't see which recent posts have discussions. Add the comment_count badge to the recent-posts rows (data already flows through /api/posts/PostList). Small, self-contained, frontend-only.",
+      "alternatives_rejected": "(a) Top-posts card - rejected: it is views-focused; recent-posts is the engagement list. (b) New stats - rejected: covered by comment_count on PostList."
+    },
+    "TASK-065": {
+      "id": "TASK-065",
+      "type": "task",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-16T08:58:57+00:00",
+      "updated_at": "2026-08-16T08:58:57+00:00",
+      "touched_round": 55,
+      "category": "core-feature",
+      "description": "Add comment count badge to admin dashboard recent-posts rows"
     }
   },
   "edges": [
