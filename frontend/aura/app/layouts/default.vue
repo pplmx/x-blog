@@ -78,6 +78,9 @@ onMounted(() => {
               {{ t(link.labelKey) }}
             </NuxtLink>
 
+            <!-- Instant search suggestions -->
+            <HeaderSearch class="w-56 mx-2" />
+
             <!-- Language switcher -->
             <LanguageSwitcher class="mx-2" />
 
@@ -124,6 +127,9 @@ onMounted(() => {
               <Icon :icon="link.icon" class="w-4 h-4" />
               {{ t(link.labelKey) }}
             </NuxtLink>
+            <div class="px-4 py-2">
+              <HeaderSearch />
+            </div>
             <div class="px-4 py-2">
               <LanguageSwitcher />
             </div>

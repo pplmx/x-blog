@@ -1,0 +1,10 @@
+{
+	"headerSearch": {
+		"placeholder": "Search posts...",
+		"ariaInput": "Search this site",
+		"viewAll": "View all results",
+		"noResults": "No matching posts",
+		"goToSearch": "Go to search page",
+		"hint": "Type to quickly find posts"
+	}
+}

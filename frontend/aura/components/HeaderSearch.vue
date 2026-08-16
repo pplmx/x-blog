@@ -1,0 +1,173 @@
+<script setup lang="ts">
+import { ref } from "vue";
+import { type PostList, type PostListResponse } from "~~/composables/useApi";
+
+const { t } = useLang();
+const config = useRuntimeConfig();
+const apiBase = (config.public.apiUrl || "").replace(/\/+$/, "");
+
+const query = ref("");
+const open = ref(false);
+const results = ref<PostList[]>([]);
+const loading = ref(false);
+const searched = ref(false);
+const activeIndex = ref(-1);
+let timer: ReturnType<typeof setTimeout> | null = null;
+
+async function runSearch(q: string): Promise<void> {
+	if (!q.trim()) {
+		results.value = [];
+		searched.value = false;
+		return;
+	}
+	try {
+		const data = await $fetch<PostListResponse>(`${apiBase}/api/search`, {
+			query: { q: q.trim(), page: 1, limit: 5 },
+		});
+		results.value = data.items;
+	} catch {
+		results.value = [];
+	} finally {
+		loading.value = false;
+		searched.value = true;
+	}
+}
+
+// Debounced + minimum query so a search-as-you-type input stays within the
+// backend's per-minute rate limit for /api/search.
+function onInput(): void {
+	if (timer) clearTimeout(timer);
+	loading.value = true;
+	open.value = true;
+	activeIndex.value = -1;
+	const q = query.value.trim();
+	if (!q) {
+		results.value = [];
+		searched.value = false;
+		loading.value = false;
+		return;
+	}
+	timer = setTimeout(() => runSearch(q), 300);
+}
+
+function onKeydown(event: KeyboardEvent): void {
+	if (event.key === "ArrowDown") {
+		event.preventDefault();
+		if (results.value.length) {
+			activeIndex.value = (activeIndex.value + 1) % results.value.length;
+		}
+	} else if (event.key === "ArrowUp") {
+		event.preventDefault();
+		if (results.value.length) {
+			activeIndex.value = (activeIndex.value - 1 + results.value.length) % results.value.length;
+		}
+	} else if (event.key === "Enter") {
+		event.preventDefault();
+		const post = results.value[activeIndex.value];
+		if (activeIndex.value >= 0 && post) {
+			pick(post);
+		} else {
+			goToSearch();
+		}
+	} else if (event.key === "Escape") {
+		close();
+	}
+}
+
+function pick(post: PostList): void {
+	close();
+	navigateTo(`/posts/${post.slug}`);
+}
+
+function goToSearch(): void {
+	const q = query.value.trim();
+	close();
+	navigateTo(q ? { path: "/search", query: { q } } : "/search");
+}
+
+function close(): void {
+	open.value = false;
+	activeIndex.value = -1;
+	if (timer) clearTimeout(timer);
+}
+
+// Delayed so a click inside the popup (mousedown.prevent) still lands before
+// we unmount it on blur.
+function onBlur(): void {
+	setTimeout(close, 150);
+}
+</script>
+
+<template>
+  <div class="relative w-full">
+    <div class="relative">
+      <Icon
+        icon="lucide:search"
+        class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none"
+      />
+      <input
+        v-model="query"
+        type="search"
+        role="combobox"
+        :aria-expanded="open && (results.length > 0 || searched)"
+        aria-controls="header-search-listbox"
+        aria-haspopup="listbox"
+        :aria-activedescendant="activeIndex >= 0 ? `header-search-option-${activeIndex}` : undefined"
+        :placeholder="t('headerSearch.placeholder')"
+        :aria-label="t('headerSearch.ariaInput')"
+        autocomplete="off"
+        class="w-full pl-9 pr-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-950 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
+        @input="onInput"
+        @keydown="onKeydown"
+        @focus="open = true"
+        @blur="onBlur"
+      />
+      <div v-if="loading" class="absolute right-3 top-1/2 -translate-y-1/2">
+        <Icon icon="lucide:loader-2" class="w-4 h-4 text-gray-400 animate-spin" />
+      </div>
+    </div>
+
+    <div
+      v-if="open"
+      class="absolute z-50 mt-2 w-full rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 shadow-xl overflow-hidden"
+    >
+      <ul id="header-search-listbox" role="listbox" class="max-h-80 overflow-auto py-1">
+        <li
+          v-for="(post, index) in results"
+          :key="post.id"
+          :id="`header-search-option-${index}`"
+          role="option"
+          :aria-selected="index === activeIndex"
+          class="px-3 py-2 flex items-center gap-3 cursor-pointer transition-colors"
+          :class="index === activeIndex
+            ? 'bg-gray-50 dark:bg-gray-800'
+            : 'hover:bg-gray-50 dark:hover:bg-gray-800'"
+          @mousedown.prevent="pick(post)"
+          @mouseenter="activeIndex = index"
+        >
+          <span class="flex-1 min-w-0">
+            <span class="block text-sm font-medium text-gray-900 dark:text-gray-100 line-clamp-1">
+              {{ post.title }}
+            </span>
+          </span>
+          <span class="shrink-0 text-xs text-gray-400">{{ post.views }} · {{ post.category?.name ?? "" }}</span>
+        </li>
+      </ul>
+
+      <div
+        v-if="searched && !loading && results.length === 0"
+        class="px-3 py-3 text-sm text-gray-500 dark:text-gray-400"
+      >
+        {{ t('headerSearch.noResults') }}
+      </div>
+
+      <button
+        type="button"
+        class="w-full px-3 py-2.5 text-left text-sm font-medium text-blue-600 dark:text-blue-400 border-t border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+        @mousedown.prevent="goToSearch"
+      >
+        {{ t('headerSearch.viewAll') }}
+      </button>
+    </div>
+  </div>
+</template>

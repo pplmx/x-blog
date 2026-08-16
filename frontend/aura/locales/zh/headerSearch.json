@@ -1,0 +1,10 @@
+{
+	"headerSearch": {
+		"placeholder": "搜索文章...",
+		"ariaInput": "站内搜索",
+		"viewAll": "查看全部结果",
+		"noResults": "未找到匹配的文章",
+		"goToSearch": "前往搜索页",
+		"hint": "输入关键词快速查找文章"
+	}
+}
