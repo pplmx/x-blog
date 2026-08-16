@@ -2,7 +2,7 @@
   "ril_version": 1,
   "round": 60,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-08-16T09:32:58+00:00",
+  "updated_at": "2026-08-16T09:37:10+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -3773,6 +3773,29 @@
       "source": "tests/test_rss.py test_rss_full_feed_renders_markdown_as_html + test_atom_feed_renders_markdown_as_html | 589 backend pytest @93.40% | pyright 0 errors | ruff clean",
       "note": "Full-content RSS/Atom now render markdown (#/ ** /code) to HTML and strip script/event-handlers. Added 'markdown' dependency. Also fixed styled grouped-count type annotations (pyright 0 errors) in crud/admin for comment_count & post_count.",
       "confidence": 1.0
+    },
+    "EV-079": {
+      "id": "EV-079",
+      "type": "evidence",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-16T09:37:10+00:00",
+      "updated_at": "2026-08-16T09:37:10+00:00",
+      "touched_round": 60,
+      "source": "playwright e2e seo.spec.ts (7 passed: RSS/Atom/sitemap/robots/OG/Twitter) | live atom content renders <h1>/<strong>, no ** in content block",
+      "note": "Confirmed the markdown-render feed change causes no e2e regression; full-content feeds now serve rendered HTML.",
+      "confidence": 1.0
+    },
+    "DEC-044": {
+      "id": "DEC-044",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-16T09:37:10+00:00",
+      "updated_at": "2026-08-16T09:37:10+00:00",
+      "touched_round": 60,
+      "rationale": "OBSERVE/surface scan confirming fix completeness: after the ISS-039 feed markdown fix, re-verified the whole feed surface end-to-end (backend unit tests, pyright, live curl, seo e2e). No residual date-locale, number-format, or feed-encoding gaps found in the app.",
+      "alternatives_rejected": "n/a"
     }
   },
   "edges": [
