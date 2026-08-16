@@ -110,7 +110,7 @@ function statusDot(post: AdminPost): string {
           v-model="searchQuery"
           type="text"
           :placeholder="t('admin.postsList.searchPlaceholder')"
-          class="w-full pl-9 pr-4 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+          class="search-input w-full pl-9 pr-4 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
           @input="onSearchInput"
         />
       </div>

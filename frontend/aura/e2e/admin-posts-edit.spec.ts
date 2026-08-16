@@ -113,13 +113,15 @@ test.describe("Admin post editing", () => {
 	});
 
 	test("admin can search/filter posts", async ({ page }) => {
-		const searchInput = page.locator('input[type="search"], input[name="search"], .search-input');
+		// Scope to the admin <main> so we hit the posts-list filter, not the
+		// global header-search combobox (which is a `type=search` outside <main>).
+		const searchInput = page.locator("main .search-input");
 		if (await searchInput.isVisible()) {
 			await searchInput.fill("test");
 			await searchInput.press("Enter");
 
 			// Should show filtered results
-			const results = page.locator("tr, .post-row");
+			const results = page.locator("main tr, main .post-row");
 			await expect(results).toBeVisible();
 		}
 	});
