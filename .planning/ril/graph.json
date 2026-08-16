@@ -2,7 +2,7 @@
   "ril_version": 1,
   "round": 41,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-08-16T06:02:17+00:00",
+  "updated_at": "2026-08-16T06:03:28+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -3190,10 +3190,10 @@
     "ISS-034": {
       "id": "ISS-034",
       "type": "issue",
-      "status": "active",
-      "version": 1,
+      "status": "resolved",
+      "version": 2,
       "created_at": "2026-08-16T06:02:12+00:00",
-      "updated_at": "2026-08-16T06:02:12+00:00",
+      "updated_at": "2026-08-16T06:03:28+00:00",
       "touched_round": 41,
       "severity": "low",
       "description": "i18n date-locale inconsistency: categories.vue:135, tags.vue:131, search.vue:182 use toLocaleDateString() with NO locale argument, so they render in the browser's ambient locale rather than the app's active locale (zh/en switcher). PostCard, CommentList, and the round-7-fixed post/bookmarks/admin pages use the active locale. Result: when a user switches to English, dates on /categories /tags /search stay in the browser-default (often zh) format, inconsistent with the rest of the site."
@@ -3201,13 +3201,36 @@
     "TASK-057": {
       "id": "TASK-057",
       "type": "task",
-      "status": "active",
-      "version": 1,
+      "status": "resolved",
+      "version": 2,
       "created_at": "2026-08-16T06:02:17+00:00",
-      "updated_at": "2026-08-16T06:02:17+00:00",
+      "updated_at": "2026-08-16T06:03:28+00:00",
       "touched_round": 41,
       "category": "correctness",
       "description": "Fix toLocaleDateString() no-locale on categories/tags/search pages to follow active locale"
+    },
+    "CHG-048": {
+      "id": "CHG-048",
+      "type": "change",
+      "status": "active",
+      "version": 2,
+      "created_at": "2026-08-16T06:03:22+00:00",
+      "updated_at": "2026-08-16T06:03:28+00:00",
+      "touched_round": 41,
+      "commit": "748360287e6615cd6c45b38a5dc9aaea0f34ee4e",
+      "description": "Locale-aware date formatting on categories/tags/search pages (TASK-057)"
+    },
+    "EV-064": {
+      "id": "EV-064",
+      "type": "evidence",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-16T06:03:28+00:00",
+      "updated_at": "2026-08-16T06:03:28+00:00",
+      "touched_round": 41,
+      "source": "701 frontend unit tests (tags/categories/search page tests) | nuxt typecheck | biome clean | rounds 7+8 date-locale fixes now cover all public post-date surfaces",
+      "note": "All public date-rendering surfaces (post, bookmarks, admin, categories, tags, search, PostCard, CommentList) now follow the active locale; no remaining toLocaleDateString() without locale in app/components.",
+      "confidence": 1.0
     }
   },
   "edges": [
@@ -4423,6 +4446,12 @@
       "to": "ISS-034",
       "type": "addresses",
       "created_at": "2026-08-16T06:02:17+00:00"
+    },
+    {
+      "from": "CHG-048",
+      "to": "TASK-057",
+      "type": "implements",
+      "created_at": "2026-08-16T06:03:28+00:00"
     }
   ]
 }
