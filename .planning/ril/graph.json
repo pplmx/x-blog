@@ -2,7 +2,7 @@
   "ril_version": 1,
   "round": 31,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-08-16T00:46:11+00:00",
+  "updated_at": "2026-08-16T01:08:57+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -2650,6 +2650,69 @@
       "source": "32fe7d8 (frontend unit 664 pass, typecheck 0, biome clean; header-search.spec.ts 3/3 in real chromium against live backend: typing shows suggestion, click navigates, Enter -> /search)",
       "title": "Header search combobox landed and verified end-to-end",
       "confidence": 1.0
+    },
+    "DEC-028": {
+      "id": "DEC-028",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-16T01:08:42+00:00",
+      "updated_at": "2026-08-16T01:08:42+00:00",
+      "touched_round": 31,
+      "title": "Feature-evolution batch: admin dashboard top-posts visualization (round 32, operator \"do all\")",
+      "rationale": "Continue the feature backlog. Candidate search-result highlighting already exists (backend emits <mark> snippets, search page renders them via v-html) so it was skipped to avoid duplication. Delivered: proportional view bars on the admin \"Top posts by views\" card (frontend-only, frontend-aura). Surfaced a pre-existing bug (ISS-032) that the admin dashboard shows empty API data on a hard full-page reload (SPA navigation works) - tracked, not in this change scope.",
+      "alternatives_rejected": "(a) Rebuild search highlighting - rejected: already implemented end-to-end. (b) Comment reply/email notifications - rejected: needs SMTP infra, deferred. (c) Traffic-trend charts - rejected: stats API is aggregates-only, would need a new time-series model+migration."
+    },
+    "TASK-046": {
+      "id": "TASK-046",
+      "type": "task",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-08-16T01:08:42+00:00",
+      "updated_at": "2026-08-16T01:08:49+00:00",
+      "touched_round": 31,
+      "category": "core-feature",
+      "severity": 0.7,
+      "confidence": 0.9,
+      "effort": 2,
+      "unlock_factor": 1,
+      "title": "Visualize top posts by views on the admin dashboard",
+      "description": "Frontend-only proportional bars on the top-posts card (views/max). Verified: typecheck 0, biome clean, 664 unit, browser bars:5 on SPA nav."
+    },
+    "ISS-032": {
+      "id": "ISS-032",
+      "type": "issue",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-16T01:08:42+00:00",
+      "updated_at": "2026-08-16T01:08:42+00:00",
+      "touched_round": 31,
+      "severity": 0.4,
+      "title": "Admin dashboard shows empty API data on a hard full-page reload (SPA navigation loads it fine)",
+      "description": "Pre-existing: the admin layout gates the page slot on client auth, so on a hard reload the SSR render skips the page setup; the client-rendered page then has empty useFetch data until a client-side (SPA) navigation. Not introduced by recent work. Deferred to a dedicated round."
+    },
+    "CHG-036": {
+      "id": "CHG-036",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-16T01:08:49+00:00",
+      "updated_at": "2026-08-16T01:08:49+00:00",
+      "touched_round": 31,
+      "commit": "4b4d985",
+      "title": "Admin dashboard top-posts view bars"
+    },
+    "EV-052": {
+      "id": "EV-052",
+      "type": "evidence",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-16T01:08:49+00:00",
+      "updated_at": "2026-08-16T01:08:49+00:00",
+      "touched_round": 31,
+      "source": "4b4d985 (typecheck 0, biome clean, 664 unit pass; browser: admin login + SPA nav -> bars:5 rendered with real data 29071 views / top posts listed)",
+      "title": "Admin dashboard top-posts bars render with real data",
+      "confidence": 1.0
     }
   },
   "edges": [
@@ -3775,6 +3838,18 @@
       "to": "TASK-045",
       "type": "implements",
       "created_at": "2026-08-16T00:46:11+00:00"
+    },
+    {
+      "from": "CHG-036",
+      "to": "TASK-046",
+      "type": "implements",
+      "created_at": "2026-08-16T01:08:49+00:00"
+    },
+    {
+      "from": "ISS-032",
+      "to": "COMP-002",
+      "type": "located_in",
+      "created_at": "2026-08-16T01:08:57+00:00"
     }
   ]
 }
