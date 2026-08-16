@@ -2,7 +2,7 @@
   "ril_version": 1,
   "round": 74,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-08-16T15:50:30+00:00",
+  "updated_at": "2026-08-16T15:51:22+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -4372,7 +4372,7 @@
       "version": 2,
       "created_at": "2026-08-16T15:27:19+00:00",
       "updated_at": "2026-08-16T15:50:30+00:00",
-      "touched_round": 73,
+      "touched_round": 74,
       "title": "Accessibility: like/bookmark lack aria-pressed, hardcoded English aria-label + KaTeX error string",
       "severity": 0.3
     },
@@ -4383,13 +4383,24 @@
       "version": 4,
       "created_at": "2026-08-16T15:27:19+00:00",
       "updated_at": "2026-08-16T15:50:30+00:00",
-      "touched_round": 73,
+      "touched_round": 74,
       "category": "dx",
       "severity": 0.3,
       "confidence": 1.0,
       "effort": 2.0,
       "unlock_factor": 1.0,
       "title": "Add aria-pressed/labels + localize hardcoded a11y strings"
+    },
+    "CHG-072": {
+      "id": "CHG-072",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-16T15:51:18+00:00",
+      "updated_at": "2026-08-16T15:51:18+00:00",
+      "touched_round": 74,
+      "commit": "15fa2fc",
+      "title": "Accessibility polish (aria + localization)"
     }
   },
   "edges": [
@@ -5989,6 +6000,18 @@
       "to": "ISS-053",
       "type": "addresses",
       "created_at": "2026-08-16T15:27:19+00:00"
+    },
+    {
+      "from": "CHG-072",
+      "to": "TASK-084",
+      "type": "implements",
+      "created_at": "2026-08-16T15:51:22+00:00"
+    },
+    {
+      "from": "CHG-072",
+      "to": "ISS-053",
+      "type": "resolves",
+      "created_at": "2026-08-16T15:51:22+00:00"
     }
   ]
 }
