@@ -37,7 +37,17 @@
 			"subtitle": "下载内容的 CSV 快照。",
 			"posts": "导出文章 CSV",
 			"comments": "导出评论 CSV",
-			"exporting": "导出中…"
+			"exporting": "导出中…",
+			"postStatus": "文章状态",
+			"commentStatus": "评论状态",
+			"allStatuses": "全部",
+			"published": "已发布",
+			"draft": "草稿",
+			"scheduled": "定时发布",
+			"approved": "已审核",
+			"pending": "待审核",
+			"fromDate": "起始日期",
+			"toDate": "截止日期"
 		}
 	}
 }

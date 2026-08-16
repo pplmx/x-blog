@@ -37,7 +37,17 @@
 			"subtitle": "Download a CSV snapshot of your content.",
 			"posts": "Export Posts CSV",
 			"comments": "Export Comments CSV",
-			"exporting": "Exporting…"
+			"exporting": "Exporting…",
+			"postStatus": "Post status",
+			"commentStatus": "Comment status",
+			"allStatuses": "All",
+			"published": "Published",
+			"draft": "Draft",
+			"scheduled": "Scheduled",
+			"approved": "Approved",
+			"pending": "Pending",
+			"fromDate": "From date",
+			"toDate": "To date"
 		}
 	}
 }

@@ -87,24 +87,44 @@ onMounted(() => {
 const exporting = ref<"posts" | "comments" | null>(null);
 const exportError = ref("");
 
+// Export options (RIL TASK-079, ISS-048): posts status + both kinds' date
+// range, passed as query params to the CSV endpoints.
+const exportStatus = ref<"all" | "published" | "draft" | "scheduled">("all");
+const exportApproved = ref<"all" | "approved" | "pending">("all");
+const exportDateFrom = ref("");
+const exportDateTo = ref("");
+
 async function downloadExport(kind: "posts" | "comments"): Promise<void> {
 	exporting.value = kind;
 	exportError.value = "";
 	try {
-		const res = await $fetch<unknown>(`${apiBase}/api/export/${kind}.csv`, {
+		const q = new URLSearchParams();
+		if (kind === "posts" && exportStatus.value !== "all") {
+			q.set("status", exportStatus.value);
+		}
+		if (kind === "comments") {
+			if (exportApproved.value === "approved") q.set("is_approved", "true");
+			else if (exportApproved.value === "pending") q.set("is_approved", "false");
+		}
+		if (exportDateFrom.value) q.set("date_from", exportDateFrom.value);
+		if (exportDateTo.value) q.set("date_to", exportDateTo.value);
+		const qs = q.toString();
+		const url = `${apiBase}/api/export/${kind}.csv${qs ? `?${qs}` : ""}`;
+
+		const res = await $fetch<unknown>(url, {
 			headers: { Accept: "text/csv", ...authHeaders() },
 		});
 		// $fetch auto-parses unknown content-type as text; coerce to string.
 		const csv = res as string;
 		const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
-		const url = URL.createObjectURL(blob);
+		const urlObj = URL.createObjectURL(blob);
 		const a = document.createElement("a");
-		a.href = url;
+		a.href = urlObj;
 		a.download = `${kind}.csv`;
 		document.body.appendChild(a);
 		a.click();
 		a.remove();
-		URL.revokeObjectURL(url);
+		URL.revokeObjectURL(urlObj);
 	} catch (e) {
 		exportError.value = e instanceof Error ? e.message : String(e);
 	} finally {
@@ -434,6 +454,50 @@ const stats = computed(() => [
       <div v-if="exportError" class="mb-4 px-4 py-3 rounded-xl border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20 text-sm text-red-600 dark:text-red-400">
         {{ exportError }}
       </div>
+
+      <!-- Export filters (RIL TASK-079) -->
+      <div class="flex flex-wrap items-end gap-3 mb-4">
+        <label class="flex flex-col gap-1 text-xs font-medium text-gray-500 dark:text-gray-400">
+          {{ t("admin.dashboard.export.postStatus") }}
+          <select
+            v-model="exportStatus"
+            class="px-3 py-2 text-sm border border-gray-200 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+          >
+            <option value="all">{{ t("admin.dashboard.export.allStatuses") }}</option>
+            <option value="published">{{ t("admin.dashboard.export.published") }}</option>
+            <option value="draft">{{ t("admin.dashboard.export.draft") }}</option>
+            <option value="scheduled">{{ t("admin.dashboard.export.scheduled") }}</option>
+          </select>
+        </label>
+        <label class="flex flex-col gap-1 text-xs font-medium text-gray-500 dark:text-gray-400">
+          {{ t("admin.dashboard.export.commentStatus") }}
+          <select
+            v-model="exportApproved"
+            class="px-3 py-2 text-sm border border-gray-200 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+          >
+            <option value="all">{{ t("admin.dashboard.export.allStatuses") }}</option>
+            <option value="approved">{{ t("admin.dashboard.export.approved") }}</option>
+            <option value="pending">{{ t("admin.dashboard.export.pending") }}</option>
+          </select>
+        </label>
+        <label class="flex flex-col gap-1 text-xs font-medium text-gray-500 dark:text-gray-400">
+          {{ t("admin.dashboard.export.fromDate") }}
+          <input
+            v-model="exportDateFrom"
+            type="date"
+            class="px-3 py-2 text-sm border border-gray-200 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+          >
+        </label>
+        <label class="flex flex-col gap-1 text-xs font-medium text-gray-500 dark:text-gray-400">
+          {{ t("admin.dashboard.export.toDate") }}
+          <input
+            v-model="exportDateTo"
+            type="date"
+            class="px-3 py-2 text-sm border border-gray-200 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+          >
+        </label>
+      </div>
+
       <div class="flex flex-wrap gap-3">
         <button
           type="button"

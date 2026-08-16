@@ -786,5 +786,21 @@ describe("Admin Dashboard Page", () => {
 			expect(exportCall).toBeDefined();
 			expect(vi.mocked(URL.createObjectURL)).toHaveBeenCalled();
 		});
+
+		it("passes the selected post status as a query param (RIL TASK-079)", async () => {
+			const DashboardPage = await loadPage();
+			const wrapper = await mountWithSuspense(DashboardPage);
+			const statusSelect = wrapper.find("select");
+			await statusSelect.setValue("draft");
+			const postsBtn = wrapper.findAll("button").find((b) => b.text().includes("导出文章 CSV"));
+			await postsBtn?.trigger("click");
+			await flushPromises();
+			const fetchMock = vi.mocked($fetch);
+			const exportCall = fetchMock.mock.calls.find(([u]) =>
+				String(u).includes("/api/export/posts.csv"),
+			);
+			expect(exportCall).toBeDefined();
+			expect(String(exportCall?.[0])).toContain("status=draft");
+		});
 	});
 });

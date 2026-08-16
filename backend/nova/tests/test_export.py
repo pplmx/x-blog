@@ -27,6 +27,42 @@ class TestExportPostsCsv:
         response = client.get("/api/export/posts.csv")
         assert response.status_code == 401
 
+    def test_export_posts_csv_uses_admin_style_filters(self, client, auth_headers, db_session):
+        """status/date filters shape the exported row set (RIL TASK-079)."""
+        from app import models
+
+        published = models.Post(
+            title="Published Export",
+            slug="published-export",
+            content="C",
+            published=True,
+            pinned=True,
+        )
+        draft = models.Post(title="Draft Export", slug="draft-export", content="C", published=False)
+        db_session.add_all([published, draft])
+        db_session.commit()
+
+        all_rows = client.get("/api/export/posts.csv", headers=auth_headers).text.strip().split("\n")
+        assert any("published-export" in r for r in all_rows)
+        # status=None ("all") includes the draft too
+        assert any("draft-export" in r for r in all_rows)
+
+        draft_rows = client.get("/api/export/posts.csv?status=draft", headers=auth_headers).text.strip().split("\n")
+        assert any("draft-export" in r for r in draft_rows)
+        assert not any("published-export" in r for r in draft_rows)
+
+        published_rows = client.get(
+            "/api/export/posts.csv?status=published", headers=auth_headers
+        ).text.strip().split("\n")
+        assert any("published-export" in r for r in published_rows)
+        assert not any("draft-export" in r for r in published_rows)
+
+    def test_export_posts_csv_includes_status_columns(self, client, auth_headers):
+        """Posts CSV carries Status/Pinned/Publish At columns (RIL TASK-079)."""
+        response = client.get("/api/export/posts.csv", headers=auth_headers)
+        headers = response.text.strip().split("\n")[0].split(",")
+        assert "Status" in headers and "Pinned" in headers and "Publish At" in headers
+
 
 class TestExportCommentsCsv:
     def test_export_comments_csv(self, client, auth_headers):
@@ -75,3 +111,40 @@ class TestExportCommentsCsv:
         assert "'=cmd|' /C calc'!A0" in body
         assert "'@evil.example" in body
         assert "'=HYPERLINK(" in body
+
+    def test_export_comments_csv_filters_by_status_and_has_status_column(self, client, auth_headers, db_session):
+        """comments.csv supports is_approved filter + a Status column (RIL TASK-079)."""
+        from datetime import UTC, datetime
+
+        from app import models
+
+        post = models.Post(title="Export Comments", slug="export-comments", content="C", published=True)
+        db_session.add(post)
+        db_session.commit()
+        approved = models.Comment(
+            post_id=post.id,
+            nickname="ApprovedCommenter",
+            content="approved",
+            is_approved=True,
+            created_at=datetime(2026, 1, 1, tzinfo=UTC),
+        )
+        pending = models.Comment(
+            post_id=post.id,
+            nickname="PendingCommenter",
+            content="pending",
+            is_approved=False,
+            created_at=datetime(2026, 2, 1, tzinfo=UTC),
+        )
+        db_session.add_all([approved, pending])
+        db_session.commit()
+
+        all_rows = client.get("/api/export/comments.csv", headers=auth_headers).text.strip().split("\n")
+        assert all_rows[0].split(",")[-2] == "Status" or "Status" in all_rows[0]
+        assert any("ApprovedCommenter" in r for r in all_rows)
+        assert any("PendingCommenter" in r for r in all_rows)
+
+        pending_rows = client.get(
+            "/api/export/comments.csv?is_approved=false", headers=auth_headers
+        ).text.strip().split("\n")
+        assert any("PendingCommenter" in r for r in pending_rows)
+        assert not any("ApprovedCommenter" in r for r in pending_rows)

@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 69,
+  "round": 70,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-08-16T14:17:11+00:00",
+  "updated_at": "2026-08-16T14:32:15+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -4190,6 +4190,32 @@
       "touched_round": 69,
       "commit": "e4ba9cf",
       "title": "Admin comment moderation filters"
+    },
+    "ISS-048": {
+      "id": "ISS-048",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-08-16T14:19:31+00:00",
+      "updated_at": "2026-08-16T14:32:14+00:00",
+      "touched_round": 69,
+      "title": "CSV export omits drafts/scheduled, caps at 10000, comments export unfiltered PII, no date/status filters",
+      "severity": 0.4
+    },
+    "TASK-079": {
+      "id": "TASK-079",
+      "type": "task",
+      "status": "resolved",
+      "version": 4,
+      "created_at": "2026-08-16T14:19:31+00:00",
+      "updated_at": "2026-08-16T14:32:15+00:00",
+      "touched_round": 69,
+      "category": "core-feature",
+      "severity": 0.4,
+      "confidence": 1.0,
+      "effort": 4.0,
+      "unlock_factor": 1.0,
+      "title": "Add status/date/limit filters to posts+comments CSV export + UI options"
     }
   },
   "edges": [
@@ -5693,6 +5719,12 @@
       "to": "ISS-047",
       "type": "resolves",
       "created_at": "2026-08-16T14:17:11+00:00"
+    },
+    {
+      "from": "TASK-079",
+      "to": "ISS-048",
+      "type": "addresses",
+      "created_at": "2026-08-16T14:19:35+00:00"
     }
   ]
 }
