@@ -36,6 +36,15 @@ tags_cache: TTLCache[str, list[models.Tag], float] = TTLCache(  # type: ignore[r
 posts_list_cache: TTLCache[tuple, dict, float] = TTLCache(  # type: ignore[reportAssignmentType]
     maxsize=256, ttl=300
 )
+# Rendered RSS/Atom/sitemap bodies keyed by feed name ("feed", "atom", "sitemap").
+# Rendering markdown per request is expensive (full DB query + sanitizer), so
+# cache the serialized XML and invalidate on any post write. A 5-minute TTL is
+# a safety net (same refresh window as the posts list). Sitemap also depends on
+# categories/tags, which changes on those writes via their own clears, but a
+# stale sitemap for up to 5 min is acceptable.
+feed_cache: TTLCache[str, str, float] = TTLCache(  # type: ignore[reportAssignmentType]
+    maxsize=8, ttl=300
+)
 
 
 def cache_clear():
@@ -43,6 +52,7 @@ def cache_clear():
     categories_cache.clear()
     tags_cache.clear()
     posts_list_cache.clear()
+    feed_cache.clear()
     logger.info("cache_cleared")
 
 
@@ -59,8 +69,13 @@ def clear_tags_cache():
 
 
 def clear_posts_list_cache():
-    """Clear the posts list cache (invalidated on any post write)."""
+    """Clear the posts list cache (invalidated on any post write).
+
+    Also clears the rendered RSS/Atom/sitemap feeds — they derive from the same
+    published post set (and content), so a write must invalidate them too.
+    """
     posts_list_cache.clear()
+    feed_cache.clear()
     logger.info("posts_list_cache_cleared")
 
 
@@ -70,4 +85,5 @@ def get_cache_info() -> dict[str, dict[str, int | float]]:
         "categories": {"size": len(categories_cache), "maxsize": categories_cache.maxsize, "ttl": categories_cache.ttl},
         "tags": {"size": len(tags_cache), "maxsize": tags_cache.maxsize, "ttl": tags_cache.ttl},
         "posts": {"size": len(posts_list_cache), "maxsize": posts_list_cache.maxsize, "ttl": posts_list_cache.ttl},
+        "feeds": {"size": len(feed_cache), "maxsize": feed_cache.maxsize, "ttl": feed_cache.ttl},
     }

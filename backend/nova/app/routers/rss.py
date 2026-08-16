@@ -8,6 +8,7 @@ from fastapi.responses import Response
 from sqlalchemy.orm import Session
 
 from app import crud
+from app.cache import feed_cache
 from app.config import settings
 from app.database import get_db
 
@@ -157,7 +158,16 @@ def get_rss_feed(full: bool = True, db: Session = Depends(get_db)):
 
     Args:
         full: If True, include full post content instead of excerpt (default: True).
+
+    Rendered feed is cached (feed_cache, TTL 300s) and invalidated on post
+    writes via clear_posts_list_cache, so repeated poller hits don't re-query
+    the DB or re-render markdown per request (RIL TASK-085, ISS-054).
     """
+    key = ("feed", full)
+    cached = feed_cache.get(key)
+    if cached is not None:
+        return Response(content=cached, media_type="application/rss+xml")
+
     posts, _ = crud.get_posts(db, skip=0, limit=20, published=True)
 
     site_url = getattr(settings, "site_url", "http://localhost:3000")
@@ -165,6 +175,7 @@ def get_rss_feed(full: bool = True, db: Session = Depends(get_db)):
     description = getattr(settings, "site_description", "A modern blog built with FastAPI and Next.js")
 
     rss_content = generate_rss_feed(posts, site_url, title, description, full_content=full)
+    feed_cache[key] = rss_content
 
     return Response(content=rss_content, media_type="application/rss+xml")
 
@@ -172,6 +183,10 @@ def get_rss_feed(full: bool = True, db: Session = Depends(get_db)):
 @rss_router.get("/atom.xml")
 def get_atom_feed(db: Session = Depends(get_db)):
     """Get Atom feed of published posts."""
+    cached = feed_cache.get("atom")
+    if cached is not None:
+        return Response(content=cached, media_type="application/atom+xml")
+
     posts, _ = crud.get_posts(db, skip=0, limit=20, published=True)
 
     site_url = getattr(settings, "site_url", "http://localhost:3000")
@@ -205,6 +220,7 @@ def get_atom_feed(db: Session = Depends(get_db)):
     {"".join(items)}
 </feed>"""
 
+    feed_cache["atom"] = atom
     return Response(content=atom, media_type="application/atom+xml")
 
 
@@ -212,6 +228,10 @@ def get_atom_feed(db: Session = Depends(get_db)):
 @seo_router.get("/sitemap.xml")
 def get_sitemap(db: Session = Depends(get_db)):
     """Get XML sitemap of the site."""
+    cached = feed_cache.get("sitemap")
+    if cached is not None:
+        return Response(content=cached, media_type="application/xml")
+
     posts, _ = crud.get_posts(db, skip=0, limit=1000, published=True)
     categories = crud.get_categories(db)
     tags = crud.get_tags(db)
@@ -295,6 +315,7 @@ def get_sitemap(db: Session = Depends(get_db)):
     {"".join(urls)}
 </urlset>"""
 
+    feed_cache["sitemap"] = sitemap
     return Response(content=sitemap, media_type="application/xml")
 
 

@@ -77,7 +77,7 @@ def test_get_cache_info():
     info = get_cache_info()
 
     # Check structure — only caches the app actually reads are reported
-    assert set(info.keys()) == {"categories", "tags", "posts"}
+    assert set(info.keys()) == {"categories", "tags", "posts", "feeds"}
 
     # Check each cache has required fields
     for _cache_name, cache_info in info.items():

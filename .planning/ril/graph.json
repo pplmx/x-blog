@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 74,
+  "round": 75,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-08-16T15:51:22+00:00",
+  "updated_at": "2026-08-16T16:20:59+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -4401,6 +4401,65 @@
       "touched_round": 74,
       "commit": "15fa2fc",
       "title": "Accessibility polish (aria + localization)"
+    },
+    "ISS-054": {
+      "id": "ISS-054",
+      "type": "issue",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-16T15:54:02+00:00",
+      "updated_at": "2026-08-16T15:54:02+00:00",
+      "touched_round": 74,
+      "title": "RSS/Atom/sitemap re-render markdown + full DB query on every request (no caching, DoS-surfaced)",
+      "severity": 0.4
+    },
+    "TASK-085": {
+      "id": "TASK-085",
+      "type": "task",
+      "status": "resolved",
+      "version": 3,
+      "created_at": "2026-08-16T15:54:02+00:00",
+      "updated_at": "2026-08-16T16:20:59+00:00",
+      "touched_round": 75,
+      "category": "performance",
+      "severity": 0.4,
+      "confidence": 1.0,
+      "effort": 3.0,
+      "unlock_factor": 1.0,
+      "title": "Add TTL cache for rendered RSS/Atom/sitemap, invalidated on post writes",
+      "lock_owner": "",
+      "lock_until": "2026-08-16T16:39:02+00:00"
+    },
+    "ISS-055": {
+      "id": "ISS-055",
+      "type": "issue",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-16T16:20:21+00:00",
+      "updated_at": "2026-08-16T16:20:21+00:00",
+      "touched_round": 75,
+      "title": "RSS feed cache key ignores full param, mixing excerpt/full bodies",
+      "severity": 0.6
+    },
+    "CHG-073": {
+      "id": "CHG-073",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-16T16:20:26+00:00",
+      "updated_at": "2026-08-16T16:20:26+00:00",
+      "touched_round": 75,
+      "commit": "(pending)"
+    },
+    "COMP-006": {
+      "id": "COMP-006",
+      "type": "component",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-16T16:20:56+00:00",
+      "updated_at": "2026-08-16T16:20:56+00:00",
+      "touched_round": 75,
+      "note": "rss router"
     }
   },
   "edges": [
@@ -6012,6 +6071,30 @@
       "to": "ISS-053",
       "type": "resolves",
       "created_at": "2026-08-16T15:51:22+00:00"
+    },
+    {
+      "from": "TASK-085",
+      "to": "ISS-054",
+      "type": "addresses",
+      "created_at": "2026-08-16T15:54:02+00:00"
+    },
+    {
+      "from": "ISS-055",
+      "to": "COMP-006",
+      "type": "located_in",
+      "created_at": "2026-08-16T16:20:59+00:00"
+    },
+    {
+      "from": "CHG-073",
+      "to": "ISS-055",
+      "type": "resolves",
+      "created_at": "2026-08-16T16:20:59+00:00"
+    },
+    {
+      "from": "CHG-073",
+      "to": "TASK-085",
+      "type": "implements",
+      "created_at": "2026-08-16T16:20:59+00:00"
     }
   ]
 }
