@@ -315,7 +315,7 @@ def test_rss_feed_etag_and_304(client, auth_headers):
         headers=auth_headers,
     )
 
-    for path, expected_mt in (
+    for path, _expected_mt in (
         ("/rss/feed.xml", "application/rss+xml"),
         ("/rss/atom.xml", "application/atom+xml"),
         ("/sitemap.xml", "application/xml"),

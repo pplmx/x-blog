@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from jose import jwt
+import jwt
 
 from app.auth import (
     SECRET_KEY,

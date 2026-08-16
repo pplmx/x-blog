@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 75,
+  "round": 76,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-08-16T17:39:41+00:00",
+  "updated_at": "2026-08-16T17:48:51+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -4659,11 +4659,11 @@
     "TASK-088": {
       "id": "TASK-088",
       "type": "task",
-      "status": "active",
-      "version": 1,
+      "status": "resolved",
+      "version": 2,
       "created_at": "2026-08-16T17:35:24+00:00",
-      "updated_at": "2026-08-16T17:35:24+00:00",
-      "touched_round": 75,
+      "updated_at": "2026-08-16T17:48:51+00:00",
+      "touched_round": 76,
       "category": "security",
       "severity": 0.5,
       "confidence": 1.0,
@@ -4675,11 +4675,11 @@
       "id": "CHG-076",
       "type": "change",
       "status": "active",
-      "version": 1,
+      "version": 2,
       "created_at": "2026-08-16T17:39:35+00:00",
-      "updated_at": "2026-08-16T17:39:35+00:00",
+      "updated_at": "2026-08-16T17:39:44+00:00",
       "touched_round": 75,
-      "commit": "(pending)"
+      "commit": "ea6e3e0511c3097e6b76e63030e7549ac501ff32"
     },
     "ISS-067": {
       "id": "ISS-067",
@@ -4691,6 +4691,60 @@
       "touched_round": 75,
       "title": "Feeds/sitemap lack HTTP ETag/conditional GET, re-downloaded by pollers",
       "severity": 0.4
+    },
+    "ISS-068": {
+      "id": "ISS-068",
+      "type": "issue",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-16T17:40:26+00:00",
+      "updated_at": "2026-08-16T17:40:26+00:00",
+      "touched_round": 76,
+      "title": "No CSP or SRI on frontend; no pip dependency audit in CI",
+      "severity": 0.5
+    },
+    "CHG-077": {
+      "id": "CHG-077",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-16T17:48:40+00:00",
+      "updated_at": "2026-08-16T17:48:40+00:00",
+      "touched_round": 76,
+      "commit": "(pending)"
+    },
+    "ISS-069": {
+      "id": "ISS-069",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-08-16T17:48:40+00:00",
+      "updated_at": "2026-08-16T17:48:45+00:00",
+      "touched_round": 76,
+      "title": "Transitive vulns (ecdsa Minerva via python-jose, cryptography, click)",
+      "severity": 0.6
+    },
+    "DEC-050": {
+      "id": "DEC-050",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-16T17:48:45+00:00",
+      "updated_at": "2026-08-16T17:48:45+00:00",
+      "touched_round": 76,
+      "title": "Swap python-jose to PyJWT; adopt uv audit gate",
+      "rationale": "ecdsa (Minerva) transitive via python-jose has no fix; app only uses HS256. PyJWT is a drop-in, removes ecdsa entirely. uv audit now clean; gate added to CI.",
+      "alternatives_rejected": "Allowlist ecdsa advisory (leaves vuln surface), keep python-jose (unpatched timing attack)."
+    },
+    "COMP-007": {
+      "id": "COMP-007",
+      "type": "component",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-16T17:48:47+00:00",
+      "updated_at": "2026-08-16T17:48:47+00:00",
+      "touched_round": 76,
+      "note": "JWT auth"
     }
   },
   "edges": [
@@ -6410,6 +6464,30 @@
       "to": "ISS-067",
       "type": "resolves",
       "created_at": "2026-08-16T17:39:40+00:00"
+    },
+    {
+      "from": "TASK-088",
+      "to": "ISS-068",
+      "type": "addresses",
+      "created_at": "2026-08-16T17:40:29+00:00"
+    },
+    {
+      "from": "CHG-077",
+      "to": "ISS-069",
+      "type": "resolves",
+      "created_at": "2026-08-16T17:48:45+00:00"
+    },
+    {
+      "from": "ISS-069",
+      "to": "COMP-007",
+      "type": "located_in",
+      "created_at": "2026-08-16T17:48:51+00:00"
+    },
+    {
+      "from": "CHG-077",
+      "to": "TASK-088",
+      "type": "implements",
+      "created_at": "2026-08-16T17:48:51+00:00"
     }
   ]
 }

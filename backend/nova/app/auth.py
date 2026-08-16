@@ -3,9 +3,10 @@ import warnings
 from datetime import UTC, datetime, timedelta
 
 import bcrypt
+import jwt
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
-from jose import JWTError, jwt
+from jwt import InvalidTokenError
 from pydantic import BaseModel
 from sqlalchemy import Boolean, DateTime, Integer, String
 from sqlalchemy.orm import Mapped, Session, mapped_column
@@ -102,9 +103,9 @@ def get_current_user(
         if user_id is None:
             raise credentials_exception
         token_data = TokenData(user_id=user_id)
-    except JWTError, TypeError, ValueError:
-        # JWTError: bad signature/expired token; TypeError/ValueError: malformed
-        # `sub` claim (e.g. non-numeric). Both are authentication failures → 401.
+    except InvalidTokenError, TypeError, ValueError:
+        # InvalidTokenError: bad signature/expired token; TypeError/ValueError:
+        # malformed `sub` claim (e.g. non-numeric). Both are auth failures → 401.
         raise credentials_exception
 
     # Tokens signed before this change have no `ver` claim -> treat as 0; the

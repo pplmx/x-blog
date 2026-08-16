@@ -40,6 +40,13 @@ jobs:
           cd backend/nova
           uv run pyright
 
+      - name: Backend dependency vulnerability audit
+        run: |
+          cd backend/nova
+          # Fail the build on any known vulnerability in the resolved dependency
+          # tree (uv audit exits non-zero when vulnerabilities are found).
+          uv audit
+
       - name: Verify alembic baseline builds a fresh DB (no model drift)
         run: |
           cd backend/nova
