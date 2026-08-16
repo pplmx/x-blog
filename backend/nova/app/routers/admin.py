@@ -319,12 +319,13 @@ def admin_list_categories(
 ):
     categories = db.query(models.Category).all()
     # Post count per category in a single grouped query (no N+1).
-    counts = dict(
+    rows = (
         db.query(models.Post.category_id, func.count(models.Post.id))
         .filter(models.Post.category_id.isnot(None))
         .group_by(models.Post.category_id)
         .all()
     )
+    counts = {cat_id: int(count) for cat_id, count in rows}
     return [{"id": c.id, "name": c.name, "post_count": counts.get(c.id, 0)} for c in categories]
 
 
@@ -416,11 +417,12 @@ def admin_list_tags(
 ):
     tags = db.query(models.Tag).all()
     # Post count per tag through the many-to-many join table, one grouped query.
-    counts = dict(
+    rows = (
         db.query(models.post_tags.c.tag_id, func.count(models.post_tags.c.post_id))
         .group_by(models.post_tags.c.tag_id)
         .all()
     )
+    counts = {tag_id: int(count) for tag_id, count in rows}
     return [{"id": t.id, "name": t.name, "post_count": counts.get(t.id, 0)} for t in tags]
 
 

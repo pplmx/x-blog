@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 58,
+  "round": 59,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-08-16T09:18:12+00:00",
+  "updated_at": "2026-08-16T09:21:09+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -3728,6 +3728,28 @@
       "source": "714 frontend unit tests | grep confirms no Sidebar references | biome clean",
       "note": "Dead Sidebar.vue removed; home page uses its own inline aside. Zero references across app/components/tests.",
       "confidence": 1.0
+    },
+    "ISS-039": {
+      "id": "ISS-039",
+      "type": "issue",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-16T09:21:04+00:00",
+      "updated_at": "2026-08-16T09:21:04+00:00",
+      "touched_round": 59,
+      "severity": "high",
+      "description": "RSS/Atom full-content feeds emit raw Markdown source wrapped in CDATA labeled as HTML: /rss/feed.xml (default full=True, and the subscribe footer + e2e hit it) puts post.content into <content:encoded> and /rss/atom.xml into <content type=html>. Feed readers render this as escaped Markdown syntax (# heading, **bold**, mermaid code) instead of rendered post HTML, so the advertised full-content subscription is broken for readers. Need markdown->sanitized HTML at feed-generation time."
+    },
+    "TASK-068": {
+      "id": "TASK-068",
+      "type": "task",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-16T09:21:09+00:00",
+      "updated_at": "2026-08-16T09:21:09+00:00",
+      "touched_round": 59,
+      "category": "correctness",
+      "description": "Render post markdown to sanitized HTML in full-content RSS/Atom feeds"
     }
   },
   "edges": [
@@ -5045,6 +5067,12 @@
       "to": "TASK-067",
       "type": "implements",
       "created_at": "2026-08-16T09:17:57+00:00"
+    },
+    {
+      "from": "TASK-068",
+      "to": "ISS-039",
+      "type": "addresses",
+      "created_at": "2026-08-16T09:21:09+00:00"
     }
   ]
 }

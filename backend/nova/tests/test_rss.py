@@ -53,6 +53,61 @@ def test_rss_feed_full_content_flag(client, auth_headers):
     assert "Full post content here" in content
 
 
+def test_rss_full_feed_renders_markdown_as_html(client, auth_headers):
+    """Full-content feeds must render markdown to HTML, not literal syntax,
+    and strip dangerous markup (ISS-039)."""
+    client.post(
+        "/api/posts",
+        json={
+            "title": "MD Post",
+            "slug": "md-post",
+            "content": '# Heading\n\n**bold** and `code`.\n\n<b onclick="x()">inline</b><script>alert(1)</script>',
+            "published": True,
+        },
+        headers=auth_headers,
+    )
+    response = client.get("/rss/feed.xml?full=true")
+    assert response.status_code == 200
+    content = response.text
+    # Rendered HTML: heading tag, bold tag, code tag appear; raw markdown syntax does not.
+    assert "<h1" in content
+    assert "<strong>" in content
+    assert "<code>" in content
+    assert "# Heading" not in content
+    assert "**bold**" not in content
+    # Dangerous markup stripped: no script, no event-handler attributes.
+    assert "<script" not in content
+    assert "onclick" not in content
+
+
+def test_atom_feed_renders_markdown_as_html(client, auth_headers):
+    """Atom full-content feed also renders markdown to sanitized HTML."""
+    client.post(
+        "/api/posts",
+        json={
+            "title": "Atom MD",
+            "slug": "atom-md",
+            "content": "**nice** <script>alert(1)</script>",
+            "published": True,
+        },
+        headers=auth_headers,
+    )
+    response = client.get("/rss/atom.xml")
+    assert response.status_code == 200
+    content = response.text
+    # The <content type=html> block renders markdown to sanitized HTML.
+    import re
+
+    content_block = re.search(r"<content type=\"html\">(.*?)</content>", content, re.S)
+    assert content_block is not None
+    rendered = content_block.group(1)
+    assert "<strong>nice</strong>" in rendered
+    assert "**nice**" not in rendered
+    assert "<script" not in rendered
+    # No event-handler attributes survive.
+    assert "onclick" not in rendered
+
+
 def test_rss_feed_excerpt_only_by_default(client, auth_headers):
     """RSS feed by default should use excerpt, not full content."""
     client.post(

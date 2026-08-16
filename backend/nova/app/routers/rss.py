@@ -1,6 +1,8 @@
 from datetime import UTC, datetime
+from html.parser import HTMLParser
 from xml.sax.saxutils import escape
 
+import markdown as md
 from fastapi import APIRouter, Depends
 from fastapi.responses import Response
 from sqlalchemy.orm import Session
@@ -21,6 +23,82 @@ def _cdata(value: str) -> str:
     return f"<![CDATA[{value.replace(']]>', ']]]]><![CDATA[>')}]]>"
 
 
+# Elements stripped from feed content (can never appear) — the allow-list of
+# tags/attrs that survive mirrors the frontend's markdown+DOMPurify pipeline so
+# feed readers get the rendered article, not raw markdown, and never script.
+_ALLOWED_TAGS = {
+    "p", "br", "hr", "a", "img", "em", "strong", "code", "pre", "blockquote",
+    "ul", "ol", "li", "h1", "h2", "h3", "h4", "h5", "h6", "table", "thead",
+    "tbody", "tr", "th", "td", "del", "sup", "sub", "span", "div",
+}
+_ALLOWED_ATTRS = {"href", "src", "alt", "title", "target", "rel"}
+
+
+class _FeedSanitizer(HTMLParser):
+    """Strip disallowed tags and unsafe attributes from rendered markdown.
+
+    `convert_charrefs=False` keeps entity references intact so character
+    refs in the source content aren't double-escaped.
+    """
+
+    def __init__(self) -> None:
+        super().__init__(convert_charrefs=False)
+        self.out: list[str] = []
+        self._stack: list[str] = []
+
+    def handle_starttag(self, tag: str, attrs: list) -> None:
+        if tag in _ALLOWED_TAGS:
+            self._stack.append(tag)
+            allowed = [
+                (k, v) for k, v in attrs if k in _ALLOWED_ATTRS and not k.lower().startswith("on")
+            ]
+            attr_str = "".join(f' {k}="{escape(v, {"&": "&amp;", '"': "&quot;"})}"' for k, v in allowed)
+            self.out.append(f"<{tag}{attr_str}>")
+        else:
+            self._stack.append("")  # placeholder so a matching close tag is dropped
+
+    def handle_endtag(self, tag: str) -> None:
+        if self._stack:
+            opened = self._stack.pop()
+            if opened == tag:
+                self.out.append(f"</{tag}>")
+
+    def handle_startendtag(self, tag: str, attrs: list) -> None:
+        if tag in _ALLOWED_TAGS:
+            allowed = [
+                (k, v) for k, v in attrs if k in _ALLOWED_ATTRS and not k.lower().startswith("on")
+            ]
+            attr_str = "".join(f' {k}="{escape(v, {"&": "&amp;", '"': "&quot;"})}"' for k, v in allowed)
+            self.out.append(f"<{tag}{attr_str}/>")
+
+    def handle_data(self, data: str) -> None:
+        self.out.append(data)
+
+    def handle_entityref(self, name: str) -> None:
+        self.out.append(f"&{name};")
+
+    def handle_charref(self, name: str) -> None:
+        self.out.append(f"&#{name};")
+
+    def handle_comment(self, data: str) -> None:
+        pass
+
+    def handle_pi(self, data: str) -> None:
+        pass
+
+    def handle_decl(self, decl: str) -> None:
+        pass
+
+
+def _feed_content_html(content: str) -> str:
+    """Render a post's Markdown to sanitized HTML for full-content feeds."""
+    html = md.markdown(content, extensions=["fenced_code", "tables", "nl2br"])
+    sanitizer = _FeedSanitizer()
+    sanitizer.feed(html)
+    sanitizer.close()
+    return "".join(sanitizer.out)
+
+
 def generate_rss_feed(posts: list, site_url: str, title: str, description: str, full_content: bool = False) -> str:
     """Generate RSS 2.0 feed.
 
@@ -37,8 +115,9 @@ def generate_rss_feed(posts: list, site_url: str, title: str, description: str, 
         link = f"{site_url}/posts/{post.slug}"
 
         if full_content:
-            # Full content RSS
-            content = f"<content:encoded>{_cdata(post.content)}</content:encoded>"
+            # Full content RSS — render markdown to sanitized HTML so feed
+            # readers show the article, not literal markdown syntax (ISS-039).
+            content = f"<content:encoded>{_cdata(_feed_content_html(post.content))}</content:encoded>"
             items.append(f"""<item>
         <title>{_cdata(post.title)}</title>
         <link>{escape(link)}</link>
@@ -103,7 +182,7 @@ def get_atom_feed(db: Session = Depends(get_db)):
     for post in posts:
         updated = (post.updated_at or crud.utc_now_naive()).strftime("%Y-%m-%dT%H:%M:%SZ")
         published = (post.created_at or crud.utc_now_naive()).strftime("%Y-%m-%dT%H:%M:%SZ")
-        content = post.content[:5000] if len(post.content) > 5000 else post.content
+        content = _feed_content_html(post.content)
         link = f"{site_url}/posts/{post.slug}"
         items.append(f"""<entry>
         <title>{escape(post.title)}</title>

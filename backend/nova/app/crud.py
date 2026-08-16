@@ -82,7 +82,7 @@ def get_posts(
     # queried, so cost scales with the page size regardless of total.
     if posts:
         post_ids = [p.id for p in posts]
-        comment_counts = dict(
+        rows = (
             db.query(models.Comment.post_id, func.count(models.Comment.id))
             .filter(
                 models.Comment.post_id.in_(post_ids),
@@ -91,6 +91,7 @@ def get_posts(
             .group_by(models.Comment.post_id)
             .all()
         )
+        comment_counts = {post_id: int(count) for post_id, count in rows}
         for p in posts:
             p.comment_count = comment_counts.get(p.id, 0)
 
@@ -225,12 +226,13 @@ def get_categories(db: Session) -> list[models.Category]:
     categories = db.query(models.Category).all()
 
     # Post count per category in a single grouped query (no N+1).
-    counts = dict(
+    rows = (
         db.query(models.Post.category_id, func.count(models.Post.id))
         .filter(models.Post.category_id.isnot(None))
         .group_by(models.Post.category_id)
         .all()
     )
+    counts = {cat_id: int(count) for cat_id, count in rows}
     for cat in categories:
         cat.post_count = counts.get(cat.id, 0)
 
@@ -306,11 +308,12 @@ def get_tags(db: Session) -> list[models.Tag]:
     tags = db.query(models.Tag).all()
 
     # Post count per tag through the many-to-many join, one grouped query.
-    counts = dict(
+    rows = (
         db.query(models.post_tags.c.tag_id, func.count(models.post_tags.c.post_id))
         .group_by(models.post_tags.c.tag_id)
         .all()
     )
+    counts = {tag_id: int(count) for tag_id, count in rows}
     for tag in tags:
         tag.post_count = counts.get(tag.id, 0)
 
