@@ -2,7 +2,7 @@
   "ril_version": 1,
   "round": 31,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-08-16T01:08:57+00:00",
+  "updated_at": "2026-08-16T03:55:27+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -2682,10 +2682,10 @@
     "ISS-032": {
       "id": "ISS-032",
       "type": "issue",
-      "status": "active",
-      "version": 1,
+      "status": "resolved",
+      "version": 2,
       "created_at": "2026-08-16T01:08:42+00:00",
-      "updated_at": "2026-08-16T01:08:42+00:00",
+      "updated_at": "2026-08-16T03:55:27+00:00",
       "touched_round": 31,
       "severity": 0.4,
       "title": "Admin dashboard shows empty API data on a hard full-page reload (SPA navigation loads it fine)",
@@ -2712,6 +2712,29 @@
       "touched_round": 31,
       "source": "4b4d985 (typecheck 0, biome clean, 664 unit pass; browser: admin login + SPA nav -> bars:5 rendered with real data 29071 views / top posts listed)",
       "title": "Admin dashboard top-posts bars render with real data",
+      "confidence": 1.0
+    },
+    "CHG-037": {
+      "id": "CHG-037",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-16T03:55:26+00:00",
+      "updated_at": "2026-08-16T03:55:26+00:00",
+      "touched_round": 31,
+      "commit": "8a02ae3",
+      "title": "Fix admin dashboard hard-reload empty data (client-side load after auth)"
+    },
+    "EV-053": {
+      "id": "EV-053",
+      "type": "evidence",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-16T03:55:26+00:00",
+      "updated_at": "2026-08-16T03:55:26+00:00",
+      "touched_round": 31,
+      "source": "8a02ae3 (664 unit incl. adapted 27 dashboard tests, typecheck 0, biome clean; browser hard reload /admin after login renders real data: top-posts bars 5 + posts listed, previously empty)",
+      "title": "Admin dashboard loads real data on hard reload after fix",
       "confidence": 1.0
     }
   },
@@ -3850,6 +3873,12 @@
       "to": "COMP-002",
       "type": "located_in",
       "created_at": "2026-08-16T01:08:57+00:00"
+    },
+    {
+      "from": "CHG-037",
+      "to": "ISS-032",
+      "type": "resolves",
+      "created_at": "2026-08-16T03:55:26+00:00"
     }
   ]
 }
