@@ -2,7 +2,7 @@
   "ril_version": 1,
   "round": 32,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-08-16T04:46:47+00:00",
+  "updated_at": "2026-08-16T04:47:29+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -2751,10 +2751,10 @@
     "TASK-047": {
       "id": "TASK-047",
       "type": "task",
-      "status": "active",
-      "version": 1,
+      "status": "resolved",
+      "version": 2,
       "created_at": "2026-08-16T04:30:37+00:00",
-      "updated_at": "2026-08-16T04:30:37+00:00",
+      "updated_at": "2026-08-16T04:47:29+00:00",
       "touched_round": 32,
       "category": "core-feature",
       "description": "Add public /categories browse page mirroring /tags: all-categories chips view + per-category posts with pagination; en/zh i18n; wire nav"
@@ -2763,12 +2763,24 @@
       "id": "CHG-038",
       "type": "change",
       "status": "active",
-      "version": 1,
+      "version": 2,
       "created_at": "2026-08-16T04:46:47+00:00",
-      "updated_at": "2026-08-16T04:46:47+00:00",
+      "updated_at": "2026-08-16T04:47:29+00:00",
       "touched_round": 32,
-      "commit": "__PENDING__",
+      "commit": "168c5f66c928c18a38d212b01aad7d95d78cccad",
       "description": "Public /categories browse page (FEAT-047)"
+    },
+    "EV-054": {
+      "id": "EV-054",
+      "type": "evidence",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-16T04:47:29+00:00",
+      "updated_at": "2026-08-16T04:47:29+00:00",
+      "touched_round": 32,
+      "source": "test_rss.py test_sitemap_includes_static_pages|tests/pages/categories.spec.ts (14) | playwright e2e categories.spec.ts | 678 frontend unit tests | ruff/biome clean | nuxt typecheck green",
+      "note": "Categories page browser-verified: h1 全部分类, 5 category chips, category posts view with pagination; sitemap now lists /categories",
+      "confidence": 1.0
     }
   },
   "edges": [
@@ -3912,6 +3924,12 @@
       "to": "ISS-032",
       "type": "resolves",
       "created_at": "2026-08-16T03:55:26+00:00"
+    },
+    {
+      "from": "CHG-038",
+      "to": "TASK-047",
+      "type": "implements",
+      "created_at": "2026-08-16T04:47:29+00:00"
     }
   ]
 }
