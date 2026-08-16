@@ -1,4 +1,5 @@
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { ref } from "vue";
 
 import { type Bookmark, useBookmarks } from "../../composables/useBookmarks.ts";
 
@@ -142,6 +143,25 @@ describe("useBookmarks", () => {
 			addBookmark(mockBookmark);
 			expect(bookmarks.value).toEqual([]);
 			global.window = originalWindow;
+		});
+	});
+
+	describe("shared state (RIL ISS-036)", () => {
+		it("two useBookmarks() calls share one reactive array under useState", () => {
+			// Simulate the Nuxt runtime where useState is a keyed singleton:
+			// both calls must resolve to the same backing ref.
+			const shared = ref<Bookmark[]>([]);
+			vi.stubGlobal("useState", () => shared);
+
+			const a = useBookmarks();
+			const b = useBookmarks();
+			// Adding via one instance must be visible via the other immediately
+			a.addBookmark(mockBookmark);
+			expect(b.isBookmarked(1)).toBe(true);
+			expect(b.bookmarkCount.value).toBe(1);
+			b.removeBookmark(1);
+			expect(a.isBookmarked(1)).toBe(false);
+			vi.unstubAllGlobals();
 		});
 	});
 });

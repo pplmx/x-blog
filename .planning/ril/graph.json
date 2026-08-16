@@ -2,7 +2,7 @@
   "ril_version": 1,
   "round": 47,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-08-16T06:37:39+00:00",
+  "updated_at": "2026-08-16T06:38:14+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -3333,6 +3333,28 @@
       "source": "playwright e2e: 27 public-journey specs, 26 passed + fixed homepage category-filter (await SPA nav)",
       "note": "Full public e2e run surfaced a latent test race (page.url read before SPA navigation) activated by the round-5 browse-chips feature; fixed test to await /category_id= URL. Verifies browse chips + home filtering + post chips + RSS/sitemap end-to-end.",
       "confidence": 1.0
+    },
+    "ISS-036": {
+      "id": "ISS-036",
+      "type": "issue",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-16T06:38:09+00:00",
+      "updated_at": "2026-08-16T06:38:09+00:00",
+      "touched_round": 47,
+      "severity": "medium",
+      "description": "Bookmarks use non-shared state: useBookmarks() creates a fresh ref(loadFromStorage()) per call, so the three consumers (BookmarkButton, Sidebar bookmark count, bookmarks page) each hold isolated reactive state. Adding/removing a bookmark in one component does not update the others until a full reload; the sidebar count and bookmarks list go stale. contrast: useLang uses useState for shared state; useBookmarks should too."
+    },
+    "TASK-060": {
+      "id": "TASK-060",
+      "type": "task",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-16T06:38:14+00:00",
+      "updated_at": "2026-08-16T06:38:14+00:00",
+      "touched_round": 47,
+      "category": "correctness",
+      "description": "Make useBookmarks state shared via useState so all consumers stay in sync"
     }
   },
   "edges": [
@@ -4572,6 +4594,12 @@
       "to": "TASK-059",
       "type": "implements",
       "created_at": "2026-08-16T06:27:08+00:00"
+    },
+    {
+      "from": "TASK-060",
+      "to": "ISS-036",
+      "type": "addresses",
+      "created_at": "2026-08-16T06:38:14+00:00"
     }
   ]
 }

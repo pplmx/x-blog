@@ -1,4 +1,4 @@
-import { computed, ref } from "vue";
+import { computed, type Ref, ref } from "vue";
 
 export interface Bookmark {
 	id: number;
@@ -12,9 +12,27 @@ export interface Bookmark {
 }
 
 const STORAGE_KEY = "x_blog_bookmarks";
+const STATE_KEY = "x_blog_bookmarks_state";
 
 function isClient(): boolean {
 	return typeof window !== "undefined";
+}
+
+// Whether Nuxt globals (useState) are available. In vitest they aren't, so we
+// fall back to a plain module-scoped ref (see the isClient guard below).
+function canUseNuxt(): boolean {
+	return typeof useState === "function";
+}
+
+// localStorage is client-only, but useState initializes during SSR where
+// window is undefined — the server serializes an empty array and the client
+// reuses it, so on a full page load we must re-read storage once, client-side,
+// before any user interaction. Guarded so we don't clobber genuine edits.
+let hydratedFromStorage = false;
+function ensureClientHydration(bookmarks: Ref<Bookmark[]>): void {
+	if (!isClient() || hydratedFromStorage) return;
+	bookmarks.value = loadFromStorage();
+	hydratedFromStorage = true;
 }
 
 function loadFromStorage(): Bookmark[] {
@@ -38,7 +56,20 @@ function saveToStorage(bookmarks: Bookmark[]): void {
 }
 
 export function useBookmarks() {
-	const bookmarks = ref<Bookmark[]>(loadFromStorage());
+	// Backing array is a Nuxt `useState` singleton so every consumer
+	// (BookmarkButton, Sidebar count, /bookmarks page) shares one reactive
+	// source — a plain `ref()` per call kept each component's bookmarks out of
+	// sync until a reload (RIL ISS-036). In vitest there is no `useState`, so
+	// use a local ref (tests stub useState explicitly to exercise the shared path).
+	const bookmarks = canUseNuxt()
+		? useState<Bookmark[]>(STATE_KEY, () => loadFromStorage())
+		: ref<Bookmark[]>(loadFromStorage());
+
+	// On a full page load the useState value arrives SSR-serialized (empty when
+	// window was undefined on the server); re-read localStorage once client-side.
+	if (canUseNuxt()) {
+		ensureClientHydration(bookmarks);
+	}
 
 	function isBookmarked(id: number): boolean {
 		return bookmarks.value.some((b) => b.id === id);
