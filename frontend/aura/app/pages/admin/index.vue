@@ -59,6 +59,12 @@ const recentPosts = posts
 
 // Top 5 posts by view count
 const topPosts = [...posts].sort((a, b) => (b.views || 0) - (a.views || 0));
+const topPostsTop = topPosts.slice(0, 5);
+// Max views among the shown top posts — the bar scale (guard divide-by-zero).
+const maxTopViews = Math.max(1, ...topPostsTop.map((p) => p.views || 0));
+function topViewsPct(views: number): number {
+	return Math.round((views / maxTopViews) * 100);
+}
 
 // Top 5 pending comments (newest first)
 const recentPendingComments = pendingComments.slice(0, 5);
@@ -179,17 +185,25 @@ const stats = computed(() => [
         </h3>
         <div class="space-y-3">
           <div
-            v-for="post in topPosts.slice(0, 5)"
+            v-for="post in topPostsTop"
             :key="post.id"
-            class="flex items-center justify-between p-3 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+            class="p-3 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
           >
-            <span class="font-medium text-gray-900 dark:text-gray-100 truncate">
-              {{ post.title }}
-            </span>
-            <span class="text-sm text-gray-500 dark:text-gray-400 flex items-center gap-1">
-              <Icon icon="lucide:eye" class="w-4 h-4" />
-              {{ post.views || 0 }}
-            </span>
+            <div class="flex items-center justify-between mb-1.5 gap-3">
+              <span class="font-medium text-gray-900 dark:text-gray-100 truncate">
+                {{ post.title }}
+              </span>
+              <span class="text-sm text-gray-500 dark:text-gray-400 flex items-center gap-1 shrink-0">
+                <Icon icon="lucide:eye" class="w-4 h-4" />
+                {{ post.views || 0 }}
+              </span>
+            </div>
+            <div class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2 overflow-hidden">
+              <div
+                class="h-2 rounded-full bg-gradient-to-r from-blue-500 to-indigo-500 transition-all"
+                :style="{ width: topViewsPct(post.views || 0) + '%' }"
+              />
+            </div>
           </div>
         </div>
       </div>
