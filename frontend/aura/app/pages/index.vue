@@ -292,7 +292,7 @@ const stats = computed(() => {
               </NuxtLink>
             </div>
             <div v-else class="mb-4 text-sm text-gray-400">
-              {{ t("home.empty.posts") }}
+              {{ t("home.sidebar.noCategories") }}
             </div>
 
             <h4 class="text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase mb-2">
@@ -310,6 +310,9 @@ const stats = computed(() => {
               >
                 #{{ tag.name }}
               </NuxtLink>
+            </div>
+            <div v-else class="text-sm text-gray-400">
+              {{ t("home.sidebar.noTags") }}
             </div>
           </div>
 

@@ -34,14 +34,15 @@ def test_create_comment(client, post):
 
 
 def test_posts_list_includes_comment_count(client, post, auth_headers):
-    """PostList should expose comment_count, counting approved comments only."""
-    from app.cache import clear_posts_list_cache
+    """PostList should expose comment_count, counting approved comments only.
 
+    Comment create/approve must auto-invalidate the cached posts list (RIL
+    TASK-073, ISS-041); no manual cache clears here.
+    """
     # No comments yet -> 0
-    clear_posts_list_cache()
     assert client.get("/api/posts").json()["items"][0]["comment_count"] == 0
 
-    # Add an unapproved comment -> still 0
+    # Add an unapproved comment -> still 0 (not counted)
     unapproved = client.post(
         f"/api/comments/post/{post['id']}",
         json={
@@ -50,16 +51,14 @@ def test_posts_list_includes_comment_count(client, post, auth_headers):
             "content": "Buy now!",
         },
     ).json()
-    clear_posts_list_cache()
     assert client.get("/api/posts").json()["items"][0]["comment_count"] == 0
 
-    # Approve it -> count becomes 1
+    # Approve it -> count becomes 1 (posts list cache invalidated on approve)
     client.patch(
         f"/api/comments/{unapproved['id']}/approve",
         json={"approved": True},
         headers=auth_headers,
     )
-    clear_posts_list_cache()
     assert client.get("/api/posts").json()["items"][0]["comment_count"] == 1
 
 

@@ -5,6 +5,7 @@ Uses shared fixtures from conftest.py: admin_user, admin_token, auth_headers.
 Credentials: username="testadmin", password="testpass123"
 """
 
+from datetime import datetime
 from unittest.mock import patch
 
 from sqlalchemy.exc import IntegrityError
@@ -1050,6 +1051,74 @@ class TestAdminPostCategoryClear:
 
         detail = client.get(f"/api/admin/posts/{post['id']}", headers=auth_headers).json()
         assert detail["category_id"] is None
+
+
+class TestAdminPostPublishAtPreservation:
+    """The admin post editor must not wipe a scheduled publish_at on save.
+
+    Regresses the data-loss bug (RIL TASK-072, ISS-040): admin_get_post did not
+    return publish_at, the editor then always sent publish_at back, and the
+    update handler's exclude_unset logic nulled the schedule even when the user
+    changed nothing. The get endpoint must return publish_at so the editor can
+    round-trip it unchanged.
+    """
+
+    def test_admin_get_post_returns_publish_at(self, client, auth_headers, db_session):
+        from datetime import timedelta
+
+        from app import models
+        from app.crud import utc_now_naive
+
+        scheduled = utc_now_naive() + timedelta(days=1)
+        post = models.Post(
+            title="Scheduled Post",
+            slug="scheduled-post",
+            content="Content",
+            published=True,
+            publish_at=scheduled,
+        )
+        db_session.add(post)
+        db_session.commit()
+
+        response = client.get(f"/api/admin/posts/{post.id}", headers=auth_headers)
+        assert response.status_code == 200
+        data = response.json()
+        assert data["publish_at"] is not None
+        parsed = datetime.fromisoformat(data["publish_at"])
+        assert parsed.replace(tzinfo=None) == scheduled.replace(tzinfo=None)
+
+    def test_admin_update_untouched_post_preserves_publish_at(self, client, auth_headers, db_session):
+        """A save with zero edits must not clear the schedule."""
+        from datetime import timedelta
+
+        from app import models
+        from app.crud import utc_now_naive
+
+        scheduled = utc_now_naive() + timedelta(days=2)
+        post = models.Post(
+            title="Keep Schedule",
+            slug="keep-schedule",
+            content="Content",
+            published=True,
+            publish_at=scheduled,
+        )
+        db_session.add(post)
+        db_session.commit()
+
+        # Editor round-trips: GET (now returns publish_at), then PUT with the
+        # same value echoed back plus an innocuous title edit.
+        detail = client.get(f"/api/admin/posts/{post.id}", headers=auth_headers).json()
+        payload = {"title": "Keep Schedule v2", "publish_at": detail["publish_at"]}
+        update = client.put(
+            f"/api/admin/posts/{post.id}",
+            json=payload,
+            headers=auth_headers,
+        )
+        assert update.status_code == 200
+
+        refreshed = db_session.get(models.Post, post.id)
+        assert refreshed.publish_at is not None
+        assert refreshed.publish_at.replace(tzinfo=None) == scheduled.replace(tzinfo=None)
 
 
 class TestAdminPostStatusFilters:

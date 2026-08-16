@@ -124,6 +124,41 @@ def test_list_posts_cache_invalidated_on_delete(client, auth_headers):
     assert second.json()["pagination"]["total"] == 0
 
 
+def test_category_post_count_invalidated_on_post_write(client, auth_headers):
+    """Assigning a post to a category must refresh the cached category post_count.
+
+    Regresses the stale post_count bug (RIL TASK-074, ISS-042): post writes
+    cleared tags/posts caches but not categories_cache, so the per-category
+    post_count stayed stale up to the 1800s TTL.
+    """
+    cat = client.post(
+        "/api/admin/categories",
+        json={"name": "Cache Test Cat"},
+        headers=auth_headers,
+    ).json()
+
+    # Prime the categories cache (post_count 0 for the new category)
+    first = client.get("/api/categories")
+    assert next(c for c in first.json() if c["id"] == cat["id"])["post_count"] == 0
+
+    # Create a post in that category -> must drop the cached categories list
+    created = client.post(
+        "/api/posts",
+        json={
+            "title": "Categorized Cache",
+            "slug": "categorized-cache",
+            "content": "C",
+            "published": True,
+            "category_id": cat["id"],
+        },
+        headers=auth_headers,
+    )
+    assert created.status_code == 201
+
+    second = client.get("/api/categories")
+    assert next(c for c in second.json() if c["id"] == cat["id"])["post_count"] == 1
+
+
 def test_list_posts(client, auth_headers):
     client.post(
         "/api/posts",

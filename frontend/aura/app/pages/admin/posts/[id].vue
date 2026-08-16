@@ -87,7 +87,7 @@ watch(
 				excerpt: val.excerpt || "",
 				published: val.published,
 				pinned: val.pinned,
-				publish_at: val.publish_at || null,
+				publish_at: toLocalInputValue(val.publish_at),
 				category_id: val.category_id || undefined,
 				tag_ids: val.tag_ids || [],
 				cover_image: val.cover_image || undefined,
@@ -106,6 +106,31 @@ function generateSlug(title: string) {
 		.replace(/\s+/g, "-")
 		.replace(/-+/g, "-")
 		.trim();
+}
+
+// publish_at round-trip helpers. The backend stores/publishes publish_at as a
+// naive-UTC datetime (see crud.utc_now_naive), while the datetime-local input
+// edits in the browser's local wall-clock. These convert between the two so a
+// scheduled time is the same instant regardless of the admin's timezone
+// (RIL TASK-072, ISS-040).
+function toLocalInputValue(utcIso: string | null): string {
+	if (!utcIso) return "";
+	// Backend returns naive UTC (no zone suffix). Treat it as UTC so the
+	// browser converts to the admin's local wall-clock for editing.
+	const d = new Date(utcIso.endsWith("Z") || utcIso.includes("+") ? utcIso : `${utcIso}Z`);
+	if (Number.isNaN(d.getTime())) return "";
+	const pad = (n: number) => String(n).padStart(2, "0");
+	return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+function toUtcNaiveIso(localValue: string): string {
+	if (!localValue) return "";
+	// datetime-local yields local wall-clock; Date interprets it as local and
+	// toISOString() converts to UTC. Truncate to minute precision to match the
+	// input granularity and keep the naive-UTC storage contract.
+	const d = new Date(localValue);
+	if (Number.isNaN(d.getTime())) return "";
+	return `${d.toISOString().slice(0, 16)}:00`;
 }
 
 // Track edits against the loaded snapshot and warn on tab-close/reload
@@ -153,7 +178,7 @@ async function handleSubmit(e: Event) {
 
 	const payload = { ...formData.value };
 	if (payload.publish_at) {
-		payload.publish_at = `${payload.publish_at}:00Z`;
+		payload.publish_at = toUtcNaiveIso(payload.publish_at);
 	}
 	// New posts start with an empty slug, which fails the backend schema
 	// pattern (^[a-z0-9]+(?:-[a-z0-9]+)*$) with a 422. Generate one from the

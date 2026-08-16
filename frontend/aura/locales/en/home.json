@@ -34,7 +34,9 @@
 			"quickNav": "Quick Links",
 			"browse": "Browse by",
 			"browseCategories": "Categories",
-			"browseTags": "Tags"
+			"browseTags": "Tags",
+			"noCategories": "No categories yet",
+			"noTags": "No tags yet"
 		}
 	}
 }

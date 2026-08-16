@@ -253,7 +253,7 @@ const readingTime = computed(() => {
           <span class="w-px h-6 bg-gray-200 dark:bg-gray-700" />
           <button type="button" :disabled="likeLoading || likedThisPost" :title="likedThisPost ? t('post.liked') : t('post.likes')" class="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all duration-200 border disabled:opacity-60 disabled:cursor-not-allowed" :class="likedThisPost ? 'border-pink-200 dark:border-pink-800 bg-pink-50 dark:bg-pink-900/20 text-pink-600 dark:text-pink-400' : 'border-gray-200 dark:border-gray-700 hover:bg-pink-50 dark:hover:bg-pink-900/20 hover:text-pink-600 dark:hover:text-pink-400 hover:border-pink-200 dark:hover:border-pink-800 active:scale-95'" @click="handleLike">
             <Icon :icon="likeLoading ? 'lucide:loader-2' : 'lucide:heart'" class="w-4 h-4" :class="{ 'animate-spin': likeLoading }" />
-            {{ post.likes || t('post.likes') }}
+            {{ (post.likes ?? 0).toLocaleString() }}
           </button>
           <span v-if="likeError" class="text-sm text-red-500">{{ likeError }}</span>
         </div>

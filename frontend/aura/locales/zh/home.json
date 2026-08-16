@@ -34,7 +34,9 @@
 			"quickNav": "快速导航",
 			"browse": "按分类/标签浏览",
 			"browseCategories": "分类",
-			"browseTags": "标签"
+			"browseTags": "标签",
+			"noCategories": "暂无分类",
+			"noTags": "暂无标签"
 		}
 	}
 }

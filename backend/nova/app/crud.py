@@ -195,6 +195,7 @@ def create_post(db: Session, post: schemas.PostCreate) -> models.Post:
         raise
 
     clear_tags_cache()
+    clear_categories_cache()
     clear_posts_list_cache()
     return db_post
 
@@ -230,6 +231,7 @@ def update_post(db: Session, post_id: int, post: schemas.PostUpdate) -> models.P
         raise
 
     clear_tags_cache()
+    clear_categories_cache()
     clear_posts_list_cache()
     return db_post
 
@@ -245,6 +247,7 @@ def delete_post(db: Session, post_id: int) -> bool:
         db.rollback()
         raise ValueError("Cannot delete post: it has dependent records")
     clear_tags_cache()
+    clear_categories_cache()
     clear_posts_list_cache()
     return True
 
@@ -485,6 +488,10 @@ def create_comment(
     except IntegrityError:
         db.rollback()
         raise ValueError("Failed to create comment")
+    # The public posts list serializes approved comment_count per post; a new
+    # (or subsequently approved) comment changes those counts, so invalidate
+    # the cached list rather than wait up to 300s TTL (RIL TASK-073, ISS-041).
+    clear_posts_list_cache()
     return db_comment
 
 
@@ -496,6 +503,9 @@ def approve_comment(db: Session, comment_id: int, approved: bool = True) -> mode
     comment.is_approved = approved
     db.commit()
     db.refresh(comment)
+    # Approving (or rejecting) a comment changes the approved comment_count
+    # surfaced on the cached public posts list (RIL TASK-073, ISS-041).
+    clear_posts_list_cache()
     return comment
 
 
@@ -524,6 +534,9 @@ def delete_comment(db: Session, comment_id: int) -> bool:
     except IntegrityError:
         db.rollback()
         raise ValueError("Cannot delete comment: it has dependent records")
+    # Deleting an approved comment changes the approved comment_count surfaced
+    # on the cached public posts list (RIL TASK-073, ISS-041).
+    clear_posts_list_cache()
     return True
 
 

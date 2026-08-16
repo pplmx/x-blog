@@ -209,6 +209,7 @@ def admin_get_post(
         "excerpt": post.excerpt,
         "published": post.published,
         "pinned": post.pinned,
+        "publish_at": post.publish_at.isoformat() if post.publish_at else None,
         "cover_image": post.cover_image,
         "category_id": post.category_id,
         "tag_ids": [t.id for t in post.tags],
@@ -289,6 +290,7 @@ def admin_update_post(
         raise HTTPException(status_code=400, detail="Slug already exists")
     db.refresh(post)
     clear_tags_cache()
+    clear_categories_cache()
     clear_posts_list_cache()
     return {"id": post.id}
 
@@ -308,6 +310,7 @@ def admin_delete_post(
     db.delete(post)
     db.commit()
     clear_tags_cache()
+    clear_categories_cache()
     clear_posts_list_cache()
     return {"message": "Post deleted"}
 
