@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 63,
+  "round": 64,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-08-16T10:42:57+00:00",
+  "updated_at": "2026-08-16T11:29:52+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -3846,6 +3846,64 @@
       "source": "tests/test_features.py::test_posts_list_reading_time; tests/test_features.py::test_related_posts_reading_time; backend live /api/posts; browser UI home cards show '1 分钟'/'2 分钟'; pyright 0 err; ruff/biome clean; nuxt typecheck clean",
       "summary": "reading_time present on /api/posts, related, popular; rendered on PostCard in browser",
       "confidence": 1.0
+    },
+    "DEC-046": {
+      "id": "DEC-046",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-16T11:29:17+00:00",
+      "updated_at": "2026-08-16T11:29:17+00:00",
+      "touched_round": 64,
+      "summary": "Add linear prev/next post navigation to the article page (feature-evolution round 65)",
+      "rationale": "Feature gap (SKILL 11.2 reader UX): the post detail page offers only topical “related posts”; it has no linear prev/next navigation. Readers finishing an article cannot step forward/backward through the blog feed in reading order, so the only continuation path is back to the homepage or the topical grid. This adds a two-column prev/next nav (feed order: pinned desc, created_at desc) under the article, via a new GET /api/posts/{id}/adjacent endpoint. Self-contained vertical slice: backend endpoint + crud + tests, frontend composable + rendering + i18n + unit tests, verified in a real browser in both locales.",
+      "alternatives_rejected": "(1) Reuse the existing /related endpoint: it is topical (shared category/tags), not linear reading order, and cannot express feed edges. (2) Pagination links at the bottom: page-based nav jumps 10 posts and is already covered by the paginated feed; it does not give sequential single-post stepping. (3) Client-side derivation: would require fetching the full feed client-side, duplicating the pinned/created_at ordering and leaking pagination budget."
+    },
+    "TASK-070": {
+      "id": "TASK-070",
+      "type": "task",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-08-16T11:29:17+00:00",
+      "updated_at": "2026-08-16T11:29:52+00:00",
+      "touched_round": 64,
+      "category": "core-feature",
+      "summary": "Implement linear prev/next post navigation on the article page (ADJACENT N-1 endpoint + nav UI)",
+      "priority_score": 6.0
+    },
+    "CHG-062": {
+      "id": "CHG-062",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-16T11:29:43+00:00",
+      "updated_at": "2026-08-16T11:29:43+00:00",
+      "touched_round": 64,
+      "commit": "3530c0b",
+      "summary": "Add GET /api/posts/{id}/adjacent + two-column prev/next nav on article page (en/zh)",
+      "changed_files": [
+        "backend/nova/app/crud.py",
+        "backend/nova/app/routers/posts.py",
+        "backend/nova/app/schemas.py",
+        "backend/nova/tests/test_posts.py",
+        "frontend/aura/app/pages/posts/[slug].vue",
+        "frontend/aura/composables/useApi.ts",
+        "frontend/aura/locales/en/post.json",
+        "frontend/aura/locales/zh/post.json",
+        "frontend/aura/tests/pages/posts/slug.spec.ts"
+      ]
+    },
+    "EV-081": {
+      "id": "EV-081",
+      "type": "evidence",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-16T11:29:43+00:00",
+      "updated_at": "2026-08-16T11:29:43+00:00",
+      "touched_round": 64,
+      "source": "3530c0b",
+      "summary": "Verification: 595 backend tests + 4 new adjacent tests green; ruff/pyright clean; 719 frontend tests (3 new nav tests) green; biome+typecheck clean; real-browser click-through confirmed prev/next nav renders and navigates in BOTH zh and en locales, incl. endpoint returning correct previous/next on a seeded 31-post DB.",
+      "confidence": 1.0
     }
   },
   "edges": [
@@ -5187,6 +5245,18 @@
       "to": "TASK-069",
       "type": "implements",
       "created_at": "2026-08-16T10:42:48+00:00"
+    },
+    {
+      "from": "CHG-062",
+      "to": "TASK-070",
+      "type": "implements",
+      "created_at": "2026-08-16T11:29:52+00:00"
+    },
+    {
+      "from": "DEC-046",
+      "to": "TASK-070",
+      "type": "governs",
+      "created_at": "2026-08-16T11:29:52+00:00"
     }
   ]
 }
