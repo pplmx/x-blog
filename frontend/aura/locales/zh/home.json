@@ -30,7 +30,10 @@
 		},
 		"sidebar": {
 			"stats": "站点统计",
-			"quickNav": "快速导航"
+			"quickNav": "快速导航",
+			"browse": "按分类/标签浏览",
+			"browseCategories": "分类",
+			"browseTags": "标签"
 		}
 	}
 }

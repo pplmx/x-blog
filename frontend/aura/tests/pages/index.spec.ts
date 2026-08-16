@@ -504,4 +504,41 @@ describe("Index Page", () => {
 			});
 		});
 	});
+
+	describe("Browse-by chips", () => {
+		beforeEach(() => {
+			mockState.posts = mockPostsData;
+			mockState.categories = [
+				{ id: 1, name: "Tech" },
+				{ id: 2, name: "Design" },
+			];
+			mockState.tags = [{ id: 7, name: "Vue" }];
+		});
+
+		it("renders category chips from the categories data", async () => {
+			const wrapper = await mountIndexPage();
+			expect(wrapper.text()).toContain("Tech");
+			expect(wrapper.text()).toContain("Design");
+		});
+
+		it("renders tag chips with hash prefix", async () => {
+			const wrapper = await mountIndexPage();
+			expect(wrapper.text()).toContain("#Vue");
+		});
+
+		it("renders category chip as a navigable link", async () => {
+			const wrapper = await mountIndexPage();
+			const chip = wrapper.findAll("a").find((a) => a.text() === "Tech");
+			// Chip renders as an anchor (NuxtLink) so it navigates.
+			expect(chip).toBeDefined();
+			expect(chip?.element.tagName).toBe("A");
+		});
+
+		it("renders tag chip as a navigable link", async () => {
+			const wrapper = await mountIndexPage();
+			const chip = wrapper.findAll("a").find((a) => a.text() === "#Vue");
+			expect(chip).toBeDefined();
+			expect(chip?.element.tagName).toBe("A");
+		});
+	});
 });

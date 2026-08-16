@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 35,
+  "round": 36,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-08-16T05:21:59+00:00",
+  "updated_at": "2026-08-16T05:23:15+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -2961,6 +2961,28 @@
       "source": "688 frontend unit tests | nuxt typecheck | biome clean | browser: lang=en => July 21, 2026; lang=zh => 2026年7月21日",
       "note": "Browser-verified on post detail page: en locale renders English date, zh renders Chinese date. Fixed all hardcoded zh-CN date callsites across post/bookmarks/admin pages.",
       "confidence": 1.0
+    },
+    "DEC-033": {
+      "id": "DEC-033",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-16T05:23:15+00:00",
+      "updated_at": "2026-08-16T05:23:15+00:00",
+      "touched_round": 36,
+      "rationale": "Round-4 delivered home deep-link category/tag filtering (/?category_id=X, /?tag_id=X now filter the feed), but it is undiscoverable from the UI: the home aside shows only stats + quick links, and components/Sidebar.vue --- which already renders filter chips + active-state highlighting for exactly those query params --- is dead code used nowhere. Add a Browse-by category/tag section to the home aside (chips linking via the now-working filters, matching the Sidebar pattern), making the new browse capability reachable and removing the discoverability gap. Pure frontend, reuses existing fetch on the page.",
+      "alternatives_rejected": "(a) Wire the whole dead Sidebar.vue into home - rejected: it lacks the stats/quick-nav card the current aside shows and would regress the home layout. (b) Backend change - rejected: no schema/infra need. (c) Header nav dropdown - rejected: mobile menu complexity, larger blast radius."
+    },
+    "TASK-052": {
+      "id": "TASK-052",
+      "type": "task",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-16T05:23:15+00:00",
+      "updated_at": "2026-08-16T05:23:15+00:00",
+      "touched_round": 36,
+      "category": "core-feature",
+      "description": "Add category/tag browse chips to home aside (make deep-link filtering discoverable)"
     }
   },
   "edges": [

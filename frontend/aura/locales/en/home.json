@@ -30,7 +30,10 @@
 		},
 		"sidebar": {
 			"stats": "Site Stats",
-			"quickNav": "Quick Links"
+			"quickNav": "Quick Links",
+			"browse": "Browse by",
+			"browseCategories": "Categories",
+			"browseTags": "Tags"
 		}
 	}
 }

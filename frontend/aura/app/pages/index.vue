@@ -263,6 +263,51 @@ const stats = computed(() => {
             </div>
           </div>
 
+          <!-- Browse by category / tag -->
+          <div class="rounded-2xl border border-gray-100 dark:border-gray-800 p-5">
+            <h3 class="text-sm font-bold text-gray-900 dark:text-gray-100 mb-3 flex items-center gap-2">
+              <Icon icon="lucide:compass" class="w-4 h-4 text-indigo-500" />
+              {{ t("home.sidebar.browse") }}
+            </h3>
+
+            <h4 class="text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase mb-2">
+              {{ t("home.sidebar.browseCategories") }}
+            </h4>
+            <div v-if="categories?.length" class="flex flex-wrap gap-2 mb-4">
+              <NuxtLink
+                v-for="cat in categories"
+                :key="cat.id"
+                :to="{ query: { category_id: String(cat.id) } }"
+                class="px-3 py-1 rounded-full text-xs font-medium transition-all duration-200"
+                :class="categoryId === cat.id
+                  ? 'bg-gradient-to-r from-purple-500 to-indigo-500 text-white shadow-md'
+                  : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-purple-100 dark:hover:bg-purple-900/40 hover:text-purple-600'"
+              >
+                {{ cat.name }}
+              </NuxtLink>
+            </div>
+            <div v-else class="mb-4 text-sm text-gray-400">
+              {{ t("home.empty.posts") }}
+            </div>
+
+            <h4 class="text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase mb-2">
+              {{ t("home.sidebar.browseTags") }}
+            </h4>
+            <div v-if="tags?.length" class="flex flex-wrap gap-2">
+              <NuxtLink
+                v-for="tag in tags"
+                :key="tag.id"
+                :to="{ query: { tag_id: String(tag.id) } }"
+                class="px-3 py-1 rounded-full text-xs font-medium transition-all duration-200"
+                :class="tagId === tag.id
+                  ? 'bg-gradient-to-r from-pink-500 to-rose-500 text-white shadow-md'
+                  : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-pink-100 dark:hover:bg-pink-900/40 hover:text-pink-600'"
+              >
+                #{{ tag.name }}
+              </NuxtLink>
+            </div>
+          </div>
+
           <!-- Quick links -->
           <div class="rounded-2xl border border-gray-100 dark:border-gray-800 p-5">
             <h3 class="text-sm font-bold text-gray-900 dark:text-gray-100 mb-3 flex items-center gap-2">
