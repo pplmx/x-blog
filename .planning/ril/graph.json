@@ -2,7 +2,7 @@
   "ril_version": 1,
   "round": 31,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-08-15T16:15:10+00:00",
+  "updated_at": "2026-08-16T00:46:11+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -22,7 +22,7 @@
       "version": 1,
       "created_at": "2026-08-06T13:23:41+00:00",
       "updated_at": "2026-08-06T13:23:41+00:00",
-      "touched_round": 30,
+      "touched_round": 31,
       "title": "frontend-aura",
       "description": "Nuxt 4 Vue 3 TypeScript frontend at frontend/aura; composables; admin pages; e2e Playwright; biome lint"
     },
@@ -2599,6 +2599,57 @@
       "source": "3a4b3ed (backend 586 pass incl. test_migrations; ruff+pyright clean; live uvicorn startup ran alembic upgrade head and admin login returned a valid JWT, previously \"no such column: users.token_version\")",
       "title": "Stale dev DB migrated in place at startup; login works after fix",
       "confidence": 1.0
+    },
+    "DEC-027": {
+      "id": "DEC-027",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-16T00:40:57+00:00",
+      "updated_at": "2026-08-16T00:40:57+00:00",
+      "touched_round": 31,
+      "title": "Header search-as-you-type suggestions (feature-evolution round 32, operator \"continue\")",
+      "rationale": "Pick a high-value, self-contained feature absent operator direction (SKILL 11.2 gap analysis): instant header search suggestions on the primary technical-blog discovery path. Reuses the existing GET /api/search (items+pagination, limit<=50, 60/min rate limit) with a short debounce + min query to stay rate-limit-conscious. Pure frontend, no schema/infra change, e2e-verifiable. Adds a combobox dropdown (title + mini metadata) with keyboard nav, links to /posts/{slug} or the full /search.",
+      "alternatives_rejected": "(a) Admin dashboard charts - rejected: lower user value and the stats API is aggregates-only (no time-series), needing a new table+migration. (b) User accounts/bookmark sync - rejected: touches the security-hardened auth surface, high risk for this round. (c) Traffic-trend analytics - rejected: needs new time-series model/instrumentation. (d) TOC/reading-progress - rejected: already implemented on the post page."
+    },
+    "TASK-045": {
+      "id": "TASK-045",
+      "type": "task",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-08-16T00:40:57+00:00",
+      "updated_at": "2026-08-16T00:46:11+00:00",
+      "touched_round": 31,
+      "category": "core-feature",
+      "severity": 1,
+      "confidence": 0.85,
+      "effort": 4,
+      "unlock_factor": 1,
+      "title": "Add instant header search suggestions (combobox dropdown) to the global header",
+      "description": "Per DEC-027: HeaderSearch.vue in the default layout — debounced (300ms) client fetch of /api/search?q&limit=5, dropdown of matching posts (title+mini metadata), keyboard nav (arrows + Enter) + Escape, click navigates to /posts/{slug}, Enter/View-all to /search?q=. i18n via headerSearch namespace (zh/en). Rate-limit-conscious (debounce, min query). Verify per SKILL 11.4: no unit regressions, browser + Playwright e2e against a live backend with a seeded post."
+    },
+    "CHG-035": {
+      "id": "CHG-035",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-16T00:46:07+00:00",
+      "updated_at": "2026-08-16T00:46:07+00:00",
+      "touched_round": 31,
+      "commit": "32fe7d8",
+      "title": "Instant header search suggestions (HeaderSearch combobox)"
+    },
+    "EV-051": {
+      "id": "EV-051",
+      "type": "evidence",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-16T00:46:07+00:00",
+      "updated_at": "2026-08-16T00:46:07+00:00",
+      "touched_round": 31,
+      "source": "32fe7d8 (frontend unit 664 pass, typecheck 0, biome clean; header-search.spec.ts 3/3 in real chromium against live backend: typing shows suggestion, click navigates, Enter -> /search)",
+      "title": "Header search combobox landed and verified end-to-end",
+      "confidence": 1.0
     }
   },
   "edges": [
@@ -3712,6 +3763,18 @@
       "to": "HYP-001",
       "type": "validates",
       "created_at": "2026-08-15T16:15:10+00:00"
+    },
+    {
+      "from": "DEC-027",
+      "to": "COMP-002",
+      "type": "governs",
+      "created_at": "2026-08-16T00:41:00+00:00"
+    },
+    {
+      "from": "CHG-035",
+      "to": "TASK-045",
+      "type": "implements",
+      "created_at": "2026-08-16T00:46:11+00:00"
     }
   ]
 }
