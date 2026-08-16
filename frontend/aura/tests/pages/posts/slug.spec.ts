@@ -152,6 +152,11 @@ async function mountPostPage({
 describe("Post Detail Page", () => {
 	afterEach(() => {
 		vi.restoreAllMocks();
+		try {
+			localStorage.removeItem("x_blog_liked_posts");
+		} catch {
+			// happy-dom may not have full localStorage
+		}
 	});
 
 	describe("View tracking", () => {

@@ -31,10 +31,18 @@ if (post.value) {
 
 const likeLoading = ref(false);
 const likeError = ref<string | null>(null);
+// Client-side "liked this post" dedup (RIL ISS-038): a visitor can like at most
+// once per post. isLiked drives the persisted button state; recordLike marks
+// before the API call so later clicks are no-ops.
+const { isLiked, recordLike, persist } = useLikes();
+const likedThisPost = computed(() => (post.value?.id ? isLiked(post.value.id) : false));
 async function handleLike() {
 	if (!post.value?.id || likeLoading.value) return;
+	if (likedThisPost.value) return; // already liked — no-op
 	likeLoading.value = true;
 	likeError.value = null;
+	recordLike(post.value.id); // optimistic local marker
+	persist();
 	try {
 		const liked = await usePostLike(post.value.id);
 		// POST /like returns the updated Post (response_model=schemas.Post); use
@@ -236,7 +244,7 @@ const readingTime = computed(() => {
         <div class="mt-10 pt-8 border-t border-gray-100 dark:border-gray-800 flex flex-wrap items-center gap-4">
           <BookmarkButton :post-id="post.id" :post="post" variant="full" />
           <span class="w-px h-6 bg-gray-200 dark:bg-gray-700" />
-          <button type="button" :disabled="likeLoading" class="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all duration-200 border border-gray-200 dark:border-gray-700 hover:bg-pink-50 dark:hover:bg-pink-900/20 hover:text-pink-600 dark:hover:text-pink-400 hover:border-pink-200 dark:hover:border-pink-800 active:scale-95" @click="handleLike">
+          <button type="button" :disabled="likeLoading || likedThisPost" :title="likedThisPost ? t('post.liked') : t('post.likes')" class="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all duration-200 border disabled:opacity-60 disabled:cursor-not-allowed" :class="likedThisPost ? 'border-pink-200 dark:border-pink-800 bg-pink-50 dark:bg-pink-900/20 text-pink-600 dark:text-pink-400' : 'border-gray-200 dark:border-gray-700 hover:bg-pink-50 dark:hover:bg-pink-900/20 hover:text-pink-600 dark:hover:text-pink-400 hover:border-pink-200 dark:hover:border-pink-800 active:scale-95'" @click="handleLike">
             <Icon :icon="likeLoading ? 'lucide:loader-2' : 'lucide:heart'" class="w-4 h-4" :class="{ 'animate-spin': likeLoading }" />
             {{ post.likes || t('post.likes') }}
           </button>

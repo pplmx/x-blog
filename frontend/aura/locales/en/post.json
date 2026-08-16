@@ -10,6 +10,7 @@
 		"notFoundHeading": "The page got lost",
 		"notFoundDesc": "Sorry, the page you are looking for does not exist or has been removed. Why not head back to the homepage to browse the latest articles?",
 		"searchArticles": "Search articles",
-		"about": "About this site"
+		"about": "About this site",
+		"liked": "Liked"
 	}
 }
