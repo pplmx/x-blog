@@ -2,7 +2,7 @@
   "ril_version": 1,
   "round": 69,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-08-16T14:16:15+00:00",
+  "updated_at": "2026-08-16T14:17:11+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -4161,7 +4161,7 @@
       "version": 2,
       "created_at": "2026-08-16T14:02:36+00:00",
       "updated_at": "2026-08-16T14:16:14+00:00",
-      "touched_round": 68,
+      "touched_round": 69,
       "title": "Admin comment moderation lacks status/search/date filters + pending count is page-scoped",
       "severity": 0.4
     },
@@ -4172,13 +4172,24 @@
       "version": 4,
       "created_at": "2026-08-16T14:02:36+00:00",
       "updated_at": "2026-08-16T14:16:15+00:00",
-      "touched_round": 68,
+      "touched_round": 69,
       "category": "core-feature",
       "severity": 0.4,
       "confidence": 1.0,
       "effort": 4.0,
       "unlock_factor": 1.0,
       "title": "Add status/search/date-range filters to admin comments + moderation UI"
+    },
+    "CHG-067": {
+      "id": "CHG-067",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-16T14:16:54+00:00",
+      "updated_at": "2026-08-16T14:16:54+00:00",
+      "touched_round": 69,
+      "commit": "e4ba9cf",
+      "title": "Admin comment moderation filters"
     }
   },
   "edges": [
@@ -5670,6 +5681,18 @@
       "to": "ISS-047",
       "type": "addresses",
       "created_at": "2026-08-16T14:02:38+00:00"
+    },
+    {
+      "from": "CHG-067",
+      "to": "TASK-078",
+      "type": "implements",
+      "created_at": "2026-08-16T14:17:11+00:00"
+    },
+    {
+      "from": "CHG-067",
+      "to": "ISS-047",
+      "type": "resolves",
+      "created_at": "2026-08-16T14:17:11+00:00"
     }
   ]
 }
