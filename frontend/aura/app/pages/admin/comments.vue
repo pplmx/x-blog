@@ -9,7 +9,7 @@ import {
 
 definePageMeta({ layout: "admin" });
 
-const { t } = useLang();
+const { t, locale } = useLang();
 
 useHead({ title: computed(() => t("admin.comments.seoTitle")) });
 
@@ -211,7 +211,7 @@ async function handleApprove(id: number, approved: boolean) {
             <div class="text-xs text-gray-400 dark:text-gray-500 space-x-3">
               <span>{{ comment.post_title }}</span>
               <span>{{ comment.ip_address }}</span>
-              <span>{{ new Date(comment.created_at).toLocaleString('zh-CN') }}</span>
+              <span>{{ new Date(comment.created_at).toLocaleString(locale === "zh" ? "zh-CN" : "en-US") }}</span>
             </div>
           </div>
 

@@ -4,7 +4,7 @@ import { deleteAdminPost, fetchAdminPosts } from "~~/composables/useApi";
 
 definePageMeta({ layout: "admin" });
 
-const { t } = useLang();
+const { t, locale } = useLang();
 
 useHead({ title: computed(() => t("admin.postsList.seoTitle")) });
 
@@ -195,7 +195,7 @@ function statusDot(post: AdminPost): string {
                 {{ post.views || 0 }}
               </td>
               <td class="px-5 py-4 text-sm text-gray-500 dark:text-gray-400 hidden sm:table-cell">
-                {{ new Date(post.created_at).toLocaleDateString('zh-CN') }}
+                {{ new Date(post.created_at).toLocaleDateString(locale === "zh" ? "zh-CN" : "en-US") }}
               </td>
               <td class="px-5 py-4 text-right">
                 <div class="flex items-center justify-end gap-1">

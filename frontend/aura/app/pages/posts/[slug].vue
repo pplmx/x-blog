@@ -5,7 +5,7 @@ import { coverImageSrc } from "~~/composables/useCoverImage";
 import { usePostSeo } from "~~/composables/useSeo";
 import { extractToc } from "~~/composables/useToc";
 
-const { t } = useLang();
+const { t, locale } = useLang();
 const route = useRoute();
 const { data: post, pending, error } = await usePost(route.params.slug as string);
 
@@ -193,7 +193,7 @@ const readingTime = computed(() => {
           <div class="flex items-center gap-4 text-sm text-gray-400">
             <span class="flex items-center gap-1.5">
               <Icon icon="lucide:calendar" class="w-3.5 h-3.5" />
-              {{ new Date(post.created_at).toLocaleDateString('zh-CN', { year: 'numeric', month: 'long', day: 'numeric' }) }}
+              {{ new Date(post.created_at).toLocaleDateString(locale === "zh" ? "zh-CN" : "en-US", { year: 'numeric', month: 'long', day: 'numeric' }) }}
             </span>
           </div>
 

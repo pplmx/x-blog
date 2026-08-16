@@ -2,7 +2,7 @@
 import { useBookmarks } from "~~/composables/useBookmarks";
 import { useSeo } from "~~/composables/useSeo";
 
-const { t } = useLang();
+const { t, locale } = useLang();
 const { bookmarks, removeBookmark, clearBookmarks, bookmarkCount } = useBookmarks();
 
 useSeo({
@@ -94,7 +94,7 @@ function handleClearAll() {
               </span>
               <span class="flex items-center gap-1">
                 <Icon icon="lucide:calendar" class="w-4 h-4" />
-                {{ new Date(bookmark.created_at).toLocaleDateString('zh-CN', { year: 'numeric', month: 'long', day: 'numeric' }) }}
+                {{ new Date(bookmark.created_at).toLocaleDateString(locale === "zh" ? "zh-CN" : "en-US", { year: 'numeric', month: 'long', day: 'numeric' }) }}
               </span>
             </div>
 

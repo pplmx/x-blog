@@ -18,7 +18,7 @@ import { approveAdminComment } from "~~/composables/useApi";
 
 definePageMeta({ layout: "admin" });
 
-const { t } = useLang();
+const { t, locale } = useLang();
 const config = useRuntimeConfig();
 const apiBase = (config.public.apiUrl || "").replace(/\/+$/, "");
 
@@ -125,7 +125,7 @@ async function handleApprove(commentId: number, approved: boolean) {
 	}
 }
 
-const loadedAt = new Date().toLocaleString("zh-CN");
+const loadedAt = new Date().toLocaleString(locale.value === "zh" ? "zh-CN" : "en-US");
 
 const stats = computed(() => [
 	{
@@ -305,7 +305,7 @@ const stats = computed(() => [
                 {{ post.title }}
               </p>
               <p class="text-sm text-gray-500 dark:text-gray-400">
-                {{ new Date(post.created_at).toLocaleDateString('zh-CN') }}
+                {{ new Date(post.created_at).toLocaleDateString(locale === "zh" ? "zh-CN" : "en-US") }}
               </p>
             </div>
             <div class="flex items-center gap-2 text-sm text-gray-400 dark:text-gray-500">

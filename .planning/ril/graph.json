@@ -2,7 +2,7 @@
   "ril_version": 1,
   "round": 35,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-08-16T05:14:26+00:00",
+  "updated_at": "2026-08-16T05:16:10+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -2916,6 +2916,28 @@
       "source": "tests/components/PostCard.spec.ts pinned badge tests | 688 frontend unit tests | biome clean | nuxt typecheck | browser: pinned post id=1 renders 置顶 badge before title on home feed",
       "note": "Browser-verified on live seed data: pinned post 欢迎使用 X-Blog shows the 置顶 badge; PostList interface updated to include pinned (matches backend schema).",
       "confidence": 1.0
+    },
+    "ISS-033": {
+      "id": "ISS-033",
+      "type": "issue",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-16T05:16:04+00:00",
+      "updated_at": "2026-08-16T05:16:04+00:00",
+      "touched_round": 35,
+      "severity": "medium",
+      "description": "Date locale inconsistency: post page (posts/[slug].vue:196) and bookmarks page (bookmarks.vue:97) hardcode toLocaleDateString('zh-CN'), so en users see Chinese-formatted dates, while PostCard/CommentList/categories/tags/search correctly switch by locale. Regression from the i18n feature DEC-026."
+    },
+    "TASK-051": {
+      "id": "TASK-051",
+      "type": "task",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-16T05:16:10+00:00",
+      "updated_at": "2026-08-16T05:16:10+00:00",
+      "touched_round": 35,
+      "category": "correctness",
+      "description": "Fix hardcoded zh-CN date locale on post detail and bookmarks pages to follow active locale"
     }
   },
   "edges": [
@@ -4083,6 +4105,12 @@
       "to": "TASK-050",
       "type": "implements",
       "created_at": "2026-08-16T05:14:16+00:00"
+    },
+    {
+      "from": "TASK-051",
+      "to": "ISS-033",
+      "type": "addresses",
+      "created_at": "2026-08-16T05:16:10+00:00"
     }
   ]
 }
