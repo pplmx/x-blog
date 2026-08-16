@@ -2,7 +2,7 @@
   "ril_version": 1,
   "round": 38,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-08-16T05:38:56+00:00",
+  "updated_at": "2026-08-16T05:42:31+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -3066,13 +3066,36 @@
     "TASK-054": {
       "id": "TASK-054",
       "type": "task",
-      "status": "active",
-      "version": 1,
+      "status": "resolved",
+      "version": 2,
       "created_at": "2026-08-16T05:38:56+00:00",
-      "updated_at": "2026-08-16T05:38:56+00:00",
+      "updated_at": "2026-08-16T05:42:31+00:00",
       "touched_round": 38,
       "category": "core-feature",
       "description": "Add /tags static page to XML sitemap"
+    },
+    "CHG-045": {
+      "id": "CHG-045",
+      "type": "change",
+      "status": "active",
+      "version": 2,
+      "created_at": "2026-08-16T05:42:26+00:00",
+      "updated_at": "2026-08-16T05:42:31+00:00",
+      "touched_round": 38,
+      "commit": "ab27bf0696bed30ddfcc8363a1540b18169c6c93",
+      "description": "Add /tags static page to XML sitemap; sitemap now lists / /about /search /categories /tags (TASK-054)"
+    },
+    "EV-061": {
+      "id": "EV-061",
+      "type": "evidence",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-16T05:42:31+00:00",
+      "updated_at": "2026-08-16T05:42:31+00:00",
+      "touched_round": 38,
+      "source": "tests/test_rss.py test_sitemap_includes_static_pages (asserts /tags) | 586 backend pytest passed | ruff clean",
+      "note": "Sitemap now includes /tags alongside /categories and other top-level pages; backend test asserts it.",
+      "confidence": 1.0
     }
   },
   "edges": [
@@ -4264,6 +4287,12 @@
       "to": "TASK-053",
       "type": "implements",
       "created_at": "2026-08-16T05:37:51+00:00"
+    },
+    {
+      "from": "CHG-045",
+      "to": "TASK-054",
+      "type": "implements",
+      "created_at": "2026-08-16T05:42:31+00:00"
     }
   ]
 }
