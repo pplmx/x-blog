@@ -41,6 +41,7 @@
 			"link": "链接",
 			"uploadImage": "上传图片"
 		},
-		"loading": "加载中..."
+		"loading": "加载中...",
+		"unsavedConfirm": "你有未保存的更改，确定离开吗？"
 	}
 }

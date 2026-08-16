@@ -44,6 +44,16 @@ vi.stubGlobal("useRuntimeConfig", () => ({
 vi.stubGlobal("useHead", vi.fn());
 vi.stubGlobal("definePageMeta", vi.fn());
 
+// Capture the route-leave guard callback so we can exercise it directly
+// (the unit-test mount has no active router, so onBeforeRouteLeave wouldn't
+// otherwise be invocable).
+let capturedRouteLeave: (() => boolean) | null = null;
+vi.mock("vue-router", () => ({
+	onBeforeRouteLeave: (cb: () => boolean) => {
+		capturedRouteLeave = cb;
+	},
+}));
+
 const mockCategories = [
 	{ id: 1, name: "Tech" },
 	{ id: 2, name: "Design" },
@@ -514,6 +524,57 @@ describe("Admin Post Editor Page", () => {
 			const wrapper = await mountWithSuspense(PostEditor);
 			const fileInput = wrapper.find('input[type="file"]');
 			expect(fileInput.exists()).toBe(true);
+		});
+	});
+
+	describe("Unsaved-changes guard", () => {
+		afterEach(() => {
+			vi.restoreAllMocks();
+			vi.unstubAllGlobals();
+		});
+
+		async function freshGuard() {
+			// Reset the module graph so the vue-router mock and component
+			// re-evaluate cleanly, then re-establish the shared stubs.
+			capturedRouteLeave = null;
+			vi.resetModules();
+			vi.stubGlobal("useRuntimeConfig", () => ({
+				public: { apiUrl: "http://localhost:18888" },
+			}));
+			vi.stubGlobal("useHead", vi.fn());
+			vi.stubGlobal("definePageMeta", vi.fn());
+			vi.stubGlobal(
+				"confirm",
+				vi.fn(() => true),
+			);
+			setupRoute();
+			setupMocks();
+			const { default: PostEditor } = await import("@/pages/admin/posts/[id].vue");
+			const wrapper = await mountWithSuspense(PostEditor);
+			await flushPromises();
+			return wrapper;
+		}
+
+		it("does NOT confirm on leave when the form is untouched", async () => {
+			const wrapper = await freshGuard();
+			expect(typeof capturedRouteLeave).toBe("function");
+			const allowed = (capturedRouteLeave as () => boolean)();
+			expect(globalThis.confirm as ReturnType<typeof vi.fn>).not.toHaveBeenCalled();
+			expect(allowed).toBe(true);
+		});
+
+		it("confirms before leaving when edits are unsaved", async () => {
+			const wrapper = await freshGuard();
+			// Make an edit to a dirty field
+			const titleInput = wrapper.find('input[type="text"]');
+			expect(titleInput.exists()).toBe(true);
+			await titleInput.setValue("Changed Title");
+			await flushPromises();
+
+			const decided = (capturedRouteLeave as () => boolean)();
+			expect(globalThis.confirm).toHaveBeenCalled();
+			// Confirm returns true so navigation proceeds
+			expect(decided).toBe(true);
 		});
 	});
 });

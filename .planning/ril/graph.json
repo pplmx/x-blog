@@ -2,7 +2,7 @@
   "ril_version": 1,
   "round": 49,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-08-16T06:51:22+00:00",
+  "updated_at": "2026-08-16T06:52:13+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -3390,6 +3390,28 @@
       "source": "Verified current source: schemas.py comment max_length 5000; auth.py JWT ver claim + ACCESS_TOKEN_EXPIRE_DAYS; upload.py read(MAX_SIZE+1) cap; deploy/nginx.conf + main.py nosniff; limiter.client_rate_key trusted-proxy-aware; useMarkdown.ts sanitizeUrl",
       "note": "All six 'fix this round' security items in ISS-016 are implemented and tested in production source. The issue was left active historically; closing as audit-complete.",
       "confidence": 1.0
+    },
+    "DEC-039": {
+      "id": "DEC-039",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-16T06:52:13+00:00",
+      "updated_at": "2026-08-16T06:52:13+00:00",
+      "touched_round": 49,
+      "rationale": "Feature gap (SKILL 11.2): the admin post editor has no unsaved-changes guard. A user typing into a long article who clicks away (browser back, a nav link, or closes the tab) loses all edits silently — a frustrating, data-losing UX on the one surface where content matters most. Add dirty tracking (deep-watch formData) + a beforeunload handler (tab-close/reload) + an onBeforeRouteLeave confirm (SPA navigation/back) with a localized confirmation message that offers keep/cancel. Small, self-contained, high safety value.",
+      "alternatives_rejected": "(a) Autosave draft to localStorage - rejected: larger scope, draft-recovery UI diff, and drafts conflict with the publish/pinned model. (b) Disable navigation entirely - rejected: hostile; the guard should be a soft confirm. (c) Backend-only draft endpoint - rejected: no need."
+    },
+    "TASK-061": {
+      "id": "TASK-061",
+      "type": "task",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-16T06:52:13+00:00",
+      "updated_at": "2026-08-16T06:52:13+00:00",
+      "touched_round": 49,
+      "category": "core-feature",
+      "description": "Add unsaved-changes guard (dirty tracking + beforeunload + route-leave confirm) to admin post editor"
     }
   },
   "edges": [

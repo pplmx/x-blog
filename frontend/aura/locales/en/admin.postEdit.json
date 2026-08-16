@@ -41,6 +41,7 @@
 			"link": "Link",
 			"uploadImage": "Upload image"
 		},
-		"loading": "Loading..."
+		"loading": "Loading...",
+		"unsavedConfirm": "You have unsaved changes. Leave without saving?"
 	}
 }

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { onBeforeRouteLeave } from "vue-router";
 import type { AdminPostDetail, PostCreate } from "~~/composables/useApi";
 import {
 	createAdminPost,
@@ -32,6 +33,14 @@ const formData = ref<Partial<PostCreate>>({
 });
 const isSubmitting = ref(false);
 const submitError = ref<string | null>(null);
+
+// Unsaved-changes guard state (RIL TASK-061). Declared before the postData
+// watch below, whose immediate:true callback needs loadedSnapshot at setup time.
+const isDirty = ref(false);
+let loadedSnapshot = "";
+function snapshot(): string {
+	return JSON.stringify(formData.value);
+}
 const categories = ref<Array<{ id: number; name: string }>>([]);
 const tags = ref<Array<{ id: number; name: string }>>([]);
 const existingPost = ref<AdminPostDetail | null>(null);
@@ -83,6 +92,8 @@ watch(
 				tag_ids: val.tag_ids || [],
 				cover_image: val.cover_image || undefined,
 			};
+			loadedSnapshot = snapshot();
+			isDirty.value = false;
 		}
 	},
 	{ immediate: true },
@@ -96,6 +107,44 @@ function generateSlug(title: string) {
 		.replace(/-+/g, "-")
 		.trim();
 }
+
+// Track edits against the loaded snapshot and warn on tab-close/reload
+// (beforeunload) and SPA navigation (route leave) so a long draft is never
+// lost silently (RIL TASK-061). isDirty/loadedSnapshot/snapshot are declared
+// above with the other state.
+watch(
+	formData,
+	() => {
+		if (loadedSnapshot !== "" && snapshot() !== loadedSnapshot) {
+			isDirty.value = true;
+		}
+	},
+	{ deep: true },
+);
+
+function onBeforeUnload(e: BeforeUnloadEvent) {
+	if (isDirty.value) {
+		e.preventDefault();
+		e.returnValue = ""; // legacy browsers show native prompt
+	}
+}
+
+onMounted(() => {
+	if (postId) return; // existing posts capture their snapshot in the watch below
+	// For a new post, snapshot the empty form once mounted so the first edit
+	// flips isDirty.
+	loadedSnapshot = snapshot();
+	window.addEventListener("beforeunload", onBeforeUnload);
+});
+
+onBeforeUnmount(() => {
+	window.removeEventListener("beforeunload", onBeforeUnload);
+});
+
+onBeforeRouteLeave(() => {
+	if (!isDirty.value) return true;
+	return window.confirm(t("admin.postEdit.unsavedConfirm"));
+});
 
 async function handleSubmit(e: Event) {
 	e.preventDefault();
@@ -127,6 +176,7 @@ async function handleSubmit(e: Event) {
 			const detail = err?.data?.detail;
 			submitError.value = typeof detail === "string" ? detail : t("admin.postEdit.saveError");
 		} else {
+			isDirty.value = false; // don't re-prompt during the redirect
 			navigateTo("/admin/posts", { replace: true });
 		}
 	} catch (_err) {
