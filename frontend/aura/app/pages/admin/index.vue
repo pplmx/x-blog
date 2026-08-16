@@ -8,10 +8,10 @@ import { onMounted, ref } from "vue";
 import type {
 	AdminComment,
 	AdminCommentListResponse,
+	AdminPost,
+	AdminPostListResponse,
 	BlogStats,
 	Category,
-	PostList,
-	PostListResponse,
 	Tag,
 } from "~~/composables/useApi";
 import { approveAdminComment } from "~~/composables/useApi";
@@ -30,7 +30,7 @@ useHead({ title: computed(() => t("admin.dashboard.seoTitle")) });
 // mount (the in-flight request is aborted during the hydration recount). Load
 // imperatively after mount to fix the hard-reload empty dashboard (ISS-032),
 // while keeping SSR gating so admin payload never reaches SSR HTML.
-const posts = ref<PostList[]>([]);
+const posts = ref<AdminPost[]>([]);
 const categories = ref<Category[] | null>(null);
 const tags = ref<Tag[] | null>(null);
 const allComments = ref<AdminComment[]>([]);
@@ -44,17 +44,34 @@ function authHeaders(): Record<string, string> {
 
 async function loadDashboard(): Promise<void> {
 	try {
-		const [postsData, catData, tagData, commentsData, statsData] = await Promise.all([
-			$fetch<PostListResponse>(`${apiBase}/api/posts`, { query: { limit: 100 } }),
-			$fetch<Category[]>(`${apiBase}/api/categories`),
-			$fetch<Tag[]>(`${apiBase}/api/tags`),
+		// Load ALL posts via the authenticated admin endpoint (all statuses:
+		// published + draft + scheduled), paginating because the API caps a
+		// single page at 100. Previously the dashboard used the PUBLIC
+		// /api/posts?limit=100 endpoint — published-only and hard-capped, so
+		// top/recency/category rankings under-reported on blogs >100 posts and
+		// drafts never surfaced (RIL TASK-077, ISS-046).
+		const batchSize = 100;
+		const postsPage: AdminPost[] = [];
+		let page = 1;
+		for (;;) {
+			const res = await $fetch<AdminPostListResponse>(`${apiBase}/api/admin/posts`, {
+				query: { page, limit: batchSize },
+				headers: authHeaders(),
+			});
+			postsPage.push(...res.items);
+			if (postsPage.length >= res.pagination.total) break;
+			page += 1;
+		}
+		const [catData, tagData, commentsData, statsData] = await Promise.all([
+			$fetch<Category[]>(`${apiBase}/api/admin/categories`, { headers: authHeaders() }),
+			$fetch<Tag[]>(`${apiBase}/api/admin/tags`, { headers: authHeaders() }),
 			$fetch<AdminCommentListResponse>(`${apiBase}/api/admin/comments`, {
 				query: { page: 1, limit: 100 },
 				headers: authHeaders(),
 			}),
 			$fetch<BlogStats>(`${apiBase}/api/stats`),
 		]);
-		posts.value = postsData.items;
+		posts.value = postsPage;
 		categories.value = catData;
 		tags.value = tagData;
 		allComments.value = commentsData.items;
@@ -137,7 +154,7 @@ const recentPendingComments = computed(() => pendingComments.value.slice(0, 5));
 
 // Helper: count published posts per category (matches Next.js CategoryPieChart)
 function postsInCategory(catId: number): number {
-	return posts.value.filter((p) => p.category?.id === catId && p.published).length;
+	return posts.value.filter((p) => p.category_id === catId && p.published).length;
 }
 
 const approveError = ref<string | null>(null);

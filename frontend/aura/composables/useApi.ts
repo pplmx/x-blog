@@ -292,6 +292,8 @@ export interface AdminPost {
 	views: number;
 	cover_image: string | null;
 	category: string | null;
+	category_id: number | null;
+	comment_count: number;
 	tags: string[];
 	created_at: string;
 	updated_at: string;

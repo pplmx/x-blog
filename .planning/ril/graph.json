@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 67,
+  "round": 68,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-08-16T13:47:52+00:00",
+  "updated_at": "2026-08-16T14:01:09+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -4116,6 +4116,32 @@
       "touched_round": 67,
       "commit": "9b89c45",
       "title": "Admin Users management page"
+    },
+    "ISS-046": {
+      "id": "ISS-046",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-08-16T13:50:29+00:00",
+      "updated_at": "2026-08-16T14:01:09+00:00",
+      "touched_round": 67,
+      "title": "Admin dashboard loads posts via public endpoint capped at 100 -> under-reports rankings/recency and hides drafts",
+      "severity": 0.5
+    },
+    "TASK-077": {
+      "id": "TASK-077",
+      "type": "task",
+      "status": "resolved",
+      "version": 4,
+      "created_at": "2026-08-16T13:50:29+00:00",
+      "updated_at": "2026-08-16T14:01:09+00:00",
+      "touched_round": 67,
+      "category": "correctness",
+      "severity": 0.5,
+      "confidence": 1.0,
+      "effort": 3.0,
+      "unlock_factor": 1.0,
+      "title": "Load admin dashboard posts from admin API (all statuses, paginated)"
     }
   },
   "edges": [
@@ -5583,6 +5609,12 @@
       "to": "ISS-045",
       "type": "resolves",
       "created_at": "2026-08-16T13:47:52+00:00"
+    },
+    {
+      "from": "TASK-077",
+      "to": "ISS-046",
+      "type": "addresses",
+      "created_at": "2026-08-16T13:50:32+00:00"
     }
   ]
 }

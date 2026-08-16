@@ -60,7 +60,8 @@ const mockPostsResponse = {
 			views: 100,
 			comment_count: 7,
 			cover_image: null,
-			category: { id: 1, name: "Tech" },
+			category: "Tech",
+			category_id: 1,
 			tags: [{ id: 1, name: "React" }],
 		},
 		{
@@ -72,7 +73,8 @@ const mockPostsResponse = {
 			created_at: "2024-02-20T14:00:00Z",
 			views: 50,
 			cover_image: null,
-			category: { id: 1, name: "Tech" },
+			category: "Tech",
+			category_id: 1,
 			tags: [],
 		},
 		{
@@ -84,11 +86,12 @@ const mockPostsResponse = {
 			created_at: "2024-03-10T09:00:00Z",
 			views: 200,
 			cover_image: null,
-			category: { id: 2, name: "Design" },
+			category: "Design",
+			category_id: 2,
 			tags: [],
 		},
 	],
-	pagination: { total: 3, page: 1, limit: 1000, total_pages: 1 },
+	pagination: { total: 3, page: 1, limit: 100, total_pages: 1 },
 };
 
 const mockCategories = [
@@ -170,9 +173,9 @@ vi.stubGlobal(
 	"$fetch",
 	vi.fn(async (url: unknown) => {
 		const u = String(url);
-		if (u.includes("/api/posts")) return postsOverride ?? mockPostsResponse;
-		if (u.includes("/api/categories")) return mockCategories;
-		if (u.includes("/api/tags")) return mockTags;
+		if (u.includes("/api/admin/posts")) return postsOverride ?? mockPostsResponse;
+		if (u.includes("/api/admin/categories")) return mockCategories;
+		if (u.includes("/api/admin/tags")) return mockTags;
 		if (u.includes("/api/admin/comments")) return commentsOverride ?? mockCommentList;
 		if (u.includes("/api/stats")) return { ...statsOverride };
 		if (u.includes("/api/export/posts.csv")) return "ID,Title\n1,Hello\n";
@@ -485,7 +488,9 @@ describe("Admin Dashboard Page", () => {
 				created_at: "2024-04-01T10:00:00Z",
 				views: 10,
 				cover_image: null,
-				category: { id: 1, name: "Tech" },
+				category: "Tech",
+				category_id: 1,
+				comment_count: 0,
 				tags: [],
 			};
 			mockUsePosts.mockResolvedValue({
@@ -620,6 +625,8 @@ describe("Admin Dashboard Page", () => {
 							views: 0,
 							cover_image: null,
 							category: null,
+							category_id: null,
+							comment_count: 0,
 							tags: [],
 						},
 					],
@@ -641,6 +648,8 @@ describe("Admin Dashboard Page", () => {
 						views: 0,
 						cover_image: null,
 						category: null,
+						category_id: null,
+						comment_count: 0,
 						tags: [],
 					},
 				],

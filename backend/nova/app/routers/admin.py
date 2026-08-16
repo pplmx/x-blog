@@ -161,6 +161,22 @@ def admin_list_posts(
         .limit(limit)
         .all()
     )
+    # Approved comment_count per post for this page (single grouped query, no
+    # N+1) — mirrors crud.get_posts so the admin dashboard can render counts
+    # for all statuses, not just the public published list.
+    comment_counts: dict[int, int] = {}
+    if posts:
+        post_ids = [p.id for p in posts]
+        rows = (
+            db.query(models.Comment.post_id, func.count(models.Comment.id))
+            .filter(
+                models.Comment.post_id.in_(post_ids),
+                models.Comment.is_approved.is_(True),
+            )
+            .group_by(models.Comment.post_id)
+            .all()
+        )
+        comment_counts = {post_id: int(count) for post_id, count in rows}
     return {
         "items": [
             {
@@ -173,6 +189,8 @@ def admin_list_posts(
                 "views": p.views,
                 "cover_image": p.cover_image,
                 "category": p.category.name if p.category else None,
+                "category_id": p.category_id,
+                "comment_count": comment_counts.get(p.id, 0),
                 "tags": [t.name for t in p.tags],
                 "created_at": p.created_at.isoformat() if p.created_at else None,
                 "updated_at": p.updated_at.isoformat() if p.updated_at else None,
