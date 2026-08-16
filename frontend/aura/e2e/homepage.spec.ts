@@ -78,8 +78,8 @@ test.describe("Homepage", () => {
 		const categoryLink = page.locator("a[href*='category_id=']").first();
 		if (await categoryLink.isVisible()) {
 			await categoryLink.click();
-			const url = await page.url();
-			expect(url).toContain("category_id=");
+			// SPA navigation is async — await the URL change before asserting.
+			await expect(page).toHaveURL(/category_id=/);
 		}
 	});
 
