@@ -2,7 +2,7 @@
   "ril_version": 1,
   "round": 66,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-08-16T13:33:30+00:00",
+  "updated_at": "2026-08-16T13:33:47+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -3961,7 +3961,7 @@
       "version": 2,
       "created_at": "2026-08-16T13:13:40+00:00",
       "updated_at": "2026-08-16T13:33:04+00:00",
-      "touched_round": 65,
+      "touched_round": 66,
       "title": "admin_get_post omits publish_at -> editor nulls schedule on save (data loss)",
       "severity": 0.7
     },
@@ -3972,7 +3972,7 @@
       "version": 2,
       "created_at": "2026-08-16T13:13:41+00:00",
       "updated_at": "2026-08-16T13:33:04+00:00",
-      "touched_round": 65,
+      "touched_round": 66,
       "title": "comment create/approve/delete never clears posts_list_cache -> stale comment_count",
       "severity": 0.4
     },
@@ -3983,7 +3983,7 @@
       "version": 2,
       "created_at": "2026-08-16T13:13:41+00:00",
       "updated_at": "2026-08-16T13:33:04+00:00",
-      "touched_round": 65,
+      "touched_round": 66,
       "title": "post writes clear tags/posts caches but not categories_cache -> stale category post_count",
       "severity": 0.4
     },
@@ -3994,7 +3994,7 @@
       "version": 2,
       "created_at": "2026-08-16T13:13:41+00:00",
       "updated_at": "2026-08-16T13:33:04+00:00",
-      "touched_round": 65,
+      "touched_round": 66,
       "title": "zero likes renders label not 0 on post detail",
       "severity": 0.2
     },
@@ -4005,7 +4005,7 @@
       "version": 2,
       "created_at": "2026-08-16T13:13:41+00:00",
       "updated_at": "2026-08-16T13:33:05+00:00",
-      "touched_round": 65,
+      "touched_round": 66,
       "title": "home sidebar categories empty msg wrong + tags block no empty state",
       "severity": 0.2
     },
@@ -4016,7 +4016,7 @@
       "version": 4,
       "created_at": "2026-08-16T13:13:49+00:00",
       "updated_at": "2026-08-16T13:32:53+00:00",
-      "touched_round": 65,
+      "touched_round": 66,
       "category": "correctness",
       "severity": 0.7,
       "confidence": 1.0,
@@ -4031,7 +4031,7 @@
       "version": 2,
       "created_at": "2026-08-16T13:13:49+00:00",
       "updated_at": "2026-08-16T13:32:50+00:00",
-      "touched_round": 65,
+      "touched_round": 66,
       "category": "correctness",
       "severity": 0.4,
       "confidence": 1.0,
@@ -4046,7 +4046,7 @@
       "version": 2,
       "created_at": "2026-08-16T13:13:49+00:00",
       "updated_at": "2026-08-16T13:32:50+00:00",
-      "touched_round": 65,
+      "touched_round": 66,
       "category": "correctness",
       "severity": 0.4,
       "confidence": 1.0,
@@ -4061,13 +4061,24 @@
       "version": 2,
       "created_at": "2026-08-16T13:13:50+00:00",
       "updated_at": "2026-08-16T13:32:50+00:00",
-      "touched_round": 65,
+      "touched_round": 66,
       "category": "core-feature",
       "severity": 0.2,
       "confidence": 1.0,
       "effort": 1.0,
       "unlock_factor": 1.0,
       "title": "Fix zero-likes display + home sidebar empty states"
+    },
+    "CHG-064": {
+      "id": "CHG-064",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-16T13:33:43+00:00",
+      "updated_at": "2026-08-16T13:33:43+00:00",
+      "touched_round": 66,
+      "commit": "fea586c",
+      "title": "publish_at preservation + cache invalidation + reader polish"
     }
   },
   "edges": [
@@ -5463,6 +5474,60 @@
       "to": "ISS-044",
       "type": "addresses",
       "created_at": "2026-08-16T13:14:08+00:00"
+    },
+    {
+      "from": "CHG-064",
+      "to": "TASK-072",
+      "type": "implements",
+      "created_at": "2026-08-16T13:33:46+00:00"
+    },
+    {
+      "from": "CHG-064",
+      "to": "TASK-073",
+      "type": "implements",
+      "created_at": "2026-08-16T13:33:46+00:00"
+    },
+    {
+      "from": "CHG-064",
+      "to": "TASK-074",
+      "type": "implements",
+      "created_at": "2026-08-16T13:33:46+00:00"
+    },
+    {
+      "from": "CHG-064",
+      "to": "TASK-075",
+      "type": "implements",
+      "created_at": "2026-08-16T13:33:47+00:00"
+    },
+    {
+      "from": "CHG-064",
+      "to": "ISS-040",
+      "type": "resolves",
+      "created_at": "2026-08-16T13:33:47+00:00"
+    },
+    {
+      "from": "CHG-064",
+      "to": "ISS-041",
+      "type": "resolves",
+      "created_at": "2026-08-16T13:33:47+00:00"
+    },
+    {
+      "from": "CHG-064",
+      "to": "ISS-042",
+      "type": "resolves",
+      "created_at": "2026-08-16T13:33:47+00:00"
+    },
+    {
+      "from": "CHG-064",
+      "to": "ISS-043",
+      "type": "resolves",
+      "created_at": "2026-08-16T13:33:47+00:00"
+    },
+    {
+      "from": "CHG-064",
+      "to": "ISS-044",
+      "type": "resolves",
+      "created_at": "2026-08-16T13:33:47+00:00"
     }
   ]
 }
