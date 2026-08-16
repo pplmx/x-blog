@@ -162,6 +162,13 @@ def get_sitemap(db: Session = Depends(get_db)):
     <priority>0.3</priority>
 </url>""")
 
+    # Categories browse page
+    urls.append(f"""<url>
+    <loc>{site_url}/categories</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.4</priority>
+</url>""")
+
     # Posts
     for post in posts:
         updated = (post.updated_at or crud.utc_now_naive()).strftime("%Y-%m-%d")
@@ -183,7 +190,7 @@ def get_sitemap(db: Session = Depends(get_db)):
     # Categories
     for cat in categories:
         urls.append(f"""<url>
-    <loc>{site_url}/?category_id={cat.id}</loc>
+    <loc>{site_url}/categories?category_id={cat.id}</loc>
     <changefreq>weekly</changefreq>
     <priority>0.6</priority>
 </url>""")

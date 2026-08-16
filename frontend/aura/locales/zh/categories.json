@@ -1,0 +1,14 @@
+{
+	"categories": {
+		"all": "全部分类",
+		"categoryTitle": "分类: {name}",
+		"countLabel": "共 {count} 个分类",
+		"empty": "暂无分类",
+		"backToAll": "返回所有分类",
+		"categoryPosts": "分类文章",
+		"postsEmpty": "暂无文章",
+		"views": "{count} 次阅读",
+		"allDesc": "浏览 X-Blog 中的所有分类",
+		"categoryDesc": "浏览分类 \"{name}\" 下的所有文章"
+	}
+}

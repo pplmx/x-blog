@@ -3,6 +3,7 @@
 		"nav": {
 			"home": "首页",
 			"about": "关于",
+			"categories": "分类",
 			"search": "搜索",
 			"github": "GitHub"
 		},

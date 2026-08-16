@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 31,
+  "round": 32,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-08-16T03:55:27+00:00",
+  "updated_at": "2026-08-16T04:46:47+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -2736,6 +2736,39 @@
       "source": "8a02ae3 (664 unit incl. adapted 27 dashboard tests, typecheck 0, biome clean; browser hard reload /admin after login renders real data: top-posts bars 5 + posts listed, previously empty)",
       "title": "Admin dashboard loads real data on hard reload after fix",
       "confidence": 1.0
+    },
+    "DEC-029": {
+      "id": "DEC-029",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-16T04:30:37+00:00",
+      "updated_at": "2026-08-16T04:30:37+00:00",
+      "touched_round": 32,
+      "rationale": "Feature-evolution gap analysis (SKILL 11.2): tags have a dedicated public /tags browse page (all tags + per-tag posts with pagination) but categories --- a first-class concept in nav/sidebar/home filter/admin --- have no public browse page; categories only appear as sidebar filter links on the home page. Add /categories mirroring the proven /tags pattern: all-categories view (chips), category posts view (filtered via GET /api/posts?category_id=, pagination), i18n en/zh, e2e-verifiable. Pure frontend, no schema/infra change, low risk.",
+      "alternatives_rejected": "(a) Comment reply/email notifications - needs SMTP infra, deferred. (b) Traffic-trend charts - stats API is aggregates-only, needs time-series model+migration. (c) User accounts/bookmarks sync - touches hardened auth surface, high risk. (d) Related-posts on post page - backend query change, larger blast radius."
+    },
+    "TASK-047": {
+      "id": "TASK-047",
+      "type": "task",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-16T04:30:37+00:00",
+      "updated_at": "2026-08-16T04:30:37+00:00",
+      "touched_round": 32,
+      "category": "core-feature",
+      "description": "Add public /categories browse page mirroring /tags: all-categories chips view + per-category posts with pagination; en/zh i18n; wire nav"
+    },
+    "CHG-038": {
+      "id": "CHG-038",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-16T04:46:47+00:00",
+      "updated_at": "2026-08-16T04:46:47+00:00",
+      "touched_round": 32,
+      "commit": "__PENDING__",
+      "description": "Public /categories browse page (FEAT-047)"
     }
   },
   "edges": [

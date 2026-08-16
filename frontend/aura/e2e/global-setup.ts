@@ -20,6 +20,7 @@ const ROUTES = [
 	"/about",
 	"/search",
 	"/tags",
+	"/categories",
 	"/admin/login",
 	"/admin",
 	"/admin/posts",

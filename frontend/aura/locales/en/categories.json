@@ -1,0 +1,14 @@
+{
+	"categories": {
+		"all": "All Categories",
+		"categoryTitle": "Category: {name}",
+		"countLabel": "{count} categories in total",
+		"empty": "No categories yet",
+		"backToAll": "Back to all categories",
+		"categoryPosts": "Category posts",
+		"postsEmpty": "No posts yet",
+		"views": "{count} views",
+		"allDesc": "Browse all categories on X-Blog",
+		"categoryDesc": "Browse all articles under category \"{name}\""
+	}
+}

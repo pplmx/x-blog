@@ -144,6 +144,7 @@ def test_sitemap_includes_static_pages(client):
     content = response.text
     assert "/about" in content
     assert "/search" in content
+    assert "/categories" in content
 
 
 def test_sitemap_includes_image_namespace(client):
@@ -191,6 +192,7 @@ def test_sitemap_includes_categories_and_tags(client, auth_headers):
     assert response.status_code == 200
     content = response.text
     assert "category_id=" in content
+    assert "/categories?category_id=" in content
     assert "tag_id=" in content
 
 

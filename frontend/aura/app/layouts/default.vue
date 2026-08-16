@@ -6,6 +6,7 @@ const isHome = computed(() => route.path === "/");
 const navLinks = [
 	{ to: "/", labelKey: "common.nav.home", icon: "lucide:home" },
 	{ to: "/about", labelKey: "common.nav.about", icon: "lucide:user" },
+	{ to: "/categories", labelKey: "common.nav.categories", icon: "lucide:folder-open" },
 	{ to: "/search", labelKey: "common.nav.search", icon: "lucide:search" },
 ];
 
