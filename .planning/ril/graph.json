@@ -2,7 +2,7 @@
   "ril_version": 1,
   "round": 75,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-08-16T16:20:59+00:00",
+  "updated_at": "2026-08-16T17:35:01+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -4445,11 +4445,11 @@
       "id": "CHG-073",
       "type": "change",
       "status": "active",
-      "version": 1,
+      "version": 2,
       "created_at": "2026-08-16T16:20:26+00:00",
-      "updated_at": "2026-08-16T16:20:26+00:00",
+      "updated_at": "2026-08-16T16:22:07+00:00",
       "touched_round": 75,
-      "commit": "(pending)"
+      "commit": "c3dd765"
     },
     "COMP-006": {
       "id": "COMP-006",
@@ -4460,6 +4460,174 @@
       "updated_at": "2026-08-16T16:20:56+00:00",
       "touched_round": 75,
       "note": "rss router"
+    },
+    "ISS-056": {
+      "id": "ISS-056",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-08-16T16:50:54+00:00",
+      "updated_at": "2026-08-16T17:34:51+00:00",
+      "touched_round": 75,
+      "title": "Admin batch-approve comments does not clear posts list cache, stale comment counts up to 300s",
+      "severity": 0.5
+    },
+    "ISS-057": {
+      "id": "ISS-057",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-08-16T16:50:54+00:00",
+      "updated_at": "2026-08-16T17:34:51+00:00",
+      "touched_round": 75,
+      "title": "Category/tag rename only clears own cache, leaves stale names in cached post lists, feeds, sitemap",
+      "severity": 0.5
+    },
+    "ISS-058": {
+      "id": "ISS-058",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-08-16T16:50:54+00:00",
+      "updated_at": "2026-08-16T17:34:51+00:00",
+      "touched_round": 75,
+      "title": "RSS generate_rss_feed lacks created_at None-guard (Atom branch has it)",
+      "severity": 0.3
+    },
+    "ISS-059": {
+      "id": "ISS-059",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-08-16T16:50:55+00:00",
+      "updated_at": "2026-08-16T17:34:51+00:00",
+      "touched_round": 75,
+      "title": "cover_image allows protocol-relative // URLs reaching sitemap",
+      "severity": 0.4
+    },
+    "ISS-060": {
+      "id": "ISS-060",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-08-16T16:50:55+00:00",
+      "updated_at": "2026-08-16T17:34:51+00:00",
+      "touched_round": 75,
+      "title": "health /cache response_model omits feeds stats",
+      "severity": 0.2
+    },
+    "ISS-061": {
+      "id": "ISS-061",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-08-16T16:50:55+00:00",
+      "updated_at": "2026-08-16T17:34:51+00:00",
+      "touched_round": 75,
+      "title": "Search Postgres ts_headline N+1 per result invo paginated query",
+      "severity": 0.4
+    },
+    "ISS-062": {
+      "id": "ISS-062",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-08-16T17:12:28+00:00",
+      "updated_at": "2026-08-16T17:34:55+00:00",
+      "touched_round": 75,
+      "title": "Admin login page uses removed Options-API layout option (Nuxt 4) -> renders in default layout",
+      "severity": 0.6
+    },
+    "ISS-063": {
+      "id": "ISS-063",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-08-16T17:12:28+00:00",
+      "updated_at": "2026-08-16T17:34:55+00:00",
+      "touched_round": 75,
+      "title": "Post view count increments during SSR (top-level await), inflated by crawlers/pre-renders",
+      "severity": 0.5
+    },
+    "ISS-064": {
+      "id": "ISS-064",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-08-16T17:12:29+00:00",
+      "updated_at": "2026-08-16T17:34:55+00:00",
+      "touched_round": 75,
+      "title": "Dark mode applied only in onMounted -> light FOUC flash on load",
+      "severity": 0.4
+    },
+    "ISS-065": {
+      "id": "ISS-065",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-08-16T17:12:29+00:00",
+      "updated_at": "2026-08-16T17:34:55+00:00",
+      "touched_round": 75,
+      "title": "TOC slugify Math.random fallback -> SSR/client hydration mismatch on empty slugs",
+      "severity": 0.4
+    },
+    "ISS-066": {
+      "id": "ISS-066",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-08-16T17:12:29+00:00",
+      "updated_at": "2026-08-16T17:34:55+00:00",
+      "touched_round": 75,
+      "title": "CommentForm lacks accessible labels and anti-spam honeypot",
+      "severity": 0.4
+    },
+    "TASK-086": {
+      "id": "TASK-086",
+      "type": "task",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-16T17:31:02+00:00",
+      "updated_at": "2026-08-16T17:31:02+00:00",
+      "touched_round": 75,
+      "category": "correctness",
+      "severity": 0.4,
+      "confidence": 1.0,
+      "effort": 3.0,
+      "unlock_factor": 1.0,
+      "title": "Fix search ts_headline N+1 (Postgres) by projecting headline into main query"
+    },
+    "CHG-074": {
+      "id": "CHG-074",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-16T17:34:44+00:00",
+      "updated_at": "2026-08-16T17:34:44+00:00",
+      "touched_round": 75,
+      "commit": "(pending)"
+    },
+    "CHG-075": {
+      "id": "CHG-075",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-16T17:34:51+00:00",
+      "updated_at": "2026-08-16T17:34:51+00:00",
+      "touched_round": 75,
+      "commit": "(pending)"
+    },
+    "DEC-048": {
+      "id": "DEC-048",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-16T17:35:01+00:00",
+      "updated_at": "2026-08-16T17:35:01+00:00",
+      "touched_round": 75,
+      "rationale": "Blockchain has no genuine value for X-Blog: a blog is a single-authority, admin-moderated system with modest trust/storage needs; decentralizing comments/likes/timestamps would add cost and latency with no user benefit. Modern non-blockchain hardening is adopted instead.",
+      "alternatives_rejected": "Content hash-chain (no demand; RSS/ETag cheaper), comment provenance (moderation already gates abuse), timestamp anchoring (DB timestamps suffice), like tokenization (gimmick, no audience).",
+      "title": "Reject blockchain; adopt modern web hardening"
     }
   },
   "edges": [
@@ -6095,6 +6263,78 @@
       "to": "TASK-085",
       "type": "implements",
       "created_at": "2026-08-16T16:20:59+00:00"
+    },
+    {
+      "from": "TASK-086",
+      "to": "ISS-061",
+      "type": "addresses",
+      "created_at": "2026-08-16T17:31:02+00:00"
+    },
+    {
+      "from": "CHG-074",
+      "to": "ISS-056",
+      "type": "resolves",
+      "created_at": "2026-08-16T17:34:46+00:00"
+    },
+    {
+      "from": "CHG-074",
+      "to": "ISS-057",
+      "type": "resolves",
+      "created_at": "2026-08-16T17:34:46+00:00"
+    },
+    {
+      "from": "CHG-074",
+      "to": "ISS-058",
+      "type": "resolves",
+      "created_at": "2026-08-16T17:34:46+00:00"
+    },
+    {
+      "from": "CHG-074",
+      "to": "ISS-059",
+      "type": "resolves",
+      "created_at": "2026-08-16T17:34:47+00:00"
+    },
+    {
+      "from": "CHG-074",
+      "to": "ISS-060",
+      "type": "resolves",
+      "created_at": "2026-08-16T17:34:47+00:00"
+    },
+    {
+      "from": "CHG-074",
+      "to": "ISS-061",
+      "type": "resolves",
+      "created_at": "2026-08-16T17:34:47+00:00"
+    },
+    {
+      "from": "CHG-075",
+      "to": "ISS-062",
+      "type": "resolves",
+      "created_at": "2026-08-16T17:34:54+00:00"
+    },
+    {
+      "from": "CHG-075",
+      "to": "ISS-063",
+      "type": "resolves",
+      "created_at": "2026-08-16T17:34:55+00:00"
+    },
+    {
+      "from": "CHG-075",
+      "to": "ISS-064",
+      "type": "resolves",
+      "created_at": "2026-08-16T17:34:55+00:00"
+    },
+    {
+      "from": "CHG-075",
+      "to": "ISS-065",
+      "type": "resolves",
+      "created_at": "2026-08-16T17:34:55+00:00"
+    },
+    {
+      "from": "CHG-075",
+      "to": "ISS-066",
+      "type": "resolves",
+      "created_at": "2026-08-16T17:34:55+00:00"
     }
   ]
 }

@@ -42,7 +42,7 @@ posts_list_cache: TTLCache[tuple, dict, float] = TTLCache(  # type: ignore[repor
 # a safety net (same refresh window as the posts list). Sitemap also depends on
 # categories/tags, which changes on those writes via their own clears, but a
 # stale sitemap for up to 5 min is acceptable.
-feed_cache: TTLCache[str, str, float] = TTLCache(  # type: ignore[reportAssignmentType]
+feed_cache: TTLCache[tuple | str, str, float] = TTLCache(  # type: ignore[reportAssignmentType]
     maxsize=8, ttl=300
 )
 

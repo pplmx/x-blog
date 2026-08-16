@@ -28,6 +28,9 @@
 		"share": {
 			"shareTo": "分享到",
 			"weibo": "分享到微博",
+			"x": "分享到 X",
+			"facebook": "分享到 Facebook",
+			"linkedin": "分享到 LinkedIn",
 			"copyLink": "复制链接"
 		},
 		"sidebar": {

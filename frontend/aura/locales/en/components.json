@@ -28,6 +28,9 @@
 		"share": {
 			"shareTo": "Share to",
 			"weibo": "Share to Weibo",
+			"x": "Share to X",
+			"facebook": "Share to Facebook",
+			"linkedin": "Share to LinkedIn",
 			"copyLink": "Copy link"
 		},
 		"sidebar": {

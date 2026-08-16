@@ -112,7 +112,7 @@ def generate_rss_feed(posts: list, site_url: str, title: str, description: str, 
     """
     items = []
     for post in posts:
-        pub_date = post.created_at.strftime("%a, %d %b %Y %H:%M:%S GMT")
+        pub_date = (post.created_at or crud.utc_now_naive()).strftime("%a, %d %b %Y %H:%M:%S GMT")
         link = f"{site_url}/posts/{post.slug}"
 
         if full_content:

@@ -76,6 +76,17 @@ export default defineNuxtConfig({
 						}),
 					),
 				},
+				// Pre-paint theme bootstrap — apply the saved/system dark mode to
+				// <html> before the Vue app mounts so there is no light-mode FOUC
+				// flash on load (the layout only applies it in onMounted).
+				// Matches useLang/default.vue: values "dark"/"light"/(system).
+				{
+					textContent:
+						"(function(){try{var t=localStorage.getItem('theme');" +
+						"if(t==='light'){return}if(t==='dark'||window.matchMedia('(prefers-color-scheme: dark)').matches){" +
+						"document.documentElement.classList.add('dark')}}catch(e){}})();",
+					tagPriority: "critical",
+				},
 			],
 		},
 	},

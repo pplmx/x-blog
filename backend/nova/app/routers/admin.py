@@ -397,6 +397,8 @@ def admin_update_category(
         db.rollback()
         raise HTTPException(status_code=400, detail="Category already exists")
     clear_categories_cache()
+    # Renamed name is embedded in cached public post lists and feeds (ISS-057).
+    clear_posts_list_cache()
     return {"id": category.id, "name": category.name}
 
 
@@ -494,6 +496,8 @@ def admin_update_tag(
         db.rollback()
         raise HTTPException(status_code=400, detail="Tag already exists")
     clear_tags_cache()
+    # Renamed name is embedded in cached public post lists and feeds (ISS-057).
+    clear_posts_list_cache()
     return {"id": tag.id, "name": tag.name}
 
 
@@ -615,6 +619,9 @@ def admin_batch_approve_comments(
     for c in comments:
         c.is_approved = body.approved
     db.commit()
+    # Approving/rejecting changes the approved comment_count embedded in the
+    # cached public post list, so invalidate it (ISS-056).
+    clear_posts_list_cache()
     return {"message": f"{len(comments)} comments updated"}
 
 

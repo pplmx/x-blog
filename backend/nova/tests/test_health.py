@@ -40,13 +40,16 @@ def test_cache_stats(client):
     response = client.get("/health/cache")
     assert response.status_code == 200
     data = response.json()
-    assert set(data.keys()) == {"categories", "tags", "posts"}
+    assert set(data.keys()) == {"categories", "tags", "posts", "feeds"}
     assert "size" in data["categories"]
     assert "maxsize" in data["categories"]
     assert "ttl" in data["categories"]
     assert "size" in data["posts"]
     assert "maxsize" in data["posts"]
     assert "ttl" in data["posts"]
+    assert "size" in data["feeds"]
+    assert "maxsize" in data["feeds"]
+    assert "ttl" in data["feeds"]
 
 
 def test_readiness_check_database_error(client):

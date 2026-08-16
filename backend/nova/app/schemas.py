@@ -20,6 +20,11 @@ def _validate_cover_image_url(value: str | None) -> str | None:
     """
     if value is None:
         return value
+    # Reject protocol-relative URLs (//host/...) — urlparse yields scheme ""
+    # so they'd slip past the scheme check and produce malformed sitemap image
+    # URLs ({site_url}//host/...) while pointing the page at an external host.
+    if value.startswith("//"):
+        raise ValueError("cover_image must be an absolute http(s) URL or a /static/... path")
     parsed = urlparse(value)
     if parsed.scheme and parsed.scheme not in _ALLOWED_COVER_SCHEMES:
         raise ValueError("cover_image must be an absolute http(s) URL or a /static/... path")
@@ -205,6 +210,17 @@ class CommentBase(BaseModel):
 
 class CommentCreate(CommentBase):
     parent_id: int | None = None
+    # Anti-spam honeypot: a hidden field real humans never see or fill, but
+    # naive spam bots do. The frontend submits an empty string; any non-empty
+    # value means the submitter is a bot, so the comment is rejected.
+    website: str = ""
+
+    @field_validator("website")
+    @classmethod
+    def check_honeypot(cls, value: str) -> str:
+        if value:
+            raise ValueError("Unexpected field")
+        return value
 
 
 class Comment(CommentBase):

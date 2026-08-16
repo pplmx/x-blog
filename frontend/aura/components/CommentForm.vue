@@ -20,30 +20,58 @@
     </div>
 
     <form @submit.prevent="handleSubmit" class="space-y-4">
-      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <input
-          v-model="form.nickname"
-          type="text"
-          required
-          :placeholder="t('components.commentForm.nickname')"
-          class="px-3 py-2 border border-gray-200 dark:border-gray-700 dark:bg-gray-800 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
-        >
-        <input
-          v-model="form.email"
-          type="email"
-          required
-          :placeholder="t('components.commentForm.email')"
-          class="px-3 py-2 border border-gray-200 dark:border-gray-700 dark:bg-gray-800 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
-        >
+      <!-- Anti-spam honeypot: visually hidden, screens off for AT/human users.
+           A bot filling every field lands here and the backend rejects it. -->
+      <div class="absolute left-[-9999px] top-auto h-1 w-1 overflow-hidden" aria-hidden="true">
+        <label for="comment-hp">Website</label>
+        <input id="comment-hp" v-model="form.website" type="text" tabindex="-1" autocomplete="off" />
       </div>
 
-      <textarea
-        v-model="form.content"
-        required
-        rows="4"
-        :placeholder="t('components.commentForm.content')"
-        class="w-full px-3 py-2 border border-gray-200 dark:border-gray-700 dark:bg-gray-800 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm resize-y"
-      />
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div>
+          <label
+            for="comment-nickname"
+            class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5"
+          >{{ t('components.commentForm.nickname') }}</label>
+          <input
+            id="comment-nickname"
+            v-model="form.nickname"
+            type="text"
+            required
+            :placeholder="t('components.commentForm.nickname')"
+            class="px-3 py-2 w-full border border-gray-200 dark:border-gray-700 dark:bg-gray-800 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+          >
+        </div>
+        <div>
+          <label
+            for="comment-email"
+            class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5"
+          >{{ t('components.commentForm.email') }}</label>
+          <input
+            id="comment-email"
+            v-model="form.email"
+            type="email"
+            required
+            :placeholder="t('components.commentForm.email')"
+            class="px-3 py-2 w-full border border-gray-200 dark:border-gray-700 dark:bg-gray-800 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+          >
+        </div>
+      </div>
+
+      <div>
+        <label
+          for="comment-content"
+          class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5"
+        >{{ t('components.commentForm.content') }}</label>
+        <textarea
+          id="comment-content"
+          v-model="form.content"
+          required
+          rows="4"
+          :placeholder="t('components.commentForm.content')"
+          class="w-full px-3 py-2 border border-gray-200 dark:border-gray-700 dark:bg-gray-800 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm resize-y"
+        />
+      </div>
 
       <button
         type="submit"
@@ -89,6 +117,7 @@ const form = ref({
 	nickname: "",
 	email: "",
 	content: "",
+	website: "", // anti-spam honeypot — hidden, humans never fill it
 });
 
 const submitting = ref(false);
@@ -99,7 +128,7 @@ const success = ref("");
 watch(
 	() => props.parentId,
 	() => {
-		form.value = { nickname: "", email: "", content: "" };
+		form.value = { nickname: "", email: "", content: "", website: "" };
 		error.value = "";
 		success.value = "";
 	},
@@ -118,9 +147,10 @@ async function handleSubmit() {
 			email: form.value.email,
 			content: form.value.content,
 			parent_id: props.parentId ?? null,
+			website: form.value.website,
 		});
 		success.value = t("components.commentForm.submitSuccess");
-		form.value = { nickname: "", email: "", content: "" };
+		form.value = { nickname: "", email: "", content: "", website: "" };
 		emit("submitted");
 	} catch (e: any) {
 		error.value = e?.message || t("components.commentForm.submitFailed");

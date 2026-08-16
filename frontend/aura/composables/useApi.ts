@@ -270,6 +270,7 @@ export async function createComment(
 		email: string;
 		content: string;
 		parent_id?: number | null;
+		website?: string;
 	},
 ) {
 	return useApi<Comment>(`/api/comments/post/${postId}`, {

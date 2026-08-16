@@ -28,10 +28,6 @@ const postId = post.value?.id ?? 0;
 const { data: relatedPosts } = postId ? await useRelatedPosts(postId) : { data: ref(null) };
 const { data: adjacent } = postId ? await useAdjacentPosts(postId) : { data: ref(null) };
 
-if (post.value?.id) {
-	await usePostView(post.value.id);
-}
-
 if (post.value) {
 	usePostSeo(post.value);
 }
@@ -70,6 +66,13 @@ async function handleLike() {
 const scrollProgress = ref(0);
 const activeTocId = ref("");
 onMounted(() => {
+	// Client-only view counter: reflects real human reads, not crawlers/bots
+	// or SSR pre-renders (running this in top-level setup inflated counts on
+	// every server render and search-engine visit).
+	const postId = post.value?.id;
+	if (postId) {
+		usePostView(postId).catch(() => {});
+	}
 	const updateProgress = () => {
 		const scrolled = window.scrollY;
 		const maxScroll = document.body.scrollHeight - window.innerHeight;

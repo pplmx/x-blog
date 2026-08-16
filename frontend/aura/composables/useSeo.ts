@@ -268,6 +268,27 @@ function buildHead(options: SeoOptions, siteUrl: string): Record<string, unknown
 		meta.push({ name: "robots", content: "noindex, follow" });
 	}
 
+	// OpenGraph article metadata: og:type=article benefits from the standard
+	// article:published_time / article:modified_time / article:tag properties,
+	// which social platforms and rich previews consume for better rendering.
+	if (options.article) {
+		if (options.article.datePublished) {
+			meta.push({
+				property: "article:published_time",
+				content: String(options.article.datePublished),
+			});
+		}
+		if (options.article.dateModified) {
+			meta.push({
+				property: "article:modified_time",
+				content: String(options.article.dateModified),
+			});
+		}
+		for (const tag of options.article.tags ?? []) {
+			meta.push({ property: "article:tag", content: tag });
+		}
+	}
+
 	const input: Record<string, unknown> = {
 		title: options.title,
 		meta,

@@ -5,6 +5,7 @@ from fastapi import APIRouter, Depends, Query, Request
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
+from .. import models
 from ..crud import search_posts
 from ..database import get_db
 from ..limiter import RATE_LIMIT_SEARCH, limiter
@@ -56,6 +57,33 @@ def _build_snippet(post: Post, query: str, is_postgres: bool, db: Session) -> st
     return _highlight_sqlite(post.excerpt or post.content[:300], query)
 
 
+def _build_postgres_snippets(db: Session, posts: list[Post], query: str) -> dict[int, str | None]:
+    """Compute ts_headline for a page of posts in ONE query (avoids N+1, ISS-061).
+
+    Each per-post ts_headline call was a round-trip; a 50-post page meant up to
+    51 queries. Batch with a single GROUP BY result of headline per post id.
+    """
+    if not posts or not query.strip():
+        return {}
+    ts_query = func.plainto_tsquery("english", query)
+    q = func.ts_headline(
+        "english",
+        models.Post.content,
+        ts_query,
+        "StartSel=<mark>, StopSel=</mark>, MaxWords=40, MinWords=20, ShortWord=3",
+    )
+    post_ids = [p.id for p in posts]
+    rows = db.query(models.Post.id, q).filter(models.Post.id.in_(post_ids)).group_by(models.Post.id, q).all()
+    out: dict[int, str | None] = dict.fromkeys(post_ids)
+    for pid, headline in rows:
+        if not headline:
+            continue
+        # Escape, then restore only our <mark> delimiters (XSS-safe).
+        escaped = html.escape(headline)
+        out[pid] = escaped.replace("&lt;mark&gt;", "<mark>").replace("&lt;/mark&gt;", "</mark>")
+    return out
+
+
 @router.get("")
 @limiter.limit(f"{RATE_LIMIT_SEARCH}/minute")
 def search(
@@ -68,9 +96,18 @@ def search(
     is_postgres = db.get_bind().dialect.name == "postgresql"
     posts, total = search_posts(db, query=q, page=page, limit=limit)
 
+    # Postgres: compute ts_headline for the whole page in a single query to
+    # avoid an N+1 round-trip per result (ISS-061).
+    snippets = _build_postgres_snippets(db, posts, q) if is_postgres else {}
+
     items = []
     for p in posts:
-        snippet = _build_snippet(p, q, is_postgres, db)
+        if is_postgres:
+            snippet = snippets.get(p.id)
+            if snippet is None and q.strip():
+                snippet = p.excerpt or p.content[:200]
+        else:
+            snippet = _build_snippet(p, q, is_postgres, db)
         post_dict = PostList.model_validate(p).model_dump()
         post_dict["snippet"] = snippet
         items.append(post_dict)

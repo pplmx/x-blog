@@ -33,6 +33,34 @@ def test_create_comment(client, post):
     assert data["post_id"] == post["id"]
 
 
+def test_create_comment_honeypot_rejected(client, post):
+    """A non-empty `website` honeypot field must be rejected (bot signal)."""
+    response = client.post(
+        f"/api/comments/post/{post['id']}",
+        json={
+            "nickname": "Bot",
+            "email": "bot@example.com",
+            "content": "Click my link",
+            "website": "http://spam.example.com",
+        },
+    )
+    assert response.status_code == 422
+
+
+def test_create_comment_honeypot_empty_passes(client, post):
+    """An empty honeypot field (normal human form) does not break submission."""
+    response = client.post(
+        f"/api/comments/post/{post['id']}",
+        json={
+            "nickname": "Test User",
+            "email": "test@example.com",
+            "content": "Test comment",
+            "website": "",
+        },
+    )
+    assert response.status_code == 201
+
+
 def test_posts_list_includes_comment_count(client, post, auth_headers):
     """PostList should expose comment_count, counting approved comments only.
 

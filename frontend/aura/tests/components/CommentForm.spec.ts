@@ -63,14 +63,14 @@ describe("CommentForm", () => {
 
 		it("renders nickname input field", async () => {
 			const wrapper = await mountCommentForm();
-			const nicknameInput = wrapper.find('input[type="text"]');
+			const nicknameInput = wrapper.find("#comment-nickname");
 			expect(nicknameInput.exists()).toBe(true);
 			expect(nicknameInput.attributes("placeholder")).toContain("昵称");
 		});
 
 		it("renders email input field", async () => {
 			const wrapper = await mountCommentForm();
-			const emailInput = wrapper.find('input[type="email"]');
+			const emailInput = wrapper.find("#comment-email");
 			expect(emailInput.exists()).toBe(true);
 			expect(emailInput.attributes("placeholder")).toContain("邮箱");
 		});
@@ -93,7 +93,7 @@ describe("CommentForm", () => {
 	describe("Form binding", () => {
 		it("binds nickname input to form.nickname", async () => {
 			const wrapper = await mountCommentForm();
-			const nicknameInput = wrapper.find('input[type="text"]') as any;
+			const nicknameInput = wrapper.find("#comment-nickname") as any;
 			await nicknameInput.setValue("Alice");
 			expect(nicknameInput.element.value).toBe("Alice");
 		});
@@ -123,7 +123,7 @@ describe("CommentForm", () => {
 
 		it("does NOT call createComment when email is empty", async () => {
 			const wrapper = await mountCommentForm();
-			await (wrapper.find('input[type="text"]') as any).setValue("Alice");
+			await (wrapper.find("#comment-nickname") as any).setValue("Alice");
 			// Don't set email
 			await (wrapper.find("textarea") as any).setValue("Content here");
 			await wrapper.find("form").trigger("submit.prevent");
@@ -132,7 +132,7 @@ describe("CommentForm", () => {
 
 		it("does NOT call createComment when content is empty", async () => {
 			const wrapper = await mountCommentForm();
-			await (wrapper.find('input[type="text"]') as any).setValue("Alice");
+			await (wrapper.find("#comment-nickname") as any).setValue("Alice");
 			await (wrapper.find('input[type="email"]') as any).setValue("alice@test.com");
 			// Don't set content
 			await wrapper.find("form").trigger("submit.prevent");
@@ -141,7 +141,7 @@ describe("CommentForm", () => {
 
 		it("submits when all fields are filled", async () => {
 			const wrapper = await mountCommentForm();
-			await (wrapper.find('input[type="text"]') as any).setValue("Alice");
+			await (wrapper.find("#comment-nickname") as any).setValue("Alice");
 			await (wrapper.find('input[type="email"]') as any).setValue("alice@test.com");
 			await (wrapper.find("textarea") as any).setValue("Great post!");
 			await wrapper.find("form").trigger("submit.prevent");
@@ -153,6 +153,7 @@ describe("CommentForm", () => {
 				email: "alice@test.com",
 				content: "Great post!",
 				parent_id: null,
+				website: "",
 			});
 		});
 	});
@@ -160,7 +161,7 @@ describe("CommentForm", () => {
 	describe("Submission success", () => {
 		it("shows success message after successful submission", async () => {
 			const wrapper = await mountCommentForm();
-			await (wrapper.find('input[type="text"]') as any).setValue("Alice");
+			await (wrapper.find("#comment-nickname") as any).setValue("Alice");
 			await (wrapper.find('input[type="email"]') as any).setValue("alice@test.com");
 			await (wrapper.find("textarea") as any).setValue("Great post!");
 			await wrapper.find("form").trigger("submit.prevent");
@@ -171,13 +172,13 @@ describe("CommentForm", () => {
 
 		it("clears the form after successful submission", async () => {
 			const wrapper = await mountCommentForm();
-			await (wrapper.find('input[type="text"]') as any).setValue("Alice");
+			await (wrapper.find("#comment-nickname") as any).setValue("Alice");
 			await (wrapper.find('input[type="email"]') as any).setValue("alice@test.com");
 			await (wrapper.find("textarea") as any).setValue("Great post!");
 			await wrapper.find("form").trigger("submit.prevent");
 			await flushPromises();
 
-			expect((wrapper.find('input[type="text"]') as any).element.value).toBe("");
+			expect((wrapper.find("#comment-nickname") as any).element.value).toBe("");
 			expect((wrapper.find('input[type="email"]') as any).element.value).toBe("");
 			expect((wrapper.find("textarea") as any).element.value).toBe("");
 		});
@@ -186,7 +187,7 @@ describe("CommentForm", () => {
 			// First, do a successful submission
 			mockCreateComment.mockResolvedValue({});
 			let wrapper = await mountCommentForm({ postId: 1 });
-			await (wrapper.find('input[type="text"]') as any).setValue("Alice");
+			await (wrapper.find("#comment-nickname") as any).setValue("Alice");
 			await (wrapper.find('input[type="email"]') as any).setValue("alice@test.com");
 			await (wrapper.find("textarea") as any).setValue("Great post!");
 			await wrapper.find("form").trigger("submit.prevent");
@@ -198,7 +199,7 @@ describe("CommentForm", () => {
 			// Now do an error submission — need to re-mount since form is cleared
 			mockCreateComment.mockRejectedValue(new Error("Network error"));
 			wrapper = await mountCommentForm({ postId: 1, submitResult: "error" });
-			await (wrapper.find('input[type="text"]') as any).setValue("Alice");
+			await (wrapper.find("#comment-nickname") as any).setValue("Alice");
 			await (wrapper.find('input[type="email"]') as any).setValue("alice@test.com");
 			await (wrapper.find("textarea") as any).setValue("Great post!");
 			await wrapper.find("form").trigger("submit.prevent");
@@ -213,7 +214,7 @@ describe("CommentForm", () => {
 	describe("Submission error", () => {
 		it("shows error message when submission fails", async () => {
 			const wrapper = await mountCommentForm({ submitResult: "error" });
-			await (wrapper.find('input[type="text"]') as any).setValue("Alice");
+			await (wrapper.find("#comment-nickname") as any).setValue("Alice");
 			await (wrapper.find('input[type="email"]') as any).setValue("alice@test.com");
 			await (wrapper.find("textarea") as any).setValue("Great post!");
 			await wrapper.find("form").trigger("submit.prevent");
@@ -225,7 +226,7 @@ describe("CommentForm", () => {
 
 		it("shows error message with the error text", async () => {
 			const wrapper = await mountCommentForm({ submitResult: "error" });
-			await (wrapper.find('input[type="text"]') as any).setValue("Alice");
+			await (wrapper.find("#comment-nickname") as any).setValue("Alice");
 			await (wrapper.find('input[type="email"]') as any).setValue("alice@test.com");
 			await (wrapper.find("textarea") as any).setValue("Great post!");
 			await wrapper.find("form").trigger("submit.prevent");
@@ -246,7 +247,7 @@ describe("CommentForm", () => {
 			mockCreateComment.mockReturnValue(submitPromise);
 
 			// Set fields
-			await (wrapper.find('input[type="text"]') as any).setValue("Alice");
+			await (wrapper.find("#comment-nickname") as any).setValue("Alice");
 			await (wrapper.find('input[type="email"]') as any).setValue("alice@test.com");
 			await (wrapper.find("textarea") as any).setValue("Great post!");
 

@@ -33,7 +33,7 @@ export function slugify(text: string): string {
 			.toLowerCase()
 			.trim()
 			.replace(/[\s_]+/g, "-")
-			.replace(/[^\w-]+/g, "") || `heading-${Math.random().toString(36).slice(2, 8)}`
+			.replace(/[^\w-]+/g, "") || ""
 	);
 }
 

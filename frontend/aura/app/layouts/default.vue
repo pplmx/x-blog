@@ -105,6 +105,8 @@ onMounted(() => {
             type="button"
             class="md:hidden p-2 rounded-lg text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
             :aria-label="t('common.menu.open')"
+            :aria-expanded="mobileMenuOpen"
+            aria-controls="mobile-nav"
             @click="mobileMenuOpen = !mobileMenuOpen"
           >
             <Icon :icon="mobileMenuOpen ? 'lucide:x' : 'lucide:menu'" class="w-5 h-5 transition-transform duration-200" />
@@ -114,7 +116,7 @@ onMounted(() => {
 
       <!-- Mobile navigation -->
       <Transition name="slide">
-        <div v-if="mobileMenuOpen" class="md:hidden border-t border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-950">
+        <div v-if="mobileMenuOpen" id="mobile-nav" class="md:hidden border-t border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-950">
           <div class="container mx-auto px-4 py-4 space-y-1">
             <NuxtLink
               v-for="link in navLinks"

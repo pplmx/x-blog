@@ -7,6 +7,8 @@
 import { ref } from "vue";
 import { adminLoginRequest, useAdminAuth } from "~~/composables/useAdminAuth";
 
+definePageMeta({ layout: "admin" });
+
 const { t } = useLang();
 
 useHead({ title: computed(() => t("admin.login.seoTitle")) });
@@ -122,11 +124,7 @@ async function handleLogin() {
 </template>
 
 <!--
-  Use the admin layout (no sidebar for login page)
+  Page layout is set via definePageMeta({ layout: "admin" }) in <script setup>
+  (Nuxt 4 removed the Options-API `layout` property). The admin layout renders
+  the login card without the sidebar and handles the unauth redirect.
 -->
-<script lang="ts">
-export default {
-  layout: 'admin',
-  auth: false,
-};
-</script>
