@@ -2,7 +2,7 @@
   "ril_version": 1,
   "round": 47,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-08-16T06:38:14+00:00",
+  "updated_at": "2026-08-16T06:50:08+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -3337,10 +3337,10 @@
     "ISS-036": {
       "id": "ISS-036",
       "type": "issue",
-      "status": "active",
-      "version": 1,
+      "status": "resolved",
+      "version": 2,
       "created_at": "2026-08-16T06:38:09+00:00",
-      "updated_at": "2026-08-16T06:38:09+00:00",
+      "updated_at": "2026-08-16T06:50:08+00:00",
       "touched_round": 47,
       "severity": "medium",
       "description": "Bookmarks use non-shared state: useBookmarks() creates a fresh ref(loadFromStorage()) per call, so the three consumers (BookmarkButton, Sidebar bookmark count, bookmarks page) each hold isolated reactive state. Adding/removing a bookmark in one component does not update the others until a full reload; the sidebar count and bookmarks list go stale. contrast: useLang uses useState for shared state; useBookmarks should too."
@@ -3348,13 +3348,36 @@
     "TASK-060": {
       "id": "TASK-060",
       "type": "task",
-      "status": "active",
-      "version": 1,
+      "status": "resolved",
+      "version": 2,
       "created_at": "2026-08-16T06:38:14+00:00",
-      "updated_at": "2026-08-16T06:38:14+00:00",
+      "updated_at": "2026-08-16T06:50:08+00:00",
       "touched_round": 47,
       "category": "correctness",
       "description": "Make useBookmarks state shared via useState so all consumers stay in sync"
+    },
+    "CHG-051": {
+      "id": "CHG-051",
+      "type": "change",
+      "status": "active",
+      "version": 2,
+      "created_at": "2026-08-16T06:50:01+00:00",
+      "updated_at": "2026-08-16T06:50:08+00:00",
+      "touched_round": 47,
+      "commit": "728f13a6581fc8698ec88d54da36265b0f6dfb5e",
+      "description": "Share bookmarks state via useState singleton + client hydration sync (TASK-060)"
+    },
+    "EV-068": {
+      "id": "EV-068",
+      "type": "evidence",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-16T06:50:08+00:00",
+      "updated_at": "2026-08-16T06:50:08+00:00",
+      "touched_round": 47,
+      "source": "tests/composables/useBookmarks.spec.ts shared-state test (stubbed useState) | 704 frontend unit tests | biome clean | nuxt typecheck | browser: bookmark on home card reflected on /bookmarks (SPA) AND hard-reload hydration shows seeded bookmark",
+      "note": "useBookmarks now backs state with useState singleton (shared across BookmarkButton/Sidebar/bookmarks page) plus a one-time client hydration re-read so full page loads still load from localStorage. Vitest path stubs useState to verify sharing.",
+      "confidence": 1.0
     }
   },
   "edges": [
@@ -4600,6 +4623,12 @@
       "to": "ISS-036",
       "type": "addresses",
       "created_at": "2026-08-16T06:38:14+00:00"
+    },
+    {
+      "from": "CHG-051",
+      "to": "TASK-060",
+      "type": "implements",
+      "created_at": "2026-08-16T06:50:08+00:00"
     }
   ]
 }
