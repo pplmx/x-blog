@@ -2,7 +2,7 @@
   "ril_version": 1,
   "round": 36,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-08-16T05:23:15+00:00",
+  "updated_at": "2026-08-16T05:29:32+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -2976,13 +2976,36 @@
     "TASK-052": {
       "id": "TASK-052",
       "type": "task",
-      "status": "active",
-      "version": 1,
+      "status": "resolved",
+      "version": 2,
       "created_at": "2026-08-16T05:23:15+00:00",
-      "updated_at": "2026-08-16T05:23:15+00:00",
+      "updated_at": "2026-08-16T05:29:32+00:00",
       "touched_round": 36,
       "category": "core-feature",
       "description": "Add category/tag browse chips to home aside (make deep-link filtering discoverable)"
+    },
+    "CHG-043": {
+      "id": "CHG-043",
+      "type": "change",
+      "status": "active",
+      "version": 2,
+      "created_at": "2026-08-16T05:29:27+00:00",
+      "updated_at": "2026-08-16T05:29:32+00:00",
+      "touched_round": 36,
+      "commit": "0e5953460bf81c933124510510bdc8944095bf54",
+      "description": "Add browse-by category/tag chips to home sidebar (TASK-052)"
+    },
+    "EV-059": {
+      "id": "EV-059",
+      "type": "evidence",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-16T05:29:32+00:00",
+      "updated_at": "2026-08-16T05:29:32+00:00",
+      "touched_round": 36,
+      "source": "tests/pages/index.spec.ts browse-chips tests | 692 frontend unit tests | biome clean | nuxt typecheck | browser: home aside shows 按分类/标签浏览 card; clicking 前端开发 chip => /?category_id=1 => 7 posts + filter indicator",
+      "note": "Browser-verified browse-by UI: category/tag chips render with correct deep-link hrefs and clicking filters the home feed, closing the round-4 discoverability gap.",
+      "confidence": 1.0
     }
   },
   "edges": [
@@ -4162,6 +4185,12 @@
       "to": "TASK-051",
       "type": "implements",
       "created_at": "2026-08-16T05:21:59+00:00"
+    },
+    {
+      "from": "CHG-043",
+      "to": "TASK-052",
+      "type": "implements",
+      "created_at": "2026-08-16T05:29:32+00:00"
     }
   ]
 }
