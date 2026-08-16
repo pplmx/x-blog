@@ -206,6 +206,11 @@ export function useSiteUrl(): string {
 /**
  * Apply complete SEO metadata via useHead.
  *
+ * Accepts either a static SeoOptions object or a getter `() => SeoOptions`.
+ * When a getter is supplied it is evaluated reactively inside a computed, so
+ * SPA navigation that only changes route.query (e.g. /tags?tag_id=1 →
+ * ?tag_id=2) updates <title>/meta without re-mounting the page component.
+ *
  * Generates:
  * - <title> and <meta name="description">
  * - OpenGraph tags (og:title, og:description, og:type, og:image, og:url, og:locale)
@@ -217,8 +222,19 @@ export function useSiteUrl(): string {
  *
  * All values fall back to siteConfig defaults when not provided.
  */
-export function useSeo(options: SeoOptions): void {
+export function useSeo(options: SeoOptions | (() => SeoOptions)): void {
+	// Resolve the Nuxt-context value (useRuntimeConfig) eagerly during setup:
+	// useHead evaluates its argument lazily outside the component setup scope,
+	// so useRuntimeConfig cannot be called from inside the computed getter.
 	const siteUrl = useSiteUrl();
+	if (typeof options === "function") {
+		useHead(computed(() => buildHead(options(), siteUrl)));
+		return;
+	}
+	useHead(buildHead(options, siteUrl));
+}
+
+function buildHead(options: SeoOptions, siteUrl: string): Record<string, unknown> {
 	const path = options.path || "/";
 	const canonicalUrl = buildCanonicalUrl(path, siteUrl);
 	const imageUrl = buildAbsoluteImageUrl(options.image || siteConfig.image, siteUrl);
@@ -252,14 +268,14 @@ export function useSeo(options: SeoOptions): void {
 		meta.push({ name: "robots", content: "noindex, follow" });
 	}
 
-	const headInput: Record<string, unknown> = {
+	const input: Record<string, unknown> = {
 		title: options.title,
 		meta,
 		link: [buildCanonicalLink(canonicalUrl)],
 	};
 
 	if (options.article) {
-		headInput.script = [
+		input.script = [
 			{
 				type: "application/ld+json",
 				textContent: JSON.stringify(
@@ -288,7 +304,7 @@ export function useSeo(options: SeoOptions): void {
 		];
 	}
 
-	useHead(headInput);
+	return input;
 }
 
 /**

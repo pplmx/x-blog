@@ -58,7 +58,7 @@ const monthLabel = computed(() => {
 	);
 });
 
-useSeo({
+useSeo(() => ({
 	title: hasPeriod.value
 		? t("archive.monthTitle", { year: year.value ?? "", month: monthLabel.value })
 		: t("archive.title"),
@@ -66,7 +66,7 @@ useSeo({
 		? t("archive.monthDesc", { year: year.value ?? "", month: monthLabel.value })
 		: t("archive.desc"),
 	path: "/archive",
-});
+}));
 </script>
 
 <template>

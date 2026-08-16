@@ -376,5 +376,24 @@ describe("CommentList", () => {
 			const deepOccurrences = wrapper.text().split("Reply to the reply (deep)").length - 1;
 			expect(deepOccurrences).toBe(1);
 		});
+
+		it("shows a Reply button on nested replies and opens a reply form (RIL TASK-080)", async () => {
+			const { wrapper } = await mountCommentList({ comments: deepComments });
+			// Two nested replies (Level1 id=11, Level2 id=12) each get a Reply button.
+			const replyButtons = wrapper.findAll("button").filter((b) => b.text() === "回复");
+			// 1 top-level (Root) + 2 nested = 3 reply buttons.
+			expect(replyButtons.length).toBe(3);
+
+			// Click the deepest reply's (Level2) Reply button — it's the last
+			// one, as nested replies render after the top-level comment.
+			await replyButtons[2].trigger("click");
+			await flushPromises();
+
+			// The inline reply form appears (CommentForm renders a textarea).
+			expect(wrapper.find("textarea").exists()).toBe(true);
+			// And it targets the Level2 comment as its parent via the real
+			// CommentForm: the "正在回复 {name}" context is shown for Level2.
+			expect(wrapper.text()).toContain("Level2");
+		});
 	});
 });

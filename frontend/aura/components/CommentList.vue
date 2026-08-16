@@ -72,6 +72,26 @@
               <span class="text-xs text-gray-500 dark:text-gray-400">{{ formatDate(reply.created_at) }}</span>
             </div>
             <p class="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap">{{ reply.content }}</p>
+
+            <button
+              type="button"
+              class="mt-2 text-xs text-blue-500 hover:text-blue-700 dark:hover:text-blue-300 transition-colors"
+              @click="toggleReply(reply)"
+            >
+              {{ replyTo?.id === reply.id ? t('components.commentList.cancelReply') : t('components.commentList.reply') }}
+            </button>
+
+            <!-- Inline reply form for this reply (reply-to-reply, RIL TASK-080) -->
+            <div v-if="replyTo?.id === reply.id" class="mt-3">
+              <CommentForm
+                :post-id="props.postId"
+                :parent-id="reply.id"
+                :replying-to="reply.nickname"
+                :submit-label="t('components.commentList.reply')"
+                @submitted="handleReplied"
+                @cancel="replyTo = null"
+              />
+            </div>
           </li>
         </ul>
       </li>
@@ -145,9 +165,7 @@ const childrenByParent = computed(() => {
 // Top-level = no parent, or the parent isn't present on this page (it would
 // otherwise nest under a comment we can't render above it).
 const topLevelComments = computed(() =>
-	comments.value.filter(
-		(c) => c.parent_id === null || !byId.value.has(c.parent_id ?? -1),
-	),
+	comments.value.filter((c) => c.parent_id === null || !byId.value.has(c.parent_id ?? -1)),
 );
 
 function descendantsOf(commentId: number): Comment[] {

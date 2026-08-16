@@ -41,8 +41,10 @@ onMounted(() => {
 	void loadPurify();
 });
 
-// SEO: set dynamic head metadata based on search query
-useSeo({
+// SEO: set dynamic head metadata based on search query. Passed as a getter so
+// SPA navigation between ?q= values updates the <title>/canonical (RIL
+// TASK-080; useSeo accepts () => SeoOptions).
+useSeo(() => ({
 	title: query.value
 		? t("search.seo.titleWithQuery", { query: query.value })
 		: t("search.seo.title"),
@@ -51,7 +53,7 @@ useSeo({
 		: t("search.seo.description"),
 	path: query.value ? `/search?q=${encodeURIComponent(query.value)}` : "/search",
 	noindex: true,
-});
+}));
 
 // Search input handler: navigate to /search?q=keyword on Enter
 const searchInput = ref("");

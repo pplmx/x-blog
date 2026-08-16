@@ -29,8 +29,10 @@ const categoryName = computed(() =>
 	categoryId.value ? categories.value?.find((c) => c.id === categoryId.value)?.name : undefined,
 );
 
-// SEO: set dynamic head metadata based on view state
-useSeo({
+// SEO: set dynamic head metadata based on view state. Passed as a getter so
+// SPA navigation between ?category_id=X values updates the <title> (RIL
+// TASK-080; useSeo accepts () => SeoOptions).
+useSeo(() => ({
 	title: categoryName.value
 		? t("categories.categoryTitle", { name: categoryName.value })
 		: t("categories.all"),
@@ -38,7 +40,7 @@ useSeo({
 		? t("categories.categoryDesc", { name: categoryName.value })
 		: t("categories.allDesc"),
 	path: "/categories",
-});
+}));
 </script>
 
 <template>

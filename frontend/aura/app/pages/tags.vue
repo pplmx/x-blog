@@ -29,12 +29,14 @@ const tagName = computed(() =>
 	tagId.value ? tags.value?.find((t) => t.id === tagId.value)?.name : undefined,
 );
 
-// SEO: set dynamic head metadata based on view state
-useSeo({
+// SEO: set dynamic head metadata based on view state. Passed as a getter so
+// SPA navigation between ?tag_id=X values updates the <title> without a reload
+// (RIL TASK-080; useSeo accepts () => SeoOptions).
+useSeo(() => ({
 	title: tagName.value ? t("tags.tagTitle", { name: tagName.value }) : t("tags.all"),
 	description: tagName.value ? t("tags.tagDesc", { name: tagName.value }) : t("tags.allDesc"),
 	path: "/tags",
-});
+}));
 </script>
 
 <template>

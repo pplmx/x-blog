@@ -469,6 +469,24 @@ describe("useSeo composable", () => {
 		expect(robots).toBeUndefined();
 	});
 
+	it("accepts a getter and re-evaluates the title reactively (RIL TASK-080)", () => {
+		const title = ref("Tag One");
+		useSeo(() => ({
+			title: title.value ? `Tag ${title.value}` : "All Tags",
+			description: "Tags page",
+			path: "/tags",
+		}));
+
+		// Getter path passes a compat/computed to useHead; its .value resolves
+		// the current reactive state.
+		const headRef = useHeadSpy.mock.calls[0][0] as { value: { title: string } };
+		expect(headRef.value.title).toBe("Tag Tag One");
+
+		// Mutate the reactive source → the resolved title reflects it.
+		title.value = "Tag Two";
+		expect(headRef.value.title).toBe("Tag Tag Two");
+	});
+
 	it("uses og:type 'article' when article metadata is provided", () => {
 		useSeo({
 			title: "My Post",
