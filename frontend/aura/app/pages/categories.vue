@@ -3,7 +3,7 @@ import { computed } from "vue";
 import { type PostListResponse, useApi, useCategories } from "~~/composables/useApi";
 import { useSeo } from "~~/composables/useSeo";
 
-const { t } = useLang();
+const { t, locale } = useLang();
 const route = useRoute();
 // Reactive sources so SPA navigation that changes only query params
 // (category_id / page) refetches — the computed URL drives useFetch.
@@ -132,7 +132,7 @@ useSeo({
               {{ post.category.name }}
             </span>
             <span>
-              {{ new Date(post.created_at).toLocaleDateString() }}
+              {{ new Date(post.created_at).toLocaleDateString(locale === "zh" ? "zh-CN" : "en-US") }}
             </span>
             <span>{{ t('categories.views', { count: post.views }) }}</span>
           </div>

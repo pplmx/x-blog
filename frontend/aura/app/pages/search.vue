@@ -4,7 +4,7 @@ import { type PostListResponse, useApi } from "~~/composables/useApi";
 import { loadPurify, sanitizeHtml } from "~~/composables/useMarkdown";
 import { useSeo } from "~~/composables/useSeo";
 
-const { t } = useLang();
+const { t, locale } = useLang();
 // used in template v-html (Biome cannot see template usage)
 void sanitizeHtml;
 
@@ -179,7 +179,7 @@ function handleSearchInput() {
               {{ post.category.name }}
             </span>
             <span>
-              {{ new Date(post.created_at).toLocaleDateString() }}
+              {{ new Date(post.created_at).toLocaleDateString(locale === "zh" ? "zh-CN" : "en-US") }}
             </span>
             <span>{{ post.views }} {{ t("search.posts.views") }}</span>
           </div>
