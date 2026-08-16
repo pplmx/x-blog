@@ -2,6 +2,7 @@
 import { computed, onMounted } from "vue";
 import { type PostListResponse, useApi } from "~~/composables/useApi";
 import { loadPurify, sanitizeHtml } from "~~/composables/useMarkdown";
+import { paginationPages } from "~~/composables/usePagination";
 import { useSeo } from "~~/composables/useSeo";
 
 const { t, locale } = useLang();
@@ -34,6 +35,14 @@ const {
 } = await useApi<PostListResponse>(searchUrl, {
 	enabled: computed(() => !!query.value),
 });
+
+// Windowed, ellipsis-aware pagination buttons (RIL TASK-083, ISS-052).
+const paginationTokens = computed(() =>
+	paginationPages(
+		searchResult.value?.pagination?.total_pages ?? 0,
+		searchResult.value?.pagination?.page ?? 1,
+	),
+);
 
 // Upgrade snippet sanitization to DOMPurify as soon as it loads (results that
 // arrive later re-render through the stronger sanitizer).
@@ -187,21 +196,24 @@ function handleSearchInput() {
           </div>
         </div>
 
-        <!-- Pagination -->
+        <!-- Pagination (windowed with ellipsis, RIL TASK-083) -->
         <div
           v-if="searchResult.pagination.total_pages > 1"
           class="flex justify-center gap-2 mt-8"
         >
           <button
-            v-for="pg in searchResult.pagination.total_pages"
-            :key="pg"
+            v-for="(pg, i) in paginationTokens"
+            :key="pg === '…' ? `ellipsis-${i}` : pg"
+            :disabled="pg === '…'"
             :class="[
               'px-3 py-1 rounded',
-              pg === searchResult.pagination.page
-                ? 'bg-blue-600 text-white'
-                : 'border hover:bg-gray-50',
+              pg === '…'
+                ? 'cursor-default text-gray-400'
+                : pg === searchResult.pagination.page
+                  ? 'bg-blue-600 text-white'
+                  : 'border hover:bg-gray-50',
             ]"
-            @click="navigateTo({ query: { q: query, page: pg } })"
+            @click="pg !== '…' && navigateTo({ query: { q: query, page: pg } })"
           >
             {{ pg }}
           </button>

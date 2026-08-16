@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed } from "vue";
 import { type PostListResponse, useApi, useTags } from "~~/composables/useApi";
+import { paginationPages } from "~~/composables/usePagination";
 import { useSeo } from "~~/composables/useSeo";
 
 const { t, locale } = useLang();
@@ -23,6 +24,11 @@ const postsUrl = computed(() => {
 const { data: tags, pending: tagsPending } = await useTags();
 const { data: posts, pending: postsPending } = await useApi<PostListResponse>(postsUrl);
 const pending = computed(() => tagsPending.value || postsPending.value);
+
+// Windowed, ellipsis-aware pagination buttons (RIL TASK-083, ISS-052).
+const paginationTokens = computed(() =>
+	paginationPages(posts.value?.pagination?.total_pages ?? 0, posts.value?.pagination?.page ?? 1),
+);
 
 // Look up the tag name for SEO when a tag is selected
 const tagName = computed(() =>
@@ -136,21 +142,24 @@ useSeo(() => ({
           </div>
         </div>
 
-        <!-- Pagination -->
+        <!-- Pagination (windowed with ellipsis, RIL TASK-083) -->
         <div
           v-if="posts.pagination.total_pages > 1"
           class="flex justify-center gap-2 mt-8"
         >
           <button
-            v-for="pg in posts.pagination.total_pages"
-            :key="pg"
+            v-for="(pg, i) in paginationTokens"
+            :key="pg === '…' ? `ellipsis-${i}` : pg"
+            :disabled="pg === '…'"
             :class="[
               'px-3 py-1 rounded',
-              pg === posts.pagination.page
-                ? 'bg-blue-600 text-white'
-                : 'border hover:bg-gray-50',
+              pg === '…'
+                ? 'cursor-default text-gray-400'
+                : pg === posts.pagination.page
+                  ? 'bg-blue-600 text-white'
+                  : 'border hover:bg-gray-50',
             ]"
-            @click="navigateTo({ query: { tag_id: String(tagId), page: pg } })"
+            @click="pg !== '…' && navigateTo({ query: { tag_id: tagId ? String(tagId) : undefined, page: pg } })"
           >
             {{ pg }}
           </button>

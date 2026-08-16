@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 72,
+  "round": 73,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-08-16T15:03:43+00:00",
+  "updated_at": "2026-08-16T15:17:57+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -4327,6 +4327,32 @@
       "touched_round": 72,
       "commit": "5b30ff9",
       "title": "CJK-aware reading time"
+    },
+    "ISS-052": {
+      "id": "ISS-052",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-08-16T15:04:23+00:00",
+      "updated_at": "2026-08-16T15:17:57+00:00",
+      "touched_round": 72,
+      "title": "Feed pagination renders every page number (no window) -> overflow on large blogs",
+      "severity": 0.3
+    },
+    "TASK-083": {
+      "id": "TASK-083",
+      "type": "task",
+      "status": "resolved",
+      "version": 4,
+      "created_at": "2026-08-16T15:04:23+00:00",
+      "updated_at": "2026-08-16T15:17:57+00:00",
+      "touched_round": 72,
+      "category": "dx",
+      "severity": 0.3,
+      "confidence": 1.0,
+      "effort": 3.0,
+      "unlock_factor": 1.0,
+      "title": "Window feed pagination with ellipsis across index/tags/categories/search"
     }
   },
   "edges": [
@@ -5902,6 +5928,12 @@
       "to": "ISS-051",
       "type": "resolves",
       "created_at": "2026-08-16T15:03:43+00:00"
+    },
+    {
+      "from": "TASK-083",
+      "to": "ISS-052",
+      "type": "addresses",
+      "created_at": "2026-08-16T15:04:23+00:00"
     }
   ]
 }

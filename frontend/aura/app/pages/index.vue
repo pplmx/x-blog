@@ -6,6 +6,7 @@ import {
 	usePopularPosts,
 	useTags,
 } from "~~/composables/useApi";
+import { paginationPages } from "~~/composables/usePagination";
 import { useSeo } from "~~/composables/useSeo";
 
 const { t } = useLang();
@@ -75,6 +76,13 @@ useSeo({
 	description: t("home.seo.description"),
 	path: "/",
 });
+
+// Windowed, ellipsis-aware pagination buttons (RIL TASK-083, ISS-052): render
+// the first, current±window and last page joined by "…" instead of one button
+// per page, so large blogs don't overflow the layout.
+const paginationTokens = computed(() =>
+	paginationPages(posts.value?.pagination?.total_pages ?? 0, posts.value?.pagination?.page ?? 1),
+);
 
 function fetchPosts(pageNum: number) {
 	// Update page ref first — this triggers useFetch re-fetch via watch
@@ -227,18 +235,21 @@ const stats = computed(() => {
         <div v-else-if="posts?.items?.length" class="space-y-5">
           <PostCard v-for="post in posts.items" :key="post.id" :post="post" />
 
-          <!-- Pagination -->
+          <!-- Pagination (windowed with ellipsis, RIL TASK-083) -->
           <div v-if="posts.pagination.total_pages > 1" class="flex items-center justify-center gap-2 mt-8">
             <button
-              v-for="pg in posts.pagination.total_pages"
-              :key="pg"
+              v-for="(pg, i) in paginationTokens"
+              :key="pg === '…' ? `ellipsis-${i}` : pg"
+              :disabled="pg === '…'"
               :class="[
                 'w-9 h-9 rounded-xl text-sm font-medium transition-all duration-200',
-                pg === posts.pagination.page
-                  ? 'bg-blue-600 text-white shadow-md shadow-blue-500/20'
-                  : 'border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800',
+                pg === '…'
+                  ? 'cursor-default text-gray-400 dark:text-gray-500'
+                  : pg === posts.pagination.page
+                    ? 'bg-blue-600 text-white shadow-md shadow-blue-500/20'
+                    : 'border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800',
               ]"
-              @click="fetchPosts(pg)"
+              @click="pg !== '…' && fetchPosts(pg)"
             >
               {{ pg }}
             </button>
