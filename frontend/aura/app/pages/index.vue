@@ -1,5 +1,10 @@
 <script setup lang="ts">
-import { type PostListResponse, usePopularPosts } from "~~/composables/useApi";
+import {
+	type PostListResponse,
+	useCategories,
+	usePopularPosts,
+	useTags,
+} from "~~/composables/useApi";
 import { useSeo } from "~~/composables/useSeo";
 
 const { t } = useLang();
@@ -9,13 +14,31 @@ const route = useRoute();
 // Synced from route.query.page on init and when browser back/forward runs.
 const page = ref(Number(route.query.page) || 1);
 
-// Build URL from the page ref.  Because useFetch watches `page`, changes
-// trigger a re-fetch with the new URL.
+// Category/tag filter refs, driven by the route query. The sitemap and shared
+// links use /?category_id=X and /?tag_id=X as deep-link browse URLs, so the
+// home feed must honour them (previously ignored → unfiltered feed).
+const categoryId = computed(() =>
+	route.query.category_id ? Number.parseInt(String(route.query.category_id), 10) : undefined,
+);
+const tagId = computed(() =>
+	route.query.tag_id ? Number.parseInt(String(route.query.tag_id), 10) : undefined,
+);
+
+// Build URL from the page + filter refs.  Because useFetch watches these,
+// changes trigger a re-fetch with the new URL.
 const apiUrl = computed(() => {
 	const params = new URLSearchParams();
 	params.set("page", String(page.value));
 	params.set("limit", "10");
+	if (categoryId.value) params.set("category_id", String(categoryId.value));
+	if (tagId.value) params.set("tag_id", String(tagId.value));
 	return `/api/posts?${params.toString()}`;
+});
+
+// Reset to page 1 when the active category/tag filter changes, so we don't
+// land past the end of a newly filtered result set.
+watch([categoryId, tagId], () => {
+	if (page.value !== 1) page.value = 1;
 });
 
 const config = useRuntimeConfig();
@@ -25,10 +48,25 @@ const {
 	error,
 } = await useFetch<PostListResponse>(apiUrl, {
 	baseURL: config.public.apiUrl,
-	watch: [page],
+	watch: [page, categoryId, tagId],
 });
 
 const { data: popularPosts } = await usePopularPosts();
+
+// Look up active filter labels for the "filtered by" indicator (deep-link UX).
+const { data: categories } = await useCategories();
+const { data: tags } = await useTags();
+const activeFilterLabel = computed(() => {
+	if (categoryId.value && categories.value) {
+		const name = categories.value.find((c) => c.id === categoryId.value)?.name;
+		if (name) return name;
+	}
+	if (tagId.value && tags.value) {
+		const name = tags.value.find((tg) => tg.id === tagId.value)?.name;
+		if (name) return name;
+	}
+	return undefined;
+});
 
 useSeo({
 	title: t("home.seo.title"),
@@ -39,8 +77,11 @@ useSeo({
 function fetchPosts(pageNum: number) {
 	// Update page ref first — this triggers useFetch re-fetch via watch
 	page.value = pageNum;
-	// Then update the URL so the page is bookmarkable
-	navigateTo({ query: { page: pageNum } });
+	// Then update the URL so the page is bookmarkable (preserve active filters)
+	const query: Record<string, string> = { page: String(pageNum) };
+	if (categoryId.value) query.category_id = String(categoryId.value);
+	if (tagId.value) query.tag_id = String(tagId.value);
+	navigateTo({ query });
 }
 
 // Sync page ref from URL when browser back / forward changes the route
@@ -139,10 +180,28 @@ const stats = computed(() => {
         </div>
 
         <!-- Section heading -->
-        <h2 class="text-lg font-bold text-gray-900 dark:text-gray-100 mb-4 flex items-center gap-2">
-          <Icon icon="lucide:clock" class="w-5 h-5 text-blue-500" />
-          {{ t("home.sections.latest") }}
-        </h2>
+        <div class="flex items-center justify-between mb-4 flex-wrap gap-2">
+          <h2 class="text-lg font-bold text-gray-900 dark:text-gray-100 flex items-center gap-2">
+            <Icon icon="lucide:clock" class="w-5 h-5 text-blue-500" />
+            {{ t("home.sections.latest") }}
+          </h2>
+
+          <!-- Active filter indicator (deep-link /?category_id= or /?tag_id=) -->
+          <div
+            v-if="activeFilterLabel"
+            class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-blue-50 dark:bg-blue-950/50 border border-blue-100 dark:border-blue-900/40 text-sm text-blue-700 dark:text-blue-300"
+          >
+            {{ t("home.sections.filtered", { label: activeFilterLabel }) }}
+            <button
+              type="button"
+              class="text-blue-500 hover:text-blue-700 dark:hover:text-blue-200 transition-colors font-semibold"
+              :aria-label="t('home.sections.clearFilter')"
+              @click="navigateTo({ query: { page: '1' } })"
+            >
+              {{ t("home.sections.clearFilter") }}
+            </button>
+          </div>
+        </div>
 
         <!-- Loading skeleton -->
         <div v-if="pending" class="space-y-4">

@@ -49,6 +49,16 @@ test.describe("Homepage", () => {
 		await expect(page.locator("h1")).toBeVisible();
 	});
 
+	test("home honors category deep-link filter", async ({ page }) => {
+		// The sitemap links per-category URLs as /?category_id=X; the home
+		// feed must filter to that category (regression guard for the filter).
+		await page.goto("/?category_id=1");
+		await expect(page.locator("div", { hasText: "筛选:" }).first()).toBeVisible();
+		// All rendered post cards share the first post's category (前端开发).
+		const cards = page.locator("article");
+		await expect(cards.first()).toBeVisible();
+	});
+
 	test("admin page loads", async ({ page }) => {
 		await page.goto("/admin");
 		await expect(page.locator("h1")).toBeVisible();

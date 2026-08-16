@@ -2,7 +2,7 @@
   "ril_version": 1,
   "round": 33,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-08-16T04:54:51+00:00",
+  "updated_at": "2026-08-16T04:56:46+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -2826,6 +2826,28 @@
       "source": "tests/app.spec.ts feed auto-discovery | tests/layouts/default.spec.ts RSS link | about.spec.ts + default.spec.ts zh footer | 679 frontend unit tests | biome clean | nuxt typecheck | browser: head alternate links + footer 订阅 link present; /rss/feed.xml and /rss/atom.xml served via proxy",
       "note": "Browser-verified: <link rel=alternate> RSS+Atom in head; footer 订阅 link type=application/rss+xml; feed.xml/atom.xml return valid XML through Nuxt server proxy. Also fixed zh footer localization bug (was untranslated English).",
       "confidence": 1.0
+    },
+    "DEC-031": {
+      "id": "DEC-031",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-16T04:56:46+00:00",
+      "updated_at": "2026-08-16T04:56:46+00:00",
+      "touched_round": 33,
+      "rationale": "Feature-evolution gap analysis (SKILL 11.2): the sitemap generates per-category URLs as {site_url}/?category_id={id} and per-tag URLs as {site_url}/?tag_id={id} (home filter URLs), but the home page (index.vue) ignores both query params --- it only passes page/limit to GET /api/posts, while the backend fully supports category_id/tag_id filters (crud.get_posts + posts router, cached). So every sitemap category/tag URL and any shared ?category_id=/?tag_id= link renders the unfiltered home feed (latent correctness bug + missing browse capability on the primary discovery path). Add category_id/tag_id support to the home page: pass them into useFetch, watch for route query changes, preserve filters across pagination, and only show when set. Pure frontend, no schema change; aligns home with the /categories and /tags pages.",
+      "alternatives_rejected": "(a) Rewrite sidebar to use /categories,/tags pages only - rejected: sitemap intentionally links home-filter URLs; home filtering is the intended deep-link contract. (b) Redirect ?category_id to /categories - rejected: changes SEO URLs, larger blast radius. (c) Global filters refactor - rejected: out of scope, higher risk."
+    },
+    "TASK-049": {
+      "id": "TASK-049",
+      "type": "task",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-16T04:56:46+00:00",
+      "updated_at": "2026-08-16T04:56:46+00:00",
+      "touched_round": 33,
+      "category": "core-feature",
+      "description": "Home page respect category_id/tag_id query filters (fixes sitemap deep-link contract + enables browse)"
     }
   },
   "edges": [

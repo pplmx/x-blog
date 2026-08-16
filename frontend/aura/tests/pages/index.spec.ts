@@ -28,6 +28,8 @@ const { mockState } = vi.hoisted(() => ({
 			slug: string;
 			views: number;
 		}>,
+		categories: [] as Array<{ id: number; name: string }>,
+		tags: [] as Array<{ id: number; name: string }>,
 	},
 }));
 
@@ -37,6 +39,12 @@ const { mockState } = vi.hoisted(() => ({
 vi.mock("../../composables/useApi", () => ({
 	usePopularPosts: () => ({
 		data: ref(mockState.popularPosts),
+	}),
+	useCategories: () => ({
+		data: ref(mockState.categories),
+	}),
+	useTags: () => ({
+		data: ref(mockState.tags),
 	}),
 }));
 
@@ -48,8 +56,9 @@ vi.mock("../../composables/useSeo", () => ({
 // Stub components defined as global components in mountIndexPage()
 
 // --- Stub Nuxt globals used by the page ---
-function setupNuxtStubs() {
-	vi.stubGlobal("useRoute", () => ({ path: "/", query: {} }));
+let lastFetchUrl: string = "";
+function setupNuxtStubs({ query = {} }: { query?: Record<string, string> } = {}) {
+	vi.stubGlobal("useRoute", () => ({ path: "/", query }));
 	vi.stubGlobal("navigateTo", vi.fn());
 	vi.stubGlobal("useRuntimeConfig", () => ({
 		public: { apiUrl: "http://localhost:18888", siteUrl: "http://localhost:3000" },
@@ -58,19 +67,23 @@ function setupNuxtStubs() {
 	// index.vue calls useFetch directly for the posts list with a computed URL
 	vi.stubGlobal(
 		"useFetch",
-		vi.fn(() => ({
-			data: ref(mockState.posts),
-			pending: ref(mockState.pending),
-			error: ref(mockState.error),
-			refresh: vi.fn(),
-		})),
+		vi.fn((url: string | (() => string) | { value: string }) => {
+			lastFetchUrl =
+				typeof url === "function" ? url() : typeof url === "string" ? url : (url.value ?? "");
+			return {
+				data: ref(mockState.posts),
+				pending: ref(mockState.pending),
+				error: ref(mockState.error),
+				refresh: vi.fn(),
+			};
+		}),
 	);
 	vi.stubGlobal("$fetch", vi.fn());
 }
 
 // --- Helper: mount the index page with a Suspense boundary ---
-async function mountIndexPage() {
-	setupNuxtStubs();
+async function mountIndexPage(options: { query?: Record<string, string> } = {}) {
+	setupNuxtStubs(options);
 
 	const { default: IndexPage } = await import("@/pages/index.vue");
 
@@ -161,6 +174,9 @@ function resetMockState() {
 	mockState.pending = false;
 	mockState.error = null;
 	mockState.popularPosts = [];
+	mockState.categories = [];
+	mockState.tags = [];
+	lastFetchUrl = "";
 }
 
 describe("Index Page", () => {
@@ -415,6 +431,77 @@ describe("Index Page", () => {
 			const wrapper = await mountIndexPage();
 			expect(wrapper.text()).toContain("搜索文章");
 			expect(wrapper.text()).toContain("关于本站");
+		});
+	});
+
+	describe("Category/tag deep-link filtering", () => {
+		beforeEach(() => {
+			mockState.posts = mockPostsData;
+			mockState.categories = [
+				{ id: 1, name: "Tech" },
+				{ id: 2, name: "Design" },
+			];
+			mockState.tags = [{ id: 7, name: "Vue" }];
+		});
+
+		it("passes category_id to the posts API when the route query sets it", async () => {
+			await mountIndexPage({ query: { category_id: "1" } });
+			expect(lastFetchUrl).toContain("category_id=1");
+		});
+
+		it("passes tag_id to the posts API when the route query sets it", async () => {
+			await mountIndexPage({ query: { tag_id: "7" } });
+			expect(lastFetchUrl).toContain("tag_id=7");
+		});
+
+		it("passes no filter params when neither is set", async () => {
+			await mountIndexPage();
+			expect(lastFetchUrl).not.toContain("category_id=");
+			expect(lastFetchUrl).not.toContain("tag_id=");
+		});
+
+		it("shows an active filter indicator with the category name", async () => {
+			const wrapper = await mountIndexPage({ query: { category_id: "1" } });
+			expect(wrapper.text()).toContain("筛选");
+			expect(wrapper.text()).toContain("Tech");
+		});
+
+		it("shows an active filter indicator with the tag name", async () => {
+			const wrapper = await mountIndexPage({ query: { tag_id: "7" } });
+			expect(wrapper.text()).toContain("筛选");
+			expect(wrapper.text()).toContain("Vue");
+		});
+
+		it("does not show a filter indicator when no filter is active", async () => {
+			const wrapper = await mountIndexPage();
+			expect(wrapper.text()).not.toContain("筛选");
+		});
+
+		it("preserves the active filter when navigating pages", async () => {
+			mockState.posts = {
+				...mockPostsData,
+				pagination: { total: 20, page: 1, limit: 10, total_pages: 2 },
+			};
+			const wrapper = await mountIndexPage({ query: { category_id: "1" } });
+
+			// Override the navigateTo stub AFTER mount so it captures calls
+			const navigateToMock = vi.fn();
+			vi.stubGlobal("navigateTo", navigateToMock);
+
+			// Click a pagination button (rendered because total_pages > 1)
+			const pageButtons = wrapper
+				.findAll("button")
+				.filter((b) => b.text() === "2" || b.text() === "1");
+			expect(pageButtons.length).toBeGreaterThanOrEqual(1);
+			const pageTwo = pageButtons.find((b) => b.text() === "2");
+			expect(pageTwo).toBeDefined();
+			if (!pageTwo) throw new Error("expected a page-2 button");
+			await pageTwo.trigger("click");
+
+			// navigateTo must keep the active category filter alongside the page
+			expect(navigateToMock).toHaveBeenCalledWith({
+				query: { page: "2", category_id: "1" },
+			});
 		});
 	});
 });

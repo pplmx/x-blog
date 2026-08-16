@@ -21,7 +21,9 @@
 		},
 		"sections": {
 			"popular": "Popular Articles",
-			"latest": "Latest Articles"
+			"latest": "Latest Articles",
+			"filtered": "Filtered: {label}",
+			"clearFilter": "X Clear"
 		},
 		"empty": {
 			"posts": "No articles yet"
