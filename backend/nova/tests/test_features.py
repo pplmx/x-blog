@@ -149,3 +149,57 @@ def test_export_comments_csv(client, auth_headers, db_session):
     response = client.get("/api/export/comments.csv", headers=auth_headers)
     assert response.status_code == 200
     assert "text/csv" in response.headers["content-type"]
+
+
+def test_posts_list_reading_time(client, db_session):
+    """Test that /api/posts surfaces reading_time derived from content length."""
+    # 1200 space-separated words -> 1200/200 = 6 min (frontend formula)
+    post = models.Post(
+        title="Long Post",
+        slug="long-post",
+        content="word " * 1200,
+        published=True,
+    )
+    db_session.add(post)
+    db_session.commit()
+
+    response = client.get("/api/posts")
+    assert response.status_code == 200
+    data = response.json()
+    item = next(i for i in data["items"] if i["slug"] == "long-post")
+    assert item["reading_time"] == 6
+
+
+def test_related_posts_reading_time(client, db_session):
+    """Test that related/popular PostList responses include reading_time."""
+    category = models.Category(name="Tech")
+    db_session.add(category)
+    db_session.commit()
+
+    post1 = models.Post(
+        title="Post 1",
+        slug="post-rt-1",
+        content="word " * 400,  # 400/200 = 2 min
+        published=True,
+        category_id=category.id,
+        views=100,
+    )
+    post2 = models.Post(
+        title="Post 2",
+        slug="post-rt-2",
+        content="word " * 800,  # 800/200 = 4 min
+        published=True,
+        category_id=category.id,
+        views=50,
+    )
+    db_session.add(post1)
+    db_session.add(post2)
+    db_session.commit()
+
+    related = client.get(f"/api/posts/{post1.id}/related")
+    assert related.status_code == 200
+    assert all("reading_time" in p for p in related.json())
+
+    popular = client.get("/api/posts/popular/list")
+    assert popular.status_code == 200
+    assert all("reading_time" in p for p in popular.json())

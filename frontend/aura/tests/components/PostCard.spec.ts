@@ -164,6 +164,18 @@ describe("PostCard", () => {
 		});
 	});
 
+	describe("reading time display", () => {
+		it("renders the reading time when present", () => {
+			const wrapper = mountPostCard({ ...mockPost, reading_time: 5 });
+			expect(wrapper.text()).toContain("5 分钟");
+		});
+
+		it("does not render a reading time when absent", () => {
+			const wrapper = mountPostCard();
+			expect(wrapper.text()).not.toContain("分钟");
+		});
+	});
+
 	describe("bookmark", () => {
 		it("renders a bookmark button", () => {
 			const wrapper = mountPostCard();

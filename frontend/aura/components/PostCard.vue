@@ -59,6 +59,14 @@ const date = computed(() =>
             {{ date }}
           </span>
           <span
+            v-if="post.reading_time"
+            class="flex items-center gap-1"
+            :title="t('components.postCard.readingTime', { count: post.reading_time })"
+          >
+            <Icon icon="lucide:clock" class="w-4 h-4" />
+            {{ t('components.postCard.readingTime', { count: post.reading_time }) }}
+          </span>
+          <span
             v-if="post.category"
             class="px-3 py-1 bg-gradient-to-r from-gray-50 dark:from-gray-800 to-gray-100 dark:to-gray-700 rounded-full text-xs font-medium text-gray-600 dark:text-gray-300"
           >

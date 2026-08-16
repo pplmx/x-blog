@@ -113,6 +113,19 @@ class Post(PostBase):
     model_config = ConfigDict(from_attributes=True)
 
 
+def reading_minutes(content: str | None) -> int:
+    """Estimate reading time in minutes from Markdown content.
+
+    Mirrors the frontend formula in `posts/[slug].vue` (words / 200, floor at
+    1) so list cards and the detail page agree on article length. Punctuation
+    and markup are stripped before counting words.
+    """
+    if not content:
+        return 1
+    words = len(re.sub(r"[#*`\n]", " ", content).split())
+    return max(1, round(words / 200))
+
+
 class PostList(BaseModel):
     id: int
     title: str
@@ -125,6 +138,7 @@ class PostList(BaseModel):
     views: int = 0
     likes: int = 0
     comment_count: int = 0
+    reading_time: int = 1
     cover_image: str | None = None
     category: Category | None = None
     tags: list[Tag] = []

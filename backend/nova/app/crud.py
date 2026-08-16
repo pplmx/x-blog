@@ -94,6 +94,7 @@ def get_posts(
         comment_counts = {post_id: int(count) for post_id, count in rows}
         for p in posts:
             p.comment_count = comment_counts.get(p.id, 0)
+            p.reading_time = schemas.reading_minutes(p.content or "")
 
     return posts, total
 
@@ -612,7 +613,7 @@ def increment_likes(db: Session, post_id: int) -> models.Post | None:
 def get_popular_posts(db: Session, limit: int = 5) -> list[models.Post]:
     """Get the most popular posts by view count."""
     now = utc_now_naive()
-    return (
+    posts = (
         db.query(models.Post)
         .filter(
             models.Post.published.is_(True),
@@ -626,6 +627,9 @@ def get_popular_posts(db: Session, limit: int = 5) -> list[models.Post]:
         .limit(limit)
         .all()
     )
+    for p in posts:
+        p.reading_time = schemas.reading_minutes(p.content or "")
+    return posts
 
 
 def get_related_posts(db: Session, post_id: int, limit: int = 5) -> list[models.Post]:
@@ -644,7 +648,7 @@ def get_related_posts(db: Session, post_id: int, limit: int = 5) -> list[models.
         )
         if post and post.category_id:
             query = query.filter(models.Post.category_id == post.category_id)
-        return (
+        posts = (
             query.options(
                 joinedload(models.Post.category),
                 joinedload(models.Post.tags),
@@ -653,6 +657,9 @@ def get_related_posts(db: Session, post_id: int, limit: int = 5) -> list[models.
             .limit(limit)
             .all()
         )
+        for p in posts:
+            p.reading_time = schemas.reading_minutes(p.content or "")
+        return posts
 
     # Get tag IDs of the source post
     source_tag_ids = [t.id for t in post.tags]
@@ -720,4 +727,7 @@ def get_related_posts(db: Session, post_id: int, limit: int = 5) -> list[models.
     results = query.limit(limit).all()
 
     # Extract posts from results (strip the extra columns)
-    return [row[0] for row in results]
+    posts = [row[0] for row in results]
+    for p in posts:
+        p.reading_time = schemas.reading_minutes(p.content or "")
+    return posts

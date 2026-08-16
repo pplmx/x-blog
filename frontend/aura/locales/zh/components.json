@@ -44,7 +44,8 @@
 			"copyCode": "复制代码"
 		},
 		"postCard": {
-			"pinned": "置顶"
+			"pinned": "置顶",
+			"readingTime": "{count} 分钟"
 		}
 	}
 }
