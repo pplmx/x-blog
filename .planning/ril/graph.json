@@ -2,7 +2,7 @@
   "ril_version": 1,
   "round": 52,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-08-16T07:17:32+00:00",
+  "updated_at": "2026-08-16T07:47:47+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -3409,7 +3409,7 @@
       "version": 2,
       "created_at": "2026-08-16T06:52:13+00:00",
       "updated_at": "2026-08-16T07:03:28+00:00",
-      "touched_round": 49,
+      "touched_round": 52,
       "category": "core-feature",
       "description": "Add unsaved-changes guard (dirty tracking + beforeunload + route-leave confirm) to admin post editor"
     },
@@ -3443,7 +3443,7 @@
       "version": 2,
       "created_at": "2026-08-16T07:04:06+00:00",
       "updated_at": "2026-08-16T07:12:44+00:00",
-      "touched_round": 50,
+      "touched_round": 52,
       "severity": "medium",
       "description": "Comment reply threading loses deep replies: CommentList groups comments into topLevel (parent_id===null) + one level of repliesByParent. But create_comment allows replying to ANY approved comment, so a reply-to-a-reply has parent_id pointing at another reply; its ancestor chain isn't followed and it never renders (topLevelComments excludes it, and it isn't a direct child of a top-level comment). Deep replies silently disappear from the post comment UI."
     },
@@ -3479,6 +3479,29 @@
       "touched_round": 50,
       "source": "tests/components/CommentList.spec.ts deep-reply tests | 708 frontend unit tests | nuxt typecheck | biome OK | browser: post page renders top-level -> reply -> reply-to-reply (L2 二级深层回复) nested, previously dropped",
       "note": "CommentList now builds a full descendant tree (recurse childrenByParent) with top-level = no parent or parent not on page. Replies-to-replies stay under their top-level ancestor. Browser-verified live chain.",
+      "confidence": 1.0
+    },
+    "CHG-054": {
+      "id": "CHG-054",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-16T07:47:40+00:00",
+      "updated_at": "2026-08-16T07:47:40+00:00",
+      "touched_round": 52,
+      "commit": "2eddda5f2b16c1622948b1113ebc04a4cc09a538",
+      "description": "Add .search-input class to admin posts filter + scope admin-search e2e test to main (header search feature from round 4 had hijacked the selectors)"
+    },
+    "EV-072": {
+      "id": "EV-072",
+      "type": "evidence",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-16T07:47:47+00:00",
+      "updated_at": "2026-08-16T07:47:47+00:00",
+      "touched_round": 52,
+      "source": "playwright e2e admin-posts-edit search/filter (was failing, now passes) | admin-login logout passes isolated (flake) | 708 frontend unit tests | biome+typecheck clean",
+      "note": "The round-4 home-header-search feature added a global type=search combobox that hijacked the admin posts search/filter e2e test's selector (previously dormant, always skipped). Scoped the test to main and tagged the admin filter with .search-input; both previously-failing admin e2e tests now pass.",
       "confidence": 1.0
     }
   },
@@ -4749,6 +4772,12 @@
       "to": "TASK-062",
       "type": "implements",
       "created_at": "2026-08-16T07:12:44+00:00"
+    },
+    {
+      "from": "TASK-061",
+      "to": "ISS-037",
+      "type": "addresses",
+      "created_at": "2026-08-16T07:47:47+00:00"
     }
   ]
 }
