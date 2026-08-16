@@ -18,11 +18,13 @@ import { ref } from "vue";
 // (matching Nuxt's resolution), so vi.mock can intercept the specifier.
 // vi.hoisted ensures the mock function is created before the factory runs
 // (vi.mock is hoisted to the top of the file).
-const { mockFetchComments } = vi.hoisted(() => ({
+const { mockFetchComments, mockCreateComment } = vi.hoisted(() => ({
 	mockFetchComments: vi.fn(),
+	mockCreateComment: vi.fn(),
 }));
 vi.mock("~/composables/useApi", () => ({
 	fetchComments: mockFetchComments,
+	createComment: mockCreateComment,
 }));
 
 import CommentList from "../../components/CommentList.vue";
@@ -231,6 +233,85 @@ describe("CommentList", () => {
 			});
 			const nav = wrapper.find("nav");
 			expect(nav.exists()).toBe(false);
+		});
+	});
+
+	describe("Threaded replies", () => {
+		const threadedComments = {
+			items: [
+				{
+					id: 1,
+					post_id: 1,
+					parent_id: null,
+					nickname: "Alice",
+					email: "alice@test.com",
+					content: "Top-level comment",
+					is_approved: true,
+					ip_address: "127.0.0.1",
+					created_at: "2024-01-15T10:30:00Z",
+				},
+				{
+					id: 2,
+					post_id: 1,
+					parent_id: 1,
+					nickname: "Bob",
+					email: "bob@test.com",
+					content: "A reply to Alice",
+					is_approved: true,
+					ip_address: "127.0.0.1",
+					created_at: "2024-01-16T10:30:00Z",
+				},
+				{
+					id: 3,
+					post_id: 1,
+					parent_id: null,
+					nickname: "Carol",
+					email: "carol@test.com",
+					content: "Another top-level",
+					is_approved: true,
+					ip_address: "127.0.0.1",
+					created_at: "2024-01-17T10:30:00Z",
+				},
+			],
+			total: 3,
+			total_pages: 1,
+			page: 1,
+			limit: 20,
+		};
+
+		it("shows a Reply button on each top-level comment", async () => {
+			const { wrapper } = await mountCommentList({ comments: threadedComments });
+			expect(wrapper.text()).toContain("回复");
+		});
+
+		it("renders replies nested under their parent (not as top-level)", async () => {
+			const { wrapper } = await mountCommentList({ comments: threadedComments });
+			expect(wrapper.text()).toContain("A reply to Alice");
+			// Both top-level comments are anchors of list items; the reply is
+			// nested inside Alice's li.
+			const aliceLi = wrapper.findAll("li").find((li) => li.text().includes("Top-level comment"));
+			expect(aliceLi).toBeDefined();
+			expect(aliceLi?.text()).toContain("A reply to Alice");
+		});
+
+		it("does not render a top-level li for a reply", async () => {
+			const { wrapper } = await mountCommentList({ comments: threadedComments });
+			// Reply content should only appear once (nested), not as its own item
+			const replyOccurrences = wrapper.text().split("A reply to Alice").length - 1;
+			expect(replyOccurrences).toBe(1);
+		});
+
+		it("opens an inline reply form when Reply is clicked", async () => {
+			const { wrapper } = await mountCommentList({ comments: threadedComments });
+			const replyBtn = wrapper.findAll("button").find((b) => b.text() === "回复");
+			expect(replyBtn).toBeDefined();
+			if (!replyBtn) throw new Error("expected a reply button");
+			await replyBtn.trigger("click");
+			await flushPromises();
+			// CommentForm is mocked at the module level in a sibling spec, but
+			// here the real CommentForm renders; at minimum a textarea appears.
+			expect(wrapper.find("textarea").exists()).toBe(true);
+			expect(wrapper.text()).toContain("正在回复");
 		});
 	});
 });

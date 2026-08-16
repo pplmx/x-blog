@@ -14,11 +14,16 @@
 			"submitting": "Submitting...",
 			"submit": "Post comment",
 			"submitFailed": "Failed to submit comment. Please try again.",
-			"submitSuccess": "Comment submitted successfully, awaiting review!"
+			"submitSuccess": "Comment submitted successfully, awaiting review!",
+			"cancelReply": "Cancel reply",
+			"replyingTo": "Replying to {name}"
 		},
 		"commentList": {
 			"title": "Comments",
-			"empty": "No comments yet — be the first to comment!"
+			"empty": "No comments yet — be the first to comment!",
+			"reply": "Reply",
+			"cancelReply": "Cancel reply",
+			"replyingTo": "Replying to {name}"
 		},
 		"share": {
 			"shareTo": "Share to",

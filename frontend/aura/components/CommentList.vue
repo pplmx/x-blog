@@ -23,7 +23,7 @@
     <!-- Comment list -->
     <ul v-else class="space-y-4">
       <li
-        v-for="comment in comments"
+        v-for="comment in topLevelComments"
         :key="comment.id"
         class="border border-gray-100 dark:border-gray-700 rounded-lg p-3"
       >
@@ -34,8 +34,43 @@
               <span class="text-xs text-gray-500 dark:text-gray-400">{{ formatDate(comment.created_at) }}</span>
             </div>
             <p class="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap">{{ comment.content }}</p>
+
+            <button
+              type="button"
+              class="mt-2 text-xs text-blue-500 hover:text-blue-700 dark:hover:text-blue-300 transition-colors"
+              @click="toggleReply(comment)"
+            >
+              {{ replyTo?.id === comment.id ? t('components.commentList.cancelReply') : t('components.commentList.reply') }}
+            </button>
+
+            <!-- Inline reply form -->
+            <div v-if="replyTo?.id === comment.id" class="mt-3">
+              <CommentForm
+                :post-id="props.postId"
+                :parent-id="comment.id"
+                :replying-to="comment.nickname"
+                :submit-label="t('components.commentList.reply')"
+                @submitted="handleReplied"
+                @cancel="replyTo = null"
+              />
+            </div>
           </div>
         </div>
+
+        <!-- Nested replies -->
+        <ul v-if="repliesByParent.get(comment.id)?.length" class="mt-3 space-y-3 pl-4 border-l-2 border-gray-200 dark:border-gray-700">
+          <li
+            v-for="reply in repliesByParent.get(comment.id)"
+            :key="reply.id"
+            class="bg-gray-50 dark:bg-gray-800/50 rounded-lg p-3"
+          >
+            <div class="flex items-center gap-2 mb-1">
+              <span class="font-medium text-sm text-gray-900 dark:text-gray-100">{{ reply.nickname }}</span>
+              <span class="text-xs text-gray-500 dark:text-gray-400">{{ formatDate(reply.created_at) }}</span>
+            </div>
+            <p class="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap">{{ reply.content }}</p>
+          </li>
+        </ul>
       </li>
     </ul>
 
@@ -64,7 +99,8 @@
 
 <script setup lang="ts">
 import { computed, ref } from "vue";
-import { fetchComments } from "~~/composables/useApi";
+import { type Comment, fetchComments } from "~~/composables/useApi";
+import CommentForm from "./CommentForm.vue";
 
 interface Props {
 	postId: number;
@@ -81,6 +117,38 @@ const total = computed(() => commentData.value?.total || 0);
 const totalPages = computed(() => commentData.value?.total_pages || 0);
 const currentPage = ref(1);
 
+// Thread the paginated flat list: top-level comments are those with no parent;
+// their direct replies (in the same page's items) nest beneath them by parent_id.
+const topLevelComments = computed(() => comments.value.filter((c) => c.parent_id === null));
+const repliesByParent = computed(() => {
+	const map = new Map<number, Comment[]>();
+	for (const c of comments.value) {
+		if (c.parent_id !== null) {
+			const list = map.get(c.parent_id) ?? [];
+			list.push(c);
+			map.set(c.parent_id, list);
+		}
+	}
+	return map;
+});
+
+// Expand a top-level comment into itself plus its nested replies (one level).
+const replyTo = ref<{ id: number; nickname: string } | null>(null);
+
+function toggleReply(comment: Comment) {
+	replyTo.value =
+		replyTo.value?.id === comment.id ? null : { id: comment.id, nickname: comment.nickname };
+}
+
+async function refreshList() {
+	commentData.value = (await fetchComments(props.postId, currentPage.value, 20)).data.value;
+}
+
+async function handleReplied() {
+	await refreshList();
+	replyTo.value = null;
+}
+
 const visiblePages = computed(() => {
 	const pages = [];
 	const maxVisible = 5;
@@ -95,8 +163,7 @@ const visiblePages = computed(() => {
 
 async function loadPage(page: number) {
 	currentPage.value = page;
-	const result = await fetchComments(props.postId, page, 20);
-	commentData.value = result.data.value;
+	await refreshList();
 }
 
 function formatDate(dateStr: string): string {

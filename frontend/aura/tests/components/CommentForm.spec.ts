@@ -152,6 +152,7 @@ describe("CommentForm", () => {
 				nickname: "Alice",
 				email: "alice@test.com",
 				content: "Great post!",
+				parent_id: null,
 			});
 		});
 	});

@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 38,
+  "round": 39,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-08-16T05:42:31+00:00",
+  "updated_at": "2026-08-16T05:44:19+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -3096,6 +3096,28 @@
       "source": "tests/test_rss.py test_sitemap_includes_static_pages (asserts /tags) | 586 backend pytest passed | ruff clean",
       "note": "Sitemap now includes /tags alongside /categories and other top-level pages; backend test asserts it.",
       "confidence": 1.0
+    },
+    "DEC-036": {
+      "id": "DEC-036",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-16T05:44:19+00:00",
+      "updated_at": "2026-08-16T05:44:19+00:00",
+      "touched_round": 39,
+      "rationale": "Feature gap: README advertises 'Nested comment support with replies', and the backend fully implements threaded comments --- Comment.parent_id + replies relationship (models.py), CommentCreate.parent_id + Comment.parent_id in schemas, create_comment validates parent belongs to the post and is approved (crud.py), all backend-tested --- but the public frontend (components/CommentList.vue + CommentForm.vue) renders comments as a flat list with NO reply button, no nested rendering, and the form never sends parent_id. The entire advertised replies feature is invisible to users on the primary post page. Add client-side reply UI: a Reply button per comment toggling an inline reply form, post a new comment with parent_id, and render approved replies nested under their parent. Pure frontend; the backend contract already exists and is tested.",
+      "alternatives_rejected": "(a) Backend threaded-tree endpoint restoring full reply trees - rejected: existing paginated flat list + parent_id is enough for top-level comments with their direct replies; a full tree API is larger blast radius. (b) Email/notify on reply - needs SMTP, deferred. (c) Sort replies - out of scope, no user value now."
+    },
+    "TASK-055": {
+      "id": "TASK-055",
+      "type": "task",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-16T05:44:19+00:00",
+      "updated_at": "2026-08-16T05:44:19+00:00",
+      "touched_round": 39,
+      "category": "core-feature",
+      "description": "Add comment reply UI: Reply button + inline form (parent_id) + nested rendering in CommentForm/CommentList"
     }
   },
   "edges": [
