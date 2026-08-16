@@ -2,7 +2,7 @@
   "ril_version": 1,
   "round": 39,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-08-16T05:44:19+00:00",
+  "updated_at": "2026-08-16T05:54:21+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -3111,13 +3111,36 @@
     "TASK-055": {
       "id": "TASK-055",
       "type": "task",
-      "status": "active",
-      "version": 1,
+      "status": "resolved",
+      "version": 2,
       "created_at": "2026-08-16T05:44:19+00:00",
-      "updated_at": "2026-08-16T05:44:19+00:00",
+      "updated_at": "2026-08-16T05:54:21+00:00",
       "touched_round": 39,
       "category": "core-feature",
       "description": "Add comment reply UI: Reply button + inline form (parent_id) + nested rendering in CommentForm/CommentList"
+    },
+    "CHG-046": {
+      "id": "CHG-046",
+      "type": "change",
+      "status": "active",
+      "version": 2,
+      "created_at": "2026-08-16T05:54:14+00:00",
+      "updated_at": "2026-08-16T05:54:21+00:00",
+      "touched_round": 39,
+      "commit": "d2cbc9f2475b29bba75d0fd32eae4591b5160db7",
+      "description": "Add comment reply UI: Reply button + inline form (parent_id) + nested rendering in CommentList/CommentForm (TASK-055)"
+    },
+    "EV-062": {
+      "id": "EV-062",
+      "type": "evidence",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-16T05:54:21+00:00",
+      "updated_at": "2026-08-16T05:54:21+00:00",
+      "touched_round": 39,
+      "source": "tests/components/CommentList.spec.ts + CommentForm.spec.ts (37 tests incl. threaded rendering, reply button, inline form, parent_id in createComment) | 699 frontend unit tests | nuxt typecheck | biome lint passes | browser: approved reply renders nested under parent; Reply button opens inline form with 正在回复 context",
+      "note": "Browser-verified after backend reply already created+approved: reply appears nested; reply UI complete. Backend reply contract (parent_id, create validation, approval) was pre-existing and tested.",
+      "confidence": 1.0
     }
   },
   "edges": [
@@ -4315,6 +4338,12 @@
       "to": "TASK-054",
       "type": "implements",
       "created_at": "2026-08-16T05:42:31+00:00"
+    },
+    {
+      "from": "CHG-046",
+      "to": "TASK-055",
+      "type": "implements",
+      "created_at": "2026-08-16T05:54:21+00:00"
     }
   ]
 }
