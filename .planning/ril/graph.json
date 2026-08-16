@@ -2,7 +2,7 @@
   "ril_version": 1,
   "round": 48,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-08-16T06:50:19+00:00",
+  "updated_at": "2026-08-16T06:51:14+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -1323,11 +1323,11 @@
     "ISS-016": {
       "id": "ISS-016",
       "type": "issue",
-      "status": "active",
-      "version": 2,
+      "status": "resolved",
+      "version": 3,
       "created_at": "2026-08-10T00:41:55+00:00",
-      "updated_at": "2026-08-10T00:57:13+00:00",
-      "touched_round": 16,
+      "updated_at": "2026-08-16T06:51:14+00:00",
+      "touched_round": 48,
       "severity": 0.5,
       "title": "Security audit findings (round 16): fix 3 MEDIUM + cheap LOWs; track deployment-bound items",
       "description": "Audit complete (EV-030). Fix this round: comment content max_length, JWT lifetime + token_version invalidation, upload streaming cap, markdown image sanitizeUrl, nginx nosniff, trusted-proxy-aware rate-limit key. Track (deployment-bound / low): admin endpoint rate limits, isomorphic-dompurify, upload re-encode."
@@ -3377,6 +3377,18 @@
       "touched_round": 47,
       "source": "tests/composables/useBookmarks.spec.ts shared-state test (stubbed useState) | 704 frontend unit tests | biome clean | nuxt typecheck | browser: bookmark on home card reflected on /bookmarks (SPA) AND hard-reload hydration shows seeded bookmark",
       "note": "useBookmarks now backs state with useState singleton (shared across BookmarkButton/Sidebar/bookmarks page) plus a one-time client hydration re-read so full page loads still load from localStorage. Vitest path stubs useState to verify sharing.",
+      "confidence": 1.0
+    },
+    "EV-069": {
+      "id": "EV-069",
+      "type": "evidence",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-16T06:51:09+00:00",
+      "updated_at": "2026-08-16T06:51:09+00:00",
+      "touched_round": 48,
+      "source": "Verified current source: schemas.py comment max_length 5000; auth.py JWT ver claim + ACCESS_TOKEN_EXPIRE_DAYS; upload.py read(MAX_SIZE+1) cap; deploy/nginx.conf + main.py nosniff; limiter.client_rate_key trusted-proxy-aware; useMarkdown.ts sanitizeUrl",
+      "note": "All six 'fix this round' security items in ISS-016 are implemented and tested in production source. The issue was left active historically; closing as audit-complete.",
       "confidence": 1.0
     }
   },
