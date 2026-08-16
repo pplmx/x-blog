@@ -39,6 +39,7 @@ class TagCreate(TagBase):
 
 class Tag(TagBase):
     id: int
+    post_count: int = 0
     model_config = ConfigDict(from_attributes=True)
 
 
@@ -53,6 +54,7 @@ class CategoryCreate(CategoryBase):
 
 class Category(CategoryBase):
     id: int
+    post_count: int = 0
     model_config = ConfigDict(from_attributes=True)
 
 

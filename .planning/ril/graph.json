@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 53,
+  "round": 54,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-08-16T08:15:55+00:00",
+  "updated_at": "2026-08-16T08:37:36+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -3548,6 +3548,28 @@
       "source": "tests/test_admin.py post_count assertions | 587 backend + 708 frontend unit tests | ruff+biome clean | nuxt typecheck",
       "note": "Admin categories/tags endpoints now return post_count via a single grouped COUNT each (categories by category_id; tags via post_tags join); admin pages render a count badge. Backward-compatible optional interface fields.",
       "confidence": 1.0
+    },
+    "DEC-041": {
+      "id": "DEC-041",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-16T08:37:36+00:00",
+      "updated_at": "2026-08-16T08:37:36+00:00",
+      "touched_round": 54,
+      "rationale": "Feature gap (SKILL 11.2): the public /categories and /tags browse pages render chips with only names — no per-item post count — so readers can't gauge content weight at a glance, and the admin side now shows counts (TASK-063) leaving a public/admin inconsistency. Add post_count to the public Category/Tag schema (default 0) + GET /api/categories & /api/tags grouped COUNT (no N+1), cache-safe (same backward-compatible pattern as comment_count).",
+      "alternatives_rejected": "(a) Skip — public Chips are navigational only - rejected: the admin now shows counts and consistency is cheap. (b) Frontend-only count via posts fetch - rejected: N+1. (c) Separate count endpoint - rejected: empty taxonomy would 404 before a count call."
+    },
+    "TASK-064": {
+      "id": "TASK-064",
+      "type": "task",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-16T08:37:36+00:00",
+      "updated_at": "2026-08-16T08:37:36+00:00",
+      "touched_round": 54,
+      "category": "core-feature",
+      "description": "Add post_count to public categories/tags endpoints + display on browse pages"
     }
   },
   "edges": [

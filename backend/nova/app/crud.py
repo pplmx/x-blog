@@ -224,6 +224,16 @@ def get_categories(db: Session) -> list[models.Category]:
     # Query database
     categories = db.query(models.Category).all()
 
+    # Post count per category in a single grouped query (no N+1).
+    counts = dict(
+        db.query(models.Post.category_id, func.count(models.Post.id))
+        .filter(models.Post.category_id.isnot(None))
+        .group_by(models.Post.category_id)
+        .all()
+    )
+    for cat in categories:
+        cat.post_count = counts.get(cat.id, 0)
+
     # Cache the result
     categories_cache[cache_key] = categories
     return categories
@@ -294,6 +304,15 @@ def get_tags(db: Session) -> list[models.Tag]:
 
     # Query database
     tags = db.query(models.Tag).all()
+
+    # Post count per tag through the many-to-many join, one grouped query.
+    counts = dict(
+        db.query(models.post_tags.c.tag_id, func.count(models.post_tags.c.post_id))
+        .group_by(models.post_tags.c.tag_id)
+        .all()
+    )
+    for tag in tags:
+        tag.post_count = counts.get(tag.id, 0)
 
     # Cache the result
     tags_cache[cache_key] = tags

@@ -78,7 +78,7 @@ useSeo({
           :to="{ query: { category_id: String(category.id) } }"
           class="px-5 py-2.5 bg-gradient-to-r from-purple-500 to-indigo-500 text-white rounded-xl text-sm font-medium hover:from-purple-600 hover:to-indigo-600 transition-all shadow-md hover:shadow-lg"
         >
-          {{ category.name }}
+          {{ category.name }} <span class="opacity-80 text-xs">({{ category.post_count ?? 0 }})</span>
         </NuxtLink>
       </div>
 

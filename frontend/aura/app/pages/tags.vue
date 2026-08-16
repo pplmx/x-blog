@@ -74,7 +74,7 @@ useSeo({
           :to="{ query: { tag_id: String(tag.id) } }"
           class="px-5 py-2.5 bg-gradient-to-r from-blue-500 to-indigo-500 text-white rounded-xl text-sm font-medium hover:from-blue-600 hover:to-indigo-600 transition-all shadow-md hover:shadow-lg"
         >
-          #{{ tag.name }}
+          #{{ tag.name }} <span class="opacity-80 text-xs">({{ tag.post_count ?? 0 }})</span>
         </NuxtLink>
       </div>
 

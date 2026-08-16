@@ -43,6 +43,8 @@ def test_list_tags(client, auth_headers):
     data = response.json()
     assert len(data) == 1
     assert data[0]["name"] == "Test Tag"
+    assert "post_count" in data[0]
+    assert isinstance(data[0]["post_count"], int)
 
 
 def test_get_tag(client, auth_headers):

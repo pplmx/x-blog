@@ -50,6 +50,10 @@ def test_list_categories(client, auth_headers):
     assert response.status_code == 200
     data = response.json()
     assert len(data) == 2
+    # Each category includes a post count (0 here: no posts reference them).
+    for cat in data:
+        assert "post_count" in cat
+        assert isinstance(cat["post_count"], int)
 
 
 def test_get_category(client, auth_headers):
