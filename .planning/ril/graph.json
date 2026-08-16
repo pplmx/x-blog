@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 41,
+  "round": 42,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-08-16T06:03:28+00:00",
+  "updated_at": "2026-08-16T06:05:43+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -3231,6 +3231,28 @@
       "source": "701 frontend unit tests (tags/categories/search page tests) | nuxt typecheck | biome clean | rounds 7+8 date-locale fixes now cover all public post-date surfaces",
       "note": "All public date-rendering surfaces (post, bookmarks, admin, categories, tags, search, PostCard, CommentList) now follow the active locale; no remaining toLocaleDateString() without locale in app/components.",
       "confidence": 1.0
+    },
+    "DEC-038": {
+      "id": "DEC-038",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-16T06:05:43+00:00",
+      "updated_at": "2026-08-16T06:05:43+00:00",
+      "touched_round": 42,
+      "rationale": "Feature gap (SKILL 11.2 engagement surface): post cards show views and likes but NOT comment count, even though the blog has a full comment system with replies (round 7) and README advertises engagement/reading analytics. Comment count on cards is a standard blog engagement signal users expect at a glance. Add comment_count to the PostList API schema (default 0, backward compatible) populated via a single grouped COUNT query in crud.get_posts (no N+1), and render it in PostCard next to views/likes. Cache-safe: serialized dicts carry the new defaulted field; existing cached entries lack it but PostList default 0 fills the gap until TTL expiry.",
+      "alternatives_rejected": "(a) Frontend-only per-card comment fetch - rejected: N+1 requests per card, wasteful and rate-limit-hostile. (b) Reuse admin comment count - rejected: admin uses a different auth'd endpoint not exposed on the public PostList. (c) Comment-count on home hero stats - rejected: reads are the card-level concern."
+    },
+    "TASK-058": {
+      "id": "TASK-058",
+      "type": "task",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-16T06:05:43+00:00",
+      "updated_at": "2026-08-16T06:05:43+00:00",
+      "touched_round": 42,
+      "category": "core-feature",
+      "description": "Add comment_count to PostList API + PostCard display"
     }
   },
   "edges": [

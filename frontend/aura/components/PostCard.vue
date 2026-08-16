@@ -68,6 +68,10 @@ const date = computed(() =>
             <Icon icon="lucide:eye" class="w-4 h-4" />
             {{ post.views || 0 }}
           </span>
+          <span v-if="post.comment_count" class="flex items-center gap-1">
+            <Icon icon="lucide:message-square" class="w-4 h-4" />
+            {{ post.comment_count }}
+          </span>
         </div>
 
         <p

@@ -33,6 +33,36 @@ def test_create_comment(client, post):
     assert data["post_id"] == post["id"]
 
 
+def test_posts_list_includes_comment_count(client, post, auth_headers):
+    """PostList should expose comment_count, counting approved comments only."""
+    from app.cache import clear_posts_list_cache
+
+    # No comments yet -> 0
+    clear_posts_list_cache()
+    assert client.get("/api/posts").json()["items"][0]["comment_count"] == 0
+
+    # Add an unapproved comment -> still 0
+    unapproved = client.post(
+        f"/api/comments/post/{post['id']}",
+        json={
+            "nickname": "Spammer",
+            "email": "spam@example.com",
+            "content": "Buy now!",
+        },
+    ).json()
+    clear_posts_list_cache()
+    assert client.get("/api/posts").json()["items"][0]["comment_count"] == 0
+
+    # Approve it -> count becomes 1
+    client.patch(
+        f"/api/comments/{unapproved['id']}/approve",
+        json={"approved": True},
+        headers=auth_headers,
+    )
+    clear_posts_list_cache()
+    assert client.get("/api/posts").json()["items"][0]["comment_count"] == 1
+
+
 def test_create_comment_requires_moderation(client, post, auth_headers):
     """Comments can never self-approve: is_approved is server-controlled."""
     response = client.post(

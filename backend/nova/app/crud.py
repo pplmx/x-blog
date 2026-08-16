@@ -76,6 +76,24 @@ def get_posts(
 
     # Sort by pinned first, then by created_at
     posts = query.order_by(models.Post.pinned.desc(), models.Post.created_at.desc()).offset(skip).limit(limit).all()
+
+    # Populate comment_count in a single grouped query (no N+1): count approved
+    # comments per post for the current page. Only the page's post ids are
+    # queried, so cost scales with the page size regardless of total.
+    if posts:
+        post_ids = [p.id for p in posts]
+        comment_counts = dict(
+            db.query(models.Comment.post_id, func.count(models.Comment.id))
+            .filter(
+                models.Comment.post_id.in_(post_ids),
+                models.Comment.is_approved == True,  # noqa: E712
+            )
+            .group_by(models.Comment.post_id)
+            .all()
+        )
+        for p in posts:
+            p.comment_count = comment_counts.get(p.id, 0)
+
     return posts, total
 
 

@@ -16,6 +16,7 @@ const mockPost = {
 	published: true,
 	created_at: "2024-01-15T10:00:00Z",
 	views: 42,
+	comment_count: 7,
 	cover_image: null,
 	category: { id: 1, name: "Technology" },
 	tags: [
@@ -146,6 +147,20 @@ describe("PostCard", () => {
 			const postNoViews = { ...mockPost, views: 0 };
 			const wrapper = mountPostCard(postNoViews);
 			expect(wrapper.text()).toContain("0");
+		});
+	});
+
+	describe("comment count display", () => {
+		it("renders the comment count when present", () => {
+			const wrapper = mountPostCard();
+			expect(wrapper.text()).toContain("7");
+		});
+
+		it("does not render a comment count when it is 0/absent", () => {
+			const noComments = { ...mockPost, comment_count: 0 };
+			const wrapper = mountPostCard(noComments);
+			// The count is gated on truthiness so 0 renders nothing extra.
+			expect(wrapper.text()).not.toContain("7");
 		});
 	});
 

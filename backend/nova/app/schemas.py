@@ -122,6 +122,7 @@ class PostList(BaseModel):
     created_at: datetime
     views: int = 0
     likes: int = 0
+    comment_count: int = 0
     cover_image: str | None = None
     category: Category | None = None
     tags: list[Tag] = []

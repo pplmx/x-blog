@@ -25,6 +25,7 @@ export interface PostList {
 	created_at: string;
 	views: number;
 	likes: number;
+	comment_count?: number;
 	cover_image: string | null;
 	category: { id: number; name: string } | null;
 	tags: { id: number; name: string }[];
