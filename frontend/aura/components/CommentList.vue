@@ -57,14 +57,17 @@
           </div>
         </div>
 
-        <!-- Nested replies -->
-        <ul v-if="repliesByParent.get(comment.id)?.length" class="mt-3 space-y-3 pl-4 border-l-2 border-gray-200 dark:border-gray-700">
+        <!-- Nested replies (all descendants, incl. replies-to-replies) -->
+        <ul v-if="descendantsOf(comment.id).length" class="mt-3 space-y-3 pl-4 border-l-2 border-gray-200 dark:border-gray-700">
           <li
-            v-for="reply in repliesByParent.get(comment.id)"
+            v-for="reply in descendantsOf(comment.id)"
             :key="reply.id"
             class="bg-gray-50 dark:bg-gray-800/50 rounded-lg p-3"
           >
             <div class="flex items-center gap-2 mb-1">
+              <span v-if="reply.parent_id !== comment.id" class="text-xs text-gray-400 -mr-1">
+                <Icon icon="lucide:corner-down-right" class="w-3 h-3 inline" />
+              </span>
               <span class="font-medium text-sm text-gray-900 dark:text-gray-100">{{ reply.nickname }}</span>
               <span class="text-xs text-gray-500 dark:text-gray-400">{{ formatDate(reply.created_at) }}</span>
             </div>
@@ -117,20 +120,45 @@ const total = computed(() => commentData.value?.total || 0);
 const totalPages = computed(() => commentData.value?.total_pages || 0);
 const currentPage = ref(1);
 
-// Thread the paginated flat list: top-level comments are those with no parent;
-// their direct replies (in the same page's items) nest beneath them by parent_id.
-const topLevelComments = computed(() => comments.value.filter((c) => c.parent_id === null));
-const repliesByParent = computed(() => {
-	const map = new Map<number, Comment[]>();
+// Thread the paginated flat list into a tree: group children by parent_id,
+// then render top-level comments (parent_id null, or whose parent is not on
+// the current page) with all their nested descendants. Walking the ancestor
+// chain means replies-to-replies stay under their top-level comment instead of
+// being dropped (RIL ISS-037).
+const byId = computed(() => {
+	const m = new Map<number, Comment>();
+	for (const c of comments.value) m.set(c.id, c);
+	return m;
+});
+const childrenByParent = computed(() => {
+	const m = new Map<number, Comment[]>();
 	for (const c of comments.value) {
 		if (c.parent_id !== null) {
-			const list = map.get(c.parent_id) ?? [];
+			const list = m.get(c.parent_id) ?? [];
 			list.push(c);
-			map.set(c.parent_id, list);
+			m.set(c.parent_id, list);
 		}
 	}
-	return map;
+	return m;
 });
+
+// Top-level = no parent, or the parent isn't present on this page (it would
+// otherwise nest under a comment we can't render above it).
+const topLevelComments = computed(() =>
+	comments.value.filter(
+		(c) => c.parent_id === null || !byId.value.has(c.parent_id ?? -1),
+	),
+);
+
+function descendantsOf(commentId: number): Comment[] {
+	const direct = childrenByParent.value.get(commentId) ?? [];
+	const nested: Comment[] = [];
+	for (const c of direct) {
+		nested.push(c);
+		nested.push(...descendantsOf(c.id));
+	}
+	return nested;
+}
 
 // Expand a top-level comment into itself plus its nested replies (one level).
 const replyTo = ref<{ id: number; nickname: string } | null>(null);

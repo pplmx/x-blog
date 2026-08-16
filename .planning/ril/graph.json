@@ -2,7 +2,7 @@
   "ril_version": 1,
   "round": 50,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-08-16T07:03:39+00:00",
+  "updated_at": "2026-08-16T07:04:10+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -3435,6 +3435,28 @@
       "source": "tests/admin/posts-id.spec.ts guard tests (clean: no confirm; dirty: confirm called) | 706 frontend unit tests | biome clean | nuxt typecheck | browser: editor loads, edit flips dirty",
       "note": "Guard verified: untouched form leaves without confirm; edited form invokes confirm before navigation. Handles new+existing posts; clears dirty on successful save. Dirty state declared before the immediate postData watch.",
       "confidence": 1.0
+    },
+    "ISS-037": {
+      "id": "ISS-037",
+      "type": "issue",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-16T07:04:06+00:00",
+      "updated_at": "2026-08-16T07:04:06+00:00",
+      "touched_round": 50,
+      "severity": "medium",
+      "description": "Comment reply threading loses deep replies: CommentList groups comments into topLevel (parent_id===null) + one level of repliesByParent. But create_comment allows replying to ANY approved comment, so a reply-to-a-reply has parent_id pointing at another reply; its ancestor chain isn't followed and it never renders (topLevelComments excludes it, and it isn't a direct child of a top-level comment). Deep replies silently disappear from the post comment UI."
+    },
+    "TASK-062": {
+      "id": "TASK-062",
+      "type": "task",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-16T07:04:10+00:00",
+      "updated_at": "2026-08-16T07:04:10+00:00",
+      "touched_round": 50,
+      "category": "correctness",
+      "description": "Fix comment threading to nest replies-to-replies under their top-level ancestor"
     }
   },
   "edges": [
@@ -4692,6 +4714,12 @@
       "to": "TASK-061",
       "type": "implements",
       "created_at": "2026-08-16T07:03:27+00:00"
+    },
+    {
+      "from": "TASK-062",
+      "to": "ISS-037",
+      "type": "addresses",
+      "created_at": "2026-08-16T07:04:10+00:00"
     }
   ]
 }

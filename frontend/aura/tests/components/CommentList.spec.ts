@@ -314,4 +314,67 @@ describe("CommentList", () => {
 			expect(wrapper.text()).toContain("正在回复");
 		});
 	});
+
+	describe("Deep replies (reply to a reply, RIL ISS-037)", () => {
+		const deepComments = {
+			items: [
+				{
+					id: 10,
+					post_id: 1,
+					parent_id: null,
+					nickname: "Root",
+					email: "root@test.com",
+					content: "Root comment",
+					is_approved: true,
+					ip_address: "127.0.0.1",
+					created_at: "2024-01-10T10:00:00Z",
+				},
+				{
+					id: 11,
+					post_id: 1,
+					parent_id: 10,
+					nickname: "Level1",
+					email: "l1@test.com",
+					content: "Reply to root",
+					is_approved: true,
+					ip_address: "127.0.0.1",
+					created_at: "2024-01-11T10:00:00Z",
+				},
+				{
+					id: 12,
+					post_id: 1,
+					parent_id: 11,
+					nickname: "Level2",
+					email: "l2@test.com",
+					content: "Reply to the reply (deep)",
+					is_approved: true,
+					ip_address: "127.0.0.1",
+					created_at: "2024-01-12T10:00:00Z",
+				},
+			],
+			total: 3,
+			total_pages: 1,
+			page: 1,
+			limit: 20,
+		};
+
+		it("renders a reply-to-a-reply nested under its top-level ancestor", async () => {
+			const { wrapper } = await mountCommentList({ comments: deepComments });
+			expect(wrapper.text()).toContain("Root comment");
+			expect(wrapper.text()).toContain("Reply to root");
+			// The deep reply must appear (previously dropped entirely)
+			expect(wrapper.text()).toContain("Reply to the reply (deep)");
+			const rootLi = wrapper.findAll("li").find((li) => li.text().includes("Root comment"));
+			expect(rootLi).toBeDefined();
+			// Deep reply lives inside the root's list item
+			expect(rootLi?.text()).toContain("Reply to the reply (deep)");
+		});
+
+		it("does not render the deep reply as its own top-level item", async () => {
+			const { wrapper } = await mountCommentList({ comments: deepComments });
+			// The deep reply should not be a top-level <li> sibling of root
+			const deepOccurrences = wrapper.text().split("Reply to the reply (deep)").length - 1;
+			expect(deepOccurrences).toBe(1);
+		});
+	});
 });
