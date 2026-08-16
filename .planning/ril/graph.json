@@ -2,7 +2,7 @@
   "ril_version": 1,
   "round": 45,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-08-16T06:31:03+00:00",
+  "updated_at": "2026-08-16T06:36:47+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -3320,6 +3320,18 @@
       "touched_round": 43,
       "source": "backend test_stats.py total_likes | 587 backend + 703 frontend tests | biome+ruff clean | nuxt typecheck | browser: hero shows 41 articles / 29,080 views / 919 likes / 11 comments (real totals, vs old per-page 9,651/307/30)",
       "note": "Confirmed the old hero summed only page-1 items (9,651 vs real 29,080 views). Now sourced from /api/stats which already held total_views/total_comments; added total_likes. Also surfaced total comments stat.",
+      "confidence": 1.0
+    },
+    "EV-067": {
+      "id": "EV-067",
+      "type": "evidence",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-16T06:36:47+00:00",
+      "updated_at": "2026-08-16T06:36:47+00:00",
+      "touched_round": 45,
+      "source": "playwright e2e: 27 public-journey specs, 26 passed + fixed homepage category-filter (await SPA nav)",
+      "note": "Full public e2e run surfaced a latent test race (page.url read before SPA navigation) activated by the round-5 browse-chips feature; fixed test to await /category_id= URL. Verifies browse chips + home filtering + post chips + RSS/sitemap end-to-end.",
       "confidence": 1.0
     }
   },
