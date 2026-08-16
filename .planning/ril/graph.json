@@ -2,7 +2,7 @@
   "ril_version": 1,
   "round": 57,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-08-16T09:17:33+00:00",
+  "updated_at": "2026-08-16T09:17:57+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -3698,13 +3698,36 @@
     "TASK-067": {
       "id": "TASK-067",
       "type": "task",
-      "status": "active",
-      "version": 1,
+      "status": "resolved",
+      "version": 2,
       "created_at": "2026-08-16T09:17:33+00:00",
-      "updated_at": "2026-08-16T09:17:33+00:00",
+      "updated_at": "2026-08-16T09:17:57+00:00",
       "touched_round": 57,
       "category": "maintainability",
       "description": "Remove dead Sidebar.vue component"
+    },
+    "CHG-059": {
+      "id": "CHG-059",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-16T09:17:51+00:00",
+      "updated_at": "2026-08-16T09:17:51+00:00",
+      "touched_round": 57,
+      "commit": "750694dad54aa03e0cc1115b7b1c48973a096203",
+      "description": "Remove dead Sidebar.vue component (TASK-067)"
+    },
+    "EV-077": {
+      "id": "EV-077",
+      "type": "evidence",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-16T09:17:57+00:00",
+      "updated_at": "2026-08-16T09:17:57+00:00",
+      "touched_round": 57,
+      "source": "714 frontend unit tests | grep confirms no Sidebar references | biome clean",
+      "note": "Dead Sidebar.vue removed; home page uses its own inline aside. Zero references across app/components/tests.",
+      "confidence": 1.0
     }
   },
   "edges": [
@@ -5016,6 +5039,12 @@
       "to": "TASK-066",
       "type": "implements",
       "created_at": "2026-08-16T09:13:09+00:00"
+    },
+    {
+      "from": "CHG-059",
+      "to": "TASK-067",
+      "type": "implements",
+      "created_at": "2026-08-16T09:17:57+00:00"
     }
   ]
 }
