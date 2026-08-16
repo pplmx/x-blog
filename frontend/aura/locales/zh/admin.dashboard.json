@@ -31,6 +31,13 @@
 		"reject": "拒绝",
 		"operationFailed": "操作失败，请重试",
 		"updatedAt": "数据更新于 {time}",
-		"loading": "正在加载数据..."
+		"loading": "正在加载数据...",
+		"export": {
+			"title": "数据导出",
+			"subtitle": "下载内容的 CSV 快照。",
+			"posts": "导出文章 CSV",
+			"comments": "导出评论 CSV",
+			"exporting": "导出中…"
+		}
 	}
 }

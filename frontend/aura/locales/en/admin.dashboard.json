@@ -31,6 +31,13 @@
 		"reject": "Reject",
 		"operationFailed": "Operation failed, please retry",
 		"updatedAt": "Updated at {time}",
-		"loading": "Loading data..."
+		"loading": "Loading data...",
+		"export": {
+			"title": "Data Export",
+			"subtitle": "Download a CSV snapshot of your content.",
+			"posts": "Export Posts CSV",
+			"comments": "Export Comments CSV",
+			"exporting": "Exporting…"
+		}
 	}
 }

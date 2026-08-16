@@ -174,6 +174,8 @@ vi.stubGlobal(
 		if (u.includes("/api/tags")) return mockTags;
 		if (u.includes("/api/admin/comments")) return commentsOverride ?? mockCommentList;
 		if (u.includes("/api/stats")) return { ...statsOverride };
+		if (u.includes("/api/export/posts.csv")) return "ID,Title\n1,Hello\n";
+		if (u.includes("/api/export/comments.csv")) return "ID,Content\n1,Great post\n";
 		throw new Error(`Unexpected $fetch in dashboard test: ${u}`);
 	}),
 );
@@ -727,6 +729,45 @@ describe("Admin Dashboard Page", () => {
 			const DashboardPage = await loadPage();
 			const wrapper = await mountWithSuspense(DashboardPage);
 			expect(wrapper.text()).toContain("暂无待审核评论");
+		});
+	});
+
+	describe("Data export", () => {
+		beforeEach(() => {
+			vi.stubGlobal("URL", {
+				createObjectURL: vi.fn(() => "blob:mock"),
+				revokeObjectURL: vi.fn(),
+				...URL,
+			});
+		});
+
+		it("renders the export card title", async () => {
+			const DashboardPage = await loadPage();
+			const wrapper = await mountWithSuspense(DashboardPage);
+			expect(wrapper.text()).toContain("数据导出");
+		});
+
+		it("renders Posts CSV and Comments CSV buttons", async () => {
+			const DashboardPage = await loadPage();
+			const wrapper = await mountWithSuspense(DashboardPage);
+			expect(wrapper.text()).toContain("导出文章 CSV");
+			expect(wrapper.text()).toContain("导出评论 CSV");
+		});
+
+		it("fetches posts.csv and triggers a download when the posts button is clicked", async () => {
+			const DashboardPage = await loadPage();
+			const wrapper = await mountWithSuspense(DashboardPage);
+			const postsBtn = wrapper.findAll("button").find((b) => b.text().includes("导出文章 CSV"));
+			expect(postsBtn).toBeDefined();
+			if (!postsBtn) throw new Error("expected a posts export button");
+			await postsBtn.trigger("click");
+			await flushPromises();
+			const fetchMock = vi.mocked($fetch);
+			const exportCall = fetchMock.mock.calls.find(([u]) =>
+				String(u).includes("/api/export/posts.csv"),
+			);
+			expect(exportCall).toBeDefined();
+			expect(vi.mocked(URL.createObjectURL)).toHaveBeenCalled();
 		});
 	});
 });

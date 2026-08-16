@@ -67,6 +67,34 @@ onMounted(() => {
 	loadDashboard();
 });
 
+const exporting = ref<"posts" | "comments" | null>(null);
+const exportError = ref("");
+
+async function downloadExport(kind: "posts" | "comments"): Promise<void> {
+	exporting.value = kind;
+	exportError.value = "";
+	try {
+		const res = await $fetch<unknown>(`${apiBase}/api/export/${kind}.csv`, {
+			headers: { Accept: "text/csv", ...authHeaders() },
+		});
+		// $fetch auto-parses unknown content-type as text; coerce to string.
+		const csv = res as string;
+		const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+		const url = URL.createObjectURL(blob);
+		const a = document.createElement("a");
+		a.href = url;
+		a.download = `${kind}.csv`;
+		document.body.appendChild(a);
+		a.click();
+		a.remove();
+		URL.revokeObjectURL(url);
+	} catch (e) {
+		exportError.value = e instanceof Error ? e.message : String(e);
+	} finally {
+		exporting.value = null;
+	}
+}
+
 const publishedCount = computed(
 	() => blogStats.value?.published_posts ?? posts.value.filter((p) => p.published).length,
 );
@@ -368,6 +396,40 @@ const stats = computed(() => [
             </div>
           </div>
         </div>
+      </div>
+    </div>
+
+    <!-- Data export -->
+    <div class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 p-5 mb-8">
+      <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4 flex items-center gap-2">
+        <Icon icon="lucide:download" class="w-5 h-5 text-indigo-500" />
+        {{ t("admin.dashboard.export.title") }}
+      </h3>
+      <p class="text-sm text-gray-500 dark:text-gray-400 mb-4">
+        {{ t("admin.dashboard.export.subtitle") }}
+      </p>
+      <div v-if="exportError" class="mb-4 px-4 py-3 rounded-xl border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20 text-sm text-red-600 dark:text-red-400">
+        {{ exportError }}
+      </div>
+      <div class="flex flex-wrap gap-3">
+        <button
+          type="button"
+          :disabled="exporting !== null"
+          class="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium text-white bg-gradient-to-r from-indigo-500 to-blue-500 hover:from-indigo-600 hover:to-blue-600 disabled:opacity-60 transition-all"
+          @click="downloadExport('posts')"
+        >
+          <Icon icon="lucide:file-text" class="w-4 h-4" />
+          {{ exporting === 'posts' ? t("admin.dashboard.export.exporting") : t("admin.dashboard.export.posts") }}
+        </button>
+        <button
+          type="button"
+          :disabled="exporting !== null"
+          class="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium text-white bg-gradient-to-r from-teal-500 to-emerald-500 hover:from-teal-600 hover:to-emerald-600 disabled:opacity-60 transition-all"
+          @click="downloadExport('comments')"
+        >
+          <Icon icon="lucide:message-square" class="w-4 h-4" />
+          {{ exporting === 'comments' ? t("admin.dashboard.export.exporting") : t("admin.dashboard.export.comments") }}
+        </button>
       </div>
     </div>
 
