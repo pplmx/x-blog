@@ -2,7 +2,7 @@
   "ril_version": 1,
   "round": 56,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-08-16T08:59:56+00:00",
+  "updated_at": "2026-08-16T09:13:10+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -3642,10 +3642,10 @@
     "ISS-038": {
       "id": "ISS-038",
       "type": "issue",
-      "status": "active",
-      "version": 1,
+      "status": "resolved",
+      "version": 2,
       "created_at": "2026-08-16T08:59:51+00:00",
-      "updated_at": "2026-08-16T08:59:51+00:00",
+      "updated_at": "2026-08-16T09:13:10+00:00",
       "touched_round": 56,
       "severity": "medium",
       "description": "Like is not idempotent per user: POST /api/posts/{id}/like increments unconditionally and the post page's handleLike only guards the in-flight double-click (likeLoading), with no 'already liked this session' state. A user (or script) can like a post unlimited times, inflating the count unboundedly and misleading readers. POST /view has the same write-on-read pattern (tracked as TASK-026), but likes are a user-triggered intentional action where dedup is clearly expected."
@@ -3653,13 +3653,36 @@
     "TASK-066": {
       "id": "TASK-066",
       "type": "task",
-      "status": "active",
-      "version": 1,
+      "status": "resolved",
+      "version": 2,
       "created_at": "2026-08-16T08:59:56+00:00",
-      "updated_at": "2026-08-16T08:59:56+00:00",
+      "updated_at": "2026-08-16T09:13:10+00:00",
       "touched_round": 56,
       "category": "correctness",
       "description": "Add per-user like dedup (localStorage marker + liked UI state) on post page"
+    },
+    "CHG-058": {
+      "id": "CHG-058",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-16T09:13:02+00:00",
+      "updated_at": "2026-08-16T09:13:02+00:00",
+      "touched_round": 56,
+      "commit": "f1993c77662dba466eedf31fab9cba5018b4238a",
+      "description": "Add client-side like dedup (useLikes localStorage markers + liked UI state) (TASK-066)"
+    },
+    "EV-076": {
+      "id": "EV-076",
+      "type": "evidence",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-16T09:13:10+00:00",
+      "updated_at": "2026-08-16T09:13:10+00:00",
+      "touched_round": 56,
+      "source": "tests/composables/useLikes.spec.ts (5) + slug.spec like test | 714 frontend unit tests | biome+typecheck clean | browser: like 44->45 + marker [1] + button disabled; 2nd click no-op, DB stays 45",
+      "note": "Added useLikes composable (localStorage marker set, shared via useState). Post page marks liked optimistically, disables button, shows Liked state. Browser-verified a repeat click does not double-increment the DB.",
+      "confidence": 1.0
     }
   },
   "edges": [
@@ -4965,6 +4988,12 @@
       "to": "ISS-038",
       "type": "addresses",
       "created_at": "2026-08-16T08:59:56+00:00"
+    },
+    {
+      "from": "CHG-058",
+      "to": "TASK-066",
+      "type": "implements",
+      "created_at": "2026-08-16T09:13:09+00:00"
     }
   ]
 }
