@@ -2,7 +2,7 @@
   "ril_version": 1,
   "round": 49,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-08-16T06:52:13+00:00",
+  "updated_at": "2026-08-16T07:03:28+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -3405,13 +3405,36 @@
     "TASK-061": {
       "id": "TASK-061",
       "type": "task",
-      "status": "active",
-      "version": 1,
+      "status": "resolved",
+      "version": 2,
       "created_at": "2026-08-16T06:52:13+00:00",
-      "updated_at": "2026-08-16T06:52:13+00:00",
+      "updated_at": "2026-08-16T07:03:28+00:00",
       "touched_round": 49,
       "category": "core-feature",
       "description": "Add unsaved-changes guard (dirty tracking + beforeunload + route-leave confirm) to admin post editor"
+    },
+    "CHG-052": {
+      "id": "CHG-052",
+      "type": "change",
+      "status": "active",
+      "version": 2,
+      "created_at": "2026-08-16T07:03:20+00:00",
+      "updated_at": "2026-08-16T07:03:27+00:00",
+      "touched_round": 49,
+      "commit": "f629c6c324da85448265dc0fe8cd368d3fe40cf2",
+      "description": "Add unsaved-changes guard to admin post editor (dirty tracking, beforeunload, route-leave confirm) (TASK-061)"
+    },
+    "EV-070": {
+      "id": "EV-070",
+      "type": "evidence",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-16T07:03:28+00:00",
+      "updated_at": "2026-08-16T07:03:28+00:00",
+      "touched_round": 49,
+      "source": "tests/admin/posts-id.spec.ts guard tests (clean: no confirm; dirty: confirm called) | 706 frontend unit tests | biome clean | nuxt typecheck | browser: editor loads, edit flips dirty",
+      "note": "Guard verified: untouched form leaves without confirm; edited form invokes confirm before navigation. Handles new+existing posts; clears dirty on successful save. Dirty state declared before the immediate postData watch.",
+      "confidence": 1.0
     }
   },
   "edges": [
@@ -4663,6 +4686,12 @@
       "to": "TASK-060",
       "type": "implements",
       "created_at": "2026-08-16T06:50:08+00:00"
+    },
+    {
+      "from": "CHG-052",
+      "to": "TASK-061",
+      "type": "implements",
+      "created_at": "2026-08-16T07:03:27+00:00"
     }
   ]
 }
