@@ -2,7 +2,7 @@
   "ril_version": 1,
   "round": 42,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-08-16T06:05:43+00:00",
+  "updated_at": "2026-08-16T06:16:17+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -3246,13 +3246,36 @@
     "TASK-058": {
       "id": "TASK-058",
       "type": "task",
-      "status": "active",
-      "version": 1,
+      "status": "resolved",
+      "version": 2,
       "created_at": "2026-08-16T06:05:43+00:00",
-      "updated_at": "2026-08-16T06:05:43+00:00",
+      "updated_at": "2026-08-16T06:16:16+00:00",
       "touched_round": 42,
       "category": "core-feature",
       "description": "Add comment_count to PostList API + PostCard display"
+    },
+    "CHG-049": {
+      "id": "CHG-049",
+      "type": "change",
+      "status": "active",
+      "version": 2,
+      "created_at": "2026-08-16T06:16:10+00:00",
+      "updated_at": "2026-08-16T06:16:16+00:00",
+      "touched_round": 42,
+      "commit": "257346a17d7b05060005b129114b4e68978ebb56",
+      "description": "Add comment_count to PostList API (grouped COUNT in get_posts) + PostCard display (TASK-058)"
+    },
+    "EV-065": {
+      "id": "EV-065",
+      "type": "evidence",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-16T06:16:17+00:00",
+      "updated_at": "2026-08-16T06:16:17+00:00",
+      "touched_round": 42,
+      "source": "backend test_comments.py::test_posts_list_includes_comment_count | 587 backend pytest | 703 frontend unit tests | nuxt typecheck | biome+ruff clean | browser: API /api/posts returns comment_count (post 1 = 2 approved); PostCard renders 2 next to views",
+      "note": "Backend added comment_count via single grouped COUNT (no N+1), schema default 0 (cache-safe, backward compatible). Frontend PostList interface + PostCard show the count. Browser-verified end-to-end.",
+      "confidence": 1.0
     }
   },
   "edges": [
@@ -4474,6 +4497,12 @@
       "to": "TASK-057",
       "type": "implements",
       "created_at": "2026-08-16T06:03:28+00:00"
+    },
+    {
+      "from": "CHG-049",
+      "to": "TASK-058",
+      "type": "implements",
+      "created_at": "2026-08-16T06:16:16+00:00"
     }
   ]
 }
