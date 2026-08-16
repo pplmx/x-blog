@@ -2,7 +2,7 @@
   "ril_version": 1,
   "round": 73,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-08-16T15:17:57+00:00",
+  "updated_at": "2026-08-16T15:19:10+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -4335,7 +4335,7 @@
       "version": 2,
       "created_at": "2026-08-16T15:04:23+00:00",
       "updated_at": "2026-08-16T15:17:57+00:00",
-      "touched_round": 72,
+      "touched_round": 73,
       "title": "Feed pagination renders every page number (no window) -> overflow on large blogs",
       "severity": 0.3
     },
@@ -4346,13 +4346,24 @@
       "version": 4,
       "created_at": "2026-08-16T15:04:23+00:00",
       "updated_at": "2026-08-16T15:17:57+00:00",
-      "touched_round": 72,
+      "touched_round": 73,
       "category": "dx",
       "severity": 0.3,
       "confidence": 1.0,
       "effort": 3.0,
       "unlock_factor": 1.0,
       "title": "Window feed pagination with ellipsis across index/tags/categories/search"
+    },
+    "CHG-071": {
+      "id": "CHG-071",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-16T15:19:06+00:00",
+      "updated_at": "2026-08-16T15:19:06+00:00",
+      "touched_round": 73,
+      "commit": "c395ef7",
+      "title": "Windowed pagination with ellipsis"
     }
   },
   "edges": [
@@ -5934,6 +5945,18 @@
       "to": "ISS-052",
       "type": "addresses",
       "created_at": "2026-08-16T15:04:23+00:00"
+    },
+    {
+      "from": "CHG-071",
+      "to": "TASK-083",
+      "type": "implements",
+      "created_at": "2026-08-16T15:19:10+00:00"
+    },
+    {
+      "from": "CHG-071",
+      "to": "ISS-052",
+      "type": "resolves",
+      "created_at": "2026-08-16T15:19:10+00:00"
     }
   ]
 }
