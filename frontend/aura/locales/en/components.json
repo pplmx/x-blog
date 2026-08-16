@@ -41,7 +41,8 @@
 		"markdown": {
 			"copy": "Copy",
 			"copied": "Copied",
-			"copyCode": "Copy code"
+			"copyCode": "Copy code",
+			"katexError": "[KaTeX render error]"
 		},
 		"postCard": {
 			"pinned": "Pinned",

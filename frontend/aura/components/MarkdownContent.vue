@@ -153,7 +153,7 @@ function renderKatex(
 				});
 				el.innerHTML = html;
 			} catch {
-				el.innerHTML = `<span class="text-red-500">[KaTeX render error]</span>`;
+				el.innerHTML = `<span class="text-red-500">${t("components.markdown.katexError")}</span>`;
 			}
 		})
 		.catch(() => {

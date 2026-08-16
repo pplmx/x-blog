@@ -32,6 +32,8 @@ function handleClick() {
     type="button"
     @click.stop="handleClick"
     :title="isBookmarked(postId) ? t('components.bookmark.remove') : t('components.bookmark.article')"
+    :aria-pressed="isBookmarked(postId) ? 'true' : 'false'"
+    :aria-label="isBookmarked(postId) ? t('components.bookmark.remove') : t('components.bookmark.article')"
     :class="[
       'inline-flex items-center justify-center rounded-xl transition-all duration-200',
       variant === 'icon'

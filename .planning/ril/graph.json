@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 73,
+  "round": 74,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-08-16T15:19:10+00:00",
+  "updated_at": "2026-08-16T15:50:30+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -4364,6 +4364,32 @@
       "touched_round": 73,
       "commit": "c395ef7",
       "title": "Windowed pagination with ellipsis"
+    },
+    "ISS-053": {
+      "id": "ISS-053",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-08-16T15:27:19+00:00",
+      "updated_at": "2026-08-16T15:50:30+00:00",
+      "touched_round": 73,
+      "title": "Accessibility: like/bookmark lack aria-pressed, hardcoded English aria-label + KaTeX error string",
+      "severity": 0.3
+    },
+    "TASK-084": {
+      "id": "TASK-084",
+      "type": "task",
+      "status": "resolved",
+      "version": 4,
+      "created_at": "2026-08-16T15:27:19+00:00",
+      "updated_at": "2026-08-16T15:50:30+00:00",
+      "touched_round": 73,
+      "category": "dx",
+      "severity": 0.3,
+      "confidence": 1.0,
+      "effort": 2.0,
+      "unlock_factor": 1.0,
+      "title": "Add aria-pressed/labels + localize hardcoded a11y strings"
     }
   },
   "edges": [
@@ -5957,6 +5983,12 @@
       "to": "ISS-052",
       "type": "resolves",
       "created_at": "2026-08-16T15:19:10+00:00"
+    },
+    {
+      "from": "TASK-084",
+      "to": "ISS-053",
+      "type": "addresses",
+      "created_at": "2026-08-16T15:27:19+00:00"
     }
   ]
 }

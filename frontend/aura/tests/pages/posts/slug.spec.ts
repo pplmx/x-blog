@@ -601,6 +601,15 @@ describe("Post Detail Page", () => {
 			expect(button.text()).toContain("56");
 		});
 
+		it("exposes the like toggle state via aria-pressed (RIL TASK-084)", async () => {
+			const wrapper = await mountPostPage();
+			const button = wrapper.find("[aria-pressed]");
+			expect(button.exists()).toBe(true);
+			// Not liked yet -> pressed=false
+			expect(button.attributes("aria-pressed")).toBe("false");
+			expect(button.attributes("aria-label")).toBeDefined();
+		});
+
 		it("renders the like count when present", async () => {
 			const wrapper = await mountPostPage();
 			expect(wrapper.text()).toContain("56");
@@ -985,7 +994,9 @@ describe("Post Detail Page", () => {
 		it("renders previous and next post links with correct hrefs", async () => {
 			const wrapper = await mountPostPage();
 
-			const links = wrapper.findAll('a[href="/posts/previous-article"], a[href="/posts/next-article"]');
+			const links = wrapper.findAll(
+				'a[href="/posts/previous-article"], a[href="/posts/next-article"]',
+			);
 			expect(links.length).toBe(2);
 
 			const text = wrapper.text();

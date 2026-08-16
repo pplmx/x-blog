@@ -41,7 +41,8 @@
 		"markdown": {
 			"copy": "复制",
 			"copied": "已复制",
-			"copyCode": "复制代码"
+			"copyCode": "复制代码",
+			"katexError": "[公式渲染失败]"
 		},
 		"postCard": {
 			"pinned": "置顶",
