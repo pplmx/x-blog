@@ -731,3 +731,55 @@ def get_related_posts(db: Session, post_id: int, limit: int = 5) -> list[models.
     for p in posts:
         p.reading_time = schemas.reading_minutes(p.content or "")
     return posts
+
+
+def get_adjacent_posts(db: Session, post_id: int) -> tuple[models.Post | None, models.Post | None]:
+    """Return the linear previous/next posts around `post_id` in public feed order.
+
+    Feed order is pinned desc, then created_at desc (matching ``get_posts``), so
+    "previous" is the post immediately above the current one and "next" is the
+    one immediately below it when scanning the homepage feed. Only publicly
+    visible (published, publish_at passed) posts count, matching the feed.
+
+    Returns ``(previous, next)``; either side is None at the ends of the feed,
+    and both are None when the post is not publicly visible.
+    """
+    now = utc_now_naive()
+    # Fetch public post ids in exact feed order (single cheap column query),
+    # find the current post's position, then load only the two neighbours with
+    # their relationships. Avoids loading every post row for a small result.
+    feed_ids = [
+        row[0]
+        for row in db.query(models.Post.id)
+        .filter(
+            models.Post.published.is_(True),
+            or_(models.Post.publish_at.is_(None), models.Post.publish_at <= now),
+        )
+        .order_by(models.Post.pinned.desc(), models.Post.created_at.desc())
+        .all()
+    ]
+    try:
+        idx = feed_ids.index(post_id)
+    except ValueError:
+        return None, None
+
+    neighbour_ids = []
+    if idx > 0:
+        neighbour_ids.append(feed_ids[idx - 1])
+    if idx + 1 < len(feed_ids):
+        neighbour_ids.append(feed_ids[idx + 1])
+    if not neighbour_ids:
+        return None, None
+
+    rows = (
+        db.query(models.Post)
+        .filter(models.Post.id.in_(neighbour_ids))
+        .options(joinedload(models.Post.category), joinedload(models.Post.tags))
+        .all()
+    )
+    by_id = {p.id: p for p in rows}
+    for p in by_id.values():
+        p.reading_time = schemas.reading_minutes(p.content or "")
+    previous = by_id.get(feed_ids[idx - 1]) if idx > 0 else None
+    following = by_id.get(feed_ids[idx + 1]) if idx + 1 < len(feed_ids) else None
+    return previous, following

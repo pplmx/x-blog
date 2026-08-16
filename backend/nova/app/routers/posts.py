@@ -168,3 +168,16 @@ def get_popular_posts(limit: int = Query(5, ge=1, le=50), db: Session = Depends(
 def get_related_posts(post_id: int, limit: int = Query(5, ge=1, le=50), db: Session = Depends(get_db)):
     """Get related posts based on category and tags."""
     return crud.get_related_posts(db, post_id, limit=limit)
+
+
+@router.get("/{post_id}/adjacent", response_model=schemas.AdjacentPosts)
+def get_adjacent_posts(post_id: int, db: Session = Depends(get_db)):
+    """Get the linear previous/next posts around a post, in public feed order.
+
+    Returns ``{previous, next}`` (either may be null at the ends of the feed).
+    A 404 is returned when the post does not exist or is not publicly visible.
+    """
+    if (existing := crud.get_post(db, post_id)) is None or not crud.is_publicly_visible(existing):
+        raise HTTPException(status_code=404, detail="Post not found")
+    previous, following = crud.get_adjacent_posts(db, post_id)
+    return schemas.AdjacentPosts(previous=previous, next=following)

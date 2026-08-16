@@ -356,3 +356,91 @@ def test_delete_post_with_conflicting_data_returns_error_not_500(client, auth_he
     )
     assert response.status_code == 400
     assert "already exists" in response.json()["error"]["message"]
+
+
+def _seed_adjacent_posts(db_session):
+    """Seed posts with known created_at so feed order is deterministic.
+
+    Feed order: pinned desc, then created_at desc. With three non-pinned posts,
+    the feed is [C(2024-03), B(2024-02), A(2024-01)].
+    """
+    from datetime import UTC, datetime
+
+    from app import models
+
+    posts = []
+    for i, (title, created, pinned) in enumerate(
+        [
+            ("Oldest", datetime(2024, 1, 1, 12, 0, 0, tzinfo=UTC), False),
+            ("Middle", datetime(2024, 2, 1, 12, 0, 0, tzinfo=UTC), False),
+            ("Newest", datetime(2024, 3, 1, 12, 0, 0, tzinfo=UTC), False),
+            ("PinnedNewest", datetime(2024, 4, 1, 12, 0, 0, tzinfo=UTC), True),
+            ("Draft", datetime(2024, 5, 1, 12, 0, 0, tzinfo=UTC), False),
+        ]
+    ):
+        post = models.Post(
+            title=title,
+            slug=f"adj-{title.lower()}-{i}",
+            content="Content",
+            published=title != "Draft",
+            pinned=pinned,
+            created_at=created,
+        )
+        posts.append(post)
+    db_session.add_all(posts)
+    db_session.commit()
+    return {p.title: p for p in posts}
+
+
+def test_get_adjacent_posts_middle(client, db_session):
+    """The middle post in feed order has both previous and next.
+
+    Feed order (pinned desc, created_at desc): PinnedNewest, Newest, Middle,
+    Oldest. So for 'Newest': previous=PinnedNewest, next=Middle.
+    """
+    posts = _seed_adjacent_posts(db_session)
+
+    response = client.get(f"/api/posts/{posts['Newest'].id}/adjacent")
+    assert response.status_code == 200
+    data = response.json()
+    assert data["previous"]["title"] == "PinnedNewest"
+    assert data["next"]["title"] == "Middle"
+
+
+def test_get_adjacent_posts_feed_ends(client, db_session):
+    """First and last Public posts have a single neighbour."""
+    posts = _seed_adjacent_posts(db_session)
+
+    # Newest non-pinned public post is the head of the pinned-desc/created-desc feed.
+    newest = client.get(f"/api/posts/{posts['Newest'].id}/adjacent")
+    assert newest.status_code == 200
+    # PinnedNewest comes before it; Middle after it.
+    assert newest.json()["previous"]["title"] == "PinnedNewest"
+    assert newest.json()["next"]["title"] == "Middle"
+
+    # Oldest is the tail of the public feed (Draft is not published, so excluded).
+    oldest = client.get(f"/api/posts/{posts['Oldest'].id}/adjacent")
+    assert oldest.status_code == 200
+    assert oldest.json()["previous"]["title"] == "Middle"
+    assert oldest.json()["next"] is None
+
+
+def test_get_adjacent_posts_pinned_head(client, db_session):
+    """The pinned head of the feed has no previous neighbour."""
+    posts = _seed_adjacent_posts(db_session)
+
+    response = client.get(f"/api/posts/{posts['PinnedNewest'].id}/adjacent")
+    assert response.status_code == 200
+    assert response.json()["previous"] is None
+    assert response.json()["next"]["title"] == "Newest"
+
+
+def test_get_adjacent_posts_404(client, db_session):
+    """Non-public (draft) and non-existent posts return 404."""
+    posts = _seed_adjacent_posts(db_session)
+
+    draft = client.get(f"/api/posts/{posts['Draft'].id}/adjacent")
+    assert draft.status_code == 404
+
+    missing = client.get("/api/posts/999999/adjacent")
+    assert missing.status_code == 404

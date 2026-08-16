@@ -63,18 +63,48 @@ const mockRelatedPosts = [
 	},
 ];
 
+// Mock adjacent (prev/next) posts data
+const mockAdjacentPosts = {
+	previous: {
+		id: 9,
+		title: "Previous Article",
+		slug: "previous-article",
+		excerpt: "Before this one.",
+		published: true,
+		created_at: "2023-12-01T10:00:00Z",
+		views: 20,
+		cover_image: null,
+		category: { id: 1, name: "Tech" },
+		tags: [],
+	},
+	next: {
+		id: 12,
+		title: "Next Article",
+		slug: "next-article",
+		excerpt: "After this one.",
+		published: true,
+		created_at: "2024-05-01T10:00:00Z",
+		views: 40,
+		cover_image: null,
+		category: { id: 2, name: "Science" },
+		tags: [],
+	},
+};
+
 async function mountPostPage({
 	post = mockPost,
 	pending = false,
 	error = null,
 	slug = "test-article-post",
 	relatedPosts = mockRelatedPosts,
+	adjacentPosts = mockAdjacentPosts,
 }: {
 	post?: typeof mockPost | null;
 	pending?: boolean;
 	error?: { message: string } | null;
 	slug?: string;
 	relatedPosts?: typeof mockRelatedPosts | null;
+	adjacentPosts?: typeof mockAdjacentPosts | null;
 } = {}) {
 	vi.stubGlobal("useRuntimeConfig", () => ({
 		public: {
@@ -95,6 +125,14 @@ async function mountPostPage({
 	vi.stubGlobal(
 		"useFetch",
 		vi.fn((url: string, _options?: Record<string, unknown>) => {
+			if (typeof url === "string" && url.includes("/adjacent")) {
+				return {
+					data: ref(adjacentPosts),
+					pending: ref(false),
+					error: ref(null),
+					refresh: vi.fn(),
+				};
+			}
 			if (typeof url === "string" && url.includes("/related")) {
 				return {
 					data: ref(relatedPosts),
@@ -940,6 +978,38 @@ describe("Post Detail Page", () => {
 
 			// When post is null, useRelatedPosts should NOT be called
 			expect(relatedPostsUrl).toBe("");
+		});
+	});
+
+	describe("Prev/Next navigation", () => {
+		it("renders previous and next post links with correct hrefs", async () => {
+			const wrapper = await mountPostPage();
+
+			const links = wrapper.findAll('a[href="/posts/previous-article"], a[href="/posts/next-article"]');
+			expect(links.length).toBe(2);
+
+			const text = wrapper.text();
+			expect(text).toContain("Previous Article");
+			expect(text).toContain("Next Article");
+		});
+
+		it("renders only the next link when previous is null (feed head)", async () => {
+			const wrapper = await mountPostPage({
+				adjacentPosts: { previous: null, next: mockAdjacentPosts.next },
+			});
+
+			const links = wrapper.findAll('a[href="/posts/next-article"]');
+			expect(links.length).toBe(1);
+			expect(wrapper.findAll('a[href="/posts/previous-article"]').length).toBe(0);
+		});
+
+		it("renders no nav section when both neighbours are null", async () => {
+			const wrapper = await mountPostPage({
+				adjacentPosts: { previous: null, next: null },
+			});
+
+			expect(wrapper.findAll('a[href="/posts/previous-article"]').length).toBe(0);
+			expect(wrapper.findAll('a[href="/posts/next-article"]').length).toBe(0);
 		});
 	});
 

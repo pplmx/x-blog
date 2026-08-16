@@ -11,6 +11,8 @@
 		"notFoundDesc": "抱歉，你访问的页面不存在或已被移除。不如回到首页看看最新文章？",
 		"searchArticles": "搜索文章",
 		"about": "关于本站",
-		"liked": "已点赞"
+		"liked": "已点赞",
+		"previousPost": "上一篇",
+		"nextPost": "下一篇"
 	}
 }

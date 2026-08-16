@@ -1,6 +1,12 @@
 <script setup lang="ts">
 import { computed } from "vue";
-import { usePost, usePostLike, usePostView, useRelatedPosts } from "~~/composables/useApi";
+import {
+	useAdjacentPosts,
+	usePost,
+	usePostLike,
+	usePostView,
+	useRelatedPosts,
+} from "~~/composables/useApi";
 import { coverImageSrc } from "~~/composables/useCoverImage";
 import { usePostSeo } from "~~/composables/useSeo";
 import { extractToc } from "~~/composables/useToc";
@@ -20,6 +26,7 @@ const coverImageUrl = computed(() => {
 
 const postId = post.value?.id ?? 0;
 const { data: relatedPosts } = postId ? await useRelatedPosts(postId) : { data: ref(null) };
+const { data: adjacent } = postId ? await useAdjacentPosts(postId) : { data: ref(null) };
 
 if (post.value?.id) {
 	await usePostView(post.value.id);
@@ -290,6 +297,41 @@ const readingTime = computed(() => {
             </NuxtLink>
           </div>
         </section>
+
+        <!-- Prev / Next linear navigation (public feed order) -->
+        <nav
+          v-if="adjacent?.previous || adjacent?.next"
+          class="mt-12 pt-8 border-t border-gray-100 dark:border-gray-800 grid gap-4 sm:grid-cols-2"
+          aria-label="Post navigation"
+        >
+          <NuxtLink
+            v-if="adjacent?.previous"
+            :to="`/posts/${adjacent.previous.slug}`"
+            class="group p-5 rounded-2xl border border-gray-100 dark:border-gray-800 hover:border-blue-200 dark:hover:border-blue-800 hover:shadow-lg transition-all duration-200"
+          >
+            <span class="inline-flex items-center gap-1.5 text-xs text-gray-400 group-hover:text-blue-500 transition-colors">
+              <Icon icon="lucide:arrow-left" class="w-3.5 h-3.5" />
+              {{ t('post.previousPost') }}
+            </span>
+            <h3 class="mt-2 font-semibold text-gray-900 dark:text-gray-100 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors line-clamp-2">
+              {{ adjacent.previous.title }}
+            </h3>
+          </NuxtLink>
+
+          <NuxtLink
+            v-if="adjacent?.next"
+            :to="`/posts/${adjacent.next.slug}`"
+            class="group p-5 rounded-2xl border border-gray-100 dark:border-gray-800 hover:border-blue-200 dark:hover:border-blue-800 hover:shadow-lg transition-all duration-200 sm:text-right"
+          >
+            <span class="inline-flex items-center gap-1.5 text-xs text-gray-400 group-hover:text-blue-500 transition-colors sm:flex-row-reverse">
+              {{ t('post.nextPost') }}
+              <Icon icon="lucide:arrow-right" class="w-3.5 h-3.5" />
+            </span>
+            <h3 class="mt-2 font-semibold text-gray-900 dark:text-gray-100 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors line-clamp-2">
+              {{ adjacent.next.title }}
+            </h3>
+          </NuxtLink>
+        </nav>
       </article>
     </div>
   </div>

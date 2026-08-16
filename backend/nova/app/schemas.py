@@ -157,6 +157,17 @@ class PostListResponse(BaseModel):
     pagination: PaginationMeta
 
 
+class AdjacentPosts(BaseModel):
+    """Linear prev/next navigation for a post, in feed order.
+
+    `previous` is the post immediately before the current one in the public
+    feed (pinned desc, created_at desc); `next` is the one immediately after.
+    Either may be None at the ends of the feed.
+    """
+    previous: PostList | None = None
+    next: PostList | None = None
+
+
 class CommentBase(BaseModel):
     # max_length values match the Comment VARCHAR columns (nickname 50,
     # email 100) so over-length input is rejected with 422 instead of an

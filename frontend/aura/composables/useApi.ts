@@ -183,6 +183,23 @@ export async function useRelatedPosts(postId: number, limit = 5) {
 }
 
 /**
+ * Adjacent linear navigation for a post, in public feed order.
+ * `previous` / `next` are PostList summaries or null at the feed's ends.
+ */
+export interface AdjacentPosts {
+	previous: PostList | null;
+	next: PostList | null;
+}
+
+/**
+ * Fetch the linear previous/next posts around a post.
+ * Uses the backend's GET /api/posts/{post_id}/adjacent endpoint.
+ */
+export async function useAdjacentPosts(postId: number) {
+	return useApi<AdjacentPosts>(`/api/posts/${postId}/adjacent`);
+}
+
+/**
  * Blog-level aggregate statistics from the backend /api/stats endpoint.
  * Exact counts (unlike deriving from a paginated post list, which the
  * backend caps at limit <= 100 and would silently undercount larger blogs).
