@@ -726,10 +726,28 @@ describe("Post Detail Page", () => {
 
 		it("renders tag elements with correct keys", async () => {
 			const wrapper = await mountPostPage();
-			const tagSpans = wrapper.findAll("span.inline-flex");
-			const tagTexts = tagSpans.map((s) => s.text());
+			const tagLinks = wrapper.findAll("a.inline-flex");
+			const tagTexts = tagLinks.map((s) => s.text());
 			expect(tagTexts.some((t) => t.includes("React"))).toBe(true);
 			expect(tagTexts.some((t) => t.includes("TypeScript"))).toBe(true);
+		});
+	});
+
+	describe("Category/tag navigation", () => {
+		it("renders the category chip as a link", async () => {
+			const wrapper = await mountPostPage();
+			const catLink = wrapper.findAll("a.inline-flex");
+			// Category chip + back-to-home link are anchors; category text present
+			expect(wrapper.find("a.inline-flex").exists()).toBe(true);
+			// The category name renders and the chipled element is an anchor
+			expect(catLink.some((a) => a.text().includes("Tech"))).toBe(true);
+		});
+
+		it("renders tag chips as links", async () => {
+			const wrapper = await mountPostPage();
+			const tagLinks = wrapper.findAll("a.inline-flex");
+			expect(tagLinks.some((a) => a.text().includes("React"))).toBe(true);
+			expect(tagLinks.some((a) => a.text().includes("TypeScript"))).toBe(true);
 		});
 	});
 

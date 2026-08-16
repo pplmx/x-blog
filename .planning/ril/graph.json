@@ -2,7 +2,7 @@
   "ril_version": 1,
   "round": 40,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-08-16T05:54:41+00:00",
+  "updated_at": "2026-08-16T05:56:56+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -3141,6 +3141,28 @@
       "source": "tests/components/CommentList.spec.ts + CommentForm.spec.ts (37 tests incl. threaded rendering, reply button, inline form, parent_id in createComment) | 699 frontend unit tests | nuxt typecheck | biome lint passes | browser: approved reply renders nested under parent; Reply button opens inline form with 正在回复 context",
       "note": "Browser-verified after backend reply already created+approved: reply appears nested; reply UI complete. Backend reply contract (parent_id, create validation, approval) was pre-existing and tested.",
       "confidence": 1.0
+    },
+    "DEC-037": {
+      "id": "DEC-037",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-16T05:56:56+00:00",
+      "updated_at": "2026-08-16T05:56:56+00:00",
+      "touched_round": 40,
+      "rationale": "Navigation gap on the primary content page: the post detail page renders its category chip and tag chips as inert spans (cursor-default), so a reader cannot click through to other posts in the same category or tag --- even though rounds 4 made /?category_id=X and /?tag_id=X filter the home feed and the browse chips expose them on home. Making these chips navigate closes the post->category/tag discovery loop. Convert the category chip to a NuxtLink to /?category_id={id} and each tag chip to /?tag_id={id} (matching the home deep-link contract), preserving hover styles. Pure frontend.",
+      "alternatives_rejected": "(a) Link chips to /categories?category_id= / /tags?tag_id= pages - rejected: the home deep-link is the established URI contract (sitemap + browse chips); a second destination would split traffic. (b) Backend - none needed."
+    },
+    "TASK-056": {
+      "id": "TASK-056",
+      "type": "task",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-16T05:56:56+00:00",
+      "updated_at": "2026-08-16T05:56:56+00:00",
+      "touched_round": 40,
+      "category": "core-feature",
+      "description": "Make post detail category/tag chips link to filtered home feed"
     }
   },
   "edges": [

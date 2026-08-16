@@ -172,10 +172,14 @@ const readingTime = computed(() => {
 
           <!-- Category badge + meta -->
           <div class="flex flex-wrap items-center gap-3 mb-4">
-            <span v-if="post.category" class="inline-flex items-center gap-1 px-3 py-1 bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-full text-xs font-medium">
+            <NuxtLink
+              v-if="post.category"
+              :to="{ path: '/', query: { category_id: String(post.category.id) } }"
+              class="inline-flex items-center gap-1 px-3 py-1 bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-full text-xs font-medium hover:bg-blue-100 dark:hover:bg-blue-800/40 transition-colors"
+            >
               <Icon icon="lucide:folder" class="w-3 h-3" />
               {{ post.category.name }}
-            </span>
+            </NuxtLink>
             <span class="text-xs text-gray-400 flex items-center gap-1">
               <Icon icon="lucide:clock" class="w-3 h-3" />
               {{ t('post.readingTime', { count: readingTime }) }}
@@ -216,10 +220,15 @@ const readingTime = computed(() => {
         <!-- Tags -->
         <footer v-if="post.tags?.length" class="mt-10 pt-8 border-t border-gray-100 dark:border-gray-800">
           <div class="flex flex-wrap gap-2">
-            <span v-for="tag in post.tags" :key="tag.id" class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 rounded-full text-xs font-medium hover:bg-blue-50 dark:hover:bg-blue-900/30 hover:text-blue-600 dark:hover:text-blue-400 transition-colors cursor-default">
+            <NuxtLink
+              v-for="tag in post.tags"
+              :key="tag.id"
+              :to="{ path: '/', query: { tag_id: String(tag.id) } }"
+              class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 rounded-full text-xs font-medium hover:bg-blue-50 dark:hover:bg-blue-900/30 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+            >
               <Icon icon="lucide:tag" class="w-3 h-3" />
               {{ tag.name }}
-            </span>
+            </NuxtLink>
           </div>
         </footer>
 
