@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 33,
+  "round": 34,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-08-16T05:05:04+00:00",
+  "updated_at": "2026-08-16T05:09:42+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -2871,6 +2871,28 @@
       "source": "tests/pages/index.spec.ts (filter tests) | e2e homepage.spec.ts home-filter test | 686 frontend unit tests | biome clean | nuxt typecheck | browser: ?category_id=1 => 7 posts + indicator; ?tag_id=1 => 1 post + indicator; unfiltered => 10 posts no indicator",
       "note": "Browser-verified deep-link contract: home now filters by category/tag, shows 筛选:{label} + 清除 indicator, pagination keeps filter. Fixes latent sitemap deep-link bug where /?category_id=X and /?tag_id=X returned the unfiltered feed.",
       "confidence": 1.0
+    },
+    "DEC-032": {
+      "id": "DEC-032",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-16T05:09:41+00:00",
+      "updated_at": "2026-08-16T05:09:41+00:00",
+      "touched_round": 34,
+      "rationale": "Feature-evolution gap analysis (SKILL 11.2): pinned is a first-class backend concept --- Post.pinned flag is set by admins (admin posts editor + router), the PostList schema exposes it, and crud.get_posts sorts pinned-first (ordering honors admin intent) --- but NO UI surface marks a post as pinned. Readers on the home/category/tag/search feeds cannot tell which posts admins pinned to the top, which is the entire point of the feature. Add a localized Pinned badge to PostCard (visible on home, categories, tags, search — wherever PostCard renders). Pure frontend, no schema/infra change, low risk.",
+      "alternatives_rejected": "(a) Add pinned toggle UI in post detail header - rejected: pin is an admin editorial action displayed in feeds, not something a reader toggles. (b) Pinned carousel/hero block - rejected: larger blast radius, conflicts with existing popular-posts hero. (c) Backend change - rejected: schema already exposes pinned; this is purely a rendering gap."
+    },
+    "TASK-050": {
+      "id": "TASK-050",
+      "type": "task",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-16T05:09:42+00:00",
+      "updated_at": "2026-08-16T05:09:42+00:00",
+      "touched_round": 34,
+      "category": "core-feature",
+      "description": "Add localized Pinned badge to PostCard for pinned-first sorted posts"
     }
   },
   "edges": [

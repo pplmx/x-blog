@@ -21,6 +21,7 @@ export interface PostList {
 	excerpt: string | null;
 	snippet?: string | null;
 	published: boolean;
+	pinned?: boolean;
 	created_at: string;
 	views: number;
 	likes: number;

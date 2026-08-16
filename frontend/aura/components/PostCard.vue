@@ -9,7 +9,7 @@ interface Props {
 const props = withDefaults(defineProps<Props>(), {});
 const { post } = toRefs(props);
 
-const { locale } = useLang();
+const { locale, t } = useLang();
 
 const coverImageUrl = computed(() => coverImageSrc(post.value.title));
 
@@ -43,7 +43,11 @@ const date = computed(() =>
 
       <div class="p-6">
         <div class="flex items-start justify-between gap-4 mb-3">
-          <h2 class="text-xl font-bold text-gray-900 dark:text-gray-100 group-hover:text-blue-600 transition-colors duration-200 line-clamp-2">
+          <h2 class="text-xl font-bold text-gray-900 dark:text-gray-100 group-hover:text-blue-600 transition-colors duration-200 line-clamp-2 flex items-center flex-wrap gap-2">
+            <span v-if="post.pinned" class="inline-flex items-center gap-1 px-2 py-0.5 bg-gradient-to-r from-orange-500 to-red-500 text-white text-xs font-semibold rounded-full shrink-0">
+              <Icon icon="lucide:pin" class="w-3 h-3" />
+              {{ t('components.postCard.pinned') }}
+            </span>
             {{ post.title }}
           </h2>
           <Icon icon="lucide:arrow-right" class="w-5 h-5 text-gray-300 group-hover:text-blue-600 group-hover:translate-x-1 transition-all duration-300 shrink-0" />

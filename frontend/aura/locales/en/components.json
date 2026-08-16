@@ -37,6 +37,9 @@
 			"copy": "Copy",
 			"copied": "Copied",
 			"copyCode": "Copy code"
+		},
+		"postCard": {
+			"pinned": "Pinned"
 		}
 	}
 }

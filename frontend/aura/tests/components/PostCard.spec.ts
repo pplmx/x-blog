@@ -161,4 +161,17 @@ describe("PostCard", () => {
 			expect(button.exists()).toBe(true);
 		});
 	});
+
+	describe("pinned badge", () => {
+		it("renders a pinned badge when post.pinned is true", () => {
+			const wrapper = mountPostCard({ ...mockPost, pinned: true });
+			expect(wrapper.text()).toContain("置顶");
+			expect(wrapper.find("svg.icon-stub").exists()).toBe(true);
+		});
+
+		it("does not render a pinned badge when post is not pinned", () => {
+			const wrapper = mountPostCard({ ...mockPost, pinned: false });
+			expect(wrapper.text()).not.toContain("置顶");
+		});
+	});
 });
