@@ -299,3 +299,33 @@ def test_rss_feed_escapes_xml_special_chars(client, auth_headers):
     assert atom_response.status_code == 200
     ET.fromstring(atom_response.text)
     assert "R&amp;D Notes &amp; &lt;Analysis&gt;" in atom_response.text
+
+
+def test_rss_feed_etag_and_304(client, auth_headers):
+    """RSS/Atom/sitemap should send an ETag and return 304 on If-None-Match."""
+    # Publish a post so the feed is non-trivial
+    client.post(
+        "/api/posts",
+        json={
+            "title": "ETag Post",
+            "slug": "etag-post",
+            "content": "ETag content",
+            "published": True,
+        },
+        headers=auth_headers,
+    )
+
+    for path, expected_mt in (
+        ("/rss/feed.xml", "application/rss+xml"),
+        ("/rss/atom.xml", "application/atom+xml"),
+        ("/sitemap.xml", "application/xml"),
+    ):
+        first = client.get(path)
+        assert first.status_code == 200
+        etag = first.headers.get("etag")
+        assert etag, f"expected ETag header on {path}"
+
+        # Conditional request with the same ETag -> 304 Not Modified
+        second = client.get(path, headers={"If-None-Match": etag})
+        assert second.status_code == 304, f"expected 304 on {path}"
+        assert second.text == ""

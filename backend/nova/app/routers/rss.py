@@ -1,9 +1,10 @@
 from datetime import UTC, datetime
+from hashlib import sha1
 from html.parser import HTMLParser
 from xml.sax.saxutils import escape
 
 import markdown as md
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Request
 from fastapi.responses import Response
 from sqlalchemy.orm import Session
 
@@ -22,6 +23,20 @@ seo_router = APIRouter(tags=["seo"])
 def _cdata(value: str) -> str:
     """Wrap a value in a CDATA section, safely splitting any embedded ']]>'."""
     return f"<![CDATA[{value.replace(']]>', ']]]]><![CDATA[>')}]]>"
+
+
+def _feed_response(body: str, media_type: str, request: Request) -> Response:
+    """Build a Response with an ETag, honoring If-None-Match (304).
+
+    Bloated feeds (RSS/Atom/sitemap) are re-polled by readers, crawlers and
+    checkers; a strong ETag lets them cheaply fetch a 304 Not Modified and
+    skip re-downloading a body that hasn't changed (RIL TASK-089).
+    """
+    etag = f'"{sha1(body.encode("utf-8")).hexdigest()}"'
+    if_none_match = request.headers.get("if-none-match")
+    if if_none_match and etag in {t.strip() for t in if_none_match.split(",")}:
+        return Response(status_code=304, headers={"ETag": etag})
+    return Response(content=body, media_type=media_type, headers={"ETag": etag})
 
 
 # Elements stripped from feed content (can never appear) — the allow-list of
@@ -153,7 +168,7 @@ def generate_rss_feed(posts: list, site_url: str, title: str, description: str, 
 
 
 @rss_router.get("/feed.xml")
-def get_rss_feed(full: bool = True, db: Session = Depends(get_db)):
+def get_rss_feed(full: bool = True, request: Request = None, db: Session = Depends(get_db)) -> Response:  # type: ignore[assignment]
     """Get RSS 2.0 feed of published posts.
 
     Args:
@@ -166,7 +181,7 @@ def get_rss_feed(full: bool = True, db: Session = Depends(get_db)):
     key = ("feed", full)
     cached = feed_cache.get(key)
     if cached is not None:
-        return Response(content=cached, media_type="application/rss+xml")
+        return _feed_response(cached, "application/rss+xml", request)
 
     posts, _ = crud.get_posts(db, skip=0, limit=20, published=True)
 
@@ -177,15 +192,15 @@ def get_rss_feed(full: bool = True, db: Session = Depends(get_db)):
     rss_content = generate_rss_feed(posts, site_url, title, description, full_content=full)
     feed_cache[key] = rss_content
 
-    return Response(content=rss_content, media_type="application/rss+xml")
+    return _feed_response(rss_content, "application/rss+xml", request)
 
 
 @rss_router.get("/atom.xml")
-def get_atom_feed(db: Session = Depends(get_db)):
+def get_atom_feed(request: Request = None, db: Session = Depends(get_db)) -> Response:  # type: ignore[assignment]
     """Get Atom feed of published posts."""
     cached = feed_cache.get("atom")
     if cached is not None:
-        return Response(content=cached, media_type="application/atom+xml")
+        return _feed_response(cached, "application/atom+xml", request)
 
     posts, _ = crud.get_posts(db, skip=0, limit=20, published=True)
 
@@ -221,16 +236,16 @@ def get_atom_feed(db: Session = Depends(get_db)):
 </feed>"""
 
     feed_cache["atom"] = atom
-    return Response(content=atom, media_type="application/atom+xml")
+    return _feed_response(atom, "application/atom+xml", request)
 
 
 # Sitemap endpoints (at root)
 @seo_router.get("/sitemap.xml")
-def get_sitemap(db: Session = Depends(get_db)):
+def get_sitemap(request: Request = None, db: Session = Depends(get_db)) -> Response:  # type: ignore[assignment]
     """Get XML sitemap of the site."""
     cached = feed_cache.get("sitemap")
     if cached is not None:
-        return Response(content=cached, media_type="application/xml")
+        return _feed_response(cached, "application/xml", request)
 
     posts, _ = crud.get_posts(db, skip=0, limit=1000, published=True)
     categories = crud.get_categories(db)
@@ -316,7 +331,7 @@ def get_sitemap(db: Session = Depends(get_db)):
 </urlset>"""
 
     feed_cache["sitemap"] = sitemap
-    return Response(content=sitemap, media_type="application/xml")
+    return _feed_response(sitemap, "application/xml", request)
 
 
 @seo_router.get("/robots.txt")

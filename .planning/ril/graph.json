@@ -2,7 +2,7 @@
   "ril_version": 1,
   "round": 75,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-08-16T17:35:01+00:00",
+  "updated_at": "2026-08-16T17:39:41+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -4585,10 +4585,10 @@
     "TASK-086": {
       "id": "TASK-086",
       "type": "task",
-      "status": "active",
-      "version": 1,
+      "status": "resolved",
+      "version": 2,
       "created_at": "2026-08-16T17:31:02+00:00",
-      "updated_at": "2026-08-16T17:31:02+00:00",
+      "updated_at": "2026-08-16T17:35:14+00:00",
       "touched_round": 75,
       "category": "correctness",
       "severity": 0.4,
@@ -4601,21 +4601,21 @@
       "id": "CHG-074",
       "type": "change",
       "status": "active",
-      "version": 1,
+      "version": 2,
       "created_at": "2026-08-16T17:34:44+00:00",
-      "updated_at": "2026-08-16T17:34:44+00:00",
+      "updated_at": "2026-08-16T17:35:14+00:00",
       "touched_round": 75,
-      "commit": "(pending)"
+      "commit": "5daf180"
     },
     "CHG-075": {
       "id": "CHG-075",
       "type": "change",
       "status": "active",
-      "version": 1,
+      "version": 2,
       "created_at": "2026-08-16T17:34:51+00:00",
-      "updated_at": "2026-08-16T17:34:51+00:00",
+      "updated_at": "2026-08-16T17:35:14+00:00",
       "touched_round": 75,
-      "commit": "(pending)"
+      "commit": "5daf180"
     },
     "DEC-048": {
       "id": "DEC-048",
@@ -4628,6 +4628,69 @@
       "rationale": "Blockchain has no genuine value for X-Blog: a blog is a single-authority, admin-moderated system with modest trust/storage needs; decentralizing comments/likes/timestamps would add cost and latency with no user benefit. Modern non-blockchain hardening is adopted instead.",
       "alternatives_rejected": "Content hash-chain (no demand; RSS/ETag cheaper), comment provenance (moderation already gates abuse), timestamp anchoring (DB timestamps suffice), like tokenization (gimmick, no audience).",
       "title": "Reject blockchain; adopt modern web hardening"
+    },
+    "DEC-049": {
+      "id": "DEC-049",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-16T17:35:24+00:00",
+      "updated_at": "2026-08-16T17:35:24+00:00",
+      "touched_round": 75,
+      "rationale": "Recorded modern-tech backlog from round-75 deep audit for future rounds.",
+      "alternatives_rejected": "Adding all at once risks churn; each needs its own round.",
+      "title": "Modern hardening backlog: ETag/conditional, Web Push, OTel metrics, CSP/SRI, CDN cache headers, CI dependency audit"
+    },
+    "TASK-087": {
+      "id": "TASK-087",
+      "type": "task",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-08-16T17:35:24+00:00",
+      "updated_at": "2026-08-16T17:39:41+00:00",
+      "touched_round": 75,
+      "category": "performance",
+      "severity": 0.5,
+      "confidence": 1.0,
+      "effort": 2.0,
+      "unlock_factor": 1.0,
+      "title": "Add ETag/If-None-Match conditional responses for public reads (posts, feeds)"
+    },
+    "TASK-088": {
+      "id": "TASK-088",
+      "type": "task",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-16T17:35:24+00:00",
+      "updated_at": "2026-08-16T17:35:24+00:00",
+      "touched_round": 75,
+      "category": "security",
+      "severity": 0.5,
+      "confidence": 1.0,
+      "effort": 3.0,
+      "unlock_factor": 1.0,
+      "title": "Add CSP + SRI and dependency audit (pip-audit) to CI"
+    },
+    "CHG-076": {
+      "id": "CHG-076",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-16T17:39:35+00:00",
+      "updated_at": "2026-08-16T17:39:35+00:00",
+      "touched_round": 75,
+      "commit": "(pending)"
+    },
+    "ISS-067": {
+      "id": "ISS-067",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-08-16T17:39:37+00:00",
+      "updated_at": "2026-08-16T17:39:41+00:00",
+      "touched_round": 75,
+      "title": "Feeds/sitemap lack HTTP ETag/conditional GET, re-downloaded by pollers",
+      "severity": 0.4
     }
   },
   "edges": [
@@ -6335,6 +6398,18 @@
       "to": "ISS-066",
       "type": "resolves",
       "created_at": "2026-08-16T17:34:55+00:00"
+    },
+    {
+      "from": "CHG-076",
+      "to": "TASK-087",
+      "type": "implements",
+      "created_at": "2026-08-16T17:39:40+00:00"
+    },
+    {
+      "from": "CHG-076",
+      "to": "ISS-067",
+      "type": "resolves",
+      "created_at": "2026-08-16T17:39:40+00:00"
     }
   ]
 }
