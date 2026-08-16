@@ -1,0 +1,13 @@
+{
+	"archive": {
+		"title": "归档",
+		"desc": "按发布日期浏览所有文章",
+		"empty": "暂无文章",
+		"backToAll": "返回完整归档",
+		"monthTitle": "{year}年{month}",
+		"countLabel": "共 {count} 篇文章",
+		"postsEmpty": "该时间段暂无文章",
+		"views": "{count} 次阅读",
+		"monthDesc": "{year}年{month}发布的所有文章"
+	}
+}

@@ -157,6 +157,14 @@ class PostListResponse(BaseModel):
     pagination: PaginationMeta
 
 
+class ArchiveEntry(BaseModel):
+    """A single (year, month) bucket with its post count, for the archive index."""
+
+    year: int
+    month: int
+    count: int
+
+
 class AdjacentPosts(BaseModel):
     """Linear prev/next navigation for a post, in feed order.
 
@@ -164,6 +172,7 @@ class AdjacentPosts(BaseModel):
     feed (pinned desc, created_at desc); `next` is the one immediately after.
     Either may be None at the ends of the feed.
     """
+
     previous: PostList | None = None
     next: PostList | None = None
 

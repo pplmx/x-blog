@@ -2,7 +2,7 @@
   "ril_version": 1,
   "round": 64,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-08-16T11:29:52+00:00",
+  "updated_at": "2026-08-16T12:21:22+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -3904,6 +3904,32 @@
       "source": "3530c0b",
       "summary": "Verification: 595 backend tests + 4 new adjacent tests green; ruff/pyright clean; 719 frontend tests (3 new nav tests) green; biome+typecheck clean; real-browser click-through confirmed prev/next nav renders and navigates in BOTH zh and en locales, incl. endpoint returning correct previous/next on a seeded 31-post DB.",
       "confidence": 1.0
+    },
+    "DEC-047": {
+      "id": "DEC-047",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-16T12:21:11+00:00",
+      "updated_at": "2026-08-16T12:21:11+00:00",
+      "touched_round": 64,
+      "title": "Public date-based Archive browsing page (/archive)",
+      "rationale": "Feature-evolution gap (SKILL 11.2): posts list supports only category_id/tag_id/page filtering — readers cannot browse old content by date and no /archive page exists. Delivers a classic, user-visible blog index grouped by year/month with per-archive post lists.",
+      "alternatives_rejected": "Per-category RSS feeds (bigger surface, lower reader value); admin 'view published' quick link (admin-only, not reader-facing); comment avatars (needs data model change, out of scope)"
+    },
+    "TASK-071": {
+      "id": "TASK-071",
+      "type": "task",
+      "status": "active",
+      "version": 2,
+      "created_at": "2026-08-16T12:21:14+00:00",
+      "updated_at": "2026-08-16T12:21:22+00:00",
+      "touched_round": 64,
+      "category": "core-feature",
+      "priority_score": 6,
+      "title": "Public date-based Archive browsing: /api/posts/archive index + year/month post filter + /archive page",
+      "lock_owner": "agent-main",
+      "lock_until": "2026-08-16T12:51:22+00:00"
     }
   },
   "edges": [
@@ -5257,6 +5283,12 @@
       "to": "TASK-070",
       "type": "governs",
       "created_at": "2026-08-16T11:29:52+00:00"
+    },
+    {
+      "from": "DEC-047",
+      "to": "TASK-071",
+      "type": "governs",
+      "created_at": "2026-08-16T12:21:22+00:00"
     }
   ]
 }

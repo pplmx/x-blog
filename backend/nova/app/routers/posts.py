@@ -10,15 +10,24 @@ from app.limiter import RATE_LIMIT_READ, RATE_LIMIT_WRITE, limiter
 router = APIRouter(prefix="/api/posts", tags=["posts"])
 
 
+@router.get("/archive", response_model=list[schemas.ArchiveEntry])
+def get_archive(db: Session = Depends(get_db)):
+    """Date-based archive index: (year, month, count) buckets newest-first."""
+    rows = crud.get_archive(db)
+    return [schemas.ArchiveEntry(year=y, month=m, count=c) for y, m, c in rows]
+
+
 @router.get("", response_model=schemas.PostListResponse)
 def list_posts(
     page: int = Query(1, ge=1),
     limit: int = Query(10, ge=1, le=100),
     category_id: int | None = None,
     tag_id: int | None = None,
+    year: int | None = Query(None, ge=2000, le=2100),
+    month: int | None = Query(None, ge=1, le=12),
     db: Session = Depends(get_db),
 ):
-    cache_key = (page, limit, category_id, tag_id)
+    cache_key = (page, limit, category_id, tag_id, year, month)
     cached = posts_list_cache.get(cache_key)
     if cached is not None:
         return cached
@@ -30,6 +39,8 @@ def list_posts(
         limit=limit,
         category_id=category_id,
         tag_id=tag_id,
+        year=year,
+        month=month,
     )
 
     total_pages = (total + limit - 1) // limit
@@ -61,11 +72,7 @@ def get_post(post_id: str, db: Session = Depends(get_db)):
     # ValueError for >4300-digit int strings (unhandled 500 on a public
     # route) and Postgres would reject an out-of-range bind otherwise.
     is_numeric_id = len(post_id) <= 15 and post_id.isdigit() and post_id.isascii()
-    post = (
-        crud.get_post(db, int(post_id))
-        if is_numeric_id
-        else crud.get_post_by_slug(db, post_id)
-    )
+    post = crud.get_post(db, int(post_id)) if is_numeric_id else crud.get_post_by_slug(db, post_id)
     # Drafts and not-yet-published scheduled posts are invisible to the public.
     if not post or not crud.is_publicly_visible(post):
         raise HTTPException(status_code=404, detail="Post not found")

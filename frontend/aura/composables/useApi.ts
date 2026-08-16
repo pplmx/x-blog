@@ -49,6 +49,12 @@ export interface Tag {
 	post_count?: number;
 }
 
+export interface ArchiveEntry {
+	year: number;
+	month: number;
+	count: number;
+}
+
 export interface Post extends PostList {
 	content: string;
 	likes: number;

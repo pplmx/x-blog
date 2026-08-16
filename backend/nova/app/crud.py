@@ -1,6 +1,6 @@
 from datetime import UTC, datetime
 
-from sqlalchemy import func, or_, select, update
+from sqlalchemy import extract, func, or_, select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, joinedload
 
@@ -49,6 +49,8 @@ def get_posts(
     published: bool = True,
     category_id: int | None = None,
     tag_id: int | None = None,
+    year: int | None = None,
+    month: int | None = None,
 ) -> tuple[list[models.Post], int]:
     query = db.query(models.Post)
 
@@ -64,6 +66,11 @@ def get_posts(
 
     if tag_id:
         query = query.join(models.Post.tags).filter(models.Tag.id == tag_id).distinct()
+
+    if year:
+        query = query.filter(extract("year", models.Post.created_at) == year)
+    if month:
+        query = query.filter(extract("month", models.Post.created_at) == month)
 
     # Count before pagination
     total = query.count()
@@ -97,6 +104,31 @@ def get_posts(
             p.reading_time = schemas.reading_minutes(p.content or "")
 
     return posts, total
+
+
+def get_archive(db: Session) -> list[tuple[int, int, int]]:
+    """Group publicly-visible posts by (year, month) of their created_at.
+
+    Returns rows ordered newest-first as (year, month, count). Only posts that
+    are published and whose publish_at (if set) has passed are counted, so the
+    archive index never reveals drafts or scheduled future posts.
+    """
+    now = utc_now_naive()
+    rows = (
+        db.query(
+            extract("year", models.Post.created_at).label("year"),
+            extract("month", models.Post.created_at).label("month"),
+            func.count(models.Post.id).label("count"),
+        )
+        .filter(
+            models.Post.published.is_(True),
+            or_(models.Post.publish_at.is_(None), models.Post.publish_at <= now),
+        )
+        .group_by("year", "month")
+        .order_by(extract("year", models.Post.created_at).desc(), extract("month", models.Post.created_at).desc())
+        .all()
+    )
+    return [(int(r.year), int(r.month), int(r.count)) for r in rows]
 
 
 def get_post(db: Session, post_id: int) -> models.Post | None:

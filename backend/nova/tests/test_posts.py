@@ -444,3 +444,85 @@ def test_get_adjacent_posts_404(client, db_session):
 
     missing = client.get("/api/posts/999999/adjacent")
     assert missing.status_code == 404
+
+
+def _seed_archive_posts(db_session):
+    """Seed published/unpublished posts across distinct (year, month) buckets."""
+    from datetime import UTC, datetime
+
+    from app import models
+
+    posts = [
+        models.Post(
+            title="Jan2024",
+            slug="arch-jan2024",
+            content="Content",
+            published=True,
+            created_at=datetime(2024, 1, 10, 9, 0, 0, tzinfo=UTC),
+        ),
+        models.Post(
+            title="Mar2024",
+            slug="arch-mar2024",
+            content="Content",
+            published=True,
+            created_at=datetime(2024, 3, 5, 9, 0, 0, tzinfo=UTC),
+        ),
+        models.Post(
+            title="Nov2025",
+            slug="arch-nov2025",
+            content="Content",
+            published=True,
+            created_at=datetime(2025, 11, 20, 9, 0, 0, tzinfo=UTC),
+        ),
+        models.Post(
+            title="Draft2024",
+            slug="arch-draft2024",
+            content="Content",
+            published=False,
+            created_at=datetime(2024, 3, 15, 9, 0, 0, tzinfo=UTC),
+        ),
+    ]
+    db_session.add_all(posts)
+    db_session.commit()
+    return {p.title: p for p in posts}
+
+
+def test_archive_index_groups_published_posts_by_year_month(client, db_session):
+    """The archive endpoint buckets public posts by (year, month), newest first,
+    and excludes drafts."""
+    _seed_archive_posts(db_session)
+
+    response = client.get("/api/posts/archive")
+    assert response.status_code == 200
+    data = response.json()
+    # Buckets: {2025-11:1, 2024-03:1, 2024-01:1}; the 2024-03 draft is excluded
+    # (published=False). Ordered year desc then month desc.
+    assert data == [
+        {"year": 2025, "month": 11, "count": 1},
+        {"year": 2024, "month": 3, "count": 1},
+        {"year": 2024, "month": 1, "count": 1},
+    ]
+
+
+def test_list_posts_filters_by_year_and_month(client, db_session):
+    """GET /api/posts?year=&month= returns only posts in that period."""
+    _seed_archive_posts(db_session)
+
+    response = client.get("/api/posts?year=2024&month=3")
+    assert response.status_code == 200
+    titles = [item["title"] for item in response.json()["items"]]
+    assert titles == ["Mar2024"]
+    assert response.json()["pagination"]["total"] == 1
+
+    # Year-only filter spans all months in that year.
+    response = client.get("/api/posts?year=2024")
+    titles = [item["title"] for item in response.json()["items"]]
+    assert set(titles) == {"Jan2024", "Mar2024"}
+
+
+def test_archive_filter_rejects_invalid_queries(client):
+    """Out-of-range year/month query values are rejected (422), not silently accepted."""
+    bad_year = client.get("/api/posts?year=1800")
+    assert bad_year.status_code == 422
+    bad_month = client.get("/api/posts?month=13")
+    assert bad_month.status_code == 422

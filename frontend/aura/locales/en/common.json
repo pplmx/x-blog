@@ -5,7 +5,8 @@
 			"about": "About",
 			"categories": "Categories",
 			"search": "Search",
-			"github": "GitHub"
+			"github": "GitHub",
+			"archive": "Archive"
 		},
 		"theme": {
 			"light": "Light mode",

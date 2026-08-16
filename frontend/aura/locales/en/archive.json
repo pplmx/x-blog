@@ -1,0 +1,13 @@
+{
+	"archive": {
+		"title": "Archive",
+		"desc": "Browse all articles by publication date",
+		"empty": "No articles yet",
+		"backToAll": "Back to full archive",
+		"monthTitle": "{month} {year}",
+		"countLabel": "{count} articles",
+		"postsEmpty": "No articles in this period",
+		"views": "{count} views",
+		"monthDesc": "All articles published in {month} {year}"
+	}
+}

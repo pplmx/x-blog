@@ -5,7 +5,8 @@
 			"about": "关于",
 			"categories": "分类",
 			"search": "搜索",
-			"github": "GitHub"
+			"github": "GitHub",
+			"archive": "归档"
 		},
 		"theme": {
 			"light": "浅色模式",
