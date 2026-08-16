@@ -2,7 +2,7 @@
   "ril_version": 1,
   "round": 43,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-08-16T06:19:45+00:00",
+  "updated_at": "2026-08-16T06:27:08+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -3280,10 +3280,10 @@
     "ISS-035": {
       "id": "ISS-035",
       "type": "issue",
-      "status": "active",
-      "version": 1,
+      "status": "resolved",
+      "version": 2,
       "created_at": "2026-08-16T06:19:41+00:00",
-      "updated_at": "2026-08-16T06:19:41+00:00",
+      "updated_at": "2026-08-16T06:27:08+00:00",
       "touched_round": 43,
       "severity": "high",
       "description": "Home hero + sidebar stats are wrong: they sum views/likes/posts from only the current page's items (limit=10) but label them as site-wide totals (总阅读/总点赞). With 30 published posts the hero shows 9,651 views and 307 likes while the real /api/stats reports 29,080 total views. Users see misleading stats and the numbers change with pagination."
@@ -3291,13 +3291,36 @@
     "TASK-059": {
       "id": "TASK-059",
       "type": "task",
-      "status": "active",
-      "version": 1,
+      "status": "resolved",
+      "version": 2,
       "created_at": "2026-08-16T06:19:45+00:00",
-      "updated_at": "2026-08-16T06:19:45+00:00",
+      "updated_at": "2026-08-16T06:27:08+00:00",
       "touched_round": 43,
       "category": "correctness",
       "description": "Fix home hero/sidebar stats to use real /api/stats totals (add total_likes to stats API)"
+    },
+    "CHG-050": {
+      "id": "CHG-050",
+      "type": "change",
+      "status": "active",
+      "version": 2,
+      "created_at": "2026-08-16T06:27:00+00:00",
+      "updated_at": "2026-08-16T06:27:08+00:00",
+      "touched_round": 43,
+      "commit": "dffe8e351d1154c976b94da03d5f2ab61332cf32",
+      "description": "Home hero/sidebar stats now use real /api/stats totals; added total_likes to stats API (TASK-059)"
+    },
+    "EV-066": {
+      "id": "EV-066",
+      "type": "evidence",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-16T06:27:08+00:00",
+      "updated_at": "2026-08-16T06:27:08+00:00",
+      "touched_round": 43,
+      "source": "backend test_stats.py total_likes | 587 backend + 703 frontend tests | biome+ruff clean | nuxt typecheck | browser: hero shows 41 articles / 29,080 views / 919 likes / 11 comments (real totals, vs old per-page 9,651/307/30)",
+      "note": "Confirmed the old hero summed only page-1 items (9,651 vs real 29,080 views). Now sourced from /api/stats which already held total_views/total_comments; added total_likes. Also surfaced total comments stat.",
+      "confidence": 1.0
     }
   },
   "edges": [
@@ -4531,6 +4554,12 @@
       "to": "ISS-035",
       "type": "addresses",
       "created_at": "2026-08-16T06:19:45+00:00"
+    },
+    {
+      "from": "CHG-050",
+      "to": "TASK-059",
+      "type": "implements",
+      "created_at": "2026-08-16T06:27:08+00:00"
     }
   ]
 }
