@@ -2,7 +2,7 @@
   "ril_version": 1,
   "round": 67,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-08-16T13:47:29+00:00",
+  "updated_at": "2026-08-16T13:47:52+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -4087,7 +4087,7 @@
       "version": 2,
       "created_at": "2026-08-16T13:36:37+00:00",
       "updated_at": "2026-08-16T13:47:27+00:00",
-      "touched_round": 66,
+      "touched_round": 67,
       "title": "Admin user management has backend API but no frontend UI",
       "severity": 0.4
     },
@@ -4098,13 +4098,24 @@
       "version": 4,
       "created_at": "2026-08-16T13:36:37+00:00",
       "updated_at": "2026-08-16T13:47:28+00:00",
-      "touched_round": 66,
+      "touched_round": 67,
       "category": "core-feature",
       "severity": 0.4,
       "confidence": 1.0,
       "effort": 3.0,
       "unlock_factor": 1.0,
       "title": "Add admin Users page (list/create/delete) wired to existing API"
+    },
+    "CHG-065": {
+      "id": "CHG-065",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-16T13:47:49+00:00",
+      "updated_at": "2026-08-16T13:47:49+00:00",
+      "touched_round": 67,
+      "commit": "9b89c45",
+      "title": "Admin Users management page"
     }
   },
   "edges": [
@@ -5560,6 +5571,18 @@
       "to": "ISS-045",
       "type": "addresses",
       "created_at": "2026-08-16T13:36:40+00:00"
+    },
+    {
+      "from": "CHG-065",
+      "to": "TASK-076",
+      "type": "implements",
+      "created_at": "2026-08-16T13:47:52+00:00"
+    },
+    {
+      "from": "CHG-065",
+      "to": "ISS-045",
+      "type": "resolves",
+      "created_at": "2026-08-16T13:47:52+00:00"
     }
   ]
 }
