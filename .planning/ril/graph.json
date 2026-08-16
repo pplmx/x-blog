@@ -2,7 +2,7 @@
   "ril_version": 1,
   "round": 38,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-08-16T05:38:02+00:00",
+  "updated_at": "2026-08-16T05:38:56+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -3051,6 +3051,28 @@
       "source": "tests/admin/dashboard.spec.ts export tests | 695 frontend unit tests | biome clean | nuxt typecheck | browser: authenticated admin dashboard shows 数据导出 card; clicking 导出文章 CSV downloads real posts CSV (4698 bytes, header+rows); 导出评论 CSV downloads comments CSV",
       "note": "Browser-verified end-to-end: both export buttons fetch the CSV via Bearer token (localStorage admin_token) and trigger a blob download with real data, closing the missing-UI-entry gap on complete backend export endpoints.",
       "confidence": 1.0
+    },
+    "DEC-035": {
+      "id": "DEC-035",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-16T05:38:56+00:00",
+      "updated_at": "2026-08-16T05:38:56+00:00",
+      "touched_round": 38,
+      "rationale": "SEO consistency gap (SKILL 11.2): round-3 added /categories to the XML sitemap (site_url/categories), but the sibling public browse page /tags --- same navigation-level content type and already a static page --- is omitted from the sitemap, so it is not discoverable via search engines while /categories is. Add the /tags static URL to the sitemap alongside the other top-level pages (/, /about, /search, /categories). Pure backend sitemap string addition; test-covered.",
+      "alternatives_rejected": "(a) Link /tags in robots.txt - rejected: robots.txt is for crawl directives, not page discovery; the sitemap is the correct surface. (b) Add / tags to nav - rejected: already reachable via browse chips + /categories pattern; this is about SEO discovery."
+    },
+    "TASK-054": {
+      "id": "TASK-054",
+      "type": "task",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-16T05:38:56+00:00",
+      "updated_at": "2026-08-16T05:38:56+00:00",
+      "touched_round": 38,
+      "category": "core-feature",
+      "description": "Add /tags static page to XML sitemap"
     }
   },
   "edges": [

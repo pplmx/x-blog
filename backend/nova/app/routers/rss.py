@@ -169,6 +169,13 @@ def get_sitemap(db: Session = Depends(get_db)):
     <priority>0.4</priority>
 </url>""")
 
+    # Tags browse page
+    urls.append(f"""<url>
+    <loc>{site_url}/tags</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.4</priority>
+</url>""")
+
     # Posts
     for post in posts:
         updated = (post.updated_at or crud.utc_now_naive()).strftime("%Y-%m-%d")

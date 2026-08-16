@@ -145,6 +145,7 @@ def test_sitemap_includes_static_pages(client):
     assert "/about" in content
     assert "/search" in content
     assert "/categories" in content
+    assert "/tags" in content
 
 
 def test_sitemap_includes_image_namespace(client):
