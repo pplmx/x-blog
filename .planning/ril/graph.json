@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 62,
+  "round": 63,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-08-16T09:38:52+00:00",
+  "updated_at": "2026-08-16T10:42:57+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -3796,6 +3796,56 @@
       "touched_round": 60,
       "rationale": "OBSERVE/surface scan confirming fix completeness: after the ISS-039 feed markdown fix, re-verified the whole feed surface end-to-end (backend unit tests, pyright, live curl, seo e2e). No residual date-locale, number-format, or feed-encoding gaps found in the app.",
       "alternatives_rejected": "n/a"
+    },
+    "DEC-045": {
+      "id": "DEC-045",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-16T10:34:16+00:00",
+      "updated_at": "2026-08-16T10:34:16+00:00",
+      "touched_round": 63,
+      "rationale": "Feature gap (SKILL 11.2, admin+reader UX consistency): reading-time is computed inline on the post detail page (posts/[slug].vue) but absent from post list surfaces. A reader scanning the home/feed/category/tag/index or related-posts lists cannot gauge article length before clicking, so short-form vs long-form content is indistinguishable. Exposing reading_time on the PostList schema and PostCard closes that gap, matching the recent trajectory of surfacing per-item info (post_count chips, comment_count) across surfaces.",
+      "alternatives_rejected": "(a) Frontend-only compute on PostCard from excerpt - rejected: excerpt is truncated (500 chars) and not the true article length; the authoritative source is post.content server-side. (b) Add reading_time only to detail Post schema - rejected: the gap is specifically the list surfaces. (c) Persist a reading_time column - rejected: it is derivable from content; storing invites staleness on content edits."
+    },
+    "TASK-069": {
+      "id": "TASK-069",
+      "type": "task",
+      "status": "resolved",
+      "version": 4,
+      "created_at": "2026-08-16T10:34:19+00:00",
+      "updated_at": "2026-08-16T10:42:57+00:00",
+      "touched_round": 63,
+      "category": "core-feature",
+      "severity": 5,
+      "confidence": 1,
+      "effort": 2,
+      "unlock_factor": 1,
+      "title": "Surface reading_time on PostList schema + PostCard (from post.content, min 1)",
+      "description": "Add reading_time to PostList, compute from post.content server-side (mirror detail-page forumla: words/200, min 1), render on PostCard in home/feed/category/tag/related lists. Resolves DEC-045."
+    },
+    "CHG-061": {
+      "id": "CHG-061",
+      "type": "change",
+      "status": "active",
+      "version": 2,
+      "created_at": "2026-08-16T10:42:18+00:00",
+      "updated_at": "2026-08-16T10:42:31+00:00",
+      "touched_round": 63,
+      "commit": "855ad4b",
+      "summary": "Add reading_time to PostList schema + PostCard (DEC-045, TASK-069)"
+    },
+    "EV-080": {
+      "id": "EV-080",
+      "type": "evidence",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-16T10:42:31+00:00",
+      "updated_at": "2026-08-16T10:42:31+00:00",
+      "touched_round": 63,
+      "source": "tests/test_features.py::test_posts_list_reading_time; tests/test_features.py::test_related_posts_reading_time; backend live /api/posts; browser UI home cards show '1 分钟'/'2 分钟'; pyright 0 err; ruff/biome clean; nuxt typecheck clean",
+      "summary": "reading_time present on /api/posts, related, popular; rendered on PostCard in browser",
+      "confidence": 1.0
     }
   },
   "edges": [
@@ -5125,6 +5175,18 @@
       "to": "TASK-068",
       "type": "implements",
       "created_at": "2026-08-16T09:32:43+00:00"
+    },
+    {
+      "from": "DEC-045",
+      "to": "TASK-069",
+      "type": "governs",
+      "created_at": "2026-08-16T10:34:22+00:00"
+    },
+    {
+      "from": "CHG-061",
+      "to": "TASK-069",
+      "type": "implements",
+      "created_at": "2026-08-16T10:42:48+00:00"
     }
   ]
 }
