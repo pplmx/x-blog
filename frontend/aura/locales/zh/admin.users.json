@@ -1,0 +1,24 @@
+{
+	"admin.users": {
+		"seoTitle": "用户 - X-Blog",
+		"title": "管理用户",
+		"summary": "共 {n} 个用户",
+		"createTitle": "新建管理员",
+		"usernamePlaceholder": "用户名（3-50 个字符）",
+		"passwordPlaceholder": "密码（至少 8 位）",
+		"confirmPasswordPlaceholder": "确认密码",
+		"create": "创建用户",
+		"delete": "删除",
+		"confirmDelete": "确定删除该用户？",
+		"superuser": "超级管理员",
+		"cannotDeleteSelf": "不能删除当前登录的账号",
+		"passwordMismatch": "两次输入的密码不一致",
+		"validation": "用户名必填且密码至少 8 位",
+		"created": "用户已创建",
+		"deleted": "用户已删除",
+		"empty": "暂无用户",
+		"operationFailed": "操作失败，请重试",
+		"loading": "加载中...",
+		"hint": "新用户拥有普通管理员权限。当前登录账号的删除按钮已禁用。"
+	}
+}

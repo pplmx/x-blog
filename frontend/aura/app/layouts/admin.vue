@@ -80,6 +80,7 @@ const navItems = [
 	{ href: "/admin/comments", labelKey: "admin.nav.comments", icon: "lucide:message-circle" },
 	{ href: "/admin/categories", labelKey: "admin.nav.categories", icon: "lucide:folder" },
 	{ href: "/admin/tags", labelKey: "admin.nav.tags", icon: "lucide:tag" },
+	{ href: "/admin/users", labelKey: "admin.nav.users", icon: "lucide:users" },
 ];
 </script>
 

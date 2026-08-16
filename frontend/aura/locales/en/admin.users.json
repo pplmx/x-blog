@@ -1,0 +1,24 @@
+{
+	"admin.users": {
+		"seoTitle": "Users - X-Blog",
+		"title": "Manage Users",
+		"summary": "{n} users total",
+		"createTitle": "New Admin User",
+		"usernamePlaceholder": "Username (3-50 chars)",
+		"passwordPlaceholder": "Password (min 8 chars)",
+		"confirmPasswordPlaceholder": "Confirm password",
+		"create": "Create User",
+		"delete": "Delete",
+		"confirmDelete": "Delete this user?",
+		"superuser": "superuser",
+		"cannotDeleteSelf": "Cannot delete your own account",
+		"passwordMismatch": "The two passwords do not match",
+		"validation": "Username is required and password must be at least 8 characters",
+		"created": "User created",
+		"deleted": "User deleted",
+		"empty": "No users yet",
+		"operationFailed": "Operation failed, please retry",
+		"loading": "Loading...",
+		"hint": "New users get standard admin permissions. Delete is disabled for your own account."
+	}
+}

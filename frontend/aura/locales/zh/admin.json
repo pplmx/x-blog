@@ -6,7 +6,8 @@
 			"posts": "文章",
 			"comments": "评论",
 			"categories": "分类",
-			"tags": "标签"
+			"tags": "标签",
+			"users": "用户"
 		},
 		"backToSite": "返回前台",
 		"changePassword": "修改密码",

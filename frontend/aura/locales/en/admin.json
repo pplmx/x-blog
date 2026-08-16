@@ -6,7 +6,8 @@
 			"posts": "Posts",
 			"comments": "Comments",
 			"categories": "Categories",
-			"tags": "Tags"
+			"tags": "Tags",
+			"users": "Users"
 		},
 		"backToSite": "Back to site",
 		"changePassword": "Change password",

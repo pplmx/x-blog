@@ -509,6 +509,52 @@ export async function deleteAdminTag(id: number) {
 	});
 }
 
+// ============================================================================
+// Admin users
+// ============================================================================
+
+export interface AdminUser {
+	id: number;
+	username: string;
+	is_superuser: boolean;
+}
+
+export interface CreateAdminUserInput {
+	username: string;
+	password: string;
+}
+
+/** Fetch all admin users (auth required). */
+export async function fetchAdminUsers() {
+	const config = useRuntimeConfig();
+	const apiUrl = config.public.apiUrl;
+	return useFetch<AdminUser[]>(`${apiUrl}/api/admin/users`, {
+		headers: getAuthHeaders(),
+		server: false,
+	});
+}
+
+/** Create an admin user (auth required). */
+export async function createAdminUser(data: CreateAdminUserInput) {
+	const config = useRuntimeConfig();
+	const apiUrl = config.public.apiUrl;
+	return useFetch<AdminUser>(`${apiUrl}/api/admin/users`, {
+		method: "POST",
+		headers: { "Content-Type": "application/json", ...getAuthHeaders() },
+		body: data,
+	});
+}
+
+/** Delete an admin user (auth required). */
+export async function deleteAdminUser(id: number) {
+	const config = useRuntimeConfig();
+	const apiUrl = config.public.apiUrl;
+	return useFetch(`${apiUrl}/api/admin/users/${id}`, {
+		method: "DELETE",
+		headers: getAuthHeaders(),
+	});
+}
+
 /** Fetch comments for admin panel (auth required, paginated envelope). */
 export interface AdminCommentListResponse {
 	items: AdminComment[];
