@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import {
 	type PostListResponse,
+	useBlogStats,
 	useCategories,
 	usePopularPosts,
 	useTags,
@@ -56,6 +57,7 @@ const { data: popularPosts } = await usePopularPosts();
 // Look up active filter labels for the "filtered by" indicator (deep-link UX).
 const { data: categories } = await useCategories();
 const { data: tags } = await useTags();
+const { data: statsData } = await useBlogStats();
 const activeFilterLabel = computed(() => {
 	if (categoryId.value && categories.value) {
 		const name = categories.value.find((c) => c.id === categoryId.value)?.name;
@@ -95,16 +97,19 @@ watch(
 	},
 );
 
-// Hero stats
+// Hero/global stats — sourced from the real /api/stats aggregates (site-wide),
+// not the current page's items. Summing the first page's 10 items presented a
+// per-page number as a site total and changed with pagination (ISS-035).
 const stats = computed(() => {
-	const items = posts.value?.items ?? [];
-	const total = posts.value?.pagination?.total ?? 0;
-	const totalViews = items.reduce((s, p) => s + (p.views || 0), 0);
-	const totalLikes = items.reduce((s, p) => s + (p.likes || 0), 0);
+	const total = statsData.value?.total_posts ?? posts.value?.pagination?.total ?? 0;
+	const totalViews = statsData.value?.total_views ?? 0;
+	const totalLikes = statsData.value?.total_likes ?? 0;
+	const totalComments = statsData.value?.total_comments ?? 0;
 	return [
-		{ labelKey: "home.stats.posts", value: total },
+		{ labelKey: "home.stats.posts", value: total.toLocaleString() },
 		{ labelKey: "home.stats.totalViews", value: totalViews.toLocaleString() },
 		{ labelKey: "home.stats.totalLikes", value: totalLikes.toLocaleString() },
+		{ labelKey: "home.stats.totalComments", value: totalComments.toLocaleString() },
 	];
 });
 </script>

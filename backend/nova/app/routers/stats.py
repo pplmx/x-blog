@@ -26,6 +26,7 @@ class BlogStatsResponse(BaseModel):
     total_comments: int
     pending_comments: int
     total_views: int
+    total_likes: int
 
 
 router = APIRouter(prefix="/api/stats", tags=["Stats"])
@@ -85,6 +86,9 @@ def get_blog_stats(request: Request, db: Session = Depends(get_db)):  # noqa: AR
     # Total views
     total_views = db.query(func.sum(models.Post.views)).scalar() or 0
 
+    # Total likes
+    total_likes = db.query(func.sum(models.Post.likes)).scalar() or 0
+
     return BlogStatsResponse(
         total_posts=total_posts,
         published_posts=published_posts,
@@ -94,4 +98,5 @@ def get_blog_stats(request: Request, db: Session = Depends(get_db)):  # noqa: AR
         total_comments=total_comments,
         pending_comments=pending_comments,
         total_views=total_views,
+        total_likes=total_likes,
     )

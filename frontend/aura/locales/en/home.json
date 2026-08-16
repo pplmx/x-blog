@@ -14,7 +14,8 @@
 		"stats": {
 			"posts": "Articles",
 			"totalViews": "Total reads",
-			"totalLikes": "Total likes"
+			"totalLikes": "Total likes",
+			"totalComments": "Comments"
 		},
 		"posts": {
 			"views": "reads"

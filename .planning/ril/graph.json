@@ -2,7 +2,7 @@
   "ril_version": 1,
   "round": 43,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-08-16T06:16:21+00:00",
+  "updated_at": "2026-08-16T06:19:45+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -3276,6 +3276,28 @@
       "source": "backend test_comments.py::test_posts_list_includes_comment_count | 587 backend pytest | 703 frontend unit tests | nuxt typecheck | biome+ruff clean | browser: API /api/posts returns comment_count (post 1 = 2 approved); PostCard renders 2 next to views",
       "note": "Backend added comment_count via single grouped COUNT (no N+1), schema default 0 (cache-safe, backward compatible). Frontend PostList interface + PostCard show the count. Browser-verified end-to-end.",
       "confidence": 1.0
+    },
+    "ISS-035": {
+      "id": "ISS-035",
+      "type": "issue",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-16T06:19:41+00:00",
+      "updated_at": "2026-08-16T06:19:41+00:00",
+      "touched_round": 43,
+      "severity": "high",
+      "description": "Home hero + sidebar stats are wrong: they sum views/likes/posts from only the current page's items (limit=10) but label them as site-wide totals (总阅读/总点赞). With 30 published posts the hero shows 9,651 views and 307 likes while the real /api/stats reports 29,080 total views. Users see misleading stats and the numbers change with pagination."
+    },
+    "TASK-059": {
+      "id": "TASK-059",
+      "type": "task",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-16T06:19:45+00:00",
+      "updated_at": "2026-08-16T06:19:45+00:00",
+      "touched_round": 43,
+      "category": "correctness",
+      "description": "Fix home hero/sidebar stats to use real /api/stats totals (add total_likes to stats API)"
     }
   },
   "edges": [
@@ -4503,6 +4525,12 @@
       "to": "TASK-058",
       "type": "implements",
       "created_at": "2026-08-16T06:16:16+00:00"
+    },
+    {
+      "from": "TASK-059",
+      "to": "ISS-035",
+      "type": "addresses",
+      "created_at": "2026-08-16T06:19:45+00:00"
     }
   ]
 }

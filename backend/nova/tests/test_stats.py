@@ -15,6 +15,7 @@ def test_get_stats(client):
     assert "total_tags" in data
     assert "total_comments" in data
     assert "total_views" in data
+    assert "total_likes" in data
 
     # Check types
     assert isinstance(data["total_posts"], int)
@@ -24,6 +25,7 @@ def test_get_stats(client):
     assert isinstance(data["total_tags"], int)
     assert isinstance(data["total_comments"], int)
     assert isinstance(data["total_views"], int)
+    assert isinstance(data["total_likes"], int)
 
 
 def test_stats_has_request_id(client):

@@ -14,7 +14,8 @@
 		"stats": {
 			"posts": "文章",
 			"totalViews": "总阅读",
-			"totalLikes": "总点赞"
+			"totalLikes": "总点赞",
+			"totalComments": "评论"
 		},
 		"posts": {
 			"views": "阅读"

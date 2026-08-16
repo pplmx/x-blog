@@ -193,6 +193,7 @@ export interface BlogStats {
 	total_comments: number;
 	pending_comments: number;
 	total_views: number;
+	total_likes: number;
 }
 
 /**

@@ -30,6 +30,12 @@ const { mockState } = vi.hoisted(() => ({
 		}>,
 		categories: [] as Array<{ id: number; name: string }>,
 		tags: [] as Array<{ id: number; name: string }>,
+		statsData: null as null | {
+			total_posts: number;
+			total_views: number;
+			total_likes: number;
+			total_comments: number;
+		},
 	},
 }));
 
@@ -45,6 +51,11 @@ vi.mock("../../composables/useApi", () => ({
 	}),
 	useTags: () => ({
 		data: ref(mockState.tags),
+	}),
+	useBlogStats: () => ({
+		data: ref(
+			mockState.statsData ?? { total_posts: 0, total_views: 0, total_likes: 0, total_comments: 0 },
+		),
 	}),
 }));
 
@@ -176,6 +187,7 @@ function resetMockState() {
 	mockState.popularPosts = [];
 	mockState.categories = [];
 	mockState.tags = [];
+	mockState.statsData = null;
 	lastFetchUrl = "";
 }
 
@@ -254,18 +266,23 @@ describe("Index Page", () => {
 			expect(hrefs).toContain("/about");
 		});
 
-		it("renders site stats from post data", async () => {
+		it("renders site stats from the stats API", async () => {
+			mockState.statsData = {
+				total_posts: 30,
+				total_views: 29080,
+				total_likes: 1200,
+				total_comments: 45,
+			};
 			const wrapper = await mountIndexPage();
-			// Total views: 100 + 200 = 300, formatted with toLocaleString
-			expect(wrapper.text()).toContain("300");
-			// Total likes: 50 + 30 = 80
-			expect(wrapper.text()).toContain("80");
+			// Site-wide totals from /api/stats, not the page's 10 items
+			expect(wrapper.text()).toContain("29,080");
+			expect(wrapper.text()).toContain("1,200");
 		});
 
 		it("renders article count in stats", async () => {
+			mockState.statsData = { total_posts: 30, total_views: 0, total_likes: 0, total_comments: 0 };
 			const wrapper = await mountIndexPage();
-			// Total posts: 2
-			expect(wrapper.text()).toContain("2");
+			expect(wrapper.text()).toContain("30");
 		});
 
 		it("renders post list section", async () => {
@@ -354,31 +371,26 @@ describe("Index Page", () => {
 	});
 
 	describe("Stats computation", () => {
-		it("computes total views from post items", async () => {
-			mockState.posts = {
-				items: [
-					{ ...mockPostsData.items[0], views: 100 },
-					{ ...mockPostsData.items[1], views: 200 },
-				],
-				pagination: mockPostsData.pagination,
+		it("computes total views and likes from the stats API", async () => {
+			mockState.statsData = {
+				total_posts: 30,
+				total_views: 29080,
+				total_likes: 1200,
+				total_comments: 45,
 			};
 			const wrapper = await mountIndexPage();
-			expect(wrapper.text()).toContain("300");
+			expect(wrapper.text()).toContain("29,080");
+			expect(wrapper.text()).toContain("1,200");
 		});
 
-		it("computes total likes from post items", async () => {
-			mockState.posts = {
-				items: [
-					{ ...mockPostsData.items[0], likes: 50 },
-					{ ...mockPostsData.items[1], likes: 30 },
-				],
-				pagination: mockPostsData.pagination,
-			};
+		it("renders total comments from the stats API", async () => {
+			mockState.statsData = { total_posts: 30, total_views: 0, total_likes: 0, total_comments: 45 };
 			const wrapper = await mountIndexPage();
-			expect(wrapper.text()).toContain("80");
+			expect(wrapper.text()).toContain("45");
 		});
 
-		it("handles missing views/likes gracefully", async () => {
+		it("handles missing stats data gracefully", async () => {
+			mockState.statsData = null;
 			mockState.posts = {
 				items: [
 					{ ...mockPostsData.items[0], views: 100, likes: 50 },
@@ -388,14 +400,16 @@ describe("Index Page", () => {
 			};
 			const wrapper = await mountIndexPage();
 			expect(wrapper.find(".markdown-content").exists()).toBe(false);
-			// Stats card should still render
+			// Stats card should still render (falls back to 0 / page total)
 			expect(wrapper.text()).toContain("站点统计");
 		});
 
 		it("formats large numbers with toLocaleString", async () => {
-			mockState.posts = {
-				items: [{ ...mockPostsData.items[0], views: 1000000, likes: 500000 }],
-				pagination: { total: 1, page: 1, limit: 10, total_pages: 1 },
+			mockState.statsData = {
+				total_posts: 1,
+				total_views: 1000000,
+				total_likes: 500000,
+				total_comments: 0,
 			};
 			const wrapper = await mountIndexPage();
 			// 1,000,000 formatted with commas
