@@ -2,7 +2,7 @@
   "ril_version": 1,
   "round": 54,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-08-16T08:37:36+00:00",
+  "updated_at": "2026-08-16T08:54:31+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -3563,13 +3563,36 @@
     "TASK-064": {
       "id": "TASK-064",
       "type": "task",
-      "status": "active",
-      "version": 1,
+      "status": "resolved",
+      "version": 2,
       "created_at": "2026-08-16T08:37:36+00:00",
-      "updated_at": "2026-08-16T08:37:36+00:00",
+      "updated_at": "2026-08-16T08:54:31+00:00",
       "touched_round": 54,
       "category": "core-feature",
       "description": "Add post_count to public categories/tags endpoints + display on browse pages"
+    },
+    "CHG-056": {
+      "id": "CHG-056",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-16T08:54:31+00:00",
+      "updated_at": "2026-08-16T08:54:31+00:00",
+      "touched_round": 54,
+      "commit": "a7405b36b16b82e786901b58bd6aabb2f0734387",
+      "description": "Add post_count to public categories/tags endpoints (grouped COUNT) + browse page chips (TASK-064)"
+    },
+    "EV-074": {
+      "id": "EV-074",
+      "type": "evidence",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-16T08:54:31+00:00",
+      "updated_at": "2026-08-16T08:54:31+00:00",
+      "touched_round": 54,
+      "source": "tests/test_categories.py + test_tags.py post_count assertions | 587 backend + 708 frontend unit tests | ruff+biome clean | nuxt typecheck",
+      "note": "Public GET /api/categories and /api/tags now return post_count via single grouped COUNT each (categories by category_id; tags via post_tags join), cache-safe with schema default 0; /categories and /tags browse chips render the count.",
+      "confidence": 1.0
     }
   },
   "edges": [
@@ -4857,6 +4880,12 @@
       "to": "TASK-063",
       "type": "implements",
       "created_at": "2026-08-16T08:15:55+00:00"
+    },
+    {
+      "from": "CHG-056",
+      "to": "TASK-064",
+      "type": "implements",
+      "created_at": "2026-08-16T08:54:31+00:00"
     }
   ]
 }
