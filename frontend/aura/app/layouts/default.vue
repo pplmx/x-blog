@@ -165,6 +165,17 @@ onMounted(() => {
           <div class="flex items-center gap-4 text-sm text-gray-400 dark:text-gray-500">
             <NuxtLink to="/" class="hover:text-gray-600 dark:hover:text-gray-300 transition-colors">{{ t('common.nav.home') }}</NuxtLink>
             <NuxtLink to="/about" class="hover:text-gray-600 dark:hover:text-gray-300 transition-colors">{{ t('common.nav.about') }}</NuxtLink>
+            <a
+              href="/rss/feed.xml"
+              type="application/rss+xml"
+              class="hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+              :title="t('common.footer.subscribeRss')"
+            >
+              <span class="inline-flex items-center gap-1.5">
+                <Icon icon="lucide:rss" class="w-4 h-4" />
+                {{ t('common.footer.subscribeRss') }}
+              </span>
+            </a>
             <a href="https://github.com/pplmx/x-blog" target="_blank" rel="noopener noreferrer" class="hover:text-gray-600 dark:hover:text-gray-300 transition-colors">GitHub</a>
           </div>
         </div>

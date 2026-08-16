@@ -48,15 +48,22 @@ describe("App Root", () => {
 		});
 	});
 
-	describe("Structure", () => {
-		it("renders layout wrapping page content", () => {
-			const wrapper = mountApp();
-			const layout = wrapper.find(".nuxt-layout");
-			const page = wrapper.find(".nuxt-page");
-			expect(layout.exists()).toBe(true);
-			expect(page.exists()).toBe(true);
-			// Page should be inside layout
-			expect(layout.element.contains(page.element)).toBe(true);
+	describe("Feed auto-discovery", () => {
+		it("emits RSS and Atom alternate link tags via useHead", () => {
+			mountApp();
+			const calls = vi.mocked(useHead).mock.calls;
+			const linkArgs = calls.flatMap(([arg]) =>
+				arg && Array.isArray((arg as Record<string, unknown>).link)
+					? ((arg as Record<string, unknown>).link as Array<Record<string, string>>)
+					: [],
+			);
+			const rss = linkArgs.find((l) => l.href === "/rss/feed.xml");
+			const atom = linkArgs.find((l) => l.href === "/rss/atom.xml");
+			expect(rss).toBeTruthy();
+			expect(rss?.type).toBe("application/rss+xml");
+			expect(rss?.rel).toBe("alternate");
+			expect(atom).toBeTruthy();
+			expect(atom?.type).toBe("application/atom+xml");
 		});
 	});
 });

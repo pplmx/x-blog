@@ -71,12 +71,19 @@ describe("Default Layout", () => {
 
 		it("renders the 'Made with' text", () => {
 			const wrapper = mountLayout();
-			expect(wrapper.text()).toMatch(/Made with/);
+			expect(wrapper.text()).toMatch(/用/);
 		});
 
 		it("renders the 'for developers' text", () => {
 			const wrapper = mountLayout();
-			expect(wrapper.text()).toMatch(/for developers/);
+			expect(wrapper.text()).toMatch(/为开发者打造/);
+		});
+
+		it("renders an RSS subscribe link to the feed", () => {
+			const wrapper = mountLayout();
+			const rssLink = wrapper.find('a[href="/rss/feed.xml"]');
+			expect(rssLink.exists()).toBe(true);
+			expect(rssLink.attributes("type")).toBe("application/rss+xml");
 		});
 	});
 

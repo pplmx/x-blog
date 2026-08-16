@@ -103,7 +103,7 @@ describe("About Page", () => {
 	describe("Footer", () => {
 		it("renders the made with text", () => {
 			const wrapper = mountAboutPage();
-			expect(wrapper.text()).toMatch(/for developers/);
+			expect(wrapper.text()).toMatch(/为开发者打造/);
 		});
 	});
 });

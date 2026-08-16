@@ -18,8 +18,9 @@
 			"close": "关闭菜单"
 		},
 		"footer": {
-			"madeWith": "Made with",
-			"forDevelopers": "for developers"
+			"madeWith": "用",
+			"forDevelopers": "为开发者打造",
+			"subscribeRss": "订阅"
 		},
 		"action": {
 			"back": "返回",

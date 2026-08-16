@@ -19,7 +19,8 @@
 		},
 		"footer": {
 			"madeWith": "Made with",
-			"forDevelopers": "for developers"
+			"forDevelopers": "for developers",
+			"subscribeRss": "Subscribe"
 		},
 		"action": {
 			"back": "Back",

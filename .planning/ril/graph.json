@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 32,
+  "round": 33,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-08-16T04:47:29+00:00",
+  "updated_at": "2026-08-16T04:49:43+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -2781,6 +2781,28 @@
       "source": "test_rss.py test_sitemap_includes_static_pages|tests/pages/categories.spec.ts (14) | playwright e2e categories.spec.ts | 678 frontend unit tests | ruff/biome clean | nuxt typecheck green",
       "note": "Categories page browser-verified: h1 全部分类, 5 category chips, category posts view with pagination; sitemap now lists /categories",
       "confidence": 1.0
+    },
+    "DEC-030": {
+      "id": "DEC-030",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-16T04:49:43+00:00",
+      "updated_at": "2026-08-16T04:49:43+00:00",
+      "touched_round": 33,
+      "rationale": "Feature-evolution gap analysis (SKILL 11.2): RSS 2.0 (/rss/feed.xml) and Atom (/rss/atom.xml) feeds are fully implemented end-to-end (backend generation + Nuxt server proxy) and tested, but are completely undiscoverable --- no UI link anywhere and no feed auto-discovery <link rel=alternate> in <head>. Blog readers subscribe via RSS; browsers and readers auto-detect feeds from the head link. Add a visible RSS subscription link in the site footer (with aria-label/title copy) and emit feed auto-discovery link tags globally via useHead. Pure frontend, no schema/infra change, low risk.",
+      "alternatives_rejected": "(a) Newsletter/email subscribe - needs SMTP infra, not available. (b) Comment reply notifications - needs SMTP, deferred. (c) Full-text RSS toggle in UI - feed already serves full content; no user value. (d) User accounts - touches hardened auth surface, high risk."
+    },
+    "TASK-048": {
+      "id": "TASK-048",
+      "type": "task",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-16T04:49:43+00:00",
+      "updated_at": "2026-08-16T04:49:43+00:00",
+      "touched_round": 33,
+      "category": "core-feature",
+      "description": "Add RSS/Atom discoverability: footer subscribe link + feed auto-discovery head link tags"
     }
   },
   "edges": [
