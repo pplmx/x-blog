@@ -489,7 +489,11 @@ describe("Admin Comments Page", () => {
 			await nextButton?.trigger("click");
 			await flushPromises();
 
-			expect(mockFetchAdminComments).toHaveBeenLastCalledWith(undefined, 2, 20);
+			expect(mockFetchAdminComments).toHaveBeenLastCalledWith(
+				{ isApproved: undefined, q: undefined, dateFrom: undefined, dateTo: undefined },
+				2,
+				20,
+			);
 			expect(wrapper.text()).toContain("Comment from page two");
 			expect(wrapper.text()).toContain("第 2 / 2 页");
 		});

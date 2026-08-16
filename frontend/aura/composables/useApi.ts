@@ -568,11 +568,23 @@ export interface AdminCommentListResponse {
 	};
 }
 
-export async function fetchAdminComments(postId?: number, page = 1, limit = 20) {
+export interface AdminCommentFilters {
+	postId?: number;
+	isApproved?: boolean;
+	q?: string;
+	dateFrom?: string;
+	dateTo?: string;
+}
+
+export async function fetchAdminComments(opts: AdminCommentFilters = {}, page = 1, limit = 20) {
 	const config = useRuntimeConfig();
 	const apiUrl = config.public.apiUrl;
 	const query = new URLSearchParams();
-	if (postId) query.set("post_id", String(postId));
+	if (opts.postId) query.set("post_id", String(opts.postId));
+	if (opts.isApproved !== undefined) query.set("is_approved", String(opts.isApproved));
+	if (opts.q) query.set("q", opts.q);
+	if (opts.dateFrom) query.set("date_from", opts.dateFrom);
+	if (opts.dateTo) query.set("date_to", opts.dateTo);
 	query.set("page", String(page));
 	query.set("limit", String(limit));
 	return useFetch<AdminCommentListResponse>(`${apiUrl}/api/admin/comments?${query}`, {

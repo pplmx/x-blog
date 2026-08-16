@@ -14,16 +14,54 @@ const { t, locale } = useLang();
 useHead({ title: computed(() => t("admin.comments.seoTitle")) });
 
 const PAGE_SIZE = 20;
+// Moderation filters (RIL TASK-078, ISS-047): status, full-text search and
+// created-date range. Applied server-side; the list refetches on change.
+const statusFilter = ref<"all" | "pending" | "approved">("all");
+const searchQuery = ref("");
+const dateFrom = ref("");
+const dateTo = ref("");
+
+function activeFilters() {
+	return {
+		isApproved:
+			statusFilter.value === "pending"
+				? false
+				: statusFilter.value === "approved"
+					? true
+					: undefined,
+		q: searchQuery.value.trim() || undefined,
+		dateFrom: dateFrom.value || undefined,
+		dateTo: dateTo.value || undefined,
+	};
+}
+
 const {
 	data: comments,
 	pending,
 	error,
 	refresh,
-} = await fetchAdminComments(undefined, 1, PAGE_SIZE);
+} = await fetchAdminComments(activeFilters(), 1, PAGE_SIZE);
 const currentPage = ref(1);
 const isProcessing = ref(false);
 const selectedIds = ref<Set<number>>(new Set());
 const actionError = ref<string | null>(null);
+
+/** Apply the active filters and reload from page 1. */
+async function applyFilters() {
+	currentPage.value = 1;
+	selectedIds.value = new Set();
+	const res = await fetchAdminComments(activeFilters(), 1, PAGE_SIZE);
+	comments.value = res.data.value;
+}
+
+/** Clear all filters back to the unfiltered list. */
+function clearFilters() {
+	statusFilter.value = "all";
+	searchQuery.value = "";
+	dateFrom.value = "";
+	dateTo.value = "";
+	applyFilters();
+}
 
 function getErrorMessage(e: unknown): string {
 	if (e instanceof Error) return e.message;
@@ -37,7 +75,7 @@ async function gotoPage(page: number) {
 	if (page < 1 || page > totalPages.value || page === currentPage.value) return;
 	currentPage.value = page;
 	selectedIds.value = new Set();
-	const res = await fetchAdminComments(undefined, page, PAGE_SIZE);
+	const res = await fetchAdminComments(activeFilters(), page, PAGE_SIZE);
 	comments.value = res.data.value;
 }
 
@@ -149,6 +187,93 @@ async function handleApprove(id: number, approved: boolean) {
           {{ t("admin.comments.selectAll") }}
         </label>
       </div>
+    </div>
+
+    <!-- Moderation filters (RIL TASK-078, ISS-047) -->
+    <div class="bg-white dark:bg-gray-900 rounded-xl border border-gray-100 dark:border-gray-800 p-4 mb-6 flex flex-wrap items-end gap-3">
+      <div class="flex flex-col gap-1">
+        <label class="text-xs font-medium text-gray-500 dark:text-gray-400">
+          {{ t("admin.comments.status") }}
+        </label>
+        <div class="inline-flex rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700">
+          <button
+            type="button"
+            :class="statusFilter === 'all'
+              ? 'bg-blue-500 text-white'
+              : 'bg-white dark:bg-gray-900 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800'"
+            class="px-3 py-1.5 text-sm font-medium transition-colors"
+            @click="statusFilter = 'all'; applyFilters()"
+          >
+            {{ t("admin.comments.filterAll") }}
+          </button>
+          <button
+            type="button"
+            :class="statusFilter === 'pending'
+              ? 'bg-amber-500 text-white'
+              : 'bg-white dark:bg-gray-900 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800'"
+            class="px-3 py-1.5 text-sm font-medium transition-colors"
+            @click="statusFilter = 'pending'; applyFilters()"
+          >
+            {{ t("admin.comments.filterPending") }}
+          </button>
+          <button
+            type="button"
+            :class="statusFilter === 'approved'
+              ? 'bg-green-500 text-white'
+              : 'bg-white dark:bg-gray-900 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800'"
+            class="px-3 py-1.5 text-sm font-medium transition-colors"
+            @click="statusFilter = 'approved'; applyFilters()"
+          >
+            {{ t("admin.comments.filterApproved") }}
+          </button>
+        </div>
+      </div>
+      <div class="flex flex-col gap-1 flex-1 min-w-48">
+        <label class="text-xs font-medium text-gray-500 dark:text-gray-400">
+          {{ t("admin.comments.search") }}
+        </label>
+        <input
+          v-model="searchQuery"
+          type="text"
+          :placeholder="t('admin.comments.searchPlaceholder')"
+          class="px-3 py-1.5 text-sm border border-gray-200 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+          @keydown.enter="applyFilters"
+        >
+      </div>
+      <div class="flex flex-col gap-1">
+        <label class="text-xs font-medium text-gray-500 dark:text-gray-400">
+          {{ t("admin.comments.dateFrom") }}
+        </label>
+        <input
+          v-model="dateFrom"
+          type="date"
+          class="px-3 py-1.5 text-sm border border-gray-200 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+        >
+      </div>
+      <div class="flex flex-col gap-1">
+        <label class="text-xs font-medium text-gray-500 dark:text-gray-400">
+          {{ t("admin.comments.dateTo") }}
+        </label>
+        <input
+          v-model="dateTo"
+          type="date"
+          class="px-3 py-1.5 text-sm border border-gray-200 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+        >
+      </div>
+      <button
+        type="button"
+        class="px-4 py-1.5 text-sm font-medium text-white bg-blue-500 rounded-lg hover:bg-blue-600 disabled:opacity-50 transition-colors"
+        @click="applyFilters"
+      >
+        {{ t("admin.comments.apply") }}
+      </button>
+      <button
+        type="button"
+        class="px-4 py-1.5 text-sm font-medium text-gray-600 dark:text-gray-300 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-lg transition-colors"
+        @click="clearFilters"
+      >
+        {{ t("admin.comments.clear") }}
+      </button>
     </div>
 
     <div v-if="pending" class="text-center py-12">

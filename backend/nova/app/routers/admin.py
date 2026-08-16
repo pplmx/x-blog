@@ -1,3 +1,5 @@
+from datetime import UTC, datetime
+
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from fastapi.security import OAuth2PasswordRequestForm
 from pydantic import BaseModel, ConfigDict, Field
@@ -532,15 +534,40 @@ def admin_delete_tag(
 @router.get("/comments")
 def admin_list_comments(
     post_id: int | None = None,
+    is_approved: bool | None = Query(None, description="Filter by moderation status"),
+    q: str | None = Query(None, description="Search nickname/email/content"),
+    date_from: datetime | None = Query(None, description="ISO date filter: created >= date_from"),
+    date_to: datetime | None = Query(None, description="ISO date filter: created <= date_to"),
     page: int = Query(1, ge=1),
     limit: int = Query(20, ge=1, le=100),
     db: Session = Depends(get_db),
     _current_user: auth.User = Depends(get_current_admin),
 ):
-    """List comments with pagination (bounded response, issue #20)."""
+    """List comments with pagination + filters (bounded response, issue #20)."""
     query = db.query(models.Comment, models.Post.title).join(models.Post, models.Post.id == models.Comment.post_id)
     if post_id:
         query = query.filter(models.Comment.post_id == post_id)
+    if is_approved is not None:
+        query = query.filter(models.Comment.is_approved.is_(is_approved))
+    if q:
+        like = f"%{crud.escape_like_pattern(q)}%"
+        query = query.filter(
+            or_(
+                models.Comment.nickname.ilike(like, escape="\\"),
+                models.Comment.email.ilike(like, escape="\\"),
+                models.Comment.content.ilike(like, escape="\\"),
+            )
+        )
+    if date_from:
+        start = date_from
+        if start.tzinfo is not None:
+            start = start.astimezone(UTC).replace(tzinfo=None)
+        query = query.filter(models.Comment.created_at >= start)
+    if date_to:
+        end = date_to
+        if end.tzinfo is not None:
+            end = end.astimezone(UTC).replace(tzinfo=None)
+        query = query.filter(models.Comment.created_at <= end)
     total = query.count()
 
     comment_rows = query.order_by(models.Comment.created_at.desc()).offset((page - 1) * limit).limit(limit).all()

@@ -181,15 +181,27 @@ describe("admin API functions", () => {
 	});
 
 	it("fetchAdminComments with postId adds query parameter", () => {
-		fetchAdminComments(15);
+		fetchAdminComments({ postId: 15 });
 		expect(useFetchCalls[0].url).toBe(
 			"http://localhost:18888/api/admin/comments?post_id=15&page=1&limit=20",
 		);
 	});
 
 	it("fetchAdminComments passes page and limit through", () => {
-		fetchAdminComments(undefined, 3, 100);
+		fetchAdminComments({}, 3, 100);
 		expect(useFetchCalls[0].url).toBe("http://localhost:18888/api/admin/comments?page=3&limit=100");
+	});
+
+	it("fetchAdminComments passes moderation filters through", () => {
+		fetchAdminComments({
+			isApproved: false,
+			q: "carol",
+			dateFrom: "2026-01-01",
+			dateTo: "2026-12-31",
+		});
+		expect(useFetchCalls[0].url).toBe(
+			"http://localhost:18888/api/admin/comments?is_approved=false&q=carol&date_from=2026-01-01&date_to=2026-12-31&page=1&limit=20",
+		);
 	});
 
 	it("deleteAdminComment sends DELETE with ID", () => {

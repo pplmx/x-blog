@@ -504,6 +504,83 @@ class TestAdminComments:
         assert comments[0]["post_id"] == post1.id
         assert comments[0]["post_title"] == "Post One"
 
+    def test_list_comments_filtered_by_approval_status(self, client, auth_headers, db_session):
+        """Filter comments by moderation status (RIL TASK-078, ISS-047)."""
+        post = models.Post(title="Status Post", slug="status-post", content="Content", published=True)
+        db_session.add(post)
+        db_session.commit()
+        approved = models.Comment(
+            post_id=post.id, nickname="ApprovedUser", content="approved one", is_approved=True
+        )
+        pending = models.Comment(
+            post_id=post.id, nickname="PendingUser", content="pending one", is_approved=False
+        )
+        db_session.add_all([approved, pending])
+        db_session.commit()
+
+        pending_resp = client.get("/api/admin/comments?is_approved=false", headers=auth_headers)
+        assert pending_resp.status_code == 200
+        pending_items = pending_resp.json()["items"]
+        assert len(pending_items) == 1
+        assert pending_items[0]["nickname"] == "PendingUser"
+
+        approved_resp = client.get("/api/admin/comments?is_approved=true", headers=auth_headers)
+        approved_items = approved_resp.json()["items"]
+        assert len(approved_items) == 1
+        assert approved_items[0]["nickname"] == "ApprovedUser"
+
+    def test_list_comments_filtered_by_search(self, client, auth_headers, db_session):
+        """Search comments by nickname/email/content (RIL TASK-078, ISS-047)."""
+        post = models.Post(title="Search Post", slug="search-post", content="Content", published=True)
+        db_session.add(post)
+        db_session.commit()
+        # Note: server-side schema validation / moderation state is irrelevant
+        # here; search matches across nickname/email/content.
+        db_session.add(
+            models.Comment(post_id=post.id, nickname="Carol", email="carol@x.com", content="great write-up")
+        )
+        db_session.add(
+            models.Comment(post_id=post.id, nickname="Dan", email="dan@x.com", content="meh")
+        )
+        db_session.commit()
+
+        by_nick = client.get("/api/admin/comments?q=carol", headers=auth_headers).json()["items"]
+        assert len(by_nick) == 1 and by_nick[0]["nickname"] == "Carol"
+
+        by_content = client.get("/api/admin/comments?q=write-up", headers=auth_headers).json()["items"]
+        assert len(by_content) == 1 and by_content[0]["nickname"] == "Carol"
+
+        no_hit = client.get("/api/admin/comments?q=zzzmissing", headers=auth_headers).json()["items"]
+        assert no_hit == []
+
+    def test_list_comments_filtered_by_date_range(self, client, auth_headers, db_session):
+        """Filter comments by created date range (RIL TASK-078, ISS-047)."""
+        from datetime import UTC, datetime
+
+        post = models.Post(title="Date Post", slug="date-post", content="Content", published=True)
+        db_session.add(post)
+        db_session.commit()
+        old = models.Comment(
+            post_id=post.id,
+            nickname="Old",
+            content="old",
+            created_at=datetime(2024, 1, 1, tzinfo=UTC),
+        )
+        recent = models.Comment(
+            post_id=post.id,
+            nickname="Recent",
+            content="recent",
+            created_at=datetime(2026, 6, 1, tzinfo=UTC),
+        )
+        db_session.add_all([old, recent])
+        db_session.commit()
+
+        within = client.get(
+            "/api/admin/comments?date_from=2024-02-01T00:00:00&date_to=2026-12-31T00:00:00",
+            headers=auth_headers,
+        ).json()["items"]
+        assert len(within) == 1 and within[0]["nickname"] == "Recent"
+
     def test_list_comments_empty(self, client, auth_headers):
         """Test listing comments when no comments exist."""
         response = client.get("/api/admin/comments", headers=auth_headers)

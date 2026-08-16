@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 68,
+  "round": 69,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-08-16T14:01:39+00:00",
+  "updated_at": "2026-08-16T14:16:15+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -4153,6 +4153,32 @@
       "touched_round": 68,
       "commit": "922d54b",
       "title": "Dashboard full-status post loading"
+    },
+    "ISS-047": {
+      "id": "ISS-047",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-08-16T14:02:36+00:00",
+      "updated_at": "2026-08-16T14:16:14+00:00",
+      "touched_round": 68,
+      "title": "Admin comment moderation lacks status/search/date filters + pending count is page-scoped",
+      "severity": 0.4
+    },
+    "TASK-078": {
+      "id": "TASK-078",
+      "type": "task",
+      "status": "resolved",
+      "version": 4,
+      "created_at": "2026-08-16T14:02:36+00:00",
+      "updated_at": "2026-08-16T14:16:15+00:00",
+      "touched_round": 68,
+      "category": "core-feature",
+      "severity": 0.4,
+      "confidence": 1.0,
+      "effort": 4.0,
+      "unlock_factor": 1.0,
+      "title": "Add status/search/date-range filters to admin comments + moderation UI"
     }
   },
   "edges": [
@@ -5638,6 +5664,12 @@
       "to": "ISS-046",
       "type": "resolves",
       "created_at": "2026-08-16T14:01:39+00:00"
+    },
+    {
+      "from": "TASK-078",
+      "to": "ISS-047",
+      "type": "addresses",
+      "created_at": "2026-08-16T14:02:38+00:00"
     }
   ]
 }
