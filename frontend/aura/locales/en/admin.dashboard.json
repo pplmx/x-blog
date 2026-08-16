@@ -30,6 +30,7 @@
 		"approve": "Approve",
 		"reject": "Reject",
 		"operationFailed": "Operation failed, please retry",
-		"updatedAt": "Updated at {time}"
+		"updatedAt": "Updated at {time}",
+		"loading": "Loading data..."
 	}
 }

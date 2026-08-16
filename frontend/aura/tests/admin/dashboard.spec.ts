@@ -156,24 +156,36 @@ const mockStatsResult = {
 	total_views: 350,
 };
 
-/** Default stub for useBlogStats used by the page for exact aggregate cards. */
+/** Mutable overrides for the $fetch responses (per-test). */
+let statsOverride: Record<string, number> = { ...mockStatsResult };
+let postsOverride: unknown = null;
+let commentsOverride: unknown = null;
+
+// The dashboard now loads data client-side via $fetch in onMounted (ISS-032
+// fix), so dispatch the endpoint fixtures by URL path. The old useFetch
+// composable stubs above are now unused by the page (the mock module remains,
+// but the component no longer imports them); the $fetch mock is authoritative.
+vi.stubGlobal(
+	"$fetch",
+	vi.fn(async (url: unknown) => {
+		const u = String(url);
+		if (u.includes("/api/posts")) return postsOverride ?? mockPostsResponse;
+		if (u.includes("/api/categories")) return mockCategories;
+		if (u.includes("/api/tags")) return mockTags;
+		if (u.includes("/api/admin/comments")) return commentsOverride ?? mockCommentList;
+		if (u.includes("/api/stats")) return { ...statsOverride };
+		throw new Error(`Unexpected $fetch in dashboard test: ${u}`);
+	}),
+);
+
+/** Default stub for the /api/stats dollar-fetch response. */
 function stubBlogStats() {
-	mockUseBlogStats.mockReturnValue({
-		data: ref(mockStatsResult),
-		pending: ref(false),
-		error: ref(null),
-		refresh: vi.fn(),
-	});
+	statsOverride = { ...mockStatsResult };
 }
 
-/** Override useBlogStats with custom aggregate stats. */
+/** Override the /api/stats dollar-fetch response with custom aggregate stats. */
 function stubBlogStatsWith(stats: Record<string, number>) {
-	mockUseBlogStats.mockReturnValue({
-		data: ref({ ...mockStatsResult, ...stats }),
-		pending: ref(false),
-		error: ref(null),
-		refresh: vi.fn(),
-	});
+	statsOverride = { ...mockStatsResult, ...stats };
 }
 
 async function loadPage() {
@@ -185,6 +197,8 @@ describe("Admin Dashboard Page", () => {
 	afterEach(() => {
 		vi.restoreAllMocks();
 		vi.clearAllMocks();
+		postsOverride = null;
+		commentsOverride = null;
 	});
 
 	describe("Rendering", () => {
@@ -480,6 +494,10 @@ describe("Admin Dashboard Page", () => {
 				error: ref(null),
 				refresh: vi.fn(),
 			});
+			postsOverride = {
+				items: [draftOnlyPost],
+				pagination: { total: 1, page: 1, limit: 100, total_pages: 1 },
+			};
 			mockUseCategories.mockReturnValue({
 				data: ref(mockCategories),
 				pending: ref(false),
@@ -601,6 +619,23 @@ describe("Admin Dashboard Page", () => {
 				error: ref(null),
 				refresh: vi.fn(),
 			});
+			postsOverride = {
+				items: [
+					{
+						id: 1,
+						title: "Draft Only",
+						slug: "draft-only",
+						excerpt: "",
+						published: false,
+						created_at: "2024-01-15T10:30:00Z",
+						views: 0,
+						cover_image: null,
+						category: null,
+						tags: [],
+					},
+				],
+				pagination: { total: 1, page: 1, limit: 100, total_pages: 1 },
+			};
 
 			const DashboardPage = await loadPage();
 			const wrapper = await mountWithSuspense(DashboardPage);
@@ -685,6 +720,10 @@ describe("Admin Dashboard Page", () => {
 				error: ref(null),
 				refresh: vi.fn(),
 			});
+			commentsOverride = {
+				items: approvedOnly,
+				pagination: { total: approvedOnly.length, page: 1, limit: 100, total_pages: 1 },
+			};
 			const DashboardPage = await loadPage();
 			const wrapper = await mountWithSuspense(DashboardPage);
 			expect(wrapper.text()).toContain("暂无待审核评论");

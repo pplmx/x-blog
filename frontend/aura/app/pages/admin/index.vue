@@ -4,74 +4,112 @@
   Fetches posts, categories, and tags in parallel for an overview dashboard.
 -->
 <script setup lang="ts">
-import type { AdminComment } from "~~/composables/useApi";
-import {
-	approveAdminComment,
-	fetchAdminComments,
-	useBlogStats,
-	useCategories,
-	useTags,
+import { onMounted, ref } from "vue";
+import type {
+	AdminComment,
+	AdminCommentListResponse,
+	BlogStats,
+	Category,
+	PostList,
+	PostListResponse,
+	Tag,
 } from "~~/composables/useApi";
+import { approveAdminComment } from "~~/composables/useApi";
 
 definePageMeta({ layout: "admin" });
 
 const { t } = useLang();
+const config = useRuntimeConfig();
+const apiBase = (config.public.apiUrl || "").replace(/\/+$/, "");
 
 useHead({ title: computed(() => t("admin.dashboard.seoTitle")) });
 
-// Fetch all data in parallel. Aggregate card counts come from the exact
-// /api/stats endpoint — deriving them from the post list would silently
-// undercount once the blog exceeds the backend's limit cap (100), because
-// /api/posts enforces limit <= 100 while the old code requested 1000.
-const [postsResponse, categoriesResult, tagsResult, commentsResult, statsResult] =
-	await Promise.all([
-		usePosts({ limit: 100 }),
-		useCategories(),
-		useTags(),
-		fetchAdminComments(undefined, 1, 100),
-		useBlogStats(),
-	]);
+// Client-side data load. The admin layout hides this page's slot on the server
+// (auth is localStorage-only), so the page mounts client-side after hydration;
+// Nuxt's top-level `await useFetch` does not populate data in that client-only
+// mount (the in-flight request is aborted during the hydration recount). Load
+// imperatively after mount to fix the hard-reload empty dashboard (ISS-032),
+// while keeping SSR gating so admin payload never reaches SSR HTML.
+const posts = ref<PostList[]>([]);
+const categories = ref<Category[] | null>(null);
+const tags = ref<Tag[] | null>(null);
+const allComments = ref<AdminComment[]>([]);
+const blogStats = ref<BlogStats | null>(null);
+const loading = ref(true);
 
-// useFetch resolves to the AsyncData object — the payload is in .data.value,
-// and the list payload's items array is what the dashboard consumes
-const posts = postsResponse.data.value?.items ?? [];
-const categories = categoriesResult.data.value;
-const tags = tagsResult.data.value;
-const allComments: AdminComment[] = commentsResult.data?.value?.items ?? [];
-const blogStats = statsResult.data.value;
+function authHeaders(): Record<string, string> {
+	const token = typeof localStorage !== "undefined" ? localStorage.getItem("admin_token") : null;
+	return token ? { Authorization: `Bearer ${token}` } : {};
+}
 
-const publishedCount = blogStats?.published_posts ?? posts.filter((p) => p.published).length;
+async function loadDashboard(): Promise<void> {
+	try {
+		const [postsData, catData, tagData, commentsData, statsData] = await Promise.all([
+			$fetch<PostListResponse>(`${apiBase}/api/posts`, { query: { limit: 100 } }),
+			$fetch<Category[]>(`${apiBase}/api/categories`),
+			$fetch<Tag[]>(`${apiBase}/api/tags`),
+			$fetch<AdminCommentListResponse>(`${apiBase}/api/admin/comments`, {
+				query: { page: 1, limit: 100 },
+				headers: authHeaders(),
+			}),
+			$fetch<BlogStats>(`${apiBase}/api/stats`),
+		]);
+		posts.value = postsData.items;
+		categories.value = catData;
+		tags.value = tagData;
+		allComments.value = commentsData.items;
+		blogStats.value = statsData;
+	} finally {
+		loading.value = false;
+	}
+}
+onMounted(() => {
+	loadDashboard();
+});
+
+const publishedCount = computed(
+	() => blogStats.value?.published_posts ?? posts.value.filter((p) => p.published).length,
+);
 // Draft = total minus published minus scheduled. The backend only excludes
 // future-publish_at posts from published_posts, so subtracting it alone would
 // fold scheduled posts into the draft bucket (they're a distinct third status).
-const draftCount =
-	(blogStats?.total_posts ?? posts.length) - publishedCount - (blogStats?.scheduled_posts ?? 0);
-const totalViews = blogStats?.total_views ?? posts.reduce((sum, p) => sum + (p.views || 0), 0);
-const pendingComments = allComments.filter((c) => !c.is_approved);
-const totalComments = allComments.length;
-const pendingCommentsCount = blogStats?.pending_comments ?? pendingComments.length;
+const draftCount = computed(
+	() =>
+		(blogStats.value?.total_posts ?? posts.value.length) -
+		publishedCount.value -
+		(blogStats.value?.scheduled_posts ?? 0),
+);
+const totalViews = computed(
+	() => blogStats.value?.total_views ?? posts.value.reduce((sum, p) => sum + (p.views || 0), 0),
+);
+const pendingComments = computed(() => allComments.value.filter((c) => !c.is_approved));
+const pendingCommentsCount = computed(
+	() => blogStats.value?.pending_comments ?? pendingComments.value.length,
+);
 
 // Recent 5 published posts sorted by date (newest first)
-const recentPosts = posts
-	.filter((p) => p.published)
-	.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
-	.slice(0, 5);
+const recentPosts = computed(() =>
+	posts.value
+		.filter((p) => p.published)
+		.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+		.slice(0, 5),
+);
 
 // Top 5 posts by view count
-const topPosts = [...posts].sort((a, b) => (b.views || 0) - (a.views || 0));
-const topPostsTop = topPosts.slice(0, 5);
+const topPosts = computed(() => [...posts.value].sort((a, b) => (b.views || 0) - (a.views || 0)));
+const topPostsTop = computed(() => topPosts.value.slice(0, 5));
 // Max views among the shown top posts — the bar scale (guard divide-by-zero).
-const maxTopViews = Math.max(1, ...topPostsTop.map((p) => p.views || 0));
+const maxTopViews = computed(() => Math.max(1, ...topPostsTop.value.map((p) => p.views || 0)));
 function topViewsPct(views: number): number {
-	return Math.round((views / maxTopViews) * 100);
+	return Math.round((views / maxTopViews.value) * 100);
 }
 
 // Top 5 pending comments (newest first)
-const recentPendingComments = pendingComments.slice(0, 5);
+const recentPendingComments = computed(() => pendingComments.value.slice(0, 5));
 
 // Helper: count published posts per category (matches Next.js CategoryPieChart)
 function postsInCategory(catId: number): number {
-	return posts.filter((p) => p.category?.id === catId && p.published).length;
+	return posts.value.filter((p) => p.category?.id === catId && p.published).length;
 }
 
 const approveError = ref<string | null>(null);
@@ -79,7 +117,7 @@ const approveError = ref<string | null>(null);
 async function handleApprove(commentId: number, approved: boolean) {
 	try {
 		await approveAdminComment(commentId, approved);
-		const comment = allComments.find((c) => c.id === commentId);
+		const comment = allComments.value.find((c) => c.id === commentId);
 		if (comment) comment.is_approved = approved;
 		approveError.value = null;
 	} catch (e) {
@@ -92,49 +130,49 @@ const loadedAt = new Date().toLocaleString("zh-CN");
 const stats = computed(() => [
 	{
 		labelKey: "admin.dashboard.stats.posts",
-		value: blogStats?.total_posts ?? posts.length,
+		value: blogStats.value?.total_posts ?? posts.value.length,
 		icon: "lucide:file-text",
 		color: "text-blue-600",
 		bg: "bg-blue-50",
 	},
 	{
 		labelKey: "admin.dashboard.stats.published",
-		value: publishedCount,
+		value: publishedCount.value,
 		icon: "lucide:check-circle",
 		color: "text-green-600",
 		bg: "bg-green-50",
 	},
 	{
 		labelKey: "admin.dashboard.stats.draft",
-		value: draftCount,
+		value: draftCount.value,
 		icon: "lucide:clock",
 		color: "text-yellow-600",
 		bg: "bg-yellow-50",
 	},
 	{
 		labelKey: "admin.dashboard.stats.categories",
-		value: categories?.length || 0,
+		value: categories.value?.length || 0,
 		icon: "lucide:folder",
 		color: "text-purple-600",
 		bg: "bg-purple-50",
 	},
 	{
 		labelKey: "admin.dashboard.stats.tags",
-		value: tags?.length || 0,
+		value: tags.value?.length || 0,
 		icon: "lucide:tag",
 		color: "text-pink-600",
 		bg: "bg-pink-50",
 	},
 	{
 		labelKey: "admin.dashboard.stats.pendingComments",
-		value: pendingCommentsCount,
+		value: pendingCommentsCount.value,
 		icon: "lucide:message-square",
 		color: "text-red-600",
 		bg: "bg-red-50",
 	},
 	{
 		labelKey: "admin.dashboard.stats.views",
-		value: totalViews,
+		value: totalViews.value,
 		icon: "lucide:eye",
 		color: "text-orange-600",
 		bg: "bg-orange-50",
@@ -153,6 +191,11 @@ const stats = computed(() => [
       <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">
         {{ t("admin.dashboard.subtitle") }}
       </p>
+    </div>
+
+    <!-- Data loads client-side after auth (ISS-032); brief loading hint -->
+    <div v-if="loading" class="mb-4 text-sm text-gray-500 dark:text-gray-400">
+      {{ t("admin.dashboard.loading") }}
     </div>
 
     <!-- Stats cards -->

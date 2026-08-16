@@ -30,6 +30,7 @@
 		"approve": "通过",
 		"reject": "拒绝",
 		"operationFailed": "操作失败，请重试",
-		"updatedAt": "数据更新于 {time}"
+		"updatedAt": "数据更新于 {time}",
+		"loading": "正在加载数据..."
 	}
 }
