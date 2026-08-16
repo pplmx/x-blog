@@ -110,9 +110,25 @@ function scrollToHeading(event: MouseEvent) {
 	}
 }
 
+// CJK-aware reading time — must match backend crud.reading_minutes (schemas.py)
+// so list cards and the detail page agree. Whitespace tokens plus each CJK char
+// count as one word (~200wpm); a Chinese post with no spaces is not collapsed
+// to a 1-minute read (RIL round 72, ISS-051).
+const READING_CJK_RE = /[\u2e80-\u2eff\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaff]/g;
 const readingTime = computed(() => {
 	if (!post.value?.content) return 1;
-	const words = post.value.content.replace(/[#*`\n]/g, " ").split(/\s+/).length;
+	const tokens = post.value.content
+		.replace(/[#*`\n]/g, " ")
+		.split(/\s+/)
+		.filter(Boolean);
+	let cjkChars = 0;
+	let nonCjkWords = 0;
+	for (const t of tokens) {
+		const m = t.match(READING_CJK_RE);
+		if (m) cjkChars += m.length;
+		else nonCjkWords += 1;
+	}
+	const words = nonCjkWords + cjkChars;
 	return Math.max(1, Math.round(words / 200));
 });
 </script>

@@ -170,6 +170,40 @@ def test_posts_list_reading_time(client, db_session):
     assert item["reading_time"] == 6
 
 
+def test_reading_minutes_cjk_aware():
+    """CJK text (no spaces) must not collapse to a 1-minute read (RIL TASK-082)."""
+    from app.schemas import reading_minutes
+
+    # 600 CJK chars => each counts as a word => 600/200 = 3 min. A whitespace
+    # split would have produced ~1 word and returned 1.
+    cjk_600 = "汉" * 600
+    assert reading_minutes(cjk_600) == 3
+
+    # English unchanged: 1200 words -> 6.
+    assert reading_minutes("word " * 1200) == 6
+
+    # Empty/Nones are floored at 1.
+    assert reading_minutes("") == 1
+    assert reading_minutes(None) == 1
+
+
+def test_posts_list_reading_time_cjk(client, db_session):
+    """Public list surfaces a sensible reading_time for a Chinese-language post."""
+    post = models.Post(
+        title="中文长文",
+        slug="zh-long-post",
+        content="中文" * 300,  # 600 CJK chars -> ~3 min
+        published=True,
+    )
+    db_session.add(post)
+    db_session.commit()
+
+    response = client.get("/api/posts")
+    assert response.status_code == 200
+    item = next(i for i in response.json()["items"] if i["slug"] == "zh-long-post")
+    assert item["reading_time"] == 3
+
+
 def test_related_posts_reading_time(client, db_session):
     """Test that related/popular PostList responses include reading_time."""
     category = models.Category(name="Tech")

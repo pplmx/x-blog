@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 71,
+  "round": 72,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-08-16T14:55:00+00:00",
+  "updated_at": "2026-08-16T15:03:28+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -4290,6 +4290,32 @@
       "touched_round": 71,
       "commit": "d1f8eff",
       "title": "Nested-reply buttons + reactive SEO title"
+    },
+    "ISS-051": {
+      "id": "ISS-051",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-08-16T14:57:59+00:00",
+      "updated_at": "2026-08-16T15:03:28+00:00",
+      "touched_round": 71,
+      "title": "Reading-time collapses CJK posts to ~1 min (whitespace word count undercounts Chinese/Japanese)",
+      "severity": 0.4
+    },
+    "TASK-082": {
+      "id": "TASK-082",
+      "type": "task",
+      "status": "resolved",
+      "version": 4,
+      "created_at": "2026-08-16T14:57:59+00:00",
+      "updated_at": "2026-08-16T15:03:28+00:00",
+      "touched_round": 71,
+      "category": "correctness",
+      "severity": 0.4,
+      "confidence": 1.0,
+      "effort": 2.0,
+      "unlock_factor": 1.0,
+      "title": "Make reading-time word count CJK-aware in backend + frontend"
     }
   },
   "edges": [
@@ -5847,6 +5873,12 @@
       "to": "ISS-050",
       "type": "resolves",
       "created_at": "2026-08-16T14:55:00+00:00"
+    },
+    {
+      "from": "TASK-082",
+      "to": "ISS-051",
+      "type": "addresses",
+      "created_at": "2026-08-16T14:58:02+00:00"
     }
   ]
 }

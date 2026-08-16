@@ -113,16 +113,31 @@ class Post(PostBase):
     model_config = ConfigDict(from_attributes=True)
 
 
+# CJK ranges (Han unified ideographs + extension A + compatibility) count as one
+# "word" each — they carry a syllable per character and text has no spaces, so
+# a whitespace split would otherwise collapse an entire Chinese post to ~1 word.
+_CJK_RE = re.compile(r"[\u2e80-\u2eff\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaff]")
+# Markdown/punctuation chars stripped before word counting (kept in sync with
+# the detail-page formula in posts/[slug].vue).
+_MD_STRIP_RE = re.compile(r"[#*`\n]")
+
+
 def reading_minutes(content: str | None) -> int:
     """Estimate reading time in minutes from Markdown content.
 
-    Mirrors the frontend formula in `posts/[slug].vue` (words / 200, floor at
-    1) so list cards and the detail page agree on article length. Punctuation
-    and markup are stripped before counting words.
+    CJK-aware: whitespace-separated tokens plus each CJK character count as one
+    word (~200 wpm), so Chinese/Japanese posts without spaces are not collapsed
+    to a 1-minute read. Mirrors the formula in `posts/[slug].vue` so list cards
+    and the detail page agree on article length.
     """
     if not content:
         return 1
-    words = len(re.sub(r"[#*`\n]", " ", content).split())
+    text = _MD_STRIP_RE.sub(" ", content)
+    tokens = text.split()
+    # Words = non-CJK whitespace tokens + each CJK character (syllable-length).
+    cjk_chars = sum(len(_CJK_RE.findall(t)) for t in tokens)
+    non_cjk_words = sum(1 for t in tokens if not _CJK_RE.search(t))
+    words = non_cjk_words + cjk_chars
     return max(1, round(words / 200))
 
 
