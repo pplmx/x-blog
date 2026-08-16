@@ -175,8 +175,11 @@ async function handleDelete(id: number) {
         <template v-else>
           <div class="flex items-center gap-2">
             <Icon icon="lucide:tag" class="w-4 h-4 text-pink-500" />
-            <span class="font-medium text-gray-900 dark:text-gray-100">
+            <span class="font-medium text-gray-900 dark:text-gray-100 inline-flex items-center gap-2">
               #{{ tag.name }}
+              <span class="text-xs px-2 py-0.5 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400">
+                {{ tag.post_count ?? 0 }}
+              </span>
             </span>
           </div>
           <button

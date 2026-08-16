@@ -39,11 +39,13 @@ export interface PostListResponse {
 export interface Category {
 	id: number;
 	name: string;
+	post_count?: number;
 }
 
 export interface Tag {
 	id: number;
 	name: string;
+	post_count?: number;
 }
 
 export interface Post extends PostList {

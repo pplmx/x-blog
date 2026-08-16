@@ -194,6 +194,12 @@ class TestAdminCategories:
 
         response = client.get("/api/admin/categories", headers=auth_headers)
         assert response.status_code == 200
+        data = response.json()
+        assert isinstance(data, list)
+        cat = next((c for c in data if c["id"] == category.id), None)
+        assert cat is not None
+        assert "post_count" in cat
+        assert cat["post_count"] == 0
 
     def test_create_category(self, client, auth_headers):
         response = client.post(
@@ -243,6 +249,12 @@ class TestAdminTags:
 
         response = client.get("/api/admin/tags", headers=auth_headers)
         assert response.status_code == 200
+        data = response.json()
+        assert isinstance(data, list)
+        t = next((x for x in data if x["id"] == tag.id), None)
+        assert t is not None
+        assert "post_count" in t
+        assert t["post_count"] == 0
 
     def test_create_tag(self, client, auth_headers):
         response = client.post(

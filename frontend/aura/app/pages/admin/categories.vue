@@ -162,9 +162,12 @@ async function handleDelete(id: number) {
           >
           <span
             v-else
-            class="text-gray-900 dark:text-gray-100 font-medium"
+            class="text-gray-900 dark:text-gray-100 font-medium inline-flex items-center gap-2"
           >
             {{ category.name }}
+            <span class="text-xs px-2 py-0.5 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400">
+              {{ category.post_count ?? 0 }}
+            </span>
           </span>
         </div>
 
