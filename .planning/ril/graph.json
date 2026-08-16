@@ -2,7 +2,7 @@
   "ril_version": 1,
   "round": 55,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-08-16T08:58:57+00:00",
+  "updated_at": "2026-08-16T08:59:08+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -3608,13 +3608,36 @@
     "TASK-065": {
       "id": "TASK-065",
       "type": "task",
-      "status": "active",
-      "version": 1,
+      "status": "resolved",
+      "version": 2,
       "created_at": "2026-08-16T08:58:57+00:00",
-      "updated_at": "2026-08-16T08:58:57+00:00",
+      "updated_at": "2026-08-16T08:59:08+00:00",
       "touched_round": 55,
       "category": "core-feature",
       "description": "Add comment count badge to admin dashboard recent-posts rows"
+    },
+    "CHG-057": {
+      "id": "CHG-057",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-16T08:59:02+00:00",
+      "updated_at": "2026-08-16T08:59:02+00:00",
+      "touched_round": 55,
+      "commit": "f9aaab90c669dc00d3721b6bef7a3ae2ff465a16",
+      "description": "Add comment count badge to admin dashboard recent-posts rows (TASK-065)"
+    },
+    "EV-075": {
+      "id": "EV-075",
+      "type": "evidence",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-16T08:59:08+00:00",
+      "updated_at": "2026-08-16T08:59:08+00:00",
+      "touched_round": 55,
+      "source": "tests/admin/dashboard.spec.ts comment-count tests | 709 frontend unit tests | biome+typecheck clean",
+      "note": "Admin dashboard recent-posts rows now show a comment_count badge alongside views (data from PostList).",
+      "confidence": 1.0
     }
   },
   "edges": [
@@ -4908,6 +4931,12 @@
       "to": "TASK-064",
       "type": "implements",
       "created_at": "2026-08-16T08:54:31+00:00"
+    },
+    {
+      "from": "CHG-057",
+      "to": "TASK-065",
+      "type": "implements",
+      "created_at": "2026-08-16T08:59:08+00:00"
     }
   ]
 }
