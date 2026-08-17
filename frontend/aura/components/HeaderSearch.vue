@@ -13,6 +13,9 @@ const loading = ref(false);
 const searched = ref(false);
 const activeIndex = ref(-1);
 let timer: ReturnType<typeof setTimeout> | null = null;
+// Monotonic token so a slow, out-of-order response can't clobber a newer one:
+// only the latest request's result is applied (TASK-096, ISS-077).
+let requestSeq = 0;
 
 async function runSearch(q: string): Promise<void> {
 	if (!q.trim()) {
@@ -20,16 +23,22 @@ async function runSearch(q: string): Promise<void> {
 		searched.value = false;
 		return;
 	}
+	const seq = ++requestSeq;
 	try {
 		const data = await $fetch<PostListResponse>(`${apiBase}/api/search`, {
 			query: { q: q.trim(), page: 1, limit: 5 },
 		});
+		// Ignore stale responses from an earlier keystroke.
+		if (seq !== requestSeq) return;
 		results.value = data.items;
 	} catch {
+		if (seq !== requestSeq) return;
 		results.value = [];
 	} finally {
-		loading.value = false;
-		searched.value = true;
+		if (seq === requestSeq) {
+			loading.value = false;
+			searched.value = true;
+		}
 	}
 }
 
@@ -88,6 +97,7 @@ function goToSearch(): void {
 function close(): void {
 	open.value = false;
 	activeIndex.value = -1;
+	requestSeq += 1; // invalidate any in-flight search
 	if (timer) clearTimeout(timer);
 }
 

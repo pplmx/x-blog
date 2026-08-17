@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 76,
+  "round": 77,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-08-16T17:48:56+00:00",
+  "updated_at": "2026-08-17T01:21:15+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -1498,10 +1498,10 @@
     "TASK-023": {
       "id": "TASK-023",
       "type": "task",
-      "status": "active",
-      "version": 1,
+      "status": "stale",
+      "version": 2,
       "created_at": "2026-08-10T02:50:10+00:00",
-      "updated_at": "2026-08-10T02:50:10+00:00",
+      "updated_at": "2026-08-17T00:36:06+00:00",
       "touched_round": 28,
       "category": "security",
       "severity": 0.2,
@@ -1583,10 +1583,10 @@
     "TASK-026": {
       "id": "TASK-026",
       "type": "task",
-      "status": "active",
-      "version": 1,
+      "status": "stale",
+      "version": 2,
       "created_at": "2026-08-10T04:19:27+00:00",
-      "updated_at": "2026-08-10T04:19:27+00:00",
+      "updated_at": "2026-08-17T00:36:06+00:00",
       "touched_round": 28,
       "category": "performance",
       "severity": 0.2,
@@ -4405,11 +4405,11 @@
     "ISS-054": {
       "id": "ISS-054",
       "type": "issue",
-      "status": "active",
-      "version": 1,
+      "status": "resolved",
+      "version": 2,
       "created_at": "2026-08-16T15:54:02+00:00",
-      "updated_at": "2026-08-16T15:54:02+00:00",
-      "touched_round": 74,
+      "updated_at": "2026-08-17T01:20:22+00:00",
+      "touched_round": 77,
       "title": "RSS/Atom/sitemap re-render markdown + full DB query on every request (no caching, DoS-surfaced)",
       "severity": 0.4
     },
@@ -4433,11 +4433,11 @@
     "ISS-055": {
       "id": "ISS-055",
       "type": "issue",
-      "status": "active",
-      "version": 1,
+      "status": "resolved",
+      "version": 2,
       "created_at": "2026-08-16T16:20:21+00:00",
-      "updated_at": "2026-08-16T16:20:21+00:00",
-      "touched_round": 75,
+      "updated_at": "2026-08-17T00:37:30+00:00",
+      "touched_round": 77,
       "title": "RSS feed cache key ignores full param, mixing excerpt/full bodies",
       "severity": 0.6
     },
@@ -4745,6 +4745,301 @@
       "updated_at": "2026-08-16T17:48:47+00:00",
       "touched_round": 76,
       "note": "JWT auth"
+    },
+    "ISS-070": {
+      "id": "ISS-070",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-08-17T00:53:52+00:00",
+      "updated_at": "2026-08-17T01:18:36+00:00",
+      "touched_round": 77,
+      "title": "auth.py:106 + upload.py:83 use Py2 comma-form except clause (except A, B, C:) — invalid SyntaxError on stock CPython",
+      "severity": 0.9
+    },
+    "ISS-071": {
+      "id": "ISS-071",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-08-17T00:54:22+00:00",
+      "updated_at": "2026-08-17T01:18:36+00:00",
+      "touched_round": 77,
+      "title": "RSS _FeedSanitizer doesn't block javascript:/data: URL schemes in href/src (feeds consumed by third-party readers)",
+      "severity": 0.55
+    },
+    "ISS-072": {
+      "id": "ISS-072",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-08-17T00:54:22+00:00",
+      "updated_at": "2026-08-17T01:18:36+00:00",
+      "touched_round": 77,
+      "title": "admin_delete_comment missing clear_posts_list_cache() -> stale comment_count in cached public posts list",
+      "severity": 0.5
+    },
+    "ISS-073": {
+      "id": "ISS-073",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-08-17T00:54:22+00:00",
+      "updated_at": "2026-08-17T01:18:36+00:00",
+      "touched_round": 77,
+      "title": "Frontend posts/[slug].vue passes static slug string to usePost -> stale post content/SEO on SPA slug navigation",
+      "severity": 0.8
+    },
+    "ISS-074": {
+      "id": "ISS-074",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-08-17T00:54:23+00:00",
+      "updated_at": "2026-08-17T01:18:36+00:00",
+      "touched_round": 77,
+      "title": "get_post treats all-digit slugs as IDs -> numeric slug unreachable/wrong post (SLUG_PATTERN permits)",
+      "severity": 0.4
+    },
+    "ISS-075": {
+      "id": "ISS-075",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-08-17T00:54:23+00:00",
+      "updated_at": "2026-08-17T01:18:36+00:00",
+      "touched_round": 77,
+      "title": "comments.py stored ip uses request.client.host (proxy IP) not proxy-aware client_rate_key",
+      "severity": 0.35
+    },
+    "ISS-076": {
+      "id": "ISS-076",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-08-17T00:54:23+00:00",
+      "updated_at": "2026-08-17T01:18:36+00:00",
+      "touched_round": 77,
+      "title": "admin post list 'scheduled' filter omits published.is_(True) (drafts w/ future publish_at counted as scheduled)",
+      "severity": 0.3
+    },
+    "ISS-077": {
+      "id": "ISS-077",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-08-17T00:54:23+00:00",
+      "updated_at": "2026-08-17T01:21:15+00:00",
+      "touched_round": 77,
+      "title": "HeaderSearch out-of-order results race; stale results during typing",
+      "severity": 0.45
+    },
+    "ISS-078": {
+      "id": "ISS-078",
+      "type": "issue",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-17T00:54:23+00:00",
+      "updated_at": "2026-08-17T00:54:23+00:00",
+      "touched_round": 77,
+      "title": "cache.py categories_cache/tags_cache store live ORM objects across sessions (contradicts docstring invariant)",
+      "severity": 0.3
+    },
+    "TASK-089": {
+      "id": "TASK-089",
+      "type": "task",
+      "status": "resolved",
+      "version": 4,
+      "created_at": "2026-08-17T00:54:36+00:00",
+      "updated_at": "2026-08-17T01:18:39+00:00",
+      "touched_round": 77,
+      "category": "correctness",
+      "severity": 0.9,
+      "title": "Fix Py2 comma-form except clauses in auth.py + upload.py (parenthesize tuple)"
+    },
+    "TASK-090": {
+      "id": "TASK-090",
+      "type": "task",
+      "status": "resolved",
+      "version": 4,
+      "created_at": "2026-08-17T00:54:36+00:00",
+      "updated_at": "2026-08-17T01:18:39+00:00",
+      "touched_round": 77,
+      "category": "core-feature",
+      "severity": 0.8,
+      "title": "Fix stale post content/SEO on SPA slug navigation in posts/[slug].vue"
+    },
+    "TASK-091": {
+      "id": "TASK-091",
+      "type": "task",
+      "status": "resolved",
+      "version": 4,
+      "created_at": "2026-08-17T00:54:36+00:00",
+      "updated_at": "2026-08-17T01:18:39+00:00",
+      "touched_round": 77,
+      "category": "security",
+      "severity": 0.55,
+      "title": "Block javascript:/data: URL schemes in RSS _FeedSanitizer href/src"
+    },
+    "TASK-092": {
+      "id": "TASK-092",
+      "type": "task",
+      "status": "resolved",
+      "version": 4,
+      "created_at": "2026-08-17T00:54:36+00:00",
+      "updated_at": "2026-08-17T01:18:39+00:00",
+      "touched_round": 77,
+      "category": "correctness",
+      "severity": 0.5,
+      "title": "Add clear_posts_list_cache() to admin_delete_comment"
+    },
+    "TASK-093": {
+      "id": "TASK-093",
+      "type": "task",
+      "status": "resolved",
+      "version": 3,
+      "created_at": "2026-08-17T00:54:36+00:00",
+      "updated_at": "2026-08-17T01:18:39+00:00",
+      "touched_round": 77,
+      "category": "correctness",
+      "severity": 0.4,
+      "title": "Fall back to slug lookup when numeric-ID lookup returns None in get_post"
+    },
+    "TASK-094": {
+      "id": "TASK-094",
+      "type": "task",
+      "status": "resolved",
+      "version": 3,
+      "created_at": "2026-08-17T00:54:36+00:00",
+      "updated_at": "2026-08-17T01:18:39+00:00",
+      "touched_round": 77,
+      "category": "security",
+      "severity": 0.35,
+      "title": "Use proxy-aware client_rate_key for stored comment ip_address"
+    },
+    "TASK-095": {
+      "id": "TASK-095",
+      "type": "task",
+      "status": "resolved",
+      "version": 3,
+      "created_at": "2026-08-17T00:54:37+00:00",
+      "updated_at": "2026-08-17T01:18:39+00:00",
+      "touched_round": 77,
+      "category": "correctness",
+      "severity": 0.3,
+      "title": "Constrain admin scheduled filter to published.is_(True)"
+    },
+    "TASK-096": {
+      "id": "TASK-096",
+      "type": "task",
+      "status": "resolved",
+      "version": 3,
+      "created_at": "2026-08-17T00:54:37+00:00",
+      "updated_at": "2026-08-17T01:21:15+00:00",
+      "touched_round": 77,
+      "category": "performance",
+      "severity": 0.45,
+      "title": "Guard HeaderSearch against out-of-order results race"
+    },
+    "CHG-078": {
+      "id": "CHG-078",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-17T01:18:28+00:00",
+      "updated_at": "2026-08-17T01:18:28+00:00",
+      "touched_round": 77,
+      "title": "Fix Py2 comma-form except in auth.py + upload.py (parenthesized tuple)",
+      "commit": "pending"
+    },
+    "CHG-079": {
+      "id": "CHG-079",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-17T01:18:29+00:00",
+      "updated_at": "2026-08-17T01:18:29+00:00",
+      "touched_round": 77,
+      "title": "Block unsafe URL schemes in RSS/Atom feed sanitizer",
+      "commit": "pending"
+    },
+    "CHG-080": {
+      "id": "CHG-080",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-17T01:18:29+00:00",
+      "updated_at": "2026-08-17T01:18:29+00:00",
+      "touched_round": 77,
+      "title": "Invalidate posts cache on admin_delete_comment",
+      "commit": "pending"
+    },
+    "CHG-081": {
+      "id": "CHG-081",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-17T01:18:29+00:00",
+      "updated_at": "2026-08-17T01:18:29+00:00",
+      "touched_round": 77,
+      "title": "Reactive slug/getter in posts/[slug].vue + useApi (fix stale SPA nav)",
+      "commit": "pending"
+    },
+    "CHG-082": {
+      "id": "CHG-082",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-17T01:18:29+00:00",
+      "updated_at": "2026-08-17T01:18:29+00:00",
+      "touched_round": 77,
+      "title": "Fall back to slug lookup for numeric segments in get_post",
+      "commit": "pending"
+    },
+    "CHG-083": {
+      "id": "CHG-083",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-17T01:18:29+00:00",
+      "updated_at": "2026-08-17T01:18:29+00:00",
+      "touched_round": 77,
+      "title": "Use proxy-aware client_rate_key for stored comment ip",
+      "commit": "pending"
+    },
+    "CHG-084": {
+      "id": "CHG-084",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-17T01:18:29+00:00",
+      "updated_at": "2026-08-17T01:18:29+00:00",
+      "touched_round": 77,
+      "title": "Constrain admin scheduled filter to published posts",
+      "commit": "pending"
+    },
+    "TASK-097": {
+      "id": "TASK-097",
+      "type": "task",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-17T01:19:38+00:00",
+      "updated_at": "2026-08-17T01:19:38+00:00",
+      "touched_round": 77,
+      "category": "maintainability",
+      "severity": 0.3,
+      "title": "Cache plain dicts (not ORM objects) in categories_cache/tags_cache to match docstring invariant"
+    },
+    "CHG-085": {
+      "id": "CHG-085",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-17T01:21:15+00:00",
+      "updated_at": "2026-08-17T01:21:15+00:00",
+      "touched_round": 77,
+      "title": "Guard HeaderSearch against out-of-order response race (seq token)",
+      "commit": "pending"
     }
   },
   "edges": [
@@ -6488,6 +6783,156 @@
       "to": "TASK-088",
       "type": "implements",
       "created_at": "2026-08-16T17:48:51+00:00"
+    },
+    {
+      "from": "TASK-089",
+      "to": "ISS-070",
+      "type": "addresses",
+      "created_at": "2026-08-17T00:54:47+00:00"
+    },
+    {
+      "from": "TASK-090",
+      "to": "ISS-073",
+      "type": "addresses",
+      "created_at": "2026-08-17T00:54:47+00:00"
+    },
+    {
+      "from": "TASK-091",
+      "to": "ISS-071",
+      "type": "addresses",
+      "created_at": "2026-08-17T00:54:47+00:00"
+    },
+    {
+      "from": "TASK-092",
+      "to": "ISS-072",
+      "type": "addresses",
+      "created_at": "2026-08-17T00:54:48+00:00"
+    },
+    {
+      "from": "TASK-093",
+      "to": "ISS-074",
+      "type": "addresses",
+      "created_at": "2026-08-17T00:54:48+00:00"
+    },
+    {
+      "from": "TASK-094",
+      "to": "ISS-075",
+      "type": "addresses",
+      "created_at": "2026-08-17T00:54:48+00:00"
+    },
+    {
+      "from": "TASK-095",
+      "to": "ISS-076",
+      "type": "addresses",
+      "created_at": "2026-08-17T00:54:48+00:00"
+    },
+    {
+      "from": "TASK-096",
+      "to": "ISS-077",
+      "type": "addresses",
+      "created_at": "2026-08-17T00:54:48+00:00"
+    },
+    {
+      "from": "CHG-078",
+      "to": "TASK-089",
+      "type": "implements",
+      "created_at": "2026-08-17T01:18:34+00:00"
+    },
+    {
+      "from": "CHG-078",
+      "to": "ISS-070",
+      "type": "resolves",
+      "created_at": "2026-08-17T01:18:34+00:00"
+    },
+    {
+      "from": "CHG-079",
+      "to": "TASK-091",
+      "type": "implements",
+      "created_at": "2026-08-17T01:18:34+00:00"
+    },
+    {
+      "from": "CHG-079",
+      "to": "ISS-071",
+      "type": "resolves",
+      "created_at": "2026-08-17T01:18:34+00:00"
+    },
+    {
+      "from": "CHG-080",
+      "to": "TASK-092",
+      "type": "implements",
+      "created_at": "2026-08-17T01:18:34+00:00"
+    },
+    {
+      "from": "CHG-080",
+      "to": "ISS-072",
+      "type": "resolves",
+      "created_at": "2026-08-17T01:18:34+00:00"
+    },
+    {
+      "from": "CHG-081",
+      "to": "TASK-090",
+      "type": "implements",
+      "created_at": "2026-08-17T01:18:35+00:00"
+    },
+    {
+      "from": "CHG-081",
+      "to": "ISS-073",
+      "type": "resolves",
+      "created_at": "2026-08-17T01:18:35+00:00"
+    },
+    {
+      "from": "CHG-082",
+      "to": "TASK-093",
+      "type": "implements",
+      "created_at": "2026-08-17T01:18:35+00:00"
+    },
+    {
+      "from": "CHG-082",
+      "to": "ISS-074",
+      "type": "resolves",
+      "created_at": "2026-08-17T01:18:35+00:00"
+    },
+    {
+      "from": "CHG-083",
+      "to": "TASK-094",
+      "type": "implements",
+      "created_at": "2026-08-17T01:18:35+00:00"
+    },
+    {
+      "from": "CHG-083",
+      "to": "ISS-075",
+      "type": "resolves",
+      "created_at": "2026-08-17T01:18:35+00:00"
+    },
+    {
+      "from": "CHG-084",
+      "to": "TASK-095",
+      "type": "implements",
+      "created_at": "2026-08-17T01:18:35+00:00"
+    },
+    {
+      "from": "CHG-084",
+      "to": "ISS-076",
+      "type": "resolves",
+      "created_at": "2026-08-17T01:18:35+00:00"
+    },
+    {
+      "from": "TASK-097",
+      "to": "ISS-078",
+      "type": "addresses",
+      "created_at": "2026-08-17T01:19:40+00:00"
+    },
+    {
+      "from": "CHG-085",
+      "to": "TASK-096",
+      "type": "implements",
+      "created_at": "2026-08-17T01:21:15+00:00"
+    },
+    {
+      "from": "CHG-085",
+      "to": "ISS-077",
+      "type": "resolves",
+      "created_at": "2026-08-17T01:21:15+00:00"
     }
   ]
 }

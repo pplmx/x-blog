@@ -108,6 +108,42 @@ def test_atom_feed_renders_markdown_as_html(client, auth_headers):
     assert "onclick" not in rendered
 
 
+def test_rss_feed_strips_unsafe_url_schemes(client, auth_headers):
+    """Unsafe URL schemes (javascript:/data:/vbscript:) in anchor/image href/src
+    must be stripped from rendered feeds, matching the frontend DOMPurify policy
+    (RIL TASK-091, ISS-071). Safe http(s)/relative URLs survive."""
+    client.post(
+        "/api/posts",
+        json={
+            "title": "Scheme Post",
+            "slug": "scheme-post",
+            "content": (
+                '<a href="https://ok.com/x?a=1">safe</a>\n'
+                '<a href="javascript:alert(1)">js</a>\n'
+                '<a href="data:text/html,hi">data</a>\n'
+                '<a href="vbscript:x">vb</a>\n'
+                '<a href="/posts/foo">rel</a>\n'
+                '<img src="javascript:alert(2)">\n'
+                '<img src="/static/x.png" onerror="alert(3)">'
+            ),
+            "published": True,
+        },
+        headers=auth_headers,
+    )
+    response = client.get("/rss/feed.xml?full=true")
+    assert response.status_code == 200
+    content = response.text
+    # Unsafe schemes stripped.
+    assert "javascript:" not in content
+    assert "data:text/html" not in content
+    assert "vbscript:" not in content
+    # Event handlers stripped.
+    assert "onerror=" not in content
+    # Safe http and relative URLs preserved.
+    assert 'href="https://ok.com/x?a=1"' in content
+    assert "/posts/foo" in content
+
+
 def test_rss_feed_excerpt_only_by_default(client, auth_headers):
     """RSS feed by default should use excerpt, not full content."""
     client.post(

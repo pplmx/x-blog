@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 from app import crud, models, schemas
 from app.auth import User, get_current_admin
 from app.database import get_db
-from app.limiter import RATE_LIMIT_COMMENT, limiter
+from app.limiter import RATE_LIMIT_COMMENT, client_rate_key, limiter
 
 router = APIRouter(prefix="/api/comments", tags=["comments"])
 
@@ -62,7 +62,10 @@ def create_comment(
     if not post or not crud.is_publicly_visible(post):
         raise HTTPException(status_code=404, detail="Post not found")
 
-    ip_address = request.client.host if request.client else "unknown"
+    # Use the same proxy-aware resolver as the rate limiter so the stored IP
+    # matches the bucket key (X-Forwarded-For behind a trusted proxy), instead
+    # of the immediate TCP peer which every client behind the proxy would share.
+    ip_address = client_rate_key(request)
     try:
         return crud.create_comment(db, post_id, comment, ip_address)
     except ValueError as e:

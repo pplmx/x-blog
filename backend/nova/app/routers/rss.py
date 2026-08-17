@@ -1,6 +1,7 @@
 from datetime import UTC, datetime
 from hashlib import sha1
 from html.parser import HTMLParser
+from urllib.parse import urlparse
 from xml.sax.saxutils import escape
 
 import markdown as md
@@ -43,11 +44,59 @@ def _feed_response(body: str, media_type: str, request: Request) -> Response:
 # tags/attrs that survive mirrors the frontend's markdown+DOMPurify pipeline so
 # feed readers get the rendered article, not raw markdown, and never script.
 _ALLOWED_TAGS = {
-    "p", "br", "hr", "a", "img", "em", "strong", "code", "pre", "blockquote",
-    "ul", "ol", "li", "h1", "h2", "h3", "h4", "h5", "h6", "table", "thead",
-    "tbody", "tr", "th", "td", "del", "sup", "sub", "span", "div",
+    "p",
+    "br",
+    "hr",
+    "a",
+    "img",
+    "em",
+    "strong",
+    "code",
+    "pre",
+    "blockquote",
+    "ul",
+    "ol",
+    "li",
+    "h1",
+    "h2",
+    "h3",
+    "h4",
+    "h5",
+    "h6",
+    "table",
+    "thead",
+    "tbody",
+    "tr",
+    "th",
+    "td",
+    "del",
+    "sup",
+    "sub",
+    "span",
+    "div",
 }
 _ALLOWED_ATTRS = {"href", "src", "alt", "title", "target", "rel"}
+
+# URL-bearing attributes that would let an author ship a scriptable link into
+# an untrusted reader (web-based RSS/Atom consumers may render these). The Nuxt
+# frontend strips javascript:/data:/vbscript: via DOMPurify; mirror that here so
+# the feed path gets the same defence-in-depth (RIL TASK-091, ISS-071).
+_URL_ATTRS = {"href", "src"}
+_UNSAFE_SCHEMES = ("javascript", "data", "vbscript")
+
+
+def _safe_attrs(attrs: list) -> list:
+    """Keep only allowed attrs, dropping on* handlers and scriptable URLs."""
+    allowed = []
+    for k, v in attrs:
+        if k not in _ALLOWED_ATTRS or k.lower().startswith("on"):
+            continue
+        if k in _URL_ATTRS:
+            scheme = urlparse(v).scheme.lower()
+            if scheme in _UNSAFE_SCHEMES:
+                continue
+        allowed.append((k, v))
+    return allowed
 
 
 class _FeedSanitizer(HTMLParser):
@@ -65,9 +114,7 @@ class _FeedSanitizer(HTMLParser):
     def handle_starttag(self, tag: str, attrs: list) -> None:
         if tag in _ALLOWED_TAGS:
             self._stack.append(tag)
-            allowed = [
-                (k, v) for k, v in attrs if k in _ALLOWED_ATTRS and not k.lower().startswith("on")
-            ]
+            allowed = _safe_attrs(attrs)
             attr_str = "".join(f' {k}="{escape(v, {"&": "&amp;", '"': "&quot;"})}"' for k, v in allowed)
             self.out.append(f"<{tag}{attr_str}>")
         else:
@@ -81,9 +128,7 @@ class _FeedSanitizer(HTMLParser):
 
     def handle_startendtag(self, tag: str, attrs: list) -> None:
         if tag in _ALLOWED_TAGS:
-            allowed = [
-                (k, v) for k, v in attrs if k in _ALLOWED_ATTRS and not k.lower().startswith("on")
-            ]
+            allowed = _safe_attrs(attrs)
             attr_str = "".join(f' {k}="{escape(v, {"&": "&amp;", '"': "&quot;"})}"' for k, v in allowed)
             self.out.append(f"<{tag}{attr_str}/>")
 

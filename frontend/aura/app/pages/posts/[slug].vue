@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from "vue";
+import { computed, watchEffect } from "vue";
 import {
 	useAdjacentPosts,
 	usePost,
@@ -13,7 +13,9 @@ import { extractToc } from "~~/composables/useToc";
 
 const { t, locale } = useLang();
 const route = useRoute();
-const { data: post, pending, error } = await usePost(route.params.slug as string);
+// Pass a reactive getter (not a static string) so useFetch refetches when the
+// slug changes via SPA navigation between posts (TASK-090, ISS-073).
+const { data: post, pending, error } = await usePost(() => route.params.slug as string);
 
 const toc = computed(() => (post.value?.content ? extractToc(post.value.content) : []));
 
@@ -24,13 +26,19 @@ const coverImageUrl = computed(() => {
 	return coverImageSrc(post.value.title);
 });
 
-const postId = post.value?.id ?? 0;
-const { data: relatedPosts } = postId ? await useRelatedPosts(postId) : { data: ref(null) };
-const { data: adjacent } = postId ? await useAdjacentPosts(postId) : { data: ref(null) };
+// Derive the id reactively so related/adjacent follow the post when the slug
+// changes via SPA navigation (TASK-090, ISS-073).
+const postId = computed(() => post.value?.id);
+const { data: relatedPosts } = await useRelatedPosts(() => postId.value);
+const { data: adjacent } = await useAdjacentPosts(() => postId.value);
 
-if (post.value) {
-	usePostSeo(post.value);
-}
+// Apply post SEO; re-run when the post changes via SPA navigation so the
+// title/og:image/canonical/JSON-LD follow the new slug (TASK-090, ISS-073).
+watchEffect(() => {
+	if (post.value) {
+		usePostSeo(post.value);
+	}
+});
 
 const likeLoading = ref(false);
 const likeError = ref<string | null>(null);

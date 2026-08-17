@@ -151,8 +151,14 @@ def admin_list_posts(
     elif status == "draft":
         query = query.filter(models.Post.published == False)  # noqa: E712
     elif status == "scheduled":
+        # A "scheduled" post is one that is published=True but not yet live
+        # (its publish_at is in the future) — matching the stats endpoint. A
+        # draft with a future publish_at is still a draft, not scheduled.
         now = utc_now_naive()
-        query = query.filter(models.Post.publish_at > now)
+        query = query.filter(
+            models.Post.published.is_(True),
+            models.Post.publish_at > now,
+        )
 
     total = query.count()
 
@@ -670,4 +676,8 @@ def admin_delete_comment(
         # public delete path instead of a 500.
         db.rollback()
         raise HTTPException(status_code=400, detail="Cannot delete comment: it has dependent records")
+    # Deleting an approved comment changes the approved comment_count surfaced
+    # on the cached public posts list; invalidate like the other comment
+    # mutations do (RIL TASK-092, ISS-072).
+    clear_posts_list_cache()
     return {"message": "Comment deleted"}

@@ -103,7 +103,7 @@ def get_current_user(
         if user_id is None:
             raise credentials_exception
         token_data = TokenData(user_id=user_id)
-    except InvalidTokenError, TypeError, ValueError:
+    except (InvalidTokenError, TypeError, ValueError):
         # InvalidTokenError: bad signature/expired token; TypeError/ValueError:
         # malformed `sub` claim (e.g. non-numeric). Both are auth failures → 401.
         raise credentials_exception

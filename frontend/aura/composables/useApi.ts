@@ -126,10 +126,15 @@ export async function useTags() {
  * either a slug string or a numeric ID.
  */
 export async function usePost(
-	slugOrId: string | number,
+	slugOrId: string | number | (() => string | number),
 	options: Parameters<typeof useFetch>[1] = {},
 ) {
-	return useApi<Post>(`/api/posts/${slugOrId}`, options);
+	// Accept a getter (reactive source) so useFetch re-runs when the slug
+	// changes via SPA navigation between posts, instead of pinning the first
+	// value (RIL TASK-090, ISS-073).
+	const url =
+		typeof slugOrId === "function" ? () => `/api/posts/${slugOrId()}` : `/api/posts/${slugOrId}`;
+	return useApi<Post>(url, options);
 }
 
 /**
@@ -182,8 +187,21 @@ export async function usePopularPosts(limit = 5) {
  * Uses the backend's GET /api/posts/{post_id}/related endpoint.
  * Returns a list of related posts based on category and tags.
  */
-export async function useRelatedPosts(postId: number, limit = 5) {
-	return useApi<PostList[]>(`/api/posts/${postId}/related`, {
+export async function useRelatedPosts(
+	postId: number | (() => number | null | undefined),
+	limit = 5,
+) {
+	// A reactive getter lets related posts follow the active post through SPA
+	// navigation; returning null/undefined when there's no id yet makes useFetch
+	// skip the request (TASK-090, ISS-073).
+	const url =
+		typeof postId === "function"
+			? ((() => {
+					const id = postId();
+					return id ? `/api/posts/${id}/related` : null;
+				}) as Parameters<typeof useFetch>[0])
+			: `/api/posts/${postId}/related`;
+	return useApi<PostList[]>(url, {
 		query: { limit },
 	});
 }
@@ -201,8 +219,15 @@ export interface AdjacentPosts {
  * Fetch the linear previous/next posts around a post.
  * Uses the backend's GET /api/posts/{post_id}/adjacent endpoint.
  */
-export async function useAdjacentPosts(postId: number) {
-	return useApi<AdjacentPosts>(`/api/posts/${postId}/adjacent`);
+export async function useAdjacentPosts(postId: number | (() => number | null | undefined)) {
+	const url =
+		typeof postId === "function"
+			? ((() => {
+					const id = postId();
+					return id ? `/api/posts/${id}/adjacent` : null;
+				}) as Parameters<typeof useFetch>[0])
+			: `/api/posts/${postId}/adjacent`;
+	return useApi<AdjacentPosts>(url);
 }
 
 /**

@@ -71,8 +71,13 @@ def get_post(post_id: str, db: Session = Depends(get_db)):
     # only a slug or garbage. Cap the int() path: Python 3.14 raises
     # ValueError for >4300-digit int strings (unhandled 500 on a public
     # route) and Postgres would reject an out-of-range bind otherwise.
+    # SLUG_PATTERN permits all-digit slugs (e.g. "123"), so a numeric segment
+    # is tried as an id first and falls back to a slug lookup when no post
+    # has that id (RIL TASK-093, ISS-074).
     is_numeric_id = len(post_id) <= 15 and post_id.isdigit() and post_id.isascii()
     post = crud.get_post(db, int(post_id)) if is_numeric_id else crud.get_post_by_slug(db, post_id)
+    if is_numeric_id and post is None:
+        post = crud.get_post_by_slug(db, post_id)
     # Drafts and not-yet-published scheduled posts are invisible to the public.
     if not post or not crud.is_publicly_visible(post):
         raise HTTPException(status_code=404, detail="Post not found")
