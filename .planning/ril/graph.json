@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 77,
+  "round": 78,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-08-17T01:21:15+00:00",
+  "updated_at": "2026-08-17T01:28:39+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -4944,79 +4944,79 @@
     "CHG-078": {
       "id": "CHG-078",
       "type": "change",
-      "status": "active",
-      "version": 1,
+      "status": "resolved",
+      "version": 2,
       "created_at": "2026-08-17T01:18:28+00:00",
-      "updated_at": "2026-08-17T01:18:28+00:00",
+      "updated_at": "2026-08-17T01:28:38+00:00",
       "touched_round": 77,
       "title": "Fix Py2 comma-form except in auth.py + upload.py (parenthesized tuple)",
-      "commit": "pending"
+      "commit": "3e21fc6"
     },
     "CHG-079": {
       "id": "CHG-079",
       "type": "change",
-      "status": "active",
-      "version": 1,
+      "status": "resolved",
+      "version": 2,
       "created_at": "2026-08-17T01:18:29+00:00",
-      "updated_at": "2026-08-17T01:18:29+00:00",
+      "updated_at": "2026-08-17T01:28:38+00:00",
       "touched_round": 77,
       "title": "Block unsafe URL schemes in RSS/Atom feed sanitizer",
-      "commit": "pending"
+      "commit": "3e21fc6"
     },
     "CHG-080": {
       "id": "CHG-080",
       "type": "change",
-      "status": "active",
-      "version": 1,
+      "status": "resolved",
+      "version": 2,
       "created_at": "2026-08-17T01:18:29+00:00",
-      "updated_at": "2026-08-17T01:18:29+00:00",
+      "updated_at": "2026-08-17T01:28:38+00:00",
       "touched_round": 77,
       "title": "Invalidate posts cache on admin_delete_comment",
-      "commit": "pending"
+      "commit": "3e21fc6"
     },
     "CHG-081": {
       "id": "CHG-081",
       "type": "change",
-      "status": "active",
-      "version": 1,
+      "status": "resolved",
+      "version": 2,
       "created_at": "2026-08-17T01:18:29+00:00",
-      "updated_at": "2026-08-17T01:18:29+00:00",
+      "updated_at": "2026-08-17T01:28:39+00:00",
       "touched_round": 77,
       "title": "Reactive slug/getter in posts/[slug].vue + useApi (fix stale SPA nav)",
-      "commit": "pending"
+      "commit": "3e21fc6"
     },
     "CHG-082": {
       "id": "CHG-082",
       "type": "change",
-      "status": "active",
-      "version": 1,
+      "status": "resolved",
+      "version": 2,
       "created_at": "2026-08-17T01:18:29+00:00",
-      "updated_at": "2026-08-17T01:18:29+00:00",
+      "updated_at": "2026-08-17T01:28:39+00:00",
       "touched_round": 77,
       "title": "Fall back to slug lookup for numeric segments in get_post",
-      "commit": "pending"
+      "commit": "3e21fc6"
     },
     "CHG-083": {
       "id": "CHG-083",
       "type": "change",
-      "status": "active",
-      "version": 1,
+      "status": "resolved",
+      "version": 2,
       "created_at": "2026-08-17T01:18:29+00:00",
-      "updated_at": "2026-08-17T01:18:29+00:00",
+      "updated_at": "2026-08-17T01:28:39+00:00",
       "touched_round": 77,
       "title": "Use proxy-aware client_rate_key for stored comment ip",
-      "commit": "pending"
+      "commit": "3e21fc6"
     },
     "CHG-084": {
       "id": "CHG-084",
       "type": "change",
-      "status": "active",
-      "version": 1,
+      "status": "resolved",
+      "version": 2,
       "created_at": "2026-08-17T01:18:29+00:00",
-      "updated_at": "2026-08-17T01:18:29+00:00",
+      "updated_at": "2026-08-17T01:28:39+00:00",
       "touched_round": 77,
       "title": "Constrain admin scheduled filter to published posts",
-      "commit": "pending"
+      "commit": "3e21fc6"
     },
     "TASK-097": {
       "id": "TASK-097",
@@ -5033,13 +5033,13 @@
     "CHG-085": {
       "id": "CHG-085",
       "type": "change",
-      "status": "active",
-      "version": 1,
+      "status": "resolved",
+      "version": 2,
       "created_at": "2026-08-17T01:21:15+00:00",
-      "updated_at": "2026-08-17T01:21:15+00:00",
+      "updated_at": "2026-08-17T01:28:39+00:00",
       "touched_round": 77,
       "title": "Guard HeaderSearch against out-of-order response race (seq token)",
-      "commit": "pending"
+      "commit": "3e21fc6"
     }
   },
   "edges": [
