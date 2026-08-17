@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 88,
+  "round": 89,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-08-17T04:48:54+00:00",
+  "updated_at": "2026-08-17T04:57:05+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -5409,6 +5409,43 @@
       "touched_round": 86,
       "title": "Admin 'create user' produces accounts that can't use any admin endpoint (all require superuser)",
       "severity": 0.3
+    },
+    "ISS-088": {
+      "id": "ISS-088",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-08-17T04:57:04+00:00",
+      "updated_at": "2026-08-17T04:57:05+00:00",
+      "touched_round": 88,
+      "title": "RSS feed sanitizer drops closing tags around void elements (br/hr/img) -> broken full-content feeds",
+      "severity": 0.5
+    },
+    "TASK-108": {
+      "id": "TASK-108",
+      "type": "task",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-08-17T04:57:04+00:00",
+      "updated_at": "2026-08-17T04:57:05+00:00",
+      "touched_round": 88,
+      "category": "correctness",
+      "severity": 0.5,
+      "confidence": 1.0,
+      "effort": 1.5,
+      "unlock_factor": 1.0,
+      "title": "_FeedSanitizer must not push void elements (br/hr/img) onto close-tag stack"
+    },
+    "CHG-095": {
+      "id": "CHG-095",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-17T04:57:04+00:00",
+      "updated_at": "2026-08-17T04:57:04+00:00",
+      "touched_round": 88,
+      "title": "feed sanitizer skips stack push for void elements so closes balance",
+      "commit": "bf300ef"
     }
   },
   "edges": [
@@ -7476,6 +7513,24 @@
       "to": "TASK-107",
       "type": "governs",
       "created_at": "2026-08-17T04:44:35+00:00"
+    },
+    {
+      "from": "TASK-108",
+      "to": "ISS-088",
+      "type": "addresses",
+      "created_at": "2026-08-17T04:57:04+00:00"
+    },
+    {
+      "from": "CHG-095",
+      "to": "TASK-108",
+      "type": "implements",
+      "created_at": "2026-08-17T04:57:04+00:00"
+    },
+    {
+      "from": "CHG-095",
+      "to": "ISS-088",
+      "type": "resolves",
+      "created_at": "2026-08-17T04:57:04+00:00"
     }
   ]
 }
