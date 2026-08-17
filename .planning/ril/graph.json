@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 90,
+  "round": 92,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-08-17T05:06:44+00:00",
+  "updated_at": "2026-08-17T05:16:58+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -5483,6 +5483,43 @@
       "touched_round": 89,
       "title": "shared _populate_post_metrics sets comment_count/reading_time on all PostList paths",
       "commit": "a4c83db"
+    },
+    "ISS-090": {
+      "id": "ISS-090",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-08-17T05:15:52+00:00",
+      "updated_at": "2026-08-17T05:15:53+00:00",
+      "touched_round": 91,
+      "title": "Identical code blocks in a post share the transient copied-flash state",
+      "severity": 0.3
+    },
+    "TASK-110": {
+      "id": "TASK-110",
+      "type": "task",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-08-17T05:15:52+00:00",
+      "updated_at": "2026-08-17T05:15:52+00:00",
+      "touched_round": 91,
+      "category": "maintainability",
+      "severity": 0.3,
+      "confidence": 1.0,
+      "effort": 1.0,
+      "unlock_factor": 1.0,
+      "title": "Key MarkdownContent copied-state by seg.key (per block)"
+    },
+    "CHG-097": {
+      "id": "CHG-097",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-17T05:16:29+00:00",
+      "updated_at": "2026-08-17T05:16:29+00:00",
+      "touched_round": 91,
+      "title": "copy state keyed by seg.key for code blocks",
+      "commit": "6159669"
     }
   },
   "edges": [
@@ -7586,6 +7623,24 @@
       "to": "ISS-089",
       "type": "resolves",
       "created_at": "2026-08-17T05:06:43+00:00"
+    },
+    {
+      "from": "TASK-110",
+      "to": "ISS-090",
+      "type": "addresses",
+      "created_at": "2026-08-17T05:15:52+00:00"
+    },
+    {
+      "from": "CHG-097",
+      "to": "TASK-110",
+      "type": "implements",
+      "created_at": "2026-08-17T05:16:58+00:00"
+    },
+    {
+      "from": "CHG-097",
+      "to": "ISS-090",
+      "type": "resolves",
+      "created_at": "2026-08-17T05:16:58+00:00"
     }
   ]
 }
