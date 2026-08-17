@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 82,
+  "round": 83,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-08-17T04:01:14+00:00",
+  "updated_at": "2026-08-17T04:23:50+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -5223,6 +5223,43 @@
       "touched_round": 81,
       "title": "slugify kept CJK letters -> valid heading ids/anchors",
       "commit": "cec2453"
+    },
+    "ISS-083": {
+      "id": "ISS-083",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-08-17T04:23:49+00:00",
+      "updated_at": "2026-08-17T04:23:50+00:00",
+      "touched_round": 82,
+      "title": "Slow-request warning drops request_id/method/path (breaks X-Request-ID correlation)",
+      "severity": 0.4
+    },
+    "TASK-103": {
+      "id": "TASK-103",
+      "type": "task",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-08-17T04:23:50+00:00",
+      "updated_at": "2026-08-17T04:23:50+00:00",
+      "touched_round": 82,
+      "category": "maintainability",
+      "severity": 0.4,
+      "confidence": 1.0,
+      "effort": 1.0,
+      "unlock_factor": 1.0,
+      "title": "Route slow-request log through StructuredLogAdapter to keep request context"
+    },
+    "CHG-091": {
+      "id": "CHG-091",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-17T04:23:50+00:00",
+      "updated_at": "2026-08-17T04:23:50+00:00",
+      "touched_round": 82,
+      "title": "slow-request log uses adapter (keeps request_id/method/path)",
+      "commit": "e3e3d7a"
     }
   },
   "edges": [
@@ -7206,6 +7243,24 @@
       "to": "ISS-082",
       "type": "resolves",
       "created_at": "2026-08-17T04:01:14+00:00"
+    },
+    {
+      "from": "TASK-103",
+      "to": "ISS-083",
+      "type": "addresses",
+      "created_at": "2026-08-17T04:23:50+00:00"
+    },
+    {
+      "from": "CHG-091",
+      "to": "TASK-103",
+      "type": "implements",
+      "created_at": "2026-08-17T04:23:50+00:00"
+    },
+    {
+      "from": "CHG-091",
+      "to": "ISS-083",
+      "type": "resolves",
+      "created_at": "2026-08-17T04:23:50+00:00"
     }
   ]
 }
