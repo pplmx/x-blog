@@ -111,9 +111,17 @@ class _FeedSanitizer(HTMLParser):
         self.out: list[str] = []
         self._stack: list[str] = []
 
+    # Void (empty) elements have no closing tag per HTML5. HTMLParser reports
+    # `<br>`/`<hr>`/`<img>` as handle_starttag (not handle_startendtag), so
+    # pushing them onto the stack consumes a slot that a later real close tag
+    # pops — dropping the enclosing `</p>`/`</div>`. Markdown's nl2br emits
+    # `<br>`, so this corrupted full-content RSS/Atom feeds (RIL TASK-108).
+    _VOID_TAGS = frozenset({"br", "hr", "img"})
+
     def handle_starttag(self, tag: str, attrs: list) -> None:
         if tag in _ALLOWED_TAGS:
-            self._stack.append(tag)
+            if tag not in self._VOID_TAGS:
+                self._stack.append(tag)
             allowed = _safe_attrs(attrs)
             attr_str = "".join(f' {k}="{escape(v, {"&": "&amp;", '"': "&quot;"})}"' for k, v in allowed)
             self.out.append(f"<{tag}{attr_str}>")

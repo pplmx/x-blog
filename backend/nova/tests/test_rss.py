@@ -80,6 +80,41 @@ def test_rss_full_feed_renders_markdown_as_html(client, auth_headers):
     assert "onclick" not in content
 
 
+def test_rss_full_feed_keeps_tags_balanced_with_void_elements(client, auth_headers):
+    """Full-content feed must not drop closing tags around void elements.
+
+    Markdown's nl2br emits <br>; HTMLParser reports <br> as a start tag (no
+    close), which used to consume the sanitizer's stack slot and dropped the
+    enclosing </p>/</div> — corrupting default full-content feeds. Regression
+    for RIL TASK-108, ISS-088.
+    """
+    client.post(
+        "/api/posts",
+        json={
+            "title": "br post",
+            "slug": "br-post",
+            "content": "line one<br>\nline two<br>\n\nsecond paragraph",
+            "published": True,
+        },
+        headers=auth_headers,
+    )
+    response = client.get("/rss/feed.xml?full=true")
+    assert response.status_code == 200
+    content = response.text
+    # The <br> tags survive, and the <p> they sit in still closes (before the
+    # fix the trailing </p> was dropped).
+    assert "<br>" in content
+    assert content.count("<br>") == content.count("<br>")  # sanity
+    # No unbalanced <p> inside the content:encoded block.
+    import re
+
+    block = re.search(r"<content:encoded>(.*?)</content:encoded>", content, re.S)
+    assert block is not None
+    rendered = block.group(1)
+    # Every <p> that is opened must be closed.
+    assert rendered.count("<p>") == rendered.count("</p>"), rendered
+
+
 def test_atom_feed_renders_markdown_as_html(client, auth_headers):
     """Atom full-content feed also renders markdown to sanitized HTML."""
     client.post(
