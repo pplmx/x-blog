@@ -8,10 +8,11 @@ description: >
   itself, asks for autonomous/continuous engineering mode, "graph
   engineering", "loop engineering", "keep improving the repository",
   "feature evolution", "功能演进", or wants issues tracked as typed nodes
-  and edges with weighted priority scoring. Covers graph schema and
+  with weighted priority scoring. Covers graph schema and
   lifecycle, cross-session loading, concurrency locking, scoring,
   deep-dive budgets, human-intervention boundaries, quality-convergence
-  stop conditions, and a feature-evolution mode (see §11).
+  stop conditions, a feature-evolution mode (see §11), and a
+  converged-idle QUIESCE so the loop parks instead of running idle rounds.
 ---
 
 # Graph Engineering（长期自主工程循环）
@@ -32,6 +33,12 @@ description: >
 
 两种模式差异仅在 SOURCE（功能/问题从哪来）与验收强度（功能端到端 + 用户可验证）；OBSERVE/EXECUTE/
 VERIFY/LEARN 与图谱写入规则完全一致。切换以不可变 decision 记录在图中。
+
+**核心不变量：收敛即停表（QUIESCE），不空转。** 引擎的目标是让仓库收敛到"正确、稳定、可维护"
+的状态，**不是"永远产出提交"**。两种模式、任意一轮，一旦进入"无高价值工作可做"的静止态
+（判定见第 10 / 11.5 节），就写一条 `converged-idle` decision 并**停止再发仅做轮次拨号的
+chore 提交**。重新激活只来自新的 operator 指令（supersedes decision）或真实外部信号（新 issue、
+实质变化）；激活首轮必须先复跑 VERIFY 确认真实基线绿，再继续。
 
 ## 1. OBSERVE
 
@@ -113,9 +120,13 @@ ril.py round | ril.py stale --rounds 10                                        #
 - 不做全图扫描，除非本轮任务明确是"图谱一致性检查"或"深度探索"（见第 8 节）。
 - 如果某个 task 需要更大范围的上下文，允许按需扩展加载（跟着边走），但要在 LEARN 阶段记录"本轮实际使用的子图范围"，供后续 session 参考典型的加载半径。
 
-### 2.4 并发语义
+### 2.4 并发语义（仅当多实例并行时生效）
 
-若存在多个 agent instance（Loop Engineering 架构下这是常态）：
+> **单一实例（默认、常见）跳过本节全部锁与乐观更新**：直接顺序读写，无需 lock/unlock、
+> 无需 `--expect-version`。本节只为"确有多个 agent instance 并行"的架构保留——若仓库
+> 只有单一提交源与顺序轮次，就不具备多实例前提，锁是无意义的仪式。
+
+若确实存在多个 agent instance 同时运行（Loop Engineering 并行架构）：
 
 - 写入图谱前，对目标节点/边执行乐观锁：`ril.py node set` 必须带 `--expect-version <当前 version>`；版本冲突时 CLI 报错并把节点输出到 stderr，此时重新读取并 diff 合并，而不是覆盖。
 - 两个 instance 不得同时对同一 component 下的代码发起 EXECUTE；开始 EXECUTE 前，用 RIL 分布式锁占用对应 task 节点：`python3 .agents/skills/graph-engineering/scripts/ril.py lock --id TASK-x --owner <instance_id>`（默认 30 分钟超时，过期自动释放），结束时 `python3 .agents/skills/graph-engineering/scripts/ril.py unlock --id TASK-x`。**不要**手写 `status=in_progress` 或 `owner=` 字段——RIL schema 没有这些字段，`ril.py` 会直接拒绝。
@@ -145,7 +156,7 @@ priority_score = category_weight × severity × confidence × (1 / sqrt(effort))
 
 正常仓库内工程操作（改代码、修 bug、加测试、重构、性能优化、错误处理、可观测性、依赖更新、配置、CI、文档、删除废弃代码）默认自主执行，只要限定在当前仓库且可通过 Git 回滚。
 
-开始前：在对应 task 节点加锁（见第 2.4 节）。
+开始前：**单实例无需加锁**；仅当多实例并行时按第 2.4 节对 task 节点加锁。
 
 ## 6. VERIFY
 
@@ -200,6 +211,18 @@ Commit 时在 message 里引用相关 task/issue 节点 id，保证代码历史�
 > 满足后并不整体停止 —— 而是切换进功能演进模式继续交付能力；功能模式下每轮结束仍须复核第 1-5 条
 > 不变式未被破坏（回归护栏）。
 
+**QUIESCE（停表）程序**：当第 1-5 条全部满足（或功能模式下第 11.5 节任一满足），且本轮
+**未交付任何 `change`**、**没有新增 `priority_score ≥ 阈值(默认 3.0)` 的 task** 时：
+
+1. 写一条不可变 `decision`：`converged-idle`，rationale 记录收敛证据与被拒绝的替代工作；
+2. 停止 REPEAT——**不再发出仅轮次拨号的 `chore(ril)` 提交**；
+3. 进入静止态。重新激活：出现新的 operator 方向（supersedes decision）、真实用户问题 / 新的
+   高价值 issue、或仓库发生实质性变化时重启；但**重启首轮先复跑 VERIFY 确认真实基线绿**，
+   未通过验证不得声称"恢复迭代"。
+
+> 目的：堵住"任务全部 ≤ 阈值却仍在每轮发验证审计提交"的空转（曾发生：仅剩 1 个 0.81 分任务，
+> 却持续刷到 round 100+）。停滞态本身是一个 `converged-idle` decision，不是缺陷。
+
 ## 11. 功能演进模式（Feature Evolution Mode）
 
 > 本节是主动交付用户可见新能力的模式。仅当质量收敛（第 10 节）已达成**且**存在"功能演进已启用"的
@@ -224,6 +247,16 @@ Commit 时在 message 里引用相关 task/issue 节点 id，保证代码历史�
 4. **使用信号**：来自 views / likes / comments / 搜索词等真实信号（若可观测）。
 
 禁止凭空堆砌功能。每个候选必须一句话说清"为哪个用户、解决什么、为什么现在"，否则不进 SELECT。
+
+**价值闸门（防琐碎化）**：候选必须**同时**满足最低线才进 SELECT：
+
+- **用户价值**：解决一个**真实用户的、可感知**的问题（不是代码一致性/内部润色层面的修补）；
+  验收标准须能在 1 句内描述。
+- **范围**：能落成一个垂直切片且是**净增量**。把"缺一个选项 / 少一个按钮"级别的修补直接判
+  `rejected`（记决策，不建 task）。
+
+未过闸门的候选记为 `rejected` decision 并**计入停止条件**（见 11.5）。不要"退而求其次做更小的
+同类"——那是补丁堆积的起点。
 
 ### 11.3 选择、范围与架构
 
@@ -250,6 +283,9 @@ Commit 时在 message 里引用相关 task/issue 节点 id，保证代码历史�
 
 1. 图谱中 `active` 的 `core-feature` task 已被 `change` 交付并验证完毕（backlog 空）；
 2. operator 主动中止或改变方向（新增 supersedes decision）；
-3. 连续 2 轮功能候选均因范围/价值被拒，无合适功能可做。
+3. 连续 2 轮功能候选均因**未过价值闸门**被 `rejected`（见 11.2），无合适功能可做。
 
 不满足时继续 REPEAT。任一功能轮结束后，仍须确认第 10 节 bug 收敛不变式未被破坏（回归护栏）。
+
+> 当 1-3 任一满足、且本轮未交付任何 `change` 时，执行第 10 节的 **QUIESCE 程序**：写
+> `converged-idle` decision，停止空转提交。不要陷入"没有功能可做却每轮发验证审计"的轮次空转。
