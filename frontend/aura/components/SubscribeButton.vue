@@ -1,0 +1,68 @@
+<script setup lang="ts">
+/**
+ * Header button that drives the reader Web Push opt-in (DEC-055, TASK-118).
+ *
+ * Hidden until we know the browser and backend can support push
+ * (PushManager + a configured VAPID public key). From there it toggles
+ * subscribe/unsubscribe and reflects the Permission API's blocked state.
+ */
+const { t } = useLang();
+const { status, init, subscribe, unsubscribe } = usePushSubscription();
+
+onMounted(() => {
+	init();
+});
+
+const visible = computed(() => status.value !== "unsupported" && status.value !== "unconfigured");
+const busy = computed(() => status.value === "subscribing" || status.value === "unsubscribing");
+
+const label = computed(() => {
+	switch (status.value) {
+		case "subscribed":
+			return t("common.push.subscribed");
+		case "denied":
+			return t("common.push.denied");
+		case "subscribing":
+			return t("common.push.subscribing");
+		case "unsubscribing":
+			return t("common.push.unsubscribing");
+		default:
+			return t("common.push.subscribe");
+	}
+});
+
+const icon = computed(() => {
+	switch (status.value) {
+		case "subscribed":
+			return "lucide:bell-ring";
+		case "denied":
+			return "lucide:bell-off";
+		case "subscribing":
+		case "unsubscribing":
+			return "lucide:loader-2";
+		default:
+			return "lucide:bell";
+	}
+});
+
+async function onClick() {
+	if (busy.value) return;
+	if (status.value === "subscribed") await unsubscribe();
+	else await subscribe();
+}
+</script>
+
+<template>
+  <button
+    v-if="visible"
+    type="button"
+    :disabled="status === 'denied' || busy"
+    :title="label"
+    :aria-label="label"
+    class="inline-flex shrink-0 items-center gap-1.5 p-2 rounded-lg text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-700 dark:hover:text-gray-200 transition-all duration-200 disabled:opacity-50"
+    @click="onClick"
+  >
+    <Icon :icon="icon" class="w-4 h-4" :class="{ 'animate-spin': busy }" />
+    <span class="hidden lg:inline text-sm">{{ label }}</span>
+  </button>
+</template>

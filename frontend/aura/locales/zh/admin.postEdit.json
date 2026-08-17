@@ -42,6 +42,11 @@
 			"uploadImage": "上传图片"
 		},
 		"loading": "加载中...",
-		"unsavedConfirm": "你有未保存的更改，确定离开吗？"
+		"unsavedConfirm": "你有未保存的更改，确定离开吗？",
+		"notifySubscribers": "通知订阅者",
+		"notifying": "通知中…",
+		"notifySent": "已通知订阅者",
+		"notifyFailed": "通知发送失败，请稍后重试",
+		"notifyFallbackTitle": "新文章已发布"
 	}
 }

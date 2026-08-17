@@ -6,6 +6,7 @@ import {
 	fetchAdminCategories,
 	fetchAdminPost,
 	fetchAdminTags,
+	notifyPushSubscribers,
 	updateAdminPost,
 } from "~~/composables/useApi";
 
@@ -33,6 +34,11 @@ const formData = ref<Partial<PostCreate>>({
 });
 const isSubmitting = ref(false);
 const submitError = ref<string | null>(null);
+// Web Push notify-subscribers (DEC-055, TASK-118): only offered on published
+// posts; superuser-only on the backend, but the button simply surfaces the
+// backend's 403 if this account is an editor.
+const isNotifying = ref(false);
+const notifyMessage = ref<string | null>(null);
 
 // Unsaved-changes guard state (RIL TASK-061). Declared before the postData
 // watch below, whose immediate:true callback needs loadedSnapshot at setup time.
@@ -227,6 +233,29 @@ function handleCancel() {
 	navigateTo("/admin/posts", { replace: true });
 }
 
+/** Broadcast a Web Push notification about this published post (DEC-055). */
+async function handleNotify() {
+	if (!formData.value.published || !formData.value.slug) return;
+	notifyMessage.value = null;
+	isNotifying.value = true;
+	try {
+		const result = await notifyPushSubscribers({
+			title: formData.value.title || t("admin.postEdit.notifyFallbackTitle"),
+			body: formData.value.excerpt || "",
+			url: `/posts/${formData.value.slug}`,
+		});
+		if (result.error.value) {
+			notifyMessage.value = t("admin.postEdit.notifyFailed");
+		} else {
+			notifyMessage.value = t("admin.postEdit.notifySent");
+		}
+	} catch {
+		notifyMessage.value = t("admin.postEdit.notifyFailed");
+	} finally {
+		isNotifying.value = false;
+	}
+}
+
 function toggleTag(tagId: number) {
 	const current = formData.value.tag_ids || [];
 	if (current.includes(tagId)) {
@@ -364,6 +393,9 @@ function handleFileInput(e: Event) {
     <form v-else @submit.prevent="handleSubmit" class="space-y-6">
       <div v-if="submitError" class="p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl text-red-600 dark:text-red-400">
         {{ submitError }}
+      </div>
+      <div v-if="notifyMessage" class="p-4 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-xl text-green-700 dark:text-green-300">
+        {{ notifyMessage }}
       </div>
 
       <div class="bg-gradient-to-br from-gray-50 dark:from-gray-800/50 to-white dark:to-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl p-5 space-y-5">
@@ -617,6 +649,16 @@ function handleFileInput(e: Event) {
       </div>
 
       <div class="flex items-center gap-3 pt-2">
+        <button
+          v-if="formData.published"
+          type="button"
+          :disabled="isNotifying"
+          class="inline-flex items-center gap-2 px-6 py-3 border border-green-300 dark:border-green-700 text-green-700 dark:text-green-300 rounded-xl font-medium hover:bg-green-50 dark:hover:bg-green-900/20 transition-all disabled:opacity-50"
+          @click="handleNotify"
+        >
+          <Icon :icon="isNotifying ? 'lucide:loader-2' : 'lucide:bell-ring'" class="w-4 h-4" :class="{ 'animate-spin': isNotifying }" />
+          {{ isNotifying ? t('admin.postEdit.notifying') : t('admin.postEdit.notifySubscribers') }}
+        </button>
         <button
           type="submit"
           :disabled="isSubmitting"

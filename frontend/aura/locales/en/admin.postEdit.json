@@ -42,6 +42,11 @@
 			"uploadImage": "Upload image"
 		},
 		"loading": "Loading...",
-		"unsavedConfirm": "You have unsaved changes. Leave without saving?"
+		"unsavedConfirm": "You have unsaved changes. Leave without saving?",
+		"notifySubscribers": "Notify subscribers",
+		"notifying": "Notifying…",
+		"notifySent": "Subscribers notified",
+		"notifyFailed": "Failed to notify subscribers. Try again later.",
+		"notifyFallbackTitle": "New post published"
 	}
 }

@@ -34,6 +34,13 @@
 			"loading": "Loading",
 			"loadFailed": "Failed to load",
 			"empty": "No content yet"
+		},
+		"push": {
+			"subscribe": "Subscribe to new posts",
+			"subscribed": "Subscribed to new posts",
+			"denied": "Notifications blocked by browser",
+			"subscribing": "Subscribing…",
+			"unsubscribing": "Unsubscribing…"
 		}
 	}
 }

@@ -34,6 +34,13 @@
 			"loading": "加载中",
 			"loadFailed": "加载失败",
 			"empty": "暂无内容"
+		},
+		"push": {
+			"subscribe": "订阅新文章通知",
+			"subscribed": "已订阅新文章通知",
+			"denied": "通知已被浏览器阻止",
+			"subscribing": "订阅中…",
+			"unsubscribing": "退订中…"
 		}
 	}
 }

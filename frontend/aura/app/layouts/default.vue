@@ -83,6 +83,9 @@ onMounted(() => {
             <!-- Instant search suggestions -->
             <HeaderSearch class="w-56 mx-2" />
 
+            <!-- Web Push opt-in (new-post notifications) -->
+            <SubscribeButton class="mx-1" />
+
             <!-- Language switcher -->
             <LanguageSwitcher class="mx-2" />
 
@@ -136,6 +139,9 @@ onMounted(() => {
             </div>
             <div class="px-4 py-2">
               <LanguageSwitcher />
+            </div>
+            <div class="px-4 py-2">
+              <SubscribeButton />
             </div>
             <button
               type="button"
