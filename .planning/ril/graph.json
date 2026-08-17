@@ -2,7 +2,7 @@
   "ril_version": 1,
   "round": 103,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-08-17T11:04:33+00:00",
+  "updated_at": "2026-08-17T15:08:48+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -5387,10 +5387,10 @@
     "TASK-107": {
       "id": "TASK-107",
       "type": "task",
-      "status": "active",
-      "version": 3,
+      "status": "resolved",
+      "version": 4,
       "created_at": "2026-08-17T04:44:35+00:00",
-      "updated_at": "2026-08-17T06:18:26+00:00",
+      "updated_at": "2026-08-17T15:08:40+00:00",
       "touched_round": 103,
       "category": "core-feature",
       "severity": 0.3,
@@ -5402,10 +5402,10 @@
     "ISS-087": {
       "id": "ISS-087",
       "type": "issue",
-      "status": "active",
-      "version": 1,
+      "status": "resolved",
+      "version": 2,
       "created_at": "2026-08-17T04:44:35+00:00",
-      "updated_at": "2026-08-17T04:44:35+00:00",
+      "updated_at": "2026-08-17T15:08:40+00:00",
       "touched_round": 103,
       "title": "Admin 'create user' produces accounts that can't use any admin endpoint (all require superuser)",
       "severity": 0.3
@@ -5647,10 +5647,10 @@
     "TASK-114": {
       "id": "TASK-114",
       "type": "task",
-      "status": "active",
-      "version": 1,
+      "status": "resolved",
+      "version": 2,
       "created_at": "2026-08-17T11:04:22+00:00",
-      "updated_at": "2026-08-17T11:04:22+00:00",
+      "updated_at": "2026-08-17T15:08:40+00:00",
       "touched_round": 103,
       "category": "core-feature",
       "title": "Backend: add role tier to User + DDL-preserving alembic migration",
@@ -5662,10 +5662,10 @@
     "TASK-115": {
       "id": "TASK-115",
       "type": "task",
-      "status": "active",
-      "version": 1,
+      "status": "resolved",
+      "version": 2,
       "created_at": "2026-08-17T11:04:22+00:00",
-      "updated_at": "2026-08-17T11:04:22+00:00",
+      "updated_at": "2026-08-17T15:08:40+00:00",
       "touched_round": 103,
       "category": "core-feature",
       "title": "Backend: permission-scoped admin guard so non-superuser role can moderate content (posts/comments/categories/tags) but not users/export/batch",
@@ -5677,10 +5677,10 @@
     "TASK-116": {
       "id": "TASK-116",
       "type": "task",
-      "status": "active",
-      "version": 1,
+      "status": "resolved",
+      "version": 2,
       "created_at": "2026-08-17T11:04:22+00:00",
-      "updated_at": "2026-08-17T11:04:22+00:00",
+      "updated_at": "2026-08-17T15:08:40+00:00",
       "touched_round": 103,
       "category": "core-feature",
       "title": "Frontend: role-aware admin UI (hide superuser-only sections) + Playwright e2e for a role-scoped editor managing content",
@@ -5688,6 +5688,51 @@
       "confidence": 1.0,
       "effort": 4.0,
       "unlock_factor": 1.0
+    },
+    "CHG-101": {
+      "id": "CHG-101",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-17T15:08:25+00:00",
+      "updated_at": "2026-08-17T15:08:25+00:00",
+      "touched_round": 103,
+      "title": "Add User.role role-tier admin access control (superuser/editor)",
+      "commit": "8bb70ad5ef70421c91b488b1ba34b2c8c7a09c02"
+    },
+    "CHG-102": {
+      "id": "CHG-102",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-17T15:08:25+00:00",
+      "updated_at": "2026-08-17T15:08:25+00:00",
+      "touched_round": 103,
+      "title": "Role-aware admin UI: hide Users nav/export/batch for editors",
+      "commit": "8bb70ad5ef70421c91b488b1ba34b2c8c7a09c02"
+    },
+    "CHG-103": {
+      "id": "CHG-103",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-17T15:08:25+00:00",
+      "updated_at": "2026-08-17T15:08:25+00:00",
+      "touched_round": 103,
+      "title": "Role-tier contract tests (test_role_tiers) + Playwright editor e2e",
+      "commit": "8bb70ad5ef70421c91b488b1ba34b2c8c7a09c02"
+    },
+    "EV-083": {
+      "id": "EV-083",
+      "type": "evidence",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-17T15:08:25+00:00",
+      "updated_at": "2026-08-17T15:08:25+00:00",
+      "touched_round": 103,
+      "title": "Backend suite 632 passed incl. 14 role-tier contract tests (ISS-087 resolved)",
+      "confidence": 1.0,
+      "source": "8bb70ad: test_role_tiers.py"
     }
   },
   "edges": [
@@ -7918,6 +7963,42 @@
       "to": "TASK-116",
       "type": "governs",
       "created_at": "2026-08-17T11:04:33+00:00"
+    },
+    {
+      "from": "CHG-101",
+      "to": "ISS-087",
+      "type": "resolves",
+      "created_at": "2026-08-17T15:08:30+00:00"
+    },
+    {
+      "from": "CHG-101",
+      "to": "TASK-114",
+      "type": "implements",
+      "created_at": "2026-08-17T15:08:30+00:00"
+    },
+    {
+      "from": "CHG-101",
+      "to": "TASK-115",
+      "type": "implements",
+      "created_at": "2026-08-17T15:08:30+00:00"
+    },
+    {
+      "from": "CHG-102",
+      "to": "TASK-116",
+      "type": "implements",
+      "created_at": "2026-08-17T15:08:30+00:00"
+    },
+    {
+      "from": "CHG-101",
+      "to": "TASK-107",
+      "type": "implements",
+      "created_at": "2026-08-17T15:08:30+00:00"
+    },
+    {
+      "from": "CHG-103",
+      "to": "TASK-116",
+      "type": "implements",
+      "created_at": "2026-08-17T15:08:48+00:00"
     }
   ]
 }
