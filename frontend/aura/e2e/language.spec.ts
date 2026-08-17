@@ -25,7 +25,9 @@ test("defaults to Chinese and shows the Chinese nav", async ({ page }) => {
 
 test("switching to English updates the UI and <html lang>", async ({ page }) => {
 	await page.goto("/");
-	await page.getByRole("button", { name: "English" }).click();
+	// The language switcher is a dropdown: open it, then pick English.
+	await page.getByRole("button", { name: "中文" }).click();
+	await page.getByRole("menuitem", { name: "English" }).click();
 	await expect(page.locator("html")).toHaveAttribute("lang", "en");
 	await expect(headerNavLink(page, "Home")).toBeVisible();
 	await expect(page.getByRole("link", { name: "首页" })).toHaveCount(0);
@@ -33,7 +35,8 @@ test("switching to English updates the UI and <html lang>", async ({ page }) => 
 
 test("the chosen language persists across reloads", async ({ page }) => {
 	await page.goto("/");
-	await page.getByRole("button", { name: "English" }).click();
+	await page.getByRole("button", { name: "中文" }).click();
+	await page.getByRole("menuitem", { name: "English" }).click();
 	await page.reload();
 	await expect(page.locator("html")).toHaveAttribute("lang", "en");
 	await expect(headerNavLink(page, "Home")).toBeVisible();
