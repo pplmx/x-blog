@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 86,
+  "round": 87,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-08-17T04:40:43+00:00",
+  "updated_at": "2026-08-17T04:47:04+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -5371,6 +5371,44 @@
       "touched_round": 85,
       "title": "admin editor generateSlug falls back to post-<hash> for CJK-only titles",
       "commit": "b4a1ea3"
+    },
+    "DEC-053": {
+      "id": "DEC-053",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-17T04:44:35+00:00",
+      "updated_at": "2026-08-17T04:44:35+00:00",
+      "touched_round": 86,
+      "title": "Created admin accounts stay non-superuser; role-tier admin is unbuilt (backlog)",
+      "rationale": "create_user forces is_superuser=False, but every admin endpoint requires get_current_admin (superuser). A created account can log in and render the admin UI but gets 403 on all data — a functional gap. Changing create_user to always superuser is a privilege-escalation risk (any superuser mints more superusers) and breaks the tested 403 contract (test_admin_users). Correct path: keep the safe contract, build a scoped non-superuser admin role next.",
+      "alternatives_rejected": "Auto-escalate created users to superuser (unsafe privilege minting, breaks tested contract), remove the users feature (loses provisioning), no action (leave unusable accounts)."
+    },
+    "TASK-107": {
+      "id": "TASK-107",
+      "type": "task",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-17T04:44:35+00:00",
+      "updated_at": "2026-08-17T04:44:35+00:00",
+      "touched_round": 86,
+      "category": "core-feature",
+      "severity": 0.3,
+      "confidence": 1.0,
+      "effort": 5.0,
+      "unlock_factor": 1.0,
+      "title": "Build scoped non-superuser admin role so created accounts are usable"
+    },
+    "ISS-087": {
+      "id": "ISS-087",
+      "type": "issue",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-17T04:44:35+00:00",
+      "updated_at": "2026-08-17T04:44:35+00:00",
+      "touched_round": 86,
+      "title": "Admin 'create user' produces accounts that can't use any admin endpoint (all require superuser)",
+      "severity": 0.3
     }
   },
   "edges": [
@@ -7426,6 +7464,18 @@
       "to": "ISS-086",
       "type": "resolves",
       "created_at": "2026-08-17T04:40:42+00:00"
+    },
+    {
+      "from": "TASK-107",
+      "to": "ISS-087",
+      "type": "addresses",
+      "created_at": "2026-08-17T04:44:35+00:00"
+    },
+    {
+      "from": "DEC-053",
+      "to": "TASK-107",
+      "type": "governs",
+      "created_at": "2026-08-17T04:44:35+00:00"
     }
   ]
 }
