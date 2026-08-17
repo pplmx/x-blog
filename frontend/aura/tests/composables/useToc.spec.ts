@@ -89,6 +89,25 @@ describe("extractToc", () => {
 		expect(result[2].id).toBe("c");
 		expect(result[3].id).toBe("d");
 	});
+
+	it("preserves CJK headings instead of collapsing to an empty id (RIL TASK-097, ISS-077)", () => {
+		const html = "<h1>中文标题</h1><h2>Python 入门指南</h2>";
+		const result = extractToc(html);
+		expect(result).toHaveLength(2);
+		// Empty id broke TOC anchors (href="#") + duplicate v-for keys before.
+		expect(result[0].id).not.toBe("");
+		expect(result[0].id).toBe("中文标题");
+		expect(result[0].text).toBe("中文标题");
+		expect(result[1].id).toBe("python-入门指南");
+	});
+
+	it("produces unique ids for distinct CJK headings (no empty-key collision)", () => {
+		const html = "<h2>简介</h2><h2>安装</h2>";
+		const result = extractToc(html);
+		expect(result[0].id).toBe("简介");
+		expect(result[1].id).toBe("安装");
+		expect(new Set(result.map((r) => r.id)).size).toBe(2);
+	});
 });
 
 describe("useToc", () => {

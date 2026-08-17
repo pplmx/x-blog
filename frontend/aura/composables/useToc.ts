@@ -21,7 +21,10 @@ export interface TocItem {
 
 /**
  * Generate a URL-safe slug from heading text.
- * Matches GitHub's algorithm for heading IDs.
+ * Matches GitHub's algorithm for heading IDs, extended to preserve CJK and
+ * accented letters (GitHub keeps them; the ASCII-only `\w` collapsed a Chinese
+ * heading like `# 中文标题` to `""`, producing empty `id=""` anchors, dead TOC
+ * links and duplicate v-for keys — a real bug on this Chinese-language blog).
  *
  * Shared with useMarkdown.ts, whose marked renderer emits these ids on the
  * rendered headings — the TOC anchors only resolve because both sides use
@@ -33,7 +36,12 @@ export function slugify(text: string): string {
 			.toLowerCase()
 			.trim()
 			.replace(/[\s_]+/g, "-")
-			.replace(/[^\w-]+/g, "") || ""
+			// Keep any Unicode letter/number (incl. CJK) plus hyphen; drop
+			// symbols/punctuation (`,.?!#%` etc). The `u` flag enables
+			// \p{L}/\p{N}. Trailing.replace yields "" only for pure-symbol text.
+			.replace(/[^\p{L}\p{N}-]+/gu, "")
+			.replace(/-+/g, "-")
+			.replace(/^-|-$/g, "") || ""
 	);
 }
 
