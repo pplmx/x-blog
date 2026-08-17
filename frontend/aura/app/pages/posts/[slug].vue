@@ -8,6 +8,7 @@ import {
 	useRelatedPosts,
 } from "~~/composables/useApi";
 import { coverImageSrc } from "~~/composables/useCoverImage";
+import { markdownToHtml } from "~~/composables/useMarkdown";
 import { usePostSeo } from "~~/composables/useSeo";
 import { extractToc } from "~~/composables/useToc";
 
@@ -17,7 +18,15 @@ const route = useRoute();
 // slug changes via SPA navigation between posts (TASK-090, ISS-073).
 const { data: post, pending, error } = await usePost(() => route.params.slug as string);
 
-const toc = computed(() => (post.value?.content ? extractToc(post.value.content) : []));
+// Extract TOC from the RENDERED markdown HTML — not the raw markdown. The
+// post content is Markdown (`# Heading`), but extractToc only recognises HTML
+// `<h1>` tags; feeding it raw Markdown always yielded an empty TOC on real
+// posts (tests masked this by mocking content as HTML). markdownToHtml uses
+// the same heading renderer/MarkdownContent uses, so the emitted ids match
+// what extractToc computes (RIL TASK-104, ISS-084).
+const toc = computed(() =>
+	post.value?.content ? extractToc(markdownToHtml(post.value.content)) : [],
+);
 
 // Display cover image: use algorithmic SVG data URI (no HTTP request, consistent style)
 // For OpenGraph og:image, usePostSeo uses buildCoverImageUrl (URL for social crawlers)

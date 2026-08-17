@@ -1053,6 +1053,28 @@ describe("Post Detail Page", () => {
 			expect(headingLinks.length).toBe(4);
 		});
 
+		it("renders TOC from Markdown content (RIL TASK-104, ISS-084 regression)", async () => {
+			// Real posts store Markdown (`# Heading`), not HTML. Prior to the
+			// fix extractToc was fed raw Markdown -> always empty TOC on real
+			// posts; the HTML-based tests above masked this.
+			const markdownPost = {
+				...mockPost,
+				content:
+					"# Introduction\n\nSome lead text.\n\n## Getting Started\n\nHow-to.\n\n## Advanced\n\nMore.",
+			};
+
+			const wrapper = await mountPostPage({ post: markdownPost });
+
+			const tocLinks = wrapper.findAll('a[href^="#"]');
+			const headingLinks = tocLinks.filter((a) =>
+				["#introduction", "#getting-started", "#advanced"].includes(a.attributes("href")),
+			);
+			expect(headingLinks.length).toBe(3);
+			expect(headingLinks[0].attributes("href")).toBe("#introduction");
+			expect(headingLinks[1].attributes("href")).toBe("#getting-started");
+			expect(headingLinks[2].attributes("href")).toBe("#advanced");
+		});
+
 		it("does NOT render TOC sidebar when post has only one heading", async () => {
 			const singleHeadingPost = {
 				...mockPost,

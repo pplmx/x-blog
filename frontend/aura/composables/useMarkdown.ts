@@ -243,6 +243,16 @@ function convertMarkdownToHtml(md: string): string {
 	}
 }
 
+/**
+ * Convert whole Markdown to HTML using the same heading renderer that
+ * `useMarkdown` uses, so rendered headings carry the exact `id` values
+ * `extractToc` computes. Feed this HTML to `extractToc` (or render it) so TOC
+ * anchors resolve to real heading elements. (RIL TASK-104, ISS-084)
+ */
+export function markdownToHtml(md: string): string {
+	return convertMarkdownToHtml(md);
+}
+
 // --- Main composable ---
 
 export function useMarkdown(content: string): UseMarkdownResult {
