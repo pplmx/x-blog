@@ -2,7 +2,7 @@
   "ril_version": 1,
   "round": 89,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-08-17T04:57:05+00:00",
+  "updated_at": "2026-08-17T04:58:17+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -5101,10 +5101,10 @@
     "TASK-099": {
       "id": "TASK-099",
       "type": "task",
-      "status": "active",
-      "version": 1,
+      "status": "stale",
+      "version": 2,
       "created_at": "2026-08-17T02:42:27+00:00",
-      "updated_at": "2026-08-17T02:42:27+00:00",
+      "updated_at": "2026-08-17T04:58:17+00:00",
       "touched_round": 78,
       "category": "security",
       "severity": 0.5,

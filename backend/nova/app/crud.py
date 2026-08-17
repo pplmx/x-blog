@@ -42,6 +42,33 @@ def is_publicly_visible(post: models.Post) -> bool:
     return publish_at <= utc_now_naive()
 
 
+def _populate_post_metrics(db: Session, posts: list[models.Post]) -> None:
+    """Fill `comment_count` + `reading_time` on a list of Post in-place.
+
+    comment_count is the approved-comment count per post, computed in ONE
+    grouped query (no N+1) so cost scales with the page size. Shared by every
+    public PostList-producing path (list / popular / related / adjacent) so a
+    PostList consumer never gets a misleading 0 for a post that has comments
+    (RIL TASK-109, ISS-089).
+    """
+    if not posts:
+        return
+    post_ids = [p.id for p in posts]
+    rows = (
+        db.query(models.Comment.post_id, func.count(models.Comment.id))
+        .filter(
+            models.Comment.post_id.in_(post_ids),
+            models.Comment.is_approved == True,  # noqa: E712
+        )
+        .group_by(models.Comment.post_id)
+        .all()
+    )
+    comment_counts = {post_id: int(count) for post_id, count in rows}
+    for p in posts:
+        p.comment_count = comment_counts.get(p.id, 0)
+        p.reading_time = schemas.reading_minutes(p.content or "")
+
+
 def get_posts(
     db: Session,
     skip: int = 0,
@@ -84,25 +111,8 @@ def get_posts(
     # Sort by pinned first, then by created_at
     posts = query.order_by(models.Post.pinned.desc(), models.Post.created_at.desc()).offset(skip).limit(limit).all()
 
-    # Populate comment_count in a single grouped query (no N+1): count approved
-    # comments per post for the current page. Only the page's post ids are
-    # queried, so cost scales with the page size regardless of total.
-    if posts:
-        post_ids = [p.id for p in posts]
-        rows = (
-            db.query(models.Comment.post_id, func.count(models.Comment.id))
-            .filter(
-                models.Comment.post_id.in_(post_ids),
-                models.Comment.is_approved == True,  # noqa: E712
-            )
-            .group_by(models.Comment.post_id)
-            .all()
-        )
-        comment_counts = {post_id: int(count) for post_id, count in rows}
-        for p in posts:
-            p.comment_count = comment_counts.get(p.id, 0)
-            p.reading_time = schemas.reading_minutes(p.content or "")
-
+    # Populate comment_count (approved) + reading_time in one pass (no N+1).
+    _populate_post_metrics(db, posts)
     return posts, total
 
 
@@ -684,8 +694,7 @@ def get_popular_posts(db: Session, limit: int = 5) -> list[models.Post]:
         .limit(limit)
         .all()
     )
-    for p in posts:
-        p.reading_time = schemas.reading_minutes(p.content or "")
+    _populate_post_metrics(db, posts)
     return posts
 
 
@@ -714,8 +723,7 @@ def get_related_posts(db: Session, post_id: int, limit: int = 5) -> list[models.
             .limit(limit)
             .all()
         )
-        for p in posts:
-            p.reading_time = schemas.reading_minutes(p.content or "")
+        _populate_post_metrics(db, posts)
         return posts
 
     # Get tag IDs of the source post
@@ -785,8 +793,7 @@ def get_related_posts(db: Session, post_id: int, limit: int = 5) -> list[models.
 
     # Extract posts from results (strip the extra columns)
     posts = [row[0] for row in results]
-    for p in posts:
-        p.reading_time = schemas.reading_minutes(p.content or "")
+    _populate_post_metrics(db, posts)
     return posts
 
 
@@ -835,8 +842,7 @@ def get_adjacent_posts(db: Session, post_id: int) -> tuple[models.Post | None, m
         .all()
     )
     by_id = {p.id: p for p in rows}
-    for p in by_id.values():
-        p.reading_time = schemas.reading_minutes(p.content or "")
+    _populate_post_metrics(db, list(by_id.values()))
     previous = by_id.get(feed_ids[idx - 1]) if idx > 0 else None
     following = by_id.get(feed_ids[idx + 1]) if idx + 1 < len(feed_ids) else None
     return previous, following

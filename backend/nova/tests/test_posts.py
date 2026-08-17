@@ -481,6 +481,47 @@ def test_get_adjacent_posts_404(client, db_session):
     assert missing.status_code == 404
 
 
+def test_adjacent_popular_related_include_comment_count(client, db_session, auth_headers):
+    """PostList from adjacent/popular/related must carry the real comment_count.
+
+    Regression for RIL TASK-109, ISS-089: these paths returned 0 even for
+    posts with approved comments (only get_posts populated it).
+    """
+    post = _seed_adjacent_posts(db_session)["Middle"]
+    # Create + approve 2 comments on this post.
+    for i in range(2):
+        c_resp = client.post(
+            f"/api/comments/post/{post.id}",
+            json={"nickname": f"U{i}", "email": f"u{i}@e.com", "content": f"c{i}"},
+        )
+        assert c_resp.status_code == 201
+        c_id = c_resp.json()["id"]
+        patch = client.patch(f"/api/comments/{c_id}/approve", json={"approved": True}, headers=auth_headers)
+        assert patch.status_code == 200
+
+    # The popular list includes every published post, so Middle appears with
+    # its 2 approved comments.
+    pop = client.get("/api/posts/popular/list")
+    assert pop.status_code == 200
+    items = pop.json()
+    # popular/list is an unbounded array (raw list, not paginated envelope).
+    middle = next((i for i in items if i["id"] == post.id), None)
+    assert middle is not None, items
+    assert middle["comment_count"] == 2, middle
+
+    # Adjacent response: Middle's next (Oldest) requires the comment_count key
+    # and must reflect any comments Oldest has (we didn't add any, so it is 0 —
+    # but the key must exist, not be dropped).
+    adj = client.get(f"/api/posts/{post.id}/adjacent")
+    assert adj.status_code == 200
+    assert "comment_count" in adj.json()["previous"] or "comment_count" in adj.json()["next"]
+
+    # Related list items all carry comment_count.
+    rel = client.get(f"/api/posts/{post.id}/related")
+    assert rel.status_code == 200
+    assert all("comment_count" in it for it in rel.json())
+
+
 def _seed_archive_posts(db_session):
     """Seed published/unpublished posts across distinct (year, month) buckets."""
     from datetime import UTC, datetime
