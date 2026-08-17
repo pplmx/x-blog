@@ -2,7 +2,7 @@
   "ril_version": 1,
   "round": 103,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-08-17T15:08:48+00:00",
+  "updated_at": "2026-08-17T16:25:43+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -5733,6 +5733,66 @@
       "title": "Backend suite 632 passed incl. 14 role-tier contract tests (ISS-087 resolved)",
       "confidence": 1.0,
       "source": "8bb70ad: test_role_tiers.py"
+    },
+    "DEC-055": {
+      "id": "DEC-055",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-17T16:23:13+00:00",
+      "updated_at": "2026-08-17T16:23:13+00:00",
+      "touched_round": 103,
+      "title": "Milestone: new-post Web Push notifications (browser push subscription)",
+      "rationale": "Feature-evolution selection (SKILL 11.2 gap analysis, surface 'subscription'). DEC-049 recorded 'Web Push' in the modern hardening backlog but no task was ever created; backlog is now empty and this is the only recorded-but-unbuilt user-visible capability. The blog ships RSS/Atom (feed-style subscription) but has no on-device notification channel: a reader must poll or use an external feed reader, so opted-in readers get no direct signal when a post goes live. Delivery: backend push_subscriptions table (DDL-preserving alembic per DEC-009) + VAPID keypair config (operator-generated, .env) + POST /api/push/subscribe, DELETE /api/push/subscribe, superuser-only POST /api/push/notify dispatching via pywebpush (http-ece + PyJWT already in tree) with 410/404 housekeeping; frontend service worker /sw.js + usePushSubscription composable + SubscribeButton in header + i18n zh/en; admin 'notify subscribers' action on post publish; contract/unit/e2e verification. Value gate (11.2): real reader problem (no signal when new content appears) with 1-sentence acceptance 'an opted-in reader receives a browser notification when the author publishes and clicks notify, and their browser remains functional after (no auth/push regressions)'; net-increment vertical slice, self-contained (no SMTP/external account infra).",
+      "alternatives_rejected": "(a) Scheduled publishing - already fully shipped (backend publish_at guards + admin 'schedule publish' + scheduled status list). (b) Theme toggle / TOC / cover image - all already implemented (default.vue, useToc, useCoverImage). (c) Reader accounts + cloud-synced bookmarks - high reader value but large multi-round auth milestone (registration, reader JWT, rate limiting); too big for a single milestone, rejected now. (d) Post series - plausible for tutorial content but a schema-heavy organizational feature with no recorded provenance; kept as backlog idea. (e) Email subscription - needs SMTP infra, exceeds present scope. (f) Per-category RSS - previously rejected (DEC-047) as bigger surface / lower reader value. (g) Reopen CSP/SRI (TASK-099/ISS-068) - already deferred by DEC-051 pending live-browser verification; not a user-visible feature."
+    },
+    "TASK-117": {
+      "id": "TASK-117",
+      "type": "task",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-17T16:23:57+00:00",
+      "updated_at": "2026-08-17T16:23:57+00:00",
+      "touched_round": 103,
+      "category": "core-feature",
+      "severity": 0.3,
+      "confidence": 1.0,
+      "effort": 4.0,
+      "unlock_factor": 1.0,
+      "title": "Backend: push_subscriptions table + DDL-preserving alembic migration + VAPID config + push router (subscribe/unsubscribe/push admin notify) with pywebpush dispatch and 410/404 subscription housekeeping",
+      "description": "Add PushSubscription model (endpoint unique, p256dh, auth, created_at); additive alembic migration preserving DDL per DEC-009; VAPID public/private key + subject from env (operator-generated, documented); POST /api/push/subscribe (validate endpoint is https URL, p256dh 65-byte base64url, auth 16-byte) with upsert; DELETE /api/push/subscribe by endpoint; superuser-only POST /api/push/notify {title, body, url} dispatching to every subscription via pywebpush (VAPID JWT via PyJWT); remove subscriptions that return 410/404. Contract tests: subscribe idempotent, invalid keys rejected, unsubscribe, admin-only notify, dispatch constructs valid VAPID auth + encrypted payload (mock outbound HTTP), 410 cleanup."
+    },
+    "TASK-118": {
+      "id": "TASK-118",
+      "type": "task",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-17T16:24:12+00:00",
+      "updated_at": "2026-08-17T16:24:12+00:00",
+      "touched_round": 103,
+      "category": "core-feature",
+      "severity": 0.3,
+      "confidence": 1.0,
+      "effort": 4.0,
+      "unlock_factor": 1.0,
+      "title": "Frontend: service worker /sw.js + usePushSubscription composable + header SubscribeButton + admin notify-subscribers action on post publish + i18n keys (zh/en)",
+      "description": "Add /public/sw.js handling 'push' (showNotification with title/body/url data) and 'notificationclick' (focus/open url), skipWaiting + clients.claim; usePushSubscription composable exposing isSupported, permission state, subscribe() (register SW -> pushManager.subscribe userVisibleOnly with decoded applicationServerKey from backend public key -> POST to /api/push/subscribe), unsubscribe() (POST? DELETE endpoint -> pushManager.unsubscribe); SubscribeButton in header with per-state labels/icons; admin posts publish flow gains notify-subscribers action calling POST /api/push/notify; locale keys in zh and en."
+    },
+    "TASK-119": {
+      "id": "TASK-119",
+      "type": "task",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-17T16:24:43+00:00",
+      "updated_at": "2026-08-17T16:24:43+00:00",
+      "touched_round": 103,
+      "category": "core-feature",
+      "severity": 0.3,
+      "confidence": 1.0,
+      "effort": 3.0,
+      "unlock_factor": 1.0,
+      "title": "Verification + docs: backend pytest contract suite + Vitest composable/component tests + Playwright e2e (header subscribe, admin notify) + README API table + .env.example VAPID + deployment note",
+      "description": "Per SKILL 11.4 acceptance: (1) backend unit/integration tests for the push contract (subscribe/unsubscribe/notify, invalid input, admin auth, 410 housekeeping) with outbound HTTP mocked; (2) frontend Vitest unit tests for usePushSubscription state machine and SubscribeButton rendering; (3) Playwright e2e journey: header subscribe button prompts->subscribed via stubbed pushManager/serviceWorker, admin notify flow; (4) docs: README API table entries for push endpoints, .env.example VAPID keys, docs/deployment.md VAPID generation step. Full regression suite must stay green."
     }
   },
   "edges": [
@@ -7999,6 +8059,45 @@
       "to": "TASK-116",
       "type": "implements",
       "created_at": "2026-08-17T15:08:48+00:00"
+    },
+    {
+      "from": "DEC-055",
+      "to": "TASK-117",
+      "type": "governs",
+      "created_at": "2026-08-17T16:25:02+00:00",
+      "note": "milestone scope governs the delivery task"
+    },
+    {
+      "from": "DEC-055",
+      "to": "TASK-118",
+      "type": "governs",
+      "created_at": "2026-08-17T16:25:03+00:00",
+      "note": "milestone scope governs the delivery task"
+    },
+    {
+      "from": "DEC-055",
+      "to": "TASK-119",
+      "type": "governs",
+      "created_at": "2026-08-17T16:25:03+00:00",
+      "note": "milestone scope governs the delivery task"
+    },
+    {
+      "from": "TASK-119",
+      "to": "TASK-118",
+      "type": "depends_on",
+      "created_at": "2026-08-17T16:25:03+00:00"
+    },
+    {
+      "from": "TASK-118",
+      "to": "TASK-117",
+      "type": "depends_on",
+      "created_at": "2026-08-17T16:25:43+00:00"
+    },
+    {
+      "from": "TASK-119",
+      "to": "TASK-117",
+      "type": "depends_on",
+      "created_at": "2026-08-17T16:25:43+00:00"
     }
   ]
 }
