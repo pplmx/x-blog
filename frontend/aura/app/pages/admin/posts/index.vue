@@ -63,21 +63,34 @@ async function handleDelete(id: number) {
 	}
 }
 
+// Status classification mirrors the backend (admin_list_posts/stats): a post is
+// "scheduled" only when it is PUBLISHED and its publish_at is in the future —
+// not yet live. A draft with a future publish_at is still a draft (published
+// is False). The old `!published && publish_at` rule was inverted: it mislabeled
+// a real scheduled post as published and a draft-with-future-date as scheduled.
+function isScheduled(post: AdminPost): boolean {
+	return (
+		post.published &&
+		!!post.publish_at &&
+		new Date(post.publish_at).getTime() > Date.now()
+	);
+}
+
 function statusLabel(post: AdminPost): string {
-	if (!post.published && post.publish_at) return t("admin.postsList.scheduled");
+	if (isScheduled(post)) return t("admin.postsList.scheduled");
 	if (post.published) return t("admin.postsList.published");
 	return t("admin.postsList.draft");
 }
 
 function statusColor(post: AdminPost): string {
-	if (!post.published && post.publish_at)
+	if (isScheduled(post))
 		return "bg-purple-50 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400";
 	if (post.published) return "bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-400";
 	return "bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400";
 }
 
 function statusDot(post: AdminPost): string {
-	if (!post.published && post.publish_at) return "bg-purple-500";
+	if (isScheduled(post)) return "bg-purple-500";
 	if (post.published) return "bg-green-500";
 	return "bg-amber-500";
 }

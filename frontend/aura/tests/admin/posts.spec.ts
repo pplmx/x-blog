@@ -56,9 +56,9 @@ const mockResponse = {
 			id: 3,
 			title: "Scheduled Post",
 			slug: "scheduled-post",
-			published: false,
+			published: true,
 			pinned: false,
-			publish_at: "2026-08-01T10:00:00Z",
+			publish_at: "2999-08-01T10:00:00Z",
 			views: 0,
 			cover_image: null,
 			category: "Tech",
@@ -66,8 +66,24 @@ const mockResponse = {
 			created_at: "2026-07-28T10:00:00Z",
 			updated_at: "2026-07-28T10:00:00Z",
 		},
+		{
+			id: 4,
+			title: "Draft With Future Date",
+			slug: "draft-with-future-date",
+			// published=false with a future publish_at is STILL a draft (the
+			// backend only treats published=true + future as "scheduled").
+			published: false,
+			pinned: false,
+			publish_at: "2999-01-01T00:00:00Z",
+			views: 0,
+			cover_image: null,
+			category: "Dev",
+			tags: [],
+			created_at: "2026-07-30T10:00:00Z",
+			updated_at: "2026-07-30T10:00:00Z",
+		},
 	],
-	pagination: { total: 3, skip: 0, limit: 20 },
+	pagination: { total: 4, skip: 0, limit: 20 },
 };
 
 async function loadPage() {
@@ -163,7 +179,7 @@ describe("Admin Posts Page", () => {
 		it("renders the post count", async () => {
 			const PostsPage = await loadPage();
 			const wrapper = await mountWithSuspense(PostsPage);
-			expect(wrapper.text()).toContain("3 篇文章");
+    expect(wrapper.text()).toContain("4 篇文章");
 		});
 
 		it('renders a "new post" link', async () => {
