@@ -3587,6 +3587,11 @@ def main():
             admin = auth.User(
                 username="admin",
                 password=auth.get_password_hash(admin_password),
+                # role is the authoritative admin discriminator (DEC-054); the
+                # role column's server_default would otherwise stamp "editor",
+                # leaving is_superuser=True but every superuser-only endpoint
+                # (users/export/batch/notify) 403ing for the seeded admin.
+                role=auth.ROLE_SUPERUSER,
                 is_superuser=True,
             )
             db.add(admin)

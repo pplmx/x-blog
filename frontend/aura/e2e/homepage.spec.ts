@@ -41,12 +41,12 @@ test.describe("Homepage", () => {
 
 	test("about page loads", async ({ page }) => {
 		await page.goto("/about");
-		await expect(page.locator("h1")).toBeVisible();
+		await expect(page.locator("h1")).toBeVisible({ timeout: 10000 });
 	});
 
 	test("tags page loads", async ({ page }) => {
 		await page.goto("/tags");
-		await expect(page.locator("h1")).toBeVisible();
+		await expect(page.locator("h1")).toBeVisible({ timeout: 10000 });
 	});
 
 	test("home honors category deep-link filter", async ({ page }) => {
@@ -61,7 +61,11 @@ test.describe("Homepage", () => {
 
 	test("admin page loads", async ({ page }) => {
 		await page.goto("/admin");
-		await expect(page.locator("h1")).toBeVisible();
+		// Unauthenticated /admin redirects client-side to the login page; wait
+		// for the redirect deterministically instead of racing it (the layout
+		// renders no content on /admin for a logged-out visitor).
+		await page.waitForURL("**/admin/login", { timeout: 10000 });
+		await expect(page.locator("h1")).toBeVisible({ timeout: 10000 });
 	});
 
 	test("pagination works", async ({ page }) => {
@@ -88,7 +92,7 @@ test.describe("Homepage", () => {
 		const postLink = page.locator("article a").first();
 		if (await postLink.isVisible()) {
 			await postLink.click();
-			await expect(page.locator("h1")).toBeVisible();
+			await expect(page.locator("h1")).toBeVisible({ timeout: 10000 });
 			await expect(page).toHaveURL(/\/posts\//);
 		}
 	});

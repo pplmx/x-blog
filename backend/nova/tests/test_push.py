@@ -14,7 +14,7 @@ from unittest.mock import patch
 
 import pytest
 
-from app import models
+from app import models, webpush
 
 # A syntactically-valid push endpoint (any https URL the push service style uses).
 ENDPOINT = "https://updates.push.services.mozilla.com/wpush/v2/AAAAAAAAAAAAAAAAAAAA"
@@ -249,3 +249,22 @@ class TestNotifyDispatch:
             headers=auth_headers,
         )
         assert response.status_code == 503
+
+
+class TestSendPushTimeout:
+    def test_send_push_forwards_a_per_endpoint_timeout(self):
+        """A dead push service must not stall the whole broadcast forever: the
+        requests call gets a bounded timeout, so a hanging endpoint is counted
+        as failed instead of eating the app's 30s request budget (504)."""
+        with patch("app.webpush.webpush") as mock_webpush:
+            webpush.send_push(
+                endpoint=ENDPOINT,
+                p256dh=_valid_keys()["p256dh"],
+                auth=_valid_keys()["auth"],
+                payload={"title": "x"},
+            )
+        kwargs = mock_webpush.call_args.kwargs
+        assert kwargs["timeout"] == 10.0
+        assert kwargs["vapid_claims"] == {"sub": "mailto:test@example.com"}
+        assert kwargs["data"] == '{"title": "x"}'
+        assert kwargs["vapid_private_key"]  # lazy env read present in tests

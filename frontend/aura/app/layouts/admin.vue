@@ -12,28 +12,49 @@ import { useAdminAuth } from "~~/composables/useAdminAuth";
 const { isAuthenticated, logout } = useAdminAuth();
 const { t } = useLang();
 const route = useRoute();
-const isLoginPage = route.path === "/admin/login";
+// Reactive, not a setup-time snapshot: an unauthenticated user hitting /admin
+// is redirected to /admin/login via SPA navigation, and the layout instance is
+// reused — a plain `route.path === ...` const would stay false and render
+// neither branch, leaving a blank page (e2e: homepage "admin page loads").
+const isLoginPage = computed(() => route.path === "/admin/login");
 const sidebarOpen = ref(false);
 
 // Current admin's role (superuser | editor). Editors (non-superuser) can
 // moderate content but must not see superuser-only sections (users/export/batch).
 // The role is stored in localStorage at login time (login.vue) and read
-// synchronously here. Defaults to superuser when absent — a pre-role session or
-// a failed /me read never hides privileged UI from a real superuser. The
-// backend still enforces authorization independently (get_current_superuser).
-const storedRole =
-	typeof window !== "undefined" && typeof localStorage?.getItem === "function"
-		? localStorage.getItem("admin_role")
-		: null;
-const currentRole = ref<"superuser" | "editor">(storedRole === "editor" ? "editor" : "superuser");
-
-// Redirect unauthenticated users to the login page — CLIENT-side only
-// (typeof window guard). The token lives in localStorage, which does not
-// exist during SSR; a server-side check would 302-redirect every admin
-// page (including for logged-in users) before the client can read the token.
-if (typeof window !== "undefined" && !(isAuthenticated.value || isLoginPage)) {
-	navigateTo("/admin/login", { replace: true });
+// here. Defaults to superuser when absent — a pre-role session or a failed
+// /me read never hides privileged UI from a real superuser. The backend still
+// enforces authorization independently (get_current_superuser).
+function readStoredRole(): "superuser" | "editor" {
+	const stored =
+		typeof window !== "undefined" && typeof localStorage?.getItem === "function"
+			? localStorage.getItem("admin_role")
+			: null;
+	return stored === "editor" ? "editor" : "superuser";
 }
+// Reactive, not a setup-time snapshot: login.vue writes admin_role right before
+// SPA-navigating to /admin/posts, so a reuse of this layout instance must see
+// the fresh role or an editor would keep the superuser sidebar (Users/export).
+const currentRole = ref<"superuser" | "editor">(readStoredRole());
+watch(
+	() => route.path,
+	() => {
+		currentRole.value = readStoredRole();
+	},
+);
+
+// Redirect unauthenticated users to the login page — CLIENT-side only: the
+// token lives in localStorage, which does not exist during SSR (a server-side
+// check would 302-redirect every admin page, including logged-in users, before
+// the client can read the token). The redirect runs in onMounted, not during
+// layout setup: navigateTo() during setup/hydration races the still-initializing
+// app context and can be silently dropped (e2e: homepage "admin page loads"
+// intermittently saw /admin never redirect).
+onMounted(() => {
+	if (!isAuthenticated.value && !isLoginPage.value) {
+		navigateTo("/admin/login", { replace: true });
+	}
+});
 
 const showPasswordModal = ref(false);
 const passwordForm = ref({ current_password: "", new_password: "", confirm: "" });

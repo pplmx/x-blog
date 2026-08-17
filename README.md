@@ -153,6 +153,19 @@ See [docs/deployment.md](./docs/deployment.md) for detailed deployment guide.
 | GET    | `/robots.txt`         | robots.txt                     |
 | GET    | `/health`             | Health check                   |
 
+### Web Push (optional, needs VAPID keys)
+
+| Method | Endpoint                     | Description                               |
+| ------ | ---------------------------- | ----------------------------------------- |
+| GET    | `/api/push/vapid-public-key` | VAPID public key for browser subscribe    |
+| POST   | `/api/push/subscribe`        | Store a reader's browser subscription     |
+| POST   | `/api/push/unsubscribe`      | Remove a subscription (idempotent)        |
+| POST   | `/api/push/notify`           | Broadcast to subscribers (superuser only) |
+
+> Web Push is opt-in and off until `VAPID_PUBLIC_KEY`/`VAPID_PRIVATE_KEY` are set
+> (see `backend/nova/.env.example`). Without them every push endpoint fails
+> closed with 503.
+
 ## 🏗️ Architecture
 
 ![Architecture Diagram](./docs/x-blog-architecture.png)

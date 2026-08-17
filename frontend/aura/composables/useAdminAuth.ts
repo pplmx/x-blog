@@ -24,9 +24,15 @@ function hasLocalStorage(): boolean {
 	);
 }
 
-export function useAdminAuth() {
-	const isAuthenticated = ref(false);
+// Shared singleton state (mirrors useBookmarks/usePushSubscription): every
+// useAdminAuth caller (the admin layout, login, logout buttons) observes the
+// same ref. A per-call ref meant the layout's copy never saw login() setting
+// it to true, leaving a blank page after SPA-navigating to /admin/posts.
+// Safe on SSR: login/logout only ever run client-side, so the server's module
+// copy stays false and each browser has its own client-bundle instance.
+const isAuthenticated = ref(false);
 
+export function useAdminAuth() {
 	// Check localStorage on mount (client-side only)
 	if (hasLocalStorage()) {
 		isAuthenticated.value = !!localStorage.getItem(ADMIN_TOKEN_KEY);

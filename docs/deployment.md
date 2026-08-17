@@ -118,7 +118,19 @@ docker compose down
 docker compose down -v
 ```
 
-**注意**: 首次启动时，PostgreSQL 自动创建数据库和用户。FastAPI 在启动时会自动执行 `Base.metadata.create_all()` 创建所有表，无需手动初始化。
+**注意**: 首次启动时，PostgreSQL 自动创建数据库和用户。FastAPI 在启动时通过 Alembic 将 schema 升级到最新版本 (base `alembic upgrade head`)，无需手动初始化。
+
+### 2.5 (可选) Web Push 推送通知
+
+读者可在浏览器订阅新文章推送 (DEC-055)。启用需生成一次 ES256 (P-256) VAPID 密钥对并写入后端 `.env`：
+
+```bash
+cd backend/nova
+cp .env.example .env
+uv run python -c "import base64; from cryptography.hazmat.primitives.asymmetric import ec; k=ec.generate_private_key(ec.SECP256R1()); p=k.public_key().public_numbers(); print('VAPID_PUBLIC_KEY='+base64.urlsafe_b64encode(b'\x04'+p.x.to_bytes(32,'big')+p.y.to_bytes(32,'big')).rstrip(b'=').decode()); print('VAPID_PRIVATE_KEY='+base64.urlsafe_b64encode(k.private_numbers().private_value.to_bytes(32,'big')).rstrip(b'=').decode())"
+```
+
+把输出的两个值填入 `.env` 的 `VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY`，并设置 `VAPID_SUBJECT=mailto:you@example.com`，然后重启后端。未配置时所有 `/api/push/*` 端点 fail-closed 返回 503，前端订阅按钮自动隐藏。
 
 ### 3. 访问服务
 

@@ -143,6 +143,11 @@ jobs:
       - name: Start backend
         run: |
           cd backend/nova
+          # Generate a throwaway ES256 (P-256) VAPID keypair so the Web Push
+          # e2e surfaces the subscribe button and can verify the API contract
+          # (DEC-055). The keys exist only for this job's lifetime.
+          read -r VAPID_PUBLIC_KEY VAPID_PRIVATE_KEY <<< "$(uv run python -c 'import base64; from cryptography.hazmat.primitives.asymmetric import ec; k=ec.generate_private_key(ec.SECP256R1()); p=k.public_key().public_numbers(); print(base64.urlsafe_b64encode(b"\x04"+p.x.to_bytes(32,\"big\")+p.y.to_bytes(32,\"big\")).rstrip(b\"=\").decode(), base64.urlsafe_b64encode(k.private_numbers().private_value.to_bytes(32,\"big\")).rstrip(b\"=\").decode())')"
+          export VAPID_PUBLIC_KEY VAPID_PRIVATE_KEY VAPID_SUBJECT=mailto:e2e@example.com
           DATABASE_URL="postgresql://xblog:xblog@localhost:5432/xblog_test" \
           JWT_SECRET_KEY="test-secret-key-e2e" \
           RATE_LIMIT_AUTH_PER_MINUTE=1000 \

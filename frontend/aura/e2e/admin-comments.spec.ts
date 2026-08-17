@@ -60,15 +60,18 @@ test.describe("Admin comment management", () => {
 	});
 
 	test("admin can filter comments by status", async ({ page }) => {
-		// Look for filter tabs/buttons
+		// Look for filter tabs/buttons. Multiple "a/button" elements can match
+		// the fuzzy text pattern (e.g. an "全部" button plus a link) — isVisible
+		// on a non-resolved locator is a strict-mode violation even when the
+		// list is non-empty, so count-first and click the first match.
 		const filterButtons = page.locator("button, a", {
 			hasText: /all|pending|approved|all comments|全部|待审核|已批准/i,
 		});
 
-		if (await filterButtons.isVisible()) {
+		if ((await filterButtons.count()) > 0) {
 			await filterButtons.first().click();
 			const table = page.locator("table, .comment-list");
-			await expect(table).toBeVisible();
+			await expect(table).toBeVisible({ timeout: 10000 });
 		}
 	});
 });

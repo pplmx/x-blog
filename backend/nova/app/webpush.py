@@ -63,11 +63,17 @@ def send_push(
     auth: str,
     payload: dict[str, Any],
     ttl: int = 300,
+    timeout: float = 10.0,
 ) -> None:
     """Deliver ``payload`` to one subscription via the Web Push protocol.
 
     Raises ``WebPushException`` on any failure (including a 410/404 from the
     push service, which the caller uses to retire a dead subscription).
+
+    ``timeout`` bounds each endpoint's connect/read so a single dead or
+    unreachable push service cannot stall a whole broadcast (without it,
+    requests has no timeout and a hanging endpoint eats the app's 30s request
+    budget, turning the admin notify into a 504).
     """
     webpush(
         subscription_info={"endpoint": endpoint, "keys": {"p256dh": p256dh, "auth": auth}},
@@ -75,6 +81,7 @@ def send_push(
         vapid_private_key=vapid_private_key(),
         vapid_claims={"sub": vapid_subject()},
         ttl=ttl,
+        timeout=timeout,
     )
 
 
