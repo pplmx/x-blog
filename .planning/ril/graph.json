@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 81,
+  "round": 82,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-08-17T03:45:26+00:00",
+  "updated_at": "2026-08-17T04:01:14+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -5186,6 +5186,43 @@
       "touched_round": 80,
       "title": "og/cover rate limits use clientRateIp honoring trusted proxies",
       "commit": "3c331f5"
+    },
+    "ISS-082": {
+      "id": "ISS-082",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-08-17T04:01:13+00:00",
+      "updated_at": "2026-08-17T04:01:14+00:00",
+      "touched_round": 81,
+      "title": "CJK headings collapse to empty TOC slug -> broken anchors + duplicate v-for keys",
+      "severity": 0.4
+    },
+    "TASK-102": {
+      "id": "TASK-102",
+      "type": "task",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-08-17T04:01:14+00:00",
+      "updated_at": "2026-08-17T04:01:14+00:00",
+      "touched_round": 81,
+      "category": "correctness",
+      "severity": 0.4,
+      "confidence": 1.0,
+      "effort": 1.0,
+      "unlock_factor": 1.0,
+      "title": "Unicode-aware slugify for TOC/heading ids (preserve CJK)"
+    },
+    "CHG-090": {
+      "id": "CHG-090",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-17T04:01:14+00:00",
+      "updated_at": "2026-08-17T04:01:14+00:00",
+      "touched_round": 81,
+      "title": "slugify kept CJK letters -> valid heading ids/anchors",
+      "commit": "cec2453"
     }
   },
   "edges": [
@@ -7151,6 +7188,24 @@
       "to": "ISS-081",
       "type": "resolves",
       "created_at": "2026-08-17T03:45:26+00:00"
+    },
+    {
+      "from": "TASK-102",
+      "to": "ISS-082",
+      "type": "addresses",
+      "created_at": "2026-08-17T04:01:14+00:00"
+    },
+    {
+      "from": "CHG-090",
+      "to": "TASK-102",
+      "type": "implements",
+      "created_at": "2026-08-17T04:01:14+00:00"
+    },
+    {
+      "from": "CHG-090",
+      "to": "ISS-082",
+      "type": "resolves",
+      "created_at": "2026-08-17T04:01:14+00:00"
     }
   ]
 }
