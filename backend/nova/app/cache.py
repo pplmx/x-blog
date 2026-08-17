@@ -11,7 +11,6 @@ Caches that are actually read by the application live here:
 
 from cachetools import TTLCache
 
-from app import models
 from app.middleware.logging import get_logger
 
 logger = get_logger(__name__)
@@ -21,11 +20,13 @@ logger = get_logger(__name__)
 # crud.get_categories/get_tags. The constructor cannot bind KT/VT from its
 # args, so assignments are typed-declared with an ignore; readers see the
 # declared type.
-categories_cache: TTLCache[str, list[models.Category], float] = TTLCache(  # type: ignore[reportAssignmentType]
+# Category/Tag lists cached as plain dicts (not ORM objects) so they survive
+# across per-request Sessions; see get_categories/get_tags in crud.py.
+categories_cache: TTLCache[str, list[dict], float] = TTLCache(  # type: ignore[reportAssignmentType]
     maxsize=20,
     ttl=1800,  # 30 minutes for categories
 )
-tags_cache: TTLCache[str, list[models.Tag], float] = TTLCache(  # type: ignore[reportAssignmentType]
+tags_cache: TTLCache[str, list[dict], float] = TTLCache(  # type: ignore[reportAssignmentType]
     maxsize=20,
     ttl=1800,  # 30 minutes for tags
 )

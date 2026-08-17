@@ -356,7 +356,7 @@ def get_sitemap(request: Request = None, db: Session = Depends(get_db)) -> Respo
     # Categories
     for cat in categories:
         urls.append(f"""<url>
-    <loc>{site_url}/categories?category_id={cat.id}</loc>
+    <loc>{site_url}/categories?category_id={cat["id"]}</loc>
     <changefreq>weekly</changefreq>
     <priority>0.6</priority>
 </url>""")
@@ -364,7 +364,7 @@ def get_sitemap(request: Request = None, db: Session = Depends(get_db)) -> Respo
     # Tags
     for tag in tags:
         urls.append(f"""<url>
-    <loc>{site_url}/?tag_id={tag.id}</loc>
+    <loc>{site_url}/?tag_id={tag["id"]}</loc>
     <changefreq>weekly</changefreq>
     <priority>0.6</priority>
 </url>""")

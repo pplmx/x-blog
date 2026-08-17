@@ -252,7 +252,7 @@ def delete_post(db: Session, post_id: int) -> bool:
     return True
 
 
-def get_categories(db: Session) -> list[models.Category]:
+def get_categories(db: Session) -> list[dict]:
     # Check cache first
     cache_key = "all_categories"
     if cache_key in categories_cache:
@@ -269,12 +269,18 @@ def get_categories(db: Session) -> list[models.Category]:
         .all()
     )
     counts = {cat_id: int(count) for cat_id, count in rows}
-    for cat in categories:
-        cat.post_count = counts.get(cat.id, 0)
+
+    # Cache plain dicts, not live ORM objects, so values survive across
+    # per-request Sessions (invariant documented in cache.py). post_count is
+    # not a column; it is computed and baked into the dict here.
+    result = [
+        {"id": cat.id, "name": cat.name, "post_count": counts.get(cat.id, 0)}
+        for cat in categories
+    ]
 
     # Cache the result
-    categories_cache[cache_key] = categories
-    return categories
+    categories_cache[cache_key] = result
+    return result
 
 
 def get_category(db: Session, category_id: int) -> models.Category | None:
@@ -334,7 +340,7 @@ def delete_category(db: Session, category_id: int) -> bool:
     return True
 
 
-def get_tags(db: Session) -> list[models.Tag]:
+def get_tags(db: Session) -> list[dict]:
     # Check cache first
     cache_key = "all_tags"
     if cache_key in tags_cache:
@@ -350,12 +356,18 @@ def get_tags(db: Session) -> list[models.Tag]:
         .all()
     )
     counts = {tag_id: int(count) for tag_id, count in rows}
-    for tag in tags:
-        tag.post_count = counts.get(tag.id, 0)
+
+    # Cache plain dicts, not live ORM objects, so values survive across
+    # per-request Sessions (invariant documented in cache.py). post_count is
+    # not a column; it is computed and baked into the dict here.
+    result = [
+        {"id": tag.id, "name": tag.name, "post_count": counts.get(tag.id, 0)}
+        for tag in tags
+    ]
 
     # Cache the result
-    tags_cache[cache_key] = tags
-    return tags
+    tags_cache[cache_key] = result
+    return result
 
 
 def get_tag(db: Session, tag_id: int) -> models.Tag | None:
