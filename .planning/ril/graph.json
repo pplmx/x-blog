@@ -2,7 +2,7 @@
   "ril_version": 1,
   "round": 103,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-08-17T06:23:27+00:00",
+  "updated_at": "2026-08-17T11:04:33+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -5391,7 +5391,7 @@
       "version": 3,
       "created_at": "2026-08-17T04:44:35+00:00",
       "updated_at": "2026-08-17T06:18:26+00:00",
-      "touched_round": 101,
+      "touched_round": 103,
       "category": "core-feature",
       "severity": 0.3,
       "confidence": 1.0,
@@ -5406,7 +5406,7 @@
       "version": 1,
       "created_at": "2026-08-17T04:44:35+00:00",
       "updated_at": "2026-08-17T04:44:35+00:00",
-      "touched_round": 86,
+      "touched_round": 103,
       "title": "Admin 'create user' produces accounts that can't use any admin endpoint (all require superuser)",
       "severity": 0.3
     },
@@ -5631,6 +5631,63 @@
       "touched_round": 97,
       "title": "admin posts list scheduled-status corrected",
       "commit": "a82d58c"
+    },
+    "DEC-054": {
+      "id": "DEC-054",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-17T11:04:13+00:00",
+      "updated_at": "2026-08-17T11:04:13+00:00",
+      "touched_round": 103,
+      "title": "Milestone: role-tier admin access control (multi-role admin)",
+      "rationale": "Feature-evolution selection (SKILL 11.2). Top of the active backlog: TASK-107/ISS-087 — create_user forces is_superuser=False while every admin endpoint requires get_current_admin (superuser), so a provisioned account logs in and renders the admin UI but 403s on all data. DEC-053 named 'build a scoped non-superuser admin role next'. Gap analysis confirms this is the only active core-feature task and the strongest user-visible milestone: it lets a superuser grant scoped content-management rights (posts, comments, categories, tags) to an editor team without handing out full superuser. Vertical slice feasible: role column + permission-specific admin guard + admin UI role adaption + contract tests + alembic migration (DDL preserved per DEC-009). Value gate (11.2): real user problem (provisioned admins unusable), 1-sentence acceptance 'a superuser can create a role-scoped editor who can moderate content but not manage users/export'. Selected as the next milestone; implementation follows in the loop.",
+      "alternatives_rejected": "(a) Platform hardening batch (DEC-049 ETag/CDN/OTel) — fails 11.2 user-value gate: internal latency/ops polish, no user-perceivable problem, no vertical user slice. (b) CSP/SRI remainder (ISS-068) — already deferred by DEC-051 (needs nonce/hash + live-browser verification the harness cannot reliably perform). (c) Comment email notif / per-category RSS / avatars — rejected in earlier rounds (SMTP infra absent, lower reader value, schema churn). (d) Auto-escalate created users to superuser — unsafe privilege minting, breaks the tested 403 contract (test_admin_users), rejected in DEC-053."
+    },
+    "TASK-114": {
+      "id": "TASK-114",
+      "type": "task",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-17T11:04:22+00:00",
+      "updated_at": "2026-08-17T11:04:22+00:00",
+      "touched_round": 103,
+      "category": "core-feature",
+      "title": "Backend: add role tier to User + DDL-preserving alembic migration",
+      "severity": 0.3,
+      "confidence": 1.0,
+      "effort": 3.0,
+      "unlock_factor": 1.0
+    },
+    "TASK-115": {
+      "id": "TASK-115",
+      "type": "task",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-17T11:04:22+00:00",
+      "updated_at": "2026-08-17T11:04:22+00:00",
+      "touched_round": 103,
+      "category": "core-feature",
+      "title": "Backend: permission-scoped admin guard so non-superuser role can moderate content (posts/comments/categories/tags) but not users/export/batch",
+      "severity": 0.3,
+      "confidence": 1.0,
+      "effort": 5.0,
+      "unlock_factor": 1.0
+    },
+    "TASK-116": {
+      "id": "TASK-116",
+      "type": "task",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-17T11:04:22+00:00",
+      "updated_at": "2026-08-17T11:04:22+00:00",
+      "touched_round": 103,
+      "category": "core-feature",
+      "title": "Frontend: role-aware admin UI (hide superuser-only sections) + Playwright e2e for a role-scoped editor managing content",
+      "severity": 0.3,
+      "confidence": 1.0,
+      "effort": 4.0,
+      "unlock_factor": 1.0
     }
   },
   "edges": [
@@ -7806,6 +7863,61 @@
       "to": "ISS-093",
       "type": "resolves",
       "created_at": "2026-08-17T06:00:35+00:00"
+    },
+    {
+      "from": "DEC-054",
+      "to": "TASK-107",
+      "type": "governs",
+      "created_at": "2026-08-17T11:04:22+00:00",
+      "note": "milestone scope governs the delivery task"
+    },
+    {
+      "from": "TASK-115",
+      "to": "TASK-114",
+      "type": "depends_on",
+      "created_at": "2026-08-17T11:04:32+00:00"
+    },
+    {
+      "from": "TASK-116",
+      "to": "TASK-115",
+      "type": "depends_on",
+      "created_at": "2026-08-17T11:04:32+00:00"
+    },
+    {
+      "from": "TASK-114",
+      "to": "ISS-087",
+      "type": "addresses",
+      "created_at": "2026-08-17T11:04:32+00:00"
+    },
+    {
+      "from": "TASK-115",
+      "to": "ISS-087",
+      "type": "addresses",
+      "created_at": "2026-08-17T11:04:32+00:00"
+    },
+    {
+      "from": "TASK-116",
+      "to": "ISS-087",
+      "type": "addresses",
+      "created_at": "2026-08-17T11:04:32+00:00"
+    },
+    {
+      "from": "DEC-054",
+      "to": "TASK-114",
+      "type": "governs",
+      "created_at": "2026-08-17T11:04:32+00:00"
+    },
+    {
+      "from": "DEC-054",
+      "to": "TASK-115",
+      "type": "governs",
+      "created_at": "2026-08-17T11:04:32+00:00"
+    },
+    {
+      "from": "DEC-054",
+      "to": "TASK-116",
+      "type": "governs",
+      "created_at": "2026-08-17T11:04:33+00:00"
     }
   ]
 }
