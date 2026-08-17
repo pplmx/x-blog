@@ -109,6 +109,22 @@
  * part of the optimal-display algorithm, not a failure to adapt.
  *
  * Tune the bounds here:
+ *
+ * Anti-regression notes (missteps seen 2026-08):
+ * - A max-width container must FIT its flex siblings: when a fixed sidebar
+ *   (TOC) + gap sits next to the content column, sum them — e.g. 256 + 40 +
+ *   896 = 1192 — or the flex silently squishes the column below its declared
+ *   max-w. Here the article reading block uses max-w-7xl (1280) for that.
+ * - Never give the container a hard min-width larger than the viewport
+ *   (causes horizontal overflow); width:100% + max-width already shrinks
+ *   fluidly below the cap — pad is enough for the small side.
+ * - Don't stretch single-column content (prose ~896 / feeds ~1024) to the
+ *   ultrawide shell: line length kills readability. Reading measure at 17px:
+ *   Latin ~45-75 chars/line is comfortable (53 at 896px); CJK ~30-45 is ideal,
+ *   so 896px runs long for Chinese — a deliberate tradeoff, not a bug.
+ * - If re-tuning widths, verify in a browser across viewports with
+ *   getBoundingClientRect on <main> vs its child and assert no horizontal
+ *   scroll at each.
  */
 :root {
 	--shell-min: 960px;
