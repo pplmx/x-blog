@@ -77,7 +77,10 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
             }
 
             if duration_ms > 1000:
-                logger.warning("request_completed", extra=log_data)
+                # Use the adapter (not the bare logger) so slow requests keep
+                # request_id/method/path/client_ip context — the exact requests
+                # you need to correlate against the X-Request-ID response header.
+                adapter.warning("request_completed", extra=log_data)
             else:
                 adapter.debug("request_completed", extra=log_data)
 
