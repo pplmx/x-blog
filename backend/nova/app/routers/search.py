@@ -31,7 +31,18 @@ def _highlight_sqlite(content: str, query: str) -> str:
     pattern = f"({'|'.join(words)})"
     escaped = html.escape(content)
     highlighted = re.sub(pattern, r"<mark>\1</mark>", escaped, flags=re.IGNORECASE)
-    return highlighted[:500] if len(highlighted) > 500 else highlighted
+    if len(highlighted) <= 500:
+        return highlighted
+    # Truncate to a balanced snippet: never emit an unclosed <mark>. Binary-search
+    # the largest cut <= 500 that leaves equal <mark> and </mark> counts. Starting
+    # from the longest valid prefix keeps as much highlighted context as possible.
+    best = 0
+    for cut in range(min(500, len(highlighted)), 0, -1):
+        prefix = highlighted[:cut]
+        if prefix.count("<mark>") == prefix.count("</mark>"):
+            best = cut
+            break
+    return highlighted[:best]
 
 
 def _build_snippet(post: Post, query: str, is_postgres: bool, db: Session) -> str | None:

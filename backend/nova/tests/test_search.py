@@ -170,6 +170,28 @@ def test_highlight_sqlite_highlights_matches():
     assert "The " in result
 
 
+def test_highlight_sqlite_truncation_keeps_marks_balanced():
+    """A >500-char snippet must never end inside an unclosed <mark> (RIL TASK-105, ISS-085).
+
+    The old ``highlighted[:500]`` could split ``<mark>...</mark>`` mid-tag, emitting
+    unbalanced markup into the client's v-html snippet (DOMPurify would drop or
+    dangle it). Truncation now lands on a </mark> boundary or before an opening
+    <mark>, so open/close counts always balance.
+    """
+    from app.routers.search import _highlight_sqlite
+
+    # Enough text to force truncation, with a highlighted word straddling 500.
+    filler = ("word " * 120) + "needle " + ("filler " * 40)
+    result = _highlight_sqlite(filler, "needle")
+    # Must still contain at least the highlighted match, but stay <= ~500 chars
+    assert result.count("<mark>") == result.count("</mark>"), result
+    assert len(result) > 1
+
+    # Non-truncated short content must also stay balanced.
+    short = _highlight_sqlite("just a needle here", "needle")
+    assert short.count("<mark>") == short.count("</mark>")
+
+
 def test_build_snippet_postgres_escapes_raw_html():
     """ts_headline output is not HTML-safe — only our <mark> tags may survive (issue #20)."""
     from unittest.mock import MagicMock
