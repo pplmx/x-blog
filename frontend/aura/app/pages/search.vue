@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted } from "vue";
+import { computed, onMounted, watch } from "vue";
 import { type PostListResponse, useApi } from "~~/composables/useApi";
 import { loadPurify, sanitizeHtml } from "~~/composables/useMarkdown";
 import { paginationPages } from "~~/composables/usePagination";
@@ -64,11 +64,24 @@ useSeo(() => ({
 	noindex: true,
 }));
 
-// Search input handler: navigate to /search?q=keyword on Enter
+// Search input handler: navigate to /search?q=keyword on Enter.
+// IMPORTANT: submitting a NEW query must reset page to 1 — navigateTo with a
+// query object merges into the current route, so without this a search fired
+// from /search?q=foo&page=3 would land on /search?q=bar&page=3 (an out-of-range
+// page of the new results).
 const searchInput = ref("");
+// Keep the input in sync with the current query so an SPA navigation to
+// /search?q=foo (e.g. from the header search link) shows the term in the box.
+watch(query, (q) => {
+	searchInput.value = q;
+});
 function handleSearchInput() {
-	if (searchInput.value.trim()) {
-		navigateTo({ query: { q: searchInput.value.trim() } });
+	const q = searchInput.value.trim();
+	if (!q) return;
+	// If the term changed, drop the page param (start at page 1); if it's the
+	// same query re-submitted, preserve the page.
+	if (q !== query.value) {
+		navigateTo({ query: { q } });
 	}
 }
 </script>
