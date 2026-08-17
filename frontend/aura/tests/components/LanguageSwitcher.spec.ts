@@ -2,17 +2,22 @@
  * LanguageSwitcher component tests.
  *
  * Mocks `useLang` for deterministic control of the locale. Verifies the
- * dropdown behaviour: a compact trigger showing the current locale, a menu
- * that opens on click with both locales, selection updating the locale and
- * closing the menu, and outside-click / Escape dismiss.
+ * dropdown behaviour with a multi-language locale list (simplified/
+ * traditional Chinese, English, Japanese, Korean): the compact trigger shows
+ * the current locale, the menu opens on click listing every locale uniformly
+ * (labels are whitespace-nowrap so no locale name wraps), selection updates
+ * the locale and closes the menu, and outside-click / Escape dismiss.
+ *
+ * Real layout (line-height/wrapping) is verified in the e2e/browser since
+ * happy-dom does not lay out the page; here we assert structure and state.
  */
 
 import { flushPromises, mount } from "@vue/test-utils";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { type Ref, ref } from "vue";
 
-const locale: Ref<"zh" | "en"> = ref("zh");
-const setLocale = vi.fn((l: "zh" | "en") => {
+const locale: Ref<string> = ref("zh-Hans");
+const setLocale = vi.fn((l: string) => {
 	locale.value = l;
 });
 
@@ -21,8 +26,11 @@ vi.mock("~~/composables/useLang", () => ({
 		locale,
 		setLocale,
 		locales: [
-			{ code: "zh", native: "中文" },
+			{ code: "zh-Hans", native: "简体中文" },
+			{ code: "zh-Hant", native: "繁體中文" },
 			{ code: "en", native: "English" },
+			{ code: "ja", native: "日本語" },
+			{ code: "ko", native: "한국어" },
 		],
 	}),
 }));
@@ -41,9 +49,11 @@ function mountSwitcher() {
 	});
 }
 
+const ALL_NATIVES = ["简体中文", "繁體中文", "English", "日本語", "한국어"];
+
 describe("LanguageSwitcher", () => {
 	beforeEach(() => {
-		locale.value = "zh";
+		locale.value = "zh-Hans";
 		setLocale.mockClear();
 	});
 
@@ -51,11 +61,11 @@ describe("LanguageSwitcher", () => {
 		const wrapper = mountSwitcher();
 		const trigger = wrapper.find('button[aria-haspopup="true"]');
 		expect(trigger.exists()).toBe(true);
-		expect(trigger.text()).toContain("中文");
+		expect(trigger.text()).toContain("简体中文");
 		expect(wrapper.find('[role="menu"]').exists()).toBe(false);
 	});
 
-	it("opens the menu on click and lists both locales", async () => {
+	it("opens the menu and lists every supported locale uniformly", async () => {
 		const wrapper = mountSwitcher();
 		await wrapper.get('button[aria-haspopup="true"]').trigger("click");
 		await flushPromises();
@@ -63,20 +73,27 @@ describe("LanguageSwitcher", () => {
 		const menu = wrapper.find('[role="menu"]');
 		expect(menu.exists()).toBe(true);
 		const items = wrapper.findAll('[role="menuitem"]');
-		expect(items.map((i) => i.text().trim())).toEqual(["中文", "English"]);
+		expect(items.map((i) => i.text().trim())).toEqual(ALL_NATIVES);
+		// Every item uses the same non-wrapping layout (no item overrides it).
+		for (const it of items) {
+			expect(it.classes()).toContain("whitespace-nowrap");
+		}
 		expect(wrapper.get('button[aria-haspopup="true"]').attributes("aria-expanded")).toBe("true");
 	});
 
-	it("selecting a locale updates state and closes the menu", async () => {
+	it("marks the active locale and selects a different one", async () => {
 		const wrapper = mountSwitcher();
 		await wrapper.get('button[aria-haspopup="true"]').trigger("click");
 		await flushPromises();
 
-		await wrapper.get('[role="menuitem"]:nth-child(2)').trigger("click");
+		const active = wrapper.find('[role="menuitem"][aria-current="true"]');
+		expect(active.text().trim()).toBe("简体中文");
+
+		await wrapper.get('[role="menuitem"]:nth-child(4)').trigger("click");
 		await flushPromises();
 
-		expect(setLocale).toHaveBeenCalledWith("en");
-		expect(locale.value).toBe("en");
+		expect(setLocale).toHaveBeenCalledWith("ja");
+		expect(locale.value).toBe("ja");
 		expect(wrapper.find('[role="menu"]').exists()).toBe(false);
 	});
 

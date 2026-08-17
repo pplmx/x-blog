@@ -42,7 +42,7 @@ onBeforeUnmount(() => {
   <div ref="root" class="relative select-none">
     <button
       type="button"
-      class="flex items-center gap-1 rounded-md px-1.5 py-1 text-xs font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+      class="flex shrink-0 items-center gap-1 whitespace-nowrap rounded-md px-1.5 py-1 text-xs font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
       :aria-haspopup="true"
       :aria-expanded="open"
       :aria-label="currentLabel"
@@ -67,7 +67,7 @@ onBeforeUnmount(() => {
           :key="l.code"
           type="button"
           role="menuitem"
-          class="flex w-full items-center justify-between gap-3 px-3 py-1.5 text-left text-xs font-medium transition-colors"
+          class="flex w-full items-center justify-between gap-3 whitespace-nowrap px-3 py-1.5 text-left text-xs font-medium transition-colors"
           :class="locale === l.code
             ? 'text-blue-600 dark:text-blue-400'
             : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800'"

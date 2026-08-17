@@ -17,6 +17,21 @@ import { expect, test } from "@playwright/test";
 const headerNavLink = (page: Page, name: string) =>
 	page.locator("header nav").getByRole("link", { name });
 
+/**
+ * Wait for the Nuxt client app to finish hydrating before interacting.
+ * `page.goto` resolves on "load", but server-rendered buttons get their
+ * @click handlers only when Vue hydrates afterwards — clicking a button in
+ * that window is a silent no-op. Vue 3 sets `__vue_app__` on the mount
+ * container only after app.mount() completes, so its presence is a precise
+ * hydration barrier (all event handlers are attached by then).
+ */
+async function waitForHydration(page: Page) {
+	await page.waitForFunction(() => {
+		const root = document.getElementById("__nuxt");
+		return Boolean(root && (root as HTMLElement & { __vue_app__?: unknown }).__vue_app__);
+	});
+}
+
 test("defaults to Chinese and shows the Chinese nav", async ({ page }) => {
 	await page.goto("/");
 	await expect(page.locator("html")).toHaveAttribute("lang", "zh");
@@ -25,6 +40,7 @@ test("defaults to Chinese and shows the Chinese nav", async ({ page }) => {
 
 test("switching to English updates the UI and <html lang>", async ({ page }) => {
 	await page.goto("/");
+	await waitForHydration(page);
 	// The language switcher is a dropdown: open it, then pick English.
 	await page.getByRole("button", { name: "中文" }).click();
 	await page.getByRole("menuitem", { name: "English" }).click();
@@ -35,6 +51,7 @@ test("switching to English updates the UI and <html lang>", async ({ page }) => 
 
 test("the chosen language persists across reloads", async ({ page }) => {
 	await page.goto("/");
+	await waitForHydration(page);
 	await page.getByRole("button", { name: "中文" }).click();
 	await page.getByRole("menuitem", { name: "English" }).click();
 	await page.reload();
