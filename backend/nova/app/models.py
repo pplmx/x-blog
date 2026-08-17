@@ -102,3 +102,27 @@ class Comment(Base):
 
     post: Mapped[Post] = relationship("Post", back_populates="comments")
     parent: Mapped[Comment | None] = relationship("Comment", remote_side=[id], backref="replies")
+
+
+class PushSubscription(Base):
+    """A reader's browser Web Push (RFC 8030) subscription.
+
+    ``endpoint`` is the push service URL the browser returned at subscribe time;
+    it is unique so re-subscribing the same browser upserts instead of
+    duplicating rows. ``p256dh``/``auth`` are the subscription keys used to
+    encrypt the notification payload for this endpoint (http-ece). Long-running
+    subscribers whose endpoint goes 410/404 are removed on the next dispatch —
+    the push service drops subscriptions that are no longer reachable.
+
+    (DEC-055, TASK-117)
+    """
+
+    __tablename__ = "push_subscriptions"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    # Push endpoints are long vendor URLs; 500 accommodates the longest known
+    # (Firefox/Web Push protocol endpoints) with headroom.
+    endpoint: Mapped[str] = mapped_column(String(500), unique=True, nullable=False, index=True)
+    p256dh: Mapped[str] = mapped_column(String(200), nullable=False)
+    auth: Mapped[str] = mapped_column(String(200), nullable=False)
+    created_at: Mapped[datetime | None] = mapped_column(DateTime, default=lambda: datetime.now(UTC))

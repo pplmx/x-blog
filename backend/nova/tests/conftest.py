@@ -10,6 +10,35 @@ os.environ.setdefault("RATE_LIMIT_SEARCH_PER_MINUTE", "9999")
 os.environ.setdefault("RATE_LIMIT_COMMENT_PER_MINUTE", "9999")
 os.environ.setdefault("RATE_LIMIT_EXPORT_PER_MINUTE", "9999")
 
+# Web Push VAPID keypair for tests — a real ES256 (P-256) pair so the public
+# key is a valid 65-byte EC point and pywebpush can build an authenticated
+# VAPID token. Env is read lazily in app.webpush so tests can also exercise
+# the unconfigured (503) path via monkeypatch.delenv.
+try:
+    from cryptography.hazmat.primitives.asymmetric import ec
+
+    _vapid_key = ec.generate_private_key(ec.SECP256R1())
+    _vapid_pub = _vapid_key.public_key().public_numbers()
+    _pub_bytes = (
+        b"\x04"
+        + _vapid_pub.x.to_bytes(32, "big")
+        + _vapid_pub.y.to_bytes(32, "big")
+    )
+    _priv_bytes = _vapid_key.private_numbers().private_value.to_bytes(32, "big")
+    import base64
+
+    os.environ.setdefault(
+        "VAPID_PUBLIC_KEY",
+        base64.urlsafe_b64encode(_pub_bytes).rstrip(b"=").decode("ascii"),
+    )
+    os.environ.setdefault(
+        "VAPID_PRIVATE_KEY",
+        base64.urlsafe_b64encode(_priv_bytes).rstrip(b"=").decode("ascii"),
+    )
+    os.environ.setdefault("VAPID_SUBJECT", "mailto:test@example.com")
+except Exception:  # pragma: no cover - cryptography is a hard dependency
+    pass
+
 import time
 from collections.abc import Generator
 from contextlib import suppress
