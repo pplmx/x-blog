@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 80,
+  "round": 81,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-08-17T03:06:52+00:00",
+  "updated_at": "2026-08-17T03:45:26+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -5149,6 +5149,43 @@
       "touched_round": 79,
       "title": "Public comment list uses CommentPublic schema omitting PII",
       "commit": "95b6c6e"
+    },
+    "ISS-081": {
+      "id": "ISS-081",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-08-17T03:45:26+00:00",
+      "updated_at": "2026-08-17T03:45:26+00:00",
+      "touched_round": 80,
+      "title": "og/cover rate limits key on socket peer, collapsing all clients behind nginx into one bucket",
+      "severity": 0.5
+    },
+    "TASK-101": {
+      "id": "TASK-101",
+      "type": "task",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-08-17T03:45:26+00:00",
+      "updated_at": "2026-08-17T03:45:26+00:00",
+      "touched_round": 80,
+      "category": "security",
+      "severity": 0.5,
+      "confidence": 1.0,
+      "effort": 2.0,
+      "unlock_factor": 1.0,
+      "title": "Trust-aware client IP for frontend og/cover rate limiters (FRONTEND_TRUSTED_PROXIES)"
+    },
+    "CHG-089": {
+      "id": "CHG-089",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-17T03:45:26+00:00",
+      "updated_at": "2026-08-17T03:45:26+00:00",
+      "touched_round": 80,
+      "title": "og/cover rate limits use clientRateIp honoring trusted proxies",
+      "commit": "3c331f5"
     }
   },
   "edges": [
@@ -7096,6 +7133,24 @@
       "to": "ISS-080",
       "type": "resolves",
       "created_at": "2026-08-17T02:56:42+00:00"
+    },
+    {
+      "from": "TASK-101",
+      "to": "ISS-081",
+      "type": "addresses",
+      "created_at": "2026-08-17T03:45:26+00:00"
+    },
+    {
+      "from": "CHG-089",
+      "to": "TASK-101",
+      "type": "implements",
+      "created_at": "2026-08-17T03:45:26+00:00"
+    },
+    {
+      "from": "CHG-089",
+      "to": "ISS-081",
+      "type": "resolves",
+      "created_at": "2026-08-17T03:45:26+00:00"
     }
   ]
 }
