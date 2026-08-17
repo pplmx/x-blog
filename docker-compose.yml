@@ -65,6 +65,12 @@ services:
       # which broke every search/API call with a wrong URL.
       NUXT_PROXY_TARGET: http://backend:18888
       NUXT_SITE_URL: http://localhost:34567
+      # Set only when the frontend sits BEHIND a trusted proxy (e.g. nginx) so
+      # its own rate limiters (public og/cover image endpoints) key on the real
+      # client IP via X-Forwarded-For rather than collapsing every user into one
+      # shared bucket. Comma-separated proxy IPs, or exactly "*" (dev topology)
+      # to trust any peer. Empty => safe peer-only behavior (RIL TASK-101).
+      FRONTEND_TRUSTED_PROXIES: ${FRONTEND_TRUSTED_PROXIES:-}
     restart: unless-stopped
     depends_on:
       backend:

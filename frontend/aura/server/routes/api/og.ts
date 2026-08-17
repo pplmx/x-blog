@@ -15,6 +15,8 @@ import { join } from "node:path";
 import satori from "satori";
 import sharp from "sharp";
 
+import { clientRateIp } from "../../utils/clientIp";
+
 // ─── Font loading ─────────────────────────────────────────────────────
 
 /** Path to the Noto Sans SC font bundled in the project. */
@@ -102,9 +104,7 @@ const IMAGE_RATE_LIMIT = 30; // requests
 const IMAGE_RATE_WINDOW_MS = 60_000; // per IP per window
 
 export default defineEventHandler(async (event) => {
-	if (
-		isRateLimited(`og:${getRequestIP(event) ?? "unknown"}`, IMAGE_RATE_LIMIT, IMAGE_RATE_WINDOW_MS)
-	) {
+	if (isRateLimited(`og:${clientRateIp(event)}`, IMAGE_RATE_LIMIT, IMAGE_RATE_WINDOW_MS)) {
 		throw createError({ statusCode: 429, statusMessage: "Too many requests" });
 	}
 
