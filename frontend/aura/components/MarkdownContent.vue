@@ -18,12 +18,14 @@
   component dispatch instead of placeholder post-processing).
 -->
 <script setup lang="ts">
-import { type ComponentPublicInstance, computed, onMounted, ref } from "vue";
+import { type ComponentPublicInstance, computed, onMounted, ref, watch } from "vue";
+import { escapeHtml, highlightCode, loadHighlighter } from "~~/composables/useCodeHighlight";
 import { loadPurify, sanitizeHtml, sanitizeUrl, useMarkdown } from "~~/composables/useMarkdown";
 
-// sanitizeUrl is referenced in the <img> template binding; keep the helper
-// "used" for Biome (it cannot see template usage).
+// sanitizeUrl and escapeHtml are referenced in template bindings; keep the
+// helpers "used" for Biome (it cannot see template usage).
 void sanitizeUrl;
+void escapeHtml;
 
 export interface MarkdownContentProps {
 	/** Raw HTML content string from the backend. */
@@ -51,7 +53,26 @@ const segments = computed(() => {
 onMounted(async () => {
 	await loadPurify();
 	purifyReady.value = true;
+	void applyHighlighting();
 });
+
+// Watch content changes so newly swapped-in code blocks get highlighted too
+// (loadHighlighter caches internally, so re-runs just re-tokenise).
+watch(() => props.content, applyHighlighting);
+
+// Lazily highlight code segments after mount. `highlightCode` escapes its
+// input, so the produced HTML (and the plain-text fallback) is safe for v-html.
+const highlighted = ref<Record<string, string>>({});
+async function applyHighlighting() {
+	const h = await loadHighlighter();
+	const map: Record<string, string> = {};
+	for (const seg of segments.value) {
+		if (seg.type === "code") {
+			map[seg.key] = highlightCode(h, seg.lang, seg.code);
+		}
+	}
+	highlighted.value = map;
+}
 const renderingKeys = ref<Set<string>>(new Set());
 
 // Track which math blocks we've already rendered to avoid double-render on re-render.
@@ -162,15 +183,6 @@ function renderKatex(
 		});
 }
 
-function escapeHtml(str: string): string {
-	return str
-		.replace(/&/g, "&amp;")
-		.replace(/</g, "&lt;")
-		.replace(/>/g, "&gt;")
-		.replace(/"/g, "&quot;")
-		.replace(/'/g, "&#39;");
-}
-
 // --- Line numbers for code blocks --
 function lineNumbers(code: string): number[] {
 	return Array.from({ length: code.split("\n").length }, (_, i) => i + 1);
@@ -220,7 +232,7 @@ function lineNumbers(code: string): number[] {
           <div class="flex-1 overflow-x-auto">
             <pre
               class="m-0 p-4 pl-6 text-sm leading-6 font-mono text-gray-200 whitespace-pre-wrap break-words"
-            ><code :data-lang="seg.lang">{{ seg.code }}</code></pre>
+            ><code :data-lang="seg.lang" v-html="highlighted[seg.key] ?? escapeHtml(seg.code)"></code></pre>
           </div>
         </div>
       </div>
@@ -333,6 +345,75 @@ function lineNumbers(code: string): number[] {
 
 .markdown-content :deep(pre code) {
   @apply text-sm leading-6;
+}
+
+/* Syntax highlighting theme (Tokyo Night palette) for highlight.js tokens.
+   The code surface is a fixed dark #1a1b26 background regardless of color
+   mode, so a single theme applies in both light and dark mode. */
+.markdown-content :deep(pre code .hljs-comment),
+.markdown-content :deep(pre code .hljs-quote) {
+  color: #565f89;
+  font-style: italic;
+}
+
+.markdown-content :deep(pre code .hljs-keyword),
+.markdown-content :deep(pre code .hljs-selector-tag),
+.markdown-content :deep(pre code .hljs-literal),
+.markdown-content :deep(pre code .hljs-doctag) {
+  color: #bb9af7;
+}
+
+.markdown-content :deep(pre code .hljs-string),
+.markdown-content :deep(pre code .hljs-regexp),
+.markdown-content :deep(pre code .hljs-addition) {
+  color: #9ece6a;
+}
+
+.markdown-content :deep(pre code .hljs-number),
+.markdown-content :deep(pre code .hljs-symbol),
+.markdown-content :deep(pre code .hljs-bullet),
+.markdown-content :deep(pre code .hljs-meta) {
+  color: #ff9e64;
+}
+
+.markdown-content :deep(pre code .hljs-title),
+.markdown-content :deep(pre code .hljs-section),
+.markdown-content :deep(pre code .hljs-title.function_) {
+  color: #7aa2f7;
+}
+
+.markdown-content :deep(pre code .hljs-title.class_),
+.markdown-content :deep(pre code .hljs-type),
+.markdown-content :deep(pre code .hljs-built_in) {
+  color: #2ac3de;
+}
+
+.markdown-content :deep(pre code .hljs-variable),
+.markdown-content :deep(pre code .hljs-template-variable),
+.markdown-content :deep(pre code .hljs-attr) {
+  color: #c0caf5;
+}
+
+.markdown-content :deep(pre code .hljs-operator),
+.markdown-content :deep(pre code .hljs-params) {
+  color: #89ddff;
+}
+
+.markdown-content :deep(pre code .hljs-tag),
+.markdown-content :deep(pre code .hljs-name) {
+  color: #f7768e;
+}
+
+.markdown-content :deep(pre code .hljs-punctuation) {
+  color: #565f89;
+}
+
+.markdown-content :deep(pre code .hljs-emphasis) {
+  font-style: italic;
+}
+
+.markdown-content :deep(pre code .hljs-strong) {
+  font-weight: bold;
 }
 
 .markdown-content :deep(img) {

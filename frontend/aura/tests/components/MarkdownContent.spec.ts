@@ -54,6 +54,12 @@ vi.mock("katex", () => ({
 	default: { renderToString: katexRenderToString },
 }));
 
+// --- Mock highlight.js (dynamically imported via useCodeHighlight) ---
+const { highlightJsMock } = vi.hoisted(() => ({
+	highlightJsMock: { highlight: vi.fn() },
+}));
+vi.mock("highlight.js/lib/common", () => ({ default: highlightJsMock }));
+
 // --- Mock the Icon component (used for copy button, etc.) ---
 vi.mock("~/components/Icon.vue", () => ({
 	default: {
@@ -81,6 +87,15 @@ function mountMarkdown(content: string) {
 }
 
 describe("MarkdownContent", () => {
+	beforeEach(() => {
+		// Default: highlight.js wraps the whole code in a keyword span so
+		// highlighted output is deterministic across tests. Individual tests
+		// override via mockImplementation as needed.
+		highlightJsMock.highlight.mockImplementation((code: string) => ({
+			value: `<span class="hljs-keyword">${code}</span>`,
+		}));
+	});
+
 	afterEach(() => {
 		vi.clearAllMocks();
 		vi.useRealTimers();
@@ -169,6 +184,64 @@ describe("MarkdownContent", () => {
 			await flushPromises();
 			expect(wrapper.text()).toContain("const a = 1;");
 			expect(wrapper.text()).toContain('print("hello")');
+		});
+	});
+
+	describe("Syntax highlighting", () => {
+		it("highlights recognized-language code blocks with hljs tokens", async () => {
+			const wrapper = mountMarkdown("```ts\nconst x = 42;\n```");
+			await flushPromises();
+			// Wait for the lazy highlight.js import + re-render.
+			await new Promise((r) => setTimeout(r, 10));
+			await flushPromises();
+
+			const code = wrapper.find("code[data-lang='ts']");
+			expect(code.exists()).toBe(true);
+			expect(code.find(".hljs-keyword").exists()).toBe(true);
+			expect(highlightJsMock.highlight).toHaveBeenCalled();
+		});
+
+		it("does not call the highlighter for plaintext code blocks", async () => {
+			const wrapper = mountMarkdown("```\nplain code\n```");
+			await flushPromises();
+			await new Promise((r) => setTimeout(r, 10));
+			await flushPromises();
+
+			expect(highlightJsMock.highlight).not.toHaveBeenCalled();
+		});
+
+		it("does not call the highlighter for unknown/plain language aliases", async () => {
+			const wrapper = mountMarkdown("```text\nhello\n```");
+			await flushPromises();
+			await new Promise((r) => setTimeout(r, 10));
+			await flushPromises();
+
+			expect(highlightJsMock.highlight).not.toHaveBeenCalled();
+		});
+
+		it("highlights each code block independently via its language", async () => {
+			const wrapper = mountMarkdown('```ts\nconst a = 1;\n```\n\n```py\nprint("x")\n```');
+			await flushPromises();
+			await new Promise((r) => setTimeout(r, 10));
+			await flushPromises();
+
+			// highlight() is called once per fenced block with its language.
+			expect(highlightJsMock.highlight).toHaveBeenCalledTimes(2);
+			const languages = highlightJsMock.highlight.mock.calls.map((call) => call[1]?.language);
+			expect(languages).toContain("ts");
+			expect(languages).toContain("py");
+			expect(wrapper.text()).toContain("const a = 1;");
+			expect(wrapper.text()).toContain('print("x")');
+		});
+
+		it("keeps line numbers intact after highlighting", async () => {
+			const wrapper = mountMarkdown("```ts\nconst a = 1;\nconst b = 2;\n```");
+			await flushPromises();
+			await new Promise((r) => setTimeout(r, 10));
+			await flushPromises();
+
+			const lineNumberDivs = wrapper.find(".select-none").findAll("div");
+			expect(lineNumberDivs.length).toBe(2);
 		});
 	});
 
