@@ -80,10 +80,7 @@ export function coverImageSrc(title: string): string {
 	// XML-escape the title before it lands in the SVG text node. A post title
 	// containing & < > produces XML-invalid SVG (bare &, unclosed markup) that
 	// breaks rendering of the data-URI <img> cover in some browsers (RIL TASK-112).
-	shortTitle = shortTitle
-		.replaceAll("&", "&amp;")
-		.replaceAll("<", "&lt;")
-		.replaceAll(">", "&gt;");
+	shortTitle = shortTitle.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;");
 
 	// Build SVG string and encode once with encodeURIComponent
 	const svg = `

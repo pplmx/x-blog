@@ -69,11 +69,7 @@ async function handleDelete(id: number) {
 // is False). The old `!published && publish_at` rule was inverted: it mislabeled
 // a real scheduled post as published and a draft-with-future-date as scheduled.
 function isScheduled(post: AdminPost): boolean {
-	return (
-		post.published &&
-		!!post.publish_at &&
-		new Date(post.publish_at).getTime() > Date.now()
-	);
+	return post.published && !!post.publish_at && new Date(post.publish_at).getTime() > Date.now();
 }
 
 function statusLabel(post: AdminPost): string {

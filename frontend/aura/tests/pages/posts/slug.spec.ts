@@ -125,7 +125,7 @@ async function mountPostPage({
 	vi.stubGlobal(
 		"useFetch",
 		vi.fn((url: string, _options?: Record<string, unknown>) => {
-		if (typeof url === "function") url = url();
+			if (typeof url === "function") url = url();
 			if (typeof url === "string" && url.includes("/adjacent")) {
 				return {
 					data: ref(adjacentPosts),
@@ -221,7 +221,7 @@ describe("Post Detail Page", () => {
 			vi.stubGlobal(
 				"useFetch",
 				vi.fn((url: string, _options?: Record<string, unknown>) => {
-				if (typeof url === "function") url = url();
+					if (typeof url === "function") url = url();
 					if (typeof url === "string" && url.includes("/related")) {
 						return {
 							data: ref(mockRelatedPosts),
@@ -304,7 +304,7 @@ describe("Post Detail Page", () => {
 			vi.stubGlobal(
 				"useFetch",
 				vi.fn((url: string) => {
-				if (typeof url === "function") url = url();
+					if (typeof url === "function") url = url();
 					// Track POST to /view endpoint (usePostView side effect)
 					if (typeof url === "string" && url.includes("/view")) {
 						viewPostCalled = true;
@@ -377,7 +377,7 @@ describe("Post Detail Page", () => {
 			vi.stubGlobal(
 				"useFetch",
 				vi.fn((url: string) => {
-				if (typeof url === "function") url = url();
+					if (typeof url === "function") url = url();
 					if (typeof url === "string" && url.includes("/view")) {
 						viewPostCalled = true;
 						return {
@@ -531,7 +531,7 @@ describe("Post Detail Page", () => {
 			vi.stubGlobal(
 				"useFetch",
 				vi.fn((url: string) => {
-				if (typeof url === "function") url = url();
+					if (typeof url === "function") url = url();
 					if (typeof url === "string" && url.includes("/related")) {
 						return {
 							data: ref(mockRelatedPosts),
@@ -641,7 +641,7 @@ describe("Post Detail Page", () => {
 			vi.stubGlobal(
 				"useFetch",
 				vi.fn((url: string) => {
-				if (typeof url === "function") url = url();
+					if (typeof url === "function") url = url();
 					if (typeof url === "string" && url.includes("/like")) {
 						throw new Error("Network error");
 					}
@@ -704,7 +704,7 @@ describe("Post Detail Page", () => {
 			vi.stubGlobal(
 				"useFetch",
 				vi.fn((url: string) => {
-				if (typeof url === "function") url = url();
+					if (typeof url === "function") url = url();
 					if (typeof url === "string" && url.includes("/like")) {
 						return {
 							data: ref(likedPost),
@@ -871,7 +871,7 @@ describe("Post Detail Page", () => {
 			vi.stubGlobal(
 				"useFetch",
 				vi.fn((url: string) => {
-				if (typeof url === "function") url = url();
+					if (typeof url === "function") url = url();
 					if (typeof url === "string" && url.includes("/related")) {
 						relatedPostsUrl = url;
 						return {
@@ -946,7 +946,7 @@ describe("Post Detail Page", () => {
 			vi.stubGlobal(
 				"useFetch",
 				vi.fn((url: string) => {
-				if (typeof url === "function") url = url();
+					if (typeof url === "function") url = url();
 					if (typeof url === "string" && url.includes("/related")) {
 						relatedPostsUrl = url;
 						return {

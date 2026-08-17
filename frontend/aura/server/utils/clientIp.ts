@@ -38,7 +38,10 @@ export function resolveClientIp(
 	if (!header) return peer;
 	const trustedValue = (trusted || "").trim();
 	const trustedSet = new Set(
-		trustedValue.split(",").map((s) => s.trim()).filter(Boolean),
+		trustedValue
+			.split(",")
+			.map((s) => s.trim())
+			.filter(Boolean),
 	);
 	if (trustedValue === "*" || trustedSet.has(peer)) {
 		return header.split(",")[0].trim() || peer;

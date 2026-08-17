@@ -53,7 +53,8 @@ describe("Admin Users Page", () => {
 		vi.clearAllMocks();
 		window.confirm = originalConfirm;
 		if (window.localStorage) {
-			window.localStorage.getItem = originalLocalStorageGetItem as typeof window.localStorage.getItem;
+			window.localStorage.getItem =
+				originalLocalStorageGetItem as typeof window.localStorage.getItem;
 		}
 	});
 

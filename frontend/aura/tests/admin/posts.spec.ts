@@ -179,7 +179,7 @@ describe("Admin Posts Page", () => {
 		it("renders the post count", async () => {
 			const PostsPage = await loadPage();
 			const wrapper = await mountWithSuspense(PostsPage);
-    expect(wrapper.text()).toContain("4 篇文章");
+			expect(wrapper.text()).toContain("4 篇文章");
 		});
 
 		it('renders a "new post" link', async () => {
