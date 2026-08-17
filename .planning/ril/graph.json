@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 85,
+  "round": 86,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-08-17T04:37:24+00:00",
+  "updated_at": "2026-08-17T04:40:43+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -5334,6 +5334,43 @@
       "touched_round": 84,
       "title": "SQLite highlight snippet truncates to a balanced <mark> prefix",
       "commit": "61245db"
+    },
+    "ISS-086": {
+      "id": "ISS-086",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-08-17T04:40:42+00:00",
+      "updated_at": "2026-08-17T04:40:43+00:00",
+      "touched_round": 85,
+      "title": "Admin editor auto-slug is empty/invalid for CJK-only titles -> new-post save 422s",
+      "severity": 0.5
+    },
+    "TASK-106": {
+      "id": "TASK-106",
+      "type": "task",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-08-17T04:40:42+00:00",
+      "updated_at": "2026-08-17T04:40:42+00:00",
+      "touched_round": 85,
+      "category": "core-feature",
+      "severity": 0.5,
+      "confidence": 1.0,
+      "effort": 1.0,
+      "unlock_factor": 1.0,
+      "title": "GenerateSlug: deterministic ASCII fallback when title is CJK-only"
+    },
+    "CHG-094": {
+      "id": "CHG-094",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-17T04:40:42+00:00",
+      "updated_at": "2026-08-17T04:40:42+00:00",
+      "touched_round": 85,
+      "title": "admin editor generateSlug falls back to post-<hash> for CJK-only titles",
+      "commit": "b4a1ea3"
     }
   },
   "edges": [
@@ -7371,6 +7408,24 @@
       "to": "ISS-085",
       "type": "resolves",
       "created_at": "2026-08-17T04:37:24+00:00"
+    },
+    {
+      "from": "TASK-106",
+      "to": "ISS-086",
+      "type": "addresses",
+      "created_at": "2026-08-17T04:40:42+00:00"
+    },
+    {
+      "from": "CHG-094",
+      "to": "TASK-106",
+      "type": "implements",
+      "created_at": "2026-08-17T04:40:42+00:00"
+    },
+    {
+      "from": "CHG-094",
+      "to": "ISS-086",
+      "type": "resolves",
+      "created_at": "2026-08-17T04:40:42+00:00"
     }
   ]
 }
