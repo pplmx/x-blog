@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 101,
+  "round": 102,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-08-17T06:13:00+00:00",
+  "updated_at": "2026-08-17T06:18:26+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -5388,10 +5388,10 @@
       "id": "TASK-107",
       "type": "task",
       "status": "active",
-      "version": 1,
+      "version": 3,
       "created_at": "2026-08-17T04:44:35+00:00",
-      "updated_at": "2026-08-17T04:44:35+00:00",
-      "touched_round": 86,
+      "updated_at": "2026-08-17T06:18:26+00:00",
+      "touched_round": 101,
       "category": "core-feature",
       "severity": 0.3,
       "confidence": 1.0,
