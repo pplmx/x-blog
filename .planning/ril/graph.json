@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 84,
+  "round": 85,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-08-17T04:29:14+00:00",
+  "updated_at": "2026-08-17T04:37:24+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -5297,6 +5297,43 @@
       "touched_round": 83,
       "title": "post page TOC computed from markdownToHtml(content); export markdownToHtml",
       "commit": "2f814c5"
+    },
+    "ISS-085": {
+      "id": "ISS-085",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-08-17T04:37:23+00:00",
+      "updated_at": "2026-08-17T04:37:24+00:00",
+      "touched_round": 84,
+      "title": "SQLite search snippet truncation can cut mid-<mark>, emitting unbalanced HTML",
+      "severity": 0.4
+    },
+    "TASK-105": {
+      "id": "TASK-105",
+      "type": "task",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-08-17T04:37:24+00:00",
+      "updated_at": "2026-08-17T04:37:24+00:00",
+      "touched_round": 84,
+      "category": "correctness",
+      "severity": 0.4,
+      "confidence": 1.0,
+      "effort": 1.0,
+      "unlock_factor": 1.0,
+      "title": "Balance <mark> tags when truncating SQLite highlight snippet"
+    },
+    "CHG-093": {
+      "id": "CHG-093",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-17T04:37:24+00:00",
+      "updated_at": "2026-08-17T04:37:24+00:00",
+      "touched_round": 84,
+      "title": "SQLite highlight snippet truncates to a balanced <mark> prefix",
+      "commit": "61245db"
     }
   },
   "edges": [
@@ -7316,6 +7353,24 @@
       "to": "ISS-084",
       "type": "resolves",
       "created_at": "2026-08-17T04:29:14+00:00"
+    },
+    {
+      "from": "TASK-105",
+      "to": "ISS-085",
+      "type": "addresses",
+      "created_at": "2026-08-17T04:37:24+00:00"
+    },
+    {
+      "from": "CHG-093",
+      "to": "TASK-105",
+      "type": "implements",
+      "created_at": "2026-08-17T04:37:24+00:00"
+    },
+    {
+      "from": "CHG-093",
+      "to": "ISS-085",
+      "type": "resolves",
+      "created_at": "2026-08-17T04:37:24+00:00"
     }
   ]
 }
