@@ -15,6 +15,18 @@ const route = useRoute();
 const isLoginPage = route.path === "/admin/login";
 const sidebarOpen = ref(false);
 
+// Current admin's role (superuser | editor). Editors (non-superuser) can
+// moderate content but must not see superuser-only sections (users/export/batch).
+// The role is stored in localStorage at login time (login.vue) and read
+// synchronously here. Defaults to superuser when absent — a pre-role session or
+// a failed /me read never hides privileged UI from a real superuser. The
+// backend still enforces authorization independently (get_current_superuser).
+const storedRole =
+	typeof window !== "undefined" && typeof localStorage?.getItem === "function"
+		? localStorage.getItem("admin_role")
+		: null;
+const currentRole = ref<"superuser" | "editor">(storedRole === "editor" ? "editor" : "superuser");
+
 // Redirect unauthenticated users to the login page — CLIENT-side only
 // (typeof window guard). The token lives in localStorage, which does not
 // exist during SSR; a server-side check would 302-redirect every admin
@@ -73,15 +85,21 @@ watch(
 	},
 );
 
-// Navigation items matching the Next.js admin layout
-const navItems = [
-	{ href: "/admin", labelKey: "admin.nav.dashboard", icon: "lucide:layout-dashboard" },
-	{ href: "/admin/posts", labelKey: "admin.nav.posts", icon: "lucide:file-text" },
-	{ href: "/admin/comments", labelKey: "admin.nav.comments", icon: "lucide:message-circle" },
-	{ href: "/admin/categories", labelKey: "admin.nav.categories", icon: "lucide:folder" },
-	{ href: "/admin/tags", labelKey: "admin.nav.tags", icon: "lucide:tag" },
-	{ href: "/admin/users", labelKey: "admin.nav.users", icon: "lucide:users" },
-];
+// Navigation items matching the Next.js admin layout. The Users section
+// (manage admins) is superuser-only — hidden for editors (DEC-054, TASK-116).
+const navItems = computed(() => {
+	const items = [
+		{ href: "/admin", labelKey: "admin.nav.dashboard", icon: "lucide:layout-dashboard" },
+		{ href: "/admin/posts", labelKey: "admin.nav.posts", icon: "lucide:file-text" },
+		{ href: "/admin/comments", labelKey: "admin.nav.comments", icon: "lucide:message-circle" },
+		{ href: "/admin/categories", labelKey: "admin.nav.categories", icon: "lucide:folder" },
+		{ href: "/admin/tags", labelKey: "admin.nav.tags", icon: "lucide:tag" },
+	];
+	if (currentRole.value === "superuser") {
+		items.push({ href: "/admin/users", labelKey: "admin.nav.users", icon: "lucide:users" });
+	}
+	return items;
+});
 </script>
 
 <template>

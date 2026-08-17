@@ -129,11 +129,12 @@ def admin_user(db_session: Session):
     Create admin user within the test's transaction.
     The transaction is rolled back after the test, so no cleanup needed.
     """
-    from app.auth import User, get_password_hash
+    from app.auth import ROLE_SUPERUSER, User, get_password_hash
 
     user = User(
         username="testadmin",
         password=get_password_hash("testpass123"),
+        role=ROLE_SUPERUSER,
         is_superuser=True,
     )
     db_session.add(user)
@@ -159,3 +160,35 @@ def admin_token(client: TestClient, admin_user) -> str:  # noqa: ARG001
 def auth_headers(admin_token: str) -> dict:
     """Authorization header dict for admin requests."""
     return {"Authorization": f"Bearer {admin_token}"}
+
+
+@pytest.fixture
+def editor_user(db_session: Session):
+    """
+    Create a non-superuser editor admin within the test's transaction.
+    Editors can moderate content (posts/comments/categories/tags) but cannot
+    manage users/export/batch (DEC-054, TASK-115).
+    """
+    from app.auth import ROLE_EDITOR, User, get_password_hash
+
+    user = User(
+        username="testeditor",
+        password=get_password_hash("editorpass123"),
+        role=ROLE_EDITOR,
+        is_superuser=False,
+    )
+    db_session.add(user)
+    db_session.flush()
+    return user
+
+
+@pytest.fixture
+def editor_headers(client: TestClient, editor_user) -> dict:  # noqa: ARG001
+    """Authorization header dict for the editor (non-superuser) account."""
+    response = client.post(
+        "/api/admin/login",
+        data={"username": "testeditor", "password": "editorpass123"},
+    )
+    assert response.status_code == 200, f"Editor login failed: {response.json()}"
+    token = response.json()["access_token"]
+    return {"Authorization": f"Bearer {token}"}

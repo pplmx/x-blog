@@ -7,7 +7,7 @@ from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 
 from app import crud, models
-from app.auth import User, get_current_admin
+from app.auth import User, get_current_superuser
 from app.database import get_db
 from app.limiter import RATE_LIMIT_EXPORT, limiter
 
@@ -44,7 +44,7 @@ def export_posts_csv(
     date_to: datetime | None = Query(None, description="ISO date: created <= date_to"),
     limit: int = Query(10000, ge=1, le=100000),
     db: Session = Depends(get_db),
-    _current_user: User = Depends(get_current_admin),
+    _current_user: User = Depends(get_current_superuser),
 ):
     """Export posts to CSV, filterable by status and created-date range.
 
@@ -126,7 +126,7 @@ def export_comments_csv(
     date_to: datetime | None = Query(None, description="ISO date: created <= date_to"),
     limit: int = Query(10000, ge=1, le=100000),
     db: Session = Depends(get_db),
-    _current_user: User = Depends(get_current_admin),
+    _current_user: User = Depends(get_current_superuser),
 ):
     """Export comments to CSV, filterable by moderation status and date range.
 

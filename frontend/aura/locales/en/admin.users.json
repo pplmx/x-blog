@@ -19,6 +19,9 @@
 		"empty": "No users yet",
 		"operationFailed": "Operation failed, please retry",
 		"loading": "Loading...",
-		"hint": "New users get standard admin permissions. Delete is disabled for your own account."
+		"editor": "editor",
+		"hint": "New users get the editor role: they can manage content but not users, export, or batch actions. Delete is disabled for your own account.",
+		"accessDenied": "Access denied",
+		"editorNoAccess": "The editor role cannot manage users."
 	}
 }

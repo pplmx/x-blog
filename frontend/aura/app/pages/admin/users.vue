@@ -11,6 +11,16 @@ const { t } = useLang();
 
 useHead({ title: computed(() => t("admin.users.seoTitle")) });
 
+// The admin users page is superuser-only (backend: get_current_superuser).
+// Hide its entire content for editors even on direct navigation (not just the
+// hidden sidebar link) so an editor never sees the provisioning form. The API
+// independently enforces a 403 on every /users call. (DEC-054, TASK-116)
+const storedRole =
+	typeof window !== "undefined" && typeof localStorage?.getItem === "function"
+		? localStorage.getItem("admin_role")
+		: null;
+const isSuperuserView = ref(storedRole !== "editor");
+
 const { data: users, pending, error, refresh } = await fetchAdminUsers();
 
 // The backend rejects self-deletion by user id (admin.py delete_user compares
@@ -96,6 +106,17 @@ async function handleDelete(id: number) {
 
 <template>
   <div>
+    <div v-if="!isSuperuserView" class="text-center py-16">
+      <Icon icon="lucide:lock" class="w-12 h-12 text-gray-400 mb-4 mx-auto" />
+      <h2 class="text-lg font-medium text-gray-700 dark:text-gray-300 mb-1">
+        {{ t("admin.users.accessDenied") }}
+      </h2>
+      <p class="text-sm text-gray-500 dark:text-gray-400">
+        {{ t("admin.users.editorNoAccess") }}
+      </p>
+    </div>
+
+    <template v-if="isSuperuserView">
     <div class="mb-8">
       <h1
         class="text-2xl font-bold bg-gradient-to-r from-gray-900 dark:from-gray-100 to-gray-600 dark:to-gray-400 bg-clip-text text-transparent"
@@ -192,8 +213,17 @@ async function handleDelete(id: number) {
           <div>
             <span class="text-gray-900 dark:text-gray-100 font-medium inline-flex items-center gap-2">
               {{ user.username }}
-              <span v-if="user.is_superuser" class="text-xs px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-400">
+              <span
+                v-if="user.role === 'superuser' || user.is_superuser"
+                class="text-xs px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-400"
+              >
                 {{ t("admin.users.superuser") }}
+              </span>
+              <span
+                v-else
+                class="text-xs px-2 py-0.5 rounded-full bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-400"
+              >
+                {{ t("admin.users.editor") }}
               </span>
             </span>
           </div>
@@ -209,5 +239,6 @@ async function handleDelete(id: number) {
         </button>
       </div>
     </div>
+    </template>
   </div>
 </template>

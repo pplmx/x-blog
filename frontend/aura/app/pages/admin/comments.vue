@@ -13,6 +13,30 @@ const { t, locale } = useLang();
 
 useHead({ title: computed(() => t("admin.comments.seoTitle")) });
 
+// Batch approve/reject is a superuser-only capability (get_current_superuser on
+// /api/admin/comments/batch-approve). Hide the batch UI for editors so they
+// never see a control that would 403; single-comment moderation stays enabled.
+// Defaults to visible and downgrades only on a confirmed editor role so a
+// failed/missing /me response never hides controls from a superuser; the
+// backend still enforces authorization independently.
+const config = useRuntimeConfig();
+const apiBase = (config.public.apiUrl || "").replace(/\/+$/, "");
+const canBatch = ref(true);
+function adminHeaders(): Record<string, string> {
+	const token = typeof localStorage !== "undefined" ? localStorage.getItem("admin_token") : null;
+	return token ? { Authorization: `Bearer ${token}` } : {};
+}
+onMounted(async () => {
+	try {
+		const data = await $fetch<{ role: string }>(`${apiBase}/api/admin/me`, {
+			headers: adminHeaders(),
+		}).catch(() => null);
+		if (data && data.role === "editor") canBatch.value = false;
+	} catch {
+		/* keep visible default */
+	}
+});
+
 const PAGE_SIZE = 20;
 // Moderation filters (RIL TASK-078, ISS-047): status, full-text search and
 // created-date range. Applied server-side; the list refetches on change.
@@ -159,7 +183,7 @@ async function handleApprove(id: number, approved: boolean) {
       >
         {{ actionError }}
       </div>
-      <div v-if="pendingComments.length > 0" class="flex items-center gap-2">
+      <div v-if="canBatch && pendingComments.length > 0" class="flex items-center gap-2">
         <button
           type="button"
           :disabled="isProcessing || selectedIds.size === 0"
@@ -308,7 +332,7 @@ async function handleApprove(id: number, approved: boolean) {
           <div class="flex-1">
             <div class="flex items-center gap-3 mb-2">
               <input
-                v-if="!comment.is_approved"
+                v-if="canBatch && !comment.is_approved"
                 type="checkbox"
                 class="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                 :checked="selectedIds.has(comment.id)"

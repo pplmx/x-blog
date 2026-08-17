@@ -47,6 +47,15 @@ SECRET_KEY = _load_secret_key()
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/admin/login")
 
+# Admin role tiers (authoritative discriminator for admin authorization). A
+# superuser can manage users/export/batch; an editor can only moderate content
+# (posts/comments/categories/tags). `is_superuser` below is kept as a stored
+# boolean (DDL preserved, DEC-009) and stays consistent with role. (DEC-054,
+# TASK-114)
+ROLE_SUPERUSER = "superuser"
+ROLE_EDITOR = "editor"
+ADMIN_ROLES = (ROLE_SUPERUSER, ROLE_EDITOR)
+
 
 class User(Base):
     __tablename__ = "users"
@@ -54,6 +63,7 @@ class User(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     username: Mapped[str] = mapped_column(String(50), unique=True, nullable=False, index=True)
     password: Mapped[str] = mapped_column(String(200), nullable=False)
+    role: Mapped[str] = mapped_column(String(20), nullable=False, default=ROLE_EDITOR)
     is_superuser: Mapped[bool | None] = mapped_column(Boolean, default=False)
     # Bumped on password change so previously-issued JWTs are invalidated
     # immediately (checked in get_current_user). (RIL round 16 security audit)
@@ -103,7 +113,7 @@ def get_current_user(
         if user_id is None:
             raise credentials_exception
         token_data = TokenData(user_id=user_id)
-    except (InvalidTokenError, TypeError, ValueError):
+    except InvalidTokenError, TypeError, ValueError:
         # InvalidTokenError: bad signature/expired token; TypeError/ValueError:
         # malformed `sub` claim (e.g. non-numeric). Both are auth failures → 401.
         raise credentials_exception
@@ -119,7 +129,22 @@ def get_current_user(
 
 
 def get_current_admin(current_user: User = Depends(get_current_user)) -> User:
-    if not current_user.is_superuser:
+    """Any authenticated admin-tier account (superuser or editor).
+
+    Guards content-moderation endpoints (posts/comments/categories/tags/upload).
+    Privileged endpoints (users/export/batch) use get_current_superuser.
+    """
+    if current_user.role not in ADMIN_ROLES:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Not enough permissions",
+        )
+    return current_user
+
+
+def get_current_superuser(current_user: User = Depends(get_current_admin)) -> User:
+    """Superuser-only guard for privileged admin endpoints (users/export/batch)."""
+    if current_user.role != ROLE_SUPERUSER:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Not enough permissions",

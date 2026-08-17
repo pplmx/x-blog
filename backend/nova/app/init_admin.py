@@ -3,7 +3,7 @@ import warnings
 
 from sqlalchemy.orm import Session
 
-from app.auth import User, get_password_hash
+from app.auth import ROLE_SUPERUSER, User, get_password_hash
 from app.config import is_development
 from app.database import Base, SessionLocal, engine
 
@@ -36,6 +36,7 @@ def create_admin():
             admin = User(
                 username="admin",
                 password=get_password_hash(admin_password),
+                role=ROLE_SUPERUSER,
                 is_superuser=True,
             )
             db.add(admin)

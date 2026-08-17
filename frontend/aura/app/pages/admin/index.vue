@@ -84,6 +84,23 @@ onMounted(() => {
 	loadDashboard();
 });
 
+// Data export is a superuser-only capability — hidden for editors (DEC-054,
+// TASK-116). The API itself enforces this (get_current_superuser); this is a
+// UI affordance so an editor never sees a section that would 403. Defaults to
+// visible and downgrades only on a confirmed editor role so a failed /me
+// response never hides export from a superuser.
+const canExport = ref(true);
+onMounted(async () => {
+	try {
+		const data = await $fetch<{ role: string }>(`${apiBase}/api/admin/me`, {
+			headers: authHeaders(),
+		}).catch(() => null);
+		if (data && data.role === "editor") canExport.value = false;
+	} catch {
+		/* keep visible default */
+	}
+});
+
 const exporting = ref<"posts" | "comments" | null>(null);
 const exportError = ref("");
 
@@ -442,8 +459,11 @@ const stats = computed(() => [
       </div>
     </div>
 
-    <!-- Data export -->
-    <div class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 p-5 mb-8">
+    <!-- Data export (superuser-only, hidden for editors) -->
+    <div
+      v-if="canExport"
+      class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 p-5 mb-8"
+    >
       <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4 flex items-center gap-2">
         <Icon icon="lucide:download" class="w-5 h-5 text-indigo-500" />
         {{ t("admin.dashboard.export.title") }}

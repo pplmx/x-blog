@@ -35,6 +35,22 @@ async function handleLogin() {
 
 		if (data.value?.access_token) {
 			login(data.value.access_token);
+			// Persist the admin role so the role-aware UI (admin layout) can hide
+			// superuser-only sections for editors. Read from /me (authoritative);
+			// on failure keep a superuser default (the backend enforces anyway).
+			try {
+				if (typeof localStorage?.setItem === "function") {
+					localStorage.setItem("admin_role", "superuser");
+					const config = useRuntimeConfig();
+					const apiUrl = (config.public.apiUrl || "").replace(/\/+$/, "");
+					const me = await $fetch<{ role: string }>(`${apiUrl}/api/admin/me`, {
+						headers: { Authorization: `Bearer ${data.value.access_token}` },
+					}).catch(() => null);
+					if (me?.role) localStorage.setItem("admin_role", me.role);
+				}
+			} catch {
+				/* keep superuser default */
+			}
 			navigateTo("/admin/posts", { replace: true });
 		} else {
 			error.value = t("admin.login.errors.noToken");

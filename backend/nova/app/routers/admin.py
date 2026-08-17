@@ -8,7 +8,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, joinedload
 
 from app import auth, crud, models
-from app.auth import get_current_admin
+from app.auth import ROLE_EDITOR, get_current_admin, get_current_superuser
 from app.cache import (
     clear_categories_cache,
     clear_posts_list_cache,
@@ -50,6 +50,7 @@ class UserResponse(BaseModel):
 
     id: int
     username: str
+    role: str
     is_superuser: bool
 
 
@@ -71,22 +72,38 @@ def login(
     return {"access_token": access_token, "token_type": "bearer"}
 
 
+@router.get("/me", response_model=UserResponse)
+def get_current_user_profile(
+    _current_user: auth.User = Depends(get_current_admin),
+):
+    """Return the current admin's profile (id, username, role).
+
+    Lets the frontend adapt the admin UI: editors (non-superuser role) must not
+    see superuser-only sections (users/export). (DEC-054, TASK-116)
+    """
+    return _current_user
+
+
 @limiter.limit(f"{RATE_LIMIT_WRITE}/minute")
 @router.post("/users", response_model=UserResponse)
 def create_user(
     request: Request,  # noqa: ARG001
     user_data: UserCreate,
     db: Session = Depends(get_db),
-    _current_user: auth.User = Depends(get_current_admin),
+    _current_user: auth.User = Depends(get_current_superuser),
 ):
     existing = db.query(auth.User).filter(auth.User.username == user_data.username).first()
     if existing:
         raise HTTPException(status_code=400, detail="Username already exists")
 
     hashed_password = auth.get_password_hash(user_data.password)
+    # Created accounts are always editors (non-superuser), never admins — a
+    # provisioned editor can moderate content but cannot manage users/export.
+    # This is the safe-contract fix for ISS-087 (DEC-053/DEC-054).
     user = auth.User(
         username=user_data.username,
         password=hashed_password,
+        role=ROLE_EDITOR,
         is_superuser=False,
     )
     db.add(user)
@@ -102,7 +119,7 @@ def create_user(
 @router.get("/users", response_model=list[UserResponse])
 def list_users(
     db: Session = Depends(get_db),
-    _current_user: auth.User = Depends(get_current_admin),
+    _current_user: auth.User = Depends(get_current_superuser),
 ):
     users = db.query(auth.User).all()
     return users
@@ -114,7 +131,7 @@ def delete_user(
     request: Request,  # noqa: ARG001
     user_id: int,
     db: Session = Depends(get_db),
-    _current_user: auth.User = Depends(get_current_admin),
+    _current_user: auth.User = Depends(get_current_superuser),
 ):
     if user_id == _current_user.id:
         raise HTTPException(status_code=400, detail="Cannot delete yourself")
@@ -619,7 +636,7 @@ def admin_batch_approve_comments(
     request: Request,  # noqa: ARG001
     body: BatchApproveRequest,
     db: Session = Depends(get_db),
-    _current_user: auth.User = Depends(get_current_admin),
+    _current_user: auth.User = Depends(get_current_superuser),
 ):
     comments = db.query(models.Comment).filter(models.Comment.id.in_(body.ids)).all()
     for c in comments:

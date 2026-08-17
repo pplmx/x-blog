@@ -545,12 +545,23 @@ export async function deleteAdminTag(id: number) {
 export interface AdminUser {
 	id: number;
 	username: string;
+	role: "superuser" | "editor";
 	is_superuser: boolean;
 }
 
 export interface CreateAdminUserInput {
 	username: string;
 	password: string;
+}
+
+/** Fetch the current admin's profile (id, username, role) — drives role-aware UI. */
+export async function fetchCurrentAdmin() {
+	const config = useRuntimeConfig();
+	const apiUrl = config.public.apiUrl;
+	return useFetch<AdminUser>(`${apiUrl}/api/admin/me`, {
+		headers: getAuthHeaders(),
+		server: false,
+	});
 }
 
 /** Fetch all admin users (auth required). */
