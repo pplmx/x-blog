@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 94,
+  "round": 95,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-08-17T05:22:12+00:00",
+  "updated_at": "2026-08-17T05:25:47+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -5520,6 +5520,43 @@
       "touched_round": 91,
       "title": "copy state keyed by seg.key for code blocks",
       "commit": "6159669"
+    },
+    "ISS-091": {
+      "id": "ISS-091",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-08-17T05:25:46+00:00",
+      "updated_at": "2026-08-17T05:25:47+00:00",
+      "touched_round": 94,
+      "title": "search submit from paginated page keeps stale page param",
+      "severity": 0.3
+    },
+    "TASK-111": {
+      "id": "TASK-111",
+      "type": "task",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-08-17T05:25:46+00:00",
+      "updated_at": "2026-08-17T05:25:47+00:00",
+      "touched_round": 94,
+      "category": "correctness",
+      "title": "search submit resets page; sync input to route",
+      "severity": 0.3,
+      "confidence": 1.0,
+      "effort": 1.0,
+      "unlock_factor": 1.0
+    },
+    "CHG-098": {
+      "id": "CHG-098",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-17T05:25:46+00:00",
+      "updated_at": "2026-08-17T05:25:46+00:00",
+      "touched_round": 94,
+      "title": "search page page-reset on new query + input sync",
+      "commit": "fdfce8f"
     }
   },
   "edges": [
@@ -7641,6 +7678,24 @@
       "to": "ISS-090",
       "type": "resolves",
       "created_at": "2026-08-17T05:16:58+00:00"
+    },
+    {
+      "from": "TASK-111",
+      "to": "ISS-091",
+      "type": "addresses",
+      "created_at": "2026-08-17T05:25:46+00:00"
+    },
+    {
+      "from": "CHG-098",
+      "to": "TASK-111",
+      "type": "implements",
+      "created_at": "2026-08-17T05:25:46+00:00"
+    },
+    {
+      "from": "CHG-098",
+      "to": "ISS-091",
+      "type": "resolves",
+      "created_at": "2026-08-17T05:25:46+00:00"
     }
   ]
 }
