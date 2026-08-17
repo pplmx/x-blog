@@ -99,13 +99,25 @@ watch(
 	{ immediate: true },
 );
 
-function generateSlug(title: string) {
-	return title
+function generateSlug(title: string): string {
+	let slug = title
 		.toLowerCase()
 		.replace(/[^\w\s-]/g, "")
 		.replace(/\s+/g, "-")
 		.replace(/-+/g, "-")
+		.replace(/^-+|-+$/g, "")
 		.trim();
+	// ASCII-only `\w` (regex without the `u` flag) strips CJK characters, so a
+	// Chinese-only title collapses to "" (or a bare "-"), which violates the
+	// backend slug pattern ^[a-z0-9]+(?:-[a-z0-9]+)*$ and 422s new-post saves.
+	// Fall back to a deterministic ASCII slug so a pure-CJK "fill title +
+	// content, save" flow always works (RIL TASK-106, ISS-086).
+	if (!slug) {
+		let hash = 0;
+		for (const ch of title) hash = (hash * 31 + ch.charCodeAt(0)) & 0x7fffffff;
+		slug = `post-${hash.toString(36)}`;
+	}
+	return slug;
 }
 
 // publish_at round-trip helpers. The backend stores/publishes publish_at as a

@@ -215,6 +215,31 @@ describe("Admin Post Editor Page", () => {
 			expect(wrapper.text()).toContain("Slug");
 		});
 
+		it("auto-generates a VALID ASCII slug for a Chinese-only title on submit (RIL TASK-106, ISS-086)", async () => {
+			// ASCII-only \w strips CJK, so a Chinese-only title previously
+			// produced "" or "-" -> backend 422 -> new post could not be saved.
+			const PostEditor = await loadPage();
+			const wrapper = await mountWithSuspense(PostEditor);
+			await flushPromises();
+
+			const titleInput = wrapper.find('input[type="text"]');
+			await titleInput.setValue("我的第一篇中文博客");
+			// Leave slug empty (new-post default); fill content to satisfy submit.
+			const contentTextarea = wrapper.find("textarea");
+			await contentTextarea.setValue("# 正文");
+
+			const form = wrapper.find("form");
+			await form.trigger("submit.prevent");
+			await flushPromises();
+
+			expect(mockCreateAdminPost).toHaveBeenCalled();
+			const [payload] = mockCreateAdminPost.mock.calls[0] as any[];
+			const slug = payload?.slug;
+			// Must be non-empty and match the backend's slug pattern.
+			expect(slug).toBeTruthy();
+			expect(/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug)).toBe(true);
+		});
+
 		it("displays submit error when createAdminPost fails", async () => {
 			mockCreateAdminPost.mockRejectedValue(new Error("Network error"));
 
