@@ -86,6 +86,26 @@ describe("robots.txt route", () => {
 		expect(result).toBeInstanceOf(Error);
 		expect(result.message).toBe("Failed to fetch robots.txt");
 	});
+
+	it("should prefer NUXT_PROXY_TARGET over NUXT_API_URL (compose topology)", async () => {
+		const prevProxy = process.env.NUXT_PROXY_TARGET;
+		const prevApi = process.env.NUXT_API_URL;
+		// Clean module cache so the handler re-reads process.env on import.
+		vi.resetModules();
+		process.env.NUXT_PROXY_TARGET = "http://backend:18888";
+		delete process.env.NUXT_API_URL;
+		try {
+			const { default: handler } = await import("~/../server/routes/robots.txt");
+			await callRoute(handler);
+			expect(fetchCalls).toHaveLength(1);
+			expect(fetchCalls[0].url).toBe("http://backend:18888/robots.txt");
+		} finally {
+			if (prevProxy === undefined) delete process.env.NUXT_PROXY_TARGET;
+			else process.env.NUXT_PROXY_TARGET = prevProxy;
+			if (prevApi === undefined) delete process.env.NUXT_API_URL;
+			else process.env.NUXT_API_URL = prevApi;
+		}
+	});
 });
 
 describe("sitemap.xml route", () => {

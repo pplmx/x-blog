@@ -2,7 +2,7 @@
   "ril_version": 1,
   "round": 78,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-08-17T01:28:39+00:00",
+  "updated_at": "2026-08-17T02:29:30+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -4837,11 +4837,11 @@
     "ISS-078": {
       "id": "ISS-078",
       "type": "issue",
-      "status": "active",
-      "version": 1,
+      "status": "resolved",
+      "version": 2,
       "created_at": "2026-08-17T00:54:23+00:00",
-      "updated_at": "2026-08-17T00:54:23+00:00",
-      "touched_round": 77,
+      "updated_at": "2026-08-17T02:29:29+00:00",
+      "touched_round": 78,
       "title": "cache.py categories_cache/tags_cache store live ORM objects across sessions (contradicts docstring invariant)",
       "severity": 0.3
     },
@@ -5021,11 +5021,11 @@
     "TASK-097": {
       "id": "TASK-097",
       "type": "task",
-      "status": "active",
-      "version": 1,
+      "status": "resolved",
+      "version": 2,
       "created_at": "2026-08-17T01:19:38+00:00",
-      "updated_at": "2026-08-17T01:19:38+00:00",
-      "touched_round": 77,
+      "updated_at": "2026-08-17T02:29:29+00:00",
+      "touched_round": 78,
       "category": "maintainability",
       "severity": 0.3,
       "title": "Cache plain dicts (not ORM objects) in categories_cache/tags_cache to match docstring invariant"
@@ -5040,6 +5040,17 @@
       "touched_round": 77,
       "title": "Guard HeaderSearch against out-of-order response race (seq token)",
       "commit": "3e21fc6"
+    },
+    "CHG-086": {
+      "id": "CHG-086",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-17T02:29:29+00:00",
+      "updated_at": "2026-08-17T02:29:29+00:00",
+      "touched_round": 78,
+      "title": "Cache categories/tags as plain dicts not ORM objects",
+      "commit": "2407e9d"
     }
   },
   "edges": [
@@ -6933,6 +6944,18 @@
       "to": "ISS-077",
       "type": "resolves",
       "created_at": "2026-08-17T01:21:15+00:00"
+    },
+    {
+      "from": "CHG-086",
+      "to": "TASK-097",
+      "type": "implements",
+      "created_at": "2026-08-17T02:29:30+00:00"
+    },
+    {
+      "from": "CHG-086",
+      "to": "ISS-078",
+      "type": "resolves",
+      "created_at": "2026-08-17T02:29:30+00:00"
     }
   ]
 }
