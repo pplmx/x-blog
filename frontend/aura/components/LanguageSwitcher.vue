@@ -42,7 +42,7 @@ onBeforeUnmount(() => {
   <div ref="root" class="relative select-none">
     <button
       type="button"
-      class="flex shrink-0 items-center gap-1 whitespace-nowrap rounded-md px-1.5 py-1 text-xs font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+      class="flex w-24 shrink-0 items-center justify-center gap-1 whitespace-nowrap rounded-md py-1 text-xs font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
       :aria-haspopup="true"
       :aria-expanded="open"
       :aria-label="currentLabel"
@@ -60,7 +60,7 @@ onBeforeUnmount(() => {
       <div
         v-if="open"
         role="menu"
-        class="absolute right-0 mt-1.5 z-50 min-w-[120px] overflow-hidden rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 py-1 shadow-lg"
+        class="absolute right-0 mt-1.5 z-50 w-36 overflow-hidden rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 py-1 shadow-lg"
       >
         <button
           v-for="l in locales"

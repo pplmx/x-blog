@@ -57,11 +57,15 @@ describe("LanguageSwitcher", () => {
 		setLocale.mockClear();
 	});
 
-	it("renders the current locale as a compact trigger", () => {
+	it("renders the current locale as a compact, fixed-width trigger", () => {
 		const wrapper = mountSwitcher();
 		const trigger = wrapper.find('button[aria-haspopup="true"]');
 		expect(trigger.exists()).toBe(true);
 		expect(trigger.text()).toContain("简体中文");
+		// Fixed width + centered so the trigger does not resize when the
+		// current language label changes.
+		expect(trigger.classes()).toContain("w-24");
+		expect(trigger.classes()).toContain("justify-center");
 		expect(wrapper.find('[role="menu"]').exists()).toBe(false);
 	});
 
@@ -72,6 +76,8 @@ describe("LanguageSwitcher", () => {
 
 		const menu = wrapper.find('[role="menu"]');
 		expect(menu.exists()).toBe(true);
+		// The menu has a fixed width (does not auto-fit per language).
+		expect(menu.classes()).toContain("w-36");
 		const items = wrapper.findAll('[role="menuitem"]');
 		expect(items.map((i) => i.text().trim())).toEqual(ALL_NATIVES);
 		// Every item uses the same non-wrapping layout (no item overrides it).
