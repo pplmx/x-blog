@@ -55,7 +55,7 @@ onMounted(() => {
       class="sticky top-0 z-50 border-b border-gray-100/80 dark:border-gray-800/80"
       :class="isHome ? 'bg-white/70 dark:bg-gray-950/70 backdrop-blur-xl' : 'bg-white/90 dark:bg-gray-950/90 backdrop-blur-md'"
     >
-      <div class="container mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="page-shell px-4 sm:px-6 lg:px-8">
         <div class="flex items-center justify-between h-16">
           <!-- Logo -->
           <NuxtLink
@@ -117,7 +117,7 @@ onMounted(() => {
       <!-- Mobile navigation -->
       <Transition name="slide">
         <div v-if="mobileMenuOpen" id="mobile-nav" class="md:hidden border-t border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-950">
-          <div class="container mx-auto px-4 py-4 space-y-1">
+          <div class="page-shell px-4 py-4 space-y-1">
             <NuxtLink
               v-for="link in navLinks"
               :key="link.to"
@@ -151,13 +151,13 @@ onMounted(() => {
     </header>
 
     <!-- Main -->
-    <main class="flex-1 container mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 lg:py-10">
+    <main class="flex-1 page-shell px-4 sm:px-6 lg:px-8 py-6 sm:py-8 lg:py-10">
       <slot />
     </main>
 
     <!-- Footer -->
     <footer class="border-t border-gray-100 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-900/50">
-      <div class="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div class="page-shell px-4 sm:px-6 lg:px-8 py-8">
         <div class="flex flex-col sm:flex-row items-center justify-between gap-4">
           <div class="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
             <span>© 2026 X-Blog.</span>

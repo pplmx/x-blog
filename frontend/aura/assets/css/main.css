@@ -94,3 +94,33 @@
 	opacity: 0;
 	transform: translateY(8px);
 }
+
+/*
+ * Single source of layout width — a resolution-aware algorithm:
+ *
+ *   max-width: clamp(960px, 92vw, 1680px)
+ *
+ * The shell grows smoothly with the viewport (gutters ≈ 4vw each side),
+ * bounded by an absolute [min, max]. So the page frame (header/main/footer)
+ * adapts to any resolution — e.g. 1200px -> ~1104, 1366 -> ~1257, 1440 ->
+ * ~1325, 2240/3440 -> 1680 (capped). Content columns below use their own
+ * tighter caps (prose ~896px, single-column feeds ~1024px) because scaling
+ * them to ultrawide widths hurts readability — that readable cap is itself
+ * part of the optimal-display algorithm, not a failure to adapt.
+ *
+ * Tune the bounds here:
+ */
+:root {
+	--shell-min: 960px;
+	--shell-ref: 92vw;
+	--shell-max: 1680px;
+	--layout-max: clamp(var(--shell-min), var(--shell-ref), var(--shell-max));
+}
+
+@layer base {
+	.page-shell {
+		width: 100%;
+		max-width: var(--layout-max);
+		margin-inline: auto;
+	}
+}
