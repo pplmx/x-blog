@@ -154,7 +154,7 @@ const readingTime = computed(() => {
 </script>
 
 <template>
-  <div class="max-w-4xl mx-auto">
+  <div class="max-w-7xl mx-auto">
     <!-- Reading progress bar -->
     <div class="fixed top-0 left-0 right-0 z-50 h-1 bg-gray-100 dark:bg-gray-800">
       <div
@@ -164,7 +164,7 @@ const readingTime = computed(() => {
     </div>
 
     <!-- Loading skeleton -->
-    <div v-if="pending" class="max-w-3xl mx-auto space-y-6 pt-8">
+    <div v-if="pending" class="max-w-4xl mx-auto space-y-6 pt-8">
       <div class="h-8 bg-gray-200 dark:bg-gray-800 rounded-lg w-3/4 animate-pulse" />
       <div class="h-64 bg-gray-200 dark:bg-gray-800 rounded-2xl animate-pulse" />
       <div class="space-y-3">
@@ -213,7 +213,7 @@ const readingTime = computed(() => {
       </nav>
 
       <!-- Main content -->
-      <article class="flex-1 min-w-0 max-w-3xl">
+      <article class="flex-1 min-w-0 max-w-4xl">
         <!-- Header -->
         <header class="mb-10">
           <NuxtLink to="/" class="inline-flex items-center gap-1.5 text-sm text-gray-400 hover:text-blue-500 transition-colors mb-6">

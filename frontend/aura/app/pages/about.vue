@@ -50,7 +50,7 @@ const features = [
 </script>
 
 <template>
-  <div class="max-w-3xl mx-auto">
+  <div class="max-w-4xl mx-auto">
     <NuxtLink
       to="/"
       class="inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-blue-600 transition-colors mb-8"

@@ -46,7 +46,7 @@ useSeo(() => ({
 </script>
 
 <template>
-  <div class="max-w-4xl mx-auto">
+  <div class="max-w-5xl mx-auto">
     <!-- Loading state -->
     <div v-if="pending" class="space-y-4">
       <div class="bg-gray-100 animate-pulse h-8 rounded-lg mb-4 w-1/3" />

@@ -87,7 +87,7 @@ function handleSearchInput() {
 </script>
 
 <template>
-  <div class="max-w-4xl mx-auto">
+  <div class="max-w-5xl mx-auto">
     <!-- Empty query state -->
     <div
       v-if="!query"

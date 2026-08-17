@@ -123,7 +123,7 @@ const stats = computed(() => {
 </script>
 
 <template>
-  <div class="max-w-5xl mx-auto">
+  <div class="max-w-6xl mx-auto">
     <!-- Hero -->
     <section class="relative overflow-hidden rounded-3xl bg-gradient-to-br from-blue-600 via-indigo-600 to-purple-700 mb-12 p-8 sm:p-12 lg:p-16">
       <div class="absolute inset-0 opacity-10">

@@ -19,7 +19,7 @@ function handleClearAll() {
 </script>
 
 <template>
-  <div class="max-w-4xl mx-auto px-4 py-12">
+  <div class="max-w-5xl mx-auto px-4 py-12">
     <!-- Header -->
     <div class="flex items-center justify-between mb-8">
       <div>
