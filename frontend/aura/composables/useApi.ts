@@ -256,17 +256,18 @@ export async function useBlogStats() {
 }
 
 /**
- * Comment type matching the backend Comment schema.
+ * Comment type matching the backendCommentListResponse public schema. The
+ * public comment list omits PII: ip_address and email are intentionally not
+ * returned (RIL TASK-100, ISS-080); they exist only on the authenticated
+ * admin comment list (see AdminComment).
  */
 export interface Comment {
 	id: number;
 	post_id: number;
 	parent_id: number | null;
 	nickname: string;
-	email: string;
 	content: string;
 	is_approved: boolean;
-	ip_address: string;
 	created_at: string;
 }
 
