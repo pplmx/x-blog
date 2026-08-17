@@ -65,12 +65,12 @@ const copiedStates = ref<Set<string>>(new Set());
 
 const { t } = useLang();
 
-async function copyCode(code: string) {
+async function copyCode(code: string, key: string) {
 	try {
 		await navigator.clipboard.writeText(code);
-		copiedStates.value.add(code);
+		copiedStates.value.add(key);
 		setTimeout(() => {
-			copiedStates.value.delete(code);
+			copiedStates.value.delete(key);
 		}, 2000);
 	} catch {
 		// ignore
@@ -198,14 +198,14 @@ function lineNumbers(code: string): number[] {
             <span class="font-mono font-medium">{{ seg.lang }}</span>
           </div>
           <button
-            @click="copyCode(seg.code)"
-            :data-copied="copiedStates.has(seg.code)"
+            @click="copyCode(seg.code, seg.key)"
+            :data-copied="copiedStates.has(seg.key)"
             class="flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs transition-all duration-200 hover:bg-gray-700 hover:text-white text-gray-400"
             :title="t('components.markdown.copyCode')"
           >
-            <Icon icon="lucide:copy" class="w-3.5 h-3.5" v-if="!copiedStates.has(seg.code)" />
+            <Icon icon="lucide:copy" class="w-3.5 h-3.5" v-if="!copiedStates.has(seg.key)" />
             <Icon icon="lucide:check" class="w-3.5 h-3.5" v-else />
-            <span>{{ copiedStates.has(seg.code) ? t('components.markdown.copied') : t('components.markdown.copy') }}</span>
+            <span>{{ copiedStates.has(seg.key) ? t('components.markdown.copied') : t('components.markdown.copy') }}</span>
           </button>
         </div>
         <div class="flex bg-[#1a1b26]">
