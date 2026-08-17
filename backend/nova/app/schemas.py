@@ -231,3 +231,26 @@ class Comment(CommentBase):
     is_approved: bool = True
     created_at: datetime
     model_config = ConfigDict(from_attributes=True)
+
+
+class CommentPublic(CommentBase):
+    """Public-facing comment that omits PII (ip_address, email).
+
+    The unauthenticated list endpoint returns this instead of the full
+    ``Comment`` so a visitor cannot enumerate commenters' stored IP addresses
+    or email addresses (both are collected for moderation/rate-limiting only).
+    ``CommentBase`` still carries email for the write path (required on create);
+    this schema drops it from the read response by re-declaring only the
+    moderator-safe fields.
+    """
+
+    id: int
+    post_id: int
+    parent_id: int | None = None
+    is_approved: bool = True
+    created_at: datetime
+    # Re-declare email so it is dropped from the public serialization even
+    # though CommentBase supplies it (Field exclude). ip_address is simply
+    # absent from this schema.
+    email: str = Field(default="", exclude=True)
+    model_config = ConfigDict(from_attributes=True)

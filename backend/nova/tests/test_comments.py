@@ -211,6 +211,36 @@ def test_list_comments(client, post, auth_headers):
     assert data["limit"] == 20
 
 
+def test_list_comments_omits_pii(client, post, auth_headers):
+    """Public comment list must not leak ip_address / email (RIL TASK-100, ISS-080)."""
+    create_response = client.post(
+        f"/api/comments/post/{post['id']}",
+        json={
+            "nickname": "Private User",
+            "email": "private@example.com",
+            "content": "Private comment",
+        },
+    )
+    assert create_response.status_code == 201
+    comment_id = create_response.json()["id"]
+    client.patch(
+        f"/api/comments/{comment_id}/approve",
+        json={"approved": True},
+        headers=auth_headers,
+    )
+
+    # The created comment stores an IP (derived from the request); the list
+    # endpoint must not surface it or the commenter's email.
+    response = client.get(f"/api/comments/post/{post['id']}")
+    assert response.status_code == 200
+    item = response.json()["items"][0]
+    assert "ip_address" not in item
+    assert "email" not in item
+    assert item["nickname"] == "Private User"
+    assert item["content"] == "Private comment"
+    assert item["id"] == comment_id
+
+
 def test_list_comments_pagination(client, post, auth_headers):
     # Create 5 comments
     comment_ids = []

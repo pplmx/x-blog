@@ -11,9 +11,9 @@ router = APIRouter(prefix="/api/comments", tags=["comments"])
 
 
 class CommentListResponse(BaseModel):
-    """Paginated comment list response."""
+    """Paginated comment list response (public — omits commenter PII)."""
 
-    items: list[schemas.Comment]
+    items: list[schemas.CommentPublic]
     total: int
     page: int
     limit: int
