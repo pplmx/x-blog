@@ -35,7 +35,9 @@ def upgrade() -> None:
     if "role" not in existing:
         op.add_column("users", sa.Column("role", sa.String(length=20), nullable=False, server_default="editor"))
         # Backfill: superusers keep superuser role; non-superusers become editors.
-        op.execute("UPDATE users SET role='superuser' WHERE is_superuser = 1")
+        # Compare against TRUE, not 1: is_superuser is a PostgreSQL BOOLEAN, and
+        # `boolean = integer` has no operator (SQLite's loose typing hid this).
+        op.execute("UPDATE users SET role='superuser' WHERE is_superuser = TRUE")
 
 
 def downgrade() -> None:
