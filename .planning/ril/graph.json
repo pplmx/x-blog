@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 106,
+  "round": 107,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-08-18T07:13:08+00:00",
+  "updated_at": "2026-08-18T14:00:30+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -6091,11 +6091,11 @@
     "TASK-123": {
       "id": "TASK-123",
       "type": "task",
-      "status": "active",
-      "version": 1,
+      "status": "resolved",
+      "version": 2,
       "created_at": "2026-08-18T05:28:44+00:00",
-      "updated_at": "2026-08-18T05:28:44+00:00",
-      "touched_round": 104,
+      "updated_at": "2026-08-18T13:53:58+00:00",
+      "touched_round": 106,
       "category": "core-feature",
       "severity": 6,
       "confidence": 1.0,
@@ -6172,6 +6172,41 @@
       "category": "test-quality",
       "severity": 6,
       "title": "Close frontend coverage gap on main (functions 79.88% / branches 76.95% vs 80% gate) and fix CI runner so 'pnpm test -- --coverage' actually enables coverage (latent gate)"
+    },
+    "CHG-113": {
+      "id": "CHG-113",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-18T13:52:54+00:00",
+      "updated_at": "2026-08-18T13:52:54+00:00",
+      "touched_round": 106,
+      "commit": "5ecc53b",
+      "title": "Frontend admin series slice + verification/docs delivered"
+    },
+    "EV-091": {
+      "id": "EV-091",
+      "type": "evidence",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-18T13:52:54+00:00",
+      "updated_at": "2026-08-18T13:52:54+00:00",
+      "touched_round": 106,
+      "source": "5ecc53b",
+      "detail": "Backend 678 passed/8 skipped/92.92% cov; frontend 841 vitest + typecheck + lint + build green; series e2e 5/5 pass (admin create, admin post-assign round-trip, public ordered series, chip + in-series nav); docs updated",
+      "confidence": 1.0
+    },
+    "EV-092": {
+      "id": "EV-092",
+      "type": "evidence",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-18T13:55:07+00:00",
+      "updated_at": "2026-08-18T13:55:07+00:00",
+      "touched_round": 106,
+      "source": "ril",
+      "detail": "DEC-056 milestone complete: TASK-121/122/123 all resolved (CHG-111/112/113, EV-089/090/091). Post series feature delivered end-to-end: backend series model+migration+API, public /series pages + post chip + in-series nav, admin series management + post-editor assignment, e2e journey. Remaining tracked: ISS-102/TASK-124 pre-existing frontend coverage gate, ISS-097 e2e load-flake.",
+      "confidence": 1.0
     }
   },
   "edges": [
@@ -8663,6 +8698,12 @@
       "to": "COMP-002",
       "type": "located_in",
       "created_at": "2026-08-18T07:12:45+00:00"
+    },
+    {
+      "from": "CHG-113",
+      "to": "TASK-123",
+      "type": "implements",
+      "created_at": "2026-08-18T13:53:58+00:00"
     }
   ]
 }
