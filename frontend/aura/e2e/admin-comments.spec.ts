@@ -60,18 +60,20 @@ test.describe("Admin comment management", () => {
 	});
 
 	test("admin can filter comments by status", async ({ page }) => {
-		// Look for filter tabs/buttons. Multiple "a/button" elements can match
-		// the fuzzy text pattern (e.g. an "全部" button plus a link) — isVisible
-		// on a non-resolved locator is a strict-mode violation even when the
-		// list is non-empty, so count-first and click the first match.
-		const filterButtons = page.locator("button, a", {
-			hasText: /all|pending|approved|all comments|全部|待审核|已批准/i,
+		// Status filters are the "全部/待审核/已审核" (zh) / "All/Pending/Approved"
+		// (en) buttons in the filter bar. getByRole("button") keeps the label
+		// match from grabbing the status badge spans rendered on comment cards.
+		const pendingFilter = page.getByRole("button", {
+			name: /待审核|pending/i,
 		});
+		await pendingFilter.click();
 
-		if ((await filterButtons.count()) > 0) {
-			await filterButtons.first().click();
-			const table = page.locator("table, .comment-list");
-			await expect(table).toBeVisible({ timeout: 10000 });
-		}
+		// Comments render as cards in .space-y-3, not a table (the seeded DB has
+		// two pending comments: 王五 and spam_bot), so the filtered list stays
+		// visible and every card carries the "待审核/Pending" badge.
+		const list = page.locator(".space-y-3");
+		await expect(list).toBeVisible({ timeout: 10000 });
+		const badges = list.locator('span:has-text("待审核"), span:has-text("Pending")');
+		expect(await badges.count()).toBe(await list.locator("> div").count());
 	});
 });
