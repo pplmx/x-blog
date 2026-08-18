@@ -9,6 +9,7 @@ from app.cache import (
     categories_cache,
     clear_categories_cache,
     clear_posts_list_cache,
+    clear_series_cache,
     clear_tags_cache,
     tags_cache,
 )
@@ -175,6 +176,11 @@ def create_post(db: Session, post: schemas.PostCreate) -> models.Post:
         if not category:
             raise ValueError(f"Category with id {post.category_id} not found")
 
+    if post.series_id:
+        series = db.query(models.Series).filter(models.Series.id == post.series_id).first()
+        if not series:
+            raise ValueError(f"Series with id {post.series_id} not found")
+
     tags = []
     for tag_name in post.tags:
         tag = db.query(models.Tag).filter(models.Tag.name == tag_name).first()
@@ -193,6 +199,8 @@ def create_post(db: Session, post: schemas.PostCreate) -> models.Post:
         pinned=post.pinned,
         publish_at=post.publish_at,
         category_id=post.category_id,
+        series_id=post.series_id,
+        series_order=post.series_order,
         cover_image=post.cover_image,
     )
     db_post.tags = tags
@@ -224,6 +232,11 @@ def update_post(db: Session, post_id: int, post: schemas.PostUpdate) -> models.P
         category = db.query(models.Category).filter(models.Category.id == update_data["category_id"]).first()
         if not category:
             raise ValueError(f"Category with id {update_data['category_id']} not found")
+
+    if "series_id" in update_data and update_data["series_id"] is not None:
+        series = db.query(models.Series).filter(models.Series.id == update_data["series_id"]).first()
+        if not series:
+            raise ValueError(f"Series with id {update_data['series_id']} not found")
 
     if "tag_ids" in update_data:
         tag_id_list = update_data.pop("tag_ids")
@@ -843,3 +856,117 @@ def get_adjacent_posts(db: Session, post_id: int) -> tuple[models.Post | None, m
     previous = by_id.get(feed_ids[idx - 1]) if idx > 0 else None
     following = by_id.get(feed_ids[idx + 1]) if idx + 1 < len(feed_ids) else None
     return previous, following
+
+
+# --- Series (DEC-056, TASK-121) -------------------------------------------
+
+
+def get_series(db: Session, series_id: int) -> models.Series | None:
+    """Fetch a series by id."""
+    return db.query(models.Series).filter(models.Series.id == series_id).first()
+
+
+def get_series_by_slug(db: Session, slug: str) -> models.Series | None:
+    """Fetch a series by its unique, stable slug."""
+    return db.query(models.Series).filter(models.Series.slug == slug).first()
+
+
+def list_series(db: Session) -> list[models.Series]:
+    """All series, ordered by title for a stable, predictable admin/public list."""
+    return db.query(models.Series).order_by(models.Series.title).all()
+
+
+def count_visible_series_posts(db: Session, series_id: int) -> int:
+    """Number of publicly visible posts in a series (drafts/scheduled excluded)."""
+    now = utc_now_naive()
+    return (
+        db.query(models.Series.id)
+        .join(models.Post, models.Post.series_id == models.Series.id)
+        .filter(
+            models.Series.id == series_id,
+            models.Post.published.is_(True),
+            or_(models.Post.publish_at.is_(None), models.Post.publish_at <= now),
+        )
+        .count()
+    )
+
+
+def get_series_visible_posts(db: Session, series: models.Series) -> list[models.Post]:
+    """Ordered, publicly visible posts of a series (self-controlled order).
+
+    Order is ``series_order`` then ``id`` (see Series.posts relationship) so
+    equal orders resolve deterministically to insertion order. Drafts and
+    scheduled-future posts are excluded, mirroring the public post list filter.
+    """
+    now = utc_now_naive()
+    posts = (
+        db.query(models.Post)
+        .filter(
+            models.Post.series_id == series.id,
+            models.Post.published.is_(True),
+            or_(models.Post.publish_at.is_(None), models.Post.publish_at <= now),
+        )
+        .options(joinedload(models.Post.category), joinedload(models.Post.tags))
+        .order_by(models.Post.series_order, models.Post.id)
+        .all()
+    )
+    _populate_post_metrics(db, posts)
+    return posts
+
+
+def create_series(db: Session, data: schemas.SeriesCreate) -> models.Series:
+    """Create a series. Raises ValueError on a duplicate slug."""
+    db_series = models.Series(
+        title=data.title,
+        slug=data.slug,
+        description=data.description,
+    )
+    db.add(db_series)
+    try:
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        raise ValueError(f"Series with slug '{data.slug}' already exists")
+    db.refresh(db_series)
+    clear_series_cache()
+    return db_series
+
+
+def update_series(db: Session, series_id: int, data: schemas.SeriesUpdate) -> models.Series | None:
+    """Update a series (title/slug/description). None if the series is missing."""
+    db_series = get_series(db, series_id)
+    if not db_series:
+        return None
+    for field, value in data.model_dump(exclude_unset=True).items():
+        setattr(db_series, field, value)
+    try:
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        raise ValueError(f"Series with slug '{data.slug}' already exists")
+    db.refresh(db_series)
+    clear_series_cache()
+    # Series identity is embedded in public post lists/feeds via SeriesBrief.
+    clear_posts_list_cache()
+    return db_series
+
+
+def delete_series(db: Session, series_id: int) -> bool:
+    """Delete a series, unlinking its posts (posts keep existing, series cleared)."""
+    db_series = get_series(db, series_id)
+    if not db_series:
+        return False
+    # Unlink posts first so the FK can't block the delete (no cascade on the
+    # posts.series_id relation — deleting a series must never delete posts).
+    db.query(models.Post).filter(models.Post.series_id == series_id).update(
+        {models.Post.series_id: None, models.Post.series_order: 0}
+    )
+    db.delete(db_series)
+    try:
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        raise ValueError("Cannot delete series: it has dependent records")
+    clear_series_cache()
+    clear_posts_list_cache()
+    return True

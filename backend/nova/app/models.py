@@ -60,8 +60,23 @@ class Post(Base):
     views: Mapped[int | None] = mapped_column(Integer, default=0, index=True)
     likes: Mapped[int | None] = mapped_column(Integer, default=0)
 
+    # No DB-level FOREIGN KEY on series_id, by design (DEC-056/TASK-121): the
+    # series migration is entirely additive per DEC-009, and SQLite's alembic
+    # dialect can't add an FK column to an existing table without batch-mode
+    # table recreation. Referential integrity is enforced at the ORM layer
+    # (crud validates series on create/update and unlinks posts on series
+    # delete), so the join below is declared explicitly instead.
+    series_id: Mapped[int | None] = mapped_column(Integer, index=True)
+    series_order: Mapped[int] = mapped_column(Integer, nullable=False, server_default="0", default=0)
+
     category: Mapped[Category | None] = relationship("Category", back_populates="posts")
     tags: Mapped[list[Tag]] = relationship("Tag", secondary=post_tags, back_populates="posts")
+    series: Mapped[Series | None] = relationship(
+        "Series",
+        back_populates="posts",
+        primaryjoin="Post.series_id == Series.id",
+        foreign_keys="Post.series_id",
+    )
     comments: Mapped[list[Comment]] = relationship(
         "Comment",
         back_populates="post",
@@ -126,3 +141,38 @@ class PushSubscription(Base):
     p256dh: Mapped[str] = mapped_column(String(200), nullable=False)
     auth: Mapped[str] = mapped_column(String(200), nullable=False)
     created_at: Mapped[datetime | None] = mapped_column(DateTime, default=lambda: datetime.now(UTC))
+
+
+class Series(Base):
+    """An ordered group of posts presented as a multi-part sequence (DEC-056).
+
+    Posts opt into a series via ``Post.series_id``; ``Post.series_order`` fixes
+    their position so the public series detail renders a deterministic order the
+    author controls (rather than feed order). ``slug`` is unique and follows the
+    same slug pattern as posts so series URLs stay stable and shareable.
+
+    (DEC-056, TASK-121)
+    """
+
+    __tablename__ = "series"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    title: Mapped[str] = mapped_column(String(200), nullable=False)
+    slug: Mapped[str] = mapped_column(String(200), unique=True, index=True, nullable=False)
+    description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime | None] = mapped_column(DateTime, default=lambda: datetime.now(UTC))
+    updated_at: Mapped[datetime | None] = mapped_column(
+        DateTime,
+        default=lambda: datetime.now(UTC),
+        onupdate=lambda: datetime.now(UTC),
+    )
+
+    # Ordered by series_order then id so equal orders fall back to insertion
+    # order deterministically (TASK-121).
+    posts: Mapped[list[Post]] = relationship(
+        "Post",
+        back_populates="series",
+        order_by="Post.series_order, Post.id",
+        primaryjoin="Post.series_id == Series.id",
+        foreign_keys="Post.series_id",
+    )

@@ -17,7 +17,7 @@ from app.database import engine
 from app.limiter import limiter
 from app.middleware import RequestLoggingMiddleware, get_logger, setup_logging
 from app.migrations import run_migrations
-from app.routers import admin, categories, comments, posts, push, search, tags, upload
+from app.routers import admin, categories, comments, posts, push, search, series, tags, upload
 from app.routers.export import router as export_router
 from app.routers.health import router as health_router
 from app.routers.rss import rss_router, seo_router
@@ -232,6 +232,7 @@ app.include_router(stats_router)
 app.include_router(posts.router)
 app.include_router(categories.router)
 app.include_router(tags.router)
+app.include_router(series.router)
 app.include_router(comments.router)
 app.include_router(search.router)
 app.include_router(admin.router)

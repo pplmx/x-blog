@@ -37,6 +37,13 @@ tags_cache: TTLCache[str, list[dict], float] = TTLCache(  # type: ignore[reportA
 posts_list_cache: TTLCache[tuple, dict, float] = TTLCache(  # type: ignore[reportAssignmentType]
     maxsize=256, ttl=300
 )
+# Serialized series detail payloads keyed by series slug. Building the detail
+# costs a post-list query + per-post reading_time (markdown), so cache it; any
+# post write (publish/unpublish/reorder/delete) and any series write must
+# invalidate it (wired into clear_posts_list_cache and clear_series_cache).
+series_cache: TTLCache[str, dict, float] = TTLCache(  # type: ignore[reportAssignmentType]
+    maxsize=64, ttl=300
+)
 # Rendered RSS/Atom/sitemap bodies keyed by feed name ("feed", "atom", "sitemap").
 # Rendering markdown per request is expensive (full DB query + sanitizer), so
 # cache the serialized XML and invalidate on any post write. A 5-minute TTL is
@@ -54,6 +61,7 @@ def cache_clear():
     tags_cache.clear()
     posts_list_cache.clear()
     feed_cache.clear()
+    series_cache.clear()
     logger.info("cache_cleared")
 
 
@@ -74,10 +82,19 @@ def clear_posts_list_cache():
 
     Also clears the rendered RSS/Atom/sitemap feeds — they derive from the same
     published post set (and content), so a write must invalidate them too.
+    And the series detail cache: a post write can change which posts appear in
+    a series and their order (TASK-121).
     """
     posts_list_cache.clear()
     feed_cache.clear()
+    series_cache.clear()
     logger.info("posts_list_cache_cleared")
+
+
+def clear_series_cache():
+    """Clear the series cache (invalidated on any series write)."""
+    series_cache.clear()
+    logger.info("series_cache_cleared")
 
 
 def get_cache_info() -> dict[str, dict[str, int | float]]:

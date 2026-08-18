@@ -63,6 +63,49 @@ class Category(CategoryBase):
     model_config = ConfigDict(from_attributes=True)
 
 
+class SeriesBrief(BaseModel):
+    """Lightweight series reference embedded in post payloads (id + identity).
+
+    Standalone (not a Series serialization) so a Post payload doesn't drag in
+    the full series/post-list recursion (TASK-121).
+    """
+
+    id: int
+    title: str
+    slug: str
+    model_config = ConfigDict(from_attributes=True)
+
+
+class SeriesPublic(BaseModel):
+    """Public series summary (list view): identity + visible post count."""
+
+    id: int
+    title: str
+    slug: str
+    description: str | None = None
+    post_count: int = 0
+    model_config = ConfigDict(from_attributes=True)
+
+
+class SeriesDetail(SeriesPublic):
+    """Public series detail: the series plus its ordered, visible posts."""
+
+    posts: list[PostList] = []
+
+
+class SeriesCreate(BaseModel):
+    # max_length 200 matches the Series VARCHAR(200) title/slug columns.
+    title: str = Field(min_length=1, max_length=200)
+    slug: str = Field(max_length=200, pattern=SLUG_PATTERN.pattern)
+    description: str | None = Field(default=None, max_length=2000)
+
+
+class SeriesUpdate(BaseModel):
+    title: str | None = Field(default=None, min_length=1, max_length=200)
+    slug: str | None = Field(default=None, max_length=200, pattern=SLUG_PATTERN.pattern)
+    description: str | None = None
+
+
 class PostBase(BaseModel):
     # max_length values match the Post VARCHAR columns (title/slug 200,
     # excerpt/cover_image 500) so PostgreSQL rejects over-length input with
@@ -75,6 +118,8 @@ class PostBase(BaseModel):
     pinned: bool = False
     publish_at: datetime | None = None
     category_id: int | None = None
+    series_id: int | None = None
+    series_order: int = 0
     cover_image: str | None = Field(default=None, max_length=500)
 
 
@@ -98,6 +143,10 @@ class PostUpdate(BaseModel):
     pinned: bool | None = None
     publish_at: datetime | None = None
     category_id: int | None = None
+    # series_id: int = assign/change, null = clear the series membership
+    # (mirrors category_id semantics under model_dump(exclude_unset=True)).
+    series_id: int | None = None
+    series_order: int | None = None
     cover_image: str | None = Field(default=None, max_length=500)
     tag_ids: list[int] | None = None
 
@@ -115,6 +164,7 @@ class Post(PostBase):
     likes: int = 0
     category: Category | None = None
     tags: list[Tag] = []
+    series: SeriesBrief | None = None
     model_config = ConfigDict(from_attributes=True)
 
 
@@ -162,6 +212,8 @@ class PostList(BaseModel):
     cover_image: str | None = None
     category: Category | None = None
     tags: list[Tag] = []
+    series: SeriesBrief | None = None
+    series_order: int = 0
     model_config = ConfigDict(from_attributes=True)
 
 
