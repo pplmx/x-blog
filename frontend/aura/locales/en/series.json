@@ -1,0 +1,16 @@
+{
+	"series": {
+		"all": "All Series",
+		"allDesc": "Browse all post series on X-Blog",
+		"countLabel": "{count} series in total",
+		"empty": "No series yet",
+		"notFound": "Series not found",
+		"backToAll": "Back to all series",
+		"partLabel": "Part {position} of {count}",
+		"serialLabel": "In this series",
+		"previousPart": "Previous part",
+		"nextPart": "Next part",
+		"postsEmpty": "No published posts yet",
+		"views": "{count} views"
+	}
+}

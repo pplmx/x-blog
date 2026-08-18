@@ -1,0 +1,16 @@
+{
+	"series": {
+		"all": "全部系列",
+		"allDesc": "浏览 X-Blog 中的所有文章系列",
+		"countLabel": "共 {count} 个系列",
+		"empty": "暂无系列",
+		"notFound": "系列不存在",
+		"backToAll": "返回全部系列",
+		"partLabel": "第 {position} 篇 / 共 {count} 篇",
+		"serialLabel": "本系列文章",
+		"previousPart": "上一篇",
+		"nextPart": "下一篇",
+		"postsEmpty": "暂无已发布文章",
+		"views": "{count} 次阅读"
+	}
+}

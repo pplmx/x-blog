@@ -14,6 +14,13 @@ export interface PaginationInfo {
 	total_pages: number;
 }
 
+/** Lightweight series reference embedded in a Post payload (DEC-056). */
+export interface SeriesBrief {
+	id: number;
+	title: string;
+	slug: string;
+}
+
 export interface PostList {
 	id: number;
 	title: string;
@@ -30,6 +37,10 @@ export interface PostList {
 	cover_image: string | null;
 	category: { id: number; name: string } | null;
 	tags: { id: number; name: string }[];
+	/** Series this post belongs to, if any (DEC-056). */
+	series: SeriesBrief | null;
+	/** Position within the series (author-controlled order, DEC-056). */
+	series_order: number;
 }
 
 export interface PostListResponse {
@@ -228,6 +239,51 @@ export async function useAdjacentPosts(postId: number | (() => number | null | u
 				}) as Parameters<typeof useFetch>[0])
 			: `/api/posts/${postId}/adjacent`;
 	return useApi<AdjacentPosts>(url);
+}
+
+/**
+ * Public series lists/detail from the backend /api/series endpoints.
+ * A series is an author-ordered group of posts (DEC-056) — see SeriesBrief
+ * on PostList for the embedded reference used on post/list payloads.
+ */
+
+/** Public series summary (list view) — identity plus visible post count. */
+export interface SeriesPublic {
+	id: number;
+	title: string;
+	slug: string;
+	description: string | null;
+	post_count: number;
+}
+
+/** Public series detail — the series plus its ordered, visible posts. */
+export interface SeriesDetail extends SeriesPublic {
+	posts: PostList[];
+}
+
+/**
+ * Fetch all public series (ordered by title) with their visible post counts.
+ */
+export async function useSeries() {
+	return useApi<SeriesPublic[]>("/api/series");
+}
+
+/**
+ * Fetch a single public series by slug, including its ordered visible posts.
+ * Accepts a getter (reactive source) so useFetch re-runs on SPA navigation
+ * between series (mirrors usePost for posts, TASK-090/ISS-073). A getter that
+ * returns null/undefined (e.g. a post with no series) makes useFetch skip the
+ * request (mirrors useRelatedPosts).
+ */
+export async function useSeriesBySlug(slug: string | (() => string | null | undefined)) {
+	const url =
+		typeof slug === "function"
+			? ((() => {
+					const s = slug();
+					return s ? `/api/series/${s}` : null;
+				}) as Parameters<typeof useFetch>[0])
+			: `/api/series/${slug}`;
+	return useApi<SeriesDetail>(url);
 }
 
 /**

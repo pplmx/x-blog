@@ -6,6 +6,7 @@ import {
 	usePostLike,
 	usePostView,
 	useRelatedPosts,
+	useSeriesBySlug,
 } from "~~/composables/useApi";
 import { coverImageSrc } from "~~/composables/useCoverImage";
 import { markdownToHtml } from "~~/composables/useMarkdown";
@@ -40,6 +41,24 @@ const coverImageUrl = computed(() => {
 const postId = computed(() => post.value?.id);
 const { data: relatedPosts } = await useRelatedPosts(() => postId.value);
 const { data: adjacent } = await useAdjacentPosts(() => postId.value);
+
+// In-series navigation (DEC-056): when this post belongs to a series, load the
+// series' ordered posts and locate this post so we can render a series chip and
+// next/previous-in-series links. The getter returns null when the post has no
+// series, which makes useFetch skip the request entirely.
+const { data: seriesDetail } = await useSeriesBySlug(() => post.value?.series?.slug ?? null);
+const seriesNav = computed(() => {
+	if (!post.value?.series || !seriesDetail.value?.posts) return null;
+	const idx = seriesDetail.value.posts.findIndex((p) => p.id === post.value?.id);
+	if (idx === -1) return null;
+	return {
+		series: post.value.series,
+		position: idx + 1,
+		total: seriesDetail.value.posts.length,
+		previous: idx > 0 ? seriesDetail.value.posts[idx - 1] : null,
+		next: idx < seriesDetail.value.posts.length - 1 ? seriesDetail.value.posts[idx + 1] : null,
+	};
+});
 
 // Apply post SEO; re-run when the post changes via SPA navigation so the
 // title/og:image/canonical/JSON-LD follow the new slug (TASK-090, ISS-073).
@@ -231,6 +250,15 @@ const readingTime = computed(() => {
               <Icon icon="lucide:folder" class="w-3 h-3" />
               {{ post.category.name }}
             </NuxtLink>
+            <NuxtLink
+              v-if="post.series"
+              :to="`/series/${post.series.slug}`"
+              class="inline-flex items-center gap-1 px-3 py-1 bg-gradient-to-r from-indigo-50 dark:from-indigo-900/30 to-purple-50 dark:to-purple-900/30 text-indigo-600 dark:text-indigo-400 rounded-full text-xs font-medium hover:from-indigo-100 dark:hover:from-indigo-900/50 hover:to-purple-100 dark:hover:to-purple-900/50 transition-colors"
+            >
+              <Icon icon="lucide:layers" class="w-3 h-3" />
+              <span v-if="seriesNav">{{ t('series.partLabel', { position: seriesNav.position, count: seriesNav.total }) }}</span>
+              <span v-else>{{ post.series.title }}</span>
+            </NuxtLink>
             <span class="text-xs text-gray-400 flex items-center gap-1">
               <Icon icon="lucide:clock" class="w-3 h-3" />
               {{ t('post.readingTime', { count: readingTime }) }}
@@ -367,6 +395,55 @@ const readingTime = computed(() => {
               {{ adjacent.next.title }}
             </h3>
           </NuxtLink>
+        </nav>
+
+        <!-- In-series navigation (DEC-056): prev/next within the series order,
+             shown only when the post belongs to a series with a resolved position. -->
+        <nav
+          v-if="seriesNav"
+          class="mt-12 pt-8 border-t border-gray-100 dark:border-gray-800"
+          :aria-label="t('series.serialLabel')"
+        >
+          <div class="flex items-center justify-between gap-4 mb-4">
+            <NuxtLink
+              :to="`/series/${seriesNav.series.slug}`"
+              class="inline-flex items-center gap-1.5 text-sm font-medium text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 transition-colors"
+            >
+              <Icon icon="lucide:layers" class="w-4 h-4" />
+              <span>{{ t('series.serialLabel') }} — {{ seriesNav.series.title }}</span>
+            </NuxtLink>
+            <span class="text-xs text-gray-400 shrink-0">
+              {{ t('series.partLabel', { position: seriesNav.position, count: seriesNav.total }) }}
+            </span>
+          </div>
+          <div class="grid gap-4 sm:grid-cols-2">
+            <NuxtLink
+              v-if="seriesNav.previous"
+              :to="`/posts/${seriesNav.previous.slug}`"
+              class="group p-5 rounded-2xl border border-gray-100 dark:border-gray-800 hover:border-indigo-200 dark:hover:border-indigo-800 hover:shadow-lg transition-all duration-200"
+            >
+              <span class="inline-flex items-center gap-1.5 text-xs text-gray-400 group-hover:text-indigo-500 transition-colors">
+                <Icon icon="lucide:arrow-left" class="w-3.5 h-3.5" />
+                {{ t('series.previousPart') }}
+              </span>
+              <h3 class="mt-2 font-semibold text-gray-900 dark:text-gray-100 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors line-clamp-2">
+                {{ seriesNav.previous.title }}
+              </h3>
+            </NuxtLink>
+            <NuxtLink
+              v-if="seriesNav.next"
+              :to="`/posts/${seriesNav.next.slug}`"
+              class="group p-5 rounded-2xl border border-gray-100 dark:border-gray-800 hover:border-indigo-200 dark:hover:border-indigo-800 hover:shadow-lg transition-all duration-200 sm:text-right"
+            >
+              <span class="inline-flex items-center gap-1.5 text-xs text-gray-400 group-hover:text-indigo-500 transition-colors sm:flex-row-reverse">
+                {{ t('series.nextPart') }}
+                <Icon icon="lucide:arrow-right" class="w-3.5 h-3.5" />
+              </span>
+              <h3 class="mt-2 font-semibold text-gray-900 dark:text-gray-100 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors line-clamp-2">
+                {{ seriesNav.next.title }}
+              </h3>
+            </NuxtLink>
+          </div>
         </nav>
       </article>
     </div>

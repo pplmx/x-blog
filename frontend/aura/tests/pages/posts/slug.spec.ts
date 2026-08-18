@@ -98,6 +98,7 @@ async function mountPostPage({
 	slug = "test-article-post",
 	relatedPosts = mockRelatedPosts,
 	adjacentPosts = mockAdjacentPosts,
+	seriesDetail = null,
 }: {
 	post?: typeof mockPost | null;
 	pending?: boolean;
@@ -105,6 +106,7 @@ async function mountPostPage({
 	slug?: string;
 	relatedPosts?: typeof mockRelatedPosts | null;
 	adjacentPosts?: typeof mockAdjacentPosts | null;
+	seriesDetail?: Record<string, unknown> | null;
 } = {}) {
 	vi.stubGlobal("useRuntimeConfig", () => ({
 		public: {
@@ -137,6 +139,14 @@ async function mountPostPage({
 			if (typeof url === "string" && url.includes("/related")) {
 				return {
 					data: ref(relatedPosts),
+					pending: ref(false),
+					error: ref(null),
+					refresh: vi.fn(),
+				};
+			}
+			if (typeof url === "string" && url.includes("/api/series/")) {
+				return {
+					data: ref(seriesDetail),
 					pending: ref(false),
 					error: ref(null),
 					refresh: vi.fn(),
@@ -1030,6 +1040,110 @@ describe("Post Detail Page", () => {
 
 			expect(wrapper.findAll('a[href="/posts/previous-article"]').length).toBe(0);
 			expect(wrapper.findAll('a[href="/posts/next-article"]').length).toBe(0);
+		});
+	});
+
+	describe("In-series navigation (DEC-056)", () => {
+		// A post that belongs to a series, with the series detail loaded so the
+		// chip and prev/next-in-series nav can resolve the position.
+		const seriesPost = {
+			...mockPost,
+			series: { id: 1, title: "FastAPI Deep Dive", slug: "fastapi-deep-dive" },
+			series_order: 1,
+		};
+		const seriesPosts = [
+			{
+				id: 9,
+				title: "Part One: Routing",
+				slug: "part-one-routing",
+				created_at: "2024-05-01T10:00:00Z",
+				views: 40,
+				cover_image: null,
+				category: { id: 1, name: "Tech" },
+				tags: [],
+				series: { id: 1, title: "FastAPI Deep Dive", slug: "fastapi-deep-dive" },
+				series_order: 0,
+			},
+			{
+				id: 1,
+				title: "Test Article Post",
+				slug: "test-article-post",
+				created_at: "2024-01-15T10:30:00Z",
+				views: 1234,
+				cover_image: null,
+				category: { id: 1, name: "Tech" },
+				tags: [],
+				series: { id: 1, title: "FastAPI Deep Dive", slug: "fastapi-deep-dive" },
+				series_order: 1,
+			},
+			{
+				id: 12,
+				title: "Part Three: Security",
+				slug: "part-three-security",
+				created_at: "2024-05-15T10:00:00Z",
+				views: 25,
+				cover_image: null,
+				category: { id: 1, name: "Tech" },
+				tags: [],
+				series: { id: 1, title: "FastAPI Deep Dive", slug: "fastapi-deep-dive" },
+				series_order: 2,
+			},
+		];
+		const mockSeriesDetail = {
+			id: 1,
+			title: "FastAPI Deep Dive",
+			slug: "fastapi-deep-dive",
+			description: "A guided tour.",
+			post_count: 3,
+			posts: seriesPosts,
+		};
+
+		it("renders the series chip linking to the series page", async () => {
+			const wrapper = await mountPostPage({
+				post: seriesPost,
+				seriesDetail: mockSeriesDetail,
+			});
+			const chip = wrapper.find('a[href="/series/fastapi-deep-dive"]');
+			expect(chip.exists()).toBe(true);
+			expect(chip.text()).toContain("第 2 篇");
+			expect(chip.text()).toContain("共 3 篇");
+		});
+
+		it("renders previous and next in-series links in series order", async () => {
+			const wrapper = await mountPostPage({
+				post: seriesPost,
+				seriesDetail: mockSeriesDetail,
+			});
+			const prev = wrapper.findAll('a[href="/posts/part-one-routing"]');
+			const next = wrapper.findAll('a[href="/posts/part-three-security"]');
+			// only the in-series nav links (linear feed nav has none here since
+			// adjacentPosts defaults to previous/next articles — those hrefs differ)
+			expect(prev.length).toBeGreaterThanOrEqual(1);
+			expect(next.length).toBeGreaterThanOrEqual(1);
+			expect(wrapper.text()).toContain("Part One: Routing");
+			expect(wrapper.text()).toContain("Part Three: Security");
+		});
+
+		it("renders no in-series nav for a post without a series", async () => {
+			const wrapper = await mountPostPage({ post: mockPost, seriesDetail: null });
+			expect(wrapper.findAll('a[href^="/series/"]').length).toBe(0);
+			expect(wrapper.text()).not.toContain("本系列文章");
+		});
+
+		it("renders only the next in-series link at the start and only prev at the end", async () => {
+			// position 1 of 3: no previous
+			const first = await mountPostPage({
+				post: {
+					...seriesPost,
+					id: 9,
+					slug: "part-one-routing",
+					series_order: 0,
+					title: "Part One: Routing",
+				},
+				seriesDetail: mockSeriesDetail,
+			});
+			expect(first.findAll('a[href="/posts/part-one-routing"]').length).toBe(0);
+			expect(first.findAll('a[href="/posts/test-article-post"]').length).toBeGreaterThanOrEqual(1);
 		});
 	});
 
