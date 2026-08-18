@@ -180,7 +180,11 @@ def admin_list_posts(
     total = query.count()
 
     posts = (
-        query.options(joinedload(models.Post.category), joinedload(models.Post.tags))
+        query.options(
+            joinedload(models.Post.category),
+            joinedload(models.Post.tags),
+            joinedload(models.Post.series),
+        )
         .order_by(models.Post.pinned.desc(), models.Post.created_at.desc())
         .offset(skip)
         .limit(limit)
@@ -217,6 +221,10 @@ def admin_list_posts(
                 "category_id": p.category_id,
                 "comment_count": comment_counts.get(p.id, 0),
                 "tags": [t.name for t in p.tags],
+                "series_id": p.series_id,
+                "series_order": p.series_order,
+                "series_title": p.series.title if p.series else None,
+                "series_slug": p.series.slug if p.series else None,
                 "created_at": p.created_at.isoformat() if p.created_at else None,
                 "updated_at": p.updated_at.isoformat() if p.updated_at else None,
             }
@@ -238,7 +246,11 @@ def admin_get_post(
 ):
     post = (
         db.query(models.Post)
-        .options(joinedload(models.Post.category), joinedload(models.Post.tags))
+        .options(
+            joinedload(models.Post.category),
+            joinedload(models.Post.tags),
+            joinedload(models.Post.series),
+        )
         .filter(models.Post.id == post_id)
         .first()
     )
@@ -255,6 +267,10 @@ def admin_get_post(
         "publish_at": post.publish_at.isoformat() if post.publish_at else None,
         "cover_image": post.cover_image,
         "category_id": post.category_id,
+        "series_id": post.series_id,
+        "series_order": post.series_order,
+        "series_title": post.series.title if post.series else None,
+        "series_slug": post.series.slug if post.series else None,
         "tag_ids": [t.id for t in post.tags],
         "created_at": post.created_at.isoformat() if post.created_at else None,
         "updated_at": post.updated_at.isoformat() if post.updated_at else None,

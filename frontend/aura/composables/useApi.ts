@@ -378,6 +378,11 @@ export interface AdminPost {
 	category_id: number | null;
 	comment_count: number;
 	tags: string[];
+	/** Series membership (DEC-056/TASK-123) — null when the post is standalone. */
+	series_id: number | null;
+	series_order: number;
+	series_title: string | null;
+	series_slug: string | null;
 	created_at: string;
 	updated_at: string;
 }
@@ -402,6 +407,11 @@ export interface AdminPostDetail {
 	publish_at: string | null;
 	cover_image: string | null;
 	category_id: number | null;
+	/** Series membership (DEC-056/TASK-123) — null when the post is standalone. */
+	series_id: number | null;
+	series_order: number;
+	series_title: string | null;
+	series_slug: string | null;
 	tag_ids: number[];
 	created_at: string;
 	updated_at: string;
@@ -418,6 +428,9 @@ export interface PostCreate {
 	category_id?: number;
 	tag_ids?: number[];
 	cover_image?: string;
+	/** Series membership (DEC-056/TASK-123); undefined = standalone post. */
+	series_id?: number;
+	series_order?: number;
 }
 
 export interface AdminComment {
@@ -589,6 +602,68 @@ export async function deleteAdminTag(id: number) {
 	const config = useRuntimeConfig();
 	const apiUrl = config.public.apiUrl;
 	return useFetch(`${apiUrl}/api/admin/tags/${id}`, {
+		method: "DELETE",
+		headers: getAuthHeaders(),
+	});
+}
+
+// ============================================================================
+// Admin series (DEC-056/TASK-123)
+//
+// Series write endpoints live under /api/series (POST/PUT/DELETE are admin-
+// gated with get_current_admin on the backend), and the list endpoint is the
+// same one the public /series index uses. Admin helpers reuse those paths with
+// auth headers so a manager can create/rename/reorder/delete series.
+// ============================================================================
+
+export interface AdminSeries extends SeriesPublic {
+	description: string | null;
+	post_count: number;
+}
+
+export interface AdminSeriesInput {
+	title: string;
+	slug: string;
+	description: string | null;
+}
+
+/** Fetch all series (admin view — same payload as the public list). */
+export async function fetchAdminSeries() {
+	const config = useRuntimeConfig();
+	const apiUrl = config.public.apiUrl;
+	return useFetch<AdminSeries[]>(`${apiUrl}/api/series`, {
+		headers: getAuthHeaders(),
+		server: false,
+	});
+}
+
+/** Create a series (auth required). */
+export async function createAdminSeries(data: AdminSeriesInput) {
+	const config = useRuntimeConfig();
+	const apiUrl = config.public.apiUrl;
+	return useFetch<AdminSeries>(`${apiUrl}/api/series`, {
+		method: "POST",
+		headers: { "Content-Type": "application/json", ...getAuthHeaders() },
+		body: data,
+	});
+}
+
+/** Update a series (auth required). */
+export async function updateAdminSeries(id: number, data: Partial<AdminSeriesInput>) {
+	const config = useRuntimeConfig();
+	const apiUrl = config.public.apiUrl;
+	return useFetch<AdminSeries>(`${apiUrl}/api/series/${id}`, {
+		method: "PUT",
+		headers: { "Content-Type": "application/json", ...getAuthHeaders() },
+		body: data,
+	});
+}
+
+/** Delete a series — unlinks its posts, which keep existing (auth required). */
+export async function deleteAdminSeries(id: number) {
+	const config = useRuntimeConfig();
+	const apiUrl = config.public.apiUrl;
+	return useFetch(`${apiUrl}/api/series/${id}`, {
 		method: "DELETE",
 		headers: getAuthHeaders(),
 	});

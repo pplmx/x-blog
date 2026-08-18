@@ -1,0 +1,23 @@
+{
+	"admin.series": {
+		"seoTitle": "系列管理 - X-Blog",
+		"title": "系列管理",
+		"summary": "共 {n} 个系列",
+		"createTitle": "新建系列",
+		"titleLabel": "系列标题",
+		"titlePlaceholder": "例如：FastAPI 深入浅出",
+		"slugLabel": "Slug",
+		"slugPlaceholder": "fastapi-deep-dive",
+		"descriptionLabel": "描述",
+		"descriptionPlaceholder": "这个系列是关于什么的？",
+		"create": "创建",
+		"confirm": "确认",
+		"edit": "编辑",
+		"delete": "删除",
+		"confirmDelete": "删除该系列？其文章会被解除关联，但文章不会被删除。",
+		"empty": "暂无系列",
+		"operationFailed": "操作失败，请重试",
+		"loading": "加载中...",
+		"postsLabel": "{count} 篇文章"
+	}
+}

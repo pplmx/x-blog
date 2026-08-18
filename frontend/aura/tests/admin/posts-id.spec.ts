@@ -20,12 +20,14 @@ const {
 	mockFetchAdminCategories,
 	mockFetchAdminTags,
 	mockFetchAdminPost,
+	mockFetchAdminSeries,
 	mockCreateAdminPost,
 	mockUpdateAdminPost,
 } = vi.hoisted(() => ({
 	mockFetchAdminCategories: vi.fn(),
 	mockFetchAdminTags: vi.fn(),
 	mockFetchAdminPost: vi.fn(),
+	mockFetchAdminSeries: vi.fn(),
 	mockCreateAdminPost: vi.fn(),
 	mockUpdateAdminPost: vi.fn(),
 }));
@@ -34,6 +36,7 @@ vi.mock("~/composables/useApi", () => ({
 	fetchAdminCategories: mockFetchAdminCategories,
 	fetchAdminTags: mockFetchAdminTags,
 	fetchAdminPost: mockFetchAdminPost,
+	fetchAdminSeries: mockFetchAdminSeries,
 	createAdminPost: mockCreateAdminPost,
 	updateAdminPost: mockUpdateAdminPost,
 }));
@@ -74,9 +77,25 @@ const mockExistingPost = {
 	cover_image: null,
 	category_id: 1,
 	tag_ids: [1],
+	// series fields (DEC-056/TASK-123)
+	series_id: 2,
+	series_order: 3,
+	series_title: "Deep Dive",
+	series_slug: "deep-dive",
 	created_at: "2024-01-01T00:00:00Z",
 	updated_at: "2024-01-01T00:00:00Z",
 };
+
+const mockSeries = [
+	{
+		id: 1,
+		title: "Nuxt 3 Essentials",
+		slug: "nuxt-3-essentials",
+		description: null,
+		post_count: 1,
+	},
+	{ id: 2, title: "Deep Dive", slug: "deep-dive", description: null, post_count: 2 },
+];
 
 function setupRoute(id = "new") {
 	vi.stubGlobal("useRoute", () => ({
@@ -100,6 +119,12 @@ function setupMocks() {
 	});
 	mockFetchAdminPost.mockReturnValue({
 		data: ref(mockExistingPost),
+		pending: ref(false),
+		error: ref(null),
+		refresh: vi.fn(),
+	});
+	mockFetchAdminSeries.mockReturnValue({
+		data: ref(mockSeries),
 		pending: ref(false),
 		error: ref(null),
 		refresh: vi.fn(),
@@ -466,6 +491,94 @@ describe("Admin Post Editor Page", () => {
 			const PostEditor = await loadPage();
 			const wrapper = await mountWithSuspense(PostEditor);
 			expect(wrapper.text()).toContain("封面图 URL");
+		});
+	});
+
+	describe("Series assignment (DEC-056, TASK-123)", () => {
+		beforeEach(() => {
+			setupMocks();
+		});
+
+		it("renders the series selector with available series", async () => {
+			setupRoute("new");
+			const PostEditor = await loadPage();
+			const wrapper = await mountWithSuspense(PostEditor);
+
+			expect(wrapper.text()).toContain("系列");
+			expect(wrapper.text()).toContain("无系列");
+			expect(wrapper.text()).toContain("Deep Dive");
+			expect(wrapper.text()).toContain("Nuxt 3 Essentials");
+		});
+
+		it("populates the series dropdown from an assigned post (edit mode)", async () => {
+			setupRoute("1");
+			const PostEditor = await loadPage();
+			const wrapper = await mountWithSuspense(PostEditor);
+
+			// mockExistingPost has series_id 2 (Deep Dive) — the order input
+			// should be enabled and carry the stored position.
+			const selects = wrapper.findAll("select");
+			const seriesSelect = selects[selects.length - 1];
+			expect((seriesSelect.element as HTMLSelectElement).value).toBe("2");
+			const orderInput = wrapper.find('input[type="number"]');
+			expect((orderInput.element as HTMLInputElement).value).toBe("3");
+		});
+
+		it("submits series_id and series_order on create", async () => {
+			setupRoute("new");
+			const PostEditor = await loadPage();
+			const wrapper = await mountWithSuspense(PostEditor);
+
+			const titleInput = wrapper.find('input[type="text"]');
+			await titleInput.setValue("Series Member Post");
+			const slugInput = wrapper.findAll('input[type="text"]')[1];
+			await slugInput.setValue("series-member-post");
+			const contentTextarea = wrapper.find("textarea");
+			await contentTextarea.setValue("# Content");
+
+			// pick Deep Dive (id 2) and set order 4
+			const selects = wrapper.findAll("select");
+			const seriesSelect = selects[selects.length - 1];
+			await seriesSelect.setValue("2");
+			const orderInput = wrapper.find('input[type="number"]');
+			await orderInput.setValue("4");
+			await flushPromises();
+
+			const form = wrapper.find("form");
+			await form.trigger("submit.prevent");
+			await flushPromises();
+
+			expect(mockCreateAdminPost).toHaveBeenCalled();
+			// last call — earlier tests in the file already submitted creates
+			const [payload] = mockCreateAdminPost.mock.calls.at(-1) as any[];
+			expect(payload.series_id).toBe(2);
+			expect(payload.series_order).toBe(4);
+		});
+
+		it("clears series_order when the series membership is removed", async () => {
+			setupRoute("1");
+			const PostEditor = await loadPage();
+			const wrapper = await mountWithSuspense(PostEditor);
+
+			// assign order 3, then clear the series back to "无系列" ('' value)
+			const selects = wrapper.findAll("select");
+			const seriesSelect = selects[selects.length - 1];
+			await seriesSelect.setValue("");
+			await flushPromises();
+
+			const orderInput = wrapper.find('input[type="number"]');
+			expect((orderInput.element as HTMLInputElement).value).toBe("0");
+
+			const form = wrapper.find("form");
+			await form.trigger("submit.prevent");
+			await flushPromises();
+
+			expect(mockUpdateAdminPost).toHaveBeenCalled();
+			// last call — earlier tests in the file already submitted updates
+			const [id, payload] = mockUpdateAdminPost.mock.calls.at(-1) as any[];
+			expect(id).toBe(1);
+			expect(payload.series_id).toBeUndefined();
+			expect(payload.series_order).toBe(0);
 		});
 	});
 

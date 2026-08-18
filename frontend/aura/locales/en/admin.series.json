@@ -1,0 +1,23 @@
+{
+	"admin.series": {
+		"seoTitle": "Series - X-Blog",
+		"title": "Manage Series",
+		"summary": "{n} series total",
+		"createTitle": "New Series",
+		"titleLabel": "Series title",
+		"titlePlaceholder": "e.g. FastAPI Deep Dive",
+		"slugLabel": "Slug",
+		"slugPlaceholder": "fastapi-deep-dive",
+		"descriptionLabel": "Description",
+		"descriptionPlaceholder": "What is this series about?",
+		"create": "Create",
+		"confirm": "Confirm",
+		"edit": "Edit",
+		"delete": "Delete",
+		"confirmDelete": "Delete this series? Its posts will be unlinked but keep existing.",
+		"empty": "No series yet",
+		"operationFailed": "Operation failed, please retry",
+		"loading": "Loading...",
+		"postsLabel": "{count} posts"
+	}
+}

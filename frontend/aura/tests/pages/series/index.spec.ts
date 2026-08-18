@@ -67,7 +67,7 @@ async function mountSeriesPage({
 		}),
 	);
 
-	const { default: SeriesPage } = await import("@/pages/series.vue");
+	const { default: SeriesPage } = await import("@/pages/series/index.vue");
 
 	const SuspenseWrapper: any = {
 		components: { SeriesPage },

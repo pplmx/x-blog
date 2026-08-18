@@ -27,6 +27,7 @@ A modern full-stack blog application built with FastAPI + Nuxt
 - 📊 **Reading Analytics** - View counts, like counts, reading progress
 - 💬 **Comments** - Nested comment support with replies
 - 🏷️ **Tags & Categories** - Organize posts with tags and categories
+- 📚 **Series** - Group posts into ordered multi-part sequences with in-series prev/next navigation
 - 🎯 **SEO Optimized** - Open Graph, JSON-LD structured data
 - ⬆️ **Pinned Posts** - Pin important posts to top
 - 📤 **Data Export** - Export posts/comments as CSV
@@ -118,6 +119,18 @@ See [docs/deployment.md](./docs/deployment.md) for detailed deployment guide.
 | DELETE | `/api/posts/{id}`         | Delete post            |
 | POST   | `/api/posts/{id}/like`    | Like a post            |
 | POST   | `/api/posts/{id}/view`    | Increment view count   |
+
+### Series
+
+| Method | Endpoint            | Description                              |
+| ------ | ------------------- | ---------------------------------------- |
+| GET    | `/api/series`       | List public series (with post counts)    |
+| GET    | `/api/series/{slug}`| Series detail with ordered visible posts |
+| POST   | `/api/series`       | Create series (admin)                    |
+| PUT    | `/api/series/{id}`  | Update series (admin)                    |
+| DELETE | `/api/series/{id}`  | Delete series, unlinks posts (admin)     |
+
+A series groups posts into an author-ordered sequence (`Post.series_id` + `Post.series_order`); the public series detail renders them in that order and series posts show a chip plus prev/next-in-series navigation.
 
 ### Comments (Moderated)
 

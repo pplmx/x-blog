@@ -5,6 +5,7 @@ import {
 	createAdminPost,
 	fetchAdminCategories,
 	fetchAdminPost,
+	fetchAdminSeries,
 	fetchAdminTags,
 	notifyPushSubscribers,
 	updateAdminPost,
@@ -31,6 +32,8 @@ const formData = ref<Partial<PostCreate>>({
 	category_id: undefined,
 	tag_ids: [],
 	cover_image: undefined,
+	series_id: undefined,
+	series_order: 0,
 });
 const isSubmitting = ref(false);
 const submitError = ref<string | null>(null);
@@ -49,10 +52,15 @@ function snapshot(): string {
 }
 const categories = ref<Array<{ id: number; name: string }>>([]);
 const tags = ref<Array<{ id: number; name: string }>>([]);
+const series = ref<Array<{ id: number; title: string; slug: string }>>([]);
 const existingPost = ref<AdminPostDetail | null>(null);
 
 const { data: catsData } = await fetchAdminCategories();
 const { data: tagsData } = await fetchAdminTags();
+// Series list for the membership dropdown (DEC-056/TASK-123). The admin keeps
+// the option to create series on the /admin/series page; here a post is simply
+// assigned into an existing series with a 0-based position.
+const { data: seriesData } = await fetchAdminSeries();
 
 watch(
 	() => catsData.value,
@@ -65,6 +73,13 @@ watch(
 	() => tagsData.value,
 	(val) => {
 		if (val) tags.value = val;
+	},
+	{ immediate: true },
+);
+watch(
+	() => seriesData.value,
+	(val) => {
+		if (val) series.value = val;
 	},
 	{ immediate: true },
 );
@@ -97,6 +112,8 @@ watch(
 				category_id: val.category_id || undefined,
 				tag_ids: val.tag_ids || [],
 				cover_image: val.cover_image || undefined,
+				series_id: val.series_id || undefined,
+				series_order: val.series_order ?? 0,
 			};
 			loadedSnapshot = snapshot();
 			isDirty.value = false;
@@ -150,6 +167,15 @@ function toUtcNaiveIso(localValue: string): string {
 	if (Number.isNaN(d.getTime())) return "";
 	return `${d.toISOString().slice(0, 16)}:00`;
 }
+
+// Clearing the series membership drops the order back to 0 (a standalone post
+// must not carry a stale position into the payload — DEC-056/TASK-123).
+watch(
+	() => formData.value.series_id,
+	(val) => {
+		if (val === undefined || val === null) formData.value.series_order = 0;
+	},
+);
 
 // Track edits against the loaded snapshot and warn on tab-close/reload
 // (beforeunload) and SPA navigation (route leave) so a long draft is never
@@ -492,6 +518,39 @@ function handleFileInput(e: Event) {
             </label>
           </div>
           <p v-else class="text-sm text-gray-400 dark:text-gray-500">{{ t("admin.postEdit.noTags") }}</p>
+        </div>
+
+        <div class="bg-gradient-to-br from-indigo-50 dark:from-indigo-900/20 to-white dark:to-gray-900 border border-indigo-100 dark:border-indigo-900/30 rounded-2xl p-5">
+          <label class="flex items-center gap-2 text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">
+            <Icon icon="lucide:layers" class="w-4 h-4 text-indigo-500" />
+            {{ t("admin.postEdit.series") }}
+          </label>
+          <div class="space-y-3">
+            <select
+              v-model="formData.series_id"
+              class="w-full rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-2.5 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
+            >
+              <option :value="undefined">{{ t("admin.postEdit.seriesNone") }}</option>
+              <option v-for="s in series" :key="s.id" :value="s.id">
+                {{ s.title }}
+              </option>
+            </select>
+            <!-- series_order is only meaningful inside a series; when the admin
+                 clears the membership, drop the order back to 0 so a standalone
+                 post never carries a stray position -->
+            <div class="flex items-center gap-3">
+              <label class="text-sm text-gray-600 dark:text-gray-400 shrink-0">
+                {{ t("admin.postEdit.seriesOrder") }}
+              </label>
+              <input
+                v-model.number="formData.series_order"
+                type="number"
+                min="0"
+                :disabled="!formData.series_id"
+                class="w-28 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-2.5 text-sm disabled:opacity-50 disabled:cursor-not-allowed focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
+              >
+            </div>
+          </div>
         </div>
       </div>
 

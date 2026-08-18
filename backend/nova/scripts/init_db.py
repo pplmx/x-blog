@@ -3726,6 +3726,35 @@ def main():
             db.commit()
             print("✓ 5 sample comments created")
 
+        # Post series (DEC-056/TASK-123): seed one series and group two of the
+        # demo posts into it so the public /series pages and the admin series
+        # management flow have real data to exercise in dev + e2e. Idempotent:
+        # skips if the series already exists.
+        if is_development():
+            existing_series = db.query(models.Series).filter(models.Series.slug == "fastapi-tour").first()
+            if existing_series:
+                print("✓ Demo series already exists, skipping")
+            else:
+                demo_series = models.Series(
+                    title="FastAPI 深入浅出",
+                    slug="fastapi-tour",
+                    description="从零开始系统地学习 FastAPI：框架基础、依赖注入、数据库实践与部署技巧。",
+                )
+                db.add(demo_series)
+                db.flush()
+                di_post = (
+                    db.query(models.Post).filter(models.Post.slug == "fastapi-dependency-injection-deep-dive").first()
+                )
+                sql_post = db.query(models.Post).filter(models.Post.slug == "postgresql-performance-tuning").first()
+                if di_post:
+                    di_post.series_id = demo_series.id
+                    di_post.series_order = 0
+                if sql_post:
+                    sql_post.series_id = demo_series.id
+                    sql_post.series_order = 1
+                db.commit()
+                print("✓ Demo series created: FastAPI 深入浅出")
+
         total_posts = db.query(models.Post).count()
         total_comments = db.query(models.Comment).count()
         print("\n✨ Database initialized successfully!")

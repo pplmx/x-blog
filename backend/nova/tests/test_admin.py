@@ -130,6 +130,54 @@ class TestAdminPosts:
         assert response.status_code == 200
         assert response.json()["title"] == "Test"
 
+    def test_get_post_exposes_series_assignment(self, client, auth_headers, db_session):
+        """Admin post detail must surface series_id/order + identity (DEC-056,
+        TASK-123) so the post editor can render and reassign the membership."""
+        series = models.Series(title="Deep Dive", slug="deep-dive", description=None)
+        db_session.add(series)
+        db_session.commit()
+        post = models.Post(
+            title="Test",
+            slug="test",
+            content="Content",
+            published=True,
+            series_id=series.id,
+            series_order=2,
+        )
+        db_session.add(post)
+        db_session.commit()
+
+        response = client.get(f"/api/admin/posts/{post.id}", headers=auth_headers)
+        assert response.status_code == 200
+        data = response.json()
+        assert data["series_id"] == series.id
+        assert data["series_order"] == 2
+        assert data["series_title"] == "Deep Dive"
+        assert data["series_slug"] == "deep-dive"
+
+    def test_list_posts_exposes_series_assignment(self, client, auth_headers, db_session):
+        """Admin post list also carries the series fields (list page + editor)."""
+        series = models.Series(title="Deep Dive", slug="deep-dive", description=None)
+        db_session.add(series)
+        db_session.commit()
+        post = models.Post(
+            title="Test",
+            slug="test",
+            content="Content",
+            published=True,
+            series_id=series.id,
+            series_order=1,
+        )
+        db_session.add(post)
+        db_session.commit()
+
+        response = client.get("/api/admin/posts", headers=auth_headers)
+        assert response.status_code == 200
+        item = response.json()["items"][0]
+        assert item["series_id"] == series.id
+        assert item["series_order"] == 1
+        assert item["series_title"] == "Deep Dive"
+
     def test_update_post(self, client, auth_headers, db_session):
         post = models.Post(title="Test", slug="test", content="Content", published=True)
         db_session.add(post)
