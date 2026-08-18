@@ -172,7 +172,7 @@ class TestRequestLoggingMiddleware:
 
         # The adapter must attach request_id/method/path to the slow-request
         # record (the bare logger path would not).
-        extra = getattr(completed[0], "request_id", None)
+        extra = completed[0].request_id
         assert extra, "request_id missing from slow-request log record"
-        assert getattr(completed[0], "method") == "GET"
-        assert getattr(completed[0], "path") == "/slow"
+        assert completed[0].method == "GET"
+        assert completed[0].path == "/slow"

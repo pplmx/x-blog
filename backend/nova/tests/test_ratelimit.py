@@ -132,9 +132,7 @@ class TestAdminWriteEndpointsRateLimited:
             "admin_create_tag",
             "admin_update_tag",
         ):
-            assert f"app.routers.admin.{fn_name}" in registered, (
-                f"admin write endpoint {fn_name} is not rate-limited"
-            )
+            assert f"app.routers.admin.{fn_name}" in registered, f"admin write endpoint {fn_name} is not rate-limited"
 
     def test_admin_delete_endpoints_remain_rate_limited(self):
         """Sanity check the registry also still covers the destructive writes."""

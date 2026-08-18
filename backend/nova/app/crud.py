@@ -138,7 +138,10 @@ def get_archive(db: Session) -> list[tuple[int, int, int]]:
         .order_by(extract("year", models.Post.created_at).desc(), extract("month", models.Post.created_at).desc())
         .all()
     )
-    return [(int(r.year), int(r.month), int(r.count)) for r in rows]
+    # Positional Row access (year, month, count — the SELECT order): pyright
+    # cannot resolve label attributes on an untyped SQLAlchemy Row, and
+    # getattr() with a constant trips ruff B009.
+    return [(int(r[0]), int(r[1]), int(r[2])) for r in rows]
 
 
 def get_post(db: Session, post_id: int) -> models.Post | None:
@@ -283,10 +286,7 @@ def get_categories(db: Session) -> list[dict]:
     # Cache plain dicts, not live ORM objects, so values survive across
     # per-request Sessions (invariant documented in cache.py). post_count is
     # not a column; it is computed and baked into the dict here.
-    result = [
-        {"id": cat.id, "name": cat.name, "post_count": counts.get(cat.id, 0)}
-        for cat in categories
-    ]
+    result = [{"id": cat.id, "name": cat.name, "post_count": counts.get(cat.id, 0)} for cat in categories]
 
     # Cache the result
     categories_cache[cache_key] = result
@@ -370,10 +370,7 @@ def get_tags(db: Session) -> list[dict]:
     # Cache plain dicts, not live ORM objects, so values survive across
     # per-request Sessions (invariant documented in cache.py). post_count is
     # not a column; it is computed and baked into the dict here.
-    result = [
-        {"id": tag.id, "name": tag.name, "post_count": counts.get(tag.id, 0)}
-        for tag in tags
-    ]
+    result = [{"id": tag.id, "name": tag.name, "post_count": counts.get(tag.id, 0)} for tag in tags]
 
     # Cache the result
     tags_cache[cache_key] = result

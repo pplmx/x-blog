@@ -51,9 +51,9 @@ class TestExportPostsCsv:
         assert any("draft-export" in r for r in draft_rows)
         assert not any("published-export" in r for r in draft_rows)
 
-        published_rows = client.get(
-            "/api/export/posts.csv?status=published", headers=auth_headers
-        ).text.strip().split("\n")
+        published_rows = (
+            client.get("/api/export/posts.csv?status=published", headers=auth_headers).text.strip().split("\n")
+        )
         assert any("published-export" in r for r in published_rows)
         assert not any("draft-export" in r for r in published_rows)
 
@@ -143,8 +143,8 @@ class TestExportCommentsCsv:
         assert any("ApprovedCommenter" in r for r in all_rows)
         assert any("PendingCommenter" in r for r in all_rows)
 
-        pending_rows = client.get(
-            "/api/export/comments.csv?is_approved=false", headers=auth_headers
-        ).text.strip().split("\n")
+        pending_rows = (
+            client.get("/api/export/comments.csv?is_approved=false", headers=auth_headers).text.strip().split("\n")
+        )
         assert any("PendingCommenter" in r for r in pending_rows)
         assert not any("ApprovedCommenter" in r for r in pending_rows)

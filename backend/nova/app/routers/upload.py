@@ -80,7 +80,7 @@ async def upload_image(
         raise HTTPException(400, detail="File content does not match the declared image type")
     try:
         _verify_image_decodes(contents)
-    except (UnidentifiedImageError, OSError, ValueError):
+    except UnidentifiedImageError, OSError, ValueError:
         raise HTTPException(400, detail="File is not a valid image")
 
     # Safely extract file extension — guards against path traversal via filename

@@ -19,11 +19,7 @@ try:
 
     _vapid_key = ec.generate_private_key(ec.SECP256R1())
     _vapid_pub = _vapid_key.public_key().public_numbers()
-    _pub_bytes = (
-        b"\x04"
-        + _vapid_pub.x.to_bytes(32, "big")
-        + _vapid_pub.y.to_bytes(32, "big")
-    )
+    _pub_bytes = b"\x04" + _vapid_pub.x.to_bytes(32, "big") + _vapid_pub.y.to_bytes(32, "big")
     _priv_bytes = _vapid_key.private_numbers().private_value.to_bytes(32, "big")
     import base64
 

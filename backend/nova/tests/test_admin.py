@@ -509,12 +509,8 @@ class TestAdminComments:
         post = models.Post(title="Status Post", slug="status-post", content="Content", published=True)
         db_session.add(post)
         db_session.commit()
-        approved = models.Comment(
-            post_id=post.id, nickname="ApprovedUser", content="approved one", is_approved=True
-        )
-        pending = models.Comment(
-            post_id=post.id, nickname="PendingUser", content="pending one", is_approved=False
-        )
+        approved = models.Comment(post_id=post.id, nickname="ApprovedUser", content="approved one", is_approved=True)
+        pending = models.Comment(post_id=post.id, nickname="PendingUser", content="pending one", is_approved=False)
         db_session.add_all([approved, pending])
         db_session.commit()
 
@@ -536,12 +532,8 @@ class TestAdminComments:
         db_session.commit()
         # Note: server-side schema validation / moderation state is irrelevant
         # here; search matches across nickname/email/content.
-        db_session.add(
-            models.Comment(post_id=post.id, nickname="Carol", email="carol@x.com", content="great write-up")
-        )
-        db_session.add(
-            models.Comment(post_id=post.id, nickname="Dan", email="dan@x.com", content="meh")
-        )
+        db_session.add(models.Comment(post_id=post.id, nickname="Carol", email="carol@x.com", content="great write-up"))
+        db_session.add(models.Comment(post_id=post.id, nickname="Dan", email="dan@x.com", content="meh"))
         db_session.commit()
 
         by_nick = client.get("/api/admin/comments?q=carol", headers=auth_headers).json()["items"]

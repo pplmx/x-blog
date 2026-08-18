@@ -73,9 +73,7 @@ app = FastAPI(
 
 # 3000 = Nuxt container port, 34567 = Nuxt dev port. 3001/3003 were Next.js-era
 # ports no longer used by the project (they only diluted the CORS allowlist).
-ALLOWED_ORIGINS = os.getenv(
-    "ALLOWED_ORIGINS", "http://localhost:3000,http://localhost:34567"
-).split(",")
+ALLOWED_ORIGINS = os.getenv("ALLOWED_ORIGINS", "http://localhost:3000,http://localhost:34567").split(",")
 
 app.add_middleware(
     CORSMiddleware,

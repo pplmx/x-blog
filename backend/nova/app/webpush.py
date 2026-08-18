@@ -24,7 +24,7 @@ import json
 import os
 from typing import Any
 
-from pywebpush import WebPushException, webpush
+from pywebpush import webpush
 
 
 def _b64url_decode(value: str) -> bytes | None:
