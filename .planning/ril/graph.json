@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 103,
+  "round": 104,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-08-17T16:25:43+00:00",
+  "updated_at": "2026-08-18T00:59:18+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -11,7 +11,7 @@
       "version": 1,
       "created_at": "2026-08-06T13:23:41+00:00",
       "updated_at": "2026-08-06T13:23:41+00:00",
-      "touched_round": 28,
+      "touched_round": 103,
       "title": "backend-nova",
       "description": "FastAPI Python 3.14 backend at backend/nova; SQLAlchemy ORM; routers in app/routers, crud.py business logic, 656 lines"
     },
@@ -22,7 +22,7 @@
       "version": 1,
       "created_at": "2026-08-06T13:23:41+00:00",
       "updated_at": "2026-08-06T13:23:41+00:00",
-      "touched_round": 31,
+      "touched_round": 103,
       "title": "frontend-aura",
       "description": "Nuxt 4 Vue 3 TypeScript frontend at frontend/aura; composables; admin pages; e2e Playwright; biome lint"
     },
@@ -5749,10 +5749,10 @@
     "TASK-117": {
       "id": "TASK-117",
       "type": "task",
-      "status": "active",
-      "version": 1,
+      "status": "resolved",
+      "version": 2,
       "created_at": "2026-08-17T16:23:57+00:00",
-      "updated_at": "2026-08-17T16:23:57+00:00",
+      "updated_at": "2026-08-17T23:59:09+00:00",
       "touched_round": 103,
       "category": "core-feature",
       "severity": 0.3,
@@ -5765,10 +5765,10 @@
     "TASK-118": {
       "id": "TASK-118",
       "type": "task",
-      "status": "active",
-      "version": 1,
+      "status": "resolved",
+      "version": 2,
       "created_at": "2026-08-17T16:24:12+00:00",
-      "updated_at": "2026-08-17T16:24:12+00:00",
+      "updated_at": "2026-08-17T23:59:09+00:00",
       "touched_round": 103,
       "category": "core-feature",
       "severity": 0.3,
@@ -5781,11 +5781,11 @@
     "TASK-119": {
       "id": "TASK-119",
       "type": "task",
-      "status": "active",
-      "version": 1,
+      "status": "resolved",
+      "version": 2,
       "created_at": "2026-08-17T16:24:43+00:00",
-      "updated_at": "2026-08-17T16:24:43+00:00",
-      "touched_round": 103,
+      "updated_at": "2026-08-17T23:59:09+00:00",
+      "touched_round": 104,
       "category": "core-feature",
       "severity": 0.3,
       "confidence": 1.0,
@@ -5793,6 +5793,177 @@
       "unlock_factor": 1.0,
       "title": "Verification + docs: backend pytest contract suite + Vitest composable/component tests + Playwright e2e (header subscribe, admin notify) + README API table + .env.example VAPID + deployment note",
       "description": "Per SKILL 11.4 acceptance: (1) backend unit/integration tests for the push contract (subscribe/unsubscribe/notify, invalid input, admin auth, 410 housekeeping) with outbound HTTP mocked; (2) frontend Vitest unit tests for usePushSubscription state machine and SubscribeButton rendering; (3) Playwright e2e journey: header subscribe button prompts->subscribed via stubbed pushManager/serviceWorker, admin notify flow; (4) docs: README API table entries for push endpoints, .env.example VAPID keys, docs/deployment.md VAPID generation step. Full regression suite must stay green."
+    },
+    "CHG-104": {
+      "id": "CHG-104",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-17T23:51:43+00:00",
+      "updated_at": "2026-08-17T23:51:43+00:00",
+      "touched_round": 103,
+      "commit": "8bb70ad",
+      "title": "Backend Web Push slice (subscriptions table, VAPID config, subscribe/unsubscribe/notify, pywebpush dispatch, 410 housekeeping)"
+    },
+    "CHG-105": {
+      "id": "CHG-105",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-17T23:51:43+00:00",
+      "updated_at": "2026-08-17T23:51:43+00:00",
+      "touched_round": 103,
+      "commit": "c0e7d28",
+      "title": "Frontend Web Push slice (service worker, usePushSubscription, SubscribeButton, admin notify, i18n, 24 vitest tests)"
+    },
+    "CHG-106": {
+      "id": "CHG-106",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-17T23:51:43+00:00",
+      "updated_at": "2026-08-17T23:51:43+00:00",
+      "touched_round": 103,
+      "commit": "a28c658",
+      "title": "E2E journeys + VAPID CI + fixes surfaced by e2e (init_db role, admin layout reactivity, auth singleton, dispatch timeout, typecheck drift) + docs"
+    },
+    "EV-084": {
+      "id": "EV-084",
+      "type": "evidence",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-17T23:52:48+00:00",
+      "updated_at": "2026-08-17T23:52:48+00:00",
+      "touched_round": 103,
+      "source": "test: backend suite (uv run pytest --cov --cov-fail-under=80)",
+      "confidence": 1.0,
+      "note": "658 passed, 8 skipped, 93.03% coverage; 27 push tests green"
+    },
+    "EV-085": {
+      "id": "EV-085",
+      "type": "evidence",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-17T23:52:48+00:00",
+      "updated_at": "2026-08-17T23:52:48+00:00",
+      "touched_round": 103,
+      "source": "test: frontend vitest + typecheck + biome",
+      "confidence": 1.0,
+      "note": "806 unit tests passed (incl. 24 new push tests); nuxt typecheck clean; biome clean"
+    },
+    "EV-086": {
+      "id": "EV-086",
+      "type": "evidence",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-17T23:52:48+00:00",
+      "updated_at": "2026-08-17T23:52:48+00:00",
+      "touched_round": 103,
+      "source": "test: playwright e2e/push.spec.ts",
+      "confidence": 1.0,
+      "note": "push e2e 4/4 green across repeated runs (subscribe, reload re-detect, unsubscribe, admin notify)"
+    },
+    "EV-087": {
+      "id": "EV-087",
+      "type": "evidence",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-17T23:52:48+00:00",
+      "updated_at": "2026-08-17T23:52:48+00:00",
+      "touched_round": 103,
+      "source": "test: full playwright suite",
+      "confidence": 0.85,
+      "note": "full e2e 72-73/74 green in sandbox; 2 pre-existing load-sensitive tests (homepage:62, admin-comments:62) intermittently flake under cumulative preview load, pass isolated/retry; not push-related"
+    },
+    "HYP-011": {
+      "id": "HYP-011",
+      "type": "hypothesis",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-17T23:52:48+00:00",
+      "updated_at": "2026-08-17T23:52:48+00:00",
+      "touched_round": 104,
+      "confidence": 0.85,
+      "title": "New-post Web Push notifications delivered end-to-end per DEC-055 acceptance (opt-in subscribe -> backend storage -> superuser notify -> service worker display) and the milestone is a net-increment user value",
+      "description": "Acceptance: an opted-in reader receives a browser notification when the author publishes and clicks notify, without regressions. Verified by backend contract tests, composable/SW unit tests, and Playwright journeys."
+    },
+    "ISS-094": {
+      "id": "ISS-094",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-08-17T23:53:39+00:00",
+      "updated_at": "2026-08-17T23:59:09+00:00",
+      "touched_round": 103,
+      "severity": 0.7,
+      "title": "init_db.py seeds admin without role=superuser -> is_superuser=True but role=editor, so every superuser-only endpoint (users/export/notify) 403s for the seeded admin and role-tier e2e breaks"
+    },
+    "ISS-095": {
+      "id": "ISS-095",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-08-17T23:53:39+00:00",
+      "updated_at": "2026-08-17T23:59:09+00:00",
+      "touched_round": 103,
+      "severity": 0.5,
+      "title": "admin layout: non-reactive isLoginPage/currentRole + per-call useAdminAuth isAuthenticated ref -> SPA nav between /admin, /admin/login and /admin/posts renders a blank page or stale-superuser sidebar"
+    },
+    "ISS-096": {
+      "id": "ISS-096",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-08-17T23:53:39+00:00",
+      "updated_at": "2026-08-17T23:59:09+00:00",
+      "touched_round": 103,
+      "severity": 0.6,
+      "title": "webpush send_push had no per-endpoint timeout; a dead/hanging push service can stall a whole broadcast past the app 30s request budget (504) and slow every admin notify"
+    },
+    "ISS-097": {
+      "id": "ISS-097",
+      "type": "issue",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-17T23:53:39+00:00",
+      "updated_at": "2026-08-17T23:53:39+00:00",
+      "touched_round": 103,
+      "severity": 0.2,
+      "title": "e2e homepage:62 and admin-comments:62 intermittently flaky under cumulative preview-server load in the sandbox (pass isolated/on retry; not push-related; app-level causes fixed)"
+    },
+    "ISS-098": {
+      "id": "ISS-098",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-08-17T23:53:40+00:00",
+      "updated_at": "2026-08-17T23:59:09+00:00",
+      "touched_round": 103,
+      "severity": 0.4,
+      "title": "typecheck was red on main (h3/TS6 import.meta/navigator typing drift in server/utils/clientIp.ts + server routes); CI gate broken until fixed in this milestone"
+    },
+    "CHG-107": {
+      "id": "CHG-107",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-18T00:59:18+00:00",
+      "updated_at": "2026-08-18T00:59:18+00:00",
+      "touched_round": 104,
+      "commit": "563bf37",
+      "title": "Restore backend CI gates red on main (CommentPublic on public comment list PII fix, webpush unused import, ruff B009, pyright Row type, format drift)"
+    },
+    "EV-088": {
+      "id": "EV-088",
+      "type": "evidence",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-18T00:59:18+00:00",
+      "updated_at": "2026-08-18T00:59:18+00:00",
+      "touched_round": 104,
+      "source": "verify: final regression gate",
+      "confidence": 1.0,
+      "note": "backend 659 passed / 93.13% cov, ruff+format+pyright green; frontend 806 vitest + nuxt typecheck + biome green; push e2e 4/4; full e2e 72/74 with homepage:62 + admin-comments:62 sandbox-load flakes tracked in ISS-097 (pass isolated/retry)"
     }
   },
   "edges": [
@@ -8098,6 +8269,114 @@
       "to": "TASK-117",
       "type": "depends_on",
       "created_at": "2026-08-17T16:25:43+00:00"
+    },
+    {
+      "from": "CHG-104",
+      "to": "TASK-117",
+      "type": "implements",
+      "created_at": "2026-08-17T23:56:21+00:00"
+    },
+    {
+      "from": "CHG-105",
+      "to": "TASK-118",
+      "type": "implements",
+      "created_at": "2026-08-17T23:56:21+00:00"
+    },
+    {
+      "from": "CHG-106",
+      "to": "TASK-119",
+      "type": "implements",
+      "created_at": "2026-08-17T23:56:21+00:00"
+    },
+    {
+      "from": "CHG-106",
+      "to": "ISS-094",
+      "type": "resolves",
+      "created_at": "2026-08-17T23:56:21+00:00"
+    },
+    {
+      "from": "CHG-106",
+      "to": "ISS-095",
+      "type": "resolves",
+      "created_at": "2026-08-17T23:56:21+00:00"
+    },
+    {
+      "from": "CHG-106",
+      "to": "ISS-096",
+      "type": "resolves",
+      "created_at": "2026-08-17T23:56:21+00:00"
+    },
+    {
+      "from": "CHG-105",
+      "to": "ISS-098",
+      "type": "resolves",
+      "created_at": "2026-08-17T23:56:21+00:00"
+    },
+    {
+      "from": "ISS-094",
+      "to": "COMP-001",
+      "type": "located_in",
+      "created_at": "2026-08-17T23:56:21+00:00"
+    },
+    {
+      "from": "ISS-096",
+      "to": "COMP-001",
+      "type": "located_in",
+      "created_at": "2026-08-17T23:56:21+00:00"
+    },
+    {
+      "from": "ISS-095",
+      "to": "COMP-002",
+      "type": "located_in",
+      "created_at": "2026-08-17T23:56:21+00:00"
+    },
+    {
+      "from": "ISS-098",
+      "to": "COMP-002",
+      "type": "located_in",
+      "created_at": "2026-08-17T23:56:21+00:00"
+    },
+    {
+      "from": "ISS-097",
+      "to": "COMP-002",
+      "type": "located_in",
+      "created_at": "2026-08-17T23:56:21+00:00"
+    },
+    {
+      "from": "EV-084",
+      "to": "HYP-011",
+      "type": "validates",
+      "created_at": "2026-08-17T23:56:21+00:00"
+    },
+    {
+      "from": "EV-085",
+      "to": "HYP-011",
+      "type": "validates",
+      "created_at": "2026-08-17T23:56:22+00:00"
+    },
+    {
+      "from": "EV-086",
+      "to": "HYP-011",
+      "type": "validates",
+      "created_at": "2026-08-17T23:56:22+00:00"
+    },
+    {
+      "from": "EV-087",
+      "to": "HYP-011",
+      "type": "validates",
+      "created_at": "2026-08-17T23:56:22+00:00"
+    },
+    {
+      "from": "CHG-107",
+      "to": "TASK-119",
+      "type": "implements",
+      "created_at": "2026-08-18T00:59:18+00:00"
+    },
+    {
+      "from": "EV-088",
+      "to": "HYP-011",
+      "type": "validates",
+      "created_at": "2026-08-18T00:59:18+00:00"
     }
   ]
 }
