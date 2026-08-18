@@ -2,7 +2,7 @@
   "ril_version": 1,
   "round": 104,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-08-18T05:25:33+00:00",
+  "updated_at": "2026-08-18T05:28:44+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -6045,6 +6045,63 @@
       "touched_round": 104,
       "commit": "a73c745",
       "title": "test(frontend): install localStorage mock unconditionally for happy-dom 20"
+    },
+    "DEC-056": {
+      "id": "DEC-056",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-18T05:28:29+00:00",
+      "updated_at": "2026-08-18T05:28:29+00:00",
+      "touched_round": 104,
+      "title": "Milestone: post series (grouped ordered multi-post sequences)",
+      "rationale": "Feature-evolution selection (SKILL 11.2 gap analysis + recorded backlog). DEC-055(d) recorded \"post series\" as a kept backlog idea; it is the only recorded-but-unbuilt bounded user-visible capability left. The blog organizes posts only via flat tags/categories/pinned; there is no way to group a multi-part tutorial into an ordered sequence, so authors cannot present part 2 -> part 3 navigation and readers cannot follow or discover a whole series from one post. Vertical slice: series table + Post.series_id/series_order (DDL-preserving alembic per DEC-009), public /api/series list + /api/series/{slug} detail (ordered published posts), post page series chip + prev/next in-series navigation, admin series CRUD + post-editor series assignment, zh/en i18n, contract/unit/e2e verification. Value gate (11.2): real author+reader problem (no sequence grouping/navigation) with 1-sentence acceptance \"an author can group posts into an ordered series and a reader can open any series post and navigate the sequence in order\"; net-increment vertical slice, self-contained, no external infra.",
+      "alternatives_rejected": "(a) Reader accounts + cloud-synced bookmarks - high reader value but needs the reader auth milestone (registration, reader JWT, rate limiting); explicitly deferred in DEC-055 as too big for one milestone; bookmarks already exist as localStorage-only (useBookmarks.ts) so the remaining value is accounts+sync, a separate milestone. (b) Email subscription - needs SMTP infra, exceeds scope (DEC-035/055). (c) Per-category RSS - rejected at DEC-047 (bigger surface/lower reader value). (d) Reopen CSP/SRI (TASK-099/ISS-068) - deferred DEC-051 pending live-browser verification; internal hardening, not user-visible. (e) Interest/bookmark sync without accounts - no backend identity to sync to; dead end."
+    },
+    "TASK-121": {
+      "id": "TASK-121",
+      "type": "task",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-18T05:28:43+00:00",
+      "updated_at": "2026-08-18T05:28:43+00:00",
+      "touched_round": 104,
+      "category": "core-feature",
+      "severity": 6,
+      "confidence": 1.0,
+      "effort": 4.0,
+      "unlock_factor": 3.0,
+      "title": "Backend series slice: Series model + DDL-preserving alembic migration, Post.series_id/series_order, schemas, public /api/series list+detail with cache, admin series CRUD, cache invalidation, contract tests"
+    },
+    "TASK-122": {
+      "id": "TASK-122",
+      "type": "task",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-18T05:28:44+00:00",
+      "updated_at": "2026-08-18T05:28:44+00:00",
+      "touched_round": 104,
+      "category": "core-feature",
+      "severity": 6,
+      "confidence": 1.0,
+      "effort": 3.0,
+      "unlock_factor": 2.0,
+      "title": "Frontend public series slice: /series index + /series/[slug] pages, post page series chip + prev/next in-series nav, zh/en i18n, vitest"
+    },
+    "TASK-123": {
+      "id": "TASK-123",
+      "type": "task",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-18T05:28:44+00:00",
+      "updated_at": "2026-08-18T05:28:44+00:00",
+      "touched_round": 104,
+      "category": "core-feature",
+      "severity": 6,
+      "confidence": 1.0,
+      "effort": 3.0,
+      "unlock_factor": 1.0,
+      "title": "Frontend admin series slice + verification/docs: admin series management page, post-editor series assignment, Playwright e2e journey, README/docs, full VERIFY + close"
     }
   },
   "edges": [
@@ -8488,6 +8545,24 @@
       "to": "ISS-101",
       "type": "resolves",
       "created_at": "2026-08-18T05:25:33+00:00"
+    },
+    {
+      "from": "DEC-056",
+      "to": "TASK-121",
+      "type": "governs",
+      "created_at": "2026-08-18T05:28:44+00:00"
+    },
+    {
+      "from": "TASK-121",
+      "to": "TASK-122",
+      "type": "depends_on",
+      "created_at": "2026-08-18T05:28:44+00:00"
+    },
+    {
+      "from": "TASK-122",
+      "to": "TASK-123",
+      "type": "depends_on",
+      "created_at": "2026-08-18T05:28:44+00:00"
     }
   ]
 }
