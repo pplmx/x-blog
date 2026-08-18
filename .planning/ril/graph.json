@@ -2,7 +2,7 @@
   "ril_version": 1,
   "round": 104,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-08-18T00:59:18+00:00",
+  "updated_at": "2026-08-18T04:06:06+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -5964,6 +5964,50 @@
       "source": "verify: final regression gate",
       "confidence": 1.0,
       "note": "backend 659 passed / 93.13% cov, ruff+format+pyright green; frontend 806 vitest + nuxt typecheck + biome green; push e2e 4/4; full e2e 72/74 with homepage:62 + admin-comments:62 sandbox-load flakes tracked in ISS-097 (pass isolated/retry)"
+    },
+    "ISS-099": {
+      "id": "ISS-099",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-08-18T02:45:17+00:00",
+      "updated_at": "2026-08-18T02:46:28+00:00",
+      "touched_round": 104,
+      "title": "role-tier migration boolean=integer backfill breaks PostgreSQL",
+      "detail": "migration b3f7a1c9d054 line 38: UPDATE users SET role='superuser' WHERE is_superuser = 1 fails on Postgres (psycopg2 UndefinedFunction boolean=integer); SQLite loose typing hid it; blocks e2e Seed database and server deploy migration"
+    },
+    "CHG-108": {
+      "id": "CHG-108",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-18T02:45:52+00:00",
+      "updated_at": "2026-08-18T02:45:52+00:00",
+      "touched_round": 104,
+      "commit": "fa181b2",
+      "title": "fix role migration boolean backfill for Postgres (ISS-099)"
+    },
+    "ISS-100": {
+      "id": "ISS-100",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-08-18T04:03:28+00:00",
+      "updated_at": "2026-08-18T04:06:06+00:00",
+      "touched_round": 104,
+      "title": "e2e admin-comments filter test asserts non-existent table locator",
+      "detail": "admin-comments.spec.ts filter-by-status expected 'table, .comment-list' but the admin comments page renders cards in .space-y-3; prior rewrite only replaced a strict-mode violation with a guaranteed not-found failure, blocking the e2e gate"
+    },
+    "CHG-109": {
+      "id": "CHG-109",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-18T04:06:06+00:00",
+      "updated_at": "2026-08-18T04:06:06+00:00",
+      "touched_round": 104,
+      "commit": "7b3e421",
+      "title": "fix e2e admin-comments filter spec (ISS-100)"
     }
   },
   "edges": [
@@ -8377,6 +8421,18 @@
       "to": "HYP-011",
       "type": "validates",
       "created_at": "2026-08-18T00:59:18+00:00"
+    },
+    {
+      "from": "CHG-108",
+      "to": "ISS-099",
+      "type": "resolves",
+      "created_at": "2026-08-18T02:46:15+00:00"
+    },
+    {
+      "from": "CHG-109",
+      "to": "ISS-100",
+      "type": "resolves",
+      "created_at": "2026-08-18T04:06:06+00:00"
     }
   ]
 }
