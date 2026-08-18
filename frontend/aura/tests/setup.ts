@@ -10,30 +10,40 @@ Object.defineProperty(window.navigator, "language", {
 	configurable: true,
 });
 
-// happy-dom (vitest 4.x) doesn't fully implement localStorage —
-// provides the object but getItem/setItem/clear are missing.
-// Install an in-memory mock so tests that use localStorage work.
-if (typeof globalThis.localStorage !== "undefined") {
-	const store: Record<string, string> = {};
-	const storageMock = {
-		getItem: (key: string) => (key in store ? store[key] : null),
-		setItem: (key: string, value: string) => {
-			store[key] = value;
-		},
-		removeItem: (key: string) => {
+// happy-dom (vitest 4.x) has historically differed on localStorage: some
+// versions expose the object but leave getItem/setItem/clear unimplemented,
+// newer 20.x builds do not define it at all (undefined on both globalThis and
+// window — RIL TASK-120). Install one in-memory mock unconditionally so every
+// test sees the same deterministic storage regardless of the happy-dom
+// version the lockfile resolves to.
+const store: Record<string, string> = {};
+const storageMock: Storage = {
+	getItem: (key: string) => (key in store ? store[key] : null),
+	setItem: (key: string, value: string) => {
+		store[key] = value;
+	},
+	removeItem: (key: string) => {
+		delete store[key];
+	},
+	clear: () => {
+		for (const key of Object.keys(store)) {
 			delete store[key];
-		},
-		clear: () => {
-			for (const key of Object.keys(store)) {
-				delete store[key];
-			}
-		},
-		key: (index: number) => Object.keys(store)[index] ?? null,
-		get length() {
-			return Object.keys(store).length;
-		},
-	};
-	Object.defineProperty(globalThis, "localStorage", {
+		}
+	},
+	key: (index: number) => Object.keys(store)[index] ?? null,
+	get length() {
+		return Object.keys(store).length;
+	},
+};
+Object.defineProperty(globalThis, "localStorage", {
+	value: storageMock,
+	writable: true,
+	configurable: true,
+});
+// Wire it onto window too (same object under happy-dom, but harmless to pin
+// down for environments where they differ).
+if (typeof window !== "undefined" && !("localStorage" in window)) {
+	Object.defineProperty(window, "localStorage", {
 		value: storageMock,
 		writable: true,
 		configurable: true,
