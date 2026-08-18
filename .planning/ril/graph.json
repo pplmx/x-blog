@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 104,
+  "round": 106,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-08-18T05:28:44+00:00",
+  "updated_at": "2026-08-18T07:13:08+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -22,7 +22,7 @@
       "version": 1,
       "created_at": "2026-08-06T13:23:41+00:00",
       "updated_at": "2026-08-06T13:23:41+00:00",
-      "touched_round": 103,
+      "touched_round": 105,
       "title": "frontend-aura",
       "description": "Nuxt 4 Vue 3 TypeScript frontend at frontend/aura; composables; admin pages; e2e Playwright; biome lint"
     },
@@ -6061,10 +6061,10 @@
     "TASK-121": {
       "id": "TASK-121",
       "type": "task",
-      "status": "active",
-      "version": 1,
+      "status": "resolved",
+      "version": 2,
       "created_at": "2026-08-18T05:28:43+00:00",
-      "updated_at": "2026-08-18T05:28:43+00:00",
+      "updated_at": "2026-08-18T06:25:44+00:00",
       "touched_round": 104,
       "category": "core-feature",
       "severity": 6,
@@ -6076,11 +6076,11 @@
     "TASK-122": {
       "id": "TASK-122",
       "type": "task",
-      "status": "active",
-      "version": 1,
+      "status": "resolved",
+      "version": 2,
       "created_at": "2026-08-18T05:28:44+00:00",
-      "updated_at": "2026-08-18T05:28:44+00:00",
-      "touched_round": 104,
+      "updated_at": "2026-08-18T07:11:42+00:00",
+      "touched_round": 105,
       "category": "core-feature",
       "severity": 6,
       "confidence": 1.0,
@@ -6102,6 +6102,76 @@
       "effort": 3.0,
       "unlock_factor": 1.0,
       "title": "Frontend admin series slice + verification/docs: admin series management page, post-editor series assignment, Playwright e2e journey, README/docs, full VERIFY + close"
+    },
+    "CHG-111": {
+      "id": "CHG-111",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-18T06:25:30+00:00",
+      "updated_at": "2026-08-18T06:25:30+00:00",
+      "touched_round": 104,
+      "commit": "9046d2e",
+      "title": "Backend series slice delivered"
+    },
+    "EV-089": {
+      "id": "EV-089",
+      "type": "evidence",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-18T06:25:44+00:00",
+      "updated_at": "2026-08-18T06:25:44+00:00",
+      "touched_round": 104,
+      "source": "9046d2e",
+      "detail": "Full backend suite 676 passed / 8 skipped, coverage 92.92%; ruff+format+pyright clean; alembic upgrade head + alembic check no-drift",
+      "confidence": 1.0
+    },
+    "CHG-112": {
+      "id": "CHG-112",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-18T07:10:53+00:00",
+      "updated_at": "2026-08-18T07:10:53+00:00",
+      "touched_round": 105,
+      "commit": "92d8c26",
+      "title": "Frontend public series slice delivered"
+    },
+    "EV-090": {
+      "id": "EV-090",
+      "type": "evidence",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-18T07:10:53+00:00",
+      "updated_at": "2026-08-18T07:10:53+00:00",
+      "touched_round": 105,
+      "source": "92d8c26",
+      "detail": "826 frontend tests green (incl 27 new series cases); biome lint, nuxt typecheck, production build all pass; series pages 94-100% line coverage",
+      "confidence": 1.0
+    },
+    "ISS-102": {
+      "id": "ISS-102",
+      "type": "issue",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-18T07:11:45+00:00",
+      "updated_at": "2026-08-18T07:11:45+00:00",
+      "touched_round": 105,
+      "severity": "high",
+      "title": "Frontend vitest coverage gate below 80% on main (branches 76.95%, functions 79.88%); CI's 'pnpm test -- --coverage' does not actually enable coverage so the gate is latent",
+      "category": "test-quality"
+    },
+    "TASK-124": {
+      "id": "TASK-124",
+      "type": "task",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-18T07:12:21+00:00",
+      "updated_at": "2026-08-18T07:12:21+00:00",
+      "touched_round": 105,
+      "category": "test-quality",
+      "severity": 6,
+      "title": "Close frontend coverage gap on main (functions 79.88% / branches 76.95% vs 80% gate) and fix CI runner so 'pnpm test -- --coverage' actually enables coverage (latent gate)"
     }
   },
   "edges": [
@@ -8563,6 +8633,36 @@
       "to": "TASK-123",
       "type": "depends_on",
       "created_at": "2026-08-18T05:28:44+00:00"
+    },
+    {
+      "from": "CHG-111",
+      "to": "TASK-121",
+      "type": "implements",
+      "created_at": "2026-08-18T06:25:44+00:00"
+    },
+    {
+      "from": "EV-089",
+      "to": "HYP-011",
+      "type": "validates",
+      "created_at": "2026-08-18T06:25:58+00:00"
+    },
+    {
+      "from": "CHG-112",
+      "to": "TASK-122",
+      "type": "implements",
+      "created_at": "2026-08-18T07:11:42+00:00"
+    },
+    {
+      "from": "TASK-124",
+      "to": "ISS-102",
+      "type": "addresses",
+      "created_at": "2026-08-18T07:12:45+00:00"
+    },
+    {
+      "from": "ISS-102",
+      "to": "COMP-002",
+      "type": "located_in",
+      "created_at": "2026-08-18T07:12:45+00:00"
     }
   ]
 }
