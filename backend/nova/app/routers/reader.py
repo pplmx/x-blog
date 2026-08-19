@@ -9,13 +9,13 @@ endpoints (enforced in auth.get_current_user / get_current_reader).
 
 from datetime import datetime
 
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy import func
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from app import auth
+from app import auth, crud, models, schemas
 from app.database import get_db
 from app.limiter import RATE_LIMIT_AUTH, RATE_LIMIT_REGISTER, limiter
 
@@ -58,6 +58,59 @@ class ReaderRegister(BaseModel):
 class ReaderLogin(BaseModel):
     email: str = Field(min_length=3, max_length=254, pattern=_EMAIL_PATTERN)
     password: str = Field(min_length=1, max_length=72)
+
+
+class BookmarkItem(BaseModel):
+    """A bookmarked post as serialized to the reader's bookmark list.
+
+    Mirrors the frontend ``Bookmark`` shape (useBookmarks.ts) so the cloud list
+    and the localStorage list serialize identically and the client can merge
+    them transparently. Deliberately omits full content/views/likes — a
+    bookmark list is a navigation list, not an article dump.
+    """
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    title: str
+    slug: str
+    excerpt: str | None = None
+    cover_image: str | None = None
+    created_at: datetime | None = None
+    category: schemas.Category | None = None
+    tags: list[schemas.Tag] = []
+
+    @classmethod
+    def from_post(cls, post: models.Post) -> BookmarkItem:
+        """Build from a Post row (created_at is the post's, not the bookmark's).
+
+        Category/tags are copied into the public schema shapes (the model rows
+        carry ORM instances and would leak through from_attributes otherwise).
+        """
+        return cls(
+            id=post.id,
+            title=post.title,
+            slug=post.slug,
+            excerpt=post.excerpt,
+            cover_image=post.cover_image,
+            created_at=post.created_at,
+            category=(
+                schemas.Category.model_validate(post.category) if post.category else None
+            ),
+            tags=[schemas.Tag.model_validate(t) for t in post.tags],
+        )
+
+
+class BookmarkListResponse(BaseModel):
+    items: list[BookmarkItem]
+    total: int
+
+
+class AddBookmarkResponse(BaseModel):
+    post_id: int
+    # True when the bookmark was newly created, False when it already existed
+    # (idempotent re-put during merge). Lets the client skip a redundant sync.
+    already_existed: bool
 
 
 # A valid bcrypt hash of a random throwaway password, at the same cost as a
@@ -151,3 +204,60 @@ def login(
 def me(_current_reader: auth.ReaderAccount = Depends(auth.get_current_reader)):
     """Return the authenticated reader's own profile."""
     return _current_reader
+
+
+# ---------------------------------------------------------------------------
+# Cloud-synced bookmarks (DEC-059/TASK-132)
+# ---------------------------------------------------------------------------
+
+
+@router.get("/me/bookmarks", response_model=BookmarkListResponse)
+def list_bookmarks(
+    current_reader: auth.ReaderAccount = Depends(auth.get_current_reader),
+    db: Session = Depends(get_db),
+):
+    """List the reader's bookmarked posts (publicly-visible only).
+
+    Non-public posts (draft/scheduled/unpublished) are excluded — a bookmark
+    list is a read path and must not leak post existence/visibility changes.
+    Newest bookmark first (the natural "recently saved" ordering).
+    """
+    posts = crud.list_reader_bookmarks(db, current_reader.id)
+    return BookmarkListResponse(
+        items=[BookmarkItem.from_post(p) for p in posts],
+        total=len(posts),
+    )
+
+
+@router.put("/me/bookmarks/{post_id}", response_model=AddBookmarkResponse)
+def add_bookmark(
+    post_id: int,
+    response: Response,
+    current_reader: auth.ReaderAccount = Depends(auth.get_current_reader),
+    db: Session = Depends(get_db),
+):
+    """Bookmark a public post. Idempotent: 201 on first save, 200 on re-save
+    (already_existed=True) so a merge/re-login client can re-put the same set
+    without errors or duplicates.
+
+    Drafts/scheduled/unknown posts are uniformly 404 — no draft-existence
+    oracle (same guard as the public comment-create path).
+    """
+    post = db.get(models.Post, post_id)
+    if not post or not crud.is_publicly_visible(post):
+        raise HTTPException(status_code=404, detail="Post not found")
+    bookmark, created = crud.add_reader_bookmark(db, current_reader.id, post.id)
+    response.status_code = 201 if created else 200
+    return AddBookmarkResponse(post_id=bookmark.post_id, already_existed=not created)
+
+
+@router.delete("/me/bookmarks/{post_id}", status_code=204)
+def remove_bookmark(
+    post_id: int,
+    current_reader: auth.ReaderAccount = Depends(auth.get_current_reader),
+    db: Session = Depends(get_db),
+):
+    """Remove a bookmark. Idempotent: deleting a non-existent bookmark is a
+    204 no-op (merge-friendly)."""
+    crud.remove_reader_bookmark(db, current_reader.id, post_id)
+    return None

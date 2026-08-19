@@ -21,6 +21,7 @@ from sqlalchemy import (
     String,
     Table,
     Text,
+    UniqueConstraint,
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -117,6 +118,34 @@ class Comment(Base):
 
     post: Mapped[Post] = relationship("Post", back_populates="comments")
     parent: Mapped[Comment | None] = relationship("Comment", remote_side=[id], backref="replies")
+
+
+class ReaderBookmark(Base):
+    """A reader's saved post (cloud-synced bookmarks, DEC-059/TASK-132).
+
+    ``reader_accounts.id`` ↔ ``posts.id`` pair is unique (one bookmark per
+    post per reader). Referential integrity is enforced at the ORM layer and
+    by a DB-level unique constraint on the pair; the migration creates the
+    table entirely additively (DEC-009).
+    """
+
+    __tablename__ = "reader_bookmarks"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    reader_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
+    post_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
+    created_at: Mapped[datetime | None] = mapped_column(DateTime, default=lambda: datetime.now(UTC))
+
+    __table_args__ = (UniqueConstraint("reader_id", "post_id", name="uq_reader_bookmarks_reader_post"),)
+
+    # No DB-level FK on the columns (SQLite alembic can't add FK-carrying
+    # columns to existing tables, DEC-009) — the join is declared explicitly,
+    # mirroring the Post.series_id pattern.
+    post: Mapped[Post] = relationship(
+        "Post",
+        primaryjoin="ReaderBookmark.post_id == Post.id",
+        foreign_keys="ReaderBookmark.post_id",
+    )
 
 
 class PushSubscription(Base):

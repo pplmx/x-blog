@@ -970,3 +970,63 @@ def delete_series(db: Session, series_id: int) -> bool:
     clear_series_cache()
     clear_posts_list_cache()
     return True
+
+
+# ---------------------------------------------------------------------------
+# Reader bookmarks (cloud-synced, DEC-059/TASK-132)
+# ---------------------------------------------------------------------------
+
+
+def get_reader_bookmark(db: Session, reader_id: int, post_id: int) -> models.ReaderBookmark | None:
+    """Return the reader's bookmark for a post, or None."""
+    return (
+        db.query(models.ReaderBookmark)
+        .filter(
+            models.ReaderBookmark.reader_id == reader_id,
+            models.ReaderBookmark.post_id == post_id,
+        )
+        .first()
+    )
+
+
+def add_reader_bookmark(db: Session, reader_id: int, post_id: int) -> tuple[models.ReaderBookmark, bool]:
+    """Create a bookmark; returns (bookmark, created). Idempotent: re-adding
+    an existing bookmark returns the existing row with created=False (merge-
+    friendly — a localStorage-first client re-PUTs the same set on login)."""
+    existing = get_reader_bookmark(db, reader_id, post_id)
+    if existing:
+        return existing, False
+    bookmark = models.ReaderBookmark(reader_id=reader_id, post_id=post_id)
+    db.add(bookmark)
+    db.commit()
+    db.refresh(bookmark)
+    return bookmark, True
+
+
+def remove_reader_bookmark(db: Session, reader_id: int, post_id: int) -> bool:
+    """Delete a bookmark; returns True if one was removed. Idempotent."""
+    bookmark = get_reader_bookmark(db, reader_id, post_id)
+    if not bookmark:
+        return False
+    db.delete(bookmark)
+    db.commit()
+    return True
+
+
+def list_reader_bookmarks(db: Session, reader_id: int) -> list[models.Post]:
+    """Return the reader's bookmarked posts that are *publicly visible* only.
+
+    Post timestamps/visibility can change after a bookmark is saved; the list
+    must not leak a draft or scheduled post on a read path (same invariant as
+    the public post/comment read paths). Non-visible posts simply don't appear,
+    newest bookmark first.
+    """
+    rows = (
+        db.query(models.Post)
+        .join(models.ReaderBookmark, models.ReaderBookmark.post_id == models.Post.id)
+        .filter(models.ReaderBookmark.reader_id == reader_id)
+        .options(joinedload(models.Post.category), joinedload(models.Post.tags))
+        .order_by(models.ReaderBookmark.created_at.desc())
+        .all()
+    )
+    return [p for p in rows if is_publicly_visible(p)]
