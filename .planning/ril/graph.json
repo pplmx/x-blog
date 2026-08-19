@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 107,
+  "round": 108,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-08-19T08:57:35+00:00",
+  "updated_at": "2026-08-19T12:41:12+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -6435,6 +6435,117 @@
       "source": "b14607f",
       "summary": "Conditional-GET + cache policy verified end to end: backend 700 tests + frontend 929 vitest tests green with coverage >= 80% (Statements 89.83 / Branches 80.68 / Functions 85.49 / Lines 92.5); e2e/caching.spec.ts in Chromium through the Nuxt edge asserts feed 200 with ETag + 'Cache-Control: public, max-age=60' then bodyless 304 on If-None-Match, posts list conditional 200->304, and write-on-read post detail 'Cache-Control: no-store'; e2e/csp.spec.ts unchanged (5 journeys) still zero CSP violations.",
       "confidence": 1.0
+    },
+    "DEC-059": {
+      "id": "DEC-059",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-19T10:16:46+00:00",
+      "updated_at": "2026-08-19T10:16:46+00:00",
+      "touched_round": 108,
+      "title": "Milestone: reader accounts + cloud-synced bookmarks",
+      "rationale": "Feature-evolution milestone (SKILL 11.2/11.3; operator directive \"start a new milestone\" 2026-08-19). DEC-055 recorded reader accounts + cloud bookmarks as the highest reader value capability, explicitly deferred as needing the reader-auth milestone (registration, reader JWT, rate limiting); DEC-056/057/058 all re-confirm feature backlog is otherwise empty (copy-code button, comment reactions, reading-progress fail the 11.2 value gate as button-level). Bookmarks today are localStorage-only (frontend/aura/composables/useBookmarks.ts) — lost on cache clear / device change; no backend identity to sync to. Vertical slices, one per round: (1) backend reader auth (ReaderAccount table + DDL-preserving alembic per DEC-009, register/login/me endpoints, reader JWT distinct from admin JWT, rate limiting, password hashing reuse); (2) backend cloud bookmarks API (cards table, GET/PUT/DELETE /api/me/bookmarks, merge semantics); (3) frontend reader auth UI (login/register page, token store, auth guard); (4) frontend bookmark sync integration (merge local bookmarks on login, keep offline-local fallback, e2e journey). Acceptance (1 sentence): \"a reader can create an account and their bookmarks persist and sync across devices.\" Value gate: real user problem (data loss across devices), net-increment vertical slices, self-contained, no external infra (SQLite/Postgres both).",
+      "alternatives_rejected": "(a) Public comments UI + nested replies - comments already have backend (comments.py) and admin moderation; surfacing reader replies is real value but feeds/side-projects re-scoped: DEC-059 chooses reader identity first because cloud bookmark sync cannot exist without it, and comment identity can later ride the same ReaderAccount. (b) Email subscription - needs SMTP infra, exceeds scope (DEC-035/055). (c) Search improvements / per-category RSS - lower reader value or already rejizected (DEC-047). (d) Another internal hardening round (DEC-057/058 did CSP + conditional-requests) - backlog of hardening issues is empty; diminishing returns vs unbuilt reader capability."
+    },
+    "TASK-131": {
+      "id": "TASK-131",
+      "type": "task",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-08-19T10:17:15+00:00",
+      "updated_at": "2026-08-19T12:41:12+00:00",
+      "touched_round": 108,
+      "category": "core-feature",
+      "priority_score": 6.0,
+      "severity": 5,
+      "confidence": 0.95,
+      "effort": 3,
+      "unlock_factor": 1.5,
+      "title": "Backend reader auth: ReaderAccount model + DDL-preserving alembic migration (DEC-009), POST /api/reader/register + /api/reader/login + GET /api/reader/me, reader JWT distinct from admin JWT (iss/aud claims), rate limiting on auth endpoints, bcrypt hash reuse from auth.py, contract tests. 1-sentence acceptance: a reader can register and log in."
+    },
+    "TASK-132": {
+      "id": "TASK-132",
+      "type": "task",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-19T10:17:15+00:00",
+      "updated_at": "2026-08-19T10:17:15+00:00",
+      "touched_round": 108,
+      "category": "core-feature",
+      "priority_score": 6.0,
+      "severity": 5,
+      "confidence": 0.95,
+      "effort": 3,
+      "unlock_factor": 1.5,
+      "title": "Backend cloud bookmarks API: ReaderBookmark table (reader_id FK, post_id FK, unique pair) + migration, GET /api/reader/me/bookmarks (list post summaries), PUT add, DELETE remove, merge-friendly (idempotent add), respects public-visibility rule (drafts invisible), contract tests + no-store cache headers behind reader auth."
+    },
+    "TASK-133": {
+      "id": "TASK-133",
+      "type": "task",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-19T10:17:15+00:00",
+      "updated_at": "2026-08-19T10:17:15+00:00",
+      "touched_round": 108,
+      "category": "core-feature",
+      "priority_score": 6.0,
+      "severity": 5,
+      "confidence": 0.95,
+      "effort": 3,
+      "unlock_factor": 1.5,
+      "title": "Frontend reader auth UI: /login page with register/login toggle, reader token store (localStorage + useState), auth composable, logout, nav indicator when signed in, zh/en i18n, vitest + component tests."
+    },
+    "TASK-134": {
+      "id": "TASK-134",
+      "type": "task",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-19T10:17:15+00:00",
+      "updated_at": "2026-08-19T10:17:15+00:00",
+      "touched_round": 108,
+      "category": "core-feature",
+      "priority_score": 6.0,
+      "severity": 5,
+      "confidence": 0.95,
+      "effort": 3,
+      "unlock_factor": 1.5,
+      "title": "Frontend bookmark sync integration: on login merge localStorage bookmarks up to cloud (dedupe by post id), subsequent adds/removes hit /api/reader/me/bookmarks, offline fallback keeps local, /bookmarks page reflects both, e2e journey register->bookmark->login-back->bookmarks persisted."
+    },
+    "EV-096": {
+      "id": "EV-096",
+      "type": "evidence",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-19T12:23:33+00:00",
+      "updated_at": "2026-08-19T12:23:33+00:00",
+      "touched_round": 108,
+      "source": "a0ca0936040130ac3 (security-reviewer agent, 2026-08-19)",
+      "summary": "Independent security review of TASK-131 reader auth: audience separation verified safe both directions (incl sub-collision + list-form aud); no CRITICAL/HIGH. Residuals: M1 register=existence oracle (inherent to open signup, bounded by 5/min); M2 per-proxy shared bucket in default compose (documented in compose+deployment.md); L1 bcrypt 72-byte cap (fixed); L2 int(sub) 500-izable (fixed, moved into _decode_payload); L3 list-form aud explicit check hardened; L4 display_name/email output-escaping (frontend concern, Vue auto-escapes); L5 3.14-only except tuple syntax (declared runtime).",
+      "confidence": 1.0
+    },
+    "DEC-060": {
+      "id": "DEC-060",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-19T12:24:01+00:00",
+      "updated_at": "2026-08-19T12:24:01+00:00",
+      "touched_round": 108,
+      "title": "Reader auth hardened per independent security review (TASK-131)",
+      "rationale": "Security-reviewer agent (EV-096) confirmed the audience-separation design safe; applied its actionable LOWs: bcrypt 72-byte password cap (L1), int(sub) coercion moved into _decode_payload so malformed sub is a 401 not 500 (L2), list-aware aud check in admin guard (L3). M1 (register existence oracle) accepted: inherent to open-signup UX, bounded by dedicated 5/min/IP register limiter, same message-shape as admin create. M2 (shared proxy-level bucket in default compose) is a pre-existing limiter-topology property; documented in docker-compose.yml + docs/deployment.md with TRUSTED_PROXIES guidance for production.",
+      "alternatives_rejected": "(a) Removing the register existence oracle via generic 201+email-link flow — requires email/SMTP infra, out of scope (DEC-035/055 legacy); via captcha — external service dependency. (b) Making register/login share one bucket — weaker spam protection. (c) Overriding the limiter for reader endpoints — abandons abuse protection."
+    },
+    "CHG-121": {
+      "id": "CHG-121",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-19T12:40:29+00:00",
+      "updated_at": "2026-08-19T12:40:29+00:00",
+      "touched_round": 108,
+      "commit": "9a9d5ff",
+      "summary": "Reader accounts + audience-separated JWT: ReaderAccount table+migration (add-only), reader JWT with aud=x-blog-reader, register/login/me endpoints with rate limiting, audience separation verified by independent security review (no CRIT/HIGH)."
     }
   },
   "edges": [
@@ -9058,6 +9169,66 @@
       "to": "TASK-130",
       "type": "implements",
       "created_at": "2026-08-19T08:55:46+00:00"
+    },
+    {
+      "from": "TASK-132",
+      "to": "TASK-131",
+      "type": "depends_on",
+      "created_at": "2026-08-19T10:17:54+00:00"
+    },
+    {
+      "from": "TASK-133",
+      "to": "TASK-131",
+      "type": "depends_on",
+      "created_at": "2026-08-19T10:17:54+00:00"
+    },
+    {
+      "from": "TASK-134",
+      "to": "TASK-132",
+      "type": "depends_on",
+      "created_at": "2026-08-19T10:17:54+00:00"
+    },
+    {
+      "from": "TASK-134",
+      "to": "TASK-133",
+      "type": "depends_on",
+      "created_at": "2026-08-19T10:17:54+00:00"
+    },
+    {
+      "from": "DEC-059",
+      "to": "TASK-131",
+      "type": "governs",
+      "created_at": "2026-08-19T10:17:54+00:00"
+    },
+    {
+      "from": "DEC-059",
+      "to": "TASK-132",
+      "type": "governs",
+      "created_at": "2026-08-19T10:17:54+00:00"
+    },
+    {
+      "from": "DEC-059",
+      "to": "TASK-133",
+      "type": "governs",
+      "created_at": "2026-08-19T10:17:54+00:00"
+    },
+    {
+      "from": "DEC-059",
+      "to": "TASK-134",
+      "type": "governs",
+      "created_at": "2026-08-19T10:17:54+00:00"
+    },
+    {
+      "from": "DEC-060",
+      "to": "TASK-131",
+      "type": "governs",
+      "created_at": "2026-08-19T12:26:35+00:00"
+    },
+    {
+      "from": "CHG-121",
+      "to": "TASK-131",
+      "type": "implements",
+      "created_at": "2026-08-19T12:41:12+00:00"
     }
   ]
 }
