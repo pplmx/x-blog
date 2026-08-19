@@ -169,7 +169,7 @@ pnpm dev
 
 ## 限流与可信代理
 
-所有生产 API 端点都带速率限制（默认按端点区分：读 120/min、写 30/min、登录 10/min、搜索 60/min、评论 20/min、导出 10/min）。每个值都可通过同名环境变量覆盖，例如 `RATE_LIMIT_WRITE_PER_MINUTE=60`。
+所有生产 API 端点都带速率限制（默认按端点区分：读 120/min、写 30/min、登录 10/min、**注册 5/min**、搜索 60/min、评论 20/min、导出 10/min）。每个值都可通过同名环境变量覆盖，例如 `RATE_LIMIT_WRITE_PER_MINUTE=60`。读者注册（`RATE_LIMIT_REGISTER_PER_MINUTE`，DEC-059）比登录更严，因为开放注册是典型的垃圾账号/滥用入口。
 
 > **注意**：`RATE_LIMIT_PER_MINUTE` 是历史遗留的无效变量，代码不读取它，请使用上面按端点的变量名。
 
@@ -190,6 +190,10 @@ TRUSTED_PROXIES=*
 - 不设置时保持默认安全行为：忽略上游 `X-Forwarded-For`，直接访客无法伪造新桶。
 - docker-compose 默认不设置（保持默认安全行为）；若你部署在单网关后且后端端口未公开，可在 `.env` 中设置 `TRUSTED_PROXIES=*` 恢复按客户端的限流桶。
 - 部署在 nginx 后时，把 nginx 的 IP（或 `*`，后端不公开时）填入以恢复按客户端限流。nginx 已透传 `X-Forwarded-For`。
+- **读者认证端点（DEC-059）**：默认 compose 拓扑下所有浏览器请求都经 Nuxt 代理到达后端，若未配置
+  `TRUSTED_PROXIES`，读者注册/登录会共享**同一个**代理级桶（注册 5/min、登录 10/min 全站共享）——
+  一个攻击者即可耗尽桶导致全站读者注册/登录被限流。要在生产恢复按客户端桶，必须把代理 IP 填入
+  `TRUSTED_PROXIES`（单网关后且后端 18888 端口未公开时可用 `*`）。
 
 ---
 

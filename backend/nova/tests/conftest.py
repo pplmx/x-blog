@@ -4,6 +4,7 @@ import os
 # Rate limits must be raised before the limiter singleton is created.
 os.environ.setdefault("JWT_SECRET_KEY", "test-secret-key-for-testing-only")
 os.environ.setdefault("RATE_LIMIT_AUTH_PER_MINUTE", "9999")
+os.environ.setdefault("RATE_LIMIT_REGISTER_PER_MINUTE", "9999")
 os.environ.setdefault("RATE_LIMIT_WRITE_PER_MINUTE", "9999")
 os.environ.setdefault("RATE_LIMIT_READ_PER_MINUTE", "9999")
 os.environ.setdefault("RATE_LIMIT_SEARCH_PER_MINUTE", "9999")

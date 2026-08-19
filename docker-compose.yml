@@ -30,6 +30,9 @@ services:
       RATE_LIMIT_READ_PER_MINUTE: ${RATE_LIMIT_READ_PER_MINUTE:-120}
       RATE_LIMIT_WRITE_PER_MINUTE: ${RATE_LIMIT_WRITE_PER_MINUTE:-30}
       RATE_LIMIT_AUTH_PER_MINUTE: ${RATE_LIMIT_AUTH_PER_MINUTE:-10}
+      # Reader registration gets its own (stricter) bucket than login: open
+      # signup is the classic spam/abuse surface. (DEC-059, TASK-131)
+      RATE_LIMIT_REGISTER_PER_MINUTE: ${RATE_LIMIT_REGISTER_PER_MINUTE:-5}
       RATE_LIMIT_SEARCH_PER_MINUTE: ${RATE_LIMIT_SEARCH_PER_MINUTE:-60}
       RATE_LIMIT_COMMENT_PER_MINUTE: ${RATE_LIMIT_COMMENT_PER_MINUTE:-20}
       RATE_LIMIT_EXPORT_PER_MINUTE: ${RATE_LIMIT_EXPORT_PER_MINUTE:-10}
@@ -38,6 +41,13 @@ services:
       # (see app/limiter.py client_rate_key + docs/deployment.md). Empty =>
       # default-safe peer-key behavior. Use "*" only when the backend port is
       # NOT publicly reachable.
+      #
+      # IMPORTANT (DEC-059, TASK-131): in the default compose topology every
+      # browser request reaches the backend via the Nuxt proxy, so with an EMPTY
+      # TRUSTED_PROXIES the reader register/login buckets key on the proxy peer
+      # and ALL readers share one bucket (5/min register, 10/min login). Set
+      # TRUSTED_PROXIES to the proxy's IP (or "*" if backend:18888 is firewalled
+      # from the internet) to restore per-client buckets for reader auth.
       TRUSTED_PROXIES: ${TRUSTED_PROXIES:-}
       GZIP_MINIMUM_SIZE: "500"
     volumes:

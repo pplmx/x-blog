@@ -17,6 +17,16 @@ from app.database import Base, get_db
 DEV_SECRET_KEY = "x-blog-secret-key-dev-only"
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_DAYS = int(os.getenv("JWT_EXPIRE_DAYS", "1"))
+# Reader JWT expiry (shorter than admin: readers authenticate from many
+# browsers/scripts, and cloud-sync clients should re-login periodically).
+READER_TOKEN_EXPIRE_DAYS = int(os.getenv("READER_TOKEN_EXPIRE_DAYS", "30"))
+
+# Audience disambiguation between admin and reader tokens. Both token kinds are
+# signed with the same SECRET_KEY, so audience separation is the *discriminator*
+# that stops a leaked reader token from ever authenticating as an admin. A
+# reader JWT carries aud=x-blog-reader and the admin guard rejects it explicitly
+# (see get_current_user). (DEC-059, TASK-131)
+READER_AUDIENCE = "x-blog-reader"
 
 
 def _load_secret_key() -> str:
@@ -71,6 +81,26 @@ class User(Base):
     created_at: Mapped[datetime | None] = mapped_column(DateTime, default=lambda: datetime.now(UTC))
 
 
+class ReaderAccount(Base):
+    """A reader's account — the identity backing cloud-synced bookmarks.
+
+    Deliberately separate from the admin ``User`` table: readers self-register
+    publicly, so they must never share a table or row range with privileged
+    admin accounts (a JWT ``sub`` collision could otherwise cross-authenticate,
+    DEC-059/TASK-131). ``token_version`` mirrors ``User`` so a credential
+    rotation invalidates previously-issued reader tokens immediately.
+    """
+
+    __tablename__ = "reader_accounts"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    email: Mapped[str] = mapped_column(String(254), unique=True, nullable=False, index=True)
+    password: Mapped[str] = mapped_column(String(200), nullable=False)
+    display_name: Mapped[str | None] = mapped_column(String(50))
+    token_version: Mapped[int | None] = mapped_column(Integer, default=0)
+    created_at: Mapped[datetime | None] = mapped_column(DateTime, default=lambda: datetime.now(UTC))
+
+
 class TokenData(BaseModel):
     user_id: int | None = None
 
@@ -97,6 +127,54 @@ def create_access_token(data: dict, token_version: int = 0) -> str:
     return encoded_jwt
 
 
+def create_reader_token(data: dict, token_version: int = 0) -> str:
+    """Create a reader-scoped JWT (aud=x-blog-reader).
+
+    Same signing key as admin tokens, but the ``aud`` claim marks the token as
+    reader-scoped: the admin guard (get_current_user) rejects tokens carrying
+    this audience, so a reader credential can never be replayed against admin
+    endpoints even if ``sub`` happens to equal a users.id (DEC-059, TASK-131).
+    Readers log in from many sessions/clients, so their tokens live longer than
+    admin tokens by default.
+    """
+    to_encode = data.copy()
+    if "sub" in to_encode:
+        to_encode["sub"] = str(to_encode["sub"])
+    to_encode["ver"] = token_version
+    to_encode["aud"] = READER_AUDIENCE
+    expire = datetime.now(UTC) + timedelta(days=READER_TOKEN_EXPIRE_DAYS)
+    to_encode["exp"] = expire
+    return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+
+
+def _decode_payload(token: str, audience: str | None = None) -> dict | None:
+    """Decode+verify a JWT, returning its claims or None on any failure.
+
+    ``audience`` is passed through to ``jwt.decode``: PyJWT only validates the
+    ``aud`` claim when the token carries one (legacy admin tokens without an
+    ``aud`` claim still decode), but a token *with* an ``aud`` must match the
+    expected audience or it is rejected. This is what makes audience separation
+    hold in practice — a mismatched-audience token never reaches the guards'
+    claim checks. Audience-verification failures surface as
+    ``InvalidAudienceError``, a subclass of ``InvalidTokenError``, so they fall
+    into the same None-returning path as expiry/bad-signature.
+
+    The ``sub`` claim is coerced to ``int`` *here* (inside the error handling)
+    rather than in the guards, so a malformed non-numeric ``sub`` is a clean 401
+    instead of a 500-class ValueError escaping from ``int(...)``. (security
+    review, TASK-131)
+    """
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM], audience=audience)
+        sub = payload.get("sub")
+        payload["sub"] = int(sub) if sub else None
+        return payload
+    except InvalidTokenError, TypeError, ValueError:
+        # InvalidTokenError: bad signature/expired/audience; TypeError/ValueError:
+        # malformed (non-numeric) `sub`. All are auth failures → None.
+        return None
+
+
 def get_current_user(
     token: str = Depends(oauth2_scheme),
     db: Session = Depends(get_db),
@@ -106,23 +184,30 @@ def get_current_user(
         detail="Could not validate credentials",
         headers={"WWW-Authenticate": "Bearer"},
     )
-    try:
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        user_id_str = payload.get("sub")
-        user_id = int(user_id_str) if user_id_str else None
-        if user_id is None:
-            raise credentials_exception
-        token_data = TokenData(user_id=user_id)
-    except InvalidTokenError, TypeError, ValueError:
-        # InvalidTokenError: bad signature/expired token; TypeError/ValueError:
-        # malformed `sub` claim (e.g. non-numeric). Both are auth failures → 401.
+    payload = _decode_payload(token)
+    if payload is None:
+        raise credentials_exception
+    # Audience separation (DEC-059, TASK-131): a reader-scoped token (carrying
+    # aud=x-blog-reader) must never authenticate as an admin. Without this check
+    # a leaked reader token whose sub happens to match a users.id would grant
+    # admin access. Legacy admin tokens (issued before this change) carry no aud
+    # claim and still decode; only reader tokens are rejected. Note _decode_payload
+    # already rejects an aud-bearing token outright when decoding with no expected
+    # audience (PyJWT raises InvalidAudienceError) — this check is defense-in-depth
+    # against future decode-option changes, and is list-aware so a list-form
+    # aud claim (["x-blog-reader", ...]) is also rejected.
+    aud = payload.get("aud")
+    if aud == READER_AUDIENCE or (isinstance(aud, list) and READER_AUDIENCE in aud):
+        raise credentials_exception
+    user_id = payload.get("sub")
+    if user_id is None:
         raise credentials_exception
 
     # Tokens signed before this change have no `ver` claim -> treat as 0; the
     # user's counter is also 0 until a password change, so they still work.
     # After a password change the counter bumps and every older token is rejected.
     token_version = payload.get("ver", 0)
-    user = db.query(User).filter(User.id == token_data.user_id).first()
+    user = db.query(User).filter(User.id == user_id).first()
     if user is None or token_version != (user.token_version or 0):
         raise credentials_exception
     return user
@@ -150,3 +235,40 @@ def get_current_superuser(current_user: User = Depends(get_current_admin)) -> Us
             detail="Not enough permissions",
         )
     return current_user
+
+
+# Reader auth: a distinct bearer-credential scheme so OpenAPI/docs and the
+# Swagger "Authorize" button keep reader and admin scopes apart. The tokenUrl
+# points at the reader login route (documentation only — bearer tokens are used).
+reader_oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/reader/login")
+
+
+def get_current_reader(
+    token: str = Depends(reader_oauth2_scheme),
+    db: Session = Depends(get_db),
+) -> ReaderAccount:
+    credentials_exception = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Could not validate credentials",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+    # Decode with the reader audience: a token carrying aud=x-blog-reader must
+    # match it, and a legacy admin token (no aud claim) fails PyJWT's
+    # "audience claim required" — so admin credentials can never authenticate
+    # as a reader.
+    payload = _decode_payload(token, audience=READER_AUDIENCE)
+    if payload is None:
+        raise credentials_exception
+    # This guard only ever accepts reader-scoped tokens (DEC-059, TASK-131).
+    # Admin tokens carry no aud=x-blog-reader, so they can't authenticate here.
+    if payload.get("aud") != READER_AUDIENCE:
+        raise credentials_exception
+    reader_id = payload.get("sub")
+    if reader_id is None:
+        raise credentials_exception
+
+    token_version = payload.get("ver", 0)
+    reader = db.query(ReaderAccount).filter(ReaderAccount.id == reader_id).first()
+    if reader is None or token_version != (reader.token_version or 0):
+        raise credentials_exception
+    return reader

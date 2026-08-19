@@ -86,6 +86,32 @@ nosniff、XFO、XSS、HSTS）与前端一致，由 `add_security_headers` 中间
 `setdefault` 施加——路由显式设置的头（如 CSV 导出的 `X-Content-Type-Options` /
 `Content-Disposition`）不会被覆盖。
 
+## 认证与受众分离（Admin / Reader）
+
+RIL DEC-059 里程碑（TASK-131）。系统有两类 JWT，使用同一签名密钥（HS256，
+`JWT_SECRET_KEY`），靠 **`aud` claim（受众）** 严格区分：
+
+| 凭据         | 签发源                                             | `aud` claim     | 可访问                                              |
+| ------------ | -------------------------------------------------- | --------------- | --------------------------------------------------- |
+| Admin token  | `POST /api/admin/login`（用户名+密码）             | 无（legacy）    | `/api/admin/*`（按 `role` 细分为 superuser/editor） |
+| Reader token | `POST /api/reader/register` / `login`（邮箱+密码） | `x-blog-reader` | `/api/reader/*`                                     |
+
+**防横向冒充的关键设计**（`app/auth.py`）：
+
+- 读者 token 恒带 `aud=x-blog-reader`；`get_current_user`（admin 守卫）对携带该
+  `aud` 的 token **直接拒绝**——即使 `sub`（reader_account.id）恰巧与某个
+  `users.id` 相等，读者凭据也永远无法在 admin 端点通过认证。
+- `get_current_reader` 解码时以 `audience="x-blog-reader"` 校验：token 带 `aud`
+  则必须匹配，否则解码失败返回 401。legacy admin token（无 `aud`）不满足
+  `aud == x-blog-reader`，同样无法冒充读者。
+- 读者账户存于独立表 `reader_accounts`（与 `users` 分离），bcrypt 密码哈希复用
+  `auth.get_password_hash`；`token_version` 支持改密后即时吊销 token。
+- 注册走独立且更严的限流桶 `RATE_LIMIT_REGISTER_PER_MINUTE`（默认 5/min/IP），
+  登录复用 `RATE_LIMIT_AUTH_PER_MINUTE`（默认 10/min/IP），防开放注册被滥用。
+
+**不可缓存**：`/api/reader/*` 属于私有端点，默认保持 `Cache-Control: no-store`
+（DEC-058/TASK-129 的默认策略），不允许共享缓存存放读者身份/书签数据。
+
 ## HTTP 缓存策略（Cache-Control / 条件请求）
 
 RIL DEC-058 里程碑。默认情况下每条 API 响应都是 `Cache-Control: no-store`

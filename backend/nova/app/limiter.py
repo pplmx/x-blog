@@ -9,6 +9,9 @@ from starlette.requests import Request
 RATE_LIMIT_READ = os.getenv("RATE_LIMIT_READ_PER_MINUTE", "120")
 RATE_LIMIT_WRITE = os.getenv("RATE_LIMIT_WRITE_PER_MINUTE", "30")
 RATE_LIMIT_AUTH = os.getenv("RATE_LIMIT_AUTH_PER_MINUTE", "10")
+# Stricter than login: open reader signup is the classic spam/abuse surface, so
+# account creation gets a tight per-IP bucket. (DEC-059, TASK-131)
+RATE_LIMIT_REGISTER = os.getenv("RATE_LIMIT_REGISTER_PER_MINUTE", "5")
 RATE_LIMIT_SEARCH = os.getenv("RATE_LIMIT_SEARCH_PER_MINUTE", "60")
 RATE_LIMIT_COMMENT = os.getenv("RATE_LIMIT_COMMENT_PER_MINUTE", "20")
 RATE_LIMIT_EXPORT = os.getenv("RATE_LIMIT_EXPORT_PER_MINUTE", "10")
