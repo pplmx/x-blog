@@ -28,6 +28,7 @@
 - 💬 **评论系统** - 支持楼中楼回复
 - 🏷️ **标签分类** - 使用标签和分类组织文章
 - 📚 **文章系列** - 将文章组织为有序的多篇系列，支持系列内上一篇/下一篇导航
+- 🔖 **云端收藏同步** - 读者账号让收藏跨设备同步（登录后本地收藏自动合并到云端）
 - 🎯 **SEO 优化** - Open Graph、JSON-LD 结构化数据
 - ⬆️ **文章置顶** - 将重要文章置顶显示
 - 📤 **数据导出** - 导出文章/评论为 CSV
@@ -165,6 +166,23 @@ docker-compose logs -f
 | GET  | `/sitemap.xml`        | XML 站点地图           |
 | GET  | `/robots.txt`         | robots.txt             |
 | GET  | `/health`             | 健康检查               |
+
+### 读者账号与云端收藏
+
+读者账号是云端收藏同步的 identity 层（与 admin JWT 通过 `aud` 严格隔离，见
+`docs/security.md`）；注册默认限流 5/min/IP。
+
+| 方法   | 路径                            | 说明                                    |
+| ------ | ------------------------------- | --------------------------------------- |
+| POST   | `/api/reader/register`          | 创建读者账号（返回读者 JWT，自动登录）  |
+| POST   | `/api/reader/login`             | 读者登录（邮箱 + 密码）                 |
+| GET    | `/api/reader/me`                | 当前读者资料                            |
+| GET    | `/api/reader/me/bookmarks`      | 云端收藏列表（仅公开可见的文章）        |
+| PUT    | `/api/reader/me/bookmarks/{id}` | 添加收藏（幂等：新建 201 / 已存在 200） |
+| DELETE | `/api/reader/me/bookmarks/{id}` | 移除收藏（幂等 204）                    |
+
+收藏在浏览器端以 localStorage 为主，登录时合并到云端——离线操作不丢失，下次
+登录时自动对账。读者收藏数据不出现在共享缓存（`Cache-Control: no-store`）。
 
 ## 🏗️ 系统架构
 

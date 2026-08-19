@@ -2,7 +2,7 @@
   "ril_version": 1,
   "round": 108,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-08-19T16:59:54+00:00",
+  "updated_at": "2026-08-19T17:28:35+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -6579,6 +6579,18 @@
       "touched_round": 108,
       "commit": "58cf598",
       "summary": "Frontend bookmark sync integration: useBookmarkSync bridges localStorage list to cloud API (mirror add/remove when signed in, mergeLocalToCloud push-up+pull-union on login and /bookmarks mount), BookmarkButton + /bookmarks + login wired; 6 unit tests + e2e journey (register->bookmark->login->persisted)."
+    },
+    "DEC-061": {
+      "id": "DEC-061",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-19T17:26:46+00:00",
+      "updated_at": "2026-08-19T17:26:46+00:00",
+      "touched_round": 108,
+      "title": "Milestone delivered: reader accounts + cloud-synced bookmarks (DEC-059 complete)",
+      "rationale": "All four milestone slices delivered and verified (DEC-059 governs TASK-131..134, all resolved via CHG-121..124): backend reader auth (audience-separated JWT), backend bookmarks API, frontend auth UI, frontend sync integration. Value gate acceptance (1 sentence) met and browser-verified: \"a reader can create an account and their bookmarks persist and sync across devices\" — verified by e2e journey (register -> bookmark -> login -> bookmarks persist on /bookmarks) in a real Chromium against the live stack, plus API audience-separation test and offline bookmark merge-up. Regression gates all green: backend 736 passed / 93.47%, frontend 947 passed, vue-tsc + pyright + ruff + biome clean, coverage above 80% (backend and frontend), alembic check no drift, rumdl clean. Merge contract documented trade-off: local-wins adds, union pulled on re-login.",
+      "alternatives_rejected": "(a) Public comments UI / reader replies — real value but rides reader identity which this milestone now provides; deferred to a future milestone. (b) Email subscription — needs SMTP infra (DEC-035/055). (c) A second hardening round — hardening backlog empty (DEC-057/058)."
     }
   },
   "edges": [
@@ -9280,6 +9292,12 @@
       "to": "TASK-134",
       "type": "implements",
       "created_at": "2026-08-19T16:59:54+00:00"
+    },
+    {
+      "from": "DEC-061",
+      "to": "DEC-059",
+      "type": "supersedes",
+      "created_at": "2026-08-19T17:28:35+00:00"
     }
   ]
 }

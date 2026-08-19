@@ -28,6 +28,7 @@ A modern full-stack blog application built with FastAPI + Nuxt
 - 💬 **Comments** - Nested comment support with replies
 - 🏷️ **Tags & Categories** - Organize posts with tags and categories
 - 📚 **Series** - Group posts into ordered multi-part sequences with in-series prev/next navigation
+- 🔖 **Cloud Bookmark Sync** - Reader accounts keep your bookmarks synced across devices (sign in → local bookmarks merge to the cloud)
 - 🎯 **SEO Optimized** - Open Graph, JSON-LD structured data
 - ⬆️ **Pinned Posts** - Pin important posts to top
 - 📤 **Data Export** - Export posts/comments as CSV
@@ -178,6 +179,26 @@ A series groups posts into an author-ordered sequence (`Post.series_id` + `Post.
 > Web Push is opt-in and off until `VAPID_PUBLIC_KEY`/`VAPID_PRIVATE_KEY` are set
 > (see `backend/nova/.env.example`). Without them every push endpoint fails
 > closed with 503.
+
+### Reader Accounts & Cloud Bookmark Sync
+
+Reader accounts are the identity layer for cloud-synced bookmarks (audience-
+separated from admin JWTs; see `docs/security.md`). Registration is rate-
+limited (default 5/min/IP).
+
+| Method | Endpoint                        | Description                                                |
+| ------ | ------------------------------- | ---------------------------------------------------------- |
+| POST   | `/api/reader/register`          | Create a reader account (returns a reader JWT, auto-login) |
+| POST   | `/api/reader/login`             | Reader login (email + password)                            |
+| GET    | `/api/reader/me`                | Current reader profile                                     |
+| GET    | `/api/reader/me/bookmarks`      | Cloud-synced bookmark list (publicly-visible posts only)   |
+| PUT    | `/api/reader/me/bookmarks/{id}` | Add a bookmark (idempotent: 201 new / 200 already)         |
+| DELETE | `/api/reader/me/bookmarks/{id}` | Remove a bookmark (idempotent 204)                         |
+
+Bookmarks are stored localStorage-first on the browser and merged to the cloud
+when a reader signs in — offline changes survive and re-concile on the next
+login. Reader bookmarks never appear in shared caches (`Cache-Control:
+no-store`).
 
 ## 🏗️ Architecture
 
