@@ -2,7 +2,7 @@
   "ril_version": 1,
   "round": 108,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-08-19T12:41:12+00:00",
+  "updated_at": "2026-08-19T16:59:54+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -6467,10 +6467,10 @@
     "TASK-132": {
       "id": "TASK-132",
       "type": "task",
-      "status": "active",
-      "version": 1,
+      "status": "resolved",
+      "version": 2,
       "created_at": "2026-08-19T10:17:15+00:00",
-      "updated_at": "2026-08-19T10:17:15+00:00",
+      "updated_at": "2026-08-19T13:40:07+00:00",
       "touched_round": 108,
       "category": "core-feature",
       "priority_score": 6.0,
@@ -6483,10 +6483,10 @@
     "TASK-133": {
       "id": "TASK-133",
       "type": "task",
-      "status": "active",
-      "version": 1,
+      "status": "resolved",
+      "version": 2,
       "created_at": "2026-08-19T10:17:15+00:00",
-      "updated_at": "2026-08-19T10:17:15+00:00",
+      "updated_at": "2026-08-19T15:37:01+00:00",
       "touched_round": 108,
       "category": "core-feature",
       "priority_score": 6.0,
@@ -6499,10 +6499,10 @@
     "TASK-134": {
       "id": "TASK-134",
       "type": "task",
-      "status": "active",
-      "version": 1,
+      "status": "resolved",
+      "version": 2,
       "created_at": "2026-08-19T10:17:15+00:00",
-      "updated_at": "2026-08-19T10:17:15+00:00",
+      "updated_at": "2026-08-19T16:59:54+00:00",
       "touched_round": 108,
       "category": "core-feature",
       "priority_score": 6.0,
@@ -6546,6 +6546,39 @@
       "touched_round": 108,
       "commit": "9a9d5ff",
       "summary": "Reader accounts + audience-separated JWT: ReaderAccount table+migration (add-only), reader JWT with aud=x-blog-reader, register/login/me endpoints with rate limiting, audience separation verified by independent security review (no CRIT/HIGH)."
+    },
+    "CHG-122": {
+      "id": "CHG-122",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-19T13:38:44+00:00",
+      "updated_at": "2026-08-19T13:38:44+00:00",
+      "touched_round": 108,
+      "commit": "45e34ef",
+      "summary": "Cloud-synced reader bookmarks API: ReaderBookmark table+migration (add-only, no drift), GET/PUT/DELETE /api/reader/me/bookmarks via get_current_reader, public-visibility-only list, idempotent add/remove, no-store."
+    },
+    "CHG-123": {
+      "id": "CHG-123",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-19T15:35:44+00:00",
+      "updated_at": "2026-08-19T15:35:44+00:00",
+      "touched_round": 108,
+      "commit": "ab89ef8",
+      "summary": "Frontend reader auth UI: useReaderAuth composable (reader_token store, login/register/logout), /login page with sign-in/register toggle, reader-aware default-nav (bookmarks link + sign in/out desktop+mobile), zh/en i18n, useApi reader functions."
+    },
+    "CHG-124": {
+      "id": "CHG-124",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-19T16:58:09+00:00",
+      "updated_at": "2026-08-19T16:58:09+00:00",
+      "touched_round": 108,
+      "commit": "58cf598",
+      "summary": "Frontend bookmark sync integration: useBookmarkSync bridges localStorage list to cloud API (mirror add/remove when signed in, mergeLocalToCloud push-up+pull-union on login and /bookmarks mount), BookmarkButton + /bookmarks + login wired; 6 unit tests + e2e journey (register->bookmark->login->persisted)."
     }
   },
   "edges": [
@@ -9229,6 +9262,24 @@
       "to": "TASK-131",
       "type": "implements",
       "created_at": "2026-08-19T12:41:12+00:00"
+    },
+    {
+      "from": "CHG-122",
+      "to": "TASK-132",
+      "type": "implements",
+      "created_at": "2026-08-19T13:40:07+00:00"
+    },
+    {
+      "from": "CHG-123",
+      "to": "TASK-133",
+      "type": "implements",
+      "created_at": "2026-08-19T15:37:01+00:00"
+    },
+    {
+      "from": "CHG-124",
+      "to": "TASK-134",
+      "type": "implements",
+      "created_at": "2026-08-19T16:59:54+00:00"
     }
   ]
 }
