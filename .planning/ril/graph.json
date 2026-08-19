@@ -2,7 +2,7 @@
   "ril_version": 1,
   "round": 107,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-08-19T06:20:57+00:00",
+  "updated_at": "2026-08-19T06:40:44+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -6333,6 +6333,63 @@
       "source": "b219b2a",
       "summary": "Live-browser verification of the nonce CSP under Chromium (e2e/csp.spec.ts): (1) CSP header carries a per-request nonce shared by every inline SSR script (importmap/theme-bootstrap/JSON-LD/Nuxt payload/data block), script-src has no 'unsafe-inline', baseline headers present; (2) home + /posts/welcome-to-x-blog render KaTeX (.katex) and Mermaid (svg) with ZERO CSP-violation console errors; (3) the nonce'd theme-bootstrap inline script executes (dark class applies from localStorage) and JSON-LD is intact. Browser verification caught @iconify/vue runtime icon JSON fetches to api.iconify.design/unisvg/simplesvg blocked by connect-src 'self' — fixed by allowlisting those read-only data hosts (connect-src); offline icon bundling recorded as future optimization.",
       "confidence": 1.0
+    },
+    "DEC-058": {
+      "id": "DEC-058",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-19T06:39:13+00:00",
+      "updated_at": "2026-08-19T06:39:13+00:00",
+      "touched_round": 107,
+      "title": "Milestone: conditional requests + explicit cache headers across the public API",
+      "rationale": "Hardening-selection (SKILL 1-8; DEC-049 backlog: 'ETag/conditional' + 'CDN cache headers' remain — Web Push/CSP/CI-audit are delivered). The feeds/sitemap already ship strong-ETag 304 (TASK-089, _feed_response), but the public JSON API does not: GET /api/posts (list/archive/popular/related/adjacent), series (list/detail, cached 5 min), categories/tags (cached 30 min) return no Cache-Control and no ETag, so shared caches and (re)clients re-download identical payloads; conversely POST /view + /like and the post-detail GET carry live counters and could be heuristically cached by browsers/CDNs, serving stale view counts. Scope: extract a reusable conditional-response helper (strong ETag from body + If-None-Match 304 + Cache-Control) from _feed_response; apply to all cacheable public GETs with per-resource revalidation windows (public, max-age ~ TTL-based); set no-store on write-on-read/post-detail and leave private admin/search uncached; contract tests (200 then 304, ETag stability across cache hits, Cache-Control per endpoint class); e2e journey through the Nuxt proxy verifying 200->304 conditional workflow; document the cache policy. No DDL — Postgres behavior covered by the existing e2e (Postgres 17 in CI) and the operator dev pg (10.112.9.49:13310) remains for any future migration milestone.",
+      "alternatives_rejected": "(a) A new user-visible feature — feature backlog empty after series (DEC-056); surviving gap items (copy-code button, comment reactions, reading-progress) fail the 11.2 value gate as button-level/patch-sized. (b) OTel metrics (DEC-049) — larger observability lift with no active issue; keep backlogged. (c) Debounce view/like write-on-read (TASK-026) — independent perf item, keep tracked; this milestone instead makes the detail/views path explicitly no-store, which bounds the correctness side of the same concern without the write-queue redesign. (d) Full ETag on post-detail/search — detail carries live views/likes and search is auth/global-vary sensitive; caching them would serve stale counters, so they are explicitly no-cache here."
+    },
+    "TASK-128": {
+      "id": "TASK-128",
+      "type": "task",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-19T06:39:47+00:00",
+      "updated_at": "2026-08-19T06:39:47+00:00",
+      "touched_round": 107,
+      "category": "performance",
+      "severity": 6,
+      "confidence": 1.0,
+      "effort": 4.0,
+      "unlock_factor": 2.0,
+      "title": "Backend: reusable conditional-response helper (strong ETag + If-None-Match 304 + Cache-Control), extracted from _feed_response; apply to all cacheable public GETs (feeds/sitemap, posts list/archive/popular/related/adjacent, series list/detail, categories/tags) with TTL-aligned public,max-age revalidation; contract tests (200 then 304, ETag stable across cache-hit vs miss), ruff/pyright clean"
+    },
+    "TASK-129": {
+      "id": "TASK-129",
+      "type": "task",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-19T06:39:47+00:00",
+      "updated_at": "2026-08-19T06:39:47+00:00",
+      "touched_round": 107,
+      "category": "correctness",
+      "severity": 7,
+      "confidence": 1.0,
+      "effort": 3.0,
+      "unlock_factor": 2.0,
+      "title": "Backend: no-store on write-on-read & private endpoints (POST views/likes, post detail with live counters, admin, search) so shared caches never serve stale view/like counts or private data; contract tests asserting absence of caching headers / presence of no-store on those routes"
+    },
+    "TASK-130": {
+      "id": "TASK-130",
+      "type": "task",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-19T06:39:47+00:00",
+      "updated_at": "2026-08-19T06:39:47+00:00",
+      "touched_round": 107,
+      "category": "performance",
+      "severity": 5,
+      "confidence": 1.0,
+      "effort": 3.0,
+      "unlock_factor": 1.5,
+      "title": "E2E + docs: Playwright journey asserting the conditional workflow through the Nuxt proxy (200 with ETag/Cache-Control, then If-None-Match returns 304 and skips body) on feed + posts list; document the cache/Conditional-GET policy in docs; full regression green"
     }
   },
   "edges": [
@@ -8908,6 +8965,36 @@
       "to": "ISS-068",
       "type": "resolves",
       "created_at": "2026-08-19T06:16:52+00:00"
+    },
+    {
+      "from": "TASK-128",
+      "to": "TASK-129",
+      "type": "depends_on",
+      "created_at": "2026-08-19T06:40:14+00:00"
+    },
+    {
+      "from": "TASK-130",
+      "to": "TASK-128",
+      "type": "depends_on",
+      "created_at": "2026-08-19T06:40:14+00:00"
+    },
+    {
+      "from": "DEC-058",
+      "to": "TASK-128",
+      "type": "governs",
+      "created_at": "2026-08-19T06:40:44+00:00"
+    },
+    {
+      "from": "DEC-058",
+      "to": "TASK-129",
+      "type": "governs",
+      "created_at": "2026-08-19T06:40:44+00:00"
+    },
+    {
+      "from": "DEC-058",
+      "to": "TASK-130",
+      "type": "governs",
+      "created_at": "2026-08-19T06:40:44+00:00"
     }
   ]
 }
