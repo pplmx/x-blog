@@ -79,22 +79,29 @@ describe("buildCspPolicy", () => {
 		expect(buildCspPolicy("n1", {})).toContain("style-src 'self' 'unsafe-inline'");
 	});
 
-	it("adds the API origin to connect-src when an absolute apiUrl is set", () => {
-		const csp = buildCspPolicy("n1", { apiUrl: "https://api.example.com" });
-		expect(csp).toContain("connect-src 'self' https://api.example.com");
+	it("includes the iconify icon-CDN hosts by default (Icon.vue fetches lucide JSON)", () => {
+		const csp = buildCspPolicy("n1", {});
+		expect(csp).toContain("connect-src 'self' https://api.iconify.design");
+		expect(csp).toContain("https://api.unisvg.com");
+		expect(csp).toContain("https://api.simplesvg.com");
 	});
 
-	it("defaults connect-src to 'self' (proxied /api path)", () => {
-		expect(buildCspPolicy("n1", {})).toContain("connect-src 'self'");
+	it("adds the API origin to connect-src when an absolute apiUrl is set", () => {
+		const csp = buildCspPolicy("n1", { apiUrl: "https://api.example.com" });
+		expect(csp).toContain("connect-src 'self'");
+		expect(csp).toContain("https://api.example.com");
 	});
 
 	it("does not repeat the same origin when apiUrl is same-origin-shaped", () => {
 		const csp = buildCspPolicy("n1", { apiUrl: "http://localhost:34567" });
-		expect(csp).toContain("connect-src 'self' http://localhost:34567");
+		expect(csp).toContain("connect-src 'self'");
+		expect(csp).toContain("http://localhost:34567");
 	});
 
 	it("ignores a malformed apiUrl", () => {
-		expect(buildCspPolicy("n1", { apiUrl: "not a url" })).toContain("connect-src 'self'");
+		const csp = buildCspPolicy("n1", { apiUrl: "not a url" });
+		expect(csp).toContain("connect-src 'self'");
+		expect(csp).not.toContain("not a url");
 	});
 
 	it("relaxes script-src and connect-src in dev for vite HMR", () => {

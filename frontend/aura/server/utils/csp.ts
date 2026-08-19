@@ -52,6 +52,16 @@ export interface CspPolicyOptions {
 export function buildCspPolicy(nonce: string, options: CspPolicyOptions = {}): string {
 	const scriptSources = ["'self'", `'nonce-${nonce}'`];
 	const connectSources = ["'self'"];
+	// Icon.vue wraps @iconify/vue, which fetches lucide icon JSON at runtime
+	// from the iconify API plus its fallback CDNs (read-only SVG/JSON data).
+	// Allow them so the strict policy does not blank every icon in the UI. A
+	// future optimization is offline bundling (addCollection from
+	// @iconify-json/lucide), which would let these hosts be dropped.
+	connectSources.push(
+		"https://api.iconify.design",
+		"https://api.unisvg.com",
+		"https://api.simplesvg.com",
+	);
 
 	if (options.dev) {
 		// vite dev server: HMR over websocket + dynamic import/eval for dev-only code.
@@ -64,7 +74,7 @@ export function buildCspPolicy(nonce: string, options: CspPolicyOptions = {}): s
 			const { origin } = new URL(options.apiUrl);
 			if (origin && origin !== "null") connectSources.push(origin);
 		} catch {
-			// Malformed apiUrl — fall back to 'self' (the proxied /api path).
+			// Malformed apiUrl — fall back to the proxied /api path ('self').
 		}
 	}
 
