@@ -2,7 +2,7 @@
   "ril_version": 1,
   "round": 107,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-08-19T06:40:44+00:00",
+  "updated_at": "2026-08-19T08:57:35+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -6349,10 +6349,10 @@
     "TASK-128": {
       "id": "TASK-128",
       "type": "task",
-      "status": "active",
-      "version": 1,
+      "status": "resolved",
+      "version": 2,
       "created_at": "2026-08-19T06:39:47+00:00",
-      "updated_at": "2026-08-19T06:39:47+00:00",
+      "updated_at": "2026-08-19T08:57:35+00:00",
       "touched_round": 107,
       "category": "performance",
       "severity": 6,
@@ -6364,10 +6364,10 @@
     "TASK-129": {
       "id": "TASK-129",
       "type": "task",
-      "status": "active",
-      "version": 1,
+      "status": "resolved",
+      "version": 2,
       "created_at": "2026-08-19T06:39:47+00:00",
-      "updated_at": "2026-08-19T06:39:47+00:00",
+      "updated_at": "2026-08-19T08:57:35+00:00",
       "touched_round": 107,
       "category": "correctness",
       "severity": 7,
@@ -6379,10 +6379,10 @@
     "TASK-130": {
       "id": "TASK-130",
       "type": "task",
-      "status": "active",
-      "version": 1,
+      "status": "resolved",
+      "version": 2,
       "created_at": "2026-08-19T06:39:47+00:00",
-      "updated_at": "2026-08-19T06:39:47+00:00",
+      "updated_at": "2026-08-19T08:57:35+00:00",
       "touched_round": 107,
       "category": "performance",
       "severity": 5,
@@ -6390,6 +6390,51 @@
       "effort": 3.0,
       "unlock_factor": 1.5,
       "title": "E2E + docs: Playwright journey asserting the conditional workflow through the Nuxt proxy (200 with ETag/Cache-Control, then If-None-Match returns 304 and skips body) on feed + posts list; document the cache/Conditional-GET policy in docs; full regression green"
+    },
+    "CHG-118": {
+      "id": "CHG-118",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-19T08:54:51+00:00",
+      "updated_at": "2026-08-19T08:54:51+00:00",
+      "touched_round": 107,
+      "title": "Cache policy middleware: default Cache-Control no-store unless a route opts in (private/admin/write-on-read never cached)",
+      "commit": "d2bf1ab"
+    },
+    "CHG-119": {
+      "id": "CHG-119",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-19T08:54:51+00:00",
+      "updated_at": "2026-08-19T08:54:51+00:00",
+      "touched_round": 107,
+      "title": "Conditional GET + Cache-Control on cacheable public endpoints (ETag/304 via app/conditional.py across posts/series/categories/tags/feeds)",
+      "commit": "372b014"
+    },
+    "CHG-120": {
+      "id": "CHG-120",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-19T08:54:51+00:00",
+      "updated_at": "2026-08-19T08:54:51+00:00",
+      "touched_round": 107,
+      "title": "Nuxt proxy preserves the conditional-GET contract (feed/sitemap proxies + /api header forwarding) + e2e caching journey + docs",
+      "commit": "b14607f"
+    },
+    "EV-095": {
+      "id": "EV-095",
+      "type": "evidence",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-19T08:55:46+00:00",
+      "updated_at": "2026-08-19T08:55:46+00:00",
+      "touched_round": 107,
+      "source": "b14607f",
+      "summary": "Conditional-GET + cache policy verified end to end: backend 700 tests + frontend 929 vitest tests green with coverage >= 80% (Statements 89.83 / Branches 80.68 / Functions 85.49 / Lines 92.5); e2e/caching.spec.ts in Chromium through the Nuxt edge asserts feed 200 with ETag + 'Cache-Control: public, max-age=60' then bodyless 304 on If-None-Match, posts list conditional 200->304, and write-on-read post detail 'Cache-Control: no-store'; e2e/csp.spec.ts unchanged (5 journeys) still zero CSP violations.",
+      "confidence": 1.0
     }
   },
   "edges": [
@@ -8995,6 +9040,24 @@
       "to": "TASK-130",
       "type": "governs",
       "created_at": "2026-08-19T06:40:44+00:00"
+    },
+    {
+      "from": "CHG-118",
+      "to": "TASK-129",
+      "type": "implements",
+      "created_at": "2026-08-19T08:55:46+00:00"
+    },
+    {
+      "from": "CHG-119",
+      "to": "TASK-128",
+      "type": "implements",
+      "created_at": "2026-08-19T08:55:46+00:00"
+    },
+    {
+      "from": "CHG-120",
+      "to": "TASK-130",
+      "type": "implements",
+      "created_at": "2026-08-19T08:55:46+00:00"
     }
   ]
 }
