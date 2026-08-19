@@ -2,7 +2,7 @@
   "ril_version": 1,
   "round": 107,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-08-18T14:00:30+00:00",
+  "updated_at": "2026-08-19T03:55:29+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -6152,11 +6152,11 @@
     "ISS-102": {
       "id": "ISS-102",
       "type": "issue",
-      "status": "active",
-      "version": 1,
+      "status": "resolved",
+      "version": 2,
       "created_at": "2026-08-18T07:11:45+00:00",
-      "updated_at": "2026-08-18T07:11:45+00:00",
-      "touched_round": 105,
+      "updated_at": "2026-08-19T03:55:29+00:00",
+      "touched_round": 107,
       "severity": "high",
       "title": "Frontend vitest coverage gate below 80% on main (branches 76.95%, functions 79.88%); CI's 'pnpm test -- --coverage' does not actually enable coverage so the gate is latent",
       "category": "test-quality"
@@ -6164,11 +6164,11 @@
     "TASK-124": {
       "id": "TASK-124",
       "type": "task",
-      "status": "active",
-      "version": 1,
+      "status": "resolved",
+      "version": 2,
       "created_at": "2026-08-18T07:12:21+00:00",
-      "updated_at": "2026-08-18T07:12:21+00:00",
-      "touched_round": 105,
+      "updated_at": "2026-08-19T03:55:29+00:00",
+      "touched_round": 107,
       "category": "test-quality",
       "severity": 6,
       "title": "Close frontend coverage gap on main (functions 79.88% / branches 76.95% vs 80% gate) and fix CI runner so 'pnpm test -- --coverage' actually enables coverage (latent gate)"
@@ -6206,6 +6206,30 @@
       "touched_round": 106,
       "source": "ril",
       "detail": "DEC-056 milestone complete: TASK-121/122/123 all resolved (CHG-111/112/113, EV-089/090/091). Post series feature delivered end-to-end: backend series model+migration+API, public /series pages + post chip + in-series nav, admin series management + post-editor assignment, e2e journey. Remaining tracked: ISS-102/TASK-124 pre-existing frontend coverage gate, ISS-097 e2e load-flake.",
+      "confidence": 1.0
+    },
+    "CHG-114": {
+      "id": "CHG-114",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-19T03:52:43+00:00",
+      "updated_at": "2026-08-19T03:52:43+00:00",
+      "touched_round": 107,
+      "title": "Close frontend coverage gap on main + enable real vitest coverage in CI",
+      "commit": "55ccd05",
+      "summary": "909 lines of unit coverage across admin pages, shared components, composables, search/series pages and server rate-limit handler; CI 'pnpm test --coverage' now forwards the flag (was -- --coverage, a positional filter that silently disabled coverage)"
+    },
+    "EV-093": {
+      "id": "EV-093",
+      "type": "evidence",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-19T03:54:34+00:00",
+      "updated_at": "2026-08-19T03:54:34+00:00",
+      "touched_round": 107,
+      "source": "55ccd05",
+      "summary": "vitest coverage on main after CHG-114 clears all 80% gates: Statements 89.81% (2557/2847), Branches 80.64% (1587/1968), Functions 85.41% (609/713), Lines 92.49% (2343/2533); 907 unit tests pass; lint pass (1 pre-existing CommentList.vue unused-import warning)",
       "confidence": 1.0
     }
   },
@@ -8704,6 +8728,18 @@
       "to": "TASK-123",
       "type": "implements",
       "created_at": "2026-08-18T13:53:58+00:00"
+    },
+    {
+      "from": "CHG-114",
+      "to": "ISS-102",
+      "type": "resolves",
+      "created_at": "2026-08-19T03:53:37+00:00"
+    },
+    {
+      "from": "CHG-114",
+      "to": "TASK-124",
+      "type": "implements",
+      "created_at": "2026-08-19T03:53:37+00:00"
     }
   ]
 }
