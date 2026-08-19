@@ -2,7 +2,7 @@
   "ril_version": 1,
   "round": 107,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-08-19T03:55:29+00:00",
+  "updated_at": "2026-08-19T04:17:24+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -4699,7 +4699,7 @@
       "version": 2,
       "created_at": "2026-08-16T17:40:26+00:00",
       "updated_at": "2026-08-17T02:42:27+00:00",
-      "touched_round": 78,
+      "touched_round": 107,
       "title": "No CSP or SRI on frontend; no pip dependency audit in CI",
       "severity": 0.5
     },
@@ -6231,6 +6231,63 @@
       "source": "55ccd05",
       "summary": "vitest coverage on main after CHG-114 clears all 80% gates: Statements 89.81% (2557/2847), Branches 80.64% (1587/1968), Functions 85.41% (609/713), Lines 92.49% (2343/2533); 907 unit tests pass; lint pass (1 pre-existing CommentList.vue unused-import warning)",
       "confidence": 1.0
+    },
+    "DEC-057": {
+      "id": "DEC-057",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-19T04:16:37+00:00",
+      "updated_at": "2026-08-19T04:16:37+00:00",
+      "touched_round": 107,
+      "title": "Milestone: nonce-based CSP + security-headers hardening (frontend + API)",
+      "rationale": "Hardening-selection (SKILL 1-8; ISS-068 active, deferred at DEC-051 until a nonce/hash scheme could be browser-verified — this repo's Playwright harness now makes that feasible). DEC-056's rejection of CSP/SRI was a priority ordering ('internal hardening, not user-visible') in favor of the at-then-open series feature; series is delivered and the user-visible backlog is empty, so ISS-068 (CSP/SRI) is the only remaining active issue and the outstanding DEC-049 check-list entry. The app ships no Content-Security-Policy at all (only nosniff/XFO/HSTS), so any XSS in rendered HTML (DOMPurify is the sole sanitizer; TASK-023 is defense-in-depth only) runs with full page privileges. Scope: (1) Nitro server middleware emits a nonce-based CSP on Nuxt SSR HTML (script-src 'self' nonce-<n>, style-src 'self' 'unsafe-inline', img-src 'self' data: https:, connect-src 'self' + configured API origin, frame-ancestors 'none', object-src 'none', base-uri 'self') and injects the nonce attribute into every SSR inline <script> (Nuxt payload, theme bootstrap, JSON-LD); (2) complete backend API security headers (CSP on API/doc responses + Referrer-Policy + Permissions-Policy); (3) Playwright browser verification: header present with nonce, nonce attrs on inline scripts, zero CSP-violation console errors, dark-mode bootstrap + JSON-LD + KaTeX/Mermaid render on a math+mermaid post under the policy; (4) unit/contract/e2e tests. SRI scoped out: all script/css assets are same-origin Vite bundles with no third-party CDN reference, so SRI's CDN-tampering threat model is null (recorded as scope rationale, not a gap). Postgres: no DDL in this milestone; backend behavior verified by the existing suite (CI e2e boots PostgreSQL 17); operator dev pg 10.112.9.49:13310 noted but credentials are unset and not required here.",
+      "alternatives_rejected": "(a) New user-visible feature via 11.2 gap analysis — backlog empty; surviving candidates (code-copy button, comment emoji reactions) fail the value gate (button-level/patch-sized) or need reader accounts (deferred DEC-055). (b) OTel metrics (DEC-049) — observability infra with no active issue, larger surface; stay backlogged. (c) ETag/conditional + CDN cache headers (DEC-049) — performance hardening, no active issue; stay backlogged. (d) Reader accounts + cloud bookmarks — deferred DEC-055, needs auth milestone. (e) Newsletter/email — needs SMTP infra, out of scope. (f) Strict style-src without 'unsafe-inline' — would break KaTeX/Mermaid which inject runtime <style>/style attrs; rejected, inline styles are a lower risk class than inline scripts."
+    },
+    "TASK-125": {
+      "id": "TASK-125",
+      "type": "task",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-19T04:16:59+00:00",
+      "updated_at": "2026-08-19T04:16:59+00:00",
+      "touched_round": 107,
+      "category": "security",
+      "severity": 7,
+      "confidence": 1.0,
+      "effort": 3.0,
+      "unlock_factor": 2.0,
+      "title": "Backend security headers completion: CSP on API/doc responses + Referrer-Policy + Permissions-Policy headers in add_security_headers middleware, with unit + contract tests"
+    },
+    "TASK-126": {
+      "id": "TASK-126",
+      "type": "task",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-19T04:16:59+00:00",
+      "updated_at": "2026-08-19T04:16:59+00:00",
+      "touched_round": 107,
+      "category": "security",
+      "severity": 8,
+      "confidence": 1.0,
+      "effort": 5.0,
+      "unlock_factor": 3.0,
+      "title": "Nuxt 4 nonce-based CSP: Nitro server middleware emitting Content-Security-Policy (script-src 'self' + nonce, style-src 'self' 'unsafe-inline', img-src 'self' data: https:, connect-src 'self'+API, object-src 'none', base-uri 'self', frame-ancestors 'none') and injecting the per-request nonce into every SSR inline <script>, so the Nuxt payload, theme-bootstrap and JSON-LD keep working; unit tests"
+    },
+    "TASK-127": {
+      "id": "TASK-127",
+      "type": "task",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-19T04:16:59+00:00",
+      "updated_at": "2026-08-19T04:16:59+00:00",
+      "touched_round": 107,
+      "category": "security",
+      "severity": 7,
+      "confidence": 1.0,
+      "effort": 4.0,
+      "unlock_factor": 2.0,
+      "title": "Browser verification under CSP (Playwright e2e): assert nonce header + nonce attrs on inline scripts, zero CSP-violation console errors, dark-mode bootstrap/JSON-LD intact, and KaTeX/Mermaid render on a math+mermaid post; document the policy in docs"
     }
   },
   "edges": [
@@ -8740,6 +8797,36 @@
       "to": "TASK-124",
       "type": "implements",
       "created_at": "2026-08-19T03:53:37+00:00"
+    },
+    {
+      "from": "TASK-125",
+      "to": "ISS-068",
+      "type": "addresses",
+      "created_at": "2026-08-19T04:17:24+00:00"
+    },
+    {
+      "from": "TASK-126",
+      "to": "ISS-068",
+      "type": "addresses",
+      "created_at": "2026-08-19T04:17:24+00:00"
+    },
+    {
+      "from": "TASK-127",
+      "to": "ISS-068",
+      "type": "addresses",
+      "created_at": "2026-08-19T04:17:24+00:00"
+    },
+    {
+      "from": "TASK-126",
+      "to": "TASK-125",
+      "type": "depends_on",
+      "created_at": "2026-08-19T04:17:24+00:00"
+    },
+    {
+      "from": "TASK-127",
+      "to": "TASK-126",
+      "type": "depends_on",
+      "created_at": "2026-08-19T04:17:24+00:00"
     }
   ]
 }
