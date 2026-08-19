@@ -1,0 +1,33 @@
+{
+	"reader": {
+		"login": {
+			"seoTitle": "Sign in — X-Blog",
+			"seoDesc": "Sign in to sync your bookmarks across devices.",
+			"title": "Sign in",
+			"subtitle": "Your bookmarks, synced across devices.",
+			"registerTitle": "Create an account",
+			"registerSubtitle": "Keep your bookmarks safe and in sync.",
+			"hasAccount": "Sign in",
+			"noAccount": "Register",
+			"email": "Email",
+			"emailPlaceholder": "you@example.com",
+			"password": "Password",
+			"passwordPlaceholder": "••••••••",
+			"displayName": "Display name (optional)",
+			"displayNamePlaceholder": "How should we call you?",
+			"loggingIn": "Signing in…",
+			"registering": "Creating account…",
+			"login": "Sign in",
+			"registerAction": "Create account",
+			"backToBookmarks": "Back to bookmarks",
+			"errors": {
+				"network": "A network error occurred. Please try again."
+			}
+		},
+		"nav": {
+			"signIn": "Sign in",
+			"signOut": "Sign out",
+			"bookmarks": "Bookmarks"
+		}
+	}
+}

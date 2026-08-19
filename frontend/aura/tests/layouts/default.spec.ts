@@ -132,4 +132,38 @@ describe("Default Layout", () => {
 			expect(wrapper.text()).toContain("首页");
 		});
 	});
+
+	describe("Reader account nav (TASK-133)", () => {
+		it("renders a bookmarks nav link", () => {
+			const wrapper = mountLayout();
+			const bookmarks = wrapper.find('a[href="/bookmarks"]');
+			expect(bookmarks.exists()).toBe(true);
+		});
+
+		it("shows sign-in link when unauthenticated", () => {
+			const wrapper = mountLayout();
+			const signIn = wrapper.find('a[href="/login"]');
+			expect(signIn.exists()).toBe(true);
+			expect(signIn.text()).toContain("登录");
+		});
+
+		it("shows sign-out instead of sign-in when a reader token exists", async () => {
+			// useReaderAuth() re-reads localStorage on every call, so planting the
+			// token before mount flips the layout into the authenticated state.
+			localStorage.setItem("reader_token", "jwt.token");
+
+			const wrapper = mountLayout();
+			// Desktop: sign-in link gone, sign-out button present.
+			expect(wrapper.find('a[href="/login"]').exists()).toBe(false);
+			expect(wrapper.text()).toContain("退出登录");
+
+			// Mobile menu also exposes sign-out.
+			const menuButton = wrapper.find('button[aria-label="打开菜单"]');
+			await menuButton.trigger("click");
+			await wrapper.vm.$nextTick();
+			expect(wrapper.text()).toContain("退出登录");
+
+			localStorage.removeItem("reader_token");
+		});
+	});
 });

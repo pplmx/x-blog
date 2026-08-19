@@ -1,0 +1,33 @@
+{
+	"reader": {
+		"login": {
+			"seoTitle": "登录 — X-Blog",
+			"seoDesc": "登录后收藏可在多设备间同步。",
+			"title": "登录",
+			"subtitle": "跨设备同步你的收藏。",
+			"registerTitle": "创建账号",
+			"registerSubtitle": "让收藏安全可靠、随时同步。",
+			"hasAccount": "登录",
+			"noAccount": "注册",
+			"email": "邮箱",
+			"emailPlaceholder": "you@example.com",
+			"password": "密码",
+			"passwordPlaceholder": "••••••••",
+			"displayName": "昵称（可选）",
+			"displayNamePlaceholder": "怎么称呼你？",
+			"loggingIn": "登录中…",
+			"registering": "创建账号中…",
+			"login": "登录",
+			"registerAction": "创建账号",
+			"backToBookmarks": "返回收藏",
+			"errors": {
+				"network": "网络错误，请重试。"
+			}
+		},
+		"nav": {
+			"signIn": "登录",
+			"signOut": "退出登录",
+			"bookmarks": "收藏"
+		}
+	}
+}

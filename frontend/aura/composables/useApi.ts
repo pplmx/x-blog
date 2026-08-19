@@ -830,3 +830,122 @@ export async function notifyPushSubscribers(payload: PushNotifyPayload) {
 		},
 	);
 }
+
+// ---------------------------------------------------------------------------
+// Reader account + cloud-synced bookmarks (DEC-059, TASK-131/132)
+// ---------------------------------------------------------------------------
+
+export interface ReaderProfile {
+	id: number;
+	email: string;
+	display_name: string | null;
+	created_at: string | null;
+}
+
+export interface ReaderLoginResponse {
+	access_token: string;
+	token_type: string;
+	reader: ReaderProfile;
+}
+
+/** A bookmarked post as serialized by GET /api/reader/me/bookmarks (TASK-132).
+ * Mirrors the localStorage `Bookmark` shape (useBookmarks.ts) so both
+ * serializations merge transparently on the client. */
+export interface ReaderBookmarkItem {
+	id: number;
+	title: string;
+	slug: string;
+	excerpt: string | null;
+	cover_image: string | null;
+	created_at: string | null;
+	category: { id: number; name: string } | null;
+	tags: { id: number; name: string }[];
+}
+
+export interface ReaderBookmarkListResponse {
+	items: ReaderBookmarkItem[];
+	total: number;
+}
+
+/** Authorization header from the reader token (distinct store from admin). */
+function getReaderAuthHeaders(): HeadersInit {
+	if (
+		typeof window === "undefined" ||
+		typeof localStorage === "undefined" ||
+		typeof localStorage.getItem !== "function"
+	) {
+		return {};
+	}
+	const token = localStorage.getItem("reader_token");
+	return token ? { Authorization: `Bearer ${token}` } : {};
+}
+
+/** Reader self-registration (auto-login on the backend). */
+export async function readerRegister(body: {
+	email: string;
+	password: string;
+	display_name?: string;
+}) {
+	const config = useRuntimeConfig();
+	const apiUrl = config.public.apiUrl;
+	return useFetch<ReaderLoginResponse>(`${apiUrl}/api/reader/register`, {
+		method: "POST",
+		headers: { "Content-Type": "application/json" },
+		body,
+		server: false,
+	});
+}
+
+/** Reader login (email + password). */
+export async function readerLogin(body: { email: string; password: string }) {
+	const config = useRuntimeConfig();
+	const apiUrl = config.public.apiUrl;
+	return useFetch<ReaderLoginResponse>(`${apiUrl}/api/reader/login`, {
+		method: "POST",
+		headers: { "Content-Type": "application/json" },
+		body,
+		server: false,
+	});
+}
+
+/** Current reader profile (requires reader token). */
+export async function fetchCurrentReader() {
+	const config = useRuntimeConfig();
+	const apiUrl = config.public.apiUrl;
+	return useFetch<ReaderProfile>(`${apiUrl}/api/reader/me`, {
+		headers: getReaderAuthHeaders(),
+		server: false,
+	});
+}
+
+/** Cloud-synced bookmarks list (requires reader token). */
+export async function fetchReaderBookmarks() {
+	const config = useRuntimeConfig();
+	const apiUrl = config.public.apiUrl;
+	return useFetch<ReaderBookmarkListResponse>(`${apiUrl}/api/reader/me/bookmarks`, {
+		headers: getReaderAuthHeaders(),
+		server: false,
+	});
+}
+
+/** Save a bookmark. Returns 201 (new) / 200 (already existed) — idempotent. */
+export async function addReaderBookmark(postId: number) {
+	const config = useRuntimeConfig();
+	const apiUrl = config.public.apiUrl;
+	return useFetch<{ post_id: number }>(`${apiUrl}/api/reader/me/bookmarks/${postId}`, {
+		method: "PUT",
+		headers: getReaderAuthHeaders(),
+		server: false,
+	});
+}
+
+/** Remove a bookmark (204 no-op if absent). */
+export async function removeReaderBookmark(postId: number) {
+	const config = useRuntimeConfig();
+	const apiUrl = config.public.apiUrl;
+	return useFetch<null>(`${apiUrl}/api/reader/me/bookmarks/${postId}`, {
+		method: "DELETE",
+		headers: getReaderAuthHeaders(),
+		server: false,
+	});
+}

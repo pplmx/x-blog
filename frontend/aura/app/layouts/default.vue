@@ -1,7 +1,10 @@
 <script setup lang="ts">
+import { useReaderAuth } from "~~/composables/useReaderAuth";
+
 const route = useRoute();
 const { t } = useLang();
 const isHome = computed(() => route.path === "/");
+const { isAuthenticated, logout } = useReaderAuth();
 
 const navLinks = [
 	{ to: "/", labelKey: "common.nav.home", icon: "lucide:home" },
@@ -10,6 +13,7 @@ const navLinks = [
 	{ to: "/series", labelKey: "common.nav.series", icon: "lucide:layers" },
 	{ to: "/archive", labelKey: "common.nav.archive", icon: "lucide:archive" },
 	{ to: "/search", labelKey: "common.nav.search", icon: "lucide:search" },
+	{ to: "/bookmarks", labelKey: "reader.nav.bookmarks", icon: "lucide:bookmark" },
 ];
 
 const isDark = ref(false);
@@ -87,6 +91,25 @@ onMounted(() => {
             <!-- Web Push opt-in (new-post notifications) -->
             <SubscribeButton class="mx-1" />
 
+            <!-- Reader account: sign in (→ /login) / sign out (TASK-133) -->
+            <NuxtLink
+              v-if="!isAuthenticated"
+              to="/login"
+              class="shrink-0 inline-flex items-center gap-1.5 whitespace-nowrap px-3 py-2 rounded-lg text-sm font-medium text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 transition-all duration-200"
+            >
+              <Icon icon="lucide:log-in" class="w-4 h-4" />
+              {{ t('reader.nav.signIn') }}
+            </NuxtLink>
+            <button
+              v-else
+              type="button"
+              class="shrink-0 inline-flex items-center gap-1.5 whitespace-nowrap px-3 py-2 rounded-lg text-sm font-medium text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 transition-all duration-200"
+              @click="logout"
+            >
+              <Icon icon="lucide:log-out" class="w-4 h-4" />
+              {{ t('reader.nav.signOut') }}
+            </button>
+
             <!-- Language switcher -->
             <LanguageSwitcher class="mx-2" />
 
@@ -144,6 +167,24 @@ onMounted(() => {
             <div class="px-4 py-2">
               <SubscribeButton />
             </div>
+            <NuxtLink
+              v-if="!isAuthenticated"
+              to="/login"
+              class="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+              @click="mobileMenuOpen = false"
+            >
+              <Icon icon="lucide:log-in" class="w-4 h-4" />
+              {{ t('reader.nav.signIn') }}
+            </NuxtLink>
+            <button
+              v-else
+              type="button"
+              class="flex items-center gap-3 w-full px-4 py-3 rounded-xl text-sm font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+              @click="logout"
+            >
+              <Icon icon="lucide:log-out" class="w-4 h-4" />
+              {{ t('reader.nav.signOut') }}
+            </button>
             <button
               type="button"
               class="flex items-center gap-3 w-full px-4 py-3 rounded-xl text-sm font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
