@@ -17,6 +17,7 @@ from app.cache import cache_clear
 from app.database import engine
 from app.limiter import limiter
 from app.middleware import RequestLoggingMiddleware, get_logger, setup_logging
+from app.middleware.cache import add_cache_policy
 from app.middleware.security import add_security_headers
 from app.migrations import run_migrations
 from app.routers import admin, categories, comments, posts, push, search, series, tags, upload
@@ -97,6 +98,12 @@ app.add_middleware(RequestLoggingMiddleware)
 # Permissions-Policy, COOP, nosniff, frame/XSS/HSTS). Never overwrites headers a
 # route set on purpose (setdefault semantics) — see middleware/security.py.
 app.add_middleware(BaseHTTPMiddleware, dispatch=add_security_headers)
+
+# Cache policy: default every response to Cache-Control: no-store unless the
+# route set its own Cache-Control (public list/feed endpoints opt in via
+# routers/conditional.py, TASK-128). Admin/private and write-on-read responses
+# therefore never reach shared caches. See middleware/cache.py.
+app.add_middleware(BaseHTTPMiddleware, dispatch=add_cache_policy)
 
 
 @app.middleware("http")
