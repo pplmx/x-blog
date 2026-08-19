@@ -3,6 +3,7 @@ from sqlalchemy.orm import Session
 
 from app import crud, schemas
 from app.auth import User, get_current_admin
+from app.conditional import conditional_json
 from app.database import get_db
 from app.limiter import RATE_LIMIT_WRITE, limiter
 
@@ -10,16 +11,17 @@ router = APIRouter(prefix="/api/categories", tags=["categories"])
 
 
 @router.get("", response_model=list[schemas.Category])
-def list_categories(db: Session = Depends(get_db)):
-    return crud.get_categories(db)
+def list_categories(request: Request, db: Session = Depends(get_db)):
+    # crud.get_categories returns cached plain dicts (see cache.py).
+    return conditional_json(crud.get_categories(db), request)
 
 
 @router.get("/{category_id}", response_model=schemas.Category)
-def get_category(category_id: int, db: Session = Depends(get_db)):
+def get_category(request: Request, category_id: int, db: Session = Depends(get_db)):
     category = crud.get_category(db, category_id)
     if not category:
         raise HTTPException(status_code=404, detail="Category not found")
-    return category
+    return conditional_json(schemas.Category.model_validate(category).model_dump(mode="json"), request)
 
 
 @router.post("", response_model=schemas.Category, status_code=status.HTTP_201_CREATED)

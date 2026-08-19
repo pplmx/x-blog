@@ -4,6 +4,7 @@ from sqlalchemy.orm import Session
 from app import crud, models, schemas
 from app.auth import User, get_current_admin
 from app.cache import series_cache
+from app.conditional import conditional_json
 from app.database import get_db
 from app.limiter import RATE_LIMIT_WRITE, limiter
 
@@ -27,15 +28,16 @@ def _public_series_summary(db: Session, series: models.Series) -> schemas.Series
 
 
 @router.get("", response_model=list[schemas.SeriesPublic])
-def list_series(db: Session = Depends(get_db)):
-    return [_public_series_summary(db, s) for s in crud.list_series(db)]
+def list_series(request: Request, db: Session = Depends(get_db)):
+    summaries = [_public_series_summary(db, s) for s in crud.list_series(db)]
+    return conditional_json([s.model_dump(mode="json") for s in summaries], request)
 
 
 @router.get("/{slug}", response_model=schemas.SeriesDetail)
-def get_series(slug: str, db: Session = Depends(get_db)):
+def get_series(request: Request, slug: str, db: Session = Depends(get_db)):
     cached = series_cache.get(slug)
     if cached is not None:
-        return cached
+        return conditional_json(cached, request)
 
     series = crud.get_series_by_slug(db, slug)
     if not series:
@@ -55,9 +57,9 @@ def get_series(slug: str, db: Session = Depends(get_db)):
             "posts": posts,
         }
     )
-    serialized = detail.model_dump()
+    serialized = detail.model_dump(mode="json")
     series_cache[slug] = serialized
-    return serialized
+    return conditional_json(serialized, request)
 
 
 @router.post("", response_model=schemas.SeriesPublic, status_code=status.HTTP_201_CREATED)

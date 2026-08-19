@@ -1,5 +1,4 @@
 from datetime import UTC, datetime
-from hashlib import sha1
 from html.parser import HTMLParser
 from urllib.parse import urlparse
 from xml.sax.saxutils import escape
@@ -11,6 +10,7 @@ from sqlalchemy.orm import Session
 
 from app import crud
 from app.cache import feed_cache
+from app.conditional import PUBLIC_CACHE_CONTROL, conditional_response
 from app.config import settings
 from app.database import get_db
 
@@ -31,13 +31,11 @@ def _feed_response(body: str, media_type: str, request: Request) -> Response:
 
     Bloated feeds (RSS/Atom/sitemap) are re-polled by readers, crawlers and
     checkers; a strong ETag lets them cheaply fetch a 304 Not Modified and
-    skip re-downloading a body that hasn't changed (RIL TASK-089).
+    skip re-downloading a body that hasn't changed (RIL TASK-089). Delegates to
+    the shared conditional helper (TASK-128) so feeds also carry Cache-Control
+    and the 304 revalidates the stored copy's freshness window.
     """
-    etag = f'"{sha1(body.encode("utf-8")).hexdigest()}"'
-    if_none_match = request.headers.get("if-none-match")
-    if if_none_match and etag in {t.strip() for t in if_none_match.split(",")}:
-        return Response(status_code=304, headers={"ETag": etag})
-    return Response(content=body, media_type=media_type, headers={"ETag": etag})
+    return conditional_response(body, media_type, request, PUBLIC_CACHE_CONTROL)
 
 
 # Elements stripped from feed content (can never appear) — the allow-list of

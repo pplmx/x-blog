@@ -4,6 +4,7 @@ from sqlalchemy.orm import Session
 from app import crud, schemas
 from app.auth import User, get_current_admin
 from app.cache import posts_list_cache
+from app.conditional import conditional_json
 from app.database import get_db
 from app.limiter import RATE_LIMIT_READ, RATE_LIMIT_WRITE, limiter
 
@@ -11,14 +12,16 @@ router = APIRouter(prefix="/api/posts", tags=["posts"])
 
 
 @router.get("/archive", response_model=list[schemas.ArchiveEntry])
-def get_archive(db: Session = Depends(get_db)):
+def get_archive(request: Request, db: Session = Depends(get_db)):
     """Date-based archive index: (year, month, count) buckets newest-first."""
     rows = crud.get_archive(db)
-    return [schemas.ArchiveEntry(year=y, month=m, count=c) for y, m, c in rows]
+    entries = [schemas.ArchiveEntry(year=y, month=m, count=c) for y, m, c in rows]
+    return conditional_json([e.model_dump(mode="json") for e in entries], request)
 
 
 @router.get("", response_model=schemas.PostListResponse)
 def list_posts(
+    request: Request,
     page: int = Query(1, ge=1),
     limit: int = Query(10, ge=1, le=100),
     category_id: int | None = None,
@@ -30,7 +33,7 @@ def list_posts(
     cache_key = (page, limit, category_id, tag_id, year, month)
     cached = posts_list_cache.get(cache_key)
     if cached is not None:
-        return cached
+        return conditional_json(cached, request)
 
     skip = (page - 1) * limit
     posts, total = crud.get_posts(
@@ -59,9 +62,9 @@ def list_posts(
             },
         }
     )
-    serialized = response.model_dump()
+    serialized = response.model_dump(mode="json")
     posts_list_cache[cache_key] = serialized
-    return serialized
+    return conditional_json(serialized, request)
 
 
 @router.get("/{post_id}", response_model=schemas.Post)
@@ -171,19 +174,31 @@ def increment_likes(
 
 
 @router.get("/popular/list", response_model=list[schemas.PostList])
-def get_popular_posts(limit: int = Query(5, ge=1, le=50), db: Session = Depends(get_db)):
+def get_popular_posts(request: Request, limit: int = Query(5, ge=1, le=50), db: Session = Depends(get_db)):
     """Get the most popular posts by view count."""
-    return crud.get_popular_posts(db, limit=limit)
+    popular = [
+        schemas.PostList.model_validate(p).model_dump(mode="json") for p in crud.get_popular_posts(db, limit=limit)
+    ]
+    return conditional_json(popular, request)
 
 
 @router.get("/{post_id}/related", response_model=list[schemas.PostList])
-def get_related_posts(post_id: int, limit: int = Query(5, ge=1, le=50), db: Session = Depends(get_db)):
+def get_related_posts(
+    request: Request,
+    post_id: int,
+    limit: int = Query(5, ge=1, le=50),
+    db: Session = Depends(get_db),
+):
     """Get related posts based on category and tags."""
-    return crud.get_related_posts(db, post_id, limit=limit)
+    related = [
+        schemas.PostList.model_validate(p).model_dump(mode="json")
+        for p in crud.get_related_posts(db, post_id, limit=limit)
+    ]
+    return conditional_json(related, request)
 
 
 @router.get("/{post_id}/adjacent", response_model=schemas.AdjacentPosts)
-def get_adjacent_posts(post_id: int, db: Session = Depends(get_db)):
+def get_adjacent_posts(request: Request, post_id: int, db: Session = Depends(get_db)):
     """Get the linear previous/next posts around a post, in public feed order.
 
     Returns ``{previous, next}`` (either may be null at the ends of the feed).
@@ -192,4 +207,4 @@ def get_adjacent_posts(post_id: int, db: Session = Depends(get_db)):
     if (existing := crud.get_post(db, post_id)) is None or not crud.is_publicly_visible(existing):
         raise HTTPException(status_code=404, detail="Post not found")
     previous, following = crud.get_adjacent_posts(db, post_id)
-    return schemas.AdjacentPosts(previous=previous, next=following)
+    return conditional_json(schemas.AdjacentPosts(previous=previous, next=following).model_dump(mode="json"), request)

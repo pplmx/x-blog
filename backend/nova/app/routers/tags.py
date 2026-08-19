@@ -3,6 +3,7 @@ from sqlalchemy.orm import Session
 
 from app import crud, schemas
 from app.auth import User, get_current_admin
+from app.conditional import conditional_json
 from app.database import get_db
 from app.limiter import RATE_LIMIT_WRITE, limiter
 
@@ -10,16 +11,17 @@ router = APIRouter(prefix="/api/tags", tags=["tags"])
 
 
 @router.get("", response_model=list[schemas.Tag])
-def list_tags(db: Session = Depends(get_db)):
-    return crud.get_tags(db)
+def list_tags(request: Request, db: Session = Depends(get_db)):
+    # crud.get_tags returns cached plain dicts (see cache.py).
+    return conditional_json(crud.get_tags(db), request)
 
 
 @router.get("/{tag_id}", response_model=schemas.Tag)
-def get_tag(tag_id: int, db: Session = Depends(get_db)):
+def get_tag(request: Request, tag_id: int, db: Session = Depends(get_db)):
     tag = crud.get_tag(db, tag_id)
     if not tag:
         raise HTTPException(status_code=404, detail="Tag not found")
-    return tag
+    return conditional_json(schemas.Tag.model_validate(tag).model_dump(mode="json"), request)
 
 
 @router.post("", response_model=schemas.Tag, status_code=status.HTTP_201_CREATED)
