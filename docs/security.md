@@ -86,6 +86,28 @@ nosniff、XFO、XSS、HSTS）与前端一致，由 `add_security_headers` 中间
 `setdefault` 施加——路由显式设置的头（如 CSV 导出的 `X-Content-Type-Options` /
 `Content-Disposition`）不会被覆盖。
 
+## HTTP 缓存策略（Cache-Control / 条件请求）
+
+RIL DEC-058 里程碑。默认情况下每条 API 响应都是 `Cache-Control: no-store`
+（`backend/nova/app/middleware/cache.py`，路由未声明缓存策略时施加），避免共享
+缓存存放私有/动态数据。**可缓存的公开 GET 端点显式选择缓存**，通过
+`app/conditional.py` 的 `conditional_response` / `conditional_json`：
+
+- 响应带**强 ETag**（响应体的确定性哈希）与 `Cache-Control: public, max-age=60`；
+- 客户端携带匹配的 `If-None-Match` 重校验时返回 **304（空响应体）**，并携带同一
+  ETag 与 Cache-Control（刷新已存副本的新鲜度窗口）；
+- 覆盖：RSS/Atom/sitemap（原有 TASK-089 行为统一到该辅助函数）、`/api/posts`
+  列表与 archive/popular/related/adjacent、`/api/series` 列表与详情、
+  `/api/categories`、`/api/tags`（列表与单项）。
+
+**不可缓存（保持 `no-store`）**：admin 私有端点、`GET /api/posts/{id}` 详情（携带
+实时 views/likes 计数）、`POST .../view|like` 写时读端点、搜索、评论。
+
+前端 Nuxt 作为 API 与 feed 的边缘，代理需要透传这些头（`If-None-Match` 请求头 +
+后端返回的 `ETag`/`Cache-Control`/状态），否则客户端永远拿不到 304：
+`server/routes/api/[...path].ts`（通用代理）与 `server/utils/proxyFeed.ts` +
+`server/routes/rss/*.xml.ts|sitemap.xml.ts`（feed/sitemap 代理）。
+
 ## 验证
 
 - **单元测试**：`frontend/aura/tests/server/csp.spec.ts`（nonce 注入、策略构建、

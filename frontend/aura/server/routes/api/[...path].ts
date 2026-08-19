@@ -84,11 +84,30 @@ export default defineEventHandler(async (event) => {
 		});
 
 		setResponseStatus(event, response.status);
-		for (const [key, value] of Object.entries(response.headers)) {
-			if (["content-encoding", "transfer-encoding", "connection"].includes(key)) continue;
-			setResponseHeader(event, key, value);
+		// ofetch exposes Headers-like (iterable) headers; iterate entries rather
+		// than Object.entries (which sees nothing) so backend headers — the
+		// conditional ETag/Cache-Control (TASK-128) and rate-limit headers —
+		// actually reach the browser.
+		const responseHeaders = response.headers;
+		const entries =
+			typeof responseHeaders.entries === "function"
+				? [...responseHeaders.entries()]
+				: Object.entries(responseHeaders);
+		for (const [key, value] of entries) {
+			// Let h3/nitro own framing: content-length must not be forwarded
+			// (re-encoded bodies and bodyless 304s would conflict with it).
+			if (
+				["content-encoding", "transfer-encoding", "connection", "content-length"].includes(
+					key.toLowerCase(),
+				)
+			) {
+				continue;
+			}
+			setResponseHeader(event, key, String(value));
 		}
 
+		// Bodyless 304: forward the cache headers above, return no body.
+		if (response.status === 304) return;
 		return response._data;
 	} catch (err: any) {
 		if (err.response) {
