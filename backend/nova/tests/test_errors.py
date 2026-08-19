@@ -126,6 +126,15 @@ def test_security_headers(client):
     assert response.headers.get("X-Frame-Options") == "DENY"
     assert response.headers.get("X-XSS-Protection") == "1; mode=block"
     assert "max-age=31536000" in response.headers.get("Strict-Transport-Security", "")
+    # DEC-057 / TASK-125: the baseline hardening set beyond the legacy four.
+    assert response.headers.get("Referrer-Policy") == "strict-origin-when-cross-origin"
+    assert response.headers.get("Permissions-Policy") == "camera=(), microphone=(), geolocation=(), payment=(), usb=()"
+    assert response.headers.get("Cross-Origin-Opener-Policy") == "same-origin"
+    csp = response.headers.get("Content-Security-Policy", "")
+    assert "default-src 'self'" in csp
+    assert "object-src 'none'" in csp
+    assert "frame-ancestors 'none'" in csp
+    assert "base-uri 'self'" in csp
 
 
 def test_security_headers_on_error(client):
@@ -134,6 +143,20 @@ def test_security_headers_on_error(client):
     assert response.status_code == 404
     assert response.headers.get("X-Content-Type-Options") == "nosniff"
     assert response.headers.get("X-Frame-Options") == "DENY"
+    assert "Content-Security-Policy" in response.headers
+
+
+def test_docs_page_csp_allowlists_doc_cdns(client):
+    """The API CSP keeps the Swagger UI / ReDoc doc pages loadable.
+
+    FastAPI 0.141 serves Swagger UI from jsdelivr and ReDoc from jsdelivr +
+    Google Fonts; the enforced policy must allow those hosts or /docs breaks.
+    """
+    response = client.get("/docs")
+    assert response.status_code == 200
+    csp = response.headers.get("Content-Security-Policy", "")
+    assert "https://cdn.jsdelivr.net" in csp
+    assert "https://fonts.googleapis.com" in csp
 
 
 def test_unhandled_exception_returns_error_envelope(client):

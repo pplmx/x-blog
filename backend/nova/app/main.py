@@ -10,12 +10,14 @@ from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
 from slowapi.errors import RateLimitExceeded
+from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import ClientDisconnect
 
 from app.cache import cache_clear
 from app.database import engine
 from app.limiter import limiter
 from app.middleware import RequestLoggingMiddleware, get_logger, setup_logging
+from app.middleware.security import add_security_headers
 from app.migrations import run_migrations
 from app.routers import admin, categories, comments, posts, push, search, series, tags, upload
 from app.routers.export import router as export_router
@@ -91,15 +93,10 @@ app.add_middleware(GZipMiddleware, minimum_size=GZIP_MINIMUM_SIZE)
 # Add request logging middleware
 app.add_middleware(RequestLoggingMiddleware)
 
-
-@app.middleware("http")
-async def add_security_headers(request: Request, call_next):
-    response = await call_next(request)
-    response.headers["X-Content-Type-Options"] = "nosniff"
-    response.headers["X-Frame-Options"] = "DENY"
-    response.headers["X-XSS-Protection"] = "1; mode=block"
-    response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
-    return response
+# Baseline response security headers (CSP for the docs page, Referrer-Policy,
+# Permissions-Policy, COOP, nosniff, frame/XSS/HSTS). Never overwrites headers a
+# route set on purpose (setdefault semantics) — see middleware/security.py.
+app.add_middleware(BaseHTTPMiddleware, dispatch=add_security_headers)
 
 
 @app.middleware("http")
