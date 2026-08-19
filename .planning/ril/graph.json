@@ -2,7 +2,7 @@
   "ril_version": 1,
   "round": 107,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-08-19T04:17:24+00:00",
+  "updated_at": "2026-08-19T06:20:57+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -4695,10 +4695,10 @@
     "ISS-068": {
       "id": "ISS-068",
       "type": "issue",
-      "status": "active",
-      "version": 2,
+      "status": "resolved",
+      "version": 3,
       "created_at": "2026-08-16T17:40:26+00:00",
-      "updated_at": "2026-08-17T02:42:27+00:00",
+      "updated_at": "2026-08-19T06:18:36+00:00",
       "touched_round": 107,
       "title": "No CSP or SRI on frontend; no pip dependency audit in CI",
       "severity": 0.5
@@ -5101,11 +5101,11 @@
     "TASK-099": {
       "id": "TASK-099",
       "type": "task",
-      "status": "stale",
-      "version": 2,
+      "status": "resolved",
+      "version": 3,
       "created_at": "2026-08-17T02:42:27+00:00",
-      "updated_at": "2026-08-17T04:58:17+00:00",
-      "touched_round": 78,
+      "updated_at": "2026-08-19T06:20:57+00:00",
+      "touched_round": 107,
       "category": "security",
       "severity": 0.5,
       "confidence": 1.0,
@@ -6247,10 +6247,10 @@
     "TASK-125": {
       "id": "TASK-125",
       "type": "task",
-      "status": "active",
-      "version": 1,
+      "status": "resolved",
+      "version": 2,
       "created_at": "2026-08-19T04:16:59+00:00",
-      "updated_at": "2026-08-19T04:16:59+00:00",
+      "updated_at": "2026-08-19T06:18:36+00:00",
       "touched_round": 107,
       "category": "security",
       "severity": 7,
@@ -6262,10 +6262,10 @@
     "TASK-126": {
       "id": "TASK-126",
       "type": "task",
-      "status": "active",
-      "version": 1,
+      "status": "resolved",
+      "version": 2,
       "created_at": "2026-08-19T04:16:59+00:00",
-      "updated_at": "2026-08-19T04:16:59+00:00",
+      "updated_at": "2026-08-19T06:18:36+00:00",
       "touched_round": 107,
       "category": "security",
       "severity": 8,
@@ -6277,10 +6277,10 @@
     "TASK-127": {
       "id": "TASK-127",
       "type": "task",
-      "status": "active",
-      "version": 1,
+      "status": "resolved",
+      "version": 2,
       "created_at": "2026-08-19T04:16:59+00:00",
-      "updated_at": "2026-08-19T04:16:59+00:00",
+      "updated_at": "2026-08-19T06:18:36+00:00",
       "touched_round": 107,
       "category": "security",
       "severity": 7,
@@ -6288,6 +6288,51 @@
       "effort": 4.0,
       "unlock_factor": 2.0,
       "title": "Browser verification under CSP (Playwright e2e): assert nonce header + nonce attrs on inline scripts, zero CSP-violation console errors, dark-mode bootstrap/JSON-LD intact, and KaTeX/Mermaid render on a math+mermaid post; document the policy in docs"
+    },
+    "CHG-115": {
+      "id": "CHG-115",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-19T06:13:01+00:00",
+      "updated_at": "2026-08-19T06:13:01+00:00",
+      "touched_round": 107,
+      "title": "Backend baseline security headers (CSP for docs, Referrer-Policy, Permissions-Policy, COOP) via app/middleware/security.py",
+      "commit": "f555e43"
+    },
+    "CHG-116": {
+      "id": "CHG-116",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-19T06:13:01+00:00",
+      "updated_at": "2026-08-19T06:13:01+00:00",
+      "touched_round": 107,
+      "title": "Nuxt 4 nonce-based CSP via nitro render:html plugin + server/utils/csp.ts, 16 unit tests",
+      "commit": "f4336e3"
+    },
+    "CHG-117": {
+      "id": "CHG-117",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-19T06:13:01+00:00",
+      "updated_at": "2026-08-19T06:13:01+00:00",
+      "touched_round": 107,
+      "title": "Live-browser CSP verification (e2e/csp.spec.ts, 3 journeys zero violations) + iconify connect-src allowlist fix + docs/security.md",
+      "commit": "b219b2a"
+    },
+    "EV-094": {
+      "id": "EV-094",
+      "type": "evidence",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-19T06:17:16+00:00",
+      "updated_at": "2026-08-19T06:17:16+00:00",
+      "touched_round": 107,
+      "source": "b219b2a",
+      "summary": "Live-browser verification of the nonce CSP under Chromium (e2e/csp.spec.ts): (1) CSP header carries a per-request nonce shared by every inline SSR script (importmap/theme-bootstrap/JSON-LD/Nuxt payload/data block), script-src has no 'unsafe-inline', baseline headers present; (2) home + /posts/welcome-to-x-blog render KaTeX (.katex) and Mermaid (svg) with ZERO CSP-violation console errors; (3) the nonce'd theme-bootstrap inline script executes (dark class applies from localStorage) and JSON-LD is intact. Browser verification caught @iconify/vue runtime icon JSON fetches to api.iconify.design/unisvg/simplesvg blocked by connect-src 'self' — fixed by allowlisting those read-only data hosts (connect-src); offline icon bundling recorded as future optimization.",
+      "confidence": 1.0
     }
   },
   "edges": [
@@ -8827,6 +8872,42 @@
       "to": "TASK-126",
       "type": "depends_on",
       "created_at": "2026-08-19T04:17:24+00:00"
+    },
+    {
+      "from": "CHG-115",
+      "to": "TASK-125",
+      "type": "implements",
+      "created_at": "2026-08-19T06:16:52+00:00"
+    },
+    {
+      "from": "CHG-116",
+      "to": "TASK-126",
+      "type": "implements",
+      "created_at": "2026-08-19T06:16:52+00:00"
+    },
+    {
+      "from": "CHG-117",
+      "to": "TASK-127",
+      "type": "implements",
+      "created_at": "2026-08-19T06:16:52+00:00"
+    },
+    {
+      "from": "CHG-115",
+      "to": "ISS-068",
+      "type": "resolves",
+      "created_at": "2026-08-19T06:16:52+00:00"
+    },
+    {
+      "from": "CHG-116",
+      "to": "ISS-068",
+      "type": "resolves",
+      "created_at": "2026-08-19T06:16:52+00:00"
+    },
+    {
+      "from": "CHG-117",
+      "to": "ISS-068",
+      "type": "resolves",
+      "created_at": "2026-08-19T06:16:52+00:00"
     }
   ]
 }
