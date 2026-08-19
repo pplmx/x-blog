@@ -87,7 +87,10 @@ jobs:
       - name: Frontend tests with coverage
         run: |
           cd frontend/aura
-          pnpm test -- --coverage
+          # `pnpm test -- --coverage` would pass --coverage as a positional
+          # filter (the -- separator) so coverage never ran — the gate was
+          # latent. `pnpm test --coverage` forwards it as a real vitest flag.
+          pnpm test --coverage
 
   e2e-test:
     runs-on: ubuntu-latest

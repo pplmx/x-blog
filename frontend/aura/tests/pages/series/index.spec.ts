@@ -33,9 +33,11 @@ const mockSeries = [
 async function mountSeriesPage({
 	series = mockSeries,
 	pending = false,
+	error = null,
 }: {
 	series?: typeof mockSeries | null;
 	pending?: boolean;
+	error?: { message: string } | null;
 } = {}) {
 	vi.stubGlobal("useRuntimeConfig", () => ({
 		public: {
@@ -54,7 +56,7 @@ async function mountSeriesPage({
 				return {
 					data: ref(series),
 					pending: ref(pending),
-					error: ref(null),
+					error: ref(error),
 					refresh: vi.fn(),
 				};
 			}
@@ -139,5 +141,10 @@ describe("Series Index Page", () => {
 	it("renders the empty state when there are no series", async () => {
 		const wrapper = await mountSeriesPage({ series: [] });
 		expect(wrapper.text()).toContain("暂无系列");
+	});
+
+	it("renders the load-failed state on fetch error", async () => {
+		const wrapper = await mountSeriesPage({ error: { message: "boom" } });
+		expect(wrapper.text()).toContain("加载失败");
 	});
 });

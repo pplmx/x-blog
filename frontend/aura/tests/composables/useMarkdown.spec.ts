@@ -1,6 +1,7 @@
 import { beforeAll, describe, expect, it } from "vitest";
 import {
 	regexSanitize,
+	type Segment,
 	sanitizeHtml,
 	sanitizeUrl,
 	useMarkdown,
@@ -257,5 +258,38 @@ describe("heading ids for TOC anchors", () => {
 		const htmlSeg = r.segments.find((s) => s.type === "html");
 		const toc = extractToc(`<h2>我的 文章</h2>`);
 		expect(htmlSeg?.html).toContain(`id="${toc[0].id}"`);
+	});
+});
+
+describe("segment extraction edge cases", () => {
+	it("leaves an empty display formula ($$ $$) intact", () => {
+		const r = useMarkdown("before $$   $$ after");
+		// Whitespace-only formula is not math; it stays in the HTML stream.
+		expect(r.segments.every((s) => s.type !== "math")).toBe(true);
+		const html = r.segments
+			.filter((s): s is Extract<Segment, { type: "html" }> => s.type === "html")
+			.map((s) => s.html)
+			.join("");
+		expect(html).toContain("$$");
+	});
+
+	it("defaults alt to an empty string for images without an alt attribute", () => {
+		const r = useMarkdown('<img src="/no-alt.png" />');
+		expect(r.segments).toHaveLength(1);
+		expect(r.segments[0].type).toBe("image");
+		expect(r.segments[0].alt).toBe("");
+	});
+
+	it("skips placeholders whose extracted segment no longer exists", () => {
+		// An orphaned placeholder (key not in the extraction map) must be
+		// dropped, not crash the segment walk.
+		const r = useMarkdown("before <!--code:missing-key--> after");
+		expect(r.segments.every((s) => s.type !== "code")).toBe(true);
+	});
+
+	it("emits no trailing html segment for whitespace-only tails", () => {
+		const r = useMarkdown("```ts\ncode\n```\n   \n\t\n");
+		const types = r.segments.map((s) => s.type);
+		expect(types).toEqual(["code"]);
 	});
 });

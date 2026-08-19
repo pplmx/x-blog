@@ -61,9 +61,11 @@ const emptySeries = {
 async function mountSeriesDetailPage({
 	series = mockSeries,
 	pending = false,
+	error = null,
 }: {
 	series?: typeof mockSeries | null;
 	pending?: boolean;
+	error?: { message: string } | null;
 } = {}) {
 	vi.stubGlobal("useRuntimeConfig", () => ({
 		public: {
@@ -86,7 +88,7 @@ async function mountSeriesDetailPage({
 				return {
 					data: ref(series),
 					pending: ref(pending),
-					error: ref(null),
+					error: ref(error),
 					refresh: vi.fn(),
 				};
 			}
@@ -175,6 +177,14 @@ describe("Series Detail Page", () => {
 	it("renders loading skeletons while pending", async () => {
 		const wrapper = await mountSeriesDetailPage({ pending: true });
 		expect(wrapper.findAll(".animate-pulse").length).toBeGreaterThan(0);
+	});
+
+	it("renders the load-failed state with the error message on fetch error", async () => {
+		const wrapper = await mountSeriesDetailPage({
+			error: { message: "network down" },
+		});
+		expect(wrapper.text()).toContain("加载失败");
+		expect(wrapper.text()).toContain("network down");
 	});
 
 	it("renders the empty state when a series has no posts", async () => {

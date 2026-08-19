@@ -219,6 +219,77 @@ describe("Admin Series Page", () => {
 		});
 	});
 
+	describe("Error paths", () => {
+		beforeEach(() => {
+			mockFetchAdminSeries.mockReturnValue(mockFetchResult(mockSeries));
+		});
+
+		it("does not call the API when the title is empty", async () => {
+			mockCreateAdminSeries.mockReturnValue(mockFetchResult(null));
+			const SeriesPage = await loadPage();
+			const wrapper = await mountWithSuspense(SeriesPage);
+
+			// No title typed — the create button is disabled, so nothing fires.
+			const createButton = wrapper.findAll("button").find((b) => b.text().includes("创建"));
+			expect(createButton?.attributes("disabled")).toBeDefined();
+			expect(mockCreateAdminSeries).not.toHaveBeenCalled();
+		});
+
+		it("surfaces a thrown Error from create (getErrorMessage)", async () => {
+			mockCreateAdminSeries.mockRejectedValue(new Error("boom"));
+			const SeriesPage = await loadPage();
+			const wrapper = await mountWithSuspense(SeriesPage);
+
+			const inputs = wrapper.findAll('input[type="text"]');
+			await inputs[0].setValue("Will Throw");
+			const createButton = wrapper.findAll("button").find((b) => b.text().includes("创建"));
+			expect(createButton).toBeDefined();
+			await createButton?.trigger("click");
+			await flushPromises();
+
+			expect(wrapper.text()).toContain("boom");
+		});
+
+		it("falls back to a generic message when create rejects with a non-Error", async () => {
+			mockCreateAdminSeries.mockRejectedValue("not-an-error");
+			const SeriesPage = await loadPage();
+			const wrapper = await mountWithSuspense(SeriesPage);
+
+			const inputs = wrapper.findAll('input[type="text"]');
+			await inputs[0].setValue("Will Throw");
+			const createButton = wrapper.findAll("button").find((b) => b.text().includes("创建"));
+			await createButton?.trigger("click");
+			await flushPromises();
+
+			expect(wrapper.text()).toContain("操作失败");
+		});
+
+		it("surfaces a non-string detail (array) from the backend as a generic error", async () => {
+			mockCreateAdminSeries.mockReturnValue(
+				mockFetchResult(null, {
+					error: { data: { detail: [{ msg: "validate this" }] } },
+				}),
+			);
+			const SeriesPage = await loadPage();
+			const wrapper = await mountWithSuspense(SeriesPage);
+
+			const inputs = wrapper.findAll('input[type="text"]');
+			await inputs[0].setValue("Duplicate");
+			const createButton = wrapper.findAll("button").find((b) => b.text().includes("创建"));
+			await createButton?.trigger("click");
+			await flushPromises();
+
+			expect(wrapper.text()).toContain("操作失败");
+		});
+
+		it("renders String(error) when a fetch error has no message", async () => {
+			mockFetchAdminSeries.mockReturnValue(mockFetchResult(null, { error: "Bare error string" }));
+			const SeriesPage = await loadPage();
+			const wrapper = await mountWithSuspense(SeriesPage);
+			expect(wrapper.text()).toContain("Bare error string");
+		});
+	});
+
 	describe("Delete", () => {
 		beforeEach(() => {
 			mockFetchAdminSeries.mockReturnValue(mockFetchResult(mockSeries));

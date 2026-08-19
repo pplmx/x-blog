@@ -12,21 +12,31 @@ import {
 	batchApproveAdminComment,
 	createAdminCategory,
 	createAdminPost,
+	createAdminSeries,
 	createAdminTag,
+	createAdminUser,
 	createComment,
 	deleteAdminCategory,
 	deleteAdminComment,
 	deleteAdminPost,
+	deleteAdminSeries,
 	deleteAdminTag,
+	deleteAdminUser,
 	fetchAdminCategories,
 	fetchAdminComments,
 	fetchAdminPosts,
+	fetchAdminSeries,
 	fetchAdminTags,
+	fetchAdminUsers,
 	fetchComments,
+	fetchCurrentAdmin,
+	notifyPushSubscribers,
 	updateAdminCategory,
 	updateAdminPost,
+	updateAdminSeries,
 	updateAdminTag,
 	useApi,
+	useBlogStats,
 	useCategories,
 	usePopularPosts,
 	usePost,
@@ -35,6 +45,8 @@ import {
 	usePostView,
 	useRelatedPosts,
 	useSearch,
+	useSeries,
+	useSeriesBySlug,
 	useTags,
 } from "../../composables/useApi.ts";
 
@@ -485,6 +497,163 @@ describe("createComment", () => {
 	});
 });
 
+describe("series API", () => {
+	it("useSeries fetches the public series endpoint", () => {
+		useSeries();
+		expect(useFetchCalls[0].url).toBe("/api/series");
+	});
+
+	it("useSeriesBySlug fetches a series by slug", () => {
+		useSeriesBySlug("fastapi-deep-dive");
+		expect(useFetchCalls[0].url).toBe("/api/series/fastapi-deep-dive");
+	});
+
+	it("useSeriesBySlug accepts a reactive getter returning the slug", () => {
+		useSeriesBySlug(() => "nuxt-3-essentials" as string | null);
+		// The getter is handed to useFetch (which resolves it reactively); the
+		// mock stores it as-is, so resolve it to assert the built URL.
+		const urlFn = useFetchCalls[0].url as () => string;
+		expect(urlFn()).toBe("/api/series/nuxt-3-essentials");
+	});
+
+	it("useSeriesBySlug getter returning null makes useFetch skip the request", () => {
+		useSeriesBySlug(() => null);
+		// URL resolves to null — useFetch would skip the request. The mock still
+		// records one call (it can't skip), so assert the resolved URL is null.
+		const urlFn = useFetchCalls[0].url as () => string | null;
+		expect(urlFn()).toBeNull();
+	});
+});
+
+describe("series admin API functions", () => {
+	beforeEach(() => {
+		Object.defineProperty(window, "localStorage", {
+			value: {
+				getItem: vi.fn(() => "test-token"),
+				setItem: vi.fn(),
+				removeItem: vi.fn(),
+			},
+			writable: true,
+		});
+	});
+
+	it("fetchAdminSeries fetches the series list with auth header", () => {
+		fetchAdminSeries();
+		expect(useFetchCalls[0].url).toBe("http://localhost:18888/api/series");
+		expect(useFetchCalls[0].options.headers).toEqual({ Authorization: "Bearer test-token" });
+	});
+
+	it("createAdminSeries sends POST with body and auth", () => {
+		createAdminSeries({
+			title: "FastAPI Deep Dive",
+			slug: "fastapi-deep-dive",
+			description: "A tour",
+		});
+		expect(useFetchCalls[0].url).toBe("http://localhost:18888/api/series");
+		expect(useFetchCalls[0].options.method).toBe("POST");
+		expect(useFetchCalls[0].options.headers).toEqual({
+			"Content-Type": "application/json",
+			Authorization: "Bearer test-token",
+		});
+		expect(useFetchCalls[0].options.body).toEqual({
+			title: "FastAPI Deep Dive",
+			slug: "fastapi-deep-dive",
+			description: "A tour",
+		});
+	});
+
+	it("updateAdminSeries sends PUT with ID and body", () => {
+		updateAdminSeries(5, { title: "Renamed" });
+		expect(useFetchCalls[0].url).toBe("http://localhost:18888/api/series/5");
+		expect(useFetchCalls[0].options.method).toBe("PUT");
+		expect(useFetchCalls[0].options.headers).toEqual({
+			"Content-Type": "application/json",
+			Authorization: "Bearer test-token",
+		});
+		expect(useFetchCalls[0].options.body).toEqual({ title: "Renamed" });
+	});
+
+	it("deleteAdminSeries sends DELETE with ID and auth", () => {
+		deleteAdminSeries(5);
+		expect(useFetchCalls[0].url).toBe("http://localhost:18888/api/series/5");
+		expect(useFetchCalls[0].options.method).toBe("DELETE");
+		expect(useFetchCalls[0].options.headers).toEqual({ Authorization: "Bearer test-token" });
+	});
+});
+
+describe("useBlogStats", () => {
+	it("fetches the blog stats endpoint", () => {
+		useBlogStats();
+		expect(useFetchCalls[0].url).toBe("/api/stats");
+	});
+});
+
+describe("admin user API functions", () => {
+	beforeEach(() => {
+		Object.defineProperty(window, "localStorage", {
+			value: {
+				getItem: vi.fn(() => "test-token"),
+				setItem: vi.fn(),
+				removeItem: vi.fn(),
+			},
+			writable: true,
+		});
+	});
+
+	it("fetchCurrentAdmin fetches the profile with auth", () => {
+		fetchCurrentAdmin();
+		expect(useFetchCalls[0].url).toBe("http://localhost:18888/api/admin/me");
+		expect(useFetchCalls[0].options.headers).toEqual({ Authorization: "Bearer test-token" });
+	});
+
+	it("fetchAdminUsers fetches the users list with auth", () => {
+		fetchAdminUsers();
+		expect(useFetchCalls[0].url).toBe("http://localhost:18888/api/admin/users");
+		expect(useFetchCalls[0].options.headers).toEqual({ Authorization: "Bearer test-token" });
+	});
+
+	it("createAdminUser sends POST with credentials", () => {
+		createAdminUser({ username: "alice", password: "secret" });
+		expect(useFetchCalls[0].url).toBe("http://localhost:18888/api/admin/users");
+		expect(useFetchCalls[0].options.method).toBe("POST");
+		expect(useFetchCalls[0].options.body).toEqual({ username: "alice", password: "secret" });
+	});
+
+	it("deleteAdminUser sends DELETE with ID", () => {
+		deleteAdminUser(9);
+		expect(useFetchCalls[0].url).toBe("http://localhost:18888/api/admin/users/9");
+		expect(useFetchCalls[0].options.method).toBe("DELETE");
+	});
+});
+
+describe("notifyPushSubscribers", () => {
+	beforeEach(() => {
+		Object.defineProperty(window, "localStorage", {
+			value: {
+				getItem: vi.fn(() => "test-token"),
+				setItem: vi.fn(),
+				removeItem: vi.fn(),
+			},
+			writable: true,
+		});
+	});
+
+	it("posts a notification to the push endpoint with auth", () => {
+		notifyPushSubscribers({ title: "New post", body: "Check it out", url: "/posts/x" });
+		expect(useFetchCalls[0].url).toBe("http://localhost:18888/api/push/notify");
+		expect(useFetchCalls[0].options.method).toBe("POST");
+		expect(useFetchCalls[0].options.body).toEqual({
+			title: "New post",
+			body: "Check it out",
+			url: "/posts/x",
+		});
+		expect(useFetchCalls[0].options.headers).toEqual({
+			"Content-Type": "application/json",
+			Authorization: "Bearer test-token",
+		});
+	});
+});
+
 describe("adminLogin", () => {
 	it("posts to the correct /api/admin/login URL with full baseURL", () => {
 		adminLogin("admin", "secret");
@@ -503,5 +672,31 @@ describe("adminLogin", () => {
 		adminLogin("admin", "pass");
 		const headers = useFetchCalls[0].options.headers as Record<string, string>;
 		expect(headers["Content-Type"]).toBe("application/x-www-form-urlencoded");
+	});
+});
+
+describe("admin auth header edge cases (getAuthHeaders)", () => {
+	it("omits the Authorization header when no admin token is stored", () => {
+		vi.stubGlobal("localStorage", {
+			getItem: vi.fn(() => null),
+			setItem: vi.fn(),
+			removeItem: vi.fn(),
+		});
+		fetchAdminPosts();
+		expect(useFetchCalls[0].options.headers).toEqual({});
+	});
+
+	it("omits the Authorization header when localStorage is unavailable (SSR)", () => {
+		vi.stubGlobal("localStorage", undefined);
+		fetchAdminPosts();
+		expect(useFetchCalls[0].options.headers).toEqual({});
+	});
+
+	it("omits the Authorization header when localStorage lacks getItem", () => {
+		// Partial localStorage polyfills on some Node SSR runtimes must not
+		// crash admin fetches (guard checks typeof getItem === "function").
+		vi.stubGlobal("localStorage", {});
+		fetchAdminPosts();
+		expect(useFetchCalls[0].options.headers).toEqual({});
 	});
 });

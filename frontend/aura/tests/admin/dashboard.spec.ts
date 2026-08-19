@@ -725,6 +725,30 @@ describe("Admin Dashboard Page", () => {
 			expect(rejectButtons.length).toBeGreaterThanOrEqual(2);
 		});
 
+		it("approves a pending comment via the approve button", async () => {
+			mockApproveAdminComment.mockResolvedValue({});
+			const DashboardPage = await loadPage();
+			const wrapper = await mountWithSuspense(DashboardPage);
+			const approveBtn = wrapper.findAll(".text-green-700")[0];
+			expect(approveBtn).toBeDefined();
+			await approveBtn.trigger("click");
+			await flushPromises();
+			expect(mockApproveAdminComment).toHaveBeenCalled();
+			const [id, approved] = mockApproveAdminComment.mock.calls[0] as unknown[];
+			expect(id).toEqual(1);
+			expect(approved).toBe(true);
+		});
+
+		it("shows a rejection message when approving fails", async () => {
+			mockApproveAdminComment.mockRejectedValue(new Error("network down"));
+			const DashboardPage = await loadPage();
+			const wrapper = await mountWithSuspense(DashboardPage);
+			const approveBtn = wrapper.findAll(".text-green-700")[0];
+			await approveBtn?.trigger("click");
+			await flushPromises();
+			expect(wrapper.text()).toContain("network down");
+		});
+
 		it("renders data freshness timestamp", async () => {
 			const DashboardPage = await loadPage();
 			const wrapper = await mountWithSuspense(DashboardPage);
@@ -801,6 +825,21 @@ describe("Admin Dashboard Page", () => {
 			);
 			expect(exportCall).toBeDefined();
 			expect(String(exportCall?.[0])).toContain("status=draft");
+		});
+
+		it("fetches comments.csv when the comments export button is clicked", async () => {
+			const DashboardPage = await loadPage();
+			const wrapper = await mountWithSuspense(DashboardPage);
+			const commentsBtn = wrapper.findAll("button").find((b) => b.text().includes("导出评论 CSV"));
+			expect(commentsBtn).toBeDefined();
+			await commentsBtn?.trigger("click");
+			await flushPromises();
+			const fetchMock = vi.mocked($fetch);
+			const exportCall = fetchMock.mock.calls.find(([u]) =>
+				String(u).includes("/api/export/comments.csv"),
+			);
+			expect(exportCall).toBeDefined();
+			expect(vi.mocked(URL.createObjectURL)).toHaveBeenCalled();
 		});
 	});
 });

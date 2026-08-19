@@ -23,6 +23,7 @@ const {
 	mockFetchAdminSeries,
 	mockCreateAdminPost,
 	mockUpdateAdminPost,
+	mockNotifyPushSubscribers,
 } = vi.hoisted(() => ({
 	mockFetchAdminCategories: vi.fn(),
 	mockFetchAdminTags: vi.fn(),
@@ -30,6 +31,7 @@ const {
 	mockFetchAdminSeries: vi.fn(),
 	mockCreateAdminPost: vi.fn(),
 	mockUpdateAdminPost: vi.fn(),
+	mockNotifyPushSubscribers: vi.fn(),
 }));
 
 vi.mock("~/composables/useApi", () => ({
@@ -39,6 +41,7 @@ vi.mock("~/composables/useApi", () => ({
 	fetchAdminSeries: mockFetchAdminSeries,
 	createAdminPost: mockCreateAdminPost,
 	updateAdminPost: mockUpdateAdminPost,
+	notifyPushSubscribers: mockNotifyPushSubscribers,
 }));
 
 vi.stubGlobal("useRuntimeConfig", () => ({
@@ -494,6 +497,60 @@ describe("Admin Post Editor Page", () => {
 		});
 	});
 
+	describe("Web Push notify (DEC-055)", () => {
+		beforeEach(() => {
+			setupRoute("1"); // existing post — published=true shows the notify button
+			setupMocks();
+			mockNotifyPushSubscribers.mockReturnValue({
+				data: ref({ total: 1, sent: 1, failed: 0, removed: 0 }),
+				pending: ref(false),
+				error: ref(null),
+				refresh: vi.fn(),
+			});
+		});
+
+		it("renders the notify button for a published post", async () => {
+			const PostEditor = await loadPage();
+			const wrapper = await mountWithSuspense(PostEditor);
+			expect(wrapper.text()).toContain("通知订阅者");
+		});
+
+		it("sends a notification when the notify button is clicked", async () => {
+			const PostEditor = await loadPage();
+			const wrapper = await mountWithSuspense(PostEditor);
+
+			const notifyBtn = wrapper.findAll("button").find((b) => b.text().includes("通知订阅者"));
+			expect(notifyBtn).toBeDefined();
+			await notifyBtn?.trigger("click");
+			await flushPromises();
+
+			expect(mockNotifyPushSubscribers).toHaveBeenCalled();
+			const [payload] = mockNotifyPushSubscribers.mock.calls[0] as [
+				{ title: string; body: string; url: string },
+			];
+			expect(payload.title).toBe("Existing Post");
+			expect(payload.url).toBe("/posts/existing-post");
+			expect(wrapper.text()).toContain("已通知订阅者");
+		});
+
+		it("shows a failure message when notification dispatch fails", async () => {
+			mockNotifyPushSubscribers.mockReturnValue({
+				data: ref(null),
+				pending: ref(false),
+				error: ref({ message: "boom" }),
+				refresh: vi.fn(),
+			});
+			const PostEditor = await loadPage();
+			const wrapper = await mountWithSuspense(PostEditor);
+
+			const notifyBtn = wrapper.findAll("button").find((b) => b.text().includes("通知订阅者"));
+			await notifyBtn?.trigger("click");
+			await flushPromises();
+
+			expect(wrapper.text()).toContain("通知发送失败");
+		});
+	});
+
 	describe("Series assignment (DEC-056, TASK-123)", () => {
 		beforeEach(() => {
 			setupMocks();
@@ -662,6 +719,47 @@ describe("Admin Post Editor Page", () => {
 			const wrapper = await mountWithSuspense(PostEditor);
 			const fileInput = wrapper.find('input[type="file"]');
 			expect(fileInput.exists()).toBe(true);
+		});
+
+		it("wraps the selected text in bold via the toolbar", async () => {
+			const PostEditor = await loadPage();
+			const wrapper = await mountWithSuspense(PostEditor);
+			const textarea = wrapper.find('textarea[rows="15"]');
+			await textarea.setValue("hello");
+			textarea.element.setSelectionRange(0, 5);
+			const boldBtn = wrapper.findAll('button[type="button"]').find((b) => b.text().trim() === "B");
+			expect(boldBtn).toBeDefined();
+			await boldBtn.trigger("click");
+			await flushPromises();
+			expect((textarea.element as HTMLTextAreaElement).value).toBe("**hello**");
+		});
+
+		it("inserts a heading at the cursor via the toolbar", async () => {
+			const PostEditor = await loadPage();
+			const wrapper = await mountWithSuspense(PostEditor);
+			const textarea = wrapper.find('textarea[rows="15"]');
+			await textarea.setValue("Title");
+			textarea.element.setSelectionRange(0, 0);
+			const h1Btn = wrapper.findAll('button[type="button"]').find((b) => b.text().trim() === "H1");
+			expect(h1Btn).toBeDefined();
+			await h1Btn.trigger("click");
+			await flushPromises();
+			expect((textarea.element as HTMLTextAreaElement).value).toBe("# Title");
+		});
+
+		it("inserts a link cursor at the edit position via the toolbar", async () => {
+			const PostEditor = await loadPage();
+			const wrapper = await mountWithSuspense(PostEditor);
+			const textarea = wrapper.find('textarea[rows="15"]');
+			await textarea.setValue("");
+			const linkBtn = wrapper
+				.findAll('button[type="button"]')
+				.find((b) => b.attributes("title") === "链接");
+			expect(linkBtn).toBeDefined();
+			await linkBtn.trigger("click");
+			await flushPromises();
+			expect((textarea.element as HTMLTextAreaElement).value).toContain("[");
+			expect((textarea.element as HTMLTextAreaElement).value).toContain("](url)");
 		});
 	});
 

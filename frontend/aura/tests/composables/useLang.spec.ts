@@ -61,3 +61,139 @@ describe("locale key parity (zh <-> en)", () => {
 		expect(onlyEn).toEqual([]);
 	});
 });
+
+// ─────────────────────────────────────────────
+// useLang composable (reactive wrapper)
+// ─────────────────────────────────────────────
+// Covers the Nuxt-side wrapper: cookie-based init, locale switching, DOM lang
+// sync, and the ref fallback when Nuxt primitives are absent (vitest).
+
+import { afterEach, beforeEach, vi } from "vitest";
+import { ref } from "vue";
+import { useLang } from "../../composables/useLang";
+
+describe("useLang", () => {
+	// In vitest there is no Nuxt useState/useCookie, so useLang falls back to a
+	// module ref keyed off the browser language (zh-CN in setup).
+	beforeEach(() => {
+		vi.stubGlobal("document", {
+			documentElement: { lang: "" },
+		});
+	});
+	afterEach(() => {
+		vi.unstubAllGlobals();
+	});
+
+	it("returns the detected/fallback locale and a working t()", () => {
+		const { locale, t } = useLang();
+		expect(["zh", "en"]).toContain(locale.value);
+		expect(t("common.nav.home")).toBeTruthy();
+	});
+
+	it("setLocale switches the locale", () => {
+		const { locale, setLocale } = useLang();
+		const next = locale.value === "zh" ? "en" : "zh";
+		setLocale(next);
+		expect(locale.value).toBe(next);
+	});
+
+	it("sets document.documentElement.lang to the current locale on setup", () => {
+		const { locale } = useLang();
+		expect(document.documentElement.lang).toBe(locale.value);
+	});
+
+	it("exposes the supported locales list", () => {
+		const { locales } = useLang();
+		expect(locales.map((l) => l.code).sort()).toEqual(["en", "zh"]);
+	});
+
+	it("empty navigator.language falls back to the default locale", () => {
+		const originalLang = Object.getOwnPropertyDescriptor(window.navigator, "language");
+		Object.defineProperty(window.navigator, "language", { value: "", configurable: true });
+		const { locale } = useLang();
+		expect(locale.value).toBe("zh");
+		if (originalLang) Object.defineProperty(window.navigator, "language", originalLang);
+	});
+});
+
+// ─────────────────────────────────────────────
+// Nuxt-mode + SSR paths
+// ─────────────────────────────────────────────
+// With useState/useCookie stubbed, useLang takes the Nuxt branch: cookie-based
+// initial locale and cookie persistence on switch. With window/document
+// removed, the SSR guards must keep every path crash-free.
+
+import { nextTick } from "vue";
+
+describe("useLang in Nuxt mode (useState + useCookie stubbed)", () => {
+	afterEach(() => {
+		vi.unstubAllGlobals();
+	});
+
+	function stubNuxt(cookieValue: "zh" | "en" | null) {
+		const cookieRef = ref<"zh" | "en" | null>(cookieValue);
+		const states = new Map<string, ReturnType<typeof ref>>();
+		vi.stubGlobal("useState", (key: string, init?: () => "zh" | "en") => {
+			if (!states.has(key)) states.set(key, ref(init ? init() : undefined));
+			return states.get(key);
+		});
+		vi.stubGlobal("useCookie", () => cookieRef);
+		return cookieRef;
+	}
+
+	it("initializes the locale from a valid lang cookie", () => {
+		stubNuxt("en");
+		const { locale } = useLang();
+		expect(locale.value).toBe("en");
+	});
+
+	it("persists locale switches to the cookie", async () => {
+		const cookieRef = stubNuxt("en");
+		const { setLocale } = useLang();
+		setLocale("zh");
+		await nextTick(); // watch flush
+		expect(cookieRef.value).toBe("zh");
+	});
+
+	it("falls back to browser detection when useCookie is absent", () => {
+		// useState present but useCookie missing -> canUseNuxt() is false, so
+		// no cookie read/write; setup.ts pins navigator.language to zh-CN.
+		const states = new Map<string, ReturnType<typeof ref>>();
+		vi.stubGlobal("useState", (key: string, init?: () => "zh" | "en") => {
+			if (!states.has(key)) states.set(key, ref(init ? init() : undefined));
+			return states.get(key);
+		});
+		const { locale, setLocale } = useLang();
+		expect(locale.value).toBe("zh");
+		setLocale("en"); // must not throw without a cookie sink
+		expect(locale.value).toBe("en");
+	});
+});
+
+describe("useLang SSR guards (no window/document)", () => {
+	afterEach(() => {
+		vi.unstubAllGlobals();
+	});
+
+	it("initializes to the default locale and switches safely without window/document", async () => {
+		vi.stubGlobal("window", undefined);
+		vi.stubGlobal("document", undefined);
+		const { locale, setLocale } = useLang();
+		// No navigator.language -> detectBrowserLocale("") -> DEFAULT_LOCALE.
+		expect(locale.value).toBe("zh");
+		setLocale("en");
+		await nextTick(); // watch fires; updateDomLang must early-return
+		expect(locale.value).toBe("en");
+	});
+
+	it("treats a missing navigator.language as empty (default locale)", () => {
+		const original = Object.getOwnPropertyDescriptor(window.navigator, "language");
+		Object.defineProperty(window.navigator, "language", {
+			value: undefined,
+			configurable: true,
+		});
+		const { locale } = useLang();
+		expect(locale.value).toBe("zh");
+		if (original) Object.defineProperty(window.navigator, "language", original);
+	});
+});

@@ -238,6 +238,43 @@ describe("Admin Posts Page", () => {
 			expect(wrapper.text()).toContain("定时发布");
 		});
 
+		it("refreshes the list when the search query changes", async () => {
+			const refreshMock = vi.fn();
+			mockFetchAdminPosts.mockReturnValue({
+				data: ref(mockResponse),
+				pending: ref(false),
+				error: ref(null),
+				refresh: refreshMock,
+			});
+			const PostsPage = await loadPage();
+			const wrapper = await mountWithSuspense(PostsPage);
+			refreshMock.mockClear();
+
+			const searchInput = wrapper.find('input[type="text"]');
+			await searchInput.setValue("test");
+			// debounced 300ms
+			await new Promise((r) => setTimeout(r, 350));
+			expect(refreshMock).toHaveBeenCalled();
+		});
+
+		it("refreshes the list when the status filter changes", async () => {
+			const refreshMock = vi.fn();
+			mockFetchAdminPosts.mockReturnValue({
+				data: ref(mockResponse),
+				pending: ref(false),
+				error: ref(null),
+				refresh: refreshMock,
+			});
+			const PostsPage = await loadPage();
+			const wrapper = await mountWithSuspense(PostsPage);
+			refreshMock.mockClear();
+
+			const statusSelect = wrapper.find("select");
+			await statusSelect.setValue("published");
+			await flushPromises();
+			expect(refreshMock).toHaveBeenCalled();
+		});
+
 		it("calls deleteAdminPost with confirmation when delete is clicked", async () => {
 			window.confirm = vi.fn(() => true);
 			mockDeleteAdminPost.mockResolvedValue({});

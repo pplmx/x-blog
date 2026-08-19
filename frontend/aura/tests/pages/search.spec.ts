@@ -184,6 +184,44 @@ describe("Search Page", () => {
 		});
 	});
 
+	describe("Search input handler", () => {
+		// NB: mountSearchPage re-stubs navigateTo with its own mock internally,
+		// so we re-stub it AFTER mounting and read from that instance.
+		let navMock: ReturnType<typeof vi.fn>;
+
+		// The search input is only rendered in the empty-query state (with a
+		// query the results view replaces it), so all input-handler tests mount
+		// with no route query.
+
+		it("does nothing on Enter with an empty input", async () => {
+			const wrapper = await mountSearchPage({ routeQuery: {} });
+			navMock = vi.fn();
+			vi.stubGlobal("navigateTo", navMock);
+			const input = wrapper.find('input[type="text"]');
+			await input.trigger("keydown.enter");
+			expect(navMock).not.toHaveBeenCalled();
+		});
+
+		it("navigates to the typed term on Enter", async () => {
+			const wrapper = await mountSearchPage({ routeQuery: {} });
+			navMock = vi.fn();
+			vi.stubGlobal("navigateTo", navMock);
+			const input = wrapper.find('input[type="text"]');
+			await input.setValue("nuxt");
+			await input.trigger("keydown.enter");
+			// New (non-empty) term → drop page, navigate to ?q=nuxt.
+			expect(navMock).toHaveBeenCalledWith({ query: { q: "nuxt" } });
+		});
+
+		it("keeps the input in sync with a route query on mount", async () => {
+			const wrapper = await mountSearchPage({ routeQuery: {} });
+			const input = wrapper.find('input[type="text"]');
+			// The empty-query page has no route query, so the input starts blank
+			// (the watch would populate it only if ?q= existed at mount).
+			expect((input.element as HTMLInputElement).value).toBe("");
+		});
+	});
+
 	describe("Loading state", () => {
 		it("renders loading skeletons when results are pending", async () => {
 			const wrapper = await mountSearchPage({

@@ -512,5 +512,84 @@ describe("Admin Comments Page", () => {
 			expect(nextButton).toBeUndefined();
 			expect(wrapper.text()).not.toContain("第 1 /");
 		});
+
+		it("does not leave page 1 when the previous button is disabled", async () => {
+			const twoPages = {
+				items: mockComments,
+				pagination: { total: 40, page: 1, limit: 20, total_pages: 2 },
+			};
+			mockFetchAdminComments.mockReturnValue({
+				data: ref(twoPages),
+				pending: ref(false),
+				error: ref(null),
+				refresh: vi.fn(),
+			});
+			const CommentsPage = await loadPage();
+			const wrapper = await mountWithSuspense(CommentsPage);
+
+			const prevButton = wrapper.findAll("button").find((b) => b.text().trim() === "上一页");
+			expect(prevButton?.attributes("disabled")).toBeDefined();
+			await prevButton?.trigger("click");
+			await flushPromises();
+			// still page 1 — no additional fetch happened
+			expect(mockFetchAdminComments).toHaveBeenCalledTimes(1);
+		});
+
+		it("applies the search filter via Enter and reloads", async () => {
+			mockFetchAdminComments.mockReturnValue({
+				data: ref(mockCommentList),
+				pending: ref(false),
+				error: ref(null),
+				refresh: vi.fn(),
+			});
+			const CommentsPage = await loadPage();
+			const wrapper = await mountWithSuspense(CommentsPage);
+
+			const searchInput = wrapper.find('input[placeholder*="昵称"]');
+			expect(searchInput.exists()).toBe(true);
+			await searchInput.setValue("Alice");
+			await searchInput.trigger("keydown.enter");
+			await flushPromises();
+
+			expect(mockFetchAdminComments).toHaveBeenLastCalledWith(
+				{ isApproved: undefined, q: "Alice", dateFrom: undefined, dateTo: undefined },
+				1,
+				20,
+			);
+		});
+
+		it("filters by pending status and clears filters back to all", async () => {
+			mockFetchAdminComments.mockReturnValue({
+				data: ref(mockCommentList),
+				pending: ref(false),
+				error: ref(null),
+				refresh: vi.fn(),
+			});
+			const CommentsPage = await loadPage();
+			const wrapper = await mountWithSuspense(CommentsPage);
+
+			// pending status tab
+			const pendingTab = wrapper.findAll("button").find((b) => b.text().includes("待审核"));
+			expect(pendingTab).toBeDefined();
+			await pendingTab?.trigger("click");
+			await flushPromises();
+			expect(mockFetchAdminComments).toHaveBeenLastCalledWith(
+				{ isApproved: false, q: undefined, dateFrom: undefined, dateTo: undefined },
+				1,
+				20,
+			);
+
+			// clear filters back to all
+			mockFetchAdminComments.mockClear();
+			const clearBtn = wrapper.findAll("button").find((b) => b.text().trim() === "清除");
+			expect(clearBtn).toBeDefined();
+			await clearBtn?.trigger("click");
+			await flushPromises();
+			expect(mockFetchAdminComments).toHaveBeenLastCalledWith(
+				{ isApproved: undefined, q: undefined, dateFrom: undefined, dateTo: undefined },
+				1,
+				20,
+			);
+		});
 	});
 });

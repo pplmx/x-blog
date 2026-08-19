@@ -222,4 +222,70 @@ describe("ShareButtons", () => {
 			expect(copyButton.attributes("title")).toBeTruthy();
 		});
 	});
+
+	describe("X / Twitter sharing", () => {
+		it("opens the X intent URL when clicking the X button", async () => {
+			const wrapper = mountShareButtons({
+				url: "https://example.com/post",
+				title: "Hello",
+			});
+			const xButton = wrapper.findAll("button")[1];
+			await xButton.trigger("click");
+
+			expect(openSpy).toHaveBeenCalledTimes(1);
+			const shareUrl = openSpy.mock.calls[0][0] as string;
+			expect(shareUrl).toContain("twitter.com/intent/tweet");
+			expect(shareUrl).toContain(encodeURIComponent("https://example.com/post"));
+			expect(shareUrl).toContain(encodeURIComponent("Hello"));
+			expect(openSpy).toHaveBeenCalledWith(expect.any(String), "_blank", "width=600,height=450");
+		});
+	});
+
+	describe("Facebook sharing", () => {
+		it("opens the Facebook sharer URL when clicking the Facebook button", async () => {
+			const wrapper = mountShareButtons({
+				url: "https://example.com/post",
+				title: "Hello",
+			});
+			const fbButton = wrapper.findAll("button")[2];
+			await fbButton.trigger("click");
+
+			expect(openSpy).toHaveBeenCalledTimes(1);
+			const shareUrl = openSpy.mock.calls[0][0] as string;
+			expect(shareUrl).toContain("facebook.com/sharer/sharer.php");
+			expect(shareUrl).toContain(`u=${encodeURIComponent("https://example.com/post")}`);
+			expect(openSpy).toHaveBeenCalledWith(expect.any(String), "_blank", "width=600,height=500");
+		});
+	});
+
+	describe("LinkedIn sharing", () => {
+		it("opens the LinkedIn share-offsite URL when clicking the LinkedIn button", async () => {
+			const wrapper = mountShareButtons({
+				url: "https://example.com/post",
+				title: "Hello",
+			});
+			const liButton = wrapper.findAll("button")[3];
+			await liButton.trigger("click");
+
+			expect(openSpy).toHaveBeenCalledTimes(1);
+			const shareUrl = openSpy.mock.calls[0][0] as string;
+			expect(shareUrl).toContain("linkedin.com/sharing/share-offsite");
+			expect(shareUrl).toContain(`url=${encodeURIComponent("https://example.com/post")}`);
+			expect(openSpy).toHaveBeenCalledWith(expect.any(String), "_blank", "width=600,height=500");
+		});
+	});
+
+	describe("Copy link failure", () => {
+		it("swallows clipboard errors without throwing", async () => {
+			clipboardSpy.mockRejectedValueOnce(new Error("clipboard unavailable"));
+			const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+			const wrapper = mountShareButtons();
+			const buttons = wrapper.findAll("button");
+			const copyButton = buttons[buttons.length - 1];
+
+			await expect(copyButton.trigger("click")).resolves.not.toThrow();
+			expect(consoleSpy).toHaveBeenCalled();
+			consoleSpy.mockRestore();
+		});
+	});
 });
