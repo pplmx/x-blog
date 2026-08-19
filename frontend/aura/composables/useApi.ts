@@ -325,6 +325,9 @@ export interface Comment {
 	content: string;
 	is_approved: boolean;
 	created_at: string;
+	/** Verified reader identity for reader-attributed comments (DEC-062);
+	 * null for anonymous free-text commenters. */
+	reader: { id: number; display_name: string | null } | null;
 }
 
 /**
@@ -355,9 +358,15 @@ export async function createComment(
 		website?: string;
 	},
 ) {
+	// A signed-in reader comments under their account: send the reader JWT so
+	// the backend stamps identity from the token (client-supplied nickname is
+	// ignored then). Empty headers (no reader_token) keeps anonymous comments
+	// working unchanged. (DEC-062, TASK-136)
+	const headers = getReaderAuthHeaders();
 	return useApi<Comment>(`/api/comments/post/${postId}`, {
 		method: "POST",
 		body: data,
+		...(Object.keys(headers).length ? { headers } : {}),
 	});
 }
 

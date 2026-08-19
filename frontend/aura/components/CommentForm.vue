@@ -27,7 +27,18 @@
         <input id="comment-hp" v-model="form.website" type="text" tabindex="-1" autocomplete="off" />
       </div>
 
-      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      <!-- Signed-in reader: identity comes from the account, no name/email
+           inputs (the backend stamps the verified display_name). -->
+      <div
+        v-if="signedIn"
+        id="reader-comment-identity"
+        class="flex items-center gap-2 px-3 py-2 bg-blue-50 dark:bg-blue-950/40 border border-blue-100 dark:border-blue-900/40 rounded-lg text-sm text-gray-700 dark:text-gray-300"
+      >
+        <Icon icon="lucide:badge-check" class="w-4 h-4 text-blue-600 dark:text-blue-400 shrink-0" />
+        <span>{{ t('components.commentForm.asReader', { name: identityLabel }) }}</span>
+      </div>
+
+      <div v-else class="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
           <label
             for="comment-nickname"
@@ -93,8 +104,9 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch } from "vue";
+import { computed, onMounted, ref, watch } from "vue";
 import { createComment } from "~~/composables/useApi";
+import { useReaderAuth } from "~~/composables/useReaderAuth";
 
 interface Props {
 	postId: number;
@@ -112,8 +124,28 @@ const props = withDefaults(defineProps<Props>(), {
 const emit = defineEmits<{ submitted: []; cancel: [] }>();
 
 const { t } = useLang();
+const { isAuthenticated, reader } = useReaderAuth();
+
+// A signed-in reader comments under their account identity — no nickname/email
+// inputs, the createComment call includes the reader JWT and the backend stamps
+// the verified display_name (client-provided name is ignored). (DEC-062,
+// TASK-136)
+//
+// The reader identity is only known post-hydration (localStorage is
+// client-only): render the anonymous form during SSR + the first client render
+// (hydrationStats agree), then flip to the identity form after mount. Without
+// this gate Vue's hydration mismatch on the v-if region leaves the form
+// half-patched (RIL reader-comments e2e).
+const hydrated = ref(false);
+onMounted(() => {
+	hydrated.value = true;
+});
+const signedIn = computed(() => hydrated.value && isAuthenticated.value && !!reader.value);
+const identityLabel = computed(() => reader.value?.display_name || reader.value?.email || "");
 
 const form = ref({
+	// Placeholders the backend ignores for signed-in readers; the form only
+	// submits them for anonymous commenters.
 	nickname: "",
 	email: "",
 	content: "",
@@ -135,7 +167,9 @@ watch(
 );
 
 async function handleSubmit() {
-	if (!(form.value.nickname && form.value.email && form.value.content)) return;
+	// Signed-in readers only need content; anonymous must give nickname+email.
+	if (!form.value.content) return;
+	if (!signedIn.value && !(form.value.nickname && form.value.email)) return;
 
 	submitting.value = true;
 	error.value = "";
@@ -143,8 +177,10 @@ async function handleSubmit() {
 
 	try {
 		await createComment(props.postId, {
-			nickname: form.value.nickname,
-			email: form.value.email,
+			// For signed-in readers the backend ignores nickname/email and stamps
+			// the account identity; the empty email still satisfies the schema.
+			nickname: signedIn.value ? identityLabel.value : form.value.nickname,
+			email: signedIn.value ? "" : form.value.email,
 			content: form.value.content,
 			parent_id: props.parentId ?? null,
 			website: form.value.website,

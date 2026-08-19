@@ -16,14 +16,17 @@
 			"submitFailed": "Failed to submit comment. Please try again.",
 			"submitSuccess": "Comment submitted successfully, awaiting review!",
 			"cancelReply": "Cancel reply",
-			"replyingTo": "Replying to {name}"
+			"replyingTo": "Replying to {name}",
+			"asReader": "Submitting as {name}",
+			"asReaderHint": "Your verified reader identity is used automatically."
 		},
 		"commentList": {
 			"title": "Comments",
 			"empty": "No comments yet — be the first to comment!",
 			"reply": "Reply",
 			"cancelReply": "Cancel reply",
-			"replyingTo": "Replying to {name}"
+			"replyingTo": "Replying to {name}",
+			"verifiedReader": "Verified reader"
 		},
 		"share": {
 			"shareTo": "Share to",

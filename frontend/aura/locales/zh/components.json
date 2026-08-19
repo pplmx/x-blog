@@ -16,14 +16,17 @@
 			"submitFailed": "评论提交失败，请重试。",
 			"submitSuccess": "评论提交成功，等待审核中！",
 			"cancelReply": "取消回复",
-			"replyingTo": "正在回复 {name}"
+			"replyingTo": "正在回复 {name}",
+			"asReader": "以 {name} 的身份发表",
+			"asReaderHint": "将使用你已验证的读者身份。"
 		},
 		"commentList": {
 			"title": "评论",
 			"empty": "还没有评论，来发第一个评论吧！",
 			"reply": "回复",
 			"cancelReply": "取消回复",
-			"replyingTo": "正在回复 {name}"
+			"replyingTo": "正在回复 {name}",
+			"verifiedReader": "已认证读者"
 		},
 		"share": {
 			"shareTo": "分享到",

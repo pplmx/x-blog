@@ -31,6 +31,16 @@
           <div class="flex-1">
             <div class="flex items-center gap-2 mb-1">
               <span class="font-medium text-sm text-gray-900 dark:text-gray-100">{{ comment.nickname }}</span>
+              <span
+                v-if="comment.reader"
+                class="inline-flex items-center gap-0.5 text-[11px] text-blue-600 dark:text-blue-400"
+                :title="t('components.commentList.verifiedReader')"
+              >
+                <Icon icon="lucide:badge-check" class="w-3.5 h-3.5" />
+                <span v-if="comment.reader.display_name && comment.reader.display_name !== comment.nickname">
+                  {{ comment.reader.display_name }}
+                </span>
+              </span>
               <span class="text-xs text-gray-500 dark:text-gray-400">{{ formatDate(comment.created_at) }}</span>
             </div>
             <p class="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap">{{ comment.content }}</p>
@@ -69,6 +79,13 @@
                 <Icon icon="lucide:corner-down-right" class="w-3 h-3 inline" />
               </span>
               <span class="font-medium text-sm text-gray-900 dark:text-gray-100">{{ reply.nickname }}</span>
+              <span
+                v-if="reply.reader"
+                class="text-[11px] text-blue-600 dark:text-blue-400"
+                :title="t('components.commentList.verifiedReader')"
+              >
+                <Icon icon="lucide:badge-check" class="w-3.5 h-3.5 inline" />
+              </span>
               <span class="text-xs text-gray-500 dark:text-gray-400">{{ formatDate(reply.created_at) }}</span>
             </div>
             <p class="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap">{{ reply.content }}</p>

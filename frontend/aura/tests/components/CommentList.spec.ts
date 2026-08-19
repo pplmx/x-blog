@@ -396,4 +396,43 @@ describe("CommentList", () => {
 			expect(wrapper.text()).toContain("Level2");
 		});
 	});
+
+	describe("verified reader badge (DEC-062, TASK-136)", () => {
+		it("renders a verified badge for reader-attributed comments", async () => {
+			const readerComments = {
+				items: [
+					{
+						id: 30,
+						post_id: 1,
+						parent_id: null,
+						nickname: "Riki",
+						content: "Signed-in comment",
+						is_approved: true,
+						created_at: "2024-06-01T10:00:00Z",
+						reader: { id: 1, display_name: "Riki" },
+					},
+					{
+						id: 31,
+						post_id: 1,
+						parent_id: null,
+						nickname: "Guest",
+						content: "Anonymous comment",
+						is_approved: true,
+						created_at: "2024-06-02T10:00:00Z",
+						reader: null,
+					},
+				],
+				total: 2,
+				total_pages: 1,
+				page: 1,
+				limit: 20,
+			} as const;
+			const { wrapper } = await mountCommentList({ comments: readerComments });
+			// The reader-attributed comment carries the verified badge icon.
+			expect(wrapper.findAll('[data-icon="lucide:badge-check"]').length).toBe(1);
+			// The anonymous comment has none.
+			expect(wrapper.text()).toContain("Riki");
+			expect(wrapper.text()).toContain("Guest");
+		});
+	});
 });

@@ -16,7 +16,10 @@ function freshEmail(): string {
 }
 const PASSWORD = "e2epass123";
 
-async function registerReader(request: import("@playwright/test").APIRequestContext, email: string) {
+async function registerReader(
+	request: import("@playwright/test").APIRequestContext,
+	email: string,
+) {
 	const resp = await request.post("/api/reader/register", {
 		data: { email, password: PASSWORD, display_name: "E2E Reader" },
 	});
@@ -60,9 +63,7 @@ test.describe("Reader accounts + cloud bookmarks", () => {
 		await expect(page.locator(`a[href="${href}"]`).first()).toBeVisible({ timeout: 5000 });
 	});
 
-	test("reader token cannot access admin API (audience separation)", async ({
-		request,
-	}) => {
+	test("reader token cannot access admin API (audience separation)", async ({ request }) => {
 		const email = freshEmail();
 		const { access_token } = await registerReader(request, email);
 		const resp = await request.get("/api/admin/me", {
