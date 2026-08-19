@@ -106,6 +106,21 @@ export function useBookmarks() {
 		saveToStorage(bookmarks.value);
 	}
 
+	/** Replace the whole list (used by cloud sync to adopt the merged server
+	 * list as the local truth; dedupes defensively by post id). */
+	function replaceBookmarks(items: Bookmark[]): void {
+		if (!isClient()) return;
+		const seen = new Set<number>();
+		const deduped: Bookmark[] = [];
+		for (const b of items) {
+			if (seen.has(b.id)) continue;
+			seen.add(b.id);
+			deduped.push(b);
+		}
+		bookmarks.value = deduped;
+		saveToStorage(bookmarks.value);
+	}
+
 	function refresh(): void {
 		bookmarks.value = loadFromStorage();
 	}
@@ -119,6 +134,7 @@ export function useBookmarks() {
 		removeBookmark,
 		toggleBookmark,
 		clearBookmarks,
+		replaceBookmarks,
 		bookmarkCount,
 		refresh,
 	};

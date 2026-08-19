@@ -1,6 +1,6 @@
 <script setup lang="ts">
+import { useBookmarkSync } from "~~/composables/useBookmarkSync";
 import type { Bookmark } from "~~/composables/useBookmarks";
-import { useBookmarks } from "~~/composables/useBookmarks";
 
 interface Props {
 	postId: number;
@@ -17,11 +17,17 @@ const props = withDefaults(defineProps<Props>(), {
 const emit = defineEmits<Emits>();
 
 const { t } = useLang();
-const { isBookmarked, toggleBookmark } = useBookmarks();
+const { isBookmarked, add, remove } = useBookmarkSync();
 
 function handleClick() {
 	if (props.post) {
-		toggleBookmark(props.post);
+		// Mirror to the cloud when signed in (TASK-134); local remains the
+		// single source of truth for the button state.
+		if (isBookmarked(props.postId)) {
+			remove(props.postId);
+		} else {
+			add(props.post);
+		}
 	}
 	emit("toggle", props.postId);
 }

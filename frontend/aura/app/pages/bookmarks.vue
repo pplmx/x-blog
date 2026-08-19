@@ -1,9 +1,11 @@
 <script setup lang="ts">
+import { useBookmarkSync } from "~~/composables/useBookmarkSync";
 import { useBookmarks } from "~~/composables/useBookmarks";
 import { useSeo } from "~~/composables/useSeo";
 
 const { t, locale } = useLang();
-const { bookmarks, removeBookmark, clearBookmarks, bookmarkCount } = useBookmarks();
+const { bookmarks, clearBookmarks, bookmarkCount } = useBookmarks();
+const { remove, mergeLocalToCloud } = useBookmarkSync();
 
 useSeo({
 	title: t("bookmarks.seoTitle"),
@@ -16,6 +18,13 @@ function handleClearAll() {
 		clearBookmarks();
 	}
 }
+
+// When a signed-in reader opens the page, reconcile with the cloud: push any
+// local-only bookmarks up and adopt the merged server list (other-device
+// changes appear here). Safe while logged out — no-op. (TASK-134)
+onMounted(() => {
+	void mergeLocalToCloud();
+});
 </script>
 
 <template>
@@ -112,7 +121,7 @@ function handleClearAll() {
           <!-- Remove button -->
           <button
             type="button"
-            @click.stop="removeBookmark(bookmark.id)"
+            @click.stop="remove(bookmark.id)"
             :title="t('bookmarks.remove')"
             class="shrink-0 p-2 text-gray-400 hover:text-red-500 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-xl transition-colors"
           >

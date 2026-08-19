@@ -9,7 +9,10 @@
 <script setup lang="ts">
 import { ref } from "vue";
 
+import { useBookmarkSync } from "~~/composables/useBookmarkSync";
 import { useReaderAuth } from "~~/composables/useReaderAuth";
+
+const readerAuth = useReaderAuth();
 
 const { t } = useLang();
 
@@ -19,7 +22,7 @@ useSeo({
 	path: "/login",
 });
 
-const { login, register } = useReaderAuth();
+const { mergeLocalToCloud } = useBookmarkSync();
 
 const mode = ref<"login" | "register">("login");
 const email = ref("");
@@ -34,10 +37,13 @@ async function handleSubmit() {
 	isPending.value = true;
 	try {
 		if (mode.value === "register") {
-			await register(email.value, password.value, displayName.value || undefined);
+			await readerAuth.register(email.value, password.value, displayName.value || undefined);
 		} else {
-			await login(email.value, password.value);
+			await readerAuth.login(email.value, password.value);
 		}
+		// Once authenticated, push any local bookmarks up and adopt the merged
+		// server list so /bookmarks is consistent post-login. (TASK-134)
+		await mergeLocalToCloud();
 		navigateTo("/bookmarks", { replace: true });
 	} catch (e) {
 		error.value = e instanceof Error ? e.message : t("reader.login.errors.network");
