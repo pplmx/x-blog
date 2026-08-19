@@ -4,7 +4,7 @@ from sqlalchemy import extract, func, or_, select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, joinedload
 
-from app import models, schemas
+from app import auth, models, schemas
 from app.cache import (
     categories_cache,
     clear_categories_cache,
@@ -482,6 +482,7 @@ def create_comment(
     post_id: int,
     comment: schemas.CommentCreate,
     ip_address: str,
+    reader: auth.ReaderAccount | None = None,
 ) -> models.Comment:
     # Validate that the post exists
     post = db.get(models.Post, post_id)
@@ -501,13 +502,29 @@ def create_comment(
         if not parent.is_approved:
             raise ValueError("Cannot reply to a comment awaiting approval")
 
+    # Reader-attributed comments (DEC-062): when a signed-in reader authors the
+    # comment, their identity is stamped from the account — client-supplied
+    # nickname/email are IGNORED (a reader cannot spoof another's display name
+    # or attach a bogus email). Using the account's email would stash PII in the
+    # comment row; we store the reader_id only and keep the account email on
+    # reader_accounts. Anonymous comments keep their free-text nickname/email.
+    if reader is not None:
+        comment_nickname = reader.display_name or reader.email
+        comment_email: str | None = None
+        reader_id: int | None = reader.id
+    else:
+        comment_nickname = comment.nickname
+        comment_email = comment.email
+        reader_id = None
+
     db_comment = models.Comment(
         post_id=post_id,
         parent_id=comment.parent_id,
-        nickname=comment.nickname,
-        email=comment.email,
+        nickname=comment_nickname,
+        email=comment_email,
         content=comment.content,
         ip_address=ip_address,
+        reader_id=reader_id,
         # Moderation: comments are never auto-approved; an admin must approve
         # them via the approve/batch-approve endpoints. The client's value is
         # ignored (CommentCreate no longer accepts is_approved).
@@ -1030,3 +1047,21 @@ def list_reader_bookmarks(db: Session, reader_id: int) -> list[models.Post]:
         .all()
     )
     return [p for p in rows if is_publicly_visible(p)]
+
+
+def get_reader_comments(db: Session, reader_id: int) -> list[models.Comment]:
+    """A reader's own approved comments, newest first (DEC-062, TASK-135).
+
+    Only approved comments appear — pending/rejected comments are invisible to
+    the author on this read path (they will surface once moderated), matching
+    the public visibility rule.
+    """
+    return (
+        db.query(models.Comment)
+        .filter(
+            models.Comment.reader_id == reader_id,
+            models.Comment.is_approved == True,  # noqa: E712
+        )
+        .order_by(models.Comment.created_at.desc())
+        .all()
+    )

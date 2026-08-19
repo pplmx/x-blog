@@ -241,6 +241,12 @@ def get_current_superuser(current_user: User = Depends(get_current_admin)) -> Us
 # Swagger "Authorize" button keep reader and admin scopes apart. The tokenUrl
 # points at the reader login route (documentation only — bearer tokens are used).
 reader_oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/reader/login")
+# auto_error=False variant for endpoints where a reader token is optional
+# (e.g. public comment creation): a missing header yields None instead of a 401.
+optional_reader_oauth2_scheme = OAuth2PasswordBearer(
+    tokenUrl="/api/reader/login",
+    auto_error=False,
+)
 
 
 def get_current_reader(
@@ -272,3 +278,25 @@ def get_current_reader(
     if reader is None or token_version != (reader.token_version or 0):
         raise credentials_exception
     return reader
+
+
+def get_optional_reader(
+    token: str | None = Depends(optional_reader_oauth2_scheme),
+    db: Session = Depends(get_db),
+) -> ReaderAccount | None:
+    """Resolve the reader JWT if present and valid, else None.
+
+    For endpoints that work for anonymous users too (e.g. public comment
+    creation): a missing/invalid reader token just yields no reader identity
+    rather than a 401. The token is strictly reader-scoped (aud=x-blog-reader,
+    enforced by get_current_reader), so an admin token never resolves here
+    either. (DEC-062, TASK-135)
+    """
+    if not token:
+        return None
+    try:
+        # Reuse get_current_reader's decode + audience + version checks (passing
+        # the token/db positionally bypasses the Depends defaults).
+        return get_current_reader(token, db)
+    except HTTPException:
+        return None

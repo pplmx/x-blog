@@ -11,6 +11,7 @@ constraints is a separate, deliberate schema migration, not this refactor.
 """
 
 from datetime import UTC, datetime
+from typing import TYPE_CHECKING
 
 from sqlalchemy import (
     Boolean,
@@ -26,6 +27,12 @@ from sqlalchemy import (
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base
+
+if TYPE_CHECKING:
+    # ReaderAccount lives in app.auth (deliberately, next to the other account
+    # model); import only for type checking so the string-based relationship
+    # annotation resolves under pyright without a runtime import cycle.
+    from app.auth import ReaderAccount
 
 post_tags = Table(
     "post_tags",
@@ -115,9 +122,24 @@ class Comment(Base):
     ip_address: Mapped[str | None] = mapped_column(String(50))
     is_approved: Mapped[bool | None] = mapped_column(Boolean, default=True, index=True)
     created_at: Mapped[datetime | None] = mapped_column(DateTime, default=lambda: datetime.now(UTC))
+    # Optional reader that authored the comment (None = anonymous free-text
+    # commenter). Set only from the reader JWT at create time — client-supplied
+    # identity is never trusted (see routers/comments.py). The email is NOT
+    # stored here: it lives on reader_accounts; anonymous comments keep their
+    # free-text email column.
+    reader_id: Mapped[int | None] = mapped_column(Integer, nullable=True, index=True)
 
     post: Mapped[Post] = relationship("Post", back_populates="comments")
     parent: Mapped[Comment | None] = relationship("Comment", remote_side=[id], backref="replies")
+    # Reader account that authored the comment (None for anonymous). No DB FK on
+    # reader_id (additive column per DEC-009 — SQLite alembic can't add an
+    # FK-carrying column to an existing table); the join is explicit, mirroring
+    # the ReaderBookmark/Series pattern.
+    reader: Mapped[ReaderAccount | None] = relationship(
+        "ReaderAccount",
+        primaryjoin="Comment.reader_id == ReaderAccount.id",
+        foreign_keys="Comment.reader_id",
+    )
 
 
 class ReaderBookmark(Base):

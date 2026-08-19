@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
-from app import crud, models, schemas
+from app import auth, crud, models, schemas
 from app.auth import User, get_current_admin
 from app.database import get_db
 from app.limiter import RATE_LIMIT_COMMENT, client_rate_key, limiter
@@ -55,6 +55,7 @@ def create_comment(
     comment: schemas.CommentCreate,
     request: Request,
     db: Session = Depends(get_db),
+    reader: auth.ReaderAccount | None = Depends(auth.get_optional_reader),
 ):
     # Drafts and not-yet-published scheduled posts are invisible to the public
     # (same rule as the read paths). Without this guard the endpoint became a
@@ -69,7 +70,7 @@ def create_comment(
     # of the immediate TCP peer which every client behind the proxy would share.
     ip_address = client_rate_key(request)
     try:
-        return crud.create_comment(db, post_id, comment, ip_address)
+        return crud.create_comment(db, post_id, comment, ip_address, reader=reader)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 

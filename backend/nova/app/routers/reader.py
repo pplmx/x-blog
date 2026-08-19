@@ -261,3 +261,46 @@ def remove_bookmark(
     204 no-op (merge-friendly)."""
     crud.remove_reader_bookmark(db, current_reader.id, post_id)
     return None
+
+
+class ReaderCommentItem(schemas.CommentPublic):
+    """A reader's own comment, plus the post it was left on (for navigation)."""
+
+    post: schemas.CommentPostBrief | None = None
+
+
+class ReaderCommentListResponse(BaseModel):
+    items: list[ReaderCommentItem]
+    total: int
+
+
+@router.get("/me/comments", response_model=ReaderCommentListResponse)
+def list_my_comments(
+    current_reader: auth.ReaderAccount = Depends(auth.get_current_reader),
+    db: Session = Depends(get_db),
+):
+    """The reader's own approved comment history (DEC-062, TASK-135).
+
+    Only approved comments appear (pending ones surface once moderated). Each
+    item carries the post it was left on so the frontend can link back.
+    """
+    comments = crud.get_reader_comments(db, current_reader.id)
+    items = []
+    for c in comments:
+        base = schemas.CommentPublic.model_validate(c).model_dump()
+        post = db.get(models.Post, c.post_id)
+        items.append(
+            ReaderCommentItem(
+                **base,
+                post=(
+                    schemas.CommentPostBrief(
+                        id=post.id,
+                        title=post.title,
+                        slug=post.slug,
+                    )
+                    if post
+                    else None
+                ),
+            )
+        )
+    return ReaderCommentListResponse(items=items, total=len(items))

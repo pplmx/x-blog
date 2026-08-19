@@ -252,9 +252,12 @@ class AdjacentPosts(BaseModel):
 class CommentBase(BaseModel):
     # max_length values match the Comment VARCHAR columns (nickname 50,
     # email 100) so over-length input is rejected with 422 instead of an
-    # uncaught DataError -> 500 on PostgreSQL.
+    # uncaught DataError -> 500 on PostgreSQL. email is intentionally NOT here:
+    # only CommentCreate requires it (anonymous submissions), while the read
+    # schemas (Comment/CommentPublic) either carry it back from the DB row
+    # (full Comment, nullable for readers) or drop it entirely (CommentPublic
+    # drops PII). Keeps the schemas free of conflicting overrides.
     nickname: str = Field(max_length=50)
-    email: str = Field(max_length=100)
     # Bounded so the public, unauthenticated comment endpoint cannot bloat the DB
     # / response with unbounded bodies (security audit round 16).
     content: str = Field(max_length=5000)
@@ -262,6 +265,10 @@ class CommentBase(BaseModel):
 
 class CommentCreate(CommentBase):
     parent_id: int | None = None
+    # Anonymous submissions must identify themselves; signed-in readers send a
+    # placeholder (their identity is stamped from the JWT and this is ignored).
+    # Column width 100 matches the VARCHAR (no DataError on PostgreSQL).
+    email: str = Field(max_length=100)
     # Anti-spam honeypot: a hidden field real humans never see or fill, but
     # naive spam bots do. The frontend submits an empty string; any non-empty
     # value means the submitter is a bot, so the comment is rejected.
@@ -282,7 +289,58 @@ class Comment(CommentBase):
     ip_address: str
     is_approved: bool = True
     created_at: datetime
+    # Full row: reader-attributed comments store no free-text email (identity
+    # is the account), anonymous comments keep theirs — nullable covers both.
+    email: str | None = None
+    # Reader-attributed identity (None for anonymous free-text commenters) —
+    # mapped from the ORM comment.reader relationship (DEC-062).
+    reader: CommentReaderProfile | None = None
+
+    @field_validator("reader", mode="before")
+    @classmethod
+    def _map_reader(cls, reader):
+        return comment_reader_profile(reader)
+
     model_config = ConfigDict(from_attributes=True)
+
+
+class CommentReaderProfile(BaseModel):
+    """Public reader identity attached to an attributed comment (DEC-062).
+
+    Deliberately NO email — a comment's reader_id is verified (stamped from the
+    reader JWT), but the account email is PII and must not ride a public
+    comment list. display_name is the author-controlled, reader-facing handle.
+    """
+
+    id: int
+    display_name: str | None = None
+
+
+class CommentPostBrief(BaseModel):
+    """Minimal post context for a comment-history item (navigation only)."""
+
+    id: int
+    title: str
+    slug: str
+
+
+def comment_reader_profile(reader) -> CommentReaderProfile | None:
+    """Map a comment `reader` (ORM ReaderAccount | dict | None) to the profile.
+
+    Shared by the Comment and CommentPublic schemas so a reader-attributed
+    comment serializes the same profile shape wherever it appears. Accepts
+    both an ORM row and an already-validated dict (the history endpoint
+    re-validates via model_dump round-trip).
+    """
+    if reader is None:
+        return None
+    if isinstance(reader, dict):
+        id_: int | None = reader.get("id") if isinstance(reader.get("id"), int) else None
+        display_name = reader.get("display_name")
+        if id_ is None:
+            return None
+        return CommentReaderProfile(id=id_, display_name=display_name)
+    return CommentReaderProfile(id=reader.id, display_name=reader.display_name)
 
 
 class CommentPublic(CommentBase):
@@ -301,8 +359,17 @@ class CommentPublic(CommentBase):
     parent_id: int | None = None
     is_approved: bool = True
     created_at: datetime
-    # Re-declare email so it is dropped from the public serialization even
-    # though CommentBase supplies it (Field exclude). ip_address is simply
-    # absent from this schema.
-    email: str = Field(default="", exclude=True)
+    # email is dropped from the public serialization entirely (PII); ip_address
+    # is simply absent from this schema. Reader-attributed comments store no
+    # free-text email (the account email is PII and stays off this schema).
+    email: str | None = Field(default=None, exclude=True)
+    # Reader-attributed identity (None for anonymous free-text commenters) —
+    # mapped from the ORM comment.reader relationship (DEC-062).
+    reader: CommentReaderProfile | None = None
+
+    @field_validator("reader", mode="before")
+    @classmethod
+    def _map_reader(cls, reader):
+        return comment_reader_profile(reader)
+
     model_config = ConfigDict(from_attributes=True)
