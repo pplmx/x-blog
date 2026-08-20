@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 113,
+  "round": 114,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-08-20T20:26:30+00:00",
+  "updated_at": "2026-08-20T21:09:43+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -7043,6 +7043,56 @@
       "touched_round": 113,
       "commit": "4072427",
       "summary": "Chinese-aware search (DEC-070 TASK-143): _has_cjk Python detection routes CJK/mixed queries to dialect-agnostic ILIKE substring path (SQLite+Postgres), ASCII keeps tsvector on PG; substring path ANDs whitespace terms across title/excerpt/content; PG-gated integration test + run_pg_search_tests.sh targeting dev host."
+    },
+    "DEC-071": {
+      "id": "DEC-071",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-20T20:34:36+00:00",
+      "updated_at": "2026-08-20T20:34:36+00:00",
+      "touched_round": 113,
+      "title": "Milestone: CJK snippet highlight parity + match-context window (completes DEC-070)",
+      "rationale": "Feature-evolution selection (SKILL 11.2 gap analysis). TASK-143 fixed CJK matching on Postgres but left the snippet path dialect-branched: search.py still uses ts_headline('english') whenever is_postgres, so a CJK query that now MATCHES via ILIKE on Postgres gets an english-config ts_headline snippet with no reliable highlight (same CJK/tsvector confusion just fixed in search_posts). Independently, the SQLite/py highlight path windows content[:300], so matches in the middle of long posts never appear in the snippet. On a zh-first blog with long technical posts, 'search a Chinese term and see why it matched' is the perceivable payoff of DEC-070 — it is currently half-delivered. Vertical slice: (1) route snippet generation by _has_cjk(query) (not is_postgres) so CJK/mixed snippets use the dialect-agnostic Python highlighter on SQLite AND Postgres, ASCII PG keeps batched ts_headline; (2) upgrade the highlighter to window around the first matched term in the FULL content (excerpt preferred when it matches), escape-then-highlight with balanced <mark> <= 500; (3) tests: mid-content match highlight, excerpt preference, balance/bounds, XSS safety, ASCII unchanged, PG-gated CJK snippet contains <mark>. Acceptance (1 sentence): 'a CJK search result shows a highlighted snippet around the matched term on Postgres and SQLite alike, including matches deep in long posts.'",
+      "alternatives_rejected": "(a) DOMPurify-on-backend/frontend already handles rendering; the gap is generation, not display. (b) ts_headline with a zh parser config — needs a zhparser extension (superuser) like pg_trgm, DEC-070 decided against extensions. (c) Post TOC — unrelated, still a backlog candidate."
+    },
+    "TASK-144": {
+      "id": "TASK-144",
+      "type": "task",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-08-20T20:34:36+00:00",
+      "updated_at": "2026-08-20T21:09:43+00:00",
+      "touched_round": 114,
+      "category": "core-feature",
+      "severity": 4,
+      "confidence": 0.95,
+      "effort": 3,
+      "unlock_factor": 1.0,
+      "title": "Backend CJK/context-aware search snippet (query-routed + match window)"
+    },
+    "CHG-135": {
+      "id": "CHG-135",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-20T21:09:43+00:00",
+      "updated_at": "2026-08-20T21:09:43+00:00",
+      "touched_round": 113,
+      "commit": "f0d312a",
+      "summary": "CJK snippet highlight parity + match-context window (DEC-071 TASK-144): snippet routed by _has_cjk(query) (not dialect) so CJK/mixed snippets use the Python highlighter on SQLite+Postgres, ASCII PG keeps batched ts_headline; highlighter windows around first match in full content (excerpt only if it matches), balanced <mark> <=500, XSS-safe; frontend mark styling + search spec + CJK e2e."
+    },
+    "EV-104": {
+      "id": "EV-104",
+      "type": "evidence",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-20T21:09:43+00:00",
+      "updated_at": "2026-08-20T21:09:43+00:00",
+      "touched_round": 113,
+      "source": "787 nova tests (8 new snippet); typecheck; 977 frontend units; full e2e 91 incl CJK snippet journey",
+      "summary": "DEC-071 verified: mid-content CJK hits now surface a highlighted <mark> snippet (deep-body e2e proves the full stack); excerpt only preferred when it matches; balanced/bounded; XSS safe; ASCII ts_headline unchanged; PG-gated snippet test added (runs via run_pg_search_tests.sh against the dev host).",
+      "confidence": 1.0
     }
   },
   "edges": [
@@ -9913,6 +9963,18 @@
       "to": "TASK-143",
       "type": "implements",
       "created_at": "2026-08-20T20:26:30+00:00"
+    },
+    {
+      "from": "DEC-071",
+      "to": "TASK-144",
+      "type": "governs",
+      "created_at": "2026-08-20T20:34:36+00:00"
+    },
+    {
+      "from": "CHG-135",
+      "to": "TASK-144",
+      "type": "implements",
+      "created_at": "2026-08-20T21:09:43+00:00"
     }
   ]
 }
