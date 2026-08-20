@@ -180,7 +180,12 @@ class PushSubscription(Base):
     subscribers whose endpoint goes 410/404 are removed on the next dispatch —
     the push service drops subscriptions that are no longer reachable.
 
-    (DEC-055, TASK-117)
+    ``reader_id`` (nullable, DEC-064/TASK-137) binds the subscription to the
+    reader account that subscribed, enabling targeted notifications (e.g. "someone
+    replied to your comment"). Anonymous subscriptions (None) still receive the
+    superuser broadcast. No DB FK on the column (additive per DEC-009).
+
+    (DEC-055, TASK-117; DEC-064, TASK-137)
     """
 
     __tablename__ = "push_subscriptions"
@@ -192,6 +197,9 @@ class PushSubscription(Base):
     p256dh: Mapped[str] = mapped_column(String(200), nullable=False)
     auth: Mapped[str] = mapped_column(String(200), nullable=False)
     created_at: Mapped[datetime | None] = mapped_column(DateTime, default=lambda: datetime.now(UTC))
+    # Reader account that subscribed this browser (None = anonymous). Enables
+    # targeted per-reader notifications (DEC-064, TASK-137).
+    reader_id: Mapped[int | None] = mapped_column(Integer, nullable=True, index=True)
 
 
 class Series(Base):

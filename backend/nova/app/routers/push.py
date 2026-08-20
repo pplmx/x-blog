@@ -11,8 +11,7 @@ from app.limiter import RATE_LIMIT_WRITE, limiter
 from app.middleware import get_logger
 from app.webpush import (
     _b64url_decode,
-    push_removed_status,
-    send_push,
+    dispatch_to_subscriptions,
     vapid_configured,
     vapid_public_key,
 )
@@ -93,6 +92,7 @@ def subscribe(
     request: Request,  # noqa: ARG001
     data: PushSubscriptionCreate,
     db: Session = Depends(get_db),
+    reader: auth.ReaderAccount | None = Depends(auth.get_optional_reader),
 ):
     if not vapid_configured():
         raise HTTPException(
@@ -109,10 +109,14 @@ def subscribe(
     if auth_bytes is None or len(auth_bytes) != 16:
         raise HTTPException(status_code=422, detail="keys.auth must be a 16-byte base64url value")
 
+    # Bind the subscription to the reader account when the subscribe request
+    # carries a reader JWT (targeted notifications, DEC-064/TASK-137).
+    reader_id = reader.id if reader else None
     existing = db.query(models.PushSubscription).filter(models.PushSubscription.endpoint == data.endpoint).first()
     if existing:
         existing.p256dh = data.keys.p256dh
         existing.auth = data.keys.auth
+        existing.reader_id = reader_id or existing.reader_id
         db.commit()
         db.refresh(existing)
         return existing
@@ -120,6 +124,7 @@ def subscribe(
         endpoint=data.endpoint,
         p256dh=data.keys.p256dh,
         auth=data.keys.auth,
+        reader_id=reader_id,
     )
     db.add(sub)
     db.commit()
@@ -161,7 +166,8 @@ def notify_subscribers(
 
     Retires subscriptions the push service reports as gone (410/404) so the
     table does not accumulate dead endpoints, and never fails the request
-    because one subscriber's endpoint is down.
+    because one subscriber's endpoint is down. Uses the shared dispatch helper
+    (same as targeted reader notifications, DEC-064/TASK-137).
     """
     if not vapid_configured():
         raise HTTPException(
@@ -170,27 +176,5 @@ def notify_subscribers(
         )
     payload = {"title": data.title, "body": data.body, "url": data.url}
     subscriptions = db.query(models.PushSubscription).all()
-    sent = 0
-    failed = 0
-    removed = 0
-    for sub in subscriptions:
-        try:
-            send_push(endpoint=sub.endpoint, p256dh=sub.p256dh, auth=sub.auth, payload=payload)
-            sent += 1
-        except Exception as exc:  # noqa: BLE001 — pywebpush raises typed+untyped per endpoint
-            removed_status = push_removed_status(exc)
-            if removed_status is not None:
-                db.delete(sub)
-                removed += 1
-                logger.warning(
-                    "push_subscription_gone",
-                    extra={"endpoint": sub.endpoint, "status": removed_status},
-                )
-            else:
-                failed += 1
-                logger.warning(
-                    "push_dispatch_failed",
-                    extra={"endpoint": sub.endpoint, "error": str(exc)[:300]},
-                )
-    db.commit()
-    return {"total": len(subscriptions), "sent": sent, "failed": failed, "removed": removed}
+    result = dispatch_to_subscriptions(subscriptions, payload, db, logger)
+    return {"total": len(subscriptions), **result}

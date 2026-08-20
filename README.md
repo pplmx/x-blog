@@ -187,6 +187,13 @@ badge. Anonymous commenters keep the free-text nickname/email path.
 > (see `backend/nova/.env.example`). Without them every push endpoint fails
 > closed with 503.
 
+**Reader reply notifications (DEC-064)**: a signed-in reader's browser
+subscription is bound to their account (`POST /api/push/subscribe` carries the
+reader JWT), so when someone replies to their comment they receive a push
+notification ("有人回复了你的评论"). Anonymous subscribers still just receive
+the superuser broadcast. The reply-notification copy is configurable via
+`REPLY_NOTIFICATION_TITLE`/`REPLY_NOTIFICATION_BODY`.
+
 ### Reader Accounts & Cloud Bookmark Sync
 
 Reader accounts are the identity layer for cloud-synced bookmarks (audience-

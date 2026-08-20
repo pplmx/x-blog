@@ -174,7 +174,7 @@ class TestNotifyDispatch:
         client.post("/api/push/subscribe", json=_subscribe_body(endpoint=NEW_ENDPOINT, prefix=8))
 
         captured = []
-        with patch("app.routers.push.send_push") as mock_send:
+        with patch("app.webpush.send_push") as mock_send:
             mock_send.side_effect = lambda **kw: captured.append(kw)
             response = client.post(
                 "/api/push/notify",
@@ -204,7 +204,7 @@ class TestNotifyDispatch:
 
             raise WebPushException("gone", response=_Resp())
 
-        with patch("app.routers.push.send_push", side_effect=_gone):
+        with patch("app.webpush.send_push", side_effect=_gone):
             response = client.post(
                 "/api/push/notify",
                 json={"title": "Hi", "url": "/posts/x"},
@@ -228,7 +228,7 @@ class TestNotifyDispatch:
 
             raise WebPushException("down", response=_Resp())
 
-        with patch("app.routers.push.send_push", side_effect=_down):
+        with patch("app.webpush.send_push", side_effect=_down):
             response = client.post(
                 "/api/push/notify",
                 json={"title": "Hi", "url": "/posts/x"},

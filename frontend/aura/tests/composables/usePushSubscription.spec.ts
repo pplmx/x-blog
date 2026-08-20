@@ -150,6 +150,30 @@ describe("usePushSubscription", () => {
 		);
 	});
 
+	it("subscribe sends the reader JWT so the backend binds the reader (DEC-064)", async () => {
+		localStorage.setItem("reader_token", "reader.jwt.token");
+		const { svc, reg } = setupBrowser({ permission: "granted" });
+		reg.pushManager.subscribe.mockResolvedValue(fakePushSubscription(ENDPOINT));
+		const { usePushSubscription } = await import("~/composables/usePushSubscription");
+		const { status, subscribe } = usePushSubscription();
+
+		await subscribe();
+
+		expect(svc.register).toHaveBeenCalledWith("/sw.js");
+		expect(status.value).toBe("subscribed");
+		expect(globalThis.fetch).toHaveBeenCalledWith(
+			"http://localhost:18888/api/push/subscribe",
+			expect.objectContaining({
+				method: "POST",
+				headers: expect.objectContaining({
+					Authorization: "Bearer reader.jwt.token",
+				}),
+				body: expect.any(String),
+			}),
+		);
+		localStorage.removeItem("reader_token");
+	});
+
 	it("subscribe stays idle when permission is refused", async () => {
 		setupBrowser({ permission: "default" });
 		const { usePushSubscription } = await import("~/composables/usePushSubscription");

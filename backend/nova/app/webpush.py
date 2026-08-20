@@ -96,3 +96,41 @@ def push_removed_status(exc: BaseException) -> int | None:
     response = getattr(exc, "response", None)
     status = getattr(response, "status_code", None)
     return status if status in (404, 410) else None
+
+
+def dispatch_to_subscriptions(
+    subscriptions,
+    payload: dict[str, Any],
+    db,
+    logger,
+) -> dict[str, int]:
+    """Send ``payload`` to a set of subscriptions, retiring dead ones.
+
+    Shared by the superuser broadcast and targeted reader notifications: sends
+    to each endpoint, treats 404/410 as "subscription gone" (deletes the row,
+    stays invisible to the caller), and tolerates individual failures so one
+    dead endpoint cannot fail the whole dispatch or the triggering request.
+    """
+    sent = failed = removed = 0
+    for sub in subscriptions:
+        try:
+            send_push(endpoint=sub.endpoint, p256dh=sub.p256dh, auth=sub.auth, payload=payload)
+            sent += 1
+        except Exception as exc:  # noqa: BLE001 — pywebpush raises typed+untyped per endpoint
+            removed_status = push_removed_status(exc)
+            if removed_status is not None and db is not None:
+                db.delete(sub)
+                removed += 1
+                logger.warning(
+                    "push_subscription_gone",
+                    extra={"endpoint": sub.endpoint, "status": removed_status},
+                )
+            else:
+                failed += 1
+                logger.warning(
+                    "push_dispatch_failed",
+                    extra={"endpoint": sub.endpoint, "error": str(exc)[:300]},
+                )
+    if db is not None:
+        db.commit()
+    return {"sent": sent, "failed": failed, "removed": removed}

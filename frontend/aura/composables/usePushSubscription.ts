@@ -96,9 +96,17 @@ async function syncBackend(
 	sub: PushSubscription,
 	path: "subscribe" | "unsubscribe",
 ): Promise<void> {
+	// Send the reader JWT when present so the backend binds this subscription
+	// to the reader account (targeted reply notifications, DEC-064/TASK-137).
+	// Anonymous browsers subscribe without it and only receive broadcasts.
+	const headers: Record<string, string> = { "Content-Type": "application/json" };
+	if (typeof localStorage?.getItem === "function") {
+		const token = localStorage.getItem("reader_token");
+		if (token) headers["Authorization"] = `Bearer ${token}`;
+	}
 	const res = await fetch(`${apiBase()}/api/push/${path}`, {
 		method: "POST",
-		headers: { "Content-Type": "application/json" },
+		headers,
 		body: JSON.stringify(subscriptionToBody(sub)),
 	});
 	if (!res.ok) throw new Error(`push ${path} failed (${res.status})`);

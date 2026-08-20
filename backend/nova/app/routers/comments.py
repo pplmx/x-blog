@@ -1,3 +1,5 @@
+import os
+
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
@@ -6,8 +8,46 @@ from app import auth, crud, models, schemas
 from app.auth import User, get_current_admin
 from app.database import get_db
 from app.limiter import RATE_LIMIT_COMMENT, client_rate_key, limiter
+from app.middleware import get_logger
+from app.webpush import dispatch_to_subscriptions, vapid_configured
+
+logger = get_logger(__name__)
 
 router = APIRouter(prefix="/api/comments", tags=["comments"])
+
+# Reply-notification copy (server-generated push, so not i18n-able per browser;
+# operators can localize via env). Defaults match the site's zh-first posture.
+REPLY_NOTIF_TITLE = os.getenv("REPLY_NOTIFICATION_TITLE", "有人回复了你的评论")
+REPLY_NOTIF_BODY = os.getenv("REPLY_NOTIFICATION_BODY", "《{post_title}》有新回复")
+
+
+def _notify_replied_to(parent_reader: auth.ReaderAccount, post: models.Post, db: Session) -> None:
+    """Push 'someone replied to your comment' to the replied-to reader.
+
+    Fired when a *reply is approved* (this blog moderates every comment, DEC-064:
+    a reader should only hear about a reply they can actually see — notifying at
+    create-time would leak pending/spam replies). Target: the parent comment's
+    author if they are a reader with a push subscription. Best effort: VAPID
+    unconfigured or missing subscriptions is a silent no-op — moderation must
+    never fail because of notifications. Dead (404/410) subscriptions are retired
+    via the shared dispatch helper. (DEC-064, TASK-137)
+    """
+    if not vapid_configured():
+        return
+    payload = {
+        "title": REPLY_NOTIF_TITLE,
+        # replace (not .format) so a { } in the post title can't raise and
+        # break the comment create — this path must stay best-effort.
+        "body": REPLY_NOTIF_BODY.replace("{post_title}", post.title or ""),
+        "url": f"/posts/{post.slug}",
+    }
+    subs = (
+        db.query(models.PushSubscription)
+        .filter(models.PushSubscription.reader_id == parent_reader.id)
+        .all()
+    )
+    if subs:
+        dispatch_to_subscriptions(subs, payload, db, logger)
 
 
 class CommentListResponse(BaseModel):
@@ -70,6 +110,8 @@ def create_comment(
     # of the immediate TCP peer which every client behind the proxy would share.
     ip_address = client_rate_key(request)
     try:
+        # Reply notifications are fired at APPROVAL time (see approve_comment and
+        # _notify_replied_to), not here — every comment is moderated.
         return crud.create_comment(db, post_id, comment, ip_address, reader=reader)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -88,6 +130,20 @@ def approve_comment(
     comment = crud.approve_comment(db, comment_id, approved=approval.approved)
     if not comment:
         raise HTTPException(status_code=404, detail="Comment not found")
+
+    # An approved REPLY notifies the replied-to reader (their own reply's author
+    # is not notified). Best-effort: never fails the approval. (DEC-064, TASK-137)
+    if approval.approved and comment.parent_id is not None:
+        parent = db.get(models.Comment, comment.parent_id)
+        if (
+            parent is not None
+            and parent.reader_id is not None
+            and parent.reader_id != comment.reader_id
+        ):
+            post = db.get(models.Post, comment.post_id)
+            parent_reader = db.get(auth.ReaderAccount, parent.reader_id)
+            if post is not None and parent_reader is not None:
+                _notify_replied_to(parent_reader, post, db)
     return comment
 
 

@@ -190,6 +190,14 @@ docker-compose logs -f
 收藏在浏览器端以 localStorage 为主，登录时合并到云端——离线操作不丢失，下次
 登录时自动对账。读者收藏数据不出现在共享缓存（`Cache-Control: no-store`）。
 
+### Web Push 与回复通知（可选，需 VAPID keys）
+
+`POST /api/push/subscribe`（携带读者 JWT 时）把浏览器订阅绑定到读者账号
+（DEC-064）：有人回复该读者的评论时，推送"有人回复了你的评论"通知；匿名
+订阅者仍只接收管理员广播。未配置 `VAPID_PUBLIC_KEY`/`VAPID_PRIVATE_KEY` 时
+所有 push 端点 fail-closed 返回 503。回复通知文案可通过
+`REPLY_NOTIFICATION_TITLE`/`REPLY_NOTIFICATION_BODY` 覆盖。
+
 ## 🏗️ 系统架构
 
 ![架构图](./docs/x-blog-architecture.png)
