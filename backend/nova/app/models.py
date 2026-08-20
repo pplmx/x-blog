@@ -121,6 +121,10 @@ class Comment(Base):
     content: Mapped[str] = mapped_column(Text, nullable=False)
     ip_address: Mapped[str | None] = mapped_column(String(50))
     is_approved: Mapped[bool | None] = mapped_column(Boolean, default=True, index=True)
+    # When a moderator last reviewed this comment (approve OR reject). Null
+    # distinguishes "still pending" from "reviewed and rejected" for the
+    # author's comment-history status (DEC-066, TASK-139).
+    reviewed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     created_at: Mapped[datetime | None] = mapped_column(DateTime, default=lambda: datetime.now(UTC))
     # Optional reader that authored the comment (None = anonymous free-text
     # commenter). Set only from the reader JWT at create time — client-supplied

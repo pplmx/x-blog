@@ -550,12 +550,37 @@ def approve_comment(db: Session, comment_id: int, approved: bool = True) -> mode
     if not comment:
         return None
     comment.is_approved = approved
+    # Reviewed_at distinguishes "still pending" from "reviewed and rejected" for
+    # the author's comment history (DEC-066, TASK-139). Set on both outcomes.
+    comment.reviewed_at = datetime.now(UTC)
     db.commit()
     db.refresh(comment)
     # Approving (or rejecting) a comment changes the approved comment_count
     # surfaced on the cached public posts list (RIL TASK-073, ISS-041).
     clear_posts_list_cache()
     return comment
+
+
+def delete_reader_comment(db: Session, comment_id: int, reader_id: int) -> bool:
+    """Delete one of the reader's own comments (any status). False if the
+    comment is missing or belongs to a different reader. (DEC-066, TASK-139)"""
+    comment = (
+        db.query(models.Comment)
+        .filter(models.Comment.id == comment_id, models.Comment.reader_id == reader_id)
+        .first()
+    )
+    if not comment:
+        return False
+    db.delete(comment)
+    try:
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        raise ValueError("Cannot delete comment: it has dependent records")
+    # Same as admin delete: removing an approved comment changes the approved
+    # comment_count on the cached public posts list.
+    clear_posts_list_cache()
+    return True
 
 
 def get_pending_comments(db: Session) -> list[models.Comment]:
@@ -1050,18 +1075,15 @@ def list_reader_bookmarks(db: Session, reader_id: int) -> list[models.Post]:
 
 
 def get_reader_comments(db: Session, reader_id: int) -> list[models.Comment]:
-    """A reader's own approved comments, newest first (DEC-062, TASK-135).
+    """A reader's own comments across statuses, newest first (DEC-066, TASK-139).
 
-    Only approved comments appear — pending/rejected comments are invisible to
-    the author on this read path (they will surface once moderated), matching
-    the public visibility rule.
+    Pending and rejected comments are the author's own content — showing them
+    (with a status) is what lets a moderated blog's author know their comment is
+    in review / was declined. Public read paths still filter to approved only.
     """
     return (
         db.query(models.Comment)
-        .filter(
-            models.Comment.reader_id == reader_id,
-            models.Comment.is_approved == True,  # noqa: E712
-        )
+        .filter(models.Comment.reader_id == reader_id)
         .order_by(models.Comment.created_at.desc())
         .all()
     )

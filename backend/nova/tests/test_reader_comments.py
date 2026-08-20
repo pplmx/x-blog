@@ -10,8 +10,9 @@ Critical properties:
 - a signed-in reader's comment serializes their account identity (display_name,
   not the nickname they typed, and email never echoed publicly);
 - identity always comes from the JWT, never from client input;
-- /api/reader/me/comments lists only the caller's own approved comments
-  (pending excluded — same read-path visibility rule), isolated per reader.
+- /api/reader/me/comments lists the caller's own comments across statuses
+  (pending / approved / rejected) with a per-item `status`, isolated per reader;
+- a reader can DELETE their own comment (any status); others' comments 404.
 """
 
 from datetime import datetime
@@ -109,14 +110,34 @@ class TestCommentHistory:
         assert body["total"] == 1
         assert body["items"][0]["id"] == created["id"]
         assert body["items"][0]["post_id"] == post.id
+        assert body["items"][0]["status"] == "approved"
 
-    def test_pending_comments_hidden(self, client, db_session):
+    def test_pending_comments_shown_as_pending(self, client, db_session):
+        """A pending comment is the author's own content — show it with a
+        pending status (moderated-blog visibility: the author knows it is in
+        review). (DEC-066 flips the DEC-062 approved-only read path)."""
         post = _create_post(db_session)
         token = _token(client)
-        _post_comment(client, post.id, headers=_auth(token))  # left pending
+        created = _post_comment(client, post.id, headers=_auth(token)).json()
         resp = client.get("/api/reader/me/comments", headers=_auth(token))
         assert resp.status_code == 200
-        assert resp.json()["total"] == 0
+        body = resp.json()
+        assert body["total"] == 1
+        assert body["items"][0]["id"] == created["id"]
+        assert body["items"][0]["status"] == "pending"
+
+    def test_rejected_comment_shows_rejected_status(self, client, db_session):
+        from app.crud import approve_comment
+
+        post = _create_post(db_session)
+        token = _token(client)
+        created = _post_comment(client, post.id, headers=_auth(token)).json()
+        approve_comment(db_session, created["id"], approved=False)
+
+        body = client.get("/api/reader/me/comments", headers=_auth(token)).json()
+        assert body["total"] == 1
+        assert body["items"][0]["id"] == created["id"]
+        assert body["items"][0]["status"] == "rejected"
 
     def test_isolated_per_reader(self, client, db_session):
         from app.crud import approve_comment
@@ -152,3 +173,38 @@ class TestCommentHistory:
         assert isinstance(item["post"], dict)
         assert re.match(r"^\d{4}-\d{2}-\d{2}T", item["created_at"])
         assert datetime.fromisoformat(item["created_at"].replace("Z", "+00:00")) is not None
+
+
+class TestDeleteOwnComment:
+    def _own_comment(self, client, db_session, approved=None):
+        from app.crud import approve_comment
+
+        post = _create_post(db_session, slug=f"del-post-{id(self)}")
+        token = _token(client, email=f"del-{id(self)}@example.com", display_name="Del")
+        created = _post_comment(client, post.id, headers=_auth(token)).json()
+        if approved is not None:
+            approve_comment(db_session, created["id"], approved=approved)
+        return post, created["id"], token
+
+    def test_delete_own_pending_comment(self, client, db_session):
+        post, comment_id, token = self._own_comment(client, db_session)  # left pending
+        resp = client.delete(f"/api/reader/me/comments/{comment_id}", headers=_auth(token))
+        assert resp.status_code == 204, resp.text
+        assert client.get("/api/reader/me/comments", headers=_auth(token)).json()["total"] == 0
+
+    def test_delete_own_approved_comment(self, client, db_session):
+        post, comment_id, token = self._own_comment(client, db_session, approved=True)
+        resp = client.delete(f"/api/reader/me/comments/{comment_id}", headers=_auth(token))
+        assert resp.status_code == 204, resp.text
+        assert client.get("/api/reader/me/comments", headers=_auth(token)).json()["total"] == 0
+
+    def test_cannot_delete_another_readers_comment(self, client, db_session):
+        _post, comment_id, _token_a = self._own_comment(client, db_session)
+        other = _token(client, email=f"other-{id(self)}@example.com", display_name="Other")
+        resp = client.delete(f"/api/reader/me/comments/{comment_id}", headers=_auth(other))
+        assert resp.status_code == 404, resp.text
+
+    def test_delete_requires_reader_token(self, client, db_session):
+        post, comment_id, _token_a = self._own_comment(client, db_session)
+        resp = client.delete(f"/api/reader/me/comments/{comment_id}")
+        assert resp.status_code == 401

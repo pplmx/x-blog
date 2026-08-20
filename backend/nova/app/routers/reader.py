@@ -8,6 +8,7 @@ endpoints (enforced in auth.get_current_user / get_current_reader).
 """
 
 from datetime import datetime
+from typing import Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from pydantic import BaseModel, ConfigDict, Field
@@ -264,8 +265,11 @@ def remove_bookmark(
 
 
 class ReaderCommentItem(schemas.CommentPublic):
-    """A reader's own comment, plus the post it was left on (for navigation)."""
+    """A reader's own comment, its moderation status, plus the post it was left
+    on (for navigation). `status` is derived: approved / rejected (reviewed and
+    declined) / pending (awaiting review). (DEC-066, TASK-139)"""
 
+    status: Literal["pending", "approved", "rejected"]
     post: schemas.CommentPostBrief | None = None
 
 
@@ -274,15 +278,25 @@ class ReaderCommentListResponse(BaseModel):
     total: int
 
 
+def _comment_status(c: models.Comment) -> Literal["pending", "approved", "rejected"]:
+    if c.is_approved:
+        return "approved"
+    if c.reviewed_at is not None:
+        return "rejected"
+    return "pending"
+
+
 @router.get("/me/comments", response_model=ReaderCommentListResponse)
 def list_my_comments(
     current_reader: auth.ReaderAccount = Depends(auth.get_current_reader),
     db: Session = Depends(get_db),
 ):
-    """The reader's own approved comment history (DEC-062, TASK-135).
+    """The reader's own comment history across statuses (DEC-066, TASK-139).
 
-    Only approved comments appear (pending ones surface once moderated). Each
-    item carries the post it was left on so the frontend can link back.
+    A moderated blog hides pending/rejected comments from everyone but their
+    author; this endpoint shows the caller's own comments with a derived
+    status (pending / approved / rejected) plus the post they were left on so
+    the frontend can link back. Anonymous readers have no history.
     """
     comments = crud.get_reader_comments(db, current_reader.id)
     items = []
@@ -292,6 +306,7 @@ def list_my_comments(
         items.append(
             ReaderCommentItem(
                 **base,
+                status=_comment_status(c),
                 post=(
                     schemas.CommentPostBrief(
                         id=post.id,
@@ -304,3 +319,24 @@ def list_my_comments(
             )
         )
     return ReaderCommentListResponse(items=items, total=len(items))
+
+
+@router.delete("/me/comments/{comment_id}", status_code=204)
+def delete_my_comment(
+    comment_id: int,
+    current_reader: auth.ReaderAccount = Depends(auth.get_current_reader),
+    db: Session = Depends(get_db),
+):
+    """Delete one of the reader's own comments (any status).
+
+    Scoped to the caller: another reader's comment (or a missing id) is a 404,
+    indistinguishable from a non-existent resource so comment ids are not
+    enumerable. Admin delete (DELETE /api/comments/{id}) is unchanged.
+    """
+    try:
+        deleted = crud.delete_reader_comment(db, comment_id, current_reader.id)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    if not deleted:
+        raise HTTPException(status_code=404, detail="Comment not found")
+    return None
