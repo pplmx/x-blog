@@ -14,7 +14,10 @@ import { ref } from "vue";
 const mockIsAuthenticated = ref(true);
 const mockLogout = vi.fn();
 const mockRoutePath = ref("/admin");
-const mockNavigateTo = vi.fn();
+// The auth guard uses a hard redirect (window.location.replace) — asserting
+// the SPA navigateTo call is gone because it left the layout slot empty on
+// first load (see admin.vue redirect comment).
+const mockLocationReplace = vi.fn();
 
 vi.mock("../../composables/useAdminAuth", () => ({
 	useAdminAuth: () => ({
@@ -24,8 +27,9 @@ vi.mock("../../composables/useAdminAuth", () => ({
 }));
 
 vi.stubGlobal("useRoute", () => ({ path: mockRoutePath.value, query: {} }));
-vi.stubGlobal("navigateTo", mockNavigateTo);
+vi.stubGlobal("navigateTo", vi.fn());
 vi.stubGlobal("useRuntimeConfig", () => ({ public: { apiUrl: "http://localhost:18888" } }));
+vi.spyOn(window.location, "replace").mockImplementation(mockLocationReplace);
 vi.stubGlobal("useHead", vi.fn());
 vi.stubGlobal("onMounted", (fn: () => void) => fn());
 vi.stubGlobal("watch", () => {});
@@ -93,7 +97,7 @@ describe("Admin Layout", () => {
 		wrapper.unmount();
 	});
 
-	it("redirects unauthenticated users to login", () => {
+	it("redirects unauthenticated users to login with a hard redirect", () => {
 		mockIsAuthenticated.value = false;
 		mockRoutePath.value = "/admin";
 
@@ -101,7 +105,7 @@ describe("Admin Layout", () => {
 			global: { stubs, slots: { default: "<div>Content</div>" } },
 		});
 
-		expect(mockNavigateTo).toHaveBeenCalledWith("/admin/login", { replace: true });
+		expect(mockLocationReplace).toHaveBeenCalledWith("/admin/login");
 	});
 
 	it("renders sidebar navigation when authenticated", () => {

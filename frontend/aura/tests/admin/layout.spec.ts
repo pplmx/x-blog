@@ -35,6 +35,15 @@ vi.stubGlobal("useRuntimeConfig", () => ({
 }));
 vi.stubGlobal("navigateTo", vi.fn());
 vi.stubGlobal("useHead", vi.fn());
+// The auth guard hard-redirects via window.location.replace (an SPA navigateTo
+// to the same admin layout left the slot empty on first load) — see the
+// redirect comment in admin.vue. Set up per-test: afterEach's restoreAllMocks
+// reverts the spy, so each test re-establishes it.
+let mockLocationReplace: ReturnType<typeof vi.fn>;
+beforeEach(() => {
+	mockLocationReplace = vi.fn();
+	vi.spyOn(window.location, "replace").mockImplementation(mockLocationReplace);
+});
 
 const IconStubComponent = {
 	props: ["icon", "width", "height", "class"],
@@ -248,9 +257,6 @@ describe("Admin Layout", () => {
 				query: {},
 			}));
 
-			const mockNavigateTo = vi.fn();
-			vi.stubGlobal("navigateTo", mockNavigateTo);
-
 			const { default: AdminLayout } = await import("@/layouts/admin.vue");
 			const wrapper = mount(AdminLayout, {
 				global: {
@@ -259,10 +265,9 @@ describe("Admin Layout", () => {
 				slots: { default: "<div>Content</div>" },
 			});
 
-			// The layout should call navigateTo to redirect to login
-			expect(mockNavigateTo).toHaveBeenCalledWith("/admin/login", {
-				replace: true,
-			});
+			// The layout hard-redirects (window.location.replace) so the login
+			// page re-renders via SSR instead of a same-layout SPA swap.
+			expect(mockLocationReplace).toHaveBeenCalledWith("/admin/login");
 			// Sidebar should NOT be rendered
 			expect(wrapper.text()).not.toContain("X-Blog 管理");
 			expect(wrapper.text()).not.toContain("仪表盘");

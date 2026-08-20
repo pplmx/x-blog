@@ -50,9 +50,16 @@ watch(
 // layout setup: navigateTo() during setup/hydration races the still-initializing
 // app context and can be silently dropped (e2e: homepage "admin page loads"
 // intermittently saw /admin never redirect).
+//
+// A hard `window.location.replace` (not `navigateTo`) is intentional: an SPA
+// navigateTo to another page sharing this same "admin" layout can leave the
+// layout's slot empty on the first load (the layout instance is reused, the
+// page component never mounts — observed as a blank page at /admin/login after
+// the URL changes). A hard load re-renders /admin/login via SSR and hydrates
+// reliably. Only unauthenticated visitors hit this path.
 onMounted(() => {
 	if (!isAuthenticated.value && !isLoginPage.value) {
-		navigateTo("/admin/login", { replace: true });
+		window.location.replace("/admin/login");
 	}
 });
 
