@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 111,
+  "round": 112,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-08-20T19:43:41+00:00",
+  "updated_at": "2026-08-20T19:49:32+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -6969,6 +6969,18 @@
       "source": "771 nova tests (13 new self-service); 976 frontend units; typecheck; full e2e 90 passed incl account journey",
       "summary": "DEC-067 verified end-to-end: contract tests cover profile immutability/validation, password rotation (token_version revocation + fresh token), device list/isolate/revoke; e2e proves rename persists, password rotate signs old out / lets new in, device appears and revokes.",
       "confidence": 1.0
+    },
+    "DEC-068": {
+      "id": "DEC-068",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-20T19:48:56+00:00",
+      "updated_at": "2026-08-20T19:48:56+00:00",
+      "touched_round": 111,
+      "title": "converged-idle: reader arc closed (DEC-064/066/067 delivered this session)",
+      "rationale": "All §10 quality-convergence conditions hold (no active task >= 3.0; no high-severity open issue — only ISS-097 0.2 flake tracker; last VERIFY all green: 771 nova tests, 976 frontend units, typecheck, 90 e2e; graph consistent 564 nodes) AND §11.5 feature-evolution stop condition 1 (core-feature backlog empty — TASK-137/138, 139/140, 141/142 all delivered via CHG-127..133). This session closed the reader arc end to end: reply notifications (DEC-064 incl. approval-time semantics DEC-065), comment management (DEC-066), account self-service (DEC-067), plus a pre-existing admin blank-page fix (ISS-103/CHG-129). Each milestone shipped with contract+unit+e2e and full-suite regression gates.",
+      "alternatives_rejected": "(a) Post TOC / reading-progress page — real but frontend-only polish with smaller user value than the reader arc; deferred twice (DEC-066/067 decisions), candidate for a future operator directive. (b) Email recovery/newsletter — SMTP infra, rejected DEC-035/055 three times. (c) Reactions/emoji/copy-code — button-level, rejected DEC-056..058. (d) Fabricating a fourth milestone to keep shipping commits — violates SKILL 11.2 'no feature piling'; the value gate is intentionally the stop knife."
     }
   },
   "edges": [
