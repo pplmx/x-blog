@@ -1,0 +1,38 @@
+{
+	"account": {
+		"title": "账号设置",
+		"seoTitle": "账号设置 — X-Blog",
+		"seoDesc": "管理你的读者账号：昵称、密码与推送设备。",
+		"signInPrompt": "登录后可以管理你的账号设置",
+		"signInLink": "前往登录",
+		"profile": {
+			"title": "个人资料",
+			"displayNameLabel": "显示名称",
+			"emailNote": "登录邮箱（不可修改）",
+			"save": "保存",
+			"saved": "已保存",
+			"saveFailed": "保存失败，请稍后再试"
+		},
+		"password": {
+			"title": "修改密码",
+			"currentLabel": "当前密码",
+			"newLabel": "新密码",
+			"confirmLabel": "确认新密码",
+			"tooShort": "新密码至少 8 位",
+			"mismatch": "两次输入的新密码不一致",
+			"change": "修改密码",
+			"success": "密码已修改，已将其他设备登出",
+			"wrongCurrent": "当前密码不正确",
+			"failed": "修改失败，请稍后再试"
+		},
+		"devices": {
+			"title": "推送设备",
+			"empty": "还没有绑定任何推送设备",
+			"revoke": "移除",
+			"revokeConfirm": "确定移除这台设备吗？之后将不再向它推送通知。",
+			"revoked": "已移除",
+			"revokeFailed": "移除失败，请稍后再试",
+			"note": "订阅过 Web Push 且已登录的设备会出现在这里。"
+		}
+	}
+}

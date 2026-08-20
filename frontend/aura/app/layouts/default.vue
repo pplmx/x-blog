@@ -15,7 +15,9 @@ const navLinks = [
 	{ to: "/search", labelKey: "common.nav.search", icon: "lucide:search" },
 	{ to: "/bookmarks", labelKey: "reader.nav.bookmarks", icon: "lucide:bookmark" },
 	{ to: "/comments", labelKey: "reader.nav.comments", icon: "lucide:message-square" },
+	{ to: "/account", labelKey: "reader.nav.account", icon: "lucide:settings", authOnly: true },
 ];
+const navLinksVisible = computed(() => navLinks.filter((l) => !l.authOnly || isAuthenticated.value));
 
 const isDark = ref(false);
 const mobileMenuOpen = ref(false);
@@ -74,7 +76,7 @@ onMounted(() => {
           <!-- Desktop nav -->
           <nav class="hidden md:flex items-center gap-1">
             <NuxtLink
-              v-for="link in navLinks"
+              v-for="link in navLinksVisible"
               :key="link.to"
               :to="link.to"
               class="flex shrink-0 items-center gap-1.5 whitespace-nowrap px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200"
@@ -147,7 +149,7 @@ onMounted(() => {
         <div v-if="mobileMenuOpen" id="mobile-nav" class="md:hidden border-t border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-950">
           <div class="page-shell px-4 py-4 space-y-1">
             <NuxtLink
-              v-for="link in navLinks"
+              v-for="link in navLinksVisible"
               :key="link.to"
               :to="link.to"
               class="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200"

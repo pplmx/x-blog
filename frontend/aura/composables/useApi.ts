@@ -998,3 +998,66 @@ export async function deleteMyComment(commentId: number): Promise<void> {
 		headers: getReaderAuthHeaders(),
 	});
 }
+
+/* ---------------------------------------------------------------------------
+ * Reader account self-service (DEC-067, TASK-141/142): profile + password +
+ * push-device management.
+ * ------------------------------------------------------------------------- */
+
+/** Update the reader's own profile (currently display_name; email immutable). */
+export async function updateMyProfile(body: { display_name?: string }): Promise<ReaderProfile> {
+	const config = useRuntimeConfig();
+	const apiUrl = config.public.apiUrl;
+	return $fetch<ReaderProfile>(`${apiUrl}/api/reader/me`, {
+		method: "PATCH",
+		headers: { ...getReaderAuthHeaders(), "Content-Type": "application/json" },
+		body: JSON.stringify(body),
+	});
+}
+
+/** Change the reader's password (verifies current). Returns a fresh session
+ * whose token supersedes the stored one (token_version bump). */
+export async function changeMyPassword(body: {
+	current_password: string;
+	new_password: string;
+}): Promise<ReaderLoginResponse> {
+	const config = useRuntimeConfig();
+	const apiUrl = config.public.apiUrl;
+	return $fetch<ReaderLoginResponse>(`${apiUrl}/api/reader/me/password`, {
+		method: "POST",
+		headers: { ...getReaderAuthHeaders(), "Content-Type": "application/json" },
+		body: JSON.stringify(body),
+	});
+}
+
+/** One push subscription bound to the reader account (device-management view;
+ * encryption keys are never returned). */
+export interface ReaderPushSubscription {
+	id: number;
+	endpoint: string;
+	created_at: string | null;
+}
+
+export interface ReaderPushSubscriptionListResponse {
+	items: ReaderPushSubscription[];
+	total: number;
+}
+
+/** The reader's push subscriptions (devices registered for notifications). */
+export async function fetchMyPushSubscriptions(): Promise<ReaderPushSubscriptionListResponse> {
+	const config = useRuntimeConfig();
+	const apiUrl = config.public.apiUrl;
+	return $fetch<ReaderPushSubscriptionListResponse>(`${apiUrl}/api/reader/me/push-subscriptions`, {
+		headers: getReaderAuthHeaders(),
+	});
+}
+
+/** Revoke one of the reader's push subscriptions (204; 404 for another's). */
+export async function revokeMyPushSubscription(subscriptionId: number): Promise<void> {
+	const config = useRuntimeConfig();
+	const apiUrl = config.public.apiUrl;
+	await $fetch(`${apiUrl}/api/reader/me/push-subscriptions/${subscriptionId}`, {
+		method: "DELETE",
+		headers: getReaderAuthHeaders(),
+	});
+}

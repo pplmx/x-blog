@@ -94,5 +94,25 @@ export function useReaderAuth() {
 		isAuthenticated.value = false;
 	};
 
-	return { isAuthenticated, reader, login, register, logout };
+	/**
+	 * Persist a (possibly rotated) session without clearing the rest — used
+	 * after a password change returns a fresh token whose version supersedes
+	 * the stored one (DEC-067, TASK-141). Login/register use setSession.
+	 */
+	const updateToken = (session: ReaderLoginResponse): void => {
+		if (hasLocalStorage()) {
+			localStorage.setItem(READER_TOKEN_KEY, session.access_token);
+		}
+		reader.value = session.reader;
+		saveProfile(session.reader);
+		isAuthenticated.value = true;
+	};
+
+	/** Refresh the in-memory profile after a display_name edit (no token change). */
+	const setProfile = (profile: ReaderProfile): void => {
+		reader.value = profile;
+		saveProfile(profile);
+	};
+
+	return { isAuthenticated, reader, login, register, logout, updateToken, setProfile };
 }

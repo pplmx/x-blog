@@ -28,7 +28,8 @@
 			"signIn": "Sign in",
 			"signOut": "Sign out",
 			"bookmarks": "Bookmarks",
-			"comments": "My comments"
+			"comments": "My comments",
+			"account": "Account"
 		}
 	}
 }

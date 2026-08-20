@@ -1,0 +1,38 @@
+{
+	"account": {
+		"title": "Account settings",
+		"seoTitle": "Account settings — X-Blog",
+		"seoDesc": "Manage your reader account: display name, password, and push devices.",
+		"signInPrompt": "Sign in to manage your account settings",
+		"signInLink": "Sign in",
+		"profile": {
+			"title": "Profile",
+			"displayNameLabel": "Display name",
+			"emailNote": "Sign-in email (cannot be changed)",
+			"save": "Save",
+			"saved": "Saved",
+			"saveFailed": "Couldn't save — please try again"
+		},
+		"password": {
+			"title": "Change password",
+			"currentLabel": "Current password",
+			"newLabel": "New password",
+			"confirmLabel": "Confirm new password",
+			"tooShort": "New password must be at least 8 characters",
+			"mismatch": "The new passwords don't match",
+			"change": "Change password",
+			"success": "Password changed — other devices have been signed out",
+			"wrongCurrent": "Current password is incorrect",
+			"failed": "Couldn't change the password — please try again"
+		},
+		"devices": {
+			"title": "Push devices",
+			"empty": "No push devices are linked to this account",
+			"revoke": "Remove",
+			"revokeConfirm": "Remove this device? It will stop receiving notifications from your account.",
+			"revoked": "Removed",
+			"revokeFailed": "Couldn't remove the device — please try again",
+			"note": "Browsers that subscribed to Web Push while signed in appear here."
+		}
+	}
+}
