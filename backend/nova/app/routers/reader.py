@@ -207,6 +207,143 @@ def me(_current_reader: auth.ReaderAccount = Depends(auth.get_current_reader)):
     return _current_reader
 
 
+class ReaderProfileUpdate(BaseModel):
+    """Editable reader profile fields. Email is deliberately immutable (it is
+    the login identity and there is no email-verification recovery flow, so
+    reassigning it silently would orphan the account)."""
+
+    display_name: str | None = Field(default=None, min_length=1, max_length=50)
+
+
+class ReaderPasswordChange(BaseModel):
+    """Password rotation: verify the current one, set a new one.
+
+    new_password bounds mirror registration (bcrypt only hashes the first 72
+    bytes — equality between effective and stored credential requires the same
+    cap on both ends, security review TASK-131)."""
+
+    current_password: str = Field(min_length=1, max_length=72)
+    new_password: str = Field(min_length=8, max_length=72)
+
+
+class ReaderPasswordChangeResponse(BaseModel):
+    access_token: str
+    token_type: str
+    reader: ReaderProfile
+
+
+class ReaderPushSubscriptionItem(BaseModel):
+    """One push subscription bound to the reader (device management view).
+
+    Deliberately excludes the encryption keys (p256dh/auth/endpoint-fragment)
+    — the client only needs identity + age to decide what to revoke."""
+
+    id: int
+    endpoint: str
+    created_at: datetime | None = None
+
+
+class ReaderPushSubscriptionListResponse(BaseModel):
+    items: list[ReaderPushSubscriptionItem]
+    total: int
+
+
+@router.patch("/me", response_model=ReaderProfile)
+def update_my_profile(
+    payload: ReaderProfileUpdate,
+    current_reader: auth.ReaderAccount = Depends(auth.get_current_reader),
+    db: Session = Depends(get_db),
+):
+    """Update the reader's own profile (display_name). Email is immutable."""
+    if payload.display_name is not None:
+        current_reader.display_name = payload.display_name
+    db.commit()
+    db.refresh(current_reader)
+    return current_reader
+
+
+@router.post("/me/password", response_model=ReaderPasswordChangeResponse)
+@limiter.limit(f"{RATE_LIMIT_AUTH}/minute")
+def change_my_password(
+    request: Request,  # noqa: ARG001
+    payload: ReaderPasswordChange,
+    current_reader: auth.ReaderAccount = Depends(auth.get_current_reader),
+    db: Session = Depends(get_db),
+):
+    """Rotate the reader's password, revoking all other sessions.
+
+    Verifies the current password (same timing-safe helper as login), then
+    bumps ``token_version`` so every pre-change reader JWT is rejected, and
+    returns a fresh token for this session. Rate-limited like login.
+    """
+    if not auth.verify_password(payload.current_password, current_reader.password):
+        raise HTTPException(status_code=401, detail="Incorrect current password")
+    current_reader.password = auth.get_password_hash(payload.new_password)
+    current_reader.token_version = (current_reader.token_version or 0) + 1
+    db.commit()
+    db.refresh(current_reader)
+
+    access_token = auth.create_reader_token(
+        {"sub": current_reader.id}, token_version=current_reader.token_version or 0
+    )
+    return {
+        "access_token": access_token,
+        "token_type": "bearer",
+        "reader": ReaderProfile.model_validate(current_reader),
+    }
+
+
+@router.get("/me/push-subscriptions", response_model=ReaderPushSubscriptionListResponse)
+def list_my_push_subscriptions(
+    current_reader: auth.ReaderAccount = Depends(auth.get_current_reader),
+    db: Session = Depends(get_db),
+):
+    """The reader's push subscriptions bound to their account (device view).
+
+    Lets a reader see which browsers/devices currently receive their
+    notifications and revoke any they no longer control. Only rows bound to
+    this reader (DEC-064 binds subscriptions at /api/push/subscribe)."""
+    subs = (
+        db.query(models.PushSubscription)
+        .filter(models.PushSubscription.reader_id == current_reader.id)
+        .order_by(models.PushSubscription.created_at.desc())
+        .all()
+    )
+    return ReaderPushSubscriptionListResponse(
+        items=[
+            ReaderPushSubscriptionItem(id=s.id, endpoint=s.endpoint, created_at=s.created_at)
+            for s in subs
+        ],
+        total=len(subs),
+    )
+
+
+@router.delete("/me/push-subscriptions/{subscription_id}", status_code=204)
+def revoke_my_push_subscription(
+    subscription_id: int,
+    current_reader: auth.ReaderAccount = Depends(auth.get_current_reader),
+    db: Session = Depends(get_db),
+):
+    """Revoke one of the reader's push subscriptions (204).
+
+    Scoped to the caller: another reader's or an unknown id is a 404 so
+    subscription ids are not enumerable. The browser keeps its local
+    subscription; it simply stops receiving this account's notifications."""
+    sub = (
+        db.query(models.PushSubscription)
+        .filter(
+            models.PushSubscription.id == subscription_id,
+            models.PushSubscription.reader_id == current_reader.id,
+        )
+        .first()
+    )
+    if not sub:
+        raise HTTPException(status_code=404, detail="Subscription not found")
+    db.delete(sub)
+    db.commit()
+    return None
+
+
 # ---------------------------------------------------------------------------
 # Cloud-synced bookmarks (DEC-059/TASK-132)
 # ---------------------------------------------------------------------------
