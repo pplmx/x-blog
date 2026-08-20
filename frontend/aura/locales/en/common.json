@@ -41,7 +41,8 @@
 			"subscribed": "Subscribed to new posts",
 			"denied": "Notifications blocked by browser",
 			"subscribing": "Subscribing…",
-			"unsubscribing": "Unsubscribing…"
+			"unsubscribing": "Unsubscribing…",
+			"repliesIn": "You'll also be notified when someone replies to your comment"
 		}
 	}
 }

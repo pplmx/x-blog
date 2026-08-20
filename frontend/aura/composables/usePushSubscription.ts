@@ -183,6 +183,19 @@ async function unsubscribe(): Promise<void> {
 	}
 }
 
+/**
+ * Re-stamp the reader on an existing subscription after an auth change (e.g.
+ * he just signed in). A browser that subscribed while anonymous stays
+ * anonymous-bound until this runs; reply notifications (DEC-064) are only
+ * delivered to reader-bound subscriptions. Anonymous re-stamp is a no-op on
+ * the backend (reader_id preserved), matching the conservative opt-in model.
+ */
+async function syncReaderBinding(): Promise<void> {
+	if (!isSupported() || status.value !== "subscribed") return;
+	const sub = await activeSubscription();
+	if (sub) await syncBackend(sub, "subscribe").catch(() => {});
+}
+
 export function usePushSubscription() {
-	return { status, init, subscribe, unsubscribe };
+	return { status, init, subscribe, unsubscribe, syncReaderBinding };
 }

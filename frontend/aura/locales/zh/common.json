@@ -41,7 +41,8 @@
 			"subscribed": "已订阅新文章通知",
 			"denied": "通知已被浏览器阻止",
 			"subscribing": "订阅中…",
-			"unsubscribing": "退订中…"
+			"unsubscribing": "退订中…",
+			"repliesIn": "评论被回复时也会收到通知"
 		}
 	}
 }

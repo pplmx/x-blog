@@ -215,6 +215,41 @@ describe("usePushSubscription", () => {
 		);
 	});
 
+	it("syncReaderBinding re-stamps an existing subscription with the reader JWT (DEC-064)", async () => {
+		setupBrowser({ permission: "granted", existingSubscription: fakePushSubscription(ENDPOINT) });
+		localStorage.setItem("reader_token", "reader.jwt.token");
+		const { usePushSubscription } = await import("~/composables/usePushSubscription");
+		const { status, init, syncReaderBinding } = usePushSubscription();
+		await init();
+		expect(status.value).toBe("subscribed");
+
+		await syncReaderBinding();
+
+		expect(globalThis.fetch).toHaveBeenCalledWith(
+			"http://localhost:18888/api/push/subscribe",
+			expect.objectContaining({
+				method: "POST",
+				headers: expect.objectContaining({ Authorization: "Bearer reader.jwt.token" }),
+			}),
+		);
+		localStorage.removeItem("reader_token");
+	});
+
+	it("syncReaderBinding is a no-op when there is no subscription", async () => {
+		setupBrowser();
+		const { usePushSubscription } = await import("~/composables/usePushSubscription");
+		const { status, init, syncReaderBinding } = usePushSubscription();
+		await init();
+		expect(status.value).toBe("idle");
+
+		await syncReaderBinding();
+
+		const calls = (globalThis.fetch as ReturnType<typeof vi.fn>).mock.calls.filter(([url]) =>
+			String(url).includes("/api/push/subscribe"),
+		);
+		expect(calls).toHaveLength(0);
+	});
+
 	it("urlBase64ToUint8Array decodes a base64url string to the right bytes", async () => {
 		const { urlBase64ToUint8Array } = await import("~/composables/usePushSubscription");
 		// "ARs..." decodes to 0x01, bytes 0x1B, 0xAD

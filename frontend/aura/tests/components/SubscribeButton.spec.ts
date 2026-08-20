@@ -8,7 +8,7 @@
 
 import { mount } from "@vue/test-utils";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { ref } from "vue";
+import { nextTick, ref } from "vue";
 
 const t = vi.fn((key: string) => key);
 vi.mock("~~/composables/useLang", () => ({
@@ -19,8 +19,14 @@ const status = ref("idle");
 const init = vi.fn().mockResolvedValue(undefined);
 const subscribe = vi.fn().mockResolvedValue(undefined);
 const unsubscribe = vi.fn().mockResolvedValue(undefined);
+const syncReaderBinding = vi.fn().mockResolvedValue(undefined);
 vi.mock("~~/composables/usePushSubscription", () => ({
-	usePushSubscription: () => ({ status, init, subscribe, unsubscribe }),
+	usePushSubscription: () => ({ status, init, subscribe, unsubscribe, syncReaderBinding }),
+}));
+
+const isAuthenticated = ref(false);
+vi.mock("~~/composables/useReaderAuth", () => ({
+	useReaderAuth: () => ({ isAuthenticated }),
 }));
 
 import SubscribeButton from "../../components/SubscribeButton.vue";
@@ -31,15 +37,24 @@ const iconStub = {
 	props: ["icon"],
 };
 
+let wrapper: ReturnType<typeof mount> | undefined;
 function mountButton() {
-	return mount(SubscribeButton, {
+	wrapper = mount(SubscribeButton, {
 		global: { stubs: { Icon: iconStub } },
 	});
+	return wrapper;
 }
 
 describe("SubscribeButton", () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
+	});
+	afterEach(() => {
+		// Unmount so per-instance watchers (e.g. the isAuthenticated watch) don't
+		// fire again on later tests mutating the shared refs.
+		wrapper?.unmount();
+		wrapper = undefined;
+		isAuthenticated.value = false;
 	});
 
 	it("is hidden when the browser does not support push (unsupported)", () => {
@@ -101,5 +116,33 @@ describe("SubscribeButton", () => {
 		expect(wrapper.get("button").attributes("disabled")).toBeDefined();
 		await wrapper.get("button").trigger("click");
 		expect(subscribe).not.toHaveBeenCalled();
+	});
+
+	it("advertises reply notifications in the tooltip when signed in (DEC-064)", () => {
+		status.value = "idle";
+		isAuthenticated.value = true;
+		const wrapper = mountButton();
+		expect(wrapper.get("button").attributes("title")).toBe(
+			"common.push.subscribe · common.push.repliesIn",
+		);
+		// aria-label stays the base label (stable for assistive tech + e2e).
+		expect(wrapper.get("button").attributes("aria-label")).toBe("common.push.subscribe");
+	});
+
+	it("does not advertise reply notifications when signed out", () => {
+		status.value = "idle";
+		isAuthenticated.value = false;
+		const wrapper = mountButton();
+		expect(wrapper.get("button").attributes("title")).toBe("common.push.subscribe");
+	});
+
+	it("re-stamps an existing subscription when a reader signs in", async () => {
+		status.value = "subscribed";
+		isAuthenticated.value = false;
+		mountButton();
+		expect(syncReaderBinding).not.toHaveBeenCalled();
+		isAuthenticated.value = true;
+		await nextTick();
+		expect(syncReaderBinding).toHaveBeenCalledOnce();
 	});
 });

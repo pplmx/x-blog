@@ -156,6 +156,41 @@ test.describe("Web Push reader opt-in", () => {
 		expect(after).toBe(before); // init only re-detected, did not re-subscribe
 	});
 
+	test("signed-in reader's subscription is bound via the reader JWT (DEC-064)", async ({
+		page,
+		request,
+	}) => {
+		// Register a reader, then sign in through the UI so the reader JWT lands
+		// in localStorage before the subscription is taken out.
+		const email = `reader-${Date.now()}@example.com`;
+		const reg = await request.post("/api/reader/register", {
+			data: { email, password: "e2epass123", display_name: "E2E Reader" },
+		});
+		expect(reg.status()).toBe(201);
+
+		await stubPushStack(page);
+		await page.goto("/login");
+		await page.locator('input[type="email"]').fill(email);
+		await page.locator('input[type="password"]').fill("e2epass123");
+		await page.locator("form").press("Enter");
+		await page.waitForURL("**/bookmarks");
+		await page.waitForFunction(() => !!localStorage.getItem("reader_token"));
+		const token = await page.evaluate(() => localStorage.getItem("reader_token"));
+
+		// Subscribe from the header: the subscribe request must carry the reader
+		// JWT so the backend binds this subscription for reply notifications.
+		await page.goto("/");
+		const subscribeReq = page.waitForRequest(
+			(r) => r.url().includes("/api/push/subscribe") && r.method() === "POST",
+			{ timeout: 15000 },
+		);
+		await page.locator('button[aria-label="订阅新文章通知"]').click();
+		await expect(subscribedBtn(page)).toBeVisible({ timeout: 10000 });
+
+		const authz = (await subscribeReq).headers()["authorization"] || "";
+		expect(authz).toBe(`Bearer ${token}`);
+	});
+
 	test("unsubscribes on a second click", async ({ page }) => {
 		await stubPushStack(page);
 		const unsubscribe204 = page
