@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 112,
+  "round": 113,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-08-20T19:49:32+00:00",
+  "updated_at": "2026-08-20T20:26:30+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -6977,10 +6977,72 @@
       "version": 1,
       "created_at": "2026-08-20T19:48:56+00:00",
       "updated_at": "2026-08-20T19:48:56+00:00",
-      "touched_round": 111,
+      "touched_round": 112,
       "title": "converged-idle: reader arc closed (DEC-064/066/067 delivered this session)",
       "rationale": "All §10 quality-convergence conditions hold (no active task >= 3.0; no high-severity open issue — only ISS-097 0.2 flake tracker; last VERIFY all green: 771 nova tests, 976 frontend units, typecheck, 90 e2e; graph consistent 564 nodes) AND §11.5 feature-evolution stop condition 1 (core-feature backlog empty — TASK-137/138, 139/140, 141/142 all delivered via CHG-127..133). This session closed the reader arc end to end: reply notifications (DEC-064 incl. approval-time semantics DEC-065), comment management (DEC-066), account self-service (DEC-067), plus a pre-existing admin blank-page fix (ISS-103/CHG-129). Each milestone shipped with contract+unit+e2e and full-suite regression gates.",
       "alternatives_rejected": "(a) Post TOC / reading-progress page — real but frontend-only polish with smaller user value than the reader arc; deferred twice (DEC-066/067 decisions), candidate for a future operator directive. (b) Email recovery/newsletter — SMTP infra, rejected DEC-035/055 three times. (c) Reactions/emoji/copy-code — button-level, rejected DEC-056..058. (d) Fabricating a fourth milestone to keep shipping commits — violates SKILL 11.2 'no feature piling'; the value gate is intentionally the stop knife."
+    },
+    "DEC-069": {
+      "id": "DEC-069",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-20T19:57:31+00:00",
+      "updated_at": "2026-08-20T19:57:31+00:00",
+      "touched_round": 112,
+      "title": "Reactivated by operator directive: continue milestones (supersedes DEC-068)",
+      "rationale": "DEC-068 (converged-idle) was mis-fired against the standing operator directive '调用 skill graph-engineering 持续推进，开始新的里程碑'. The directive is an explicit operator product direction (§11.2 priority 1) and per §10 only a new operator directive or real external signal reactivates the loop — the directive itself qualifies. Stop-hook feedback confirmed the condition requires STARTING a new milestone, not parking. This decision supersedes DEC-068 and re-opens feature evolution.",
+      "alternatives_rejected": "(a) Staying parked at converged-idle — contradicts the explicit operator directive; the value gate is for preventing fabrication, not for ignoring an operator-sourced milestone. (b) Waiting for a new user message — the goal hook already states the directive."
+    },
+    "DEC-070": {
+      "id": "DEC-070",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-20T19:58:13+00:00",
+      "updated_at": "2026-08-20T19:58:13+00:00",
+      "touched_round": 112,
+      "title": "Milestone: Chinese-aware search quality (Postgres CJK substring matching)",
+      "rationale": "Feature-evolution selection (SKILL 11.2 gap analysis + operator's dev-pgsql hint). Production search (crud.search_posts) uses Postgres to_tsvector('english'), which tokenizes CJK as opaque runs: partial/prefix Chinese queries ('评' vs content '评论系统') do not match on Postgres. The SQLite path uses ILIKE substring and works, so the entire local unit suite is green while production (Postgres) is broken for CJK — a dialect-divergence bug invisible to CI. Chinese-first blog => real, perceivable problem. Vertical slice: (1) backend detects CJK in the QUERY (Python-side, not dialect-side) and routes CJK/mixed queries to the dialect-agnostic ILIKE substring path on both SQLite and Postgres, keeping tsvector relevance for ASCII queries on Postgres; (2) contract tests: has_cjk unit + search behavior on SQLite, plus a Postgres-gated integration test (runs when TEST_DATABASE_URL targets PG — the operator's dev host 10.112.9.49:13310 is the intended target); (3) docs/runner. Acceptance (1 sentence): 'searching a Chinese term returns posts that contain it (including partials) on Postgres and SQLite alike.' Net-increment, self-contained.",
+      "alternatives_rejected": "(a) pg_trgm / zhparser extensions — need CREATE EXTENSION (superuser) on the shared dev DB and alter production schema; heavier than the value. (b) Post TOC/reading-progress — deferred twice as lower-value frontend polish. (c) Email recovery — SMTP infra, rejected repeatedly."
+    },
+    "TASK-143": {
+      "id": "TASK-143",
+      "type": "task",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-08-20T19:58:13+00:00",
+      "updated_at": "2026-08-20T20:25:00+00:00",
+      "touched_round": 113,
+      "category": "core-feature",
+      "severity": 5,
+      "confidence": 0.95,
+      "effort": 3,
+      "unlock_factor": 1.0,
+      "title": "Backend CJK-aware search routing + contract tests (Postgres + SQLite)"
+    },
+    "EV-103": {
+      "id": "EV-103",
+      "type": "evidence",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-20T20:25:00+00:00",
+      "updated_at": "2026-08-20T20:25:00+00:00",
+      "touched_round": 112,
+      "source": "779 nova tests (8 new CJK + 1 PG-gated skip); existing search/crud regression 117 passed",
+      "summary": "DEC-070 verified on SQLite: _has_cjk unit (blank/ascii false, ideographs/ext-A true, mixed true); CJK exact/partial-prefix/excerpt/mixed all match; ASCII unchanged. Postgres-gated test reproduces the original bug on real PG but is skipped here — dev-host verification pending operator credentials (runner provided).",
+      "confidence": 1.0
+    },
+    "CHG-134": {
+      "id": "CHG-134",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-20T20:25:46+00:00",
+      "updated_at": "2026-08-20T20:25:46+00:00",
+      "touched_round": 113,
+      "commit": "4072427",
+      "summary": "Chinese-aware search (DEC-070 TASK-143): _has_cjk Python detection routes CJK/mixed queries to dialect-agnostic ILIKE substring path (SQLite+Postgres), ASCII keeps tsvector on PG; substring path ANDs whitespace terms across title/excerpt/content; PG-gated integration test + run_pg_search_tests.sh targeting dev host."
     }
   },
   "edges": [
@@ -9833,6 +9895,24 @@
       "to": "TASK-142",
       "type": "implements",
       "created_at": "2026-08-20T19:42:49+00:00"
+    },
+    {
+      "from": "DEC-069",
+      "to": "DEC-068",
+      "type": "supersedes",
+      "created_at": "2026-08-20T19:58:13+00:00"
+    },
+    {
+      "from": "DEC-070",
+      "to": "TASK-143",
+      "type": "governs",
+      "created_at": "2026-08-20T19:58:13+00:00"
+    },
+    {
+      "from": "CHG-134",
+      "to": "TASK-143",
+      "type": "implements",
+      "created_at": "2026-08-20T20:26:30+00:00"
     }
   ]
 }
