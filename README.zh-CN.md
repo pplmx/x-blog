@@ -149,7 +149,9 @@ docker-compose logs -f
 “已认证读者”徽标；匿名评论者仍走自由填写的昵称/邮箱路径。**我的评论**页面
 （DEC-066，`/comments`）向本人展示全部评论及其审核状态（待审核 / 已发布 /
 未通过），并可删除自己的评论（`GET /api/reader/me/comments`、
-`DELETE /api/reader/me/comments/{id}`）。
+`DELETE /api/reader/me/comments/{id}`）。**账号设置**页面（DEC-067，`/account`）
+允许读者修改显示名、修改密码（验证当前密码、登出其他会话、签发新 token），
+并查看/移除绑定到账号的推送设备。
 
 ### 管理后台
 

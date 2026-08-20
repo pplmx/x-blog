@@ -201,16 +201,20 @@ Reader accounts are the identity layer for cloud-synced bookmarks (audience-
 separated from admin JWTs; see `docs/security.md`). Registration is rate-
 limited (default 5/min/IP).
 
-| Method | Endpoint                        | Description                                                |
-| ------ | ------------------------------- | ---------------------------------------------------------- |
-| POST   | `/api/reader/register`          | Create a reader account (returns a reader JWT, auto-login) |
-| POST   | `/api/reader/login`             | Reader login (email + password)                            |
-| GET    | `/api/reader/me`                | Current reader profile                                     |
-| GET    | `/api/reader/me/bookmarks`      | Cloud-synced bookmark list (publicly-visible posts only)   |
-| PUT    | `/api/reader/me/bookmarks/{id}` | Add a bookmark (idempotent: 201 new / 200 already)         |
-| DELETE | `/api/reader/me/bookmarks/{id}` | Remove a bookmark (idempotent 204)                         |
-| GET    | `/api/reader/me/comments`       | Reader's own comments across statuses (DEC-066)            |
-| DELETE | `/api/reader/me/comments/{id}`  | Delete one of the reader's own comments (any status)       |
+| Method | Endpoint                                 | Description                                                   |
+| ------ | ---------------------------------------- | ------------------------------------------------------------- |
+| POST   | `/api/reader/register`                   | Create a reader account (returns a reader JWT, auto-login)    |
+| POST   | `/api/reader/login`                      | Reader login (email + password)                               |
+| GET    | `/api/reader/me`                         | Current reader profile                                        |
+| GET    | `/api/reader/me/bookmarks`               | Cloud-synced bookmark list (publicly-visible posts only)      |
+| PUT    | `/api/reader/me/bookmarks/{id}`          | Add a bookmark (idempotent: 201 new / 200 already)            |
+| DELETE | `/api/reader/me/bookmarks/{id}`          | Remove a bookmark (idempotent 204)                            |
+| GET    | `/api/reader/me/comments`                | Reader's own comments across statuses (DEC-066)               |
+| DELETE | `/api/reader/me/comments/{id}`           | Delete one of the reader's own comments (any status)          |
+| PATCH  | `/api/reader/me`                         | Update display name (email immutable) (DEC-067)               |
+| POST   | `/api/reader/me/password`                | Change password (revokes other sessions, returns fresh token) |
+| GET    | `/api/reader/me/push-subscriptions`      | Reader's push devices (no keys) (DEC-067)                     |
+| DELETE | `/api/reader/me/push-subscriptions/{id}` | Revoke one push device (DEC-067)                              |
 
 Bookmarks are stored localStorage-first on the browser and merged to the cloud
 when a reader signs in — offline changes survive and re-concile on the next
@@ -221,6 +225,11 @@ no-store`).
 reader their own comments with a moderation status (待审核 / 已发布 / 未通过 —
 a moderated blog hides pending comments from everyone but their author), a
 link back to each thread, and a delete action scoped to their own comment.
+
+**Reader account self-service (DEC-067)**: `/account` lets a signed-in reader
+edit their display name and rotate their password (the current password is
+verified, all other sessions are signed out, and a fresh token is issued), and
+inspect/revoke the browser push devices bound to their account.
 
 ## 🏗️ Architecture
 

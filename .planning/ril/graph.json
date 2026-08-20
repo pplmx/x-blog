@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 110,
+  "round": 111,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-08-20T18:53:37+00:00",
+  "updated_at": "2026-08-20T19:43:41+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -6893,6 +6893,82 @@
       "source": "debug + e2e: useFetch-in-onMounted race",
       "summary": "Frontend e2e caught a real bug: fetchMyComments used useFetch, and awaiting it in onMounted resolved before the data ref arrived (flaky empty list on /comments). Switched the imperative reads to $fetch, which truly awaits the response; reproduced fixed in e2e (pending visible across reload; approve flips to approved; delete empties).",
       "confidence": 1.0
+    },
+    "DEC-067": {
+      "id": "DEC-067",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-20T19:01:12+00:00",
+      "updated_at": "2026-08-20T19:01:12+00:00",
+      "touched_round": 110,
+      "title": "Milestone: reader account self-service (profile + password + push devices)",
+      "rationale": "Feature-evolution selection (SKILL 11.2 gap analysis). Reader accounts (DEC-059) support register/login/me/bookmarks/comments but offer NO self-service: a reader who mistyped their display name, forgot/weakened their password, or lost a device cannot fix any of it (open signup with no email-verification recovery). Backend exposes no PATCH profile / password change / subscription revocation; frontend has no settings page. Real user problem: 'I registered and now I'm stuck with this display name and password, and I don't know which devices get my notifications.' Acceptance (1 sentence): 'a signed-in reader can update their display name and set a new password (verifying the current one) and see/revoke the browsers subscribed to push for their account.' Vertical slices: (1) backend PATCH /api/reader/me (display_name), POST /api/reader/me/password (current+new, bcrypt 72-byte cap), GET + DELETE /api/reader/me/push-subscriptions (list/revoke own bound subscriptions); (2) frontend /account settings page with those three sections, zh/en i18n, unit + e2e. Value gate: real user problem + 1-sentence acceptance + net-increment vertical slice.",
+      "alternatives_rejected": "(a) Post TOC/reading-progress - real but frontend-only polish; smaller value than closing the reader self-service gap; keep in backlog. (b) Email password-reset recovery - needs SMTP infra, rejected DEC-035/055 repeatedly; in-account password change (JWT-authenticated, current password verified) works without it. (c) Notifications center/at-mentions - speculative, no usage signal."
+    },
+    "TASK-141": {
+      "id": "TASK-141",
+      "type": "task",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-08-20T19:01:49+00:00",
+      "updated_at": "2026-08-20T19:43:41+00:00",
+      "touched_round": 111,
+      "category": "core-feature",
+      "severity": 4,
+      "confidence": 0.9,
+      "effort": 4,
+      "unlock_factor": 1.1,
+      "title": "Backend reader self-service: profile patch + password change + push subscription management"
+    },
+    "TASK-142": {
+      "id": "TASK-142",
+      "type": "task",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-08-20T19:01:49+00:00",
+      "updated_at": "2026-08-20T19:43:41+00:00",
+      "touched_round": 111,
+      "category": "core-feature",
+      "severity": 4,
+      "confidence": 0.9,
+      "effort": 3,
+      "unlock_factor": 1.1,
+      "title": "Frontend reader account settings page (profile + password + push devices)"
+    },
+    "CHG-132": {
+      "id": "CHG-132",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-20T19:42:48+00:00",
+      "updated_at": "2026-08-20T19:42:48+00:00",
+      "touched_round": 110,
+      "commit": "4145c63",
+      "summary": "Backend reader self-service (DEC-067 TASK-141): PATCH /me (display_name, email immutable), POST /me/password (verify current, bcrypt 72 cap, token_version bump revokes old sessions, returns fresh token), GET+DELETE /me/push-subscriptions (list sanitized, revoke scoped 404)."
+    },
+    "CHG-133": {
+      "id": "CHG-133",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-20T19:42:49+00:00",
+      "updated_at": "2026-08-20T19:42:49+00:00",
+      "touched_round": 110,
+      "commit": "95d28e5",
+      "summary": "Frontend account settings page (DEC-067 TASK-142): /account with profile/password/device sections; useReaderAuth.updateToken+setProfile; $fetch helpers; zh/en i18n; unit + e2e journey (rename, password rotate old-rejected/new-works, device subscribe->list->revoke)."
+    },
+    "EV-102": {
+      "id": "EV-102",
+      "type": "evidence",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-20T19:42:49+00:00",
+      "updated_at": "2026-08-20T19:42:49+00:00",
+      "touched_round": 110,
+      "source": "771 nova tests (13 new self-service); 976 frontend units; typecheck; full e2e 90 passed incl account journey",
+      "summary": "DEC-067 verified end-to-end: contract tests cover profile immutability/validation, password rotation (token_version revocation + fresh token), device list/isolate/revoke; e2e proves rename persists, password rotate signs old out / lets new in, device appears and revokes.",
+      "confidence": 1.0
     }
   },
   "edges": [
@@ -9715,6 +9791,36 @@
       "to": "TASK-140",
       "type": "implements",
       "created_at": "2026-08-20T18:53:05+00:00"
+    },
+    {
+      "from": "DEC-067",
+      "to": "TASK-141",
+      "type": "governs",
+      "created_at": "2026-08-20T19:01:49+00:00"
+    },
+    {
+      "from": "DEC-067",
+      "to": "TASK-142",
+      "type": "governs",
+      "created_at": "2026-08-20T19:01:49+00:00"
+    },
+    {
+      "from": "TASK-142",
+      "to": "TASK-141",
+      "type": "depends_on",
+      "created_at": "2026-08-20T19:01:49+00:00"
+    },
+    {
+      "from": "CHG-132",
+      "to": "TASK-141",
+      "type": "implements",
+      "created_at": "2026-08-20T19:42:49+00:00"
+    },
+    {
+      "from": "CHG-133",
+      "to": "TASK-142",
+      "type": "implements",
+      "created_at": "2026-08-20T19:42:49+00:00"
     }
   ]
 }
