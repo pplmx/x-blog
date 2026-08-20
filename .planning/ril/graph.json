@@ -2,7 +2,7 @@
   "ril_version": 1,
   "round": 108,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-08-20T00:23:55+00:00",
+  "updated_at": "2026-08-20T01:56:17+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -6669,6 +6669,50 @@
       "title": "Milestone delivered: reader-attributed comments + comment history (DEC-062 complete)",
       "rationale": "Both slices delivered and verified (DEC-062 governs TASK-135/136, both resolved via CHG-125/126): backend Comment.reader_id + identity-stamped comments + GET /api/reader/me/comments history; frontend reader-aware comment form + verified badge + e2e. Value-gate acceptance met and browser-verified: \"a signed-in reader can comment under their own verified identity and find all their comments in one place\" — e2e journey (register -> post -> login -> identity shown, no name/email inputs -> submit -> moderation success) passes in Chromium against the live stack. Hardening: client-supplied nickname/email ignored for signed-in readers (no spoofing), account email never stored/echoed on the comment (PII), pending comments hidden from history. Regression gates all green: backend 744 passed / 93.50%, frontend 952 passed, vue-tsc + pyright + ruff + biome clean, coverage >80% (both), alembic check no drift.",
       "alternatives_rejected": "(a) Comment reply-notifications via Web Push — needs per-reader push subscription model (current push_subscriptions anonymous), larger scope, future milestone. (b) Email subscription — SMTP infra, out of scope (DEC-035/055). (c) Another hardening round — hardening backlog empty."
+    },
+    "DEC-064": {
+      "id": "DEC-064",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-20T01:35:06+00:00",
+      "updated_at": "2026-08-20T01:35:06+00:00",
+      "touched_round": 108,
+      "title": "Milestone: reader comment-reply notifications (Web Push bound to reader accounts)",
+      "rationale": "Feature-evolution selection (SKILL 11.2 gap analysis). DEC-063 rejected reply-notifications as needing a per-reader push model; reader accounts now exist (DEC-059), so the push layer can bind subscriptions to readers (today push_subscriptions is anonymous/endpoint-keyed — a device can subscribe but there is no way to reach a specific commenter). Real user problem: a reader who comments has no way to know someone replied without reloading. Vertical slices: (1) backend push_subscriptions.reader_id (additive, nullable, no FK per DEC-009) + subscribe accepts an optional reader token (get_optional_reader) to bind the subscription; on approved comment create/reply, fan out a push to the post's reader-commenters who are subscribed (dedupe by reader, batch via send_push, retire dead endpoints — reuse push/notify machinery); (2) frontend reader opt-in for reply notifications + permission flow, zh/en i18n, unit + contract + e2e. Value gate: real user problem, 1-sentence acceptance \"a reader who commented gets a push notification when someone replies to their comment\"; net-increment vertical slice, self-contained.",
+      "alternatives_rejected": "(a) Email subscription/newsletter - SMTP infra, out of scope (DEC-035/055). (b) Copy-code/emoji-reaction/reading-progress - failed 11.2 value gate as button-level (DEC-056..058). (c) Per-category RSS - rejected DEC-047. (d) Another hardening round - hardening backlog empty (DEC-057/058)."
+    },
+    "TASK-137": {
+      "id": "TASK-137",
+      "type": "task",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-20T01:53:45+00:00",
+      "updated_at": "2026-08-20T01:53:45+00:00",
+      "touched_round": 108,
+      "category": "core-feature",
+      "priority_score": 6.0,
+      "severity": 5,
+      "confidence": 0.9,
+      "effort": 4,
+      "unlock_factor": 1.2,
+      "title": "Backend reply-notifications: bind reader + fan out on reply"
+    },
+    "TASK-138": {
+      "id": "TASK-138",
+      "type": "task",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-20T01:56:17+00:00",
+      "updated_at": "2026-08-20T01:56:17+00:00",
+      "touched_round": 108,
+      "category": "core-feature",
+      "priority_score": 6.0,
+      "severity": 4,
+      "confidence": 0.9,
+      "effort": 3,
+      "unlock_factor": 1.1,
+      "title": "Frontend reply-notification opt-in: reader-aware SubscribeButton"
     }
   },
   "edges": [
@@ -9412,6 +9456,24 @@
       "to": "DEC-062",
       "type": "supersedes",
       "created_at": "2026-08-20T00:23:55+00:00"
+    },
+    {
+      "from": "TASK-138",
+      "to": "TASK-137",
+      "type": "depends_on",
+      "created_at": "2026-08-20T01:56:17+00:00"
+    },
+    {
+      "from": "DEC-064",
+      "to": "TASK-137",
+      "type": "governs",
+      "created_at": "2026-08-20T01:56:17+00:00"
+    },
+    {
+      "from": "DEC-064",
+      "to": "TASK-138",
+      "type": "governs",
+      "created_at": "2026-08-20T01:56:17+00:00"
     }
   ]
 }
