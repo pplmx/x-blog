@@ -27,7 +27,8 @@
 		"nav": {
 			"signIn": "Sign in",
 			"signOut": "Sign out",
-			"bookmarks": "Bookmarks"
+			"bookmarks": "Bookmarks",
+			"comments": "My comments"
 		}
 	}
 }

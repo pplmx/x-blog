@@ -1,0 +1,26 @@
+{
+	"myComments": {
+		"title": "My comments",
+		"countLabel": "{count} comments",
+		"empty": "You haven't commented yet",
+		"browse": "Browse posts",
+		"signInPrompt": "Sign in to review and manage your comments",
+		"signInLink": "Sign in",
+		"status": {
+			"pending": "Pending review",
+			"approved": "Published",
+			"rejected": "Not approved"
+		},
+		"statusTitle": {
+			"pending": "This comment is waiting for moderator approval",
+			"approved": "This comment is published",
+			"rejected": "This comment was not approved; only you can see it"
+		},
+		"delete": "Delete",
+		"deleteConfirm": "Delete this comment?",
+		"deleteFailed": "Couldn't delete the comment — please try again",
+		"onPost": "On “{title}”",
+		"seoTitle": "My comments — X-Blog",
+		"seoDesc": "Comments you've left, with their moderation status."
+	}
+}

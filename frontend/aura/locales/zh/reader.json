@@ -27,7 +27,8 @@
 		"nav": {
 			"signIn": "登录",
 			"signOut": "退出登录",
-			"bookmarks": "收藏"
+			"bookmarks": "收藏",
+			"comments": "我的评论"
 		}
 	}
 }

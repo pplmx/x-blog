@@ -1,0 +1,26 @@
+{
+	"myComments": {
+		"title": "我的评论",
+		"countLabel": "共 {count} 条评论",
+		"empty": "还没有发表过评论",
+		"browse": "去发表评论",
+		"signInPrompt": "登录后可以查看和管理你的评论",
+		"signInLink": "前往登录",
+		"status": {
+			"pending": "待审核",
+			"approved": "已发布",
+			"rejected": "未通过"
+		},
+		"statusTitle": {
+			"pending": "评论正在等待管理员审核",
+			"approved": "评论已发布",
+			"rejected": "评论未通过审核，仅自己可见"
+		},
+		"delete": "删除",
+		"deleteConfirm": "确定要删除这条评论吗？",
+		"deleteFailed": "删除失败，请稍后再试",
+		"onPost": "评论于《{title}》",
+		"seoTitle": "我的评论 — X-Blog",
+		"seoDesc": "您发表过的评论，含审核状态。"
+	}
+}

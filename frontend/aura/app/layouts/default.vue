@@ -14,6 +14,7 @@ const navLinks = [
 	{ to: "/archive", labelKey: "common.nav.archive", icon: "lucide:archive" },
 	{ to: "/search", labelKey: "common.nav.search", icon: "lucide:search" },
 	{ to: "/bookmarks", labelKey: "reader.nav.bookmarks", icon: "lucide:bookmark" },
+	{ to: "/comments", labelKey: "reader.nav.comments", icon: "lucide:message-square" },
 ];
 
 const isDark = ref(false);

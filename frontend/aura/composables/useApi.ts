@@ -958,3 +958,43 @@ export async function removeReaderBookmark(postId: number) {
 		server: false,
 	});
 }
+
+/** Moderation status of a reader's own comment (DEC-066, TASK-139). */
+export type MyCommentStatus = "pending" | "approved" | "rejected";
+
+/** One of the caller's own comments, its moderation status, and the post it
+ * was left on (for navigation back to the thread). */
+export interface MyComment extends Comment {
+	status: MyCommentStatus;
+	post: { id: number; title: string; slug: string } | null;
+}
+
+export interface MyCommentListResponse {
+	items: MyComment[];
+	total: number;
+}
+
+/**
+ * The signed-in reader's own comment history across statuses (401 when no
+ * token). Uses $fetch (not useFetch) deliberately: these are imperative
+ * client-only reads (invoked from onMounted / after delete), and useFetch in a
+ * non-setup context can resolve before the data ref arrives (flaky empty
+ * list). $fetch awaits the real response. (DEC-066, TASK-139/140)
+ */
+export async function fetchMyComments(): Promise<MyCommentListResponse> {
+	const config = useRuntimeConfig();
+	const apiUrl = config.public.apiUrl;
+	return $fetch<MyCommentListResponse>(`${apiUrl}/api/reader/me/comments`, {
+		headers: getReaderAuthHeaders(),
+	});
+}
+
+/** Delete one of the reader's own comments (204; 404 for another's / unknown). */
+export async function deleteMyComment(commentId: number): Promise<void> {
+	const config = useRuntimeConfig();
+	const apiUrl = config.public.apiUrl;
+	await $fetch(`${apiUrl}/api/reader/me/comments/${commentId}`, {
+		method: "DELETE",
+		headers: getReaderAuthHeaders(),
+	});
+}
