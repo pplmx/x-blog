@@ -90,12 +90,10 @@ describe("Admin Comments Page", () => {
 
 	describe("Loading state", () => {
 		it("renders loading spinner when comments are pending", async () => {
-			mockFetchAdminComments.mockReturnValue({
-				data: ref(null),
-				pending: ref(true),
-				error: ref(null),
-				refresh: vi.fn(),
-			});
+			// The page loads via onMounted -> loadComments; a never-resolving
+			// fetch keeps the internal `loading` flag true (the page's own ref,
+			// not the mock's pending ref).
+			mockFetchAdminComments.mockReturnValue(new Promise(() => {}));
 
 			const CommentsPage = await loadPage();
 			const wrapper = await mountWithSuspense(CommentsPage);
@@ -105,12 +103,7 @@ describe("Admin Comments Page", () => {
 
 	describe("Error state", () => {
 		it("renders error message when fetch fails", async () => {
-			mockFetchAdminComments.mockReturnValue({
-				data: ref(null),
-				pending: ref(false),
-				error: ref({ message: "Server error" }),
-				refresh: vi.fn(),
-			});
+			mockFetchAdminComments.mockRejectedValue(new Error("Server error"));
 
 			const CommentsPage = await loadPage();
 			const wrapper = await mountWithSuspense(CommentsPage);
@@ -120,15 +113,10 @@ describe("Admin Comments Page", () => {
 
 	describe("Empty state", () => {
 		it("renders empty state when no comments exist", async () => {
-			mockFetchAdminComments.mockReturnValue({
-				data: ref({
+			mockFetchAdminComments.mockResolvedValue({
 					items: [],
 					pagination: { total: 0, page: 1, limit: 20, total_pages: 0 },
-				}),
-				pending: ref(false),
-				error: ref(null),
-				refresh: vi.fn(),
-			});
+				});
 
 			const CommentsPage = await loadPage();
 			const wrapper = await mountWithSuspense(CommentsPage);
@@ -138,12 +126,7 @@ describe("Admin Comments Page", () => {
 
 	describe("Populated state", () => {
 		beforeEach(() => {
-			mockFetchAdminComments.mockReturnValue({
-				data: ref(mockCommentList),
-				pending: ref(false),
-				error: ref(null),
-				refresh: vi.fn(),
-			});
+			mockFetchAdminComments.mockResolvedValue(mockCommentList);
 		});
 
 		afterEach(() => {
@@ -302,12 +285,7 @@ describe("Admin Comments Page", () => {
 
 	describe("Batch select and approve", () => {
 		beforeEach(() => {
-			mockFetchAdminComments.mockReturnValue({
-				data: ref(mockCommentList),
-				pending: ref(false),
-				error: ref(null),
-				refresh: vi.fn(),
-			});
+			mockFetchAdminComments.mockResolvedValue(mockCommentList);
 			mockBatchApproveAdminComment.mockResolvedValue({});
 		});
 
@@ -466,18 +444,8 @@ describe("Admin Comments Page", () => {
 				pagination: { total: 40, page: 2, limit: 20, total_pages: 2 },
 			};
 			mockFetchAdminComments
-				.mockReturnValueOnce({
-					data: ref(page1),
-					pending: ref(false),
-					error: ref(null),
-					refresh: vi.fn(),
-				})
-				.mockReturnValue({
-					data: ref(page2),
-					pending: ref(false),
-					error: ref(null),
-					refresh: vi.fn(),
-				});
+				.mockResolvedValueOnce(page1)
+				.mockResolvedValue(page2);
 
 			const CommentsPage = await loadPage();
 			const wrapper = await mountWithSuspense(CommentsPage);
@@ -499,12 +467,7 @@ describe("Admin Comments Page", () => {
 		});
 
 		it("hides page navigation when there is a single page", async () => {
-			mockFetchAdminComments.mockReturnValue({
-				data: ref(mockCommentList),
-				pending: ref(false),
-				error: ref(null),
-				refresh: vi.fn(),
-			});
+			mockFetchAdminComments.mockResolvedValue(mockCommentList);
 			const CommentsPage = await loadPage();
 			const wrapper = await mountWithSuspense(CommentsPage);
 
@@ -518,12 +481,7 @@ describe("Admin Comments Page", () => {
 				items: mockComments,
 				pagination: { total: 40, page: 1, limit: 20, total_pages: 2 },
 			};
-			mockFetchAdminComments.mockReturnValue({
-				data: ref(twoPages),
-				pending: ref(false),
-				error: ref(null),
-				refresh: vi.fn(),
-			});
+			mockFetchAdminComments.mockResolvedValue(twoPages);
 			const CommentsPage = await loadPage();
 			const wrapper = await mountWithSuspense(CommentsPage);
 
@@ -536,12 +494,7 @@ describe("Admin Comments Page", () => {
 		});
 
 		it("applies the search filter via Enter and reloads", async () => {
-			mockFetchAdminComments.mockReturnValue({
-				data: ref(mockCommentList),
-				pending: ref(false),
-				error: ref(null),
-				refresh: vi.fn(),
-			});
+			mockFetchAdminComments.mockResolvedValue(mockCommentList);
 			const CommentsPage = await loadPage();
 			const wrapper = await mountWithSuspense(CommentsPage);
 
@@ -559,12 +512,7 @@ describe("Admin Comments Page", () => {
 		});
 
 		it("filters by pending status and clears filters back to all", async () => {
-			mockFetchAdminComments.mockReturnValue({
-				data: ref(mockCommentList),
-				pending: ref(false),
-				error: ref(null),
-				refresh: vi.fn(),
-			});
+			mockFetchAdminComments.mockResolvedValue(mockCommentList);
 			const CommentsPage = await loadPage();
 			const wrapper = await mountWithSuspense(CommentsPage);
 

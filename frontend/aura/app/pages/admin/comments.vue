@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { AdminComment } from "~~/composables/useApi";
+import type { AdminComment, AdminCommentListResponse } from "~~/composables/useApi";
 import {
 	approveAdminComment,
 	batchApproveAdminComment,
@@ -59,23 +59,53 @@ function activeFilters() {
 	};
 }
 
-const {
-	data: comments,
-	pending,
-	error,
-	refresh,
-} = await fetchAdminComments(activeFilters(), 1, PAGE_SIZE);
+// The list is our OWN ref, written only through the sequenced loader below.
+// Binding it to the setup-top-level useFetch's live data ref let the initial
+// (slower) request clobber a later applied filter — clicking 待审核 then
+// reverted to the full mixed list once the first fetch landed (RIL ISS-097:
+// e2e "filter by status" intermittently flaky). Latest-wins sequencing makes
+// every writer — initial load, filter, paging, post-approve refresh — safe.
+const comments = ref<AdminCommentListResponse | null>(null);
+const loading = ref(true);
+const error = ref<string | null>(null);
 const currentPage = ref(1);
 const isProcessing = ref(false);
 const selectedIds = ref<Set<number>>(new Set());
 const actionError = ref<string | null>(null);
 
+let listRequestSeq = 0;
+
+/** Fetch one page of comments; only the most recently issued request wins. */
+async function loadComments(filters: ReturnType<typeof activeFilters>, page: number) {
+	const seq = ++listRequestSeq;
+	loading.value = true;
+	try {
+		const data = await fetchAdminComments(filters, page, PAGE_SIZE);
+		if (seq === listRequestSeq) {
+			comments.value = data;
+			error.value = null;
+		}
+	} catch (e) {
+		if (seq === listRequestSeq) {
+			error.value = getErrorMessage(e);
+		}
+	} finally {
+		if (seq === listRequestSeq) {
+			loading.value = false;
+		}
+	}
+}
+
+/** Initial load (same guarded loader as every other writer). */
+onMounted(() => {
+	void loadComments(activeFilters(), 1);
+});
+
 /** Apply the active filters and reload from page 1. */
 async function applyFilters() {
 	currentPage.value = 1;
 	selectedIds.value = new Set();
-	const res = await fetchAdminComments(activeFilters(), 1, PAGE_SIZE);
-	comments.value = res.data.value;
+	await loadComments(activeFilters(), 1);
 }
 
 /** Clear all filters back to the unfiltered list. */
@@ -89,6 +119,10 @@ function clearFilters() {
 
 function getErrorMessage(e: unknown): string {
 	if (e instanceof Error) return e.message;
+	if (e && typeof e === "object" && "message" in e) {
+		const m = (e as { message?: unknown }).message;
+		if (typeof m === "string" && m) return m;
+	}
 	return t("admin.comments.operationFailed");
 }
 
@@ -99,8 +133,7 @@ async function gotoPage(page: number) {
 	if (page < 1 || page > totalPages.value || page === currentPage.value) return;
 	currentPage.value = page;
 	selectedIds.value = new Set();
-	const res = await fetchAdminComments(activeFilters(), page, PAGE_SIZE);
-	comments.value = res.data.value;
+	await loadComments(activeFilters(), page);
 }
 
 const pendingComments = computed(() =>
@@ -130,7 +163,7 @@ async function batchApprove(approved: boolean) {
 	try {
 		await batchApproveAdminComment(Array.from(selectedIds.value), approved);
 		selectedIds.value = new Set();
-		await refresh();
+		await loadComments(activeFilters(), currentPage.value);
 	} catch (e) {
 		actionError.value = getErrorMessage(e);
 	} finally {
@@ -144,7 +177,7 @@ async function handleDelete(id: number) {
 	actionError.value = null;
 	try {
 		await deleteAdminComment(id);
-		await refresh();
+		await loadComments(activeFilters(), currentPage.value);
 	} catch (e) {
 		actionError.value = getErrorMessage(e);
 	} finally {
@@ -157,7 +190,7 @@ async function handleApprove(id: number, approved: boolean) {
 	actionError.value = null;
 	try {
 		await approveAdminComment(id, approved);
-		await refresh();
+		await loadComments(activeFilters(), currentPage.value);
 	} catch (e) {
 		actionError.value = getErrorMessage(e);
 	} finally {
@@ -300,7 +333,7 @@ async function handleApprove(id: number, approved: boolean) {
       </button>
     </div>
 
-    <div v-if="pending" class="text-center py-12">
+    <div v-if="loading" class="text-center py-12">
       <div class="inline-flex items-center gap-2 text-gray-500">
         <Icon icon="lucide:loader-2" class="w-5 h-5 animate-spin" />
         {{ t("admin.comments.loading") }}
@@ -308,7 +341,7 @@ async function handleApprove(id: number, approved: boolean) {
     </div>
 
     <div v-else-if="error" class="text-center py-12 text-red-500">
-      {{ error?.message || String(error) }}
+      {{ error }}
     </div>
 
     <div v-else-if="!comments || !comments.items || comments.items.length === 0" class="flex flex-col items-center justify-center py-16 bg-gradient-to-br from-gray-50 dark:from-gray-800/50 to-white dark:to-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800">

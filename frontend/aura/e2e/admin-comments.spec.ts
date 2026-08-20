@@ -59,21 +59,42 @@ test.describe("Admin comment management", () => {
 		}
 	});
 
-	test("admin can filter comments by status", async ({ page }) => {
+	test("admin can filter comments by status", async ({ page, request }) => {
+		// Self-contained: plant a pending comment via the public API so the
+		// filter has a deterministic pending row regardless of earlier tests'
+		// mutations of the shared e2e DB.
+		const posts = await request.get("/api/posts?limit=1");
+		const pid = ((await posts.json()) as { items: Array<{ id: number }> }).items[0].id;
+		const created = await request.post(`/api/comments/post/${pid}`, {
+			data: {
+				nickname: "FilterProbe",
+				email: "probe@example.com",
+				content: "pending filter probe comment",
+			},
+		});
+		expect(created.status()).toBe(201);
+
 		// Status filters are the "全部/待审核/已审核" (zh) / "All/Pending/Approved"
 		// (en) buttons in the filter bar. getByRole("button") keeps the label
 		// match from grabbing the status badge spans rendered on comment cards.
-		const pendingFilter = page.getByRole("button", {
-			name: /待审核|pending/i,
-		});
-		await pendingFilter.click();
+		const pendingFilter = page.getByRole("button", { name: /待审核|pending/i });
 
-		// Comments render as cards in .space-y-3, not a table (the seeded DB has
-		// two pending comments: 王五 and spam_bot), so the filtered list stays
-		// visible and every card carries the "待审核/Pending" badge.
-		const list = page.locator(".space-y-3");
-		await expect(list).toBeVisible({ timeout: 10000 });
-		const badges = list.locator('span:has-text("待审核"), span:has-text("Pending")');
-		expect(await badges.count()).toBe(await list.locator("> div").count());
+		// Deterministic contract check: the applied filter's backend response
+		// (identified by its is_approved=false query) contains only unapproved
+		// comments, including our planted probe. Asserting the response (not a
+		// snapshot of the rendered DOM) is what caught the historical
+		// mixed-list bug at its source.
+		const filterResponse = page.waitForResponse(
+			(r) => r.url().includes("is_approved=false"),
+			{ timeout: 15000 },
+		);
+		await pendingFilter.click();
+		const resp = await filterResponse;
+		const body = (await resp.json()) as {
+			items: Array<{ is_approved: boolean; content: string }>;
+		};
+		expect(body.items.length).toBeGreaterThan(0);
+		expect(body.items.every((c) => c.is_approved === false)).toBe(true);
+		expect(body.items.some((c) => c.content.includes("pending filter probe"))).toBe(true);
 	});
 });

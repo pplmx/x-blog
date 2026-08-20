@@ -754,7 +754,11 @@ export interface AdminCommentFilters {
 	dateTo?: string;
 }
 
-export async function fetchAdminComments(opts: AdminCommentFilters = {}, page = 1, limit = 20) {
+export async function fetchAdminComments(
+	opts: AdminCommentFilters = {},
+	page = 1,
+	limit = 20,
+): Promise<AdminCommentListResponse> {
 	const config = useRuntimeConfig();
 	const apiUrl = config.public.apiUrl;
 	const query = new URLSearchParams();
@@ -765,9 +769,13 @@ export async function fetchAdminComments(opts: AdminCommentFilters = {}, page = 
 	if (opts.dateTo) query.set("date_to", opts.dateTo);
 	query.set("page", String(page));
 	query.set("limit", String(limit));
-	return useFetch<AdminCommentListResponse>(`${apiUrl}/api/admin/comments?${query}`, {
+	// $fetch (not useFetch): the admin comments page reloads imperatively
+	// (filters/paging/approve) from event handlers, and `await useFetch` in a
+	// non-setup context resolves before the data ref arrives (flaky empty list
+	// under load — RIL ISS-097). $fetch awaits the real response. (DEC-070-era
+	// pattern, same as the reader my-comments helpers.)
+	return $fetch<AdminCommentListResponse>(`${apiUrl}/api/admin/comments?${query}`, {
 		headers: getAuthHeaders(),
-		server: false,
 	});
 }
 

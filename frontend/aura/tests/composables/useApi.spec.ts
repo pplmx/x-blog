@@ -55,9 +55,15 @@ let useFetchCalls: Array<{
 	url: string;
 	options: Record<string, unknown>;
 }>;
+// Some admin readers use $fetch (the imperative fetch helpers) — capture it too.
+let $fetchCalls: Array<{
+	url: string;
+	options: Record<string, unknown>;
+}>;
 
 beforeEach(() => {
 	useFetchCalls = [];
+	$fetchCalls = [];
 
 	vi.stubGlobal("useRuntimeConfig", () => ({
 		public: {
@@ -76,6 +82,11 @@ beforeEach(() => {
 			data: null,
 			refresh: vi.fn(),
 		};
+	}) as Mock);
+
+	vi.stubGlobal("$fetch", ((url: string, options: Record<string, unknown> = {}) => {
+		$fetchCalls.push({ url, options });
+		return Promise.resolve({});
 	}) as Mock);
 });
 
@@ -187,31 +198,31 @@ describe("admin API functions", () => {
 		expect(useFetchCalls[0].options.method).toBe("DELETE");
 	});
 
-	it("fetchAdminComments constructs correct URL", () => {
-		fetchAdminComments();
-		expect(useFetchCalls[0].url).toBe("http://localhost:18888/api/admin/comments?page=1&limit=20");
+	it("fetchAdminComments constructs correct URL", async () => {
+		await fetchAdminComments();
+		expect($fetchCalls[0].url).toBe("http://localhost:18888/api/admin/comments?page=1&limit=20");
 	});
 
-	it("fetchAdminComments with postId adds query parameter", () => {
-		fetchAdminComments({ postId: 15 });
-		expect(useFetchCalls[0].url).toBe(
+	it("fetchAdminComments with postId adds query parameter", async () => {
+		await fetchAdminComments({ postId: 15 });
+		expect($fetchCalls[0].url).toBe(
 			"http://localhost:18888/api/admin/comments?post_id=15&page=1&limit=20",
 		);
 	});
 
-	it("fetchAdminComments passes page and limit through", () => {
-		fetchAdminComments({}, 3, 100);
-		expect(useFetchCalls[0].url).toBe("http://localhost:18888/api/admin/comments?page=3&limit=100");
+	it("fetchAdminComments passes page and limit through", async () => {
+		await fetchAdminComments({}, 3, 100);
+		expect($fetchCalls[0].url).toBe("http://localhost:18888/api/admin/comments?page=3&limit=100");
 	});
 
-	it("fetchAdminComments passes moderation filters through", () => {
-		fetchAdminComments({
+	it("fetchAdminComments passes moderation filters through", async () => {
+		await fetchAdminComments({
 			isApproved: false,
 			q: "carol",
 			dateFrom: "2026-01-01",
 			dateTo: "2026-12-31",
 		});
-		expect(useFetchCalls[0].url).toBe(
+		expect($fetchCalls[0].url).toBe(
 			"http://localhost:18888/api/admin/comments?is_approved=false&q=carol&date_from=2026-01-01&date_to=2026-12-31&page=1&limit=20",
 		);
 	});
