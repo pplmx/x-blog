@@ -29,6 +29,7 @@ A modern full-stack blog application built with FastAPI + Nuxt
 - 🏷️ **Tags & Categories** - Organize posts with tags and categories
 - 📚 **Series** - Group posts into ordered multi-part sequences with in-series prev/next navigation
 - 🔖 **Cloud Bookmark Sync** - Reader accounts keep your bookmarks synced across devices (sign in → local bookmarks merge to the cloud)
+- 💬 **Reader Comment Management** - a signed-in reader sees their own comments with moderation status (pending / approved / rejected) and can delete them (DEC-066)
 - 🎯 **SEO Optimized** - Open Graph, JSON-LD structured data
 - ⬆️ **Pinned Posts** - Pin important posts to top
 - 📤 **Data Export** - Export posts/comments as CSV
@@ -208,12 +209,18 @@ limited (default 5/min/IP).
 | GET    | `/api/reader/me/bookmarks`      | Cloud-synced bookmark list (publicly-visible posts only)   |
 | PUT    | `/api/reader/me/bookmarks/{id}` | Add a bookmark (idempotent: 201 new / 200 already)         |
 | DELETE | `/api/reader/me/bookmarks/{id}` | Remove a bookmark (idempotent 204)                         |
-| GET    | `/api/reader/me/comments`       | Reader's own approved comment history (DEC-062)            |
+| GET    | `/api/reader/me/comments`       | Reader's own comments across statuses (DEC-066)            |
+| DELETE | `/api/reader/me/comments/{id}`  | Delete one of the reader's own comments (any status)       |
 
 Bookmarks are stored localStorage-first on the browser and merged to the cloud
 when a reader signs in — offline changes survive and re-concile on the next
 login. Reader bookmarks never appear in shared caches (`Cache-Control:
 no-store`).
+
+**Reader comment management (DEC-066)**: `/comments` shows the signed-in
+reader their own comments with a moderation status (待审核 / 已发布 / 未通过 —
+a moderated blog hides pending comments from everyone but their author), a
+link back to each thread, and a delete action scoped to their own comment.
 
 ## 🏗️ Architecture
 

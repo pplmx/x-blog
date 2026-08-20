@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 109,
+  "round": 110,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-08-20T16:44:12+00:00",
+  "updated_at": "2026-08-20T18:53:37+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -6805,6 +6805,94 @@
       "touched_round": 109,
       "rationale": "DEC-064 slice 1 says 'on APPROVED comment create/reply, fan out a push'. Every comment in this blog is moderated (crud.create_comment is never auto-approved), so the in-flight create-time trigger was wrong: it notified a reader about a reply that was still invisible (pending/spam) to them. Firing in the approve endpoint (approved=True, parent author != reply author) means a reader only hears about replies they can actually see. Contract tests cover pending/no-push, reject/no-push, approve/push, self-reply exclusion, dead-endpoint retirement.",
       "alternatives_rejected": "(a) create-time fire (in-flight impl before this round): leaks pending replies to readers, phantom notifications on rejected comments. (b) admin-full-broadcast at approval: out of scope, would notify all subscribers not just the replied-to author."
+    },
+    "DEC-066": {
+      "id": "DEC-066",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-20T16:59:37+00:00",
+      "updated_at": "2026-08-20T16:59:37+00:00",
+      "touched_round": 109,
+      "title": "Milestone: reader comment management (my-comments page + status + delete)",
+      "rationale": "Feature-evolution selection (SKILL 11.2 gap analysis). This blog moderates every comment (no auto-approve), and DEC-064 just taught readers to opt into reply notifications; but a reader who comments has ZERO visibility: they cannot see whether their comment is pending/approved/rejected (GET /api/reader/me/comments only lists approved), cannot delete or retract a comment they regret, and there is no frontend page at all. Real user problem: 'I commented but nothing shows up for days and I can't tell why or undo it.' Vertical slices: (1) backend me/comments includes pending/rejected with status + a DELETE /api/reader/me/comments/{id} scoped to the caller's own comment (works for any status; admin delete unchanged); (2) frontend 'my comments' page (/comments) with status badges, per-post links, delete with confirm, zh/en i18n, unit + contract + e2e. Value gate: real user problem, 1-sentence acceptance 'a signed-in reader can view their own comments with status (pending/approved/rejected) and delete one'; net-increment vertical slice completing the reader arc.",
+      "alternatives_rejected": "(a) Post TOC/reading-progress for long posts - real but frontend-only polish, smaller value than closing the reader-comment loop; keep in backlog. (b) Email/subscription - SMTP infra, rejected DEC-035/055 repeatedly. (c) Reactions/emoji/copy-code - button-level, rejected DEC-056..058. (d) Comment threading UI rework - current nested-reply render already covers it."
+    },
+    "TASK-139": {
+      "id": "TASK-139",
+      "type": "task",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-08-20T17:00:50+00:00",
+      "updated_at": "2026-08-20T18:53:37+00:00",
+      "touched_round": 110,
+      "category": "core-feature",
+      "severity": 4,
+      "confidence": 0.9,
+      "effort": 4,
+      "unlock_factor": 1.1,
+      "title": "Backend reader comment management: status-aware me/comments + delete-own-comment"
+    },
+    "TASK-140": {
+      "id": "TASK-140",
+      "type": "task",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-08-20T17:00:50+00:00",
+      "updated_at": "2026-08-20T18:53:37+00:00",
+      "touched_round": 110,
+      "category": "core-feature",
+      "severity": 4,
+      "confidence": 0.9,
+      "effort": 3,
+      "unlock_factor": 1.1,
+      "title": "Frontend my-comments page: status badges + delete + i18n + tests"
+    },
+    "CHG-130": {
+      "id": "CHG-130",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-20T18:52:21+00:00",
+      "updated_at": "2026-08-20T18:52:21+00:00",
+      "touched_round": 109,
+      "commit": "86a7daf",
+      "summary": "Backend reader comment management (DEC-066 TASK-139): comments.reviewed_at + migration; me/comments returns own comments across statuses with derived pending/approved/rejected; DELETE /api/reader/me/comments/{id} reader-scoped (404 not-enumerable), reuses admin delete cache invalidation; approve/reject stamps reviewed_at."
+    },
+    "CHG-131": {
+      "id": "CHG-131",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-20T18:52:21+00:00",
+      "updated_at": "2026-08-20T18:52:21+00:00",
+      "touched_round": 109,
+      "commit": "16bc3d9",
+      "summary": "Frontend my-comments page (DEC-066 TASK-140): /comments with status badges + thread links + delete-with-confirm, nav entry, zh/en i18n; fetchMyComments/deleteMyComment switch to $fetch (useFetch in non-setup context raced -> flaky empty list caught by e2e); unit + e2e journey."
+    },
+    "EV-100": {
+      "id": "EV-100",
+      "type": "evidence",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-20T18:53:05+00:00",
+      "updated_at": "2026-08-20T18:53:05+00:00",
+      "touched_round": 109,
+      "source": "758 nova tests; alembic upgrade head verified reviewed_at column; contract tests cover status derivation + reader delete",
+      "summary": "Backend DEC-066 verified: me/comments shows pending->approved (reviewed_at flips on approve/reject), rejected status after approve(False), delete own pending/approved works, cross-reader 404, token required; migration e1f2a3b4c5d6 applies cleanly.",
+      "confidence": 1.0
+    },
+    "EV-101": {
+      "id": "EV-101",
+      "type": "evidence",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-20T18:53:05+00:00",
+      "updated_at": "2026-08-20T18:53:05+00:00",
+      "touched_round": 109,
+      "source": "debug + e2e: useFetch-in-onMounted race",
+      "summary": "Frontend e2e caught a real bug: fetchMyComments used useFetch, and awaiting it in onMounted resolved before the data ref arrived (flaky empty list on /comments). Switched the imperative reads to $fetch, which truly awaits the response; reproduced fixed in e2e (pending visible across reload; approve flips to approved; delete empties).",
+      "confidence": 1.0
     }
   },
   "edges": [
@@ -9597,6 +9685,36 @@
       "type": "supersedes",
       "created_at": "2026-08-20T16:44:12+00:00",
       "note": "refines implementation interpretation of DEC-064 slice 1 (approval-time vs create-time)"
+    },
+    {
+      "from": "DEC-066",
+      "to": "TASK-139",
+      "type": "governs",
+      "created_at": "2026-08-20T17:01:39+00:00"
+    },
+    {
+      "from": "DEC-066",
+      "to": "TASK-140",
+      "type": "governs",
+      "created_at": "2026-08-20T17:01:39+00:00"
+    },
+    {
+      "from": "TASK-140",
+      "to": "TASK-139",
+      "type": "depends_on",
+      "created_at": "2026-08-20T17:01:39+00:00"
+    },
+    {
+      "from": "CHG-130",
+      "to": "TASK-139",
+      "type": "implements",
+      "created_at": "2026-08-20T18:53:05+00:00"
+    },
+    {
+      "from": "CHG-131",
+      "to": "TASK-140",
+      "type": "implements",
+      "created_at": "2026-08-20T18:53:05+00:00"
     }
   ]
 }
