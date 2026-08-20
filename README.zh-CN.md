@@ -167,15 +167,15 @@ docker-compose logs -f
 
 ### 搜索、SEO 与统计
 
-| 方法 | 路径                  | 说明                   |
-| ---- | --------------------- | ---------------------- |
-| GET  | `/api/search?q=`      | 全文搜索               |
-| GET  | `/api/stats`          | 博客统计               |
-| GET  | `/rss/feed.xml`       | RSS 2.0 订阅源         |
-| GET  | `/rss/atom.xml`       | Atom 订阅源            |
-| GET  | `/sitemap.xml`        | XML 站点地图           |
-| GET  | `/robots.txt`         | robots.txt             |
-| GET  | `/health`             | 健康检查               |
+| 方法 | 路径             | 说明                          |
+| ---- | ---------------- | ----------------------------- |
+| GET  | `/api/search?q=` | 全文搜索（中文感知，DEC-070） |
+| GET  | `/api/stats`     | 博客统计                      |
+| GET  | `/rss/feed.xml`  | RSS 2.0 订阅源                |
+| GET  | `/rss/atom.xml`  | Atom 订阅源                   |
+| GET  | `/sitemap.xml`   | XML 站点地图                  |
+| GET  | `/robots.txt`    | robots.txt                    |
+| GET  | `/health`        | 健康检查                      |
 
 ### 读者账号与云端收藏
 

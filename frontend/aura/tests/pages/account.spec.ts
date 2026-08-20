@@ -110,7 +110,11 @@ describe("Account settings page", () => {
 
 	it("saves the display name and refreshes the profile", async () => {
 		isAuthenticated.value = true;
-		mockUpdateMyProfile.mockResolvedValue({ id: 1, email: "r@example.com", display_name: "NewName" });
+		mockUpdateMyProfile.mockResolvedValue({
+			id: 1,
+			email: "r@example.com",
+			display_name: "NewName",
+		});
 		const wrapper = await mountPage();
 
 		const input = wrapper.get("input[type='text']");
@@ -119,9 +123,7 @@ describe("Account settings page", () => {
 		await flushPromises();
 
 		expect(mockUpdateMyProfile).toHaveBeenCalledWith({ display_name: "NewName" });
-		expect(setProfile).toHaveBeenCalledWith(
-			expect.objectContaining({ display_name: "NewName" }),
-		);
+		expect(setProfile).toHaveBeenCalledWith(expect.objectContaining({ display_name: "NewName" }));
 		expect(wrapper.text()).toContain("已保存");
 	});
 
@@ -172,7 +174,9 @@ describe("Account settings page", () => {
 			current_password: "currentpass123",
 			new_password: "newpass456",
 		});
-		expect(updateToken).toHaveBeenCalledWith(expect.objectContaining({ access_token: "fresh.jwt" }));
+		expect(updateToken).toHaveBeenCalledWith(
+			expect.objectContaining({ access_token: "fresh.jwt" }),
+		);
 		expect(wrapper.text()).toContain("密码已修改");
 	});
 

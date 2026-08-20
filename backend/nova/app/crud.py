@@ -1,6 +1,6 @@
 from datetime import UTC, datetime
 
-from sqlalchemy import extract, func, or_, select, update
+from sqlalchemy import and_, extract, func, or_, select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, joinedload
 
@@ -623,15 +623,35 @@ def escape_like_pattern(query: str) -> str:
     return query.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
 
 
+def _has_cjk(query: str) -> bool:
+    """True when the query contains CJK ideographs.
+
+    Postgres ``to_tsvector('english')`` tokenizes CJK as opaque runs, so
+    full-text search cannot match partial/prefix Chinese terms ('评' vs content
+    '评论系统') — while SQLite's ILIKE substring path handles them fine. Detect
+    CJK in Python (not by dialect) so the fallback to substring matching is
+    identical on SQLite and Postgres. (DEC-070, TASK-143)
+    """
+    return any(
+        ("㐀" <= ch <= "䶿")  # CJK Extension A
+        or ("一" <= ch <= "鿿")  # CJK Unified Ideographs
+        or ("豈" <= ch <= "﫿")  # CJK Compatibility Ideographs
+        for ch in query
+    )
+
+
 def search_posts(db: Session, query: str, page: int = 1, limit: int = 10) -> tuple[list[models.Post], int]:
     offset = (page - 1) * limit
     is_postgres = db.get_bind().dialect.name == "postgresql"
+    # CJK/mixed queries go through the dialect-agnostic ILIKE substring path on
+    # every backend; only pure-ASCII Postgres queries keep tsvector relevance.
+    use_tsvector = is_postgres and not _has_cjk(query)
 
     now = utc_now_naive()
     # Scheduled posts are not searchable before their publish_at (same rule as list)
     scheduled_filter = or_(models.Post.publish_at.is_(None), models.Post.publish_at <= now)
 
-    if is_postgres:
+    if use_tsvector:
         ts_query = func.plainto_tsquery("english", query)
         ts_vector = func.to_tsvector(
             "english",
@@ -659,35 +679,46 @@ def search_posts(db: Session, query: str, page: int = 1, limit: int = 10) -> tup
             .where(ts_vector.op("@@")(ts_query))
         )
     else:
-        search_pattern = f"%{escape_like_pattern(query)}%"
+        # CJK/mixed substring matching: every whitespace-separated term must
+        # appear (as a substring) in the title, excerpt, or content. Per-term
+        # OR over fields, AND over terms — mirrors plainto_tsquery AND semantics
+        # so a query like "TypeScript 类型" matches TypeScript in the title and
+        # 类型 in the content. excerpt is covered like the tsvector path.
+        terms = [t for t in query.split() if t] or [query]
+        fields = (
+            models.Post.title,
+            models.Post.excerpt,
+            models.Post.content,
+        )
+        term_clauses = [
+            and_(
+                or_(
+                    *(
+                        field.ilike(f"%{escape_like_pattern(term)}%", escape="\\")
+                        for field in fields
+                    )
+                )
+            )
+            for term in terms
+        ]
 
         stmt = (
             select(models.Post)
-            .where(
-                or_(
-                    models.Post.title.ilike(search_pattern, escape="\\"),
-                    models.Post.content.ilike(search_pattern, escape="\\"),
-                )
-            )
+            .where(and_(*term_clauses))
             .where(models.Post.published.is_(True))
             .where(scheduled_filter)
             .options(
                 joinedload(models.Post.category),
                 joinedload(models.Post.tags),
             )
-            .order_by(models.Post.title.ilike(search_pattern, escape="\\").desc(), models.Post.created_at.desc())
+            .order_by(models.Post.created_at.desc())
             .offset(offset)
             .limit(limit)
         )
 
         count_stmt = (
             select(func.count(models.Post.id))
-            .where(
-                or_(
-                    models.Post.title.ilike(search_pattern, escape="\\"),
-                    models.Post.content.ilike(search_pattern, escape="\\"),
-                )
-            )
+            .where(and_(*term_clauses))
             .where(models.Post.published.is_(True))
             .where(scheduled_filter)
         )

@@ -165,15 +165,15 @@ badge. Anonymous commenters keep the free-text nickname/email path.
 
 ### Search, SEO & Stats
 
-| Method | Endpoint              | Description                    |
-| ------ | --------------------- | ------------------------------ |
-| GET    | `/api/search?q=`      | Full-text search               |
-| GET    | `/api/stats`          | Blog statistics                |
-| GET    | `/rss/feed.xml`       | RSS 2.0 feed                   |
-| GET    | `/rss/atom.xml`       | Atom feed                      |
-| GET    | `/sitemap.xml`        | XML sitemap                    |
-| GET    | `/robots.txt`         | robots.txt                     |
-| GET    | `/health`             | Health check                   |
+| Method | Endpoint         | Description                           |
+| ------ | ---------------- | ------------------------------------- |
+| GET    | `/api/search?q=` | Full-text search (CJK-aware, DEC-070) |
+| GET    | `/api/stats`     | Blog statistics                       |
+| GET    | `/rss/feed.xml`  | RSS 2.0 feed                          |
+| GET    | `/rss/atom.xml`  | Atom feed                             |
+| GET    | `/sitemap.xml`   | XML sitemap                           |
+| GET    | `/robots.txt`    | robots.txt                            |
+| GET    | `/health`        | Health check                          |
 
 ### Web Push (optional, needs VAPID keys)
 
