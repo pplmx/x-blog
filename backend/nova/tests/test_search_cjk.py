@@ -18,6 +18,7 @@ import os
 import pytest
 
 from app.crud import _has_cjk, search_posts
+from app.routers.search import _build_snippet, _highlight_sqlite
 from app.schemas import PostCreate
 
 CJK_CONTENT = "# 标题\n评论系统支持楼中楼回复，回复通知走 Web Push。"
@@ -93,6 +94,77 @@ class TestChineseSearchSqlite:
         assert found[0].id == post.id
 
 
+LONG_CONTENT = "开头甲" + "填充甲" * 200 + "评论系统出现在中段" + "结尾乙"
+
+
+class TestSearchSnippet:
+    """Snippet generation for CJK/mid-content matches (DEC-071, TASK-144).
+
+    Bare function tests against _build_snippet (dialect False = the Python
+    highlighter path). The original behavior windowed content[:300], so a term
+    buried deep in a long post never appeared or got highlighted; the fixed
+    path windows around the first matched term in the full content."""
+
+    def _post(self, db_session, content, slug, excerpt=None):
+        return _create_post(
+            db_session, f"标题{slug}", slug, content=content, excerpt=excerpt or "摘要"
+        )
+
+    def test_mid_content_cjk_match_is_highlighted(self, db_session):
+        # The term sits at ~400 chars in a 600+ char body.
+        post = self._post(db_session, LONG_CONTENT, "snippet-mid")
+        snippet = _build_snippet(post, "评论系统", False, db_session)
+        assert snippet is not None
+        assert "<mark>评论系统</mark>" in snippet
+        assert len(snippet) <= 500
+
+    def test_snippet_prefers_excerpt_that_matches(self, db_session):
+        post = self._post(
+            db_session, "正文内容无关键词", "snippet-excerpt", excerpt="摘要：评论系统很强大"
+        )
+        snippet = _build_snippet(post, "评论系统", False, db_session)
+        assert snippet is not None
+        assert "<mark>评论系统</mark>" in snippet
+        assert "正文内容无关键词" not in snippet  # came from the excerpt
+
+    def test_snippet_uses_content_when_excerpt_has_no_match(self, db_session):
+        post = self._post(db_session, LONG_CONTENT, "snippet-content")
+        snippet = _build_snippet(post, "评论系统", False, db_session)
+        assert "填充甲" in snippet  # content window, not the excerpt
+
+    def test_partial_cjk_term_highlighted(self, db_session):
+        post = self._post(db_session, LONG_CONTENT, "snippet-partial")
+        snippet = _build_snippet(post, "评", False, db_session)
+        assert snippet is not None
+        assert "<mark>评</mark>" in snippet
+
+    def test_snippet_is_balanced_and_bounded(self, db_session):
+        spam = "评论系统 " * 400  # many matches, very long
+        post = self._post(db_session, spam, "snippet-long")
+        snippet = _build_snippet(post, "评论系统", False, db_session)
+        assert len(snippet) <= 500
+        assert snippet.count("<mark>") == snippet.count("</mark>")
+
+    def test_snippet_xss_safe(self, db_session):
+        malicious = "<script>alert(1)</script> 前面评论系统后面"
+        post = self._post(db_session, malicious, "snippet-xss")
+        snippet = _build_snippet(post, "评论系统", False, db_session)
+        assert snippet is not None
+        assert "<script>" not in snippet  # escaped
+        assert "<mark>评论系统</mark>" in snippet  # only our markup survives
+
+    def test_ascii_snippet_still_highlights(self, db_session):
+        post = self._post(db_session, "The quick brown fox jumps", "snippet-ascii")
+        snippet = _build_snippet(post, "quick", False, db_session)
+        assert snippet is not None
+        assert "<mark>quick</mark>" in snippet
+
+    def test_empty_query_returns_none_or_plain(self):
+        # The existing _highlight_sqlite contract: empty query -> escaped text.
+        out = _highlight_sqlite("Some content here", "")
+        assert "Some content here" in out or out == ""
+
+
 @pytest.mark.skipif(
     not os.getenv("TEST_DATABASE_URL", "").startswith("postgresql"),
     reason="requires TEST_DATABASE_URL pointing at PostgreSQL (e.g. dev host 10.112.9.49:13310)",
@@ -121,6 +193,12 @@ class TestChineseSearchPostgres:
             assert any(p.id == post.id for p in found)
             found, total = search_posts(db, "TypeScript 类型")  # mixed -> ILIKE
             assert total >= 0  # not present -> no match (control path executes)
+
+            # CJK snippet uses the Python highlighter even on Postgres: the old
+            # dialect-branched ts_headline('english') produced no <mark> for CJK.
+            snippet = _build_snippet(post, "评", True, db)
+            assert snippet is not None
+            assert "<mark>" in snippet and "</mark>" in snippet
         finally:
             db.close()
             engine.dispose()

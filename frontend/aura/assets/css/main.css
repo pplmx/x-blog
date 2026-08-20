@@ -139,4 +139,17 @@
 		max-width: var(--layout-max);
 		margin-inline: auto;
 	}
+
+	/* Search result highlight (DEC-071): the backend emits <mark> snippets; keep
+	 * the highlight legible in both themes instead of the harsh default yellow. */
+	mark {
+		background-color: rgb(251 219 122 / 0.45);
+		color: inherit;
+		border-radius: 2px;
+		padding: 0 1px;
+	}
+	.dark mark {
+		background-color: rgb(250 204 21 / 0.28);
+		color: inherit;
+	}
 }

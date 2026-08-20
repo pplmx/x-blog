@@ -305,6 +305,23 @@ describe("Search Page", () => {
 			const links = wrapper.findAll('a[href^="/posts/"]');
 			expect(links.length).toBeGreaterThanOrEqual(2);
 		});
+
+		it("renders a highlighted snippet when the backend provides one (DEC-071)", async () => {
+			// The backend emits a <mark>-highlighted snippet (CJK-aware since
+			// DEC-071); the page renders it sanitized and the term is visible.
+			const withSnippet = {
+				...mockSearchResult,
+				items: [
+					{
+						...mockSearchResult.items[0],
+						snippet: "开头 <mark>评论系统</mark> 出现在摘要里",
+					},
+				],
+			};
+			const wrapper = await mountSearchPage({ searchResult: withSnippet });
+			expect(wrapper.find("mark").exists()).toBe(true);
+			expect(wrapper.text()).toContain("评论系统");
+		});
 	});
 
 	describe("Pagination", () => {

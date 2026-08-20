@@ -6,7 +6,7 @@ from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from .. import models
-from ..crud import search_posts
+from ..crud import _has_cjk, search_posts
 from ..database import get_db
 from ..limiter import RATE_LIMIT_SEARCH, limiter
 from ..models import Post
@@ -17,27 +17,44 @@ router = APIRouter(prefix="/api/search", tags=["search"])
 # Cap query length so malicious input cannot drive expensive regex/DB work.
 MAX_QUERY_LENGTH = 200
 
+# Snippet output budget (chars) and the context window around the first match.
+SNIPPET_MAX = 500
+SNIPPET_CONTEXT = 120
+
 
 def _highlight_sqlite(content: str, query: str) -> str:
-    """Simple regex-based highlighting for SQLite.
+    """Build an HTML snippet around the first matched term, highlighting matches.
 
-    Content is HTML-escaped *before* highlighting so the ``<mark>`` tags we
-    inject are the only markup present in the result — article text can never
-    smuggle raw HTML into the snippet.
+    Dialect-agnostic (works for CJK and ASCII alike — the CJK/Postgres snippet
+    path since DEC-071/TASK-144). Windows around the first occurrence of any
+    query term in the FULL content, so hits deep in long posts surface context
+    instead of an arbitrary content[:300] prefix. Content is HTML-escaped
+    *before* highlighting so the ``<mark>`` tags we inject are the only markup
+    present in the result — article text can never smuggle raw HTML into the
+    snippet.
     """
-    words = [re.escape(w) for w in query.split() if w]
-    if not words:
-        return html.escape(content[:300])
-    pattern = f"({'|'.join(words)})"
+    terms = [t for t in query.split() if t]
+    if not terms:
+        return html.escape(content[:SNIPPET_MAX])
+
+    # Window around the earliest match so the term is visible even mid-body.
+    lower = content.lower()
+    positions = [lower.find(t.lower()) for t in terms]
+    positions = [p for p in positions if p != -1]
+    if positions:
+        start = max(0, min(positions) - SNIPPET_CONTEXT)
+        content = content[start:]
+
+    pattern = f"({'|'.join(re.escape(w) for w in terms)})"
     escaped = html.escape(content)
     highlighted = re.sub(pattern, r"<mark>\1</mark>", escaped, flags=re.IGNORECASE)
-    if len(highlighted) <= 500:
+    if len(highlighted) <= SNIPPET_MAX:
         return highlighted
-    # Truncate to a balanced snippet: never emit an unclosed <mark>. Binary-search
-    # the largest cut <= 500 that leaves equal <mark> and </mark> counts. Starting
-    # from the longest valid prefix keeps as much highlighted context as possible.
+    # Truncate to a balanced snippet: never emit an unclosed <mark>. Scan from
+    # the longest valid prefix that leaves equal <mark> and </mark> counts so we
+    # keep as much highlighted context as possible.
     best = 0
-    for cut in range(min(500, len(highlighted)), 0, -1):
+    for cut in range(min(SNIPPET_MAX, len(highlighted)), 0, -1):
         prefix = highlighted[:cut]
         if prefix.count("<mark>") == prefix.count("</mark>"):
             best = cut
@@ -45,11 +62,21 @@ def _highlight_sqlite(content: str, query: str) -> str:
     return highlighted[:best]
 
 
+def _contains_any_term(text: str, query: str) -> bool:
+    lower = text.lower()
+    return any(t.lower() in lower for t in query.split() if t)
+
+
 def _build_snippet(post: Post, query: str, is_postgres: bool, db: Session) -> str | None:
-    """Generate a search snippet with highlighted matches."""
+    """Generate a search snippet with highlighted matches.
+
+    Routing mirrors search_posts (DEC-070): CJK/mixed queries use the
+    dialect-agnostic highlighter on every backend (ts_headline('english')
+    cannot reliably highlight CJK on Postgres); only pure-ASCII Postgres
+    queries keep ts_headline."""
     if not query.strip():
         return None
-    if is_postgres:
+    if is_postgres and not _has_cjk(query):
         ts_query = func.plainto_tsquery("english", query)
         headline = func.ts_headline(
             "english",
@@ -65,7 +92,11 @@ def _build_snippet(post: Post, query: str, is_postgres: bool, db: Session) -> st
         # the <mark> highlight delimiters we configured above.
         escaped = html.escape(result)
         return escaped.replace("&lt;mark&gt;", "<mark>").replace("&lt;/mark&gt;", "</mark>")
-    return _highlight_sqlite(post.excerpt or post.content[:300], query)
+    # Prefer the excerpt only when it actually matches; otherwise window the
+    # full content so a match deep in a long post still surfaces.
+    if post.excerpt and _contains_any_term(post.excerpt, query):
+        return _highlight_sqlite(post.excerpt, query)
+    return _highlight_sqlite(post.content or "", query)
 
 
 def _build_postgres_snippets(db: Session, posts: list[Post], query: str) -> dict[int, str | None]:
@@ -107,13 +138,14 @@ def search(
     is_postgres = db.get_bind().dialect.name == "postgresql"
     posts, total = search_posts(db, query=q, page=page, limit=limit)
 
-    # Postgres: compute ts_headline for the whole page in a single query to
-    # avoid an N+1 round-trip per result (ISS-061).
-    snippets = _build_postgres_snippets(db, posts, q) if is_postgres else {}
+    # ts_headline is only useful for ASCII queries — CJK/mixed go through the
+    # Python highlighter so Postgres CJK snippets highlight too (DEC-071).
+    use_headline = is_postgres and not _has_cjk(q)
+    snippets = _build_postgres_snippets(db, posts, q) if use_headline else {}
 
     items = []
     for p in posts:
-        if is_postgres:
+        if use_headline:
             snippet = snippets.get(p.id)
             if snippet is None and q.strip():
                 snippet = p.excerpt or p.content[:200]
