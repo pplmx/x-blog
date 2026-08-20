@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 108,
+  "round": 109,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-08-20T01:56:17+00:00",
+  "updated_at": "2026-08-20T16:44:12+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -22,7 +22,7 @@
       "version": 1,
       "created_at": "2026-08-06T13:23:41+00:00",
       "updated_at": "2026-08-06T13:23:41+00:00",
-      "touched_round": 105,
+      "touched_round": 108,
       "title": "frontend-aura",
       "description": "Nuxt 4 Vue 3 TypeScript frontend at frontend/aura; composables; admin pages; e2e Playwright; biome lint"
     },
@@ -6677,7 +6677,7 @@
       "version": 1,
       "created_at": "2026-08-20T01:35:06+00:00",
       "updated_at": "2026-08-20T01:35:06+00:00",
-      "touched_round": 108,
+      "touched_round": 109,
       "title": "Milestone: reader comment-reply notifications (Web Push bound to reader accounts)",
       "rationale": "Feature-evolution selection (SKILL 11.2 gap analysis). DEC-063 rejected reply-notifications as needing a per-reader push model; reader accounts now exist (DEC-059), so the push layer can bind subscriptions to readers (today push_subscriptions is anonymous/endpoint-keyed — a device can subscribe but there is no way to reach a specific commenter). Real user problem: a reader who comments has no way to know someone replied without reloading. Vertical slices: (1) backend push_subscriptions.reader_id (additive, nullable, no FK per DEC-009) + subscribe accepts an optional reader token (get_optional_reader) to bind the subscription; on approved comment create/reply, fan out a push to the post's reader-commenters who are subscribed (dedupe by reader, batch via send_push, retire dead endpoints — reuse push/notify machinery); (2) frontend reader opt-in for reply notifications + permission flow, zh/en i18n, unit + contract + e2e. Value gate: real user problem, 1-sentence acceptance \"a reader who commented gets a push notification when someone replies to their comment\"; net-increment vertical slice, self-contained.",
       "alternatives_rejected": "(a) Email subscription/newsletter - SMTP infra, out of scope (DEC-035/055). (b) Copy-code/emoji-reaction/reading-progress - failed 11.2 value gate as button-level (DEC-056..058). (c) Per-category RSS - rejected DEC-047. (d) Another hardening round - hardening backlog empty (DEC-057/058)."
@@ -6685,11 +6685,11 @@
     "TASK-137": {
       "id": "TASK-137",
       "type": "task",
-      "status": "active",
-      "version": 1,
+      "status": "resolved",
+      "version": 2,
       "created_at": "2026-08-20T01:53:45+00:00",
-      "updated_at": "2026-08-20T01:53:45+00:00",
-      "touched_round": 108,
+      "updated_at": "2026-08-20T16:38:41+00:00",
+      "touched_round": 109,
       "category": "core-feature",
       "priority_score": 6.0,
       "severity": 5,
@@ -6701,11 +6701,11 @@
     "TASK-138": {
       "id": "TASK-138",
       "type": "task",
-      "status": "active",
-      "version": 1,
+      "status": "resolved",
+      "version": 2,
       "created_at": "2026-08-20T01:56:17+00:00",
-      "updated_at": "2026-08-20T01:56:17+00:00",
-      "touched_round": 108,
+      "updated_at": "2026-08-20T16:38:41+00:00",
+      "touched_round": 109,
       "category": "core-feature",
       "priority_score": 6.0,
       "severity": 4,
@@ -6713,6 +6713,98 @@
       "effort": 3,
       "unlock_factor": 1.1,
       "title": "Frontend reply-notification opt-in: reader-aware SubscribeButton"
+    },
+    "CHG-127": {
+      "id": "CHG-127",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-20T16:25:31+00:00",
+      "updated_at": "2026-08-20T16:25:31+00:00",
+      "touched_round": 108,
+      "commit": "4bab6e1",
+      "summary": "Backend reply-notifications (DEC-064 TASK-137): push_subscriptions.reader_id + migration; subscribe binds reader JWT; shared dispatch_to_subscriptions (broadcast + targeted, retires dead endpoints); reply push fired at APPROVAL time (comments are moderated) excluding self-replies; safe title replace; frontend JWT wire in syncBackend."
+    },
+    "CHG-128": {
+      "id": "CHG-128",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-20T16:25:31+00:00",
+      "updated_at": "2026-08-20T16:25:31+00:00",
+      "touched_round": 108,
+      "commit": "1e129e2",
+      "summary": "Frontend reply-notification opt-in (DEC-064 TASK-138): reader-aware SubscribeButton with reply-notifications tooltip (zh/en common.push.repliesIn) + watch auth to re-bind existing subscription (syncReaderBinding); e2e journey asserts subscribe carries the reader JWT."
+    },
+    "CHG-129": {
+      "id": "CHG-129",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-20T16:25:31+00:00",
+      "updated_at": "2026-08-20T16:25:31+00:00",
+      "touched_round": 108,
+      "commit": "314fb30",
+      "summary": "Admin layout hard-redirect for unauthenticated /admin: window.location.replace('/admin/login') replaces SPA navigateTo (same-layout SPA transition left the slot empty -> blank page). Fixes pre-existing blank page found during DEC-064 e2e verification."
+    },
+    "EV-097": {
+      "id": "EV-097",
+      "type": "evidence",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-20T16:26:43+00:00",
+      "updated_at": "2026-08-20T16:26:43+00:00",
+      "touched_round": 108,
+      "source": "751 passed full nova suite; alembic upgrade head on scratch SQLite verified reader_id column + index; 36 reply+push tests green",
+      "summary": "Backend DEC-064 contract verified: subscribe stamps reader_id (bind + refresh), reply fires on APPROVAL (pending sends nothing, reject sends nothing, self-reply excluded, anonymous target no-op), dead-endpoint retirement on approval; migration chain c7d8e9f0a1b2->d9e8f7a6b5c4 applies clean.",
+      "confidence": 1.0
+    },
+    "EV-098": {
+      "id": "EV-098",
+      "type": "evidence",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-20T16:26:43+00:00",
+      "updated_at": "2026-08-20T16:26:43+00:00",
+      "touched_round": 108,
+      "source": "frontend vitest 958 passed; e2e 89 passed (incl new reader-binding journey); typecheck clean",
+      "summary": "Frontend DEC-064 verified: full unit suite + full Playwright suite green after TASK-138; new e2e proves the subscribe request carries the reader JWT when signed in.",
+      "confidence": 1.0
+    },
+    "EV-099": {
+      "id": "EV-099",
+      "type": "evidence",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-20T16:26:43+00:00",
+      "updated_at": "2026-08-20T16:26:43+00:00",
+      "touched_round": 108,
+      "source": "homepage.spec.ts 'admin page loads' + DOM inspection; baseline rebuild (git stash) reproduced",
+      "summary": "Admin blank-page bug: same-layout SPA navigateTo from /admin left layout slot empty (route.path stale). Reproduced on the committed baseline without this round's changes -> pre-existing. Fixed via hard redirect; e2e now passes.",
+      "confidence": 1.0
+    },
+    "ISS-103": {
+      "id": "ISS-103",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-08-20T16:28:05+00:00",
+      "updated_at": "2026-08-20T16:38:41+00:00",
+      "touched_round": 109,
+      "severity": 4,
+      "title": "Admin blank page for unauthenticated /admin (same-layout SPA nav)",
+      "detail": "Logged-out visitor navigating to /admin got a blank page after the URL changed to /admin/login: admin layout guard's SPA navigateTo to another page sharing the 'admin' layout left the layout slot empty on first load. Fixed in 314fb30 by hard window.location.replace; adding this node documents the pre-existing defect + fix for the audit trail."
+    },
+    "DEC-065": {
+      "id": "DEC-065",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-20T16:43:41+00:00",
+      "updated_at": "2026-08-20T16:43:41+00:00",
+      "touched_round": 109,
+      "rationale": "DEC-064 slice 1 says 'on APPROVED comment create/reply, fan out a push'. Every comment in this blog is moderated (crud.create_comment is never auto-approved), so the in-flight create-time trigger was wrong: it notified a reader about a reply that was still invisible (pending/spam) to them. Firing in the approve endpoint (approved=True, parent author != reply author) means a reader only hears about replies they can actually see. Contract tests cover pending/no-push, reject/no-push, approve/push, self-reply exclusion, dead-endpoint retirement.",
+      "alternatives_rejected": "(a) create-time fire (in-flight impl before this round): leaks pending replies to readers, phantom notifications on rejected comments. (b) admin-full-broadcast at approval: out of scope, would notify all subscribers not just the replied-to author."
     }
   },
   "edges": [
@@ -9474,6 +9566,37 @@
       "to": "TASK-138",
       "type": "governs",
       "created_at": "2026-08-20T01:56:17+00:00"
+    },
+    {
+      "from": "CHG-127",
+      "to": "TASK-137",
+      "type": "implements",
+      "created_at": "2026-08-20T16:29:23+00:00"
+    },
+    {
+      "from": "CHG-128",
+      "to": "TASK-138",
+      "type": "implements",
+      "created_at": "2026-08-20T16:29:23+00:00"
+    },
+    {
+      "from": "CHG-129",
+      "to": "ISS-103",
+      "type": "resolves",
+      "created_at": "2026-08-20T16:29:23+00:00"
+    },
+    {
+      "from": "ISS-103",
+      "to": "COMP-002",
+      "type": "located_in",
+      "created_at": "2026-08-20T16:37:29+00:00"
+    },
+    {
+      "from": "DEC-065",
+      "to": "DEC-064",
+      "type": "supersedes",
+      "created_at": "2026-08-20T16:44:12+00:00",
+      "note": "refines implementation interpretation of DEC-064 slice 1 (approval-time vs create-time)"
     }
   ]
 }
