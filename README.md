@@ -142,6 +142,13 @@ A series groups posts into an author-ordered sequence (`Post.series_id` + `Post.
 | DELETE | `/api/comments/{id}`           | Delete comment (admin)|
 | PATCH  | `/api/comments/{id}/approve`   | Approve/reject (admin)|
 
+Comments are moderation-gated (new comments must be approved). A **signed-in
+reader** comments under their verified account identity (DEC-062): the form
+omits name/email, the backend stamps the account's display name (client-supplied
+identity is ignored — no spoofing), and the comment list shows a verified-reader
+badge. Anonymous commenters keep the free-text nickname/email path.
+`GET /api/reader/me/comments` lists a reader's own approved comment history.
+
 ### Admin
 
 | Method | Endpoint                       | Description             |
@@ -194,6 +201,7 @@ limited (default 5/min/IP).
 | GET    | `/api/reader/me/bookmarks`      | Cloud-synced bookmark list (publicly-visible posts only)   |
 | PUT    | `/api/reader/me/bookmarks/{id}` | Add a bookmark (idempotent: 201 new / 200 already)         |
 | DELETE | `/api/reader/me/bookmarks/{id}` | Remove a bookmark (idempotent 204)                         |
+| GET    | `/api/reader/me/comments`       | Reader's own approved comment history (DEC-062)            |
 
 Bookmarks are stored localStorage-first on the browser and merged to the cloud
 when a reader signs in — offline changes survive and re-concile on the next

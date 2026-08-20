@@ -143,6 +143,11 @@ docker-compose logs -f
 | DELETE | `/api/comments/{id}`         | 删除评论 (管理员) |
 | PATCH  | `/api/comments/{id}/approve` | 审核通过/拒绝     |
 
+评论需审核后可见。**已登录读者**以账号身份发表评论（DEC-062）：表单省略
+昵称/邮箱，后端盖章账号昵称（客户端伪造的身份一律忽略，杜绝冒名），评论区显示
+“已认证读者”徽标；匿名评论者仍走自由填写的昵称/邮箱路径。`GET
+/api/reader/me/comments` 返回读者自己已审核的评论历史。
+
 ### 管理后台
 
 | 方法 | 路径                           | 说明               |
@@ -180,6 +185,7 @@ docker-compose logs -f
 | GET    | `/api/reader/me/bookmarks`      | 云端收藏列表（仅公开可见的文章）        |
 | PUT    | `/api/reader/me/bookmarks/{id}` | 添加收藏（幂等：新建 201 / 已存在 200） |
 | DELETE | `/api/reader/me/bookmarks/{id}` | 移除收藏（幂等 204）                    |
+| GET    | `/api/reader/me/comments`       | 读者自己的已审核评论历史（DEC-062）     |
 
 收藏在浏览器端以 localStorage 为主，登录时合并到云端——离线操作不丢失，下次
 登录时自动对账。读者收藏数据不出现在共享缓存（`Cache-Control: no-store`）。
