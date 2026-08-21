@@ -1,7 +1,8 @@
 import html
 import re
+from datetime import UTC, datetime
 
-from fastapi import APIRouter, Depends, Query, Request
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
@@ -126,6 +127,26 @@ def _build_postgres_snippets(db: Session, posts: list[Post], query: str) -> dict
     return out
 
 
+# Sort orders accepted by /api/search (DEC-084, TASK-154). "relevance" is the
+# only one that needs the tsvector rank (and degrades to newest on the CJK
+# substring path); the rest are plain column orders.
+VALID_SORTS = ("relevance", "newest", "oldest", "views")
+
+
+def _naive_utc(value: datetime | None) -> datetime | None:
+    """Coerce a client-supplied (possibly tz-aware) filter to naive UTC.
+
+    The created_at columns are naive UTC; comparing a tz-aware bind against a
+    naive timestamp column errors on PostgreSQL, so normalize at the boundary —
+    a date-only value parses as midnight naive and is left as-is.
+    """
+    if value is None:
+        return None
+    if value.tzinfo is not None:
+        return value.astimezone(UTC).replace(tzinfo=None)
+    return value
+
+
 @router.get("")
 @limiter.limit(f"{RATE_LIMIT_SEARCH}/minute")
 def search(
@@ -133,10 +154,27 @@ def search(
     q: str = Query(..., min_length=1, max_length=MAX_QUERY_LENGTH),
     page: int = Query(1, ge=1),
     limit: int = Query(10, ge=1, le=50),
+    category: str | None = Query(None, max_length=50, description="narrow to a category by name"),
+    tag: str | None = Query(None, max_length=50, description="narrow to a tag by name"),
+    date_from: datetime | None = Query(None, description="created_at >= (ISO date or datetime)"),
+    date_to: datetime | None = Query(None, description="created_at <= (ISO date or datetime)"),
+    sort: str = Query("relevance", description="relevance | newest | oldest | views"),
     db: Session = Depends(get_db),
 ):
+    if sort not in VALID_SORTS:
+        raise HTTPException(status_code=422, detail=f"sort must be one of {list(VALID_SORTS)}")
     is_postgres = db.get_bind().dialect.name == "postgresql"
-    posts, total = search_posts(db, query=q, page=page, limit=limit)
+    posts, total = search_posts(
+        db,
+        query=q,
+        page=page,
+        limit=limit,
+        category=category or None,
+        tag=tag or None,
+        date_from=_naive_utc(date_from),
+        date_to=_naive_utc(date_to),
+        sort=sort,
+    )
 
     # ts_headline is only useful for ASCII queries — CJK/mixed go through the
     # Python highlighter so Postgres CJK snippets highlight too (DEC-071).

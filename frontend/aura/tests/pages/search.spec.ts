@@ -99,6 +99,18 @@ async function mountSearchPage({
 		})),
 	);
 
+	// The filter bar loads the category/tag lists via $fetch on mount (DEC-084);
+	// stub it so the select options render empty instead of an unhandled error.
+	vi.stubGlobal(
+		"$fetch",
+		vi.fn(async (url: string) => {
+			const u = String(url);
+			if (u.includes("/api/categories")) return [];
+			if (u.includes("/api/tags")) return [];
+			throw new Error(`Unexpected $fetch in search test: ${u}`);
+		}),
+	);
+
 	const { default: SearchPage } = await import("../../app/pages/search.vue");
 
 	// Template-based Suspense wrapper

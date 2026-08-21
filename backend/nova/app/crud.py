@@ -654,7 +654,17 @@ def _has_cjk(query: str) -> bool:
     )
 
 
-def search_posts(db: Session, query: str, page: int = 1, limit: int = 10) -> tuple[list[models.Post], int]:
+def search_posts(
+    db: Session,
+    query: str,
+    page: int = 1,
+    limit: int = 10,
+    category: str | None = None,
+    tag: str | None = None,
+    date_from: datetime | None = None,
+    date_to: datetime | None = None,
+    sort: str = "relevance",
+) -> tuple[list[models.Post], int]:
     offset = (page - 1) * limit
     is_postgres = db.get_bind().dialect.name == "postgresql"
     # CJK/mixed queries go through the dialect-agnostic ILIKE substring path on
@@ -664,6 +674,34 @@ def search_posts(db: Session, query: str, page: int = 1, limit: int = 10) -> tup
     now = utc_now_naive()
     # Scheduled posts are not searchable before their publish_at (same rule as list)
     scheduled_filter = or_(models.Post.publish_at.is_(None), models.Post.publish_at <= now)
+
+    # Narrowing filters (DEC-084, TASK-154): category/tag by NAME, plus a
+    # created_at range. Applied identically on both dialect paths. The range
+    # columns are naive UTC (see utc_now_naive); coerce whatever the client
+    # sent (naive or aware, ISO or date) to naive UTC before comparing.
+    filters = []
+    if category:
+        filters.append(models.Post.category_id.in_(select(models.Category.id).where(models.Category.name == category)))
+    if tag:
+        filters.append(models.Post.tags.any(models.Tag.name == tag))
+    if date_from is not None:
+        filters.append(models.Post.created_at >= date_from)
+    if date_to is not None:
+        filters.append(models.Post.created_at <= date_to)
+
+    # Sort applied below per dialect branch (tsvector relevance is a real
+    # metric; the CJK substring path has none, so "relevance" degrades to
+    # newest there — documented in DEC-084).
+    def _sort_order(ts_vector=None, ts_query=None):
+        if sort == "newest":
+            return models.Post.created_at.desc()
+        if sort == "oldest":
+            return models.Post.created_at.asc()
+        if sort == "views":
+            return models.Post.views.desc()
+        if sort == "relevance" and ts_vector is not None:
+            return func.ts_rank(ts_vector, ts_query).desc()
+        return models.Post.created_at.desc()
 
     if use_tsvector:
         ts_query = func.plainto_tsquery("english", query)
@@ -676,8 +714,9 @@ def search_posts(db: Session, query: str, page: int = 1, limit: int = 10) -> tup
             select(models.Post)
             .where(models.Post.published.is_(True))
             .where(scheduled_filter)
+            .where(*filters)
             .where(ts_vector.op("@@")(ts_query))
-            .order_by(func.ts_rank(ts_vector, ts_query).desc())
+            .order_by(_sort_order(ts_vector, ts_query))
             .options(
                 joinedload(models.Post.category),
                 joinedload(models.Post.tags),
@@ -690,6 +729,7 @@ def search_posts(db: Session, query: str, page: int = 1, limit: int = 10) -> tup
             select(func.count(models.Post.id))
             .where(models.Post.published.is_(True))
             .where(scheduled_filter)
+            .where(*filters)
             .where(ts_vector.op("@@")(ts_query))
         )
     else:
@@ -714,11 +754,12 @@ def search_posts(db: Session, query: str, page: int = 1, limit: int = 10) -> tup
             .where(and_(*term_clauses))
             .where(models.Post.published.is_(True))
             .where(scheduled_filter)
+            .where(*filters)
+            .order_by(_sort_order())
             .options(
                 joinedload(models.Post.category),
                 joinedload(models.Post.tags),
             )
-            .order_by(models.Post.created_at.desc())
             .offset(offset)
             .limit(limit)
         )
@@ -728,6 +769,7 @@ def search_posts(db: Session, query: str, page: int = 1, limit: int = 10) -> tup
             .where(and_(*term_clauses))
             .where(models.Post.published.is_(True))
             .where(scheduled_filter)
+            .where(*filters)
         )
 
     posts = list(db.execute(stmt).unique().scalars().all())

@@ -22,6 +22,19 @@
 		},
 		"posts": {
 			"views": "reads"
+		},
+		"filters": {
+			"category": "Category",
+			"tag": "Tag",
+			"sort": "Sort",
+			"allCategories": "All categories",
+			"allTags": "All tags",
+			"sortRelevance": "Relevance",
+			"sortNewest": "Newest",
+			"sortOldest": "Oldest",
+			"sortViews": "Most viewed",
+			"dateFrom": "From",
+			"dateTo": "To"
 		}
 	}
 }

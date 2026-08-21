@@ -2,7 +2,7 @@
   "ril_version": 1,
   "round": 121,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-08-21T17:48:32+00:00",
+  "updated_at": "2026-08-21T17:53:10+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -7521,10 +7521,38 @@
       "version": 1,
       "created_at": "2026-08-21T17:47:42+00:00",
       "updated_at": "2026-08-21T17:47:42+00:00",
-      "touched_round": 120,
+      "touched_round": 121,
       "title": "Milestone delivered: full-blog backup & restore (DEC-082 complete)",
       "rationale": "Delivery of DEC-082 / TASK-153 via CHG-143, verified end-to-end. Backend: GET /api/admin/backup (x-blog-backup v1 snapshot: categories, tags, series, posts with category/tags/series links + views/likes, comment threads with parent ordinals + reader marker; NO auth data: reader accounts/users/password hashes/push subs never leak) + POST /api/admin/backup/restore (natural-key upserts: category/tag by name, series by slug, post by slug; comments upsert on (post_id, import_key), parents re-wired; reader-linked comments degrade to anonymous). Additive migration e6a2d4b8f0c2 adds comments.import_key. Frontend: admin dashboard backup/restore card (superuser-only, hidden for editors like CSV export) with download x-blog-backup-<date>.json + restore file upload + per-entity counts, en/zh. Verification: backend 857 on SQLite / 866 on dev PostgreSQL 18.4 (93.9% cov), migration chain on fresh SQLite + fresh PG confirmed, ruff + biome + vue-tsc clean, frontend vitest 1006 green, full Playwright 105 passed under CI-equivalent env (incl new admin-backup 3).",
       "alternatives_rejected": "Search filters/sort (postponed at DEC-079, still smaller value); reader notification-center (needs history table); email digests (no SMTP). Accepted limitations: live comments without import_key can duplicate on re-import to the SAME instance (documented; idempotency guaranteed per same-snapshot), restored reader-attributed comments become anonymous (reader accounts do not round-trip)."
+    },
+    "DEC-084": {
+      "id": "DEC-084",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-21T17:52:29+00:00",
+      "updated_at": "2026-08-21T17:52:29+00:00",
+      "touched_round": 121,
+      "title": "Milestone: search filters + sort (category/tag/date range) for reader discovery",
+      "rationale": "Feature-evolution selection (SKILL 11.2 gap analysis; the standing operator directive keeps feature evolution active). Reader-facing discovery upgrade: search today is keyword-only with no way to narrow by category/tag/date or reorder results. Postponed at DEC-079 as smaller value vs thread-subscriptions, but content volume is growing (an active CJK blog), and filters+sort are the clearest remaining search-surface gap that was postponed, not rejected. Milestone: category/tag/date-range filters + sort (relevance/newest/oldest/views) on /api/search and the search page (URL-shareable), both dialect paths (tsvector ASCII + CJK substring) gain the same WHERE/ORDER semantics; CJK/plain relevance degrades to newest (no relevance metric); backend + crud tests, search-page filter UI + E2E.",
+      "alternatives_rejected": "Reader notification-center page: needs a new notification-history table; management-heavy. Email digests: no SMTP infra. Blog analytics time-series: needs a per-day views log table + write-on-read path (interacts with deferred TASK-026 write-on-read debt); larger infra slice, deferred. Post code-block copy button etc: below the value gate (a button-level patch)."
+    },
+    "TASK-154": {
+      "id": "TASK-154",
+      "type": "task",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-21T17:52:29+00:00",
+      "updated_at": "2026-08-21T17:52:29+00:00",
+      "touched_round": 121,
+      "category": "core-feature",
+      "severity": 0.6,
+      "confidence": 0.9,
+      "effort": 1.1,
+      "unlock_factor": 1.0,
+      "title": "Search filters + sort: category/tag/date + relevance/newest/oldest/views on /api/search + search page UI",
+      "description": "Extend crud.search_posts with category/tag/date_from/date_to/sort for both dialect paths; expose Query params on the search router; search page filter bar wired into URL query (shareable); contract tests + E2E on demo data."
     }
   },
   "edges": [
@@ -10580,6 +10608,19 @@
       "type": "supersedes",
       "created_at": "2026-08-21T17:48:32+00:00",
       "note": "Milestone delivered, superseding the milestone decision"
+    },
+    {
+      "from": "DEC-084",
+      "to": "TASK-154",
+      "type": "governs",
+      "created_at": "2026-08-21T17:53:10+00:00"
+    },
+    {
+      "from": "DEC-084",
+      "to": "DEC-083",
+      "type": "supersedes",
+      "created_at": "2026-08-21T17:53:10+00:00",
+      "note": "New operator milestone after the backup/restore close"
     }
   ]
 }

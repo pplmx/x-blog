@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, watch } from "vue";
+import { computed, onMounted, ref, watch } from "vue";
 import { type PostListResponse, useApi } from "~~/composables/useApi";
 import { loadPurify, sanitizeHtml } from "~~/composables/useMarkdown";
 import { paginationPages } from "~~/composables/usePagination";
@@ -16,9 +16,46 @@ const route = useRoute();
 const query = computed(() => (route.query.q as string) || "");
 const page = computed(() => (route.query.page ? Number.parseInt(String(route.query.page), 10) : 1));
 
+// Filter state lives in the URL query so a filtered search is shareable and
+// survives reload (DEC-084): category/tag by name, sort, and a created_at
+// range. Each is bound to the route; changing one resets to page 1.
+const filterCategory = computed(() => (route.query.category as string) || "");
+const filterTag = computed(() => (route.query.tag as string) || "");
+const filterSort = computed(() => (route.query.sort as string) || "relevance");
+const filterDateFrom = computed(() => (route.query.date_from as string) || "");
+const filterDateTo = computed(() => (route.query.date_to as string) || "");
+
+function setFilter(key: string, value: string): void {
+	const merged: Record<string, string> = {};
+	for (const [k, v] of Object.entries(route.query)) {
+		if (typeof v === "string" && v) merged[k] = v;
+	}
+	if (value) merged[key] = value;
+	else delete merged[key];
+	merged.page = "1"; // a filter change starts a fresh result set
+	navigateTo({ query: merged });
+}
+
+// The current filter set (everything except q/page), reused when paging so
+// page-sized navigation never drops an active category/tag/sort/date filter.
+const activeFilters = computed(() => {
+	const out: Record<string, string> = {};
+	for (const [k, v] of Object.entries(route.query)) {
+		if (typeof v !== "string" || !v) continue;
+		if (k === "q" || k === "page") continue;
+		out[k] = v;
+	}
+	return out;
+});
+
 const searchUrl = computed(() => {
 	const params = new URLSearchParams();
 	if (query.value) params.set("q", query.value);
+	if (filterCategory.value) params.set("category", filterCategory.value);
+	if (filterTag.value) params.set("tag", filterTag.value);
+	if (filterSort.value !== "relevance") params.set("sort", filterSort.value);
+	if (filterDateFrom.value) params.set("date_from", filterDateFrom.value);
+	if (filterDateTo.value) params.set("date_to", filterDateTo.value);
 	params.set("page", String(page.value));
 	params.set("limit", "10");
 	return `/api/search?${params.toString()}`;
@@ -45,9 +82,18 @@ const paginationTokens = computed(() =>
 );
 
 // Upgrade snippet sanitization to DOMPurify as soon as it loads (results that
-// arrive later re-render through the stronger sanitizer).
-onMounted(() => {
+// arrive later re-render through the stronger sanitizer), and preload the
+// category/tag lists for the filter selects (DEC-084).
+const categories = ref<{ id: number; name: string }[]>([]);
+const tags = ref<{ id: number; name: string }[]>([]);
+onMounted(async () => {
 	void loadPurify();
+	const [cats, tgs] = await Promise.all([
+		$fetch<{ id: number; name: string }[]>("/api/categories").catch(() => []),
+		$fetch<{ id: number; name: string }[]>("/api/tags").catch(() => []),
+	]);
+	categories.value = cats;
+	tags.value = tgs;
 });
 
 // SEO: set dynamic head metadata based on search query. Passed as a getter so
@@ -153,6 +199,64 @@ function handleSearchInput() {
         </p>
       </div>
 
+      <!-- Filters (DEC-084): category/tag/date-range narrowing + sort. Values
+           live in the URL so a filtered search is shareable. -->
+      <div class="flex flex-wrap items-end gap-3 mb-6">
+        <label class="flex flex-col gap-1 text-xs font-medium text-gray-500 dark:text-gray-400">
+          {{ t("search.filters.category") }}
+          <select
+            :value="filterCategory"
+            class="px-3 py-2 text-sm border border-gray-200 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            @change="setFilter('category', ($event.target as HTMLSelectElement).value)"
+          >
+            <option value="">{{ t("search.filters.allCategories") }}</option>
+            <option v-for="c in categories" :key="c.id" :value="c.name">{{ c.name }}</option>
+          </select>
+        </label>
+        <label class="flex flex-col gap-1 text-xs font-medium text-gray-500 dark:text-gray-400">
+          {{ t("search.filters.tag") }}
+          <select
+            :value="filterTag"
+            class="px-3 py-2 text-sm border border-gray-200 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            @change="setFilter('tag', ($event.target as HTMLSelectElement).value)"
+          >
+            <option value="">{{ t("search.filters.allTags") }}</option>
+            <option v-for="tag in tags" :key="tag.id" :value="tag.name">{{ tag.name }}</option>
+          </select>
+        </label>
+        <label class="flex flex-col gap-1 text-xs font-medium text-gray-500 dark:text-gray-400">
+          {{ t("search.filters.sort") }}
+          <select
+            :value="filterSort"
+            class="px-3 py-2 text-sm border border-gray-200 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            @change="setFilter('sort', ($event.target as HTMLSelectElement).value)"
+          >
+            <option value="relevance">{{ t("search.filters.sortRelevance") }}</option>
+            <option value="newest">{{ t("search.filters.sortNewest") }}</option>
+            <option value="oldest">{{ t("search.filters.sortOldest") }}</option>
+            <option value="views">{{ t("search.filters.sortViews") }}</option>
+          </select>
+        </label>
+        <label class="flex flex-col gap-1 text-xs font-medium text-gray-500 dark:text-gray-400">
+          {{ t("search.filters.dateFrom") }}
+          <input
+            :value="filterDateFrom"
+            type="date"
+            class="px-3 py-2 text-sm border border-gray-200 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            @change="setFilter('date_from', ($event.target as HTMLInputElement).value)"
+          >
+        </label>
+        <label class="flex flex-col gap-1 text-xs font-medium text-gray-500 dark:text-gray-400">
+          {{ t("search.filters.dateTo") }}
+          <input
+            :value="filterDateTo"
+            type="date"
+            class="px-3 py-2 text-sm border border-gray-200 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            @change="setFilter('date_to', ($event.target as HTMLInputElement).value)"
+          >
+        </label>
+      </div>
+
       <!-- Empty results -->
       <div
         v-if="!searchResult?.items?.length"
@@ -226,7 +330,7 @@ function handleSearchInput() {
                   ? 'bg-blue-600 text-white'
                   : 'border hover:bg-gray-50',
             ]"
-            @click="pg !== '…' && navigateTo({ query: { q: query, page: pg } })"
+            @click="pg !== '…' && navigateTo({ query: { ...activeFilters, q: query, page: pg } })"
           >
             {{ pg }}
           </button>
