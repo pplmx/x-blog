@@ -55,7 +55,7 @@ def test_popular_related_adjacent_are_conditional(client, auth_headers):
         headers=auth_headers,
     )
     post_id = created.json()["id"]
-    for path in (f"/api/posts/popular/list", f"/api/posts/{post_id}/related", f"/api/posts/{post_id}/adjacent"):
+    for path in ("/api/posts/popular/list", f"/api/posts/{post_id}/related", f"/api/posts/{post_id}/adjacent"):
         response = client.get(path)
         assert response.status_code == 200, path
         etag = _etag_of(response)

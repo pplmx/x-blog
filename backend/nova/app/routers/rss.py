@@ -286,9 +286,9 @@ def get_rss_feed(
     full: bool = True,
     category_id: int | None = None,
     tag_id: int | None = None,
-    request: Request = None,
+    request: Request = None,  # type: ignore[assignment] — FastAPI injects it; never None at runtime
     db: Session = Depends(get_db),
-) -> Response:  # type: ignore[assignment]
+) -> Response:
     """Get RSS 2.0 feed of published posts.
 
     Args:
@@ -327,9 +327,9 @@ def get_rss_feed(
 def get_atom_feed(
     category_id: int | None = None,
     tag_id: int | None = None,
-    request: Request = None,
+    request: Request = None,  # type: ignore[assignment] — FastAPI injects it; never None at runtime
     db: Session = Depends(get_db),
-) -> Response:  # type: ignore[assignment]
+) -> Response:
     """Get Atom feed of published posts, optionally scoped to a category/tag
     (DEC-074, TASK-146; same semantics as the RSS feed)."""
     category, tag = _resolve_feed_scope(db, category_id, tag_id)

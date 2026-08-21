@@ -200,8 +200,9 @@ class TestPublishFanOut:
         assert mock_send.call_count == 0
 
     def test_dead_endpoint_retired_on_publish(self, client, auth_headers, db_session):
-        from app import models
         from pywebpush import WebPushException
+
+        from app import models
 
         client.post("/api/push/subscribe", json=_subscribe_body(want_new_posts=True))
 
