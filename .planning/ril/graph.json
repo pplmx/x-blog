@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 116,
+  "round": 117,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-08-21T01:04:39+00:00",
+  "updated_at": "2026-08-21T01:08:06+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -7166,6 +7166,18 @@
       "source": "788 nova tests (+1 deep-link contract); 980 frontend units; full e2e 93 passed",
       "summary": "DEC-072 verified: notification URL deep-links to the parent comment; the post page scrolls the #comment-<id> anchor into view (e2e proves a fresh load lands near the fold); anchors render on top-level + nested comments with header scroll-margin.",
       "confidence": 1.0
+    },
+    "DEC-073": {
+      "id": "DEC-073",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-21T01:08:06+00:00",
+      "updated_at": "2026-08-21T01:08:06+00:00",
+      "touched_round": 116,
+      "title": "Backlog drained after delivered milestones — awaiting direction (supersedes reactivation intent)",
+      "rationale": "Post-reactivation this session delivered and verified DEC-070 (CJK search/Postgres), DEC-071 (CJK snippet parity), ISS-097 (admin filter root cause), DEC-072 (reply-notification deep-link) — 8 commits, all gates green (788 nova / 980 frontend / typecheck / 93 e2e). Active tasks = 0 and active issues = 0. The remaining candidate pool was audited this round: post TOC and reading-progress VERIFIED already implemented, search snippets already implemented, email/per-category-RSS/reactions rejected at the value gate (infra / button-level), at-mentions/notification-center speculative with no usage signal. Starting another milestone now would mean fabricating a feature — explicitly forbidden by SKILL 11.2 'no feature piling'. This decision records the earned, post-delivery drained state: the standing directive's intent (keep iterating, start new milestones) was honored with real delivered milestones; the next activation requires a concrete operator product direction or a real external signal.",
+      "alternatives_rejected": "(a) Fabricating e.g. 'reader avatars' / 'theme presets' / 'share buttons' to keep committing — button-level polish, gate-rejected class. (b) Re-litigating email / reactions / per-category RSS — infra or explicit prior rejects. (c) Starting speculative at-mentions without usage signal."
     }
   },
   "edges": [
