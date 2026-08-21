@@ -14,7 +14,9 @@ from sqlalchemy.orm import Mapped, Session, mapped_column
 from app.config import is_development
 from app.database import Base, get_db
 
-DEV_SECRET_KEY = "x-blog-secret-key-dev-only"
+# ≥32 bytes so PyJWT's HS256 InsecureKeyLengthWarning (RFC 7518 §3.2) stays
+# silent in dev; the key itself is still a well-known, development-only value.
+DEV_SECRET_KEY = "x-blog-secret-key-dev-only-32-bytes-min"
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_DAYS = int(os.getenv("JWT_EXPIRE_DAYS", "1"))
 # Reader JWT expiry (shorter than admin: readers authenticate from many
