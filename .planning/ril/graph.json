@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 120,
+  "round": 121,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-08-21T16:33:23+00:00",
+  "updated_at": "2026-08-21T17:48:32+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -7490,10 +7490,10 @@
     "TASK-153": {
       "id": "TASK-153",
       "type": "task",
-      "status": "active",
-      "version": 1,
+      "status": "resolved",
+      "version": 2,
       "created_at": "2026-08-21T16:31:33+00:00",
-      "updated_at": "2026-08-21T16:31:33+00:00",
+      "updated_at": "2026-08-21T17:48:32+00:00",
       "touched_round": 120,
       "category": "core-feature",
       "severity": 0.65,
@@ -7502,6 +7502,29 @@
       "unlock_factor": 1.0,
       "title": "Blog backup & restore: GET/POST /api/admin/backup + admin dashboard card + tests",
       "description": "Superuser-only JSON snapshot of categories/tags/series/posts/post_tags/comments with natural-key upsert restore (category by name, tag by name, series by slug, post by slug, comment re-attach by post slug + parent remap); no auth data round-trips; contract + round-trip + idempotency + authz tests, frontend backup/restore card + i18n + E2E."
+    },
+    "CHG-143": {
+      "id": "CHG-143",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-21T17:47:42+00:00",
+      "updated_at": "2026-08-21T17:47:42+00:00",
+      "touched_round": 120,
+      "commit": "165f123",
+      "title": "Full-blog backup & restore (DEC-082, TASK-153)"
+    },
+    "DEC-083": {
+      "id": "DEC-083",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-21T17:47:42+00:00",
+      "updated_at": "2026-08-21T17:47:42+00:00",
+      "touched_round": 120,
+      "title": "Milestone delivered: full-blog backup & restore (DEC-082 complete)",
+      "rationale": "Delivery of DEC-082 / TASK-153 via CHG-143, verified end-to-end. Backend: GET /api/admin/backup (x-blog-backup v1 snapshot: categories, tags, series, posts with category/tags/series links + views/likes, comment threads with parent ordinals + reader marker; NO auth data: reader accounts/users/password hashes/push subs never leak) + POST /api/admin/backup/restore (natural-key upserts: category/tag by name, series by slug, post by slug; comments upsert on (post_id, import_key), parents re-wired; reader-linked comments degrade to anonymous). Additive migration e6a2d4b8f0c2 adds comments.import_key. Frontend: admin dashboard backup/restore card (superuser-only, hidden for editors like CSV export) with download x-blog-backup-<date>.json + restore file upload + per-entity counts, en/zh. Verification: backend 857 on SQLite / 866 on dev PostgreSQL 18.4 (93.9% cov), migration chain on fresh SQLite + fresh PG confirmed, ruff + biome + vue-tsc clean, frontend vitest 1006 green, full Playwright 105 passed under CI-equivalent env (incl new admin-backup 3).",
+      "alternatives_rejected": "Search filters/sort (postponed at DEC-079, still smaller value); reader notification-center (needs history table); email digests (no SMTP). Accepted limitations: live comments without import_key can duplicate on re-import to the SAME instance (documented; idempotency guaranteed per same-snapshot), restored reader-attributed comments become anonymous (reader accounts do not round-trip)."
     }
   },
   "edges": [
@@ -10544,6 +10567,19 @@
       "type": "supersedes",
       "created_at": "2026-08-21T16:33:23+00:00",
       "note": "New operator milestone after the moderation-push close"
+    },
+    {
+      "from": "CHG-143",
+      "to": "TASK-153",
+      "type": "implements",
+      "created_at": "2026-08-21T17:47:42+00:00"
+    },
+    {
+      "from": "DEC-083",
+      "to": "DEC-082",
+      "type": "supersedes",
+      "created_at": "2026-08-21T17:48:32+00:00",
+      "note": "Milestone delivered, superseding the milestone decision"
     }
   ]
 }
