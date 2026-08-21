@@ -1,7 +1,8 @@
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
+from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
-from app import crud, schemas
+from app import auth, crud, models, schemas
 from app.auth import User, get_current_admin
 from app.cache import posts_list_cache
 from app.conditional import conditional_json
@@ -9,6 +10,13 @@ from app.database import get_db
 from app.limiter import RATE_LIMIT_READ, RATE_LIMIT_WRITE, limiter
 
 router = APIRouter(prefix="/api/posts", tags=["posts"])
+
+
+class PostSubscriptionStatus(BaseModel):
+    """Whether the signed-in reader follows a post's comment thread (DEC-078)."""
+
+    post_id: int
+    subscribed: bool
 
 
 @router.get("/archive", response_model=list[schemas.ArchiveEntry])
@@ -208,3 +216,59 @@ def get_adjacent_posts(request: Request, post_id: int, db: Session = Depends(get
         raise HTTPException(status_code=404, detail="Post not found")
     previous, following = crud.get_adjacent_posts(db, post_id)
     return conditional_json(schemas.AdjacentPosts(previous=previous, next=following).model_dump(mode="json"), request)
+
+
+# ---------------------------------------------------------------------------
+# Comment-thread subscription (DEC-078/TASK-150): a signed-in reader follows a
+# post's discussion and gets a best-effort Web Push when a new comment is
+# approved. The response is reader-specific, so these endpoints deliberately
+# return plain Pydantic models — NOT conditional_json: the shared ETag cache
+# would echo one reader's state to every other visitor.
+# ---------------------------------------------------------------------------
+
+
+@router.get("/{post_id}/subscription", response_model=PostSubscriptionStatus)
+def get_post_subscription_status(
+    post_id: int,
+    db: Session = Depends(get_db),
+    reader: auth.ReaderAccount | None = Depends(auth.get_optional_reader),
+):
+    """Whether the signed-in reader follows this post's comment thread.
+
+    Anonymous visitors get ``subscribed: false``. Unknown or not-yet-visible
+    posts are uniformly 404 (no draft-existence oracle, same guard as the
+    public comment-create/bookmark paths).
+    """
+    post = db.get(models.Post, post_id)
+    if not post or not crud.is_publicly_visible(post):
+        raise HTTPException(status_code=404, detail="Post not found")
+    subscribed = reader is not None and crud.get_comment_subscription(db, reader.id, post_id) is not None
+    return PostSubscriptionStatus(post_id=post_id, subscribed=subscribed)
+
+
+@router.put("/{post_id}/subscription", response_model=PostSubscriptionStatus, status_code=201)
+def subscribe_to_post_thread(
+    post_id: int,
+    db: Session = Depends(get_db),
+    reader: auth.ReaderAccount = Depends(auth.get_current_reader),
+):
+    """Follow a post's comment thread. Idempotent: re-subscribing returns the
+    same 201 state (mirrors the bookmark PUT contract). Readers can only follow
+    posts they can see — private/scheduled/unknown are uniformly 404."""
+    post = db.get(models.Post, post_id)
+    if not post or not crud.is_publicly_visible(post):
+        raise HTTPException(status_code=404, detail="Post not found")
+    crud.add_comment_subscription(db, reader.id, post_id)
+    return PostSubscriptionStatus(post_id=post_id, subscribed=True)
+
+
+@router.delete("/{post_id}/subscription", status_code=204)
+def unsubscribe_from_post_thread(
+    post_id: int,
+    db: Session = Depends(get_db),
+    reader: auth.ReaderAccount = Depends(auth.get_current_reader),
+):
+    """Unfollow a post's comment thread. Idempotent: deleting a follow that is
+    not present (or a post no longer public) is still a 204 no-op."""
+    crud.remove_comment_subscription(db, reader.id, post_id)
+    return None

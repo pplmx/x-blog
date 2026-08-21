@@ -112,6 +112,42 @@ class AddBookmarkResponse(BaseModel):
     already_existed: bool
 
 
+class SubscribedThreadItem(BaseModel):
+    """A followed comment thread as serialized to the reader's account list.
+
+    Same navigation-list shape as BookmarkItem (title/slug/cover/taxonomy,
+    no full content dump) — the reader needs to identify and open the post,
+    not re-read it here.
+    """
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    title: str
+    slug: str
+    excerpt: str | None = None
+    cover_image: str | None = None
+    category: schemas.Category | None = None
+    tags: list[schemas.Tag] = []
+
+    @classmethod
+    def from_post(cls, post: models.Post) -> SubscribedThreadItem:
+        return cls(
+            id=post.id,
+            title=post.title,
+            slug=post.slug,
+            excerpt=post.excerpt,
+            cover_image=post.cover_image,
+            category=(schemas.Category.model_validate(post.category) if post.category else None),
+            tags=[schemas.Tag.model_validate(t) for t in post.tags],
+        )
+
+
+class SubscribedThreadListResponse(BaseModel):
+    items: list[SubscribedThreadItem]
+    total: int
+
+
 # A valid bcrypt hash of a random throwaway password, at the same cost as a
 # real account hash. When the email is unknown we still run bcrypt against this
 # so the login endpoint's response *timing* does not reveal whether an email
@@ -415,6 +451,24 @@ def list_bookmarks(
     posts = crud.list_reader_bookmarks(db, current_reader.id)
     return BookmarkListResponse(
         items=[BookmarkItem.from_post(p) for p in posts],
+        total=len(posts),
+    )
+
+
+@router.get("/me/post-subscriptions", response_model=SubscribedThreadListResponse)
+def list_my_post_subscriptions(
+    current_reader: auth.ReaderAccount = Depends(auth.get_current_reader),
+    db: Session = Depends(get_db),
+):
+    """The comment threads the reader follows (publicly-visible posts only).
+
+    Same non-leak invariant as the bookmark list: a followed post that became
+    a draft/scheduled no longer appears, while the follow row is kept (the
+    reader unsubscribes from the post page). Newest follow first.
+    """
+    posts = crud.list_reader_comment_subscriptions(db, current_reader.id)
+    return SubscribedThreadListResponse(
+        items=[SubscribedThreadItem.from_post(p) for p in posts],
         total=len(posts),
     )
 

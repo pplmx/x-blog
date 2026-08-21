@@ -1112,6 +1112,78 @@ def list_reader_bookmarks(db: Session, reader_id: int) -> list[models.Post]:
     return [p for p in rows if is_publicly_visible(p)]
 
 
+def get_comment_subscription(db: Session, reader_id: int, post_id: int) -> models.CommentSubscription | None:
+    """Return the reader's thread subscription for a post, or None."""
+    return (
+        db.query(models.CommentSubscription)
+        .filter(
+            models.CommentSubscription.reader_id == reader_id,
+            models.CommentSubscription.post_id == post_id,
+        )
+        .first()
+    )
+
+
+def add_comment_subscription(db: Session, reader_id: int, post_id: int) -> tuple[models.CommentSubscription, bool]:
+    """Follow a post's comment thread; returns (subscription, created).
+
+    Idempotent: re-subscribing an existing follow returns the existing row
+    with created=False (mirrors add_reader_bookmark's merge-friendly contract).
+    """
+    existing = get_comment_subscription(db, reader_id, post_id)
+    if existing:
+        return existing, False
+    subscription = models.CommentSubscription(reader_id=reader_id, post_id=post_id)
+    db.add(subscription)
+    db.commit()
+    db.refresh(subscription)
+    return subscription, True
+
+
+def remove_comment_subscription(db: Session, reader_id: int, post_id: int) -> bool:
+    """Unfollow a post's comment thread; returns True if one was removed."""
+    subscription = get_comment_subscription(db, reader_id, post_id)
+    if not subscription:
+        return False
+    db.delete(subscription)
+    db.commit()
+    return True
+
+
+def list_reader_comment_subscriptions(db: Session, reader_id: int) -> list[models.Post]:
+    """The posts whose threads a reader follows, *publicly visible* only.
+
+    Same invariant as list_reader_bookmarks: a followed post that became a
+    draft/private/scheduled must not leak on this read path — it simply stops
+    appearing (the follow row is kept; the reader can re-see it, and
+    unsubscribe, once the post is public again). Newest follow first.
+    """
+    rows = (
+        db.query(models.Post)
+        .join(models.CommentSubscription, models.CommentSubscription.post_id == models.Post.id)
+        .filter(models.CommentSubscription.reader_id == reader_id)
+        .options(joinedload(models.Post.category), joinedload(models.Post.tags))
+        .order_by(models.CommentSubscription.created_at.desc())
+        .all()
+    )
+    return [p for p in rows if is_publicly_visible(p)]
+
+
+def comment_subscription_reader_ids(db: Session, post_id: int) -> list[int]:
+    """Distinct reader_ids following a post's comment thread (fan-out target).
+
+    Deduplicates in SQL in case future rows ever violate the ORM guard; the
+    caller subtracts the comment author's own reader_id before dispatching.
+    """
+    return [
+        row[0]
+        for row in db.query(models.CommentSubscription.reader_id)
+        .filter(models.CommentSubscription.post_id == post_id)
+        .distinct()
+        .all()
+    ]
+
+
 def get_reader_comments(db: Session, reader_id: int) -> list[models.Comment]:
     """A reader's own comments across statuses, newest first (DEC-066, TASK-139).
 

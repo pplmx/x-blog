@@ -1019,6 +1019,75 @@ export async function deleteMyComment(commentId: number): Promise<void> {
 }
 
 /* ---------------------------------------------------------------------------
+ * Comment-thread subscriptions (DEC-078, TASK-150): follow a post's discussion
+ * and get a push when a new comment is approved.
+ * ------------------------------------------------------------------------- */
+
+/** Whether the signed-in reader follows a post's comment thread. */
+export interface PostSubscriptionStatus {
+	post_id: number;
+	subscribed: boolean;
+}
+
+/** The reader's followed threads — same navigation-list shape as the bookmark
+ * list (title/slug/cover/taxonomy, no content dump). */
+export interface SubscribedThreadItem {
+	id: number;
+	title: string;
+	slug: string;
+	excerpt: string | null;
+	cover_image: string | null;
+	category: { id: number; name: string } | null;
+	tags: { id: number; name: string }[];
+}
+
+export interface SubscribedThreadListResponse {
+	items: SubscribedThreadItem[];
+	total: number;
+}
+
+/** Follow status for one post (anonymous readers get subscribed: false). */
+export async function fetchPostSubscription(postId: number) {
+	const config = useRuntimeConfig();
+	const apiUrl = config.public.apiUrl;
+	return useFetch<PostSubscriptionStatus>(`${apiUrl}/api/posts/${postId}/subscription`, {
+		headers: getReaderAuthHeaders(),
+		server: false,
+	});
+}
+
+/** Follow a post's comment thread (idempotent; reader token required). */
+export async function subscribeToPostThread(postId: number) {
+	const config = useRuntimeConfig();
+	const apiUrl = config.public.apiUrl;
+	return useFetch<PostSubscriptionStatus>(`${apiUrl}/api/posts/${postId}/subscription`, {
+		method: "PUT",
+		headers: getReaderAuthHeaders(),
+		server: false,
+	});
+}
+
+/** Unfollow a post's comment thread (idempotent 204). */
+export async function unsubscribeFromPostThread(postId: number) {
+	const config = useRuntimeConfig();
+	const apiUrl = config.public.apiUrl;
+	return useFetch<null>(`${apiUrl}/api/posts/${postId}/subscription`, {
+		method: "DELETE",
+		headers: getReaderAuthHeaders(),
+		server: false,
+	});
+}
+
+/** The followed comment threads for the account page (imperative $fetch). */
+export async function fetchMyPostSubscriptions(): Promise<SubscribedThreadListResponse> {
+	const config = useRuntimeConfig();
+	const apiUrl = config.public.apiUrl;
+	return $fetch<SubscribedThreadListResponse>(`${apiUrl}/api/reader/me/post-subscriptions`, {
+		headers: getReaderAuthHeaders(),
+	});
+}
+
+/* ---------------------------------------------------------------------------
  * Reader account self-service (DEC-067, TASK-141/142): profile + password +
  * push-device management.
  * ------------------------------------------------------------------------- */

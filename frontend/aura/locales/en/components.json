@@ -28,6 +28,13 @@
 			"replyingTo": "Replying to {name}",
 			"verifiedReader": "Verified reader"
 		},
+		"threadSubscribe": {
+			"follow": "Follow discussion",
+			"unfollow": "Following",
+			"pushNeeded": "Turn on browser notifications (Web Push) to get alerts for new comments",
+			"blockedHint": "Browser notifications are unavailable or blocked — can't follow this discussion",
+			"error": "Something went wrong, please try again"
+		},
 		"share": {
 			"shareTo": "Share to",
 			"weibo": "Share to Weibo",

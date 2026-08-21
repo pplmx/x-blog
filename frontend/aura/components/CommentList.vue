@@ -2,6 +2,9 @@
   <section>
     <div class="flex items-center justify-between mb-4">
       <h2 class="text-xl font-bold text-gray-900 dark:text-gray-100">{{ t('components.commentList.title') }} ({{ total }})</h2>
+      <!-- Comment-thread follow (DEC-078/TASK-150): signed-in readers subscribe
+           to this discussion and get a push on each newly approved comment. -->
+      <ThreadSubscribeButton v-if="props.postId" :post-id="props.postId" />
     </div>
 
     <!-- Loading -->

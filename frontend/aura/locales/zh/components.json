@@ -28,6 +28,13 @@
 			"replyingTo": "正在回复 {name}",
 			"verifiedReader": "已认证读者"
 		},
+		"threadSubscribe": {
+			"follow": "订阅讨论",
+			"unfollow": "已订阅",
+			"pushNeeded": "需要开启浏览器通知（Web Push）才能接收新评论提醒",
+			"blockedHint": "浏览器通知不可用或未开启，暂时无法订阅讨论",
+			"error": "操作失败，请重试"
+		},
 		"share": {
 			"shareTo": "分享到",
 			"weibo": "分享到微博",

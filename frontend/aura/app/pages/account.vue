@@ -9,9 +9,12 @@ import {
 	type Category,
 	changeMyPassword,
 	fetchCategories,
+	fetchMyPostSubscriptions,
 	fetchMyPushSubscriptions,
 	type ReaderPushSubscription,
 	revokeMyPushSubscription,
+	type SubscribedThreadItem,
+	unsubscribeFromPostThread,
 	updateMyProfile,
 	updateMyPushSubscriptionPrefs,
 } from "~~/composables/useApi";
@@ -178,9 +181,42 @@ function onDeviceCategoryChange(device: ReaderPushSubscription, event: Event) {
 	return setDeviceFollowCategory(device, value ? Number(value) : null);
 }
 
+/* Followed discussions (DEC-078, TASK-150) -------------------------------- */
+const threads = ref<SubscribedThreadItem[]>([]);
+const threadsLoaded = ref(false);
+const unsubscribingId = ref<number | null>(null);
+const threadsError = ref(false);
+
+async function loadThreads() {
+	if (!isAuthenticated.value) return;
+	try {
+		const data = await fetchMyPostSubscriptions();
+		threads.value = data.items;
+	} catch {
+		threads.value = [];
+	}
+	threadsLoaded.value = true;
+}
+
+/** Unfollow a discussion (unsubscribes on the post-scoped toggle endpoint). */
+async function unfollowThread(thread: SubscribedThreadItem) {
+	if (!confirm(t("account.threads.unfollowConfirm"))) return;
+	unsubscribingId.value = thread.id;
+	threadsError.value = false;
+	try {
+		await unsubscribeFromPostThread(thread.id);
+		await loadThreads();
+	} catch {
+		threadsError.value = true;
+	} finally {
+		unsubscribingId.value = null;
+	}
+}
+
 onMounted(() => {
 	loadDevices();
 	loadCategories();
+	loadThreads();
 	// Keep the name input in sync if the header "reader" profile loads after us.
 	displayName.value = reader.value?.display_name ?? displayName.value;
 });
@@ -401,6 +437,46 @@ function shortEndpoint(endpoint: string): string {
         </p>
         <p v-if="prefsError" class="mt-2 text-sm text-red-500 dark:text-red-400">
           {{ t('account.devices.prefsFailed') }}
+        </p>
+      </section>
+
+      <!-- Followed discussions (DEC-078, TASK-150) -->
+      <section class="border border-gray-100 dark:border-gray-700 rounded-xl p-5">
+        <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-1">
+          {{ t('account.threads.title') }}
+        </h2>
+        <p class="text-xs text-gray-400 mb-4">{{ t('account.threads.note') }}</p>
+
+        <p v-if="threadsLoaded && threads.length === 0" class="text-sm text-gray-500 dark:text-gray-400">
+          {{ t('account.threads.empty') }}
+        </p>
+        <ul v-else class="space-y-3">
+          <li
+            v-for="thread in threads"
+            :key="thread.id"
+            class="border border-gray-100 dark:border-gray-800 rounded-lg p-3"
+          >
+            <div class="flex items-center justify-between gap-3 text-sm">
+              <NuxtLink
+                :to="`/posts/${thread.slug}`"
+                class="min-w-0 truncate text-gray-900 dark:text-gray-100 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+              >
+                {{ thread.title }}
+              </NuxtLink>
+              <button
+                type="button"
+                :disabled="unsubscribingId === thread.id"
+                class="shrink-0 inline-flex items-center gap-1 text-xs text-gray-400 hover:text-red-500 transition-colors disabled:opacity-50"
+                @click="unfollowThread(thread)"
+              >
+                <Icon icon="lucide:bell-off" class="w-3.5 h-3.5" />
+                {{ t('account.threads.unfollow') }}
+              </button>
+            </div>
+          </li>
+        </ul>
+        <p v-if="threadsError" class="mt-2 text-sm text-red-500 dark:text-red-400">
+          {{ t('account.threads.failed') }}
         </p>
       </section>
     </div>

@@ -38,6 +38,14 @@
 			"allNewPosts": "All new posts",
 			"followCategory": "Followed category",
 			"prefsFailed": "Couldn't save — please try again"
+		},
+		"threads": {
+			"title": "Followed discussions",
+			"note": "You'll be pushed a Web Push when a new comment on these posts is approved.",
+			"empty": "You're not following any discussions",
+			"unfollow": "Unfollow",
+			"unfollowConfirm": "Unfollow this discussion? You'll stop getting new-comment alerts for it.",
+			"failed": "Couldn't do that — please try again"
 		}
 	}
 }

@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 118,
+  "round": 119,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-08-21T04:52:10+00:00",
+  "updated_at": "2026-08-21T08:41:16+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -7346,6 +7346,48 @@
       "title": "Milestone delivered: new-post Web Push notifications scoped by followed category (DEC-076)",
       "rationale": "Delivery of DEC-076 / TASK-147, verified end-to-end: backend 809 tests green (93.4% cov; 13 new new-post push contract tests: subscribe prefs defaults/422/upsert, fan-out scope category/all/no-category, draft+scheduled+edit no-notify, draft->published transition notify, dead-endpoint retirement, unconfigured fail-closed), frontend unit 991 (58 files), nuxt typecheck clean, ruff lint+format clean on touched files, biome clean on touched files, full e2e 93 passed/3 skipped (category-page one-tap follow toggle on the operator dev Postgres via xblog_e2e). Acceptance met: a reader who opts in receives a new-post Web Push when the author publishes, and can restrict follows to a single category. Committed 842bec7 (change CHG-139). Known limitation recorded, not hidden: future-publish_at posts notify only when actually published by a later write (no background scheduler exists).",
       "alternatives_rejected": "(a) Email notifications — SMTP infra, gate-rejected repeatedly. (b) Account-level follows table instead of per-subscription prefs — per-browser prefs match existing PushSubscription semantics (each device opts in), no join table. (c) A background scheduler for publish_at fan-out — out of scope infra for this slice; immediate-publish coverage is the honest first slice. (d) Adding tag-scoped push follows — out of acceptance; category scoping is the acceptance unit and tag push would multiply the prefs surface without a demonstrated use signal."
+    },
+    "DEC-078": {
+      "id": "DEC-078",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-21T06:53:41+00:00",
+      "updated_at": "2026-08-21T06:53:41+00:00",
+      "touched_round": 118,
+      "title": "Milestone: comment-thread subscriptions (reader follows a post's discussion)",
+      "rationale": "Feature-evolution selection (SKILL 11.2 gap analysis). Readers can only catch notifications addressed to them — reply notifications (DEC-064/DEC-072) target the replied-to author, new-post push (DEC-076) targets category followers. A reader participating in a discussion has no way to follow the thread itself: conversations they care about are missed unless someone replies directly. This completes the notification arc: a signed-in reader subscribes to a post's comment thread (comment_subscriptions) and receives a best-effort Web Push (deep-linked to the new approved comment via the DEC-072 anchor) when a new comment is approved. DB-backed (new additive table) and verifiable against PostgreSQL per operator's dev-pgsql hint. Reuses established webpush fan-out + reader-scoped idempotent API conventions (bookmarks).",
+      "alternatives_rejected": "(a) Sitemap/robots.txt — already shipped (rss router serves /sitemap.xml). (b) Related posts — already implemented end-to-end (crud.get_related_posts + /api/posts/{id}/related + useRelatedPosts), verified in code. (c) Search category/tag filters — smaller value, no distinct user problem vs. search page as-is. (d) Email notifications — rejected repeatedly at the gate (no SMTP infra). (e) Likes overhaul — existing client-side per-visitor design is intentional (ISS-038)."
+    },
+    "TASK-150": {
+      "id": "TASK-150",
+      "type": "task",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-21T06:53:56+00:00",
+      "updated_at": "2026-08-21T06:53:56+00:00",
+      "touched_round": 118,
+      "category": "core-feature",
+      "severity": 3,
+      "effort": 8,
+      "confidence": 1,
+      "unlock_factor": 1,
+      "title": "Comment-thread subscriptions backend: CommentSubscription model + additive migration + reader-scoped API (GET/PUT/DELETE /api/posts/{id}/subscription, GET /api/reader/me/post-subscriptions) + approval fan-out (excl. comment author + replied-to parent) + contract tests (SQLite + Postgres)"
+    },
+    "TASK-151": {
+      "id": "TASK-151",
+      "type": "task",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-21T06:53:57+00:00",
+      "updated_at": "2026-08-21T06:53:57+00:00",
+      "touched_round": 118,
+      "category": "core-feature",
+      "severity": 3,
+      "effort": 6,
+      "confidence": 1,
+      "unlock_factor": 1,
+      "title": "Comment-thread subscriptions frontend: ThreadSubscribeButton on post page + account subscribed-threads section + useApi functions + i18n + Vitest + e2e + README"
     }
   },
   "edges": [
@@ -10307,6 +10349,24 @@
       "to": "DEC-076",
       "type": "supersedes",
       "created_at": "2026-08-21T04:52:10+00:00"
+    },
+    {
+      "from": "DEC-078",
+      "to": "TASK-150",
+      "type": "governs",
+      "created_at": "2026-08-21T06:54:21+00:00"
+    },
+    {
+      "from": "DEC-078",
+      "to": "TASK-151",
+      "type": "governs",
+      "created_at": "2026-08-21T06:54:21+00:00"
+    },
+    {
+      "from": "TASK-151",
+      "to": "TASK-150",
+      "type": "depends_on",
+      "created_at": "2026-08-21T06:54:21+00:00"
     }
   ]
 }

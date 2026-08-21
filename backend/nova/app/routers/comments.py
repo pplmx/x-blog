@@ -20,6 +20,48 @@ router = APIRouter(prefix="/api/comments", tags=["comments"])
 REPLY_NOTIF_TITLE = os.getenv("REPLY_NOTIFICATION_TITLE", "有人回复了你的评论")
 REPLY_NOTIF_BODY = os.getenv("REPLY_NOTIFICATION_BODY", "《{post_title}》有新回复")
 
+# Thread-follow notification copy (DEC-078/TASK-150): a new comment was
+# approved on a thread the reader follows.
+THREAD_NOTIF_TITLE = os.getenv("THREAD_NOTIFICATION_TITLE", "你订阅的讨论有新评论")
+THREAD_NOTIF_BODY = os.getenv("THREAD_NOTIFICATION_BODY", "《{post_title}》有新评论")
+
+
+def _notify_thread_subscribers(
+    post: models.Post,
+    new_comment_id: int,
+    exclude_reader_ids: set[int],
+    db: Session,
+) -> None:
+    """Push 'a new comment was approved on a thread you follow' to followers.
+
+    Fired when any comment is approved (this blog moderates every comment:
+    followers should only hear about comments they can actually see). Target:
+    every reader following the post's thread minus ``exclude_reader_ids`` —
+    the comment's own author (no self-notification) and, for a reply, the
+    replied-to reader (they already get the targeted reply notification,
+    DEC-064; doubling it would push twice). Best effort: VAPID unconfigured
+    or no subscribers is a silent no-op — moderation must never fail because
+    of notifications. Dead (404/410) subscriptions are retired by the shared
+    dispatch helper. (DEC-078, TASK-150)
+    """
+    if not vapid_configured():
+        return
+    target_ids = [rid for rid in crud.comment_subscription_reader_ids(db, post.id) if rid not in exclude_reader_ids]
+    if not target_ids:
+        return
+    subscriptions = db.query(models.PushSubscription).filter(models.PushSubscription.reader_id.in_(target_ids)).all()
+    if not subscriptions:
+        return
+    payload = {
+        "title": THREAD_NOTIF_TITLE,
+        # replace (not .format) so a { } in the post title can't raise and
+        # break the approval — this path must stay best-effort.
+        "body": THREAD_NOTIF_BODY.replace("{post_title}", post.title or ""),
+        # Deep-link to the new approved comment (DEC-072 anchor scroll).
+        "url": f"/posts/{post.slug}#comment-{new_comment_id}",
+    }
+    dispatch_to_subscriptions(subscriptions, payload, db, logger)
+
 
 def _notify_replied_to(
     parent_reader: auth.ReaderAccount,
@@ -134,15 +176,29 @@ def approve_comment(
     if not comment:
         raise HTTPException(status_code=404, detail="Comment not found")
 
-    # An approved REPLY notifies the replied-to reader (their own reply's author
-    # is not notified). Best-effort: never fails the approval. (DEC-064, TASK-137)
-    if approval.approved and comment.parent_id is not None:
-        parent = db.get(models.Comment, comment.parent_id)
+    if approval.approved:
+        post = db.get(models.Post, comment.post_id)
+        parent = db.get(models.Comment, comment.parent_id) if comment.parent_id is not None else None
+
+        # An approved REPLY notifies the replied-to reader (their own reply's
+        # author is not notified). Best-effort: never fails the approval.
+        # (DEC-064, TASK-137)
         if parent is not None and parent.reader_id is not None and parent.reader_id != comment.reader_id:
-            post = db.get(models.Post, comment.post_id)
             parent_reader = db.get(auth.ReaderAccount, parent.reader_id)
             if post is not None and parent_reader is not None:
                 _notify_replied_to(parent_reader, post, parent.id, db)
+
+        # Any approved comment notifies the thread's followers (DEC-078),
+        # excluding the comment's own author and — on a reply — the replied-to
+        # reader, who already got the targeted notification above (no double
+        # push for the same event). Best-effort via _notify_thread_subscribers.
+        if post is not None:
+            excluded: set[int] = set()
+            if comment.reader_id is not None:
+                excluded.add(comment.reader_id)
+            if parent is not None and parent.reader_id is not None:
+                excluded.add(parent.reader_id)
+            _notify_thread_subscribers(post, comment.id, excluded, db)
     return comment
 
 

@@ -174,6 +174,34 @@ class ReaderBookmark(Base):
     )
 
 
+class CommentSubscription(Base):
+    """A reader following a post's comment thread (DEC-078/TASK-150).
+
+    One row per reader↔post pair (unique constraint): the reader opted in to a
+    Web Push whenever a *new comment* on the post is approved. Distinct from
+    reply notifications (DEC-064), which only target the replied-to author —
+    this follows the whole discussion. Additive table, no DB-level FK on the
+    columns (SQLite alembic can't add FK-carrying columns to existing tables,
+    DEC-009); integrity (unknown post/reader) is enforced at the API layer,
+    mirroring ReaderBookmark/PushSubscription.
+    """
+
+    __tablename__ = "comment_subscriptions"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    reader_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
+    post_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
+    created_at: Mapped[datetime | None] = mapped_column(DateTime, default=lambda: datetime.now(UTC))
+
+    __table_args__ = (UniqueConstraint("reader_id", "post_id", name="uq_comment_subscriptions_reader_post"),)
+
+    post: Mapped[Post] = relationship(
+        "Post",
+        primaryjoin="CommentSubscription.post_id == Post.id",
+        foreign_keys="CommentSubscription.post_id",
+    )
+
+
 class PushSubscription(Base):
     """A reader's browser Web Push (RFC 8030) subscription.
 
