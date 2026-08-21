@@ -2,7 +2,7 @@
   "ril_version": 1,
   "round": 119,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-08-21T08:41:16+00:00",
+  "updated_at": "2026-08-21T10:04:46+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -7275,11 +7275,11 @@
     "ISS-104": {
       "id": "ISS-104",
       "type": "issue",
-      "status": "active",
-      "version": 1,
+      "status": "resolved",
+      "version": 2,
       "created_at": "2026-08-21T04:22:03+00:00",
-      "updated_at": "2026-08-21T04:22:03+00:00",
-      "touched_round": 118,
+      "updated_at": "2026-08-21T10:04:12+00:00",
+      "touched_round": 119,
       "severity": "medium",
       "title": "Frontend pnpm lint (biome check .) fails at committed baseline (formatter drift)",
       "description": "biome 2.5.8 check of the clean HEAD exits 1: formatter drift (lineWidth 100) across committed files from prior milestones (account.vue organizeImports+format, comments.vue, default.vue, SubscribeButton.vue, e2e my-comments/reader-comments/search specs) plus style lints (useLiteralKeys in usePushSubscription.ts, useTemplate, noNonNullAssertion in e2e). CI gates on pnpm lint, so the lint gate is red independent of any current change. Evidence: pnpm lint exit=1 on a git-stash-ed clean HEAD 2026-08-21 (surfaced during DEC-076 VERIFY)."
@@ -7287,11 +7287,11 @@
     "TASK-149": {
       "id": "TASK-149",
       "type": "task",
-      "status": "active",
-      "version": 1,
+      "status": "resolved",
+      "version": 2,
       "created_at": "2026-08-21T04:22:03+00:00",
-      "updated_at": "2026-08-21T04:22:03+00:00",
-      "touched_round": 118,
+      "updated_at": "2026-08-21T10:04:12+00:00",
+      "touched_round": 119,
       "category": "maintainability",
       "severity": 3,
       "effort": 3,
@@ -7362,11 +7362,11 @@
     "TASK-150": {
       "id": "TASK-150",
       "type": "task",
-      "status": "active",
-      "version": 1,
+      "status": "resolved",
+      "version": 2,
       "created_at": "2026-08-21T06:53:56+00:00",
-      "updated_at": "2026-08-21T06:53:56+00:00",
-      "touched_round": 118,
+      "updated_at": "2026-08-21T10:04:12+00:00",
+      "touched_round": 119,
       "category": "core-feature",
       "severity": 3,
       "effort": 8,
@@ -7377,17 +7377,51 @@
     "TASK-151": {
       "id": "TASK-151",
       "type": "task",
-      "status": "active",
-      "version": 1,
+      "status": "resolved",
+      "version": 2,
       "created_at": "2026-08-21T06:53:57+00:00",
-      "updated_at": "2026-08-21T06:53:57+00:00",
-      "touched_round": 118,
+      "updated_at": "2026-08-21T10:04:12+00:00",
+      "touched_round": 119,
       "category": "core-feature",
       "severity": 3,
       "effort": 6,
       "confidence": 1,
       "unlock_factor": 1,
       "title": "Comment-thread subscriptions frontend: ThreadSubscribeButton on post page + account subscribed-threads section + useApi functions + i18n + Vitest + e2e + README"
+    },
+    "CHG-140": {
+      "id": "CHG-140",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-21T10:02:56+00:00",
+      "updated_at": "2026-08-21T10:02:56+00:00",
+      "touched_round": 119,
+      "commit": "f8989ec",
+      "title": "chore(lint): restore green ruff import-order + pyright gate (ISS-104/TASK-149 close)"
+    },
+    "CHG-141": {
+      "id": "CHG-141",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-21T10:02:56+00:00",
+      "updated_at": "2026-08-21T10:02:56+00:00",
+      "touched_round": 119,
+      "commit": "9999bab",
+      "title": "feat(push): comment-thread subscriptions + Web Push fan-out (DEC-078)"
+    },
+    "DEC-079": {
+      "id": "DEC-079",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-21T10:04:46+00:00",
+      "updated_at": "2026-08-21T10:04:46+00:00",
+      "touched_round": 119,
+      "title": "Milestone delivered: comment-thread subscriptions with Web Push (DEC-078 complete)",
+      "rationale": "Shipped and verified end-to-end (DEC-078, TASK-150/151 via CHG-141). Backend: CommentSubscription model + additive migration b0c2d4e6f8a0, reader-scoped GET/PUT/DELETE /api/posts/{id}/subscription + /api/reader/me/post-subscriptions, approval fan-out excluding the comment author and (on replies) the already-notified parent reader. Frontend: ThreadSubscribeButton on the comments header + account '订阅的讨论' section. Verification: 13 backend contract tests + full suite green on SQLite and PostgreSQL (831 passed), migration chain applied on a fresh PG 18.4 DB (unique pair enforced), ThreadSubscribeButton Vitest (7), full frontend vitest (998), biome + vue-tsc clean, Playwright thread-follow journey (4) green. Also closed the stale lint-drift task ISS-104/TASK-149 (CHG-140).",
+      "alternatives_rejected": "Postponed: search category/tag filters (smaller value), email notifications (no SMTP infra), sitemap/related-posts (already shipped). Opened an async code review (python-reviewer + typescript-reviewer) whose findings — if any HIGH — will be folded into follow-up commits before push."
     }
   },
   "edges": [
@@ -10367,6 +10401,30 @@
       "to": "TASK-150",
       "type": "depends_on",
       "created_at": "2026-08-21T06:54:21+00:00"
+    },
+    {
+      "from": "CHG-140",
+      "to": "TASK-149",
+      "type": "implements",
+      "created_at": "2026-08-21T10:03:37+00:00"
+    },
+    {
+      "from": "CHG-140",
+      "to": "ISS-104",
+      "type": "resolves",
+      "created_at": "2026-08-21T10:03:37+00:00"
+    },
+    {
+      "from": "CHG-141",
+      "to": "TASK-150",
+      "type": "implements",
+      "created_at": "2026-08-21T10:03:37+00:00"
+    },
+    {
+      "from": "CHG-141",
+      "to": "TASK-151",
+      "type": "implements",
+      "created_at": "2026-08-21T10:03:38+00:00"
     }
   ]
 }
