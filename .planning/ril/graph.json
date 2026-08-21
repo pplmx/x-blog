@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 121,
+  "round": 122,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-08-21T17:53:10+00:00",
+  "updated_at": "2026-08-21T19:01:53+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -7541,10 +7541,10 @@
     "TASK-154": {
       "id": "TASK-154",
       "type": "task",
-      "status": "active",
-      "version": 1,
+      "status": "resolved",
+      "version": 2,
       "created_at": "2026-08-21T17:52:29+00:00",
-      "updated_at": "2026-08-21T17:52:29+00:00",
+      "updated_at": "2026-08-21T19:01:53+00:00",
       "touched_round": 121,
       "category": "core-feature",
       "severity": 0.6,
@@ -7553,6 +7553,29 @@
       "unlock_factor": 1.0,
       "title": "Search filters + sort: category/tag/date + relevance/newest/oldest/views on /api/search + search page UI",
       "description": "Extend crud.search_posts with category/tag/date_from/date_to/sort for both dialect paths; expose Query params on the search router; search page filter bar wired into URL query (shareable); contract tests + E2E on demo data."
+    },
+    "CHG-144": {
+      "id": "CHG-144",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-21T19:00:17+00:00",
+      "updated_at": "2026-08-21T19:00:17+00:00",
+      "touched_round": 121,
+      "commit": "92bea38",
+      "title": "Search filters + sort (DEC-084, TASK-154)"
+    },
+    "DEC-085": {
+      "id": "DEC-085",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-21T19:00:17+00:00",
+      "updated_at": "2026-08-21T19:00:17+00:00",
+      "touched_round": 121,
+      "title": "Milestone delivered: search filters + sort (DEC-084 complete)",
+      "rationale": "Delivery of DEC-084 / TASK-154 via CHG-144, verified end-to-end. Backend: crud.search_posts gains category/tag by name + date_from/date_to (naive-UTC coercion at the boundary) + sort relevance|newest|oldest|views applied identically on the tsvector (ASCII) and CJK substring paths; relevance degrades to newest on CJK (no metric); invalid sort 422. /api/search exposes the params. Frontend: search-page filter bar bound to the URL query (shareable), filters preserved across pagination. Verification: backend 868 on SQLite / 877 on dev PostgreSQL 18.4 (both dialect paths), ruff clean; vitest 1006 green (search spec 24, $fetch category/tag stub added), biome + vue-tsc clean; Playwright search-filters 3 green, full e2e 108 passed under the CI-equivalent env.",
+      "alternatives_rejected": "Reader notification-center (needs history table); email digests (no SMTP); analytics time-series (deferred, interacts with TASK-026 write-on-read debt). Accepted: category filter is by exact name (no slug/alias); \"relevance\" on CJK is newest (no tsvector metric for CJK)."
     }
   },
   "edges": [
@@ -10621,6 +10644,19 @@
       "type": "supersedes",
       "created_at": "2026-08-21T17:53:10+00:00",
       "note": "New operator milestone after the backup/restore close"
+    },
+    {
+      "from": "CHG-144",
+      "to": "TASK-154",
+      "type": "implements",
+      "created_at": "2026-08-21T19:00:17+00:00"
+    },
+    {
+      "from": "DEC-085",
+      "to": "DEC-084",
+      "type": "supersedes",
+      "created_at": "2026-08-21T19:01:53+00:00",
+      "note": "Milestone delivered, superseding the milestone decision"
     }
   ]
 }
