@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 115,
+  "round": 116,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-08-20T23:49:29+00:00",
+  "updated_at": "2026-08-21T01:04:39+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -7116,6 +7116,56 @@
       "source": "full e2e x3: 94 passed / 0 failed / 0 flaky; frontend units 977; typecheck clean",
       "summary": "ISS-097 fully closed: admin-comments 'filter by status' was flaky due to a REAL frontend race (applyFilters awaited useFetch in non-setup context; initial all-fetch could clobber the applied pending filter). Fixed at the source + the e2e now asserts the backend filter contract deterministically. homepage:62 admin redirect part was already fixed in CHG-129.",
       "confidence": 1.0
+    },
+    "DEC-072": {
+      "id": "DEC-072",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-20T23:58:14+00:00",
+      "updated_at": "2026-08-20T23:58:14+00:00",
+      "touched_round": 115,
+      "title": "Milestone: reply-notification deep-link to the reply (completes DEC-064 UX)",
+      "rationale": "Feature-evolution selection (SKILL 11.2 gap analysis on the shipped DEC-064 slice). A reader who opted into reply notifications receives '有人回复了你的评论' and taps it — the notification's click URL is /posts/<slug> with NO comment anchor, so the reader lands at the top of a possibly long post instead of the reply. Real, perceivable gap in an existing shipped feature; 1-sentence acceptance: 'tapping a reply notification opens the post scrolled to the reply it mentions.' Vertical slice: (1) backend reply-notification payload URL gains #comment-<parent_id>; (2) CommentList renders id=\"comment-<id>\" anchors and scrolls to location.hash on mount (with header offset), so the anchor lands; (3) contract test asserts the URL anchor, unit test asserts the anchor + scroll behavior, e2e visits /posts/<slug>#comment-<id> and confirms the element is visible. Net-increment, self-contained, small on purpose (a deepening, not a fabricated feature).",
+      "alternatives_rejected": "(a) New standalone milestone candidates (email/reactions/per-category-RSS/at-mentions) — all previously rejected at the value gate for infra (SMTP) or button-level/speculative reasons; the feature backlog is drained otherwise. (b) Post TOC / search snippet — verified already implemented this session."
+    },
+    "TASK-145": {
+      "id": "TASK-145",
+      "type": "task",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-08-20T23:58:14+00:00",
+      "updated_at": "2026-08-21T01:04:39+00:00",
+      "touched_round": 116,
+      "category": "core-feature",
+      "severity": 3,
+      "confidence": 0.95,
+      "effort": 2,
+      "unlock_factor": 1.0,
+      "title": "Reply-notification deep-link: URL anchor + comment-anchor scroll (backend+frontend)"
+    },
+    "CHG-137": {
+      "id": "CHG-137",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-21T01:04:39+00:00",
+      "updated_at": "2026-08-21T01:04:39+00:00",
+      "touched_round": 115,
+      "commit": "f2d0a94",
+      "summary": "Reply-notification deep-link (DEC-072 TASK-145): payload URL gains #comment-<parent_id>; CommentList renders anchors + scrolls to location.hash on mount; contract test + unit + e2e journey."
+    },
+    "EV-106": {
+      "id": "EV-106",
+      "type": "evidence",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-21T01:04:39+00:00",
+      "updated_at": "2026-08-21T01:04:39+00:00",
+      "touched_round": 115,
+      "source": "788 nova tests (+1 deep-link contract); 980 frontend units; full e2e 93 passed",
+      "summary": "DEC-072 verified: notification URL deep-links to the parent comment; the post page scrolls the #comment-<id> anchor into view (e2e proves a fresh load lands near the fold); anchors render on top-level + nested comments with header scroll-margin.",
+      "confidence": 1.0
     }
   },
   "edges": [
@@ -10004,6 +10054,18 @@
       "to": "ISS-097",
       "type": "resolves",
       "created_at": "2026-08-20T23:49:29+00:00"
+    },
+    {
+      "from": "DEC-072",
+      "to": "TASK-145",
+      "type": "governs",
+      "created_at": "2026-08-20T23:58:14+00:00"
+    },
+    {
+      "from": "CHG-137",
+      "to": "TASK-145",
+      "type": "implements",
+      "created_at": "2026-08-21T01:04:39+00:00"
     }
   ]
 }
