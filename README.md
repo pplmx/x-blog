@@ -33,6 +33,7 @@ A modern full-stack blog application built with FastAPI + Nuxt
 - 🎯 **SEO Optimized** - Open Graph, JSON-LD structured data
 - ⬆️ **Pinned Posts** - Pin important posts to top
 - 📤 **Data Export** - Export posts/comments as CSV
+- 📡 **RSS & Atom Feeds** - Subscribe to the site-wide feed or a single category/tag via scoped feeds with autodiscovery (DEC-074)
 
 ## 🚀 Quick Start
 

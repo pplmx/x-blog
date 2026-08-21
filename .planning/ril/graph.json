@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 117,
+  "round": 118,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-08-21T01:08:06+00:00",
+  "updated_at": "2026-08-21T03:30:39+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -7174,10 +7174,74 @@
       "version": 1,
       "created_at": "2026-08-21T01:08:06+00:00",
       "updated_at": "2026-08-21T01:08:06+00:00",
-      "touched_round": 116,
+      "touched_round": 118,
       "title": "Backlog drained after delivered milestones — awaiting direction (supersedes reactivation intent)",
       "rationale": "Post-reactivation this session delivered and verified DEC-070 (CJK search/Postgres), DEC-071 (CJK snippet parity), ISS-097 (admin filter root cause), DEC-072 (reply-notification deep-link) — 8 commits, all gates green (788 nova / 980 frontend / typecheck / 93 e2e). Active tasks = 0 and active issues = 0. The remaining candidate pool was audited this round: post TOC and reading-progress VERIFIED already implemented, search snippets already implemented, email/per-category-RSS/reactions rejected at the value gate (infra / button-level), at-mentions/notification-center speculative with no usage signal. Starting another milestone now would mean fabricating a feature — explicitly forbidden by SKILL 11.2 'no feature piling'. This decision records the earned, post-delivery drained state: the standing directive's intent (keep iterating, start new milestones) was honored with real delivered milestones; the next activation requires a concrete operator product direction or a real external signal.",
       "alternatives_rejected": "(a) Fabricating e.g. 'reader avatars' / 'theme presets' / 'share buttons' to keep committing — button-level polish, gate-rejected class. (b) Re-litigating email / reactions / per-category RSS — infra or explicit prior rejects. (c) Starting speculative at-mentions without usage signal."
+    },
+    "DEC-074": {
+      "id": "DEC-074",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-21T02:26:57+00:00",
+      "updated_at": "2026-08-21T02:26:57+00:00",
+      "touched_round": 118,
+      "title": "Milestone: scoped category/tag RSS + Atom feeds (deepens shipped RSS)",
+      "rationale": "Feature-evolution selection (SKILL 11.2 gap analysis + fresh operator directive, supersedes DEC-073 idleness). The blog ships global RSS/Atom feeds (/rss/feed.xml, /rss/atom.xml) with caching, sanitizer, ETag/304, but they cover only the latest 20 posts site-wide — a reader following only, say, the Python category or the tailwind tag cannot subscribe to just that topic. rss.py, crud.get_posts(category_id/tag_id), get_category/get_tag and the category/tag browse pages all already exist, so the old DEC-073 audits rejection of \"per-category-RSS (infra)\" was premised on infra that is already built; this is a small deepening of a shipped feature, not new infra. Vertical slice: (1) GET /rss/feed.xml and /rss/atom.xml accept optional category_id=&tag_id= query params; validate the target exists (404 otherwise), filter via crud.get_posts, scope the channel/feed title+description to the category/tag name, and make the atom:link rel=\"self\" reflect the scoped URL; cache keys include the scope so invalidation/lifecycle stay correct; (2) category/tag browse pages emit <link rel=alternate type=application/rss+xml> autodiscovery plus a visible subscribe link pointing at the scoped feed; (3) backend contract tests (filtering, title scoping, 404, atom parity, global feed unchanged) + frontend unit tests for the feed-link composable + e2e autodiscovery check. Acceptance (1 sentence): \"a reader can subscribe to a single category or tag through its own RSS/Atom feed URL and sees only posts in that topic.\" Net-increment, self-contained, ~<300 line diff.",
+      "alternatives_rejected": "(a) Re-litigating email notifications / at-mentions / notification-centre — SMTP infra or speculative with no usage signal, rejected at the value gate again. (b) Reader avatars / theme presets / share-buttons polish — button-level, gate-rejected class, and ShareButtons already ship. (c) New standalone global-feature milestone — backlog has no active core-feature tasks; a deepening of an existing user-facing surface (RSS) is the honest minimal unit. (d) Per-category RSS via separate parallel URL space (/rss/category/N.xml) — rejected: extending the existing feed endpoints with optional scope params is backward-compatible, reuses cache/sanitize/ETag machinery, and avoids a second URL convention."
+    },
+    "TASK-146": {
+      "id": "TASK-146",
+      "type": "task",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-08-21T02:28:03+00:00",
+      "updated_at": "2026-08-21T03:28:45+00:00",
+      "touched_round": 118,
+      "category": "core-feature",
+      "severity": 4,
+      "effort": 3,
+      "confidence": 0.95,
+      "unlock_factor": 1.0,
+      "priority_score": 6.0,
+      "title": "Scoped category/tag RSS + Atom feeds (backend filter + feed metadata, frontend autodiscovery + subscribe link, tests)",
+      "resolution": "Delivered by CHG-138 (commit 5175686); full verify green: backend 804 (795 pass/9 skip incl 7 new scoped tests), frontend unit 986, typecheck clean, ruff+biome clean, e2e 92 passed/3 skipped incl rss-scope (3/3) on dev Postgres xblog_e2e."
+    },
+    "CHG-138": {
+      "id": "CHG-138",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-21T03:28:03+00:00",
+      "updated_at": "2026-08-21T03:28:03+00:00",
+      "touched_round": 118,
+      "commit": "5175686",
+      "summary": "Scoped category/tag RSS+Atom feeds (DEC-074 TASK-146): feed.xml/atom.xml accept category_id=/tag_id= (one max, 400; unknown 404), scoped title/description + rel=self/id, scope in cache key; category/tag pages emit alternate autodiscovery + RSS subscribe button (zh/en); backend contract tests + frontend unit tests + rss-scope e2e on Postgres."
+    },
+    "EV-107": {
+      "id": "EV-107",
+      "type": "evidence",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-21T03:28:54+00:00",
+      "updated_at": "2026-08-21T03:28:54+00:00",
+      "touched_round": 118,
+      "source": "backend/nova/tests/test_rss.py::test_rss_feed_scoped_by_category (commit 5175686)",
+      "content": "Category-scoped RSS returns only that category posts + scoped channel title/self link; verified also for tag/atom/400/404/ETag-304.",
+      "confidence": 1.0
+    },
+    "DEC-075": {
+      "id": "DEC-075",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-21T03:30:39+00:00",
+      "updated_at": "2026-08-21T03:30:39+00:00",
+      "touched_round": 118,
+      "title": "Milestone delivered: scoped category/tag RSS + Atom feeds (DEC-074)",
+      "rationale": "Delivery of DEC-074 / TASK-146, verified end-to-end: backend 804 tests green (795 pass/9 skip, incl 7 new scoped-feed contract tests covering filter + title scoping + 400/404 + Atom parity + ETag/304 + global-feed-no-scope), frontend unit 986 (58 files), nuxt typecheck clean, ruff + biome clean, full e2e 92 passed/3 skipped incl the new rss-scope.spec.ts (3/3, exercised on the operator dev Postgres host via dedicated xblog_e2e database). Acceptance met: a reader can subscribe to a single category or tag through its own RSS/Atom feed URL and sees only posts in that topic. Committed as 5175686 (change CHG-138).",
+      "alternatives_rejected": "(a) Continuing to park at DEC-073 backlog-drained state — contradicted by the operator new-milestone directive; the scoped-RSS candidates earlier gate rejection was premised on \"infra\" that was already shipped (rss.py + crud filters), so a fresh audit correctly admitted it. (b) Email / at-mentions / notification-centre — re-rejected at the value gate (SMTP infra / speculative, no usage signal). (c) Separate URL space per scope (/rss/category/N.xml) — rejected in DEC-074 in favour of extending the existing feed endpoints, backward-compatible."
     }
   },
   "edges": [
@@ -10078,6 +10142,31 @@
       "to": "TASK-145",
       "type": "implements",
       "created_at": "2026-08-21T01:04:39+00:00"
+    },
+    {
+      "from": "DEC-074",
+      "to": "DEC-073",
+      "type": "supersedes",
+      "created_at": "2026-08-21T02:28:08+00:00",
+      "note": "New operator directive starts a fresh milestone; scoped-RSS candidate previously misjudged as infra, infra verified already shipped"
+    },
+    {
+      "from": "DEC-074",
+      "to": "TASK-146",
+      "type": "governs",
+      "created_at": "2026-08-21T02:28:08+00:00"
+    },
+    {
+      "from": "CHG-138",
+      "to": "TASK-146",
+      "type": "implements",
+      "created_at": "2026-08-21T03:28:03+00:00"
+    },
+    {
+      "from": "DEC-075",
+      "to": "DEC-074",
+      "type": "supersedes",
+      "created_at": "2026-08-21T03:30:39+00:00"
     }
   ]
 }
