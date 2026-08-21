@@ -84,10 +84,9 @@ test.describe("Admin comment management", () => {
 		// comments, including our planted probe. Asserting the response (not a
 		// snapshot of the rendered DOM) is what caught the historical
 		// mixed-list bug at its source.
-		const filterResponse = page.waitForResponse(
-			(r) => r.url().includes("is_approved=false"),
-			{ timeout: 15000 },
-		);
+		const filterResponse = page.waitForResponse((r) => r.url().includes("is_approved=false"), {
+			timeout: 15000,
+		});
 		await pendingFilter.click();
 		const resp = await filterResponse;
 		const body = (await resp.json()) as {

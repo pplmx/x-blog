@@ -400,3 +400,123 @@ def test_rss_feed_etag_and_304(client, auth_headers):
         second = client.get(path, headers={"If-None-Match": etag})
         assert second.status_code == 304, f"expected 304 on {path}"
         assert second.text == ""
+
+
+# ---------------------------------------------------------------------------
+# Scoped category/tag feeds (DEC-074, TASK-146) — a reader can subscribe to a
+# single topic via its own feed URL and sees only that topic's posts.
+# ---------------------------------------------------------------------------
+
+
+def _make_published_post(client, auth_headers, title, slug, **extra):
+    """Create a published post (plus optional category_id/tags) via the API."""
+    payload = {
+        "title": title,
+        "slug": slug,
+        "content": f"content of {slug}",
+        "excerpt": f"excerpt of {slug}",
+        "published": True,
+        **extra,
+    }
+    resp = client.post("/api/posts", json=payload, headers=auth_headers)
+    assert resp.status_code == 201, resp.text
+
+
+def test_rss_feed_scoped_by_category(client, auth_headers):
+    """A category-scoped RSS feed contains only that category's posts, and
+    the channel identifies the category."""
+    cat = client.post("/api/categories", json={"name": "Python", "slug": "python"}, headers=auth_headers)
+    assert cat.status_code == 201
+    cat_id = cat.json()["id"]
+
+    _make_published_post(client, auth_headers, "Python post", "py-post", category_id=cat_id)
+    _make_published_post(client, auth_headers, "Unrelated post", "other-post")
+
+    response = client.get(f"/rss/feed.xml?category_id={cat_id}")
+    assert response.status_code == 200
+    content = response.text
+    assert "Python post" in content
+    assert "Unrelated post" not in content
+    # Channel title identifies the scoped topic, and rel=self points at the
+    # scoped feed URL so feed readers validate the subscription.
+    assert "Python —" in content
+    assert 'rel="self" type="application/rss+xml"' in content
+    assert f"category_id={cat_id}" in content
+
+
+def test_rss_feed_scoped_by_tag(client, auth_headers):
+    """A tag-scoped RSS feed contains only posts carrying that tag."""
+    tag = client.post("/api/tags", json={"name": "pytag", "slug": "pytag"}, headers=auth_headers)
+    assert tag.status_code == 201
+    tag_id = tag.json()["id"]
+
+    _make_published_post(client, auth_headers, "Tagged post", "tagged-post", tags=["pytag"])
+    _make_published_post(client, auth_headers, "Untagged post", "untagged-post")
+
+    response = client.get(f"/rss/feed.xml?tag_id={tag_id}")
+    assert response.status_code == 200
+    content = response.text
+    assert "Tagged post" in content
+    assert "Untagged post" not in content
+    # Tag channel title and scoped self link.
+    assert "#pytag" in content
+    assert f"tag_id={tag_id}" in content
+
+
+def test_atom_feed_scoped_by_category(client, auth_headers):
+    """Atom parity: a category-scoped Atom feed filters and identifies the topic."""
+    cat = client.post("/api/categories", json={"name": "Go", "slug": "go"}, headers=auth_headers)
+    assert cat.status_code == 201
+    cat_id = cat.json()["id"]
+
+    _make_published_post(client, auth_headers, "Go post", "go-post", category_id=cat_id)
+    _make_published_post(client, auth_headers, "Other", "other-post")
+
+    response = client.get(f"/rss/atom.xml?category_id={cat_id}")
+    assert response.status_code == 200
+    content = response.text
+    assert "Go post" in content
+    assert "Other" not in content
+    assert "Go —" in content
+    # Feed self/id reference the scoped URL.
+    assert f"category_id={cat_id}" in content
+
+
+def test_rss_feed_scoped_unknown_scope_404(client):
+    """An unknown category/tag scope id is a 404, not a silent global feed."""
+    response = client.get("/rss/feed.xml?category_id=999999")
+    assert response.status_code == 404
+    response = client.get("/rss/atom.xml?tag_id=999999")
+    assert response.status_code == 404
+
+
+def test_rss_feed_scoped_both_params_400(client):
+    """A feed scoped to both category and tag is rejected — one dimension max."""
+    response = client.get("/rss/feed.xml?category_id=1&tag_id=1")
+    assert response.status_code == 400
+
+
+def test_rss_feed_scoped_etag_and_304(client, auth_headers):
+    """Scoped feeds keep the ETag/304 conditional-response behavior."""
+    cat = client.post("/api/categories", json={"name": "ETag Cat", "slug": "etag-cat"}, headers=auth_headers)
+    cat_id = cat.json()["id"]
+
+    first = client.get(f"/rss/feed.xml?category_id={cat_id}")
+    assert first.status_code == 200
+    etag = first.headers.get("etag")
+    assert etag
+    second = client.get(f"/rss/feed.xml?category_id={cat_id}", headers={"If-None-Match": etag})
+    assert second.status_code == 304
+
+
+def test_global_feed_unaffected_by_scope_support(client, auth_headers):
+    """Default global feeds still work and are unscoped when no param is sent."""
+    _make_published_post(client, auth_headers, "Global post", "global-post")
+    response = client.get("/rss/feed.xml")
+    assert response.status_code == 200
+    content = response.text
+    assert "Global post" in content
+    # Default self link has no scope query.
+    assert 'rel="self"' in content
+    assert "category_id=" not in content
+    assert "tag_id=" not in content

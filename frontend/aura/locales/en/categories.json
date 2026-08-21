@@ -9,6 +9,8 @@
 		"postsEmpty": "No posts yet",
 		"views": "{count} views",
 		"allDesc": "Browse all categories on X-Blog",
-		"categoryDesc": "Browse all articles under category \"{name}\""
+		"categoryDesc": "Browse all articles under category \"{name}\"",
+		"subscribe": "RSS Subscribe",
+		"subscribeTitle": "Subscribe to the latest posts in this category"
 	}
 }

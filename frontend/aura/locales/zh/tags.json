@@ -9,6 +9,8 @@
 		"postsEmpty": "暂无文章",
 		"views": "{count} 次阅读",
 		"allDesc": "浏览 X-Blog 中的所有标签",
-		"tagDesc": "浏览标签 \"{name}\" 下的所有文章"
+		"tagDesc": "浏览标签 \"{name}\" 下的所有文章",
+		"subscribe": "RSS 订阅",
+		"subscribeTitle": "订阅该标签下的最新文章"
 	}
 }

@@ -47,6 +47,26 @@ useSeo(() => ({
 		: t("categories.allDesc"),
 	path: "/categories",
 }));
+
+// Scoped RSS feed (DEC-074, TASK-146): on a selected category, autodiscovery
+// emits <link rel="alternate" type="application/rss+xml"> so browsers/feed
+// readers offer "subscribe to this category", and the visible button shares
+// the same feed URL.
+const feedUrl = computed(() =>
+	categoryId.value ? `/rss/feed.xml?category_id=${categoryId.value}` : "/rss/feed.xml",
+);
+useHead(() => ({
+	link: categoryId.value
+		? [
+				{
+					rel: "alternate",
+					type: "application/rss+xml",
+					title: t("categories.subscribe"),
+					href: feedUrl.value,
+				},
+			]
+		: [],
+}));
 </script>
 
 <template>
@@ -108,9 +128,21 @@ useSeo(() => ({
           <Icon icon="lucide:arrow-left" class="w-4 h-4" />
           {{ t('categories.backToAll') }}
         </NuxtLink>
-        <h1 class="text-3xl font-bold bg-gradient-to-r from-gray-900 dark:from-gray-100 to-gray-600 dark:to-gray-400 bg-clip-text text-transparent">
-          {{ t('categories.categoryPosts') }}
-        </h1>
+        <div class="flex items-center justify-between gap-4">
+          <h1 class="text-3xl font-bold bg-gradient-to-r from-gray-900 dark:from-gray-100 to-gray-600 dark:to-gray-400 bg-clip-text text-transparent">
+            {{ t('categories.categoryPosts') }}
+          </h1>
+          <a
+            :href="feedUrl"
+            target="_blank"
+            rel="noopener"
+            :title="t('categories.subscribeTitle')"
+            class="inline-flex items-center gap-1.5 text-sm text-purple-600 hover:text-purple-700 border border-purple-200 hover:border-purple-300 rounded-full px-3 py-1.5 transition-colors whitespace-nowrap"
+          >
+            <Icon icon="lucide:rss" class="w-4 h-4" />
+            {{ t('categories.subscribe') }}
+          </a>
+        </div>
       </div>
 
       <!-- Posts list -->

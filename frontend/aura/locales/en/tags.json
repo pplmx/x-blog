@@ -9,6 +9,8 @@
 		"postsEmpty": "No posts yet",
 		"views": "{count} views",
 		"allDesc": "Browse all tags on X-Blog",
-		"tagDesc": "Browse all articles under tag \"{name}\""
+		"tagDesc": "Browse all articles under tag \"{name}\"",
+		"subscribe": "RSS Subscribe",
+		"subscribeTitle": "Subscribe to the latest posts in this tag"
 	}
 }

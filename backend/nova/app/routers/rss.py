@@ -4,11 +4,11 @@ from urllib.parse import urlparse
 from xml.sax.saxutils import escape
 
 import markdown as md
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import Response
 from sqlalchemy.orm import Session
 
-from app import crud
+from app import crud, models
 from app.cache import feed_cache
 from app.conditional import PUBLIC_CACHE_CONTROL, conditional_response
 from app.config import settings
@@ -36,6 +36,58 @@ def _feed_response(body: str, media_type: str, request: Request) -> Response:
     and the 304 revalidates the stored copy's freshness window.
     """
     return conditional_response(body, media_type, request, PUBLIC_CACHE_CONTROL)
+
+
+def _resolve_feed_scope(
+    db: Session, category_id: int | None, tag_id: int | None
+) -> tuple[models.Category | None, models.Tag | None]:
+    """Resolve the optional category/tag scope of a feed request.
+
+    A subscription is scoped to at most one dimension — a category or a tag —
+    so the channel title stays unambiguous; passing both is rejected. An
+    unknown scope id is a 404 rather than a silent fallback to the global
+    feed: scoped feed links are emitted by the category/tag browse pages, so a
+    bad id is a real error, not a reader preference (DEC-074, TASK-146).
+    """
+    if category_id is not None and tag_id is not None:
+        raise HTTPException(status_code=400, detail="Provide at most one of category_id and tag_id")
+    if category_id is not None:
+        category = crud.get_category(db, category_id)
+        if category is None:
+            raise HTTPException(status_code=404, detail="Category not found")
+        return category, None
+    if tag_id is not None:
+        tag = crud.get_tag(db, tag_id)
+        if tag is None:
+            raise HTTPException(status_code=404, detail="Tag not found")
+        return None, tag
+    return None, None
+
+
+def _scoped_feed_meta(
+    site_title: str,
+    site_description: str,
+    category: models.Category | None,
+    tag: models.Tag | None,
+) -> tuple[str, str]:
+    """Feed title/description that identify the optional topic scope."""
+    if category is not None:
+        return f"{category.name} — {site_title}", f"{site_description} · category: {category.name}"
+    if tag is not None:
+        return f"#{tag.name} — {site_title}", f"{site_description} · tag: {tag.name}"
+    return site_title, site_description
+
+
+def _feed_self_url(site_url: str, kind: str, category_id: int | None, tag_id: int | None) -> str:
+    """The rel=self URL of a (possibly scoped) feed, mirroring its query params."""
+    path = {"rss": "/rss/feed.xml", "atom": "/rss/atom.xml"}[kind]
+    params = []
+    if category_id is not None:
+        params.append(f"category_id={category_id}")
+    if tag_id is not None:
+        params.append(f"tag_id={tag_id}")
+    suffix = f"?{'&'.join(params)}" if params else ""
+    return f"{site_url}{path}{suffix}"
 
 
 # Elements stripped from feed content (can never appear) — the allow-list of
@@ -166,7 +218,14 @@ def _feed_content_html(content: str) -> str:
     return "".join(sanitizer.out)
 
 
-def generate_rss_feed(posts: list, site_url: str, title: str, description: str, full_content: bool = False) -> str:
+def generate_rss_feed(
+    posts: list,
+    site_url: str,
+    title: str,
+    description: str,
+    full_content: bool = False,
+    self_url: str | None = None,
+) -> str:
     """Generate RSS 2.0 feed.
 
     Args:
@@ -175,6 +234,9 @@ def generate_rss_feed(posts: list, site_url: str, title: str, description: str, 
         title: Feed title
         description: Feed description
         full_content: If True, include full post content. If False, use excerpt.
+        self_url: The feed's own URL for atom:link rel=self; defaults to the
+            global feed URL. Scoped feeds pass their scoped URL so feed readers
+            validate the subscription (DEC-074, TASK-146).
     """
     items = []
     for post in posts:
@@ -203,6 +265,7 @@ def generate_rss_feed(posts: list, site_url: str, title: str, description: str, 
         <description>{_cdata(post.excerpt or post.content[:200])}</description>
     </item>""")
 
+    rss_self = self_url or f"{site_url}/rss/feed.xml"
     rss = f"""<?xml version="1.0" encoding="UTF-8"?>
 <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom" xmlns:content="http://purl.org/rss/1.0/modules/content/">
 <channel>
@@ -211,7 +274,7 @@ def generate_rss_feed(posts: list, site_url: str, title: str, description: str, 
     <description>{escape(description)}</description>
     <language>zh-CN</language>
     <lastBuildDate>{datetime.now(UTC).strftime("%a, %d %b %Y %H:%M:%S GMT")}</lastBuildDate>
-    <atom:link href="{escape(site_url)}/rss/feed.xml" rel="self" type="application/rss+xml"/>
+    <atom:link href="{escape(rss_self)}" rel="self" type="application/rss+xml"/>
     {"".join(items)}
 </channel>
 </rss>"""
@@ -219,45 +282,69 @@ def generate_rss_feed(posts: list, site_url: str, title: str, description: str, 
 
 
 @rss_router.get("/feed.xml")
-def get_rss_feed(full: bool = True, request: Request = None, db: Session = Depends(get_db)) -> Response:  # type: ignore[assignment]
+def get_rss_feed(
+    full: bool = True,
+    category_id: int | None = None,
+    tag_id: int | None = None,
+    request: Request = None,
+    db: Session = Depends(get_db),
+) -> Response:  # type: ignore[assignment]
     """Get RSS 2.0 feed of published posts.
 
     Args:
         full: If True, include full post content instead of excerpt (default: True).
+        category_id: If given, restrict the feed to posts in this category
+            (DEC-074, TASK-146). Unknown id -> 404.
+        tag_id: If given, restrict the feed to posts with this tag
+            (DEC-074, TASK-146). Unknown id -> 404.
 
-    Rendered feed is cached (feed_cache, TTL 300s) and invalidated on post
-    writes via clear_posts_list_cache, so repeated poller hits don't re-query
-    the DB or re-render markdown per request (RIL TASK-085, ISS-054).
+    Rendered feed is cached (feed_cache, TTL 300s) with the scope in the key,
+    and invalidated on post writes via clear_posts_list_cache, so repeated
+    poller hits don't re-query the DB or re-render markdown per request
+    (RIL TASK-085, ISS-054).
     """
-    key = ("feed", full)
+    category, tag = _resolve_feed_scope(db, category_id, tag_id)
+    key = ("feed", full, category_id, tag_id)
     cached = feed_cache.get(key)
     if cached is not None:
         return _feed_response(cached, "application/rss+xml", request)
 
-    posts, _ = crud.get_posts(db, skip=0, limit=20, published=True)
+    posts, _ = crud.get_posts(db, skip=0, limit=20, published=True, category_id=category_id, tag_id=tag_id)
 
     site_url = getattr(settings, "site_url", "http://localhost:3000")
-    title = getattr(settings, "site_title", "X-Blog")
-    description = getattr(settings, "site_description", "A modern blog built with FastAPI and Next.js")
+    site_title = getattr(settings, "site_title", "X-Blog")
+    site_description = getattr(settings, "site_description", "A modern blog built with FastAPI and Next.js")
+    title, description = _scoped_feed_meta(site_title, site_description, category, tag)
+    self_url = _feed_self_url(site_url, "rss", category_id, tag_id)
 
-    rss_content = generate_rss_feed(posts, site_url, title, description, full_content=full)
+    rss_content = generate_rss_feed(posts, site_url, title, description, full_content=full, self_url=self_url)
     feed_cache[key] = rss_content
 
     return _feed_response(rss_content, "application/rss+xml", request)
 
 
 @rss_router.get("/atom.xml")
-def get_atom_feed(request: Request = None, db: Session = Depends(get_db)) -> Response:  # type: ignore[assignment]
-    """Get Atom feed of published posts."""
-    cached = feed_cache.get("atom")
+def get_atom_feed(
+    category_id: int | None = None,
+    tag_id: int | None = None,
+    request: Request = None,
+    db: Session = Depends(get_db),
+) -> Response:  # type: ignore[assignment]
+    """Get Atom feed of published posts, optionally scoped to a category/tag
+    (DEC-074, TASK-146; same semantics as the RSS feed)."""
+    category, tag = _resolve_feed_scope(db, category_id, tag_id)
+    key = ("atom", category_id, tag_id)
+    cached = feed_cache.get(key)
     if cached is not None:
         return _feed_response(cached, "application/atom+xml", request)
 
-    posts, _ = crud.get_posts(db, skip=0, limit=20, published=True)
+    posts, _ = crud.get_posts(db, skip=0, limit=20, published=True, category_id=category_id, tag_id=tag_id)
 
     site_url = getattr(settings, "site_url", "http://localhost:3000")
-    title = getattr(settings, "site_title", "X-Blog")
-    description = getattr(settings, "site_description", "A modern blog built with FastAPI and Next.js")
+    site_title = getattr(settings, "site_title", "X-Blog")
+    site_description = getattr(settings, "site_description", "A modern blog built with FastAPI and Next.js")
+    title, description = _scoped_feed_meta(site_title, site_description, category, tag)
+    self_url = _feed_self_url(site_url, "atom", category_id, tag_id)
 
     items = []
     for post in posts:
@@ -279,14 +366,14 @@ def get_atom_feed(request: Request = None, db: Session = Depends(get_db)) -> Res
 <feed xmlns="http://www.w3.org/2005/Atom">
     <title>{escape(title)}</title>
     <link href="{escape(site_url)}"/>
-    <link href="{escape(site_url)}/rss/atom.xml" rel="self"/>
-    <id>{escape(site_url)}/rss/atom.xml</id>
+    <link href="{escape(self_url)}" rel="self"/>
+    <id>{escape(self_url)}</id>
     <subtitle>{escape(description)}</subtitle>
     <updated>{datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")}</updated>
     {"".join(items)}
 </feed>"""
 
-    feed_cache["atom"] = atom
+    feed_cache[key] = atom
     return _feed_response(atom, "application/atom+xml", request)
 
 

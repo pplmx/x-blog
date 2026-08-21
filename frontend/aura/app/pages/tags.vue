@@ -43,6 +43,25 @@ useSeo(() => ({
 	description: tagName.value ? t("tags.tagDesc", { name: tagName.value }) : t("tags.allDesc"),
 	path: "/tags",
 }));
+
+// Scoped RSS feed (DEC-074, TASK-146): on a selected tag, autodiscovery emits
+// <link rel="alternate" type="application/rss+xml"> and the visible button
+// shares the tag-scoped feed URL.
+const feedUrl = computed(() =>
+	tagId.value ? `/rss/feed.xml?tag_id=${tagId.value}` : "/rss/feed.xml",
+);
+useHead(() => ({
+	link: tagId.value
+		? [
+				{
+					rel: "alternate",
+					type: "application/rss+xml",
+					title: t("tags.subscribe"),
+					href: feedUrl.value,
+				},
+			]
+		: [],
+}));
 </script>
 
 <template>
@@ -104,9 +123,21 @@ useSeo(() => ({
           <Icon icon="lucide:arrow-left" class="w-4 h-4" />
           {{ t('tags.backToAll') }}
         </NuxtLink>
-        <h1 class="text-3xl font-bold bg-gradient-to-r from-gray-900 dark:from-gray-100 to-gray-600 dark:to-gray-400 bg-clip-text text-transparent">
-          {{ t('tags.tagPosts') }}
-        </h1>
+        <div class="flex items-center justify-between gap-4">
+          <h1 class="text-3xl font-bold bg-gradient-to-r from-gray-900 dark:from-gray-100 to-gray-600 dark:to-gray-400 bg-clip-text text-transparent">
+            {{ t('tags.tagPosts') }}
+          </h1>
+          <a
+            :href="feedUrl"
+            target="_blank"
+            rel="noopener"
+            :title="t('tags.subscribeTitle')"
+            class="inline-flex items-center gap-1.5 text-sm text-blue-600 hover:text-blue-700 border border-blue-200 hover:border-blue-300 rounded-full px-3 py-1.5 transition-colors whitespace-nowrap"
+          >
+            <Icon icon="lucide:rss" class="w-4 h-4" />
+            {{ t('tags.subscribe') }}
+          </a>
+        </div>
       </div>
 
       <!-- Posts list -->

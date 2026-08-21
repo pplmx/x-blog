@@ -230,6 +230,45 @@ describe("Tags Page", () => {
 		});
 	});
 
+	describe("Scoped RSS feed (DEC-074, TASK-146)", () => {
+		function alternateLinksFromHead(): Array<{ rel: string; href?: string; type?: string }> {
+			const useHeadMock = (
+				globalThis as unknown as { useHead: { mock: { calls: Array<[unknown]> } } }
+			).useHead;
+			return useHeadMock.mock.calls
+				.map(([arg]) => arg)
+				.filter((arg): arg is () => { link?: unknown[] } => typeof arg === "function")
+				.map((getter) => getter())
+				.flatMap((h) => (h?.link ?? []) as Array<{ rel: string; href?: string; type?: string }>);
+		}
+
+		it("renders a subscribe link pointing at the tag-scoped feed", async () => {
+			const wrapper = await mountTagsPage({ routeQuery: { tag_id: "1" } });
+			const link = wrapper.find('a[href="/rss/feed.xml?tag_id=1"]');
+			expect(link.exists()).toBe(true);
+			expect(link.text()).toContain("RSS 订阅");
+		});
+
+		it("emits an alternate autodiscovery link for the selected tag", async () => {
+			await mountTagsPage({ routeQuery: { tag_id: "1" } });
+			const links = alternateLinksFromHead();
+			expect(
+				links.some(
+					(l) =>
+						l.rel === "alternate" &&
+						l.href === "/rss/feed.xml?tag_id=1" &&
+						l.type === "application/rss+xml",
+				),
+			).toBe(true);
+		});
+
+		it("emits no autodiscovery link on the all-tags view", async () => {
+			await mountTagsPage();
+			const links = alternateLinksFromHead();
+			expect(links.some((l) => l.rel === "alternate")).toBe(false);
+		});
+	});
+
 	describe("Empty tag posts", () => {
 		it("renders empty state when tag has no posts", async () => {
 			const wrapper = await mountTagsPage({
