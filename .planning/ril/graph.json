@@ -2,7 +2,7 @@
   "ril_version": 1,
   "round": 118,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-08-21T03:30:39+00:00",
+  "updated_at": "2026-08-21T04:52:10+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -22,7 +22,7 @@
       "version": 1,
       "created_at": "2026-08-06T13:23:41+00:00",
       "updated_at": "2026-08-06T13:23:41+00:00",
-      "touched_round": 108,
+      "touched_round": 118,
       "title": "frontend-aura",
       "description": "Nuxt 4 Vue 3 TypeScript frontend at frontend/aura; composables; admin pages; e2e Playwright; biome lint"
     },
@@ -7242,6 +7242,110 @@
       "title": "Milestone delivered: scoped category/tag RSS + Atom feeds (DEC-074)",
       "rationale": "Delivery of DEC-074 / TASK-146, verified end-to-end: backend 804 tests green (795 pass/9 skip, incl 7 new scoped-feed contract tests covering filter + title scoping + 400/404 + Atom parity + ETag/304 + global-feed-no-scope), frontend unit 986 (58 files), nuxt typecheck clean, ruff + biome clean, full e2e 92 passed/3 skipped incl the new rss-scope.spec.ts (3/3, exercised on the operator dev Postgres host via dedicated xblog_e2e database). Acceptance met: a reader can subscribe to a single category or tag through its own RSS/Atom feed URL and sees only posts in that topic. Committed as 5175686 (change CHG-138).",
       "alternatives_rejected": "(a) Continuing to park at DEC-073 backlog-drained state — contradicted by the operator new-milestone directive; the scoped-RSS candidates earlier gate rejection was premised on \"infra\" that was already shipped (rss.py + crud filters), so a fresh audit correctly admitted it. (b) Email / at-mentions / notification-centre — re-rejected at the value gate (SMTP infra / speculative, no usage signal). (c) Separate URL space per scope (/rss/category/N.xml) — rejected in DEC-074 in favour of extending the existing feed endpoints, backward-compatible."
+    },
+    "DEC-076": {
+      "id": "DEC-076",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-21T03:37:01+00:00",
+      "updated_at": "2026-08-21T03:37:01+00:00",
+      "touched_round": 118,
+      "title": "Milestone: new-post Web Push notifications, scoped to a followed category",
+      "rationale": "Feature-evolution selection (SKILL 11.2 gap analysis). The blog delivers Web Push reply notifications (DEC-064→DEC-072) and now topic-scoped RSS (DEC-074). The missing classic blog capability is \"notify me when a new post is published\", with a category scope for readers who follow one topic — it deepens the shipped push arc and complements the new scoped-browsing surface; non-speculative (reply notifications prove opt-in + delivery on this stack). Acceptance (1 sentence): \"a reader who opts into new-post notifications receives a Web Push when a new post is published, and can restrict follows to a single category.\" Vertical slice (multi-commit): (1) DDL-preserving migration + model: PushSubscription gains want_new_posts bool (default False) and new_post_category_id int? (null = all posts); (2) backend: subscribe accepts the two prefs; publish fan-out — after a post write that makes it immediately visible (published and publish_at null/<=now), dispatch to subscriptions with want_new_posts matching category-or-all, best-effort + dead-endpoint retirement via the shared helper, env-configurable copy like REPLY_NOTIF_*; scheduled (future publish_at) posts notify at that later write/publish, documented; (3) frontend: follow-a-category toggle on category pages + account-page new-post opt-in/category list; (4) tests: backend contract (defaults, subscribe prefs, fan-out filter incl category / all / draft-no-notify / dead endpoint), frontend unit, e2e (author subscribes via API then publishes — assert dispatch targeted via a testable seam); (5) docs + full VERIFY. Note the shallow publish trigger limitation (no background scheduler for publish_at) is recorded, not silently hidden.",
+      "alternatives_rejected": "(a) Email notifications — SMTP infra, rejected repeatedly at the gate. (b) At-mentions / notification centre inbox — speculative, no usage signal. (c) Notify on future-publish_at via a scheduler/job worker — out of scope infra for this slice (blog has no background jobs today); immediate-publish coverage is the honest first slice. (d) Account-level follow table (reader→category) instead of per-subscription prefs — adds a join table and account-wide fan-out; per-browser prefs match existing PushSubscription semantics (each device opts in independently, like comment replies). (e) Notifying for new comments on followed posts — different feature needing a watched-posts table; out of scope, rejection recorded."
+    },
+    "TASK-147": {
+      "id": "TASK-147",
+      "type": "task",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-08-21T03:37:01+00:00",
+      "updated_at": "2026-08-21T04:51:21+00:00",
+      "touched_round": 118,
+      "category": "core-feature",
+      "severity": 4,
+      "effort": 5,
+      "confidence": 0.9,
+      "unlock_factor": 1.0,
+      "priority_score": 6.0,
+      "title": "New-post Web Push notifications scoped by followed category (model+migration, subscribe prefs, publish fan-out, frontend follow UI, tests)",
+      "resolution": "Delivered by CHG-139 (commit 842bec7); verify green 2026-08-21: backend 809 pass/9 skip (93.4% cov, incl 13 new new-post push tests), frontend unit 991, nuxt typecheck clean, ruff lint+format clean on touched files, biome clean on touched files (exit 0), full e2e 93 passed/3 skipped (incl category-page follow toggle on dev Postgres xblog_e2e)."
+    },
+    "ISS-104": {
+      "id": "ISS-104",
+      "type": "issue",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-21T04:22:03+00:00",
+      "updated_at": "2026-08-21T04:22:03+00:00",
+      "touched_round": 118,
+      "severity": "medium",
+      "title": "Frontend pnpm lint (biome check .) fails at committed baseline (formatter drift)",
+      "description": "biome 2.5.8 check of the clean HEAD exits 1: formatter drift (lineWidth 100) across committed files from prior milestones (account.vue organizeImports+format, comments.vue, default.vue, SubscribeButton.vue, e2e my-comments/reader-comments/search specs) plus style lints (useLiteralKeys in usePushSubscription.ts, useTemplate, noNonNullAssertion in e2e). CI gates on pnpm lint, so the lint gate is red independent of any current change. Evidence: pnpm lint exit=1 on a git-stash-ed clean HEAD 2026-08-21 (surfaced during DEC-076 VERIFY)."
+    },
+    "TASK-149": {
+      "id": "TASK-149",
+      "type": "task",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-21T04:22:03+00:00",
+      "updated_at": "2026-08-21T04:22:03+00:00",
+      "touched_round": 118,
+      "category": "maintainability",
+      "severity": 3,
+      "effort": 3,
+      "confidence": 1.0,
+      "unlock_factor": 1.0,
+      "priority_score": 3.0,
+      "title": "Restore green pnpm lint: biome-format/organize drifted files + targeted lint cleanup (ISS-104)"
+    },
+    "EV-108": {
+      "id": "EV-108",
+      "type": "evidence",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-21T04:42:21+00:00",
+      "updated_at": "2026-08-21T04:42:21+00:00",
+      "touched_round": 118,
+      "source": "uv run ruff format --check . (2026-08-21, during DEC-076 VERIFY)",
+      "content": "Backend ruff format --check fails at baseline on 4 files not touched this milestone (app/routers/comments.py, tests/test_reader_reply_notifications.py, tests/test_reader_self_service.py, tests/test_search_cjk.py); crud.py drift was already aligned by ruff format this session. Combined with frontend biome drift (ISS-104), both CI format gates (ruff format --check ., pnpm lint) are red independent of current work.",
+      "confidence": 1.0
+    },
+    "HYP-012": {
+      "id": "HYP-012",
+      "type": "hypothesis",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-21T04:42:21+00:00",
+      "updated_at": "2026-08-21T04:42:21+00:00",
+      "touched_round": 118,
+      "confidence": 0.7,
+      "title": "Format gates went red when earlier milestones adjusted formatting without running the repo-wide check",
+      "content": "Hypothesis: DEC-066/067/071/072 contributed files formatted under editor defaults (not ruff/biome canonical), and no subsequent run of ruff format --check . / pnpm lint caught the cumulative drift because per-milestone VERIFY only checked touched files."
+    },
+    "CHG-139": {
+      "id": "CHG-139",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-21T04:51:21+00:00",
+      "updated_at": "2026-08-21T04:51:21+00:00",
+      "touched_round": 118,
+      "commit": "842bec7",
+      "summary": "New-post Web Push scoped by followed category (DEC-076 TASK-147): PushSubscription.want_new_posts/new_post_category_id + DDL-preserving migration (a1f9c3e5b7d2); subscribe carries prefs (422 unknown category) + reader per-device PATCH; publish fan-out dispatch_new_post fires on create-as-published / draft->published transition; category-page follow toggle + account per-device new-post toggle/category select; 13 backend contract tests + frontend unit + e2e follow-toggle assertion."
+    },
+    "DEC-077": {
+      "id": "DEC-077",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-21T04:52:10+00:00",
+      "updated_at": "2026-08-21T04:52:10+00:00",
+      "touched_round": 118,
+      "title": "Milestone delivered: new-post Web Push notifications scoped by followed category (DEC-076)",
+      "rationale": "Delivery of DEC-076 / TASK-147, verified end-to-end: backend 809 tests green (93.4% cov; 13 new new-post push contract tests: subscribe prefs defaults/422/upsert, fan-out scope category/all/no-category, draft+scheduled+edit no-notify, draft->published transition notify, dead-endpoint retirement, unconfigured fail-closed), frontend unit 991 (58 files), nuxt typecheck clean, ruff lint+format clean on touched files, biome clean on touched files, full e2e 93 passed/3 skipped (category-page one-tap follow toggle on the operator dev Postgres via xblog_e2e). Acceptance met: a reader who opts in receives a new-post Web Push when the author publishes, and can restrict follows to a single category. Committed 842bec7 (change CHG-139). Known limitation recorded, not hidden: future-publish_at posts notify only when actually published by a later write (no background scheduler exists).",
+      "alternatives_rejected": "(a) Email notifications — SMTP infra, gate-rejected repeatedly. (b) Account-level follows table instead of per-subscription prefs — per-browser prefs match existing PushSubscription semantics (each device opts in), no join table. (c) A background scheduler for publish_at fan-out — out of scope infra for this slice; immediate-publish coverage is the honest first slice. (d) Adding tag-scoped push follows — out of acceptance; category scoping is the acceptance unit and tag push would multiply the prefs surface without a demonstrated use signal."
     }
   },
   "edges": [
@@ -10167,6 +10271,42 @@
       "to": "DEC-074",
       "type": "supersedes",
       "created_at": "2026-08-21T03:30:39+00:00"
+    },
+    {
+      "from": "DEC-076",
+      "to": "TASK-147",
+      "type": "governs",
+      "created_at": "2026-08-21T03:37:01+00:00"
+    },
+    {
+      "from": "TASK-149",
+      "to": "ISS-104",
+      "type": "addresses",
+      "created_at": "2026-08-21T04:22:03+00:00"
+    },
+    {
+      "from": "ISS-104",
+      "to": "COMP-002",
+      "type": "located_in",
+      "created_at": "2026-08-21T04:22:03+00:00"
+    },
+    {
+      "from": "EV-108",
+      "to": "HYP-012",
+      "type": "validates",
+      "created_at": "2026-08-21T04:42:21+00:00"
+    },
+    {
+      "from": "CHG-139",
+      "to": "TASK-147",
+      "type": "implements",
+      "created_at": "2026-08-21T04:51:21+00:00"
+    },
+    {
+      "from": "DEC-077",
+      "to": "DEC-076",
+      "type": "supersedes",
+      "created_at": "2026-08-21T04:52:10+00:00"
     }
   ]
 }
