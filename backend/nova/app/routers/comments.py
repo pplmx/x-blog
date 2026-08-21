@@ -48,11 +48,7 @@ def _notify_replied_to(
         # on the reply, not the top of a long post (DEC-072, TASK-145).
         "url": f"/posts/{post.slug}#comment-{parent_comment_id}",
     }
-    subs = (
-        db.query(models.PushSubscription)
-        .filter(models.PushSubscription.reader_id == parent_reader.id)
-        .all()
-    )
+    subs = db.query(models.PushSubscription).filter(models.PushSubscription.reader_id == parent_reader.id).all()
     if subs:
         dispatch_to_subscriptions(subs, payload, db, logger)
 
@@ -142,11 +138,7 @@ def approve_comment(
     # is not notified). Best-effort: never fails the approval. (DEC-064, TASK-137)
     if approval.approved and comment.parent_id is not None:
         parent = db.get(models.Comment, comment.parent_id)
-        if (
-            parent is not None
-            and parent.reader_id is not None
-            and parent.reader_id != comment.reader_id
-        ):
+        if parent is not None and parent.reader_id is not None and parent.reader_id != comment.reader_id:
             post = db.get(models.Post, comment.post_id)
             parent_reader = db.get(auth.ReaderAccount, parent.reader_id)
             if post is not None and parent_reader is not None:

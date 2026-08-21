@@ -71,9 +71,13 @@ test.describe("Reader my-comments journey", () => {
 		// server id via the admin list after approval below.
 
 		// Open /comments from the header nav: pending status is author-visible.
-		await page.locator('header a[href="/comments"]').first().click().catch(async () => {
-			await page.goto("/comments");
-		});
+		await page
+			.locator('header a[href="/comments"]')
+			.first()
+			.click()
+			.catch(async () => {
+				await page.goto("/comments");
+			});
 		await page.waitForURL("**/comments");
 		await expect(page.locator("h1", { hasText: "我的评论" })).toBeVisible({ timeout: 10000 });
 		await expect(page.locator("text=待审核")).toBeVisible({ timeout: 10000 });

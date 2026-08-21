@@ -60,9 +60,7 @@ const icon = computed(() => {
 
 // Tooltip advertises the reply-notification benefit for signed-in readers;
 // anonymous visitors just see the base label.
-const hint = computed(() =>
-	isAuthenticated.value ? ` · ${t("common.push.repliesIn")}` : "",
-);
+const hint = computed(() => (isAuthenticated.value ? ` · ${t("common.push.repliesIn")}` : ""));
 const title = computed(() => `${label.value}${hint.value}`);
 
 async function onClick() {

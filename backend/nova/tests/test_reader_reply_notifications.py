@@ -52,7 +52,7 @@ def _subscribe(client, endpoint="https://fcm.example.com/abc", p256dh=None, auth
         "endpoint": endpoint,
         "keys": {
             "p256dh": p256dh or ("A" * 43 + "="),  # 32 raw bytes, base64url-ish minimal
-            "auth": auth_ or ("B" * 22 + "="),     # 16 raw bytes
+            "auth": auth_ or ("B" * 22 + "="),  # 16 raw bytes
         },
     }
     return client.post("/api/push/subscribe", json=body, headers=headers)
@@ -84,9 +84,11 @@ class TestSubscribeBindsReader:
 
         resp = _subscribe(client, p256dh=_valid_p256dh(), auth_=_valid_auth())
         assert resp.status_code == 200, resp.text
-        sub = db_session.query(models.PushSubscription).filter(
-            models.PushSubscription.endpoint == "https://fcm.example.com/abc"
-        ).first()
+        sub = (
+            db_session.query(models.PushSubscription)
+            .filter(models.PushSubscription.endpoint == "https://fcm.example.com/abc")
+            .first()
+        )
         assert sub is not None
         assert sub.reader_id is None
 
@@ -96,9 +98,11 @@ class TestSubscribeBindsReader:
         token = _token(client)
         resp = _subscribe(client, p256dh=_valid_p256dh(), auth_=_valid_auth(), headers=_auth(token))
         assert resp.status_code == 200, resp.text
-        sub = db_session.query(models.PushSubscription).filter(
-            models.PushSubscription.endpoint == "https://fcm.example.com/abc"
-        ).first()
+        sub = (
+            db_session.query(models.PushSubscription)
+            .filter(models.PushSubscription.endpoint == "https://fcm.example.com/abc")
+            .first()
+        )
         assert sub is not None
         assert sub.reader_id is not None
 
@@ -109,9 +113,11 @@ class TestSubscribeBindsReader:
         t2 = _token(client, email="b@example.com", display_name="B")
         _subscribe(client, p256dh=_valid_p256dh(), auth_=_valid_auth(), headers=_auth(t1))
         _subscribe(client, p256dh=_valid_p256dh(), auth_=_valid_auth(), headers=_auth(t2))
-        sub = db_session.query(models.PushSubscription).filter(
-            models.PushSubscription.endpoint == "https://fcm.example.com/abc"
-        ).first()
+        sub = (
+            db_session.query(models.PushSubscription)
+            .filter(models.PushSubscription.endpoint == "https://fcm.example.com/abc")
+            .first()
+        )
         assert sub.reader_id is not None
         # endpoint re-subscribed by B -> reader_id now B's
         from app.auth import ReaderAccount
@@ -146,8 +152,12 @@ class TestReplyNotification:
         self._COUNTER += 1
         return client.post(
             f"/api/comments/post/{post_id}",
-            json={"nickname": f"B{self._COUNTER}", "email": f"reply-b{self._COUNTER}@example.com",
-                  "content": content, "parent_id": parent_id},
+            json={
+                "nickname": f"B{self._COUNTER}",
+                "email": f"reply-b{self._COUNTER}@example.com",
+                "content": content,
+                "parent_id": parent_id,
+            },
             headers=_auth(token),
         )
 
@@ -262,7 +272,9 @@ class TestReplyNotification:
         # The dead subscription was retired.
         from app import models
 
-        remaining = db_session.query(models.PushSubscription).filter(
-            models.PushSubscription.endpoint == "https://fcm.example.com/abc"
-        ).all()
+        remaining = (
+            db_session.query(models.PushSubscription)
+            .filter(models.PushSubscription.endpoint == "https://fcm.example.com/abc")
+            .all()
+        )
         assert remaining == []

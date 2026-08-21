@@ -14,7 +14,6 @@
 
 import { flushPromises } from "@vue/test-utils";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { ref } from "vue";
 import { mountWithSuspense } from "./helpers.ts";
 
 const {
@@ -114,9 +113,9 @@ describe("Admin Comments Page", () => {
 	describe("Empty state", () => {
 		it("renders empty state when no comments exist", async () => {
 			mockFetchAdminComments.mockResolvedValue({
-					items: [],
-					pagination: { total: 0, page: 1, limit: 20, total_pages: 0 },
-				});
+				items: [],
+				pagination: { total: 0, page: 1, limit: 20, total_pages: 0 },
+			});
 
 			const CommentsPage = await loadPage();
 			const wrapper = await mountWithSuspense(CommentsPage);
@@ -443,9 +442,7 @@ describe("Admin Comments Page", () => {
 				],
 				pagination: { total: 40, page: 2, limit: 20, total_pages: 2 },
 			};
-			mockFetchAdminComments
-				.mockResolvedValueOnce(page1)
-				.mockResolvedValue(page2);
+			mockFetchAdminComments.mockResolvedValueOnce(page1).mockResolvedValue(page2);
 
 			const CommentsPage = await loadPage();
 			const wrapper = await mountWithSuspense(CommentsPage);

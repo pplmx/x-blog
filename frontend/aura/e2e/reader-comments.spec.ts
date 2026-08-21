@@ -64,10 +64,7 @@ test.describe("Reader-attributed comments", () => {
 		await expect(page.locator("text=评论提交成功，等待审核中！")).toBeVisible({ timeout: 5000 });
 	});
 
-	test("reply deep-link lands the reader on the comment (DEC-072)", async ({
-		page,
-		request,
-	}) => {
+	test("reply deep-link lands the reader on the comment (DEC-072)", async ({ page, request }) => {
 		// Plant an approved comment so it appears on the public list.
 		const posts = await request.get("/api/posts?limit=1");
 		const postLink = ((await posts.json()) as { items: Array<{ id: number; slug: string }> })

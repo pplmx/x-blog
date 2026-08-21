@@ -142,6 +142,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from "vue";
 import { type Comment, fetchComments } from "~~/composables/useApi";
+// biome-ignore lint/correctness/noUnusedImports: CommentForm is rendered in the SFC <template> (lines 59/105).
 import CommentForm from "./CommentForm.vue";
 
 interface Props {

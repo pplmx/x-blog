@@ -73,8 +73,7 @@ const statusIcon = (status: MyComment["status"]): string =>
 			: "lucide:clock";
 
 const statusClasses: Record<MyComment["status"], string> = {
-	approved:
-		"bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300",
+	approved: "bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300",
 	pending: "bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300",
 	rejected: "bg-red-50 dark:bg-red-950/40 text-red-600 dark:text-red-400",
 };

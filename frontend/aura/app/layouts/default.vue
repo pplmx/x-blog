@@ -17,7 +17,9 @@ const navLinks = [
 	{ to: "/comments", labelKey: "reader.nav.comments", icon: "lucide:message-square" },
 	{ to: "/account", labelKey: "reader.nav.account", icon: "lucide:settings", authOnly: true },
 ];
-const navLinksVisible = computed(() => navLinks.filter((l) => !l.authOnly || isAuthenticated.value));
+const navLinksVisible = computed(() =>
+	navLinks.filter((l) => !l.authOnly || isAuthenticated.value),
+);
 
 const isDark = ref(false);
 const mobileMenuOpen = ref(false);

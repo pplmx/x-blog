@@ -122,7 +122,7 @@ async function syncBackend(
 	const headers: Record<string, string> = { "Content-Type": "application/json" };
 	if (typeof localStorage?.getItem === "function") {
 		const token = localStorage.getItem("reader_token");
-		if (token) headers["Authorization"] = `Bearer ${token}`;
+		if (token) headers.Authorization = `Bearer ${token}`;
 	}
 	const res = await fetch(`${apiBase()}/api/push/${path}`, {
 		method: "POST",

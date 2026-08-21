@@ -109,15 +109,11 @@ class TestReaderPasswordChange:
         fresh = resp.json()["access_token"]
 
         # New password works on login.
-        login = client.post(
-            "/api/reader/login", json={"email": "ss@example.com", "password": "newpass456"}
-        )
+        login = client.post("/api/reader/login", json={"email": "ss@example.com", "password": "newpass456"})
         assert login.status_code == 200
 
         # Old password is rejected.
-        old = client.post(
-            "/api/reader/login", json={"email": "ss@example.com", "password": "readerpass123"}
-        )
+        old = client.post("/api/reader/login", json={"email": "ss@example.com", "password": "readerpass123"})
         assert old.status_code == 401
 
         # The pre-change token is revoked (token_version bump), the fresh one works.
@@ -193,9 +189,7 @@ class TestPushSubscriptionManagement:
         )
         assert sub is not None
 
-        resp = client.delete(
-            f"/api/reader/me/push-subscriptions/{sub.id}", headers=_auth(token)
-        )
+        resp = client.delete(f"/api/reader/me/push-subscriptions/{sub.id}", headers=_auth(token))
         assert resp.status_code == 204, resp.text
         assert client.get("/api/reader/me/push-subscriptions", headers=_auth(token)).json()["total"] == 0
 

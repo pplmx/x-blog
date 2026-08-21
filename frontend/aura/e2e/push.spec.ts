@@ -187,7 +187,7 @@ test.describe("Web Push reader opt-in", () => {
 		await page.locator('button[aria-label="订阅新文章通知"]').click();
 		await expect(subscribedBtn(page)).toBeVisible({ timeout: 10000 });
 
-		const authz = (await subscribeReq).headers()["authorization"] || "";
+		const authz = (await subscribeReq).headers().authorization || "";
 		expect(authz).toBe(`Bearer ${token}`);
 	});
 

@@ -193,7 +193,8 @@ describe("CommentList", () => {
 		it("scrolls to the #comment-<id> anchor on mount when the hash matches", async () => {
 			const original = Element.prototype.scrollIntoView;
 			const scrollIntoView = vi.fn();
-			Element.prototype.scrollIntoView = scrollIntoView as unknown as typeof Element.prototype.scrollIntoView;
+			Element.prototype.scrollIntoView =
+				scrollIntoView as unknown as typeof Element.prototype.scrollIntoView;
 			window.history.replaceState(null, "", "/posts/x#comment-2");
 			expect(window.location.hash).toBe("#comment-2");
 			try {
@@ -209,7 +210,8 @@ describe("CommentList", () => {
 		it("does not scroll when the hash is not a comment deep-link", async () => {
 			const original = Element.prototype.scrollIntoView;
 			const scrollIntoView = vi.fn();
-			Element.prototype.scrollIntoView = scrollIntoView as unknown as typeof Element.prototype.scrollIntoView;
+			Element.prototype.scrollIntoView =
+				scrollIntoView as unknown as typeof Element.prototype.scrollIntoView;
 			window.history.replaceState(null, "", "/posts/x#some-other-anchor");
 			try {
 				const { wrapper } = await mountCommentList({ attachToBody: true });

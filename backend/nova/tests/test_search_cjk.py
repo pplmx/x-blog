@@ -71,9 +71,7 @@ class TestChineseSearchSqlite:
 
     def test_chinese_term_in_excerpt_matches(self, db_session):
         # The ILIKE path covers excerpt like the tsvector path does.
-        post = _create_post(
-            db_session, "标题", "zh-excerpt", content="正文内容", excerpt="摘要提到评论系统"
-        )
+        post = _create_post(db_session, "标题", "zh-excerpt", content="正文内容", excerpt="摘要提到评论系统")
         found, total = search_posts(db_session, "评论系统")
         assert total == 1
         assert found[0].id == post.id
@@ -106,9 +104,7 @@ class TestSearchSnippet:
     path windows around the first matched term in the full content."""
 
     def _post(self, db_session, content, slug, excerpt=None):
-        return _create_post(
-            db_session, f"标题{slug}", slug, content=content, excerpt=excerpt or "摘要"
-        )
+        return _create_post(db_session, f"标题{slug}", slug, content=content, excerpt=excerpt or "摘要")
 
     def test_mid_content_cjk_match_is_highlighted(self, db_session):
         # The term sits at ~400 chars in a 600+ char body.
@@ -119,9 +115,7 @@ class TestSearchSnippet:
         assert len(snippet) <= 500
 
     def test_snippet_prefers_excerpt_that_matches(self, db_session):
-        post = self._post(
-            db_session, "正文内容无关键词", "snippet-excerpt", excerpt="摘要：评论系统很强大"
-        )
+        post = self._post(db_session, "正文内容无关键词", "snippet-excerpt", excerpt="摘要：评论系统很强大")
         snippet = _build_snippet(post, "评论系统", False, db_session)
         assert snippet is not None
         assert "<mark>评论系统</mark>" in snippet
