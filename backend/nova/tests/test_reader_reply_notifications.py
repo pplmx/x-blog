@@ -177,6 +177,20 @@ class TestReplyNotification:
             assert args["payload"]["url"].startswith("/posts/")
             assert args["payload"]["title"]
 
+    def test_reply_push_url_deep_links_to_parent_comment(self, client, db_session, auth_headers):
+        """The notification's click URL must land ON the replied-to comment, not
+        the top of a possibly long post (DEC-072, TASK-145)."""
+        post, parent_id, token_a = self._parent(client, db_session)
+        _subscribe(client, p256dh=_valid_p256dh(), auth_=_valid_auth(), headers=_auth(token_a))
+        token_b = _token(client, email=f"reply-bzz{self._COUNTER}@example.com", display_name="B")
+        created = self._reply(client, post.id, parent_id, token_b)
+        assert created.status_code == 201, created.text
+        with patch("app.webpush.send_push") as mock_send:
+            self._approve(client, created.json()["id"], auth_headers=auth_headers)
+            assert mock_send.called
+            url = mock_send.call_args.kwargs["payload"]["url"]
+            assert url == f"/posts/{post.slug}#comment-{parent_id}"
+
     def test_rejecting_reply_sends_no_push(self, client, db_session, auth_headers):
         post, parent_id, token_a = self._parent(client, db_session)
         _subscribe(client, p256dh=_valid_p256dh(), auth_=_valid_auth(), headers=_auth(token_a))

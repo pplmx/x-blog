@@ -21,7 +21,12 @@ REPLY_NOTIF_TITLE = os.getenv("REPLY_NOTIFICATION_TITLE", "有人回复了你的
 REPLY_NOTIF_BODY = os.getenv("REPLY_NOTIFICATION_BODY", "《{post_title}》有新回复")
 
 
-def _notify_replied_to(parent_reader: auth.ReaderAccount, post: models.Post, db: Session) -> None:
+def _notify_replied_to(
+    parent_reader: auth.ReaderAccount,
+    post: models.Post,
+    parent_comment_id: int,
+    db: Session,
+) -> None:
     """Push 'someone replied to your comment' to the replied-to reader.
 
     Fired when a *reply is approved* (this blog moderates every comment, DEC-064:
@@ -30,7 +35,7 @@ def _notify_replied_to(parent_reader: auth.ReaderAccount, post: models.Post, db:
     author if they are a reader with a push subscription. Best effort: VAPID
     unconfigured or missing subscriptions is a silent no-op — moderation must
     never fail because of notifications. Dead (404/410) subscriptions are retired
-    via the shared dispatch helper. (DEC-064, TASK-137)
+    via the shared dispatch helper. (DEC-064, TASK-137; DEC-072, TASK-145)
     """
     if not vapid_configured():
         return
@@ -39,7 +44,9 @@ def _notify_replied_to(parent_reader: auth.ReaderAccount, post: models.Post, db:
         # replace (not .format) so a { } in the post title can't raise and
         # break the comment create — this path must stay best-effort.
         "body": REPLY_NOTIF_BODY.replace("{post_title}", post.title or ""),
-        "url": f"/posts/{post.slug}",
+        # Deep-link to the replied-to comment so tapping the notification lands
+        # on the reply, not the top of a long post (DEC-072, TASK-145).
+        "url": f"/posts/{post.slug}#comment-{parent_comment_id}",
     }
     subs = (
         db.query(models.PushSubscription)
@@ -143,7 +150,7 @@ def approve_comment(
             post = db.get(models.Post, comment.post_id)
             parent_reader = db.get(auth.ReaderAccount, parent.reader_id)
             if post is not None and parent_reader is not None:
-                _notify_replied_to(parent_reader, post, db)
+                _notify_replied_to(parent_reader, post, parent.id, db)
     return comment
 
 

@@ -73,10 +73,12 @@ async function mountCommentList({
 	comments = mockComments,
 	pending = false,
 	postId = 1,
+	attachToBody = false,
 }: {
 	comments?: typeof mockComments | null;
 	pending?: boolean;
 	postId?: number;
+	attachToBody?: boolean;
 } = {}) {
 	const mockData = ref(comments ? { ...comments } : null);
 	const mockResult = {
@@ -101,6 +103,7 @@ async function mountCommentList({
 	};
 
 	const wrapper = mount(SuspenseWrapper, {
+		attachTo: attachToBody ? document.body : undefined,
 		global: {
 			stubs: {
 				Icon: {
@@ -179,6 +182,42 @@ describe("CommentList", () => {
 		it("renders formatted dates", async () => {
 			const { wrapper } = await mountCommentList();
 			expect(wrapper.text()).toContain("2024");
+		});
+
+		it("renders a #comment-<id> anchor on every comment (DEC-072)", async () => {
+			const { wrapper } = await mountCommentList();
+			expect(wrapper.find('li[id="comment-1"]').exists()).toBe(true);
+			expect(wrapper.find('li[id="comment-2"]').exists()).toBe(true);
+		});
+
+		it("scrolls to the #comment-<id> anchor on mount when the hash matches", async () => {
+			const original = Element.prototype.scrollIntoView;
+			const scrollIntoView = vi.fn();
+			Element.prototype.scrollIntoView = scrollIntoView as unknown as typeof Element.prototype.scrollIntoView;
+			window.history.replaceState(null, "", "/posts/x#comment-2");
+			expect(window.location.hash).toBe("#comment-2");
+			try {
+				const { wrapper } = await mountCommentList({ attachToBody: true });
+				expect(document.getElementById("comment-2")).toBeTruthy();
+				expect(scrollIntoView).toHaveBeenCalledTimes(1);
+			} finally {
+				Element.prototype.scrollIntoView = original;
+				window.history.replaceState(null, "", "/");
+			}
+		});
+
+		it("does not scroll when the hash is not a comment deep-link", async () => {
+			const original = Element.prototype.scrollIntoView;
+			const scrollIntoView = vi.fn();
+			Element.prototype.scrollIntoView = scrollIntoView as unknown as typeof Element.prototype.scrollIntoView;
+			window.history.replaceState(null, "", "/posts/x#some-other-anchor");
+			try {
+				const { wrapper } = await mountCommentList({ attachToBody: true });
+				expect(scrollIntoView).not.toHaveBeenCalled();
+			} finally {
+				Element.prototype.scrollIntoView = original;
+				window.history.replaceState(null, "", "/");
+			}
 		});
 
 		it("renders each comment in a list item", async () => {

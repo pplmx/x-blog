@@ -63,4 +63,55 @@ test.describe("Reader-attributed comments", () => {
 		await page.locator("button[type='submit']").first().click();
 		await expect(page.locator("text=评论提交成功，等待审核中！")).toBeVisible({ timeout: 5000 });
 	});
+
+	test("reply deep-link lands the reader on the comment (DEC-072)", async ({
+		page,
+		request,
+	}) => {
+		// Plant an approved comment so it appears on the public list.
+		const posts = await request.get("/api/posts?limit=1");
+		const postLink = ((await posts.json()) as { items: Array<{ id: number; slug: string }> })
+			.items[0];
+		const created = await request.post(`/api/comments/post/${postLink.id}`, {
+			data: {
+				nickname: "DeepLink",
+				email: "dl@example.com",
+				content: "deep-link target comment",
+			},
+		});
+		expect(created.status()).toBe(201);
+		const commentId = (await created.json()).id as number;
+		const admin = await request.post("/api/admin/login", {
+			form: { username: "admin", password: "admin123" },
+		});
+		const token = ((await admin.json()) as { access_token: string }).access_token;
+		const approved = await request.patch(`/api/comments/${commentId}/approve`, {
+			data: { approved: true },
+			headers: { Authorization: `Bearer ${token}` },
+		});
+		expect(approved.status()).toBe(200);
+
+		// Visit the post URL with the comment anchor (what the reply notification
+		// now opens) — the list must scroll so the anchored comment is in view.
+		await page.goto(`/posts/${postLink.slug}#comment-${commentId}`);
+		const el = page.locator(`#comment-${commentId}`);
+		await expect(el).toBeVisible({ timeout: 10000 });
+		// The page must scroll so the anchored comment lands at (or just at) the
+		// fold — a fresh top-of-page load would leave it far below. A last-
+		// comment-at-page-bottom can sit a few px past the fold at max scroll.
+		await expect
+			.poll(
+				async () => {
+					const [scrollTop, box, vh] = await Promise.all([
+						page.evaluate(() => document.scrollingElement?.scrollTop ?? 0),
+						el.boundingBox(),
+						page.evaluate(() => window.innerHeight),
+					]);
+					if (!box) return false;
+					return scrollTop > 100 && box.y < vh + 60 && box.y + box.height > 0;
+				},
+				{ timeout: 10000 },
+			)
+			.toBe(true);
+	});
 });

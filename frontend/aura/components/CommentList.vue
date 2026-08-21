@@ -25,7 +25,8 @@
       <li
         v-for="comment in topLevelComments"
         :key="comment.id"
-        class="border border-gray-100 dark:border-gray-700 rounded-lg p-3"
+        :id="`comment-${comment.id}`"
+        class="border border-gray-100 dark:border-gray-700 rounded-lg p-3 scroll-mt-28"
       >
         <div class="flex items-start gap-2">
           <div class="flex-1">
@@ -72,7 +73,8 @@
           <li
             v-for="reply in descendantsOf(comment.id)"
             :key="reply.id"
-            class="bg-gray-50 dark:bg-gray-800/50 rounded-lg p-3"
+            :id="`comment-${reply.id}`"
+            class="bg-gray-50 dark:bg-gray-800/50 rounded-lg p-3 scroll-mt-28"
           >
             <div class="flex items-center gap-2 mb-1">
               <span v-if="reply.parent_id !== comment.id" class="text-xs text-gray-400 -mr-1">
@@ -138,7 +140,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from "vue";
+import { computed, onMounted, ref } from "vue";
 import { type Comment, fetchComments } from "~~/composables/useApi";
 import CommentForm from "./CommentForm.vue";
 
@@ -151,6 +153,15 @@ const props = defineProps<Props>();
 const { t, locale } = useLang();
 
 const { data: commentData, pending } = await fetchComments(props.postId, 1, 20);
+
+// Deep-link landing (DEC-072): a reply notification opens /posts/<slug>#comment-<id>;
+// once the list renders, scroll the anchor into view (comments carry scroll-mt
+// so the sticky header doesn't cover the target).
+onMounted(() => {
+	if (typeof window === "undefined" || !window.location.hash.startsWith("#comment-")) return;
+	const el = document.getElementById(window.location.hash.slice(1));
+	if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+});
 
 const comments = computed(() => commentData.value?.items || []);
 const total = computed(() => commentData.value?.total || 0);
