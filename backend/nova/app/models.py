@@ -132,6 +132,12 @@ class Comment(Base):
     # stored here: it lives on reader_accounts; anonymous comments keep their
     # free-text email column.
     reader_id: Mapped[int | None] = mapped_column(Integer, nullable=True, index=True)
+    # Idempotency anchor for full-blog restore (DEC-082): the backup export
+    # stamps each comment with "{post_slug}#{export-ordinal}" and restore
+    # upserts by (post_id, import_key), so re-importing the same snapshot never
+    # duplicates comments. Nullable + non-indexed: only used during restore;
+    # additive per DEC-009.
+    import_key: Mapped[str | None] = mapped_column(String(100), nullable=True)
 
     post: Mapped[Post] = relationship("Post", back_populates="comments")
     parent: Mapped[Comment | None] = relationship("Comment", remote_side=[id], backref="replies")

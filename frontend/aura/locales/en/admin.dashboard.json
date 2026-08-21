@@ -48,6 +48,16 @@
 			"pending": "Pending",
 			"fromDate": "From date",
 			"toDate": "To date"
+		},
+		"backup": {
+			"title": "Backup & restore",
+			"subtitle": "Download a complete snapshot of the whole blog (categories, tags, series, posts and comments), or restore one into an empty instance. Never contains account credentials.",
+			"download": "Download full backup",
+			"restore": "Restore backup (JSON)",
+			"downloading": "Downloading…",
+			"restoring": "Restoring…",
+			"restored": "Restore complete: {summary}",
+			"parseError": "Could not parse the chosen file: not a valid backup JSON"
 		}
 	}
 }

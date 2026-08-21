@@ -33,6 +33,7 @@ A modern full-stack blog application built with FastAPI + Nuxt
 - 🎯 **SEO Optimized** - Open Graph, JSON-LD structured data
 - ⬆️ **Pinned Posts** - Pin important posts to top
 - 📤 **Data Export** - Export posts/comments as CSV
+- 💾 **Backup & Restore** - download the whole blog as one portable JSON snapshot (categories, tags, series, posts, comments) and restore it into an empty instance (DEC-082)
 - 📡 **RSS & Atom Feeds** - Subscribe to the site-wide feed or a single category/tag via scoped feeds with autodiscovery (DEC-074)
 - 🔔 **New-post Web Push** - Follow a category (or all new posts) and get a browser push when the author publishes (DEC-076)
 - 💬 **Comment-thread subscription** - Follow a post's discussion; a push lands when a new comment is approved (DEC-078)

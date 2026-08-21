@@ -48,6 +48,16 @@
 			"pending": "待审核",
 			"fromDate": "起始日期",
 			"toDate": "截止日期"
+		},
+		"backup": {
+			"title": "备份与恢复",
+			"subtitle": "下载整个博客的完整快照（分类、标签、系列、文章与评论），或在空实例上恢复它。不含任何账号凭据。",
+			"download": "下载完整备份",
+			"restore": "恢复备份 (JSON)",
+			"downloading": "下载中…",
+			"restoring": "恢复中…",
+			"restored": "恢复完成：{summary}",
+			"parseError": "无法解析所选文件：不是有效的备份 JSON"
 		}
 	}
 }

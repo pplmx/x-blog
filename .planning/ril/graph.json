@@ -2,7 +2,7 @@
   "ril_version": 1,
   "round": 120,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-08-21T16:26:42+00:00",
+  "updated_at": "2026-08-21T16:33:23+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -7470,10 +7470,38 @@
       "version": 1,
       "created_at": "2026-08-21T16:26:01+00:00",
       "updated_at": "2026-08-21T16:26:01+00:00",
-      "touched_round": 119,
+      "touched_round": 120,
       "title": "Milestone delivered: author comment-moderation push (DEC-080 complete)",
       "rationale": "Delivery of DEC-080 / TASK-152 via CHG-142, verified end-to-end. Backend: AdminPushSubscription table + additive migration c9a1b3d5e7f1 (fresh SQLite and fresh PostgreSQL 18.4 on 10.112.9.49:13310 both apply the whole chain; table cols/unique-endpoint/indexes verified on real PG), admin-scoped /api/admin/push subscribe+unsubscribe+list guarded by get_current_admin, dispatch_moderation_pending fired on comment create (pending) reusing the shared helper (best-effort, dead-endpoint retirement, reader fan-out untouched). Frontend: useAdminPushSubscription + AdminPushToggle in the admin sidebar gated like ThreadSubscribeButton (disabled+hint when no VAPID or permission denied - never a silent no-op), en/zh strings. Verification: backend 847 passed on SQLite / 856 on dev PostgreSQL (93.78% cov; admin_push 100%), migration chain on fresh PG confirmed, ruff + biome + vue-tsc clean, frontend vitest 1006 green, full Playwright suite 102 passed under the CI-equivalent env (VAPID + raised register/auth limits) - the 9 earlier failures were harness-environment artifacts (missing VAPID / 5-per-min register budget), reproducible without this diff and all green under the CI posture.",
       "alternatives_rejected": "Search category/tag filters (smaller value, already postponed at DEC-079); reader notification-center page (needs new history table, management-heavy); email digests (no SMTP infra). Accepted limitation: a comment the author themselves posts cannot be excluded (comments carry no admin-author identity) - single-author blog, minor self-notification."
+    },
+    "DEC-082": {
+      "id": "DEC-082",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-21T16:31:33+00:00",
+      "updated_at": "2026-08-21T16:31:33+00:00",
+      "touched_round": 120,
+      "title": "Milestone: full blog backup & restore (portable JSON snapshot, admin-gated)",
+      "rationale": "Feature-evolution selection (SKILL 11.2 gap analysis + standing operator directive \"start a new milestone\"). The admin surface has CSV export of posts/comments (reporting-oriented, filtered per request) but no way to snapshot the WHOLE blog - categories, tags, series, post-tag links, series order, comments - into one portable file, nor to restore it (migration, disaster recovery, copying to a fresh instance). This milestone adds a superuser-only JSON backup (GET /api/admin/backup) and a restore (POST /api/admin/backup/restore) with natural-key upserts (category by name, tag by name, series by slug, post by slug; comments re-attached via post-slug mapping with parent re-mapping). No auth data (reader accounts/passwords) round-trips; lost reader-links on comments degrade to anonymous (documented). Vertical slice: backend endpoints + crud import/export + round-trip/idempotency/authorization contract tests + admin dashboard card + i18n + E2E, verified on SQLite + dev PostgreSQL.",
+      "alternatives_rejected": "Search category/tag filters + sort: postponed at DEC-079 as smaller value; no new evidence to override. Reader notification-center page: needs a new notification-history table; management-heavy. Email digests: no SMTP infra. Full-text markdown/HTML of exported posts could be included if the operator wants plain-text archival later (out of scope now)."
+    },
+    "TASK-153": {
+      "id": "TASK-153",
+      "type": "task",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-21T16:31:33+00:00",
+      "updated_at": "2026-08-21T16:31:33+00:00",
+      "touched_round": 120,
+      "category": "core-feature",
+      "severity": 0.65,
+      "confidence": 0.9,
+      "effort": 1.4,
+      "unlock_factor": 1.0,
+      "title": "Blog backup & restore: GET/POST /api/admin/backup + admin dashboard card + tests",
+      "description": "Superuser-only JSON snapshot of categories/tags/series/posts/post_tags/comments with natural-key upsert restore (category by name, tag by name, series by slug, post by slug, comment re-attach by post slug + parent remap); no auth data round-trips; contract + round-trip + idempotency + authz tests, frontend backup/restore card + i18n + E2E."
     }
   },
   "edges": [
@@ -10503,6 +10531,19 @@
       "type": "supersedes",
       "created_at": "2026-08-21T16:26:42+00:00",
       "note": "Milestone delivered, superseding the milestone decision"
+    },
+    {
+      "from": "DEC-082",
+      "to": "TASK-153",
+      "type": "governs",
+      "created_at": "2026-08-21T16:33:23+00:00"
+    },
+    {
+      "from": "DEC-082",
+      "to": "DEC-081",
+      "type": "supersedes",
+      "created_at": "2026-08-21T16:33:23+00:00",
+      "note": "New operator milestone after the moderation-push close"
     }
   ]
 }

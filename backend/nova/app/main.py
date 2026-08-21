@@ -20,7 +20,20 @@ from app.middleware import RequestLoggingMiddleware, get_logger, setup_logging
 from app.middleware.cache import add_cache_policy
 from app.middleware.security import add_security_headers
 from app.migrations import run_migrations
-from app.routers import admin, admin_push, categories, comments, posts, push, reader, search, series, tags, upload
+from app.routers import (
+    admin,
+    admin_push,
+    backup,
+    categories,
+    comments,
+    posts,
+    push,
+    reader,
+    search,
+    series,
+    tags,
+    upload,
+)
 from app.routers.export import router as export_router
 from app.routers.health import router as health_router
 from app.routers.rss import rss_router, seo_router
@@ -243,6 +256,7 @@ app.include_router(admin.router)
 app.include_router(upload.router)
 app.include_router(push.router)
 app.include_router(admin_push.router)
+app.include_router(backup.router)
 app.include_router(reader.router)
 app.include_router(export_router)
 app.include_router(rss_router, prefix="/rss")

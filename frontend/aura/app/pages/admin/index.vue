@@ -149,6 +149,81 @@ async function downloadExport(kind: "posts" | "comments"): Promise<void> {
 	}
 }
 
+// Full-blog backup & restore (DEC-082, TASK-153): superuser-only like the CSV
+// export. Download fetches the whole blog as one JSON snapshot; restore
+// uploads such a snapshot and upserts it into this instance (natural keys +
+// import_key idempotency).
+const backupState = ref<"idle" | "downloading" | "restoring">("idle");
+const backupError = ref("");
+const restoreSummary = ref("");
+
+function backupCounts(counts: Record<string, number>): string {
+	// Compact "分类 +1 · 标签 +2 · 文章 +2 · 评论 +2 (跳过 0)" summary.
+	return [
+		`${t("admin.dashboard.stats.categories")} +${counts.categories ?? 0}`,
+		`${t("admin.dashboard.stats.tags")} +${counts.tags ?? 0}`,
+		`${t("admin.dashboard.stats.posts")} +${counts.posts_created ?? 0}`,
+		`评论 +${counts.comments_created ?? 0} (跳过 ${counts.comments_skipped ?? 0})`,
+	].join(" · ");
+}
+
+async function downloadFullBackup(): Promise<void> {
+	backupState.value = "downloading";
+	backupError.value = "";
+	restoreSummary.value = "";
+	try {
+		// Fetched as JSON and re-stringified, so the downloaded file is a
+		// canonical snapshot regardless of the wire formatting.
+		const data = await $fetch<Record<string, unknown>>(`${apiBase}/api/admin/backup`, {
+			headers: authHeaders(),
+		});
+		const blob = new Blob([JSON.stringify(data, null, 2)], {
+			type: "application/json;charset=utf-8",
+		});
+		const urlObj = URL.createObjectURL(blob);
+		const a = document.createElement("a");
+		a.href = urlObj;
+		a.download = `x-blog-backup-${new Date().toISOString().slice(0, 10)}.json`;
+		document.body.appendChild(a);
+		a.click();
+		a.remove();
+		URL.revokeObjectURL(urlObj);
+	} catch (e) {
+		backupError.value = e instanceof Error ? e.message : String(e);
+	} finally {
+		backupState.value = "idle";
+	}
+}
+
+async function onRestoreFileChange(event: Event): Promise<void> {
+	const input = event.target as HTMLInputElement;
+	const file = input.files?.[0];
+	if (!file) return;
+	backupState.value = "restoring";
+	backupError.value = "";
+	restoreSummary.value = "";
+	try {
+		let snap: unknown;
+		try {
+			snap = JSON.parse(await file.text());
+		} catch {
+			throw new Error(t("admin.dashboard.backup.parseError"));
+		}
+		const counts = await $fetch<Record<string, number>>(`${apiBase}/api/admin/backup/restore`, {
+			method: "POST",
+			headers: { "Content-Type": "application/json", ...authHeaders() },
+			body: JSON.stringify(snap),
+		});
+		restoreSummary.value = backupCounts(counts);
+		void loadDashboard(); // refresh the stats cards with restored content
+	} catch (e) {
+		backupError.value = e instanceof Error ? e.message : String(e);
+	} finally {
+		backupState.value = "idle";
+		input.value = "";
+	}
+}
+
 const publishedCount = computed(
 	() => blogStats.value?.published_posts ?? posts.value.filter((p) => p.published).length,
 );
@@ -537,6 +612,57 @@ const stats = computed(() => [
           <Icon icon="lucide:message-square" class="w-4 h-4" />
           {{ exporting === 'comments' ? t("admin.dashboard.export.exporting") : t("admin.dashboard.export.comments") }}
         </button>
+      </div>
+    </div>
+
+    <!-- Full-blog backup & restore (DEC-082) -->
+    <div
+      v-if="canExport"
+      class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 p-5 mb-8"
+    >
+      <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4 flex items-center gap-2">
+        <Icon icon="lucide:archive" class="w-5 h-5 text-amber-500" />
+        {{ t("admin.dashboard.backup.title") }}
+      </h3>
+      <p class="text-sm text-gray-500 dark:text-gray-400 mb-4">
+        {{ t("admin.dashboard.backup.subtitle") }}
+      </p>
+      <div
+        v-if="backupError"
+        class="mb-4 px-4 py-3 rounded-xl border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20 text-sm text-red-600 dark:text-red-400"
+      >
+        {{ backupError }}
+      </div>
+      <div
+        v-if="restoreSummary"
+        class="mb-4 px-4 py-3 rounded-xl border border-green-200 dark:border-green-800 bg-green-50 dark:bg-green-900/20 text-sm text-green-700 dark:text-green-400"
+      >
+        {{ t("admin.dashboard.backup.restored", { summary: restoreSummary }) }}
+      </div>
+      <div class="flex flex-wrap gap-3">
+        <button
+          type="button"
+          :disabled="backupState !== 'idle'"
+          class="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium text-white bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 disabled:opacity-60 transition-all"
+          @click="downloadFullBackup"
+        >
+          <Icon icon="lucide:download" class="w-4 h-4" />
+          {{ backupState === 'downloading' ? t("admin.dashboard.backup.downloading") : t("admin.dashboard.backup.download") }}
+        </button>
+        <label
+          class="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium text-white bg-gradient-to-r from-slate-500 to-slate-700 hover:from-slate-600 hover:to-slate-800 disabled:opacity-60 transition-all cursor-pointer"
+          :class="{ 'opacity-60 pointer-events-none': backupState !== 'idle' }"
+        >
+          <Icon icon="lucide:upload" class="w-4 h-4" />
+          {{ backupState === 'restoring' ? t("admin.dashboard.backup.restoring") : t("admin.dashboard.backup.restore") }}
+          <input
+            type="file"
+            accept="application/json,.json"
+            class="hidden"
+            :disabled="backupState !== 'idle'"
+            @change="onRestoreFileChange"
+          >
+        </label>
       </div>
     </div>
 
