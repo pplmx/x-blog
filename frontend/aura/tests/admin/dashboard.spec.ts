@@ -164,6 +164,18 @@ const mockStatsResult = {
 let statsOverride: Record<string, number> = { ...mockStatsResult };
 let postsOverride: unknown = null;
 let commentsOverride: unknown = null;
+let trendOverride: unknown = null;
+
+// A zero-filled 30-day reading-trend series (DEC-086).
+const mockTrendResult = {
+	days: 30,
+	total: 0,
+	series: Array.from({ length: 30 }, (_, i) => ({
+		day: `2026-08-${String(i + 1).padStart(2, "0")}`,
+		views: 0,
+	})),
+	top_posts: [],
+};
 
 // The dashboard now loads data client-side via $fetch in onMounted (ISS-032
 // fix), so dispatch the endpoint fixtures by URL path. The old useFetch
@@ -178,6 +190,9 @@ vi.stubGlobal(
 		if (u.includes("/api/admin/tags")) return mockTags;
 		if (u.includes("/api/admin/comments")) return commentsOverride ?? mockCommentList;
 		if (u.includes("/api/stats")) return { ...statsOverride };
+		// Reading-trend analytics (DEC-086): zero-filled 30-day series so the
+		// trend card renders (and stays deterministic) without real data.
+		if (u.includes("/api/admin/stats/views")) return trendOverride ?? mockTrendResult;
 		if (u.includes("/api/export/posts.csv")) return "ID,Title\n1,Hello\n";
 		if (u.includes("/api/export/comments.csv")) return "ID,Content\n1,Great post\n";
 		throw new Error(`Unexpected $fetch in dashboard test: ${u}`);
@@ -410,6 +425,37 @@ describe("Admin Dashboard Page", () => {
 			const wrapper = await mountWithSuspense(DashboardPage);
 			expect(wrapper.text()).toContain("200");
 			expect(wrapper.text()).toContain("100");
+		});
+	});
+
+	describe("Reading trend (DEC-086)", () => {
+		beforeEach(() => {
+			trendOverride = {
+				days: 30,
+				total: 42,
+				series: [
+					{ day: "2026-08-21", views: 42 },
+					{ day: "2026-08-22", views: 0 },
+				],
+				top_posts: [{ id: 1, title: "Trend Post", slug: "trend-post", views: 42 }],
+			};
+		});
+		afterEach(() => {
+			trendOverride = null;
+		});
+
+		it("renders the trend card with the period total", async () => {
+			const DashboardPage = await loadPage();
+			const wrapper = await mountWithSuspense(DashboardPage);
+			expect(wrapper.text()).toContain("阅读趋势");
+			expect(wrapper.text()).toContain("42");
+		});
+
+		it("lists hot posts by in-period views", async () => {
+			const DashboardPage = await loadPage();
+			const wrapper = await mountWithSuspense(DashboardPage);
+			expect(wrapper.text()).toContain("本期热门文章");
+			expect(wrapper.text()).toContain("Trend Post");
 		});
 	});
 

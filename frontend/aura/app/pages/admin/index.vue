@@ -37,6 +37,27 @@ const allComments = ref<AdminComment[]>([]);
 const blogStats = ref<BlogStats | null>(null);
 const loading = ref(true);
 
+// Reading-trend analytics (DEC-086): per-day view totals + top posts by
+// in-period views. Null when the endpoint failed — the card then hides.
+interface ViewsTrend {
+	days: number;
+	total: number;
+	series: Array<{ day: string; views: number }>;
+	top_posts: Array<{ id: number; title: string; slug: string; views: number }>;
+}
+const viewsTrend = ref<ViewsTrend | null>(null);
+const trendMax = computed(() =>
+	Math.max(1, ...(viewsTrend.value?.series.map((s) => s.views) ?? [])),
+);
+function trendPct(views: number): number {
+	return Math.round((views / trendMax.value) * 100);
+}
+function trendDayShort(iso: string): string {
+	// "2026-08-22" → "8/22" (locale-agnostic compact axis label).
+	const [, m, d] = iso.split("-");
+	return `${Number(m)}/${Number(d)}`;
+}
+
 function authHeaders(): Record<string, string> {
 	const token = typeof localStorage !== "undefined" ? localStorage.getItem("admin_token") : null;
 	return token ? { Authorization: `Bearer ${token}` } : {};
@@ -62,7 +83,7 @@ async function loadDashboard(): Promise<void> {
 			if (postsPage.length >= res.pagination.total) break;
 			page += 1;
 		}
-		const [catData, tagData, commentsData, statsData] = await Promise.all([
+		const [catData, tagData, commentsData, statsData, trendData] = await Promise.all([
 			$fetch<Category[]>(`${apiBase}/api/admin/categories`, { headers: authHeaders() }),
 			$fetch<Tag[]>(`${apiBase}/api/admin/tags`, { headers: authHeaders() }),
 			$fetch<AdminCommentListResponse>(`${apiBase}/api/admin/comments`, {
@@ -70,12 +91,18 @@ async function loadDashboard(): Promise<void> {
 				headers: authHeaders(),
 			}),
 			$fetch<BlogStats>(`${apiBase}/api/stats`),
+			// Reading-trend analytics (DEC-086): best-effort — a failure just
+			// hides the trend card rather than blocking the whole dashboard.
+			$fetch<ViewsTrend>(`${apiBase}/api/admin/stats/views?days=30`, {
+				headers: authHeaders(),
+			}).catch(() => null),
 		]);
 		posts.value = postsPage;
 		categories.value = catData;
 		tags.value = tagData;
 		allComments.value = commentsData.items;
 		blogStats.value = statsData;
+		viewsTrend.value = trendData;
 	} finally {
 		loading.value = false;
 	}
@@ -434,6 +461,60 @@ const stats = computed(() => [
             </span>
           </div>
         </div>
+      </div>
+    </div>
+
+    <!-- Reading trend (DEC-086): last-30-days view series + top posts -->
+    <div
+      v-if="viewsTrend"
+      class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 p-5 mb-8"
+    >
+      <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4 flex items-center gap-2">
+        <Icon icon="lucide:trending-up" class="w-5 h-5 text-blue-500" />
+        {{ t("admin.dashboard.trend.title") }}
+        <span class="ml-auto text-sm font-normal text-gray-500">
+          {{ t("admin.dashboard.trend.total", { n: viewsTrend.total }) }}
+        </span>
+      </h3>
+      <div class="flex items-end gap-1 h-24">
+        <div
+          v-for="point in viewsTrend.series"
+          :key="point.day"
+          class="flex-1 flex items-end justify-center h-full group"
+          :title="`${point.day} · ${point.views}`"
+        >
+          <div
+            class="w-full rounded-t bg-gradient-to-t from-blue-500 to-indigo-400 group-hover:from-blue-600 group-hover:to-indigo-500 transition-colors"
+            :style="{ height: trendPct(point.views) + '%' }"
+          />
+        </div>
+      </div>
+      <div class="flex justify-between text-[10px] text-gray-400 mt-1">
+        <span>{{ trendDayShort(viewsTrend.series[0]?.day ?? "") }}</span>
+        <span>{{ trendDayShort(viewsTrend.series[viewsTrend.series.length - 1]?.day ?? "") }}</span>
+      </div>
+      <div
+        v-if="viewsTrend.top_posts.length"
+        class="mt-4 pt-4 border-t border-gray-100 dark:border-gray-800"
+      >
+        <p class="text-sm font-medium text-gray-900 dark:text-gray-100 mb-2">
+          {{ t("admin.dashboard.trend.topTitle") }}
+        </p>
+        <ul class="space-y-1">
+          <li
+            v-for="tp in viewsTrend.top_posts"
+            :key="tp.id"
+            class="flex items-center justify-between gap-3 text-sm"
+          >
+            <NuxtLink :to="`/admin/posts/${tp.id}`" class="truncate text-gray-700 dark:text-gray-300 hover:text-blue-600">
+              {{ tp.title }}
+            </NuxtLink>
+            <span class="text-gray-400 text-xs flex items-center gap-1 shrink-0">
+              <Icon icon="lucide:eye" class="w-3.5 h-3.5" />
+              {{ tp.views }}
+            </span>
+          </li>
+        </ul>
       </div>
     </div>
 

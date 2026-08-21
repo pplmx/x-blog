@@ -58,6 +58,11 @@
 			"restoring": "Restoring…",
 			"restored": "Restore complete: {summary}",
 			"parseError": "Could not parse the chosen file: not a valid backup JSON"
+		},
+		"trend": {
+			"title": "Reading trend (last 30 days)",
+			"total": "{n} views in the last 30 days",
+			"topTitle": "Hot posts this period"
 		}
 	}
 }

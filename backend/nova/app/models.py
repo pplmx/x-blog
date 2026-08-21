@@ -10,12 +10,13 @@ provides a value (e.g. ``published``, ``views``, timestamps). Tightening those
 constraints is a separate, deliberate schema migration, not this refactor.
 """
 
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 from typing import TYPE_CHECKING
 
 from sqlalchemy import (
     Boolean,
     Column,
+    Date,
     DateTime,
     ForeignKey,
     Integer,
@@ -273,6 +274,29 @@ class AdminPushSubscription(Base):
     p256dh: Mapped[str] = mapped_column(String(200), nullable=False)
     auth: Mapped[str] = mapped_column(String(200), nullable=False)
     created_at: Mapped[datetime | None] = mapped_column(DateTime, default=lambda: datetime.now(UTC))
+
+
+class PostViewsDaily(Base):
+    """Per-day view counts for reading-trend analytics (DEC-086).
+
+    One row per (post, calendar day) — unique pair, monotonic ``views`` counter
+    upserted from the same write-on-read path as ``Post.views``. This is the
+    trend signal an operator's dashboard needs (which posts are gaining
+    traction day by day); the aggregate ``Post.views`` counter stays as-is.
+
+    Additive table, no DB-level FK on ``post_id`` (SQLite alembic can't add
+    FK-carrying columns to existing tables, DEC-009) — integrity at the API
+    layer, mirroring ReaderBookmark/CommentSubscription.
+    """
+
+    __tablename__ = "post_views_daily"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    post_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
+    day: Mapped[date] = mapped_column(Date, nullable=False)
+    views: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+
+    __table_args__ = (UniqueConstraint("post_id", "day", name="uq_post_views_daily_post_day"),)
 
 
 class Series(Base):

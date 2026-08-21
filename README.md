@@ -24,7 +24,7 @@ A modern full-stack blog application built with FastAPI + Nuxt
 - ✅ **Type Safe** - Full TypeScript support + Pydantic validation
 - 🔍 **Full-text Search** - Post search functionality
 - 🌙 **Dark Mode** - System preference aware dark mode
-- 📊 **Reading Analytics** - View counts, like counts, reading progress
+- 📊 **Reading Analytics** - View counts, like counts, reading progress, and a per-day readership trend with hot posts for the operator (DEC-086)
 - 💬 **Comments** - Nested comment support with replies
 - 🏷️ **Tags & Categories** - Organize posts with tags and categories
 - 📚 **Series** - Group posts into ordered multi-part sequences with in-series prev/next navigation

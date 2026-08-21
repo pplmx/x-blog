@@ -1,4 +1,4 @@
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 
 from sqlalchemy import and_, extract, func, or_, select, update
 from sqlalchemy.exc import IntegrityError
@@ -780,9 +780,21 @@ def search_posts(
 
 
 def increment_views(db: Session, post_id: int) -> models.Post | None:
-    """Increment the view count for a post using atomic SQL update."""
+    """Increment the view count for a post using atomic SQL update.
+
+    Also upserts today's row in ``post_views_daily`` (DEC-086) so the admin
+    dashboard's reading-trend series advances on the same write-on-read path.
+    One extra small statement per pageview rides the existing UPDATE+commit;
+    coalescing these writes is tracked separately (TASK-026).
+    """
     stmt = update(models.Post).where(models.Post.id == post_id).values(views=models.Post.views + 1)
     db.execute(stmt)
+    today = utc_now_naive().date()
+    daily = db.query(models.PostViewsDaily).filter_by(post_id=post_id, day=today).first()
+    if daily is not None:
+        daily.views = (daily.views or 0) + 1
+    else:
+        db.add(models.PostViewsDaily(post_id=post_id, day=today, views=1))
     try:
         db.commit()
     except Exception:
@@ -1464,3 +1476,51 @@ def restore_backup(db: Session, payload: dict) -> dict:
                 new_by_ordinal[ordinal].parent_id = new_by_ordinal[parent_ordinal].id
 
     return counts
+
+
+def get_daily_views_stats(db: Session, days: int = 30) -> dict:
+    """Reading-trend series + in-period top posts for the admin dashboard (DEC-086).
+
+    ``series`` is every calendar day in [today-days+1, today] with its total
+    views (zero-filled so the chart is a continuous axis). ``top_posts`` is the
+    top 5 posts by in-period views (title/slug for deep links). The table only
+    tracks forward from when the feature shipped — no backfill of the historic
+    counter (honest, documented).
+    """
+    today = utc_now_naive().date()
+    first = today - timedelta(days=days - 1)
+
+    rows = (
+        db.query(models.PostViewsDaily.day, func.sum(models.PostViewsDaily.views))
+        .filter(models.PostViewsDaily.day >= first)
+        .group_by(models.PostViewsDaily.day)
+        .all()
+    )
+    by_day = {day: int(total) for day, total in rows}
+    day = first
+    series = []
+    while day <= today:
+        series.append({"day": day.isoformat(), "views": by_day.get(day, 0)})
+        day += timedelta(days=1)
+
+    top = (
+        db.query(
+            models.Post.id,
+            models.Post.title,
+            models.Post.slug,
+            func.coalesce(func.sum(models.PostViewsDaily.views), 0).label("views"),
+        )
+        .join(models.PostViewsDaily, models.PostViewsDaily.post_id == models.Post.id)
+        .filter(models.PostViewsDaily.day >= first)
+        .group_by(models.Post.id, models.Post.title, models.Post.slug)
+        .order_by(func.sum(models.PostViewsDaily.views).desc())
+        .limit(5)
+        .all()
+    )
+
+    return {
+        "days": days,
+        "total": sum(by_day.values()),
+        "series": series,
+        "top_posts": [{"id": row[0], "title": row[1], "slug": row[2], "views": int(row[3])} for row in top],
+    }

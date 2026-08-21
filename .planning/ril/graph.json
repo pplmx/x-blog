@@ -2,7 +2,7 @@
   "ril_version": 1,
   "round": 122,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-08-21T19:01:53+00:00",
+  "updated_at": "2026-08-21T19:10:41+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -7572,10 +7572,38 @@
       "version": 1,
       "created_at": "2026-08-21T19:00:17+00:00",
       "updated_at": "2026-08-21T19:00:17+00:00",
-      "touched_round": 121,
+      "touched_round": 122,
       "title": "Milestone delivered: search filters + sort (DEC-084 complete)",
       "rationale": "Delivery of DEC-084 / TASK-154 via CHG-144, verified end-to-end. Backend: crud.search_posts gains category/tag by name + date_from/date_to (naive-UTC coercion at the boundary) + sort relevance|newest|oldest|views applied identically on the tsvector (ASCII) and CJK substring paths; relevance degrades to newest on CJK (no metric); invalid sort 422. /api/search exposes the params. Frontend: search-page filter bar bound to the URL query (shareable), filters preserved across pagination. Verification: backend 868 on SQLite / 877 on dev PostgreSQL 18.4 (both dialect paths), ruff clean; vitest 1006 green (search spec 24, $fetch category/tag stub added), biome + vue-tsc clean; Playwright search-filters 3 green, full e2e 108 passed under the CI-equivalent env.",
       "alternatives_rejected": "Reader notification-center (needs history table); email digests (no SMTP); analytics time-series (deferred, interacts with TASK-026 write-on-read debt). Accepted: category filter is by exact name (no slug/alias); \"relevance\" on CJK is newest (no tsvector metric for CJK)."
+    },
+    "DEC-086": {
+      "id": "DEC-086",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-21T19:08:16+00:00",
+      "updated_at": "2026-08-21T19:08:16+00:00",
+      "touched_round": 122,
+      "title": "Milestone: daily readership analytics (per-day view trend + top posts)",
+      "rationale": "Feature-evolution selection (SKILL 11.2 gap analysis, \"analysis dashboard\" face). The blog already counts aggregate views/likes and top-posts (counters only); there is no trend signal. A content owner wants \"which posts are gaining traction, day by day\" — the natural complement to the recently delivered push/backup/search arc and a dashboards-per-day chart. Milestone: a post_views_daily table (additive, unique per post+day) written from the existing increment_views path, an admin-scoped /api/admin/stats/views endpoint (last-N-days total series + top posts by in-period views), and a small bar chart on the admin dashboard (no chart lib; hand-rolled bars like the existing top-posts card). Tracks forward only (no backfill of historic counter data — honest, documented).",
+      "alternatives_rejected": "Reader notification-center page: needs a new notification-history table, management-heavy. Email digests: no SMTP. Search filters: shipped (DEC-084). Full-text backup of posts as markdown: export/round-trip is JSON-only (DEC-082), could add later if wanted. Debounce view writes: tracked as TASK-026 (stale) — the daily upsert rides the existing write-on-read path; coalescing it is a separate optimization, not this slice."
+    },
+    "TASK-155": {
+      "id": "TASK-155",
+      "type": "task",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-21T19:08:16+00:00",
+      "updated_at": "2026-08-21T19:08:16+00:00",
+      "touched_round": 122,
+      "category": "core-feature",
+      "severity": 0.55,
+      "confidence": 0.9,
+      "effort": 1.2,
+      "unlock_factor": 1.0,
+      "title": "Daily view analytics: post_views_daily + /api/admin/stats/views + dashboard chart + tests",
+      "description": "Additive post_views_daily (post_id+day unique) written from crud.increment_views; superuser/admin endpoint returning last-N-days total series + top posts by in-period views; admin dashboard bar chart card + i18n; backend contract tests (upsert on increment, authz, series/top shape) + E2E; migration on fresh SQLite + PG."
     }
   },
   "edges": [
@@ -10657,6 +10685,19 @@
       "type": "supersedes",
       "created_at": "2026-08-21T19:01:53+00:00",
       "note": "Milestone delivered, superseding the milestone decision"
+    },
+    {
+      "from": "DEC-086",
+      "to": "TASK-155",
+      "type": "governs",
+      "created_at": "2026-08-21T19:10:41+00:00"
+    },
+    {
+      "from": "DEC-086",
+      "to": "DEC-085",
+      "type": "supersedes",
+      "created_at": "2026-08-21T19:10:41+00:00",
+      "note": "New operator milestone after the search-filters close"
     }
   ]
 }

@@ -23,6 +23,7 @@ from app.migrations import run_migrations
 from app.routers import (
     admin,
     admin_push,
+    analytics,
     backup,
     categories,
     comments,
@@ -257,6 +258,7 @@ app.include_router(upload.router)
 app.include_router(push.router)
 app.include_router(admin_push.router)
 app.include_router(backup.router)
+app.include_router(analytics.router)
 app.include_router(reader.router)
 app.include_router(export_router)
 app.include_router(rss_router, prefix="/rss")
