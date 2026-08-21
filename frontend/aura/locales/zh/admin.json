@@ -22,6 +22,15 @@
 			"minLength": "密码至少 8 位",
 			"mismatch": "两次输入的密码不一致",
 			"failed": "修改密码失败"
+		},
+		"moderationPush": {
+			"label": "新评论待审核通知",
+			"subscribe": "开启待审通知",
+			"subscribed": "已开启待审通知",
+			"denied": "通知已被浏览器阻止",
+			"subscribing": "开启中…",
+			"unsubscribing": "关闭中…",
+			"hint": "有新的待审评论时推送提醒"
 		}
 	}
 }

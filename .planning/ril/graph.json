@@ -2,7 +2,7 @@
   "ril_version": 1,
   "round": 119,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-08-21T10:04:46+00:00",
+  "updated_at": "2026-08-21T12:23:19+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -7422,6 +7422,35 @@
       "title": "Milestone delivered: comment-thread subscriptions with Web Push (DEC-078 complete)",
       "rationale": "Shipped and verified end-to-end (DEC-078, TASK-150/151 via CHG-141). Backend: CommentSubscription model + additive migration b0c2d4e6f8a0, reader-scoped GET/PUT/DELETE /api/posts/{id}/subscription + /api/reader/me/post-subscriptions, approval fan-out excluding the comment author and (on replies) the already-notified parent reader. Frontend: ThreadSubscribeButton on the comments header + account '订阅的讨论' section. Verification: 13 backend contract tests + full suite green on SQLite and PostgreSQL (831 passed), migration chain applied on a fresh PG 18.4 DB (unique pair enforced), ThreadSubscribeButton Vitest (7), full frontend vitest (998), biome + vue-tsc clean, Playwright thread-follow journey (4) green. Also closed the stale lint-drift task ISS-104/TASK-149 (CHG-140).",
       "alternatives_rejected": "Postponed: search category/tag filters (smaller value), email notifications (no SMTP infra), sitemap/related-posts (already shipped). Opened an async code review (python-reviewer + typescript-reviewer) whose findings — if any HIGH — will be folded into follow-up commits before push."
+    },
+    "DEC-080": {
+      "id": "DEC-080",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-21T12:20:37+00:00",
+      "updated_at": "2026-08-21T12:20:37+00:00",
+      "touched_round": 119,
+      "title": "Milestone: author comment-moderation push (notify the blogger when a comment awaits approval)",
+      "rationale": "Feature-evolution selection (SKILL 11.2 gap analysis + fresh operator directive \"start a new milestone\"). The push arc ships reader-facing legs - reply notifications (DEC-064), new-post follows (DEC-076), thread subscriptions (DEC-078) - but the blog moderates EVERY comment (no auto-approve, DEC-066) and the author has zero notification: they must re-open the admin moderation queue to discover pending comments. This is the missing last leg: a browser push to admin accounts (superuser+editor, DEC-054 role tiers) the moment a new comment is created (pending), deep-linking to /admin/comments. Vertical slice: additive admin_push_subscriptions table (DEC-009 additive constraint), admin-only /api/admin/push subscribe+unsubscribe endpoints (audience-separated admin JWT, DEC-059), dispatch on create_comment reusing the shared dispatch helper (best-effort, dead-endpoint retirement), AdminPushToggle in the admin sidebar gated on push readiness like SubscribeButton (e2e harness runs without VAPID), backend contract tests + component test + E2E, migration verified on dev PostgreSQL 10.112.9.49:13310.",
+      "alternatives_rejected": "Search category/tag filters: already weighed at DEC-079 and postponed as smaller value. Reader notification-center page (list thread/category subs + history): needs a new notification-history table and is management-heavy; the moderation push solves an operator daily workflow first. Email digests: no SMTP infra (DEC-079). Accepted limitation: a comment the author themselves posts cannot be excluded (comments carry no admin-author identity) - single-author blog, minor self-notification."
+    },
+    "TASK-152": {
+      "id": "TASK-152",
+      "type": "task",
+      "status": "active",
+      "version": 2,
+      "created_at": "2026-08-21T12:20:37+00:00",
+      "updated_at": "2026-08-21T12:23:19+00:00",
+      "touched_round": 119,
+      "category": "core-feature",
+      "priority_score": 3.99,
+      "title": "Author comment-moderation push: admin push subscription + dispatch on pending comment create + AdminPushToggle",
+      "description": "Backend: admin_push_subscriptions table + admin-only /api/admin/push subscribe/unsubscribe + dispatch_moderation_pending on create_comment. Frontend: AdminPushToggle in admin sidebar gated on push readiness. Tests: backend contract + component + E2E; migration on dev PG.",
+      "severity": 0.7,
+      "confidence": 0.95,
+      "effort": 1.0,
+      "unlock_factor": 1.0
     }
   },
   "edges": [
@@ -10425,6 +10454,19 @@
       "to": "TASK-151",
       "type": "implements",
       "created_at": "2026-08-21T10:03:38+00:00"
+    },
+    {
+      "from": "DEC-080",
+      "to": "DEC-079",
+      "type": "supersedes",
+      "created_at": "2026-08-21T12:23:19+00:00",
+      "note": "New operator directive (start a new milestone) begins the author-moderation-push arc after the comment-thread milestone closed"
+    },
+    {
+      "from": "DEC-080",
+      "to": "TASK-152",
+      "type": "governs",
+      "created_at": "2026-08-21T12:23:19+00:00"
     }
   ]
 }

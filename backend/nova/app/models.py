@@ -240,6 +240,35 @@ class PushSubscription(Base):
     new_post_category_id: Mapped[int | None] = mapped_column(Integer, nullable=True, index=True)
 
 
+class AdminPushSubscription(Base):
+    """An admin's browser Web Push subscription for moderation alerts (DEC-080).
+
+    The blog moderates every comment, and the author only learns a comment is
+    pending by re-opening the admin moderation queue. This table lets an admin
+    (superuser or editor, DEC-054) opt a browser into a push when a new comment
+    is created — the receiver of the blog's one-sided push arc, which until now
+    only went reader-ward (reply/new-post/thread, DEC-064/076/078).
+
+    Deliberately a separate table from ``PushSubscription``: reader rows are
+    mixed into anonymous + reader-bound broadcasts (``/api/push/notify`` queries
+    every ``PushSubscription``), so mixing admin rows in would leak moderation
+    pushes to reader fan-outs. It also mirrors the account-audience separation
+    (``User`` vs ``ReaderAccount``, DEC-059). ``endpoint`` is unique per table
+    so re-subscribing the same browser upserts; ``user_id`` binds it to the
+    admin account (no DB FK — additive per DEC-009; integrity at the API layer,
+    mirroring PushSubscription).
+    """
+
+    __tablename__ = "admin_push_subscriptions"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    user_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
+    endpoint: Mapped[str] = mapped_column(String(500), unique=True, nullable=False, index=True)
+    p256dh: Mapped[str] = mapped_column(String(200), nullable=False)
+    auth: Mapped[str] = mapped_column(String(200), nullable=False)
+    created_at: Mapped[datetime | None] = mapped_column(DateTime, default=lambda: datetime.now(UTC))
+
+
 class Series(Base):
     """An ordered group of posts presented as a multi-part sequence (DEC-056).
 

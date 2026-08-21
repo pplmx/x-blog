@@ -54,7 +54,7 @@ export function urlBase64ToUint8Array(base64: string): Uint8Array<ArrayBuffer> {
 	return bytes;
 }
 
-function isSupported(): boolean {
+export function isSupported(): boolean {
 	return (
 		typeof window !== "undefined" &&
 		"serviceWorker" in navigator &&
@@ -63,11 +63,11 @@ function isSupported(): boolean {
 	);
 }
 
-function apiBase(): string {
+export function apiBase(): string {
 	return useRuntimeConfig().public.apiUrl || "";
 }
 
-async function fetchBackendPublicKey(): Promise<string | null> {
+export async function fetchBackendPublicKey(): Promise<string | null> {
 	try {
 		const res = await fetch(`${apiBase()}/api/push/vapid-public-key`);
 		if (!res.ok) return null;

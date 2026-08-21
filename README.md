@@ -36,6 +36,7 @@ A modern full-stack blog application built with FastAPI + Nuxt
 - 📡 **RSS & Atom Feeds** - Subscribe to the site-wide feed or a single category/tag via scoped feeds with autodiscovery (DEC-074)
 - 🔔 **New-post Web Push** - Follow a category (or all new posts) and get a browser push when the author publishes (DEC-076)
 - 💬 **Comment-thread subscription** - Follow a post's discussion; a push lands when a new comment is approved (DEC-078)
+- 🔔 **Moderation alerts** - admins get a push the moment a new comment awaits approval, deep-linking to the moderation queue (DEC-080)
 
 ## 🚀 Quick Start
 

@@ -22,6 +22,15 @@
 			"minLength": "Password must be at least 8 characters",
 			"mismatch": "The two passwords do not match",
 			"failed": "Failed to change password"
+		},
+		"moderationPush": {
+			"label": "Comment moderation alerts",
+			"subscribe": "Enable alerts",
+			"subscribed": "Alerts on",
+			"denied": "Notifications blocked by browser",
+			"subscribing": "Enabling…",
+			"unsubscribing": "Disabling…",
+			"hint": "Get a push when a comment awaits your approval"
 		}
 	}
 }

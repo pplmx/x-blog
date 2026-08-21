@@ -28,6 +28,7 @@ from pywebpush import webpush
 from sqlalchemy import or_
 
 from app import models
+from app.auth import User  # noqa: F401 — moderation fan-out targets admins (User, not ReaderAccount)
 
 
 def _b64url_decode(value: str) -> bytes | None:
@@ -181,4 +182,62 @@ def dispatch_new_post(db, post: models.Post, logger) -> dict[str, int]:
     subscriptions = query.all()
     if not subscriptions:
         return {"sent": 0, "failed": 0, "removed": 0}
+    return dispatch_to_subscriptions(subscriptions, payload, db, logger)
+
+
+# Moderation-alert notification copy (server-generated push, so not i18n-able
+# per browser; operators can localize via env). The blog moderates every comment
+# and the author's only discovery path was re-opening the moderation queue —
+# this push tells them a new comment is waiting, with a short preview so they
+# can judge it before opening the queue. (DEC-080)
+MODERATION_NOTIF_TITLE = os.getenv("MODERATION_NOTIFICATION_TITLE", "新评论待审核")
+MODERATION_NOTIF_BODY = os.getenv(
+    "MODERATION_NOTIFICATION_BODY",
+    "《{post_title}》有新的待审评论：{nickname}：{excerpt}",
+)
+
+
+def dispatch_moderation_pending(db, post: models.Post, comment, logger) -> dict[str, int]:
+    """Push 'a new comment awaits moderation' to opted-in admin accounts.
+
+    Fired when a comment is CREATED (every comment starts pending in this blog —
+    no auto-approve, DEC-066). Target: every admin (superuser or editor,
+    DEC-054) who opted this browser in via /api/admin/push/subscribe. Consumer
+    is the blog operator, whose one-sided push arc until now only went
+    reader-ward (reply/new-post/thread, DEC-064/076/078).
+
+    Deliberately queries ``AdminPushSubscription`` (not ``PushSubscription``):
+    the two tables are separated so a moderation push can never leak into the
+    reader fan-outs, mirroring the User/ReaderAccount audience separation
+    (DEC-059). Best effort — unconfigured VAPID or no subscriptions is a silent
+    no-op, and the shared dispatch helper retires dead (404/410) endpoints
+    without failing the comment create (DEC-080).
+    """
+    if not vapid_configured():
+        return {"sent": 0, "failed": 0, "removed": 0}
+    subscriptions = (
+        db.query(models.AdminPushSubscription)
+        .join(User, User.id == models.AdminPushSubscription.user_id)
+        .filter(User.role.in_(("superuser", "editor")))
+        .all()
+    )
+    if not subscriptions:
+        return {"sent": 0, "failed": 0, "removed": 0}
+    # A short single-line preview (commenter + up to 60 chars of content,
+    # whitespace-collapsed) so the author can judge the comment before opening
+    # the queue. Truncation keeps the os.environ override simple; replace (not
+    # .format) so { } in user content can never raise and break the create.
+    nickname = str(comment.nickname or "").strip()[:20]
+    excerpt = " ".join(str(comment.content or "").split())[:60]
+    payload = {
+        "title": MODERATION_NOTIF_TITLE,
+        "body": (
+            MODERATION_NOTIF_BODY.replace("{post_title}", post.title or "")
+            .replace("{nickname}", nickname)
+            .replace("{excerpt}", excerpt)
+        ),
+        # Deep-link to the moderation queue (the admin comments page defaults
+        # to the "all" filter and highlights pending comments).
+        "url": "/admin/comments",
+    }
     return dispatch_to_subscriptions(subscriptions, payload, db, logger)

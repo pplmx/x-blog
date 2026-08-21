@@ -195,6 +195,10 @@ const navItems = computed(() => {
             {{ t('admin.backToSite') }}
           </NuxtLink>
 
+          <!-- Comment-moderation alerts (DEC-080): opt this browser into a push
+               when a new comment awaits approval. Admin-context only. -->
+          <AdminPushToggle />
+
           <button
             type="button"
             class="flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 hover:text-gray-700 dark:hover:text-gray-200 transition-all duration-200 w-full"

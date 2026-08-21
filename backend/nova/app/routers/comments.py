@@ -9,7 +9,11 @@ from app.auth import User, get_current_admin
 from app.database import get_db
 from app.limiter import RATE_LIMIT_COMMENT, client_rate_key, limiter
 from app.middleware import get_logger
-from app.webpush import dispatch_to_subscriptions, vapid_configured
+from app.webpush import (
+    dispatch_moderation_pending,
+    dispatch_to_subscriptions,
+    vapid_configured,
+)
 
 logger = get_logger(__name__)
 
@@ -155,9 +159,14 @@ def create_comment(
     # of the immediate TCP peer which every client behind the proxy would share.
     ip_address = client_rate_key(request)
     try:
-        # Reply notifications are fired at APPROVAL time (see approve_comment and
-        # _notify_replied_to), not here — every comment is moderated.
-        return crud.create_comment(db, post_id, comment, ip_address, reader=reader)
+        # Reply/thread notifications are fired at APPROVAL time (see
+        # approve_comment and _notify_replied_to), not here — every comment is
+        # moderated. The moderation alert is the exception: it fires at CREATE
+        # because the whole point is telling the author a comment is WAITING
+        # for approval. Best-effort — never fails the create. (DEC-080)
+        created = crud.create_comment(db, post_id, comment, ip_address, reader=reader)
+        dispatch_moderation_pending(db, post, created, logger)
+        return created
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
