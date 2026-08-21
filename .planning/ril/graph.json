@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 122,
+  "round": 123,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-08-21T19:10:41+00:00",
+  "updated_at": "2026-08-21T21:02:49+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -7592,10 +7592,10 @@
     "TASK-155": {
       "id": "TASK-155",
       "type": "task",
-      "status": "active",
-      "version": 1,
+      "status": "resolved",
+      "version": 2,
       "created_at": "2026-08-21T19:08:16+00:00",
-      "updated_at": "2026-08-21T19:08:16+00:00",
+      "updated_at": "2026-08-21T21:02:49+00:00",
       "touched_round": 122,
       "category": "core-feature",
       "severity": 0.55,
@@ -7604,6 +7604,29 @@
       "unlock_factor": 1.0,
       "title": "Daily view analytics: post_views_daily + /api/admin/stats/views + dashboard chart + tests",
       "description": "Additive post_views_daily (post_id+day unique) written from crud.increment_views; superuser/admin endpoint returning last-N-days total series + top posts by in-period views; admin dashboard bar chart card + i18n; backend contract tests (upsert on increment, authz, series/top shape) + E2E; migration on fresh SQLite + PG."
+    },
+    "CHG-145": {
+      "id": "CHG-145",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-21T20:57:23+00:00",
+      "updated_at": "2026-08-21T20:57:23+00:00",
+      "touched_round": 122,
+      "commit": "cb8075a",
+      "title": "Daily readership analytics (DEC-086, TASK-155)"
+    },
+    "DEC-087": {
+      "id": "DEC-087",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-21T20:57:23+00:00",
+      "updated_at": "2026-08-21T20:57:23+00:00",
+      "touched_round": 122,
+      "title": "Milestone delivered: daily readership analytics (DEC-086 complete)",
+      "rationale": "Delivery of DEC-086 / TASK-155 via CHG-145, verified end-to-end. Backend: additive post_views_daily (post_id+day unique) upserted from crud.increment_views; /api/admin/stats/views (get_current_admin) returns zero-filled last-N-days series + top posts by in-period views, days bounded; forward-only tracking (no backfill) documented. Frontend: admin dashboard trend card (hand-rolled bars, best-effort load, en/zh). Verification: backend 877 SQLite / 886 dev PostgreSQL 18.4 (93.99% cov), migration chain on fresh SQLite + PG (unique pair verified), ruff clean; frontend vitest 1008 (trend spec 2), biome + vue-tsc clean; Playwright admin-analytics 2 green, full e2e 110 passed under CI-equivalent env.",
+      "alternatives_rejected": "Reader notification-center (needs history table, management-heavy); email digests (no SMTP); search filters shipped (DEC-084); markdown/HTML backup format (JSON-only round-trip shipped in DEC-082, could add later). Accepted: daily write rides the existing write-on-read path, coalescing tracked separately (TASK-026); series tracks forward only from the feature."
     }
   },
   "edges": [
@@ -10698,6 +10721,19 @@
       "type": "supersedes",
       "created_at": "2026-08-21T19:10:41+00:00",
       "note": "New operator milestone after the search-filters close"
+    },
+    {
+      "from": "CHG-145",
+      "to": "TASK-155",
+      "type": "implements",
+      "created_at": "2026-08-21T20:57:23+00:00"
+    },
+    {
+      "from": "DEC-087",
+      "to": "DEC-086",
+      "type": "supersedes",
+      "created_at": "2026-08-21T21:02:49+00:00",
+      "note": "Milestone delivered, superseding the milestone decision"
     }
   ]
 }
