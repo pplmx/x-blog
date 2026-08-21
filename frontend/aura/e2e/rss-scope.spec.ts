@@ -93,11 +93,15 @@ test.describe("Scoped category feed", () => {
 		// The site globally advertises the unscoped feed (app.vue); on a topic
 		// page the scoped feed must ALSO be advertised as an alternate link.
 		const alternates = await page.evaluate(() =>
-			Array.from(document.querySelectorAll('link[rel="alternate"][type="application/rss+xml"]')).map(
-				(node) => node.getAttribute("href"),
-			),
+			Array.from(
+				document.querySelectorAll('link[rel="alternate"][type="application/rss+xml"]'),
+			).map((node) => node.getAttribute("href")),
 		);
 		expect(alternates).toContain(feedUrl);
+
+		// With Web Push configured the same topic view offers a one-tap
+		// "follow new posts" toggle (DEC-076/TASK-147).
+		await expect(page.getByRole("button", { name: "关注新文章" })).toBeVisible();
 	});
 
 	test("scoped Atom feed matches the RSS scope", async ({ request }) => {

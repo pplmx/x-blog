@@ -95,9 +95,7 @@ class BookmarkItem(BaseModel):
             excerpt=post.excerpt,
             cover_image=post.cover_image,
             created_at=post.created_at,
-            category=(
-                schemas.Category.model_validate(post.category) if post.category else None
-            ),
+            category=(schemas.Category.model_validate(post.category) if post.category else None),
             tags=[schemas.Tag.model_validate(t) for t in post.tags],
         )
 
@@ -236,11 +234,21 @@ class ReaderPushSubscriptionItem(BaseModel):
     """One push subscription bound to the reader (device management view).
 
     Deliberately excludes the encryption keys (p256dh/auth/endpoint-fragment)
-    — the client only needs identity + age to decide what to revoke."""
+    — the client only needs identity + age + new-post prefs to decide what to
+    revoke or how to steer follows (DEC-076, TASK-147)."""
 
     id: int
     endpoint: str
     created_at: datetime | None = None
+    want_new_posts: bool = False
+    new_post_category_id: int | None = None
+
+
+class ReaderPushSubscriptionUpdate(BaseModel):
+    """New-post notification prefs for one of the reader's devices."""
+
+    want_new_posts: bool = False
+    new_post_category_id: int | None = None
 
 
 class ReaderPushSubscriptionListResponse(BaseModel):
@@ -283,9 +291,7 @@ def change_my_password(
     db.commit()
     db.refresh(current_reader)
 
-    access_token = auth.create_reader_token(
-        {"sub": current_reader.id}, token_version=current_reader.token_version or 0
-    )
+    access_token = auth.create_reader_token({"sub": current_reader.id}, token_version=current_reader.token_version or 0)
     return {
         "access_token": access_token,
         "token_type": "bearer",
@@ -311,10 +317,56 @@ def list_my_push_subscriptions(
     )
     return ReaderPushSubscriptionListResponse(
         items=[
-            ReaderPushSubscriptionItem(id=s.id, endpoint=s.endpoint, created_at=s.created_at)
+            ReaderPushSubscriptionItem(
+                id=s.id,
+                endpoint=s.endpoint,
+                created_at=s.created_at,
+                want_new_posts=s.want_new_posts,
+                new_post_category_id=s.new_post_category_id,
+            )
             for s in subs
         ],
         total=len(subs),
+    )
+
+
+@router.patch("/me/push-subscriptions/{subscription_id}", response_model=ReaderPushSubscriptionItem)
+def update_my_push_subscription_prefs(
+    subscription_id: int,
+    payload: ReaderPushSubscriptionUpdate,
+    current_reader: auth.ReaderAccount = Depends(auth.get_current_reader),
+    db: Session = Depends(get_db),
+):
+    """Update the new-post notification prefs on one of the reader's devices.
+
+    Lets a reader follow a category (or all new posts) from their account
+    settings, per browser/device. Scoped to the caller: another reader's or an
+    unknown id is a 404 so subscription ids are not enumerable. An unknown
+    category id is a 422 (the fan-out matches on it, so it must exist).
+    (DEC-076, TASK-147)
+    """
+    sub = (
+        db.query(models.PushSubscription)
+        .filter(
+            models.PushSubscription.id == subscription_id,
+            models.PushSubscription.reader_id == current_reader.id,
+        )
+        .first()
+    )
+    if not sub:
+        raise HTTPException(status_code=404, detail="Push subscription not found")
+    if payload.new_post_category_id is not None and crud.get_category(db, payload.new_post_category_id) is None:
+        raise HTTPException(status_code=422, detail="Unknown new_post_category_id")
+    sub.want_new_posts = payload.want_new_posts
+    sub.new_post_category_id = payload.new_post_category_id
+    db.commit()
+    db.refresh(sub)
+    return ReaderPushSubscriptionItem(
+        id=sub.id,
+        endpoint=sub.endpoint,
+        created_at=sub.created_at,
+        want_new_posts=sub.want_new_posts,
+        new_post_category_id=sub.new_post_category_id,
     )
 
 

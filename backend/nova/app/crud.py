@@ -13,6 +13,10 @@ from app.cache import (
     clear_tags_cache,
     tags_cache,
 )
+from app.middleware import get_logger
+from app.webpush import dispatch_new_post
+
+logger = get_logger(__name__)
 
 
 def utc_now_naive() -> datetime:
@@ -218,6 +222,11 @@ def create_post(db: Session, post: schemas.PostCreate) -> models.Post:
     clear_tags_cache()
     clear_categories_cache()
     clear_posts_list_cache()
+
+    # A post created as immediately visible is a new post — fan out the
+    # new-post push (DEC-076, TASK-147). Best effort, no-op when unconfigured.
+    if is_publicly_visible(db_post):
+        dispatch_new_post(db, db_post, logger)
     return db_post
 
 
@@ -226,6 +235,9 @@ def update_post(db: Session, post_id: int, post: schemas.PostUpdate) -> models.P
     if not db_post:
         return None
 
+    # Notify on the transition into visibility (draft/scheduled -> published),
+    # not on every edit of an already-published post (DEC-076/TASK-147).
+    was_visible = is_publicly_visible(db_post)
     update_data = post.model_dump(exclude_unset=True)
 
     if "category_id" in update_data and update_data["category_id"] is not None:
@@ -259,6 +271,10 @@ def update_post(db: Session, post_id: int, post: schemas.PostUpdate) -> models.P
     clear_tags_cache()
     clear_categories_cache()
     clear_posts_list_cache()
+
+    # Only the draft/scheduled -> published transition notifies (see above).
+    if not was_visible and is_publicly_visible(db_post):
+        dispatch_new_post(db, db_post, logger)
     return db_post
 
 
@@ -565,9 +581,7 @@ def delete_reader_comment(db: Session, comment_id: int, reader_id: int) -> bool:
     """Delete one of the reader's own comments (any status). False if the
     comment is missing or belongs to a different reader. (DEC-066, TASK-139)"""
     comment = (
-        db.query(models.Comment)
-        .filter(models.Comment.id == comment_id, models.Comment.reader_id == reader_id)
-        .first()
+        db.query(models.Comment).filter(models.Comment.id == comment_id, models.Comment.reader_id == reader_id).first()
     )
     if not comment:
         return False
@@ -691,14 +705,7 @@ def search_posts(db: Session, query: str, page: int = 1, limit: int = 10) -> tup
             models.Post.content,
         )
         term_clauses = [
-            and_(
-                or_(
-                    *(
-                        field.ilike(f"%{escape_like_pattern(term)}%", escape="\\")
-                        for field in fields
-                    )
-                )
-            )
+            and_(or_(*(field.ilike(f"%{escape_like_pattern(term)}%", escape="\\") for field in fields)))
             for term in terms
         ]
 

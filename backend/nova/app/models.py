@@ -204,6 +204,12 @@ class PushSubscription(Base):
     # Reader account that subscribed this browser (None = anonymous). Enables
     # targeted per-reader notifications (DEC-064, TASK-137).
     reader_id: Mapped[int | None] = mapped_column(Integer, nullable=True, index=True)
+    # New-post notification opt-in (DEC-076, TASK-147). When True the browser
+    # receives a push when a post is published; new_post_category_id narrows
+    # that to a single followed category (None = all new posts). Both additive,
+    # no DB FK on the category column (DEC-009 convention).
+    want_new_posts: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    new_post_category_id: Mapped[int | None] = mapped_column(Integer, nullable=True, index=True)
 
 
 class Series(Base):

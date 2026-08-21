@@ -11,6 +11,9 @@
 		"allDesc": "浏览 X-Blog 中的所有分类",
 		"categoryDesc": "浏览分类 \"{name}\" 下的所有文章",
 		"subscribe": "RSS 订阅",
-		"subscribeTitle": "订阅该分类下的最新文章"
+		"subscribeTitle": "订阅该分类下的最新文章",
+		"followPush": "关注新文章",
+		"followingPush": "已关注新文章",
+		"followPushTitle": "有新文章发布时通过浏览器推送通知我（可到账号设置管理）"
 	}
 }

@@ -125,6 +125,17 @@ export async function useCategories() {
 }
 
 /**
+ * Fetch all categories as a plain awaitable promise ($fetch, not useFetch).
+ * For call sites that must not turn setup async (account settings) and want a
+ * guaranteed-settled result that tests can mock like any useApi helper.
+ */
+export async function fetchCategories(): Promise<Category[]> {
+	const config = useRuntimeConfig();
+	const apiUrl = config.public.apiUrl;
+	return $fetch<Category[]>(`${apiUrl}/api/categories`);
+}
+
+/**
  * Fetch all tags.
  */
 export async function useTags() {
@@ -1044,6 +1055,8 @@ export interface ReaderPushSubscription {
 	id: number;
 	endpoint: string;
 	created_at: string | null;
+	want_new_posts: boolean;
+	new_post_category_id: number | null;
 }
 
 export interface ReaderPushSubscriptionListResponse {
@@ -1068,4 +1081,24 @@ export async function revokeMyPushSubscription(subscriptionId: number): Promise<
 		method: "DELETE",
 		headers: getReaderAuthHeaders(),
 	});
+}
+
+/**
+ * Update the new-post notification prefs on one of the reader's devices
+ * (DEC-076/TASK-147). `new_post_category_id` null = all new posts.
+ */
+export async function updateMyPushSubscriptionPrefs(
+	subscriptionId: number,
+	prefs: { want_new_posts: boolean; new_post_category_id: number | null },
+): Promise<ReaderPushSubscription> {
+	const config = useRuntimeConfig();
+	const apiUrl = config.public.apiUrl;
+	return $fetch<ReaderPushSubscription>(
+		`${apiUrl}/api/reader/me/push-subscriptions/${subscriptionId}`,
+		{
+			method: "PATCH",
+			headers: getReaderAuthHeaders(),
+			body: prefs,
+		},
+	);
 }

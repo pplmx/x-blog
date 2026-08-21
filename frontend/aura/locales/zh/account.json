@@ -32,7 +32,12 @@
 			"revokeConfirm": "确定移除这台设备吗？之后将不再向它推送通知。",
 			"revoked": "已移除",
 			"revokeFailed": "移除失败，请稍后再试",
-			"note": "订阅过 Web Push 且已登录的设备会出现在这里。"
+			"note": "订阅过 Web Push 且已登录的设备会出现在这里。",
+			"newPosts": "新文章通知",
+			"newPostsNote": "有新文章发布时，通过浏览器推送通知这台设备。",
+			"allNewPosts": "全部新文章",
+			"followCategory": "关注分类",
+			"prefsFailed": "保存失败，请稍后再试"
 		}
 	}
 }

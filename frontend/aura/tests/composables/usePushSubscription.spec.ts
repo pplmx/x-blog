@@ -150,6 +150,43 @@ describe("usePushSubscription", () => {
 		);
 	});
 
+	it("subscribe carries new-post prefs on the request body (DEC-076/TASK-147)", async () => {
+		const { reg } = setupBrowser({ permission: "granted" });
+		reg.pushManager.subscribe.mockResolvedValue(fakePushSubscription(ENDPOINT));
+		const { usePushSubscription } = await import("~/composables/usePushSubscription");
+		const { status, subscribe } = usePushSubscription();
+
+		await subscribe({ want: true, categoryId: 7 });
+
+		expect(status.value).toBe("subscribed");
+		expect(globalThis.fetch).toHaveBeenCalledWith(
+			"http://localhost:18888/api/push/subscribe",
+			expect.objectContaining({
+				method: "POST",
+				body: expect.stringContaining('"want_new_posts":true'),
+			}),
+		);
+	});
+
+	it("setNewPostPrefs upserts prefs on an existing subscription (DEC-076/TASK-147)", async () => {
+		setupBrowser({ permission: "granted", existingSubscription: fakePushSubscription(ENDPOINT) });
+		const { usePushSubscription } = await import("~/composables/usePushSubscription");
+		const { status, init, setNewPostPrefs } = usePushSubscription();
+
+		await init();
+		expect(status.value).toBe("subscribed");
+
+		await setNewPostPrefs({ want: true, categoryId: null });
+
+		expect(globalThis.fetch).toHaveBeenCalledWith(
+			expect.stringContaining("/api/push/subscribe"),
+			expect.objectContaining({
+				method: "POST",
+				body: expect.stringContaining('"want_new_posts":true'),
+			}),
+		);
+	});
+
 	it("subscribe sends the reader JWT so the backend binds the reader (DEC-064)", async () => {
 		localStorage.setItem("reader_token", "reader.jwt.token");
 		const { svc, reg } = setupBrowser({ permission: "granted" });

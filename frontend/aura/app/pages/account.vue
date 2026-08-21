@@ -6,11 +6,14 @@
  * browser push devices bound to the account.
  */
 import {
+	type Category,
 	changeMyPassword,
+	fetchCategories,
 	fetchMyPushSubscriptions,
+	type ReaderPushSubscription,
 	revokeMyPushSubscription,
 	updateMyProfile,
-	type ReaderPushSubscription,
+	updateMyPushSubscriptionPrefs,
 } from "~~/composables/useApi";
 import { useReaderAuth } from "~~/composables/useReaderAuth";
 import { useSeo } from "~~/composables/useSeo";
@@ -50,7 +53,9 @@ async function saveProfileName() {
 
 /* Password -------------------------------------------------------------- */
 const pw = ref({ current: "", next: "", confirm: "" });
-const passwordState = ref<"idle" | "busy" | "success" | "wrong" | "mismatch" | "short" | "failed">("idle");
+const passwordState = ref<"idle" | "busy" | "success" | "wrong" | "mismatch" | "short" | "failed">(
+	"idle",
+);
 
 async function submitPassword() {
 	const next = pw.value.next;
@@ -110,8 +115,72 @@ async function revokeDevice(device: ReaderPushSubscription) {
 	}
 }
 
+/* New-post notification prefs (DEC-076, TASK-147) ------------------------- */
+const categories = ref<Category[]>([]);
+const savingPrefsId = ref<number | null>(null);
+const prefsError = ref(false);
+
+// The public /api/categories list drives the "followed category" options for
+// every device. Loaded on mount via $fetch (not useFetch) so setup stays
+// synchronous and tests can mock fetchCategories like any useApi helper.
+async function loadCategories() {
+	try {
+		categories.value = await fetchCategories();
+	} catch {
+		categories.value = [];
+	}
+}
+
+/** Toggle the device's new-post opt-in (null scope = all new posts). */
+async function setDeviceNewPosts(device: ReaderPushSubscription, want: boolean) {
+	prefsError.value = false;
+	savingPrefsId.value = device.id;
+	try {
+		await updateMyPushSubscriptionPrefs(device.id, {
+			want_new_posts: want,
+			new_post_category_id: want ? device.new_post_category_id : null,
+		});
+		device.want_new_posts = want;
+	} catch {
+		prefsError.value = true;
+	} finally {
+		savingPrefsId.value = null;
+	}
+}
+
+/** Pin a device's follow to one category (or null for all new posts). */
+async function setDeviceFollowCategory(device: ReaderPushSubscription, categoryId: number | null) {
+	prefsError.value = false;
+	savingPrefsId.value = device.id;
+	try {
+		await updateMyPushSubscriptionPrefs(device.id, {
+			want_new_posts: true,
+			new_post_category_id: categoryId,
+		});
+		device.new_post_category_id = categoryId;
+		device.want_new_posts = true;
+	} catch {
+		prefsError.value = true;
+	} finally {
+		savingPrefsId.value = null;
+	}
+}
+
+/** Template binding: checkbox change -> new-post opt-in toggle. */
+function onDeviceNewPostsChange(device: ReaderPushSubscription, event: Event) {
+	const want = (event.target as HTMLInputElement | null)?.checked ?? false;
+	return setDeviceNewPosts(device, want);
+}
+
+/** Template binding: category select change -> pin/clear the follow scope. */
+function onDeviceCategoryChange(device: ReaderPushSubscription, event: Event) {
+	const value = (event.target as HTMLSelectElement | null)?.value ?? "";
+	return setDeviceFollowCategory(device, value ? Number(value) : null);
+}
+
 onMounted(() => {
 	loadDevices();
+	loadCategories();
 	// Keep the name input in sync if the header "reader" profile loads after us.
 	displayName.value = reader.value?.display_name ?? displayName.value;
 });
@@ -265,29 +334,73 @@ function shortEndpoint(endpoint: string): string {
         <p v-if="devicesLoaded && devices.length === 0" class="text-sm text-gray-500 dark:text-gray-400">
           {{ t('account.devices.empty') }}
         </p>
-        <ul v-else class="space-y-2">
+        <ul v-else class="space-y-3">
           <li
             v-for="device in devices"
             :key="device.id"
-            class="flex items-center justify-between gap-3 text-sm"
+            class="border border-gray-100 dark:border-gray-800 rounded-lg p-3"
           >
-            <div class="min-w-0">
-              <p class="truncate text-gray-900 dark:text-gray-100">{{ shortEndpoint(device.endpoint) }}</p>
-              <p class="text-xs text-gray-500 dark:text-gray-400">{{ formatDate(device.created_at) }}</p>
+            <div class="flex items-center justify-between gap-3 text-sm">
+              <div class="min-w-0">
+                <p class="truncate text-gray-900 dark:text-gray-100">{{ shortEndpoint(device.endpoint) }}</p>
+                <p class="text-xs text-gray-500 dark:text-gray-400">{{ formatDate(device.created_at) }}</p>
+              </div>
+              <button
+                type="button"
+                :disabled="revokingId === device.id"
+                class="shrink-0 inline-flex items-center gap-1 text-xs text-gray-400 hover:text-red-500 transition-colors disabled:opacity-50"
+                @click="revokeDevice(device)"
+              >
+                <Icon icon="lucide:trash-2" class="w-3.5 h-3.5" />
+                {{ t('account.devices.revoke') }}
+              </button>
             </div>
-            <button
-              type="button"
-              :disabled="revokingId === device.id"
-              class="shrink-0 inline-flex items-center gap-1 text-xs text-gray-400 hover:text-red-500 transition-colors disabled:opacity-50"
-              @click="revokeDevice(device)"
-            >
-              <Icon icon="lucide:trash-2" class="w-3.5 h-3.5" />
-              {{ t('account.devices.revoke') }}
-            </button>
+
+            <!-- New-post notification prefs (DEC-076, TASK-147) -->
+            <div class="mt-2 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm">
+              <label class="inline-flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  class="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                  :checked="device.want_new_posts"
+                  :disabled="savingPrefsId === device.id"
+                  @change="onDeviceNewPostsChange(device, $event)"
+                />
+                <span class="text-gray-700 dark:text-gray-300">
+                  {{ t('account.devices.newPosts') }}
+                </span>
+              </label>
+              <label
+                v-if="device.want_new_posts"
+                class="inline-flex items-center gap-2"
+              >
+                <span class="text-xs text-gray-500 dark:text-gray-400">
+                  {{ t('account.devices.followCategory') }}
+                </span>
+                <select
+                  class="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-2 py-1 text-xs text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  :value="device.new_post_category_id ?? ''"
+                  :disabled="savingPrefsId === device.id"
+                  @change="onDeviceCategoryChange(device, $event)"
+                >
+                  <option value="">{{ t('account.devices.allNewPosts') }}</option>
+                  <option v-for="cat in categories" :key="cat.id" :value="String(cat.id)">
+                    {{ cat.name }}
+                  </option>
+                </select>
+              </label>
+              <span
+                v-if="savingPrefsId === device.id"
+                class="text-xs text-gray-400 animate-pulse"
+              >…</span>
+            </div>
           </li>
         </ul>
         <p v-if="deviceError" class="mt-2 text-sm text-red-500 dark:text-red-400">
           {{ t('account.devices.revokeFailed') }}
+        </p>
+        <p v-if="prefsError" class="mt-2 text-sm text-red-500 dark:text-red-400">
+          {{ t('account.devices.prefsFailed') }}
         </p>
       </section>
     </div>

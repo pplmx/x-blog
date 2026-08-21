@@ -11,6 +11,9 @@
 		"allDesc": "Browse all categories on X-Blog",
 		"categoryDesc": "Browse all articles under category \"{name}\"",
 		"subscribe": "RSS Subscribe",
-		"subscribeTitle": "Subscribe to the latest posts in this category"
+		"subscribeTitle": "Subscribe to the latest posts in this category",
+		"followPush": "Follow new posts",
+		"followingPush": "Following new posts",
+		"followPushTitle": "Notify me by browser push when a new post is published (manage in account settings)"
 	}
 }

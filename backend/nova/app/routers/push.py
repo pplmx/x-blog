@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request, status
 from pydantic import BaseModel, Field, field_validator
 from sqlalchemy.orm import Session
 
-from app import auth, models
+from app import auth, crud, models
 from app.auth import get_current_superuser
 from app.database import get_db
 from app.limiter import RATE_LIMIT_WRITE, limiter
@@ -32,6 +32,11 @@ class PushSubscriptionCreate(BaseModel):
     # input is rejected with 422 instead of an uncaught DataError -> 500.
     endpoint: str = Field(max_length=500)
     keys: SubscriptionKeys
+    # New-post notification opt-in (DEC-076, TASK-147): want_new_posts enables
+    # new-post pushes for this browser; new_post_category_id narrows them to a
+    # single followed category (None = all new posts).
+    want_new_posts: bool = False
+    new_post_category_id: int | None = None
 
     @field_validator("endpoint")
     @classmethod
@@ -109,6 +114,12 @@ def subscribe(
     if auth_bytes is None or len(auth_bytes) != 16:
         raise HTTPException(status_code=422, detail="keys.auth must be a 16-byte base64url value")
 
+    # A category-scoped new-post follow must reference an existing category:
+    # the fan-out matches on the category id, so an unknown id would silently
+    # never notify (DEC-076, TASK-147).
+    if data.new_post_category_id is not None and crud.get_category(db, data.new_post_category_id) is None:
+        raise HTTPException(status_code=422, detail="Unknown new_post_category_id")
+
     # Bind the subscription to the reader account when the subscribe request
     # carries a reader JWT (targeted notifications, DEC-064/TASK-137).
     reader_id = reader.id if reader else None
@@ -117,6 +128,8 @@ def subscribe(
         existing.p256dh = data.keys.p256dh
         existing.auth = data.keys.auth
         existing.reader_id = reader_id or existing.reader_id
+        existing.want_new_posts = data.want_new_posts
+        existing.new_post_category_id = data.new_post_category_id
         db.commit()
         db.refresh(existing)
         return existing
@@ -125,6 +138,8 @@ def subscribe(
         p256dh=data.keys.p256dh,
         auth=data.keys.auth,
         reader_id=reader_id,
+        want_new_posts=data.want_new_posts,
+        new_post_category_id=data.new_post_category_id,
     )
     db.add(sub)
     db.commit()

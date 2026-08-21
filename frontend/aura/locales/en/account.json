@@ -32,7 +32,12 @@
 			"revokeConfirm": "Remove this device? It will stop receiving notifications from your account.",
 			"revoked": "Removed",
 			"revokeFailed": "Couldn't remove the device — please try again",
-			"note": "Browsers that subscribed to Web Push while signed in appear here."
+			"note": "Browsers that subscribed to Web Push while signed in appear here.",
+			"newPosts": "New-post notifications",
+			"newPostsNote": "Push this device when a new post is published.",
+			"allNewPosts": "All new posts",
+			"followCategory": "Followed category",
+			"prefsFailed": "Couldn't save — please try again"
 		}
 	}
 }

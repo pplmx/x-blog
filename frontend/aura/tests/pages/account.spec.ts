@@ -28,6 +28,8 @@ const mockUpdateMyProfile = vi.fn();
 const mockChangeMyPassword = vi.fn();
 const mockFetchPushSubscriptions = vi.fn();
 const mockRevokePushSubscription = vi.fn();
+const mockFetchCategories = vi.fn();
+const mockUpdatePushSubscriptionPrefs = vi.fn();
 
 vi.mock("../../composables/useApi", async (importOriginal) => {
 	const orig = await importOriginal<typeof import("../../composables/useApi")>();
@@ -37,6 +39,8 @@ vi.mock("../../composables/useApi", async (importOriginal) => {
 		changeMyPassword: mockChangeMyPassword,
 		fetchMyPushSubscriptions: mockFetchPushSubscriptions,
 		revokeMyPushSubscription: mockRevokePushSubscription,
+		fetchCategories: mockFetchCategories,
+		updateMyPushSubscriptionPrefs: mockUpdatePushSubscriptionPrefs,
 	};
 });
 
@@ -59,6 +63,8 @@ function makeDevice(overrides: Partial<ReaderPushSubscription> = {}): ReaderPush
 		id: 1,
 		endpoint: "https://fcm.example.com/wpush/v2/abcd",
 		created_at: "2024-01-15T10:00:00Z",
+		want_new_posts: false,
+		new_post_category_id: null,
 		...overrides,
 	};
 }
@@ -106,6 +112,54 @@ describe("Account settings page", () => {
 		expect(mockRevokePushSubscription).toHaveBeenCalledWith(1);
 		expect(mockFetchPushSubscriptions).toHaveBeenCalledTimes(2); // reloaded
 		vi.unstubAllGlobals();
+	});
+
+	it("defaults a device to no new-post notifications", async () => {
+		isAuthenticated.value = true;
+		mockFetchPushSubscriptions.mockResolvedValue({ items: [makeDevice()], total: 1 });
+		const wrapper = await mountPage();
+
+		const checkbox = wrapper.get("input[type='checkbox']") as unknown as {
+			element: { checked: boolean };
+		};
+		expect(checkbox.element.checked).toBe(false);
+		expect(wrapper.find("select").exists()).toBe(false);
+	});
+
+	it("opts a device into all new posts per the toggle", async () => {
+		isAuthenticated.value = true;
+		mockFetchPushSubscriptions.mockResolvedValue({ items: [makeDevice()], total: 1 });
+		mockUpdatePushSubscriptionPrefs.mockResolvedValue(makeDevice({ want_new_posts: true }));
+		const wrapper = await mountPage();
+
+		await wrapper.get("input[type='checkbox']").setValue(true);
+		await flushPromises();
+
+		expect(mockUpdatePushSubscriptionPrefs).toHaveBeenCalledWith(1, {
+			want_new_posts: true,
+			new_post_category_id: null,
+		});
+	});
+
+	it("scopes a followed device to a chosen category", async () => {
+		isAuthenticated.value = true;
+		mockFetchCategories.mockResolvedValue([{ id: 7, name: "Python" }]);
+		mockFetchPushSubscriptions.mockResolvedValue({
+			items: [makeDevice({ want_new_posts: true })],
+			total: 1,
+		});
+		mockUpdatePushSubscriptionPrefs.mockResolvedValue(
+			makeDevice({ want_new_posts: true, new_post_category_id: 7 }),
+		);
+		const wrapper = await mountPage();
+
+		await wrapper.get("select").setValue("7");
+		await flushPromises();
+
+		expect(mockUpdatePushSubscriptionPrefs).toHaveBeenCalledWith(1, {
+			want_new_posts: true,
+			new_post_category_id: 7,
+		});
 	});
 
 	it("saves the display name and refreshes the profile", async () => {

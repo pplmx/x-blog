@@ -2,6 +2,7 @@
 import { computed } from "vue";
 import { type PostListResponse, useApi, useCategories } from "~~/composables/useApi";
 import { paginationPages } from "~~/composables/usePagination";
+import { usePushSubscription } from "~~/composables/usePushSubscription";
 import { useSeo } from "~~/composables/useSeo";
 
 const { t, locale } = useLang();
@@ -67,6 +68,43 @@ useHead(() => ({
 			]
 		: [],
 }));
+
+// New-post push follow on this category (DEC-076, TASK-147): a one-tap way to
+// be notified when the author publishes here. Shares the header push state.
+const {
+	status: pushStatus,
+	init: initPush,
+	subscribe: pushSubscribe,
+	setNewPostPrefs,
+	newPostPrefs,
+} = usePushSubscription();
+onMounted(() => initPush());
+const pushVisible = computed(
+	() => pushStatus.value !== "unsupported" && pushStatus.value !== "unconfigured",
+);
+const pushBusy = computed(
+	() => pushStatus.value === "subscribing" || pushStatus.value === "unsubscribing",
+);
+const followingThisCategory = computed(
+	() => newPostPrefs.value.want && newPostPrefs.value.categoryId === categoryId.value,
+);
+
+async function toggleFollowNewPosts() {
+	if (!categoryId.value || pushBusy.value) return;
+	if (followingThisCategory.value) {
+		await setNewPostPrefs({ want: false, categoryId: null });
+	} else if (pushStatus.value === "subscribed") {
+		// Already subscribed (perhaps following all, or replies only) — upsert
+		// the follow for this category without re-asking permission.
+		await setNewPostPrefs({ want: true, categoryId: categoryId.value });
+	} else {
+		await pushSubscribe({ want: true, categoryId: categoryId.value });
+	}
+}
+
+const followIcon = computed(() =>
+	followingThisCategory.value ? "lucide:bell-ring" : "lucide:bell",
+);
 </script>
 
 <template>
@@ -132,16 +170,29 @@ useHead(() => ({
           <h1 class="text-3xl font-bold bg-gradient-to-r from-gray-900 dark:from-gray-100 to-gray-600 dark:to-gray-400 bg-clip-text text-transparent">
             {{ t('categories.categoryPosts') }}
           </h1>
-          <a
-            :href="feedUrl"
-            target="_blank"
-            rel="noopener"
-            :title="t('categories.subscribeTitle')"
-            class="inline-flex items-center gap-1.5 text-sm text-purple-600 hover:text-purple-700 border border-purple-200 hover:border-purple-300 rounded-full px-3 py-1.5 transition-colors whitespace-nowrap"
-          >
-            <Icon icon="lucide:rss" class="w-4 h-4" />
-            {{ t('categories.subscribe') }}
-          </a>
+          <div class="flex items-center gap-2">
+            <button
+              v-if="pushVisible"
+              type="button"
+              :disabled="pushBusy"
+              :title="t('categories.followPushTitle')"
+              class="inline-flex items-center gap-1.5 text-sm text-purple-600 hover:text-purple-700 border border-purple-200 hover:border-purple-300 rounded-full px-3 py-1.5 transition-colors whitespace-nowrap disabled:opacity-60"
+              @click="toggleFollowNewPosts"
+            >
+              <Icon :icon="followIcon" class="w-4 h-4" :class="{ 'animate-pulse': pushBusy }" />
+              {{ followingThisCategory ? t('categories.followingPush') : t('categories.followPush') }}
+            </button>
+            <a
+              :href="feedUrl"
+              target="_blank"
+              rel="noopener"
+              :title="t('categories.subscribeTitle')"
+              class="inline-flex items-center gap-1.5 text-sm text-purple-600 hover:text-purple-700 border border-purple-200 hover:border-purple-300 rounded-full px-3 py-1.5 transition-colors whitespace-nowrap"
+            >
+              <Icon icon="lucide:rss" class="w-4 h-4" />
+              {{ t('categories.subscribe') }}
+            </a>
+          </div>
         </div>
       </div>
 

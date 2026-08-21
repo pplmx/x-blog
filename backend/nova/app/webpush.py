@@ -25,6 +25,9 @@ import os
 from typing import Any
 
 from pywebpush import webpush
+from sqlalchemy import or_
+
+from app import models
 
 
 def _b64url_decode(value: str) -> bytes | None:
@@ -134,3 +137,48 @@ def dispatch_to_subscriptions(
     if db is not None:
         db.commit()
     return {"sent": sent, "failed": failed, "removed": removed}
+
+
+# New-post notification copy (server-generated push, so not i18n-able per
+# browser; operators can localize via env). Defaults match the zh-first site.
+POST_NOTIF_TITLE = os.getenv("POST_NOTIFICATION_TITLE", "新文章发布")
+POST_NOTIF_BODY = os.getenv("POST_NOTIFICATION_BODY", "《{post_title}》")
+
+
+def dispatch_new_post(db, post: models.Post, logger) -> dict[str, int]:
+    """Push 'a new post was published' to opted-in subscriptions.
+
+    Target: every subscription with ``want_new_posts`` whose scope matches the
+    post — a subscription pinned to a category receives only that category's
+    posts; an all-posts subscription (``new_post_category_id`` NULL) receives
+    everything. A post without a category only reaches all-posts subscribers.
+    Best effort: unconfigured VAPID or no matches is a silent no-op, and the
+    shared dispatch helper retires dead (404/410) endpoints without failing the
+    publish. Callers fire this only after a write makes the post immediately
+    visible (published, publish_at == None or passed) — scheduled (future
+    publish_at) posts are not notified until they are actually published by a
+    later write (this blog has no background scheduler today, DEC-076).
+    """
+    if not vapid_configured():
+        return {"sent": 0, "failed": 0, "removed": 0}
+    payload = {
+        "title": POST_NOTIF_TITLE,
+        # replace (not .format) so a { } in the post title can't raise and
+        # break the publish — this path must stay best-effort.
+        "body": POST_NOTIF_BODY.replace("{post_title}", post.title or ""),
+        "url": f"/posts/{post.slug}",
+    }
+    query = db.query(models.PushSubscription).filter(models.PushSubscription.want_new_posts.is_(True))
+    if post.category_id is not None:
+        query = query.filter(
+            or_(
+                models.PushSubscription.new_post_category_id.is_(None),
+                models.PushSubscription.new_post_category_id == post.category_id,
+            )
+        )
+    else:
+        query = query.filter(models.PushSubscription.new_post_category_id.is_(None))
+    subscriptions = query.all()
+    if not subscriptions:
+        return {"sent": 0, "failed": 0, "removed": 0}
+    return dispatch_to_subscriptions(subscriptions, payload, db, logger)

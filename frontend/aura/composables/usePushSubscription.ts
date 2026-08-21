@@ -30,6 +30,17 @@ export type PushStatus =
 // useBookmarks module-scoped-state pattern.
 const status = ref<PushStatus>("unsupported");
 
+// New-post notification preference for THIS browser (DEC-076/TASK-147): whether
+// it wants new-post pushes and, if so, whether narrowed to one followed
+// category (null = all new posts). Kept in module scope so the category-page
+// follow button and later subscribes share one source of truth.
+export interface NewPostPrefs {
+	want: boolean;
+	categoryId: number | null;
+}
+
+const newPostPrefs = ref<NewPostPrefs>({ want: false, categoryId: null });
+
 /** Decode the base64url VAPID public key into the bytes pushManager expects. */
 export function urlBase64ToUint8Array(base64: string): Uint8Array<ArrayBuffer> {
 	const padding = "=".repeat((4 - (base64.length % 4)) % 4);
@@ -68,9 +79,14 @@ async function fetchBackendPublicKey(): Promise<string | null> {
 }
 
 /** Serialize a browser PushSubscription into the backend's wire shape. */
-function subscriptionToBody(sub: PushSubscription): {
+function subscriptionToBody(
+	sub: PushSubscription,
+	prefs: NewPostPrefs = newPostPrefs.value,
+): {
 	endpoint: string;
 	keys: { p256dh: string; auth: string };
+	want_new_posts: boolean;
+	new_post_category_id: number | null;
 } {
 	const b64url = (buffer: ArrayBuffer | null): string => {
 		const bytes = new Uint8Array(buffer ?? new ArrayBuffer(0));
@@ -83,6 +99,9 @@ function subscriptionToBody(sub: PushSubscription): {
 	return {
 		endpoint: sub.endpoint,
 		keys: { p256dh: b64url(sub.getKey("p256dh")), auth: b64url(sub.getKey("auth")) },
+		// New-post notification prefs on this browser (DEC-076/TASK-147).
+		want_new_posts: prefs.want,
+		new_post_category_id: prefs.categoryId,
 	};
 }
 
@@ -95,6 +114,7 @@ async function activeSubscription(): Promise<PushSubscription | null> {
 async function syncBackend(
 	sub: PushSubscription,
 	path: "subscribe" | "unsubscribe",
+	prefs?: NewPostPrefs,
 ): Promise<void> {
 	// Send the reader JWT when present so the backend binds this subscription
 	// to the reader account (targeted reply notifications, DEC-064/TASK-137).
@@ -107,7 +127,11 @@ async function syncBackend(
 	const res = await fetch(`${apiBase()}/api/push/${path}`, {
 		method: "POST",
 		headers,
-		body: JSON.stringify(subscriptionToBody(sub)),
+		// On unsubscribe the backend only needs the endpoint; prefs ride along
+		// on subscribe (and resubscribe-with-prefs) to upsert the opt-in.
+		body: JSON.stringify(
+			subscriptionToBody(sub, path === "subscribe" ? prefs : newPostPrefs.value),
+		),
 	});
 	if (!res.ok) throw new Error(`push ${path} failed (${res.status})`);
 }
@@ -134,7 +158,8 @@ async function init(): Promise<void> {
 }
 
 /** Opt this browser in: register the SW, request permission once, subscribe. */
-async function subscribe(): Promise<void> {
+async function subscribe(prefs?: NewPostPrefs): Promise<void> {
+	if (prefs) newPostPrefs.value = prefs;
 	if (!isSupported() || status.value === "denied") return;
 	const publicKey = await fetchBackendPublicKey();
 	if (!publicKey) {
@@ -196,6 +221,19 @@ async function syncReaderBinding(): Promise<void> {
 	if (sub) await syncBackend(sub, "subscribe").catch(() => {});
 }
 
+/**
+ * Set this browser's new-post notification prefs (DEC-076/TASK-147). When
+ * already subscribed the prefs are upserted on the backend immediately
+ * (subscribe is an endpoint-keyed upsert); otherwise they are remembered so
+ * the next subscribe carries them.
+ */
+async function setNewPostPrefs(prefs: NewPostPrefs): Promise<void> {
+	newPostPrefs.value = prefs;
+	if (!isSupported() || status.value !== "subscribed") return;
+	const sub = await activeSubscription();
+	if (sub) await syncBackend(sub, "subscribe", prefs);
+}
+
 export function usePushSubscription() {
-	return { status, init, subscribe, unsubscribe, syncReaderBinding };
+	return { status, init, subscribe, unsubscribe, syncReaderBinding, setNewPostPrefs, newPostPrefs };
 }
