@@ -7,6 +7,8 @@ export interface Bookmark {
 	excerpt: string | null;
 	cover_image: string | null;
 	created_at: string;
+	folder_id?: number | null;
+	folder_name?: string | null;
 	category: { id: number; name: string } | null;
 	tags: { id: number; name: string }[];
 }

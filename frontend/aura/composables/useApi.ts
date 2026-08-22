@@ -980,12 +980,26 @@ export interface ReaderBookmarkItem {
 	excerpt: string | null;
 	cover_image: string | null;
 	created_at: string | null;
+	folder_id?: number | null;
+	folder_name?: string | null;
 	category: { id: number; name: string } | null;
 	tags: { id: number; name: string }[];
 }
 
 export interface ReaderBookmarkListResponse {
 	items: ReaderBookmarkItem[];
+	total: number;
+}
+
+/** A reader's bookmark folder/collection (DEC-120, TASK-172). */
+export interface BookmarkFolder {
+	id: number;
+	name: string;
+	count: number;
+}
+
+export interface BookmarkFolderListResponse {
+	items: BookmarkFolder[];
 	total: number;
 }
 
@@ -1040,14 +1054,78 @@ export async function fetchCurrentReader() {
 	});
 }
 
-/** Cloud-synced bookmarks list (requires reader token). */
-export async function fetchReaderBookmarks() {
+/** Cloud-synced bookmarks list (requires reader token); optional folder filter. */
+export async function fetchReaderBookmarks(folderId?: number | null) {
 	const config = useRuntimeConfig();
 	const apiUrl = config.public.apiUrl;
-	return useFetch<ReaderBookmarkListResponse>(`${apiUrl}/api/reader/me/bookmarks`, {
+	const q = folderId ? `?folder_id=${folderId}` : "";
+	return useFetch<ReaderBookmarkListResponse>(`${apiUrl}/api/reader/me/bookmarks${q}`, {
 		headers: getReaderAuthHeaders(),
 		server: false,
 	});
+}
+
+/** Bookmark folders (requires reader token). */
+export async function fetchReaderBookmarkFolders() {
+	const config = useRuntimeConfig();
+	const apiUrl = config.public.apiUrl;
+	return useFetch<BookmarkFolderListResponse>(`${apiUrl}/api/reader/me/bookmarks/folders`, {
+		headers: getReaderAuthHeaders(),
+		server: false,
+	});
+}
+
+/** Create a bookmark folder (requires reader token). */
+export async function createReaderBookmarkFolder(name: string) {
+	const config = useRuntimeConfig();
+	const apiUrl = config.public.apiUrl;
+	return useFetch<{ id: number; name: string }>(`${apiUrl}/api/reader/me/bookmarks/folders`, {
+		method: "POST",
+		headers: { ...getReaderAuthHeaders(), "Content-Type": "application/json" },
+		body: { name },
+		server: false,
+	});
+}
+
+/** Rename a bookmark folder (requires reader token). */
+export async function renameReaderBookmarkFolder(folderId: number, name: string) {
+	const config = useRuntimeConfig();
+	const apiUrl = config.public.apiUrl;
+	return useFetch<{ id: number; name: string }>(
+		`${apiUrl}/api/reader/me/bookmarks/folders/${folderId}`,
+		{
+			method: "PATCH",
+			headers: { ...getReaderAuthHeaders(), "Content-Type": "application/json" },
+			body: { name },
+			server: false,
+		},
+	);
+}
+
+/** Delete a bookmark folder (requires reader token); bookmarks become uncategorized. */
+export async function deleteReaderBookmarkFolder(folderId: number) {
+	const config = useRuntimeConfig();
+	const apiUrl = config.public.apiUrl;
+	return useFetch<null>(`${apiUrl}/api/reader/me/bookmarks/folders/${folderId}`, {
+		method: "DELETE",
+		headers: getReaderAuthHeaders(),
+		server: false,
+	});
+}
+
+/** File a bookmarked post into a folder (folderId null clears) — requires reader token. */
+export async function assignBookmarkFolder(postId: number, folderId: number | null) {
+	const config = useRuntimeConfig();
+	const apiUrl = config.public.apiUrl;
+	return useFetch<{ post_id: number; folder_id: number | null }>(
+		`${apiUrl}/api/reader/me/bookmarks/${postId}/folder`,
+		{
+			method: "PATCH",
+			headers: { ...getReaderAuthHeaders(), "Content-Type": "application/json" },
+			body: { folder_id: folderId },
+			server: false,
+		},
+	);
 }
 
 /** Save a bookmark. Returns 201 (new) / 200 (already existed) — idempotent. */

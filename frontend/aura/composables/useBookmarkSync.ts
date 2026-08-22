@@ -44,6 +44,8 @@ function toLocalBookmark(item: ReaderBookmarkItem): Bookmark {
 		excerpt: item.excerpt,
 		cover_image: item.cover_image,
 		created_at: item.created_at ?? new Date().toISOString(),
+		folder_id: item.folder_id ?? null,
+		folder_name: item.folder_name ?? null,
 		category: item.category,
 		tags: item.tags,
 	};

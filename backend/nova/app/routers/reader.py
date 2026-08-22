@@ -66,8 +66,9 @@ class BookmarkItem(BaseModel):
 
     Mirrors the frontend ``Bookmark`` shape (useBookmarks.ts) so the cloud list
     and the localStorage list serialize identically and the client can merge
-    them transparently. Deliberately omits full content/views/likes — a
-    bookmark list is a navigation list, not an article dump.
+    them transparently. Carries the optional folder_id/folder_name (DEC-120/
+    TASK-172) so the client can render grouping. Deliberately omits full
+    content/views/likes — a bookmark list is a navigation list, not a dump.
     """
 
     model_config = ConfigDict(from_attributes=True)
@@ -78,11 +79,18 @@ class BookmarkItem(BaseModel):
     excerpt: str | None = None
     cover_image: str | None = None
     created_at: datetime | None = None
+    folder_id: int | None = None
+    folder_name: str | None = None
     category: schemas.Category | None = None
     tags: list[schemas.Tag] = []
 
     @classmethod
-    def from_post(cls, post: models.Post) -> BookmarkItem:
+    def from_post(
+        cls,
+        post: models.Post,
+        folder_id: int | None = None,
+        folder_name: str | None = None,
+    ) -> BookmarkItem:
         """Build from a Post row (created_at is the post's, not the bookmark's).
 
         Category/tags are copied into the public schema shapes (the model rows
@@ -95,6 +103,8 @@ class BookmarkItem(BaseModel):
             excerpt=post.excerpt,
             cover_image=post.cover_image,
             created_at=post.created_at,
+            folder_id=folder_id,
+            folder_name=folder_name,
             category=(schemas.Category.model_validate(post.category) if post.category else None),
             tags=[schemas.Tag.model_validate(t) for t in post.tags],
         )
@@ -103,6 +113,42 @@ class BookmarkItem(BaseModel):
 class BookmarkListResponse(BaseModel):
     items: list[BookmarkItem]
     total: int
+
+
+class BookmarkFolderItem(BaseModel):
+    """A reader's bookmark folder with its saved-post count (DEC-120)."""
+
+    id: int
+    name: str
+    count: int = 0
+
+
+class BookmarkFolderListResponse(BaseModel):
+    items: list[BookmarkFolderItem]
+    total: int
+
+
+class FolderCreate(BaseModel):
+    name: str = Field(min_length=1, max_length=50)
+
+
+class FolderRename(BaseModel):
+    name: str = Field(min_length=1, max_length=50)
+
+
+class AssignFolder(BaseModel):
+    # None clears the bookmark's folder.
+    folder_id: int | None = None
+
+
+class BookmarkFolderResponse(BaseModel):
+    id: int
+    name: str
+
+
+class AssignFolderResponse(BaseModel):
+    post_id: int
+    folder_id: int | None = None
 
 
 class AddBookmarkResponse(BaseModel):
@@ -534,18 +580,20 @@ def revoke_my_push_subscription(
 @router.get("/me/bookmarks", response_model=BookmarkListResponse)
 def list_bookmarks(
     current_reader: auth.ReaderAccount = Depends(auth.get_current_reader),
+    folder_id: int | None = Query(None, description="filter to this folder"),
     db: Session = Depends(get_db),
 ):
     """List the reader's bookmarked posts (publicly-visible only).
 
     Non-public posts (draft/scheduled/unpublished) are excluded — a bookmark
     list is a read path and must not leak post existence/visibility changes.
-    Newest bookmark first (the natural "recently saved" ordering).
+    Newest bookmark first (the natural "recently saved" ordering). Optional
+    ``folder_id`` filters to that folder (DEC-120/TASK-172).
     """
-    posts = crud.list_reader_bookmarks(db, current_reader.id)
+    rows = crud.list_reader_bookmarks(db, current_reader.id, folder_id=folder_id)
     return BookmarkListResponse(
-        items=[BookmarkItem.from_post(p) for p in posts],
-        total=len(posts),
+        items=[BookmarkItem.from_post(p, fid, fname) for p, fid, fname in rows],
+        total=len(rows),
     )
 
 
@@ -599,6 +647,84 @@ def remove_bookmark(
     204 no-op (merge-friendly)."""
     crud.remove_reader_bookmark(db, current_reader.id, post_id)
     return None
+
+
+# Bookmark folders / collections (DEC-120/TASK-172)
+# ---------------------------------------------------------------------------
+
+
+@router.get("/me/bookmarks/folders", response_model=BookmarkFolderListResponse)
+def list_bookmark_folders(
+    current_reader: auth.ReaderAccount = Depends(auth.get_current_reader),
+    db: Session = Depends(get_db),
+):
+    """List the reader's bookmark folders with their saved-post counts."""
+    folders = crud.list_reader_bookmark_folders(db, current_reader.id)
+    return BookmarkFolderListResponse(
+        items=[BookmarkFolderItem(id=f.id, name=f.name, count=c) for f, c in folders],
+        total=len(folders),
+    )
+
+
+@router.post("/me/bookmarks/folders", response_model=BookmarkFolderResponse, status_code=201)
+def create_bookmark_folder(
+    body: FolderCreate,
+    response: Response,
+    current_reader: auth.ReaderAccount = Depends(auth.get_current_reader),
+    db: Session = Depends(get_db),
+):
+    """Create a bookmark folder. Idempotent: a same-named folder already
+    existing returns 200 with created=False semantics (no error)."""
+    folder, created = crud.create_bookmark_folder(db, current_reader.id, body.name)
+    response.status_code = 201 if created else 200
+    return BookmarkFolderResponse(id=folder.id, name=folder.name)
+
+
+@router.patch("/me/bookmarks/folders/{folder_id}", response_model=BookmarkFolderResponse)
+def rename_bookmark_folder(
+    folder_id: int,
+    body: FolderRename,
+    current_reader: auth.ReaderAccount = Depends(auth.get_current_reader),
+    db: Session = Depends(get_db),
+):
+    """Rename a folder. 404 if it doesn't belong to the reader; 409 if the new
+    name collides with another of the reader's folders."""
+    folder = crud.rename_bookmark_folder(db, current_reader.id, folder_id, body.name)
+    if not folder:
+        # Distinguish not-found vs duplicate-name.
+        existing = crud.get_bookmark_folder(db, current_reader.id, folder_id)
+        if not existing:
+            raise HTTPException(status_code=404, detail="Folder not found")
+        raise HTTPException(status_code=409, detail="Folder name already exists")
+    return BookmarkFolderResponse(id=folder.id, name=folder.name)
+
+
+@router.delete("/me/bookmarks/folders/{folder_id}", status_code=204)
+def delete_bookmark_folder(
+    folder_id: int,
+    current_reader: auth.ReaderAccount = Depends(auth.get_current_reader),
+    db: Session = Depends(get_db),
+):
+    """Delete a folder (its bookmarks become uncategorized). Idempotent 204."""
+    crud.delete_bookmark_folder(db, current_reader.id, folder_id)
+    return None
+
+
+@router.patch("/me/bookmarks/{post_id}/folder", response_model=AssignFolderResponse)
+def assign_bookmark_folder(
+    post_id: int,
+    body: AssignFolder,
+    current_reader: auth.ReaderAccount = Depends(auth.get_current_reader),
+    db: Session = Depends(get_db),
+):
+    """File a bookmarked post into a folder (or clear with folder_id=None).
+
+    404 if the post isn't bookmarked by the reader or the folder isn't theirs.
+    """
+    bookmark = crud.set_bookmark_folder(db, current_reader.id, post_id, body.folder_id)
+    if not bookmark:
+        raise HTTPException(status_code=404, detail="Bookmark or folder not found")
+    return AssignFolderResponse(post_id=bookmark.post_id, folder_id=bookmark.folder_id)
 
 
 # Server-backed reading history (DEC-116/TASK-170)

@@ -8,6 +8,17 @@
 		"browse": "去浏览文章",
 		"remove": "移除收藏",
 		"seoTitle": "收藏的文章 — X-Blog",
-		"seoDesc": "您收藏的文章列表。"
+		"seoDesc": "您收藏的文章列表。",
+		"allFolders": "全部",
+		"newFolder": "新建文件夹",
+		"newFolderPrompt": "文件夹名称：",
+		"manageFolders": "管理文件夹",
+		"renameFolder": "重命名",
+		"renameFolderPrompt": "新文件夹名称：",
+		"deleteFolder": "删除",
+		"deleteFolderConfirm": "删除文件夹“{name}”？其中的收藏将变为未分类。",
+		"noFolder": "未分类",
+		"noPostsInFolder": "此文件夹中暂无收藏。",
+		"assign": "移动到文件夹"
 	}
 }

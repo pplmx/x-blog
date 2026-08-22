@@ -182,13 +182,33 @@ class CommentFlag(Base):
     __table_args__ = (UniqueConstraint("comment_id", "ip_key", name="uq_comment_flags_comment_ip"),)
 
 
+class BookmarkFolder(Base):
+    """A reader's bookmark folder/collection (DEC-120, TASK-172).
+
+    One folder per reader with a unique (reader_id, name) pair, so a reader
+    can organize saved posts by topic/project. Additive table, no DB-level FK
+    (SQLite alembic can't add FK-carrying columns to existing tables,
+    DEC-009); ownership is enforced at the API layer.
+    """
+
+    __tablename__ = "bookmark_folders"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    reader_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
+    name: Mapped[str] = mapped_column(String(50), nullable=False)
+    created_at: Mapped[datetime | None] = mapped_column(DateTime, default=lambda: datetime.now(UTC))
+
+    __table_args__ = (UniqueConstraint("reader_id", "name", name="uq_bookmark_folders_reader_name"),)
+
+
 class ReaderBookmark(Base):
     """A reader's saved post (cloud-synced bookmarks, DEC-059/TASK-132).
 
     ``reader_accounts.id`` ↔ ``posts.id`` pair is unique (one bookmark per
-    post per reader). Referential integrity is enforced at the ORM layer and
-    by a DB-level unique constraint on the pair; the migration creates the
-    table entirely additively (DEC-009).
+    post per reader). An optional ``folder_id`` files the save into a
+    BookmarkFolder (DEC-120/TASK-172). Referential integrity is enforced at
+    the ORM layer and by a DB-level unique constraint on the pair; the
+    migration creates the table/additive column entirely additively (DEC-009).
     """
 
     __tablename__ = "reader_bookmarks"
@@ -196,17 +216,24 @@ class ReaderBookmark(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     reader_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
     post_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
+    folder_id: Mapped[int | None] = mapped_column(Integer, nullable=True, index=True)
     created_at: Mapped[datetime | None] = mapped_column(DateTime, default=lambda: datetime.now(UTC))
 
     __table_args__ = (UniqueConstraint("reader_id", "post_id", name="uq_reader_bookmarks_reader_post"),)
 
     # No DB-level FK on the columns (SQLite alembic can't add FK-carrying
     # columns to existing tables, DEC-009) — the join is declared explicitly,
-    # mirroring the Post.series_id pattern.
+    # mirroring the Post.series_id pattern. Ownership/folder validity is
+    # enforced at the API layer.
     post: Mapped[Post] = relationship(
         "Post",
         primaryjoin="ReaderBookmark.post_id == Post.id",
         foreign_keys="ReaderBookmark.post_id",
+    )
+    folder: Mapped[BookmarkFolder | None] = relationship(
+        "BookmarkFolder",
+        primaryjoin="ReaderBookmark.folder_id == BookmarkFolder.id",
+        foreign_keys="ReaderBookmark.folder_id",
     )
 
 

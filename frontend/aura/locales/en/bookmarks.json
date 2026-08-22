@@ -8,6 +8,17 @@
 		"browse": "Browse articles",
 		"remove": "Remove bookmark",
 		"seoTitle": "Bookmarked Posts — X-Blog",
-		"seoDesc": "A list of articles you have bookmarked."
+		"seoDesc": "A list of articles you have bookmarked.",
+		"allFolders": "All",
+		"newFolder": "New folder",
+		"newFolderPrompt": "Folder name:",
+		"manageFolders": "Manage folders",
+		"renameFolder": "Rename",
+		"renameFolderPrompt": "New folder name:",
+		"deleteFolder": "Delete",
+		"deleteFolderConfirm": "Delete folder \"{name}\"? Its bookmarks will become uncategorized.",
+		"noFolder": "No folder",
+		"noPostsInFolder": "No bookmarks in this folder yet.",
+		"assign": "Move to folder"
 	}
 }

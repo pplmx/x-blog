@@ -1398,23 +1398,142 @@ def reader_history_stats(db: Session, reader_id: int, recent_limit: int = 6) -> 
     }
 
 
-def list_reader_bookmarks(db: Session, reader_id: int) -> list[models.Post]:
-    """Return the reader's bookmarked posts that are *publicly visible* only.
+def list_reader_bookmarks(
+    db: Session, reader_id: int, folder_id: int | None = None
+) -> list[tuple[models.Post, int | None, str | None]]:
+    """Return the reader's bookmark rows as (post, folder_id, folder_name),
+    publicly-visible only, newest bookmark first.
 
     Post timestamps/visibility can change after a bookmark is saved; the list
     must not leak a draft or scheduled post on a read path (same invariant as
-    the public post/comment read paths). Non-visible posts simply don't appear,
-    newest bookmark first.
+    the public post/comment read paths). Non-visible posts simply don't appear.
+    ``folder_id`` (if given) filters to that folder. (DEC-120/TASK-172)
     """
-    rows = (
-        db.query(models.Post)
+    query = (
+        db.query(models.Post, models.ReaderBookmark.folder_id, models.BookmarkFolder.name)
         .join(models.ReaderBookmark, models.ReaderBookmark.post_id == models.Post.id)
+        .outerjoin(models.BookmarkFolder, models.ReaderBookmark.folder_id == models.BookmarkFolder.id)
         .filter(models.ReaderBookmark.reader_id == reader_id)
         .options(joinedload(models.Post.category), joinedload(models.Post.tags))
-        .order_by(models.ReaderBookmark.created_at.desc())
+        .order_by(models.ReaderBookmark.created_at.desc(), models.Post.id.desc())
+    )
+    if folder_id is not None:
+        query = query.filter(models.ReaderBookmark.folder_id == folder_id)
+    rows = query.all()
+    return [(post, fid, fname) for post, fid, fname in rows if is_publicly_visible(post)]
+
+
+# Bookmark folders/collections (DEC-120/TASK-172)
+# ---------------------------------------------------------------------------
+
+
+def get_bookmark_folder(db: Session, reader_id: int, folder_id: int) -> models.BookmarkFolder | None:
+    """Return one of the reader's folders (ownership-scoped), or None."""
+    return (
+        db.query(models.BookmarkFolder)
+        .filter(
+            models.BookmarkFolder.id == folder_id,
+            models.BookmarkFolder.reader_id == reader_id,
+        )
+        .first()
+    )
+
+
+def list_reader_bookmark_folders(db: Session, reader_id: int) -> list[tuple[models.BookmarkFolder, int]]:
+    """Return (folder, bookmark_count) for the reader's folders, name asc."""
+    rows = (
+        db.query(models.BookmarkFolder, func.count(models.ReaderBookmark.id))
+        .outerjoin(
+            models.ReaderBookmark,
+            and_(
+                models.ReaderBookmark.folder_id == models.BookmarkFolder.id,
+                models.ReaderBookmark.reader_id == reader_id,
+            ),
+        )
+        .filter(models.BookmarkFolder.reader_id == reader_id)
+        .group_by(models.BookmarkFolder.id)
+        .order_by(models.BookmarkFolder.name.asc())
         .all()
     )
-    return [p for p in rows if is_publicly_visible(p)]
+    return [(folder, count) for folder, count in rows]
+
+
+def create_bookmark_folder(db: Session, reader_id: int, name: str) -> tuple[models.BookmarkFolder, bool]:
+    """Create a folder; returns (folder, created). Idempotent: a folder with
+    the same name already existing returns it with created=False."""
+    name = name.strip()
+    existing = (
+        db.query(models.BookmarkFolder)
+        .filter(models.BookmarkFolder.reader_id == reader_id, models.BookmarkFolder.name == name)
+        .first()
+    )
+    if existing:
+        return existing, False
+    folder = models.BookmarkFolder(reader_id=reader_id, name=name)
+    db.add(folder)
+    db.commit()
+    db.refresh(folder)
+    return folder, True
+
+
+def rename_bookmark_folder(db: Session, reader_id: int, folder_id: int, name: str) -> models.BookmarkFolder | None:
+    """Rename a folder; returns the folder, or None if not found or the new
+    name collides with another of the reader's folders."""
+    folder = get_bookmark_folder(db, reader_id, folder_id)
+    if not folder:
+        return None
+    name = name.strip()
+    if name != folder.name:
+        dup = (
+            db.query(models.BookmarkFolder)
+            .filter(
+                models.BookmarkFolder.reader_id == reader_id,
+                models.BookmarkFolder.name == name,
+                models.BookmarkFolder.id != folder_id,
+            )
+            .first()
+        )
+        if dup:
+            return None
+    folder.name = name
+    db.add(folder)
+    db.commit()
+    db.refresh(folder)
+    return folder
+
+
+def delete_bookmark_folder(db: Session, reader_id: int, folder_id: int) -> bool:
+    """Delete a folder; unassigns its bookmarks (sets folder_id=None).
+    Returns True if a folder was removed, False if not found. Idempotent."""
+    folder = get_bookmark_folder(db, reader_id, folder_id)
+    if not folder:
+        return False
+    db.query(models.ReaderBookmark).filter(
+        models.ReaderBookmark.folder_id == folder_id,
+        models.ReaderBookmark.reader_id == reader_id,
+    ).update({"folder_id": None})
+    db.delete(folder)
+    db.commit()
+    return True
+
+
+def set_bookmark_folder(
+    db: Session, reader_id: int, post_id: int, folder_id: int | None
+) -> models.ReaderBookmark | None:
+    """File a bookmark into a folder (or clear it with folder_id=None).
+    Ownership-scoped: the folder must belong to the reader. Returns the
+    updated bookmark, or None if the bookmark doesn't exist or the folder is
+    not the reader's."""
+    bookmark = get_reader_bookmark(db, reader_id, post_id)
+    if not bookmark:
+        return None
+    if folder_id is not None and not get_bookmark_folder(db, reader_id, folder_id):
+        return None
+    bookmark.folder_id = folder_id
+    db.add(bookmark)
+    db.commit()
+    db.refresh(bookmark)
+    return bookmark
 
 
 def get_comment_subscription(db: Session, reader_id: int, post_id: int) -> models.CommentSubscription | None:

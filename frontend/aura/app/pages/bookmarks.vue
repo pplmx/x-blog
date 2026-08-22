@@ -1,17 +1,35 @@
 <script setup lang="ts">
+import { computed, onMounted, ref } from "vue";
+import { useBookmarkFolders } from "~~/composables/useBookmarkFolders";
 import { useBookmarkSync } from "~~/composables/useBookmarkSync";
-import { useBookmarks } from "~~/composables/useBookmarks";
+import { type Bookmark, useBookmarks } from "~~/composables/useBookmarks";
 import { useSeo } from "~~/composables/useSeo";
 
 const { t, locale } = useLang();
 const { bookmarks, clearBookmarks, bookmarkCount } = useBookmarks();
 const { remove, mergeLocalToCloud } = useBookmarkSync();
+const {
+	folders,
+	load: loadFolders,
+	create: createFolder,
+	rename: renameFolder,
+	remove: removeFolder,
+	assign: assignFolder,
+} = useBookmarkFolders();
 
 useSeo({
 	title: t("bookmarks.seoTitle"),
 	description: t("bookmarks.seoDesc"),
 	path: "/bookmarks",
 });
+
+// Folders are a signed-in (cloud) feature. Mirror useBookmarkSync's token check.
+const signedIn = computed(
+	() =>
+		typeof window !== "undefined" &&
+		typeof localStorage?.getItem === "function" &&
+		!!localStorage.getItem("reader_token"),
+);
 
 function handleClearAll() {
 	if (confirm(t("bookmarks.confirmClear"))) {
@@ -24,7 +42,62 @@ function handleClearAll() {
 // changes appear here). Safe while logged out — no-op. (TASK-134)
 onMounted(() => {
 	void mergeLocalToCloud();
+	if (signedIn.value) {
+		void loadFolders();
+	}
 });
+
+// --- Folders (DEC-120, TASK-172) ------------------------------------------
+
+const activeFolderId = ref<"all" | number>("all");
+const showManage = ref(false);
+
+const filteredBookmarks = computed<Bookmark[]>(() => {
+	if (activeFolderId.value === "all") return bookmarks.value;
+	return bookmarks.value.filter((b) => b.folder_id === activeFolderId.value);
+});
+
+const showingCount = computed(() =>
+	signedIn.value && activeFolderId.value !== "all"
+		? filteredBookmarks.value.length
+		: bookmarkCount.value,
+);
+
+async function handleNewFolder() {
+	const name = window.prompt(t("bookmarks.newFolderPrompt"))?.trim();
+	if (name) {
+		await createFolder(name);
+	}
+}
+
+async function handleRename(folder: { id: number; name: string }) {
+	const name = window.prompt(t("bookmarks.renameFolderPrompt"), folder.name)?.trim();
+	if (name && name !== folder.name) {
+		await renameFolder(folder.id, name);
+	}
+}
+
+function handleDelete(folder: { id: number; name: string }) {
+	if (confirm(t("bookmarks.deleteFolderConfirm", { name: folder.name }))) {
+		void removeFolder(folder.id);
+		if (activeFolderId.value === folder.id) activeFolderId.value = "all";
+	}
+}
+
+function activeClass(active: boolean): string {
+	return active
+		? "px-3 py-1.5 rounded-xl text-sm font-medium bg-violet-100 dark:bg-violet-900/40 text-violet-700 dark:text-violet-300"
+		: "px-3 py-1.5 rounded-xl text-sm font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors";
+}
+
+async function handleAssign(bookmark: Bookmark, raw: string) {
+	const folderId = raw === "" ? null : Number(raw);
+	// Optimistic local update so the list re-renders immediately.
+	bookmark.folder_id = folderId;
+	bookmark.folder_name =
+		folderId === null ? null : (folders.value.find((f) => f.id === folderId)?.name ?? null);
+	await assignFolder(bookmark.id, folderId);
+}
 </script>
 
 <template>
@@ -38,7 +111,7 @@ onMounted(() => {
           {{ t('bookmarks.title') }}
         </h1>
         <p v-if="bookmarkCount > 0" class="text-sm text-gray-500 dark:text-gray-400 mt-2">
-          {{ t('bookmarks.countLabel', { count: bookmarkCount }) }}
+          {{ t('bookmarks.countLabel', { count: showingCount }) }}
         </p>
       </div>
       <button
@@ -51,6 +124,67 @@ onMounted(() => {
         <Icon icon="lucide:trash-2" class="w-4 h-4 inline mr-1" />
         {{ t('bookmarks.clearAll') }}
       </button>
+    </div>
+
+    <!-- Folder bar (signed-in only) -->
+    <div v-if="signedIn" class="mb-6">
+      <div class="flex flex-wrap items-center gap-2">
+        <button type="button" :class="activeClass(activeFolderId === 'all')" @click="activeFolderId = 'all'">
+          {{ t('bookmarks.allFolders') }}
+        </button>
+        <button
+          v-for="f in folders"
+          :key="f.id"
+          type="button"
+          :class="activeClass(activeFolderId === f.id)"
+          @click="activeFolderId = f.id"
+        >
+          {{ f.name }} ({{ f.count }})
+        </button>
+        <span class="mx-1 w-px h-5 bg-gray-200 dark:bg-gray-700" />
+        <button
+          type="button"
+          class="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl text-sm font-medium text-violet-600 dark:text-violet-400 hover:bg-violet-50 dark:hover:bg-violet-900/30 transition-colors"
+          @click="handleNewFolder"
+        >
+          <Icon icon="lucide:folder-plus" class="w-4 h-4" />
+          {{ t('bookmarks.newFolder') }}
+        </button>
+        <button
+          v-if="folders.length"
+          type="button"
+          class="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl text-sm font-medium text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+          @click="showManage = !showManage"
+        >
+          <Icon icon="lucide:settings-2" class="w-4 h-4" />
+          {{ t('bookmarks.manageFolders') }}
+        </button>
+      </div>
+
+      <!-- Manage-folder panel -->
+      <div v-if="showManage" class="mt-4 p-4 rounded-2xl border border-gray-100 dark:border-gray-800">
+        <ul class="space-y-2">
+          <li v-for="f in folders" :key="f.id" class="flex items-center justify-between gap-4">
+            <span class="text-sm text-gray-700 dark:text-gray-200">{{ f.name }}</span>
+            <div class="flex items-center gap-2">
+              <button
+                type="button"
+                class="text-xs text-gray-500 hover:text-blue-600 transition-colors"
+                @click="handleRename(f)"
+              >
+                {{ t('bookmarks.renameFolder') }}
+              </button>
+              <button
+                type="button"
+                class="text-xs text-gray-500 hover:text-red-500 transition-colors"
+                @click="handleDelete(f)"
+              >
+                {{ t('bookmarks.deleteFolder') }}
+              </button>
+            </div>
+          </li>
+        </ul>
+      </div>
     </div>
 
     <!-- Empty state -->
@@ -69,13 +203,19 @@ onMounted(() => {
       </NuxtLink>
     </div>
 
-    <!-- Bookmarks list -->
+    <!-- No posts in the selected folder -->
     <div
-      v-else
-      class="space-y-4"
+      v-else-if="filteredBookmarks.length === 0"
+      class="text-center py-16 text-gray-500 dark:text-gray-400"
     >
+      <Icon icon="lucide:folder-open" class="w-12 h-12 mx-auto mb-4 text-gray-300" />
+      <p class="text-lg">{{ t('bookmarks.noPostsInFolder') }}</p>
+    </div>
+
+    <!-- Bookmarks list -->
+    <div v-else class="space-y-4">
       <div
-        v-for="bookmark in bookmarks"
+        v-for="bookmark in filteredBookmarks"
         :key="bookmark.id"
         class="border border-gray-100 dark:border-gray-800 rounded-2xl p-4 hover:shadow-md transition-shadow"
       >
@@ -101,6 +241,10 @@ onMounted(() => {
                 <Icon icon="lucide:folder" class="w-4 h-4" />
                 {{ bookmark.category.name }}
               </span>
+              <span v-if="bookmark.folder_name" class="flex items-center gap-1 text-violet-500">
+                <Icon icon="lucide:layers" class="w-4 h-4" />
+                {{ bookmark.folder_name }}
+              </span>
               <span class="flex items-center gap-1">
                 <Icon icon="lucide:calendar" class="w-4 h-4" />
                 {{ new Date(bookmark.created_at).toLocaleDateString(locale === "zh" ? "zh-CN" : "en-US", { year: 'numeric', month: 'long', day: 'numeric' }) }}
@@ -115,6 +259,22 @@ onMounted(() => {
               >
                 #{{ tag.name }}
               </span>
+            </div>
+
+            <!-- Folder assignment (signed-in only) -->
+            <div v-if="signedIn" class="mt-3">
+              <label class="inline-flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
+                <Icon icon="lucide:folder" class="w-4 h-4" />
+                <span>{{ t('bookmarks.assign') }}</span>
+                <select
+                  :value="bookmark.folder_id ?? ''"
+                  class="ml-1 text-sm bg-transparent border border-gray-200 dark:border-gray-700 rounded-lg px-2 py-1 text-gray-700 dark:text-gray-200 focus:outline-none"
+                  @change="handleAssign(bookmark, ($event.target as HTMLSelectElement).value)"
+                >
+                  <option value="">{{ t('bookmarks.noFolder') }}</option>
+                  <option v-for="f in folders" :key="f.id" :value="f.id">{{ f.name }}</option>
+                </select>
+              </label>
             </div>
           </div>
 
