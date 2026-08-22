@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 124,
+  "round": 125,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-08-22T06:07:39+00:00",
+  "updated_at": "2026-08-22T08:17:10+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -7682,11 +7682,11 @@
     "TASK-157": {
       "id": "TASK-157",
       "type": "task",
-      "status": "active",
-      "version": 1,
+      "status": "resolved",
+      "version": 2,
       "created_at": "2026-08-22T05:55:29+00:00",
-      "updated_at": "2026-08-22T05:55:29+00:00",
-      "touched_round": 123,
+      "updated_at": "2026-08-22T08:08:33+00:00",
+      "touched_round": 124,
       "category": "core-feature",
       "severity": 0.5,
       "confidence": 0.9,
@@ -7701,10 +7701,60 @@
       "version": 1,
       "created_at": "2026-08-22T06:02:16+00:00",
       "updated_at": "2026-08-22T06:02:16+00:00",
-      "touched_round": 123,
+      "touched_round": 124,
       "title": "Milestone: syntax highlighting in comment code blocks",
       "rationale": "Feature-evolution selection (SKILL 11.2 gap analysis): DEC-088 delivered sanitized markdown rendering in comments but explicitly deferred syntax highlighting as an enhancement after the baseline. Now that fences render, a tech blog discussion still falls flat — a ts snippet in a comment is monochrome while the identical snippet in the post body is Tokyo Night highlighted. Users: readers posting/sharing snippets in discussion threads. Why now: the render pipeline exists and useCodeHighlight already ships for posts (lazy client-only highlight.js + escapeHtml fallback), so the slice is a frontend-only augment with no schema change. Acceptance (one sentence): an approved comment fenced code block shows highlight.js token colors reusing the post Tokyo Night theme. Scope: lazily load loadHighlighter in CommentList, tokenize each .comment-body pre code on mount, apply shared token CSS, fall back to plain escaped text; keep existing XSS guarantees (highlightCode escapes its source).",
       "alternatives_rejected": "Math/mermaid in comments (posts-only scope); comment editing/deleting (auth surface, separate slice); email digests (no SMTP); unifying post/comment code surfaces (cleaner but bigger refactor — note for later)."
+    },
+    "CHG-147": {
+      "id": "CHG-147",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-22T08:06:50+00:00",
+      "updated_at": "2026-08-22T08:06:50+00:00",
+      "touched_round": 124,
+      "commit": "d2e6ae3",
+      "title": "Comment syntax highlighting (DEC-090, TASK-157)"
+    },
+    "DEC-091": {
+      "id": "DEC-091",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-22T08:08:33+00:00",
+      "updated_at": "2026-08-22T08:08:33+00:00",
+      "touched_round": 124,
+      "title": "Milestone delivered: syntax highlighting in comment code blocks (DEC-090 complete)",
+      "rationale": "Delivery of DEC-090 / TASK-157 via CHG-147 (d2e6ae3), verified end-to-end. Frontend-only: CommentList lazily loads useCodeHighlight (loadHighlighter + highlightCode) after mount, tokenizes each .comment-body pre code block, and re-runs on comment-list changes; highlightCode escapes its source and plain-text-falls-back for unknown languages so the TASK-156 XSS guarantees are unchanged. The Tokyo Night .hljs-* palette moved from MarkdownContent scoped styles into the shared global assets/css/code-theme.pcss (imported via main.css) so post and comment code surfaces render alike, and comment pre sits on the same fixed dark #1a1b26 panel as post code for contrast in both modes. Verification: vitest 1014 green (2 CommentList highlight tests: keyword spans on fenced ts, unknown-lang plain fallback), biome + vue-tsc clean, Playwright comment-markdown green including a new assertion that an approved comment ts fence shows .hljs-keyword spans in a real browser.",
+      "alternatives_rejected": "Copy button on comment code blocks (fold into a later slice); comment like/upvote (next milestone); math/mermaid in comments (posts-only); unifying post/comment code surfaces into one component (cleaner but bigger refactor)."
+    },
+    "TASK-158": {
+      "id": "TASK-158",
+      "type": "task",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-22T08:09:54+00:00",
+      "updated_at": "2026-08-22T08:09:54+00:00",
+      "touched_round": 124,
+      "category": "core-feature",
+      "severity": 0.7,
+      "confidence": 0.9,
+      "effort": 1.0,
+      "unlock_factor": 1.0,
+      "title": "Comment likes/upvotes: comments.likes column + POST /comments/{id}/like + per-comment like button with localStorage dedup + tests"
+    },
+    "DEC-092": {
+      "id": "DEC-092",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-22T08:11:56+00:00",
+      "updated_at": "2026-08-22T08:11:56+00:00",
+      "touched_round": 124,
+      "title": "Milestone: comment likes (upvotes)",
+      "rationale": "Feature-evolution selection (SKILL 11.2 gap analysis): with comments now rendering markdown and highlighted code, discussion threads still lack a lightweight community signal — readers share code, but there is no way to signal \"this snippet/answer helped me\" without writing another comment. Post likes (POST /posts/{id}/like, anonymous count++) already set the precedent; extending the same pattern to comments is a natural vertical slice on the comments arc (DEC-088 markdown -> DEC-090 highlight -> likes). Users: readers evaluating whether past questions were answered; authors scanning which comments helped. Acceptance (one sentence): a reader can like (and dedup-prevent re-like of) a comment, and the count is visible on every published comment. Scope: additive comments.likes column + POST /comments/{id}/like (rate-limited, 404 for comments on non-public posts) + CommentPublic.likes; per-comment like button in CommentList (heart + count, localStorage dedup like the post-like ISS-038 pattern, optimistic update, error handling) + en/zh labels; backend pytest + frontend component + E2E.",
+      "alternatives_rejected": "Comment code copy button (tiny, frontend-only, could fold into a later slice); comment editing/deleting by author (larger auth/ownership surface, separate slice); comment dislikes (negative engagement, out); per-reader like identity (would need a new table + JWT wiring — anonymous count matches the post-likes precedent)."
     }
   },
   "edges": [
@@ -10849,6 +10899,30 @@
       "to": "TASK-157",
       "type": "governs",
       "created_at": "2026-08-22T06:07:39+00:00"
+    },
+    {
+      "from": "CHG-147",
+      "to": "TASK-157",
+      "type": "implements",
+      "created_at": "2026-08-22T08:08:33+00:00"
+    },
+    {
+      "from": "DEC-091",
+      "to": "DEC-090",
+      "type": "supersedes",
+      "created_at": "2026-08-22T08:17:10+00:00"
+    },
+    {
+      "from": "DEC-092",
+      "to": "DEC-091",
+      "type": "supersedes",
+      "created_at": "2026-08-22T08:17:10+00:00"
+    },
+    {
+      "from": "DEC-092",
+      "to": "TASK-158",
+      "type": "governs",
+      "created_at": "2026-08-22T08:17:10+00:00"
     }
   ]
 }
