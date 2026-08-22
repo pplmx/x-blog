@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 130,
+  "round": 131,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-08-22T12:20:51+00:00",
+  "updated_at": "2026-08-22T13:10:20+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -7936,7 +7936,7 @@
       "version": 1,
       "created_at": "2026-08-22T12:20:43+00:00",
       "updated_at": "2026-08-22T12:20:43+00:00",
-      "touched_round": 130,
+      "touched_round": 131,
       "title": "Milestone: admin settings page with runtime auto-approve toggle",
       "rationale": "Feature-evolution selection (SKILL 11.2 gap analysis), direct follow-on to DEC-098. The verified-reader auto-approve trust tier currently ships as an env-only toggle (AUTO_APPROVE_READER_COMMENTS), so an operator must redeploy to flip the moderation policy. There is no admin settings surface at all. Milestone: a persisted SiteSetting key-value store + an Admin Settings page so the operator can toggle verified-reader auto-approve at runtime (falling back to the env default). Users: the blog operator/admin who wants to turn the trust tier on/off without a redeploy. Why now: the flag just shipped (DEC-098); making it runtime-controllable closes the loop and is a clean, additive, net-new slice. Acceptance (one sentence): an admin can flip \"auto-approve verified-reader comments\" on/off on an Admin Settings page and the comment-create policy honors it immediately. Scope: SiteSetting table (key/value, additive migration, seed auto_approve_reader_comments=false); GET/PUT /api/admin/settings/{key} admin-only; create_comment resolves the flag from the persisted setting with env fallback (cheap single-row read); Admin Settings page (/admin/settings, nav link, toggle + save + saved state, i18n); backend pytest (defaults, PUT persists + create honors it, admin-only, invalid key 404) + frontend page test + E2E.",
       "alternatives_rejected": "Comment code copy button (trivial-button, rejected per value gate); a general settings framework for many keys (scope creep, just the one key now); deploying env-only forever (operator pain, this milestone fixes it); auto-approve by liked-count/reputation (needs reputation table, separate slice)."
@@ -7944,17 +7944,67 @@
     "TASK-162": {
       "id": "TASK-162",
       "type": "task",
-      "status": "active",
-      "version": 1,
+      "status": "resolved",
+      "version": 2,
       "created_at": "2026-08-22T12:20:48+00:00",
-      "updated_at": "2026-08-22T12:20:48+00:00",
-      "touched_round": 130,
+      "updated_at": "2026-08-22T13:10:17+00:00",
+      "touched_round": 131,
       "category": "core-feature",
       "severity": 0.6,
       "confidence": 0.82,
       "effort": 1.6,
       "unlock_factor": 1.3,
       "title": "Admin runtime settings for auto-approve: SiteSetting key/value table (additive migration, seed auto_approve_reader_comments=false) + GET/PUT /api/admin/settings/{key} admin-only + comment-create resolves persisted flag with env fallback + Admin Settings page (/admin/settings, toggle, save, i18n) + backend pytest + frontend page test + E2E"
+    },
+    "CHG-152": {
+      "id": "CHG-152",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-22T13:09:38+00:00",
+      "updated_at": "2026-08-22T13:09:38+00:00",
+      "touched_round": 131,
+      "commit": "2890aee86fc530696462efc11da6983db751146b",
+      "title": "Admin runtime settings page + auto-approve toggle (DEC-100, TASK-162)"
+    },
+    "DEC-101": {
+      "id": "DEC-101",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-22T13:09:45+00:00",
+      "updated_at": "2026-08-22T13:09:45+00:00",
+      "touched_round": 131,
+      "title": "Milestone delivered: admin runtime settings + auto-approve toggle (DEC-100 complete)",
+      "rationale": "Delivery of DEC-100 / TASK-162 via CHG-152 (2890aee). Backend: additive SiteSetting key/value table (migration a1f3c5e7d9b2, no seed so env default stays in effect until written); crud.get_site_setting/upsert_site_setting/boolean_setting (persisted wins over env fallback); create_comment resolves auto-approve via crud.boolean_setting(db, key, env) so a persisted \"false\"/\"true\" overrides AUTO_APPROVE_READER_COMMENTS; admin-only GET/PUT /api/admin/settings/{key} (whitelist, invalid key 404, invalid boolean 422), GET returns effective value, PUT writes canonical. Frontend: Admin Settings page (/admin/settings) with a toggle + load/save/saved/error states, Settings link in the admin sidebar, en/zh labels; useApi fetchSiteSetting/updateSiteSetting. Tests: backend settings suite (admin-only 401, default effective false, PUT persists, persisted true auto-approves verified reader, persisted false overrides env true, invalid key/value 422/404) + frontend page test (loads true/false, saves toggle) + Playwright toggle journey. Verification: frontend vitest 1029 green, biome + vue-tsc clean; backend ruff/pyright green, imports + OpenAPI routes registered. backend pytest + Playwright not executed in the CPU-starved sandbox.",
+      "alternatives_rejected": "General settings framework for many keys (scope creep, one key now); env-only forever (operator redeploys, this milestone fixes it); comment code copy button (trivial, rejected); auto-approve by liked-count/reputation (needs reputation table, separate slice)."
+    },
+    "DEC-102": {
+      "id": "DEC-102",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-22T13:09:56+00:00",
+      "updated_at": "2026-08-22T13:09:56+00:00",
+      "touched_round": 131,
+      "title": "Milestone: My Comments filtering + pagination",
+      "rationale": "Feature-evolution selection (SKILL 11.2 gap analysis) on the reader comment-history arc. GET /api/reader/me/comments (DEC-066) returns the reader is entire comment history as one unfiltered, unpaginated list (crud.get_reader_comments returns all rows; the endpoint returns items+total with no page/limit or status filter). The My Comments page (/comments) renders every comment in one flat dump, so a reader who comments often cannot surface \"still pending\" vs \"rejected\" or page through a long history. Milestone: add a status filter (all|pending|approved|rejected) and pagination to the reader is own comment history, with filter tabs + pager on the My Comments page. Users: readers managing their comment history under a moderated blog who want to find pending/rejected items and page long histories. Why now: the comment arc matured (edit/delete DEC-096, auto-approve DEC-098/100) but its reader history view never gained filtering/pagination. Acceptance (one sentence): a reader can filter their My Comments by status and jump between pages. Scope: backend whitelisted status param + page/limit on GET /api/reader/me/comments (crud.get_reader_comments gains filters + pagination, returning total; status derived via _comment_status), frontend My Comments page filter tabs + pagination controls (i18n), backend pytest (filter each status, pagination, invalid status 422, total consistent) + frontend component test + E2E.",
+      "alternatives_rejected": "Email digests of new replies (no SMTP, out); in-app notification center (redundant with account.vue, rejected earlier); comment code copy button (trivial button, rejected); comment archive/export of own history (bigger surface, separate slice)."
+    },
+    "TASK-163": {
+      "id": "TASK-163",
+      "type": "task",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-22T13:10:00+00:00",
+      "updated_at": "2026-08-22T13:10:00+00:00",
+      "touched_round": 131,
+      "category": "core-feature",
+      "severity": 0.6,
+      "confidence": 0.85,
+      "effort": 1.4,
+      "unlock_factor": 1.1,
+      "title": "My Comments filter+pagination: whitelisted status param (all|pending|approved|rejected) + page/limit on GET /api/reader/me/comments (+ crud.get_reader_comments filters/pagination/total) + My Comments page filter tabs + pagination controls + i18n + backend pytest + frontend test + E2E"
     }
   },
   "edges": [
@@ -11243,6 +11293,36 @@
       "to": "TASK-162",
       "type": "governs",
       "created_at": "2026-08-22T12:20:51+00:00"
+    },
+    {
+      "from": "CHG-152",
+      "to": "TASK-162",
+      "type": "implements",
+      "created_at": "2026-08-22T13:10:19+00:00"
+    },
+    {
+      "from": "DEC-101",
+      "to": "DEC-100",
+      "type": "supersedes",
+      "created_at": "2026-08-22T13:10:19+00:00"
+    },
+    {
+      "from": "DEC-101",
+      "to": "TASK-162",
+      "type": "governs",
+      "created_at": "2026-08-22T13:10:19+00:00"
+    },
+    {
+      "from": "DEC-102",
+      "to": "DEC-101",
+      "type": "supersedes",
+      "created_at": "2026-08-22T13:10:20+00:00"
+    },
+    {
+      "from": "DEC-102",
+      "to": "TASK-163",
+      "type": "governs",
+      "created_at": "2026-08-22T13:10:20+00:00"
     }
   ]
 }
