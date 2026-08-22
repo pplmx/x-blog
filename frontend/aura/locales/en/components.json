@@ -22,6 +22,14 @@
 			"markdownHint": "Supports Markdown — code blocks, bold and links render."
 		},
 		"commentList": {
+			"edited": "edited",
+			"edit": "Edit",
+			"delete": "Delete",
+			"save": "Save",
+			"cancel": "Cancel",
+			"deleteConfirm": "Delete this comment? This can't be undone.",
+			"editError": "Couldn't edit this comment. Please try again.",
+			"deleteError": "Couldn't delete this comment. Please try again.",
 			"sortBy": "Sort",
 			"sortNewest": "Newest",
 			"sortOldest": "Oldest",

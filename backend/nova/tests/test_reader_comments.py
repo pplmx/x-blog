@@ -208,3 +208,80 @@ class TestDeleteOwnComment:
         post, comment_id, _token_a = self._own_comment(client, db_session)
         resp = client.delete(f"/api/reader/me/comments/{comment_id}")
         assert resp.status_code == 401
+
+
+class TestEditOwnComment:
+    def _own_approved(self, client, db_session):
+        from app.crud import approve_comment
+
+        post = _create_post(db_session, slug=f"edit-post-{id(self)}")
+        token = _token(client, email=f"edit-{id(self)}@example.com", display_name="Editor")
+        created = _post_comment(client, post.id, headers=_auth(token)).json()
+        approve_comment(db_session, created["id"], approved=True)
+        return post, created["id"], token
+
+    def test_edit_own_approved_comment(self, client, db_session):
+        post, comment_id, token = self._own_approved(client, db_session)
+        resp = client.patch(
+            f"/api/reader/me/comments/{comment_id}",
+            json={"content": "edited body"},
+            headers=_auth(token),
+        )
+        assert resp.status_code == 200, resp.text
+        data = resp.json()
+        assert data["content"] == "edited body"
+        assert data["edited_at"] is not None
+        # The public thread reflects the edit.
+        listed = client.get(f"/api/comments/post/{post.id}").json()["items"]
+        assert [c["content"] for c in listed if c["id"] == comment_id] == ["edited body"]
+
+    def test_cannot_edit_another_readers_comment(self, client, db_session):
+        _post, comment_id, token = self._own_approved(client, db_session)
+        other = _token(client, email=f"edit-other-{id(self)}@example.com", display_name="Other")
+        resp = client.patch(
+            f"/api/reader/me/comments/{comment_id}",
+            json={"content": "sneaky"},
+            headers=_auth(other),
+        )
+        assert resp.status_code == 404, resp.text
+
+    def test_edit_requires_reader_token(self, client, db_session):
+        _post, comment_id, _token_a = self._own_approved(client, db_session)
+        resp = client.patch(f"/api/reader/me/comments/{comment_id}", json={"content": "anon"})
+        assert resp.status_code == 401
+
+    def test_edit_unknown_comment_404(self, client, db_session):
+        token = _token(client, email=f"edit-none-{id(self)}@example.com")
+        resp = client.patch(
+            "/api/reader/me/comments/999999",
+            json={"content": "x"},
+            headers=_auth(token),
+        )
+        assert resp.status_code == 404
+
+
+class TestDeleteReparentsReplies:
+    def test_delete_own_comment_promotes_its_replies_to_top_level(self, client, db_session):
+        from app.crud import approve_comment
+
+        post = _create_post(db_session, slug=f"del-reply-{id(self)}")
+        token = _token(client, email=f"del-r-{id(self)}@example.com", display_name="Del")
+        top = _post_comment(client, post.id, headers=_auth(token)).json()
+        approve_comment(db_session, top["id"], approved=True)
+        reply = _post_comment(
+            client,
+            post.id,
+            {"nickname": "x", "email": "x@x.com", "content": "a reply", "parent_id": top["id"]},
+        ).json()
+        approve_comment(db_session, reply["id"], approved=True)
+
+        resp = client.delete(f"/api/reader/me/comments/{top['id']}", headers=_auth(token))
+        assert resp.status_code == 204, resp.text
+
+        # The reply survives, now a top-level comment (not orphaned).
+        items = client.get(f"/api/comments/post/{post.id}").json()["items"]
+        moved = next((c for c in items if c["id"] == reply["id"]), None)
+        assert moved is not None
+        assert moved["parent_id"] is None
+        # The deleted comment is gone.
+        assert all(c["id"] != top["id"] for c in items)

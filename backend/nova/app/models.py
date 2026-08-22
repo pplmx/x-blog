@@ -130,6 +130,9 @@ class Comment(Base):
     # distinguishes "still pending" from "reviewed and rejected" for the
     # author's comment-history status (DEC-066, TASK-139).
     reviewed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    # When the reader-author last edited their own comment (DEC-096, TASK-160).
+    # Null = never edited; set by PATCH /api/reader/me/comments/{id}. Additive.
+    edited_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     created_at: Mapped[datetime | None] = mapped_column(DateTime, default=lambda: datetime.now(UTC))
     # Optional reader that authored the comment (None = anonymous free-text
     # commenter). Set only from the reader JWT at create time — client-supplied

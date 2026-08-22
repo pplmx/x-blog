@@ -592,12 +592,26 @@ def approve_comment(db: Session, comment_id: int, approved: bool = True) -> mode
 
 def delete_reader_comment(db: Session, comment_id: int, reader_id: int) -> bool:
     """Delete one of the reader's own comments (any status). False if the
-    comment is missing or belongs to a different reader. (DEC-066, TASK-139)"""
+    comment is missing or belongs to a different reader. (DEC-066, TASK-139)
+
+    Replies are reparented to this comment's parent (or promoted to top-level
+    when it had none) rather than blocking the delete, so a reader can withdraw
+    a comment that already has replies without orphaning the thread (DEC-096,
+    TASK-160). Deeper descendants ride along under the promoted reply.
+    """
     comment = (
         db.query(models.Comment).filter(models.Comment.id == comment_id, models.Comment.reader_id == reader_id).first()
     )
     if not comment:
         return False
+    # Promote direct replies to the deleted comment's parent (or to top-level).
+    # SQLAlchemy's bulk update avoids loading each reply; synchronize_session
+    # is disabled because we only need the DB state.
+    target_parent = comment.parent_id
+    db.query(models.Comment).filter(models.Comment.parent_id == comment_id).update(
+        {models.Comment.parent_id: target_parent},
+        synchronize_session=False,
+    )
     db.delete(comment)
     try:
         db.commit()
@@ -608,6 +622,27 @@ def delete_reader_comment(db: Session, comment_id: int, reader_id: int) -> bool:
     # comment_count on the cached public posts list.
     clear_posts_list_cache()
     return True
+
+
+def update_reader_comment(db: Session, comment_id: int, reader_id: int, content: str) -> models.Comment | None:
+    """Edit one of the reader's own comments (any status).
+
+    Returns the updated comment, or None if it is missing or belongs to a
+    different reader (indistinguishable 404). Content is stored raw and
+    re-rendered through the same sanitized markdown pipeline as a new comment,
+    so an edit can never weaken the XSS guarantees (DEC-096, TASK-160). The
+    ``edited_at`` marker is stamped so the UI can surface it.
+    """
+    comment = (
+        db.query(models.Comment).filter(models.Comment.id == comment_id, models.Comment.reader_id == reader_id).first()
+    )
+    if not comment:
+        return None
+    comment.content = content
+    comment.edited_at = datetime.now(UTC)
+    db.commit()
+    db.refresh(comment)
+    return comment
 
 
 def get_pending_comments(db: Session) -> list[models.Comment]:

@@ -291,6 +291,9 @@ class Comment(CommentBase):
     # Comment upvote count (DEC-092/TASK-158); mirrored on CommentPublic.
     likes: int = 0
     created_at: datetime
+    # When the reader-author last edited this comment (DEC-096/TASK-160);
+    # None = never edited.
+    edited_at: datetime | None = None
     # Full row: reader-attributed comments store no free-text email (identity
     # is the account), anonymous comments keep theirs — nullable covers both.
     email: str | None = None
@@ -364,6 +367,9 @@ class CommentPublic(CommentBase):
     # unlike the PII fields dropped from this schema.
     likes: int = 0
     created_at: datetime
+    # When the reader-author last edited this comment (DEC-096/TASK-160);
+    # None = never edited. Not PII, safe on the public list.
+    edited_at: datetime | None = None
     # email is dropped from the public serialization entirely (PII); ip_address
     # is simply absent from this schema. Reader-attributed comments store no
     # free-text email (the account email is PII and stays off this schema).

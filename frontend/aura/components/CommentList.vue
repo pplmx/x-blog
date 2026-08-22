@@ -7,6 +7,7 @@
       <ThreadSubscribeButton v-if="props.postId" :post-id="props.postId" />
     </div>
     <p v-if="likeError" class="mb-3 text-sm text-red-500">{{ likeError }}</p>
+    <p v-if="actionError" class="mb-3 text-sm text-red-500">{{ actionError }}</p>
 
     <!-- Comment sort (DEC-094/TASK-159): reorder the thread by newest / oldest
          / most helpful (likes). Shown once there is a discussion to sort. -->
@@ -97,6 +98,27 @@
                 />
                 <span class="like-count">{{ comment.likes ?? 0 }}</span>
               </button>
+              <!-- Own-comment edit/delete (DEC-096, TASK-160): only the author
+                   sees these; "edited" marks a self-edit. -->
+              <span v-if="comment.edited_at" class="text-xs text-gray-400 dark:text-gray-500">{{ t('components.commentList.edited') }}</span>
+              <template v-if="isOwnComment(comment)">
+                <button
+                  type="button"
+                  class="comment-edit text-xs text-blue-500 hover:text-blue-700 dark:hover:text-blue-300 transition-colors disabled:opacity-60"
+                  :disabled="actionIds.has(comment.id)"
+                  @click="startEdit(comment)"
+                >
+                  {{ t('components.commentList.edit') }}
+                </button>
+                <button
+                  type="button"
+                  class="comment-delete text-xs text-red-500 hover:text-red-700 dark:hover:text-red-300 transition-colors disabled:opacity-60"
+                  :disabled="actionIds.has(comment.id)"
+                  @click="confirmDelete(comment)"
+                >
+                  {{ t('components.commentList.delete') }}
+                </button>
+              </template>
             </div>
 
             <!-- Inline reply form -->
@@ -109,6 +131,32 @@
                 @submitted="handleReplied"
                 @cancel="replyTo = null"
               />
+            </div>
+
+            <!-- Inline edit form for the author's own comment (DEC-096) -->
+            <div v-if="editingId === comment.id" class="mt-3 space-y-2">
+              <textarea
+                v-model="editContent"
+                rows="3"
+                class="w-full rounded border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm text-gray-700 dark:text-gray-300 p-2"
+              ></textarea>
+              <div class="flex gap-2">
+                <button
+                  type="button"
+                  class="px-3 py-1 rounded text-sm bg-blue-600 text-white disabled:opacity-60"
+                  :disabled="actionIds.has(comment.id)"
+                  @click="saveEdit(comment)"
+                >
+                  {{ t('components.commentList.save') }}
+                </button>
+                <button
+                  type="button"
+                  class="px-3 py-1 rounded text-sm bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300"
+                  @click="cancelEdit"
+                >
+                  {{ t('components.commentList.cancel') }}
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -164,6 +212,25 @@
                 />
                 <span class="like-count">{{ reply.likes ?? 0 }}</span>
               </button>
+              <span v-if="reply.edited_at" class="text-xs text-gray-400 dark:text-gray-500">{{ t('components.commentList.edited') }}</span>
+              <template v-if="isOwnComment(reply)">
+                <button
+                  type="button"
+                  class="comment-edit text-xs text-blue-500 hover:text-blue-700 dark:hover:text-blue-300 transition-colors disabled:opacity-60"
+                  :disabled="actionIds.has(reply.id)"
+                  @click="startEdit(reply)"
+                >
+                  {{ t('components.commentList.edit') }}
+                </button>
+                <button
+                  type="button"
+                  class="comment-delete text-xs text-red-500 hover:text-red-700 dark:hover:text-red-300 transition-colors disabled:opacity-60"
+                  :disabled="actionIds.has(reply.id)"
+                  @click="confirmDelete(reply)"
+                >
+                  {{ t('components.commentList.delete') }}
+                </button>
+              </template>
             </div>
 
             <!-- Inline reply form for this reply (reply-to-reply, RIL TASK-080) -->
@@ -176,6 +243,32 @@
                 @submitted="handleReplied"
                 @cancel="replyTo = null"
               />
+            </div>
+
+            <!-- Inline edit form for the author's own reply (DEC-096) -->
+            <div v-if="editingId === reply.id" class="mt-3 space-y-2">
+              <textarea
+                v-model="editContent"
+                rows="3"
+                class="w-full rounded border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm text-gray-700 dark:text-gray-300 p-2"
+              ></textarea>
+              <div class="flex gap-2">
+                <button
+                  type="button"
+                  class="px-3 py-1 rounded text-sm bg-blue-600 text-white disabled:opacity-60"
+                  :disabled="actionIds.has(reply.id)"
+                  @click="saveEdit(reply)"
+                >
+                  {{ t('components.commentList.save') }}
+                </button>
+                <button
+                  type="button"
+                  class="px-3 py-1 rounded text-sm bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300"
+                  @click="cancelEdit"
+                >
+                  {{ t('components.commentList.cancel') }}
+                </button>
+              </div>
             </div>
           </li>
         </ul>
@@ -210,11 +303,14 @@ import { computed, nextTick, onMounted, ref, watch } from "vue";
 import {
 	type Comment,
 	type CommentSort,
+	deleteMyComment,
+	editMyComment,
 	fetchComments,
 	useCommentLike,
 } from "~~/composables/useApi";
 import { highlightCode, loadHighlighter } from "~~/composables/useCodeHighlight";
 import { commentMarkdownToHtml, loadPurify } from "~~/composables/useMarkdown";
+import { useReaderAuth } from "~~/composables/useReaderAuth";
 // biome-ignore lint/correctness/noUnusedImports: CommentForm is rendered in the SFC <template> (lines 59/105).
 import CommentForm from "./CommentForm.vue";
 
@@ -341,6 +437,76 @@ async function handleCommentLike(comment: Comment): Promise<void> {
 		const s = new Set(likingIds.value);
 		s.delete(comment.id);
 		likingIds.value = s;
+	}
+}
+
+// --- Comment edit/delete by the author (DEC-096, TASK-160) ---
+// Only a signed-in reader who authored a comment can edit/delete it. The
+// controls render only on the reader's own comments (comment.reader.id matches
+// the current reader's id); anonymous comments have no owner and no controls.
+const { reader } = useReaderAuth();
+
+function isOwnComment(comment: Comment): boolean {
+	const rid = reader.value?.id;
+	return rid != null && comment.reader?.id === rid;
+}
+
+const editingId = ref<number | null>(null);
+const editContent = ref("");
+// Comment ids with an in-flight edit/delete (disables the buttons + spinner).
+const actionIds = ref<Set<number>>(new Set());
+const actionError = ref<string | null>(null);
+
+function startEdit(comment: Comment): void {
+	editingId.value = comment.id;
+	editContent.value = comment.content;
+	actionError.value = null;
+}
+
+function cancelEdit(): void {
+	editingId.value = null;
+	editContent.value = "";
+}
+
+async function saveEdit(comment: Comment): Promise<void> {
+	const trimmed = editContent.value.trim();
+	if (!trimmed || actionIds.value.has(comment.id)) return;
+	actionIds.value = new Set(actionIds.value).add(comment.id);
+	actionError.value = null;
+	try {
+		const updated = await editMyComment(comment.id, trimmed);
+		const target = commentData.value?.items.find((c) => c.id === comment.id);
+		if (target) {
+			target.content = updated.content;
+			if (updated.edited_at !== undefined) target.edited_at = updated.edited_at;
+			editingId.value = null;
+		}
+	} catch {
+		actionError.value = t("components.commentList.editError");
+	} finally {
+		const s = new Set(actionIds.value);
+		s.delete(comment.id);
+		actionIds.value = s;
+	}
+}
+
+async function confirmDelete(comment: Comment): Promise<void> {
+	if (actionIds.value.has(comment.id)) return;
+	if (!window.confirm(t("components.commentList.deleteConfirm"))) return;
+	actionIds.value = new Set(actionIds.value).add(comment.id);
+	actionError.value = null;
+	try {
+		await deleteMyComment(comment.id);
+		// Re-fetch the current page: the backend reparents any replies, and the
+		// flat list + tree recompute reflects the fresh state.
+		if (editingId.value === comment.id) cancelEdit();
+		await refreshList();
+	} catch {
+		actionError.value = t("components.commentList.deleteError");
+	} finally {
+		const s = new Set(actionIds.value);
+		s.delete(comment.id);
+		actionIds.value = s;
 	}
 }
 

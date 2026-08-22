@@ -574,7 +574,9 @@ def delete_my_comment(
 
     Scoped to the caller: another reader's comment (or a missing id) is a 404,
     indistinguishable from a non-existent resource so comment ids are not
-    enumerable. Admin delete (DELETE /api/comments/{id}) is unchanged.
+    enumerable. Admin delete (DELETE /api/comments/{id}) is unchanged. When the
+    comment has replies they are reparented (crud.delete_reader_comment) so the
+    thread stays coherent (DEC-096, TASK-160).
     """
     try:
         deleted = crud.delete_reader_comment(db, comment_id, current_reader.id)
@@ -583,3 +585,30 @@ def delete_my_comment(
     if not deleted:
         raise HTTPException(status_code=404, detail="Comment not found")
     return None
+
+
+class ReaderCommentEdit(BaseModel):
+    """Edit body for a reader's own comment (DEC-096, TASK-160)."""
+
+    content: str = Field(max_length=5000)
+
+
+@router.patch("/me/comments/{comment_id}", response_model=schemas.CommentPublic)
+def edit_my_comment(
+    comment_id: int,
+    edit: ReaderCommentEdit,
+    current_reader: auth.ReaderAccount = Depends(auth.get_current_reader),
+    db: Session = Depends(get_db),
+):
+    """Edit one of the reader's own comments (any status).
+
+    Ownership-scoped exactly like delete: another reader's comment (or a
+    missing id) is a 404 so comment ids are not enumerable. Only ``content``
+    may change (post_id/parent_id/identity are preserved); the body is stored
+    raw and re-rendered through the sanitized markdown pipeline, and
+    ``edited_at`` is stamped. (DEC-096, TASK-160)
+    """
+    updated = crud.update_reader_comment(db, comment_id, current_reader.id, edit.content)
+    if not updated:
+        raise HTTPException(status_code=404, detail="Comment not found")
+    return updated

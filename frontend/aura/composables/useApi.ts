@@ -338,6 +338,9 @@ export interface Comment {
 	/** Comment upvote count (DEC-092/TASK-158). */
 	likes: number;
 	created_at: string;
+	/** When the reader-author last edited this comment; null/undefined = never
+	 *  edited (DEC-096/TASK-160). */
+	edited_at?: string | null;
 	/** Verified reader identity for reader-attributed comments (DEC-062);
 	 * null for anonymous free-text commenters. */
 	reader: { id: number; display_name: string | null } | null;
@@ -1033,6 +1036,18 @@ export async function deleteMyComment(commentId: number): Promise<void> {
 	await $fetch(`${apiUrl}/api/reader/me/comments/${commentId}`, {
 		method: "DELETE",
 		headers: getReaderAuthHeaders(),
+	});
+}
+
+/** Edit one of the reader's own comments (returns the updated CommentPublic;
+ *  404 for another's / unknown). (DEC-096, TASK-160) */
+export async function editMyComment(commentId: number, content: string): Promise<Comment> {
+	const config = useRuntimeConfig();
+	const apiUrl = config.public.apiUrl;
+	return $fetch<Comment>(`${apiUrl}/api/reader/me/comments/${commentId}`, {
+		method: "PATCH",
+		headers: getReaderAuthHeaders(),
+		body: { content },
 	});
 }
 

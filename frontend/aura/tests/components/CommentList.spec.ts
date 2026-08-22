@@ -18,15 +18,25 @@ import { ref } from "vue";
 // (matching Nuxt's resolution), so vi.mock can intercept the specifier.
 // vi.hoisted ensures the mock function is created before the factory runs
 // (vi.mock is hoisted to the top of the file).
-const { mockFetchComments, mockCreateComment, mockUseCommentLike } = vi.hoisted(() => ({
+const {
+	mockFetchComments,
+	mockCreateComment,
+	mockUseCommentLike,
+	mockEditMyComment,
+	mockDeleteMyComment,
+} = vi.hoisted(() => ({
 	mockFetchComments: vi.fn(),
 	mockCreateComment: vi.fn(),
 	mockUseCommentLike: vi.fn(),
+	mockEditMyComment: vi.fn(),
+	mockDeleteMyComment: vi.fn(),
 }));
 vi.mock("~/composables/useApi", () => ({
 	fetchComments: mockFetchComments,
 	createComment: mockCreateComment,
 	useCommentLike: mockUseCommentLike,
+	editMyComment: mockEditMyComment,
+	deleteMyComment: mockDeleteMyComment,
 }));
 
 import CommentList from "../../components/CommentList.vue";
@@ -415,6 +425,104 @@ describe("CommentList", () => {
 			await flushPromises();
 			expect(wrapper.text()).toContain("点赞失败");
 			expect(localStorage.getItem("liked-comments:1")).toBeNull();
+		});
+	});
+
+	describe("Comment edit/delete by author (DEC-096, TASK-160)", () => {
+		const ownReader = { id: 7, display_name: "Me" };
+		const ownComments = {
+			items: [
+				{
+					id: 50,
+					post_id: 1,
+					parent_id: null,
+					nickname: "Me",
+					content: "my original comment",
+					is_approved: true,
+					ip_address: "127.0.0.1",
+					likes: 0,
+					created_at: "2024-01-15T10:30:00Z",
+					edited_at: null,
+					reader: ownReader,
+				},
+			],
+			total: 1,
+			total_pages: 1,
+			page: 1,
+			limit: 20,
+		};
+
+		beforeEach(() => {
+			localStorage.clear();
+			localStorage.setItem("reader_token", "reader.jwt");
+			localStorage.setItem(
+				"reader_profile",
+				JSON.stringify({ id: 7, email: "me@x.com", display_name: "Me", created_at: null }),
+			);
+			mockEditMyComment.mockReset();
+			mockDeleteMyComment.mockReset();
+		});
+
+		it("shows Edit/Delete only on the reader's own comments", async () => {
+			const { wrapper } = await mountCommentList();
+			// With the signed-in reader (id 7) and no own comment in the seeded
+			// data, no edit/delete controls render.
+			expect(wrapper.find(".comment-edit").exists()).toBe(false);
+
+			// When the seeded comment belongs to the reader, the controls appear.
+			const { wrapper: w2 } = await mountCommentList({ comments: ownComments });
+			expect(w2.find(".comment-edit").exists()).toBe(true);
+			expect(w2.find(".comment-delete").exists()).toBe(true);
+		});
+
+		it("edits content and shows an edited marker", async () => {
+			const updated = {
+				...ownComments.items[0],
+				content: "my edited body",
+				edited_at: "2024-02-01T00:00:00Z",
+			};
+			mockEditMyComment.mockResolvedValue(updated);
+			const { wrapper } = await mountCommentList({ comments: ownComments });
+
+			await wrapper.find(".comment-edit").trigger("click");
+			await flushPromises();
+			const textarea = wrapper.find("textarea");
+			expect(textarea.exists()).toBe(true);
+			await textarea.setValue("my edited body");
+			const saveBtn = wrapper.findAll("button").find((b) => b.text() === "保存");
+			expect(saveBtn).toBeDefined();
+			await saveBtn?.trigger("click");
+			await flushPromises();
+
+			expect(mockEditMyComment).toHaveBeenCalledWith(50, "my edited body");
+			expect(wrapper.text()).toContain("my edited body");
+			expect(wrapper.text()).toContain("已编辑");
+		});
+
+		it("deletes a comment after confirmation", async () => {
+			mockDeleteMyComment.mockResolvedValue(undefined);
+			vi.stubGlobal("confirm", () => true);
+			try {
+				const { wrapper } = await mountCommentList({ comments: ownComments });
+				await wrapper.find(".comment-delete").trigger("click");
+				await flushPromises();
+				expect(mockDeleteMyComment).toHaveBeenCalledWith(50);
+			} finally {
+				vi.unstubAllGlobals();
+			}
+		});
+
+		it("does not delete when the confirmation is dismissed", async () => {
+			mockDeleteMyComment.mockResolvedValue(undefined);
+			vi.stubGlobal("confirm", () => false);
+			try {
+				const { wrapper } = await mountCommentList({ comments: ownComments });
+				await wrapper.find(".comment-delete").trigger("click");
+				await flushPromises();
+				expect(mockDeleteMyComment).not.toHaveBeenCalled();
+			} finally {
+				vi.unstubAllGlobals();
+			}
 		});
 	});
 
