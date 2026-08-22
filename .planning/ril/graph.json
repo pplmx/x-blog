@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 139,
+  "round": 140,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-08-22T16:05:01+00:00",
+  "updated_at": "2026-08-22T16:10:08+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -8386,7 +8386,7 @@
       "version": 1,
       "created_at": "2026-08-22T16:04:41+00:00",
       "updated_at": "2026-08-22T16:04:41+00:00",
-      "touched_round": 139,
+      "touched_round": 140,
       "title": "Milestone: reader reading-summary page (personal reading stats)",
       "rationale": "Feature-evolution selection (SKILL 11.2 gap analysis). Now that a signed-in reader's view history is server-backed and timestamped (DEC-116/TASK-170), the natural payoff is surfacing that data back to the reader as an at-a-glance reading summary — distinct from the per-post detail page and from site-wide admin analytics. Users: signed-in readers who want to see how much/what they've been reading (posts read, total reading minutes, recent/discontinued reads). Why now: the history data exists and is authoritative; no other reader surface summarizes it. Net-additive. Acceptance (one sentence): a signed-in reader sees a reading-summary page with total posts read, total reading minutes, and a 'continue where you left off' highlight of their most recent reads, derived from their own history. Scope: backend GET /api/reader/me/history/stats (aggregates the reader's visible history rows: total posts read, sum reading_time, last_viewed_at, top-N most recent posts) + backend pytest; frontend a /stats page (or summary section on /history) rendering the cards + quick-jump links + i18n + vitest + E2E. Note E2E + the whole backend suite remain unverifiable in this sandbox (see DEC-111/113/115/117).",
       "alternatives_rejected": "Bookmark folders/collections (higher effort, deferred — organizing saved posts vs summarizing read posts); notifications center (separate surface, deferred); site-wide admin analytics already exists (this is reader-personal)."
@@ -8394,17 +8394,67 @@
     "TASK-171": {
       "id": "TASK-171",
       "type": "task",
-      "status": "active",
-      "version": 1,
+      "status": "resolved",
+      "version": 2,
       "created_at": "2026-08-22T16:04:44+00:00",
-      "updated_at": "2026-08-22T16:04:44+00:00",
-      "touched_round": 139,
+      "updated_at": "2026-08-22T16:09:41+00:00",
+      "touched_round": 140,
       "category": "core-feature",
       "severity": 0.6,
       "confidence": 0.85,
       "effort": 1.6,
       "unlock_factor": 1.0,
       "title": "Reader reading-summary page: backend GET /api/reader/me/history/stats (total posts read, sum reading_time, last_viewed_at, top-N recent posts from the reader's visible history) + backend pytest; frontend /stats page (or summary section on /history) with stat cards + continue-reading quick-jump + i18n + vitest + E2E"
+    },
+    "CHG-161": {
+      "id": "CHG-161",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-22T16:09:41+00:00",
+      "updated_at": "2026-08-22T16:09:41+00:00",
+      "touched_round": 140,
+      "commit": "cf4f53bd4b637a4e94d7ebc91ed2ae16329be6cf",
+      "title": "Reader reading-summary page (DEC-118, TASK-171)"
+    },
+    "DEC-119": {
+      "id": "DEC-119",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-22T16:09:50+00:00",
+      "updated_at": "2026-08-22T16:09:50+00:00",
+      "touched_round": 140,
+      "title": "Milestone delivered: reader reading-summary page (DEC-118 complete)",
+      "rationale": "Delivery of DEC-118 / TASK-171 via CHG-161 (cf4f53b). Backend: GET /api/reader/me/history/stats aggregates the reader's publicly-visible history (total posts read, total reading minutes via schemas.reading_minutes, last_viewed_at, top-N=6 recent post summaries) through crud.reader_history_stats; same non-leak invariant as the history list. Frontend: /history now shows two reading-summary stat cards (posts read + reading minutes) for signed-in readers, loaded via useReadingHistory.stats (fetchReaderHistoryStats client); guests see no summary (local trail has no aggregate). i18n en/zh keys added. Verification: backend 23 history/stats tests green (auth scoping, aggregates, recent cap=6, hidden-post exclusion, reader isolation); ruff + pyright clean; frontend vitest 1068 green (composable stats load/clear + summary cards + guest-hidden), vue-tsc + biome clean. Screenshot-level E2E (assert summary card in history-sync journey) authored + lint-clean but NOT executed in this constrained sandbox (FastAPI backend cannot bind; CPU-starved) — same limitation as DEC-111/113/115/117. Commit body written per operator preference (bulleted one-liner items).",
+      "alternatives_rejected": "Bookmark folders/collections (higher effort — deferred to DEC-120/TASK-172 as the next milestone); notifications center (separate surface, deferred); moving stats to a separate /stats route (kept as a summary section on /history for discoverability and fewer routes)."
+    },
+    "DEC-120": {
+      "id": "DEC-120",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-22T16:09:59+00:00",
+      "updated_at": "2026-08-22T16:09:59+00:00",
+      "touched_round": 140,
+      "title": "Milestone: bookmark folders (collections) to organize saved posts",
+      "rationale": "Feature-evolution selection (SKILL 11.2 gap analysis). Bookmarking is cloud-synced (DEC-059) but the saved list is flat: a reader with a growing archive (now further fueled by reading-history/print tooling) has no way to group posts. Users: signed-in readers accumulating saved posts who want to file them by topic/project. Why now: bookmarks are the primary saved-reading surface and the natural next reader-owned resource to add organization to (same pattern as bookmarks/history/subscriptions). Net-additive. Acceptance (one sentence): a signed-in reader can create/rename/delete bookmark folders, file saved posts into them, and filter the bookmarks page by folder. Scope: backend bookmark_folders table (id, reader_id, name unique per reader) + folder_id column on reader_bookmarks + migration + auth-scoped API (rest/filter/assign) + backend pytest; frontend bookmarks page folder sidebar/dropdown + create/rename/delete + assign + filter-by-folder + i18n + vitest + E2E. Note E2E + the whole backend suite remain unverifiable in this sandbox (see DEC-111/113/115/117/119).",
+      "alternatives_rejected": "Tags instead of folders (many-to-many, more surface; folders are the minimal organizing model); notifications center / unified inbox (separate surface, later); comments or history folders (not the primary saved list)."
+    },
+    "TASK-172": {
+      "id": "TASK-172",
+      "type": "task",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-22T16:10:03+00:00",
+      "updated_at": "2026-08-22T16:10:03+00:00",
+      "touched_round": 140,
+      "category": "core-feature",
+      "severity": 0.65,
+      "confidence": 0.85,
+      "effort": 2.2,
+      "unlock_factor": 1.0,
+      "title": "Bookmark folders (collections): backend bookmark_folders table (reader_id, name unique per reader) + folder_id on reader_bookmarks + migration + auth-scoped API (folders CRUD + assign post to folder + filter bookmarks by folder) + backend pytest; frontend bookmarks page folder UI (create/rename/delete, assign, filter-by-folder) + i18n + vitest + E2E"
     }
   },
   "edges": [
@@ -11963,6 +12013,36 @@
       "to": "TASK-171",
       "type": "governs",
       "created_at": "2026-08-22T16:05:01+00:00"
+    },
+    {
+      "from": "CHG-161",
+      "to": "TASK-171",
+      "type": "implements",
+      "created_at": "2026-08-22T16:10:07+00:00"
+    },
+    {
+      "from": "DEC-119",
+      "to": "DEC-118",
+      "type": "supersedes",
+      "created_at": "2026-08-22T16:10:07+00:00"
+    },
+    {
+      "from": "DEC-119",
+      "to": "TASK-171",
+      "type": "governs",
+      "created_at": "2026-08-22T16:10:08+00:00"
+    },
+    {
+      "from": "DEC-120",
+      "to": "DEC-119",
+      "type": "supersedes",
+      "created_at": "2026-08-22T16:10:08+00:00"
+    },
+    {
+      "from": "DEC-120",
+      "to": "TASK-172",
+      "type": "governs",
+      "created_at": "2026-08-22T16:10:08+00:00"
     }
   ]
 }
