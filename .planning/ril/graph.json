@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 123,
+  "round": 124,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-08-21T21:38:05+00:00",
+  "updated_at": "2026-08-22T06:07:39+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -7643,10 +7643,10 @@
     "TASK-156": {
       "id": "TASK-156",
       "type": "task",
-      "status": "active",
-      "version": 1,
+      "status": "resolved",
+      "version": 2,
       "created_at": "2026-08-21T21:33:59+00:00",
-      "updated_at": "2026-08-21T21:33:59+00:00",
+      "updated_at": "2026-08-22T05:47:03+00:00",
       "touched_round": 123,
       "category": "core-feature",
       "severity": 0.6,
@@ -7655,6 +7655,56 @@
       "unlock_factor": 1.0,
       "title": "Comment Markdown rendering: commentMarkdownToHtml + CommentList v-html + form hint + tests",
       "description": "Add commentMarkdownToHtml to useMarkdown (marked breaks:true + sanitizeHtml); render CommentList top-level + reply content via v-html with loadPurify on beforeMount; comment form Markdown hint + i18n; CommentList component tests (markdown/XSS) + E2E posting a fenced-code + script comment."
+    },
+    "CHG-146": {
+      "id": "CHG-146",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-22T05:44:46+00:00",
+      "updated_at": "2026-08-22T05:44:46+00:00",
+      "touched_round": 123,
+      "commit": "20fe205",
+      "title": "Sanitized Markdown comment rendering (DEC-088, TASK-156)"
+    },
+    "DEC-089": {
+      "id": "DEC-089",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-22T05:53:17+00:00",
+      "updated_at": "2026-08-22T05:53:17+00:00",
+      "touched_round": 123,
+      "title": "Milestone delivered: sanitized Markdown rendering in comments (DEC-088 complete)",
+      "rationale": "Delivery of DEC-088 / TASK-156 via CHG-146 (20fe205), verified end-to-end. Frontend-only: commentMarkdownToHtml in useMarkdown (marked breaks true then sanitizeHtml); CommentList renders top-level + reply content through v-html with a purifyReady recompute upgrading on-screen comments to DOMPurify once loaded (same pattern as MarkdownContent); always-on stripUnsafeUrlAttrs neutralizes javascript/vbscript/data hrefs chained onto the DOMPurify wrapper (unit test went RED before that fix). Comment form shows localized Markdown hint (en/zh). Storage stays raw. Verification: frontend vitest 1012 green, biome + vue-tsc clean, Playwright comment-markdown green against built bundle (fence renders, script/onerror/javascript neutralized, window.__xss never set). E2E stack ran against dev PostgreSQL 10.112.9.49:13310 (migrated + seeded).",
+      "alternatives_rejected": "Syntax highlighting in comments (deferred to next milestone); math/mermaid in comments (posts-only scope); comment editing/deleting by author (auth surface, separate slice)."
+    },
+    "TASK-157": {
+      "id": "TASK-157",
+      "type": "task",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-22T05:55:29+00:00",
+      "updated_at": "2026-08-22T05:55:29+00:00",
+      "touched_round": 123,
+      "category": "core-feature",
+      "severity": 0.5,
+      "confidence": 0.9,
+      "effort": 0.8,
+      "unlock_factor": 1.0,
+      "title": "Comment code-block syntax highlighting: lazy loadHighlighter tokenization inside CommentList comment-body pre code + shared Tokyo Night token theme + tests"
+    },
+    "DEC-090": {
+      "id": "DEC-090",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-22T06:02:16+00:00",
+      "updated_at": "2026-08-22T06:02:16+00:00",
+      "touched_round": 123,
+      "title": "Milestone: syntax highlighting in comment code blocks",
+      "rationale": "Feature-evolution selection (SKILL 11.2 gap analysis): DEC-088 delivered sanitized markdown rendering in comments but explicitly deferred syntax highlighting as an enhancement after the baseline. Now that fences render, a tech blog discussion still falls flat — a ts snippet in a comment is monochrome while the identical snippet in the post body is Tokyo Night highlighted. Users: readers posting/sharing snippets in discussion threads. Why now: the render pipeline exists and useCodeHighlight already ships for posts (lazy client-only highlight.js + escapeHtml fallback), so the slice is a frontend-only augment with no schema change. Acceptance (one sentence): an approved comment fenced code block shows highlight.js token colors reusing the post Tokyo Night theme. Scope: lazily load loadHighlighter in CommentList, tokenize each .comment-body pre code on mount, apply shared token CSS, fall back to plain escaped text; keep existing XSS guarantees (highlightCode escapes its source).",
+      "alternatives_rejected": "Math/mermaid in comments (posts-only scope); comment editing/deleting (auth surface, separate slice); email digests (no SMTP); unifying post/comment code surfaces (cleaner but bigger refactor — note for later)."
     }
   },
   "edges": [
@@ -10775,6 +10825,30 @@
       "type": "supersedes",
       "created_at": "2026-08-21T21:38:05+00:00",
       "note": "New operator milestone after the analytics close"
+    },
+    {
+      "from": "CHG-146",
+      "to": "TASK-156",
+      "type": "implements",
+      "created_at": "2026-08-22T05:47:03+00:00"
+    },
+    {
+      "from": "DEC-089",
+      "to": "DEC-088",
+      "type": "supersedes",
+      "created_at": "2026-08-22T06:07:39+00:00"
+    },
+    {
+      "from": "DEC-090",
+      "to": "DEC-089",
+      "type": "supersedes",
+      "created_at": "2026-08-22T06:07:39+00:00"
+    },
+    {
+      "from": "DEC-090",
+      "to": "TASK-157",
+      "type": "governs",
+      "created_at": "2026-08-22T06:07:39+00:00"
     }
   ]
 }
