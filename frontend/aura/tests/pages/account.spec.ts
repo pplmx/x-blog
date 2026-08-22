@@ -32,6 +32,7 @@ const mockRevokePushSubscription = vi.fn();
 const mockFetchCategories = vi.fn();
 const mockUpdatePushSubscriptionPrefs = vi.fn();
 const mockDeleteReaderAccount = vi.fn();
+const mockFetchReaderDataExport = vi.fn();
 
 vi.mock("../../composables/useApi", async (importOriginal) => {
 	const orig = await importOriginal<typeof import("../../composables/useApi")>();
@@ -44,6 +45,7 @@ vi.mock("../../composables/useApi", async (importOriginal) => {
 		fetchCategories: mockFetchCategories,
 		updateMyPushSubscriptionPrefs: mockUpdatePushSubscriptionPrefs,
 		deleteReaderAccount: mockDeleteReaderAccount,
+		fetchReaderDataExport: mockFetchReaderDataExport,
 	};
 });
 
@@ -289,6 +291,60 @@ describe("Account settings page", () => {
 			await flushPromises();
 
 			expect(wrapper.text()).toContain("密码错误");
+			vi.unstubAllGlobals();
+		});
+	});
+
+	describe("data export (TASK-175)", () => {
+		it("downloads the data bundle after confirmation", async () => {
+			isAuthenticated.value = true;
+			mockFetchPushSubscriptions.mockResolvedValue({ items: [], total: 0 });
+			mockFetchReaderDataExport.mockResolvedValue({
+				data: {
+					value: { account: { email: "x@x.com" }, bookmarks: [], comments: [], history: [] },
+				},
+			});
+			const createObjectURL = vi.fn(() => "blob:test");
+			vi.stubGlobal("URL", { ...URL, createObjectURL, revokeObjectURL: vi.fn() });
+			vi.stubGlobal("confirm", () => true);
+
+			const wrapper = await mountPage();
+			const btn = wrapper.findAll("button").find((b) => b.text().includes("下载我的数据"));
+			await btn?.trigger("click");
+			await flushPromises();
+
+			expect(mockFetchReaderDataExport).toHaveBeenCalled();
+			expect(createObjectURL).toHaveBeenCalled();
+			expect(wrapper.text()).toContain("数据已导出");
+			vi.unstubAllGlobals();
+		});
+
+		it("does not download when cancelled", async () => {
+			isAuthenticated.value = true;
+			mockFetchPushSubscriptions.mockResolvedValue({ items: [], total: 0 });
+			vi.stubGlobal("confirm", () => false);
+
+			const wrapper = await mountPage();
+			const btn = wrapper.findAll("button").find((b) => b.text().includes("下载我的数据"));
+			await btn?.trigger("click");
+
+			expect(mockFetchReaderDataExport).not.toHaveBeenCalled();
+			vi.unstubAllGlobals();
+		});
+
+		it("shows a failure message on export error", async () => {
+			isAuthenticated.value = true;
+			mockFetchPushSubscriptions.mockResolvedValue({ items: [], total: 0 });
+			mockFetchReaderDataExport.mockRejectedValue(new Error("boom"));
+			vi.stubGlobal("URL", { ...URL, createObjectURL: vi.fn(), revokeObjectURL: vi.fn() });
+			vi.stubGlobal("confirm", () => true);
+
+			const wrapper = await mountPage();
+			const btn = wrapper.findAll("button").find((b) => b.text().includes("下载我的数据"));
+			await btn?.trigger("click");
+			await flushPromises();
+
+			expect(wrapper.text()).toContain("导出失败");
 			vi.unstubAllGlobals();
 		});
 	});

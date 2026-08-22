@@ -1231,6 +1231,16 @@ export async function fetchReaderHistoryStats() {
 	});
 }
 
+/** Download the signed-in reader's portable data bundle (DEC-126/TASK-175). */
+export async function fetchReaderDataExport() {
+	const config = useRuntimeConfig();
+	const apiUrl = config.public.apiUrl;
+	return useFetch<Record<string, unknown>>(`${apiUrl}/api/reader/me/export`, {
+		headers: getReaderAuthHeaders(),
+		server: false,
+	});
+}
+
 /** Clear the reader's entire reading history (requires reader token). */
 export async function clearReaderHistory() {
 	const config = useRuntimeConfig();

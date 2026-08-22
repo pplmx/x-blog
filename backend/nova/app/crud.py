@@ -1437,6 +1437,87 @@ def reader_series_progress(db: Session, reader_id: int, series: models.Series) -
     }
 
 
+def export_reader_data(db: Session, reader_id: int) -> dict:
+    """Assemble a reader's portable data bundle (DEC-126/TASK-175).
+
+    Scoped strictly to the caller: profile, public-visible bookmarks (with
+    folder name), all of the reader's own comments (any moderation status),
+    and their publicly-visible reading history. Nothing cross-reader and no
+    draft/scheduled-post leakage — bookmarks/history exclude non-visible posts
+    (same invariants as the read paths).
+    """
+    account = db.query(auth.ReaderAccount).filter(auth.ReaderAccount.id == reader_id).first()
+    account_data = {
+        "email": account.email if account else None,
+        "display_name": account.display_name if account else None,
+        "created_at": account.created_at.isoformat() if account and account.created_at else None,
+    }
+
+    bookmarks = []
+    for post, _, folder_name in list_reader_bookmarks(db, reader_id):
+        bookmarks.append(
+            {
+                "post_id": post.id,
+                "title": post.title,
+                "slug": post.slug,
+                "folder_name": folder_name,
+                "created_at": post.created_at.isoformat() if post.created_at else None,
+            }
+        )
+
+    comments = []
+    comment_rows = (
+        db.query(models.Comment).filter(models.Comment.reader_id == reader_id).order_by(models.Comment.created_at).all()
+    )
+    for c in comment_rows:
+        post = db.get(models.Post, c.post_id)
+        if c.is_approved is True:
+            status = "approved"
+        elif c.reviewed_at is not None:
+            status = "rejected"
+        else:
+            status = "pending"
+        comments.append(
+            {
+                "comment_id": c.id,
+                "post_id": c.post_id,
+                "post_slug": post.slug if post else None,
+                "content": c.content,
+                "status": status,
+                "created_at": c.created_at.isoformat() if c.created_at else None,
+                "edited_at": c.edited_at.isoformat() if c.edited_at else None,
+            }
+        )
+
+    history = []
+    history_rows = (
+        db.query(models.Post, models.ReadingHistory.viewed_at)
+        .join(models.ReadingHistory, models.ReadingHistory.post_id == models.Post.id)
+        .filter(models.ReadingHistory.reader_id == reader_id)
+        .order_by(models.ReadingHistory.viewed_at.desc())
+        .all()
+    )
+    for post, viewed_at in history_rows:
+        if not is_publicly_visible(post):
+            continue
+        history.append(
+            {
+                "post_id": post.id,
+                "title": post.title,
+                "slug": post.slug,
+                "viewed_at": viewed_at.isoformat() if viewed_at else None,
+            }
+        )
+
+    return {
+        "account": account_data,
+        "exported_at": datetime.now(UTC).isoformat(),
+        "bookmarks": bookmarks,
+        "comments": comments,
+        "history": history,
+    }
+
+
 def list_reader_bookmarks(
     db: Session, reader_id: int, folder_id: int | None = None
 ) -> list[tuple[models.Post, int | None, str | None]]:

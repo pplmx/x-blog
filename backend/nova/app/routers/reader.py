@@ -166,6 +166,16 @@ class SeriesProgressResponse(BaseModel):
     next_slug: str | None = None
 
 
+class DataExportResponse(BaseModel):
+    """A reader's portable data bundle (DEC-126/TASK-175)."""
+
+    account: dict
+    exported_at: str | None = None
+    bookmarks: list[dict] = []
+    comments: list[dict] = []
+    history: list[dict] = []
+
+
 class AddBookmarkResponse(BaseModel):
     post_id: int
     # True when the bookmark was newly created, False when it already existed
@@ -762,6 +772,16 @@ def series_reading_progress(
         series_title=series.title,
         **prog,
     )
+
+
+@router.get("/me/export", response_model=DataExportResponse)
+def export_my_data(
+    current_reader: auth.ReaderAccount = Depends(auth.get_current_reader),
+    db: Session = Depends(get_db),
+):
+    """Return the caller's portable data bundle (account, bookmarks, comments,
+    history). Auth-scoped — only the signed-in reader's own data (DEC-126)."""
+    return DataExportResponse(**crud.export_reader_data(db, current_reader.id))
 
 
 # Server-backed reading history (DEC-116/TASK-170)

@@ -55,6 +55,14 @@
 			"unfollow": "Unfollow",
 			"unfollowConfirm": "Unfollow this discussion? You'll stop getting new-comment alerts for it.",
 			"failed": "Couldn't do that — please try again"
+		},
+		"export": {
+			"title": "Download your data",
+			"description": "Get a portable JSON copy of your account, bookmarks, comments, and reading history.",
+			"download": "Download my data",
+			"confirm": "Download your personal data as a JSON file?",
+			"done": "Data exported. Check your downloads.",
+			"failed": "Export failed. Please try again."
 		}
 	}
 }

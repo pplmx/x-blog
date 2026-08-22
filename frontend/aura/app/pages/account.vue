@@ -12,6 +12,7 @@ import {
 	fetchCategories,
 	fetchMyPostSubscriptions,
 	fetchMyPushSubscriptions,
+	fetchReaderDataExport,
 	type ReaderPushSubscription,
 	revokeMyPushSubscription,
 	type SubscribedThreadItem,
@@ -215,6 +216,36 @@ async function unfollowThread(thread: SubscribedThreadItem) {
 }
 
 /* Delete account (DEC-106, TASK-165) ---------------------------------- */
+// Data export (DEC-126, TASK-175): download the reader's portable JSON bundle.
+const exportingData = ref(false);
+const exportState = ref<"idle" | "done" | "failed">("idle");
+
+async function downloadMyData() {
+	if (exportingData.value) return;
+	if (!confirm(t("account.export.confirm"))) return;
+	exportingData.value = true;
+	exportState.value = "idle";
+	try {
+		const res = await fetchReaderDataExport();
+		const data = res.data?.value;
+		if (!data) throw new Error("empty export");
+		const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+		const url = URL.createObjectURL(blob);
+		const a = document.createElement("a");
+		a.href = url;
+		a.download = "xblog-my-data.json";
+		document.body.appendChild(a);
+		a.click();
+		document.body.removeChild(a);
+		URL.revokeObjectURL(url);
+		exportState.value = "done";
+	} catch {
+		exportState.value = "failed";
+	} finally {
+		exportingData.value = false;
+	}
+}
+
 const deletePassword = ref("");
 const deletingAccount = ref(false);
 const deleteError = ref<{ code: "wrong" | "failed" } | null>(null);
@@ -502,6 +533,31 @@ function shortEndpoint(endpoint: string): string {
         <p v-if="threadsError" class="mt-2 text-sm text-red-500 dark:text-red-400">
           {{ t('account.threads.failed') }}
         </p>
+      </section>
+
+      <!-- Data export (DEC-126, TASK-175): portable copy of the reader's data -->
+      <section class="border border-gray-100 dark:border-gray-700 rounded-xl p-5">
+        <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-1">
+          {{ t('account.export.title') }}
+        </h2>
+        <p class="text-xs text-gray-400 mb-4">{{ t('account.export.description') }}</p>
+        <button
+          type="button"
+          :disabled="exportingData"
+          class="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-200 border border-gray-200 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
+          @click="downloadMyData"
+        >
+          <Icon :icon="exportingData ? 'lucide:loader-2' : 'lucide:download'" class="w-4 h-4" :class="{ 'animate-spin': exportingData }" />
+          {{ t('account.export.download') }}
+        </button>
+        <p
+          v-if="exportState === 'done'"
+          class="mt-2 text-sm text-emerald-600 dark:text-emerald-400"
+        >{{ t('account.export.done') }}</p>
+        <p
+          v-else-if="exportState === 'failed'"
+          class="mt-2 text-sm text-red-500 dark:text-red-400"
+        >{{ t('account.export.failed') }}</p>
       </section>
 
       <!-- Delete account (DEC-106, TASK-165): self-service account deletion -->
