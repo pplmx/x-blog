@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 125,
+  "round": 127,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-08-22T08:17:10+00:00",
+  "updated_at": "2026-08-22T11:02:34+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -7732,11 +7732,11 @@
     "TASK-158": {
       "id": "TASK-158",
       "type": "task",
-      "status": "active",
-      "version": 1,
+      "status": "resolved",
+      "version": 2,
       "created_at": "2026-08-22T08:09:54+00:00",
-      "updated_at": "2026-08-22T08:09:54+00:00",
-      "touched_round": 124,
+      "updated_at": "2026-08-22T11:02:24+00:00",
+      "touched_round": 127,
       "category": "core-feature",
       "severity": 0.7,
       "confidence": 0.9,
@@ -7751,10 +7751,60 @@
       "version": 1,
       "created_at": "2026-08-22T08:11:56+00:00",
       "updated_at": "2026-08-22T08:11:56+00:00",
-      "touched_round": 124,
+      "touched_round": 127,
       "title": "Milestone: comment likes (upvotes)",
       "rationale": "Feature-evolution selection (SKILL 11.2 gap analysis): with comments now rendering markdown and highlighted code, discussion threads still lack a lightweight community signal — readers share code, but there is no way to signal \"this snippet/answer helped me\" without writing another comment. Post likes (POST /posts/{id}/like, anonymous count++) already set the precedent; extending the same pattern to comments is a natural vertical slice on the comments arc (DEC-088 markdown -> DEC-090 highlight -> likes). Users: readers evaluating whether past questions were answered; authors scanning which comments helped. Acceptance (one sentence): a reader can like (and dedup-prevent re-like of) a comment, and the count is visible on every published comment. Scope: additive comments.likes column + POST /comments/{id}/like (rate-limited, 404 for comments on non-public posts) + CommentPublic.likes; per-comment like button in CommentList (heart + count, localStorage dedup like the post-like ISS-038 pattern, optimistic update, error handling) + en/zh labels; backend pytest + frontend component + E2E.",
       "alternatives_rejected": "Comment code copy button (tiny, frontend-only, could fold into a later slice); comment editing/deleting by author (larger auth/ownership surface, separate slice); comment dislikes (negative engagement, out); per-reader like identity (would need a new table + JWT wiring — anonymous count matches the post-likes precedent)."
+    },
+    "CHG-148": {
+      "id": "CHG-148",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-22T11:01:34+00:00",
+      "updated_at": "2026-08-22T11:01:34+00:00",
+      "touched_round": 127,
+      "commit": "abf3fb0",
+      "title": "Comment likes/upvotes (DEC-092, TASK-158)"
+    },
+    "DEC-093": {
+      "id": "DEC-093",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-22T11:01:43+00:00",
+      "updated_at": "2026-08-22T11:01:43+00:00",
+      "touched_round": 127,
+      "title": "Milestone delivered: comment likes/upvotes (DEC-092 complete)",
+      "rationale": "Delivery of DEC-092 / TASK-158 via CHG-148 (abf3fb0), verified end-to-end. Backend (additive, DEC-009 preserved): comments.likes INT NOT NULL DEFAULT 0 (migration b7d1f3a5c9e2); POST /api/comments/{id}/like increments via atomic crud.increment_comment_likes (update+commit+refresh), rate-limited, and 404s for unknown ids or comments on non-public posts (never answers draft-existence questions); CommentPublic/Comment expose likes. Frontend: useCommentLike + Comment.likes in useApi; CommentList renders a per-comment heart+count button (top-level and replies) with optimistic update from the response, a localStorage liked-comments:<id> guard (one like per browser, mirroring the post-like ISS-038 pattern), in-flight spinner, and localized error. Tests: backend comment suite (increment per request, exposed on public approved list, 404 unknown, 404 on non-public post) + full suite green (93.91% cov); frontend vitest 1017 (like click updates count + marks localStorage, dedup no-op, error path); biome + vue-tsc + pyright clean; Playwright comment-likes (count 0->1, aria-pressed, second click deduped) + comment-markdown regression green.",
+      "alternatives_rejected": "Comment code copy button (deferred to a later slice); comment editing/deleting by author (auth/ownership surface, separate slice); per-reader like identity (needs a new table + JWT wiring, anonymous count matches post-likes); comment dislikes (negative engagement, out)."
+    },
+    "DEC-094": {
+      "id": "DEC-094",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-22T11:02:19+00:00",
+      "updated_at": "2026-08-22T11:02:19+00:00",
+      "touched_round": 127,
+      "title": "Milestone: comment sorting by likes (most helpful)",
+      "rationale": "Feature-evolution selection (SKILL 11.2 gap analysis) on the comments arc. DEC-092 shipped a per-comment likes counter, but the public comment list still renders strictly newest-first (crud.get_comments_paginated orders by created_at desc), so likes carry no ordering value — on a long thread readers share snippets and answers with no way to surface which comments helped. Milestone: let readers sort the approved comment list by Most helpful (likes desc), Newest, or Oldest. Users: readers landing on a long thread who want the best/answered question first; authors scanning which comments helped. Why now: the likes column already exists (DEC-092/TASK-158), so this is a pure additive slice with no schema change — it activates the likes data into a user-facing ordering dimension. Acceptance (one sentence): a reader can switch the thread to Most helpful/Newest/Oldest and the approved comment list reorders accordingly. Scope: add a whitelisted sort param (newest default | oldest | likes) to GET /api/comments/post/{id} and crud.get_comments_paginated (likes desc, created_at desc tiebreak), a sort toggle in CommentList (re-fetch with selected sort), i18n labels (en/zh), frontend component + backend pytest + E2E.",
+      "alternatives_rejected": "Comment code copy button (tiny, frontend-only, low value-gate — \"missing a button\" level, rejected per SKILL 11.2); comment editing/deleting by author (larger auth/ownership surface, keep as a separate slice); comment dislikes (negative engagement, out); comment collapsing/summarizing by likes (scope creep, threads are flat already)."
+    },
+    "TASK-159": {
+      "id": "TASK-159",
+      "type": "task",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-22T11:02:21+00:00",
+      "updated_at": "2026-08-22T11:02:21+00:00",
+      "touched_round": 127,
+      "category": "core-feature",
+      "severity": 0.6,
+      "confidence": 0.9,
+      "effort": 1.0,
+      "unlock_factor": 1.4,
+      "title": "Comment sorting: whitelisted sort param (newest default|oldest|likes) on GET /api/comments/post/{id} + crud.get_comments_paginated (likes desc, created_at desc tiebreak) + CommentList sort toggle re-fetch + i18n + backend pytest + frontend component + E2E"
     }
   },
   "edges": [
@@ -10923,6 +10973,36 @@
       "to": "TASK-158",
       "type": "governs",
       "created_at": "2026-08-22T08:17:10+00:00"
+    },
+    {
+      "from": "CHG-148",
+      "to": "TASK-158",
+      "type": "implements",
+      "created_at": "2026-08-22T11:02:29+00:00"
+    },
+    {
+      "from": "DEC-093",
+      "to": "DEC-092",
+      "type": "supersedes",
+      "created_at": "2026-08-22T11:02:29+00:00"
+    },
+    {
+      "from": "DEC-093",
+      "to": "TASK-158",
+      "type": "governs",
+      "created_at": "2026-08-22T11:02:30+00:00"
+    },
+    {
+      "from": "DEC-094",
+      "to": "DEC-093",
+      "type": "supersedes",
+      "created_at": "2026-08-22T11:02:33+00:00"
+    },
+    {
+      "from": "DEC-094",
+      "to": "TASK-159",
+      "type": "governs",
+      "created_at": "2026-08-22T11:02:34+00:00"
     }
   ]
 }
