@@ -1,6 +1,15 @@
 {
 	"account": {
 		"title": "账号设置",
+		"deleteAccount": {
+			"title": "删除账号",
+			"description": "永久删除你的账号并清除已保存数据。你过去的评论将保留公开，但不再关联你的身份。",
+			"passwordLabel": "输入密码以确认",
+			"delete": "删除我的账号",
+			"confirm": "此操作将永久删除你的账号，且无法撤销。是否继续？",
+			"wrongPassword": "密码错误，请重试。",
+			"failed": "删除账号失败，请重试。"
+		},
 		"seoTitle": "账号设置 — X-Blog",
 		"seoDesc": "管理你的读者账号：昵称、密码与推送设备。",
 		"signInPrompt": "登录后可以管理你的账号设置",

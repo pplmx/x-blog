@@ -1344,6 +1344,46 @@ def get_reader_comments(
 # ---------------------------------------------------------------------------
 
 
+def delete_reader_account(db: Session, reader_id: int) -> bool:
+    """Permanently delete a reader account and detach their contributed data.
+
+    Self-service account deletion (DEC-106, TASK-165): the comment *discussion*
+    is preserved but anonymized (reader_id detached, keeping the stored
+    nickname/content public but no longer account-linked — no verified badge),
+    while the reader's cloud-synced bookmarks, comment-thread subscriptions and
+    push subscriptions are removed. Returns False if the account does not exist.
+    """
+    reader = db.get(auth.ReaderAccount, reader_id)
+    if reader is None:
+        return False
+
+    # Anonymize the reader's comments instead of deleting them, so a public
+    # thread isn't destroyed by an account leaving (identity detached; the row
+    # keeps its nickname/content, so it renders without the verified badge).
+    db.query(models.Comment).filter(models.Comment.reader_id == reader_id).update(
+        {models.Comment.reader_id: None},
+        synchronize_session=False,
+    )
+    # Cloud-synced bookmarks and per-account subscriptions are account-private:
+    # remove them outright.
+    db.query(models.ReaderBookmark).filter(models.ReaderBookmark.reader_id == reader_id).delete(
+        synchronize_session=False
+    )
+    db.query(models.CommentSubscription).filter(models.CommentSubscription.reader_id == reader_id).delete(
+        synchronize_session=False
+    )
+    db.query(models.PushSubscription).filter(models.PushSubscription.reader_id == reader_id).delete(
+        synchronize_session=False
+    )
+    db.delete(reader)
+    try:
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        raise ValueError("Cannot delete account: it has dependent records")
+    return True
+
+
 def get_site_setting(db: Session, key: str) -> str | None:
     """Read a persisted site setting by key, or None if it has never been set."""
     row = db.get(models.SiteSetting, key)

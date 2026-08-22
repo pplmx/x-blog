@@ -1,6 +1,15 @@
 {
 	"account": {
 		"title": "Account settings",
+		"deleteAccount": {
+			"title": "Delete account",
+			"description": "Permanently delete your account and remove your saved data. Your past comments stay public but are no longer linked to you.",
+			"passwordLabel": "Enter your password to confirm",
+			"delete": "Delete my account",
+			"confirm": "This will permanently delete your account. You can't undo this. Continue?",
+			"wrongPassword": "Incorrect password. Please try again.",
+			"failed": "Couldn't delete the account. Please try again."
+		},
 		"seoTitle": "Account settings — X-Blog",
 		"seoDesc": "Manage your reader account: display name, password, and push devices.",
 		"signInPrompt": "Sign in to manage your account settings",

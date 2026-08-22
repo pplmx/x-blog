@@ -335,6 +335,39 @@ def change_my_password(
     }
 
 
+class ReaderAccountDelete(BaseModel):
+    """Body for reader self-service account deletion (DEC-106, TASK-165)."""
+
+    password: str
+
+
+@router.delete("/me/account", status_code=204)
+@limiter.limit(f"{RATE_LIMIT_AUTH}/minute")
+def delete_my_account(
+    request: Request,  # noqa: ARG001
+    payload: ReaderAccountDelete,
+    current_reader: auth.ReaderAccount = Depends(auth.get_current_reader),
+    db: Session = Depends(get_db),
+):
+    """Permanently delete the reader's own account.
+
+    Requires the current password (timing-safe, same helper as login/change).
+    On success the account is removed, their cloud bookmarks/subscriptions are
+    deleted, and their past comments are anonymized (identity detached, comment
+    kept public). A wrong password is a 401; the response is 204 and the caller
+    is now logged out (the account no longer resolves). (DEC-106, TASK-165)
+    """
+    if not auth.verify_password(payload.password, current_reader.password):
+        raise HTTPException(status_code=401, detail="Incorrect current password")
+    try:
+        deleted = crud.delete_reader_account(db, current_reader.id)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    if not deleted:
+        raise HTTPException(status_code=404, detail="Account not found")
+    return None
+
+
 @router.get("/me/push-subscriptions", response_model=ReaderPushSubscriptionListResponse)
 def list_my_push_subscriptions(
     current_reader: auth.ReaderAccount = Depends(auth.get_current_reader),

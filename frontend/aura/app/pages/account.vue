@@ -8,6 +8,7 @@
 import {
 	type Category,
 	changeMyPassword,
+	deleteReaderAccount,
 	fetchCategories,
 	fetchMyPostSubscriptions,
 	fetchMyPushSubscriptions,
@@ -22,7 +23,7 @@ import { useReaderAuth } from "~~/composables/useReaderAuth";
 import { useSeo } from "~~/composables/useSeo";
 
 const { t, locale } = useLang();
-const { isAuthenticated, reader, setProfile, updateToken } = useReaderAuth();
+const { isAuthenticated, reader, setProfile, updateToken, logout } = useReaderAuth();
 
 useSeo({
 	title: t("account.seoTitle"),
@@ -210,6 +211,29 @@ async function unfollowThread(thread: SubscribedThreadItem) {
 		threadsError.value = true;
 	} finally {
 		unsubscribingId.value = null;
+	}
+}
+
+/* Delete account (DEC-106, TASK-165) ---------------------------------- */
+const deletePassword = ref("");
+const deletingAccount = ref(false);
+const deleteError = ref<{ code: "wrong" | "failed" } | null>(null);
+
+async function deleteAccount() {
+	if (deletingAccount.value) return;
+	if (!confirm(t("account.deleteAccount.confirm"))) return;
+	if (!deletePassword.value) return;
+	deletingAccount.value = true;
+	deleteError.value = null;
+	try {
+		await deleteReaderAccount(deletePassword.value);
+		logout();
+		navigateTo("/");
+	} catch (e) {
+		const status = (e as { status?: number }).status;
+		deleteError.value = { code: status === 401 ? "wrong" : "failed" };
+	} finally {
+		deletingAccount.value = false;
 	}
 }
 
@@ -478,6 +502,42 @@ function shortEndpoint(endpoint: string): string {
         <p v-if="threadsError" class="mt-2 text-sm text-red-500 dark:text-red-400">
           {{ t('account.threads.failed') }}
         </p>
+      </section>
+
+      <!-- Delete account (DEC-106, TASK-165): self-service account deletion -->
+      <section class="border border-red-200 dark:border-red-900/50 rounded-xl p-5">
+        <h2 class="text-lg font-semibold text-red-600 dark:text-red-400 mb-1">
+          {{ t('account.deleteAccount.title') }}
+        </h2>
+        <p class="text-xs text-gray-400 mb-4">{{ t('account.deleteAccount.description') }}</p>
+
+        <div class="flex flex-col sm:flex-row sm:items-end gap-3">
+          <label class="flex-1 min-w-0">
+            <span class="text-sm text-gray-600 dark:text-gray-400">{{ t('account.deleteAccount.passwordLabel') }}</span>
+            <input
+              v-model="deletePassword"
+              type="password"
+              autocomplete="current-password"
+              class="mt-1 w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-red-500"
+            />
+          </label>
+          <button
+            type="button"
+            :disabled="deletingAccount || !deletePassword"
+            class="shrink-0 px-4 py-2 rounded-lg text-sm font-medium text-white bg-red-600 hover:bg-red-700 disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
+            @click="deleteAccount"
+          >
+            {{ t('account.deleteAccount.delete') }}
+          </button>
+        </div>
+        <p
+          v-if="deleteError?.code === 'wrong'"
+          class="mt-2 text-sm text-red-500 dark:text-red-400"
+        >{{ t('account.deleteAccount.wrongPassword') }}</p>
+        <p
+          v-else-if="deleteError?.code === 'failed'"
+          class="mt-2 text-sm text-red-500 dark:text-red-400"
+        >{{ t('account.deleteAccount.failed') }}</p>
       </section>
     </div>
   </div>

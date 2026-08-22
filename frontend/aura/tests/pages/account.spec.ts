@@ -15,9 +15,10 @@ const isAuthenticated = ref(false);
 const reader = ref<ReaderProfile | null>(null);
 const setProfile = vi.fn();
 const updateToken = vi.fn();
+const logout = vi.fn();
 
 vi.mock("../../composables/useReaderAuth", () => ({
-	useReaderAuth: () => ({ isAuthenticated, reader, setProfile, updateToken }),
+	useReaderAuth: () => ({ isAuthenticated, reader, setProfile, updateToken, logout }),
 }));
 
 vi.mock("../../composables/useSeo", () => ({
@@ -30,6 +31,7 @@ const mockFetchPushSubscriptions = vi.fn();
 const mockRevokePushSubscription = vi.fn();
 const mockFetchCategories = vi.fn();
 const mockUpdatePushSubscriptionPrefs = vi.fn();
+const mockDeleteReaderAccount = vi.fn();
 
 vi.mock("../../composables/useApi", async (importOriginal) => {
 	const orig = await importOriginal<typeof import("../../composables/useApi")>();
@@ -41,6 +43,7 @@ vi.mock("../../composables/useApi", async (importOriginal) => {
 		revokeMyPushSubscription: mockRevokePushSubscription,
 		fetchCategories: mockFetchCategories,
 		updateMyPushSubscriptionPrefs: mockUpdatePushSubscriptionPrefs,
+		deleteReaderAccount: mockDeleteReaderAccount,
 	};
 });
 
@@ -246,5 +249,47 @@ describe("Account settings page", () => {
 		await flushPromises();
 
 		expect(wrapper.text()).toContain("当前密码不正确");
+	});
+
+	describe("delete account (DEC-106, TASK-165)", () => {
+		it("deletes the account after confirming the password", async () => {
+			isAuthenticated.value = true;
+			mockFetchPushSubscriptions.mockResolvedValue({ items: [], total: 0 });
+			mockDeleteReaderAccount.mockResolvedValue(undefined);
+			vi.stubGlobal("confirm", () => true);
+			const navigateTo = vi.fn();
+			vi.stubGlobal("navigateTo", navigateTo);
+
+			const wrapper = await mountPage();
+			const section = wrapper.findAll("section").find((s) => s.text().includes("删除账号"));
+			expect(section).toBeDefined();
+			if (!section) throw new Error("delete section not found");
+			await section.findAll("input[type='password']")[0].setValue("readerpass123");
+			await section.find("button").trigger("click");
+			await flushPromises();
+
+			expect(mockDeleteReaderAccount).toHaveBeenCalledWith("readerpass123");
+			expect(logout).toHaveBeenCalled();
+			expect(navigateTo).toHaveBeenCalledWith("/");
+			vi.unstubAllGlobals();
+		});
+
+		it("shows a wrong-password error when deletion is rejected 401", async () => {
+			isAuthenticated.value = true;
+			mockFetchPushSubscriptions.mockResolvedValue({ items: [], total: 0 });
+			mockDeleteReaderAccount.mockRejectedValue({ status: 401 });
+			vi.stubGlobal("confirm", () => true);
+			vi.stubGlobal("navigateTo", vi.fn());
+
+			const wrapper = await mountPage();
+			const section = wrapper.findAll("section").find((s) => s.text().includes("删除账号"));
+			if (!section) throw new Error("delete section not found");
+			await section.findAll("input[type='password']")[0].setValue("nope");
+			await section.find("button").trigger("click");
+			await flushPromises();
+
+			expect(wrapper.text()).toContain("密码错误");
+			vi.unstubAllGlobals();
+		});
 	});
 });

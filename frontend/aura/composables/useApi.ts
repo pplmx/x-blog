@@ -1192,6 +1192,18 @@ export async function changeMyPassword(body: {
 	});
 }
 
+/** Permanently delete the reader's own account (204 on success; 401 when the
+ *  password is wrong). Past comments are anonymized, not deleted. (DEC-106) */
+export async function deleteReaderAccount(password: string): Promise<void> {
+	const config = useRuntimeConfig();
+	const apiUrl = config.public.apiUrl;
+	await $fetch(`${apiUrl}/api/reader/me/account`, {
+		method: "DELETE",
+		headers: { ...getReaderAuthHeaders(), "Content-Type": "application/json" },
+		body: JSON.stringify({ password }),
+	});
+}
+
 /** One push subscription bound to the reader account (device-management view;
  * encryption keys are never returned). */
 export interface ReaderPushSubscription {
