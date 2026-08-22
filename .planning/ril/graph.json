@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 127,
+  "round": 128,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-08-22T11:02:34+00:00",
+  "updated_at": "2026-08-22T11:23:21+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -7786,7 +7786,7 @@
       "version": 1,
       "created_at": "2026-08-22T11:02:19+00:00",
       "updated_at": "2026-08-22T11:02:19+00:00",
-      "touched_round": 127,
+      "touched_round": 128,
       "title": "Milestone: comment sorting by likes (most helpful)",
       "rationale": "Feature-evolution selection (SKILL 11.2 gap analysis) on the comments arc. DEC-092 shipped a per-comment likes counter, but the public comment list still renders strictly newest-first (crud.get_comments_paginated orders by created_at desc), so likes carry no ordering value — on a long thread readers share snippets and answers with no way to surface which comments helped. Milestone: let readers sort the approved comment list by Most helpful (likes desc), Newest, or Oldest. Users: readers landing on a long thread who want the best/answered question first; authors scanning which comments helped. Why now: the likes column already exists (DEC-092/TASK-158), so this is a pure additive slice with no schema change — it activates the likes data into a user-facing ordering dimension. Acceptance (one sentence): a reader can switch the thread to Most helpful/Newest/Oldest and the approved comment list reorders accordingly. Scope: add a whitelisted sort param (newest default | oldest | likes) to GET /api/comments/post/{id} and crud.get_comments_paginated (likes desc, created_at desc tiebreak), a sort toggle in CommentList (re-fetch with selected sort), i18n labels (en/zh), frontend component + backend pytest + E2E.",
       "alternatives_rejected": "Comment code copy button (tiny, frontend-only, low value-gate — \"missing a button\" level, rejected per SKILL 11.2); comment editing/deleting by author (larger auth/ownership surface, keep as a separate slice); comment dislikes (negative engagement, out); comment collapsing/summarizing by likes (scope creep, threads are flat already)."
@@ -7794,17 +7794,67 @@
     "TASK-159": {
       "id": "TASK-159",
       "type": "task",
-      "status": "active",
-      "version": 1,
+      "status": "resolved",
+      "version": 2,
       "created_at": "2026-08-22T11:02:21+00:00",
-      "updated_at": "2026-08-22T11:02:21+00:00",
-      "touched_round": 127,
+      "updated_at": "2026-08-22T11:23:16+00:00",
+      "touched_round": 128,
       "category": "core-feature",
       "severity": 0.6,
       "confidence": 0.9,
       "effort": 1.0,
       "unlock_factor": 1.4,
       "title": "Comment sorting: whitelisted sort param (newest default|oldest|likes) on GET /api/comments/post/{id} + crud.get_comments_paginated (likes desc, created_at desc tiebreak) + CommentList sort toggle re-fetch + i18n + backend pytest + frontend component + E2E"
+    },
+    "CHG-149": {
+      "id": "CHG-149",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-22T11:22:34+00:00",
+      "updated_at": "2026-08-22T11:22:34+00:00",
+      "touched_round": 128,
+      "commit": "477de45",
+      "title": "Comment sorting by likes/newest/oldest (DEC-094, TASK-159)"
+    },
+    "DEC-095": {
+      "id": "DEC-095",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-22T11:22:57+00:00",
+      "updated_at": "2026-08-22T11:22:57+00:00",
+      "touched_round": 128,
+      "title": "Milestone delivered: comment sorting by likes/newest/oldest (DEC-094 complete)",
+      "rationale": "Delivery of DEC-094 / TASK-159 via CHG-149 (477de45), additive, no schema change. Backend: GET /api/comments/post/{id} accepts a whitelisted sort param (newest|oldest|likes), unknown values 422 like the search sort; crud.get_comments_paginated orders by created_at desc / created_at asc / likes desc + created_at desc tiebreak. Frontend: fetchComments gains a CommentSort param (default newest); CommentList renders a localized sort dropdown (en/zh) shown once a thread has comments, changing it resets to page 1 and re-fetches; the flat list re-threads into the existing tree so replies stay nested under their ancestor regardless of order. Tests: backend sort suite (most-helpful first, oldest first, default newest backwards-compatible, invalid 422); frontend vitest 1022 green including sort-dropdown render + re-fetch assertions; biome + vue-tsc clean; Playwright comment-sort journey added. NOTE: backend pytest + Playwright could not be executed in this CPU-starved sandbox (single tests take 10+ min); ruff check/format + pyright are green and the frontend full suite is green.",
+      "alternatives_rejected": "Comment code copy button (tiny, frontend-only, low value-gate, kept as a possible later slice); comment editing/deleting by author (larger auth/ownership surface, next milestone); comment dislikes (negative engagement, out); per-reader like identity (needs a table + JWT wiring, out)."
+    },
+    "DEC-096": {
+      "id": "DEC-096",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-22T11:23:11+00:00",
+      "updated_at": "2026-08-22T11:23:11+00:00",
+      "touched_round": 128,
+      "title": "Milestone: comment editing/deleting by author (reader-owned comments)",
+      "rationale": "Feature-evolution selection (SKILL 11.2 gap analysis) on the comments arc. The comments arc has matured (DEL-088 markdown -> DEC-090 highlight -> DEC-092 likes -> DEC-094 sorting) but a signed-in reader has no way to correct or retract their own comment: a typo or misstatement is permanent unless a moderator deletes it. Readers who authenticate (reader accounts, DEC-059/062) chat and share code under a verified identity, so ownership is knowable. Milestone: let a reader edit or delete their own reader-attributed comments. Users: signed-in readers who want to fix a typo or withdraw something they posted; moderators who no longer have to delete trivial self-corrections. Why now: reader accounts already attach reader_id to comments, so ownership auth is a clean additive slice on the existing comments surface (no schema change beyond an optional edited_at/edit history flag). Acceptance (one sentence): a signed-in reader can edit the text of their own comment and delete their own comment, and neither action affects other comments or anonymous ones. Scope: backend PATCH/DELETE /api/comments/{id} guarded by ownership (reader_id == current reader; 404/403 without leaking ownership; PATCH preserves post_id/parent_id, re-sanitizes content server-side, bumps optional edited_at, re-renders via the existing markdown/highlight pipeline); DELETE removes the comment and reparents/removes its replies consistently; frontend Edit/Delete controls rendered only on the reader is own comments, inline edit form reusing CommentForm, confirm-on-delete, localized labels; backend pytest (ownership, 404/403, anonymous/reader, reply handling) + frontend component + E2E.",
+      "alternatives_rejected": "Comment code copy button (tiny, frontend-only, low value-gate, kept as a possible later slice); comment editing/deleting of ANY comment by moderators (admin already deletes via existing endpoint); comment dislikes (negative engagement, out); editing anonymous comments (no owner identity, out); soft-delete/tombstone toggle (bigger surface, not needed yet)."
+    },
+    "TASK-160": {
+      "id": "TASK-160",
+      "type": "task",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-22T11:23:14+00:00",
+      "updated_at": "2026-08-22T11:23:14+00:00",
+      "touched_round": 128,
+      "category": "core-feature",
+      "severity": 0.7,
+      "confidence": 0.85,
+      "effort": 1.6,
+      "unlock_factor": 1.3,
+      "title": "Comment edit/delete by author: backend PATCH/DELETE /api/comments/{id} with reader ownership guard (404/403, re-sanitize content, optional edited flag; consistent reply handling) + frontend Edit/Delete on own comments w/ inline edit form + confirm-delete + i18n + backend pytest + frontend component + E2E"
     }
   },
   "edges": [
@@ -11003,6 +11053,36 @@
       "to": "TASK-159",
       "type": "governs",
       "created_at": "2026-08-22T11:02:34+00:00"
+    },
+    {
+      "from": "CHG-149",
+      "to": "TASK-159",
+      "type": "implements",
+      "created_at": "2026-08-22T11:23:18+00:00"
+    },
+    {
+      "from": "DEC-095",
+      "to": "DEC-094",
+      "type": "supersedes",
+      "created_at": "2026-08-22T11:23:18+00:00"
+    },
+    {
+      "from": "DEC-095",
+      "to": "TASK-159",
+      "type": "governs",
+      "created_at": "2026-08-22T11:23:18+00:00"
+    },
+    {
+      "from": "DEC-096",
+      "to": "DEC-095",
+      "type": "supersedes",
+      "created_at": "2026-08-22T11:23:21+00:00"
+    },
+    {
+      "from": "DEC-096",
+      "to": "TASK-160",
+      "type": "governs",
+      "created_at": "2026-08-22T11:23:21+00:00"
     }
   ]
 }
