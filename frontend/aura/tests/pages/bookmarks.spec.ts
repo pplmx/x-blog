@@ -165,4 +165,48 @@ describe("Bookmarks page", () => {
 			vi.unstubAllGlobals();
 		});
 	});
+
+	describe("search (TASK-174)", () => {
+		const vueBookmark = { ...sampleBookmark, id: 1, title: "Vue Guide", slug: "vue-guide" };
+		const goBookmark = {
+			...sampleBookmark,
+			id: 2,
+			title: "Go Internals",
+			slug: "go-internals",
+			category: { id: 2, name: "Backend" },
+			tags: [],
+		};
+
+		it("filters bookmarks by title keyword", async () => {
+			mockBookmarks.value = [vueBookmark, goBookmark];
+			const wrapper = mountBookmarks();
+			await wrapper.find('input[type="search"]').setValue("Vue");
+			expect(wrapper.text()).toContain("Vue Guide");
+			expect(wrapper.text()).not.toContain("Go Internals");
+		});
+
+		it("filters bookmarks by category name", async () => {
+			mockBookmarks.value = [vueBookmark, goBookmark];
+			const wrapper = mountBookmarks();
+			await wrapper.find('input[type="search"]').setValue("Backend");
+			expect(wrapper.text()).toContain("Go Internals");
+			expect(wrapper.text()).not.toContain("Vue Guide");
+		});
+
+		it("shows a no-results message and clears the search", async () => {
+			mockBookmarks.value = [vueBookmark, goBookmark];
+			const wrapper = mountBookmarks();
+			await wrapper.find('input[type="search"]').setValue("zzz");
+			expect(wrapper.text()).toContain("没有匹配的收藏。");
+			await wrapper.find('button[aria-label="清除搜索"]').trigger("click");
+			expect(wrapper.text()).toContain("Go Internals");
+			expect(wrapper.text()).toContain("Vue Guide");
+		});
+
+		it("hidden when there are no bookmarks", () => {
+			mockBookmarks.value = [];
+			const wrapper = mountBookmarks();
+			expect(wrapper.find('input[type="search"]').exists()).toBe(false);
+		});
+	});
 });

@@ -19,6 +19,9 @@
 		"deleteFolderConfirm": "删除文件夹“{name}”？其中的收藏将变为未分类。",
 		"noFolder": "未分类",
 		"noPostsInFolder": "此文件夹中暂无收藏。",
-		"assign": "移动到文件夹"
+		"assign": "移动到文件夹",
+		"searchPlaceholder": "搜索收藏…",
+		"clearSearch": "清除搜索",
+		"noSearchResults": "没有匹配的收藏。"
 	}
 }

@@ -52,16 +52,29 @@ onMounted(() => {
 const activeFolderId = ref<"all" | number>("all");
 const showManage = ref(false);
 
+// Keyword search (DEC-124, TASK-174): matches title, category, or tag names,
+// case-insensitive, and composes with the active folder filter.
+const searchQuery = ref("");
+const searchText = computed(() => searchQuery.value.trim().toLowerCase());
+const searching = computed(() => searchText.value !== "");
+
 const filteredBookmarks = computed<Bookmark[]>(() => {
 	if (activeFolderId.value === "all") return bookmarks.value;
 	return bookmarks.value.filter((b) => b.folder_id === activeFolderId.value);
 });
 
-const showingCount = computed(() =>
-	signedIn.value && activeFolderId.value !== "all"
-		? filteredBookmarks.value.length
-		: bookmarkCount.value,
-);
+const searchedBookmarks = computed<Bookmark[]>(() => {
+	if (!searching.value) return filteredBookmarks.value;
+	const q = searchText.value;
+	return filteredBookmarks.value.filter((b) => {
+		if ((b.title || "").toLowerCase().includes(q)) return true;
+		if (b.category?.name?.toLowerCase().includes(q)) return true;
+		return b.tags.some((t) => t.name.toLowerCase().includes(q));
+	});
+});
+
+// Matches the rendered list in every case (folder filter, search, or neither).
+const showingCount = computed(() => searchedBookmarks.value.length);
 
 async function handleNewFolder() {
 	const name = window.prompt(t("bookmarks.newFolderPrompt"))?.trim();
@@ -124,6 +137,28 @@ async function handleAssign(bookmark: Bookmark, raw: string) {
         <Icon icon="lucide:trash-2" class="w-4 h-4 inline mr-1" />
         {{ t('bookmarks.clearAll') }}
       </button>
+    </div>
+
+    <!-- Bookmark search (DEC-124, TASK-174) -->
+    <div v-if="bookmarkCount > 0" class="mb-6">
+      <div class="relative max-w-md">
+        <Icon icon="lucide:search" class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+        <input
+          v-model="searchQuery"
+          type="search"
+          :placeholder="t('bookmarks.searchPlaceholder')"
+          class="w-full pl-9 pr-9 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-transparent text-sm text-gray-700 dark:text-gray-200 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/40"
+        />
+        <button
+          v-if="searchQuery"
+          type="button"
+          :aria-label="t('bookmarks.clearSearch')"
+          class="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors"
+          @click="searchQuery = ''"
+        >
+          <Icon icon="lucide:x" class="w-4 h-4" />
+        </button>
+      </div>
     </div>
 
     <!-- Folder bar (signed-in only) -->
@@ -203,19 +238,19 @@ async function handleAssign(bookmark: Bookmark, raw: string) {
       </NuxtLink>
     </div>
 
-    <!-- No posts in the selected folder -->
+    <!-- No results in the current folder/search -->
     <div
-      v-else-if="filteredBookmarks.length === 0"
+      v-else-if="searchedBookmarks.length === 0"
       class="text-center py-16 text-gray-500 dark:text-gray-400"
     >
-      <Icon icon="lucide:folder-open" class="w-12 h-12 mx-auto mb-4 text-gray-300" />
-      <p class="text-lg">{{ t('bookmarks.noPostsInFolder') }}</p>
+      <Icon :icon="searching ? 'lucide:search-x' : 'lucide:folder-open'" class="w-12 h-12 mx-auto mb-4 text-gray-300" />
+      <p class="text-lg">{{ searching ? t('bookmarks.noSearchResults') : t('bookmarks.noPostsInFolder') }}</p>
     </div>
 
     <!-- Bookmarks list -->
     <div v-else class="space-y-4">
       <div
-        v-for="bookmark in filteredBookmarks"
+        v-for="bookmark in searchedBookmarks"
         :key="bookmark.id"
         class="border border-gray-100 dark:border-gray-800 rounded-2xl p-4 hover:shadow-md transition-shadow"
       >

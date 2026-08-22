@@ -19,6 +19,9 @@
 		"deleteFolderConfirm": "Delete folder \"{name}\"? Its bookmarks will become uncategorized.",
 		"noFolder": "No folder",
 		"noPostsInFolder": "No bookmarks in this folder yet.",
-		"assign": "Move to folder"
+		"assign": "Move to folder",
+		"searchPlaceholder": "Search bookmarks…",
+		"clearSearch": "Clear search",
+		"noSearchResults": "No bookmarks match your search."
 	}
 }
