@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 136,
+  "round": 137,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-08-22T15:14:53+00:00",
+  "updated_at": "2026-08-22T15:32:30+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -8236,7 +8236,7 @@
       "version": 1,
       "created_at": "2026-08-22T15:14:42+00:00",
       "updated_at": "2026-08-22T15:14:42+00:00",
-      "touched_round": 136,
+      "touched_round": 137,
       "title": "Milestone: printable/PDF view of a post",
       "rationale": "Feature-evolution selection (SKILL 11.2 gap analysis). Tech-blog readers often want to save or share an article, but there is no print-friendly / PDF output for a single post (confirmed absent). Milestone: a print-optimized view of a post so a reader can save it cleanly (browser print-to-PDF) without the site chrome. Users: readers who want a clean, shareable/saveable copy of an article. Why now: reading/archival features (TOC, read progress, series nav, bookmark, download?) are otherwise complete; this is net-new and reader-visible. Acceptance (one sentence): a reader can open a print/PDF view of any post and the result is a clean typographic article. Scope: frontend-only print layout - a /posts/[slug]/print route rendering post title/date/content (sanitized markdown via the existing renderer) + reading time, a Print/PDF button on the post page and/or in the print route that calls window.print(), a print stylesheet hiding the site chrome @media print, and a no-js/SEO-consistent link; vitest (print route renders post title/content) + E2E (open print route, assert article content present). No backend/schema change.",
       "alternatives_rejected": "Server-side PDF generation (adds a heavy render dependency; browser print-to-PDF covers the need without new deps); full-blog PDF export (much larger, niche); comment code copy button (trivial, rejected); email self-send (no SMTP)."
@@ -8244,17 +8244,67 @@
     "TASK-168": {
       "id": "TASK-168",
       "type": "task",
-      "status": "active",
-      "version": 1,
+      "status": "resolved",
+      "version": 2,
       "created_at": "2026-08-22T15:14:47+00:00",
-      "updated_at": "2026-08-22T15:14:47+00:00",
-      "touched_round": 136,
+      "updated_at": "2026-08-22T15:32:05+00:00",
+      "touched_round": 137,
       "category": "core-feature",
       "severity": 0.6,
       "confidence": 0.9,
       "effort": 1.2,
       "unlock_factor": 1.0,
       "title": "Printable/PDF view of a post: /posts/[slug]/print route (title/date/content via sanitized markdown + reading time) + Print/PDF button calling window.print() + @media print chrome-hiding stylesheet + entry link + vitest + E2E; no backend change"
+    },
+    "CHG-158": {
+      "id": "CHG-158",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-22T15:32:05+00:00",
+      "updated_at": "2026-08-22T15:32:05+00:00",
+      "touched_round": 137,
+      "commit": "bdc59a2184c9f6c8ca70400e69e4fe886b50599d",
+      "title": "Printable/PDF view of a post (DEC-112, TASK-168)"
+    },
+    "DEC-113": {
+      "id": "DEC-113",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-22T15:32:14+00:00",
+      "updated_at": "2026-08-22T15:32:14+00:00",
+      "touched_round": 137,
+      "title": "Milestone delivered: printable/PDF view of a post (DEC-112 complete)",
+      "rationale": "Delivery of DEC-112 / TASK-168 via CHG-158 (bdc59a2). Frontend-only print/PDF view: new /posts/[slug]/print page rendering post title/date/excerpt + CJK-aware reading time and the sanitized markdown content via the existing MarkdownContent renderer; a Print/PDF button calls window.print(); a global @media print stylesheet hides the site chrome (header/footer/nav) and the screen-only toolbar; the article page got an SEO-consistent Print/PDF entry link; en/zh labels. Extracted the reading-time logic into composables/useReadingTime so the detail page and print route agree with the backend. Also formatted pre-existing locales/zh/admin.comments.json indentation debt so the biome gate is green. Verification: full vitest suite 1052 green incl. new print.spec (7 tests: title, excerpt, markdown content, reading time, back link, window.print button, not-found states); vue-tsc clean; biome check clean across 240 files. Playwright E2E (e2e/print.spec.ts, open print route + assert article content + toolbar) was authored and lint-clean but NOT executed: this constrained sandbox cannot bind the FastAPI backend (startup hangs, port never opens) and is CPU-starved — same limitation recorded for the previous milestone (DEC-111). Acceptance met on unit/markup evidence; E2E pending a runnable CI environment.",
+      "alternatives_rejected": "Server-side PDF generation (heavy render dep; browser print-to-PDF covers it without new deps); full-blog PDF export (much larger, niche); comment code copy button (trivial, previously rejected)."
+    },
+    "DEC-114": {
+      "id": "DEC-114",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-22T15:32:23+00:00",
+      "updated_at": "2026-08-22T15:32:23+00:00",
+      "touched_round": 137,
+      "title": "Milestone: reader reading-history page",
+      "rationale": "Feature-evolution selection (SKILL 11.2 gap analysis). The recently-viewed continue-reading trail (DEC-104) is purely client-side and capped at 8 entries in a home row with no way to browse everything the reader has been reading or to clear it in one place. Now that readers have archival tooling (print/PDF, DEC-112), a dedicated reading-history surface is the natural next reader-visible capability. Milestone: a /history page listing the reader's recently-viewed posts (newest-first, deduped, with viewed timestamps and continue-reading links) plus a single-action clear-history control and an empty state. Users: returning readers who want to see everything they've been reading and jump back or clear the trail. Why now: complements the just-shipped print/PDF (archival) milestone and the home continue-reading row; net-additive, no schema/backend change (still localStorage-backed for this slice). Acceptance (one sentence): a reader can open a Reading history page that lists their recently viewed posts newest-first with continue-reading links and can clear the whole trail. Scope: extend useRecentlyViewed to persist a larger/stamped trail, add the /history page (list, resume links, clear action, empty state) + i18n + entry link in reader nav/account + vitest (trail max/stamping + page render/clear) + E2E.",
+      "alternatives_rejected": "Server-backed reading history across devices (larger: new DB table + auth-scoped API; deferred — localStorage slice shipped first, backend sync can be a later superseding milestone); per-post 'remove from history' micro-action in this slice (folded into Clear-history to keep the slice vertical); comment code copy button (trivial, repeatedly rejected)."
+    },
+    "TASK-169": {
+      "id": "TASK-169",
+      "type": "task",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-22T15:32:26+00:00",
+      "updated_at": "2026-08-22T15:32:26+00:00",
+      "touched_round": 137,
+      "category": "core-feature",
+      "severity": 0.6,
+      "confidence": 0.85,
+      "effort": 1.2,
+      "unlock_factor": 1.0,
+      "title": "Reader reading-history page: extend useRecentlyViewed to keep a larger timestamped trail, add /history page (newest-first list with viewed timestamps + continue-reading links + clear-history action + empty state) + reader nav/account entry link + i18n + vitest (trail cap/stamp + page render/clear) + E2E; no backend change"
     }
   },
   "edges": [
@@ -11723,6 +11773,36 @@
       "to": "TASK-168",
       "type": "governs",
       "created_at": "2026-08-22T15:14:53+00:00"
+    },
+    {
+      "from": "CHG-158",
+      "to": "TASK-168",
+      "type": "implements",
+      "created_at": "2026-08-22T15:32:30+00:00"
+    },
+    {
+      "from": "DEC-113",
+      "to": "DEC-112",
+      "type": "supersedes",
+      "created_at": "2026-08-22T15:32:30+00:00"
+    },
+    {
+      "from": "DEC-113",
+      "to": "TASK-168",
+      "type": "governs",
+      "created_at": "2026-08-22T15:32:30+00:00"
+    },
+    {
+      "from": "DEC-114",
+      "to": "DEC-113",
+      "type": "supersedes",
+      "created_at": "2026-08-22T15:32:30+00:00"
+    },
+    {
+      "from": "DEC-114",
+      "to": "TASK-169",
+      "type": "governs",
+      "created_at": "2026-08-22T15:32:30+00:00"
     }
   ]
 }
