@@ -15,6 +15,7 @@
 		"progressTitle": "阅读进度",
 		"readCountLabel": "已读 {read} / {total}",
 		"continueReading": "继续阅读",
-		"completed": "已读完"
+		"completed": "已读完",
+		"subscribeFeed": "RSS 订阅"
 	}
 }

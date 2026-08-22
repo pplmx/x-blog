@@ -234,7 +234,7 @@ describe("Categories Page", () => {
 
 		it("renders a subscribe link pointing at the category-scoped feed", async () => {
 			const wrapper = await mountCategoriesPage({ routeQuery: { category_id: "1" } });
-			const link = wrapper.find('a[href="/rss/feed.xml?category_id=1"]');
+			const link = wrapper.find('a[href="/rss/category/Tech.xml"]');
 			expect(link.exists()).toBe(true);
 			expect(link.text()).toContain("RSS 订阅");
 		});
@@ -246,7 +246,7 @@ describe("Categories Page", () => {
 				links.some(
 					(l) =>
 						l.rel === "alternate" &&
-						l.href === "/rss/feed.xml?category_id=1" &&
+						l.href === "/rss/category/Tech.xml" &&
 						l.type === "application/rss+xml",
 				),
 			).toBe(true);

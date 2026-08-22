@@ -44,6 +44,21 @@ const progressPercent = computed(() => {
 	if (!progress.value || progress.value.total <= 0) return 0;
 	return Math.round((progress.value.read_count / progress.value.total) * 100);
 });
+
+// Scoped RSS feed (DEC-130/TASK-177): subscribe to just this series.
+const feedUrl = computed(() => (series.value?.slug ? `/rss/series/${series.value.slug}.xml` : ""));
+useHead(() => ({
+	link: feedUrl.value
+		? [
+				{
+					rel: "alternate",
+					type: "application/rss+xml",
+					title: series.value?.title,
+					href: feedUrl.value,
+				},
+			]
+		: [],
+}));
 </script>
 
 <template>
@@ -87,6 +102,17 @@ const progressPercent = computed(() => {
             <Icon icon="lucide:layers" class="w-4 h-4" />
             {{ t('series.countLabel', { count: series.post_count }) }}
           </span>
+          <a
+            v-if="feedUrl"
+            :href="feedUrl"
+            target="_blank"
+            rel="noopener"
+            :title="t('series.subscribeFeed')"
+            class="inline-flex items-center gap-1 text-indigo-500 hover:text-indigo-700 transition-colors"
+          >
+            <Icon icon="lucide:rss" class="w-4 h-4" />
+            {{ t('series.subscribeFeed') }}
+          </a>
         </div>
         <p v-if="series.description" class="mt-4 text-lg text-gray-600 dark:text-gray-400 leading-relaxed">
           {{ series.description }}

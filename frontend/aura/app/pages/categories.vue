@@ -53,8 +53,13 @@ useSeo(() => ({
 // emits <link rel="alternate" type="application/rss+xml"> so browsers/feed
 // readers offer "subscribe to this category", and the visible button shares
 // the same feed URL.
+// Scoped RSS feed (DEC-130/TASK-177): use the stable per-category feed URL
+// (category has no slug — unique name is the path segment) when a category is
+// selected; fall back to the global feed on the all-categories view.
 const feedUrl = computed(() =>
-	categoryId.value ? `/rss/feed.xml?category_id=${categoryId.value}` : "/rss/feed.xml",
+	categoryName.value
+		? `/rss/category/${encodeURIComponent(categoryName.value)}.xml`
+		: "/rss/feed.xml",
 );
 useHead(() => ({
 	link: categoryId.value

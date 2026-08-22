@@ -15,6 +15,7 @@
 		"progressTitle": "Reading progress",
 		"readCountLabel": "{read} of {total} read",
 		"continueReading": "Continue reading",
-		"completed": "Completed"
+		"completed": "Completed",
+		"subscribeFeed": "RSS feed"
 	}
 }

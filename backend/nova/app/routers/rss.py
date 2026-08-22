@@ -1,6 +1,6 @@
 from datetime import UTC, datetime
 from html.parser import HTMLParser
-from urllib.parse import urlparse
+from urllib.parse import quote, urlparse
 from xml.sax.saxutils import escape
 
 import markdown as md
@@ -375,6 +375,73 @@ def get_atom_feed(
 
     feed_cache[key] = atom
     return _feed_response(atom, "application/atom+xml", request)
+
+
+@rss_router.get("/category/{name}.xml")
+def get_category_rss_feed(
+    name: str,
+    full: bool = True,
+    request: Request = None,  # type: ignore[assignment] — FastAPI injects it
+    db: Session = Depends(get_db),
+) -> Response:
+    """RSS 2.0 feed scoped to a category (by its unique name; DEC-130/TASK-177).
+
+    Category has no slug column — its unique ``name`` is the stable, URL-encoded
+    path segment. Unknown name -> 404. Cached under a scoped key.
+    """
+    category = crud.get_category_by_name(db, name)
+    if not category:
+        raise HTTPException(status_code=404, detail="Category not found")
+    key = ("rss-category", name, full)
+    cached = feed_cache.get(key)
+    if cached is not None:
+        return _feed_response(cached, "application/rss+xml", request)
+
+    posts, _ = crud.get_posts(db, skip=0, limit=20, published=True, category_id=category.id)
+
+    site_url = getattr(settings, "site_url", "http://localhost:3000")
+    site_title = getattr(settings, "site_title", "X-Blog")
+    site_description = getattr(settings, "site_description", "A modern blog built with FastAPI and Next.js")
+    title = f"{category.name} — {site_title}"
+    description = f"{site_description} · category: {category.name}"
+    self_url = f"{site_url}/rss/category/{quote(name)}.xml"
+
+    rss = generate_rss_feed(posts, site_url, title, description, full_content=full, self_url=self_url)
+    feed_cache[key] = rss
+    return _feed_response(rss, "application/rss+xml", request)
+
+
+@rss_router.get("/series/{slug}.xml")
+def get_series_rss_feed(
+    slug: str,
+    full: bool = True,
+    request: Request = None,  # type: ignore[assignment] — FastAPI injects it
+    db: Session = Depends(get_db),
+) -> Response:
+    """RSS 2.0 feed scoped to a series (by its slug; DEC-130/TASK-177).
+
+    Unknown slug -> 404. Cached under a scoped key.
+    """
+    series = crud.get_series_by_slug(db, slug)
+    if not series:
+        raise HTTPException(status_code=404, detail="Series not found")
+    key = ("rss-series", slug, full)
+    cached = feed_cache.get(key)
+    if cached is not None:
+        return _feed_response(cached, "application/rss+xml", request)
+
+    posts = crud.get_series_visible_posts(db, series)[:20]
+
+    site_url = getattr(settings, "site_url", "http://localhost:3000")
+    site_title = getattr(settings, "site_title", "X-Blog")
+    site_description = getattr(settings, "site_description", "A modern blog built with FastAPI and Next.js")
+    title = f"{series.title} — {site_title}"
+    description = f"{site_description} · series: {series.title}"
+    self_url = f"{site_url}/rss/series/{quote(slug)}.xml"
+
+    rss = generate_rss_feed(posts, site_url, title, description, full_content=full, self_url=self_url)
+    feed_cache[key] = rss
+    return _feed_response(rss, "application/rss+xml", request)
 
 
 # Sitemap endpoints (at root)

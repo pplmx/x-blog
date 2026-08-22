@@ -150,4 +150,10 @@ describe("Series reading progress (TASK-173)", () => {
 		expect(h.fetchProgress).not.toHaveBeenCalled();
 		expect(wrapper.text()).not.toContain("阅读进度");
 	});
+
+	it("links the scoped series RSS feed (TASK-177)", async () => {
+		const wrapper = await mountPage();
+		expect(wrapper.find('a[href="/rss/series/tutorial.xml"]').exists()).toBe(true);
+		expect(wrapper.text()).toContain("RSS 订阅");
+	});
 });
