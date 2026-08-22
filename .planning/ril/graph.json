@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 140,
+  "round": 141,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-08-22T16:10:08+00:00",
+  "updated_at": "2026-08-22T16:21:54+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -8436,7 +8436,7 @@
       "version": 1,
       "created_at": "2026-08-22T16:09:59+00:00",
       "updated_at": "2026-08-22T16:09:59+00:00",
-      "touched_round": 140,
+      "touched_round": 141,
       "title": "Milestone: bookmark folders (collections) to organize saved posts",
       "rationale": "Feature-evolution selection (SKILL 11.2 gap analysis). Bookmarking is cloud-synced (DEC-059) but the saved list is flat: a reader with a growing archive (now further fueled by reading-history/print tooling) has no way to group posts. Users: signed-in readers accumulating saved posts who want to file them by topic/project. Why now: bookmarks are the primary saved-reading surface and the natural next reader-owned resource to add organization to (same pattern as bookmarks/history/subscriptions). Net-additive. Acceptance (one sentence): a signed-in reader can create/rename/delete bookmark folders, file saved posts into them, and filter the bookmarks page by folder. Scope: backend bookmark_folders table (id, reader_id, name unique per reader) + folder_id column on reader_bookmarks + migration + auth-scoped API (rest/filter/assign) + backend pytest; frontend bookmarks page folder sidebar/dropdown + create/rename/delete + assign + filter-by-folder + i18n + vitest + E2E. Note E2E + the whole backend suite remain unverifiable in this sandbox (see DEC-111/113/115/117/119).",
       "alternatives_rejected": "Tags instead of folders (many-to-many, more surface; folders are the minimal organizing model); notifications center / unified inbox (separate surface, later); comments or history folders (not the primary saved list)."
@@ -8444,17 +8444,67 @@
     "TASK-172": {
       "id": "TASK-172",
       "type": "task",
-      "status": "active",
-      "version": 1,
+      "status": "resolved",
+      "version": 2,
       "created_at": "2026-08-22T16:10:03+00:00",
-      "updated_at": "2026-08-22T16:10:03+00:00",
-      "touched_round": 140,
+      "updated_at": "2026-08-22T16:21:25+00:00",
+      "touched_round": 141,
       "category": "core-feature",
       "severity": 0.65,
       "confidence": 0.85,
       "effort": 2.2,
       "unlock_factor": 1.0,
       "title": "Bookmark folders (collections): backend bookmark_folders table (reader_id, name unique per reader) + folder_id on reader_bookmarks + migration + auth-scoped API (folders CRUD + assign post to folder + filter bookmarks by folder) + backend pytest; frontend bookmarks page folder UI (create/rename/delete, assign, filter-by-folder) + i18n + vitest + E2E"
+    },
+    "CHG-162": {
+      "id": "CHG-162",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-22T16:21:25+00:00",
+      "updated_at": "2026-08-22T16:21:25+00:00",
+      "touched_round": 141,
+      "commit": "4c93c08ef5fa51051a1936c3611dd4b3033e23d0",
+      "title": "Bookmark folders to organize saved posts (DEC-120, TASK-172)"
+    },
+    "DEC-121": {
+      "id": "DEC-121",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-22T16:21:35+00:00",
+      "updated_at": "2026-08-22T16:21:35+00:00",
+      "touched_round": 141,
+      "title": "Milestone delivered: bookmark folders to organize saved posts (DEC-120 complete)",
+      "rationale": "Delivery of DEC-120 / TASK-172 via CHG-162 (4c93c08). Backend: additive bookmark_folders table (unique reader/name) + nullable folder_id on reader_bookmarks (migration d7e9f1a3b5c7) + ReadingHistory-style model changes; CRUD list/create/rename/delete/assign with ownership scoping (delete unassigns bookmarks); API GET/POST/PATCH/DELETE /api/reader/me/bookmarks/folders, PATCH /api/reader/me/bookmarks/{post_id}/folder, and folder_id filter on the bookmark list; folder counts per folder. Frontend: /bookmarks folder bar (filter chips with counts + all), new-folder prompt, manage panel (rename/delete with confirmation), per-row folder assign select, folder badge; Bookmark/ReaderBookmarkItem carry folder_id/folder_name; useBookmarkFolders client + useBookmarkSync maps folder fields. Verification: backend 16 new folder tests (54 folder/bookmark/history green) + ruff/pyright clean; frontend vitest 1075 green (7 new folder-UI tests), vue-tsc + biome clean; commit body in bullet style per operator preference. Playwright E2E (e2e/bookmark-folders.spec.ts) authored + lint-clean but NOT executed in this constrained sandbox (FastAPI backend cannot bind) — same limitation as prior DEC records.",
+      "alternatives_rejected": "Bookmark tags instead of folders (many-to-many, more surface; folders chosen as minimal organizing model); notifications center (still open, separate surface); series reading-progress (deferred to DEC-122/TASK-173)."
+    },
+    "DEC-122": {
+      "id": "DEC-122",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-22T16:21:45+00:00",
+      "updated_at": "2026-08-22T16:21:45+00:00",
+      "touched_round": 141,
+      "title": "Milestone: reader series reading-progress tracking",
+      "rationale": "Feature-evolution selection (SKILL 11.2 gap analysis). The blog has multi-part series (DEC-056) with ordered episodes, and signed-in readers now have authoritative server-backed reading history (TASK-170) — but there is no reader-facing surface showing progress through a series or where to continue. Users: signed-in readers working through a tutorial/collection who want to see how much they've completed and pick up at the next unread episode. Why now: series + history already exist; deriving per-series progress is the natural net-additive payoff, and it gives readers an anchor for long collections (complements bookmark folders/reading-summary). Acceptance (one sentence): a signed-in reader sees a per-series progress indicator (episodes read / total) on the series page and can continue from their first unread episode, derived from their history. Scope: backend reader-series-progress endpoint (uses reading_history joined to series-ordered posts to compute read-set/next-unread; auth-scoped) + backend pytest; frontend progress bar + continue link on /series/[slug] (and a 'in progress' hint on series chips) derived from the endpoint + i18n + vitest + E2E. Note E2E + the whole backend suite remain unverifiable in this sandbox (see DEC-111/113/115/117/119/121).",
+      "alternatives_rejected": "Notifications center (still deferred; partially covered by account-page push/subscription management); reader data export (niche, deferred); manual mark-as-read in this slice (derive from history instead, zero extra reader input)."
+    },
+    "TASK-173": {
+      "id": "TASK-173",
+      "type": "task",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-22T16:21:49+00:00",
+      "updated_at": "2026-08-22T16:21:49+00:00",
+      "touched_round": 141,
+      "category": "core-feature",
+      "severity": 0.6,
+      "confidence": 0.85,
+      "effort": 1.7,
+      "unlock_factor": 1.0,
+      "title": "Reader series reading-progress: backend auth-scoped endpoint computing per-series read-set + next-unread from the reader's reading_history joined to series-ordered posts + backend pytest; frontend series page progress bar + continue-from-first-unread link (+ 'in progress' hint on series chips) + i18n + vitest + E2E"
     }
   },
   "edges": [
@@ -12043,6 +12093,36 @@
       "to": "TASK-172",
       "type": "governs",
       "created_at": "2026-08-22T16:10:08+00:00"
+    },
+    {
+      "from": "CHG-162",
+      "to": "TASK-172",
+      "type": "implements",
+      "created_at": "2026-08-22T16:21:54+00:00"
+    },
+    {
+      "from": "DEC-121",
+      "to": "DEC-120",
+      "type": "supersedes",
+      "created_at": "2026-08-22T16:21:54+00:00"
+    },
+    {
+      "from": "DEC-121",
+      "to": "TASK-172",
+      "type": "governs",
+      "created_at": "2026-08-22T16:21:54+00:00"
+    },
+    {
+      "from": "DEC-122",
+      "to": "DEC-121",
+      "type": "supersedes",
+      "created_at": "2026-08-22T16:21:54+00:00"
+    },
+    {
+      "from": "DEC-122",
+      "to": "TASK-173",
+      "type": "governs",
+      "created_at": "2026-08-22T16:21:54+00:00"
     }
   ]
 }
