@@ -1301,19 +1301,42 @@ def comment_subscription_reader_ids(db: Session, post_id: int) -> list[int]:
     ]
 
 
-def get_reader_comments(db: Session, reader_id: int) -> list[models.Comment]:
-    """A reader's own comments across statuses, newest first (DEC-066, TASK-139).
+def get_reader_comments(
+    db: Session,
+    reader_id: int,
+    status: str = "all",
+    page: int = 1,
+    limit: int = 20,
+) -> tuple[list[models.Comment], int]:
+    """A reader's own comments, newest first, with status filter + pagination.
 
-    Pending and rejected comments are the author's own content — showing them
-    (with a status) is what lets a moderated blog's author know their comment is
-    in review / was declined. Public read paths still filter to approved only.
+    DEC-066/TASK-139 showed pending/rejected comments to their author (with a
+    derived status); DEC-102/TASK-163 adds a status filter (all|pending|
+    approved|rejected) and pagination so a reader with a long history can find
+    pending/rejected items and page through. Public read paths still filter to
+    approved only.
+
+    Returns:
+        Tuple of (page of comments, total count matching the filter).
     """
-    return (
-        db.query(models.Comment)
-        .filter(models.Comment.reader_id == reader_id)
-        .order_by(models.Comment.created_at.desc())
-        .all()
-    )
+    query = db.query(models.Comment).filter(models.Comment.reader_id == reader_id)
+    if status == "approved":
+        query = query.filter(models.Comment.is_approved == True)  # noqa: E712
+    elif status == "rejected":
+        query = query.filter(
+            models.Comment.is_approved == False,  # noqa: E712
+            models.Comment.reviewed_at.isnot(None),
+        )
+    elif status == "pending":
+        query = query.filter(
+            models.Comment.is_approved == False,  # noqa: E712
+            models.Comment.reviewed_at.is_(None),
+        )
+    # "all" -> no filter
+
+    total = query.count()
+    items = query.order_by(models.Comment.created_at.desc()).offset((page - 1) * limit).limit(limit).all()
+    return items, total
 
 
 # ---------------------------------------------------------------------------

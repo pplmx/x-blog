@@ -9,7 +9,11 @@
  * delete action scoped to the caller's own comment. Logged-out visitors see a
  * sign-in prompt instead (no server-side guard: reader auth is localStorage).
  */
-import type { MyComment, MyCommentListResponse } from "~~/composables/useApi";
+import type {
+	MyComment,
+	MyCommentListResponse,
+	MyCommentStatusFilter,
+} from "~~/composables/useApi";
 import { deleteMyComment, fetchMyComments } from "~~/composables/useApi";
 import { useReaderAuth } from "~~/composables/useReaderAuth";
 import { useSeo } from "~~/composables/useSeo";
@@ -28,10 +32,13 @@ useSeo({
 // `await` really waits for the response (no useFetch race).
 const commentData = ref<MyCommentListResponse | null>(null);
 const loading = ref(true);
+// Status filter + pagination (DEC-102, TASK-163).
+const statusFilter = ref<MyCommentStatusFilter>("all");
+const currentPage = ref(1);
 
 async function load() {
 	try {
-		commentData.value = await fetchMyComments();
+		commentData.value = await fetchMyComments(statusFilter.value, currentPage.value, 20);
 	} catch {
 		// Missing/invalid token, offline, etc — the signed-in check gates the
 		// page; any failure just leaves the empty state.
@@ -46,6 +53,30 @@ onMounted(() => {
 
 const comments = computed(() => commentData.value?.items || []);
 const total = computed(() => commentData.value?.total || 0);
+const totalPages = computed(() => commentData.value?.total_pages || 0);
+
+const visiblePages = computed(() => {
+	const pages = [];
+	const maxVisible = 5;
+	let start = Math.max(1, currentPage.value - Math.floor(maxVisible / 2));
+	let end = Math.min(totalPages.value, start + maxVisible - 1);
+	start = Math.max(1, end - maxVisible + 1);
+	for (let i = start; i <= end; i++) pages.push(i);
+	return pages;
+});
+
+function setStatus(status: MyCommentStatusFilter): void {
+	if (status === statusFilter.value) return;
+	statusFilter.value = status;
+	currentPage.value = 1;
+	void load();
+}
+
+function goToPage(page: number): void {
+	if (page === currentPage.value) return;
+	currentPage.value = page;
+	void load();
+}
 
 const deleting = ref<number | null>(null);
 const deleteFailed = ref(false);
@@ -100,6 +131,30 @@ function formatDate(dateStr: string): string {
           {{ t('myComments.countLabel', { count: total }) }}
         </p>
       </div>
+    </div>
+
+    <!-- Status filter tabs (DEC-102, TASK-163) -->
+    <div
+      v-if="isAuthenticated && !loading"
+      class="flex items-center gap-2 mb-6 flex-wrap"
+      role="tablist"
+    >
+      <button
+        v-for="status in (['all', 'pending', 'approved', 'rejected'] as const)"
+        :key="status"
+        type="button"
+        role="tab"
+        :aria-selected="statusFilter === status"
+        :class="[
+          'px-3 py-1 rounded-full text-sm transition-colors',
+          statusFilter === status
+            ? 'bg-blue-600 text-white'
+            : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700',
+        ]"
+        @click="setStatus(status)"
+      >
+        {{ t(`myComments.filter.${status}`) }}
+      </button>
     </div>
 
     <!-- Logged out: this page is reader-scoped, prompt to sign in -->
@@ -186,5 +241,24 @@ function formatDate(dateStr: string): string {
     <p v-if="deleteFailed" class="mt-3 text-sm text-red-500 dark:text-red-400">
       {{ t('myComments.deleteFailed') }}
     </p>
+
+    <!-- Pagination (DEC-102, TASK-163) -->
+    <nav v-if="isAuthenticated && totalPages > 1" class="flex justify-center gap-2 mt-6">
+      <button
+        type="button"
+        v-for="page in visiblePages"
+        :key="page"
+        :aria-current="page === currentPage ? 'page' : undefined"
+        :class="[
+          'px-3 py-1 rounded text-sm',
+          page === currentPage
+            ? 'bg-blue-600 text-white'
+            : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700',
+        ]"
+        @click="goToPage(page)"
+      >
+        {{ page }}
+      </button>
+    </nav>
   </div>
 </template>

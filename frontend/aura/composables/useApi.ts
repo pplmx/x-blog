@@ -1040,7 +1040,15 @@ export interface MyComment extends Comment {
 export interface MyCommentListResponse {
 	items: MyComment[];
 	total: number;
+	/** Pagination metadata (DEC-102, TASK-163). Optional for readers of older
+	 *  responses; the page defaults missing values. */
+	page?: number;
+	limit?: number;
+	total_pages?: number;
 }
+
+/** Valid status filters for a reader's own comment history (DEC-102, TASK-163). */
+export type MyCommentStatusFilter = "all" | MyCommentStatus;
 
 /**
  * The signed-in reader's own comment history across statuses (401 when no
@@ -1049,10 +1057,15 @@ export interface MyCommentListResponse {
  * non-setup context can resolve before the data ref arrives (flaky empty
  * list). $fetch awaits the real response. (DEC-066, TASK-139/140)
  */
-export async function fetchMyComments(): Promise<MyCommentListResponse> {
+export async function fetchMyComments(
+	status: MyCommentStatusFilter = "all",
+	page = 1,
+	limit = 20,
+): Promise<MyCommentListResponse> {
 	const config = useRuntimeConfig();
 	const apiUrl = config.public.apiUrl;
 	return $fetch<MyCommentListResponse>(`${apiUrl}/api/reader/me/comments`, {
+		query: { status, page, limit },
 		headers: getReaderAuthHeaders(),
 	});
 }

@@ -10,7 +10,7 @@ endpoints (enforced in auth.get_current_user / get_current_reader).
 from datetime import datetime
 from typing import Literal
 
-from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status
 from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy import func
 from sqlalchemy.exc import IntegrityError
@@ -519,6 +519,10 @@ class ReaderCommentItem(schemas.CommentPublic):
 class ReaderCommentListResponse(BaseModel):
     items: list[ReaderCommentItem]
     total: int
+    # Pagination metadata (DEC-102, TASK-163).
+    page: int = 1
+    limit: int = 20
+    total_pages: int = 1
 
 
 def _comment_status(c: models.Comment) -> Literal["pending", "approved", "rejected"]:
@@ -529,19 +533,30 @@ def _comment_status(c: models.Comment) -> Literal["pending", "approved", "reject
     return "pending"
 
 
+# Statuses accepted by GET /api/reader/me/comments (DEC-102, TASK-163).
+VALID_READER_COMMENT_STATUSES = ("all", "pending", "approved", "rejected")
+
+
 @router.get("/me/comments", response_model=ReaderCommentListResponse)
 def list_my_comments(
     current_reader: auth.ReaderAccount = Depends(auth.get_current_reader),
+    status: str = Query("all", description="all | pending | approved | rejected"),
+    page: int = Query(1, ge=1),
+    limit: int = Query(20, ge=1, le=100),
     db: Session = Depends(get_db),
 ):
-    """The reader's own comment history across statuses (DEC-066, TASK-139).
+    """The reader's own comment history with a status filter + pagination.
 
     A moderated blog hides pending/rejected comments from everyone but their
     author; this endpoint shows the caller's own comments with a derived
     status (pending / approved / rejected) plus the post they were left on so
-    the frontend can link back. Anonymous readers have no history.
+    the frontend can link back. Anonymous readers have no history. ``status``
+    is whitelisted and unknown values are rejected with 422 (DEC-102/TASK-163).
     """
-    comments = crud.get_reader_comments(db, current_reader.id)
+    if status not in VALID_READER_COMMENT_STATUSES:
+        raise HTTPException(status_code=422, detail=f"status must be one of {list(VALID_READER_COMMENT_STATUSES)}")
+    comments, total = crud.get_reader_comments(db, current_reader.id, status=status, page=page, limit=limit)
+    total_pages = (total + limit - 1) // limit if limit > 0 else 0
     items = []
     for c in comments:
         base = schemas.CommentPublic.model_validate(c).model_dump()
@@ -561,7 +576,7 @@ def list_my_comments(
                 ),
             )
         )
-    return ReaderCommentListResponse(items=items, total=len(items))
+    return ReaderCommentListResponse(items=items, total=total, page=page, limit=limit, total_pages=total_pages)
 
 
 @router.delete("/me/comments/{comment_id}", status_code=204)

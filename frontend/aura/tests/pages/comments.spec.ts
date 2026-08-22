@@ -152,7 +152,9 @@ describe("My comments page", () => {
 
 		const wrapper = await mountPage();
 		expect(mockFetchMyComments).toHaveBeenCalledTimes(1); // initial load
-		await wrapper.get("button").trigger("click");
+		const deleteBtn = wrapper.findAll("button").find((b) => b.text().includes("删除"));
+		expect(deleteBtn).toBeDefined();
+		await deleteBtn?.trigger("click");
 		await flushPromises();
 
 		expect(mockDeleteMyComment).toHaveBeenCalledWith(1);
@@ -166,7 +168,9 @@ describe("My comments page", () => {
 		vi.stubGlobal("confirm", () => false);
 
 		const wrapper = await mountPage();
-		await wrapper.get("button").trigger("click");
+		const deleteBtn = wrapper.findAll("button").find((b) => b.text().includes("删除"));
+		expect(deleteBtn).toBeDefined();
+		await deleteBtn?.trigger("click");
 
 		expect(mockDeleteMyComment).not.toHaveBeenCalled();
 		vi.unstubAllGlobals();
@@ -179,10 +183,63 @@ describe("My comments page", () => {
 		vi.stubGlobal("confirm", () => true);
 
 		const wrapper = await mountPage();
-		await wrapper.get("button").trigger("click");
+		const deleteBtn = wrapper.findAll("button").find((b) => b.text().includes("删除"));
+		expect(deleteBtn).toBeDefined();
+		await deleteBtn?.trigger("click");
 		await wrapper.vm.$nextTick();
 
 		expect(wrapper.text()).toContain("删除失败");
 		vi.unstubAllGlobals();
+	});
+
+	describe("filter + pagination (DEC-102, TASK-163)", () => {
+		it("renders the four status filter tabs", async () => {
+			isAuthenticated.value = true;
+			mockData.value = { items: [makeComment()], total: 1 };
+			const wrapper = await mountPage();
+			const tabs = wrapper.findAll('[role="tab"]');
+			expect(tabs.map((t) => t.text())).toEqual(["全部", "待审核", "已通过", "未通过"]);
+		});
+
+		it("re-fetches with the selected status and resets to page 1", async () => {
+			isAuthenticated.value = true;
+			mockData.value = { items: [makeComment()], total: 1 };
+			mockFetchMyComments.mockClear();
+			const wrapper = await mountPage();
+			// Value "approved" maps to the "已通过" tab (third), via setStatus.
+			const tabs = wrapper.findAll('[role="tab"]');
+			expect(mockFetchMyComments).toHaveBeenLastCalledWith("all", 1, 20);
+			await tabs[2].trigger("click");
+			await flushPromises();
+			expect(mockFetchMyComments).toHaveBeenLastCalledWith("approved", 1, 20);
+		});
+
+		it("renders pagination and navigates pages when total_pages > 1", async () => {
+			isAuthenticated.value = true;
+			mockData.value = {
+				items: Array.from({ length: 2 }, (_, i) => makeComment({ id: i + 1 })),
+				total: 3,
+				page: 1,
+				limit: 2,
+				total_pages: 2,
+			};
+			mockFetchMyComments.mockClear();
+			const wrapper = await mountPage();
+			await flushPromises();
+
+			const nav = wrapper.find("nav");
+			expect(nav.exists()).toBe(true);
+			// navigate to page 2
+			await nav.findAll("button")[1].trigger("click");
+			await flushPromises();
+			expect(mockFetchMyComments).toHaveBeenLastCalledWith("all", 2, 20);
+		});
+
+		it("does not render pagination when there is a single page", async () => {
+			isAuthenticated.value = true;
+			mockData.value = { items: [makeComment()], total: 1, total_pages: 1 };
+			const wrapper = await mountPage();
+			expect(wrapper.find("nav").exists()).toBe(false);
+		});
 	});
 });

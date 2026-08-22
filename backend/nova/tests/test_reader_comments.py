@@ -324,3 +324,78 @@ class TestAutoApproveVerifiedReaders:
         # Not on the public list until the moderator approves.
         listed = client.get(f"/api/comments/post/{post.id}").json()["items"]
         assert not any(c["id"] == created["id"] for c in listed)
+
+
+class TestFilterAndPaginate:
+    """My Comments status filter + pagination (DEC-102, TASK-163)."""
+
+    def _reader_with_statuses(self, client, db_session, count=3):
+        from app.crud import approve_comment
+
+        post = _create_post(db_session, slug=f"filter-{id(self)}")
+        token = _token(client, email=f"filter-{id(self)}@example.com", display_name="Filterer")
+        headers = _auth(token)
+        ids = {}
+        for i in range(count):
+            c = _post_comment(
+                client,
+                post.id,
+                {"nickname": "x", "email": "x@x.com", "content": f"comment {i}"},
+                headers=headers,
+            ).json()
+            ids[c["id"]] = c["id"]
+            if i == 1:
+                approve_comment(db_session, c["id"], approved=True)
+            elif i == 2:
+                approve_comment(db_session, c["id"], approved=False)
+            # i == 0 stays pending
+        return token, list(ids.values())
+
+    def test_filter_approved(self, client, db_session):
+        token, ids = self._reader_with_statuses(client, db_session)
+        data = client.get("/api/reader/me/comments", params={"status": "approved"}, headers=_auth(token)).json()
+        assert data["total"] == 1
+        assert data["items"][0]["id"] == ids[1]
+        assert data["items"][0]["status"] == "approved"
+
+    def test_filter_rejected(self, client, db_session):
+        token, ids = self._reader_with_statuses(client, db_session)
+        data = client.get("/api/reader/me/comments", params={"status": "rejected"}, headers=_auth(token)).json()
+        assert data["total"] == 1
+        assert data["items"][0]["id"] == ids[2]
+        assert data["items"][0]["status"] == "rejected"
+
+    def test_filter_pending(self, client, db_session):
+        token, ids = self._reader_with_statuses(client, db_session)
+        data = client.get("/api/reader/me/comments", params={"status": "pending"}, headers=_auth(token)).json()
+        assert data["total"] == 1
+        assert data["items"][0]["id"] == ids[0]
+        assert data["items"][0]["status"] == "pending"
+
+    def test_filter_all(self, client, db_session):
+        token, _ids = self._reader_with_statuses(client, db_session)
+        data = client.get("/api/reader/me/comments", headers=_auth(token)).json()
+        assert data["total"] == 3
+
+    def test_invalid_status_422(self, client, db_session):
+        token, _ids = self._reader_with_statuses(client, db_session)
+        resp = client.get("/api/reader/me/comments", params={"status": "banana"}, headers=_auth(token))
+        assert resp.status_code == 422
+
+    def test_pagination(self, client, db_session):
+        token, _ids = self._reader_with_statuses(client, db_session, count=3)
+        page1 = client.get(
+            "/api/reader/me/comments",
+            params={"page": 1, "limit": 2},
+            headers=_auth(token),
+        ).json()
+        assert len(page1["items"]) == 2
+        assert page1["total"] == 3
+        assert page1["total_pages"] == 2
+
+        page2 = client.get(
+            "/api/reader/me/comments",
+            params={"page": 2, "limit": 2},
+            headers=_auth(token),
+        ).json()
+        assert len(page2["items"]) == 1

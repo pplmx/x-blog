@@ -1,5 +1,11 @@
 {
 	"myComments": {
+		"filter": {
+			"all": "全部",
+			"pending": "待审核",
+			"approved": "已通过",
+			"rejected": "未通过"
+		},
 		"title": "我的评论",
 		"countLabel": "共 {count} 条评论",
 		"empty": "还没有发表过评论",

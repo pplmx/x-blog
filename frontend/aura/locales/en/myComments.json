@@ -1,5 +1,11 @@
 {
 	"myComments": {
+		"filter": {
+			"all": "All",
+			"pending": "Pending",
+			"approved": "Approved",
+			"rejected": "Rejected"
+		},
 		"title": "My comments",
 		"countLabel": "{count} comments",
 		"empty": "You haven't commented yet",
