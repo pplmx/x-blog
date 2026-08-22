@@ -445,13 +445,18 @@ describe("fetchComments", () => {
 	it("fetches comments for a post with default pagination", () => {
 		fetchComments(42);
 		expect(useFetchCalls[0].url).toBe("/api/comments/post/42");
-		expect(useFetchCalls[0].options.query).toEqual({ page: 1, limit: 20 });
+		expect(useFetchCalls[0].options.query).toEqual({ page: 1, limit: 20, sort: "newest" });
 		expect(useFetchCalls[0].options.baseURL).toBe("http://localhost:18888");
 	});
 
 	it("accepts custom page and limit parameters", () => {
 		fetchComments(10, 3, 5);
-		expect(useFetchCalls[0].options.query).toEqual({ page: 3, limit: 5 });
+		expect(useFetchCalls[0].options.query).toEqual({ page: 3, limit: 5, sort: "newest" });
+	});
+
+	it("passes the requested sort through to the query (DEC-094, TASK-159)", () => {
+		fetchComments(10, 1, 20, "likes");
+		expect(useFetchCalls[0].options.query).toEqual({ page: 1, limit: 20, sort: "likes" });
 	});
 
 	it("returns the comments endpoint URL format", () => {

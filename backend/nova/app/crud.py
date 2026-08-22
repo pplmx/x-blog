@@ -476,8 +476,14 @@ def get_comments_paginated(
     post_id: int,
     page: int = 1,
     limit: int = 20,
+    sort: str = "newest",
 ) -> tuple[list[models.Comment], int]:
     """Get paginated approved comments for a post.
+
+    ``sort`` is one of ``newest`` (default, created_at desc), ``oldest``
+    (created_at asc) or ``likes`` (likes desc, created_at desc tiebreak).
+    The caller is responsible for whitelisting the value before this runs;
+    anything else falls back to the default newest order (DEC-094, TASK-159).
 
     Returns:
         Tuple of (comments list, total count)
@@ -488,7 +494,14 @@ def get_comments_paginated(
     )
 
     total = query.count()
-    comments = query.order_by(models.Comment.created_at.desc()).offset((page - 1) * limit).limit(limit).all()
+    if sort == "oldest":
+        order = [models.Comment.created_at.asc()]
+    elif sort == "likes":
+        # Most helpful first; newest wins ties among equal like counts.
+        order = [models.Comment.likes.desc(), models.Comment.created_at.desc()]
+    else:
+        order = [models.Comment.created_at.desc()]
+    comments = query.order_by(*order).offset((page - 1) * limit).limit(limit).all()
 
     return comments, total
 
@@ -823,11 +836,7 @@ def increment_likes(db: Session, post_id: int) -> models.Post | None:
 
 def increment_comment_likes(db: Session, comment_id: int) -> models.Comment | None:
     """Increment the like count for a comment using atomic SQL update."""
-    stmt = (
-        update(models.Comment)
-        .where(models.Comment.id == comment_id)
-        .values(likes=models.Comment.likes + 1)
-    )
+    stmt = update(models.Comment).where(models.Comment.id == comment_id).values(likes=models.Comment.likes + 1)
     db.execute(stmt)
     try:
         db.commit()
@@ -1346,9 +1355,7 @@ def build_backup_snapshot(db: Session) -> dict:
                         "is_approved": bool(c.is_approved),
                         "reviewed_at": _iso(c.reviewed_at),
                         "created_at": _iso(c.created_at),
-                        "parent_ordinal": (
-                            ordinal_by_id.get(c.parent_id) if c.parent_id is not None else None
-                        ),
+                        "parent_ordinal": (ordinal_by_id.get(c.parent_id) if c.parent_id is not None else None),
                         "reader": c.reader_id is not None,
                     }
                     for i, c in enumerate(comments)

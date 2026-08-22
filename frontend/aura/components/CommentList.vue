@@ -8,6 +8,22 @@
     </div>
     <p v-if="likeError" class="mb-3 text-sm text-red-500">{{ likeError }}</p>
 
+    <!-- Comment sort (DEC-094/TASK-159): reorder the thread by newest / oldest
+         / most helpful (likes). Shown once there is a discussion to sort. -->
+    <div v-if="total > 0" class="flex items-center justify-end gap-2 mb-3 text-sm">
+      <label for="comment-sort" class="text-gray-500 dark:text-gray-400">{{ t('components.commentList.sortBy') }}</label>
+      <select
+        id="comment-sort"
+        class="rounded border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 px-2 py-1"
+        :value="currentSort"
+        @change="onSortChange"
+      >
+        <option value="newest">{{ t('components.commentList.sortNewest') }}</option>
+        <option value="oldest">{{ t('components.commentList.sortOldest') }}</option>
+        <option value="likes">{{ t('components.commentList.sortLikes') }}</option>
+      </select>
+    </div>
+
     <!-- Loading -->
     <div v-if="pending" class="space-y-3">
       <div v-for="i in 3" :key="i" class="animate-pulse">
@@ -191,7 +207,12 @@
 
 <script setup lang="ts">
 import { computed, nextTick, onMounted, ref, watch } from "vue";
-import { type Comment, fetchComments, useCommentLike } from "~~/composables/useApi";
+import {
+	type Comment,
+	type CommentSort,
+	fetchComments,
+	useCommentLike,
+} from "~~/composables/useApi";
 import { highlightCode, loadHighlighter } from "~~/composables/useCodeHighlight";
 import { commentMarkdownToHtml, loadPurify } from "~~/composables/useMarkdown";
 // biome-ignore lint/correctness/noUnusedImports: CommentForm is rendered in the SFC <template> (lines 59/105).
@@ -258,6 +279,18 @@ const comments = computed(() => commentData.value?.items || []);
 const total = computed(() => commentData.value?.total || 0);
 const totalPages = computed(() => commentData.value?.total_pages || 0);
 const currentPage = ref(1);
+
+// Comment sort (DEC-094/TASK-159): newest is the default; changing it resets
+// to page 1 and re-fetches so the reorder is immediately visible.
+const currentSort = ref<CommentSort>("newest");
+
+function onSortChange(event: Event): void {
+	const value = (event.target as HTMLSelectElement).value as CommentSort;
+	if (value === currentSort.value) return;
+	currentSort.value = value;
+	currentPage.value = 1;
+	void refreshList();
+}
 
 // Re-tokenize whenever the list changes (submit, pagination): the new rows
 // re-render as plain <pre><code> until this re-highlights them.
@@ -358,7 +391,9 @@ function toggleReply(comment: Comment) {
 }
 
 async function refreshList() {
-	commentData.value = (await fetchComments(props.postId, currentPage.value, 20)).data.value;
+	commentData.value = (
+		await fetchComments(props.postId, currentPage.value, 20, currentSort.value)
+	).data.value;
 }
 
 async function handleReplied() {

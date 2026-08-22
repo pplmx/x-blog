@@ -30,6 +30,12 @@ THREAD_NOTIF_TITLE = os.getenv("THREAD_NOTIFICATION_TITLE", "你订阅的讨论�
 THREAD_NOTIF_BODY = os.getenv("THREAD_NOTIFICATION_BODY", "《{post_title}》有新评论")
 
 
+# Sort orders accepted by GET /api/comments/post/{id} (DEC-094, TASK-159).
+# "newest" is the default (created_at desc); "oldest" is created_at asc; "likes"
+# is likes desc with a created_at desc tiebreak so equal counts stay deterministic.
+VALID_COMMENT_SORTS = ("newest", "oldest", "likes")
+
+
 def _notify_thread_subscribers(
     post: models.Post,
     new_comment_id: int,
@@ -120,10 +126,18 @@ def list_comments(
     post_id: int,
     page: int = Query(1, ge=1),
     limit: int = Query(20, ge=1, le=100),
+    sort: str = Query("newest", description="newest | oldest | likes"),
     db: Session = Depends(get_db),
 ):
-    """Get paginated approved comments for a post."""
-    comments, total = crud.get_comments_paginated(db, post_id, page=page, limit=limit)
+    """Get paginated approved comments for a post.
+
+    ``sort`` lets readers reorder the thread — newest (default), oldest, or
+    most helpful (likes desc). Invalid values are rejected like the search
+    sort (DEC-094, TASK-159).
+    """
+    if sort not in VALID_COMMENT_SORTS:
+        raise HTTPException(status_code=422, detail=f"sort must be one of {list(VALID_COMMENT_SORTS)}")
+    comments, total = crud.get_comments_paginated(db, post_id, page=page, limit=limit, sort=sort)
     total_pages = (total + limit - 1) // limit if limit > 0 else 0
 
     return CommentListResponse(

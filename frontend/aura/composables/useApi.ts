@@ -343,18 +343,27 @@ export interface Comment {
 	reader: { id: number; display_name: string | null } | null;
 }
 
+export type CommentSort = "newest" | "oldest" | "likes";
+
 /**
  * Fetch paginated comments for a post.
- * Uses the backend's GET /api/comments/post/{post_id} endpoint.
+ * Uses the backend's GET /api/comments/post/{post_id} endpoint. `sort` lets
+ * readers reorder the thread — newest (default), oldest, or most helpful
+ * (likes desc) — per DEC-094/TASK-159.
  */
-export async function fetchComments(postId: number, page = 1, limit = 20) {
+export async function fetchComments(
+	postId: number,
+	page = 1,
+	limit = 20,
+	sort: CommentSort = "newest",
+) {
 	return useApi<{
 		items: Comment[];
 		total: number;
 		page: number;
 		limit: number;
 		total_pages: number;
-	}>(`/api/comments/post/${postId}`, { query: { page, limit } });
+	}>(`/api/comments/post/${postId}`, { query: { page, limit, sort } });
 }
 
 /**

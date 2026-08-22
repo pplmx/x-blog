@@ -437,6 +437,60 @@ def test_like_comment_on_non_public_post_returns_404(client, db_session, draft_p
     assert response.json()["error"]["code"] == "NOT_FOUND"
 
 
+def _create_approved_comment(client, post_id, nickname, content, auth_headers, likes=0):
+    """Create a comment, optionally like it, then approve it (public)."""
+    created = client.post(
+        f"/api/comments/post/{post_id}",
+        json={"nickname": nickname, "email": f"{nickname}@example.com", "content": content},
+    )
+    assert created.status_code == 201
+    cid = created.json()["id"]
+    for _ in range(likes):
+        assert client.post(f"/api/comments/{cid}/like").status_code == 200
+    approved = client.patch(f"/api/comments/{cid}/approve", json={"approved": True}, headers=auth_headers)
+    assert approved.status_code == 200
+    return cid
+
+
+def test_list_comments_sort_likes_most_helpful_first(client, post, auth_headers):
+    """sort=likes orders approved comments by like count desc (DEC-094, TASK-159)."""
+    low = _create_approved_comment(client, post["id"], "Low", "not as helpful", auth_headers, likes=1)
+    high = _create_approved_comment(client, post["id"], "High", "the helpful answer", auth_headers, likes=5)
+    mid = _create_approved_comment(client, post["id"], "Mid", "kinda helpful", auth_headers, likes=3)
+
+    items = client.get(f"/api/comments/post/{post['id']}", params={"sort": "likes"}).json()["items"]
+    ids = [c["id"] for c in items]
+    # Most helpful first; the 5-like comment leads.
+    assert [c for c in ids if c in {low, high, mid}] == [high, mid, low]
+
+
+def test_list_comments_sort_oldest_first(client, post, auth_headers):
+    """sort=oldest returns approved comments by created_at asc (DEC-094, TASK-159)."""
+    first = _create_approved_comment(client, post["id"], "First", "first comment", auth_headers)
+    second = _create_approved_comment(client, post["id"], "Second", "second comment", auth_headers)
+    third = _create_approved_comment(client, post["id"], "Third", "third comment", auth_headers)
+
+    items = client.get(f"/api/comments/post/{post['id']}", params={"sort": "oldest"}).json()["items"]
+    ids = [c["id"] for c in items]
+    assert [c for c in ids if c in {first, second, third}] == [first, second, third]
+
+
+def test_list_comments_default_sort_newest_first(client, post, auth_headers):
+    """With no sort param, comments return newest-first (backwards compatible)."""
+    first = _create_approved_comment(client, post["id"], "Old", "older comment", auth_headers)
+    second = _create_approved_comment(client, post["id"], "New", "newer comment", auth_headers)
+
+    items = client.get(f"/api/comments/post/{post['id']}").json()["items"]
+    ids = [c["id"] for c in items]
+    assert [c for c in ids if c in {first, second}] == [second, first]
+
+
+def test_list_comments_rejects_invalid_sort(client, post):
+    """An unknown sort value is rejected with 422 (validated at the boundary)."""
+    response = client.get(f"/api/comments/post/{post['id']}", params={"sort": "random"})
+    assert response.status_code == 422
+
+
 def test_create_comment_on_nonexistent_post(client):
     """Creating a comment on a non-existent post should return 404.
 

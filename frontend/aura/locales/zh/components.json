@@ -22,6 +22,10 @@
 			"markdownHint": "支持 Markdown，代码块、加粗和链接会渲染。"
 		},
 		"commentList": {
+			"sortBy": "排序",
+			"sortNewest": "最新",
+			"sortOldest": "最早",
+			"sortLikes": "最有帮助",
 			"title": "评论",
 			"empty": "还没有评论，来发第一个评论吧！",
 			"reply": "回复",

@@ -22,6 +22,10 @@
 			"markdownHint": "Supports Markdown — code blocks, bold and links render."
 		},
 		"commentList": {
+			"sortBy": "Sort",
+			"sortNewest": "Newest",
+			"sortOldest": "Oldest",
+			"sortLikes": "Most helpful",
 			"title": "Comments",
 			"empty": "No comments yet — be the first to comment!",
 			"reply": "Reply",

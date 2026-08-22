@@ -418,6 +418,34 @@ describe("CommentList", () => {
 		});
 	});
 
+	describe("Comment sort (DEC-094, TASK-159)", () => {
+		it("renders a sort dropdown once there are comments", async () => {
+			const { wrapper } = await mountCommentList();
+			expect(wrapper.find("select#comment-sort").exists()).toBe(true);
+		});
+
+		it("does not render the sort dropdown when there are no comments", async () => {
+			const { wrapper } = await mountCommentList({
+				comments: mockEmptyComments,
+			});
+			expect(wrapper.find("select#comment-sort").exists()).toBe(false);
+		});
+
+		it("shows the three sort options (newest, oldest, most helpful)", async () => {
+			const { wrapper } = await mountCommentList();
+			const options = wrapper.findAll("select#comment-sort option");
+			expect(options.map((o) => o.attributes("value"))).toEqual(["newest", "oldest", "likes"]);
+		});
+
+		it("re-fetches with the selected sort and resets to page 1", async () => {
+			const { wrapper } = await mountCommentList();
+			const select = wrapper.find("select#comment-sort");
+			await select.setValue("likes");
+			await flushPromises();
+			expect(mockFetchComments).toHaveBeenLastCalledWith(1, 1, 20, "likes");
+		});
+	});
+
 	describe("Pagination", () => {
 		it("renders pagination when total_pages > 1", async () => {
 			const { wrapper } = await mountCommentList();
@@ -452,7 +480,7 @@ describe("CommentList", () => {
 			await flushPromises();
 
 			expect(mockFetchComments.mock.calls.length).toBeGreaterThan(1);
-			expect(mockFetchComments).toHaveBeenLastCalledWith(1, 2, 20);
+			expect(mockFetchComments).toHaveBeenLastCalledWith(1, 2, 20, "newest");
 		});
 	});
 
