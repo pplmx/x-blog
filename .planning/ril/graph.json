@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 143,
+  "round": 144,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-08-22T16:33:33+00:00",
+  "updated_at": "2026-08-22T16:40:11+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -8586,7 +8586,7 @@
       "version": 1,
       "created_at": "2026-08-22T16:33:24+00:00",
       "updated_at": "2026-08-22T16:33:24+00:00",
-      "touched_round": 143,
+      "touched_round": 144,
       "title": "Milestone: reader data export (personal data portability)",
       "rationale": "Feature-evolution selection (SKILL 11.2 gap analysis). A signed-in reader has collected several server-backed resources (bookmarks, comments, reading history) but there is no way to download their own data — a privacy/data-portability gap (GDPR-style 'export my data'). Users: signed-in readers who want a portable copy of their account, saves, comments, and reading history. Why now: the reader-owned resources (bookmarks TASK-132, comments TASK-139, history TASK-170) are all stable and server-backed, so assembling an export is a natural net-additive completion; rights/export tooling is a real, non-overlapping capability. Acceptance (one sentence): a signed-in reader can download a JSON bundle of their account data (profile, bookmarks, comments, reading history) from the account page. Scope: backend GET /api/reader/me/export (auth-scoped; returns account + public-visible bookmarks/comments/history, no cross-reader leakage, refuses nothing) + backend pytest; frontend 'Download my data' button on /account that fetches the bundle and triggers a JSON file download + i18n + confirm + vitest + E2E. Note E2E + the whole backend suite remain unverifiable in this sandbox (see DEC-111/113/115/117/119/121/123/125).",
       "alternatives_rejected": "Notifications center (still deferred; partially covered by account push/subscription management); read-later queue (overlaps bookmarks — confusing); CSV export (JSON is the portable superset for a data export)."
@@ -8594,17 +8594,67 @@
     "TASK-175": {
       "id": "TASK-175",
       "type": "task",
-      "status": "active",
-      "version": 1,
+      "status": "resolved",
+      "version": 2,
       "created_at": "2026-08-22T16:33:28+00:00",
-      "updated_at": "2026-08-22T16:33:28+00:00",
-      "touched_round": 143,
+      "updated_at": "2026-08-22T16:39:43+00:00",
+      "touched_round": 144,
       "category": "core-feature",
       "severity": 0.6,
       "confidence": 0.85,
       "effort": 1.6,
       "unlock_factor": 1.0,
       "title": "Reader data export: backend GET /api/reader/me/export (auth-scoped; account profile + public-visible bookmarks/comments/history, no cross-reader leakage) + backend pytest; frontend 'Download my data' button on /account (fetch bundle + trigger JSON download + confirm) + i18n + vitest + E2E"
+    },
+    "CHG-165": {
+      "id": "CHG-165",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-22T16:39:43+00:00",
+      "updated_at": "2026-08-22T16:39:43+00:00",
+      "touched_round": 144,
+      "commit": "ed86d8fc6829d8d89a87c7d46ff782d3005021cd",
+      "title": "Reader data-export bundle (DEC-126, TASK-175)"
+    },
+    "DEC-127": {
+      "id": "DEC-127",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-22T16:39:52+00:00",
+      "updated_at": "2026-08-22T16:39:52+00:00",
+      "touched_round": 144,
+      "title": "Milestone delivered: reader data export bundle (DEC-126 complete)",
+      "rationale": "Delivery of DEC-126 / TASK-175 via CHG-165 (ed86d8f). Backend: GET /api/reader/me/export (auth-scoped) + crud.export_reader_data assembles a portable JSON bundle — account profile (email/display_name/created_at), public-visible bookmarks (with folder name), the reader's own comments (any moderation status, with post slug), and public-visible reading history — with no cross-reader leakage and draft/scheduled-future exclusion on bookmarks/history. Frontend: 'Download my data' button on /account (confirm dialog, fetch bundle, Blob + anchor JSON download, loading + done/failed states); useApi fetchReaderDataExport client; en/zh keys. Verification: backend 8 new export tests (auth scoping, empty, bookmarks/folder, comments, history, reader isolation, hidden-post exclusion) — ruff+pyright clean, full test counts in DEC-125 range; frontend vitest 1086 green (3 new account export tests), vue-tsc + biome clean; bulleted commit bodies per operator preference. Playwright E2E (e2e/data-export.spec.ts, accepts dialog and checks xblog-my-data.json download) authored + lint-clean but NOT executed in this constrained sandbox (FastAPI backend cannot bind) — same limitation as prior DEC records.",
+      "alternatives_rejected": "Notifications center (deferred, separate surface); read-later queue (overlaps bookmarks); CSV export (JSON is the portable superset); personalized recommendations (deferred to DEC-128/TASK-176)."
+    },
+    "DEC-128": {
+      "id": "DEC-128",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-22T16:40:01+00:00",
+      "updated_at": "2026-08-22T16:40:01+00:00",
+      "touched_round": 144,
+      "title": "Milestone: personalized 'Recommended for you' reading list",
+      "rationale": "Feature-evolution selection (SKILL 11.2 gap analysis). The home page shows global popular/latest + continue-reading rows, but a signed-in reader's *interests* (from their reading history/bookmarks) are never used to surface posts they'd like — related/popular are content-based on the current post, not personalized. Users: signed-in readers who want posts matched to their reading habits instead of generic popular content. Why now: server history (TASK-170) + bookmarks/categories now provide a real interest signal; a personalized row is net-additive and reader-visible. Acceptance (one sentence): a signed-in reader sees a 'Recommended for you' row on the home page with posts scored from their history/bookmark category affinity, excluding posts they've already read or bookmarked. Scope: backend GET /api/reader/me/recommendations (auth-scoped; build category/tag affinity from reading_history + bookmarks, score visible posts not already read/bookmarked, cap N, stable ordering) + backend pytest; frontend 'Recommended for you' row on home for signed-in readers (skeleton + link to posts + i18n) + vitest + E2E. Note E2E + the whole backend suite remain unverifiable in this sandbox (see DEC-111/113/115/117/119/121/123/125/127).",
+      "alternatives_rejected": "Notifications center (deferred); reading-streak/goals gamification (trivial, risk of low value); cold-start for guests (requires auth signal — guest row stays generic popular)."
+    },
+    "TASK-176": {
+      "id": "TASK-176",
+      "type": "task",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-22T16:40:06+00:00",
+      "updated_at": "2026-08-22T16:40:06+00:00",
+      "touched_round": 144,
+      "category": "core-feature",
+      "severity": 0.6,
+      "confidence": 0.8,
+      "effort": 1.8,
+      "unlock_factor": 1.0,
+      "title": "Personalized 'Recommended for you': backend GET /api/reader/me/recommendations (auth-scoped; category/tag affinity from reading_history + bookmarks, score visible posts excluding already-read/bookmarked, cap N) + backend pytest; frontend 'Recommended for you' home row for signed-in readers (skeleton + links + i18n) + vitest + E2E"
     }
   },
   "edges": [
@@ -12283,6 +12333,36 @@
       "to": "TASK-175",
       "type": "governs",
       "created_at": "2026-08-22T16:33:33+00:00"
+    },
+    {
+      "from": "CHG-165",
+      "to": "TASK-175",
+      "type": "implements",
+      "created_at": "2026-08-22T16:40:10+00:00"
+    },
+    {
+      "from": "DEC-127",
+      "to": "DEC-126",
+      "type": "supersedes",
+      "created_at": "2026-08-22T16:40:10+00:00"
+    },
+    {
+      "from": "DEC-127",
+      "to": "TASK-175",
+      "type": "governs",
+      "created_at": "2026-08-22T16:40:10+00:00"
+    },
+    {
+      "from": "DEC-128",
+      "to": "DEC-127",
+      "type": "supersedes",
+      "created_at": "2026-08-22T16:40:10+00:00"
+    },
+    {
+      "from": "DEC-128",
+      "to": "TASK-176",
+      "type": "governs",
+      "created_at": "2026-08-22T16:40:11+00:00"
     }
   ]
 }
