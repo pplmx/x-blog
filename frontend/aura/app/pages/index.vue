@@ -168,10 +168,19 @@ const stats = computed(() => {
 
     <!-- Continue reading (DEC-104, TASK-164): recently viewed posts -->
     <section v-if="recentPosts.length" class="mb-10">
-      <h2 class="text-lg font-bold text-gray-900 dark:text-gray-100 mb-4 flex items-center gap-2">
-        <Icon icon="lucide:history" class="w-5 h-5 text-violet-500" />
-        {{ t("home.sections.recent") }}
-      </h2>
+      <div class="flex items-center justify-between mb-4">
+        <h2 class="text-lg font-bold text-gray-900 dark:text-gray-100 flex items-center gap-2">
+          <Icon icon="lucide:history" class="w-5 h-5 text-violet-500" />
+          {{ t("home.sections.recent") }}
+        </h2>
+        <NuxtLink
+          to="/history"
+          class="inline-flex items-center gap-1 text-xs text-gray-400 hover:text-violet-500 transition-colors"
+        >
+          {{ t("reader.nav.history") }}
+          <Icon icon="lucide:chevron-right" class="w-3.5 h-3.5" />
+        </NuxtLink>
+      </div>
       <div class="flex flex-wrap gap-3">
         <NuxtLink
           v-for="item in recentPosts.slice(0, 6)"

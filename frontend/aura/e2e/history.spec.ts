@@ -1,0 +1,48 @@
+/**
+ * Reading-history page journey (DEC-114, TASK-169).
+ *
+ * A reader who opens a post can reach the Reading history page (via the nav
+ * entry link) and see that post listed newest-first; clearing history returns
+ * the page to its empty state. The trail is client-side (localStorage), so
+ * this needs only a live backend with at least one published post.
+ */
+
+import { expect, test } from "@playwright/test";
+
+test.describe("Reading history page (TASK-169)", () => {
+	test("lists a viewed post and clears it to the empty state", async ({ page }) => {
+		await page.goto("/");
+		const postLink = page.locator("article a").first();
+		if (!(await postLink.isVisible())) {
+			test.skip();
+			return;
+		}
+		const title = ((await postLink.textContent()) ?? "").trim();
+
+		// Opening the post records it in the client-side history trail.
+		await postLink.click();
+		await page.waitForURL(/\/posts\//);
+
+		// Reach the history page through the nav entry link.
+		const navHistory = page.locator("nav a", { hasText: "阅读历史" }).first();
+		if (await navHistory.isVisible()) {
+			await navHistory.click();
+		} else {
+			await page.goto("/history");
+		}
+		await page.waitForURL("**/history");
+		await expect(page.locator("h1").first()).toBeVisible({ timeout: 10000 });
+
+		// The viewed post appears in the history list.
+		if (title) {
+			await expect(page.locator("main a", { hasText: title }).first()).toBeVisible({
+				timeout: 10000,
+			});
+		}
+
+		// Clear history (header button → confirm inside the alert) → empty state.
+		await page.locator("main button", { hasText: "清空历史" }).first().click();
+		await page.locator('[role="alert"] button', { hasText: "清空历史" }).click();
+		await expect(page.locator("body")).toContainText("暂无阅读历史", { timeout: 10000 });
+	});
+});

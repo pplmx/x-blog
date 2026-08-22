@@ -29,7 +29,8 @@
 			"signOut": "Sign out",
 			"bookmarks": "Bookmarks",
 			"comments": "My comments",
-			"account": "Account"
+			"account": "Account",
+			"history": "History"
 		}
 	}
 }

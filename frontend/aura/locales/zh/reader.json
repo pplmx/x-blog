@@ -29,7 +29,8 @@
 			"signOut": "退出登录",
 			"bookmarks": "收藏",
 			"comments": "我的评论",
-			"account": "账号"
+			"account": "账号",
+			"history": "阅读历史"
 		}
 	}
 }

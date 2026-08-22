@@ -1,0 +1,16 @@
+{
+	"history": {
+		"seoTitle": "阅读历史 — X-Blog",
+		"seoDesc": "你最近阅读过的文章，随时回来继续。",
+		"title": "阅读历史",
+		"empty": "暂无阅读历史",
+		"emptyDesc": "你打开过的文章会显示在这里，方便随时继续阅读。",
+		"browse": "浏览文章",
+		"clear": "清空历史",
+		"clearConfirm": "确定清空全部阅读历史吗？此操作无法撤销。",
+		"clearConfirmAction": "清空历史",
+		"clearDone": "阅读历史已清空",
+		"unviewed": "最近浏览",
+		"continue": "继续阅读"
+	}
+}

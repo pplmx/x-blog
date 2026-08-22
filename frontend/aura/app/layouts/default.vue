@@ -14,6 +14,7 @@ const navLinks = [
 	{ to: "/archive", labelKey: "common.nav.archive", icon: "lucide:archive" },
 	{ to: "/search", labelKey: "common.nav.search", icon: "lucide:search" },
 	{ to: "/bookmarks", labelKey: "reader.nav.bookmarks", icon: "lucide:bookmark" },
+	{ to: "/history", labelKey: "reader.nav.history", icon: "lucide:history" },
 	{ to: "/comments", labelKey: "reader.nav.comments", icon: "lucide:message-square" },
 	{ to: "/account", labelKey: "reader.nav.account", icon: "lucide:settings", authOnly: true },
 ];

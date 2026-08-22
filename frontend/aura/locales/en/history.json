@@ -1,0 +1,16 @@
+{
+	"history": {
+		"seoTitle": "Reading history — X-Blog",
+		"seoDesc": "Posts you have recently read, ready to pick back up.",
+		"title": "Reading history",
+		"empty": "No reading history yet",
+		"emptyDesc": "Posts you open will show up here so you can pick them back up.",
+		"browse": "Browse posts",
+		"clear": "Clear history",
+		"clearConfirm": "Clear your entire reading history? This cannot be undone.",
+		"clearConfirmAction": "Clear history",
+		"clearDone": "Reading history cleared",
+		"unviewed": "Recently viewed",
+		"continue": "Read on"
+	}
+}
