@@ -222,12 +222,16 @@ def create_comment(
         # Best-effort — never fails the create. (DEC-080)
         created = crud.create_comment(db, post_id, comment, ip_address, reader=reader)
 
-        # Moderation trust tier (DEC-098, TASK-161): when enabled, a verified
-        # reader's comment (reader_id stamped from the reader JWT) publishes
-        # immediately instead of waiting, firing the same approval notifications
-        # as a moderator approve. Anonymous comments and the flag-off case stay
-        # pending and go through the moderator alert as before.
-        if AUTO_APPROVE_READER_COMMENTS and created.reader_id is not None:
+        # Moderation trust tier (DEC-098/100, TASK-161/162): when enabled, a
+        # verified reader's comment (reader_id stamped from the reader JWT)
+        # publishes immediately instead of waiting, firing the same approval
+        # notifications as a moderator approve. The persisted admin setting
+        # (if set) overrides the env fallback so the policy flips at runtime.
+        # Anonymous comments and the flag-off case stay pending and go through
+        # the moderator alert as before.
+        if created.reader_id is not None and crud.boolean_setting(
+            db, "auto_approve_reader_comments", AUTO_APPROVE_READER_COMMENTS
+        ):
             approved = crud.approve_comment(db, created.id, approved=True)
             if approved is not None:
                 _notify_comment_approved(db, approved)

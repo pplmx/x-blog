@@ -8,7 +8,19 @@
 			"categories": "分类",
 			"tags": "标签",
 			"series": "系列",
+			"settings": "设置",
 			"users": "用户"
+		},
+		"settings": {
+			"title": "设置",
+			"loading": "正在加载设置…",
+			"autoApproveLabel": "自动审核通过的已认证读者评论",
+			"autoApproveDescription": "开启后，登录的已认证读者发表的评论将立即发布，无需等待审核；匿名评论始终需要审核。",
+			"save": "保存更改",
+			"saving": "保存中…",
+			"saved": "设置已保存",
+			"saveFailed": "保存设置失败，请重试。",
+			"loadFailed": "加载设置失败，请重试。"
 		},
 		"backToSite": "返回前台",
 		"changePassword": "修改密码",

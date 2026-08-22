@@ -123,6 +123,7 @@ const navItems = computed(() => {
 		{ href: "/admin/categories", labelKey: "admin.nav.categories", icon: "lucide:folder" },
 		{ href: "/admin/tags", labelKey: "admin.nav.tags", icon: "lucide:tag" },
 		{ href: "/admin/series", labelKey: "admin.nav.series", icon: "lucide:layers" },
+		{ href: "/admin/settings", labelKey: "admin.nav.settings", icon: "lucide:settings" },
 	];
 	if (currentRole.value === "superuser") {
 		items.push({ href: "/admin/users", labelKey: "admin.nav.users", icon: "lucide:users" });

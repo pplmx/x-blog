@@ -17,6 +17,7 @@ from app.cache import (
 from app.crud import utc_now_naive
 from app.database import get_db
 from app.limiter import RATE_LIMIT_AUTH, RATE_LIMIT_WRITE, limiter
+from app.routers.comments import AUTO_APPROVE_READER_COMMENTS
 from app.schemas import PostCreate, PostUpdate
 
 router = APIRouter(prefix="/api/admin", tags=["admin"])
@@ -714,3 +715,54 @@ def admin_delete_comment(
     # mutations do (RIL TASK-092, ISS-072).
     clear_posts_list_cache()
     return {"message": "Comment deleted"}
+
+
+# Runtime site settings (DEC-100, TASK-162): operator-controlled key/values.
+# A persisted value wins over the env fallback read by the comment-create path;
+# GET returns the effective value for display. Keys are whitelisted so clients
+# can't enumerate or write arbitrary rows (404 for unknown keys).
+KNOWN_BOOLEAN_SETTINGS = {"auto_approve_reader_comments"}
+
+
+class SettingRead(BaseModel):
+    key: str
+    value: str
+
+
+class SettingUpdate(BaseModel):
+    value: str
+
+
+def _effective_boolean_setting(db: Session, key: str, env_default: bool) -> bool:
+    return crud.boolean_setting(db, key, env_default)
+
+
+@router.get("/settings/{key}", response_model=SettingRead)
+def get_site_setting_ep(
+    key: str,
+    db: Session = Depends(get_db),
+    _current_user: auth.User = Depends(get_current_admin),
+):
+    """Read a runtime site setting (admin only). Unknown keys are 404."""
+    if key not in KNOWN_BOOLEAN_SETTINGS:
+        raise HTTPException(status_code=404, detail="Unknown setting")
+    effective = _effective_boolean_setting(db, key, AUTO_APPROVE_READER_COMMENTS)
+    return SettingRead(key=key, value="true" if effective else "false")
+
+
+@router.put("/settings/{key}", response_model=SettingRead)
+def put_site_setting_ep(
+    key: str,
+    body: SettingUpdate,
+    db: Session = Depends(get_db),
+    _current_user: auth.User = Depends(get_current_admin),
+):
+    """Persist a runtime site setting (admin only). Unknown keys / bad values 404/422."""
+    if key not in KNOWN_BOOLEAN_SETTINGS:
+        raise HTTPException(status_code=404, detail="Unknown setting")
+    normalized = body.value.strip().lower()
+    if normalized not in {"true", "false", "1", "0", "yes", "no", "on", "off"}:
+        raise HTTPException(status_code=422, detail="value must be a boolean string")
+    canonical = "true" if normalized in {"1", "true", "yes", "on"} else "false"
+    crud.upsert_site_setting(db, key, canonical)
+    return SettingRead(key=key, value=canonical)

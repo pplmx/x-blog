@@ -339,3 +339,23 @@ class Series(Base):
         primaryjoin="Post.series_id == Series.id",
         foreign_keys="Post.series_id",
     )
+
+
+class SiteSetting(Base):
+    """Operator-controlled runtime settings, stored as key/value (DEC-100, TASK-162).
+
+    The only current key is ``auto_approve_reader_comments`` (a boolean flag
+    persisted as "true"/"false") which the comment-create path resolves with an
+    env fallback, so an admin can flip the moderation trust tier at runtime
+    without a redeploy. Additive table — no changes to existing tables (DEC-009).
+    """
+
+    __tablename__ = "site_settings"
+
+    key: Mapped[str] = mapped_column(String(100), primary_key=True)
+    value: Mapped[str] = mapped_column(String(255), nullable=False)
+    updated_at: Mapped[datetime | None] = mapped_column(
+        DateTime,
+        default=lambda: datetime.now(UTC),
+        onupdate=lambda: datetime.now(UTC),
+    )

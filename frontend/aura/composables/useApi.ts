@@ -648,6 +648,34 @@ export async function deleteAdminTag(id: number) {
 	});
 }
 
+/** A runtime site setting (DEC-100, TASK-162). `value` is a canonical string
+ *  ("true"/"false" for boolean settings). */
+export interface SiteSetting {
+	key: string;
+	value: string;
+}
+
+/** Read a runtime site setting (admin auth). */
+export async function fetchSiteSetting(key: string) {
+	const config = useRuntimeConfig();
+	const apiUrl = config.public.apiUrl;
+	return useFetch<SiteSetting>(`${apiUrl}/api/admin/settings/${key}`, {
+		headers: getAuthHeaders(),
+		server: false,
+	});
+}
+
+/** Persist a runtime site setting (admin auth). */
+export async function updateSiteSetting(key: string, value: string) {
+	const config = useRuntimeConfig();
+	const apiUrl = config.public.apiUrl;
+	return useFetch<SiteSetting>(`${apiUrl}/api/admin/settings/${key}`, {
+		method: "PUT",
+		headers: { "Content-Type": "application/json", ...getAuthHeaders() },
+		body: { value },
+	});
+}
+
 // ============================================================================
 // Admin series (DEC-056/TASK-123)
 //

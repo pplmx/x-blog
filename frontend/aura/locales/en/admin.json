@@ -8,7 +8,19 @@
 			"categories": "Categories",
 			"tags": "Tags",
 			"series": "Series",
+			"settings": "Settings",
 			"users": "Users"
+		},
+		"settings": {
+			"title": "Settings",
+			"loading": "Loading settings…",
+			"autoApproveLabel": "Auto-approve verified-reader comments",
+			"autoApproveDescription": "When on, comments from signed-in verified readers publish immediately instead of waiting for moderation. Anonymous comments are always moderated.",
+			"save": "Save changes",
+			"saving": "Saving…",
+			"saved": "Settings saved",
+			"saveFailed": "Failed to save settings. Please try again.",
+			"loadFailed": "Failed to load settings. Please try again."
 		},
 		"backToSite": "Back to site",
 		"changePassword": "Change password",
