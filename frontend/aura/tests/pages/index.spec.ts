@@ -3,6 +3,10 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { ref } from "vue";
 
 // --- Shared mock state (vi.hoisted makes it available to vi.mock factory) ---
+const { mockRecentState } = vi.hoisted(() => ({
+	mockRecentState: { recentRef: null as null | { value: unknown[] } },
+}));
+
 const { mockState } = vi.hoisted(() => ({
 	mockState: {
 		posts: null as null | {
@@ -63,6 +67,17 @@ vi.mock("../../composables/useApi", () => ({
 vi.mock("../../composables/useSeo", () => ({
 	useSeo: vi.fn(),
 }));
+
+// ------- Mock useRecentlyViewed (DEC-104, TASK-164) so tests control the
+// continue-reading trail (the real composable reads localStorage at module load).
+vi.mock("../../composables/useRecentlyViewed", async () => {
+	const { ref } = await import("vue");
+	const recent = ref<Array<{ slug: string; title: string }>>([]) as {
+		value: Array<{ slug: string; title: string }>;
+	};
+	mockRecentState.recentRef = recent;
+	return { useRecentlyViewed: () => ({ recent, record: vi.fn(), clear: vi.fn() }) };
+});
 
 // Stub components defined as global components in mountIndexPage()
 
@@ -194,6 +209,7 @@ function resetMockState() {
 describe("Index Page", () => {
 	afterEach(() => {
 		resetMockState();
+		if (mockRecentState.recentRef) mockRecentState.recentRef.value = [];
 		vi.restoreAllMocks();
 	});
 
@@ -553,6 +569,27 @@ describe("Index Page", () => {
 			const chip = wrapper.findAll("a").find((a) => a.text() === "#Vue");
 			expect(chip).toBeDefined();
 			expect(chip?.element.tagName).toBe("A");
+		});
+	});
+
+	describe("Continue reading (DEC-104, TASK-164)", () => {
+		it("hides the section when nothing was recently viewed", async () => {
+			mockState.posts = mockPostsData;
+			const wrapper = await mountIndexPage();
+			expect(wrapper.text()).not.toContain("继续阅读");
+		});
+
+		it("renders recently viewed posts as links", async () => {
+			mockState.posts = mockPostsData;
+			const wrapper = await mountIndexPage();
+			const recentRef = mockRecentState.recentRef as { value: unknown[] };
+			recentRef.value = [
+				{ slug: "made-post", title: "Made Post" },
+				{ slug: "other", title: "Other Post" },
+			];
+			await wrapper.vm.$nextTick();
+			expect(wrapper.text()).toContain("继续阅读");
+			expect(wrapper.text()).toContain("Made Post");
 		});
 	});
 });

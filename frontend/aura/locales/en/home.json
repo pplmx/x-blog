@@ -21,6 +21,7 @@
 			"views": "reads"
 		},
 		"sections": {
+			"recent": "Continue reading",
 			"popular": "Popular Articles",
 			"latest": "Latest Articles",
 			"filtered": "Filtered: {label}",

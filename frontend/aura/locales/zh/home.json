@@ -21,6 +21,7 @@
 			"views": "阅读"
 		},
 		"sections": {
+			"recent": "继续阅读",
 			"popular": "热门文章",
 			"latest": "最新文章",
 			"filtered": "筛选: {label}",

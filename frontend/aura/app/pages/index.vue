@@ -7,6 +7,7 @@ import {
 	useTags,
 } from "~~/composables/useApi";
 import { paginationPages } from "~~/composables/usePagination";
+import { useRecentlyViewed } from "~~/composables/useRecentlyViewed";
 import { useSeo } from "~~/composables/useSeo";
 
 const { t } = useLang();
@@ -76,6 +77,10 @@ useSeo({
 	description: t("home.seo.description"),
 	path: "/",
 });
+
+// Continue-reading trail (DEC-104, TASK-164): recently opened posts, rendered
+// as a compact row on the home page when the visitor has read something.
+const { recent: recentPosts } = useRecentlyViewed();
 
 // Windowed, ellipsis-aware pagination buttons (RIL TASK-083, ISS-052): render
 // the first, current±window and last page joined by "…" instead of one button
@@ -158,6 +163,27 @@ const stats = computed(() => {
             <div class="text-xs text-white/60 mt-1">{{ t(stat.labelKey) }}</div>
           </div>
         </div>
+      </div>
+    </section>
+
+    <!-- Continue reading (DEC-104, TASK-164): recently viewed posts -->
+    <section v-if="recentPosts.length" class="mb-10">
+      <h2 class="text-lg font-bold text-gray-900 dark:text-gray-100 mb-4 flex items-center gap-2">
+        <Icon icon="lucide:history" class="w-5 h-5 text-violet-500" />
+        {{ t("home.sections.recent") }}
+      </h2>
+      <div class="flex flex-wrap gap-3">
+        <NuxtLink
+          v-for="item in recentPosts.slice(0, 6)"
+          :key="item.slug"
+          :to="`/posts/${item.slug}`"
+          class="group flex items-center gap-2 px-4 py-2 rounded-xl border border-gray-100 dark:border-gray-800 hover:border-violet-200 dark:hover:border-violet-800 hover:shadow-md transition-all duration-200"
+        >
+          <Icon icon="lucide:book-open" class="w-4 h-4 text-violet-400 shrink-0" />
+          <span class="text-sm text-gray-700 dark:text-gray-300 group-hover:text-violet-600 dark:group-hover:text-violet-400 truncate max-w-[240px]">
+            {{ item.title }}
+          </span>
+        </NuxtLink>
       </div>
     </section>
 

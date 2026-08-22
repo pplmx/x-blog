@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, watchEffect } from "vue";
+import { computed, watch, watchEffect } from "vue";
 import {
 	useAdjacentPosts,
 	usePost,
@@ -10,6 +10,7 @@ import {
 } from "~~/composables/useApi";
 import { coverImageSrc } from "~~/composables/useCoverImage";
 import { markdownToHtml } from "~~/composables/useMarkdown";
+import { useRecentlyViewed } from "~~/composables/useRecentlyViewed";
 import { usePostSeo } from "~~/composables/useSeo";
 import { extractToc } from "~~/composables/useToc";
 
@@ -18,6 +19,17 @@ const route = useRoute();
 // Pass a reactive getter (not a static string) so useFetch refetches when the
 // slug changes via SPA navigation between posts (TASK-090, ISS-073).
 const { data: post, pending, error } = await usePost(() => route.params.slug as string);
+
+// Continue-reading trail (DEC-104, TASK-164): remember this post client-side
+// when its detail page loads (dedup/cap/prune live in useRecentlyViewed).
+const { record } = useRecentlyViewed();
+watch(
+	() => (post.value ? { slug: post.value.slug, title: post.value.title } : null),
+	(p) => {
+		if (p) record(p);
+	},
+	{ immediate: true },
+);
 
 // Extract TOC from the RENDERED markdown HTML — not the raw markdown. The
 // post content is Markdown (`# Heading`), but extractToc only recognises HTML
