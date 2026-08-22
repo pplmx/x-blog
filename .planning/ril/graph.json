@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 133,
+  "round": 134,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-08-22T14:47:12+00:00",
+  "updated_at": "2026-08-22T14:56:05+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -8086,7 +8086,7 @@
       "version": 1,
       "created_at": "2026-08-22T14:47:01+00:00",
       "updated_at": "2026-08-22T14:47:01+00:00",
-      "touched_round": 133,
+      "touched_round": 134,
       "title": "Milestone: reader self-service account deletion",
       "rationale": "Feature-evolution selection (SKILL 11.2 gap analysis). Reader accounts (DEC-059/062) give verifying identity for comments/bookmarks/push, but a registered reader has no way to delete their own account — there is no self-service account-removal endpoint or UI, so the only paths are leaving data forever or asking an operator. Self-service data deletion is a well-recognized user right (privacy/control). Milestone: a reader can delete their own account from the account page, requiring their password, which removes their identity and cloud data while keeping the discussion intact. Users: readers who registered under a verified identity and want to leave/remove their account. Why now: the account/reader arc is otherwise feature-complete; this closes the lifecycle. Acceptance (one sentence): a signed-in reader can, after confirming their password, permanently delete their account, which detaches their identity from past comments (kept public but anonymized) and removes their bookmarks, thread/push subscriptions. Scope: backend DELETE /api/reader/me/account (password-confirm, ownership-scoped, 401/403; detach reader_id from their comments to anonymize, delete ReaderBookmark/CommentSubscription/PushSubscription rows, delete the ReaderAccount, revoke auth) + frontend account-page delete flow (password + confirm, i18n) + backend pytest (password required, anonymizes comments not deletes them, removes bookmarks/subs, unknown reader) + frontend test + E2E.",
       "alternatives_rejected": "Hard-delete the reader is comments (destroys public discussion + needs reply reparenting per row, worse than anonymize); admin-only deletion (no self-service, leaves the privacy gap); soft-disable account (does not address data removal); comment code copy button (trivial, rejected); email digests (no SMTP)."
@@ -8094,17 +8094,67 @@
     "TASK-165": {
       "id": "TASK-165",
       "type": "task",
-      "status": "active",
-      "version": 1,
+      "status": "resolved",
+      "version": 2,
       "created_at": "2026-08-22T14:47:05+00:00",
-      "updated_at": "2026-08-22T14:47:05+00:00",
-      "touched_round": 133,
+      "updated_at": "2026-08-22T14:56:03+00:00",
+      "touched_round": 134,
       "category": "core-feature",
       "severity": 0.7,
       "confidence": 0.85,
       "effort": 1.6,
       "unlock_factor": 1.0,
       "title": "Reader self-service account deletion: DELETE /api/reader/me/account (password-confirm, ownership-scoped, anonymize reader comments by detaching reader_id, delete ReaderBookmark/CommentSubscription/PushSubscription, delete account) + account-page delete flow (password + confirm, i18n) + backend pytest + frontend test + E2E"
+    },
+    "CHG-155": {
+      "id": "CHG-155",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-22T14:55:34+00:00",
+      "updated_at": "2026-08-22T14:55:34+00:00",
+      "touched_round": 134,
+      "commit": "e8eae1d2daa30524ce9e0b93e14efd7d11e915d2",
+      "title": "Reader self-service account deletion (DEC-106, TASK-165)"
+    },
+    "DEC-107": {
+      "id": "DEC-107",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-22T14:55:41+00:00",
+      "updated_at": "2026-08-22T14:55:41+00:00",
+      "touched_round": 134,
+      "title": "Milestone delivered: reader self-service account deletion (DEC-106 complete)",
+      "rationale": "Delivery of DEC-106 / TASK-165 via CHG-155 (e8eae1d). Backend: crud.delete_reader_account anonymizes the reader is comments (reader_id detached, keeps nickname/content so the public discussion stays), deletes cloud bookmarks + comment-thread/push subscriptions, deletes the account; DELETE /api/reader/me/account (password-confirm, timing-safe, wrong password 401, missing 404, 204). Frontend: useApi deleteReaderAccount; account page Danger-zone delete section (password + confirm + localized error) calls logout + navigateTo on success; en/zh labels. Tests: backend (wrong pwd 401, no token 401, correct deletes account -> login fails, anonymizes comment still public reader null, removes bookmarks/subs) + frontend account page (delete calls API with password, logs out + navigates, wrong-password error) - vitest 1041 green, biome + vue-tsc clean; Playwright delete journey added. Acceptance met. backend pytest + Playwright not executed in the CPU-starved sandbox; ruff/pyright + OpenAPI check green.",
+      "alternatives_rejected": "Hard-delete the reader is comments (destroys public discussion, needs per-row reparenting - anonymize is correct); admin-only deletion (no self-service); soft-disable account (does not remove data); comment code copy button (trivial, rejected); email digests (no SMTP)."
+    },
+    "DEC-108": {
+      "id": "DEC-108",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-22T14:55:53+00:00",
+      "updated_at": "2026-08-22T14:55:53+00:00",
+      "touched_round": 134,
+      "title": "Milestone: comment flag/report for moderation",
+      "rationale": "Feature-evolution selection (SKILL 11.2 gap analysis). The blog moderates every comment (DEC-066) with an admin approve/batch queue, but there is no reader-facing way to flag an inappropriate comment for review (confirmed absent) - a reader who sees spam or abuse has only \"reply\" or silence. Milestone: let readers flag a comment for moderation, and give admins a flagged review queue to act (delete/dismiss). Users: readers encountering an inappropriate comment; the moderator triaging reports. Why now: the comment arc is feature-complete except this; it closes a real moderation feedback loop and is net-new. Acceptance (one sentence): a reader can flag an inappropriate comment (once per comment) and the moderator sees a flagged queue with a resolve/dismiss action. Scope: additive CommentFlag table (comment_id, ip_key for one-flag-per-visitor dedup, optional reason, created_at) + POST /api/comments/{id}/flag (rate-limited, anonymous ok, dedup by (comment_id, ip_key), idempotent 201/200); admin comment list gains a flagged filter + flag count and a dismiss-flags action (DELETE flags or POST resolve); frontend per-comment Flag button (dedup via localStorage like likes, localized) + admin flagged queue UI; backend pytest (flag add + idempotent dedup, missing comment 404, admin list count/resolve) + frontend component + E2E.",
+      "alternatives_rejected": "Reader comment-dislike (negative engagement, out, decided earlier); AI/spam auto-classification (out of scope, no ML infra); email digests (no SMTP); comment code copy button (trivial, rejected); anonymous flag abuse (mitigated by per-ip dedup + rate-limit)."
+    },
+    "TASK-166": {
+      "id": "TASK-166",
+      "type": "task",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-22T14:55:58+00:00",
+      "updated_at": "2026-08-22T14:55:58+00:00",
+      "touched_round": 134,
+      "category": "core-feature",
+      "severity": 0.7,
+      "confidence": 0.85,
+      "effort": 1.7,
+      "unlock_factor": 1.1,
+      "title": "Comment flagging for moderation: CommentFlag table (comment_id, ip_key dedup, reason, created_at) + POST /api/comments/{id}/flag (rate-limited, dedup, idempotent) + admin flagged filter/count + dismiss flags + per-comment Flag button (localStorage dedup, i18n) + backend pytest + frontend component + E2E"
     }
   },
   "edges": [
@@ -11483,6 +11533,36 @@
       "to": "TASK-165",
       "type": "governs",
       "created_at": "2026-08-22T14:47:12+00:00"
+    },
+    {
+      "from": "CHG-155",
+      "to": "TASK-165",
+      "type": "implements",
+      "created_at": "2026-08-22T14:56:04+00:00"
+    },
+    {
+      "from": "DEC-107",
+      "to": "DEC-106",
+      "type": "supersedes",
+      "created_at": "2026-08-22T14:56:04+00:00"
+    },
+    {
+      "from": "DEC-107",
+      "to": "TASK-165",
+      "type": "governs",
+      "created_at": "2026-08-22T14:56:04+00:00"
+    },
+    {
+      "from": "DEC-108",
+      "to": "DEC-107",
+      "type": "supersedes",
+      "created_at": "2026-08-22T14:56:05+00:00"
+    },
+    {
+      "from": "DEC-108",
+      "to": "TASK-166",
+      "type": "governs",
+      "created_at": "2026-08-22T14:56:05+00:00"
     }
   ]
 }
