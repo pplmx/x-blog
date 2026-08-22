@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 145,
+  "round": 146,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-08-22T16:46:47+00:00",
+  "updated_at": "2026-08-22T16:53:21+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -8686,7 +8686,7 @@
       "version": 1,
       "created_at": "2026-08-22T16:46:37+00:00",
       "updated_at": "2026-08-22T16:46:37+00:00",
-      "touched_round": 145,
+      "touched_round": 146,
       "title": "Milestone: per-category and per-series RSS feeds",
       "rationale": "Feature-evolution selection (SKILL 11.2 gap analysis). The blog exposes a global RSS feed (/rss/feed.xml) but category and series pages — the blog's main browse/drill-down surfaces — have no scoped feed, so a reader who only cares about one category or one tutorial series can't subscribe narrowly. Users: feed-reader subscribers who follow only a category or a series instead of the whole blog. Why now: the RSS builder already exists (app/routers/rss.py); adding content-scoped variants is net-additive and distinct from the global feed. Acceptance (one sentence): a reader can subscribe to an XML feed limited to a single category or a single series, linked from that category/series page. Scope: backend scoped RSS endpoints (/rss/category/{slug}.xml, /rss/series/{slug}.xml) reusing the existing feed builder, filtered to publicly-visible posts in that category/series (404 on unknown slug); frontend feed link (RSS icon) on category and series pages + tests (backend XML shape/scoping/404 + frontend link) + E2E. Note E2E + the whole backend suite remain unverifiable in this sandbox (see DEC-111/113/115/117/119/121/123/125/127/129).",
       "alternatives_rejected": "PDF/print of a whole series (larger, overlaps print); notifications center (separate surface, deferred); per-tag feeds (many-to-many tags make stable URLs/ordering unclear — categories and series are the clean scoped units)."
@@ -8694,17 +8694,67 @@
     "TASK-177": {
       "id": "TASK-177",
       "type": "task",
-      "status": "active",
-      "version": 1,
+      "status": "resolved",
+      "version": 2,
       "created_at": "2026-08-22T16:46:42+00:00",
-      "updated_at": "2026-08-22T16:46:42+00:00",
-      "touched_round": 145,
+      "updated_at": "2026-08-22T16:52:53+00:00",
+      "touched_round": 146,
       "category": "core-feature",
       "severity": 0.55,
       "confidence": 0.85,
       "effort": 1.3,
       "unlock_factor": 1.0,
       "title": "Per-category and per-series RSS feeds: backend /rss/category/{slug}.xml + /rss/series/{slug}.xml (reuse feed builder, filter to publicly-visible posts in that category/series, 404 on unknown) + backend pytest; frontend RSS feed links (icon) on category and series pages + i18n + vitest + E2E"
+    },
+    "CHG-167": {
+      "id": "CHG-167",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-22T16:52:53+00:00",
+      "updated_at": "2026-08-22T16:52:53+00:00",
+      "touched_round": 146,
+      "commit": "aadd249c91cf49dcd48b5ec59611650107a3d8ba",
+      "title": "Per-category and per-series RSS feeds (DEC-130, TASK-177)"
+    },
+    "DEC-131": {
+      "id": "DEC-131",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-22T16:53:02+00:00",
+      "updated_at": "2026-08-22T16:53:02+00:00",
+      "touched_round": 146,
+      "title": "Milestone delivered: per-category and per-series RSS feeds (DEC-130 complete)",
+      "rationale": "Delivery of DEC-130 / TASK-177 via CHG-167 (aadd249). Backend: two new scoped RSS endpoints — /rss/category/{name}.xml (category has no slug column; its unique name is the stable URL-encoded segment) and /rss/series/{slug}.xml — reusing generate_rss_feed, filtering to publicly-visible posts in that scope (crud.get_posts by category / get_series_visible_posts), scoped channel title/description + atom:link self URL, 404 on unknown, cached under scoped feed_cache keys. Frontend: series page gains a visible RSS feed link + autodiscovery alternate; the category page's existing scoped feed link now points at the stable name-based URL. i18n series.subscribeFeed en/zh. Verification: backend 5 new scoped-RSS tests (category/series scoping, out-of-scope exclusion, unknown 404, URL-encoded category name) — ruff + pyright clean; frontend vitest 1089 green (series + category feed-link tests, updated autodiscovery assertions), vue-tsc + biome clean; bulleted commit bodies per operating preference. Playwright E2E (e2e/rss-scoped.spec.ts) authored + lint-clean but NOT executed in this constrained sandbox (FastAPI backend cannot bind) — same limitation as prior DEC records.",
+      "alternatives_rejected": "Per-tag feeds (many-to-many tags make stable URLs ambiguous — categories/series are the clean scoped units; query-scoped tag feed still exists from DEC-074); web push for new series parts (deferred to DEC-132/TASK-178); notifications center (separate surface, deferred)."
+    },
+    "DEC-132": {
+      "id": "DEC-132",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-22T16:53:11+00:00",
+      "updated_at": "2026-08-22T16:53:11+00:00",
+      "touched_round": 146,
+      "title": "Milestone: Web Push notifications for new series parts",
+      "rationale": "Feature-evolution selection (SKILL 11.2 gap analysis). New-post push exists but is global or per-category (DEC-076); a reader following a tutorial series has no targeted signal when a new part is published, even though series have become a first-class surface (progress TASK-173, scoped feeds TASK-177). Users: signed-in readers tracking a series who want a push only when that series gets a new part. Why now: series features are mature and push infra exists; adding per-series follow is the coherent next surface (net-additive). Acceptance (one sentence): a signed-in reader can subscribe a series for push and is notified when a new public post in that series is published. Scope: backend series-follow (new series_follow table reader↔series with unique pair + migration, or a series_id on push subscription) + auth-scoped subscribe/unsubscribe API + dispatch a push when a new public post is created in a followed series + integration with the existing new-post dispatch + backend pytest; frontend 'Notify me of new parts' toggle on the series page (like the category follow button) + i18n + vitest + E2E. Note E2E + the whole backend suite remain unverifiable in this sandbox (see DEC-111/113/115/117/119/121/123/125/127/129/131).",
+      "alternatives_rejected": "Per-tag push (tags are many-to-many and noisy); global 'all series' push button (already covered by category/all new-post push); notifications center (separate surface, still deferred)."
+    },
+    "TASK-178": {
+      "id": "TASK-178",
+      "type": "task",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-22T16:53:16+00:00",
+      "updated_at": "2026-08-22T16:53:16+00:00",
+      "touched_round": 146,
+      "category": "core-feature",
+      "severity": 0.6,
+      "confidence": 0.85,
+      "effort": 2.0,
+      "unlock_factor": 1.0,
+      "title": "Web Push for new series parts: backend series_follow table (reader↔series, unique + migration) or series_id on push subscription + auth-scoped subscribe/unsubscribe API + push dispatch when a new public post is published in a followed series (integrate with new-post dispatch) + backend pytest; frontend 'Notify me of new parts' toggle on the series page + i18n + vitest + E2E"
     }
   },
   "edges": [
@@ -12443,6 +12493,36 @@
       "to": "TASK-177",
       "type": "governs",
       "created_at": "2026-08-22T16:46:47+00:00"
+    },
+    {
+      "from": "CHG-167",
+      "to": "TASK-177",
+      "type": "implements",
+      "created_at": "2026-08-22T16:53:21+00:00"
+    },
+    {
+      "from": "DEC-131",
+      "to": "DEC-130",
+      "type": "supersedes",
+      "created_at": "2026-08-22T16:53:21+00:00"
+    },
+    {
+      "from": "DEC-131",
+      "to": "TASK-177",
+      "type": "governs",
+      "created_at": "2026-08-22T16:53:21+00:00"
+    },
+    {
+      "from": "DEC-132",
+      "to": "DEC-131",
+      "type": "supersedes",
+      "created_at": "2026-08-22T16:53:21+00:00"
+    },
+    {
+      "from": "DEC-132",
+      "to": "TASK-178",
+      "type": "governs",
+      "created_at": "2026-08-22T16:53:21+00:00"
     }
   ]
 }
