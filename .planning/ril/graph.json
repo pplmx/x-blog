@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 134,
+  "round": 135,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-08-22T14:56:05+00:00",
+  "updated_at": "2026-08-22T15:06:15+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -8136,7 +8136,7 @@
       "version": 1,
       "created_at": "2026-08-22T14:55:53+00:00",
       "updated_at": "2026-08-22T14:55:53+00:00",
-      "touched_round": 134,
+      "touched_round": 135,
       "title": "Milestone: comment flag/report for moderation",
       "rationale": "Feature-evolution selection (SKILL 11.2 gap analysis). The blog moderates every comment (DEC-066) with an admin approve/batch queue, but there is no reader-facing way to flag an inappropriate comment for review (confirmed absent) - a reader who sees spam or abuse has only \"reply\" or silence. Milestone: let readers flag a comment for moderation, and give admins a flagged review queue to act (delete/dismiss). Users: readers encountering an inappropriate comment; the moderator triaging reports. Why now: the comment arc is feature-complete except this; it closes a real moderation feedback loop and is net-new. Acceptance (one sentence): a reader can flag an inappropriate comment (once per comment) and the moderator sees a flagged queue with a resolve/dismiss action. Scope: additive CommentFlag table (comment_id, ip_key for one-flag-per-visitor dedup, optional reason, created_at) + POST /api/comments/{id}/flag (rate-limited, anonymous ok, dedup by (comment_id, ip_key), idempotent 201/200); admin comment list gains a flagged filter + flag count and a dismiss-flags action (DELETE flags or POST resolve); frontend per-comment Flag button (dedup via localStorage like likes, localized) + admin flagged queue UI; backend pytest (flag add + idempotent dedup, missing comment 404, admin list count/resolve) + frontend component + E2E.",
       "alternatives_rejected": "Reader comment-dislike (negative engagement, out, decided earlier); AI/spam auto-classification (out of scope, no ML infra); email digests (no SMTP); comment code copy button (trivial, rejected); anonymous flag abuse (mitigated by per-ip dedup + rate-limit)."
@@ -8144,17 +8144,67 @@
     "TASK-166": {
       "id": "TASK-166",
       "type": "task",
-      "status": "active",
-      "version": 1,
+      "status": "resolved",
+      "version": 2,
       "created_at": "2026-08-22T14:55:58+00:00",
-      "updated_at": "2026-08-22T14:55:58+00:00",
-      "touched_round": 134,
+      "updated_at": "2026-08-22T15:06:13+00:00",
+      "touched_round": 135,
       "category": "core-feature",
       "severity": 0.7,
       "confidence": 0.85,
       "effort": 1.7,
       "unlock_factor": 1.1,
       "title": "Comment flagging for moderation: CommentFlag table (comment_id, ip_key dedup, reason, created_at) + POST /api/comments/{id}/flag (rate-limited, dedup, idempotent) + admin flagged filter/count + dismiss flags + per-comment Flag button (localStorage dedup, i18n) + backend pytest + frontend component + E2E"
+    },
+    "CHG-156": {
+      "id": "CHG-156",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-22T15:05:41+00:00",
+      "updated_at": "2026-08-22T15:05:41+00:00",
+      "touched_round": 135,
+      "commit": "d6818fc34d38f0216d26d3cef91c07c662aaa35e",
+      "title": "Comment flag/report for moderation (DEC-108, TASK-166)"
+    },
+    "DEC-109": {
+      "id": "DEC-109",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-22T15:05:50+00:00",
+      "updated_at": "2026-08-22T15:05:50+00:00",
+      "touched_round": 135,
+      "title": "Milestone delivered: comment flag/report for moderation (DEC-108 complete)",
+      "rationale": "Delivery of DEC-108 / TASK-166 via CHG-156 (d6818fc). Backend: additive CommentFlag table (comment_id + ip_key unique, optional reason); POST /api/comments/{id}/flag (rate-limited, 404 for non-public/unknown, idempotent 201/200, returns distinct count); crud flag_comment (+ dedup), flag_counts_for_comments, dismiss_comment_flags; /api/admin/comments gains a flagged filter + flag_count per item; DELETE /api/admin/comments/{id}/flags dismisses a comment is reports. Frontend: CommentList per-comment Report button (localStorage one-per-browser guard, localized, error), Admin comments page Flagged filter tab + flag-count badge + Dismiss flags action, en/zh labels + useApi flagComment/dismissAdminCommentFlags. Tests: backend (201 new, 200 idempotent, 404 unknown/non-public, distinct-source counting, admin flagged filter/count/dismiss) + frontend CommentList flag tests - vitest 1043 green, biome + vue-tsc clean; Playwright flag journey added. Acceptance met: a reader can flag a comment once and the moderator sees a flagged queue with dismiss. backend pytest + Playwright not executed in the CPU-starved sandbox; ruff/pyright + OpenAPI green.",
+      "alternatives_rejected": "Reader comment-dislike (negative engagement, out); AI/spam auto-classification (no ML infra); email digests (no SMTP); comment code copy button (trivial, rejected); abuse mitigated by per-ip dedup + rate-limit."
+    },
+    "DEC-110": {
+      "id": "DEC-110",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-22T15:06:01+00:00",
+      "updated_at": "2026-08-22T15:06:01+00:00",
+      "touched_round": 135,
+      "title": "Milestone: admin bulk-comment delete (spam cleanup)",
+      "rationale": "Feature-evolution selection (SKILL 11.2 gap analysis). With reader flagging now feeding the moderation queue (DEC-108), the admin can filter to flagged comments but still deletes them one-by-one (only batch-approve/reject exists; there is no batch delete). A moderator clearing a spam run or a burst of flagged comments has to click delete per row. Milestone: add a bulk-delete to the admin comments queue so a moderator can select and delete many comments at once. Users: the moderator performing spam cleanup or clearing flagged/batch-rejected comments. Why now: it directly complements the just-shipped flagged queue and the existing batch-approve; net-additive, no schema change. Acceptance (one sentence): an admin can multi-select comments and delete them in one action. Scope: backend POST /api/admin/comments/batch-delete (admin-only, ids cap like batch-approve, returns deleted count, reparents replies consistently like delete_comment) + admin comments page \"Delete selected\" action alongside batch approve/reject (selection already exists for pending; extend to any visible comment) + confirm dialog + count feedback + i18n; backend pytest (bulk delete removes rows + reply reparenting + admin-only + cap) + frontend test + E2E.",
+      "alternatives_rejected": "Delete-all-flagged (unbounded destructive action, dangerous without explicit selection); trash/soft-delete (bigger surface); comment code copy button (trivial, rejected); per-comment delete remains but is the slow path this fixes."
+    },
+    "TASK-167": {
+      "id": "TASK-167",
+      "type": "task",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-22T15:06:06+00:00",
+      "updated_at": "2026-08-22T15:06:06+00:00",
+      "touched_round": 135,
+      "category": "core-feature",
+      "severity": 0.6,
+      "confidence": 0.85,
+      "effort": 1.3,
+      "unlock_factor": 1.0,
+      "title": "Admin bulk-comment delete: POST /api/admin/comments/batch-delete (admin-only, ids cap, reply reparenting, returns deleted count) + admin comments page Delete selected action + confirm + count feedback + i18n + backend pytest + frontend test + E2E"
     }
   },
   "edges": [
@@ -11563,6 +11613,36 @@
       "to": "TASK-166",
       "type": "governs",
       "created_at": "2026-08-22T14:56:05+00:00"
+    },
+    {
+      "from": "CHG-156",
+      "to": "TASK-166",
+      "type": "implements",
+      "created_at": "2026-08-22T15:06:14+00:00"
+    },
+    {
+      "from": "DEC-109",
+      "to": "DEC-108",
+      "type": "supersedes",
+      "created_at": "2026-08-22T15:06:14+00:00"
+    },
+    {
+      "from": "DEC-109",
+      "to": "TASK-166",
+      "type": "governs",
+      "created_at": "2026-08-22T15:06:14+00:00"
+    },
+    {
+      "from": "DEC-110",
+      "to": "DEC-109",
+      "type": "supersedes",
+      "created_at": "2026-08-22T15:06:15+00:00"
+    },
+    {
+      "from": "DEC-110",
+      "to": "TASK-167",
+      "type": "governs",
+      "created_at": "2026-08-22T15:06:15+00:00"
     }
   ]
 }
