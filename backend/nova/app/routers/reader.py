@@ -148,6 +148,53 @@ class SubscribedThreadListResponse(BaseModel):
     total: int
 
 
+class ReadingHistoryItem(BaseModel):
+    """A viewed post as serialized to the reader's reading-history page.
+
+    Navigation-list shape (post summary) plus the last ``viewed_at`` so the UI
+    can render when the post was read. Omits the full body/views/likes — a
+    history page is a jump-back list, like the bookmark list.
+    """
+
+    id: int
+    title: str
+    slug: str
+    excerpt: str | None = None
+    cover_image: str | None = None
+    viewed_at: datetime | None = None
+    category: schemas.Category | None = None
+    tags: list[schemas.Tag] = []
+
+    @classmethod
+    def from_post(cls, post: models.Post, viewed_at: datetime | None) -> ReadingHistoryItem:
+        return cls(
+            id=post.id,
+            title=post.title,
+            slug=post.slug,
+            excerpt=post.excerpt,
+            cover_image=post.cover_image,
+            viewed_at=viewed_at,
+            category=(schemas.Category.model_validate(post.category) if post.category else None),
+            tags=[schemas.Tag.model_validate(t) for t in post.tags],
+        )
+
+
+class ReadingHistoryListResponse(BaseModel):
+    items: list[ReadingHistoryItem]
+    total: int
+    # Pagination metadata (mirrors ReaderCommentListResponse, DEC-102).
+    page: int = 1
+    limit: int = 20
+    total_pages: int = 1
+
+
+class RecordHistoryResponse(BaseModel):
+    post_id: int
+    # True when the history row already existed and only viewed_at refreshed
+    # (idempotent upsert); the client can ignore it.
+    already_existed: bool
+
+
 # A valid bcrypt hash of a random throwaway password, at the same cost as a
 # real account hash. When the email is unknown we still run bcrypt against this
 # so the login endpoint's response *timing* does not reveal whether an email
@@ -537,6 +584,61 @@ def remove_bookmark(
     """Remove a bookmark. Idempotent: deleting a non-existent bookmark is a
     204 no-op (merge-friendly)."""
     crud.remove_reader_bookmark(db, current_reader.id, post_id)
+    return None
+
+
+# Server-backed reading history (DEC-116/TASK-170)
+# ---------------------------------------------------------------------------
+
+
+@router.get("/me/history", response_model=ReadingHistoryListResponse)
+def list_reading_history(
+    current_reader: auth.ReaderAccount = Depends(auth.get_current_reader),
+    page: int = Query(1, ge=1),
+    limit: int = Query(20, ge=1, le=100),
+    db: Session = Depends(get_db),
+):
+    """The reader's viewed posts, newest-first, publicly-visible only.
+
+    Paginated so the history list stays bounded. Same non-leak invariant as
+    bookmarks/subs: a viewed post that went dark stops appearing (row kept).
+    """
+    rows, total = crud.list_reader_history(db, current_reader.id, page=page, limit=limit)
+    total_pages = (total + limit - 1) // limit if limit > 0 else 0
+    return ReadingHistoryListResponse(
+        items=[ReadingHistoryItem.from_post(p, viewed_at) for p, viewed_at in rows],
+        total=total,
+        page=page,
+        limit=limit,
+        total_pages=total_pages,
+    )
+
+
+@router.post("/me/history/{post_id}", response_model=RecordHistoryResponse)
+def record_reading_view(
+    post_id: int,
+    current_reader: auth.ReaderAccount = Depends(auth.get_current_reader),
+    db: Session = Depends(get_db),
+):
+    """Record a view on a public post (idempotent upsert).
+
+    Drafts/scheduled/unknown posts are uniformly 404 — no draft-existence
+    oracle (same guard as the bookmark/comment paths).
+    """
+    post = db.get(models.Post, post_id)
+    if not post or not crud.is_publicly_visible(post):
+        raise HTTPException(status_code=404, detail="Post not found")
+    row, created = crud.record_reading_history(db, current_reader.id, post.id)
+    return RecordHistoryResponse(post_id=row.post_id, already_existed=not created)
+
+
+@router.delete("/me/history", status_code=204)
+def clear_reading_history(
+    current_reader: auth.ReaderAccount = Depends(auth.get_current_reader),
+    db: Session = Depends(get_db),
+):
+    """Clear the reader's entire reading history. Idempotent (no-op if empty)."""
+    crud.clear_reader_history(db, current_reader.id)
     return None
 
 

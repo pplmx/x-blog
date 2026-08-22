@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, watch, watchEffect } from "vue";
 import {
+	recordReaderHistory,
 	useAdjacentPosts,
 	usePost,
 	usePostLike,
@@ -10,6 +11,7 @@ import {
 } from "~~/composables/useApi";
 import { coverImageSrc } from "~~/composables/useCoverImage";
 import { markdownToHtml } from "~~/composables/useMarkdown";
+import { useReaderAuth } from "~~/composables/useReaderAuth";
 import { readingMinutes } from "~~/composables/useReadingTime";
 import { useRecentlyViewed } from "~~/composables/useRecentlyViewed";
 import { usePostSeo } from "~~/composables/useSeo";
@@ -24,6 +26,7 @@ const { data: post, pending, error } = await usePost(() => route.params.slug as 
 // Continue-reading trail (DEC-104, TASK-164): remember this post client-side
 // when its detail page loads (dedup/cap/prune live in useRecentlyViewed).
 const { record } = useRecentlyViewed();
+const { isAuthenticated } = useReaderAuth();
 watch(
 	() => (post.value ? { slug: post.value.slug, title: post.value.title } : null),
 	(p) => {
@@ -121,6 +124,11 @@ onMounted(() => {
 	const postId = post.value?.id;
 	if (postId) {
 		usePostView(postId).catch(() => {});
+		// Server-backed reading history (DEC-116, TASK-170): sync a signed-in
+		// reader's view to their cross-device history (guests keep the local trail).
+		if (isAuthenticated.value) {
+			recordReaderHistory(postId).catch(() => {});
+		}
 	}
 	const updateProgress = () => {
 		const scrolled = window.scrollY;

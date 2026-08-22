@@ -1072,6 +1072,61 @@ export async function removeReaderBookmark(postId: number) {
 	});
 }
 
+/** One history item — a viewed post summary plus when it was last read. */
+export interface ReaderHistoryItem {
+	id: number;
+	title: string;
+	slug: string;
+	excerpt?: string | null;
+	viewed_at?: string | null;
+}
+
+export interface ReaderHistoryListResponse {
+	items: ReaderHistoryItem[];
+	total: number;
+	page: number;
+	limit: number;
+	total_pages: number;
+}
+
+/** Server-backed reading history list, newest-first (requires reader token). */
+export async function fetchReaderHistory(page = 1, limit = 50) {
+	const config = useRuntimeConfig();
+	const apiUrl = config.public.apiUrl;
+	return useFetch<ReaderHistoryListResponse>(
+		`${apiUrl}/api/reader/me/history?page=${page}&limit=${limit}`,
+		{
+			headers: getReaderAuthHeaders(),
+			server: false,
+		},
+	);
+}
+
+/** Record a view on a post (idempotent upsert; requires reader token). */
+export async function recordReaderHistory(postId: number) {
+	const config = useRuntimeConfig();
+	const apiUrl = config.public.apiUrl;
+	return useFetch<{ post_id: number; already_existed: boolean }>(
+		`${apiUrl}/api/reader/me/history/${postId}`,
+		{
+			method: "POST",
+			headers: getReaderAuthHeaders(),
+			server: false,
+		},
+	);
+}
+
+/** Clear the reader's entire reading history (requires reader token). */
+export async function clearReaderHistory() {
+	const config = useRuntimeConfig();
+	const apiUrl = config.public.apiUrl;
+	return useFetch<null>(`${apiUrl}/api/reader/me/history`, {
+		method: "DELETE",
+		headers: getReaderAuthHeaders(),
+		server: false,
+	});
+}
+
 /** Moderation status of a reader's own comment (DEC-066, TASK-139). */
 export type MyCommentStatus = "pending" | "approved" | "rejected";
 

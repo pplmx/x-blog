@@ -1,24 +1,30 @@
 /**
- * Reading-history page tests (DEC-114, TASK-169).
+ * Reading-history page tests (DEC-114, TASK-169; DEC-116, TASK-170).
  *
  * Verifies the empty state, the newest-first history list with viewed
  * timestamps and continue-reading links, and the confirm/cancel/clear flow.
- * useRecentlyViewed and useSeo are mocked so tests control the trail
+ * useReadingHistory and useSeo are mocked so tests control the trail
  * deterministically (the composable itself is covered by its own spec).
  */
 
 import { mount } from "@vue/test-utils";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ref } from "vue";
-import type { RecentlyViewedPost } from "../../composables/useRecentlyViewed";
+import type { HistoryEntry } from "../../composables/useReadingHistory";
 
-const mockRecent = ref<RecentlyViewedPost[]>([]);
-const mockClear = vi.fn(() => {
-	mockRecent.value = [];
+const mockHistory = ref<HistoryEntry[]>([]);
+const mockClear = vi.fn(async () => {
+	mockHistory.value = [];
 });
 
-vi.mock("../../composables/useRecentlyViewed", () => ({
-	useRecentlyViewed: () => ({ recent: mockRecent, record: vi.fn(), clear: mockClear }),
+vi.mock("../../composables/useReadingHistory", () => ({
+	useReadingHistory: () => ({
+		history: mockHistory,
+		loading: ref(false),
+		serverEnabled: ref(false),
+		load: vi.fn(),
+		clear: mockClear,
+	}),
 }));
 
 vi.mock("../../composables/useSeo", () => ({ useSeo: vi.fn() }));
@@ -38,9 +44,9 @@ function mountHistory() {
 	return mount(HistoryPage, { global: { stubs } });
 }
 
-describe("Reading-history page (TASK-169)", () => {
+describe("Reading-history page (TASK-170)", () => {
 	beforeEach(() => {
-		mockRecent.value = [];
+		mockHistory.value = [];
 		mockClear.mockClear();
 	});
 
@@ -56,7 +62,7 @@ describe("Reading-history page (TASK-169)", () => {
 	});
 
 	it("lists history entries with title and continue-reading label", () => {
-		mockRecent.value = [
+		mockHistory.value = [
 			{ slug: "a", title: "Article A", viewedAt: Date.UTC(2024, 0, 15, 10, 30) },
 			{ slug: "b", title: "Article B", viewedAt: Date.UTC(2024, 1, 1, 9, 0) },
 		];
@@ -69,19 +75,21 @@ describe("Reading-history page (TASK-169)", () => {
 	});
 
 	it("shows a localized viewed timestamp when available", () => {
-		mockRecent.value = [{ slug: "a", title: "Article A", viewedAt: Date.UTC(2024, 0, 15, 10, 30) }];
+		mockHistory.value = [
+			{ slug: "a", title: "Article A", viewedAt: Date.UTC(2024, 0, 15, 10, 30) },
+		];
 		const wrapper = mountHistory();
 		expect(wrapper.text()).toContain("2024");
 	});
 
 	it("falls back to the unviewed label for legacy entries without a timestamp", () => {
-		mockRecent.value = [{ slug: "a", title: "Article A" }];
+		mockHistory.value = [{ slug: "a", title: "Article A" }];
 		const wrapper = mountHistory();
 		expect(wrapper.text()).toContain("最近浏览");
 	});
 
 	it("clears history only after confirmation", async () => {
-		mockRecent.value = [{ slug: "a", title: "Article A", viewedAt: Date.now() }];
+		mockHistory.value = [{ slug: "a", title: "Article A", viewedAt: Date.now() }];
 		const wrapper = mountHistory();
 		expect(wrapper.text()).toContain("Article A");
 

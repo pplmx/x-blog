@@ -210,6 +210,34 @@ class ReaderBookmark(Base):
     )
 
 
+class ReadingHistory(Base):
+    """A reader's server-backed view history (DEC-116, TASK-170).
+
+    One row per reader↔post pair (unique constraint) holding the last time the
+    reader viewed the post — an upsert updates ``viewed_at`` in place so there
+    are no duplicate rows. This makes a signed-in reader's Continue-reading
+    trail follow them across devices (the client-side localStorage trail,
+    DEC-104/TASK-169, remains the guest fallback). Additive table, no DB-level
+    FK on the columns (SQLite alembic can't add FK-carrying columns to existing
+    tables, DEC-009; integrity enforced at the API layer like ReaderBookmark).
+    """
+
+    __tablename__ = "reading_history"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    reader_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
+    post_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
+    viewed_at: Mapped[datetime | None] = mapped_column(DateTime, default=lambda: datetime.now(UTC))
+
+    __table_args__ = (UniqueConstraint("reader_id", "post_id", name="uq_reading_history_reader_post"),)
+
+    post: Mapped[Post] = relationship(
+        "Post",
+        primaryjoin="ReadingHistory.post_id == Post.id",
+        foreign_keys="ReadingHistory.post_id",
+    )
+
+
 class CommentSubscription(Base):
     """A reader following a post's comment thread (DEC-078/TASK-150).
 

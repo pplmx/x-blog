@@ -1,18 +1,19 @@
 <script setup lang="ts">
 /**
- * Reader reading-history page (DEC-114, TASK-169).
+ * Reader reading-history page (DEC-114, TASK-169; DEC-116, TASK-170).
  *
- * Lists the reader's recently-viewed posts (from the client-side
- * useRecentlyViewed trail, newest-first) with continue-reading links, viewed
- * timestamps, a single clear-history action, and an empty state. Frontend-only
- * — no backend/schema dependency; the trail lives in localStorage.
+ * Lists the reader's recently-viewed posts newest-first with continue-reading
+ * links, viewed timestamps, a single clear-history action, and an empty state.
+ * The source follows the reader: a signed-in reader gets the server-backed
+ * history (synced across devices); guests use the client-side localStorage
+ * trail (see composables/useReadingHistory).
  */
-import { ref } from "vue";
-import { type RecentlyViewedPost, useRecentlyViewed } from "~~/composables/useRecentlyViewed";
+import { onMounted, ref } from "vue";
+import { type HistoryEntry, useReadingHistory } from "~~/composables/useReadingHistory";
 import { useSeo } from "~~/composables/useSeo";
 
 const { t, locale } = useLang();
-const { recent, clear } = useRecentlyViewed();
+const { history, loading, load, clear } = useReadingHistory();
 
 useSeo({
 	title: t("history.seoTitle"),
@@ -20,17 +21,22 @@ useSeo({
 	path: "/history",
 });
 
+// Load from the active source (server when signed in, else local).
+onMounted(() => {
+	void load();
+});
+
 // Single-action clear with an inline confirmation (destructive, no undo).
 const confirmClear = ref(false);
 
-function clearHistory() {
-	clear();
+async function clearHistory() {
+	await clear();
 	confirmClear.value = false;
 }
 
 // Absolute viewed date, localized. Legacy entries without a timestamp fall
 // back to a "recently viewed" label.
-function viewedLabel(item: RecentlyViewedPost): string {
+function viewedLabel(item: HistoryEntry): string {
 	if (!item.viewedAt) return t("history.unviewed");
 	const d = new Date(item.viewedAt);
 	const fmt = new Intl.DateTimeFormat(locale.value === "zh" ? "zh-CN" : "en-US", {
@@ -57,7 +63,7 @@ function viewedLabel(item: RecentlyViewedPost): string {
         </p>
       </div>
       <button
-        v-if="recent.length"
+        v-if="history.length || loading"
         type="button"
         class="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 hover:text-red-500 dark:hover:text-red-400 transition-colors"
         @click="confirmClear = true"
@@ -94,7 +100,7 @@ function viewedLabel(item: RecentlyViewedPost): string {
     </div>
 
     <!-- Empty state -->
-    <div v-if="!recent.length" class="text-center py-20">
+    <div v-if="!loading && !history.length" class="text-center py-20">
       <Icon icon="lucide:history" class="w-14 h-14 mx-auto mb-5 text-gray-300 dark:text-gray-600" />
       <p class="font-medium text-gray-700 dark:text-gray-200 mb-2">{{ t('history.empty') }}</p>
       <p class="text-sm text-gray-500 dark:text-gray-400 mb-7">{{ t('history.emptyDesc') }}</p>
@@ -110,7 +116,7 @@ function viewedLabel(item: RecentlyViewedPost): string {
     <!-- History list -->
     <div v-else class="space-y-3">
       <NuxtLink
-        v-for="item in recent"
+        v-for="item in history"
         :key="item.slug"
         :to="`/posts/${item.slug}`"
         class="group flex items-center gap-4 p-4 rounded-2xl border border-gray-100 dark:border-gray-800 hover:border-violet-200 dark:hover:border-violet-800 hover:shadow-md transition-all duration-200"

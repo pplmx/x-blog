@@ -1305,6 +1305,74 @@ def remove_reader_bookmark(db: Session, reader_id: int, post_id: int) -> bool:
     return True
 
 
+def get_reading_history(db: Session, reader_id: int, post_id: int) -> models.ReadingHistory | None:
+    """Return the reader's view-history row for a post, or None."""
+    return (
+        db.query(models.ReadingHistory)
+        .filter(
+            models.ReadingHistory.reader_id == reader_id,
+            models.ReadingHistory.post_id == post_id,
+        )
+        .first()
+    )
+
+
+def record_reading_history(db: Session, reader_id: int, post_id: int) -> tuple[models.ReadingHistory, bool]:
+    """Upsert a view into the reader's history; returns (row, created).
+
+    Idempotent: recording the same post again refreshes ``viewed_at`` in place
+    (moving it to the front of the newest-first list) instead of duplicating —
+    a reader revisiting a post bumps it, mirroring read-trail semantics
+    (DEC-116, TASK-170).
+    """
+    existing = get_reading_history(db, reader_id, post_id)
+    if existing:
+        existing.viewed_at = datetime.now(UTC)
+        db.add(existing)
+        db.commit()
+        db.refresh(existing)
+        return existing, False
+    row = models.ReadingHistory(reader_id=reader_id, post_id=post_id, viewed_at=datetime.now(UTC))
+    db.add(row)
+    db.commit()
+    db.refresh(row)
+    return row, True
+
+
+def list_reader_history(
+    db: Session, reader_id: int, page: int = 1, limit: int = 20
+) -> tuple[list[tuple[models.Post, datetime]], int]:
+    """Return the reader's viewed posts (publicly visible only) newest-first.
+
+    Paginated. Same non-leak invariant as bookmarks/subscriptions: a viewed post
+    that was later un-published/scheduled simply stops appearing (the history row
+    is kept; it reappears if the post becomes public again). Each item carries
+    the post plus the last ``viewed_at`` so the UI can render when it was read.
+    A reader's history is a bounded personal list, so the public-visibility
+    filter runs in Python (mirroring list_reader_bookmarks) and pagination
+    slices the filtered result — keeping ``total`` equal to the visible count.
+    """
+    rows = (
+        db.query(models.Post, models.ReadingHistory.viewed_at)
+        .join(models.ReadingHistory, models.ReadingHistory.post_id == models.Post.id)
+        .filter(models.ReadingHistory.reader_id == reader_id)
+        .options(joinedload(models.Post.category), joinedload(models.Post.tags))
+        .order_by(models.ReadingHistory.viewed_at.desc(), models.Post.id.desc())
+        .all()
+    )
+    visible = [(post, viewed_at) for post, viewed_at in rows if is_publicly_visible(post)]
+    total = len(visible)
+    page_items = visible[(page - 1) * limit : page * limit]
+    return page_items, total
+
+
+def clear_reader_history(db: Session, reader_id: int) -> int:
+    """Delete every history row for a reader; returns the number removed."""
+    deleted = db.query(models.ReadingHistory).filter(models.ReadingHistory.reader_id == reader_id).delete()
+    db.commit()
+    return deleted
+
+
 def list_reader_bookmarks(db: Session, reader_id: int) -> list[models.Post]:
     """Return the reader's bookmarked posts that are *publicly visible* only.
 
