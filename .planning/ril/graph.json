@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 132,
+  "round": 133,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-08-22T13:39:49+00:00",
+  "updated_at": "2026-08-22T14:47:12+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -8036,7 +8036,7 @@
       "version": 1,
       "created_at": "2026-08-22T13:35:18+00:00",
       "updated_at": "2026-08-22T13:35:18+00:00",
-      "touched_round": 132,
+      "touched_round": 133,
       "title": "Milestone: Recently viewed / continue reading row (home)",
       "rationale": "Feature-evolution selection (SKILL 11.2 gap analysis). With reader features (series nav, TOC, bookmarks, search, comments) mature, a reader who leaves a long post and comes back later has no lightweight cue of where they were — the blog has no \"recently viewed/continue reading\" affordance (confirmed absent). Milestone: track the posts a visitor actually reads and surface a compact \"Recently viewed / Continue reading\" row on the home page so they can jump back. Users: returning readers who want to resume posts they opened earlier without re-searching. Why now: purely client-side (no auth/DB dependency), a clean net-additive vertical slice that improves returning-reader continuity. Acceptance (one sentence): a visitor who opens a few posts sees them listed (most-recent-first, deduped, capped) in a Continue-reading row on the home page. Scope: a useRecentlyViewed composable that records a post slug/id + title into localStorage when its detail page loads (capped ~8, most-recent-first, dedup, stale entries pruned), and a home-page section rendering recent posts with links (i18n title, empty = hidden); frontend vitest (record, dedup, cap, ordering, clears), no schema or backend change. not a backend slice.",
       "alternatives_rejected": "Reader-account server-side reading history (needs a new table + auth wiring, heavier than the client-side need); email digests (no SMTP); comment code copy button (trivial button, rejected); bookmarks are the explicit-save path (different intent from passive recently-viewed, both can coexist)."
@@ -8044,17 +8044,67 @@
     "TASK-164": {
       "id": "TASK-164",
       "type": "task",
-      "status": "active",
-      "version": 1,
+      "status": "resolved",
+      "version": 2,
       "created_at": "2026-08-22T13:37:01+00:00",
-      "updated_at": "2026-08-22T13:37:01+00:00",
-      "touched_round": 132,
+      "updated_at": "2026-08-22T14:47:09+00:00",
+      "touched_round": 133,
       "category": "core-feature",
       "severity": 0.55,
       "confidence": 0.9,
       "effort": 1.0,
       "unlock_factor": 1.0,
       "title": "Recently viewed / continue reading: useRecentlyViewed composable (localStorage cap ~8, most-recent-first, dedup, prune) recording post detail open + home-page Continue reading row with links + i18n (hidden when empty) + frontend vitest; no schema/backend change"
+    },
+    "CHG-154": {
+      "id": "CHG-154",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-22T14:46:42+00:00",
+      "updated_at": "2026-08-22T14:46:42+00:00",
+      "touched_round": 133,
+      "commit": "c462562c1e35e66dbdbde21a80587dfedf191f36",
+      "title": "Recently-viewed continue-reading row (DEC-104, TASK-164)"
+    },
+    "DEC-105": {
+      "id": "DEC-105",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-22T14:46:49+00:00",
+      "updated_at": "2026-08-22T14:46:49+00:00",
+      "touched_round": 133,
+      "title": "Milestone delivered: recently-viewed continue-reading row (DEC-104 complete)",
+      "rationale": "Delivery of DEC-104 / TASK-164 via CHG-154 (c462562). Frontend-only, no schema/backend change. useRecentlyViewed composable records each opened post (slug+title) into localStorage, most-recent-first, deduped by slug, capped at 8, stale (>30d) entries pruned, missing-storage-safe, exposing a reactive `recent`; the post detail page records every post it loads; the home page renders a Continue-reading row (recently-viewed links, 6 shown, hidden when empty) with en/zh labels. Tests: composable (order/dedup, cap, cross-instance persistence, clear) + home page (hidden when empty, renders recent posts as links) - vitest 1039 green, biome + vue-tsc clean. No backend change. Acceptance met: a visitor who opens a few posts sees them listed most-recent-first in a Continue-reading row on the home page.",
+      "alternatives_rejected": "Server-side reader reading history (needs a table + auth wiring, heavier than the client-side need); email digests (no SMTP); comment code copy button (trivial button, rejected); bookmarks remain the explicit-save path (coexist)."
+    },
+    "DEC-106": {
+      "id": "DEC-106",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-22T14:47:01+00:00",
+      "updated_at": "2026-08-22T14:47:01+00:00",
+      "touched_round": 133,
+      "title": "Milestone: reader self-service account deletion",
+      "rationale": "Feature-evolution selection (SKILL 11.2 gap analysis). Reader accounts (DEC-059/062) give verifying identity for comments/bookmarks/push, but a registered reader has no way to delete their own account — there is no self-service account-removal endpoint or UI, so the only paths are leaving data forever or asking an operator. Self-service data deletion is a well-recognized user right (privacy/control). Milestone: a reader can delete their own account from the account page, requiring their password, which removes their identity and cloud data while keeping the discussion intact. Users: readers who registered under a verified identity and want to leave/remove their account. Why now: the account/reader arc is otherwise feature-complete; this closes the lifecycle. Acceptance (one sentence): a signed-in reader can, after confirming their password, permanently delete their account, which detaches their identity from past comments (kept public but anonymized) and removes their bookmarks, thread/push subscriptions. Scope: backend DELETE /api/reader/me/account (password-confirm, ownership-scoped, 401/403; detach reader_id from their comments to anonymize, delete ReaderBookmark/CommentSubscription/PushSubscription rows, delete the ReaderAccount, revoke auth) + frontend account-page delete flow (password + confirm, i18n) + backend pytest (password required, anonymizes comments not deletes them, removes bookmarks/subs, unknown reader) + frontend test + E2E.",
+      "alternatives_rejected": "Hard-delete the reader is comments (destroys public discussion + needs reply reparenting per row, worse than anonymize); admin-only deletion (no self-service, leaves the privacy gap); soft-disable account (does not address data removal); comment code copy button (trivial, rejected); email digests (no SMTP)."
+    },
+    "TASK-165": {
+      "id": "TASK-165",
+      "type": "task",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-22T14:47:05+00:00",
+      "updated_at": "2026-08-22T14:47:05+00:00",
+      "touched_round": 133,
+      "category": "core-feature",
+      "severity": 0.7,
+      "confidence": 0.85,
+      "effort": 1.6,
+      "unlock_factor": 1.0,
+      "title": "Reader self-service account deletion: DELETE /api/reader/me/account (password-confirm, ownership-scoped, anonymize reader comments by detaching reader_id, delete ReaderBookmark/CommentSubscription/PushSubscription, delete account) + account-page delete flow (password + confirm, i18n) + backend pytest + frontend test + E2E"
     }
   },
   "edges": [
@@ -11403,6 +11453,36 @@
       "to": "TASK-164",
       "type": "governs",
       "created_at": "2026-08-22T13:39:49+00:00"
+    },
+    {
+      "from": "CHG-154",
+      "to": "TASK-164",
+      "type": "implements",
+      "created_at": "2026-08-22T14:47:11+00:00"
+    },
+    {
+      "from": "DEC-105",
+      "to": "DEC-104",
+      "type": "supersedes",
+      "created_at": "2026-08-22T14:47:11+00:00"
+    },
+    {
+      "from": "DEC-105",
+      "to": "TASK-164",
+      "type": "governs",
+      "created_at": "2026-08-22T14:47:11+00:00"
+    },
+    {
+      "from": "DEC-106",
+      "to": "DEC-105",
+      "type": "supersedes",
+      "created_at": "2026-08-22T14:47:12+00:00"
+    },
+    {
+      "from": "DEC-106",
+      "to": "TASK-165",
+      "type": "governs",
+      "created_at": "2026-08-22T14:47:12+00:00"
     }
   ]
 }
