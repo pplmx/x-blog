@@ -48,7 +48,9 @@ test.describe("Reading-trend analytics (admin dashboard)", () => {
 		expect(login.ok).toBeTruthy();
 		const { access_token } = await login.json();
 		const users = await (
-			await fetch(`${API}/api/admin/users`, { headers: { Authorization: `Bearer ${access_token}` } })
+			await fetch(`${API}/api/admin/users`, {
+				headers: { Authorization: `Bearer ${access_token}` },
+			})
 		).json();
 		if (!users.some((u: { username: string }) => u.username === "e2eeditor")) {
 			const created = await fetch(`${API}/api/admin/users`, {
