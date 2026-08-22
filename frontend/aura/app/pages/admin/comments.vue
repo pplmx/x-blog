@@ -4,6 +4,7 @@ import {
 	approveAdminComment,
 	batchApproveAdminComment,
 	deleteAdminComment,
+	dismissAdminCommentFlags,
 	fetchAdminComments,
 } from "~~/composables/useApi";
 
@@ -41,18 +42,21 @@ const PAGE_SIZE = 20;
 // Moderation filters (RIL TASK-078, ISS-047): status, full-text search and
 // created-date range. Applied server-side; the list refetches on change.
 const statusFilter = ref<"all" | "pending" | "approved">("all");
+const flaggedOnly = ref(false);
 const searchQuery = ref("");
 const dateFrom = ref("");
 const dateTo = ref("");
 
 function activeFilters() {
 	return {
-		isApproved:
-			statusFilter.value === "pending"
+		isApproved: flaggedOnly.value
+			? undefined
+			: statusFilter.value === "pending"
 				? false
 				: statusFilter.value === "approved"
 					? true
 					: undefined,
+		flagged: flaggedOnly.value || undefined,
 		q: searchQuery.value.trim() || undefined,
 		dateFrom: dateFrom.value || undefined,
 		dateTo: dateTo.value || undefined,
@@ -111,6 +115,7 @@ async function applyFilters() {
 /** Clear all filters back to the unfiltered list. */
 function clearFilters() {
 	statusFilter.value = "all";
+	flaggedOnly.value = false;
 	searchQuery.value = "";
 	dateFrom.value = "";
 	dateTo.value = "";
@@ -177,6 +182,20 @@ async function handleDelete(id: number) {
 	actionError.value = null;
 	try {
 		await deleteAdminComment(id);
+		await loadComments(activeFilters(), currentPage.value);
+	} catch (e) {
+		actionError.value = getErrorMessage(e);
+	} finally {
+		isProcessing.value = false;
+	}
+}
+
+/** Dismiss all reader flags on a comment, then reload the queue. (DEC-108) */
+async function handleDismissFlags(id: number) {
+	isProcessing.value = true;
+	actionError.value = null;
+	try {
+		await dismissAdminCommentFlags(id);
 		await loadComments(activeFilters(), currentPage.value);
 	} catch (e) {
 		actionError.value = getErrorMessage(e);
@@ -259,7 +278,7 @@ async function handleApprove(id: number, approved: boolean) {
               ? 'bg-blue-500 text-white'
               : 'bg-white dark:bg-gray-900 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800'"
             class="px-3 py-1.5 text-sm font-medium transition-colors"
-            @click="statusFilter = 'all'; applyFilters()"
+            @click="statusFilter = 'all'; flaggedOnly = false; applyFilters()"
           >
             {{ t("admin.comments.filterAll") }}
           </button>
@@ -269,7 +288,7 @@ async function handleApprove(id: number, approved: boolean) {
               ? 'bg-amber-500 text-white'
               : 'bg-white dark:bg-gray-900 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800'"
             class="px-3 py-1.5 text-sm font-medium transition-colors"
-            @click="statusFilter = 'pending'; applyFilters()"
+            @click="statusFilter = 'pending'; flaggedOnly = false; applyFilters()"
           >
             {{ t("admin.comments.filterPending") }}
           </button>
@@ -279,9 +298,19 @@ async function handleApprove(id: number, approved: boolean) {
               ? 'bg-green-500 text-white'
               : 'bg-white dark:bg-gray-900 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800'"
             class="px-3 py-1.5 text-sm font-medium transition-colors"
-            @click="statusFilter = 'approved'; applyFilters()"
+            @click="statusFilter = 'approved'; flaggedOnly = false; applyFilters()"
           >
             {{ t("admin.comments.filterApproved") }}
+          </button>
+          <button
+            type="button"
+            :class="flaggedOnly
+              ? 'bg-red-500 text-white'
+              : 'bg-white dark:bg-gray-900 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800'"
+            class="px-3 py-1.5 text-sm font-medium transition-colors"
+            @click="statusFilter = 'all'; flaggedOnly = true; applyFilters()"
+          >
+            {{ t("admin.comments.filterFlagged") }}
           </button>
         </div>
       </div>
@@ -384,6 +413,13 @@ async function handleApprove(id: number, approved: boolean) {
               >
                 {{ comment.is_approved ? t('admin.comments.approved') : t('admin.comments.pending') }}
               </span>
+              <span
+                v-if="(comment.flag_count ?? 0) > 0"
+                class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400"
+              >
+                <Icon icon="lucide:flag" class="w-3 h-3 mr-1" />
+                {{ t('admin.comments.flaggedBadge', { n: comment.flag_count ?? 0 }) }}
+              </span>
             </div>
 
             <p class="text-gray-700 dark:text-gray-300 mb-2">
@@ -415,6 +451,15 @@ async function handleApprove(id: number, approved: boolean) {
               @click="handleApprove(comment.id, false)"
             >
               {{ t("admin.comments.revoke") }}
+            </button>
+            <button
+              v-if="(comment.flag_count ?? 0) > 0"
+              type="button"
+              :disabled="isProcessing"
+              class="px-3 py-1.5 text-xs text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/30 hover:bg-amber-100 dark:hover:bg-amber-900/50 rounded-lg transition-colors"
+              @click="handleDismissFlags(comment.id)"
+            >
+              {{ t("admin.comments.dismissFlags") }}
             </button>
             <button
               type="button"

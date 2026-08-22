@@ -22,6 +22,9 @@
 			"markdownHint": "支持 Markdown，代码块、加粗和链接会渲染。"
 		},
 		"commentList": {
+			"flag": "举报",
+			"flagged": "已举报",
+			"flagError": "举报失败，请重试。",
 			"edited": "已编辑",
 			"edit": "编辑",
 			"delete": "删除",

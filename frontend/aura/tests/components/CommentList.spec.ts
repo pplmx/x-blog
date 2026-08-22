@@ -24,12 +24,14 @@ const {
 	mockUseCommentLike,
 	mockEditMyComment,
 	mockDeleteMyComment,
+	mockFlagComment,
 } = vi.hoisted(() => ({
 	mockFetchComments: vi.fn(),
 	mockCreateComment: vi.fn(),
 	mockUseCommentLike: vi.fn(),
 	mockEditMyComment: vi.fn(),
 	mockDeleteMyComment: vi.fn(),
+	mockFlagComment: vi.fn(),
 }));
 vi.mock("~/composables/useApi", () => ({
 	fetchComments: mockFetchComments,
@@ -37,6 +39,7 @@ vi.mock("~/composables/useApi", () => ({
 	useCommentLike: mockUseCommentLike,
 	editMyComment: mockEditMyComment,
 	deleteMyComment: mockDeleteMyComment,
+	flagComment: mockFlagComment,
 }));
 
 import CommentList from "../../components/CommentList.vue";
@@ -523,6 +526,33 @@ describe("CommentList", () => {
 			} finally {
 				vi.unstubAllGlobals();
 			}
+		});
+	});
+
+	describe("Comment flag/report (DEC-108, TASK-166)", () => {
+		beforeEach(() => {
+			localStorage.clear();
+			mockFlagComment.mockReset();
+		});
+
+		it("flags a comment and marks it locally", async () => {
+			mockFlagComment.mockResolvedValue({ comment_id: 1, flags: 1, is_new: true });
+			const { wrapper } = await mountCommentList();
+			const flagBtn = wrapper.find("#comment-1 .comment-flag");
+			expect(flagBtn.exists()).toBe(true);
+			await flagBtn.trigger("click");
+			await flushPromises();
+			expect(mockFlagComment).toHaveBeenCalledWith(1);
+			expect(localStorage.getItem("flagged-comments:1")).toBe("1");
+			expect(wrapper.find("#comment-1 .comment-flag").text()).toContain("已举报");
+		});
+
+		it("does not flag a comment already flagged by this browser", async () => {
+			localStorage.setItem("flagged-comments:1", "1");
+			const { wrapper } = await mountCommentList();
+			await wrapper.find("#comment-1 .comment-flag").trigger("click");
+			await flushPromises();
+			expect(mockFlagComment).not.toHaveBeenCalled();
 		});
 	});
 

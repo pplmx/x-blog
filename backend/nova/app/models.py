@@ -160,6 +160,28 @@ class Comment(Base):
     )
 
 
+class CommentFlag(Base):
+    """A reader flagging a comment for moderation (DEC-108, TASK-166).
+
+    One flag per comment per visitor is enforced by the unique (comment_id,
+    ip_key) pair, so repeated clicks by the same person are idempotent and the
+    moderator sees a count of distinct reporters, not click spam. Additive table,
+    no DB-level FK on the columns (SQLite alembic can't add FK-carrying columns
+    to existing tables, DEC-009).
+    """
+
+    __tablename__ = "comment_flags"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    comment_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
+    # Proxy-aware source key (same resolver as the rate limiter / stored ip).
+    ip_key: Mapped[str] = mapped_column(String(50), nullable=False, index=True)
+    reason: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    created_at: Mapped[datetime | None] = mapped_column(DateTime, default=lambda: datetime.now(UTC))
+
+    __table_args__ = (UniqueConstraint("comment_id", "ip_key", name="uq_comment_flags_comment_ip"),)
+
+
 class ReaderBookmark(Base):
     """A reader's saved post (cloud-synced bookmarks, DEC-059/TASK-132).
 

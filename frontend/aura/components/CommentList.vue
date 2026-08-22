@@ -8,6 +8,7 @@
     </div>
     <p v-if="likeError" class="mb-3 text-sm text-red-500">{{ likeError }}</p>
     <p v-if="actionError" class="mb-3 text-sm text-red-500">{{ actionError }}</p>
+    <p v-if="flagError" class="mb-3 text-sm text-red-500">{{ flagError }}</p>
 
     <!-- Comment sort (DEC-094/TASK-159): reorder the thread by newest / oldest
          / most helpful (likes). Shown once there is a discussion to sort. -->
@@ -97,6 +98,22 @@
                   :class="{ 'animate-spin': likingIds.has(comment.id) }"
                 />
                 <span class="like-count">{{ comment.likes ?? 0 }}</span>
+              </button>
+              <!-- Comment flag/report for moderation (DEC-108, TASK-166): a
+                   visitor flags an inappropriate comment; one per browser. -->
+              <button
+                type="button"
+                class="comment-flag inline-flex items-center gap-1 text-xs text-gray-400 dark:text-gray-500 hover:text-amber-600 dark:hover:text-amber-400 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+                :disabled="flaggingIds.has(comment.id)"
+                :title="isCommentFlagged(comment.id) ? t('components.commentList.flagged') : t('components.commentList.flag')"
+                @click="handleCommentFlag(comment)"
+              >
+                <Icon
+                  icon="lucide:flag"
+                  class="w-3.5 h-3.5"
+                  :class="{ 'text-amber-500': isCommentFlagged(comment.id) }"
+                />
+                <span>{{ isCommentFlagged(comment.id) ? t('components.commentList.flagged') : t('components.commentList.flag') }}</span>
               </button>
               <!-- Own-comment edit/delete (DEC-096, TASK-160): only the author
                    sees these; "edited" marks a self-edit. -->
@@ -212,6 +229,20 @@
                 />
                 <span class="like-count">{{ reply.likes ?? 0 }}</span>
               </button>
+              <button
+                type="button"
+                class="comment-flag inline-flex items-center gap-1 text-xs text-gray-400 dark:text-gray-500 hover:text-amber-600 dark:hover:text-amber-400 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+                :disabled="flaggingIds.has(reply.id)"
+                :title="isCommentFlagged(reply.id) ? t('components.commentList.flagged') : t('components.commentList.flag')"
+                @click="handleCommentFlag(reply)"
+              >
+                <Icon
+                  icon="lucide:flag"
+                  class="w-3.5 h-3.5"
+                  :class="{ 'text-amber-500': isCommentFlagged(reply.id) }"
+                />
+                <span>{{ isCommentFlagged(reply.id) ? t('components.commentList.flagged') : t('components.commentList.flag') }}</span>
+              </button>
               <span v-if="reply.edited_at" class="text-xs text-gray-400 dark:text-gray-500">{{ t('components.commentList.edited') }}</span>
               <template v-if="isOwnComment(reply)">
                 <button
@@ -306,6 +337,7 @@ import {
 	deleteMyComment,
 	editMyComment,
 	fetchComments,
+	flagComment,
 	useCommentLike,
 } from "~~/composables/useApi";
 import { highlightCode, loadHighlighter } from "~~/composables/useCodeHighlight";
@@ -507,6 +539,41 @@ async function confirmDelete(comment: Comment): Promise<void> {
 		const s = new Set(actionIds.value);
 		s.delete(comment.id);
 		actionIds.value = s;
+	}
+}
+
+// --- Comment flag/report (DEC-108, TASK-166) ---
+// A visitor flags an inappropriate comment for moderation; the backend dedups
+// by (comment, source), and the browser keeps its own guard so one person
+// reports a comment at most once (mirrors the like dedup).
+const FLAG_PREFIX = "flagged-comments:";
+function isCommentFlagged(id: number): boolean {
+	if (typeof window === "undefined") return false;
+	return localStorage.getItem(`${FLAG_PREFIX}${id}`) === "1";
+}
+function markCommentFlagged(id: number): void {
+	if (typeof window === "undefined") return;
+	localStorage.setItem(`${FLAG_PREFIX}${id}`, "1");
+}
+
+const flaggingIds = ref<Set<number>>(new Set());
+const flagError = ref<string | null>(null);
+
+async function handleCommentFlag(comment: Comment): Promise<void> {
+	if (isCommentFlagged(comment.id) || flaggingIds.value.has(comment.id)) return;
+	flaggingIds.value = new Set(flaggingIds.value).add(comment.id);
+	flagError.value = null;
+	try {
+		const resp = await flagComment(comment.id);
+		if (resp?.status === 200 || resp?.status === 201 || resp?.is_new !== undefined) {
+			markCommentFlagged(comment.id);
+		}
+	} catch {
+		flagError.value = t("components.commentList.flagError");
+	} finally {
+		const s = new Set(flaggingIds.value);
+		s.delete(comment.id);
+		flaggingIds.value = s;
 	}
 }
 

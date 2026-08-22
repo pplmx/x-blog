@@ -582,6 +582,7 @@ def admin_list_comments(
     q: str | None = Query(None, description="Search nickname/email/content"),
     date_from: datetime | None = Query(None, description="ISO date filter: created >= date_from"),
     date_to: datetime | None = Query(None, description="ISO date filter: created <= date_to"),
+    flagged: bool | None = Query(None, description="Filter to comments that have reader flags"),
     page: int = Query(1, ge=1),
     limit: int = Query(20, ge=1, le=100),
     db: Session = Depends(get_db),
@@ -612,9 +613,17 @@ def admin_list_comments(
         if end.tzinfo is not None:
             end = end.astimezone(UTC).replace(tzinfo=None)
         query = query.filter(models.Comment.created_at <= end)
+    if flagged is not None:
+        flagged_ids = db.query(models.CommentFlag.comment_id)
+        if flagged:
+            query = query.filter(models.Comment.id.in_(flagged_ids))
+        else:
+            query = query.filter(models.Comment.id.notin_(flagged_ids))
     total = query.count()
 
     comment_rows = query.order_by(models.Comment.created_at.desc()).offset((page - 1) * limit).limit(limit).all()
+    page_ids = [c.id for c, _ in comment_rows]
+    flag_counts = crud.flag_counts_for_comments(db, page_ids)
     result = []
     for c, post_title in comment_rows:
         result.append(
@@ -628,6 +637,7 @@ def admin_list_comments(
                 "ip_address": c.ip_address,
                 "is_approved": c.is_approved,
                 "created_at": c.created_at.isoformat() if c.created_at else None,
+                "flag_count": flag_counts.get(c.id, 0),
             }
         )
     return {
@@ -669,6 +679,20 @@ def admin_batch_approve_comments(
 class PasswordChangeRequest(BaseModel):
     current_password: str
     new_password: str = Field(min_length=8, description="New password must be at least 8 characters")
+
+
+@router.delete("/comments/{comment_id}/flags")
+def dismiss_comment_flags(
+    comment_id: int,
+    db: Session = Depends(get_db),
+    _current_user: auth.User = Depends(get_current_admin),
+):
+    """Clear all reader flags on a comment (moderator dismissed the reports)."""
+    comment = db.query(models.Comment).filter(models.Comment.id == comment_id).first()
+    if not comment:
+        raise HTTPException(status_code=404, detail="Comment not found")
+    removed = crud.dismiss_comment_flags(db, comment_id)
+    return {"comment_id": comment_id, "removed": removed}
 
 
 @router.post("/password")

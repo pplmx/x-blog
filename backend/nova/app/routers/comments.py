@@ -1,7 +1,7 @@
 import os
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Request
-from pydantic import BaseModel
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
+from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
 from app import auth, crud, models, schemas
@@ -287,6 +287,40 @@ def like_comment(
     if not updated:
         raise HTTPException(status_code=404, detail="Comment not found")
     return updated
+
+
+class CommentFlagBody(BaseModel):
+    """Optional reason when a reader flags a comment for moderation (DEC-108)."""
+
+    reason: str | None = Field(default=None, max_length=200)
+
+
+@router.post("/{comment_id}/flag")
+@limiter.limit(f"{RATE_LIMIT_COMMENT}/minute")
+def flag_comment(
+    request: Request,  # noqa: ARG001
+    response: Response,
+    comment_id: int,
+    body: CommentFlagBody | None = None,
+    db: Session = Depends(get_db),
+):
+    """Flag a comment for moderator review (DEC-108, TASK-166).
+
+    Anonymous/reader, rate-limited, idempotent per (comment, source IP). A
+    comment on a draft or otherwise non-public post responds 404 (same as an
+    unknown id) so the endpoint never answers existence questions about drafts.
+    Returns the distinct-flag count (not exposed on the public schema).
+    """
+    comment = db.get(models.Comment, comment_id)
+    if not comment:
+        raise HTTPException(status_code=404, detail="Comment not found")
+    post = db.get(models.Post, comment.post_id)
+    if not post or not crud.is_publicly_visible(post):
+        raise HTTPException(status_code=404, detail="Comment not found")
+    reason = (body.reason if body is not None else None) or None
+    created, total = crud.flag_comment(db, comment_id, client_rate_key(request), reason=reason)
+    response.status_code = 201 if created else 200
+    return {"comment_id": comment_id, "flags": total, "is_new": created}
 
 
 @router.delete("/{comment_id}", status_code=204)

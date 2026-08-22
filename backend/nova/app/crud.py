@@ -869,6 +869,55 @@ def increment_likes(db: Session, post_id: int) -> models.Post | None:
     return post
 
 
+def flag_comment(db: Session, comment_id: int, ip_key: str, reason: str | None = None) -> tuple[bool, int]:
+    """Record a reader flag on a comment; idempotent per (comment, ip_key).
+
+    Returns (created_new, total_distinct_flags). A second flag from the same
+    source key is a no-op (unique constraint) so the moderator sees distinct
+    reporters, not click spam (DEC-108, TASK-166).
+    """
+    existing = (
+        db.query(models.CommentFlag)
+        .filter(models.CommentFlag.comment_id == comment_id, models.CommentFlag.ip_key == ip_key)
+        .first()
+    )
+    if existing is None:
+        db.add(models.CommentFlag(comment_id=comment_id, ip_key=ip_key, reason=reason))
+        try:
+            db.commit()
+        except IntegrityError:
+            db.rollback()  # concurrent duplicate → treat as idempotent no-op
+    total = db.query(models.CommentFlag).filter(models.CommentFlag.comment_id == comment_id).count()
+    return existing is None, total
+
+
+def flag_counts_for_comments(db: Session, comment_ids: list[int]) -> dict[int, int]:
+    """Map comment_id -> distinct-flag count for the admin comment list."""
+    if not comment_ids:
+        return {}
+    rows = (
+        db.query(models.CommentFlag.comment_id, func.count(models.CommentFlag.id))
+        .filter(models.CommentFlag.comment_id.in_(comment_ids))
+        .group_by(models.CommentFlag.comment_id)
+        .all()
+    )
+    counts: dict[int, int] = {}
+    for cid, count in rows:
+        counts[int(cid)] = int(count)
+    return counts
+
+
+def dismiss_comment_flags(db: Session, comment_id: int) -> int:
+    """Clear all flags on a comment (moderator dismissed the reports)."""
+    removed = (
+        db.query(models.CommentFlag)
+        .filter(models.CommentFlag.comment_id == comment_id)
+        .delete(synchronize_session=False)
+    )
+    db.commit()
+    return removed
+
+
 def increment_comment_likes(db: Session, comment_id: int) -> models.Comment | None:
     """Increment the like count for a comment using atomic SQL update."""
     stmt = update(models.Comment).where(models.Comment.id == comment_id).values(likes=models.Comment.likes + 1)

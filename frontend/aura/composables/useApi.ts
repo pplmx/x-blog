@@ -380,6 +380,23 @@ export async function useCommentLike(commentId: number) {
 	});
 }
 
+/** Label for a comment flag (DEC-108, TASK-166). */
+export interface CommentFlagResult {
+	comment_id: number;
+	flags: number;
+	is_new: boolean;
+}
+
+/** Flag a comment for moderator review. Anonymous/reader, rate-limited and
+ *  idempotent per (comment, source) on the backend. */
+export async function flagComment(commentId: number): Promise<CommentFlagResult> {
+	const config = useRuntimeConfig();
+	const apiUrl = config.public.apiUrl;
+	return $fetch<CommentFlagResult>(`${apiUrl}/api/comments/${commentId}/flag`, {
+		method: "POST",
+	});
+}
+
 export async function createComment(
 	postId: number,
 	data: {
@@ -484,6 +501,8 @@ export interface AdminComment {
 	ip_address: string;
 	is_approved: boolean;
 	created_at: string;
+	/** Distinct reader flags (DEC-108, TASK-166). */
+	flag_count?: number;
 }
 
 /** Get auth headers from localStorage (admin token). */
@@ -812,6 +831,7 @@ export interface AdminCommentFilters {
 	q?: string;
 	dateFrom?: string;
 	dateTo?: string;
+	flagged?: boolean;
 }
 
 export async function fetchAdminComments(
@@ -827,6 +847,7 @@ export async function fetchAdminComments(
 	if (opts.q) query.set("q", opts.q);
 	if (opts.dateFrom) query.set("date_from", opts.dateFrom);
 	if (opts.dateTo) query.set("date_to", opts.dateTo);
+	if (opts.flagged !== undefined) query.set("flagged", String(opts.flagged));
 	query.set("page", String(page));
 	query.set("limit", String(limit));
 	// $fetch (not useFetch): the admin comments page reloads imperatively
@@ -835,6 +856,19 @@ export async function fetchAdminComments(
 	// under load — RIL ISS-097). $fetch awaits the real response. (DEC-070-era
 	// pattern, same as the reader my-comments helpers.)
 	return $fetch<AdminCommentListResponse>(`${apiUrl}/api/admin/comments?${query}`, {
+		headers: getAuthHeaders(),
+	});
+}
+
+/** Dismiss all reader flags on a comment (auth required). (DEC-108, TASK-166) */
+export async function dismissAdminCommentFlags(commentId: number): Promise<{
+	comment_id: number;
+	removed: number;
+}> {
+	const config = useRuntimeConfig();
+	const apiUrl = config.public.apiUrl;
+	return $fetch(`${apiUrl}/api/admin/comments/${commentId}/flags`, {
+		method: "DELETE",
 		headers: getAuthHeaders(),
 	});
 }
