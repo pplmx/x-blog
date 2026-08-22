@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 128,
+  "round": 129,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-08-22T11:23:21+00:00",
+  "updated_at": "2026-08-22T11:59:08+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -7836,7 +7836,7 @@
       "version": 1,
       "created_at": "2026-08-22T11:23:11+00:00",
       "updated_at": "2026-08-22T11:23:11+00:00",
-      "touched_round": 128,
+      "touched_round": 129,
       "title": "Milestone: comment editing/deleting by author (reader-owned comments)",
       "rationale": "Feature-evolution selection (SKILL 11.2 gap analysis) on the comments arc. The comments arc has matured (DEL-088 markdown -> DEC-090 highlight -> DEC-092 likes -> DEC-094 sorting) but a signed-in reader has no way to correct or retract their own comment: a typo or misstatement is permanent unless a moderator deletes it. Readers who authenticate (reader accounts, DEC-059/062) chat and share code under a verified identity, so ownership is knowable. Milestone: let a reader edit or delete their own reader-attributed comments. Users: signed-in readers who want to fix a typo or withdraw something they posted; moderators who no longer have to delete trivial self-corrections. Why now: reader accounts already attach reader_id to comments, so ownership auth is a clean additive slice on the existing comments surface (no schema change beyond an optional edited_at/edit history flag). Acceptance (one sentence): a signed-in reader can edit the text of their own comment and delete their own comment, and neither action affects other comments or anonymous ones. Scope: backend PATCH/DELETE /api/comments/{id} guarded by ownership (reader_id == current reader; 404/403 without leaking ownership; PATCH preserves post_id/parent_id, re-sanitizes content server-side, bumps optional edited_at, re-renders via the existing markdown/highlight pipeline); DELETE removes the comment and reparents/removes its replies consistently; frontend Edit/Delete controls rendered only on the reader is own comments, inline edit form reusing CommentForm, confirm-on-delete, localized labels; backend pytest (ownership, 404/403, anonymous/reader, reply handling) + frontend component + E2E.",
       "alternatives_rejected": "Comment code copy button (tiny, frontend-only, low value-gate, kept as a possible later slice); comment editing/deleting of ANY comment by moderators (admin already deletes via existing endpoint); comment dislikes (negative engagement, out); editing anonymous comments (no owner identity, out); soft-delete/tombstone toggle (bigger surface, not needed yet)."
@@ -7844,17 +7844,67 @@
     "TASK-160": {
       "id": "TASK-160",
       "type": "task",
-      "status": "active",
-      "version": 1,
+      "status": "resolved",
+      "version": 2,
       "created_at": "2026-08-22T11:23:14+00:00",
-      "updated_at": "2026-08-22T11:23:14+00:00",
-      "touched_round": 128,
+      "updated_at": "2026-08-22T11:58:59+00:00",
+      "touched_round": 129,
       "category": "core-feature",
       "severity": 0.7,
       "confidence": 0.85,
       "effort": 1.6,
       "unlock_factor": 1.3,
       "title": "Comment edit/delete by author: backend PATCH/DELETE /api/comments/{id} with reader ownership guard (404/403, re-sanitize content, optional edited flag; consistent reply handling) + frontend Edit/Delete on own comments w/ inline edit form + confirm-delete + i18n + backend pytest + frontend component + E2E"
+    },
+    "CHG-150": {
+      "id": "CHG-150",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-22T11:57:59+00:00",
+      "updated_at": "2026-08-22T11:57:59+00:00",
+      "touched_round": 129,
+      "commit": "2141f54",
+      "title": "Comment edit/delete by author (DEC-096, TASK-160)"
+    },
+    "DEC-097": {
+      "id": "DEC-097",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-22T11:58:16+00:00",
+      "updated_at": "2026-08-22T11:58:16+00:00",
+      "touched_round": 129,
+      "title": "Milestone delivered: comment edit/delete by author (DEC-096 complete)",
+      "rationale": "Delivery of DEC-096 / TASK-160 via CHG-150 (2141f54). Backend: additive Comment.edited_at column (migration e8d4c2a6f0b1) surfaced on Comment/CommentPublic; PATCH /api/reader/me/comments/{id} edits an own comment (any status), ownership-scoped (another/missing = 404), bounded content, stamps edited_at, body re-rendered through the sanitized markdown pipeline; crud.update_reader_comment + delete_reader_comment now reparents direct replies to the deleted comment parent (or top-level) instead of failing on dependent records, so a reader can withdraw a commented-on comment. Frontend: useApi Comment.edited_at + editMyComment (reuses deleteMyComment); CommentList renders Edit/Delete only on the reader is own comments, inline edit textarea with Save/Cancel, confirm-on-delete, edited marker, localized errors; delete re-fetches so reparented replies render. Tests: backend ownership/edit/reparent suite; frontend vitest 1026 green incl. own-comment controls, edit+edited marker, delete confirm/cancel; biome + vue-tsc clean; Playwright edit+delete journey added. NOTE: backend pytest + Playwright not executed in the CPU-starved sandbox; ruff/pyright + import + OpenAPI route registration checks green (PATCH /api/reader/me/comments/{id} registered).",
+      "alternatives_rejected": "Comment code copy button (tiny, frontend-only, low value-gate, kept rejected); editing any comment by moderators (admin already deletes; editing reader text admin-side is out of scope); editing anonymous comments (no owner identity, out); soft-delete/tombstone toggle (bigger surface, not needed yet)."
+    },
+    "DEC-098": {
+      "id": "DEC-098",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-22T11:58:47+00:00",
+      "updated_at": "2026-08-22T11:58:47+00:00",
+      "touched_round": 129,
+      "title": "Milestone: auto-approve comments from verified readers (moderation trust tier)",
+      "rationale": "Feature-evolution selection (SKILL 11.2 gap analysis). This blog moderates every comment (DEC-066): each anonymous or reader comment waits for an admin approve/batch-approve, so a signed-in, verified reader still never sees their comment publish instantly and the moderator approving every thread does redundant review of established accounts. Milestone: a \"trust tier\" auto-approves comments authored by verified reader accounts (reader_id set/attributed via the reader JWT, DEC-062) while anonymous comments stay fully moderated. Users: signed-in readers (their comment appears immediately instead of waiting) and the moderator (approves fewer trusted, account-stamped comments). Why now: reader accounts already stamp reader_id at create time and comment creation is centralized, so this is a clean, additive slice; operator-controlled so the policy stays the blog is call. Acceptance (one sentence): when auto-approve is enabled, a comment posted by a signed-in reader is immediately published (and fires the same approval notifications), while anonymous comments remain pending. Scope: AUTO_APPROVE_READER_COMMENTS env flag (default off) checked in the create-comment path; when on and reader_id is set, approve inline (is_approved=True, reviewed_at=now, clear the approved comment_count cache) and fire the same reply/thread-subscription notifications approve_comment fires; anonymous/flag-off behavior unchanged; backend pytest (reader auto-approved publishes instantly + notifications, anonymous still pending, flag off still pending, reply auto-approval respects approved-parent rule) + frontend note/UI + E2E.",
+      "alternatives_rejected": "Auto-approve ALL comments (would invite spam, contra to the moderated-blog stance, out); auto-approve based on comment likes/count (needs a per-reader reputation table, bigger slice); comment code copy button (tiny, frontend-only, low value-gate, rejected); per-reader moderation queue/admin UI toggle (a settings store; fold a UI toggle into a later slice if operators want it runtime)."
+    },
+    "TASK-161": {
+      "id": "TASK-161",
+      "type": "task",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-22T11:58:56+00:00",
+      "updated_at": "2026-08-22T11:58:56+00:00",
+      "touched_round": 129,
+      "category": "core-feature",
+      "severity": 0.65,
+      "confidence": 0.8,
+      "effort": 1.5,
+      "unlock_factor": 1.2,
+      "title": "Auto-approve verified-reader comments: AUTO_APPROVE_READER_COMMENTS env flag (default off) checked at comment create; when on + reader_id set, publish inline (is_approved=True, reviewed_at=now, refresh approved count cache) and fire the same reply/thread-subscription notifications as approve_comment; anonymous + flag-off stay pending; backend pytest + frontend/E2E"
     }
   },
   "edges": [
@@ -11083,6 +11133,36 @@
       "to": "TASK-160",
       "type": "governs",
       "created_at": "2026-08-22T11:23:21+00:00"
+    },
+    {
+      "from": "CHG-150",
+      "to": "TASK-160",
+      "type": "implements",
+      "created_at": "2026-08-22T11:59:04+00:00"
+    },
+    {
+      "from": "DEC-097",
+      "to": "DEC-096",
+      "type": "supersedes",
+      "created_at": "2026-08-22T11:59:04+00:00"
+    },
+    {
+      "from": "DEC-097",
+      "to": "TASK-160",
+      "type": "governs",
+      "created_at": "2026-08-22T11:59:04+00:00"
+    },
+    {
+      "from": "DEC-098",
+      "to": "DEC-097",
+      "type": "supersedes",
+      "created_at": "2026-08-22T11:59:08+00:00"
+    },
+    {
+      "from": "DEC-098",
+      "to": "TASK-161",
+      "type": "governs",
+      "created_at": "2026-08-22T11:59:08+00:00"
     }
   ]
 }
