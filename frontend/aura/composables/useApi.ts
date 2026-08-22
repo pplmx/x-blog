@@ -1201,6 +1201,26 @@ export interface ReaderHistoryStats {
 	recent: ReaderHistoryItem[];
 }
 
+export interface SeriesProgress {
+	series_slug: string;
+	series_title: string;
+	total: number;
+	read_count: number;
+	completed: boolean;
+	read_post_ids: number[];
+	next_slug: string | null;
+}
+
+/** A signed-in reader's progress through a series (from their history). */
+export async function fetchReaderSeriesProgress(slug: string) {
+	const config = useRuntimeConfig();
+	const apiUrl = config.public.apiUrl;
+	return useFetch<SeriesProgress>(`${apiUrl}/api/reader/me/series/${slug}/progress`, {
+		headers: getReaderAuthHeaders(),
+		server: false,
+	});
+}
+
 /** Reader reading-summary stats derived from their history (requires reader token). */
 export async function fetchReaderHistoryStats() {
 	const config = useRuntimeConfig();

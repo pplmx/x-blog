@@ -11,6 +11,10 @@
 		"previousPart": "Previous part",
 		"nextPart": "Next part",
 		"postsEmpty": "No published posts yet",
-		"views": "{count} views"
+		"views": "{count} views",
+		"progressTitle": "Reading progress",
+		"readCountLabel": "{read} of {total} read",
+		"continueReading": "Continue reading",
+		"completed": "Completed"
 	}
 }

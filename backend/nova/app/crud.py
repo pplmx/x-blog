@@ -1398,6 +1398,45 @@ def reader_history_stats(db: Session, reader_id: int, recent_limit: int = 6) -> 
     }
 
 
+def reader_series_progress(db: Session, reader_id: int, series: models.Series) -> dict:
+    """Compute a reader's progress through a series from their history.
+
+    ``posts`` is the series' ordered, publicly visible posts (series_order then
+    id). A post counts as read when it appears in the reader's reading_history
+    (server-backed trail, TASK-170). Returns total count, the read post ids,
+    how many are read, the first *unread* post slug (None when complete), and a
+    completion flag. Public-visibility invariants hold via get_series_visible_posts.
+    (DEC-122/TASK-173)
+    """
+    posts = get_series_visible_posts(db, series)
+    if not posts:
+        return {
+            "total": 0,
+            "read_post_ids": [],
+            "read_count": 0,
+            "next_slug": None,
+            "completed": False,
+        }
+    post_ids = [p.id for p in posts]
+    read_rows = (
+        db.query(models.ReadingHistory.post_id)
+        .filter(
+            models.ReadingHistory.reader_id == reader_id,
+            models.ReadingHistory.post_id.in_(post_ids),
+        )
+        .all()
+    )
+    read_ids = {row.post_id for row in read_rows}
+    next_slug = next((p.slug for p in posts if p.id not in read_ids), None)
+    return {
+        "total": len(posts),
+        "read_post_ids": sorted(p.id for p in posts if p.id in read_ids),
+        "read_count": len(read_ids),
+        "next_slug": next_slug,
+        "completed": next_slug is None and len(posts) > 0,
+    }
+
+
 def list_reader_bookmarks(
     db: Session, reader_id: int, folder_id: int | None = None
 ) -> list[tuple[models.Post, int | None, str | None]]:

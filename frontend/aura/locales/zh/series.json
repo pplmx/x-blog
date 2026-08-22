@@ -11,6 +11,10 @@
 		"previousPart": "上一篇",
 		"nextPart": "下一篇",
 		"postsEmpty": "暂无已发布文章",
-		"views": "{count} 次阅读"
+		"views": "{count} 次阅读",
+		"progressTitle": "阅读进度",
+		"readCountLabel": "已读 {read} / {total}",
+		"continueReading": "继续阅读",
+		"completed": "已读完"
 	}
 }

@@ -1,5 +1,10 @@
 <script setup lang="ts">
-import { useSeriesBySlug } from "~~/composables/useApi";
+import { computed, onMounted, ref } from "vue";
+import {
+	fetchReaderSeriesProgress,
+	type SeriesProgress,
+	useSeriesBySlug,
+} from "~~/composables/useApi";
 import { useSeo } from "~~/composables/useSeo";
 
 const { t, locale } = useLang();
@@ -13,6 +18,32 @@ useSeo(() => ({
 	description: series.value?.description || t("series.allDesc"),
 	path: `/series/${route.params.slug}`,
 }));
+
+// Series reading progress (DEC-122, TASK-173): a signed-in reader sees how far
+// through the series they are (derived from their reading history) and can
+// continue from the first unread episode. Guests see no progress.
+const signedIn = computed(
+	() =>
+		typeof window !== "undefined" &&
+		typeof localStorage?.getItem === "function" &&
+		!!localStorage.getItem("reader_token"),
+);
+const progress = ref<SeriesProgress | null>(null);
+
+onMounted(async () => {
+	if (!signedIn.value || !series.value?.slug) return;
+	try {
+		const res = await fetchReaderSeriesProgress(series.value.slug);
+		progress.value = res.data?.value ?? null;
+	} catch {
+		progress.value = null;
+	}
+});
+
+const progressPercent = computed(() => {
+	if (!progress.value || progress.value.total <= 0) return 0;
+	return Math.round((progress.value.read_count / progress.value.total) * 100);
+});
 </script>
 
 <template>
@@ -60,6 +91,45 @@ useSeo(() => ({
         <p v-if="series.description" class="mt-4 text-lg text-gray-600 dark:text-gray-400 leading-relaxed">
           {{ series.description }}
         </p>
+
+        <!-- Reader series progress (signed-in) -->
+        <div
+          v-if="signedIn && progress"
+          class="mt-6 p-4 rounded-2xl border border-indigo-100 dark:border-indigo-900/40 bg-indigo-50/50 dark:bg-indigo-900/10"
+        >
+          <div class="flex flex-wrap items-center justify-between gap-3">
+            <div class="flex items-center gap-2">
+              <Icon icon="lucide:list-checks" class="w-4 h-4 text-indigo-500" />
+              <span class="text-sm font-medium text-gray-700 dark:text-gray-200">
+                {{ t('series.progressTitle') }}
+              </span>
+              <span class="text-sm text-gray-500 dark:text-gray-400">
+                {{ t('series.readCountLabel', { read: progress.read_count, total: progress.total }) }}
+              </span>
+              <span
+                v-if="progress.completed"
+                class="inline-flex items-center gap-1 text-xs font-medium text-emerald-600 dark:text-emerald-400"
+              >
+                <Icon icon="lucide:check-circle-2" class="w-3.5 h-3.5" />
+                {{ t('series.completed') }}
+              </span>
+            </div>
+            <NuxtLink
+              v-if="progress.next_slug"
+              :to="`/posts/${progress.next_slug}`"
+              class="inline-flex items-center gap-1.5 text-sm font-medium text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 transition-colors"
+            >
+              {{ t('series.continueReading') }}
+              <Icon icon="lucide:arrow-right" class="w-4 h-4" />
+            </NuxtLink>
+          </div>
+          <div class="mt-3 h-2 rounded-full bg-indigo-100 dark:bg-indigo-900/30 overflow-hidden">
+            <div
+              class="h-full rounded-full bg-gradient-to-r from-indigo-500 to-violet-500 transition-all duration-500"
+              :style="{ width: progressPercent + '%' }"
+            />
+          </div>
+        </div>
       </div>
 
       <!-- Ordered series posts -->

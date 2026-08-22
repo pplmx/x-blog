@@ -151,6 +151,21 @@ class AssignFolderResponse(BaseModel):
     folder_id: int | None = None
 
 
+class SeriesProgressResponse(BaseModel):
+    """A reader's progress through a series, derived from their history
+    (DEC-122/TASK-173). ``next_slug`` is the first unread post in series order,
+    or None when the series is fully read/empty.
+    """
+
+    series_slug: str
+    series_title: str
+    total: int = 0
+    read_count: int = 0
+    completed: bool = False
+    read_post_ids: list[int] = []
+    next_slug: str | None = None
+
+
 class AddBookmarkResponse(BaseModel):
     post_id: int
     # True when the bookmark was newly created, False when it already existed
@@ -725,6 +740,28 @@ def assign_bookmark_folder(
     if not bookmark:
         raise HTTPException(status_code=404, detail="Bookmark or folder not found")
     return AssignFolderResponse(post_id=bookmark.post_id, folder_id=bookmark.folder_id)
+
+
+@router.get("/me/series/{slug}/progress", response_model=SeriesProgressResponse)
+def series_reading_progress(
+    slug: str,
+    current_reader: auth.ReaderAccount = Depends(auth.get_current_reader),
+    db: Session = Depends(get_db),
+):
+    """A reader's reading progress through a series, from their history.
+
+    Reads are posts present in the reader's reading_history among the series'
+    ordered publicly-visible posts. 404 if the series slug is unknown.
+    """
+    series = crud.get_series_by_slug(db, slug)
+    if not series:
+        raise HTTPException(status_code=404, detail="Series not found")
+    prog = crud.reader_series_progress(db, current_reader.id, series)
+    return SeriesProgressResponse(
+        series_slug=series.slug,
+        series_title=series.title,
+        **prog,
+    )
 
 
 # Server-backed reading history (DEC-116/TASK-170)
