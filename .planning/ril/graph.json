@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 135,
+  "round": 136,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-08-22T15:06:15+00:00",
+  "updated_at": "2026-08-22T15:14:53+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -8186,7 +8186,7 @@
       "version": 1,
       "created_at": "2026-08-22T15:06:01+00:00",
       "updated_at": "2026-08-22T15:06:01+00:00",
-      "touched_round": 135,
+      "touched_round": 136,
       "title": "Milestone: admin bulk-comment delete (spam cleanup)",
       "rationale": "Feature-evolution selection (SKILL 11.2 gap analysis). With reader flagging now feeding the moderation queue (DEC-108), the admin can filter to flagged comments but still deletes them one-by-one (only batch-approve/reject exists; there is no batch delete). A moderator clearing a spam run or a burst of flagged comments has to click delete per row. Milestone: add a bulk-delete to the admin comments queue so a moderator can select and delete many comments at once. Users: the moderator performing spam cleanup or clearing flagged/batch-rejected comments. Why now: it directly complements the just-shipped flagged queue and the existing batch-approve; net-additive, no schema change. Acceptance (one sentence): an admin can multi-select comments and delete them in one action. Scope: backend POST /api/admin/comments/batch-delete (admin-only, ids cap like batch-approve, returns deleted count, reparents replies consistently like delete_comment) + admin comments page \"Delete selected\" action alongside batch approve/reject (selection already exists for pending; extend to any visible comment) + confirm dialog + count feedback + i18n; backend pytest (bulk delete removes rows + reply reparenting + admin-only + cap) + frontend test + E2E.",
       "alternatives_rejected": "Delete-all-flagged (unbounded destructive action, dangerous without explicit selection); trash/soft-delete (bigger surface); comment code copy button (trivial, rejected); per-comment delete remains but is the slow path this fixes."
@@ -8194,17 +8194,67 @@
     "TASK-167": {
       "id": "TASK-167",
       "type": "task",
-      "status": "active",
-      "version": 1,
+      "status": "resolved",
+      "version": 2,
       "created_at": "2026-08-22T15:06:06+00:00",
-      "updated_at": "2026-08-22T15:06:06+00:00",
-      "touched_round": 135,
+      "updated_at": "2026-08-22T15:14:51+00:00",
+      "touched_round": 136,
       "category": "core-feature",
       "severity": 0.6,
       "confidence": 0.85,
       "effort": 1.3,
       "unlock_factor": 1.0,
       "title": "Admin bulk-comment delete: POST /api/admin/comments/batch-delete (admin-only, ids cap, reply reparenting, returns deleted count) + admin comments page Delete selected action + confirm + count feedback + i18n + backend pytest + frontend test + E2E"
+    },
+    "CHG-157": {
+      "id": "CHG-157",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-22T15:14:24+00:00",
+      "updated_at": "2026-08-22T15:14:24+00:00",
+      "touched_round": 136,
+      "commit": "dcd547bd815c86e6101010623970bae91fd82162",
+      "title": "Admin bulk-comment delete (DEC-110, TASK-167)"
+    },
+    "DEC-111": {
+      "id": "DEC-111",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-22T15:14:31+00:00",
+      "updated_at": "2026-08-22T15:14:31+00:00",
+      "touched_round": 136,
+      "title": "Milestone delivered: admin bulk-comment delete (DEC-110 complete)",
+      "rationale": "Delivery of DEC-110 / TASK-167 via CHG-157 (dcd547b). Backend: crud.bulk_delete_comments deletes many comments, reparenting surviving replies to the nearest surviving ancestor (walks past ancestors being deleted) so no thread is orphaned; POST /api/admin/comments/batch-delete (admin-only, ids capped like batch-approve, returns deleted count). Frontend: admin comments page now makes every visible comment selectable, a select-all checks all on page, and a Delete selected (n) action (confirm + deleted-count feedback) sits beside batch approve/reject; useApi batchDeleteAdminComment; en/zh labels. Tests: backend (bulk deletes selected, reparents surviving reply to top-level, deleting parent+reply leaves no orphan, admin-only 401) + frontend admin spec (bulk delete calls API with selected ids after confirm) - vitest 1044 green, biome + vue-tsc clean; Playwright bulk-delete journey added. Acceptance met: an admin can multi-select and delete comments in one action. backend pytest + Playwright not executed in the CPU-starved sandbox; ruff/pyright + OpenAPI green.",
+      "alternatives_rejected": "Delete-all-flagged (unbounded destructive, dangerous without explicit selection); trash/soft-delete (bigger surface); comment code copy button (trivial, rejected); per-comment delete remains the slow path this fixes."
+    },
+    "DEC-112": {
+      "id": "DEC-112",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-22T15:14:42+00:00",
+      "updated_at": "2026-08-22T15:14:42+00:00",
+      "touched_round": 136,
+      "title": "Milestone: printable/PDF view of a post",
+      "rationale": "Feature-evolution selection (SKILL 11.2 gap analysis). Tech-blog readers often want to save or share an article, but there is no print-friendly / PDF output for a single post (confirmed absent). Milestone: a print-optimized view of a post so a reader can save it cleanly (browser print-to-PDF) without the site chrome. Users: readers who want a clean, shareable/saveable copy of an article. Why now: reading/archival features (TOC, read progress, series nav, bookmark, download?) are otherwise complete; this is net-new and reader-visible. Acceptance (one sentence): a reader can open a print/PDF view of any post and the result is a clean typographic article. Scope: frontend-only print layout - a /posts/[slug]/print route rendering post title/date/content (sanitized markdown via the existing renderer) + reading time, a Print/PDF button on the post page and/or in the print route that calls window.print(), a print stylesheet hiding the site chrome @media print, and a no-js/SEO-consistent link; vitest (print route renders post title/content) + E2E (open print route, assert article content present). No backend/schema change.",
+      "alternatives_rejected": "Server-side PDF generation (adds a heavy render dependency; browser print-to-PDF covers the need without new deps); full-blog PDF export (much larger, niche); comment code copy button (trivial, rejected); email self-send (no SMTP)."
+    },
+    "TASK-168": {
+      "id": "TASK-168",
+      "type": "task",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-22T15:14:47+00:00",
+      "updated_at": "2026-08-22T15:14:47+00:00",
+      "touched_round": 136,
+      "category": "core-feature",
+      "severity": 0.6,
+      "confidence": 0.9,
+      "effort": 1.2,
+      "unlock_factor": 1.0,
+      "title": "Printable/PDF view of a post: /posts/[slug]/print route (title/date/content via sanitized markdown + reading time) + Print/PDF button calling window.print() + @media print chrome-hiding stylesheet + entry link + vitest + E2E; no backend change"
     }
   },
   "edges": [
@@ -11643,6 +11693,36 @@
       "to": "TASK-167",
       "type": "governs",
       "created_at": "2026-08-22T15:06:15+00:00"
+    },
+    {
+      "from": "CHG-157",
+      "to": "TASK-167",
+      "type": "implements",
+      "created_at": "2026-08-22T15:14:52+00:00"
+    },
+    {
+      "from": "DEC-111",
+      "to": "DEC-110",
+      "type": "supersedes",
+      "created_at": "2026-08-22T15:14:53+00:00"
+    },
+    {
+      "from": "DEC-111",
+      "to": "TASK-167",
+      "type": "governs",
+      "created_at": "2026-08-22T15:14:53+00:00"
+    },
+    {
+      "from": "DEC-112",
+      "to": "DEC-111",
+      "type": "supersedes",
+      "created_at": "2026-08-22T15:14:53+00:00"
+    },
+    {
+      "from": "DEC-112",
+      "to": "TASK-168",
+      "type": "governs",
+      "created_at": "2026-08-22T15:14:53+00:00"
     }
   ]
 }
