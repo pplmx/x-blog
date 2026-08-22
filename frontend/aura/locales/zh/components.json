@@ -27,7 +27,10 @@
 			"reply": "回复",
 			"cancelReply": "取消回复",
 			"replyingTo": "正在回复 {name}",
-			"verifiedReader": "已认证读者"
+			"verifiedReader": "已认证读者",
+			"like": "点赞",
+			"liked": "已点赞",
+			"likeError": "点赞失败，请重试。"
 		},
 		"threadSubscribe": {
 			"follow": "订阅讨论",

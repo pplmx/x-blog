@@ -288,6 +288,8 @@ class Comment(CommentBase):
     parent_id: int | None = None
     ip_address: str
     is_approved: bool = True
+    # Comment upvote count (DEC-092/TASK-158); mirrored on CommentPublic.
+    likes: int = 0
     created_at: datetime
     # Full row: reader-attributed comments store no free-text email (identity
     # is the account), anonymous comments keep theirs — nullable covers both.
@@ -358,6 +360,9 @@ class CommentPublic(CommentBase):
     post_id: int
     parent_id: int | None = None
     is_approved: bool = True
+    # Comment upvote count (DEC-092/TASK-158): harmless on the public list,
+    # unlike the PII fields dropped from this schema.
+    likes: int = 0
     created_at: datetime
     # email is dropped from the public serialization entirely (PII); ip_address
     # is simply absent from this schema. Reader-attributed comments store no

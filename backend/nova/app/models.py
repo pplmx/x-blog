@@ -122,6 +122,10 @@ class Comment(Base):
     content: Mapped[str] = mapped_column(Text, nullable=False)
     ip_address: Mapped[str | None] = mapped_column(String(50))
     is_approved: Mapped[bool | None] = mapped_column(Boolean, default=True, index=True)
+    # Comment upvote count (DEC-092/TASK-158): anonymous count++, mirrors the
+    # post-likes precedent. The backend only ever increments it (atomic update
+    # in crud.increment_comment_likes), never decrements.
+    likes: Mapped[int] = mapped_column(Integer, default=0, nullable=False, server_default="0")
     # When a moderator last reviewed this comment (approve OR reject). Null
     # distinguishes "still pending" from "reviewed and rejected" for the
     # author's comment-history status (DEC-066, TASK-139).

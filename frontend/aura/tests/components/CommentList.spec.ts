@@ -18,13 +18,15 @@ import { ref } from "vue";
 // (matching Nuxt's resolution), so vi.mock can intercept the specifier.
 // vi.hoisted ensures the mock function is created before the factory runs
 // (vi.mock is hoisted to the top of the file).
-const { mockFetchComments, mockCreateComment } = vi.hoisted(() => ({
+const { mockFetchComments, mockCreateComment, mockUseCommentLike } = vi.hoisted(() => ({
 	mockFetchComments: vi.fn(),
 	mockCreateComment: vi.fn(),
+	mockUseCommentLike: vi.fn(),
 }));
 vi.mock("~/composables/useApi", () => ({
 	fetchComments: mockFetchComments,
 	createComment: mockCreateComment,
+	useCommentLike: mockUseCommentLike,
 }));
 
 import CommentList from "../../components/CommentList.vue";
@@ -349,6 +351,70 @@ describe("CommentList", () => {
 			// still visible (no highlight.js failure, no raw HTML).
 			expect(wrapper.find(".comment-body pre code").text()).toContain("sudo rm -rf /");
 			expect(wrapper.find(".comment-body pre code .hljs-keyword").exists()).toBe(false);
+		});
+	});
+
+	describe("Comment likes (DEC-092, TASK-158)", () => {
+		beforeEach(() => {
+			localStorage.clear();
+			mockUseCommentLike.mockReset();
+		});
+
+		it("renders the like count for each comment and likes on click", async () => {
+			const comment = mockComments.items[0];
+			mockUseCommentLike.mockResolvedValue({
+				data: { value: { ...comment, likes: 3 } },
+				error: { value: null },
+			});
+			const { wrapper } = await mountCommentList();
+
+			const likeButton = wrapper.find(`#comment-${comment.id} .comment-like`);
+			expect(likeButton.exists()).toBe(true);
+			// initial count is 0 (no likes on the mock data)
+			expect(likeButton.get(".like-count").text()).toBe("0");
+
+			await likeButton.trigger("click");
+			await flushPromises();
+			expect(mockUseCommentLike).toHaveBeenCalledWith(comment.id);
+			expect(likeButton.get(".like-count").text()).toBe("3");
+			expect(localStorage.getItem("liked-comments:1")).toBe("1");
+		});
+
+		it("does not re-like a comment the visitor already liked (dedup)", async () => {
+			const comment = { ...mockComments.items[0], likes: 7 };
+			localStorage.setItem("liked-comments:1", "1");
+			mockUseCommentLike.mockResolvedValue({
+				data: { value: { ...comment, likes: 8 } },
+				error: { value: null },
+			});
+			// Seed the rendered row with the already-liked count (7).
+			const { wrapper } = await mountCommentList({
+				comments: { ...mockComments, items: [comment] },
+			});
+
+			const likeButton = wrapper.find(`#comment-${comment.id} .comment-like`);
+			// Already-liked button is marked and has the stored count.
+			expect(likeButton.attributes("aria-pressed")).toBe("true");
+			expect(likeButton.get(".like-count").text()).toBe("7");
+			await likeButton.trigger("click");
+			await flushPromises();
+			// Dedup short-circuits before hitting the API; count stays 7.
+			expect(mockUseCommentLike).not.toHaveBeenCalled();
+			expect(likeButton.get(".like-count").text()).toBe("7");
+		});
+
+		it("shows a friendly error when liking fails", async () => {
+			const comment = mockComments.items[0];
+			mockUseCommentLike.mockResolvedValue({
+				data: { value: null },
+				error: { value: new Error("boom") },
+			});
+			const { wrapper } = await mountCommentList();
+
+			await wrapper.find(`#comment-${comment.id} .comment-like`).trigger("click");
+			await flushPromises();
+			expect(wrapper.text()).toContain("点赞失败");
+			expect(localStorage.getItem("liked-comments:1")).toBeNull();
 		});
 	});
 

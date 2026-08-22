@@ -6,6 +6,7 @@
            to this discussion and get a push on each newly approved comment. -->
       <ThreadSubscribeButton v-if="props.postId" :post-id="props.postId" />
     </div>
+    <p v-if="likeError" class="mb-3 text-sm text-red-500">{{ likeError }}</p>
 
     <!-- Loading -->
     <div v-if="pending" class="space-y-3">
@@ -54,13 +55,33 @@
               v-html="commentBodyHtml(comment.content)"
             />
 
-            <button
-              type="button"
-              class="mt-2 text-xs text-blue-500 hover:text-blue-700 dark:hover:text-blue-300 transition-colors"
-              @click="toggleReply(comment)"
-            >
-              {{ replyTo?.id === comment.id ? t('components.commentList.cancelReply') : t('components.commentList.reply') }}
-            </button>
+            <div class="mt-2 flex items-center gap-3">
+              <button
+                type="button"
+                class="text-xs text-blue-500 hover:text-blue-700 dark:hover:text-blue-300 transition-colors"
+                @click="toggleReply(comment)"
+              >
+                {{ replyTo?.id === comment.id ? t('components.commentList.cancelReply') : t('components.commentList.reply') }}
+              </button>
+              <!-- Comment likes (DEC-092/TASK-158): anonymous upvote with a
+                   localStorage dedup so one browser registers at most one like. -->
+              <button
+                type="button"
+                class="comment-like inline-flex items-center gap-1 text-xs text-gray-500 hover:text-pink-600 dark:text-gray-400 dark:hover:text-pink-400 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+                :disabled="likingIds.has(comment.id)"
+                :title="isCommentLiked(comment.id) ? t('components.commentList.liked') : t('components.commentList.like')"
+                :aria-pressed="isCommentLiked(comment.id) ? 'true' : 'false'"
+                :aria-label="isCommentLiked(comment.id) ? t('components.commentList.liked') : t('components.commentList.like')"
+                @click="handleCommentLike(comment)"
+              >
+                <Icon
+                  :icon="likingIds.has(comment.id) ? 'lucide:loader-2' : 'lucide:thumbs-up'"
+                  class="w-3.5 h-3.5"
+                  :class="{ 'animate-spin': likingIds.has(comment.id) }"
+                />
+                <span class="like-count">{{ comment.likes ?? 0 }}</span>
+              </button>
+            </div>
 
             <!-- Inline reply form -->
             <div v-if="replyTo?.id === comment.id" class="mt-3">
@@ -103,13 +124,31 @@
               v-html="commentBodyHtml(reply.content)"
             />
 
-            <button
-              type="button"
-              class="mt-2 text-xs text-blue-500 hover:text-blue-700 dark:hover:text-blue-300 transition-colors"
-              @click="toggleReply(reply)"
-            >
-              {{ replyTo?.id === reply.id ? t('components.commentList.cancelReply') : t('components.commentList.reply') }}
-            </button>
+            <div class="mt-2 flex items-center gap-3">
+              <button
+                type="button"
+                class="text-xs text-blue-500 hover:text-blue-700 dark:hover:text-blue-300 transition-colors"
+                @click="toggleReply(reply)"
+              >
+                {{ replyTo?.id === reply.id ? t('components.commentList.cancelReply') : t('components.commentList.reply') }}
+              </button>
+              <button
+                type="button"
+                class="comment-like inline-flex items-center gap-1 text-xs text-gray-500 hover:text-pink-600 dark:text-gray-400 dark:hover:text-pink-400 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+                :disabled="likingIds.has(reply.id)"
+                :title="isCommentLiked(reply.id) ? t('components.commentList.liked') : t('components.commentList.like')"
+                :aria-pressed="isCommentLiked(reply.id) ? 'true' : 'false'"
+                :aria-label="isCommentLiked(reply.id) ? t('components.commentList.liked') : t('components.commentList.like')"
+                @click="handleCommentLike(reply)"
+              >
+                <Icon
+                  :icon="likingIds.has(reply.id) ? 'lucide:loader-2' : 'lucide:thumbs-up'"
+                  class="w-3.5 h-3.5"
+                  :class="{ 'animate-spin': likingIds.has(reply.id) }"
+                />
+                <span class="like-count">{{ reply.likes ?? 0 }}</span>
+              </button>
+            </div>
 
             <!-- Inline reply form for this reply (reply-to-reply, RIL TASK-080) -->
             <div v-if="replyTo?.id === reply.id" class="mt-3">
@@ -152,7 +191,7 @@
 
 <script setup lang="ts">
 import { computed, nextTick, onMounted, ref, watch } from "vue";
-import { type Comment, fetchComments } from "~~/composables/useApi";
+import { type Comment, fetchComments, useCommentLike } from "~~/composables/useApi";
 import { highlightCode, loadHighlighter } from "~~/composables/useCodeHighlight";
 import { commentMarkdownToHtml, loadPurify } from "~~/composables/useMarkdown";
 // biome-ignore lint/correctness/noUnusedImports: CommentForm is rendered in the SFC <template> (lines 59/105).
@@ -226,6 +265,51 @@ watch(comments, async () => {
 	await nextTick();
 	void highlightCommentCode();
 });
+
+// --- Comment likes (DEC-092, TASK-158) ---
+
+// One like per comment per browser, matching the post-like dedup (ISS-038).
+const LIKED_PREFIX = "liked-comments:";
+function isCommentLiked(id: number): boolean {
+	if (typeof window === "undefined") return false;
+	return localStorage.getItem(`${LIKED_PREFIX}${id}`) === "1";
+}
+function markCommentLiked(id: number): void {
+	if (typeof window === "undefined") return;
+	localStorage.setItem(`${LIKED_PREFIX}${id}`, "1");
+}
+
+// Comment ids with an in-flight like (spins the like icon, disables re-click).
+const likingIds = ref<Set<number>>(new Set());
+const likeError = ref<string | null>(null);
+
+async function handleCommentLike(comment: Comment): Promise<void> {
+	if (isCommentLiked(comment.id) || likingIds.value.has(comment.id)) return;
+	likingIds.value = new Set(likingIds.value).add(comment.id);
+	likeError.value = null;
+	try {
+		const liked = await useCommentLike(comment.id);
+		// useFetch surfaces failures in `.error` (the fetch never rejects).
+		if (liked.error?.value || !liked.data?.value) {
+			likeError.value = t("components.commentList.likeError");
+			return;
+		}
+		const updated = liked.data.value;
+		if (typeof updated.likes === "number") {
+			// Patch the flat list item — the computed tree re-renders its row
+			// (top-level or nested) with the new count.
+			const target = commentData.value?.items.find((c) => c.id === comment.id);
+			if (target) target.likes = updated.likes;
+			markCommentLiked(comment.id);
+		}
+	} catch {
+		likeError.value = t("components.commentList.likeError");
+	} finally {
+		const s = new Set(likingIds.value);
+		s.delete(comment.id);
+		likingIds.value = s;
+	}
+}
 
 // Thread the paginated flat list into a tree: group children by parent_id,
 // then render top-level comments (parent_id null, or whose parent is not on

@@ -211,6 +211,32 @@ def approve_comment(
     return comment
 
 
+@router.post("/{comment_id}/like", response_model=schemas.CommentPublic)
+@limiter.limit(f"{RATE_LIMIT_COMMENT}/minute")
+def like_comment(
+    request: Request,  # noqa: ARG001
+    comment_id: int,
+    db: Session = Depends(get_db),
+):
+    """Increment the like count for a comment (DEC-092, TASK-158).
+
+    Anonymous count++, mirroring POST /posts/{id}/like (the frontend guards
+    a visitor to one like per comment via localStorage). A comment on a draft
+    or otherwise non-public post responds 404 — the same as an unknown id —
+    so the endpoint never answers existence questions about drafts.
+    """
+    comment = db.get(models.Comment, comment_id)
+    if not comment:
+        raise HTTPException(status_code=404, detail="Comment not found")
+    post = db.get(models.Post, comment.post_id)
+    if not post or not crud.is_publicly_visible(post):
+        raise HTTPException(status_code=404, detail="Comment not found")
+    updated = crud.increment_comment_likes(db, comment_id)
+    if not updated:
+        raise HTTPException(status_code=404, detail="Comment not found")
+    return updated
+
+
 @router.delete("/{comment_id}", status_code=204)
 @limiter.limit(f"{RATE_LIMIT_COMMENT}/minute")
 def delete_comment(

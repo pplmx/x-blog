@@ -821,6 +821,25 @@ def increment_likes(db: Session, post_id: int) -> models.Post | None:
     return post
 
 
+def increment_comment_likes(db: Session, comment_id: int) -> models.Comment | None:
+    """Increment the like count for a comment using atomic SQL update."""
+    stmt = (
+        update(models.Comment)
+        .where(models.Comment.id == comment_id)
+        .values(likes=models.Comment.likes + 1)
+    )
+    db.execute(stmt)
+    try:
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise
+    comment = db.get(models.Comment, comment_id)
+    if comment:
+        db.refresh(comment)
+    return comment
+
+
 def get_popular_posts(db: Session, limit: int = 5) -> list[models.Post]:
     """Get the most popular posts by view count."""
     now = utc_now_naive()
@@ -1327,7 +1346,9 @@ def build_backup_snapshot(db: Session) -> dict:
                         "is_approved": bool(c.is_approved),
                         "reviewed_at": _iso(c.reviewed_at),
                         "created_at": _iso(c.created_at),
-                        "parent_ordinal": ordinal_by_id.get(c.parent_id),
+                        "parent_ordinal": (
+                            ordinal_by_id.get(c.parent_id) if c.parent_id is not None else None
+                        ),
                         "reader": c.reader_id is not None,
                     }
                     for i, c in enumerate(comments)

@@ -27,7 +27,10 @@
 			"reply": "Reply",
 			"cancelReply": "Cancel reply",
 			"replyingTo": "Replying to {name}",
-			"verifiedReader": "Verified reader"
+			"verifiedReader": "Verified reader",
+			"like": "Like",
+			"liked": "Liked",
+			"likeError": "Couldn't like this comment. Please try again."
 		},
 		"threadSubscribe": {
 			"follow": "Follow discussion",

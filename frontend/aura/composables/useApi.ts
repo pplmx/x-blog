@@ -335,6 +335,8 @@ export interface Comment {
 	nickname: string;
 	content: string;
 	is_approved: boolean;
+	/** Comment upvote count (DEC-092/TASK-158). */
+	likes: number;
 	created_at: string;
 	/** Verified reader identity for reader-attributed comments (DEC-062);
 	 * null for anonymous free-text commenters. */
@@ -359,6 +361,13 @@ export async function fetchComments(postId: number, page = 1, limit = 20) {
  * Create a new comment for a post.
  * Uses the backend's POST /api/comments/post/{post_id} endpoint.
  */
+export async function useCommentLike(commentId: number) {
+	// POST /comments/{id}/like returns the updated comment with its new count.
+	return useApi<Comment>(`/api/comments/${commentId}/like`, {
+		method: "POST",
+	});
+}
+
 export async function createComment(
 	postId: number,
 	data: {

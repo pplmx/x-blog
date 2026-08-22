@@ -368,6 +368,75 @@ def test_approve_comment_unauthorized(client, post):
     assert response.status_code == 401
 
 
+# --- Comment likes (DEC-092, TASK-158) ---
+
+
+def test_like_comment(client, post):
+    create_response = client.post(
+        f"/api/comments/post/{post['id']}",
+        json={"nickname": "Test User", "email": "test@example.com", "content": "Nice snippet"},
+    )
+    comment_id = create_response.json()["id"]
+    response = client.post(f"/api/comments/{comment_id}/like")
+    assert response.status_code == 200
+    data = response.json()
+    assert data["id"] == comment_id
+    assert data["likes"] == 1
+
+
+def test_like_comment_increments_each_request(client, post):
+    create_response = client.post(
+        f"/api/comments/post/{post['id']}",
+        json={"nickname": "Test User", "email": "test@example.com", "content": "Again"},
+    )
+    comment_id = create_response.json()["id"]
+    assert client.post(f"/api/comments/{comment_id}/like").json()["likes"] == 1
+    # The API allows repeated likes (the frontend dedups), mirroring posts.
+    assert client.post(f"/api/comments/{comment_id}/like").json()["likes"] == 2
+
+
+def test_like_comment_exposes_likes_on_public_list(client, post, auth_headers):
+    create_response = client.post(
+        f"/api/comments/post/{post['id']}",
+        json={"nickname": "Test User", "email": "test@example.com", "content": "Snippet"},
+    )
+    comment_id = create_response.json()["id"]
+    liked = client.post(f"/api/comments/{comment_id}/like")
+    assert liked.status_code == 200
+    # The public list only exposes approved comments — approve before listing.
+    approved = client.patch(
+        f"/api/comments/{comment_id}/approve",
+        json={"approved": True},
+        headers=auth_headers,
+    )
+    assert approved.status_code == 200
+    listed = client.get(f"/api/comments/post/{post['id']}").json()["items"]
+    assert [c["likes"] for c in listed if c["id"] == comment_id] == [1]
+
+
+def test_like_comment_not_found(client):
+    response = client.post("/api/comments/99999/like")
+    assert response.status_code == 404
+    assert response.json()["error"]["code"] == "NOT_FOUND"
+
+
+def test_like_comment_on_non_public_post_returns_404(client, db_session, draft_post):
+    """A comment on a hidden post must 404 like an unknown id."""
+    from app import models
+
+    comment = models.Comment(
+        post_id=draft_post["id"],
+        nickname="Probe",
+        email="probe@example.com",
+        content="hidden comment",
+    )
+    db_session.add(comment)
+    db_session.flush()
+    response = client.post(f"/api/comments/{comment.id}/like")
+    assert response.status_code == 404
+    assert response.json()["error"]["code"] == "NOT_FOUND"
+
+
 def test_create_comment_on_nonexistent_post(client):
     """Creating a comment on a non-existent post should return 404.
 
