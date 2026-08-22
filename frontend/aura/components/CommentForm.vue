@@ -82,6 +82,11 @@
           :placeholder="t('components.commentForm.content')"
           class="w-full px-3 py-2 border border-gray-200 dark:border-gray-700 dark:bg-gray-800 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm resize-y"
         />
+        <!-- Markdown hint (DEC-088): comments render as sanitized Markdown. -->
+        <p class="mt-1 text-xs text-gray-400 dark:text-gray-500">
+          <Icon icon="lucide:braces" class="w-3 h-3 inline mr-0.5" />
+          {{ t('components.commentForm.markdownHint') }}
+        </p>
       </div>
 
       <button

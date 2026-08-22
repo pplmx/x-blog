@@ -18,7 +18,8 @@
 			"cancelReply": "Cancel reply",
 			"replyingTo": "Replying to {name}",
 			"asReader": "Submitting as {name}",
-			"asReaderHint": "Your verified reader identity is used automatically."
+			"asReaderHint": "Your verified reader identity is used automatically.",
+			"markdownHint": "Supports Markdown — code blocks, bold and links render."
 		},
 		"commentList": {
 			"title": "Comments",

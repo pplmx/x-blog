@@ -88,6 +88,11 @@ describe("CommentForm", () => {
 			expect(button.exists()).toBe(true);
 			expect(button.text()).toContain("提交评论");
 		});
+
+		it("renders the Markdown hint under the content box (DEC-088)", async () => {
+			const wrapper = await mountCommentForm();
+			expect(wrapper.text()).toContain("支持 Markdown");
+		});
 	});
 
 	describe("Form binding", () => {

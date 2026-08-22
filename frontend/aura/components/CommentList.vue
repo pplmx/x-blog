@@ -47,7 +47,12 @@
               </span>
               <span class="text-xs text-gray-500 dark:text-gray-400">{{ formatDate(comment.created_at) }}</span>
             </div>
-            <p class="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap">{{ comment.content }}</p>
+            <!-- Comment markdown rendering (DEC-088): sanitized via the same
+                 pipeline as post content, with line breaks preserved. -->
+            <div
+              class="comment-body text-sm text-gray-700 dark:text-gray-300"
+              v-html="commentBodyHtml(comment.content)"
+            />
 
             <button
               type="button"
@@ -93,7 +98,10 @@
               </span>
               <span class="text-xs text-gray-500 dark:text-gray-400">{{ formatDate(reply.created_at) }}</span>
             </div>
-            <p class="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap">{{ reply.content }}</p>
+            <div
+              class="comment-body text-sm text-gray-700 dark:text-gray-300"
+              v-html="commentBodyHtml(reply.content)"
+            />
 
             <button
               type="button"
@@ -145,8 +153,25 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from "vue";
 import { type Comment, fetchComments } from "~~/composables/useApi";
+import { commentMarkdownToHtml, loadPurify } from "~~/composables/useMarkdown";
 // biome-ignore lint/correctness/noUnusedImports: CommentForm is rendered in the SFC <template> (lines 59/105).
 import CommentForm from "./CommentForm.vue";
+
+// Upgrade the comments already on screen to DOMPurify once it finishes loading
+// (same pattern as MarkdownContent): the regex fallback guarantees XSS-safety
+// from the very first paint, and flipping purifyReady recomputes every body
+// through the stronger sanitizer. (DEC-088, TASK-156)
+const purifyReady = ref(false);
+onMounted(async () => {
+	await loadPurify();
+	purifyReady.value = true;
+});
+
+/** Comment body HTML; recomputed per comment when DOMPurify is ready. */
+function commentBodyHtml(content: string): string {
+	void purifyReady.value;
+	return commentMarkdownToHtml(content);
+}
 
 interface Props {
 	postId: number;
@@ -252,3 +277,42 @@ function formatDate(dateStr: string): string {
 	});
 }
 </script>
+
+<!-- Comment markdown typography (DEC-088): code blocks/links/quotes inside the
+     sanitized comment body read like the post body, minus the heavy features. -->
+<style scoped>
+.comment-body :deep(pre) {
+	overflow-x: auto;
+	padding: 0.5rem 0.75rem;
+	margin: 0.5rem 0;
+	border-radius: 0.5rem;
+	background: #f1f5f9;
+	font-size: 0.8rem;
+}
+.dark .comment-body :deep(pre) {
+	background: #1f2937;
+}
+.comment-body :deep(code) {
+	background: rgba(0, 0, 0, 0.06);
+	padding: 0.1rem 0.3rem;
+	border-radius: 0.25rem;
+	font-size: 0.85em;
+}
+.dark .comment-body :deep(code) {
+	background: rgba(255, 255, 255, 0.12);
+}
+.comment-body :deep(pre code) {
+	background: transparent;
+	padding: 0;
+}
+.comment-body :deep(a) {
+	color: #2563eb;
+	text-decoration: underline;
+}
+.comment-body :deep(blockquote) {
+	border-left: 3px solid #d1d5db;
+	padding-left: 0.75rem;
+	color: #6b7280;
+	margin: 0.5rem 0;
+}
+</style>

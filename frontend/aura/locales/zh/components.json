@@ -18,7 +18,8 @@
 			"cancelReply": "取消回复",
 			"replyingTo": "正在回复 {name}",
 			"asReader": "以 {name} 的身份发表",
-			"asReaderHint": "将使用你已验证的读者身份。"
+			"asReaderHint": "将使用你已验证的读者身份。",
+			"markdownHint": "支持 Markdown，代码块、加粗和链接会渲染。"
 		},
 		"commentList": {
 			"title": "评论",

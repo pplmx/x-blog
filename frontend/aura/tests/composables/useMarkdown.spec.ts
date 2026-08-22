@@ -172,6 +172,14 @@ describe("sanitizeHtml", () => {
 	it("does not throw on normal HTML when purify is loaded", () => {
 		expect(() => sanitizeHtml("<p>Safe content</p>")).not.toThrow();
 	});
+
+	it("neutralizes javascript: hrefs even after DOMPurify is loaded", () => {
+		// DOMPurify passes element/handler checks in some DOM harnesses but
+		// still fails to enforce its URI whitelist — stripUnsafeUrlAttrs must
+		// hold the line regardless of which sanitizer is active (DEC-088).
+		const result = sanitizeHtml('hello <a href="javascript:alert(1)">click</a>');
+		expect(result).not.toContain('href="javascript:');
+	});
 });
 
 describe("useMarkdownSanitised", () => {

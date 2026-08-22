@@ -2,7 +2,7 @@
   "ril_version": 1,
   "round": 123,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-08-21T21:02:49+00:00",
+  "updated_at": "2026-08-21T21:38:05+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -7623,10 +7623,38 @@
       "version": 1,
       "created_at": "2026-08-21T20:57:23+00:00",
       "updated_at": "2026-08-21T20:57:23+00:00",
-      "touched_round": 122,
+      "touched_round": 123,
       "title": "Milestone delivered: daily readership analytics (DEC-086 complete)",
       "rationale": "Delivery of DEC-086 / TASK-155 via CHG-145, verified end-to-end. Backend: additive post_views_daily (post_id+day unique) upserted from crud.increment_views; /api/admin/stats/views (get_current_admin) returns zero-filled last-N-days series + top posts by in-period views, days bounded; forward-only tracking (no backfill) documented. Frontend: admin dashboard trend card (hand-rolled bars, best-effort load, en/zh). Verification: backend 877 SQLite / 886 dev PostgreSQL 18.4 (93.99% cov), migration chain on fresh SQLite + PG (unique pair verified), ruff clean; frontend vitest 1008 (trend spec 2), biome + vue-tsc clean; Playwright admin-analytics 2 green, full e2e 110 passed under CI-equivalent env.",
       "alternatives_rejected": "Reader notification-center (needs history table, management-heavy); email digests (no SMTP); search filters shipped (DEC-084); markdown/HTML backup format (JSON-only round-trip shipped in DEC-082, could add later). Accepted: daily write rides the existing write-on-read path, coalescing tracked separately (TASK-026); series tracks forward only from the feature."
+    },
+    "DEC-088": {
+      "id": "DEC-088",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-21T21:33:58+00:00",
+      "updated_at": "2026-08-21T21:33:58+00:00",
+      "touched_round": 123,
+      "title": "Milestone: sanitized Markdown rendering in comments",
+      "rationale": "Feature-evolution selection (SKILL 11.2 gap analysis). A tech blog lives on code discussion, but comments render as plain pre-wrap text: a fenced code block or inline `code`/emphasis shows its raw markdown, hurting readability exactly where readers share snippets. Milestone: render comment content through the SAME sanitized markdown pipeline as post content (marked with breaks:true to keep single newlines, then sanitizeHtml — DOMPurify when loaded, always-on regex fallback otherwise), so code blocks/emphasis render and a <script> in a comment still never executes; add a \"supports Markdown\" hint to the comment form. Frontend-only (comment storage stays raw; the RSS/export/backup paths already carry the raw text). Tests: CommentList component (markdown rendering + XSS strip) + E2E posting a code/script comment.",
+      "alternatives_rejected": "Reader notification-center: redundant with account.vue (devices/want_new_posts/followed category/threads already managed there). Email digests: no SMTP infra. Comment editing/deleting by author: larger auth surface (comment ownership), separate slice. Syntax highlighting in comments: enhancement after baseline markdown rendering. Math/mermaid in comments: out of scope (posts-only)."
+    },
+    "TASK-156": {
+      "id": "TASK-156",
+      "type": "task",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-21T21:33:59+00:00",
+      "updated_at": "2026-08-21T21:33:59+00:00",
+      "touched_round": 123,
+      "category": "core-feature",
+      "severity": 0.6,
+      "confidence": 0.92,
+      "effort": 0.9,
+      "unlock_factor": 1.0,
+      "title": "Comment Markdown rendering: commentMarkdownToHtml + CommentList v-html + form hint + tests",
+      "description": "Add commentMarkdownToHtml to useMarkdown (marked breaks:true + sanitizeHtml); render CommentList top-level + reply content via v-html with loadPurify on beforeMount; comment form Markdown hint + i18n; CommentList component tests (markdown/XSS) + E2E posting a fenced-code + script comment."
     }
   },
   "edges": [
@@ -10734,6 +10762,19 @@
       "type": "supersedes",
       "created_at": "2026-08-21T21:02:49+00:00",
       "note": "Milestone delivered, superseding the milestone decision"
+    },
+    {
+      "from": "DEC-088",
+      "to": "TASK-156",
+      "type": "governs",
+      "created_at": "2026-08-21T21:38:05+00:00"
+    },
+    {
+      "from": "DEC-088",
+      "to": "DEC-087",
+      "type": "supersedes",
+      "created_at": "2026-08-21T21:38:05+00:00",
+      "note": "New operator milestone after the analytics close"
     }
   ]
 }

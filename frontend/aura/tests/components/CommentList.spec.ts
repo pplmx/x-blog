@@ -229,6 +229,63 @@ describe("CommentList", () => {
 		});
 	});
 
+	describe("Markdown rendering (DEC-088, TASK-156)", () => {
+		it("renders comment markdown as HTML (code block, bold, line breaks)", async () => {
+			const mdComments = {
+				items: [
+					{
+						id: 1,
+						post_id: 1,
+						parent_id: null,
+						nickname: "U",
+						email: "u@x.com",
+						content: "Line one\nLine two\n\n**bold** and `code`\n\n```ts\nconst x = 1;\n```",
+						is_approved: true,
+						ip_address: "127.0.0.1",
+						created_at: "2024-01-15T10:30:00Z",
+					},
+				],
+				total: 1,
+				total_pages: 1,
+				page: 1,
+				limit: 20,
+			};
+			const { wrapper } = await mountCommentList({ comments: mdComments });
+			expect(wrapper.find(".comment-body pre code").exists()).toBe(true);
+			expect(wrapper.find(".comment-body strong").exists()).toBe(true);
+			expect(wrapper.find(".comment-body br").exists()).toBe(true); // breaks: true keeps newlines
+		});
+
+		it("strips script tags and event handlers from comment HTML (XSS-safe)", async () => {
+			const xssComments = {
+				items: [
+					{
+						id: 2,
+						post_id: 1,
+						parent_id: null,
+						nickname: "X",
+						email: "x@x.com",
+						content:
+							'hello <script>window.__xss=1</script> <img src=x onerror="alert(1)"> [click](javascript:alert(1))',
+						is_approved: true,
+						ip_address: "127.0.0.1",
+						created_at: "2024-01-15T10:30:00Z",
+					},
+				],
+				total: 1,
+				total_pages: 1,
+				page: 1,
+				limit: 20,
+			};
+			const { wrapper } = await mountCommentList({ comments: xssComments });
+			expect(wrapper.find(".comment-body script").exists()).toBe(false);
+			expect((wrapper.element as HTMLElement).querySelector("script")).toBeNull();
+			expect(wrapper.find("[onerror]").exists()).toBe(false);
+			// javascript: links are neutralized by the sanitizer.
+			expect((wrapper.element as HTMLElement).querySelector('a[href^="javascript:"]')).toBeNull();
+		});
+	});
+
 	describe("Pagination", () => {
 		it("renders pagination when total_pages > 1", async () => {
 			const { wrapper } = await mountCommentList();

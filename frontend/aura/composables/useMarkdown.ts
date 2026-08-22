@@ -163,22 +163,44 @@ function extractImages(
 
 let purify: ((html: string) => string) | null = null;
 
+/** URL-typed attribute schemes no sanitizer may ever pass through. */
+const UNSAFE_URL_SCHEMES = /^(javascript|vbscript|data):/i;
+
+/**
+ * Empty out href/src/action/xlink:href attributes whose value starts with an
+ * unsafe scheme (``javascript:``, ``vbscript:``, ``data:``). Runs ALWAYS (even
+ * after DOMPurify) because some DOM harnesses fail to enforce DOMPurify's URI
+ * whitelist — a ``[x](javascript:...)`` comment must never become a clickable
+ * script link in any renderer.
+ */
+export function stripUnsafeUrlAttrs(html: string): string {
+	return html.replace(
+		/\s(href|src|action|xlink:href)\s*=\s*("[^"]*"|'[^']*'|[^\s>]+)/gi,
+		(match, attr: string, value: string) => {
+			const raw = value.replace(/^["']|["']$/g, "").trim();
+			return UNSAFE_URL_SCHEMES.test(raw) ? ` ${attr}=""` : match;
+		},
+	);
+}
+
 /**
  * Minimal synchronous sanitizer used until DOMPurify finishes loading (and as
  * the permanent fallback in environments where DOMPurify cannot run).
  *
- * Strips script/style/iframe/object/embed/form elements and all on* event
- * handler attributes. This is NOT as strong as DOMPurify (e.g. `javascript:`
- * hrefs and SVG payloads survive), so DOMPurify is always preferred on the
- * client — but the fallback must never be identity: content rendered through
- * v-html must always pass through a sanitizer.
+ * Strips script/style/iframe/object/embed/form elements, all on* event-handler
+ * attributes, and nulls href/src/action attributes with an unsafe scheme (via
+ * the always-on ``stripUnsafeUrlAttrs``). Still NOT as strong as DOMPurify
+ * (e.g. SVG payloads), so DOMPurify is always preferred — but the fallback
+ * must never be identity.
  */
 export function regexSanitize(html: string): string {
-	return html
-		.replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, "")
-		.replace(/<style\b[^>]*>[\s\S]*?<\/style>/gi, "")
-		.replace(/\son\w+\s*=\s*("[^"]*"|'[^']*'|[^\s>]+)/gi, "")
-		.replace(/<(script|style|iframe|object|embed|form)[^>]*>.*?<\/\1>/gi, "");
+	return stripUnsafeUrlAttrs(
+		html
+			.replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, "")
+			.replace(/<style\b[^>]*>[\s\S]*?<\/style>/gi, "")
+			.replace(/\son\w+\s*=\s*("[^"]*"|'[^']*'|[^\s>]+)/gi, "")
+			.replace(/<(script|style|iframe|object|embed|form)[^>]*>.*?<\/\1>/gi, ""),
+	);
 }
 
 /** Load DOMPurify (client-side) and verify it actually strips XSS payloads. */
@@ -193,7 +215,10 @@ export async function loadPurify(): Promise<void> {
 		if (typeof DomPurify?.sanitize === "function") {
 			const testResult = DomPurify.sanitize("<script>alert(1)</script>");
 			if (typeof testResult === "string" && !testResult.includes("<script>")) {
-				purify = (html: string) => DomPurify.sanitize(html);
+				// Chain stripUnsafeUrlAttrs even after DOMPurify: some DOM
+				// harnesses pass DOMPurify's script/element checks but fail to
+				// enforce its URI whitelist, leaving a live javascript: href.
+				purify = (html: string) => stripUnsafeUrlAttrs(DomPurify.sanitize(html));
 				return;
 			}
 		}
@@ -251,6 +276,25 @@ function convertMarkdownToHtml(md: string): string {
  */
 export function markdownToHtml(md: string): string {
 	return convertMarkdownToHtml(md);
+}
+
+/**
+ * Render comment content as sanitized HTML (DEC-088, TASK-156).
+ *
+ * Comments reuse the post pipeline (marked) with ``breaks: true`` so single
+ * newlines become ``<br>`` (comment prose is line-broken like the old
+ * ``whitespace-pre-wrap`` text, unlike post prose). The result is ALWAYS piped
+ * through ``sanitizeHtml`` — DOMPurify once loaded, the always-on regex
+ * fallback beforehand — so a ``<script>``/event-handler comment can never
+ * execute regardless of render timing.
+ */
+export function commentMarkdownToHtml(md: string): string {
+	try {
+		const html = String(marked.parse(md || "", { breaks: true }));
+		return sanitizeHtml(html);
+	} catch {
+		return sanitizeHtml(md || "");
+	}
 }
 
 // --- Main composable ---
