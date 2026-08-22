@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 142,
+  "round": 143,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-08-22T16:29:41+00:00",
+  "updated_at": "2026-08-22T16:33:33+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -8536,7 +8536,7 @@
       "version": 1,
       "created_at": "2026-08-22T16:29:33+00:00",
       "updated_at": "2026-08-22T16:29:33+00:00",
-      "touched_round": 142,
+      "touched_round": 143,
       "title": "Milestone: reader bookmark search",
       "rationale": "Feature-evolution selection (SKILL 11.2 gap analysis). Bookmarks now have cloud sync + folders (TASK-132/172), but as the saved list grows a reader still can't find a specific saved post by keyword — folders organize by category, they don't search text. Users: readers with a growing saved list who want to locate a saved post by title/category/tag. Why now: folders (TASK-172) shipped, making a text search the natural complementary capability on the same surface. Net-additive, no backend change needed. Acceptance (one sentence): a reader can type into a search box on the bookmarks page and see only saved posts whose title (or category/tag) matches, with a clear action and a no-results state. Scope: frontend search box on /bookmarks (client-side filter over the merged bookmarks list, composable with the folder filter, clear button + empty/no-results state) + i18n + vitest + E2E. Note E2E + the whole backend suite remain unverifiable in this sandbox (see DEC-111/113/115/117/119/121/123).",
       "alternatives_rejected": "Server-side bookmark search API (unnecessary — per-reader list is small and already fully client-side via the merge; client filter is instant); reader data export (niche, deferred); notifications center (separate surface, deferred)."
@@ -8544,17 +8544,67 @@
     "TASK-174": {
       "id": "TASK-174",
       "type": "task",
-      "status": "active",
-      "version": 1,
+      "status": "resolved",
+      "version": 2,
       "created_at": "2026-08-22T16:29:36+00:00",
-      "updated_at": "2026-08-22T16:29:36+00:00",
-      "touched_round": 142,
+      "updated_at": "2026-08-22T16:33:07+00:00",
+      "touched_round": 143,
       "category": "core-feature",
       "severity": 0.55,
       "confidence": 0.85,
       "effort": 0.9,
       "unlock_factor": 1.0,
       "title": "Reader bookmark search: search box on /bookmarks (client-side filter over the merged list by title/category/tag, composable with folder filter, clear action + no-results state) + i18n + vitest + E2E; no backend change"
+    },
+    "CHG-164": {
+      "id": "CHG-164",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-22T16:33:07+00:00",
+      "updated_at": "2026-08-22T16:33:07+00:00",
+      "touched_round": 143,
+      "commit": "5b81baa13d33bc018c069eda31afb0c9e4d3c3c7",
+      "title": "Reader bookmark search (DEC-124, TASK-174)"
+    },
+    "DEC-125": {
+      "id": "DEC-125",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-22T16:33:14+00:00",
+      "updated_at": "2026-08-22T16:33:14+00:00",
+      "touched_round": 143,
+      "title": "Milestone delivered: reader bookmark search (DEC-124 complete)",
+      "rationale": "Delivery of DEC-124 / TASK-174 via CHG-164 (5b81baa). Frontend-only: a search box on /bookmarks filters the merged saved list by title/category/tag (case-insensitive), composes with the active folder filter, shows a clear button and a search-specific no-results state, and is hidden when there are no bookmarks; the count label reflects the filtered list; en/zh keys added. No backend change (per-reader list is already fully client-side via the cloud merge, so a client filter is instant and sufficient). Verification: frontend vitest 1083 green (4 new bookmarks-page search tests: title/tag-category filter, no-results+clear, hidden when empty), vue-tsc + biome clean; bulleted commit bodies per operator preference. Playwright E2E (e2e/bookmark-search.spec.ts) authored + lint-clean but NOT executed in this constrained sandbox (FastAPI backend cannot bind) — same limitation as prior DEC records.",
+      "alternatives_rejected": "Server-side bookmark search API (unnecessary — small per-reader list is client-side; kept scope zero-backend); reader data export (deferred to DEC-126/TASK-175); notifications center (separate surface, deferred)."
+    },
+    "DEC-126": {
+      "id": "DEC-126",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-22T16:33:24+00:00",
+      "updated_at": "2026-08-22T16:33:24+00:00",
+      "touched_round": 143,
+      "title": "Milestone: reader data export (personal data portability)",
+      "rationale": "Feature-evolution selection (SKILL 11.2 gap analysis). A signed-in reader has collected several server-backed resources (bookmarks, comments, reading history) but there is no way to download their own data — a privacy/data-portability gap (GDPR-style 'export my data'). Users: signed-in readers who want a portable copy of their account, saves, comments, and reading history. Why now: the reader-owned resources (bookmarks TASK-132, comments TASK-139, history TASK-170) are all stable and server-backed, so assembling an export is a natural net-additive completion; rights/export tooling is a real, non-overlapping capability. Acceptance (one sentence): a signed-in reader can download a JSON bundle of their account data (profile, bookmarks, comments, reading history) from the account page. Scope: backend GET /api/reader/me/export (auth-scoped; returns account + public-visible bookmarks/comments/history, no cross-reader leakage, refuses nothing) + backend pytest; frontend 'Download my data' button on /account that fetches the bundle and triggers a JSON file download + i18n + confirm + vitest + E2E. Note E2E + the whole backend suite remain unverifiable in this sandbox (see DEC-111/113/115/117/119/121/123/125).",
+      "alternatives_rejected": "Notifications center (still deferred; partially covered by account push/subscription management); read-later queue (overlaps bookmarks — confusing); CSV export (JSON is the portable superset for a data export)."
+    },
+    "TASK-175": {
+      "id": "TASK-175",
+      "type": "task",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-22T16:33:28+00:00",
+      "updated_at": "2026-08-22T16:33:28+00:00",
+      "touched_round": 143,
+      "category": "core-feature",
+      "severity": 0.6,
+      "confidence": 0.85,
+      "effort": 1.6,
+      "unlock_factor": 1.0,
+      "title": "Reader data export: backend GET /api/reader/me/export (auth-scoped; account profile + public-visible bookmarks/comments/history, no cross-reader leakage) + backend pytest; frontend 'Download my data' button on /account (fetch bundle + trigger JSON download + confirm) + i18n + vitest + E2E"
     }
   },
   "edges": [
@@ -12203,6 +12253,36 @@
       "to": "TASK-174",
       "type": "governs",
       "created_at": "2026-08-22T16:29:41+00:00"
+    },
+    {
+      "from": "CHG-164",
+      "to": "TASK-174",
+      "type": "implements",
+      "created_at": "2026-08-22T16:33:33+00:00"
+    },
+    {
+      "from": "DEC-125",
+      "to": "DEC-124",
+      "type": "supersedes",
+      "created_at": "2026-08-22T16:33:33+00:00"
+    },
+    {
+      "from": "DEC-125",
+      "to": "TASK-174",
+      "type": "governs",
+      "created_at": "2026-08-22T16:33:33+00:00"
+    },
+    {
+      "from": "DEC-126",
+      "to": "DEC-125",
+      "type": "supersedes",
+      "created_at": "2026-08-22T16:33:33+00:00"
+    },
+    {
+      "from": "DEC-126",
+      "to": "TASK-175",
+      "type": "governs",
+      "created_at": "2026-08-22T16:33:33+00:00"
     }
   ]
 }
