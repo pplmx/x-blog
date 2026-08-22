@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 137,
+  "round": 138,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-08-22T15:32:30+00:00",
+  "updated_at": "2026-08-22T15:39:48+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -8286,7 +8286,7 @@
       "version": 1,
       "created_at": "2026-08-22T15:32:23+00:00",
       "updated_at": "2026-08-22T15:32:23+00:00",
-      "touched_round": 137,
+      "touched_round": 138,
       "title": "Milestone: reader reading-history page",
       "rationale": "Feature-evolution selection (SKILL 11.2 gap analysis). The recently-viewed continue-reading trail (DEC-104) is purely client-side and capped at 8 entries in a home row with no way to browse everything the reader has been reading or to clear it in one place. Now that readers have archival tooling (print/PDF, DEC-112), a dedicated reading-history surface is the natural next reader-visible capability. Milestone: a /history page listing the reader's recently-viewed posts (newest-first, deduped, with viewed timestamps and continue-reading links) plus a single-action clear-history control and an empty state. Users: returning readers who want to see everything they've been reading and jump back or clear the trail. Why now: complements the just-shipped print/PDF (archival) milestone and the home continue-reading row; net-additive, no schema/backend change (still localStorage-backed for this slice). Acceptance (one sentence): a reader can open a Reading history page that lists their recently viewed posts newest-first with continue-reading links and can clear the whole trail. Scope: extend useRecentlyViewed to persist a larger/stamped trail, add the /history page (list, resume links, clear action, empty state) + i18n + entry link in reader nav/account + vitest (trail max/stamping + page render/clear) + E2E.",
       "alternatives_rejected": "Server-backed reading history across devices (larger: new DB table + auth-scoped API; deferred — localStorage slice shipped first, backend sync can be a later superseding milestone); per-post 'remove from history' micro-action in this slice (folded into Clear-history to keep the slice vertical); comment code copy button (trivial, repeatedly rejected)."
@@ -8294,17 +8294,67 @@
     "TASK-169": {
       "id": "TASK-169",
       "type": "task",
-      "status": "active",
-      "version": 1,
+      "status": "resolved",
+      "version": 2,
       "created_at": "2026-08-22T15:32:26+00:00",
-      "updated_at": "2026-08-22T15:32:26+00:00",
-      "touched_round": 137,
+      "updated_at": "2026-08-22T15:39:20+00:00",
+      "touched_round": 138,
       "category": "core-feature",
       "severity": 0.6,
       "confidence": 0.85,
       "effort": 1.2,
       "unlock_factor": 1.0,
       "title": "Reader reading-history page: extend useRecentlyViewed to keep a larger timestamped trail, add /history page (newest-first list with viewed timestamps + continue-reading links + clear-history action + empty state) + reader nav/account entry link + i18n + vitest (trail cap/stamp + page render/clear) + E2E; no backend change"
+    },
+    "CHG-159": {
+      "id": "CHG-159",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-22T15:39:20+00:00",
+      "updated_at": "2026-08-22T15:39:20+00:00",
+      "touched_round": 138,
+      "commit": "d471af81b93e10791c69fa880c6d49c79c85f820",
+      "title": "Reader reading-history page (DEC-114, TASK-169)"
+    },
+    "DEC-115": {
+      "id": "DEC-115",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-22T15:39:30+00:00",
+      "updated_at": "2026-08-22T15:39:30+00:00",
+      "touched_round": 138,
+      "title": "Milestone delivered: reader reading-history page (DEC-114 complete)",
+      "rationale": "Delivery of DEC-114 / TASK-169 via CHG-159 (d471af8). Frontend-only reading-history: extended useRecentlyViewed to keep a HISTORY_CAP=50 timestamped trail (was 8) every entry stamped with viewedAt; a new /history page lists the trail newest-first with localized viewed timestamps and continue-reading links, an inline confirm/cancel clear-history action (destructive, no undo), and an empty state; nav entry link added to the default layout and a 'view all' link on the home continue-reading row (reusing reader.nav.history); new history.json en/zh bundle and reader.nav.history key. Verification: full vitest suite 1060 green incl. updated composable spec (cap moved 8->50 + timestamp/revisit-refresh tests) and new history page spec (empty state, newest-first listing, timestamp + legacy fallback, confirm/cancel/clear flow); vue-tsc clean; biome clean across 245 files. Playwright E2E (e2e/history.spec.ts, nav entry opens /history, viewed post listed, clear -> empty state) authored + lint-clean but NOT executed in this constrained sandbox (FastAPI backend cannot bind, CPU-starved) — same limitation as DEC-111/DEC-113. Acceptance met on unit/markup evidence; sync across devices deliberately deferred to the next milestone (see DEC-116).",
+      "alternatives_rejected": "Server-backed cross-device sync in this slice (bigger surface — deferred to DEC-116 as the explicit superseding milestone); per-item 'remove one' history action in this slice (folded into clear-history to keep the slice vertical); comment code copy button (trivial, repeatedly rejected)."
+    },
+    "DEC-116": {
+      "id": "DEC-116",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-22T15:39:41+00:00",
+      "updated_at": "2026-08-22T15:39:41+00:00",
+      "touched_round": 138,
+      "title": "Milestone: server-backed reading-history sync across devices",
+      "rationale": "Feature-evolution selection (SKILL 11.2 gap analysis, superseding DEC-114's deferred scope). The reading-history page shipped in DEC-114/TASK-169 is client-side (localStorage), so a signed-in reader's Continue-reading trail does not follow them across devices or browsers. Milestone: persist a reader's view history server-side so /history shows the same trail everywhere they sign in. Users: logged-in readers on multiple devices who expect their continue-reading trail to sync like bookmarks already do. Why now: bookmarks already sync (reader auth + /api/reader/*); history is the last single-device reader surface; net-additive. Acceptance (one sentence): a signed-in reader sees the same reading history across devices — a post viewed on one device persists server-side and appears on /history on another. Scope: backend reading_history table (reader_id, post_id, viewed_at; unique(reader_id, post_id) upsert + prune) + migration + auth-scoped API (GET /api/reader/history paginated; POST /api/reader/history upsert on view; DELETE /api/reader/history clear) + backend pytest; frontend history composable merges/reads the server trail when authenticated (falls back to localStorage for guests) + i18n + vitest + E2E. Note E2E currently cannot run in this sandbox (see DEC-111/113/115); backend pytest also unverified in-sandbox.",
+      "alternatives_rejected": "Server-push notifications for re-reads / read-again reminders (creepy + niche); markdown/notes stored per post (bigger, unclear value); keep history strictly local (already delivered, but fails the cross-device use case)."
+    },
+    "TASK-170": {
+      "id": "TASK-170",
+      "type": "task",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-22T15:39:44+00:00",
+      "updated_at": "2026-08-22T15:39:44+00:00",
+      "touched_round": 138,
+      "category": "core-feature",
+      "severity": 0.7,
+      "confidence": 0.85,
+      "effort": 2.5,
+      "unlock_factor": 1.0,
+      "title": "Server-backed reading-history sync: backend reading_history table (reader_id, post_id, viewed_at, unique upsert + prune) + migration + auth-scoped API (GET /api/reader/history paginated, POST upsert on view, DELETE clear) + backend pytest; frontend history composable uses the server trail when authenticated (localStorage fallback for guests) + i18n + vitest + E2E"
     }
   },
   "edges": [
@@ -11803,6 +11853,36 @@
       "to": "TASK-169",
       "type": "governs",
       "created_at": "2026-08-22T15:32:30+00:00"
+    },
+    {
+      "from": "CHG-159",
+      "to": "TASK-169",
+      "type": "implements",
+      "created_at": "2026-08-22T15:39:48+00:00"
+    },
+    {
+      "from": "DEC-115",
+      "to": "DEC-114",
+      "type": "supersedes",
+      "created_at": "2026-08-22T15:39:48+00:00"
+    },
+    {
+      "from": "DEC-115",
+      "to": "TASK-169",
+      "type": "governs",
+      "created_at": "2026-08-22T15:39:48+00:00"
+    },
+    {
+      "from": "DEC-116",
+      "to": "DEC-115",
+      "type": "supersedes",
+      "created_at": "2026-08-22T15:39:48+00:00"
+    },
+    {
+      "from": "DEC-116",
+      "to": "TASK-170",
+      "type": "governs",
+      "created_at": "2026-08-22T15:39:48+00:00"
     }
   ]
 }
