@@ -89,6 +89,13 @@ test.describe("Comment Markdown rendering (DEC-088)", () => {
 		// zero-height element — count it rather than asserting visibility).
 		expect(await mdBody.locator("br").count()).toBeGreaterThan(0);
 
+		// Syntax highlighting (DEC-090): the lazy highlight.js pass tokenizes
+		// the fence after mount; `const` becomes an .hljs-keyword span. This is
+		// the acceptance — a code block in a comment shows token colors.
+		const highlighted = mdBody.locator("pre code.language-ts .hljs-keyword");
+		await expect(highlighted.first()).toBeVisible({ timeout: 10000 });
+		expect(await highlighted.count()).toBeGreaterThan(0);
+
 		// XSS half: the script/event-handler comment rendered its text but none
 		// of the payload produced a live node.
 		const xssBody = page.locator(`#comment-${xssId} .comment-body`);

@@ -286,6 +286,72 @@ describe("CommentList", () => {
 		});
 	});
 
+	describe("Syntax highlighting (DEC-090, TASK-157)", () => {
+		it("tokenizes fenced code blocks in comment bodies with highlight.js", async () => {
+			const codeComments = {
+				items: [
+					{
+						id: 3,
+						post_id: 1,
+						parent_id: null,
+						nickname: "Snippy",
+						email: "s@x.com",
+						content: "```ts\nconst x = 1;\n```",
+						is_approved: true,
+						ip_address: "127.0.0.1",
+						created_at: "2024-01-15T10:30:00Z",
+					},
+				],
+				total: 1,
+				total_pages: 1,
+				page: 1,
+				limit: 20,
+			};
+			const { wrapper } = await mountCommentList({ comments: codeComments });
+			// Highlight loads the lazy highlight.js bundle asynchronously after
+			// mount + DOMPurify upgrade, so poll for the token spans.
+			await vi.waitFor(() => {
+				const code = wrapper.find(".comment-body pre code.language-ts");
+				expect(code.exists()).toBe(true);
+				// `const` is a keyword in the typescript grammar — its token
+				// span only exists once highlighting has run.
+				expect(code.find(".hljs-keyword").exists()).toBe(true);
+			});
+			// The highlighted HTML still carries the escaped source (no live tags).
+			expect(wrapper.find(".comment-body pre code.language-ts").text()).toContain("const x = 1;");
+		});
+
+		it("keeps unknown-language blocks as plain escaped text (no highlight error)", async () => {
+			const plainComments = {
+				items: [
+					{
+						id: 4,
+						post_id: 1,
+						parent_id: null,
+						nickname: "Plain",
+						email: "p@x.com",
+						content: "```weirdlang\nsudo rm -rf /\n```",
+						is_approved: true,
+						ip_address: "127.0.0.1",
+						created_at: "2024-01-15T10:30:00Z",
+					},
+				],
+				total: 1,
+				total_pages: 1,
+				page: 1,
+				limit: 20,
+			};
+			const { wrapper } = await mountCommentList({ comments: plainComments });
+			await vi.waitFor(() => {
+				expect(wrapper.find(".comment-body pre code").exists()).toBe(true);
+			});
+			// highlightCode falls back to escaped plain text; the raw source is
+			// still visible (no highlight.js failure, no raw HTML).
+			expect(wrapper.find(".comment-body pre code").text()).toContain("sudo rm -rf /");
+			expect(wrapper.find(".comment-body pre code .hljs-keyword").exists()).toBe(false);
+		});
+	});
+
 	describe("Pagination", () => {
 		it("renders pagination when total_pages > 1", async () => {
 			const { wrapper } = await mountCommentList();

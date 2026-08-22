@@ -1,6 +1,7 @@
 @import "tailwindcss";
 @import "katex/dist/katex.min.css";
 @import "./theme.pcss";
+@import "./code-theme.pcss";
 
 @layer base {
 	html {

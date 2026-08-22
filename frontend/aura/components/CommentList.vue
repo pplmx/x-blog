@@ -1,5 +1,5 @@
 <template>
-  <section>
+  <section ref="listEl">
     <div class="flex items-center justify-between mb-4">
       <h2 class="text-xl font-bold text-gray-900 dark:text-gray-100">{{ t('components.commentList.title') }} ({{ total }})</h2>
       <!-- Comment-thread follow (DEC-078/TASK-150): signed-in readers subscribe
@@ -151,8 +151,9 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from "vue";
+import { computed, nextTick, onMounted, ref, watch } from "vue";
 import { type Comment, fetchComments } from "~~/composables/useApi";
+import { highlightCode, loadHighlighter } from "~~/composables/useCodeHighlight";
 import { commentMarkdownToHtml, loadPurify } from "~~/composables/useMarkdown";
 // biome-ignore lint/correctness/noUnusedImports: CommentForm is rendered in the SFC <template> (lines 59/105).
 import CommentForm from "./CommentForm.vue";
@@ -165,12 +166,34 @@ const purifyReady = ref(false);
 onMounted(async () => {
 	await loadPurify();
 	purifyReady.value = true;
+	// The purifyReady recompute replaces comment-body HTML, wiping any earlier
+	// tokens — so highlight only after that patch has applied.
+	await nextTick();
+	void highlightCommentCode();
 });
 
 /** Comment body HTML; recomputed per comment when DOMPurify is ready. */
 function commentBodyHtml(content: string): string {
 	void purifyReady.value;
 	return commentMarkdownToHtml(content);
+}
+
+// Syntax highlighting for comment code blocks (DEC-090, TASK-157): the same
+// lazy client-only highlight.js used for post content. Fences already render
+// as <pre><code class="language-..."> from the markdown pass; tokenize each
+// block once the list is on screen. highlightCode escapes its source (plain
+// text fallback for unknown languages), so installing the highlighted HTML
+// never weakens the v-html XSS guarantees from TASK-156.
+const listEl = ref<HTMLElement | null>(null);
+
+async function highlightCommentCode(): Promise<void> {
+	if (!listEl.value) return;
+	const h = await loadHighlighter();
+	const blocks = listEl.value.querySelectorAll<HTMLElement>(".comment-body pre code");
+	for (const el of blocks) {
+		const lang = (el.className.match(/language-([\w-]+)/)?.[1] ?? "").trim();
+		el.innerHTML = highlightCode(h, lang, el.textContent ?? "");
+	}
 }
 
 interface Props {
@@ -196,6 +219,13 @@ const comments = computed(() => commentData.value?.items || []);
 const total = computed(() => commentData.value?.total || 0);
 const totalPages = computed(() => commentData.value?.total_pages || 0);
 const currentPage = ref(1);
+
+// Re-tokenize whenever the list changes (submit, pagination): the new rows
+// re-render as plain <pre><code> until this re-highlights them.
+watch(comments, async () => {
+	await nextTick();
+	void highlightCommentCode();
+});
 
 // Thread the paginated flat list into a tree: group children by parent_id,
 // then render top-level comments (parent_id null, or whose parent is not on
@@ -286,11 +316,11 @@ function formatDate(dateStr: string): string {
 	padding: 0.5rem 0.75rem;
 	margin: 0.5rem 0;
 	border-radius: 0.5rem;
-	background: #f1f5f9;
+	/* Fixed Tokyo Night code surface — the same panel as post code, so the
+	   shared .hljs-* token palette stays readable in both color modes. */
+	background: #1a1b26;
+	color: #c0caf5;
 	font-size: 0.8rem;
-}
-.dark .comment-body :deep(pre) {
-	background: #1f2937;
 }
 .comment-body :deep(code) {
 	background: rgba(0, 0, 0, 0.06);

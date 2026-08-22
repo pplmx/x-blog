@@ -347,74 +347,9 @@ function lineNumbers(code: string): number[] {
   @apply text-sm leading-6;
 }
 
-/* Syntax highlighting theme (Tokyo Night palette) for highlight.js tokens.
-   The code surface is a fixed dark #1a1b26 background regardless of color
-   mode, so a single theme applies in both light and dark mode. */
-.markdown-content :deep(pre code .hljs-comment),
-.markdown-content :deep(pre code .hljs-quote) {
-  color: #565f89;
-  font-style: italic;
-}
-
-.markdown-content :deep(pre code .hljs-keyword),
-.markdown-content :deep(pre code .hljs-selector-tag),
-.markdown-content :deep(pre code .hljs-literal),
-.markdown-content :deep(pre code .hljs-doctag) {
-  color: #bb9af7;
-}
-
-.markdown-content :deep(pre code .hljs-string),
-.markdown-content :deep(pre code .hljs-regexp),
-.markdown-content :deep(pre code .hljs-addition) {
-  color: #9ece6a;
-}
-
-.markdown-content :deep(pre code .hljs-number),
-.markdown-content :deep(pre code .hljs-symbol),
-.markdown-content :deep(pre code .hljs-bullet),
-.markdown-content :deep(pre code .hljs-meta) {
-  color: #ff9e64;
-}
-
-.markdown-content :deep(pre code .hljs-title),
-.markdown-content :deep(pre code .hljs-section),
-.markdown-content :deep(pre code .hljs-title.function_) {
-  color: #7aa2f7;
-}
-
-.markdown-content :deep(pre code .hljs-title.class_),
-.markdown-content :deep(pre code .hljs-type),
-.markdown-content :deep(pre code .hljs-built_in) {
-  color: #2ac3de;
-}
-
-.markdown-content :deep(pre code .hljs-variable),
-.markdown-content :deep(pre code .hljs-template-variable),
-.markdown-content :deep(pre code .hljs-attr) {
-  color: #c0caf5;
-}
-
-.markdown-content :deep(pre code .hljs-operator),
-.markdown-content :deep(pre code .hljs-params) {
-  color: #89ddff;
-}
-
-.markdown-content :deep(pre code .hljs-tag),
-.markdown-content :deep(pre code .hljs-name) {
-  color: #f7768e;
-}
-
-.markdown-content :deep(pre code .hljs-punctuation) {
-  color: #565f89;
-}
-
-.markdown-content :deep(pre code .hljs-emphasis) {
-  font-style: italic;
-}
-
-.markdown-content :deep(pre code .hljs-strong) {
-  font-weight: bold;
-}
+/* The highlight.js token theme (Tokyo Night) now lives in the shared global
+   assets/css/code-theme.pcss so post and comment code surfaces render alike
+   (DEC-090). Only the code-surface base styles stay here. */
 
 .markdown-content :deep(img) {
   @apply rounded-xl my-8 mx-auto max-w-full h-auto shadow-md;
