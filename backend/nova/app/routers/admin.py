@@ -675,6 +675,31 @@ def admin_batch_approve_comments(
     return {"message": f"{len(comments)} comments updated"}
 
 
+class BatchDeleteRequest(BaseModel):
+    # Cap the batch so one request cannot touch an unbounded number of rows.
+    ids: list[int] = Field(max_length=100)
+
+
+@limiter.limit(f"{RATE_LIMIT_WRITE}/minute")
+@router.post("/comments/batch-delete")
+def admin_batch_delete_comments(
+    request: Request,  # noqa: ARG001
+    body: BatchDeleteRequest,
+    db: Session = Depends(get_db),
+    _current_user: auth.User = Depends(get_current_admin),
+):
+    """Bulk-delete selected comments (own-user, spam cleanup). DEC-110.
+
+    Surviving replies are reparented consistently (crud.bulk_delete_comments)
+    so the thread is never orphaned. Returns the number deleted.
+    """
+    try:
+        deleted = crud.bulk_delete_comments(db, body.ids)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    return {"deleted": deleted}
+
+
 # Password management
 class PasswordChangeRequest(BaseModel):
     current_password: str

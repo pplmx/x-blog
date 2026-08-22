@@ -113,3 +113,71 @@ class TestAdminFlagged:
 
         listed = client.get("/api/admin/comments", params={"flagged": True}, headers=auth_headers).json()
         assert not any(i["id"] == cid for i in listed["items"])
+
+
+class TestBulkDelete:
+    def _approved_comment(self, client, db_session, post_id, content):
+        from app.crud import approve_comment
+
+        c = _comment(client, post_id, content=content)
+        approve_comment(db_session, c["id"], approved=True)
+        return c
+
+    def _reply(self, client, db_session, post_id, parent_id, content):
+        from app.crud import approve_comment
+
+        r = client.post(
+            f"/api/comments/post/{post_id}",
+            json={"nickname": "R", "email": "r@example.com", "content": content, "parent_id": parent_id},
+        )
+        assert r.status_code == 201
+        rid = r.json()["id"]
+        approve_comment(db_session, rid, approved=True)
+        return rid
+
+    def test_bulk_delete_removes_selected(self, client, db_session, auth_headers):
+        post = _post(db_session, slug="bulk-1")
+        c1 = self._approved_comment(client, db_session, post.id, "one")
+        c2 = self._approved_comment(client, db_session, post.id, "two")
+
+        resp = client.post("/api/admin/comments/batch-delete", json={"ids": [c1["id"], c2["id"]]}, headers=auth_headers)
+        assert resp.status_code == 200
+        assert resp.json()["deleted"] == 2
+
+        left = client.get(f"/api/comments/post/{post.id}").json()["items"]
+        assert all(c["id"] not in (c1["id"], c2["id"]) for c in left)
+
+    def test_bulk_delete_reparents_surviving_reply(self, client, db_session, auth_headers):
+        post = _post(db_session, slug="bulk-reparent")
+        top = self._approved_comment(client, db_session, post.id, "top")
+        reply = self._reply(client, db_session, post.id, top["id"], "a reply")
+
+        resp = client.post("/api/admin/comments/batch-delete", json={"ids": [top["id"]]}, headers=auth_headers)
+        assert resp.status_code == 200
+        assert resp.json()["deleted"] == 1
+
+        left = client.get(f"/api/comments/post/{post.id}").json()["items"]
+        moved = next((c for c in left if c["id"] == reply), None)
+        assert moved is not None
+        assert moved["parent_id"] is None  # promoted to top-level
+
+    def test_bulk_delete_deleting_parent_and_reply_leaves_orphan_free(self, client, db_session, auth_headers):
+        post = _post(db_session, slug="bulk-orphan")
+        top = self._approved_comment(client, db_session, post.id, "top")
+        reply = self._reply(client, db_session, post.id, top["id"], "a reply")
+
+        resp = client.post(
+            "/api/admin/comments/batch-delete",
+            json={"ids": [top["id"], reply]},
+            headers=auth_headers,
+        )
+        assert resp.status_code == 200
+        assert resp.json()["deleted"] == 2
+        left = client.get(f"/api/comments/post/{post.id}").json()["items"]
+        assert all(c["id"] not in (top["id"], reply) for c in left)
+
+    def test_bulk_delete_requires_admin(self, client, db_session):
+        post = _post(db_session, slug="bulk-auth")
+        c = _comment(client, post.id)
+        resp = client.post("/api/admin/comments/batch-delete", json={"ids": [c["id"]]})
+        assert resp.status_code == 401

@@ -3,6 +3,7 @@ import type { AdminComment, AdminCommentListResponse } from "~~/composables/useA
 import {
 	approveAdminComment,
 	batchApproveAdminComment,
+	batchDeleteAdminComment,
 	deleteAdminComment,
 	dismissAdminCommentFlags,
 	fetchAdminComments,
@@ -76,6 +77,7 @@ const currentPage = ref(1);
 const isProcessing = ref(false);
 const selectedIds = ref<Set<number>>(new Set());
 const actionError = ref<string | null>(null);
+const deletedMessage = ref<string>("");
 
 let listRequestSeq = 0;
 
@@ -153,11 +155,11 @@ function toggleSelect(id: number) {
 }
 
 function toggleSelectAll() {
-	const pendings = (comments.value?.items ?? []).filter((c: AdminComment) => !c.is_approved);
-	if (selectedIds.value.size === pendings.length) {
+	const items = comments.value?.items ?? [];
+	if (selectedIds.value.size === items.length) {
 		selectedIds.value = new Set();
 	} else {
-		selectedIds.value = new Set(pendings.map((c: AdminComment) => c.id));
+		selectedIds.value = new Set(items.map((c: AdminComment) => c.id));
 	}
 }
 
@@ -168,6 +170,25 @@ async function batchApprove(approved: boolean) {
 	try {
 		await batchApproveAdminComment(Array.from(selectedIds.value), approved);
 		selectedIds.value = new Set();
+		await loadComments(activeFilters(), currentPage.value);
+	} catch (e) {
+		actionError.value = getErrorMessage(e);
+	} finally {
+		isProcessing.value = false;
+	}
+}
+
+async function batchDelete() {
+	const ids = Array.from(selectedIds.value);
+	if (ids.length === 0) return;
+	if (!confirm(t("admin.comments.confirmBatchDelete", { n: ids.length }))) return;
+	isProcessing.value = true;
+	actionError.value = null;
+	deletedMessage.value = "";
+	try {
+		const { deleted } = await batchDeleteAdminComment(ids);
+		selectedIds.value = new Set();
+		deletedMessage.value = t("admin.comments.deletedFeedback", { n: deleted });
 		await loadComments(activeFilters(), currentPage.value);
 	} catch (e) {
 		actionError.value = getErrorMessage(e);
@@ -235,29 +256,46 @@ async function handleApprove(id: number, approved: boolean) {
       >
         {{ actionError }}
       </div>
-      <div v-if="canBatch && pendingComments.length > 0" class="flex items-center gap-2">
-        <button
-          type="button"
-          :disabled="isProcessing || selectedIds.size === 0"
-          class="px-4 py-2 text-sm bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-400 rounded-lg hover:bg-green-100 dark:hover:bg-green-900/50 transition-colors disabled:opacity-40"
-          @click="batchApprove(true)"
-        >
-          {{ t("admin.comments.batchApprove", { n: selectedIds.size }) }}
-        </button>
-        <button
-          type="button"
-          :disabled="isProcessing || selectedIds.size === 0"
-          class="px-4 py-2 text-sm bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 rounded-lg hover:bg-red-100 dark:hover:bg-red-900/50 transition-colors disabled:opacity-40"
-          @click="batchApprove(false)"
-        >
-          {{ t("admin.comments.batchReject", { n: selectedIds.size }) }}
-        </button>
+      <div
+        v-if="canBatch && comments && comments.items.length > 0"
+        class="flex items-center gap-2"
+      >
+        <template v-if="selectedIds.size > 0">
+          <button
+            type="button"
+            :disabled="isProcessing"
+            class="px-4 py-2 text-sm bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-400 rounded-lg hover:bg-green-100 dark:hover:bg-green-900/50 transition-colors disabled:opacity-40"
+            @click="batchApprove(true)"
+          >
+            {{ t("admin.comments.batchApprove", { n: selectedIds.size }) }}
+          </button>
+          <button
+            type="button"
+            :disabled="isProcessing"
+            class="px-4 py-2 text-sm bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 rounded-lg hover:bg-red-100 dark:hover:bg-red-900/50 transition-colors disabled:opacity-40"
+            @click="batchApprove(false)"
+          >
+            {{ t("admin.comments.batchReject", { n: selectedIds.size }) }}
+          </button>
+          <button
+            type="button"
+            :disabled="isProcessing"
+            class="px-4 py-2 text-sm bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors disabled:opacity-40"
+            @click="batchDelete"
+          >
+            {{ t("admin.comments.batchDelete", { n: selectedIds.size }) }}
+          </button>
+        </template>
+        <span
+          v-if="deletedMessage"
+          class="text-sm text-emerald-600 dark:text-emerald-400"
+        >{{ deletedMessage }}</span>
         <label class="flex items-center gap-1.5 text-sm text-gray-500 dark:text-gray-400 cursor-pointer select-none">
           <input
             type="checkbox"
             class="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-            :checked="pendingComments.length > 0 && selectedIds.size === pendingComments.length"
-            :indeterminate="selectedIds.size > 0 && selectedIds.size < pendingComments.length"
+            :checked="selectedIds.size > 0 && comments.items.length > 0 && selectedIds.size === comments.items.length"
+            :indeterminate="selectedIds.size > 0 && selectedIds.size < comments.items.length"
             @change="toggleSelectAll"
           >
           {{ t("admin.comments.selectAll") }}
@@ -394,7 +432,7 @@ async function handleApprove(id: number, approved: boolean) {
           <div class="flex-1">
             <div class="flex items-center gap-3 mb-2">
               <input
-                v-if="canBatch && !comment.is_approved"
+                v-if="canBatch"
                 type="checkbox"
                 class="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                 :checked="selectedIds.has(comment.id)"

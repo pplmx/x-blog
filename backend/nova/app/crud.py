@@ -660,6 +660,52 @@ def get_all_comments(db: Session) -> list[models.Comment]:
     return db.query(models.Comment).order_by(models.Comment.created_at.desc()).all()
 
 
+def bulk_delete_comments(db: Session, ids: list[int]) -> int:
+    """Delete many comments at once, keeping the thread consistent (DEC-110).
+
+    Surviving direct replies of a deleted comment are promoted to the nearest
+    surviving ancestor (or top-level) — walking up past any ancestors that are
+    themselves being deleted — so a bulk delete never orphans a thread or
+    leaves a reply pointing at a deleted parent. Returns the number deleted.
+    """
+    delete_set = set(ids)
+    comments = db.query(models.Comment).filter(models.Comment.id.in_(delete_set)).all()
+    if not comments:
+        return 0
+    existing_ids = {c.id for c in comments}
+    for c in comments:
+        survivor_ids = [
+            sid
+            for (sid,) in db.query(models.Comment.id)
+            .filter(models.Comment.parent_id == c.id, models.Comment.id.notin_(existing_ids))
+            .all()
+        ]
+        if not survivor_ids:
+            continue
+        # Nearest ancestor of c that is not itself being deleted.
+        eff_parent = c.parent_id
+        seen: set[int] = set()
+        while eff_parent is not None and eff_parent in existing_ids and eff_parent not in seen:
+            seen.add(eff_parent)
+            up = db.get(models.Comment, eff_parent)
+            eff_parent = up.parent_id if up is not None else None
+        db.query(models.Comment).filter(models.Comment.id.in_(survivor_ids)).update(
+            {models.Comment.parent_id: eff_parent},
+            synchronize_session=False,
+        )
+    for c in comments:
+        db.delete(c)
+    try:
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        raise ValueError("Cannot delete comments: dependent records remain")
+    # Deleting approved comments changes the approved comment_count on the
+    # cached public posts list (RIL TASK-073, ISS-041).
+    clear_posts_list_cache()
+    return len(comments)
+
+
 def delete_comment(db: Session, comment_id: int) -> bool:
     comment = db.query(models.Comment).filter(models.Comment.id == comment_id).first()
     if not comment:

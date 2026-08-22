@@ -6,7 +6,10 @@
 		"pendingSummary": "{n} pending on this page",
 		"batchApprove": "Approve selected ({n})",
 		"batchReject": "Reject selected ({n})",
-		"selectAll": "Select all pending",
+		"batchDelete": "Delete selected ({n})",
+		"confirmBatchDelete": "Delete {n} selected comments? This can't be undone.",
+		"deletedFeedback": "Deleted {n} comments",
+		"selectAll": "Select all",
 		"empty": {
 			"title": "No comments",
 			"subtitle": "There are no comments yet"

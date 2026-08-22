@@ -873,6 +873,17 @@ export async function dismissAdminCommentFlags(commentId: number): Promise<{
 	});
 }
 
+/** Bulk-delete selected comments (auth required). Returns the deleted count. */
+export async function batchDeleteAdminComment(ids: number[]): Promise<{ deleted: number }> {
+	const config = useRuntimeConfig();
+	const apiUrl = config.public.apiUrl;
+	return $fetch<{ deleted: number }>(`${apiUrl}/api/admin/comments/batch-delete`, {
+		method: "POST",
+		headers: { "Content-Type": "application/json", ...getAuthHeaders() },
+		body: { ids },
+	});
+}
+
 /** Batch approve or reject comments (auth required). */
 export async function batchApproveAdminComment(ids: number[], approved: boolean) {
 	const config = useRuntimeConfig();

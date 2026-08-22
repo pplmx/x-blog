@@ -21,11 +21,15 @@ const {
 	mockDeleteAdminComment,
 	mockApproveAdminComment,
 	mockBatchApproveAdminComment,
+	mockBatchDeleteAdminComment,
+	mockDismissAdminCommentFlags,
 } = vi.hoisted(() => ({
 	mockFetchAdminComments: vi.fn(),
 	mockDeleteAdminComment: vi.fn(),
 	mockApproveAdminComment: vi.fn(),
 	mockBatchApproveAdminComment: vi.fn(),
+	mockBatchDeleteAdminComment: vi.fn(),
+	mockDismissAdminCommentFlags: vi.fn(),
 }));
 
 vi.mock("~/composables/useApi", () => ({
@@ -33,6 +37,8 @@ vi.mock("~/composables/useApi", () => ({
 	deleteAdminComment: mockDeleteAdminComment,
 	approveAdminComment: mockApproveAdminComment,
 	batchApproveAdminComment: mockBatchApproveAdminComment,
+	batchDeleteAdminComment: mockBatchDeleteAdminComment,
+	dismissAdminCommentFlags: mockDismissAdminCommentFlags,
 }));
 
 vi.stubGlobal("useRuntimeConfig", () => ({
@@ -313,9 +319,10 @@ describe("Admin Comments Page", () => {
 			const CommentsPage = await loadPage();
 			const wrapper = await mountWithSuspense(CommentsPage);
 
-			// Select Bob's checkbox (unapproved comment)
+			// Select Bob's checkbox (unapproved comment — the last one now, since
+			// every visible comment gets a checkbox).
 			const checkboxes = wrapper.findAll('input[type="checkbox"]');
-			const individualCheckbox = checkboxes[checkboxes.length - 2];
+			const individualCheckbox = checkboxes[checkboxes.length - 1];
 			await individualCheckbox.setChecked();
 
 			// Click batch approve button
@@ -334,9 +341,9 @@ describe("Admin Comments Page", () => {
 			const CommentsPage = await loadPage();
 			const wrapper = await mountWithSuspense(CommentsPage);
 
-			// Select Bob's checkbox (unapproved comment)
+			// Select Bob's checkbox (last one)
 			const checkboxes = wrapper.findAll('input[type="checkbox"]');
-			const individualCheckbox = checkboxes[checkboxes.length - 2];
+			const individualCheckbox = checkboxes[checkboxes.length - 1];
 			await individualCheckbox.setChecked();
 
 			// Click batch reject button
@@ -355,15 +362,13 @@ describe("Admin Comments Page", () => {
 			const CommentsPage = await loadPage();
 			const wrapper = await mountWithSuspense(CommentsPage);
 
-			// Click batch approve button without selecting anything
+			// Without a selection the batch buttons are not rendered at all, so
+			// nothing can be called.
 			const batchApproveButton = wrapper
 				.findAll("button")
 				.find((b) => b.text().trim().includes("批量通过"));
-			expect(batchApproveButton).toBeDefined();
-
-			await batchApproveButton?.trigger("click");
+			expect(batchApproveButton).toBeUndefined();
 			await flushPromises();
-
 			expect(mockBatchApproveAdminComment).not.toHaveBeenCalled();
 		});
 
@@ -385,18 +390,23 @@ describe("Admin Comments Page", () => {
 			await batchApproveButton?.trigger("click");
 			await flushPromises();
 
-			expect(mockBatchApproveAdminComment).toHaveBeenCalledWith([2], true);
+			expect(mockBatchApproveAdminComment).toHaveBeenCalledWith([1, 2], true);
 		});
 
-		it("disables batch buttons when no comments are selected", async () => {
+		it("renders batch buttons only once a comment is selected", async () => {
 			const CommentsPage = await loadPage();
 			const wrapper = await mountWithSuspense(CommentsPage);
 
-			// Without selecting, batch buttons should be disabled
-			const batchApproveButton = wrapper
-				.findAll("button")
-				.find((b) => b.text().trim().includes("批量通过"));
-			expect(batchApproveButton?.attributes("disabled")).toBeDefined();
+			// Nothing selected -> no batch buttons; after selecting Bob they appear.
+			expect(
+				wrapper.findAll("button").find((b) => b.text().trim().includes("批量通过")),
+			).toBeUndefined();
+
+			const checkboxes = wrapper.findAll('input[type="checkbox"]');
+			await checkboxes[checkboxes.length - 1].setChecked();
+			await flushPromises();
+			const after = wrapper.findAll("button").find((b) => b.text().trim().includes("批量通过"));
+			expect(after).toBeDefined();
 		});
 
 		it("sets isProcessing during batch approve", async () => {
@@ -417,6 +427,32 @@ describe("Admin Comments Page", () => {
 			expect(batchApproveButton?.attributes("disabled")).toBeDefined();
 
 			await flushPromises();
+		});
+
+		it("bulk-deletes selected comments after confirmation (DEC-110)", async () => {
+			mockFetchAdminComments.mockResolvedValue(mockCommentList);
+			mockBatchDeleteAdminComment.mockResolvedValue({ deleted: 1 });
+			window.confirm = vi.fn(() => true);
+
+			const CommentsPage = await loadPage();
+			const wrapper = await mountWithSuspense(CommentsPage);
+
+			const checkboxes = wrapper.findAll('input[type="checkbox"]');
+			// Select Bob's comment (last checkbox, since every comment is selectable).
+			await checkboxes[checkboxes.length - 1].setChecked();
+			await flushPromises();
+
+			const batchDeleteButton = wrapper
+				.findAll("button")
+				.find((b) => b.text().trim().includes("删除所选"));
+			expect(batchDeleteButton).toBeDefined();
+			await batchDeleteButton?.trigger("click");
+			await flushPromises();
+
+			expect(window.confirm).toHaveBeenCalledWith(
+				expect.stringContaining("确定删除选中的 1 条评论"),
+			);
+			expect(mockBatchDeleteAdminComment).toHaveBeenCalledWith([2]);
 		});
 	});
 
