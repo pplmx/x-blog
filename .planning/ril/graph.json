@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 144,
+  "round": 145,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-08-22T16:40:11+00:00",
+  "updated_at": "2026-08-22T16:46:47+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -8636,7 +8636,7 @@
       "version": 1,
       "created_at": "2026-08-22T16:40:01+00:00",
       "updated_at": "2026-08-22T16:40:01+00:00",
-      "touched_round": 144,
+      "touched_round": 145,
       "title": "Milestone: personalized 'Recommended for you' reading list",
       "rationale": "Feature-evolution selection (SKILL 11.2 gap analysis). The home page shows global popular/latest + continue-reading rows, but a signed-in reader's *interests* (from their reading history/bookmarks) are never used to surface posts they'd like — related/popular are content-based on the current post, not personalized. Users: signed-in readers who want posts matched to their reading habits instead of generic popular content. Why now: server history (TASK-170) + bookmarks/categories now provide a real interest signal; a personalized row is net-additive and reader-visible. Acceptance (one sentence): a signed-in reader sees a 'Recommended for you' row on the home page with posts scored from their history/bookmark category affinity, excluding posts they've already read or bookmarked. Scope: backend GET /api/reader/me/recommendations (auth-scoped; build category/tag affinity from reading_history + bookmarks, score visible posts not already read/bookmarked, cap N, stable ordering) + backend pytest; frontend 'Recommended for you' row on home for signed-in readers (skeleton + link to posts + i18n) + vitest + E2E. Note E2E + the whole backend suite remain unverifiable in this sandbox (see DEC-111/113/115/117/119/121/123/125/127).",
       "alternatives_rejected": "Notifications center (deferred); reading-streak/goals gamification (trivial, risk of low value); cold-start for guests (requires auth signal — guest row stays generic popular)."
@@ -8644,17 +8644,67 @@
     "TASK-176": {
       "id": "TASK-176",
       "type": "task",
-      "status": "active",
-      "version": 1,
+      "status": "resolved",
+      "version": 2,
       "created_at": "2026-08-22T16:40:06+00:00",
-      "updated_at": "2026-08-22T16:40:06+00:00",
-      "touched_round": 144,
+      "updated_at": "2026-08-22T16:46:20+00:00",
+      "touched_round": 145,
       "category": "core-feature",
       "severity": 0.6,
       "confidence": 0.8,
       "effort": 1.8,
       "unlock_factor": 1.0,
       "title": "Personalized 'Recommended for you': backend GET /api/reader/me/recommendations (auth-scoped; category/tag affinity from reading_history + bookmarks, score visible posts excluding already-read/bookmarked, cap N) + backend pytest; frontend 'Recommended for you' home row for signed-in readers (skeleton + links + i18n) + vitest + E2E"
+    },
+    "CHG-166": {
+      "id": "CHG-166",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-22T16:46:20+00:00",
+      "updated_at": "2026-08-22T16:46:20+00:00",
+      "touched_round": 145,
+      "commit": "4a11671234f38b18452b381ee2666c70ac623da0",
+      "title": "Personalized Recommended for you home row (DEC-128, TASK-176)"
+    },
+    "DEC-129": {
+      "id": "DEC-129",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-22T16:46:28+00:00",
+      "updated_at": "2026-08-22T16:46:28+00:00",
+      "touched_round": 145,
+      "title": "Milestone delivered: personalized Recommended for you home row (DEC-128 complete)",
+      "rationale": "Delivery of DEC-128 / TASK-176 via CHG-166 (4a11671). Backend: GET /api/reader/me/recommendations (auth-scoped) + crud.recommend_posts scores public posts by category(×10)+tag(×2) affinity derived from the reader's reading-history + bookmarks, excludes already-read/bookmarked, caps (limit) with stable ordering (score desc, recency, id), and returns empty on cold start (no interests) so the frontend hides the row. Frontend: 'Recommended for you' home row (heading + loading skeleton + post cards with category/views) shown only for signed-in readers via useApi useReaderRecommendations; en/zh keys. Verification: backend 8 new recommendations tests (auth scoping, cold start, category/tag affinity, read + bookmark exclusion, cap+order, reader isolation) — ruff + pyright clean; frontend vitest 1088 green (2 new home tests), vue-tsc + biome clean; bulleted commit bodies per operating preference. Playwright E2E (e2e/recommendations.spec.ts) authored + lint-clean but NOT executed in this constrained sandbox (FastAPI backend cannot bind) — same limitation as prior DEC records.",
+      "alternatives_rejected": "Notifications center (deferred); reading-streak/goals gamification (trivial/low value); guest cold-start recommendations (needs auth signal — guest row stays generic popular); per-category/series RSS (deferred to DEC-130/TASK-177)."
+    },
+    "DEC-130": {
+      "id": "DEC-130",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-22T16:46:37+00:00",
+      "updated_at": "2026-08-22T16:46:37+00:00",
+      "touched_round": 145,
+      "title": "Milestone: per-category and per-series RSS feeds",
+      "rationale": "Feature-evolution selection (SKILL 11.2 gap analysis). The blog exposes a global RSS feed (/rss/feed.xml) but category and series pages — the blog's main browse/drill-down surfaces — have no scoped feed, so a reader who only cares about one category or one tutorial series can't subscribe narrowly. Users: feed-reader subscribers who follow only a category or a series instead of the whole blog. Why now: the RSS builder already exists (app/routers/rss.py); adding content-scoped variants is net-additive and distinct from the global feed. Acceptance (one sentence): a reader can subscribe to an XML feed limited to a single category or a single series, linked from that category/series page. Scope: backend scoped RSS endpoints (/rss/category/{slug}.xml, /rss/series/{slug}.xml) reusing the existing feed builder, filtered to publicly-visible posts in that category/series (404 on unknown slug); frontend feed link (RSS icon) on category and series pages + tests (backend XML shape/scoping/404 + frontend link) + E2E. Note E2E + the whole backend suite remain unverifiable in this sandbox (see DEC-111/113/115/117/119/121/123/125/127/129).",
+      "alternatives_rejected": "PDF/print of a whole series (larger, overlaps print); notifications center (separate surface, deferred); per-tag feeds (many-to-many tags make stable URLs/ordering unclear — categories and series are the clean scoped units)."
+    },
+    "TASK-177": {
+      "id": "TASK-177",
+      "type": "task",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-22T16:46:42+00:00",
+      "updated_at": "2026-08-22T16:46:42+00:00",
+      "touched_round": 145,
+      "category": "core-feature",
+      "severity": 0.55,
+      "confidence": 0.85,
+      "effort": 1.3,
+      "unlock_factor": 1.0,
+      "title": "Per-category and per-series RSS feeds: backend /rss/category/{slug}.xml + /rss/series/{slug}.xml (reuse feed builder, filter to publicly-visible posts in that category/series, 404 on unknown) + backend pytest; frontend RSS feed links (icon) on category and series pages + i18n + vitest + E2E"
     }
   },
   "edges": [
@@ -12363,6 +12413,36 @@
       "to": "TASK-176",
       "type": "governs",
       "created_at": "2026-08-22T16:40:11+00:00"
+    },
+    {
+      "from": "CHG-166",
+      "to": "TASK-176",
+      "type": "implements",
+      "created_at": "2026-08-22T16:46:47+00:00"
+    },
+    {
+      "from": "DEC-129",
+      "to": "DEC-128",
+      "type": "supersedes",
+      "created_at": "2026-08-22T16:46:47+00:00"
+    },
+    {
+      "from": "DEC-129",
+      "to": "TASK-176",
+      "type": "governs",
+      "created_at": "2026-08-22T16:46:47+00:00"
+    },
+    {
+      "from": "DEC-130",
+      "to": "DEC-129",
+      "type": "supersedes",
+      "created_at": "2026-08-22T16:46:47+00:00"
+    },
+    {
+      "from": "DEC-130",
+      "to": "TASK-177",
+      "type": "governs",
+      "created_at": "2026-08-22T16:46:47+00:00"
     }
   ]
 }
