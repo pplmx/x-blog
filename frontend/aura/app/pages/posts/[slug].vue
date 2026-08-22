@@ -10,6 +10,7 @@ import {
 } from "~~/composables/useApi";
 import { coverImageSrc } from "~~/composables/useCoverImage";
 import { markdownToHtml } from "~~/composables/useMarkdown";
+import { readingMinutes } from "~~/composables/useReadingTime";
 import { useRecentlyViewed } from "~~/composables/useRecentlyViewed";
 import { usePostSeo } from "~~/composables/useSeo";
 import { extractToc } from "~~/composables/useToc";
@@ -161,27 +162,10 @@ function scrollToHeading(event: MouseEvent) {
 	}
 }
 
-// CJK-aware reading time — must match backend crud.reading_minutes (schemas.py)
-// so list cards and the detail page agree. Whitespace tokens plus each CJK char
-// count as one word (~200wpm); a Chinese post with no spaces is not collapsed
-// to a 1-minute read (RIL round 72, ISS-051).
-const READING_CJK_RE = /[\u2e80-\u2eff\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaff]/g;
-const readingTime = computed(() => {
-	if (!post.value?.content) return 1;
-	const tokens = post.value.content
-		.replace(/[#*`\n]/g, " ")
-		.split(/\s+/)
-		.filter(Boolean);
-	let cjkChars = 0;
-	let nonCjkWords = 0;
-	for (const t of tokens) {
-		const m = t.match(READING_CJK_RE);
-		if (m) cjkChars += m.length;
-		else nonCjkWords += 1;
-	}
-	const words = nonCjkWords + cjkChars;
-	return Math.max(1, Math.round(words / 200));
-});
+// Reading time (shared with the print/PDF view so they agree). The CJK-aware
+// logic lives in composables/useReadingTime to keep the detail page and the
+// print route consistent with backend crud.reading_minutes (RIL round 72).
+const readingTime = computed(() => readingMinutes(post.value?.content));
 </script>
 
 <template>
@@ -279,6 +263,17 @@ const readingTime = computed(() => {
               <Icon icon="lucide:eye" class="w-3 h-3" />
               {{ t('post.views', { count: post.views }) }}
             </span>
+
+            <!-- Print / PDF view (DEC-112, TASK-168): SEO-consistent link to the
+                 print-friendly route; the print button itself calls window.print(). -->
+            <NuxtLink
+              :to="`/posts/${post.slug}/print`"
+              class="inline-flex items-center gap-1 text-xs text-gray-400 hover:text-blue-500 transition-colors"
+              :aria-label="t('post.printPdf')"
+            >
+              <Icon icon="lucide:printer" class="w-3.5 h-3.5" />
+              {{ t('post.printPdf') }}
+            </NuxtLink>
           </div>
 
           <h1 class="text-3xl sm:text-4xl lg:text-5xl font-bold text-gray-900 dark:text-gray-100 leading-tight mb-6 text-balance">

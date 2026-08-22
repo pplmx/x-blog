@@ -14,6 +14,8 @@
 		"liked": "Liked",
 		"previousPost": "Previous post",
 		"nextPost": "Next post",
-		"navigation": "Post navigation"
+		"navigation": "Post navigation",
+		"printPdf": "Print / PDF",
+		"backToArticle": "Back to article"
 	}
 }

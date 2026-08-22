@@ -154,3 +154,31 @@
 		color: inherit;
 	}
 }
+
+/* Print / PDF view (DEC-112, TASK-168): hide the site chrome (header, footer,
+ * sticky progress bar, admin chrome) and the screen-only toolbar when the
+ * reader prints from the print route or the article page. The print page sets
+ * its own page margins/shading via its scoped styles; this is the global
+ * "chrome off for print" contract so any printed page stays clean and light.
+ */
+@media print {
+	header,
+	footer,
+	nav,
+	.no-print {
+		display: none !important;
+	}
+
+	body {
+		background: #fff !important;
+		color: #000 !important;
+	}
+
+	main {
+		padding: 0 !important;
+	}
+
+	@page {
+		margin: 1.5cm;
+	}
+}

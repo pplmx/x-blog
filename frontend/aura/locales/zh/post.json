@@ -14,6 +14,8 @@
 		"liked": "已点赞",
 		"previousPost": "上一篇",
 		"nextPost": "下一篇",
-		"navigation": "文章导航"
+		"navigation": "文章导航",
+		"printPdf": "打印 / PDF",
+		"backToArticle": "返回文章"
 	}
 }
