@@ -36,6 +36,18 @@ THREAD_NOTIF_BODY = os.getenv("THREAD_NOTIFICATION_BODY", "《{post_title}》有
 VALID_COMMENT_SORTS = ("newest", "oldest", "likes")
 
 
+# Moderation trust tier (DEC-098, TASK-161): when enabled, a comment authored by
+# a verified reader account (reader_id stamped from the reader JWT at create,
+# DEC-062) is approved immediately instead of waiting for a moderator, while
+# anonymous comments stay fully moderated. Operator-controlled env toggle;
+# default off preserves the "every comment is moderated" stance (DEC-066).
+def _env_flag(name: str) -> bool:
+    return os.getenv(name, "").strip().lower() in {"1", "true", "yes", "on"}
+
+
+AUTO_APPROVE_READER_COMMENTS = _env_flag("AUTO_APPROVE_READER_COMMENTS")
+
+
 def _notify_thread_subscribers(
     post: models.Post,
     new_comment_id: int,
@@ -103,6 +115,36 @@ def _notify_replied_to(
     subs = db.query(models.PushSubscription).filter(models.PushSubscription.reader_id == parent_reader.id).all()
     if subs:
         dispatch_to_subscriptions(subs, payload, db, logger)
+
+
+def _notify_comment_approved(db: Session, comment: models.Comment) -> None:
+    """Fire the notifications for a comment that just became public.
+
+    Shared by the admin approve endpoint and the verified-reader auto-approve
+    path (DEC-098, TASK-161): a reply notifies the replied-to reader, then the
+    thread's followers. Best-effort — never fails the approve, mirroring the
+    existing approve_comment guarantees (DEC-064/072/078).
+    """
+    post = db.get(models.Post, comment.post_id)
+    parent = db.get(models.Comment, comment.parent_id) if comment.parent_id is not None else None
+
+    # An approved REPLY notifies the replied-to reader (its author is not
+    # notified). (DEC-064, TASK-137)
+    if parent is not None and parent.reader_id is not None and parent.reader_id != comment.reader_id:
+        parent_reader = db.get(auth.ReaderAccount, parent.reader_id)
+        if post is not None and parent_reader is not None:
+            _notify_replied_to(parent_reader, post, parent.id, db)
+
+    # Any approved comment notifies the thread's followers (DEC-078), excluding
+    # the comment's own author and — on a reply — the replied-to reader, who
+    # already got the targeted notification above (no double push).
+    if post is not None:
+        excluded: set[int] = set()
+        if comment.reader_id is not None:
+            excluded.add(comment.reader_id)
+        if parent is not None and parent.reader_id is not None:
+            excluded.add(parent.reader_id)
+        _notify_thread_subscribers(post, comment.id, excluded, db)
 
 
 class CommentListResponse(BaseModel):
@@ -174,11 +216,23 @@ def create_comment(
     ip_address = client_rate_key(request)
     try:
         # Reply/thread notifications are fired at APPROVAL time (see
-        # approve_comment and _notify_replied_to), not here — every comment is
-        # moderated. The moderation alert is the exception: it fires at CREATE
-        # because the whole point is telling the author a comment is WAITING
-        # for approval. Best-effort — never fails the create. (DEC-080)
+        # _notify_comment_approved), not here — comments are moderated. The
+        # moderation alert is the exception: it fires at CREATE because the
+        # whole point is telling the author a comment is WAITING for approval.
+        # Best-effort — never fails the create. (DEC-080)
         created = crud.create_comment(db, post_id, comment, ip_address, reader=reader)
+
+        # Moderation trust tier (DEC-098, TASK-161): when enabled, a verified
+        # reader's comment (reader_id stamped from the reader JWT) publishes
+        # immediately instead of waiting, firing the same approval notifications
+        # as a moderator approve. Anonymous comments and the flag-off case stay
+        # pending and go through the moderator alert as before.
+        if AUTO_APPROVE_READER_COMMENTS and created.reader_id is not None:
+            approved = crud.approve_comment(db, created.id, approved=True)
+            if approved is not None:
+                _notify_comment_approved(db, approved)
+                return approved
+
         dispatch_moderation_pending(db, post, created, logger)
         return created
     except ValueError as e:
@@ -200,28 +254,8 @@ def approve_comment(
         raise HTTPException(status_code=404, detail="Comment not found")
 
     if approval.approved:
-        post = db.get(models.Post, comment.post_id)
-        parent = db.get(models.Comment, comment.parent_id) if comment.parent_id is not None else None
-
-        # An approved REPLY notifies the replied-to reader (their own reply's
-        # author is not notified). Best-effort: never fails the approval.
-        # (DEC-064, TASK-137)
-        if parent is not None and parent.reader_id is not None and parent.reader_id != comment.reader_id:
-            parent_reader = db.get(auth.ReaderAccount, parent.reader_id)
-            if post is not None and parent_reader is not None:
-                _notify_replied_to(parent_reader, post, parent.id, db)
-
-        # Any approved comment notifies the thread's followers (DEC-078),
-        # excluding the comment's own author and — on a reply — the replied-to
-        # reader, who already got the targeted notification above (no double
-        # push for the same event). Best-effort via _notify_thread_subscribers.
-        if post is not None:
-            excluded: set[int] = set()
-            if comment.reader_id is not None:
-                excluded.add(comment.reader_id)
-            if parent is not None and parent.reader_id is not None:
-                excluded.add(parent.reader_id)
-            _notify_thread_subscribers(post, comment.id, excluded, db)
+        # Shared with the verified-reader auto-approve path (DEC-098, TASK-161).
+        _notify_comment_approved(db, comment)
     return comment
 
 

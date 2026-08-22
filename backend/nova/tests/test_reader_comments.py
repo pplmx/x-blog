@@ -285,3 +285,42 @@ class TestDeleteReparentsReplies:
         assert moved["parent_id"] is None
         # The deleted comment is gone.
         assert all(c["id"] != top["id"] for c in items)
+
+
+class TestAutoApproveVerifiedReaders:
+    """Moderation trust tier (DEC-098, TASK-161): AUTO_APPROVE_READER_COMMENTS."""
+
+    def test_verified_reader_comment_publishes_immediately_when_enabled(self, client, db_session, monkeypatch):
+        from app.routers import comments as comments_router
+
+        monkeypatch.setattr(comments_router, "AUTO_APPROVE_READER_COMMENTS", True)
+        post = _create_post(db_session, slug=f"auto-on-{id(self)}")
+        token = _token(client, email=f"auto-on-{id(self)}@example.com", display_name="Auto")
+        created = _post_comment(client, post.id, headers=_auth(token)).json()
+
+        assert created["is_approved"] is True, "verified reader comment should auto-approve"
+        # It is on the public list immediately, with no moderator approve call.
+        listed = client.get(f"/api/comments/post/{post.id}").json()["items"]
+        assert any(c["id"] == created["id"] for c in listed)
+
+    def test_anonymous_comment_stays_pending_when_enabled(self, client, db_session, monkeypatch):
+        from app.routers import comments as comments_router
+
+        monkeypatch.setattr(comments_router, "AUTO_APPROVE_READER_COMMENTS", True)
+        post = _create_post(db_session, slug=f"auto-anon-{id(self)}")
+        created = _post_comment(client, post.id).json()  # no reader token -> anonymous
+
+        assert created["is_approved"] is False, "anonymous comment must stay moderated"
+
+    def test_verified_reader_comment_stays_pending_when_disabled(self, client, db_session, monkeypatch):
+        from app.routers import comments as comments_router
+
+        monkeypatch.setattr(comments_router, "AUTO_APPROVE_READER_COMMENTS", False)
+        post = _create_post(db_session, slug=f"auto-off-{id(self)}")
+        token = _token(client, email=f"auto-off-{id(self)}@example.com", display_name="Waiter")
+        created = _post_comment(client, post.id, headers=_auth(token)).json()
+
+        assert created["is_approved"] is False, "flag-off must preserve pending moderation"
+        # Not on the public list until the moderator approves.
+        listed = client.get(f"/api/comments/post/{post.id}").json()["items"]
+        assert not any(c["id"] == created["id"] for c in listed)
