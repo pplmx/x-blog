@@ -195,6 +195,20 @@ class RecordHistoryResponse(BaseModel):
     already_existed: bool
 
 
+class ReadingStatsResponse(BaseModel):
+    """A reader's reading summary derived from their history (DEC-118).
+
+    Publicly-visible posts only — un-published posts neither leak nor count.
+    ``recent`` mirrors the history-list item shape for continue-reading quick
+    jumps.
+    """
+
+    total_posts: int = 0
+    total_reading_minutes: int = 0
+    last_viewed_at: datetime | None = None
+    recent: list[ReadingHistoryItem] = []
+
+
 # A valid bcrypt hash of a random throwaway password, at the same cost as a
 # real account hash. When the email is unknown we still run bcrypt against this
 # so the login endpoint's response *timing* does not reveal whether an email
@@ -611,6 +625,21 @@ def list_reading_history(
         page=page,
         limit=limit,
         total_pages=total_pages,
+    )
+
+
+@router.get("/me/history/stats", response_model=ReadingStatsResponse)
+def reading_history_stats(
+    current_reader: auth.ReaderAccount = Depends(auth.get_current_reader),
+    db: Session = Depends(get_db),
+):
+    """A reader's reading summary (posts read, minutes, latest activity)."""
+    stats = crud.reader_history_stats(db, current_reader.id, recent_limit=6)
+    return ReadingStatsResponse(
+        total_posts=stats["total_posts"],
+        total_reading_minutes=stats["total_reading_minutes"],
+        last_viewed_at=stats["last_viewed_at"],
+        recent=[ReadingHistoryItem.from_post(p, viewed_at) for p, viewed_at in stats["recent"]],
     )
 
 

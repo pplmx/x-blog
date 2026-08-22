@@ -10,16 +10,19 @@
 import { mount } from "@vue/test-utils";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ref } from "vue";
-import type { HistoryEntry } from "../../composables/useReadingHistory";
+import type { HistoryEntry, ReadingStats } from "../../composables/useReadingHistory";
 
 const mockHistory = ref<HistoryEntry[]>([]);
+const mockStats = ref<ReadingStats | null>(null);
 const mockClear = vi.fn(async () => {
 	mockHistory.value = [];
+	mockStats.value = null;
 });
 
 vi.mock("../../composables/useReadingHistory", () => ({
 	useReadingHistory: () => ({
 		history: mockHistory,
+		stats: mockStats,
 		loading: ref(false),
 		serverEnabled: ref(false),
 		load: vi.fn(),
@@ -47,6 +50,7 @@ function mountHistory() {
 describe("Reading-history page (TASK-170)", () => {
 	beforeEach(() => {
 		mockHistory.value = [];
+		mockStats.value = null;
 		mockClear.mockClear();
 	});
 
@@ -86,6 +90,20 @@ describe("Reading-history page (TASK-170)", () => {
 		mockHistory.value = [{ slug: "a", title: "Article A" }];
 		const wrapper = mountHistory();
 		expect(wrapper.text()).toContain("最近浏览");
+	});
+
+	it("shows reading-summary cards when stats are available (TASK-171)", () => {
+		mockStats.value = { totalPosts: 4, totalReadingMinutes: 37 };
+		const wrapper = mountHistory();
+		expect(wrapper.text()).toContain("已读文章");
+		expect(wrapper.text()).toContain("4");
+		expect(wrapper.text()).toContain("阅读时长（分钟）");
+		expect(wrapper.text()).toContain("37");
+	});
+
+	it("hides reading-summary cards when no stats (guests)", () => {
+		const wrapper = mountHistory();
+		expect(wrapper.text()).not.toContain("已读文章");
 	});
 
 	it("clears history only after confirmation", async () => {

@@ -1,18 +1,24 @@
 /**
- * Reading-history source selector (DEC-116, TASK-170).
+ * Reading-history source selector + summary (DEC-116/TASK-170, DEC-118/TASK-171).
  *
  * A signed-in reader's Continue-reading trail is server-backed so it follows
  * them across devices; guests keep the client-side localStorage trail
  * (DEC-104/TASK-169). This composable exposes one normalized `history` list
- * (slug/title/viewedAt) that comes from the API when authenticated and from
- * the local trail otherwise, plus `load()` and `clear()` that act on the
- * active source. View *recording* stays in the post page: it always updates
- * the local trail and, when signed in, syncs to the server via
- * `recordReaderHistory` (see posts/[slug].vue).
+ * (slug/title/viewedAt) from the API when authenticated and from the local
+ * trail otherwise, plus `load()`/`clear()` on the active source. For signed-in
+ * readers it also loads a `stats` summary (posts read, total reading minutes,
+ * last viewed) so /history can render the reading-summary cards. View
+ * *recording* stays in the post page: it always updates the local trail and,
+ * when signed in, syncs to the server via `recordReaderHistory`.
  */
 
 import { computed, ref } from "vue";
-import { clearReaderHistory, fetchReaderHistory, type ReaderHistoryListResponse } from "./useApi";
+import {
+	clearReaderHistory,
+	fetchReaderHistory,
+	fetchReaderHistoryStats,
+	type ReaderHistoryListResponse,
+} from "./useApi";
 import { useReaderAuth } from "./useReaderAuth";
 import { useRecentlyViewed } from "./useRecentlyViewed";
 
@@ -21,6 +27,13 @@ export interface HistoryEntry {
 	title: string;
 	/** Epoch ms when the post was last viewed (undefined for legacy local rows). */
 	viewedAt?: number;
+}
+
+export interface ReadingStats {
+	totalPosts: number;
+	totalReadingMinutes: number;
+	/** Epoch ms of the most recent view (server-only; undefined for guests). */
+	lastViewedAt?: number;
 }
 
 /** HISTORY page limit pulled from the API (newest-first, single page). */
@@ -42,12 +55,14 @@ export function useReadingHistory() {
 
 	const serverEnabled = computed(() => isAuthenticated.value);
 	const history = ref<HistoryEntry[]>([]);
+	const stats = ref<ReadingStats | null>(null);
 	const loading = ref(false);
 
-	/** Load the history from the active source (server if signed in, else local). */
+	/** Load history (+ stats) from the active source (server if signed in, else local). */
 	async function load(): Promise<void> {
 		if (!serverEnabled.value) {
 			history.value = fromLocal(local.recent.value);
+			stats.value = null;
 			return;
 		}
 		loading.value = true;
@@ -62,12 +77,27 @@ export function useReadingHistory() {
 		} catch {
 			// Best-effort: fall back to the local trail if the call fails.
 			history.value = fromLocal(local.recent.value);
+		}
+		try {
+			const sres = await fetchReaderHistoryStats();
+			const sdata = sres.data?.value as
+				| { total_posts: number; total_reading_minutes: number; last_viewed_at?: string | null }
+				| undefined;
+			if (sdata) {
+				stats.value = {
+					totalPosts: sdata.total_posts,
+					totalReadingMinutes: sdata.total_reading_minutes,
+					lastViewedAt: toEpoch(sdata.last_viewed_at),
+				};
+			}
+		} catch {
+			stats.value = null;
 		} finally {
 			loading.value = false;
 		}
 	}
 
-	/** Clear the history from the active source (server + local both cleared). */
+	/** Clear the history (and stats) from the active source (server + local both cleared). */
 	async function clear(): Promise<void> {
 		if (serverEnabled.value) {
 			try {
@@ -78,7 +108,8 @@ export function useReadingHistory() {
 		}
 		local.clear();
 		history.value = [];
+		stats.value = null;
 	}
 
-	return { history, loading, serverEnabled, load, clear };
+	return { history, stats, loading, serverEnabled, load, clear };
 }

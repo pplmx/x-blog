@@ -11,6 +11,8 @@
 		"clearConfirmAction": "Clear history",
 		"clearDone": "Reading history cleared",
 		"unviewed": "Recently viewed",
-		"continue": "Read on"
+		"continue": "Read on",
+		"postsRead": "Posts read",
+		"readingMinutes": "Reading minutes"
 	}
 }

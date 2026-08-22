@@ -11,6 +11,8 @@
 		"clearConfirmAction": "清空历史",
 		"clearDone": "阅读历史已清空",
 		"unviewed": "最近浏览",
-		"continue": "继续阅读"
+		"continue": "继续阅读",
+		"postsRead": "已读文章",
+		"readingMinutes": "阅读时长（分钟）"
 	}
 }

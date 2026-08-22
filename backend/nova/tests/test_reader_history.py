@@ -201,3 +201,62 @@ class TestClearHistory:
         client.delete(HISTORY, headers=_auth(t1))
         assert client.get(HISTORY, headers=_auth(t1)).json()["total"] == 0
         assert client.get(HISTORY, headers=_auth(t2)).json()["total"] == 1
+
+
+class TestReadingStats:
+    STATS = f"{HISTORY}/stats"
+
+    def test_stats_requires_reader_token(self, client):
+        assert client.get(self.STATS).status_code == 401
+
+    def test_empty_stats(self, client):
+        token = _token(client)
+        resp = client.get(self.STATS, headers=_auth(token))
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body["total_posts"] == 0
+        assert body["total_reading_minutes"] == 0
+        assert body["last_viewed_at"] is None
+        assert body["recent"] == []
+
+    def test_stats_aggregate(self, client, db_session):
+        token = _token(client)
+        posts = [_create_post(db_session, title=f"P{i}") for i in range(3)]
+        for p in posts:
+            client.post(f"{HISTORY}/{p.id}", headers=_auth(token))
+        body = client.get(self.STATS, headers=_auth(token)).json()
+        assert body["total_posts"] == 3
+        # Each short post reads as 1 minute (schemas.reading_minutes floor).
+        assert body["total_reading_minutes"] == 3
+        assert body["last_viewed_at"] is not None
+        # recent is newest-first post summaries (no content dump).
+        assert [i["id"] for i in body["recent"]] == [posts[2].id, posts[1].id, posts[0].id]
+        assert "content" not in body["recent"][0]
+
+    def test_stats_recent_capped(self, client, db_session):
+        token = _token(client)
+        for _ in range(10):
+            p = _create_post(db_session)
+            client.post(f"{HISTORY}/{p.id}", headers=_auth(token))
+        body = client.get(self.STATS, headers=_auth(token)).json()
+        assert body["total_posts"] == 10
+        assert len(body["recent"]) == 6  # top-N most recent
+
+    def test_stats_excludes_unpublished(self, client, db_session):
+        from app.crud import update_post
+        from app.schemas import PostUpdate
+
+        token = _token(client)
+        post = _create_post(db_session)
+        client.post(f"{HISTORY}/{post.id}", headers=_auth(token))
+        assert client.get(self.STATS, headers=_auth(token)).json()["total_posts"] == 1
+        update_post(db_session, post.id, PostUpdate(published=False))
+        assert client.get(self.STATS, headers=_auth(token)).json()["total_posts"] == 0
+
+    def test_stats_isolated_between_readers(self, client, db_session):
+        t1 = _token(client, email="stats1@example.com")
+        t2 = _token(client, email="stats2@example.com")
+        post = _create_post(db_session)
+        client.post(f"{HISTORY}/{post.id}", headers=_auth(t1))
+        assert client.get(self.STATS, headers=_auth(t1)).json()["total_posts"] == 1
+        assert client.get(self.STATS, headers=_auth(t2)).json()["total_posts"] == 0

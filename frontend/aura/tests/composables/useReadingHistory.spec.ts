@@ -15,10 +15,12 @@ const localClear = vi.fn(() => {
 	localRecent.value = [];
 });
 const fetchHistory = vi.fn();
+const fetchStats = vi.fn();
 const clearHistoryApi = vi.fn();
 
 vi.mock("../../composables/useApi", () => ({
 	fetchReaderHistory: (...a: unknown[]) => fetchHistory(...a),
+	fetchReaderHistoryStats: (...a: unknown[]) => fetchStats(...a),
 	clearReaderHistory: (...a: unknown[]) => clearHistoryApi(...a),
 }));
 
@@ -45,16 +47,19 @@ describe("useReadingHistory (TASK-170)", () => {
 		authRef.value = false;
 		localRecent.value = [];
 		fetchHistory.mockReset();
+		fetchStats.mockReset();
 		clearHistoryApi.mockReset();
 		localClear.mockClear();
 	});
 
 	it("loads from the local trail for guests", async () => {
 		localRecent.value = [{ slug: "a", title: "A", viewedAt: 123 }];
-		const { load, history } = useReadingHistory();
+		const { load, history, stats } = useReadingHistory();
 		await load();
 		expect(history.value).toEqual([{ slug: "a", title: "A", viewedAt: 123 }]);
 		expect(fetchHistory).not.toHaveBeenCalled();
+		expect(stats.value).toBeNull();
+		expect(stats.value).toBeNull();
 	});
 
 	it("loads from the API when authenticated, mapping viewed_at", async () => {
@@ -100,13 +105,17 @@ describe("useReadingHistory (TASK-170)", () => {
 		expect(history.value).toEqual([]);
 	});
 
-	it("authenticated clear calls the API and clears the local mirror", async () => {
+	it("authenticated clear calls the API, clears the local mirror, and resets stats", async () => {
 		authRef.value = true;
 		fetchHistory.mockResolvedValue(apiResult({ items: [], total: 0 }));
-		const { clear } = useReadingHistory();
+		fetchStats.mockResolvedValue(
+			apiResult({ total_posts: 1, total_reading_minutes: 2, recent: [] }),
+		);
+		const { clear, stats } = useReadingHistory();
 		await clear();
 		expect(clearHistoryApi).toHaveBeenCalled();
 		expect(localClear).toHaveBeenCalled();
+		expect(stats.value).toBeNull();
 	});
 
 	it("exposes serverEnabled reflecting auth", () => {

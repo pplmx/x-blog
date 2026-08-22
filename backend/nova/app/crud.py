@@ -1373,6 +1373,31 @@ def clear_reader_history(db: Session, reader_id: int) -> int:
     return deleted
 
 
+def reader_history_stats(db: Session, reader_id: int, recent_limit: int = 6) -> dict:
+    """Aggregate a reader's reading summary from their history (DEC-118).
+
+    Returns total visible posts read, the sum of their reading minutes, the
+    most-recent viewed timestamp, and the ``recent_limit`` most recent
+    (post, viewed_at) pairs. Uses the same public-visibility filter as the
+    history list so un-published posts don't leak or count.
+    """
+    rows = (
+        db.query(models.Post, models.ReadingHistory.viewed_at)
+        .join(models.ReadingHistory, models.ReadingHistory.post_id == models.Post.id)
+        .filter(models.ReadingHistory.reader_id == reader_id)
+        .order_by(models.ReadingHistory.viewed_at.desc(), models.Post.id.desc())
+        .all()
+    )
+    visible = [(post, viewed_at) for post, viewed_at in rows if is_publicly_visible(post)]
+    total_minutes = sum(schemas.reading_minutes(post.content or "") for post, _ in visible)
+    return {
+        "total_posts": len(visible),
+        "total_reading_minutes": total_minutes,
+        "last_viewed_at": visible[0][1] if visible else None,
+        "recent": visible[:recent_limit],
+    }
+
+
 def list_reader_bookmarks(db: Session, reader_id: int) -> list[models.Post]:
     """Return the reader's bookmarked posts that are *publicly visible* only.
 

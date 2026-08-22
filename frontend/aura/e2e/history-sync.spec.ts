@@ -63,6 +63,9 @@ test.describe("Server-backed reading history (TASK-170)", () => {
 			});
 		}
 
+		// The reading-summary card reflects the server-backed stats (TASK-171).
+		await expect(page.locator("body")).toContainText("已读文章", { timeout: 10000 });
+
 		// The API itself returns the recorded view for this reader.
 		const api = await request.get("/api/reader/me/history", {
 			headers: { Authorization: `Bearer ${token}` },

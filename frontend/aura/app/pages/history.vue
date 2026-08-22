@@ -13,7 +13,7 @@ import { type HistoryEntry, useReadingHistory } from "~~/composables/useReadingH
 import { useSeo } from "~~/composables/useSeo";
 
 const { t, locale } = useLang();
-const { history, loading, load, clear } = useReadingHistory();
+const { history, stats, loading, load, clear } = useReadingHistory();
 
 useSeo({
 	title: t("history.seoTitle"),
@@ -71,6 +71,21 @@ function viewedLabel(item: HistoryEntry): string {
         <Icon icon="lucide:trash-2" class="w-4 h-4" />
         {{ t('history.clear') }}
       </button>
+    </div>
+
+    <!-- Reading summary (server-backed, signed-in readers only) -->
+    <div
+      v-if="stats"
+      class="grid grid-cols-2 gap-4 mb-8"
+    >
+      <div class="p-5 rounded-2xl border border-gray-100 dark:border-gray-800 bg-gradient-to-br from-violet-50 to-transparent dark:from-violet-900/20">
+        <p class="text-xs font-medium text-gray-400 dark:text-gray-500 uppercase tracking-wide mb-1">{{ t('history.postsRead') }}</p>
+        <p class="text-3xl font-bold text-gray-900 dark:text-gray-100">{{ stats.totalPosts }}</p>
+      </div>
+      <div class="p-5 rounded-2xl border border-gray-100 dark:border-gray-800 bg-gradient-to-br from-blue-50 to-transparent dark:from-blue-900/20">
+        <p class="text-xs font-medium text-gray-400 dark:text-gray-500 uppercase tracking-wide mb-1">{{ t('history.readingMinutes') }}</p>
+        <p class="text-3xl font-bold text-gray-900 dark:text-gray-100">{{ stats.totalReadingMinutes }}</p>
+      </div>
     </div>
 
     <!-- Inline clear confirmation -->

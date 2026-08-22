@@ -1116,6 +1116,23 @@ export async function recordReaderHistory(postId: number) {
 	);
 }
 
+export interface ReaderHistoryStats {
+	total_posts: number;
+	total_reading_minutes: number;
+	last_viewed_at?: string | null;
+	recent: ReaderHistoryItem[];
+}
+
+/** Reader reading-summary stats derived from their history (requires reader token). */
+export async function fetchReaderHistoryStats() {
+	const config = useRuntimeConfig();
+	const apiUrl = config.public.apiUrl;
+	return useFetch<ReaderHistoryStats>(`${apiUrl}/api/reader/me/history/stats`, {
+		headers: getReaderAuthHeaders(),
+		server: false,
+	});
+}
+
 /** Clear the reader's entire reading history (requires reader token). */
 export async function clearReaderHistory() {
 	const config = useRuntimeConfig();
