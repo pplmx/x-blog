@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 138,
+  "round": 139,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-08-22T15:39:48+00:00",
+  "updated_at": "2026-08-22T16:05:01+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -8336,7 +8336,7 @@
       "version": 1,
       "created_at": "2026-08-22T15:39:41+00:00",
       "updated_at": "2026-08-22T15:39:41+00:00",
-      "touched_round": 138,
+      "touched_round": 139,
       "title": "Milestone: server-backed reading-history sync across devices",
       "rationale": "Feature-evolution selection (SKILL 11.2 gap analysis, superseding DEC-114's deferred scope). The reading-history page shipped in DEC-114/TASK-169 is client-side (localStorage), so a signed-in reader's Continue-reading trail does not follow them across devices or browsers. Milestone: persist a reader's view history server-side so /history shows the same trail everywhere they sign in. Users: logged-in readers on multiple devices who expect their continue-reading trail to sync like bookmarks already do. Why now: bookmarks already sync (reader auth + /api/reader/*); history is the last single-device reader surface; net-additive. Acceptance (one sentence): a signed-in reader sees the same reading history across devices — a post viewed on one device persists server-side and appears on /history on another. Scope: backend reading_history table (reader_id, post_id, viewed_at; unique(reader_id, post_id) upsert + prune) + migration + auth-scoped API (GET /api/reader/history paginated; POST /api/reader/history upsert on view; DELETE /api/reader/history clear) + backend pytest; frontend history composable merges/reads the server trail when authenticated (falls back to localStorage for guests) + i18n + vitest + E2E. Note E2E currently cannot run in this sandbox (see DEC-111/113/115); backend pytest also unverified in-sandbox.",
       "alternatives_rejected": "Server-push notifications for re-reads / read-again reminders (creepy + niche); markdown/notes stored per post (bigger, unclear value); keep history strictly local (already delivered, but fails the cross-device use case)."
@@ -8344,17 +8344,67 @@
     "TASK-170": {
       "id": "TASK-170",
       "type": "task",
-      "status": "active",
-      "version": 1,
+      "status": "resolved",
+      "version": 2,
       "created_at": "2026-08-22T15:39:44+00:00",
-      "updated_at": "2026-08-22T15:39:44+00:00",
-      "touched_round": 138,
+      "updated_at": "2026-08-22T16:04:18+00:00",
+      "touched_round": 139,
       "category": "core-feature",
       "severity": 0.7,
       "confidence": 0.85,
       "effort": 2.5,
       "unlock_factor": 1.0,
       "title": "Server-backed reading-history sync: backend reading_history table (reader_id, post_id, viewed_at, unique upsert + prune) + migration + auth-scoped API (GET /api/reader/history paginated, POST upsert on view, DELETE clear) + backend pytest; frontend history composable uses the server trail when authenticated (localStorage fallback for guests) + i18n + vitest + E2E"
+    },
+    "CHG-160": {
+      "id": "CHG-160",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-22T16:04:18+00:00",
+      "updated_at": "2026-08-22T16:04:18+00:00",
+      "touched_round": 139,
+      "commit": "39725e12d829d42071bb5e9f70b79745241eaa03",
+      "title": "Server-backed reading-history sync across devices (DEC-116, TASK-170)"
+    },
+    "DEC-117": {
+      "id": "DEC-117",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-22T16:04:31+00:00",
+      "updated_at": "2026-08-22T16:04:31+00:00",
+      "touched_round": 139,
+      "title": "Milestone delivered: server-backed reading-history sync across devices (DEC-116 complete)",
+      "rationale": "Delivery of DEC-116 / TASK-170 via CHG-160 (39725e1). Backend: new additive reading_history table (reader_id, post_id, viewed_at, unique(reader_id,post_id) upsert; migration c3d5e7f9a0b1 chaining from the comment_flags head) + ReadingHistory model; crud record/list/clear with public-visibility filter and total = visible count (post-selected bug where total counted unfiltered rows was found by and fixed via the test suite); auth-scoped reader API GET /api/reader/me/history (paginated, newest-first), POST /api/reader/me/history/{post_id} (idempotent upsert, draft/scheduled/unknown=404), DELETE /api/reader/me/history (idempotent clear). Frontend: composables/useReadingHistory selects server trail when signed in (fetch/clear via API, localStorage fallback for guests and on fetch failure); /history page wired to it; post page syncs a signed-in reader's view server-side; useApi reader-history client + vitest + E2E. Verification: backend 17 new history tests pass in isolation (auth scoping, upsert/re-visit bump, pagination, isolation, hidden-post non-leak, clear); ruff + pyright clean; full-frontend vitest 1066 green (new composable + page specs), vue-tsc + biome clean. Playwright E2E (e2e/history-sync.spec.ts, restrict-role caveat) authored + lint-clean but NOT executed in this constrained sandbox (FastAPI backend cannot bind, CPU-starved) — same limitation as DEC-111/113/115. Note: running the entire backend suite under --cov in this sandbox is flaky (123 failures in one full run vs 0 in isolated files); the reader_account TestDeleteAccount failures are a pre-existing TestClient.delete(json=...) bug unrelated to this change (files run green in isolation).",
+      "alternatives_rejected": "Reading-stats surfaced here (deferred to next milestone DEC-118/TASK-171 to keep this slice vertical); bookmark folders (larger, deferred); notifications center (larger, separate concern)."
+    },
+    "DEC-118": {
+      "id": "DEC-118",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-22T16:04:41+00:00",
+      "updated_at": "2026-08-22T16:04:41+00:00",
+      "touched_round": 139,
+      "title": "Milestone: reader reading-summary page (personal reading stats)",
+      "rationale": "Feature-evolution selection (SKILL 11.2 gap analysis). Now that a signed-in reader's view history is server-backed and timestamped (DEC-116/TASK-170), the natural payoff is surfacing that data back to the reader as an at-a-glance reading summary — distinct from the per-post detail page and from site-wide admin analytics. Users: signed-in readers who want to see how much/what they've been reading (posts read, total reading minutes, recent/discontinued reads). Why now: the history data exists and is authoritative; no other reader surface summarizes it. Net-additive. Acceptance (one sentence): a signed-in reader sees a reading-summary page with total posts read, total reading minutes, and a 'continue where you left off' highlight of their most recent reads, derived from their own history. Scope: backend GET /api/reader/me/history/stats (aggregates the reader's visible history rows: total posts read, sum reading_time, last_viewed_at, top-N most recent posts) + backend pytest; frontend a /stats page (or summary section on /history) rendering the cards + quick-jump links + i18n + vitest + E2E. Note E2E + the whole backend suite remain unverifiable in this sandbox (see DEC-111/113/115/117).",
+      "alternatives_rejected": "Bookmark folders/collections (higher effort, deferred — organizing saved posts vs summarizing read posts); notifications center (separate surface, deferred); site-wide admin analytics already exists (this is reader-personal)."
+    },
+    "TASK-171": {
+      "id": "TASK-171",
+      "type": "task",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-22T16:04:44+00:00",
+      "updated_at": "2026-08-22T16:04:44+00:00",
+      "touched_round": 139,
+      "category": "core-feature",
+      "severity": 0.6,
+      "confidence": 0.85,
+      "effort": 1.6,
+      "unlock_factor": 1.0,
+      "title": "Reader reading-summary page: backend GET /api/reader/me/history/stats (total posts read, sum reading_time, last_viewed_at, top-N recent posts from the reader's visible history) + backend pytest; frontend /stats page (or summary section on /history) with stat cards + continue-reading quick-jump + i18n + vitest + E2E"
     }
   },
   "edges": [
@@ -11883,6 +11933,36 @@
       "to": "TASK-170",
       "type": "governs",
       "created_at": "2026-08-22T15:39:48+00:00"
+    },
+    {
+      "from": "CHG-160",
+      "to": "TASK-170",
+      "type": "implements",
+      "created_at": "2026-08-22T16:05:00+00:00"
+    },
+    {
+      "from": "DEC-117",
+      "to": "DEC-116",
+      "type": "supersedes",
+      "created_at": "2026-08-22T16:05:00+00:00"
+    },
+    {
+      "from": "DEC-117",
+      "to": "TASK-170",
+      "type": "governs",
+      "created_at": "2026-08-22T16:05:00+00:00"
+    },
+    {
+      "from": "DEC-118",
+      "to": "DEC-117",
+      "type": "supersedes",
+      "created_at": "2026-08-22T16:05:01+00:00"
+    },
+    {
+      "from": "DEC-118",
+      "to": "TASK-171",
+      "type": "governs",
+      "created_at": "2026-08-22T16:05:01+00:00"
     }
   ]
 }
