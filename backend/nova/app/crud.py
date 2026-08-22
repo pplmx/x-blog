@@ -1518,6 +1518,79 @@ def export_reader_data(db: Session, reader_id: int) -> dict:
     }
 
 
+def recommend_posts(db: Session, reader_id: int, limit: int = 6) -> list[models.Post]:
+    """Personalized post recommendations from the reader's interests.
+
+    Interest signal = the reader's publicly-visible reading history (TASK-170)
+    plus bookmarks (TASK-132): category and tag weights are the number of known
+    posts carrying each. Candidate posts are public posts the reader has
+    *not* read or bookmarked; each is scored by its shared category (×10) and
+    shared tags (×2), then ranked by score desc, recency desc, id desc for a
+    stable ordering. Posts with zero affinity are dropped. Only posts with
+    affinity are recommended, so a cold-start reader gets an empty list (the
+    frontend hides the row). (DEC-128/TASK-176)
+    """
+    now = utc_now_naive()
+
+    history_ids = [
+        r.post_id
+        for r in db.query(models.ReadingHistory.post_id).filter(models.ReadingHistory.reader_id == reader_id).all()
+    ]
+    bookmark_ids = [
+        b.post_id
+        for b in db.query(models.ReaderBookmark.post_id).filter(models.ReaderBookmark.reader_id == reader_id).all()
+    ]
+    known_ids = set(history_ids) | set(bookmark_ids)
+
+    # Build interest weights from the reader's known (public) posts.
+    category_weight: dict[int, int] = {}
+    tag_weight: dict[int, int] = {}
+    if known_ids:
+        known_posts = (
+            db.query(models.Post)
+            .filter(models.Post.id.in_(list(known_ids)))
+            .options(joinedload(models.Post.category), joinedload(models.Post.tags))
+            .all()
+        )
+        for post in known_posts:
+            if not is_publicly_visible(post):
+                continue
+            if post.category_id:
+                category_weight[post.category_id] = category_weight.get(post.category_id, 0) + 1
+            for tag in post.tags:
+                tag_weight[tag.id] = tag_weight.get(tag.id, 0) + 1
+    if not category_weight and not tag_weight:
+        return []
+
+    candidate_query = db.query(models.Post).filter(
+        models.Post.published.is_(True),
+        or_(models.Post.publish_at.is_(None), models.Post.publish_at <= now),
+    )
+    if known_ids:
+        candidate_query = candidate_query.filter(models.Post.id.notin_(list(known_ids)))
+    candidates = candidate_query.options(joinedload(models.Post.category), joinedload(models.Post.tags)).all()
+
+    def affinity(post: models.Post) -> int:
+        score = 0
+        if post.category_id:
+            score += category_weight.get(post.category_id, 0) * 10
+        for tag in post.tags:
+            score += tag_weight.get(tag.id, 0) * 2
+        return score
+
+    scored = [(affinity(p), p) for p in candidates if is_publicly_visible(p) and affinity(p) > 0]
+    scored.sort(
+        key=lambda item: (
+            -item[0],
+            -(item[1].created_at or now).timestamp() if item[1].created_at else 0,
+            -item[1].id,
+        )
+    )
+    result = [post for _, post in scored[:limit]]
+    _populate_post_metrics(db, result)
+    return result
+
+
 def list_reader_bookmarks(
     db: Session, reader_id: int, folder_id: int | None = None
 ) -> list[tuple[models.Post, int | None, str | None]]:

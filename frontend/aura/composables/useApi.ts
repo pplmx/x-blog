@@ -205,6 +205,18 @@ export async function usePopularPosts(limit = 5) {
 }
 
 /**
+ * Personalized "Recommended for you" list (DEC-128, TASK-176).
+ * Returns posts scored from the signed-in reader's history/bookmark affinity.
+ */
+export async function useReaderRecommendations(limit = 6) {
+	return useApi<PostList[]>("/api/reader/me/recommendations", {
+		query: { limit },
+		headers: getReaderAuthHeaders(),
+		server: false,
+	});
+}
+
+/**
  * Fetch related posts for a given post.
  * Uses the backend's GET /api/posts/{post_id}/related endpoint.
  * Returns a list of related posts based on category and tags.

@@ -784,6 +784,17 @@ def export_my_data(
     return DataExportResponse(**crud.export_reader_data(db, current_reader.id))
 
 
+@router.get("/me/recommendations", response_model=list[schemas.PostList])
+def my_recommendations(
+    limit: int = Query(6, ge=1, le=20),
+    current_reader: auth.ReaderAccount = Depends(auth.get_current_reader),
+    db: Session = Depends(get_db),
+):
+    """Personalized post recommendations for the signed-in reader (DEC-128)."""
+    recommended = crud.recommend_posts(db, current_reader.id, limit=limit)
+    return [schemas.PostList.model_validate(p) for p in recommended]
+
+
 # Server-backed reading history (DEC-116/TASK-170)
 # ---------------------------------------------------------------------------
 

@@ -1,9 +1,11 @@
 <script setup lang="ts">
 import {
+	type PostList,
 	type PostListResponse,
 	useBlogStats,
 	useCategories,
 	usePopularPosts,
+	useReaderRecommendations,
 	useTags,
 } from "~~/composables/useApi";
 import { paginationPages } from "~~/composables/usePagination";
@@ -55,6 +57,29 @@ const {
 });
 
 const { data: popularPosts } = await usePopularPosts();
+
+// Personalized "Recommended for you" (DEC-128, TASK-176): shown only to
+// signed-in readers, sourced from their history/bookmark category+tag affinity.
+const recommendedPosts = ref<PostList[]>([]);
+const recommending = ref(false);
+const recSignedIn = computed(
+	() =>
+		typeof window !== "undefined" &&
+		typeof localStorage?.getItem === "function" &&
+		!!localStorage.getItem("reader_token"),
+);
+onMounted(async () => {
+	if (!recSignedIn.value) return;
+	recommending.value = true;
+	try {
+		const res = await useReaderRecommendations(6);
+		recommendedPosts.value = res.data?.value ?? [];
+	} catch {
+		recommendedPosts.value = [];
+	} finally {
+		recommending.value = false;
+	}
+});
 
 // Look up active filter labels for the "filtered by" indicator (deep-link UX).
 const { data: categories } = await useCategories();
@@ -192,6 +217,39 @@ const stats = computed(() => {
           <span class="text-sm text-gray-700 dark:text-gray-300 group-hover:text-violet-600 dark:group-hover:text-violet-400 truncate max-w-[240px]">
             {{ item.title }}
           </span>
+        </NuxtLink>
+      </div>
+    </section>
+
+    <!-- Recommended for you (DEC-128, TASK-176): personalized, signed-in only -->
+    <section v-if="recSignedIn" class="mb-10">
+      <h2 class="text-lg font-bold text-gray-900 dark:text-gray-100 mb-4 flex items-center gap-2">
+        <Icon icon="lucide:sparkles" class="w-5 h-5 text-fuchsia-500" />
+        {{ t("home.sections.recommended") }}
+      </h2>
+
+      <!-- Loading skeleton -->
+      <div v-if="recommending" class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <div v-for="i in 3" :key="i" class="h-24 rounded-xl border border-gray-100 dark:border-gray-800 animate-pulse" />
+      </div>
+
+      <div v-else-if="recommendedPosts.length" class="grid gap-3 sm:grid-cols-2">
+        <NuxtLink
+          v-for="post in recommendedPosts.slice(0, 6)"
+          :key="post.id"
+          :to="`/posts/${post.slug}`"
+          class="group p-4 rounded-xl border border-gray-100 dark:border-gray-800 hover:border-fuchsia-200 dark:hover:border-fuchsia-800 hover:shadow-md transition-all duration-200"
+        >
+          <h3 class="text-sm font-semibold text-gray-900 dark:text-gray-100 group-hover:text-fuchsia-600 dark:group-hover:text-fuchsia-400 transition-colors line-clamp-2">
+            {{ post.title }}
+          </h3>
+          <div class="mt-2 flex items-center gap-2 text-xs text-gray-400">
+            <span v-if="post.category" class="inline-flex items-center gap-1">
+              <Icon icon="lucide:folder" class="w-3 h-3" />
+              {{ post.category.name }}
+            </span>
+            <span>{{ post.views }} {{ t("home.posts.views") }}</span>
+          </div>
         </NuxtLink>
       </div>
     </section>

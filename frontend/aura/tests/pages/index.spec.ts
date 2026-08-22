@@ -40,6 +40,13 @@ const { mockState } = vi.hoisted(() => ({
 			total_likes: number;
 			total_comments: number;
 		},
+		recommended: [] as Array<{
+			id: number;
+			title: string;
+			slug: string;
+			views: number;
+			category: { id: number; name: string } | null;
+		}>,
 	},
 }));
 
@@ -60,6 +67,9 @@ vi.mock("../../composables/useApi", () => ({
 		data: ref(
 			mockState.statsData ?? { total_posts: 0, total_views: 0, total_likes: 0, total_comments: 0 },
 		),
+	}),
+	useReaderRecommendations: () => ({
+		data: ref(mockState.recommended),
 	}),
 }));
 
@@ -203,6 +213,12 @@ function resetMockState() {
 	mockState.categories = [];
 	mockState.tags = [];
 	mockState.statsData = null;
+	mockState.recommended = [];
+	try {
+		window.localStorage.removeItem("reader_token");
+	} catch {
+		// happy-dom may lack localStorage
+	}
 	lastFetchUrl = "";
 }
 
@@ -590,6 +606,26 @@ describe("Index Page", () => {
 			await wrapper.vm.$nextTick();
 			expect(wrapper.text()).toContain("继续阅读");
 			expect(wrapper.text()).toContain("Made Post");
+		});
+	});
+
+	describe("Recommended for you (TASK-176)", () => {
+		it("shows recommended posts for a signed-in reader", async () => {
+			window.localStorage.setItem("reader_token", "token");
+			mockState.recommended = [
+				{ id: 7, title: "AI Post", slug: "ai-post", views: 3, category: { id: 2, name: "AI" } },
+			];
+			const wrapper = await mountIndexPage();
+			expect(wrapper.text()).toContain("为你推荐");
+			expect(wrapper.text()).toContain("AI Post");
+		});
+
+		it("hides the recommended row for guests", async () => {
+			mockState.recommended = [
+				{ id: 7, title: "AI Post", slug: "ai-post", views: 3, category: { id: 2, name: "AI" } },
+			];
+			const wrapper = await mountIndexPage();
+			expect(wrapper.text()).not.toContain("为你推荐");
 		});
 	});
 });

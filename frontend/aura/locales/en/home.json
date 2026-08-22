@@ -25,7 +25,8 @@
 			"popular": "Popular Articles",
 			"latest": "Latest Articles",
 			"filtered": "Filtered: {label}",
-			"clearFilter": "X Clear"
+			"clearFilter": "X Clear",
+			"recommended": "Recommended for you"
 		},
 		"empty": {
 			"posts": "No articles yet"
