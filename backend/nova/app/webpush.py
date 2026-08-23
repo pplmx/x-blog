@@ -204,6 +204,28 @@ def dispatch_new_post(db, post: models.Post, logger) -> dict[str, int]:
             ):
                 by_endpoint[sub.endpoint] = sub
 
+    # Also notify readers who follow this post's category with notifications
+    # on (DEC-140/TASK-182): durable reader-level intent, distinct from the
+    # per-device new-post category pin. Unioned by endpoint so a category
+    # follower already reached via all/category new-post push gets one push.
+    if post.category_id is not None:
+        cat_follower_reader_ids = [
+            row.reader_id
+            for row in db.query(models.CategoryFollow.reader_id)
+            .filter(
+                models.CategoryFollow.category_id == post.category_id,
+                models.CategoryFollow.notify.is_(True),
+            )
+            .all()
+        ]
+        if cat_follower_reader_ids:
+            for sub in (
+                db.query(models.PushSubscription)
+                .filter(models.PushSubscription.reader_id.in_(cat_follower_reader_ids))
+                .all()
+            ):
+                by_endpoint[sub.endpoint] = sub
+
     if not by_endpoint:
         return {"sent": 0, "failed": 0, "removed": 0}
     return dispatch_to_subscriptions(list(by_endpoint.values()), payload, db, logger)

@@ -198,6 +198,32 @@ class SeriesFollowResponse(BaseModel):
     notify: bool
 
 
+class FollowedCategoryItem(BaseModel):
+    """A category the reader follows (DEC-140/TASK-182)."""
+
+    id: int
+    name: str
+    notify: bool
+
+
+class FollowedCategoryListResponse(BaseModel):
+    items: list[FollowedCategoryItem]
+    total: int
+
+
+class CategoryFollowResponse(BaseModel):
+    category_id: int
+    category_name: str
+    following: bool
+    notify: bool
+
+
+class CategoryFollowNotifyUpdate(BaseModel):
+    """Body for toggling per-category new-post notifications (TASK-182)."""
+
+    notify: bool
+
+
 class AddBookmarkResponse(BaseModel):
     post_id: int
     # True when the bookmark was newly created, False when it already existed
@@ -886,6 +912,80 @@ def unfollow_series(
 ):
     """Unfollow a series. Idempotent 204."""
     crud.remove_series_follow(db, current_reader.id, series_id)
+    return None
+
+
+@router.get("/me/category-follows", response_model=FollowedCategoryListResponse)
+def list_category_follows(
+    current_reader: auth.ReaderAccount = Depends(auth.get_current_reader),
+    db: Session = Depends(get_db),
+):
+    """The categories the reader follows, with per-follow notification state."""
+    follows = crud.list_reader_category_follows(db, current_reader.id)
+    return FollowedCategoryListResponse(
+        items=[
+            FollowedCategoryItem(
+                id=f.category_id,
+                name=f.category.name if f.category else str(f.category_id),
+                notify=f.notify,
+            )
+            for f in follows
+        ],
+        total=len(follows),
+    )
+
+
+@router.put("/me/categories/{category_id}/follow", response_model=CategoryFollowResponse)
+def follow_category(
+    category_id: int,
+    response: Response,
+    current_reader: auth.ReaderAccount = Depends(auth.get_current_reader),
+    db: Session = Depends(get_db),
+):
+    """Follow a category for new-post push (idempotent: 201 on first, 200 on re-follow)."""
+    category = db.get(models.Category, category_id)
+    if not category:
+        raise HTTPException(status_code=404, detail="Category not found")
+    follow, created = crud.add_category_follow(db, current_reader.id, category_id)
+    response.status_code = 201 if created else 200
+    return CategoryFollowResponse(
+        category_id=category.id,
+        category_name=category.name,
+        following=True,
+        notify=follow.notify,
+    )
+
+
+@router.patch("/me/categories/{category_id}/follow", response_model=CategoryFollowResponse)
+def set_category_follow_notify(
+    category_id: int,
+    payload: CategoryFollowNotifyUpdate,
+    current_reader: auth.ReaderAccount = Depends(auth.get_current_reader),
+    db: Session = Depends(get_db),
+):
+    """Toggle new-post notifications for a followed category. 404 if not following."""
+    category = db.get(models.Category, category_id)
+    if not category:
+        raise HTTPException(status_code=404, detail="Category not found")
+    follow = crud.set_category_follow_notify(db, current_reader.id, category_id, payload.notify)
+    if not follow:
+        raise HTTPException(status_code=404, detail="Not following this category")
+    return CategoryFollowResponse(
+        category_id=category.id,
+        category_name=category.name,
+        following=True,
+        notify=follow.notify,
+    )
+
+
+@router.delete("/me/categories/{category_id}/follow", status_code=204)
+def unfollow_category(
+    category_id: int,
+    current_reader: auth.ReaderAccount = Depends(auth.get_current_reader),
+    db: Session = Depends(get_db),
+):
+    """Unfollow a category. Idempotent 204."""
+    crud.remove_category_follow(db, current_reader.id, category_id)
     return None
 
 

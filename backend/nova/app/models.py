@@ -103,6 +103,35 @@ class Category(Base):
     posts: Mapped[list[Post]] = relationship("Post", back_populates="category")
 
 
+class CategoryFollow(Base):
+    """A reader following a category (DEC-140, TASK-182).
+
+    Durable, reader-level intent (cross-device, unlike the per-device new-post
+    category pin on PushSubscription from DEC-076): a follow with notify=true
+    is fanned out in new-post dispatch for that category, and appears in the
+    reader's Followed-categories list. ``notify`` decouples tracking from push
+    (mirrors SeriesFollow, DEC-138/TASK-181). Additive table, no DB-level FK on
+    the columns (SQLite alembic can't add FK-carrying columns to existing
+    tables, DEC-009); integrity enforced at the API layer.
+    """
+
+    __tablename__ = "category_follows"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    reader_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
+    category_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
+    notify: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True, server_default=text("1"))
+    created_at: Mapped[datetime | None] = mapped_column(DateTime, default=lambda: datetime.now(UTC))
+
+    __table_args__ = (UniqueConstraint("reader_id", "category_id", name="uq_category_follows_reader_category"),)
+
+    category: Mapped[Category | None] = relationship(
+        "Category",
+        primaryjoin="CategoryFollow.category_id == Category.id",
+        foreign_keys="CategoryFollow.category_id",
+    )
+
+
 class Tag(Base):
     __tablename__ = "tags"
 

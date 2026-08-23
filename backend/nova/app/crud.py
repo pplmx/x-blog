@@ -1654,6 +1654,77 @@ def list_series_follow_reader_ids(db: Session, series_id: int) -> list[int]:
     ]
 
 
+def get_category_follow(db: Session, reader_id: int, category_id: int) -> models.CategoryFollow | None:
+    """Return the reader's follow for a category, or None."""
+    return (
+        db.query(models.CategoryFollow)
+        .filter(
+            models.CategoryFollow.reader_id == reader_id,
+            models.CategoryFollow.category_id == category_id,
+        )
+        .first()
+    )
+
+
+def add_category_follow(db: Session, reader_id: int, category_id: int) -> tuple[models.CategoryFollow, bool]:
+    """Follow a category for new-post push; returns (follow, created). Idempotent."""
+    existing = get_category_follow(db, reader_id, category_id)
+    if existing:
+        return existing, False
+    follow = models.CategoryFollow(reader_id=reader_id, category_id=category_id)
+    db.add(follow)
+    db.commit()
+    db.refresh(follow)
+    return follow, True
+
+
+def remove_category_follow(db: Session, reader_id: int, category_id: int) -> bool:
+    """Unfollow a category; returns True if a follow was removed. Idempotent."""
+    follow = get_category_follow(db, reader_id, category_id)
+    if not follow:
+        return False
+    db.delete(follow)
+    db.commit()
+    return True
+
+
+def set_category_follow_notify(
+    db: Session, reader_id: int, category_id: int, notify: bool
+) -> models.CategoryFollow | None:
+    """Toggle whether a category follow pushes new-posts. Returns None if not following."""
+    follow = get_category_follow(db, reader_id, category_id)
+    if not follow:
+        return None
+    follow.notify = notify
+    db.commit()
+    db.refresh(follow)
+    return follow
+
+
+def list_reader_category_follows(db: Session, reader_id: int) -> list[models.CategoryFollow]:
+    """The reader's category follow rows (with ``category`` loaded), newest first."""
+    rows = (
+        db.query(models.CategoryFollow)
+        .filter(models.CategoryFollow.reader_id == reader_id)
+        .order_by(models.CategoryFollow.created_at.desc(), models.CategoryFollow.id.desc())
+        .all()
+    )
+    return rows
+
+
+def list_category_follow_reader_ids(db: Session, category_id: int) -> list[int]:
+    """Reader ids following a category with notifications on (for new-post dispatch)."""
+    return [
+        reader_id
+        for (reader_id,) in db.query(models.CategoryFollow.reader_id)
+        .filter(
+            models.CategoryFollow.category_id == category_id,
+            models.CategoryFollow.notify.is_(True),
+        )
+        .all()
+    ]
+
+
 def list_reader_bookmarks(
     db: Session, reader_id: int, folder_id: int | None = None
 ) -> list[tuple[models.Post, int | None, str | None]]:
