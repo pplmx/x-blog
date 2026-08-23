@@ -2,7 +2,7 @@
   "ril_version": 1,
   "round": 159,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-08-23T04:54:50+00:00",
+  "updated_at": "2026-08-23T04:57:05+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -9390,6 +9390,33 @@
       "title": "Milestone delivered: post editor draft auto-save (DEC-156 complete)",
       "rationale": "Draft auto-save delivery of DEC-156/TASK-190 (7851bc0): the admin post editor auto-persists edits to a draft after an 800ms debounce with a saving/saved/error indicator; a new post is created on first auto-save (derived slug) then updated; SPA route-leave flushes and beforeunload guards full unload; a new post auto-create points the address bar at the created draft. Also fixed a latent edit-mode 422 (publish_at \":\" normalized to null in both auto-save and manual submit). Tests: frontend vitest (posts-id autosave suite), authored E2E (edit-existing + new-post), backend 1061 green (94.3% cov), biome + vue-tsc clean, E2E green against production build.",
       "alternatives_rejected": "Collaborative/cloud editing (large infra, out of scope); full calendar/scheduling UI (marginal; publish_at already exists); email/digest (out of scope)."
+    },
+    "DEC-158": {
+      "id": "DEC-158",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-23T04:57:02+00:00",
+      "updated_at": "2026-08-23T04:57:02+00:00",
+      "touched_round": 159,
+      "title": "Milestone: post revision history",
+      "rationale": "Feature-evolution selection (SKILL 11.2 gap analysis; author stakeholder). The editor now auto-saves drafts (DEC-156/TASK-190), but an accidental overwrite is still unrecoverable — only the whole-blog backup (DEC-082) exists, no per-post history. Versioning each admin save lets the author view and restore any previous state, completing the \"no lost/overwritten work\" authoring story. Users: the blog operator/author. Why now: authoring is feature-complete; undo/restore is the natural closing gap. Acceptance: an author opens a post, sees a list of past saved revisions, and can restore one, which becomes the live post. Scope (vertical slices, delivered in rounds): backend per-post revision snapshots captured on every admin create/update (with a per-post retention cap), list/revision-detail/restore admin endpoints + pytest; then the admin editor \"version history\" panel (list + restore) + i18n + vitest + E2E.",
+      "alternatives_rejected": "Real-time collaborative/cloud editing (large infra, out of scope); git-style full diffing UI (overkill for restore); global \"trash/soft-delete\" (out of scope)."
+    },
+    "TASK-191": {
+      "id": "TASK-191",
+      "type": "task",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-23T04:57:02+00:00",
+      "updated_at": "2026-08-23T04:57:02+00:00",
+      "touched_round": 159,
+      "category": "core-feature",
+      "severity": 0.6,
+      "confidence": 0.9,
+      "effort": 3.0,
+      "unlock_factor": 1.0,
+      "title": "Post revision history: snapshot a posts editable fields on every admin create/update into a per-post versions list (with a retention cap), and expose admin endpoints to list revisions, get one revision, and restore it as the live post (pytest); then an admin editor version-history panel (list + restore) + i18n + vitest + E2E"
     }
   },
   "edges": [
@@ -13548,6 +13575,18 @@
       "to": "DEC-156",
       "type": "supersedes",
       "created_at": "2026-08-23T04:54:50+00:00"
+    },
+    {
+      "from": "DEC-158",
+      "to": "TASK-191",
+      "type": "governs",
+      "created_at": "2026-08-23T04:57:05+00:00"
+    },
+    {
+      "from": "DEC-158",
+      "to": "DEC-157",
+      "type": "supersedes",
+      "created_at": "2026-08-23T04:57:05+00:00"
     }
   ]
 }
