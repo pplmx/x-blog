@@ -9,13 +9,16 @@ import {
 	type Category,
 	changeMyPassword,
 	deleteReaderAccount,
+	type FollowedSeriesItem,
 	fetchCategories,
 	fetchMyPostSubscriptions,
 	fetchMyPushSubscriptions,
 	fetchReaderDataExport,
+	fetchReaderSeriesFollows,
 	type ReaderPushSubscription,
 	revokeMyPushSubscription,
 	type SubscribedThreadItem,
+	unfollowReaderSeries,
 	unsubscribeFromPostThread,
 	updateMyProfile,
 	updateMyPushSubscriptionPrefs,
@@ -215,6 +218,37 @@ async function unfollowThread(thread: SubscribedThreadItem) {
 	}
 }
 
+/* Followed series for new-part push (DEC-134, TASK-179) -------------------- */
+const seriesFollows = ref<FollowedSeriesItem[]>([]);
+const seriesFollowsLoaded = ref(false);
+const seriesUnfollowId = ref<number | null>(null);
+const seriesFollowsError = ref(false);
+
+async function loadSeriesFollows() {
+	if (!isAuthenticated.value) return;
+	try {
+		const res = await fetchReaderSeriesFollows();
+		seriesFollows.value = res.data?.value?.items ?? [];
+	} catch {
+		seriesFollows.value = [];
+	}
+	seriesFollowsLoaded.value = true;
+}
+
+async function unfollowFollowedSeries(item: FollowedSeriesItem) {
+	if (!confirm(t("account.series.unfollowConfirm"))) return;
+	seriesUnfollowId.value = item.id;
+	seriesFollowsError.value = false;
+	try {
+		await unfollowReaderSeries(item.id);
+		await loadSeriesFollows();
+	} catch {
+		seriesFollowsError.value = true;
+	} finally {
+		seriesUnfollowId.value = null;
+	}
+}
+
 /* Delete account (DEC-106, TASK-165) ---------------------------------- */
 // Data export (DEC-126, TASK-175): download the reader's portable JSON bundle.
 const exportingData = ref(false);
@@ -272,6 +306,7 @@ onMounted(() => {
 	loadDevices();
 	loadCategories();
 	loadThreads();
+	loadSeriesFollows();
 	// Keep the name input in sync if the header "reader" profile loads after us.
 	displayName.value = reader.value?.display_name ?? displayName.value;
 });
@@ -532,6 +567,46 @@ function shortEndpoint(endpoint: string): string {
         </ul>
         <p v-if="threadsError" class="mt-2 text-sm text-red-500 dark:text-red-400">
           {{ t('account.threads.failed') }}
+        </p>
+      </section>
+
+      <!-- Followed series for new-part push (DEC-134, TASK-179) -->
+      <section class="border border-gray-100 dark:border-gray-700 rounded-xl p-5">
+        <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-1">
+          {{ t('account.series.title') }}
+        </h2>
+        <p class="text-xs text-gray-400 mb-4">{{ t('account.series.note') }}</p>
+
+        <p v-if="seriesFollowsLoaded && seriesFollows.length === 0" class="text-sm text-gray-500 dark:text-gray-400">
+          {{ t('account.series.empty') }}
+        </p>
+        <ul v-else class="space-y-3">
+          <li
+            v-for="sf in seriesFollows"
+            :key="sf.id"
+            class="border border-gray-100 dark:border-gray-800 rounded-lg p-3"
+          >
+            <div class="flex items-center justify-between gap-3 text-sm">
+              <NuxtLink
+                :to="`/series/${sf.slug}`"
+                class="min-w-0 truncate text-gray-900 dark:text-gray-100 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+              >
+                {{ sf.title }}
+              </NuxtLink>
+              <button
+                type="button"
+                :disabled="seriesUnfollowId === sf.id"
+                class="shrink-0 inline-flex items-center gap-1 text-xs text-gray-400 hover:text-red-500 transition-colors disabled:opacity-50"
+                @click="unfollowFollowedSeries(sf)"
+              >
+                <Icon icon="lucide:bell-off" class="w-3.5 h-3.5" />
+                {{ t('account.series.unfollow') }}
+              </button>
+            </div>
+          </li>
+        </ul>
+        <p v-if="seriesFollowsError" class="mt-2 text-sm text-red-500 dark:text-red-400">
+          {{ t('account.series.failed') }}
         </p>
       </section>
 

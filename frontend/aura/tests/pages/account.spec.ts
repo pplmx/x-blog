@@ -33,6 +33,8 @@ const mockFetchCategories = vi.fn();
 const mockUpdatePushSubscriptionPrefs = vi.fn();
 const mockDeleteReaderAccount = vi.fn();
 const mockFetchReaderDataExport = vi.fn();
+const mockFetchReaderSeriesFollows = vi.fn();
+const mockUnfollowReaderSeries = vi.fn();
 
 vi.mock("../../composables/useApi", async (importOriginal) => {
 	const orig = await importOriginal<typeof import("../../composables/useApi")>();
@@ -46,6 +48,8 @@ vi.mock("../../composables/useApi", async (importOriginal) => {
 		updateMyPushSubscriptionPrefs: mockUpdatePushSubscriptionPrefs,
 		deleteReaderAccount: mockDeleteReaderAccount,
 		fetchReaderDataExport: mockFetchReaderDataExport,
+		fetchReaderSeriesFollows: mockFetchReaderSeriesFollows,
+		unfollowReaderSeries: mockUnfollowReaderSeries,
 	};
 });
 
@@ -345,6 +349,48 @@ describe("Account settings page", () => {
 			await flushPromises();
 
 			expect(wrapper.text()).toContain("导出失败");
+			vi.unstubAllGlobals();
+		});
+	});
+
+	describe("followed series (DEC-134, TASK-179)", () => {
+		function mockFollows(items: Array<{ id: number; title: string; slug: string }> = []) {
+			mockFetchReaderSeriesFollows.mockResolvedValue({
+				data: { value: { items, total: items.length } },
+			});
+		}
+
+		it("shows an empty state when following no series", async () => {
+			isAuthenticated.value = true;
+			mockFetchPushSubscriptions.mockResolvedValue({ items: [], total: 0 });
+			mockFollows([]);
+			const wrapper = await mountPage();
+			expect(wrapper.text()).toContain("还没有关注任何系列");
+		});
+
+		it("lists followed series and unfollows after confirmation", async () => {
+			isAuthenticated.value = true;
+			mockFetchPushSubscriptions.mockResolvedValue({ items: [], total: 0 });
+			mockFetchReaderSeriesFollows
+				.mockResolvedValueOnce({
+					data: { value: { items: [{ id: 5, title: "Tutorial", slug: "tutorial" }], total: 1 } },
+				})
+				.mockResolvedValueOnce({ data: { value: { items: [], total: 0 } } });
+			mockUnfollowReaderSeries.mockResolvedValue(undefined);
+			vi.stubGlobal("confirm", () => true);
+
+			const wrapper = await mountPage();
+			expect(wrapper.text()).toContain("Tutorial");
+
+			const section = wrapper.findAll("section").find((s) => s.text().includes("关注的系列"));
+			expect(section).toBeDefined();
+			if (!section) throw new Error("series section not found");
+			await section.find("button").trigger("click");
+			await flushPromises();
+
+			expect(mockUnfollowReaderSeries).toHaveBeenCalledWith(5);
+			expect(mockFetchReaderSeriesFollows).toHaveBeenCalledTimes(2); // initial + reload
+			expect(wrapper.text()).toContain("还没有关注任何系列");
 			vi.unstubAllGlobals();
 		});
 	});

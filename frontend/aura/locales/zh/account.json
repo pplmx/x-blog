@@ -56,6 +56,14 @@
 			"unfollowConfirm": "确定取消订阅这篇讨论吗？之后不再收到它的新评论提醒。",
 			"failed": "操作失败，请稍后再试"
 		},
+		"series": {
+			"title": "关注的系列",
+			"note": "这些系列发布新篇时，会通过 Web Push 通知你。",
+			"empty": "还没有关注任何系列",
+			"unfollow": "取消关注",
+			"unfollowConfirm": "确定取消关注这个系列吗？之后不再收到它的新篇提醒。",
+			"failed": "操作失败，请稍后再试"
+		},
 		"export": {
 			"title": "下载我的数据",
 			"description": "获取一份可携带的 JSON 副本，包含你的账号、收藏、评论和阅读历史。",
