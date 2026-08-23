@@ -9,6 +9,7 @@
 		"published": "已发布",
 		"draft": "草稿",
 		"scheduled": "定时发布",
+		"preview": "预览",
 		"confirmDelete": "确定要删除这篇文章吗？",
 		"columns": {
 			"title": "标题",

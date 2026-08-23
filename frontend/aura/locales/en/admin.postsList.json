@@ -9,6 +9,7 @@
 		"published": "Published",
 		"draft": "Draft",
 		"scheduled": "Scheduled",
+		"preview": "Preview",
 		"confirmDelete": "Delete this post?",
 		"columns": {
 			"title": "Title",

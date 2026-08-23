@@ -208,6 +208,15 @@ function statusDot(post: AdminPost): string {
               </td>
               <td class="px-5 py-4 text-right">
                 <div class="flex items-center justify-end gap-1">
+                  <NuxtLink :to="`/preview/posts/${post.id}`">
+                    <button
+                      type="button"
+                      :title="t('admin.postsList.preview')"
+                      class="h-8 w-8 p-0 text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 rounded-lg transition-colors"
+                    >
+                      <Icon icon="lucide:eye" class="h-4 w-4" />
+                    </button>
+                  </NuxtLink>
                   <NuxtLink :to="`/admin/posts/${post.id}`">
                     <button type="button" class="h-8 w-8 p-0 text-blue-600 hover:text-blue-700 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded-lg transition-colors">
                       <Icon icon="lucide:pencil" class="h-4 w-4" />

@@ -1,0 +1,8 @@
+{
+	"preview": {
+		"seoTitle": "文章预览 — X-Blog",
+		"back": "返回文章列表",
+		"badge": "预览（尚未发布）",
+		"loadFailed": "无法加载文章进行预览"
+	}
+}

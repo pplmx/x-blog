@@ -227,6 +227,13 @@ describe("Admin Posts Page", () => {
 			expect(editLink.exists()).toBe(true);
 		});
 
+		it("renders a preview link for each post (TASK-187)", async () => {
+			const PostsPage = await loadPage();
+			const wrapper = await mountWithSuspense(PostsPage);
+			const previewLink = wrapper.find('a[href="/preview/posts/1"]');
+			expect(previewLink.exists()).toBe(true);
+		});
+
 		it("renders search input and status filter", async () => {
 			const PostsPage = await loadPage();
 			const wrapper = await mountWithSuspense(PostsPage);
