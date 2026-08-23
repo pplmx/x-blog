@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 155,
+  "round": 156,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-08-23T01:54:31+00:00",
+  "updated_at": "2026-08-23T02:08:45+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -9182,11 +9182,11 @@
     "TASK-187": {
       "id": "TASK-187",
       "type": "task",
-      "status": "active",
-      "version": 1,
+      "status": "resolved",
+      "version": 2,
       "created_at": "2026-08-23T01:54:26+00:00",
-      "updated_at": "2026-08-23T01:54:26+00:00",
-      "touched_round": 154,
+      "updated_at": "2026-08-23T02:08:45+00:00",
+      "touched_round": 155,
       "category": "core-feature",
       "severity": 0.6,
       "confidence": 0.9,
@@ -9201,10 +9201,60 @@
       "version": 1,
       "created_at": "2026-08-23T01:54:26+00:00",
       "updated_at": "2026-08-23T01:54:26+00:00",
-      "touched_round": 154,
+      "touched_round": 155,
       "title": "Milestone: author preview of draft/scheduled posts",
       "rationale": "Feature-evolution selection (SKILL 11.2 gap analysis; author stakeholder). An author can only see a draft/scheduled post in the admin editor, not how it will actually render for readers (markdown, cover, reading time, SEO) — exports/backup and the public read path exclude non-published posts, so there is no preview. Adding an admin-authenticated preview of a non-public post (full detail) plus a preview route/flag on the post page lets the author verify the final look before publish. Users: the blog operator/author. Why now: authoring (posts editor, series) is mature but preview is a real missing step before publish. Acceptance: an author can preview a draft/scheduled post as readers will see it. Scope: admin-authenticated preview read of a non-public post + preview flag/route on the post page + admin Preview button + pytest + vitest + E2E.",
       "alternatives_rejected": "Post clone/duplicate (authoring nicety, marginal); email/digest (out of scope); reader public draft counts (privacy/leak risk)."
+    },
+    "CHG-177": {
+      "id": "CHG-177",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-23T02:08:39+00:00",
+      "updated_at": "2026-08-23T02:08:39+00:00",
+      "touched_round": 155,
+      "commit": "a31ad63",
+      "title": "Author preview of draft/scheduled posts (frontend) (DEC-150, TASK-187)"
+    },
+    "DEC-151": {
+      "id": "DEC-151",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-23T02:08:39+00:00",
+      "updated_at": "2026-08-23T02:08:39+00:00",
+      "touched_round": 155,
+      "title": "Milestone delivered: author preview of draft/scheduled posts (DEC-150 complete)",
+      "rationale": "Feature-evolution delivery of DEC-150/TASK-187 (frontend a31ad63 + backend preview-read tests e2dc29b): /preview/posts/:id (admin-gated) renders a not-live post as readers see it (title/meta/reading time/cover/markdown/category/tags) from the admin detail endpoint, with a Preview button on the admin posts list. Tests: 3 backend review-read tests, vitest (preview renders + auth-gate + list link), authored E2E. Verified: full backend 1050 green, full frontend 1112 vitest green, ruff+pyright+biome+vue-tsc clean.",
+      "alternatives_rejected": "Post clone/duplicate (authoring nicety, marginal); email/digest (out of scope); public draft counts (privacy/leak risk)."
+    },
+    "TASK-188": {
+      "id": "TASK-188",
+      "type": "task",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-23T02:08:39+00:00",
+      "updated_at": "2026-08-23T02:08:39+00:00",
+      "touched_round": 155,
+      "category": "core-feature",
+      "severity": 0.6,
+      "confidence": 0.9,
+      "effort": 2.0,
+      "unlock_factor": 1.0,
+      "title": "Search analytics for the operator: log public reader search queries (privacy-safe, aggregate-only) in an additive table and show top-searches by count in the admin analytics, so the author sees what readers look for; backend search-logging + admin top-searches endpoint + analytics card + i18n + pytest + vitest + E2E"
+    },
+    "DEC-152": {
+      "id": "DEC-152",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-23T02:08:39+00:00",
+      "updated_at": "2026-08-23T02:08:39+00:00",
+      "touched_round": 155,
+      "title": "Milestone: search analytics for the operator",
+      "rationale": "Feature-evolution selection (SKILL 11.2 gap analysis; operator stakeholder, distinct from follow/view analytics already shipped). The public search (DEC-070/074/084) is a major discovery surface, but the operator has zero visibility into what readers search for — a real, distinct signal for content direction. Logging aggregated (count-only, not per-reader) search terms and surfacing top searches in the admin analytics is net-additive, privacy-safe, and non-marginal. Users: the blog operator/author. Why now: reader discovery (search/filters) and operator analytics (views/follows) are mature; search-terms is the missing operator signal. Acceptance: the admin analytics show the most-searched terms by count. Scope: additive search-log aggregation table + admin top-searches endpoint + admin analytics card + pytest + vitest + E2E.",
+      "alternatives_rejected": "Per-reader search history (privacy risk, not needed); tag follows (rejected earlier: tags many-to-many/noisy); email/digest (out of scope)."
     }
   },
   "edges": [
@@ -13243,6 +13293,36 @@
       "to": "TASK-187",
       "type": "governs",
       "created_at": "2026-08-23T01:54:31+00:00"
+    },
+    {
+      "from": "CHG-177",
+      "to": "TASK-187",
+      "type": "implements",
+      "created_at": "2026-08-23T02:08:45+00:00"
+    },
+    {
+      "from": "DEC-151",
+      "to": "DEC-150",
+      "type": "supersedes",
+      "created_at": "2026-08-23T02:08:45+00:00"
+    },
+    {
+      "from": "DEC-151",
+      "to": "TASK-187",
+      "type": "governs",
+      "created_at": "2026-08-23T02:08:45+00:00"
+    },
+    {
+      "from": "DEC-152",
+      "to": "DEC-151",
+      "type": "supersedes",
+      "created_at": "2026-08-23T02:08:45+00:00"
+    },
+    {
+      "from": "DEC-152",
+      "to": "TASK-188",
+      "type": "governs",
+      "created_at": "2026-08-23T02:08:45+00:00"
     }
   ]
 }
