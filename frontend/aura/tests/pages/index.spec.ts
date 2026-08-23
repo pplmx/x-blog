@@ -47,6 +47,19 @@ const { mockState } = vi.hoisted(() => ({
 			views: number;
 			category: { id: number; name: string } | null;
 		}>,
+		followedSeries: [] as Array<{ id: number; title: string; slug: string }>,
+		seriesProgress: {} as Record<
+			string,
+			{
+				series_slug: string;
+				series_title: string;
+				total: number;
+				read_count: number;
+				completed: boolean;
+				read_post_ids: number[];
+				next_slug: string | null;
+			} | null
+		>,
 	},
 }));
 
@@ -70,6 +83,12 @@ vi.mock("../../composables/useApi", () => ({
 	}),
 	useReaderRecommendations: () => ({
 		data: ref(mockState.recommended),
+	}),
+	fetchReaderSeriesFollows: async () => ({
+		data: { value: { items: mockState.followedSeries, total: mockState.followedSeries.length } },
+	}),
+	fetchReaderSeriesProgress: async (slug: string) => ({
+		data: { value: mockState.seriesProgress[slug] ?? null },
 	}),
 }));
 
@@ -214,6 +233,8 @@ function resetMockState() {
 	mockState.tags = [];
 	mockState.statsData = null;
 	mockState.recommended = [];
+	mockState.followedSeries = [];
+	mockState.seriesProgress = {};
 	try {
 		window.localStorage.removeItem("reader_token");
 	} catch {
@@ -626,6 +647,41 @@ describe("Index Page", () => {
 			];
 			const wrapper = await mountIndexPage();
 			expect(wrapper.text()).not.toContain("为你推荐");
+		});
+	});
+
+	describe("Your series (TASK-180)", () => {
+		it("shows followed series with progress + a continue deep link for a signed-in follower", async () => {
+			window.localStorage.setItem("reader_token", "token");
+			mockState.followedSeries = [{ id: 3, title: "Tutorial", slug: "tutorial" }];
+			mockState.seriesProgress = {
+				tutorial: {
+					series_slug: "tutorial",
+					series_title: "Tutorial",
+					total: 5,
+					read_count: 2,
+					completed: false,
+					read_post_ids: [],
+					next_slug: "part-3",
+				},
+			};
+			const wrapper = await mountIndexPage();
+			expect(wrapper.text()).toContain("我的系列");
+			expect(wrapper.text()).toContain("Tutorial");
+			expect(wrapper.html()).toContain("/posts/part-3");
+		});
+
+		it("hides the row for guests even when followed series exist in state", async () => {
+			mockState.followedSeries = [{ id: 3, title: "Tutorial", slug: "tutorial" }];
+			const wrapper = await mountIndexPage();
+			expect(wrapper.text()).not.toContain("我的系列");
+		});
+
+		it("hides the row when a signed-in reader follows no series", async () => {
+			window.localStorage.setItem("reader_token", "token");
+			mockState.followedSeries = [];
+			const wrapper = await mountIndexPage();
+			expect(wrapper.text()).not.toContain("我的系列");
 		});
 	});
 });

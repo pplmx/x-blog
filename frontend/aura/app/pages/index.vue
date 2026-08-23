@@ -1,7 +1,11 @@
 <script setup lang="ts">
 import {
+	type FollowedSeriesItem,
+	fetchReaderSeriesFollows,
+	fetchReaderSeriesProgress,
 	type PostList,
 	type PostListResponse,
+	type SeriesProgress,
 	useBlogStats,
 	useCategories,
 	usePopularPosts,
@@ -79,7 +83,47 @@ onMounted(async () => {
 	} finally {
 		recommending.value = false;
 	}
+	await loadFollowedSeries();
 });
+
+// Personalized "Your series" (DEC-136, TASK-180): a signed-in reader who
+// follows series sees each one with reading progress (TASK-173) and a
+// continue deep link, so they can resume several ongoing series in one place.
+const followedSeries = ref<FollowedSeriesItem[]>([]);
+const followedProgress = ref<Record<string, SeriesProgress | null>>({});
+const followedLoading = ref(false);
+const followedVisible = computed(() => recSignedIn.value && followedSeries.value.length > 0);
+
+function seriesProgressPercent(p: SeriesProgress): number {
+	if (!p || p.total <= 0) return 0;
+	return Math.min(100, Math.round((p.read_count / p.total) * 100));
+}
+
+async function loadFollowedSeries() {
+	if (!recSignedIn.value) return;
+	followedLoading.value = true;
+	try {
+		const res = await fetchReaderSeriesFollows();
+		const items = res.data?.value?.items ?? [];
+		followedSeries.value = items;
+		const entries = await Promise.all(
+			items.map(async (s) => {
+				try {
+					const p = await fetchReaderSeriesProgress(s.slug);
+					return [s.slug, p.data?.value ?? null] as const;
+				} catch {
+					return [s.slug, null] as const;
+				}
+			}),
+		);
+		followedProgress.value = Object.fromEntries(entries);
+	} catch {
+		followedSeries.value = [];
+		followedProgress.value = {};
+	} finally {
+		followedLoading.value = false;
+	}
+}
 
 // Look up active filter labels for the "filtered by" indicator (deep-link UX).
 const { data: categories } = await useCategories();
@@ -251,6 +295,56 @@ const stats = computed(() => {
             <span>{{ post.views }} {{ t("home.posts.views") }}</span>
           </div>
         </NuxtLink>
+      </div>
+    </section>
+
+    <!-- Your series (DEC-136, TASK-180): personalized, signed-in followers only -->
+    <section v-if="followedVisible" class="mb-10">
+      <h2 class="text-lg font-bold text-gray-900 dark:text-gray-100 mb-4 flex items-center gap-2">
+        <Icon icon="lucide:layers" class="w-5 h-5 text-violet-500" />
+        {{ t("home.sections.yourSeries") }}
+      </h2>
+
+      <!-- Loading skeleton -->
+      <div v-if="followedLoading" class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <div v-for="i in 3" :key="i" class="h-24 rounded-xl border border-gray-100 dark:border-gray-800 animate-pulse" />
+      </div>
+
+      <div v-else class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <div
+          v-for="sf in followedSeries"
+          :key="sf.id"
+          class="p-4 rounded-xl border border-gray-100 dark:border-gray-800 hover:border-violet-200 dark:hover:border-violet-800 hover:shadow-md transition-all duration-200"
+        >
+          <NuxtLink
+            :to="`/series/${sf.slug}`"
+            class="text-sm font-semibold text-gray-900 dark:text-gray-100 hover:text-violet-600 dark:hover:text-violet-400 transition-colors line-clamp-2"
+          >
+            {{ sf.title }}
+          </NuxtLink>
+          <div v-if="followedProgress[sf.slug]" class="mt-3">
+            <div class="flex items-center justify-between gap-2 text-xs text-gray-400">
+              <span>
+                {{ t('series.readCountLabel', { read: followedProgress[sf.slug]!.read_count, total: followedProgress[sf.slug]!.total }) }}
+              </span>
+              <NuxtLink
+                v-if="!followedProgress[sf.slug]!.completed && followedProgress[sf.slug]!.next_slug"
+                :to="`/posts/${followedProgress[sf.slug]!.next_slug}`"
+                class="inline-flex items-center gap-1 text-violet-500 hover:text-violet-700 transition-colors"
+              >
+                {{ t('home.sections.continue') }}
+                <Icon icon="lucide:arrow-right" class="w-3 h-3" />
+              </NuxtLink>
+              <span v-else-if="followedProgress[sf.slug]!.completed">{{ t('series.completed') }}</span>
+            </div>
+            <div class="mt-1.5 h-1.5 rounded-full bg-gray-100 dark:bg-gray-800 overflow-hidden">
+              <div
+                class="h-full bg-gradient-to-r from-violet-500 to-fuchsia-500"
+                :style="{ width: seriesProgressPercent(followedProgress[sf.slug]!) + '%' }"
+              />
+            </div>
+          </div>
+        </div>
       </div>
     </section>
 
