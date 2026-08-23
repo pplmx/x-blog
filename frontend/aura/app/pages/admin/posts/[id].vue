@@ -43,6 +43,19 @@ const submitError = ref<string | null>(null);
 const isNotifying = ref(false);
 const notifyMessage = ref<string | null>(null);
 
+// Draft auto-save (RIL TASK-190, DEC-156): edits are auto-persisted to a
+// draft after a debounce, with a visible saving/saved state and no lost work
+// on leave. Reuses the same create/update admin endpoint as manual save.
+const AUTOSAVE_DEBOUNCE_MS = 800;
+type AutoSaveStatus = "idle" | "saving" | "saved" | "error";
+const autoSaveStatus = ref<AutoSaveStatus>("idle");
+const autoSaveError = ref<string | null>(null);
+let autosaveTimer: ReturnType<typeof setTimeout> | null = null;
+let autosaveInFlight = false;
+let autosaveQueued = false;
+/** Id of the draft created from a /admin/posts/new session (postId is null). */
+let autosavedId: number | null = null;
+
 // Unsaved-changes guard state (RIL TASK-061). Declared before the postData
 // watch below, whose immediate:true callback needs loadedSnapshot at setup time.
 const isDirty = ref(false);
@@ -186,12 +199,102 @@ watch(
 	() => {
 		if (loadedSnapshot !== "" && snapshot() !== loadedSnapshot) {
 			isDirty.value = true;
+			scheduleAutosave();
 		}
 	},
 	{ deep: true },
 );
 
+/** Debounce a pending auto-save so bursts of keystrokes coalesce into one. */
+function scheduleAutosave() {
+	if (autosaveTimer) clearTimeout(autosaveTimer);
+	autosaveTimer = setTimeout(() => {
+		autosaveTimer = null;
+		void runAutosave();
+	}, AUTOSAVE_DEBOUNCE_MS);
+}
+
+/**
+ * Persist the current form to a draft without an explicit save. For a brand
+ * new post (postId null) the first auto-save creates the draft via the normal
+ * create endpoint; later auto-saves update it. Newer edits that arrive while a
+ * save is in flight are queued and re-run so the latest state is never lost.
+ */
+async function runAutosave() {
+	if (autosaveInFlight) {
+		autosaveQueued = true;
+		return;
+	}
+	if (isSubmitting.value || isNotifying.value) return;
+	if (!isDirty.value) return;
+
+	const payload = { ...formData.value } as Partial<PostCreate>;
+	// publish_at is "" when unset (edit-mode round-trip) — normalize to null so
+	// the backend datetime field doesn't 422 (RIL TASK-190).
+	payload.publish_at = payload.publish_at ? toUtcNaiveIso(payload.publish_at) : null;
+	// Snapshot of exactly what we're about to persist, used below to decide
+	// whether it's safe to point the address bar at the created draft.
+	const savedSnapshot = JSON.stringify(payload);
+
+	let targetId: number | null = postId;
+	if (targetId === null) {
+		// First auto-save of a new post: need a draft to exist first. Skip
+		// until there's a title (so we can derive the required ASCII slug) —
+		// an empty new form has nothing worth persisting.
+		targetId = autosavedId;
+		if (targetId === null) {
+			if (!payload.title) return;
+			if (!payload.slug) payload.slug = generateSlug(payload.title);
+			if (!payload.slug) return;
+		}
+	}
+
+	autosaveInFlight = true;
+	autoSaveStatus.value = "saving";
+	autoSaveError.value = null;
+	try {
+		const result =
+			targetId === null
+				? await createAdminPost(payload as PostCreate)
+				: await updateAdminPost(targetId, payload);
+		if (result.error.value) {
+			const err = result.error.value as { data?: { detail?: string } } | null;
+			autoSaveError.value =
+				typeof err?.data?.detail === "string" ? err.data.detail : t("admin.postEdit.autoSaveError");
+			autoSaveStatus.value = "error";
+			return;
+		}
+		const createdId = (result.data.value as { id?: number } | null)?.id ?? null;
+		if (targetId === null && createdId !== null) {
+			autosavedId = createdId;
+			// Point the address bar at the newly created draft so a manual
+			// refresh doesn't re-create a second draft — but only when the
+			// form still matches what we just saved, so a remount can't drop
+			// keystrokes that arrived while the request was in flight.
+			if (snapshot() === savedSnapshot) {
+				navigateTo(`/admin/posts/${createdId}`, { replace: true });
+			}
+		}
+		loadedSnapshot = snapshot();
+		isDirty.value = false;
+		autoSaveStatus.value = "saved";
+	} catch {
+		autoSaveError.value = t("admin.postEdit.autoSaveError");
+		autoSaveStatus.value = "error";
+	} finally {
+		autosaveInFlight = false;
+		if (autosaveQueued) {
+			autosaveQueued = false;
+			if (autosaveTimer) clearTimeout(autosaveTimer);
+			void runAutosave();
+		}
+	}
+}
+
 function onBeforeUnload(e: BeforeUnloadEvent) {
+	// Best-effort flush on unload; the native prompt below still guards the
+	// (already-saved) state and lets the author choose not to lose anything.
+	if (isDirty.value) void runAutosave();
 	if (isDirty.value) {
 		e.preventDefault();
 		e.returnValue = ""; // legacy browsers show native prompt
@@ -207,12 +310,19 @@ onMounted(() => {
 });
 
 onBeforeUnmount(() => {
+	if (autosaveTimer) clearTimeout(autosaveTimer);
 	window.removeEventListener("beforeunload", onBeforeUnload);
 });
 
 onBeforeRouteLeave(() => {
-	if (!isDirty.value) return true;
-	return window.confirm(t("admin.postEdit.unsavedConfirm"));
+	// Auto-save first: the dispatched request keeps running during the SPA
+	// route change, so edits are persisted instead of prompting to abandon
+	// them. Only a full-page unload (handled above) keeps the native guard.
+	if (isDirty.value) {
+		if (autosaveTimer) clearTimeout(autosaveTimer);
+		void runAutosave();
+	}
+	return true;
 });
 
 async function handleSubmit(e: Event) {
@@ -221,9 +331,9 @@ async function handleSubmit(e: Event) {
 	submitError.value = null;
 
 	const payload = { ...formData.value };
-	if (payload.publish_at) {
-		payload.publish_at = toUtcNaiveIso(payload.publish_at);
-	}
+	// publish_at is "" when unset (edit-mode round-trip); normalize to null so
+	// the backend datetime field doesn't 422 on save/update (RIL TASK-190).
+	payload.publish_at = payload.publish_at ? toUtcNaiveIso(payload.publish_at) : null;
 	// New posts start with an empty slug, which fails the backend schema
 	// pattern (^[a-z0-9]+(?:-[a-z0-9]+)*$) with a 422. Generate one from the
 	// title so a plain "fill title + content, save" flow always works.
@@ -417,6 +527,26 @@ function handleFileInput(e: Event) {
     </div>
 
     <form v-else @submit.prevent="handleSubmit" class="space-y-6">
+      <!-- Auto-save status indicator (RIL TASK-190) -->
+      <div
+        v-if="autoSaveStatus !== 'idle'"
+        data-testid="autosave-status"
+        class="flex items-center gap-2 text-sm px-4 py-2.5 rounded-xl border"
+        :class="autoSaveStatus === 'saving'
+          ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800 text-blue-600 dark:text-blue-300'
+          : autoSaveStatus === 'saved'
+            ? 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800 text-green-700 dark:text-green-300'
+            : 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800 text-red-600 dark:text-red-400'"
+      >
+        <Icon
+          :icon="autoSaveStatus === 'saving' ? 'lucide:loader-2' : autoSaveStatus === 'saved' ? 'lucide:check-circle-2' : 'lucide:alert-triangle'"
+          :class="{ 'animate-spin': autoSaveStatus === 'saving' }"
+          class="w-4 h-4"
+        />
+        <template v-if="autoSaveStatus === 'saving'">{{ t('admin.postEdit.autoSaving') }}</template>
+        <template v-else-if="autoSaveStatus === 'saved'">{{ t('admin.postEdit.autoSaved') }}</template>
+        <template v-else>{{ autoSaveError || t('admin.postEdit.autoSaveError') }}</template>
+      </div>
       <div v-if="submitError" class="p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl text-red-600 dark:text-red-400">
         {{ submitError }}
       </div>

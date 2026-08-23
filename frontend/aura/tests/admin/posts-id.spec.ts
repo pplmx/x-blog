@@ -799,7 +799,7 @@ describe("Admin Post Editor Page", () => {
 			expect(allowed).toBe(true);
 		});
 
-		it("confirms before leaving when edits are unsaved", async () => {
+		it("flushes an auto-save instead of blocking when leaving with edits (TASK-190)", async () => {
 			const wrapper = await freshGuard();
 			// Make an edit to a dirty field
 			const titleInput = wrapper.find('input[type="text"]');
@@ -808,9 +808,137 @@ describe("Admin Post Editor Page", () => {
 			await flushPromises();
 
 			const decided = (capturedRouteLeave as () => boolean)();
-			expect(globalThis.confirm).toHaveBeenCalled();
-			// Confirm returns true so navigation proceeds
+			await flushPromises();
+			// Auto-save persists the edit instead of prompting to abandon it…
+			expect(globalThis.confirm).not.toHaveBeenCalled();
+			expect(mockCreateAdminPost).toHaveBeenCalled();
+			// …and navigation proceeds.
 			expect(decided).toBe(true);
+		});
+	});
+
+	describe("Draft auto-save (TASK-190)", () => {
+		beforeEach(() => {
+			vi.useFakeTimers();
+			// The module-level mocks accumulate call history across tests;
+			// clear them so each auto-save test asserts its own calls only.
+			mockCreateAdminPost.mockClear();
+			mockUpdateAdminPost.mockClear();
+		});
+		afterEach(() => {
+			vi.useRealTimers();
+			vi.restoreAllMocks();
+			vi.unstubAllGlobals();
+		});
+
+		function fetchResult(data: any, error: any = null) {
+			return {
+				data: ref(data),
+				pending: ref(false),
+				error: ref(error),
+				refresh: vi.fn(),
+			};
+		}
+
+		async function autosavePage(routeId = "new") {
+			const mockNavigateTo = vi.fn();
+			vi.stubGlobal("navigateTo", mockNavigateTo);
+			vi.stubGlobal("useRuntimeConfig", () => ({
+				public: { apiUrl: "http://localhost:18888" },
+			}));
+			vi.stubGlobal("useHead", vi.fn());
+			vi.stubGlobal("definePageMeta", vi.fn());
+			setupRoute(routeId);
+			setupMocks();
+			mockCreateAdminPost.mockResolvedValue(fetchResult({ id: 7 }));
+			mockUpdateAdminPost.mockResolvedValue(fetchResult({ id: 7 }));
+			const PostEditor = await loadPage();
+			const wrapper = await mountWithSuspense(PostEditor);
+			await flushPromises();
+			return { wrapper, mockNavigateTo };
+		}
+
+		it("auto-creates a draft (with a derived slug) after the debounce and navigates to it", async () => {
+			const { wrapper, mockNavigateTo } = await autosavePage("new");
+
+			const titleInput = wrapper.find('input[type="text"]');
+			await titleInput.setValue("My Auto Draft");
+			const contentTextarea = wrapper.find('textarea[rows="15"]');
+			await contentTextarea.setValue("# Draft body");
+			await vi.advanceTimersByTimeAsync(1000);
+			await flushPromises();
+
+			expect(mockCreateAdminPost).toHaveBeenCalledTimes(1);
+			const [payload] = mockCreateAdminPost.mock.calls[0] as any[];
+			expect(payload.title).toBe("My Auto Draft");
+			expect(payload.slug).toBe("my-auto-draft");
+			expect(payload.content).toBe("# Draft body");
+			expect(wrapper.find('[data-testid="autosave-status"]').text()).toContain("已自动保存");
+			expect(mockNavigateTo).toHaveBeenCalledWith("/admin/posts/7", { replace: true });
+		});
+
+		it("updates (not re-creates) the draft on later edits", async () => {
+			const { wrapper } = await autosavePage("new");
+
+			const titleInput = wrapper.find('input[type="text"]');
+			await titleInput.setValue("My Auto Draft");
+			await vi.advanceTimersByTimeAsync(1000);
+			await flushPromises();
+			expect(mockCreateAdminPost).toHaveBeenCalledTimes(1);
+
+			const contentTextarea = wrapper.find('textarea[rows="15"]');
+			await contentTextarea.setValue("# Edits");
+			await vi.advanceTimersByTimeAsync(1000);
+			await flushPromises();
+
+			expect(mockCreateAdminPost).toHaveBeenCalledTimes(1);
+			expect(mockUpdateAdminPost).toHaveBeenCalledWith(
+				7,
+				expect.objectContaining({ content: "# Edits" }),
+			);
+		});
+
+		it("auto-saves edits to an existing post via the update endpoint", async () => {
+			const { wrapper } = await autosavePage("1");
+
+			const titleInput = wrapper.find('input[type="text"]');
+			await titleInput.setValue("Existing Updated");
+			await vi.advanceTimersByTimeAsync(1000);
+			await flushPromises();
+
+			expect(mockUpdateAdminPost).toHaveBeenCalledWith(
+				1,
+				expect.objectContaining({ title: "Existing Updated" }),
+			);
+			expect(wrapper.find('[data-testid="autosave-status"]').text()).toContain("已自动保存");
+		});
+
+		it("coalesces a burst of edits into a single save", async () => {
+			const { wrapper } = await autosavePage("1");
+
+			const titleInput = wrapper.find('input[type="text"]');
+			await titleInput.setValue("T1");
+			await vi.advanceTimersByTimeAsync(400);
+			await titleInput.setValue("T2");
+			await vi.advanceTimersByTimeAsync(400);
+			await titleInput.setValue("T3");
+			await vi.advanceTimersByTimeAsync(1000);
+			await flushPromises();
+
+			expect(mockUpdateAdminPost).toHaveBeenCalledTimes(1);
+			expect(mockUpdateAdminPost).toHaveBeenCalledWith(1, expect.objectContaining({ title: "T3" }));
+		});
+
+		it("shows an error state when the auto-save fails", async () => {
+			const { wrapper } = await autosavePage("new");
+			mockCreateAdminPost.mockResolvedValue(fetchResult(null, { data: { detail: "Slug taken" } }));
+
+			const titleInput = wrapper.find('input[type="text"]');
+			await titleInput.setValue("Collision Draft");
+			await vi.advanceTimersByTimeAsync(1000);
+			await flushPromises();
+
+			expect(wrapper.find('[data-testid="autosave-status"]').text()).toContain("Slug taken");
 		});
 	});
 });
