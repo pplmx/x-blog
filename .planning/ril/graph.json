@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 159,
+  "round": 160,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-08-23T04:57:05+00:00",
+  "updated_at": "2026-08-23T05:24:28+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -9410,13 +9410,24 @@
       "version": 1,
       "created_at": "2026-08-23T04:57:02+00:00",
       "updated_at": "2026-08-23T04:57:02+00:00",
-      "touched_round": 159,
+      "touched_round": 160,
       "category": "core-feature",
       "severity": 0.6,
       "confidence": 0.9,
       "effort": 3.0,
       "unlock_factor": 1.0,
       "title": "Post revision history: snapshot a posts editable fields on every admin create/update into a per-post versions list (with a retention cap), and expose admin endpoints to list revisions, get one revision, and restore it as the live post (pytest); then an admin editor version-history panel (list + restore) + i18n + vitest + E2E"
+    },
+    "CHG-181": {
+      "id": "CHG-181",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-23T05:24:28+00:00",
+      "updated_at": "2026-08-23T05:24:28+00:00",
+      "touched_round": 160,
+      "commit": "fa34b54",
+      "title": "Post revision history backend: post_revisions table + capture on create/update + list/detail/restore endpoints (DEC-158, TASK-191)"
     }
   },
   "edges": [
@@ -13587,6 +13598,12 @@
       "to": "DEC-157",
       "type": "supersedes",
       "created_at": "2026-08-23T04:57:05+00:00"
+    },
+    {
+      "from": "CHG-181",
+      "to": "TASK-191",
+      "type": "implements",
+      "created_at": "2026-08-23T05:24:28+00:00"
     }
   ]
 }
