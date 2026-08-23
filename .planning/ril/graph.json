@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 158,
+  "round": 159,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-08-23T02:34:22+00:00",
+  "updated_at": "2026-08-23T04:54:50+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -22,7 +22,7 @@
       "version": 1,
       "created_at": "2026-08-06T13:23:41+00:00",
       "updated_at": "2026-08-06T13:23:41+00:00",
-      "touched_round": 118,
+      "touched_round": 159,
       "title": "frontend-aura",
       "description": "Nuxt 4 Vue 3 TypeScript frontend at frontend/aura; composables; admin pages; e2e Playwright; biome lint"
     },
@@ -9332,11 +9332,11 @@
     "TASK-190": {
       "id": "TASK-190",
       "type": "task",
-      "status": "active",
-      "version": 1,
+      "status": "resolved",
+      "version": 2,
       "created_at": "2026-08-23T02:34:16+00:00",
-      "updated_at": "2026-08-23T02:34:16+00:00",
-      "touched_round": 157,
+      "updated_at": "2026-08-23T04:54:50+00:00",
+      "touched_round": 159,
       "category": "core-feature",
       "severity": 0.6,
       "confidence": 0.9,
@@ -9351,10 +9351,45 @@
       "version": 1,
       "created_at": "2026-08-23T02:34:16+00:00",
       "updated_at": "2026-08-23T02:34:16+00:00",
-      "touched_round": 157,
+      "touched_round": 159,
       "title": "Milestone: post editor draft auto-save",
       "rationale": "Feature-evolution selection (SKILL 11.2 gap analysis; author stakeholder). Long-form authors can lose work if they navigate away before a manual save — the existing editor has manual save + the public /preview (TASK-187) but no auto-persist. Auto-saving edits to a draft (debounced, with a saving/saved indicator and beforeunload guard, reusing the existing draft model + admin post create/update endpoint) is net-additive, non-marginal authoring value. Users: the blog operator/author. Why now: the editor is feature-complete; data-loss prevention is the natural completion. Acceptance: an author edits a post and it is auto-persisted to the draft without an explicit save, with visible save state. Scope: frontend auto-save (debounce, indicator, beforeunload guard) over the existing draft endpoint + vitest + E2E.",
       "alternatives_rejected": "Rich collaborative/cloud editing (large infra, out of scope); a full calendar/scheduling UI (marginal, publish_at already exists); email/digest (out of scope)."
+    },
+    "ISS-105": {
+      "id": "ISS-105",
+      "type": "issue",
+      "status": "resolved",
+      "version": 1,
+      "created_at": "2026-08-23T04:54:46+00:00",
+      "updated_at": "2026-08-23T04:54:46+00:00",
+      "touched_round": 159,
+      "title": "Admin post editor update sends publish_at:\"\" -> backend 422 (edit-mode datetime round-trip)",
+      "severity": "medium",
+      "confidence": 1.0
+    },
+    "CHG-180": {
+      "id": "CHG-180",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-23T04:54:46+00:00",
+      "updated_at": "2026-08-23T04:54:46+00:00",
+      "touched_round": 159,
+      "commit": "7851bc0",
+      "title": "Post editor draft auto-save + fix edit-mode publish_at 422 (DEC-156, TASK-190)"
+    },
+    "DEC-157": {
+      "id": "DEC-157",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-23T04:54:46+00:00",
+      "updated_at": "2026-08-23T04:54:46+00:00",
+      "touched_round": 159,
+      "title": "Milestone delivered: post editor draft auto-save (DEC-156 complete)",
+      "rationale": "Draft auto-save delivery of DEC-156/TASK-190 (7851bc0): the admin post editor auto-persists edits to a draft after an 800ms debounce with a saving/saved/error indicator; a new post is created on first auto-save (derived slug) then updated; SPA route-leave flushes and beforeunload guards full unload; a new post auto-create points the address bar at the created draft. Also fixed a latent edit-mode 422 (publish_at \":\" normalized to null in both auto-save and manual submit). Tests: frontend vitest (posts-id autosave suite), authored E2E (edit-existing + new-post), backend 1061 green (94.3% cov), biome + vue-tsc clean, E2E green against production build.",
+      "alternatives_rejected": "Collaborative/cloud editing (large infra, out of scope); full calendar/scheduling UI (marginal; publish_at already exists); email/digest (out of scope)."
     }
   },
   "edges": [
@@ -13483,6 +13518,36 @@
       "to": "TASK-190",
       "type": "governs",
       "created_at": "2026-08-23T02:34:22+00:00"
+    },
+    {
+      "from": "CHG-180",
+      "to": "TASK-190",
+      "type": "implements",
+      "created_at": "2026-08-23T04:54:50+00:00"
+    },
+    {
+      "from": "CHG-180",
+      "to": "ISS-105",
+      "type": "resolves",
+      "created_at": "2026-08-23T04:54:50+00:00"
+    },
+    {
+      "from": "ISS-105",
+      "to": "COMP-002",
+      "type": "located_in",
+      "created_at": "2026-08-23T04:54:50+00:00"
+    },
+    {
+      "from": "DEC-157",
+      "to": "TASK-190",
+      "type": "governs",
+      "created_at": "2026-08-23T04:54:50+00:00"
+    },
+    {
+      "from": "DEC-157",
+      "to": "DEC-156",
+      "type": "supersedes",
+      "created_at": "2026-08-23T04:54:50+00:00"
     }
   ]
 }
