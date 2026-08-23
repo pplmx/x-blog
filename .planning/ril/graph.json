@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 149,
+  "round": 150,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-08-23T00:32:18+00:00",
+  "updated_at": "2026-08-23T00:47:26+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -8882,11 +8882,11 @@
     "TASK-181": {
       "id": "TASK-181",
       "type": "task",
-      "status": "active",
-      "version": 1,
+      "status": "resolved",
+      "version": 2,
       "created_at": "2026-08-23T00:32:11+00:00",
-      "updated_at": "2026-08-23T00:32:11+00:00",
-      "touched_round": 148,
+      "updated_at": "2026-08-23T00:47:26+00:00",
+      "touched_round": 149,
       "category": "core-feature",
       "severity": 0.6,
       "confidence": 0.9,
@@ -8901,10 +8901,60 @@
       "version": 1,
       "created_at": "2026-08-23T00:32:11+00:00",
       "updated_at": "2026-08-23T00:32:11+00:00",
-      "touched_round": 148,
+      "touched_round": 149,
       "title": "Milestone: per-series follow with notification control",
       "rationale": "Feature-evolution selection (SKILL 11.2 gap analysis, coherent follow-up to TASK-178/179/180). Following a series currently means 'push me every new part' (TASK-178), and the same follow drives the home Your-series row (TASK-180); a reader cannot track a series on the home row without receiving a push each new part, nor silence notifications for one series while keeping others. Decoupling track vs notify is a real, perceptible need. Users: signed-in readers who follow many series and want control over push noise. Why now: the series follow surface (follow, manage, home row) is mature; notification control is the natural next refinement. Acceptance: a reader can follow a series for tracking and suppress (or enable) new-part push per series. Scope: additive notify column on series_follows + follow/list/toggle API + dispatch gate + series page + account Followed-series notify control + pytest + vitest + E2E.",
       "alternatives_rejected": "Global notifications center (deferred, separate surface); follow-as-track-only (drop push, loses TASK-178 value); auto-mute after N notifications (speculative)."
+    },
+    "CHG-171": {
+      "id": "CHG-171",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-23T00:47:20+00:00",
+      "updated_at": "2026-08-23T00:47:20+00:00",
+      "touched_round": 149,
+      "commit": "b766fbc",
+      "title": "Per-series follow with notification control (DEC-138, TASK-181)"
+    },
+    "DEC-139": {
+      "id": "DEC-139",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-23T00:47:20+00:00",
+      "updated_at": "2026-08-23T00:47:20+00:00",
+      "touched_round": 149,
+      "title": "Milestone delivered: per-series follow with notification control (DEC-138 complete)",
+      "rationale": "Feature-evolution delivery of DEC-138/TASK-181: additive notify boolean (default true) on series_follows decouples tracking from push — a silent follow stays in the home Your-series row and followed-series list but is not fanned out in new-part dispatch; follow/list API exposes notify + a PATCH toggle endpoint (404 when not following); series page and account Followed-series each gain a per-series notifications toggle without unfollowing; i18n (en/zh). Tests: 5 backend (toggle, 404, auth, silent follower gets no push, list carries notify), vitest on series page + account, E2E extended. Verified: full backend 1007 green, full frontend 1097 vitest green, ruff+pyright+biome+vue-tsc clean, migration single head.",
+      "alternatives_rejected": "Global notifications center (still deferred, separate surface); follow-as-track-only (drop push, loses TASK-178 value); auto-mute heuristics (speculative)."
+    },
+    "TASK-182": {
+      "id": "TASK-182",
+      "type": "task",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-23T00:47:20+00:00",
+      "updated_at": "2026-08-23T00:47:20+00:00",
+      "touched_round": 149,
+      "category": "core-feature",
+      "severity": 0.6,
+      "confidence": 0.9,
+      "effort": 2.0,
+      "unlock_factor": 1.0,
+      "title": "Follow categories as a reader: durable reader-level category follows (persisted, cross-device intent like series-follows, not a per-device push pin) + category-page follow toggle + account Followed-categories management with notify control + category-follow dispatch target (unified with new-post category push); backend pytest + vitest + E2E"
+    },
+    "DEC-140": {
+      "id": "DEC-140",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-23T00:47:20+00:00",
+      "updated_at": "2026-08-23T00:47:20+00:00",
+      "touched_round": 149,
+      "title": "Milestone: follow categories as a reader",
+      "rationale": "Feature-evolution selection (SKILL 11.2 gap analysis, completes the follow model already proven for series in TASK-178/180/181). Category new-post push currently exists only as a per-device pin on a push subscription (DEC-076): the 'I follow the AI category' intent is not a durable reader-level fact, is lost across devices, and has no management surface. Making category-follow a reader-level concept (a category_follows table mirroring series_follows) with a category-page follow toggle, account Followed-categories management + notify control, and dispatch targeting the reader's subscriptions is net-additive and coherent. Users: signed-in readers who follow categories and expect that intent to persist and be manageable. Why now: the series follow surface (follow, notify control, management, home row) is mature; categories are the other main follow axis. Acceptance: a reader can follow a category, manage it (with notify control) on the account page, and receive category-scoped new-post push through that durable follow. Scope: category_follows table + follow/list/toggle API + dispatch gate + category page toggle + account management + pytest + vitest + E2E.",
+      "alternatives_rejected": "Global notifications center (deferred, separate surface); email/digest (needs outbound infra); keeping category follow per-device only (reader intent not durable or manageable)."
     }
   },
   "edges": [
@@ -12763,6 +12813,36 @@
       "to": "TASK-181",
       "type": "governs",
       "created_at": "2026-08-23T00:32:18+00:00"
+    },
+    {
+      "from": "CHG-171",
+      "to": "TASK-181",
+      "type": "implements",
+      "created_at": "2026-08-23T00:47:25+00:00"
+    },
+    {
+      "from": "DEC-139",
+      "to": "DEC-138",
+      "type": "supersedes",
+      "created_at": "2026-08-23T00:47:25+00:00"
+    },
+    {
+      "from": "DEC-139",
+      "to": "TASK-181",
+      "type": "governs",
+      "created_at": "2026-08-23T00:47:25+00:00"
+    },
+    {
+      "from": "DEC-140",
+      "to": "DEC-139",
+      "type": "supersedes",
+      "created_at": "2026-08-23T00:47:25+00:00"
+    },
+    {
+      "from": "DEC-140",
+      "to": "TASK-182",
+      "type": "governs",
+      "created_at": "2026-08-23T00:47:26+00:00"
     }
   ]
 }
