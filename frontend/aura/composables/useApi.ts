@@ -1223,6 +1223,53 @@ export interface SeriesProgress {
 	next_slug: string | null;
 }
 
+export interface FollowedSeriesItem {
+	id: number;
+	title: string;
+	slug: string;
+	description?: string | null;
+}
+
+export interface FollowedSeriesListResponse {
+	items: FollowedSeriesItem[];
+	total: number;
+}
+
+/** The series the signed-in reader follows for new-part push. */
+export async function fetchReaderSeriesFollows() {
+	const config = useRuntimeConfig();
+	const apiUrl = config.public.apiUrl;
+	return useFetch<FollowedSeriesListResponse>(`${apiUrl}/api/reader/me/series-follows`, {
+		headers: getReaderAuthHeaders(),
+		server: false,
+	});
+}
+
+/** Follow a series for new-part push (idempotent). */
+export async function followReaderSeries(seriesId: number) {
+	const config = useRuntimeConfig();
+	const apiUrl = config.public.apiUrl;
+	return useFetch<{ series_id: number; series_slug: string; following: boolean }>(
+		`${apiUrl}/api/reader/me/series/${seriesId}/follow`,
+		{
+			method: "PUT",
+			headers: getReaderAuthHeaders(),
+			server: false,
+		},
+	);
+}
+
+/** Unfollow a series (idempotent 204). */
+export async function unfollowReaderSeries(seriesId: number) {
+	const config = useRuntimeConfig();
+	const apiUrl = config.public.apiUrl;
+	return useFetch<null>(`${apiUrl}/api/reader/me/series/${seriesId}/follow`, {
+		method: "DELETE",
+		headers: getReaderAuthHeaders(),
+		server: false,
+	});
+}
+
 /** A signed-in reader's progress through a series (from their history). */
 export async function fetchReaderSeriesProgress(slug: string) {
 	const config = useRuntimeConfig();

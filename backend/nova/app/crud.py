@@ -1591,6 +1591,59 @@ def recommend_posts(db: Session, reader_id: int, limit: int = 6) -> list[models.
     return result
 
 
+def get_series_follow(db: Session, reader_id: int, series_id: int) -> models.SeriesFollow | None:
+    """Return the reader's follow for a series, or None."""
+    return (
+        db.query(models.SeriesFollow)
+        .filter(models.SeriesFollow.reader_id == reader_id, models.SeriesFollow.series_id == series_id)
+        .first()
+    )
+
+
+def add_series_follow(db: Session, reader_id: int, series_id: int) -> tuple[models.SeriesFollow, bool]:
+    """Follow a series for new-part push; returns (follow, created). Idempotent."""
+    existing = get_series_follow(db, reader_id, series_id)
+    if existing:
+        return existing, False
+    follow = models.SeriesFollow(reader_id=reader_id, series_id=series_id)
+    db.add(follow)
+    db.commit()
+    db.refresh(follow)
+    return follow, True
+
+
+def remove_series_follow(db: Session, reader_id: int, series_id: int) -> bool:
+    """Unfollow a series; returns True if a follow was removed. Idempotent."""
+    follow = get_series_follow(db, reader_id, series_id)
+    if not follow:
+        return False
+    db.delete(follow)
+    db.commit()
+    return True
+
+
+def list_reader_series_follows(db: Session, reader_id: int) -> list[models.Series]:
+    """The series a reader follows (their follow rows), newest follow first."""
+    rows = (
+        db.query(models.Series)
+        .join(models.SeriesFollow, models.SeriesFollow.series_id == models.Series.id)
+        .filter(models.SeriesFollow.reader_id == reader_id)
+        .order_by(models.SeriesFollow.created_at.desc(), models.Series.id.desc())
+        .all()
+    )
+    return rows
+
+
+def list_series_follow_reader_ids(db: Session, series_id: int) -> list[int]:
+    """Reader ids following a series (for 'new part' push dispatch)."""
+    return [
+        reader_id
+        for (reader_id,) in db.query(models.SeriesFollow.reader_id)
+        .filter(models.SeriesFollow.series_id == series_id)
+        .all()
+    ]
+
+
 def list_reader_bookmarks(
     db: Session, reader_id: int, folder_id: int | None = None
 ) -> list[tuple[models.Post, int | None, str | None]]:

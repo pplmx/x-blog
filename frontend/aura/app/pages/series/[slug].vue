@@ -1,8 +1,11 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from "vue";
 import {
+	fetchReaderSeriesFollows,
 	fetchReaderSeriesProgress,
+	followReaderSeries,
 	type SeriesProgress,
+	unfollowReaderSeries,
 	useSeriesBySlug,
 } from "~~/composables/useApi";
 import { useSeo } from "~~/composables/useSeo";
@@ -32,6 +35,7 @@ const progress = ref<SeriesProgress | null>(null);
 
 onMounted(async () => {
 	if (!signedIn.value || !series.value?.slug) return;
+	void loadFollowState();
 	try {
 		const res = await fetchReaderSeriesProgress(series.value.slug);
 		progress.value = res.data?.value ?? null;
@@ -59,6 +63,38 @@ useHead(() => ({
 			]
 		: [],
 }));
+
+// Follow series for 'new part' push (DEC-132/TASK-178): shown to signed-in readers.
+const followsSeries = ref(false);
+const followBusy = ref(false);
+
+async function loadFollowState() {
+	if (!signedIn.value || !series.value?.id) return;
+	try {
+		const res = await fetchReaderSeriesFollows();
+		followsSeries.value = res.data?.value?.items.some((f) => f.id === series.value?.id) ?? false;
+	} catch {
+		followsSeries.value = false;
+	}
+}
+
+async function toggleFollow() {
+	if (followBusy.value || !series.value?.id) return;
+	followBusy.value = true;
+	try {
+		if (followsSeries.value) {
+			await unfollowReaderSeries(series.value.id);
+			followsSeries.value = false;
+		} else {
+			await followReaderSeries(series.value.id);
+			followsSeries.value = true;
+		}
+	} catch {
+		// best-effort — keep current state on failure
+	} finally {
+		followBusy.value = false;
+	}
+}
 </script>
 
 <template>
@@ -113,6 +149,17 @@ useHead(() => ({
             <Icon icon="lucide:rss" class="w-4 h-4" />
             {{ t('series.subscribeFeed') }}
           </a>
+          <button
+            v-if="signedIn"
+            type="button"
+            :disabled="followBusy"
+            :title="t(followsSeries ? 'series.followingNewPartsTitle' : 'series.followNewPartsTitle')"
+            class="inline-flex items-center gap-1 text-fuchsia-500 hover:text-fuchsia-700 transition-colors disabled:opacity-60"
+            @click="toggleFollow"
+          >
+            <Icon :icon="followsSeries ? 'lucide:bell-ring' : 'lucide:bell'" class="w-4 h-4" />
+            {{ followsSeries ? t('series.followingNewParts') : t('series.followNewParts') }}
+          </button>
         </div>
         <p v-if="series.description" class="mt-4 text-lg text-gray-600 dark:text-gray-400 leading-relaxed">
           {{ series.description }}

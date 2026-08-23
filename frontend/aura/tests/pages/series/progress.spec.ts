@@ -47,7 +47,10 @@ const h = vi.hoisted(() => {
 	};
 	const progress: { value: Progress | null } = { value: null };
 	const fetchProgress = vi.fn(async () => ({ data: { value: progress.value } }));
-	return { mockSeries, progress, fetchProgress };
+	const fetchFollows = vi.fn(async () => ({ data: { value: { items: [], total: 0 } } }));
+	const followSeries = vi.fn();
+	const unfollowSeries = vi.fn();
+	return { mockSeries, progress, fetchProgress, fetchFollows, followSeries, unfollowSeries };
 });
 
 vi.mock("../../../composables/useApi", () => ({
@@ -57,6 +60,9 @@ vi.mock("../../../composables/useApi", () => ({
 		error: ref(null),
 	}),
 	fetchReaderSeriesProgress: h.fetchProgress,
+	fetchReaderSeriesFollows: h.fetchFollows,
+	followReaderSeries: h.followSeries,
+	unfollowReaderSeries: h.unfollowSeries,
 }));
 
 vi.mock("../../../composables/useSeo", () => ({ useSeo: vi.fn() }));
@@ -88,6 +94,7 @@ describe("Series reading progress (TASK-173)", () => {
 		window.localStorage.setItem("reader_token", "token");
 		h.progress.value = null;
 		h.fetchProgress.mockClear();
+		h.fetchFollows.mockClear();
 		vi.stubGlobal("useRoute", () => ({ params: { slug: "tutorial" }, query: {} }));
 		vi.stubGlobal("useHead", vi.fn());
 		vi.stubGlobal("useRuntimeConfig", () => ({ public: { apiUrl: "http://localhost:18888" } }));
@@ -155,5 +162,22 @@ describe("Series reading progress (TASK-173)", () => {
 		const wrapper = await mountPage();
 		expect(wrapper.find('a[href="/rss/series/tutorial.xml"]').exists()).toBe(true);
 		expect(wrapper.text()).toContain("RSS 订阅");
+	});
+
+	it("toggles series new-part follow (TASK-178)", async () => {
+		h.fetchFollows.mockResolvedValueOnce({
+			data: { value: { items: [{ id: 1, title: "Tutorial", slug: "tutorial" }], total: 1 } },
+		});
+		const wrapper = await mountPage();
+		expect(wrapper.text()).toContain("已关注新篇");
+
+		// Unfollow
+		await wrapper.find("button").trigger("click");
+		expect(h.unfollowSeries).toHaveBeenCalledWith(1);
+		expect(wrapper.text()).toContain("有新篇时通知我");
+
+		// Follow again
+		await wrapper.find("button").trigger("click");
+		expect(h.followSeries).toHaveBeenCalledWith(1);
 	});
 });

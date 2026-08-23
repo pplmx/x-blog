@@ -176,6 +176,26 @@ class DataExportResponse(BaseModel):
     history: list[dict] = []
 
 
+class FollowedSeriesItem(BaseModel):
+    """A series the reader follows for 'new part' push (DEC-132/TASK-178)."""
+
+    id: int
+    title: str
+    slug: str
+    description: str | None = None
+
+
+class FollowedSeriesListResponse(BaseModel):
+    items: list[FollowedSeriesItem]
+    total: int
+
+
+class SeriesFollowResponse(BaseModel):
+    series_id: int
+    series_slug: str
+    following: bool
+
+
 class AddBookmarkResponse(BaseModel):
     post_id: int
     # True when the bookmark was newly created, False when it already existed
@@ -793,6 +813,46 @@ def my_recommendations(
     """Personalized post recommendations for the signed-in reader (DEC-128)."""
     recommended = crud.recommend_posts(db, current_reader.id, limit=limit)
     return [schemas.PostList.model_validate(p) for p in recommended]
+
+
+@router.get("/me/series-follows", response_model=FollowedSeriesListResponse)
+def list_series_follows(
+    current_reader: auth.ReaderAccount = Depends(auth.get_current_reader),
+    db: Session = Depends(get_db),
+):
+    """The series the reader follows for new-part push notifications."""
+    series = crud.list_reader_series_follows(db, current_reader.id)
+    return FollowedSeriesListResponse(
+        items=[FollowedSeriesItem(id=s.id, title=s.title, slug=s.slug, description=s.description) for s in series],
+        total=len(series),
+    )
+
+
+@router.put("/me/series/{series_id}/follow", response_model=SeriesFollowResponse)
+def follow_series(
+    series_id: int,
+    response: Response,
+    current_reader: auth.ReaderAccount = Depends(auth.get_current_reader),
+    db: Session = Depends(get_db),
+):
+    """Follow a series for new-part push (idempotent: 201 on first, 200 on re-follow)."""
+    series = db.get(models.Series, series_id)
+    if not series:
+        raise HTTPException(status_code=404, detail="Series not found")
+    _, created = crud.add_series_follow(db, current_reader.id, series_id)
+    response.status_code = 201 if created else 200
+    return SeriesFollowResponse(series_id=series.id, series_slug=series.slug, following=True)
+
+
+@router.delete("/me/series/{series_id}/follow", status_code=204)
+def unfollow_series(
+    series_id: int,
+    current_reader: auth.ReaderAccount = Depends(auth.get_current_reader),
+    db: Session = Depends(get_db),
+):
+    """Unfollow a series. Idempotent 204."""
+    crud.remove_series_follow(db, current_reader.id, series_id)
+    return None
 
 
 # Server-backed reading history (DEC-116/TASK-170)

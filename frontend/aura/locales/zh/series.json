@@ -16,6 +16,10 @@
 		"readCountLabel": "已读 {read} / {total}",
 		"continueReading": "继续阅读",
 		"completed": "已读完",
-		"subscribeFeed": "RSS 订阅"
+		"subscribeFeed": "RSS 订阅",
+		"followNewParts": "有新篇时通知我",
+		"followingNewParts": "已关注新篇",
+		"followNewPartsTitle": "关注本系列，发布新篇时通知我",
+		"followingNewPartsTitle": "已关注本系列 — 点击取消关注"
 	}
 }

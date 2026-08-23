@@ -169,6 +169,7 @@ def dispatch_new_post(db, post: models.Post, logger) -> dict[str, int]:
         "body": POST_NOTIF_BODY.replace("{post_title}", post.title or ""),
         "url": f"/posts/{post.slug}",
     }
+    # Standard new-post recipients, deduped by push endpoint.
     query = db.query(models.PushSubscription).filter(models.PushSubscription.want_new_posts.is_(True))
     if post.category_id is not None:
         query = query.filter(
@@ -179,10 +180,30 @@ def dispatch_new_post(db, post: models.Post, logger) -> dict[str, int]:
         )
     else:
         query = query.filter(models.PushSubscription.new_post_category_id.is_(None))
-    subscriptions = query.all()
-    if not subscriptions:
+    by_endpoint = {sub.endpoint: sub for sub in query.all()}
+
+    # Also notify readers who follow this post's series ('new part' push,
+    # DEC-132/TASK-178): any of their PushSubscriptions receive the same
+    # notification. Unioned by endpoint so a series follower who also opted
+    # into all/category new-post push gets exactly one notification.
+    if post.series_id is not None:
+        follower_reader_ids = [
+            row.reader_id
+            for row in db.query(models.SeriesFollow.reader_id)
+            .filter(models.SeriesFollow.series_id == post.series_id)
+            .all()
+        ]
+        if follower_reader_ids:
+            for sub in (
+                db.query(models.PushSubscription)
+                .filter(models.PushSubscription.reader_id.in_(follower_reader_ids))
+                .all()
+            ):
+                by_endpoint[sub.endpoint] = sub
+
+    if not by_endpoint:
         return {"sent": 0, "failed": 0, "removed": 0}
-    return dispatch_to_subscriptions(subscriptions, payload, db, logger)
+    return dispatch_to_subscriptions(list(by_endpoint.values()), payload, db, logger)
 
 
 # Moderation-alert notification copy (server-generated push, so not i18n-able

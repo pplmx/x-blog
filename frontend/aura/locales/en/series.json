@@ -16,6 +16,10 @@
 		"readCountLabel": "{read} of {total} read",
 		"continueReading": "Continue reading",
 		"completed": "Completed",
-		"subscribeFeed": "RSS feed"
+		"subscribeFeed": "RSS feed",
+		"followNewParts": "Notify me of new parts",
+		"followingNewParts": "Following new parts",
+		"followNewPartsTitle": "Follow this series for notifications when a new part is published",
+		"followingNewPartsTitle": "Following this series — click to unfollow"
 	}
 }

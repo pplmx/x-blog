@@ -293,6 +293,33 @@ class CommentSubscription(Base):
     )
 
 
+class SeriesFollow(Base):
+    """A reader following a series for 'new part' push (DEC-132, TASK-178).
+
+    One row per reader↔series pair (unique) records the reader's intent to be
+    notified when a new public post is published in the series. Delivery goes
+    through the reader's browser Web Push subscriptions (PushSubscription);
+    this table is the series-scoped opt-in. Additive table, no DB-level FK on
+    the columns (SQLite alembic can't add FK-carrying columns to existing
+    tables, DEC-009); integrity enforced at the API layer.
+    """
+
+    __tablename__ = "series_follows"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    reader_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
+    series_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
+    created_at: Mapped[datetime | None] = mapped_column(DateTime, default=lambda: datetime.now(UTC))
+
+    __table_args__ = (UniqueConstraint("reader_id", "series_id", name="uq_series_follows_reader_series"),)
+
+    series: Mapped[Series | None] = relationship(
+        "Series",
+        primaryjoin="SeriesFollow.series_id == Series.id",
+        foreign_keys="SeriesFollow.series_id",
+    )
+
+
 class PushSubscription(Base):
     """A reader's browser Web Push (RFC 8030) subscription.
 
