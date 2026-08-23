@@ -20,6 +20,8 @@ router = APIRouter(prefix="/api/admin/stats/views", tags=["stats"])
 
 follows_router = APIRouter(prefix="/api/admin/stats/follows", tags=["stats"])
 
+searches_router = APIRouter(prefix="/api/admin/stats/searches", tags=["stats"])
+
 
 @router.get("")
 @limiter.limit(f"{RATE_LIMIT_READ}/minute")
@@ -43,3 +45,15 @@ def follows_stats(
 ):
     """Per-series + per-category reader follow counts and totals (DEC-144/TASK-184)."""
     return crud.get_follow_stats(db, limit=limit)
+
+
+@searches_router.get("")
+@limiter.limit(f"{RATE_LIMIT_READ}/minute")
+def top_searches(
+    request: Request,  # noqa: ARG001
+    limit: int = Query(10, ge=1, le=50, description="top-N search terms"),
+    db: Session = Depends(get_db),
+    _current_user: User = Depends(get_current_admin),
+):
+    """Top public search terms by aggregate count (DEC-152/TASK-188)."""
+    return crud.get_top_searches(db, limit=limit)

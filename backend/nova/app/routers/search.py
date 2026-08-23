@@ -1,5 +1,6 @@
 import html
 import re
+from contextlib import suppress
 from datetime import UTC, datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
@@ -7,7 +8,7 @@ from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from .. import models
-from ..crud import _has_cjk, search_posts
+from ..crud import _has_cjk, log_search_query, search_posts
 from ..database import get_db
 from ..limiter import RATE_LIMIT_SEARCH, limiter
 from ..models import Post
@@ -192,6 +193,10 @@ def search(
         post_dict = PostList.model_validate(p).model_dump()
         post_dict["snippet"] = snippet
         items.append(post_dict)
+
+    # Search-term analytics (DEC-152/TASK-188): best-effort aggregate count.
+    with suppress(Exception):
+        log_search_query(db, q)
 
     return {
         "items": items,

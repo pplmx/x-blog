@@ -132,6 +132,23 @@ class CategoryFollow(Base):
     )
 
 
+class SearchLog(Base):
+    """Aggregated public search-term analytics (DEC-152, TASK-188).
+
+    One row per normalized (lowercased, trimmed) query with a counter and the
+    last-searched time. Aggregate-only and never linked to a reader, so it is
+    privacy-safe while giving the operator visibility into what visitors look
+    for. Additive table; no DB-level FK needed (DEC-009).
+    """
+
+    __tablename__ = "search_logs"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    query: Mapped[str] = mapped_column(String(200), unique=True, index=True)
+    count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    last_searched_at: Mapped[datetime | None] = mapped_column(DateTime, default=lambda: datetime.now(UTC))
+
+
 class Tag(Base):
     __tablename__ = "tags"
 

@@ -1884,6 +1884,45 @@ def get_follow_stats(db: Session, limit: int = 5) -> dict:
     }
 
 
+def log_search_query(db: Session, query: str | None) -> None:
+    """Best-effort aggregate of a public search term (DEC-152/TASK-188).
+
+    Normalizes to lowercased, trimmed (≤200 chars) and upserts a counter on the
+    matching row. Never tied to a reader. A logging failure is swallowed — it
+    must never break search.
+    """
+    q = (query or "").strip().lower()[:200]
+    if not q:
+        return
+    now = datetime.now(UTC)
+    row = db.query(models.SearchLog).filter(models.SearchLog.query == q).first()
+    if row:
+        row.count = (row.count or 0) + 1
+        row.last_searched_at = now
+    else:
+        db.add(models.SearchLog(query=q, count=1, last_searched_at=now))
+    try:
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        row = db.query(models.SearchLog).filter(models.SearchLog.query == q).first()
+        if row:
+            row.count = (row.count or 0) + 1
+            row.last_searched_at = now
+            db.commit()
+
+
+def get_top_searches(db: Session, limit: int = 10) -> list[dict]:
+    """Top public search terms by aggregate count, newest-searched tiebreak."""
+    rows = (
+        db.query(models.SearchLog.query, models.SearchLog.count)
+        .order_by(models.SearchLog.count.desc(), models.SearchLog.last_searched_at.desc())
+        .limit(limit)
+        .all()
+    )
+    return [{"query": q, "count": c} for q, c in rows]
+
+
 def list_reader_bookmarks(
     db: Session, reader_id: int, folder_id: int | None = None
 ) -> list[tuple[models.Post, int | None, str | None]]:
