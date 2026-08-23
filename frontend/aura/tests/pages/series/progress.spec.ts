@@ -50,7 +50,16 @@ const h = vi.hoisted(() => {
 	const fetchFollows = vi.fn(async () => ({ data: { value: { items: [], total: 0 } } }));
 	const followSeries = vi.fn();
 	const unfollowSeries = vi.fn();
-	return { mockSeries, progress, fetchProgress, fetchFollows, followSeries, unfollowSeries };
+	const setNotify = vi.fn();
+	return {
+		mockSeries,
+		progress,
+		fetchProgress,
+		fetchFollows,
+		followSeries,
+		unfollowSeries,
+		setNotify,
+	};
 });
 
 vi.mock("../../../composables/useApi", () => ({
@@ -63,6 +72,7 @@ vi.mock("../../../composables/useApi", () => ({
 	fetchReaderSeriesFollows: h.fetchFollows,
 	followReaderSeries: h.followSeries,
 	unfollowReaderSeries: h.unfollowSeries,
+	setSeriesFollowNotify: h.setNotify,
 }));
 
 vi.mock("../../../composables/useSeo", () => ({ useSeo: vi.fn() }));
@@ -95,6 +105,9 @@ describe("Series reading progress (TASK-173)", () => {
 		h.progress.value = null;
 		h.fetchProgress.mockClear();
 		h.fetchFollows.mockClear();
+		h.followSeries.mockClear();
+		h.unfollowSeries.mockClear();
+		h.setNotify.mockClear();
 		vi.stubGlobal("useRoute", () => ({ params: { slug: "tutorial" }, query: {} }));
 		vi.stubGlobal("useHead", vi.fn());
 		vi.stubGlobal("useRuntimeConfig", () => ({ public: { apiUrl: "http://localhost:18888" } }));
@@ -179,5 +192,31 @@ describe("Series reading progress (TASK-173)", () => {
 		// Follow again
 		await wrapper.find("button").trigger("click");
 		expect(h.followSeries).toHaveBeenCalledWith(1);
+	});
+
+	it("toggles new-part notifications without unfollowing (TASK-181)", async () => {
+		h.fetchFollows.mockResolvedValueOnce({
+			data: {
+				value: { items: [{ id: 1, title: "Tutorial", slug: "tutorial", notify: true }], total: 1 },
+			},
+		});
+		h.setNotify.mockResolvedValue({
+			data: {
+				value: { series_id: 1, series_slug: "tutorial", following: true, notify: false },
+			},
+		});
+		const wrapper = await mountPage();
+		expect(wrapper.text()).toContain("通知已开");
+
+		const notifyBtn = wrapper.findAll("button").find((b) => b.text() === "通知已开");
+		expect(notifyBtn).toBeDefined();
+		if (!notifyBtn) throw new Error("notify toggle not found");
+		await notifyBtn.trigger("click");
+		await flushPromises();
+
+		expect(h.setNotify).toHaveBeenCalledWith(1, false);
+		expect(h.unfollowSeries).not.toHaveBeenCalled();
+		expect(wrapper.text()).toContain("通知已关");
+		expect(wrapper.text()).toContain("已关注新篇"); // still followed
 	});
 });

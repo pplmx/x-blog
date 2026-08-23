@@ -24,6 +24,7 @@ from sqlalchemy import (
     Table,
     Text,
     UniqueConstraint,
+    text,
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -294,14 +295,17 @@ class CommentSubscription(Base):
 
 
 class SeriesFollow(Base):
-    """A reader following a series for 'new part' push (DEC-132, TASK-178).
+    """A reader following a series (DEC-132, TASK-178; notify control DEC-138/TASK-181).
 
     One row per reader↔series pair (unique) records the reader's intent to be
-    notified when a new public post is published in the series. Delivery goes
-    through the reader's browser Web Push subscriptions (PushSubscription);
-    this table is the series-scoped opt-in. Additive table, no DB-level FK on
-    the columns (SQLite alembic can't add FK-carrying columns to existing
-    tables, DEC-009); integrity enforced at the API layer.
+    notified when a new public post is published in the series. ``notify``
+    defaults true and decouples *tracking* (the follow, which powers the home
+    "Your series" row) from *push*: a follow with notify=false still shows in
+    the reader's followed series but is not fanned out in new-part dispatch.
+    Delivery goes through the reader's browser Web Push subscriptions
+    (PushSubscription); this table is the series-scoped opt-in. Additive table,
+    no DB-level FK on the columns (SQLite alembic can't add FK-carrying columns
+    to existing tables, DEC-009); integrity enforced at the API layer.
     """
 
     __tablename__ = "series_follows"
@@ -309,6 +313,7 @@ class SeriesFollow(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     reader_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
     series_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
+    notify: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True, server_default=text("1"))
     created_at: Mapped[datetime | None] = mapped_column(DateTime, default=lambda: datetime.now(UTC))
 
     __table_args__ = (UniqueConstraint("reader_id", "series_id", name="uq_series_follows_reader_series"),)

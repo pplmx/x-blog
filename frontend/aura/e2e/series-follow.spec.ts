@@ -73,6 +73,21 @@ test.describe("Series new-part follow (TASK-178)", () => {
 		await page.reload();
 		await expect(page.getByRole("button", { name: /已关注新篇/ })).toBeVisible();
 
+		// Notification control (TASK-181): turn new-part push off, then back on.
+		const notifyOn = page.getByRole("button", { name: "通知已开" });
+		await expect(notifyOn).toBeVisible();
+		await notifyOn.click();
+		await expect(page.getByRole("button", { name: "通知已关" })).toBeVisible();
+
+		const silent = await request.get("/api/reader/me/series-follows", {
+			headers: tokenHeader(token),
+		});
+		const silentData = (await silent.json()) as { items: Array<{ id: number; notify: boolean }> };
+		expect(silentData.items.find((f) => f.id === target.id)?.notify).toBe(false);
+
+		await page.getByRole("button", { name: "通知已关" }).click();
+		await expect(page.getByRole("button", { name: "通知已开" })).toBeVisible();
+
 		// Unfollow -> back to "not following"; not listed anymore.
 		await page.getByRole("button", { name: /已关注新篇/ }).click();
 		await expect(page.getByRole("button", { name: /有新篇时通知我/ })).toBeVisible();

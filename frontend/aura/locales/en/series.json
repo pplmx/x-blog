@@ -20,6 +20,9 @@
 		"followNewParts": "Notify me of new parts",
 		"followingNewParts": "Following new parts",
 		"followNewPartsTitle": "Follow this series for notifications when a new part is published",
-		"followingNewPartsTitle": "Following this series — click to unfollow"
+		"followingNewPartsTitle": "Following this series — click to unfollow",
+		"notifyTitle": "Toggle new-part notifications for this series",
+		"notifyOn": "Notifications on",
+		"notifyOff": "Notifications off"
 	}
 }

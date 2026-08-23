@@ -1622,24 +1622,34 @@ def remove_series_follow(db: Session, reader_id: int, series_id: int) -> bool:
     return True
 
 
-def list_reader_series_follows(db: Session, reader_id: int) -> list[models.Series]:
-    """The series a reader follows (their follow rows), newest follow first."""
+def set_series_follow_notify(db: Session, reader_id: int, series_id: int, notify: bool) -> models.SeriesFollow | None:
+    """Toggle whether a follow pushes new-part notifications. Returns None if not following."""
+    follow = get_series_follow(db, reader_id, series_id)
+    if not follow:
+        return None
+    follow.notify = notify
+    db.commit()
+    db.refresh(follow)
+    return follow
+
+
+def list_reader_series_follows(db: Session, reader_id: int) -> list[models.SeriesFollow]:
+    """The reader's follow rows (with ``series`` loaded), newest follow first."""
     rows = (
-        db.query(models.Series)
-        .join(models.SeriesFollow, models.SeriesFollow.series_id == models.Series.id)
+        db.query(models.SeriesFollow)
         .filter(models.SeriesFollow.reader_id == reader_id)
-        .order_by(models.SeriesFollow.created_at.desc(), models.Series.id.desc())
+        .order_by(models.SeriesFollow.created_at.desc(), models.SeriesFollow.id.desc())
         .all()
     )
     return rows
 
 
 def list_series_follow_reader_ids(db: Session, series_id: int) -> list[int]:
-    """Reader ids following a series (for 'new part' push dispatch)."""
+    """Reader ids following a series with notifications on (for 'new part' push dispatch)."""
     return [
         reader_id
         for (reader_id,) in db.query(models.SeriesFollow.reader_id)
-        .filter(models.SeriesFollow.series_id == series_id)
+        .filter(models.SeriesFollow.series_id == series_id, models.SeriesFollow.notify.is_(True))
         .all()
     ]
 

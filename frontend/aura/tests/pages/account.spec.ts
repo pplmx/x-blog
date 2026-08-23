@@ -35,6 +35,7 @@ const mockDeleteReaderAccount = vi.fn();
 const mockFetchReaderDataExport = vi.fn();
 const mockFetchReaderSeriesFollows = vi.fn();
 const mockUnfollowReaderSeries = vi.fn();
+const mockSetSeriesFollowNotify = vi.fn();
 
 vi.mock("../../composables/useApi", async (importOriginal) => {
 	const orig = await importOriginal<typeof import("../../composables/useApi")>();
@@ -50,6 +51,7 @@ vi.mock("../../composables/useApi", async (importOriginal) => {
 		fetchReaderDataExport: mockFetchReaderDataExport,
 		fetchReaderSeriesFollows: mockFetchReaderSeriesFollows,
 		unfollowReaderSeries: mockUnfollowReaderSeries,
+		setSeriesFollowNotify: mockSetSeriesFollowNotify,
 	};
 });
 
@@ -373,7 +375,12 @@ describe("Account settings page", () => {
 			mockFetchPushSubscriptions.mockResolvedValue({ items: [], total: 0 });
 			mockFetchReaderSeriesFollows
 				.mockResolvedValueOnce({
-					data: { value: { items: [{ id: 5, title: "Tutorial", slug: "tutorial" }], total: 1 } },
+					data: {
+						value: {
+							items: [{ id: 5, title: "Tutorial", slug: "tutorial", notify: true }],
+							total: 1,
+						},
+					},
 				})
 				.mockResolvedValueOnce({ data: { value: { items: [], total: 0 } } });
 			mockUnfollowReaderSeries.mockResolvedValue(undefined);
@@ -385,13 +392,49 @@ describe("Account settings page", () => {
 			const section = wrapper.findAll("section").find((s) => s.text().includes("关注的系列"));
 			expect(section).toBeDefined();
 			if (!section) throw new Error("series section not found");
-			await section.find("button").trigger("click");
+			const unfollowBtn = section.findAll("button").find((b) => b.text() === "取消关注");
+			expect(unfollowBtn).toBeDefined();
+			if (!unfollowBtn) throw new Error("unfollow button not found");
+			await unfollowBtn.trigger("click");
 			await flushPromises();
 
 			expect(mockUnfollowReaderSeries).toHaveBeenCalledWith(5);
 			expect(mockFetchReaderSeriesFollows).toHaveBeenCalledTimes(2); // initial + reload
 			expect(wrapper.text()).toContain("还没有关注任何系列");
 			vi.unstubAllGlobals();
+		});
+
+		it("toggles new-part notifications for a followed series (TASK-181)", async () => {
+			isAuthenticated.value = true;
+			mockFetchPushSubscriptions.mockResolvedValue({ items: [], total: 0 });
+			mockFetchReaderSeriesFollows.mockResolvedValue({
+				data: {
+					value: {
+						items: [{ id: 5, title: "Tutorial", slug: "tutorial", notify: true }],
+						total: 1,
+					},
+				},
+			});
+			mockSetSeriesFollowNotify.mockResolvedValue({
+				data: {
+					value: { series_id: 5, series_slug: "tutorial", following: true, notify: false },
+				},
+			});
+
+			const wrapper = await mountPage();
+			const section = wrapper.findAll("section").find((s) => s.text().includes("关注的系列"));
+			if (!section) throw new Error("series section not found");
+			expect(section.text()).toContain("通知已开");
+
+			const notifyBtn = section.findAll("button").find((b) => b.text() === "通知已开");
+			expect(notifyBtn).toBeDefined();
+			if (!notifyBtn) throw new Error("notify toggle not found");
+			await notifyBtn.trigger("click");
+			await flushPromises();
+
+			expect(mockSetSeriesFollowNotify).toHaveBeenCalledWith(5, false);
+			expect(mockUnfollowReaderSeries).not.toHaveBeenCalled();
+			expect(section.text()).toContain("通知已关");
 		});
 	});
 });

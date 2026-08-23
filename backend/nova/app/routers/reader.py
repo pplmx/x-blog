@@ -177,12 +177,13 @@ class DataExportResponse(BaseModel):
 
 
 class FollowedSeriesItem(BaseModel):
-    """A series the reader follows for 'new part' push (DEC-132/TASK-178)."""
+    """A series the reader follows (DEC-132/TASK-178; notify control TASK-181)."""
 
     id: int
     title: str
     slug: str
     description: str | None = None
+    notify: bool
 
 
 class FollowedSeriesListResponse(BaseModel):
@@ -194,6 +195,7 @@ class SeriesFollowResponse(BaseModel):
     series_id: int
     series_slug: str
     following: bool
+    notify: bool
 
 
 class AddBookmarkResponse(BaseModel):
@@ -820,11 +822,20 @@ def list_series_follows(
     current_reader: auth.ReaderAccount = Depends(auth.get_current_reader),
     db: Session = Depends(get_db),
 ):
-    """The series the reader follows for new-part push notifications."""
-    series = crud.list_reader_series_follows(db, current_reader.id)
+    """The series the reader follows, with per-follow notification state."""
+    follows = crud.list_reader_series_follows(db, current_reader.id)
     return FollowedSeriesListResponse(
-        items=[FollowedSeriesItem(id=s.id, title=s.title, slug=s.slug, description=s.description) for s in series],
-        total=len(series),
+        items=[
+            FollowedSeriesItem(
+                id=f.series_id,
+                title=f.series.title if f.series else str(f.series_id),
+                slug=f.series.slug if f.series else "",
+                description=f.series.description if f.series else None,
+                notify=f.notify,
+            )
+            for f in follows
+        ],
+        total=len(follows),
     )
 
 
@@ -839,9 +850,32 @@ def follow_series(
     series = db.get(models.Series, series_id)
     if not series:
         raise HTTPException(status_code=404, detail="Series not found")
-    _, created = crud.add_series_follow(db, current_reader.id, series_id)
+    follow, created = crud.add_series_follow(db, current_reader.id, series_id)
     response.status_code = 201 if created else 200
-    return SeriesFollowResponse(series_id=series.id, series_slug=series.slug, following=True)
+    return SeriesFollowResponse(series_id=series.id, series_slug=series.slug, following=True, notify=follow.notify)
+
+
+class SeriesFollowNotifyUpdate(BaseModel):
+    """Body for toggling per-series new-part push notifications (TASK-181)."""
+
+    notify: bool
+
+
+@router.patch("/me/series/{series_id}/follow", response_model=SeriesFollowResponse)
+def set_series_follow_notify(
+    series_id: int,
+    payload: SeriesFollowNotifyUpdate,
+    current_reader: auth.ReaderAccount = Depends(auth.get_current_reader),
+    db: Session = Depends(get_db),
+):
+    """Toggle new-part notifications for a followed series. 404 if not following."""
+    series = db.get(models.Series, series_id)
+    if not series:
+        raise HTTPException(status_code=404, detail="Series not found")
+    follow = crud.set_series_follow_notify(db, current_reader.id, series_id, payload.notify)
+    if not follow:
+        raise HTTPException(status_code=404, detail="Not following this series")
+    return SeriesFollowResponse(series_id=series.id, series_slug=series.slug, following=True, notify=follow.notify)
 
 
 @router.delete("/me/series/{series_id}/follow", status_code=204)

@@ -55,6 +55,14 @@ test.describe("Account followed series (TASK-179)", () => {
 		await expect(section).toBeVisible({ timeout: 10000 });
 		await expect(section.locator(`a[href="/series/${target.slug}"]`).first()).toBeVisible();
 
+		// Notification control (TASK-181): toggle new-part push off/on on the
+		// account page.
+		await expect(section.getByRole("button", { name: "通知已开" })).toBeVisible();
+		await section.getByRole("button", { name: "通知已开" }).click();
+		await expect(section.getByRole("button", { name: "通知已关" })).toBeVisible();
+		await section.getByRole("button", { name: "通知已关" }).click();
+		await expect(section.getByRole("button", { name: "通知已开" })).toBeVisible();
+
 		// Unfollow from the account page (accept the confirm dialog).
 		page.on("dialog", (dialog) => dialog.accept());
 		await section.getByRole("button", { name: "取消关注" }).click();

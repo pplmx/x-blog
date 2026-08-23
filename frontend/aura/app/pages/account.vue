@@ -18,6 +18,7 @@ import {
 	type ReaderPushSubscription,
 	revokeMyPushSubscription,
 	type SubscribedThreadItem,
+	setSeriesFollowNotify,
 	unfollowReaderSeries,
 	unsubscribeFromPostThread,
 	updateMyProfile,
@@ -222,6 +223,7 @@ async function unfollowThread(thread: SubscribedThreadItem) {
 const seriesFollows = ref<FollowedSeriesItem[]>([]);
 const seriesFollowsLoaded = ref(false);
 const seriesUnfollowId = ref<number | null>(null);
+const seriesNotifyId = ref<number | null>(null);
 const seriesFollowsError = ref(false);
 
 async function loadSeriesFollows() {
@@ -246,6 +248,22 @@ async function unfollowFollowedSeries(item: FollowedSeriesItem) {
 		seriesFollowsError.value = true;
 	} finally {
 		seriesUnfollowId.value = null;
+	}
+}
+
+/** Toggle new-part push on/off for a followed series (TASK-181). */
+async function toggleSeriesNotify(item: FollowedSeriesItem) {
+	if (seriesNotifyId.value != null) return;
+	seriesNotifyId.value = item.id;
+	seriesFollowsError.value = false;
+	const next = !item.notify;
+	try {
+		const res = await setSeriesFollowNotify(item.id, next);
+		item.notify = res.data?.value?.notify ?? next;
+	} catch {
+		seriesFollowsError.value = true;
+	} finally {
+		seriesNotifyId.value = null;
 	}
 }
 
@@ -593,15 +611,27 @@ function shortEndpoint(endpoint: string): string {
               >
                 {{ sf.title }}
               </NuxtLink>
-              <button
-                type="button"
-                :disabled="seriesUnfollowId === sf.id"
-                class="shrink-0 inline-flex items-center gap-1 text-xs text-gray-400 hover:text-red-500 transition-colors disabled:opacity-50"
-                @click="unfollowFollowedSeries(sf)"
-              >
-                <Icon icon="lucide:bell-off" class="w-3.5 h-3.5" />
-                {{ t('account.series.unfollow') }}
-              </button>
+              <div class="shrink-0 flex items-center gap-3">
+                <button
+                  type="button"
+                  :disabled="seriesNotifyId === sf.id"
+                  :title="t('account.series.notifyTitle')"
+                  class="inline-flex items-center gap-1 text-xs text-gray-400 hover:text-indigo-600 transition-colors disabled:opacity-50"
+                  @click="toggleSeriesNotify(sf)"
+                >
+                  <Icon :icon="sf.notify ? 'lucide:bell' : 'lucide:bell-off'" class="w-3.5 h-3.5" />
+                  {{ t(sf.notify ? 'account.series.notifyOn' : 'account.series.notifyOff') }}
+                </button>
+                <button
+                  type="button"
+                  :disabled="seriesUnfollowId === sf.id"
+                  class="inline-flex items-center gap-1 text-xs text-gray-400 hover:text-red-500 transition-colors disabled:opacity-50"
+                  @click="unfollowFollowedSeries(sf)"
+                >
+                  <Icon icon="lucide:x" class="w-3.5 h-3.5" />
+                  {{ t('account.series.unfollow') }}
+                </button>
+              </div>
             </div>
           </li>
         </ul>

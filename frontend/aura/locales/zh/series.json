@@ -20,6 +20,9 @@
 		"followNewParts": "有新篇时通知我",
 		"followingNewParts": "已关注新篇",
 		"followNewPartsTitle": "关注本系列，发布新篇时通知我",
-		"followingNewPartsTitle": "已关注本系列 — 点击取消关注"
+		"followingNewPartsTitle": "已关注本系列 — 点击取消关注",
+		"notifyTitle": "切换本系列的新篇通知",
+		"notifyOn": "通知已开",
+		"notifyOff": "通知已关"
 	}
 }

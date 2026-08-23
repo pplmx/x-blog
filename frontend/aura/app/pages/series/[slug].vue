@@ -5,6 +5,7 @@ import {
 	fetchReaderSeriesProgress,
 	followReaderSeries,
 	type SeriesProgress,
+	setSeriesFollowNotify,
 	unfollowReaderSeries,
 	useSeriesBySlug,
 } from "~~/composables/useApi";
@@ -66,15 +67,19 @@ useHead(() => ({
 
 // Follow series for 'new part' push (DEC-132/TASK-178): shown to signed-in readers.
 const followsSeries = ref(false);
+const followNotify = ref(true);
 const followBusy = ref(false);
 
 async function loadFollowState() {
 	if (!signedIn.value || !series.value?.id) return;
 	try {
 		const res = await fetchReaderSeriesFollows();
-		followsSeries.value = res.data?.value?.items.some((f) => f.id === series.value?.id) ?? false;
+		const item = res.data?.value?.items.find((f) => f.id === series.value?.id) ?? null;
+		followsSeries.value = !!item;
+		followNotify.value = item?.notify ?? true;
 	} catch {
 		followsSeries.value = false;
+		followNotify.value = true;
 	}
 }
 
@@ -86,11 +91,27 @@ async function toggleFollow() {
 			await unfollowReaderSeries(series.value.id);
 			followsSeries.value = false;
 		} else {
-			await followReaderSeries(series.value.id);
+			const res = await followReaderSeries(series.value.id);
 			followsSeries.value = true;
+			followNotify.value = res.data?.value?.notify ?? true;
 		}
 	} catch {
 		// best-effort — keep current state on failure
+	} finally {
+		followBusy.value = false;
+	}
+}
+
+/** Toggle new-part push on/off for a followed series (TASK-181). */
+async function toggleNotify() {
+	if (followBusy.value || !series.value?.id || !followsSeries.value) return;
+	followBusy.value = true;
+	const next = !followNotify.value;
+	try {
+		const res = await setSeriesFollowNotify(series.value.id, next);
+		followNotify.value = res.data?.value?.notify ?? next;
+	} catch {
+		// best-effort — keep current brightness on failure
 	} finally {
 		followBusy.value = false;
 	}
@@ -159,6 +180,17 @@ async function toggleFollow() {
           >
             <Icon :icon="followsSeries ? 'lucide:bell-ring' : 'lucide:bell'" class="w-4 h-4" />
             {{ followsSeries ? t('series.followingNewParts') : t('series.followNewParts') }}
+          </button>
+          <button
+            v-if="followsSeries"
+            type="button"
+            :disabled="followBusy"
+            :title="t('series.notifyTitle')"
+            class="inline-flex items-center gap-1 text-indigo-500 hover:text-indigo-700 transition-colors disabled:opacity-60"
+            @click="toggleNotify"
+          >
+            <Icon :icon="followNotify ? 'lucide:bell' : 'lucide:bell-off'" class="w-4 h-4" />
+            {{ t(followNotify ? 'series.notifyOn' : 'series.notifyOff') }}
           </button>
         </div>
         <p v-if="series.description" class="mt-4 text-lg text-gray-600 dark:text-gray-400 leading-relaxed">

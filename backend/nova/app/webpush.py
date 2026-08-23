@@ -190,7 +190,10 @@ def dispatch_new_post(db, post: models.Post, logger) -> dict[str, int]:
         follower_reader_ids = [
             row.reader_id
             for row in db.query(models.SeriesFollow.reader_id)
-            .filter(models.SeriesFollow.series_id == post.series_id)
+            .filter(
+                models.SeriesFollow.series_id == post.series_id,
+                models.SeriesFollow.notify.is_(True),
+            )
             .all()
         ]
         if follower_reader_ids:

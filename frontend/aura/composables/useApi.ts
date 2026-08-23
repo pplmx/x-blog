@@ -1228,11 +1228,20 @@ export interface FollowedSeriesItem {
 	title: string;
 	slug: string;
 	description?: string | null;
+	/** Whether new-part push is enabled for this follow (TASK-181). */
+	notify: boolean;
 }
 
 export interface FollowedSeriesListResponse {
 	items: FollowedSeriesItem[];
 	total: number;
+}
+
+export interface SeriesFollowState {
+	series_id: number;
+	series_slug: string;
+	following: boolean;
+	notify: boolean;
 }
 
 /** The series the signed-in reader follows for new-part push. */
@@ -1249,14 +1258,23 @@ export async function fetchReaderSeriesFollows() {
 export async function followReaderSeries(seriesId: number) {
 	const config = useRuntimeConfig();
 	const apiUrl = config.public.apiUrl;
-	return useFetch<{ series_id: number; series_slug: string; following: boolean }>(
-		`${apiUrl}/api/reader/me/series/${seriesId}/follow`,
-		{
-			method: "PUT",
-			headers: getReaderAuthHeaders(),
-			server: false,
-		},
-	);
+	return useFetch<SeriesFollowState>(`${apiUrl}/api/reader/me/series/${seriesId}/follow`, {
+		method: "PUT",
+		headers: getReaderAuthHeaders(),
+		server: false,
+	});
+}
+
+/** Toggle new-part push on/off for a series the reader already follows. */
+export async function setSeriesFollowNotify(seriesId: number, notify: boolean) {
+	const config = useRuntimeConfig();
+	const apiUrl = config.public.apiUrl;
+	return useFetch<SeriesFollowState>(`${apiUrl}/api/reader/me/series/${seriesId}/follow`, {
+		method: "PATCH",
+		headers: getReaderAuthHeaders(),
+		server: false,
+		body: { notify },
+	});
 }
 
 /** Unfollow a series (idempotent 204). */
