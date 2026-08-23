@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 147,
+  "round": 148,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-08-23T00:23:03+00:00",
+  "updated_at": "2026-08-23T00:27:33+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -8782,11 +8782,11 @@
     "TASK-179": {
       "id": "TASK-179",
       "type": "task",
-      "status": "active",
-      "version": 1,
+      "status": "resolved",
+      "version": 2,
       "created_at": "2026-08-23T00:22:40+00:00",
-      "updated_at": "2026-08-23T00:22:40+00:00",
-      "touched_round": 146,
+      "updated_at": "2026-08-23T00:27:33+00:00",
+      "touched_round": 147,
       "category": "core-feature",
       "severity": 0.6,
       "confidence": 0.9,
@@ -8801,10 +8801,60 @@
       "version": 1,
       "created_at": "2026-08-23T00:22:51+00:00",
       "updated_at": "2026-08-23T00:22:51+00:00",
-      "touched_round": 146,
+      "touched_round": 147,
       "title": "Milestone: manage followed series on the reader account page",
       "rationale": "Feature-evolution selection (SKILL 11.2 gap analysis, coherent follow-up to TASK-178). TASK-178 lets a reader follow a series for new-part push via a per-series toggle, but there is no single place to see which series are followed or unfollow one without visiting each series page. The account page already manages push devices, category prefs, and followed discussions; adding a Followed-series section completes subscription management and is net-additive, reusing the existing /api/reader/me/series-follows list + unfollow API (no backend change). Users: signed-in readers tracking multiple series. Why now: series-follow push shipped in TASK-178; surfacing the management list closes that feature arc. Acceptance (one sentence): a signed-in reader sees all the series they follow on the account page and can unfollow from there. Scope: frontend only account.vue section listing followed series (title/slug) with unfollow + i18n + vitest + E2E.",
       "alternatives_rejected": "Consolidated notifications center (categories+series+threads+devices single page) — bigger separate surface, remains deferred; standalone /me/follows page — account page is already the subscription-management home; inline unfollow only on the series page — no management surface for readers following many series."
+    },
+    "CHG-169": {
+      "id": "CHG-169",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-23T00:27:24+00:00",
+      "updated_at": "2026-08-23T00:27:24+00:00",
+      "touched_round": 147,
+      "commit": "8add6c0",
+      "title": "Manage followed series on the reader account page (DEC-134, TASK-179)"
+    },
+    "DEC-135": {
+      "id": "DEC-135",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-23T00:27:24+00:00",
+      "updated_at": "2026-08-23T00:27:24+00:00",
+      "touched_round": 147,
+      "title": "Milestone delivered: manage followed series on the reader account page (DEC-134 complete)",
+      "rationale": "Feature-evolution delivery of DEC-134/TASK-179: /account gains a Followed-series section listing the series a signed-in reader follows for new-part push with an unfollow action, reusing the TASK-178 list + unfollow API (no backend change); i18n (en/zh), vitest (list/empty/unfollow-with-confirm), authored E2E journey. Verified: full frontend suite 1092 vitest green, biome + vue-tsc clean.",
+      "alternatives_rejected": "Consolidated notifications center (deferred, separate surface); standalone /me/follows page (account is the subscription-management home)."
+    },
+    "TASK-180": {
+      "id": "TASK-180",
+      "type": "task",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-23T00:27:25+00:00",
+      "updated_at": "2026-08-23T00:27:25+00:00",
+      "touched_round": 147,
+      "category": "core-feature",
+      "severity": 0.6,
+      "confidence": 0.9,
+      "effort": 1.0,
+      "unlock_factor": 1.0,
+      "title": "Followed-series row on the home page: signed-in readers who follow series see a personalized \"Your series\" row (reuse /api/reader/me/series-follows) showing each followed series with reading progress (TASK-173) and a continue/deep link, gated to signed-in followers + i18n + vitest + E2E"
+    },
+    "DEC-136": {
+      "id": "DEC-136",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-23T00:27:25+00:00",
+      "updated_at": "2026-08-23T00:27:25+00:00",
+      "touched_round": 147,
+      "title": "Milestone: followed-series row on the home page",
+      "rationale": "Feature-evolution selection (SKILL 11.2 gap analysis, coherent follow-up to TASK-179). TASK-179 gave readers a way to follow and manage series they track, but a reader following several series has no one place on the reader surface to see them together or resume each. The home page already has personalized rows (Recommended for you, continue-reading); adding a Your-series row for signed-in followers shows each followed series with reading progress (TASK-173) and a continue deep link, tying follows + progress into a single resume point. Users: signed-in readers who follow multiple series. Why now: series-follow (TASK-178) and its management (TASK-179) shipped; a surfaced row is the reader-facing payoff. Acceptance (one sentence): a signed-in reader who follows series sees them with progress on the home page and can jump back in. Scope: frontend home row (reuse /api/reader/me/series-follows + per-series progress), gated to signed-in followers + i18n + vitest + E2E.",
+      "alternatives_rejected": "Consolidated notifications center (deferred, separate surface); dedicated /series/following page (row on the existing home keeps value where readers browse); email/digest (requires new outbound infra, out of scope for the push-focused reader)."
     }
   },
   "edges": [
@@ -12603,6 +12653,36 @@
       "to": "TASK-179",
       "type": "governs",
       "created_at": "2026-08-23T00:22:56+00:00"
+    },
+    {
+      "from": "CHG-169",
+      "to": "TASK-179",
+      "type": "implements",
+      "created_at": "2026-08-23T00:27:32+00:00"
+    },
+    {
+      "from": "DEC-135",
+      "to": "DEC-134",
+      "type": "supersedes",
+      "created_at": "2026-08-23T00:27:32+00:00"
+    },
+    {
+      "from": "DEC-135",
+      "to": "TASK-179",
+      "type": "governs",
+      "created_at": "2026-08-23T00:27:32+00:00"
+    },
+    {
+      "from": "DEC-136",
+      "to": "DEC-135",
+      "type": "supersedes",
+      "created_at": "2026-08-23T00:27:33+00:00"
+    },
+    {
+      "from": "DEC-136",
+      "to": "TASK-180",
+      "type": "governs",
+      "created_at": "2026-08-23T00:27:33+00:00"
     }
   ]
 }
