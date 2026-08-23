@@ -1725,6 +1725,51 @@ def list_category_follow_reader_ids(db: Session, category_id: int) -> list[int]:
     ]
 
 
+def follows_feed_posts(db: Session, reader_id: int, limit: int = 12) -> list[models.Post]:
+    """Recent public posts from the reader's followed categories + series.
+
+    The discovery payoff of the follow model (DEC-142/TASK-183): a post matches
+    if its category is one the reader follows OR its series is one they follow
+    (independent of per-follow notify — tracking, not push). Results are public,
+    published, deduped (a post is its own row), newest first, capped at ``limit``.
+    A reader following nothing gets an empty list (the frontend hides the row).
+    """
+    category_ids = [
+        cid
+        for (cid,) in db.query(models.CategoryFollow.category_id)
+        .filter(models.CategoryFollow.reader_id == reader_id)
+        .all()
+    ]
+    series_ids = [
+        sid
+        for (sid,) in db.query(models.SeriesFollow.series_id).filter(models.SeriesFollow.reader_id == reader_id).all()
+    ]
+    if not category_ids and not series_ids:
+        return []
+
+    now = utc_now_naive()
+    scope = []
+    if category_ids:
+        scope.append(models.Post.category_id.in_(category_ids))
+    if series_ids:
+        scope.append(models.Post.series_id.in_(series_ids))
+
+    query = (
+        db.query(models.Post)
+        .filter(
+            models.Post.published.is_(True),
+            or_(models.Post.publish_at.is_(None), models.Post.publish_at <= now),
+            or_(*scope),
+        )
+        .options(joinedload(models.Post.category), joinedload(models.Post.tags))
+        .order_by(models.Post.created_at.desc(), models.Post.id.desc())
+        .limit(limit)
+    )
+    result = [post for post in query.all() if is_publicly_visible(post)]
+    _populate_post_metrics(db, result)
+    return result
+
+
 def list_reader_bookmarks(
     db: Session, reader_id: int, folder_id: int | None = None
 ) -> list[tuple[models.Post, int | None, str | None]]:

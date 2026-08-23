@@ -843,6 +843,17 @@ def my_recommendations(
     return [schemas.PostList.model_validate(p) for p in recommended]
 
 
+@router.get("/me/follows-feed", response_model=list[schemas.PostList])
+def my_follows_feed(
+    limit: int = Query(12, ge=1, le=50),
+    current_reader: auth.ReaderAccount = Depends(auth.get_current_reader),
+    db: Session = Depends(get_db),
+):
+    """Recent public posts from the reader's followed categories + series (DEC-142/TASK-183)."""
+    posts = crud.follows_feed_posts(db, current_reader.id, limit=limit)
+    return [schemas.PostList.model_validate(p) for p in posts]
+
+
 @router.get("/me/series-follows", response_model=FollowedSeriesListResponse)
 def list_series_follows(
     current_reader: auth.ReaderAccount = Depends(auth.get_current_reader),
