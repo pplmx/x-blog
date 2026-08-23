@@ -78,6 +78,11 @@
 			"title": "Top searches",
 			"note": "The most-searched public terms (aggregate counts, no reader data).",
 			"empty": "No searches logged yet"
+		},
+		"comments": {
+			"title": "Comment activity",
+			"total": "{n} comments in the last 30 days",
+			"topTitle": "Most-discussed posts"
 		}
 	}
 }

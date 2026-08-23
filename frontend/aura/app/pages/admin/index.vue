@@ -75,6 +75,24 @@ const searchMax = computed(() => Math.max(1, ...(topSearches.value?.map((s) => s
 function searchPct(count: number): number {
 	return Math.round((count / searchMax.value) * 100);
 }
+// Comment activity analytics (DEC-154/TASK-189): engagement axis.
+interface CommentActivity {
+	days: number;
+	total: number;
+	series: Array<{ day: string; count: number }>;
+	top_posts: Array<{ id: number; title: string; slug: string; count: number }>;
+}
+const commentActivity = ref<CommentActivity | null>(null);
+const commentMax = computed(() =>
+	Math.max(1, ...(commentActivity.value?.series.map((d) => d.count) ?? [])),
+);
+function commentPct(count: number): number {
+	return Math.round((count / commentMax.value) * 100);
+}
+function commentDayShort(iso: string): string {
+	const [, m, d] = iso.split("-");
+	return `${Number(m)}/${Number(d)}`;
+}
 const trendMax = computed(() =>
 	Math.max(1, ...(viewsTrend.value?.series.map((s) => s.views) ?? [])),
 );
@@ -112,29 +130,41 @@ async function loadDashboard(): Promise<void> {
 			if (postsPage.length >= res.pagination.total) break;
 			page += 1;
 		}
-		const [catData, tagData, commentsData, statsData, trendData, followsData, searchesData] =
-			await Promise.all([
-				$fetch<Category[]>(`${apiBase}/api/admin/categories`, { headers: authHeaders() }),
-				$fetch<Tag[]>(`${apiBase}/api/admin/tags`, { headers: authHeaders() }),
-				$fetch<AdminCommentListResponse>(`${apiBase}/api/admin/comments`, {
-					query: { page: 1, limit: 100 },
-					headers: authHeaders(),
-				}),
-				$fetch<BlogStats>(`${apiBase}/api/stats`),
-				// Reading-trend analytics (DEC-086): best-effort — a failure just
-				// hides the trend card rather than blocking the whole dashboard.
-				$fetch<ViewsTrend>(`${apiBase}/api/admin/stats/views?days=30`, {
-					headers: authHeaders(),
-				}).catch(() => null),
-				// Follow analytics (DEC-144/TASK-184): best-effort.
-				$fetch<FollowStats>(`${apiBase}/api/admin/stats/follows`, {
-					headers: authHeaders(),
-				}).catch(() => null),
-				// Search-term analytics (DEC-152/TASK-188): best-effort.
-				$fetch<SearchTerm[]>(`${apiBase}/api/admin/stats/searches`, {
-					headers: authHeaders(),
-				}).catch(() => null),
-			]);
+		const [
+			catData,
+			tagData,
+			commentsData,
+			statsData,
+			trendData,
+			followsData,
+			searchesData,
+			commentsActivityData,
+		] = await Promise.all([
+			$fetch<Category[]>(`${apiBase}/api/admin/categories`, { headers: authHeaders() }),
+			$fetch<Tag[]>(`${apiBase}/api/admin/tags`, { headers: authHeaders() }),
+			$fetch<AdminCommentListResponse>(`${apiBase}/api/admin/comments`, {
+				query: { page: 1, limit: 100 },
+				headers: authHeaders(),
+			}),
+			$fetch<BlogStats>(`${apiBase}/api/stats`),
+			// Reading-trend analytics (DEC-086): best-effort — a failure just
+			// hides the trend card rather than blocking the whole dashboard.
+			$fetch<ViewsTrend>(`${apiBase}/api/admin/stats/views?days=30`, {
+				headers: authHeaders(),
+			}).catch(() => null),
+			// Follow analytics (DEC-144/TASK-184): best-effort.
+			$fetch<FollowStats>(`${apiBase}/api/admin/stats/follows`, {
+				headers: authHeaders(),
+			}).catch(() => null),
+			// Search-term analytics (DEC-152/TASK-188): best-effort.
+			$fetch<SearchTerm[]>(`${apiBase}/api/admin/stats/searches`, {
+				headers: authHeaders(),
+			}).catch(() => null),
+			// Comment activity (DEC-154/TASK-189): best-effort.
+			$fetch<CommentActivity>(`${apiBase}/api/admin/stats/comments`, {
+				headers: authHeaders(),
+			}).catch(() => null),
+		]);
 		posts.value = postsPage;
 		categories.value = catData;
 		tags.value = tagData;
@@ -143,6 +173,7 @@ async function loadDashboard(): Promise<void> {
 		viewsTrend.value = trendData;
 		followStats.value = followsData;
 		topSearches.value = searchesData;
+		commentActivity.value = commentsActivityData;
 	} finally {
 		loading.value = false;
 	}
@@ -598,6 +629,60 @@ const stats = computed(() => [
         </div>
       </div>
       <p v-else class="text-sm text-gray-400">{{ t("admin.dashboard.searches.empty") }}</p>
+    </div>
+
+    <!-- Comment activity (DEC-154, TASK-189): engagement axis -->
+    <div
+      v-if="commentActivity"
+      class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 p-5 mb-8"
+    >
+      <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4 flex items-center gap-2">
+        <Icon icon="lucide:message-square" class="w-5 h-5 text-emerald-500" />
+        {{ t("admin.dashboard.comments.title") }}
+        <span class="ml-auto text-sm font-normal text-gray-500">
+          {{ t("admin.dashboard.comments.total", { n: commentActivity.total }) }}
+        </span>
+      </h3>
+      <div class="flex items-end gap-1 h-24">
+        <div
+          v-for="point in commentActivity.series"
+          :key="point.day"
+          class="flex-1 flex items-end justify-center h-full group"
+          :title="`${point.day} · ${point.count}`"
+        >
+          <div
+            class="w-full rounded-t bg-gradient-to-t from-emerald-500 to-teal-400 group-hover:from-emerald-600 group-hover:to-teal-500 transition-colors"
+            :style="{ height: commentPct(point.count) + '%' }"
+          />
+        </div>
+      </div>
+      <div class="flex justify-between text-[10px] text-gray-400 mt-1">
+        <span>{{ commentDayShort(commentActivity.series[0]?.day ?? "") }}</span>
+        <span>{{ commentDayShort(commentActivity.series[commentActivity.series.length - 1]?.day ?? "") }}</span>
+      </div>
+      <div
+        v-if="commentActivity.top_posts.length"
+        class="mt-4 pt-4 border-t border-gray-100 dark:border-gray-800"
+      >
+        <p class="text-sm font-medium text-gray-900 dark:text-gray-100 mb-2">
+          {{ t("admin.dashboard.comments.topTitle") }}
+        </p>
+        <ul class="space-y-1">
+          <li
+            v-for="cp in commentActivity.top_posts"
+            :key="cp.id"
+            class="flex items-center justify-between gap-3 text-sm"
+          >
+            <NuxtLink :to="`/admin/posts/${cp.id}`" class="truncate text-gray-700 dark:text-gray-300 hover:text-blue-600">
+              {{ cp.title }}
+            </NuxtLink>
+            <span class="text-gray-400 text-xs flex items-center gap-1 shrink-0">
+              <Icon icon="lucide:message-square" class="w-3.5 h-3.5" />
+              {{ cp.count }}
+            </span>
+          </li>
+        </ul>
+      </div>
     </div>
 
     <!-- Reading trend (DEC-086): last-30-days view series + top posts -->

@@ -167,6 +167,7 @@ let commentsOverride: unknown = null;
 let trendOverride: unknown = null;
 let followsOverride: unknown = null;
 let searchesOverride: unknown = null;
+let commentStatsOverride: unknown = null;
 
 const mockFollowsResult = {
 	total_series_follows: 0,
@@ -176,6 +177,16 @@ const mockFollowsResult = {
 };
 
 const mockSearchesResult: Array<{ query: string; count: number }> = [];
+
+const mockCommentsResult = {
+	days: 30,
+	total: 0,
+	series: Array.from({ length: 30 }, (_, i) => ({
+		day: `2026-08-${String(i + 1).padStart(2, "0")}`,
+		count: 0,
+	})),
+	top_posts: [],
+};
 
 // A zero-filled 30-day reading-trend series (DEC-086).
 const mockTrendResult = {
@@ -208,6 +219,8 @@ vi.stubGlobal(
 		if (u.includes("/api/admin/stats/follows")) return followsOverride ?? mockFollowsResult;
 		// Search-term analytics (DEC-152/TASK-188).
 		if (u.includes("/api/admin/stats/searches")) return searchesOverride ?? mockSearchesResult;
+		// Comment activity (DEC-154/TASK-189).
+		if (u.includes("/api/admin/stats/comments")) return commentStatsOverride ?? mockCommentsResult;
 		if (u.includes("/api/export/posts.csv")) return "ID,Title\n1,Hello\n";
 		if (u.includes("/api/export/comments.csv")) return "ID,Content\n1,Great post\n";
 		throw new Error(`Unexpected $fetch in dashboard test: ${u}`);
@@ -512,6 +525,28 @@ describe("Admin Dashboard Page", () => {
 			expect(wrapper.text()).toContain("热门搜索");
 			expect(wrapper.text()).toContain("async rust");
 			expect(wrapper.text()).toContain("database");
+		});
+	});
+
+	describe("Comment activity (TASK-189)", () => {
+		afterEach(() => {
+			commentStatsOverride = null;
+		});
+
+		it("shows the comment total and most-discussed posts", async () => {
+			commentStatsOverride = {
+				days: 30,
+				total: 7,
+				series: Array.from({ length: 30 }, (_, i) => ({
+					day: `2026-08-${String(i + 1).padStart(2, "0")}`,
+					count: i === 29 ? 7 : 0,
+				})),
+				top_posts: [{ id: 3, title: "Hot Thread", slug: "hot", count: 5 }],
+			};
+			const DashboardPage = await loadPage();
+			const wrapper = await mountWithSuspense(DashboardPage);
+			expect(wrapper.text()).toContain("评论活跃度");
+			expect(wrapper.text()).toContain("Hot Thread");
 		});
 	});
 
