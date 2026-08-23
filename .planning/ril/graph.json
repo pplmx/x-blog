@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 150,
+  "round": 151,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-08-23T00:47:26+00:00",
+  "updated_at": "2026-08-23T01:04:42+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -8932,11 +8932,11 @@
     "TASK-182": {
       "id": "TASK-182",
       "type": "task",
-      "status": "active",
-      "version": 1,
+      "status": "resolved",
+      "version": 2,
       "created_at": "2026-08-23T00:47:20+00:00",
-      "updated_at": "2026-08-23T00:47:20+00:00",
-      "touched_round": 149,
+      "updated_at": "2026-08-23T01:04:42+00:00",
+      "touched_round": 150,
       "category": "core-feature",
       "severity": 0.6,
       "confidence": 0.9,
@@ -8951,10 +8951,60 @@
       "version": 1,
       "created_at": "2026-08-23T00:47:20+00:00",
       "updated_at": "2026-08-23T00:47:20+00:00",
-      "touched_round": 149,
+      "touched_round": 150,
       "title": "Milestone: follow categories as a reader",
       "rationale": "Feature-evolution selection (SKILL 11.2 gap analysis, completes the follow model already proven for series in TASK-178/180/181). Category new-post push currently exists only as a per-device pin on a push subscription (DEC-076): the 'I follow the AI category' intent is not a durable reader-level fact, is lost across devices, and has no management surface. Making category-follow a reader-level concept (a category_follows table mirroring series_follows) with a category-page follow toggle, account Followed-categories management + notify control, and dispatch targeting the reader's subscriptions is net-additive and coherent. Users: signed-in readers who follow categories and expect that intent to persist and be manageable. Why now: the series follow surface (follow, notify control, management, home row) is mature; categories are the other main follow axis. Acceptance: a reader can follow a category, manage it (with notify control) on the account page, and receive category-scoped new-post push through that durable follow. Scope: category_follows table + follow/list/toggle API + dispatch gate + category page toggle + account management + pytest + vitest + E2E.",
       "alternatives_rejected": "Global notifications center (deferred, separate surface); email/digest (needs outbound infra); keeping category follow per-device only (reader intent not durable or manageable)."
+    },
+    "CHG-172": {
+      "id": "CHG-172",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-23T01:04:24+00:00",
+      "updated_at": "2026-08-23T01:04:24+00:00",
+      "touched_round": 150,
+      "commit": "b8746e7",
+      "title": "Follow categories as a reader (frontend) (DEC-140, TASK-182)"
+    },
+    "DEC-141": {
+      "id": "DEC-141",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-23T01:04:24+00:00",
+      "updated_at": "2026-08-23T01:04:24+00:00",
+      "touched_round": 150,
+      "title": "Milestone delivered: follow categories as a reader (DEC-140 complete)",
+      "rationale": "Feature-evolution delivery of DEC-140/TASK-182 (backend 80d5c61 + frontend b8746e7): additive category_follows table (reader↔category unique pair + notify flag), list/follow/unfollow/notify-toggle API, new-post dispatch targets category followers with notify=true deduped by endpoint, category-page durable follow toggle + notifications bell (signed-in only), account Followed-categories list (notify + unfollow); i18n en/zh. Tests: 14 backend (auth, follow/idempotency/unfollow/isolation, notify control, dispatch + dedupe), vitest (account + categories page), authored E2E. Verified: full backend 1021 green, full frontend 1102 vitest green, ruff+pyright+biome+vue-tsc clean, migration single head.",
+      "alternatives_rejected": "Global notifications center (deferred, separate surface); email/digest (needs outbound infra); keeping category follow per-device only (reader intent not durable or manageable)."
+    },
+    "TASK-183": {
+      "id": "TASK-183",
+      "type": "task",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-23T01:04:24+00:00",
+      "updated_at": "2026-08-23T01:04:24+00:00",
+      "touched_round": 150,
+      "category": "core-feature",
+      "severity": 0.7,
+      "confidence": 0.9,
+      "effort": 2.0,
+      "unlock_factor": 1.0,
+      "title": "Latest from your follows home row: auth-scoped backend endpoint aggregating recent public posts from the reader's followed categories + followed series (deduped, newest first, capped) + a home 'Latest from your follows' row for signed-in followers (display-row, independent of silent-follow) + i18n + vitest + backend pytest + E2E"
+    },
+    "DEC-142": {
+      "id": "DEC-142",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-23T01:04:34+00:00",
+      "updated_at": "2026-08-23T01:04:34+00:00",
+      "touched_round": 150,
+      "title": "Milestone: \"Latest from your follows\" home row",
+      "rationale": "Feature-evolution selection (SKILL 11.2 gap analysis, discovery payoff of the follow model built in TASK-178..182). A reader can follow series and categories, but has no single place to see the newest content across everything they follow; the main Latest feed is global. Scoping a home row to the reader's followed categories + series turns follow intent into discovery: one glance at what is new in what I follow. Users: signed-in readers who follow series/categories. Why now: the follow model (series TASK-178/180/181, categories TASK-182) is complete; surfacing followed content is the natural payoff. Acceptance: a signed-in reader sees the newest public posts from their followed categories and series on the home page. Scope: auth-scoped endpoint aggregating recent posts from followed categories + series (public, published, deduped, newest first, capped) + a home row for signed-in followers (display regardless of silent-follow) + i18n + vitest + backend pytest + E2E.",
+      "alternatives_rejected": "Consolidated notifications center (deferred, separate surface); bare your-categories or your-series link rows (marginal, no new content); email/digest (needs outbound infra)."
     }
   },
   "edges": [
@@ -12843,6 +12893,36 @@
       "to": "TASK-182",
       "type": "governs",
       "created_at": "2026-08-23T00:47:26+00:00"
+    },
+    {
+      "from": "CHG-172",
+      "to": "TASK-182",
+      "type": "implements",
+      "created_at": "2026-08-23T01:04:42+00:00"
+    },
+    {
+      "from": "DEC-141",
+      "to": "DEC-140",
+      "type": "supersedes",
+      "created_at": "2026-08-23T01:04:42+00:00"
+    },
+    {
+      "from": "DEC-141",
+      "to": "TASK-182",
+      "type": "governs",
+      "created_at": "2026-08-23T01:04:42+00:00"
+    },
+    {
+      "from": "DEC-142",
+      "to": "DEC-141",
+      "type": "supersedes",
+      "created_at": "2026-08-23T01:04:42+00:00"
+    },
+    {
+      "from": "DEC-142",
+      "to": "TASK-183",
+      "type": "governs",
+      "created_at": "2026-08-23T01:04:42+00:00"
     }
   ]
 }
