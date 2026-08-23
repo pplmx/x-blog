@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 156,
+  "round": 157,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-08-23T02:08:45+00:00",
+  "updated_at": "2026-08-23T02:20:46+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -9232,11 +9232,11 @@
     "TASK-188": {
       "id": "TASK-188",
       "type": "task",
-      "status": "active",
-      "version": 1,
+      "status": "resolved",
+      "version": 2,
       "created_at": "2026-08-23T02:08:39+00:00",
-      "updated_at": "2026-08-23T02:08:39+00:00",
-      "touched_round": 155,
+      "updated_at": "2026-08-23T02:20:45+00:00",
+      "touched_round": 156,
       "category": "core-feature",
       "severity": 0.6,
       "confidence": 0.9,
@@ -9251,10 +9251,60 @@
       "version": 1,
       "created_at": "2026-08-23T02:08:39+00:00",
       "updated_at": "2026-08-23T02:08:39+00:00",
-      "touched_round": 155,
+      "touched_round": 156,
       "title": "Milestone: search analytics for the operator",
       "rationale": "Feature-evolution selection (SKILL 11.2 gap analysis; operator stakeholder, distinct from follow/view analytics already shipped). The public search (DEC-070/074/084) is a major discovery surface, but the operator has zero visibility into what readers search for — a real, distinct signal for content direction. Logging aggregated (count-only, not per-reader) search terms and surfacing top searches in the admin analytics is net-additive, privacy-safe, and non-marginal. Users: the blog operator/author. Why now: reader discovery (search/filters) and operator analytics (views/follows) are mature; search-terms is the missing operator signal. Acceptance: the admin analytics show the most-searched terms by count. Scope: additive search-log aggregation table + admin top-searches endpoint + admin analytics card + pytest + vitest + E2E.",
       "alternatives_rejected": "Per-reader search history (privacy risk, not needed); tag follows (rejected earlier: tags many-to-many/noisy); email/digest (out of scope)."
+    },
+    "CHG-178": {
+      "id": "CHG-178",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-23T02:20:40+00:00",
+      "updated_at": "2026-08-23T02:20:40+00:00",
+      "touched_round": 156,
+      "commit": "bb6f48c",
+      "title": "Search-term analytics card (frontend) (DEC-152, TASK-188)"
+    },
+    "DEC-153": {
+      "id": "DEC-153",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-23T02:20:40+00:00",
+      "updated_at": "2026-08-23T02:20:40+00:00",
+      "touched_round": 156,
+      "title": "Milestone delivered: search analytics for the operator (DEC-152 complete)",
+      "rationale": "Feature-evolution delivery of DEC-152/TASK-188 (backend e46ac27 + frontend bb6f48c): additive search_logs table (normalized query + aggregate count, privacy-safe, never reader-linked); public /api/search logs best-effort (suppressed, never breaks search); admin GET /api/admin/stats/searches returns top terms; dashboard Top-searches card. Tests: 6 backend, vitest, authored E2E; existing search tests stay green. Verified: full backend 1056 green, full frontend 1113 vitest green, ruff+pyright+biome+vue-tsc clean, migration single head.",
+      "alternatives_rejected": "Per-reader search history (privacy risk); tag follows (rejected earlier); email/digest (out of scope)."
+    },
+    "TASK-189": {
+      "id": "TASK-189",
+      "type": "task",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-23T02:20:40+00:00",
+      "updated_at": "2026-08-23T02:20:40+00:00",
+      "touched_round": 156,
+      "category": "core-feature",
+      "severity": 0.6,
+      "confidence": 0.9,
+      "effort": 1.5,
+      "unlock_factor": 1.0,
+      "title": "Comment activity analytics for the operator: admin dashboard card showing comments over the last N days + most-commented posts (approved/visible counts), the engagement axis distinct from consumption (views/search) and follows; backend admin comment-activity endpoint (pytest) + analytics card + i18n + vitest + E2E"
+    },
+    "DEC-154": {
+      "id": "DEC-154",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-23T02:20:40+00:00",
+      "updated_at": "2026-08-23T02:20:40+00:00",
+      "touched_round": 156,
+      "title": "Milestone: comment activity analytics for the operator",
+      "rationale": "Feature-evolution selection (SKILL 11.2 gap analysis; operator stakeholder). The dashboard trends consumption (views DEC-086, searches DEC-152) and following (TASK-184), but has no engagement view: how comment volume moves over time and which posts draw discussion. Comment activity (approved/visible counts per day + most-commented posts) is a distinct, non-marginal operator signal and a natural completion of the analytics set. Users: the blog operator/author. Why now: moderation (DEC-066/108) and the other analytics axes are mature; engagement trend is the missing one. Acceptance: the admin dashboard shows comment volume over the last N days and the most-commented posts. Scope: admin comment-activity endpoint (per-day counts + top posts by comment count) + dashboard card + pytest + vitest + E2E.",
+      "alternatives_rejected": "Consumer analytics stacking beyond a clear metric (marginal); email/digest (out of scope); per-commenter analytics (privacy-heavy, not needed for a small blog)."
     }
   },
   "edges": [
@@ -13323,6 +13373,36 @@
       "to": "TASK-188",
       "type": "governs",
       "created_at": "2026-08-23T02:08:45+00:00"
+    },
+    {
+      "from": "CHG-178",
+      "to": "TASK-188",
+      "type": "implements",
+      "created_at": "2026-08-23T02:20:45+00:00"
+    },
+    {
+      "from": "DEC-153",
+      "to": "DEC-152",
+      "type": "supersedes",
+      "created_at": "2026-08-23T02:20:45+00:00"
+    },
+    {
+      "from": "DEC-153",
+      "to": "TASK-188",
+      "type": "governs",
+      "created_at": "2026-08-23T02:20:45+00:00"
+    },
+    {
+      "from": "DEC-154",
+      "to": "DEC-153",
+      "type": "supersedes",
+      "created_at": "2026-08-23T02:20:45+00:00"
+    },
+    {
+      "from": "DEC-154",
+      "to": "TASK-189",
+      "type": "governs",
+      "created_at": "2026-08-23T02:20:45+00:00"
     }
   ]
 }
