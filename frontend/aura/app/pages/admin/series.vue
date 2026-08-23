@@ -10,6 +10,9 @@ import {
 	createAdminSeries,
 	deleteAdminSeries,
 	fetchAdminSeries,
+	fetchAdminSeriesEpisodes,
+	reorderAdminSeriesEpisodes,
+	type SeriesEpisode,
 	updateAdminSeries,
 } from "~~/composables/useApi";
 
@@ -34,6 +37,52 @@ const editingForm = ref({
 	slug: "",
 	description: "",
 });
+
+// Episode management (DEC-146/TASK-185): expand a series to see its posts in
+// order and reorder them with up/down, persisted via the reorder endpoint.
+const openEpisodesId = ref<number | null>(null);
+const episodesBySeries = ref<Record<number, SeriesEpisode[]>>({});
+const episodesLoading = ref(false);
+const episodesError = ref(false);
+
+async function toggleEpisodes(s: { id: number }) {
+	episodesError.value = false;
+	if (openEpisodesId.value === s.id) {
+		openEpisodesId.value = null;
+		return;
+	}
+	openEpisodesId.value = s.id;
+	if (episodesBySeries.value[s.id]) return;
+	episodesLoading.value = true;
+	try {
+		const res = await fetchAdminSeriesEpisodes(s.id);
+		episodesBySeries.value[s.id] = res.data?.value ?? [];
+	} catch {
+		episodesBySeries.value[s.id] = [];
+		episodesError.value = true;
+	} finally {
+		episodesLoading.value = false;
+	}
+}
+
+async function moveEpisode(seriesId: number, index: number, dir: -1 | 1) {
+	const current = episodesBySeries.value[seriesId] ?? [];
+	const target = index + dir;
+	if (target < 0 || target >= current.length) return;
+	const next = [...current];
+	const [item] = next.splice(index, 1);
+	next.splice(target, 0, item);
+	episodesError.value = false;
+	try {
+		const res = await reorderAdminSeriesEpisodes(
+			seriesId,
+			next.map((e) => e.id),
+		);
+		episodesBySeries.value[seriesId] = res.data?.value ?? next;
+	} catch {
+		episodesError.value = true;
+	}
+}
 
 function getErrorMessage(e: unknown): string {
 	if (e instanceof Error) return e.message;
@@ -297,6 +346,13 @@ async function handleDelete(id: number) {
             <div class="flex items-center gap-2 shrink-0">
               <button
                 type="button"
+                class="px-3 py-1.5 text-sm text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 rounded-lg transition-colors"
+                @click="toggleEpisodes(s)"
+              >
+                {{ t("admin.series.episodes") }}
+              </button>
+              <button
+                type="button"
                 class="px-3 py-1.5 text-sm text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 rounded-lg transition-colors"
                 @click="startEdit(s)"
               >
@@ -311,6 +367,58 @@ async function handleDelete(id: number) {
                 {{ t("admin.series.delete") }}
               </button>
             </div>
+          </div>
+
+          <!-- Episode manager (DEC-146/TASK-185) -->
+          <div
+            v-if="openEpisodesId === s.id"
+            class="mt-4 border-t border-gray-100 dark:border-gray-800 pt-3"
+          >
+            <p class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-2">
+              {{ t("admin.series.episodesTitle") }}
+            </p>
+            <p v-if="episodesLoading" class="text-sm text-gray-400">
+              {{ t("admin.series.loading") }}
+            </p>
+            <p v-else-if="episodesBySeries[s.id]?.length === 0" class="text-sm text-gray-400">
+              {{ t("admin.series.noEpisodes") }}
+            </p>
+            <ul v-else class="space-y-2">
+              <li
+                v-for="(ep, idx) in episodesBySeries[s.id]"
+                :key="ep.id"
+                class="flex items-center gap-2 text-sm"
+              >
+                <span class="text-gray-400 w-5 text-right">{{ idx + 1 }}.</span>
+                <span class="flex-1 min-w-0 truncate text-gray-700 dark:text-gray-300" :title="ep.title">
+                  {{ ep.title }}
+                  <span v-if="!ep.published" class="text-xs text-amber-500 ml-1">
+                    {{ t("admin.series.draftBadge") }}
+                  </span>
+                </span>
+                <button
+                  type="button"
+                  :disabled="idx === 0"
+                  class="p-1 rounded-md text-gray-400 hover:text-indigo-600 hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                  :aria-label="t('admin.series.moveUp')"
+                  @click="moveEpisode(s.id, idx, -1)"
+                >
+                  <Icon icon="lucide:chevron-up" class="w-4 h-4" />
+                </button>
+                <button
+                  type="button"
+                  :disabled="idx === episodesBySeries[s.id].length - 1"
+                  class="p-1 rounded-md text-gray-400 hover:text-indigo-600 hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                  :aria-label="t('admin.series.moveDown')"
+                  @click="moveEpisode(s.id, idx, 1)"
+                >
+                  <Icon icon="lucide:chevron-down" class="w-4 h-4" />
+                </button>
+              </li>
+            </ul>
+            <p v-if="episodesError" class="text-sm text-red-500 mt-2">
+              {{ t("admin.series.episodeFailed") }}
+            </p>
           </div>
         </div>
       </div>

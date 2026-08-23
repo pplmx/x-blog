@@ -20,11 +20,15 @@ const {
 	mockCreateAdminSeries,
 	mockUpdateAdminSeries,
 	mockDeleteAdminSeries,
+	mockFetchAdminSeriesEpisodes,
+	mockReorderAdminSeriesEpisodes,
 } = vi.hoisted(() => ({
 	mockFetchAdminSeries: vi.fn(),
 	mockCreateAdminSeries: vi.fn(),
 	mockUpdateAdminSeries: vi.fn(),
 	mockDeleteAdminSeries: vi.fn(),
+	mockFetchAdminSeriesEpisodes: vi.fn(),
+	mockReorderAdminSeriesEpisodes: vi.fn(),
 }));
 
 vi.mock("~/composables/useApi", () => ({
@@ -32,6 +36,8 @@ vi.mock("~/composables/useApi", () => ({
 	createAdminSeries: mockCreateAdminSeries,
 	updateAdminSeries: mockUpdateAdminSeries,
 	deleteAdminSeries: mockDeleteAdminSeries,
+	fetchAdminSeriesEpisodes: mockFetchAdminSeriesEpisodes,
+	reorderAdminSeriesEpisodes: mockReorderAdminSeriesEpisodes,
 }));
 
 vi.stubGlobal("useRuntimeConfig", () => ({
@@ -321,6 +327,56 @@ describe("Admin Series Page", () => {
 			await flushPromises();
 
 			expect(mockDeleteAdminSeries).not.toHaveBeenCalled();
+		});
+	});
+
+	describe("Episode management (TASK-185)", () => {
+		it("expands a series to list its episodes in order", async () => {
+			mockFetchAdminSeriesEpisodes.mockReturnValue(
+				mockFetchResult([
+					{ id: 1, title: "Part One", slug: "part-one", series_order: 1, published: true },
+					{ id: 2, title: "Part Two", slug: "part-two", series_order: 2, published: false },
+				]),
+			);
+			const SeriesPage = await loadPage();
+			const wrapper = await mountWithSuspense(SeriesPage);
+
+			const episodesBtn = wrapper.findAll("button").find((b) => b.text().includes("章节"));
+			await episodesBtn?.trigger("click");
+			await flushPromises();
+
+			expect(mockFetchAdminSeriesEpisodes).toHaveBeenCalledWith(1);
+			expect(wrapper.text()).toContain("Part One");
+			expect(wrapper.text()).toContain("Part Two");
+			expect(wrapper.text()).toContain("草稿"); // draft badge on the unpublished part
+		});
+
+		it("reorders episodes via the reorder endpoint and updates the list", async () => {
+			const initial = [
+				{ id: 1, title: "Part One", slug: "part-one", series_order: 1, published: true },
+				{ id: 2, title: "Part Two", slug: "part-two", series_order: 2, published: true },
+			];
+			mockFetchAdminSeriesEpisodes.mockReturnValue(mockFetchResult(initial));
+			// Moving Part Two down one slot → [2, 1].
+			mockReorderAdminSeriesEpisodes.mockReturnValue(
+				mockFetchResult([
+					{ id: 2, title: "Part Two", slug: "part-two", series_order: 1, published: true },
+					{ id: 1, title: "Part One", slug: "part-one", series_order: 2, published: true },
+				]),
+			);
+			const SeriesPage = await loadPage();
+			const wrapper = await mountWithSuspense(SeriesPage);
+
+			const episodesBtn = wrapper.findAll("button").find((b) => b.text().includes("章节"));
+			await episodesBtn?.trigger("click");
+			await flushPromises();
+
+			// First episode's down-arrow (enabled, index 0): reorder [2, 1].
+			const downArrow = wrapper.find('button[aria-label="下移"]');
+			await downArrow.trigger("click");
+			await flushPromises();
+
+			expect(mockReorderAdminSeriesEpisodes).toHaveBeenCalledWith(1, [2, 1]);
 		});
 	});
 });

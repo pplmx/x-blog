@@ -18,6 +18,13 @@
 		"empty": "No series yet",
 		"operationFailed": "Operation failed, please retry",
 		"loading": "Loading...",
-		"postsLabel": "{count} posts"
+		"postsLabel": "{count} posts",
+		"episodes": "Episodes",
+		"episodesTitle": "Episode order (drag the arrows to reorder)",
+		"noEpisodes": "No posts in this series yet",
+		"draftBadge": "draft",
+		"moveUp": "Move up",
+		"moveDown": "Move down",
+		"episodeFailed": "Couldn't reorder — please try again"
 	}
 }

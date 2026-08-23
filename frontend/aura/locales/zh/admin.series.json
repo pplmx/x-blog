@@ -18,6 +18,13 @@
 		"empty": "暂无系列",
 		"operationFailed": "操作失败，请重试",
 		"loading": "加载中...",
-		"postsLabel": "{count} 篇文章"
+		"postsLabel": "{count} 篇文章",
+		"episodes": "章节",
+		"episodesTitle": "章节顺序（使用箭头调整）",
+		"noEpisodes": "该系列还没有文章",
+		"draftBadge": "草稿",
+		"moveUp": "上移",
+		"moveDown": "下移",
+		"episodeFailed": "调整失败，请重试"
 	}
 }

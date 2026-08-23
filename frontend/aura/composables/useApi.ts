@@ -780,6 +780,35 @@ export async function deleteAdminSeries(id: number) {
 	});
 }
 
+export interface SeriesEpisode {
+	id: number;
+	title: string;
+	slug: string;
+	series_order: number;
+	published: boolean;
+}
+
+/** Fetch a series' episodes in order (admin, incl. drafts). */
+export async function fetchAdminSeriesEpisodes(seriesId: number) {
+	const config = useRuntimeConfig();
+	const apiUrl = config.public.apiUrl;
+	return useFetch<SeriesEpisode[]>(`${apiUrl}/api/series/${seriesId}/episodes`, {
+		headers: getAuthHeaders(),
+		server: false,
+	});
+}
+
+/** Reorder a series' episodes from an explicit post-id list (admin). */
+export async function reorderAdminSeriesEpisodes(seriesId: number, postIds: number[]) {
+	const config = useRuntimeConfig();
+	const apiUrl = config.public.apiUrl;
+	return useFetch<SeriesEpisode[]>(`${apiUrl}/api/series/${seriesId}/episodes/reorder`, {
+		method: "PUT",
+		headers: { "Content-Type": "application/json", ...getAuthHeaders() },
+		body: { post_ids: postIds },
+	});
+}
+
 // ============================================================================
 // Admin users
 // ============================================================================
