@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 148,
+  "round": 149,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-08-23T00:27:33+00:00",
+  "updated_at": "2026-08-23T00:32:18+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -8832,11 +8832,11 @@
     "TASK-180": {
       "id": "TASK-180",
       "type": "task",
-      "status": "active",
-      "version": 1,
+      "status": "resolved",
+      "version": 2,
       "created_at": "2026-08-23T00:27:25+00:00",
-      "updated_at": "2026-08-23T00:27:25+00:00",
-      "touched_round": 147,
+      "updated_at": "2026-08-23T00:32:18+00:00",
+      "touched_round": 148,
       "category": "core-feature",
       "severity": 0.6,
       "confidence": 0.9,
@@ -8851,10 +8851,60 @@
       "version": 1,
       "created_at": "2026-08-23T00:27:25+00:00",
       "updated_at": "2026-08-23T00:27:25+00:00",
-      "touched_round": 147,
+      "touched_round": 148,
       "title": "Milestone: followed-series row on the home page",
       "rationale": "Feature-evolution selection (SKILL 11.2 gap analysis, coherent follow-up to TASK-179). TASK-179 gave readers a way to follow and manage series they track, but a reader following several series has no one place on the reader surface to see them together or resume each. The home page already has personalized rows (Recommended for you, continue-reading); adding a Your-series row for signed-in followers shows each followed series with reading progress (TASK-173) and a continue deep link, tying follows + progress into a single resume point. Users: signed-in readers who follow multiple series. Why now: series-follow (TASK-178) and its management (TASK-179) shipped; a surfaced row is the reader-facing payoff. Acceptance (one sentence): a signed-in reader who follows series sees them with progress on the home page and can jump back in. Scope: frontend home row (reuse /api/reader/me/series-follows + per-series progress), gated to signed-in followers + i18n + vitest + E2E.",
       "alternatives_rejected": "Consolidated notifications center (deferred, separate surface); dedicated /series/following page (row on the existing home keeps value where readers browse); email/digest (requires new outbound infra, out of scope for the push-focused reader)."
+    },
+    "CHG-170": {
+      "id": "CHG-170",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-23T00:32:11+00:00",
+      "updated_at": "2026-08-23T00:32:11+00:00",
+      "touched_round": 148,
+      "commit": "d780888",
+      "title": "\"Your series\" row on the home page (DEC-136, TASK-180)"
+    },
+    "DEC-137": {
+      "id": "DEC-137",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-23T00:32:11+00:00",
+      "updated_at": "2026-08-23T00:32:11+00:00",
+      "touched_round": 148,
+      "title": "Milestone delivered: \"Your series\" row on the home page (DEC-136 complete)",
+      "rationale": "Feature-evolution delivery of DEC-136/TASK-180: signed-in readers who follow series see a personalized 'Your series' row on the home page (reusing /api/reader/me/series-follows) showing each followed series with per-series reading progress (TASK-173) + a progress bar and a Continue deep link to the next unread part; guests and non-followers see no row; frontend only. i18n (en/zh), vitest (follower/guest/no-follows), authored E2E journey. Verified: full frontend suite 1095 vitest green, biome + vue-tsc clean.",
+      "alternatives_rejected": "Consolidated notifications center (deferred); dedicated /series/following page (row on existing home keeps value where readers browse)."
+    },
+    "TASK-181": {
+      "id": "TASK-181",
+      "type": "task",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-23T00:32:11+00:00",
+      "updated_at": "2026-08-23T00:32:11+00:00",
+      "touched_round": 148,
+      "category": "core-feature",
+      "severity": 0.6,
+      "confidence": 0.9,
+      "effort": 1.5,
+      "unlock_factor": 1.0,
+      "title": "Per-series follow: control new-part notifications. Add additive notify boolean (default true) to series_follows (DEC-009-compatible migration); expose in follow/list API + a notify-toggle endpoint; push dispatch only targets follows with notify=true; series page + account Followed-series list manage per-series notify; backend pytest + vitest + E2E"
+    },
+    "DEC-138": {
+      "id": "DEC-138",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-23T00:32:11+00:00",
+      "updated_at": "2026-08-23T00:32:11+00:00",
+      "touched_round": 148,
+      "title": "Milestone: per-series follow with notification control",
+      "rationale": "Feature-evolution selection (SKILL 11.2 gap analysis, coherent follow-up to TASK-178/179/180). Following a series currently means 'push me every new part' (TASK-178), and the same follow drives the home Your-series row (TASK-180); a reader cannot track a series on the home row without receiving a push each new part, nor silence notifications for one series while keeping others. Decoupling track vs notify is a real, perceptible need. Users: signed-in readers who follow many series and want control over push noise. Why now: the series follow surface (follow, manage, home row) is mature; notification control is the natural next refinement. Acceptance: a reader can follow a series for tracking and suppress (or enable) new-part push per series. Scope: additive notify column on series_follows + follow/list/toggle API + dispatch gate + series page + account Followed-series notify control + pytest + vitest + E2E.",
+      "alternatives_rejected": "Global notifications center (deferred, separate surface); follow-as-track-only (drop push, loses TASK-178 value); auto-mute after N notifications (speculative)."
     }
   },
   "edges": [
@@ -12683,6 +12733,36 @@
       "to": "TASK-180",
       "type": "governs",
       "created_at": "2026-08-23T00:27:33+00:00"
+    },
+    {
+      "from": "CHG-170",
+      "to": "TASK-180",
+      "type": "implements",
+      "created_at": "2026-08-23T00:32:18+00:00"
+    },
+    {
+      "from": "DEC-137",
+      "to": "DEC-136",
+      "type": "supersedes",
+      "created_at": "2026-08-23T00:32:18+00:00"
+    },
+    {
+      "from": "DEC-137",
+      "to": "TASK-180",
+      "type": "governs",
+      "created_at": "2026-08-23T00:32:18+00:00"
+    },
+    {
+      "from": "DEC-138",
+      "to": "DEC-137",
+      "type": "supersedes",
+      "created_at": "2026-08-23T00:32:18+00:00"
+    },
+    {
+      "from": "DEC-138",
+      "to": "TASK-181",
+      "type": "governs",
+      "created_at": "2026-08-23T00:32:18+00:00"
     }
   ]
 }
