@@ -1206,6 +1206,49 @@ def get_series_visible_posts(db: Session, series: models.Series) -> list[models.
     return posts
 
 
+def list_series_episodes(db: Session, series: models.Series) -> list[models.Post]:
+    """All of a series' posts in order (admin view, any status incl. drafts).
+
+    Order is ``series_order`` then ``id`` so equal orders resolve to insertion
+    order (mirrors get_series_visible_posts).
+    """
+    return (
+        db.query(models.Post)
+        .filter(models.Post.series_id == series.id)
+        .order_by(models.Post.series_order, models.Post.id)
+        .all()
+    )
+
+
+def reorder_series_episodes(db: Session, series: models.Series, post_ids: list[int]) -> list[models.Post]:
+    """Rewrite a series' episode order (1..n) from an explicit post-id list.
+
+    Every id in ``post_ids`` must belong to the series, and the list must not
+    contain duplicates, or a ValueError is raised before any write. Posts not
+    listed keep their current series_order (they drop out of the ordered view
+    only if no longer linked to the series). Returns the updated ordered posts.
+    """
+    if len(post_ids) != len(set(post_ids)):
+        raise ValueError("Duplicate post ids in reorder")
+    posts = []
+    for pid in post_ids:
+        post = db.get(models.Post, pid)
+        if post is None or post.series_id != series.id:
+            raise ValueError(f"Post {pid} is not part of this series")
+        posts.append(post)
+    for index, post in enumerate(posts):
+        post.series_order = index + 1
+    db.commit()
+    for post in posts:
+        db.refresh(post)
+    return posts
+
+
+def series_post_count(db: Session, series_id: int) -> int:
+    """Total posts linked to a series (any status), for the admin episode view."""
+    return db.query(models.Post).filter(models.Post.series_id == series_id).count()
+
+
 def create_series(db: Session, data: schemas.SeriesCreate) -> models.Series:
     """Create a series. Raises ValueError on a duplicate slug."""
     db_series = models.Series(

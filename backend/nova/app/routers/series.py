@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, Request, status
+from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from app import crud, models, schemas
@@ -111,3 +112,72 @@ def delete_series(
         raise HTTPException(status_code=400, detail=str(e))
     if not success:
         raise HTTPException(status_code=404, detail="Series not found")
+
+
+class SeriesEpisodeItem(BaseModel):
+    """One series post in admin episode order (DEC-146/TASK-185)."""
+
+    id: int
+    title: str
+    slug: str
+    series_order: int
+    published: bool
+
+
+class SeriesReorderBody(BaseModel):
+    """Admin batch reorder payload: the series' post ids in desired order."""
+
+    post_ids: list[int]
+
+
+@router.get("/{series_id}/episodes", response_model=list[SeriesEpisodeItem])
+def list_series_episodes(
+    series_id: int,
+    _current_user: User = Depends(get_current_admin),
+    db: Session = Depends(get_db),
+):
+    """Admin view of a series' episodes in order (any status incl. drafts)."""
+    series = db.get(models.Series, series_id)
+    if not series:
+        raise HTTPException(status_code=404, detail="Series not found")
+    episodes = crud.list_series_episodes(db, series)
+    return [
+        SeriesEpisodeItem(
+            id=p.id,
+            title=p.title,
+            slug=p.slug,
+            series_order=p.series_order,
+            published=bool(p.published),
+        )
+        for p in episodes
+    ]
+
+
+@router.put("/{series_id}/episodes/reorder", response_model=list[SeriesEpisodeItem])
+@limiter.limit(f"{RATE_LIMIT_WRITE}/minute")
+def reorder_series_episodes(
+    request: Request,  # noqa: ARG001
+    series_id: int,
+    body: SeriesReorderBody,
+    _current_user: User = Depends(get_current_admin),
+    db: Session = Depends(get_db),
+):
+    """Rewrite a series' episode order from an explicit post-id list (admin)."""
+    series = db.get(models.Series, series_id)
+    if not series:
+        raise HTTPException(status_code=404, detail="Series not found")
+    try:
+        episodes = crud.reorder_series_episodes(db, series, body.post_ids)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    series_cache.pop(series.slug, None)
+    return [
+        SeriesEpisodeItem(
+            id=p.id,
+            title=p.title,
+            slug=p.slug,
+            series_order=p.series_order,
+            published=bool(p.published),
+        )
+        for p in episodes
+    ]
