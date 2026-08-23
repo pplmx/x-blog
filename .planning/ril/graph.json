@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 154,
+  "round": 155,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-08-23T01:42:16+00:00",
+  "updated_at": "2026-08-23T01:54:31+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -9132,11 +9132,11 @@
     "TASK-186": {
       "id": "TASK-186",
       "type": "task",
-      "status": "active",
-      "version": 1,
+      "status": "resolved",
+      "version": 2,
       "created_at": "2026-08-23T01:42:10+00:00",
-      "updated_at": "2026-08-23T01:42:10+00:00",
-      "touched_round": 153,
+      "updated_at": "2026-08-23T01:54:31+00:00",
+      "touched_round": 154,
       "category": "core-feature",
       "severity": 0.6,
       "confidence": 0.9,
@@ -9151,10 +9151,60 @@
       "version": 1,
       "created_at": "2026-08-23T01:42:10+00:00",
       "updated_at": "2026-08-23T01:42:10+00:00",
-      "touched_round": 153,
+      "touched_round": 154,
       "title": "Milestone: search within reading history",
       "rationale": "Feature-evolution selection (SKILL 11.2 gap analysis, recall payoff of reading history built in TASK-169/170). A reader with a long reading history cannot find 'that post I read about X' — the /history page only lists (paginated). Search within history (title/excerpt match) is a real, frequent recall need and is net-additive, mirroring the proven bookmark-search pattern (TASK-174) but over a different dataset (history carries its own last-viewed time, so results can show when the post was read). Users: signed-in readers with history. Why now: history sync (TASK-170) + summary (TASK-171) are mature; recall search is the natural completion. Acceptance: a reader can type a query on /history and see matching past-read posts with their last-viewed time. Scope: auth-scoped backend history-search (title/excerpt, public-visible posts only, newest-viewed first) + /history search box + i18n + vitest + backend pytest + E2E.",
       "alternatives_rejected": "Consolidated notifications center (deferred, redundant); plain bookmark search extension (already shipped, TASK-174); email/digest (out of scope)."
+    },
+    "CHG-176": {
+      "id": "CHG-176",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-23T01:54:26+00:00",
+      "updated_at": "2026-08-23T01:54:26+00:00",
+      "touched_round": 154,
+      "commit": "ca15309",
+      "title": "Search within reading history (frontend) (DEC-148, TASK-186)"
+    },
+    "DEC-149": {
+      "id": "DEC-149",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-23T01:54:26+00:00",
+      "updated_at": "2026-08-23T01:54:26+00:00",
+      "touched_round": 154,
+      "title": "Milestone delivered: search within reading history (DEC-148 complete)",
+      "rationale": "Feature-evolution delivery of DEC-148/TASK-186 (backend 5d93f93 + frontend ca15309): /api/reader/me/history gains a q param filtering to viewed posts whose title/excerpt match (case-insensitive, escape-aware, public-only); /history gains a search box (server for signed-in, in-place for guests) + empty-search state. Tests: 6 backend, vitest (history page + composable updated), authored E2E. Verified: full backend 1047 green, full frontend 1109 vitest green, ruff+pyright+biome+vue-tsc clean.",
+      "alternatives_rejected": "Consolidated notifications center (deferred, redundant); theme toggle (already shipped); email/digest (out of scope)."
+    },
+    "TASK-187": {
+      "id": "TASK-187",
+      "type": "task",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-23T01:54:26+00:00",
+      "updated_at": "2026-08-23T01:54:26+00:00",
+      "touched_round": 154,
+      "category": "core-feature",
+      "severity": 0.6,
+      "confidence": 0.9,
+      "effort": 2.0,
+      "unlock_factor": 1.0,
+      "title": "Author preview of draft/scheduled posts: an admin can preview how a not-yet-published post will look to readers (admin-authenticated preview read of a non-public post's full detail + a preview route/flag so the post page renders it) + Preview button on the admin post list/editor; backend pytest + vitest + E2E"
+    },
+    "DEC-150": {
+      "id": "DEC-150",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-23T01:54:26+00:00",
+      "updated_at": "2026-08-23T01:54:26+00:00",
+      "touched_round": 154,
+      "title": "Milestone: author preview of draft/scheduled posts",
+      "rationale": "Feature-evolution selection (SKILL 11.2 gap analysis; author stakeholder). An author can only see a draft/scheduled post in the admin editor, not how it will actually render for readers (markdown, cover, reading time, SEO) — exports/backup and the public read path exclude non-published posts, so there is no preview. Adding an admin-authenticated preview of a non-public post (full detail) plus a preview route/flag on the post page lets the author verify the final look before publish. Users: the blog operator/author. Why now: authoring (posts editor, series) is mature but preview is a real missing step before publish. Acceptance: an author can preview a draft/scheduled post as readers will see it. Scope: admin-authenticated preview read of a non-public post + preview flag/route on the post page + admin Preview button + pytest + vitest + E2E.",
+      "alternatives_rejected": "Post clone/duplicate (authoring nicety, marginal); email/digest (out of scope); reader public draft counts (privacy/leak risk)."
     }
   },
   "edges": [
@@ -13163,6 +13213,36 @@
       "to": "TASK-186",
       "type": "governs",
       "created_at": "2026-08-23T01:42:16+00:00"
+    },
+    {
+      "from": "CHG-176",
+      "to": "TASK-186",
+      "type": "implements",
+      "created_at": "2026-08-23T01:54:31+00:00"
+    },
+    {
+      "from": "DEC-149",
+      "to": "DEC-148",
+      "type": "supersedes",
+      "created_at": "2026-08-23T01:54:31+00:00"
+    },
+    {
+      "from": "DEC-149",
+      "to": "TASK-186",
+      "type": "governs",
+      "created_at": "2026-08-23T01:54:31+00:00"
+    },
+    {
+      "from": "DEC-150",
+      "to": "DEC-149",
+      "type": "supersedes",
+      "created_at": "2026-08-23T01:54:31+00:00"
+    },
+    {
+      "from": "DEC-150",
+      "to": "TASK-187",
+      "type": "governs",
+      "created_at": "2026-08-23T01:54:31+00:00"
     }
   ]
 }
