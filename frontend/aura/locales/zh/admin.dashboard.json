@@ -63,6 +63,16 @@
 			"title": "阅读趋势（近30天）",
 			"total": "近30天共 {n} 次浏览",
 			"topTitle": "本期热门文章"
+		},
+		"follows": {
+			"title": "读者关注",
+			"note": "各系列与分类被多少读者关注（基于关注而非推送通知设置）。",
+			"totalSeries": "系列关注总数",
+			"totalCategories": "分类关注总数",
+			"topSeries": "关注最多的系列",
+			"topCategories": "关注最多的分类",
+			"emptySeries": "暂无系列关注",
+			"emptyCategories": "暂无分类关注"
 		}
 	}
 }

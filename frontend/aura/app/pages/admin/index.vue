@@ -46,6 +46,25 @@ interface ViewsTrend {
 	top_posts: Array<{ id: number; title: string; slug: string; views: number }>;
 }
 const viewsTrend = ref<ViewsTrend | null>(null);
+// Follow analytics (DEC-144, TASK-184): per-series/category reader follow
+// counts + totals (tracking-based, notify-independent). Null on failure.
+interface FollowStats {
+	total_series_follows: number;
+	total_category_follows: number;
+	top_series: Array<{ id: number; title: string; slug: string; count: number }>;
+	top_categories: Array<{ id: number; name: string; count: number }>;
+}
+const followStats = ref<FollowStats | null>(null);
+const followMax = computed(() =>
+	Math.max(
+		1,
+		...(followStats.value?.top_series.map((s) => s.count) ?? []),
+		...(followStats.value?.top_categories.map((c) => c.count) ?? []),
+	),
+);
+function followPct(count: number): number {
+	return Math.round((count / followMax.value) * 100);
+}
 const trendMax = computed(() =>
 	Math.max(1, ...(viewsTrend.value?.series.map((s) => s.views) ?? [])),
 );
@@ -83,7 +102,7 @@ async function loadDashboard(): Promise<void> {
 			if (postsPage.length >= res.pagination.total) break;
 			page += 1;
 		}
-		const [catData, tagData, commentsData, statsData, trendData] = await Promise.all([
+		const [catData, tagData, commentsData, statsData, trendData, followsData] = await Promise.all([
 			$fetch<Category[]>(`${apiBase}/api/admin/categories`, { headers: authHeaders() }),
 			$fetch<Tag[]>(`${apiBase}/api/admin/tags`, { headers: authHeaders() }),
 			$fetch<AdminCommentListResponse>(`${apiBase}/api/admin/comments`, {
@@ -96,6 +115,10 @@ async function loadDashboard(): Promise<void> {
 			$fetch<ViewsTrend>(`${apiBase}/api/admin/stats/views?days=30`, {
 				headers: authHeaders(),
 			}).catch(() => null),
+			// Follow analytics (DEC-144/TASK-184): best-effort.
+			$fetch<FollowStats>(`${apiBase}/api/admin/stats/follows`, {
+				headers: authHeaders(),
+			}).catch(() => null),
 		]);
 		posts.value = postsPage;
 		categories.value = catData;
@@ -103,6 +126,7 @@ async function loadDashboard(): Promise<void> {
 		allComments.value = commentsData.items;
 		blogStats.value = statsData;
 		viewsTrend.value = trendData;
+		followStats.value = followsData;
 	} finally {
 		loading.value = false;
 	}
@@ -460,6 +484,74 @@ const stats = computed(() => [
               {{ postsInCategory(cat.id) }}
             </span>
           </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Follow analytics (DEC-144, TASK-184): what readers track -->
+    <div
+      v-if="followStats"
+      class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 p-5 mb-8"
+    >
+      <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-1 flex items-center gap-2">
+        <Icon icon="lucide:heart" class="w-5 h-5 text-rose-500" />
+        {{ t("admin.dashboard.follows.title") }}
+      </h3>
+      <p class="text-xs text-gray-400 mb-4">{{ t("admin.dashboard.follows.note") }}</p>
+
+      <div class="grid gap-4 sm:grid-cols-2 mb-4">
+        <div class="rounded-xl border border-gray-100 dark:border-gray-800 p-4">
+          <div class="text-2xl font-bold text-gray-900 dark:text-gray-100">
+            {{ followStats.total_series_follows }}
+          </div>
+          <div class="text-xs text-gray-500 mt-1">{{ t("admin.dashboard.follows.totalSeries") }}</div>
+        </div>
+        <div class="rounded-xl border border-gray-100 dark:border-gray-800 p-4">
+          <div class="text-2xl font-bold text-gray-900 dark:text-gray-100">
+            {{ followStats.total_category_follows }}
+          </div>
+          <div class="text-xs text-gray-500 mt-1">{{ t("admin.dashboard.follows.totalCategories") }}</div>
+        </div>
+      </div>
+
+      <div class="grid gap-6 lg:grid-cols-2">
+        <div>
+          <h4 class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">
+            {{ t("admin.dashboard.follows.topSeries") }}
+          </h4>
+          <div v-if="followStats.top_series.length" class="space-y-3">
+            <div v-for="s in followStats.top_series" :key="s.id" class="flex items-center gap-3">
+              <span class="text-sm text-gray-800 dark:text-gray-200 w-32 truncate" :title="s.title">
+                {{ s.title }}
+              </span>
+              <div class="flex-1 bg-gray-200 dark:bg-gray-700 rounded-full h-2 overflow-hidden">
+                <div
+                  class="bg-rose-500 h-2 rounded-full transition-all"
+                  :style="{ width: followPct(s.count) + '%' }"
+                />
+              </div>
+              <span class="text-sm text-gray-500 w-8 text-right">{{ s.count }}</span>
+            </div>
+          </div>
+          <p v-else class="text-sm text-gray-400">{{ t("admin.dashboard.follows.emptySeries") }}</p>
+        </div>
+        <div>
+          <h4 class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">
+            {{ t("admin.dashboard.follows.topCategories") }}
+          </h4>
+          <div v-if="followStats.top_categories.length" class="space-y-3">
+            <div v-for="c in followStats.top_categories" :key="c.id" class="flex items-center gap-3">
+              <span class="text-sm text-gray-800 dark:text-gray-200 w-32 truncate">{{ c.name }}</span>
+              <div class="flex-1 bg-gray-200 dark:bg-gray-700 rounded-full h-2 overflow-hidden">
+                <div
+                  class="bg-rose-500 h-2 rounded-full transition-all"
+                  :style="{ width: followPct(c.count) + '%' }"
+                />
+              </div>
+              <span class="text-sm text-gray-500 w-8 text-right">{{ c.count }}</span>
+            </div>
+          </div>
+          <p v-else class="text-sm text-gray-400">{{ t("admin.dashboard.follows.emptyCategories") }}</p>
         </div>
       </div>
     </div>

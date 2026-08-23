@@ -165,6 +165,14 @@ let statsOverride: Record<string, number> = { ...mockStatsResult };
 let postsOverride: unknown = null;
 let commentsOverride: unknown = null;
 let trendOverride: unknown = null;
+let followsOverride: unknown = null;
+
+const mockFollowsResult = {
+	total_series_follows: 0,
+	total_category_follows: 0,
+	top_series: [],
+	top_categories: [],
+};
 
 // A zero-filled 30-day reading-trend series (DEC-086).
 const mockTrendResult = {
@@ -193,6 +201,8 @@ vi.stubGlobal(
 		// Reading-trend analytics (DEC-086): zero-filled 30-day series so the
 		// trend card renders (and stays deterministic) without real data.
 		if (u.includes("/api/admin/stats/views")) return trendOverride ?? mockTrendResult;
+		// Follow analytics (DEC-144/TASK-184).
+		if (u.includes("/api/admin/stats/follows")) return followsOverride ?? mockFollowsResult;
 		if (u.includes("/api/export/posts.csv")) return "ID,Title\n1,Hello\n";
 		if (u.includes("/api/export/comments.csv")) return "ID,Content\n1,Great post\n";
 		throw new Error(`Unexpected $fetch in dashboard test: ${u}`);
@@ -456,6 +466,29 @@ describe("Admin Dashboard Page", () => {
 			const wrapper = await mountWithSuspense(DashboardPage);
 			expect(wrapper.text()).toContain("本期热门文章");
 			expect(wrapper.text()).toContain("Trend Post");
+		});
+	});
+
+	describe("Follow analytics (TASK-184)", () => {
+		afterEach(() => {
+			followsOverride = null;
+		});
+
+		it("shows totals and top series/categories", async () => {
+			followsOverride = {
+				total_series_follows: 7,
+				total_category_follows: 9,
+				top_series: [{ id: 3, title: "Tutorial", slug: "tutorial", count: 5 }],
+				top_categories: [{ id: 1, name: "AI", count: 6 }],
+			};
+			const DashboardPage = await loadPage();
+			const wrapper = await mountWithSuspense(DashboardPage);
+			expect(wrapper.text()).toContain("读者关注");
+			expect(wrapper.text()).toContain("Tutorial");
+			expect(wrapper.text()).toContain("AI");
+			// both totals render
+			expect(wrapper.text()).toContain("系列关注总数");
+			expect(wrapper.text()).toContain("分类关注总数");
 		});
 	});
 

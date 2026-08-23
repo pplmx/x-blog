@@ -63,6 +63,16 @@
 			"title": "Reading trend (last 30 days)",
 			"total": "{n} views in the last 30 days",
 			"topTitle": "Hot posts this period"
+		},
+		"follows": {
+			"title": "Reader follows",
+			"note": "How many readers follow each series and category (tracking-based, independent of push notification settings).",
+			"totalSeries": "Total series follows",
+			"totalCategories": "Total category follows",
+			"topSeries": "Most-followed series",
+			"topCategories": "Most-followed categories",
+			"emptySeries": "No series follows yet",
+			"emptyCategories": "No category follows yet"
 		}
 	}
 }
