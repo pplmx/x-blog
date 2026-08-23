@@ -22,6 +22,8 @@ follows_router = APIRouter(prefix="/api/admin/stats/follows", tags=["stats"])
 
 searches_router = APIRouter(prefix="/api/admin/stats/searches", tags=["stats"])
 
+comments_router = APIRouter(prefix="/api/admin/stats/comments", tags=["stats"])
+
 
 @router.get("")
 @limiter.limit(f"{RATE_LIMIT_READ}/minute")
@@ -57,3 +59,15 @@ def top_searches(
 ):
     """Top public search terms by aggregate count (DEC-152/TASK-188)."""
     return crud.get_top_searches(db, limit=limit)
+
+
+@comments_router.get("")
+@limiter.limit(f"{RATE_LIMIT_READ}/minute")
+def comments_stats(
+    request: Request,  # noqa: ARG001
+    days: int = Query(30, ge=1, le=365, description="number of days to include"),
+    db: Session = Depends(get_db),
+    _current_user: User = Depends(get_current_admin),
+):
+    """Comment-activity series + top commented posts (DEC-154/TASK-189)."""
+    return crud.get_comment_activity_stats(db, days=days)

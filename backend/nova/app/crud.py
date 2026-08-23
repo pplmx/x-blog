@@ -2518,3 +2518,54 @@ def get_daily_views_stats(db: Session, days: int = 30) -> dict:
         "series": series,
         "top_posts": [{"id": row[0], "title": row[1], "slug": row[2], "views": int(row[3])} for row in top],
     }
+
+
+def get_comment_activity_stats(db: Session, days: int = 30) -> dict:
+    """Comment-activity series + in-period top posts for the admin dashboard (DEC-154/TASK-189).
+
+    The engagement axis (distinct from views/searches/follows): per-day counts of
+    approved, publicly visible comments plus the posts that draw the most
+    discussion in the period. ``series`` is a zero-filled calendar-axis.
+    """
+    today = utc_now_naive().date()
+    first = today - timedelta(days=days - 1)
+    first_iso = first.isoformat()
+    today_iso = today.isoformat()
+
+    rows = (
+        db.query(func.date(models.Comment.created_at).label("day"), func.count(models.Comment.id))
+        .filter(
+            models.Comment.is_approved.is_(True),
+            func.date(models.Comment.created_at) >= first_iso,
+            func.date(models.Comment.created_at) <= today_iso,
+        )
+        .group_by(func.date(models.Comment.created_at))
+        .all()
+    )
+    by_day = {str(day): int(count) for day, count in rows}
+    day = first
+    series = []
+    while day <= today:
+        series.append({"day": day.isoformat(), "count": by_day.get(day.isoformat(), 0)})
+        day += timedelta(days=1)
+
+    top = (
+        db.query(models.Post.id, models.Post.title, models.Post.slug, func.count(models.Comment.id))
+        .join(models.Comment, models.Comment.post_id == models.Post.id)
+        .filter(
+            models.Comment.is_approved.is_(True),
+            func.date(models.Comment.created_at) >= first_iso,
+            func.date(models.Comment.created_at) <= today_iso,
+        )
+        .group_by(models.Post.id, models.Post.title, models.Post.slug)
+        .order_by(func.count(models.Comment.id).desc())
+        .limit(5)
+        .all()
+    )
+
+    return {
+        "days": days,
+        "total": sum(by_day.values()),
+        "series": series,
+        "top_posts": [{"id": pid, "title": title, "slug": slug, "count": int(c)} for pid, title, slug, c in top],
+    }
