@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 153,
+  "round": 154,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-08-23T01:28:31+00:00",
+  "updated_at": "2026-08-23T01:42:16+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -9082,11 +9082,11 @@
     "TASK-185": {
       "id": "TASK-185",
       "type": "task",
-      "status": "active",
-      "version": 1,
+      "status": "resolved",
+      "version": 2,
       "created_at": "2026-08-23T01:28:24+00:00",
-      "updated_at": "2026-08-23T01:28:24+00:00",
-      "touched_round": 152,
+      "updated_at": "2026-08-23T01:42:16+00:00",
+      "touched_round": 153,
       "category": "core-feature",
       "severity": 0.6,
       "confidence": 0.9,
@@ -9101,10 +9101,60 @@
       "version": 1,
       "created_at": "2026-08-23T01:28:24+00:00",
       "updated_at": "2026-08-23T01:28:24+00:00",
-      "touched_round": 152,
+      "touched_round": 153,
       "title": "Milestone: admin series episode management",
       "rationale": "Feature-evolution selection (SKILL 11.2 gap analysis; author stakeholder). The reader series surface is mature (progress TASK-173, scoped feeds TASK-177, follows TASK-178..180) but the author manages episode order only by typing series_order per post in the post editor — there is no admin view of a series' episodes or a way to reorder them. A dedicated admin series-episode management surface (see a series' posts in order, reorder with up/down controls, persisted via a batch series_order update) is net-additive, non-marginal authoring value that directly serves the series experience. Users: the blog operator/author. Why now: reader series features are complete and depend on a sensible order; authoring is the missing link. Acceptance: an author can view a series' episodes in order and reorder them from the admin. Scope: admin endpoint to list a series' posts in order + batch reorder writing series_order + admin UI + pytest + vitest + E2E.",
       "alternatives_rejected": "Reader-facing follow-public-counts (marginal social proof); notifications center (deferred, redundant); drag-drop writer for post body (large editor investment, existing markdown editor adequate)."
+    },
+    "CHG-175": {
+      "id": "CHG-175",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-23T01:42:10+00:00",
+      "updated_at": "2026-08-23T01:42:10+00:00",
+      "touched_round": 153,
+      "commit": "e07abf3",
+      "title": "Admin series episode manager (frontend) (DEC-146, TASK-185)"
+    },
+    "DEC-147": {
+      "id": "DEC-147",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-23T01:42:10+00:00",
+      "updated_at": "2026-08-23T01:42:10+00:00",
+      "touched_round": 153,
+      "title": "Milestone delivered: admin series episode management (DEC-146 complete)",
+      "rationale": "Feature-evolution delivery of DEC-146/TASK-185 (backend 4c9e5be + frontend e07abf3): GET /api/series/{id}/episodes (admin) lists a series' posts in order incl. drafts; PUT .../episodes/reorder rewrites series_order from an explicit post-id list (validates membership + no dups, clears the detail cache); admin series page gains an Episodes expander with up/down reorder. Tests: 7 backend, vitest (list + reorder), authored E2E. Verified: full backend 1041 green, full frontend 1108 vitest green, ruff+pyright+biome+vue-tsc clean.",
+      "alternatives_rejected": "Drag-and-drop writer for post bodies (large editor investment; existing markdown editor adequate); notifications center (deferred, redundant); public read-later bar (existing bookmarks cover)."
+    },
+    "TASK-186": {
+      "id": "TASK-186",
+      "type": "task",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-23T01:42:10+00:00",
+      "updated_at": "2026-08-23T01:42:10+00:00",
+      "touched_round": 153,
+      "category": "core-feature",
+      "severity": 0.6,
+      "confidence": 0.9,
+      "effort": 1.5,
+      "unlock_factor": 1.0,
+      "title": "Search within reading history: a signed-in reader can search their past-read posts (title/excerpt match) on the /history page and jump back, mirroring bookmark-search (TASK-174) but over reading-history (different dataset, recall value); backend auth-scoped history search (pytest) + frontend /history search box + i18n + vitest + E2E"
+    },
+    "DEC-148": {
+      "id": "DEC-148",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-23T01:42:10+00:00",
+      "updated_at": "2026-08-23T01:42:10+00:00",
+      "touched_round": 153,
+      "title": "Milestone: search within reading history",
+      "rationale": "Feature-evolution selection (SKILL 11.2 gap analysis, recall payoff of reading history built in TASK-169/170). A reader with a long reading history cannot find 'that post I read about X' — the /history page only lists (paginated). Search within history (title/excerpt match) is a real, frequent recall need and is net-additive, mirroring the proven bookmark-search pattern (TASK-174) but over a different dataset (history carries its own last-viewed time, so results can show when the post was read). Users: signed-in readers with history. Why now: history sync (TASK-170) + summary (TASK-171) are mature; recall search is the natural completion. Acceptance: a reader can type a query on /history and see matching past-read posts with their last-viewed time. Scope: auth-scoped backend history-search (title/excerpt, public-visible posts only, newest-viewed first) + /history search box + i18n + vitest + backend pytest + E2E.",
+      "alternatives_rejected": "Consolidated notifications center (deferred, redundant); plain bookmark search extension (already shipped, TASK-174); email/digest (out of scope)."
     }
   },
   "edges": [
@@ -13083,6 +13133,36 @@
       "to": "TASK-185",
       "type": "governs",
       "created_at": "2026-08-23T01:28:31+00:00"
+    },
+    {
+      "from": "CHG-175",
+      "to": "TASK-185",
+      "type": "implements",
+      "created_at": "2026-08-23T01:42:15+00:00"
+    },
+    {
+      "from": "DEC-147",
+      "to": "DEC-146",
+      "type": "supersedes",
+      "created_at": "2026-08-23T01:42:15+00:00"
+    },
+    {
+      "from": "DEC-147",
+      "to": "TASK-185",
+      "type": "governs",
+      "created_at": "2026-08-23T01:42:15+00:00"
+    },
+    {
+      "from": "DEC-148",
+      "to": "DEC-147",
+      "type": "supersedes",
+      "created_at": "2026-08-23T01:42:15+00:00"
+    },
+    {
+      "from": "DEC-148",
+      "to": "TASK-186",
+      "type": "governs",
+      "created_at": "2026-08-23T01:42:16+00:00"
     }
   ]
 }
