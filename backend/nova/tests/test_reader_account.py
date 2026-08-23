@@ -46,17 +46,17 @@ def _seed(client, db_session, tag):
 class TestDeleteAccount:
     def test_wrong_password_401(self, client, db_session):
         _post, _email, _rid, _cid, headers = _seed(client, db_session, "wrongpw")
-        resp = client.delete("/api/reader/me/account", json={"password": "not-the-password"}, headers=headers)
+        resp = client.request("DELETE", "/api/reader/me/account", json={"password": "not-the-password"}, headers=headers)
         assert resp.status_code == 401
 
     def test_requires_reader_token(self, client, db_session):
-        resp = client.delete("/api/reader/me/account", json={"password": PASSWORD})
+        resp = client.request("DELETE", "/api/reader/me/account", json={"password": PASSWORD})
         assert resp.status_code == 401
 
     def test_deletes_account_and_anonymizes_comments(self, client, db_session):
         post, email, reader_id, comment_id, headers = _seed(client, db_session, "delete1")
 
-        resp = client.delete("/api/reader/me/account", json={"password": PASSWORD}, headers=headers)
+        resp = client.request("DELETE", "/api/reader/me/account", json={"password": PASSWORD}, headers=headers)
         assert resp.status_code == 204, resp.text
 
         # Account is gone; the reader can no longer log in.
