@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 157,
+  "round": 158,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-08-23T02:20:46+00:00",
+  "updated_at": "2026-08-23T02:34:22+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -9282,11 +9282,11 @@
     "TASK-189": {
       "id": "TASK-189",
       "type": "task",
-      "status": "active",
-      "version": 1,
+      "status": "resolved",
+      "version": 2,
       "created_at": "2026-08-23T02:20:40+00:00",
-      "updated_at": "2026-08-23T02:20:40+00:00",
-      "touched_round": 156,
+      "updated_at": "2026-08-23T02:34:22+00:00",
+      "touched_round": 157,
       "category": "core-feature",
       "severity": 0.6,
       "confidence": 0.9,
@@ -9301,10 +9301,60 @@
       "version": 1,
       "created_at": "2026-08-23T02:20:40+00:00",
       "updated_at": "2026-08-23T02:20:40+00:00",
-      "touched_round": 156,
+      "touched_round": 157,
       "title": "Milestone: comment activity analytics for the operator",
       "rationale": "Feature-evolution selection (SKILL 11.2 gap analysis; operator stakeholder). The dashboard trends consumption (views DEC-086, searches DEC-152) and following (TASK-184), but has no engagement view: how comment volume moves over time and which posts draw discussion. Comment activity (approved/visible counts per day + most-commented posts) is a distinct, non-marginal operator signal and a natural completion of the analytics set. Users: the blog operator/author. Why now: moderation (DEC-066/108) and the other analytics axes are mature; engagement trend is the missing one. Acceptance: the admin dashboard shows comment volume over the last N days and the most-commented posts. Scope: admin comment-activity endpoint (per-day counts + top posts by comment count) + dashboard card + pytest + vitest + E2E.",
       "alternatives_rejected": "Consumer analytics stacking beyond a clear metric (marginal); email/digest (out of scope); per-commenter analytics (privacy-heavy, not needed for a small blog)."
+    },
+    "CHG-179": {
+      "id": "CHG-179",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-23T02:34:16+00:00",
+      "updated_at": "2026-08-23T02:34:16+00:00",
+      "touched_round": 157,
+      "commit": "687c2bf",
+      "title": "Comment-activity analytics card (frontend) (DEC-154, TASK-189)"
+    },
+    "DEC-155": {
+      "id": "DEC-155",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-23T02:34:16+00:00",
+      "updated_at": "2026-08-23T02:34:16+00:00",
+      "touched_round": 157,
+      "title": "Milestone delivered: comment activity analytics for the operator (DEC-154 complete)",
+      "rationale": "Feature-evolution delivery of DEC-154/TASK-189 (backend 05ff513 + frontend 687c2bf): admin GET /api/admin/stats/comments returns a per-day approved-comment series + most-discussed posts; dashboard Comment-activity card (bars, total, top posts). Completes the operator analytics set (views, follows, searches, comments). Tests: 5 backend, vitest, authored E2E. Verified: full backend 1061 green, full frontend 1114 vitest green, ruff+pyright+biome+vue-tsc clean.",
+      "alternatives_rejected": "Per-commenter analytics (privacy-heavy, not needed); email/digest (out of scope); further analytics-card stacking beyond a clear metric (marginal)."
+    },
+    "TASK-190": {
+      "id": "TASK-190",
+      "type": "task",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-23T02:34:16+00:00",
+      "updated_at": "2026-08-23T02:34:16+00:00",
+      "touched_round": 157,
+      "category": "core-feature",
+      "severity": 0.6,
+      "confidence": 0.9,
+      "effort": 2.0,
+      "unlock_factor": 1.0,
+      "title": "Post editor draft auto-save: the admin post editor auto-persists edits to a draft (debounced, saving/saved indicator, no lost work on leave), reusing the existing admin post create/update model/endpoint; frontend + vitest + E2E"
+    },
+    "DEC-156": {
+      "id": "DEC-156",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-23T02:34:16+00:00",
+      "updated_at": "2026-08-23T02:34:16+00:00",
+      "touched_round": 157,
+      "title": "Milestone: post editor draft auto-save",
+      "rationale": "Feature-evolution selection (SKILL 11.2 gap analysis; author stakeholder). Long-form authors can lose work if they navigate away before a manual save — the existing editor has manual save + the public /preview (TASK-187) but no auto-persist. Auto-saving edits to a draft (debounced, with a saving/saved indicator and beforeunload guard, reusing the existing draft model + admin post create/update endpoint) is net-additive, non-marginal authoring value. Users: the blog operator/author. Why now: the editor is feature-complete; data-loss prevention is the natural completion. Acceptance: an author edits a post and it is auto-persisted to the draft without an explicit save, with visible save state. Scope: frontend auto-save (debounce, indicator, beforeunload guard) over the existing draft endpoint + vitest + E2E.",
+      "alternatives_rejected": "Rich collaborative/cloud editing (large infra, out of scope); a full calendar/scheduling UI (marginal, publish_at already exists); email/digest (out of scope)."
     }
   },
   "edges": [
@@ -13403,6 +13453,36 @@
       "to": "TASK-189",
       "type": "governs",
       "created_at": "2026-08-23T02:20:45+00:00"
+    },
+    {
+      "from": "CHG-179",
+      "to": "TASK-189",
+      "type": "implements",
+      "created_at": "2026-08-23T02:34:21+00:00"
+    },
+    {
+      "from": "DEC-155",
+      "to": "DEC-154",
+      "type": "supersedes",
+      "created_at": "2026-08-23T02:34:21+00:00"
+    },
+    {
+      "from": "DEC-155",
+      "to": "TASK-189",
+      "type": "governs",
+      "created_at": "2026-08-23T02:34:21+00:00"
+    },
+    {
+      "from": "DEC-156",
+      "to": "DEC-155",
+      "type": "supersedes",
+      "created_at": "2026-08-23T02:34:21+00:00"
+    },
+    {
+      "from": "DEC-156",
+      "to": "TASK-190",
+      "type": "governs",
+      "created_at": "2026-08-23T02:34:22+00:00"
     }
   ]
 }
