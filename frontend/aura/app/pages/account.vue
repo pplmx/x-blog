@@ -9,16 +9,20 @@ import {
 	type Category,
 	changeMyPassword,
 	deleteReaderAccount,
+	type FollowedCategoryItem,
 	type FollowedSeriesItem,
 	fetchCategories,
 	fetchMyPostSubscriptions,
 	fetchMyPushSubscriptions,
+	fetchReaderCategoryFollows,
 	fetchReaderDataExport,
 	fetchReaderSeriesFollows,
 	type ReaderPushSubscription,
 	revokeMyPushSubscription,
 	type SubscribedThreadItem,
+	setCategoryFollowNotify,
 	setSeriesFollowNotify,
+	unfollowReaderCategory,
 	unfollowReaderSeries,
 	unsubscribeFromPostThread,
 	updateMyProfile,
@@ -267,6 +271,53 @@ async function toggleSeriesNotify(item: FollowedSeriesItem) {
 	}
 }
 
+/* Followed categories for new-post push (DEC-140, TASK-182) --------------- */
+const categoryFollows = ref<FollowedCategoryItem[]>([]);
+const categoryFollowsLoaded = ref(false);
+const categoryUnfollowId = ref<number | null>(null);
+const categoryNotifyId = ref<number | null>(null);
+const categoryFollowsError = ref(false);
+
+async function loadCategoryFollows() {
+	if (!isAuthenticated.value) return;
+	try {
+		const res = await fetchReaderCategoryFollows();
+		categoryFollows.value = res.data?.value?.items ?? [];
+	} catch {
+		categoryFollows.value = [];
+	}
+	categoryFollowsLoaded.value = true;
+}
+
+async function unfollowFollowedCategory(item: FollowedCategoryItem) {
+	if (!confirm(t("account.categories.unfollowConfirm"))) return;
+	categoryUnfollowId.value = item.id;
+	categoryFollowsError.value = false;
+	try {
+		await unfollowReaderCategory(item.id);
+		await loadCategoryFollows();
+	} catch {
+		categoryFollowsError.value = true;
+	} finally {
+		categoryUnfollowId.value = null;
+	}
+}
+
+async function toggleCategoryNotify(item: FollowedCategoryItem) {
+	if (categoryNotifyId.value != null) return;
+	categoryNotifyId.value = item.id;
+	categoryFollowsError.value = false;
+	const next = !item.notify;
+	try {
+		const res = await setCategoryFollowNotify(item.id, next);
+		item.notify = res.data?.value?.notify ?? next;
+	} catch {
+		categoryFollowsError.value = true;
+	} finally {
+		categoryNotifyId.value = null;
+	}
+}
+
 /* Delete account (DEC-106, TASK-165) ---------------------------------- */
 // Data export (DEC-126, TASK-175): download the reader's portable JSON bundle.
 const exportingData = ref(false);
@@ -325,6 +376,7 @@ onMounted(() => {
 	loadCategories();
 	loadThreads();
 	loadSeriesFollows();
+	loadCategoryFollows();
 	// Keep the name input in sync if the header "reader" profile loads after us.
 	displayName.value = reader.value?.display_name ?? displayName.value;
 });
@@ -637,6 +689,58 @@ function shortEndpoint(endpoint: string): string {
         </ul>
         <p v-if="seriesFollowsError" class="mt-2 text-sm text-red-500 dark:text-red-400">
           {{ t('account.series.failed') }}
+        </p>
+      </section>
+
+      <!-- Followed categories for new-post push (DEC-140, TASK-182) -->
+      <section class="border border-gray-100 dark:border-gray-700 rounded-xl p-5">
+        <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-1">
+          {{ t('account.categories.title') }}
+        </h2>
+        <p class="text-xs text-gray-400 mb-4">{{ t('account.categories.note') }}</p>
+
+        <p v-if="categoryFollowsLoaded && categoryFollows.length === 0" class="text-sm text-gray-500 dark:text-gray-400">
+          {{ t('account.categories.empty') }}
+        </p>
+        <ul v-else class="space-y-3">
+          <li
+            v-for="cf in categoryFollows"
+            :key="cf.id"
+            class="border border-gray-100 dark:border-gray-800 rounded-lg p-3"
+          >
+            <div class="flex items-center justify-between gap-3 text-sm">
+              <NuxtLink
+                :to="{ query: { category_id: String(cf.id) } }"
+                class="min-w-0 truncate text-gray-900 dark:text-gray-100 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+              >
+                {{ cf.name }}
+              </NuxtLink>
+              <div class="shrink-0 flex items-center gap-3">
+                <button
+                  type="button"
+                  :disabled="categoryNotifyId === cf.id"
+                  :title="t('account.categories.notifyTitle')"
+                  class="inline-flex items-center gap-1 text-xs text-gray-400 hover:text-emerald-600 transition-colors disabled:opacity-50"
+                  @click="toggleCategoryNotify(cf)"
+                >
+                  <Icon :icon="cf.notify ? 'lucide:bell' : 'lucide:bell-off'" class="w-3.5 h-3.5" />
+                  {{ t(cf.notify ? 'account.categories.notifyOn' : 'account.categories.notifyOff') }}
+                </button>
+                <button
+                  type="button"
+                  :disabled="categoryUnfollowId === cf.id"
+                  class="inline-flex items-center gap-1 text-xs text-gray-400 hover:text-red-500 transition-colors disabled:opacity-50"
+                  @click="unfollowFollowedCategory(cf)"
+                >
+                  <Icon icon="lucide:x" class="w-3.5 h-3.5" />
+                  {{ t('account.categories.unfollow') }}
+                </button>
+              </div>
+            </div>
+          </li>
+        </ul>
+        <p v-if="categoryFollowsError" class="mt-2 text-sm text-red-500 dark:text-red-400">
+          {{ t('account.categories.failed') }}
         </p>
       </section>
 

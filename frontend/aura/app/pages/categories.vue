@@ -1,6 +1,14 @@
 <script setup lang="ts">
-import { computed } from "vue";
-import { type PostListResponse, useApi, useCategories } from "~~/composables/useApi";
+import { computed, onMounted, ref } from "vue";
+import {
+	fetchReaderCategoryFollows,
+	followReaderCategory,
+	type PostListResponse,
+	setCategoryFollowNotify,
+	unfollowReaderCategory,
+	useApi,
+	useCategories,
+} from "~~/composables/useApi";
 import { paginationPages } from "~~/composables/usePagination";
 import { usePushSubscription } from "~~/composables/usePushSubscription";
 import { useSeo } from "~~/composables/useSeo";
@@ -110,6 +118,67 @@ async function toggleFollowNewPosts() {
 const followIcon = computed(() =>
 	followingThisCategory.value ? "lucide:bell-ring" : "lucide:bell",
 );
+
+// Durable reader-level category follow (DEC-140/TASK-182): a signed-in reader
+// can follow a category (persisted, cross-device) distinct from the per-device
+// new-post pin above, and manage + toggle notifications on the account page.
+const catSignedIn = computed(
+	() =>
+		typeof window !== "undefined" &&
+		typeof localStorage?.getItem === "function" &&
+		!!localStorage.getItem("reader_token"),
+);
+const catFollowing = ref(false);
+const catNotify = ref(true);
+const catFollowBusy = ref(false);
+
+async function loadCategoryFollow() {
+	if (!catSignedIn.value || !categoryId.value) return;
+	try {
+		const res = await fetchReaderCategoryFollows();
+		const item = res.data?.value?.items.find((c) => c.id === categoryId.value) ?? null;
+		catFollowing.value = !!item;
+		catNotify.value = item?.notify ?? true;
+	} catch {
+		catFollowing.value = false;
+		catNotify.value = true;
+	}
+}
+
+async function toggleCategoryFollow() {
+	if (catFollowBusy.value || !categoryId.value) return;
+	catFollowBusy.value = true;
+	try {
+		if (catFollowing.value) {
+			await unfollowReaderCategory(categoryId.value);
+			catFollowing.value = false;
+		} else {
+			const res = await followReaderCategory(categoryId.value);
+			catFollowing.value = true;
+			catNotify.value = res.data?.value?.notify ?? true;
+		}
+	} catch {
+		// best-effort — keep current state on failure
+	} finally {
+		catFollowBusy.value = false;
+	}
+}
+
+async function toggleCategoryNotify() {
+	if (catFollowBusy.value || !categoryId.value || !catFollowing.value) return;
+	catFollowBusy.value = true;
+	const next = !catNotify.value;
+	try {
+		const res = await setCategoryFollowNotify(categoryId.value, next);
+		catNotify.value = res.data?.value?.notify ?? next;
+	} catch {
+		// best-effort — keep current state on failure
+	} finally {
+		catFollowBusy.value = false;
+	}
+}
+
+onMounted(loadCategoryFollow);
 </script>
 
 <template>
@@ -176,6 +245,28 @@ const followIcon = computed(() =>
             {{ t('categories.categoryPosts') }}
           </h1>
           <div class="flex items-center gap-2">
+            <button
+              v-if="catSignedIn"
+              type="button"
+              :disabled="catFollowBusy"
+              :title="t(catFollowing ? 'categories.followingTitle' : 'categories.followTitle')"
+              class="inline-flex items-center gap-1.5 text-sm text-emerald-600 hover:text-emerald-700 border border-emerald-200 hover:border-emerald-300 rounded-full px-3 py-1.5 transition-colors whitespace-nowrap disabled:opacity-60"
+              @click="toggleCategoryFollow"
+            >
+              <Icon :icon="catFollowing ? 'lucide:bookmark-check' : 'lucide:bookmark'" class="w-4 h-4" />
+              {{ catFollowing ? t('categories.following') : t('categories.follow') }}
+            </button>
+            <button
+              v-if="catFollowing"
+              type="button"
+              :disabled="catFollowBusy"
+              :title="t('categories.notifyTitle')"
+              class="inline-flex items-center gap-1.5 text-sm text-emerald-600 hover:text-emerald-700 border border-emerald-200 hover:border-emerald-300 rounded-full px-3 py-1.5 transition-colors whitespace-nowrap disabled:opacity-60"
+              @click="toggleCategoryNotify"
+            >
+              <Icon :icon="catNotify ? 'lucide:bell' : 'lucide:bell-off'" class="w-4 h-4" />
+              {{ t(catNotify ? 'categories.notifyOn' : 'categories.notifyOff') }}
+            </button>
             <button
               v-if="pushVisible"
               type="button"

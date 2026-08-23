@@ -14,6 +14,13 @@
 		"subscribeTitle": "订阅该分类下的最新文章",
 		"followPush": "关注新文章",
 		"followingPush": "已关注新文章",
-		"followPushTitle": "有新文章发布时通过浏览器推送通知我（可到账号设置管理）"
+		"followPushTitle": "有新文章发布时通过浏览器推送通知我（可到账号设置管理）",
+		"follow": "关注分类",
+		"following": "已关注分类",
+		"followTitle": "关注此分类以追踪（跨设备同步）",
+		"followingTitle": "已关注此分类 — 点击取消关注",
+		"notifyTitle": "切换此分类的新文章通知",
+		"notifyOn": "通知已开",
+		"notifyOff": "通知已关"
 	}
 }

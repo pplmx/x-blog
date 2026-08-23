@@ -1288,6 +1288,69 @@ export async function unfollowReaderSeries(seriesId: number) {
 	});
 }
 
+export interface FollowedCategoryItem {
+	id: number;
+	name: string;
+	/** Whether new-post push is enabled for this follow (TASK-182). */
+	notify: boolean;
+}
+
+export interface FollowedCategoryListResponse {
+	items: FollowedCategoryItem[];
+	total: number;
+}
+
+export interface CategoryFollowState {
+	category_id: number;
+	category_name: string;
+	following: boolean;
+	notify: boolean;
+}
+
+/** The categories the signed-in reader follows (durable reader-level intent). */
+export async function fetchReaderCategoryFollows() {
+	const config = useRuntimeConfig();
+	const apiUrl = config.public.apiUrl;
+	return useFetch<FollowedCategoryListResponse>(`${apiUrl}/api/reader/me/category-follows`, {
+		headers: getReaderAuthHeaders(),
+		server: false,
+	});
+}
+
+/** Follow a category for new-post push (idempotent). */
+export async function followReaderCategory(categoryId: number) {
+	const config = useRuntimeConfig();
+	const apiUrl = config.public.apiUrl;
+	return useFetch<CategoryFollowState>(`${apiUrl}/api/reader/me/categories/${categoryId}/follow`, {
+		method: "PUT",
+		headers: getReaderAuthHeaders(),
+		server: false,
+	});
+}
+
+/** Toggle new-post push on/off for a category the reader already follows. */
+export async function setCategoryFollowNotify(categoryId: number, notify: boolean) {
+	const config = useRuntimeConfig();
+	const apiUrl = config.public.apiUrl;
+	return useFetch<CategoryFollowState>(`${apiUrl}/api/reader/me/categories/${categoryId}/follow`, {
+		method: "PATCH",
+		headers: getReaderAuthHeaders(),
+		server: false,
+		body: { notify },
+	});
+}
+
+/** Unfollow a category (idempotent 204). */
+export async function unfollowReaderCategory(categoryId: number) {
+	const config = useRuntimeConfig();
+	const apiUrl = config.public.apiUrl;
+	return useFetch<null>(`${apiUrl}/api/reader/me/categories/${categoryId}/follow`, {
+		method: "DELETE",
+		headers: getReaderAuthHeaders(),
+		server: false,
+	});
+}
+
 /** A signed-in reader's progress through a series (from their history). */
 export async function fetchReaderSeriesProgress(slug: string) {
 	const config = useRuntimeConfig();

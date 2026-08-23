@@ -54,6 +54,13 @@ const mockEmptyPosts = {
 	},
 };
 
+// Reader-level category follow state (TASK-182), served to the page's
+// fetchReaderCategoryFollows() via the stubbed global useFetch.
+const catFollowsState = {
+	items: [] as Array<{ id: number; name: string; notify: boolean }>,
+	total: 0,
+};
+
 async function mountCategoriesPage({
 	categories = mockCategories,
 	posts = mockCategoryPosts,
@@ -86,6 +93,14 @@ async function mountCategoriesPage({
 		vi.fn((url: string | (() => string) | { value: string }) => {
 			const urlStr =
 				typeof url === "function" ? url() : typeof url === "string" ? url : (url.value ?? "");
+			if (urlStr.includes("/me/category-follows")) {
+				return {
+					data: ref(catFollowsState),
+					pending: ref(false),
+					error: ref(null),
+					refresh: vi.fn(),
+				};
+			}
 			if (urlStr.includes("/api/categories") && !urlStr.includes("/posts")) {
 				return {
 					data: ref(categories),
@@ -377,6 +392,33 @@ describe("Categories Page", () => {
 			expect(navigateToMock).toHaveBeenCalledWith({
 				query: { category_id: "1", page: 2 },
 			});
+		});
+	});
+
+	describe("Reader-level category follow (TASK-182)", () => {
+		it("shows the follow + notify state for a signed-in follower of the active category", async () => {
+			window.localStorage.setItem("reader_token", "token");
+			catFollowsState.items = [{ id: 1, name: "Tech", notify: true }];
+			catFollowsState.total = 1;
+
+			const wrapper = await mountCategoriesPage({ routeQuery: { category_id: "1" } });
+			expect(wrapper.text()).toContain("已关注分类");
+			expect(wrapper.text()).toContain("通知已开");
+
+			window.localStorage.removeItem("reader_token");
+			catFollowsState.items = [];
+			catFollowsState.total = 0;
+		});
+
+		it("hides the reader-level follow control for guests", async () => {
+			catFollowsState.items = [{ id: 1, name: "Tech", notify: true }];
+			catFollowsState.total = 1;
+
+			const wrapper = await mountCategoriesPage({ routeQuery: { category_id: "1" } });
+			expect(wrapper.text()).not.toContain("关注分类");
+
+			catFollowsState.items = [];
+			catFollowsState.total = 0;
 		});
 	});
 });

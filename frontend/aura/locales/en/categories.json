@@ -14,6 +14,13 @@
 		"subscribeTitle": "Subscribe to the latest posts in this category",
 		"followPush": "Follow new posts",
 		"followingPush": "Following new posts",
-		"followPushTitle": "Notify me by browser push when a new post is published (manage in account settings)"
+		"followPushTitle": "Notify me by browser push when a new post is published (manage in account settings)",
+		"follow": "Follow category",
+		"following": "Following category",
+		"followTitle": "Follow this category to track it (cross-device)",
+		"followingTitle": "Following this category — click to unfollow",
+		"notifyTitle": "Toggle new-post notifications for this category",
+		"notifyOn": "Notifications on",
+		"notifyOff": "Notifications off"
 	}
 }

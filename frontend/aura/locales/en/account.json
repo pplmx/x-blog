@@ -67,6 +67,17 @@
 			"unfollowConfirm": "Unfollow this series? You'll stop getting new-part alerts for it.",
 			"failed": "Couldn't do that — please try again"
 		},
+		"categories": {
+			"title": "Followed categories",
+			"note": "You'll be pushed a Web Push when a new post is published in these categories.",
+			"empty": "You're not following any categories",
+			"notifyTitle": "Toggle new-post notifications for this category",
+			"notifyOn": "Notifications on",
+			"notifyOff": "Notifications off",
+			"unfollow": "Unfollow",
+			"unfollowConfirm": "Unfollow this category? You'll stop getting new-post alerts for it.",
+			"failed": "Couldn't do that — please try again"
+		},
 		"export": {
 			"title": "Download your data",
 			"description": "Get a portable JSON copy of your account, bookmarks, comments, and reading history.",

@@ -36,6 +36,9 @@ const mockFetchReaderDataExport = vi.fn();
 const mockFetchReaderSeriesFollows = vi.fn();
 const mockUnfollowReaderSeries = vi.fn();
 const mockSetSeriesFollowNotify = vi.fn();
+const mockFetchReaderCategoryFollows = vi.fn();
+const mockUnfollowReaderCategory = vi.fn();
+const mockSetCategoryFollowNotify = vi.fn();
 
 vi.mock("../../composables/useApi", async (importOriginal) => {
 	const orig = await importOriginal<typeof import("../../composables/useApi")>();
@@ -52,6 +55,9 @@ vi.mock("../../composables/useApi", async (importOriginal) => {
 		fetchReaderSeriesFollows: mockFetchReaderSeriesFollows,
 		unfollowReaderSeries: mockUnfollowReaderSeries,
 		setSeriesFollowNotify: mockSetSeriesFollowNotify,
+		fetchReaderCategoryFollows: mockFetchReaderCategoryFollows,
+		unfollowReaderCategory: mockUnfollowReaderCategory,
+		setCategoryFollowNotify: mockSetCategoryFollowNotify,
 	};
 });
 
@@ -434,6 +440,83 @@ describe("Account settings page", () => {
 
 			expect(mockSetSeriesFollowNotify).toHaveBeenCalledWith(5, false);
 			expect(mockUnfollowReaderSeries).not.toHaveBeenCalled();
+			expect(section.text()).toContain("通知已关");
+		});
+	});
+
+	describe("followed categories (DEC-140, TASK-182)", () => {
+		function mockCatFollows(items: Array<{ id: number; name: string; notify: boolean }> = []) {
+			mockFetchReaderCategoryFollows.mockResolvedValue({
+				data: { value: { items, total: items.length } },
+			});
+		}
+
+		it("shows an empty state when following no categories", async () => {
+			isAuthenticated.value = true;
+			mockFetchPushSubscriptions.mockResolvedValue({ items: [], total: 0 });
+			mockCatFollows([]);
+			const wrapper = await mountPage();
+			expect(wrapper.text()).toContain("还没有关注任何分类");
+		});
+
+		it("lists categories and unfollows after confirmation", async () => {
+			isAuthenticated.value = true;
+			mockFetchPushSubscriptions.mockResolvedValue({ items: [], total: 0 });
+			mockFetchReaderCategoryFollows
+				.mockResolvedValueOnce({
+					data: {
+						value: { items: [{ id: 4, name: "AI", notify: true }], total: 1 },
+					},
+				})
+				.mockResolvedValueOnce({ data: { value: { items: [], total: 0 } } });
+			mockUnfollowReaderCategory.mockResolvedValue(undefined);
+			vi.stubGlobal("confirm", () => true);
+
+			const wrapper = await mountPage();
+			expect(wrapper.text()).toContain("AI");
+
+			const section = wrapper.findAll("section").find((s) => s.text().includes("关注的分类"));
+			expect(section).toBeDefined();
+			if (!section) throw new Error("categories section not found");
+			const unfollowBtn = section.findAll("button").find((b) => b.text() === "取消关注");
+			expect(unfollowBtn).toBeDefined();
+			if (!unfollowBtn) throw new Error("category unfollow button not found");
+			await unfollowBtn.trigger("click");
+			await flushPromises();
+
+			expect(mockUnfollowReaderCategory).toHaveBeenCalledWith(4);
+			expect(mockFetchReaderCategoryFollows).toHaveBeenCalledTimes(2);
+			expect(wrapper.text()).toContain("还没有关注任何分类");
+			vi.unstubAllGlobals();
+		});
+
+		it("toggles notifications for a followed category (TASK-182)", async () => {
+			isAuthenticated.value = true;
+			mockFetchPushSubscriptions.mockResolvedValue({ items: [], total: 0 });
+			mockFetchReaderCategoryFollows.mockResolvedValue({
+				data: {
+					value: { items: [{ id: 4, name: "AI", notify: true }], total: 1 },
+				},
+			});
+			mockSetCategoryFollowNotify.mockResolvedValue({
+				data: {
+					value: { category_id: 4, category_name: "AI", following: true, notify: false },
+				},
+			});
+
+			const wrapper = await mountPage();
+			const section = wrapper.findAll("section").find((s) => s.text().includes("关注的分类"));
+			if (!section) throw new Error("categories section not found");
+			expect(section.text()).toContain("通知已开");
+
+			const notifyBtn = section.findAll("button").find((b) => b.text() === "通知已开");
+			expect(notifyBtn).toBeDefined();
+			if (!notifyBtn) throw new Error("category notify toggle not found");
+			await notifyBtn.trigger("click");
+			await flushPromises();
+
+			expect(mockSetCategoryFollowNotify).toHaveBeenCalledWith(4, false);
+			expect(mockUnfollowReaderCategory).not.toHaveBeenCalled();
 			expect(section.text()).toContain("通知已关");
 		});
 	});
