@@ -1,13 +1,15 @@
 <script setup lang="ts">
 import { onBeforeRouteLeave } from "vue-router";
-import type { AdminPostDetail, PostCreate } from "~~/composables/useApi";
+import type { AdminPostDetail, PostCreate, PostRevisionSummary } from "~~/composables/useApi";
 import {
 	createAdminPost,
 	fetchAdminCategories,
 	fetchAdminPost,
 	fetchAdminSeries,
 	fetchAdminTags,
+	fetchPostRevisions,
 	notifyPushSubscribers,
+	restorePostRevision,
 	updateAdminPost,
 } from "~~/composables/useApi";
 
@@ -56,6 +58,15 @@ let autosaveQueued = false;
 /** Id of the draft created from a /admin/posts/new session (postId is null). */
 let autosavedId: number | null = null;
 
+// Version history (DEC-158, TASK-191): per-post saved snapshots, list +
+// restore. Only meaningful for an existing post.
+const revisions = ref<PostRevisionSummary[]>([]);
+const revisionsOpen = ref(false);
+const revisionsLoading = ref(false);
+const revisionsError = ref<string | null>(null);
+const restoringId = ref<number | null>(null);
+const revisionMessage = ref<string | null>(null);
+
 // Unsaved-changes guard state (RIL TASK-061). Declared before the postData
 // watch below, whose immediate:true callback needs loadedSnapshot at setup time.
 const isDirty = ref(false);
@@ -101,12 +112,14 @@ const {
 	data: postData,
 	pending: postPending,
 	error: postError,
+	refresh: postRefresh,
 } = postId
 	? await fetchAdminPost(postId)
 	: {
 			data: ref(null) as any,
 			pending: ref(false) as any,
 			error: ref(null) as any,
+			refresh: (() => {}) as any,
 		};
 
 watch(
@@ -392,6 +405,68 @@ async function handleNotify() {
 	}
 }
 
+/** Load the saved revision history for the current (existing) post. */
+async function loadRevisions() {
+	if (postId === null) return;
+	revisionsLoading.value = true;
+	revisionsError.value = null;
+	try {
+		const result = await fetchPostRevisions(postId);
+		if (result.error.value) {
+			revisionsError.value = t("admin.postEdit.revisionLoadError");
+		} else {
+			revisions.value = result.data.value ?? [];
+		}
+	} catch {
+		revisionsError.value = t("admin.postEdit.revisionLoadError");
+	} finally {
+		revisionsLoading.value = false;
+	}
+}
+
+function formatRevisionTime(iso: string): string {
+	const d = new Date(iso);
+	return Number.isNaN(d.getTime()) ? iso : d.toLocaleString();
+}
+
+/** Open/close the version-history panel (lazily loads on first open). */
+async function toggleRevisions() {
+	if (revisionsOpen.value) {
+		revisionsOpen.value = false;
+		return;
+	}
+	revisionsOpen.value = true;
+	revisionMessage.value = null;
+	await loadRevisions();
+}
+
+/** Restore a saved revision as the live post, then reload the form. */
+async function handleRestoreRevision(revId: number) {
+	if (postId === null || restoringId.value !== null) return;
+	restoringId.value = revId;
+	revisionMessage.value = null;
+	try {
+		const result = await restorePostRevision(postId, revId);
+		if (result.error.value) {
+			const err = result.error.value as { data?: { detail?: string } } | null;
+			revisionMessage.value =
+				typeof err?.data?.detail === "string"
+					? err.data.detail
+					: t("admin.postEdit.revisionRestoreError");
+			return;
+		}
+		revisionMessage.value = t("admin.postEdit.revisionRestored");
+		// Re-fetch the live post so the form reflects the restored state.
+		await postRefresh();
+		// Refresh the history list (restore also snapshots the pre-restore state).
+		await loadRevisions();
+	} catch {
+		revisionMessage.value = t("admin.postEdit.revisionRestoreError");
+	} finally {
+		restoringId.value = null;
+	}
+}
+
 function toggleTag(tagId: number) {
 	const current = formData.value.tag_ids || [];
 	if (current.includes(tagId)) {
@@ -552,6 +627,60 @@ function handleFileInput(e: Event) {
       </div>
       <div v-if="notifyMessage" class="p-4 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-xl text-green-700 dark:text-green-300">
         {{ notifyMessage }}
+      </div>
+
+      <!-- Version history (DEC-158, TASK-191) -->
+      <div v-if="!isNew" data-testid="revision-history" class="border border-gray-100 dark:border-gray-800 rounded-2xl overflow-hidden">
+        <button
+          type="button"
+          data-testid="revision-toggle"
+          @click="toggleRevisions"
+          class="w-full flex items-center justify-between px-5 py-3 text-sm font-semibold text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+        >
+          <span class="flex items-center gap-2">
+            <Icon icon="lucide:history" class="w-4 h-4 text-amber-500" />
+            {{ t("admin.postEdit.revisionHistory") }}
+          </span>
+          <Icon :icon="revisionsOpen ? 'lucide:chevron-up' : 'lucide:chevron-down'" class="w-4 h-4 text-gray-400" />
+        </button>
+        <div v-if="revisionsOpen" class="border-t border-gray-100 dark:border-gray-800 p-4 space-y-3 bg-gray-50/50 dark:bg-gray-800/40">
+          <div v-if="revisionMessage" data-testid="revision-message" class="text-sm text-green-600 dark:text-green-400">
+            {{ revisionMessage }}
+          </div>
+          <div v-if="revisionsError" class="text-sm text-red-600 dark:text-red-400">{{ revisionsError }}</div>
+          <div v-if="revisionsLoading" class="flex items-center gap-2 text-sm text-gray-500">
+            <Icon icon="lucide:loader-2" class="w-4 h-4 animate-spin" />
+            {{ t("admin.postEdit.revisionLoading") }}
+          </div>
+          <ul v-else-if="revisions.length > 0" class="space-y-2">
+            <li
+              v-for="rev in revisions"
+              :key="rev.id"
+              data-testid="revision-row"
+              class="flex items-center justify-between gap-3 px-3 py-2 rounded-xl bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800"
+            >
+              <div class="min-w-0">
+                <p class="text-sm font-medium text-gray-800 dark:text-gray-200 truncate">{{ rev.title }}</p>
+                <p class="text-xs text-gray-400 dark:text-gray-500">{{ formatRevisionTime(rev.created_at) }}</p>
+              </div>
+              <button
+                type="button"
+                :disabled="restoringId !== null"
+                class="shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-lg font-medium transition-colors disabled:opacity-50"
+                :class="restoringId === rev.id ? 'text-gray-400' : 'text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-900/20'"
+                @click="handleRestoreRevision(rev.id)"
+              >
+                <Icon
+                  :icon="restoringId === rev.id ? 'lucide:loader-2' : 'lucide:rotate-ccw'"
+                  class="w-3.5 h-3.5"
+                  :class="{ 'animate-spin': restoringId === rev.id }"
+                />
+                {{ t("admin.postEdit.revisionRestore") }}
+              </button>
+            </li>
+          </ul>
+          <p v-else class="text-sm text-gray-500 dark:text-gray-400">{{ t("admin.postEdit.revisionEmpty") }}</p>
+        </div>
       </div>
 
       <div class="bg-gradient-to-br from-gray-50 dark:from-gray-800/50 to-white dark:to-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl p-5 space-y-5">

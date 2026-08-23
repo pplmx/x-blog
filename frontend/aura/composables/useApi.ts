@@ -498,6 +498,30 @@ export interface AdminPostDetail {
 	updated_at: string;
 }
 
+export interface PostRevisionSummary {
+	id: number;
+	created_at: string;
+	title: string;
+	published: boolean;
+}
+
+export interface PostRevisionDetail {
+	id: number;
+	post_id: number;
+	created_at: string;
+	title: string;
+	slug: string;
+	content: string;
+	excerpt: string | null;
+	cover_image: string | null;
+	category_id: number | null;
+	series_id: number | null;
+	series_order: number;
+	publish_at: string | null;
+	pinned: boolean;
+	published: boolean;
+}
+
 export interface PostCreate {
 	title: string;
 	slug: string;
@@ -572,6 +596,29 @@ export async function fetchAdminPost(id: number) {
 		headers: getAuthHeaders(),
 		server: false,
 	});
+}
+
+/** List a post's saved revision history (auth required). */
+export async function fetchPostRevisions(id: number) {
+	const config = useRuntimeConfig();
+	const apiUrl = config.public.apiUrl;
+	return useFetch<PostRevisionSummary[]>(`${apiUrl}/api/admin/posts/${id}/revisions`, {
+		headers: getAuthHeaders(),
+		server: false,
+	});
+}
+
+/** Restore a stored revision as the live post (auth required). */
+export async function restorePostRevision(id: number, revisionId: number) {
+	const config = useRuntimeConfig();
+	const apiUrl = config.public.apiUrl;
+	return useFetch<AdminPostDetail>(
+		`${apiUrl}/api/admin/posts/${id}/revisions/${revisionId}/restore`,
+		{
+			method: "POST",
+			headers: { ...getAuthHeaders() },
+		},
+	);
 }
 
 /** Create a new post (auth required). */

@@ -24,6 +24,8 @@ const {
 	mockCreateAdminPost,
 	mockUpdateAdminPost,
 	mockNotifyPushSubscribers,
+	mockFetchPostRevisions,
+	mockRestorePostRevision,
 } = vi.hoisted(() => ({
 	mockFetchAdminCategories: vi.fn(),
 	mockFetchAdminTags: vi.fn(),
@@ -32,6 +34,8 @@ const {
 	mockCreateAdminPost: vi.fn(),
 	mockUpdateAdminPost: vi.fn(),
 	mockNotifyPushSubscribers: vi.fn(),
+	mockFetchPostRevisions: vi.fn(),
+	mockRestorePostRevision: vi.fn(),
 }));
 
 vi.mock("~/composables/useApi", () => ({
@@ -42,6 +46,8 @@ vi.mock("~/composables/useApi", () => ({
 	createAdminPost: mockCreateAdminPost,
 	updateAdminPost: mockUpdateAdminPost,
 	notifyPushSubscribers: mockNotifyPushSubscribers,
+	fetchPostRevisions: mockFetchPostRevisions,
+	restorePostRevision: mockRestorePostRevision,
 }));
 
 vi.stubGlobal("useRuntimeConfig", () => ({
@@ -939,6 +945,80 @@ describe("Admin Post Editor Page", () => {
 			await flushPromises();
 
 			expect(wrapper.find('[data-testid="autosave-status"]').text()).toContain("Slug taken");
+		});
+	});
+
+	describe("Version history (TASK-191)", () => {
+		beforeEach(() => {
+			setupRoute("1");
+			setupMocks();
+			vi.stubGlobal("useRuntimeConfig", () => ({
+				public: { apiUrl: "http://localhost:18888" },
+			}));
+			vi.stubGlobal("useHead", vi.fn());
+			vi.stubGlobal("definePageMeta", vi.fn());
+			mockFetchPostRevisions.mockResolvedValue({
+				data: ref([
+					{ id: 2, created_at: "2026-01-02T00:00:00Z", title: "existing-post", published: false },
+					{ id: 1, created_at: "2026-01-01T00:00:00Z", title: "existing-post", published: false },
+				]),
+				pending: ref(false),
+				error: ref(null),
+				refresh: vi.fn(),
+			});
+			mockRestorePostRevision.mockResolvedValue({
+				data: ref({ id: 1 }),
+				pending: ref(false),
+				error: ref(null),
+				refresh: vi.fn(),
+			});
+		});
+		afterEach(() => {
+			vi.restoreAllMocks();
+			mockFetchPostRevisions.mockClear();
+			mockRestorePostRevision.mockClear();
+		});
+
+		async function mountEdit(refreshFn?: ReturnType<typeof vi.fn>) {
+			mockFetchAdminPost.mockReturnValue({
+				data: ref(mockExistingPost),
+				pending: ref(false),
+				error: ref(null),
+				refresh: refreshFn ?? vi.fn(),
+			});
+			const PostEditor = await loadPage();
+			const wrapper = await mountWithSuspense(PostEditor);
+			await flushPromises();
+			return wrapper;
+		}
+
+		it("renders the history panel only for an existing post and lists revisions when opened", async () => {
+			const wrapper = await mountEdit();
+			expect(wrapper.find('[data-testid="revision-history"]').exists()).toBe(true);
+			expect(wrapper.text()).toContain("版本历史");
+
+			await wrapper.find('[data-testid="revision-toggle"]').trigger("click");
+			await flushPromises();
+
+			expect(mockFetchPostRevisions).toHaveBeenCalledWith(1);
+			expect(wrapper.findAll('[data-testid="revision-row"]').length).toBe(2);
+			expect(wrapper.find('[data-testid="revision-row"]').text()).toContain("恢复此版本");
+		});
+
+		it("restores a revision and reloads the live post", async () => {
+			const refreshFn = vi.fn();
+			const wrapper = await mountEdit(refreshFn);
+			await wrapper.find('[data-testid="revision-toggle"]').trigger("click");
+			await flushPromises();
+
+			const restoreBtn = wrapper.findAll("button").find((b) => b.text().includes("恢复此版本"));
+			expect(restoreBtn).toBeDefined();
+			await restoreBtn?.trigger("click");
+			await flushPromises();
+
+			expect(mockRestorePostRevision).toHaveBeenCalledWith(1, 2); // newest revision id
+			expect(refreshFn).toHaveBeenCalled();
+			expect(wrapper.find('[data-testid="revision-message"]').text()).toContain("已恢复所选版本");
 		});
 	});
 });
