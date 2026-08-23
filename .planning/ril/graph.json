@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 146,
+  "round": 147,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-08-22T16:53:21+00:00",
+  "updated_at": "2026-08-23T00:23:03+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -8744,10 +8744,10 @@
     "TASK-178": {
       "id": "TASK-178",
       "type": "task",
-      "status": "active",
-      "version": 1,
+      "status": "resolved",
+      "version": 2,
       "created_at": "2026-08-22T16:53:16+00:00",
-      "updated_at": "2026-08-22T16:53:16+00:00",
+      "updated_at": "2026-08-23T00:22:57+00:00",
       "touched_round": 146,
       "category": "core-feature",
       "severity": 0.6,
@@ -8755,6 +8755,56 @@
       "effort": 2.0,
       "unlock_factor": 1.0,
       "title": "Web Push for new series parts: backend series_follow table (reader↔series, unique + migration) or series_id on push subscription + auth-scoped subscribe/unsubscribe API + push dispatch when a new public post is published in a followed series (integrate with new-post dispatch) + backend pytest; frontend 'Notify me of new parts' toggle on the series page + i18n + vitest + E2E"
+    },
+    "CHG-168": {
+      "id": "CHG-168",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-23T00:22:40+00:00",
+      "updated_at": "2026-08-23T00:22:40+00:00",
+      "touched_round": 146,
+      "commit": "95ae9d0",
+      "title": "Web Push notifications for new series parts (DEC-132, TASK-178)"
+    },
+    "DEC-133": {
+      "id": "DEC-133",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-23T00:22:40+00:00",
+      "updated_at": "2026-08-23T00:22:40+00:00",
+      "touched_round": 146,
+      "title": "Milestone delivered: Web Push notifications for new series parts (DEC-132 complete)",
+      "rationale": "Feature-evolution delivery of DEC-132/TASK-178: additive series_follows table (reader↔series unique pair + migration, no existing DDL touched per DEC-009); auth-scoped list/follow/unfollow API on /api/reader/me/series-follows (idempotent follow 201/200, unfollow 204); new-post push dispatch fans out to followers of a followed series and unions by push endpoint so a follower who also opted into all/category new-post push receives one notification; series-page toggle (signed-in only) + i18n + vitest + authored E2E. Verified: 1002 backend tests green, frontend 1090 vitest green, ruff+pyright clean, migration single head, biome+vue-tsc clean.",
+      "alternatives_rejected": "Per-tag push (tags many-to-many, noisy); global all-series push (already covered by category/all new-post push); notifications center (separate surface, still deferred)."
+    },
+    "TASK-179": {
+      "id": "TASK-179",
+      "type": "task",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-23T00:22:40+00:00",
+      "updated_at": "2026-08-23T00:22:40+00:00",
+      "touched_round": 146,
+      "category": "core-feature",
+      "severity": 0.6,
+      "confidence": 0.9,
+      "effort": 1.0,
+      "unlock_factor": 1.0,
+      "title": "My followed series on the reader account page: ./account lists the series a signed-in reader follows for new-part push (reuse /api/reader/me/series-follows + unfollow API from TASK-178, no backend change) + unfollow buttons + i18n + vitest + E2E"
+    },
+    "DEC-134": {
+      "id": "DEC-134",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-23T00:22:51+00:00",
+      "updated_at": "2026-08-23T00:22:51+00:00",
+      "touched_round": 146,
+      "title": "Milestone: manage followed series on the reader account page",
+      "rationale": "Feature-evolution selection (SKILL 11.2 gap analysis, coherent follow-up to TASK-178). TASK-178 lets a reader follow a series for new-part push via a per-series toggle, but there is no single place to see which series are followed or unfollow one without visiting each series page. The account page already manages push devices, category prefs, and followed discussions; adding a Followed-series section completes subscription management and is net-additive, reusing the existing /api/reader/me/series-follows list + unfollow API (no backend change). Users: signed-in readers tracking multiple series. Why now: series-follow push shipped in TASK-178; surfacing the management list closes that feature arc. Acceptance (one sentence): a signed-in reader sees all the series they follow on the account page and can unfollow from there. Scope: frontend only account.vue section listing followed series (title/slug) with unfollow + i18n + vitest + E2E.",
+      "alternatives_rejected": "Consolidated notifications center (categories+series+threads+devices single page) — bigger separate surface, remains deferred; standalone /me/follows page — account page is already the subscription-management home; inline unfollow only on the series page — no management surface for readers following many series."
     }
   },
   "edges": [
@@ -12523,6 +12573,36 @@
       "to": "TASK-178",
       "type": "governs",
       "created_at": "2026-08-22T16:53:21+00:00"
+    },
+    {
+      "from": "CHG-168",
+      "to": "TASK-178",
+      "type": "implements",
+      "created_at": "2026-08-23T00:22:56+00:00"
+    },
+    {
+      "from": "DEC-133",
+      "to": "DEC-132",
+      "type": "supersedes",
+      "created_at": "2026-08-23T00:22:56+00:00"
+    },
+    {
+      "from": "DEC-133",
+      "to": "TASK-178",
+      "type": "governs",
+      "created_at": "2026-08-23T00:22:56+00:00"
+    },
+    {
+      "from": "DEC-134",
+      "to": "DEC-133",
+      "type": "supersedes",
+      "created_at": "2026-08-23T00:22:56+00:00"
+    },
+    {
+      "from": "DEC-134",
+      "to": "TASK-179",
+      "type": "governs",
+      "created_at": "2026-08-23T00:22:56+00:00"
     }
   ]
 }
