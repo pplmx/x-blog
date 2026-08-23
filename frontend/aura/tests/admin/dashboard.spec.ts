@@ -166,6 +166,7 @@ let postsOverride: unknown = null;
 let commentsOverride: unknown = null;
 let trendOverride: unknown = null;
 let followsOverride: unknown = null;
+let searchesOverride: unknown = null;
 
 const mockFollowsResult = {
 	total_series_follows: 0,
@@ -173,6 +174,8 @@ const mockFollowsResult = {
 	top_series: [],
 	top_categories: [],
 };
+
+const mockSearchesResult: Array<{ query: string; count: number }> = [];
 
 // A zero-filled 30-day reading-trend series (DEC-086).
 const mockTrendResult = {
@@ -203,6 +206,8 @@ vi.stubGlobal(
 		if (u.includes("/api/admin/stats/views")) return trendOverride ?? mockTrendResult;
 		// Follow analytics (DEC-144/TASK-184).
 		if (u.includes("/api/admin/stats/follows")) return followsOverride ?? mockFollowsResult;
+		// Search-term analytics (DEC-152/TASK-188).
+		if (u.includes("/api/admin/stats/searches")) return searchesOverride ?? mockSearchesResult;
 		if (u.includes("/api/export/posts.csv")) return "ID,Title\n1,Hello\n";
 		if (u.includes("/api/export/comments.csv")) return "ID,Content\n1,Great post\n";
 		throw new Error(`Unexpected $fetch in dashboard test: ${u}`);
@@ -489,6 +494,24 @@ describe("Admin Dashboard Page", () => {
 			// both totals render
 			expect(wrapper.text()).toContain("系列关注总数");
 			expect(wrapper.text()).toContain("分类关注总数");
+		});
+	});
+
+	describe("Search analytics (TASK-188)", () => {
+		afterEach(() => {
+			searchesOverride = null;
+		});
+
+		it("shows top search terms with counts", async () => {
+			searchesOverride = [
+				{ query: "async rust", count: 9 },
+				{ query: "database", count: 3 },
+			];
+			const DashboardPage = await loadPage();
+			const wrapper = await mountWithSuspense(DashboardPage);
+			expect(wrapper.text()).toContain("热门搜索");
+			expect(wrapper.text()).toContain("async rust");
+			expect(wrapper.text()).toContain("database");
 		});
 	});
 

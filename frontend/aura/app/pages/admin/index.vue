@@ -65,6 +65,16 @@ const followMax = computed(() =>
 function followPct(count: number): number {
 	return Math.round((count / followMax.value) * 100);
 }
+// Search-term analytics (DEC-152/TASK-188): top public search counts.
+interface SearchTerm {
+	query: string;
+	count: number;
+}
+const topSearches = ref<SearchTerm[] | null>(null);
+const searchMax = computed(() => Math.max(1, ...(topSearches.value?.map((s) => s.count) ?? [])));
+function searchPct(count: number): number {
+	return Math.round((count / searchMax.value) * 100);
+}
 const trendMax = computed(() =>
 	Math.max(1, ...(viewsTrend.value?.series.map((s) => s.views) ?? [])),
 );
@@ -102,24 +112,29 @@ async function loadDashboard(): Promise<void> {
 			if (postsPage.length >= res.pagination.total) break;
 			page += 1;
 		}
-		const [catData, tagData, commentsData, statsData, trendData, followsData] = await Promise.all([
-			$fetch<Category[]>(`${apiBase}/api/admin/categories`, { headers: authHeaders() }),
-			$fetch<Tag[]>(`${apiBase}/api/admin/tags`, { headers: authHeaders() }),
-			$fetch<AdminCommentListResponse>(`${apiBase}/api/admin/comments`, {
-				query: { page: 1, limit: 100 },
-				headers: authHeaders(),
-			}),
-			$fetch<BlogStats>(`${apiBase}/api/stats`),
-			// Reading-trend analytics (DEC-086): best-effort — a failure just
-			// hides the trend card rather than blocking the whole dashboard.
-			$fetch<ViewsTrend>(`${apiBase}/api/admin/stats/views?days=30`, {
-				headers: authHeaders(),
-			}).catch(() => null),
-			// Follow analytics (DEC-144/TASK-184): best-effort.
-			$fetch<FollowStats>(`${apiBase}/api/admin/stats/follows`, {
-				headers: authHeaders(),
-			}).catch(() => null),
-		]);
+		const [catData, tagData, commentsData, statsData, trendData, followsData, searchesData] =
+			await Promise.all([
+				$fetch<Category[]>(`${apiBase}/api/admin/categories`, { headers: authHeaders() }),
+				$fetch<Tag[]>(`${apiBase}/api/admin/tags`, { headers: authHeaders() }),
+				$fetch<AdminCommentListResponse>(`${apiBase}/api/admin/comments`, {
+					query: { page: 1, limit: 100 },
+					headers: authHeaders(),
+				}),
+				$fetch<BlogStats>(`${apiBase}/api/stats`),
+				// Reading-trend analytics (DEC-086): best-effort — a failure just
+				// hides the trend card rather than blocking the whole dashboard.
+				$fetch<ViewsTrend>(`${apiBase}/api/admin/stats/views?days=30`, {
+					headers: authHeaders(),
+				}).catch(() => null),
+				// Follow analytics (DEC-144/TASK-184): best-effort.
+				$fetch<FollowStats>(`${apiBase}/api/admin/stats/follows`, {
+					headers: authHeaders(),
+				}).catch(() => null),
+				// Search-term analytics (DEC-152/TASK-188): best-effort.
+				$fetch<SearchTerm[]>(`${apiBase}/api/admin/stats/searches`, {
+					headers: authHeaders(),
+				}).catch(() => null),
+			]);
 		posts.value = postsPage;
 		categories.value = catData;
 		tags.value = tagData;
@@ -127,6 +142,7 @@ async function loadDashboard(): Promise<void> {
 		blogStats.value = statsData;
 		viewsTrend.value = trendData;
 		followStats.value = followsData;
+		topSearches.value = searchesData;
 	} finally {
 		loading.value = false;
 	}
@@ -554,6 +570,34 @@ const stats = computed(() => [
           <p v-else class="text-sm text-gray-400">{{ t("admin.dashboard.follows.emptyCategories") }}</p>
         </div>
       </div>
+    </div>
+
+    <!-- Search-term analytics (DEC-152, TASK-188): what readers look for -->
+    <div
+      v-if="topSearches"
+      class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 p-5 mb-8"
+    >
+      <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-1 flex items-center gap-2">
+        <Icon icon="lucide:search" class="w-5 h-5 text-sky-500" />
+        {{ t("admin.dashboard.searches.title") }}
+      </h3>
+      <p class="text-xs text-gray-400 mb-4">{{ t("admin.dashboard.searches.note") }}</p>
+
+      <div v-if="topSearches.length" class="space-y-3">
+        <div v-for="s in topSearches" :key="s.query" class="flex items-center gap-3">
+          <span class="text-sm text-gray-800 dark:text-gray-200 w-48 truncate" :title="s.query">
+            {{ s.query }}
+          </span>
+          <div class="flex-1 bg-gray-200 dark:bg-gray-700 rounded-full h-2 overflow-hidden">
+            <div
+              class="bg-sky-500 h-2 rounded-full transition-all"
+              :style="{ width: searchPct(s.count) + '%' }"
+            />
+          </div>
+          <span class="text-sm text-gray-500 w-8 text-right">{{ s.count }}</span>
+        </div>
+      </div>
+      <p v-else class="text-sm text-gray-400">{{ t("admin.dashboard.searches.empty") }}</p>
     </div>
 
     <!-- Reading trend (DEC-086): last-30-days view series + top posts -->

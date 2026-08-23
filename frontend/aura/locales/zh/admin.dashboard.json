@@ -73,6 +73,11 @@
 			"topCategories": "关注最多的分类",
 			"emptySeries": "暂无系列关注",
 			"emptyCategories": "暂无分类关注"
+		},
+		"searches": {
+			"title": "热门搜索",
+			"note": "被搜索最多的公开关键词（聚合计数，不含读者数据）。",
+			"empty": "暂无搜索记录"
 		}
 	}
 }

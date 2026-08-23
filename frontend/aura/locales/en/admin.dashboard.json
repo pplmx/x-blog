@@ -73,6 +73,11 @@
 			"topCategories": "Most-followed categories",
 			"emptySeries": "No series follows yet",
 			"emptyCategories": "No category follows yet"
+		},
+		"searches": {
+			"title": "Top searches",
+			"note": "The most-searched public terms (aggregate counts, no reader data).",
+			"empty": "No searches logged yet"
 		}
 	}
 }
