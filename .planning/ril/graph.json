@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 152,
+  "round": 153,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-08-23T01:15:55+00:00",
+  "updated_at": "2026-08-23T01:28:31+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -9032,11 +9032,11 @@
     "TASK-184": {
       "id": "TASK-184",
       "type": "task",
-      "status": "active",
-      "version": 1,
+      "status": "resolved",
+      "version": 2,
       "created_at": "2026-08-23T01:15:50+00:00",
-      "updated_at": "2026-08-23T01:15:50+00:00",
-      "touched_round": 151,
+      "updated_at": "2026-08-23T01:28:31+00:00",
+      "touched_round": 152,
       "category": "core-feature",
       "severity": 0.6,
       "confidence": 0.9,
@@ -9051,10 +9051,60 @@
       "version": 1,
       "created_at": "2026-08-23T01:15:50+00:00",
       "updated_at": "2026-08-23T01:15:50+00:00",
-      "touched_round": 151,
+      "touched_round": 152,
       "title": "Milestone: follow analytics for the operator",
       "rationale": "Feature-evolution selection (SKILL 11.2 gap analysis; distinct stakeholder + new signal). The reader follow model (series TASK-178..180, categories TASK-182) is complete, but the operator has zero visibility into it: they cannot see which series or categories readers are tracking, so content decisions are blind. Adding follow counts (per series/category + total) to the admin analytics gives the author a real, new signal to guide what to write next. Users: the blog operator/author. Why now: the follow data is rich and stable after TASK-178..182; surfacing it is the operator payoff. Acceptance: the admin analytics show how many readers follow each series and category. Scope: backend follow-count stats (series_follows + category_follows, notify-independent, public readers only) + admin analytics/dashboard surface + pytest + vitest + E2E.",
       "alternatives_rejected": "Consolidated notifications center (deferred, redundant with account page); reader-facing follow summaries (already on home/account); email/digest (needs outbound infra)."
+    },
+    "CHG-174": {
+      "id": "CHG-174",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-23T01:28:24+00:00",
+      "updated_at": "2026-08-23T01:28:24+00:00",
+      "touched_round": 152,
+      "commit": "1dc176e",
+      "title": "Follow analytics dashboard card (DEC-144, TASK-184)"
+    },
+    "DEC-145": {
+      "id": "DEC-145",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-23T01:28:24+00:00",
+      "updated_at": "2026-08-23T01:28:24+00:00",
+      "touched_round": 152,
+      "title": "Milestone delivered: follow analytics for the operator (DEC-144 complete)",
+      "rationale": "Feature-evolution delivery of DEC-144/TASK-184 (backend edb6728 + frontend 1dc176e): admin-scoped GET /api/admin/stats/follows returns total series/category follows + top-N per axis (tracking-based, notify-independent) and the admin dashboard renders a Reader-follows card (totals + count bars). Tests: 6 backend, vitest, authored E2E. Verified: full backend 1034 green, full frontend 1106 vitest green, ruff+pyright+biome+vue-tsc clean.",
+      "alternatives_rejected": "Consolidated notifications center (deferred, redundant with account page); public follow counts on series/category pages (marginal social-proof); email/digest (needs outbound infra)."
+    },
+    "TASK-185": {
+      "id": "TASK-185",
+      "type": "task",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-23T01:28:24+00:00",
+      "updated_at": "2026-08-23T01:28:24+00:00",
+      "touched_round": 152,
+      "category": "core-feature",
+      "severity": 0.6,
+      "confidence": 0.9,
+      "effort": 2.0,
+      "unlock_factor": 1.0,
+      "title": "Admin series episode management: an author sees a series' episodes in order and reorders them (admin batch reorder endpoint writing series_order + admin UI with up/down controls) so the reader series surface (progress, follows, feeds) reflects the author's intended order without editing each post; backend pytest + vitest + E2E"
+    },
+    "DEC-146": {
+      "id": "DEC-146",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-23T01:28:24+00:00",
+      "updated_at": "2026-08-23T01:28:24+00:00",
+      "touched_round": 152,
+      "title": "Milestone: admin series episode management",
+      "rationale": "Feature-evolution selection (SKILL 11.2 gap analysis; author stakeholder). The reader series surface is mature (progress TASK-173, scoped feeds TASK-177, follows TASK-178..180) but the author manages episode order only by typing series_order per post in the post editor — there is no admin view of a series' episodes or a way to reorder them. A dedicated admin series-episode management surface (see a series' posts in order, reorder with up/down controls, persisted via a batch series_order update) is net-additive, non-marginal authoring value that directly serves the series experience. Users: the blog operator/author. Why now: reader series features are complete and depend on a sensible order; authoring is the missing link. Acceptance: an author can view a series' episodes in order and reorder them from the admin. Scope: admin endpoint to list a series' posts in order + batch reorder writing series_order + admin UI + pytest + vitest + E2E.",
+      "alternatives_rejected": "Reader-facing follow-public-counts (marginal social proof); notifications center (deferred, redundant); drag-drop writer for post body (large editor investment, existing markdown editor adequate)."
     }
   },
   "edges": [
@@ -13003,6 +13053,36 @@
       "to": "TASK-184",
       "type": "governs",
       "created_at": "2026-08-23T01:15:55+00:00"
+    },
+    {
+      "from": "CHG-174",
+      "to": "TASK-184",
+      "type": "implements",
+      "created_at": "2026-08-23T01:28:31+00:00"
+    },
+    {
+      "from": "DEC-145",
+      "to": "DEC-144",
+      "type": "supersedes",
+      "created_at": "2026-08-23T01:28:31+00:00"
+    },
+    {
+      "from": "DEC-145",
+      "to": "TASK-184",
+      "type": "governs",
+      "created_at": "2026-08-23T01:28:31+00:00"
+    },
+    {
+      "from": "DEC-146",
+      "to": "DEC-145",
+      "type": "supersedes",
+      "created_at": "2026-08-23T01:28:31+00:00"
+    },
+    {
+      "from": "DEC-146",
+      "to": "TASK-185",
+      "type": "governs",
+      "created_at": "2026-08-23T01:28:31+00:00"
     }
   ]
 }
