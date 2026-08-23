@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 151,
+  "round": 152,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-08-23T01:04:42+00:00",
+  "updated_at": "2026-08-23T01:15:55+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -8982,11 +8982,11 @@
     "TASK-183": {
       "id": "TASK-183",
       "type": "task",
-      "status": "active",
-      "version": 1,
+      "status": "resolved",
+      "version": 2,
       "created_at": "2026-08-23T01:04:24+00:00",
-      "updated_at": "2026-08-23T01:04:24+00:00",
-      "touched_round": 150,
+      "updated_at": "2026-08-23T01:15:55+00:00",
+      "touched_round": 151,
       "category": "core-feature",
       "severity": 0.7,
       "confidence": 0.9,
@@ -9001,10 +9001,60 @@
       "version": 1,
       "created_at": "2026-08-23T01:04:34+00:00",
       "updated_at": "2026-08-23T01:04:34+00:00",
-      "touched_round": 150,
+      "touched_round": 151,
       "title": "Milestone: \"Latest from your follows\" home row",
       "rationale": "Feature-evolution selection (SKILL 11.2 gap analysis, discovery payoff of the follow model built in TASK-178..182). A reader can follow series and categories, but has no single place to see the newest content across everything they follow; the main Latest feed is global. Scoping a home row to the reader's followed categories + series turns follow intent into discovery: one glance at what is new in what I follow. Users: signed-in readers who follow series/categories. Why now: the follow model (series TASK-178/180/181, categories TASK-182) is complete; surfacing followed content is the natural payoff. Acceptance: a signed-in reader sees the newest public posts from their followed categories and series on the home page. Scope: auth-scoped endpoint aggregating recent posts from followed categories + series (public, published, deduped, newest first, capped) + a home row for signed-in followers (display regardless of silent-follow) + i18n + vitest + backend pytest + E2E.",
       "alternatives_rejected": "Consolidated notifications center (deferred, separate surface); bare your-categories or your-series link rows (marginal, no new content); email/digest (needs outbound infra)."
+    },
+    "CHG-173": {
+      "id": "CHG-173",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-23T01:15:50+00:00",
+      "updated_at": "2026-08-23T01:15:50+00:00",
+      "touched_round": 151,
+      "commit": "0a15dfa",
+      "title": "\"Latest from your follows\" home row (frontend) (DEC-142, TASK-183)"
+    },
+    "DEC-143": {
+      "id": "DEC-143",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-23T01:15:50+00:00",
+      "updated_at": "2026-08-23T01:15:50+00:00",
+      "touched_round": 151,
+      "title": "Milestone delivered: \"Latest from your follows\" home row (DEC-142 complete)",
+      "rationale": "Feature-evolution delivery of DEC-142/TASK-183 (backend cb85f31 + frontend 0a15dfa): auth-scoped GET /api/reader/me/follows-feed returns recent public published posts from the reader's followed categories + series (deduped, newest first, capped, tracking-based regardless of per-follow notify), empty when following nothing; a 'Latest from your follows' home row for signed-in followers. Tests: 7 backend, vitest (shown/guest/no-follows), authored E2E. Verified: full backend 1028 green, full frontend 1105 vitest green, ruff+pyright+biome+vue-tsc clean.",
+      "alternatives_rejected": "Consolidated notifications center (deferred, redundant with account page); bare your-categories/series link rows (marginal); email/digest (needs outbound infra)."
+    },
+    "TASK-184": {
+      "id": "TASK-184",
+      "type": "task",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-23T01:15:50+00:00",
+      "updated_at": "2026-08-23T01:15:50+00:00",
+      "touched_round": 151,
+      "category": "core-feature",
+      "severity": 0.6,
+      "confidence": 0.9,
+      "effort": 1.5,
+      "unlock_factor": 1.0,
+      "title": "Follow analytics for the operator: admin analytics/stats surface shows per-series and per-category reader follow counts (from series_follows + category_follows, notify-independent) + total active follows, so the author sees what readers track; backend stats (pytest) + admin frontend (vitest) + E2E"
+    },
+    "DEC-144": {
+      "id": "DEC-144",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-23T01:15:50+00:00",
+      "updated_at": "2026-08-23T01:15:50+00:00",
+      "touched_round": 151,
+      "title": "Milestone: follow analytics for the operator",
+      "rationale": "Feature-evolution selection (SKILL 11.2 gap analysis; distinct stakeholder + new signal). The reader follow model (series TASK-178..180, categories TASK-182) is complete, but the operator has zero visibility into it: they cannot see which series or categories readers are tracking, so content decisions are blind. Adding follow counts (per series/category + total) to the admin analytics gives the author a real, new signal to guide what to write next. Users: the blog operator/author. Why now: the follow data is rich and stable after TASK-178..182; surfacing it is the operator payoff. Acceptance: the admin analytics show how many readers follow each series and category. Scope: backend follow-count stats (series_follows + category_follows, notify-independent, public readers only) + admin analytics/dashboard surface + pytest + vitest + E2E.",
+      "alternatives_rejected": "Consolidated notifications center (deferred, redundant with account page); reader-facing follow summaries (already on home/account); email/digest (needs outbound infra)."
     }
   },
   "edges": [
@@ -12923,6 +12973,36 @@
       "to": "TASK-183",
       "type": "governs",
       "created_at": "2026-08-23T01:04:42+00:00"
+    },
+    {
+      "from": "CHG-173",
+      "to": "TASK-183",
+      "type": "implements",
+      "created_at": "2026-08-23T01:15:55+00:00"
+    },
+    {
+      "from": "DEC-143",
+      "to": "DEC-142",
+      "type": "supersedes",
+      "created_at": "2026-08-23T01:15:55+00:00"
+    },
+    {
+      "from": "DEC-143",
+      "to": "TASK-183",
+      "type": "governs",
+      "created_at": "2026-08-23T01:15:55+00:00"
+    },
+    {
+      "from": "DEC-144",
+      "to": "DEC-143",
+      "type": "supersedes",
+      "created_at": "2026-08-23T01:15:55+00:00"
+    },
+    {
+      "from": "DEC-144",
+      "to": "TASK-184",
+      "type": "governs",
+      "created_at": "2026-08-23T01:15:55+00:00"
     }
   ]
 }
