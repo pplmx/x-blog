@@ -1383,9 +1383,13 @@ def record_reading_history(db: Session, reader_id: int, post_id: int) -> tuple[m
 
 
 def list_reader_history(
-    db: Session, reader_id: int, page: int = 1, limit: int = 20
+    db: Session, reader_id: int, page: int = 1, limit: int = 20, q: str | None = None
 ) -> tuple[list[tuple[models.Post, datetime]], int]:
     """Return the reader's viewed posts (publicly visible only) newest-first.
+
+    ``q`` (optional) filters to viewed posts whose title or excerpt matches the
+    term (case-insensitive, escape-aware — DEC-148/TASK-186) so a reader can
+    recall a past read.
 
     Paginated. Same non-leak invariant as bookmarks/subscriptions: a viewed post
     that was later un-published/scheduled simply stops appearing (the history row
@@ -1395,14 +1399,21 @@ def list_reader_history(
     filter runs in Python (mirroring list_reader_bookmarks) and pagination
     slices the filtered result — keeping ``total`` equal to the visible count.
     """
-    rows = (
+    query = (
         db.query(models.Post, models.ReadingHistory.viewed_at)
         .join(models.ReadingHistory, models.ReadingHistory.post_id == models.Post.id)
         .filter(models.ReadingHistory.reader_id == reader_id)
         .options(joinedload(models.Post.category), joinedload(models.Post.tags))
-        .order_by(models.ReadingHistory.viewed_at.desc(), models.Post.id.desc())
-        .all()
     )
+    if q and q.strip():
+        term = f"%{escape_like_pattern(q.strip())}%"
+        query = query.filter(
+            or_(
+                models.Post.title.ilike(term, escape="\\"),
+                models.Post.excerpt.ilike(term, escape="\\"),
+            )
+        )
+    rows = query.order_by(models.ReadingHistory.viewed_at.desc(), models.Post.id.desc()).all()
     visible = [(post, viewed_at) for post, viewed_at in rows if is_publicly_visible(post)]
     total = len(visible)
     page_items = visible[(page - 1) * limit : page * limit]

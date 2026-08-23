@@ -1009,14 +1009,17 @@ def list_reading_history(
     current_reader: auth.ReaderAccount = Depends(auth.get_current_reader),
     page: int = Query(1, ge=1),
     limit: int = Query(20, ge=1, le=100),
+    q: str | None = Query(None, description="filter history to posts matching this term"),
     db: Session = Depends(get_db),
 ):
     """The reader's viewed posts, newest-first, publicly-visible only.
 
-    Paginated so the history list stays bounded. Same non-leak invariant as
-    bookmarks/subs: a viewed post that went dark stops appearing (row kept).
+    Paginated so the history list stays bounded. ``q`` filters to posts whose
+    title/excerpt match (recall search, DEC-148/TASK-186). Same non-leak
+    invariant as bookmarks/subs: a viewed post that went dark stops appearing
+    (row kept).
     """
-    rows, total = crud.list_reader_history(db, current_reader.id, page=page, limit=limit)
+    rows, total = crud.list_reader_history(db, current_reader.id, page=page, limit=limit, q=q)
     total_pages = (total + limit - 1) // limit if limit > 0 else 0
     return ReadingHistoryListResponse(
         items=[ReadingHistoryItem.from_post(p, viewed_at) for p, viewed_at in rows],
