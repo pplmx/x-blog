@@ -18,6 +18,8 @@ from app.limiter import RATE_LIMIT_READ, limiter
 
 router = APIRouter(prefix="/api/admin/stats/views", tags=["stats"])
 
+follows_router = APIRouter(prefix="/api/admin/stats/follows", tags=["stats"])
+
 
 @router.get("")
 @limiter.limit(f"{RATE_LIMIT_READ}/minute")
@@ -29,3 +31,15 @@ def views_trend(
 ):
     """Last ``days`` days of total views + top posts by in-period views."""
     return crud.get_daily_views_stats(db, days=days)
+
+
+@follows_router.get("")
+@limiter.limit(f"{RATE_LIMIT_READ}/minute")
+def follows_stats(
+    request: Request,  # noqa: ARG001
+    limit: int = Query(5, ge=1, le=50, description="top-N per axis"),
+    db: Session = Depends(get_db),
+    _current_user: User = Depends(get_current_admin),
+):
+    """Per-series + per-category reader follow counts and totals (DEC-144/TASK-184)."""
+    return crud.get_follow_stats(db, limit=limit)

@@ -1770,6 +1770,66 @@ def follows_feed_posts(db: Session, reader_id: int, limit: int = 12) -> list[mod
     return result
 
 
+def get_follow_stats(db: Session, limit: int = 5) -> dict:
+    """Operator-facing follow analytics (DEC-144, TASK-184).
+
+    Counts are notify-independent (tracking, not push): they capture how many
+    readers follow each series and category, plus totals, so the author can see
+    what readers track. Top-N are ordered by follower count desc, then id desc
+    for stable ordering.
+    """
+    series_rows = (
+        db.query(models.SeriesFollow.series_id, func.count(models.SeriesFollow.id))
+        .group_by(models.SeriesFollow.series_id)
+        .order_by(func.count(models.SeriesFollow.id).desc(), models.SeriesFollow.series_id.desc())
+        .limit(limit)
+        .all()
+    )
+    category_rows = (
+        db.query(models.CategoryFollow.category_id, func.count(models.CategoryFollow.id))
+        .group_by(models.CategoryFollow.category_id)
+        .order_by(func.count(models.CategoryFollow.id).desc(), models.CategoryFollow.category_id.desc())
+        .limit(limit)
+        .all()
+    )
+    total_series = db.query(func.count(models.SeriesFollow.id)).scalar() or 0
+    total_categories = db.query(func.count(models.CategoryFollow.id)).scalar() or 0
+
+    series_ids = [sid for sid, _ in series_rows]
+    series_map = (
+        {s.id: s for s in db.query(models.Series).filter(models.Series.id.in_(series_ids)).all()} if series_ids else {}
+    )
+
+    category_ids = [cid for cid, _ in category_rows]
+    category_map = (
+        {c.id: c for c in db.query(models.Category).filter(models.Category.id.in_(category_ids)).all()}
+        if category_ids
+        else {}
+    )
+
+    return {
+        "total_series_follows": total_series,
+        "total_category_follows": total_categories,
+        "top_series": [
+            {
+                "id": sid,
+                "title": series_map[sid].title if sid in series_map else str(sid),
+                "slug": series_map[sid].slug if sid in series_map else "",
+                "count": count,
+            }
+            for sid, count in series_rows
+        ],
+        "top_categories": [
+            {
+                "id": cid,
+                "name": category_map[cid].name if cid in category_map else str(cid),
+                "count": count,
+            }
+            for cid, count in category_rows
+        ],
+    }
+
+
 def list_reader_bookmarks(
     db: Session, reader_id: int, folder_id: int | None = None
 ) -> list[tuple[models.Post, int | None, str | None]]:
