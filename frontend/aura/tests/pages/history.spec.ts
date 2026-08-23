@@ -7,13 +7,14 @@
  * deterministically (the composable itself is covered by its own spec).
  */
 
-import { mount } from "@vue/test-utils";
+import { flushPromises, mount } from "@vue/test-utils";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ref } from "vue";
 import type { HistoryEntry, ReadingStats } from "../../composables/useReadingHistory";
 
 const mockHistory = ref<HistoryEntry[]>([]);
 const mockStats = ref<ReadingStats | null>(null);
+const mockLoad = vi.fn();
 const mockClear = vi.fn(async () => {
 	mockHistory.value = [];
 	mockStats.value = null;
@@ -25,7 +26,7 @@ vi.mock("../../composables/useReadingHistory", () => ({
 		stats: mockStats,
 		loading: ref(false),
 		serverEnabled: ref(false),
-		load: vi.fn(),
+		load: mockLoad,
 		clear: mockClear,
 	}),
 }));
@@ -51,7 +52,16 @@ describe("Reading-history page (TASK-170)", () => {
 	beforeEach(() => {
 		mockHistory.value = [];
 		mockStats.value = null;
+		mockLoad.mockClear();
 		mockClear.mockClear();
+	});
+
+	it("invokes load with the search term on input (TASK-186)", async () => {
+		const wrapper = mountHistory();
+		const input = wrapper.get('input[type="search"]');
+		await input.setValue("rust");
+		await flushPromises();
+		expect(mockLoad).toHaveBeenCalledWith("rust");
 	});
 
 	it("renders without errors", () => {

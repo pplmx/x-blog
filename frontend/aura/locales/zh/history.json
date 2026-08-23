@@ -13,6 +13,8 @@
 		"unviewed": "最近浏览",
 		"continue": "继续阅读",
 		"postsRead": "已读文章",
-		"readingMinutes": "阅读时长（分钟）"
+		"readingMinutes": "阅读时长（分钟）",
+		"searchPlaceholder": "搜索阅读历史…",
+		"noSearchResults": "没有匹配的阅读记录"
 	}
 }

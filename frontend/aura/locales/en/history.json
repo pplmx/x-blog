@@ -13,6 +13,8 @@
 		"unviewed": "Recently viewed",
 		"continue": "Read on",
 		"postsRead": "Posts read",
-		"readingMinutes": "Reading minutes"
+		"readingMinutes": "Reading minutes",
+		"searchPlaceholder": "Search your reading history…",
+		"noSearchResults": "No past reads match that search"
 	}
 }

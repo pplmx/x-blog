@@ -78,7 +78,7 @@ describe("useReadingHistory (TASK-170)", () => {
 		);
 		const { load, history } = useReadingHistory();
 		await load();
-		expect(fetchHistory).toHaveBeenCalledWith(1, 100);
+		expect(fetchHistory).toHaveBeenCalledWith(1, 100, "");
 		expect(history.value[0]).toEqual({
 			slug: "s-a",
 			title: "Server A",

@@ -15,6 +15,13 @@ import { useSeo } from "~~/composables/useSeo";
 const { t, locale } = useLang();
 const { history, stats, loading, load, clear } = useReadingHistory();
 
+// Recall search (DEC-148/TASK-186): filter history to viewed posts matching
+// the term (server for signed-in readers, in-place for guests).
+const searchQuery = ref("");
+function onSearch() {
+	void load(searchQuery.value);
+}
+
 useSeo({
 	title: t("history.seoTitle"),
 	description: t("history.seoDesc"),
@@ -71,6 +78,23 @@ function viewedLabel(item: HistoryEntry): string {
         <Icon icon="lucide:trash-2" class="w-4 h-4" />
         {{ t('history.clear') }}
       </button>
+    </div>
+
+    <!-- Recall search (DEC-148/TASK-186): find a past read -->
+    <div class="mb-8">
+      <div class="relative max-w-md">
+        <Icon icon="lucide:search" class="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+        <input
+          v-model="searchQuery"
+          type="search"
+          :placeholder="t('history.searchPlaceholder')"
+          class="w-full pl-10 pr-4 py-2.5 border border-gray-200 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 rounded-xl focus:outline-none focus:ring-2 focus:ring-violet-500 transition-colors"
+          @input="onSearch"
+        >
+      </div>
+      <p v-if="searchQuery.trim() && history.length === 0 && !loading" class="mt-2 text-sm text-gray-500">
+        {{ t('history.noSearchResults') }}
+      </p>
     </div>
 
     <!-- Reading summary (server-backed, signed-in readers only) -->

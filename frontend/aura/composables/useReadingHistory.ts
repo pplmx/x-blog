@@ -58,16 +58,20 @@ export function useReadingHistory() {
 	const stats = ref<ReadingStats | null>(null);
 	const loading = ref(false);
 
-	/** Load history (+ stats) from the active source (server if signed in, else local). */
-	async function load(): Promise<void> {
+	/** Load history (+ stats) from the active source (server if signed in, else local).
+	 * ``query`` (optional) filters to posts whose title/excerpt match (recall
+	 * search, DEC-148/TASK-186): server asks the API, guests filter in place. */
+	async function load(query = ""): Promise<void> {
 		if (!serverEnabled.value) {
-			history.value = fromLocal(local.recent.value);
+			const term = query.trim().toLowerCase();
+			const all = fromLocal(local.recent.value);
+			history.value = term ? all.filter((h) => h.title.toLowerCase().includes(term)) : all;
 			stats.value = null;
 			return;
 		}
 		loading.value = true;
 		try {
-			const res = await fetchReaderHistory(1, HISTORY_FETCH_LIMIT);
+			const res = await fetchReaderHistory(1, HISTORY_FETCH_LIMIT, query);
 			const data = res.data?.value as ReaderHistoryListResponse | undefined;
 			history.value = (data?.items ?? []).map((i) => ({
 				slug: i.slug,

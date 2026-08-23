@@ -1220,11 +1220,13 @@ export interface ReaderHistoryListResponse {
 }
 
 /** Server-backed reading history list, newest-first (requires reader token). */
-export async function fetchReaderHistory(page = 1, limit = 50) {
+export async function fetchReaderHistory(page = 1, limit = 50, q?: string) {
 	const config = useRuntimeConfig();
 	const apiUrl = config.public.apiUrl;
+	const params = new URLSearchParams({ page: String(page), limit: String(limit) });
+	if (q?.trim()) params.set("q", q.trim());
 	return useFetch<ReaderHistoryListResponse>(
-		`${apiUrl}/api/reader/me/history?page=${page}&limit=${limit}`,
+		`${apiUrl}/api/reader/me/history?${params.toString()}`,
 		{
 			headers: getReaderAuthHeaders(),
 			server: false,
