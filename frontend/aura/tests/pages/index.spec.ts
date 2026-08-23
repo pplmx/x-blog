@@ -60,6 +60,13 @@ const { mockState } = vi.hoisted(() => ({
 				next_slug: string | null;
 			} | null
 		>,
+		followsFeed: [] as Array<{
+			id: number;
+			title: string;
+			slug: string;
+			views: number;
+			category: { id: number; name: string } | null;
+		}>,
 	},
 }));
 
@@ -89,6 +96,9 @@ vi.mock("../../composables/useApi", () => ({
 	}),
 	fetchReaderSeriesProgress: async (slug: string) => ({
 		data: { value: mockState.seriesProgress[slug] ?? null },
+	}),
+	fetchReaderFollowsFeed: async () => ({
+		data: { value: mockState.followsFeed },
 	}),
 }));
 
@@ -235,6 +245,7 @@ function resetMockState() {
 	mockState.recommended = [];
 	mockState.followedSeries = [];
 	mockState.seriesProgress = {};
+	mockState.followsFeed = [];
 	try {
 		window.localStorage.removeItem("reader_token");
 	} catch {
@@ -682,6 +693,45 @@ describe("Index Page", () => {
 			mockState.followedSeries = [];
 			const wrapper = await mountIndexPage();
 			expect(wrapper.text()).not.toContain("我的系列");
+		});
+	});
+
+	describe("Latest from your follows (TASK-183)", () => {
+		it("shows followed-content posts for a signed-in follower", async () => {
+			window.localStorage.setItem("reader_token", "token");
+			mockState.followsFeed = [
+				{
+					id: 9,
+					title: "Followed Post",
+					slug: "followed-post",
+					views: 4,
+					category: { id: 2, name: "AI" },
+				},
+			];
+			const wrapper = await mountIndexPage();
+			expect(wrapper.text()).toContain("关注内容的最新文章");
+			expect(wrapper.text()).toContain("Followed Post");
+		});
+
+		it("hides the row for guests", async () => {
+			mockState.followsFeed = [
+				{
+					id: 9,
+					title: "Followed Post",
+					slug: "followed-post",
+					views: 4,
+					category: { id: 2, name: "AI" },
+				},
+			];
+			const wrapper = await mountIndexPage();
+			expect(wrapper.text()).not.toContain("关注内容的最新文章");
+		});
+
+		it("hides the row when the signed-in reader's follows feed is empty", async () => {
+			window.localStorage.setItem("reader_token", "token");
+			mockState.followsFeed = [];
+			const wrapper = await mountIndexPage();
+			expect(wrapper.text()).not.toContain("关注内容的最新文章");
 		});
 	});
 });

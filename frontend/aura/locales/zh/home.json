@@ -28,7 +28,8 @@
 			"clearFilter": "× 清除",
 			"recommended": "为你推荐",
 			"yourSeries": "我的系列",
-			"continue": "继续"
+			"continue": "继续",
+			"latestFollows": "关注内容的最新文章"
 		},
 		"empty": {
 			"posts": "暂无文章"

@@ -28,7 +28,8 @@
 			"clearFilter": "X Clear",
 			"recommended": "Recommended for you",
 			"yourSeries": "Your series",
-			"continue": "Continue"
+			"continue": "Continue",
+			"latestFollows": "Latest from your follows"
 		},
 		"empty": {
 			"posts": "No articles yet"

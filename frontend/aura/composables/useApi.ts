@@ -216,6 +216,17 @@ export async function useReaderRecommendations(limit = 6) {
 	});
 }
 
+/** Recent public posts from the reader's followed categories + series. */
+export async function fetchReaderFollowsFeed(limit = 12) {
+	const config = useRuntimeConfig();
+	const apiUrl = config.public.apiUrl;
+	return useFetch<PostList[]>(`${apiUrl}/api/reader/me/follows-feed`, {
+		query: { limit },
+		headers: getReaderAuthHeaders(),
+		server: false,
+	});
+}
+
 /**
  * Fetch related posts for a given post.
  * Uses the backend's GET /api/posts/{post_id}/related endpoint.

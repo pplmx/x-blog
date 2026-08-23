@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import {
 	type FollowedSeriesItem,
+	fetchReaderFollowsFeed,
 	fetchReaderSeriesFollows,
 	fetchReaderSeriesProgress,
 	type PostList,
@@ -84,7 +85,27 @@ onMounted(async () => {
 		recommending.value = false;
 	}
 	await loadFollowedSeries();
+	await loadFollowsFeed();
 });
+
+// "Latest from your follows" (DEC-142, TASK-183): newest posts from the
+// reader's followed categories + series, gated to signed-in followers.
+const followsFeed = ref<PostList[]>([]);
+const followsFeedLoading = ref(false);
+const followsFeedVisible = computed(() => recSignedIn.value && followsFeed.value.length > 0);
+
+async function loadFollowsFeed() {
+	if (!recSignedIn.value) return;
+	followsFeedLoading.value = true;
+	try {
+		const res = await fetchReaderFollowsFeed(12);
+		followsFeed.value = res.data?.value ?? [];
+	} catch {
+		followsFeed.value = [];
+	} finally {
+		followsFeedLoading.value = false;
+	}
+}
 
 // Personalized "Your series" (DEC-136, TASK-180): a signed-in reader who
 // follows series sees each one with reading progress (TASK-173) and a
@@ -345,6 +366,39 @@ const stats = computed(() => {
             </div>
           </div>
         </div>
+      </div>
+    </section>
+
+    <!-- Latest from your follows (DEC-142, TASK-183): signed-in followers only -->
+    <section v-if="followsFeedVisible" class="mb-10">
+      <h2 class="text-lg font-bold text-gray-900 dark:text-gray-100 mb-4 flex items-center gap-2">
+        <Icon icon="lucide:rss" class="w-5 h-5 text-emerald-500" />
+        {{ t("home.sections.latestFollows") }}
+      </h2>
+
+      <!-- Loading skeleton -->
+      <div v-if="followsFeedLoading" class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <div v-for="i in 3" :key="i" class="h-24 rounded-xl border border-gray-100 dark:border-gray-800 animate-pulse" />
+      </div>
+
+      <div v-else class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <NuxtLink
+          v-for="post in followsFeed"
+          :key="post.id"
+          :to="`/posts/${post.slug}`"
+          class="group p-4 rounded-xl border border-gray-100 dark:border-gray-800 hover:border-emerald-200 dark:hover:border-emerald-800 hover:shadow-md transition-all duration-200"
+        >
+          <h3 class="text-sm font-semibold text-gray-900 dark:text-gray-100 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors line-clamp-2">
+            {{ post.title }}
+          </h3>
+          <div class="mt-2 flex items-center gap-2 text-xs text-gray-400">
+            <span v-if="post.category" class="inline-flex items-center gap-1">
+              <Icon icon="lucide:folder" class="w-3 h-3" />
+              {{ post.category.name }}
+            </span>
+            <span>{{ post.views }} {{ t("home.posts.views") }}</span>
+          </div>
+        </NuxtLink>
       </div>
     </section>
 
