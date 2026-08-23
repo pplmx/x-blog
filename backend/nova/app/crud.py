@@ -210,6 +210,12 @@ def create_post(db: Session, post: schemas.PostCreate) -> models.Post:
     db_post.tags = tags
     db.add(db_post)
     try:
+        # Flush once so db_post.id is available, then capture the initial
+        # revision in the SAME transaction as the post, and commit once. A
+        # single commit keeps the unit test that mocks commit/refresh valid
+        # (clears the tags cache exactly once, no double-flush slug clash).
+        db.flush()
+        _snapshot_revision(db, db_post)
         db.commit()
         db.refresh(db_post)
     except IntegrityError:
@@ -259,6 +265,9 @@ def update_post(db: Session, post_id: int, post: schemas.PostUpdate) -> models.P
         setattr(db_post, field, value)
 
     try:
+        # Capture the updated state as a new revision in the same transaction
+        # as the field changes, then commit once (single-commit pattern).
+        _snapshot_revision(db, db_post)
         db.commit()
         db.refresh(db_post)
     except IntegrityError:
@@ -275,6 +284,133 @@ def update_post(db: Session, post_id: int, post: schemas.PostUpdate) -> models.P
     # Only the draft/scheduled -> published transition notifies (see above).
     if not was_visible and is_publicly_visible(db_post):
         dispatch_new_post(db, db_post, logger)
+    return db_post
+
+
+# ---- Post revision history (DEC-158, TASK-191) ---------------------------
+
+MAX_REVISIONS_PER_POST = 100
+
+
+def capture_post_revision(db: Session, db_post: models.Post) -> None:
+    """Snapshot the post's current state as a new revision and commit it.
+
+    Public (not underscore-prefixed) because the admin PUT route applies edits
+    in the router (it does not call ``crud.update_post``), so it must be able
+    to invoke the same capture the crud paths use (DEC-158, TASK-191).
+    """
+    _snapshot_revision(db, db_post)
+    db.commit()
+
+
+def _snapshot_revision(db: Session, db_post: models.Post) -> None:
+    """Persist an immutable snapshot of the post's editable fields.
+
+    Called on every admin create/update (and before a restore, so a restore is
+    itself undo-able). Retention-capped per post so long auto-save sessions
+    don't grow history without bound.
+    """
+    rev = models.PostRevision(
+        post_id=db_post.id,
+        title=db_post.title,
+        slug=db_post.slug,
+        content=db_post.content,
+        excerpt=db_post.excerpt,
+        cover_image=db_post.cover_image,
+        category_id=db_post.category_id,
+        series_id=db_post.series_id,
+        series_order=db_post.series_order,
+        publish_at=db_post.publish_at,
+        pinned=bool(db_post.pinned),
+        published=bool(db_post.published),
+    )
+    db.add(rev)
+    db.flush()
+    _prune_revisions(db, db_post.id)
+
+
+def _prune_revisions(db: Session, post_id: int) -> None:
+    """Keep only the most recent MAX_REVISIONS_PER_POST revisions for a post."""
+    total = db.query(models.PostRevision).filter(models.PostRevision.post_id == post_id).count()
+    overflow = total - MAX_REVISIONS_PER_POST
+    if overflow <= 0:
+        return
+    oldest = (
+        db.query(models.PostRevision)
+        .filter(models.PostRevision.post_id == post_id)
+        .order_by(models.PostRevision.id.asc())
+        .limit(overflow)
+        .all()
+    )
+    for rev in oldest:
+        db.delete(rev)
+
+
+def get_post_revisions(
+    db: Session,
+    post_id: int,
+    limit: int = 100,
+) -> list[models.PostRevision]:
+    """Newest-first revision history for a post, bounded by ``limit``."""
+    return (
+        db.query(models.PostRevision)
+        .filter(models.PostRevision.post_id == post_id)
+        .order_by(models.PostRevision.id.desc())
+        .limit(limit)
+        .all()
+    )
+
+
+def get_post_revision(
+    db: Session,
+    post_id: int,
+    revision_id: int,
+) -> models.PostRevision | None:
+    return (
+        db.query(models.PostRevision)
+        .filter(
+            models.PostRevision.id == revision_id,
+            models.PostRevision.post_id == post_id,
+        )
+        .first()
+    )
+
+
+def restore_post_revision(
+    db: Session,
+    post_id: int,
+    revision_id: int,
+) -> models.Post:
+    """Apply a stored revision to the live post, snapshotting the current state
+    first so the restore itself is part of the history (undo-able)."""
+    db_post = get_post(db, post_id)
+    if not db_post:
+        raise ValueError("Post not found")
+    target = get_post_revision(db, post_id, revision_id)
+    if not target:
+        raise ValueError("Revision not found")
+
+    _snapshot_revision(db, db_post)
+    db_post.title = target.title
+    db_post.slug = target.slug
+    db_post.content = target.content
+    db_post.excerpt = target.excerpt
+    db_post.cover_image = target.cover_image
+    db_post.category_id = target.category_id
+    db_post.series_id = target.series_id
+    db_post.series_order = target.series_order
+    db_post.publish_at = target.publish_at
+    db_post.pinned = bool(target.pinned)
+    db_post.published = bool(target.published)
+    try:
+        db.commit()
+        db.refresh(db_post)
+    except IntegrityError:
+        db.rollback()
+        raise ValueError("Slug or unique constraint already exists")
+    clear_tags_cache()
+    clear_categories_cache()
+    clear_posts_list_cache()
     return db_post
 
 

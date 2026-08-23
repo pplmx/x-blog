@@ -92,6 +92,57 @@ class Post(Base):
         back_populates="post",
         cascade="all, delete-orphan",
     )
+    revisions: Mapped[list[PostRevision]] = relationship(
+        "PostRevision",
+        back_populates="post",
+        cascade="all, delete-orphan",
+        order_by="desc(PostRevision.id)",
+        # post_id is a plain integer (no DB-level FK, SQLite-safe additive
+        # convention, DEC-009), so the ORM join must be explicit — same as the
+        # series_id relationship above.
+        primaryjoin="Post.id == PostRevision.post_id",
+        foreign_keys="PostRevision.post_id",
+    )
+
+
+class PostRevision(Base):
+    """An immutable snapshot of a post's editable fields (DEC-158, TASK-191).
+
+    Captured on every admin create/update (and before a restore, so a restore
+    is itself part of the history / undo-able). Lets the author view and
+    restore any past state — per-post version history on top of the whole-blog
+    backup (DEC-082). Additive table; the FK is a plain integer + ORM-level
+    relationship (SQLite alembic can't add FK-carrying columns to existing
+    tables, DEC-009), with cascade enforced at the ORM layer.
+    """
+
+    __tablename__ = "post_revisions"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    post_id: Mapped[int] = mapped_column(Integer, index=True, nullable=False)
+    title: Mapped[str] = mapped_column(String(200), nullable=False)
+    slug: Mapped[str] = mapped_column(String(200), nullable=False)
+    content: Mapped[str] = mapped_column(Text, nullable=False)
+    excerpt: Mapped[str | None] = mapped_column(String(500))
+    cover_image: Mapped[str | None] = mapped_column(String(500))
+    category_id: Mapped[int | None] = mapped_column(Integer)
+    series_id: Mapped[int | None] = mapped_column(Integer)
+    series_order: Mapped[int] = mapped_column(Integer, nullable=False, server_default="0", default=0)
+    publish_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    pinned: Mapped[bool | None] = mapped_column(Boolean, default=False)
+    published: Mapped[bool | None] = mapped_column(Boolean, default=False)
+    created_at: Mapped[datetime | None] = mapped_column(
+        DateTime,
+        default=lambda: datetime.now(UTC),
+        index=True,
+    )
+
+    post: Mapped[Post] = relationship(
+        "Post",
+        back_populates="revisions",
+        primaryjoin="PostRevision.post_id == Post.id",
+        foreign_keys="PostRevision.post_id",
+    )
 
 
 class Category(Base):

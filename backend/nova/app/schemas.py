@@ -229,6 +229,36 @@ class PostListResponse(BaseModel):
     pagination: PaginationMeta
 
 
+class PostRevisionSummary(BaseModel):
+    """A lightweight row in the version-history list (DEC-158, TASK-191)."""
+
+    id: int
+    created_at: datetime
+    title: str
+    published: bool = False
+    model_config = ConfigDict(from_attributes=True)
+
+
+class PostRevisionDetail(BaseModel):
+    """A full snapshot of a post at a point in time (DEC-158, TASK-191)."""
+
+    id: int
+    post_id: int
+    created_at: datetime
+    title: str
+    slug: str
+    content: str
+    excerpt: str | None = None
+    cover_image: str | None = None
+    category_id: int | None = None
+    series_id: int | None = None
+    series_order: int = 0
+    publish_at: datetime | None = None
+    pinned: bool = False
+    published: bool = False
+    model_config = ConfigDict(from_attributes=True)
+
+
 class ArchiveEntry(BaseModel):
     """A single (year, month) bucket with its post count, for the archive index."""
 

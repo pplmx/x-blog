@@ -18,7 +18,7 @@ from app.crud import utc_now_naive
 from app.database import get_db
 from app.limiter import RATE_LIMIT_AUTH, RATE_LIMIT_WRITE, limiter
 from app.routers.comments import AUTO_APPROVE_READER_COMMENTS
-from app.schemas import PostCreate, PostUpdate
+from app.schemas import Post, PostCreate, PostRevisionDetail, PostRevisionSummary, PostUpdate
 
 router = APIRouter(prefix="/api/admin", tags=["admin"])
 
@@ -349,6 +349,10 @@ def admin_update_post(
         db.rollback()
         raise HTTPException(status_code=400, detail="Slug already exists")
     db.refresh(post)
+    # Snapshot the updated state into version history (DEC-158, TASK-191).
+    # This route updates fields directly (it doesn't use crud.update_post), so
+    # the capture is invoked here explicitly.
+    crud.capture_post_revision(db, post)
     clear_tags_cache()
     clear_categories_cache()
     clear_posts_list_cache()
@@ -373,6 +377,48 @@ def admin_delete_post(
     clear_categories_cache()
     clear_posts_list_cache()
     return {"message": "Post deleted"}
+
+
+@router.get("/posts/{post_id}/revisions", response_model=list[PostRevisionSummary])
+def admin_list_post_revisions(
+    post_id: int,
+    db: Session = Depends(get_db),
+    _current_user: auth.User = Depends(get_current_admin),
+):
+    post = db.query(models.Post).filter(models.Post.id == post_id).first()
+    if not post:
+        raise HTTPException(status_code=404, detail="Post not found")
+    return crud.get_post_revisions(db, post_id)
+
+
+@router.get("/posts/{post_id}/revisions/{revision_id}", response_model=PostRevisionDetail)
+def admin_get_post_revision(
+    post_id: int,
+    revision_id: int,
+    db: Session = Depends(get_db),
+    _current_user: auth.User = Depends(get_current_admin),
+):
+    revision = crud.get_post_revision(db, post_id, revision_id)
+    if not revision:
+        raise HTTPException(status_code=404, detail="Revision not found")
+    return revision
+
+
+@limiter.limit(f"{RATE_LIMIT_WRITE}/minute")
+@router.post("/posts/{post_id}/revisions/{revision_id}/restore", response_model=Post)
+def admin_restore_post_revision(
+    request: Request,  # noqa: ARG001
+    post_id: int,
+    revision_id: int,
+    db: Session = Depends(get_db),
+    _current_user: auth.User = Depends(get_current_admin),
+):
+    try:
+        return crud.restore_post_revision(db, post_id, revision_id)
+    except ValueError as e:
+        msg = str(e)
+        code = 404 if "not found" in msg else 400
+        raise HTTPException(status_code=code, detail=msg)
 
 
 @router.get("/categories", response_model=list[dict])
