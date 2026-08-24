@@ -1,9 +1,9 @@
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from fastapi.security import OAuth2PasswordRequestForm
 from pydantic import BaseModel, ConfigDict, Field
-from sqlalchemy import func, or_
+from sqlalchemy import and_, func, or_
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, joinedload
 
@@ -239,7 +239,87 @@ def admin_list_posts(
     }
 
 
-@router.get("/posts/{post_id}", response_model=dict)
+@router.get("/calendar", response_model=dict)
+def admin_calendar(
+    month: str = Query(..., pattern=r"^\d{4}-\d{2}$", description="Month to view, YYYY-MM"),
+    db: Session = Depends(get_db),
+    _current_user: auth.User = Depends(get_current_admin),
+):
+    """Month-bucketed posts for the editorial calendar (DEC-162, TASK-194).
+
+    Each post carries a ``type`` the calendar colors (published / scheduled /
+    draft) and a ``date`` the grid places it on:
+      - scheduled: published=True with publish_at in the future -> publish_at
+      - published: published=True, already live -> publish_at or created_at
+      - draft: not published -> its intended publish_at, if any
+    Undated drafts are returned separately under ``unscheduled`` — a plan view
+    shouldn't hide them, but they have no grid day. The query is bounded to
+    posts whose publish_at / created_at fall in or near the month (a post from
+    long ago has no day in this grid); the classification matches the posts
+    list status semantics. Dates are naive UTC (utc_now_naive contract, same
+    as schedule comparisons); the frontend renders them in the operator's
+    local tz by appending 'Z'.
+    """
+    try:
+        month_start = datetime.strptime(f"{month}-01", "%Y-%m-%d")
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid month; use YYYY-MM")
+    # Naive UTC window: the next month's first day is the grid upper bound, and
+    # a small lead-in tolerance keeps tz-heavy publish_at values from dropping
+    # off the edge of the grid they visually belong to.
+    month_end = (month_start.replace(day=28) + timedelta(days=4)).replace(day=1)
+    window_start = month_start - timedelta(days=3)
+
+    def classify(p: models.Post) -> tuple[str, datetime | None]:
+        if p.published and p.publish_at is not None and p.publish_at > utc_now_naive():
+            return "scheduled", p.publish_at
+        if p.published:
+            return "published", p.publish_at or p.created_at
+        return "draft", p.publish_at
+
+    posts = (
+        db.query(models.Post)
+        .options(joinedload(models.Post.category))
+        .filter(
+            or_(
+                and_(
+                    models.Post.publish_at.isnot(None),
+                    models.Post.publish_at >= window_start,
+                ),
+                and_(
+                    models.Post.created_at.isnot(None),
+                    models.Post.created_at >= window_start,
+                ),
+            )
+        )
+        .all()
+    )
+
+    grid: list[dict] = []
+    unscheduled: list[dict] = []
+    for p in posts:
+        ptype, when = classify(p)
+        entry = {
+            "id": p.id,
+            "title": p.title,
+            "slug": p.slug,
+            "type": ptype,
+            "date": when.isoformat() if when else None,
+            "published": p.published,
+            "publish_at": p.publish_at.isoformat() if p.publish_at else None,
+            "category": p.category.name if p.category else None,
+        }
+        if when is None:
+            # Draft with no intended date yet — keep it visible but off-grid.
+            if ptype == "draft":
+                unscheduled.append(entry)
+            continue
+        if month_start <= when < month_end:
+            grid.append(entry)
+
+    grid.sort(key=lambda e: (e["date"] or "", e["id"]))
+    unscheduled.sort(key=lambda e: e["id"])
+    return {"month": month, "items": grid, "unscheduled": unscheduled}
 def admin_get_post(
     post_id: int,
     db: Session = Depends(get_db),
