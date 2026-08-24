@@ -33,6 +33,7 @@
 - 🎯 **SEO 优化** - Open Graph、JSON-LD 结构化数据
 - ⬆️ **文章置顶** - 将重要文章置顶显示
 - 📤 **数据导出** - 导出文章/评论为 CSV
+- 🗓️ **内容日历** - 管理员在月历上一眼查看发布计划——已发布 / 定时发布 / 草稿按日期展示，点击即可进入编辑器（DEC-162）
 - 📡 **RSS & Atom 订阅** - 可订阅全站源，也可按分类/标签订阅定向源，并支持自动发现（DEC-074）
 - 🔔 **新文章推送通知** - 关注某个分类（或全部新文章），作者发布时通过浏览器推送提醒你（DEC-076）
 - 💬 **评论讨论订阅** - 订阅某篇文章的评论讨论，新评论通过审核后通过浏览器推送提醒你（DEC-078）
@@ -159,15 +160,16 @@ docker-compose logs -f
 
 ### 管理后台
 
-| 方法 | 路径                           | 说明               |
-| ---- | ------------------------------ | ------------------ |
-| POST | `/api/admin/login`             | 管理员登录         |
-| GET  | `/api/admin/stats`             | 仪表盘统计         |
-| GET  | `/api/posts?all=true`          | 列出全部（含草稿） |
-| GET  | `/api/comments?approved=false` | 待审核评论列表     |
-| POST | `/api/upload`                  | 上传图片           |
-| GET  | `/api/export/posts.csv`        | 导出文章           |
-| GET  | `/api/export/comments.csv`     | 导出评论           |
+| 方法 | 路径                                | 说明                                      |
+| ---- | ----------------------------------- | ----------------------------------------- |
+| POST | `/api/admin/login`                  | 管理员登录                                |
+| GET  | `/api/admin/stats`                  | 仪表盘统计                                |
+| GET  | `/api/posts?all=true`               | 列出全部（含草稿）                        |
+| GET  | `/api/comments?approved=false`      | 待审核评论列表                            |
+| POST | `/api/upload`                       | 上传图片                                  |
+| GET  | `/api/export/posts.csv`             | 导出文章                                  |
+| GET  | `/api/export/comments.csv`          | 导出评论                                  |
+| GET  | `/api/admin/calendar?month=YYYY-MM` | 按日期聚合的文章，用于内容日历（DEC-162） |
 
 ### 搜索、SEO 与统计
 

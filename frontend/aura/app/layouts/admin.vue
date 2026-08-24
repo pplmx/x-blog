@@ -119,6 +119,7 @@ const navItems = computed(() => {
 	const items = [
 		{ href: "/admin", labelKey: "admin.nav.dashboard", icon: "lucide:layout-dashboard" },
 		{ href: "/admin/posts", labelKey: "admin.nav.posts", icon: "lucide:file-text" },
+		{ href: "/admin/calendar", labelKey: "admin.nav.calendar", icon: "lucide:calendar-days" },
 		{ href: "/admin/comments", labelKey: "admin.nav.comments", icon: "lucide:message-circle" },
 		{ href: "/admin/categories", labelKey: "admin.nav.categories", icon: "lucide:folder" },
 		{ href: "/admin/tags", labelKey: "admin.nav.tags", icon: "lucide:tag" },

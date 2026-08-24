@@ -33,6 +33,7 @@ A modern full-stack blog application built with FastAPI + Nuxt
 - 🎯 **SEO Optimized** - Open Graph, JSON-LD structured data
 - ⬆️ **Pinned Posts** - Pin important posts to top
 - 📤 **Data Export** - Export posts/comments as CSV
+- 🗓️ **Editorial Calendar** - admins see the publishing plan at a glance — live / scheduled / draft posts placed on their date in a month grid, click into the editor (DEC-162)
 - 💾 **Backup & Restore** - download the whole blog as one portable JSON snapshot (categories, tags, series, posts, comments) and restore it into an empty instance (DEC-082)
 - 📡 **RSS & Atom Feeds** - Subscribe to the site-wide feed or a single category/tag via scoped feeds with autodiscovery (DEC-074)
 - 🔔 **New-post Web Push** - Follow a category (or all new posts) and get a browser push when the author publishes (DEC-076)
@@ -158,16 +159,17 @@ badge. Anonymous commenters keep the free-text nickname/email path.
 
 ### Admin
 
-| Method | Endpoint                       | Description             |
-| ------ | ------------------------------ | ----------------------- |
-| POST   | `/api/admin/login`             | Admin login             |
-| GET    | `/api/admin/stats`             | Dashboard analytics     |
-| GET    | `/api/posts?all=true`          | List all (incl. drafts) |
-| GET    | `/api/comments?approved=false` | List pending comments   |
-| PATCH  | `/api/comments/{id}/approve`   | Approve comment         |
-| POST   | `/api/upload`                  | Upload image            |
-| GET    | `/api/export/posts.csv`        | Export posts (admin)    |
-| GET    | `/api/export/comments.csv`     | Export comments (admin) |
+| Method | Endpoint                            | Description                                                 |
+| ------ | ----------------------------------- | ----------------------------------------------------------- |
+| POST   | `/api/admin/login`                  | Admin login                                                 |
+| GET    | `/api/admin/stats`                  | Dashboard analytics                                         |
+| GET    | `/api/posts?all=true`               | List all (incl. drafts)                                     |
+| GET    | `/api/comments?approved=false`      | List pending comments                                       |
+| PATCH  | `/api/comments/{id}/approve`        | Approve comment                                             |
+| POST   | `/api/upload`                       | Upload image                                                |
+| GET    | `/api/export/posts.csv`             | Export posts (admin)                                        |
+| GET    | `/api/export/comments.csv`          | Export comments (admin)                                     |
+| GET    | `/api/admin/calendar?month=YYYY-MM` | Posts bucketed by date for the editorial calendar (DEC-162) |
 
 ### Search, SEO & Stats
 

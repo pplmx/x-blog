@@ -1771,3 +1771,34 @@ export async function markAllReaderNotificationsRead(): Promise<{ updated: numbe
 		headers: getReaderAuthHeaders(),
 	});
 }
+
+// Admin editorial calendar (DEC-162/TASK-194)
+// ---------------------------------------------------------------------------
+
+/** One post on the editorial calendar, bucketed to a grid day by the backend. */
+export interface CalendarPost {
+	id: number;
+	title: string;
+	slug: string;
+	type: "published" | "scheduled" | "draft";
+	date?: string | null;
+	published: boolean;
+	publish_at?: string | null;
+	category?: string | null;
+}
+
+export interface AdminCalendarResponse {
+	month: string;
+	items: CalendarPost[];
+	unscheduled: CalendarPost[];
+}
+
+/** Month-bucketed posts for the admin editorial calendar (auth required). */
+export async function fetchAdminCalendar(month: string): Promise<AdminCalendarResponse> {
+	const config = useRuntimeConfig();
+	const apiUrl = config.public.apiUrl;
+	return $fetch<AdminCalendarResponse>(
+		`${apiUrl}/api/admin/calendar?month=${encodeURIComponent(month)}`,
+		{ headers: getAuthHeaders() },
+	);
+}

@@ -9,7 +9,8 @@
 			"tags": "标签",
 			"series": "系列",
 			"settings": "设置",
-			"users": "用户"
+			"users": "用户",
+			"calendar": "日历"
 		},
 		"settings": {
 			"title": "设置",

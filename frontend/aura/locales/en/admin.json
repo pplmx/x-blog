@@ -9,7 +9,8 @@
 			"tags": "Tags",
 			"series": "Series",
 			"settings": "Settings",
-			"users": "Users"
+			"users": "Users",
+			"calendar": "Calendar"
 		},
 		"settings": {
 			"title": "Settings",

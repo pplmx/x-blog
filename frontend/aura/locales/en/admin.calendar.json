@@ -1,0 +1,19 @@
+{
+	"admin.calendar": {
+		"seoTitle": "Editorial Calendar — X-Blog",
+		"title": "Editorial Calendar",
+		"desc": "See the publishing plan by date: live, scheduled and draft posts at a glance.",
+		"prevMonth": "Previous",
+		"nextMonth": "Next",
+		"today": "Today",
+		"newPost": "New post",
+		"legendPublished": "Live",
+		"legendScheduled": "Scheduled",
+		"legendDraft": "Draft",
+		"unscheduled": "Undated drafts",
+		"unscheduledEmpty": "No undated drafts",
+		"loading": "Loading calendar…",
+		"loadError": "Failed to load the calendar. Please try again.",
+		"emptyDay": "No posts"
+	}
+}

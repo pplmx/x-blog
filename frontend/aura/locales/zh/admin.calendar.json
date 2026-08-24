@@ -1,0 +1,19 @@
+{
+	"admin.calendar": {
+		"seoTitle": "内容日历 — X-Blog",
+		"title": "内容日历",
+		"desc": "按日期查看发布计划：已发布、定时发布与草稿一目了然。",
+		"prevMonth": "上月",
+		"nextMonth": "下月",
+		"today": "今天",
+		"newPost": "新建文章",
+		"legendPublished": "已发布",
+		"legendScheduled": "定时发布",
+		"legendDraft": "草稿",
+		"unscheduled": "未排期草稿",
+		"unscheduledEmpty": "没有未排期草稿",
+		"loading": "正在加载日历…",
+		"loadError": "加载日历失败，请重试。",
+		"emptyDay": "暂无文章"
+	}
+}
