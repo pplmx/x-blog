@@ -99,6 +99,7 @@ async function mountPostPage({
 	relatedPosts = mockRelatedPosts,
 	adjacentPosts = mockAdjacentPosts,
 	seriesDetail = null,
+	$fetchImpl,
 }: {
 	post?: typeof mockPost | null;
 	pending?: boolean;
@@ -107,6 +108,8 @@ async function mountPostPage({
 	relatedPosts?: typeof mockRelatedPosts | null;
 	adjacentPosts?: typeof mockAdjacentPosts | null;
 	seriesDetail?: Record<string, unknown> | null;
+	/** Override the global $fetch mock (e.g. to serve a saved resume position). */
+	$fetchImpl?: (url: string, opts?: Record<string, unknown>) => Promise<unknown>;
 } = {}) {
 	vi.stubGlobal("useRuntimeConfig", () => ({
 		public: {
@@ -163,7 +166,7 @@ async function mountPostPage({
 
 	// Fire-and-forget POSTs (usePostView/usePostLike) use `$fetch`; default to
 	// resolving so onMounted's view-counter call never throws in the test env.
-	vi.stubGlobal("$fetch", vi.fn(() => Promise.resolve(mockPost)));
+	vi.stubGlobal("$fetch", $fetchImpl ?? vi.fn(() => Promise.resolve(mockPost)));
 
 	const { default: PostPage } = await import("@/pages/posts/[slug].vue");
 
@@ -1235,6 +1238,79 @@ describe("Post Detail Page", () => {
 
 			const headingLinks = wrapper.findAll('a[href^="#"]');
 			expect(headingLinks.length).toBe(0);
+		});
+	});
+
+	describe("Resume-reading chip (DEC-167, TASK-200)", () => {
+		afterEach(() => {
+			// Do not leak the signed-in state into later tests in this file.
+			localStorage.removeItem("reader_token");
+		});
+
+		// A signed-in reader with a saved position gets the chip; guests never do.
+		function stubSignedIn() {
+			localStorage.setItem("reader_token", "test-token-for-resume");
+			// Give the page a scrollable body so resumePercent resolves.
+			Object.defineProperty(document.body, "scrollHeight", {
+				value: 4000,
+				configurable: true,
+			});
+			Object.defineProperty(window, "innerHeight", {
+				value: 800,
+				configurable: true,
+				writable: true,
+			});
+			Object.defineProperty(window, "scrollY", {
+				value: 0,
+				configurable: true,
+				writable: true,
+			});
+			window.scrollTo = vi.fn();
+		}
+
+		it("shows the resume chip and restores a signed-in reader's position", async () => {
+			stubSignedIn();
+			// GET /api/reader/me/history/{id} returns the saved offset; the
+			// view-record POST keeps the default resolving behavior.
+			const fetchHandler = vi.fn((url: string) => {
+				if (url.includes("/api/reader/me/history/")) {
+					return Promise.resolve({ post_id: 1, scroll_position: 1400 });
+				}
+				return Promise.resolve(mockPost);
+			});
+			const wrapper = await mountPostPage({ $fetchImpl: fetchHandler });
+
+			// On mount the composable scrolled to the saved offset and the chip
+			// announces the jump (default test locale is zh).
+			await flushPromises();
+			await flushPromises();
+			const chip = wrapper.find('[role="status"]');
+			expect(chip.exists()).toBe(true);
+			expect(chip.text()).toContain("44%"); // 1400 / (4000 - 800)
+			expect(chip.text()).toContain("回到顶部");
+			expect(window.scrollTo).toHaveBeenCalledWith(expect.objectContaining({ top: 1400 }));
+
+			// Back-to-top dismisses the chip.
+			await wrapper.find('[data-testid="resume-back-to-top"]').trigger("click");
+			await flushPromises();
+			expect(wrapper.find('[role="status"]').exists()).toBe(false);
+			wrapper.unmount();
+		});
+
+		it("does NOT show the resume chip for a signed-in reader with no saved position", async () => {
+			stubSignedIn();
+			const fetchHandler = vi.fn((url: string) => {
+				if (url.includes("/api/reader/me/history/")) {
+					return Promise.resolve({ post_id: 1, scroll_position: null });
+				}
+				return Promise.resolve(mockPost);
+			});
+			const wrapper = await mountPostPage({ $fetchImpl: fetchHandler });
+
+			await flushPromises();
+			await flushPromises();
+			expect(wrapper.find('[role="status"]').exists()).toBe(false);
+			wrapper.unmount();
 		});
 	});
 });

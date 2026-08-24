@@ -14,6 +14,7 @@ import { markdownToHtml } from "~~/composables/useMarkdown";
 import { useReaderAuth } from "~~/composables/useReaderAuth";
 import { readingMinutes } from "~~/composables/useReadingTime";
 import { useRecentlyViewed } from "~~/composables/useRecentlyViewed";
+import { useResumeReading } from "~~/composables/useResumeReading";
 import { usePostSeo } from "~~/composables/useSeo";
 import { extractToc } from "~~/composables/useToc";
 
@@ -117,23 +118,73 @@ async function handleLike() {
 
 const scrollProgress = ref(0);
 const activeTocId = ref("");
+// Per-post resume reading (DEC-167, TASK-200): restore a signed-in reader's
+// saved scroll offset when the post opens, and save it (debounced) while they
+// scroll. Only active client-side for authenticated readers (the server trail
+// is reader-only); guests are unaffected.
+const resume = useResumeReading(() => post.value?.id);
+const resumeChipVisible = ref(false);
+let resumeChipTimer: ReturnType<typeof setTimeout> | null = null;
+// Percentage of the page the restored offset corresponds to, for the chip.
+const resumePercent = computed(() => {
+	if (typeof window === "undefined" || resume.restoredPosition.value == null) return null;
+	const maxScroll = document.body.scrollHeight - window.innerHeight;
+	if (maxScroll <= 0) return null;
+	const pct = Math.round((resume.restoredPosition.value / maxScroll) * 100);
+	return Math.min(99, Math.max(1, pct));
+});
+
+function showResumeChip() {
+	if (resumeChipTimer) clearTimeout(resumeChipTimer);
+	resumeChipTimer = setTimeout(() => {
+		resumeChipVisible.value = false;
+	}, 8000);
+}
+
+/** Client-only per-post session: count the view, sync reading history, and
+ * restore/save the signed-in reader's resume position. */
+function beginReadingSession(postId: number) {
+	usePostView(postId).catch(() => {});
+	if (isAuthenticated.value) {
+		recordReaderHistory(postId).catch(() => {});
+		// Drop the reader back where they left off, surfacing a small chip so
+		// the jump is not unexplained.
+		resume.restore().then((pos) => {
+			if (pos != null) {
+				resumeChipVisible.value = true;
+				showResumeChip();
+			}
+		});
+	}
+}
+
+// SPA navigation between posts (prev/next, related, TOC) reuses this component
+// instance, so onMounted never re-fires for the new post. Watch the loaded id:
+// reset the previous post's resume state (stale chip included) and start a
+// fresh session. The initial load (oldId undefined) is still handled once by
+// onMounted so the view is not double-counted.
+watch(postId, (newId, oldId) => {
+	if (oldId === undefined || newId === oldId) return;
+	resumeChipVisible.value = false;
+	resume.reset();
+	if (newId) beginReadingSession(newId);
+});
+
 onMounted(() => {
 	// Client-only view counter: reflects real human reads, not crawlers/bots
 	// or SSR pre-renders (running this in top-level setup inflated counts on
-	// every server render and search-engine visit).
+	// every server render and search-engine visit). SPA navigations to a
+	// different post are handled by the postId watcher above.
 	const postId = post.value?.id;
 	if (postId) {
-		usePostView(postId).catch(() => {});
-		// Server-backed reading history (DEC-116, TASK-170): sync a signed-in
-		// reader's view to their cross-device history (guests keep the local trail).
-		if (isAuthenticated.value) {
-			recordReaderHistory(postId).catch(() => {});
-		}
+		beginReadingSession(postId);
 	}
 	const updateProgress = () => {
 		const scrolled = window.scrollY;
 		const maxScroll = document.body.scrollHeight - window.innerHeight;
 		scrollProgress.value = maxScroll > 0 ? (scrolled / maxScroll) * 100 : 0;
+		// Best-effort, debounced in the composable; no-ops for guests.
+		resume.save(scrolled);
 	};
 	const observer = new IntersectionObserver(
 		(entries) => {
@@ -156,6 +207,10 @@ onMounted(() => {
 	onUnmounted(() => {
 		window.removeEventListener("scroll", updateProgress);
 		observer.disconnect();
+		if (resumeChipTimer) {
+			clearTimeout(resumeChipTimer);
+			resumeChipTimer = null;
+		}
 	});
 });
 
@@ -185,6 +240,27 @@ const readingTime = computed(() => readingMinutes(post.value?.content));
         :style="{ width: scrollProgress + '%' }"
       />
     </div>
+
+    <!-- Resume-reading chip (DEC-167, TASK-200): shown briefly when the page
+         jumped the reader back to their saved position; lets them return to
+         the top in one click and then fades. -->
+    <transition name="fade">
+      <div
+        v-if="resumeChipVisible && resumePercent != null"
+        class="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 rounded-full bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-lg px-4 py-2 text-sm text-gray-700 dark:text-gray-200"
+        role="status"
+      >
+        <Icon icon="lucide:bookmark" class="w-4 h-4 text-blue-500" />
+        <span>{{ t('post.resumeReading', { percent: resumePercent }) }}</span>
+        <button
+          class="text-blue-600 dark:text-blue-400 font-medium hover:underline shrink-0"
+          data-testid="resume-back-to-top"
+          @click="resume.jumpToTop(); resumeChipVisible = false"
+        >
+          {{ t('post.backToTop') }}
+        </button>
+      </div>
+    </transition>
 
     <!-- Loading skeleton -->
     <div v-if="pending" class="max-w-4xl mx-auto space-y-6 pt-8">

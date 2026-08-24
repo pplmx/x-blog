@@ -1280,7 +1280,11 @@ export interface ReaderHistoryListResponse {
 }
 
 /** Server-backed reading history list, newest-first (requires reader token). */
-export async function fetchReaderHistory(page = 1, limit = 50, q?: string): Promise<ReaderHistoryListResponse> {
+export async function fetchReaderHistory(
+	page = 1,
+	limit = 50,
+	q?: string,
+): Promise<ReaderHistoryListResponse> {
 	const config = useRuntimeConfig();
 	const apiUrl = config.public.apiUrl;
 	const params = new URLSearchParams({ page: String(page), limit: String(limit) });
@@ -1296,16 +1300,40 @@ export async function fetchReaderHistory(page = 1, limit = 50, q?: string): Prom
  * `$fetch`, not `useFetch`: `useFetch` requires a setup/suspense context to
  * trigger execution and its request silently never leaves the browser when
  * called from a lifecycle hook, which left the server-backed reading history
- * (and thus the /history stats) permanently empty. (ISS-110, DEC-165/197) */
-export async function recordReaderHistory(postId: number): Promise<{ post_id: number; already_existed: boolean }> {
+ * (and thus the /history stats) permanently empty. (ISS-110, DEC-165/197)
+ *
+ * ``scrollPosition`` (optional, DEC-167/TASK-200) saves the reader's resume
+ * offset in one write with the same endpoint. Omit it for a plain view that
+ * preserves an already-saved position; ``0`` clears it. */
+export async function recordReaderHistory(
+	postId: number,
+	scrollPosition?: number,
+): Promise<{ post_id: number; already_existed: boolean }> {
 	const config = useRuntimeConfig();
 	const apiUrl = config.public.apiUrl;
+	const body = scrollPosition !== undefined ? { scroll_position: scrollPosition } : undefined;
 	return $fetch<{ post_id: number; already_existed: boolean }>(
 		`${apiUrl}/api/reader/me/history/${postId}`,
 		{
 			method: "POST",
 			headers: getReaderAuthHeaders(),
+			body,
 		},
+	);
+}
+
+/** The reader's saved resume offset for a post, if any (DEC-167/TASK-200).
+ *
+ * Returns ``scroll_position`` (px) or null when they never viewed the post or
+ * have no saved position. Requires a reader token. */
+export async function fetchReaderReadingPosition(
+	postId: number,
+): Promise<{ post_id: number; scroll_position: number | null }> {
+	const config = useRuntimeConfig();
+	const apiUrl = config.public.apiUrl;
+	return $fetch<{ post_id: number; scroll_position: number | null }>(
+		`${apiUrl}/api/reader/me/history/${postId}`,
+		{ headers: getReaderAuthHeaders() },
 	);
 }
 

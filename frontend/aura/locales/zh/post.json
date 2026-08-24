@@ -16,6 +16,8 @@
 		"nextPost": "下一篇",
 		"navigation": "文章导航",
 		"printPdf": "打印 / PDF",
-		"backToArticle": "返回文章"
+		"backToArticle": "返回文章",
+		"resumeReading": "已续读至 {percent}%",
+		"backToTop": "回到顶部"
 	}
 }

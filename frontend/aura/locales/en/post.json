@@ -16,6 +16,8 @@
 		"nextPost": "Next post",
 		"navigation": "Post navigation",
 		"printPdf": "Print / PDF",
-		"backToArticle": "Back to article"
+		"backToArticle": "Back to article",
+		"resumeReading": "Resumed at {percent}%",
+		"backToTop": "Back to top"
 	}
 }
