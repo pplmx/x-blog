@@ -2,7 +2,7 @@
   "ril_version": 1,
   "round": 168,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-08-24T11:33:04+00:00",
+  "updated_at": "2026-08-24T12:54:25+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -9977,6 +9977,102 @@
       "title": "Milestone delivered: reader resume-reading position — remember and restore where a reader left off inside a post (DEC-167 complete)",
       "rationale": "Delivered the resume-reading slice the milestone opened: a signed-in reader's scroll offset inside a post is saved server-side (ReadingHistory.scroll_position, additive migration verified on Postgres 18.4) and restored on return with a layout-shift-safe settle and a dismissible 'resumed' chip. Integrated with every continue-reading entry point (history/recently-viewed now land mid-post automatically). TDD: 12 new backend contract tests, 15 new frontend tests, and a Playwright e2e that scrolled to 1500px, verified the server offset >= 1400, restored the viewport on return, and confirmed back-to-top clears the position to 0. Two MEDIUM review findings (SPA post-to-post resume never re-ran; back-to-top did not clear the saved position) were fixed in-round. VERIFY: backend 1103 passed / 94.49% coverage, frontend 1151 passed, e2e green, typecheck clean beyond the pre-existing ISS-107 baseline.",
       "alternatives_rejected": "Declined reading-gamification streaks/activity-calendar (next-best gap; soft motivation vs the friction removal delivered here), declined per-type notification toggles (cross-cutting fan-out), and declined expanding restore to heading-anchor precision (pixel offsets are well under 10M px, and the settle re-applies already absorb image/layout drift — hierarchy not justified this round)."
+    },
+    "DEC-169": {
+      "id": "DEC-169",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-24T11:37:40+00:00",
+      "updated_at": "2026-08-24T11:37:40+00:00",
+      "touched_round": 168,
+      "title": "Milestone: reader reading-gamification — current/longest reading streak + daily activity heatmap on /history",
+      "rationale": "Round 168 gap analysis ranked reading gamification as the next reader-facing slice after resume-reading (delivered DEC-167). /history already shows totals-only cards (posts read, minutes, last activity); adding a current/longest streak and a GitHub-style daily activity heatmap turns the existing reading-insights surface into a motivating retention loop. Infrastructure is already in place: the ReadingHistory rows carry viewed_at, the /me/history/stats endpoint aggregates them, and the just-shipped scroll_position work proves the additive-stats path. Vertical slice: extend ReadingStatsResponse with per-day counts (last 52 weeks) + streak math (pure SQL/python over existing rows, no new table), render a heatmap + streak pills in the reading-summary panel with i18n, backend + vitest + e2e coverage.",
+      "alternatives_rejected": "Rejected per-type notification settings (real gap but cross-cuts fan-out in crud.py — heavier slice, next after this); rejected PWA manifest/offline shell (no backend involvement, speculative value); rejected word-count/reading-time micro-features (button-level, fail the value gate)."
+    },
+    "TASK-201": {
+      "id": "TASK-201",
+      "type": "task",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-08-24T11:37:40+00:00",
+      "updated_at": "2026-08-24T12:52:23+00:00",
+      "touched_round": 168,
+      "category": "core-feature",
+      "severity": 0.9,
+      "confidence": 1.0,
+      "effort": 3.0,
+      "title": "Reading gamification: extend GET /me/history/stats with activity (per-day read counts, last 52 weeks) + current_streak/longest_streak; render a GitHub-style activity heatmap and streak pills in the /history reading-summary panel; zh/en i18n; backend + vitest + e2e coverage"
+    },
+    "CHG-195": {
+      "id": "CHG-195",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-24T12:52:22+00:00",
+      "updated_at": "2026-08-24T12:52:22+00:00",
+      "touched_round": 168,
+      "commit": "bdcf964",
+      "title": "feat(reader): reading-streak + 52-week activity in the history stats (DEC-169, TASK-201)"
+    },
+    "CHG-196": {
+      "id": "CHG-196",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-24T12:52:23+00:00",
+      "updated_at": "2026-08-24T12:52:23+00:00",
+      "touched_round": 168,
+      "commit": "2d6253f",
+      "title": "feat(reader): streak card + 52-week activity heatmap on /history (DEC-169, TASK-201)"
+    },
+    "EV-114": {
+      "id": "EV-114",
+      "type": "evidence",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-24T12:52:23+00:00",
+      "updated_at": "2026-08-24T12:52:23+00:00",
+      "touched_round": 168,
+      "source": "backend: pytest -n auto --cov-fail-under=80",
+      "title": "Full backend suite green: 1109 passed, 9 skipped, 94.52% coverage (adds 6 TestActivityStreak contract tests)",
+      "confidence": 1.0
+    },
+    "EV-115": {
+      "id": "EV-115",
+      "type": "evidence",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-24T12:52:23+00:00",
+      "updated_at": "2026-08-24T12:52:23+00:00",
+      "touched_round": 168,
+      "source": "frontend: pnpm test",
+      "title": "Full frontend vitest green: 1155 passed (adds reading-history streak mapping + history page heatmap/streak tests)",
+      "confidence": 1.0
+    },
+    "EV-116": {
+      "id": "EV-116",
+      "type": "evidence",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-24T12:52:23+00:00",
+      "updated_at": "2026-08-24T12:52:23+00:00",
+      "touched_round": 168,
+      "source": "e2e: playwright reading-streak.spec.ts",
+      "title": "Playwright e2e passed: signed-in reader reads a post today -> /history shows streak card and a shaded heatmap cell with count tooltip",
+      "confidence": 1.0
+    },
+    "DEC-170": {
+      "id": "DEC-170",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-24T12:54:25+00:00",
+      "updated_at": "2026-08-24T12:54:25+00:00",
+      "touched_round": 168,
+      "title": "Milestone delivered: reader reading-gamification — current/longest streak + 52-week activity heatmap on /history (DEC-169 complete)",
+      "rationale": "Delivered the gamification slice the milestone opened: GET /me/history/stats now returns current_streak/longest_streak and a 364-day per-day activity list (UTC, public-reads-only, zeros included), and /history renders a fourth streak card plus a GitHub-style activity heatmap (week columns, intensity shading, per-day tooltip, less/more legend). TDD throughout: 6 new backend contract tests (empty, single-day, multi-day, today-gap vs longest, bucketing, non-public exclusion), frontend composable-mapping + page tests, and a Playwright e2e proving a read today lights the streak and heatmap. VERIFY: backend 1109 passed / 94.52% coverage, frontend 1155 passed, e2e green, ruff/biome clean, typecheck clean beyond the pre-existing ISS-107 baseline.",
+      "alternatives_rejected": "Rejected per-type notification settings (real gap, but next after this — cross-cuts fan-out in crud.py); rejected PWA manifest/offline (speculative value); rejected word-count/reading-time micro-features (fail the value gate)."
     }
   },
   "edges": [
@@ -14417,6 +14513,24 @@
       "to": "HYP-011",
       "type": "validates",
       "created_at": "2026-08-24T11:33:03+00:00"
+    },
+    {
+      "from": "DEC-169",
+      "to": "TASK-201",
+      "type": "governs",
+      "created_at": "2026-08-24T11:37:40+00:00"
+    },
+    {
+      "from": "CHG-195",
+      "to": "TASK-201",
+      "type": "implements",
+      "created_at": "2026-08-24T12:52:23+00:00"
+    },
+    {
+      "from": "CHG-196",
+      "to": "TASK-201",
+      "type": "implements",
+      "created_at": "2026-08-24T12:52:23+00:00"
     }
   ]
 }
