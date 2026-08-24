@@ -67,6 +67,10 @@ def _notify_thread_subscribers(
     dispatch helper. (DEC-078, TASK-150)
     """
     target_ids = [rid for rid in crud.comment_subscription_reader_ids(db, post.id) if rid not in exclude_reader_ids]
+    # Per-kind opt-out (DEC-171, TASK-202): readers who turned 'thread_comment'
+    # off are dropped before both the inbox row and the push fan-out below.
+    target_prefs = crud.reader_notification_prefs_for(db, target_ids)
+    target_ids = [rid for rid in target_ids if crud.notification_kind_enabled(target_prefs.get(rid), "thread_comment")]
     if not target_ids:
         return
     # Persist to the durable reader inbox (independent of VAPID) so a reader
@@ -112,6 +116,11 @@ def _notify_replied_to(
     never fail because of notifications. Dead (404/410) subscriptions are retired
     via the shared dispatch helper. (DEC-064, TASK-137; DEC-072, TASK-145)
     """
+    # Per-kind opt-out (DEC-171, TASK-202): a replied-to reader who turned
+    # 'reply' off gets neither the inbox row nor the push.
+    target_prefs = crud.reader_notification_prefs_for(db, [parent_reader.id])
+    if not crud.notification_kind_enabled(target_prefs.get(parent_reader.id), "reply"):
+        return
     # Persist to the durable reader inbox (independent of VAPID) so the replied-to
     # reader sees the reply in-app even if the browser push is missed/unconfigured.
     crud.record_reader_notification(

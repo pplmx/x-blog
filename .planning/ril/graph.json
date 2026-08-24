@@ -2,7 +2,7 @@
   "ril_version": 1,
   "round": 168,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-08-24T12:54:25+00:00",
+  "updated_at": "2026-08-24T15:20:55+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -10073,6 +10073,33 @@
       "title": "Milestone delivered: reader reading-gamification — current/longest streak + 52-week activity heatmap on /history (DEC-169 complete)",
       "rationale": "Delivered the gamification slice the milestone opened: GET /me/history/stats now returns current_streak/longest_streak and a 364-day per-day activity list (UTC, public-reads-only, zeros included), and /history renders a fourth streak card plus a GitHub-style activity heatmap (week columns, intensity shading, per-day tooltip, less/more legend). TDD throughout: 6 new backend contract tests (empty, single-day, multi-day, today-gap vs longest, bucketing, non-public exclusion), frontend composable-mapping + page tests, and a Playwright e2e proving a read today lights the streak and heatmap. VERIFY: backend 1109 passed / 94.52% coverage, frontend 1155 passed, e2e green, ruff/biome clean, typecheck clean beyond the pre-existing ISS-107 baseline.",
       "alternatives_rejected": "Rejected per-type notification settings (real gap, but next after this — cross-cuts fan-out in crud.py); rejected PWA manifest/offline (speculative value); rejected word-count/reading-time micro-features (fail the value gate)."
+    },
+    "DEC-171": {
+      "id": "DEC-171",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-24T15:18:29+00:00",
+      "updated_at": "2026-08-24T15:18:29+00:00",
+      "touched_round": 168,
+      "title": "Milestone: reader notification preferences — per-kind opt-out (new_post / reply / thread_comment) for the notification fan-out",
+      "rationale": "Round-168 gap analysis has repeatedly ranked per-type notification settings as the next reader-facing slice after the inbox (DEC-160) and the follow-level notify toggles (DEC-138/TASK-181, TASK-182). Today the durable inbox + push fan out three kinds (new_post via crud.record_new_post_notifications; reply and thread_comment via routers/comments.py) and a reader can only silence a kind by destroying their follows/subscriptions — there is no global kill-switch. Feature-evolution mode is enabled (consecutive reader milestones DEC-160..170), so this milestone delivers the deferred per-kind preferences surface: a reader toggles a kind off and both the inbox row and the browser push stop for it, at every dispatch point. Vertical slice: additive prefs table + migration (DEC-009 additive, no FK), crud read/batch/update, GET + PUT /me/notification-preferences, dispatch gating at all 3 fan-out points, zh/en preferences UI on /notifications, vitest + backend contract tests + Playwright journey. SQLite additive-table constraints honored (DEC-009).",
+      "alternatives_rejected": "Rejected PWA manifest/offline shell again (no backend involvement, speculative value). Rejected word-count/reading-time micro-features (button-level, fail value gate). Rejected a master on/off for all notifications with no per-kind granularity (fails the per-type pain: a reader who likes new-post updates but not reply pings needs kind-level control). Rejected moving per-follow notify off CategoryFollow/SeriesFollow into the prefs table (breaking change to existing controls; per-follow granularity stays where it is). Rejected frontend-only suppression of inbox rows after the fact (rows would still be persisted + pushed; must gate at dispatch)."
+    },
+    "TASK-202": {
+      "id": "TASK-202",
+      "type": "task",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-24T15:19:30+00:00",
+      "updated_at": "2026-08-24T15:19:30+00:00",
+      "touched_round": 168,
+      "category": "core-feature",
+      "severity": 0.7,
+      "confidence": 1.0,
+      "effort": 3.0,
+      "unlock_factor": 1.0,
+      "title": "Reader notification preferences (DEC-171): add reader_notification_prefs table (new_post/reply/thread_comment bools, one row per reader, additive migration), crud get/batch/update helpers, GET/PUT /api/reader/me/notification-preferences, gate fan-out at record_new_post_notifications + comments.py reply/thread dispatch, render a per-kind preferences card with toggles on /notifications (zh/en), backend contract tests + vitest + Playwright journey"
     }
   },
   "edges": [
@@ -14531,6 +14558,12 @@
       "to": "TASK-201",
       "type": "implements",
       "created_at": "2026-08-24T12:52:23+00:00"
+    },
+    {
+      "from": "DEC-171",
+      "to": "TASK-202",
+      "type": "governs",
+      "created_at": "2026-08-24T15:20:55+00:00"
     }
   ]
 }

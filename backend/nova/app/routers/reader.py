@@ -1363,3 +1363,67 @@ def mark_all_notifications_read(
     """Mark every unread notification read; returns the count updated."""
     updated = crud.mark_all_reader_notifications_read(db, current_reader.id)
     return {"updated": updated}
+
+
+# Reader notification preferences (DEC-171, TASK-202)
+# ---------------------------------------------------------------------------
+
+
+class NotificationPrefs(BaseModel):
+    """A reader's per-kind notification state; every field true = all on.
+
+    Mirrors the ReaderNotificationPref row. Missing rows read as all-on, so a
+    reader who never opened the preferences surface is unaffected.
+    """
+
+    new_post: bool
+    reply: bool
+    thread_comment: bool
+
+
+class NotificationPrefUpdate(BaseModel):
+    """Body for toggling one notification kind (DEC-171, TASK-202)."""
+
+    kind: str
+    enabled: bool
+
+
+@router.get("/me/notification-preferences", response_model=NotificationPrefs)
+def get_my_notification_prefs(
+    current_reader: auth.ReaderAccount = Depends(auth.get_current_reader),
+    db: Session = Depends(get_db),
+):
+    """The signed-in reader's per-kind notification opt-outs, all-on by default.
+
+    Auth-scoped like the inbox; the global middleware defaults these to no-store
+    (per-reader data). Materializes an all-on row on first read so the response
+    is always the full object.
+    """
+    prefs = crud.get_reader_notification_prefs(db, current_reader.id)
+    return NotificationPrefs(
+        new_post=prefs.new_post,
+        reply=prefs.reply,
+        thread_comment=prefs.thread_comment,
+    )
+
+
+@router.patch("/me/notification-preferences", response_model=NotificationPrefs)
+def set_my_notification_pref(
+    payload: NotificationPrefUpdate,
+    current_reader: auth.ReaderAccount = Depends(auth.get_current_reader),
+    db: Session = Depends(get_db),
+):
+    """Toggle one notification kind for the signed-in reader. 422 on unknown kind.
+
+    A kind turned off stops it at every dispatch point — the reader gets neither
+    a durable inbox row nor a browser push for that kind. Returns the full
+    updated preferences.
+    """
+    prefs = crud.set_reader_notification_kind(db, current_reader.id, payload.kind, payload.enabled)
+    if prefs is None:
+        raise HTTPException(status_code=422, detail=f"Unknown notification kind: {payload.kind}")
+    return NotificationPrefs(
+        new_post=prefs.new_post,
+        reply=prefs.reply,
+        thread_comment=prefs.thread_comment,
+    )

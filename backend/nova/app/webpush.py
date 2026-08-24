@@ -226,6 +226,25 @@ def dispatch_new_post(db, post: models.Post, logger) -> dict[str, int]:
             ):
                 by_endpoint[sub.endpoint] = sub
 
+    # Per-kind opt-out (DEC-171, TASK-202): drop push subscriptions whose reader
+    # turned 'new_post' off — same reader-level intent as the inbox gating in
+    # crud.record_new_post_notifications, so an opted-out reader gets neither the
+    # durable row nor the browser push. Anonymous subscriptions (reader_id NULL)
+    # are unaffected.
+    if by_endpoint:
+        reader_ids = [s.reader_id for s in by_endpoint.values()]
+        opt_out_reader_ids = {
+            uid
+            for (uid,) in db.query(models.ReaderNotificationPref.reader_id)
+            .filter(
+                models.ReaderNotificationPref.reader_id.in_(reader_ids),
+                models.ReaderNotificationPref.new_post.is_(False),
+            )
+            .all()
+        }
+        if opt_out_reader_ids:
+            by_endpoint = {endpoint: s for endpoint, s in by_endpoint.items() if s.reader_id not in opt_out_reader_ids}
+
     if not by_endpoint:
         return {"sent": 0, "failed": 0, "removed": 0}
     return dispatch_to_subscriptions(list(by_endpoint.values()), payload, db, logger)

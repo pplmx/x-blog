@@ -433,6 +433,29 @@ class ReaderNotification(Base):
     )
 
 
+class ReaderNotificationPref(Base):
+    """Per-reader notification-kind opt-out (DEC-171, TASK-202).
+
+    A signed-in reader silences a whole notification *kind* (new_post, reply,
+    thread_comment) on top of the per-follow ``notify`` flags on
+    CategoryFollow/SeriesFollow. Defaults everything on (None row reads as
+    all-enabled, so the table stays empty for readers who never opt out). When
+    a kind is off every dispatch point skips it — the durable inbox row AND the
+    browser push. One row per reader (reader_id primary key). Additive table,
+    no DB-level FK (SQLite alembic can't add FK-carrying columns to existing
+    tables, DEC-009); integrity enforced at the API layer like the other reader
+    extension tables.
+    """
+
+    __tablename__ = "reader_notification_prefs"
+
+    reader_id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    new_post: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True, server_default=true())
+    reply: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True, server_default=true())
+    thread_comment: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True, server_default=true())
+    updated_at: Mapped[datetime | None] = mapped_column(DateTime, default=lambda: datetime.now(UTC), nullable=True)
+
+
 class SeriesFollow(Base):
     """A reader following a series (DEC-132, TASK-178; notify control DEC-138/TASK-181).
 

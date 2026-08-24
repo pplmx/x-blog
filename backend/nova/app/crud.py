@@ -1,3 +1,4 @@
+from collections.abc import Iterable
 from datetime import UTC, datetime, timedelta
 
 from sqlalchemy import and_, extract, func, or_, select, update
@@ -2521,7 +2522,13 @@ def record_new_post_notifications(db: Session, post: models.Post) -> None:
                 )
                 .all()
             )
+        # Per-kind opt-out (DEC-171, TASK-202): batch-load every target's prefs
+        # once; a reader who turned 'new_post' off gets neither an inbox row here
+        # nor the push (the same target set drives dispatch_new_post).
+        prefs = reader_notification_prefs_for(db, target_reader_ids)
         for reader_id in target_reader_ids:
+            if not notification_kind_enabled(prefs.get(reader_id), "new_post"):
+                continue
             record_reader_notification(
                 db,
                 reader_id,
@@ -2532,6 +2539,75 @@ def record_new_post_notifications(db: Session, post: models.Post) -> None:
             )
     except Exception:  # noqa: BLE001 — best effort, never fail the publish
         db.rollback()
+
+
+# Notification-kind opt-outs (DEC-171, TASK-202). The only kinds the dispatch
+# points can produce; the preferences surface exposes exactly these toggles.
+NOTIFICATION_KINDS: tuple[str, ...] = ("new_post", "reply", "thread_comment")
+
+
+def get_reader_notification_prefs(db: Session, reader_id: int) -> models.ReaderNotificationPref:
+    """The reader's per-kind notification prefs, materializing an all-on row
+    the first time it is read (GET). Dispatch gating must NOT call this — it
+    writes; use ``reader_notification_prefs_for`` for fan-out paths.
+    (DEC-171, TASK-202)
+    """
+    row = db.get(models.ReaderNotificationPref, reader_id)
+    if row is None:
+        row = models.ReaderNotificationPref(reader_id=reader_id)
+        db.add(row)
+        db.commit()
+        db.refresh(row)
+    return row
+
+
+def reader_notification_prefs_for(
+    db: Session, reader_ids: Iterable[int]
+) -> dict[int, models.ReaderNotificationPref | None]:
+    """Batch pref lookup for dispatch gating — read-only, never writes.
+
+    Returns {reader_id: pref_row}. Missing readers are absent (treat as all-on
+    via ``notification_kind_enabled``), so a reader who never opted out keeps
+    getting every kind without materializing a row in hot fan-out paths.
+    (DEC-171, TASK-202)
+    """
+    ids = list(reader_ids)
+    if not ids:
+        return {}
+    rows = db.query(models.ReaderNotificationPref).filter(models.ReaderNotificationPref.reader_id.in_(ids)).all()
+    return {r.reader_id: r for r in rows}
+
+
+def notification_kind_enabled(pref: models.ReaderNotificationPref | None, kind: str) -> bool:
+    """True when a reader allows ``kind`` to fan out. A missing pref row (None)
+    reads as enabled — defaults are all-on. Callers pass the row from
+    ``reader_notification_prefs_for``. (DEC-171, TASK-202)
+    """
+    if pref is None:
+        return True
+    return bool(getattr(pref, kind, True))
+
+
+def set_reader_notification_kind(
+    db: Session, reader_id: int, kind: str, enabled: bool
+) -> models.ReaderNotificationPref | None:
+    """Toggle one notification kind for a reader; returns the updated row.
+
+    ``kind`` must be in ``NOTIFICATION_KINDS`` (whitelist — never write an
+    attacker-controlled attribute). None if the kind is rejected; the router
+    422s on that. (DEC-171, TASK-202)
+    """
+    if kind not in NOTIFICATION_KINDS:
+        return None
+    row = db.get(models.ReaderNotificationPref, reader_id)
+    if row is None:
+        row = models.ReaderNotificationPref(reader_id=reader_id)
+        db.add(row)
+    setattr(row, kind, enabled)
+    row.updated_at = utc_now_naive()
+    db.commit()
+    db.refresh(row)
+    return row
 
 
 def list_reader_notifications(

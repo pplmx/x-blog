@@ -157,6 +157,43 @@ class TestPublishFanOut:
         assert mock_send.call_count == 1
         assert mock_send.call_args.kwargs["payload"]["url"] == "/posts/no-category"
 
+    def test_reader_bound_subscriber_with_new_post_pref_off_is_skipped(self, client, auth_headers):
+        # A reader-bound push subscription is dropped when that reader turns
+        # the 'new_post' notification kind off (DEC-171, TASK-202): the opt-out
+        # gates both the durable inbox row and the browser push.
+        reg = client.post(
+            "/api/reader/register",
+            json={"email": "push-pref-off@example.com", "password": "readerpass123"},
+        )
+        token = reg.json()["access_token"]
+        headers = {"Authorization": f"Bearer {token}"}
+        client.post("/api/push/subscribe", json=_subscribe_body(want_new_posts=True), headers=headers)
+        resp = client.patch(
+            "/api/reader/me/notification-preferences",
+            json={"kind": "new_post", "enabled": False},
+            headers=headers,
+        )
+        assert resp.status_code == 200, resp.text
+
+        with patch("app.webpush.send_push") as mock_send:
+            _create_post(client, auth_headers, slug="pref-off-post")
+        assert mock_send.call_count == 0
+
+    def test_reader_bound_subscriber_with_pref_on_still_receives(self, client, auth_headers):
+        # Positive control: the default (all-on) pref keeps the reader-bound
+        # subscription in the fan-out — the opt-out is opt-in to opt out.
+        reg = client.post(
+            "/api/reader/register",
+            json={"email": "push-pref-on@example.com", "password": "readerpass123"},
+        )
+        token = reg.json()["access_token"]
+        headers = {"Authorization": f"Bearer {token}"}
+        client.post("/api/push/subscribe", json=_subscribe_body(want_new_posts=True), headers=headers)
+
+        with patch("app.webpush.send_push") as mock_send:
+            _create_post(client, auth_headers, slug="pref-on-post")
+        assert mock_send.call_count == 1
+
     def test_draft_create_does_not_notify(self, client, auth_headers):
         client.post("/api/push/subscribe", json=_subscribe_body(want_new_posts=True))
         with patch("app.webpush.send_push") as mock_send:
