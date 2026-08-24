@@ -2,7 +2,7 @@
   "ril_version": 1,
   "round": 169,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-08-24T17:50:58+00:00",
+  "updated_at": "2026-08-24T18:25:16+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -9600,11 +9600,11 @@
     "TASK-195": {
       "id": "TASK-195",
       "type": "task",
-      "status": "active",
-      "version": 1,
+      "status": "resolved",
+      "version": 2,
       "created_at": "2026-08-24T03:03:20+00:00",
-      "updated_at": "2026-08-24T03:03:20+00:00",
-      "touched_round": 165,
+      "updated_at": "2026-08-24T18:18:32+00:00",
+      "touched_round": 169,
       "category": "test-quality",
       "severity": 0.5,
       "confidence": 1.0,
@@ -9665,11 +9665,11 @@
     "ISS-107": {
       "id": "ISS-107",
       "type": "issue",
-      "status": "active",
-      "version": 1,
+      "status": "resolved",
+      "version": 2,
       "created_at": "2026-08-24T03:22:16+00:00",
-      "updated_at": "2026-08-24T03:22:16+00:00",
-      "touched_round": 165,
+      "updated_at": "2026-08-24T18:18:32+00:00",
+      "touched_round": 169,
       "title": "Frontend vue-tsc baseline is red in HEAD: admin/series.vue, CommentList.vue, useApi.ts:969 Excessive stack depth (pre-existing, unrelated to any shipped milestone)"
     },
     "ISS-108": {
@@ -10228,6 +10228,77 @@
       "source": "independent code-review agent (git diff 2465f6c..HEAD)",
       "confidence": 1.0,
       "title": "Code review verdict: APPROVE — whitelist-before-setattr holds, auth/IDOR/CSRF surface clean, every fan-out point for every kind gated, anonymous subscription None-handling verified; 0 critical/high, 3 medium (2 recorded as ISS-112/113, 1 fixed) and 5 low (accepted)"
+    },
+    "CHG-199": {
+      "id": "CHG-199",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-24T18:17:18+00:00",
+      "updated_at": "2026-08-24T18:17:18+00:00",
+      "touched_round": 169,
+      "commit": "9938a76",
+      "title": "Restore clean pnpm typecheck: fix 9 vue-tsc errors (admin/series.vue x2, history.vue, CommentList.vue x2, useApi.ts route-type x6)"
+    },
+    "EV-123": {
+      "id": "EV-123",
+      "type": "evidence",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-24T18:18:32+00:00",
+      "updated_at": "2026-08-24T18:18:32+00:00",
+      "touched_round": 169,
+      "source": "pnpm typecheck (nuxt typecheck) exit code",
+      "confidence": 1.0,
+      "title": "typecheck exits 0 (0 TS errors) — first clean run since DEC-118; full vitest 1158 passed, biome clean"
+    },
+    "DEC-173": {
+      "id": "DEC-173",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-24T18:18:32+00:00",
+      "updated_at": "2026-08-24T18:18:32+00:00",
+      "touched_round": 169,
+      "title": "Quality round: close the typecheck baseline (TASK-195/ISS-107) as the last active RIL task",
+      "rationale": "After delivering the notification-preferences feature milestone (DEC-171/172) the only remaining active RIL task (TASK-195 vue-tsc baseline, 1.41) had been deferred across four milestones; closing it makes just ci fully green for the first time and removes a persistent red check that masked real regressions. Root causes were simple: noUncheckedIndexedAccess discipline + a dead resp.status field + Nuxt typed-routes over-resolving a bare ofetch call.",
+      "alternatives_rejected": "Declined opening another user-facing feature as the immediate next round (the backlog's next feature candidates are all under the value gate / speculative). Declined re-touching toolchain versions to switch off typedRoutes (fixes the symptom by disabling the feature rather than repairing the callsites)."
+    },
+    "DEC-174": {
+      "id": "DEC-174",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-24T18:22:46+00:00",
+      "updated_at": "2026-08-24T18:22:46+00:00",
+      "touched_round": 169,
+      "title": "Defer ISS-108 dependabot advisory track to dependabot update PRs (already documented at DEC-164)",
+      "rationale": "Dependabot reports 26 advisories (16 high / 6 moderate / 4 low), largely dev-tooling transitives. The actionable bumps already ride open dependabot branches (biome 2.5.6, marked 18.0.7, playwright 1.62.1, cryptography 50.0.0, urllib3 2.7.0); residual dev-time advisories were documented at DEC-164. No code change warranted this session; the track is continuous monitoring, not a resolvable defect.",
+      "alternatives_rejected": "Declined force-bumping runtime deps outside dependabot's reviewed PRs (churn/risk for dev-only advisories)."
+    },
+    "DEC-175": {
+      "id": "DEC-175",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-24T18:23:47+00:00",
+      "updated_at": "2026-08-24T18:23:47+00:00",
+      "touched_round": 169,
+      "title": "Accept ISS-112 anonymous push-subscription opt-out gap (documented behavior)",
+      "rationale": "reader_id NULL push subscriptions created before a reader had an account can't be attributed to that reader at dispatch time, so the new_post push still lands while the inbox row is suppressed. Inherent — an anonymous sub carries no identity; the webpush.py comment documents the tradeoff and the UI feature text says 'off silences that type'. No clean dispatch-time fix; a UI footnote would be optional copy for an edge case.",
+      "alternatives_rejected": "Declined dropping anonymous new_post push subscriptions entirely (removes legitimate pre-account push users). Declined retrofitting identity onto existing anonymous subs (no trustable mapping)."
+    },
+    "DEC-176": {
+      "id": "DEC-176",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-24T18:25:16+00:00",
+      "updated_at": "2026-08-24T18:25:16+00:00",
+      "touched_round": 169,
+      "title": "Defer ISS-113 per-reader prune N+1 in the new-post fan-out",
+      "rationale": "record_reader_notification commits + prunes per reader (O(2n) queries) inside record_new_post_notifications' loop. Pre-existing since DEC-160, not a DEC-171 regression (the prefs lookup is batched). Fan-outs are small in practice; changing to one batched commit + window-function prune across SQLite/Postgres risks the freshly-tested fan-out path for marginal gain. Revisit if follower fan-outs grow.",
+      "alternatives_rejected": "Declined a per-reader batch prune without window functions (still O(n) queries). Declined changing commit semantics mid-loop (best-effort partial fan-out is intended behavior)."
     }
   },
   "edges": [
@@ -14722,6 +14793,18 @@
       "to": "DEC-171",
       "type": "supersedes",
       "created_at": "2026-08-24T17:50:58+00:00"
+    },
+    {
+      "from": "CHG-199",
+      "to": "TASK-195",
+      "type": "implements",
+      "created_at": "2026-08-24T18:17:18+00:00"
+    },
+    {
+      "from": "CHG-199",
+      "to": "ISS-107",
+      "type": "resolves",
+      "created_at": "2026-08-24T18:17:18+00:00"
     }
   ]
 }
