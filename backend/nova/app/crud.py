@@ -232,6 +232,7 @@ def create_post(db: Session, post: schemas.PostCreate) -> models.Post:
     # A post created as immediately visible is a new post — fan out the
     # new-post push (DEC-076, TASK-147). Best effort, no-op when unconfigured.
     if is_publicly_visible(db_post):
+        record_new_post_notifications(db, db_post)
         dispatch_new_post(db, db_post, logger)
     return db_post
 
@@ -283,6 +284,7 @@ def update_post(db: Session, post_id: int, post: schemas.PostUpdate) -> models.P
 
     # Only the draft/scheduled -> published transition notifies (see above).
     if not was_visible and is_publicly_visible(db_post):
+        record_new_post_notifications(db, db_post)
         dispatch_new_post(db, db_post, logger)
     return db_post
 
@@ -2343,6 +2345,9 @@ def delete_reader_account(db: Session, reader_id: int) -> bool:
     db.query(models.PushSubscription).filter(models.PushSubscription.reader_id == reader_id).delete(
         synchronize_session=False
     )
+    db.query(models.ReaderNotification).filter(models.ReaderNotification.reader_id == reader_id).delete(
+        synchronize_session=False
+    )
     db.delete(reader)
     try:
         db.commit()
@@ -2350,6 +2355,169 @@ def delete_reader_account(db: Session, reader_id: int) -> bool:
         db.rollback()
         raise ValueError("Cannot delete account: it has dependent records")
     return True
+
+
+# ---- Reader notification inbox (DEC-160, TASK-192) ------------------------
+
+# Retention cap per reader: keep the most recent N notifications, pruning older
+# rows on insert so the inbox can never grow without bound (mirrors the per-post
+# revision cap, DEC-158).
+MAX_NOTIFICATIONS_PER_READER = 200
+
+
+def record_reader_notification(
+    db: Session,
+    reader_id: int,
+    kind: str,
+    title: str,
+    body: str | None = None,
+    url: str | None = None,
+) -> models.ReaderNotification:
+    """Persist one reader-facing notification row (inbox, DEC-160/TASK-192).
+
+    Called at the same dispatch points that fire the Web Push (new post in a
+    followed series/category, reply, thread comment) so the durable inbox and
+    the ephemeral push stay in sync. Best effort: never raises — a notify path
+    must not break the triggering write (publish/comment) because of persistence.
+    """
+    row = models.ReaderNotification(
+        reader_id=reader_id,
+        kind=kind,
+        title=title,
+        body=body,
+        url=url,
+    )
+    try:
+        db.add(row)
+        db.flush()
+        # Prune to the retention cap (keep newest by id).
+        recent_ids = [
+            rid
+            for (rid,) in db.query(models.ReaderNotification.id)
+            .filter(models.ReaderNotification.reader_id == reader_id)
+            .order_by(models.ReaderNotification.id.desc())
+            .limit(MAX_NOTIFICATIONS_PER_READER)
+            .all()
+        ]
+        if recent_ids:
+            db.query(models.ReaderNotification).filter(
+                models.ReaderNotification.reader_id == reader_id,
+                models.ReaderNotification.id.notin_(recent_ids),
+            ).delete(synchronize_session=False)
+        db.commit()
+    except Exception:  # noqa: BLE001 — best effort, never fail the caller
+        db.rollback()
+    return row
+
+
+def record_new_post_notifications(db: Session, post: models.Post) -> None:
+    """Persist a new-post inbox notification for every reader who follows the
+    post's series or category (DEC-160, TASK-192).
+
+    Mirrors the follower targeting of ``dispatch_new_post`` (series followers +
+    category followers with notify on), but persists to the durable inbox
+    instead of (or in addition to) the ephemeral browser push. Independent of
+    VAPID configuration: a reader should still get an inbox row even when Web
+    Push is not set up. Best effort, never raises. ``post`` must be the just-
+    persisted, publicly-visible post (callers gate on ``is_publicly_visible``).
+    """
+    try:
+        target_reader_ids: set[int] = set()
+        # Readers who follow this post's series ('new part' notification).
+        if post.series_id is not None:
+            target_reader_ids.update(
+                rid
+                for (rid,) in db.query(models.SeriesFollow.reader_id)
+                .filter(
+                    models.SeriesFollow.series_id == post.series_id,
+                    models.SeriesFollow.notify.is_(True),
+                )
+                .all()
+            )
+        # Readers who follow this post's category with notifications on.
+        if post.category_id is not None:
+            target_reader_ids.update(
+                rid
+                for (rid,) in db.query(models.CategoryFollow.reader_id)
+                .filter(
+                    models.CategoryFollow.category_id == post.category_id,
+                    models.CategoryFollow.notify.is_(True),
+                )
+                .all()
+            )
+        for reader_id in target_reader_ids:
+            record_reader_notification(
+                db,
+                reader_id,
+                kind="new_post",
+                title="新文章发布",
+                body=f"《{post.title or ''}》",
+                url=f"/posts/{post.slug}",
+            )
+    except Exception:  # noqa: BLE001 — best effort, never fail the publish
+        db.rollback()
+
+
+def list_reader_notifications(
+    db: Session, reader_id: int, page: int = 1, limit: int = 20, unread_only: bool = False
+) -> tuple[list[models.ReaderNotification], int]:
+    """The reader's notification inbox rows, newest first, paginated.
+
+    ``unread_only`` filters to rows with read_at NULL (for an unread badge).
+    Returns (items, total). Unlike the post lists, inbox rows do not carry a
+    public-visibility check — a notification points at a post that may later be
+    unpublished, but the inbox records the *event*, not current visibility.
+    """
+    query = db.query(models.ReaderNotification).filter(models.ReaderNotification.reader_id == reader_id)
+    if unread_only:
+        query = query.filter(models.ReaderNotification.read_at.is_(None))
+    total = query.count()
+    items = query.order_by(models.ReaderNotification.id.desc()).offset((page - 1) * limit).limit(limit).all()
+    return items, total
+
+
+def unread_notification_count(db: Session, reader_id: int) -> int:
+    """How many of the reader's notifications are unread (for a badge)."""
+    return (
+        db.query(models.ReaderNotification)
+        .filter(
+            models.ReaderNotification.reader_id == reader_id,
+            models.ReaderNotification.read_at.is_(None),
+        )
+        .count()
+    )
+
+
+def mark_reader_notification_read(db: Session, reader_id: int, notification_id: int) -> bool:
+    """Mark one of the reader's notifications read. Returns False if not theirs."""
+    row = (
+        db.query(models.ReaderNotification)
+        .filter(
+            models.ReaderNotification.id == notification_id,
+            models.ReaderNotification.reader_id == reader_id,
+        )
+        .first()
+    )
+    if row is None:
+        return False
+    if row.read_at is None:
+        row.read_at = utc_now_naive()
+        db.commit()
+    return True
+
+
+def mark_all_reader_notifications_read(db: Session, reader_id: int) -> int:
+    """Mark every unread notification of a reader read; returns count updated."""
+    updated = (
+        db.query(models.ReaderNotification)
+        .filter(
+            models.ReaderNotification.reader_id == reader_id,
+            models.ReaderNotification.read_at.is_(None),
+        )
+        .update({models.ReaderNotification.read_at: utc_now_naive()}, synchronize_session=False)
+    )
+    db.commit()
+    return updated
 
 
 def get_site_setting(db: Session, key: str) -> str | None:

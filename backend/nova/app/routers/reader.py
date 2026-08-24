@@ -1193,3 +1193,107 @@ def edit_my_comment(
     if not updated:
         raise HTTPException(status_code=404, detail="Comment not found")
     return updated
+
+
+# Reader notification inbox (DEC-160/TASK-192)
+# ---------------------------------------------------------------------------
+
+
+class NotificationItem(BaseModel):
+    """One durable reader notification (inbox). ``kind`` tags the source so the
+    UI can render an icon/filter; ``read`` derives from read_at. ``url`` deep-links
+    to the source post/comment. (DEC-160, TASK-192)"""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    kind: str
+    title: str
+    body: str | None = None
+    url: str | None = None
+    read: bool = False
+    created_at: datetime | None = None
+
+
+class NotificationListResponse(BaseModel):
+    items: list[NotificationItem]
+    total: int
+    unread: int
+    page: int = 1
+    limit: int = 20
+    total_pages: int = 1
+
+
+@router.get("/me/notifications", response_model=NotificationListResponse)
+def list_my_notifications(
+    current_reader: auth.ReaderAccount = Depends(auth.get_current_reader),
+    page: int = Query(1, ge=1),
+    limit: int = Query(20, ge=1, le=100),
+    unread: bool = Query(False, description="filter to unread notifications only"),
+    db: Session = Depends(get_db),
+):
+    """The signed-in reader's durable notification inbox, newest first.
+
+    Unlike the fire-and-forget browser push, these rows are persisted at the
+    same dispatch points (new post in a followed series/category, reply to the
+    reader's comment, new comment on a followed thread) so a reader can review
+    activity they missed. ``unread`` filters to not-yet-read rows; ``unread``
+    in the response is the total unread count for the badge regardless of the
+    filter. Auth-scoped; the global middleware defaults these to no-store.
+    (DEC-160, TASK-192)
+    """
+    items, total = crud.list_reader_notifications(db, current_reader.id, page=page, limit=limit, unread_only=unread)
+    unread_count = crud.unread_notification_count(db, current_reader.id)
+    total_pages = (total + limit - 1) // limit if limit > 0 else 0
+    return NotificationListResponse(
+        items=[
+            NotificationItem(
+                id=n.id,
+                kind=n.kind,
+                title=n.title,
+                body=n.body,
+                url=n.url,
+                read=n.read_at is not None,
+                created_at=n.created_at,
+            )
+            for n in items
+        ],
+        total=total,
+        unread=unread_count,
+        page=page,
+        limit=limit,
+        total_pages=total_pages,
+    )
+
+
+@router.post("/me/notifications/{notification_id}/read", response_model=NotificationItem)
+def mark_notification_read(
+    notification_id: int,
+    current_reader: auth.ReaderAccount = Depends(auth.get_current_reader),
+    db: Session = Depends(get_db),
+):
+    """Mark one of the reader's notifications read. 404 if not theirs."""
+    ok = crud.mark_reader_notification_read(db, current_reader.id, notification_id)
+    if not ok:
+        raise HTTPException(status_code=404, detail="Notification not found")
+    row = db.get(models.ReaderNotification, notification_id)
+    assert row is not None  # mark_reader_notification_read returned True only for an owned row
+    return NotificationItem(
+        id=row.id,
+        kind=row.kind,
+        title=row.title,
+        body=row.body,
+        url=row.url,
+        read=row.read_at is not None,
+        created_at=row.created_at,
+    )
+
+
+@router.post("/me/notifications/read-all", response_model=dict[str, int])
+def mark_all_notifications_read(
+    current_reader: auth.ReaderAccount = Depends(auth.get_current_reader),
+    db: Session = Depends(get_db),
+):
+    """Mark every unread notification read; returns the count updated."""
+    updated = crud.mark_all_reader_notifications_read(db, current_reader.id)
+    return {"updated": updated}

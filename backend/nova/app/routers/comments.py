@@ -66,10 +66,21 @@ def _notify_thread_subscribers(
     of notifications. Dead (404/410) subscriptions are retired by the shared
     dispatch helper. (DEC-078, TASK-150)
     """
-    if not vapid_configured():
-        return
     target_ids = [rid for rid in crud.comment_subscription_reader_ids(db, post.id) if rid not in exclude_reader_ids]
     if not target_ids:
+        return
+    # Persist to the durable reader inbox (independent of VAPID) so a reader
+    # sees the new comment in-app even if the browser push is missed/unconfigured.
+    for rid in target_ids:
+        crud.record_reader_notification(
+            db,
+            rid,
+            kind="thread_comment",
+            title=THREAD_NOTIF_TITLE,
+            body=THREAD_NOTIF_BODY.replace("{post_title}", post.title or ""),
+            url=f"/posts/{post.slug}#comment-{new_comment_id}",
+        )
+    if not vapid_configured():
         return
     subscriptions = db.query(models.PushSubscription).filter(models.PushSubscription.reader_id.in_(target_ids)).all()
     if not subscriptions:
@@ -101,6 +112,16 @@ def _notify_replied_to(
     never fail because of notifications. Dead (404/410) subscriptions are retired
     via the shared dispatch helper. (DEC-064, TASK-137; DEC-072, TASK-145)
     """
+    # Persist to the durable reader inbox (independent of VAPID) so the replied-to
+    # reader sees the reply in-app even if the browser push is missed/unconfigured.
+    crud.record_reader_notification(
+        db,
+        parent_reader.id,
+        kind="reply",
+        title=REPLY_NOTIF_TITLE,
+        body=REPLY_NOTIF_BODY.replace("{post_title}", post.title or ""),
+        url=f"/posts/{post.slug}#comment-{parent_comment_id}",
+    )
     if not vapid_configured():
         return
     payload = {

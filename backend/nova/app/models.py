@@ -392,6 +392,43 @@ class CommentSubscription(Base):
     )
 
 
+class ReaderNotification(Base):
+    """A durable, in-app notification for a signed-in reader (DEC-160, TASK-192).
+
+    The blog's reader-facing notifications (new post in a followed
+    series/category, a reply to the reader's comment, a new comment on a
+    followed thread) are today delivered only as fire-and-forget browser Web
+    Push — a reader who misses the push (browser closed, second device, blocked
+    notifications) has no durable record of what they follow or what replied to
+    them. This table persists one row per reader-facing notification event so
+    a signed-in reader can review their activity in-app as a read/unread list,
+    each row deep-linking to the source post/comment. Additive table, no DB-level
+    FK (SQLite alembic can't add FK-carrying columns to existing tables, DEC-009);
+    integrity (unknown reader) is enforced at the API layer like the other reader
+    extension tables. Rows are written at the same dispatch points that fire the
+    push, so the inbox and the push stay in sync.
+    """
+
+    __tablename__ = "reader_notifications"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    reader_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
+    # kind ∈ {new_post, series_new_part, reply, thread_comment}; distinguishes
+    # the event source for iconography/filtering on the frontend.
+    kind: Mapped[str] = mapped_column(String(32), nullable=False, default="new_post")
+    title: Mapped[str] = mapped_column(String(200), nullable=False)
+    body: Mapped[str | None] = mapped_column(String(500))
+    # Deep-link to the source (post page / post + comment anchor) so tapping an
+    # inbox row navigates the reader to the thing they were notified about.
+    url: Mapped[str | None] = mapped_column(String(500))
+    read_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True, index=True)
+    created_at: Mapped[datetime | None] = mapped_column(
+        DateTime,
+        default=lambda: datetime.now(UTC),
+        index=True,
+    )
+
+
 class SeriesFollow(Base):
     """A reader following a series (DEC-132, TASK-178; notify control DEC-138/TASK-181).
 
