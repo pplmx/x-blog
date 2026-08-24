@@ -51,5 +51,6 @@
 		"unplugin-auto-import": "^21.1.0",
 		"vitest": "^4.1.10",
 		"vue-tsc": "^3.3.10"
-	}
+	},
+	"packageManager": "pnpm@10.0.0"
 }
