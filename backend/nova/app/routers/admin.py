@@ -320,6 +320,9 @@ def admin_calendar(
     grid.sort(key=lambda e: (e["date"] or "", e["id"]))
     unscheduled.sort(key=lambda e: e["id"])
     return {"month": month, "items": grid, "unscheduled": unscheduled}
+
+
+@router.get("/posts/{post_id}", response_model=dict)
 def admin_get_post(
     post_id: int,
     db: Session = Depends(get_db),
