@@ -2,7 +2,7 @@
   "ril_version": 1,
   "round": 164,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-08-24T02:12:26+00:00",
+  "updated_at": "2026-08-24T02:22:00+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -9543,10 +9543,37 @@
       "version": 1,
       "created_at": "2026-08-24T02:11:44+00:00",
       "updated_at": "2026-08-24T02:11:44+00:00",
-      "touched_round": 163,
+      "touched_round": 164,
       "title": "Milestone delivered: reader notification inbox (DEC-160 complete)",
       "rationale": "Feature-evolution gap-analysis milestone (SKILL 11.2; reader stakeholder). Every notification was fire-and-forget browser Web Push; a durable, auth-scoped inbox now makes follow/reply/thread activity retrievable in-app as a read/unread list with deep links. Delivered end to end: CHG-183 backend (additive reader_notifications table, retention-capped at 200/reader; persistence hooks kept in sync with the push at new-post publish + comment approval; GET /me/notifications + mark-read/read-all endpoints, reader-isolated; contract pytest incl. all four kinds) + CHG-184 frontend (/notifications page, unread nav badge poll, deep links, i18n, vitest 4/4, Playwright journey). Verifies: backend 1082 green (98.9% cov, ruff+pyright clean), frontend 1125 vitest green (biome clean on changed files; vue-tsc unchanged vs baseline), PG 18.4 migration chain up-to-head verified (see ISS-106/TASK-193). Completes the follow/reply/thread retrieval story next to push.",
       "alternatives_rejected": "Email/digest notifications (no mail infra, out of scope); unified admin notification center (moderation alerts already push; scope is reader-facing); scheduled digest grouping (out of scope)."
+    },
+    "DEC-162": {
+      "id": "DEC-162",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-24T02:21:59+00:00",
+      "updated_at": "2026-08-24T02:21:59+00:00",
+      "touched_round": 164,
+      "title": "Milestone: admin editorial calendar (post publishing plan view)",
+      "rationale": "Feature-evolution selection (SKILL 11.2 gap analysis; operator stakeholder). The admin can schedule posts via publish_at (DEC-148/TASK-187, DEC-150/TASK-187 author preview) and filter the posts table by status, but there is no date-oriented view of the publishing plan — an operator cannot see at a glance which posts are live/scheduled/draft on which day. A month-grid editorial calendar (published/scheduled/draft markers per day, click into the editor) turns the schedule into a visible, navigable surface. Users: the blog operator/author. Why now: scheduling + author-preview + draft-autosave are done; the scheduling visualization is the missing closing surface. Acceptance (1 sentence): an admin opens a Calendar page, sees a month grid with each post placed on its live/scheduled/draft date, and clicks any post to open the editor. Scope (vertical slice): backend month-bucketed posts endpoint (published/scheduled/draft classification + date) + pytest; then an admin calendar page (month grid, navigation, today highlight, status coloring, click-to-edit) + i18n + vitest + e2e smoke.",
+      "alternatives_rejected": "Per-kind reader notification mute (net-new but borderline 'add options/buttons' per value gate; weaker as a standalone milestone); reader reading-insights dashboard (backend stats already exist and are unused — surfacing them is thin for a milestone; record as follow-up task); email/digest notifications (no mail infra, out of scope)."
+    },
+    "TASK-194": {
+      "id": "TASK-194",
+      "type": "task",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-24T02:21:59+00:00",
+      "updated_at": "2026-08-24T02:21:59+00:00",
+      "touched_round": 164,
+      "category": "core-feature",
+      "severity": 0.6,
+      "confidence": 0.9,
+      "effort": 4.0,
+      "unlock_factor": 1.0,
+      "title": "Admin editorial calendar: month-bucketed posts endpoint (published/scheduled/draft per day, auth + pytest), then an admin Calendar page (month grid, prev/next navigation, today highlight, status-colored post chips, click-to-edit) + i18n + vitest + e2e smoke"
     }
   },
   "edges": [
@@ -13801,6 +13828,18 @@
       "to": "DEC-160",
       "type": "supersedes",
       "created_at": "2026-08-24T02:11:44+00:00"
+    },
+    {
+      "from": "DEC-162",
+      "to": "TASK-194",
+      "type": "governs",
+      "created_at": "2026-08-24T02:21:59+00:00"
+    },
+    {
+      "from": "DEC-162",
+      "to": "DEC-161",
+      "type": "supersedes",
+      "created_at": "2026-08-24T02:22:00+00:00"
     }
   ]
 }
