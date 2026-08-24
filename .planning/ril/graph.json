@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 161,
+  "round": 164,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-08-23T05:33:30+00:00",
+  "updated_at": "2026-08-24T02:12:26+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -11,7 +11,7 @@
       "version": 1,
       "created_at": "2026-08-06T13:23:41+00:00",
       "updated_at": "2026-08-06T13:23:41+00:00",
-      "touched_round": 103,
+      "touched_round": 163,
       "title": "backend-nova",
       "description": "FastAPI Python 3.14 backend at backend/nova; SQLAlchemy ORM; routers in app/routers, crud.py business logic, 656 lines"
     },
@@ -9447,10 +9447,106 @@
       "version": 1,
       "created_at": "2026-08-23T05:33:29+00:00",
       "updated_at": "2026-08-23T05:33:29+00:00",
-      "touched_round": 161,
+      "touched_round": 162,
       "title": "Milestone delivered: post revision history (DEC-158 complete)",
       "rationale": "Post revision history delivered end to end (CHG-181 backend + CHG-182 frontend). Every admin create/update snapshots the post into post_revisions (retention-capped at 100/post); admin endpoints list revisions, fetch one, and restore it (restore is itself recorded as a snapshot). The editor has a collapsible Version-history panel (list + restore) that reloads the live post on restore. Verifies: backend 1069 green (94.4% cov, ruff+pyright clean), frontend 1121 vitest green (vue-tsc+biome clean), revision E2E green against production build + real backend. Completes the authoring story (auto-save + undo).",
       "alternatives_rejected": "Real-time collaborative/cloud editing (large infra, out of scope); git-style full diffing UI (overkill for restore); global trash/soft-delete (out of scope)."
+    },
+    "DEC-160": {
+      "id": "DEC-160",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-23T08:13:55+00:00",
+      "updated_at": "2026-08-23T08:13:55+00:00",
+      "touched_round": 163,
+      "title": "Milestone: reader notification inbox",
+      "rationale": "Feature-evolution selection (SKILL 11.2 gap analysis; reader stakeholder). Every notification today is fire-and-forget browser Web Push (new-post DEC-076, series-follow DEC-132, category-follow DEC-140, reply DEC-064, thread-follow DEC-078). A reader who misses a push, uses a second device, or has notifications disabled has no durable in-app record of what they follow or what replied to them. A persistent, auth-scoped notification inbox (read/unread) closes the gap by making every follow/reply/thread event retrievable in the browser. Users: the signed-in reader. Why now: the follow+notify model is feature-complete; a durable inbox is the missing retrieval surface. Acceptance (1 sentence): a signed-in reader opens a Notifications page and sees their follow/reply/thread activity as a read/unread list, each deep-linking to the source. Scope (vertical slices): backend reader_notifications table (additive, DEC-009) + persistence hooks at the existing dispatch points + auth-scoped list/mark-read endpoints + pytest; then a Notifications page + unread badge + i18n + vitest + E2E.",
+      "alternatives_rejected": "Email/digest notifications (out of scope, no mail infra); a unified cross-user notification center for admins (admin moderation alerts already push; scope is reader-facing); scheduled digest grouping (out of scope)."
+    },
+    "TASK-192": {
+      "id": "TASK-192",
+      "type": "task",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-08-23T08:13:59+00:00",
+      "updated_at": "2026-08-24T02:11:44+00:00",
+      "touched_round": 163,
+      "category": "core-feature",
+      "severity": 0.6,
+      "confidence": 0.9,
+      "effort": 4.0,
+      "unlock_factor": 1.0,
+      "title": "Reader notification inbox: persist every reader-facing notification (new post in a followed series/category, reply to the reader's comment, new comment on a followed thread) into a reader_notifications table at the existing dispatch points, and expose auth-scoped GET /api/reader/me/notifications (list, read/unread) + mark-read endpoint (pytest); then a Notifications page with unread badge + deep links + mark-as-read + i18n + vitest + E2E"
+    },
+    "ISS-106": {
+      "id": "ISS-106",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-08-24T02:01:11+00:00",
+      "updated_at": "2026-08-24T02:11:44+00:00",
+      "touched_round": 163,
+      "title": "Migration chain fails on PostgreSQL: Boolean columns declared with SQLite-style server_default text('1') (series_follows.notify, category_follows.notify)"
+    },
+    "TASK-193": {
+      "id": "TASK-193",
+      "type": "task",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-08-24T02:01:32+00:00",
+      "updated_at": "2026-08-24T02:11:44+00:00",
+      "touched_round": 163,
+      "category": "correctness",
+      "severity": 0.8,
+      "effort": 1.0,
+      "confidence": 1.0,
+      "title": "Fix PG-incompatible boolean server defaults in migrations + models: switch server_default text('1') to sa.true()/true() for notify columns (series_follows, category_follows) so the alembic chain runs on PostgreSQL (verified: full chain now upgrades head on PG 18.4)"
+    },
+    "CHG-183": {
+      "id": "CHG-183",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-24T02:07:45+00:00",
+      "updated_at": "2026-08-24T02:07:45+00:00",
+      "touched_round": 163,
+      "commit": "27aed1f",
+      "title": "Reader notification inbox backend: reader_notifications table + persistence hooks + auth-scoped list/mark-read endpoints + pytest (DEC-160, TASK-192)"
+    },
+    "CHG-184": {
+      "id": "CHG-184",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-24T02:11:12+00:00",
+      "updated_at": "2026-08-24T02:11:12+00:00",
+      "touched_round": 163,
+      "commit": "846e7c0",
+      "title": "Reader notification inbox frontend: /notifications page + unread nav badge + useApi helpers + i18n + vitest + E2E (DEC-160, TASK-192)"
+    },
+    "CHG-185": {
+      "id": "CHG-185",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-24T02:11:12+00:00",
+      "updated_at": "2026-08-24T02:11:12+00:00",
+      "touched_round": 163,
+      "commit": "d9841c3",
+      "title": "Fix Postgres boolean server defaults in series_follows/category_follows migrations + ORM (ISS-106, TASK-193)"
+    },
+    "DEC-161": {
+      "id": "DEC-161",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-24T02:11:44+00:00",
+      "updated_at": "2026-08-24T02:11:44+00:00",
+      "touched_round": 163,
+      "title": "Milestone delivered: reader notification inbox (DEC-160 complete)",
+      "rationale": "Feature-evolution gap-analysis milestone (SKILL 11.2; reader stakeholder). Every notification was fire-and-forget browser Web Push; a durable, auth-scoped inbox now makes follow/reply/thread activity retrievable in-app as a read/unread list with deep links. Delivered end to end: CHG-183 backend (additive reader_notifications table, retention-capped at 200/reader; persistence hooks kept in sync with the push at new-post publish + comment approval; GET /me/notifications + mark-read/read-all endpoints, reader-isolated; contract pytest incl. all four kinds) + CHG-184 frontend (/notifications page, unread nav badge poll, deep links, i18n, vitest 4/4, Playwright journey). Verifies: backend 1082 green (98.9% cov, ruff+pyright clean), frontend 1125 vitest green (biome clean on changed files; vue-tsc unchanged vs baseline), PG 18.4 migration chain up-to-head verified (see ISS-106/TASK-193). Completes the follow/reply/thread retrieval story next to push.",
+      "alternatives_rejected": "Email/digest notifications (no mail infra, out of scope); unified admin notification center (moderation alerts already push; scope is reader-facing); scheduled digest grouping (out of scope)."
     }
   },
   "edges": [
@@ -13645,6 +13741,66 @@
       "to": "DEC-158",
       "type": "supersedes",
       "created_at": "2026-08-23T05:33:30+00:00"
+    },
+    {
+      "from": "DEC-160",
+      "to": "TASK-192",
+      "type": "governs",
+      "created_at": "2026-08-23T08:14:01+00:00"
+    },
+    {
+      "from": "DEC-160",
+      "to": "DEC-159",
+      "type": "supersedes",
+      "created_at": "2026-08-23T08:14:01+00:00"
+    },
+    {
+      "from": "ISS-106",
+      "to": "COMP-001",
+      "type": "located_in",
+      "created_at": "2026-08-24T02:02:02+00:00"
+    },
+    {
+      "from": "TASK-193",
+      "to": "ISS-106",
+      "type": "addresses",
+      "created_at": "2026-08-24T02:02:02+00:00"
+    },
+    {
+      "from": "CHG-183",
+      "to": "TASK-192",
+      "type": "implements",
+      "created_at": "2026-08-24T02:07:45+00:00"
+    },
+    {
+      "from": "CHG-184",
+      "to": "TASK-192",
+      "type": "implements",
+      "created_at": "2026-08-24T02:11:12+00:00"
+    },
+    {
+      "from": "CHG-185",
+      "to": "TASK-193",
+      "type": "implements",
+      "created_at": "2026-08-24T02:11:12+00:00"
+    },
+    {
+      "from": "CHG-185",
+      "to": "ISS-106",
+      "type": "resolves",
+      "created_at": "2026-08-24T02:11:12+00:00"
+    },
+    {
+      "from": "DEC-161",
+      "to": "TASK-192",
+      "type": "governs",
+      "created_at": "2026-08-24T02:11:44+00:00"
+    },
+    {
+      "from": "DEC-161",
+      "to": "DEC-160",
+      "type": "supersedes",
+      "created_at": "2026-08-24T02:11:44+00:00"
     }
   ]
 }
