@@ -2,7 +2,7 @@
   "ril_version": 1,
   "round": 169,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-08-24T18:25:16+00:00",
+  "updated_at": "2026-08-24T18:34:53+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -22,7 +22,7 @@
       "version": 1,
       "created_at": "2026-08-06T13:23:41+00:00",
       "updated_at": "2026-08-06T13:23:41+00:00",
-      "touched_round": 167,
+      "touched_round": 169,
       "title": "frontend-aura",
       "description": "Nuxt 4 Vue 3 TypeScript frontend at frontend/aura; composables; admin pages; e2e Playwright; biome lint"
     },
@@ -10299,6 +10299,17 @@
       "title": "Defer ISS-113 per-reader prune N+1 in the new-post fan-out",
       "rationale": "record_reader_notification commits + prunes per reader (O(2n) queries) inside record_new_post_notifications' loop. Pre-existing since DEC-160, not a DEC-171 regression (the prefs lookup is batched). Fan-outs are small in practice; changing to one batched commit + window-function prune across SQLite/Postgres risks the freshly-tested fan-out path for marginal gain. Revisit if follower fan-outs grow.",
       "alternatives_rejected": "Declined a per-reader batch prune without window functions (still O(n) queries). Declined changing commit semantics mid-loop (best-effort partial fan-out is intended behavior)."
+    },
+    "ISS-114": {
+      "id": "ISS-114",
+      "type": "issue",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-24T18:34:53+00:00",
+      "updated_at": "2026-08-24T18:34:53+00:00",
+      "touched_round": 169,
+      "title": "series_new_part notification kind is dead — backend never emits it but the frontend labels/iconships it",
+      "summary": "record_new_post_notifications writes kind='new_post' for BOTH series-follow and category-follow new posts, but frontend kindIcon/kindLabel and i18n (notifications.kind.series_new_part = '系列更新') already handle a distinct series_new_part kind that is never produced. Net effect: a series-follow 'new part' shows as '新文章发布' instead of '系列更新'. Fixing properly needs a dedup decision (reader following both series AND category of a post: one row preferring series_new_part vs two rows) — record before implementing. Found during DEC-171/172 analysis; no change made."
     }
   },
   "edges": [
@@ -14805,6 +14816,12 @@
       "to": "ISS-107",
       "type": "resolves",
       "created_at": "2026-08-24T18:17:18+00:00"
+    },
+    {
+      "from": "ISS-114",
+      "to": "COMP-002",
+      "type": "located_in",
+      "created_at": "2026-08-24T18:34:53+00:00"
     }
   ]
 }
