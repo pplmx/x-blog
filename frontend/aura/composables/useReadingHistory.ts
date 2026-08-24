@@ -13,11 +13,7 @@
  */
 
 import { computed, ref } from "vue";
-import {
-	clearReaderHistory,
-	fetchReaderHistory,
-	fetchReaderHistoryStats,
-} from "./useApi";
+import { clearReaderHistory, fetchReaderHistory, fetchReaderHistoryStats } from "./useApi";
 import { useReaderAuth } from "./useReaderAuth";
 import { useRecentlyViewed } from "./useRecentlyViewed";
 
@@ -33,6 +29,12 @@ export interface ReadingStats {
 	totalReadingMinutes: number;
 	/** Epoch ms of the most recent view (server-only; undefined for guests). */
 	lastViewedAt?: number;
+	/** Consecutive active days (server-only; 0 for guests). DEC-169/TASK-201. */
+	currentStreak?: number;
+	/** Longest run of consecutive active days (server-only). DEC-169/TASK-201. */
+	longestStreak?: number;
+	/** Last 52 weeks of per-day read counts (server-only). DEC-169/TASK-201. */
+	activity?: { date: string; count: number }[];
 }
 
 /** HISTORY page limit pulled from the API (newest-first, single page). */
@@ -87,6 +89,9 @@ export function useReadingHistory() {
 					totalPosts: sdata.total_posts,
 					totalReadingMinutes: sdata.total_reading_minutes,
 					lastViewedAt: toEpoch(sdata.last_viewed_at),
+					currentStreak: sdata.current_streak ?? 0,
+					longestStreak: sdata.longest_streak ?? 0,
+					activity: sdata.activity ?? [],
 				};
 			}
 		} catch {

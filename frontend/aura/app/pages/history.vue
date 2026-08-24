@@ -8,7 +8,7 @@
  * history (synced across devices); guests use the client-side localStorage
  * trail (see composables/useReadingHistory).
  */
-import { onMounted, ref } from "vue";
+import { computed, onMounted, ref } from "vue";
 import { type HistoryEntry, useReadingHistory } from "~~/composables/useReadingHistory";
 import { useSeo } from "~~/composables/useSeo";
 
@@ -71,6 +71,62 @@ function lastActivityLabel(): string {
 	});
 	return fmt.format(d);
 }
+
+// Reading gamification (DEC-169/TASK-201): a GitHub-style activity heatmap of
+// the last 52 weeks plus the current/longest reading streak. The server sends
+// ascending UTC per-day counts (zeros included); we align the first column to
+// a Monday and render week columns of 7 day-cells, shaded by read-count
+// intensity (relative to the busiest day in the window).
+
+interface ActivityCell {
+	date: string;
+	count: number;
+}
+
+const ACTIVITY_DAYS = 364;
+
+/** Busiest day's count in the window (>= 1 so single-read days still shade). */
+const maxActivity = computed(() =>
+	Math.max(1, ...(stats.value?.activity ?? []).map((a) => a.count)),
+);
+
+/** Week columns (Monday-first) of cells; null pads the leading partial week. */
+const heatmapWeeks = computed<(ActivityCell | null)[][]>(() => {
+	const acts = stats.value?.activity ?? [];
+	if (!acts.length) return [];
+	// The server's first entry may not fall on a Monday; pad the front so
+	// columns align and today sits at the end (acts are ascending, end today).
+	const mondayIndex = (new Date(`${acts[0].date}T00:00:00Z`).getUTCDay() + 6) % 7;
+	const cells: (ActivityCell | null)[] = [];
+	for (let i = 0; i < mondayIndex; i++) cells.push(null);
+	for (const a of acts) cells.push(a);
+	const weeks: (ActivityCell | null)[][] = [];
+	for (let i = 0; i < cells.length; i += 7) weeks.push(cells.slice(i, i + 7));
+	return weeks;
+});
+
+/** Shade a heatmap cell by relative read-count intensity that day. */
+function heatCellClass(cell: ActivityCell | null): string {
+	if (!cell || cell.count === 0) return "bg-gray-100 dark:bg-gray-800";
+	const pct = cell.count / maxActivity.value;
+	if (pct < 0.25) return "bg-blue-200 dark:bg-blue-900";
+	if (pct < 0.5) return "bg-blue-400 dark:bg-blue-700";
+	if (pct < 0.75) return "bg-indigo-500 dark:bg-indigo-600";
+	return "bg-violet-600 dark:bg-violet-500";
+}
+
+/** Count label shown in a heatmap cell tooltip. */
+function heatCellLabel(cell: ActivityCell | null): string {
+	if (!cell) return "";
+	const d = new Date(`${cell.date}T00:00:00Z`);
+	const fmt = new Intl.DateTimeFormat(locale.value === "zh" ? "zh-CN" : "en-US", {
+		year: "numeric",
+		month: "short",
+		day: "numeric",
+	});
+	const posts = t("history.activityPosts", { count: cell.count });
+	return `${fmt.format(d)}：${posts}`;
+}
 </script>
 
 <template>
@@ -116,19 +172,64 @@ function lastActivityLabel(): string {
     <!-- Reading summary (server-backed, signed-in readers only) -->
     <div
       v-if="stats"
-      class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8"
+      class="mb-8"
     >
-      <div class="p-5 rounded-2xl border border-gray-100 dark:border-gray-800 bg-gradient-to-br from-violet-50 to-transparent dark:from-violet-900/20">
-        <p class="text-xs font-medium text-gray-400 dark:text-gray-500 uppercase tracking-wide mb-1">{{ t('history.postsRead') }}</p>
-        <p class="text-3xl font-bold text-gray-900 dark:text-gray-100">{{ stats.totalPosts }}</p>
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+        <div class="p-5 rounded-2xl border border-gray-100 dark:border-gray-800 bg-gradient-to-br from-violet-50 to-transparent dark:from-violet-900/20">
+          <p class="text-xs font-medium text-gray-400 dark:text-gray-500 uppercase tracking-wide mb-1">{{ t('history.postsRead') }}</p>
+          <p class="text-3xl font-bold text-gray-900 dark:text-gray-100">{{ stats.totalPosts }}</p>
+        </div>
+        <div class="p-5 rounded-2xl border border-gray-100 dark:border-gray-800 bg-gradient-to-br from-blue-50 to-transparent dark:from-blue-900/20">
+          <p class="text-xs font-medium text-gray-400 dark:text-gray-500 uppercase tracking-wide mb-1">{{ t('history.readingMinutes') }}</p>
+          <p class="text-3xl font-bold text-gray-900 dark:text-gray-100">{{ stats.totalReadingMinutes }}</p>
+        </div>
+        <div class="p-5 rounded-2xl border border-gray-100 dark:border-gray-800 bg-gradient-to-br from-emerald-50 to-transparent dark:from-emerald-900/20">
+          <p class="text-xs font-medium text-gray-400 dark:text-gray-500 uppercase tracking-wide mb-1">{{ t('history.lastActivity') }}</p>
+          <p class="text-base sm:text-lg font-semibold text-gray-900 dark:text-gray-100 leading-snug">{{ lastActivityLabel() }}</p>
+        </div>
+        <div class="p-5 rounded-2xl border border-gray-100 dark:border-gray-800 bg-gradient-to-br from-amber-50 to-transparent dark:from-amber-900/20">
+          <p class="text-xs font-medium text-gray-400 dark:text-gray-500 uppercase tracking-wide mb-1">{{ t('history.currentStreak') }}</p>
+          <p class="text-3xl font-bold text-gray-900 dark:text-gray-100">
+            {{ stats.currentStreak ?? 0 }}
+            <span class="text-base font-medium text-gray-400 dark:text-gray-500 ml-1">{{ t('history.days') }}</span>
+          </p>
+          <p class="text-xs font-medium text-gray-400 dark:text-gray-500 mt-1">
+            {{ t('history.longestStreak', { count: stats.longestStreak ?? 0 }) }}
+          </p>
+        </div>
       </div>
-      <div class="p-5 rounded-2xl border border-gray-100 dark:border-gray-800 bg-gradient-to-br from-blue-50 to-transparent dark:from-blue-900/20">
-        <p class="text-xs font-medium text-gray-400 dark:text-gray-500 uppercase tracking-wide mb-1">{{ t('history.readingMinutes') }}</p>
-        <p class="text-3xl font-bold text-gray-900 dark:text-gray-100">{{ stats.totalReadingMinutes }}</p>
-      </div>
-      <div class="p-5 rounded-2xl border border-gray-100 dark:border-gray-800 bg-gradient-to-br from-emerald-50 to-transparent dark:from-emerald-900/20">
-        <p class="text-xs font-medium text-gray-400 dark:text-gray-500 uppercase tracking-wide mb-1">{{ t('history.lastActivity') }}</p>
-        <p class="text-base sm:text-lg font-semibold text-gray-900 dark:text-gray-100 leading-snug">{{ lastActivityLabel() }}</p>
+
+      <!-- 52-week activity heatmap (DEC-169/TASK-201) -->
+      <div
+        v-if="heatmapWeeks.length"
+        class="p-5 rounded-2xl border border-gray-100 dark:border-gray-800 bg-gradient-to-br from-blue-50/60 to-transparent dark:from-blue-900/15"
+      >
+        <p class="text-xs font-medium text-gray-400 dark:text-gray-500 uppercase tracking-wide mb-3">{{ t('history.activityTitle') }}</p>
+        <div class="overflow-x-auto pb-1">
+          <div
+            class="grid grid-flow-col auto-cols-[11px] gap-[3px] w-fit"
+            style="grid-template-rows: repeat(7, 11px)"
+          >
+            <template v-for="(week, wi) in heatmapWeeks" :key="wi">
+              <div
+                v-for="(cell, ci) in week"
+                :key="ci"
+                class="h-[11px] w-[11px] rounded-[2px]"
+                :class="heatCellClass(cell)"
+                :title="heatCellLabel(cell)"
+              />
+            </template>
+          </div>
+        </div>
+        <div class="mt-2 flex items-center gap-1.5 text-xs text-gray-400 dark:text-gray-500">
+          <span class="mr-1">{{ t('history.less') }}</span>
+          <span class="h-[11px] w-[11px] rounded-[2px] bg-gray-100 dark:bg-gray-800" />
+          <span class="h-[11px] w-[11px] rounded-[2px] bg-blue-200 dark:bg-blue-900" />
+          <span class="h-[11px] w-[11px] rounded-[2px] bg-blue-400 dark:bg-blue-700" />
+          <span class="h-[11px] w-[11px] rounded-[2px] bg-indigo-500 dark:bg-indigo-600" />
+          <span class="h-[11px] w-[11px] rounded-[2px] bg-violet-600 dark:bg-violet-500" />
+          <span class="ml-1">{{ t('history.more') }}</span>
+        </div>
       </div>
     </div>
 

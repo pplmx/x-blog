@@ -1342,6 +1342,12 @@ export interface ReaderHistoryStats {
 	total_reading_minutes: number;
 	last_viewed_at?: string | null;
 	recent: ReaderHistoryItem[];
+	/** Consecutive active days ending today (or yesterday) — DEC-169. */
+	current_streak?: number;
+	/** Longest run of consecutive active days anywhere (DEC-169). */
+	longest_streak?: number;
+	/** Last 52 weeks of per-day read counts (UTC, ascending, zeros included). */
+	activity?: { date: string; count: number }[];
 }
 
 export interface SeriesProgress {

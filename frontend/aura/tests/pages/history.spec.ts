@@ -130,6 +130,45 @@ describe("Reading-history page (TASK-170)", () => {
 		expect(wrapper.text()).toContain("暂无记录");
 	});
 
+	it("renders the reading streak card with current and longest days (TASK-201)", () => {
+		mockStats.value = {
+			totalPosts: 4,
+			totalReadingMinutes: 37,
+			currentStreak: 3,
+			longestStreak: 12,
+		};
+		const wrapper = mountHistory();
+		expect(wrapper.text()).toContain("连续阅读");
+		expect(wrapper.text()).toContain("3");
+		expect(wrapper.text()).toContain("最长 12 天");
+	});
+
+	it("renders the 52-week activity heatmap with shaded day cells (TASK-201)", () => {
+		mockStats.value = {
+			totalPosts: 4,
+			totalReadingMinutes: 37,
+			activity: [
+				{ date: "2026-08-22", count: 1 },
+				{ date: "2026-08-23", count: 3 },
+			],
+		};
+		const wrapper = mountHistory();
+		expect(wrapper.text()).toContain("阅读活跃度（近一年）");
+		// A day cell carries a tooltip with the date + localized count (padding
+		// cells on the leading partial week have an empty title and are skipped).
+		const tooltipCells = wrapper
+			.findAll("[title]")
+			.filter((el) => (el.attributes("title") ?? "") !== "");
+		expect(tooltipCells.length).toBeGreaterThan(0);
+		expect(tooltipCells[0].attributes("title")).toContain("篇");
+	});
+
+	it("hides the heatmap when there is no activity data (TASK-201)", () => {
+		mockStats.value = { totalPosts: 0, totalReadingMinutes: 0 };
+		const wrapper = mountHistory();
+		expect(wrapper.text()).not.toContain("阅读活跃度（近一年）");
+	});
+
 	it("hides reading-summary cards when no stats (guests)", () => {
 		const wrapper = mountHistory();
 		expect(wrapper.text()).not.toContain("已读文章");

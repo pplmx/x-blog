@@ -117,4 +117,32 @@ describe("useReadingHistory (TASK-170)", () => {
 		const b = useReadingHistory();
 		expect(b.serverEnabled.value).toBe(true);
 	});
+
+	it("maps streak + activity fields from the server stats (TASK-201)", async () => {
+		authRef.value = true;
+		fetchHistory.mockResolvedValue({ items: [], total: 0 });
+		fetchStats.mockResolvedValue({
+			total_posts: 3,
+			total_reading_minutes: 40,
+			current_streak: 2,
+			longest_streak: 6,
+			activity: [
+				{ date: "2026-08-22", count: 1 },
+				{ date: "2026-08-23", count: 3 },
+			],
+			recent: [],
+		});
+		const { load, stats } = useReadingHistory();
+		await load();
+		expect(stats.value).toMatchObject({
+			totalPosts: 3,
+			totalReadingMinutes: 40,
+			currentStreak: 2,
+			longestStreak: 6,
+			activity: [
+				{ date: "2026-08-22", count: 1 },
+				{ date: "2026-08-23", count: 3 },
+			],
+		});
+	});
 });

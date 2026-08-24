@@ -17,6 +17,13 @@
 		"lastActivity": "Latest activity",
 		"noActivity": "No recent reads",
 		"searchPlaceholder": "Search your reading history…",
-		"noSearchResults": "No past reads match that search"
+		"noSearchResults": "No past reads match that search",
+		"currentStreak": "Current streak",
+		"days": "days",
+		"longestStreak": "Longest: {count} days",
+		"activityTitle": "Reading activity (last 12 months)",
+		"less": "Less",
+		"more": "More",
+		"activityPosts": "{count} posts"
 	}
 }
