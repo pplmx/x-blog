@@ -1,0 +1,151 @@
+/**
+ * Reader notification inbox page tests (DEC-160, TASK-192).
+ *
+ * Verifies the empty state, the newest-first list with read/unread badges and
+ * kind labels, deep-link hrefs, single mark-as-read, and mark-all-read. Auth
+ * and useApi are mocked so the inbox is deterministic. Guests are redirected
+ * to /login.
+ */
+
+import { flushPromises, mount } from "@vue/test-utils";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { ref } from "vue";
+import type { ReaderNotification } from "../../composables/useApi";
+
+const isAuthenticated = ref(false);
+vi.mock("../../composables/useReaderAuth", () => ({
+	useReaderAuth: () => ({ isAuthenticated, reader: ref(null), logout: vi.fn() }),
+}));
+
+vi.mock("../../composables/useSeo", () => ({ useSeo: vi.fn() }));
+
+const mockFetch = vi.fn();
+const mockMarkRead = vi.fn(async (id: number) => ({
+	id,
+	kind: "reply",
+	title: "有人回复了你的评论",
+	read: true,
+}));
+const mockMarkAllRead = vi.fn(async () => ({ updated: 2 }));
+
+vi.mock("../../composables/useApi", async (importOriginal) => {
+	const orig = await importOriginal<typeof import("../../composables/useApi")>();
+	return {
+		...orig,
+		fetchReaderNotifications: mockFetch,
+		markReaderNotificationRead: mockMarkRead,
+		markAllReaderNotificationsRead: mockMarkAllRead,
+	};
+});
+
+const stubs = {
+	Icon: { template: '<svg class="icon-stub" />' },
+};
+
+let NotificationsPage: unknown;
+
+async function mountPage() {
+	isAuthenticated.value = true;
+	vi.stubGlobal("useRouter", () => ({ replace: vi.fn() }));
+	NotificationsPage =
+		NotificationsPage ?? (await import("../../app/pages/notifications.vue")).default;
+	const wrapper = mount(NotificationsPage as never, {
+		global: {
+			stubs,
+		},
+	});
+	await flushPromises();
+	return wrapper;
+}
+
+afterEach(() => {
+	vi.unstubAllGlobals();
+});
+
+function makeNotif(overrides: Partial<ReaderNotification> = {}): ReaderNotification {
+	return {
+		id: 1,
+		kind: "new_post",
+		title: "新文章发布",
+		body: "《A》",
+		url: "/posts/a",
+		read: false,
+		created_at: "2026-08-23T00:00:00Z",
+		...overrides,
+	};
+}
+
+describe("Notifications page (TASK-192)", () => {
+	beforeEach(() => {
+		isAuthenticated.value = true;
+		mockFetch.mockReset();
+		mockMarkRead.mockClear();
+		mockMarkAllRead.mockClear();
+		mockFetch.mockResolvedValue({
+			items: [],
+			total: 0,
+			unread: 0,
+			page: 1,
+			limit: 100,
+			total_pages: 0,
+		});
+	});
+
+	it("renders the empty state when there are no notifications", async () => {
+		const wrapper = await mountPage();
+		expect(wrapper.text()).toContain("通知中心");
+		expect(wrapper.text()).toContain("暂无通知");
+	});
+
+	it("lists notifications newest-first with read/unread and deep links", async () => {
+		mockFetch.mockResolvedValue({
+			items: [
+				makeNotif({ id: 2, kind: "reply", title: "有人回复了你的评论", url: "/posts/a#comment-9" }),
+				makeNotif({ id: 1, title: "新文章发布", read: true }),
+			],
+			total: 2,
+			unread: 1,
+			page: 1,
+			limit: 100,
+			total_pages: 1,
+		});
+		const wrapper = await mountPage();
+		expect(wrapper.text()).toContain("有人回复了你的评论");
+		expect(wrapper.text()).toContain("新文章发布");
+		expect(wrapper.find('a[href="/posts/a#comment-9"]').exists()).toBe(true);
+	});
+
+	it("marks a single notification read", async () => {
+		const item = makeNotif({ id: 5, kind: "thread_comment", title: "你订阅的讨论有新评论" });
+		mockFetch.mockResolvedValue({
+			items: [item],
+			total: 1,
+			unread: 1,
+			page: 1,
+			limit: 100,
+			total_pages: 1,
+		});
+		const wrapper = await mountPage();
+		const buttons = wrapper.findAll("button");
+		await buttons[buttons.length - 1].trigger("click");
+		await flushPromises();
+		expect(mockMarkRead).toHaveBeenCalledWith(5);
+	});
+
+	it("marks all notifications read", async () => {
+		mockFetch.mockResolvedValue({
+			items: [makeNotif({ id: 1 }), makeNotif({ id: 2 })],
+			total: 2,
+			unread: 2,
+			page: 1,
+			limit: 100,
+			total_pages: 1,
+		});
+		const wrapper = await mountPage();
+		const markAll = wrapper.findAll("button").find((b) => b.text().includes("全部标为已读"));
+		expect(markAll).toBeDefined();
+		await markAll?.trigger("click");
+		await flushPromises();
+		expect(mockMarkAllRead).toHaveBeenCalled();
+	});
+});

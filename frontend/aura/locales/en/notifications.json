@@ -1,0 +1,21 @@
+{
+	"notifications": {
+		"seoTitle": "Notifications — X-Blog",
+		"seoDesc": "See activity from your follows and replies.",
+		"title": "Notifications",
+		"empty": "No notifications yet",
+		"emptyDesc": "When something you follow updates, or someone replies to you, it will show up here.",
+		"markAllRead": "Mark all as read",
+		"markRead": "Mark as read",
+		"read": "Read",
+		"unread": "Unread",
+		"unreadBadge": "unread",
+		"now": "Just now",
+		"kind": {
+			"new_post": "New post published",
+			"series_new_part": "Series updated",
+			"reply": "You have a reply",
+			"thread_comment": "New comment on a thread you follow"
+		}
+	}
+}

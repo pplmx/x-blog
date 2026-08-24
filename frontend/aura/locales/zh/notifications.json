@@ -1,0 +1,21 @@
+{
+	"notifications": {
+		"seoTitle": "通知中心 — X-Blog",
+		"seoDesc": "查看你的关注与回复动态。",
+		"title": "通知中心",
+		"empty": "暂无通知",
+		"emptyDesc": "当你关注的内容有新动态、有人回复你时，会显示在这里。",
+		"markAllRead": "全部标为已读",
+		"markRead": "标为已读",
+		"read": "已读",
+		"unread": "未读",
+		"unreadBadge": "未读",
+		"now": "刚刚",
+		"kind": {
+			"new_post": "新文章发布",
+			"series_new_part": "系列更新",
+			"reply": "收到回复",
+			"thread_comment": "讨论有新评论"
+		}
+	}
+}

@@ -36,6 +36,7 @@
 - 📡 **RSS & Atom 订阅** - 可订阅全站源，也可按分类/标签订阅定向源，并支持自动发现（DEC-074）
 - 🔔 **新文章推送通知** - 关注某个分类（或全部新文章），作者发布时通过浏览器推送提醒你（DEC-076）
 - 💬 **评论讨论订阅** - 订阅某篇文章的评论讨论，新评论通过审核后通过浏览器推送提醒你（DEC-078）
+- 🔔 **读者通知中心** - 已登录读者可在站内查看（已读/未读）关注系列/分类的新文章、他人对自己评论的回复、以及所订阅讨论的新评论——即使错过浏览器推送或未开启 Web Push 也能看到（DEC-160）
 
 ## 🚀 快速开始
 
@@ -185,18 +186,26 @@ docker-compose logs -f
 读者账号是云端收藏同步的 identity 层（与 admin JWT 通过 `aud` 严格隔离，见
 `docs/security.md`）；注册默认限流 5/min/IP。
 
-| 方法   | 路径                            | 说明                                    |
-| ------ | ------------------------------- | --------------------------------------- |
-| POST   | `/api/reader/register`          | 创建读者账号（返回读者 JWT，自动登录）  |
-| POST   | `/api/reader/login`             | 读者登录（邮箱 + 密码）                 |
-| GET    | `/api/reader/me`                | 当前读者资料                            |
-| GET    | `/api/reader/me/bookmarks`      | 云端收藏列表（仅公开可见的文章）        |
-| PUT    | `/api/reader/me/bookmarks/{id}` | 添加收藏（幂等：新建 201 / 已存在 200） |
-| DELETE | `/api/reader/me/bookmarks/{id}` | 移除收藏（幂等 204）                    |
-| GET    | `/api/reader/me/comments`       | 读者自己的已审核评论历史（DEC-062）     |
+| 方法   | 路径                                     | 说明                                       |
+| ------ | ---------------------------------------- | ------------------------------------------ |
+| POST   | `/api/reader/register`                   | 创建读者账号（返回读者 JWT，自动登录）     |
+| POST   | `/api/reader/login`                      | 读者登录（邮箱 + 密码）                    |
+| GET    | `/api/reader/me`                         | 当前读者资料                               |
+| GET    | `/api/reader/me/bookmarks`               | 云端收藏列表（仅公开可见的文章）           |
+| PUT    | `/api/reader/me/bookmarks/{id}`          | 添加收藏（幂等：新建 201 / 已存在 200）    |
+| DELETE | `/api/reader/me/bookmarks/{id}`          | 移除收藏（幂等 204）                       |
+| GET    | `/api/reader/me/comments`                | 读者自己的已审核评论历史（DEC-062）        |
+| GET    | `/api/reader/me/notifications`           | 读者的持久通知中心（已读/未读）（DEC-160） |
+| POST   | `/api/reader/me/notifications/{id}/read` | 将某条通知标为已读（DEC-160）              |
+| POST   | `/api/reader/me/notifications/read-all`  | 将全部通知标为已读（DEC-160）              |
 
 收藏在浏览器端以 localStorage 为主，登录时合并到云端——离线操作不丢失，下次
 登录时自动对账。读者收藏数据不出现在共享缓存（`Cache-Control: no-store`）。
+
+**读者通知中心（DEC-160）**：`/notifications` 为已登录读者展示其持久化、
+带已读/未读状态的关注/回复/讨论动态列表——关注系列/分类的新文章、他人对自己
+评论的回复、以及所订阅讨论的新评论——每条都可深链到来源。这些记录在与浏览器
+推送相同的触发点写入服务端，因此即使错过推送或关闭 Web Push，读者也能看到。
 
 ### Web Push 与回复通知（可选，需 VAPID keys）
 

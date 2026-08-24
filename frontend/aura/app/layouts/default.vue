@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { fetchReaderNotifications } from "~~/composables/useApi";
 import { useReaderAuth } from "~~/composables/useReaderAuth";
 
 const route = useRoute();
@@ -16,11 +17,37 @@ const navLinks = [
 	{ to: "/bookmarks", labelKey: "reader.nav.bookmarks", icon: "lucide:bookmark" },
 	{ to: "/history", labelKey: "reader.nav.history", icon: "lucide:history" },
 	{ to: "/comments", labelKey: "reader.nav.comments", icon: "lucide:message-square" },
+	{
+		to: "/notifications",
+		labelKey: "reader.nav.notifications",
+		icon: "lucide:bell",
+		authOnly: true,
+		badge: "unread",
+	},
 	{ to: "/account", labelKey: "reader.nav.account", icon: "lucide:settings", authOnly: true },
 ];
 const navLinksVisible = computed(() =>
 	navLinks.filter((l) => !l.authOnly || isAuthenticated.value),
 );
+
+// Unread notification badge (DEC-160, TASK-192): polled for signed-in readers
+// so the nav reflects new notifications without a page reload.
+const unreadCount = ref(0);
+async function refreshUnread() {
+	if (!isAuthenticated.value) {
+		unreadCount.value = 0;
+		return;
+	}
+	try {
+		const data = await fetchReaderNotifications(1, 1);
+		unreadCount.value = data.unread;
+	} catch {
+		unreadCount.value = 0;
+	}
+}
+onMounted(() => {
+	if (isAuthenticated.value) void refreshUnread();
+});
 
 const isDark = ref(false);
 const mobileMenuOpen = ref(false);
@@ -89,6 +116,10 @@ onMounted(() => {
             >
               <Icon :icon="link.icon" class="w-4 h-4" />
               {{ t(link.labelKey) }}
+              <span
+                v-if="link.badge && unreadCount > 0"
+                class="inline-flex items-center justify-center min-w-[1.25rem] h-5 px-1 rounded-full text-[11px] font-bold bg-amber-500 text-white"
+              >{{ unreadCount > 99 ? '99+' : unreadCount }}</span>
             </NuxtLink>
 
             <!-- Instant search suggestions -->
@@ -163,6 +194,10 @@ onMounted(() => {
             >
               <Icon :icon="link.icon" class="w-4 h-4" />
               {{ t(link.labelKey) }}
+              <span
+                v-if="link.badge && unreadCount > 0"
+                class="inline-flex items-center justify-center min-w-[1.25rem] h-5 px-1 rounded-full text-[11px] font-bold bg-amber-500 text-white"
+              >{{ unreadCount > 99 ? '99+' : unreadCount }}</span>
             </NuxtLink>
             <div class="px-4 py-2">
               <HeaderSearch />

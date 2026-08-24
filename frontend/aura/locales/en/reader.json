@@ -30,7 +30,8 @@
 			"bookmarks": "Bookmarks",
 			"comments": "My comments",
 			"account": "Account",
-			"history": "History"
+			"history": "History",
+			"notifications": "Notifications"
 		}
 	}
 }

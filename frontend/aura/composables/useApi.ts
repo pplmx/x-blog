@@ -1711,3 +1711,63 @@ export async function updateMyPushSubscriptionPrefs(
 		},
 	);
 }
+
+// Reader notification inbox (DEC-160/TASK-192)
+// ---------------------------------------------------------------------------
+
+export interface ReaderNotification {
+	id: number;
+	kind: string;
+	title: string;
+	body?: string | null;
+	url?: string | null;
+	read: boolean;
+	created_at?: string | null;
+}
+
+export interface ReaderNotificationListResponse {
+	items: ReaderNotification[];
+	total: number;
+	unread: number;
+	page: number;
+	limit: number;
+	total_pages: number;
+}
+
+/** The signed-in reader's durable notification inbox, newest first. */
+export async function fetchReaderNotifications(
+	page = 1,
+	limit = 50,
+	unreadOnly = false,
+): Promise<ReaderNotificationListResponse> {
+	const config = useRuntimeConfig();
+	const apiUrl = config.public.apiUrl;
+	const params = new URLSearchParams({ page: String(page), limit: String(limit) });
+	if (unreadOnly) params.set("unread", "true");
+	return $fetch<ReaderNotificationListResponse>(
+		`${apiUrl}/api/reader/me/notifications?${params.toString()}`,
+		{ headers: getReaderAuthHeaders() },
+	);
+}
+
+/** Mark one notification read (404 if it isn't the reader's). */
+export async function markReaderNotificationRead(
+	notificationId: number,
+): Promise<ReaderNotification> {
+	const config = useRuntimeConfig();
+	const apiUrl = config.public.apiUrl;
+	return $fetch<ReaderNotification>(
+		`${apiUrl}/api/reader/me/notifications/${notificationId}/read`,
+		{ method: "POST", headers: getReaderAuthHeaders() },
+	);
+}
+
+/** Mark every unread notification read; returns the count updated. */
+export async function markAllReaderNotificationsRead(): Promise<{ updated: number }> {
+	const config = useRuntimeConfig();
+	const apiUrl = config.public.apiUrl;
+	return $fetch<{ updated: number }>(`${apiUrl}/api/reader/me/notifications/read-all`, {
+		method: "POST",
+		headers: getReaderAuthHeaders(),
+	});
+}

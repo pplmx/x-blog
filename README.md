@@ -38,6 +38,7 @@ A modern full-stack blog application built with FastAPI + Nuxt
 - 🔔 **New-post Web Push** - Follow a category (or all new posts) and get a browser push when the author publishes (DEC-076)
 - 💬 **Comment-thread subscription** - Follow a post's discussion; a push lands when a new comment is approved (DEC-078)
 - 🔔 **Moderation alerts** - admins get a push the moment a new comment awaits approval, deep-linking to the moderation queue (DEC-080)
+- 🔔 **Reader notification inbox** - signed-in readers get a durable in-app list (read/unread) of new posts in followed series/categories, replies to their comments, and new comments on followed threads — even when the browser push is missed or Web Push is off (DEC-160)
 
 ## 🚀 Quick Start
 
@@ -220,11 +221,21 @@ limited (default 5/min/IP).
 | POST   | `/api/reader/me/password`                | Change password (revokes other sessions, returns fresh token) |
 | GET    | `/api/reader/me/push-subscriptions`      | Reader's push devices (no keys) (DEC-067)                     |
 | DELETE | `/api/reader/me/push-subscriptions/{id}` | Revoke one push device (DEC-067)                              |
+| GET    | `/api/reader/me/notifications`           | Reader's durable notification inbox (read/unread) (DEC-160)   |
+| POST   | `/api/reader/me/notifications/{id}/read` | Mark one notification read (DEC-160)                          |
+| POST   | `/api/reader/me/notifications/read-all`  | Mark all notifications read (DEC-160)                         |
 
 Bookmarks are stored localStorage-first on the browser and merged to the cloud
 when a reader signs in — offline changes survive and re-concile on the next
 login. Reader bookmarks never appear in shared caches (`Cache-Control:
 no-store`).
+
+**Reader notification inbox (DEC-160)**: `/notifications` shows the signed-in
+reader a durable, read/unread list of their follow/reply/thread activity — new
+posts in followed series/categories, replies to their comments, and new comments
+on followed threads — each deep-linking to the source. These rows persist
+server-side at the same points that fire the browser push, so a reader sees
+activity they missed even when Web Push is off or the browser was closed.
 
 **Reader comment management (DEC-066)**: `/comments` shows the signed-in
 reader their own comments with a moderation status (待审核 / 已发布 / 未通过 —
