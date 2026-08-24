@@ -453,7 +453,10 @@ class ReaderNotificationPref(Base):
     new_post: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True, server_default=true())
     reply: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True, server_default=true())
     thread_comment: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True, server_default=true())
-    updated_at: Mapped[datetime | None] = mapped_column(DateTime, default=lambda: datetime.now(UTC), nullable=True)
+    # Set only on PATCH (naive UTC, utc_now_naive in crud) — no model default, so
+    # a GET-materialized row left untouched has NULL (never modified) and no
+    # aware-vs-naive mix in one column.
+    updated_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
 
 class SeriesFollow(Base):

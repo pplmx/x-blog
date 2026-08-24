@@ -212,25 +212,27 @@ Reader accounts are the identity layer for cloud-synced bookmarks (audience-
 separated from admin JWTs; see `docs/security.md`). Registration is rate-
 limited (default 5/min/IP).
 
-| Method | Endpoint                                 | Description                                                                                  |
-| ------ | ---------------------------------------- | -------------------------------------------------------------------------------------------- |
-| POST   | `/api/reader/register`                   | Create a reader account (returns a reader JWT, auto-login)                                   |
-| POST   | `/api/reader/login`                      | Reader login (email + password)                                                              |
-| GET    | `/api/reader/me`                         | Current reader profile                                                                       |
-| GET    | `/api/reader/me/bookmarks`               | Cloud-synced bookmark list (publicly-visible posts only)                                     |
-| PUT    | `/api/reader/me/bookmarks/{id}`          | Add a bookmark (idempotent: 201 new / 200 already)                                           |
-| DELETE | `/api/reader/me/bookmarks/{id}`          | Remove a bookmark (idempotent 204)                                                           |
-| GET    | `/api/reader/me/comments`                | Reader's own comments across statuses (DEC-066)                                              |
-| DELETE | `/api/reader/me/comments/{id}`           | Delete one of the reader's own comments (any status)                                         |
-| PATCH  | `/api/reader/me`                         | Update display name (email immutable) (DEC-067)                                              |
-| POST   | `/api/reader/me/password`                | Change password (revokes other sessions, returns fresh token)                                |
-| GET    | `/api/reader/me/push-subscriptions`      | Reader's push devices (no keys) (DEC-067)                                                    |
-| DELETE | `/api/reader/me/push-subscriptions/{id}` | Revoke one push device (DEC-067)                                                             |
-| GET    | `/api/reader/me/notifications`           | Reader's durable notification inbox (read/unread) (DEC-160)                                  |
-| POST   | `/api/reader/me/notifications/{id}/read` | Mark one notification read (DEC-160)                                                         |
-| POST   | `/api/reader/me/notifications/read-all`  | Mark all notifications read (DEC-160)                                                        |
-| GET    | `/api/reader/me/history/{post_id}`       | Reader's saved resume offset for a post (null if never read) (DEC-167)                       |
-| POST   | `/api/reader/me/history/{post_id}`       | Record a view; optional body `{scroll_position}` saves the resume offset (DEC-167, TASK-200) |
+| Method | Endpoint                                  | Description                                                                                  |
+| ------ | ----------------------------------------- | -------------------------------------------------------------------------------------------- |
+| POST   | `/api/reader/register`                    | Create a reader account (returns a reader JWT, auto-login)                                   |
+| POST   | `/api/reader/login`                       | Reader login (email + password)                                                              |
+| GET    | `/api/reader/me`                          | Current reader profile                                                                       |
+| GET    | `/api/reader/me/bookmarks`                | Cloud-synced bookmark list (publicly-visible posts only)                                     |
+| PUT    | `/api/reader/me/bookmarks/{id}`           | Add a bookmark (idempotent: 201 new / 200 already)                                           |
+| DELETE | `/api/reader/me/bookmarks/{id}`           | Remove a bookmark (idempotent 204)                                                           |
+| GET    | `/api/reader/me/comments`                 | Reader's own comments across statuses (DEC-066)                                              |
+| DELETE | `/api/reader/me/comments/{id}`            | Delete one of the reader's own comments (any status)                                         |
+| PATCH  | `/api/reader/me`                          | Update display name (email immutable) (DEC-067)                                              |
+| POST   | `/api/reader/me/password`                 | Change password (revokes other sessions, returns fresh token)                                |
+| GET    | `/api/reader/me/push-subscriptions`       | Reader's push devices (no keys) (DEC-067)                                                    |
+| DELETE | `/api/reader/me/push-subscriptions/{id}`  | Revoke one push device (DEC-067)                                                             |
+| GET    | `/api/reader/me/notifications`            | Reader's durable notification inbox (read/unread) (DEC-160)                                  |
+| POST   | `/api/reader/me/notifications/{id}/read`  | Mark one notification read (DEC-160)                                                         |
+| POST   | `/api/reader/me/notifications/read-all`   | Mark all notifications read (DEC-160)                                                        |
+| GET    | `/api/reader/me/notification-preferences` | Read the reader's per-kind notification switches (DEC-171)                                   |
+| PATCH  | `/api/reader/me/notification-preferences` | Toggle one notification kind on/off (DEC-171)                                                |
+| GET    | `/api/reader/me/history/{post_id}`        | Reader's saved resume offset for a post (null if never read) (DEC-167)                       |
+| POST   | `/api/reader/me/history/{post_id}`        | Record a view; optional body `{scroll_position}` saves the resume offset (DEC-167, TASK-200) |
 
 Bookmarks are stored localStorage-first on the browser and merged to the cloud
 when a reader signs in — offline changes survive and re-concile on the next

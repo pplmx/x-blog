@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 168,
+  "round": 169,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-08-24T15:20:55+00:00",
+  "updated_at": "2026-08-24T17:50:58+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -11,7 +11,7 @@
       "version": 1,
       "created_at": "2026-08-06T13:23:41+00:00",
       "updated_at": "2026-08-06T13:23:41+00:00",
-      "touched_round": 163,
+      "touched_round": 169,
       "title": "backend-nova",
       "description": "FastAPI Python 3.14 backend at backend/nova; SQLAlchemy ORM; routers in app/routers, crud.py business logic, 656 lines"
     },
@@ -10081,7 +10081,7 @@
       "version": 1,
       "created_at": "2026-08-24T15:18:29+00:00",
       "updated_at": "2026-08-24T15:18:29+00:00",
-      "touched_round": 168,
+      "touched_round": 169,
       "title": "Milestone: reader notification preferences — per-kind opt-out (new_post / reply / thread_comment) for the notification fan-out",
       "rationale": "Round-168 gap analysis has repeatedly ranked per-type notification settings as the next reader-facing slice after the inbox (DEC-160) and the follow-level notify toggles (DEC-138/TASK-181, TASK-182). Today the durable inbox + push fan out three kinds (new_post via crud.record_new_post_notifications; reply and thread_comment via routers/comments.py) and a reader can only silence a kind by destroying their follows/subscriptions — there is no global kill-switch. Feature-evolution mode is enabled (consecutive reader milestones DEC-160..170), so this milestone delivers the deferred per-kind preferences surface: a reader toggles a kind off and both the inbox row and the browser push stop for it, at every dispatch point. Vertical slice: additive prefs table + migration (DEC-009 additive, no FK), crud read/batch/update, GET + PUT /me/notification-preferences, dispatch gating at all 3 fan-out points, zh/en preferences UI on /notifications, vitest + backend contract tests + Playwright journey. SQLite additive-table constraints honored (DEC-009).",
       "alternatives_rejected": "Rejected PWA manifest/offline shell again (no backend involvement, speculative value). Rejected word-count/reading-time micro-features (button-level, fail value gate). Rejected a master on/off for all notifications with no per-kind granularity (fails the per-type pain: a reader who likes new-post updates but not reply pings needs kind-level control). Rejected moving per-follow notify off CategoryFollow/SeriesFollow into the prefs table (breaking change to existing controls; per-follow granularity stays where it is). Rejected frontend-only suppression of inbox rows after the fact (rows would still be persisted + pushed; must gate at dispatch)."
@@ -10089,17 +10089,145 @@
     "TASK-202": {
       "id": "TASK-202",
       "type": "task",
-      "status": "active",
-      "version": 1,
+      "status": "resolved",
+      "version": 2,
       "created_at": "2026-08-24T15:19:30+00:00",
-      "updated_at": "2026-08-24T15:19:30+00:00",
-      "touched_round": 168,
+      "updated_at": "2026-08-24T17:50:58+00:00",
+      "touched_round": 169,
       "category": "core-feature",
       "severity": 0.7,
       "confidence": 1.0,
       "effort": 3.0,
       "unlock_factor": 1.0,
       "title": "Reader notification preferences (DEC-171): add reader_notification_prefs table (new_post/reply/thread_comment bools, one row per reader, additive migration), crud get/batch/update helpers, GET/PUT /api/reader/me/notification-preferences, gate fan-out at record_new_post_notifications + comments.py reply/thread dispatch, render a per-kind preferences card with toggles on /notifications (zh/en), backend contract tests + vitest + Playwright journey"
+    },
+    "CHG-197": {
+      "id": "CHG-197",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-24T17:16:32+00:00",
+      "updated_at": "2026-08-24T17:16:32+00:00",
+      "touched_round": 169,
+      "commit": "2b0a62a",
+      "title": "Backend: reader_notification_prefs table + GET/PATCH /me/notification-preferences + dispatch gating at new_post/reply/thread_comment fan-out (inbox + push)"
+    },
+    "CHG-198": {
+      "id": "CHG-198",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-24T17:17:26+00:00",
+      "updated_at": "2026-08-24T17:17:26+00:00",
+      "touched_round": 169,
+      "commit": "e9e46dc",
+      "title": "Frontend: notification-preferences card with per-kind toggles on /notifications + i18n + vitest + Playwright journey; hardened existing reader-notifications e2e locators"
+    },
+    "EV-117": {
+      "id": "EV-117",
+      "type": "evidence",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-24T17:18:38+00:00",
+      "updated_at": "2026-08-24T17:18:38+00:00",
+      "touched_round": 169,
+      "source": "backend pytest full suite (APP_ENV=development .venv/bin/python -m pytest -q)",
+      "confidence": 1.0,
+      "title": "Backend suite green post-milestone: 1121 passed / 9 skipped, 94.61% coverage; all notification suites (inbox, reply, subscriptions, push, prefs) pass"
+    },
+    "EV-118": {
+      "id": "EV-118",
+      "type": "evidence",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-24T17:18:38+00:00",
+      "updated_at": "2026-08-24T17:18:38+00:00",
+      "touched_round": 169,
+      "source": "alembic upgrade head on postgresql://postgres:postgres@10.112.9.49:13310/xblog_e2e + information_schema probe",
+      "confidence": 1.0,
+      "title": "Migration k1d6e8f2a4c0b applies cleanly on Postgres 18.4: reader_notification_prefs columns correct, fresh-row insert yields (True,True,True) server defaults"
+    },
+    "EV-119": {
+      "id": "EV-119",
+      "type": "evidence",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-24T17:18:38+00:00",
+      "updated_at": "2026-08-24T17:18:38+00:00",
+      "touched_round": 169,
+      "source": "pnpm vitest --run (frontend/aura)",
+      "confidence": 1.0,
+      "title": "Frontend unit suite green: 1158 passed / 71 files; notifications page spec 9 passed incl. prefs card render, toggle persist, rollback"
+    },
+    "EV-120": {
+      "id": "EV-120",
+      "type": "evidence",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-24T17:18:39+00:00",
+      "updated_at": "2026-08-24T17:18:39+00:00",
+      "touched_round": 169,
+      "source": "pnpm exec playwright test reader-notifications notification-preferences (single-shell uvicorn recipe)",
+      "confidence": 1.0,
+      "title": "E2E green: notification-preferences journey passes (toggle off persists across reload); reader-notifications journey passes (strict-locator + click/GET race hardened)"
+    },
+    "EV-121": {
+      "id": "EV-121",
+      "type": "evidence",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-24T17:18:39+00:00",
+      "updated_at": "2026-08-24T17:18:39+00:00",
+      "touched_round": 169,
+      "source": "pnpm typecheck (nuxt typecheck)",
+      "confidence": 1.0,
+      "title": "Typecheck: no new vue-tsc errors introduced; only the known TASK-195/ISS-107 baseline (series.vue, CommentList.vue, useApi route-type stack depth) plus pre-existing history.vue:99"
+    },
+    "ISS-112": {
+      "id": "ISS-112",
+      "type": "issue",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-24T17:47:18+00:00",
+      "updated_at": "2026-08-24T17:47:18+00:00",
+      "touched_round": 169,
+      "title": "Anonymous push subscriptions bypass the new_post opt-out (DEC-171)",
+      "summary": "A push subscription created before a reader had an account has reader_id NULL, so dispatch_new_post's opt-out filter can't attribute it to the reader. The inbox row IS suppressed (record_new_post_notifications keys off the follower's known reader_id) but the push still lands. Inherent (no identity on the anonymous sub); the webpush.py comment documents the tradeoff. Recorded from code review; no code change this milestone."
+    },
+    "ISS-113": {
+      "id": "ISS-113",
+      "type": "issue",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-24T17:47:18+00:00",
+      "updated_at": "2026-08-24T17:47:18+00:00",
+      "touched_round": 169,
+      "title": "Per-reader prune in record_reader_notification is O(2n) in the new-post fan-out (pre-existing)",
+      "summary": "record_reader_notification issues a SELECT-recent-200 + DELETE + commit per reader inside record_new_post_notifications' loop. Pre-existing (not introduced by DEC-171; the new prefs lookup is batched). Worth a follow-up: hoist/batch the prune out of the loop for heavily-followed posts."
+    },
+    "DEC-172": {
+      "id": "DEC-172",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-24T17:50:06+00:00",
+      "updated_at": "2026-08-24T17:50:06+00:00",
+      "touched_round": 169,
+      "title": "Milestone delivered: reader notification preferences — per-kind opt-out live (DEC-171 complete)",
+      "rationale": "Delivered the deferred per-kind notification preferences slice (previously declined at DEC-167/168 and DEC-169/170 as 'next after this'). A signed-in reader now silences any notification kind (new_post / reply / thread_comment) via the /notifications preferences card; an off kind stops both the durable inbox row and the browser push at every dispatch point (crud.record_new_post_notifications, comments._notify_thread_subscribers/_notify_replied_to, webpush.dispatch_new_post). Additive reader_notification_prefs table verified on Postgres 18.4 (xblog_e2e). Independent code review: APPROVE — 0 critical/high; three mediums recorded as follow-up issues (ISS-112 anonymous-push opt-out gap, ISS-113 pre-existing prune N+1) or fixed (updated_at aware/naive alignment).",
+      "alternatives_rejected": "Declined PWA manifest/offline shell again (speculative, no backend involvement). Declined word-count/reading-time micro-features (fail the value gate). Declined frontend-only inbox-row suppression (rows still persisted+pushed; must gate at dispatch). Declined moving per-follow notify off CategoryFollow/SeriesFollow (breaking change; per-follow granularity stays)."
+    },
+    "EV-122": {
+      "id": "EV-122",
+      "type": "evidence",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-24T17:50:58+00:00",
+      "updated_at": "2026-08-24T17:50:58+00:00",
+      "touched_round": 169,
+      "source": "independent code-review agent (git diff 2465f6c..HEAD)",
+      "confidence": 1.0,
+      "title": "Code review verdict: APPROVE — whitelist-before-setattr holds, auth/IDOR/CSRF surface clean, every fan-out point for every kind gated, anonymous subscription None-handling verified; 0 critical/high, 3 medium (2 recorded as ISS-112/113, 1 fixed) and 5 low (accepted)"
     }
   },
   "edges": [
@@ -14564,6 +14692,36 @@
       "to": "TASK-202",
       "type": "governs",
       "created_at": "2026-08-24T15:20:55+00:00"
+    },
+    {
+      "from": "CHG-197",
+      "to": "TASK-202",
+      "type": "implements",
+      "created_at": "2026-08-24T17:19:32+00:00"
+    },
+    {
+      "from": "CHG-198",
+      "to": "TASK-202",
+      "type": "implements",
+      "created_at": "2026-08-24T17:19:32+00:00"
+    },
+    {
+      "from": "ISS-112",
+      "to": "COMP-001",
+      "type": "located_in",
+      "created_at": "2026-08-24T17:48:15+00:00"
+    },
+    {
+      "from": "ISS-113",
+      "to": "COMP-001",
+      "type": "located_in",
+      "created_at": "2026-08-24T17:48:15+00:00"
+    },
+    {
+      "from": "DEC-172",
+      "to": "DEC-171",
+      "type": "supersedes",
+      "created_at": "2026-08-24T17:50:58+00:00"
     }
   ]
 }

@@ -2523,8 +2523,10 @@ def record_new_post_notifications(db: Session, post: models.Post) -> None:
                 .all()
             )
         # Per-kind opt-out (DEC-171, TASK-202): batch-load every target's prefs
-        # once; a reader who turned 'new_post' off gets neither an inbox row here
-        # nor the push (the same target set drives dispatch_new_post).
+        # once. The same reader-level intent gates the push in
+        # webpush.dispatch_new_post (which also reaches want_new_posts push
+        # subscriptions with no follow), so an opted-out reader gets neither an
+        # inbox row here nor a new_post push.
         prefs = reader_notification_prefs_for(db, target_reader_ids)
         for reader_id in target_reader_ids:
             if not notification_kind_enabled(prefs.get(reader_id), "new_post"):
