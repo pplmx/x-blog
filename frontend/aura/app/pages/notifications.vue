@@ -8,12 +8,15 @@
  * /login (the inbox is auth-scoped). Unlike the fire-and-forget browser push,
  * these rows persist server-side so a reader can review activity they missed.
  */
-import { onMounted, ref } from "vue";
+import { computed, onMounted, ref } from "vue";
 import {
+	fetchReaderNotificationPrefs,
 	fetchReaderNotifications,
 	markAllReaderNotificationsRead,
 	markReaderNotificationRead,
 	type ReaderNotification,
+	type ReaderNotificationPrefs,
+	updateReaderNotificationPref,
 } from "~~/composables/useApi";
 import { useReaderAuth } from "~~/composables/useReaderAuth";
 import { useSeo } from "~~/composables/useSeo";
@@ -33,6 +36,20 @@ const unread = ref(0);
 const loading = ref(false);
 const error = ref(false);
 
+// Per-kind preferences (DEC-171, TASK-202). A reader who turns a kind off stops
+// receiving it everywhere (inbox row + push), via the server gate.
+const prefs = ref<ReaderNotificationPrefs | null>(null);
+const prefsError = ref(false);
+const prefsSaving = ref<keyof ReaderNotificationPrefs | null>(null);
+
+/** True when a 401 means an expired/invalid reader session (see ISS-110). */
+function isStaleSession(cause: unknown): boolean {
+	return (
+		(cause as { statusCode?: number } | undefined)?.statusCode === 401 ||
+		(cause as { response?: { status?: number } } | undefined)?.response?.status === 401
+	);
+}
+
 async function load() {
 	if (!isAuthenticated.value) return;
 	loading.value = true;
@@ -46,10 +63,7 @@ async function load() {
 		// expired/invalid, not a transient outage. Drop the stale session and
 		// send the reader back to sign-in (same route as the guest redirect)
 		// instead of surfacing a misleading network error. (ISS-110, TASK-198)
-		if (
-			(cause as { statusCode?: number } | undefined)?.statusCode === 401 ||
-			(cause as { response?: { status?: number } } | undefined)?.response?.status === 401
-		) {
+		if (isStaleSession(cause)) {
 			logout();
 			void router.replace("/login");
 			return;
@@ -60,12 +74,84 @@ async function load() {
 	}
 }
 
+async function loadPrefs() {
+	if (!isAuthenticated.value) return;
+	try {
+		prefs.value = await fetchReaderNotificationPrefs();
+		prefsError.value = false;
+	} catch (cause) {
+		if (isStaleSession(cause)) {
+			logout();
+			void router.replace("/login");
+			return;
+		}
+		// Non-fatal: the inbox still renders; the card just shows its error hint.
+		prefsError.value = true;
+	}
+}
+
+async function savePref(kind: keyof ReaderNotificationPrefs, enabled: boolean) {
+	prefsSaving.value = kind;
+	try {
+		prefs.value = await updateReaderNotificationPref(kind, enabled);
+		prefsError.value = false;
+	} catch (cause) {
+		if (isStaleSession(cause)) {
+			logout();
+			void router.replace("/login");
+			return;
+		}
+		// Roll the toggle back to the server-confirmed state and surface the hint.
+		prefsError.value = true;
+		if (prefs.value) prefs.value[kind] = !enabled;
+	} finally {
+		prefsSaving.value = null;
+	}
+}
+
+function togglePref(kind: keyof ReaderNotificationPrefs) {
+	if (!prefs.value || prefsSaving.value !== null) return;
+	prefs.value[kind] = !prefs.value[kind];
+	void savePref(kind, prefs.value[kind]);
+}
+
+type PrefKind = keyof ReaderNotificationPrefs;
+
+const prefRows = computed(() => {
+	if (!prefs.value) return [];
+	const rows: Array<{ key: PrefKind; icon: string; label: string; desc: string; on: boolean }> = [
+		{
+			key: "new_post",
+			icon: "lucide:file-text",
+			label: t("notifications.prefs.kind.new_post.label"),
+			desc: t("notifications.prefs.kind.new_post.desc"),
+			on: prefs.value.new_post,
+		},
+		{
+			key: "reply",
+			icon: "lucide:message-square",
+			label: t("notifications.prefs.kind.reply.label"),
+			desc: t("notifications.prefs.kind.reply.desc"),
+			on: prefs.value.reply,
+		},
+		{
+			key: "thread_comment",
+			icon: "lucide:message-circle",
+			label: t("notifications.prefs.kind.thread_comment.label"),
+			desc: t("notifications.prefs.kind.thread_comment.desc"),
+			on: prefs.value.thread_comment,
+		},
+	];
+	return rows;
+});
+
 onMounted(() => {
 	if (!isAuthenticated.value) {
 		void router.replace("/login");
 		return;
 	}
 	void load();
+	void loadPrefs();
 });
 
 async function markRead(item: ReaderNotification) {
@@ -145,6 +231,50 @@ function kindIcon(kind: string): string {
     <p v-if="error" class="mb-4 text-sm text-red-600 dark:text-red-400">
       {{ t('common.errors.network') }}
     </p>
+
+    <section
+      v-if="isAuthenticated"
+      class="mb-8 rounded-xl border border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 p-5"
+    >
+      <h2 class="flex items-center gap-2 text-sm font-semibold text-gray-900 dark:text-gray-100">
+        <Icon icon="lucide:settings-2" class="w-4 h-4 text-amber-500" />
+        {{ t('notifications.prefs.title') }}
+      </h2>
+      <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
+        {{ t('notifications.prefs.subtitle') }}
+      </p>
+      <ul class="mt-4 space-y-4">
+        <li v-for="row in prefRows" :key="row.key" class="flex items-start justify-between gap-4">
+          <div class="flex items-start gap-3">
+            <Icon :icon="row.icon" class="w-5 h-5 mt-0.5 shrink-0 text-amber-500" />
+            <div>
+              <p class="text-sm font-medium text-gray-900 dark:text-gray-100">{{ row.label }}</p>
+              <p class="mt-0.5 text-xs text-gray-500 dark:text-gray-400">{{ row.desc }}</p>
+            </div>
+          </div>
+          <button
+            type="button"
+            role="switch"
+            :aria-checked="row.on ? 'true' : 'false'"
+            :aria-label="row.label"
+            :disabled="prefsSaving !== null"
+            class="relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors duration-200 disabled:cursor-not-allowed disabled:opacity-60"
+            :class="row.on
+              ? 'bg-amber-500'
+              : 'bg-gray-200 dark:bg-gray-700'"
+            @click="togglePref(row.key)"
+          >
+            <span
+              class="inline-block h-5 w-5 transform rounded-full bg-white shadow transition-transform duration-200"
+              :class="row.on ? 'translate-x-[22px]' : 'translate-x-0.5'"
+            />
+          </button>
+        </li>
+      </ul>
+      <p v-if="prefsError" class="mt-3 text-xs text-red-600 dark:text-red-400">
+        {{ t('common.errors.network') }}
+      </p>
+    </section>
 
     <div v-if="loading" class="py-12 text-center text-gray-400">
       <Icon icon="lucide:loader-2" class="w-8 h-8 animate-spin mx-auto" />

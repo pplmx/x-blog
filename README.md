@@ -40,6 +40,7 @@ A modern full-stack blog application built with FastAPI + Nuxt
 - 💬 **Comment-thread subscription** - Follow a post's discussion; a push lands when a new comment is approved (DEC-078)
 - 🔔 **Moderation alerts** - admins get a push the moment a new comment awaits approval, deep-linking to the moderation queue (DEC-080)
 - 🔔 **Reader notification inbox** - signed-in readers get a durable in-app list (read/unread) of new posts in followed series/categories, replies to their comments, and new comments on followed threads — even when the browser push is missed or Web Push is off (DEC-160)
+- 🔕 **Per-kind notification preferences** - a signed-in reader silences any notification type (new posts / replies / followed-thread comments) from the /notifications page; an off kind stops both the inbox row and the push at every dispatch point (DEC-171)
 - 📖 **Resume Reading** - signed-in readers pick up right where they left off: the post page remembers their scroll position server-side and drops them back on return, with a resume chip offering back-to-top (DEC-167)
 - 🔥 **Reading streaks & activity heatmap** - /history shows a signed-in reader's current/longest consecutive-day streak and a GitHub-style 52-week heatmap of days they read (DEC-169)
 

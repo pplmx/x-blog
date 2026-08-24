@@ -1817,6 +1817,39 @@ export async function markAllReaderNotificationsRead(): Promise<{ updated: numbe
 	});
 }
 
+// Reader notification preferences (DEC-171/TASK-202)
+// ---------------------------------------------------------------------------
+
+/** A reader's per-kind notification opt-outs. Every true = all kinds on. */
+export interface ReaderNotificationPrefs {
+	new_post: boolean;
+	reply: boolean;
+	thread_comment: boolean;
+}
+
+/** The signed-in reader's per-kind notification preferences (all-on default). */
+export async function fetchReaderNotificationPrefs(): Promise<ReaderNotificationPrefs> {
+	const config = useRuntimeConfig();
+	const apiUrl = config.public.apiUrl;
+	return $fetch<ReaderNotificationPrefs>(`${apiUrl}/api/reader/me/notification-preferences`, {
+		headers: getReaderAuthHeaders(),
+	});
+}
+
+/** Toggle one notification kind; returns the reader's full updated prefs. */
+export async function updateReaderNotificationPref(
+	kind: "new_post" | "reply" | "thread_comment",
+	enabled: boolean,
+): Promise<ReaderNotificationPrefs> {
+	const config = useRuntimeConfig();
+	const apiUrl = config.public.apiUrl;
+	return $fetch<ReaderNotificationPrefs>(`${apiUrl}/api/reader/me/notification-preferences`, {
+		method: "PATCH",
+		headers: getReaderAuthHeaders(),
+		body: { kind, enabled },
+	});
+}
+
 // Admin editorial calendar (DEC-162/TASK-194)
 // ---------------------------------------------------------------------------
 

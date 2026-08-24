@@ -16,6 +16,24 @@
 			"series_new_part": "Series updated",
 			"reply": "You have a reply",
 			"thread_comment": "New comment on a thread you follow"
+		},
+		"prefs": {
+			"title": "Notification preferences",
+			"subtitle": "Choose which activity types notify you (off silences that type).",
+			"kind": {
+				"new_post": {
+					"label": "New posts",
+					"desc": "Notify me when something I follow publishes a new post."
+				},
+				"reply": {
+					"label": "Replies to my comments",
+					"desc": "Notify me when someone replies to a comment I left."
+				},
+				"thread_comment": {
+					"label": "Followed-thread comments",
+					"desc": "Notify me when a discussion I follow gets a new comment."
+				}
+			}
 		}
 	}
 }

@@ -89,14 +89,20 @@ test.describe("Reader notification inbox (TASK-192)", () => {
 		await page.addInitScript((tk) => localStorage.setItem("reader_token", tk), token);
 		await page.goto("/notifications");
 		await expect(page.locator("h1").first()).toBeVisible({ timeout: 10000 });
-		await expect(page.locator("main").or(page.locator("body"))).toContainText("新文章发布", {
+		// 'body' alone (not main.or(body)): both selectors resolve on this page,
+		// so the union hits Playwright strict-mode (2 elements). Assert on the
+		// page body instead.
+		await expect(page.locator("body")).toContainText("新文章发布", {
 			timeout: 10000,
 		});
 
-		// Mark all read -> badge clears.
+		// Mark all read -> badge clears. The header button renders only while
+		// unread > 0, so waiting for it to disappear confirms the server actually
+		// processed the mark-all before the GET below (avoids a click/GET race).
 		const markAll = page.getByRole("button", { name: "全部标为已读" });
 		if (await markAll.isVisible().catch(() => false)) {
 			await markAll.click();
+			await expect(markAll).not.toBeVisible({ timeout: 10000 });
 		}
 		const after = await request.get("/api/reader/me/notifications", { headers: readerH });
 		const afterData = (await after.json()) as { unread: number };

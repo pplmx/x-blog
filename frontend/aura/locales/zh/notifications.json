@@ -16,6 +16,24 @@
 			"series_new_part": "系列更新",
 			"reply": "收到回复",
 			"thread_comment": "讨论有新评论"
+		},
+		"prefs": {
+			"title": "通知偏好",
+			"subtitle": "选择哪些类型的动态会通知你（关闭后不再收到该类型通知）。",
+			"kind": {
+				"new_post": {
+					"label": "新文章发布",
+					"desc": "你关注的分类或系列有新文章时通知你。"
+				},
+				"reply": {
+					"label": "收到回复",
+					"desc": "有人回复你的评论时通知你。"
+				},
+				"thread_comment": {
+					"label": "讨论有新评论",
+					"desc": "你订阅的讨论出现新评论时通知你。"
+				}
+			}
 		}
 	}
 }

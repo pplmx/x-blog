@@ -1,16 +1,17 @@
 /**
- * Reader notification inbox page tests (DEC-160, TASK-192).
+ * Reader notification inbox page tests (DEC-160, TASK-192; prefs DEC-171/TASK-202).
  *
  * Verifies the empty state, the newest-first list with read/unread badges and
- * kind labels, deep-link hrefs, single mark-as-read, and mark-all-read. Auth
- * and useApi are mocked so the inbox is deterministic. Guests are redirected
- * to /login.
+ * kind labels, deep-link hrefs, single mark-as-read, mark-all-read, and the
+ * per-kind notification-preferences card (loads all-on, toggles a kind via
+ * updateReaderNotificationPref, rolls back on error). Auth and useApi are
+ * mocked so the inbox is deterministic. Guests are redirected to /login.
  */
 
 import { flushPromises, mount } from "@vue/test-utils";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ref } from "vue";
-import type { ReaderNotification } from "../../composables/useApi";
+import type { ReaderNotification, ReaderNotificationPrefs } from "../../composables/useApi";
 
 const isAuthenticated = ref(false);
 const mockLogout = vi.fn();
@@ -29,6 +30,23 @@ const mockMarkRead = vi.fn(async (id: number) => ({
 	read: true,
 }));
 const mockMarkAllRead = vi.fn(async () => ({ updated: 2 }));
+const mockFetchPrefs = vi.fn(
+	async (): Promise<ReaderNotificationPrefs> => ({
+		new_post: true,
+		reply: true,
+		thread_comment: true,
+	}),
+);
+const mockUpdatePref = vi.fn(
+	async (
+		kind: keyof ReaderNotificationPrefs,
+		enabled: boolean,
+	): Promise<ReaderNotificationPrefs> => ({
+		new_post: kind === "new_post" ? enabled : true,
+		reply: kind === "reply" ? enabled : true,
+		thread_comment: kind === "thread_comment" ? enabled : true,
+	}),
+);
 
 vi.mock("../../composables/useApi", async (importOriginal) => {
 	const orig = await importOriginal<typeof import("../../composables/useApi")>();
@@ -37,6 +55,8 @@ vi.mock("../../composables/useApi", async (importOriginal) => {
 		fetchReaderNotifications: mockFetch,
 		markReaderNotificationRead: mockMarkRead,
 		markAllReaderNotificationsRead: mockMarkAllRead,
+		fetchReaderNotificationPrefs: mockFetchPrefs,
+		updateReaderNotificationPref: mockUpdatePref,
 	};
 });
 
@@ -83,6 +103,8 @@ describe("Notifications page (TASK-192)", () => {
 		mockFetch.mockReset();
 		mockMarkRead.mockClear();
 		mockMarkAllRead.mockClear();
+		mockFetchPrefs.mockReset();
+		mockUpdatePref.mockClear();
 		mockLogout.mockClear();
 		mockReplace.mockClear();
 		mockFetch.mockResolvedValue({
@@ -92,6 +114,11 @@ describe("Notifications page (TASK-192)", () => {
 			page: 1,
 			limit: 100,
 			total_pages: 0,
+		});
+		mockFetchPrefs.mockResolvedValue({
+			new_post: true,
+			reply: true,
+			thread_comment: true,
 		});
 	});
 
@@ -170,5 +197,38 @@ describe("Notifications page (TASK-192)", () => {
 		expect(mockReplace).toHaveBeenCalledWith("/login");
 		// No misleading network-error banner when the cause is an stale session.
 		expect(wrapper.text()).not.toContain("网络错误，请稍后重试");
+	});
+
+	it("loads the preferences card with every kind on (DEC-171)", async () => {
+		const wrapper = await mountPage();
+		expect(wrapper.text()).toContain("通知偏好");
+		const switches = wrapper.findAll('button[role="switch"]');
+		expect(switches).toHaveLength(3);
+		for (const s of switches) {
+			expect(s.attributes("aria-checked")).toBe("true");
+		}
+	});
+
+	it("toggles a kind off and persists via updateReaderNotificationPref", async () => {
+		const wrapper = await mountPage();
+		const switches = wrapper.findAll('button[role="switch"]');
+		// Order is new_post, reply, thread_comment.
+		await switches[1].trigger("click");
+		await flushPromises();
+		expect(mockUpdatePref).toHaveBeenCalledWith("reply", false);
+		expect(switches[1].attributes("aria-checked")).toBe("false");
+		// Other kinds are untouched.
+		expect(switches[0].attributes("aria-checked")).toBe("true");
+		expect(switches[2].attributes("aria-checked")).toBe("true");
+	});
+
+	it("rolls a failed toggle back and shows the error hint", async () => {
+		mockUpdatePref.mockRejectedValueOnce(new Error("boom"));
+		const wrapper = await mountPage();
+		const switches = wrapper.findAll('button[role="switch"]');
+		await switches[0].trigger("click");
+		await flushPromises();
+		expect(switches[0].attributes("aria-checked")).toBe("true"); // rolled back
+		expect(wrapper.text()).toContain("网络错误，请稍后重试");
 	});
 });
