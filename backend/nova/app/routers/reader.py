@@ -334,18 +334,35 @@ class ReadingPositionResponse(BaseModel):
     scroll_position: int | None = None
 
 
+class DayActivity(BaseModel):
+    """One day's reads for the 52-week activity heatmap (DEC-169/TASK-201).
+
+    ``date`` is the UTC date (ISO yyyy-mm-dd); ``count`` is how many publicly
+    visible posts were read that day (0 days included so the heatmap renders
+    without gaps).
+    """
+
+    date: str
+    count: int
+
+
 class ReadingStatsResponse(BaseModel):
     """A reader's reading summary derived from their history (DEC-118).
 
     Publicly-visible posts only — un-published posts neither leak nor count.
     ``recent`` mirrors the history-list item shape for continue-reading quick
-    jumps.
+    jumps. ``current_streak`` / ``longest_streak`` / ``activity`` power the
+    gamification surface (DEC-169): the streak in consecutive active UTC days
+    and the last 52 weeks of per-day read counts.
     """
 
     total_posts: int = 0
     total_reading_minutes: int = 0
     last_viewed_at: datetime | None = None
     recent: list[ReadingHistoryItem] = []
+    current_streak: int = 0
+    longest_streak: int = 0
+    activity: list[DayActivity] = []
 
 
 # A valid bcrypt hash of a random throwaway password, at the same cost as a
@@ -1062,6 +1079,9 @@ def reading_history_stats(
         total_reading_minutes=stats["total_reading_minutes"],
         last_viewed_at=stats["last_viewed_at"],
         recent=[ReadingHistoryItem.from_post(p, viewed_at) for p, viewed_at in stats["recent"]],
+        current_streak=stats["current_streak"],
+        longest_streak=stats["longest_streak"],
+        activity=[DayActivity(**a) for a in stats["activity"]],
     )
 
 

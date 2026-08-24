@@ -350,3 +350,115 @@ class TestScrollPosition:
         """Anonymous visitors cannot read a reader's saved position."""
         post = _create_post(db_session, slug="pos-public")
         assert client.get(f"{HISTORY}/{post.id}").status_code == 401
+
+
+class TestActivityStreak:
+    """Reading-streak + daily-activity stats (DEC-169, TASK-201).
+
+    ``ReadingStatsResponse`` gains ``current_streak`` / ``longest_streak`` and an
+    ``activity`` list of per-day read counts covering the last 52 weeks (UTC
+    dates, zeros included). Streaks are computed from the distinct UTC
+    ``viewed_at`` dates of publicly-visible reads; the current streak counts
+    consecutive days ending today (or yesterday, while today is still being
+    read); the longest is the longest run anywhere.
+    """
+
+    ACTIVITY_DAYS = 364  # must match crud.ACTIVITY_DAYS
+
+    def _reader_id(self, db_session, email="historian@example.com"):
+        from app.auth import ReaderAccount
+
+        return db_session.query(ReaderAccount).filter(ReaderAccount.email == email).first().id
+
+    def _seed(self, db_session, reader_id, post_ids, dates):
+        """Insert reading_history rows directly with fixed UTC viewed_at dates."""
+        from app import models
+
+        for pid, d in zip(post_ids, dates, strict=True):
+            db_session.add(models.ReadingHistory(reader_id=reader_id, post_id=pid, viewed_at=d))
+        db_session.commit()
+
+    def _dates_from_now(self, offsets, hour=12):
+        from datetime import UTC, datetime, timedelta
+
+        return [datetime.now(UTC) - timedelta(days=o) for o in offsets]
+
+    def _stats(self, client, token):
+        return client.get(f"{HISTORY}/stats", headers=_auth(token)).json()
+
+    def test_empty_stats_have_zero_streaks_and_zeroed_activity(self, client, db_session):
+        token = _token(client)
+        body = self._stats(client, token)
+        assert body["current_streak"] == 0
+        assert body["longest_streak"] == 0
+        assert len(body["activity"]) == self.ACTIVITY_DAYS
+        assert all(a["count"] == 0 for a in body["activity"])
+        assert body["activity"][-1]["count"] == 0  # today untracked until read
+
+    def test_single_day_read_gives_streak_of_one_and_counts_today(self, client, db_session):
+
+        token = _token(client)
+        reader_id = self._reader_id(db_session)
+        posts = [_create_post(db_session) for _ in range(2)]
+        self._seed(db_session, reader_id, [p.id for p in posts], self._dates_from_now([0, 0]))
+
+        body = self._stats(client, token)
+        assert body["current_streak"] == 1
+        assert body["longest_streak"] == 1
+        assert body["activity"][-1]["count"] == 2  # two reads today
+
+    def test_consecutive_days_count_toward_current_streak(self, client, db_session):
+        token = _token(client)
+        reader_id = self._reader_id(db_session)
+        posts = [_create_post(db_session) for _ in range(3)]
+        # Today, yesterday, day-before: a 3-day current streak.
+        self._seed(db_session, reader_id, [p.id for p in posts], self._dates_from_now([0, 1, 2]))
+
+        body = self._stats(client, token)
+        assert body["current_streak"] == 3
+        assert body["longest_streak"] == 3
+
+    def test_gap_today_counts_from_yesterday_and_longest_wins(self, client, db_session):
+        token = _token(client)
+        reader_id = self._reader_id(db_session)
+        posts = [_create_post(db_session) for _ in range(6)]
+        # A 5-day past run (today-4..today-8) plus activity only yesterday.
+        dates = self._dates_from_now([1, 4, 5, 6, 7, 8])
+        self._seed(db_session, reader_id, [p.id for p in posts], dates)
+
+        body = self._stats(client, token)
+        # Today is inactive -> current stretches back from yesterday (length 1);
+        # the longest run anywhere is the 5-day one.
+        assert body["current_streak"] == 1
+        # NB: current run from yesterday only touches day 1; it does not merge
+        # with the -4..-8 run (day 2,3 gap), so it stays 1.
+        assert body["longest_streak"] == 5
+
+    def test_activity_buckets_counts_per_date(self, client, db_session):
+        token = _token(client)
+        reader_id = self._reader_id(db_session)
+        posts = [_create_post(db_session) for _ in range(4)]
+        today, yesterday = self._dates_from_now([0, 1])
+        self._seed(
+            db_session,
+            reader_id,
+            [posts[0].id, posts[1].id, posts[2].id, posts[3].id],
+            [today, today, yesterday, yesterday],
+        )
+
+        body = self._stats(client, token)
+        by_date = {a["date"]: a["count"] for a in body["activity"]}
+        assert by_date[today.date().isoformat()] == 2
+        assert by_date[yesterday.date().isoformat()] == 2
+        assert len([a for a in body["activity"] if a["count"]]) == 2  # only two lit days
+
+    def test_streak_ignores_non_public_posts(self, client, db_session):
+
+        token = _token(client)
+        reader_id = self._reader_id(db_session)
+        draft = _create_post(db_session, slug="streak-draft", draft=True)
+        self._seed(db_session, reader_id, [draft.id], self._dates_from_now([0]))
+
+        body = self._stats(client, token)
+        assert body["current_streak"] == 0
+        assert body["activity"][-1]["count"] == 0

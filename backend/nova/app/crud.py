@@ -1580,13 +1580,61 @@ def clear_reader_history(db: Session, reader_id: int) -> int:
     return deleted
 
 
+# Reading-streak + activity window for the /history summary (DEC-169, TASK-201).
+# The heatmap shows the last 52 weeks; entries are produced for every day
+# (zeros included) so the frontend renders a complete calendar without gaps.
+ACTIVITY_DAYS = 364
+
+
+def _current_streak(dates: set) -> int:
+    """Consecutive active days ending today (or yesterday while today is still
+    inactive — a reader who has not read *yet* today keeps their streak)."""
+    if not dates:
+        return 0
+    today = datetime.now(UTC).date()
+    anchor = today if today in dates else today - timedelta(days=1)
+    n = 0
+    while anchor in dates:
+        n += 1
+        anchor -= timedelta(days=1)
+    return n
+
+
+def _longest_streak(dates: set) -> int:
+    """Longest run of consecutive active days anywhere in the history."""
+    if not dates:
+        return 0
+    longest = run = 0
+    prev = None
+    for d in sorted(dates):
+        run = run + 1 if prev is not None and (d - prev).days == 1 else 1
+        longest = max(longest, run)
+        prev = d
+    return longest
+
+
+def _day_activity(counts: dict) -> list[dict]:
+    """Per-day read counts for the last ``ACTIVITY_DAYS`` days (UTC, ascending,
+    zeros included) for a GitHub-style heatmap."""
+    today = datetime.now(UTC).date()
+    window_start = today - timedelta(days=ACTIVITY_DAYS - 1)
+    out: list[dict] = []
+    d = window_start
+    while d <= today:
+        out.append({"date": d.isoformat(), "count": counts.get(d, 0)})
+        d += timedelta(days=1)
+    return out
+
+
 def reader_history_stats(db: Session, reader_id: int, recent_limit: int = 6) -> dict:
     """Aggregate a reader's reading summary from their history (DEC-118).
 
     Returns total visible posts read, the sum of their reading minutes, the
     most-recent viewed timestamp, and the ``recent_limit`` most recent
-    (post, viewed_at) pairs. Uses the same public-visibility filter as the
-    history list so un-published posts don't leak or count.
+    (post, viewed_at) pairs. Since DEC-169/TASK-201 it also returns the
+    current/longest reading streak and a 52-week per-day activity list for the
+    gamification surface on /history. Uses the same public-visibility filter as
+    the history list so un-published posts don't leak or count.
     """
     rows = (
         db.query(models.Post, models.ReadingHistory.viewed_at)
@@ -1597,11 +1645,24 @@ def reader_history_stats(db: Session, reader_id: int, recent_limit: int = 6) -> 
     )
     visible = [(post, viewed_at) for post, viewed_at in rows if is_publicly_visible(post)]
     total_minutes = sum(schemas.reading_minutes(post.content or "") for post, _ in visible)
+
+    counts: dict = {}
+    dates: set = set()
+    for _post, viewed_at in visible:
+        if viewed_at is None:
+            continue
+        d = viewed_at.date()
+        counts[d] = counts.get(d, 0) + 1
+        dates.add(d)
+
     return {
         "total_posts": len(visible),
         "total_reading_minutes": total_minutes,
         "last_viewed_at": visible[0][1] if visible else None,
         "recent": visible[:recent_limit],
+        "current_streak": _current_streak(dates),
+        "longest_streak": _longest_streak(dates),
+        "activity": _day_activity(counts),
     }
 
 
