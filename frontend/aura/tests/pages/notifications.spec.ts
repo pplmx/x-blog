@@ -13,8 +13,10 @@ import { ref } from "vue";
 import type { ReaderNotification } from "../../composables/useApi";
 
 const isAuthenticated = ref(false);
+const mockLogout = vi.fn();
+const mockReplace = vi.fn();
 vi.mock("../../composables/useReaderAuth", () => ({
-	useReaderAuth: () => ({ isAuthenticated, reader: ref(null), logout: vi.fn() }),
+	useReaderAuth: () => ({ isAuthenticated, reader: ref(null), logout: mockLogout }),
 }));
 
 vi.mock("../../composables/useSeo", () => ({ useSeo: vi.fn() }));
@@ -46,7 +48,7 @@ let NotificationsPage: unknown;
 
 async function mountPage() {
 	isAuthenticated.value = true;
-	vi.stubGlobal("useRouter", () => ({ replace: vi.fn() }));
+	vi.stubGlobal("useRouter", () => ({ replace: mockReplace }));
 	NotificationsPage =
 		NotificationsPage ?? (await import("../../app/pages/notifications.vue")).default;
 	const wrapper = mount(NotificationsPage as never, {
@@ -81,6 +83,8 @@ describe("Notifications page (TASK-192)", () => {
 		mockFetch.mockReset();
 		mockMarkRead.mockClear();
 		mockMarkAllRead.mockClear();
+		mockLogout.mockClear();
+		mockReplace.mockClear();
 		mockFetch.mockResolvedValue({
 			items: [],
 			total: 0,
@@ -147,5 +151,24 @@ describe("Notifications page (TASK-192)", () => {
 		await markAll?.trigger("click");
 		await flushPromises();
 		expect(mockMarkAllRead).toHaveBeenCalled();
+	});
+
+	it("renders a localized network error when the inbox fetch fails (ISS-110)", async () => {
+		mockFetch.mockRejectedValue(new Error("boom"));
+		const wrapper = await mountPage();
+		// The orphaned common.errors.network key is now defined in zh locale,
+		// so the page shows a real message instead of the raw key.
+		expect(wrapper.text()).toContain("网络错误，请稍后重试");
+		expect(mockLogout).not.toHaveBeenCalled();
+		expect(mockReplace).not.toHaveBeenCalled();
+	});
+
+	it("logs an expired session out and redirects to login on a 401 (ISS-110)", async () => {
+		mockFetch.mockRejectedValue({ statusCode: 401 });
+		const wrapper = await mountPage();
+		expect(mockLogout).toHaveBeenCalledTimes(1);
+		expect(mockReplace).toHaveBeenCalledWith("/login");
+		// No misleading network-error banner when the cause is an stale session.
+		expect(wrapper.text()).not.toContain("网络错误，请稍后重试");
 	});
 });

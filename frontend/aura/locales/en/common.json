@@ -43,6 +43,9 @@
 			"subscribing": "Subscribing…",
 			"unsubscribing": "Unsubscribing…",
 			"repliesIn": "You'll also be notified when someone replies to your comment"
+		},
+		"errors": {
+			"network": "Network error, please try again later"
 		}
 	}
 }

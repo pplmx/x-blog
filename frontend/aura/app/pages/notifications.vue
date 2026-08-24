@@ -19,7 +19,7 @@ import { useReaderAuth } from "~~/composables/useReaderAuth";
 import { useSeo } from "~~/composables/useSeo";
 
 const { t, locale } = useLang();
-const { isAuthenticated } = useReaderAuth();
+const { isAuthenticated, logout } = useReaderAuth();
 const router = useRouter();
 
 useSeo({
@@ -41,7 +41,19 @@ async function load() {
 		const data = await fetchReaderNotifications(1, 100);
 		items.value = data.items;
 		unread.value = data.unread;
-	} catch {
+	} catch (cause) {
+		// The inbox is auth-scoped: a 401 means the stored reader token is
+		// expired/invalid, not a transient outage. Drop the stale session and
+		// send the reader back to sign-in (same route as the guest redirect)
+		// instead of surfacing a misleading network error. (ISS-110, TASK-198)
+		if (
+			(cause as { statusCode?: number } | undefined)?.statusCode === 401 ||
+			(cause as { response?: { status?: number } } | undefined)?.response?.status === 401
+		) {
+			logout();
+			void router.replace("/login");
+			return;
+		}
 		error.value = true;
 	} finally {
 		loading.value = false;
