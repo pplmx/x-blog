@@ -14,6 +14,8 @@
 		"continue": "继续阅读",
 		"postsRead": "已读文章",
 		"readingMinutes": "阅读时长（分钟）",
+		"lastActivity": "最近阅读活动",
+		"noActivity": "暂无记录",
 		"searchPlaceholder": "搜索阅读历史…",
 		"noSearchResults": "没有匹配的阅读记录"
 	}

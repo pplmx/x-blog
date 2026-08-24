@@ -111,6 +111,25 @@ describe("Reading-history page (TASK-170)", () => {
 		expect(wrapper.text()).toContain("37");
 	});
 
+	it("renders the latest-activity card with a localized datetime (TASK-197)", () => {
+		mockStats.value = {
+			totalPosts: 4,
+			totalReadingMinutes: 37,
+			lastViewedAt: Date.UTC(2026, 7, 24, 9, 15),
+		};
+		const wrapper = mountHistory();
+		expect(wrapper.text()).toContain("最近阅读活动");
+		expect(wrapper.text()).toContain("2026");
+		expect(wrapper.text()).not.toContain("暂无记录");
+	});
+
+	it("shows a placeholder on the latest-activity card when there is no last read (TASK-197)", () => {
+		mockStats.value = { totalPosts: 0, totalReadingMinutes: 0 };
+		const wrapper = mountHistory();
+		expect(wrapper.text()).toContain("最近阅读活动");
+		expect(wrapper.text()).toContain("暂无记录");
+	});
+
 	it("hides reading-summary cards when no stats (guests)", () => {
 		const wrapper = mountHistory();
 		expect(wrapper.text()).not.toContain("已读文章");

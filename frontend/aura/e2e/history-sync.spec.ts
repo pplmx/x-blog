@@ -63,8 +63,11 @@ test.describe("Server-backed reading history (TASK-170)", () => {
 			});
 		}
 
-		// The reading-summary card reflects the server-backed stats (TASK-171).
+		// The reading-summary cards reflect the server-backed stats (TASK-171 /
+		// DEC-165, TASK-197): posts read, reading minutes, latest activity.
 		await expect(page.locator("body")).toContainText("已读文章", { timeout: 10000 });
+		await expect(page.locator("body")).toContainText("阅读时长（分钟）");
+		await expect(page.locator("body")).toContainText("最近阅读活动");
 
 		// The API itself returns the recorded view for this reader.
 		const api = await request.get("/api/reader/me/history", {

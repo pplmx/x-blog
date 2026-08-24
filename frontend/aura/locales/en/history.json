@@ -14,6 +14,8 @@
 		"continue": "Read on",
 		"postsRead": "Posts read",
 		"readingMinutes": "Reading minutes",
+		"lastActivity": "Latest activity",
+		"noActivity": "No recent reads",
 		"searchPlaceholder": "Search your reading history…",
 		"noSearchResults": "No past reads match that search"
 	}

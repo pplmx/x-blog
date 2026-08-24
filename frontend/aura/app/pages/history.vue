@@ -55,6 +55,22 @@ function viewedLabel(item: HistoryEntry): string {
 	});
 	return fmt.format(d);
 }
+
+// Latest-activity card (DEC-165/TASK-197): the server summary carries
+// lastViewedAt, which was loaded into stats but never rendered — surface it
+// as an absolute localized date-time (same shape as viewedLabel).
+function lastActivityLabel(): string {
+	if (!stats.value?.lastViewedAt) return t("history.noActivity");
+	const d = new Date(stats.value.lastViewedAt);
+	const fmt = new Intl.DateTimeFormat(locale.value === "zh" ? "zh-CN" : "en-US", {
+		year: "numeric",
+		month: "long",
+		day: "numeric",
+		hour: "2-digit",
+		minute: "2-digit",
+	});
+	return fmt.format(d);
+}
 </script>
 
 <template>
@@ -100,7 +116,7 @@ function viewedLabel(item: HistoryEntry): string {
     <!-- Reading summary (server-backed, signed-in readers only) -->
     <div
       v-if="stats"
-      class="grid grid-cols-2 gap-4 mb-8"
+      class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8"
     >
       <div class="p-5 rounded-2xl border border-gray-100 dark:border-gray-800 bg-gradient-to-br from-violet-50 to-transparent dark:from-violet-900/20">
         <p class="text-xs font-medium text-gray-400 dark:text-gray-500 uppercase tracking-wide mb-1">{{ t('history.postsRead') }}</p>
@@ -109,6 +125,10 @@ function viewedLabel(item: HistoryEntry): string {
       <div class="p-5 rounded-2xl border border-gray-100 dark:border-gray-800 bg-gradient-to-br from-blue-50 to-transparent dark:from-blue-900/20">
         <p class="text-xs font-medium text-gray-400 dark:text-gray-500 uppercase tracking-wide mb-1">{{ t('history.readingMinutes') }}</p>
         <p class="text-3xl font-bold text-gray-900 dark:text-gray-100">{{ stats.totalReadingMinutes }}</p>
+      </div>
+      <div class="p-5 rounded-2xl border border-gray-100 dark:border-gray-800 bg-gradient-to-br from-emerald-50 to-transparent dark:from-emerald-900/20">
+        <p class="text-xs font-medium text-gray-400 dark:text-gray-500 uppercase tracking-wide mb-1">{{ t('history.lastActivity') }}</p>
+        <p class="text-base sm:text-lg font-semibold text-gray-900 dark:text-gray-100 leading-snug">{{ lastActivityLabel() }}</p>
       </div>
     </div>
 
