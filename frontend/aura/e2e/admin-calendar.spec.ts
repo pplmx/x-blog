@@ -25,7 +25,7 @@ test.describe("Admin editorial calendar", () => {
 		// Navigation + legend chrome.
 		const buttons = page.locator("button");
 		await expect(buttons.filter({ hasText: /今天|今天|Today/ }).first()).toBeVisible();
-		await expect(page.locator("text=已发布|Live").first()).toBeVisible();
+		await expect(page.locator("text=/已发布|Live/").first()).toBeVisible();
 	});
 
 	test("navigates to the previous month", async ({ page }) => {
