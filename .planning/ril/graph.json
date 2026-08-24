@@ -2,7 +2,7 @@
   "ril_version": 1,
   "round": 167,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-08-24T06:22:40+00:00",
+  "updated_at": "2026-08-24T06:37:44+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -9628,10 +9628,10 @@
     "TASK-197": {
       "id": "TASK-197",
       "type": "task",
-      "status": "active",
-      "version": 2,
+      "status": "resolved",
+      "version": 3,
       "created_at": "2026-08-24T03:03:20+00:00",
-      "updated_at": "2026-08-24T05:00:30+00:00",
+      "updated_at": "2026-08-24T06:37:44+00:00",
       "touched_round": 167,
       "category": "core-feature",
       "severity": 0.3,
@@ -9685,11 +9685,11 @@
     "ISS-109": {
       "id": "ISS-109",
       "type": "issue",
-      "status": "active",
-      "version": 1,
+      "status": "resolved",
+      "version": 2,
       "created_at": "2026-08-24T03:22:16+00:00",
-      "updated_at": "2026-08-24T03:22:16+00:00",
-      "touched_round": 165,
+      "updated_at": "2026-08-24T06:37:44+00:00",
+      "touched_round": 167,
       "title": "Reader reading summary built but never surfaced: /me/history/stats + fetchReaderHistoryStats exist but the history page shows no stats"
     },
     "CHG-189": {
@@ -9718,10 +9718,10 @@
     "ISS-110": {
       "id": "ISS-110",
       "type": "issue",
-      "status": "active",
-      "version": 1,
+      "status": "resolved",
+      "version": 2,
       "created_at": "2026-08-24T04:59:35+00:00",
-      "updated_at": "2026-08-24T04:59:35+00:00",
+      "updated_at": "2026-08-24T06:37:44+00:00",
       "touched_round": 167,
       "title": "Reader notifications page renders the raw i18n key \"common.errors.network\" when the reader token is expired/invalid: key not defined in any locale AND page has no session-expiry (401) handling — every notifications-API failure shows an untranslated key"
     },
@@ -9740,10 +9740,10 @@
     "TASK-198": {
       "id": "TASK-198",
       "type": "task",
-      "status": "active",
-      "version": 1,
+      "status": "resolved",
+      "version": 2,
       "created_at": "2026-08-24T05:00:30+00:00",
-      "updated_at": "2026-08-24T05:00:30+00:00",
+      "updated_at": "2026-08-24T06:37:44+00:00",
       "touched_round": 167,
       "category": "correctness",
       "severity": 0.5,
@@ -9779,10 +9779,10 @@
     "ISS-111": {
       "id": "ISS-111",
       "type": "issue",
-      "status": "active",
-      "version": 1,
+      "status": "resolved",
+      "version": 2,
       "created_at": "2026-08-24T06:22:40+00:00",
-      "updated_at": "2026-08-24T06:22:40+00:00",
+      "updated_at": "2026-08-24T06:37:44+00:00",
       "touched_round": 167,
       "title": "Fire-and-forget client POSTs via useFetch never execute outside a setup/suspense context: usePostView (post page onMounted) and usePostLike (click handler) silently never send their request — public view counts and post likes do not persist (verified on a fresh production build: neither POST fires until switched to )"
     },
@@ -9801,10 +9801,10 @@
     "TASK-199": {
       "id": "TASK-199",
       "type": "task",
-      "status": "active",
-      "version": 1,
+      "status": "resolved",
+      "version": 2,
       "created_at": "2026-08-24T06:22:40+00:00",
-      "updated_at": "2026-08-24T06:22:40+00:00",
+      "updated_at": "2026-08-24T06:37:44+00:00",
       "touched_round": 167,
       "category": "correctness",
       "severity": 0.5,
@@ -9812,6 +9812,51 @@
       "effort": 1.0,
       "unlock_factor": 1.0,
       "title": "Convert fire-and-forget lifecycle/handler client calls from useFetch to  so they actually execute: usePostView, usePostLike, recordReaderHistory, fetchReaderHistory, fetchReaderHistoryStats, clearReaderHistory, fetchReaderDataExport + update slug/useApi/useReadingHistory specs to stub "
+    },
+    "CHG-190": {
+      "id": "CHG-190",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-24T06:37:43+00:00",
+      "updated_at": "2026-08-24T06:37:43+00:00",
+      "touched_round": 167,
+      "commit": "ebec10b",
+      "title": "fix(reader): notifications page — localized common.errors.network + 401 session-expiry logout/redirect (ISS-110, TASK-198)"
+    },
+    "CHG-191": {
+      "id": "CHG-191",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-24T06:37:43+00:00",
+      "updated_at": "2026-08-24T06:37:43+00:00",
+      "touched_round": 167,
+      "commit": "6a1986d",
+      "title": "fix(reader): convert fire-and-forget useFetch client calls to  — recordReaderHistory/fetchReaderHistory/Stats/clear/export + usePostView/usePostLike/useCommentLike (ISS-111, TASK-199)"
+    },
+    "CHG-192": {
+      "id": "CHG-192",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-24T06:37:43+00:00",
+      "updated_at": "2026-08-24T06:37:43+00:00",
+      "touched_round": 167,
+      "commit": "6892917",
+      "title": "feat(reader): latest-activity card on reading-history summary (DEC-165, TASK-197)"
+    },
+    "DEC-166": {
+      "id": "DEC-166",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-24T06:37:44+00:00",
+      "updated_at": "2026-08-24T06:37:44+00:00",
+      "touched_round": 167,
+      "title": "Milestone delivered: reader reading-insights — reading-history summary complete (DEC-165)",
+      "rationale": "Delivered the reading-insights slice the milestone opened: the latest-activity card now renders on /history (posts read + minutes already shipped DEC-118) with i18n, vitest and e2e coverage. The round also fixed two real user-facing bugs that surfaced during verification: ISS-110 (notifications raw i18n key + missing 401 session handling) and ISS-111 (fire-and-forget useFetch calls in lifecycle/handler contexts silently never execute, breaking server-backed history, post views, post/comment likes and data export).",
+      "alternatives_rejected": "Declined leaving the useFetch lifecycle bug unfixed once confirmed (ISS-111), declined expanding to an unverified system-wide useFetch audit this round, and declined re-delivering the already-shipped stats panel (duplicates DEC-118)."
     }
   },
   "edges": [
@@ -14180,6 +14225,54 @@
       "to": "COMP-002",
       "type": "located_in",
       "created_at": "2026-08-24T06:22:40+00:00"
+    },
+    {
+      "from": "CHG-190",
+      "to": "TASK-198",
+      "type": "implements",
+      "created_at": "2026-08-24T06:37:43+00:00"
+    },
+    {
+      "from": "CHG-190",
+      "to": "ISS-110",
+      "type": "resolves",
+      "created_at": "2026-08-24T06:37:43+00:00"
+    },
+    {
+      "from": "CHG-191",
+      "to": "TASK-199",
+      "type": "implements",
+      "created_at": "2026-08-24T06:37:43+00:00"
+    },
+    {
+      "from": "CHG-191",
+      "to": "ISS-111",
+      "type": "resolves",
+      "created_at": "2026-08-24T06:37:43+00:00"
+    },
+    {
+      "from": "CHG-192",
+      "to": "TASK-197",
+      "type": "implements",
+      "created_at": "2026-08-24T06:37:43+00:00"
+    },
+    {
+      "from": "CHG-192",
+      "to": "ISS-109",
+      "type": "resolves",
+      "created_at": "2026-08-24T06:37:43+00:00"
+    },
+    {
+      "from": "DEC-166",
+      "to": "TASK-197",
+      "type": "governs",
+      "created_at": "2026-08-24T06:37:44+00:00"
+    },
+    {
+      "from": "DEC-166",
+      "to": "DEC-165",
+      "type": "supersedes",
+      "created_at": "2026-08-24T06:37:44+00:00"
     }
   ]
 }
