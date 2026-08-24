@@ -32,7 +32,7 @@ def upgrade() -> None:
             sa.Column("id", sa.Integer(), primary_key=True, index=True),
             sa.Column("reader_id", sa.Integer(), nullable=False, index=True),
             sa.Column("category_id", sa.Integer(), nullable=False, index=True),
-            sa.Column("notify", sa.Boolean(), nullable=False, server_default=sa.text("1")),
+            sa.Column("notify", sa.Boolean(), nullable=False, server_default=sa.true()),
             sa.Column("created_at", sa.DateTime(), nullable=True),
             sa.UniqueConstraint("reader_id", "category_id", name="uq_category_follows_reader_category"),
         )

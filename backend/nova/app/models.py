@@ -25,6 +25,7 @@ from sqlalchemy import (
     Text,
     UniqueConstraint,
     text,
+    true,
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -171,7 +172,7 @@ class CategoryFollow(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     reader_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
     category_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
-    notify: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True, server_default=text("1"))
+    notify: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True, server_default=true())
     created_at: Mapped[datetime | None] = mapped_column(DateTime, default=lambda: datetime.now(UTC))
 
     __table_args__ = (UniqueConstraint("reader_id", "category_id", name="uq_category_follows_reader_category"),)
@@ -410,7 +411,7 @@ class SeriesFollow(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     reader_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
     series_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
-    notify: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True, server_default=text("1"))
+    notify: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True, server_default=true())
     created_at: Mapped[datetime | None] = mapped_column(DateTime, default=lambda: datetime.now(UTC))
 
     __table_args__ = (UniqueConstraint("reader_id", "series_id", name="uq_series_follows_reader_series"),)
