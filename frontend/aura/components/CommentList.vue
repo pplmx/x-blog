@@ -560,10 +560,10 @@ async function handleCommentFlag(comment: Comment): Promise<void> {
 	flaggingIds.value = new Set(flaggingIds.value).add(comment.id);
 	flagError.value = null;
 	try {
-		const resp = await flagComment(comment.id);
-		if (resp?.status === 200 || resp?.status === 201 || resp?.is_new !== undefined) {
-			markCommentFlagged(comment.id);
-		}
+		// A resolved flag = server-confirmed (is_new distinguishes first-vs-dup
+		// flag server-side but either way the local "flagged" state should stick).
+		await flagComment(comment.id);
+		markCommentFlagged(comment.id);
 	} catch {
 		flagError.value = t("components.commentList.flagError");
 	} finally {

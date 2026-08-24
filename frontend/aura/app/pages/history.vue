@@ -96,7 +96,11 @@ const heatmapWeeks = computed<(ActivityCell | null)[][]>(() => {
 	if (!acts.length) return [];
 	// The server's first entry may not fall on a Monday; pad the front so
 	// columns align and today sits at the end (acts are ascending, end today).
-	const mondayIndex = (new Date(`${acts[0].date}T00:00:00Z`).getUTCDay() + 6) % 7;
+	// acts.length > 0 is checked above; the optional read keeps
+	// noUncheckedIndexedAccess quiet without a non-null assertion.
+	const firstDate = acts[0]?.date;
+	if (!firstDate) return [];
+	const mondayIndex = (new Date(`${firstDate}T00:00:00Z`).getUTCDay() + 6) % 7;
 	const cells: (ActivityCell | null)[] = [];
 	for (let i = 0; i < mondayIndex; i++) cells.push(null);
 	for (const a of acts) cells.push(a);

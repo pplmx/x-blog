@@ -979,10 +979,15 @@ export async function dismissAdminCommentFlags(commentId: number): Promise<{
 }> {
 	const config = useRuntimeConfig();
 	const apiUrl = config.public.apiUrl;
-	return $fetch(`${apiUrl}/api/admin/comments/${commentId}/flags`, {
-		method: "DELETE",
-		headers: getAuthHeaders(),
-	});
+	// Explicit generic avoids Nuxt typed-routes resolving this template string
+	// through ofetch's unconstrained overload (TS2321 excessive stack depth).
+	return $fetch<{ comment_id: number; removed: number }>(
+		`${apiUrl}/api/admin/comments/${commentId}/flags`,
+		{
+			method: "DELETE",
+			headers: getAuthHeaders(),
+		},
+	);
 }
 
 /** Bulk-delete selected comments (auth required). Returns the deleted count. */

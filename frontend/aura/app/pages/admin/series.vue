@@ -70,7 +70,11 @@ async function moveEpisode(seriesId: number, index: number, dir: -1 | 1) {
 	const target = index + dir;
 	if (target < 0 || target >= current.length) return;
 	const next = [...current];
-	const [item] = next.splice(index, 1);
+	// Bounds-checked above (target in [0, current.length)), but
+	// noUncheckedIndexedAccess needs an explicit guard before the splice-out.
+	const item = next[index];
+	if (item === undefined) return;
+	next.splice(index, 1);
 	next.splice(target, 0, item);
 	episodesError.value = false;
 	try {
@@ -407,7 +411,7 @@ async function handleDelete(id: number) {
                 </button>
                 <button
                   type="button"
-                  :disabled="idx === episodesBySeries[s.id].length - 1"
+                  :disabled="idx === (episodesBySeries[s.id] ?? []).length - 1"
                   class="p-1 rounded-md text-gray-400 hover:text-indigo-600 hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
                   :aria-label="t('admin.series.moveDown')"
                   @click="moveEpisode(s.id, idx, 1)"
