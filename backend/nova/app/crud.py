@@ -1498,22 +1498,37 @@ def get_reading_history(db: Session, reader_id: int, post_id: int) -> models.Rea
     )
 
 
-def record_reading_history(db: Session, reader_id: int, post_id: int) -> tuple[models.ReadingHistory, bool]:
+def record_reading_history(
+    db: Session, reader_id: int, post_id: int, scroll_position: int | None = None
+) -> tuple[models.ReadingHistory, bool]:
     """Upsert a view into the reader's history; returns (row, created).
 
     Idempotent: recording the same post again refreshes ``viewed_at`` in place
     (moving it to the front of the newest-first list) instead of duplicating —
     a reader revisiting a post bumps it, mirroring read-trail semantics
     (DEC-116, TASK-170).
+
+    ``scroll_position`` (per-post resume, DEC-167/TASK-200) is updated in place
+    *only* when the caller passes an explicit value: a plain view (None)
+    preserves whatever position was last saved, so reopening a post does not
+    wipe the reader's place. ``0`` is meaningful (scrolled back to the very
+    top) and clears the saved offset.
     """
     existing = get_reading_history(db, reader_id, post_id)
     if existing:
         existing.viewed_at = datetime.now(UTC)
+        if scroll_position is not None:
+            existing.scroll_position = scroll_position
         db.add(existing)
         db.commit()
         db.refresh(existing)
         return existing, False
-    row = models.ReadingHistory(reader_id=reader_id, post_id=post_id, viewed_at=datetime.now(UTC))
+    row = models.ReadingHistory(
+        reader_id=reader_id,
+        post_id=post_id,
+        viewed_at=datetime.now(UTC),
+        scroll_position=scroll_position,
+    )
     db.add(row)
     db.commit()
     db.refresh(row)

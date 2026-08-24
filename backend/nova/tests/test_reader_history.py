@@ -260,3 +260,93 @@ class TestReadingStats:
         client.post(f"{HISTORY}/{post.id}", headers=_auth(t1))
         assert client.get(self.STATS, headers=_auth(t1)).json()["total_posts"] == 1
         assert client.get(self.STATS, headers=_auth(t2)).json()["total_posts"] == 0
+
+
+class TestScrollPosition:
+    """Per-post resume position (DEC-167, TASK-200).
+
+    ``scroll_position`` is an optional pixel offset saved with a view so a
+    signed-in reader can resume where they left off inside a post. The record
+    endpoint accepts an optional JSON body: a plain view (no body / null)
+    preserves an existing position, an explicit ``0`` clears it, and a save
+    updates it in place. ``GET /me/history/{post_id}`` reads the position back
+    for the post page to restore on return (null when never viewed).
+    """
+
+    def test_record_with_body_requires_reader_token(self, client):
+        assert client.post(f"{HISTORY}/1", json={"scroll_position": 100}).status_code == 401
+
+    def test_position_read_requires_reader_token(self, client):
+        assert client.get(f"{HISTORY}/1").status_code == 401
+
+    def test_position_saved_and_read_back(self, client, db_session):
+        token = _token(client)
+        post = _create_post(db_session, slug="pos-readback")
+        resp = client.post(f"{HISTORY}/{post.id}", json={"scroll_position": 420}, headers=_auth(token))
+        assert resp.status_code == 200, resp.text
+        got = client.get(f"{HISTORY}/{post.id}", headers=_auth(token))
+        assert got.status_code == 200
+        assert got.json() == {"post_id": post.id, "scroll_position": 420}
+
+    def test_plain_view_preserves_existing_position(self, client, db_session):
+        """Re-opening a post (no body) must not wipe the saved position."""
+        token = _token(client)
+        post = _create_post(db_session, slug="pos-preserve")
+        client.post(f"{HISTORY}/{post.id}", json={"scroll_position": 500}, headers=_auth(token))
+        client.post(f"{HISTORY}/{post.id}", headers=_auth(token))
+        assert client.get(f"{HISTORY}/{post.id}", headers=_auth(token)).json()["scroll_position"] == 500
+
+    def test_position_zero_overwrites(self, client, db_session):
+        token = _token(client)
+        post = _create_post(db_session, slug="pos-zero")
+        client.post(f"{HISTORY}/{post.id}", json={"scroll_position": 500}, headers=_auth(token))
+        client.post(f"{HISTORY}/{post.id}", json={"scroll_position": 0}, headers=_auth(token))
+        assert client.get(f"{HISTORY}/{post.id}", headers=_auth(token)).json()["scroll_position"] == 0
+
+    def test_position_updated_in_place(self, client, db_session):
+        token = _token(client)
+        post = _create_post(db_session, slug="pos-update")
+        client.post(f"{HISTORY}/{post.id}", json={"scroll_position": 100}, headers=_auth(token))
+        client.post(f"{HISTORY}/{post.id}", json={"scroll_position": 2400}, headers=_auth(token))
+        assert client.get(f"{HISTORY}/{post.id}", headers=_auth(token)).json()["scroll_position"] == 2400
+
+    def test_negative_position_rejected(self, client, db_session):
+        token = _token(client)
+        post = _create_post(db_session, slug="pos-negative")
+        resp = client.post(f"{HISTORY}/{post.id}", json={"scroll_position": -1}, headers=_auth(token))
+        assert resp.status_code == 422
+
+    def test_excessive_position_rejected(self, client, db_session):
+        token = _token(client)
+        post = _create_post(db_session, slug="pos-huge")
+        resp = client.post(
+            f"{HISTORY}/{post.id}",
+            json={"scroll_position": 99_000_000_000},
+            headers=_auth(token),
+        )
+        assert resp.status_code == 422
+
+    def test_unviewed_post_returns_null_position(self, client, db_session):
+        token = _token(client)
+        post = _create_post(db_session, slug="pos-unviewed")
+        got = client.get(f"{HISTORY}/{post.id}", headers=_auth(token))
+        assert got.status_code == 200
+        assert got.json() == {"post_id": post.id, "scroll_position": None}
+
+    def test_position_read_draft_rejected(self, client, db_session):
+        token = _token(client)
+        post = _create_post(db_session, slug="pos-draft", draft=True)
+        assert client.get(f"{HISTORY}/{post.id}", headers=_auth(token)).status_code == 404
+
+    def test_position_is_reader_isolated(self, client, db_session):
+        t1 = _token(client, email="pos1@example.com")
+        t2 = _token(client, email="pos2@example.com")
+        post = _create_post(db_session, slug="pos-isolated")
+        client.post(f"{HISTORY}/{post.id}", json={"scroll_position": 777}, headers=_auth(t1))
+        assert client.get(f"{HISTORY}/{post.id}", headers=_auth(t1)).json()["scroll_position"] == 777
+        assert client.get(f"{HISTORY}/{post.id}", headers=_auth(t2)).json()["scroll_position"] is None
+
+    def test_position_not_exposed_in_public_post(self, client, db_session):
+        """Anonymous visitors cannot read a reader's saved position."""
+        post = _create_post(db_session, slug="pos-public")
+        assert client.get(f"{HISTORY}/{post.id}").status_code == 401

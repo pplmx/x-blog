@@ -314,6 +314,26 @@ class RecordHistoryResponse(BaseModel):
     already_existed: bool
 
 
+class RecordHistoryRequest(BaseModel):
+    """Optional body on the view-record endpoint (DEC-167/TASK-200).
+
+    A plain view (no body) preserves the previously saved ``scroll_position``;
+    the client sends an explicit value only when updating the reader's resume
+    position. ``0`` is a valid offset (scrolled to the very top) and clears the
+    saved position. Bounded so a misbehaving client cannot store absurd pixels.
+    """
+
+    scroll_position: int | None = Field(default=None, ge=0, le=10_000_000)
+
+
+class ReadingPositionResponse(BaseModel):
+    """A reader's saved resume offset for a post, for the post page to restore
+    on return (null when the post has never been viewed)."""
+
+    post_id: int
+    scroll_position: int | None = None
+
+
 class ReadingStatsResponse(BaseModel):
     """A reader's reading summary derived from their history (DEC-118).
 
@@ -1045,21 +1065,47 @@ def reading_history_stats(
     )
 
 
+@router.get("/me/history/{post_id}", response_model=ReadingPositionResponse)
+def reading_position(
+    post_id: int,
+    current_reader: auth.ReaderAccount = Depends(auth.get_current_reader),
+    db: Session = Depends(get_db),
+):
+    """A reader's saved resume position for a public post (DEC-167/TASK-200).
+
+    Returns the last scroll offset the reader saved for this post (or null when
+    they never viewed it) so the post page can drop them back where they left
+    off. Same public-post guard as the record path — a post that went dark is
+    uniformly 404 and cannot be positioned (no draft oracle). The position is
+    auth-scoped to the reader; it never appears in the public post payload.
+    """
+    post = db.get(models.Post, post_id)
+    if not post or not crud.is_publicly_visible(post):
+        raise HTTPException(status_code=404, detail="Post not found")
+    row = crud.get_reading_history(db, current_reader.id, post.id)
+    return ReadingPositionResponse(post_id=post_id, scroll_position=row.scroll_position if row else None)
+
+
 @router.post("/me/history/{post_id}", response_model=RecordHistoryResponse)
 def record_reading_view(
     post_id: int,
+    body: RecordHistoryRequest | None = None,
     current_reader: auth.ReaderAccount = Depends(auth.get_current_reader),
     db: Session = Depends(get_db),
 ):
     """Record a view on a public post (idempotent upsert).
 
+    ``body`` is optional: omit it (or send ``scroll_position: null``) for a
+    plain view that refreshes ``viewed_at`` without touching the saved resume
+    position; send an explicit ``scroll_position`` to update it (DEC-167).
     Drafts/scheduled/unknown posts are uniformly 404 — no draft-existence
     oracle (same guard as the bookmark/comment paths).
     """
     post = db.get(models.Post, post_id)
     if not post or not crud.is_publicly_visible(post):
         raise HTTPException(status_code=404, detail="Post not found")
-    row, created = crud.record_reading_history(db, current_reader.id, post.id)
+    scroll_position = body.scroll_position if body is not None else None
+    row, created = crud.record_reading_history(db, current_reader.id, post.id, scroll_position)
     return RecordHistoryResponse(post_id=row.post_id, already_existed=not created)
 
 

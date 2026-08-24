@@ -24,7 +24,6 @@ from sqlalchemy import (
     Table,
     Text,
     UniqueConstraint,
-    text,
     true,
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -354,6 +353,11 @@ class ReadingHistory(Base):
     reader_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
     post_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
     viewed_at: Mapped[datetime | None] = mapped_column(DateTime, default=lambda: datetime.now(UTC))
+    # Per-post resume position (DEC-167, TASK-200): last saved vertical scroll
+    # offset in px, so a returning reader can be dropped back where they left
+    # off. Nullable + additive. Updated in place by the record endpoint only
+    # when the client sends an explicit value (plain views preserve it).
+    scroll_position: Mapped[int | None] = mapped_column(Integer, nullable=True)
 
     __table_args__ = (UniqueConstraint("reader_id", "post_id", name="uq_reading_history_reader_post"),)
 
