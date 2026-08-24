@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 164,
+  "round": 165,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-08-24T02:22:00+00:00",
+  "updated_at": "2026-08-24T03:22:17+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -9563,10 +9563,10 @@
     "TASK-194": {
       "id": "TASK-194",
       "type": "task",
-      "status": "active",
-      "version": 1,
+      "status": "resolved",
+      "version": 2,
       "created_at": "2026-08-24T02:21:59+00:00",
-      "updated_at": "2026-08-24T02:21:59+00:00",
+      "updated_at": "2026-08-24T03:19:47+00:00",
       "touched_round": 164,
       "category": "core-feature",
       "severity": 0.6,
@@ -9574,6 +9574,123 @@
       "effort": 4.0,
       "unlock_factor": 1.0,
       "title": "Admin editorial calendar: month-bucketed posts endpoint (published/scheduled/draft per day, auth + pytest), then an admin Calendar page (month grid, prev/next navigation, today highlight, status-colored post chips, click-to-edit) + i18n + vitest + e2e smoke"
+    },
+    "CHG-186": {
+      "id": "CHG-186",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-24T02:32:07+00:00",
+      "updated_at": "2026-08-24T02:32:07+00:00",
+      "touched_round": 164,
+      "commit": "8ce61ba",
+      "title": "Admin editorial calendar backend: GET /api/admin/calendar?month=YYYY-MM + pytest (DEC-162, TASK-194)"
+    },
+    "CHG-187": {
+      "id": "CHG-187",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-24T03:03:20+00:00",
+      "updated_at": "2026-08-24T03:03:20+00:00",
+      "touched_round": 164,
+      "commit": "268187a",
+      "title": "Admin editorial calendar frontend: month-grid page + nav item + useApi helper + i18n + vitest + e2e smoke (DEC-162, TASK-194)"
+    },
+    "TASK-195": {
+      "id": "TASK-195",
+      "type": "task",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-24T03:03:20+00:00",
+      "updated_at": "2026-08-24T03:03:20+00:00",
+      "touched_round": 165,
+      "category": "test-quality",
+      "severity": 0.5,
+      "confidence": 1.0,
+      "effort": 2.0,
+      "title": "Fix pre-existing frontend typecheck errors in HEAD (vue-tsc baseline not clean): admin/series.vue (2 errors), CommentList.vue (CommentFlagResult.status), useApi.ts:969 Excessive stack depth in the  route-type helper (6 errors)"
+    },
+    "TASK-196": {
+      "id": "TASK-196",
+      "type": "task",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-24T03:03:20+00:00",
+      "updated_at": "2026-08-24T03:03:20+00:00",
+      "touched_round": 165,
+      "category": "security",
+      "severity": 0.8,
+      "confidence": 0.9,
+      "effort": 5.0,
+      "title": "Address GitHub dependabot findings on default branch (26 total: 16 high, 6 moderate, 4 low) — audit + bump affected frontend/backend dependencies and document or remediate"
+    },
+    "TASK-197": {
+      "id": "TASK-197",
+      "type": "task",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-24T03:03:20+00:00",
+      "updated_at": "2026-08-24T03:03:20+00:00",
+      "touched_round": 165,
+      "category": "core-feature",
+      "severity": 0.4,
+      "confidence": 0.9,
+      "effort": 2.0,
+      "title": "Surface reader reading-insights on the history page: the /me/history/stats composable (fetchReaderHistoryStats) is unused — add a stats panel (posts read, minutes, latest activity) to /history with vitest"
+    },
+    "CHG-188": {
+      "id": "CHG-188",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-24T03:19:46+00:00",
+      "updated_at": "2026-08-24T03:19:46+00:00",
+      "touched_round": 164,
+      "commit": "36b8e0f",
+      "title": "Fix: restore GET /posts/{post_id} decorator dropped when inserting the /calendar endpoint (caught by full-suite regression guard)"
+    },
+    "DEC-163": {
+      "id": "DEC-163",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-24T03:19:46+00:00",
+      "updated_at": "2026-08-24T03:19:46+00:00",
+      "touched_round": 164,
+      "title": "Milestone delivered: admin editorial calendar (DEC-162 complete)",
+      "rationale": "Feature-evolution gap-analysis milestone (SKILL 11.2; operator stakeholder). The operator could schedule posts but had no date-oriented view of the publishing plan. CHG-186 backend (GET /api/admin/calendar?month=YYYY-MM buckets posts as published/scheduled/draft with a grid date, undated drafts kept in an unscheduled list, bounded window query + pytest) + CHG-187 frontend (/admin/calendar Monday-first month grid, status-colored chips, click-to-edit, prev/next/today, ?month= URL state, sidebar, nav item, i18n, vitest) + CHG-188 (restored a GET posts/{post_id} decorator accidentally dropped during the insert — caught by the full-suite regression guard, the value of re-running VERIFY each round). Verifies: backend 1091 green (98.9% cov, ruff+pyright clean), frontend 1131 vitest green (biome clean on changed files, vue-tsc unchanged vs HEAD baseline which has pre-existing errors tracked as TASK-195), Playwright admin-calendar smoke added per the established admin-e2e pattern. Gives the operator a shareable, clickable publishing plan.",
+      "alternatives_rejected": "Per-kind reader notification mute (borderline 'add options/buttons' per value gate); reader reading-insights dashboard (backend stats already exist and are unreferenced; surfaced later as TASK-197); email/digest notifications (no mail infra, out of scope)."
+    },
+    "ISS-107": {
+      "id": "ISS-107",
+      "type": "issue",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-24T03:22:16+00:00",
+      "updated_at": "2026-08-24T03:22:16+00:00",
+      "touched_round": 165,
+      "title": "Frontend vue-tsc baseline is red in HEAD: admin/series.vue, CommentList.vue, useApi.ts:969 Excessive stack depth (pre-existing, unrelated to any shipped milestone)"
+    },
+    "ISS-108": {
+      "id": "ISS-108",
+      "type": "issue",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-24T03:22:16+00:00",
+      "updated_at": "2026-08-24T03:22:16+00:00",
+      "touched_round": 165,
+      "title": "GitHub dependabot reports 26 vulnerabilities on default branch (16 high / 6 moderate / 4 low)"
+    },
+    "ISS-109": {
+      "id": "ISS-109",
+      "type": "issue",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-24T03:22:16+00:00",
+      "updated_at": "2026-08-24T03:22:16+00:00",
+      "touched_round": 165,
+      "title": "Reader reading summary built but never surfaced: /me/history/stats + fetchReaderHistoryStats exist but the history page shows no stats"
     }
   },
   "edges": [
@@ -13840,6 +13957,54 @@
       "to": "DEC-161",
       "type": "supersedes",
       "created_at": "2026-08-24T02:22:00+00:00"
+    },
+    {
+      "from": "CHG-186",
+      "to": "TASK-194",
+      "type": "implements",
+      "created_at": "2026-08-24T02:32:07+00:00"
+    },
+    {
+      "from": "CHG-187",
+      "to": "TASK-194",
+      "type": "implements",
+      "created_at": "2026-08-24T03:03:20+00:00"
+    },
+    {
+      "from": "CHG-188",
+      "to": "TASK-194",
+      "type": "implements",
+      "created_at": "2026-08-24T03:19:46+00:00"
+    },
+    {
+      "from": "DEC-163",
+      "to": "TASK-194",
+      "type": "governs",
+      "created_at": "2026-08-24T03:19:47+00:00"
+    },
+    {
+      "from": "DEC-163",
+      "to": "DEC-162",
+      "type": "supersedes",
+      "created_at": "2026-08-24T03:19:47+00:00"
+    },
+    {
+      "from": "TASK-195",
+      "to": "ISS-107",
+      "type": "addresses",
+      "created_at": "2026-08-24T03:22:16+00:00"
+    },
+    {
+      "from": "TASK-196",
+      "to": "ISS-108",
+      "type": "addresses",
+      "created_at": "2026-08-24T03:22:16+00:00"
+    },
+    {
+      "from": "TASK-197",
+      "to": "ISS-109",
+      "type": "addresses",
+      "created_at": "2026-08-24T03:22:17+00:00"
     }
   ]
 }
