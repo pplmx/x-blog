@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 167,
+  "round": 168,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-08-24T06:37:44+00:00",
+  "updated_at": "2026-08-24T11:33:04+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -5878,11 +5878,11 @@
     "HYP-011": {
       "id": "HYP-011",
       "type": "hypothesis",
-      "status": "active",
-      "version": 1,
+      "status": "stale",
+      "version": 2,
       "created_at": "2026-08-17T23:52:48+00:00",
-      "updated_at": "2026-08-17T23:52:48+00:00",
-      "touched_round": 104,
+      "updated_at": "2026-08-24T08:18:45+00:00",
+      "touched_round": 168,
       "confidence": 0.85,
       "title": "New-post Web Push notifications delivered end-to-end per DEC-055 acceptance (opt-in subscribe -> backend storage -> superuser notify -> service worker display) and the milestone is a net-increment user value",
       "description": "Acceptance: an opted-in reader receives a browser notification when the author publishes and clicks notify, without regressions. Verified by backend contract tests, composable/SW unit tests, and Playwright journeys."
@@ -7315,10 +7315,10 @@
     "HYP-012": {
       "id": "HYP-012",
       "type": "hypothesis",
-      "status": "active",
-      "version": 1,
+      "status": "stale",
+      "version": 2,
       "created_at": "2026-08-21T04:42:21+00:00",
-      "updated_at": "2026-08-21T04:42:21+00:00",
+      "updated_at": "2026-08-24T08:18:45+00:00",
       "touched_round": 118,
       "confidence": 0.7,
       "title": "Format gates went red when earlier milestones adjusted formatting without running the repo-wide check",
@@ -9857,6 +9857,126 @@
       "title": "Milestone delivered: reader reading-insights — reading-history summary complete (DEC-165)",
       "rationale": "Delivered the reading-insights slice the milestone opened: the latest-activity card now renders on /history (posts read + minutes already shipped DEC-118) with i18n, vitest and e2e coverage. The round also fixed two real user-facing bugs that surfaced during verification: ISS-110 (notifications raw i18n key + missing 401 session handling) and ISS-111 (fire-and-forget useFetch calls in lifecycle/handler contexts silently never execute, breaking server-backed history, post views, post/comment likes and data export).",
       "alternatives_rejected": "Declined leaving the useFetch lifecycle bug unfixed once confirmed (ISS-111), declined expanding to an unverified system-wide useFetch audit this round, and declined re-delivering the already-shipped stats panel (duplicates DEC-118)."
+    },
+    "DEC-167": {
+      "id": "DEC-167",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-24T08:37:40+00:00",
+      "updated_at": "2026-08-24T08:37:40+00:00",
+      "touched_round": 168,
+      "title": "Milestone: reader resume-reading position — remember and restore where a reader left off inside a post",
+      "rationale": "Gap-analysis (round 168) ranked per-post resume as the top reader-facing missing capability: every long post with a signed-in reader hits the friction of re-finding their place after leaving. Existing infrastructure is already in place — server-backed reading-history write (POST /me/history/{id}, hardened in ISS-111), the ReadingHistory row per reader/post, and continue-reading entry points on /history, / (recently viewed) and /series/[slug] that currently all deep-link to the post top. Adding a nullable scroll_position column, an optional body on the record endpoint, and a position-readback endpoint plus debounced save/restore on the post page closes that gap end-to-end with zero new subsystems.",
+      "alternatives_rejected": "rejected: reading-streaks/activity-calendar milestone (lower per-user value); rejected: per-type notification settings page (distributed fan-out, heavier slice); rejected: PWA manifest/offline shell (no backend involvement, speculative value)"
+    },
+    "TASK-200": {
+      "id": "TASK-200",
+      "type": "task",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-08-24T08:37:40+00:00",
+      "updated_at": "2026-08-24T11:33:03+00:00",
+      "touched_round": 168,
+      "category": "core-feature",
+      "severity": 1.0,
+      "confidence": 1.0,
+      "effort": 3.0,
+      "title": "Resume-reading position: add scroll_position to ReadingHistory (nullable col + alembic migration), extend POST /me/history/{id} with optional body, add GET /me/history/{id} position readback, debounced save+restore on the post page with a dismissible 'resumed' chip, backend + vitest + e2e coverage"
+    },
+    "CHG-193": {
+      "id": "CHG-193",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-24T11:32:13+00:00",
+      "updated_at": "2026-08-24T11:32:13+00:00",
+      "touched_round": 168,
+      "commit": "27c3ea8",
+      "title": "feat(reader): per-post resume position — scroll_position column + record body + position readback (DEC-167, TASK-200)"
+    },
+    "CHG-194": {
+      "id": "CHG-194",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-24T11:32:13+00:00",
+      "updated_at": "2026-08-24T11:32:13+00:00",
+      "touched_round": 168,
+      "commit": "d8f85de",
+      "title": "feat(reader): resume-reading save/restore + chip on the post page (DEC-167, TASK-200)"
+    },
+    "EV-109": {
+      "id": "EV-109",
+      "type": "evidence",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-24T11:32:13+00:00",
+      "updated_at": "2026-08-24T11:32:13+00:00",
+      "touched_round": 168,
+      "source": "backend: pytest -n auto --cov-fail-under=80",
+      "title": "Full backend suite green on final state: 1103 passed, 9 skipped, 94.49% coverage (milestone adds 12 TestScrollPosition contract tests)",
+      "confidence": 1.0
+    },
+    "EV-110": {
+      "id": "EV-110",
+      "type": "evidence",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-24T11:32:13+00:00",
+      "updated_at": "2026-08-24T11:32:13+00:00",
+      "touched_round": 168,
+      "source": "frontend: pnpm test",
+      "title": "Full frontend vitest green: 1151 passed across 71 files (incl. useResumeReading, slug chip, useApi position tests)",
+      "confidence": 1.0
+    },
+    "EV-111": {
+      "id": "EV-111",
+      "type": "evidence",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-24T11:32:13+00:00",
+      "updated_at": "2026-08-24T11:32:13+00:00",
+      "touched_round": 168,
+      "source": "e2e: playwright resume-reading.spec.ts",
+      "title": "Playwright e2e passed: scroll long post -> server saves offset (>=1400) -> return restores viewport + chip -> back-to-top clears server position to 0",
+      "confidence": 1.0
+    },
+    "EV-112": {
+      "id": "EV-112",
+      "type": "evidence",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-24T11:32:13+00:00",
+      "updated_at": "2026-08-24T11:32:13+00:00",
+      "touched_round": 168,
+      "source": "throwaway PG 18.4 DB @10.112.9.49:13310",
+      "title": "alembic upgrade head applied cleanly from scratch on Postgres; reading_history.scroll_position integer nullable present; temp DB dropped",
+      "confidence": 1.0
+    },
+    "EV-113": {
+      "id": "EV-113",
+      "type": "evidence",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-24T11:32:14+00:00",
+      "updated_at": "2026-08-24T11:32:14+00:00",
+      "touched_round": 168,
+      "source": "code-reviewer agent (round 168)",
+      "title": "Review: 0 CRITICAL / 0 HIGH; 2 MEDIUM (SPA nav resume gap, back-to-top did not clear position) fixed in-round; typecheck clean beyond pre-existing ISS-107 baseline",
+      "confidence": 1.0
+    },
+    "DEC-168": {
+      "id": "DEC-168",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-24T11:33:04+00:00",
+      "updated_at": "2026-08-24T11:33:04+00:00",
+      "touched_round": 168,
+      "title": "Milestone delivered: reader resume-reading position — remember and restore where a reader left off inside a post (DEC-167 complete)",
+      "rationale": "Delivered the resume-reading slice the milestone opened: a signed-in reader's scroll offset inside a post is saved server-side (ReadingHistory.scroll_position, additive migration verified on Postgres 18.4) and restored on return with a layout-shift-safe settle and a dismissible 'resumed' chip. Integrated with every continue-reading entry point (history/recently-viewed now land mid-post automatically). TDD: 12 new backend contract tests, 15 new frontend tests, and a Playwright e2e that scrolled to 1500px, verified the server offset >= 1400, restored the viewport on return, and confirmed back-to-top clears the position to 0. Two MEDIUM review findings (SPA post-to-post resume never re-ran; back-to-top did not clear the saved position) were fixed in-round. VERIFY: backend 1103 passed / 94.49% coverage, frontend 1151 passed, e2e green, typecheck clean beyond the pre-existing ISS-107 baseline.",
+      "alternatives_rejected": "Declined reading-gamification streaks/activity-calendar (next-best gap; soft motivation vs the friction removal delivered here), declined per-type notification toggles (cross-cutting fan-out), and declined expanding restore to heading-anchor precision (pixel offsets are well under 10M px, and the settle re-applies already absorb image/layout drift — hierarchy not justified this round)."
     }
   },
   "edges": [
@@ -14273,6 +14393,30 @@
       "to": "DEC-165",
       "type": "supersedes",
       "created_at": "2026-08-24T06:37:44+00:00"
+    },
+    {
+      "from": "DEC-167",
+      "to": "TASK-200",
+      "type": "governs",
+      "created_at": "2026-08-24T08:37:40+00:00"
+    },
+    {
+      "from": "CHG-193",
+      "to": "TASK-200",
+      "type": "implements",
+      "created_at": "2026-08-24T11:33:03+00:00"
+    },
+    {
+      "from": "CHG-194",
+      "to": "TASK-200",
+      "type": "implements",
+      "created_at": "2026-08-24T11:33:03+00:00"
+    },
+    {
+      "from": "EV-109",
+      "to": "HYP-011",
+      "type": "validates",
+      "created_at": "2026-08-24T11:33:03+00:00"
     }
   ]
 }
