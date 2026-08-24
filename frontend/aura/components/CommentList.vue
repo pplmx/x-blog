@@ -449,13 +449,9 @@ async function handleCommentLike(comment: Comment): Promise<void> {
 	likingIds.value = new Set(likingIds.value).add(comment.id);
 	likeError.value = null;
 	try {
-		const liked = await useCommentLike(comment.id);
-		// useFetch surfaces failures in `.error` (the fetch never rejects).
-		if (liked.error?.value || !liked.data?.value) {
-			likeError.value = t("components.commentList.likeError");
-			return;
-		}
-		const updated = liked.data.value;
+		const updated = await useCommentLike(comment.id);
+		// $fetch rejects on failure (handled below); a 200 returns the updated
+		// comment with its new count.
 		if (typeof updated.likes === "number") {
 			// Patch the flat list item — the computed tree re-renders its row
 			// (top-level or nested) with the new count.

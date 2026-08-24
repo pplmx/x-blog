@@ -178,8 +178,10 @@ export async function useSearch(query: string, page = 1, limit = 10) {
  * Increment the view count for a post.
  * Uses the backend's POST /api/posts/{post_id}/view endpoint.
  */
-export async function usePostView(postId: number) {
-	return useApi<Post>(`/api/posts/${postId}/view`, {
+export async function usePostView(postId: number): Promise<Post> {
+	const config = useRuntimeConfig();
+	const apiUrl = config.public.apiUrl;
+	return $fetch<Post>(`${apiUrl}/api/posts/${postId}/view`, {
 		method: "POST",
 	});
 }
@@ -187,9 +189,15 @@ export async function usePostView(postId: number) {
 /**
  * Increment the like count for a post.
  * Uses the backend's POST /api/posts/{post_id}/like endpoint.
+ *
+ * Like usePostView this is fire-and-forget (called from the click handler):
+ * `useFetch` never executes outside a setup/suspense context, so `$fetch` is
+ * required here or likes never reach the backend. (ISS-111)
  */
-export async function usePostLike(postId: number) {
-	return useApi<Post>(`/api/posts/${postId}/like`, {
+export async function usePostLike(postId: number): Promise<Post> {
+	const config = useRuntimeConfig();
+	const apiUrl = config.public.apiUrl;
+	return $fetch<Post>(`${apiUrl}/api/posts/${postId}/like`, {
 		method: "POST",
 	});
 }
@@ -396,9 +404,14 @@ export async function fetchComments(
  * Create a new comment for a post.
  * Uses the backend's POST /api/comments/post/{post_id} endpoint.
  */
-export async function useCommentLike(commentId: number) {
+export async function useCommentLike(commentId: number): Promise<Comment> {
 	// POST /comments/{id}/like returns the updated comment with its new count.
-	return useApi<Comment>(`/api/comments/${commentId}/like`, {
+	// Fire-and-forget from the click handler: `useFetch` never executes outside
+	// a setup/suspense context, so this must use `$fetch` or comment likes
+	// silently never reach the backend. (ISS-111)
+	const config = useRuntimeConfig();
+	const apiUrl = config.public.apiUrl;
+	return $fetch<Comment>(`${apiUrl}/api/comments/${commentId}/like`, {
 		method: "POST",
 	});
 }
@@ -1267,30 +1280,31 @@ export interface ReaderHistoryListResponse {
 }
 
 /** Server-backed reading history list, newest-first (requires reader token). */
-export async function fetchReaderHistory(page = 1, limit = 50, q?: string) {
+export async function fetchReaderHistory(page = 1, limit = 50, q?: string): Promise<ReaderHistoryListResponse> {
 	const config = useRuntimeConfig();
 	const apiUrl = config.public.apiUrl;
 	const params = new URLSearchParams({ page: String(page), limit: String(limit) });
 	if (q?.trim()) params.set("q", q.trim());
-	return useFetch<ReaderHistoryListResponse>(
-		`${apiUrl}/api/reader/me/history?${params.toString()}`,
-		{
-			headers: getReaderAuthHeaders(),
-			server: false,
-		},
-	);
+	return $fetch<ReaderHistoryListResponse>(`${apiUrl}/api/reader/me/history?${params.toString()}`, {
+		headers: getReaderAuthHeaders(),
+	});
 }
 
-/** Record a view on a post (idempotent upsert; requires reader token). */
-export async function recordReaderHistory(postId: number) {
+/** Record a view on a post (idempotent upsert; requires reader token).
+ *
+ * Fire-and-forget client POST from the post page's onMounted — must use
+ * `$fetch`, not `useFetch`: `useFetch` requires a setup/suspense context to
+ * trigger execution and its request silently never leaves the browser when
+ * called from a lifecycle hook, which left the server-backed reading history
+ * (and thus the /history stats) permanently empty. (ISS-110, DEC-165/197) */
+export async function recordReaderHistory(postId: number): Promise<{ post_id: number; already_existed: boolean }> {
 	const config = useRuntimeConfig();
 	const apiUrl = config.public.apiUrl;
-	return useFetch<{ post_id: number; already_existed: boolean }>(
+	return $fetch<{ post_id: number; already_existed: boolean }>(
 		`${apiUrl}/api/reader/me/history/${postId}`,
 		{
 			method: "POST",
 			headers: getReaderAuthHeaders(),
-			server: false,
 		},
 	);
 }
@@ -1451,33 +1465,30 @@ export async function fetchReaderSeriesProgress(slug: string) {
 }
 
 /** Reader reading-summary stats derived from their history (requires reader token). */
-export async function fetchReaderHistoryStats() {
+export async function fetchReaderHistoryStats(): Promise<ReaderHistoryStats> {
 	const config = useRuntimeConfig();
 	const apiUrl = config.public.apiUrl;
-	return useFetch<ReaderHistoryStats>(`${apiUrl}/api/reader/me/history/stats`, {
+	return $fetch<ReaderHistoryStats>(`${apiUrl}/api/reader/me/history/stats`, {
 		headers: getReaderAuthHeaders(),
-		server: false,
 	});
 }
 
 /** Download the signed-in reader's portable data bundle (DEC-126/TASK-175). */
-export async function fetchReaderDataExport() {
+export async function fetchReaderDataExport(): Promise<Record<string, unknown>> {
 	const config = useRuntimeConfig();
 	const apiUrl = config.public.apiUrl;
-	return useFetch<Record<string, unknown>>(`${apiUrl}/api/reader/me/export`, {
+	return $fetch<Record<string, unknown>>(`${apiUrl}/api/reader/me/export`, {
 		headers: getReaderAuthHeaders(),
-		server: false,
 	});
 }
 
 /** Clear the reader's entire reading history (requires reader token). */
-export async function clearReaderHistory() {
+export async function clearReaderHistory(): Promise<null> {
 	const config = useRuntimeConfig();
 	const apiUrl = config.public.apiUrl;
-	return useFetch<null>(`${apiUrl}/api/reader/me/history`, {
+	return $fetch<null>(`${apiUrl}/api/reader/me/history`, {
 		method: "DELETE",
 		headers: getReaderAuthHeaders(),
-		server: false,
 	});
 }
 

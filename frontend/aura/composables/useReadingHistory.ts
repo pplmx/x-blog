@@ -17,7 +17,6 @@ import {
 	clearReaderHistory,
 	fetchReaderHistory,
 	fetchReaderHistoryStats,
-	type ReaderHistoryListResponse,
 } from "./useApi";
 import { useReaderAuth } from "./useReaderAuth";
 import { useRecentlyViewed } from "./useRecentlyViewed";
@@ -71,8 +70,7 @@ export function useReadingHistory() {
 		}
 		loading.value = true;
 		try {
-			const res = await fetchReaderHistory(1, HISTORY_FETCH_LIMIT, query);
-			const data = res.data?.value as ReaderHistoryListResponse | undefined;
+			const data = await fetchReaderHistory(1, HISTORY_FETCH_LIMIT, query);
 			history.value = (data?.items ?? []).map((i) => ({
 				slug: i.slug,
 				title: i.title,
@@ -83,10 +81,7 @@ export function useReadingHistory() {
 			history.value = fromLocal(local.recent.value);
 		}
 		try {
-			const sres = await fetchReaderHistoryStats();
-			const sdata = sres.data?.value as
-				| { total_posts: number; total_reading_minutes: number; last_viewed_at?: string | null }
-				| undefined;
+			const sdata = await fetchReaderHistoryStats();
 			if (sdata) {
 				stats.value = {
 					totalPosts: sdata.total_posts,

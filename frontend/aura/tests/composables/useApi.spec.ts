@@ -387,25 +387,23 @@ describe("useSearch", () => {
 });
 
 describe("usePostView", () => {
-	it("posts to the view increment endpoint", () => {
-		usePostView(42);
-		expect(useFetchCalls[0].url).toBe("/api/posts/42/view");
-		expect(useFetchCalls[0].options.method).toBe("POST");
-		expect(useFetchCalls[0].options.baseURL).toBe("http://localhost:18888");
+	it("posts to the view increment endpoint via $fetch", () => {
+		void usePostView(42);
+		expect($fetchCalls[0].url).toBe("http://localhost:18888/api/posts/42/view");
+		expect($fetchCalls[0].options.method).toBe("POST");
 	});
 
-	it("uses the correct baseURL from config", () => {
-		usePostView(1);
-		expect(useFetchCalls[0].options.baseURL).toBe("http://localhost:18888");
+	it("builds the URL from the configured apiUrl", () => {
+		void usePostView(1);
+		expect($fetchCalls[0].url).toBe("http://localhost:18888/api/posts/1/view");
 	});
 });
 
 describe("usePostLike", () => {
-	it("posts to the like increment endpoint", () => {
-		usePostLike(42);
-		expect(useFetchCalls[0].url).toBe("/api/posts/42/like");
-		expect(useFetchCalls[0].options.method).toBe("POST");
-		expect(useFetchCalls[0].options.baseURL).toBe("http://localhost:18888");
+	it("posts to the like increment endpoint via $fetch", () => {
+		void usePostLike(42);
+		expect($fetchCalls[0].url).toBe("http://localhost:18888/api/posts/42/like");
+		expect($fetchCalls[0].options.method).toBe("POST");
 	});
 });
 

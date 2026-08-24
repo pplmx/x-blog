@@ -103,8 +103,8 @@ async function handleLike() {
 		// POST /like returns the updated Post (response_model=schemas.Post); use
 		// it to refresh the rendered count instead of a discarded refetch, which
 		// left post.value.likes stale in the UI.
-		if (liked.data?.value) {
-			post.value = liked.data.value;
+		if (liked) {
+			post.value = liked;
 		} else {
 			await usePost(route.params.slug as string);
 		}

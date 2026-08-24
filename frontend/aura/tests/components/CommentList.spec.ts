@@ -375,10 +375,7 @@ describe("CommentList", () => {
 
 		it("renders the like count for each comment and likes on click", async () => {
 			const comment = mockComments.items[0];
-			mockUseCommentLike.mockResolvedValue({
-				data: { value: { ...comment, likes: 3 } },
-				error: { value: null },
-			});
+			mockUseCommentLike.mockResolvedValue({ ...comment, likes: 3 });
 			const { wrapper } = await mountCommentList();
 
 			const likeButton = wrapper.find(`#comment-${comment.id} .comment-like`);
@@ -396,10 +393,7 @@ describe("CommentList", () => {
 		it("does not re-like a comment the visitor already liked (dedup)", async () => {
 			const comment = { ...mockComments.items[0], likes: 7 };
 			localStorage.setItem("liked-comments:1", "1");
-			mockUseCommentLike.mockResolvedValue({
-				data: { value: { ...comment, likes: 8 } },
-				error: { value: null },
-			});
+			mockUseCommentLike.mockResolvedValue({ ...comment, likes: 8 });
 			// Seed the rendered row with the already-liked count (7).
 			const { wrapper } = await mountCommentList({
 				comments: { ...mockComments, items: [comment] },
@@ -418,10 +412,7 @@ describe("CommentList", () => {
 
 		it("shows a friendly error when liking fails", async () => {
 			const comment = mockComments.items[0];
-			mockUseCommentLike.mockResolvedValue({
-				data: { value: null },
-				error: { value: new Error("boom") },
-			});
+			mockUseCommentLike.mockRejectedValue(new Error("boom"));
 			const { wrapper } = await mountCommentList();
 
 			await wrapper.find(`#comment-${comment.id} .comment-like`).trigger("click");

@@ -312,9 +312,10 @@ describe("Account settings page", () => {
 			isAuthenticated.value = true;
 			mockFetchPushSubscriptions.mockResolvedValue({ items: [], total: 0 });
 			mockFetchReaderDataExport.mockResolvedValue({
-				data: {
-					value: { account: { email: "x@x.com" }, bookmarks: [], comments: [], history: [] },
-				},
+				account: { email: "x@x.com" },
+				bookmarks: [],
+				comments: [],
+				history: [],
 			});
 			const createObjectURL = vi.fn(() => "blob:test");
 			vi.stubGlobal("URL", { ...URL, createObjectURL, revokeObjectURL: vi.fn() });

@@ -329,8 +329,7 @@ async function downloadMyData() {
 	exportingData.value = true;
 	exportState.value = "idle";
 	try {
-		const res = await fetchReaderDataExport();
-		const data = res.data?.value;
+		const data = await fetchReaderDataExport();
 		if (!data) throw new Error("empty export");
 		const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
 		const url = URL.createObjectURL(blob);

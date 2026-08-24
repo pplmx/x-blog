@@ -161,6 +161,10 @@ async function mountPostPage({
 		}),
 	);
 
+	// Fire-and-forget POSTs (usePostView/usePostLike) use `$fetch`; default to
+	// resolving so onMounted's view-counter call never throws in the test env.
+	vi.stubGlobal("$fetch", vi.fn(() => Promise.resolve(mockPost)));
+
 	const { default: PostPage } = await import("@/pages/posts/[slug].vue");
 
 	// Template-based Suspense wrapper (works reliably with @vue/test-utils)
@@ -257,6 +261,19 @@ describe("Post Detail Page", () => {
 						error: ref(null),
 						refresh: vi.fn(),
 					};
+				}),
+			);
+
+			// usePostView fires via $fetch (fire-and-forget); track the POST.
+			vi.stubGlobal(
+				"$fetch",
+				vi.fn((url: string) => {
+					const u = String(url);
+					if (u.includes("/view")) {
+						viewPostCalled = true;
+						viewPostUrl = u;
+					}
+					return Promise.resolve(mockPost);
 				}),
 			);
 
@@ -652,15 +669,22 @@ describe("Post Detail Page", () => {
 				"useFetch",
 				vi.fn((url: string) => {
 					if (typeof url === "function") url = url();
-					if (typeof url === "string" && url.includes("/like")) {
-						throw new Error("Network error");
-					}
 					return {
 						data: ref(mockPost),
 						pending: ref(false),
 						error: ref(null),
 						refresh: vi.fn(),
 					};
+				}),
+			);
+			// usePostLike posts via $fetch; make it throw to simulate failure.
+			vi.stubGlobal(
+				"$fetch",
+				vi.fn((url: string) => {
+					if (String(url).includes("/like")) {
+						return Promise.reject(new Error("Network error"));
+					}
+					return Promise.resolve(mockPost);
 				}),
 			);
 
@@ -698,7 +722,7 @@ describe("Post Detail Page", () => {
 		});
 
 		it("updates the rendered like count after a successful like", async () => {
-			// Stub useFetch so the POST /like returns a post with an incremented
+			// Stub $fetch so the POST /like returns a post with an incremented
 			// like count — the UI must reflect the new value (regression guard for
 			// handleLike discarding the updated post, which left the count stale).
 			const likedPost = { ...mockPost, likes: 57 };
@@ -715,20 +739,19 @@ describe("Post Detail Page", () => {
 				"useFetch",
 				vi.fn((url: string) => {
 					if (typeof url === "function") url = url();
-					if (typeof url === "string" && url.includes("/like")) {
-						return {
-							data: ref(likedPost),
-							pending: ref(false),
-							error: ref(null),
-							refresh: vi.fn(),
-						};
-					}
 					return {
 						data: ref(mockPost),
 						pending: ref(false),
 						error: ref(null),
 						refresh: vi.fn(),
 					};
+				}),
+			);
+			vi.stubGlobal(
+				"$fetch",
+				vi.fn((url: string) => {
+					if (String(url).includes("/like")) return Promise.resolve(likedPost);
+					return Promise.resolve(mockPost);
 				}),
 			);
 

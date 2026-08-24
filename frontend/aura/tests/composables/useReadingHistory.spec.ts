@@ -38,10 +38,6 @@ vi.mock("../../composables/useRecentlyViewed", () => ({
 
 import { useReadingHistory } from "../../composables/useReadingHistory";
 
-function apiResult(data: unknown) {
-	return { data: { value: data } };
-}
-
 describe("useReadingHistory (TASK-170)", () => {
 	beforeEach(() => {
 		authRef.value = false;
@@ -64,18 +60,16 @@ describe("useReadingHistory (TASK-170)", () => {
 
 	it("loads from the API when authenticated, mapping viewed_at", async () => {
 		authRef.value = true;
-		fetchHistory.mockResolvedValue(
-			apiResult({
-				items: [
-					{ id: 1, title: "Server A", slug: "s-a", viewed_at: "2024-01-15T10:30:00Z" },
-					{ id: 2, title: "Server B", slug: "s-b", viewed_at: null },
-				],
-				total: 2,
-				page: 1,
-				limit: 100,
-				total_pages: 1,
-			}),
-		);
+		fetchHistory.mockResolvedValue({
+			items: [
+				{ id: 1, title: "Server A", slug: "s-a", viewed_at: "2024-01-15T10:30:00Z" },
+				{ id: 2, title: "Server B", slug: "s-b", viewed_at: null },
+			],
+			total: 2,
+			page: 1,
+			limit: 100,
+			total_pages: 1,
+		});
 		const { load, history } = useReadingHistory();
 		await load();
 		expect(fetchHistory).toHaveBeenCalledWith(1, 100, "");
@@ -107,10 +101,8 @@ describe("useReadingHistory (TASK-170)", () => {
 
 	it("authenticated clear calls the API, clears the local mirror, and resets stats", async () => {
 		authRef.value = true;
-		fetchHistory.mockResolvedValue(apiResult({ items: [], total: 0 }));
-		fetchStats.mockResolvedValue(
-			apiResult({ total_posts: 1, total_reading_minutes: 2, recent: [] }),
-		);
+		fetchHistory.mockResolvedValue({ items: [], total: 0 });
+		fetchStats.mockResolvedValue({ total_posts: 1, total_reading_minutes: 2, recent: [] });
 		const { clear, stats } = useReadingHistory();
 		await clear();
 		expect(clearHistoryApi).toHaveBeenCalled();
