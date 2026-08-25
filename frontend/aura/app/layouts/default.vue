@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { fetchReaderNotifications } from "~~/composables/useApi";
+import { getReaderNotifications } from "~~/api/reader/notifications";
 import { useReaderAuth } from "~~/composables/useReaderAuth";
 
 const route = useRoute();
@@ -39,7 +39,7 @@ async function refreshUnread() {
 		return;
 	}
 	try {
-		const data = await fetchReaderNotifications(1, 1);
+		const data = await getReaderNotifications(1, 1);
 		unreadCount.value = data.unread;
 	} catch {
 		unreadCount.value = 0;

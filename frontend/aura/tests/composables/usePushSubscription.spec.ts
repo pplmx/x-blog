@@ -11,7 +11,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 // A structurally valid base64url VAPID public key: 87 chars (65-byte
 // uncompressed EC point, first byte 0x04) decode cleanly with one "=" pad.
-const PUBLIC_KEY = "B" + "A".repeat(86);
+const PUBLIC_KEY = `B${"A".repeat(86)}`;
 const ENDPOINT = "https://push.example.com/wpush/v2/abc";
 
 function fakePushSubscription(endpoint: string = ENDPOINT) {

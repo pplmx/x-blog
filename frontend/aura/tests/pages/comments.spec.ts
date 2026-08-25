@@ -10,7 +10,7 @@
 import { flushPromises, mount } from "@vue/test-utils";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { ref } from "vue";
-import type { MyComment, MyCommentListResponse } from "../../composables/useApi";
+import type { MyComment, MyCommentListResponse } from "../../api/reader/comments";
 
 // Fixtures referenced by the deferred (test-time) page import, so the mock
 // factories below can close over module-level state without a TDZ error. The
@@ -29,16 +29,12 @@ vi.mock("../../composables/useSeo", () => ({
 	useSeo: vi.fn(),
 }));
 
-vi.mock("../../composables/useApi", async (importOriginal) => {
-	const orig = await importOriginal<typeof import("../../composables/useApi")>();
-	return {
-		...orig,
-		fetchMyComments: mockFetchMyComments,
-		deleteMyComment: mockDeleteMyComment,
-	};
-});
+vi.mock("../../api/reader/comments", () => ({
+	getMyComments: mockFetchMyComments,
+	deleteMyComment: mockDeleteMyComment,
+}));
 
-// fetchMyComments resolves to the response value ($fetch-style); referenced
+// getMyComments resolves to the response value ($fetch-style); referenced
 // only after the page module is dynamically imported (no hoisting TDZ).
 mockFetchMyComments.mockImplementation(() =>
 	Promise.resolve(mockData.value as MyCommentListResponse),
@@ -65,7 +61,7 @@ async function mountPage() {
 	const wrapper = mount(MyComments, {
 		global: { stubs },
 	});
-	// The page's setup awaits fetchMyComments (async setup) — flush before
+	// The page's setup awaits getMyComments (async setup) — flush before
 	// asserting so the slots below actually render.
 	await flushPromises();
 	return wrapper;

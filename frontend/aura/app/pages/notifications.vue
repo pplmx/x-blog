@@ -10,14 +10,14 @@
  */
 import { computed, onMounted, ref } from "vue";
 import {
-	fetchReaderNotificationPrefs,
-	fetchReaderNotifications,
+	getReaderNotificationPrefs,
+	getReaderNotifications,
 	markAllReaderNotificationsRead,
 	markReaderNotificationRead,
 	type ReaderNotification,
 	type ReaderNotificationPrefs,
 	updateReaderNotificationPref,
-} from "~~/composables/useApi";
+} from "~~/api/reader/notifications";
 import { useReaderAuth } from "~~/composables/useReaderAuth";
 import { useSeo } from "~~/composables/useSeo";
 
@@ -55,7 +55,7 @@ async function load() {
 	loading.value = true;
 	error.value = false;
 	try {
-		const data = await fetchReaderNotifications(1, 100);
+		const data = await getReaderNotifications(1, 100);
 		items.value = data.items;
 		unread.value = data.unread;
 	} catch (cause) {
@@ -77,7 +77,7 @@ async function load() {
 async function loadPrefs() {
 	if (!isAuthenticated.value) return;
 	try {
-		prefs.value = await fetchReaderNotificationPrefs();
+		prefs.value = await getReaderNotificationPrefs();
 		prefsError.value = false;
 	} catch (cause) {
 		if (isStaleSession(cause)) {

@@ -11,7 +11,7 @@
 import { flushPromises, mount } from "@vue/test-utils";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ref } from "vue";
-import type { ReaderNotification, ReaderNotificationPrefs } from "../../composables/useApi";
+import type { ReaderNotification, ReaderNotificationPrefs } from "../../api/reader/notifications";
 
 const isAuthenticated = ref(false);
 const mockLogout = vi.fn();
@@ -48,17 +48,13 @@ const mockUpdatePref = vi.fn(
 	}),
 );
 
-vi.mock("../../composables/useApi", async (importOriginal) => {
-	const orig = await importOriginal<typeof import("../../composables/useApi")>();
-	return {
-		...orig,
-		fetchReaderNotifications: mockFetch,
-		markReaderNotificationRead: mockMarkRead,
-		markAllReaderNotificationsRead: mockMarkAllRead,
-		fetchReaderNotificationPrefs: mockFetchPrefs,
-		updateReaderNotificationPref: mockUpdatePref,
-	};
-});
+vi.mock("../../api/reader/notifications", () => ({
+	getReaderNotifications: mockFetch,
+	markReaderNotificationRead: mockMarkRead,
+	markAllReaderNotificationsRead: mockMarkAllRead,
+	getReaderNotificationPrefs: mockFetchPrefs,
+	updateReaderNotificationPref: mockUpdatePref,
+}));
 
 const stubs = {
 	Icon: { template: '<svg class="icon-stub" />' },

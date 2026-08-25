@@ -339,7 +339,7 @@ import {
 	likeComment,
 	useComments,
 } from "~~/api/public/comments";
-import { deleteMyComment, editMyComment } from "~~/composables/useApi";
+import { deleteMyComment, updateMyComment } from "~~/api/reader/comments";
 import { highlightCode, loadHighlighter } from "~~/composables/useCodeHighlight";
 import { commentMarkdownToHtml, loadPurify } from "~~/composables/useMarkdown";
 import { useReaderAuth } from "~~/composables/useReaderAuth";
@@ -502,7 +502,7 @@ async function saveEdit(comment: Comment): Promise<void> {
 	actionIds.value = new Set(actionIds.value).add(comment.id);
 	actionError.value = null;
 	try {
-		const updated = await editMyComment(comment.id, trimmed);
+		const updated = await updateMyComment(comment.id, trimmed);
 		const target = commentData.value?.items.find((c) => c.id === comment.id);
 		if (target) {
 			target.content = updated.content;

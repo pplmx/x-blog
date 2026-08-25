@@ -5,6 +5,13 @@
  * alive while the version bump signs other sessions out), and see/revoke the
  * browser push devices bound to the account.
  */
+
+import {
+	changeReaderPassword,
+	deleteReaderAccount,
+	getReaderDataExport,
+	updateReaderProfile,
+} from "~~/api/reader/account";
 import type { FollowedCategoryItem, FollowedSeriesItem } from "~~/api/reader/follows";
 import {
 	setCategoryFollowNotify,
@@ -15,20 +22,17 @@ import {
 	useReaderSeriesFollows,
 } from "~~/api/reader/follows";
 import {
-	type Category,
-	changeMyPassword,
-	deleteReaderAccount,
-	fetchCategories,
-	fetchMyPostSubscriptions,
-	fetchMyPushSubscriptions,
-	fetchReaderDataExport,
+	getMyPushSubscriptions,
 	type ReaderPushSubscription,
 	revokeMyPushSubscription,
+	updateMyPushSubscriptionPrefs,
+} from "~~/api/reader/notifications";
+import {
+	getMyPostSubscriptions,
 	type SubscribedThreadItem,
 	unsubscribeFromPostThread,
-	updateMyProfile,
-	updateMyPushSubscriptionPrefs,
-} from "~~/composables/useApi";
+} from "~~/api/reader/subscriptions";
+import { type Category, fetchCategories } from "~~/composables/useApi";
 import { useReaderAuth } from "~~/composables/useReaderAuth";
 import { useSeo } from "~~/composables/useSeo";
 
@@ -54,7 +58,7 @@ async function saveProfileName() {
 	const name = displayName.value.trim();
 	if (!name) return;
 	try {
-		const updated = await updateMyProfile({ display_name: name });
+		const updated = await updateReaderProfile({ display_name: name });
 		setProfile(updated);
 		displayName.value = updated.display_name ?? "";
 		profileSaved.value = true;
@@ -83,7 +87,7 @@ async function submitPassword() {
 	}
 	passwordState.value = "busy";
 	try {
-		const session = await changeMyPassword({
+		const session = await changeReaderPassword({
 			current_password: pw.value.current,
 			new_password: next,
 		});
@@ -107,7 +111,7 @@ const deviceError = ref(false);
 async function loadDevices() {
 	if (!isAuthenticated.value) return;
 	try {
-		const data = await fetchMyPushSubscriptions();
+		const data = await getMyPushSubscriptions();
 		devices.value = data.items;
 	} catch {
 		devices.value = [];
@@ -201,7 +205,7 @@ const threadsError = ref(false);
 async function loadThreads() {
 	if (!isAuthenticated.value) return;
 	try {
-		const data = await fetchMyPostSubscriptions();
+		const data = await getMyPostSubscriptions();
 		threads.value = data.items;
 	} catch {
 		threads.value = [];
@@ -330,7 +334,7 @@ async function downloadMyData() {
 	exportingData.value = true;
 	exportState.value = "idle";
 	try {
-		const data = await fetchReaderDataExport();
+		const data = await getReaderDataExport();
 		if (!data) throw new Error("empty export");
 		const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
 		const url = URL.createObjectURL(blob);

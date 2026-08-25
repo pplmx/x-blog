@@ -30,14 +30,14 @@ vi.mock("~~/composables/useReaderAuth", () => ({
 	useReaderAuth: () => ({ isAuthenticated }),
 }));
 
-const { mockFetchPostSubscription, mockSubscribeToPostThread, mockUnsubscribeFromPostThread } =
+const { mockUsePostSubscription, mockSubscribeToPostThread, mockUnsubscribeFromPostThread } =
 	vi.hoisted(() => ({
-		mockFetchPostSubscription: vi.fn(),
+		mockUsePostSubscription: vi.fn(),
 		mockSubscribeToPostThread: vi.fn(),
 		mockUnsubscribeFromPostThread: vi.fn(),
 	}));
-vi.mock("~~/composables/useApi", () => ({
-	fetchPostSubscription: mockFetchPostSubscription,
+vi.mock("~~/api/reader/subscriptions", () => ({
+	usePostSubscription: mockUsePostSubscription,
 	subscribeToPostThread: mockSubscribeToPostThread,
 	unsubscribeFromPostThread: mockUnsubscribeFromPostThread,
 }));
@@ -52,7 +52,7 @@ const iconStub = {
 
 function mockStatus(subscribed: boolean) {
 	const data = ref({ post_id: 1, subscribed });
-	mockFetchPostSubscription.mockResolvedValue({ data });
+	mockUsePostSubscription.mockResolvedValue({ data });
 }
 
 let wrapper: ReturnType<typeof mount> | undefined;
@@ -81,7 +81,7 @@ describe("ThreadSubscribeButton", () => {
 		const w = await mountButton();
 		expect(w.find("button").exists()).toBe(false);
 		// No follow-state fetch fires for anonymous visitors.
-		expect(mockFetchPostSubscription).not.toHaveBeenCalled();
+		expect(mockUsePostSubscription).not.toHaveBeenCalled();
 	});
 
 	it("initializes push and loads the follow state on mount when signed in", async () => {
@@ -89,7 +89,7 @@ describe("ThreadSubscribeButton", () => {
 		mockStatus(false);
 		await mountButton();
 		expect(init).toHaveBeenCalledOnce();
-		expect(mockFetchPostSubscription).toHaveBeenCalledWith(1);
+		expect(mockUsePostSubscription).toHaveBeenCalledWith(1);
 		expect(wrapper?.text()).toContain("components.threadSubscribe.follow");
 	});
 

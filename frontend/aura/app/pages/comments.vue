@@ -13,8 +13,8 @@ import type {
 	MyComment,
 	MyCommentListResponse,
 	MyCommentStatusFilter,
-} from "~~/composables/useApi";
-import { deleteMyComment, fetchMyComments } from "~~/composables/useApi";
+} from "~~/api/reader/comments";
+import { deleteMyComment, getMyComments } from "~~/api/reader/comments";
 import { useReaderAuth } from "~~/composables/useReaderAuth";
 import { useSeo } from "~~/composables/useSeo";
 
@@ -28,7 +28,7 @@ useSeo({
 });
 
 // Load on mount (not async setup, so the page is testable and SSR-hydration
-// friendly; reader auth is localStorage-only). fetchMyComments uses $fetch so
+// friendly; reader auth is localStorage-only). getMyComments uses $fetch so
 // `await` really waits for the response (no useFetch race).
 const commentData = ref<MyCommentListResponse | null>(null);
 const loading = ref(true);
@@ -38,7 +38,7 @@ const currentPage = ref(1);
 
 async function load() {
 	try {
-		commentData.value = await fetchMyComments(statusFilter.value, currentPage.value, 20);
+		commentData.value = await getMyComments(statusFilter.value, currentPage.value, 20);
 	} catch {
 		// Missing/invalid token, offline, etc — the signed-in check gates the
 		// page; any failure just leaves the empty state.

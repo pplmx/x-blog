@@ -9,7 +9,8 @@
 import { flushPromises, mount } from "@vue/test-utils";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { ref } from "vue";
-import type { ReaderProfile, ReaderPushSubscription } from "../../composables/useApi";
+import type { ReaderProfile } from "../../api/reader/auth";
+import type { ReaderPushSubscription } from "../../api/reader/notifications";
 
 const isAuthenticated = ref(false);
 const reader = ref<ReaderProfile | null>(null);
@@ -39,6 +40,8 @@ const mockSetSeriesFollowNotify = vi.fn();
 const mockFetchReaderCategoryFollows = vi.fn();
 const mockUnfollowReaderCategory = vi.fn();
 const mockSetCategoryFollowNotify = vi.fn();
+const mockFetchMyPostSubscriptions = vi.fn();
+const mockUnsubscribeFromPostThread = vi.fn();
 
 vi.mock("~~/api/reader/follows", () => ({
 	useReaderSeriesFollows: mockFetchReaderSeriesFollows,
@@ -48,20 +51,24 @@ vi.mock("~~/api/reader/follows", () => ({
 	unfollowReaderCategory: mockUnfollowReaderCategory,
 	setCategoryFollowNotify: mockSetCategoryFollowNotify,
 }));
-vi.mock("../../composables/useApi", async (importOriginal) => {
-	const orig = await importOriginal<typeof import("../../composables/useApi")>();
-	return {
-		...orig,
-		updateMyProfile: mockUpdateMyProfile,
-		changeMyPassword: mockChangeMyPassword,
-		fetchMyPushSubscriptions: mockFetchPushSubscriptions,
-		revokeMyPushSubscription: mockRevokePushSubscription,
-		fetchCategories: mockFetchCategories,
-		updateMyPushSubscriptionPrefs: mockUpdatePushSubscriptionPrefs,
-		deleteReaderAccount: mockDeleteReaderAccount,
-		fetchReaderDataExport: mockFetchReaderDataExport,
-	};
-});
+vi.mock("../../api/reader/account", () => ({
+	changeReaderPassword: mockChangeMyPassword,
+	deleteReaderAccount: mockDeleteReaderAccount,
+	getReaderDataExport: mockFetchReaderDataExport,
+	updateReaderProfile: mockUpdateMyProfile,
+}));
+vi.mock("../../api/reader/notifications", () => ({
+	getMyPushSubscriptions: mockFetchPushSubscriptions,
+	revokeMyPushSubscription: mockRevokePushSubscription,
+	updateMyPushSubscriptionPrefs: mockUpdatePushSubscriptionPrefs,
+}));
+vi.mock("../../api/reader/subscriptions", () => ({
+	getMyPostSubscriptions: mockFetchMyPostSubscriptions,
+	unsubscribeFromPostThread: mockUnsubscribeFromPostThread,
+}));
+vi.mock("../../composables/useApi", () => ({
+	fetchCategories: mockFetchCategories,
+}));
 
 const stubs = {
 	Icon: { template: '<svg class="icon-stub" />' },

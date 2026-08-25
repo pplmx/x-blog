@@ -10,10 +10,10 @@
  * unsupported/blocked on this browser, following is disabled with a hint.
  */
 import {
-	fetchPostSubscription,
 	subscribeToPostThread,
 	unsubscribeFromPostThread,
-} from "~~/composables/useApi";
+	usePostSubscription,
+} from "~~/api/reader/subscriptions";
 
 interface Props {
 	postId: number;
@@ -37,7 +37,7 @@ onMounted(() => {
 
 async function loadFollowing() {
 	try {
-		const { data } = await fetchPostSubscription(props.postId);
+		const { data } = await usePostSubscription(props.postId);
 		following.value = data.value?.subscribed === true;
 	} catch {
 		// Token/network hiccup: leave the button un-followed; an actual click

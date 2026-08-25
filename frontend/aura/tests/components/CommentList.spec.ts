@@ -22,7 +22,7 @@ const {
 	mockGetComments,
 	mockCreateComment,
 	mockLikeComment,
-	mockEditMyComment,
+	mockUpdateMyComment,
 	mockDeleteMyComment,
 	mockFlagComment,
 } = vi.hoisted(() => ({
@@ -30,7 +30,7 @@ const {
 	mockGetComments: vi.fn(),
 	mockCreateComment: vi.fn(),
 	mockLikeComment: vi.fn(),
-	mockEditMyComment: vi.fn(),
+	mockUpdateMyComment: vi.fn(),
 	mockDeleteMyComment: vi.fn(),
 	mockFlagComment: vi.fn(),
 }));
@@ -41,10 +41,8 @@ vi.mock("~~/api/public/comments", () => ({
 	likeComment: mockLikeComment,
 	flagComment: mockFlagComment,
 }));
-// Reader comment edit/delete stays in the monolith until the reader batches
-// migrate it to its own domain module.
-vi.mock("~/composables/useApi", () => ({
-	editMyComment: mockEditMyComment,
+vi.mock("~~/api/reader/comments", () => ({
+	updateMyComment: mockUpdateMyComment,
 	deleteMyComment: mockDeleteMyComment,
 }));
 
@@ -463,7 +461,7 @@ describe("CommentList", () => {
 				"reader_profile",
 				JSON.stringify({ id: 7, email: "me@x.com", display_name: "Me", created_at: null }),
 			);
-			mockEditMyComment.mockReset();
+			mockUpdateMyComment.mockReset();
 			mockDeleteMyComment.mockReset();
 		});
 
@@ -485,7 +483,7 @@ describe("CommentList", () => {
 				content: "my edited body",
 				edited_at: "2024-02-01T00:00:00Z",
 			};
-			mockEditMyComment.mockResolvedValue(updated);
+			mockUpdateMyComment.mockResolvedValue(updated);
 			const { wrapper } = await mountCommentList({ comments: ownComments });
 
 			await wrapper.find(".comment-edit").trigger("click");
@@ -498,7 +496,7 @@ describe("CommentList", () => {
 			await saveBtn?.trigger("click");
 			await flushPromises();
 
-			expect(mockEditMyComment).toHaveBeenCalledWith(50, "my edited body");
+			expect(mockUpdateMyComment).toHaveBeenCalledWith(50, "my edited body");
 			expect(wrapper.text()).toContain("my edited body");
 			expect(wrapper.text()).toContain("已编辑");
 		});
