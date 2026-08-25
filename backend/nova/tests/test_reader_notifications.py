@@ -13,6 +13,7 @@ thread-comment on approval). Mirror the bookmark/history contract conventions.
 from uuid import uuid4
 
 NOTIFS = "/api/reader/me/notifications"
+PREFS = "/api/reader/me/notification-preferences"
 
 
 def _register(client, email="n@example.com", password="readerpass123"):
@@ -208,6 +209,93 @@ class TestPersistenceHooks:
         data = client.get(NOTIFS, headers=headers).json()
         assert data["total"] == 1
         assert data["items"][0]["url"] == "/posts/part-1"
+        # A series follow surfaces the distinct series_new_part kind (ISS-114,
+        # DEC-181): the frontend icons/labels it as 系列更新, never as 新文章发布.
+        assert data["items"][0]["kind"] == "series_new_part"
+        assert data["items"][0]["title"] == "系列更新"
+
+    def test_series_and_category_dedup_to_one_series_row(self, client, db_session, auth_headers):
+        """A reader following BOTH the series and the category of a post gets ONE
+        new-part row, preferring series_new_part — not one row per follow
+        (DEC-181 dedup)."""
+        token = _token(client, email="both@example.com")
+        headers = _auth(token)
+
+        series = client.post(
+            "/api/series",
+            json={"title": "Both Series", "slug": "notif-both-series", "description": "d"},
+            headers=auth_headers,
+        )
+        assert series.status_code in (200, 201), series.text
+        series_id = series.json()["id"]
+        f = client.put(f"/api/reader/me/series/{series_id}/follow", headers=headers)
+        assert f.status_code in (200, 201), f.text
+
+        cat = client.post("/api/categories", json={"name": "BothCat"}, headers=auth_headers)
+        assert cat.status_code == 201, cat.text
+        cat_id = cat.json()["id"]
+        c = client.put(f"/api/reader/me/categories/{cat_id}/follow", headers=headers)
+        assert c.status_code in (200, 201), c.text
+
+        post = client.post(
+            "/api/posts",
+            json={
+                "title": "Both Part",
+                "slug": "both-part",
+                "content": "c",
+                "published": True,
+                "series_id": series_id,
+                "series_order": 1,
+                "category_id": cat_id,
+            },
+            headers=auth_headers,
+        )
+        assert post.status_code == 201, post.text
+
+        data = client.get(NOTIFS, headers=headers).json()
+        assert data["total"] == 1
+        assert data["items"][0]["kind"] == "series_new_part"
+        assert data["items"][0]["url"] == "/posts/both-part"
+
+    def test_series_new_part_respects_new_post_opt_out(self, client, db_session, auth_headers):
+        """Under DEC-181 a series part is a new_post announcement (a series update
+        IS a new post), so the existing new_post kill-switch silences it too —
+        no separate toggle, no surprise wake-ups for opted-out readers."""
+        token = _token(client, email="ser-off@example.com")
+        headers = _auth(token)
+        resp = client.patch(
+            PREFS,
+            json={"kind": "new_post", "enabled": False},
+            headers=headers,
+        )
+        assert resp.status_code == 200, resp.text
+
+        series = client.post(
+            "/api/series",
+            json={"title": "Off Series", "slug": "notif-off-series", "description": "d"},
+            headers=auth_headers,
+        )
+        assert series.status_code in (200, 201), series.text
+        series_id = series.json()["id"]
+        f = client.put(f"/api/reader/me/series/{series_id}/follow", headers=headers)
+        assert f.status_code in (200, 201), f.text
+
+        post = client.post(
+            "/api/posts",
+            json={
+                "title": "Off Part",
+                "slug": "off-part",
+                "content": "c",
+                "published": True,
+                "series_id": series_id,
+                "series_order": 1,
+            },
+            headers=auth_headers,
+        )
+        assert post.status_code == 201, post.text
+
+        data = client.get(NOTIFS, headers=headers).json()
+        assert data["total"] == 0
 
     def test_reply_notification_persists_on_approval(self, client, db_session, auth_headers):
         token = _token(client, email="parent@example.com")

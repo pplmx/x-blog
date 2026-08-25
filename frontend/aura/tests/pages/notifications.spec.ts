@@ -142,6 +142,32 @@ describe("Notifications page (TASK-192)", () => {
 		expect(wrapper.find('a[href="/posts/a#comment-9"]').exists()).toBe(true);
 	});
 
+	it("labels a series-new-part event with the series kind (ISS-114)", async () => {
+		// The backend now emits kind=series_new_part for a new part of a followed
+		// series; the page must render the distinct 系列更新 label (not the
+		// generic 新文章发布) so series updates are visible as such.
+		mockFetch.mockResolvedValue({
+			items: [
+				makeNotif({
+					id: 7,
+					kind: "series_new_part",
+					title: "系列更新",
+					body: "《Part 2》",
+					url: "/posts/part-2",
+				}),
+			],
+			total: 1,
+			unread: 1,
+			page: 1,
+			limit: 100,
+			total_pages: 1,
+		});
+		const wrapper = await mountPage();
+		expect(wrapper.text()).toContain("系列更新");
+		const link = wrapper.find('a[href="/posts/part-2"]');
+		expect(link.exists()).toBe(true);
+	});
+
 	it("marks a single notification read", async () => {
 		const item = makeNotif({ id: 5, kind: "thread_comment", title: "你订阅的讨论有新评论" });
 		mockFetch.mockResolvedValue({

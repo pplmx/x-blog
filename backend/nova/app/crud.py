@@ -2516,12 +2516,22 @@ def record_new_post_notifications(db: Session, post: models.Post) -> None:
     VAPID configuration: a reader should still get an inbox row even when Web
     Push is not set up. Best effort, never raises. ``post`` must be the just-
     persisted, publicly-visible post (callers gate on ``is_publicly_visible``).
+
+    Kind (ISS-114, DEC-181): a series follow surfaces the distinct
+    ``series_new_part`` kind (frontend icons/labels it 系列更新) while a
+    category-only follow keeps ``new_post`` (新文章发布). A reader following
+    both the series AND the category of the same post gets exactly one row,
+    preferring ``series_new_part`` — the series follow is the more specific
+    signal for the same event. Both kinds stay gated by the single ``new_post``
+    opt-out (DEC-171 umbrella): a series update IS a new post, so a reader who
+    silenced new_post is not woken for series parts.
     """
     try:
-        target_reader_ids: set[int] = set()
+        series_reader_ids: set[int] = set()
+        category_reader_ids: set[int] = set()
         # Readers who follow this post's series ('new part' notification).
         if post.series_id is not None:
-            target_reader_ids.update(
+            series_reader_ids.update(
                 rid
                 for (rid,) in db.query(models.SeriesFollow.reader_id)
                 .filter(
@@ -2532,7 +2542,7 @@ def record_new_post_notifications(db: Session, post: models.Post) -> None:
             )
         # Readers who follow this post's category with notifications on.
         if post.category_id is not None:
-            target_reader_ids.update(
+            category_reader_ids.update(
                 rid
                 for (rid,) in db.query(models.CategoryFollow.reader_id)
                 .filter(
@@ -2541,6 +2551,7 @@ def record_new_post_notifications(db: Session, post: models.Post) -> None:
                 )
                 .all()
             )
+        target_reader_ids = series_reader_ids | category_reader_ids
         # Per-kind opt-out (DEC-171, TASK-202): batch-load every target's prefs
         # once. The same reader-level intent gates the push in
         # webpush.dispatch_new_post (which also reaches want_new_posts push
@@ -2550,11 +2561,12 @@ def record_new_post_notifications(db: Session, post: models.Post) -> None:
         for reader_id in target_reader_ids:
             if not notification_kind_enabled(prefs.get(reader_id), "new_post"):
                 continue
+            is_series_part = reader_id in series_reader_ids
             record_reader_notification(
                 db,
                 reader_id,
-                kind="new_post",
-                title="新文章发布",
+                kind="series_new_part" if is_series_part else "new_post",
+                title="系列更新" if is_series_part else "新文章发布",
                 body=f"《{post.title or ''}》",
                 url=f"/posts/{post.slug}",
             )
@@ -2562,8 +2574,11 @@ def record_new_post_notifications(db: Session, post: models.Post) -> None:
         db.rollback()
 
 
-# Notification-kind opt-outs (DEC-171, TASK-202). The only kinds the dispatch
-# points can produce; the preferences surface exposes exactly these toggles.
+# Notification-kind opt-outs (DEC-171, TASK-202). The preferences surface
+# exposes exactly these toggles. Dispatch can also produce series_new_part as a
+# label refinement of new_post (ISS-114, DEC-181) — it is never a separate
+# toggle because a series update IS a new post; the new_post kill-switch gates
+# it.
 NOTIFICATION_KINDS: tuple[str, ...] = ("new_post", "reply", "thread_comment")
 
 
