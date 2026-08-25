@@ -1549,28 +1549,47 @@ def list_reader_history(
     that was later un-published/scheduled simply stops appearing (the history row
     is kept; it reappears if the post becomes public again). Each item carries
     the post plus the last ``viewed_at`` so the UI can render when it was read.
-    A reader's history is a bounded personal list, so the public-visibility
-    filter runs in Python (mirroring list_reader_bookmarks) and pagination
-    slices the filtered result — keeping ``total`` equal to the visible count.
+    Visibility filtering, counting, and pagination all run in SQL so response
+    cost is bounded by the requested page size.
     """
-    query = (
-        db.query(models.Post, models.ReadingHistory.viewed_at)
-        .join(models.ReadingHistory, models.ReadingHistory.post_id == models.Post.id)
-        .filter(models.ReadingHistory.reader_id == reader_id)
-        .options(joinedload(models.Post.category), joinedload(models.Post.tags))
-    )
+    filters = [
+        models.ReadingHistory.reader_id == reader_id,
+        models.ReadingHistory.viewed_at.is_not(None),
+        models.Post.published.is_(True),
+        or_(models.Post.publish_at.is_(None), models.Post.publish_at <= utc_now_naive()),
+    ]
     if q and q.strip():
         term = f"%{escape_like_pattern(q.strip())}%"
-        query = query.filter(
+        filters.append(
             or_(
                 models.Post.title.ilike(term, escape="\\"),
                 models.Post.excerpt.ilike(term, escape="\\"),
             )
         )
-    rows = query.order_by(models.ReadingHistory.viewed_at.desc(), models.Post.id.desc()).all()
-    visible = [(post, viewed_at) for post, viewed_at in rows if is_publicly_visible(post)]
-    total = len(visible)
-    page_items = visible[(page - 1) * limit : page * limit]
+
+    total = int(
+        db.query(func.count(models.ReadingHistory.id))
+        .join(models.Post, models.ReadingHistory.post_id == models.Post.id)
+        .filter(*filters)
+        .scalar()
+        or 0
+    )
+    query = (
+        db.query(models.Post, models.ReadingHistory.viewed_at)
+        .join(models.ReadingHistory, models.ReadingHistory.post_id == models.Post.id)
+        .filter(*filters)
+        .options(joinedload(models.Post.category), joinedload(models.Post.tags))
+    )
+    rows = (
+        query.order_by(models.ReadingHistory.viewed_at.desc(), models.ReadingHistory.post_id.desc())
+        .offset((page - 1) * limit)
+        .limit(limit)
+        .all()
+    )
+    page_items = []
+    for post, viewed_at in rows:
+        assert viewed_at is not None  # Enforced by the SQL filter above.
+        page_items.append((post, viewed_at))
     return page_items, total
 
 

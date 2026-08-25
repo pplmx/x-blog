@@ -19,6 +19,7 @@ from sqlalchemy import (
     Date,
     DateTime,
     ForeignKey,
+    Index,
     Integer,
     String,
     Table,
@@ -359,7 +360,10 @@ class ReadingHistory(Base):
     # when the client sends an explicit value (plain views preserve it).
     scroll_position: Mapped[int | None] = mapped_column(Integer, nullable=True)
 
-    __table_args__ = (UniqueConstraint("reader_id", "post_id", name="uq_reading_history_reader_post"),)
+    __table_args__ = (
+        UniqueConstraint("reader_id", "post_id", name="uq_reading_history_reader_post"),
+        Index("ix_reading_history_reader_viewed_post", "reader_id", "viewed_at", "post_id"),
+    )
 
     post: Mapped[Post] = relationship(
         "Post",
@@ -382,7 +386,7 @@ class CommentSubscription(Base):
 
     __tablename__ = "comment_subscriptions"
 
-    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
     reader_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
     post_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
     created_at: Mapped[datetime | None] = mapped_column(DateTime, default=lambda: datetime.now(UTC))
@@ -549,9 +553,9 @@ class AdminPushSubscription(Base):
 
     __tablename__ = "admin_push_subscriptions"
 
-    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
     user_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
-    endpoint: Mapped[str] = mapped_column(String(500), unique=True, nullable=False, index=True)
+    endpoint: Mapped[str] = mapped_column(String(500), unique=True, nullable=False)
     p256dh: Mapped[str] = mapped_column(String(200), nullable=False)
     auth: Mapped[str] = mapped_column(String(200), nullable=False)
     created_at: Mapped[datetime | None] = mapped_column(DateTime, default=lambda: datetime.now(UTC))
@@ -572,7 +576,7 @@ class PostViewsDaily(Base):
 
     __tablename__ = "post_views_daily"
 
-    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
     post_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
     day: Mapped[date] = mapped_column(Date, nullable=False)
     views: Mapped[int] = mapped_column(Integer, nullable=False, default=0)

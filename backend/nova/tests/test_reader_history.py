@@ -158,6 +158,62 @@ class TestListHistory:
         assert page2["total"] == 3
         assert len(page2["items"]) == 1
 
+    def test_pagination_is_applied_in_sql(self, client, db_session, test_engine):
+        from sqlalchemy import event
+
+        token = _token(client)
+        posts = [_create_post(db_session) for _ in range(3)]
+        for post in posts:
+            client.post(f"{HISTORY}/{post.id}", headers=_auth(token))
+
+        statements = []
+
+        def capture_statement(_conn, _cursor, statement, _parameters, _context, _executemany):
+            statements.append(statement)
+
+        event.listen(test_engine, "before_cursor_execute", capture_statement)
+        try:
+            response = client.get(f"{HISTORY}?page=2&limit=1", headers=_auth(token))
+        finally:
+            event.remove(test_engine, "before_cursor_execute", capture_statement)
+
+        assert response.status_code == 200
+        history_queries = [
+            statement for statement in statements if "JOIN reading_history" in statement and "FROM posts" in statement
+        ]
+        count_queries = [
+            statement
+            for statement in statements
+            if "count(reading_history.id)" in statement and "JOIN posts" in statement
+        ]
+        assert history_queries
+        assert count_queries
+        assert "LIMIT" in history_queries[0]
+        assert "OFFSET" in history_queries[0]
+        for statement in (history_queries[0], count_queries[0]):
+            assert "posts.published" in statement
+            assert "posts.publish_at" in statement
+
+    def test_history_without_viewed_timestamp_is_excluded(self, client, db_session):
+        from app import auth, models
+
+        token = _token(client)
+        reader = db_session.query(auth.ReaderAccount).filter(auth.ReaderAccount.email == "historian@example.com").one()
+        post = _create_post(db_session)
+        db_session.add(models.ReadingHistory(reader_id=reader.id, post_id=post.id, viewed_at=None))
+        db_session.flush()
+        db_session.query(models.ReadingHistory).filter(
+            models.ReadingHistory.reader_id == reader.id,
+            models.ReadingHistory.post_id == post.id,
+        ).update({models.ReadingHistory.viewed_at: None})
+        db_session.flush()
+
+        response = client.get(HISTORY, headers=_auth(token))
+
+        assert response.status_code == 200
+        assert response.json()["total"] == 0
+        assert response.json()["items"] == []
+
     def test_unpublished_post_disappears_from_list(self, client, db_session):
         from app.crud import update_post
         from app.schemas import PostUpdate
