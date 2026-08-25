@@ -3,7 +3,7 @@
   Backs onto the existing /api/admin/users API (TASK-076, ISS-045).
 -->
 <script setup lang="ts">
-import { createAdminUser, deleteAdminUser, fetchAdminUsers } from "~~/composables/useApi";
+import { createAdminUser, deleteAdminUser, useAdminUsers } from "~~/api/admin/users";
 
 definePageMeta({ layout: "admin" });
 
@@ -21,7 +21,7 @@ const storedRole =
 		: null;
 const isSuperuserView = ref(storedRole !== "editor");
 
-const { data: users, pending, error, refresh } = await fetchAdminUsers();
+const { data: users, pending, error, refresh } = await useAdminUsers();
 
 // The backend rejects self-deletion by user id (admin.py delete_user compares
 // user_id == _current_user.id), so mirror that here: decode the JWT `sub`

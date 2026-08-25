@@ -20,8 +20,8 @@ const routeQuery = { month: "2026-06" };
 vi.stubGlobal("useRoute", () => reactive({ query: routeQuery }));
 
 const mockFetch = vi.fn();
-vi.mock("../../composables/useApi", () => ({
-	fetchAdminCalendar: mockFetch,
+vi.mock("../../api/admin/calendar", () => ({
+	getAdminCalendar: mockFetch,
 }));
 
 const stubs = {

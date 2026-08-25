@@ -5,8 +5,8 @@
  * creating a user (with input validation + password match), deleting a user
  * with confirmation, and the self-delete guard.
  *
- * Mocks the fetchAdminUsers, createAdminUser, deleteAdminUser composables.
- * Uses a <Suspense> wrapper since the page uses `await fetchAdminUsers()` in
+ * Mocks the useAdminUsers, createAdminUser, deleteAdminUser api/admin/users functions.
+ * Uses a <Suspense> wrapper since the page uses `await useAdminUsers()` in
  * <script setup>.
  */
 
@@ -21,8 +21,8 @@ const { mockFetchAdminUsers, mockCreateAdminUser, mockDeleteAdminUser } = vi.hoi
 	mockDeleteAdminUser: vi.fn(),
 }));
 
-vi.mock("~/composables/useApi", () => ({
-	fetchAdminUsers: mockFetchAdminUsers,
+vi.mock("~~/api/admin/users", () => ({
+	useAdminUsers: mockFetchAdminUsers,
 	createAdminUser: mockCreateAdminUser,
 	deleteAdminUser: mockDeleteAdminUser,
 }));

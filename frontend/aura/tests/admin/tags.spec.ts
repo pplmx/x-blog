@@ -6,9 +6,9 @@
  * editing a tag (inline edit + save/cancel), and deleting
  * a tag with confirmation.
  *
- * Mocks the fetchAdminTags, createAdminTag, updateAdminTag,
- * and deleteAdminTag composables. Uses a <Suspense> wrapper
- * since the page uses `await fetchAdminTags()` in <script setup>.
+ * Mocks the useAdminTags, createAdminTag, updateAdminTag,
+ * and deleteAdminTag api/admin/taxonomy functions. Uses a <Suspense> wrapper
+ * since the page uses `await useAdminTags()` in <script setup>.
  */
 
 import { flushPromises } from "@vue/test-utils";
@@ -24,8 +24,8 @@ const { mockFetchAdminTags, mockCreateAdminTag, mockUpdateAdminTag, mockDeleteAd
 		mockDeleteAdminTag: vi.fn(),
 	}));
 
-vi.mock("~/composables/useApi", () => ({
-	fetchAdminTags: mockFetchAdminTags,
+vi.mock("~~/api/admin/taxonomy", () => ({
+	useAdminTags: mockFetchAdminTags,
 	createAdminTag: mockCreateAdminTag,
 	updateAdminTag: mockUpdateAdminTag,
 	deleteAdminTag: mockDeleteAdminTag,

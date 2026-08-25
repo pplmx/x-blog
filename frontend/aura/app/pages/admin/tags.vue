@@ -8,9 +8,9 @@ import { ref } from "vue";
 import {
 	createAdminTag,
 	deleteAdminTag,
-	fetchAdminTags,
 	updateAdminTag,
-} from "~~/composables/useApi";
+	useAdminTags,
+} from "~~/api/admin/taxonomy";
 
 definePageMeta({ layout: "admin" });
 
@@ -18,7 +18,7 @@ const { t } = useLang();
 
 useHead({ title: computed(() => t("admin.tags.seoTitle")) });
 
-const { data: tags, pending, error, refresh } = await fetchAdminTags();
+const { data: tags, pending, error, refresh } = await useAdminTags();
 const newTagName = ref("");
 const isProcessing = ref(false);
 const editingId = ref<number | null>(null);

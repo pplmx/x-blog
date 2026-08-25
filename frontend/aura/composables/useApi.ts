@@ -8,7 +8,7 @@
  */
 
 import { adminAuthHeaders as getAuthHeaders } from "../api/auth";
-import type { Category, Tag } from "../api/contracts/shared";
+import type { Category } from "../api/contracts/shared";
 import { type ApiQueryOptions, query } from "../api/transport";
 
 export type {
@@ -243,118 +243,6 @@ export async function deleteAdminPost(id: number) {
 	});
 }
 
-/** Fetch all categories (admin, auth required). */
-export async function fetchAdminCategories() {
-	const config = useRuntimeConfig();
-	const apiUrl = config.public.apiUrl;
-	return useFetch<Category[]>(`${apiUrl}/api/admin/categories`, {
-		headers: getAuthHeaders(),
-		server: false,
-	});
-}
-
-/** Create a category (auth required). */
-export async function createAdminCategory(name: string) {
-	const config = useRuntimeConfig();
-	const apiUrl = config.public.apiUrl;
-	return useFetch<Category>(`${apiUrl}/api/admin/categories`, {
-		method: "POST",
-		headers: { "Content-Type": "application/json", ...getAuthHeaders() },
-		body: { name },
-	});
-}
-
-/** Update a category (auth required). */
-export async function updateAdminCategory(id: number, name: string) {
-	const config = useRuntimeConfig();
-	const apiUrl = config.public.apiUrl;
-	return useFetch<Category>(`${apiUrl}/api/admin/categories/${id}`, {
-		method: "PUT",
-		headers: { "Content-Type": "application/json", ...getAuthHeaders() },
-		body: { name },
-	});
-}
-
-/** Delete a category (auth required). */
-export async function deleteAdminCategory(id: number) {
-	const config = useRuntimeConfig();
-	const apiUrl = config.public.apiUrl;
-	return useFetch(`${apiUrl}/api/admin/categories/${id}`, {
-		method: "DELETE",
-		headers: getAuthHeaders(),
-	});
-}
-
-/** Fetch all tags (admin, auth required). */
-export async function fetchAdminTags() {
-	const config = useRuntimeConfig();
-	const apiUrl = config.public.apiUrl;
-	return useFetch<Tag[]>(`${apiUrl}/api/admin/tags`, {
-		headers: getAuthHeaders(),
-		server: false,
-	});
-}
-
-/** Create a tag (auth required). */
-export async function createAdminTag(name: string) {
-	const config = useRuntimeConfig();
-	const apiUrl = config.public.apiUrl;
-	return useFetch<Tag>(`${apiUrl}/api/admin/tags`, {
-		method: "POST",
-		headers: { "Content-Type": "application/json", ...getAuthHeaders() },
-		body: { name },
-	});
-}
-
-/** Update a tag (auth required). */
-export async function updateAdminTag(id: number, name: string) {
-	const config = useRuntimeConfig();
-	const apiUrl = config.public.apiUrl;
-	return useFetch<Tag>(`${apiUrl}/api/admin/tags/${id}`, {
-		method: "PUT",
-		headers: { "Content-Type": "application/json", ...getAuthHeaders() },
-		body: { name },
-	});
-}
-
-/** Delete a tag (auth required). */
-export async function deleteAdminTag(id: number) {
-	const config = useRuntimeConfig();
-	const apiUrl = config.public.apiUrl;
-	return useFetch(`${apiUrl}/api/admin/tags/${id}`, {
-		method: "DELETE",
-		headers: getAuthHeaders(),
-	});
-}
-
-/** A runtime site setting (DEC-100, TASK-162). `value` is a canonical string
- *  ("true"/"false" for boolean settings). */
-export interface SiteSetting {
-	key: string;
-	value: string;
-}
-
-/** Read a runtime site setting (admin auth). */
-export async function fetchSiteSetting(key: string) {
-	const config = useRuntimeConfig();
-	const apiUrl = config.public.apiUrl;
-	return useFetch<SiteSetting>(`${apiUrl}/api/admin/settings/${key}`, {
-		headers: getAuthHeaders(),
-		server: false,
-	});
-}
-
-/** Persist a runtime site setting (admin auth). */
-export async function updateSiteSetting(key: string, value: string) {
-	const config = useRuntimeConfig();
-	const apiUrl = config.public.apiUrl;
-	return useFetch<SiteSetting>(`${apiUrl}/api/admin/settings/${key}`, {
-		method: "PUT",
-		headers: { "Content-Type": "application/json", ...getAuthHeaders() },
-		body: { value },
-	});
-}
-
 // ============================================================================
 // Admin series (DEC-056/TASK-123)
 //
@@ -445,63 +333,6 @@ export async function reorderAdminSeriesEpisodes(seriesId: number, postIds: numb
 		method: "PUT",
 		headers: { "Content-Type": "application/json", ...getAuthHeaders() },
 		body: { post_ids: postIds },
-	});
-}
-
-// ============================================================================
-// Admin users
-// ============================================================================
-
-export interface AdminUser {
-	id: number;
-	username: string;
-	role: "superuser" | "editor";
-	is_superuser: boolean;
-}
-
-export interface CreateAdminUserInput {
-	username: string;
-	password: string;
-}
-
-/** Fetch the current admin's profile (id, username, role) — drives role-aware UI. */
-export async function fetchCurrentAdmin() {
-	const config = useRuntimeConfig();
-	const apiUrl = config.public.apiUrl;
-	return useFetch<AdminUser>(`${apiUrl}/api/admin/me`, {
-		headers: getAuthHeaders(),
-		server: false,
-	});
-}
-
-/** Fetch all admin users (auth required). */
-export async function fetchAdminUsers() {
-	const config = useRuntimeConfig();
-	const apiUrl = config.public.apiUrl;
-	return useFetch<AdminUser[]>(`${apiUrl}/api/admin/users`, {
-		headers: getAuthHeaders(),
-		server: false,
-	});
-}
-
-/** Create an admin user (auth required). */
-export async function createAdminUser(data: CreateAdminUserInput) {
-	const config = useRuntimeConfig();
-	const apiUrl = config.public.apiUrl;
-	return useFetch<AdminUser>(`${apiUrl}/api/admin/users`, {
-		method: "POST",
-		headers: { "Content-Type": "application/json", ...getAuthHeaders() },
-		body: data,
-	});
-}
-
-/** Delete an admin user (auth required). */
-export async function deleteAdminUser(id: number) {
-	const config = useRuntimeConfig();
-	const apiUrl = config.public.apiUrl;
-	return useFetch(`${apiUrl}/api/admin/users/${id}`, {
-		method: "DELETE",
-		headers: getAuthHeaders(),
 	});
 }
 
@@ -610,72 +441,4 @@ export async function approveAdminComment(commentId: number, approved: boolean) 
 		headers: { "Content-Type": "application/json", ...getAuthHeaders() },
 		body: { approved },
 	});
-}
-
-/** Admin login — returns access token. */
-export async function adminLogin(username: string, password: string) {
-	const config = useRuntimeConfig();
-	const apiUrl = config.public.apiUrl;
-	const formData = new URLSearchParams();
-	formData.set("username", username);
-	formData.set("password", password);
-
-	return useFetch<{ access_token: string }>(`${apiUrl}/api/admin/login`, {
-		method: "POST",
-		headers: { "Content-Type": "application/x-www-form-urlencoded" },
-		body: formData,
-	});
-}
-
-/** Push notification body accepted by POST /api/push/notify (DEC-055). */
-export interface PushNotifyPayload {
-	title: string;
-	body: string;
-	url: string;
-}
-
-/** Broadcast a notification to every push subscriber (superuser only). */
-export async function notifyPushSubscribers(payload: PushNotifyPayload) {
-	const config = useRuntimeConfig();
-	const apiUrl = config.public.apiUrl;
-	return useFetch<{ total: number; sent: number; failed: number; removed: number }>(
-		`${apiUrl}/api/push/notify`,
-		{
-			method: "POST",
-			headers: { "Content-Type": "application/json", ...getAuthHeaders() },
-			body: payload,
-			server: false,
-		},
-	);
-}
-
-// Admin editorial calendar (DEC-162/TASK-194)
-// ---------------------------------------------------------------------------
-
-/** One post on the editorial calendar, bucketed to a grid day by the backend. */
-export interface CalendarPost {
-	id: number;
-	title: string;
-	slug: string;
-	type: "published" | "scheduled" | "draft";
-	date?: string | null;
-	published: boolean;
-	publish_at?: string | null;
-	category?: string | null;
-}
-
-export interface AdminCalendarResponse {
-	month: string;
-	items: CalendarPost[];
-	unscheduled: CalendarPost[];
-}
-
-/** Month-bucketed posts for the admin editorial calendar (auth required). */
-export async function fetchAdminCalendar(month: string): Promise<AdminCalendarResponse> {
-	const config = useRuntimeConfig();
-	const apiUrl = config.public.apiUrl;
-	return $fetch<AdminCalendarResponse>(
-		`${apiUrl}/api/admin/calendar?month=${encodeURIComponent(month)}`,
-		{ headers: getAuthHeaders() },
-	);
 }

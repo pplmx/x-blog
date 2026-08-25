@@ -17,10 +17,12 @@ const { mockFetchPost, mockFetchCategories, mockFetchTags } = vi.hoisted(() => (
 	mockFetchTags: vi.fn(),
 }));
 
+vi.mock("~~/api/admin/taxonomy", () => ({
+	useAdminCategories: mockFetchCategories,
+	useAdminTags: mockFetchTags,
+}));
 vi.mock("~~/composables/useApi", () => ({
 	fetchAdminPost: mockFetchPost,
-	fetchAdminCategories: mockFetchCategories,
-	fetchAdminTags: mockFetchTags,
 }));
 vi.mock("~~/composables/useSeo", () => ({ useSeo: vi.fn() }));
 vi.mock("~~/composables/useLang", () => ({

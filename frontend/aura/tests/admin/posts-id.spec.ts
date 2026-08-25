@@ -4,7 +4,7 @@
  * Tests the post editor page: creating new posts, editing existing posts,
  * form rendering, field interactions, submit handling, and cancel behavior.
  *
- * Mocks the useApi composables (fetchAdminCategories, fetchAdminTags,
+ * Mocks the api domain modules (taxonomy + push) beside the useApi monolith
  * fetchAdminPost, createAdminPost, updateAdminPost) to test the page
  * in isolation. Uses a <Suspense> wrapper since the page uses `await`
  * composables in <script setup>.
@@ -38,14 +38,18 @@ const {
 	mockRestorePostRevision: vi.fn(),
 }));
 
+vi.mock("~~/api/admin/taxonomy", () => ({
+	useAdminCategories: mockFetchAdminCategories,
+	useAdminTags: mockFetchAdminTags,
+}));
+vi.mock("~~/api/admin/push", () => ({
+	notifyPushSubscribers: mockNotifyPushSubscribers,
+}));
 vi.mock("~/composables/useApi", () => ({
-	fetchAdminCategories: mockFetchAdminCategories,
-	fetchAdminTags: mockFetchAdminTags,
 	fetchAdminPost: mockFetchAdminPost,
 	fetchAdminSeries: mockFetchAdminSeries,
 	createAdminPost: mockCreateAdminPost,
 	updateAdminPost: mockUpdateAdminPost,
-	notifyPushSubscribers: mockNotifyPushSubscribers,
 	fetchPostRevisions: mockFetchPostRevisions,
 	restorePostRevision: mockRestorePostRevision,
 }));
@@ -507,12 +511,7 @@ describe("Admin Post Editor Page", () => {
 		beforeEach(() => {
 			setupRoute("1"); // existing post — published=true shows the notify button
 			setupMocks();
-			mockNotifyPushSubscribers.mockReturnValue({
-				data: ref({ total: 1, sent: 1, failed: 0, removed: 0 }),
-				pending: ref(false),
-				error: ref(null),
-				refresh: vi.fn(),
-			});
+			mockNotifyPushSubscribers.mockResolvedValue({ total: 1, sent: 1, failed: 0, removed: 0 });
 		});
 
 		it("renders the notify button for a published post", async () => {
@@ -540,12 +539,7 @@ describe("Admin Post Editor Page", () => {
 		});
 
 		it("shows a failure message when notification dispatch fails", async () => {
-			mockNotifyPushSubscribers.mockReturnValue({
-				data: ref(null),
-				pending: ref(false),
-				error: ref({ message: "boom" }),
-				refresh: vi.fn(),
-			});
+			mockNotifyPushSubscribers.mockRejectedValue(new Error("boom"));
 			const PostEditor = await loadPage();
 			const wrapper = await mountWithSuspense(PostEditor);
 

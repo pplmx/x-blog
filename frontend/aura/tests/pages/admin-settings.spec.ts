@@ -16,8 +16,8 @@ vi.stubGlobal("useHead", vi.fn());
 const mockFetchSiteSetting = vi.fn();
 const mockUpdateSiteSetting = vi.fn();
 
-vi.mock("../../composables/useApi", () => ({
-	fetchSiteSetting: mockFetchSiteSetting,
+vi.mock("../../api/admin/settings", () => ({
+	useSiteSetting: mockFetchSiteSetting,
 	updateSiteSetting: mockUpdateSiteSetting,
 }));
 

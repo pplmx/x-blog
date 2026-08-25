@@ -7,9 +7,9 @@ import { ref } from "vue";
 import {
 	createAdminCategory,
 	deleteAdminCategory,
-	fetchAdminCategories,
 	updateAdminCategory,
-} from "~~/composables/useApi";
+	useAdminCategories,
+} from "~~/api/admin/taxonomy";
 
 definePageMeta({ layout: "admin" });
 
@@ -17,7 +17,7 @@ const { t } = useLang();
 
 useHead({ title: computed(() => t("admin.categories.seoTitle")) });
 
-const { data: categories, pending, error, refresh } = await fetchAdminCategories();
+const { data: categories, pending, error, refresh } = await useAdminCategories();
 const newCategoryName = ref("");
 const isProcessing = ref(false);
 const editingId = ref<number | null>(null);

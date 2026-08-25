@@ -7,32 +7,18 @@
 import { afterEach, beforeEach, describe, expect, it, type Mock, vi } from "vitest";
 
 import {
-	adminLogin,
 	approveAdminComment,
 	batchApproveAdminComment,
-	createAdminCategory,
 	createAdminPost,
 	createAdminSeries,
-	createAdminTag,
-	createAdminUser,
-	deleteAdminCategory,
 	deleteAdminComment,
 	deleteAdminPost,
 	deleteAdminSeries,
-	deleteAdminTag,
-	deleteAdminUser,
-	fetchAdminCategories,
 	fetchAdminComments,
 	fetchAdminPosts,
 	fetchAdminSeries,
-	fetchAdminTags,
-	fetchAdminUsers,
-	fetchCurrentAdmin,
-	notifyPushSubscribers,
-	updateAdminCategory,
 	updateAdminPost,
 	updateAdminSeries,
-	updateAdminTag,
 } from "../../composables/useApi.ts";
 
 // Capture what useFetch is called with
@@ -133,53 +119,6 @@ describe("admin API functions", () => {
 	it("deleteAdminPost sends DELETE with ID", () => {
 		deleteAdminPost(5);
 		expect(useFetchCalls[0].url).toBe("http://localhost:18888/api/admin/posts/5");
-		expect(useFetchCalls[0].options.method).toBe("DELETE");
-	});
-
-	it("fetchAdminCategories constructs correct URL", () => {
-		fetchAdminCategories();
-		expect(useFetchCalls[0].url).toBe("http://localhost:18888/api/admin/categories");
-	});
-
-	it("createAdminCategory sends POST with name", () => {
-		createAdminCategory("New Category");
-		expect(useFetchCalls[0].options.method).toBe("POST");
-		expect(useFetchCalls[0].options.body).toEqual({ name: "New Category" });
-	});
-
-	it("updateAdminCategory sends PUT with ID and name", () => {
-		updateAdminCategory(3, "Updated Category");
-		expect(useFetchCalls[0].url).toBe("http://localhost:18888/api/admin/categories/3");
-		expect(useFetchCalls[0].options.method).toBe("PUT");
-		expect(useFetchCalls[0].options.body).toEqual({ name: "Updated Category" });
-	});
-
-	it("deleteAdminCategory sends DELETE with ID", () => {
-		deleteAdminCategory(7);
-		expect(useFetchCalls[0].url).toBe("http://localhost:18888/api/admin/categories/7");
-		expect(useFetchCalls[0].options.method).toBe("DELETE");
-	});
-
-	it("fetchAdminTags constructs correct URL", () => {
-		fetchAdminTags();
-		expect(useFetchCalls[0].url).toBe("http://localhost:18888/api/admin/tags");
-	});
-
-	it("createAdminTag sends POST with name", () => {
-		createAdminTag("New Tag");
-		expect(useFetchCalls[0].options.method).toBe("POST");
-		expect(useFetchCalls[0].options.body).toEqual({ name: "New Tag" });
-	});
-
-	it("updateAdminTag sends PUT with ID and name", () => {
-		updateAdminTag(2, "Updated Tag");
-		expect(useFetchCalls[0].url).toBe("http://localhost:18888/api/admin/tags/2");
-		expect(useFetchCalls[0].options.method).toBe("PUT");
-	});
-
-	it("deleteAdminTag sends DELETE with ID", () => {
-		deleteAdminTag(8);
-		expect(useFetchCalls[0].url).toBe("http://localhost:18888/api/admin/tags/8");
 		expect(useFetchCalls[0].options.method).toBe("DELETE");
 	});
 
@@ -293,92 +232,5 @@ describe("series admin API functions", () => {
 		expect(useFetchCalls[0].url).toBe("http://localhost:18888/api/series/5");
 		expect(useFetchCalls[0].options.method).toBe("DELETE");
 		expect(useFetchCalls[0].options.headers).toEqual({ Authorization: "Bearer test-token" });
-	});
-});
-
-describe("admin user API functions", () => {
-	beforeEach(() => {
-		Object.defineProperty(window, "localStorage", {
-			value: {
-				getItem: vi.fn(() => "test-token"),
-				setItem: vi.fn(),
-				removeItem: vi.fn(),
-			},
-			writable: true,
-		});
-	});
-
-	it("fetchCurrentAdmin fetches the profile with auth", () => {
-		fetchCurrentAdmin();
-		expect(useFetchCalls[0].url).toBe("http://localhost:18888/api/admin/me");
-		expect(useFetchCalls[0].options.headers).toEqual({ Authorization: "Bearer test-token" });
-	});
-
-	it("fetchAdminUsers fetches the users list with auth", () => {
-		fetchAdminUsers();
-		expect(useFetchCalls[0].url).toBe("http://localhost:18888/api/admin/users");
-		expect(useFetchCalls[0].options.headers).toEqual({ Authorization: "Bearer test-token" });
-	});
-
-	it("createAdminUser sends POST with credentials", () => {
-		createAdminUser({ username: "alice", password: "secret" });
-		expect(useFetchCalls[0].url).toBe("http://localhost:18888/api/admin/users");
-		expect(useFetchCalls[0].options.method).toBe("POST");
-		expect(useFetchCalls[0].options.body).toEqual({ username: "alice", password: "secret" });
-	});
-
-	it("deleteAdminUser sends DELETE with ID", () => {
-		deleteAdminUser(9);
-		expect(useFetchCalls[0].url).toBe("http://localhost:18888/api/admin/users/9");
-		expect(useFetchCalls[0].options.method).toBe("DELETE");
-	});
-});
-
-describe("notifyPushSubscribers", () => {
-	beforeEach(() => {
-		Object.defineProperty(window, "localStorage", {
-			value: {
-				getItem: vi.fn(() => "test-token"),
-				setItem: vi.fn(),
-				removeItem: vi.fn(),
-			},
-			writable: true,
-		});
-	});
-
-	it("posts a notification to the push endpoint with auth", () => {
-		notifyPushSubscribers({ title: "New post", body: "Check it out", url: "/posts/x" });
-		expect(useFetchCalls[0].url).toBe("http://localhost:18888/api/push/notify");
-		expect(useFetchCalls[0].options.method).toBe("POST");
-		expect(useFetchCalls[0].options.body).toEqual({
-			title: "New post",
-			body: "Check it out",
-			url: "/posts/x",
-		});
-		expect(useFetchCalls[0].options.headers).toEqual({
-			"Content-Type": "application/json",
-			Authorization: "Bearer test-token",
-		});
-	});
-});
-
-describe("adminLogin", () => {
-	it("posts to the correct /api/admin/login URL with full baseURL", () => {
-		adminLogin("admin", "secret");
-		expect(useFetchCalls[0].url).toBe("http://localhost:18888/api/admin/login");
-		expect(useFetchCalls[0].options.method).toBe("POST");
-	});
-
-	it("sends credentials as form-urlencoded body", () => {
-		adminLogin("myuser", "mypass");
-		const body = useFetchCalls[0].options.body as URLSearchParams;
-		expect(body.get("username")).toBe("myuser");
-		expect(body.get("password")).toBe("mypass");
-	});
-
-	it("sets the Content-Type header to application/x-www-form-urlencoded", () => {
-		adminLogin("admin", "pass");
-		const headers = useFetchCalls[0].options.headers as Record<string, string>;
-		expect(headers["Content-Type"]).toBe("application/x-www-form-urlencoded");
 	});
 });

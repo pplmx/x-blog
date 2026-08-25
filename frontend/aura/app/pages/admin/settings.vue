@@ -5,7 +5,7 @@
 -->
 <script setup lang="ts">
 import { computed, ref } from "vue";
-import { fetchSiteSetting, updateSiteSetting } from "~~/composables/useApi";
+import { updateSiteSetting, useSiteSetting } from "~~/api/admin/settings";
 
 definePageMeta({ layout: "admin" });
 
@@ -24,7 +24,7 @@ async function load() {
 	loading.value = true;
 	error.value = null;
 	try {
-		const { data } = await fetchSiteSetting(SETTING_KEY);
+		const { data } = await useSiteSetting(SETTING_KEY);
 		const value = data.value?.value;
 		enabled.value = value === "true";
 	} catch {

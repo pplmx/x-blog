@@ -15,8 +15,8 @@ import { computed, ref, watch } from "vue";
 import {
 	type AdminCalendarResponse,
 	type CalendarPost,
-	fetchAdminCalendar,
-} from "~~/composables/useApi";
+	getAdminCalendar,
+} from "~~/api/admin/calendar";
 
 definePageMeta({ layout: "admin" });
 
@@ -112,7 +112,7 @@ async function load() {
 	loading.value = true;
 	error.value = false;
 	try {
-		data.value = await fetchAdminCalendar(monthKey.value);
+		data.value = await getAdminCalendar(monthKey.value);
 	} catch {
 		data.value = null;
 		error.value = true;

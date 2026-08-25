@@ -1,14 +1,13 @@
 <script setup lang="ts">
 import { onBeforeRouteLeave } from "vue-router";
+import { notifyPushSubscribers } from "~~/api/admin/push";
+import { useAdminCategories, useAdminTags } from "~~/api/admin/taxonomy";
 import type { AdminPostDetail, PostCreate, PostRevisionSummary } from "~~/composables/useApi";
 import {
 	createAdminPost,
-	fetchAdminCategories,
 	fetchAdminPost,
 	fetchAdminSeries,
-	fetchAdminTags,
 	fetchPostRevisions,
-	notifyPushSubscribers,
 	restorePostRevision,
 	updateAdminPost,
 } from "~~/composables/useApi";
@@ -79,8 +78,8 @@ const tags = ref<Array<{ id: number; name: string }>>([]);
 const series = ref<Array<{ id: number; title: string; slug: string }>>([]);
 const existingPost = ref<AdminPostDetail | null>(null);
 
-const { data: catsData } = await fetchAdminCategories();
-const { data: tagsData } = await fetchAdminTags();
+const { data: catsData } = await useAdminCategories();
+const { data: tagsData } = await useAdminTags();
 // Series list for the membership dropdown (DEC-056/TASK-123). The admin keeps
 // the option to create series on the /admin/series page; here a post is simply
 // assigned into an existing series with a 0-based position.
@@ -388,16 +387,12 @@ async function handleNotify() {
 	notifyMessage.value = null;
 	isNotifying.value = true;
 	try {
-		const result = await notifyPushSubscribers({
+		await notifyPushSubscribers({
 			title: formData.value.title || t("admin.postEdit.notifyFallbackTitle"),
 			body: formData.value.excerpt || "",
 			url: `/posts/${formData.value.slug}`,
 		});
-		if (result.error.value) {
-			notifyMessage.value = t("admin.postEdit.notifyFailed");
-		} else {
-			notifyMessage.value = t("admin.postEdit.notifySent");
-		}
+		notifyMessage.value = t("admin.postEdit.notifySent");
 	} catch {
 		notifyMessage.value = t("admin.postEdit.notifyFailed");
 	} finally {

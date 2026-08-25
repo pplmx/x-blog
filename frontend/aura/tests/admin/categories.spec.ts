@@ -6,10 +6,10 @@
  * editing a category (inline edit + save/cancel), and deleting
  * a category with confirmation.
  *
- * Mocks the fetchAdminCategories, createAdminCategory,
- * updateAdminCategory, and deleteAdminCategory composables.
+ * Mocks the useAdminCategories, createAdminCategory,
+ * updateAdminCategory, and deleteAdminCategory api/admin/taxonomy functions.
  * Uses a <Suspense> wrapper since the page uses
- * `await fetchAdminCategories()` in <script setup>.
+ * `await useAdminCategories()` in <script setup>.
  */
 
 import { flushPromises } from "@vue/test-utils";
@@ -29,8 +29,8 @@ const {
 	mockDeleteAdminCategory: vi.fn(),
 }));
 
-vi.mock("~/composables/useApi", () => ({
-	fetchAdminCategories: mockFetchAdminCategories,
+vi.mock("~~/api/admin/taxonomy", () => ({
+	useAdminCategories: mockFetchAdminCategories,
 	createAdminCategory: mockCreateAdminCategory,
 	updateAdminCategory: mockUpdateAdminCategory,
 	deleteAdminCategory: mockDeleteAdminCategory,
