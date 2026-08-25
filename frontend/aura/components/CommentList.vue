@@ -331,15 +331,15 @@
 
 <script setup lang="ts">
 import { computed, nextTick, onMounted, ref, watch } from "vue";
+import type { Comment } from "~~/api/contracts/shared";
 import {
-	type Comment,
 	type CommentSort,
-	deleteMyComment,
-	editMyComment,
-	fetchComments,
 	flagComment,
-	useCommentLike,
-} from "~~/composables/useApi";
+	getComments,
+	likeComment,
+	useComments,
+} from "~~/api/public/comments";
+import { deleteMyComment, editMyComment } from "~~/composables/useApi";
 import { highlightCode, loadHighlighter } from "~~/composables/useCodeHighlight";
 import { commentMarkdownToHtml, loadPurify } from "~~/composables/useMarkdown";
 import { useReaderAuth } from "~~/composables/useReaderAuth";
@@ -392,7 +392,7 @@ const props = defineProps<Props>();
 
 const { t, locale } = useLang();
 
-const { data: commentData, pending } = await fetchComments(props.postId, 1, 20);
+const { data: commentData, pending } = await useComments(props.postId, 1, 20);
 
 // Deep-link landing (DEC-072): a reply notification opens /posts/<slug>#comment-<id>;
 // once the list renders, scroll the anchor into view (comments carry scroll-mt
@@ -449,7 +449,7 @@ async function handleCommentLike(comment: Comment): Promise<void> {
 	likingIds.value = new Set(likingIds.value).add(comment.id);
 	likeError.value = null;
 	try {
-		const updated = await useCommentLike(comment.id);
+		const updated = await likeComment(comment.id);
 		// $fetch rejects on failure (handled below); a 200 returns the updated
 		// comment with its new count.
 		if (typeof updated.likes === "number") {
@@ -620,9 +620,7 @@ function toggleReply(comment: Comment) {
 }
 
 async function refreshList() {
-	commentData.value = (
-		await fetchComments(props.postId, currentPage.value, 20, currentSort.value)
-	).data.value;
+	commentData.value = await getComments(props.postId, currentPage.value, 20, currentSort.value);
 }
 
 async function handleReplied() {

@@ -7,7 +7,7 @@ import { ref } from "vue";
 const { mockCreateComment } = vi.hoisted(() => ({
 	mockCreateComment: vi.fn(),
 }));
-vi.mock("~/composables/useApi", () => ({
+vi.mock("~~/api/public/comments", () => ({
 	createComment: mockCreateComment,
 }));
 

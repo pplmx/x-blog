@@ -70,24 +70,38 @@ const { mockState } = vi.hoisted(() => ({
 	},
 }));
 
-// --- Mock useApi module so we control usePopularPosts return values ---
-// Note: index.vue no longer uses usePosts — it calls useFetch directly
-// for reactive pagination. Only usePopularPosts is still imported from useApi.
-vi.mock("../../composables/useApi", () => ({
-	usePopularPosts: () => ({
-		data: ref(mockState.popularPosts),
-	}),
+// --- Mock the public API modules so we control the real data lists. ---
+// index.vue loads the post feed through the real usePosts (which hits the
+// stubbed global useFetch below, keeping lastFetchUrl tracked for the
+// filter/URL assertions); each remaining public module export is overridden.
+vi.mock("../../api/public/posts", async () => {
+	const actual =
+		await vi.importActual<typeof import("../../api/public/posts")>("../../api/public/posts");
+	return {
+		...actual,
+		usePopularPosts: () => ({
+			data: ref(mockState.popularPosts),
+		}),
+	};
+});
+vi.mock("../../api/public/taxonomy", () => ({
 	useCategories: () => ({
 		data: ref(mockState.categories),
 	}),
 	useTags: () => ({
 		data: ref(mockState.tags),
 	}),
+}));
+vi.mock("../../api/public/stats", () => ({
 	useBlogStats: () => ({
 		data: ref(
 			mockState.statsData ?? { total_posts: 0, total_views: 0, total_likes: 0, total_comments: 0 },
 		),
 	}),
+}));
+// The reader-scoped functions stay in the monolith until the reader batches
+// migrate them to their own domain modules.
+vi.mock("../../composables/useApi", () => ({
 	useReaderRecommendations: () => ({
 		data: ref(mockState.recommended),
 	}),
@@ -129,7 +143,8 @@ function setupNuxtStubs({ query = {} }: { query?: Record<string, string> } = {})
 		public: { apiUrl: "http://localhost:18888", siteUrl: "http://localhost:3000" },
 	}));
 	vi.stubGlobal("useHead", vi.fn());
-	// index.vue calls useFetch directly for the posts list with a computed URL
+	// The real usePosts forwards the reactive filter getter to this stub, which
+	// resolves it to a URL and records it for the filter/URL assertions.
 	vi.stubGlobal(
 		"useFetch",
 		vi.fn((url: string | (() => string) | { value: string }) => {

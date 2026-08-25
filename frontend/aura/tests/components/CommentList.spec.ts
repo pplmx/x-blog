@@ -3,7 +3,7 @@
  * Tests rendering states: loading, empty, populated comments,
  * date formatting, pagination, and the loadPage navigation callback.
  *
- * Mocks the fetchComments composable module to return
+ * Mocks the public comments API module to return
  * controlled mock data, then verifies the component renders
  * correctly in each state.
  */
@@ -12,34 +12,40 @@ import { flushPromises, mount } from "@vue/test-utils";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { ref } from "vue";
 
-// Mock the composable module before importing the component.
-// The component imports from '~/composables/useApi' — in the vitest
-// config we alias ~/composables to the root composables/ directory
+// Mock the API module before importing the component.
+// In the vitest config the ~/ alias resolves to the frontend root
 // (matching Nuxt's resolution), so vi.mock can intercept the specifier.
 // vi.hoisted ensures the mock function is created before the factory runs
 // (vi.mock is hoisted to the top of the file).
 const {
 	mockFetchComments,
+	mockGetComments,
 	mockCreateComment,
-	mockUseCommentLike,
+	mockLikeComment,
 	mockEditMyComment,
 	mockDeleteMyComment,
 	mockFlagComment,
 } = vi.hoisted(() => ({
 	mockFetchComments: vi.fn(),
+	mockGetComments: vi.fn(),
 	mockCreateComment: vi.fn(),
-	mockUseCommentLike: vi.fn(),
+	mockLikeComment: vi.fn(),
 	mockEditMyComment: vi.fn(),
 	mockDeleteMyComment: vi.fn(),
 	mockFlagComment: vi.fn(),
 }));
-vi.mock("~/composables/useApi", () => ({
-	fetchComments: mockFetchComments,
+vi.mock("~~/api/public/comments", () => ({
+	useComments: mockFetchComments,
+	getComments: mockGetComments,
 	createComment: mockCreateComment,
-	useCommentLike: mockUseCommentLike,
+	likeComment: mockLikeComment,
+	flagComment: mockFlagComment,
+}));
+// Reader comment edit/delete stays in the monolith until the reader batches
+// migrate it to its own domain module.
+vi.mock("~/composables/useApi", () => ({
 	editMyComment: mockEditMyComment,
 	deleteMyComment: mockDeleteMyComment,
-	flagComment: mockFlagComment,
 }));
 
 import CommentList from "../../components/CommentList.vue";
@@ -103,11 +109,15 @@ async function mountCommentList({
 		refresh: vi.fn(),
 	};
 
-	mockFetchComments.mockReturnValue(mockResult);
+	mockFetchComments.mockReset().mockReturnValue(mockResult);
+	// The imperative re-fetch (sort change / pagination) resolves with the
+	// settled data object, which refreshList assigns straight to commentData.
+	mockGetComments.mockReset().mockResolvedValue(comments ? { ...comments } : null);
 
-	// The component uses `await fetchComments(...)` in <script setup>, making
-	// setup async. We wrap it in a <Suspense> boundary, same pattern as
-	// the page tests (see slug.spec.ts, search.spec.ts, etc.).
+	// The component uses `await useComments(...)` (via fetchComments' reactive
+	// replacement) in <script setup>, making setup async. We wrap it in a
+	// <Suspense> boundary, same pattern as the page tests (see slug.spec.ts,
+	// search.spec.ts, etc.).
 	const SuspenseWrapper: any = {
 		components: { CommentList },
 		template:
@@ -370,12 +380,12 @@ describe("CommentList", () => {
 	describe("Comment likes (DEC-092, TASK-158)", () => {
 		beforeEach(() => {
 			localStorage.clear();
-			mockUseCommentLike.mockReset();
+			mockLikeComment.mockReset();
 		});
 
 		it("renders the like count for each comment and likes on click", async () => {
 			const comment = mockComments.items[0];
-			mockUseCommentLike.mockResolvedValue({ ...comment, likes: 3 });
+			mockLikeComment.mockResolvedValue({ ...comment, likes: 3 });
 			const { wrapper } = await mountCommentList();
 
 			const likeButton = wrapper.find(`#comment-${comment.id} .comment-like`);
@@ -385,7 +395,7 @@ describe("CommentList", () => {
 
 			await likeButton.trigger("click");
 			await flushPromises();
-			expect(mockUseCommentLike).toHaveBeenCalledWith(comment.id);
+			expect(mockLikeComment).toHaveBeenCalledWith(comment.id);
 			expect(likeButton.get(".like-count").text()).toBe("3");
 			expect(localStorage.getItem("liked-comments:1")).toBe("1");
 		});
@@ -393,7 +403,7 @@ describe("CommentList", () => {
 		it("does not re-like a comment the visitor already liked (dedup)", async () => {
 			const comment = { ...mockComments.items[0], likes: 7 };
 			localStorage.setItem("liked-comments:1", "1");
-			mockUseCommentLike.mockResolvedValue({ ...comment, likes: 8 });
+			mockLikeComment.mockResolvedValue({ ...comment, likes: 8 });
 			// Seed the rendered row with the already-liked count (7).
 			const { wrapper } = await mountCommentList({
 				comments: { ...mockComments, items: [comment] },
@@ -406,13 +416,13 @@ describe("CommentList", () => {
 			await likeButton.trigger("click");
 			await flushPromises();
 			// Dedup short-circuits before hitting the API; count stays 7.
-			expect(mockUseCommentLike).not.toHaveBeenCalled();
+			expect(mockLikeComment).not.toHaveBeenCalled();
 			expect(likeButton.get(".like-count").text()).toBe("7");
 		});
 
 		it("shows a friendly error when liking fails", async () => {
 			const comment = mockComments.items[0];
-			mockUseCommentLike.mockRejectedValue(new Error("boom"));
+			mockLikeComment.mockRejectedValue(new Error("boom"));
 			const { wrapper } = await mountCommentList();
 
 			await wrapper.find(`#comment-${comment.id} .comment-like`).trigger("click");
@@ -571,7 +581,7 @@ describe("CommentList", () => {
 			const select = wrapper.find("select#comment-sort");
 			await select.setValue("likes");
 			await flushPromises();
-			expect(mockFetchComments).toHaveBeenLastCalledWith(1, 1, 20, "likes");
+			expect(mockGetComments).toHaveBeenLastCalledWith(1, 1, 20, "likes");
 		});
 	});
 
@@ -602,14 +612,14 @@ describe("CommentList", () => {
 			expect(buttons[0].classes()).toContain("bg-blue-600");
 		});
 
-		it("calls fetchComments when clicking a page button", async () => {
+		it("calls getComments when clicking a page button", async () => {
 			const { wrapper } = await mountCommentList();
 			const buttons = wrapper.findAll("nav button");
 			await buttons[1].trigger("click");
 			await flushPromises();
 
-			expect(mockFetchComments.mock.calls.length).toBeGreaterThan(1);
-			expect(mockFetchComments).toHaveBeenLastCalledWith(1, 2, 20, "newest");
+			expect(mockGetComments).toHaveBeenCalledTimes(1);
+			expect(mockGetComments).toHaveBeenLastCalledWith(1, 2, 20, "newest");
 		});
 	});
 

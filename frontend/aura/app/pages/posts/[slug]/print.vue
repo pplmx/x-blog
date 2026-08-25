@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from "vue";
-import { usePost } from "~~/composables/useApi";
+import { usePost } from "~~/api/public/posts";
 import { readingMinutes } from "~~/composables/useReadingTime";
 
 // Print / PDF view of a post (DEC-112, TASK-168).

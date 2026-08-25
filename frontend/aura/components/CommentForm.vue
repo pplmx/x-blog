@@ -110,7 +110,7 @@
 
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from "vue";
-import { createComment } from "~~/composables/useApi";
+import { createComment } from "~~/api/public/comments";
 import { useReaderAuth } from "~~/composables/useReaderAuth";
 
 interface Props {

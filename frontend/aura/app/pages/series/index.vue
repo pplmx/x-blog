@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { useSeries } from "~~/composables/useApi";
+import { useSeries } from "~~/api/public/series";
 import { useSeo } from "~~/composables/useSeo";
 
 const { t } = useLang();

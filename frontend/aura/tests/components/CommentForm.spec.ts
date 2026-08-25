@@ -3,18 +3,18 @@
  * Tests form rendering, input binding, validation (empty fields),
  * submission flow (success and error paths), and loading state.
  *
- * Mocks the createComment composable module to control the
+ * Mocks the public comments API module to control the
  * submission result without hitting the backend.
  */
 
 import { flushPromises, mount } from "@vue/test-utils";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-// Mock the composable module before importing the component.
+// Mock the API module before importing the component.
 const { mockCreateComment } = vi.hoisted(() => ({
 	mockCreateComment: vi.fn(),
 }));
-vi.mock("~/composables/useApi", () => ({
+vi.mock("~~/api/public/comments", () => ({
 	createComment: mockCreateComment,
 }));
 

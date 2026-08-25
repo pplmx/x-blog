@@ -1,17 +1,15 @@
 <script setup lang="ts">
+import type { PostList } from "~~/api/contracts/shared";
+import { usePopularPosts, usePosts } from "~~/api/public/posts";
+import { useBlogStats } from "~~/api/public/stats";
+import { useCategories, useTags } from "~~/api/public/taxonomy";
 import {
 	type FollowedSeriesItem,
 	fetchReaderFollowsFeed,
 	fetchReaderSeriesFollows,
 	fetchReaderSeriesProgress,
-	type PostList,
-	type PostListResponse,
 	type SeriesProgress,
-	useBlogStats,
-	useCategories,
-	usePopularPosts,
 	useReaderRecommendations,
-	useTags,
 } from "~~/composables/useApi";
 import { paginationPages } from "~~/composables/usePagination";
 import { useRecentlyViewed } from "~~/composables/useRecentlyViewed";
@@ -34,16 +32,15 @@ const tagId = computed(() =>
 	route.query.tag_id ? Number.parseInt(String(route.query.tag_id), 10) : undefined,
 );
 
-// Build URL from the page + filter refs.  Because useFetch watches these,
-// changes trigger a re-fetch with the new URL.
-const apiUrl = computed(() => {
-	const params = new URLSearchParams();
-	params.set("page", String(page.value));
-	params.set("limit", "10");
-	if (categoryId.value) params.set("category_id", String(categoryId.value));
-	if (tagId.value) params.set("tag_id", String(tagId.value));
-	return `/api/posts?${params.toString()}`;
-});
+// Build the filter set from the page + filter refs. The reactive getter drives
+// useFetch, so a page/category/tag change re-fetches (the type-level comment
+// below documents the refetch contract for future maintainers).
+const postsFilters = computed(() => ({
+	page: page.value,
+	limit: 10,
+	category_id: categoryId.value,
+	tag_id: tagId.value,
+}));
 
 // Reset to page 1 when the active category/tag filter changes, so we don't
 // land past the end of a newly filtered result set.
@@ -51,15 +48,7 @@ watch([categoryId, tagId], () => {
 	if (page.value !== 1) page.value = 1;
 });
 
-const config = useRuntimeConfig();
-const {
-	data: posts,
-	pending,
-	error,
-} = await useFetch<PostListResponse>(apiUrl, {
-	baseURL: config.public.apiUrl,
-	watch: [page, categoryId, tagId],
-});
+const { data: posts, pending, error } = await usePosts(postsFilters);
 
 const { data: popularPosts } = await usePopularPosts();
 

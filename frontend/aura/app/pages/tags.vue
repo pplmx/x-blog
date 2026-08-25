@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed } from "vue";
-import { type PostListResponse, useApi, useTags } from "~~/composables/useApi";
+import { usePosts } from "~~/api/public/posts";
+import { useTags } from "~~/api/public/taxonomy";
 import { paginationPages } from "~~/composables/usePagination";
 import { useSeo } from "~~/composables/useSeo";
 
@@ -13,16 +14,15 @@ const tagId = computed(() =>
 );
 const page = computed(() => (route.query.page ? Number.parseInt(String(route.query.page), 10) : 1));
 
-const postsUrl = computed(() => {
-	const params = new URLSearchParams();
-	if (tagId.value) params.set("tag_id", String(tagId.value));
-	if (page.value > 1) params.set("page", String(page.value));
-	const qs = params.toString();
-	return qs ? `/api/posts?${qs}` : "/api/posts";
-});
+// `withQuery` omits undefined values, so page 1 or an unset tag leaves no
+// trailing query params behind (matches the previous URL construction).
+const postsFilters = computed(() => ({
+	tag_id: tagId.value,
+	page: page.value > 1 ? page.value : undefined,
+}));
 
 const { data: tags, pending: tagsPending } = await useTags();
-const { data: posts, pending: postsPending } = await useApi<PostListResponse>(postsUrl);
+const { data: posts, pending: postsPending } = await usePosts(postsFilters);
 const pending = computed(() => tagsPending.value || postsPending.value);
 
 // Windowed, ellipsis-aware pagination buttons (RIL TASK-083, ISS-052).

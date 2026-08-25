@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from "vue";
-import { type PostListResponse, useApi } from "~~/composables/useApi";
+import { usePostSearch } from "~~/api/public/posts";
 import { loadPurify, sanitizeHtml } from "~~/composables/useMarkdown";
 import { paginationPages } from "~~/composables/usePagination";
 import { useSeo } from "~~/composables/useSeo";
@@ -48,18 +48,20 @@ const activeFilters = computed(() => {
 	return out;
 });
 
-const searchUrl = computed(() => {
-	const params = new URLSearchParams();
-	if (query.value) params.set("q", query.value);
-	if (filterCategory.value) params.set("category", filterCategory.value);
-	if (filterTag.value) params.set("tag", filterTag.value);
-	if (filterSort.value !== "relevance") params.set("sort", filterSort.value);
-	if (filterDateFrom.value) params.set("date_from", filterDateFrom.value);
-	if (filterDateTo.value) params.set("date_to", filterDateTo.value);
-	params.set("page", String(page.value));
-	params.set("limit", "10");
-	return `/api/search?${params.toString()}`;
-});
+// Search params mirror the previous URL construction: `withQuery` omits empty
+// strings and undefined values, so a default `relevance` sort and empty
+// category/tag/date filters leave no trailing query params behind. `q` is
+// always sent (it is the search term).
+const searchParams = computed(() => ({
+	q: query.value,
+	category: filterCategory.value,
+	tag: filterTag.value,
+	sort: filterSort.value !== "relevance" ? filterSort.value : undefined,
+	date_from: filterDateFrom.value,
+	date_to: filterDateTo.value,
+	page: page.value,
+	limit: 10,
+}));
 
 // With no query there is nothing to search: `enabled: false` makes Nuxt skip
 // the request (reactively re-enabling on SPA nav to ?q=...). Without this the
@@ -69,7 +71,7 @@ const {
 	data: searchResult,
 	pending,
 	error,
-} = await useApi<PostListResponse>(searchUrl, {
+} = await usePostSearch(searchParams, {
 	enabled: computed(() => !!query.value),
 });
 

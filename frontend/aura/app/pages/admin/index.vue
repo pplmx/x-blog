@@ -5,12 +5,12 @@
 -->
 <script setup lang="ts">
 import { onMounted, ref } from "vue";
+import type { BlogStats } from "~~/api/public/stats";
 import type {
 	AdminComment,
 	AdminCommentListResponse,
 	AdminPost,
 	AdminPostListResponse,
-	BlogStats,
 	Category,
 	Tag,
 } from "~~/composables/useApi";

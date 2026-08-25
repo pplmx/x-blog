@@ -62,12 +62,14 @@ const h = vi.hoisted(() => {
 	};
 });
 
-vi.mock("../../../composables/useApi", () => ({
+vi.mock("../../../api/public/series", () => ({
 	useSeriesBySlug: () => ({
 		data: ref(h.mockSeries),
 		pending: ref(false),
 		error: ref(null),
 	}),
+}));
+vi.mock("../../../composables/useApi", () => ({
 	fetchReaderSeriesProgress: h.fetchProgress,
 	fetchReaderSeriesFollows: h.fetchFollows,
 	followReaderSeries: h.followSeries,

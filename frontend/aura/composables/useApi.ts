@@ -7,70 +7,22 @@
  *   const { data: categories } = await useApi('/api/categories');
  */
 
-export interface PaginationInfo {
-	total: number;
-	page: number;
-	limit: number;
-	total_pages: number;
-}
+import {
+	adminAuthHeaders as getAuthHeaders,
+	readerAuthHeaders as getReaderAuthHeaders,
+} from "../api/auth";
+import type { Category, Comment, PostList, Tag } from "../api/contracts/shared";
+import { type ApiQueryOptions, query } from "../api/transport";
 
-/** Lightweight series reference embedded in a Post payload (DEC-056). */
-export interface SeriesBrief {
-	id: number;
-	title: string;
-	slug: string;
-}
-
-export interface PostList {
-	id: number;
-	title: string;
-	slug: string;
-	excerpt: string | null;
-	snippet?: string | null;
-	published: boolean;
-	pinned?: boolean;
-	created_at: string;
-	views: number;
-	likes: number;
-	comment_count?: number;
-	reading_time?: number;
-	cover_image: string | null;
-	category: { id: number; name: string } | null;
-	tags: { id: number; name: string }[];
-	/** Series this post belongs to, if any (DEC-056). */
-	series: SeriesBrief | null;
-	/** Position within the series (author-controlled order, DEC-056). */
-	series_order: number;
-}
-
-export interface PostListResponse {
-	items: PostList[];
-	pagination: PaginationInfo;
-}
-
-export interface Category {
-	id: number;
-	name: string;
-	post_count?: number;
-}
-
-export interface Tag {
-	id: number;
-	name: string;
-	post_count?: number;
-}
-
-export interface ArchiveEntry {
-	year: number;
-	month: number;
-	count: number;
-}
-
-export interface Post extends PostList {
-	content: string;
-	likes: number;
-	updated_at: string;
-}
+export type {
+	Category,
+	Comment,
+	PaginationInfo,
+	PostList,
+	PostListResponse,
+	SeriesBrief,
+	Tag,
+} from "../api/contracts/shared";
 
 /**
  * Core fetch helper that targets the backend API.
@@ -82,46 +34,13 @@ export interface Post extends PostList {
  */
 export async function useApi<T>(
 	url: Parameters<typeof useFetch>[0],
-	options: Parameters<typeof useFetch>[1] = {},
+	options: ApiQueryOptions<T> = {},
 ) {
-	const config = useRuntimeConfig();
-	const apiUrl = config.public.apiUrl;
-
-	return useFetch<T>(
-		url as string,
-		{
-			baseURL: apiUrl,
-			...((options as Record<string, unknown>) ?? {}),
-		} as never,
-	);
-}
-
-/**
- * Fetch posts with optional filtering.
- */
-export async function usePosts(filters?: {
-	category_id?: number;
-	tag_id?: number;
-	page?: number;
-	limit?: number;
-}) {
-	const params = new URLSearchParams();
-	if (filters?.category_id) params.set("category_id", String(filters.category_id));
-	if (filters?.tag_id) params.set("tag_id", String(filters.tag_id));
-	if (filters?.page) params.set("page", String(filters.page));
-	if (filters?.limit) params.set("limit", String(filters.limit));
-
-	const query = params.toString();
-	const url = query ? `/api/posts?${query}` : "/api/posts";
-
-	return useApi<PostListResponse>(url);
-}
-
-/**
- * Fetch all categories.
- */
-export async function useCategories() {
-	return useApi<Category[]>("/api/categories");
+	const legacyQuery = query as <ResT>(
+		path: Parameters<typeof useFetch>[0],
+		queryOptions?: ApiQueryOptions<ResT>,
+	) => ReturnType<typeof useFetch<ResT>>;
+	return legacyQuery<T>(url, options);
 }
 
 /**
@@ -133,83 +52,6 @@ export async function fetchCategories(): Promise<Category[]> {
 	const config = useRuntimeConfig();
 	const apiUrl = config.public.apiUrl;
 	return $fetch<Category[]>(`${apiUrl}/api/categories`);
-}
-
-/**
- * Fetch all tags.
- */
-export async function useTags() {
-	return useApi<Tag[]>("/api/tags");
-}
-
-/**
- * Fetch a single post by slug or numeric ID.
- * Uses the backend's /api/posts/{slug_or_id} endpoint which accepts
- * either a slug string or a numeric ID.
- */
-export async function usePost(
-	slugOrId: string | number | (() => string | number),
-	options: Parameters<typeof useFetch>[1] = {},
-) {
-	// Accept a getter (reactive source) so useFetch re-runs when the slug
-	// changes via SPA navigation between posts, instead of pinning the first
-	// value (RIL TASK-090, ISS-073).
-	const url =
-		typeof slugOrId === "function" ? () => `/api/posts/${slugOrId()}` : `/api/posts/${slugOrId}`;
-	return useApi<Post>(url, options);
-}
-
-/**
- * Search posts by keyword.
- * Uses the backend's /api/search endpoint.
- * Returns the same shape as PostListResponse.
- */
-export async function useSearch(query: string, page = 1, limit = 10) {
-	const params = new URLSearchParams();
-	params.set("q", query);
-	params.set("page", String(page));
-	params.set("limit", String(limit));
-
-	const url = `/api/search?${params.toString()}`;
-	return useApi<PostListResponse>(url);
-}
-
-/**
- * Increment the view count for a post.
- * Uses the backend's POST /api/posts/{post_id}/view endpoint.
- */
-export async function usePostView(postId: number): Promise<Post> {
-	const config = useRuntimeConfig();
-	const apiUrl = config.public.apiUrl;
-	return $fetch<Post>(`${apiUrl}/api/posts/${postId}/view`, {
-		method: "POST",
-	});
-}
-
-/**
- * Increment the like count for a post.
- * Uses the backend's POST /api/posts/{post_id}/like endpoint.
- *
- * Like usePostView this is fire-and-forget (called from the click handler):
- * `useFetch` never executes outside a setup/suspense context, so `$fetch` is
- * required here or likes never reach the backend. (ISS-111)
- */
-export async function usePostLike(postId: number): Promise<Post> {
-	const config = useRuntimeConfig();
-	const apiUrl = config.public.apiUrl;
-	return $fetch<Post>(`${apiUrl}/api/posts/${postId}/like`, {
-		method: "POST",
-	});
-}
-
-/**
- * Fetch the most popular posts by view count.
- * Uses the backend's GET /api/posts/popular/list endpoint.
- */
-export async function usePopularPosts(limit = 5) {
-	return useApi<PostList[]>("/api/posts/popular/list", {
-		query: { limit },
-	});
 }
 
 /**
@@ -234,230 +76,6 @@ export async function fetchReaderFollowsFeed(limit = 12) {
 		server: false,
 	});
 }
-
-/**
- * Fetch related posts for a given post.
- * Uses the backend's GET /api/posts/{post_id}/related endpoint.
- * Returns a list of related posts based on category and tags.
- */
-export async function useRelatedPosts(
-	postId: number | (() => number | null | undefined),
-	limit = 5,
-) {
-	// A reactive getter lets related posts follow the active post through SPA
-	// navigation; returning null/undefined when there's no id yet makes useFetch
-	// skip the request (TASK-090, ISS-073).
-	const url =
-		typeof postId === "function"
-			? ((() => {
-					const id = postId();
-					return id ? `/api/posts/${id}/related` : null;
-				}) as Parameters<typeof useFetch>[0])
-			: `/api/posts/${postId}/related`;
-	return useApi<PostList[]>(url, {
-		query: { limit },
-	});
-}
-
-/**
- * Adjacent linear navigation for a post, in public feed order.
- * `previous` / `next` are PostList summaries or null at the feed's ends.
- */
-export interface AdjacentPosts {
-	previous: PostList | null;
-	next: PostList | null;
-}
-
-/**
- * Fetch the linear previous/next posts around a post.
- * Uses the backend's GET /api/posts/{post_id}/adjacent endpoint.
- */
-export async function useAdjacentPosts(postId: number | (() => number | null | undefined)) {
-	const url =
-		typeof postId === "function"
-			? ((() => {
-					const id = postId();
-					return id ? `/api/posts/${id}/adjacent` : null;
-				}) as Parameters<typeof useFetch>[0])
-			: `/api/posts/${postId}/adjacent`;
-	return useApi<AdjacentPosts>(url);
-}
-
-/**
- * Public series lists/detail from the backend /api/series endpoints.
- * A series is an author-ordered group of posts (DEC-056) — see SeriesBrief
- * on PostList for the embedded reference used on post/list payloads.
- */
-
-/** Public series summary (list view) — identity plus visible post count. */
-export interface SeriesPublic {
-	id: number;
-	title: string;
-	slug: string;
-	description: string | null;
-	post_count: number;
-}
-
-/** Public series detail — the series plus its ordered, visible posts. */
-export interface SeriesDetail extends SeriesPublic {
-	posts: PostList[];
-}
-
-/**
- * Fetch all public series (ordered by title) with their visible post counts.
- */
-export async function useSeries() {
-	return useApi<SeriesPublic[]>("/api/series");
-}
-
-/**
- * Fetch a single public series by slug, including its ordered visible posts.
- * Accepts a getter (reactive source) so useFetch re-runs on SPA navigation
- * between series (mirrors usePost for posts, TASK-090/ISS-073). A getter that
- * returns null/undefined (e.g. a post with no series) makes useFetch skip the
- * request (mirrors useRelatedPosts).
- */
-export async function useSeriesBySlug(slug: string | (() => string | null | undefined)) {
-	const url =
-		typeof slug === "function"
-			? ((() => {
-					const s = slug();
-					return s ? `/api/series/${s}` : null;
-				}) as Parameters<typeof useFetch>[0])
-			: `/api/series/${slug}`;
-	return useApi<SeriesDetail>(url);
-}
-
-/**
- * Blog-level aggregate statistics from the backend /api/stats endpoint.
- * Exact counts (unlike deriving from a paginated post list, which the
- * backend caps at limit <= 100 and would silently undercount larger blogs).
- */
-export interface BlogStats {
-	total_posts: number;
-	published_posts: number;
-	scheduled_posts: number;
-	total_categories: number;
-	total_tags: number;
-	total_comments: number;
-	pending_comments: number;
-	total_views: number;
-	total_likes: number;
-}
-
-/**
- * Fetch blog aggregate statistics.
- * Uses the backend's GET /api/stats endpoint.
- */
-export async function useBlogStats() {
-	return useApi<BlogStats>("/api/stats");
-}
-
-/**
- * Comment type matching the backendCommentListResponse public schema. The
- * public comment list omits PII: ip_address and email are intentionally not
- * returned (RIL TASK-100, ISS-080); they exist only on the authenticated
- * admin comment list (see AdminComment).
- */
-export interface Comment {
-	id: number;
-	post_id: number;
-	parent_id: number | null;
-	nickname: string;
-	content: string;
-	is_approved: boolean;
-	/** Comment upvote count (DEC-092/TASK-158). */
-	likes: number;
-	created_at: string;
-	/** When the reader-author last edited this comment; null/undefined = never
-	 *  edited (DEC-096/TASK-160). */
-	edited_at?: string | null;
-	/** Verified reader identity for reader-attributed comments (DEC-062);
-	 * null for anonymous free-text commenters. */
-	reader: { id: number; display_name: string | null } | null;
-}
-
-export type CommentSort = "newest" | "oldest" | "likes";
-
-/**
- * Fetch paginated comments for a post.
- * Uses the backend's GET /api/comments/post/{post_id} endpoint. `sort` lets
- * readers reorder the thread — newest (default), oldest, or most helpful
- * (likes desc) — per DEC-094/TASK-159.
- */
-export async function fetchComments(
-	postId: number,
-	page = 1,
-	limit = 20,
-	sort: CommentSort = "newest",
-) {
-	return useApi<{
-		items: Comment[];
-		total: number;
-		page: number;
-		limit: number;
-		total_pages: number;
-	}>(`/api/comments/post/${postId}`, { query: { page, limit, sort } });
-}
-
-/**
- * Create a new comment for a post.
- * Uses the backend's POST /api/comments/post/{post_id} endpoint.
- */
-export async function useCommentLike(commentId: number): Promise<Comment> {
-	// POST /comments/{id}/like returns the updated comment with its new count.
-	// Fire-and-forget from the click handler: `useFetch` never executes outside
-	// a setup/suspense context, so this must use `$fetch` or comment likes
-	// silently never reach the backend. (ISS-111)
-	const config = useRuntimeConfig();
-	const apiUrl = config.public.apiUrl;
-	return $fetch<Comment>(`${apiUrl}/api/comments/${commentId}/like`, {
-		method: "POST",
-	});
-}
-
-/** Label for a comment flag (DEC-108, TASK-166). */
-export interface CommentFlagResult {
-	comment_id: number;
-	flags: number;
-	is_new: boolean;
-}
-
-/** Flag a comment for moderator review. Anonymous/reader, rate-limited and
- *  idempotent per (comment, source) on the backend. */
-export async function flagComment(commentId: number): Promise<CommentFlagResult> {
-	const config = useRuntimeConfig();
-	const apiUrl = config.public.apiUrl;
-	return $fetch<CommentFlagResult>(`${apiUrl}/api/comments/${commentId}/flag`, {
-		method: "POST",
-	});
-}
-
-export async function createComment(
-	postId: number,
-	data: {
-		nickname: string;
-		email: string;
-		content: string;
-		parent_id?: number | null;
-		website?: string;
-	},
-) {
-	// A signed-in reader comments under their account: send the reader JWT so
-	// the backend stamps identity from the token (client-supplied nickname is
-	// ignored then). Empty headers (no reader_token) keeps anonymous comments
-	// working unchanged. (DEC-062, TASK-136)
-	const headers = getReaderAuthHeaders();
-	return useApi<Comment>(`/api/comments/post/${postId}`, {
-		method: "POST",
-		body: data,
-		...(Object.keys(headers).length ? { headers } : {}),
-	});
-}
-
-// ============================================================================
-// Admin API
-// ============================================================================
 
 export interface AdminPost {
 	id: number;
@@ -563,21 +181,6 @@ export interface AdminComment {
 	created_at: string;
 	/** Distinct reader flags (DEC-108, TASK-166). */
 	flag_count?: number;
-}
-
-/** Get auth headers from localStorage (admin token). */
-function getAuthHeaders(): HeadersInit {
-	// typeof window guards SSR (see useAdminAuth.hasLocalStorage): a partial
-	// localStorage global on Node must not crash admin fetches during SSR.
-	if (
-		typeof window === "undefined" ||
-		typeof localStorage === "undefined" ||
-		typeof localStorage.getItem !== "function"
-	) {
-		return {};
-	}
-	const token = localStorage.getItem("admin_token");
-	return token ? { Authorization: `Bearer ${token}` } : {};
 }
 
 /** Fetch posts for admin panel with search, filter, pagination. */
@@ -786,6 +389,8 @@ export async function updateSiteSetting(key: string, value: string) {
 // same one the public /series index uses. Admin helpers reuse those paths with
 // auth headers so a manager can create/rename/reorder/delete series.
 // ============================================================================
+
+import type { SeriesPublic } from "../api/public/series";
 
 export interface AdminSeries extends SeriesPublic {
 	description: string | null;
@@ -1118,19 +723,6 @@ export interface BookmarkFolder {
 export interface BookmarkFolderListResponse {
 	items: BookmarkFolder[];
 	total: number;
-}
-
-/** Authorization header from the reader token (distinct store from admin). */
-function getReaderAuthHeaders(): HeadersInit {
-	if (
-		typeof window === "undefined" ||
-		typeof localStorage === "undefined" ||
-		typeof localStorage.getItem !== "function"
-	) {
-		return {};
-	}
-	const token = localStorage.getItem("reader_token");
-	return token ? { Authorization: `Bearer ${token}` } : {};
 }
 
 /** Reader self-registration (auto-login on the backend). */

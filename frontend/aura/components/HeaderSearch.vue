@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref } from "vue";
-import { type PostList, type PostListResponse } from "~~/composables/useApi";
+import type { PostList, PostListResponse } from "~~/api/contracts/shared";
 
 const { t } = useLang();
 const config = useRuntimeConfig();

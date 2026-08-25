@@ -1,13 +1,12 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from "vue";
+import { usePosts } from "~~/api/public/posts";
+import { useCategories } from "~~/api/public/taxonomy";
 import {
 	fetchReaderCategoryFollows,
 	followReaderCategory,
-	type PostListResponse,
 	setCategoryFollowNotify,
 	unfollowReaderCategory,
-	useApi,
-	useCategories,
 } from "~~/composables/useApi";
 import { paginationPages } from "~~/composables/usePagination";
 import { usePushSubscription } from "~~/composables/usePushSubscription";
@@ -22,16 +21,15 @@ const categoryId = computed(() =>
 );
 const page = computed(() => (route.query.page ? Number.parseInt(String(route.query.page), 10) : 1));
 
-const postsUrl = computed(() => {
-	const params = new URLSearchParams();
-	if (categoryId.value) params.set("category_id", String(categoryId.value));
-	if (page.value > 1) params.set("page", String(page.value));
-	const qs = params.toString();
-	return qs ? `/api/posts?${qs}` : "/api/posts";
-});
+// `withQuery` omits undefined values, so page 1 or an unset category leaves no
+// trailing query params behind (matches the previous URL construction).
+const postsFilters = computed(() => ({
+	category_id: categoryId.value,
+	page: page.value > 1 ? page.value : undefined,
+}));
 
 const { data: categories, pending: categoriesPending } = await useCategories();
-const { data: posts, pending: postsPending } = await useApi<PostListResponse>(postsUrl);
+const { data: posts, pending: postsPending } = await usePosts(postsFilters);
 const pending = computed(() => categoriesPending.value || postsPending.value);
 
 // Windowed, ellipsis-aware pagination buttons (RIL TASK-083, ISS-052).

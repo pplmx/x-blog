@@ -1,14 +1,14 @@
 <script setup lang="ts">
 import { computed, watch, watchEffect } from "vue";
 import {
-	recordReaderHistory,
+	likePost,
+	recordPostView,
 	useAdjacentPosts,
 	usePost,
-	usePostLike,
-	usePostView,
 	useRelatedPosts,
-	useSeriesBySlug,
-} from "~~/composables/useApi";
+} from "~~/api/public/posts";
+import { useSeriesBySlug } from "~~/api/public/series";
+import { recordReaderHistory } from "~~/composables/useApi";
 import { coverImageSrc } from "~~/composables/useCoverImage";
 import { markdownToHtml } from "~~/composables/useMarkdown";
 import { useReaderAuth } from "~~/composables/useReaderAuth";
@@ -100,7 +100,7 @@ async function handleLike() {
 	recordLike(post.value.id); // optimistic local marker
 	persist();
 	try {
-		const liked = await usePostLike(post.value.id);
+		const liked = await likePost(post.value.id);
 		// POST /like returns the updated Post (response_model=schemas.Post); use
 		// it to refresh the rendered count instead of a discarded refetch, which
 		// left post.value.likes stale in the UI.
@@ -144,7 +144,7 @@ function showResumeChip() {
 /** Client-only per-post session: count the view, sync reading history, and
  * restore/save the signed-in reader's resume position. */
 function beginReadingSession(postId: number) {
-	usePostView(postId).catch(() => {});
+	recordPostView(postId).catch(() => {});
 	if (isAuthenticated.value) {
 		recordReaderHistory(postId).catch(() => {});
 		// Drop the reader back where they left off, surfacing a small chip so

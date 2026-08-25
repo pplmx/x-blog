@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { PostList } from "~~/composables/useApi";
+import type { PostList } from "~~/api/contracts/shared";
 import { coverImageSrc } from "~~/composables/useCoverImage";
 
 interface Props {

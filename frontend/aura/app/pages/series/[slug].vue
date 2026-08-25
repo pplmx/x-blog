@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from "vue";
+import { useSeriesBySlug } from "~~/api/public/series";
 import {
 	fetchReaderSeriesFollows,
 	fetchReaderSeriesProgress,
@@ -7,7 +8,6 @@ import {
 	type SeriesProgress,
 	setSeriesFollowNotify,
 	unfollowReaderSeries,
-	useSeriesBySlug,
 } from "~~/composables/useApi";
 import { useSeo } from "~~/composables/useSeo";
 

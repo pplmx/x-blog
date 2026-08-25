@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from "vue";
-import { type ArchiveEntry, type PostListResponse, useApi } from "~~/composables/useApi";
+import { type ArchiveEntry, usePostArchive, usePosts } from "~~/api/public/posts";
 import { useSeo } from "~~/composables/useSeo";
 
 const { t, locale } = useLang();
@@ -15,24 +15,21 @@ const month = computed(() =>
 );
 const page = computed(() => (route.query.page ? Number.parseInt(String(route.query.page), 10) : 1));
 
-const archiveUrl = "/api/posts/archive";
-
-const postsUrl = computed(() => {
-	const params = new URLSearchParams();
-	if (year.value) params.set("year", String(year.value));
-	if (month.value) params.set("month", String(month.value));
-	if (page.value > 1) params.set("page", String(page.value));
-	const qs = params.toString();
-	return qs ? `/api/posts?${qs}` : "/api/posts";
-});
 // Only fetch posts when a year/month is actually selected (index view has no
 // post list). `enabled: false` makes Nuxt skip the request without firing it.
 const hasPeriod = computed(() => !!year.value || !!month.value);
 
-const { data: archive, pending: archivePending } = await useApi<ArchiveEntry[]>(archiveUrl);
-const { data: posts, pending: postsPending } = await useApi<PostListResponse | null>(postsUrl, {
-	enabled: hasPeriod,
-});
+// Year/month/page filters mirror the previous URL construction: `withQuery`
+// omits undefined values, so page 1, an empty year, or an empty month leave no
+// trailing query params behind.
+const postsFilters = computed(() => ({
+	year: year.value,
+	month: month.value,
+	page: page.value > 1 ? page.value : undefined,
+}));
+
+const { data: archive, pending: archivePending } = await usePostArchive();
+const { data: posts, pending: postsPending } = await usePosts(postsFilters, { enabled: hasPeriod });
 const pending = computed(() => archivePending.value || postsPending.value);
 
 // Group flat (year, month, count) buckets into years, newest first.
