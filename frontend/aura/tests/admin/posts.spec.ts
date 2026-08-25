@@ -8,8 +8,8 @@ const { mockFetchAdminPosts, mockDeleteAdminPost } = vi.hoisted(() => ({
 	mockDeleteAdminPost: vi.fn(),
 }));
 
-vi.mock("~/composables/useApi", () => ({
-	fetchAdminPosts: mockFetchAdminPosts,
+vi.mock("~~/api/admin/posts", () => ({
+	useAdminPosts: mockFetchAdminPosts,
 	deleteAdminPost: mockDeleteAdminPost,
 }));
 

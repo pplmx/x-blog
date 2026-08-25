@@ -6,15 +6,15 @@
 -->
 <script setup lang="ts">
 import { ref } from "vue";
+import type { SeriesEpisode } from "~~/api/admin/series";
 import {
 	createAdminSeries,
 	deleteAdminSeries,
-	fetchAdminSeries,
-	fetchAdminSeriesEpisodes,
+	getAdminSeriesEpisodes,
 	reorderAdminSeriesEpisodes,
-	type SeriesEpisode,
 	updateAdminSeries,
-} from "~~/composables/useApi";
+	useAdminSeries,
+} from "~~/api/admin/series";
 
 definePageMeta({ layout: "admin" });
 
@@ -22,7 +22,7 @@ const { t } = useLang();
 
 useHead({ title: computed(() => t("admin.series.seoTitle")) });
 
-const { data: series, pending, error, refresh } = await fetchAdminSeries();
+const { data: series, pending, error, refresh } = await useAdminSeries();
 const isProcessing = ref(false);
 const actionError = ref<string | null>(null);
 
@@ -55,8 +55,7 @@ async function toggleEpisodes(s: { id: number }) {
 	if (episodesBySeries.value[s.id]) return;
 	episodesLoading.value = true;
 	try {
-		const res = await fetchAdminSeriesEpisodes(s.id);
-		episodesBySeries.value[s.id] = res.data?.value ?? [];
+		episodesBySeries.value[s.id] = await getAdminSeriesEpisodes(s.id);
 	} catch {
 		episodesBySeries.value[s.id] = [];
 		episodesError.value = true;
@@ -78,11 +77,10 @@ async function moveEpisode(seriesId: number, index: number, dir: -1 | 1) {
 	next.splice(target, 0, item);
 	episodesError.value = false;
 	try {
-		const res = await reorderAdminSeriesEpisodes(
+		episodesBySeries.value[seriesId] = await reorderAdminSeriesEpisodes(
 			seriesId,
 			next.map((e) => e.id),
 		);
-		episodesBySeries.value[seriesId] = res.data?.value ?? next;
 	} catch {
 		episodesError.value = true;
 	}
@@ -121,17 +119,12 @@ async function handleCreate() {
 			slug: newForm.value.slug.trim() || generateSlug(newForm.value.title.trim()),
 			description: newForm.value.description.trim() || null,
 		};
-		const result = await createAdminSeries(payload);
-		if (result.error.value) {
-			const err = result.error.value as { data?: { detail?: string | { msg?: string }[] } } | null;
-			actionError.value =
-				typeof err?.data?.detail === "string" ? err.data.detail : t("admin.series.operationFailed");
-		} else {
-			newForm.value = { title: "", slug: "", description: "" };
-			await refresh();
-		}
+		await createAdminSeries(payload);
+		newForm.value = { title: "", slug: "", description: "" };
+		await refresh();
 	} catch (e) {
-		actionError.value = getErrorMessage(e);
+		const detail = (e as { data?: { detail?: string | { msg?: string }[] } })?.data?.detail;
+		actionError.value = typeof detail === "string" ? detail : getErrorMessage(e);
 	} finally {
 		isProcessing.value = false;
 	}
@@ -156,17 +149,12 @@ async function confirmEdit(id: number) {
 			slug: editingForm.value.slug.trim(),
 			description: editingForm.value.description.trim() || null,
 		};
-		const result = await updateAdminSeries(id, payload);
-		if (result.error.value) {
-			const err = result.error.value as { data?: { detail?: string | { msg?: string }[] } } | null;
-			actionError.value =
-				typeof err?.data?.detail === "string" ? err.data.detail : t("admin.series.operationFailed");
-		} else {
-			editingId.value = null;
-			await refresh();
-		}
+		await updateAdminSeries(id, payload);
+		editingId.value = null;
+		await refresh();
 	} catch (e) {
-		actionError.value = getErrorMessage(e);
+		const detail = (e as { data?: { detail?: string | { msg?: string }[] } })?.data?.detail;
+		actionError.value = typeof detail === "string" ? detail : getErrorMessage(e);
 	} finally {
 		isProcessing.value = false;
 	}

@@ -1,16 +1,16 @@
 <script setup lang="ts">
 import { onBeforeRouteLeave } from "vue-router";
-import { notifyPushSubscribers } from "~~/api/admin/push";
-import { useAdminCategories, useAdminTags } from "~~/api/admin/taxonomy";
-import type { AdminPostDetail, PostCreate, PostRevisionSummary } from "~~/composables/useApi";
+import type { AdminPostDetail, PostCreate, PostRevisionSummary } from "~~/api/admin/posts";
 import {
 	createAdminPost,
-	fetchAdminPost,
-	fetchAdminSeries,
-	fetchPostRevisions,
+	getPostRevisions,
 	restorePostRevision,
 	updateAdminPost,
-} from "~~/composables/useApi";
+	useAdminPost,
+} from "~~/api/admin/posts";
+import { notifyPushSubscribers } from "~~/api/admin/push";
+import { useAdminSeries } from "~~/api/admin/series";
+import { useAdminCategories, useAdminTags } from "~~/api/admin/taxonomy";
 
 definePageMeta({ layout: "admin" });
 
@@ -83,7 +83,7 @@ const { data: tagsData } = await useAdminTags();
 // Series list for the membership dropdown (DEC-056/TASK-123). The admin keeps
 // the option to create series on the /admin/series page; here a post is simply
 // assigned into an existing series with a 0-based position.
-const { data: seriesData } = await fetchAdminSeries();
+const { data: seriesData } = await useAdminSeries();
 
 watch(
 	() => catsData.value,
@@ -113,7 +113,7 @@ const {
 	error: postError,
 	refresh: postRefresh,
 } = postId
-	? await fetchAdminPost(postId)
+	? await useAdminPost(postId)
 	: {
 			data: ref(null) as any,
 			pending: ref(false) as any,
@@ -265,18 +265,14 @@ async function runAutosave() {
 	autoSaveStatus.value = "saving";
 	autoSaveError.value = null;
 	try {
-		const result =
+		// These commands resolve to the created/updated post id on success and
+		// reject with a FetchError (whose .data.detail carries 422 messages) on
+		// failure, so no .data.value/.error.value ref reading is needed.
+		const created =
 			targetId === null
 				? await createAdminPost(payload as PostCreate)
 				: await updateAdminPost(targetId, payload);
-		if (result.error.value) {
-			const err = result.error.value as { data?: { detail?: string } } | null;
-			autoSaveError.value =
-				typeof err?.data?.detail === "string" ? err.data.detail : t("admin.postEdit.autoSaveError");
-			autoSaveStatus.value = "error";
-			return;
-		}
-		const createdId = (result.data.value as { id?: number } | null)?.id ?? null;
+		const createdId = created.id;
 		if (targetId === null && createdId !== null) {
 			autosavedId = createdId;
 			// Point the address bar at the newly created draft so a manual
@@ -290,8 +286,9 @@ async function runAutosave() {
 		loadedSnapshot = snapshot();
 		isDirty.value = false;
 		autoSaveStatus.value = "saved";
-	} catch {
-		autoSaveError.value = t("admin.postEdit.autoSaveError");
+	} catch (err) {
+		const detail = (err as { data?: { detail?: string } } | null)?.data?.detail;
+		autoSaveError.value = typeof detail === "string" ? detail : t("admin.postEdit.autoSaveError");
 		autoSaveStatus.value = "error";
 	} finally {
 		autosaveInFlight = false;
@@ -354,24 +351,18 @@ async function handleSubmit(e: Event) {
 	}
 
 	try {
-		// These helpers return useFetch's AsyncData — HTTP errors land in
-		// .error (a Ref) instead of throwing, so check it before redirecting.
-		// Narrowing `postId === null` lets TS treat the other branch as a
-		// number without a non-null assertion (noNonNullAssertion).
-		const result =
-			postId === null
-				? await createAdminPost(payload as PostCreate)
-				: await updateAdminPost(postId, payload);
-		if (result.error.value) {
-			const err = result.error.value as { data?: { detail?: string } } | null;
-			const detail = err?.data?.detail;
-			submitError.value = typeof detail === "string" ? detail : t("admin.postEdit.saveError");
+		// These commands reject with a FetchError on HTTP failure (422 detail
+		// lands in .data.detail); success resolves with the persisted post id.
+		if (postId === null) {
+			await createAdminPost(payload as PostCreate);
 		} else {
-			isDirty.value = false; // don't re-prompt during the redirect
-			navigateTo("/admin/posts", { replace: true });
+			await updateAdminPost(postId, payload);
 		}
-	} catch (_err) {
-		submitError.value = t("admin.postEdit.saveError");
+		isDirty.value = false; // don't re-prompt during the redirect
+		navigateTo("/admin/posts", { replace: true });
+	} catch (err) {
+		const detail = (err as { data?: { detail?: string } } | null)?.data?.detail;
+		submitError.value = typeof detail === "string" ? detail : t("admin.postEdit.saveError");
 	} finally {
 		isSubmitting.value = false;
 	}
@@ -406,12 +397,7 @@ async function loadRevisions() {
 	revisionsLoading.value = true;
 	revisionsError.value = null;
 	try {
-		const result = await fetchPostRevisions(postId);
-		if (result.error.value) {
-			revisionsError.value = t("admin.postEdit.revisionLoadError");
-		} else {
-			revisions.value = result.data.value ?? [];
-		}
+		revisions.value = await getPostRevisions(postId);
 	} catch {
 		revisionsError.value = t("admin.postEdit.revisionLoadError");
 	} finally {
@@ -441,22 +427,16 @@ async function handleRestoreRevision(revId: number) {
 	restoringId.value = revId;
 	revisionMessage.value = null;
 	try {
-		const result = await restorePostRevision(postId, revId);
-		if (result.error.value) {
-			const err = result.error.value as { data?: { detail?: string } } | null;
-			revisionMessage.value =
-				typeof err?.data?.detail === "string"
-					? err.data.detail
-					: t("admin.postEdit.revisionRestoreError");
-			return;
-		}
+		await restorePostRevision(postId, revId);
 		revisionMessage.value = t("admin.postEdit.revisionRestored");
 		// Re-fetch the live post so the form reflects the restored state.
 		await postRefresh();
 		// Refresh the history list (restore also snapshots the pre-restore state).
 		await loadRevisions();
-	} catch {
-		revisionMessage.value = t("admin.postEdit.revisionRestoreError");
+	} catch (err) {
+		const detail = (err as { data?: { detail?: string } } | null)?.data?.detail;
+		revisionMessage.value =
+			typeof detail === "string" ? detail : t("admin.postEdit.revisionRestoreError");
 	} finally {
 		restoringId.value = null;
 	}

@@ -9,16 +9,8 @@ import { afterEach, beforeEach, describe, expect, it, type Mock, vi } from "vite
 import {
 	approveAdminComment,
 	batchApproveAdminComment,
-	createAdminPost,
-	createAdminSeries,
 	deleteAdminComment,
-	deleteAdminPost,
-	deleteAdminSeries,
 	fetchAdminComments,
-	fetchAdminPosts,
-	fetchAdminSeries,
-	updateAdminPost,
-	updateAdminSeries,
 } from "../../composables/useApi.ts";
 
 // Capture what useFetch is called with
@@ -82,46 +74,6 @@ describe("admin API functions", () => {
 		});
 	});
 
-	it("fetchAdminPosts constructs the correct URL with auth header", () => {
-		fetchAdminPosts();
-		expect(useFetchCalls[0].url).toBe("http://localhost:18888/api/admin/posts");
-		expect(useFetchCalls[0].options.headers).toEqual({ Authorization: "Bearer test-token" });
-	});
-
-	it("fetchAdminPost constructs URL with post ID", () => {
-		fetchAdminPost(42);
-		expect(useFetchCalls[0].url).toBe("http://localhost:18888/api/admin/posts/42");
-	});
-
-	it("createAdminPost sends POST with body", () => {
-		createAdminPost({
-			title: "New Post",
-			slug: "new-post",
-			content: "# Hello",
-			excerpt: "Hello world",
-			published: true,
-		});
-		expect(useFetchCalls[0].url).toBe("http://localhost:18888/api/admin/posts");
-		expect(useFetchCalls[0].options.method).toBe("POST");
-		expect(useFetchCalls[0].options.headers).toEqual({
-			"Content-Type": "application/json",
-			Authorization: "Bearer test-token",
-		});
-	});
-
-	it("updateAdminPost sends PUT with ID and body", () => {
-		updateAdminPost(10, { title: "Updated" });
-		expect(useFetchCalls[0].url).toBe("http://localhost:18888/api/admin/posts/10");
-		expect(useFetchCalls[0].options.method).toBe("PUT");
-		expect(useFetchCalls[0].options.body).toEqual({ title: "Updated" });
-	});
-
-	it("deleteAdminPost sends DELETE with ID", () => {
-		deleteAdminPost(5);
-		expect(useFetchCalls[0].url).toBe("http://localhost:18888/api/admin/posts/5");
-		expect(useFetchCalls[0].options.method).toBe("DELETE");
-	});
-
 	it("fetchAdminComments constructs correct URL", async () => {
 		await fetchAdminComments();
 		expect($fetchCalls[0].url).toBe("http://localhost:18888/api/admin/comments?page=1&limit=20");
@@ -176,61 +128,5 @@ describe("admin API functions", () => {
 			ids: [1, 2, 3],
 			approved: true,
 		});
-	});
-});
-
-describe("series admin API functions", () => {
-	beforeEach(() => {
-		Object.defineProperty(window, "localStorage", {
-			value: {
-				getItem: vi.fn(() => "test-token"),
-				setItem: vi.fn(),
-				removeItem: vi.fn(),
-			},
-			writable: true,
-		});
-	});
-
-	it("fetchAdminSeries fetches the series list with auth header", () => {
-		fetchAdminSeries();
-		expect(useFetchCalls[0].url).toBe("http://localhost:18888/api/series");
-		expect(useFetchCalls[0].options.headers).toEqual({ Authorization: "Bearer test-token" });
-	});
-
-	it("createAdminSeries sends POST with body and auth", () => {
-		createAdminSeries({
-			title: "FastAPI Deep Dive",
-			slug: "fastapi-deep-dive",
-			description: "A tour",
-		});
-		expect(useFetchCalls[0].url).toBe("http://localhost:18888/api/series");
-		expect(useFetchCalls[0].options.method).toBe("POST");
-		expect(useFetchCalls[0].options.headers).toEqual({
-			"Content-Type": "application/json",
-			Authorization: "Bearer test-token",
-		});
-		expect(useFetchCalls[0].options.body).toEqual({
-			title: "FastAPI Deep Dive",
-			slug: "fastapi-deep-dive",
-			description: "A tour",
-		});
-	});
-
-	it("updateAdminSeries sends PUT with ID and body", () => {
-		updateAdminSeries(5, { title: "Renamed" });
-		expect(useFetchCalls[0].url).toBe("http://localhost:18888/api/series/5");
-		expect(useFetchCalls[0].options.method).toBe("PUT");
-		expect(useFetchCalls[0].options.headers).toEqual({
-			"Content-Type": "application/json",
-			Authorization: "Bearer test-token",
-		});
-		expect(useFetchCalls[0].options.body).toEqual({ title: "Renamed" });
-	});
-
-	it("deleteAdminSeries sends DELETE with ID and auth", () => {
-		deleteAdminSeries(5);
-		expect(useFetchCalls[0].url).toBe("http://localhost:18888/api/series/5");
-		expect(useFetchCalls[0].options.method).toBe("DELETE");
-		expect(useFetchCalls[0].options.headers).toEqual({ Authorization: "Bearer test-token" });
 	});
 });

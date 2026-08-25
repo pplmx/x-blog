@@ -17,12 +17,12 @@ const { mockFetchPost, mockFetchCategories, mockFetchTags } = vi.hoisted(() => (
 	mockFetchTags: vi.fn(),
 }));
 
+vi.mock("~~/api/admin/posts", () => ({
+	getAdminPost: mockFetchPost,
+}));
 vi.mock("~~/api/admin/taxonomy", () => ({
 	useAdminCategories: mockFetchCategories,
 	useAdminTags: mockFetchTags,
-}));
-vi.mock("~~/composables/useApi", () => ({
-	fetchAdminPost: mockFetchPost,
 }));
 vi.mock("~~/composables/useSeo", () => ({ useSeo: vi.fn() }));
 vi.mock("~~/composables/useLang", () => ({
@@ -76,7 +76,7 @@ describe("Author preview page (TASK-187)", () => {
 	it("renders a draft post's title, excerpt and content for an admin", async () => {
 		window.localStorage.setItem("admin_token", "admin");
 		stubRoute("5");
-		mockFetchPost.mockResolvedValue({ data: { value: detail } });
+		mockFetchPost.mockResolvedValue(detail);
 		mockFetchCategories.mockResolvedValue({ data: { value: [{ id: 1, name: "AI" }] } });
 		mockFetchTags.mockResolvedValue({ data: { value: [{ id: 2, name: "rust" }] } });
 

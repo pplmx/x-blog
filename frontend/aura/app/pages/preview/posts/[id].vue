@@ -8,8 +8,9 @@
  * which redirects unauthenticated visitors to /admin/login.
  */
 import { computed, onMounted, ref } from "vue";
+import type { AdminPostDetail } from "~~/api/admin/posts";
+import { getAdminPost } from "~~/api/admin/posts";
 import { useAdminCategories, useAdminTags } from "~~/api/admin/taxonomy";
-import { type AdminPostDetail, fetchAdminPost } from "~~/composables/useApi";
 import { coverImageSrc } from "~~/composables/useCoverImage";
 import { readingMinutes } from "~~/composables/useReadingTime";
 import { useSeo } from "~~/composables/useSeo";
@@ -43,12 +44,11 @@ onMounted(async () => {
 	}
 	loading.value = true;
 	try {
-		const [res, cats, tgs] = await Promise.all([
-			fetchAdminPost(Number(route.params.id)),
+		const [data, cats, tgs] = await Promise.all([
+			getAdminPost(Number(route.params.id)),
 			useAdminCategories(),
 			useAdminTags(),
 		]);
-		const data = res.data?.value;
 		if (data) post.value = data;
 		else failed.value = true;
 		categories.value = cats.data?.value ?? [];

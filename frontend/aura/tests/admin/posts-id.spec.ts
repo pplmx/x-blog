@@ -4,9 +4,8 @@
  * Tests the post editor page: creating new posts, editing existing posts,
  * form rendering, field interactions, submit handling, and cancel behavior.
  *
- * Mocks the api domain modules (taxonomy + push) beside the useApi monolith
- * fetchAdminPost, createAdminPost, updateAdminPost) to test the page
- * in isolation. Uses a <Suspense> wrapper since the page uses `await`
+ * Mocks the api domain modules (posts, series, taxonomy, push) to test the
+ * page in isolation. Uses a <Suspense> wrapper since the page uses `await`
  * composables in <script setup>.
  */
 
@@ -45,13 +44,15 @@ vi.mock("~~/api/admin/taxonomy", () => ({
 vi.mock("~~/api/admin/push", () => ({
 	notifyPushSubscribers: mockNotifyPushSubscribers,
 }));
-vi.mock("~/composables/useApi", () => ({
-	fetchAdminPost: mockFetchAdminPost,
-	fetchAdminSeries: mockFetchAdminSeries,
+vi.mock("~~/api/admin/posts", () => ({
+	useAdminPost: mockFetchAdminPost,
 	createAdminPost: mockCreateAdminPost,
 	updateAdminPost: mockUpdateAdminPost,
-	fetchPostRevisions: mockFetchPostRevisions,
+	getPostRevisions: mockFetchPostRevisions,
 	restorePostRevision: mockRestorePostRevision,
+}));
+vi.mock("~~/api/admin/series", () => ({
+	useAdminSeries: mockFetchAdminSeries,
 }));
 
 vi.stubGlobal("useRuntimeConfig", () => ({
@@ -304,15 +305,12 @@ describe("Admin Post Editor Page", () => {
 		});
 
 		it("shows the backend detail and does not navigate when createAdminPost returns an HTTP error", async () => {
-			// useFetch surfaces HTTP errors in .error (a Ref) instead of
-			// throwing — the editor must not redirect when it's set.
+			// The post command rejects with a FetchError (422 detail arrives
+			// in .data.detail) — the editor must surface it and not redirect.
 			const mockNavigateTo = vi.fn();
 			vi.stubGlobal("navigateTo", mockNavigateTo);
-			mockCreateAdminPost.mockResolvedValue({
-				data: ref(null),
-				pending: ref(false),
-				error: ref({ data: { detail: "Slug 'test-title' already exists" } }),
-				refresh: vi.fn(),
+			mockCreateAdminPost.mockRejectedValue({
+				data: { detail: "Slug 'test-title' already exists" },
 			});
 
 			const PostEditor = await loadPage();
@@ -831,15 +829,6 @@ describe("Admin Post Editor Page", () => {
 			vi.unstubAllGlobals();
 		});
 
-		function fetchResult(data: any, error: any = null) {
-			return {
-				data: ref(data),
-				pending: ref(false),
-				error: ref(error),
-				refresh: vi.fn(),
-			};
-		}
-
 		async function autosavePage(routeId = "new") {
 			const mockNavigateTo = vi.fn();
 			vi.stubGlobal("navigateTo", mockNavigateTo);
@@ -850,8 +839,8 @@ describe("Admin Post Editor Page", () => {
 			vi.stubGlobal("definePageMeta", vi.fn());
 			setupRoute(routeId);
 			setupMocks();
-			mockCreateAdminPost.mockResolvedValue(fetchResult({ id: 7 }));
-			mockUpdateAdminPost.mockResolvedValue(fetchResult({ id: 7 }));
+			mockCreateAdminPost.mockResolvedValue({ id: 7 });
+			mockUpdateAdminPost.mockResolvedValue({ id: 7 });
 			const PostEditor = await loadPage();
 			const wrapper = await mountWithSuspense(PostEditor);
 			await flushPromises();
@@ -931,7 +920,7 @@ describe("Admin Post Editor Page", () => {
 
 		it("shows an error state when the auto-save fails", async () => {
 			const { wrapper } = await autosavePage("new");
-			mockCreateAdminPost.mockResolvedValue(fetchResult(null, { data: { detail: "Slug taken" } }));
+			mockCreateAdminPost.mockRejectedValue({ data: { detail: "Slug taken" } });
 
 			const titleInput = wrapper.find('input[type="text"]');
 			await titleInput.setValue("Collision Draft");
@@ -951,21 +940,11 @@ describe("Admin Post Editor Page", () => {
 			}));
 			vi.stubGlobal("useHead", vi.fn());
 			vi.stubGlobal("definePageMeta", vi.fn());
-			mockFetchPostRevisions.mockResolvedValue({
-				data: ref([
-					{ id: 2, created_at: "2026-01-02T00:00:00Z", title: "existing-post", published: false },
-					{ id: 1, created_at: "2026-01-01T00:00:00Z", title: "existing-post", published: false },
-				]),
-				pending: ref(false),
-				error: ref(null),
-				refresh: vi.fn(),
-			});
-			mockRestorePostRevision.mockResolvedValue({
-				data: ref({ id: 1 }),
-				pending: ref(false),
-				error: ref(null),
-				refresh: vi.fn(),
-			});
+			mockFetchPostRevisions.mockResolvedValue([
+				{ id: 2, created_at: "2026-01-02T00:00:00Z", title: "existing-post", published: false },
+				{ id: 1, created_at: "2026-01-01T00:00:00Z", title: "existing-post", published: false },
+			]);
+			mockRestorePostRevision.mockResolvedValue({ id: 1 });
 		});
 		afterEach(() => {
 			vi.restoreAllMocks();

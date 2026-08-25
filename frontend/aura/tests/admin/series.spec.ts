@@ -5,9 +5,9 @@
  * (title + generated slug + description), inline editing, and deleting with
  * confirmation.
  *
- * Mocks the fetchAdminSeries, createAdminSeries, updateAdminSeries, and
- * deleteAdminSeries composables. Uses a <Suspense> wrapper since the page uses
- * `await fetchAdminSeries()` in <script setup>.
+ * Mocks the useAdminSeries, createAdminSeries, updateAdminSeries, and
+ * deleteAdminSeries api/admin/series functions. Uses a <Suspense> wrapper since
+ * the page uses `await useAdminSeries()` in <script setup>.
  */
 
 import { flushPromises } from "@vue/test-utils";
@@ -31,12 +31,12 @@ const {
 	mockReorderAdminSeriesEpisodes: vi.fn(),
 }));
 
-vi.mock("~/composables/useApi", () => ({
-	fetchAdminSeries: mockFetchAdminSeries,
+vi.mock("~~/api/admin/series", () => ({
+	useAdminSeries: mockFetchAdminSeries,
 	createAdminSeries: mockCreateAdminSeries,
 	updateAdminSeries: mockUpdateAdminSeries,
 	deleteAdminSeries: mockDeleteAdminSeries,
-	fetchAdminSeriesEpisodes: mockFetchAdminSeriesEpisodes,
+	getAdminSeriesEpisodes: mockFetchAdminSeriesEpisodes,
 	reorderAdminSeriesEpisodes: mockReorderAdminSeriesEpisodes,
 }));
 
@@ -136,7 +136,7 @@ describe("Admin Series Page", () => {
 		});
 
 		it("creates a series with title, generated slug, and description", async () => {
-			mockCreateAdminSeries.mockReturnValue(mockFetchResult({ id: 3 }));
+			mockCreateAdminSeries.mockResolvedValue({ id: 3 });
 			const SeriesPage = await loadPage();
 			const wrapper = await mountWithSuspense(SeriesPage);
 
@@ -159,7 +159,7 @@ describe("Admin Series Page", () => {
 		});
 
 		it("generates a deterministic ASCII slug for a CJK-only title", async () => {
-			mockCreateAdminSeries.mockReturnValue(mockFetchResult({ id: 4 }));
+			mockCreateAdminSeries.mockResolvedValue({ id: 4 });
 			const SeriesPage = await loadPage();
 			const wrapper = await mountWithSuspense(SeriesPage);
 
@@ -176,9 +176,9 @@ describe("Admin Series Page", () => {
 		});
 
 		it("surfaces a duplicate-slug error from the backend", async () => {
-			mockCreateAdminSeries.mockReturnValue(
-				mockFetchResult(null, { error: { data: { detail: "Series already exists" } } }),
-			);
+			mockCreateAdminSeries.mockRejectedValue({
+				data: { detail: "Series already exists" },
+			});
 			const SeriesPage = await loadPage();
 			const wrapper = await mountWithSuspense(SeriesPage);
 
@@ -198,7 +198,7 @@ describe("Admin Series Page", () => {
 		});
 
 		it("edits title/slug/description and saves", async () => {
-			mockUpdateAdminSeries.mockReturnValue(mockFetchResult({ id: 1 }));
+			mockUpdateAdminSeries.mockResolvedValue({ id: 1 });
 			const SeriesPage = await loadPage();
 			const wrapper = await mountWithSuspense(SeriesPage);
 
@@ -231,7 +231,7 @@ describe("Admin Series Page", () => {
 		});
 
 		it("does not call the API when the title is empty", async () => {
-			mockCreateAdminSeries.mockReturnValue(mockFetchResult(null));
+			mockCreateAdminSeries.mockResolvedValue(null);
 			const SeriesPage = await loadPage();
 			const wrapper = await mountWithSuspense(SeriesPage);
 
@@ -271,11 +271,9 @@ describe("Admin Series Page", () => {
 		});
 
 		it("surfaces a non-string detail (array) from the backend as a generic error", async () => {
-			mockCreateAdminSeries.mockReturnValue(
-				mockFetchResult(null, {
-					error: { data: { detail: [{ msg: "validate this" }] } },
-				}),
-			);
+			mockCreateAdminSeries.mockRejectedValue({
+				data: { detail: [{ msg: "validate this" }] },
+			});
 			const SeriesPage = await loadPage();
 			const wrapper = await mountWithSuspense(SeriesPage);
 
@@ -332,12 +330,10 @@ describe("Admin Series Page", () => {
 
 	describe("Episode management (TASK-185)", () => {
 		it("expands a series to list its episodes in order", async () => {
-			mockFetchAdminSeriesEpisodes.mockReturnValue(
-				mockFetchResult([
-					{ id: 1, title: "Part One", slug: "part-one", series_order: 1, published: true },
-					{ id: 2, title: "Part Two", slug: "part-two", series_order: 2, published: false },
-				]),
-			);
+			mockFetchAdminSeriesEpisodes.mockResolvedValue([
+				{ id: 1, title: "Part One", slug: "part-one", series_order: 1, published: true },
+				{ id: 2, title: "Part Two", slug: "part-two", series_order: 2, published: false },
+			]);
 			const SeriesPage = await loadPage();
 			const wrapper = await mountWithSuspense(SeriesPage);
 
@@ -356,14 +352,12 @@ describe("Admin Series Page", () => {
 				{ id: 1, title: "Part One", slug: "part-one", series_order: 1, published: true },
 				{ id: 2, title: "Part Two", slug: "part-two", series_order: 2, published: true },
 			];
-			mockFetchAdminSeriesEpisodes.mockReturnValue(mockFetchResult(initial));
+			mockFetchAdminSeriesEpisodes.mockResolvedValue(initial);
 			// Moving Part Two down one slot → [2, 1].
-			mockReorderAdminSeriesEpisodes.mockReturnValue(
-				mockFetchResult([
-					{ id: 2, title: "Part Two", slug: "part-two", series_order: 1, published: true },
-					{ id: 1, title: "Part One", slug: "part-one", series_order: 2, published: true },
-				]),
-			);
+			mockReorderAdminSeriesEpisodes.mockResolvedValue([
+				{ id: 2, title: "Part Two", slug: "part-two", series_order: 1, published: true },
+				{ id: 1, title: "Part One", slug: "part-one", series_order: 2, published: true },
+			]);
 			const SeriesPage = await loadPage();
 			const wrapper = await mountWithSuspense(SeriesPage);
 

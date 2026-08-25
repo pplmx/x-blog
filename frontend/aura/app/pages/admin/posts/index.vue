@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import type { AdminPost } from "~~/composables/useApi";
-import { deleteAdminPost, fetchAdminPosts } from "~~/composables/useApi";
+import type { AdminPost } from "~~/api/admin/posts";
+import { deleteAdminPost, useAdminPosts } from "~~/api/admin/posts";
 
 definePageMeta({ layout: "admin" });
 
@@ -23,7 +23,7 @@ const queryParams = computed(() => {
 	return params;
 });
 
-const { data, pending, error, refresh } = await fetchAdminPosts(queryParams.value);
+const { data, pending, error, refresh } = await useAdminPosts(queryParams.value);
 const posts = computed(() => data.value?.items ?? []);
 const total = computed(() => data.value?.pagination?.total ?? 0);
 const totalPages = computed(() => Math.ceil(total.value / pageSize));

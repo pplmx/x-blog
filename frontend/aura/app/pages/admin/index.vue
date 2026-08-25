@@ -5,15 +5,9 @@
 -->
 <script setup lang="ts">
 import { onMounted, ref } from "vue";
+import type { AdminPost, AdminPostListResponse } from "~~/api/admin/posts";
 import type { BlogStats } from "~~/api/public/stats";
-import type {
-	AdminComment,
-	AdminCommentListResponse,
-	AdminPost,
-	AdminPostListResponse,
-	Category,
-	Tag,
-} from "~~/composables/useApi";
+import type { AdminComment, AdminCommentListResponse, Category, Tag } from "~~/composables/useApi";
 import { approveAdminComment } from "~~/composables/useApi";
 
 definePageMeta({ layout: "admin" });
