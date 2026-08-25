@@ -20,24 +20,24 @@ const {
 	mockFetchAdminComments,
 	mockDeleteAdminComment,
 	mockApproveAdminComment,
-	mockBatchApproveAdminComment,
-	mockBatchDeleteAdminComment,
+	mockBatchApproveAdminComments,
+	mockBatchDeleteAdminComments,
 	mockDismissAdminCommentFlags,
 } = vi.hoisted(() => ({
 	mockFetchAdminComments: vi.fn(),
 	mockDeleteAdminComment: vi.fn(),
 	mockApproveAdminComment: vi.fn(),
-	mockBatchApproveAdminComment: vi.fn(),
-	mockBatchDeleteAdminComment: vi.fn(),
+	mockBatchApproveAdminComments: vi.fn(),
+	mockBatchDeleteAdminComments: vi.fn(),
 	mockDismissAdminCommentFlags: vi.fn(),
 }));
 
-vi.mock("~/composables/useApi", () => ({
-	fetchAdminComments: mockFetchAdminComments,
+vi.mock("~~/api/admin/comments", () => ({
+	getAdminComments: mockFetchAdminComments,
 	deleteAdminComment: mockDeleteAdminComment,
 	approveAdminComment: mockApproveAdminComment,
-	batchApproveAdminComment: mockBatchApproveAdminComment,
-	batchDeleteAdminComment: mockBatchDeleteAdminComment,
+	batchApproveAdminComments: mockBatchApproveAdminComments,
+	batchDeleteAdminComments: mockBatchDeleteAdminComments,
 	dismissAdminCommentFlags: mockDismissAdminCommentFlags,
 }));
 
@@ -291,7 +291,7 @@ describe("Admin Comments Page", () => {
 	describe("Batch select and approve", () => {
 		beforeEach(() => {
 			mockFetchAdminComments.mockResolvedValue(mockCommentList);
-			mockBatchApproveAdminComment.mockResolvedValue({});
+			mockBatchApproveAdminComments.mockResolvedValue({});
 		});
 
 		it("renders select-all checkbox when pending comments exist", async () => {
@@ -334,7 +334,7 @@ describe("Admin Comments Page", () => {
 			await batchApproveButton?.trigger("click");
 			await flushPromises();
 
-			expect(mockBatchApproveAdminComment).toHaveBeenCalledWith([2], true);
+			expect(mockBatchApproveAdminComments).toHaveBeenCalledWith([2], true);
 		});
 
 		it("calls batchApproveAdminComment with approved=false when batch reject clicked", async () => {
@@ -355,7 +355,7 @@ describe("Admin Comments Page", () => {
 			await batchRejectButton?.trigger("click");
 			await flushPromises();
 
-			expect(mockBatchApproveAdminComment).toHaveBeenCalledWith([2], false);
+			expect(mockBatchApproveAdminComments).toHaveBeenCalledWith([2], false);
 		});
 
 		it("does NOT call batchApproveAdminComment when no comments are selected", async () => {
@@ -369,7 +369,7 @@ describe("Admin Comments Page", () => {
 				.find((b) => b.text().trim().includes("批量通过"));
 			expect(batchApproveButton).toBeUndefined();
 			await flushPromises();
-			expect(mockBatchApproveAdminComment).not.toHaveBeenCalled();
+			expect(mockBatchApproveAdminComments).not.toHaveBeenCalled();
 		});
 
 		it("selects all pending comments via toggleSelectAll then approves", async () => {
@@ -390,7 +390,7 @@ describe("Admin Comments Page", () => {
 			await batchApproveButton?.trigger("click");
 			await flushPromises();
 
-			expect(mockBatchApproveAdminComment).toHaveBeenCalledWith([1, 2], true);
+			expect(mockBatchApproveAdminComments).toHaveBeenCalledWith([1, 2], true);
 		});
 
 		it("renders batch buttons only once a comment is selected", async () => {
@@ -431,7 +431,7 @@ describe("Admin Comments Page", () => {
 
 		it("bulk-deletes selected comments after confirmation (DEC-110)", async () => {
 			mockFetchAdminComments.mockResolvedValue(mockCommentList);
-			mockBatchDeleteAdminComment.mockResolvedValue({ deleted: 1 });
+			mockBatchDeleteAdminComments.mockResolvedValue({ deleted: 1 });
 			window.confirm = vi.fn(() => true);
 
 			const CommentsPage = await loadPage();
@@ -452,7 +452,7 @@ describe("Admin Comments Page", () => {
 			expect(window.confirm).toHaveBeenCalledWith(
 				expect.stringContaining("确定删除选中的 1 条评论"),
 			);
-			expect(mockBatchDeleteAdminComment).toHaveBeenCalledWith([2]);
+			expect(mockBatchDeleteAdminComments).toHaveBeenCalledWith([2]);
 		});
 	});
 

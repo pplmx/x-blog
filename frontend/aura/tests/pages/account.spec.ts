@@ -66,8 +66,8 @@ vi.mock("../../api/reader/subscriptions", () => ({
 	getMyPostSubscriptions: mockFetchMyPostSubscriptions,
 	unsubscribeFromPostThread: mockUnsubscribeFromPostThread,
 }));
-vi.mock("../../composables/useApi", () => ({
-	fetchCategories: mockFetchCategories,
+vi.mock("../../api/public/taxonomy", () => ({
+	getCategories: mockFetchCategories,
 }));
 
 const stubs = {

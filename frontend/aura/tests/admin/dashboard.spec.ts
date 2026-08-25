@@ -32,12 +32,7 @@ const {
 	mockApproveAdminComment: vi.fn(),
 }));
 
-vi.mock("~/composables/useApi", () => ({
-	usePosts: mockUsePosts,
-	useCategories: mockUseCategories,
-	useTags: mockUseTags,
-	fetchAdminComments: mockFetchAdminComments,
-	useBlogStats: mockUseBlogStats,
+vi.mock("~~/api/admin/comments", () => ({
 	approveAdminComment: mockApproveAdminComment,
 }));
 

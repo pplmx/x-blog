@@ -1,13 +1,13 @@
 <script setup lang="ts">
-import type { AdminComment, AdminCommentListResponse } from "~~/composables/useApi";
+import type { AdminComment, AdminCommentListResponse } from "~~/api/admin/comments";
 import {
 	approveAdminComment,
-	batchApproveAdminComment,
-	batchDeleteAdminComment,
+	batchApproveAdminComments,
+	batchDeleteAdminComments,
 	deleteAdminComment,
 	dismissAdminCommentFlags,
-	fetchAdminComments,
-} from "~~/composables/useApi";
+	getAdminComments,
+} from "~~/api/admin/comments";
 
 definePageMeta({ layout: "admin" });
 
@@ -86,7 +86,7 @@ async function loadComments(filters: ReturnType<typeof activeFilters>, page: num
 	const seq = ++listRequestSeq;
 	loading.value = true;
 	try {
-		const data = await fetchAdminComments(filters, page, PAGE_SIZE);
+		const data = await getAdminComments(filters, page, PAGE_SIZE);
 		if (seq === listRequestSeq) {
 			comments.value = data;
 			error.value = null;
@@ -168,7 +168,7 @@ async function batchApprove(approved: boolean) {
 	isProcessing.value = true;
 	actionError.value = null;
 	try {
-		await batchApproveAdminComment(Array.from(selectedIds.value), approved);
+		await batchApproveAdminComments(Array.from(selectedIds.value), approved);
 		selectedIds.value = new Set();
 		await loadComments(activeFilters(), currentPage.value);
 	} catch (e) {
@@ -186,7 +186,7 @@ async function batchDelete() {
 	actionError.value = null;
 	deletedMessage.value = "";
 	try {
-		const { deleted } = await batchDeleteAdminComment(ids);
+		const { deleted } = await batchDeleteAdminComments(ids);
 		selectedIds.value = new Set();
 		deletedMessage.value = t("admin.comments.deletedFeedback", { n: deleted });
 		await loadComments(activeFilters(), currentPage.value);

@@ -6,6 +6,8 @@
  * browser push devices bound to the account.
  */
 
+import type { Category } from "~~/api/contracts/shared";
+import { getCategories } from "~~/api/public/taxonomy";
 import {
 	changeReaderPassword,
 	deleteReaderAccount,
@@ -32,7 +34,6 @@ import {
 	type SubscribedThreadItem,
 	unsubscribeFromPostThread,
 } from "~~/api/reader/subscriptions";
-import { type Category, fetchCategories } from "~~/composables/useApi";
 import { useReaderAuth } from "~~/composables/useReaderAuth";
 import { useSeo } from "~~/composables/useSeo";
 
@@ -140,10 +141,10 @@ const prefsError = ref(false);
 
 // The public /api/categories list drives the "followed category" options for
 // every device. Loaded on mount via $fetch (not useFetch) so setup stays
-// synchronous and tests can mock fetchCategories like any useApi helper.
+// synchronous and tests can mock getCategories like any taxonomy helper.
 async function loadCategories() {
 	try {
-		categories.value = await fetchCategories();
+		categories.value = await getCategories();
 	} catch {
 		categories.value = [];
 	}

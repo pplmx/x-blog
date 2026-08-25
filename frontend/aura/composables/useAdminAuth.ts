@@ -74,7 +74,7 @@ export function isAdminAuthenticated(): boolean {
  */
 export async function adminLoginRequest(username: string, password: string) {
 	// `~~` = project rootDir (Nuxt 4: `~` is srcDir = app/, which broke the
-	// production build — the import resolved to app/composables/useApi)
+	// production build — the import resolved to app/composables/useApi).
 	const { adminLogin } = await import("~~/api/admin/auth");
 	return adminLogin(username, password);
 }

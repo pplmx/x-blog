@@ -11,7 +11,7 @@
 import { mount } from "@vue/test-utils";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { computed, ref } from "vue";
-import type { BookmarkFolder } from "../../composables/useApi";
+import type { BookmarkFolder } from "../../api/reader/bookmarks";
 import type { Bookmark } from "../../composables/useBookmarks";
 
 const READER_TOKEN_KEY = "reader_token";
