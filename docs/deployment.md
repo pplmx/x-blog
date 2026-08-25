@@ -106,7 +106,7 @@ export POSTGRES_PASSWORD=your-strong-password
 
 ```bash
 # 启动全部服务 (PostgreSQL + Backend + Frontend)
-docker compose up -d
+docker compose up -d --build
 
 # 查看日志
 docker compose logs -f
@@ -119,6 +119,18 @@ docker compose down -v
 ```
 
 **注意**: 首次启动时，PostgreSQL 自动创建数据库和用户。FastAPI 在启动时通过 Alembic 将 schema 升级到最新版本 (base `alembic upgrade head`)，无需手动初始化。
+
+### GitHub Actions 自动部署
+
+`Test` 工作流在 `main` 的 push 上全部通过后，`Deploy` 工作流会构建并推送后端、前端镜像，再按镜像 digest 部署该次测试对应的 commit。服务器需要：
+
+- 在 `/opt/x-blog` 放置此仓库的 Git clone，并允许部署用户执行 `git fetch`。
+- 安装 Git、Docker 和支持 `docker compose up --wait` 的 Docker Compose。
+- 在仓库 Actions secrets 中配置 `SERVER_HOST`、`SERVER_USER`、`SSH_KEY` 和 `SERVER_KNOWN_HOSTS`。
+- 创建受保护的 `production` environment，并限制为 `main` 分支；建议配置 required reviewers。
+- 为 `main` 启用分支保护，要求 `Test` 状态检查通过。
+
+`SERVER_KNOWN_HOSTS` 应保存目标主机完整的 OpenSSH `known_hosts` 记录（主机名、key 类型和公钥），并通过可信渠道核对服务器 SSH host key，不能只信任首次网络扫描结果。部署使用临时 SSH 和 Docker 凭据目录，拉取完成或失败后都会清理私钥与 GHCR token。
 
 ### 2.5 (可选) Web Push 推送通知
 

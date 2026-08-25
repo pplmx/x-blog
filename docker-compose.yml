@@ -15,6 +15,7 @@ services:
     restart: unless-stopped
 
   backend:
+    image: ${BACKEND_IMAGE:-x-blog-backend:local}
     build:
       context: ./backend/nova
       target: production
@@ -63,6 +64,7 @@ services:
       retries: 3
 
   frontend:
+    image: ${FRONTEND_IMAGE:-x-blog-frontend:local}
     build:
       context: ./frontend/aura
       target: runner
