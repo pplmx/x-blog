@@ -18,9 +18,9 @@ const fetchHistory = vi.fn();
 const fetchStats = vi.fn();
 const clearHistoryApi = vi.fn();
 
-vi.mock("../../composables/useApi", () => ({
-	fetchReaderHistory: (...a: unknown[]) => fetchHistory(...a),
-	fetchReaderHistoryStats: (...a: unknown[]) => fetchStats(...a),
+vi.mock("~~/api/reader/history", () => ({
+	getReaderHistory: (...a: unknown[]) => fetchHistory(...a),
+	getReaderHistoryStats: (...a: unknown[]) => fetchStats(...a),
 	clearReaderHistory: (...a: unknown[]) => clearHistoryApi(...a),
 }));
 

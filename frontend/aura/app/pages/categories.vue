@@ -3,11 +3,11 @@ import { computed, onMounted, ref } from "vue";
 import { usePosts } from "~~/api/public/posts";
 import { useCategories } from "~~/api/public/taxonomy";
 import {
-	fetchReaderCategoryFollows,
 	followReaderCategory,
 	setCategoryFollowNotify,
 	unfollowReaderCategory,
-} from "~~/composables/useApi";
+	useReaderCategoryFollows,
+} from "~~/api/reader/follows";
 import { paginationPages } from "~~/composables/usePagination";
 import { usePushSubscription } from "~~/composables/usePushSubscription";
 import { useSeo } from "~~/composables/useSeo";
@@ -133,7 +133,7 @@ const catFollowBusy = ref(false);
 async function loadCategoryFollow() {
 	if (!catSignedIn.value || !categoryId.value) return;
 	try {
-		const res = await fetchReaderCategoryFollows();
+		const res = await useReaderCategoryFollows();
 		const item = res.data?.value?.items.find((c) => c.id === categoryId.value) ?? null;
 		catFollowing.value = !!item;
 		catNotify.value = item?.notify ?? true;
@@ -153,7 +153,7 @@ async function toggleCategoryFollow() {
 		} else {
 			const res = await followReaderCategory(categoryId.value);
 			catFollowing.value = true;
-			catNotify.value = res.data?.value?.notify ?? true;
+			catNotify.value = res?.notify ?? true;
 		}
 	} catch {
 		// best-effort — keep current state on failure
@@ -168,7 +168,7 @@ async function toggleCategoryNotify() {
 	const next = !catNotify.value;
 	try {
 		const res = await setCategoryFollowNotify(categoryId.value, next);
-		catNotify.value = res.data?.value?.notify ?? next;
+		catNotify.value = res?.notify ?? next;
 	} catch {
 		// best-effort — keep current state on failure
 	} finally {

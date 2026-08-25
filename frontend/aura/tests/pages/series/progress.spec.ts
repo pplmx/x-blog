@@ -69,9 +69,11 @@ vi.mock("../../../api/public/series", () => ({
 		error: ref(null),
 	}),
 }));
-vi.mock("../../../composables/useApi", () => ({
-	fetchReaderSeriesProgress: h.fetchProgress,
-	fetchReaderSeriesFollows: h.fetchFollows,
+vi.mock("../../../api/reader/history", () => ({
+	useReaderSeriesProgress: h.fetchProgress,
+}));
+vi.mock("../../../api/reader/follows", () => ({
+	useReaderSeriesFollows: h.fetchFollows,
 	followReaderSeries: h.followSeries,
 	unfollowReaderSeries: h.unfollowSeries,
 	setSeriesFollowNotify: h.setNotify,

@@ -5,25 +5,26 @@
  * alive while the version bump signs other sessions out), and see/revoke the
  * browser push devices bound to the account.
  */
+import type { FollowedCategoryItem, FollowedSeriesItem } from "~~/api/reader/follows";
 import {
-	type Category,
-	changeMyPassword,
-	deleteReaderAccount,
-	type FollowedCategoryItem,
-	type FollowedSeriesItem,
-	fetchCategories,
-	fetchMyPostSubscriptions,
-	fetchMyPushSubscriptions,
-	fetchReaderCategoryFollows,
-	fetchReaderDataExport,
-	fetchReaderSeriesFollows,
-	type ReaderPushSubscription,
-	revokeMyPushSubscription,
-	type SubscribedThreadItem,
 	setCategoryFollowNotify,
 	setSeriesFollowNotify,
 	unfollowReaderCategory,
 	unfollowReaderSeries,
+	useReaderCategoryFollows,
+	useReaderSeriesFollows,
+} from "~~/api/reader/follows";
+import {
+	type Category,
+	changeMyPassword,
+	deleteReaderAccount,
+	fetchCategories,
+	fetchMyPostSubscriptions,
+	fetchMyPushSubscriptions,
+	fetchReaderDataExport,
+	type ReaderPushSubscription,
+	revokeMyPushSubscription,
+	type SubscribedThreadItem,
 	unsubscribeFromPostThread,
 	updateMyProfile,
 	updateMyPushSubscriptionPrefs,
@@ -233,7 +234,7 @@ const seriesFollowsError = ref(false);
 async function loadSeriesFollows() {
 	if (!isAuthenticated.value) return;
 	try {
-		const res = await fetchReaderSeriesFollows();
+		const res = await useReaderSeriesFollows();
 		seriesFollows.value = res.data?.value?.items ?? [];
 	} catch {
 		seriesFollows.value = [];
@@ -263,7 +264,7 @@ async function toggleSeriesNotify(item: FollowedSeriesItem) {
 	const next = !item.notify;
 	try {
 		const res = await setSeriesFollowNotify(item.id, next);
-		item.notify = res.data?.value?.notify ?? next;
+		item.notify = res?.notify ?? next;
 	} catch {
 		seriesFollowsError.value = true;
 	} finally {
@@ -281,7 +282,7 @@ const categoryFollowsError = ref(false);
 async function loadCategoryFollows() {
 	if (!isAuthenticated.value) return;
 	try {
-		const res = await fetchReaderCategoryFollows();
+		const res = await useReaderCategoryFollows();
 		categoryFollows.value = res.data?.value?.items ?? [];
 	} catch {
 		categoryFollows.value = [];
@@ -310,7 +311,7 @@ async function toggleCategoryNotify(item: FollowedCategoryItem) {
 	const next = !item.notify;
 	try {
 		const res = await setCategoryFollowNotify(item.id, next);
-		item.notify = res.data?.value?.notify ?? next;
+		item.notify = res?.notify ?? next;
 	} catch {
 		categoryFollowsError.value = true;
 	} finally {

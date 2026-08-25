@@ -13,7 +13,7 @@
  */
 
 import { computed, ref } from "vue";
-import { clearReaderHistory, fetchReaderHistory, fetchReaderHistoryStats } from "./useApi";
+import { clearReaderHistory, getReaderHistory, getReaderHistoryStats } from "~~/api/reader/history";
 import { useReaderAuth } from "./useReaderAuth";
 import { useRecentlyViewed } from "./useRecentlyViewed";
 
@@ -72,7 +72,7 @@ export function useReadingHistory() {
 		}
 		loading.value = true;
 		try {
-			const data = await fetchReaderHistory(1, HISTORY_FETCH_LIMIT, query);
+			const data = await getReaderHistory(1, HISTORY_FETCH_LIMIT, query);
 			history.value = (data?.items ?? []).map((i) => ({
 				slug: i.slug,
 				title: i.title,
@@ -83,7 +83,7 @@ export function useReadingHistory() {
 			history.value = fromLocal(local.recent.value);
 		}
 		try {
-			const sdata = await fetchReaderHistoryStats();
+			const sdata = await getReaderHistoryStats();
 			if (sdata) {
 				stats.value = {
 					totalPosts: sdata.total_posts,

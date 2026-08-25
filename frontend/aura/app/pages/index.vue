@@ -3,14 +3,10 @@ import type { PostList } from "~~/api/contracts/shared";
 import { usePopularPosts, usePosts } from "~~/api/public/posts";
 import { useBlogStats } from "~~/api/public/stats";
 import { useCategories, useTags } from "~~/api/public/taxonomy";
-import {
-	type FollowedSeriesItem,
-	fetchReaderFollowsFeed,
-	fetchReaderSeriesFollows,
-	fetchReaderSeriesProgress,
-	type SeriesProgress,
-	useReaderRecommendations,
-} from "~~/composables/useApi";
+import type { FollowedSeriesItem } from "~~/api/reader/follows";
+import { useReaderFollowsFeed, useReaderSeriesFollows } from "~~/api/reader/follows";
+import type { SeriesProgress } from "~~/api/reader/history";
+import { useReaderRecommendations, useReaderSeriesProgress } from "~~/api/reader/history";
 import { paginationPages } from "~~/composables/usePagination";
 import { useRecentlyViewed } from "~~/composables/useRecentlyViewed";
 import { useSeo } from "~~/composables/useSeo";
@@ -87,7 +83,7 @@ async function loadFollowsFeed() {
 	if (!recSignedIn.value) return;
 	followsFeedLoading.value = true;
 	try {
-		const res = await fetchReaderFollowsFeed(12);
+		const res = await useReaderFollowsFeed(12);
 		followsFeed.value = res.data?.value ?? [];
 	} catch {
 		followsFeed.value = [];
@@ -113,13 +109,13 @@ async function loadFollowedSeries() {
 	if (!recSignedIn.value) return;
 	followedLoading.value = true;
 	try {
-		const res = await fetchReaderSeriesFollows();
+		const res = await useReaderSeriesFollows();
 		const items = res.data?.value?.items ?? [];
 		followedSeries.value = items;
 		const entries = await Promise.all(
 			items.map(async (s) => {
 				try {
-					const p = await fetchReaderSeriesProgress(s.slug);
+					const p = await useReaderSeriesProgress(s.slug);
 					return [s.slug, p.data?.value ?? null] as const;
 				} catch {
 					return [s.slug, null] as const;

@@ -28,9 +28,7 @@ import {
 	fetchAdminTags,
 	fetchAdminUsers,
 	fetchCurrentAdmin,
-	fetchReaderReadingPosition,
 	notifyPushSubscribers,
-	recordReaderHistory,
 	updateAdminCategory,
 	updateAdminPost,
 	updateAdminSeries,
@@ -382,35 +380,5 @@ describe("adminLogin", () => {
 		adminLogin("admin", "pass");
 		const headers = useFetchCalls[0].options.headers as Record<string, string>;
 		expect(headers["Content-Type"]).toBe("application/x-www-form-urlencoded");
-	});
-});
-
-describe("reader reading-history position API (TASK-200)", () => {
-	it("fetchReaderReadingPosition GETs the per-post position URL", async () => {
-		await fetchReaderReadingPosition(7);
-		const call = $fetchCalls[$fetchCalls.length - 1];
-		expect(call.url).toBe("http://localhost:18888/api/reader/me/history/7");
-		expect(call.options.method ?? "GET").toBe("GET"); // absent method = GET
-	});
-
-	it("recordReaderHistory POSTs with no body when no position is given", async () => {
-		await recordReaderHistory(7);
-		const call = $fetchCalls[$fetchCalls.length - 1];
-		expect(call.url).toBe("http://localhost:18888/api/reader/me/history/7");
-		expect(call.options.method).toBe("POST");
-		expect(call.options.body).toBeUndefined();
-	});
-
-	it("recordReaderHistory includes scroll_position in the body when saving", async () => {
-		await recordReaderHistory(7, 850);
-		const call = $fetchCalls[$fetchCalls.length - 1];
-		expect(call.options.method).toBe("POST");
-		expect(call.options.body).toEqual({ scroll_position: 850 });
-	});
-
-	it("recordReaderHistory sends an explicit zero to clear the position", async () => {
-		await recordReaderHistory(7, 0);
-		const call = $fetchCalls[$fetchCalls.length - 1];
-		expect(call.options.body).toEqual({ scroll_position: 0 });
 	});
 });

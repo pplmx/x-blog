@@ -2,13 +2,13 @@
 import { computed, onMounted, ref } from "vue";
 import { useSeriesBySlug } from "~~/api/public/series";
 import {
-	fetchReaderSeriesFollows,
-	fetchReaderSeriesProgress,
 	followReaderSeries,
-	type SeriesProgress,
 	setSeriesFollowNotify,
 	unfollowReaderSeries,
-} from "~~/composables/useApi";
+	useReaderSeriesFollows,
+} from "~~/api/reader/follows";
+import type { SeriesProgress } from "~~/api/reader/history";
+import { useReaderSeriesProgress } from "~~/api/reader/history";
 import { useSeo } from "~~/composables/useSeo";
 
 const { t, locale } = useLang();
@@ -38,7 +38,7 @@ onMounted(async () => {
 	if (!signedIn.value || !series.value?.slug) return;
 	void loadFollowState();
 	try {
-		const res = await fetchReaderSeriesProgress(series.value.slug);
+		const res = await useReaderSeriesProgress(series.value.slug);
 		progress.value = res.data?.value ?? null;
 	} catch {
 		progress.value = null;
@@ -73,7 +73,7 @@ const followBusy = ref(false);
 async function loadFollowState() {
 	if (!signedIn.value || !series.value?.id) return;
 	try {
-		const res = await fetchReaderSeriesFollows();
+		const res = await useReaderSeriesFollows();
 		const item = res.data?.value?.items.find((f) => f.id === series.value?.id) ?? null;
 		followsSeries.value = !!item;
 		followNotify.value = item?.notify ?? true;
@@ -93,7 +93,7 @@ async function toggleFollow() {
 		} else {
 			const res = await followReaderSeries(series.value.id);
 			followsSeries.value = true;
-			followNotify.value = res.data?.value?.notify ?? true;
+			followNotify.value = res?.notify ?? true;
 		}
 	} catch {
 		// best-effort — keep current state on failure
@@ -109,7 +109,7 @@ async function toggleNotify() {
 	const next = !followNotify.value;
 	try {
 		const res = await setSeriesFollowNotify(series.value.id, next);
-		followNotify.value = res.data?.value?.notify ?? next;
+		followNotify.value = res?.notify ?? next;
 	} catch {
 		// best-effort — keep current brightness on failure
 	} finally {

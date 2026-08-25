@@ -40,6 +40,14 @@ const mockFetchReaderCategoryFollows = vi.fn();
 const mockUnfollowReaderCategory = vi.fn();
 const mockSetCategoryFollowNotify = vi.fn();
 
+vi.mock("~~/api/reader/follows", () => ({
+	useReaderSeriesFollows: mockFetchReaderSeriesFollows,
+	unfollowReaderSeries: mockUnfollowReaderSeries,
+	setSeriesFollowNotify: mockSetSeriesFollowNotify,
+	useReaderCategoryFollows: mockFetchReaderCategoryFollows,
+	unfollowReaderCategory: mockUnfollowReaderCategory,
+	setCategoryFollowNotify: mockSetCategoryFollowNotify,
+}));
 vi.mock("../../composables/useApi", async (importOriginal) => {
 	const orig = await importOriginal<typeof import("../../composables/useApi")>();
 	return {
@@ -52,12 +60,6 @@ vi.mock("../../composables/useApi", async (importOriginal) => {
 		updateMyPushSubscriptionPrefs: mockUpdatePushSubscriptionPrefs,
 		deleteReaderAccount: mockDeleteReaderAccount,
 		fetchReaderDataExport: mockFetchReaderDataExport,
-		fetchReaderSeriesFollows: mockFetchReaderSeriesFollows,
-		unfollowReaderSeries: mockUnfollowReaderSeries,
-		setSeriesFollowNotify: mockSetSeriesFollowNotify,
-		fetchReaderCategoryFollows: mockFetchReaderCategoryFollows,
-		unfollowReaderCategory: mockUnfollowReaderCategory,
-		setCategoryFollowNotify: mockSetCategoryFollowNotify,
 	};
 });
 

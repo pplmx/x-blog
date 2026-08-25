@@ -22,7 +22,7 @@
  */
 
 import { onUnmounted, ref } from "vue";
-import { fetchReaderReadingPosition, recordReaderHistory } from "./useApi";
+import { getReaderReadingPosition, recordReaderHistory } from "~~/api/reader/history";
 import { useReaderAuth } from "./useReaderAuth";
 
 /** Ignore offsets below this many px: too small to be worth restoring, and
@@ -90,7 +90,7 @@ export function useResumeReading(postId: () => number | undefined): ResumeReadin
 		if (!id) return null;
 		restoring.value = true;
 		try {
-			const data = await fetchReaderReadingPosition(id);
+			const data = await getReaderReadingPosition(id);
 			const pos = data?.scroll_position ?? null;
 			if (pos != null && pos >= MIN_SAVE_PX) {
 				applyScroll(id, pos);

@@ -17,8 +17,8 @@ const authRef = ref(false);
 const fetchPosition = vi.fn();
 const recordHistory = vi.fn();
 
-vi.mock("../../composables/useApi", () => ({
-	fetchReaderReadingPosition: (...a: unknown[]) => fetchPosition(...a),
+vi.mock("~~/api/reader/history", () => ({
+	getReaderReadingPosition: (...a: unknown[]) => fetchPosition(...a),
 	recordReaderHistory: (...a: unknown[]) => {
 		recordHistory(...a);
 		// The composable fire-and-forget `.catch(() => {})`s the returned

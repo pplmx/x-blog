@@ -8,7 +8,7 @@ import {
 	useRelatedPosts,
 } from "~~/api/public/posts";
 import { useSeriesBySlug } from "~~/api/public/series";
-import { recordReaderHistory } from "~~/composables/useApi";
+import { recordReaderHistory } from "~~/api/reader/history";
 import { coverImageSrc } from "~~/composables/useCoverImage";
 import { markdownToHtml } from "~~/composables/useMarkdown";
 import { useReaderAuth } from "~~/composables/useReaderAuth";

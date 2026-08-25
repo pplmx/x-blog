@@ -99,20 +99,20 @@ vi.mock("../../api/public/stats", () => ({
 		),
 	}),
 }));
-// The reader-scoped functions stay in the monolith until the reader batches
-// migrate them to their own domain modules.
-vi.mock("../../composables/useApi", () => ({
+vi.mock("../../api/reader/history", () => ({
 	useReaderRecommendations: () => ({
 		data: ref(mockState.recommended),
 	}),
-	fetchReaderSeriesFollows: async () => ({
-		data: { value: { items: mockState.followedSeries, total: mockState.followedSeries.length } },
-	}),
-	fetchReaderSeriesProgress: async (slug: string) => ({
+	useReaderSeriesProgress: async (slug: string) => ({
 		data: { value: mockState.seriesProgress[slug] ?? null },
 	}),
-	fetchReaderFollowsFeed: async () => ({
+}));
+vi.mock("../../api/reader/follows", () => ({
+	useReaderFollowsFeed: async () => ({
 		data: { value: mockState.followsFeed },
+	}),
+	useReaderSeriesFollows: async () => ({
+		data: { value: { items: mockState.followedSeries, total: mockState.followedSeries.length } },
 	}),
 }));
 
