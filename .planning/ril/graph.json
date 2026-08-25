@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 170,
+  "round": 171,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-08-25T17:28:00+00:00",
+  "updated_at": "2026-08-25T17:33:52+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -10578,6 +10578,18 @@
       "source": "VERIFY 2026-08-26: backend full suite 1129 passed / 9 skipped / 94.62% cov (was 1127 green baseline); frontend Vitest 1205 passed; targeted notification/prefs/follow/push suites green; notifications page spec locked the frontend consumption",
       "details": "RED first: series tests asserted series_new_part and failed with new_post before the crud.py fix; GREEN after. Dedup + opt-out-umbrella tests added. Rootdir-quirk documented (file-scoped pytest needs --rootdir).",
       "confidence": 1.0
+    },
+    "DEC-182": {
+      "id": "DEC-182",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-25T17:33:52+00:00",
+      "updated_at": "2026-08-25T17:33:52+00:00",
+      "touched_round": 171,
+      "title": "converged-idle: quality-convergence stop conditions met after the series_new_part fix (ISS-114/CHG-210) + closing bookkeeping",
+      "rationale": "No active task above the 3.0 threshold (0 active tasks). High-severity issues: ISS-114 resolved by CHG-210/TASK-206 this session; the remaining active issues carry explicit deferral/acceptance decisions (ISS-108 -> DEC-164 + DEC-174, ISS-112 -> DEC-175, ISS-113 -> DEC-176). Most recent VERIFY all green (backend 1129 passed / 9 skipped / 94.62% cov; frontend 1205 passed). Two deep-dive rounds surfaced nothing new at or above 3.0 (no TODOs/FIXMEs, clean tree, i18n complete for the newly emitted kind, no useFetch outside the transport seam, no e2e label assumptions regressed). RIL consistency check passes (856 nodes / 768 edges).",
+      "alternatives_rejected": "Relight ISS-113 (O(2n) fan-out prune) against DEC-176 without follower-growth evidence - computed score below 3.0 and the decision defers to that trigger; add an ISS-112 anonymous-sub UI footnote - docs-level, far below threshold; keep scanning for cosmetic/sub-threshold churn - would only produce empty round-tick commits; start feature evolution - no feature-evolution decision exists, so the engine stays in converged quality-convergence mode."
     }
   },
   "edges": [
