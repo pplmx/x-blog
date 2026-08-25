@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 169,
+  "round": 170,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-08-24T18:34:53+00:00",
+  "updated_at": "2026-08-25T16:58:57+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -10310,6 +10310,222 @@
       "touched_round": 169,
       "title": "series_new_part notification kind is dead — backend never emits it but the frontend labels/iconships it",
       "summary": "record_new_post_notifications writes kind='new_post' for BOTH series-follow and category-follow new posts, but frontend kindIcon/kindLabel and i18n (notifications.kind.series_new_part = '系列更新') already handle a distinct series_new_part kind that is never produced. Net effect: a series-follow 'new part' shows as '新文章发布' instead of '系列更新'. Fixing properly needs a dedup decision (reader following both series AND category of a post: one row preferring series_new_part vs two rows) — record before implementing. Found during DEC-171/172 analysis; no change made."
+    },
+    "DEC-177": {
+      "id": "DEC-177",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-25T12:03:31+00:00",
+      "updated_at": "2026-08-25T12:03:31+00:00",
+      "touched_round": 170,
+      "title": "Open frontend-api-client-redesign milestone (TASK-203)",
+      "rationale": "{\"reader milestones all closed (DEC-172 notification prefs, DEC-170 gamification, DEC-168 resume-reading) and the typecheck baseline is green (DEC-173, TASK-195); the remaining dominant frontend risk is the 1,900-line composables/useApi.ts monolith mixing contracts, reactive queries, imperative commands, base-URL resolution, and token access. Its shallow interface already caused ISS-111 (fire-and-forget useFetch no-op). Approved spec 2026-08-25-frontend-api-client-redesign replaces it with api/transport.ts (query vs command seam) + api/auth.ts (audience-safe token adapter) + public/reader/admin domain modules; backend HTTP contract unchanged. This round also captures two complete in-flight worktree threads (DEC-178 backend pagination, DEC-179 deploy pipeline) to establish a clean baseline first.\"}",
+      "alternatives_rejected": "{\"Rejected an OpenAPI-generated client (non-goal; keeps hand-written DTOs). Rejected global error toasts/retries/caching/token refresh (non-goal; transport stays transparent). Rejected a compatibility barrel re-export (would recreate the broad interface the redesign removes). Rejected page-state management redesign (non-goal; scope is the API client only).\"}"
+    },
+    "DEC-178": {
+      "id": "DEC-178",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-25T12:05:00+00:00",
+      "updated_at": "2026-08-25T12:05:00+00:00",
+      "touched_round": 170,
+      "title": "Capture in-flight reading-history pagination + index cleanup (TASK-204)",
+      "rationale": "The worktree (from a prior interrupted session) contains a complete, verified thread for reader-history pagination: list_reader_history now filters/counts/paginates in SQL so response cost is bounded by the requested page size; a covering index ix_reading_history_reader_viewed_post (reader_id, viewed_at, post_id) was added; and redundant non-unique indexes derived from PK/unique columns were dropped (comment_subscriptions.id, admin_push_subscriptions.id and .endpoint, post_views_daily.id). Verified this round: full pytest suite 1127 passed / 9 skipped @ 94.61% coverage, plus a clean alembic check against dev Postgres 10.112.9.49:13310/xblog_e2e after applying migrations m2e7a9c1d3f5 -> n3f8b0d2e4a6. Capturing the work unblocks a clean baseline for DEC-177.",
+      "alternatives_rejected": "Left uncommitted (worktree drift risk and deploy confusion). Split SQL-pagination from the index cleanup (one coherent change; undo as a unit). Kept Python-side filtering (cost grew with the visible-history length and forced in-process visibility checks)."
+    },
+    "DEC-179": {
+      "id": "DEC-179",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-25T12:05:00+00:00",
+      "updated_at": "2026-08-25T12:05:00+00:00",
+      "touched_round": 170,
+      "title": "Capture in-flight deploy pipeline rework (TASK-205)",
+      "rationale": "The worktree also contains a verified rewrite of Deploy: it now triggers via workflow_run on the Test workflow (conclusion success + event push + branch main + same repo), builds and pushes digest-pinned GHCR images, and deploys by digest over SSH using temp dirs + traps to clean the private key and GHCR token, a stale-commit guard, and a production concurrency group. docker-compose.yml gains image: env overrides (BACKEND_IMAGE/FRONTEND_IMAGE) so compose can pull prebuilt images while keeping local --build fallbacks. docs/deployment.md documents the required secrets (SERVER_HOST/USER, SSH_KEY, SERVER_KNOWN_HOSTS) and the protected production environment. YAML parses; behavior is operator-facing and documented - the operator must create the new secrets + environment before pushes resume deploying.",
+      "alternatives_rejected": "Kept server-side source builds (the previous script itself noted compose pull has nothing to pull; building on the production host is slow and untraceable). Deployed latest main without digest pinning (stale-commit risk)."
+    },
+    "TASK-203": {
+      "id": "TASK-203",
+      "type": "task",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-08-25T12:05:15+00:00",
+      "updated_at": "2026-08-25T16:58:56+00:00",
+      "touched_round": 170,
+      "category": "maintainability",
+      "severity": 0.9,
+      "confidence": 0.9,
+      "effort": 5.0,
+      "unlock_factor": 2.0,
+      "title": "Frontend API client redesign: replace the 1,900-line composables/useApi.ts monolith with api/transport.ts + api/auth.ts seams and public/reader/admin domain modules; migrate every caller; delete the monolith (DEC-177)"
+    },
+    "TASK-204": {
+      "id": "TASK-204",
+      "type": "task",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-08-25T12:05:15+00:00",
+      "updated_at": "2026-08-25T12:07:13+00:00",
+      "touched_round": 170,
+      "category": "performance",
+      "severity": 0.6,
+      "confidence": 1.0,
+      "effort": 2.0,
+      "unlock_factor": 1.0,
+      "title": "Reading-history SQL-side pagination + covering index ix_reading_history_reader_viewed_post + drop redundant PK/unique-derived indexes (DEC-178)"
+    },
+    "TASK-205": {
+      "id": "TASK-205",
+      "type": "task",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-08-25T12:05:15+00:00",
+      "updated_at": "2026-08-25T12:07:13+00:00",
+      "touched_round": 170,
+      "category": "dx",
+      "severity": 0.6,
+      "confidence": 0.9,
+      "effort": 2.0,
+      "unlock_factor": 1.0,
+      "title": "Deploy pipeline rework: workflow_run-triggered GHCR image build/push + digest-pinned deploy over SSH (DEC-179)"
+    },
+    "CHG-200": {
+      "id": "CHG-200",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-25T12:07:13+00:00",
+      "updated_at": "2026-08-25T12:07:13+00:00",
+      "touched_round": 170,
+      "commit": "d91181f",
+      "title": "perf(reader): SQL-side reading-history pagination + covering index"
+    },
+    "CHG-201": {
+      "id": "CHG-201",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-25T12:07:13+00:00",
+      "updated_at": "2026-08-25T12:07:13+00:00",
+      "touched_round": 170,
+      "commit": "bbcc3c5",
+      "title": "ci(deploy): build GHCR images from Test workflow, deploy by digest"
+    },
+    "CHG-202": {
+      "id": "CHG-202",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-25T16:51:52+00:00",
+      "updated_at": "2026-08-25T16:51:52+00:00",
+      "touched_round": 170,
+      "commit": "e285f26",
+      "summary": "Migrate the public domain to the new api/ client (transport seam, public posts/taxonomy/series/comments/stats, auth helpers)"
+    },
+    "CHG-203": {
+      "id": "CHG-203",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-25T16:51:52+00:00",
+      "updated_at": "2026-08-25T16:51:52+00:00",
+      "touched_round": 170,
+      "commit": "81e4aab",
+      "summary": "Migrate reader auth + bookmarks to api/reader domains (useReaderAuth + sync/merge on command seam)"
+    },
+    "CHG-204": {
+      "id": "CHG-204",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-25T16:51:52+00:00",
+      "updated_at": "2026-08-25T16:51:52+00:00",
+      "touched_round": 170,
+      "commit": "4c57d2b",
+      "summary": "Migrate reader history + follows to api/reader domains (reactive queries + Promise commands)"
+    },
+    "CHG-205": {
+      "id": "CHG-205",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-25T16:51:52+00:00",
+      "updated_at": "2026-08-25T16:51:52+00:00",
+      "touched_round": 170,
+      "commit": "aa800d3",
+      "summary": "Migrate reader account/comments/subscriptions/notifications to api/reader domains (editMyComment renamed updateMyComment)"
+    },
+    "CHG-206": {
+      "id": "CHG-206",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-25T16:51:52+00:00",
+      "updated_at": "2026-08-25T16:51:52+00:00",
+      "touched_round": 170,
+      "commit": "abd2515",
+      "summary": "Migrate admin auth/users/taxonomy/settings/calendar/push to api/admin domains (push notifier off useFetch in a click handler)"
+    },
+    "CHG-207": {
+      "id": "CHG-207",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-25T16:51:52+00:00",
+      "updated_at": "2026-08-25T16:51:52+00:00",
+      "touched_round": 170,
+      "commit": "26e95ec",
+      "summary": "Migrate admin posts + series to api/admin domains (commands reject with FetchError .data.detail; no more AsyncData .error.value in handlers)"
+    },
+    "CHG-208": {
+      "id": "CHG-208",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-25T16:51:52+00:00",
+      "updated_at": "2026-08-25T16:51:52+00:00",
+      "touched_round": 170,
+      "commit": "5b1dafb",
+      "summary": "Settings page reads the toggle imperatively (getSiteSetting) so a client-only shell reload shows the persisted value (e2e-driven hardening)"
+    },
+    "CHG-209": {
+      "id": "CHG-209",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-25T16:52:43+00:00",
+      "updated_at": "2026-08-25T16:52:43+00:00",
+      "touched_round": 170,
+      "commit": "9027776",
+      "summary": "Migrate admin comments (plural batch names) and delete composables/useApi.ts + its spec — zero monolith imports remain"
+    },
+    "EV-124": {
+      "id": "EV-124",
+      "type": "evidence",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-25T16:58:56+00:00",
+      "updated_at": "2026-08-25T16:58:56+00:00",
+      "touched_round": 170,
+      "source": "VERIFY 2026-08-26: full Vitest 1203 passed / 94 files; pnpm build ok; 16 green Playwright e2e journeys; 4 preexisting harness failures documented",
+      "details": "Migration verified end-to-end after monolith deletion; structural invariants audited (no composables/useApi imports; no useFetch/$fetch outside api/transport.ts; token reads only api/auth.ts)",
+      "confidence": 1.0
+    },
+    "DEC-180": {
+      "id": "DEC-180",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-25T16:58:57+00:00",
+      "updated_at": "2026-08-25T16:58:57+00:00",
+      "touched_round": 170,
+      "title": "Milestone delivered: frontend API client redesign - every operation in an owning domain module, monolith deleted (TASK-203)",
+      "rationale": "All public/reader/admin callers migrated to api/ domain modules over api/transport.ts + api/auth.ts seams; 1,900-line composables/useApi.ts deleted (CHG-209); structural invariants verified by audit + 1203 Vitest + build + 16 e2e journeys; a real Nuxt lifecycle bug (stale useFetch read in client-only admin shell, ISS-097-class) fixed via imperative getSiteSetting (CHG-208)",
+      "alternatives_rejected": "Keep the monolith and add per-feature wrappers (retains one god-module and mixed query/command semantics); stop at partial migration (leaves hybrid import surface)",
+      "supersedes": "DEC-177"
     }
   },
   "edges": [
@@ -14822,6 +15038,90 @@
       "to": "COMP-002",
       "type": "located_in",
       "created_at": "2026-08-24T18:34:53+00:00"
+    },
+    {
+      "from": "DEC-177",
+      "to": "TASK-203",
+      "type": "governs",
+      "created_at": "2026-08-25T12:05:30+00:00"
+    },
+    {
+      "from": "DEC-178",
+      "to": "TASK-204",
+      "type": "governs",
+      "created_at": "2026-08-25T12:05:30+00:00"
+    },
+    {
+      "from": "DEC-179",
+      "to": "TASK-205",
+      "type": "governs",
+      "created_at": "2026-08-25T12:05:30+00:00"
+    },
+    {
+      "from": "CHG-200",
+      "to": "TASK-204",
+      "type": "implements",
+      "created_at": "2026-08-25T12:07:13+00:00"
+    },
+    {
+      "from": "CHG-201",
+      "to": "TASK-205",
+      "type": "implements",
+      "created_at": "2026-08-25T12:07:13+00:00"
+    },
+    {
+      "from": "CHG-202",
+      "to": "TASK-203",
+      "type": "implements",
+      "created_at": "2026-08-25T16:52:43+00:00"
+    },
+    {
+      "from": "CHG-203",
+      "to": "TASK-203",
+      "type": "implements",
+      "created_at": "2026-08-25T16:52:43+00:00"
+    },
+    {
+      "from": "CHG-204",
+      "to": "TASK-203",
+      "type": "implements",
+      "created_at": "2026-08-25T16:52:43+00:00"
+    },
+    {
+      "from": "CHG-205",
+      "to": "TASK-203",
+      "type": "implements",
+      "created_at": "2026-08-25T16:52:43+00:00"
+    },
+    {
+      "from": "CHG-206",
+      "to": "TASK-203",
+      "type": "implements",
+      "created_at": "2026-08-25T16:52:43+00:00"
+    },
+    {
+      "from": "CHG-208",
+      "to": "TASK-203",
+      "type": "implements",
+      "created_at": "2026-08-25T16:52:44+00:00"
+    },
+    {
+      "from": "CHG-209",
+      "to": "TASK-203",
+      "type": "implements",
+      "created_at": "2026-08-25T16:54:18+00:00"
+    },
+    {
+      "from": "CHG-207",
+      "to": "TASK-203",
+      "type": "implements",
+      "created_at": "2026-08-25T16:56:16+00:00"
+    },
+    {
+      "from": "DEC-180",
+      "to": "DEC-177",
+      "type": "supersedes",
+      "created_at": "2026-08-25T16:58:57+00:00"
     }
   ]
 }

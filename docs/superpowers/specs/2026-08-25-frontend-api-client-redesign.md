@@ -204,3 +204,34 @@ Repository searches must show:
 - All static checks, unit tests, and production build pass.
 - Focused E2E flows pass or any unavailable runtime dependency is documented
   with the strongest available substitute evidence.
+
+## Completion record (2026-08-26)
+
+Implemented across Tasks 1-9 in six batches (commits `e285f26`, `81e4aab`,
+`4c57d2b`, `aa800d3`, `abd2515`, `26e95ec`, `9027776`), with one follow-up
+(`5b1dafb`):
+
+- Public, reader, and admin domains all live under `api/`; the monolith
+  `composables/useApi.ts` and its spec are deleted; no import of either
+  remains anywhere in the frontend.
+- `api/transport.ts` is the only module touching `useFetch`/`$fetch`; domain
+  modules select an audience via `api/auth.ts` and never read `localStorage`
+  or `useRuntimeConfig` directly (verified by repository search).
+- Reactive reads (`use*`) and imperative commands (verbs returning
+  `Promise<T>`) are explicit in names and return types. Click-handler and
+  post-mount actions use commands; the migrations turned the post editor's
+  auto-save/submit/revision handlers and the push notifier off `useFetch`
+  AsyncData `.error.value` reads onto command rejection (`FetchError
+  .data.detail`), and the settings page onto the imperative `getSiteSetting`
+  so a client-only shell reload shows the persisted toggle.
+
+Regression gates at completion: Biome baseline (only pre-existing e2e
+lint notes), `pnpm typecheck`, full Vitest 1203 passed (94 files),
+production Nuxt build, and focused Playwright journeys — 16 green covering
+admin post edit/revisions/autosave, admin comments moderation, admin
+settings, reader notifications + preferences, and reader comment flows. Four
+failing e2e specs are pre-existing test-harness issues unrelated to this
+refactor (strict-mode locator ambiguity in `account.spec`, `my-comments.spec`,
+`admin-series-episodes.spec`, and a `created.id`-on-Response bug in
+`my-comments-filter.spec`); the app paths they exercise are covered by the
+unit suite.
