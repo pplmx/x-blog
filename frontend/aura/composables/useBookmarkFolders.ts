@@ -13,9 +13,9 @@ import {
 	type BookmarkFolder,
 	createReaderBookmarkFolder,
 	deleteReaderBookmarkFolder,
-	fetchReaderBookmarkFolders,
+	getReaderBookmarkFolders,
 	renameReaderBookmarkFolder,
-} from "./useApi";
+} from "~~/api/reader/bookmarks";
 
 export function useBookmarkFolders() {
 	const folders = ref<BookmarkFolder[]>([]);
@@ -24,8 +24,8 @@ export function useBookmarkFolders() {
 	async function load(): Promise<void> {
 		loading.value = true;
 		try {
-			const res = await fetchReaderBookmarkFolders();
-			folders.value = res.data?.value?.items ?? [];
+			const res = await getReaderBookmarkFolders();
+			folders.value = res.items ?? [];
 		} catch {
 			// Keep last-known list on transient failure.
 		} finally {

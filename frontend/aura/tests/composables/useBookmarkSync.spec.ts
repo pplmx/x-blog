@@ -7,13 +7,13 @@ const addReaderBookmarkMock = vi.fn();
 const removeReaderBookmarkMock = vi.fn();
 const fetchReaderBookmarksMock = vi.fn();
 
-vi.mock("~~/composables/useApi", async (importOriginal) => {
-	const actual = await importOriginal<typeof import("../../composables/useApi")>();
+vi.mock("~~/api/reader/bookmarks", async (importOriginal) => {
+	const actual = await importOriginal<typeof import("../../api/reader/bookmarks")>();
 	return {
 		...actual,
 		addReaderBookmark: addReaderBookmarkMock,
 		removeReaderBookmark: removeReaderBookmarkMock,
-		fetchReaderBookmarks: fetchReaderBookmarksMock,
+		getReaderBookmarks: fetchReaderBookmarksMock,
 	};
 });
 
@@ -147,7 +147,8 @@ describe("useBookmarkSync", () => {
 	it("merge pushes local up then adopts the cloud list (union outcome)", async () => {
 		localStorage.setItem("reader_token", "jwt.token");
 		addReaderBookmarkMock.mockResolvedValue(okFetch([null]));
-		fetchReaderBookmarksMock.mockResolvedValue(okFetch([cloudItem]));
+		// getReaderBookmarks resolves with the settled list response directly.
+		fetchReaderBookmarksMock.mockResolvedValue({ items: [cloudItem], total: 1 });
 		const sync = useBookmarkSync();
 		useBookmarks().addBookmark({
 			id: 3,

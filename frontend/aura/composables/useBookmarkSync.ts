@@ -20,7 +20,7 @@
  * list. This is the documented trade-off for a localStorage-first client.
  */
 
-import type { ReaderBookmarkItem } from "./useApi";
+import type { ReaderBookmarkItem } from "~~/api/reader/bookmarks";
 import type { Bookmark } from "./useBookmarks";
 import { useBookmarks } from "./useBookmarks";
 
@@ -63,7 +63,7 @@ export function useBookmarkSync() {
 	async function mirrorAdd(postId: number): Promise<void> {
 		if (!hasReaderToken()) return;
 		try {
-			const { addReaderBookmark } = await import("~~/composables/useApi");
+			const { addReaderBookmark } = await import("~~/api/reader/bookmarks");
 			await addReaderBookmark(postId);
 		} catch {
 			// offline — local list is authoritative until next merge
@@ -74,7 +74,7 @@ export function useBookmarkSync() {
 	async function mirrorRemove(postId: number): Promise<void> {
 		if (!hasReaderToken()) return;
 		try {
-			const { removeReaderBookmark } = await import("~~/composables/useApi");
+			const { removeReaderBookmark } = await import("~~/api/reader/bookmarks");
 			await removeReaderBookmark(postId);
 		} catch {
 			// offline — next merge re-conciliates
@@ -85,16 +85,16 @@ export function useBookmarkSync() {
 	async function mergeLocalToCloud(): Promise<void> {
 		if (!hasReaderToken()) return;
 		try {
-			const { addReaderBookmark, fetchReaderBookmarks } = await import("~~/composables/useApi");
+			const { addReaderBookmark, getReaderBookmarks } = await import("~~/api/reader/bookmarks");
 			// Push local bookmarks up (idempotent PUT; a full Bookmark carries the
 			// post id we PUT with).
 			for (const b of bookmarks.value) {
 				await addReaderBookmark(b.id);
 			}
 			// Pull the merged server list and make it the local truth.
-			const { data } = await fetchReaderBookmarks();
-			if (data.value) {
-				replaceBookmarks(data.value.items.map(toLocalBookmark));
+			const res = await getReaderBookmarks();
+			if (res) {
+				replaceBookmarks(res.items.map(toLocalBookmark));
 			}
 		} catch {
 			// Cloud unreachable — keep the local list untouched.

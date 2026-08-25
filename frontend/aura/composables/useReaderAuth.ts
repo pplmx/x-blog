@@ -10,7 +10,7 @@
  *   const { isAuthenticated, reader, login, register, logout } = useReaderAuth();
  */
 
-import type { ReaderLoginResponse, ReaderProfile } from "./useApi";
+import type { ReaderLoginResponse, ReaderProfile } from "~~/api/reader/auth";
 
 const READER_TOKEN_KEY = "reader_token";
 
@@ -62,7 +62,7 @@ export function useReaderAuth() {
 	};
 
 	const login = async (email: string, password: string): Promise<ReaderLoginResponse> => {
-		const { readerLogin } = await import("~~/composables/useApi");
+		const { readerLogin } = await import("~~/api/reader/auth");
 		const { data, error } = await readerLogin({ email, password });
 		if (error.value || !data.value?.access_token) {
 			throw new Error(error.value?.message || "Login failed");
@@ -76,7 +76,7 @@ export function useReaderAuth() {
 		password: string,
 		displayName?: string,
 	): Promise<ReaderLoginResponse> => {
-		const { readerRegister } = await import("~~/composables/useApi");
+		const { readerRegister } = await import("~~/api/reader/auth");
 		const { data, error } = await readerRegister({ email, password, display_name: displayName });
 		if (error.value || !data.value?.access_token) {
 			throw new Error(error.value?.message || "Registration failed");

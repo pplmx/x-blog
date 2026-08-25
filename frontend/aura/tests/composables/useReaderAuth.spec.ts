@@ -5,8 +5,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 const readerLoginMock = vi.fn();
 const readerRegisterMock = vi.fn();
 
-vi.mock("~~/composables/useApi", async (importOriginal) => {
-	const actual = await importOriginal<typeof import("../../composables/useApi")>();
+vi.mock("~~/api/reader/auth", async (importOriginal) => {
+	const actual = await importOriginal<typeof import("../../api/reader/auth")>();
 	return {
 		...actual,
 		readerLogin: readerLoginMock,
