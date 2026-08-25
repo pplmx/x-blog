@@ -2,7 +2,7 @@
   "ril_version": 1,
   "round": 170,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-08-25T16:58:57+00:00",
+  "updated_at": "2026-08-25T17:28:00+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -11,7 +11,7 @@
       "version": 1,
       "created_at": "2026-08-06T13:23:41+00:00",
       "updated_at": "2026-08-06T13:23:41+00:00",
-      "touched_round": 169,
+      "touched_round": 170,
       "title": "backend-nova",
       "description": "FastAPI Python 3.14 backend at backend/nova; SQLAlchemy ORM; routers in app/routers, crud.py business logic, 656 lines"
     },
@@ -10303,11 +10303,11 @@
     "ISS-114": {
       "id": "ISS-114",
       "type": "issue",
-      "status": "active",
-      "version": 1,
+      "status": "resolved",
+      "version": 2,
       "created_at": "2026-08-24T18:34:53+00:00",
-      "updated_at": "2026-08-24T18:34:53+00:00",
-      "touched_round": 169,
+      "updated_at": "2026-08-25T17:28:00+00:00",
+      "touched_round": 170,
       "title": "series_new_part notification kind is dead — backend never emits it but the frontend labels/iconships it",
       "summary": "record_new_post_notifications writes kind='new_post' for BOTH series-follow and category-follow new posts, but frontend kindIcon/kindLabel and i18n (notifications.kind.series_new_part = '系列更新') already handle a distinct series_new_part kind that is never produced. Net effect: a series-follow 'new part' shows as '新文章发布' instead of '系列更新'. Fixing properly needs a dedup decision (reader following both series AND category of a post: one row preferring series_new_part vs two rows) — record before implementing. Found during DEC-171/172 analysis; no change made."
     },
@@ -10526,6 +10526,58 @@
       "rationale": "All public/reader/admin callers migrated to api/ domain modules over api/transport.ts + api/auth.ts seams; 1,900-line composables/useApi.ts deleted (CHG-209); structural invariants verified by audit + 1203 Vitest + build + 16 e2e journeys; a real Nuxt lifecycle bug (stale useFetch read in client-only admin shell, ISS-097-class) fixed via imperative getSiteSetting (CHG-208)",
       "alternatives_rejected": "Keep the monolith and add per-feature wrappers (retains one god-module and mixed query/command semantics); stop at partial migration (leaves hybrid import surface)",
       "supersedes": "DEC-177"
+    },
+    "DEC-181": {
+      "id": "DEC-181",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-25T17:09:10+00:00",
+      "updated_at": "2026-08-25T17:09:10+00:00",
+      "touched_round": 170,
+      "title": "series_new_part is a label refinement of the new_post announcement: one inbox row, preferring the series follow (ISS-114)",
+      "rationale": "A new part of a followed series currently lands in the reader inbox as kind=new_post (新文章发布), but the frontend already icons/labels a distinct series_new_part (lucide:layers / notifications.kind.series_new_part = 系列更新) that no dispatch point ever produces (ISS-114). Fix: series-followers get kind=series_new_part title=系列更新; category-only followers keep kind=new_post; a reader following BOTH the series and the category of the same post gets exactly ONE row preferring series_new_part (the series follow is the more specific signal for the same event, and duplicate rows would double-fill the inbox). Both kinds stay gated by the existing new_post opt-out (DEC-171 umbrella): a series update IS a new post, so readers who silenced new_post are not woken for series parts, and no new toggleable kind/schema/migration is added.",
+      "alternatives_rejected": "Two rows (one per follow) - duplicate inbox spam and double mark-read bookkeeping; separate series_new_part pref column + toggle + migration - over-engineered (series parts only reach readers who already opted into that series' notify) and would churn the stable NOTIFICATION_KINDS surface; keep emitting new_post for series followers - leaves the reported label bug standing.",
+      "governs": "TASK-204"
+    },
+    "TASK-206": {
+      "id": "TASK-206",
+      "type": "task",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-08-25T17:09:10+00:00",
+      "updated_at": "2026-08-25T17:27:59+00:00",
+      "touched_round": 170,
+      "category": "correctness",
+      "severity": 0.8,
+      "confidence": 0.95,
+      "effort": 1.5,
+      "unlock_factor": 1.0,
+      "priority_score": 8.0,
+      "title": "Emit the series_new_part kind for series-follow new-part inbox rows, dedup preferring the series follow (ISS-114, DEC-181)"
+    },
+    "CHG-210": {
+      "id": "CHG-210",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-25T17:27:59+00:00",
+      "updated_at": "2026-08-25T17:27:59+00:00",
+      "touched_round": 170,
+      "commit": "286fcb5",
+      "title": "Emit the series_new_part kind for series-follow new-part inbox rows, dedup preferring the series follow (TASK-206, ISS-114, DEC-181)"
+    },
+    "EV-125": {
+      "id": "EV-125",
+      "type": "evidence",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-25T17:27:59+00:00",
+      "updated_at": "2026-08-25T17:27:59+00:00",
+      "touched_round": 170,
+      "source": "VERIFY 2026-08-26: backend full suite 1129 passed / 9 skipped / 94.62% cov (was 1127 green baseline); frontend Vitest 1205 passed; targeted notification/prefs/follow/push suites green; notifications page spec locked the frontend consumption",
+      "details": "RED first: series tests asserted series_new_part and failed with new_post before the crud.py fix; GREEN after. Dedup + opt-out-umbrella tests added. Rootdir-quirk documented (file-scoped pytest needs --rootdir).",
+      "confidence": 1.0
     }
   },
   "edges": [
@@ -15122,6 +15174,36 @@
       "to": "DEC-177",
       "type": "supersedes",
       "created_at": "2026-08-25T16:58:57+00:00"
+    },
+    {
+      "from": "ISS-114",
+      "to": "COMP-001",
+      "type": "located_in",
+      "created_at": "2026-08-25T17:09:11+00:00"
+    },
+    {
+      "from": "TASK-206",
+      "to": "ISS-114",
+      "type": "addresses",
+      "created_at": "2026-08-25T17:09:44+00:00"
+    },
+    {
+      "from": "DEC-181",
+      "to": "TASK-206",
+      "type": "governs",
+      "created_at": "2026-08-25T17:09:45+00:00"
+    },
+    {
+      "from": "CHG-210",
+      "to": "TASK-206",
+      "type": "implements",
+      "created_at": "2026-08-25T17:27:59+00:00"
+    },
+    {
+      "from": "CHG-210",
+      "to": "ISS-114",
+      "type": "resolves",
+      "created_at": "2026-08-25T17:27:59+00:00"
     }
   ]
 }
