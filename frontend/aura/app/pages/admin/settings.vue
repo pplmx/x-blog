@@ -5,7 +5,7 @@
 -->
 <script setup lang="ts">
 import { computed, ref } from "vue";
-import { updateSiteSetting, useSiteSetting } from "~~/api/admin/settings";
+import { getSiteSetting, updateSiteSetting } from "~~/api/admin/settings";
 
 definePageMeta({ layout: "admin" });
 
@@ -24,9 +24,11 @@ async function load() {
 	loading.value = true;
 	error.value = null;
 	try {
-		const { data } = await useSiteSetting(SETTING_KEY);
-		const value = data.value?.value;
-		enabled.value = value === "true";
+		// Imperative read: the admin shell mounts client-only, where
+		// `await useFetch` resolves before the data ref arrives (a stale
+		// unchecked toggle on reload). getSiteSetting awaits the real response.
+		const setting = await getSiteSetting(SETTING_KEY);
+		enabled.value = setting.value === "true";
 	} catch {
 		error.value = t("admin.settings.loadFailed");
 	} finally {

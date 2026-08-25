@@ -16,6 +16,17 @@ export function useSiteSetting(key: string) {
 	});
 }
 
+/**
+ * Read a runtime site setting imperatively. The settings page reloads from a
+ * client-only admin shell where `await useFetch` resolves before the data ref
+ * arrives; awaiting the real response is deterministic (cf. ISS-097).
+ */
+export function getSiteSetting(key: string): Promise<SiteSetting> {
+	return command<SiteSetting>(`/api/admin/settings/${key}`, {
+		headers: adminAuthHeaders(),
+	});
+}
+
 /** Persist a runtime site setting. */
 export function updateSiteSetting(key: string, value: string): Promise<SiteSetting> {
 	return command<SiteSetting>(`/api/admin/settings/${key}`, {

@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, type Mock, vi } from "vitest";
 
-import { updateSiteSetting, useSiteSetting } from "../../../api/admin/settings";
+import { getSiteSetting, updateSiteSetting, useSiteSetting } from "../../../api/admin/settings";
 
 let queryCalls: Array<{ path: unknown; options: Record<string, unknown> }>;
 let commandCalls: Array<{ path: string; options: Record<string, unknown> }>;
@@ -38,6 +38,13 @@ describe("admin settings", () => {
 		expect(queryCalls[0].path).toBe("/api/admin/settings/auto_approve_reader_comments");
 		expect(queryCalls[0].options.headers).toEqual({ Authorization: "Bearer admin-jwt" });
 		expect(queryCalls[0].options.server).toBe(false);
+	});
+
+	it("reads a setting imperatively", async () => {
+		await getSiteSetting("auto_approve_reader_comments");
+
+		expect(commandCalls[0].path).toBe("/api/admin/settings/auto_approve_reader_comments");
+		expect(commandCalls[0].options.headers).toEqual({ Authorization: "Bearer admin-jwt" });
 	});
 
 	it("persists a setting with PUT and a value body", async () => {

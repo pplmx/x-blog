@@ -17,7 +17,7 @@ const mockFetchSiteSetting = vi.fn();
 const mockUpdateSiteSetting = vi.fn();
 
 vi.mock("../../api/admin/settings", () => ({
-	useSiteSetting: mockFetchSiteSetting,
+	getSiteSetting: mockFetchSiteSetting,
 	updateSiteSetting: mockUpdateSiteSetting,
 }));
 
@@ -52,8 +52,8 @@ describe("Admin Settings page", () => {
 
 	it("loads and reflects the persisted true setting", async () => {
 		mockFetchSiteSetting.mockResolvedValue({
-			data: { value: { key: "auto_approve_reader_comments", value: "true" } },
-			pending: false,
+			key: "auto_approve_reader_comments",
+			value: "true",
 		});
 		const wrapper = await mountPage();
 		await flushPromises();
@@ -64,8 +64,8 @@ describe("Admin Settings page", () => {
 
 	it("shows the checkbox unchecked when the setting is false", async () => {
 		mockFetchSiteSetting.mockResolvedValue({
-			data: { value: { key: "auto_approve_reader_comments", value: "false" } },
-			pending: false,
+			key: "auto_approve_reader_comments",
+			value: "false",
 		});
 		const wrapper = await mountPage();
 		await flushPromises();
@@ -75,8 +75,8 @@ describe("Admin Settings page", () => {
 
 	it("saves the toggled value", async () => {
 		mockFetchSiteSetting.mockResolvedValue({
-			data: { value: { key: "auto_approve_reader_comments", value: "false" } },
-			pending: false,
+			key: "auto_approve_reader_comments",
+			value: "false",
 		});
 		mockUpdateSiteSetting.mockResolvedValue({
 			data: { value: { key: "auto_approve_reader_comments", value: "true" } },
