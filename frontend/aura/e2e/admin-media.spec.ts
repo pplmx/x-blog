@@ -112,4 +112,69 @@ test.describe("Admin media library (DEC-183)", () => {
 		await expect(page.locator(`img[alt="${uploadedName}"]`)).toHaveCount(0);
 		await expect(page.locator(`img[alt="${referencedName}"]`)).toBeVisible();
 	});
+
+	test("select and batch-delete unreferenced uploads (DEC-191)", async ({ page, request }) => {
+		const { headers } = await login(page);
+
+		// Seed two unreferenced uploads + one referenced upload (embedded in a
+		// post), directly via the API.
+		const unreferenced: string[] = [];
+		for (let i = 0; i < 2; i++) {
+			const resp = await request.post("/api/upload", {
+				multipart: {
+					file: {
+						name: `bulk-${stamp}-${i}.png`,
+						mimeType: "image/png",
+						buffer: Buffer.from(PNG_BASE64, "base64"),
+					},
+				},
+				headers,
+			});
+			expect(resp.ok()).toBe(true);
+			const { url } = (await resp.json()) as { url: string };
+			unreferenced.push(url.split("/").pop()!);
+		}
+		const refUpload = await request.post("/api/upload", {
+			multipart: {
+				file: {
+					name: `bulk-ref-${stamp}.png`,
+					mimeType: "image/png",
+					buffer: Buffer.from(PNG_BASE64, "base64"),
+				},
+			},
+			headers,
+		});
+		const refUrl = ((await refUpload.json()) as { url: string }).url;
+		const refName = refUrl.split("/").pop()!;
+		await request.post("/api/admin/posts", {
+			data: {
+				title: `Bulk ref ${stamp}`,
+				slug: `bulk-ref-${stamp}`,
+				content: `embed ![x](${refUrl})`,
+				excerpt: "seed",
+				published: false,
+			},
+			headers,
+		});
+
+		await page.goto("/admin/media");
+		page.on("dialog", (d) => void d.accept());
+
+		// Only unreferenced cards expose a select checkbox; the referenced one
+		// has none. Tick both unreferenced cards and batch-delete them.
+		const selectBtn = (name: string) =>
+			page
+				.locator(`div:has(> div > img[alt="${name}"])`)
+				.first()
+				.locator('button[aria-label="选择"]');
+		await selectBtn(unreferenced[0]).click();
+		await selectBtn(unreferenced[1]).click();
+		await expect(page.locator("text=已选 2 张")).toBeVisible();
+
+		await page.getByRole("button", { name: "删除选中" }).click();
+		await expect(page.locator(`img[alt="${unreferenced[0]}"]`)).toHaveCount(0, { timeout: 10000 });
+		await expect(page.locator(`img[alt="${unreferenced[1]}"]`)).toHaveCount(0);
+		// Referenced image is untouched by the batch (no checkbox, no delete).
+		await expect(page.locator(`img[alt="${refName}"]`)).toBeVisible();
+	});
 });

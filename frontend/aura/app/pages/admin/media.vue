@@ -1,12 +1,17 @@
 <!--
   Admin Media Library (DEC-183) — grid of every uploaded image.
-  Browse (newest first), copy URL to paste into a post, and delete images that
-  are not referenced by any post. Filesystem-backed: the listing comes from the
+  Browse (newest first), search by filename (DEC-189), copy URL to paste into a
+  post, and delete images that are not referenced by any post — singly or in a
+  multi-select batch (DEC-191). Filesystem-backed: the listing comes from the
   backend media API which walks static/uploads/ and reports reference status
   from one scan of post content + cover_image.
 -->
 <script setup lang="ts">
-import { deleteAdminMediaFile, useAdminMedia } from "~~/api/admin/media";
+import {
+	batchDeleteAdminMediaFiles,
+	deleteAdminMediaFile,
+	useAdminMedia,
+} from "~~/api/admin/media";
 import type { UploadFileInfo } from "~~/api/contracts/media";
 
 definePageMeta({ layout: "admin" });
@@ -40,6 +45,41 @@ const totalPages = computed(() => data.value?.pagination?.total_pages ?? 0);
 const isDeleting = ref(false);
 const actionError = ref<string | null>(null);
 const copiedUrl = ref<string | null>(null);
+
+// Bulk-delete selection (DEC-191): the URLs of the deletable cards the admin
+// has ticked. Only unreferenced images get a checkbox (referenced ones are
+// undeletable, so they are never selectable); the selection resets on page or
+// search change so a ticked card can't be silently swept into a later batch.
+const selected = ref<string[]>([]);
+const selectedCount = computed(() => selected.value.length);
+function isSelected(item: UploadFileInfo): boolean {
+	return selected.value.includes(item.url);
+}
+function toggleSelect(item: UploadFileInfo) {
+	selected.value = selected.value.includes(item.url)
+		? selected.value.filter((u) => u !== item.url)
+		: [...selected.value, item.url];
+}
+watch([currentPage, searchQ], () => {
+	selected.value = [];
+});
+
+const batchDeleting = ref(false);
+async function handleBatchDelete() {
+	if (selectedCount.value === 0 || batchDeleting.value) return;
+	if (!confirm(t("admin.media.confirmBatchDelete", { n: selectedCount.value }))) return;
+	batchDeleting.value = true;
+	actionError.value = null;
+	try {
+		await batchDeleteAdminMediaFiles([...selected.value]);
+		selected.value = [];
+		await refresh();
+	} catch (e) {
+		actionError.value = e instanceof Error ? e.message : t("admin.media.deleteFailed");
+	} finally {
+		batchDeleting.value = false;
+	}
+}
 
 function imageUrl(item: UploadFileInfo): string {
 	const config = useRuntimeConfig();
@@ -108,14 +148,29 @@ function goToPage(page: number) {
       <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">{{ t("admin.media.summary", { n: total }) }}</p>
     </div>
 
-    <div class="mb-4 max-w-sm">
-      <input
-        v-model="searchInput"
-        type="search"
-        :placeholder="t('admin.media.searchPlaceholder')"
-        class="w-full px-3 py-2 text-sm rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500/40"
-        @input="onSearchInput"
-      >
+    <div class="mb-4 flex flex-wrap items-center gap-3">
+      <div class="max-w-sm flex-1 min-w-56">
+        <input
+          v-model="searchInput"
+          type="search"
+          :placeholder="t('admin.media.searchPlaceholder')"
+          class="w-full px-3 py-2 text-sm rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500/40"
+          @input="onSearchInput"
+        >
+      </div>
+      <div v-if="selectedCount > 0" class="flex items-center gap-2">
+        <span class="text-sm text-gray-600 dark:text-gray-300">
+          {{ t("admin.media.selectedCount", { n: selectedCount }) }}
+        </span>
+        <button
+          type="button"
+          :disabled="batchDeleting"
+          class="px-3 py-2 text-sm rounded-xl bg-red-600 text-white hover:bg-red-700 disabled:opacity-50 transition-colors"
+          @click="handleBatchDelete"
+        >
+          {{ t("admin.media.deleteSelected") }}
+        </button>
+      </div>
     </div>
 
     <div v-if="actionError" class="mb-4 p-3 bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-400 rounded-xl text-sm">
@@ -164,6 +219,20 @@ function goToPage(page: number) {
           >
             {{ item.referenced ? t("admin.media.referenced") : t("admin.media.unreferenced") }}
           </span>
+          <!-- Bulk-delete selection (DEC-191): only unreferenced cards are
+               selectable — referenced images cannot be deleted anyway. -->
+          <button
+            v-if="!item.referenced"
+            type="button"
+            :aria-label="t('admin.media.select')"
+            class="absolute top-2 right-2 w-6 h-6 flex items-center justify-center rounded-md bg-white/90 dark:bg-gray-900/90 text-gray-600 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400"
+            @click.stop="toggleSelect(item)"
+          >
+            <Icon
+              :icon="isSelected(item) ? 'lucide:check-square' : 'lucide:square'"
+              class="w-4 h-4"
+            />
+          </button>
         </div>
 
         <div class="p-3 flex-1 flex flex-col gap-1">

@@ -14,12 +14,14 @@ vi.stubGlobal("definePageMeta", vi.fn());
 
 const listMock = vi.fn();
 const deleteMock = vi.fn();
+const batchDeleteMock = vi.fn();
 
 vi.mock("../../api/admin/media", () => ({
 	// useAdminMedia returns an AsyncData-like object the page destructures as
 	// { data, pending, error, refresh }.
 	useAdminMedia: (page: number, pageSize: number) => listMock(page, pageSize),
 	deleteAdminMediaFile: deleteMock,
+	batchDeleteAdminMediaFiles: batchDeleteMock,
 }));
 
 stubNuxtGlobals();
@@ -103,6 +105,41 @@ describe("Admin Media page", () => {
 			await flushPromises();
 
 			expect(deleteMock).toHaveBeenCalledWith(unreferenced);
+			expect(refresh).toHaveBeenCalled();
+		} finally {
+			window.confirm = originalConfirm;
+		}
+	});
+
+	it("batch-deletes selected unreferenced images (DEC-191)", async () => {
+		const refresh = vi.fn(() => Promise.resolve());
+		listMock.mockReturnValue(
+			fakeListing(
+				[
+					{ ...unreferenced, url: unreferenced.url },
+					{ ...referenced, url: referenced.url },
+				],
+				refresh,
+			),
+		);
+		batchDeleteMock.mockResolvedValue({ deleted: 2 });
+		const originalConfirm = window.confirm;
+		window.confirm = vi.fn(() => true);
+
+		try {
+			const wrapper = await mountPage();
+			// Referenced images have no select checkbox; unreferenced ones do.
+			const selects = wrapper.findAll('button[aria-label="选择"]');
+			expect(selects.length).toBe(1);
+			await selects[0].trigger("click");
+			expect(wrapper.text()).toContain("已选 1 张");
+
+			const batchBtn = wrapper.findAll("button").find((b) => b.text().trim() === "删除选中")!;
+			expect(batchBtn).toBeTruthy();
+			await batchBtn.trigger("click");
+			await flushPromises();
+
+			expect(batchDeleteMock).toHaveBeenCalledWith([unreferenced.url]);
 			expect(refresh).toHaveBeenCalled();
 		} finally {
 			window.confirm = originalConfirm;

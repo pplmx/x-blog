@@ -48,3 +48,17 @@ export function deleteAdminMediaFile(
 		headers: adminAuthHeaders(),
 	});
 }
+
+/**
+ * Delete many uploaded images at once (media bulk delete, DEC-191). The backend
+ * is fail-closed: if any listed URL is still referenced by a post it 409s the
+ * whole batch. Only unreferenced cards are selectable in the UI, so a real
+ * batch is always clean — but referenced URLs stay a valid defensive 409.
+ */
+export function batchDeleteAdminMediaFiles(urls: string[]): Promise<{ deleted: number }> {
+	return command<{ deleted: number }>("/api/upload/files/batch-delete", {
+		method: "POST",
+		headers: { "Content-Type": "application/json", ...adminAuthHeaders() },
+		body: { urls },
+	});
+}
