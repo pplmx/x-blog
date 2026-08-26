@@ -2,7 +2,7 @@
   "ril_version": 1,
   "round": 172,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-08-26T11:08:19+00:00",
+  "updated_at": "2026-08-26T11:18:06+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -10819,6 +10819,17 @@
       "title": "Cover-from-media-library delivered (DEC-187, TASK-209) — editor cover connects to the library; media milestone surface now fully wired",
       "rationale": "Third feature slice of this milestone run, gap-completing the media library: the editor cover_image field was the last image surface still requiring a hand-typed URL. Reused the proven MediaPickerModal with an independent open state; picking fills the cover field. Backend untouched (already PG-verified for the library) so this is a pure frontend ++ i18n slice + test.",
       "alternatives_rejected": "Auto-cover from first content image (silent behavior change); dedicated drag-drop cover uploader (feature creep over the reuse path); resize/crop preview (display-side concern)."
+    },
+    "CHG-217": {
+      "id": "CHG-217",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-26T11:18:06+00:00",
+      "updated_at": "2026-08-26T11:18:06+00:00",
+      "touched_round": 172,
+      "commit": "5d5ea0e",
+      "title": "Preserve WebP alpha in ingest optimization (DEC-185/TASK-208 refinement): only JPEG flattens alpha (onto white); transparent WebP keeps its channel"
     }
   },
   "edges": [
@@ -15535,6 +15546,12 @@
       "to": "TASK-209",
       "type": "governs",
       "created_at": "2026-08-26T11:08:19+00:00"
+    },
+    {
+      "from": "CHG-217",
+      "to": "TASK-208",
+      "type": "implements",
+      "created_at": "2026-08-26T11:18:06+00:00"
     }
   ]
 }
