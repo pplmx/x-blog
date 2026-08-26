@@ -2,7 +2,7 @@
   "ril_version": 1,
   "round": 172,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-08-26T11:18:06+00:00",
+  "updated_at": "2026-08-26T11:58:43+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -10830,6 +10830,57 @@
       "touched_round": 172,
       "commit": "5d5ea0e",
       "title": "Preserve WebP alpha in ingest optimization (DEC-185/TASK-208 refinement): only JPEG flattens alpha (onto white); transparent WebP keeps its channel"
+    },
+    "DEC-189": {
+      "id": "DEC-189",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-26T11:26:42+00:00",
+      "updated_at": "2026-08-26T11:26:42+00:00",
+      "touched_round": 172,
+      "title": "Media library search (milestone continuation): find an uploaded image by filename — the library currently only paginates",
+      "rationale": "Feature-evolution gap analysis (§11.2) from direct observation: the media library (DEC-183) lists every upload but only paginates newest-first. On a blog with hundreds of uploads an author cannot locate a specific image (only the one they just uploaded) without scrolling — e2e testing hit a 2000+ upload dir with no way to filter. Slice: backend GET /api/upload/files gains a filename substring filter (SQL-side is not needed — the walk already yields filenames; filter in the walk before pagination), frontend /admin/media gains a debounced search box born into the existing query flow and the picker inherits it. Pure extension of the just-built surface; zero DDL.",
+      "alternatives_rejected": "Full-text/DB-indexed media (over-engineered — filenames are uuid-hashes, never searched before; substring on the in-memory walk is enough at blog scale); tag/keyword uploads (metadata model we deliberately did not build, DEC-183); client-side filter of the fetched page only (hides the real gap — search must reach the whole store, not the current page)."
+    },
+    "TASK-210": {
+      "id": "TASK-210",
+      "type": "task",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-08-26T11:26:42+00:00",
+      "updated_at": "2026-08-26T11:58:43+00:00",
+      "touched_round": 172,
+      "category": "core-feature",
+      "severity": 0.7,
+      "confidence": 0.95,
+      "effort": 1.2,
+      "unlock_factor": 1.0,
+      "title": "Media library filename search (DEC-189): backend q filter on the walk + debounced frontend search box (page + picker)"
+    },
+    "CHG-218": {
+      "id": "CHG-218",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-26T11:58:14+00:00",
+      "updated_at": "2026-08-26T11:58:14+00:00",
+      "touched_round": 172,
+      "commit": "0ca5cf6",
+      "title": "Media library filename search: backend q filter + debounced frontend search box (DEC-189, TASK-210)",
+      "description": "GET /api/upload/files gains case-insensitive filename-substring q (walk-filtered before pagination) + test test_list_filename_search; useAdminMedia(page,pageSize,q) computes the path from refs so page/q edits auto-refetch; /admin/media adds a debounced search box, search-aware empty state, reactive paginator (was silently dead); MediaPickerModal keeps its positional contract; fixed pre-existing PaginationInfo import error"
+    },
+    "EV-129": {
+      "id": "EV-129",
+      "type": "evidence",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-26T11:58:31+00:00",
+      "updated_at": "2026-08-26T11:58:31+00:00",
+      "touched_round": 172,
+      "source": "tests/test_upload.py::TestMediaLibrary::test_list_filename_search; e2e/admin-media.spec.ts search step; frontend tests/pages/admin-media.spec.ts (1214 total)",
+      "description": "q filter verified: exact-uuid hits one, nonsense hits zero, shared extension hits both (29 upload tests green); browser e2e: search narrows to the matching card and clearing restores it; full frontend 1214 pass, vue-tsc 0; full backend suite re-ran with the new test in this slice",
+      "confidence": 1.0
     }
   },
   "edges": [
@@ -15552,6 +15603,18 @@
       "to": "TASK-208",
       "type": "implements",
       "created_at": "2026-08-26T11:18:06+00:00"
+    },
+    {
+      "from": "DEC-189",
+      "to": "TASK-210",
+      "type": "governs",
+      "created_at": "2026-08-26T11:26:42+00:00"
+    },
+    {
+      "from": "CHG-218",
+      "to": "TASK-210",
+      "type": "implements",
+      "created_at": "2026-08-26T11:58:31+00:00"
     }
   ]
 }
