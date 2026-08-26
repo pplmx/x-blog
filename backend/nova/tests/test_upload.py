@@ -169,6 +169,102 @@ def test_upload_requires_auth(client):
 
 
 # ---------------------------------------------------------------------------
+# Ingest optimization (DEC-185, TASK-208): same-format re-encode, never-larger,
+# EXIF stripped, GIF/fallback preserved.
+# ---------------------------------------------------------------------------
+
+
+def _jpeg_with_exif() -> bytes:
+    """A small JPEG carrying EXIF (GPS) metadata, as a phone camera would."""
+    from io import BytesIO as _BytesIO
+
+    from PIL import Image as _Image
+
+    buf = _BytesIO()
+    image = _Image.new("RGB", (8, 8), (10, 200, 30))
+    exif = _Image.Exif()
+    exif[0x0131] = "Test Camera"
+    exif[0x8825] = {1: "N", 2: (12.34,), 3: "W", 4: (56.78,)}  # GPS IFD
+    image.save(buf, format="JPEG", quality=95, exif=exif)
+    return buf.getvalue()
+
+
+class TestIngestOptimization:
+    def test_stored_jpeg_dropped_exif(self, client, auth_headers):
+        """A JPEG with EXIF/GPS stores with the metadata stripped (privacy)."""
+        jpeg_with_exif = _jpeg_with_exif()
+        resp = client.post(
+            "/api/upload",
+            files={"file": ("phone.jpg", jpeg_with_exif, "image/jpeg")},
+            headers=auth_headers,
+        )
+        assert resp.status_code == 200, resp.text
+        url = resp.json()["url"]
+        try:
+            parts = url.split("/")
+            stored = Path(STATIC_DIR) / "uploads" / parts[-3] / parts[-2] / parts[-1]
+            with Image.open(stored) as image:
+                assert not image.getexif(), "EXIF metadata must be stripped at ingest"
+                assert image.size == (8, 8)
+        finally:
+            _delete_file(client, auth_headers, url)
+
+    def test_never_larger_than_original(self, client, auth_headers):
+        """Optimized output must not exceed the original's size (re-encode kept
+        only if strictly smaller; otherwise the original bytes are stored)."""
+        original = _jpeg_with_exif()
+        resp = client.post(
+            "/api/upload",
+            files={"file": ("phone.jpg", original, "image/jpeg")},
+            headers=auth_headers,
+        )
+        assert resp.status_code == 200, resp.text
+        url = resp.json()["url"]
+        try:
+            parts = url.split("/")
+            stored = Path(STATIC_DIR) / "uploads" / parts[-3] / parts[-2] / parts[-1]
+            assert stored.stat().st_size <= len(original)
+        finally:
+            _delete_file(client, auth_headers, url)
+
+    def test_gif_preserved_verbatim(self, client, auth_headers):
+        """Animated GIFs are stored byte-identical (re-encoding risks frames)."""
+        gif = _image_bytes("GIF")
+        resp = client.post(
+            "/api/upload",
+            files={"file": ("anim.gif", gif, "image/gif")},
+            headers=auth_headers,
+        )
+        assert resp.status_code == 200, resp.text
+        url = resp.json()["url"]
+        try:
+            parts = url.split("/")
+            stored = Path(STATIC_DIR) / "uploads" / parts[-3] / parts[-2] / parts[-1]
+            assert stored.read_bytes() == gif
+        finally:
+            _delete_file(client, auth_headers, url)
+
+    def test_webp_optimized(self, client, auth_headers):
+        """WebP uploads re-encode in WebP (same format), still decodable."""
+        resp = client.post(
+            "/api/upload",
+            files={"file": ("img.webp", WEBP_BYTES, "image/webp")},
+            headers=auth_headers,
+        )
+        assert resp.status_code == 200, resp.text
+        url = resp.json()["url"]
+        try:
+            parts = url.split("/")
+            stored = Path(STATIC_DIR) / "uploads" / parts[-3] / parts[-2] / parts[-1]
+            assert stored.suffix == ".webp"
+            with Image.open(stored) as image:
+                image.load()
+                assert image.size == (2, 2)
+        finally:
+            _delete_file(client, auth_headers, url)
+
+
+# ---------------------------------------------------------------------------
 # Media library (DEC-183): GET /api/upload/files + DELETE .../files/{y}/{m}/{f}
 # ---------------------------------------------------------------------------
 
@@ -209,7 +305,9 @@ class TestMediaLibrary:
             assert len(found) == 1, f"uploaded url {url} missing from listing: {data['items']}"
             item = found[0]
             assert item["referenced"] is False
-            assert item["size"] == len(PNG_BYTES)
+            # The stored file is the optimized same-format re-encode (DEC-185),
+            # never larger than the original PNG but not byte-identical to it.
+            assert 0 < item["size"] <= len(PNG_BYTES)
             assert item["width"] == 2 and item["height"] == 2
         finally:
             _delete_file(client, auth_headers, url)

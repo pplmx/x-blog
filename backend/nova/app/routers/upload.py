@@ -63,6 +63,46 @@ def _verify_image_decodes(contents: bytes) -> None:
         image.load()
 
 
+def _optimize_image(image_bytes: bytes, content_type: str) -> bytes:
+    """Re-encode an already-validated image in its own format to shrink it.
+
+    Same-format re-encode keeps the URL/extension (and thus every existing
+    /static/uploads/... reference and the media library's filename contract)
+    unchanged while dropping EXIF/GPS metadata — Pillow only preserves EXIF
+    when it is explicitly passed to save(). (DEC-185, TASK-208)
+
+    Guarantees:
+    - never-larger: the optimized result is kept only if it is strictly smaller
+      than the input, otherwise the original bytes win;
+    - never-rejects: any re-encode error falls back to the original bytes (the
+      upload was already validated); GIF is preserved as-is because re-encoding
+      animated frames risks corruption for marginal gains.
+    """
+    if content_type == "image/gif":
+        return image_bytes
+
+    quality = 85 if content_type in {"image/jpeg", "image/webp"} else None
+    try:
+        out = BytesIO()
+        with Image.open(BytesIO(image_bytes)) as image:
+            image.load()  # ensure pixel data is available before re-encode
+            if content_type in {"image/jpeg", "image/webp"}:
+                image = image.convert("RGB")
+            save_kwargs: dict[str, int | bool] = {"optimize": True}
+            if quality is not None:
+                save_kwargs["quality"] = quality
+            if content_type == "image/webp":
+                save_kwargs["method"] = 6
+            if content_type == "image/jpeg":
+                save_kwargs["progressive"] = True
+            fmt = "JPEG" if content_type == "image/jpeg" else content_type.upper()
+            image.save(out, format=fmt, **save_kwargs)
+        optimized = out.getvalue()
+    except Exception:  # noqa: BLE001 — never turn a valid upload into a failure
+        return image_bytes
+    return optimized if len(optimized) < len(image_bytes) else image_bytes
+
+
 # Whitelist of allowed file extensions for uploaded images
 ALLOWED_EXTENSIONS = {"jpg", "jpeg", "png", "gif", "webp"}
 
@@ -97,6 +137,11 @@ async def upload_image(
         _verify_image_decodes(contents)
     except UnidentifiedImageError, OSError, ValueError:
         raise HTTPException(400, detail="File is not a valid image")
+
+    # Re-encode in the same format to shrink + strip EXIF (DEC-185, TASK-208).
+    # Never-larger + never-rejecting, and the extension/URL is untouched so the
+    # media library and every existing post reference stay valid.
+    contents = _optimize_image(contents, file.content_type)
 
     # Safely extract file extension — guards against path traversal via filename
     safe_ext = Path(file.filename or "").suffix.lstrip(".").lower()
