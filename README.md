@@ -20,7 +20,7 @@ A modern full-stack blog application built with FastAPI + Nuxt
 - 🎨 **Beautiful UI** - Clean design with Tailwind CSS v4
 - 📱 **Responsive** - Mobile-friendly responsive layout
 - 🔒 **Admin Panel** - Built-in admin dashboard for content management
-- 🧪 **Well Tested** - 912 tests (475 backend + 437 Nuxt), 85% backend coverage
+- 🧪 **Well Tested** - 2341 tests (1129 backend + 1212 Nuxt), 94.6% backend coverage
 - ✅ **Type Safe** - Full TypeScript support + Pydantic validation
 - 🔍 **Full-text Search** - Post search functionality
 - 🌙 **Dark Mode** - System preference aware dark mode
@@ -43,6 +43,7 @@ A modern full-stack blog application built with FastAPI + Nuxt
 - 🔕 **Per-kind notification preferences** - a signed-in reader silences any notification type (new posts / replies / followed-thread comments) from the /notifications page; an off kind stops both the inbox row and the push at every dispatch point (DEC-171)
 - 📖 **Resume Reading** - signed-in readers pick up right where they left off: the post page remembers their scroll position server-side and drops them back on return, with a resume chip offering back-to-top (DEC-167)
 - 🔥 **Reading streaks & activity heatmap** - /history shows a signed-in reader's current/longest consecutive-day streak and a GitHub-style 52-week heatmap of days they read (DEC-169)
+- 🖼️ **Media Library** - admins browse every uploaded image (grid, preview, copy URL, in-use badge), delete unreferenced uploads (referenced ones are refused server-side), and insert a previously uploaded image straight from the post editor toolbar (DEC-183)
 
 ## 🚀 Quick Start
 
@@ -162,17 +163,19 @@ badge. Anonymous commenters keep the free-text nickname/email path.
 
 ### Admin
 
-| Method | Endpoint                            | Description                                                 |
-| ------ | ----------------------------------- | ----------------------------------------------------------- |
-| POST   | `/api/admin/login`                  | Admin login                                                 |
-| GET    | `/api/admin/stats`                  | Dashboard analytics                                         |
-| GET    | `/api/posts?all=true`               | List all (incl. drafts)                                     |
-| GET    | `/api/comments?approved=false`      | List pending comments                                       |
-| PATCH  | `/api/comments/{id}/approve`        | Approve comment                                             |
-| POST   | `/api/upload`                       | Upload image                                                |
-| GET    | `/api/export/posts.csv`             | Export posts (admin)                                        |
-| GET    | `/api/export/comments.csv`          | Export comments (admin)                                     |
-| GET    | `/api/admin/calendar?month=YYYY-MM` | Posts bucketed by date for the editorial calendar (DEC-162) |
+| Method | Endpoint                            | Description                                                  |
+| ------ | ----------------------------------- | ------------------------------------------------------------ |
+| POST   | `/api/admin/login`                  | Admin login                                                  |
+| GET    | `/api/admin/stats`                  | Dashboard analytics                                          |
+| GET    | `/api/posts?all=true`               | List all (incl. drafts)                                      |
+| GET    | `/api/comments?approved=false`      | List pending comments                                        |
+| PATCH  | `/api/comments/{id}/approve`        | Approve comment                                              |
+| POST   | `/api/upload`                       | Upload image                                                 |
+| GET    | `/api/upload/files`                 | Media library — list uploads with reference status (DEC-183) |
+| DELETE | `/api/upload/files/{y}/{m}/{file}`  | Delete an upload; 409 while referenced by a post (DEC-183)   |
+| GET    | `/api/export/posts.csv`             | Export posts (admin)                                         |
+| GET    | `/api/export/comments.csv`          | Export comments (admin)                                      |
+| GET    | `/api/admin/calendar?month=YYYY-MM` | Posts bucketed by date for the editorial calendar (DEC-162)  |
 
 ### Search, SEO & Stats
 
@@ -275,7 +278,7 @@ x-blog/
 │   │   ├── schemas.py      # Pydantic schemas
 │   │   ├── crud.py         # Database operations
 │   │   └── routers/        # API routes
-│   ├── tests/              # pytest tests (475 tests)
+│   ├── tests/              # pytest tests (1129 tests)
 │   └── pyproject.toml      # Python config
 │
 ├── frontend/
@@ -351,9 +354,9 @@ The PostgreSQL test suite includes dedicated connection validation tests (`tests
 
 **Test Statistics:**
 
-- Backend: 475 tests (pytest + pytest-xdist), 85% coverage
-- Nuxt (frontend): 437 tests (Vitest)
-- **Total: 912 tests, 0 failures**
+- Backend: 1129 tests (pytest + pytest-xdist), 94.6% coverage
+- Nuxt (frontend): 1212 tests (Vitest)
+- **Total: 2341 tests, 0 failures**
 
 ## 🤝 Contributing
 
