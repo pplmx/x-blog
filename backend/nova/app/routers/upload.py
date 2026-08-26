@@ -220,15 +220,18 @@ def _upload_file_info(full_path: Path, refs: dict[str, list[tuple[int, str]]]) -
 @router.get("/files", response_model=UploadListResponse)
 def list_uploaded_files(
     db: Session = Depends(get_db),
+    q: str | None = Query(None, max_length=200, description="Filename substring filter (case-insensitive)"),
     page: int = Query(1, ge=1),
     page_size: int = Query(100, ge=1, le=500),
     _current_user: User = Depends(get_current_admin),
 ):
-    """Admin media library: list every stored upload, newest first.
+    """Admin media library: list stored uploads, newest first.
 
     Files live flat under static/uploads/YYYY/MM/ (see upload_image), so the
     listing is a bounded filesystem walk; reference status comes from one scan
-    of the posts table rather than per-file queries.
+    of the posts table rather than per-file queries. `q` narrows by filename
+    substring (case-insensitive) so an author can locate a specific upload
+    without scrolling a long library (DEC-189, TASK-210).
     """
     uploads_root = STATIC_DIR / "uploads"
     if not uploads_root.is_dir():
@@ -237,6 +240,7 @@ def list_uploaded_files(
         )
 
     refs = _collect_upload_references(db)
+    needle = q.lower() if q else None
 
     files: list[tuple[datetime, Path]] = []
     for year_dir in uploads_root.iterdir():
@@ -246,7 +250,7 @@ def list_uploaded_files(
             if not month_dir.is_dir():
                 continue
             for path in month_dir.iterdir():
-                if path.is_file():
+                if path.is_file() and (needle is None or needle in path.name.lower()):
                     files.append((datetime.fromtimestamp(path.stat().st_mtime), path))
     files.sort(key=lambda pair: pair[0], reverse=True)
 

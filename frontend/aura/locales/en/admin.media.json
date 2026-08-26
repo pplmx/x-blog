@@ -8,6 +8,11 @@
 			"title": "No uploads yet",
 			"hint": "Images you upload in the post editor appear here"
 		},
+		"searchPlaceholder": "Search by filename...",
+		"searchEmpty": {
+			"title": "No matching images",
+			"hint": "Try a different filename or clear the search"
+		},
 		"uploadedAt": "Uploaded {date}",
 		"dimensions": "{width}×{height}",
 		"size": "{n}",

@@ -108,4 +108,19 @@ describe("Admin Media page", () => {
 			window.confirm = originalConfirm;
 		}
 	});
+
+	it("filters by filename through the debounced search box (DEC-189)", async () => {
+		listMock.mockReturnValue(fakeListing([]));
+		const wrapper = await mountPage();
+		const input = wrapper.find('input[type="search"]');
+		expect(input.exists()).toBe(true);
+		expect(input.attributes("placeholder")).toBe("按文件名搜索...");
+		expect(wrapper.text()).toContain("还没有上传的图片");
+
+		// Typing arms the 300ms debounce; once it fires, `q` is set and the
+		// empty state flips to the "no match" variant.
+		await input.setValue("zzzz-no-such-file");
+		await new Promise((r) => setTimeout(r, 400));
+		expect(wrapper.text()).toContain("没有匹配的图片");
+	});
 });

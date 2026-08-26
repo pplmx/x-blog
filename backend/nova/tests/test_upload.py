@@ -431,6 +431,30 @@ class TestMediaLibrary:
         finally:
             _delete_file(client, auth_headers, url)
 
+    def test_list_filename_search(self, client, auth_headers):
+        """`q` narrows the listing to filename substrings (case-insensitive)."""
+        a = _upload_and_get_url(client, auth_headers)  # uuid1.png
+        b = _upload_and_get_url(client, auth_headers)  # uuid2.png
+        try:
+            # Search for an exact uuid (must hit exactly one).
+            parts = a.split("/")
+            needle = parts[-1][:10]
+            resp = client.get(f"/api/upload/files?q={needle}", headers=auth_headers)
+            assert resp.status_code == 200
+            assert [i["url"] for i in resp.json()["items"]] == [a]
+            # No match -> empty list with total 0.
+            resp = client.get("/api/upload/files?q=zzzzzzzzzz", headers=auth_headers)
+            assert resp.status_code == 200
+            body = resp.json()
+            assert body["items"] == [] and body["pagination"]["total"] == 0
+            # Both .png uploads share the extension -> q=.png returns both.
+            resp = client.get("/api/upload/files?q=.png", headers=auth_headers)
+            found = {i["url"] for i in resp.json()["items"]}
+            assert {a, b}.issubset(found)
+        finally:
+            _delete_file(client, auth_headers, a)
+            _delete_file(client, auth_headers, b)
+
     def test_delete_requires_auth(self, client):
         resp = client.delete("/api/upload/files/2026/07/00000000-0000-0000-0000-000000000000.png")
         assert resp.status_code == 401

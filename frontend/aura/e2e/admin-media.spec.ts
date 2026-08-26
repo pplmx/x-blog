@@ -84,10 +84,19 @@ test.describe("Admin media library (DEC-183)", () => {
 		await expect(page.locator(`text=${uploadedName}`)).toBeVisible();
 		await expect(page.locator(`text=${referencedName}`)).toBeVisible();
 
+		// 3b. Filename search (DEC-189): typing a substring filters to the
+		//     matching card after the debounce; clearing restores the listing.
+		const searchBox = page.locator('input[type="search"]');
+		const uploadedCard = page.locator(`div:has(> div > img[alt="${uploadedName}"])`).first();
+		const referencedCard = page.locator(`div:has(> div > img[alt="${referencedName}"])`).first();
+		const refNeedle = referencedName.slice(0, 12); // distinct leading uuid chunk
+		await searchBox.fill(refNeedle);
+		await expect(page.locator(`img[alt="${referencedName}"]`)).toBeVisible();
+		await expect(page.locator(`img[alt="${uploadedName}"]`)).toHaveCount(0, { timeout: 10000 });
+		await searchBox.fill("");
+		await expect(page.locator(`img[alt="${uploadedName}"]`)).toBeVisible({ timeout: 10000 });
+
 		// 4. The referenced image card: "In use" badge, delete disabled.
-		const referencedCard = page
-			.locator(`div:has(> div > img[alt="${referencedName}"])`)
-			.first();
 		await expect(referencedCard.locator("text=使用中")).toBeVisible();
 		await expect(referencedCard.getByRole("button", { name: "删除" })).toBeDisabled();
 
@@ -95,7 +104,6 @@ test.describe("Admin media library (DEC-183)", () => {
 		//    copied, then delete removes the card (img alt is unique per file,
 		//    so assert on the image count rather than the filename text which
 		//    appears both as the card label and as the img's accessible alt).
-		const uploadedCard = page.locator(`div:has(> div > img[alt="${uploadedName}"])`).first();
 		await uploadedCard.getByRole("button", { name: /复制链接|Copy/ }).click();
 		await expect(uploadedCard.getByRole("button", { name: /已复制|Copied/ })).toBeVisible();
 

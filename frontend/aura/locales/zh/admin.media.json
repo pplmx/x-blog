@@ -8,6 +8,11 @@
 			"title": "还没有上传的图片",
 			"hint": "在文章编辑器中上传的图片会显示在这里"
 		},
+		"searchPlaceholder": "按文件名搜索...",
+		"searchEmpty": {
+			"title": "没有匹配的图片",
+			"hint": "换个文件名试试，或清空搜索"
+		},
 		"uploadedAt": "上传于 {date}",
 		"dimensions": "{width}×{height}",
 		"size": "{n}",

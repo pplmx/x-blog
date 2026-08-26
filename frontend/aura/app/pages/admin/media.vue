@@ -6,7 +6,7 @@
   from one scan of post content + cover_image.
 -->
 <script setup lang="ts">
-import { useAdminMedia, deleteAdminMediaFile } from "~~/api/admin/media";
+import { deleteAdminMediaFile, useAdminMedia } from "~~/api/admin/media";
 import type { UploadFileInfo } from "~~/api/contracts/media";
 
 definePageMeta({ layout: "admin" });
@@ -15,9 +15,24 @@ const { t } = useLang();
 
 useHead({ title: computed(() => t("admin.media.seoTitle")) });
 
-const currentPage = ref(0);
+const currentPage = ref(1);
 const pageSize = 60;
-const { data, pending, error, refresh } = await useAdminMedia(1, pageSize);
+// Debounced filename search: the input ref updates instantly, the query ref
+// settles 300ms after the last keystroke so each keystroke doesn't fire a
+// request. Both refs feed the computed listing path (DEC-189).
+const searchInput = ref("");
+const searchQ = ref("");
+const q = computed(() => searchQ.value);
+let searchTimer: ReturnType<typeof setTimeout> | undefined;
+function onSearchInput() {
+	clearTimeout(searchTimer);
+	searchTimer = setTimeout(() => {
+		searchQ.value = searchInput.value;
+		currentPage.value = 1; // a new filter starts from the first page
+	}, 300);
+}
+
+const { data, pending, error, refresh } = await useAdminMedia(currentPage, pageSize, searchQ);
 const items = computed(() => data.value?.items ?? []);
 const total = computed(() => data.value?.pagination?.total ?? 0);
 const totalPages = computed(() => data.value?.pagination?.total_pages ?? 0);
@@ -75,9 +90,10 @@ async function handleDelete(item: UploadFileInfo) {
 }
 
 function goToPage(page: number) {
-	if (page < 0 || page >= totalPages.value) return;
+	if (page < 1 || page > totalPages.value) return;
+	// Setting currentPage re-runs the computed listing path (useFetch watches
+	// it), so there's no manual refresh here — a click refetches automatically.
 	currentPage.value = page;
-	refresh();
 }
 </script>
 
@@ -90,6 +106,16 @@ function goToPage(page: number) {
         {{ t("admin.media.title") }}
       </h1>
       <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">{{ t("admin.media.summary", { n: total }) }}</p>
+    </div>
+
+    <div class="mb-4 max-w-sm">
+      <input
+        v-model="searchInput"
+        type="search"
+        :placeholder="t('admin.media.searchPlaceholder')"
+        class="w-full px-3 py-2 text-sm rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500/40"
+        @input="onSearchInput"
+      >
     </div>
 
     <div v-if="actionError" class="mb-4 p-3 bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-400 rounded-xl text-sm">
@@ -106,8 +132,12 @@ function goToPage(page: number) {
 
     <div v-else-if="items.length === 0" class="py-16 text-center">
       <Icon icon="lucide:image" class="w-12 h-12 mx-auto text-gray-300 dark:text-gray-600" />
-      <h2 class="mt-4 text-lg font-semibold text-gray-700 dark:text-gray-300">{{ t("admin.media.empty.title") }}</h2>
-      <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">{{ t("admin.media.empty.hint") }}</p>
+      <h2 class="mt-4 text-lg font-semibold text-gray-700 dark:text-gray-300">
+        {{ q ? t("admin.media.searchEmpty.title") : t("admin.media.empty.title") }}
+      </h2>
+      <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
+        {{ q ? t("admin.media.searchEmpty.hint") : t("admin.media.empty.hint") }}
+      </p>
     </div>
 
     <div v-else class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
@@ -173,16 +203,16 @@ function goToPage(page: number) {
     <div v-if="totalPages > 1" class="mt-6 flex items-center justify-between">
       <button
         type="button"
-        :disabled="currentPage === 0"
+        :disabled="currentPage === 1"
         class="px-3 py-1.5 text-sm rounded-lg bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 disabled:opacity-40 transition-colors"
         @click="goToPage(currentPage - 1)"
       >
         {{ t("admin.media.pagination.prev") }}
       </button>
-      <span class="text-sm text-gray-500 dark:text-gray-400">{{ currentPage + 1 }} / {{ totalPages }}</span>
+      <span class="text-sm text-gray-500 dark:text-gray-400">{{ currentPage }} / {{ totalPages }}</span>
       <button
         type="button"
-        :disabled="currentPage >= totalPages - 1"
+        :disabled="currentPage >= totalPages"
         class="px-3 py-1.5 text-sm rounded-lg bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 disabled:opacity-40 transition-colors"
         @click="goToPage(currentPage + 1)"
       >
