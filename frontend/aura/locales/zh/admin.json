@@ -10,7 +10,8 @@
 			"series": "系列",
 			"settings": "设置",
 			"users": "用户",
-			"calendar": "日历"
+			"calendar": "日历",
+			"media": "媒体库"
 		},
 		"settings": {
 			"title": "设置",

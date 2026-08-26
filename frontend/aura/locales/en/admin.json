@@ -10,7 +10,8 @@
 			"series": "Series",
 			"settings": "Settings",
 			"users": "Users",
-			"calendar": "Calendar"
+			"calendar": "Calendar",
+			"media": "Media"
 		},
 		"settings": {
 			"title": "Settings",

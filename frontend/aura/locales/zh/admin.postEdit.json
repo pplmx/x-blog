@@ -52,7 +52,8 @@
 			"heading2": "标题 2",
 			"heading3": "标题 3",
 			"link": "链接",
-			"uploadImage": "上传图片"
+			"uploadImage": "上传图片",
+			"mediaLibrary": "从媒体库插入"
 		},
 		"loading": "加载中...",
 		"unsavedConfirm": "你有未保存的更改，确定离开吗？",

@@ -125,6 +125,7 @@ const navItems = computed(() => {
 		{ href: "/admin/tags", labelKey: "admin.nav.tags", icon: "lucide:tag" },
 		{ href: "/admin/series", labelKey: "admin.nav.series", icon: "lucide:layers" },
 		{ href: "/admin/settings", labelKey: "admin.nav.settings", icon: "lucide:settings" },
+		{ href: "/admin/media", labelKey: "admin.nav.media", icon: "lucide:images" },
 	];
 	if (currentRole.value === "superuser") {
 		items.push({ href: "/admin/users", labelKey: "admin.nav.users", icon: "lucide:users" });

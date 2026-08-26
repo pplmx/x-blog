@@ -1,0 +1,193 @@
+<!--
+  Admin Media Library (DEC-183) — grid of every uploaded image.
+  Browse (newest first), copy URL to paste into a post, and delete images that
+  are not referenced by any post. Filesystem-backed: the listing comes from the
+  backend media API which walks static/uploads/ and reports reference status
+  from one scan of post content + cover_image.
+-->
+<script setup lang="ts">
+import { useAdminMedia, deleteAdminMediaFile } from "~~/api/admin/media";
+import type { UploadFileInfo } from "~~/api/contracts/media";
+
+definePageMeta({ layout: "admin" });
+
+const { t } = useLang();
+
+useHead({ title: computed(() => t("admin.media.seoTitle")) });
+
+const currentPage = ref(0);
+const pageSize = 60;
+const { data, pending, error, refresh } = await useAdminMedia(1, pageSize);
+const items = computed(() => data.value?.items ?? []);
+const total = computed(() => data.value?.pagination?.total ?? 0);
+const totalPages = computed(() => data.value?.pagination?.total_pages ?? 0);
+
+const isDeleting = ref(false);
+const actionError = ref<string | null>(null);
+const copiedUrl = ref<string | null>(null);
+
+function imageUrl(item: UploadFileInfo): string {
+	const config = useRuntimeConfig();
+	return `${config.public.apiUrl}${item.url}`;
+}
+
+function formatSize(bytes: number): string {
+	if (bytes < 1024) return `${bytes} B`;
+	if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+	return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+async function copyUrl(item: UploadFileInfo) {
+	try {
+		await navigator.clipboard.writeText(item.url);
+		copiedUrl.value = item.url;
+		setTimeout(() => {
+			if (copiedUrl.value === item.url) copiedUrl.value = null;
+		}, 1500);
+	} catch {
+		// Clipboard API can be unavailable (non-secure context); fall back to
+		// selecting the URL in an input so the author can copy manually.
+		const fallback = document.createElement("input");
+		fallback.value = item.url;
+		document.body.appendChild(fallback);
+		fallback.select();
+		document.execCommand("copy");
+		document.body.removeChild(fallback);
+		copiedUrl.value = item.url;
+		setTimeout(() => {
+			if (copiedUrl.value === item.url) copiedUrl.value = null;
+		}, 1500);
+	}
+}
+
+async function handleDelete(item: UploadFileInfo) {
+	if (!confirm(t("admin.media.confirmDelete"))) return;
+	isDeleting.value = true;
+	actionError.value = null;
+	try {
+		await deleteAdminMediaFile(item.year, item.month, item.filename);
+		await refresh();
+	} catch (e) {
+		actionError.value = e instanceof Error ? e.message : t("admin.media.deleteFailed");
+	} finally {
+		isDeleting.value = false;
+	}
+}
+
+function goToPage(page: number) {
+	if (page < 0 || page >= totalPages.value) return;
+	currentPage.value = page;
+	refresh();
+}
+</script>
+
+<template>
+  <div>
+    <div class="mb-8">
+      <h1
+        class="text-2xl font-bold bg-gradient-to-r from-gray-900 dark:from-gray-100 to-gray-600 dark:to-gray-400 bg-clip-text text-transparent"
+      >
+        {{ t("admin.media.title") }}
+      </h1>
+      <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">{{ t("admin.media.summary", { n: total }) }}</p>
+    </div>
+
+    <div v-if="actionError" class="mb-4 p-3 bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-400 rounded-xl text-sm">
+      {{ actionError }}
+    </div>
+
+    <p v-if="error" class="mb-4 p-3 bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-400 rounded-xl text-sm">
+      {{ t("admin.media.loadFailed") }}
+    </p>
+
+    <div v-if="pending" class="py-16 text-center text-gray-500 dark:text-gray-400 text-sm">
+      {{ t("admin.media.loading") }}
+    </div>
+
+    <div v-else-if="items.length === 0" class="py-16 text-center">
+      <Icon icon="lucide:image" class="w-12 h-12 mx-auto text-gray-300 dark:text-gray-600" />
+      <h2 class="mt-4 text-lg font-semibold text-gray-700 dark:text-gray-300">{{ t("admin.media.empty.title") }}</h2>
+      <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">{{ t("admin.media.empty.hint") }}</p>
+    </div>
+
+    <div v-else class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+      <div
+        v-for="item in items"
+        :key="item.url"
+        class="group rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 overflow-hidden flex flex-col"
+      >
+        <div class="relative aspect-video bg-gray-100 dark:bg-gray-900 flex items-center justify-center overflow-hidden">
+          <img
+            :src="imageUrl(item)"
+            :alt="item.filename"
+            loading="lazy"
+            class="w-full h-full object-contain"
+          >
+          <span
+            class="absolute top-2 left-2 text-[10px] px-2 py-0.5 rounded-full font-medium"
+            :class="item.referenced
+              ? 'bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300'
+              : 'bg-gray-100 dark:bg-gray-700/60 text-gray-600 dark:text-gray-300'"
+            :title="item.referenced
+              ? t('admin.media.referencedTitle', { n: item.referencing_posts.length })
+              : undefined"
+          >
+            {{ item.referenced ? t("admin.media.referenced") : t("admin.media.unreferenced") }}
+          </span>
+        </div>
+
+        <div class="p-3 flex-1 flex flex-col gap-1">
+          <div class="text-xs text-gray-600 dark:text-gray-300 truncate" :title="item.filename">{{ item.filename }}</div>
+          <div class="text-[11px] text-gray-400 dark:text-gray-500">
+            {{ item.width && item.height ? t("admin.media.dimensions", { width: item.width, height: item.height }) + " · " : "" }}
+            {{ formatSize(item.size) }}
+          </div>
+          <div class="text-[11px] text-gray-400 dark:text-gray-500">
+            {{ t("admin.media.uploadedAt", { date: new Date(item.uploaded_at).toLocaleDateString() }) }}
+          </div>
+
+          <div class="mt-auto pt-2 flex gap-1.5">
+            <button
+              type="button"
+              class="flex-1 text-xs px-2 py-1.5 rounded-lg bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+              @click="copyUrl(item)"
+            >
+              {{ copiedUrl === item.url ? t("admin.media.copied") : t("admin.media.copyUrl") }}
+            </button>
+            <button
+              type="button"
+              :disabled="item.referenced || isDeleting"
+              class="text-xs px-2 py-1.5 rounded-lg bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/50 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+              :title="item.referenced
+                ? t('admin.media.referencedTitle', { n: item.referencing_posts.length })
+                : undefined"
+              @click="handleDelete(item)"
+            >
+              {{ t("admin.media.delete") }}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div v-if="totalPages > 1" class="mt-6 flex items-center justify-between">
+      <button
+        type="button"
+        :disabled="currentPage === 0"
+        class="px-3 py-1.5 text-sm rounded-lg bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 disabled:opacity-40 transition-colors"
+        @click="goToPage(currentPage - 1)"
+      >
+        {{ t("admin.media.pagination.prev") }}
+      </button>
+      <span class="text-sm text-gray-500 dark:text-gray-400">{{ currentPage + 1 }} / {{ totalPages }}</span>
+      <button
+        type="button"
+        :disabled="currentPage >= totalPages - 1"
+        class="px-3 py-1.5 text-sm rounded-lg bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 disabled:opacity-40 transition-colors"
+        @click="goToPage(currentPage + 1)"
+      >
+        {{ t("admin.media.pagination.next") }}
+      </button>
+    </div>
+  </div>
+</template>

@@ -454,6 +454,11 @@ function toggleTag(tagId: number) {
 const textareaRef = ref<HTMLTextAreaElement | null>(null);
 const showPreview = ref(false);
 const { uploadImage, isUploading, error: uploadError } = useUpload();
+const showMediaPicker = ref(false);
+
+function insertFromLibrary(url: string) {
+	insertMarkdown(`![image](${url})`);
+}
 
 function insertMarkdown(before: string, after = "") {
 	const ta = textareaRef.value;
@@ -825,7 +830,11 @@ function handleFileInput(e: Event) {
           <button type="button" @click="triggerImagePicker" :disabled="isUploading" :title="t('admin.postEdit.toolbar.uploadImage')" class="toolbar-btn">
             <Icon :icon="isUploading ? 'lucide:loader-2' : 'lucide:image'" :class="{ 'animate-spin': isUploading }" class="w-3.5 h-3.5" />
           </button>
+          <button type="button" @click="showMediaPicker = true" :title="t('admin.postEdit.toolbar.mediaLibrary')" class="toolbar-btn">
+            <Icon icon="lucide:images" class="w-3.5 h-3.5" />
+          </button>
           <input id="image-upload-input" type="file" accept="image/*" class="hidden" @change="handleFileInput">
+          <MediaPickerModal :open="showMediaPicker" @close="showMediaPicker = false" @select="insertFromLibrary" />
         </div>
 
         <div

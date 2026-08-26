@@ -52,7 +52,8 @@
 			"heading2": "Heading 2",
 			"heading3": "Heading 3",
 			"link": "Link",
-			"uploadImage": "Upload image"
+			"uploadImage": "Upload image",
+			"mediaLibrary": "Insert from media library"
 		},
 		"loading": "Loading...",
 		"unsavedConfirm": "You have unsaved changes. Leave without saving?",

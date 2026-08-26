@@ -1,5 +1,12 @@
 {
 	"components": {
+		"mediaPicker": {
+			"title": "Media Library",
+			"loading": "Loading media…",
+			"empty": "No uploaded images yet — upload one from the toolbar first.",
+			"prev": "Previous",
+			"next": "Next"
+		},
 		"bookmark": {
 			"add": "Bookmark",
 			"remove": "Remove bookmark",

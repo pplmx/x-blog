@@ -1,0 +1,28 @@
+{
+	"admin.media": {
+		"seoTitle": "Media Library - X-Blog",
+		"title": "Media Library",
+		"summary": "{n} uploaded images",
+		"loading": "Loading media...",
+		"empty": {
+			"title": "No uploads yet",
+			"hint": "Images you upload in the post editor appear here"
+		},
+		"uploadedAt": "Uploaded {date}",
+		"dimensions": "{width}×{height}",
+		"size": "{n}",
+		"copyUrl": "Copy URL",
+		"copied": "URL copied",
+		"delete": "Delete",
+		"confirmDelete": "Delete this image?",
+		"referencedTitle": "This image is used by {n} post(s) and cannot be deleted",
+		"referenced": "In use",
+		"unreferenced": "Unused",
+		"deleteFailed": "Failed to delete image",
+		"loadFailed": "Failed to load media",
+		"pagination": {
+			"prev": "Previous",
+			"next": "Next"
+		}
+	}
+}
