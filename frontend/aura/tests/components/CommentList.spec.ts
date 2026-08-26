@@ -196,6 +196,22 @@ describe("CommentList", () => {
 			expect(wrapper.text()).toContain("Bob");
 		});
 
+		it("badges an author reply from the queue (DEC-192)", async () => {
+			const authorReply = {
+				...mockComments.items[0],
+				nickname: "X-Blog",
+				is_author_reply: true,
+			};
+			const { wrapper } = await mountCommentList({
+				comments: {
+					...mockComments,
+					items: [authorReply, ...mockComments.items.slice(1)],
+				},
+			});
+			expect(wrapper.text()).toContain("X-Blog");
+			expect(wrapper.text()).toContain("作者"); // the reader-facing author badge
+		});
+
 		it("renders comment content", async () => {
 			const { wrapper } = await mountCommentList();
 			expect(wrapper.text()).toContain("This is a great post!");

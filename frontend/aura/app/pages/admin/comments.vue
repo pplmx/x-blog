@@ -7,6 +7,7 @@ import {
 	deleteAdminComment,
 	dismissAdminCommentFlags,
 	getAdminComments,
+	replyAdminComment,
 } from "~~/api/admin/comments";
 
 definePageMeta({ layout: "admin" });
@@ -237,6 +238,40 @@ async function handleApprove(id: number, approved: boolean) {
 		isProcessing.value = false;
 	}
 }
+
+// Author reply (DEC-192, TASK-212): one inline reply box at a time, targeting
+// an approved comment (the public thread only shows public comments; replying
+// to a pending one would leave an approved reply under a hidden parent).
+const replyOpenId = ref<number | null>(null);
+const replyText = ref("");
+const replySending = ref(false);
+
+function openReply(id: number) {
+	replyOpenId.value = id;
+	replyText.value = "";
+}
+
+function closeReply() {
+	replyOpenId.value = null;
+	replyText.value = "";
+}
+
+async function submitReply(id: number) {
+	const content = replyText.value.trim();
+	if (!content || replySending.value) return;
+	replySending.value = true;
+	actionError.value = null;
+	try {
+		await replyAdminComment(id, content);
+		replyOpenId.value = null;
+		replyText.value = "";
+		await loadComments(activeFilters(), currentPage.value);
+	} catch (e) {
+		actionError.value = getErrorMessage(e);
+	} finally {
+		replySending.value = false;
+	}
+}
 </script>
 
 <template>
@@ -441,6 +476,12 @@ async function handleApprove(id: number, approved: boolean) {
               <span class="font-medium text-gray-900 dark:text-gray-100">
                 {{ comment.nickname }}
               </span>
+              <span
+                v-if="comment.is_author_reply"
+                class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-50 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300"
+              >
+                {{ t("admin.comments.authorReply") }}
+              </span>
               <span class="text-sm text-gray-500 dark:text-gray-400">
                 {{ comment.email }}
               </span>
@@ -464,6 +505,34 @@ async function handleApprove(id: number, approved: boolean) {
               {{ comment.content }}
             </p>
 
+            <!-- Author reply box (DEC-192): open per comment, submits as the
+                 blog owner, then reloads the queue to show the created reply. -->
+            <div v-if="replyOpenId === comment.id" class="mb-2">
+              <textarea
+                v-model="replyText"
+                rows="2"
+                :placeholder="t('admin.comments.replyPlaceholder')"
+                class="w-full px-3 py-2 text-sm rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500/40"
+              ></textarea>
+              <div class="flex gap-2 mt-1.5">
+                <button
+                  type="button"
+                  :disabled="replySending || !replyText.trim()"
+                  class="px-3 py-1.5 text-xs bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-40 transition-colors"
+                  @click="submitReply(comment.id)"
+                >
+                  {{ t("admin.comments.sendReply") }}
+                </button>
+                <button
+                  type="button"
+                  class="px-3 py-1.5 text-xs text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
+                  @click="closeReply"
+                >
+                  {{ t("common.cancel") }}
+                </button>
+              </div>
+            </div>
+
             <div class="text-xs text-gray-400 dark:text-gray-500 space-x-3">
               <span>{{ comment.post_title }}</span>
               <span>{{ comment.ip_address }}</span>
@@ -472,6 +541,15 @@ async function handleApprove(id: number, approved: boolean) {
           </div>
 
           <div class="flex flex-col gap-1.5 shrink-0">
+            <button
+              v-if="comment.is_approved"
+              type="button"
+              :disabled="isProcessing"
+              class="px-3 py-1.5 text-xs text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 hover:bg-blue-100 dark:hover:bg-blue-900/50 rounded-lg transition-colors"
+              @click="replyOpenId === comment.id ? closeReply() : openReply(comment.id)"
+            >
+              {{ replyOpenId === comment.id ? t("common.cancel") : t("admin.comments.reply") }}
+            </button>
             <button
               v-if="!comment.is_approved"
               type="button"

@@ -23,6 +23,7 @@ const {
 	mockBatchApproveAdminComments,
 	mockBatchDeleteAdminComments,
 	mockDismissAdminCommentFlags,
+	mockReplyAdminComment,
 } = vi.hoisted(() => ({
 	mockFetchAdminComments: vi.fn(),
 	mockDeleteAdminComment: vi.fn(),
@@ -30,6 +31,7 @@ const {
 	mockBatchApproveAdminComments: vi.fn(),
 	mockBatchDeleteAdminComments: vi.fn(),
 	mockDismissAdminCommentFlags: vi.fn(),
+	mockReplyAdminComment: vi.fn(),
 }));
 
 vi.mock("~~/api/admin/comments", () => ({
@@ -39,6 +41,7 @@ vi.mock("~~/api/admin/comments", () => ({
 	batchApproveAdminComments: mockBatchApproveAdminComments,
 	batchDeleteAdminComments: mockBatchDeleteAdminComments,
 	dismissAdminCommentFlags: mockDismissAdminCommentFlags,
+	replyAdminComment: mockReplyAdminComment,
 }));
 
 vi.stubGlobal("useRuntimeConfig", () => ({
@@ -255,6 +258,33 @@ describe("Admin Comments Page", () => {
 			await flushPromises();
 
 			expect(mockApproveAdminComment).toHaveBeenCalledWith(1, false);
+		});
+
+		it("replies to an approved comment as the author, then reloads (DEC-192)", async () => {
+			mockReplyAdminComment.mockResolvedValue({});
+			const fetchSpy = vi.mocked(mockFetchAdminComments);
+
+			const CommentsPage = await loadPage();
+			const wrapper = await mountWithSuspense(CommentsPage);
+			const before = fetchSpy.mock.calls.length;
+
+			// Only the approved comment (id 1) exposes the reply action.
+			const replyButtons = wrapper.findAll("button");
+			const replyButton = replyButtons.find((b) => b.text().trim() === "回复");
+			expect(replyButton).toBeDefined();
+			await replyButton?.trigger("click");
+
+			const textarea = wrapper.find("textarea");
+			expect(textarea.exists()).toBe(true);
+			await textarea.setValue("感谢反馈，已修复。");
+			await wrapper
+				.findAll("button")
+				.find((b) => b.text().trim() === "发送回复")
+				?.trigger("click");
+			await flushPromises();
+
+			expect(mockReplyAdminComment).toHaveBeenCalledWith(1, "感谢反馈，已修复。");
+			expect(fetchSpy.mock.calls.length).toBeGreaterThan(before); // queue reloads
 		});
 
 		it("calls deleteAdminComment with confirmation when delete is clicked", async () => {

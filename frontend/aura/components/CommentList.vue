@@ -54,6 +54,16 @@
           <div class="flex-1">
             <div class="flex items-center gap-2 mb-1">
               <span class="font-medium text-sm text-gray-900 dark:text-gray-100">{{ comment.nickname }}</span>
+              <!-- Author reply (DEC-192): an official answer from the blog owner,
+                   distinguished from a commenter so readers trust the source. -->
+              <span
+                v-if="comment.is_author_reply"
+                class="inline-flex items-center gap-0.5 text-[11px] text-blue-600 dark:text-blue-400"
+                :title="t('components.commentList.authorReply')"
+              >
+                <Icon icon="lucide:badge-check" class="w-3.5 h-3.5" />
+                <span>{{ t("components.commentList.authorReply") }}</span>
+              </span>
               <span
                 v-if="comment.reader"
                 class="inline-flex items-center gap-0.5 text-[11px] text-blue-600 dark:text-blue-400"
@@ -191,6 +201,14 @@
                 <Icon icon="lucide:corner-down-right" class="w-3 h-3 inline" />
               </span>
               <span class="font-medium text-sm text-gray-900 dark:text-gray-100">{{ reply.nickname }}</span>
+              <span
+                v-if="reply.is_author_reply"
+                class="text-[11px] text-blue-600 dark:text-blue-400"
+                :title="t('components.commentList.authorReply')"
+              >
+                <Icon icon="lucide:badge-check" class="w-3.5 h-3.5 inline" />
+                {{ t("components.commentList.authorReply") }}
+              </span>
               <span
                 v-if="reply.reader"
                 class="text-[11px] text-blue-600 dark:text-blue-400"

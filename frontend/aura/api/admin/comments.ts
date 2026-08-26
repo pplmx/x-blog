@@ -11,6 +11,8 @@ export interface AdminComment {
 	content: string;
 	ip_address: string;
 	is_approved: boolean;
+	/** Author reply from the moderation queue (DEC-192) — badges the badge. */
+	is_author_reply?: boolean;
 	created_at: string;
 	/** Distinct reader flags (DEC-108, TASK-166). */
 	flag_count?: number;
@@ -107,5 +109,18 @@ export function approveAdminComment(commentId: number, approved: boolean): Promi
 		method: "PATCH",
 		headers: { "Content-Type": "application/json", ...adminAuthHeaders() },
 		body: { approved },
+	});
+}
+
+/**
+ * Reply to a comment as the blog author (DEC-192, TASK-212). The reply is an
+ * immediately-approved, author-flagged comment that notifies the replied-to
+ * reader + thread followers; returns the created comment.
+ */
+export function replyAdminComment(commentId: number, content: string): Promise<AdminComment> {
+	return command<AdminComment>(`/api/admin/comments/${commentId}/reply`, {
+		method: "POST",
+		headers: { "Content-Type": "application/json", ...adminAuthHeaders() },
+		body: { content },
 	});
 }

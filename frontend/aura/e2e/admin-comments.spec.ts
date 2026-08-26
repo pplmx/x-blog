@@ -96,4 +96,53 @@ test.describe("Admin comment management", () => {
 		expect(body.items.every((c) => c.is_approved === false)).toBe(true);
 		expect(body.items.some((c) => c.content.includes("pending filter probe"))).toBe(true);
 	});
+
+	test("admin replies to a comment as the author; the public thread badges it (DEC-192)", async ({
+		page,
+		request,
+	}) => {
+		// beforeEach already signed into /admin/comments; derive the token for
+		// the API seeding/approve calls (approval is what makes the reply action
+		// available — the same rule as the create path).
+		const token = (await page.evaluate(() => localStorage.getItem("admin_token"))) ?? "";
+		const headers = { Authorization: `Bearer ${token}` };
+		const marker = `Follow-up planned? ${Date.now()}`;
+		const post = (
+			(await (await request.get("/api/posts?limit=1")).json()) as {
+				items: Array<{ id: number; slug: string }>;
+			}
+		).items[0];
+
+		// Plant a comment via the public API and approve it via the admin API.
+		const created = await request.post(`/api/comments/post/${post.id}`, {
+			data: { nickname: "CuriousReader", email: "cr@example.com", content: marker },
+		});
+		expect(created.status()).toBe(201);
+		const cid = ((await created.json()) as { id: number }).id;
+		const approved = await request.patch(`/api/comments/${cid}/approve`, {
+			headers,
+			data: { approved: true },
+		});
+		expect(approved.status()).toBe(200);
+
+		// Reload the queue so the newly approved comment is on screen.
+		await page.reload();
+		const row = page.locator(".space-y-3 > div", { hasText: marker }).first();
+		await expect(row).toBeVisible();
+		await row.getByRole("button", { name: "回复" }).click();
+		// Unique reply text: the shared e2e DB accumulates rows across runs, so
+		// a fixed string would strict-mode-match multiple replies.
+		const replyText = `正在写续篇，感谢关注！${Date.now()}`;
+		await row.locator("textarea").fill(replyText);
+		await row.getByRole("button", { name: "发送回复" }).click();
+
+		// The created reply shows up in the queue with the author badge.
+		await expect(page.getByText(replyText).first()).toBeVisible({ timeout: 10000 });
+		await expect(page.getByText("作者回复").first()).toBeVisible({ timeout: 10000 });
+
+		// The public thread renders it with the reader-facing author badge.
+		await page.goto(`/posts/${post.slug}`);
+		await expect(page.getByText(replyText).first()).toBeVisible({ timeout: 10000 });
+		await expect(page.getByText("作者", { exact: true }).first()).toBeVisible();
+	});
 });

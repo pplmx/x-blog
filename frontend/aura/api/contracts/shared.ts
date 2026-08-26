@@ -56,6 +56,9 @@ export interface Comment {
 	nickname: string;
 	content: string;
 	is_approved: boolean;
+	// Author reply from the moderation queue (DEC-192): renders the "author"
+	// badge so readers can tell an official reply from a commenter's comment.
+	is_author_reply?: boolean;
 	likes: number;
 	created_at: string;
 	edited_at?: string | null;

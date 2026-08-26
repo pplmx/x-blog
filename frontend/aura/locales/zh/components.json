@@ -49,6 +49,7 @@
 			"reply": "回复",
 			"cancelReply": "取消回复",
 			"replyingTo": "正在回复 {name}",
+			"authorReply": "作者",
 			"verifiedReader": "已认证读者",
 			"like": "点赞",
 			"liked": "已点赞",

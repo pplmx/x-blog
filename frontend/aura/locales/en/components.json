@@ -49,6 +49,7 @@
 			"reply": "Reply",
 			"cancelReply": "Cancel reply",
 			"replyingTo": "Replying to {name}",
+			"authorReply": "Author",
 			"verifiedReader": "Verified reader",
 			"like": "Like",
 			"liked": "Liked",
