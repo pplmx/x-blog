@@ -362,3 +362,102 @@ class TestPersistenceHooks:
 
         data = client.get(NOTIFS, headers=headers).json()
         assert any(i["kind"] == "thread_comment" for i in data["items"])
+
+
+class TestFanOutPrune:
+    """Batch new-post fan-out prune (ISS-113, DEC-193, TASK-213).
+
+    record_new_post_notifications used to run record_reader_notification's
+    per-reader "SELECT recent-N + DELETE + commit" inside its follower loop —
+    O(2n) queries per publish. It now bulk-inserts, flushes, prunes all touched
+    readers with one set-based window-function delete, and commits once. These
+    tests pin the cap semantics (newest MAX per reader survive) and that the
+    fan-out still lands the new post's row while the inbox stays capped.
+    """
+
+    def test_batch_prune_keeps_newest_per_reader(self, db_session):
+        from app import crud, models
+
+        # Three readers overflowing the cap, one reader below it (untouched).
+        for rid in (1, 2, 3):
+            db_session.add_all(
+                [
+                    models.ReaderNotification(
+                        reader_id=rid, kind="new_post", title=f"{rid}-{i}", body="b", url=f"/p/{i}"
+                    )
+                    for i in range(205)
+                ]
+            )
+        db_session.add(models.ReaderNotification(reader_id=9, kind="reply", title="t", body="b", url="/x"))
+        db_session.flush()
+
+        crud._prune_notifications_for_readers(db_session, {1, 2, 3})
+        db_session.commit()
+
+        from sqlalchemy import func
+
+        assert db_session.query(func.count(models.ReaderNotification.id)).filter(
+            models.ReaderNotification.reader_id.in_((1, 2, 3))
+        ).scalar() == 600
+        assert (
+            db_session.query(models.ReaderNotification)
+            .filter(models.ReaderNotification.reader_id == 1)
+            .count()
+            == 200
+        )
+        # Newest rows (highest id) survive; the oldest are pruned.
+        assert (
+            db_session.query(models.ReaderNotification)
+            .filter(models.ReaderNotification.reader_id == 1, models.ReaderNotification.title == "1-204")
+            .one_or_none()
+            is not None
+        )
+        assert (
+            db_session.query(models.ReaderNotification)
+            .filter(models.ReaderNotification.reader_id == 1, models.ReaderNotification.title == "1-0")
+            .one_or_none()
+            is None
+        )
+        # The reader below the cap is untouched by the batched prune.
+        assert (
+            db_session.query(models.ReaderNotification)
+            .filter(models.ReaderNotification.reader_id == 9)
+            .count()
+            == 1
+        )
+
+    def test_fan_out_lands_new_post_and_stays_capped(self, client, db_session, auth_headers):
+        from app import crud, models
+
+        reg = _register(client, email="fan@example.com")
+        reader_id = reg.json()["reader"]["id"]
+        headers = _auth(reg.json()["access_token"])
+
+        cat = client.post("/api/categories", json={"name": "FanOut"}, headers=auth_headers)
+        cat_id = cat.json()["id"]
+        follow = client.put(f"/api/reader/me/categories/{cat_id}/follow", headers=headers)
+        assert follow.status_code in (200, 201), follow.text
+
+        # Overfill the inbox, then publish: the fan-out must land the new-post
+        # row while pruning back to the cap (205 old + 1 new -> 200).
+        db_session.add_all(
+            [
+                models.ReaderNotification(
+                    reader_id=reader_id, kind="new_post", title=f"old-{i}", body="b", url=f"/posts/old-{i}"
+                )
+                for i in range(205)
+            ]
+        )
+        db_session.commit()
+
+        post = client.post(
+            "/api/posts",
+            json={"title": "Capped post", "slug": "capped-notif-post", "content": "c", "published": True, "category_id": cat_id},
+            headers=auth_headers,
+        )
+        assert post.status_code == 201, post.text
+
+        data = client.get(NOTIFS, headers=headers).json()
+        assert data["total"] == 200  # cap enforced after the fan-out
+        assert any(i["url"] == "/posts/capped-notif-post" for i in data["items"])
+        assert crud.MAX_NOTIFICATIONS_PER_READER == 200  # keep the constant honest

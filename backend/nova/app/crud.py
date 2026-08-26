@@ -2461,6 +2461,38 @@ def delete_reader_account(db: Session, reader_id: int) -> bool:
 MAX_NOTIFICATIONS_PER_READER = 200
 
 
+def _prune_notifications_for_readers(db: Session, reader_ids: set[int]) -> None:
+    """Keep only the newest ``MAX_NOTIFICATIONS_PER_READER`` rows per reader.
+
+    One set-based DELETE over a window function (ROW_NUMBER partitioned by
+    reader, ordered by id desc) — portable across SQLite and PostgreSQL. This
+    is the batched replacement for ``record_reader_notification``'s
+    per-reader "SELECT recent-N + DELETE", which was O(2n) queries in the
+    new-post fan-out (ISS-113, supersedes DEC-176's deferral): a heavily
+    followed post now pays one delete instead of one per follower. Rows
+    just inserted carry the highest ids, so they always rank inside the kept
+    window (a fan-out adds at most one row per reader).
+    """
+    if not reader_ids:
+        return
+    ranked = (
+        select(
+            models.ReaderNotification.id,
+            func.row_number()
+            .over(
+                partition_by=models.ReaderNotification.reader_id,
+                order_by=models.ReaderNotification.id.desc(),
+            )
+            .label("rn"),
+        )
+        .where(models.ReaderNotification.reader_id.in_(reader_ids))
+    ).subquery()
+    over_cap = select(ranked.c.id).where(ranked.c.rn > MAX_NOTIFICATIONS_PER_READER)
+    db.query(models.ReaderNotification).filter(
+        models.ReaderNotification.id.in_(over_cap)
+    ).delete(synchronize_session=False)
+
+
 def record_reader_notification(
     db: Session,
     reader_id: int,
@@ -2558,18 +2590,32 @@ def record_new_post_notifications(db: Session, post: models.Post) -> None:
         # subscriptions with no follow), so an opted-out reader gets neither an
         # inbox row here nor a new_post push.
         prefs = reader_notification_prefs_for(db, target_reader_ids)
+        # Batch the fan-out (ISS-113, supersedes DEC-176): build every row up
+        # front, add all with one flush + one commit, then prune the whole
+        # inbox retention cap for all touched readers with a single set-based
+        # window-function delete — instead of record_reader_notification's
+        # per-reader SELECT-recent-200 + DELETE + commit (O(2n) queries per
+        # publish on a heavily followed post). The single commit also makes the
+        # fan-out atomic: either every follower's inbox row lands or none does.
+        rows: list[models.ReaderNotification] = []
         for reader_id in target_reader_ids:
             if not notification_kind_enabled(prefs.get(reader_id), "new_post"):
                 continue
             is_series_part = reader_id in series_reader_ids
-            record_reader_notification(
-                db,
-                reader_id,
-                kind="series_new_part" if is_series_part else "new_post",
-                title="系列更新" if is_series_part else "新文章发布",
-                body=f"《{post.title or ''}》",
-                url=f"/posts/{post.slug}",
+            rows.append(
+                models.ReaderNotification(
+                    reader_id=reader_id,
+                    kind="series_new_part" if is_series_part else "new_post",
+                    title="系列更新" if is_series_part else "新文章发布",
+                    body=f"《{post.title or ''}》",
+                    url=f"/posts/{post.slug}",
+                )
             )
+        if rows:
+            db.add_all(rows)
+            db.flush()  # assign ids so the prune's id ordering is exact
+            _prune_notifications_for_readers(db, {r.reader_id for r in rows})
+            db.commit()  # inserts + prune land atomically
     except Exception:  # noqa: BLE001 — best effort, never fail the publish
         db.rollback()
 
