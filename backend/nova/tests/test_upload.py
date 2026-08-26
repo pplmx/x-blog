@@ -263,6 +263,45 @@ class TestIngestOptimization:
         finally:
             _delete_file(client, auth_headers, url)
 
+    def test_webp_transparency_preserved(self, client, auth_headers):
+        """Transparent WebP must keep its alpha channel (alpha lives in the
+        pixel data; the same-format re-encode must not flatten it)."""
+        buf = BytesIO()
+        transparent = Image.new("RGBA", (4, 4), (0, 0, 0, 0))  # fully transparent
+        transparent.save(buf, format="WEBP")
+        resp = client.post(
+            "/api/upload",
+            files={"file": ("alpha.webp", buf.getvalue(), "image/webp")},
+            headers=auth_headers,
+        )
+        assert resp.status_code == 200, resp.text
+        url = resp.json()["url"]
+        try:
+            parts = url.split("/")
+            stored = Path(STATIC_DIR) / "uploads" / parts[-3] / parts[-2] / parts[-1]
+            with Image.open(stored) as image:
+                image.load()
+                # Pillow reports "RGBA" for an alpha-bearing WebP (not "RGB").
+                assert "A" in image.mode, f"transparency lost: mode={image.mode}"
+                alpha = image.getchannel("A").getextrema()
+                assert max(alpha) == 0, f"alpha not preserved: {alpha}"
+        finally:
+            _delete_file(client, auth_headers, url)
+
+    def test_optimize_preserves_pixels_and_jpeg_rgb(self):
+        """_optimize_image re-encodes a plain JPEG faithfully (mode stays RGB,
+        opaque white pixels unchanged). The RGBA-composite branch cannot be
+        reached by a real JPEG upload (magic bytes + JPEG's no-alpha format),
+        so this guards the reachable default path."""
+        from app.routers.upload import _optimize_image
+
+        buf = BytesIO()
+        Image.new("RGB", (4, 4), (255, 255, 255)).save(buf, format="JPEG", quality=95)
+        optimized = _optimize_image(buf.getvalue(), "image/jpeg")
+        with Image.open(BytesIO(optimized)) as image:
+            assert image.mode == "RGB"
+            assert image.convert("RGB").getpixel((1, 1)) == (255, 255, 255)
+
 
 # ---------------------------------------------------------------------------
 # Media library (DEC-183): GET /api/upload/files + DELETE .../files/{y}/{m}/{f}

@@ -86,8 +86,18 @@ def _optimize_image(image_bytes: bytes, content_type: str) -> bytes:
         out = BytesIO()
         with Image.open(BytesIO(image_bytes)) as image:
             image.load()  # ensure pixel data is available before re-encode
-            if content_type in {"image/jpeg", "image/webp"}:
-                image = image.convert("RGB")
+            # JPEG has no alpha channel: any transparency must be flattened (to
+            # a white background, not black) or the re-encode would silently
+            # ruin the image. WebP does support alpha, so RGBA/LA/P images keep
+            # their transparency unchanged.
+            if content_type == "image/jpeg":
+                if image.mode in {"RGBA", "LA", "P", "PA"}:
+                    rgba = image.convert("RGBA")
+                    background = Image.new("RGBA", rgba.size, (255, 255, 255, 255))
+                    background.alpha_composite(rgba)
+                    image = background.convert("RGB")
+                else:
+                    image = image.convert("RGB")
             save_kwargs: dict[str, int | bool] = {"optimize": True}
             if quality is not None:
                 save_kwargs["quality"] = quality
