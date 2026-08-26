@@ -2,7 +2,7 @@
   "ril_version": 1,
   "round": 172,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-08-26T14:17:49+00:00",
+  "updated_at": "2026-08-26T14:54:14+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -10295,7 +10295,7 @@
       "version": 1,
       "created_at": "2026-08-24T18:25:16+00:00",
       "updated_at": "2026-08-24T18:25:16+00:00",
-      "touched_round": 169,
+      "touched_round": 172,
       "title": "Defer ISS-113 per-reader prune N+1 in the new-post fan-out",
       "rationale": "record_reader_notification commits + prunes per reader (O(2n) queries) inside record_new_post_notifications' loop. Pre-existing since DEC-160, not a DEC-171 regression (the prefs lookup is batched). Fan-outs are small in practice; changing to one batched commit + window-function prune across SQLite/Postgres risks the freshly-tested fan-out path for marginal gain. Revisit if follower fan-outs grow.",
       "alternatives_rejected": "Declined a per-reader batch prune without window functions (still O(n) queries). Declined changing commit semantics mid-loop (best-effort partial fan-out is intended behavior)."
@@ -11067,6 +11067,69 @@
       "touched_round": 172,
       "source": "Full backend suite 2026-08-26 (author-reply regression guard)",
       "description": "1158 passed / 9 skipped (1153 pre-slice + 5 new TestAdminCommentReply) — the is_author_reply column, migration, and admin reply endpoint introduce no cross-test regression.",
+      "confidence": 1.0
+    },
+    "DEC-193": {
+      "id": "DEC-193",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-26T14:27:28+00:00",
+      "updated_at": "2026-08-26T14:27:28+00:00",
+      "touched_round": 172,
+      "title": "Close ISS-113: batch the new-post fan-out prune (supersedes DEC-176) — one window-function delete instead of per-reader SELECT+DELETE+commit",
+      "rationale": "DEC-176 deferred the O(2n) per-reader prune in record_new_post_notifications 'if follower fan-outs grow' — they have (the blog accumulates series/category followers). Follower count is now the multiplier: a heavily followed post pays n SELECTs + n DELETEs + n commits today. Revisit is sanctioned by revisiting the deferred decision. Fix: build every row, one flush + a single set-based window-function prune (ROW_NUMBER partitioned by reader, portable SQLite/Postgres) + one atomic commit. Single-reader paths (reply/thread) keep record_reader_notification unchanged.",
+      "alternatives_rejected": "Keep per-reader prune (the measured O(2n) cost DEC-176 accepted — now the fan-out multiplier is real); prune only the batch's own rows (wrong — must keep the per-reader cap over the whole inbox, which is what the window function over all rows does); do it with a Python-side grouped sort of all rows then batched not-in delete (window function is a single portable statement, no unbounded IN list)."
+    },
+    "TASK-213": {
+      "id": "TASK-213",
+      "type": "task",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-08-26T14:27:28+00:00",
+      "updated_at": "2026-08-26T14:48:43+00:00",
+      "touched_round": 172,
+      "category": "performance",
+      "severity": 0.55,
+      "confidence": 0.98,
+      "effort": 1.5,
+      "unlock_factor": 1.0,
+      "title": "Batch the new-post notification fan-out prune (ISS-113, DEC-193): single window-function prune + one atomic commit"
+    },
+    "CHG-224": {
+      "id": "CHG-224",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-26T14:48:00+00:00",
+      "updated_at": "2026-08-26T14:48:00+00:00",
+      "touched_round": 172,
+      "commit": "d6bfd1e",
+      "title": "Batch the new-post fan-out prune (ISS-113, DEC-193, TASK-213)",
+      "description": "record_new_post_notifications now bulk-adds rows, flushes once, prunes ALL touched readers via a single set-based window-function delete (ROW_NUMBER partition by reader), and commits once atomically. record_reader_notification (single-reader reply/thread) unchanged."
+    },
+    "EV-135": {
+      "id": "EV-135",
+      "type": "evidence",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-26T14:48:00+00:00",
+      "updated_at": "2026-08-26T14:48:00+00:00",
+      "touched_round": 172,
+      "source": "tests/test_reader_notifications.py::TestFanOutPrune (2); follow + auth suites; VERIFY 2026-08-26",
+      "description": "Batch prune keeps newest 200 per reader (3 overfull + 1 below-cap untouched); API fan-out over an overfilled inbox lands the new post row capped at 200; notifications 17 + follow/auth 50 green, ruff + pyright clean.",
+      "confidence": 1.0
+    },
+    "EV-136": {
+      "id": "EV-136",
+      "type": "evidence",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-26T14:54:14+00:00",
+      "updated_at": "2026-08-26T14:54:14+00:00",
+      "touched_round": 172,
+      "source": "Full backend suite 2026-08-26 (fan-out prune regression guard, solo run)",
+      "description": "1160 passed / 9 skipped (1158 pre-slice + 2 new TestFanOutPrune). A parallel foreground suite earlier clashed on the shared SQLite test DB ('readonly database' — environmental, documented quirk); the solo re-run is clean: the batched prune introduces no regression.",
       "confidence": 1.0
     }
   },
@@ -15844,6 +15907,24 @@
       "to": "TASK-212",
       "type": "implements",
       "created_at": "2026-08-26T14:10:46+00:00"
+    },
+    {
+      "from": "DEC-193",
+      "to": "TASK-213",
+      "type": "governs",
+      "created_at": "2026-08-26T14:27:28+00:00"
+    },
+    {
+      "from": "CHG-224",
+      "to": "TASK-213",
+      "type": "implements",
+      "created_at": "2026-08-26T14:48:00+00:00"
+    },
+    {
+      "from": "DEC-193",
+      "to": "DEC-176",
+      "type": "supersedes",
+      "created_at": "2026-08-26T14:48:00+00:00"
     }
   ]
 }
