@@ -70,10 +70,17 @@ export default defineEventHandler(async (event) => {
 	// runtime's fetch) cannot serialize — every form POST 502'd with
 	// "Cannot convert object to primitive value". Raw passthrough is also
 	// byte-exact, which is what a proxy should be.
-	let body: string | undefined;
+	//
+	// readRawBody(event, false) returns the Buffer, NOT a utf8 string: h3's
+	// default decoded-string form mangles binary bodies (image uploads) — the
+	// invalid-utf8 image bytes collapse to U+FFFD and the backend's magic-byte
+	// check rejects the mutated bytes. Buffers round-trip byte-exact. (Fix
+	// surfaced by the media-library e2e upload; every admin image upload
+	// through this proxy failed with 400 before this.)
+	let body: Buffer | undefined;
 	if (method !== "get" && method !== "head" && getRequestHeader(event, "content-type") !== null) {
 		assertBodyWithinLimit(event);
-		body = await readRawBody(event);
+		body = await readRawBody(event, false);
 	}
 
 	try {

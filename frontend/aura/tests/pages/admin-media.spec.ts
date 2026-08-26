@@ -102,11 +102,7 @@ describe("Admin Media page", () => {
 			await deleteBtn.trigger("click");
 			await flushPromises();
 
-			expect(deleteMock).toHaveBeenCalledWith(
-				unreferenced.year,
-				unreferenced.month,
-				unreferenced.filename,
-			);
+			expect(deleteMock).toHaveBeenCalledWith(unreferenced);
 			expect(refresh).toHaveBeenCalled();
 		} finally {
 			window.confirm = originalConfirm;

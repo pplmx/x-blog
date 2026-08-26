@@ -65,7 +65,7 @@ async function handleDelete(item: UploadFileInfo) {
 	isDeleting.value = true;
 	actionError.value = null;
 	try {
-		await deleteAdminMediaFile(item.year, item.month, item.filename);
+		await deleteAdminMediaFile(item);
 		await refresh();
 	} catch (e) {
 		actionError.value = e instanceof Error ? e.message : t("admin.media.deleteFailed");
