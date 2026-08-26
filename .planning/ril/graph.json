@@ -2,7 +2,7 @@
   "ril_version": 1,
   "round": 172,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-08-26T10:40:46+00:00",
+  "updated_at": "2026-08-26T11:08:19+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -10773,10 +10773,10 @@
     "TASK-209": {
       "id": "TASK-209",
       "type": "task",
-      "status": "active",
-      "version": 1,
+      "status": "resolved",
+      "version": 2,
       "created_at": "2026-08-26T10:40:46+00:00",
-      "updated_at": "2026-08-26T10:40:46+00:00",
+      "updated_at": "2026-08-26T11:08:19+00:00",
       "touched_round": 172,
       "category": "core-feature",
       "severity": 0.7,
@@ -10784,6 +10784,41 @@
       "effort": 1.0,
       "unlock_factor": 1.0,
       "title": "Cover image from media library in the post editor (DEC-187): MediaPickerModal next to cover_image input, pick fills the URL"
+    },
+    "CHG-216": {
+      "id": "CHG-216",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-26T11:08:19+00:00",
+      "updated_at": "2026-08-26T11:08:19+00:00",
+      "touched_round": 172,
+      "commit": "80af193",
+      "title": "Cover-from-media-library in the post editor (DEC-187, TASK-209): picker button + open state + cover fill"
+    },
+    "EV-128": {
+      "id": "EV-128",
+      "type": "evidence",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-26T11:08:19+00:00",
+      "updated_at": "2026-08-26T11:08:19+00:00",
+      "touched_round": 172,
+      "source": "VERIFY 2026-08-26: frontend Vitest 1213 pass (was 1212; +1 cover-picker editor spec); vue-tsc 0 errors; nuxt build green; existing media e2e still green",
+      "details": "Editor spec proves the cover button flips the picker open (distinct from the toolbar instance) and that selecting fills cover_image. Pure frontend slice over the proven picker + media API; backend unchanged and already PG-verified.",
+      "confidence": 1.0
+    },
+    "DEC-188": {
+      "id": "DEC-188",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-26T11:08:19+00:00",
+      "updated_at": "2026-08-26T11:08:19+00:00",
+      "touched_round": 172,
+      "title": "Cover-from-media-library delivered (DEC-187, TASK-209) — editor cover connects to the library; media milestone surface now fully wired",
+      "rationale": "Third feature slice of this milestone run, gap-completing the media library: the editor cover_image field was the last image surface still requiring a hand-typed URL. Reused the proven MediaPickerModal with an independent open state; picking fills the cover field. Backend untouched (already PG-verified for the library) so this is a pure frontend ++ i18n slice + test.",
+      "alternatives_rejected": "Auto-cover from first content image (silent behavior change); dedicated drag-drop cover uploader (feature creep over the reuse path); resize/crop preview (display-side concern)."
     }
   },
   "edges": [
@@ -15488,6 +15523,18 @@
       "to": "TASK-209",
       "type": "governs",
       "created_at": "2026-08-26T10:40:46+00:00"
+    },
+    {
+      "from": "CHG-216",
+      "to": "TASK-209",
+      "type": "implements",
+      "created_at": "2026-08-26T11:08:19+00:00"
+    },
+    {
+      "from": "DEC-188",
+      "to": "TASK-209",
+      "type": "governs",
+      "created_at": "2026-08-26T11:08:19+00:00"
     }
   ]
 }
