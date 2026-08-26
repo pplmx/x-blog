@@ -1,17 +1,32 @@
+import re
 import uuid
+from contextlib import suppress
 from datetime import datetime
 from io import BytesIO
 from pathlib import Path
 
-from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile
+from fastapi import APIRouter, Depends, File, HTTPException, Query, Request, UploadFile
 from PIL import Image, UnidentifiedImageError
+from sqlalchemy.orm import Session
 
+from app import models
 from app.auth import User, get_current_admin
+from app.database import get_db
 from app.limiter import RATE_LIMIT_WRITE, limiter
+from app.schemas import PaginationMeta, UploadFileInfo, UploadListResponse, UploadPostRef
 
 router = APIRouter(prefix="/api/upload", tags=["upload"])
 
 ALLOWED_TYPES = {"image/jpeg", "image/png", "image/gif", "image/webp"}
+
+# Upload filenames are `{uuid4}.{ext}` (see upload_image below); a month dir
+# never holds anything else, so the delete route can whitelist the exact shape
+# rather than defer to the filesystem.
+_FILENAME_RE = re.compile(r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\.(jpg|jpeg|png|gif|webp)$")
+_YEAR_RE = re.compile(r"^20\d{2}$")
+_MONTH_RE = re.compile(r"^(0[1-9]|1[0-2])$")
+# References to uploaded images inside post content/cover_image.
+_UPLOAD_URL_RE = re.compile(r"/static/uploads/(\d{4})/(\d{2})/([0-9a-f-]{36}\.[a-z]+)")
 MAX_SIZE = 5 * 1024 * 1024  # 5MB
 
 # Magic bytes for each allowed image type — the Content-Type header alone is
@@ -97,3 +112,134 @@ async def upload_image(
     filepath.write_bytes(contents)
 
     return {"url": f"/static/uploads/{now.year}/{now.month:02d}/{filename}"}
+
+
+def _collect_upload_references(db: Session) -> dict[str, list[tuple[int, str]]]:
+    """Map `/static/uploads/...` URL -> [(post id, post title)] for every post
+    whose content or cover_image embeds that URL.
+
+    One pass over the posts table (substring scan of the stored markdown), so a
+    media query never turns into an N+1 walk over the uploads directory. The
+    scan is over the exact upload URL form, so a post counts as referencing an
+    image whether it appears inline (content) or as the cover.
+    """
+    refs: dict[str, list[tuple[int, str]]] = {}
+    for post_id, title, content, cover_image in db.query(
+        models.Post.id, models.Post.title, models.Post.content, models.Post.cover_image
+    ).all():
+        joined = " ".join(text for text in (content, cover_image) if text)
+        for url in _UPLOAD_URL_RE.findall(joined):
+            refs.setdefault(f"/static/uploads/{url[0]}/{url[1]}/{url[2]}", []).append((post_id, title))
+    return refs
+
+
+def _upload_file_info(full_path: Path, refs: dict[str, list[tuple[int, str]]]) -> UploadFileInfo:
+    """Derive the media-library row for one stored upload (DEC-183)."""
+    year, month, filename = full_path.parent.parent.name, full_path.parent.name, full_path.name
+    url = f"/static/uploads/{year}/{month}/{filename}"
+    size = full_path.stat().st_size if full_path.exists() else 0
+    width = height = None
+    try:
+        with Image.open(full_path) as image:
+            width, height = image.size
+    except OSError:
+        pass  # filesystem metadata only; dims are best-effort
+    # uploaded_at falls back to the file's mtime when the read/decoded size is
+    # unavailable — the month directory is the upload's authoritative date.
+    uploaded_at = datetime.fromtimestamp(full_path.stat().st_mtime)
+    post_refs = [UploadPostRef(id=post_id, title=title) for post_id, title in refs.get(url, [])]
+    return UploadFileInfo(
+        url=url,
+        year=int(year),
+        month=int(month),
+        filename=filename,
+        size=size,
+        width=width,
+        height=height,
+        uploaded_at=uploaded_at,
+        referenced=bool(post_refs),
+        referencing_posts=post_refs,
+    )
+
+
+@router.get("/files", response_model=UploadListResponse)
+def list_uploaded_files(
+    db: Session = Depends(get_db),
+    page: int = Query(1, ge=1),
+    page_size: int = Query(100, ge=1, le=500),
+    _current_user: User = Depends(get_current_admin),
+):
+    """Admin media library: list every stored upload, newest first.
+
+    Files live flat under static/uploads/YYYY/MM/ (see upload_image), so the
+    listing is a bounded filesystem walk; reference status comes from one scan
+    of the posts table rather than per-file queries.
+    """
+    uploads_root = STATIC_DIR / "uploads"
+    if not uploads_root.is_dir():
+        return UploadListResponse(
+            items=[], pagination=PaginationMeta(total=0, page=page, limit=page_size, total_pages=0)
+        )
+
+    refs = _collect_upload_references(db)
+
+    files: list[tuple[datetime, Path]] = []
+    for year_dir in uploads_root.iterdir():
+        if not year_dir.is_dir():
+            continue
+        for month_dir in year_dir.iterdir():
+            if not month_dir.is_dir():
+                continue
+            for path in month_dir.iterdir():
+                if path.is_file():
+                    files.append((datetime.fromtimestamp(path.stat().st_mtime), path))
+    files.sort(key=lambda pair: pair[0], reverse=True)
+
+    total = len(files)
+    total_pages = (total + page_size - 1) // page_size
+    start = (page - 1) * page_size
+    items = [_upload_file_info(path, refs) for _, path in files[start : start + page_size]]
+    return UploadListResponse(
+        items=items,
+        pagination=PaginationMeta(total=total, page=page, limit=page_size, total_pages=total_pages),
+    )
+
+
+@router.delete("/files/{year}/{month}/{filename}")
+@limiter.limit(f"{RATE_LIMIT_WRITE}/minute")
+def delete_uploaded_file(
+    request: Request,  # noqa: ARG001
+    year: str,
+    month: str,
+    filename: str,
+    db: Session = Depends(get_db),
+    _current_user: User = Depends(get_current_admin),
+):
+    """Delete one uploaded image.
+
+    Refuses when any post still embeds the image (content or cover_image) with a
+    409 listing the referencing posts — matching how category deletion is
+    guarded. Path components are validated against the exact upload shape
+    (4-digit year / zero-padded month / uuid.ext) so traversal is rejected at
+    the boundary, before any filesystem access.
+    """
+    if not _YEAR_RE.match(year) or not _MONTH_RE.match(month) or not _FILENAME_RE.match(filename):
+        raise HTTPException(status_code=400, detail="Invalid upload path")
+    url = f"/static/uploads/{year}/{month}/{filename}"
+    refs = _collect_upload_references(db)
+    if url in refs:
+        titles = ", ".join(title for _, title in refs[url])
+        raise HTTPException(
+            status_code=409,
+            detail=f"Cannot delete image: referenced by post(s): {titles}",
+        )
+
+    filepath = STATIC_DIR / "uploads" / year / month / filename
+    if not filepath.is_file():
+        raise HTTPException(status_code=404, detail="File not found")
+    filepath.unlink()
+    # Prune now-empty month/year directories so the listing stays tidy.
+    for dir_ in (filepath.parent, filepath.parent.parent):
+        with suppress(OSError):
+            dir_.rmdir()
+    return {"message": "Media deleted"}

@@ -196,6 +196,33 @@ def reading_minutes(content: str | None) -> int:
     return max(1, round(words / 200))
 
 
+class UploadPostRef(BaseModel):
+    """A post whose content or cover_image references an uploaded image (DEC-183)."""
+
+    id: int
+    title: str
+
+
+class UploadFileInfo(BaseModel):
+    """One uploaded image in the admin media library (DEC-183)."""
+
+    url: str
+    year: int
+    month: int
+    filename: str
+    size: int
+    width: int | None = None
+    height: int | None = None
+    uploaded_at: datetime
+    referenced: bool
+    referencing_posts: list[UploadPostRef] = []
+
+
+class UploadListResponse(BaseModel):
+    items: list[UploadFileInfo]
+    pagination: PaginationMeta
+
+
 class PostList(BaseModel):
     id: int
     title: str
