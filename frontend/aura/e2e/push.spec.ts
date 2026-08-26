@@ -191,6 +191,58 @@ test.describe("Web Push reader opt-in", () => {
 		expect(authz).toBe(`Bearer ${token}`);
 	});
 
+	test("re-binds a subscription taken while anonymous when a signed-in reader loads a page (ISS-112)", async ({
+		page,
+		request,
+	}) => {
+		// A browser that subscribed BEFORE the reader had an account holds that
+		// subscription as reader_id NULL. Unless it is re-stamped with the
+		// reader's JWT, the new_post opt-out (DEC-171) can never attribute it —
+		// the inbox row is suppressed but the push still lands. Regress that:
+		// subscribing anonymously, then signing in, then loading a fresh page
+		// (already authenticated, no false->true transition) must bind the
+		// existing subscription to the reader.
+		await stubPushStack(page);
+
+		// 1. Subscribe while anonymous (no reader_token in localStorage).
+		await page.goto("/");
+		await page.locator('button[aria-label="订阅新文章通知"]').click();
+		await expect(subscribedBtn(page)).toBeVisible({ timeout: 10000 });
+
+		// 2. The reader account is created after the subscription already exists.
+		const email = `anon-sub-${Date.now()}@example.com`;
+		const reg = await request.post("/api/reader/register", {
+			data: { email, password: "e2epass123", display_name: "E2E Reader" },
+		});
+		expect(reg.status()).toBe(201);
+
+		// 3. Sign in (this page-load transitions isAuthenticated false->true).
+		await page.goto("/login");
+		await page.locator('input[type="email"]').fill(email);
+		await page.locator('input[type="password"]').fill("e2epass123");
+		await page.locator("form").press("Enter");
+		await page.waitForURL("**/bookmarks");
+		await page.waitForFunction(() => !!localStorage.getItem("reader_token"));
+		const token = await page.evaluate(() => localStorage.getItem("reader_token"));
+
+		// 4. Navigate to a fresh page where the reader is ALREADY signed in and
+		//    the browser "still holds" the anonymous subscription. The mount-time
+		//    re-stamp must bind it (the reader's push-subscriptions list surfaces
+		//    only reader-bound subscriptions, so its appearance proves the bind).
+		await page.goto("/");
+		await expect(subscribedBtn(page)).toBeVisible({ timeout: 10000 });
+		await expect(async () => {
+			const res = await request.get("/api/reader/me/push-subscriptions", {
+				headers: { Authorization: `Bearer ${token}` },
+			});
+			expect(res.status()).toBe(200);
+			const body = (await res.json()) as { items: { endpoint: string }[] };
+			expect(body.items.map((i) => i.endpoint)).toContain(
+				"https://127.0.0.1:9/wpush/v2/e2e-endpoint",
+			);
+		}).toPass({ timeout: 15000 });
+	});
+
 	test("unsubscribes on a second click", async ({ page }) => {
 		await stubPushStack(page);
 		const unsubscribe204 = page

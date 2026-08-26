@@ -19,12 +19,30 @@ onMounted(() => {
 	init();
 });
 
-// Re-bind an existing subscription when a reader signs in (safe no-op when
-// there is none / not subscribed; the backend keeps reader_id on anonymous
-// re-stamp, so logout leaves the browser-level subscription untouched).
-watch(isAuthenticated, (signedIn) => {
-	if (signedIn) void syncReaderBinding();
-});
+// Re-bind an existing (previously anonymous) subscription whenever the reader
+// is signed in AND the browser subscription is detected. Safe no-op when there
+// is none / not subscribed; the backend keeps reader_id on anonymous re-stamp,
+// so logout leaves the browser-level subscription untouched (DEC-064).
+//
+// The combined immediate watch is the ISS-112 fix: an isAuthenticated-only,
+// non-immediate watch left anonymous subscriptions unbound forever —
+//  (a) a reader already signed in on load (stored token) never transitions
+//      false->true, so the re-stamp never ran; and
+//  (b) the re-stamp needs `status === "subscribed"`, which is only known after
+//      the async init() settles, so firing on sign-in alone hit the guard too
+//      early and silently no-oped.
+// Watching both refs (immediate covers the already-set initial state) means the
+// first moment both hold true triggers the bind; redundant firings are harmless
+// — syncBackend subscribe is an endpoint-keyed upsert and syncReaderBinding
+// guards on status itself. Once bound, the reader's new_post opt-out (DEC-171)
+// filters this subscription the same way it filters the inbox row.
+watch(
+	[isAuthenticated, status],
+	([signedIn, currentStatus]) => {
+		if (signedIn && currentStatus === "subscribed") void syncReaderBinding();
+	},
+	{ immediate: true },
+);
 
 const visible = computed(() => status.value !== "unsupported" && status.value !== "unconfigured");
 const busy = computed(() => status.value === "subscribing" || status.value === "unsubscribing");

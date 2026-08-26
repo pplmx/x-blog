@@ -145,4 +145,32 @@ describe("SubscribeButton", () => {
 		await nextTick();
 		expect(syncReaderBinding).toHaveBeenCalledOnce();
 	});
+
+	it("re-stamps when a signed-in reader loads the page already subscribed (ISS-112)", async () => {
+		// The reader signed in on a previous page-load (token persists in
+		// localStorage) and the browser subscription already exists — the
+		// false->true transition never happens, so the re-stamp must fire on
+		// mount with both conditions already true. Without an immediate watch
+		// this anonymous subscription stays reader_id NULL forever and keeps
+		// receiving new_post pushes despite the reader's opt-out (DEC-171).
+		status.value = "subscribed";
+		isAuthenticated.value = true;
+		mountButton();
+		expect(syncReaderBinding).toHaveBeenCalledOnce();
+	});
+
+	it("re-stamps once init() reveals an existing subscription for a signed-in reader (ISS-112)", async () => {
+		// On load, status starts "unsupported" until the async init() detects
+		// the browser subscription — so an isAuthenticated-only watch (even
+		// immediate) fires before the guard passes, then keeps silent once
+		// status becomes "subscribed". The combined watch re-evaluates on the
+		// status change, so the first moment both hold true triggers the bind.
+		status.value = "unsupported";
+		isAuthenticated.value = true;
+		mountButton();
+		expect(syncReaderBinding).not.toHaveBeenCalled();
+		status.value = "subscribed"; // init() settled and found a subscription
+		await nextTick();
+		expect(syncReaderBinding).toHaveBeenCalledOnce();
+	});
 });
