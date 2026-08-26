@@ -2,7 +2,7 @@
   "ril_version": 1,
   "round": 172,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-08-26T12:56:20+00:00",
+  "updated_at": "2026-08-26T14:17:49+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -10993,6 +10993,81 @@
       "source": "Full backend suite 2026-08-26 (bulk-delete regression guard)",
       "description": "1153 passed / 9 skipped (1146 pre-slice + 7 new TestMediaLibraryBulkDelete tests) — the new batch endpoint + schema introduce no cross-test regression.",
       "confidence": 1.0
+    },
+    "DEC-192": {
+      "id": "DEC-192",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-26T13:02:59+00:00",
+      "updated_at": "2026-08-26T13:02:59+00:00",
+      "touched_round": 172,
+      "title": "Milestone: author replies from the moderation queue (DEC-192) — reply to a commenter as the blog owner, readers see the reply with an author badge",
+      "rationale": "Engagement gap after the media milestone: the admin comment queue moderates (approve/reject/batch/delete) but the blog owner cannot answer a commenter except by publishing a post reply. The reply-notification machinery already exists (approved replies notify the replied-to reader + thread followers, _notify_comment_approved); an author reply is just an immediately-approved comment (no moderation for the owner) with is_author_reply and an env-configurable author nickname, notified at create. Readers see it inline with an 'author' badge (CommentPublic + CommentList). Zero new dependencies; one additive column (DEC-009 precedent: reviewed_at/edited_at/import_key).",
+      "alternatives_rejected": "Public owner reply by reusing the anonymous reader path with a reserved nickname (relies on a fragile string marker and still leaves reader-facing replies identical to commenters — no way to render the author badge); an author-flagged role on ReaderAccount (only admins/editors reply; an admin account isn't a ReaderAccount, forcing an account just to comment); email replies (out of scope — the blog's notification surface is Web Push/in-app, DEC-055/064)."
+    },
+    "TASK-212": {
+      "id": "TASK-212",
+      "type": "task",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-08-26T13:03:00+00:00",
+      "updated_at": "2026-08-26T14:11:16+00:00",
+      "touched_round": 172,
+      "category": "core-feature",
+      "severity": 0.6,
+      "confidence": 0.95,
+      "effort": 2.2,
+      "unlock_factor": 1.0,
+      "title": "Author reply from the admin comment queue (DEC-192): POST /api/admin/comments/{id}/reply + queue reply UI + public author badge"
+    },
+    "CHG-222": {
+      "id": "CHG-222",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-26T14:10:12+00:00",
+      "updated_at": "2026-08-26T14:10:12+00:00",
+      "touched_round": 172,
+      "commit": "785b854",
+      "title": "Author-reply endpoint + is_author_reply column (DEC-192, TASK-212)",
+      "description": "POST /api/admin/comments/{id}/reply (editor+): approved author-flagged comment, env nickname, parented, fires _notify_comment_approved. Additive column + alembic migration o4a1b2c3d4e5; Comment/CommentPublic/admin list gain the field."
+    },
+    "CHG-223": {
+      "id": "CHG-223",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-26T14:10:12+00:00",
+      "updated_at": "2026-08-26T14:10:12+00:00",
+      "touched_round": 172,
+      "commit": "5ef4ccf",
+      "title": "Author-reply queue UI + public author badge (DEC-192, TASK-212)",
+      "description": "Admin queue reply action (approved comments only) + inline box; CommentList public '作者' badge on top-level and nested-reply branches; replyAdminComment API client; contracts/locales/tests/e2e."
+    },
+    "EV-133": {
+      "id": "EV-133",
+      "type": "evidence",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-26T14:10:13+00:00",
+      "updated_at": "2026-08-26T14:10:13+00:00",
+      "touched_round": 172,
+      "source": "tests/test_admin.py::TestAdminCommentReply (5); frontend tests/admin/comments.spec.ts + CommentList.spec.ts; e2e/admin-comments.spec.ts DEC-192 journey; VERIFY 2026-08-26",
+      "description": "Backend reply tests + comment/notification suites green, ruff+pyright clean; frontend 1219, vue-tsc 0, biome clean; admin-comments e2e 5 pass (queue reply + public author badge in a real browser).",
+      "confidence": 1.0
+    },
+    "EV-134": {
+      "id": "EV-134",
+      "type": "evidence",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-26T14:17:49+00:00",
+      "updated_at": "2026-08-26T14:17:49+00:00",
+      "touched_round": 172,
+      "source": "Full backend suite 2026-08-26 (author-reply regression guard)",
+      "description": "1158 passed / 9 skipped (1153 pre-slice + 5 new TestAdminCommentReply) — the is_author_reply column, migration, and admin reply endpoint introduce no cross-test regression.",
+      "confidence": 1.0
     }
   },
   "edges": [
@@ -15751,6 +15826,24 @@
       "to": "TASK-211",
       "type": "implements",
       "created_at": "2026-08-26T12:50:44+00:00"
+    },
+    {
+      "from": "DEC-192",
+      "to": "TASK-212",
+      "type": "governs",
+      "created_at": "2026-08-26T13:03:00+00:00"
+    },
+    {
+      "from": "CHG-222",
+      "to": "TASK-212",
+      "type": "implements",
+      "created_at": "2026-08-26T14:10:46+00:00"
+    },
+    {
+      "from": "CHG-223",
+      "to": "TASK-212",
+      "type": "implements",
+      "created_at": "2026-08-26T14:10:46+00:00"
     }
   ]
 }
