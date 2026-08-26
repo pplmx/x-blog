@@ -455,9 +455,14 @@ const textareaRef = ref<HTMLTextAreaElement | null>(null);
 const showPreview = ref(false);
 const { uploadImage, isUploading, error: uploadError } = useUpload();
 const showMediaPicker = ref(false);
+const showCoverPicker = ref(false);
 
 function insertFromLibrary(url: string) {
 	insertMarkdown(`![image](${url})`);
+}
+
+function insertCoverFromLibrary(url: string) {
+	formData.value.cover_image = url;
 }
 
 function insertMarkdown(before: string, after = "") {
@@ -944,9 +949,18 @@ function handleFileInput(e: Event) {
             placeholder="https://example.com/image.jpg"
             class="w-full px-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
           >
+          <button
+            type="button"
+            class="shrink-0 px-2.5 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+            :title="t('admin.postEdit.toolbar.coverFromLibrary')"
+            @click="showCoverPicker = true"
+          >
+            <Icon icon="lucide:images" class="w-4 h-4" />
+          </button>
           <label for="cover_image" class="text-sm font-medium text-gray-700 dark:text-gray-300 pt-1.5 whitespace-nowrap">
             {{ t("admin.postEdit.coverImage") }}
           </label>
+          <MediaPickerModal :open="showCoverPicker" @close="showCoverPicker = false" @select="insertCoverFromLibrary" />
         </div>
       </div>
 

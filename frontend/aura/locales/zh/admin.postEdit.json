@@ -53,7 +53,8 @@
 			"heading3": "标题 3",
 			"link": "链接",
 			"uploadImage": "上传图片",
-			"mediaLibrary": "从媒体库插入"
+			"mediaLibrary": "从媒体库插入",
+			"coverFromLibrary": "从媒体库选择封面"
 		},
 		"loading": "加载中...",
 		"unsavedConfirm": "你有未保存的更改，确定离开吗？",

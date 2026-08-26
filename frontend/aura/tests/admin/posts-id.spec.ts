@@ -503,6 +503,36 @@ describe("Admin Post Editor Page", () => {
 			const wrapper = await mountWithSuspense(PostEditor);
 			expect(wrapper.text()).toContain("封面图 URL");
 		});
+
+		it("cover picker button opens the media library modal and fills the cover field", async () => {
+			const PostEditor = await loadPage();
+			// Stub the picker (it mounts an async media fetch we don't want to
+			// exercise here) and capture the open prop + emitted select.
+			const wrapper = await mountWithSuspense(PostEditor, {
+				MediaPickerModal: {
+					props: ["open"],
+					template:
+						'<div data-testid="media-picker" :data-open="String(open)"><button @click="$emit(\'select\', \'/static/uploads/2026/07/x.png\'); $emit(\'close\')">pick</button></div>',
+				},
+			});
+			// The cover row has its own media-library button (distinct title from
+			// the content toolbar's insert button, DEC-187).
+			const coverPickers = wrapper.findAll('button[title="从媒体库选择封面"]');
+			expect(coverPickers.length).toBeGreaterThan(0);
+			await coverPickers[0].trigger("click");
+			// The picker's `open` prop flips to true (rendered, not a setup
+			// snapshot). There are two MediaPickerModal instances (content
+			// toolbar + cover); the cover button must open the cover one.
+			const pickers = wrapper.findAll('[data-testid="media-picker"]');
+			expect(pickers.some((p) => p.attributes("data-open") === "true")).toBe(true);
+			// And picking on the OPEN picker fills the cover field.
+			const openPicker = pickers.find((p) => p.attributes("data-open") === "true")!;
+			await openPicker.find("button").trigger("click");
+
+			expect((wrapper.find("#cover_image").element as HTMLInputElement).value).toBe(
+				"/static/uploads/2026/07/x.png",
+			);
+		});
 	});
 
 	describe("Web Push notify (DEC-055)", () => {

@@ -53,7 +53,8 @@
 			"heading3": "Heading 3",
 			"link": "Link",
 			"uploadImage": "Upload image",
-			"mediaLibrary": "Insert from media library"
+			"mediaLibrary": "Insert from media library",
+			"coverFromLibrary": "Pick cover from media library"
 		},
 		"loading": "Loading...",
 		"unsavedConfirm": "You have unsaved changes. Leave without saving?",

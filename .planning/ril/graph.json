@@ -2,7 +2,7 @@
   "ril_version": 1,
   "round": 172,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-08-26T10:25:23+00:00",
+  "updated_at": "2026-08-26T10:40:46+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -10665,11 +10665,11 @@
     "ISS-115": {
       "id": "ISS-115",
       "type": "issue",
-      "status": "active",
-      "version": 1,
+      "status": "resolved",
+      "version": 2,
       "created_at": "2026-08-26T09:51:54+00:00",
-      "updated_at": "2026-08-26T09:51:54+00:00",
-      "touched_round": 171,
+      "updated_at": "2026-08-26T10:38:00+00:00",
+      "touched_round": 172,
       "title": "Nuxt API proxy read request bodies as UTF-8 strings, corrupting binary image uploads (backend 400 magic-byte mismatch); surfaced by the media-library e2e"
     },
     "EV-126": {
@@ -10757,6 +10757,33 @@
       "title": "Milestone closed: ingest image optimization delivered (DEC-185, TASK-208) — smaller uploads, EXIF/GPS stripped, never-larger",
       "rationale": "Second feature in this extended milestone run (after the media library, DEC-183/184). Uploads are now optimized at ingest with identical format/URL, dropping EXIF/GPS (privacy win for anonymous readers) and shrinking storage with a never-larger guarantee; GIF preserved and re-encode failures fall back to validated originals (never a new rejection path). Pure backend slice over the media library; other work was possible (media library e2e, backlog scan) but this was the recorded deferred intent (DEC-183 alternatives_rejected) and the highest-value bounded next slice.",
       "alternatives_rejected": "Downscale to fixed dimensions (loses resolution without consent); transcode everything to WebP (extension change breaks references); client-side-only optimization (misses API/paste uploads); skip (uploads keep leaking EXIF/GPS + inevitable size growth)."
+    },
+    "DEC-187": {
+      "id": "DEC-187",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-26T10:40:46+00:00",
+      "updated_at": "2026-08-26T10:40:46+00:00",
+      "touched_round": 172,
+      "title": "Cover image from the media library (milestone completion): let the post editor pick the card cover from uploaded images instead of hand-typing a URL",
+      "rationale": "Milestone completion slice (§11.2, builds directly on DEC-183 media library). The post editor still requires the author to hand-type/paste the cover image URL into a text field, while the media library (just delivered) is the natural source — this is the one remaining editor surface not connected to it, and the cover is the most-public image of a post (cards, OG tags, sitemap). Slice: reuse MediaPickerModal next to the cover_image text input; a pick button opens the library, selecting an image fills formData.cover_image with its /static/uploads/... URL. Pure frontend, reuses the proven picker + media API; backend unchanged. Verified by Vitest + existing e2e paths.",
+      "alternatives_rejected": "A separate drag-and-drop cover uploader (feature creep; the editor already has inline-upload for content images and the library covers reuse); auto-cover from first content image (silent behavior change, may pick an illustration not meant as cover); resize/crop cover preview (out of scope; cover dims are display-side)."
+    },
+    "TASK-209": {
+      "id": "TASK-209",
+      "type": "task",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-26T10:40:46+00:00",
+      "updated_at": "2026-08-26T10:40:46+00:00",
+      "touched_round": 172,
+      "category": "core-feature",
+      "severity": 0.7,
+      "confidence": 0.95,
+      "effort": 1.0,
+      "unlock_factor": 1.0,
+      "title": "Cover image from media library in the post editor (DEC-187): MediaPickerModal next to cover_image input, pick fills the URL"
     }
   },
   "edges": [
@@ -15455,6 +15482,12 @@
       "to": "TASK-208",
       "type": "governs",
       "created_at": "2026-08-26T10:25:23+00:00"
+    },
+    {
+      "from": "DEC-187",
+      "to": "TASK-209",
+      "type": "governs",
+      "created_at": "2026-08-26T10:40:46+00:00"
     }
   ]
 }
