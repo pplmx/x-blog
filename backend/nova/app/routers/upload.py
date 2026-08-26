@@ -13,7 +13,13 @@ from app import models
 from app.auth import User, get_current_admin
 from app.database import get_db
 from app.limiter import RATE_LIMIT_WRITE, limiter
-from app.schemas import PaginationMeta, UploadFileInfo, UploadListResponse, UploadPostRef
+from app.schemas import (
+    PaginationMeta,
+    UploadBatchDeleteRequest,
+    UploadFileInfo,
+    UploadListResponse,
+    UploadPostRef,
+)
 
 router = APIRouter(prefix="/api/upload", tags=["upload"])
 
@@ -302,3 +308,77 @@ def delete_uploaded_file(
         with suppress(OSError):
             dir_.rmdir()
     return {"message": "Media deleted"}
+
+
+def _parse_upload_url(url: str) -> tuple[str, str, str] | None:
+    """Split a /static/uploads/Y/M/F url into (year, month, filename) exactly.
+
+    The same strict shape as the single-delete route (4-digit year /
+    zero-padded month / uuid.ext) so a batch can never touch the filesystem
+    with a malformed or traversing path — anything else parses to None.
+    """
+    prefix = "/static/uploads/"
+    if not url.startswith(prefix):
+        return None
+    rest = url[len(prefix) :]
+    if rest.count("/") != 2:
+        return None
+    year, month, filename = rest.split("/")
+    if not (_YEAR_RE.match(year) and _MONTH_RE.match(month) and _FILENAME_RE.match(filename)):
+        return None
+    return year, month, filename
+
+
+@router.post("/files/batch-delete", response_model=dict[str, int])
+@limiter.limit(f"{RATE_LIMIT_WRITE}/minute")
+def delete_uploaded_files_batch(
+    request: Request,  # noqa: ARG001
+    body: UploadBatchDeleteRequest,
+    db: Session = Depends(get_db),
+    _current_user: User = Depends(get_current_admin),
+):
+    """Delete many uploaded images in one action (media bulk delete, DEC-191).
+
+    The admin media library keeps hundreds of files with no way to clean up
+    except one-by-one; this mirrors the comment batch-delete pattern (DEC-110):
+    a capped request that validates every URL against the exact upload shape,
+    then refuses the WHOLE batch with a 409 listing the referencing posts if
+    ANY image is still embedded (fail-closed — same guard as the single delete,
+    so bulk is never a way around the reference check). Missing files are
+    skipped (idempotent) rather than failing the rest of the batch.
+    """
+    if not body.urls:
+        return {"deleted": 0}
+
+    parsed: list[tuple[str, str, str]] = []
+    invalid: list[str] = []
+    for url in body.urls:
+        parts = _parse_upload_url(url)
+        if parts is None:
+            invalid.append(url)
+        else:
+            parsed.append(parts)
+    if invalid:
+        raise HTTPException(status_code=400, detail=f"Invalid upload path(s): {', '.join(invalid)}")
+
+    refs = _collect_upload_references(db)
+    referenced: dict[str, list[tuple[int, str]]] = {}
+    for year, month, filename in parsed:
+        url = f"/static/uploads/{year}/{month}/{filename}"
+        if url in refs:
+            referenced[url] = refs[url]
+    if referenced:
+        block = "; ".join(f"{u} ({', '.join(t for _, t in posts)})" for u, posts in referenced.items())
+        raise HTTPException(status_code=409, detail=f"Cannot delete images referenced by post(s): {block}")
+
+    deleted = 0
+    for year, month, filename in parsed:
+        filepath = STATIC_DIR / "uploads" / year / month / filename
+        if not filepath.is_file():
+            continue  # already gone — keep the batch idempotent
+        filepath.unlink()
+        for dir_ in (filepath.parent, filepath.parent.parent):
+            with suppress(OSError):
+                dir_.rmdir()
+        deleted += 1
+    return {"deleted": deleted}

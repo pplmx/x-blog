@@ -223,6 +223,12 @@ class UploadListResponse(BaseModel):
     pagination: PaginationMeta
 
 
+class UploadBatchDeleteRequest(BaseModel):
+    """URLs to batch-delete (media library bulk delete, DEC-191)."""
+
+    urls: list[str] = Field(default_factory=list, max_length=50)
+
+
 class PostList(BaseModel):
     id: int
     title: str

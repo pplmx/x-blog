@@ -485,3 +485,87 @@ class TestMediaLibrary:
             headers=auth_headers,
         )
         assert resp.status_code == 404
+
+
+# ---------------------------------------------------------------------------
+# Media library bulk delete (DEC-191, TASK-211): POST /api/upload/files/batch-delete
+# ---------------------------------------------------------------------------
+
+
+def _batch_delete(client, auth_headers, urls: list[str]):
+    return client.post(
+        "/api/upload/files/batch-delete",
+        json={"urls": urls},
+        headers=auth_headers,
+    )
+
+
+class TestMediaLibraryBulkDelete:
+    """Batch delete: capped, shape-validated, fail-closed on references."""
+
+    def test_batch_delete_requires_auth(self, client):
+        resp = _batch_delete(client, {}, ["/static/uploads/2026/07/x.png"])
+        assert resp.status_code == 401
+
+    def test_batch_delete_clean_batch(self, client, auth_headers):
+        urls = [_upload_and_get_url(client, auth_headers) for _ in range(3)]
+        resp = _batch_delete(client, auth_headers, urls)
+        assert resp.status_code == 200, resp.text
+        assert resp.json() == {"deleted": 3}
+        listing = client.get("/api/upload/files", headers=auth_headers).json()
+        assert all(item["url"] not in urls for item in listing["items"])
+        # Each file is gone from disk (month/year dirs are pruned when empty,
+        # but the shared static dir may hold unrelated uploads from other runs,
+        # so assert on the files themselves).
+        for url in urls:
+            parts = url.split("/")
+            assert not (Path(STATIC_DIR) / "uploads" / parts[-3] / parts[-2] / parts[-1]).exists()
+
+    def test_batch_delete_referenced_rejected_fail_closed(self, client, auth_headers, db_session):
+        """Any referenced image blocks the WHOLE batch (nothing deleted)."""
+        a = _upload_and_get_url(client, auth_headers)
+        b = _upload_and_get_url(client, auth_headers)
+        try:
+            post = models.Post(
+                title="Refs a",
+                slug="refs-a",
+                content=f"![x]({a})",
+                published=False,
+            )
+            db_session.add(post)
+            db_session.commit()
+            resp = _batch_delete(client, auth_headers, [a, b])
+            assert resp.status_code == 409, resp.text
+            assert "referenced by post" in resp.json()["error"]["message"]
+            # Neither file was deleted.
+            listing = client.get("/api/upload/files", headers=auth_headers).json()
+            assert {item["url"] for item in listing["items"]} >= {a, b}
+        finally:
+            _delete_file(client, auth_headers, a)
+            _delete_file(client, auth_headers, b)
+
+    def test_batch_delete_invalid_path_rejected(self, client, auth_headers):
+        resp = _batch_delete(client, auth_headers, ["/static/uploads/etc/passwd.png"])
+        assert resp.status_code == 400, resp.text
+        resp = _batch_delete(client, auth_headers, ["/static/uploads/2026/07/not-a-uuid.png"])
+        assert resp.status_code == 400, resp.text
+
+    def test_batch_delete_missing_files_skipped(self, client, auth_headers):
+        """Valid-shape but absent files are skipped, not errored (idempotent)."""
+        present = _upload_and_get_url(client, auth_headers)
+        ghost = "/static/uploads/2026/07/00000000-0000-0000-0000-000000000999.png"
+        resp = _batch_delete(client, auth_headers, [present, ghost])
+        assert resp.status_code == 200, resp.text
+        assert resp.json() == {"deleted": 1}
+        listing = client.get("/api/upload/files", headers=auth_headers).json()
+        assert all(item["url"] != present for item in listing["items"])
+
+    def test_batch_delete_empty_noop(self, client, auth_headers):
+        resp = _batch_delete(client, auth_headers, [])
+        assert resp.status_code == 200
+        assert resp.json() == {"deleted": 0}
+
+    def test_batch_delete_cap_enforced(self, client, auth_headers):
+        urls = [f"/static/uploads/2026/07/{i:08d}-0000-0000-0000-000000000000.png" for i in range(51)]
+        resp = _batch_delete(client, auth_headers, urls)
+        assert resp.status_code == 422, resp.text
