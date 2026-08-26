@@ -2,7 +2,7 @@
   "ril_version": 1,
   "round": 172,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-08-26T09:55:04+00:00",
+  "updated_at": "2026-08-26T10:25:23+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -10695,6 +10695,68 @@
       "title": "Milestone closed: admin media library delivered end-to-end (DEC-183, TASK-207) — browse, reuse, and safely delete uploaded images",
       "rationale": "Feature-evolution milestone (per operator directive \"start a new milestone\"). DEC-183 chose the media library via §11.2 gap analysis; TASK-207 delivered in four slices, all green: backend list + reference-aware delete API (test_upload 22 pass, ruff clean, pyright 0); frontend /admin/media page + api/admin/media + MediaPickerModal + editor insert-from-library (full Vitest 1212 + vue-tsc + nuxt build); docs (README en/zh feature + API rows + refreshed stale test counts); a real Playwright e2e proving upload->library->copy->delete, plus two integration bugs it surfaced that are now fixed: (1) the API proxy read request bodies as UTF-8 strings, so every binary image upload through the deployed topology was corrupted (backend 400) — readRawBody(event, false) byte-exact Buffers (ISS-115 -> CHG-213); (2) media delete built the path from month int (8) vs zero-padded dir (2026/08) -> 400 — now derived from the URL. Backend verified against dev pg (10.112.9.49:13310) per operator note; e2e ran against the live stack.",
       "alternatives_rejected": "PWA/offline (rejected repeatedly, no backend value); email digest (SMTP infra, large scope); comment reactions (relitigated low value); WebP/downscale auto-transcode (risk to proven upload validation; a future slice could add it on top of the library); DB-backed media table (filesystem + read-only scan is sufficient at blog scale, zero DDL per DEC-009)."
+    },
+    "DEC-185": {
+      "id": "DEC-185",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-26T10:06:59+00:00",
+      "updated_at": "2026-08-26T10:06:59+00:00",
+      "touched_round": 172,
+      "title": "Milestone: optimize uploaded images at ingest (smaller storage/page weight, EXIF stripped) — next feature after the media library (DEC-183 deferred it)",
+      "rationale": "Feature-evolution gap analysis (§11.2) + recorded backlog: DEC-183 explicitly deferred \"automatic image downscaling/WebP transcoding\" as a later slice on top of the media library (rejected there only as scope, not value). Today upload_image stores bytes verbatim, so a phone-camera 3MB JPEG stays 3MB forever and carries EXIF (often GPS) to every reader — page weight cost and a privacy leak for a blog that serves these images to anonymous visitors. Deliver a pure backend slice: after the existing magic-byte + Pillow-decode validation (kept as step one, unchanged contract), re-encode through Pillow in the SAME format (ext/URL unchanged, so reference-tracking and existing markdown stay valid; zero DDL per DEC-009) with size-optimizing settings (JPEG 85%/optimize/progressive, PNG optimize, WebP method 6; GIF/animated left as-is), and only keep the result if it is actually smaller than the original (never-larger guarantee). EXIF/GPS is dropped by the re-encode (Pillow only preserves it when explicitly passed). Any re-encode failure falls back to the original validated bytes (never reject a valid upload).",
+      "alternatives_rejected": "Downscale to fixed dimensions/thumbnails (changes intrinsic image data readers may want; the library lists real dimensions so a capped-width compression should not silently destroy resolution — later slice can add responsive sizes on top); transcode everything to WebP (changes extension -> breaks every existing /static/uploads/... reference and markdown; not net-safe); strip EXIF via exifread without re-encode (Pillow re-save already drops it and also shrinks); client-side optimization only (backend ingest covers all clients incl. paste/API)."
+    },
+    "TASK-208": {
+      "id": "TASK-208",
+      "type": "task",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-08-26T10:06:59+00:00",
+      "updated_at": "2026-08-26T10:25:23+00:00",
+      "touched_round": 172,
+      "category": "core-feature",
+      "severity": 0.8,
+      "confidence": 0.95,
+      "effort": 2.0,
+      "unlock_factor": 1.5,
+      "title": "Optimize uploaded images at ingest (DEC-185): Pillow same-format re-encode with never-larger guarantee + fallback; EXIF stripped; media e2e still green"
+    },
+    "CHG-215": {
+      "id": "CHG-215",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-26T10:24:35+00:00",
+      "updated_at": "2026-08-26T10:24:35+00:00",
+      "touched_round": 172,
+      "commit": "d5b4a04",
+      "title": "Ingest image optimization (DEC-185, TASK-208): same-format Pillow re-encode, never-larger, EXIF stripped, GIF verbatim"
+    },
+    "EV-127": {
+      "id": "EV-127",
+      "type": "evidence",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-26T10:24:35+00:00",
+      "updated_at": "2026-08-26T10:24:35+00:00",
+      "touched_round": 172,
+      "source": "VERIFY 2026-08-26: backend full suite 1143 passed / 9 skipped (was 1139; +4 optimization tests); ruff + pyright clean; Playwright admin-media e2e still green against the live stack with optimization enabled",
+      "details": "test_upload 26 pass incl. EXIF-strip (JPEG with GPS IFD stores without getexif()), never-larger guarantee (stored size <= original), GIF byte-identical, WebP re-encode decodable. Regression guard: full backend suite + media e2e both green after the ingest change.",
+      "confidence": 1.0
+    },
+    "DEC-186": {
+      "id": "DEC-186",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-26T10:25:23+00:00",
+      "updated_at": "2026-08-26T10:25:23+00:00",
+      "touched_round": 172,
+      "title": "Milestone closed: ingest image optimization delivered (DEC-185, TASK-208) — smaller uploads, EXIF/GPS stripped, never-larger",
+      "rationale": "Second feature in this extended milestone run (after the media library, DEC-183/184). Uploads are now optimized at ingest with identical format/URL, dropping EXIF/GPS (privacy win for anonymous readers) and shrinking storage with a never-larger guarantee; GIF preserved and re-encode failures fall back to validated originals (never a new rejection path). Pure backend slice over the media library; other work was possible (media library e2e, backlog scan) but this was the recorded deferred intent (DEC-183 alternatives_rejected) and the highest-value bounded next slice.",
+      "alternatives_rejected": "Downscale to fixed dimensions (loses resolution without consent); transcode everything to WebP (extension change breaks references); client-side-only optimization (misses API/paste uploads); skip (uploads keep leaking EXIF/GPS + inevitable size growth)."
     }
   },
   "edges": [
@@ -15375,6 +15437,24 @@
       "to": "TASK-207",
       "type": "governs",
       "created_at": "2026-08-26T09:55:04+00:00"
+    },
+    {
+      "from": "DEC-185",
+      "to": "TASK-208",
+      "type": "governs",
+      "created_at": "2026-08-26T10:06:59+00:00"
+    },
+    {
+      "from": "CHG-215",
+      "to": "TASK-208",
+      "type": "implements",
+      "created_at": "2026-08-26T10:25:23+00:00"
+    },
+    {
+      "from": "DEC-186",
+      "to": "TASK-208",
+      "type": "governs",
+      "created_at": "2026-08-26T10:25:23+00:00"
     }
   ]
 }
