@@ -2,7 +2,7 @@
   "ril_version": 1,
   "round": 172,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-08-26T11:58:43+00:00",
+  "updated_at": "2026-08-26T12:25:16+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -10186,11 +10186,11 @@
     "ISS-112": {
       "id": "ISS-112",
       "type": "issue",
-      "status": "active",
-      "version": 1,
+      "status": "resolved",
+      "version": 2,
       "created_at": "2026-08-24T17:47:18+00:00",
-      "updated_at": "2026-08-24T17:47:18+00:00",
-      "touched_round": 169,
+      "updated_at": "2026-08-26T12:25:16+00:00",
+      "touched_round": 172,
       "title": "Anonymous push subscriptions bypass the new_post opt-out (DEC-171)",
       "summary": "A push subscription created before a reader had an account has reader_id NULL, so dispatch_new_post's opt-out filter can't attribute it to the reader. The inbox row IS suppressed (record_new_post_notifications keys off the follower's known reader_id) but the push still lands. Inherent (no identity on the anonymous sub); the webpush.py comment documents the tradeoff. Recorded from code review; no code change this milestone."
     },
@@ -10880,6 +10880,42 @@
       "touched_round": 172,
       "source": "tests/test_upload.py::TestMediaLibrary::test_list_filename_search; e2e/admin-media.spec.ts search step; frontend tests/pages/admin-media.spec.ts (1214 total)",
       "description": "q filter verified: exact-uuid hits one, nonsense hits zero, shared extension hits both (29 upload tests green); browser e2e: search narrows to the matching card and clearing restores it; full frontend 1214 pass, vue-tsc 0; full backend suite re-ran with the new test in this slice",
+      "confidence": 1.0
+    },
+    "DEC-190": {
+      "id": "DEC-190",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-26T12:23:23+00:00",
+      "updated_at": "2026-08-26T12:23:23+00:00",
+      "touched_round": 172,
+      "title": "ISS-112 fix: re-bind anonymous push subscriptions on reader sign-in (frontend timing fix, not backend)",
+      "rationale": "The backend already binds on re-subscribe (reader_id or existing.reader_id) and dispatch_new_post already applies the DEC-171 opt-out to bound subscriptions, so the leak was purely frontend: an isAuthenticated-only non-immediate watch in SubscribeButton never re-stamped an already-signed-in page load, and fired before init() settled which the status==='subscribed' guard then silently dropped, leaving reader_id NULL forever. Fix: watch [isAuthenticated, status] with immediate:true so the first moment both hold triggers syncReaderBinding; redundant firings are harmless (endpoint-keyed upsert).",
+      "alternatives_rejected": "Backend identity back-fill (impossible — an anonymous endpoint has no stable device token to attribute; the subscription only becomes attributable at sign-in time when the browser can present the reader JWT); force readers to re-subscribe after login (worse UX and still misses already-subscribed browsers on reload); server-side opt-out that treats anonymous subs as opted-out (would break legitimate anonymous new_post subscribers — the opt-out is reader intent, not browser intent, DEC-171)."
+    },
+    "CHG-219": {
+      "id": "CHG-219",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-26T12:23:44+00:00",
+      "updated_at": "2026-08-26T12:23:44+00:00",
+      "touched_round": 172,
+      "commit": "d59f889",
+      "title": "Re-bind anonymous push subscriptions on reader sign-in (ISS-112)",
+      "description": "SubscribeButton watches [isAuthenticated, status] with immediate:true and re-stamps when both true; covers already-signed-in page loads (non-immediate hole) and init-settles-later (status guard hole). Backend untouched."
+    },
+    "EV-130": {
+      "id": "EV-130",
+      "type": "evidence",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-26T12:23:44+00:00",
+      "updated_at": "2026-08-26T12:23:44+00:00",
+      "touched_round": 172,
+      "source": "frontend tests/components/SubscribeButton.spec.ts (2 new); e2e/push.spec.ts ISS-112 journey; VERIFY 2026-08-26",
+      "description": "Component tests pin both holes (R->G); browser e2e: anonymous subscribe -> UI sign-in -> fresh page load re-binds, proven by /me/push-subscriptions returning the endpoint (only reader-bound subs surface); full frontend 1216, vue-tsc 0, biome clean, push e2e 6 pass, backend full 1146/9.",
       "confidence": 1.0
     }
   },
@@ -15615,6 +15651,12 @@
       "to": "TASK-210",
       "type": "implements",
       "created_at": "2026-08-26T11:58:31+00:00"
+    },
+    {
+      "from": "CHG-219",
+      "to": "ISS-112",
+      "type": "resolves",
+      "created_at": "2026-08-26T12:25:16+00:00"
     }
   ]
 }
