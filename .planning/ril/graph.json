@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 171,
+  "round": 172,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-08-25T17:33:52+00:00",
+  "updated_at": "2026-08-26T09:55:04+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -22,7 +22,7 @@
       "version": 1,
       "created_at": "2026-08-06T13:23:41+00:00",
       "updated_at": "2026-08-06T13:23:41+00:00",
-      "touched_round": 169,
+      "touched_round": 171,
       "title": "frontend-aura",
       "description": "Nuxt 4 Vue 3 TypeScript frontend at frontend/aura; composables; admin pages; e2e Playwright; biome lint"
     },
@@ -10586,10 +10586,115 @@
       "version": 1,
       "created_at": "2026-08-25T17:33:52+00:00",
       "updated_at": "2026-08-25T17:33:52+00:00",
-      "touched_round": 171,
+      "touched_round": 172,
       "title": "converged-idle: quality-convergence stop conditions met after the series_new_part fix (ISS-114/CHG-210) + closing bookkeeping",
       "rationale": "No active task above the 3.0 threshold (0 active tasks). High-severity issues: ISS-114 resolved by CHG-210/TASK-206 this session; the remaining active issues carry explicit deferral/acceptance decisions (ISS-108 -> DEC-164 + DEC-174, ISS-112 -> DEC-175, ISS-113 -> DEC-176). Most recent VERIFY all green (backend 1129 passed / 9 skipped / 94.62% cov; frontend 1205 passed). Two deep-dive rounds surfaced nothing new at or above 3.0 (no TODOs/FIXMEs, clean tree, i18n complete for the newly emitted kind, no useFetch outside the transport seam, no e2e label assumptions regressed). RIL consistency check passes (856 nodes / 768 edges).",
       "alternatives_rejected": "Relight ISS-113 (O(2n) fan-out prune) against DEC-176 without follower-growth evidence - computed score below 3.0 and the decision defers to that trigger; add an ISS-112 anonymous-sub UI footnote - docs-level, far below threshold; keep scanning for cosmetic/sub-threshold churn - would only produce empty round-tick commits; start feature evolution - no feature-evolution decision exists, so the engine stays in converged quality-convergence mode."
+    },
+    "DEC-183": {
+      "id": "DEC-183",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-26T07:14:11+00:00",
+      "updated_at": "2026-08-26T07:14:11+00:00",
+      "touched_round": 171,
+      "title": "Milestone: admin media library — browse, reuse, and safely delete uploaded images (uploads are currently a one-shot dead-end)",
+      "rationale": "Feature-evolution gap analysis (§11.2): upload.py lets an admin upload an image and get a URL back (POST /api/upload, magic-byte + Pillow-verified, 5MB, admin-only since DEC-015-era hardening), but there is no way to list what has been uploaded, reuse an image across posts, or delete one — every upload writes /static/uploads/YY/MM/<uuid>.<ext> forever, so on a blog with many posts the uploads directory accumulates unreferenced files with no cleanup path and authors cannot recover a past image URL after losing it. Deliver a vertical slice: GET /api/upload/files (admin-only listing with per-file metadata + in-post reference status), DELETE /api/upload/files/{year}/{month}/{filename} (admin-only, refuses deletion of images referenced by any post content or cover_image), a frontend /admin/media page (grid, preview, copy-URL, delete with ref-status), and an insert-from-library picker in the post editor toolbar that inserts the markdown at the cursor. Pure filesystem walk + read-only scan of Post.content/cover_image for /static/uploads/ references — no DB schema change (respects DEC-009 DDL-preserving constraint). Backend verified against dev pg (10.112.9.49:13310, per operator directive); frontend verified via Vitest + build + e2e.",
+      "alternatives_rejected": "Email/RSS digest subscriptions (needs SMTP infra + a whole deliverability surface, much larger scope); comment reactions / like buttons on comments (relitigated at DEC-059/062, low marginal value); PWA offline shell (rejected repeatedly, no backend involvement); automatic image downscaling/WebP transcoding (would risk the proven upload validation path and needs new deps; a later milestone can add it on top of the library); a DB-backed media table (over-engineered for a filesystem-backed store; reference scan is read-only and cheap at blog scale)."
+    },
+    "TASK-207": {
+      "id": "TASK-207",
+      "type": "task",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-08-26T07:14:33+00:00",
+      "updated_at": "2026-08-26T09:53:47+00:00",
+      "touched_round": 172,
+      "category": "core-feature",
+      "severity": 0.8,
+      "confidence": 0.95,
+      "effort": 2.0,
+      "unlock_factor": 1.5,
+      "title": "Admin media library (DEC-183): list + reference-aware delete backend, /admin/media page, insert-from-library picker in the post editor"
+    },
+    "CHG-211": {
+      "id": "CHG-211",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-26T09:47:38+00:00",
+      "updated_at": "2026-08-26T09:47:38+00:00",
+      "touched_round": 171,
+      "commit": "b0ed8e7",
+      "title": "Frontend media library (DEC-183, TASK-207): /admin/media page, api/admin/media, MediaPickerModal, editor insert-from-library"
+    },
+    "CHG-212": {
+      "id": "CHG-212",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-26T09:47:39+00:00",
+      "updated_at": "2026-08-26T09:47:39+00:00",
+      "touched_round": 171,
+      "commit": "1e0284c",
+      "title": "Docs (DEC-183): README media-library feature + API rows + refresh stale test counts"
+    },
+    "CHG-213": {
+      "id": "CHG-213",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-26T09:47:39+00:00",
+      "updated_at": "2026-08-26T09:47:39+00:00",
+      "touched_round": 171,
+      "commit": "60cdd19",
+      "title": "Fix (DEC-183/TASK-207 surfaced): proxy reads request bodies as Buffers (binary uploads were utf8-mangled -> 400); delete builds path from URL (month int vs zero-padded dir); media-library e2e journey"
+    },
+    "CHG-214": {
+      "id": "CHG-214",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-26T09:50:30+00:00",
+      "updated_at": "2026-08-26T09:50:30+00:00",
+      "touched_round": 171,
+      "commit": "7700801",
+      "title": "Backend media library API (DEC-183, TASK-207): GET /api/upload/files + DELETE /api/upload/files/{y}/{m}/{file} with reference-aware guard"
+    },
+    "ISS-115": {
+      "id": "ISS-115",
+      "type": "issue",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-26T09:51:54+00:00",
+      "updated_at": "2026-08-26T09:51:54+00:00",
+      "touched_round": 171,
+      "title": "Nuxt API proxy read request bodies as UTF-8 strings, corrupting binary image uploads (backend 400 magic-byte mismatch); surfaced by the media-library e2e"
+    },
+    "EV-126": {
+      "id": "EV-126",
+      "type": "evidence",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-26T09:51:54+00:00",
+      "updated_at": "2026-08-26T09:51:54+00:00",
+      "touched_round": 171,
+      "source": "VERIFY 2026-08-26: backend test_upload 22 pass + ruff + pyright 0; frontend Vitest 1212 pass (incl. admin-media page + MediaPickerModal + i18n parity) + vue-tsc 0 + nuxt build green; Playwright admin-media e2e passes against live stack",
+      "details": "Media milestone (DEC-183) acceptance per SKILL 11.4: unit/integration covers list + reference-aware delete + boundary rejection; real-browser e2e proves upload->library->badge->delete; regression guard: full frontend suite + backend slice green. Proxy fix verified byte-exact via direct request (backend received \\\\x89PNG len=70, 200).",
+      "confidence": 1.0
+    },
+    "DEC-184": {
+      "id": "DEC-184",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-26T09:54:32+00:00",
+      "updated_at": "2026-08-26T09:54:32+00:00",
+      "touched_round": 172,
+      "title": "Milestone closed: admin media library delivered end-to-end (DEC-183, TASK-207) — browse, reuse, and safely delete uploaded images",
+      "rationale": "Feature-evolution milestone (per operator directive \"start a new milestone\"). DEC-183 chose the media library via §11.2 gap analysis; TASK-207 delivered in four slices, all green: backend list + reference-aware delete API (test_upload 22 pass, ruff clean, pyright 0); frontend /admin/media page + api/admin/media + MediaPickerModal + editor insert-from-library (full Vitest 1212 + vue-tsc + nuxt build); docs (README en/zh feature + API rows + refreshed stale test counts); a real Playwright e2e proving upload->library->copy->delete, plus two integration bugs it surfaced that are now fixed: (1) the API proxy read request bodies as UTF-8 strings, so every binary image upload through the deployed topology was corrupted (backend 400) — readRawBody(event, false) byte-exact Buffers (ISS-115 -> CHG-213); (2) media delete built the path from month int (8) vs zero-padded dir (2026/08) -> 400 — now derived from the URL. Backend verified against dev pg (10.112.9.49:13310) per operator note; e2e ran against the live stack.",
+      "alternatives_rejected": "PWA/offline (rejected repeatedly, no backend value); email digest (SMTP infra, large scope); comment reactions (relitigated low value); WebP/downscale auto-transcode (risk to proven upload validation; a future slice could add it on top of the library); DB-backed media table (filesystem + read-only scan is sufficient at blog scale, zero DDL per DEC-009)."
     }
   },
   "edges": [
@@ -15216,6 +15321,60 @@
       "to": "ISS-114",
       "type": "resolves",
       "created_at": "2026-08-25T17:27:59+00:00"
+    },
+    {
+      "from": "DEC-183",
+      "to": "TASK-207",
+      "type": "governs",
+      "created_at": "2026-08-26T07:14:33+00:00"
+    },
+    {
+      "from": "CHG-211",
+      "to": "TASK-207",
+      "type": "implements",
+      "created_at": "2026-08-26T09:52:34+00:00"
+    },
+    {
+      "from": "CHG-212",
+      "to": "TASK-207",
+      "type": "implements",
+      "created_at": "2026-08-26T09:52:34+00:00"
+    },
+    {
+      "from": "CHG-213",
+      "to": "TASK-207",
+      "type": "implements",
+      "created_at": "2026-08-26T09:52:34+00:00"
+    },
+    {
+      "from": "CHG-214",
+      "to": "TASK-207",
+      "type": "implements",
+      "created_at": "2026-08-26T09:52:34+00:00"
+    },
+    {
+      "from": "CHG-213",
+      "to": "ISS-115",
+      "type": "resolves",
+      "created_at": "2026-08-26T09:52:34+00:00"
+    },
+    {
+      "from": "ISS-115",
+      "to": "COMP-002",
+      "type": "located_in",
+      "created_at": "2026-08-26T09:52:34+00:00"
+    },
+    {
+      "from": "DEC-184",
+      "to": "DEC-182",
+      "type": "supersedes",
+      "created_at": "2026-08-26T09:55:04+00:00"
+    },
+    {
+      "from": "DEC-184",
+      "to": "TASK-207",
+      "type": "governs",
+      "created_at": "2026-08-26T09:55:04+00:00"
     }
   ]
 }
