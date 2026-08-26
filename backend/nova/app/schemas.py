@@ -351,6 +351,10 @@ class Comment(CommentBase):
     parent_id: int | None = None
     ip_address: str
     is_approved: bool = True
+    # Author reply from the moderation queue (DEC-192/TASK-212): True when the
+    # blog owner answered a commenter. Mirrored on CommentPublic so readers see
+    # the author badge.
+    is_author_reply: bool = False
     # Comment upvote count (DEC-092/TASK-158); mirrored on CommentPublic.
     likes: int = 0
     created_at: datetime
@@ -426,6 +430,9 @@ class CommentPublic(CommentBase):
     post_id: int
     parent_id: int | None = None
     is_approved: bool = True
+    # Author reply from the moderation queue (DEC-192/TASK-212) — drives the
+    # reader-facing "author" badge. Not PII, safe on the public list.
+    is_author_reply: bool = False
     # Comment upvote count (DEC-092/TASK-158): harmless on the public list,
     # unlike the PII fields dropped from this schema.
     likes: int = 0

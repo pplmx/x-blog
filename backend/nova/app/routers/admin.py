@@ -1,3 +1,4 @@
+import os
 from datetime import UTC, datetime, timedelta
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
@@ -16,9 +17,16 @@ from app.cache import (
 )
 from app.crud import utc_now_naive
 from app.database import get_db
-from app.limiter import RATE_LIMIT_AUTH, RATE_LIMIT_WRITE, limiter
-from app.routers.comments import AUTO_APPROVE_READER_COMMENTS
-from app.schemas import Post, PostCreate, PostRevisionDetail, PostRevisionSummary, PostUpdate
+from app.limiter import RATE_LIMIT_AUTH, RATE_LIMIT_WRITE, client_rate_key, limiter
+from app.routers.comments import AUTO_APPROVE_READER_COMMENTS, _notify_comment_approved
+from app.schemas import (
+    Comment,
+    Post,
+    PostCreate,
+    PostRevisionDetail,
+    PostRevisionSummary,
+    PostUpdate,
+)
 
 router = APIRouter(prefix="/api/admin", tags=["admin"])
 
@@ -765,6 +773,7 @@ def admin_list_comments(
                 "content": c.content,
                 "ip_address": c.ip_address,
                 "is_approved": c.is_approved,
+                "is_author_reply": bool(c.is_author_reply),
                 "created_at": c.created_at.isoformat() if c.created_at else None,
                 "flag_count": flag_counts.get(c.id, 0),
             }
@@ -893,6 +902,69 @@ def admin_delete_comment(
     # mutations do (RIL TASK-092, ISS-072).
     clear_posts_list_cache()
     return {"message": "Comment deleted"}
+
+
+# Author-reply identity (DEC-192, TASK-212): the blog owner's replies to
+# commenters carry this nickname — brand it per deployment via env, default to
+# the site's product name. It is server-set, never client-supplied, so a
+# commenter cannot spoof the author banner.
+AUTHOR_REPLY_NICKNAME = os.getenv("AUTHOR_REPLY_NICKNAME", "X-Blog")
+
+
+class AdminReplyRequest(BaseModel):
+    """Body for POST /api/admin/comments/{id}/reply (DEC-192)."""
+
+    content: str = Field(min_length=1, max_length=5000)
+
+
+@router.post("/comments/{comment_id}/reply", response_model=Comment, status_code=status.HTTP_201_CREATED)
+@limiter.limit(f"{RATE_LIMIT_WRITE}/minute")
+def admin_reply_comment(
+    request: Request,
+    comment_id: int,
+    body: AdminReplyRequest,
+    db: Session = Depends(get_db),
+    _current_user: auth.User = Depends(get_current_admin),
+):
+    """Reply to a comment as the blog author (DEC-192, TASK-212).
+
+    Lets the owner answer a commenter right from the moderation queue instead
+    of publishing a whole post reply. The reply is an immediately-approved
+    comment (the author needs no moderation) flagged ``is_author_reply`` so the
+    public thread can render the "author" badge, and it fires the same
+    notifications as an approved comment — the replied-to reader plus the
+    thread's followers (``_notify_comment_approved``). Content width matches
+    CommentBase; rendering sanitization stays where it is for every comment
+    (render-time, DEC-088).
+    """
+    comment = db.get(models.Comment, comment_id)
+    if comment is None:
+        raise HTTPException(status_code=404, detail="Comment not found")
+
+    reply = models.Comment(
+        post_id=comment.post_id,
+        parent_id=comment.id,
+        nickname=AUTHOR_REPLY_NICKNAME,
+        email=None,
+        content=body.content,
+        # Same proxy-aware resolver as the public comment path so the stored
+        # IP matches the rate-limit bucket behind a trusted proxy.
+        ip_address=client_rate_key(request),
+        reader_id=None,
+        is_approved=True,  # the author's reply needs no moderation (DEC-192)
+        is_author_reply=True,
+    )
+    db.add(reply)
+    try:
+        db.commit()
+        db.refresh(reply)
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(status_code=400, detail="Failed to create reply")
+    # Immediately public -> notify the replied-to reader + thread followers,
+    # exactly as an approved comment would (no double paths to maintain).
+    _notify_comment_approved(db, reply)
+    return reply
 
 
 # Runtime site settings (DEC-100, TASK-162): operator-controlled key/values.

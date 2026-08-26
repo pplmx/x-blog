@@ -701,6 +701,90 @@ class TestAdminComments:
         assert response.status_code == 401
 
 
+class TestAdminCommentReply:
+    """Author replies from the moderation queue (DEC-192, TASK-212)."""
+
+    def _create_comment(self, db_session, post=None, **kwargs):
+        if post is None:
+            post = models.Post(title="Reply Post", slug="reply-post", content="Content", published=True)
+            db_session.add(post)
+            db_session.commit()
+        comment = models.Comment(
+            post_id=post.id,
+            nickname=kwargs.get("nickname", "Commenter"),
+            email="commenter@test.com",
+            content=kwargs.get("content", "Nice post!"),
+        )
+        db_session.add(comment)
+        db_session.commit()
+        return comment, post
+
+    def _reply(self, client, auth_headers, comment_id, content="Author here."):
+        return client.post(
+            f"/api/admin/comments/{comment_id}/reply",
+            headers={**auth_headers, "Content-Type": "application/json"},
+            json={"content": content},
+        )
+
+    def test_reply_requires_auth(self, client):
+        resp = client.post("/api/admin/comments/1/reply", json={"content": "hi"})
+        assert resp.status_code == 401
+
+    def test_reply_creates_approved_author_comment(self, client, auth_headers, db_session):
+        from app.routers.admin import AUTHOR_REPLY_NICKNAME
+
+        comment, post = self._create_comment(db_session)
+        resp = self._reply(client, auth_headers, comment.id, content="The author answers here.")
+        assert resp.status_code == 201, resp.text
+        reply = resp.json()
+        assert reply["post_id"] == post.id
+        assert reply["parent_id"] == comment.id
+        assert reply["is_approved"] is True
+        assert reply["is_author_reply"] is True
+        assert reply["nickname"] == AUTHOR_REPLY_NICKNAME
+        assert reply["content"] == "The author answers here."
+        # Immediately approved and public: the public thread carries the reply
+        # with its author flag so readers see the badge.
+        public = client.get(f"/api/comments/post/{post.id}").json()
+        assert any(c["is_author_reply"] is True and c["content"] == "The author answers here." for c in public["items"])
+
+    def test_reply_to_missing_comment_404(self, client, auth_headers):
+        resp = self._reply(client, auth_headers, 99999)
+        assert resp.status_code == 404
+
+    def test_reply_empty_content_rejected(self, client, auth_headers, db_session):
+        comment, _ = self._create_comment(db_session)
+        resp = self._reply(client, auth_headers, comment.id, content="")
+        assert resp.status_code == 422
+
+    def test_reply_notifies_replied_to_reader(self, client, auth_headers, db_session):
+        """The replied-to reader lands in the durable inbox (kind=reply)."""
+        from app import models as _models
+
+        reg = client.post(
+            "/api/reader/register",
+            json={"email": "replied@example.com", "password": "readerpass123", "display_name": "Replied"},
+        )
+        reader_id = reg.json()["reader"]["id"]
+        comment, post = self._create_comment(db_session)
+        comment.reader_id = reader_id
+        db_session.commit()
+
+        resp = self._reply(client, auth_headers, comment.id, content="Thanks for the note!")
+        assert resp.status_code == 201, resp.text
+        n = (
+            db_session.query(_models.ReaderNotification)
+            .filter(_models.ReaderNotification.reader_id == reader_id, _models.ReaderNotification.kind == "reply")
+            .order_by(_models.ReaderNotification.id.desc())
+            .first()
+        )
+        assert n is not None, "reply notification must land in the replied-to reader's inbox"
+        # title is the fixed reply notice; the post title rides in the body and
+        # the deep-link targets the replied-to comment (DEC-072).
+        assert post.title in (n.body or "")
+        assert f"#comment-{comment.id}" in (n.url or "")
+
+
 class TestAdminUserManagement:
     """Tests for admin user CRUD endpoints."""
 

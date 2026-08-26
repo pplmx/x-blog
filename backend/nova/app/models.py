@@ -221,6 +221,11 @@ class Comment(Base):
     content: Mapped[str] = mapped_column(Text, nullable=False)
     ip_address: Mapped[str | None] = mapped_column(String(50))
     is_approved: Mapped[bool | None] = mapped_column(Boolean, default=True, index=True)
+    # Author reply from the moderation queue (DEC-192/TASK-212): True when the
+    # blog owner (admin) answered a commenter. Immediately approved (no
+    # moderation for the author) and rendered with an "author" badge in the
+    # thread. Additive per DEC-009.
+    is_author_reply: Mapped[bool | None] = mapped_column(Boolean, default=False)
     # Comment upvote count (DEC-092/TASK-158): anonymous count++, mirrors the
     # post-likes precedent. The backend only ever increments it (atomic update
     # in crud.increment_comment_likes), never decrements.
