@@ -2,7 +2,7 @@
   "ril_version": 1,
   "round": 172,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-08-26T12:50:44+00:00",
+  "updated_at": "2026-08-26T12:56:20+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -10980,6 +10980,18 @@
       "touched_round": 172,
       "source": "tests/test_upload.py::TestMediaLibraryBulkDelete (7); frontend tests/pages/admin-media.spec.ts; e2e/admin-media.spec.ts DEC-191 journey; VERIFY 2026-08-26",
       "description": "Backend upload suite 36, ruff+pyright clean; frontend 1217, vue-tsc 0, biome clean; media e2e 2 pass (bulk journey: 2 unreferenced deleted, referenced untouched).",
+      "confidence": 1.0
+    },
+    "EV-132": {
+      "id": "EV-132",
+      "type": "evidence",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-26T12:56:20+00:00",
+      "updated_at": "2026-08-26T12:56:20+00:00",
+      "touched_round": 172,
+      "source": "Full backend suite 2026-08-26 (bulk-delete regression guard)",
+      "description": "1153 passed / 9 skipped (1146 pre-slice + 7 new TestMediaLibraryBulkDelete tests) — the new batch endpoint + schema introduce no cross-test regression.",
       "confidence": 1.0
     }
   },
