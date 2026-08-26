@@ -2,7 +2,7 @@
   "ril_version": 1,
   "round": 172,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-08-26T12:25:16+00:00",
+  "updated_at": "2026-08-26T12:50:44+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -10917,6 +10917,70 @@
       "source": "frontend tests/components/SubscribeButton.spec.ts (2 new); e2e/push.spec.ts ISS-112 journey; VERIFY 2026-08-26",
       "description": "Component tests pin both holes (R->G); browser e2e: anonymous subscribe -> UI sign-in -> fresh page load re-binds, proven by /me/push-subscriptions returning the endpoint (only reader-bound subs surface); full frontend 1216, vue-tsc 0, biome clean, push e2e 6 pass, backend full 1146/9.",
       "confidence": 1.0
+    },
+    "DEC-191": {
+      "id": "DEC-191",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-26T12:29:24+00:00",
+      "updated_at": "2026-08-26T12:29:24+00:00",
+      "touched_round": 172,
+      "title": "Milestone: media library bulk delete (DEC-191) — select + delete many unreferenced uploads at once",
+      "rationale": "Media-library continuation (milestone after DEC-189 search): the library warns about hundreds of uploads with no way to clean up except one-by-one single delete. Admin comment queues already established the batch pattern (POST /comments/batch-delete, capped — DEC-110), and e2e alone hit a 2000+ upload dir. Vertical slice: POST /api/upload/files/batch-delete (capped, path-shape-validated per item, fail-closed 409 when any is referenced — same guard as the single delete), frontend /admin/media gains per-card checkboxes (referenced cards are not selectable — they cannot be deleted anyway) + a 'Delete selected' action with confirm + refresh. Zero DDL, filesystem + existing reference scan only.",
+      "alternatives_rejected": "Multi-select then send N single DELETEs (more round-trips + no atomicity; the batch endpoint also centralizes the cap and shape check); allow selecting referenced images and let the backend skip them (muddies the delete contract — better to make them unselectable and keep 409 as a defensive invariant); client-side only filtering of a fetched page then deleting those (misleading — selection must be safe to persist across the whole store, same reasoning as DEC-189)."
+    },
+    "TASK-211": {
+      "id": "TASK-211",
+      "type": "task",
+      "status": "resolved",
+      "version": 3,
+      "created_at": "2026-08-26T12:29:46+00:00",
+      "updated_at": "2026-08-26T12:50:44+00:00",
+      "touched_round": 172,
+      "category": "core-feature",
+      "severity": 0.6,
+      "confidence": 0.95,
+      "effort": 2.0,
+      "unlock_factor": 1.0,
+      "title": "Media library bulk delete (DEC-191): backend POST /api/upload/files/batch-delete + frontend checkboxes + delete-selected on /admin/media",
+      "priority_score": 5.0
+    },
+    "CHG-220": {
+      "id": "CHG-220",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-26T12:50:19+00:00",
+      "updated_at": "2026-08-26T12:50:19+00:00",
+      "touched_round": 172,
+      "commit": "fdc13e6",
+      "title": "Media bulk delete — backend batch-delete endpoint (DEC-191, TASK-211)",
+      "description": "POST /api/upload/files/batch-delete: capped (50), strict path-shape parse, single reference scan, fail-closed 409 when any is referenced, idempotent on missing files. + UploadBatchDeleteRequest schema + 7 tests."
+    },
+    "CHG-221": {
+      "id": "CHG-221",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-26T12:50:20+00:00",
+      "updated_at": "2026-08-26T12:50:20+00:00",
+      "touched_round": 172,
+      "commit": "aef0db7",
+      "title": "Media bulk delete — frontend multi-select delete (DEC-191, TASK-211)",
+      "description": "/admin/media: per-card select checkbox (unreferenced only), count + confirm + delete-selected, selection cleared on page/search change, refresh after; batchDeleteAdminMediaFiles(urls) API client; page spec + e2e journey."
+    },
+    "EV-131": {
+      "id": "EV-131",
+      "type": "evidence",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-26T12:50:20+00:00",
+      "updated_at": "2026-08-26T12:50:20+00:00",
+      "touched_round": 172,
+      "source": "tests/test_upload.py::TestMediaLibraryBulkDelete (7); frontend tests/pages/admin-media.spec.ts; e2e/admin-media.spec.ts DEC-191 journey; VERIFY 2026-08-26",
+      "description": "Backend upload suite 36, ruff+pyright clean; frontend 1217, vue-tsc 0, biome clean; media e2e 2 pass (bulk journey: 2 unreferenced deleted, referenced untouched).",
+      "confidence": 1.0
     }
   },
   "edges": [
@@ -15657,6 +15721,24 @@
       "to": "ISS-112",
       "type": "resolves",
       "created_at": "2026-08-26T12:25:16+00:00"
+    },
+    {
+      "from": "DEC-191",
+      "to": "TASK-211",
+      "type": "governs",
+      "created_at": "2026-08-26T12:30:16+00:00"
+    },
+    {
+      "from": "CHG-220",
+      "to": "TASK-211",
+      "type": "implements",
+      "created_at": "2026-08-26T12:50:44+00:00"
+    },
+    {
+      "from": "CHG-221",
+      "to": "TASK-211",
+      "type": "implements",
+      "created_at": "2026-08-26T12:50:44+00:00"
     }
   ]
 }
