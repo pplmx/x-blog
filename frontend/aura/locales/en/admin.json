@@ -11,7 +11,8 @@
 			"settings": "Settings",
 			"users": "Users",
 			"calendar": "Calendar",
-			"media": "Media"
+			"media": "Media",
+			"readers": "Readers"
 		},
 		"settings": {
 			"title": "Settings",
@@ -45,6 +46,34 @@
 			"subscribing": "Enabling…",
 			"unsubscribing": "Disabling…",
 			"hint": "Get a push when a comment awaits your approval"
+		},
+		"readers": {
+			"seoTitle": "Readers - Admin",
+			"title": "Readers",
+			"description": "Registered reader accounts. Deactivating one blocks its sign-in and revokes every live session immediately.",
+			"searchPlaceholder": "Search email or display name…",
+			"total": "{count} readers",
+			"loadFailed": "Failed to load readers. Please try again.",
+			"toggleFailed": "Failed to update the reader. Please try again.",
+			"pending": "Working…",
+			"empty": "No readers matched.",
+			"prevPage": "Previous",
+			"nextPage": "Next",
+			"pageOf": "Page {page} of {total}",
+			"colEmail": "Email",
+			"colDisplayName": "Display name",
+			"colJoined": "Joined",
+			"colLastLogin": "Last login",
+			"colComments": "Comments",
+			"colBookmarks": "Bookmarks",
+			"colStatus": "Status",
+			"colAction": "Action",
+			"statusActive": "Active",
+			"statusDeactivated": "Deactivated",
+			"deactivate": "Deactivate",
+			"activate": "Activate",
+			"confirmDeactivate": "Deactivate {email}? They will be signed out and locked out immediately.",
+			"confirmActivate": "Reactivate {email}? The reader will need to log in again."
 		}
 	}
 }

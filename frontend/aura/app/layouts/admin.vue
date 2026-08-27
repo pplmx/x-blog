@@ -126,6 +126,9 @@ const navItems = computed(() => {
 		{ href: "/admin/series", labelKey: "admin.nav.series", icon: "lucide:layers" },
 		{ href: "/admin/settings", labelKey: "admin.nav.settings", icon: "lucide:settings" },
 		{ href: "/admin/media", labelKey: "admin.nav.media", icon: "lucide:images" },
+		// Reader accounts (DEC-194): a moderation surface, so available to every
+		// admin role — unlike /admin/users provisioning (superuser-only).
+		{ href: "/admin/readers", labelKey: "admin.nav.readers", icon: "lucide:user-check" },
 	];
 	if (currentRole.value === "superuser") {
 		items.push({ href: "/admin/users", labelKey: "admin.nav.users", icon: "lucide:users" });

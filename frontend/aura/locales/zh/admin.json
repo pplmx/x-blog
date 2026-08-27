@@ -11,7 +11,8 @@
 			"settings": "设置",
 			"users": "用户",
 			"calendar": "日历",
-			"media": "媒体库"
+			"media": "媒体库",
+			"readers": "读者"
 		},
 		"settings": {
 			"title": "设置",
@@ -45,6 +46,34 @@
 			"subscribing": "开启中…",
 			"unsubscribing": "关闭中…",
 			"hint": "有新的待审评论时推送提醒"
+		},
+		"readers": {
+			"seoTitle": "读者 - 管理后台",
+			"title": "读者",
+			"description": "已注册的读者账号。停用后其登录与所有活跃会话立即失效。",
+			"searchPlaceholder": "搜索邮箱或昵称…",
+			"total": "共 {count} 位读者",
+			"loadFailed": "加载读者列表失败，请重试。",
+			"toggleFailed": "更新读者失败，请重试。",
+			"pending": "处理中…",
+			"empty": "没有匹配的读者。",
+			"prevPage": "上一页",
+			"nextPage": "下一页",
+			"pageOf": "第 {page} / {total} 页",
+			"colEmail": "邮箱",
+			"colDisplayName": "昵称",
+			"colJoined": "注册时间",
+			"colLastLogin": "最近登录",
+			"colComments": "评论",
+			"colBookmarks": "收藏",
+			"colStatus": "状态",
+			"colAction": "操作",
+			"statusActive": "正常",
+			"statusDeactivated": "已停用",
+			"deactivate": "停用",
+			"activate": "启用",
+			"confirmDeactivate": "要停用 {email} 吗？该账号将立即被登出并锁定。",
+			"confirmActivate": "要重新启用 {email} 吗？读者需重新登录。"
 		}
 	}
 }
