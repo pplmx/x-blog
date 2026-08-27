@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 172,
+  "round": 174,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-08-27T04:14:45+00:00",
+  "updated_at": "2026-08-27T07:58:16+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -22,7 +22,7 @@
       "version": 1,
       "created_at": "2026-08-06T13:23:41+00:00",
       "updated_at": "2026-08-06T13:23:41+00:00",
-      "touched_round": 172,
+      "touched_round": 173,
       "title": "frontend-aura",
       "description": "Nuxt 4 Vue 3 TypeScript frontend at frontend/aura; composables; admin pages; e2e Playwright; biome lint"
     },
@@ -11273,6 +11273,157 @@
       "touched_round": 172,
       "commit": "d98581d",
       "title": "test(e2e): admin reader moderation journey (DEC-194, TASK-214, ISS-116)"
+    },
+    "DEC-195": {
+      "id": "DEC-195",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-27T04:54:11+00:00",
+      "updated_at": "2026-08-27T04:54:11+00:00",
+      "touched_round": 173,
+      "title": "Milestone: reader tag-follow (DEC-195) — a signed-in reader follows a tag and gets a new-post push + inbox row whenever the author publishes a post carrying that tag",
+      "rationale": "Feature-evolution gap analysis (§11.2): tags are already a first-class subscription axis — DEC-074 scoped RSS/Atom feeds per category/tag, and DEC-076/140 built durable reader-level category follows that fan out new-post push + durable inbox rows (DEC-160) behind one per-kind new_post opt-out (DEC-171). But a reader can only follow categories (coarse: an entire taxonomy) and series (one workflow), never tags (fine-grained topics like 'rust' or 'postgres'). DEC-194 explicitly deferred reader-facing tag-follow as 'real value' with no moderation driver — with the reader-accounts arc closed (DEC-194/CHG-225) and the follow->fan-out->inbox->prefs stack now mature, that deferred value is deliverable. Stakeholder: signed-in readers. Acceptance (1 sentence): a signed-in reader follows a tag from the public tag surface and thereafter receives a new-post push + inbox row when the author publishes a post carrying that tag (honoring the DEC-171 new_post opt-out), with follows manageable from the account page. Why now: categories are too coarse for topic alerting on a multi-topic blog and scoped RSS feeds (DEC-074) sit outside the app; tag-follow is the only reader-facing follow dimension the taxonomy lacks. Additive scope: a new tag_follows table (reader_id, tag_id, notify, UNIQUE reader+tag) with no existing DDL touched (DEC-009); follower fan-out joins the published post's tags in both crud.record_new_post_notifications and webpush.dispatch_new_post; new reader endpoints /api/reader/me/tags/{tag_id}/follow (PUT/PATCH/DELETE) + list; follows-feed union joins tags; frontend follow + notify control on the tag surface and a Followed-tags section on the account page.",
+      "alternatives_rejected": "Category-only follow is enough (categories are coarse — a reader wanting 'new posts about rust' on a multi-topic blog gets flooded by unrelated posts; tags exist precisely as the finer axis, DEC-074 already scope feeds per tag); pure pull: rely on the tag-scoped RSS/Atom feed (DEC-074) instead (feeds sit outside the app; the gap is push + in-app inbox, not feed availability); tag bundles / multi-tag topic groups (over-engineering for a personal blog — single-tag follow with per-tag notify control covers the need); reader-view analytics/impressions page (observability only, no reader-facing value — still deferred)."
+    },
+    "TASK-215": {
+      "id": "TASK-215",
+      "type": "task",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-08-27T04:54:27+00:00",
+      "updated_at": "2026-08-27T07:56:51+00:00",
+      "touched_round": 174,
+      "category": "core-feature",
+      "severity": 0.6,
+      "confidence": 0.95,
+      "effort": 2.5,
+      "unlock_factor": 1.0,
+      "title": "Reader tag-follow (DEC-195): tag_follows table (reader_id, tag_id, notify, UNIQUE) + migration; reader endpoints GET /me/tag-follows + PUT/PATCH/DELETE /me/tags/{tag_id}/follow (404 on unknown tag, 404 on set-notify-not-following); new-post fan-out joins the post's tags with notify=True in crud.record_new_post_notifications and webpush.dispatch_new_post (dedupe vs series/category sets, honor DEC-171 new_post opt-out); follows_feed_posts unions tag follows; frontend follow + notify control on the tags page selected-tag header and a Followed-tags section on the account page; en/zh locale keys; backend tests mirroring category-follow + dispatch/inbox gating; frontend component tests; e2e tag-follow journey"
+    },
+    "CHG-228": {
+      "id": "CHG-228",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-27T05:42:28+00:00",
+      "updated_at": "2026-08-27T05:42:28+00:00",
+      "touched_round": 173,
+      "commit": "2a1e8d0",
+      "title": "Tag-follow backend: TagFollow model + migration + crud + reader endpoints + inbox/push fan-out join + follows-feed union + tests"
+    },
+    "CHG-229": {
+      "id": "CHG-229",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-27T05:43:35+00:00",
+      "updated_at": "2026-08-27T05:43:35+00:00",
+      "touched_round": 173,
+      "commit": "a6e85cf",
+      "title": "Tag-follow frontend: tag page follow control + account Followed-tags section + locales + api/component tests"
+    },
+    "CHG-230": {
+      "id": "CHG-230",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-27T05:43:36+00:00",
+      "updated_at": "2026-08-27T05:43:36+00:00",
+      "touched_round": 173,
+      "commit": "5ff8c80",
+      "title": "Tag-follow e2e journey: guests see no control; signed-in follow/toggle/unfollow + account management"
+    },
+    "ISS-117": {
+      "id": "ISS-117",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-08-27T06:39:07+00:00",
+      "updated_at": "2026-08-27T06:41:47+00:00",
+      "touched_round": 173,
+      "severity": "high",
+      "title": "Account page followed-series/category (and tag) sections render empty: useFetch-based query() wrappers (useReaderSeriesFollows/useReaderCategoryFollows, introduced by the api/reader migration 4c57d2b) silently no-op when called from onMounted in sync-setup components, so the account follows lists are empty — regressed account-series-follows + category-follow e2e on HEAD (ISS-110/111 class)"
+    },
+    "ISS-118": {
+      "id": "ISS-118",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-08-27T06:39:08+00:00",
+      "updated_at": "2026-08-27T06:41:47+00:00",
+      "touched_round": 173,
+      "severity": "medium",
+      "title": "Tag page follow state goes stale on SPA navigation between tag_id values: loadTagFollow ran only in onMounted, so switching tags (query-only NuxtLink) kept the previous tag's following/notify state (mirrors a pre-existing categories.vue flaw)"
+    },
+    "CHG-231": {
+      "id": "CHG-231",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-27T06:40:38+00:00",
+      "updated_at": "2026-08-27T06:40:38+00:00",
+      "touched_round": 173,
+      "commit": "0bef64b",
+      "title": "Account follows load via $fetch seam + tag page follow state tracks SPA tag_id (fixes ISS-117 + ISS-118)"
+    },
+    "CHG-232": {
+      "id": "CHG-232",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-27T06:55:41+00:00",
+      "updated_at": "2026-08-27T06:55:41+00:00",
+      "touched_round": 173,
+      "commit": "34e6869",
+      "title": "Eager-load tag in list_reader_tag_follows (fixes N+1, review LOW)"
+    },
+    "CHG-233": {
+      "id": "CHG-233",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-27T07:24:12+00:00",
+      "updated_at": "2026-08-27T07:24:12+00:00",
+      "touched_round": 173,
+      "commit": "f47407c",
+      "title": "Route categories/tags follow-state loads through the $fetch seam (extends ISS-117 fix)"
+    },
+    "EV-142": {
+      "id": "EV-142",
+      "type": "evidence",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-27T07:56:50+00:00",
+      "updated_at": "2026-08-27T07:56:50+00:00",
+      "touched_round": 174,
+      "source": "VERIFY 2026-08-27 (session II): backend full suite 1192 passed / 9 skipped, coverage 94.70% (was 1172/9 at TASK-215 open); ruff+pyright-clean baseline confirmed",
+      "title": "Backend full-suite evidence for the reader tag-follow milestone (TASK-215)",
+      "confidence": 1.0
+    },
+    "EV-143": {
+      "id": "EV-143",
+      "type": "evidence",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-27T07:56:50+00:00",
+      "updated_at": "2026-08-27T07:56:50+00:00",
+      "touched_round": 174,
+      "source": "VERIFY 2026-08-27 (session II): frontend Vitest 1241 passed (was 1226); includes tag-follow api (follows.spec.ts), tags page + e2e journey",
+      "title": "Frontend full-suite evidence for the reader tag-follow milestone (TASK-215)",
+      "confidence": 1.0
+    },
+    "EV-144": {
+      "id": "EV-144",
+      "type": "evidence",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-27T07:58:16+00:00",
+      "updated_at": "2026-08-27T07:58:16+00:00",
+      "touched_round": 174,
+      "source": "VERIFY 2026-08-27 (session II): nuxt typecheck 0 errors (vue-tsc); biome lint clean",
+      "title": "Frontend typecheck evidence for the reader tag-follow milestone (TASK-215)",
+      "confidence": 1.0
     }
   },
   "edges": [
@@ -16139,6 +16290,90 @@
       "to": "HYP-013",
       "type": "validates",
       "created_at": "2026-08-27T04:14:45+00:00"
+    },
+    {
+      "from": "DEC-195",
+      "to": "TASK-215",
+      "type": "governs",
+      "created_at": "2026-08-27T04:54:27+00:00"
+    },
+    {
+      "from": "CHG-228",
+      "to": "TASK-215",
+      "type": "implements",
+      "created_at": "2026-08-27T05:42:28+00:00"
+    },
+    {
+      "from": "CHG-229",
+      "to": "TASK-215",
+      "type": "implements",
+      "created_at": "2026-08-27T05:43:36+00:00"
+    },
+    {
+      "from": "CHG-230",
+      "to": "TASK-215",
+      "type": "implements",
+      "created_at": "2026-08-27T05:43:36+00:00"
+    },
+    {
+      "from": "ISS-117",
+      "to": "COMP-002",
+      "type": "located_in",
+      "created_at": "2026-08-27T06:39:07+00:00"
+    },
+    {
+      "from": "TASK-215",
+      "to": "ISS-117",
+      "type": "addresses",
+      "created_at": "2026-08-27T06:39:07+00:00"
+    },
+    {
+      "from": "ISS-118",
+      "to": "COMP-002",
+      "type": "located_in",
+      "created_at": "2026-08-27T06:39:08+00:00"
+    },
+    {
+      "from": "TASK-215",
+      "to": "ISS-118",
+      "type": "addresses",
+      "created_at": "2026-08-27T06:39:08+00:00"
+    },
+    {
+      "from": "CHG-231",
+      "to": "TASK-215",
+      "type": "implements",
+      "created_at": "2026-08-27T06:40:38+00:00"
+    },
+    {
+      "from": "CHG-231",
+      "to": "ISS-117",
+      "type": "resolves",
+      "created_at": "2026-08-27T06:40:38+00:00"
+    },
+    {
+      "from": "CHG-231",
+      "to": "ISS-118",
+      "type": "resolves",
+      "created_at": "2026-08-27T06:40:38+00:00"
+    },
+    {
+      "from": "CHG-232",
+      "to": "TASK-215",
+      "type": "implements",
+      "created_at": "2026-08-27T06:55:41+00:00"
+    },
+    {
+      "from": "CHG-233",
+      "to": "TASK-215",
+      "type": "implements",
+      "created_at": "2026-08-27T07:24:13+00:00"
+    },
+    {
+      "from": "CHG-233",
+      "to": "ISS-117",
+      "type": "resolves",
+      "created_at": "2026-08-27T07:24:13+00:00"
     }
   ]
 }
