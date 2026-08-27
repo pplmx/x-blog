@@ -2013,14 +2013,93 @@ def list_category_follow_reader_ids(db: Session, category_id: int) -> list[int]:
     ]
 
 
-def follows_feed_posts(db: Session, reader_id: int, limit: int = 12) -> list[models.Post]:
-    """Recent public posts from the reader's followed categories + series.
+def get_tag_follow(db: Session, reader_id: int, tag_id: int) -> models.TagFollow | None:
+    """Return the reader's follow for a tag, or None."""
+    return (
+        db.query(models.TagFollow)
+        .filter(
+            models.TagFollow.reader_id == reader_id,
+            models.TagFollow.tag_id == tag_id,
+        )
+        .first()
+    )
 
-    The discovery payoff of the follow model (DEC-142/TASK-183): a post matches
-    if its category is one the reader follows OR its series is one they follow
-    (independent of per-follow notify — tracking, not push). Results are public,
-    published, deduped (a post is its own row), newest first, capped at ``limit``.
-    A reader following nothing gets an empty list (the frontend hides the row).
+
+def add_tag_follow(db: Session, reader_id: int, tag_id: int) -> tuple[models.TagFollow, bool]:
+    """Follow a tag for new-post push; returns (follow, created). Idempotent."""
+    existing = get_tag_follow(db, reader_id, tag_id)
+    if existing:
+        return existing, False
+    follow = models.TagFollow(reader_id=reader_id, tag_id=tag_id)
+    db.add(follow)
+    db.commit()
+    db.refresh(follow)
+    return follow, True
+
+
+def remove_tag_follow(db: Session, reader_id: int, tag_id: int) -> bool:
+    """Unfollow a tag; returns True if a follow was removed. Idempotent."""
+    follow = get_tag_follow(db, reader_id, tag_id)
+    if not follow:
+        return False
+    db.delete(follow)
+    db.commit()
+    return True
+
+
+def set_tag_follow_notify(
+    db: Session, reader_id: int, tag_id: int, notify: bool
+) -> models.TagFollow | None:
+    """Toggle whether a tag follow pushes new-posts. Returns None if not following."""
+    follow = get_tag_follow(db, reader_id, tag_id)
+    if not follow:
+        return None
+    follow.notify = notify
+    db.commit()
+    db.refresh(follow)
+    return follow
+
+
+def list_reader_tag_follows(db: Session, reader_id: int) -> list[models.TagFollow]:
+    """The reader's tag follow rows (with ``tag`` loaded), newest first."""
+    rows = (
+        db.query(models.TagFollow)
+        .filter(models.TagFollow.reader_id == reader_id)
+        .order_by(models.TagFollow.created_at.desc(), models.TagFollow.id.desc())
+        .all()
+    )
+    return rows
+
+
+def list_tag_follow_reader_ids(db: Session, tag_ids: list[int]) -> list[int]:
+    """Reader ids following any of a post's tags with notifications on (new-post dispatch).
+
+    Takes the post's whole tag set so the caller makes one query per post rather
+    than one per tag; the union is deduped into a set downstream.
+    """
+    if not tag_ids:
+        return []
+    return [
+        reader_id
+        for (reader_id,) in db.query(models.TagFollow.reader_id)
+        .filter(
+            models.TagFollow.tag_id.in_(tag_ids),
+            models.TagFollow.notify.is_(True),
+        )
+        .all()
+    ]
+
+
+def follows_feed_posts(db: Session, reader_id: int, limit: int = 12) -> list[models.Post]:
+    """Recent public posts from the reader's followed categories + series + tags.
+
+    The discovery payoff of the follow model (DEC-142/TASK-183; tag dimension
+    DEC-195/TASK-215): a post matches if its category is one the reader follows
+    OR its series is one they follow OR it carries a tag they follow
+    (independent of per-follow notify — tracking, not push). Results are
+    public, published, deduped (a post is its own row), newest first, capped at
+    ``limit``. A reader following nothing gets an empty list (the frontend
+    hides the row).
     """
     category_ids = [
         cid
@@ -2032,7 +2111,11 @@ def follows_feed_posts(db: Session, reader_id: int, limit: int = 12) -> list[mod
         sid
         for (sid,) in db.query(models.SeriesFollow.series_id).filter(models.SeriesFollow.reader_id == reader_id).all()
     ]
-    if not category_ids and not series_ids:
+    tag_ids = [
+        tid
+        for (tid,) in db.query(models.TagFollow.tag_id).filter(models.TagFollow.reader_id == reader_id).all()
+    ]
+    if not category_ids and not series_ids and not tag_ids:
         return []
 
     now = utc_now_naive()
@@ -2041,6 +2124,12 @@ def follows_feed_posts(db: Session, reader_id: int, limit: int = 12) -> list[mod
         scope.append(models.Post.category_id.in_(category_ids))
     if series_ids:
         scope.append(models.Post.series_id.in_(series_ids))
+    if tag_ids:
+        scope.append(
+            models.Post.id.in_(
+                db.query(models.post_tags.c.post_id).filter(models.post_tags.c.tag_id.in_(tag_ids))
+            )
+        )
 
     query = (
         db.query(models.Post)
@@ -2543,24 +2632,27 @@ def record_new_post_notifications(db: Session, post: models.Post) -> None:
     post's series or category (DEC-160, TASK-192).
 
     Mirrors the follower targeting of ``dispatch_new_post`` (series followers +
-    category followers with notify on), but persists to the durable inbox
-    instead of (or in addition to) the ephemeral browser push. Independent of
-    VAPID configuration: a reader should still get an inbox row even when Web
-    Push is not set up. Best effort, never raises. ``post`` must be the just-
-    persisted, publicly-visible post (callers gate on ``is_publicly_visible``).
+    category followers + tag followers with notify on), but persists to the
+    durable inbox instead of (or in addition to) the ephemeral browser push.
+    Independent of VAPID configuration: a reader should still get an inbox row
+    even when Web Push is not set up. Best effort, never raises. ``post`` must
+    be the just-persisted, publicly-visible post (callers gate on
+    ``is_publicly_visible``).
 
     Kind (ISS-114, DEC-181): a series follow surfaces the distinct
     ``series_new_part`` kind (frontend icons/labels it 系列更新) while a
-    category-only follow keeps ``new_post`` (新文章发布). A reader following
-    both the series AND the category of the same post gets exactly one row,
-    preferring ``series_new_part`` — the series follow is the more specific
-    signal for the same event. Both kinds stay gated by the single ``new_post``
-    opt-out (DEC-171 umbrella): a series update IS a new post, so a reader who
-    silenced new_post is not woken for series parts.
+    category-only (or tag-only) follow keeps ``new_post`` (新文章发布). A
+    reader following both the series AND the category/tag of the same post gets
+    exactly one row, preferring ``series_new_part`` — the series follow is the
+    more specific signal for the same event. Tag followers (DEC-195/TASK-215)
+    join under the same ``new_post`` umbrella. Both kinds stay gated by the
+    single ``new_post`` opt-out (DEC-171 umbrella): a series update IS a new
+    post, so a reader who silenced new_post is not woken for series parts.
     """
     try:
         series_reader_ids: set[int] = set()
         category_reader_ids: set[int] = set()
+        tag_reader_ids: set[int] = set()
         # Readers who follow this post's series ('new part' notification).
         if post.series_id is not None:
             series_reader_ids.update(
@@ -2583,7 +2675,12 @@ def record_new_post_notifications(db: Session, post: models.Post) -> None:
                 )
                 .all()
             )
-        target_reader_ids = series_reader_ids | category_reader_ids
+        # Readers who follow any of this post's tags with notifications on
+        # (DEC-195/TASK-215). One query for the whole tag set.
+        tag_ids = [t.id for t in (post.tags or [])]
+        if tag_ids:
+            tag_reader_ids.update(list_tag_follow_reader_ids(db, tag_ids))
+        target_reader_ids = series_reader_ids | category_reader_ids | tag_reader_ids
         # Per-kind opt-out (DEC-171, TASK-202): batch-load every target's prefs
         # once. The same reader-level intent gates the push in
         # webpush.dispatch_new_post (which also reaches want_new_posts push

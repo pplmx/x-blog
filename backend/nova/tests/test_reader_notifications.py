@@ -28,6 +28,15 @@ def _auth(token):
     return {"Authorization": f"Bearer {token}"}
 
 
+def _tag_id(client, name):
+    """Resolve a tag's id from the public /api/tags listing by name."""
+    tags = client.get("/api/tags").json()
+    for tag in tags:
+        if tag["name"] == name:
+            return tag["id"]
+    raise AssertionError(f"tag {name!r} not found in /api/tags")
+
+
 def _create_post(db_session, **overrides):
     from app.crud import create_post
     from app.schemas import PostCreate
@@ -296,6 +305,127 @@ class TestPersistenceHooks:
 
         data = client.get(NOTIFS, headers=headers).json()
         assert data["total"] == 0
+
+    def test_new_post_in_followed_tag_persists(self, client, db_session, auth_headers):
+        """A reader following a tag gets a durable new_post inbox row when the
+        author publishes a post carrying that tag (DEC-195, TASK-215). Tags are
+        the fine-grained axis — the kind stays ``new_post`` (new article), not
+        series_new_part."""
+        token = _token(client, email="tag@example.com")
+        headers = _auth(token)
+
+        # seed a tag (a post auto-creates it), resolve its id, follow it
+        seed = client.post(
+            "/api/posts",
+            json={"title": "Seed", "slug": "tag-seed", "content": "c", "published": True, "tags": ["rust"]},
+            headers=auth_headers,
+        )
+        assert seed.status_code == 201, seed.text
+        tag_id = _tag_id(client, "rust")
+        f = client.put(f"/api/reader/me/tags/{tag_id}/follow", headers=headers)
+        assert f.status_code in (200, 201), f.text
+
+        post = client.post(
+            "/api/posts",
+            json={
+                "title": "Rust post",
+                "slug": "tag-notif-post",
+                "content": "c",
+                "published": True,
+                "tags": ["rust"],
+            },
+            headers=auth_headers,
+        )
+        assert post.status_code == 201, post.text
+
+        data = client.get(NOTIFS, headers=headers).json()
+        assert data["total"] == 1, data
+        assert data["items"][0]["kind"] == "new_post"
+        assert data["items"][0]["url"] == "/posts/tag-notif-post"
+
+    def test_tag_follow_respects_new_post_opt_out(self, client, db_session, auth_headers):
+        """Tag follow joins the same new_post umbrella (DEC-171/181): a reader
+        who silenced new_post gets no inbox row for a followed tag's new post."""
+        token = _token(client, email="tag-off@example.com")
+        headers = _auth(token)
+        resp = client.patch(
+            PREFS,
+            json={"kind": "new_post", "enabled": False},
+            headers=headers,
+        )
+        assert resp.status_code == 200, resp.text
+
+        seed = client.post(
+            "/api/posts",
+            json={
+                "title": "Seed Off",
+                "slug": "tag-off-seed",
+                "content": "c",
+                "published": True,
+                "tags": ["postgres"],
+            },
+            headers=auth_headers,
+        )
+        assert seed.status_code == 201, seed.text
+        tag_id = _tag_id(client, "postgres")
+        f = client.put(f"/api/reader/me/tags/{tag_id}/follow", headers=headers)
+        assert f.status_code in (200, 201), f.text
+
+        post = client.post(
+            "/api/posts",
+            json={
+                "title": "Pg post",
+                "slug": "tag-off-post",
+                "content": "c",
+                "published": True,
+                "tags": ["postgres"],
+            },
+            headers=auth_headers,
+        )
+        assert post.status_code == 201, post.text
+
+        data = client.get(NOTIFS, headers=headers).json()
+        assert data["total"] == 0
+
+    def test_tag_and_category_dedup_to_one_row(self, client, db_session, auth_headers):
+        """A reader following BOTH the tag and the category of a post gets ONE
+        new_post row, not one per follow (mirrors the series+category dedup).
+
+        The tag is created via the admin endpoint (not by a seeding post) so
+        no stray fan-out row lands in the inbox before the assertion."""
+        token = _token(client, email="tagcat@example.com")
+        headers = _auth(token)
+
+        cat = client.post("/api/categories", json={"name": "TagCat"}, headers=auth_headers)
+        assert cat.status_code == 201, cat.text
+        cat_id = cat.json()["id"]
+        c = client.put(f"/api/reader/me/categories/{cat_id}/follow", headers=headers)
+        assert c.status_code in (200, 201), c.text
+
+        tag = client.post("/api/tags", json={"name": "golang"}, headers=auth_headers)
+        assert tag.status_code in (200, 201), tag.text
+        tag_id = tag.json()["id"]
+        f = client.put(f"/api/reader/me/tags/{tag_id}/follow", headers=headers)
+        assert f.status_code in (200, 201), f.text
+
+        post = client.post(
+            "/api/posts",
+            json={
+                "title": "Go post",
+                "slug": "tagcat-post",
+                "content": "c",
+                "published": True,
+                "category_id": cat_id,
+                "tags": ["golang"],
+            },
+            headers=auth_headers,
+        )
+        assert post.status_code == 201, post.text
+
+        data = client.get(NOTIFS, headers=headers).json()
+        assert data["total"] == 1, data
+        assert data["items"][0]["kind"] == "new_post"
+        assert data["items"][0]["url"] == "/posts/tagcat-post"
 
     def test_reply_notification_persists_on_approval(self, client, db_session, auth_headers):
         token = _token(client, email="parent@example.com")

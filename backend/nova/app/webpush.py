@@ -226,6 +226,29 @@ def dispatch_new_post(db, post: models.Post, logger) -> dict[str, int]:
             ):
                 by_endpoint[sub.endpoint] = sub
 
+    # Also notify readers who follow any of this post's tags with notifications
+    # on (DEC-195/TASK-215): tags are the fine-grained axis categories are too
+    # coarse for. One query for the whole tag set; unioned by endpoint so a tag
+    # follower already reached via all/category new-post push gets one push.
+    tag_ids = [t.id for t in (post.tags or [])]
+    if tag_ids:
+        tag_follower_reader_ids = [
+            row.reader_id
+            for row in db.query(models.TagFollow.reader_id)
+            .filter(
+                models.TagFollow.tag_id.in_(tag_ids),
+                models.TagFollow.notify.is_(True),
+            )
+            .all()
+        ]
+        if tag_follower_reader_ids:
+            for sub in (
+                db.query(models.PushSubscription)
+                .filter(models.PushSubscription.reader_id.in_(tag_follower_reader_ids))
+                .all()
+            ):
+                by_endpoint[sub.endpoint] = sub
+
     # Per-kind opt-out (DEC-171, TASK-202): drop push subscriptions whose reader
     # turned 'new_post' off — same reader-level intent as the inbox gating in
     # crud.record_new_post_notifications, so an opted-out reader gets neither the

@@ -184,6 +184,36 @@ class CategoryFollow(Base):
     )
 
 
+class TagFollow(Base):
+    """A reader following a tag (DEC-195, TASK-215).
+
+    Mirrors CategoryFollow (DEC-140/TASK-182): durable reader-level intent
+    (cross-device) with a notify true/false that fans out new-post dispatch for
+    that tag (a post's tags come from the post_tags junction) and decouples
+    tracking from push. Tags are the fine-grained subscription axis categories
+    are too coarse for — a reader follows ``rust``, not a whole taxonomy.
+    Additive table, no DB-level FK on the columns (SQLite alembic can't add
+    FK-carrying columns to existing tables, DEC-009); integrity enforced at
+    the API layer.
+    """
+
+    __tablename__ = "tag_follows"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    reader_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
+    tag_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
+    notify: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True, server_default=true())
+    created_at: Mapped[datetime | None] = mapped_column(DateTime, default=lambda: datetime.now(UTC))
+
+    __table_args__ = (UniqueConstraint("reader_id", "tag_id", name="uq_tag_follows_reader_tag"),)
+
+    tag: Mapped[Tag | None] = relationship(
+        "Tag",
+        primaryjoin="TagFollow.tag_id == Tag.id",
+        foreign_keys="TagFollow.tag_id",
+    )
+
+
 class SearchLog(Base):
     """Aggregated public search-term analytics (DEC-152, TASK-188).
 

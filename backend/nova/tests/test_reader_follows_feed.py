@@ -41,7 +41,9 @@ def _create_series(client, auth_headers, slug="feedseries"):
     return resp.json()
 
 
-def _create_post(client, auth_headers, slug, published=True, category_id=None, series_id=None):
+def _create_post(
+    client, auth_headers, slug, published=True, category_id=None, series_id=None, tags=None
+):
     global _n
     _n += 1
     body = {
@@ -55,9 +57,26 @@ def _create_post(client, auth_headers, slug, published=True, category_id=None, s
     if series_id is not None:
         body["series_id"] = series_id
         body.setdefault("series_order", 0)
+    if tags is not None:
+        body["tags"] = tags
     resp = client.post("/api/posts", json=body, headers=auth_headers)
     assert resp.status_code == 201, resp.text
     return resp.json()
+
+
+def _tag_id(client, name):
+    """Resolve a tag's id from the public /api/tags listing by name."""
+    tags = client.get("/api/tags").json()
+    for tag in tags:
+        if tag["name"] == name:
+            return tag["id"]
+    raise AssertionError(f"tag {name!r} not found in /api/tags")
+
+
+def _create_tag(client, auth_headers, name="FeedTag"):
+    resp = client.post("/api/tags", json={"name": name}, headers=auth_headers)
+    assert resp.status_code in (200, 201), resp.text
+    return resp.json()["id"]
 
 
 class TestFollowsFeed:
@@ -90,6 +109,34 @@ class TestFollowsFeed:
         feed = client.get(FOLLOWS_FEED, headers=_auth(token)).json()
         assert len(feed) == 1
         assert feed[0]["slug"].startswith("series-only-")
+
+    def test_returns_posts_from_followed_tag(self, client, auth_headers):
+        token = _token(client)
+        tag_id = _create_tag(client, auth_headers, name="redis")
+        _create_post(client, auth_headers, "tag-new", tags=["redis"])
+        client.put(f"/api/reader/me/tags/{tag_id}/follow", headers=_auth(token))
+
+        feed = client.get(FOLLOWS_FEED, headers=_auth(token)).json()
+        assert len(feed) == 1
+        assert feed[0]["slug"].startswith("tag-new-")
+
+    def test_silent_tag_follow_still_tracked_in_feed(self, client, auth_headers):
+        """A tag follow with notify off is tracking-only: it feeds the home
+        feed but must not fan out a push — tracking vs push are decoupled
+        (mirrors category/series, DEC-195)."""
+        token = _token(client)
+        tag_id = _create_tag(client, auth_headers, name="nginx")
+        client.put(f"/api/reader/me/tags/{tag_id}/follow", headers=_auth(token))
+        client.patch(
+            f"/api/reader/me/tags/{tag_id}/follow",
+            json={"notify": False},
+            headers=_auth(token),
+        )
+        _create_post(client, auth_headers, "silent-new", tags=["nginx"])
+
+        feed = client.get(FOLLOWS_FEED, headers=_auth(token)).json()
+        assert len(feed) == 1
+        assert feed[0]["slug"].startswith("silent-new-")
 
     def test_dedups_post_in_followed_category_and_series(self, client, auth_headers):
         token = _token(client)

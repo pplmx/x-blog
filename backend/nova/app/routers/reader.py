@@ -224,6 +224,32 @@ class CategoryFollowNotifyUpdate(BaseModel):
     notify: bool
 
 
+class FollowedTagItem(BaseModel):
+    """A tag the reader follows (DEC-195/TASK-215)."""
+
+    id: int
+    name: str
+    notify: bool
+
+
+class FollowedTagListResponse(BaseModel):
+    items: list[FollowedTagItem]
+    total: int
+
+
+class TagFollowResponse(BaseModel):
+    tag_id: int
+    tag_name: str
+    following: bool
+    notify: bool
+
+
+class TagFollowNotifyUpdate(BaseModel):
+    """Body for toggling per-tag new-post notifications (TASK-215)."""
+
+    notify: bool
+
+
 class AddBookmarkResponse(BaseModel):
     post_id: int
     # True when the bookmark was newly created, False when it already existed
@@ -1054,6 +1080,80 @@ def unfollow_category(
 ):
     """Unfollow a category. Idempotent 204."""
     crud.remove_category_follow(db, current_reader.id, category_id)
+    return None
+
+
+@router.get("/me/tag-follows", response_model=FollowedTagListResponse)
+def list_tag_follows(
+    current_reader: auth.ReaderAccount = Depends(auth.get_current_reader),
+    db: Session = Depends(get_db),
+):
+    """The tags the reader follows, with per-follow notification state."""
+    follows = crud.list_reader_tag_follows(db, current_reader.id)
+    return FollowedTagListResponse(
+        items=[
+            FollowedTagItem(
+                id=f.tag_id,
+                name=f.tag.name if f.tag else str(f.tag_id),
+                notify=f.notify,
+            )
+            for f in follows
+        ],
+        total=len(follows),
+    )
+
+
+@router.put("/me/tags/{tag_id}/follow", response_model=TagFollowResponse)
+def follow_tag(
+    tag_id: int,
+    response: Response,
+    current_reader: auth.ReaderAccount = Depends(auth.get_current_reader),
+    db: Session = Depends(get_db),
+):
+    """Follow a tag for new-post push (idempotent: 201 on first, 200 on re-follow)."""
+    tag = db.get(models.Tag, tag_id)
+    if not tag:
+        raise HTTPException(status_code=404, detail="Tag not found")
+    follow, created = crud.add_tag_follow(db, current_reader.id, tag_id)
+    response.status_code = 201 if created else 200
+    return TagFollowResponse(
+        tag_id=tag.id,
+        tag_name=tag.name,
+        following=True,
+        notify=follow.notify,
+    )
+
+
+@router.patch("/me/tags/{tag_id}/follow", response_model=TagFollowResponse)
+def set_tag_follow_notify(
+    tag_id: int,
+    payload: TagFollowNotifyUpdate,
+    current_reader: auth.ReaderAccount = Depends(auth.get_current_reader),
+    db: Session = Depends(get_db),
+):
+    """Toggle new-post notifications for a followed tag. 404 if not following."""
+    tag = db.get(models.Tag, tag_id)
+    if not tag:
+        raise HTTPException(status_code=404, detail="Tag not found")
+    follow = crud.set_tag_follow_notify(db, current_reader.id, tag_id, payload.notify)
+    if not follow:
+        raise HTTPException(status_code=404, detail="Not following this tag")
+    return TagFollowResponse(
+        tag_id=tag.id,
+        tag_name=tag.name,
+        following=True,
+        notify=follow.notify,
+    )
+
+
+@router.delete("/me/tags/{tag_id}/follow", status_code=204)
+def unfollow_tag(
+    tag_id: int,
+    current_reader: auth.ReaderAccount = Depends(auth.get_current_reader),
+    db: Session = Depends(get_db),
+):
+    """Unfollow a tag. Idempotent 204."""
+    crud.remove_tag_follow(db, current_reader.id, tag_id)
     return None
 
 
