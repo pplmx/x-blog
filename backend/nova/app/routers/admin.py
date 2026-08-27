@@ -1016,3 +1016,164 @@ def put_site_setting_ep(
     canonical = "true" if normalized in {"1", "true", "yes", "on"} else "false"
     crud.upsert_site_setting(db, key, canonical)
     return SettingRead(key=key, value=canonical)
+
+
+# ---------------------------------------------------------------------------
+# Reader account moderation (DEC-194, TASK-214, ISS-116)
+# ---------------------------------------------------------------------------
+
+
+class AdminReaderSummary(BaseModel):
+    """One operator-facing reader row incl. moderation-relevant aggregates."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    email: str
+    display_name: str | None = None
+    is_active: bool = True
+    created_at: datetime | None = None
+    last_login_at: datetime | None = None
+    comment_count: int = 0
+    bookmark_count: int = 0
+
+
+class AdminReaderStatusResponse(BaseModel):
+    """Row returned by deactivate/activate so the UI can patch its list in place."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    email: str
+    is_active: bool
+    last_login_at: datetime | None = None
+
+
+@router.get("/readers")
+def admin_list_readers(
+    page: int = Query(1, ge=1),
+    limit: int = Query(20, ge=1, le=100),
+    q: str | None = Query(None, description="Search email / display name"),
+    db: Session = Depends(get_db),
+    _current_user: auth.User = Depends(get_current_admin),
+):
+    """List registered reader accounts with moderation aggregates (admin only).
+
+    Any admin role (superuser or editor) may view readers — this is a
+    moderation responsibility like the comment queue, not the superuser-only
+    admin-users provisioning surface.
+    """
+    query = db.query(auth.ReaderAccount)
+    if q:
+        like = f"%{crud.escape_like_pattern(q)}%"
+        query = query.filter(
+            or_(
+                auth.ReaderAccount.email.ilike(like, escape="\\"),
+                auth.ReaderAccount.display_name.ilike(like, escape="\\"),
+            )
+        )
+    total = query.count()
+    rows = (
+        query.order_by(auth.ReaderAccount.created_at.desc())
+        .offset((page - 1) * limit)
+        .limit(limit)
+        .all()
+    )
+    # Aggregate counts for the page rows in two grouped queries (no N+1).
+    reader_ids = [r.id for r in rows]
+    comment_counts: dict[int, int] = {}
+    bookmark_counts: dict[int, int] = {}
+    if reader_ids:
+        comment_counts = dict(
+            db.query(models.Comment.reader_id, func.count(models.Comment.id))
+            .filter(models.Comment.reader_id.in_(reader_ids))
+            .group_by(models.Comment.reader_id)
+            .all()
+        )
+        bookmark_counts = dict(
+            db.query(models.ReaderBookmark.reader_id, func.count(models.ReaderBookmark.id))
+            .filter(models.ReaderBookmark.reader_id.in_(reader_ids))
+            .group_by(models.ReaderBookmark.reader_id)
+            .all()
+        )
+    items = [
+        AdminReaderSummary(
+            id=r.id,
+            email=r.email,
+            display_name=r.display_name,
+            is_active=bool(r.is_active),
+            created_at=r.created_at,
+            last_login_at=r.last_login_at,
+            comment_count=comment_counts.get(r.id, 0),
+            bookmark_count=bookmark_counts.get(r.id, 0),
+        )
+        for r in rows
+    ]
+    return {
+        "items": items,
+        "pagination": {
+            "total": total,
+            "page": page,
+            "limit": limit,
+            "total_pages": (total + limit - 1) // limit if total > 0 else 0,
+        },
+    }
+
+
+def _get_reader_or_404(db: Session, reader_id: int) -> auth.ReaderAccount:
+    reader = db.get(auth.ReaderAccount, reader_id)
+    if reader is None:
+        raise HTTPException(status_code=404, detail="Reader not found")
+    return reader
+
+
+@router.post("/readers/{reader_id}/deactivate", response_model=AdminReaderStatusResponse)
+def admin_deactivate_reader(
+    reader_id: int,
+    db: Session = Depends(get_db),
+    _current_user: auth.User = Depends(get_current_admin),
+):
+    """Deactivate a reader account (admin only).
+
+    Sets is_active=False and bumps token_version so every previously issued
+    JWT dies immediately; the account can no longer sign in. Old tokens are
+    rejected by get_current_reader and resolve to anonymous in optional-reader
+    endpoints, so the trust-tier auto-approve path (DEC-098) cannot be gamed
+    through a deactivated account. Idempotent: an already-inactive reader is
+    not re-bumped.
+    """
+    reader = _get_reader_or_404(db, reader_id)
+    if reader.is_active:
+        reader.is_active = False
+        reader.token_version = (reader.token_version or 0) + 1
+        db.commit()
+    return AdminReaderStatusResponse(
+        id=reader.id,
+        email=reader.email,
+        is_active=False,
+        last_login_at=reader.last_login_at,
+    )
+
+
+@router.post("/readers/{reader_id}/activate", response_model=AdminReaderStatusResponse)
+def admin_activate_reader(
+    reader_id: int,
+    db: Session = Depends(get_db),
+    _current_user: auth.User = Depends(get_current_admin),
+):
+    """Reactivate a deactivated reader account (admin only).
+
+    The account can sign in again; token_version stays bumped from the
+    deactivation, so the reader must obtain a fresh token (old ones remain
+    revoked).
+    """
+    reader = _get_reader_or_404(db, reader_id)
+    if not reader.is_active:
+        reader.is_active = True
+        db.commit()
+    return AdminReaderStatusResponse(
+        id=reader.id,
+        email=reader.email,
+        is_active=True,
+        last_login_at=reader.last_login_at,
+    )

@@ -100,6 +100,8 @@ class ReaderAccount(Base):
     password: Mapped[str] = mapped_column(String(200), nullable=False)
     display_name: Mapped[str | None] = mapped_column(String(50))
     token_version: Mapped[int | None] = mapped_column(Integer, default=0)
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True, server_default="true", nullable=False)
+    last_login_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     created_at: Mapped[datetime | None] = mapped_column(DateTime, default=lambda: datetime.now(UTC))
 
 
@@ -279,6 +281,15 @@ def get_current_reader(
     reader = db.query(ReaderAccount).filter(ReaderAccount.id == reader_id).first()
     if reader is None or token_version != (reader.token_version or 0):
         raise credentials_exception
+    # Account moderation (DEC-194, TASK-214, ISS-116): a deactivated reader is
+    # rejected even with a valid token. 403 (not 401) so a client can tell the
+    # credential was valid but the account was disabled. Every live JWT is
+    # additionally killed at deactivation time via token_version bump.
+    if reader.is_active is False:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Account deactivated",
+        )
     return reader
 
 

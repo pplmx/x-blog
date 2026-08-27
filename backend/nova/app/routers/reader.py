@@ -7,7 +7,7 @@ so a self-registering reader can never hold a credential that reaches admin
 endpoints (enforced in auth.get_current_user / get_current_reader).
 """
 
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status
@@ -388,6 +388,20 @@ def _authenticate_reader(db: Session, email: str, password: str) -> auth.ReaderA
     return reader
 
 
+def _reject_inactive(reader: auth.ReaderAccount) -> None:
+    """Block a deactivated reader from signing in (DEC-194, TASK-214).
+
+    The trust tier auto-approves verified readers' comments (DEC-098), so an
+    operator-deactivated account must not be able to mint a fresh session at
+    all — the 403 mirrors get_current_reader's rejection of their old tokens.
+    """
+    if reader.is_active is False:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Account deactivated",
+        )
+
+
 @router.post("/register", response_model=ReaderLoginResponse, status_code=201)
 @limiter.limit(f"{RATE_LIMIT_REGISTER}/minute")
 def register(
@@ -419,6 +433,8 @@ def register(
         raise HTTPException(status_code=400, detail="Email already registered")
     db.refresh(reader)
 
+    reader.last_login_at = datetime.now(UTC)
+    db.commit()
     access_token = auth.create_reader_token({"sub": reader.id}, token_version=reader.token_version or 0)
     return {
         "access_token": access_token,
@@ -444,6 +460,10 @@ def login(
             detail="Incorrect email or password",
             headers={"WWW-Authenticate": "Bearer"},
         )
+    # Operator-deactivated accounts cannot sign in again (DEC-194, TASK-214).
+    _reject_inactive(reader)
+    reader.last_login_at = datetime.now(UTC)
+    db.commit()
     access_token = auth.create_reader_token({"sub": reader.id}, token_version=reader.token_version or 0)
     return {
         "access_token": access_token,
