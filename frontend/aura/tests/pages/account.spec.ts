@@ -40,16 +40,22 @@ const mockSetSeriesFollowNotify = vi.fn();
 const mockFetchReaderCategoryFollows = vi.fn();
 const mockUnfollowReaderCategory = vi.fn();
 const mockSetCategoryFollowNotify = vi.fn();
+const mockFetchReaderTagFollows = vi.fn();
+const mockUnfollowReaderTag = vi.fn();
+const mockSetTagFollowNotify = vi.fn();
 const mockFetchMyPostSubscriptions = vi.fn();
 const mockUnsubscribeFromPostThread = vi.fn();
 
 vi.mock("~~/api/reader/follows", () => ({
-	useReaderSeriesFollows: mockFetchReaderSeriesFollows,
+	getReaderSeriesFollows: mockFetchReaderSeriesFollows,
 	unfollowReaderSeries: mockUnfollowReaderSeries,
 	setSeriesFollowNotify: mockSetSeriesFollowNotify,
-	useReaderCategoryFollows: mockFetchReaderCategoryFollows,
+	getReaderCategoryFollows: mockFetchReaderCategoryFollows,
 	unfollowReaderCategory: mockUnfollowReaderCategory,
 	setCategoryFollowNotify: mockSetCategoryFollowNotify,
+	getReaderTagFollows: mockFetchReaderTagFollows,
+	unfollowReaderTag: mockUnfollowReaderTag,
+	setTagFollowNotify: mockSetTagFollowNotify,
 }));
 vi.mock("../../api/reader/account", () => ({
 	changeReaderPassword: mockChangeMyPassword,
@@ -373,9 +379,7 @@ describe("Account settings page", () => {
 
 	describe("followed series (DEC-134, TASK-179)", () => {
 		function mockFollows(items: Array<{ id: number; title: string; slug: string }> = []) {
-			mockFetchReaderSeriesFollows.mockResolvedValue({
-				data: { value: { items, total: items.length } },
-			});
+			mockFetchReaderSeriesFollows.mockResolvedValue({ items, total: items.length });
 		}
 
 		it("shows an empty state when following no series", async () => {
@@ -391,14 +395,10 @@ describe("Account settings page", () => {
 			mockFetchPushSubscriptions.mockResolvedValue({ items: [], total: 0 });
 			mockFetchReaderSeriesFollows
 				.mockResolvedValueOnce({
-					data: {
-						value: {
-							items: [{ id: 5, title: "Tutorial", slug: "tutorial", notify: true }],
-							total: 1,
-						},
-					},
+					items: [{ id: 5, title: "Tutorial", slug: "tutorial", notify: true }],
+					total: 1,
 				})
-				.mockResolvedValueOnce({ data: { value: { items: [], total: 0 } } });
+				.mockResolvedValueOnce({ items: [], total: 0 });
 			mockUnfollowReaderSeries.mockResolvedValue(undefined);
 			vi.stubGlobal("confirm", () => true);
 
@@ -424,17 +424,14 @@ describe("Account settings page", () => {
 			isAuthenticated.value = true;
 			mockFetchPushSubscriptions.mockResolvedValue({ items: [], total: 0 });
 			mockFetchReaderSeriesFollows.mockResolvedValue({
-				data: {
-					value: {
-						items: [{ id: 5, title: "Tutorial", slug: "tutorial", notify: true }],
-						total: 1,
-					},
-				},
+				items: [{ id: 5, title: "Tutorial", slug: "tutorial", notify: true }],
+				total: 1,
 			});
 			mockSetSeriesFollowNotify.mockResolvedValue({
-				data: {
-					value: { series_id: 5, series_slug: "tutorial", following: true, notify: false },
-				},
+				series_id: 5,
+				series_slug: "tutorial",
+				following: true,
+				notify: false,
 			});
 
 			const wrapper = await mountPage();
@@ -456,9 +453,7 @@ describe("Account settings page", () => {
 
 	describe("followed categories (DEC-140, TASK-182)", () => {
 		function mockCatFollows(items: Array<{ id: number; name: string; notify: boolean }> = []) {
-			mockFetchReaderCategoryFollows.mockResolvedValue({
-				data: { value: { items, total: items.length } },
-			});
+			mockFetchReaderCategoryFollows.mockResolvedValue({ items, total: items.length });
 		}
 
 		it("shows an empty state when following no categories", async () => {
@@ -474,11 +469,10 @@ describe("Account settings page", () => {
 			mockFetchPushSubscriptions.mockResolvedValue({ items: [], total: 0 });
 			mockFetchReaderCategoryFollows
 				.mockResolvedValueOnce({
-					data: {
-						value: { items: [{ id: 4, name: "AI", notify: true }], total: 1 },
-					},
+					items: [{ id: 4, name: "AI", notify: true }],
+					total: 1,
 				})
-				.mockResolvedValueOnce({ data: { value: { items: [], total: 0 } } });
+				.mockResolvedValueOnce({ items: [], total: 0 });
 			mockUnfollowReaderCategory.mockResolvedValue(undefined);
 			vi.stubGlobal("confirm", () => true);
 
@@ -504,14 +498,14 @@ describe("Account settings page", () => {
 			isAuthenticated.value = true;
 			mockFetchPushSubscriptions.mockResolvedValue({ items: [], total: 0 });
 			mockFetchReaderCategoryFollows.mockResolvedValue({
-				data: {
-					value: { items: [{ id: 4, name: "AI", notify: true }], total: 1 },
-				},
+				items: [{ id: 4, name: "AI", notify: true }],
+				total: 1,
 			});
 			mockSetCategoryFollowNotify.mockResolvedValue({
-				data: {
-					value: { category_id: 4, category_name: "AI", following: true, notify: false },
-				},
+				category_id: 4,
+				category_name: "AI",
+				following: true,
+				notify: false,
 			});
 
 			const wrapper = await mountPage();
@@ -527,6 +521,80 @@ describe("Account settings page", () => {
 
 			expect(mockSetCategoryFollowNotify).toHaveBeenCalledWith(4, false);
 			expect(mockUnfollowReaderCategory).not.toHaveBeenCalled();
+			expect(section.text()).toContain("通知已关");
+		});
+	});
+
+	describe("followed tags (DEC-195, TASK-215)", () => {
+		function mockTagFollows(items: Array<{ id: number; name: string; notify: boolean }> = []) {
+			mockFetchReaderTagFollows.mockResolvedValue({ items, total: items.length });
+		}
+
+		it("shows an empty state when following no tags", async () => {
+			isAuthenticated.value = true;
+			mockFetchPushSubscriptions.mockResolvedValue({ items: [], total: 0 });
+			mockTagFollows([]);
+			const wrapper = await mountPage();
+			expect(wrapper.text()).toContain("还没有关注任何标签");
+		});
+
+		it("lists followed tags, #-prefixed and unfollows after confirmation", async () => {
+			isAuthenticated.value = true;
+			mockFetchPushSubscriptions.mockResolvedValue({ items: [], total: 0 });
+			mockFetchReaderTagFollows
+				.mockResolvedValueOnce({
+					items: [{ id: 3, name: "Rust", notify: true }],
+					total: 1,
+				})
+				.mockResolvedValueOnce({ items: [], total: 0 });
+			mockUnfollowReaderTag.mockResolvedValue(null);
+			vi.stubGlobal("confirm", () => true);
+
+			const wrapper = await mountPage();
+			expect(wrapper.text()).toContain("#Rust");
+
+			const section = wrapper.findAll("section").find((s) => s.text().includes("关注的标签"));
+			expect(section).toBeDefined();
+			if (!section) throw new Error("tags section not found");
+			const unfollowBtn = section.findAll("button").find((b) => b.text() === "取消关注");
+			expect(unfollowBtn).toBeDefined();
+			if (!unfollowBtn) throw new Error("tag unfollow button not found");
+			await unfollowBtn.trigger("click");
+			await flushPromises();
+
+			expect(mockUnfollowReaderTag).toHaveBeenCalledWith(3);
+			expect(mockFetchReaderTagFollows).toHaveBeenCalledTimes(2); // initial + reload
+			expect(wrapper.text()).toContain("还没有关注任何标签");
+			vi.unstubAllGlobals();
+		});
+
+		it("toggles notifications for a followed tag (TASK-215)", async () => {
+			isAuthenticated.value = true;
+			mockFetchPushSubscriptions.mockResolvedValue({ items: [], total: 0 });
+			mockFetchReaderTagFollows.mockResolvedValue({
+				items: [{ id: 3, name: "Rust", notify: true }],
+				total: 1,
+			});
+			mockSetTagFollowNotify.mockResolvedValue({
+				tag_id: 3,
+				tag_name: "Rust",
+				following: true,
+				notify: false,
+			});
+
+			const wrapper = await mountPage();
+			const section = wrapper.findAll("section").find((s) => s.text().includes("关注的标签"));
+			if (!section) throw new Error("tags section not found");
+			expect(section.text()).toContain("通知已开");
+
+			const notifyBtn = section.findAll("button").find((b) => b.text() === "通知已开");
+			expect(notifyBtn).toBeDefined();
+			if (!notifyBtn) throw new Error("tag notify toggle not found");
+			await notifyBtn.trigger("click");
+			await flushPromises();
+
+			expect(mockSetTagFollowNotify).toHaveBeenCalledWith(3, false);
+			expect(mockUnfollowReaderTag).not.toHaveBeenCalled();
 			expect(section.text()).toContain("通知已关");
 		});
 	});

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted } from "vue";
+import { computed, watch } from "vue";
 import { usePosts } from "~~/api/public/posts";
 import { useTags } from "~~/api/public/taxonomy";
 import {
@@ -129,7 +129,22 @@ async function toggleTagNotify() {
 	}
 }
 
-onMounted(loadTagFollow);
+// The tag page's sidebar links are query-only NuxtLinks, so SPA navigation
+// between values of tag_id reuses this component instance without re-mounting.
+// Reload (or reset) the follow state whenever tagId changes, including the
+// initial value — otherwise the reader sees the previous tag's follow state.
+watch(
+	tagId,
+	() => {
+		if (!tagId.value) {
+			tagFollowing.value = false;
+			tagNotify.value = true;
+			return;
+		}
+		loadTagFollow();
+	},
+	{ immediate: true },
+);
 </script>
 
 <template>

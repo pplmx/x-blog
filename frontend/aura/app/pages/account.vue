@@ -20,15 +20,15 @@ import type {
 	FollowedTagItem,
 } from "~~/api/reader/follows";
 import {
+	getReaderCategoryFollows,
+	getReaderSeriesFollows,
+	getReaderTagFollows,
 	setCategoryFollowNotify,
 	setSeriesFollowNotify,
 	setTagFollowNotify,
 	unfollowReaderCategory,
 	unfollowReaderSeries,
 	unfollowReaderTag,
-	useReaderCategoryFollows,
-	useReaderSeriesFollows,
-	useReaderTagFollows,
 } from "~~/api/reader/follows";
 import {
 	getMyPushSubscriptions,
@@ -246,8 +246,7 @@ const seriesFollowsError = ref(false);
 async function loadSeriesFollows() {
 	if (!isAuthenticated.value) return;
 	try {
-		const res = await useReaderSeriesFollows();
-		seriesFollows.value = res.data?.value?.items ?? [];
+		seriesFollows.value = (await getReaderSeriesFollows()).items ?? [];
 	} catch {
 		seriesFollows.value = [];
 	}
@@ -294,8 +293,7 @@ const categoryFollowsError = ref(false);
 async function loadCategoryFollows() {
 	if (!isAuthenticated.value) return;
 	try {
-		const res = await useReaderCategoryFollows();
-		categoryFollows.value = res.data?.value?.items ?? [];
+		categoryFollows.value = (await getReaderCategoryFollows()).items ?? [];
 	} catch {
 		categoryFollows.value = [];
 	}
@@ -341,8 +339,7 @@ const tagFollowsError = ref(false);
 async function loadTagFollows() {
 	if (!isAuthenticated.value) return;
 	try {
-		const res = await useReaderTagFollows();
-		tagFollows.value = res.data?.value?.items ?? [];
+		tagFollows.value = (await getReaderTagFollows()).items ?? [];
 	} catch {
 		tagFollows.value = [];
 	}

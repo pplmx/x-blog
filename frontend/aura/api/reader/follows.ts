@@ -81,11 +81,33 @@ export function useReaderSeriesFollows() {
 	});
 }
 
+/**
+ * Imperative list of the reader's followed series (await the response directly).
+ *
+ * Fire-and-forget client GET from the account page's onMounted — must run
+ * through the imperative `command` seam, never `useFetch`: in a sync-setup
+ * component `useFetch` requires a setup/suspense context to trigger execution
+ * and its request silently never leaves the browser when called from a
+ * lifecycle hook (ISS-110/111, TASK-199). Mirrors getMyPostSubscriptions.
+ */
+export function getReaderSeriesFollows(): Promise<FollowedSeriesListResponse> {
+	return command<FollowedSeriesListResponse>("/api/reader/me/series-follows", {
+		headers: readerAuthHeaders(),
+	});
+}
+
 /** Reactive list of the categories the signed-in reader follows. */
 export function useReaderCategoryFollows() {
 	return query<FollowedCategoryListResponse>("/api/reader/me/category-follows", {
 		headers: readerAuthHeaders(),
 		server: false,
+	});
+}
+
+/** Imperative list of the reader's followed categories ($fetch seam, see getReaderSeriesFollows). */
+export function getReaderCategoryFollows(): Promise<FollowedCategoryListResponse> {
+	return command<FollowedCategoryListResponse>("/api/reader/me/category-follows", {
+		headers: readerAuthHeaders(),
 	});
 }
 
@@ -150,6 +172,13 @@ export function useReaderTagFollows() {
 	return query<FollowedTagListResponse>("/api/reader/me/tag-follows", {
 		headers: readerAuthHeaders(),
 		server: false,
+	});
+}
+
+/** Imperative list of the reader's followed tags ($fetch seam, see getReaderSeriesFollows). */
+export function getReaderTagFollows(): Promise<FollowedTagListResponse> {
+	return command<FollowedTagListResponse>("/api/reader/me/tag-follows", {
+		headers: readerAuthHeaders(),
 	});
 }
 
