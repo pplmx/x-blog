@@ -2,7 +2,7 @@
   "ril_version": 1,
   "round": 172,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-08-26T14:54:14+00:00",
+  "updated_at": "2026-08-27T02:35:17+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -9675,11 +9675,11 @@
     "ISS-108": {
       "id": "ISS-108",
       "type": "issue",
-      "status": "active",
-      "version": 1,
+      "status": "resolved",
+      "version": 2,
       "created_at": "2026-08-24T03:22:16+00:00",
-      "updated_at": "2026-08-24T03:22:16+00:00",
-      "touched_round": 165,
+      "updated_at": "2026-08-27T02:35:17+00:00",
+      "touched_round": 172,
       "title": "GitHub dependabot reports 26 vulnerabilities on default branch (16 high / 6 moderate / 4 low)"
     },
     "ISS-109": {
@@ -10197,11 +10197,11 @@
     "ISS-113": {
       "id": "ISS-113",
       "type": "issue",
-      "status": "active",
-      "version": 1,
+      "status": "resolved",
+      "version": 2,
       "created_at": "2026-08-24T17:47:18+00:00",
-      "updated_at": "2026-08-24T17:47:18+00:00",
-      "touched_round": 169,
+      "updated_at": "2026-08-27T02:35:17+00:00",
+      "touched_round": 172,
       "title": "Per-reader prune in record_reader_notification is O(2n) in the new-post fan-out (pre-existing)",
       "summary": "record_reader_notification issues a SELECT-recent-200 + DELETE + commit per reader inside record_new_post_notifications' loop. Pre-existing (not introduced by DEC-171; the new prefs lookup is batched). Worth a follow-up: hoist/batch the prune out of the loop for heavily-followed posts."
     },
@@ -11130,6 +11130,30 @@
       "touched_round": 172,
       "source": "Full backend suite 2026-08-26 (fan-out prune regression guard, solo run)",
       "description": "1160 passed / 9 skipped (1158 pre-slice + 2 new TestFanOutPrune). A parallel foreground suite earlier clashed on the shared SQLite test DB ('readonly database' — environmental, documented quirk); the solo re-run is clean: the batched prune introduces no regression.",
+      "confidence": 1.0
+    },
+    "EV-137": {
+      "id": "EV-137",
+      "type": "evidence",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-27T02:34:45+00:00",
+      "updated_at": "2026-08-27T02:34:45+00:00",
+      "touched_round": 172,
+      "title": "Re-audit 2026-08-27: all 19 open dependabot backend (pip) alerts are stale false positives against the current uv.lock — cryptography 50.0.0, starlette 1.6.0, urllib3 2.7.0, python-multipart 0.0.32, idna 3.18, pydantic-settings 2.15.0 all sit at/above their patched versions, pyasn1/ecdsa absent from the tree; uv audit reports 0 known vulns in 74 packages. The 4 remaining open npm alerts (ansi-regex@5.0.0, ini@1.3.4, postcss@8.5.22 + nanoid@3.3.16) are exactly the chains DEC-164 documented; a pnpm-up re-resolve attempt confirms pnpm 11 keeps the frozen exact-resolved edges",
+      "source": "uv audit + gh dependabot/alerts API vs backend/nova/uv.lock, frontend/aura/pnpm-lock.yaml",
+      "confidence": 1.0
+    },
+    "EV-138": {
+      "id": "EV-138",
+      "type": "evidence",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-27T02:35:03+00:00",
+      "updated_at": "2026-08-27T02:35:03+00:00",
+      "touched_round": 172,
+      "title": "Baseline VERIFY 2026-08-27 green before milestone: backend pytest 1160 passed / 9 skipped (coverage 94.52%, gate 80%), frontend vitest 1219 passed (96 files). Establishes the regression baseline for the new milestone slice",
+      "source": "just test-backend + pnpm test",
       "confidence": 1.0
     }
   },
@@ -15925,6 +15949,12 @@
       "to": "DEC-176",
       "type": "supersedes",
       "created_at": "2026-08-26T14:48:00+00:00"
+    },
+    {
+      "from": "CHG-224",
+      "to": "ISS-113",
+      "type": "resolves",
+      "created_at": "2026-08-27T02:35:17+00:00"
     }
   ]
 }
