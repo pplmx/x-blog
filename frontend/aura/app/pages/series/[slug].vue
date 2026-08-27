@@ -3,12 +3,12 @@ import { computed, onMounted, ref } from "vue";
 import { useSeriesBySlug } from "~~/api/public/series";
 import {
 	followReaderSeries,
+	getReaderSeriesFollows,
 	setSeriesFollowNotify,
 	unfollowReaderSeries,
-	useReaderSeriesFollows,
 } from "~~/api/reader/follows";
 import type { SeriesProgress } from "~~/api/reader/history";
-import { useReaderSeriesProgress } from "~~/api/reader/history";
+import { getReaderSeriesProgress } from "~~/api/reader/history";
 import { useSeo } from "~~/composables/useSeo";
 
 const { t, locale } = useLang();
@@ -37,12 +37,7 @@ const progress = ref<SeriesProgress | null>(null);
 onMounted(async () => {
 	if (!signedIn.value || !series.value?.slug) return;
 	void loadFollowState();
-	try {
-		const res = await useReaderSeriesProgress(series.value.slug);
-		progress.value = res.data?.value ?? null;
-	} catch {
-		progress.value = null;
-	}
+	void loadProgress();
 });
 
 const progressPercent = computed(() => {
@@ -73,13 +68,27 @@ const followBusy = ref(false);
 async function loadFollowState() {
 	if (!signedIn.value || !series.value?.id) return;
 	try {
-		const res = await useReaderSeriesFollows();
-		const item = res.data?.value?.items.find((f) => f.id === series.value?.id) ?? null;
+		// Imperative $fetch seam: the old useReaderSeriesFollows (useFetch query)
+		// silently never sent its request from onMounted, so the follow state was
+		// always reset to "not following" on every full load/reload (ISS-119,
+		// TASK-220 — same class as the account/tag GETs, getReaderTagFollows).
+		const res = await getReaderSeriesFollows();
+		const item = res.items.find((f) => f.id === series.value?.id) ?? null;
 		followsSeries.value = !!item;
 		followNotify.value = item?.notify ?? true;
 	} catch {
 		followsSeries.value = false;
 		followNotify.value = true;
+	}
+}
+
+/** Load the reader's progress through this series ($fetch seam, TASK-220). */
+async function loadProgress() {
+	if (!signedIn.value || !series.value?.slug) return;
+	try {
+		progress.value = await getReaderSeriesProgress(series.value.slug);
+	} catch {
+		progress.value = null;
 	}
 }
 

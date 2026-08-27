@@ -46,8 +46,11 @@ const h = vi.hoisted(() => {
 		next_slug: string | null;
 	};
 	const progress: { value: Progress | null } = { value: null };
-	const fetchProgress = vi.fn(async () => ({ data: { value: progress.value } }));
-	const fetchFollows = vi.fn(async () => ({ data: { value: { items: [], total: 0 } } }));
+	// getReaderSeriesProgress / getReaderSeriesFollows are the imperative
+	// $fetch seams the page now uses from onMounted (TASK-220) — they resolve
+	// to the raw payload, not a { data: { value } } AsyncData wrapper.
+	const fetchProgress = vi.fn(async () => progress.value);
+	const fetchFollows = vi.fn(async () => ({ items: [] as Array<{ id: number }>, total: 0 }));
 	const followSeries = vi.fn();
 	const unfollowSeries = vi.fn();
 	const setNotify = vi.fn();
@@ -70,10 +73,10 @@ vi.mock("../../../api/public/series", () => ({
 	}),
 }));
 vi.mock("../../../api/reader/history", () => ({
-	useReaderSeriesProgress: h.fetchProgress,
+	getReaderSeriesProgress: h.fetchProgress,
 }));
 vi.mock("../../../api/reader/follows", () => ({
-	useReaderSeriesFollows: h.fetchFollows,
+	getReaderSeriesFollows: h.fetchFollows,
 	followReaderSeries: h.followSeries,
 	unfollowReaderSeries: h.unfollowSeries,
 	setSeriesFollowNotify: h.setNotify,
@@ -183,7 +186,8 @@ describe("Series reading progress (TASK-173)", () => {
 
 	it("toggles series new-part follow (TASK-178)", async () => {
 		h.fetchFollows.mockResolvedValueOnce({
-			data: { value: { items: [{ id: 1, title: "Tutorial", slug: "tutorial" }], total: 1 } },
+			items: [{ id: 1, title: "Tutorial", slug: "tutorial", notify: true }],
+			total: 1,
 		});
 		const wrapper = await mountPage();
 		expect(wrapper.text()).toContain("已关注新篇");
@@ -200,14 +204,14 @@ describe("Series reading progress (TASK-173)", () => {
 
 	it("toggles new-part notifications without unfollowing (TASK-181)", async () => {
 		h.fetchFollows.mockResolvedValueOnce({
-			data: {
-				value: { items: [{ id: 1, title: "Tutorial", slug: "tutorial", notify: true }], total: 1 },
-			},
+			items: [{ id: 1, title: "Tutorial", slug: "tutorial", notify: true }],
+			total: 1,
 		});
 		h.setNotify.mockResolvedValue({
-			data: {
-				value: { series_id: 1, series_slug: "tutorial", following: true, notify: false },
-			},
+			series_id: 1,
+			series_slug: "tutorial",
+			following: true,
+			notify: false,
 		});
 		const wrapper = await mountPage();
 		expect(wrapper.text()).toContain("通知已开");

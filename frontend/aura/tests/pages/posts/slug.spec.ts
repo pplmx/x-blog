@@ -168,7 +168,7 @@ async function mountPostPage({
 	// resolving so onMounted's view-counter call never throws in the test env.
 	vi.stubGlobal("$fetch", $fetchImpl ?? vi.fn(() => Promise.resolve(mockPost)));
 
-	const { default: PostPage } = await import("@/pages/posts/[slug].vue");
+	const { default: PostPage } = await import("@/pages/posts/[slug]/index.vue");
 
 	// Template-based Suspense wrapper (works reliably with @vue/test-utils)
 	const SuspenseWrapper: any = {
@@ -280,7 +280,7 @@ describe("Post Detail Page", () => {
 				}),
 			);
 
-			const { default: PostPage } = await import("@/pages/posts/[slug].vue");
+			const { default: PostPage } = await import("@/pages/posts/[slug]/index.vue");
 
 			const SuspenseWrapper: any = {
 				components: { PostPage },
@@ -354,7 +354,7 @@ describe("Post Detail Page", () => {
 				}),
 			);
 
-			const { default: PostPage } = await import("@/pages/posts/[slug].vue");
+			const { default: PostPage } = await import("@/pages/posts/[slug]/index.vue");
 
 			const SuspenseWrapper: any = {
 				components: { PostPage },
@@ -435,7 +435,7 @@ describe("Post Detail Page", () => {
 				}),
 			);
 
-			const { default: PostPage } = await import("@/pages/posts/[slug].vue");
+			const { default: PostPage } = await import("@/pages/posts/[slug]/index.vue");
 
 			const SuspenseWrapper: any = {
 				components: { PostPage },
@@ -587,7 +587,7 @@ describe("Post Detail Page", () => {
 				}),
 			);
 
-			const { default: PostPage } = await import("@/pages/posts/[slug].vue");
+			const { default: PostPage } = await import("@/pages/posts/[slug]/index.vue");
 			const SuspenseWrapper: any = {
 				components: { PostPage },
 				template:
@@ -691,7 +691,7 @@ describe("Post Detail Page", () => {
 				}),
 			);
 
-			const { default: PostPage } = await import("@/pages/posts/[slug].vue");
+			const { default: PostPage } = await import("@/pages/posts/[slug]/index.vue");
 			const SuspenseWrapper: any = {
 				components: { PostPage },
 				template:
@@ -758,7 +758,7 @@ describe("Post Detail Page", () => {
 				}),
 			);
 
-			const { default: PostPage } = await import("@/pages/posts/[slug].vue");
+			const { default: PostPage } = await import("@/pages/posts/[slug]/index.vue");
 			const SuspenseWrapper: any = {
 				components: { PostPage },
 				template:
@@ -926,7 +926,7 @@ describe("Post Detail Page", () => {
 				}),
 			);
 
-			const { default: PostPage } = await import("@/pages/posts/[slug].vue");
+			const { default: PostPage } = await import("@/pages/posts/[slug]/index.vue");
 
 			const SuspenseWrapper: any = {
 				components: { PostPage },
@@ -1002,7 +1002,7 @@ describe("Post Detail Page", () => {
 				}),
 			);
 
-			const { default: PostPage } = await import("@/pages/posts/[slug].vue");
+			const { default: PostPage } = await import("@/pages/posts/[slug]/index.vue");
 
 			const SuspenseWrapper: any = {
 				components: { PostPage },

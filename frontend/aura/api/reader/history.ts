@@ -126,3 +126,14 @@ export function useReaderSeriesProgress(slug: string) {
 		server: false,
 	});
 }
+
+/**
+ * Imperative per-series progress ($fetch seam, see getReaderSeriesFollows): a
+ * lifecycle-hook loader must never run a useFetch query, which silently never
+ * sends outside an async-setup context (ISS-110/111/117/118, TASK-220).
+ */
+export function getReaderSeriesProgress(slug: string): Promise<SeriesProgress> {
+	return command<SeriesProgress>(`/api/reader/me/series/${slug}/progress`, {
+		headers: readerAuthHeaders(),
+	});
+}
