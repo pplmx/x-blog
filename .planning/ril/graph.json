@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 174,
+  "round": 175,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-08-27T08:28:43+00:00",
+  "updated_at": "2026-08-27T09:23:35+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -22,7 +22,7 @@
       "version": 1,
       "created_at": "2026-08-06T13:23:41+00:00",
       "updated_at": "2026-08-06T13:23:41+00:00",
-      "touched_round": 173,
+      "touched_round": 175,
       "title": "frontend-aura",
       "description": "Nuxt 4 Vue 3 TypeScript frontend at frontend/aura; composables; admin pages; e2e Playwright; biome lint"
     },
@@ -11440,11 +11440,11 @@
     "TASK-216": {
       "id": "TASK-216",
       "type": "task",
-      "status": "active",
-      "version": 1,
+      "status": "resolved",
+      "version": 2,
       "created_at": "2026-08-27T07:59:15+00:00",
-      "updated_at": "2026-08-27T07:59:15+00:00",
-      "touched_round": 174,
+      "updated_at": "2026-08-27T09:23:35+00:00",
+      "touched_round": 175,
       "category": "core-feature",
       "severity": 0.5,
       "confidence": 0.95,
@@ -11463,6 +11463,40 @@
       "source": "OBSERVE 2026-08-27 (session II): server/routes/sitemap.xml.ts exists on HEAD since b14607f (TASK-130) and proxies the backend /sitemap.xml feed with ETag/304 handling",
       "title": "Correction: DEC-196 alternatives_rejected claimed the blog has no XML sitemap — a sitemap route has existed since the conditional-request milestone (TASK-130); no sitemap backlog task should be created",
       "confidence": 1.0
+    },
+    "CHG-234": {
+      "id": "CHG-234",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-27T09:23:34+00:00",
+      "updated_at": "2026-08-27T09:23:34+00:00",
+      "touched_round": 175,
+      "commit": "194457c",
+      "title": "Post-page in-place tag follow: TagFollowButton component + shared useTagFollowStore (one list fetch per page, token-keyed) + posts/[slug].vue footer wiring + 8 Vitest component tests + tag-follow-inline Playwright journey (DEC-196/TASK-216)"
+    },
+    "EV-146": {
+      "id": "EV-146",
+      "type": "evidence",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-27T09:23:35+00:00",
+      "updated_at": "2026-08-27T09:23:35+00:00",
+      "touched_round": 175,
+      "source": "VERIFY 2026-08-27 (session II, DEC-196/TASK-216): frontend Vitest 1248 passed (was 1241; +7 TagFollowButton), vue-tsc 0 errors, biome clean; backend 1192/9 unchanged (frontend-only milestone); e2e tag-follow-inline 2/2 passed against the live dev stack; post-page-adjacent e2e regression set 39/41 with print + series-follow failing identically on clean HEAD (pre-existing env issues, see ISS-119)",
+      "title": "Verification evidence for the post-page inline tag-follow milestone (TASK-216)",
+      "confidence": 1.0
+    },
+    "ISS-119": {
+      "id": "ISS-119",
+      "type": "issue",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-27T09:23:35+00:00",
+      "updated_at": "2026-08-27T09:23:35+00:00",
+      "touched_round": 175,
+      "title": "Pre-existing e2e failures against the shared dev DB: print.spec.ts (print toolbar button not found on the print route) and series-follow.spec.ts (series follow toggle never flips to following) both reproduce on clean HEAD with the tag-follow changes stashed — environment/shared-DB dependent, not regressions from DEC-196/TASK-216; CI runs a fresh Postgres so may pass there",
+      "severity": 0.2
     }
   },
   "edges": [
@@ -16419,6 +16453,18 @@
       "to": "TASK-216",
       "type": "governs",
       "created_at": "2026-08-27T07:59:15+00:00"
+    },
+    {
+      "from": "CHG-234",
+      "to": "TASK-216",
+      "type": "implements",
+      "created_at": "2026-08-27T09:23:35+00:00"
+    },
+    {
+      "from": "ISS-119",
+      "to": "COMP-002",
+      "type": "located_in",
+      "created_at": "2026-08-27T09:23:35+00:00"
     }
   ]
 }
