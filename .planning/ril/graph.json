@@ -2,7 +2,7 @@
   "ril_version": 1,
   "round": 172,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-08-27T02:35:17+00:00",
+  "updated_at": "2026-08-27T04:14:45+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -11,7 +11,7 @@
       "version": 1,
       "created_at": "2026-08-06T13:23:41+00:00",
       "updated_at": "2026-08-06T13:23:41+00:00",
-      "touched_round": 170,
+      "touched_round": 172,
       "title": "backend-nova",
       "description": "FastAPI Python 3.14 backend at backend/nova; SQLAlchemy ORM; routers in app/routers, crud.py business logic, 656 lines"
     },
@@ -22,7 +22,7 @@
       "version": 1,
       "created_at": "2026-08-06T13:23:41+00:00",
       "updated_at": "2026-08-06T13:23:41+00:00",
-      "touched_round": 171,
+      "touched_round": 172,
       "title": "frontend-aura",
       "description": "Nuxt 4 Vue 3 TypeScript frontend at frontend/aura; composables; admin pages; e2e Playwright; biome lint"
     },
@@ -11155,6 +11155,124 @@
       "title": "Baseline VERIFY 2026-08-27 green before milestone: backend pytest 1160 passed / 9 skipped (coverage 94.52%, gate 80%), frontend vitest 1219 passed (96 files). Establishes the regression baseline for the new milestone slice",
       "source": "just test-backend + pnpm test",
       "confidence": 1.0
+    },
+    "DEC-194": {
+      "id": "DEC-194",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-27T02:38:24+00:00",
+      "updated_at": "2026-08-27T02:38:24+00:00",
+      "touched_round": 172,
+      "title": "Admin reader management milestone (operator visibility + deactivation of registered readers)",
+      "rationale": "Feature-evolution gap analysis (§11.2): the reader-accounts arc (DEC-059/062/066/098/106) delivered self-registration, bookmarks, comment history, trust-tier auto-approve and self-service account deletion, but the operator side was never built — registered readers are invisible (no admin list anywhere) and cannot be deactivated. This is now a moderation/security hole: the trust tier (DEC-098) auto-approves any verified reader's comments, so a script-registered account publishes without review and there is no way to stop it — reader_accounts has no is_active flag, get_current_reader validates only existence+token_version, and existing reader JWTs live up to READER_TOKEN_EXPIRE_DAYS. Stakeholder: the blog operator. Acceptance (1 sentence): an admin can list registered readers (email, display name, joined, last login, comment/bookmark counts) with pagination+search and deactivate/reactivate a reader, and a deactivated reader is immediately blocked from sign-in and their existing JWT stops working. Why now: completes the reader-accounts arc with its missing operator counterpart and closes a real spam-approval vector. Additive scope: reader_accounts gains is_active + last_login_at columns (no existing DDL touched, DEC-009), auth guards check activity, token_version bump invalidates live sessions.",
+      "alternatives_rejected": "Reader analytics/impressions page (observability only — no control affordance, does not close the spam vector); TAB/RSS reader-facing tag-follow (real value but a different stakeholder and no moderation driver; defer); email-verified suspension (needs mail infra this repo deliberately lacks); auto-approve-by-activity scoring (complex, unproven)."
+    },
+    "ISS-116": {
+      "id": "ISS-116",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-08-27T02:38:25+00:00",
+      "updated_at": "2026-08-27T04:14:45+00:00",
+      "touched_round": 172,
+      "title": "Admin has no visibility into or control over registered reader accounts (no is_active, trust-tier auto-approve is gamed by script-registered accounts)",
+      "severity": 0.7
+    },
+    "TASK-214": {
+      "id": "TASK-214",
+      "type": "task",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-08-27T02:38:47+00:00",
+      "updated_at": "2026-08-27T04:14:45+00:00",
+      "touched_round": 172,
+      "category": "core-feature",
+      "severity": 0.65,
+      "confidence": 0.95,
+      "effort": 2.5,
+      "unlock_factor": 1.0,
+      "title": "Admin reader management (DEC-194, ISS-116): admin readers list + deactivate/reactivate; is_active + last_login_at on reader_accounts; auth guards + token invalidation; /admin/readers page with search+pagination and role-gated nav"
+    },
+    "HYP-013": {
+      "id": "HYP-013",
+      "type": "hypothesis",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-27T02:38:47+00:00",
+      "updated_at": "2026-08-27T02:38:47+00:00",
+      "touched_round": 172,
+      "confidence": 0.9,
+      "title": "A freshly registered reader account is auto-approved by the trust tier (DEC-098) without any operator review, so a spam-script can publish unlimited auto-approved comments and no mechanism exists to block it (no is_active, no admin reader list)"
+    },
+    "EV-139": {
+      "id": "EV-139",
+      "type": "evidence",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-27T02:39:31+00:00",
+      "updated_at": "2026-08-27T02:39:31+00:00",
+      "touched_round": 172,
+      "title": "A verified reader's comment auto-approves at create when the trust tier is on (comments.py create path reads SiteSetting auto_approve_reader_comments and sets is_approved immediately for reader_id!=None comments), while open signup at POST /api/reader/register gives any script an account with NO manual review — so a spam-bot account truly publishes unmoderated. Confirms the ISS-116 premise and the missing is_active/admin-list gap.",
+      "source": "backend/nova/app/routers/comments.py:255-263 + routers/reader.py:391-428",
+      "confidence": 1.0
+    },
+    "EV-140": {
+      "id": "EV-140",
+      "type": "evidence",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-27T02:39:31+00:00",
+      "updated_at": "2026-08-27T02:39:31+00:00",
+      "touched_round": 172,
+      "title": "reader_accounts has no is_active column and get_current_reader validates only existence + token_version (auth.py:254-283); an operator therefore cannot block a reader, and an issued reader JWT stays valid until expiry — the exact interface gap the milestone closes.",
+      "source": "backend/nova/app/auth.py:96-107,254-283",
+      "confidence": 1.0
+    },
+    "EV-141": {
+      "id": "EV-141",
+      "type": "evidence",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-27T04:14:09+00:00",
+      "updated_at": "2026-08-27T04:14:09+00:00",
+      "touched_round": 172,
+      "title": "Admin reader moderation delivered and verified end-to-end: backend 1172 passed/9 skipped (coverage 94.65%), frontend 1226 vitest, Playwright admin-readers journey green — a deactivated reader's JWT is revoked and login 403s, reactivation restores sign-in (DEC-194, TASK-214, ISS-116)",
+      "source": "e59130f + 68c3d76 + d98581d (full-suite + e2e runs 2026-08-27)",
+      "confidence": 1.0
+    },
+    "CHG-225": {
+      "id": "CHG-225",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-27T04:14:09+00:00",
+      "updated_at": "2026-08-27T04:14:09+00:00",
+      "touched_round": 172,
+      "commit": "e59130f",
+      "title": "feat(admin): reader account moderation — list, deactivate/activate (DEC-194, TASK-214, ISS-116)"
+    },
+    "CHG-226": {
+      "id": "CHG-226",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-27T04:14:09+00:00",
+      "updated_at": "2026-08-27T04:14:09+00:00",
+      "touched_round": 172,
+      "commit": "68c3d76",
+      "title": "feat(admin): readers management page — list/search/deactivate/activate (DEC-194, TASK-214, ISS-116)"
+    },
+    "CHG-227": {
+      "id": "CHG-227",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-27T04:14:09+00:00",
+      "updated_at": "2026-08-27T04:14:09+00:00",
+      "touched_round": 172,
+      "commit": "d98581d",
+      "title": "test(e2e): admin reader moderation journey (DEC-194, TASK-214, ISS-116)"
     }
   },
   "edges": [
@@ -15955,6 +16073,72 @@
       "to": "ISS-113",
       "type": "resolves",
       "created_at": "2026-08-27T02:35:17+00:00"
+    },
+    {
+      "from": "TASK-214",
+      "to": "ISS-116",
+      "type": "addresses",
+      "created_at": "2026-08-27T02:38:47+00:00"
+    },
+    {
+      "from": "DEC-194",
+      "to": "TASK-214",
+      "type": "governs",
+      "created_at": "2026-08-27T02:38:47+00:00"
+    },
+    {
+      "from": "ISS-116",
+      "to": "COMP-001",
+      "type": "located_in",
+      "created_at": "2026-08-27T02:38:47+00:00"
+    },
+    {
+      "from": "EV-139",
+      "to": "HYP-013",
+      "type": "validates",
+      "created_at": "2026-08-27T02:39:54+00:00"
+    },
+    {
+      "from": "EV-140",
+      "to": "HYP-013",
+      "type": "validates",
+      "created_at": "2026-08-27T02:39:54+00:00"
+    },
+    {
+      "from": "ISS-116",
+      "to": "COMP-002",
+      "type": "located_in",
+      "created_at": "2026-08-27T02:39:54+00:00"
+    },
+    {
+      "from": "CHG-225",
+      "to": "TASK-214",
+      "type": "implements",
+      "created_at": "2026-08-27T04:14:44+00:00"
+    },
+    {
+      "from": "CHG-226",
+      "to": "TASK-214",
+      "type": "implements",
+      "created_at": "2026-08-27T04:14:44+00:00"
+    },
+    {
+      "from": "CHG-227",
+      "to": "TASK-214",
+      "type": "implements",
+      "created_at": "2026-08-27T04:14:44+00:00"
+    },
+    {
+      "from": "CHG-225",
+      "to": "ISS-116",
+      "type": "resolves",
+      "created_at": "2026-08-27T04:14:45+00:00"
+    },
+    {
+      "from": "EV-141",
+      "to": "HYP-013",
+      "type": "validates",
+      "created_at": "2026-08-27T04:14:45+00:00"
     }
   ]
 }
