@@ -2,7 +2,7 @@
   "ril_version": 1,
   "round": 174,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-08-27T07:58:16+00:00",
+  "updated_at": "2026-08-27T08:28:43+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -11424,6 +11424,45 @@
       "source": "VERIFY 2026-08-27 (session II): nuxt typecheck 0 errors (vue-tsc); biome lint clean",
       "title": "Frontend typecheck evidence for the reader tag-follow milestone (TASK-215)",
       "confidence": 1.0
+    },
+    "DEC-196": {
+      "id": "DEC-196",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-27T07:58:53+00:00",
+      "updated_at": "2026-08-27T07:58:53+00:00",
+      "touched_round": 174,
+      "title": "Milestone: in-place tag-follow on the post page (DEC-196) — tag-follow discoverability across the reading surface",
+      "rationale": "Feature-evolution continuation (§11.2 gap analysis) of the just-shipped reader tag-follow (DEC-195/TASK-215): that milestone built the durable tag_follows table, follow/unfollow/notify endpoints, and the account Followed-tags section — but the only entry point is the /tags page. On the highest-traffic reading surface, the post page, tags render as inert chips that only link back to the home tag filter; a reader who discovers a topic from a post has to leave the post, find the tag on /tags, and follow from there. This milestone closes the discovery gap: each post-page footer tag chip becomes followable for signed-in readers (follow/unfollow + new-post notify toggle), matching the established bottom-of-post subscription design language (ThreadSubscribeButton DEC-078; BookmarkButton) and the TASK-215 follow controls. Stakeholder: signed-in readers. Acceptance (1 sentence): a signed-in reader follows or unfollows a tag and toggles its new-post notify directly from the tag chips in the post footer, and the follow reflects immediately in their account Followed-tags list; guests see the chips unchanged. Why now: tag-follow is the freshest subscription axis and is otherwise invisible outside /tags; the post page is the primary topic-discovery surface. Additive, frontend-only: TASK-215 backend endpoints are complete; no DDL (DEC-009)",
+      "alternatives_rejected": "Add the follow control to every PostCard across home/search/series/archive/related grids (PostCard chips sit inside a NuxtLink wrapper — a nested interactive element inside a link is invalid HTML and adds click-propagation hazards to every card grid for modest incremental value; chips stay inert on cards, noted as a future adoption point once the shared store exists); a standalone follow button in the post Actions row (redundant with attaching the control to the chip itself and clutters an already-dense actions bar of bookmark/like/thread-subscribe); sitemap.xml + robots SEO milestone (a real gap — the blog has no XML sitemap — but author-facing with slow, indirect user perception vs a reader-facing subscription flow with a crisp acceptance; recorded as a backlog task to keep it visible); an unread-notifications header badge (inbox already returns unread_count and read-all, badge is button-adjacent and fails the value gate alone)"
+    },
+    "TASK-216": {
+      "id": "TASK-216",
+      "type": "task",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-27T07:59:15+00:00",
+      "updated_at": "2026-08-27T07:59:15+00:00",
+      "touched_round": 174,
+      "category": "core-feature",
+      "severity": 0.5,
+      "confidence": 0.95,
+      "effort": 2.0,
+      "unlock_factor": 1.0,
+      "title": "Post-page in-place tag follow (DEC-196): shared auth-aware tag-follow store (module-scoped singleton over getReaderTagFollows/followReaderTag/setTagFollowNotify/unfollowReaderTag — one GET /me/tag-follows for N chips, keyed to reader id, reset on change/logout) + TagFollowButton component (props tagId/tagName; guards on useReaderAuth.isAuthenticated so guests render nothing; bookmark-follow + bell-notify matching /tags; optimistic updates reconciled from responses; 404-safe; @click.stop.prevent beside the sibling chip link) wired into posts/[slug].vue footer chips (keep tag→home-filter link, attach control for signed-in, guest view unchanged); en/zh locales reused from tags.*; Vitest api-store + TagFollowButton component tests (guest-hides, follow/toggle/unfollow, error paths) + post-page smoke; e2e journey register → open tagged post → follow from footer → account Followed-tags shows it → unfollow"
+    },
+    "EV-145": {
+      "id": "EV-145",
+      "type": "evidence",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-27T08:28:43+00:00",
+      "updated_at": "2026-08-27T08:28:43+00:00",
+      "touched_round": 174,
+      "source": "OBSERVE 2026-08-27 (session II): server/routes/sitemap.xml.ts exists on HEAD since b14607f (TASK-130) and proxies the backend /sitemap.xml feed with ETag/304 handling",
+      "title": "Correction: DEC-196 alternatives_rejected claimed the blog has no XML sitemap — a sitemap route has existed since the conditional-request milestone (TASK-130); no sitemap backlog task should be created",
+      "confidence": 1.0
     }
   },
   "edges": [
@@ -16374,6 +16413,12 @@
       "to": "ISS-117",
       "type": "resolves",
       "created_at": "2026-08-27T07:24:13+00:00"
+    },
+    {
+      "from": "DEC-196",
+      "to": "TASK-216",
+      "type": "governs",
+      "created_at": "2026-08-27T07:59:15+00:00"
     }
   ]
 }

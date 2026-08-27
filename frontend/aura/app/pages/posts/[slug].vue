@@ -387,18 +387,23 @@ const readingTime = computed(() => readingMinutes(post.value?.content));
           <MarkdownContent :content="post.content" />
         </div>
 
-        <!-- Tags -->
+        <!-- Tags (each chip is followable in place for signed-in readers, DEC-196/TASK-216) -->
         <footer v-if="post.tags?.length" class="mt-10 pt-8 border-t border-gray-100 dark:border-gray-800">
           <div class="flex flex-wrap gap-2">
-            <NuxtLink
+            <span
               v-for="tag in post.tags"
               :key="tag.id"
-              :to="{ path: '/', query: { tag_id: String(tag.id) } }"
-              class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 rounded-full text-xs font-medium hover:bg-blue-50 dark:hover:bg-blue-900/30 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+              class="inline-flex items-center bg-gray-100 dark:bg-gray-800 rounded-full text-xs font-medium"
             >
-              <Icon icon="lucide:tag" class="w-3 h-3" />
-              {{ tag.name }}
-            </NuxtLink>
+              <NuxtLink
+                :to="{ path: '/', query: { tag_id: String(tag.id) } }"
+                class="inline-flex items-center gap-1.5 px-3 py-1.5 text-gray-600 dark:text-gray-400 hover:bg-blue-50 dark:hover:bg-blue-900/30 hover:text-blue-600 dark:hover:text-blue-400 rounded-full transition-colors"
+              >
+                <Icon icon="lucide:tag" class="w-3 h-3" />
+                {{ tag.name }}
+              </NuxtLink>
+              <TagFollowButton :tag-id="tag.id" :tag-name="tag.name" />
+            </span>
           </div>
         </footer>
 
