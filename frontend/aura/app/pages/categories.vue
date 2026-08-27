@@ -4,9 +4,9 @@ import { usePosts } from "~~/api/public/posts";
 import { useCategories } from "~~/api/public/taxonomy";
 import {
 	followReaderCategory,
+	getReaderCategoryFollows,
 	setCategoryFollowNotify,
 	unfollowReaderCategory,
-	useReaderCategoryFollows,
 } from "~~/api/reader/follows";
 import { paginationPages } from "~~/composables/usePagination";
 import { usePushSubscription } from "~~/composables/usePushSubscription";
@@ -133,8 +133,12 @@ const catFollowBusy = ref(false);
 async function loadCategoryFollow() {
 	if (!catSignedIn.value || !categoryId.value) return;
 	try {
-		const res = await useReaderCategoryFollows();
-		const item = res.data?.value?.items.find((c) => c.id === categoryId.value) ?? null;
+		// Imperative $fetch seam (ISS-110/111, TASK-199): useFetch-based query()
+		// wrappers silently no-op when called from onMounted in a sync-setup
+		// component — the same class of regression ISS-117 fixed on the account
+		// page. Await the plain response directly.
+		const res = await getReaderCategoryFollows();
+		const item = res.items.find((c) => c.id === categoryId.value) ?? null;
 		catFollowing.value = !!item;
 		catNotify.value = item?.notify ?? true;
 	} catch {

@@ -416,13 +416,12 @@ describe("Tags Page", () => {
 
 		it("follows the tag with PUT and flips to the following state", async () => {
 			window.localStorage.setItem("reader_token", "reader-jwt");
-			const fetchMock = vi.fn((_url: string, _opts?: { method?: string }) =>
-				Promise.resolve({
-					tag_id: 1,
-					tag_name: "React",
-					following: true,
-					notify: true,
-				}),
+			const fetchMock = vi.fn((url: string, opts: { method?: string } = {}) =>
+				Promise.resolve(
+					url.includes("/tag-follows") && opts.method !== "PUT"
+						? { items: [], total: 0 }
+						: { tag_id: 1, tag_name: "React", following: true, notify: true },
+				),
 			);
 			vi.stubGlobal("$fetch", fetchMock);
 
@@ -450,8 +449,12 @@ describe("Tags Page", () => {
 			const deleteMock = vi.fn(() => Promise.resolve(null));
 			vi.stubGlobal(
 				"$fetch",
-				vi.fn((_url: string, opts: { method?: string } = {}) =>
-					opts.method === "DELETE" ? deleteMock() : putMock(),
+				vi.fn((url: string, opts: { method?: string } = {}) =>
+					opts.method === "DELETE"
+						? deleteMock()
+						: url.includes("/tag-follows") && opts.method !== "PUT"
+							? Promise.resolve({ items: [], total: 0 })
+							: putMock(),
 				),
 			);
 

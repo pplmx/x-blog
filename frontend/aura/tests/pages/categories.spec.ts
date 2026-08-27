@@ -88,19 +88,30 @@ async function mountCategoriesPage({
 	vi.stubGlobal("computed", computed);
 
 	// Mock useFetch (used by useApi/useCategories internally)
+	// The reader's category-follow load runs through the imperative $fetch seam
+	// (getReaderCategoryFollows, ISS-110/111 pattern) — not useFetch.
+	vi.stubGlobal(
+		"$fetch",
+		vi.fn((url: unknown, opts: { method?: string } = {}) => {
+			if (
+				String(url).includes("/me/category-follows") &&
+				!["PUT", "PATCH", "DELETE"].includes(opts.method ?? "")
+			) {
+				// snapshot the shared state so tests can mutate it between mounts
+				return Promise.resolve({
+					items: [...catFollowsState.items],
+					total: catFollowsState.items.length,
+				});
+			}
+			return Promise.resolve({});
+		}),
+	);
+
 	vi.stubGlobal(
 		"useFetch",
 		vi.fn((url: string | (() => string) | { value: string }) => {
 			const urlStr =
 				typeof url === "function" ? url() : typeof url === "string" ? url : (url.value ?? "");
-			if (urlStr.includes("/me/category-follows")) {
-				return {
-					data: ref(catFollowsState),
-					pending: ref(false),
-					error: ref(null),
-					refresh: vi.fn(),
-				};
-			}
 			if (urlStr.includes("/api/categories") && !urlStr.includes("/posts")) {
 				return {
 					data: ref(categories),

@@ -4,9 +4,9 @@ import { usePosts } from "~~/api/public/posts";
 import { useTags } from "~~/api/public/taxonomy";
 import {
 	followReaderTag,
+	getReaderTagFollows,
 	setTagFollowNotify,
 	unfollowReaderTag,
-	useReaderTagFollows,
 } from "~~/api/reader/follows";
 import { paginationPages } from "~~/composables/usePagination";
 import { useSeo } from "~~/composables/useSeo";
@@ -86,8 +86,12 @@ const tagFollowBusy = ref(false);
 async function loadTagFollow() {
 	if (!tagSignedIn.value || !tagId.value) return;
 	try {
-		const res = await useReaderTagFollows();
-		const item = res.data?.value?.items.find((t) => t.id === tagId.value) ?? null;
+		// Imperative $fetch seam (ISS-110/111, TASK-199): useFetch-based query()
+		// wrappers silently no-op when called outside a setup/suspense context —
+		// the same class of regression ISS-117 fixed on the account page and
+		// ISS-118 extended to SPA navigation. Await the plain response directly.
+		const res = await getReaderTagFollows();
+		const item = res.items.find((t) => t.id === tagId.value) ?? null;
 		tagFollowing.value = !!item;
 		tagNotify.value = item?.notify ?? true;
 	} catch {
