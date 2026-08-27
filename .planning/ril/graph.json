@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 176,
+  "round": 177,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-08-27T12:19:20+00:00",
+  "updated_at": "2026-08-27T12:28:55+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -11593,10 +11593,22 @@
       "version": 1,
       "created_at": "2026-08-27T12:19:20+00:00",
       "updated_at": "2026-08-27T12:19:20+00:00",
-      "touched_round": 176,
+      "touched_round": 177,
       "title": "Milestone delivered: email notification channel (DEC-197 complete)",
       "rationale": "Both slices landed and verified: backend channel (3e695be, TASK-217) delivers SMTP email at every dispatch point gated on per-kind email opt-ins, prefs API extended to six kinds; frontend (9157b61, TASK-218) surfaces the three email toggles on the notifications prefs card and keeps the push/inbox contract unchanged. Full-suite + targeted + e2e evidence recorded in EV-147/EV-148.",
       "alternatives_rejected": "Deferring the milestone (the arc would keep the biggest retention hole — off-site reach — half-missing); building a newsletter/digest instead (bigger, can layer on the now-existing per-event fan-out later)"
+    },
+    "DEC-199": {
+      "id": "DEC-199",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-27T12:28:55+00:00",
+      "updated_at": "2026-08-27T12:28:55+00:00",
+      "touched_round": 177,
+      "title": "converged-idle: two milestones delivered this session (inline tag-follow, email channel); feature backlog drained and residual candidates fail the value gate",
+      "rationale": "Session II delivered and verified two complete milestones: post-page inline tag-follow (TASK-216, CHG-234) and the email notification channel (TASK-217/218, CHG-235/236), each with full unit + integration + e2e evidence (EV-142..148) and a green baseline (backend 1208/9 @94.68%, frontend 1250, e2e 4/4, typecheck 0, alembic no-drift). §11.2 sourcing against the drained backlog: the candidates remaining are (a) PostCard tag chips linking to the tag view — same nested-link-inside-NuxtLink risk already rejected in DEC-196 for marginal value; (b) a \"send test email\" button on the prefs card — a smaller same-class patch of the email channel (anti-frivolity, §11.2: no backpedalling to smaller copies of a delivered milestone); (c) a weekly email digest — a genuinely different feature but scheduler-driven and too large to land as a clean slice in this session tail. None clears the value gate as a new, differentiated milestone, so per §11.5(3) the engine parks. Reactivation: a new operator direction (supersedes this decision) or a real external signal (a fresh issue, or the operator opting into SMTP credentials and wanting digest/verification tooling) resumes the loop; the first round of any reactivation re-runs the full VERIFY baseline first.",
+      "alternatives_rejected": "Forcing the PostCard-chip link change (nested interactive element inside the card NuxtLink — invalid HTML and click-propagation risk across every card grid for a marginal discovery gain); shipping the test-email button (patchy increment on a just-delivered milestone, not a net-new differentiated capability); starting the email-digest milestone now (scheduler + aggregation is beyond a clean round and would rush a large feature)"
     }
   },
   "edges": [
@@ -16595,6 +16607,12 @@
       "to": "DEC-197",
       "type": "supersedes",
       "created_at": "2026-08-27T12:19:20+00:00"
+    },
+    {
+      "from": "DEC-199",
+      "to": "DEC-198",
+      "type": "supersedes",
+      "created_at": "2026-08-27T12:28:55+00:00"
     }
   ]
 }
