@@ -88,16 +88,23 @@ const date = computed(() =>
         >
           {{ post.excerpt }}
         </p>
-
-        <div class="flex flex-wrap gap-2 pt-2 border-t border-gray-50 dark:border-gray-800">
-          <span
-            v-for="tag in post.tags" :key="tag.id"
-            class="text-xs px-3 py-1.5 bg-gradient-to-r from-blue-50 dark:from-blue-900/30 to-indigo-50 dark:to-indigo-900/30 text-blue-600 dark:text-blue-400 rounded-full font-medium hover:from-blue-100 dark:hover:from-blue-900/50 hover:to-indigo-100 dark:hover:to-indigo-900/50 transition-colors duration-200"
-          >
-            #{{ tag.name }}
-          </span>
-        </div>
       </div>
     </NuxtLink>
+
+    <!-- Tag chips sit OUTSIDE the card link (a nested interactive element
+         inside a NuxtLink is invalid HTML, DEC-196/TASK-216), and each chip is
+         itself a link to the tag-filtered view so the feed's tags are
+         discoverable: feed chip -> tag view -> follow control. -->
+    <div v-if="post.tags?.length" class="px-6 pb-6">
+      <div class="flex flex-wrap gap-2 pt-2 border-t border-gray-50 dark:border-gray-800">
+        <NuxtLink
+          v-for="tag in post.tags" :key="tag.id"
+          :to="{ path: '/', query: { tag_id: String(tag.id) } }"
+          class="text-xs px-3 py-1.5 bg-gradient-to-r from-blue-50 dark:from-blue-900/30 to-indigo-50 dark:to-indigo-900/30 text-blue-600 dark:text-blue-400 rounded-full font-medium hover:from-blue-100 dark:hover:from-blue-900/50 hover:to-indigo-100 dark:hover:to-indigo-900/50 transition-colors duration-200"
+        >
+          #{{ tag.name }}
+        </NuxtLink>
+      </div>
+    </div>
   </article>
 </template>

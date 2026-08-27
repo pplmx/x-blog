@@ -202,3 +202,22 @@ describe("PostCard", () => {
 		});
 	});
 });
+
+it("renders each tag chip as a link to the tag-filtered view (DEC-196)", () => {
+	const hrefStub = {
+		...stubs,
+		NuxtLink: {
+			template:
+				"<a class=\"nl\" :href=\"typeof to === 'string' ? to : (to.path || '/')\"><slot/></a>",
+			props: ["to"],
+		},
+	};
+	const wrapper = mount(PostCard, { props: { post: mockPost }, global: { stubs: hrefStub } });
+	const chips = wrapper.findAll("a.nl");
+	// Main card link (post slug) + one chip per tag.
+	const chipLinks = chips.filter((c) => c.text().startsWith("#"));
+	expect(chipLinks).toHaveLength(2);
+	expect(chipLinks[0].text()).toBe("#vue");
+	expect(chipLinks[0].attributes("href")).toBe("/");
+	expect(chipLinks[1].text()).toBe("#nuxt");
+});

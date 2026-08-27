@@ -107,4 +107,27 @@ test.describe("Inline tag follow on the post page (TASK-216)", () => {
 		await page.goto("/account");
 		await expect(section).toContainText("还没有关注任何标签", { timeout: 10000 });
 	});
+
+	test("a guest can follow a tag chip from a post card to the tag-filtered feed", async ({
+		page,
+		request,
+	}) => {
+		const r = await request.get("/api/posts?limit=20");
+		expect(r.status()).toBe(200);
+		const data = (await r.json()) as {
+			items: Array<{ slug: string; tags: Array<{ id: number; name: string }> }>;
+		};
+		const post = data.items.find((p) => (p.tags?.length ?? 0) > 0);
+		if (!post) {
+			test.skip();
+			return;
+		}
+		await page.goto("/");
+		const chip = page.locator(`article a`, { hasText: `#${post.tags[0].name}` }).first();
+		await expect(chip).toBeVisible({ timeout: 10000 });
+		await chip.click();
+		// The feed chips link to the tag-filtered view (DEC-196/TASK-219).
+		await expect(page).toHaveURL(new RegExp(`tag_id=${post.tags[0].id}`));
+		await expect(page.locator("h1").first()).toBeVisible();
+	});
 });
