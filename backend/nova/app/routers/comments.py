@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 from app import auth, crud, models, schemas
 from app.auth import User, get_current_admin
 from app.database import get_db
+from app.emailer import EmailItem, dispatch_notification_emails, email_channel_enabled
 from app.limiter import RATE_LIMIT_COMMENT, client_rate_key, limiter
 from app.middleware import get_logger
 from app.webpush import (
@@ -84,6 +85,23 @@ def _notify_thread_subscribers(
             body=THREAD_NOTIF_BODY.replace("{post_title}", post.title or ""),
             url=f"/posts/{post.slug}#comment-{new_comment_id}",
         )
+    # Email channel (DEC-197, TASK-217): best-effort off-site copy for thread
+    # followers who opted into email for the kind.
+    dispatch_notification_emails(
+        db,
+        [
+            EmailItem(
+                rid,
+                "thread_comment",
+                THREAD_NOTIF_TITLE,
+                THREAD_NOTIF_BODY.replace("{post_title}", post.title or ""),
+                f"/posts/{post.slug}#comment-{new_comment_id}",
+            )
+            for rid in target_ids
+            if email_channel_enabled(target_prefs.get(rid), "thread_comment")
+        ],
+        logger,
+    )
     if not vapid_configured():
         return
     subscriptions = db.query(models.PushSubscription).filter(models.PushSubscription.reader_id.in_(target_ids)).all()
@@ -131,6 +149,22 @@ def _notify_replied_to(
         body=REPLY_NOTIF_BODY.replace("{post_title}", post.title or ""),
         url=f"/posts/{post.slug}#comment-{parent_comment_id}",
     )
+    # Email channel (DEC-197, TASK-217): best-effort off-site copy for the
+    # replied-to reader if they opted into email for replies.
+    if email_channel_enabled(target_prefs.get(parent_reader.id), "reply"):
+        dispatch_notification_emails(
+            db,
+            [
+                EmailItem(
+                    parent_reader.id,
+                    "reply",
+                    REPLY_NOTIF_TITLE,
+                    REPLY_NOTIF_BODY.replace("{post_title}", post.title or ""),
+                    f"/posts/{post.slug}#comment-{parent_comment_id}",
+                )
+            ],
+            logger,
+        )
     if not vapid_configured():
         return
     payload = {

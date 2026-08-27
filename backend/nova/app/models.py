@@ -25,6 +25,7 @@ from sqlalchemy import (
     Table,
     Text,
     UniqueConstraint,
+    false,
     true,
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -492,6 +493,15 @@ class ReaderNotificationPref(Base):
     new_post: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True, server_default=true())
     reply: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True, server_default=true())
     thread_comment: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True, server_default=true())
+    # Email channel (DEC-197, TASK-217): a per-kind *opt-in* copy of the fan-out,
+    # delivered over SMTP to the reader's registered address. Off by default —
+    # email must never arrive unless the reader explicitly asked for it — and
+    # independent of the push/inbox toggles above (a reader may want nothing on
+    # site but email for replies, or push only). One row per reader still holds
+    # both channels so the prefs surface stays a single object.
+    email_new_post: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default=false())
+    email_reply: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default=false())
+    email_thread_comment: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default=false())
     # Set only on PATCH (naive UTC, utc_now_naive in crud) — no model default, so
     # a GET-materialized row left untouched has NULL (never modified) and no
     # aware-vs-naive mix in one column.

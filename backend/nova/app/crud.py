@@ -14,6 +14,7 @@ from app.cache import (
     clear_tags_cache,
     tags_cache,
 )
+from app.emailer import EmailItem, dispatch_notification_emails, email_channel_enabled
 from app.middleware import get_logger
 from app.webpush import dispatch_new_post
 
@@ -2047,9 +2048,7 @@ def remove_tag_follow(db: Session, reader_id: int, tag_id: int) -> bool:
     return True
 
 
-def set_tag_follow_notify(
-    db: Session, reader_id: int, tag_id: int, notify: bool
-) -> models.TagFollow | None:
+def set_tag_follow_notify(db: Session, reader_id: int, tag_id: int, notify: bool) -> models.TagFollow | None:
     """Toggle whether a tag follow pushes new-posts. Returns None if not following."""
     follow = get_tag_follow(db, reader_id, tag_id)
     if not follow:
@@ -2113,8 +2112,7 @@ def follows_feed_posts(db: Session, reader_id: int, limit: int = 12) -> list[mod
         for (sid,) in db.query(models.SeriesFollow.series_id).filter(models.SeriesFollow.reader_id == reader_id).all()
     ]
     tag_ids = [
-        tid
-        for (tid,) in db.query(models.TagFollow.tag_id).filter(models.TagFollow.reader_id == reader_id).all()
+        tid for (tid,) in db.query(models.TagFollow.tag_id).filter(models.TagFollow.reader_id == reader_id).all()
     ]
     if not category_ids and not series_ids and not tag_ids:
         return []
@@ -2127,9 +2125,7 @@ def follows_feed_posts(db: Session, reader_id: int, limit: int = 12) -> list[mod
         scope.append(models.Post.series_id.in_(series_ids))
     if tag_ids:
         scope.append(
-            models.Post.id.in_(
-                db.query(models.post_tags.c.post_id).filter(models.post_tags.c.tag_id.in_(tag_ids))
-            )
+            models.Post.id.in_(db.query(models.post_tags.c.post_id).filter(models.post_tags.c.tag_id.in_(tag_ids)))
         )
 
     query = (
@@ -2574,13 +2570,12 @@ def _prune_notifications_for_readers(db: Session, reader_ids: set[int]) -> None:
                 order_by=models.ReaderNotification.id.desc(),
             )
             .label("rn"),
-        )
-        .where(models.ReaderNotification.reader_id.in_(reader_ids))
+        ).where(models.ReaderNotification.reader_id.in_(reader_ids))
     ).subquery()
     over_cap = select(ranked.c.id).where(ranked.c.rn > MAX_NOTIFICATIONS_PER_READER)
-    db.query(models.ReaderNotification).filter(
-        models.ReaderNotification.id.in_(over_cap)
-    ).delete(synchronize_session=False)
+    db.query(models.ReaderNotification).filter(models.ReaderNotification.id.in_(over_cap)).delete(
+        synchronize_session=False
+    )
 
 
 def record_reader_notification(
@@ -2696,24 +2691,42 @@ def record_new_post_notifications(db: Session, post: models.Post) -> None:
         # publish on a heavily followed post). The single commit also makes the
         # fan-out atomic: either every follower's inbox row lands or none does.
         rows: list[models.ReaderNotification] = []
+        email_items: list[EmailItem] = []
         for reader_id in target_reader_ids:
             if not notification_kind_enabled(prefs.get(reader_id), "new_post"):
                 continue
             is_series_part = reader_id in series_reader_ids
+            kind = "series_new_part" if is_series_part else "new_post"
+            title = "系列更新" if is_series_part else "新文章发布"
             rows.append(
                 models.ReaderNotification(
                     reader_id=reader_id,
-                    kind="series_new_part" if is_series_part else "new_post",
-                    title="系列更新" if is_series_part else "新文章发布",
+                    kind=kind,
+                    title=title,
                     body=f"《{post.title or ''}》",
                     url=f"/posts/{post.slug}",
                 )
             )
+            # Email channel (DEC-197, TASK-217): a best-effort off-site copy of
+            # the same fan-out, only for readers who opted into email for the kind.
+            if email_channel_enabled(prefs.get(reader_id), kind):
+                email_items.append(
+                    EmailItem(
+                        reader_id=reader_id,
+                        kind=kind,
+                        title=title,
+                        body=f"《{post.title or ''}》",
+                        url=f"/posts/{post.slug}",
+                    )
+                )
         if rows:
             db.add_all(rows)
             db.flush()  # assign ids so the prune's id ordering is exact
             _prune_notifications_for_readers(db, {r.reader_id for r in rows})
             db.commit()  # inserts + prune land atomically
+        # Send after the inbox commit so a mail failure can't affect the durable
+        # rows; dispatch_notification_emails never raises (best effort).
+        dispatch_notification_emails(db, email_items, logger)
     except Exception:  # noqa: BLE001 — best effort, never fail the publish
         db.rollback()
 
@@ -2724,6 +2737,10 @@ def record_new_post_notifications(db: Session, post: models.Post) -> None:
 # toggle because a series update IS a new post; the new_post kill-switch gates
 # it.
 NOTIFICATION_KINDS: tuple[str, ...] = ("new_post", "reply", "thread_comment")
+# Email channel (DEC-197, TASK-217): per-kind opt-ins accepted by the same
+# PATCH endpoint. The fan-out gating for these lives in emailer.email_channel_enabled.
+EMAIL_KINDS: tuple[str, ...] = ("email_new_post", "email_reply", "email_thread_comment")
+PREF_KINDS: tuple[str, ...] = NOTIFICATION_KINDS + EMAIL_KINDS
 
 
 def get_reader_notification_prefs(db: Session, reader_id: int) -> models.ReaderNotificationPref:
@@ -2773,11 +2790,11 @@ def set_reader_notification_kind(
 ) -> models.ReaderNotificationPref | None:
     """Toggle one notification kind for a reader; returns the updated row.
 
-    ``kind`` must be in ``NOTIFICATION_KINDS`` (whitelist — never write an
+    ``kind`` must be in ``PREF_KINDS`` (whitelist — never write an
     attacker-controlled attribute). None if the kind is rejected; the router
-    422s on that. (DEC-171, TASK-202)
+    422s on that. (DEC-171, TASK-202; email channel DEC-197)
     """
-    if kind not in NOTIFICATION_KINDS:
+    if kind not in PREF_KINDS:
         return None
     row = db.get(models.ReaderNotificationPref, reader_id)
     if row is None:

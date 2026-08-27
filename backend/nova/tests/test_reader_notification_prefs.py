@@ -14,6 +14,8 @@ inbox contract conventions.
 
 from uuid import uuid4
 
+import pytest
+
 PREFS = "/api/reader/me/notification-preferences"
 NOTIFS = "/api/reader/me/notifications"
 
@@ -69,7 +71,14 @@ class TestPrefsContract:
     def test_defaults_all_on(self, client):
         token = _token(client)
         data = client.get(PREFS, headers=_auth(token)).json()
-        assert data == {"new_post": True, "reply": True, "thread_comment": True}
+        assert data == {
+            "new_post": True,
+            "reply": True,
+            "thread_comment": True,
+            "email_new_post": False,
+            "email_reply": False,
+            "email_thread_comment": False,
+        }
 
     def test_toggle_off_persists_and_back_on(self, client):
         token = _token(client)
@@ -80,7 +89,14 @@ class TestPrefsContract:
         assert data["thread_comment"] is True
         # persisted server-side: a fresh GET reflects it, and other kinds are untouched.
         again = client.get(PREFS, headers=headers).json()
-        assert again == {"new_post": True, "reply": False, "thread_comment": True}
+        assert again == {
+            "new_post": True,
+            "reply": False,
+            "thread_comment": True,
+            "email_new_post": False,
+            "email_reply": False,
+            "email_thread_comment": False,
+        }
         # back on
         on = client.patch(PREFS, json={"kind": "reply", "enabled": True}, headers=headers)
         assert on.status_code == 200
@@ -96,7 +112,14 @@ class TestPrefsContract:
         token_b = _token(client, email="iso-b@example.com")
         _opt_out(client, token_a, "thread_comment")
         data_b = client.get(PREFS, headers=_auth(token_b)).json()
-        assert data_b == {"new_post": True, "reply": True, "thread_comment": True}
+        assert data_b == {
+            "new_post": True,
+            "reply": True,
+            "thread_comment": True,
+            "email_new_post": False,
+            "email_reply": False,
+            "email_thread_comment": False,
+        }
 
 
 class TestDispatchGating:
@@ -186,3 +209,107 @@ class TestDispatchGating:
 
         data = client.get(NOTIFS, headers=headers).json()
         assert data["total"] == 0
+
+
+class TestEmailChannel:
+    """Email channel (DEC-197, TASK-217): opt-in per-kind SMTP copy of the fan-out."""
+
+    _class_smtp_sent: list = []
+
+    @pytest.fixture(autouse=True)
+    def _email_sink(self, monkeypatch: pytest.MonkeyPatch):
+        captured: list = []
+        TestEmailChannel._class_smtp_sent = captured
+
+        class FakeSMTP:
+            def __init__(self, host, port, timeout=None):
+                pass
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *args):
+                return None
+
+            def starttls(self, context=None):
+                return True
+
+            def login(self, user, password):
+                return True
+
+            def send_message(self, msg):
+                captured.append(msg)
+
+        monkeypatch.setattr("app.emailer.smtplib.SMTP", FakeSMTP)
+        monkeypatch.setenv("SMTP_HOST", "smtp.test.example")
+        monkeypatch.setenv("SMTP_FROM", "blog@example.com")
+        monkeypatch.setenv("SITE_URL", "https://blog.example.com")
+
+    def test_defaults_email_off(self, client):
+        token = _token(client, email="mail-default@example.com")
+        data = client.get(PREFS, headers=_auth(token)).json()
+        assert data["email_new_post"] is False
+        assert data["email_reply"] is False
+        assert data["email_thread_comment"] is False
+        assert data["new_post"] is True  # push/inbox side stays all-on
+
+    def test_email_kind_toggle_round_trip(self, client):
+        token = _token(client, email="mail-toggle@example.com")
+        headers = _auth(token)
+        patched = client.patch(PREFS, json={"kind": "email_new_post", "enabled": True}, headers=headers)
+        assert patched.status_code == 200, patched.text
+        assert patched.json()["email_new_post"] is True
+        assert patched.json()["email_reply"] is False
+        # Persisted across a fresh GET.
+        got = client.get(PREFS, headers=headers).json()
+        assert got["email_new_post"] is True
+        # And back off.
+        off = client.patch(PREFS, json={"kind": "email_new_post", "enabled": False}, headers=headers)
+        assert off.json()["email_new_post"] is False
+
+    def test_email_off_by_default_skips_email_but_inbox_row_still_lands(self, client, auth_headers, db_session):
+        token = _token(client, email="mail-off@example.com")
+        headers = _auth(token)
+        cat = client.post("/api/categories", json={"name": "MailOffCat"}, headers=auth_headers)
+        client.put(f"/api/reader/me/categories/{cat.json()['id']}/follow", headers=headers)
+
+        post = client.post(
+            "/api/posts",
+            json={
+                "title": "Mail gated",
+                "slug": "mail-gated-new",
+                "content": "c",
+                "published": True,
+                "category_id": cat.json()["id"],
+            },
+            headers=auth_headers,
+        )
+        assert post.status_code == 201, post.text
+        # No SMTP emails for a reader who never opted in.
+        assert TestEmailChannel._class_smtp_sent == []
+        # ...but the durable inbox row still exists (push/inbox unaffected).
+        assert client.get(NOTIFS, headers=headers).json()["total"] == 1
+
+    def test_email_new_post_on_fans_out_email(self, client, auth_headers, db_session):
+        token = _token(client, email="mail-on@example.com")
+        headers = _auth(token)
+        client.patch(PREFS, json={"kind": "email_new_post", "enabled": True}, headers=headers)
+        cat = client.post("/api/categories", json={"name": "MailOnCat"}, headers=auth_headers)
+        client.put(f"/api/reader/me/categories/{cat.json()['id']}/follow", headers=headers)
+
+        client.post(
+            "/api/posts",
+            json={
+                "title": "Mail fan out",
+                "slug": "mail-fanout",
+                "content": "c",
+                "published": True,
+                "category_id": cat.json()["id"],
+            },
+            headers=auth_headers,
+        )
+        assert len(TestEmailChannel._class_smtp_sent) == 1, TestEmailChannel._class_smtp_sent
+        assert TestEmailChannel._class_smtp_sent[0]["To"] == "mail-on@example.com"
+        assert TestEmailChannel._class_smtp_sent[0]["Subject"] == "新文章发布"
+        # And the inbox row lands too.
+        assert client.get(NOTIFS, headers=headers).json()["total"] == 1

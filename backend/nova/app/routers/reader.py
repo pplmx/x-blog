@@ -1492,13 +1492,18 @@ def mark_all_notifications_read(
 class NotificationPrefs(BaseModel):
     """A reader's per-kind notification state; every field true = all on.
 
-    Mirrors the ReaderNotificationPref row. Missing rows read as all-on, so a
-    reader who never opened the preferences surface is unaffected.
+    Mirrors the ReaderNotificationPref row. Missing rows read as all-on for the
+    push/inbox kinds, so a reader who never opened the preferences surface is
+    unaffected. The email_* fields are the opt-in email channel (DEC-197,
+    TASK-217): they default false — a missing row reads as no email at all.
     """
 
     new_post: bool
     reply: bool
     thread_comment: bool
+    email_new_post: bool
+    email_reply: bool
+    email_thread_comment: bool
 
 
 class NotificationPrefUpdate(BaseModel):
@@ -1524,6 +1529,9 @@ def get_my_notification_prefs(
         new_post=prefs.new_post,
         reply=prefs.reply,
         thread_comment=prefs.thread_comment,
+        email_new_post=prefs.email_new_post,
+        email_reply=prefs.email_reply,
+        email_thread_comment=prefs.email_thread_comment,
     )
 
 
@@ -1546,4 +1554,7 @@ def set_my_notification_pref(
         new_post=prefs.new_post,
         reply=prefs.reply,
         thread_comment=prefs.thread_comment,
+        email_new_post=prefs.email_new_post,
+        email_reply=prefs.email_reply,
+        email_thread_comment=prefs.email_thread_comment,
     )
