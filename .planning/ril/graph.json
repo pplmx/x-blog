@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 178,
+  "round": 180,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-08-27T13:06:42+00:00",
+  "updated_at": "2026-08-27T16:13:33+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -11490,11 +11490,11 @@
     "ISS-119": {
       "id": "ISS-119",
       "type": "issue",
-      "status": "active",
-      "version": 1,
+      "status": "resolved",
+      "version": 2,
       "created_at": "2026-08-27T09:23:35+00:00",
-      "updated_at": "2026-08-27T09:23:35+00:00",
-      "touched_round": 175,
+      "updated_at": "2026-08-27T16:09:28+00:00",
+      "touched_round": 179,
       "title": "Pre-existing e2e failures against the shared dev DB: print.spec.ts (print toolbar button not found on the print route) and series-follow.spec.ts (series follow toggle never flips to following) both reproduce on clean HEAD with the tag-follow changes stashed — environment/shared-DB dependent, not regressions from DEC-196/TASK-216; CI runs a fresh Postgres so may pass there",
       "severity": 0.2
     },
@@ -11646,6 +11646,228 @@
       "touched_round": 178,
       "source": "VERIFY 2026-08-27 (session II, TASK-219): frontend Vitest 1251 passed; vue-tsc 0 errors; biome clean; e2e tag-follow-inline 3/3 incl guest chip->tag-view navigation against the dev stack",
       "title": "Verification evidence for card tag-chip links (TASK-219)",
+      "confidence": 1.0
+    },
+    "TASK-220": {
+      "id": "TASK-220",
+      "type": "task",
+      "status": "resolved",
+      "version": 4,
+      "created_at": "2026-08-27T14:57:53+00:00",
+      "updated_at": "2026-08-27T16:13:33+00:00",
+      "touched_round": 179,
+      "category": "correctness",
+      "severity": 0.9,
+      "confidence": 1.0,
+      "effort": 0.3,
+      "priority_score": 8.0,
+      "title": "Root-cause and fix the two latent e2e regressions behind ISS-119: (a) Nuxt page nesting — pages/posts/[slug].vue acts as the parent route for [slug]/print.vue (no <NuxtPage/> so the child never mounts and the article page renders at /posts/:slug/print); (b) series page loads follow state via useReaderSeriesFollows (useFetch query seam) from onMounted, which silently never sends, so a followed series resets to not-following on every load/reload; plus the brittle history.spec whole-card-text assertion that can never match the history row. Fixes: move [slug].vue -> [slug]/index.vue (sibling routes), switch to the $fetch seams getReaderSeriesFollows/getReaderSeriesProgress, and build the history needle from h2 minus the pinned-badge span."
+    },
+    "ISS-120": {
+      "id": "ISS-120",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-08-27T14:57:53+00:00",
+      "updated_at": "2026-08-27T16:09:28+00:00",
+      "touched_round": 179,
+      "severity": 0.4,
+      "title": "Dev/CI parity: the just e2e recipe never sets VAPID keys, so /api/push/vapid-public-key 503s and the whole push e2e cluster fails locally (7 push.spec tests + push-gated journeys); CI generates a throwaway ES256 VAPID keypair (test.yml) and exports it before e2e. Fixed by generating a throwaway keypair in the justfile e2e recipe."
+    },
+    "ISS-121": {
+      "id": "ISS-121",
+      "type": "issue",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-27T14:57:53+00:00",
+      "updated_at": "2026-08-27T14:57:53+00:00",
+      "touched_round": 179,
+      "severity": 0.15,
+      "title": "Residual pre-existing e2e failures against the shared dev DB (reproduce on clean HEAD, NOT TASK-220 regressions): account.spec strict-mode (login page resolves two input[autocomplete=current-password]), admin-readers, several admin specs, rss-scoped/scope toBe equality mismatches, and intermittent full-suite-load flakies (home-your-series/home-follows-feed/tag-follow pass in isolation but fail under full-suite load, the ISS-097 flakiness class). Some are dev-DB-data-dependent; none touched by the post/series fixes."
+    },
+    "EV-150": {
+      "id": "EV-150",
+      "type": "evidence",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-27T14:57:53+00:00",
+      "updated_at": "2026-08-27T14:57:53+00:00",
+      "touched_round": 179,
+      "source": "VERIFY 2026-08-27 (ISS-119 root cause, series page): network-level diagnostic — reader follows series via API (PUT 201) then browser loads /series/{slug}; ZERO GET /api/reader/me/series-follows fires on first load or reload, button stays 有新篇时通知我; onMounted guard passes (signedIn=true, seriesId=3) so the useFetch query seam (useReaderSeriesFollows) silently never sends from a lifecycle hook (ISS-110/111/117/118 class); home page avoids it because its onMounted awaits the seams first",
+      "title": "Series page follow-state load never fires (useFetch seam from onMounted)",
+      "confidence": 1.0
+    },
+    "EV-151": {
+      "id": "EV-151",
+      "type": "evidence",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-27T14:57:53+00:00",
+      "updated_at": "2026-08-27T14:57:53+00:00",
+      "touched_round": 179,
+      "source": "VERIFY 2026-08-27 (ISS-119 root cause, print route): production build — direct load of /posts/welcome-to-x-blog/print returns 200 but the rendered DOM is the ARTICLE page (中文/收藏/点赞 buttons, comment threads, h1 count=2); the print chunk CSS loads (print.DWZWhfRF.css) and precomputed.mjs lists both pages/vue and pages/[slug]/print.vue — Nuxt nested print.vue under the [slug].vue parent (no <NuxtPage/> so the child never mounts). Exact one nesting collision in the whole pages tree.",
+      "title": "Print route renders the article page due to [slug].vue parent nesting",
+      "confidence": 1.0
+    },
+    "EV-152": {
+      "id": "EV-152",
+      "type": "evidence",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-27T14:57:53+00:00",
+      "updated_at": "2026-08-27T14:57:53+00:00",
+      "touched_round": 179,
+      "source": "VERIFY 2026-08-27 (ISS-120): /api/push/vapid-public-key → 503 (VAPID_PUBLIC_KEY/VAPID_PRIVATE_KEY unset) on the dev backend; after generating a throwaway ES256 keypair and exporting VAPID_* the endpoint returns 200 and push.spec (7 tests) + thread-follow pass. CI already does this (test.yml), the justfile e2e recipe did not.",
+      "title": "Push e2e cluster requires VAPID keys (CI parity gap in just e2e)",
+      "confidence": 1.0
+    },
+    "EV-153": {
+      "id": "EV-153",
+      "type": "evidence",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-27T14:57:53+00:00",
+      "updated_at": "2026-08-27T14:57:53+00:00",
+      "touched_round": 179,
+      "source": "VERIFY 2026-08-27 (clean-HEAD baseline, TASK-220 not regressing): with all TASK-220 changes stashed + HEAD rebuild, account.spec (strict-mode 2 password inputs) and rss-scoped (toBe equality) still fail identically; home-your-series passes on HEAD in isolation yet failed under the full-suite run — environment/shared-DB/intermittent, not code regressions from the post/series fixes.",
+      "title": "Remaining e2e failures reproduce on clean HEAD (env/DB-state)",
+      "confidence": 1.0
+    },
+    "HY-014": {
+      "id": "HY-014",
+      "type": "hypothesis",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-08-27T14:58:53+00:00",
+      "updated_at": "2026-08-27T16:09:28+00:00",
+      "touched_round": 179,
+      "confidence": 1.0,
+      "title": "Series page follow-state load never sends: useReaderSeriesFollows (useFetch query) called from onMounted in a lifecycle hook silently never fires (ISS-110/111/117/118 class); guarded onMounted passes (seriesId=3) but 0 GET /series-follows observed; home page works because its onMounted awaits the seams first."
+    },
+    "HY-015": {
+      "id": "HY-015",
+      "type": "hypothesis",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-08-27T14:58:53+00:00",
+      "updated_at": "2026-08-27T16:09:28+00:00",
+      "touched_round": 179,
+      "confidence": 1.0,
+      "title": "Print route returns 200 but renders the article page: Nuxt nests pages/posts/[slug]/print.vue under the [slug].vue parent file (no <NuxtPage/>), so the child never mounts; the only page-nesting collision in the tree."
+    },
+    "HY-016": {
+      "id": "HY-016",
+      "type": "hypothesis",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-08-27T14:58:53+00:00",
+      "updated_at": "2026-08-27T16:09:28+00:00",
+      "touched_round": 179,
+      "confidence": 1.0,
+      "title": "The push e2e cluster fails locally because the dev backend has no VAPID_* env (just e2e), so /api/push/vapid-public-key 503s; CI generates throwaway keys."
+    },
+    "HY-017": {
+      "id": "HY-017",
+      "type": "hypothesis",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-08-27T14:58:53+00:00",
+      "updated_at": "2026-08-27T15:00:30+00:00",
+      "touched_round": 179,
+      "confidence": 0.9,
+      "title": "The remaining e2e failures (account strict-mode 2 password inputs, rss toBe, several admin, full-suite flakies) are pre-existing env/shared-DB/assertion-brittleness, reproducing on clean HEAD — not regressions from the post/series fixes."
+    },
+    "TASK-221": {
+      "id": "TASK-221",
+      "type": "task",
+      "status": "active",
+      "version": 3,
+      "created_at": "2026-08-27T15:00:30+00:00",
+      "updated_at": "2026-08-27T16:09:28+00:00",
+      "touched_round": 179,
+      "category": "test-quality",
+      "severity": 0.15,
+      "confidence": 0.9,
+      "effort": 0.8,
+      "title": "Triaging only (deferred, below threshold): the residual pre-existing e2e failures against the shared dev DB (ISS-121) — account.spec strict-mode double current-password input on the login page is the most concrete fixable item; the rest are admin/rss assertions and full-suite-load flakies that reproduce on clean HEAD. Pick up once the operator confirms the target e2e environment."
+    },
+    "DEC-200": {
+      "id": "DEC-200",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-27T15:00:30+00:00",
+      "updated_at": "2026-08-27T15:00:30+00:00",
+      "touched_round": 179,
+      "rationale": "Deferral of the residual pre-existing e2e failures (ISS-121) past the TASK-220 milestone: they reproduce identically on clean HEAD (EV-153), span unrelated areas (reader login strict-mode, admin specs, RSS/sitemap equality assertions, intermittent full-suite-load flakies of the ISS-097 class), and fixing them would require per-spec and per-DB-state triage well beyond the two real regressions this milestone closed. The VAPID parity gap (ISS-120) that broke the whole push cluster WAS fixed here as it was root-caused and cheap. Operator can task TASK-221 specifically for the dev-DB e2e cleanup.",
+      "alternatives_rejected": "Not folding ISS-121 into TASK-220 (would muddy a clean root-cause milestone); not silencing or deleting the failing specs (they encode real journeys); not force-fixing the shared-DB-dependent assertions that may be green on a fresh DB like CI uses."
+    },
+    "EV-154": {
+      "id": "EV-154",
+      "type": "evidence",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-27T15:07:57+00:00",
+      "updated_at": "2026-08-27T15:07:57+00:00",
+      "touched_round": 179,
+      "source": "VERIFY 2026-08-27 (ISS-122 root cause): burst of 8 reader-register calls → #1-#5 HTTP 201, #6-#8 HTTP 429 against the dev backend (RATE_LIMIT_REGISTER default 5/min, limiter.py); the 407 line in reader.py @limiter.limit(fRATE_LIMIT_REGISTER/min) keyed per-IP collapses all localhost e2e to one bucket — the full suite registers ~100+ readers so registration 429s mid-suite, cascading into the 26-failure full-suite result while every spec passed in isolation. After RATE_LIMIT_REGISTER_PER_MINUTE=1000 all 8 return 201.",
+      "title": "Reader-register rate limit (5/min) exhausts during the full e2e suite",
+      "confidence": 1.0
+    },
+    "ISS-122": {
+      "id": "ISS-122",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-08-27T15:07:57+00:00",
+      "updated_at": "2026-08-27T16:10:00+00:00",
+      "touched_round": 179,
+      "severity": 0.5,
+      "title": "Dev/CI e2e harness parity: the default reader REGISTER rate limit is 5/min (app/limiter.py) and the just e2e recipe only relaxed RATE_LIMIT_AUTH, so the full suite (100+ fresh reader registrations) 429s mid-run — every spec passes in isolation yet ~26 fail as a suite (confirmed by EV-154 burst). Fixed in the justfile e2e recipe by also setting RATE_LIMIT_REGISTER_PER_MINUTE=1000. CI may share the latent gap (test.yml only sets auth too)."
+    },
+    "HY-018": {
+      "id": "HY-018",
+      "type": "hypothesis",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-08-27T15:07:57+00:00",
+      "updated_at": "2026-08-27T16:13:33+00:00",
+      "touched_round": 179,
+      "confidence": 1.0,
+      "title": "Full-suite e2e failures are dominated by harness/DB-state gaps (register rate-limit cascade + VAPID unset + shared-DB data), not product code: after relaxing both, expect the suite to go green."
+    },
+    "CHG-238": {
+      "id": "CHG-238",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-27T16:08:38+00:00",
+      "updated_at": "2026-08-27T16:08:38+00:00",
+      "touched_round": 179,
+      "commit": "964d0d3",
+      "title": "App fixes for the two latent e2e regressions (ISS-119/TASK-220): moved pages/posts/[slug].vue to posts/[slug]/index.vue so /posts/:slug/print renders the print route instead of being swallowed by the parent page nesting; series page follow-state/progress now load through the $fetch seams (getReaderSeriesFollows/getReaderSeriesProgress) so followed series persist across reloads."
+    },
+    "CHG-239": {
+      "id": "CHG-239",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-27T16:08:38+00:00",
+      "updated_at": "2026-08-27T16:08:38+00:00",
+      "touched_round": 179,
+      "commit": "68aa867",
+      "title": "e2e dev-stack parity and spec robustness (ISS-120/121/122, TASK-220): justfile e2e recipe generates a throwaway VAPID keypair and sets RATE_LIMIT_REGISTER_PER_MINUTE=1000; history/history-sync needles from the card h2/h3 minus badge; account.spec disambiguates the two current-password inputs by accessible name; my-comments-filter approves only when still pending."
+    },
+    "EV-155": {
+      "id": "EV-155",
+      "type": "evidence",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-27T16:13:33+00:00",
+      "updated_at": "2026-08-27T16:13:33+00:00",
+      "touched_round": 179,
+      "source": "VERIFY 2026-08-28 (TASK-220 done, full suite against the operator dev stack, VAPID+register relaxed): 155 passed / 9 failed / 4 skipped (5.0m), down from 135 passed/29 failed at round start; every milestone target green in isolation (print, series-follow, history, history-sync, account, my-comments-filter, push 7/7, thread-follow); the 9 remaining reproduce on clean HEAD and are tracked in ISS-121 (admin dashboards vs accumulated dev data, scoped-RSS equality, auto-approve-on dev DB vs the pending-moderation contract).",
+      "title": "Full e2e suite post-fix result (155 passed, 9 clean-HEAD env failures)",
       "confidence": 1.0
     }
   },
@@ -16663,6 +16885,90 @@
       "to": "TASK-219",
       "type": "implements",
       "created_at": "2026-08-27T12:59:36+00:00"
+    },
+    {
+      "from": "TASK-220",
+      "to": "ISS-119",
+      "type": "addresses",
+      "created_at": "2026-08-27T14:57:53+00:00"
+    },
+    {
+      "from": "EV-150",
+      "to": "HY-014",
+      "type": "validates",
+      "created_at": "2026-08-27T14:58:53+00:00"
+    },
+    {
+      "from": "EV-151",
+      "to": "HY-015",
+      "type": "validates",
+      "created_at": "2026-08-27T14:58:53+00:00"
+    },
+    {
+      "from": "EV-152",
+      "to": "HY-016",
+      "type": "validates",
+      "created_at": "2026-08-27T14:58:54+00:00"
+    },
+    {
+      "from": "EV-153",
+      "to": "HY-017",
+      "type": "validates",
+      "created_at": "2026-08-27T14:58:54+00:00"
+    },
+    {
+      "from": "TASK-221",
+      "to": "ISS-121",
+      "type": "addresses",
+      "created_at": "2026-08-27T15:00:30+00:00"
+    },
+    {
+      "from": "EV-154",
+      "to": "HY-018",
+      "type": "validates",
+      "created_at": "2026-08-27T15:07:57+00:00"
+    },
+    {
+      "from": "TASK-220",
+      "to": "ISS-122",
+      "type": "addresses",
+      "created_at": "2026-08-27T15:07:57+00:00"
+    },
+    {
+      "from": "CHG-238",
+      "to": "TASK-220",
+      "type": "implements",
+      "created_at": "2026-08-27T16:09:28+00:00"
+    },
+    {
+      "from": "CHG-239",
+      "to": "TASK-220",
+      "type": "implements",
+      "created_at": "2026-08-27T16:09:28+00:00"
+    },
+    {
+      "from": "CHG-238",
+      "to": "ISS-119",
+      "type": "resolves",
+      "created_at": "2026-08-27T16:09:28+00:00"
+    },
+    {
+      "from": "CHG-239",
+      "to": "ISS-120",
+      "type": "resolves",
+      "created_at": "2026-08-27T16:09:28+00:00"
+    },
+    {
+      "from": "CHG-239",
+      "to": "ISS-122",
+      "type": "resolves",
+      "created_at": "2026-08-27T16:09:28+00:00"
+    },
+    {
+      "from": "EV-155",
+      "to": "HY-018",
+      "type": "validates",
+      "created_at": "2026-08-27T16:13:33+00:00"
     }
   ]
 }
