@@ -141,6 +141,27 @@ const prefRows = computed(() => {
 			desc: t("notifications.prefs.kind.thread_comment.desc"),
 			on: prefs.value.thread_comment,
 		},
+		{
+			key: "email_new_post",
+			icon: "lucide:mail",
+			label: t("notifications.prefs.kind.email_new_post.label"),
+			desc: t("notifications.prefs.kind.email_new_post.desc"),
+			on: prefs.value.email_new_post,
+		},
+		{
+			key: "email_reply",
+			icon: "lucide:mail-reply",
+			label: t("notifications.prefs.kind.email_reply.label"),
+			desc: t("notifications.prefs.kind.email_reply.desc"),
+			on: prefs.value.email_reply,
+		},
+		{
+			key: "email_thread_comment",
+			icon: "lucide:at-sign",
+			label: t("notifications.prefs.kind.email_thread_comment.label"),
+			desc: t("notifications.prefs.kind.email_thread_comment.desc"),
+			on: prefs.value.email_thread_comment,
+		},
 	];
 	return rows;
 });

@@ -35,6 +35,9 @@ const mockFetchPrefs = vi.fn(
 		new_post: true,
 		reply: true,
 		thread_comment: true,
+		email_new_post: false,
+		email_reply: false,
+		email_thread_comment: false,
 	}),
 );
 const mockUpdatePref = vi.fn(
@@ -45,6 +48,9 @@ const mockUpdatePref = vi.fn(
 		new_post: kind === "new_post" ? enabled : true,
 		reply: kind === "reply" ? enabled : true,
 		thread_comment: kind === "thread_comment" ? enabled : true,
+		email_new_post: kind === "email_new_post" ? enabled : false,
+		email_reply: kind === "email_reply" ? enabled : false,
+		email_thread_comment: kind === "email_thread_comment" ? enabled : false,
 	}),
 );
 
@@ -115,6 +121,9 @@ describe("Notifications page (TASK-192)", () => {
 			new_post: true,
 			reply: true,
 			thread_comment: true,
+			email_new_post: false,
+			email_reply: false,
+			email_thread_comment: false,
 		});
 	});
 
@@ -221,14 +230,28 @@ describe("Notifications page (TASK-192)", () => {
 		expect(wrapper.text()).not.toContain("网络错误，请稍后重试");
 	});
 
-	it("loads the preferences card with every kind on (DEC-171)", async () => {
+	it("loads the preferences card: push/inbox on, email kinds off (DEC-171/DEC-197)", async () => {
 		const wrapper = await mountPage();
 		expect(wrapper.text()).toContain("通知偏好");
 		const switches = wrapper.findAll('button[role="switch"]');
-		expect(switches).toHaveLength(3);
-		for (const s of switches) {
-			expect(s.attributes("aria-checked")).toBe("true");
+		expect(switches).toHaveLength(6);
+		for (let i = 0; i < 3; i += 1) {
+			expect(switches[i].attributes("aria-checked")).toBe("true");
 		}
+		for (let i = 3; i < 6; i += 1) {
+			expect(switches[i].attributes("aria-checked")).toBe("false");
+		}
+	});
+
+	it("toggles an email kind on via updateReaderNotificationPref (DEC-197)", async () => {
+		const wrapper = await mountPage();
+		const switches = wrapper.findAll('button[role="switch"]');
+		// Order: new_post, reply, thread_comment, email_new_post, email_reply, email_thread_comment.
+		await switches[3].trigger("click");
+		await flushPromises();
+		expect(mockUpdatePref).toHaveBeenCalledWith("email_new_post", true);
+		expect(switches[3].attributes("aria-checked")).toBe("true");
+		expect(switches[4].attributes("aria-checked")).toBe("false");
 	});
 
 	it("toggles a kind off and persists via updateReaderNotificationPref", async () => {

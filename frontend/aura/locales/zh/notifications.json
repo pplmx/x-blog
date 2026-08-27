@@ -32,6 +32,18 @@
 				"thread_comment": {
 					"label": "讨论有新评论",
 					"desc": "你订阅的讨论出现新评论时通知你。"
+				},
+				"email_new_post": {
+					"label": "邮件：新文章",
+					"desc": "我关注的分类/系列/标签有新文章时给我发邮件。"
+				},
+				"email_reply": {
+					"label": "邮件：回复",
+					"desc": "有人回复我的评论时给我发邮件。"
+				},
+				"email_thread_comment": {
+					"label": "邮件：讨论新评论",
+					"desc": "我订阅的讨论出现新评论时给我发邮件。"
 				}
 			}
 		}

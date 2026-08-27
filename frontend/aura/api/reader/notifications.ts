@@ -53,6 +53,10 @@ export interface ReaderNotificationPrefs {
 	new_post: boolean;
 	reply: boolean;
 	thread_comment: boolean;
+	/** Email channel (DEC-197, TASK-217): per-kind opt-in SMTP copy of the fan-out. */
+	email_new_post: boolean;
+	email_reply: boolean;
+	email_thread_comment: boolean;
 }
 
 /** The signed-in reader's per-kind notification preferences (all-on default). */
@@ -64,7 +68,7 @@ export function getReaderNotificationPrefs(): Promise<ReaderNotificationPrefs> {
 
 /** Toggle one notification kind; returns the reader's full updated prefs. */
 export function updateReaderNotificationPref(
-	kind: "new_post" | "reply" | "thread_comment",
+	kind: keyof ReaderNotificationPrefs,
 	enabled: boolean,
 ): Promise<ReaderNotificationPrefs> {
 	return command<ReaderNotificationPrefs>("/api/reader/me/notification-preferences", {

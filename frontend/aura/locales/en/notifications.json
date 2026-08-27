@@ -32,6 +32,18 @@
 				"thread_comment": {
 					"label": "Followed-thread comments",
 					"desc": "Notify me when a discussion I follow gets a new comment."
+				},
+				"email_new_post": {
+					"label": "Email: new posts",
+					"desc": "Email me when something I follow publishes a new post."
+				},
+				"email_reply": {
+					"label": "Email: replies",
+					"desc": "Email me when someone replies to my comment."
+				},
+				"email_thread_comment": {
+					"label": "Email: thread comments",
+					"desc": "Email me when a discussion I follow gets a new comment."
 				}
 			}
 		}
