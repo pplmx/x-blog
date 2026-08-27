@@ -81,7 +81,12 @@ test.describe("Reader account settings", () => {
 		await expect(page.locator("text=已保存")).toBeVisible({ timeout: 5000 });
 
 		// --- Password: rotate; new logs in, old is rejected ---
-		await page.locator('input[autocomplete="current-password"]').fill(PASSWORD);
+		// The account page has TWO `autocomplete="current-password"` inputs (the
+		// password-rotation form's current password and the delete-account
+		// confirmation field). Disambiguate by the rotation label's accessible
+		// name, otherwise Playwright strict mode rejects the bare attribute
+		// selector (pre-existing e2e break against the shared dev stack, ISS-121).
+		await page.getByRole("textbox", { name: "当前密码" }).fill(PASSWORD);
 		await page.locator('input[autocomplete="new-password"]').first().fill("freshpass789");
 		await page.locator('input[autocomplete="new-password"]').nth(1).fill("freshpass789");
 		await page.getByRole("button", { name: "修改密码" }).click();

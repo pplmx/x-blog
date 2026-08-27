@@ -17,7 +17,21 @@ test.describe("Reading history page (TASK-169)", () => {
 			test.skip();
 			return;
 		}
-		const title = ((await postLink.textContent()) ?? "").trim();
+		// Build the needle from the card's heading minus the pinned badge span:
+		// the history entry renders only the bare post title, so the whole-card
+		// textContent (badge + date + stats + excerpt) could never match it
+		// (pre-existing journey break against the shared dev DB, ISS-119). The
+		// first /posts/ link on a signed-in home may be a "为你推荐" card (h3)
+		// instead of the posts-grid PostCard (h2), so match on either heading.
+		const titleEl = postLink.locator("h2, h3").first();
+		let title: string;
+		if (await titleEl.count()) {
+			const badge = titleEl.locator("span").first();
+			if (await badge.count()) await badge.evaluate((el) => el.remove());
+			title = ((await titleEl.textContent()) ?? "").trim();
+		} else {
+			title = ((await postLink.textContent()) ?? "").trim();
+		}
 
 		// Opening the post records it in the client-side history trail.
 		await postLink.click();

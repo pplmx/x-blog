@@ -50,7 +50,21 @@ test.describe("Server-backed reading history (TASK-170)", () => {
 		const postLink = page.locator("main a[href*='/posts/']").first();
 		await postLink.waitFor({ state: "visible" });
 		const href = (await postLink.getAttribute("href")) ?? "";
-		const title = (await postLink.textContent()) ?? "";
+		// Same needle strategy as history.spec (ISS-119): the server trail row
+		// renders only the bare post title, so match the card heading minus the
+		// pinned badge span — the whole-card text (date/stats/excerpt, incl. the
+		// live view count that other suite runs keep bumping) can never match.
+		// The first /posts/ link on a signed-in home is a "为你推荐" card with an
+		// h3 (not the posts-grid PostCard's h2), so accept either heading.
+		const titleEl = postLink.locator("h2, h3").first();
+		let title: string;
+		if (await titleEl.count()) {
+			const badge = titleEl.locator("span").first();
+			if (await badge.count()) await badge.evaluate((el) => el.remove());
+			title = ((await titleEl.textContent()) ?? "").trim();
+		} else {
+			title = ((await postLink.textContent()) ?? "").trim();
+		}
 		await page.goto(href);
 		await page.waitForURL(/\/posts\//);
 

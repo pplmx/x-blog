@@ -120,9 +120,15 @@ e2e:
     @echo "Seeding database (dev admin: admin/admin123)..."
     cd backend/nova && APP_ENV=development ADMIN_PASSWORD=admin123 uv run python scripts/init_db.py
     @echo "Starting backend..."
-    # RATE_LIMIT_AUTH relaxed: the suite logs in per spec file (~15×/min),
-    # which exhausts the production 10/min per-IP login budget
-    cd backend/nova && APP_ENV=development RATE_LIMIT_AUTH_PER_MINUTE=1000 uv run uvicorn app.main:app --host 0.0.0.0 --port 18888 &
+    # RATE_LIMIT_AUTH/REGISTER relaxed: the suite logs in and registers a fresh
+    # reader in most spec files (~15+ logins/min, ~100+ registrations/suite),
+    # exhausting the production 10/min login and 5/min register budgets (the
+    # register 429 after 5/min was a full-suite cascade, EV-154)
+    #
+    # Throwaway VAPID keypair so the Web Push reader/admin e2e journeys run
+    # locally too (CI parity, .github/workflows/test.yml) — without it the
+    # /api/push/vapid-public-key endpoint 503s and every push-gated test fails.
+    cd backend/nova && VAPID_KEYS=$(.venv/bin/python -c 'import base64; from cryptography.hazmat.primitives.asymmetric import ec; k=ec.generate_private_key(ec.SECP256R1()); p=k.public_key().public_numbers(); print(base64.urlsafe_b64encode(b"\x04"+p.x.to_bytes(32,"big")+p.y.to_bytes(32,"big")).rstrip(b"=").decode()+" "+base64.urlsafe_b64encode(k.private_numbers().private_value.to_bytes(32,"big")).rstrip(b"=").decode())') && VAPID_PUBLIC_KEY=${VAPID_KEYS% *} && VAPID_PRIVATE_KEY=${VAPID_KEYS##* } && APP_ENV=development RATE_LIMIT_AUTH_PER_MINUTE=1000 RATE_LIMIT_REGISTER_PER_MINUTE=1000 VAPID_PUBLIC_KEY="$VAPID_PUBLIC_KEY" VAPID_PRIVATE_KEY="$VAPID_PRIVATE_KEY" VAPID_SUBJECT="mailto:e2e@example.com" uv run uvicorn app.main:app --host 0.0.0.0 --port 18888 &
     @sleep 3 && curl -sf http://localhost:18888/health > /dev/null || (echo "Backend failed to start" && exit 1)
     @echo "Running e2e tests (Playwright starts Nuxt on :34567)..."
     cd frontend/aura && pnpm test:e2e

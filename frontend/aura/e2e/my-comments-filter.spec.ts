@@ -52,11 +52,18 @@ async function postAndApprove(
 		headers: { Authorization: `Bearer ${readerToken}` },
 	});
 	expect(created.status()).toBe(201);
+	const createdBody = (await created.json()) as { id: number; is_approved?: boolean };
+	// The shared dev DB can have the auto_approve_reader_comments setting on,
+	// which publishes a verified reader's comment immediately — the explicit
+	// moderator approve would then 422 ("already approved"). Only approve the
+	// still-pending path, so the helper is robust to either moderation mode
+	// (pre-existing dev-stack break, ISS-121).
+	if (createdBody.is_approved) return;
 	const login = await request.post("/api/admin/login", {
 		form: { username: "admin", password: "admin123" },
 	});
 	const token = (await login.json()).access_token as string;
-	const approved = await request.patch(`/api/comments/${created.id}/approve`, {
+	const approved = await request.patch(`/api/comments/${createdBody.id}/approve`, {
 		data: { approved: true },
 		headers: { Authorization: `Bearer ${token}` },
 	});
