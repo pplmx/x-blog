@@ -2065,6 +2065,7 @@ def list_reader_tag_follows(db: Session, reader_id: int) -> list[models.TagFollo
     rows = (
         db.query(models.TagFollow)
         .filter(models.TagFollow.reader_id == reader_id)
+        .options(joinedload(models.TagFollow.tag))
         .order_by(models.TagFollow.created_at.desc(), models.TagFollow.id.desc())
         .all()
     )
