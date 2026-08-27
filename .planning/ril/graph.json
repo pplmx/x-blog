@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 175,
+  "round": 176,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-08-27T09:23:35+00:00",
+  "updated_at": "2026-08-27T12:19:20+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -11497,6 +11497,106 @@
       "touched_round": 175,
       "title": "Pre-existing e2e failures against the shared dev DB: print.spec.ts (print toolbar button not found on the print route) and series-follow.spec.ts (series follow toggle never flips to following) both reproduce on clean HEAD with the tag-follow changes stashed — environment/shared-DB dependent, not regressions from DEC-196/TASK-216; CI runs a fresh Postgres so may pass there",
       "severity": 0.2
+    },
+    "DEC-197": {
+      "id": "DEC-197",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-27T09:45:09+00:00",
+      "updated_at": "2026-08-27T09:45:09+00:00",
+      "touched_round": 176,
+      "title": "Milestone: email notification channel (DEC-197) — a per-kind opt-in email copy of the reader notification fan-out, closing the last delivery gap in the follow/notification arc",
+      "rationale": "Feature-evolution sourcing (§11.2 gap analysis): the follow/notification stack is otherwise complete — durable inbox (DEC-160), browser push with per-kind opt-outs (DEC-171), unread badge + mark-read, per-follow notify toggles, and now tag-follow (DEC-195/196). But every delivery channel requires the site to be open (in-app inbox) or the browser to have push permission and run (Web Push). Email is the only medium that reaches a reader who never re-opens the blog — the single biggest retention hole left in the arc, and the one channel mainstream blog platforms all have. Stakeholder: signed-in readers (opt-in per kind) + the operator (recovers off-site readers). Acceptance (1 sentence): a reader who enables email for a kind receives a plain-text + HTML email to their registered address when that event fires (new post in a followed series/category/tag, a reply to their comment, a comment on a followed thread), the notifications prefs page exposes an email channel per kind (off by default), delivery is best-effort over the configured SMTP host, and tests assert the outbound message via a captured SMTP session. Why now: the arc is complete except this channel; additive and purely opt-in, so existing push/inbox behavior is untouched. Scope: three additive email_* columns on reader_notification_prefs (off by default; DEC-009 additive DDL), a new app/emailer.py (smtplib + STARTTLS, HTML+text, escaping, best-effort), wiring at the three existing dispatch points (crud.record_new_post_notifications for new_post/series_new_part; comments._notify_thread_subscribers; comments._notify_replied_to) gated on ReaderAccount.email + the reader email prefs, prefs API/schema growth (6 kinds incl. email_*), notifications-page email toggles + en/zh, backend tests (prefs API, fan-out gating, emailer with a captured SMTP), frontend component tests, and an e2e journey against an SMTP sink.",
+      "alternatives_rejected": "Skip email entirely (retention stays limited to site-open push/inbox — readers who never return miss everything, the arc is then half-finished vs mainstream platforms); a weekly newsletter/digest instead of per-event email (aggregation + scheduling is a much bigger slice and can be layered on the same fan-out later; per-event email is the foundation); email for anonymous commenters too (their free-text email is untrusted PII and not stored — DEC-160 comment, email stays reader-only); email default-on for everyone (spammy and GDPR-hostile — email must be a per-kind opt-in); a reply-by-email inbound workflow (needs inbound SMTP parsing — way out of scope for this slice)."
+    },
+    "TASK-217": {
+      "id": "TASK-217",
+      "type": "task",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-08-27T09:46:11+00:00",
+      "updated_at": "2026-08-27T12:19:20+00:00",
+      "touched_round": 176,
+      "category": "core-feature",
+      "severity": 0.6,
+      "confidence": 0.95,
+      "effort": 3.0,
+      "unlock_factor": 1.5,
+      "title": "Email channel backend (DEC-197): additive email_new_post/email_reply/email_thread_comment columns (default false, server_default) on reader_notification_prefs + alembic migration; app/emailer.py — smtplib deliverer (SMTP_HOST/PORT/USER/PASSWORD/FROM/STARTTLS + SITE_URL base), HTML+text with escaping, best-effort never-raising, is_email_configured + per-kind email_enabled mapping (new_post&series_new_part→email_new_post); wire dispatch at the existing fan-out points gated on ReaderAccount.email + email prefs — crud.record_new_post_notifications (after the new_post gate), comments._notify_thread_subscribers, comments._notify_replied_to; extend NOTIFICATION_KINDS whitelist with email_kinds in set_reader_notification_kind; extend NotificationPrefs schema + GET/PATCH /me/notification-preferences to include the email fields; backend tests — prefs API round-trip for email kinds, fan-out gating (email on→smtplib send, off→none), emailer unit with a captured SMTP session (mock smtplib asserting From/To/subject/body/escaping), new-post fan-out emits exactly one email for series+tag followers"
+    },
+    "TASK-218": {
+      "id": "TASK-218",
+      "type": "task",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-08-27T09:46:42+00:00",
+      "updated_at": "2026-08-27T12:19:20+00:00",
+      "touched_round": 176,
+      "category": "core-feature",
+      "severity": 0.5,
+      "confidence": 0.95,
+      "effort": 2.0,
+      "unlock_factor": 1.0,
+      "title": "Email channel frontend + e2e (DEC-197): extend ReaderNotificationPrefs + updateReaderNotificationPref in api/reader/notifications.ts; add three email-kind toggle rows to the notifications page prefs section (prefRows gains email_new_post/email_reply/email_thread_comment with icons + label/desc en+zh locale keys); component/page tests updated for the extra rows; e2e journey — register a reader, open /notifications, toggle an email kind on and off (assert the switch + persisted API state); delivery itself covered by the backend captured-SMTP tests, but the e2e asserts the prefs surface end-to-end off an SMTP-configured backend"
+    },
+    "CHG-235": {
+      "id": "CHG-235",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-27T12:19:20+00:00",
+      "updated_at": "2026-08-27T12:19:20+00:00",
+      "touched_round": 176,
+      "commit": "3e695be",
+      "title": "Email channel backend: emailer.py + additive email_* prefs columns (migration) + fan-out wiring at record_new_post_notifications/_notify_thread_subscribers/_notify_replied_to + prefs API 6-kind contract + 15 emailer tests + prefs gate tests"
+    },
+    "CHG-236": {
+      "id": "CHG-236",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-27T12:19:20+00:00",
+      "updated_at": "2026-08-27T12:19:20+00:00",
+      "touched_round": 176,
+      "commit": "9157b61",
+      "title": "Email channel frontend: 6-switch prefs card + locale keys + updated page/api tests + extended notification-preferences e2e"
+    },
+    "EV-147": {
+      "id": "EV-147",
+      "type": "evidence",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-27T12:19:20+00:00",
+      "updated_at": "2026-08-27T12:19:20+00:00",
+      "touched_round": 176,
+      "source": "VERIFY 2026-08-27 (session II, TASK-217): full backend suite 1208 passed/9 skipped @ 94.68% (was 1192, +16 email); related notification/follow suites 84 passed; pyright 0 errors; ruff clean; alembic fresh-DB build + no-drift check green",
+      "title": "Backend verification evidence for the email channel (TASK-217)",
+      "confidence": 1.0
+    },
+    "EV-148": {
+      "id": "EV-148",
+      "type": "evidence",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-27T12:19:20+00:00",
+      "updated_at": "2026-08-27T12:19:20+00:00",
+      "touched_round": 176,
+      "source": "VERIFY 2026-08-27 (session II, TASK-218): frontend Vitest 1250 passed (was 1248); vue-tsc 0 errors; biome clean; e2e notification-preferences 2/2 + tag-follow-inline 2/2 against the dev stack (fresh backend; a stale-code uvicorn on :18888 initially masked the API contract — rerun green)",
+      "title": "Frontend verification evidence for the email channel (TASK-218)",
+      "confidence": 1.0
+    },
+    "DEC-198": {
+      "id": "DEC-198",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-27T12:19:20+00:00",
+      "updated_at": "2026-08-27T12:19:20+00:00",
+      "touched_round": 176,
+      "title": "Milestone delivered: email notification channel (DEC-197 complete)",
+      "rationale": "Both slices landed and verified: backend channel (3e695be, TASK-217) delivers SMTP email at every dispatch point gated on per-kind email opt-ins, prefs API extended to six kinds; frontend (9157b61, TASK-218) surfaces the three email toggles on the notifications prefs card and keeps the push/inbox contract unchanged. Full-suite + targeted + e2e evidence recorded in EV-147/EV-148.",
+      "alternatives_rejected": "Deferring the milestone (the arc would keep the biggest retention hole — off-site reach — half-missing); building a newsletter/digest instead (bigger, can layer on the now-existing per-event fan-out later)"
     }
   },
   "edges": [
@@ -16465,6 +16565,36 @@
       "to": "COMP-002",
       "type": "located_in",
       "created_at": "2026-08-27T09:23:35+00:00"
+    },
+    {
+      "from": "DEC-197",
+      "to": "TASK-217",
+      "type": "governs",
+      "created_at": "2026-08-27T09:46:11+00:00"
+    },
+    {
+      "from": "TASK-218",
+      "to": "TASK-217",
+      "type": "depends_on",
+      "created_at": "2026-08-27T09:46:42+00:00"
+    },
+    {
+      "from": "CHG-235",
+      "to": "TASK-217",
+      "type": "implements",
+      "created_at": "2026-08-27T12:19:20+00:00"
+    },
+    {
+      "from": "CHG-236",
+      "to": "TASK-218",
+      "type": "implements",
+      "created_at": "2026-08-27T12:19:20+00:00"
+    },
+    {
+      "from": "DEC-198",
+      "to": "DEC-197",
+      "type": "supersedes",
+      "created_at": "2026-08-27T12:19:20+00:00"
     }
   ]
 }
