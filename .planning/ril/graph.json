@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 177,
+  "round": 178,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-08-27T12:28:55+00:00",
+  "updated_at": "2026-08-27T13:06:42+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -11352,7 +11352,7 @@
       "version": 2,
       "created_at": "2026-08-27T06:39:08+00:00",
       "updated_at": "2026-08-27T06:41:47+00:00",
-      "touched_round": 173,
+      "touched_round": 178,
       "severity": "medium",
       "title": "Tag page follow state goes stale on SPA navigation between tag_id values: loadTagFollow ran only in onMounted, so switching tags (query-only NuxtLink) kept the previous tag's following/notify state (mirrors a pre-existing categories.vue flaw)"
     },
@@ -11444,7 +11444,7 @@
       "version": 2,
       "created_at": "2026-08-27T07:59:15+00:00",
       "updated_at": "2026-08-27T09:23:35+00:00",
-      "touched_round": 175,
+      "touched_round": 178,
       "category": "core-feature",
       "severity": 0.5,
       "confidence": 0.95,
@@ -11609,6 +11609,44 @@
       "title": "converged-idle: two milestones delivered this session (inline tag-follow, email channel); feature backlog drained and residual candidates fail the value gate",
       "rationale": "Session II delivered and verified two complete milestones: post-page inline tag-follow (TASK-216, CHG-234) and the email notification channel (TASK-217/218, CHG-235/236), each with full unit + integration + e2e evidence (EV-142..148) and a green baseline (backend 1208/9 @94.68%, frontend 1250, e2e 4/4, typecheck 0, alembic no-drift). §11.2 sourcing against the drained backlog: the candidates remaining are (a) PostCard tag chips linking to the tag view — same nested-link-inside-NuxtLink risk already rejected in DEC-196 for marginal value; (b) a \"send test email\" button on the prefs card — a smaller same-class patch of the email channel (anti-frivolity, §11.2: no backpedalling to smaller copies of a delivered milestone); (c) a weekly email digest — a genuinely different feature but scheduler-driven and too large to land as a clean slice in this session tail. None clears the value gate as a new, differentiated milestone, so per §11.5(3) the engine parks. Reactivation: a new operator direction (supersedes this decision) or a real external signal (a fresh issue, or the operator opting into SMTP credentials and wanting digest/verification tooling) resumes the loop; the first round of any reactivation re-runs the full VERIFY baseline first.",
       "alternatives_rejected": "Forcing the PostCard-chip link change (nested interactive element inside the card NuxtLink — invalid HTML and click-propagation risk across every card grid for a marginal discovery gain); shipping the test-email button (patchy increment on a just-delivered milestone, not a net-new differentiated capability); starting the email-digest milestone now (scheduler + aggregation is beyond a clean round and would rush a large feature)"
+    },
+    "TASK-219": {
+      "id": "TASK-219",
+      "type": "task",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-08-27T12:51:34+00:00",
+      "updated_at": "2026-08-27T12:59:36+00:00",
+      "touched_round": 178,
+      "category": "core-feature",
+      "severity": 0.3,
+      "confidence": 0.95,
+      "effort": 0.7,
+      "unlock_factor": 1.0,
+      "title": "PostCard tag chips become links to the tag-filtered view (DEC-196 continuation): the last discoverability gap in the tag arc — feed chips were inert spans inside the card NuxtLink; restructure so the chip row sits outside the card link (no nested interactive elements) and each chip navigates to /?tag_id=; add PostCard spec coverage + an e2e guest chip->tag-view step"
+    },
+    "CHG-237": {
+      "id": "CHG-237",
+      "type": "change",
+      "status": "active",
+      "version": 2,
+      "created_at": "2026-08-27T12:59:35+00:00",
+      "updated_at": "2026-08-27T13:06:42+00:00",
+      "touched_round": 178,
+      "commit": "d61a91e",
+      "title": "PostCard tag chips: restructured chip row outside the card NuxtLink and made each chip a link to /?tag_id= (feed -> tag view -> follow), + spec chip-link test + e2e guest chip-nav step (DEC-196/TASK-219)"
+    },
+    "EV-149": {
+      "id": "EV-149",
+      "type": "evidence",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-27T12:59:36+00:00",
+      "updated_at": "2026-08-27T12:59:36+00:00",
+      "touched_round": 178,
+      "source": "VERIFY 2026-08-27 (session II, TASK-219): frontend Vitest 1251 passed; vue-tsc 0 errors; biome clean; e2e tag-follow-inline 3/3 incl guest chip->tag-view navigation against the dev stack",
+      "title": "Verification evidence for card tag-chip links (TASK-219)",
+      "confidence": 1.0
     }
   },
   "edges": [
@@ -16613,6 +16651,18 @@
       "to": "DEC-198",
       "type": "supersedes",
       "created_at": "2026-08-27T12:28:55+00:00"
+    },
+    {
+      "from": "TASK-219",
+      "to": "TASK-216",
+      "type": "depends_on",
+      "created_at": "2026-08-27T12:51:34+00:00"
+    },
+    {
+      "from": "CHG-237",
+      "to": "TASK-219",
+      "type": "implements",
+      "created_at": "2026-08-27T12:59:36+00:00"
     }
   ]
 }
