@@ -27,6 +27,7 @@ A modern full-stack blog application built with FastAPI + Nuxt
 - 📊 **Reading Analytics** - View counts, like counts, reading progress, and a per-day readership trend with hot posts for the operator (DEC-086)
 - 💬 **Comments** - Nested comment support with replies
 - 🏷️ **Tags & Categories** - Organize posts with tags and categories
+- 🔔 **Tag follow** - a signed-in reader follows a topic tag from the tag page and gets a new-post push + durable inbox row whenever the author publishes a post carrying it, with per-follow notify control and an account-page Followed-tags list (DEC-195)
 - 📚 **Series** - Group posts into ordered multi-part sequences with in-series prev/next navigation
 - 🔖 **Cloud Bookmark Sync** - Reader accounts keep your bookmarks synced across devices (sign in → local bookmarks merge to the cloud)
 - 💬 **Reader Comment Management** - a signed-in reader sees their own comments with moderation status (pending / approved / rejected) and can delete them (DEC-066)

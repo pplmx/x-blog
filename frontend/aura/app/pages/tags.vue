@@ -1,7 +1,13 @@
 <script setup lang="ts">
-import { computed } from "vue";
+import { computed, onMounted } from "vue";
 import { usePosts } from "~~/api/public/posts";
 import { useTags } from "~~/api/public/taxonomy";
+import {
+	followReaderTag,
+	setTagFollowNotify,
+	unfollowReaderTag,
+	useReaderTagFollows,
+} from "~~/api/reader/follows";
 import { paginationPages } from "~~/composables/usePagination";
 import { useSeo } from "~~/composables/useSeo";
 
@@ -62,6 +68,68 @@ useHead(() => ({
 			]
 		: [],
 }));
+
+// Durable reader-level tag follow (DEC-195/TASK-215): a signed-in reader can
+// follow a tag (persisted, cross-device) — tags are the fine-grained axis
+// categories are too coarse for — and manage + toggle notifications on the
+// account page. Mirrors the category-follow interaction on categories.vue.
+const tagSignedIn = computed(
+	() =>
+		typeof window !== "undefined" &&
+		typeof localStorage?.getItem === "function" &&
+		!!localStorage.getItem("reader_token"),
+);
+const tagFollowing = ref(false);
+const tagNotify = ref(true);
+const tagFollowBusy = ref(false);
+
+async function loadTagFollow() {
+	if (!tagSignedIn.value || !tagId.value) return;
+	try {
+		const res = await useReaderTagFollows();
+		const item = res.data?.value?.items.find((t) => t.id === tagId.value) ?? null;
+		tagFollowing.value = !!item;
+		tagNotify.value = item?.notify ?? true;
+	} catch {
+		tagFollowing.value = false;
+		tagNotify.value = true;
+	}
+}
+
+async function toggleTagFollow() {
+	if (tagFollowBusy.value || !tagId.value) return;
+	tagFollowBusy.value = true;
+	try {
+		if (tagFollowing.value) {
+			await unfollowReaderTag(tagId.value);
+			tagFollowing.value = false;
+		} else {
+			const res = await followReaderTag(tagId.value);
+			tagFollowing.value = true;
+			tagNotify.value = res?.notify ?? true;
+		}
+	} catch {
+		// best-effort — keep current state on failure
+	} finally {
+		tagFollowBusy.value = false;
+	}
+}
+
+async function toggleTagNotify() {
+	if (tagFollowBusy.value || !tagId.value || !tagFollowing.value) return;
+	tagFollowBusy.value = true;
+	const next = !tagNotify.value;
+	try {
+		const res = await setTagFollowNotify(tagId.value, next);
+		tagNotify.value = res?.notify ?? next;
+	} catch {
+		// best-effort — keep current state on failure
+	} finally {
+		tagFollowBusy.value = false;
+	}
+}
+
+onMounted(loadTagFollow);
 </script>
 
 <template>
@@ -127,16 +195,40 @@ useHead(() => ({
           <h1 class="text-3xl font-bold bg-gradient-to-r from-gray-900 dark:from-gray-100 to-gray-600 dark:to-gray-400 bg-clip-text text-transparent">
             {{ t('tags.tagPosts') }}
           </h1>
-          <a
-            :href="feedUrl"
-            target="_blank"
-            rel="noopener"
-            :title="t('tags.subscribeTitle')"
-            class="inline-flex items-center gap-1.5 text-sm text-blue-600 hover:text-blue-700 border border-blue-200 hover:border-blue-300 rounded-full px-3 py-1.5 transition-colors whitespace-nowrap"
-          >
-            <Icon icon="lucide:rss" class="w-4 h-4" />
-            {{ t('tags.subscribe') }}
-          </a>
+          <div class="flex items-center gap-2">
+            <button
+              v-if="tagSignedIn"
+              type="button"
+              :disabled="tagFollowBusy"
+              :title="t(tagFollowing ? 'tags.followingTitle' : 'tags.followTitle')"
+              class="inline-flex items-center gap-1.5 text-sm text-emerald-600 hover:text-emerald-700 border border-emerald-200 hover:border-emerald-300 rounded-full px-3 py-1.5 transition-colors whitespace-nowrap disabled:opacity-60"
+              @click="toggleTagFollow"
+            >
+              <Icon :icon="tagFollowing ? 'lucide:bookmark-check' : 'lucide:bookmark'" class="w-4 h-4" />
+              {{ tagFollowing ? t('tags.following') : t('tags.follow') }}
+            </button>
+            <button
+              v-if="tagFollowing"
+              type="button"
+              :disabled="tagFollowBusy"
+              :title="t('tags.notifyTitle')"
+              class="inline-flex items-center gap-1.5 text-sm text-emerald-600 hover:text-emerald-700 border border-emerald-200 hover:border-emerald-300 rounded-full px-3 py-1.5 transition-colors whitespace-nowrap disabled:opacity-60"
+              @click="toggleTagNotify"
+            >
+              <Icon :icon="tagNotify ? 'lucide:bell' : 'lucide:bell-off'" class="w-4 h-4" />
+              {{ t(tagNotify ? 'tags.notifyOn' : 'tags.notifyOff') }}
+            </button>
+            <a
+              :href="feedUrl"
+              target="_blank"
+              rel="noopener"
+              :title="t('tags.subscribeTitle')"
+              class="inline-flex items-center gap-1.5 text-sm text-blue-600 hover:text-blue-700 border border-blue-200 hover:border-blue-300 rounded-full px-3 py-1.5 transition-colors whitespace-nowrap"
+            >
+              <Icon icon="lucide:rss" class="w-4 h-4" />
+              {{ t('tags.subscribe') }}
+            </a>
+          </div>
         </div>
       </div>
 

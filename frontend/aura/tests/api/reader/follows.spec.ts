@@ -3,13 +3,17 @@ import { afterEach, beforeEach, describe, expect, it, type Mock, vi } from "vite
 import {
 	followReaderCategory,
 	followReaderSeries,
+	followReaderTag,
 	setCategoryFollowNotify,
 	setSeriesFollowNotify,
+	setTagFollowNotify,
 	unfollowReaderCategory,
 	unfollowReaderSeries,
+	unfollowReaderTag,
 	useReaderCategoryFollows,
 	useReaderFollowsFeed,
 	useReaderSeriesFollows,
+	useReaderTagFollows,
 } from "../../../api/reader/follows.ts";
 
 let queryCalls: Array<{ path: unknown; options: Record<string, unknown> }>;
@@ -109,6 +113,38 @@ describe("reader follow commands", () => {
 		await unfollowReaderCategory(8);
 
 		expect(commandCalls[0].path).toBe("/api/reader/me/categories/8/follow");
+		expect(commandCalls[0].options.method).toBe("DELETE");
+	});
+});
+
+describe("reader tag follow API (DEC-195)", () => {
+	it("fetches tag follows reactively", () => {
+		useReaderTagFollows();
+
+		expect(queryCalls[0].path).toBe("/api/reader/me/tag-follows");
+		expect(queryCalls[0].options.headers).toEqual({ Authorization: "Bearer reader-jwt" });
+	});
+
+	it("follows a tag with PUT", async () => {
+		await followReaderTag(3);
+
+		expect(commandCalls[0].path).toBe("/api/reader/me/tags/3/follow");
+		expect(commandCalls[0].options.method).toBe("PUT");
+		expect(commandCalls[0].options.headers).toEqual({ Authorization: "Bearer reader-jwt" });
+	});
+
+	it("toggles tag notify with PATCH + body", async () => {
+		await setTagFollowNotify(3, false);
+
+		expect(commandCalls[0].path).toBe("/api/reader/me/tags/3/follow");
+		expect(commandCalls[0].options.method).toBe("PATCH");
+		expect(commandCalls[0].options.body).toEqual({ notify: false });
+	});
+
+	it("unfollows a tag with DELETE", async () => {
+		await unfollowReaderTag(3);
+
+		expect(commandCalls[0].path).toBe("/api/reader/me/tags/3/follow");
 		expect(commandCalls[0].options.method).toBe("DELETE");
 	});
 });

@@ -389,4 +389,83 @@ describe("Tags Page", () => {
 			});
 		});
 	});
+
+	describe("Tag follow (DEC-195, TASK-215)", () => {
+		afterEach(() => {
+			window.localStorage.removeItem("reader_token");
+			vi.unstubAllGlobals();
+		});
+
+		it("hides the follow button for signed-out readers", async () => {
+			const wrapper = await mountTagsPage({ routeQuery: { tag_id: "1" } });
+			expect(wrapper.text()).not.toContain("关注标签");
+		});
+
+		it("shows the follow button for a signed-in reader on a selected tag", async () => {
+			window.localStorage.setItem("reader_token", "reader-jwt");
+			const wrapper = await mountTagsPage({ routeQuery: { tag_id: "1" } });
+			expect(wrapper.text()).toContain("关注标签");
+			expect(wrapper.text()).not.toContain("已关注");
+		});
+
+		it("no follow button on the all-tags view even when signed in", async () => {
+			window.localStorage.setItem("reader_token", "reader-jwt");
+			const wrapper = await mountTagsPage();
+			expect(wrapper.text()).not.toContain("关注标签");
+		});
+
+		it("follows the tag with PUT and flips to the following state", async () => {
+			window.localStorage.setItem("reader_token", "reader-jwt");
+			const fetchMock = vi.fn((_url: string, _opts?: { method?: string }) =>
+				Promise.resolve({
+					tag_id: 1,
+					tag_name: "React",
+					following: true,
+					notify: true,
+				}),
+			);
+			vi.stubGlobal("$fetch", fetchMock);
+
+			const wrapper = await mountTagsPage({ routeQuery: { tag_id: "1" } });
+			const followButton = wrapper.findAll("button").find((b) => b.text().includes("关注标签"));
+			expect(followButton).toBeTruthy();
+
+			await followButton?.trigger("click");
+			await flushPromises();
+
+			expect(fetchMock).toHaveBeenCalledWith(
+				"/api/reader/me/tags/1/follow",
+				expect.objectContaining({ method: "PUT" }),
+			);
+			expect(wrapper.text()).toContain("已关注");
+			// the notify bell toggle appears once following
+			expect(wrapper.text()).toContain("通知已开");
+		});
+
+		it("unfollows the tag when clicking an already-followed tag", async () => {
+			window.localStorage.setItem("reader_token", "reader-jwt");
+			const putMock = vi.fn(() =>
+				Promise.resolve({ tag_id: 1, tag_name: "React", following: true, notify: true }),
+			);
+			const deleteMock = vi.fn(() => Promise.resolve(null));
+			vi.stubGlobal(
+				"$fetch",
+				vi.fn((_url: string, opts: { method?: string } = {}) =>
+					opts.method === "DELETE" ? deleteMock() : putMock(),
+				),
+			);
+
+			const wrapper = await mountTagsPage({ routeQuery: { tag_id: "1" } });
+			const followButton = wrapper.findAll("button").find((b) => b.text().includes("关注标签"));
+			await followButton?.trigger("click");
+			await flushPromises();
+			expect(wrapper.text()).toContain("已关注");
+
+			// second click unfollows (the button now reads 已关注)
+			await followButton?.trigger("click");
+			await flushPromises();
+			expect(deleteMock).toHaveBeenCalled();
+			expect(wrapper.text()).toContain("关注标签");
+		});
+	});
 });

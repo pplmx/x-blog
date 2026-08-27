@@ -78,6 +78,17 @@
 			"unfollowConfirm": "确定取消关注这个分类吗？之后不再收到它的新文章提醒。",
 			"failed": "操作失败，请稍后再试"
 		},
+		"tags": {
+			"title": "关注的标签",
+			"note": "这些标签下有新文章发布时，会通过 Web Push 通知你。",
+			"empty": "还没有关注任何标签",
+			"notifyTitle": "切换该标签的新文章通知",
+			"notifyOn": "通知已开",
+			"notifyOff": "通知已关",
+			"unfollow": "取消关注",
+			"unfollowConfirm": "确定取消关注这个标签吗？之后不再收到它的新文章提醒。",
+			"failed": "操作失败，请稍后再试"
+		},
 		"export": {
 			"title": "下载我的数据",
 			"description": "获取一份可携带的 JSON 副本，包含你的账号、收藏、评论和阅读历史。",

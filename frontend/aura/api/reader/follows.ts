@@ -44,6 +44,26 @@ export interface CategoryFollowState {
 	notify: boolean;
 }
 
+/** The tags the signed-in reader follows (durable reader-level intent, DEC-195). */
+export interface FollowedTagItem {
+	id: number;
+	name: string;
+	/** Whether new-post push is enabled for this follow (TASK-215). */
+	notify: boolean;
+}
+
+export interface FollowedTagListResponse {
+	items: FollowedTagItem[];
+	total: number;
+}
+
+export interface TagFollowState {
+	tag_id: number;
+	tag_name: string;
+	following: boolean;
+	notify: boolean;
+}
+
 /** Recent public posts from the reader's followed categories + series. */
 export function useReaderFollowsFeed(limit = 12) {
 	return query<PostList[]>("/api/reader/me/follows-feed", {
@@ -120,6 +140,39 @@ export function setCategoryFollowNotify(
 /** Unfollow a category (idempotent 204). */
 export function unfollowReaderCategory(categoryId: number): Promise<null> {
 	return command<null>(`/api/reader/me/categories/${categoryId}/follow`, {
+		method: "DELETE",
+		headers: readerAuthHeaders(),
+	});
+}
+
+/** Reactive list of the tags the signed-in reader follows. */
+export function useReaderTagFollows() {
+	return query<FollowedTagListResponse>("/api/reader/me/tag-follows", {
+		headers: readerAuthHeaders(),
+		server: false,
+	});
+}
+
+/** Follow a tag for new-post push (idempotent). */
+export function followReaderTag(tagId: number): Promise<TagFollowState> {
+	return command<TagFollowState>(`/api/reader/me/tags/${tagId}/follow`, {
+		method: "PUT",
+		headers: readerAuthHeaders(),
+	});
+}
+
+/** Toggle new-post push on/off for a tag the reader already follows. */
+export function setTagFollowNotify(tagId: number, notify: boolean): Promise<TagFollowState> {
+	return command<TagFollowState>(`/api/reader/me/tags/${tagId}/follow`, {
+		method: "PATCH",
+		headers: readerAuthHeaders(),
+		body: { notify },
+	});
+}
+
+/** Unfollow a tag (idempotent 204). */
+export function unfollowReaderTag(tagId: number): Promise<null> {
+	return command<null>(`/api/reader/me/tags/${tagId}/follow`, {
 		method: "DELETE",
 		headers: readerAuthHeaders(),
 	});

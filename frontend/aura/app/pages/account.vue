@@ -14,14 +14,21 @@ import {
 	getReaderDataExport,
 	updateReaderProfile,
 } from "~~/api/reader/account";
-import type { FollowedCategoryItem, FollowedSeriesItem } from "~~/api/reader/follows";
+import type {
+	FollowedCategoryItem,
+	FollowedSeriesItem,
+	FollowedTagItem,
+} from "~~/api/reader/follows";
 import {
 	setCategoryFollowNotify,
 	setSeriesFollowNotify,
+	setTagFollowNotify,
 	unfollowReaderCategory,
 	unfollowReaderSeries,
+	unfollowReaderTag,
 	useReaderCategoryFollows,
 	useReaderSeriesFollows,
+	useReaderTagFollows,
 } from "~~/api/reader/follows";
 import {
 	getMyPushSubscriptions,
@@ -324,6 +331,53 @@ async function toggleCategoryNotify(item: FollowedCategoryItem) {
 	}
 }
 
+/* Followed tags for new-post push (DEC-195, TASK-215) ---------------------- */
+const tagFollows = ref<FollowedTagItem[]>([]);
+const tagFollowsLoaded = ref(false);
+const tagUnfollowId = ref<number | null>(null);
+const tagNotifyId = ref<number | null>(null);
+const tagFollowsError = ref(false);
+
+async function loadTagFollows() {
+	if (!isAuthenticated.value) return;
+	try {
+		const res = await useReaderTagFollows();
+		tagFollows.value = res.data?.value?.items ?? [];
+	} catch {
+		tagFollows.value = [];
+	}
+	tagFollowsLoaded.value = true;
+}
+
+async function unfollowFollowedTag(item: FollowedTagItem) {
+	if (!confirm(t("account.tags.unfollowConfirm"))) return;
+	tagUnfollowId.value = item.id;
+	tagFollowsError.value = false;
+	try {
+		await unfollowReaderTag(item.id);
+		await loadTagFollows();
+	} catch {
+		tagFollowsError.value = true;
+	} finally {
+		tagUnfollowId.value = null;
+	}
+}
+
+async function toggleTagNotify(item: FollowedTagItem) {
+	if (tagNotifyId.value != null) return;
+	tagNotifyId.value = item.id;
+	tagFollowsError.value = false;
+	const next = !item.notify;
+	try {
+		const res = await setTagFollowNotify(item.id, next);
+		item.notify = res?.notify ?? next;
+	} catch {
+		tagFollowsError.value = true;
+	} finally {
+		tagNotifyId.value = null;
+	}
+}
+
 /* Delete account (DEC-106, TASK-165) ---------------------------------- */
 // Data export (DEC-126, TASK-175): download the reader's portable JSON bundle.
 const exportingData = ref(false);
@@ -382,6 +436,7 @@ onMounted(() => {
 	loadThreads();
 	loadSeriesFollows();
 	loadCategoryFollows();
+	loadTagFollows();
 	// Keep the name input in sync if the header "reader" profile loads after us.
 	displayName.value = reader.value?.display_name ?? displayName.value;
 });
@@ -746,6 +801,58 @@ function shortEndpoint(endpoint: string): string {
         </ul>
         <p v-if="categoryFollowsError" class="mt-2 text-sm text-red-500 dark:text-red-400">
           {{ t('account.categories.failed') }}
+        </p>
+      </section>
+
+      <!-- Followed tags for new-post push (DEC-195, TASK-215) -->
+      <section class="border border-gray-100 dark:border-gray-700 rounded-xl p-5">
+        <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-1">
+          {{ t('account.tags.title') }}
+        </h2>
+        <p class="text-xs text-gray-400 mb-4">{{ t('account.tags.note') }}</p>
+
+        <p v-if="tagFollowsLoaded && tagFollows.length === 0" class="text-sm text-gray-500 dark:text-gray-400">
+          {{ t('account.tags.empty') }}
+        </p>
+        <ul v-else class="space-y-3">
+          <li
+            v-for="tf in tagFollows"
+            :key="tf.id"
+            class="border border-gray-100 dark:border-gray-800 rounded-lg p-3"
+          >
+            <div class="flex items-center justify-between gap-3 text-sm">
+              <NuxtLink
+                :to="{ path: '/tags', query: { tag_id: String(tf.id) } }"
+                class="min-w-0 truncate text-gray-900 dark:text-gray-100 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+              >
+                #{{ tf.name }}
+              </NuxtLink>
+              <div class="shrink-0 flex items-center gap-3">
+                <button
+                  type="button"
+                  :disabled="tagNotifyId === tf.id"
+                  :title="t('account.tags.notifyTitle')"
+                  class="inline-flex items-center gap-1 text-xs text-gray-400 hover:text-emerald-600 transition-colors disabled:opacity-50"
+                  @click="toggleTagNotify(tf)"
+                >
+                  <Icon :icon="tf.notify ? 'lucide:bell' : 'lucide:bell-off'" class="w-3.5 h-3.5" />
+                  {{ t(tf.notify ? 'account.tags.notifyOn' : 'account.tags.notifyOff') }}
+                </button>
+                <button
+                  type="button"
+                  :disabled="tagUnfollowId === tf.id"
+                  class="inline-flex items-center gap-1 text-xs text-gray-400 hover:text-red-500 transition-colors disabled:opacity-50"
+                  @click="unfollowFollowedTag(tf)"
+                >
+                  <Icon icon="lucide:x" class="w-3.5 h-3.5" />
+                  {{ t('account.tags.unfollow') }}
+                </button>
+              </div>
+            </div>
+          </li>
+        </ul>
+        <p v-if="tagFollowsError" class="mt-2 text-sm text-red-500 dark:text-red-400">
+          {{ t('account.tags.failed') }}
         </p>
       </section>
 
