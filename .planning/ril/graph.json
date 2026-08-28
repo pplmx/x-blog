@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 181,
+  "round": 182,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-08-28T04:53:25+00:00",
+  "updated_at": "2026-08-28T09:44:31+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -11677,13 +11677,13 @@
     "ISS-121": {
       "id": "ISS-121",
       "type": "issue",
-      "status": "active",
-      "version": 1,
+      "status": "resolved",
+      "version": 2,
       "created_at": "2026-08-27T14:57:53+00:00",
-      "updated_at": "2026-08-27T14:57:53+00:00",
-      "touched_round": 179,
+      "updated_at": "2026-08-28T08:49:21+00:00",
+      "touched_round": 182,
       "severity": 0.15,
-      "title": "Residual pre-existing e2e failures against the shared dev DB (reproduce on clean HEAD, NOT TASK-220 regressions): account.spec strict-mode (login page resolves two input[autocomplete=current-password]), admin-readers, several admin specs, rss-scoped/scope toBe equality mismatches, and intermittent full-suite-load flakies (home-your-series/home-follows-feed/tag-follow pass in isolation but fail under full-suite load, the ISS-097 flakiness class). Some are dev-DB-data-dependent; none touched by the post/series fixes."
+      "title": "RESOLVED (local slice, EV-164): full local e2e suite green — 165 passed/0 failed/0 flaky/4 skips. History record now waits on the dispatched POST, keepalive added to fire-and-forget view/history writes, prefs assert post-PATCH via poll, my-comments auto-approve forced off + tooltip badge, scoped RSS proxied at the Nuxt origin (9b37c21), admin create 201 (f3a58e1), strict-mode selector fixes. Residual: dev-DB-state-dependent reproducibility (admin-readers exact counts vs shared dev DB state, unreachable from the sandbox) — parked in DEC-205."
     },
     "EV-150": {
       "id": "EV-150",
@@ -11780,16 +11780,16 @@
     "TASK-221": {
       "id": "TASK-221",
       "type": "task",
-      "status": "active",
-      "version": 3,
+      "status": "resolved",
+      "version": 4,
       "created_at": "2026-08-27T15:00:30+00:00",
-      "updated_at": "2026-08-27T16:09:28+00:00",
-      "touched_round": 179,
+      "updated_at": "2026-08-28T08:49:21+00:00",
+      "touched_round": 182,
       "category": "test-quality",
       "severity": 0.15,
       "confidence": 0.9,
       "effort": 0.8,
-      "title": "Triaging only (deferred, below threshold): the residual pre-existing e2e failures against the shared dev DB (ISS-121) — account.spec strict-mode double current-password input on the login page is the most concrete fixable item; the rest are admin/rss assertions and full-suite-load flakies that reproduce on clean HEAD. Pick up once the operator confirms the target e2e environment."
+      "title": "RESOLVED: local full e2e suite green (165 passed/0 failed/0 flaky/4 data-gated skips) — ISS-121 reader-history/notification-prefs/my-comments/rss/selector flakies fixed in 72e8ba1/9b37c21/f3a58e1. Only the dev-DB-state-dependent reproduction remains, parked in DEC-205 awaiting the operator-specified e2e environment."
     },
     "DEC-200": {
       "id": "DEC-200",
@@ -12058,6 +12058,149 @@
       "title": "converged-idle: weekly email digest milestone delivered (DEC-201/202 complete); feature backlog drained and the residual candidates fail the value gate",
       "rationale": "Session delivered a complete new milestone (weekly email digest, DEC-201..202, TASK-222, CHG-240..243 + f0aa349) with backend 1222/9 @94.38% + pyright 0 + frontend 1252 + typecheck 0 + e2e 3/3 + migration head (EV-156..160/162); real-PG path is now a runnable TEST_DATABASE_URL gate (EV-162). §11.2 sourcing vs the drained backlog: follow-scoped digest = patch refinement of the just-delivered milestone (anti-backpedal); one-click tokenized email unsubscribe = smaller same-class increment of the email channel the editor just delivered; both rejected (value gate). TASK-221 (e2e vs shared dev DB) stays below threshold and environment-gated. No feature candidate clears the gate with a one-line user-visible value statement, so the engine parks (QUIESCE) rather than fabricating features. Reactivation: a new operator milestone direction (supersedes this decision) or the operator running the PG gate (TEST_DATABASE_URL with a scratch database) to smoke the residual advisory-lock path.",
       "alternatives_rejected": "Not folding a follow-scoped digest into this milestone (net-new scope clearly worth its own decision if the operator wants it); not shipping one-click tokenized unsubscribe now (increment on the just-delivered email surface, no distinct user-visible milestone value); not churning another round dial on TASK-221 (environment-blocked, below threshold)."
+    },
+    "DEC-204": {
+      "id": "DEC-204",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-28T06:08:36+00:00",
+      "updated_at": "2026-08-28T06:08:36+00:00",
+      "touched_round": 182,
+      "title": "Milestone: post outline / sticky table of contents (reactivates the loop; supersedes DEC-203 park)",
+      "rationale": "Operator reactivated the loop ('继续') after the DEC-203 converged-idle park. §11.2 sourcing with the drained backlog: theme-override and comment-pagination candidates were checked against the code and already exist (binary light/dark toggle + system fallback in layouts/default.vue; page-number comment pagination in CommentList.vue) — rejected as already-done, not candidates. The verified net-new gap is post navigation: long-form posts render headings but have NO outline — a reader of a 20-minute article must scroll linearly and cannot see where they are. Value: for readers of long posts, a sticky table of contents (built from the article's rendered h2/h3 headings) gives jump-navigation + scroll-spy orientation. Why now: net-new (no TOC code exists), frontend-only vertical slice, fully verifiable by unit + component + e2e. Reactivation baseline re-verified green first (backend 1222/10 @94.38%, pyright 0, frontend vitest + typecheck 0).",
+      "alternatives_rejected": "Not scope-creeping into reading-progress bar or copy-code buttons (button-level patches of the reader surface, §11.2 anti-frivolity); not 'social share OG cards' (needs cover-image pipeline + external-preview verification — larger and less cleanly self-contained than the outline); not starting TASK-221 (the shared-dev-DB e2e cleanup) — still environment-gated below threshold."
+    },
+    "TASK-223": {
+      "id": "TASK-223",
+      "type": "task",
+      "status": "abandoned",
+      "version": 2,
+      "created_at": "2026-08-28T06:08:37+00:00",
+      "updated_at": "2026-08-28T06:13:35+00:00",
+      "touched_round": 181,
+      "category": "core-feature",
+      "title": "Post outline / sticky table of contents for long-form posts",
+      "summary": "Frontend vertical slice on the post detail page: build a TOC from the article's rendered h2/h3 headings, render a sticky right-side outline (xl+) + a collapsible outline for smaller screens, click-to-scroll (smooth, sticky-header offset via existing scroll-mt), scroll-spy active-heading highlight, zh/en i18n. Pure TOC-builder util unit-tested, page component test, e2e journey. Source: DEC-204.",
+      "severity": 3,
+      "effort": 3
+    },
+    "EV-163": {
+      "id": "EV-163",
+      "type": "evidence",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-28T06:13:34+00:00",
+      "updated_at": "2026-08-28T06:13:34+00:00",
+      "touched_round": 181,
+      "source": "observe:post page",
+      "confidence": 1.0,
+      "summary": "FALSE-gap correction: a post outline / TOC ALREADY exists on the post detail page — extractToc in composables/useToc + scroll-spy (IntersectionObserver, activeTocId) + a nav rendered from toc.length>1 headings (delivered earlier as RIL TASK-104 / ISS-084). Also confirmed already-done when candidate-scanning: binary light/dark theme toggle + system fallback (layouts/default.vue), page-number comment pagination (CommentList.vue), OpenGraph/social cards (composables/useSeo.ts), full-content RSS (rss.py full_content param). The feature backlog is genuinely saturated; net-new value-gate-clearing candidate not found without operator feature direction."
+    },
+    "EV-164": {
+      "id": "EV-164",
+      "type": "evidence",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-28T08:46:46+00:00",
+      "updated_at": "2026-08-28T08:46:46+00:00",
+      "touched_round": 182,
+      "source": "72e8ba1 (e2e convergence) + e2e-full3.log",
+      "confidence": 1.0,
+      "summary": "The full local e2e suite is now green: 165 passed / 0 failed / 0 flaky / 4 skipped (the 4 skips are legitimate data-gated skips — no fixture, e.g. no series in the seeded DB). Fixes: history-sync now waits on the dispatched reader-history POST (onMounted fires after SSR hydration — waitForURL(/posts/) could navigate away before the write was ever created); recordPostView/recordReaderHistory keepalive so the fire-and-forget read-time write survives back/forward; notification-preferences polls the API for the post-PATCH state (single GET could outrun the async write); my-comments forces the auto-approve runtime setting off + asserts the pending badge by tooltip title (strict-mode); bookmark/series/deletes selectors fixed for strict mode. ISS-121 local slice: RESOLVED."
+    },
+    "EV-165": {
+      "id": "EV-165",
+      "type": "evidence",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-28T08:46:46+00:00",
+      "updated_at": "2026-08-28T08:46:46+00:00",
+      "touched_round": 182,
+      "source": "9b37c21",
+      "confidence": 1.0,
+      "summary": "Scoped RSS feeds are now reachable on the Nuxt origin: new server/routes/rss/[...path].ts proxies /rss/{category,series}/* to the backend via proxyConditionalFeed (ETag/304 kept). Previously only production nginx routed /rss/ to the backend, so the page's /rss/category/<name>.xml links 404'd in dev/e2e (the parity gap that made rss-scope fetch from the backend host directly). Verified live in the full suite (rss-scoped/rss-scope green)."
+    },
+    "EV-166": {
+      "id": "EV-166",
+      "type": "evidence",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-28T08:46:46+00:00",
+      "updated_at": "2026-08-28T08:46:46+00:00",
+      "touched_round": 182,
+      "source": "f3a58e1",
+      "confidence": 1.0,
+      "summary": "POST /api/admin/posts now returns 201 Created like every other create endpoint (was 200, REST-inconsistent); spec assertions tightened from 200-or-201 to 201 exactly across test_admin/test_role_tiers/test_admin_post_revisions. Backend pyright clean, 1222 pytest passed at 94.38% coverage."
+    },
+    "CHG-244": {
+      "id": "CHG-244",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-28T08:48:21+00:00",
+      "updated_at": "2026-08-28T08:48:21+00:00",
+      "touched_round": 182,
+      "commit": "72e8ba1",
+      "summary": "make the last flaky reader journeys deterministic: history-sync waits on the dispatched reader-history POST, keepalive on recordPostView/recordReaderHistory, notification-preferences polls post-PATCH state, my-comments forces auto-approve off + tooltip-title badge assert, strict-mode selector fixes (bookmark/series/account-delete)."
+    },
+    "CHG-245": {
+      "id": "CHG-245",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-28T08:48:21+00:00",
+      "updated_at": "2026-08-28T08:48:21+00:00",
+      "touched_round": 182,
+      "commit": "9b37c21",
+      "summary": "Nuxt server/routes/rss/[...path].ts proxies scoped category/series feeds to the backend via proxyConditionalFeed (ETag/304 kept) — fixes the /rss/category|<name>.xml 404 on the Nuxt origin in dev/e2e."
+    },
+    "CHG-246": {
+      "id": "CHG-246",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-28T08:48:21+00:00",
+      "updated_at": "2026-08-28T08:48:21+00:00",
+      "touched_round": 182,
+      "commit": "f3a58e1",
+      "summary": "POST /api/admin/posts returns 201 Created (was 200); spec contracts tightened to 201 exactly."
+    },
+    "EV-167": {
+      "id": "EV-167",
+      "type": "evidence",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-28T09:42:33+00:00",
+      "updated_at": "2026-08-28T09:42:33+00:00",
+      "touched_round": 182,
+      "source": "18c98cc + ca03f7a",
+      "confidence": 1.0,
+      "summary": "CI lint gate (biome check .) and ruff format --check were BOTH red at committed baseline, independent of this round's e2e work: biome 4 errors + 14 warnings, ruff 9 unformatted files. Root cause: the resolved tool versions are newer than when those files were authored (lockfile bumps pulled biome 2.5.10 / ruff 0.16.5), so the pre-existing formatting drifted out of compliance — ISS-104's restoration did not survive the tool-version drift. Fixed repo-wide: 18c98cc (search.spec useTemplate, 14 noNonNullAssertion narrowings with explicit throw-guards, 4 format-drift files) and ca03f7a (9 ruff files). All gates now green: biome check . exit 0, ruff check+format clean, pyright 0, pytest 1222@94.38%, rumdl clean, typecheck clean, vitest 1252, full e2e 165/0/0."
+    },
+    "DEC-205": {
+      "id": "DEC-205",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-28T09:43:21+00:00",
+      "updated_at": "2026-08-28T09:43:21+00:00",
+      "touched_round": 182,
+      "rationale": "ISS-121/TASK-221's residual items that reproduce only against the stateful shared dev PostgreSQL (10.112.9.49:13310, unreachable from this sandbox) cannot be exercised or fixed here: exact-count admin-readers assertions and any DB-state-dependent spec need a live dev DB to reproduce. The local-slice is fully resolved (EV-164, full local suite 165/0/0) and every in-repo CI gate is green (EV-167). Forking a scratch PG from the dev dump is out of scope for this sandboxed run. Reactivation for this thread: the operator runs the e2e suite in an environment that can reach the dev DB, or points TEST_DATABASE_URL at a dev-shaped dataset.",
+      "alternatives_rejected": "Not spinning up a local Postgres replica from dump (out of sandbox scope, time/value poor); not deleting or weakening the dev-DB-dependent assertions (they encode real contract expectations; the data, not the test, is environmental).",
+      "title": "dev-DB-state-dependent e2e reproducibility parked at the environment boundary (ISS-121 residual)"
+    },
+    "DEC-206": {
+      "id": "DEC-206",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-28T09:43:53+00:00",
+      "updated_at": "2026-08-28T09:43:53+00:00",
+      "touched_round": 182,
+      "rationale": "Round 181-182 delivered the full local e2e convergence (ISS-121/TASK-221: 165 passed/0 failed/0 flaky/4 data-gated skips, commits 72e8ba1/9b37c21/f3a58e1) then restored BOTH formatter gates that CI was failing at baseline (biome + ruff, 18c98cc/ca03f7a). Stop-condition review (§10): 1) no active tasks above threshold — task backlog is empty (TASK-221 resolved); 2) all 123 issues resolved; 3) most recent VERIFY green on every CI gate (backend ruff/pyright/pytest 1222@94.38%/rumdl, frontend biome exit 0/typecheck/vitest 1252/build, full e2e 165/0/0); 4) two consecutive exploration rounds produced no new >3.0 task (round 181 false-gap TOC = already exists; round 182 real but <=0.6 convergence work); 5) graph check green. The only residual is dev-DB-state-dependent reproducibility, parked at the environment boundary (DEC-205). No net-new user-facing feature candidate clears the value gate without operator direction (§11.2 / EV-163 backlog saturation). Engine therefore QUIESCEs rather than fabricating features or issuing round-dial commits.",
+      "alternatives_rejected": "Not shipping a fabricated follow-scoped/email-nux feature (value gate; backlog genuinely saturated per EV-163); not churning another e2e round on the dev-DB-gated residual (environment-blocked, DEC-205); not backpedaling the just-restored formatter gates by editing configs to silence them (fixed the source instead, per the config-protection stance).",
+      "title": "converged-idle: e2e convergence + all-gates-green achieved; dev-DB residual parked (DEC-205); no value-gate feature candidate without operator direction"
     }
   },
   "edges": [
@@ -17212,6 +17355,48 @@
       "to": "DEC-202",
       "type": "supersedes",
       "created_at": "2026-08-28T04:53:25+00:00"
+    },
+    {
+      "from": "DEC-204",
+      "to": "DEC-203",
+      "type": "supersedes",
+      "created_at": "2026-08-28T06:08:37+00:00"
+    },
+    {
+      "from": "DEC-204",
+      "to": "TASK-223",
+      "type": "governs",
+      "created_at": "2026-08-28T06:14:09+00:00"
+    },
+    {
+      "from": "CHG-244",
+      "to": "ISS-121",
+      "type": "resolves",
+      "created_at": "2026-08-28T08:48:37+00:00"
+    },
+    {
+      "from": "CHG-245",
+      "to": "ISS-121",
+      "type": "resolves",
+      "created_at": "2026-08-28T08:48:37+00:00"
+    },
+    {
+      "from": "CHG-246",
+      "to": "ISS-121",
+      "type": "resolves",
+      "created_at": "2026-08-28T08:48:37+00:00"
+    },
+    {
+      "from": "CHG-244",
+      "to": "TASK-221",
+      "type": "implements",
+      "created_at": "2026-08-28T08:48:37+00:00"
+    },
+    {
+      "from": "DEC-204",
+      "to": "DEC-206",
+      "type": "supersedes",
+      "created_at": "2026-08-28T09:44:31+00:00"
     }
   ]
 }
