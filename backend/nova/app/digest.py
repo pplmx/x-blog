@@ -98,9 +98,7 @@ def collect_digest_posts(db: Session, now_naive: datetime) -> list[models.Post]:
     # bound is needed; SQL bounds the fetch, Python filters exactly. On SQLite
     # created_at was stored with its UTC offset (aware ORM default bound by the
     # sqlite3 adapter); match format so string ordering stays aligned.
-    created_lo: datetime = (
-        window_start.replace(tzinfo=UTC) if _dialect_name(db) == "sqlite" else window_start
-    )
+    created_lo: datetime = window_start.replace(tzinfo=UTC) if _dialect_name(db) == "sqlite" else window_start
     unscheduled_recent = and_(
         models.Post.publish_at.is_(None),
         models.Post.created_at >= created_lo,
@@ -126,7 +124,9 @@ def digest_window_start(pref: models.ReaderNotificationPref, now_naive: datetime
     return max(pref.digest_sent_at, now_naive - timedelta(days=WEEKLY_WINDOW_DAYS))
 
 
-def collect_digest_recipients(db: Session, now_naive: datetime) -> list[tuple[models.ReaderNotificationPref, ReaderAccount, datetime]]:
+def collect_digest_recipients(
+    db: Session, now_naive: datetime
+) -> list[tuple[models.ReaderNotificationPref, ReaderAccount, datetime]]:
     """Opted-in, active readers with a registered address, each with their
     window start. A missing prefs row reads as no digest (off by default)."""
     rows = (
@@ -189,23 +189,23 @@ def build_digest_message(
         label = f"{html.escape(cat)} · {date}" if cat else date
         excerpt = (post.excerpt or "").strip()
         item = (
-            f"<li><a href=\"{base}/posts/{html.escape(post.slug, quote=True)}\">"
-            f"{html.escape(post.title)}</a> <span style=\"color:#888\">({label})</span>"
+            f'<li><a href="{base}/posts/{html.escape(post.slug, quote=True)}">'
+            f'{html.escape(post.title)}</a> <span style="color:#888">({label})</span>'
         )
         if excerpt:
-            item += f"<p style=\"margin:4px 0 12px;color:#555\">{html.escape(excerpt)}</p>"
+            item += f'<p style="margin:4px 0 12px;color:#555">{html.escape(excerpt)}</p>'
         items.append(item + "</li>")
 
     rows = "\n".join(items)
     html_body = (
-        "<div style=\"font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;"
-        "max-width:640px;margin:0 auto;padding:24px\">"
-        f"<h1 style=\"font-size:20px\">本周精选 · {len(posts)} 篇新文章</h1>"
+        '<div style="font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;'
+        'max-width:640px;margin:0 auto;padding:24px">'
+        f'<h1 style="font-size:20px">本周精选 · {len(posts)} 篇新文章</h1>'
         f"<p>{html.escape(greeting)}这是过去一周发布的新文章"
         f"（{_format_date(window_start)} ~ {_format_date(now_naive)}）：</p>"
-        f"<ol style=\"line-height:1.6\">{rows}</ol>"
-        f"<p style=\"color:#888;font-size:13px\">不想再收到每周精选？"
-        f"<a href=\"{base}/notifications\">在通知偏好中关闭</a>。</p>"
+        f'<ol style="line-height:1.6">{rows}</ol>'
+        f'<p style="color:#888;font-size:13px">不想再收到每周精选？'
+        f'<a href="{base}/notifications">在通知偏好中关闭</a>。</p>'
         "</div>"
     )
 
@@ -223,9 +223,7 @@ def _acquire_digest_lock(db: Session) -> bool:
     tests) have no advisory locks and are single-process by construction."""
     if _dialect_name(db) != "postgresql":
         return True
-    return bool(
-        db.execute(text("SELECT pg_try_advisory_lock(:key)"), {"key": _DIGEST_LOCK_KEY}).scalar()
-    )
+    return bool(db.execute(text("SELECT pg_try_advisory_lock(:key)"), {"key": _DIGEST_LOCK_KEY}).scalar())
 
 
 def _release_digest_lock(db: Session) -> None:
@@ -272,13 +270,23 @@ def send_weekly_digest(db: Session, *, now_naive: datetime | None = None, logger
             # (independent of SMTP config; it's a preview, even when nobody is
             # eligible today).
             return {
-                "locked": False, "dry_run": True,
-                "readers": len(deliveries), "emails_sent": 0,
-                "posts": len(posts), "skipped": skipped,
+                "locked": False,
+                "dry_run": True,
+                "readers": len(deliveries),
+                "emails_sent": 0,
+                "posts": len(posts),
+                "skipped": skipped,
             }
 
         if not deliveries:
-            return {"locked": False, "readers": 0, "emails_sent": 0, "posts": len(posts), "skipped": skipped, "reason": "no_recipients"}
+            return {
+                "locked": False,
+                "readers": 0,
+                "emails_sent": 0,
+                "posts": len(posts),
+                "skipped": skipped,
+                "reason": "no_recipients",
+            }
 
         base_url = _env("SITE_URL") or "http://localhost:3000"
         from_addr = _env("SMTP_FROM") or "no-reply@localhost"
@@ -296,21 +304,38 @@ def send_weekly_digest(db: Session, *, now_naive: datetime | None = None, logger
             built.append((pref, msg))
 
         if not is_email_configured():
-            return {"locked": False, "readers": 0, "emails_sent": 0, "posts": len(posts), "skipped": len(deliveries), "reason": "smtp_not_configured"}
+            return {
+                "locked": False,
+                "readers": 0,
+                "emails_sent": 0,
+                "posts": len(posts),
+                "skipped": len(deliveries),
+                "reason": "smtp_not_configured",
+            }
 
         try:
             sent = send_messages([msg for _, msg in built])
         except Exception:  # noqa: BLE001 — best effort, retryable
             log.exception("weekly digest SMTP delivery failed")
             return {
-                "locked": False, "readers": 0, "emails_sent": 0,
-                "posts": len(posts), "skipped": len(deliveries), "reason": "smtp_error",
+                "locked": False,
+                "readers": 0,
+                "emails_sent": 0,
+                "posts": len(posts),
+                "skipped": len(deliveries),
+                "reason": "smtp_error",
             }
 
         # Stamp idempotency ONLY on delivered readers, after SMTP accepted.
         for pref, _msg in built:
             pref.digest_sent_at = now
         db.commit()
-        return {"locked": False, "readers": len(deliveries), "emails_sent": sent, "posts": len(posts), "skipped": skipped}
+        return {
+            "locked": False,
+            "readers": len(deliveries),
+            "emails_sent": sent,
+            "posts": len(posts),
+            "skipped": skipped,
+        }
     finally:
         _release_digest_lock(db)

@@ -154,9 +154,7 @@ class TestNotifyControl:
         assert resp.status_code == 404
 
     def test_patch_requires_token(self, client):
-        assert (
-            client.patch("/api/reader/me/series/1/follow", json={"notify": False}).status_code == 401
-        )
+        assert client.patch("/api/reader/me/series/1/follow", json={"notify": False}).status_code == 401
 
     def test_patch_unknown_series_404(self, client, auth_headers):
         token = _token(client)

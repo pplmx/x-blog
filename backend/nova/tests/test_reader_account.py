@@ -46,7 +46,9 @@ def _seed(client, db_session, tag):
 class TestDeleteAccount:
     def test_wrong_password_401(self, client, db_session):
         _post, _email, _rid, _cid, headers = _seed(client, db_session, "wrongpw")
-        resp = client.request("DELETE", "/api/reader/me/account", json={"password": "not-the-password"}, headers=headers)
+        resp = client.request(
+            "DELETE", "/api/reader/me/account", json={"password": "not-the-password"}, headers=headers
+        )
         assert resp.status_code == 401
 
     def test_requires_reader_token(self, client, db_session):

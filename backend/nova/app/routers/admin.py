@@ -1073,12 +1073,7 @@ def admin_list_readers(
             )
         )
     total = query.count()
-    rows = (
-        query.order_by(auth.ReaderAccount.created_at.desc())
-        .offset((page - 1) * limit)
-        .limit(limit)
-        .all()
-    )
+    rows = query.order_by(auth.ReaderAccount.created_at.desc()).offset((page - 1) * limit).limit(limit).all()
     # Aggregate counts for the page rows in two grouped queries (no N+1).
     reader_ids = [r.id for r in rows]
     comment_counts: dict[int, int] = {}

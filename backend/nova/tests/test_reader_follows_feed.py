@@ -41,9 +41,7 @@ def _create_series(client, auth_headers, slug="feedseries"):
     return resp.json()
 
 
-def _create_post(
-    client, auth_headers, slug, published=True, category_id=None, series_id=None, tags=None
-):
+def _create_post(client, auth_headers, slug, published=True, category_id=None, series_id=None, tags=None):
     global _n
     _n += 1
     body = {

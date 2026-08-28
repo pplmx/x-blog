@@ -42,9 +42,7 @@ def _auth(token):
 def _create_category(client, auth_headers, name="AI"):
     global _n
     _n += 1
-    resp = client.post(
-        "/api/categories", json={"name": f"{name}-{_n}"}, headers=auth_headers
-    )
+    resp = client.post("/api/categories", json={"name": f"{name}-{_n}"}, headers=auth_headers)
     assert resp.status_code == 201, resp.text
     return resp.json()
 
@@ -82,13 +80,9 @@ class TestFollow:
     def test_follow_idempotent_and_listed(self, client, auth_headers):
         token = _token(client)
         category = _create_category(client, auth_headers)
-        first = client.put(
-            f"/api/reader/me/categories/{category['id']}/follow", headers=_auth(token)
-        )
+        first = client.put(f"/api/reader/me/categories/{category['id']}/follow", headers=_auth(token))
         assert first.status_code == 201, first.text
-        again = client.put(
-            f"/api/reader/me/categories/{category['id']}/follow", headers=_auth(token)
-        )
+        again = client.put(f"/api/reader/me/categories/{category['id']}/follow", headers=_auth(token))
         assert again.status_code == 200
         assert again.json()["notify"] is True
 
@@ -99,10 +93,7 @@ class TestFollow:
 
     def test_follow_unknown_category_404(self, client):
         token = _token(client)
-        assert (
-            client.put("/api/reader/me/categories/999999/follow", headers=_auth(token)).status_code
-            == 404
-        )
+        assert client.put("/api/reader/me/categories/999999/follow", headers=_auth(token)).status_code == 404
 
     def test_unfollow_idempotent(self, client, auth_headers):
         token = _token(client)
@@ -154,10 +145,7 @@ class TestNotifyControl:
         assert resp.status_code == 404
 
     def test_patch_requires_token(self, client):
-        assert (
-            client.patch("/api/reader/me/categories/1/follow", json={"notify": False}).status_code
-            == 401
-        )
+        assert client.patch("/api/reader/me/categories/1/follow", json={"notify": False}).status_code == 401
 
 
 class TestCategoryDispatch:

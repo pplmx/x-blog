@@ -98,9 +98,7 @@ class TestFollow:
 
     def test_follow_unknown_tag_404(self, client):
         token = _token(client)
-        assert (
-            client.put("/api/reader/me/tags/999999/follow", headers=_auth(token)).status_code == 404
-        )
+        assert client.put("/api/reader/me/tags/999999/follow", headers=_auth(token)).status_code == 404
 
     def test_unfollow_idempotent(self, client, auth_headers):
         token = _token(client)
@@ -158,9 +156,7 @@ class TestNotifyControl:
         assert resp.status_code == 404
 
     def test_patch_requires_token(self, client):
-        assert (
-            client.patch("/api/reader/me/tags/1/follow", json={"notify": False}).status_code == 401
-        )
+        assert client.patch("/api/reader/me/tags/1/follow", json={"notify": False}).status_code == 401
 
 
 class TestTagDispatch:

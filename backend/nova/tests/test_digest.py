@@ -103,7 +103,9 @@ def _make_post(
     publish_at: datetime | None = None,
     created_at: datetime | None = None,
 ) -> models.Post:
-    post = models.Post(title=title, slug=slug, content="body", excerpt="excerpt", published=published, publish_at=publish_at)
+    post = models.Post(
+        title=title, slug=slug, content="body", excerpt="excerpt", published=published, publish_at=publish_at
+    )
     if created_at is not None:
         post.created_at = created_at
     db.add(post)
@@ -290,7 +292,9 @@ class TestAdminEndpoint:
 
     def test_dry_run_via_superuser(self, client, admin_token):
         assert admin_token
-        resp = client.post("/api/admin/digests/send-weekly?dry_run=true", headers={"Authorization": f"Bearer {admin_token}"})
+        resp = client.post(
+            "/api/admin/digests/send-weekly?dry_run=true", headers={"Authorization": f"Bearer {admin_token}"}
+        )
         assert resp.status_code == 200, resp.text
         body = resp.json()
         assert body.get("dry_run") is True
@@ -365,9 +369,7 @@ def test_pg_delivers_in_window_and_advisory_lock_blocks_concurrent_run(smtp_sink
             first = send_weekly_digest(db)
             assert first["readers"] == 1, first
             assert first["emails_sent"] == 1
-            html = next(
-                p.get_content() for p in smtp_sink.sent[-1].walk() if p.get_content_type() == "text/html"
-            )
+            html = next(p.get_content() for p in smtp_sink.sent[-1].walk() if p.get_content_type() == "text/html")
             assert "PG scheduled" in html and "PG created" in html
             assert "PG old" not in html
             pref = db.get(models.ReaderNotificationPref, reader.id)

@@ -526,14 +526,14 @@ class TestFanOutPrune:
 
         from sqlalchemy import func
 
-        assert db_session.query(func.count(models.ReaderNotification.id)).filter(
-            models.ReaderNotification.reader_id.in_((1, 2, 3))
-        ).scalar() == 600
         assert (
-            db_session.query(models.ReaderNotification)
-            .filter(models.ReaderNotification.reader_id == 1)
-            .count()
-            == 200
+            db_session.query(func.count(models.ReaderNotification.id))
+            .filter(models.ReaderNotification.reader_id.in_((1, 2, 3)))
+            .scalar()
+            == 600
+        )
+        assert (
+            db_session.query(models.ReaderNotification).filter(models.ReaderNotification.reader_id == 1).count() == 200
         )
         # Newest rows (highest id) survive; the oldest are pruned.
         assert (
@@ -549,12 +549,7 @@ class TestFanOutPrune:
             is None
         )
         # The reader below the cap is untouched by the batched prune.
-        assert (
-            db_session.query(models.ReaderNotification)
-            .filter(models.ReaderNotification.reader_id == 9)
-            .count()
-            == 1
-        )
+        assert db_session.query(models.ReaderNotification).filter(models.ReaderNotification.reader_id == 9).count() == 1
 
     def test_fan_out_lands_new_post_and_stays_capped(self, client, db_session, auth_headers):
         from app import crud, models
@@ -582,7 +577,13 @@ class TestFanOutPrune:
 
         post = client.post(
             "/api/posts",
-            json={"title": "Capped post", "slug": "capped-notif-post", "content": "c", "published": True, "category_id": cat_id},
+            json={
+                "title": "Capped post",
+                "slug": "capped-notif-post",
+                "content": "c",
+                "published": True,
+                "category_id": cat_id,
+            },
             headers=auth_headers,
         )
         assert post.status_code == 201, post.text
