@@ -144,6 +144,30 @@ uv run python -c "import base64; from cryptography.hazmat.primitives.asymmetric 
 
 把输出的两个值填入 `.env` 的 `VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY`，并设置 `VAPID_SUBJECT=mailto:you@example.com`，然后重启后端。未配置时所有 `/api/push/*` 端点 fail-closed 返回 503，前端订阅按钮自动隐藏。
 
+### 2.6 (可选) 邮件通知与每周精选
+
+读者可在 `/notifications` 打开「邮件」类开关：按事件（新文章 / 回复 / 讨论新评论）逐封发送到注册邮箱（DEC-197），或开启「每周精选」每周汇总一封本站新文章邮件（DEC-201）。启用需配置 SMTP：
+
+```bash
+# backend/nova/.env
+SMTP_HOST=smtp.example.com
+SMTP_PORT=587
+SMTP_USER=you@example.com
+SMTP_PASSWORD=***
+SMTP_FROM="X-Blog <noreply@example.com>"
+SITE_URL=https://your.blog.example
+```
+
+未配置 `SMTP_HOST` 时邮件 fail-closed（不发送）。「每周精选」由 cron 触发（无内置定时器，避免多进程重复发送）：
+
+```bash
+cd backend/nova
+uv run python -m app.digest_cli send-weekly           # 立即发送本周精选
+uv run python -m app.digest_cli send-weekly --dry-run # 仅预览，不发信
+```
+
+管理员也可用 `POST /api/admin/digests/send-weekly`（加 `?dry_run=true` 预览）手动触发。每个读者的 `digest_sent_at` 记录上次发送时间保证幂等；Postgres 下用 advisory lock 防止并发 job 重复发送。
+
 ### 3. 访问服务
 
 | 服务     | 地址                        |
