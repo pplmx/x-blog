@@ -162,6 +162,13 @@ const prefRows = computed(() => {
 			desc: t("notifications.prefs.kind.email_thread_comment.desc"),
 			on: prefs.value.email_thread_comment,
 		},
+		{
+			key: "email_weekly_digest",
+			icon: "lucide:calendar-clock",
+			label: t("notifications.prefs.kind.email_weekly_digest.label"),
+			desc: t("notifications.prefs.kind.email_weekly_digest.desc"),
+			on: prefs.value.email_weekly_digest,
+		},
 	];
 	return rows;
 });

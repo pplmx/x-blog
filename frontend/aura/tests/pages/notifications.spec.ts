@@ -38,6 +38,7 @@ const mockFetchPrefs = vi.fn(
 		email_new_post: false,
 		email_reply: false,
 		email_thread_comment: false,
+		email_weekly_digest: false,
 	}),
 );
 const mockUpdatePref = vi.fn(
@@ -51,6 +52,7 @@ const mockUpdatePref = vi.fn(
 		email_new_post: kind === "email_new_post" ? enabled : false,
 		email_reply: kind === "email_reply" ? enabled : false,
 		email_thread_comment: kind === "email_thread_comment" ? enabled : false,
+		email_weekly_digest: kind === "email_weekly_digest" ? enabled : false,
 	}),
 );
 
@@ -230,15 +232,15 @@ describe("Notifications page (TASK-192)", () => {
 		expect(wrapper.text()).not.toContain("网络错误，请稍后重试");
 	});
 
-	it("loads the preferences card: push/inbox on, email kinds off (DEC-171/DEC-197)", async () => {
+	it("loads the preferences card: push/inbox on, email kinds off (DEC-171/DEC-197/DEC-201)", async () => {
 		const wrapper = await mountPage();
 		expect(wrapper.text()).toContain("通知偏好");
 		const switches = wrapper.findAll('button[role="switch"]');
-		expect(switches).toHaveLength(6);
+		expect(switches).toHaveLength(7);
 		for (let i = 0; i < 3; i += 1) {
 			expect(switches[i].attributes("aria-checked")).toBe("true");
 		}
-		for (let i = 3; i < 6; i += 1) {
+		for (let i = 3; i < 7; i += 1) {
 			expect(switches[i].attributes("aria-checked")).toBe("false");
 		}
 	});
@@ -246,12 +248,25 @@ describe("Notifications page (TASK-192)", () => {
 	it("toggles an email kind on via updateReaderNotificationPref (DEC-197)", async () => {
 		const wrapper = await mountPage();
 		const switches = wrapper.findAll('button[role="switch"]');
-		// Order: new_post, reply, thread_comment, email_new_post, email_reply, email_thread_comment.
+		// Order: new_post, reply, thread_comment, email_new_post, email_reply, email_thread_comment, email_weekly_digest.
 		await switches[3].trigger("click");
 		await flushPromises();
 		expect(mockUpdatePref).toHaveBeenCalledWith("email_new_post", true);
 		expect(switches[3].attributes("aria-checked")).toBe("true");
 		expect(switches[4].attributes("aria-checked")).toBe("false");
+	});
+
+	it("toggles the weekly digest on via updateReaderNotificationPref (DEC-201)", async () => {
+		const wrapper = await mountPage();
+		const switches = wrapper.findAll('button[role="switch"]');
+		// Last toggle = the weekly-digest email opt-in, independent of per-event kinds.
+		expect(wrapper.text()).toContain("每周精选");
+		await switches[6].trigger("click");
+		await flushPromises();
+		expect(mockUpdatePref).toHaveBeenCalledWith("email_weekly_digest", true);
+		expect(switches[6].attributes("aria-checked")).toBe("true");
+		// Per-event email kinds stay off.
+		expect(switches[5].attributes("aria-checked")).toBe("false");
 	});
 
 	it("toggles a kind off and persists via updateReaderNotificationPref", async () => {

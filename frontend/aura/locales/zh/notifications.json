@@ -44,6 +44,10 @@
 				"email_thread_comment": {
 					"label": "邮件：讨论新评论",
 					"desc": "我订阅的讨论出现新评论时给我发邮件。"
+				},
+				"email_weekly_digest": {
+					"label": "邮件：每周精选",
+					"desc": "每周一封邮件，汇总本周发布的新文章。"
 				}
 			}
 		}

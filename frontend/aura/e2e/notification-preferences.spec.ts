@@ -38,6 +38,7 @@ test.describe("Reader notification preferences (TASK-202)", () => {
 			email_new_post: boolean;
 			email_reply: boolean;
 			email_thread_comment: boolean;
+			email_weekly_digest: boolean;
 		};
 		expect(initialData).toEqual({
 			new_post: true,
@@ -46,6 +47,7 @@ test.describe("Reader notification preferences (TASK-202)", () => {
 			email_new_post: false,
 			email_reply: false,
 			email_thread_comment: false,
+			email_weekly_digest: false,
 		});
 
 		// Open /notifications signed-in.
@@ -104,11 +106,11 @@ test.describe("Reader notification preferences (TASK-202)", () => {
 		await expect(page.locator("h1").first()).toBeVisible({ timeout: 10000 });
 
 		// The email channel is strictly opt-in: each email kind renders its own
-		// toggle, all off by default, alongside the push/inbox kinds (now six
+		// toggle, all off by default, alongside the push/inbox kinds (now seven
 		// switches total).
 		const emailNewPost = page.getByRole("switch", { name: "邮件：新文章" });
 		const emailReply = page.getByRole("switch", { name: "邮件：回复" });
-		await expect(page.getByRole("switch")).toHaveCount(6);
+		await expect(page.getByRole("switch")).toHaveCount(7);
 		await expect(emailNewPost).toHaveAttribute("aria-checked", "false");
 		await expect(emailReply).toHaveAttribute("aria-checked", "false");
 
@@ -129,5 +131,45 @@ test.describe("Reader notification preferences (TASK-202)", () => {
 		await page.reload();
 		await expect(emailNewPost).toBeVisible({ timeout: 10000 });
 		await expect(emailNewPost).toHaveAttribute("aria-checked", "true");
+	});
+
+	test("weekly digest opt-in is off by default and toggles on persists (DEC-201, TASK-222)", async ({
+		page,
+		request,
+	}) => {
+		const email = `prefs-digest-${Date.now()}@example.com`;
+		const reg = await request.post("/api/reader/register", {
+			data: { email, password, display_name: "Prefs Digest E2E" },
+		});
+		expect(reg.status()).toBe(201);
+		const token = ((await reg.json()) as { access_token: string }).access_token;
+		const readerH = { Authorization: `Bearer ${token}` };
+
+		await page.addInitScript((tk) => localStorage.setItem("reader_token", tk), token);
+		await page.goto("/notifications");
+		await expect(page.locator("h1").first()).toBeVisible({ timeout: 10000 });
+
+		// The weekly-digest toggle is strictly opt-in like the per-event email kinds.
+		const digestSwitch = page.getByRole("switch", { name: "邮件：每周精选" });
+		await expect(digestSwitch).toBeVisible({ timeout: 10000 });
+		await expect(digestSwitch).toHaveAttribute("aria-checked", "false");
+
+		// Flip it on -> the PATCH persists it server-side; per-event email stays off.
+		await digestSwitch.click();
+		await expect(digestSwitch).toHaveAttribute("aria-checked", "true");
+		const after = await request.get("/api/reader/me/notification-preferences", {
+			headers: readerH,
+		});
+		const afterData = (await after.json()) as {
+			email_weekly_digest: boolean;
+			email_new_post: boolean;
+		};
+		expect(afterData.email_weekly_digest).toBe(true);
+		expect(afterData.email_new_post).toBe(false);
+
+		// Reload: the digest-on state comes back from the server.
+		await page.reload();
+		await expect(digestSwitch).toBeVisible({ timeout: 10000 });
+		await expect(digestSwitch).toHaveAttribute("aria-checked", "true");
 	});
 });

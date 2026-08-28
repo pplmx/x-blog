@@ -44,6 +44,10 @@
 				"email_thread_comment": {
 					"label": "Email: thread comments",
 					"desc": "Email me when a discussion I follow gets a new comment."
+				},
+				"email_weekly_digest": {
+					"label": "Email: weekly digest",
+					"desc": "One weekly email summarizing the week's new posts."
 				}
 			}
 		}

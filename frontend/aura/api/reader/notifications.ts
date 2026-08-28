@@ -57,6 +57,8 @@ export interface ReaderNotificationPrefs {
 	email_new_post: boolean;
 	email_reply: boolean;
 	email_thread_comment: boolean;
+	/** Recurring weekly-digest email opt-in (DEC-201, TASK-222). */
+	email_weekly_digest: boolean;
 }
 
 /** The signed-in reader's per-kind notification preferences (all-on default). */
