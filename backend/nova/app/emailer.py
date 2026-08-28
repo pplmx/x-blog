@@ -133,14 +133,27 @@ def dispatch_notification_emails(db: Session, items: Iterable[EmailItem], logger
 
 
 def _send_via_smtp(recipients: list[tuple[str, EmailItem]]) -> int:
-    """Deliver every message over one SMTP session (STARTTLS when configured)."""
+    """Deliver every per-event message over one SMTP session."""
+    from_addr = _env("SMTP_FROM") or "no-reply@localhost"
+    base_url = _env("SITE_URL") or "http://localhost:3000"
+    messages = [_build_message(item, from_addr, addr, base_url) for addr, item in recipients]
+    return send_messages(messages)
+
+
+def send_messages(messages: Iterable[EmailMessage]) -> int:
+    """Deliver prebuilt EmailMessages over one SMTP session (STARTTLS when configured).
+
+    Shared by the per-event fan-out (`_send_via_smtp`) and the weekly digest
+    (DEC-201, TASK-222) so both send through the single configured SMTP path.
+    Returns how many messages the server accepted; a broken/missing config
+    raises for the caller to swallow (the fan-out and digest both treat mail as
+    best-effort).
+    """
     host = _env("SMTP_HOST")
     port = int(_env("SMTP_PORT") or 587)
     user = _env("SMTP_USER")
     password = _env("SMTP_PASSWORD")
-    from_addr = _env("SMTP_FROM") or "no-reply@localhost"
     starttls = _env("SMTP_STARTTLS").lower() != "false"
-    base_url = _env("SITE_URL") or "http://localhost:3000"
 
     with smtplib.SMTP(host, port, timeout=15) as server:
         if starttls:
@@ -148,8 +161,8 @@ def _send_via_smtp(recipients: list[tuple[str, EmailItem]]) -> int:
         if user:
             server.login(user, password)
         sent = 0
-        for addr, item in recipients:
-            server.send_message(_build_message(item, from_addr, addr, base_url))
+        for msg in messages:
+            server.send_message(msg)
             sent += 1
         return sent
 

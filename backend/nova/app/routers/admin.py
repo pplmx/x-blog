@@ -1084,18 +1084,23 @@ def admin_list_readers(
     comment_counts: dict[int, int] = {}
     bookmark_counts: dict[int, int] = {}
     if reader_ids:
-        comment_counts = dict(
+        # Explicit typed comprehensions keep pyright happy (the plain
+        # dict(row_list) idiom resolves rows to bytes, ISS-123). Comment
+        # reader_id is nullable (anonymous comments) -> drop None keys.
+        comment_rows = (
             db.query(models.Comment.reader_id, func.count(models.Comment.id))
             .filter(models.Comment.reader_id.in_(reader_ids))
             .group_by(models.Comment.reader_id)
             .all()
         )
-        bookmark_counts = dict(
+        comment_counts = {rid: int(n) for rid, n in comment_rows if rid is not None}
+        bookmark_rows = (
             db.query(models.ReaderBookmark.reader_id, func.count(models.ReaderBookmark.id))
             .filter(models.ReaderBookmark.reader_id.in_(reader_ids))
             .group_by(models.ReaderBookmark.reader_id)
             .all()
         )
+        bookmark_counts = {rid: int(n) for rid, n in bookmark_rows}
     items = [
         AdminReaderSummary(
             id=r.id,
@@ -1177,3 +1182,21 @@ def admin_activate_reader(
         is_active=True,
         last_login_at=reader.last_login_at,
     )
+
+
+@router.post("/digests/send-weekly", response_model=dict)
+def admin_send_weekly_digest(
+    dry_run: bool = Query(False, description="Build + report without sending mail or stamping digest_sent_at"),
+    _current_user: auth.User = Depends(get_current_superuser),
+    db: Session = Depends(get_db),
+):
+    """Trigger the weekly email digest job on demand (DEC-201, TASK-222).
+
+    Emails every reader who opted into the weekly digest; superuser-only
+    because it is a broadcast. ``?dry_run=true`` reports exactly who/what would
+    go out without delivering anything — the operator and e2e/verification
+    lever. Returned summary: readers, emails_sent, posts, skipped, reason.
+    """
+    from app.digest import send_weekly_digest
+
+    return send_weekly_digest(db, dry_run=dry_run)
