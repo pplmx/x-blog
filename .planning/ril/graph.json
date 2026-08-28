@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 180,
+  "round": 181,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-08-27T16:13:33+00:00",
+  "updated_at": "2026-08-28T04:34:11+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -11869,6 +11869,171 @@
       "source": "VERIFY 2026-08-28 (TASK-220 done, full suite against the operator dev stack, VAPID+register relaxed): 155 passed / 9 failed / 4 skipped (5.0m), down from 135 passed/29 failed at round start; every milestone target green in isolation (print, series-follow, history, history-sync, account, my-comments-filter, push 7/7, thread-follow); the 9 remaining reproduce on clean HEAD and are tracked in ISS-121 (admin dashboards vs accumulated dev data, scoped-RSS equality, auto-approve-on dev DB vs the pending-moderation contract).",
       "title": "Full e2e suite post-fix result (155 passed, 9 clean-HEAD env failures)",
       "confidence": 1.0
+    },
+    "DEC-201": {
+      "id": "DEC-201",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-28T02:27:48+00:00",
+      "updated_at": "2026-08-28T02:27:48+00:00",
+      "touched_round": 181,
+      "title": "Milestone: weekly email digest (recurring content discovery for opted-in readers)",
+      "rationale": "Build on the delivered per-event email channel (DEC-197/198): a signed-in reader who opts into the weekly digest gets one HTML email per week listing public posts newly published since their last digest (7-day window cap). User story: a casual reader who follows few categories misses most posts and does not want per-event mail; the digest is the re-engagement/periodic-discovery surface every personal blog needs. Why now: DEC-199 named this as the remaining differentiated capability vs. the patch-increment candidates; the emailer + prefs plumbing is healthy, and the operator directed a new milestone. Delivery: backend job + CLI + admin send-now endpoint, per-reader opt-in pref (off by default) + digest_sent_at idempotency, PG advisory lock guard for multi-worker cron, HTML template with absolute links + unsubscribe. Vertical slice with unit/integration/e2e + real-Postgres smoke.",
+      "alternatives_rejected": "Not a follow-scoped digest (digest is site-wide discovery; per-event email already covers follows; scoped digest a possible later option); not a daily digest (noise; weekly is the newsletter default); not an in-process APScheduler timer (multi-worker double-send + no persistence; prefer external cron via CLI + manual admin button with advisory-lock guard); not relying on push/inbox alone (misses off-site readers - the gap the email channel closes); not the test-email button or PostCard-chip links (rejected patch increments in DEC-199)"
+    },
+    "TASK-222": {
+      "id": "TASK-222",
+      "type": "task",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-08-28T02:28:35+00:00",
+      "updated_at": "2026-08-28T04:34:11+00:00",
+      "touched_round": 181,
+      "category": "core-feature",
+      "title": "Weekly email digest: aggregated weekly summary of newly published posts for opted-in readers",
+      "summary": "Implement the weekly email digest as a vertical slice. Scope: new opt-in pref email_weekly_digest + digest_sent_at on reader_notification_prefs (migration), app/digest.py job (collect public posts in 7-day window since last digest, render HTML with absolute links + unsubscribe, best-effort SMTP, per-reader idempotency, PG advisory lock); admin POST /api/admin/digests/send-weekly + CLI python -m app.digest_cli send-weekly; frontend prefs toggle + i18n zh/en; unit/integration/e2e tests; real-Postgres smoke via dev DB. Source: DEC-201 (DEC-199 named it)",
+      "severity": 3,
+      "effort": 5
+    },
+    "CHG-240": {
+      "id": "CHG-240",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-28T04:30:59+00:00",
+      "updated_at": "2026-08-28T04:30:59+00:00",
+      "touched_round": 181,
+      "commit": "05595eb",
+      "title": "prefs plumbing: email_weekly_digest + digest_sent_at (model/migration/crud/reader schema)"
+    },
+    "CHG-241": {
+      "id": "CHG-241",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-28T04:30:59+00:00",
+      "updated_at": "2026-08-28T04:30:59+00:00",
+      "touched_round": 181,
+      "commit": "bf5a65d",
+      "title": "digest job: app/digest.py + CLI + admin endpoint + emailer.send_messages; also pyright-clean reader-summary aggregation (ISS-123)"
+    },
+    "CHG-242": {
+      "id": "CHG-242",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-28T04:30:59+00:00",
+      "updated_at": "2026-08-28T04:30:59+00:00",
+      "touched_round": 181,
+      "commit": "f605243",
+      "title": "frontend: weekly-digest toggle on prefs card + unit + e2e"
+    },
+    "CHG-243": {
+      "id": "CHG-243",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-28T04:30:59+00:00",
+      "updated_at": "2026-08-28T04:30:59+00:00",
+      "touched_round": 181,
+      "commit": "d2c1d59",
+      "title": "docs: README + deployment email/digest section"
+    },
+    "ISS-123": {
+      "id": "ISS-123",
+      "type": "issue",
+      "status": "resolved",
+      "version": 1,
+      "created_at": "2026-08-28T04:32:58+00:00",
+      "updated_at": "2026-08-28T04:32:58+00:00",
+      "touched_round": 181,
+      "severity": 2,
+      "summary": "pyright gate drifted red: reader-summary count aggregation in admin.py used dict(list-of-row) which pyright resolves to dict[bytes,bytes], failing 9 reportAssignmentType errors. Fixed with typed comprehensions (int(n), drop None keys for nullable comment reader_id) in bf5a65d. Pre-existing on HEAD (not from the digest milestone)."
+    },
+    "EV-156": {
+      "id": "EV-156",
+      "type": "evidence",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-28T04:32:58+00:00",
+      "updated_at": "2026-08-28T04:32:58+00:00",
+      "touched_round": 181,
+      "source": "tests:backend full suite",
+      "confidence": 1.0,
+      "summary": "Backend full suite (uv run pytest -n auto --cov-fail-under=80): 1222 passed, 9 skipped, coverage 94.38% (gate 80%) — includes 14 new test_digest cases + updated prefs contract."
+    },
+    "EV-157": {
+      "id": "EV-157",
+      "type": "evidence",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-28T04:32:58+00:00",
+      "updated_at": "2026-08-28T04:32:58+00:00",
+      "touched_round": 181,
+      "source": "pyright",
+      "confidence": 1.0,
+      "summary": "uv run pyright (app package, DEC-010 gate): 0 errors, 0 warnings — digest.py/digest_cli.py/emailer/admin/reader clean after fixing pre-existing reader-summary aggregation (ISS-123)."
+    },
+    "EV-158": {
+      "id": "EV-158",
+      "type": "evidence",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-28T04:32:58+00:00",
+      "updated_at": "2026-08-28T04:32:58+00:00",
+      "touched_round": 181,
+      "source": "frontend vitest+typecheck",
+      "confidence": 1.0,
+      "summary": "Frontend: pnpm test 1252 passed (98 files) incl. notifications page + weekly-digest toggle unit; nuxt typecheck 0 errors."
+    },
+    "EV-159": {
+      "id": "EV-159",
+      "type": "evidence",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-28T04:32:58+00:00",
+      "updated_at": "2026-08-28T04:32:58+00:00",
+      "touched_round": 181,
+      "source": "playwright e2e",
+      "confidence": 1.0,
+      "summary": "Targeted e2e (notification-preferences.spec.ts, live backend + Nuxt): 3/3 passed incl. new DEC-201 weekly-digest journey (off by default, toggle on persists across reload, per-event email stays off) + 7-switch contract."
+    },
+    "EV-160": {
+      "id": "EV-160",
+      "type": "evidence",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-28T04:32:58+00:00",
+      "updated_at": "2026-08-28T04:32:58+00:00",
+      "touched_round": 181,
+      "source": "migrations",
+      "confidence": 1.0,
+      "summary": "alembic upgrade head on a fresh SQLite applies all 35 revisions through s1a2b3c4d5e6; reader_notification_prefs gains email_weekly_digest (server_default false) + digest_sent_at (nullable)."
+    },
+    "EV-161": {
+      "id": "EV-161",
+      "type": "evidence",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-28T04:32:58+00:00",
+      "updated_at": "2026-08-28T04:32:58+00:00",
+      "touched_round": 181,
+      "source": "smoke:real Postgres",
+      "confidence": 0.4,
+      "summary": "Real-Postgres smoke NOT run this session: operator dev DB 10.112.9.49:13310 unreachable from sandbox (connect timeout). PG-only advisory-lock path + naive created_at branch verified by construction + unit tests; operator should run 'python -m app.digest_cli send-weekly --dry-run' against the dev DB to smoke it."
+    },
+    "DEC-202": {
+      "id": "DEC-202",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-28T04:34:10+00:00",
+      "updated_at": "2026-08-28T04:34:10+00:00",
+      "touched_round": 181,
+      "title": "Milestone delivered: weekly email digest (DEC-201 complete)",
+      "rationale": "DEC-201 (TASK-222) shipped end-to-end and verified: prefs plumbing (05595eb), digest job with SMTP render + PG advisory lock + dry-run + admin/CLI triggers (bf5a65d, also restoring the pyright gate via ISS-123), frontend toggle + unit + e2e (f605243), docs (d2c1d59). Verification: backend 1222/9 @94.38%, pyright 0, frontend 1252 + typecheck 0, e2e 3/3 (EV-156..160), migration chain clean (EV-161). Residual: real-Postgres advisory-lock smoke deferred to the operator's dev DB (unreachable from sandbox).",
+      "alternatives_rejected": "Reverting DEC-199's converged-idle (scope too big for a clean slice) — instead this was a full milestone; not folding in a follow-scoped digest, daily digest, or in-process scheduler (documented in DEC-201)."
     }
   },
   "edges": [
@@ -16969,6 +17134,54 @@
       "to": "HY-018",
       "type": "validates",
       "created_at": "2026-08-27T16:13:33+00:00"
+    },
+    {
+      "from": "DEC-201",
+      "to": "TASK-222",
+      "type": "governs",
+      "created_at": "2026-08-28T02:28:35+00:00"
+    },
+    {
+      "from": "CHG-240",
+      "to": "TASK-222",
+      "type": "implements",
+      "created_at": "2026-08-28T04:34:10+00:00"
+    },
+    {
+      "from": "CHG-241",
+      "to": "TASK-222",
+      "type": "implements",
+      "created_at": "2026-08-28T04:34:10+00:00"
+    },
+    {
+      "from": "CHG-242",
+      "to": "TASK-222",
+      "type": "implements",
+      "created_at": "2026-08-28T04:34:10+00:00"
+    },
+    {
+      "from": "CHG-243",
+      "to": "TASK-222",
+      "type": "implements",
+      "created_at": "2026-08-28T04:34:11+00:00"
+    },
+    {
+      "from": "CHG-241",
+      "to": "ISS-123",
+      "type": "resolves",
+      "created_at": "2026-08-28T04:34:11+00:00"
+    },
+    {
+      "from": "DEC-202",
+      "to": "DEC-201",
+      "type": "supersedes",
+      "created_at": "2026-08-28T04:34:11+00:00"
+    },
+    {
+      "from": "DEC-202",
+      "to": "TASK-222",
+      "type": "governs",
+      "created_at": "2026-08-28T04:34:11+00:00"
     }
   ]
 }
