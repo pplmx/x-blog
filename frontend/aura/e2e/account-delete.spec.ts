@@ -84,7 +84,8 @@ test.describe("Reader account deletion (DEC-106)", () => {
 
 		// The comment is still public but anonymized (reader is null).
 		const listed = await request.get(`/api/comments/post/${post.id}`);
-		const items = (await listed.json()) as Array<{ id: number; reader: unknown }>;
+		// The public list endpoint responds { items, total, ... }, not a bare array.
+		const { items } = (await listed.json()) as { items: Array<{ id: number; reader: unknown }> };
 		const item = items.find((c) => c.id === commentId);
 		expect(item).toBeDefined();
 		expect(item?.reader).toBeNull();

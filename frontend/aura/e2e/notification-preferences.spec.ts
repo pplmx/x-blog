@@ -67,21 +67,15 @@ test.describe("Reader notification preferences (TASK-202)", () => {
 		// Flip the reply kind off -> PATCH persists it server-side.
 		await replySwitch.click();
 		await expect(replySwitch).toHaveAttribute("aria-checked", "false");
-		const after = await request.get("/api/reader/me/notification-preferences", {
-			headers: readerH,
+		// Persistence is async (the PATCH flies on the switch change); poll the
+		// API for the expected state so a single GET can't outrun the write
+		// (same write-read race as ISS-121 — flaked under full-suite load).
+		await expectPrefs(request, readerH, {
+			new_post: true,
+			reply: false,
+			thread_comment: true,
+			email_new_post: false,
 		});
-		const afterData = (await after.json()) as {
-			new_post: boolean;
-			reply: boolean;
-			thread_comment: boolean;
-			email_new_post: boolean;
-			email_reply: boolean;
-			email_thread_comment: boolean;
-		};
-		expect(afterData.reply).toBe(false);
-		expect(afterData.new_post).toBe(true);
-		expect(afterData.thread_comment).toBe(true);
-		expect(afterData.email_new_post).toBe(false);
 
 		// Reload: the off state comes back from the server (not UI-only).
 		await page.reload();
@@ -117,15 +111,7 @@ test.describe("Reader notification preferences (TASK-202)", () => {
 		// Flip one email kind on -> the PATCH persists it server-side.
 		await emailNewPost.click();
 		await expect(emailNewPost).toHaveAttribute("aria-checked", "true");
-		const after = await request.get("/api/reader/me/notification-preferences", {
-			headers: readerH,
-		});
-		const afterData = (await after.json()) as {
-			email_new_post: boolean;
-			email_reply: boolean;
-		};
-		expect(afterData.email_new_post).toBe(true);
-		expect(afterData.email_reply).toBe(false);
+		await expectPrefs(request, readerH, { email_new_post: true, email_reply: false });
 
 		// Reload: the email-on state comes back from the server.
 		await page.reload();
@@ -157,15 +143,7 @@ test.describe("Reader notification preferences (TASK-202)", () => {
 		// Flip it on -> the PATCH persists it server-side; per-event email stays off.
 		await digestSwitch.click();
 		await expect(digestSwitch).toHaveAttribute("aria-checked", "true");
-		const after = await request.get("/api/reader/me/notification-preferences", {
-			headers: readerH,
-		});
-		const afterData = (await after.json()) as {
-			email_weekly_digest: boolean;
-			email_new_post: boolean;
-		};
-		expect(afterData.email_weekly_digest).toBe(true);
-		expect(afterData.email_new_post).toBe(false);
+		await expectPrefs(request, readerH, { email_weekly_digest: true, email_new_post: false });
 
 		// Reload: the digest-on state comes back from the server.
 		await page.reload();
@@ -173,3 +151,31 @@ test.describe("Reader notification preferences (TASK-202)", () => {
 		await expect(digestSwitch).toHaveAttribute("aria-checked", "true");
 	});
 });
+
+/**
+ * Poll the reader's notification prefs until every key in ``expected`` holds.
+ *
+ * The UI writes prefs with a fire-and-forget PATCH, so a single GET right after
+ * flipping a switch can outrun the server commit and observe the stale value
+ * (flaked under full-suite load, ISS-121 class). Waiting on the API state makes
+ * the read deterministic regardless of PATCH timing.
+ */
+async function expectPrefs(
+	request: import("@playwright/test").APIRequestContext,
+	headers: Record<string, string>,
+	expected: Record<string, boolean>,
+) {
+	await expect
+		.poll(
+			async () => {
+				const r = await request.get("/api/reader/me/notification-preferences", {
+					headers,
+				});
+				if (r.status() !== 200) return false;
+				const data = (await r.json()) as Record<string, boolean>;
+				return Object.entries(expected).every(([key, value]) => data[key] === value);
+			},
+			{ timeout: 10000 },
+		)
+		.toBe(true);
+}

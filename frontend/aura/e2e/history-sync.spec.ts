@@ -65,12 +65,37 @@ test.describe("Server-backed reading history (TASK-170)", () => {
 		} else {
 			title = ((await postLink.textContent()) ?? "").trim();
 		}
+		// Wait for the post page's client-side reading session to actually
+		// dispatch the history write before navigating away. waitForURL only
+		// resolves when the SSR URL commits — often before hydration runs
+		// onMounted, so a fast goto("/history") could abort the mount and the
+		// recordReaderHistory fetch would never be created (keepalive can't
+		// rescue a request that was never sent — ISS-121 flake). Resolving on
+		// the dispatched POST makes the record-follows-read determinisitic.
+		const historyPosted = page.waitForRequest(
+			(req) => req.method() === "POST" && req.url().includes("/api/reader/me/history/"),
+			{ timeout: 10000 },
+		);
 		await page.goto(href);
-		await page.waitForURL(/\/posts\//);
+		await historyPosted;
 
-		// The history page lists the post from the server trail.
+		// The history page lists the post from the server trail. The view
+		// record is written asynchronously on the post page, so
+		// first poll the API for the server record, then assert the UI.
 		await page.goto("/history");
 		await expect(page.locator("h1").first()).toBeVisible({ timeout: 10000 });
+		await expect
+			.poll(
+				async () => {
+					const r = await request.get("/api/reader/me/history", {
+						headers: { Authorization: `Bearer ${token}` },
+					});
+					if (r.status() !== 200) return 0;
+					return ((await r.json()) as { total: number }).total;
+				},
+				{ timeout: 15000 },
+			)
+			.toBeGreaterThan(0);
 		if (title) {
 			await expect(page.locator("main a", { hasText: title.trim() }).first()).toBeVisible({
 				timeout: 10000,

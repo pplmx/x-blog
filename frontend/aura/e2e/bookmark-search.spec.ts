@@ -42,7 +42,9 @@ test.describe("Bookmark search (TASK-174)", () => {
 		await bookmarkPost(page, secondHref);
 
 		await page.goto("/bookmarks");
-		const search = page.locator('input[type="search"]');
+		// The header's global site search is also an input[type="search"]; scope
+		// to THIS page's bookmark filter via its placeholder (strict mode).
+		const search = page.getByPlaceholder("搜索收藏…");
 		await expect(search).toBeVisible({ timeout: 10000 });
 
 		// Typing the first post's title narrows the list to it.

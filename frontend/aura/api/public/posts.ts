@@ -101,7 +101,13 @@ export function usePostArchive(options: ApiQueryOptions<ArchiveEntry[]> = {}) {
 }
 
 export function recordPostView(postId: number): Promise<Post> {
-	return command<Post>(`/api/posts/${postId}/view`, { method: "POST" });
+	return command<Post>(`/api/posts/${postId}/view`, {
+		method: "POST",
+		// Fire-and-forget: keep the view-count write alive across navigation so
+		// a quick back/forward doesn't lose the count (mirrors the history
+		// record's keepalive).
+		keepalive: true,
+	});
 }
 
 export function likePost(postId: number): Promise<Post> {

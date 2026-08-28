@@ -48,11 +48,24 @@ test.describe("Reader my-comments journey", () => {
 		const email = freshEmail();
 		await registerReader(request, email);
 
+		// Make the moderation state deterministic: verified-reader auto-approve
+		// (DEC-098/101) is a runtime setting that admin-settings e2e runs leave
+		// toggled either way in the shared DB — force it off so THIS reader's
+		// comment always lands in the pending queue (pending badge is asserted).
+		const autoApproveOff = await request.put("/api/admin/settings/auto_approve_reader_comments", {
+			data: { value: "false" },
+			headers: { Authorization: `Bearer ${await adminToken(request)}` },
+		});
+		expect(autoApproveOff.status()).toBe(200);
+
 		// Comment on the first post as the signed-in reader.
 		await page.goto("/");
 		const postLink = page.locator("main a[href*='/posts/']").first();
 		await postLink.waitFor({ state: "visible" });
-		const postHref = (await postLink.getAttribute("href"))!;
+		// Narrow the href before navigating — expect() documents the invariant
+		// an archive-post always links to its own detail page instead of a `!`.
+		await expect(postLink).toHaveAttribute("href", /\/posts\//);
+		const postHref = (await postLink.getAttribute("href")) as string;
 		await page.goto(postHref);
 		await page.locator("section").filter({ hasText: "评论" }).first().waitFor({ state: "visible" });
 
@@ -80,7 +93,9 @@ test.describe("Reader my-comments journey", () => {
 			});
 		await page.waitForURL("**/comments");
 		await expect(page.locator("h1", { hasText: "我的评论" })).toBeVisible({ timeout: 10000 });
-		await expect(page.locator("text=待审核")).toBeVisible({ timeout: 10000 });
+		// Target the per-comment pending badge by its tooltip title — a bare
+		// text=待审核 ALSO matches the filter tab (strict-mode violation).
+		await expect(page.getByTitle("评论正在等待管理员审核")).toBeVisible({ timeout: 10000 });
 		await expect(page.locator("text=A pending comment from my-comments e2e")).toBeVisible();
 
 		// Admin approves it -> status flips to 已发布.
@@ -93,7 +108,8 @@ test.describe("Reader my-comments journey", () => {
 		};
 		const target = all.items.find((c) => c.content.includes("my-comments e2e"));
 		expect(target).toBeTruthy();
-		await adminApproveComment(request, target!.id);
+		if (!target) throw new Error("pending comment not found in the admin list");
+		await adminApproveComment(request, target.id);
 
 		await page.reload();
 		await expect(page.locator("text=已发布")).toBeVisible({ timeout: 10000 });

@@ -78,6 +78,10 @@ export function recordReaderHistory(
 			method: "POST",
 			headers: readerAuthHeaders(),
 			body,
+			// Fire-and-forget: the reader often leaves a post page immediately,
+			// so keep the request alive across navigation instead of letting the
+			// browser cancel it (a reload/back wipes an un-flushed record).
+			keepalive: true,
 		},
 	);
 }

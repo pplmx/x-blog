@@ -101,7 +101,9 @@ describe("public posts commands", () => {
 		await expect(result).resolves.toEqual({ id: 7 });
 		expect(commandCalls[0]).toEqual({
 			path: "/api/posts/7/view",
-			options: { baseURL: "https://api.example.test", method: "POST" },
+			// fire-and-forget: keepalive survives a quick back/forward so the
+			// count isn't lost mid-navigation (ISS-121 e2e flake)
+			options: { baseURL: "https://api.example.test", method: "POST", keepalive: true },
 		});
 	});
 

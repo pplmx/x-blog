@@ -61,14 +61,24 @@ test.describe("Admin series episode management (TASK-185)", () => {
 
 		// Open the admin series page and expand the series' episodes.
 		await page.goto("/admin/series");
-		const card = page.locator("div", { hasText: `Ep Series ${stamp}` }).first();
+		// Anchor on the series card via its unique /series/<slug> mono line and
+		// climb to the nearest card (the previous div.hasText(...).first() hit
+		// every ancestor div, so getByRole matched every "章节" button on the
+		// page — strict-mode violation).
+		const card = page
+			.getByText(`/series/${slug}`, { exact: true })
+			.locator('xpath=ancestor::div[contains(@class,"rounded-xl")][1]');
 		await expect(card.getByRole("button", { name: "章节" })).toBeVisible();
 		await card.getByRole("button", { name: "章节" }).click();
 		await expect(card).toContainText("Episode One", { timeout: 10000 });
 		await expect(card).toContainText("Episode Two");
 
-		// Move the first episode down; the reorder should persist.
-		await card.getByRole("button", { name: "下移" }).click();
+		// Move the first episode down; the reorder should persist. Scope to the
+		// first episode's row — the card has one 下移 button per episode (the
+		// last is disabled), so an unqualified role locator is a strict-mode
+		// violation.
+		const firstEpisode = card.getByRole("listitem").filter({ hasText: "Episode One" });
+		await firstEpisode.getByLabel("下移").click();
 		await expect
 			.poll(async () => {
 				const res = await request.get(`/api/series/${seriesId}/episodes`, { headers });
