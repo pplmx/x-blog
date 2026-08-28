@@ -67,8 +67,12 @@ test.describe("Scoped category feed", () => {
 	}) => {
 		const categoryName = unique("订阅分类");
 		const catId = await createCategory(request, categoryName);
-		const feedUrl = `/rss/feed.xml?category_id=${catId}`;
-		const backendFeedUrl = `${BACKEND}${feedUrl}`;
+		// Two valid subscribe forms: the backend's query-scoped feed (what the
+		// feed channel self-links, fetched at the backend origin) and the
+		// page's stable path-scoped URL (/rss/category/<name>.xml, DEC-130).
+		const queryFeedUrl = `/rss/feed.xml?category_id=${catId}`;
+		const pageFeedUrl = `/rss/category/${encodeURIComponent(categoryName)}.xml`;
+		const backendFeedUrl = `${BACKEND}${queryFeedUrl}`;
 
 		await createPost(request, "RSS 分类内文章", { category_id: catId });
 		await createPost(request, "RSS 无关文章");
@@ -80,13 +84,14 @@ test.describe("Scoped category feed", () => {
 		const body = await feed.text();
 		expect(body).toContain("RSS 分类内文章");
 		expect(body).not.toContain("RSS 无关文章");
-		// Channel identifies the topic and self-links the scoped URL.
+		// Channel identifies the topic and self-links the query-scoped URL.
 		expect(body).toContain(categoryName);
-		expect(body).toContain(feedUrl);
+		expect(body).toContain(queryFeedUrl);
 
-		// The category page emits autodiscovery + a visible subscribe link.
+		// The category page emits autodiscovery + a visible subscribe link to
+		// the stable path-scoped URL.
 		await page.goto(`/categories?category_id=${catId}`);
-		const subscribe = page.locator(`a[href="${feedUrl}"]`);
+		const subscribe = page.locator(`a[href="${pageFeedUrl}"]`);
 		await expect(subscribe).toBeVisible();
 		await expect(subscribe).toContainText("RSS 订阅");
 
@@ -97,7 +102,7 @@ test.describe("Scoped category feed", () => {
 				document.querySelectorAll('link[rel="alternate"][type="application/rss+xml"]'),
 			).map((node) => node.getAttribute("href")),
 		);
-		expect(alternates).toContain(feedUrl);
+		expect(alternates).toContain(pageFeedUrl);
 
 		// With Web Push configured the same topic view offers a one-tap
 		// "follow new posts" toggle (DEC-076/TASK-147).
