@@ -502,6 +502,15 @@ class ReaderNotificationPref(Base):
     email_new_post: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default=false())
     email_reply: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default=false())
     email_thread_comment: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default=false())
+    # Weekly digest (DEC-201, TASK-222): a separate *opt-in* recurring email —
+    # one aggregated summary of the week's public posts, independent of the
+    # per-event email_* toggles (a reader may want event mail off but the weekly
+    # digest on, or both silently off by default).
+    email_weekly_digest: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default=false())
+    # Last weekly-digest send for this reader (naive UTC, utc_now_naive in
+    # digest) — the idempotency/window marker the job uses so a reader is not
+    # re-mailed for a window that already went out.
+    digest_sent_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     # Set only on PATCH (naive UTC, utc_now_naive in crud) — no model default, so
     # a GET-materialized row left untouched has NULL (never modified) and no
     # aware-vs-naive mix in one column.

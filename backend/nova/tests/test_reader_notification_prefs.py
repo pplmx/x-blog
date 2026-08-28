@@ -78,6 +78,7 @@ class TestPrefsContract:
             "email_new_post": False,
             "email_reply": False,
             "email_thread_comment": False,
+            "email_weekly_digest": False,
         }
 
     def test_toggle_off_persists_and_back_on(self, client):
@@ -96,6 +97,7 @@ class TestPrefsContract:
             "email_new_post": False,
             "email_reply": False,
             "email_thread_comment": False,
+            "email_weekly_digest": False,
         }
         # back on
         on = client.patch(PREFS, json={"kind": "reply", "enabled": True}, headers=headers)
@@ -119,6 +121,7 @@ class TestPrefsContract:
             "email_new_post": False,
             "email_reply": False,
             "email_thread_comment": False,
+            "email_weekly_digest": False,
         }
 
 

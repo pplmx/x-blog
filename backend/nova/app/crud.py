@@ -2739,7 +2739,9 @@ def record_new_post_notifications(db: Session, post: models.Post) -> None:
 NOTIFICATION_KINDS: tuple[str, ...] = ("new_post", "reply", "thread_comment")
 # Email channel (DEC-197, TASK-217): per-kind opt-ins accepted by the same
 # PATCH endpoint. The fan-out gating for these lives in emailer.email_channel_enabled.
-EMAIL_KINDS: tuple[str, ...] = ("email_new_post", "email_reply", "email_thread_comment")
+# email_weekly_digest (DEC-201, TASK-222) is the recurring digest opt-in — same
+# toggle surface, but not a fan-out kind (the digest job reads it directly).
+EMAIL_KINDS: tuple[str, ...] = ("email_new_post", "email_reply", "email_thread_comment", "email_weekly_digest")
 PREF_KINDS: tuple[str, ...] = NOTIFICATION_KINDS + EMAIL_KINDS
 
 
