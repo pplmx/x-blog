@@ -18,12 +18,19 @@ import {
 	type ReaderNotificationPrefs,
 	updateReaderNotificationPref,
 } from "~~/api/reader/notifications";
+import { useNotificationBadge } from "~~/composables/useNotificationBadge";
 import { useReaderAuth } from "~~/composables/useReaderAuth";
 import { useSeo } from "~~/composables/useSeo";
 
 const { t, locale } = useLang();
 const { isAuthenticated, logout } = useReaderAuth();
 const router = useRouter();
+
+// The nav badge and this inbox share one count (ISS-124, TASK-224): every
+// read/mark-all action re-fetches the shared count from the server (not a
+// locally-decremented guess) so the header badge drop never overwrites a
+// fresher value the layout's 60s poll already fetched.
+const { refresh: refreshBadge } = useNotificationBadge();
 
 useSeo({
 	title: t("notifications.seoTitle"),
@@ -58,6 +65,7 @@ async function load() {
 		const data = await getReaderNotifications(1, 100);
 		items.value = data.items;
 		unread.value = data.unread;
+		void refreshBadge();
 	} catch (cause) {
 		// The inbox is auth-scoped: a 401 means the stored reader token is
 		// expired/invalid, not a transient outage. Drop the stale session and
@@ -186,9 +194,9 @@ async function markRead(item: ReaderNotification) {
 	if (item.read) return;
 	try {
 		const updated = await markReaderNotificationRead(item.id);
-		item.read = true;
 		item.read = updated.read;
 		if (unread.value > 0) unread.value -= 1;
+		void refreshBadge();
 	} catch {
 		/* best effort — the row stays unread */
 	}
@@ -199,6 +207,7 @@ async function markAllRead() {
 	try {
 		await markAllReaderNotificationsRead();
 		unread.value = 0;
+		void refreshBadge();
 		items.value.forEach((i) => {
 			i.read = true;
 		});

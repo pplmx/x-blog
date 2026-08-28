@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { getReaderNotifications } from "~~/api/reader/notifications";
+import { useNotificationBadge } from "~~/composables/useNotificationBadge";
 import { useReaderAuth } from "~~/composables/useReaderAuth";
 
 const route = useRoute();
@@ -30,23 +30,21 @@ const navLinksVisible = computed(() =>
 	navLinks.filter((l) => !l.authOnly || isAuthenticated.value),
 );
 
-// Unread notification badge (DEC-160, TASK-192): polled for signed-in readers
-// so the nav reflects new notifications without a page reload.
-const unreadCount = ref(0);
-async function refreshUnread() {
-	if (!isAuthenticated.value) {
-		unreadCount.value = 0;
-		return;
-	}
-	try {
-		const data = await getReaderNotifications(1, 1);
-		unreadCount.value = data.unread;
-	} catch {
-		unreadCount.value = 0;
-	}
-}
+// Unread notification badge (DEC-160, TASK-192; ISS-124/TASK-224): a
+// visibility-aware poll keeps the nav badge fresh for signed-in readers, and
+// the /notifications inbox refreshes the same shared count after a mark-read
+// action so the badge drops without a page reload. Polling follows auth state:
+// signing in starts it, signing out stops it.
+const { unreadCount, startPolling, stopPolling } = useNotificationBadge();
+watch(isAuthenticated, (auth) => {
+	if (auth) startPolling();
+	else stopPolling();
+});
 onMounted(() => {
-	if (isAuthenticated.value) void refreshUnread();
+	if (isAuthenticated.value) startPolling();
+});
+onUnmounted(() => {
+	stopPolling();
 });
 
 const isDark = ref(false);
@@ -103,30 +101,46 @@ onMounted(() => {
             X-Blog
           </NuxtLink>
 
-          <!-- Desktop nav -->
-          <nav class="hidden md:flex items-center gap-1">
-            <NuxtLink
-              v-for="link in navLinksVisible"
-              :key="link.to"
-              :to="link.to"
-              class="flex shrink-0 items-center gap-1.5 whitespace-nowrap px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200"
-              :class="route.path === link.to
-                ? 'text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/50'
-                : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800'"
-            >
-              <Icon :icon="link.icon" class="w-4 h-4" />
-              {{ t(link.labelKey) }}
-              <span
-                v-if="link.badge && unreadCount > 0"
-                class="inline-flex items-center justify-center min-w-[1.25rem] h-5 px-1 rounded-full text-[11px] font-bold bg-amber-500 text-white"
-              >{{ unreadCount > 99 ? '99+' : unreadCount }}</span>
-            </NuxtLink>
+          <!-- Desktop nav (xl+; ISS-125/TASK-225): the full link set + search +
+               lang + theme + auth needs 1400px+ in English once the reader is
+               signed in. Below xl the mobile menu takes over; at xl the ROW
+               scrolls (scrollbar hidden) rather than clipping, and that scroll
+               is confined to the LINKS+search group. The chrome controls
+               (push subscribe, account, language, theme) sit OUTSIDE the scroll
+               container as fixed, always-visible siblings — so even a Firefox
+               wheel user (which doesn't map a vertical wheel to overflow-x
+               panning) always reaches sign-out/language/theme without relying
+               on horizontal scroll. The links group right-aligns via `margin-
+               left:auto` on its first item (NOT `justify-end`): flex-end
+               +overflow clips the left-most items (scrollLeft can't go
+               negative), whereas the auto margin collapses to 0 on overflow so
+               the group scrolls from its start. No nav item is ever
+               unreachable at any width/locale/auth state. -->
+          <div class="hidden xl:flex flex-1 min-w-0 items-center justify-end gap-1">
+            <nav class="flex items-center gap-1 overflow-x-auto min-w-0">
+              <NuxtLink
+                v-for="link in navLinksVisible"
+                :key="link.to"
+                :to="link.to"
+                class="first:ml-auto flex shrink-0 items-center gap-1.5 whitespace-nowrap px-2 py-2 rounded-lg text-sm font-medium transition-all duration-200"
+                :class="route.path === link.to
+                  ? 'text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/50'
+                  : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800'"
+              >
+                <Icon :icon="link.icon" class="w-4 h-4" />
+                {{ t(link.labelKey) }}
+                <span
+                  v-if="link.badge && unreadCount > 0"
+                  class="inline-flex items-center justify-center min-w-[1.25rem] h-5 px-1 rounded-full text-[11px] font-bold bg-amber-500 text-white"
+                >{{ unreadCount > 99 ? '99+' : unreadCount }}</span>
+              </NuxtLink>
 
-            <!-- Instant search suggestions -->
-            <HeaderSearch class="w-56 mx-2" />
+              <!-- Instant search suggestions -->
+              <HeaderSearch class="w-44 mx-2" />
+            </nav>
 
             <!-- Web Push opt-in (new-post notifications) -->
-            <SubscribeButton class="mx-1" />
+            <SubscribeButton class="mx-1 shrink-0" compact />
 
             <!-- Reader account: sign in (→ /login) / sign out (TASK-133) -->
             <NuxtLink
@@ -148,26 +162,27 @@ onMounted(() => {
             </button>
 
             <!-- Language switcher -->
-            <LanguageSwitcher class="mx-2" />
+            <LanguageSwitcher class="mx-2 shrink-0" />
 
             <!-- Dark mode toggle -->
-            <div class="w-px h-5 bg-gray-200 dark:bg-gray-700 mx-2" />
+            <div class="w-px h-5 bg-gray-200 dark:bg-gray-700 mx-2 shrink-0" />
 
             <button
               type="button"
               :aria-label="isDark ? t('common.theme.toggleLight') : t('common.theme.toggleDark')"
-              class="p-2 rounded-lg text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-700 dark:hover:text-gray-200 transition-all duration-200"
+              class="shrink-0 p-2 rounded-lg text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-700 dark:hover:text-gray-200 transition-all duration-200"
               @click="toggleDark"
             >
               <Icon v-if="isDark" icon="lucide:sun" class="w-4 h-4" />
               <Icon v-else icon="lucide:moon" class="w-4 h-4" />
             </button>
-          </nav>
+          </div>
 
-          <!-- Mobile menu button -->
+          <!-- Mobile menu button (xl below: the desktop nav can't fit before
+               ~1150px, so tablets/compact laptops use the menu instead) -->
           <button
             type="button"
-            class="md:hidden p-2 rounded-lg text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+            class="xl:hidden p-2 rounded-lg text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
             :aria-label="t('common.menu.open')"
             :aria-expanded="mobileMenuOpen"
             aria-controls="mobile-nav"
@@ -180,7 +195,7 @@ onMounted(() => {
 
       <!-- Mobile navigation -->
       <Transition name="slide">
-        <div v-if="mobileMenuOpen" id="mobile-nav" class="md:hidden border-t border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-950">
+        <div v-if="mobileMenuOpen" id="mobile-nav" class="xl:hidden border-t border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-950">
           <div class="page-shell px-4 py-4 space-y-1">
             <NuxtLink
               v-for="link in navLinksVisible"
@@ -275,3 +290,17 @@ onMounted(() => {
     </footer>
   </div>
 </template>
+
+<style scoped>
+/* The desktop nav scrolls internally when the full link set outgrows the
+   viewport (English + signed-in at 1280–1536px). Hide the scrollbar so the
+   header stays chrome-clean; the nav still scrolls via wheel/trackpad, and
+   the mobile menu below xl covers every case without scrolling. (ISS-125) */
+nav {
+	scrollbar-width: none;
+	-ms-overflow-style: none;
+}
+nav::-webkit-scrollbar {
+	display: none;
+}
+</style>

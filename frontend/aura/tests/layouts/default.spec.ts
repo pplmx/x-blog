@@ -6,6 +6,7 @@ import DefaultLayout from "../../app/layouts/default.vue";
 beforeAll(() => {
 	vi.stubGlobal("useRoute", () => ({ path: "/" }));
 	vi.stubGlobal("onMounted", (fn: () => void) => fn());
+	vi.stubGlobal("onUnmounted", () => {});
 	vi.stubGlobal("watch", () => {});
 });
 

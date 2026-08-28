@@ -84,6 +84,12 @@ async function mountPage() {
 	return wrapper;
 }
 
+/** The shared nav-badge singleton, loaded lazily so the api/useReaderAuth
+ * vi.mock factories (which reference top-level consts) initialize first. */
+async function badgeApi() {
+	return (await import("../../composables/useNotificationBadge")).useNotificationBadge();
+}
+
 afterEach(() => {
 	vi.unstubAllGlobals();
 });
@@ -190,10 +196,24 @@ describe("Notifications page (TASK-192)", () => {
 			total_pages: 1,
 		});
 		const wrapper = await mountPage();
+		// The shared nav badge mirrors the inbox unread count (ISS-124/TASK-224).
+		const badge = await badgeApi();
+		expect(badge.unreadCount.value).toBe(1);
+		// Marking read re-fetches the shared count from the server (KEEP the
+		// post-action server truth), so the next GET reflects the drop.
+		mockFetch.mockResolvedValue({
+			items: [item],
+			total: 1,
+			unread: 0,
+			page: 1,
+			limit: 100,
+			total_pages: 1,
+		});
 		const buttons = wrapper.findAll("button");
 		await buttons[buttons.length - 1].trigger("click");
 		await flushPromises();
 		expect(mockMarkRead).toHaveBeenCalledWith(5);
+		expect(badge.unreadCount.value).toBe(0);
 	});
 
 	it("marks all notifications read", async () => {
@@ -206,11 +226,22 @@ describe("Notifications page (TASK-192)", () => {
 			total_pages: 1,
 		});
 		const wrapper = await mountPage();
+		const badge = await badgeApi();
+		expect(badge.unreadCount.value).toBe(2);
+		mockFetch.mockResolvedValue({
+			items: [makeNotif({ id: 1 }), makeNotif({ id: 2 })],
+			total: 2,
+			unread: 0,
+			page: 1,
+			limit: 100,
+			total_pages: 1,
+		});
 		const markAll = wrapper.findAll("button").find((b) => b.text().includes("全部标为已读"));
 		expect(markAll).toBeDefined();
 		await markAll?.trigger("click");
 		await flushPromises();
 		expect(mockMarkAllRead).toHaveBeenCalled();
+		expect(badge.unreadCount.value).toBe(0);
 	});
 
 	it("renders a localized network error when the inbox fetch fails (ISS-110)", async () => {

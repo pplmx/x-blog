@@ -81,6 +81,13 @@ const icon = computed(() => {
 const hint = computed(() => (isAuthenticated.value ? ` · ${t("common.push.repliesIn")}` : ""));
 const title = computed(() => `${label.value}${hint.value}`);
 
+// Compact (desktop header nav) hides the text below 2xl — the nav row is tight
+// at xl once a reader is signed in (English). Everywhere else (mobile menu,
+// which only ever shows below xl) keeps the full label: an unconditional
+// `hidden 2xl:inline` would leave the mobile-menu button icon-only forever
+// since the menu never reaches 2xl. (ISS-125/TASK-225)
+const props = defineProps<{ compact?: boolean }>();
+
 async function onClick() {
 	if (busy.value) return;
 	if (status.value === "subscribed") await unsubscribe();
@@ -99,6 +106,11 @@ async function onClick() {
     @click="onClick"
   >
     <Icon :icon="icon" class="w-4 h-4" :class="{ 'animate-spin': busy }" />
-    <span class="hidden lg:inline text-sm">{{ label }}</span>
+    <!-- Compact (header) icon-only below 2xl: at xl the header row is tight
+         (English + signed-in + the wide "blocked" label would overflow), so
+         the text shows only on very wide screens; the tooltip/aria-label
+         always keep it meaningful. Non-compact (mobile menu) always shows the
+         text. (ISS-125/TASK-225) -->
+    <span class="text-sm" :class="props.compact ? 'hidden 2xl:inline' : 'inline'">{{ label }}</span>
   </button>
 </template>

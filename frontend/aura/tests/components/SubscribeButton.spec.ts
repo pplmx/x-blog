@@ -159,6 +159,38 @@ describe("SubscribeButton", () => {
 		expect(syncReaderBinding).toHaveBeenCalledOnce();
 	});
 
+	it("shows the label text by default but hides it wide-only when compact (ISS-125/TASK-225)", async () => {
+		// The header nav row is tight at xl (1280px) once a reader is signed
+		// in (English), so the desktop nav renders the button compact and the
+		// label surfaces only on very wide screens. Everywhere else — the
+		// mobile menu especially (now shown below xl) — keeps the full text:
+		// an unconditional `hidden 2xl:inline` would leave the mobile-menu
+		// button icon-only forever, since the menu never reaches 2xl.
+		// These mounts go through the shared `wrapper` slot so the afterEach
+		// cleanup unmounts even if an assertion throws mid-test — a leaked
+		// mounted instance's immediate watch would hiccup the following tests
+		// by re-firing syncReaderBinding on their status transitions.
+		status.value = "idle";
+		wrapper = mount(SubscribeButton, {
+			props: { compact: true },
+			global: { stubs: { Icon: iconStub } },
+		});
+		expect(
+			wrapper
+				.findAll("span")
+				.some((s) => s.text() === "common.push.subscribe" && s.classes().includes("hidden")),
+		).toBe(true);
+		wrapper.unmount();
+
+		wrapper = mount(SubscribeButton, {
+			global: { stubs: { Icon: iconStub } },
+		});
+		const labelSpan = wrapper.findAll("span").find((s) => s.text() === "common.push.subscribe");
+		expect(labelSpan?.classes()).not.toContain("hidden");
+		wrapper.unmount();
+		wrapper = undefined;
+	});
+
 	it("re-stamps once init() reveals an existing subscription for a signed-in reader (ISS-112)", async () => {
 		// On load, status starts "unsupported" until the async init() detects
 		// the browser subscription — so an isAuthenticated-only watch (even
