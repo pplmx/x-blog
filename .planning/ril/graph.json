@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 182,
+  "round": 184,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-08-28T09:44:31+00:00",
+  "updated_at": "2026-08-28T15:54:19+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -22,7 +22,7 @@
       "version": 1,
       "created_at": "2026-08-06T13:23:41+00:00",
       "updated_at": "2026-08-06T13:23:41+00:00",
-      "touched_round": 175,
+      "touched_round": 183,
       "title": "frontend-aura",
       "description": "Nuxt 4 Vue 3 TypeScript frontend at frontend/aura; composables; admin pages; e2e Playwright; biome lint"
     },
@@ -33,7 +33,7 @@
       "version": 1,
       "created_at": "2026-08-06T13:23:41+00:00",
       "updated_at": "2026-08-06T13:23:41+00:00",
-      "touched_round": 28,
+      "touched_round": 183,
       "title": "ci-pipeline",
       "description": "GitHub Actions workflows test.yml and deploy.yml; 3-node docker compose for e2e"
     },
@@ -11197,10 +11197,10 @@
     "HYP-013": {
       "id": "HYP-013",
       "type": "hypothesis",
-      "status": "active",
-      "version": 1,
+      "status": "stale",
+      "version": 2,
       "created_at": "2026-08-27T02:38:47+00:00",
-      "updated_at": "2026-08-27T02:38:47+00:00",
+      "updated_at": "2026-08-28T14:16:50+00:00",
       "touched_round": 172,
       "confidence": 0.9,
       "title": "A freshly registered reader account is auto-approved by the trust tier (DEC-098) without any operator review, so a spam-script can publish unlimited auto-approved comments and no mechanism exists to block it (no is_active, no admin reader list)"
@@ -12201,6 +12201,105 @@
       "rationale": "Round 181-182 delivered the full local e2e convergence (ISS-121/TASK-221: 165 passed/0 failed/0 flaky/4 data-gated skips, commits 72e8ba1/9b37c21/f3a58e1) then restored BOTH formatter gates that CI was failing at baseline (biome + ruff, 18c98cc/ca03f7a). Stop-condition review (§10): 1) no active tasks above threshold — task backlog is empty (TASK-221 resolved); 2) all 123 issues resolved; 3) most recent VERIFY green on every CI gate (backend ruff/pyright/pytest 1222@94.38%/rumdl, frontend biome exit 0/typecheck/vitest 1252/build, full e2e 165/0/0); 4) two consecutive exploration rounds produced no new >3.0 task (round 181 false-gap TOC = already exists; round 182 real but <=0.6 convergence work); 5) graph check green. The only residual is dev-DB-state-dependent reproducibility, parked at the environment boundary (DEC-205). No net-new user-facing feature candidate clears the value gate without operator direction (§11.2 / EV-163 backlog saturation). Engine therefore QUIESCEs rather than fabricating features or issuing round-dial commits.",
       "alternatives_rejected": "Not shipping a fabricated follow-scoped/email-nux feature (value gate; backlog genuinely saturated per EV-163); not churning another e2e round on the dev-DB-gated residual (environment-blocked, DEC-205); not backpedaling the just-restored formatter gates by editing configs to silence them (fixed the source instead, per the config-protection stance).",
       "title": "converged-idle: e2e convergence + all-gates-green achieved; dev-DB residual parked (DEC-205); no value-gate feature candidate without operator direction"
+    },
+    "DEC-207": {
+      "id": "DEC-207",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-28T10:46:27+00:00",
+      "updated_at": "2026-08-28T10:46:27+00:00",
+      "touched_round": 182,
+      "title": "Operator reactivation: detail-optimization / bug-fix / polish / usability pass (supersedes DEC-206 idle)",
+      "rationale": "New operator directive (this session) explicitly requests quality-convergence-mode work on detail optimization, bug fixing, polishing, interactivity, practicality, usability and ease-of-use. This supersedes the DEC-206 converged-idle park and reactivates the engine's quality-convergence loop (§10 mask: reactive bug-fix / polish / DX). Reactivation VERIFY re-run at round 183 start: backend pytest 1222 passed/10 skipped @94.38%, frontend vitest 1252 passed, ruff format+check green, biome green, nuxt typecheck exit 0, pyright 0 errors — real baseline green, so iteration resume is legitimate.",
+      "alternatives_rejected": "Not continuing the feature-evolution mode (no feature-evolution-enabled decision; operator asked for polish/bug-fix, not new features); not re-issuing round-dial commits without delivering change nodes (QUIESCE discipline preserved); not re-litigating the DEC-205 dev-DB e2e reproducibility park (environment-gated)."
+    },
+    "ISS-124": {
+      "id": "ISS-124",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-08-28T11:17:42+00:00",
+      "updated_at": "2026-08-28T15:52:16+00:00",
+      "touched_round": 184,
+      "severity": "medium",
+      "title": "Nav unread-notification badge desyncs from the /notifications inbox",
+      "description": "default.vue refreshUnread() runs exactly once on mount (the comment says 'polled' but there is no interval), and the /notifications page tracks its own local unread ref. Marking notifications read on /notifications (markRead/markAllRead) or signing in later never updates the nav badge; only a full page reload shows the correct count. A signed-in reader sees a stale badge (or a permanently-hidden badge) until reload."
+    },
+    "TASK-224": {
+      "id": "TASK-224",
+      "type": "task",
+      "status": "resolved",
+      "version": 3,
+      "created_at": "2026-08-28T11:19:22+00:00",
+      "updated_at": "2026-08-28T15:52:16+00:00",
+      "touched_round": 184,
+      "category": "core-feature",
+      "severity": 0.6,
+      "title": "Share the unread-notification badge state between layout and /notifications (ISS-124)",
+      "description": "Add a module-level useNotificationBadge() composable (unreadCount ref + refresh + visibility-aware 60s polling, same singleton pattern as useReaderAuth). default.vue consumes it (replacing its one-shot local refreshUnread, wiring watch(isAuthenticated) so login starts / logout stops polling). /notifications.vue calls refresh() after load/markRead/markAllRead so the nav badge drops immediately. Unit test for the composable."
+    },
+    "TASK-225": {
+      "id": "TASK-225",
+      "type": "task",
+      "status": "resolved",
+      "version": 5,
+      "created_at": "2026-08-28T11:21:16+00:00",
+      "updated_at": "2026-08-28T15:52:16+00:00",
+      "touched_round": 184,
+      "category": "core-feature",
+      "title": "Desktop nav overflows/clips at xl widths (English + signed-in reader)",
+      "description": "ISS-125: the desktop nav (breakpoint moved md->xl) shows all 11 links + search + push + auth + lang + theme. With English locale and a signed-in reader the row overflows the xl (1280px) viewport; the original justify-end + overflow-x-auto combination clips left-most links (flex-end overflow goes to the flex-start side, scrollLeft cannot go negative, scrollWidth stays == clientWidth — CSS probe confirmed FIRST never visible). Fix: right-align via first:ml-auto on the first link (NOT justify-end) so overflowing rows scroll from the start (verified in Chromium at 1280px: all links reachable; at 1600px: right-aligned unchanged). HeaderSearch narrowed w-56->w-44; SubscribeButton gained a compact prop: header nav renders it compact (label hidden below 2xl), mobile menu keeps full text (unconditional 2xl-hiding would have left the <xl-only menu icon-only forever).",
+      "severity": 0.7
+    },
+    "ISS-125": {
+      "id": "ISS-125",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-08-28T13:38:32+00:00",
+      "updated_at": "2026-08-28T15:52:17+00:00",
+      "touched_round": 184,
+      "severity": "high",
+      "title": "Desktop nav clips the left-most links at xl viewport widths once a reader is signed in (English)",
+      "description": "The desktop nav lives at xl+ (1280px). In English with the reader signed in (11 links + search + subscribe + sign-out + lang + theme), the row overflows at 1280-~1500px. The header used justify-end + overflow-x-auto, which clips the left-most items: flex-end alignment pushes overflow to the main-start side, scrollLeft() cannot go negative, and scrollWidth stays equal to clientWidth, so the browser reports no scrollable overflow and the first links are unreachable — directly contradicting the 'no nav item is ever unreachable' invariant. CSS probe in real Chromium confirmed FIRST (left-most link) never becomes visible under justify-end. Fix switched to margin-left:auto on the first link (collapses when over capacity → row scrolls from start)."
+    },
+    "CHG-247": {
+      "id": "CHG-247",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-28T15:50:38+00:00",
+      "updated_at": "2026-08-28T15:50:38+00:00",
+      "touched_round": 184,
+      "commit": "423319a",
+      "summary": "Shared nav unread-badge state via useNotificationBadge() (module-level singleton mirroring useReaderAuth): default.vue drives visibility-aware 60s polling from watch(isAuthenticated)/onMounted/onUnmounted; /notifications re-fetches the shared count from the server after load/markRead/markAllRead (server truth, never overwrites a fresher poll value). Also fixes two desktop-nav usability regressions: (1) links+search group now right-aligns via first:ml-auto instead of justify-end, which had clipped left-most links on signed-in English overflow (flex-end+overflow hides main-start side; auto margin collapses to 0 so the row scrolls from start — verified in Chromium); (2) chrome controls (push/account/language/theme) moved outside the scroll container as fixed siblings so they stay reachable even where a vertical wheel doesn't pan overflow-x (Firefox); SubscribeButton gained a compact prop (header icon-only below 2xl, mobile menu keeps full label). Reflects a code review that verified the CSS claim correct and cleared the change with notes (2 MEDIUM + 2 LOW, all addressed: stale-badge overwrite, Firefox right-edge reachability, test-order coupling, logout race)."
+    },
+    "EV-204": {
+      "id": "EV-204",
+      "type": "evidence",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-28T15:53:09+00:00",
+      "updated_at": "2026-08-28T15:53:09+00:00",
+      "touched_round": 184,
+      "source": "423319a+tests",
+      "title": "Verification evidence for ISS-124/ISS-125 delivery",
+      "description": "Vitest 1261 passed (99 files), nuxt typecheck exit 0, biome check repo-wide green (only schema-version info). useNotificationBadge.spec: guest no-op/reset-0, signed-in fetch (getReaderNotifications(1,1)), keep-previous-on-error, poll cadence + hidden-tab skip, start/stop no-op guards, logout-race discard. notifications.spec: badge syncs to server truth after load/markRead/markAllRead (re-fetch asserted, not local decrement). default.spec: onUnmounted stub + existing nav assertions pass. SubscribeButton.spec: compact hides label below 2xl, non-compact keeps it. Chromium CSS probe (cleaned after run): justify-end+overflow-x clips first item (scrollLeft 0, no negative), first:ml-auto fixes — 1280px all 12 links reachable (maxScroll 170, minScroll 0), chrome controls visible at every width after the split.",
+      "confidence": 1.0
+    },
+    "EV-205": {
+      "id": "EV-205",
+      "type": "evidence",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-28T15:54:19+00:00",
+      "updated_at": "2026-08-28T15:54:19+00:00",
+      "touched_round": 184,
+      "source": "code-review(agent)+commit 423319a",
+      "title": "Code review outcome for ISS-124/TASK-224 + ISS-125/TASK-225",
+      "description": "code-reviewer agent reviewed the WIP (50/50 affected tests pass on review). Verdict: APPROVE with notes, no CRITICAL/HIGH. Findings and resolution: (1) MEDIUM — justify-end+hidden-scrollbar could strand right-edge controls at 1280-1400px in Firefox (no vertical-wheel→overflow-x panning): fixed by splitting chrome controls (push/account/language/theme) out of the scroll container as fixed siblings — verified visible at 1280/1440/1680 in Chromium. (2) MEDIUM — notifications page overwrote a fresher poller badge with a locally-derived stale count: markRead/markAllRead now re-fetch the shared count from the server. (3) LOW — composable spec order-dependence: singleton reset moved to beforeEach. (4) LOW — stale in-flight refresh after logout could write a nonzero badge: refresh now re-checks isAuthenticated after the await (dedicated test). Verified-correct claims left as-is: first:ml-auto overflow/right-align behavior, SSR-safety of the module singleton, accessibility of icon-only SubscribeButton.",
+      "confidence": 1.0
     }
   },
   "edges": [
@@ -17397,6 +17496,60 @@
       "to": "DEC-206",
       "type": "supersedes",
       "created_at": "2026-08-28T09:44:31+00:00"
+    },
+    {
+      "from": "DEC-207",
+      "to": "DEC-206",
+      "type": "supersedes",
+      "created_at": "2026-08-28T10:54:10+00:00"
+    },
+    {
+      "from": "TASK-224",
+      "to": "ISS-124",
+      "type": "addresses",
+      "created_at": "2026-08-28T11:27:04+00:00"
+    },
+    {
+      "from": "ISS-124",
+      "to": "COMP-002",
+      "type": "located_in",
+      "created_at": "2026-08-28T11:29:32+00:00"
+    },
+    {
+      "from": "ISS-125",
+      "to": "COMP-002",
+      "type": "located_in",
+      "created_at": "2026-08-28T13:39:49+00:00"
+    },
+    {
+      "from": "TASK-225",
+      "to": "ISS-125",
+      "type": "addresses",
+      "created_at": "2026-08-28T13:39:49+00:00"
+    },
+    {
+      "from": "CHG-247",
+      "to": "TASK-224",
+      "type": "implements",
+      "created_at": "2026-08-28T15:51:08+00:00"
+    },
+    {
+      "from": "CHG-247",
+      "to": "TASK-225",
+      "type": "implements",
+      "created_at": "2026-08-28T15:51:09+00:00"
+    },
+    {
+      "from": "CHG-247",
+      "to": "ISS-124",
+      "type": "resolves",
+      "created_at": "2026-08-28T15:51:09+00:00"
+    },
+    {
+      "from": "CHG-247",
+      "to": "ISS-125",
+      "type": "resolves",
+      "created_at": "2026-08-28T15:51:09+00:00"
     }
   ]
 }
