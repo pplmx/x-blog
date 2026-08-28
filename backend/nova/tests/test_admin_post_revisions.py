@@ -23,7 +23,7 @@ def _create_post(client, auth_headers, content="v0"):
         },
         headers=auth_headers,
     )
-    assert resp.status_code == 200, resp.text
+    assert resp.status_code == 201, resp.text
     return resp.json()["id"], title
 
 

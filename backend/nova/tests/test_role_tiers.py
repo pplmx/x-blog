@@ -51,7 +51,7 @@ class TestEditorCanModerateContent:
                 "published": False,
             },
         )
-        assert response.status_code == 200
+        assert response.status_code == 201
 
     def test_editor_can_create_category(self, client, editor_headers):
         response = client.post(

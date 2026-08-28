@@ -370,7 +370,7 @@ def admin_get_post(
 
 
 @limiter.limit(f"{RATE_LIMIT_WRITE}/minute")
-@router.post("/posts", response_model=dict)
+@router.post("/posts", response_model=dict, status_code=status.HTTP_201_CREATED)
 def admin_create_post(
     request: Request,  # noqa: ARG001
     post_data: PostCreate,
