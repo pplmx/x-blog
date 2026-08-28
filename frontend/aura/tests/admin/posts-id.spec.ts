@@ -512,7 +512,7 @@ describe("Admin Post Editor Page", () => {
 				MediaPickerModal: {
 					props: ["open"],
 					template:
-						'<div data-testid="media-picker" :data-open="String(open)"><button @click="$emit(\'select\', \'/static/uploads/2026/07/x.png\'); $emit(\'close\')">pick</button></div>',
+						"<div data-testid=\"media-picker\" :data-open=\"String(open)\"><button @click=\"$emit('select', '/static/uploads/2026/07/x.png'); $emit('close')\">pick</button></div>",
 				},
 			});
 			// The cover row has its own media-library button (distinct title from
@@ -526,7 +526,8 @@ describe("Admin Post Editor Page", () => {
 			const pickers = wrapper.findAll('[data-testid="media-picker"]');
 			expect(pickers.some((p) => p.attributes("data-open") === "true")).toBe(true);
 			// And picking on the OPEN picker fills the cover field.
-			const openPicker = pickers.find((p) => p.attributes("data-open") === "true")!;
+			const openPicker = pickers.find((p) => p.attributes("data-open") === "true");
+			if (!openPicker) throw new Error("expected the cover media picker to be open");
 			await openPicker.find("button").trigger("click");
 
 			expect((wrapper.find("#cover_image").element as HTMLInputElement).value).toBe(

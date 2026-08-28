@@ -49,7 +49,8 @@ test.describe("Admin media library (DEC-183)", () => {
 		const content = (await textarea.inputValue()) ?? "";
 		const url = content.match(/\]\((\/static\/uploads\/[^)]+\.png)\)/)?.[1];
 		expect(url).toBeTruthy();
-		const uploadedName = url!.split("/").pop()!;
+		if (!url) throw new Error("editor content did not embed the uploaded image URL");
+		const uploadedName = url.split("/").pop() ?? "";
 
 		// 2. A second upload stays REFERENCED via an API-seeded post, so the
 		//    library shows both the in-use badge and the unprotected delete.
@@ -76,7 +77,7 @@ test.describe("Admin media library (DEC-183)", () => {
 			headers,
 		});
 		expect(created.ok()).toBe(true);
-		const referencedName = referencedUrl.split("/").pop()!;
+		const referencedName = referencedUrl.split("/").pop() ?? "";
 
 		// 3. The media library lists both uploads.
 		await page.goto("/admin/media");
@@ -132,7 +133,7 @@ test.describe("Admin media library (DEC-183)", () => {
 			});
 			expect(resp.ok()).toBe(true);
 			const { url } = (await resp.json()) as { url: string };
-			unreferenced.push(url.split("/").pop()!);
+			unreferenced.push(url.split("/").pop() ?? "");
 		}
 		const refUpload = await request.post("/api/upload", {
 			multipart: {
@@ -145,7 +146,7 @@ test.describe("Admin media library (DEC-183)", () => {
 			headers,
 		});
 		const refUrl = ((await refUpload.json()) as { url: string }).url;
-		const refName = refUrl.split("/").pop()!;
+		const refName = refUrl.split("/").pop() ?? "";
 		await request.post("/api/admin/posts", {
 			data: {
 				title: `Bulk ref ${stamp}`,

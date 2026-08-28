@@ -32,7 +32,10 @@ async function bookmarkFirstPost(page: import("@playwright/test").Page): Promise
 	await page.goto("/");
 	const postLink = page.locator("main a[href*='/posts/']").first();
 	await postLink.waitFor({ state: "visible" });
-	const href = (await postLink.getAttribute("href"))!;
+	// Narrow the href instead of `!`: expect() documents that a post card
+	// always links to its own detail page.
+	await expect(postLink).toHaveAttribute("href", /\/posts\//);
+	const href = (await postLink.getAttribute("href")) as string;
 	await page.goto(href);
 	await page.locator("button[title='收藏文章']").first().click();
 	// Confirm it toggled to the "added" state.

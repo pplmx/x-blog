@@ -86,7 +86,9 @@ describe("MediaPickerModal", () => {
 		await vi.waitFor(() => {
 			expect(document.body.querySelectorAll("img").length).toBe(1);
 		});
-		const src = document.body.querySelector("img")!.getAttribute("src") || "";
+		const imageEl = document.body.querySelector("img");
+		expect(imageEl).not.toBeNull();
+		const src = imageEl?.getAttribute("src") ?? "";
 		expect(src).toContain(image.url);
 	});
 
@@ -97,12 +99,13 @@ describe("MediaPickerModal", () => {
 			expect(document.body.querySelectorAll("img").length).toBe(1);
 		});
 		const tile = document.body.querySelectorAll("button");
-		const imageTile = Array.from(tile).find((b) => b.querySelector("img"))!;
+		const imageTile = Array.from(tile).find((b) => b.querySelector("img"));
+		if (!imageTile) throw new Error("expected a media tile containing an image");
 		(imageTile as HTMLButtonElement).click();
 		const modal = wrapper.findComponent(MediaPickerModal);
 		const emitted = modal.emitted("select");
 		expect(emitted).toBeDefined();
-		expect(emitted![0]).toEqual([image.url]);
+		expect(emitted?.[0]).toEqual([image.url]);
 		expect(modal.emitted("close")).toBeDefined();
 	});
 
@@ -112,7 +115,9 @@ describe("MediaPickerModal", () => {
 		await vi.waitFor(() => {
 			expect(document.body.querySelectorAll("img").length).toBe(1);
 		});
-		const closeBtn = document.body.querySelector('[aria-label="common.menu.close"]') as HTMLButtonElement;
+		const closeBtn = document.body.querySelector(
+			'[aria-label="common.menu.close"]',
+		) as HTMLButtonElement;
 		closeBtn.click();
 		expect(wrapper.findComponent(MediaPickerModal).emitted("close")).toBeDefined();
 	});

@@ -85,7 +85,8 @@ describe("Admin Media page", () => {
 	it("disables delete for referenced images with an in-use label", async () => {
 		listMock.mockReturnValue(fakeListing([referenced]));
 		const wrapper = await mountPage();
-		const deleteBtn = wrapper.findAll("button").find((b) => b.text().trim() === "删除")!;
+		const deleteBtn = wrapper.findAll("button").find((b) => b.text().trim() === "删除");
+		if (!deleteBtn) throw new Error("expected a 删除 button");
 		expect(deleteBtn.attributes("disabled")).toBeDefined();
 		expect(wrapper.text()).toContain("使用中");
 	});
@@ -99,7 +100,8 @@ describe("Admin Media page", () => {
 
 		try {
 			const wrapper = await mountPage();
-			const deleteBtn = wrapper.findAll("button").find((b) => b.text().trim() === "删除")!;
+			const deleteBtn = wrapper.findAll("button").find((b) => b.text().trim() === "删除");
+			if (!deleteBtn) throw new Error("expected a 删除 button");
 			expect(deleteBtn.attributes("disabled")).toBeUndefined();
 			await deleteBtn.trigger("click");
 			await flushPromises();
@@ -134,8 +136,8 @@ describe("Admin Media page", () => {
 			await selects[0].trigger("click");
 			expect(wrapper.text()).toContain("已选 1 张");
 
-			const batchBtn = wrapper.findAll("button").find((b) => b.text().trim() === "删除选中")!;
-			expect(batchBtn).toBeTruthy();
+			const batchBtn = wrapper.findAll("button").find((b) => b.text().trim() === "删除选中");
+			if (!batchBtn) throw new Error("expected a 删除选中 button");
 			await batchBtn.trigger("click");
 			await flushPromises();
 

@@ -8,10 +8,7 @@
 import { useAdminMedia } from "~~/api/admin/media";
 import type { UploadFileInfo } from "~~/api/contracts/media";
 
-const props = withDefaults(
-	defineProps<{ open: boolean; pageSize?: number }>(),
-	{ pageSize: 60 },
-);
+const props = withDefaults(defineProps<{ open: boolean; pageSize?: number }>(), { pageSize: 60 });
 const emit = defineEmits<{ close: []; select: [url: string] }>();
 
 const { t } = useLang();

@@ -21,10 +21,7 @@ function tokenHeader(token: string): Record<string, string> {
 }
 
 test.describe("Tag follow (TASK-215)", () => {
-	test("guests see no reader-level follow control on the tag page", async ({
-		page,
-		request,
-	}) => {
+	test("guests see no reader-level follow control on the tag page", async ({ page, request }) => {
 		const tags = await request.get("/api/tags");
 		expect(tags.status()).toBe(200);
 		const list = (await tags.json()) as Array<{ id: number }>;

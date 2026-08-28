@@ -52,8 +52,7 @@ test.describe("Search", () => {
 		expect(login.status()).toBe(200);
 		const token = ((await login.json()) as { access_token: string }).access_token;
 		const slug = `cjk-snippet-e2e-${Date.now()}`;
-		const body =
-			"开头句。" + "填充内容段落。".repeat(60) + "评论系统高亮测试位于正文深处。" + "结尾句。";
+		const body = `开头句。${"填充内容段落。".repeat(60)}评论系统高亮测试位于正文深处。结尾句。`;
 		const create = await request.post("/api/posts", {
 			data: { title: "中文搜索测试帖", slug, content: body, published: true },
 			headers: { Authorization: `Bearer ${token}` },
