@@ -9,16 +9,27 @@ active account plus registered address), the HTML/text message builder
 (escape + absolute links + unsubscribe), and `send_weekly_digest` end-to-end
 against the same fake SMTP sink as the email channel — idempotency stamping,
 dry-run, SMTP-down retry, and the admin endpoint's auth/dry-run contract.
+
+The PostgreSQL-specific paths (advisory-lock contention + the naive-created_at
+storage branch) are covered by the `@skip_pg` tests at the bottom — they run
+only when ``TEST_DATABASE_URL`` points at a scratch PostgreSQL DB (same
+convention as test_postgres_connection.py; that module drops/recreates all
+tables, so never point it at a real database).
 """
 
+import os
 from datetime import datetime, timedelta
 from email.message import EmailMessage
 
 import pytest
+from sqlalchemy import create_engine, text
+from sqlalchemy.orm import sessionmaker
 
 from app import crud, models
 from app.auth import ReaderAccount
+from app.database import Base
 from app.digest import (
+    _DIGEST_LOCK_KEY,
     WEEKLY_WINDOW_DAYS,
     build_digest_message,
     collect_digest_posts,
@@ -284,3 +295,100 @@ class TestAdminEndpoint:
         body = resp.json()
         assert body.get("dry_run") is True
         assert body["readers"] >= 0
+
+
+# ---------------------------------------------------------------------------
+# PostgreSQL-specific paths (advisory lock + naive created_at storage).
+# Skipped unless TEST_DATABASE_URL points at a scratch PostgreSQL database.
+# ---------------------------------------------------------------------------
+
+_postgres_url = os.environ.get("TEST_DATABASE_URL") or os.environ.get("DATABASE_URL")
+skip_pg = pytest.mark.skipif(
+    not _postgres_url or "postgresql" not in _postgres_url,
+    reason="PostgreSQL not configured for testing (set TEST_DATABASE_URL to a postgresql:// URL)",
+)
+
+
+@skip_pg
+def test_pg_delivers_in_window_and_advisory_lock_blocks_concurrent_run(smtp_sink):
+    """Live-Postgres verification of the two paths SQLite cannot exercise:
+    the naive ``created_at`` storage branch (PG stores naive UTC, no +00:00
+    suffix) and the advisory-lock contention guard. Uses a scratch DB pointed
+    to by TEST_DATABASE_URL; Schema is create_all/drop_all'd like
+    test_postgres_connection (never point this at a real database)."""
+    engine = create_engine(_postgres_url)
+    Session = sessionmaker(bind=engine)
+    try:
+        Base.metadata.create_all(bind=engine)
+        db = Session()
+        try:
+            now = crud.utc_now_naive()
+            reader = ReaderAccount(email="pg-digest@example.com", password="x", display_name="PG")
+            db.add(reader)
+            db.flush()
+            db.add(models.ReaderNotificationPref(reader_id=reader.id, email_weekly_digest=True))
+            # One scheduled (naive publish_at) in-window post + one unscheduled
+            # (naive created_at) in-window post + one old post.
+            db.add(
+                models.Post(
+                    title="PG scheduled",
+                    slug="pg-scheduled",
+                    content="x",
+                    excerpt="",
+                    published=True,
+                    publish_at=now - timedelta(days=2),
+                )
+            )
+            db.add(
+                models.Post(
+                    title="PG created",
+                    slug="pg-created",
+                    content="x",
+                    excerpt="",
+                    published=True,
+                    publish_at=None,
+                    created_at=now - timedelta(days=1),
+                )
+            )
+            db.add(
+                models.Post(
+                    title="PG old",
+                    slug="pg-old",
+                    content="x",
+                    published=True,
+                    publish_at=now - timedelta(days=30),
+                )
+            )
+            db.commit()
+
+            # Normal run: both in-window posts, one email, idempotency stamped.
+            first = send_weekly_digest(db)
+            assert first["readers"] == 1, first
+            assert first["emails_sent"] == 1
+            html = next(
+                p.get_content() for p in smtp_sink.sent[-1].walk() if p.get_content_type() == "text/html"
+            )
+            assert "PG scheduled" in html and "PG created" in html
+            assert "PG old" not in html
+            pref = db.get(models.ReaderNotificationPref, reader.id)
+            assert pref.digest_sent_at is not None
+
+            # Advisory lock: hold the lock on a second connection -> job defers.
+            other = Session()
+            try:
+                other.execute(text("SELECT pg_advisory_lock(:k)"), {"k": _DIGEST_LOCK_KEY})
+                locked = send_weekly_digest(db)
+                assert locked["locked"] is True
+                assert locked["readers"] == 0
+            finally:
+                other.execute(text("SELECT pg_advisory_unlock(:k)"), {"k": _DIGEST_LOCK_KEY})
+                other.close()
+
+            # Idempotency: a second uncontended run skips the stamped reader.
+            second = send_weekly_digest(db)
+            assert second["readers"] == 0, second
+        finally:
+            db.close()
+    finally:
+        Base.metadata.drop_all(bind=engine)
+        engine.dispose()
