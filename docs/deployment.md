@@ -193,13 +193,28 @@ uv run uvicorn app.main:app --host 0.0.0.0 --port 18888
 ### 前端（本地 Windows）
 
 ```bash
-# 创建环境变量文件
-echo "NUXT_API_URL=http://<后端IP>:18888" > frontend/aura/.env
-
 cd frontend/aura
 pnpm install
 pnpm dev
 ```
+
+前端自带同源 API 代理（`server/routes/api/[...path].ts`）：浏览器只请求 Nuxt 自身的
+`/api/**`，由 Nuxt 服务端转发到后端。因此**本地开发默认无需新建 `.env` 文件** —— 代理
+默认目标即本机 `http://localhost:18888`，无论用 `http://localhost:34567` 还是
+`http://10.112.9.49:34567`（局域网 IP）访问都走同源代理，不产生跨域。
+
+后端在**别的机器**上时，用服务端专属变量指定代理目标（不会注入浏览器端）：
+
+```bash
+# 前端与后端异机：指定 Nuxt 代理转发到的后端地址
+echo "NUXT_PROXY_TARGET=http://<后端IP>:18888" > frontend/aura/.env
+```
+
+> **不要使用 `NUXT_API_URL` 指向远程后端**。`NUXT_API_URL` 会被注入浏览器端
+> `runtimeConfig.public.apiUrl`，使浏览器绕过 Nuxt 代理**直连**后端 —— 跨源请求会触发
+> CORS 预检，而后端 `ALLOWED_ORIGINS` 默认只允许 `localhost:3000/34567`；一旦用局域网 IP
+> 访问站点，预检即被拒绝，表现为所有接口 `Failed to fetch`（后端日志无对应请求）。
+> 若确认走的是受控的直连拓扑，需同时把访问源 URL 加入后端 `ALLOWED_ORIGINS`。
 
 ---
 

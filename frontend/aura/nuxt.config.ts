@@ -21,6 +21,21 @@ const siteDescription =
 // Dynamic OG image URL for global default (generates PNG with Chinese font support)
 const ogImageUrl = `${siteUrl}/api/og?title=${encodeURIComponent(siteName)}&type=website`;
 
+// NUXT_API_URL leaks into the browser bundle (runtimeConfig.public.apiUrl) and
+// makes the browser call the backend cross-origin, bypassing the same-origin
+// /api proxy (server/routes/api/[...path].ts). That only works from the exact
+// localhost origins in the backend's ALLOWED_ORIGINS — accessing the site via a
+// machine IP fails every API call with "Failed to fetch" (CORS preflight). Warn
+// at build/dev time so misconfiguration is caught instead of failing at runtime.
+if (process.env.NUXT_API_URL && /^https?:\/\//.test(process.env.NUXT_API_URL)) {
+	console.warn(
+		"[nuxt] NUXT_API_URL is injected into the client bundle and forces cross-origin " +
+			"browser→backend calls (CORS). Leave it unset to use the same-origin /api proxy " +
+			"(default target http://localhost:18888); for a remote backend set NUXT_PROXY_TARGET " +
+			"(server-only) instead. See docs/deployment.md.",
+	);
+}
+
 export default defineNuxtConfig({
 	compatibilityDate: "2025-07-15",
 	devtools: { enabled: true },
