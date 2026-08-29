@@ -313,11 +313,12 @@ async function handleAssign(bookmark: Bookmark, raw: string) {
             </div>
           </div>
 
-          <!-- Remove button -->
+          <!-- Remove button (aria-label, not just a title tooltip, ISS-137) -->
           <button
             type="button"
             @click.stop="remove(bookmark.id)"
             :title="t('bookmarks.remove')"
+            :aria-label="t('bookmarks.remove')"
             class="shrink-0 p-2 text-gray-400 hover:text-red-500 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-xl transition-colors"
           >
             <Icon icon="lucide:x" class="w-4 h-4" />

@@ -29,7 +29,8 @@
 			"save": "保存",
 			"cancel": "取消",
 			"backHome": "返回首页",
-			"backToList": "返回列表"
+			"backToList": "返回列表",
+			"retry": "重试"
 		},
 		"state": {
 			"loading": "加载中",

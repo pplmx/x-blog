@@ -635,6 +635,20 @@ describe("CommentList", () => {
 			expect(mockGetComments).toHaveBeenCalledTimes(1);
 			expect(mockGetComments).toHaveBeenLastCalledWith(1, 2, 20, "newest");
 		});
+
+		it("shows an in-flight spinner while a pagination refetch runs (ISS-130)", async () => {
+			let resolvePage!: (v: unknown) => void;
+			const { wrapper } = await mountCommentList();
+			mockGetComments.mockImplementationOnce(() => new Promise((r) => (resolvePage = r)) as never);
+			const buttons = wrapper.findAll("nav button");
+			await buttons[1].trigger("click");
+			await flushPromises();
+			expect(wrapper.find('[data-icon="lucide:loader-2"]').exists()).toBe(true);
+
+			resolvePage({ ...mockComments, page: 2 });
+			await flushPromises();
+			expect(wrapper.find('[data-icon="lucide:loader-2"]').exists()).toBe(false);
+		});
 	});
 
 	describe("No pagination when total_pages is 0", () => {

@@ -133,7 +133,16 @@ function heatCellLabel(cell: ActivityCell | null): string {
 		day: "numeric",
 	});
 	const posts = t("history.activityPosts", { count: cell.count });
-	return `${fmt.format(d)}：${posts}`;
+	// Locale-appropriate separator (no hardcoded full-width colon in English, ISS-136).
+	const sep = locale.value === "zh" ? "：" : " — ";
+	return `${fmt.format(d)}${sep}${posts}`;
+}
+
+/** Accessible summary for the whole heatmap; the individual cells are
+ * aria-hidden/presentational because 364 per-day labels would be noise (ISS-136). */
+function heatMapSummary(): string {
+	const activeDays = heatmapWeeks.value.flat().filter((c) => c !== null && c.count > 0).length;
+	return t("history.activitySummary", { count: activeDays });
 }
 </script>
 
@@ -215,6 +224,8 @@ function heatCellLabel(cell: ActivityCell | null): string {
         <p class="text-xs font-medium text-gray-400 dark:text-gray-500 uppercase tracking-wide mb-3">{{ t('history.activityTitle') }}</p>
         <div class="overflow-x-auto pb-1">
           <div
+            role="img"
+            :aria-label="heatMapSummary()"
             class="grid grid-flow-col auto-cols-[11px] gap-[3px] w-fit"
             style="grid-template-rows: repeat(7, 11px)"
           >
@@ -225,6 +236,7 @@ function heatCellLabel(cell: ActivityCell | null): string {
                 class="h-[11px] w-[11px] rounded-[2px]"
                 :class="heatCellClass(cell)"
                 :title="heatCellLabel(cell)"
+                aria-hidden="true"
               />
             </template>
           </div>

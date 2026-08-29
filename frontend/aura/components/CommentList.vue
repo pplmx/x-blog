@@ -24,6 +24,15 @@
         <option value="oldest">{{ t('components.commentList.sortOldest') }}</option>
         <option value="likes">{{ t('components.commentList.sortLikes') }}</option>
       </select>
+      <!-- In-flight feedback for sort/pagination refetches (pending only covers
+           the initial mount; ISS-130). -->
+      <Icon
+        v-if="refreshing"
+        icon="lucide:loader-2"
+        class="w-4 h-4 animate-spin text-gray-400"
+        aria-hidden="true"
+        role="presentation"
+      />
     </div>
 
     <!-- Loading -->
@@ -637,8 +646,14 @@ function toggleReply(comment: Comment) {
 		replyTo.value?.id === comment.id ? null : { id: comment.id, nickname: comment.nickname };
 }
 
+const refreshing = ref(false);
 async function refreshList() {
-	commentData.value = await getComments(props.postId, currentPage.value, 20, currentSort.value);
+	refreshing.value = true;
+	try {
+		commentData.value = await getComments(props.postId, currentPage.value, 20, currentSort.value);
+	} finally {
+		refreshing.value = false;
+	}
 }
 
 async function handleReplied() {

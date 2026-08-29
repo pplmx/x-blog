@@ -92,6 +92,28 @@ describe("Reading-history page (TASK-170)", () => {
 		expect(wrapper.exists()).toBe(true);
 	});
 
+	it("exposes an accessible summary for the heatmap, cells aria-hidden (ISS-136)", async () => {
+		mockStats.value = {
+			totalPosts: 4,
+			totalReadingMinutes: 40,
+			lastViewedAt: 123,
+			currentStreak: 2,
+			longestStreak: 6,
+			activity: [
+				{ date: "2026-08-28", count: 1 },
+				{ date: "2026-08-29", count: 3 },
+			],
+		};
+		const wrapper = mountHistory();
+		const heat = wrapper.find('[role="img"]');
+		expect(heat.exists()).toBe(true);
+		// Summary names the number of active days in the past year...
+		expect(heat.attributes("aria-label")).toContain("天");
+		// ...and the per-day cells are hidden from screen readers as noise.
+		const cells = wrapper.findAll('[aria-hidden="true"]');
+		expect(cells.length).toBeGreaterThan(0);
+	});
+
 	it("renders the empty state when there is no history", () => {
 		const wrapper = mountHistory();
 		expect(wrapper.text()).toContain("暂无阅读历史");

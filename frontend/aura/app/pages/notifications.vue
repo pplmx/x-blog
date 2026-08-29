@@ -190,20 +190,34 @@ onMounted(() => {
 	void loadPrefs();
 });
 
+// In-flight + failure state for the mark-read actions so the buttons disable
+// while running and surface a failure instead of failing silently (ISS-133).
+const markingIds = ref<Set<number>>(new Set());
+const markingAll = ref(false);
+const markActionFailed = ref(false);
+
 async function markRead(item: ReaderNotification) {
-	if (item.read) return;
+	if (item.read || markingIds.value.has(item.id)) return;
+	markingIds.value = new Set(markingIds.value).add(item.id);
+	markActionFailed.value = false;
 	try {
 		const updated = await markReaderNotificationRead(item.id);
 		item.read = updated.read;
 		if (unread.value > 0) unread.value -= 1;
 		void refreshBadge();
 	} catch {
-		/* best effort — the row stays unread */
+		markActionFailed.value = true;
+	} finally {
+		const s = new Set(markingIds.value);
+		s.delete(item.id);
+		markingIds.value = s;
 	}
 }
 
 async function markAllRead() {
-	if (unread.value === 0) return;
+	if (unread.value === 0 || markingAll.value) return;
+	markingAll.value = true;
+	markActionFailed.value = false;
 	try {
 		await markAllReaderNotificationsRead();
 		unread.value = 0;
@@ -212,7 +226,9 @@ async function markAllRead() {
 			i.read = true;
 		});
 	} catch {
-		/* best effort */
+		markActionFailed.value = true;
+	} finally {
+		markingAll.value = false;
 	}
 }
 
@@ -257,15 +273,16 @@ function kindIcon(kind: string): string {
       <button
         v-if="unread > 0"
         type="button"
-        class="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium text-amber-600 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-950/40 transition-all duration-200"
+        :disabled="markingAll"
+        class="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium text-amber-600 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-950/40 transition-all duration-200 disabled:opacity-60 disabled:cursor-not-allowed"
         @click="markAllRead"
       >
-        <Icon icon="lucide:check-check" class="w-4 h-4" />
+        <Icon :icon="markingAll ? 'lucide:loader-2' : 'lucide:check-check'" class="w-4 h-4" :class="{ 'animate-spin': markingAll }" />
         {{ t('notifications.markAllRead') }}
       </button>
     </div>
 
-    <p v-if="error" class="mb-4 text-sm text-red-600 dark:text-red-400">
+    <p v-if="error || markActionFailed" class="mb-4 text-sm text-red-600 dark:text-red-400">
       {{ t('common.errors.network') }}
     </p>
 
@@ -348,10 +365,14 @@ function kindIcon(kind: string): string {
           <button
             v-if="!item.read"
             type="button"
-            class="shrink-0 self-center text-xs font-medium text-amber-600 dark:text-amber-400 hover:underline"
+            :disabled="markingIds.has(item.id)"
+            class="shrink-0 self-center text-xs font-medium text-amber-600 dark:text-amber-400 hover:underline disabled:opacity-60 disabled:cursor-not-allowed"
             @click.stop="markRead(item)"
           >
-            {{ t('notifications.markRead') }}
+            <span v-if="markingIds.has(item.id)" class="inline-flex items-center gap-1">
+              <Icon icon="lucide:loader-2" class="w-3 h-3 animate-spin" aria-hidden="true" role="presentation" />
+            </span>
+            <template v-else>{{ t('notifications.markRead') }}</template>
           </button>
         </a>
       </li>

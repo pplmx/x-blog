@@ -244,6 +244,34 @@ describe("Notifications page (TASK-192)", () => {
 		expect(badge.unreadCount.value).toBe(0);
 	});
 
+	it("surfaces a failure and re-enables the button when mark-all fails (ISS-133)", async () => {
+		mockFetch.mockResolvedValue({
+			items: [makeNotif({ id: 1 }), makeNotif({ id: 2 })],
+			total: 2,
+			unread: 2,
+			page: 1,
+			limit: 100,
+			total_pages: 1,
+		});
+		mockMarkAllRead.mockRejectedValueOnce(new Error("boom"));
+		const wrapper = await mountPage();
+		const badge = await badgeApi();
+
+		const markAll = wrapper.findAll("button").find((b) => b.text().includes("全部标为已读"));
+		expect(markAll).toBeDefined();
+		await markAll?.trigger("click");
+		await flushPromises();
+
+		// Failure is surfaced instead of failing silently (ISS-133)...
+		expect(wrapper.text()).toContain("网络错误，请稍后重试");
+		// ...unread count is untouched, rows stay unread, and the button is
+		// enabled again so the reader can retry.
+		expect(badge.unreadCount.value).toBe(2);
+		const after = wrapper.findAll("button").find((b) => b.text().includes("全部标为已读"));
+		expect(after?.attributes("disabled")).toBeUndefined();
+		expect(wrapper.findAll("button").some((b) => b.text().includes("标为已读"))).toBe(true);
+	});
+
 	it("renders a localized network error when the inbox fetch fails (ISS-110)", async () => {
 		mockFetch.mockRejectedValue(new Error("boom"));
 		const wrapper = await mountPage();

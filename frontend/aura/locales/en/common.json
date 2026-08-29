@@ -29,7 +29,8 @@
 			"save": "Save",
 			"cancel": "Cancel",
 			"backHome": "Back to home",
-			"backToList": "Back to list"
+			"backToList": "Back to list",
+			"retry": "Retry"
 		},
 		"state": {
 			"loading": "Loading",

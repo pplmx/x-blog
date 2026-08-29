@@ -24,6 +24,7 @@
 		"activityTitle": "阅读活跃度（近一年）",
 		"less": "较少",
 		"more": "较多",
-		"activityPosts": "{count} 篇"
+		"activityPosts": "{count} 篇",
+		"activitySummary": "过去一年共有 {count} 天有阅读记录"
 	}
 }

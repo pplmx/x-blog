@@ -32,17 +32,23 @@ useSeo({
 // `await` really waits for the response (no useFetch race).
 const commentData = ref<MyCommentListResponse | null>(null);
 const loading = ref(true);
+const loadFailed = ref(false);
 // Status filter + pagination (DEC-102, TASK-163).
 const statusFilter = ref<MyCommentStatusFilter>("all");
 const currentPage = ref(1);
 
 async function load() {
+	// Re-enter loading on refetch (tab/page change) so the swap is visible, and
+	// keep errors distinct from a genuinely empty list (ISS-129).
+	loading.value = true;
+	loadFailed.value = false;
 	try {
 		commentData.value = await getMyComments(statusFilter.value, currentPage.value, 20);
 	} catch {
-		// Missing/invalid token, offline, etc — the signed-in check gates the
-		// page; any failure just leaves the empty state.
+		// Missing/invalid token, offline, etc — signal failure instead of
+		// pretending the list is empty (ISS-129).
 		commentData.value = null;
+		loadFailed.value = true;
 	}
 	loading.value = false;
 }
@@ -178,6 +184,22 @@ function formatDate(dateStr: string): string {
         <div class="bg-gray-200 dark:bg-gray-700 h-4 rounded w-3/4 mb-2" />
         <div class="bg-gray-200 dark:bg-gray-700 h-3 rounded w-1/2" />
       </div>
+    </div>
+
+    <!-- Error (distinct from an empty list, ISS-129) -->
+    <div
+      v-else-if="loadFailed"
+      class="text-center py-12 text-gray-500 dark:text-gray-400 border border-dashed border-gray-200 dark:border-gray-700 rounded-xl"
+    >
+      <p class="mb-3">{{ t('common.errors.network') }}</p>
+      <button
+        type="button"
+        class="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+        @click="void load()"
+      >
+        <Icon icon="lucide:refresh-cw" class="w-4 h-4" />
+        {{ t('common.action.retry') }}
+      </button>
     </div>
 
     <!-- Empty -->

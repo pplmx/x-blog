@@ -110,6 +110,21 @@ describe("My comments page", () => {
 		expect(wrapper.text()).toContain("还没有发表过评论");
 	});
 
+	it("shows a distinct error state (not the empty list) when the fetch fails (ISS-129)", async () => {
+		isAuthenticated.value = true;
+		mockFetchMyComments.mockRejectedValueOnce(new Error("network"));
+		const wrapper = await mountPage();
+		expect(wrapper.text()).toContain("网络错误，请稍后重试");
+		expect(wrapper.text()).not.toContain("还没有发表过评论");
+		// Retry is offered and recovers the list.
+		mockData.value = { items: [makeComment()], total: 1 };
+		const retry = wrapper.findAll("button").find((b) => b.text().includes("重试"));
+		expect(retry).toBeDefined();
+		await retry?.trigger("click");
+		await flushPromises();
+		expect(wrapper.text()).toContain("共 1 条评论");
+	});
+
 	it("shows the comment count", async () => {
 		isAuthenticated.value = true;
 		mockData.value = { items: [makeComment()], total: 1 };
