@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 186,
+  "round": 189,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-08-29T07:52:27+00:00",
+  "updated_at": "2026-08-29T10:10:18+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -12359,22 +12359,22 @@
     "ISS-131": {
       "id": "ISS-131",
       "type": "issue",
-      "status": "active",
-      "version": 1,
+      "status": "resolved",
+      "version": 2,
       "created_at": "2026-08-29T01:00:15+00:00",
-      "updated_at": "2026-08-29T01:00:15+00:00",
-      "touched_round": 186,
+      "updated_at": "2026-08-29T10:08:42+00:00",
+      "touched_round": 187,
       "title": "Mobile nav menu doesn't close on Escape and focus is not managed",
       "description": "app/layouts/default.vue:183-254 (mobileMenuOpen): only close triggers are the button, a link click, or route change (62-67); no keydown-Escape, no focus move into menu or restore to toggle. Fix: window keydown Escape -> close, focus() toggle on close."
     },
     "ISS-132": {
       "id": "ISS-132",
       "type": "issue",
-      "status": "active",
-      "version": 1,
+      "status": "resolved",
+      "version": 2,
       "created_at": "2026-08-29T01:00:15+00:00",
-      "updated_at": "2026-08-29T01:00:15+00:00",
-      "touched_round": 186,
+      "updated_at": "2026-08-29T10:08:42+00:00",
+      "touched_round": 187,
       "title": "Media picker modal lacks Escape-close and focus trap/restore",
       "description": "MediaPickerModal.vue:47-111: Teleport overlay closes only via X (57-64) and backdrop @click.self (52); no Escape, no initial focus, no focus restore. Only dialog component in the app. Fix: @keydown.esc -> emit close, autofocus close button, restore focus to trigger."
     },
@@ -12392,22 +12392,22 @@
     "ISS-134": {
       "id": "ISS-134",
       "type": "issue",
-      "status": "active",
-      "version": 1,
+      "status": "resolved",
+      "version": 2,
       "created_at": "2026-08-29T01:00:15+00:00",
-      "updated_at": "2026-08-29T01:00:15+00:00",
-      "touched_round": 186,
+      "updated_at": "2026-08-29T10:08:42+00:00",
+      "touched_round": 187,
       "title": "Home 'Recommended for you' renders as an orphaned empty heading",
       "description": "index.vue:275-305: section gated only on recSignedIn with v-else-if recommendedPosts.length; a signed-in reader with no recs sees the heading + sparkle icon and nothing under it. Unlike 'Your series'/'Latest from follows' which gate on content length. Fix: v-if='recSignedIn && (recommending || recommendedPosts.length)'."
     },
     "ISS-135": {
       "id": "ISS-135",
       "type": "issue",
-      "status": "active",
-      "version": 1,
+      "status": "resolved",
+      "version": 2,
       "created_at": "2026-08-29T01:00:15+00:00",
-      "updated_at": "2026-08-29T01:00:15+00:00",
-      "touched_round": 186,
+      "updated_at": "2026-08-29T10:08:42+00:00",
+      "touched_round": 187,
       "title": "Raw backend error.message leaked into UI on 4 pages",
       "description": "index.vue:458, posts/[slug]/index.vue:279, series/[slug].vue:144, search.vue:187: pages print the friendly 'Failed to load' line PLUS the raw exception/HTTP message users can't act on; series/index.vue:29-32 is the correct pattern. Fix: drop raw {{ error.message }} (or map status codes to localized text)."
     },
@@ -12480,10 +12480,10 @@
     "ISS-142": {
       "id": "ISS-142",
       "type": "issue",
-      "status": "active",
-      "version": 1,
+      "status": "resolved",
+      "version": 2,
       "created_at": "2026-08-29T01:00:16+00:00",
-      "updated_at": "2026-08-29T01:00:16+00:00",
+      "updated_at": "2026-08-29T10:08:21+00:00",
       "touched_round": 186,
       "title": "Bookmarks/subscription lists are unbounded (no pagination)",
       "description": "reader.py:736-753 GET /api/reader/me/bookmarks -> list_reader_bookmarks (crud.py:2246-2268) does query.all() + python-side visibility filter, returns everything with total=len(rows); same unbounded pattern for /me/post-subscriptions (reader.py:756) and /me/push-subscriptions (reader.py:634). Sibling list endpoints are paginated. Fix: page/limit defaults + cap, push offset/limit + visibility into SQL."
@@ -12524,10 +12524,10 @@
     "ISS-146": {
       "id": "ISS-146",
       "type": "issue",
-      "status": "active",
-      "version": 1,
+      "status": "resolved",
+      "version": 2,
       "created_at": "2026-08-29T01:00:16+00:00",
-      "updated_at": "2026-08-29T01:00:16+00:00",
+      "updated_at": "2026-08-29T10:08:21+00:00",
       "touched_round": 186,
       "title": "PUT /api/posts/{post_id}/subscription always returns 201 even on re-subscribe",
       "description": "posts.py:249-262: status_code=201 unconditional, while sibling idempotent PUTs (bookmark reader.py:774-793, series 962-975, category 1032-1050, tag 1106-1124) return 201 on create / 200 on already-existed. Clients doing merge/re-sync PUTs cannot distinguish. Fix: 201 if created else 200 from add_comment_subscription."
@@ -12535,10 +12535,10 @@
     "ISS-147": {
       "id": "ISS-147",
       "type": "issue",
-      "status": "active",
-      "version": 1,
+      "status": "resolved",
+      "version": 2,
       "created_at": "2026-08-29T01:00:16+00:00",
-      "updated_at": "2026-08-29T01:00:16+00:00",
+      "updated_at": "2026-08-29T10:08:21+00:00",
       "touched_round": 186,
       "title": "Admin DELETE endpoints return 200-with-body where public/reader deletes return 204",
       "description": "admin.py:138-154 DELETE /api/admin/users/{id} -> 200 {message}, admin.py:454-470 posts -> 200, upload.py:273-310 single-file -> 200; public deletes are 204 (posts.py:133, comments.py:390) and reader deletes 204 (reader.py:796,858,1001,...). Same mutation, two status vocabularies. Fix: standardize admin deletes on 204 no body (verify frontend matches)."
@@ -12720,10 +12720,10 @@
     "TASK-230": {
       "id": "TASK-230",
       "type": "task",
-      "status": "active",
-      "version": 1,
+      "status": "resolved",
+      "version": 2,
       "created_at": "2026-08-29T06:02:25+00:00",
-      "updated_at": "2026-08-29T06:02:25+00:00",
+      "updated_at": "2026-08-29T10:08:21+00:00",
       "touched_round": 186,
       "category": "performance",
       "severity": 0.6,
@@ -12733,11 +12733,11 @@
     "TASK-231": {
       "id": "TASK-231",
       "type": "task",
-      "status": "active",
-      "version": 1,
+      "status": "resolved",
+      "version": 2,
       "created_at": "2026-08-29T06:02:25+00:00",
-      "updated_at": "2026-08-29T06:02:25+00:00",
-      "touched_round": 186,
+      "updated_at": "2026-08-29T10:08:42+00:00",
+      "touched_round": 187,
       "category": "maintainability",
       "severity": 0.55,
       "title": "Dialog/menu keyboard semantics + polish: Escape-close, focus restore, orphan-safe sections, no raw error messages in UI",
@@ -12767,6 +12767,66 @@
       "title": "TASK-229 verification: full backend pytest 1230 passed/10 skipped @93.83%, ruff check+format green, pyright 0",
       "description": "Final full-suite run green after fixing the 4 intermediate failures (2 mis-asserted mock races, comment-email boundary case updated to a valid 100-char address, export email switched to a valid-but-hostile address).",
       "confidence": 1.0
+    },
+    "CHG-253": {
+      "id": "CHG-253",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-29T10:08:20+00:00",
+      "updated_at": "2026-08-29T10:08:20+00:00",
+      "touched_round": 186,
+      "commit": "0ef2dad",
+      "title": "TASK-230: paginate reader bookmarks/post-subscriptions, subscribe PUT 201/200, admin+upload deletes 204 (ISS-142/146/147)"
+    },
+    "EV-210": {
+      "id": "EV-210",
+      "type": "evidence",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-29T10:08:20+00:00",
+      "updated_at": "2026-08-29T10:08:20+00:00",
+      "touched_round": 186,
+      "source": "0ef2dad+tests",
+      "title": "Verification evidence for ISS-142/ISS-146/ISS-147 delivery",
+      "description": "Backend full pytest suite 1230 passed, 10 skipped @93.85% (includes the new pagination envelope page/limit/total_pages, 201-vs-200 subscription PUT contract, and the 204 no-body deletes); frontend vitest 1276 passed (99 files) incl. useBookmarkSync multi-page-merge; nuxt typecheck exit 0; biome repo-wide green; ruff format+lint clean. Export path re-checked: export_reader_data unpacks the new (rows, total) return — fixed after full-suite caught a 500.",
+      "confidence": 1.0
+    },
+    "CHG-254": {
+      "id": "CHG-254",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-29T10:08:41+00:00",
+      "updated_at": "2026-08-29T10:08:41+00:00",
+      "touched_round": 187,
+      "commit": "7ef29f3",
+      "title": "TASK-231: mobile-nav + media-picker keyboard semantics, no orphaned home heading, no raw error messages (ISS-131/132/134/135)"
+    },
+    "EV-211": {
+      "id": "EV-211",
+      "type": "evidence",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-29T10:08:41+00:00",
+      "updated_at": "2026-08-29T10:08:41+00:00",
+      "touched_round": 187,
+      "source": "7ef29f3+tests",
+      "title": "Verification evidence for ISS-131/ISS-132/ISS-134/ISS-135 delivery",
+      "description": "Frontend vitest 1276 passed (99 files) incl. new Escape-close/focus-restore/focus-trap, orphaned-heading, and error-leak regression tests; nuxt typecheck exit 0; biome repo-wide 0 errors/0 warnings; ruff/format untouched (frontend-only round). Code review APPROVE: 0 CRITICAL/0 HIGH; 1 MEDIUM (nested-Escape override) + 4 LOW notes all addressed (HeaderSearch preventDefault when it consumes Escape, default.vue respects defaultPrevented, panel-scoped trap assertion, focus-into-menu coverage).",
+      "confidence": 1.0
+    },
+    "DEC-210": {
+      "id": "DEC-210",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-29T10:10:18+00:00",
+      "updated_at": "2026-08-29T10:10:18+00:00",
+      "touched_round": 188,
+      "title": "converged-idle: TASK-230 + TASK-231 delivered and verified; backlog fully drained (0 active tasks)",
+      "rationale": "All §10 quality-convergence conditions hold after round 186-188: (1) zero active tasks (ril tasks --top 10 is empty) — TASK-230 (ISS-142/146/147, CHG-253/0ef2dad) and TASK-231 (ISS-131/132/134/135, CHG-254/7ef29f3) both closed with resolves/implements edges; (2) no open high-severity issues — the last 7 issues resolved this session, graph shows none active; (3) latest VERIFY all green: backend full pytest 1230 passed / 10 skipped @93.85%, frontend vitest 1276 passed (99 files), nuxt typecheck exit 0, biome repo-wide 0 errors/0 warnings, ruff format+lint clean; (4) deep-dive produced nothing above the 3.0 threshold (backlog genuine); (5) ril.py check consistent (1043 nodes, 934 edges). Code review of TASK-231: APPROVE, 0 CRITICAL/0 HIGH, MEDIUM+LOW notes addressed. No feature-evolution decision exists, so quality convergence mode stops here.",
+      "alternatives_rejected": "(a) Continuing REPEAT without any active task would only fire round-dial chore(ril) commits — the exact idleness QUIESCE exists to stop; (b) pivoting to feature-evolution mode without an operator directive / roadmap decision — forbidden by §11; (c) relighting sub-3.0 candidates (e.g. residual LOW review notes like focus-trap-extension or a HeaderSearch standalone spec) — below priority threshold and not user-visible enough to justify a new main thread."
     }
   },
   "edges": [
@@ -18335,6 +18395,60 @@
       "to": "ISS-145",
       "type": "resolves",
       "created_at": "2026-08-29T07:52:27+00:00"
+    },
+    {
+      "from": "CHG-253",
+      "to": "TASK-230",
+      "type": "implements",
+      "created_at": "2026-08-29T10:08:20+00:00"
+    },
+    {
+      "from": "CHG-253",
+      "to": "ISS-142",
+      "type": "resolves",
+      "created_at": "2026-08-29T10:08:20+00:00"
+    },
+    {
+      "from": "CHG-253",
+      "to": "ISS-146",
+      "type": "resolves",
+      "created_at": "2026-08-29T10:08:20+00:00"
+    },
+    {
+      "from": "CHG-253",
+      "to": "ISS-147",
+      "type": "resolves",
+      "created_at": "2026-08-29T10:08:21+00:00"
+    },
+    {
+      "from": "CHG-254",
+      "to": "TASK-231",
+      "type": "implements",
+      "created_at": "2026-08-29T10:08:41+00:00"
+    },
+    {
+      "from": "CHG-254",
+      "to": "ISS-131",
+      "type": "resolves",
+      "created_at": "2026-08-29T10:08:41+00:00"
+    },
+    {
+      "from": "CHG-254",
+      "to": "ISS-132",
+      "type": "resolves",
+      "created_at": "2026-08-29T10:08:42+00:00"
+    },
+    {
+      "from": "CHG-254",
+      "to": "ISS-134",
+      "type": "resolves",
+      "created_at": "2026-08-29T10:08:42+00:00"
+    },
+    {
+      "from": "CHG-254",
+      "to": "ISS-135",
+      "type": "resolves",
+      "created_at": "2026-08-29T10:08:42+00:00"
     }
   ]
 }
