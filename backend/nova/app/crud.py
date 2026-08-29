@@ -1482,6 +1482,23 @@ def delete_series(db: Session, series_id: int) -> bool:
 # ---------------------------------------------------------------------------
 
 
+def _commit_reader_upsert(db: Session) -> bool:
+    """Commit an additive unique-keyed reader write.
+
+    Returns True on success. If a concurrent duplicate won the unique-key race
+    (the same (reader, target) row was committed just before ours), rolls back
+    and returns False so the caller re-fetches the winner and reports
+    created=False — the merge-friendly PUT contracts stay idempotent and can
+    never 500 on an IntegrityError (ISS-143).
+    """
+    try:
+        db.commit()
+        return True
+    except IntegrityError:
+        db.rollback()
+        return False
+
+
 def get_reader_bookmark(db: Session, reader_id: int, post_id: int) -> models.ReaderBookmark | None:
     """Return the reader's bookmark for a post, or None."""
     return (
@@ -1503,9 +1520,13 @@ def add_reader_bookmark(db: Session, reader_id: int, post_id: int) -> tuple[mode
         return existing, False
     bookmark = models.ReaderBookmark(reader_id=reader_id, post_id=post_id)
     db.add(bookmark)
-    db.commit()
-    db.refresh(bookmark)
-    return bookmark, True
+    if _commit_reader_upsert(db):
+        db.refresh(bookmark)
+        return bookmark, True
+    existing = get_reader_bookmark(db, reader_id, post_id)
+    if existing:
+        return existing, False
+    raise RuntimeError("bookmark insert lost the unique-key race but no row was found")
 
 
 def remove_reader_bookmark(db: Session, reader_id: int, post_id: int) -> bool:
@@ -1562,9 +1583,13 @@ def record_reading_history(
         scroll_position=scroll_position,
     )
     db.add(row)
-    db.commit()
-    db.refresh(row)
-    return row, True
+    if _commit_reader_upsert(db):
+        db.refresh(row)
+        return row, True
+    existing = get_reading_history(db, reader_id, post_id)
+    if existing:
+        return existing, False
+    raise RuntimeError("history insert lost the unique-key race but no row was found")
 
 
 def list_reader_history(
@@ -1926,9 +1951,13 @@ def add_series_follow(db: Session, reader_id: int, series_id: int) -> tuple[mode
         return existing, False
     follow = models.SeriesFollow(reader_id=reader_id, series_id=series_id)
     db.add(follow)
-    db.commit()
-    db.refresh(follow)
-    return follow, True
+    if _commit_reader_upsert(db):
+        db.refresh(follow)
+        return follow, True
+    existing = get_series_follow(db, reader_id, series_id)
+    if existing:
+        return existing, False
+    raise RuntimeError("series follow insert lost the unique-key race but no row was found")
 
 
 def remove_series_follow(db: Session, reader_id: int, series_id: int) -> bool:
@@ -1992,9 +2021,13 @@ def add_category_follow(db: Session, reader_id: int, category_id: int) -> tuple[
         return existing, False
     follow = models.CategoryFollow(reader_id=reader_id, category_id=category_id)
     db.add(follow)
-    db.commit()
-    db.refresh(follow)
-    return follow, True
+    if _commit_reader_upsert(db):
+        db.refresh(follow)
+        return follow, True
+    existing = get_category_follow(db, reader_id, category_id)
+    if existing:
+        return existing, False
+    raise RuntimeError("category follow insert lost the unique-key race but no row was found")
 
 
 def remove_category_follow(db: Session, reader_id: int, category_id: int) -> bool:
@@ -2063,9 +2096,13 @@ def add_tag_follow(db: Session, reader_id: int, tag_id: int) -> tuple[models.Tag
         return existing, False
     follow = models.TagFollow(reader_id=reader_id, tag_id=tag_id)
     db.add(follow)
-    db.commit()
-    db.refresh(follow)
-    return follow, True
+    if _commit_reader_upsert(db):
+        db.refresh(follow)
+        return follow, True
+    existing = get_tag_follow(db, reader_id, tag_id)
+    if existing:
+        return existing, False
+    raise RuntimeError("tag follow insert lost the unique-key race but no row was found")
 
 
 def remove_tag_follow(db: Session, reader_id: int, tag_id: int) -> bool:
@@ -2346,9 +2383,17 @@ def create_bookmark_folder(db: Session, reader_id: int, name: str) -> tuple[mode
         return existing, False
     folder = models.BookmarkFolder(reader_id=reader_id, name=name)
     db.add(folder)
-    db.commit()
-    db.refresh(folder)
-    return folder, True
+    if _commit_reader_upsert(db):
+        db.refresh(folder)
+        return folder, True
+    existing = (
+        db.query(models.BookmarkFolder)
+        .filter(models.BookmarkFolder.reader_id == reader_id, models.BookmarkFolder.name == name)
+        .first()
+    )
+    if existing:
+        return existing, False
+    raise RuntimeError("bookmark folder insert lost the unique-key race but no row was found")
 
 
 def rename_bookmark_folder(db: Session, reader_id: int, folder_id: int, name: str) -> models.BookmarkFolder | None:
@@ -2434,9 +2479,13 @@ def add_comment_subscription(db: Session, reader_id: int, post_id: int) -> tuple
         return existing, False
     subscription = models.CommentSubscription(reader_id=reader_id, post_id=post_id)
     db.add(subscription)
-    db.commit()
-    db.refresh(subscription)
-    return subscription, True
+    if _commit_reader_upsert(db):
+        db.refresh(subscription)
+        return subscription, True
+    existing = get_comment_subscription(db, reader_id, post_id)
+    if existing:
+        return existing, False
+    raise RuntimeError("thread subscription insert lost the unique-key race but no row was found")
 
 
 def remove_comment_subscription(db: Session, reader_id: int, post_id: int) -> bool:

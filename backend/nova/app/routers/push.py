@@ -2,6 +2,7 @@ from urllib.parse import urlparse
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from pydantic import BaseModel, Field, field_validator
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app import auth, crud, models
@@ -142,7 +143,17 @@ def subscribe(
         new_post_category_id=data.new_post_category_id,
     )
     db.add(sub)
-    db.commit()
+    try:
+        db.commit()
+    except IntegrityError:
+        # A concurrent subscribe for the same endpoint won the unique-key race:
+        # roll back and treat this as the idempotent re-subscribe path (ISS-143).
+        db.rollback()
+        existing = db.query(models.PushSubscription).filter(models.PushSubscription.endpoint == data.endpoint).first()
+        if existing:
+            db.refresh(existing)
+            return existing
+        raise
     db.refresh(sub)
     return sub
 

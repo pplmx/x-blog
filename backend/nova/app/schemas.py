@@ -9,6 +9,12 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 # be matched by the public /posts/{slug_or_id} route.
 SLUG_PATTERN = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
 
+# Shared email shape for every address the API accepts (reader registration and
+# anonymous comment submission) so a malformed "email" can't be persisted and
+# shown in the moderation queue (ISS-145). ReaderRegister used a module-local
+# copy; the single constant keeps both writers in sync.
+EMAIL_PATTERN = r"^[^@\s]+@[^@\s]+\.[^@\s]+\z"
+
 _ALLOWED_COVER_SCHEMES = {"http", "https"}
 
 
@@ -328,9 +334,12 @@ class CommentBase(BaseModel):
 
 class CommentCreate(CommentBase):
     parent_id: int | None = None
-    # Anonymous submissions must identify themselves; signed-in readers send a
-    # placeholder (their identity is stamped from the JWT and this is ignored).
-    # Column width 100 matches the VARCHAR (no DataError on PostgreSQL).
+    # Anonymous submissions must identify themselves; signed-in readers send an
+    # empty placeholder (their identity is stamped from the JWT and this value
+    # is ignored). Column width 100 matches the VARCHAR (no DataError on
+    # PostgreSQL), and a non-empty address must be well-formed so garbage
+    # doesn't reach the moderation queue (ISS-145) — enforced by the validator
+    # below, which still lets the signed-in "" placeholder through.
     email: str = Field(max_length=100)
     # Anti-spam honeypot: a hidden field real humans never see or fill, but
     # naive spam bots do. The frontend submits an empty string; any non-empty
@@ -342,6 +351,16 @@ class CommentCreate(CommentBase):
     def check_honeypot(cls, value: str) -> str:
         if value:
             raise ValueError("Unexpected field")
+        return value
+
+    @field_validator("email")
+    @classmethod
+    def check_email_shape_when_present(cls, value: str) -> str:
+        # "" is the signed-in-reader placeholder; any non-empty address must
+        # match the shared EMAIL_PATTERN. The pattern uses the Rust \z anchor
+        # (Pydantic v2); translate to Python's \Z for this validator.
+        if value and not re.fullmatch(EMAIL_PATTERN.replace(r"\z", r"\Z"), value):
+            raise ValueError("email must be a valid email address or empty")
         return value
 
 

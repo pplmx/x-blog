@@ -100,7 +100,9 @@ class TestExportCommentsCsv:
             f"/api/comments/post/{post_id}",
             json={
                 "nickname": "=cmd|' /C calc'!A0",
-                "email": "@evil.example",
+                # A formula-triggering address that still validates (ISS-145
+                # rejects garbage shapes, so use a valid-but-hostile one).
+                "email": "=cmd@evil.example",
                 "content": '=HYPERLINK("https://evil.example","click")',
             },
         )
@@ -109,7 +111,7 @@ class TestExportCommentsCsv:
         body = response.text
         # Neutralized cells start with a single quote so Excel renders them as text
         assert "'=cmd|' /C calc'!A0" in body
-        assert "'@evil.example" in body
+        assert "'=cmd@evil.example" in body
         assert "'=HYPERLINK(" in body
 
     def test_export_comments_csv_filters_by_status_and_has_status_column(self, client, auth_headers, db_session):

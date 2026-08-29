@@ -980,6 +980,47 @@ class TestIncrementViewsAndLikes:
 
         assert len(cache.posts_list_cache) == 0
 
+
+class TestReaderUpsertIdempotency:
+    """Concurrent duplicate-key writes on reader follows/bookmarks/subscriptions
+    must resolve as idempotent (re-fetch the winner) instead of 500 (ISS-143)."""
+
+    def test_add_reader_bookmark_recovers_from_duplicate_key_race(self):
+        mock_db = MagicMock()
+        # The first commit loses the unique-key race; the recovery re-fetches the
+        # winner WITHOUT a second write (no further commit is made).
+        mock_db.commit.side_effect = [
+            IntegrityError("INSERT INTO reader_bookmarks", {}, Exception("UNIQUE constraint")),
+            None,
+        ]
+        existing = MagicMock()
+        # Pre-check sees no row; after the rollback the re-fetch sees the winner.
+        mock_db.query.return_value.filter.return_value.first.side_effect = [None, existing]
+
+        bookmark, created = crud.add_reader_bookmark(mock_db, 1, 2)
+
+        assert created is False
+        assert bookmark is existing
+        # Only the failed attempt commits; no second write, rollback once.
+        assert mock_db.commit.call_count == 1
+        mock_db.rollback.assert_called_once()
+
+    def test_record_reading_history_recovers_from_duplicate_key_race(self):
+        mock_db = MagicMock()
+        mock_db.commit.side_effect = [
+            IntegrityError("INSERT INTO reading_history", {}, Exception("UNIQUE constraint")),
+            None,
+        ]
+        existing = MagicMock()
+        mock_db.query.return_value.filter.return_value.first.side_effect = [None, existing]
+
+        row, created = crud.record_reading_history(mock_db, 1, 2)
+
+        assert created is False
+        assert row is existing
+        assert mock_db.commit.call_count == 1
+        mock_db.rollback.assert_called_once()
+
     def test_increment_likes_commit_failure_rolls_back(self):
         """Test increment_likes rolls back on commit failure."""
         mock_db = MagicMock()

@@ -90,6 +90,26 @@ def test_posts_list_includes_comment_count(client, post, auth_headers):
     assert client.get("/api/posts").json()["items"][0]["comment_count"] == 1
 
 
+def test_list_comments_unknown_post_404(client):
+    """An unknown post id must 404 on the list, not return an empty page (ISS-144)."""
+    list_response = client.get("/api/comments/post/999999")
+    assert list_response.status_code == 404
+    assert list_response.json()["error"]["code"] == "NOT_FOUND"
+
+
+def test_create_comment_rejects_malformed_email(client, post):
+    """A non-email 'email' is rejected with 422 instead of being persisted (ISS-145)."""
+    response = client.post(
+        f"/api/comments/post/{post['id']}",
+        json={
+            "nickname": "Garbage",
+            "email": "not-an-email",
+            "content": "Should not be stored",
+        },
+    )
+    assert response.status_code == 422
+
+
 def test_create_comment_requires_moderation(client, post, auth_headers):
     """Comments can never self-approve: is_approved is server-controlled."""
     response = client.post(
@@ -151,8 +171,9 @@ def test_create_comment_on_draft_post_returns_404(client, draft_post):
     assert response.status_code == 404
     data = response.json()
     assert data["error"]["code"] == "NOT_FOUND"
-    # The draft must also not be discoverable via the comment list
-    assert len(client.get(f"/api/comments/post/{draft_post['id']}").json()["items"]) == 0
+    # The draft must not be discoverable via the comment list either — listing
+    # 404s like create/like so draft ids are not an existence oracle (ISS-144).
+    assert client.get(f"/api/comments/post/{draft_post['id']}").status_code == 404
 
 
 def test_create_comment_on_scheduled_future_post_returns_404(client, auth_headers):

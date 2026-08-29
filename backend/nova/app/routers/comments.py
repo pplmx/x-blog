@@ -239,10 +239,16 @@ def list_comments(
 
     ``sort`` lets readers reorder the thread — newest (default), oldest, or
     most helpful (likes desc). Invalid values are rejected like the search
-    sort (DEC-094, TASK-159).
+    sort (DEC-094, TASK-159). The post must exist and be publicly visible:
+    drafts/scheduled posts are 404 (same gate as create/like), so a now-draft
+    post's previously approved comments are not served and the endpoint is not
+    a draft-existence oracle (ISS-144).
     """
     if sort not in VALID_COMMENT_SORTS:
         raise HTTPException(status_code=422, detail=f"sort must be one of {list(VALID_COMMENT_SORTS)}")
+    post = db.get(models.Post, post_id)
+    if not post or not crud.is_publicly_visible(post):
+        raise HTTPException(status_code=404, detail="Post not found")
     comments, total = crud.get_comments_paginated(db, post_id, page=page, limit=limit, sort=sort)
     total_pages = (total + limit - 1) // limit if limit > 0 else 0
 

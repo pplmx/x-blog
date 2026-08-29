@@ -629,11 +629,25 @@ class TestColumnLengthParity:
 
     def test_comment_email_rejects_over_100(self):
         with pytest.raises(ValidationError):
-            schemas.CommentCreate(nickname="ok", email="e" * 101, content="hi")
+            schemas.CommentCreate(nickname="ok", email="a" * 101, content="hi")
 
     def test_comment_email_boundary_100_accepted(self):
-        c = schemas.CommentCreate(nickname="ok", email="e" * 100, content="hi")
+        # Length parity: a 100-char address is still accepted — but it must be
+        # validly shaped, not a run of "e"s (the shape check is ISS-145).
+        c = schemas.CommentCreate(nickname="ok", email="a" * 95 + "@b.co", content="hi")
         assert len(c.email) == 100
+
+    def test_comment_email_needs_valid_shape_when_nonempty(self):
+        with pytest.raises(ValidationError):
+            schemas.CommentCreate(nickname="ok", email="not-an-email", content="hi")
+        with pytest.raises(ValidationError):
+            schemas.CommentCreate(nickname="ok", email="@evil.example", content="hi")
+
+    def test_comment_email_empty_placeholder_allowed(self):
+        # Signed-in readers send "" — the backend stamps the account identity
+        # and ignores the value, so the schema must keep accepting it (ISS-145).
+        c = schemas.CommentCreate(nickname="x", email="", content="hi")
+        assert c.email == ""
 
     def test_category_name_rejects_over_50(self):
         with pytest.raises(ValidationError):

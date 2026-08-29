@@ -26,8 +26,9 @@ router = APIRouter(prefix="/api/reader", tags=["reader"])
 # (validated as a Field pattern so malformed input becomes the repo-standard
 # 422 VALIDATION_ERROR envelope instead of a hand-rolled HTTPException).
 # Uses \z (Rust-regex end-of-text anchor — Pydantic v2's engine — not Python
-# $) so a trailing newline cannot sneak past the anchor.
-_EMAIL_PATTERN = r"^[^@\s]+@[^@\s]+\.[^@\s]+\z"
+# $) so a trailing newline cannot sneak past the anchor. Shared with the
+# anonymous comment write path via schemas.EMAIL_PATTERN (ISS-145).
+_EMAIL_PATTERN = schemas.EMAIL_PATTERN
 
 
 class ReaderProfile(BaseModel):
