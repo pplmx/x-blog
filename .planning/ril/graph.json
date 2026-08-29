@@ -2,7 +2,7 @@
   "ril_version": 1,
   "round": 186,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-08-29T06:02:26+00:00",
+  "updated_at": "2026-08-29T07:52:27+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -12491,10 +12491,10 @@
     "ISS-143": {
       "id": "ISS-143",
       "type": "issue",
-      "status": "active",
-      "version": 1,
+      "status": "resolved",
+      "version": 2,
       "created_at": "2026-08-29T01:00:16+00:00",
-      "updated_at": "2026-08-29T01:00:16+00:00",
+      "updated_at": "2026-08-29T07:52:27+00:00",
       "touched_round": 186,
       "title": "Duplicate-key races on reader follows/bookmarks/subscriptions -> 500 not idempotent 200",
       "description": "crud.py:1467-1478 add_reader_bookmark, 1892-1901 series, 1958-1967 category, 2029-2038 tag, 2306-2321 folder, 2396-2409 thread sub, 1503-1537 record_reading_history, push upsert push.py:126-147: SELECT-exists then bare commit; unique constraints mean concurrent double-PUT/retry hits unhandled IntegrityError -> 500, breaking the documented idempotent contracts (reader.py:774-793). flag_comment (crud.py:1070-1076) is the correct pattern. Fix: catch IntegrityError -> rollback -> re-fetch + return existing (or ON CONFLICT DO NOTHING + re-select)."
@@ -12502,10 +12502,10 @@
     "ISS-144": {
       "id": "ISS-144",
       "type": "issue",
-      "status": "active",
-      "version": 1,
+      "status": "resolved",
+      "version": 2,
       "created_at": "2026-08-29T01:00:16+00:00",
-      "updated_at": "2026-08-29T01:00:16+00:00",
+      "updated_at": "2026-08-29T07:52:27+00:00",
       "touched_round": 186,
       "title": "GET /api/comments/post/{id} has no post-existence/visibility gate",
       "description": "comments.py:230-257 vs siblings create (273-275) and like (344-349): the list returns 200 + empty for unknown/draft ids and keeps serving a now-draft post's previously-approved comments - an existence/visibility oracle the codebase elsewhere avoids. Fix: resolve Post, 404 when missing or not crud.is_publicly_visible."
@@ -12513,10 +12513,10 @@
     "ISS-145": {
       "id": "ISS-145",
       "type": "issue",
-      "status": "active",
-      "version": 1,
+      "status": "resolved",
+      "version": 2,
       "created_at": "2026-08-29T01:00:16+00:00",
-      "updated_at": "2026-08-29T01:00:16+00:00",
+      "updated_at": "2026-08-29T07:52:27+00:00",
       "touched_round": 186,
       "title": "CommentCreate.email accepted unvalidated",
       "description": "schemas.py:334: email: str = Field(max_length=100) with no format pattern, while reader registration enforces a strict regex (reader.py:30,51). Any garbage string is persisted and shown in the admin moderation queue (admin.py:771). Fix: reuse the ReaderRegister email Field(pattern=...)."
@@ -12707,10 +12707,10 @@
     "TASK-229": {
       "id": "TASK-229",
       "type": "task",
-      "status": "active",
-      "version": 1,
+      "status": "resolved",
+      "version": 2,
       "created_at": "2026-08-29T06:02:25+00:00",
-      "updated_at": "2026-08-29T06:02:25+00:00",
+      "updated_at": "2026-08-29T07:52:27+00:00",
       "touched_round": 186,
       "category": "correctness",
       "severity": 0.75,
@@ -12742,6 +12742,31 @@
       "severity": 0.55,
       "title": "Dialog/menu keyboard semantics + polish: Escape-close, focus restore, orphan-safe sections, no raw error messages in UI",
       "description": "ISS-131: mobile nav menu closes on Escape + focus returns to the trigger (app/layouts/default.vue). ISS-132: MediaPickerModal closes on Escape with focus trap/restore. ISS-134: home 'Recommended for you' section is gated on content too (no orphaned heading). ISS-135: index.vue/post/series/search pages stop printing raw backend error.message to users (keep the friendly line, map nothing extra)."
+    },
+    "CHG-252": {
+      "id": "CHG-252",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-29T07:52:26+00:00",
+      "updated_at": "2026-08-29T07:52:26+00:00",
+      "touched_round": 186,
+      "commit": "3200fcb",
+      "title": "TASK-229: idempotency-safe reader upserts + comments visibility + email validation (ISS-143/144/145)",
+      "description": "commit 3200fcb: shared _commit_reader_upsert (rollback + re-fetch winner on duplicate-key race) across bookmarks/history/series/category/tag/folder/thread-sub + push subscribe; comments list 404 gate; EMAIL_PATTERN shared + CommentCreate empty-or-valid email. Backend 1230 passed/10 skipped @93.83%, ruff + pyright green."
+    },
+    "EV-209": {
+      "id": "EV-209",
+      "type": "evidence",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-29T07:52:26+00:00",
+      "updated_at": "2026-08-29T07:52:26+00:00",
+      "touched_round": 186,
+      "source": "3200fcb",
+      "title": "TASK-229 verification: full backend pytest 1230 passed/10 skipped @93.83%, ruff check+format green, pyright 0",
+      "description": "Final full-suite run green after fixing the 4 intermediate failures (2 mis-asserted mock races, comment-email boundary case updated to a valid 100-char address, export email switched to a valid-but-hostile address).",
+      "confidence": 1.0
     }
   },
   "edges": [
@@ -18286,6 +18311,30 @@
       "to": "ISS-135",
       "type": "addresses",
       "created_at": "2026-08-29T06:02:26+00:00"
+    },
+    {
+      "from": "CHG-252",
+      "to": "TASK-229",
+      "type": "implements",
+      "created_at": "2026-08-29T07:52:26+00:00"
+    },
+    {
+      "from": "CHG-252",
+      "to": "ISS-143",
+      "type": "resolves",
+      "created_at": "2026-08-29T07:52:27+00:00"
+    },
+    {
+      "from": "CHG-252",
+      "to": "ISS-144",
+      "type": "resolves",
+      "created_at": "2026-08-29T07:52:27+00:00"
+    },
+    {
+      "from": "CHG-252",
+      "to": "ISS-145",
+      "type": "resolves",
+      "created_at": "2026-08-29T07:52:27+00:00"
     }
   ]
 }
