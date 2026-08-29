@@ -2,7 +2,7 @@
   "ril_version": 1,
   "round": 186,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-08-29T04:50:00+00:00",
+  "updated_at": "2026-08-29T06:02:26+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -12337,22 +12337,22 @@
     "ISS-129": {
       "id": "ISS-129",
       "type": "issue",
-      "status": "active",
-      "version": 1,
+      "status": "resolved",
+      "version": 2,
       "created_at": "2026-08-29T01:00:15+00:00",
-      "updated_at": "2026-08-29T01:00:15+00:00",
-      "touched_round": 185,
+      "updated_at": "2026-08-29T05:59:59+00:00",
+      "touched_round": 186,
       "title": "My-comments page: no loading state on refetch, errors render as empty state",
       "description": "comments.vue:39-48: load() only sets loading=true initially; tab/status changes and pagination re-call load() showing old data with zero feedback; catch sets commentData=null -> renders 'no comments' for genuine errors. Fix: loading=true at start of load(), separate error flag + distinct message."
     },
     "ISS-130": {
       "id": "ISS-130",
       "type": "issue",
-      "status": "active",
-      "version": 1,
+      "status": "resolved",
+      "version": 2,
       "created_at": "2026-08-29T01:00:15+00:00",
-      "updated_at": "2026-08-29T01:00:15+00:00",
-      "touched_round": 185,
+      "updated_at": "2026-08-29T05:59:59+00:00",
+      "touched_round": 186,
       "title": "CommentList pagination/sort refetches have no loading feedback",
       "description": "CommentList.vue:433-439 onSortChange & 661-664 loadPage -> refreshList() (640-642) never touches pending; pending only reflects the initial useComments. Previous page stays until response swaps in. Fix: local refreshing ref + compact skeleton/spinner."
     },
@@ -12381,11 +12381,11 @@
     "ISS-133": {
       "id": "ISS-133",
       "type": "issue",
-      "status": "active",
-      "version": 1,
+      "status": "resolved",
+      "version": 2,
       "created_at": "2026-08-29T01:00:15+00:00",
-      "updated_at": "2026-08-29T01:00:15+00:00",
-      "touched_round": 185,
+      "updated_at": "2026-08-29T05:59:59+00:00",
+      "touched_round": 186,
       "title": "Notifications mark-read actions fail silently with no busy state",
       "description": "notifications.vue:205-217 markAllRead and 193-203 markRead: best-effort empty catch, button not disabled while in flight, failed ops leave rows/badge unchanged with no message. Fix: markingAll ref to disable + spinner, surface failure via common.errors.network."
     },
@@ -12414,22 +12414,22 @@
     "ISS-136": {
       "id": "ISS-136",
       "type": "issue",
-      "status": "active",
-      "version": 1,
+      "status": "resolved",
+      "version": 2,
       "created_at": "2026-08-29T01:00:15+00:00",
-      "updated_at": "2026-08-29T01:00:15+00:00",
-      "touched_round": 185,
+      "updated_at": "2026-08-29T05:59:59+00:00",
+      "touched_round": 186,
       "title": "Reading-history heatmap is color-only, tooltip has hardcoded full-width colon",
       "description": "history.vue:132 hardcoded full-width ':' in `${fmt.format(d)}:{posts}` tooltip (looks wrong in English); 217-235 heatmap cells convey intensity only via background color (no role/aria-label), legend 228-236 color-only. Fix: role='img' + aria-label per cell (aria-hidden empty cells), locale-friendly separator."
     },
     "ISS-137": {
       "id": "ISS-137",
       "type": "issue",
-      "status": "active",
-      "version": 1,
+      "status": "resolved",
+      "version": 2,
       "created_at": "2026-08-29T01:00:15+00:00",
-      "updated_at": "2026-08-29T01:00:15+00:00",
-      "touched_round": 185,
+      "updated_at": "2026-08-29T05:59:59+00:00",
+      "touched_round": 186,
       "title": "Icon-only action buttons rely on title tooltip, no aria-label",
       "description": "bookmarks.vue:317-324 bookmark remove X (title only); ShareButtons.vue:9-73 Weibo/X/Facebook/LinkedIn/copy-link icon-only with title only. title is not a reliable a11y name; rest of app uses :aria-label consistently. Fix: add :aria-label per button."
     },
@@ -12572,11 +12572,11 @@
     "TASK-228": {
       "id": "TASK-228",
       "type": "task",
-      "status": "active",
-      "version": 1,
+      "status": "resolved",
+      "version": 2,
       "created_at": "2026-08-29T01:02:21+00:00",
-      "updated_at": "2026-08-29T01:02:21+00:00",
-      "touched_round": 185,
+      "updated_at": "2026-08-29T05:59:59+00:00",
+      "touched_round": 186,
       "category": "maintainability",
       "severity": 0.6,
       "title": "Frontend feedback/a11y polish: loading+error-vs-empty states, notification busy state, heatmap a11y + i18n, icon aria-labels",
@@ -12678,6 +12678,70 @@
       "title": "Live counters invalidate cached list payloads (supersedes the inline design choice that views/likes bypass cache invalidation)",
       "rationale": "cache.py previously stated views/likes do NOT invalidate posts_list_cache because they don't change list ordering/content. But PostListResponse embeds views/likes, so public lists showed counters up to 5 minutes stale (ISS-141). The cache philosophy is explicit write-invalidation with TTL only as a safety net; a counter bump is a write that changes a cached payload, so increment_views/increment_likes now call clear_posts_list_cache. The re-query cost under counter writes is accepted for this project's scale; a stable-ETag/304 redesign with decoupled counters was rejected as conflicting with TASK-128's conditional layer.",
       "alternatives_rejected": "Keeping the staleness (counter drift up to 5 min on public lists); decoupling view/like counters from the cached payload and merging fresh counts per request (breaks the stable-body ETag/304 contract from TASK-128)."
+    },
+    "CHG-251": {
+      "id": "CHG-251",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-29T05:59:58+00:00",
+      "updated_at": "2026-08-29T05:59:58+00:00",
+      "touched_round": 186,
+      "commit": "9d78768",
+      "title": "TASK-228: feedback + a11y polish (ISS-129/130/133/136/137)",
+      "description": "commit 9d78768: comments error+retry state; CommentList in-flight spinner; notification mark-read busy+failure; heatmap accessible summary + locale-aware separator; icon-only button aria-labels. Vitest 1269 passed, typecheck 0, biome 0."
+    },
+    "EV-208": {
+      "id": "EV-208",
+      "type": "evidence",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-29T05:59:58+00:00",
+      "updated_at": "2026-08-29T05:59:58+00:00",
+      "touched_round": 186,
+      "source": "9d78768",
+      "title": "TASK-228 verification: frontend vitest 1269 passed/99 files, nuxt typecheck exit 0, biome 0 errors",
+      "description": "Full frontend suite green (1269 tests, +5 from the new ISS-129/130/133/136 coverage). typecheck exit 0; biome check 0 errors (1 pre-existing schema-version info).",
+      "confidence": 1.0
+    },
+    "TASK-229": {
+      "id": "TASK-229",
+      "type": "task",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-29T06:02:25+00:00",
+      "updated_at": "2026-08-29T06:02:25+00:00",
+      "touched_round": 186,
+      "category": "correctness",
+      "severity": 0.75,
+      "title": "Reader write endpoints use idempotency-safe upserts (duplicate-key race no longer 500), comments list gates post visibility, CommentCreate email validated",
+      "description": "ISS-143: add_reader_bookmark/series/category/tag/folder/thread-sub, record_reading_history and the push subscribe upsert each do SELECT-exists-then-commit, so a concurrent double-PUT/retry hits an unhandled IntegrityError -> 500, breaking the documented idempotent contract (reader.py:774-793). Fix like flag_comment (crud.py:1070-1076): catch IntegrityError -> rollback -> re-fetch + return existing (or INSERT ON CONFLICT DO NOTHING + re-select). ISS-144: GET /api/comments/post/{id} should 404 for unknown/not-publicly-visible posts like its create/like siblings. ISS-145: apply the ReaderRegister email Field(pattern=...) to CommentCreate.email."
+    },
+    "TASK-230": {
+      "id": "TASK-230",
+      "type": "task",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-29T06:02:25+00:00",
+      "updated_at": "2026-08-29T06:02:25+00:00",
+      "touched_round": 186,
+      "category": "performance",
+      "severity": 0.6,
+      "title": "Paginate reader bookmarks/push-subscriptions lists and align the last API-status inconsistencies",
+      "description": "ISS-142: GET /api/reader/me/bookmarks (crud.list_reader_bookmarks query.all() + python-filter) and /me/push-subscriptions are unbounded; add page/limit defaults+cap with SQL-side offset/limit+visibility filter, mirroring list_reader_history. ISS-146: PUT /api/posts/{id}/subscription should return 201 only on first create, 200 when it already existed (sibling PUT contract). ISS-147: admin DELETE endpoints (users, posts, single upload file) return 200-with-body where public/reader deletes return 204 — standardize; verify the admin frontend matches."
+    },
+    "TASK-231": {
+      "id": "TASK-231",
+      "type": "task",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-29T06:02:25+00:00",
+      "updated_at": "2026-08-29T06:02:25+00:00",
+      "touched_round": 186,
+      "category": "maintainability",
+      "severity": 0.55,
+      "title": "Dialog/menu keyboard semantics + polish: Escape-close, focus restore, orphan-safe sections, no raw error messages in UI",
+      "description": "ISS-131: mobile nav menu closes on Escape + focus returns to the trigger (app/layouts/default.vue). ISS-132: MediaPickerModal closes on Escape with focus trap/restore. ISS-134: home 'Recommended for you' section is gated on content too (no orphaned heading). ISS-135: index.vue/post/series/search pages stop printing raw backend error.message to users (keep the friendly line, map nothing extra)."
     }
   },
   "edges": [
@@ -18126,6 +18190,102 @@
       "to": "ISS-141",
       "type": "resolves",
       "created_at": "2026-08-29T04:49:05+00:00"
+    },
+    {
+      "from": "CHG-251",
+      "to": "TASK-228",
+      "type": "implements",
+      "created_at": "2026-08-29T05:59:58+00:00"
+    },
+    {
+      "from": "CHG-251",
+      "to": "ISS-129",
+      "type": "resolves",
+      "created_at": "2026-08-29T05:59:58+00:00"
+    },
+    {
+      "from": "CHG-251",
+      "to": "ISS-130",
+      "type": "resolves",
+      "created_at": "2026-08-29T05:59:58+00:00"
+    },
+    {
+      "from": "CHG-251",
+      "to": "ISS-133",
+      "type": "resolves",
+      "created_at": "2026-08-29T05:59:58+00:00"
+    },
+    {
+      "from": "CHG-251",
+      "to": "ISS-136",
+      "type": "resolves",
+      "created_at": "2026-08-29T05:59:58+00:00"
+    },
+    {
+      "from": "CHG-251",
+      "to": "ISS-137",
+      "type": "resolves",
+      "created_at": "2026-08-29T05:59:58+00:00"
+    },
+    {
+      "from": "TASK-229",
+      "to": "ISS-143",
+      "type": "addresses",
+      "created_at": "2026-08-29T06:02:25+00:00"
+    },
+    {
+      "from": "TASK-229",
+      "to": "ISS-144",
+      "type": "addresses",
+      "created_at": "2026-08-29T06:02:25+00:00"
+    },
+    {
+      "from": "TASK-229",
+      "to": "ISS-145",
+      "type": "addresses",
+      "created_at": "2026-08-29T06:02:25+00:00"
+    },
+    {
+      "from": "TASK-230",
+      "to": "ISS-142",
+      "type": "addresses",
+      "created_at": "2026-08-29T06:02:25+00:00"
+    },
+    {
+      "from": "TASK-230",
+      "to": "ISS-146",
+      "type": "addresses",
+      "created_at": "2026-08-29T06:02:25+00:00"
+    },
+    {
+      "from": "TASK-230",
+      "to": "ISS-147",
+      "type": "addresses",
+      "created_at": "2026-08-29T06:02:25+00:00"
+    },
+    {
+      "from": "TASK-231",
+      "to": "ISS-131",
+      "type": "addresses",
+      "created_at": "2026-08-29T06:02:26+00:00"
+    },
+    {
+      "from": "TASK-231",
+      "to": "ISS-132",
+      "type": "addresses",
+      "created_at": "2026-08-29T06:02:26+00:00"
+    },
+    {
+      "from": "TASK-231",
+      "to": "ISS-134",
+      "type": "addresses",
+      "created_at": "2026-08-29T06:02:26+00:00"
+    },
+    {
+      "from": "TASK-231",
+      "to": "ISS-135",
+      "type": "addresses",
+      "created_at": "2026-08-29T06:02:26+00:00"
     }
   ]
 }
