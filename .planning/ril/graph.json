@@ -2,7 +2,7 @@
   "ril_version": 1,
   "round": 189,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-08-29T10:10:18+00:00",
+  "updated_at": "2026-08-29T17:15:55+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -12614,7 +12614,7 @@
       "version": 1,
       "created_at": "2026-08-29T04:02:38+00:00",
       "updated_at": "2026-08-29T04:02:38+00:00",
-      "touched_round": 186,
+      "touched_round": 189,
       "title": "Login/API fails with Failed to fetch when the site is accessed via a machine IP",
       "description": "Real user report: POST http://localhost:18888/api/reader/login -> '<no response> Failed to fetch' every time on http://10.112.9.49:34567/login. Root cause: NUXT_API_URL (old docs/deployment.md guidance) is injected into the client bundle as runtimeConfig.public.apiUrl, so the browser bypasses the same-origin /api proxy (server/routes/api/[...path].ts) and calls the backend directly, cross-origin. Backend ALLOWED_ORIGINS only lists localhost:3000/34567, so a LAN-IP origin fails the CORS preflight -> TypeError: Failed to fetch. Fixed in 434d952: docs guide to the proxy (or server-only NUXT_PROXY_TARGET) + build-time guard in nuxt.config.ts."
     },
@@ -12827,6 +12827,17 @@
       "title": "converged-idle: TASK-230 + TASK-231 delivered and verified; backlog fully drained (0 active tasks)",
       "rationale": "All §10 quality-convergence conditions hold after round 186-188: (1) zero active tasks (ril tasks --top 10 is empty) — TASK-230 (ISS-142/146/147, CHG-253/0ef2dad) and TASK-231 (ISS-131/132/134/135, CHG-254/7ef29f3) both closed with resolves/implements edges; (2) no open high-severity issues — the last 7 issues resolved this session, graph shows none active; (3) latest VERIFY all green: backend full pytest 1230 passed / 10 skipped @93.85%, frontend vitest 1276 passed (99 files), nuxt typecheck exit 0, biome repo-wide 0 errors/0 warnings, ruff format+lint clean; (4) deep-dive produced nothing above the 3.0 threshold (backlog genuine); (5) ril.py check consistent (1043 nodes, 934 edges). Code review of TASK-231: APPROVE, 0 CRITICAL/0 HIGH, MEDIUM+LOW notes addressed. No feature-evolution decision exists, so quality convergence mode stops here.",
       "alternatives_rejected": "(a) Continuing REPEAT without any active task would only fire round-dial chore(ril) commits — the exact idleness QUIESCE exists to stop; (b) pivoting to feature-evolution mode without an operator directive / roadmap decision — forbidden by §11; (c) relighting sub-3.0 candidates (e.g. residual LOW review notes like focus-trap-extension or a HeaderSearch standalone spec) — below priority threshold and not user-visible enough to justify a new main thread."
+    },
+    "ISS-149": {
+      "id": "ISS-149",
+      "type": "issue",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-29T17:14:53+00:00",
+      "updated_at": "2026-08-29T17:14:53+00:00",
+      "touched_round": 189,
+      "title": "ISS-148 regression: dev frontend relaunched with NUXT_API_URL in env; login Failed-to-fetch again",
+      "description": "Real user report (recurrence): login from http://10.112.9.49:34567/login still failed — browser logged POST http://localhost:18888/api/reader/login -> \"<no response> Failed to fetch\". The running `nuxt dev --port 34567` process (started 2026-08-28 20:01) had NUXT_API_URL=http://localhost:18888 in its environment, which nuxt.config.ts bakes into runtimeConfig.public.apiUrl and leaks into the client bundle; the browser then bypasses the same-origin /api proxy (server/routes/api/[...path].ts) and calls the backend cross-origin on localhost:18888 (from a LAN browser localhost is the client itself, and backend ALLOWED_ORIGINS lacks the 10.112.9.49 origin) -> preflight/network failure. Root cause of the recurrence: frontend/aura/README.md still instructed `NUXT_API_URL=http://localhost:18888 pnpm dev` (docs/deployment.md was fixed in 434d952/ISS-148 but the README was missed), and the dev service had been started from a shell that exported it. Remediation (2026-08-30): restarted `nuxt dev --port 34567` with `env -u NUXT_API_URL` + server-side NUXT_PROXY_TARGET=http://localhost:18888 (client bundle now serves apiUrl:\"\"); backend restarted on :18888 against dev Postgres 10.112.9.49:13310/postgres (was down); E2E via same-origin proxy verified register 201 / login 200. README corrected."
     }
   },
   "edges": [
@@ -18449,6 +18460,16 @@
       "to": "ISS-135",
       "type": "resolves",
       "created_at": "2026-08-29T10:08:42+00:00"
+    },
+    {
+      "from": "ISS-148",
+      "to": "ISS-149",
+      "type": "causes",
+      "created_at": "2026-08-29T17:15:55+00:00",
+      "meta": {
+        "root_cause": true
+      },
+      "note": "ISS-149 is the operational recurrence of the same defect family (NUXT_API_URL leaking into the client bundle); ISS-148 remained status=active with only a resolves edge from CHG-249, and frontend/aura/README.md still taught the poisoned dev command."
     }
   ]
 }
