@@ -2,7 +2,7 @@
   "ril_version": 1,
   "round": 186,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-08-29T04:02:38+00:00",
+  "updated_at": "2026-08-29T04:50:00+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -12436,44 +12436,44 @@
     "ISS-138": {
       "id": "ISS-138",
       "type": "issue",
-      "status": "active",
-      "version": 1,
+      "status": "resolved",
+      "version": 2,
       "created_at": "2026-08-29T01:00:15+00:00",
-      "updated_at": "2026-08-29T01:00:15+00:00",
-      "touched_round": 185,
+      "updated_at": "2026-08-29T04:50:00+00:00",
+      "touched_round": 186,
       "title": "Public view-count upsert races under concurrency -> 500",
       "description": "crud.py:1026-1031 (posts.py:149-164 POST /api/posts/{id}/view, fire-and-forget): post_views_daily read-modify-write (SELECT then add) with no IntegrityError handling on uq_post_views_daily_post_day (models.py:638); two concurrent first-day views -> one IntegrityError -> except Exception rollback/raise (crud.py:1033-1036) -> public 500 and rolls back the atomic Post.views update losing the count. Fix: catch IntegrityError -> rollback -> second atomic UPDATE views=views+1 WHERE post/day, or INSERT..ON CONFLICT DO UPDATE."
     },
     "ISS-139": {
       "id": "ISS-139",
       "type": "issue",
-      "status": "active",
-      "version": 1,
+      "status": "resolved",
+      "version": 2,
       "created_at": "2026-08-29T01:00:15+00:00",
-      "updated_at": "2026-08-29T01:00:15+00:00",
-      "touched_round": 185,
+      "updated_at": "2026-08-29T04:50:00+00:00",
+      "touched_round": 186,
       "title": "N+1 on public comment list: one query per reader-attributed comment",
       "description": "comments.py:252 get_comments_paginated (crud.py:631-644) returns Comment rows with no joinedload(Comment.reader); serializing CommentPublic (schemas.py:451-454 reader field accesses c.reader) fires one lazy query per reader-attributed comment. 100-comment thread = ~100 queries/request. Fix: .options(joinedload(models.Comment.reader))."
     },
     "ISS-140": {
       "id": "ISS-140",
       "type": "issue",
-      "status": "active",
-      "version": 1,
+      "status": "resolved",
+      "version": 2,
       "created_at": "2026-08-29T01:00:15+00:00",
-      "updated_at": "2026-08-29T01:00:15+00:00",
-      "touched_round": 185,
+      "updated_at": "2026-08-29T04:50:00+00:00",
+      "touched_round": 186,
       "title": "N+1 on reader's own comment history: db.get(Post) per comment",
       "description": "reader.py:1315 list_my_comments (reader.py:1292-1331) loops `for c in comments` doing post = db.get(models.Post, c.post_id) per comment; 100 comments/page -> 100 queries even with shared posts. Fix: collect post_ids, batch load with one in_() query into {id: post} map."
     },
     "ISS-141": {
       "id": "ISS-141",
       "type": "issue",
-      "status": "active",
-      "version": 1,
+      "status": "resolved",
+      "version": 2,
       "created_at": "2026-08-29T01:00:16+00:00",
-      "updated_at": "2026-08-29T01:00:16+00:00",
-      "touched_round": 185,
+      "updated_at": "2026-08-29T04:50:00+00:00",
+      "touched_round": 186,
       "title": "Cached posts list serves stale views/likes counts for up to 5 minutes",
       "description": "posts.py:41-75 + cache.py:37-39: posts_list_cache caches serialized PostListResponse incl views/likes (schemas.py:243-246); increment_views/increment_likes (crud.py:1016,1043) never invalidate it, so homepage/archive list show stale counters until 300s TTL. Comment counts are cleared on create/approve. Fix: invalidate posts_list_cache in increment_views/increment_likes (or exclude live counters)."
     },
@@ -12559,11 +12559,11 @@
     "TASK-227": {
       "id": "TASK-227",
       "type": "task",
-      "status": "active",
-      "version": 1,
+      "status": "resolved",
+      "version": 2,
       "created_at": "2026-08-29T01:02:21+00:00",
-      "updated_at": "2026-08-29T01:02:21+00:00",
-      "touched_round": 185,
+      "updated_at": "2026-08-29T04:50:00+00:00",
+      "touched_round": 186,
       "category": "performance",
       "severity": 0.75,
       "title": "Backend perf/consistency: view-count race 500, N+1 on public comment list + reader comment history, stale cached views/likes",
@@ -12641,6 +12641,43 @@
       "commit": "434d952",
       "title": "docs + build-time guard so apiUrl can never silently force cross-origin API calls",
       "description": "docs/deployment.md rewrites the frontend env guidance (no .env needed in dev; use NUXT_PROXY_TARGET for remote backends); nuxt.config.ts warns when an absolute NUXT_API_URL is set. Verified typecheck 0, biome 0."
+    },
+    "CHG-250": {
+      "id": "CHG-250",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-29T04:49:04+00:00",
+      "updated_at": "2026-08-29T04:49:04+00:00",
+      "touched_round": 186,
+      "commit": "f3f7ac1",
+      "title": "TASK-227: view-count race 500 fix, 2x N+1, stale cached counters (ISS-138/139/140/141)",
+      "description": "commit f3f7ac1: IntegrityError recovery in increment_views; joinedload(Comment.reader) on comment list page query; batch in_() post load in list_my_comments; invalidate posts_list_cache in increment_views/increment_likes. Full backend suite 1224 passed/10 skipped, ruff check+format green, pyright 0."
+    },
+    "EV-207": {
+      "id": "EV-207",
+      "type": "evidence",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-29T04:49:04+00:00",
+      "updated_at": "2026-08-29T04:49:04+00:00",
+      "touched_round": 186,
+      "source": "f3f7ac1",
+      "title": "TASK-227 verification: pytest 1224 passed/10 skipped, ruff check+format green, pyright 0 errors",
+      "description": "Full backend suite green (1224 passed incl. 2 new tests: ISS-138 race recovery via mock, ISS-141 cache invalidation). ruff check ./format --check green, pyright 0/0/0.",
+      "confidence": 1.0
+    },
+    "DEC-209": {
+      "id": "DEC-209",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-29T04:49:04+00:00",
+      "updated_at": "2026-08-29T04:49:04+00:00",
+      "touched_round": 186,
+      "title": "Live counters invalidate cached list payloads (supersedes the inline design choice that views/likes bypass cache invalidation)",
+      "rationale": "cache.py previously stated views/likes do NOT invalidate posts_list_cache because they don't change list ordering/content. But PostListResponse embeds views/likes, so public lists showed counters up to 5 minutes stale (ISS-141). The cache philosophy is explicit write-invalidation with TTL only as a safety net; a counter bump is a write that changes a cached payload, so increment_views/increment_likes now call clear_posts_list_cache. The re-query cost under counter writes is accepted for this project's scale; a stable-ETag/304 redesign with decoupled counters was rejected as conflicting with TASK-128's conditional layer.",
+      "alternatives_rejected": "Keeping the staleness (counter drift up to 5 min on public lists); decoupling view/like counters from the cached payload and merging fresh counts per request (breaks the stable-body ETag/304 contract from TASK-128)."
     }
   },
   "edges": [
@@ -18059,6 +18096,36 @@
       "to": "COMP-002",
       "type": "governs",
       "created_at": "2026-08-29T04:02:38+00:00"
+    },
+    {
+      "from": "CHG-250",
+      "to": "TASK-227",
+      "type": "implements",
+      "created_at": "2026-08-29T04:49:04+00:00"
+    },
+    {
+      "from": "CHG-250",
+      "to": "ISS-138",
+      "type": "resolves",
+      "created_at": "2026-08-29T04:49:05+00:00"
+    },
+    {
+      "from": "CHG-250",
+      "to": "ISS-139",
+      "type": "resolves",
+      "created_at": "2026-08-29T04:49:05+00:00"
+    },
+    {
+      "from": "CHG-250",
+      "to": "ISS-140",
+      "type": "resolves",
+      "created_at": "2026-08-29T04:49:05+00:00"
+    },
+    {
+      "from": "CHG-250",
+      "to": "ISS-141",
+      "type": "resolves",
+      "created_at": "2026-08-29T04:49:05+00:00"
     }
   ]
 }
