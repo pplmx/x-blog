@@ -129,8 +129,63 @@ describe("Default Layout", () => {
 			await menuButton.trigger("click");
 			await wrapper.vm.$nextTick();
 
-			// Mobile nav links should be visible
-			expect(wrapper.text()).toContain("首页");
+			// The mobile nav panel should exist (desktop nav renders Home too)
+			expect(wrapper.find("#mobile-nav").exists()).toBe(true);
+		});
+
+		it("closes the mobile menu on Escape (ISS-131)", async () => {
+			const wrapper = mountLayout();
+			const menuButton = wrapper.find('button[aria-label="打开菜单"]');
+			await menuButton.trigger("click");
+			await wrapper.vm.$nextTick();
+			expect(wrapper.find("#mobile-nav").exists()).toBe(true);
+
+			window.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" }));
+			await wrapper.vm.$nextTick();
+
+			expect(wrapper.find("#mobile-nav").exists()).toBe(false);
+			expect(menuButton.attributes("aria-expanded")).toBe("false");
+		});
+	});
+
+	describe("Mobile menu keyboard focus (ISS-131)", () => {
+		// These assert real focus movement, so the layout must be attached to
+		// the DOM (the non-attached mountLayout() leaves focus tracking inert).
+		afterEach(() => {
+			document.body.innerHTML = "";
+		});
+
+		function mountAttached() {
+			return mount(DefaultLayout, {
+				slots: {
+					default: '<div class="page-content">Page content here</div>',
+				},
+				attachTo: document.body,
+				global: {
+					stubs: {
+						NuxtLink: {
+							template: '<a :href="to"><slot/></a>',
+							props: ["to"],
+						},
+						Icon: {
+							template: '<svg class="iconstub" data-icon=":icon"></svg>',
+							props: ["icon"],
+						},
+					},
+				},
+			});
+		}
+
+		it("moves focus into the menu on open and restores it to the toggle on Escape", async () => {
+			const wrapper = mountAttached();
+			const menuButton = wrapper.find('button[aria-label="打开菜单"]');
+			await menuButton.trigger("click");
+			await wrapper.vm.$nextTick();
+			expect(document.activeElement).toBe(wrapper.find("#mobile-nav a").element);
+
+			window.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" }));
+			await wrapper.vm.$nextTick();
+			expect(document.activeElement).toBe(menuButton.element);
 		});
 	});
 

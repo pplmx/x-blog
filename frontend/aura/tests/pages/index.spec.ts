@@ -296,7 +296,8 @@ describe("Index Page", () => {
 			mockState.error = { message: "Failed to fetch posts" };
 			const wrapper = await mountIndexPage();
 			expect(wrapper.text()).toContain("加载失败");
-			expect(wrapper.text()).toContain("Failed to fetch posts");
+			// ISS-135: never leak the raw backend/exception message to readers.
+			expect(wrapper.text()).not.toContain("Failed to fetch posts");
 		});
 	});
 
@@ -671,6 +672,13 @@ describe("Index Page", () => {
 			mockState.recommended = [
 				{ id: 7, title: "AI Post", slug: "ai-post", views: 3, category: { id: 2, name: "AI" } },
 			];
+			const wrapper = await mountIndexPage();
+			expect(wrapper.text()).not.toContain("为你推荐");
+		});
+
+		it("does not render an orphaned heading for a signed-in reader with no recs (ISS-134)", async () => {
+			window.localStorage.setItem("reader_token", "token");
+			mockState.recommended = [];
 			const wrapper = await mountIndexPage();
 			expect(wrapper.text()).not.toContain("为你推荐");
 		});

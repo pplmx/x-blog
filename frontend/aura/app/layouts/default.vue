@@ -49,6 +49,9 @@ onUnmounted(() => {
 
 const isDark = ref(false);
 const mobileMenuOpen = ref(false);
+// The menu toggle itself: Escape/focus-restore (ISS-131, TASK-231) sends focus
+// back here when the panel closes so keyboard users never lose their place.
+const mobileMenuToggle = ref<HTMLButtonElement | null>(null);
 
 function updateDarkClass() {
 	if (typeof document === "undefined") return;
@@ -59,12 +62,50 @@ function toggleDark() {
 	isDark.value = !isDark.value;
 }
 
+// Keyboard semantics for the mobile nav (ISS-131): Escape closes and returns
+// focus to the toggle; opening the panel moves focus to its first link so the
+// next Tab/Enter starts inside the menu instead of re-walking the header.
+function handleNavKeydown(e: KeyboardEvent) {
+	// Respect a nested widget that already consumed Escape (e.g. HeaderSearch
+	// closing its own suggestions): only close the whole menu when nothing
+	// more-specific handled the key first.
+	if (e.key !== "Escape" || !mobileMenuOpen.value || e.defaultPrevented) return;
+	mobileMenuOpen.value = false;
+	mobileMenuToggle.value?.focus();
+}
+
+function openMobileMenu() {
+	mobileMenuOpen.value = true;
+	nextTick(() => {
+		document
+			.querySelector<HTMLElement>("#mobile-nav a, #mobile-nav button")
+			?.focus({ preventScroll: true });
+	});
+}
+
+function toggleMobileMenu() {
+	if (mobileMenuOpen.value) {
+		mobileMenuOpen.value = false;
+		// The click already leaves focus on the toggle; keep it there.
+		mobileMenuToggle.value?.focus();
+	} else {
+		openMobileMenu();
+	}
+}
+
 watch(
 	() => route.path,
 	() => {
 		mobileMenuOpen.value = false;
 	},
 );
+
+onMounted(() => {
+	window.addEventListener("keydown", handleNavKeydown);
+});
+onUnmounted(() => {
+	window.removeEventListener("keydown", handleNavKeydown);
+});
 
 onMounted(() => {
 	try {
@@ -181,12 +222,13 @@ onMounted(() => {
           <!-- Mobile menu button (xl below: the desktop nav can't fit before
                ~1150px, so tablets/compact laptops use the menu instead) -->
           <button
+            ref="mobileMenuToggle"
             type="button"
             class="xl:hidden p-2 rounded-lg text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
             :aria-label="t('common.menu.open')"
             :aria-expanded="mobileMenuOpen"
             aria-controls="mobile-nav"
-            @click="mobileMenuOpen = !mobileMenuOpen"
+            @click="toggleMobileMenu"
           >
             <Icon :icon="mobileMenuOpen ? 'lucide:x' : 'lucide:menu'" class="w-5 h-5 transition-transform duration-200" />
           </button>

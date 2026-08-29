@@ -121,4 +121,53 @@ describe("MediaPickerModal", () => {
 		closeBtn.click();
 		expect(wrapper.findComponent(MediaPickerModal).emitted("close")).toBeDefined();
 	});
+
+	it("closes on Escape (ISS-132)", async () => {
+		listMock.mockReturnValue(fakeQuery([image]));
+		const wrapper = mountPicker();
+		await vi.waitFor(() => {
+			expect(document.body.querySelectorAll("img").length).toBe(1);
+		});
+		window.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" }));
+		expect(wrapper.findComponent(MediaPickerModal).emitted("close")).toBeDefined();
+	});
+
+	it("moves focus to the close button on open and restores it on close (ISS-132)", async () => {
+		listMock.mockReturnValue(fakeQuery([image]));
+		const trigger = document.createElement("button");
+		trigger.textContent = "picker-trigger";
+		document.body.appendChild(trigger);
+		trigger.focus();
+
+		const wrapper = mountPicker(false);
+		await wrapper.setProps({ open: true });
+		await vi.waitFor(() => {
+			expect(document.activeElement).toBe(
+				document.querySelector('[aria-label="common.menu.close"]'),
+			);
+		});
+
+		await wrapper.setProps({ open: false });
+		await wrapper.vm.$nextTick();
+		expect(document.activeElement).toBe(trigger);
+		document.body.removeChild(trigger);
+	});
+
+	it("traps Tab focus within the panel (ISS-132)", async () => {
+		listMock.mockReturnValue(fakeQuery([image]));
+		const wrapper = mountPicker(false);
+		await wrapper.setProps({ open: true });
+		await vi.waitFor(() => {
+			expect(document.activeElement).toBe(
+				document.querySelector('[aria-label="common.menu.close"]'),
+			);
+		});
+		// Scope to the dialog panel so the "last focusable" can't be a stray
+		// test-appended button elsewhere in <body>.
+		const panel = document.querySelector('[role="dialog"]');
+		const panelButtons = panel ? Array.from(panel.querySelectorAll("button")) : [];
+		// Shift+Tab from the first focusable (the close button) wraps to the last.
+		window.dispatchEvent(new KeyboardEvent("keydown", { key: "Tab", shiftKey: true }));
+		expect(document.activeElement).toBe(panelButtons[panelButtons.length - 1]);
+	});
 });

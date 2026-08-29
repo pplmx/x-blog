@@ -184,7 +184,7 @@ function handleSearchInput() {
       v-else-if="error"
       class="text-center py-12 text-gray-500"
     >
-      {{ t("search.error", { message: error.message }) }}
+      {{ t("search.error") }}
     </div>
 
     <!-- Search results -->

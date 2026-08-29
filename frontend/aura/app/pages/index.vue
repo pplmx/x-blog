@@ -271,8 +271,10 @@ const stats = computed(() => {
       </div>
     </section>
 
-    <!-- Recommended for you (DEC-128, TASK-176): personalized, signed-in only -->
-    <section v-if="recSignedIn" class="mb-10">
+    <!-- Recommended for you (DEC-128, TASK-176: personalized, signed-in only;
+         ISS-134: gated on content so an empty-recs reader never sees the
+         orphaned heading) -->
+    <section v-if="recSignedIn && (recommending || recommendedPosts.length)" class="mb-10">
       <h2 class="text-lg font-bold text-gray-900 dark:text-gray-100 mb-4 flex items-center gap-2">
         <Icon icon="lucide:sparkles" class="w-5 h-5 text-fuchsia-500" />
         {{ t("home.sections.recommended") }}
@@ -455,7 +457,6 @@ const stats = computed(() => {
         <div v-else-if="error" class="text-center py-16 text-gray-500">
           <Icon icon="lucide:alert-circle" class="w-12 h-12 mx-auto mb-3 text-gray-300" />
           <p>{{ t("common.state.loadFailed") }}</p>
-          <p class="text-sm">{{ error.message }}</p>
         </div>
 
         <div v-else-if="posts?.items?.length" class="space-y-5">

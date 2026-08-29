@@ -477,13 +477,14 @@ describe("Post Detail Page", () => {
 	});
 
 	describe("Error state", () => {
-		it("renders error message when fetch fails", async () => {
+		it("renders a friendly error message when fetch fails", async () => {
 			const wrapper = await mountPostPage({
 				error: { message: "Network error" },
 				post: null,
 			});
 			expect(wrapper.text()).toContain("加载失败");
-			expect(wrapper.text()).toContain("Network error");
+			// ISS-135: never leak the raw backend/exception message to readers.
+			expect(wrapper.text()).not.toContain("Network error");
 		});
 	});
 

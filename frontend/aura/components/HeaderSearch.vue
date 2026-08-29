@@ -79,7 +79,13 @@ function onKeydown(event: KeyboardEvent): void {
 			goToSearch();
 		}
 	} else if (event.key === "Escape") {
-		close();
+		if (open.value) {
+			// The dropdown actually consumed this Escape — signal it so parent
+			// menu/window listeners (e.g. ISS-131's mobile-nav close handler)
+			// don't ALSO treat it as "close the whole menu".
+			event.preventDefault();
+			close();
+		}
 	}
 }
 

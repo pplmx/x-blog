@@ -283,7 +283,6 @@ function handleCommentSubmitted() {
     <div v-else-if="error" class="text-center py-20 text-gray-500">
       <Icon icon="lucide:alert-circle" class="w-12 h-12 mx-auto mb-4 text-gray-300" />
       <p>{{ t('common.state.loadFailed') }}</p>
-      <p class="text-sm">{{ error.message }}</p>
     </div>
 
     <div v-else-if="!post" class="text-center py-20 text-gray-500">

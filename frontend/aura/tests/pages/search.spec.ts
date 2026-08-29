@@ -246,12 +246,14 @@ describe("Search Page", () => {
 	});
 
 	describe("Error state", () => {
-		it("renders error message when fetch fails", async () => {
+		it("renders a friendly error message when fetch fails", async () => {
 			const wrapper = await mountSearchPage({
 				error: { message: "Network error" },
 				searchResult: null,
 			});
-			expect(wrapper.text()).toContain("加载失败: Network error");
+			expect(wrapper.text()).toContain("加载失败");
+			// ISS-135: never leak the raw backend/exception message to readers.
+			expect(wrapper.text()).not.toContain("Network error");
 		});
 	});
 

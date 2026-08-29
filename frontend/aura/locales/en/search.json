@@ -11,7 +11,7 @@
 			"hint": "Enter keywords to start searching"
 		},
 		"placeholder": "Enter keywords...",
-		"error": "Failed to load: {message}",
+		"error": "Failed to load",
 		"results": {
 			"title": "Search Results",
 			"summary": "Found {count} articles matching \"{query}\""

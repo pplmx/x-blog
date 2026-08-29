@@ -11,7 +11,7 @@
 			"hint": "输入关键词开始搜索"
 		},
 		"placeholder": "输入关键词...",
-		"error": "加载失败: {message}",
+		"error": "加载失败",
 		"results": {
 			"title": "搜索结果",
 			"summary": "找到 \"{query}\" 相关文章 {count} 篇"

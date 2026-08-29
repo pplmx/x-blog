@@ -179,12 +179,13 @@ describe("Series Detail Page", () => {
 		expect(wrapper.findAll(".animate-pulse").length).toBeGreaterThan(0);
 	});
 
-	it("renders the load-failed state with the error message on fetch error", async () => {
+	it("renders a friendly load-failed state on fetch error", async () => {
 		const wrapper = await mountSeriesDetailPage({
 			error: { message: "network down" },
 		});
 		expect(wrapper.text()).toContain("加载失败");
-		expect(wrapper.text()).toContain("network down");
+		// ISS-135: never leak the raw backend/exception message to readers.
+		expect(wrapper.text()).not.toContain("network down");
 	});
 
 	it("renders the empty state when a series has no posts", async () => {

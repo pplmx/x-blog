@@ -20,12 +20,58 @@ const { data, pending, refresh } = await useAdminMedia(1, props.pageSize);
 const items = computed(() => data.value?.items ?? []);
 const totalPages = computed(() => data.value?.pagination?.total_pages ?? 0);
 
+// Dialog keyboard semantics (ISS-132, TASK-231): Escape closes, initial focus
+// lands on the close button, Tab is trapped inside the panel, and focus
+// returns to whatever opened the picker when it closes.
+const closeButtonRef = ref<HTMLButtonElement | null>(null);
+const panelRef = ref<HTMLDivElement | null>(null);
+const previouslyFocused = ref<HTMLElement | null>(null);
+
 watch(
 	() => props.open,
-	(open) => {
-		if (open) refresh();
+	async (open) => {
+		if (open) {
+			previouslyFocused.value = document.activeElement as HTMLElement | null;
+			// flush:"post" + an extra tick: the teleport moves its nodes during
+			// its own render effect, so the panel may not be in the target
+			// container until the next flush. Focus lands after that.
+			await nextTick();
+			closeButtonRef.value?.focus({ preventScroll: true });
+			refresh();
+		} else if (previouslyFocused.value) {
+			previouslyFocused.value.focus({ preventScroll: true });
+			previouslyFocused.value = null;
+		}
 	},
+	{ flush: "post" },
 );
+
+onMounted(() => {
+	const onKeydown = (e: KeyboardEvent) => {
+		if (!props.open) return;
+		if (e.key === "Escape") {
+			emit("close");
+			return;
+		}
+		if (e.key !== "Tab") return;
+		const focusables = panelRef.value?.querySelectorAll<HTMLElement>(
+			'button:not([disabled]), [href], input:not([disabled]), select, textarea, [tabindex]:not([tabindex="-1"])',
+		);
+		if (!focusables || focusables.length === 0) return;
+		const first = focusables.item(0);
+		const last = focusables.item(focusables.length - 1);
+		if (!first || !last) return;
+		if (e.shiftKey && document.activeElement === first) {
+			e.preventDefault();
+			last.focus();
+		} else if (!e.shiftKey && document.activeElement === last) {
+			e.preventDefault();
+			first.focus();
+		}
+	};
+	window.addEventListener("keydown", onKeydown);
+	onUnmounted(() => window.removeEventListener("keydown", onKeydown));
+});
 
 function imageUrl(item: UploadFileInfo): string {
 	const config = useRuntimeConfig();
@@ -51,10 +97,17 @@ function goToPage(page: number) {
       class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
       @click.self="emit('close')"
     >
-      <div class="bg-white dark:bg-gray-900 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-700 w-full max-w-3xl max-h-[80vh] flex flex-col">
+      <div
+        ref="panelRef"
+        role="dialog"
+        aria-modal="true"
+        :aria-label="t('components.mediaPicker.title')"
+        class="bg-white dark:bg-gray-900 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-700 w-full max-w-3xl max-h-[80vh] flex flex-col"
+      >
         <div class="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
           <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">{{ t("components.mediaPicker.title") }}</h3>
           <button
+            ref="closeButtonRef"
             type="button"
             class="p-1 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
             :aria-label="t('common.menu.close')"
