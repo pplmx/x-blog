@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 185,
+  "round": 186,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-08-29T01:04:41+00:00",
+  "updated_at": "2026-08-29T01:54:07+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -11,7 +11,7 @@
       "version": 1,
       "created_at": "2026-08-06T13:23:41+00:00",
       "updated_at": "2026-08-06T13:23:41+00:00",
-      "touched_round": 172,
+      "touched_round": 186,
       "title": "backend-nova",
       "description": "FastAPI Python 3.14 backend at backend/nova; SQLAlchemy ORM; routers in app/routers, crud.py business logic, 656 lines"
     },
@@ -22,7 +22,7 @@
       "version": 1,
       "created_at": "2026-08-06T13:23:41+00:00",
       "updated_at": "2026-08-06T13:23:41+00:00",
-      "touched_round": 183,
+      "touched_round": 186,
       "title": "frontend-aura",
       "description": "Nuxt 4 Vue 3 TypeScript frontend at frontend/aura; composables; admin pages; e2e Playwright; biome lint"
     },
@@ -12304,10 +12304,10 @@
     "ISS-126": {
       "id": "ISS-126",
       "type": "issue",
-      "status": "active",
-      "version": 1,
+      "status": "resolved",
+      "version": 2,
       "created_at": "2026-08-29T01:00:14+00:00",
-      "updated_at": "2026-08-29T01:00:14+00:00",
+      "updated_at": "2026-08-29T01:50:50+00:00",
       "touched_round": 185,
       "title": "Newly submitted post comment is not reflected until reload",
       "description": "posts/[slug]/index.vue:428-431: standalone CommentList + CommentForm have no @submitted binding; CommentForm emits 'submitted' on success (CommentForm.vue:195) but CommentList only fetches on mount, so a fresh comment and the total count are invisible until a full page reload. Fix: template-ref + defineExpose({refreshList}) on CommentList, call it on @submitted."
@@ -12315,10 +12315,10 @@
     "ISS-127": {
       "id": "ISS-127",
       "type": "issue",
-      "status": "active",
-      "version": 1,
+      "status": "resolved",
+      "version": 2,
       "created_at": "2026-08-29T01:00:15+00:00",
-      "updated_at": "2026-08-29T01:00:15+00:00",
+      "updated_at": "2026-08-29T01:50:50+00:00",
       "touched_round": 185,
       "title": "Account Save button permanently disables after clearing display name",
       "description": "account.vue:62-67: saveProfileName sets savingProfile.value=true BEFORE the `if (!name) return` guard, and the early return skips the finally, so savingProfile stays true forever -> Save button (account.vue:498) disabled with no way to re-enable except reload. Fix: move trim/empty guard above savingProfile=true."
@@ -12326,10 +12326,10 @@
     "ISS-128": {
       "id": "ISS-128",
       "type": "issue",
-      "status": "active",
-      "version": 1,
+      "status": "resolved",
+      "version": 2,
       "created_at": "2026-08-29T01:00:15+00:00",
-      "updated_at": "2026-08-29T01:00:15+00:00",
+      "updated_at": "2026-08-29T01:50:50+00:00",
       "touched_round": 185,
       "title": "History recall-search races: un-debounced server call per keystroke, out-of-order responses",
       "description": "history.vue:21-23 onSearch calls load(q) directly on @input (history.vue:168); useReadingHistory.ts:65-102 load() has no debounce and no request-seq guard, so a slower earlier response can overwrite a later one. Only search input in the app without the HeaderSearch debounce + monotonic-seq pattern. Fix: seq guard in load() + debounce in onSearch."
@@ -12363,7 +12363,7 @@
       "version": 1,
       "created_at": "2026-08-29T01:00:15+00:00",
       "updated_at": "2026-08-29T01:00:15+00:00",
-      "touched_round": 185,
+      "touched_round": 186,
       "title": "Mobile nav menu doesn't close on Escape and focus is not managed",
       "description": "app/layouts/default.vue:183-254 (mobileMenuOpen): only close triggers are the button, a link click, or route change (62-67); no keydown-Escape, no focus move into menu or restore to toggle. Fix: window keydown Escape -> close, focus() toggle on close."
     },
@@ -12374,7 +12374,7 @@
       "version": 1,
       "created_at": "2026-08-29T01:00:15+00:00",
       "updated_at": "2026-08-29T01:00:15+00:00",
-      "touched_round": 185,
+      "touched_round": 186,
       "title": "Media picker modal lacks Escape-close and focus trap/restore",
       "description": "MediaPickerModal.vue:47-111: Teleport overlay closes only via X (57-64) and backdrop @click.self (52); no Escape, no initial focus, no focus restore. Only dialog component in the app. Fix: @keydown.esc -> emit close, autofocus close button, restore focus to trigger."
     },
@@ -12396,7 +12396,7 @@
       "version": 1,
       "created_at": "2026-08-29T01:00:15+00:00",
       "updated_at": "2026-08-29T01:00:15+00:00",
-      "touched_round": 185,
+      "touched_round": 186,
       "title": "Home 'Recommended for you' renders as an orphaned empty heading",
       "description": "index.vue:275-305: section gated only on recSignedIn with v-else-if recommendedPosts.length; a signed-in reader with no recs sees the heading + sparkle icon and nothing under it. Unlike 'Your series'/'Latest from follows' which gate on content length. Fix: v-if='recSignedIn && (recommending || recommendedPosts.length)'."
     },
@@ -12407,7 +12407,7 @@
       "version": 1,
       "created_at": "2026-08-29T01:00:15+00:00",
       "updated_at": "2026-08-29T01:00:15+00:00",
-      "touched_round": 185,
+      "touched_round": 186,
       "title": "Raw backend error.message leaked into UI on 4 pages",
       "description": "index.vue:458, posts/[slug]/index.vue:279, series/[slug].vue:144, search.vue:187: pages print the friendly 'Failed to load' line PLUS the raw exception/HTTP message users can't act on; series/index.vue:29-32 is the correct pattern. Fix: drop raw {{ error.message }} (or map status codes to localized text)."
     },
@@ -12484,7 +12484,7 @@
       "version": 1,
       "created_at": "2026-08-29T01:00:16+00:00",
       "updated_at": "2026-08-29T01:00:16+00:00",
-      "touched_round": 185,
+      "touched_round": 186,
       "title": "Bookmarks/subscription lists are unbounded (no pagination)",
       "description": "reader.py:736-753 GET /api/reader/me/bookmarks -> list_reader_bookmarks (crud.py:2246-2268) does query.all() + python-side visibility filter, returns everything with total=len(rows); same unbounded pattern for /me/post-subscriptions (reader.py:756) and /me/push-subscriptions (reader.py:634). Sibling list endpoints are paginated. Fix: page/limit defaults + cap, push offset/limit + visibility into SQL."
     },
@@ -12495,7 +12495,7 @@
       "version": 1,
       "created_at": "2026-08-29T01:00:16+00:00",
       "updated_at": "2026-08-29T01:00:16+00:00",
-      "touched_round": 185,
+      "touched_round": 186,
       "title": "Duplicate-key races on reader follows/bookmarks/subscriptions -> 500 not idempotent 200",
       "description": "crud.py:1467-1478 add_reader_bookmark, 1892-1901 series, 1958-1967 category, 2029-2038 tag, 2306-2321 folder, 2396-2409 thread sub, 1503-1537 record_reading_history, push upsert push.py:126-147: SELECT-exists then bare commit; unique constraints mean concurrent double-PUT/retry hits unhandled IntegrityError -> 500, breaking the documented idempotent contracts (reader.py:774-793). flag_comment (crud.py:1070-1076) is the correct pattern. Fix: catch IntegrityError -> rollback -> re-fetch + return existing (or ON CONFLICT DO NOTHING + re-select)."
     },
@@ -12506,7 +12506,7 @@
       "version": 1,
       "created_at": "2026-08-29T01:00:16+00:00",
       "updated_at": "2026-08-29T01:00:16+00:00",
-      "touched_round": 185,
+      "touched_round": 186,
       "title": "GET /api/comments/post/{id} has no post-existence/visibility gate",
       "description": "comments.py:230-257 vs siblings create (273-275) and like (344-349): the list returns 200 + empty for unknown/draft ids and keeps serving a now-draft post's previously-approved comments - an existence/visibility oracle the codebase elsewhere avoids. Fix: resolve Post, 404 when missing or not crud.is_publicly_visible."
     },
@@ -12517,7 +12517,7 @@
       "version": 1,
       "created_at": "2026-08-29T01:00:16+00:00",
       "updated_at": "2026-08-29T01:00:16+00:00",
-      "touched_round": 185,
+      "touched_round": 186,
       "title": "CommentCreate.email accepted unvalidated",
       "description": "schemas.py:334: email: str = Field(max_length=100) with no format pattern, while reader registration enforces a strict regex (reader.py:30,51). Any garbage string is persisted and shown in the admin moderation queue (admin.py:771). Fix: reuse the ReaderRegister email Field(pattern=...)."
     },
@@ -12528,7 +12528,7 @@
       "version": 1,
       "created_at": "2026-08-29T01:00:16+00:00",
       "updated_at": "2026-08-29T01:00:16+00:00",
-      "touched_round": 185,
+      "touched_round": 186,
       "title": "PUT /api/posts/{post_id}/subscription always returns 201 even on re-subscribe",
       "description": "posts.py:249-262: status_code=201 unconditional, while sibling idempotent PUTs (bookmark reader.py:774-793, series 962-975, category 1032-1050, tag 1106-1124) return 201 on create / 200 on already-existed. Clients doing merge/re-sync PUTs cannot distinguish. Fix: 201 if created else 200 from add_comment_subscription."
     },
@@ -12539,17 +12539,17 @@
       "version": 1,
       "created_at": "2026-08-29T01:00:16+00:00",
       "updated_at": "2026-08-29T01:00:16+00:00",
-      "touched_round": 185,
+      "touched_round": 186,
       "title": "Admin DELETE endpoints return 200-with-body where public/reader deletes return 204",
       "description": "admin.py:138-154 DELETE /api/admin/users/{id} -> 200 {message}, admin.py:454-470 posts -> 200, upload.py:273-310 single-file -> 200; public deletes are 204 (posts.py:133, comments.py:390) and reader deletes 204 (reader.py:796,858,1001,...). Same mutation, two status vocabularies. Fix: standardize admin deletes on 204 no body (verify frontend matches)."
     },
     "TASK-226": {
       "id": "TASK-226",
       "type": "task",
-      "status": "active",
-      "version": 1,
+      "status": "resolved",
+      "version": 2,
       "created_at": "2026-08-29T01:02:21+00:00",
-      "updated_at": "2026-08-29T01:02:21+00:00",
+      "updated_at": "2026-08-29T01:50:49+00:00",
       "touched_round": 185,
       "category": "correctness",
       "severity": 0.8,
@@ -12581,6 +12581,31 @@
       "severity": 0.6,
       "title": "Frontend feedback/a11y polish: loading+error-vs-empty states, notification busy state, heatmap a11y + i18n, icon aria-labels",
       "description": "Operator-directed usability/ease-of-use polish (DEC-207). (1) My-comments page: refetch has no loading state and failures render as 'no comments' (ISS-129) [comments.vue:39-48]; (2) CommentList pagination/sort refetches give no in-flight feedback (ISS-130) [CommentList.vue:433-439,661-664,640-642]; (3) notifications mark-read/mark-all-read fail silently with no busy state (ISS-133) [notifications.vue:193-217]; (4) reading-history heatmap is color-only with no aria semantics and a hardcoded full-width colon in the tooltip (ISS-136) [history.vue:132,217-235]; (5) icon-only buttons (bookmarks remove, share buttons) rely on title tooltips instead of aria-label (ISS-137) [bookmarks.vue:317-324, ShareButtons.vue:9-73]."
+    },
+    "CHG-248": {
+      "id": "CHG-248",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-29T01:50:49+00:00",
+      "updated_at": "2026-08-29T01:50:49+00:00",
+      "touched_round": 185,
+      "commit": "cf5c7eedbe0853dc557c1e32e77c04041f4ce209",
+      "title": "Post-page comment submit refresh + account save guard + history search race (TASK-226)",
+      "description": "commit cf5c7ee: explicit refreshList on the top-level comment form (ISS-126); move account empty-name guard above savingProfile (ISS-127); request-seq guard + 300ms debounce on recall search (ISS-128). Vitest 1265, typecheck 0, biome 0."
+    },
+    "EV-206": {
+      "id": "EV-206",
+      "type": "evidence",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-29T01:50:49+00:00",
+      "updated_at": "2026-08-29T01:50:49+00:00",
+      "touched_round": 185,
+      "source": "cf5c7ee",
+      "title": "TASK-226 verification: vitest 1265 passed, nuxt typecheck exit 0, biome check 0 errors",
+      "description": "After the commit: full vitest suite 1265/1265 green (new: CommentList expose-refresh test, account stuck-save regression, useReadingHistory stale-drop, history debounce x2); nuxt typecheck exit 0; pnpm lint (biome) 0 errors (1 pre-existing schema-version info).",
+      "confidence": 1.0
     }
   },
   "edges": [
@@ -17903,6 +17928,90 @@
       "to": "ISS-137",
       "type": "addresses",
       "created_at": "2026-08-29T01:04:41+00:00"
+    },
+    {
+      "from": "CHG-248",
+      "to": "TASK-226",
+      "type": "implements",
+      "created_at": "2026-08-29T01:50:49+00:00"
+    },
+    {
+      "from": "CHG-248",
+      "to": "ISS-126",
+      "type": "resolves",
+      "created_at": "2026-08-29T01:50:49+00:00"
+    },
+    {
+      "from": "CHG-248",
+      "to": "ISS-127",
+      "type": "resolves",
+      "created_at": "2026-08-29T01:50:49+00:00"
+    },
+    {
+      "from": "CHG-248",
+      "to": "ISS-128",
+      "type": "resolves",
+      "created_at": "2026-08-29T01:50:49+00:00"
+    },
+    {
+      "from": "ISS-131",
+      "to": "COMP-002",
+      "type": "located_in",
+      "created_at": "2026-08-29T01:54:07+00:00"
+    },
+    {
+      "from": "ISS-132",
+      "to": "COMP-002",
+      "type": "located_in",
+      "created_at": "2026-08-29T01:54:07+00:00"
+    },
+    {
+      "from": "ISS-134",
+      "to": "COMP-002",
+      "type": "located_in",
+      "created_at": "2026-08-29T01:54:07+00:00"
+    },
+    {
+      "from": "ISS-135",
+      "to": "COMP-002",
+      "type": "located_in",
+      "created_at": "2026-08-29T01:54:07+00:00"
+    },
+    {
+      "from": "ISS-142",
+      "to": "COMP-001",
+      "type": "located_in",
+      "created_at": "2026-08-29T01:54:07+00:00"
+    },
+    {
+      "from": "ISS-143",
+      "to": "COMP-001",
+      "type": "located_in",
+      "created_at": "2026-08-29T01:54:07+00:00"
+    },
+    {
+      "from": "ISS-144",
+      "to": "COMP-001",
+      "type": "located_in",
+      "created_at": "2026-08-29T01:54:07+00:00"
+    },
+    {
+      "from": "ISS-145",
+      "to": "COMP-001",
+      "type": "located_in",
+      "created_at": "2026-08-29T01:54:07+00:00"
+    },
+    {
+      "from": "ISS-146",
+      "to": "COMP-001",
+      "type": "located_in",
+      "created_at": "2026-08-29T01:54:07+00:00"
+    },
+    {
+      "from": "ISS-147",
+      "to": "COMP-001",
+      "type": "located_in",
+      "created_at": "2026-08-29T01:54:07+00:00"
     }
   ]
 }
