@@ -20,6 +20,9 @@ export interface ReaderBookmarkItem {
 export interface ReaderBookmarkListResponse {
 	items: ReaderBookmarkItem[];
 	total: number;
+	page?: number;
+	limit?: number;
+	total_pages?: number;
 }
 
 /** A reader's bookmark folder/collection (DEC-120, TASK-172). */
@@ -44,10 +47,15 @@ export function useReaderBookmarks(folderId?: number | null) {
 	});
 }
 
-/** Imperative bookmarks list for merge/sync handlers that need the data directly. */
-export function getReaderBookmarks(folderId?: number | null): Promise<ReaderBookmarkListResponse> {
+/** Imperative bookmarks list for merge/sync handlers that need the data directly.
+ *  Bounded paging: pass ``page``/``limit`` to walk total_pages (ISS-142). */
+export function getReaderBookmarks(
+	folderId?: number | null,
+	page?: number,
+	limit?: number,
+): Promise<ReaderBookmarkListResponse> {
 	return command<ReaderBookmarkListResponse>("/api/reader/me/bookmarks", {
-		query: { folder_id: folderId ?? undefined },
+		query: { folder_id: folderId ?? undefined, page, limit },
 		headers: readerAuthHeaders(),
 	});
 }

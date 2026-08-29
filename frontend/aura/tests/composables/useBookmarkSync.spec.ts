@@ -168,6 +168,22 @@ describe("useBookmarkSync", () => {
 		expect(useBookmarks().bookmarks.value.map((b) => b.id)).toEqual([9]);
 	});
 
+	it("merge pages through total_pages so no bookmarks are dropped (ISS-142)", async () => {
+		localStorage.setItem("reader_token", "jwt.token");
+		addReaderBookmarkMock.mockResolvedValue(okFetch([null]));
+		const p1 = { ...cloudItem, id: 9 };
+		const p2 = { ...cloudItem, id: 10 };
+		fetchReaderBookmarksMock
+			.mockResolvedValueOnce({ items: [p1], total: 2, page: 1, limit: 1, total_pages: 2 })
+			.mockResolvedValueOnce({ items: [p2], total: 2, page: 2, limit: 1, total_pages: 2 });
+		const sync = useBookmarkSync();
+
+		await sync.mergeLocalToCloud();
+
+		expect(fetchReaderBookmarksMock).toHaveBeenCalledTimes(2);
+		expect(useBookmarks().bookmarks.value.map((b) => b.id)).toEqual([9, 10]);
+	});
+
 	it("merge is a no-op when signed out", async () => {
 		await useBookmarkSync().mergeLocalToCloud();
 		expect(fetchReaderBookmarksMock).not.toHaveBeenCalled();

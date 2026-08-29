@@ -114,6 +114,9 @@ class BookmarkItem(BaseModel):
 class BookmarkListResponse(BaseModel):
     items: list[BookmarkItem]
     total: int
+    page: int = 1
+    limit: int = 100
+    total_pages: int = 0
 
 
 class BookmarkFolderItem(BaseModel):
@@ -292,6 +295,9 @@ class SubscribedThreadItem(BaseModel):
 class SubscribedThreadListResponse(BaseModel):
     items: list[SubscribedThreadItem]
     total: int
+    page: int = 1
+    limit: int = 100
+    total_pages: int = 0
 
 
 class ReadingHistoryItem(BaseModel):
@@ -738,37 +744,56 @@ def revoke_my_push_subscription(
 def list_bookmarks(
     current_reader: auth.ReaderAccount = Depends(auth.get_current_reader),
     folder_id: int | None = Query(None, description="filter to this folder"),
+    page: int = Query(1, ge=1),
+    limit: int = Query(100, ge=1, le=100),
     db: Session = Depends(get_db),
 ):
-    """List the reader's bookmarked posts (publicly-visible only).
+    """List the reader's bookmarked posts (publicly-visible only), paginated.
 
     Non-public posts (draft/scheduled/unpublished) are excluded — a bookmark
     list is a read path and must not leak post existence/visibility changes.
     Newest bookmark first (the natural "recently saved" ordering). Optional
-    ``folder_id`` filters to that folder (DEC-120/TASK-172).
+    ``folder_id`` filters to that folder (DEC-120/TASK-172). Bounded paging
+    (page/limit, max 100) keeps setup/merge calls from loading every row
+    (ISS-142); clients that need the full set page through ``total_pages``.
     """
-    rows = crud.list_reader_bookmarks(db, current_reader.id, folder_id=folder_id)
+    rows, total = crud.list_reader_bookmarks(
+        db, current_reader.id, folder_id=folder_id, page=page, limit=limit
+    )
+    total_pages = (total + limit - 1) // limit if limit > 0 else 0
     return BookmarkListResponse(
         items=[BookmarkItem.from_post(p, fid, fname) for p, fid, fname in rows],
-        total=len(rows),
+        total=total,
+        page=page,
+        limit=limit,
+        total_pages=total_pages,
     )
 
 
 @router.get("/me/post-subscriptions", response_model=SubscribedThreadListResponse)
 def list_my_post_subscriptions(
     current_reader: auth.ReaderAccount = Depends(auth.get_current_reader),
+    page: int = Query(1, ge=1),
+    limit: int = Query(100, ge=1, le=100),
     db: Session = Depends(get_db),
 ):
-    """The comment threads the reader follows (publicly-visible posts only).
+    """The comment threads the reader follows (publicly-visible posts only), paginated.
 
     Same non-leak invariant as the bookmark list: a followed post that became
     a draft/scheduled no longer appears, while the follow row is kept (the
-    reader unsubscribes from the post page). Newest follow first.
+    reader unsubscribes from the post page). Newest follow first. Bounded
+    paging like the bookmark list (ISS-142).
     """
-    posts = crud.list_reader_comment_subscriptions(db, current_reader.id)
+    posts, total = crud.list_reader_comment_subscriptions(
+        db, current_reader.id, page=page, limit=limit
+    )
+    total_pages = (total + limit - 1) // limit if limit > 0 else 0
     return SubscribedThreadListResponse(
         items=[SubscribedThreadItem.from_post(p) for p in posts],
-        total=len(posts),
+        total=total,
+        page=page,
+        limit=limit,
+        total_pages=total_pages,
     )
 
 

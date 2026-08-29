@@ -120,7 +120,8 @@ class TestListBookmarks:
         token = _token(client)
         resp = client.get(BOOKMARKS, headers=_auth(token))
         assert resp.status_code == 200
-        assert resp.json() == {"items": [], "total": 0}
+        # Pagination envelope (ISS-142): page/limit/total_pages ride along.
+        assert resp.json() == {"items": [], "total": 0, "page": 1, "limit": 100, "total_pages": 0}
 
     def test_serializes_post_summary_shape(self, client, db_session):
         token = _token(client)

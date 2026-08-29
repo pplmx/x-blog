@@ -91,11 +91,19 @@ export function useBookmarkSync() {
 			for (const b of bookmarks.value) {
 				await addReaderBookmark(b.id);
 			}
-			// Pull the merged server list and make it the local truth.
-			const res = await getReaderBookmarks();
-			if (res) {
-				replaceBookmarks(res.items.map(toLocalBookmark));
+			// Pull the whole merged server list and make it the local truth.
+			// The endpoint is bounded per page (ISS-142), so walk total_pages
+			// instead of relying on one response to contain everything.
+			let all: ReaderBookmarkItem[] = [];
+			let page = 1;
+			for (;;) {
+				const res = await getReaderBookmarks(undefined, page);
+				if (!res) break;
+				all = all.concat(res.items);
+				if (page >= (res.total_pages ?? 1)) break;
+				page += 1;
 			}
+			replaceBookmarks(all.map(toLocalBookmark));
 		} catch {
 			// Cloud unreachable — keep the local list untouched.
 		}

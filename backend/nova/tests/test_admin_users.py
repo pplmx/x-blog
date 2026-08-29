@@ -169,8 +169,8 @@ class TestDeleteUser:
             f"/api/admin/users/{user_id}",
             headers=auth_headers,
         )
-        assert delete_response.status_code == 200
-        assert "deleted" in delete_response.json()["message"].lower()
+        # Standardized 204-no-body like the public/reader delete surfaces (ISS-147).
+        assert delete_response.status_code == 204
 
     def test_delete_user_cannot_delete_self(self, client, admin_user, auth_headers):
         """Admin cannot delete themselves."""

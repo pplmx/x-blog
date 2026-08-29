@@ -659,12 +659,11 @@ class TestAdminComments:
         assert data["items"][0]["content"] == "Comment number 4"
 
     def test_delete_comment(self, client, auth_headers, db_session):
-        """Test deleting an existing comment."""
+        """Test deleting an existing comment (204, no body — standardized delete)."""
         comment, _ = self._create_comment(db_session)
 
         response = client.delete(f"/api/admin/comments/{comment.id}", headers=auth_headers)
-        assert response.status_code == 200
-        assert response.json()["message"] == "Comment deleted"
+        assert response.status_code == 204
 
     def test_delete_comment_not_found(self, client, auth_headers):
         """Test deleting a non-existent comment returns 404."""
@@ -841,7 +840,7 @@ class TestAdminUserManagement:
         user_id = user.id
 
         response = client.delete(f"/api/admin/users/{user_id}", headers=auth_headers)
-        assert response.status_code == 200
+        assert response.status_code == 204
 
     def test_delete_user_not_found(self, client, auth_headers):
         """Test deleting a non-existent user returns 404."""

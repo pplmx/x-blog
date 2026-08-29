@@ -405,7 +405,7 @@ class TestMediaLibrary:
         parts = url.split("/")
         year, month, filename = parts[-3], parts[-2], parts[-1]
         resp = client.delete(f"/api/upload/files/{year}/{month}/{filename}", headers=auth_headers)
-        assert resp.status_code == 200, resp.text
+        assert resp.status_code == 204, resp.text
         # Gone from the listing and no longer on disk.
         listing = client.get("/api/upload/files", headers=auth_headers).json()
         assert all(item["url"] != url for item in listing["items"])

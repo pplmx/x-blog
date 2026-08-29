@@ -107,8 +107,10 @@ class TestSubscribeToggleStatus:
         token = _token(client)
         r1 = _follow(client, post.id, token)
         r2 = _follow(client, post.id, token)
+        # First subscribe is 201; a re-subscribe is 200 (idempotent, matching
+        # the bookmark PUT contract — ISS-146).
         assert r1.status_code == 201, r1.text
-        assert r2.status_code == 201, r2.text
+        assert r2.status_code == 200, r2.text
         assert (
             db_session.query(models.CommentSubscription).filter(models.CommentSubscription.post_id == post.id).count()
             == 1

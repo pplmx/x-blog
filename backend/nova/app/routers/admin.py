@@ -135,7 +135,7 @@ def list_users(
 
 
 @limiter.limit(f"{RATE_LIMIT_WRITE}/minute")
-@router.delete("/users/{user_id}")
+@router.delete("/users/{user_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_user(
     request: Request,  # noqa: ARG001
     user_id: int,
@@ -151,7 +151,6 @@ def delete_user(
 
     db.delete(user)
     db.commit()
-    return {"message": "User deleted"}
 
 
 @router.get("/posts")
@@ -451,7 +450,7 @@ def admin_update_post(
 
 
 @limiter.limit(f"{RATE_LIMIT_WRITE}/minute")
-@router.delete("/posts/{post_id}")
+@router.delete("/posts/{post_id}", status_code=status.HTTP_204_NO_CONTENT)
 def admin_delete_post(
     request: Request,  # noqa: ARG001
     post_id: int,
@@ -467,7 +466,6 @@ def admin_delete_post(
     clear_tags_cache()
     clear_categories_cache()
     clear_posts_list_cache()
-    return {"message": "Post deleted"}
 
 
 @router.get("/posts/{post_id}/revisions", response_model=list[PostRevisionSummary])
@@ -580,7 +578,7 @@ def admin_update_category(
 
 
 @limiter.limit(f"{RATE_LIMIT_WRITE}/minute")
-@router.delete("/categories/{category_id}")
+@router.delete("/categories/{category_id}", status_code=status.HTTP_204_NO_CONTENT)
 def admin_delete_category(
     request: Request,  # noqa: ARG001
     category_id: int,
@@ -609,7 +607,6 @@ def admin_delete_category(
             detail="Cannot delete category: it is referenced by posts",
         )
     clear_categories_cache()
-    return {"message": "Category deleted"}
 
 
 @router.get("/tags", response_model=list[dict])
@@ -679,7 +676,7 @@ def admin_update_tag(
 
 
 @limiter.limit(f"{RATE_LIMIT_WRITE}/minute")
-@router.delete("/tags/{tag_id}")
+@router.delete("/tags/{tag_id}", status_code=status.HTTP_204_NO_CONTENT)
 def admin_delete_tag(
     request: Request,  # noqa: ARG001
     tag_id: int,
@@ -708,7 +705,6 @@ def admin_delete_tag(
             detail="Cannot delete tag: it is referenced by posts",
         )
     clear_tags_cache()
-    return {"message": "Tag deleted"}
 
 
 # Comments management
@@ -877,7 +873,7 @@ def change_password(
 
 
 @limiter.limit(f"{RATE_LIMIT_WRITE}/minute")
-@router.delete("/comments/{comment_id}")
+@router.delete("/comments/{comment_id}", status_code=status.HTTP_204_NO_CONTENT)
 def admin_delete_comment(
     request: Request,  # noqa: ARG001
     comment_id: int,
@@ -901,7 +897,6 @@ def admin_delete_comment(
     # on the cached public posts list; invalidate like the other comment
     # mutations do (RIL TASK-092, ISS-072).
     clear_posts_list_cache()
-    return {"message": "Comment deleted"}
 
 
 # Author-reply identity (DEC-192, TASK-212): the blog owner's replies to

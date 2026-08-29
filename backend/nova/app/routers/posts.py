@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
@@ -249,16 +249,19 @@ def get_post_subscription_status(
 @router.put("/{post_id}/subscription", response_model=PostSubscriptionStatus, status_code=201)
 def subscribe_to_post_thread(
     post_id: int,
+    response: Response,
     db: Session = Depends(get_db),
     reader: auth.ReaderAccount = Depends(auth.get_current_reader),
 ):
-    """Follow a post's comment thread. Idempotent: re-subscribing returns the
-    same 201 state (mirrors the bookmark PUT contract). Readers can only follow
-    posts they can see — private/scheduled/unknown are uniformly 404."""
+    """Follow a post's comment thread. Idempotent: first subscribe returns 201,
+    a re-subscribe returns 200 (mirrors the bookmark PUT contract). Readers can
+    only follow posts they can see — private/scheduled/unknown are uniformly
+    404."""
     post = db.get(models.Post, post_id)
     if not post or not crud.is_publicly_visible(post):
         raise HTTPException(status_code=404, detail="Post not found")
-    crud.add_comment_subscription(db, reader.id, post_id)
+    _, created = crud.add_comment_subscription(db, reader.id, post_id)
+    response.status_code = status.HTTP_201_CREATED if created else status.HTTP_200_OK
     return PostSubscriptionStatus(post_id=post_id, subscribed=True)
 
 

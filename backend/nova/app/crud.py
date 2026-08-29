@@ -1798,7 +1798,8 @@ def export_reader_data(db: Session, reader_id: int) -> dict:
     }
 
     bookmarks = []
-    for post, _, folder_name in list_reader_bookmarks(db, reader_id):
+    rows, _total = list_reader_bookmarks(db, reader_id)
+    for post, _, folder_name in rows:
         bookmarks.append(
             {
                 "post_id": post.id,
@@ -2311,28 +2312,47 @@ def get_top_searches(db: Session, limit: int = 10) -> list[dict]:
 
 
 def list_reader_bookmarks(
-    db: Session, reader_id: int, folder_id: int | None = None
-) -> list[tuple[models.Post, int | None, str | None]]:
+    db: Session,
+    reader_id: int,
+    folder_id: int | None = None,
+    page: int = 1,
+    limit: int = 100,
+) -> tuple[list[tuple[models.Post, int | None, str | None]], int]:
     """Return the reader's bookmark rows as (post, folder_id, folder_name),
-    publicly-visible only, newest bookmark first.
+    publicly-visible only, newest bookmark first, paginated.
 
     Post timestamps/visibility can change after a bookmark is saved; the list
     must not leak a draft or scheduled post on a read path (same invariant as
-    the public post/comment read paths). Non-visible posts simply don't appear.
-    ``folder_id`` (if given) filters to that folder. (DEC-120/TASK-172)
+    the public post/comment read paths) — visibility is pushed into the SQL
+    WHERE so pages are stable and non-visible posts simply don't appear.
+    ``folder_id`` (if given) filters to that folder. Returns (items, total),
+    where total counts the reader's publicly-visible bookmarks (bounded paging
+    instead of loading every row — ISS-142; DEC-120/TASK-172).
     """
+    now = utc_now_naive()
     query = (
         db.query(models.Post, models.ReaderBookmark.folder_id, models.BookmarkFolder.name)
         .join(models.ReaderBookmark, models.ReaderBookmark.post_id == models.Post.id)
         .outerjoin(models.BookmarkFolder, models.ReaderBookmark.folder_id == models.BookmarkFolder.id)
-        .filter(models.ReaderBookmark.reader_id == reader_id)
-        .options(joinedload(models.Post.category), joinedload(models.Post.tags))
-        .order_by(models.ReaderBookmark.created_at.desc(), models.Post.id.desc())
+        .filter(
+            models.ReaderBookmark.reader_id == reader_id,
+            models.Post.published.is_(True),
+            or_(models.Post.publish_at.is_(None), models.Post.publish_at <= now),
+        )
     )
     if folder_id is not None:
         query = query.filter(models.ReaderBookmark.folder_id == folder_id)
-    rows = query.all()
-    return [(post, fid, fname) for post, fid, fname in rows if is_publicly_visible(post)]
+    total = query.count()
+    rows = (
+        query.options(joinedload(models.Post.category), joinedload(models.Post.tags))
+        .order_by(models.ReaderBookmark.created_at.desc(), models.Post.id.desc())
+        .offset((page - 1) * limit)
+        .limit(limit)
+        .all()
+    )
+    # SQL already guarantees visibility; the predicate stays as a belt-and-braces
+    # guard against any drift between the SQL filter and is_publicly_visible.
+    return [(post, fid, fname) for post, fid, fname in rows if is_publicly_visible(post)], total
 
 
 # Bookmark folders/collections (DEC-120/TASK-172)
@@ -2498,23 +2518,37 @@ def remove_comment_subscription(db: Session, reader_id: int, post_id: int) -> bo
     return True
 
 
-def list_reader_comment_subscriptions(db: Session, reader_id: int) -> list[models.Post]:
-    """The posts whose threads a reader follows, *publicly visible* only.
+def list_reader_comment_subscriptions(
+    db: Session, reader_id: int, page: int = 1, limit: int = 100
+) -> tuple[list[models.Post], int]:
+    """The posts whose threads a reader follows, *publicly visible* only, paginated.
 
     Same invariant as list_reader_bookmarks: a followed post that became a
     draft/private/scheduled must not leak on this read path — it simply stops
     appearing (the follow row is kept; the reader can re-see it, and
-    unsubscribe, once the post is public again). Newest follow first.
+    unsubscribe, once the post is public again). Visibility is pushed into SQL
+    so pages are stable; returns (items, total) with bounded paging (ISS-142).
+    Newest follow first.
     """
-    rows = (
+    now = utc_now_naive()
+    query = (
         db.query(models.Post)
         .join(models.CommentSubscription, models.CommentSubscription.post_id == models.Post.id)
-        .filter(models.CommentSubscription.reader_id == reader_id)
-        .options(joinedload(models.Post.category), joinedload(models.Post.tags))
+        .filter(
+            models.CommentSubscription.reader_id == reader_id,
+            models.Post.published.is_(True),
+            or_(models.Post.publish_at.is_(None), models.Post.publish_at <= now),
+        )
+    )
+    total = query.count()
+    rows = (
+        query.options(joinedload(models.Post.category), joinedload(models.Post.tags))
         .order_by(models.CommentSubscription.created_at.desc())
+        .offset((page - 1) * limit)
+        .limit(limit)
         .all()
     )
-    return [p for p in rows if is_publicly_visible(p)]
+    return [p for p in rows if is_publicly_visible(p)], total
 
 
 def comment_subscription_reader_ids(db: Session, post_id: int) -> list[int]:

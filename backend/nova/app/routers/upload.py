@@ -5,7 +5,7 @@ from datetime import datetime
 from io import BytesIO
 from pathlib import Path
 
-from fastapi import APIRouter, Depends, File, HTTPException, Query, Request, UploadFile
+from fastapi import APIRouter, Depends, File, HTTPException, Query, Request, UploadFile, status
 from PIL import Image, UnidentifiedImageError
 from sqlalchemy.orm import Session
 
@@ -270,7 +270,7 @@ def list_uploaded_files(
     )
 
 
-@router.delete("/files/{year}/{month}/{filename}")
+@router.delete("/files/{year}/{month}/{filename}", status_code=status.HTTP_204_NO_CONTENT)
 @limiter.limit(f"{RATE_LIMIT_WRITE}/minute")
 def delete_uploaded_file(
     request: Request,  # noqa: ARG001
@@ -307,7 +307,6 @@ def delete_uploaded_file(
     for dir_ in (filepath.parent, filepath.parent.parent):
         with suppress(OSError):
             dir_.rmdir()
-    return {"message": "Media deleted"}
 
 
 def _parse_upload_url(url: str) -> tuple[str, str, str] | None:
