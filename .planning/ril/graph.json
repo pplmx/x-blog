@@ -2,7 +2,7 @@
   "ril_version": 1,
   "round": 186,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-08-29T01:54:07+00:00",
+  "updated_at": "2026-08-29T04:02:38+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -12606,6 +12606,41 @@
       "title": "TASK-226 verification: vitest 1265 passed, nuxt typecheck exit 0, biome check 0 errors",
       "description": "After the commit: full vitest suite 1265/1265 green (new: CommentList expose-refresh test, account stuck-save regression, useReadingHistory stale-drop, history debounce x2); nuxt typecheck exit 0; pnpm lint (biome) 0 errors (1 pre-existing schema-version info).",
       "confidence": 1.0
+    },
+    "ISS-148": {
+      "id": "ISS-148",
+      "type": "issue",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-29T04:02:38+00:00",
+      "updated_at": "2026-08-29T04:02:38+00:00",
+      "touched_round": 186,
+      "title": "Login/API fails with Failed to fetch when the site is accessed via a machine IP",
+      "description": "Real user report: POST http://localhost:18888/api/reader/login -> '<no response> Failed to fetch' every time on http://10.112.9.49:34567/login. Root cause: NUXT_API_URL (old docs/deployment.md guidance) is injected into the client bundle as runtimeConfig.public.apiUrl, so the browser bypasses the same-origin /api proxy (server/routes/api/[...path].ts) and calls the backend directly, cross-origin. Backend ALLOWED_ORIGINS only lists localhost:3000/34567, so a LAN-IP origin fails the CORS preflight -> TypeError: Failed to fetch. Fixed in 434d952: docs guide to the proxy (or server-only NUXT_PROXY_TARGET) + build-time guard in nuxt.config.ts."
+    },
+    "DEC-208": {
+      "id": "DEC-208",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-29T04:02:38+00:00",
+      "updated_at": "2026-08-29T04:02:38+00:00",
+      "touched_round": 186,
+      "title": "Same-origin /api proxy is the API edge; apiUrl stays empty; NUXT_PROXY_TARGET is the only server-side target override",
+      "rationale": "User report (ISS-148): an absolute NUXT_API_URL leaks into the browser bundle and forces cross-origin browser->backend calls that only pass CORS from the exact localhost origins in ALLOWED_ORIGINS, breaking every API call when the site is opened via a machine IP. The intended topology (compose + nginx + local dev) already front /api/** on the Nuxt origin via server/routes/api/[...path].ts; keeping runtimeConfig.public.apiUrl empty makes the browser same-origin under every host alias, and the proxy's BACKEND_URL (default localhost:18888) is overridable server-side only via NUXT_PROXY_TARGET.",
+      "alternatives_rejected": "Widening backend ALLOWED_ORIGINS to include host aliases (chasing-origin whack-a-mole, and still broken when the browser's localhost is a different machine than the backend); keeping the documented NUXT_API_URL remote-backend flow (proven to break; the proxy already exists)."
+    },
+    "CHG-249": {
+      "id": "CHG-249",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-29T04:02:38+00:00",
+      "updated_at": "2026-08-29T04:02:38+00:00",
+      "touched_round": 186,
+      "commit": "434d952",
+      "title": "docs + build-time guard so apiUrl can never silently force cross-origin API calls",
+      "description": "docs/deployment.md rewrites the frontend env guidance (no .env needed in dev; use NUXT_PROXY_TARGET for remote backends); nuxt.config.ts warns when an absolute NUXT_API_URL is set. Verified typecheck 0, biome 0."
     }
   },
   "edges": [
@@ -18012,6 +18047,18 @@
       "to": "COMP-001",
       "type": "located_in",
       "created_at": "2026-08-29T01:54:07+00:00"
+    },
+    {
+      "from": "CHG-249",
+      "to": "ISS-148",
+      "type": "resolves",
+      "created_at": "2026-08-29T04:02:38+00:00"
+    },
+    {
+      "from": "DEC-208",
+      "to": "COMP-002",
+      "type": "governs",
+      "created_at": "2026-08-29T04:02:38+00:00"
     }
   ]
 }
