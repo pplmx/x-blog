@@ -641,7 +641,12 @@ def get_comments_paginated(
         order = [models.Comment.likes.desc(), models.Comment.created_at.desc()]
     else:
         order = [models.Comment.created_at.desc()]
-    comments = query.order_by(*order).offset((page - 1) * limit).limit(limit).all()
+    # Eager-load the author reader on the page query so serializing
+    # CommentPublic (which touches c.reader) doesn't fire one lazy query per
+    # reader-attributed comment (ISS-139).
+    comments = (
+        query.options(joinedload(models.Comment.reader)).order_by(*order).offset((page - 1) * limit).limit(limit).all()
+    )
 
     return comments, total
 
@@ -1019,7 +1024,8 @@ def increment_views(db: Session, post_id: int) -> models.Post | None:
     Also upserts today's row in ``post_views_daily`` (DEC-086) so the admin
     dashboard's reading-trend series advances on the same write-on-read path.
     One extra small statement per pageview rides the existing UPDATE+commit;
-    coalescing these writes is tracked separately (TASK-026).
+    coalescing these writes is tracked separately (TASK-026). The cached list
+    payloads embed the view counter, so a pageview invalidates them (ISS-141).
     """
     stmt = update(models.Post).where(models.Post.id == post_id).values(views=models.Post.views + 1)
     db.execute(stmt)
@@ -1031,9 +1037,29 @@ def increment_views(db: Session, post_id: int) -> models.Post | None:
         db.add(models.PostViewsDaily(post_id=post_id, day=today, views=1))
     try:
         db.commit()
+    except IntegrityError:
+        # Two concurrent first-view pageviews raced to insert the unique
+        # uq_post_views_daily_post_day row (ISS-138): ours lost to the other
+        # writer's commit. Re-apply both increments as plain atomic UPDATEs on
+        # the now-visible rows, so the view is still counted and this request
+        # does not 500 on the public view endpoint.
+        db.rollback()
+        db.execute(update(models.Post).where(models.Post.id == post_id).values(views=models.Post.views + 1))
+        db.execute(
+            update(models.PostViewsDaily)
+            .where(
+                models.PostViewsDaily.post_id == post_id,
+                models.PostViewsDaily.day == today,
+            )
+            .values(views=models.PostViewsDaily.views + 1)
+        )
+        db.commit()
     except Exception:
         db.rollback()
         raise
+    # The cached list/series payloads embed the view counter — invalidate so a
+    # public list never shows stale counts for up to the 5-min TTL (ISS-141).
+    clear_posts_list_cache()
     post = db.get(models.Post, post_id)
     if post:
         db.refresh(post)
@@ -1041,7 +1067,10 @@ def increment_views(db: Session, post_id: int) -> models.Post | None:
 
 
 def increment_likes(db: Session, post_id: int) -> models.Post | None:
-    """Increment the like count for a post using atomic SQL update."""
+    """Increment the like count for a post using atomic SQL update.
+
+    Invalidates the cached list payloads, which embed the like counter (ISS-141).
+    """
     stmt = update(models.Post).where(models.Post.id == post_id).values(likes=models.Post.likes + 1)
     db.execute(stmt)
     try:
@@ -1049,6 +1078,7 @@ def increment_likes(db: Session, post_id: int) -> models.Post | None:
     except Exception:
         db.rollback()
         raise
+    clear_posts_list_cache()
     post = db.get(models.Post, post_id)
     if post:
         db.refresh(post)

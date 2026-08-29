@@ -5,8 +5,10 @@ Caches that are actually read by the application live here:
 - posts_list_cache: short-lived (5 min TTL) serialized PostListResponse
   payloads keyed by (page, limit, category_id, tag_id). Values are plain dicts
   (never live ORM objects) so they survive across per-request Sessions.
-  Invalidated on post create/update/delete (admin writes); views/likes do NOT
-  invalidate it because they don't change the list ordering or content.
+  Invalidated on post create/update/delete (admin writes) and on every
+  increment of a post's live counters — the payloads embed views/likes, so a
+  pageview/like must drop them too or public lists show stale counts until the
+  TTL (ISS-141; the counters do not, however, affect list ordering).
 """
 
 from cachetools import TTLCache

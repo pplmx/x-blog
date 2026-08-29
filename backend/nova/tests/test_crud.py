@@ -3,8 +3,9 @@
 from unittest.mock import MagicMock, patch
 
 import pytest
+from sqlalchemy.exc import IntegrityError
 
-from app import crud, models, schemas
+from app import cache, crud, models, schemas
 
 
 class TestGetPosts:
@@ -938,6 +939,46 @@ class TestIncrementViewsAndLikes:
             crud.increment_views(mock_db, 1)
 
         mock_db.rollback.assert_called_once()
+
+    def test_increment_views_recovers_from_daily_row_race(self):
+        """Two concurrent first-view pageviews on a day resolve, not 500 (ISS-138).
+
+        The loser's commit hits the unique uq_post_views_daily_post_day row and
+        must roll back, then re-apply the increments as atomic UPDATEs so the
+        view is still counted and no IntegrityError escapes to the public
+        POST /api/posts/{id}/view endpoint.
+        """
+        mock_db = MagicMock()
+        # First commit loses the race (IntegrityError); the recovery commit wins.
+        mock_db.commit.side_effect = [
+            IntegrityError("INSERT INTO post_views_daily", {}, Exception("UNIQUE constraint")),
+            None,
+        ]
+        mock_result = MagicMock()
+        mock_result.rowcount = 1
+        mock_db.execute.return_value = mock_result
+        # The losing transaction never saw the other writer's daily row.
+        mock_db.query.return_value.filter_by.return_value.first.return_value = None
+
+        result = crud.increment_views(mock_db, 1)
+
+        assert result is not None
+        # Initial commit + recovery commit; the failed one was rolled back.
+        assert mock_db.commit.call_count == 2
+        mock_db.rollback.assert_called_once()
+
+    def test_increment_views_invalidates_posts_list_cache(self, db_session):
+        """A pageview must drop the cached list payloads (they embed views, ISS-141)."""
+        post = models.Post(title="Cache Views", slug="cache-views", content="Content")
+        db_session.add(post)
+        db_session.commit()
+
+        cache.posts_list_cache[(1, 10, None, None)] = {"items": [{"id": post.id, "views": 0}]}
+        assert len(cache.posts_list_cache) == 1
+
+        crud.increment_views(db_session, post.id)
+
+        assert len(cache.posts_list_cache) == 0
 
     def test_increment_likes_commit_failure_rolls_back(self):
         """Test increment_likes rolls back on commit failure."""

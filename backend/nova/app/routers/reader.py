@@ -1309,10 +1309,17 @@ def list_my_comments(
         raise HTTPException(status_code=422, detail=f"status must be one of {list(VALID_READER_COMMENT_STATUSES)}")
     comments, total = crud.get_reader_comments(db, current_reader.id, status=status, page=page, limit=limit)
     total_pages = (total + limit - 1) // limit if limit > 0 else 0
+    # Batch-load the posts once in a single query instead of db.get per comment
+    # (many comments share a post; ISS-140) — one in_() query, not up to 100.
+    post_ids = {c.post_id for c in comments}
+    posts_by_id = {}
+    if post_ids:
+        rows = db.query(models.Post).filter(models.Post.id.in_(post_ids)).all()
+        posts_by_id = {p.id: p for p in rows}
     items = []
     for c in comments:
         base = schemas.CommentPublic.model_validate(c).model_dump()
-        post = db.get(models.Post, c.post_id)
+        post = posts_by_id.get(c.post_id)
         items.append(
             ReaderCommentItem(
                 **base,
