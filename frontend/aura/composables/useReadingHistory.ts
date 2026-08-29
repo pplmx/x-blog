@@ -59,31 +59,42 @@ export function useReadingHistory() {
 	const stats = ref<ReadingStats | null>(null);
 	const loading = ref(false);
 
+	// Monotonic request sequence so a slow earlier response cannot overwrite a
+	// newer one after the recall-search query changed (ISS-128).
+	let loadSeq = 0;
+
 	/** Load history (+ stats) from the active source (server if signed in, else local).
 	 * ``query`` (optional) filters to posts whose title/excerpt match (recall
 	 * search, DEC-148/TASK-186): server asks the API, guests filter in place. */
 	async function load(query = ""): Promise<void> {
+		const seq = ++loadSeq; // invalidate any in-flight older request
 		if (!serverEnabled.value) {
 			const term = query.trim().toLowerCase();
 			const all = fromLocal(local.recent.value);
 			history.value = term ? all.filter((h) => h.title.toLowerCase().includes(term)) : all;
 			stats.value = null;
+			// A sign-out mid-flight must still clear the spinner left by the
+			// superseded server request (this load is now the latest).
+			if (seq === loadSeq) loading.value = false;
 			return;
 		}
 		loading.value = true;
 		try {
 			const data = await getReaderHistory(1, HISTORY_FETCH_LIMIT, query);
+			if (seq !== loadSeq) return; // stale response — a newer search is in flight
 			history.value = (data?.items ?? []).map((i) => ({
 				slug: i.slug,
 				title: i.title,
 				viewedAt: toEpoch(i.viewed_at),
 			}));
 		} catch {
+			if (seq !== loadSeq) return;
 			// Best-effort: fall back to the local trail if the call fails.
 			history.value = fromLocal(local.recent.value);
 		}
 		try {
 			const sdata = await getReaderHistoryStats();
+			if (seq !== loadSeq) return;
 			if (sdata) {
 				stats.value = {
 					totalPosts: sdata.total_posts,
@@ -95,9 +106,11 @@ export function useReadingHistory() {
 				};
 			}
 		} catch {
+			if (seq !== loadSeq) return;
 			stats.value = null;
 		} finally {
-			loading.value = false;
+			// Only the latest request may clear the spinner.
+			if (seq === loadSeq) loading.value = false;
 		}
 	}
 

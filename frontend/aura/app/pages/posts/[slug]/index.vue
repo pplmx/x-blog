@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, watch, watchEffect } from "vue";
+import { computed, ref, watch, watchEffect } from "vue";
 import {
 	likePost,
 	recordPostView,
@@ -229,6 +229,13 @@ function scrollToHeading(event: MouseEvent) {
 // logic lives in composables/useReadingTime to keep the detail page and the
 // print route consistent with backend crud.reading_minutes (RIL round 72).
 const readingTime = computed(() => readingMinutes(post.value?.content));
+
+// Refresh the comment list after the standalone top-level form submits, so the
+// new comment + count are visible without a reload (ISS-126).
+const commentListRef = ref<{ refreshList: () => Promise<void> } | null>(null);
+function handleCommentSubmitted() {
+	void commentListRef.value?.refreshList();
+}
 </script>
 
 <template>
@@ -425,9 +432,9 @@ const readingTime = computed(() => readingMinutes(post.value?.content));
 
         <!-- Comments -->
         <section v-if="post.id" class="mt-12 pt-8 border-t border-gray-100 dark:border-gray-800">
-          <CommentList :post-id="post.id" />
+          <CommentList ref="commentListRef" :post-id="post.id" />
           <div class="mt-10 pt-8 border-t border-gray-100 dark:border-gray-800">
-            <CommentForm :post-id="post.id" />
+            <CommentForm :post-id="post.id" @submitted="handleCommentSubmitted" />
           </div>
         </section>
 

@@ -56,12 +56,35 @@ describe("Reading-history page (TASK-170)", () => {
 		mockClear.mockClear();
 	});
 
-	it("invokes load with the search term on input (TASK-186)", async () => {
+	it("invokes load with the search term after debounce (ISS-128)", async () => {
+		vi.useFakeTimers();
 		const wrapper = mountHistory();
 		const input = wrapper.get('input[type="search"]');
 		await input.setValue("rust");
+		// happy-dom dispatches the input event as a queued macrotask; flush it
+		// before advancing the fake clock so the debounce timer gets scheduled.
+		await vi.advanceTimersByTimeAsync(0);
+		await vi.advanceTimersByTimeAsync(350);
 		await flushPromises();
 		expect(mockLoad).toHaveBeenCalledWith("rust");
+		vi.useRealTimers();
+	});
+
+	it("debounces rapid keystrokes into a single load call (ISS-128)", async () => {
+		vi.useFakeTimers();
+		const wrapper = mountHistory();
+		const input = wrapper.get('input[type="search"]');
+		mockLoad.mockClear(); // forget the onMounted no-arg load()
+		await input.setValue("r");
+		await vi.advanceTimersByTimeAsync(0); // flush input dispatch
+		await vi.advanceTimersByTimeAsync(299); // still inside the debounce window
+		await input.setValue("rust"); // supersedes the "r" term
+		await vi.advanceTimersByTimeAsync(0); // flush input dispatch
+		await vi.advanceTimersByTimeAsync(301); // now past the 300ms debounce
+		await flushPromises();
+		expect(mockLoad).toHaveBeenCalledTimes(1);
+		expect(mockLoad).toHaveBeenCalledWith("rust");
+		vi.useRealTimers();
 	});
 
 	it("renders without errors", () => {

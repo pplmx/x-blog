@@ -60,11 +60,11 @@ const profileSaved = ref(false);
 const profileFailed = ref(false);
 
 async function saveProfileName() {
+	const name = displayName.value.trim();
+	if (!name) return; // guard before touching state so Save never sticks disabled (ISS-127)
 	savingProfile.value = true;
 	profileSaved.value = false;
 	profileFailed.value = false;
-	const name = displayName.value.trim();
-	if (!name) return;
 	try {
 		const updated = await updateReaderProfile({ display_name: name });
 		setProfile(updated);

@@ -213,6 +213,30 @@ describe("Account settings page", () => {
 		expect(wrapper.text()).toContain("已保存");
 	});
 
+	it("clearing the display name does not disable Save (ISS-127)", async () => {
+		isAuthenticated.value = true;
+		mockUpdateMyProfile.mockResolvedValue({
+			id: 1,
+			email: "r@example.com",
+			display_name: "X",
+		});
+		const wrapper = await mountPage();
+
+		const input = wrapper.get("input[type='text']");
+		await input.setValue("");
+		await wrapper.get("button").trigger("click"); // save
+		await flushPromises();
+
+		expect(mockUpdateMyProfile).not.toHaveBeenCalled();
+		expect(wrapper.get("button").attributes("disabled")).toBeUndefined();
+
+		// Still functional afterwards — a valid name saves fine.
+		await input.setValue("NewName");
+		await wrapper.get("button").trigger("click");
+		await flushPromises();
+		expect(mockUpdateMyProfile).toHaveBeenCalledWith({ display_name: "NewName" });
+	});
+
 	it("rejects a short new password without calling the API", async () => {
 		isAuthenticated.value = true;
 		const wrapper = await mountPage();

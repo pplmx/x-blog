@@ -18,8 +18,12 @@ const { history, stats, loading, load, clear } = useReadingHistory();
 // Recall search (DEC-148/TASK-186): filter history to viewed posts matching
 // the term (server for signed-in readers, in-place for guests).
 const searchQuery = ref("");
+// Debounce recall-search so fast typing doesn't fire a server call per
+// keystroke (the seq guard in load() drops out-of-order responses, ISS-128).
+let searchTimer: ReturnType<typeof setTimeout> | null = null;
 function onSearch() {
-	void load(searchQuery.value);
+	if (searchTimer) clearTimeout(searchTimer);
+	searchTimer = setTimeout(() => void load(searchQuery.value), 300);
 }
 
 useSeo({

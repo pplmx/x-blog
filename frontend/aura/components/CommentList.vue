@@ -670,6 +670,10 @@ function formatDate(dateStr: string): string {
 		day: "numeric",
 	});
 }
+
+// Expose the imperative refetch so a sibling comment form (post page) can
+// refresh the list/count after a successful top-level submission (ISS-126).
+defineExpose({ refreshList });
 </script>
 
 <!-- Comment markdown typography (DEC-088): code blocks/links/quotes inside the

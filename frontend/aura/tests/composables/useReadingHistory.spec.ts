@@ -90,6 +90,31 @@ describe("useReadingHistory (TASK-170)", () => {
 		expect(history.value).toEqual([{ slug: "l", title: "Local", viewedAt: 5 }]);
 	});
 
+	it("a stale response cannot overwrite a newer one (ISS-128 seq guard)", async () => {
+		authRef.value = true;
+		// First (older) search is slow; the second resolves first.
+		fetchHistory.mockImplementationOnce(
+			() =>
+				new Promise((resolve) =>
+					setTimeout(
+						() =>
+							resolve({ items: [{ id: 1, title: "Old", slug: "old", viewed_at: null }], total: 1 }),
+						50,
+					),
+				),
+		);
+		fetchHistory.mockImplementationOnce(() =>
+			Promise.resolve({ items: [{ id: 2, title: "New", slug: "new", viewed_at: null }], total: 1 }),
+		);
+		const { load, history } = useReadingHistory();
+		const older = load("a");
+		await load("ab");
+		expect(history.value[0]?.title).toBe("New");
+		await older; // slow response resolves last — must be dropped
+		expect(history.value[0]?.title).toBe("New");
+		expect(history.value).toHaveLength(1);
+	});
+
 	it("guest clear only clears the local trail", async () => {
 		localRecent.value = [{ slug: "a", title: "A", viewedAt: 1 }];
 		const { clear, history } = useReadingHistory();

@@ -846,4 +846,37 @@ describe("CommentList", () => {
 			expect(wrapper.text()).toContain("Guest");
 		});
 	});
+
+	describe("Exposed refresh (ISS-126)", () => {
+		it("exposes refreshList so a sibling comment form can re-fetch after submit", async () => {
+			const { wrapper } = await mountCommentList();
+			const vm = wrapper.findComponent(CommentList).vm as unknown as {
+				refreshList: () => Promise<void>;
+			};
+			expect(typeof vm.refreshList).toBe("function");
+
+			mockGetComments.mockReset().mockResolvedValue({
+				items: [
+					{
+						id: 99,
+						post_id: 1,
+						parent_id: null,
+						nickname: "Zoe",
+						email: "zoe@test.com",
+						content: "Freshly submitted comment",
+						is_approved: true,
+						ip_address: "127.0.0.1",
+						created_at: "2024-03-01T00:00:00Z",
+					},
+				],
+				total: 1,
+				total_pages: 1,
+				page: 1,
+				limit: 20,
+			});
+			await vm.refreshList();
+			expect(mockGetComments).toHaveBeenCalledWith(1, 1, 20, "newest");
+			expect(wrapper.text()).toContain("Freshly submitted comment");
+		});
+	});
 });
