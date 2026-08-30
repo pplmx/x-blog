@@ -42,6 +42,7 @@
 		"pinned": "📌 Pinned",
 		"pin": "📌 Pin post",
 		"schedulePublish": "Schedule publish (optional)",
+		"scheduledNoNotifyHint": "Scheduled posts go live automatically but readers are NOT notified at publish time — use Notify subscribers after it's live.",
 		"coverImage": "Cover image URL",
 		"saving": "Saving...",
 		"save": "Save post",

@@ -962,6 +962,21 @@ function handleFileInput(e: Event) {
           </label>
         </div>
 
+        <!-- Scheduled-publish notification note (DEC-076/TASK-235): the blog has
+             no background scheduler, so a scheduled post goes live silently —
+             followers/Web Push subscribers are NOT notified when publish_at
+             crosses. Tell the operator up front so they can notify manually
+             (the editor's notify button) instead of discovering the gap after
+             the fact. -->
+        <p
+          v-if="formData.published && formData.publish_at"
+          class="flex items-start gap-2 text-xs text-amber-700 dark:text-amber-400"
+          role="note"
+        >
+          <Icon icon="lucide:info" class="w-3.5 h-3.5 mt-0.5 shrink-0" aria-hidden="true" role="presentation" />
+          {{ t("admin.postEdit.scheduledNoNotifyHint") }}
+        </p>
+
         <div class="flex items-start gap-3">
           <input
             id="cover_image"

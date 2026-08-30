@@ -42,6 +42,7 @@
 		"pinned": "📌 已置顶",
 		"pin": "📌 置顶文章",
 		"schedulePublish": "定时发布 (可选)",
+		"scheduledNoNotifyHint": "定时发布的文章会按时上线，但读者在发布时间不会收到通知——上线后请手动点击“通知订阅者”。",
 		"coverImage": "封面图 URL",
 		"saving": "保存中...",
 		"save": "保存文章",

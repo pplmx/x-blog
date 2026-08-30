@@ -498,6 +498,30 @@ describe("Admin Post Editor Page", () => {
 			expect(wrapper.text()).toContain("已发布");
 		});
 
+		it("shows the scheduled no-notify hint only when the post is published AND scheduled", async () => {
+			// DEC-076/TASK-235: no background scheduler, so a published+scheduled
+			// post goes live silently — the editor must tell the operator to
+			// notify manually instead of leaving them to discover the gap later.
+			const PostEditor = await loadPage();
+			const wrapper = await mountWithSuspense(PostEditor);
+			await flushPromises();
+
+			// New post, draft by default: no hint.
+			expect(wrapper.text()).not.toContain("定时发布的文章会按时上线");
+
+			// Publish it but leave it unscheduled: still no hint.
+			const publishedCheckbox = wrapper.find("#published");
+			await publishedCheckbox.setChecked();
+			await flushPromises();
+			expect(wrapper.text()).not.toContain("定时发布的文章会按时上线");
+
+			// Set the publish_at datetime → the no-notify hint appears.
+			const publishAt = wrapper.find("#publish_at");
+			await publishAt.setValue("2026-09-01T10:00");
+			await flushPromises();
+			expect(wrapper.text()).toContain("定时发布的文章会按时上线");
+		});
+
 		it("renders cover image URL input", async () => {
 			const PostEditor = await loadPage();
 			const wrapper = await mountWithSuspense(PostEditor);
