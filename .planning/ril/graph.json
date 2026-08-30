@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 191,
+  "round": 192,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-08-30T10:48:13+00:00",
+  "updated_at": "2026-08-30T11:05:50+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -13187,6 +13187,30 @@
       "updated_at": "2026-08-30T10:48:13+00:00",
       "touched_round": 191,
       "summary": "Comment deep-links (#comment-<id>) silently fail for comments beyond page 1"
+    },
+    "TASK-235": {
+      "id": "TASK-235",
+      "type": "task",
+      "status": "active",
+      "version": 2,
+      "created_at": "2026-08-30T10:54:41+00:00",
+      "updated_at": "2026-08-30T10:58:39+00:00",
+      "touched_round": 191,
+      "summary": "Investigate scheduled-publish notification gap: either a scheduler that flips publish_at-due posts and fans out, or a documented decision that scheduled posts are notified on the admin 'Publish' click only",
+      "category": "core-feature",
+      "severity": 0.6,
+      "confidence": 0.7,
+      "effort": 5.0
+    },
+    "ISS-169": {
+      "id": "ISS-169",
+      "type": "issue",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-30T10:57:01+00:00",
+      "updated_at": "2026-08-30T10:57:01+00:00",
+      "touched_round": 191,
+      "summary": "Scheduled posts (publish_at in future) never fan out new-post notifications when they cross publish time - no background scheduler exists"
     }
   },
   "edges": [
@@ -18993,6 +19017,12 @@
       "to": "ISS-168",
       "type": "resolves",
       "created_at": "2026-08-30T10:48:13+00:00"
+    },
+    {
+      "from": "TASK-235",
+      "to": "ISS-169",
+      "type": "addresses",
+      "created_at": "2026-08-30T10:57:01+00:00"
     }
   ]
 }
