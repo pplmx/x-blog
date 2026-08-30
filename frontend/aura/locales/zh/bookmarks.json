@@ -21,6 +21,7 @@
 		"noFolder": "未分类",
 		"noPostsInFolder": "此文件夹中暂无收藏。",
 		"assign": "移动到文件夹",
+		"assignFailed": "移动收藏失败，请检查网络后重试。",
 		"searchPlaceholder": "搜索收藏…",
 		"clearSearch": "清除搜索",
 		"noSearchResults": "没有匹配的收藏。"

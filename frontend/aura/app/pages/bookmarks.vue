@@ -106,13 +106,27 @@ function activeClass(active: boolean): string {
 		: "px-3 py-1.5 rounded-xl text-sm font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors";
 }
 
+const assignFailed = ref(false);
+
 async function handleAssign(bookmark: Bookmark, raw: string) {
 	const folderId = raw === "" ? null : Number(raw);
+	const prevId = bookmark.folder_id;
+	const prevName = bookmark.folder_name;
 	// Optimistic local update so the list re-renders immediately.
 	bookmark.folder_id = folderId;
 	bookmark.folder_name =
 		folderId === null ? null : (folders.value.find((f) => f.id === folderId)?.name ?? null);
-	await assignFolder(bookmark.id, folderId);
+	const ok = await assignFolder(bookmark.id, folderId);
+	// Roll the row back when the server rejected the change, so the UI never
+	// claims a folder assignment the cloud did not persist (deep-dive finding).
+	if (!ok) {
+		bookmark.folder_id = prevId;
+		bookmark.folder_name = prevName;
+		assignFailed.value = true;
+		setTimeout(() => {
+			assignFailed.value = false;
+		}, 4000);
+	}
 }
 </script>
 
@@ -141,6 +155,16 @@ async function handleAssign(bookmark: Bookmark, raw: string) {
         {{ t('bookmarks.clearAll') }}
       </button>
     </div>
+
+    <!-- Folder-assign failure (deep-dive finding): the optimistic local change
+         was rolled back — tell the reader so the UI feedback is never silent. -->
+    <p
+      v-if="assignFailed"
+      class="mb-4 text-sm text-red-600 dark:text-red-400"
+      role="alert"
+    >
+      {{ t('bookmarks.assignFailed') }}
+    </p>
 
     <!-- Bookmark search (DEC-124, TASK-174) -->
     <div v-if="bookmarkCount > 0" class="mb-6">

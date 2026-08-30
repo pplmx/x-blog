@@ -62,13 +62,19 @@ export function useBookmarkFolders() {
 		}
 	}
 
-	/** Assign a bookmarked post to a folder (folderId null clears it); reload counts. */
-	async function assign(postId: number, folderId: number | null): Promise<void> {
+	/**
+	 * Assign a bookmarked post to a folder (folderId null clears it); reload
+	 * counts. Returns false on failure so the caller can roll back an optimistic
+	 * local update — a swallowed failure left the page showing a folder the
+	 * server never persisted (deep-dive finding).
+	 */
+	async function assign(postId: number, folderId: number | null): Promise<boolean> {
 		try {
 			await assignBookmarkFolder(postId, folderId);
 			await load();
+			return true;
 		} catch {
-			// best effort — local bookmark was already updated optimistically
+			return false;
 		}
 	}
 

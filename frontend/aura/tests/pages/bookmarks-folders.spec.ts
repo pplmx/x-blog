@@ -8,7 +8,7 @@
  * signed in.
  */
 
-import { mount } from "@vue/test-utils";
+import { flushPromises, mount } from "@vue/test-utils";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { computed, ref } from "vue";
 import type { BookmarkFolder } from "../../api/reader/bookmarks";
@@ -25,7 +25,7 @@ const mockLoadFolders = vi.fn();
 const mockCreateFolder = vi.fn();
 const mockRenameFolder = vi.fn();
 const mockRemoveFolder = vi.fn();
-const mockAssignFolder = vi.fn();
+const mockAssignFolder = vi.fn(() => Promise.resolve(true));
 
 vi.mock("../../composables/useBookmarks", () => ({
 	useBookmarks: () => ({
@@ -180,5 +180,21 @@ describe("Bookmark folders page (TASK-172)", () => {
 		const select = wrapper.find("select");
 		await select.setValue("2");
 		expect(mockAssignFolder).toHaveBeenCalledWith(1, 2);
+	});
+
+	it("rolls back the folder select and shows an error when the server rejects the assign", async () => {
+		// The row select updates optimistically; a failed server call must
+		// restore the prior folder and surface the failure (deep-dive finding).
+		mockFolders.value = [folder(2, "Frontend")];
+		mockBookmarks.value = [bm(1, "A", null)];
+		mockAssignFolder.mockResolvedValueOnce(false);
+		const wrapper = mountPage();
+
+		const select = wrapper.find("select");
+		await select.setValue("2");
+		await flushPromises();
+		expect(wrapper.text()).toContain("移动收藏失败");
+		// The optimistic change was rolled back to "no folder".
+		expect((select.element as HTMLSelectElement).value).toBe("");
 	});
 });
