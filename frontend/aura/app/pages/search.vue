@@ -48,6 +48,16 @@ const activeFilters = computed(() => {
 	return out;
 });
 
+// True when any narrowing filter (category/tag/sort/date) is active — gates the
+// one-click "clear filters" affordance so a filtered search isn't a trap that
+// needs every select manually reset (deep-dive finding).
+const hasActiveFilters = computed(() => Object.keys(activeFilters.value).length > 0);
+
+function clearFilters(): void {
+	// Drop every narrowing filter, keep the query, reset to page 1.
+	navigateTo({ query: { q: query.value, page: "1" } });
+}
+
 // Search params mirror the previous URL construction: `withQuery` omits empty
 // strings and undefined values, so a default `relevance` sort and empty
 // category/tag/date filters leave no trailing query params behind. `q` is
@@ -308,6 +318,17 @@ function handleSearchInput() {
             @change="setFilter('date_to', ($event.target as HTMLInputElement).value)"
           >
         </label>
+        <!-- One-click reset: a filtered search must never be a trap that needs
+             every select manually restored (deep-dive finding). -->
+        <button
+          v-if="hasActiveFilters"
+          type="button"
+          class="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-medium text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-800 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900/30 transition-colors"
+          @click="clearFilters"
+        >
+          <Icon icon="lucide:filter-x" class="w-3.5 h-3.5" />
+          {{ t("search.filters.clearAll") }}
+        </button>
       </div>
 
       <!-- Empty results -->

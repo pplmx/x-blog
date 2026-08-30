@@ -285,6 +285,31 @@ describe("Search Page", () => {
 			expect(navMock).toHaveBeenCalledWith({ query: { page: "1", q: "nuxt" } });
 		});
 
+		it("renders a one-click clear-filters button only when a filter is active", async () => {
+			// No narrowing filter active (only q): no clear button.
+			const plain = await mountSearchPage();
+			let clearBtn = plain.findAll("button").find((b) => b.text().includes("清除筛选"));
+			expect(clearBtn).toBeUndefined();
+
+			// A category filter in the URL makes it appear.
+			const filtered = await mountSearchPage({ routeQuery: { q: "test query", category: "Tech" } });
+			clearBtn = filtered.findAll("button").find((b) => b.text().includes("清除筛选"));
+			expect(clearBtn).toBeDefined();
+		});
+
+		it("clear-filters drops every narrowing filter but keeps the query", async () => {
+			const wrapper = await mountSearchPage({
+				routeQuery: { q: "test query", category: "Tech", sort: "newest" },
+			});
+			const navMock = vi.fn();
+			vi.stubGlobal("navigateTo", navMock);
+			const clearBtn = wrapper.findAll("button").find((b) => b.text().includes("清除筛选"));
+			expect(clearBtn).toBeDefined();
+			if (!clearBtn) throw new Error("expected a clear-filters button");
+			await clearBtn.trigger("click");
+			expect(navMock).toHaveBeenCalledWith({ query: { q: "test query", page: "1" } });
+		});
+
 		it("renders the found count", async () => {
 			const wrapper = await mountSearchPage();
 			expect(wrapper.text()).toContain("找到");

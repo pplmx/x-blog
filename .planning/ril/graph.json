@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 193,
+  "round": 194,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-08-30T15:44:56+00:00",
+  "updated_at": "2026-08-30T16:03:24+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -13346,6 +13346,27 @@
       "touched_round": 193,
       "commit": "1dfc2d7",
       "summary": "Scheduled-publish no-notify hint in admin post editor (TASK-235/DEC-211 resolution)"
+    },
+    "ISS-176": {
+      "id": "ISS-176",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-08-30T16:00:59+00:00",
+      "updated_at": "2026-08-30T16:02:09+00:00",
+      "touched_round": 193,
+      "summary": "Admin posts-list row actions (preview/edit/delete) were icon-only buttons with only a title tooltip - unreliable for screen readers - and the preview/edit actions nested interactive <button> inside <a> NuxtLinks (invalid HTML, unreachable-by-buttons); editor toolbar icon buttons (link/image/media) also lacked aria-labels"
+    },
+    "CHG-266": {
+      "id": "CHG-266",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-30T16:00:59+00:00",
+      "updated_at": "2026-08-30T16:00:59+00:00",
+      "touched_round": 193,
+      "commit": "612b125",
+      "summary": "Accessible valid-HTML admin row actions + editor toolbar aria-labels"
     }
   },
   "edges": [
@@ -19266,6 +19287,12 @@
       "to": "TASK-235",
       "type": "implements",
       "created_at": "2026-08-30T15:44:55+00:00"
+    },
+    {
+      "from": "CHG-266",
+      "to": "ISS-176",
+      "type": "resolves",
+      "created_at": "2026-08-30T16:02:09+00:00"
     }
   ]
 }

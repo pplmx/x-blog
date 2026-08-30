@@ -34,7 +34,8 @@
 			"sortOldest": "Oldest",
 			"sortViews": "Most viewed",
 			"dateFrom": "From",
-			"dateTo": "To"
+			"dateTo": "To",
+			"clearAll": "Clear filters"
 		}
 	}
 }

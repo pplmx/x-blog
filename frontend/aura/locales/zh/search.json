@@ -34,7 +34,8 @@
 			"sortOldest": "最旧",
 			"sortViews": "浏览量",
 			"dateFrom": "起始日期",
-			"dateTo": "结束日期"
+			"dateTo": "结束日期",
+			"clearAll": "清除筛选"
 		}
 	}
 }
