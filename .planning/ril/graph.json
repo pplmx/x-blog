@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 195,
+  "round": 196,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-08-30T18:03:47+00:00",
+  "updated_at": "2026-08-30T19:47:33+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -13444,6 +13444,88 @@
       "touched_round": 195,
       "commit": "b389e45",
       "summary": "Categories page reloads follow state on SPA category change (aligned with tags ISS-118)"
+    },
+    "ISS-180": {
+      "id": "ISS-180",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-08-30T19:45:31+00:00",
+      "updated_at": "2026-08-30T19:47:00+00:00",
+      "touched_round": 195,
+      "title": "Admin sub-page controls lack accessible names (a11y)",
+      "summary": "tags.vue icon-only action buttons (confirm/cancel/edit/delete) announced as unlabeled button; comments reply toggle and mobile sidebar hamburger lack aria-expanded; series episodes toggle same",
+      "severity": "medium"
+    },
+    "ISS-181": {
+      "id": "ISS-181",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-08-30T19:45:31+00:00",
+      "updated_at": "2026-08-30T19:47:00+00:00",
+      "touched_round": 195,
+      "title": "Admin readers table shows blank body while fetching",
+      "summary": "readers.vue table renders no loading state during pending — a blank table where the empty message is correctly suppressed, giving no feedback until rows arrive",
+      "severity": "low"
+    },
+    "ISS-182": {
+      "id": "ISS-182",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-08-30T19:45:31+00:00",
+      "updated_at": "2026-08-30T19:47:00+00:00",
+      "touched_round": 195,
+      "title": "Admin password modal lacks dialog semantics",
+      "summary": "admin layout password modal has no role=dialog/aria-modal/aria-labelledby, no Escape or close-button dismiss, no autofocus, save not disabled while submitting",
+      "severity": "medium"
+    },
+    "ISS-183": {
+      "id": "ISS-183",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-08-30T19:46:04+00:00",
+      "updated_at": "2026-08-30T19:47:00+00:00",
+      "touched_round": 195,
+      "title": "Admin taxonomy create forms don't submit on Enter",
+      "summary": "categories/tags/series create inputs only create on button click; Enter in the name field does nothing. Wrapping in real <form> elements gives native Enter-to-submit that also respects CJK IME composition",
+      "severity": "medium"
+    },
+    "ISS-184": {
+      "id": "ISS-184",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-08-30T19:46:04+00:00",
+      "updated_at": "2026-08-30T19:47:00+00:00",
+      "touched_round": 195,
+      "title": "Batch-delete success feedback unmounts when the last page empties",
+      "summary": "admin/comments.vue shows deletedMessage only in the batch action bar, which v-if's away when the comment list empties — batch-deleting all rows on the last page hides the success feedback instantly",
+      "severity": "low"
+    },
+    "ISS-185": {
+      "id": "ISS-185",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-08-30T19:46:04+00:00",
+      "updated_at": "2026-08-30T19:47:00+00:00",
+      "touched_round": 195,
+      "title": "settings.vue renders editable toggle on load failure",
+      "summary": "on a failed settings fetch the page kept showing the auto-approve toggle with the stale default/previous value, letting the operator save against a value never actually read; no retry path",
+      "severity": "medium"
+    },
+    "CHG-270": {
+      "id": "CHG-270",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-30T19:46:16+00:00",
+      "updated_at": "2026-08-30T19:46:16+00:00",
+      "touched_round": 195,
+      "commit": "6de514c"
     }
   },
   "edges": [
@@ -19400,6 +19482,48 @@
       "to": "ISS-179",
       "type": "resolves",
       "created_at": "2026-08-30T18:03:47+00:00"
+    },
+    {
+      "from": "CHG-270",
+      "to": "ISS-180",
+      "type": "resolves",
+      "created_at": "2026-08-30T19:46:46+00:00",
+      "note": "commit 6de514c fixes ISS-180"
+    },
+    {
+      "from": "CHG-270",
+      "to": "ISS-181",
+      "type": "resolves",
+      "created_at": "2026-08-30T19:46:46+00:00",
+      "note": "commit 6de514c fixes ISS-181"
+    },
+    {
+      "from": "CHG-270",
+      "to": "ISS-182",
+      "type": "resolves",
+      "created_at": "2026-08-30T19:46:46+00:00",
+      "note": "commit 6de514c fixes ISS-182"
+    },
+    {
+      "from": "CHG-270",
+      "to": "ISS-183",
+      "type": "resolves",
+      "created_at": "2026-08-30T19:46:46+00:00",
+      "note": "commit 6de514c fixes ISS-183"
+    },
+    {
+      "from": "CHG-270",
+      "to": "ISS-184",
+      "type": "resolves",
+      "created_at": "2026-08-30T19:46:46+00:00",
+      "note": "commit 6de514c fixes ISS-184"
+    },
+    {
+      "from": "CHG-270",
+      "to": "ISS-185",
+      "type": "resolves",
+      "created_at": "2026-08-30T19:46:46+00:00",
+      "note": "commit 6de514c fixes ISS-185"
     }
   ]
 }
