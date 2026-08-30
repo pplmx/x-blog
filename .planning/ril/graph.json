@@ -2,7 +2,7 @@
   "ril_version": 1,
   "round": 191,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-08-30T09:12:14+00:00",
+  "updated_at": "2026-08-30T10:48:13+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -13165,6 +13165,28 @@
       "updated_at": "2026-08-30T09:12:14+00:00",
       "touched_round": 191,
       "summary": "Home pagination click swaps content below the fold with no scroll-to-top"
+    },
+    "CHG-263": {
+      "id": "CHG-263",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-30T10:48:12+00:00",
+      "updated_at": "2026-08-30T10:48:12+00:00",
+      "touched_round": 191,
+      "commit": "9443edf",
+      "title": "Comment deep-link page-walk + README count refresh",
+      "description": "reply-notification #comment-<id> links past page 1 now walk to the comment's page and scroll; README test counts corrected."
+    },
+    "ISS-168": {
+      "id": "ISS-168",
+      "type": "issue",
+      "status": "resolved",
+      "version": 1,
+      "created_at": "2026-08-30T10:48:13+00:00",
+      "updated_at": "2026-08-30T10:48:13+00:00",
+      "touched_round": 191,
+      "summary": "Comment deep-links (#comment-<id>) silently fail for comments beyond page 1"
     }
   },
   "edges": [
@@ -18965,6 +18987,12 @@
       "to": "ISS-167",
       "type": "resolves",
       "created_at": "2026-08-30T09:12:14+00:00"
+    },
+    {
+      "from": "CHG-263",
+      "to": "ISS-168",
+      "type": "resolves",
+      "created_at": "2026-08-30T10:48:13+00:00"
     }
   ]
 }
