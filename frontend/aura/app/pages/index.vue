@@ -182,6 +182,10 @@ function fetchPosts(pageNum: number) {
 	if (categoryId.value) query.category_id = String(categoryId.value);
 	if (tagId.value) query.tag_id = String(tagId.value);
 	navigateTo({ query });
+	// Paging from the bottom of the feed re-renders in place; return the reader
+	// to the top so the new page is visible above the fold (else the swap looked
+	// like "nothing happened" while the content changed off-screen).
+	window.scrollTo({ top: 0, behavior: "smooth" });
 }
 
 // Sync page ref from URL when browser back / forward changes the route

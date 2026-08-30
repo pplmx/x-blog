@@ -31,6 +31,19 @@ const displayName = ref("");
 const error = ref<string | null>(null);
 const isPending = ref(false);
 
+const route = useRoute();
+// Sign in once, land where the reader started: /login?redirect=/account keeps a
+// guest on the page that prompted their login instead of always dumping them on
+// /bookmarks (the old behavior), which was jarring when the login link came from
+// /account, /comments, or a push sign-in prompt. Only same-origin relative paths
+// are honored (no open-redirect via an absolute URL).
+const redirectTarget = computed(() => {
+	const r = route.query.redirect;
+	if (typeof r !== "string" || !r) return "/bookmarks";
+	if (r.startsWith("/") && !r.startsWith("//")) return r;
+	return "/bookmarks";
+});
+
 async function handleSubmit() {
 	if (!(email.value && password.value)) return;
 	error.value = null;
@@ -44,7 +57,7 @@ async function handleSubmit() {
 		// Once authenticated, push any local bookmarks up and adopt the merged
 		// server list so /bookmarks is consistent post-login. (TASK-134)
 		await mergeLocalToCloud();
-		navigateTo("/bookmarks", { replace: true });
+		navigateTo(redirectTarget.value, { replace: true });
 	} catch (e) {
 		error.value = e instanceof Error ? e.message : t("reader.login.errors.network");
 	} finally {

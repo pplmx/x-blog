@@ -1,6 +1,6 @@
 /** Reader /login page tests (DEC-059, TASK-133). */
 
-import { mount } from "@vue/test-utils";
+import { flushPromises, mount } from "@vue/test-utils";
 import { describe, expect, it, vi } from "vitest";
 import { ref } from "vue";
 
@@ -18,6 +18,8 @@ vi.mock("~~/composables/useReaderAuth", () => ({
 }));
 
 vi.mock("~~/composables/useSeo", () => ({ useSeo: vi.fn() }));
+
+vi.stubGlobal("useRoute", () => ({ query: {} }));
 
 import Login from "../../app/pages/login.vue";
 
@@ -58,5 +60,50 @@ describe("login page", () => {
 		await wrapper.find('input[type="password"]').setValue("secret123");
 		await wrapper.find("form").trigger("submit.prevent");
 		expect(loginMock).toHaveBeenCalledWith("r@example.com", "secret123");
+	});
+});
+
+describe("login redirect (deep-dive fix)", () => {
+	it("navigates to ?redirect= target after a successful sign-in", async () => {
+		loginMock.mockResolvedValue({
+			access_token: "token",
+			token_type: "bearer",
+			reader: { id: 1, email: "r@example.com", display_name: null, created_at: null },
+		});
+		// Override the global route stub for this case.
+		vi.stubGlobal("useRoute", () => ({ query: { redirect: "/account" } }));
+		vi.stubGlobal("useBookmarkSync", () => ({ mergeLocalToCloud: vi.fn(() => Promise.resolve()) }));
+		const navMock = vi.fn();
+		vi.stubGlobal("navigateTo", navMock);
+
+		const wrapper = mountLogin();
+		await wrapper.find('input[type="email"]').setValue("r@example.com");
+		await wrapper.find('input[type="password"]').setValue("secret123");
+		await wrapper.find("form").trigger("submit.prevent");
+		await flushPromises();
+
+		expect(navMock).toHaveBeenCalledWith("/account", { replace: true });
+		vi.unstubAllGlobals();
+	});
+
+	it("falls back to /bookmarks for an absolute redirect (no open redirect)", async () => {
+		loginMock.mockResolvedValue({
+			access_token: "token",
+			token_type: "bearer",
+			reader: { id: 1, email: "r@example.com", display_name: null, created_at: null },
+		});
+		vi.stubGlobal("useRoute", () => ({ query: { redirect: "https://evil.example.com" } }));
+		vi.stubGlobal("useBookmarkSync", () => ({ mergeLocalToCloud: vi.fn(() => Promise.resolve()) }));
+		const navMock = vi.fn();
+		vi.stubGlobal("navigateTo", navMock);
+
+		const wrapper = mountLogin();
+		await wrapper.find('input[type="email"]').setValue("r@example.com");
+		await wrapper.find('input[type="password"]').setValue("secret123");
+		await wrapper.find("form").trigger("submit.prevent");
+		await flushPromises();
+
+		expect(navMock).toHaveBeenCalledWith("/bookmarks", { replace: true });
+		vi.unstubAllGlobals();
 	});
 });

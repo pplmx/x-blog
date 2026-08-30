@@ -349,7 +349,17 @@ function kindIcon(kind: string): string {
           ? 'border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900'
           : 'border-amber-200 dark:border-amber-900/60 bg-amber-50/50 dark:bg-amber-950/20'"
       >
-        <a :href="item.url || undefined" class="flex items-start gap-3 p-4" @click="markRead(item)">
+        <!-- With a URL the row is a link; without one it falls back to a
+             focusable row that still marks-read on activation — a bare .url-less
+             anchor (href=undefined) was neither focusable nor keyboard-
+             activatable, a dead interactive-looking row (deep-dive finding). -->
+        <component
+          :is="item.url ? 'a' : 'button'"
+          :href="item.url || undefined"
+          :type="item.url ? undefined : 'button'"
+          class="flex items-start gap-3 p-4 text-left w-full hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:outline-none rounded-xl"
+          @click="markRead(item)"
+        >
           <Icon :icon="kindIcon(item.kind)" class="w-5 h-5 mt-0.5 shrink-0 text-amber-500" />
           <div class="min-w-0 flex-1">
             <div class="flex items-center gap-2">
@@ -362,8 +372,12 @@ function kindIcon(kind: string): string {
             <p v-if="item.body" class="mt-0.5 text-sm text-gray-500 dark:text-gray-400">{{ item.body }}</p>
             <p class="mt-1 text-xs text-gray-400 dark:text-gray-500">{{ timeLabel(item) }}</p>
           </div>
+          <!-- Only as a link (url present) does the row need a separate
+               mark-read control — clicking the row itself navigates. For a
+               no-url row the whole row IS the mark-read button, so the inner
+               button is omitted (nesting a button in a button is invalid). -->
           <button
-            v-if="!item.read"
+            v-if="!item.read && item.url"
             type="button"
             :disabled="markingIds.has(item.id)"
             class="shrink-0 self-center text-xs font-medium text-amber-600 dark:text-amber-400 hover:underline disabled:opacity-60 disabled:cursor-not-allowed"
@@ -374,7 +388,7 @@ function kindIcon(kind: string): string {
             </span>
             <template v-else>{{ t('notifications.markRead') }}</template>
           </button>
-        </a>
+        </component>
       </li>
     </ul>
   </div>

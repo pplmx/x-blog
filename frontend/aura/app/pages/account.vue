@@ -467,7 +467,7 @@ function shortEndpoint(endpoint: string): string {
     >
       <p class="mb-3">{{ t('account.signInPrompt') }}</p>
       <NuxtLink
-        to="/login"
+        :to="{ path: '/login', query: { redirect: '/account' } }"
         class="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 transition-colors"
       >
         <Icon icon="lucide:log-in" class="w-4 h-4" />
