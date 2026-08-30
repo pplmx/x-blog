@@ -2,7 +2,7 @@
   "ril_version": 1,
   "round": 194,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-08-30T16:03:24+00:00",
+  "updated_at": "2026-08-30T16:26:37+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -13367,6 +13367,41 @@
       "touched_round": 193,
       "commit": "612b125",
       "summary": "Accessible valid-HTML admin row actions + editor toolbar aria-labels"
+    },
+    "TASK-239": {
+      "id": "TASK-239",
+      "type": "task",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-08-30T16:25:04+00:00",
+      "updated_at": "2026-08-30T16:26:37+00:00",
+      "touched_round": 194,
+      "category": "core-feature",
+      "severity": 0.4,
+      "confidence": 0.9,
+      "effort": 1,
+      "summary": "Search results: one-click clear-filters when a narrowing filter is active (no per-select manual reset)"
+    },
+    "ISS-177": {
+      "id": "ISS-177",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-08-30T16:25:04+00:00",
+      "updated_at": "2026-08-30T16:26:37+00:00",
+      "touched_round": 194,
+      "summary": "Filtered search page had no way to clear all filters at once - a reader had to manually reset every select"
+    },
+    "CHG-267": {
+      "id": "CHG-267",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-30T16:26:37+00:00",
+      "updated_at": "2026-08-30T16:26:37+00:00",
+      "touched_round": 194,
+      "commit": "7b56c0e",
+      "summary": "Search clear-filters button"
     }
   },
   "edges": [
@@ -19293,6 +19328,24 @@
       "to": "ISS-176",
       "type": "resolves",
       "created_at": "2026-08-30T16:02:09+00:00"
+    },
+    {
+      "from": "TASK-239",
+      "to": "ISS-177",
+      "type": "addresses",
+      "created_at": "2026-08-30T16:26:37+00:00"
+    },
+    {
+      "from": "CHG-267",
+      "to": "ISS-177",
+      "type": "resolves",
+      "created_at": "2026-08-30T16:26:37+00:00"
+    },
+    {
+      "from": "CHG-267",
+      "to": "TASK-239",
+      "type": "implements",
+      "created_at": "2026-08-30T16:26:37+00:00"
     }
   ]
 }
