@@ -181,6 +181,16 @@ async function toggleCategoryNotify() {
 }
 
 onMounted(loadCategoryFollow);
+// SPA navigation between categories (query-only change: /categories →
+// /categories?category_id=2) reuses this component instance, so onMounted does
+// not re-fire — the follow/notify buttons would keep the PREVIOUS category's
+// state (and a "follow" click would double-follow). Re-load whenever the
+// active category changes even on the same mount (deep-dive finding).
+watch(categoryId, () => {
+	catFollowing.value = false;
+	catNotify.value = true;
+	void loadCategoryFollow();
+});
 </script>
 
 <template>

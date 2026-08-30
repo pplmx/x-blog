@@ -431,5 +431,71 @@ describe("Categories Page", () => {
 			catFollowsState.items = [];
 			catFollowsState.total = 0;
 		});
+
+		it("reloads follow state on SPA navigation to a different category", async () => {
+			// SPA navigation between categories is a query-only change that reuses
+			// the component instance — onMounted does not re-fire, so the follow
+			// buttons must reload via the categoryId watcher instead of showing the
+			// previous category's state (deep-dive finding, same fix as ISS-118 on
+			// tags.vue).
+			window.localStorage.setItem("reader_token", "token");
+			// Category 1 is followed; category 2 is not.
+			catFollowsState.items = [{ id: 1, name: "Tech", notify: true }];
+			catFollowsState.total = 1;
+
+			const route = reactive({ query: { category_id: "1" } });
+			vi.stubGlobal("useRoute", () => route);
+
+			vi.stubGlobal(
+				"$fetch",
+				vi.fn((url: unknown, opts: { method?: string } = {}) => {
+					if (
+						String(url).includes("/me/category-follows") &&
+						!["PUT", "PATCH", "DELETE"].includes(opts.method ?? "")
+					) {
+						return Promise.resolve({
+							items: [...catFollowsState.items],
+							total: catFollowsState.items.length,
+						});
+					}
+					return Promise.resolve({});
+				}),
+			);
+
+			const { default: CategoriesPage } = await import("../../app/pages/categories.vue");
+			const SuspenseWrapper: any = {
+				components: { CategoriesPage },
+				template:
+					"<Suspense>" +
+					"<template #default><CategoriesPage /></template>" +
+					"<template #fallback>Loading...</template>" +
+					"</Suspense>",
+			};
+			const wrapper = mount(SuspenseWrapper, {
+				global: {
+					stubs: {
+						NuxtLink: {
+							template: '<a :href="to"><slot/></a>',
+							props: ["to"],
+						},
+						Icon: { template: '<svg class="iconstub" />' },
+					},
+				},
+			});
+			await flushPromises();
+			// Followed category 1 → the following state is shown.
+			expect(wrapper.text()).toContain("已关注分类");
+
+			// SPA-navigate to category 2 (not followed): the watcher must reload
+			// and flip the button back to "not following".
+			route.query = { category_id: "2" };
+			await flushPromises();
+			expect(wrapper.text()).toContain("关注分类");
+			expect(wrapper.text()).not.toContain("已关注分类");
+
+			window.localStorage.removeItem("reader_token");
+			catFollowsState.items = [];
+			catFollowsState.total = 0;
+		});
 	});
 });
