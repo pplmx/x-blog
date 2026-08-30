@@ -10,6 +10,8 @@
 		"draft": "Draft",
 		"scheduled": "Scheduled",
 		"preview": "Preview",
+		"edit": "Edit",
+		"delete": "Delete",
 		"confirmDelete": "Delete this post?",
 		"columns": {
 			"title": "Title",

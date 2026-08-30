@@ -2,7 +2,7 @@
   "ril_version": 1,
   "round": 193,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-08-30T15:34:12+00:00",
+  "updated_at": "2026-08-30T15:44:56+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -13318,12 +13318,12 @@
       "id": "CHG-264",
       "type": "change",
       "status": "active",
-      "version": 1,
+      "version": 2,
       "created_at": "2026-08-30T15:04:12+00:00",
-      "updated_at": "2026-08-30T15:04:12+00:00",
+      "updated_at": "2026-08-30T15:44:56+00:00",
       "touched_round": 193,
       "commit": "f7984ca",
-      "summary": "Frontend UX polish batch: search in-results query box, dashboard error branch, admin approve busy/rollback, editor error colors, bookmarks sync gate, HeaderSearch keyboard, account/notifications loading hints, login toggle lock, archive pagination windowing"
+      "summary": "Frontend UX polish batch (search/dashboard/admin/account/notifications)"
     },
     "DEC-211": {
       "id": "DEC-211",
@@ -13335,6 +13335,17 @@
       "touched_round": 193,
       "rationale": "Resolve TASK-235 (ISS-169 scheduled-publish notification gap) per its own stated acceptable outcome: a documented decision that scheduled posts notify only on the admin 'Publish' click / later write, not at publish_at crossing. DEC-076 shipped no background scheduler by design; the repo's established pattern (DEC-201) is that periodic work lives in the deploy layer as cron-friendly CLIs (digest_cli), and adding an in-process timer contradicts both. Read-path visibility is correct (scheduled posts become public on time via publish_at <= now filters); only the fan-out is deferred. To make the limitation operator-visible instead of silent, the admin post editor now shows an amber hint when a post is published+scheduled: use the Notify subscribers action after it goes live (CHG-265).",
       "alternatives_rejected": "(a) An in-process asyncio/APScheduler timer that flips due posts - contradicts DEC-076 and the no-worker deploys, and risks double-send races a cross-process timer introduces (the exact risk DEC-201's advisory lock guards against). (b) A cron CLI (publish_due_cli) that queries publish_at<=now and fans out - viable future work but needs an idempotency/quarantine marker on posts plus a DDL migration; out of scope for this polish round and not demanded by usage signal. (c) Doing nothing silently - rejected: the editor hint converts a hidden gap into an informed operator action."
+    },
+    "CHG-265": {
+      "id": "CHG-265",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-30T15:44:55+00:00",
+      "updated_at": "2026-08-30T15:44:55+00:00",
+      "touched_round": 193,
+      "commit": "1dfc2d7",
+      "summary": "Scheduled-publish no-notify hint in admin post editor (TASK-235/DEC-211 resolution)"
     }
   },
   "edges": [
@@ -19243,6 +19254,18 @@
       "to": "TASK-235",
       "type": "governs",
       "created_at": "2026-08-30T15:34:12+00:00"
+    },
+    {
+      "from": "CHG-265",
+      "to": "ISS-169",
+      "type": "resolves",
+      "created_at": "2026-08-30T15:44:55+00:00"
+    },
+    {
+      "from": "CHG-265",
+      "to": "TASK-235",
+      "type": "implements",
+      "created_at": "2026-08-30T15:44:55+00:00"
     }
   ]
 }

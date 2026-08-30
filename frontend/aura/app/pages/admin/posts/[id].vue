@@ -850,13 +850,13 @@ function handleFileInput(e: Event) {
           <button type="button" @click="insertHeading(2)" :title="t('admin.postEdit.toolbar.heading2')" class="toolbar-btn">H2</button>
           <button type="button" @click="insertHeading(3)" :title="t('admin.postEdit.toolbar.heading3')" class="toolbar-btn">H3</button>
           <span class="w-px h-5 bg-gray-200 dark:bg-gray-700 mx-1" />
-          <button type="button" @click="insertLink()" :title="t('admin.postEdit.toolbar.link')" class="toolbar-btn">
+          <button type="button" @click="insertLink()" :title="t('admin.postEdit.toolbar.link')" :aria-label="t('admin.postEdit.toolbar.link')" class="toolbar-btn">
             <Icon icon="lucide:link" class="w-3.5 h-3.5" />
           </button>
-          <button type="button" @click="triggerImagePicker" :disabled="isUploading" :title="t('admin.postEdit.toolbar.uploadImage')" class="toolbar-btn">
+          <button type="button" @click="triggerImagePicker" :disabled="isUploading" :title="t('admin.postEdit.toolbar.uploadImage')" :aria-label="t('admin.postEdit.toolbar.uploadImage')" class="toolbar-btn">
             <Icon :icon="isUploading ? 'lucide:loader-2' : 'lucide:image'" :class="{ 'animate-spin': isUploading }" class="w-3.5 h-3.5" />
           </button>
-          <button type="button" @click="showMediaPicker = true" :title="t('admin.postEdit.toolbar.mediaLibrary')" class="toolbar-btn">
+          <button type="button" @click="showMediaPicker = true" :title="t('admin.postEdit.toolbar.mediaLibrary')" :aria-label="t('admin.postEdit.toolbar.mediaLibrary')" class="toolbar-btn">
             <Icon icon="lucide:images" class="w-3.5 h-3.5" />
           </button>
           <input id="image-upload-input" type="file" accept="image/*" class="hidden" @change="handleFileInput">

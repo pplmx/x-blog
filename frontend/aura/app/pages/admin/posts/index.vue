@@ -208,23 +208,32 @@ function statusDot(post: AdminPost): string {
               </td>
               <td class="px-5 py-4 text-right">
                 <div class="flex items-center justify-end gap-1">
-                  <NuxtLink :to="`/preview/posts/${post.id}`">
-                    <button
-                      type="button"
-                      :title="t('admin.postsList.preview')"
-                      class="h-8 w-8 p-0 text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 rounded-lg transition-colors"
-                    >
-                      <Icon icon="lucide:eye" class="h-4 w-4" />
-                    </button>
+                  <!-- These are true links (preview/edit), not buttons-in-anchors:
+                       an interactive element nested inside another is invalid HTML
+                       and unreachable-by-buttons in some screen readers. The icon
+                       carries an explicit aria-label (title alone is not reliably
+                       announced). -->
+                  <NuxtLink
+                    :to="`/preview/posts/${post.id}`"
+                    :title="t('admin.postsList.preview')"
+                    :aria-label="t('admin.postsList.preview')"
+                    class="inline-flex items-center justify-center h-8 w-8 text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 rounded-lg transition-colors"
+                  >
+                    <Icon icon="lucide:eye" class="h-4 w-4" />
                   </NuxtLink>
-                  <NuxtLink :to="`/admin/posts/${post.id}`">
-                    <button type="button" class="h-8 w-8 p-0 text-blue-600 hover:text-blue-700 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded-lg transition-colors">
-                      <Icon icon="lucide:pencil" class="h-4 w-4" />
-                    </button>
+                  <NuxtLink
+                    :to="`/admin/posts/${post.id}`"
+                    :title="t('admin.postsList.edit')"
+                    :aria-label="t('admin.postsList.edit')"
+                    class="inline-flex items-center justify-center h-8 w-8 text-blue-600 hover:text-blue-700 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded-lg transition-colors"
+                  >
+                    <Icon icon="lucide:pencil" class="h-4 w-4" />
                   </NuxtLink>
                   <button
                     type="button"
                     :disabled="isDeleting"
+                    :title="t('admin.postsList.delete')"
+                    :aria-label="t('admin.postsList.delete')"
                     class="h-8 w-8 p-0 text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-lg transition-colors"
                     @click="handleDelete(post.id)"
                   >
