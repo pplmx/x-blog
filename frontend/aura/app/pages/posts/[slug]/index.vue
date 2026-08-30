@@ -124,6 +124,33 @@ async function handleLike() {
 
 const scrollProgress = ref(0);
 const activeTocId = ref("");
+// Re-created per post so SPA navigation between posts re-observes the new
+// article's headings (TASK-231-era deep-dive finding): the old single-shot
+// onMounted observer stayed pinned to the first post's headings and the TOC
+// highlight froze on SPA nav.
+let tocObserver: IntersectionObserver | null = null;
+function setupTocObserver() {
+	tocObserver?.disconnect();
+	activeTocId.value = "";
+	tocObserver = new IntersectionObserver(
+		(entries) => {
+			for (const entry of entries) {
+				if (entry.isIntersecting) {
+					activeTocId.value = entry.target.id;
+					break;
+				}
+			}
+		},
+		{ rootMargin: "-80px 0px -60% 0px" },
+	);
+	// Headings render with the content; a short settle lets the new post's
+	// article fully replace the previous one before we query for them.
+	setTimeout(() => {
+		document.querySelectorAll("h1[id], h2[id], h3[id]").forEach((el) => {
+			tocObserver?.observe(el);
+		});
+	}, 500);
+}
 // Per-post resume reading (DEC-167, TASK-200): restore a signed-in reader's
 // saved scroll offset when the post opens, and save it (debounced) while they
 // scroll. Only active client-side for authenticated readers (the server trail
@@ -173,7 +200,12 @@ watch(postId, (newId, oldId) => {
 	if (oldId === undefined || newId === oldId) return;
 	resumeChipVisible.value = false;
 	resume.reset();
-	if (newId) beginReadingSession(newId);
+	if (newId) {
+		beginReadingSession(newId);
+		// Re-observe the new post's headings so the TOC highlight tracks it
+		// instead of staying pinned to the previous article.
+		setupTocObserver();
+	}
 });
 
 onMounted(() => {
@@ -192,27 +224,12 @@ onMounted(() => {
 		// Best-effort, debounced in the composable; no-ops for guests.
 		resume.save(scrolled);
 	};
-	const observer = new IntersectionObserver(
-		(entries) => {
-			for (const entry of entries) {
-				if (entry.isIntersecting) {
-					activeTocId.value = entry.target.id;
-					break;
-				}
-			}
-		},
-		{ rootMargin: "-80px 0px -60% 0px" },
-	);
 	window.addEventListener("scroll", updateProgress);
 	updateProgress();
-	setTimeout(() => {
-		document.querySelectorAll("h1[id], h2[id], h3[id]").forEach((el) => {
-			observer.observe(el);
-		});
-	}, 500);
+	setupTocObserver();
 	onUnmounted(() => {
 		window.removeEventListener("scroll", updateProgress);
-		observer.disconnect();
+		tocObserver?.disconnect();
 		if (resumeChipTimer) {
 			clearTimeout(resumeChipTimer);
 			resumeChipTimer = null;

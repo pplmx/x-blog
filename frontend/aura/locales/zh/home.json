@@ -25,6 +25,7 @@
 			"popular": "热门文章",
 			"latest": "最新文章",
 			"filtered": "筛选: {label}",
+			"filteredUnknown": "正在按某个分类或标签筛选",
 			"clearFilter": "× 清除",
 			"recommended": "为你推荐",
 			"yourSeries": "我的系列",

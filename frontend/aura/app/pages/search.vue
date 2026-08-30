@@ -83,6 +83,28 @@ const paginationTokens = computed(() =>
 	),
 );
 
+// Out-of-range deep link (e.g. /search?q=foo&page=5 on a dataset that now has
+// 2 pages): the backend returns an empty list with total_pages < requested, and
+// the empty-state block hides the pagination bar — a dead end with no way back
+// except hand-editing the URL. When the server reports the last page we're past
+// it, jump the URL to that last page so the reader lands on real results.
+watch(
+	() => searchResult.value?.pagination,
+	(p) => {
+		const requested = Number.parseInt(String(route.query.page), 10);
+		if (!p || Number.isNaN(requested) || requested < 2) return;
+		const last = p.total_pages ?? 1;
+		if (requested > last && last >= 1) {
+			const next = {
+				...(activeFilters.value as Record<string, string>),
+				q: query.value,
+				page: String(last),
+			};
+			navigateTo({ query: next, replace: true });
+		}
+	},
+);
+
 // Upgrade snippet sanitization to DOMPurify as soon as it loads (results that
 // arrive later re-render through the stronger sanitizer), and preload the
 // category/tag lists for the filter selects (DEC-084).
@@ -126,10 +148,12 @@ watch(query, (q) => {
 function handleSearchInput() {
 	const q = searchInput.value.trim();
 	if (!q) return;
-	// If the term changed, drop the page param (start at page 1); if it's the
-	// same query re-submitted, preserve the page.
 	if (q !== query.value) {
-		navigateTo({ query: { q } });
+		// New term: merge into the existing filters (category/tag/sort/date)
+		// instead of replacing the whole query — dropping them on every Enter
+		// made a refined search silently lose its filters (deep-dive finding).
+		// Page resets to 1 for the fresh result set.
+		navigateTo({ query: { ...activeFilters.value, q, page: "1" } });
 	}
 }
 </script>

@@ -8,7 +8,7 @@
  * history (synced across devices); guests use the client-side localStorage
  * trail (see composables/useReadingHistory).
  */
-import { computed, onMounted, ref } from "vue";
+import { computed, onMounted, onUnmounted, ref } from "vue";
 import { type HistoryEntry, useReadingHistory } from "~~/composables/useReadingHistory";
 import { useSeo } from "~~/composables/useSeo";
 
@@ -25,6 +25,14 @@ function onSearch() {
 	if (searchTimer) clearTimeout(searchTimer);
 	searchTimer = setTimeout(() => void load(searchQuery.value), 300);
 }
+// Clear the pending debounce on unmount so a delayed recall-search can't fire
+// against an unmounted component after the reader left (wasted server call).
+onUnmounted(() => {
+	if (searchTimer) {
+		clearTimeout(searchTimer);
+		searchTimer = null;
+	}
+});
 
 useSeo({
 	title: t("history.seoTitle"),
@@ -279,8 +287,10 @@ function heatMapSummary(): string {
       </div>
     </div>
 
-    <!-- Empty state -->
-    <div v-if="!loading && !history.length" class="text-center py-20">
+    <!-- Empty state: only when history is genuinely empty. A recall-search that
+         matches nothing shows the small "no results" hint above instead — never
+         both (that claimed the reader has no history AND prompted them to browse). -->
+    <div v-if="!loading && !history.length && !searchQuery.trim()" class="text-center py-20">
       <Icon icon="lucide:history" class="w-14 h-14 mx-auto mb-5 text-gray-300 dark:text-gray-600" />
       <p class="font-medium text-gray-700 dark:text-gray-200 mb-2">{{ t('history.empty') }}</p>
       <p class="text-sm text-gray-500 dark:text-gray-400 mb-7">{{ t('history.emptyDesc') }}</p>

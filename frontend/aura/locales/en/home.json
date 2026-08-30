@@ -25,6 +25,7 @@
 			"popular": "Popular Articles",
 			"latest": "Latest Articles",
 			"filtered": "Filtered: {label}",
+			"filteredUnknown": "Filtered by a category or tag",
 			"clearFilter": "X Clear",
 			"recommended": "Recommended for you",
 			"yourSeries": "Your series",

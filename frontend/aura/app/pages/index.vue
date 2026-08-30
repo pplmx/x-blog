@@ -146,6 +146,16 @@ const activeFilterLabel = computed(() => {
 	}
 	return undefined;
 });
+// A deep-link filter is active even when its category/tag no longer resolves
+// (deleted since the link was shared): the chip must still render so the
+// reader can clear the dead-end filter instead of being stuck on an empty or
+// filtered feed with no affordance to leave (surfaced in deep-dive review).
+const hasActiveFilter = computed(() => Boolean(categoryId.value || tagId.value));
+const filterIndicatorText = computed(() =>
+	activeFilterLabel.value
+		? t("home.sections.filtered", { label: activeFilterLabel.value })
+		: t("home.sections.filteredUnknown"),
+);
 
 useSeo({
 	title: t("home.seo.title"),
@@ -429,10 +439,10 @@ const stats = computed(() => {
 
           <!-- Active filter indicator (deep-link /?category_id= or /?tag_id=) -->
           <div
-            v-if="activeFilterLabel"
+            v-if="hasActiveFilter"
             class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-blue-50 dark:bg-blue-950/50 border border-blue-100 dark:border-blue-900/40 text-sm text-blue-700 dark:text-blue-300"
           >
-            {{ t("home.sections.filtered", { label: activeFilterLabel }) }}
+            {{ filterIndicatorText }}
             <button
               type="button"
               class="text-blue-500 hover:text-blue-700 dark:hover:text-blue-200 transition-colors font-semibold"

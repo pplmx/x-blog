@@ -37,20 +37,29 @@ const loadFailed = ref(false);
 const statusFilter = ref<MyCommentStatusFilter>("all");
 const currentPage = ref(1);
 
+// Monotonic request sequence so a slow earlier response (e.g. a page-2 fetch)
+// cannot overwrite a newer filter tab's data after a fast response landed. Same
+// guard as useReadingHistory's recall-search (ISS-128) and HeaderSearch.
+let loadSeq = 0;
+
 async function load() {
+	const seq = ++loadSeq; // invalidate any in-flight older request
 	// Re-enter loading on refetch (tab/page change) so the swap is visible, and
 	// keep errors distinct from a genuinely empty list (ISS-129).
 	loading.value = true;
 	loadFailed.value = false;
 	try {
-		commentData.value = await getMyComments(statusFilter.value, currentPage.value, 20);
+		const data = await getMyComments(statusFilter.value, currentPage.value, 20);
+		if (seq !== loadSeq) return; // stale response — a newer filter/page is in flight
+		commentData.value = data;
 	} catch {
+		if (seq !== loadSeq) return;
 		// Missing/invalid token, offline, etc — signal failure instead of
 		// pretending the list is empty (ISS-129).
 		commentData.value = null;
 		loadFailed.value = true;
 	}
-	loading.value = false;
+	if (seq === loadSeq) loading.value = false;
 }
 
 onMounted(() => {

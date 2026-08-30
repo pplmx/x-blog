@@ -221,8 +221,9 @@ describe("Search Page", () => {
 			const input = wrapper.find('input[type="text"]');
 			await input.setValue("nuxt");
 			await input.trigger("keydown.enter");
-			// New (non-empty) term → drop page, navigate to ?q=nuxt.
-			expect(navMock).toHaveBeenCalledWith({ query: { q: "nuxt" } });
+			// New (non-empty) term → move to the fresh result set at page 1,
+			// preserving any active filters (they are empty here).
+			expect(navMock).toHaveBeenCalledWith({ query: { page: "1", q: "nuxt" } });
 		});
 
 		it("keeps the input in sync with a route query on mount", async () => {

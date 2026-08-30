@@ -647,12 +647,19 @@ function toggleReply(comment: Comment) {
 }
 
 const refreshing = ref(false);
+// Monotonic request sequence so a slow earlier response (page fetch) cannot
+// overwrite a newer sort/filter response (same guard as comments.vue/mine,
+// useReadingHistory ISS-128, HeaderSearch).
+let refreshSeq = 0;
 async function refreshList() {
+	const seq = ++refreshSeq; // invalidate any in-flight older request
 	refreshing.value = true;
 	try {
-		commentData.value = await getComments(props.postId, currentPage.value, 20, currentSort.value);
+		const data = await getComments(props.postId, currentPage.value, 20, currentSort.value);
+		if (seq !== refreshSeq) return; // stale — a sort/page change is in flight
+		commentData.value = data;
 	} finally {
-		refreshing.value = false;
+		if (seq === refreshSeq) refreshing.value = false;
 	}
 }
 
