@@ -2,7 +2,7 @@
   "ril_version": 1,
   "round": 191,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-08-30T05:01:39+00:00",
+  "updated_at": "2026-08-30T06:20:00+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -13039,6 +13039,48 @@
       "updated_at": "2026-08-30T05:01:39+00:00",
       "touched_round": 191,
       "summary": "Batch approve/reject doesn't stamp reviewed_at (reject is a silent no-op, comments stuck pending) and never notifies"
+    },
+    "CHG-260": {
+      "id": "CHG-260",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-30T06:13:24+00:00",
+      "updated_at": "2026-08-30T06:13:24+00:00",
+      "touched_round": 191,
+      "commit": "c0d33d6",
+      "title": "Backend review MEDIUM batch: related 404, comment-delete reparent, account-delete cleanup",
+      "description": "get_related_posts 404 on unknown/draft; admin comment delete reparents replies (bulk_delete_comments parity); delete_reader_account cleans follows/folders/history/prefs."
+    },
+    "ISS-159": {
+      "id": "ISS-159",
+      "type": "issue",
+      "status": "resolved",
+      "version": 1,
+      "created_at": "2026-08-30T06:16:15+00:00",
+      "updated_at": "2026-08-30T06:16:15+00:00",
+      "touched_round": 191,
+      "summary": "related-posts endpoint leaks draft existence / 200 for unknown ids"
+    },
+    "ISS-160": {
+      "id": "ISS-160",
+      "type": "issue",
+      "status": "resolved",
+      "version": 1,
+      "created_at": "2026-08-30T06:16:15+00:00",
+      "updated_at": "2026-08-30T06:16:15+00:00",
+      "touched_round": 191,
+      "summary": "admin single comment delete orphans replies (SQLite) or 400s (Postgres)"
+    },
+    "ISS-161": {
+      "id": "ISS-161",
+      "type": "issue",
+      "status": "resolved",
+      "version": 1,
+      "created_at": "2026-08-30T06:16:15+00:00",
+      "updated_at": "2026-08-30T06:16:15+00:00",
+      "touched_round": 191,
+      "summary": "account self-delete leaves orphaned follows/folders/history; SQLite rowid reuse leaks"
     }
   },
   "edges": [
@@ -18785,6 +18827,24 @@
       "to": "ISS-158",
       "type": "resolves",
       "created_at": "2026-08-30T05:01:39+00:00"
+    },
+    {
+      "from": "CHG-260",
+      "to": "ISS-159",
+      "type": "resolves",
+      "created_at": "2026-08-30T06:16:15+00:00"
+    },
+    {
+      "from": "CHG-260",
+      "to": "ISS-160",
+      "type": "resolves",
+      "created_at": "2026-08-30T06:16:15+00:00"
+    },
+    {
+      "from": "CHG-260",
+      "to": "ISS-161",
+      "type": "resolves",
+      "created_at": "2026-08-30T06:16:15+00:00"
     }
   ]
 }
