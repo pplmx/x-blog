@@ -1167,9 +1167,11 @@ class TestAdminBatchApprove:
         assert response.status_code == 200
         assert db_session.get(models.Comment, c.id).reviewed_at is not None
         # And it no longer shows in the moderation pending list.
-        pending = db_session.query(models.Comment).filter(
-            models.Comment.is_approved.is_(False), models.Comment.reviewed_at.is_(None)
-        ).all()
+        pending = (
+            db_session.query(models.Comment)
+            .filter(models.Comment.is_approved.is_(False), models.Comment.reviewed_at.is_(None))
+            .all()
+        )
         assert c.id not in [p.id for p in pending]
 
     def test_batch_approve_too_many_ids_rejected(self, client, auth_headers):
