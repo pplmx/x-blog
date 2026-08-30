@@ -2,7 +2,7 @@
   "ril_version": 1,
   "round": 191,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-08-30T08:08:09+00:00",
+  "updated_at": "2026-08-30T09:12:14+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -13123,6 +13123,48 @@
       "updated_at": "2026-08-30T08:08:09+00:00",
       "touched_round": 191,
       "summary": "Notification-pref GET/PATCH can 500 on concurrent first-materialization race"
+    },
+    "CHG-262": {
+      "id": "CHG-262",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-30T09:12:14+00:00",
+      "updated_at": "2026-08-30T09:12:14+00:00",
+      "touched_round": 191,
+      "commit": "efc2e87",
+      "title": "Frontend UX LOW batch: login redirect, notification focusable rows, home scroll-to-top",
+      "description": "Same-origin ?redirect support (contextual sign-in return); no-URL notification rows become focusable buttons; home pagination scrolls to top. Tests added."
+    },
+    "ISS-165": {
+      "id": "ISS-165",
+      "type": "issue",
+      "status": "resolved",
+      "version": 1,
+      "created_at": "2026-08-30T09:12:14+00:00",
+      "updated_at": "2026-08-30T09:12:14+00:00",
+      "touched_round": 191,
+      "summary": "Login always redirects to /bookmarks regardless of where the sign-in prompt came from"
+    },
+    "ISS-166": {
+      "id": "ISS-166",
+      "type": "issue",
+      "status": "resolved",
+      "version": 1,
+      "created_at": "2026-08-30T09:12:14+00:00",
+      "updated_at": "2026-08-30T09:12:14+00:00",
+      "touched_round": 191,
+      "summary": "Notifications without URL render as a dead, non-focusable anchor row"
+    },
+    "ISS-167": {
+      "id": "ISS-167",
+      "type": "issue",
+      "status": "resolved",
+      "version": 1,
+      "created_at": "2026-08-30T09:12:14+00:00",
+      "updated_at": "2026-08-30T09:12:14+00:00",
+      "touched_round": 191,
+      "summary": "Home pagination click swaps content below the fold with no scroll-to-top"
     }
   },
   "edges": [
@@ -18905,6 +18947,24 @@
       "to": "ISS-164",
       "type": "resolves",
       "created_at": "2026-08-30T08:08:09+00:00"
+    },
+    {
+      "from": "CHG-262",
+      "to": "ISS-165",
+      "type": "resolves",
+      "created_at": "2026-08-30T09:12:14+00:00"
+    },
+    {
+      "from": "CHG-262",
+      "to": "ISS-166",
+      "type": "resolves",
+      "created_at": "2026-08-30T09:12:14+00:00"
+    },
+    {
+      "from": "CHG-262",
+      "to": "ISS-167",
+      "type": "resolves",
+      "created_at": "2026-08-30T09:12:14+00:00"
     }
   ]
 }
