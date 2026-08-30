@@ -1121,7 +1121,36 @@ class TestAdminBatchApprove:
             json={"ids": [c.id], "approved": False},
         )
         assert response.status_code == 200
-        assert db_session.get(models.Comment, c.id).is_approved is False
+        row = db_session.get(models.Comment, c.id)
+        assert row.is_approved is False
+        # A rejected comment must leave the moderation pending queue: reviewed_at
+        # is stamped so get_pending_comments (is_approved AND reviewed_at NULL)
+        # no longer returns it, and the author's history shows "rejected" not
+        # "pending" (previously batch-reject was a silent no-op).
+        assert row.reviewed_at is not None
+
+    def test_batch_reject_stamps_reviewed_at_on_pending(self, client, auth_headers, db_session):
+        """A pending comment batch-rejected must not stay in the pending queue —
+        it is already is_approved=False, so only the reviewed_at stamp moves it."""
+        post = models.Post(title="Test", slug="batch-rej-pending", content="Content", published=True)
+        db_session.add(post)
+        db_session.flush()
+        c = models.Comment(post_id=post.id, nickname="A", content="C1", is_approved=False, reviewed_at=None)
+        db_session.add(c)
+        db_session.commit()
+
+        response = client.post(
+            "/api/admin/comments/batch-approve",
+            headers={"Content-Type": "application/json", **auth_headers},
+            json={"ids": [c.id], "approved": False},
+        )
+        assert response.status_code == 200
+        assert db_session.get(models.Comment, c.id).reviewed_at is not None
+        # And it no longer shows in the moderation pending list.
+        pending = db_session.query(models.Comment).filter(
+            models.Comment.is_approved.is_(False), models.Comment.reviewed_at.is_(None)
+        ).all()
+        assert c.id not in [p.id for p in pending]
 
     def test_batch_approve_too_many_ids_rejected(self, client, auth_headers):
         """More than 100 ids in one batch request is rejected (issue #20)."""

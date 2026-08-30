@@ -1,3 +1,4 @@
+import logging
 import os
 from datetime import UTC, datetime, timedelta
 
@@ -27,6 +28,9 @@ from app.schemas import (
     PostRevisionSummary,
     PostUpdate,
 )
+from app.webpush import dispatch_new_post
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/admin", tags=["admin"])
 
@@ -396,6 +400,12 @@ def admin_update_post(
     if not post:
         raise HTTPException(status_code=404, detail="Post not found")
 
+    # Notify on the draft/scheduled -> published transition made from the admin
+    # editor, matching the crud.update_post fan-out (ate fan-out would silently
+    # skip every reader's durable inbox row + Web Push for editor-published
+    # posts — surfacing as "published but no one got notified").
+    was_visible = crud.is_publicly_visible(post)
+
     if post_data.title is not None:
         post.title = post_data.title
     if post_data.slug is not None:
@@ -446,6 +456,14 @@ def admin_update_post(
     clear_tags_cache()
     clear_categories_cache()
     clear_posts_list_cache()
+
+    # Transition into visibility (draft/scheduled -> published) must fan out
+    # the same inbox + push notifications the crud.create/update paths do. The
+    # frontmost publish path is the admin editor's PUT /posts/{id}, which used
+    # to skip both — a follower/subscriber count that never moved.
+    if not was_visible and crud.is_publicly_visible(post):
+        crud.record_new_post_notifications(db, post)
+        dispatch_new_post(db, post, logger)
     return {"id": post.id}
 
 
@@ -802,10 +820,20 @@ def admin_batch_approve_comments(
     comments = db.query(models.Comment).filter(models.Comment.id.in_(body.ids)).all()
     for c in comments:
         c.is_approved = body.approved
+        # Stamp reviewed_at on both outcomes so rejected comments leave the
+        # moderation pending queue (get_pending_comments filters is_approved
+        # AND reviewed_at is NULL) instead of lingering "pending" forever.
+        # Mirrors crud.approve_comment's aware-UTC stamp (DEC-066, TASK-139).
+        c.reviewed_at = datetime.now(UTC)
     db.commit()
     # Approving/rejecting changes the approved comment_count embedded in the
     # cached public post list, so invalidate it (ISS-056).
     clear_posts_list_cache()
+    # Notify replied-to readers + thread followers when comments are APPROVED
+    # in bulk, the same as the single-approve path (comments.py APPROVE).
+    if body.approved:
+        for c in comments:
+            _notify_comment_approved(db, c)
     return {"message": f"{len(comments)} comments updated"}
 
 

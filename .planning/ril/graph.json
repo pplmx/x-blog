@@ -2,7 +2,7 @@
   "ril_version": 1,
   "round": 191,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-08-30T03:35:34+00:00",
+  "updated_at": "2026-08-30T04:19:24+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -12965,6 +12965,48 @@
       "commit": "bc3a6d4",
       "title": "Fix ruff 0.16.5 format gate drift + biome schema ref (round 191 baseline)",
       "description": "Reformatted reader.py two collapsed calls; bumped biome.json schema ref to 2.5.10. Baseline re-verified green."
+    },
+    "CHG-258": {
+      "id": "CHG-258",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-30T04:17:16+00:00",
+      "updated_at": "2026-08-30T04:17:16+00:00",
+      "touched_round": 191,
+      "commit": "b5fdeb2",
+      "title": "Frontend MEDIUM/LOW polish batch: seq guards, search dead-ends, TOC SPA, i18n",
+      "description": "comments.vue/CommentList seq guard (stale-response race); search out-of-range clamp + filter preservation; index.vue clearable unresolvable deep-link filter; TOC observer recreated on SPA nav; history zero-match/empty dual-state fix + debounce cleanup."
+    },
+    "ISS-154": {
+      "id": "ISS-154",
+      "type": "issue",
+      "status": "resolved",
+      "version": 1,
+      "created_at": "2026-08-30T04:17:16+00:00",
+      "updated_at": "2026-08-30T04:17:16+00:00",
+      "touched_round": 191,
+      "summary": "My-comments page + CommentList sort/pagination refetches race: stale response can overwrite newer filter"
+    },
+    "ISS-155": {
+      "id": "ISS-155",
+      "type": "issue",
+      "status": "resolved",
+      "version": 1,
+      "created_at": "2026-08-30T04:17:16+00:00",
+      "updated_at": "2026-08-30T04:17:16+00:00",
+      "touched_round": 191,
+      "summary": "Search deep links: out-of-range page = no-results dead end; new-term Enter drops active filters"
+    },
+    "ISS-156": {
+      "id": "ISS-156",
+      "type": "issue",
+      "status": "resolved",
+      "version": 1,
+      "created_at": "2026-08-30T04:17:16+00:00",
+      "updated_at": "2026-08-30T04:17:16+00:00",
+      "touched_round": 191,
+      "summary": "Home /?category_id= deep link to deleted category is a dead end (no clearable chip); history zero-match shows both no-results and empty CTA"
     }
   },
   "edges": [
@@ -18681,6 +18723,24 @@
       "to": "ISS-150",
       "type": "resolves",
       "created_at": "2026-08-30T03:35:34+00:00"
+    },
+    {
+      "from": "CHG-258",
+      "to": "ISS-154",
+      "type": "resolves",
+      "created_at": "2026-08-30T04:19:24+00:00"
+    },
+    {
+      "from": "CHG-258",
+      "to": "ISS-155",
+      "type": "resolves",
+      "created_at": "2026-08-30T04:19:24+00:00"
+    },
+    {
+      "from": "CHG-258",
+      "to": "ISS-156",
+      "type": "resolves",
+      "created_at": "2026-08-30T04:19:24+00:00"
     }
   ]
 }

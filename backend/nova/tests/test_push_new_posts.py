@@ -236,6 +236,47 @@ class TestPublishFanOut:
             _update_post(client, auth_headers, post_id, content="edited")
         assert mock_send.call_count == 0
 
+    def test_admin_editor_publish_fans_out(self, client, auth_headers):
+        """The admin editor's PUT /api/admin/posts/{id} is the primary publish
+        path — a draft→published transition made there must fan out exactly like
+        the /api/posts update path (regression: it used to skip the fan-out, so
+        an editor-published post notified nobody)."""
+        # auth_headers is the ADMIN token; the admin editor publishes via PUT
+        # /api/admin/posts/{id}, not /api/posts/{id}.
+        client.post("/api/push/subscribe", json=_subscribe_body(want_new_posts=True))
+        resp = client.post(
+            "/api/admin/posts",
+            json={"title": "editor draft", "slug": "editor-draft", "content": "c", "published": False},
+            headers=auth_headers,
+        )
+        assert resp.status_code == 201, resp.text
+        post_id = resp.json()["id"]
+        with patch("app.webpush.send_push") as mock_send:
+            publish = client.put(
+                f"/api/admin/posts/{post_id}",
+                json={"published": True},
+                headers=auth_headers,
+            )
+            assert publish.status_code == 200, publish.text
+        assert mock_send.call_count == 1
+
+    def test_admin_editor_edit_of_published_does_not_re_notify(self, client, auth_headers):
+        client.post("/api/push/subscribe", json=_subscribe_body(want_new_posts=True))
+        resp = client.post(
+            "/api/admin/posts",
+            json={"title": "editor pub", "slug": "editor-pub", "content": "c", "published": True},
+            headers=auth_headers,
+        )
+        post_id = resp.json()["id"]
+        with patch("app.webpush.send_push") as mock_send:
+            edit = client.put(
+                f"/api/admin/posts/{post_id}",
+                json={"content": "edited"},
+                headers=auth_headers,
+            )
+            assert edit.status_code == 200, edit.text
+        assert mock_send.call_count == 0
+
     def test_dead_endpoint_retired_on_publish(self, client, auth_headers, db_session):
         from pywebpush import WebPushException
 
