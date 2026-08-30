@@ -867,6 +867,44 @@ def delete_comment(db: Session, comment_id: int) -> bool:
     return True
 
 
+def delete_comment_reparent(db: Session, comment_id: int) -> bool:
+    """Delete one comment, promoting its surviving direct replies to the
+    nearest surviving ancestor (or top-level), so a single admin delete never
+    orphans a thread or leaves a reply pointing at a deleted parent.
+
+    Mirrors the reparenting in ``bulk_delete_comments`` (DEC-110) — the plain
+    ``delete_comment`` refuses (400) on Postgres when replies exist and silently
+    orphans them on SQLite, which left admins unable to remove a spam thread.
+    Returns False when the comment does not exist.
+    """
+    comment = db.query(models.Comment).filter(models.Comment.id == comment_id).first()
+    if not comment:
+        return False
+    has_replies = (
+        db.query(models.Comment.id).filter(models.Comment.parent_id == comment_id).first()
+        is not None
+    )
+    if has_replies:
+        # Nearest surviving ancestor of the deleted comment: its own parent,
+        # which by definition is not in the deletion set (only this one comment
+        # is being removed) — single-comment analogue of bulk_delete_comments.
+        eff_parent = comment.parent_id
+        db.query(models.Comment).filter(models.Comment.parent_id == comment_id).update(
+            {models.Comment.parent_id: eff_parent},
+            synchronize_session=False,
+        )
+    db.delete(comment)
+    try:
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        raise ValueError("Cannot delete comment: dependent records remain")
+    # Deleting an approved comment changes the approved comment_count surfaced
+    # on the cached public posts list (RIL TASK-073, ISS-041).
+    clear_posts_list_cache()
+    return True
+
+
 def escape_like_pattern(query: str) -> str:
     """Escape LIKE metacharacters so user input matches literally.
 
@@ -2658,6 +2696,20 @@ def delete_reader_account(db: Session, reader_id: int) -> bool:
     db.query(models.ReaderNotification).filter(models.ReaderNotification.reader_id == reader_id).delete(
         synchronize_session=False
     )
+    # Account-private rows the old deletion missed (backend deep-dive): category/
+    # tag/series follows, bookmark folders, reading history, and notification
+    # prefs. Left behind, they kept pointing at the deleted reader_id — and on
+    # SQLite (no AUTOINCREMENT) a future account could inherit the recycled id
+    # with another reader's history/follows/folders (data leak between accounts).
+    for model in (
+        models.CategoryFollow,
+        models.TagFollow,
+        models.SeriesFollow,
+        models.BookmarkFolder,
+        models.ReadingHistory,
+        models.ReaderNotificationPref,
+    ):
+        db.query(model).filter(model.reader_id == reader_id).delete(synchronize_session=False)
     db.delete(reader)
     try:
         db.commit()

@@ -912,19 +912,18 @@ def admin_delete_comment(
     if not comment:
         raise HTTPException(status_code=404, detail="Comment not found")
 
-    db.delete(comment)
     try:
-        db.commit()
-    except IntegrityError:
-        # Parent comment with replies: FK violation on Postgres, orphaned
-        # replies on SQLite (FKs off). Reject with a clear 400 like the
-        # public delete path instead of a 500.
+        # Reparent surviving replies to the nearest surviving ancestor (or
+        # top-level) so deleting a spam thread never orphans its replies or
+        # refuses on Postgres — mirrors crud.bulk_delete_comments (DEC-110).
+        # The old db.delete()+commit here orphaned replies on SQLite and 400'd
+        # on Postgres whenever the comment had replies (backend deep-dive).
+        deleted = crud.delete_comment_reparent(db, comment_id)
+    except ValueError as e:
         db.rollback()
-        raise HTTPException(status_code=400, detail="Cannot delete comment: it has dependent records")
-    # Deleting an approved comment changes the approved comment_count surfaced
-    # on the cached public posts list; invalidate like the other comment
-    # mutations do (RIL TASK-092, ISS-072).
-    clear_posts_list_cache()
+        raise HTTPException(status_code=400, detail=str(e))
+    if not deleted:
+        raise HTTPException(status_code=404, detail="Comment not found")
 
 
 # Author-reply identity (DEC-192, TASK-212): the blog owner's replies to

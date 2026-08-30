@@ -198,6 +198,14 @@ def get_related_posts(
     db: Session = Depends(get_db),
 ):
     """Get related posts based on category and tags."""
+    # Uniform non-public guard like every other public read path (get_adjacent_posts,
+    # list_comments, bookmarks...): an unknown post id must 404, and a draft's id
+    # must not act as an oracle for that draft's category. Previously this
+    # returned 200 with generic/category-scoped posts for both, leaking draft
+    # existence (backend deep-dive review).
+    source = crud.get_post(db, post_id)
+    if not source or not crud.is_publicly_visible(source):
+        raise HTTPException(status_code=404, detail="Post not found")
     related = [
         schemas.PostList.model_validate(p).model_dump(mode="json")
         for p in crud.get_related_posts(db, post_id, limit=limit)

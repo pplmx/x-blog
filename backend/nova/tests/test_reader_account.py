@@ -39,6 +39,20 @@ def _seed(client, db_session, tag):
     # Seed private account data directly.
     db_session.add(models.ReaderBookmark(reader_id=reader_id, post_id=post.id))
     db_session.add(models.CommentSubscription(reader_id=reader_id, post_id=post.id))
+    # Follows / folders / history / prefs — the rows the old delete leaked
+    # (backend deep-dive: they lingered pointing at the deleted reader_id and
+    # could be inherited by a recycled SQLite rowid).
+    cat = models.Category(name=f"Cat{tag}")
+    tg = models.Tag(name=f"Tag{tag}")
+    series = models.Series(title=f"Series{tag}", slug=f"series-{tag}")
+    db_session.add_all([cat, tg, series])
+    db_session.flush()
+    db_session.add(models.CategoryFollow(reader_id=reader_id, category_id=cat.id))
+    db_session.add(models.TagFollow(reader_id=reader_id, tag_id=tg.id))
+    db_session.add(models.SeriesFollow(reader_id=reader_id, series_id=series.id))
+    db_session.add(models.BookmarkFolder(reader_id=reader_id, name=f"Folder{tag}"))
+    db_session.add(models.ReadingHistory(reader_id=reader_id, post_id=post.id))
+    db_session.add(models.ReaderNotificationPref(reader_id=reader_id))
     db_session.commit()
     return post, email, reader_id, comment_id, headers
 
@@ -84,3 +98,16 @@ class TestDeleteAccount:
             .count()
             == 0
         )
+        # Follows / folders / history / notification-prefs are removed too —
+        # the old delete leaked them (stale rows that data-leak to a future
+        # account reusing the id on SQLite).
+        for model in (
+            models.CategoryFollow,
+            models.TagFollow,
+            models.SeriesFollow,
+            models.BookmarkFolder,
+            models.ReadingHistory,
+            models.ReaderNotificationPref,
+        ):
+            remaining = db_session.query(model).filter(model.reader_id == reader_id).count()
+            assert remaining == 0, f"{model.__name__} left {remaining} orphan row(s)"

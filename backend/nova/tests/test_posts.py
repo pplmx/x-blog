@@ -602,3 +602,35 @@ def test_archive_filter_rejects_invalid_queries(client):
     assert bad_year.status_code == 422
     bad_month = client.get("/api/posts?month=13")
     assert bad_month.status_code == 422
+
+
+def test_related_404_for_unknown_post(client):
+    """GET /api/posts/{id}/related on an unknown id must 404 (uniform public
+    read-path guard) — it used to return 200 with generic "recent posts" and
+    acted as an oracle for post existence."""
+    resp = client.get("/api/posts/999999/related")
+    assert resp.status_code == 404
+
+
+def test_related_404_for_draft_post(client, auth_headers):
+    """A draft post's id must not reveal the draft's category via /related —
+    return 404 like every other non-public read path."""
+    cat = client.post(
+        "/api/categories",
+        json={"name": "CatDraft", "slug": "catdraft"},
+        headers=auth_headers,
+    ).json()
+    draft = client.post(
+        "/api/posts",
+        json={
+            "title": "Draft Related",
+            "slug": "draft-related",
+            "content": "C",
+            "published": False,
+            "category_id": cat["id"],
+        },
+        headers=auth_headers,
+    )
+    assert draft.status_code == 201, draft.text
+    resp = client.get(f"/api/posts/{draft.json()['id']}/related")
+    assert resp.status_code == 404
