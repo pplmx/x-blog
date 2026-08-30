@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 190,
+  "round": 191,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-08-29T17:19:48+00:00",
+  "updated_at": "2026-08-30T01:56:41+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -12852,6 +12852,17 @@
       "title": "frontend/aura/README.md dev guidance corrected (no NUXT_API_URL; same-origin /api proxy + NUXT_PROXY_TARGET)",
       "description": "Fixes the recurrence source: README taught the poisoned `NUXT_API_URL=http://localhost:18888 pnpm dev` command that baked apiUrl into the client bundle and force-cross-origin login calls (Failed to fetch). Now documents the same-origin /api proxy and server-only NUXT_PROXY_TARGET, matching docs/deployment.md (434d952, ISS-148). Operational remediation also done: dev frontend restarted with NUXT_API_URL unset (bundle serves apiUrl:\"\") and verified register 201 / login 200 through the proxy.",
       "commit": "9e4a36d"
+    },
+    "ISS-150": {
+      "id": "ISS-150",
+      "type": "issue",
+      "status": "resolved",
+      "version": 1,
+      "created_at": "2026-08-30T01:56:41+00:00",
+      "updated_at": "2026-08-30T01:56:41+00:00",
+      "touched_round": 191,
+      "summary": "ruff 0.16.5 format gate drift: reader.py two call-splits collapsed to single line",
+      "severity": "medium"
     }
   },
   "edges": [

@@ -757,9 +757,7 @@ def list_bookmarks(
     (page/limit, max 100) keeps setup/merge calls from loading every row
     (ISS-142); clients that need the full set page through ``total_pages``.
     """
-    rows, total = crud.list_reader_bookmarks(
-        db, current_reader.id, folder_id=folder_id, page=page, limit=limit
-    )
+    rows, total = crud.list_reader_bookmarks(db, current_reader.id, folder_id=folder_id, page=page, limit=limit)
     total_pages = (total + limit - 1) // limit if limit > 0 else 0
     return BookmarkListResponse(
         items=[BookmarkItem.from_post(p, fid, fname) for p, fid, fname in rows],
@@ -784,9 +782,7 @@ def list_my_post_subscriptions(
     reader unsubscribes from the post page). Newest follow first. Bounded
     paging like the bookmark list (ISS-142).
     """
-    posts, total = crud.list_reader_comment_subscriptions(
-        db, current_reader.id, page=page, limit=limit
-    )
+    posts, total = crud.list_reader_comment_subscriptions(db, current_reader.id, page=page, limit=limit)
     total_pages = (total + limit - 1) // limit if limit > 0 else 0
     return SubscribedThreadListResponse(
         items=[SubscribedThreadItem.from_post(p) for p in posts],
