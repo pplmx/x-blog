@@ -1539,6 +1539,21 @@ def remove_reader_bookmark(db: Session, reader_id: int, post_id: int) -> bool:
     return True
 
 
+def clear_reader_bookmarks(db: Session, reader_id: int) -> int:
+    """Delete every bookmark the reader has saved. Returns the count removed.
+    Idempotent: clearing an already-empty list yields 0 with no error (bulk
+    ``delete()`` on a no-op filter commits nothing meaningful). Used by the
+    reader's "Clear all bookmarks" action, which must also take effect on the
+    cloud copy — not just the localStorage mirror."""
+    deleted = (
+        db.query(models.ReaderBookmark)
+        .filter(models.ReaderBookmark.reader_id == reader_id)
+        .delete(synchronize_session=False)
+    )
+    db.commit()
+    return deleted
+
+
 def get_reading_history(db: Session, reader_id: int, post_id: int) -> models.ReadingHistory | None:
     """Return the reader's view-history row for a post, or None."""
     return (

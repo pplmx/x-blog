@@ -134,3 +134,13 @@ export function removeReaderBookmark(postId: number): Promise<null> {
 		headers: readerAuthHeaders(),
 	});
 }
+
+/** Delete every bookmark the reader has saved (204, idempotent). Called by the
+ *  /bookmarks "Clear all" action so a signed-in clear sticks to the cloud too,
+ *  not just the localStorage mirror (TASK-233). */
+export function clearReaderBookmarks(): Promise<null> {
+	return command<null>("/api/reader/me/bookmarks", {
+		method: "DELETE",
+		headers: readerAuthHeaders(),
+	});
+}

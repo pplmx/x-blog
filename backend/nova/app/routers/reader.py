@@ -815,6 +815,23 @@ def add_bookmark(
     return AddBookmarkResponse(post_id=bookmark.post_id, already_existed=not created)
 
 
+@router.delete("/me/bookmarks", status_code=204)
+def clear_bookmarks(
+    current_reader: auth.ReaderAccount = Depends(auth.get_current_reader),
+    db: Session = Depends(get_db),
+):
+    """Delete every bookmark the reader has saved, cloud side included.
+
+    The reader /bookmarks page offers "Clear all": the client clears its
+    localStorage mirror AND this endpoint so a signed-in reader's clear
+    actually sticks across devices (previously only local storage was wiped
+    and the next cloud merge resurrected the list). Idempotent 204 even when
+    there was nothing to clear."""
+
+    crud.clear_reader_bookmarks(db, current_reader.id)
+    return None
+
+
 @router.delete("/me/bookmarks/{post_id}", status_code=204)
 def remove_bookmark(
     post_id: int,

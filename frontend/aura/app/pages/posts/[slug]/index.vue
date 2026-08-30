@@ -90,7 +90,7 @@ const likeError = ref<string | null>(null);
 // Client-side "liked this post" dedup (RIL ISS-038): a visitor can like at most
 // once per post. isLiked drives the persisted button state; recordLike marks
 // before the API call so later clicks are no-ops.
-const { isLiked, recordLike, persist } = useLikes();
+const { isLiked, recordLike, undoLike, persist } = useLikes();
 const likedThisPost = computed(() => (post.value?.id ? isLiked(post.value.id) : false));
 async function handleLike() {
 	if (!post.value?.id || likeLoading.value) return;
@@ -111,6 +111,12 @@ async function handleLike() {
 		}
 	} catch (_err) {
 		likeError.value = t("post.likeError");
+		// Roll the optimistic "liked" marker back so a failed like doesn't leave
+		// the button permanently disabled & pre-filled (TASK-234). The marker
+		// was persisted before the request; undo + persist restores the prior
+		// local state and lets the reader retry.
+		undoLike(post.value.id);
+		persist();
 	} finally {
 		likeLoading.value = false;
 	}

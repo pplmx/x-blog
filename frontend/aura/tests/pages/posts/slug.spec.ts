@@ -723,6 +723,14 @@ describe("Post Detail Page", () => {
 			await flushPromises();
 
 			expect(wrapper.text()).toContain("点赞失败，请稍后重试。");
+
+			// TASK-234 regression: a failed like must roll the optimistic marker
+			// back so the button is re-enabled (not permanently disabled/pre-filled)
+			// and retry works.
+			const likeBtn = wrapper.find('button[type="button"]');
+			expect(likeBtn.attributes("disabled")).toBeUndefined();
+			expect(likeBtn.attributes("aria-pressed")).toBe("false");
+			expect(localStorage.getItem("x_blog_liked_posts") || "[]").not.toContain(`"${mockPost.id}"`);
 		});
 
 		it("updates the rendered like count after a successful like", async () => {

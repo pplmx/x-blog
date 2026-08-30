@@ -2,7 +2,7 @@
   "ril_version": 1,
   "round": 191,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-08-30T01:56:41+00:00",
+  "updated_at": "2026-08-30T02:28:54+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -12863,6 +12863,51 @@
       "touched_round": 191,
       "summary": "ruff 0.16.5 format gate drift: reader.py two call-splits collapsed to single line",
       "severity": "medium"
+    },
+    "TASK-232": {
+      "id": "TASK-232",
+      "type": "task",
+      "status": "active",
+      "version": 2,
+      "created_at": "2026-08-30T02:25:02+00:00",
+      "updated_at": "2026-08-30T02:28:54+00:00",
+      "touched_round": 191,
+      "category": "correctness",
+      "severity": 0.85,
+      "summary": "MediaPickerModal pagination dead: useAdminMedia(page=1 literal) ignores currentPage; Next/Prev re-fetch page 1 forever",
+      "title": "MediaPickerModal pagination broken",
+      "confidence": 0.9,
+      "effort": 1.5
+    },
+    "TASK-233": {
+      "id": "TASK-233",
+      "type": "task",
+      "status": "active",
+      "version": 2,
+      "created_at": "2026-08-30T02:25:02+00:00",
+      "updated_at": "2026-08-30T02:28:54+00:00",
+      "touched_round": 191,
+      "category": "correctness",
+      "severity": 0.85,
+      "summary": "Signed-in 'Clear all bookmarks' clears localStorage only; next mount mergeLocalToCloud resurrects cloud list",
+      "title": "Clear-all bookmarks not persisted to cloud",
+      "confidence": 0.9,
+      "effort": 1.5
+    },
+    "TASK-234": {
+      "id": "TASK-234",
+      "type": "task",
+      "status": "active",
+      "version": 2,
+      "created_at": "2026-08-30T02:25:03+00:00",
+      "updated_at": "2026-08-30T02:28:54+00:00",
+      "touched_round": 191,
+      "category": "correctness",
+      "severity": 0.85,
+      "summary": "Post-like optimistic marker never rolled back on API failure: undoLike exists but is dead code, button permanently disabled",
+      "title": "Like failure leaves button unusable",
+      "confidence": 0.9,
+      "effort": 1.5
     }
   },
   "edges": [

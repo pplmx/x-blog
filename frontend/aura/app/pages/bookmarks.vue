@@ -6,8 +6,8 @@ import { type Bookmark, useBookmarks } from "~~/composables/useBookmarks";
 import { useSeo } from "~~/composables/useSeo";
 
 const { t, locale } = useLang();
-const { bookmarks, clearBookmarks, bookmarkCount } = useBookmarks();
-const { remove, mergeLocalToCloud } = useBookmarkSync();
+const { bookmarks, bookmarkCount } = useBookmarks();
+const { remove, clearAll, mergeLocalToCloud } = useBookmarkSync();
 const {
 	folders,
 	load: loadFolders,
@@ -33,7 +33,10 @@ const signedIn = computed(
 
 function handleClearAll() {
 	if (confirm(t("bookmarks.confirmClear"))) {
-		clearBookmarks();
+		// clearAll wipes the localStorage mirror AND the cloud copy when signed
+		// in, so the clear actually sticks (TASK-233). The old clearBookmarks
+		// only cleared local storage and the next cloud merge resurrected rows.
+		void clearAll();
 	}
 }
 

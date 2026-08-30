@@ -13,10 +13,16 @@ const emit = defineEmits<{ close: []; select: [url: string] }>();
 
 const { t } = useLang();
 
+// 0-based UI index (the pager shows currentPage + 1); useAdminMedia's listing
+// path is computed from a 1-based page, so the pager ref is translated. Passing
+// the computed ref (not a literal) is the point: useAdminMedia's `path`
+// computed watches it and re-fetches on pagination, same as the admin media
+// page (DEC-189) — the previous literal 1 left Next/Prev re-fetching page 1.
 const currentPage = ref(0);
+const apiPage = computed(() => currentPage.value + 1);
 // fetch lazily only when opened (server:false keeps SSR/CSR honest); refresh
 // on open so a brand-new upload appears immediately.
-const { data, pending, refresh } = await useAdminMedia(1, props.pageSize);
+const { data, pending, refresh } = await useAdminMedia(apiPage, props.pageSize);
 const items = computed(() => data.value?.items ?? []);
 const totalPages = computed(() => data.value?.pagination?.total_pages ?? 0);
 
@@ -86,7 +92,8 @@ function select(item: UploadFileInfo) {
 function goToPage(page: number) {
 	if (page < 0 || page >= totalPages.value) return;
 	currentPage.value = page;
-	refresh();
+	// No manual refresh: apiPage is a reactive source of useAdminMedia's path,
+	// so useFetch re-fetches this page automatically.
 }
 </script>
 

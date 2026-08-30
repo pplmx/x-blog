@@ -57,7 +57,7 @@ export function useBookmarkSync() {
 	// composable would split state identity — fine under Nuxt's useState
 	// singleton, but divergent in tests that exercise the ref fallback).
 	const store = useBookmarks();
-	const { bookmarks, addBookmark, removeBookmark, replaceBookmarks } = store;
+	const { bookmarks, addBookmark, removeBookmark, replaceBookmarks, clearBookmarks } = store;
 
 	/** Mirror a single add to the cloud. Offline-safe: errors are swallowed. */
 	async function mirrorAdd(postId: number): Promise<void> {
@@ -121,11 +121,32 @@ export function useBookmarkSync() {
 		void mirrorRemove(postId);
 	}
 
+	/**
+	 * Clear every bookmark — local AND cloud when signed in (TASK-233).
+	 *
+	 * The previous ``clearBookmarks()`` wiped only localStorage, so a signed-in
+	 * reader's "Clear all" silently resurrected on the next mount when
+	 * mergeLocalToCloud pulled the server list back down. Offline-safe: if the
+	 * cloud clear fails we keep the local wipe (the cloud has nothing new) and
+	 * the next merge re-reconciles; a signed-out reader just clears locally.
+	 */
+	async function clearAll(): Promise<void> {
+		clearBookmarks();
+		if (!hasReaderToken()) return;
+		try {
+			const { clearReaderBookmarks } = await import("~~/api/reader/bookmarks");
+			await clearReaderBookmarks();
+		} catch {
+			// offline — local cleared; server rows clear on the next clear/merge
+		}
+	}
+
 	return {
 		...store,
 		isSignedIn: hasReaderToken,
 		add,
 		remove,
+		clearAll,
 		mergeLocalToCloud,
 	};
 }

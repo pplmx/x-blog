@@ -12,15 +12,25 @@ import { computed, ref } from "vue";
 // Mock useBookmarks composable
 const mockBookmarks = ref([]);
 const mockRemoveBookmark = vi.fn();
-const mockClearBookmarks = vi.fn();
+const mockClearAll = vi.fn();
 const mockBookmarkCount = computed(() => mockBookmarks.value.length);
 
 vi.mock("../../composables/useBookmarks", () => ({
 	useBookmarks: () => ({
 		bookmarks: mockBookmarks,
 		removeBookmark: mockRemoveBookmark,
-		clearBookmarks: mockClearBookmarks,
 		bookmarkCount: mockBookmarkCount,
+	}),
+}));
+
+// Mock useBookmarkSync: the page's "Clear all" now goes through clearAll
+// (local wipe + cloud clear, TASK-233), not a bare clearBookmarks.
+vi.mock("../../composables/useBookmarkSync", () => ({
+	useBookmarkSync: () => ({
+		bookmarks: mockBookmarks,
+		remove: mockRemoveBookmark,
+		clearAll: mockClearAll,
+		mergeLocalToCloud: vi.fn(() => Promise.resolve()),
 	}),
 }));
 
@@ -141,27 +151,27 @@ describe("Bookmarks page", () => {
 			expect(mockRemoveBookmark).toHaveBeenCalledWith(1);
 		});
 
-		it("calls clearBookmarks when clear all is confirmed", async () => {
+		it("calls clearAll when clear all is confirmed", async () => {
 			mockBookmarks.value = [sampleBookmark];
-			mockClearBookmarks.mockClear();
+			mockClearAll.mockClear();
 			vi.stubGlobal("confirm", () => true);
 
 			const wrapper = mountBookmarks();
 			await wrapper.find("button[title='清空全部']").trigger("click");
 
-			expect(mockClearBookmarks).toHaveBeenCalled();
+			expect(mockClearAll).toHaveBeenCalled();
 			vi.unstubAllGlobals();
 		});
 
-		it("does not call clearBookmarks when clear all is cancelled", async () => {
+		it("does not call clearAll when clear all is cancelled", async () => {
 			mockBookmarks.value = [sampleBookmark];
-			mockClearBookmarks.mockClear();
+			mockClearAll.mockClear();
 			vi.stubGlobal("confirm", () => false);
 
 			const wrapper = mountBookmarks();
 			await wrapper.find("button[title='清空全部']").trigger("click");
 
-			expect(mockClearBookmarks).not.toHaveBeenCalled();
+			expect(mockClearAll).not.toHaveBeenCalled();
 			vi.unstubAllGlobals();
 		});
 	});

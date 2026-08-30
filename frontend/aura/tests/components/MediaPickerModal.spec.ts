@@ -9,7 +9,7 @@
 
 import { mount } from "@vue/test-utils";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { ref } from "vue";
+import { computed, ref } from "vue";
 
 const t = vi.fn((key: string) => key);
 vi.mock("~~/composables/useLang", () => ({
@@ -19,7 +19,14 @@ vi.stubGlobal("useRuntimeConfig", () => ({ public: { apiUrl: "http://localhost:1
 
 const listMock = vi.fn();
 vi.mock("../../api/admin/media", () => ({
-	useAdminMedia: (page: number, pageSize: number) => listMock(page, pageSize),
+	// The modal passes its 1-based page as a computed ref (DEC-189 reactive-path
+	// pattern) so the listing follows pagination. The mock preserves the ref so
+	// a test can drive data reactively per page — the fixed-literal bug (page
+	// always 1) would be invisible to a mock that snapshots a number here.
+	useAdminMedia: (page: number | { value: number }, pageSize: number) => {
+		const pageRef = page && typeof page === "object" ? page : { value: page };
+		return listMock(pageRef, pageSize);
+	},
 }));
 
 import MediaPickerModal from "../../components/MediaPickerModal.vue";
@@ -90,6 +97,45 @@ describe("MediaPickerModal", () => {
 		expect(imageEl).not.toBeNull();
 		const src = imageEl?.getAttribute("src") ?? "";
 		expect(src).toContain(image.url);
+	});
+
+	it("Next/Prev fetch the target page via the reactive page ref (TASK-232)", async () => {
+		// Two pages of one image each: paging must move the request to the next
+		// page, not re-fetch page 1 (the old literal-1 bug).
+		const pageA = { ...image, url: image.url.replace("000000000001", "000000000001p1") };
+		const pageB = { ...image, url: image.url.replace("000000000001", "000000000002p2") };
+		const pageRefState = { ref: null as null | { value: number } };
+		listMock.mockImplementation((page: { value: number }) => {
+			pageRefState.ref = page;
+			return {
+				data: computed(() => ({
+					items: page.value === 1 ? [pageA] : [pageB],
+					pagination: { total: 2, page: page.value, limit: 60, total_pages: 2 },
+				})),
+				pending: ref(false),
+				error: ref(null),
+				refresh: vi.fn(() => Promise.resolve()),
+			};
+		});
+		mountPicker();
+
+		// The grid renders <img :src=...>, so match page identity by src URL
+		// (filename/alt is unchanged between the two pages).
+		await vi.waitFor(() => {
+			expect(document.body.querySelector('img[src*="000000000001p1"]')).not.toBeNull();
+		});
+
+		const nextBtn = Array.from(document.body.querySelectorAll("button")).find((b) =>
+			b.textContent?.includes("components.mediaPicker.next"),
+		);
+		if (!nextBtn) throw new Error("expected a next button");
+		(nextBtn as HTMLButtonElement).click();
+
+		await vi.waitFor(() => {
+			expect(document.body.querySelector('img[src*="000000000002p2"]')).not.toBeNull();
+		});
+		// The ref used to request the data now points at page 2.
+		expect(pageRefState.ref?.value).toBe(2);
 	});
 
 	it("emits select with the image URL on click", async () => {

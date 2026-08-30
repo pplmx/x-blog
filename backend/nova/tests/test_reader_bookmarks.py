@@ -186,6 +186,43 @@ class TestRemoveBookmark:
         assert client.get(BOOKMARKS, headers=_auth(t2)).json()["total"] == 1
 
 
+class TestClearAllBookmarks:
+    """DELETE /api/reader/me/bookmarks — "Clear all" must stick to the cloud
+    too, not just a localStorage wipe (TASK-233)."""
+
+    def test_clear_all_removes_every_bookmark(self, client, db_session):
+        token = _token(client)
+        p1 = _create_post(db_session, slug="clear-a")
+        p2 = _create_post(db_session, slug="clear-b")
+        client.put(f"{BOOKMARKS}/{p1.id}", headers=_auth(token))
+        client.put(f"{BOOKMARKS}/{p2.id}", headers=_auth(token))
+        assert client.get(BOOKMARKS, headers=_auth(token)).json()["total"] == 2
+
+        resp = client.delete(BOOKMARKS, headers=_auth(token))
+        assert resp.status_code == 204
+        assert client.get(BOOKMARKS, headers=_auth(token)).json()["total"] == 0
+
+    def test_clear_all_does_not_touch_another_reader(self, client, db_session):
+        t1 = _token(client, email="clr1@example.com")
+        t2 = _token(client, email="clr2@example.com")
+        post = _create_post(db_session, slug="clear-shared")
+        client.put(f"{BOOKMARKS}/{post.id}", headers=_auth(t1))
+        client.put(f"{BOOKMARKS}/{post.id}", headers=_auth(t2))
+        client.delete(BOOKMARKS, headers=_auth(t1))
+        assert client.get(BOOKMARKS, headers=_auth(t1)).json()["total"] == 0
+        assert client.get(BOOKMARKS, headers=_auth(t2)).json()["total"] == 1
+
+    def test_clear_all_idempotent_when_empty(self, client):
+        token = _token(client)
+        resp = client.delete(BOOKMARKS, headers=_auth(token))
+        assert resp.status_code == 204
+        again = client.delete(BOOKMARKS, headers=_auth(token))
+        assert again.status_code == 204
+
+    def test_clear_all_requires_reader_token(self, client):
+        assert client.delete(BOOKMARKS).status_code == 401
+
+
 class TestNoStoreCacheHeaders:
     def test_bookmarks_never_cached(self, client):
         """Reader-owned data must stay Cache-Control: no-store (TASK-129 default)."""
