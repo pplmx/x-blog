@@ -47,6 +47,9 @@ const error = ref(false);
 // receiving it everywhere (inbox row + push), via the server gate.
 const prefs = ref<ReaderNotificationPrefs | null>(null);
 const prefsError = ref(false);
+// Pref rows render only after prefs resolves; gate them behind a small loading
+// hint so the card isn't a blank box while it loads (deep-dive finding).
+const prefsLoading = ref(false);
 const prefsSaving = ref<keyof ReaderNotificationPrefs | null>(null);
 
 /** True when a 401 means an expired/invalid reader session (see ISS-110). */
@@ -84,6 +87,7 @@ async function load() {
 
 async function loadPrefs() {
 	if (!isAuthenticated.value) return;
+	prefsLoading.value = true;
 	try {
 		prefs.value = await getReaderNotificationPrefs();
 		prefsError.value = false;
@@ -95,6 +99,8 @@ async function loadPrefs() {
 		}
 		// Non-fatal: the inbox still renders; the card just shows its error hint.
 		prefsError.value = true;
+	} finally {
+		prefsLoading.value = false;
 	}
 }
 
@@ -297,7 +303,14 @@ function kindIcon(kind: string): string {
       <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
         {{ t('notifications.prefs.subtitle') }}
       </p>
-      <ul class="mt-4 space-y-4">
+      <p
+        v-if="prefsLoading"
+        class="mt-4 flex items-center gap-2 text-sm text-gray-400 dark:text-gray-500"
+      >
+        <Icon icon="lucide:loader-2" class="w-4 h-4 animate-spin" aria-hidden="true" role="presentation" />
+        {{ t('notifications.prefs.loading') }}
+      </p>
+      <ul v-else class="mt-4 space-y-4">
         <li v-for="row in prefRows" :key="row.key" class="flex items-start justify-between gap-4">
           <div class="flex items-start gap-3">
             <Icon :icon="row.icon" class="w-5 h-5 mt-0.5 shrink-0 text-amber-500" />

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed } from "vue";
 import { type ArchiveEntry, usePostArchive, usePosts } from "~~/api/public/posts";
+import { paginationPages } from "~~/composables/usePagination";
 import { useSeo } from "~~/composables/useSeo";
 
 const { t, locale } = useLang();
@@ -54,6 +55,12 @@ const monthLabel = computed(() => {
 		{ month: "long" },
 	);
 });
+
+// Windowed, ellipsis-aware pagination buttons (same pattern as home/search):
+// a month with 50+ pages of posts must not render one button per page.
+const paginationTokens = computed(() =>
+	paginationPages(posts.value?.pagination?.total_pages ?? 0, posts.value?.pagination?.page ?? 1),
+);
 
 useSeo(() => ({
 	title: hasPeriod.value
@@ -178,21 +185,24 @@ useSeo(() => ({
           </div>
         </div>
 
-        <!-- Pagination -->
+        <!-- Pagination (windowed with ellipsis, matching home/search) -->
         <div
           v-if="posts && posts.pagination.total_pages > 1"
-          class="flex justify-center gap-2 mt-8"
+          class="flex items-center justify-center gap-2 mt-8"
         >
           <button
-            v-for="pg in posts.pagination.total_pages"
-            :key="pg"
+            v-for="(pg, i) in paginationTokens"
+            :key="pg === '…' ? `ellipsis-${i}` : pg"
+            :disabled="pg === '…'"
             :class="[
-              'px-3 py-1 rounded',
-              pg === posts.pagination.page
-                ? 'bg-purple-600 text-white'
-                : 'border hover:bg-gray-50',
+              'px-3 py-1 rounded transition-colors',
+              pg === '…'
+                ? 'cursor-default text-gray-400'
+                : pg === posts.pagination.page
+                  ? 'bg-purple-600 text-white'
+                  : 'border hover:bg-gray-50',
             ]"
-            @click="navigateTo({ query: { year: String(year), month: String(month), page: pg } })"
+            @click="pg !== '…' && navigateTo({ query: { year: String(year), month: String(month), page: pg } })"
           >
             {{ pg }}
           </button>

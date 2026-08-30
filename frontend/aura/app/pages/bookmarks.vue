@@ -7,7 +7,7 @@ import { useSeo } from "~~/composables/useSeo";
 
 const { t, locale } = useLang();
 const { bookmarks, bookmarkCount } = useBookmarks();
-const { remove, clearAll, mergeLocalToCloud } = useBookmarkSync();
+const { remove, clearAll, mergeLocalToCloud, syncing } = useBookmarkSync();
 const {
 	folders,
 	load: loadFolders,
@@ -225,9 +225,21 @@ async function handleAssign(bookmark: Bookmark, raw: string) {
       </div>
     </div>
 
-    <!-- Empty state -->
+    <!-- Cloud reconciliation (signed-in, fresh device): the local list is empty
+         until the cloud pull lands, so show a light in-flight hint instead of
+         a false "you have no bookmarks yet" empty state (deep-dive finding). -->
     <div
-      v-if="bookmarkCount === 0"
+      v-if="bookmarkCount === 0 && syncing"
+      class="text-center py-16 text-gray-500 dark:text-gray-400"
+      role="status"
+    >
+      <Icon icon="lucide:loader-2" class="w-10 h-10 mx-auto mb-4 animate-spin text-gray-300" />
+      <p class="text-lg">{{ t('bookmarks.syncing') }}</p>
+    </div>
+
+    <!-- Empty state (only once sync finished and nothing remains) -->
+    <div
+      v-else-if="bookmarkCount === 0 && !syncing"
       class="text-center py-16 text-gray-500 dark:text-gray-400"
     >
       <Icon icon="lucide:bookmark" class="w-12 h-12 mx-auto mb-4 text-gray-300" />

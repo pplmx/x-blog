@@ -20,6 +20,7 @@
 		"prefs": {
 			"title": "Notification preferences",
 			"subtitle": "Choose which activity types notify you (off silences that type).",
+			"loading": "Loading preferences…",
 			"kind": {
 				"new_post": {
 					"label": "New posts",

@@ -12,6 +12,7 @@
 		},
 		"seoTitle": "账号设置 — X-Blog",
 		"seoDesc": "管理你的读者账号：昵称、密码与推送设备。",
+		"loading": "加载中…",
 		"signInPrompt": "登录后可以管理你的账号设置",
 		"signInLink": "前往登录",
 		"profile": {

@@ -31,6 +31,10 @@ const tags = ref<Tag[] | null>(null);
 const allComments = ref<AdminComment[]>([]);
 const blogStats = ref<BlogStats | null>(null);
 const loading = ref(true);
+// A failed load (expired admin token → 401, transient network, a post page
+// error) must be surfaced as an explicit error branch with a retry, not
+// silently render all-zero stat cards that look like an empty installation.
+const loadError = ref(false);
 
 // Reading-trend analytics (DEC-086): per-day view totals + top posts by
 // in-period views. Null when the endpoint failed — the card then hides.
@@ -106,6 +110,7 @@ function authHeaders(): Record<string, string> {
 }
 
 async function loadDashboard(): Promise<void> {
+	loadError.value = false;
 	try {
 		// Load ALL posts via the authenticated admin endpoint (all statuses:
 		// published + draft + scheduled), paginating because the API caps a
@@ -169,6 +174,16 @@ async function loadDashboard(): Promise<void> {
 		followStats.value = followsData;
 		topSearches.value = searchesData;
 		commentActivity.value = commentsActivityData;
+	} catch {
+		// Keep every list empty and flag the failure — the error branch below
+		// explains what happened and offers a retry instead of presenting zeros
+		// as a real (empty) install (deep-dive finding).
+		posts.value = [];
+		categories.value = null;
+		tags.value = null;
+		allComments.value = [];
+		blogStats.value = null;
+		loadError.value = true;
 	} finally {
 		loading.value = false;
 	}
@@ -363,15 +378,29 @@ function postsInCategory(catId: number): number {
 }
 
 const approveError = ref<string | null>(null);
+// Per-comment in-flight set so an approve/reject click disables THAT row's
+// buttons while the request runs (prevents double-submit) without freezing the
+// whole dashboard (deep-dive finding).
+const approvingIds = ref<Set<number>>(new Set());
 
 async function handleApprove(commentId: number, approved: boolean) {
+	if (approvingIds.value.has(commentId)) return;
+	const comment = allComments.value.find((c) => c.id === commentId);
+	const previous = comment?.is_approved;
+	approvingIds.value = new Set(approvingIds.value).add(commentId);
+	approveError.value = null;
 	try {
 		await approveAdminComment(commentId, approved);
-		const comment = allComments.value.find((c) => c.id === commentId);
 		if (comment) comment.is_approved = approved;
-		approveError.value = null;
 	} catch (e) {
+		// Roll the row back to its prior state so a failed toggle doesn't leave
+		// the UI claiming a moderation change the server rejected.
+		if (comment && typeof previous === "boolean") comment.is_approved = previous;
 		approveError.value = e instanceof Error ? e.message : t("admin.dashboard.operationFailed");
+	} finally {
+		const next = new Set(approvingIds.value);
+		next.delete(commentId);
+		approvingIds.value = next;
 	}
 }
 
@@ -448,7 +477,38 @@ const stats = computed(() => [
       {{ t("admin.dashboard.loading") }}
     </div>
 
-    <!-- Stats cards -->
+    <!-- Load failure (401 from an expired admin token, network, an upstream
+         error): surface the problem with a retry instead of rendering zeros
+         that look like an empty installation (deep-dive finding). -->
+    <div
+      v-if="loadError"
+      class="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20 p-5"
+      role="alert"
+    >
+      <div class="flex items-start gap-3">
+        <Icon icon="lucide:alert-triangle" class="w-5 h-5 mt-0.5 text-red-500 dark:text-red-400 shrink-0" />
+        <div>
+          <p class="text-sm font-medium text-red-700 dark:text-red-300">
+            {{ t("admin.dashboard.loadError") }}
+          </p>
+          <p class="text-xs text-red-600/80 dark:text-red-400/80 mt-0.5">
+            {{ t("admin.dashboard.loadErrorHint") }}
+          </p>
+        </div>
+      </div>
+      <button
+        type="button"
+        class="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium text-white bg-red-500 hover:bg-red-600 transition-colors"
+        @click="loadDashboard()"
+      >
+        <Icon icon="lucide:refresh-cw" class="w-3.5 h-3.5" />
+        {{ t("common.action.retry") }}
+      </button>
+    </div>
+
+    <!-- Stats cards (hidden entirely on a failed load — the zeroed cards
+         would otherwise masquerade as a real empty install) -->
+    <template v-if="!loadError">
     <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 mb-8">
       <div
         v-for="stat in stats"
@@ -468,6 +528,7 @@ const stats = computed(() => [
         </div>
       </div>
     </div>
+    </template>
 
     <!-- Top posts by views + Category distribution -->
     <div class="grid gap-6 lg:grid-cols-2 mb-8">
@@ -814,13 +875,17 @@ const stats = computed(() => [
             </p>
             <div class="flex items-center gap-2">
               <button
-                class="px-3 py-1 text-xs font-medium text-green-700 bg-green-100 dark:bg-green-900/30 dark:text-green-400 rounded-lg hover:bg-green-200 dark:hover:bg-green-900/50 transition-colors"
+                type="button"
+                :disabled="approvingIds.has(comment.id)"
+                class="px-3 py-1 text-xs font-medium text-green-700 bg-green-100 dark:bg-green-900/30 dark:text-green-400 rounded-lg hover:bg-green-200 dark:hover:bg-green-900/50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 @click="handleApprove(comment.id, true)"
               >
-                {{ t("admin.dashboard.approve") }}
+                {{ approvingIds.has(comment.id) ? t("admin.dashboard.approving") : t("admin.dashboard.approve") }}
               </button>
               <button
-                class="px-3 py-1 text-xs font-medium text-red-700 bg-red-100 dark:bg-red-900/30 dark:text-red-400 rounded-lg hover:bg-red-200 dark:hover:bg-red-900/50 transition-colors"
+                type="button"
+                :disabled="approvingIds.has(comment.id)"
+                class="px-3 py-1 text-xs font-medium text-red-700 bg-red-100 dark:bg-red-900/30 dark:text-red-400 rounded-lg hover:bg-red-200 dark:hover:bg-red-900/50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 @click="handleApprove(comment.id, false)"
               >
                 {{ t("admin.dashboard.reject") }}

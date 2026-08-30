@@ -28,10 +28,13 @@
 			"empty": "No pending comments"
 		},
 		"approve": "Approve",
+		"approving": "Approving…",
 		"reject": "Reject",
 		"operationFailed": "Operation failed, please retry",
 		"updatedAt": "Updated at {time}",
 		"loading": "Loading data...",
+		"loadError": "Couldn't load the dashboard",
+		"loadErrorHint": "Check your admin session and network, then retry.",
 		"export": {
 			"title": "Data Export",
 			"subtitle": "Download a CSV snapshot of your content.",

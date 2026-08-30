@@ -12,6 +12,7 @@
 		},
 		"seoTitle": "Account settings — X-Blog",
 		"seoDesc": "Manage your reader account: display name, password, and push devices.",
+		"loading": "Loading…",
 		"signInPrompt": "Sign in to manage your account settings",
 		"signInLink": "Sign in",
 		"profile": {

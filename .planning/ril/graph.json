@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 192,
+  "round": 193,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-08-30T11:05:50+00:00",
+  "updated_at": "2026-08-30T13:38:11+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -13211,6 +13211,108 @@
       "updated_at": "2026-08-30T10:57:01+00:00",
       "touched_round": 191,
       "summary": "Scheduled posts (publish_at in future) never fan out new-post notifications when they cross publish time - no background scheduler exists"
+    },
+    "ISS-170": {
+      "id": "ISS-170",
+      "type": "issue",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-30T13:35:09+00:00",
+      "updated_at": "2026-08-30T13:35:09+00:00",
+      "touched_round": 193,
+      "summary": "Search results view (/search?q=...) has no editable query input - once a query is active the results view renders no search box, so a reader cannot refine the query on the page"
+    },
+    "ISS-171": {
+      "id": "ISS-171",
+      "type": "issue",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-30T13:35:09+00:00",
+      "updated_at": "2026-08-30T13:35:09+00:00",
+      "touched_round": 193,
+      "summary": "Admin dashboard loadDashboard() has a finally but no catch: any failure (401/network) renders all-zero stat cards + empty lists with no error banner and no retry"
+    },
+    "ISS-172": {
+      "id": "ISS-172",
+      "type": "issue",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-30T13:35:09+00:00",
+      "updated_at": "2026-08-30T13:35:09+00:00",
+      "touched_round": 193,
+      "summary": "Post editor notifyMessage/revisionMessage boxes are hard-coded to green success styling even when holding failure strings"
+    },
+    "ISS-173": {
+      "id": "ISS-173",
+      "type": "issue",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-30T13:36:06+00:00",
+      "updated_at": "2026-08-30T13:36:06+00:00",
+      "touched_round": 193,
+      "summary": "Bookmarks page shows false 'no bookmarks yet' empty state for cloud-only readers while mergeLocalToCloud() is still reconciling (no loading/hydrating gate) - the empty-state flash is the default experience on new devices"
+    },
+    "ISS-174": {
+      "id": "ISS-174",
+      "type": "issue",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-30T13:36:06+00:00",
+      "updated_at": "2026-08-30T13:36:06+00:00",
+      "touched_round": 193,
+      "summary": "HeaderSearch 'View all results' button binds only @mousedown.prevent with no @click - keyboard users who Tab to it and press Enter/Space fire a click nobody handles, so the full-search CTA is unreachable without a mouse"
+    },
+    "ISS-175": {
+      "id": "ISS-175",
+      "type": "issue",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-30T13:36:06+00:00",
+      "updated_at": "2026-08-30T13:36:06+00:00",
+      "touched_round": 193,
+      "summary": "Clear-history uses a bespoke inline confirm while every analogous destructive action uses window.confirm() - same operation class, two interaction models (history.vue vs bookmarks/account/admin)"
+    },
+    "TASK-236": {
+      "id": "TASK-236",
+      "type": "task",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-30T13:37:40+00:00",
+      "updated_at": "2026-08-30T13:37:40+00:00",
+      "touched_round": 193,
+      "category": "core-feature",
+      "severity": 0.7,
+      "confidence": 0.9,
+      "effort": 2,
+      "summary": "Add an editable search input to the /search results view so a reader can refine/re-query in place instead of being stuck on a frozen query"
+    },
+    "TASK-237": {
+      "id": "TASK-237",
+      "type": "task",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-30T13:37:40+00:00",
+      "updated_at": "2026-08-30T13:37:40+00:00",
+      "touched_round": 193,
+      "category": "correctness",
+      "severity": 0.8,
+      "confidence": 0.9,
+      "effort": 2,
+      "summary": "Give the admin dashboard a load-error branch + retry so a failure (401/network) never renders indistinguishable all-zero stat cards"
+    },
+    "TASK-238": {
+      "id": "TASK-238",
+      "type": "task",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-30T13:37:40+00:00",
+      "updated_at": "2026-08-30T13:37:40+00:00",
+      "touched_round": 193,
+      "category": "maintainability",
+      "severity": 0.5,
+      "confidence": 0.9,
+      "effort": 3,
+      "summary": "Frontend UX polish batch: keyboard-reachable HeaderSearch view-all, red error styling in post editor, bookmarks empty-state flash gate, history confirm consistency"
     }
   },
   "edges": [
@@ -19023,6 +19125,42 @@
       "to": "ISS-169",
       "type": "addresses",
       "created_at": "2026-08-30T10:57:01+00:00"
+    },
+    {
+      "from": "TASK-236",
+      "to": "ISS-170",
+      "type": "addresses",
+      "created_at": "2026-08-30T13:38:11+00:00"
+    },
+    {
+      "from": "TASK-237",
+      "to": "ISS-171",
+      "type": "addresses",
+      "created_at": "2026-08-30T13:38:11+00:00"
+    },
+    {
+      "from": "TASK-238",
+      "to": "ISS-172",
+      "type": "addresses",
+      "created_at": "2026-08-30T13:38:11+00:00"
+    },
+    {
+      "from": "TASK-238",
+      "to": "ISS-173",
+      "type": "addresses",
+      "created_at": "2026-08-30T13:38:11+00:00"
+    },
+    {
+      "from": "TASK-238",
+      "to": "ISS-174",
+      "type": "addresses",
+      "created_at": "2026-08-30T13:38:11+00:00"
+    },
+    {
+      "from": "TASK-238",
+      "to": "ISS-175",
+      "type": "addresses",
+      "created_at": "2026-08-30T13:38:11+00:00"
     }
   ]
 }

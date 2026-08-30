@@ -158,6 +158,8 @@ const mockStatsResult = {
 /** Mutable overrides for the $fetch responses (per-test). */
 let statsOverride: Record<string, number> = { ...mockStatsResult };
 let postsOverride: unknown = null;
+// True → the /api/admin/posts route throws (401/network failure drill).
+let failPostsOverride = false;
 let commentsOverride: unknown = null;
 let trendOverride: unknown = null;
 let followsOverride: unknown = null;
@@ -202,7 +204,10 @@ vi.stubGlobal(
 	"$fetch",
 	vi.fn(async (url: unknown) => {
 		const u = String(url);
-		if (u.includes("/api/admin/posts")) return postsOverride ?? mockPostsResponse;
+		if (u.includes("/api/admin/posts")) {
+			if (failPostsOverride) throw new Error("401 Unauthorized");
+			return postsOverride ?? mockPostsResponse;
+		}
 		if (u.includes("/api/admin/categories")) return mockCategories;
 		if (u.includes("/api/admin/tags")) return mockTags;
 		if (u.includes("/api/admin/comments")) return commentsOverride ?? mockCommentList;
@@ -282,6 +287,21 @@ describe("Admin Dashboard Page", () => {
 			const DashboardPage = await loadPage();
 			const wrapper = await mountWithSuspense(DashboardPage);
 			expect(wrapper.text()).toContain("仪表盘");
+		});
+
+		it("renders an error branch with retry when the load fails instead of zeroed cards", async () => {
+			// A failed admin load (401 / network) must surface an error + retry
+			// rather than render all-zero stat cards that masquerade as an empty
+			// installation (deep-dive finding). Uses the file's failPostsOverride
+			// lever so the shared $fetch route dispatcher is untouched.
+			failPostsOverride = true;
+			const DashboardPage = await loadPage();
+			const wrapper = await mountWithSuspense(DashboardPage);
+			await flushPromises();
+			expect(wrapper.text()).toContain("无法加载仪表盘");
+			// The stat cards (which would read 0) are replaced by the error branch.
+			expect(wrapper.text()).not.toContain("文章总数");
+			failPostsOverride = false;
 		});
 
 		it("renders the subtitle", async () => {

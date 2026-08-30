@@ -584,7 +584,14 @@ function shortEndpoint(endpoint: string): string {
         </h2>
         <p class="text-xs text-gray-400 mb-4">{{ t('account.devices.note') }}</p>
 
-        <p v-if="devicesLoaded && devices.length === 0" class="text-sm text-gray-500 dark:text-gray-400">
+        <p
+          v-if="!devicesLoaded"
+          class="flex items-center gap-2 text-sm text-gray-400 dark:text-gray-500"
+        >
+          <Icon icon="lucide:loader-2" class="w-4 h-4 animate-spin" aria-hidden="true" role="presentation" />
+          {{ t('account.loading') }}
+        </p>
+        <p v-else-if="devices.length === 0" class="text-sm text-gray-500 dark:text-gray-400">
           {{ t('account.devices.empty') }}
         </p>
         <ul v-else class="space-y-3">
@@ -664,7 +671,14 @@ function shortEndpoint(endpoint: string): string {
         </h2>
         <p class="text-xs text-gray-400 mb-4">{{ t('account.threads.note') }}</p>
 
-        <p v-if="threadsLoaded && threads.length === 0" class="text-sm text-gray-500 dark:text-gray-400">
+        <p
+          v-if="!threadsLoaded"
+          class="flex items-center gap-2 text-sm text-gray-400 dark:text-gray-500"
+        >
+          <Icon icon="lucide:loader-2" class="w-4 h-4 animate-spin" aria-hidden="true" role="presentation" />
+          {{ t('account.loading') }}
+        </p>
+        <p v-else-if="threads.length === 0" class="text-sm text-gray-500 dark:text-gray-400">
           {{ t('account.threads.empty') }}
         </p>
         <ul v-else class="space-y-3">
@@ -704,7 +718,14 @@ function shortEndpoint(endpoint: string): string {
         </h2>
         <p class="text-xs text-gray-400 mb-4">{{ t('account.series.note') }}</p>
 
-        <p v-if="seriesFollowsLoaded && seriesFollows.length === 0" class="text-sm text-gray-500 dark:text-gray-400">
+        <p
+          v-if="!seriesFollowsLoaded"
+          class="flex items-center gap-2 text-sm text-gray-400 dark:text-gray-500"
+        >
+          <Icon icon="lucide:loader-2" class="w-4 h-4 animate-spin" aria-hidden="true" role="presentation" />
+          {{ t('account.loading') }}
+        </p>
+        <p v-else-if="seriesFollows.length === 0" class="text-sm text-gray-500 dark:text-gray-400">
           {{ t('account.series.empty') }}
         </p>
         <ul v-else class="space-y-3">
@@ -756,7 +777,14 @@ function shortEndpoint(endpoint: string): string {
         </h2>
         <p class="text-xs text-gray-400 mb-4">{{ t('account.categories.note') }}</p>
 
-        <p v-if="categoryFollowsLoaded && categoryFollows.length === 0" class="text-sm text-gray-500 dark:text-gray-400">
+        <p
+          v-if="!categoryFollowsLoaded"
+          class="flex items-center gap-2 text-sm text-gray-400 dark:text-gray-500"
+        >
+          <Icon icon="lucide:loader-2" class="w-4 h-4 animate-spin" aria-hidden="true" role="presentation" />
+          {{ t('account.loading') }}
+        </p>
+        <p v-else-if="categoryFollows.length === 0" class="text-sm text-gray-500 dark:text-gray-400">
           {{ t('account.categories.empty') }}
         </p>
         <ul v-else class="space-y-3">
@@ -808,7 +836,14 @@ function shortEndpoint(endpoint: string): string {
         </h2>
         <p class="text-xs text-gray-400 mb-4">{{ t('account.tags.note') }}</p>
 
-        <p v-if="tagFollowsLoaded && tagFollows.length === 0" class="text-sm text-gray-500 dark:text-gray-400">
+        <p
+          v-if="!tagFollowsLoaded"
+          class="flex items-center gap-2 text-sm text-gray-400 dark:text-gray-500"
+        >
+          <Icon icon="lucide:loader-2" class="w-4 h-4 animate-spin" aria-hidden="true" role="presentation" />
+          {{ t('account.loading') }}
+        </p>
+        <p v-else-if="tagFollows.length === 0" class="text-sm text-gray-500 dark:text-gray-400">
           {{ t('account.tags.empty') }}
         </p>
         <ul v-else class="space-y-3">

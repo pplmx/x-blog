@@ -59,6 +59,12 @@ export function useBookmarkSync() {
 	const store = useBookmarks();
 	const { bookmarks, addBookmark, removeBookmark, replaceBookmarks, clearBookmarks } = store;
 
+	// True while a cloud reconciliation (mergeLocalToCloud) is running. The
+	// bookmarks page uses this to gate its empty state: on a fresh device the
+	// local list is empty until the cloud pull lands, and showing "you have no
+	// bookmarks yet" during that window is a false negative (deep-dive finding).
+	const syncing = ref(false);
+
 	/** Mirror a single add to the cloud. Offline-safe: errors are swallowed. */
 	async function mirrorAdd(postId: number): Promise<void> {
 		if (!hasReaderToken()) return;
@@ -84,6 +90,7 @@ export function useBookmarkSync() {
 	/** Reconcile local + cloud: push local up, adopt the server union down. */
 	async function mergeLocalToCloud(): Promise<void> {
 		if (!hasReaderToken()) return;
+		syncing.value = true;
 		try {
 			const { addReaderBookmark, getReaderBookmarks } = await import("~~/api/reader/bookmarks");
 			// Push local bookmarks up (idempotent PUT; a full Bookmark carries the
@@ -106,6 +113,8 @@ export function useBookmarkSync() {
 			replaceBookmarks(all.map(toLocalBookmark));
 		} catch {
 			// Cloud unreachable — keep the local list untouched.
+		} finally {
+			syncing.value = false;
 		}
 	}
 
@@ -144,6 +153,7 @@ export function useBookmarkSync() {
 	return {
 		...store,
 		isSignedIn: hasReaderToken,
+		syncing,
 		add,
 		remove,
 		clearAll,

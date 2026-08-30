@@ -141,10 +141,17 @@ useSeo(() => ({
 // page of the new results).
 const searchInput = ref("");
 // Keep the input in sync with the current query so an SPA navigation to
-// /search?q=foo (e.g. from the header search link) shows the term in the box.
-watch(query, (q) => {
-	searchInput.value = q;
-});
+// /search?q=foo (e.g. from the header search link) AND a fresh deep-link
+// load both show the term in the box (immediate:true covers the initial
+// mount — previously a /search?q=... landing showed a blank results-view
+// input despite results being for that query).
+watch(
+	query,
+	(q) => {
+		searchInput.value = q;
+	},
+	{ immediate: true },
+);
 function handleSearchInput() {
 	const q = searchInput.value.trim();
 	if (!q) return;
@@ -213,6 +220,26 @@ function handleSearchInput() {
 
     <!-- Search results -->
     <div v-else>
+      <!-- Header with an editable query box so a reader who landed on
+           /search?q=... (header/home search, or a shared deep link) can refine
+           the term in place instead of being stuck with a frozen query. -->
+      <div class="mb-6 w-full max-w-md">
+        <div class="relative">
+          <input
+            v-model="searchInput"
+            type="search"
+            :placeholder="t('search.placeholder')"
+            :aria-label="t('search.placeholder')"
+            class="w-full pl-10 pr-4 py-3 border border-gray-200 dark:border-gray-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+            @keydown.enter="handleSearchInput"
+          >
+          <Icon
+            icon="lucide:search"
+            class="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 pointer-events-none"
+          />
+        </div>
+      </div>
+
       <!-- Header -->
       <div class="mb-8">
         <h1

@@ -25,12 +25,14 @@ vi.mock("../../composables/useBookmarks", () => ({
 
 // Mock useBookmarkSync: the page's "Clear all" now goes through clearAll
 // (local wipe + cloud clear, TASK-233), not a bare clearBookmarks.
+const mockSyncing = ref(false);
 vi.mock("../../composables/useBookmarkSync", () => ({
 	useBookmarkSync: () => ({
 		bookmarks: mockBookmarks,
 		remove: mockRemoveBookmark,
 		clearAll: mockClearAll,
 		mergeLocalToCloud: vi.fn(() => Promise.resolve()),
+		syncing: mockSyncing,
 	}),
 }));
 
@@ -95,6 +97,26 @@ describe("Bookmarks page", () => {
 			mockBookmarks.value = [];
 			const wrapper = mountBookmarks();
 			expect(wrapper.find("button[title='清空全部']").exists()).toBe(false);
+		});
+
+		it("shows a syncing placeholder instead of the empty state while the cloud merge runs", () => {
+			// A signed-in reader on a fresh device has an empty LOCAL list until
+			// mergeLocalToCloud pulls the server copy down; the empty state must
+			// not flash "you have no bookmarks yet" during that window.
+			mockBookmarks.value = [];
+			mockSyncing.value = true;
+			const wrapper = mountBookmarks();
+			expect(wrapper.text()).toContain("正在同步收藏");
+			expect(wrapper.text()).not.toContain("还没有收藏的文章");
+			mockSyncing.value = false;
+		});
+
+		it("shows the real empty state once sync finishes", () => {
+			mockBookmarks.value = [];
+			mockSyncing.value = false;
+			const wrapper = mountBookmarks();
+			expect(wrapper.text()).toContain("还没有收藏的文章");
+			expect(wrapper.text()).not.toContain("正在同步收藏");
 		});
 	});
 

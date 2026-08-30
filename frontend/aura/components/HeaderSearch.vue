@@ -180,7 +180,8 @@ function onBlur(): void {
       <button
         type="button"
         class="w-full px-3 py-2.5 text-left text-sm font-medium text-blue-600 dark:text-blue-400 border-t border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
-        @mousedown.prevent="goToSearch"
+        @mousedown.prevent
+        @click="goToSearch"
       >
         {{ t('headerSearch.viewAll') }}
       </button>

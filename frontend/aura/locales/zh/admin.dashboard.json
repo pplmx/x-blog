@@ -28,10 +28,13 @@
 			"empty": "暂无待审核评论"
 		},
 		"approve": "通过",
+		"approving": "处理中…",
 		"reject": "拒绝",
 		"operationFailed": "操作失败，请重试",
 		"updatedAt": "数据更新于 {time}",
 		"loading": "正在加载数据...",
+		"loadError": "无法加载仪表盘",
+		"loadErrorHint": "请检查管理员登录状态与网络后重试。",
 		"export": {
 			"title": "数据导出",
 			"subtitle": "下载内容的 CSV 快照。",

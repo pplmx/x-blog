@@ -264,6 +264,27 @@ describe("Search Page", () => {
 			expect(wrapper.text()).toContain("搜索结果");
 		});
 
+		it("renders an editable query input in the results view (deep-link refinement)", async () => {
+			// A reader landing on /search?q=... from a shared link or the header
+			// search must be able to refine the term in place — the results view
+			// previously rendered no search box at all (dead-end).
+			const wrapper = await mountSearchPage(); // routeQuery defaults to { q: "test query" }
+			const input = wrapper.find('input[type="search"]');
+			expect(input.exists()).toBe(true);
+			expect((input.element as HTMLInputElement).value).toBe("test query");
+		});
+
+		it("re-queries from the results-view input on Enter", async () => {
+			const wrapper = await mountSearchPage(); // q=test query
+			const navMock = vi.fn();
+			vi.stubGlobal("navigateTo", navMock);
+			const input = wrapper.find('input[type="search"]');
+			await input.setValue("nuxt");
+			await input.trigger("keydown.enter");
+			// New term → fresh result set at page 1, preserving active filters.
+			expect(navMock).toHaveBeenCalledWith({ query: { page: "1", q: "nuxt" } });
+		});
+
 		it("renders the found count", async () => {
 			const wrapper = await mountSearchPage();
 			expect(wrapper.text()).toContain("找到");

@@ -43,6 +43,10 @@ const submitError = ref<string | null>(null);
 // backend's 403 if this account is an editor.
 const isNotifying = ref(false);
 const notifyMessage = ref<string | null>(null);
+// A message box must know whether it holds a success or a failure so it can be
+// styled accordingly — a fixed green box shipped failure strings in green
+// (deep-dive finding). True when the latest notify attempt failed.
+const notifyFailed = ref(false);
 
 // Draft auto-save (RIL TASK-190, DEC-156): edits are auto-persisted to a
 // draft after a debounce, with a visible saving/saved state and no lost work
@@ -65,6 +69,8 @@ const revisionsLoading = ref(false);
 const revisionsError = ref<string | null>(null);
 const restoringId = ref<number | null>(null);
 const revisionMessage = ref<string | null>(null);
+// Mirrors notifyFailed: green for restore success, red for a failed restore.
+const revisionFailed = ref(false);
 
 // Unsaved-changes guard state (RIL TASK-061). Declared before the postData
 // watch below, whose immediate:true callback needs loadedSnapshot at setup time.
@@ -384,8 +390,10 @@ async function handleNotify() {
 			url: `/posts/${formData.value.slug}`,
 		});
 		notifyMessage.value = t("admin.postEdit.notifySent");
+		notifyFailed.value = false;
 	} catch {
 		notifyMessage.value = t("admin.postEdit.notifyFailed");
+		notifyFailed.value = true;
 	} finally {
 		isNotifying.value = false;
 	}
@@ -429,6 +437,7 @@ async function handleRestoreRevision(revId: number) {
 	try {
 		await restorePostRevision(postId, revId);
 		revisionMessage.value = t("admin.postEdit.revisionRestored");
+		revisionFailed.value = false;
 		// Re-fetch the live post so the form reflects the restored state.
 		await postRefresh();
 		// Refresh the history list (restore also snapshots the pre-restore state).
@@ -437,6 +446,7 @@ async function handleRestoreRevision(revId: number) {
 		const detail = (err as { data?: { detail?: string } } | null)?.data?.detail;
 		revisionMessage.value =
 			typeof detail === "string" ? detail : t("admin.postEdit.revisionRestoreError");
+		revisionFailed.value = true;
 	} finally {
 		restoringId.value = null;
 	}
@@ -610,7 +620,12 @@ function handleFileInput(e: Event) {
       <div v-if="submitError" class="p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl text-red-600 dark:text-red-400">
         {{ submitError }}
       </div>
-      <div v-if="notifyMessage" class="p-4 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-xl text-green-700 dark:text-green-300">
+      <div
+        v-if="notifyMessage"
+        :class="notifyFailed
+          ? 'p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl text-red-600 dark:text-red-400'
+          : 'p-4 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-xl text-green-700 dark:text-green-300'"
+      >
         {{ notifyMessage }}
       </div>
 
@@ -629,7 +644,13 @@ function handleFileInput(e: Event) {
           <Icon :icon="revisionsOpen ? 'lucide:chevron-up' : 'lucide:chevron-down'" class="w-4 h-4 text-gray-400" />
         </button>
         <div v-if="revisionsOpen" class="border-t border-gray-100 dark:border-gray-800 p-4 space-y-3 bg-gray-50/50 dark:bg-gray-800/40">
-          <div v-if="revisionMessage" data-testid="revision-message" class="text-sm text-green-600 dark:text-green-400">
+          <div
+            v-if="revisionMessage"
+            data-testid="revision-message"
+            :class="revisionFailed
+              ? 'text-sm text-red-600 dark:text-red-400'
+              : 'text-sm text-green-600 dark:text-green-400'"
+          >
             {{ revisionMessage }}
           </div>
           <div v-if="revisionsError" class="text-sm text-red-600 dark:text-red-400">{{ revisionsError }}</div>
