@@ -2,7 +2,7 @@
   "ril_version": 1,
   "round": 195,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-08-30T16:34:42+00:00",
+  "updated_at": "2026-08-30T16:51:47+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -13402,6 +13402,27 @@
       "touched_round": 194,
       "commit": "7b56c0e",
       "summary": "Search clear-filters button"
+    },
+    "ISS-178": {
+      "id": "ISS-178",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-08-30T16:51:47+00:00",
+      "updated_at": "2026-08-30T16:51:47+00:00",
+      "touched_round": 195,
+      "summary": "Bookmarks folder-assign was optimistic with no rollback: on a failed server call the page kept showing the new folder while the cloud never persisted it (UI/server drift)"
+    },
+    "CHG-268": {
+      "id": "CHG-268",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-30T16:51:47+00:00",
+      "updated_at": "2026-08-30T16:51:47+00:00",
+      "touched_round": 195,
+      "commit": "dfdea96",
+      "summary": "Bookmark folder-assign rollback + error surface"
     }
   },
   "edges": [
@@ -19346,6 +19367,12 @@
       "to": "TASK-239",
       "type": "implements",
       "created_at": "2026-08-30T16:26:37+00:00"
+    },
+    {
+      "from": "CHG-268",
+      "to": "ISS-178",
+      "type": "resolves",
+      "created_at": "2026-08-30T16:51:47+00:00"
     }
   ]
 }
