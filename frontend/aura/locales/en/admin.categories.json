@@ -7,6 +7,7 @@
 		"namePlaceholder": "Category name",
 		"create": "Create",
 		"confirm": "Confirm",
+		"cancel": "Cancel",
 		"edit": "Edit",
 		"delete": "Delete",
 		"confirmDelete": "Delete this category?",

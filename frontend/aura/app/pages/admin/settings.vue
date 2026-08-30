@@ -16,12 +16,14 @@ const SETTING_KEY = "auto_approve_reader_comments";
 
 const enabled = ref(false);
 const loading = ref(true);
+const loadingFailed = ref(false);
 const saving = ref(false);
 const saved = ref(false);
 const error = ref<string | null>(null);
 
 async function load() {
 	loading.value = true;
+	loadingFailed.value = false;
 	error.value = null;
 	try {
 		// Imperative read: the admin shell mounts client-only, where
@@ -30,6 +32,7 @@ async function load() {
 		const setting = await getSiteSetting(SETTING_KEY);
 		enabled.value = setting.value === "true";
 	} catch {
+		loadingFailed.value = true;
 		error.value = t("admin.settings.loadFailed");
 	} finally {
 		loading.value = false;
@@ -63,6 +66,19 @@ await load();
     <div class="max-w-2xl rounded-lg border border-gray-200 dark:border-gray-700 p-5 bg-white dark:bg-gray-800">
       <div v-if="loading" class="text-sm text-gray-500 dark:text-gray-400">
         {{ t("admin.settings.loading") }}
+      </div>
+
+      <!-- Load failed: never render the editable toggle against a value the
+           operator never actually saw — show the error with a retry instead. -->
+      <div v-else-if="loadingFailed" class="py-2">
+        <p class="text-sm text-red-500">{{ error }}</p>
+        <button
+          type="button"
+          class="mt-3 px-4 py-2 rounded text-sm border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+          @click="load"
+        >
+          {{ t("admin.settings.loadRetry") }}
+        </button>
       </div>
 
       <template v-else>

@@ -67,10 +67,22 @@ const showPasswordModal = ref(false);
 const passwordForm = ref({ current_password: "", new_password: "", confirm: "" });
 const passwordError = ref<string | null>(null);
 const passwordSuccess = ref(false);
+const passwordBusy = ref(false);
+const passwordCurrentInput = ref<HTMLInputElement | null>(null);
+
+// Reset transient state and move focus into the first field every time the
+// modal reopens, so a fresh open never shows a stale error/success banner.
+watch(showPasswordModal, (open) => {
+	if (!open) return;
+	passwordError.value = null;
+	passwordSuccess.value = false;
+	nextTick(() => passwordCurrentInput.value?.focus());
+});
 
 async function handleChangePassword() {
 	passwordError.value = null;
 	passwordSuccess.value = false;
+	if (passwordBusy.value) return;
 	if (passwordForm.value.new_password.length < 8) {
 		passwordError.value = t("admin.password.minLength");
 		return;
@@ -79,6 +91,7 @@ async function handleChangePassword() {
 		passwordError.value = t("admin.password.mismatch");
 		return;
 	}
+	passwordBusy.value = true;
 	try {
 		const config = useRuntimeConfig();
 		const apiUrl = config.public.apiUrl;
@@ -102,6 +115,8 @@ async function handleChangePassword() {
 		}, 1500);
 	} catch (err) {
 		passwordError.value = err instanceof Error ? err.message : t("admin.password.failed");
+	} finally {
+		passwordBusy.value = false;
 	}
 }
 
@@ -145,7 +160,11 @@ const navItems = computed(() => {
     </div>
 
     <!-- Authenticated layout — with sidebar -->
-    <div v-else-if="isAuthenticated" class="flex min-h-screen">
+    <div
+      v-else-if="isAuthenticated"
+      class="flex min-h-screen"
+      @keydown.esc="sidebarOpen = false"
+    >
       <!-- Mobile overlay -->
       <div
         v-if="sidebarOpen"
@@ -233,6 +252,7 @@ const navItems = computed(() => {
             type="button"
             class="p-2 -ml-2 mr-2 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"
             @click="sidebarOpen = true"
+            :aria-expanded="sidebarOpen"
             :aria-label="t('common.menu.open')"
           >
             <Icon icon="lucide:menu" class="w-6 h-6" />
@@ -250,11 +270,24 @@ const navItems = computed(() => {
     <Teleport to="body">
       <div
         v-if="showPasswordModal"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="password-modal-title"
         class="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
         @click.self="showPasswordModal = false"
+        @keydown.esc="showPasswordModal = false"
       >
-        <div class="bg-white dark:bg-gray-900 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-700 p-6 w-full max-w-sm mx-4">
-          <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">{{ t('admin.password.title') }}</h3>
+        <div class="relative bg-white dark:bg-gray-900 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-700 p-6 w-full max-w-sm mx-4">
+          <button
+            type="button"
+            :aria-label="t('common.menu.close')"
+            :title="t('common.menu.close')"
+            class="absolute top-3 right-3 p-1.5 rounded-lg text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+            @click="showPasswordModal = false"
+          >
+            <Icon icon="lucide:x" class="w-4 h-4" />
+          </button>
+          <h3 id="password-modal-title" class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">{{ t('admin.password.title') }}</h3>
 
           <div v-if="passwordSuccess" class="p-3 bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-400 rounded-xl text-sm mb-4">
             {{ t('admin.password.success') }}
@@ -264,6 +297,7 @@ const navItems = computed(() => {
             <div>
               <label class="text-sm font-medium text-gray-700 dark:text-gray-300 block mb-1">{{ t('admin.password.current') }}</label>
               <input
+                ref="passwordCurrentInput"
                 v-model="passwordForm.current_password"
                 type="password"
                 required
@@ -293,10 +327,10 @@ const navItems = computed(() => {
             <div v-if="passwordError" class="text-sm text-red-500">{{ passwordError }}</div>
 
             <div class="flex gap-3 pt-2">
-              <button type="submit" class="flex-1 px-4 py-2 bg-blue-500 text-white rounded-xl text-sm font-medium hover:bg-blue-600 transition-colors">
-                {{ t('common.action.save') }}
+              <button type="submit" :disabled="passwordBusy" class="flex-1 px-4 py-2 bg-blue-500 text-white rounded-xl text-sm font-medium hover:bg-blue-600 disabled:opacity-50 transition-colors">
+                {{ passwordBusy ? t('admin.password.saving') : t('common.action.save') }}
               </button>
-              <button type="button" class="flex-1 px-4 py-2 border border-gray-200 dark:border-gray-700 rounded-xl text-sm font-medium hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors" @click="showPasswordModal = false">
+              <button type="button" :disabled="passwordBusy" class="flex-1 px-4 py-2 border border-gray-200 dark:border-gray-700 rounded-xl text-sm font-medium hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors" @click="showPasswordModal = false">
                 {{ t('common.action.cancel') }}
               </button>
             </div>

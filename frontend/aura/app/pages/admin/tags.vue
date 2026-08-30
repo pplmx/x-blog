@@ -50,6 +50,13 @@ async function startEdit(tag: { id: number; name: string }) {
 	editingName.value = tag.name;
 }
 
+/** Abandon an in-progress edit. A mis-clicked Edit must not trap the operator
+ * into committing or deleting — Cancel (and Escape) restores the row. */
+function cancelEdit() {
+	editingId.value = null;
+	editingName.value = "";
+}
+
 async function confirmEdit(id: number) {
 	if (!editingName.value.trim()) return;
 	isProcessing.value = true;
@@ -106,7 +113,7 @@ async function handleDelete(id: number) {
       <h2 class="text-lg font-medium text-gray-900 dark:text-gray-100 mb-4">
         {{ t("admin.tags.createTitle") }}
       </h2>
-      <div class="flex gap-3">
+      <form class="flex gap-3" @submit.prevent="handleCreate">
         <input
           v-model="newTagName"
           type="text"
@@ -114,14 +121,13 @@ async function handleDelete(id: number) {
           class="flex-1 px-4 py-3 border border-gray-200 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
         >
         <button
-          type="button"
+          type="submit"
           :disabled="!newTagName.trim() || isProcessing"
           class="px-6 py-3 bg-pink-500 text-white rounded-xl font-medium hover:bg-pink-600 disabled:opacity-50 transition-colors"
-          @click="handleCreate"
         >
           {{ t("admin.tags.create") }}
         </button>
-      </div>
+      </form>
     </div>
 
     <!-- Tags list -->
@@ -156,9 +162,12 @@ async function handleDelete(id: number) {
             type="text"
             class="w-full px-3 py-2 border border-gray-200 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
             @keydown.enter="confirmEdit(tag.id)"
+            @keydown.esc="cancelEdit"
           >
           <button
             type="button"
+            :title="t('admin.tags.confirm')"
+            :aria-label="t('admin.tags.confirm')"
             class="px-2 py-1 text-sm text-green-600 hover:bg-green-50 dark:hover:bg-green-900/30 rounded-lg transition-colors"
             @click="confirmEdit(tag.id)"
           >
@@ -166,8 +175,10 @@ async function handleDelete(id: number) {
           </button>
           <button
             type="button"
+            :title="t('admin.tags.cancel')"
+            :aria-label="t('admin.tags.cancel')"
             class="px-2 py-1 text-sm text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
-            @click="editingId = null"
+            @click="cancelEdit"
           >
             <Icon icon="lucide:x" class="w-4 h-4" />
           </button>
@@ -184,6 +195,8 @@ async function handleDelete(id: number) {
           </div>
           <button
             type="button"
+            :title="t('admin.tags.edit')"
+            :aria-label="t('admin.tags.edit')"
             class="px-2 py-1 text-sm text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded-lg transition-colors"
             @click="startEdit(tag)"
           >
@@ -191,6 +204,8 @@ async function handleDelete(id: number) {
           </button>
           <button
             type="button"
+            :title="t('admin.tags.delete')"
+            :aria-label="t('admin.tags.delete')"
             :disabled="isProcessing"
             class="px-2 py-1 text-sm text-red-500 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-lg transition-colors"
             @click="handleDelete(tag.id)"

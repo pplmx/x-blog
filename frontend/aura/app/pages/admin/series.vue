@@ -44,6 +44,10 @@ const openEpisodesId = ref<number | null>(null);
 const episodesBySeries = ref<Record<number, SeriesEpisode[]>>({});
 const episodesLoading = ref(false);
 const episodesError = ref(false);
+// Tracks which series' episodes loaded successfully, so a failed fetch is NOT
+// cached as "no episodes": the truthy-[] guard below would then skip every
+// later refetch and permanently fake an empty series until full reload.
+const episodesLoadedOk = ref<Record<number, boolean>>({});
 
 async function toggleEpisodes(s: { id: number }) {
 	episodesError.value = false;
@@ -52,12 +56,14 @@ async function toggleEpisodes(s: { id: number }) {
 		return;
 	}
 	openEpisodesId.value = s.id;
-	if (episodesBySeries.value[s.id]) return;
+	if (episodesLoadedOk.value[s.id]) return;
 	episodesLoading.value = true;
 	try {
 		episodesBySeries.value[s.id] = await getAdminSeriesEpisodes(s.id);
+		episodesLoadedOk.value[s.id] = true;
 	} catch {
 		episodesBySeries.value[s.id] = [];
+		episodesLoadedOk.value[s.id] = false;
 		episodesError.value = true;
 	} finally {
 		episodesLoading.value = false;
@@ -68,6 +74,8 @@ async function moveEpisode(seriesId: number, index: number, dir: -1 | 1) {
 	const current = episodesBySeries.value[seriesId] ?? [];
 	const target = index + dir;
 	if (target < 0 || target >= current.length) return;
+	// Snapshot the pre-move order so a failed reorder can be rolled back.
+	const previous = [...current];
 	const next = [...current];
 	// Bounds-checked above (target in [0, current.length)), but
 	// noUncheckedIndexedAccess needs an explicit guard before the splice-out.
@@ -82,6 +90,10 @@ async function moveEpisode(seriesId: number, index: number, dir: -1 | 1) {
 			next.map((e) => e.id),
 		);
 	} catch {
+		// Roll the list back to the server-confirmed order: the optimistic
+		// splice must never leave the UI claiming an order the API rejected
+		// (a reload would snap it back — deep-dive finding).
+		episodesBySeries.value[seriesId] = previous;
 		episodesError.value = true;
 	}
 }
@@ -201,7 +213,7 @@ async function handleDelete(id: number) {
       <h2 class="text-lg font-medium text-gray-900 dark:text-gray-100 mb-4">
         {{ t("admin.series.createTitle") }}
       </h2>
-      <div class="space-y-3">
+      <form class="space-y-3" @submit.prevent="handleCreate">
         <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">
           <span class="mb-1 inline-block">{{ t("admin.series.titleLabel") }}</span>
           <input
@@ -239,14 +251,13 @@ async function handleDelete(id: number) {
           />
         </label>
         <button
-          type="button"
+          type="submit"
           :disabled="!newForm.title.trim() || isProcessing"
           class="px-6 py-3 bg-blue-500 text-white rounded-xl font-medium hover:bg-blue-600 disabled:opacity-50 transition-colors"
-          @click="handleCreate"
         >
           {{ t("admin.series.create") }}
         </button>
-      </div>
+      </form>
     </div>
 
     <!-- Series list -->
@@ -279,7 +290,11 @@ async function handleDelete(id: number) {
         class="p-4 bg-white dark:bg-gray-900 rounded-xl border border-gray-100 dark:border-gray-800"
       >
         <!-- Inline edit form -->
-        <div v-if="editingId === s.id" class="space-y-3">
+        <div
+          v-if="editingId === s.id"
+          class="space-y-3"
+          @keydown.esc="editingId = null"
+        >
           <div class="flex gap-3">
             <input
               v-model="editingForm.title"
@@ -338,6 +353,7 @@ async function handleDelete(id: number) {
             <div class="flex items-center gap-2 shrink-0">
               <button
                 type="button"
+                :aria-expanded="openEpisodesId === s.id"
                 class="px-3 py-1.5 text-sm text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 rounded-lg transition-colors"
                 @click="toggleEpisodes(s)"
               >
@@ -365,6 +381,7 @@ async function handleDelete(id: number) {
           <div
             v-if="openEpisodesId === s.id"
             class="mt-4 border-t border-gray-100 dark:border-gray-800 pt-3"
+            @keydown.esc="openEpisodesId = null"
           >
             <p class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-2">
               {{ t("admin.series.episodesTitle") }}
@@ -372,7 +389,10 @@ async function handleDelete(id: number) {
             <p v-if="episodesLoading" class="text-sm text-gray-400">
               {{ t("admin.series.loading") }}
             </p>
-            <p v-else-if="episodesBySeries[s.id]?.length === 0" class="text-sm text-gray-400">
+            <p
+              v-else-if="!episodesError && episodesBySeries[s.id]?.length === 0"
+              class="text-sm text-gray-400"
+            >
               {{ t("admin.series.noEpisodes") }}
             </p>
             <ul v-else class="space-y-2">

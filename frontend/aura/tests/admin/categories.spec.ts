@@ -156,7 +156,8 @@ describe("Admin Categories Page", () => {
 
 			const input = wrapper.find('input[type="text"]');
 			await input.setValue("New Category");
-			await wrapper.find("button").trigger("click");
+			// Create form is a real <form> (submit-on-Enter); submit it.
+			await wrapper.find("form").trigger("submit");
 			await flushPromises();
 
 			expect(mockCreateAdminCategory).toHaveBeenCalledWith("New Category");
@@ -188,7 +189,7 @@ describe("Admin Categories Page", () => {
 
 			const input = wrapper.find('input[type="text"]');
 			await input.setValue("New Category");
-			await wrapper.find("button").trigger("click");
+			await wrapper.find("form").trigger("submit");
 			await flushPromises();
 
 			expect(input.element).toBeInstanceOf(HTMLInputElement);
@@ -255,25 +256,46 @@ describe("Admin Categories Page", () => {
 			expect(mockUpdateAdminCategory).toHaveBeenCalledWith(1, "Updated Category");
 		});
 
-		it("shows confirm button but no cancel button in edit mode", async () => {
+		it("shows a cancel button in edit mode and it exits without committing (deep-dive)", async () => {
 			const CategoriesPage = await loadPage();
 			const wrapper = await mountWithSuspense(CategoriesPage);
 
 			// Enter edit mode
-			const editButtons = wrapper.findAll("button");
-			const editBtn = editButtons.find((b) => b.text().includes("编辑"));
+			const editBtn = wrapper.findAll("button").find((b) => b.text().includes("编辑"));
 			await editBtn?.trigger("click");
 			await flushPromises();
 
-			// Confirm button should be present
-			const confirmButtons = wrapper.findAll("button");
-			const confirmBtn = confirmButtons.find((b) => b.text().includes("确认"));
-			expect(confirmBtn).toBeDefined();
+			// Confirm row action (save) requires a spinner etc. — the point of
+			// this test is the ESCAPE path: a mis-clicked Edit must not trap the
+			// operator into confirming or deleting. Both confirm AND cancel are
+			// present in edit mode.
+			const buttons = wrapper.findAll("button");
+			expect(buttons.find((b) => b.text().includes("确认"))).toBeDefined();
+			const cancelButton = buttons.find((b) => b.text().includes("取消"));
+			expect(cancelButton).toBeDefined();
 
-			// No cancel button exists in the categories page edit mode
-			const cancelButtons = wrapper.findAll("button");
-			const cancelButton = cancelButtons.find((b) => b.text().includes("取消"));
-			expect(cancelButton).toBeFalsy();
+			// Cancel exits edit mode and does NOT fire an update request.
+			await cancelButton?.trigger("click");
+			await flushPromises();
+			expect(mockUpdateAdminCategory).not.toHaveBeenCalled();
+			// The row is back to its static (non-editing) state.
+			expect(wrapper.findAll('input[type="text"]').length).toBe(1); // create-form only
+		});
+
+		it("Escape exits edit mode like the cancel button", async () => {
+			const CategoriesPage = await loadPage();
+			const wrapper = await mountWithSuspense(CategoriesPage);
+
+			const editBtn = wrapper.findAll("button").find((b) => b.text().includes("编辑"));
+			await editBtn?.trigger("click");
+			await flushPromises();
+			expect(wrapper.findAll('input[type="text"]').length).toBe(2);
+
+			const editInput = wrapper.findAll('input[type="text"]')[1];
+			await editInput.trigger("keydown", { key: "Escape" });
+			await flushPromises();
+			expect(mockUpdateAdminCategory).not.toHaveBeenCalled();
+			expect(wrapper.findAll('input[type="text"]').length).toBe(1);
 		});
 
 		it("deletes a category with confirmation", async () => {

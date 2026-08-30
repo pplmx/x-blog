@@ -23,7 +23,8 @@
 			"saving": "Saving…",
 			"saved": "Settings saved",
 			"saveFailed": "Failed to save settings. Please try again.",
-			"loadFailed": "Failed to load settings. Please try again."
+			"loadFailed": "Failed to load settings. Please try again.",
+			"loadRetry": "Retry"
 		},
 		"backToSite": "Back to site",
 		"changePassword": "Change password",
@@ -36,7 +37,8 @@
 			"success": "Password changed successfully",
 			"minLength": "Password must be at least 8 characters",
 			"mismatch": "The two passwords do not match",
-			"failed": "Failed to change password"
+			"failed": "Failed to change password",
+			"saving": "Saving…"
 		},
 		"moderationPush": {
 			"label": "Comment moderation alerts",
@@ -56,6 +58,7 @@
 			"loadFailed": "Failed to load readers. Please try again.",
 			"toggleFailed": "Failed to update the reader. Please try again.",
 			"pending": "Working…",
+			"loading": "Loading readers…",
 			"empty": "No readers matched.",
 			"prevPage": "Previous",
 			"nextPage": "Next",

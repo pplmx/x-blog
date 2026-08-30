@@ -151,7 +151,8 @@ describe("Admin Tags Page", () => {
 
 			const input = wrapper.find('input[type="text"]');
 			await input.setValue("New Tag");
-			await wrapper.find("button").trigger("click");
+			// Create form is a real <form> (submit-on-Enter); submit it.
+			await wrapper.find("form").trigger("submit");
 			await flushPromises();
 
 			expect(mockCreateAdminTag).toHaveBeenCalledWith("New Tag");
@@ -175,7 +176,7 @@ describe("Admin Tags Page", () => {
 
 			const input = wrapper.find('input[type="text"]');
 			await input.setValue("New Tag");
-			await wrapper.find("button").trigger("click");
+			await wrapper.find("form").trigger("submit");
 			await flushPromises();
 
 			expect(input.element).toBeInstanceOf(HTMLInputElement);
@@ -279,6 +280,40 @@ describe("Admin Tags Page", () => {
 				return svg.exists();
 			});
 			expect(saveBtn).toBeFalsy();
+		});
+
+		it("Escape exits edit mode without committing", async () => {
+			const TagsPage = await loadPage();
+			const wrapper = await mountWithSuspense(TagsPage);
+
+			const editBtn = wrapper
+				.findAll("button")
+				.find((b) => b.find('svg[data-icon="lucide:pencil"]').exists());
+			await editBtn?.trigger("click");
+			await flushPromises();
+
+			const editInput = wrapper.findAll('input[type="text"]')[1];
+			await editInput.trigger("keydown", { key: "Escape" });
+			await flushPromises();
+			expect(mockUpdateAdminTag).not.toHaveBeenCalled();
+			expect(wrapper.find('svg[data-icon="lucide:check"]').exists()).toBe(false);
+		});
+
+		it("exposes accessible names on the icon-only action buttons", async () => {
+			const TagsPage = await loadPage();
+			const wrapper = await mountWithSuspense(TagsPage);
+
+			const pencil = wrapper
+				.findAll("button")
+				.find((b) => b.find('svg[data-icon="lucide:pencil"]').exists());
+			expect(pencil?.attributes("aria-label")).toBe("编辑");
+			expect(pencil?.attributes("title")).toBe("编辑");
+
+			const trash = wrapper
+				.findAll("button")
+				.find((b) => b.find('svg[data-icon="lucide:trash-2"]').exists());
+			expect(trash?.attributes("aria-label")).toBe("删除");
+			expect(trash?.attributes("title")).toBe("删除");
 		});
 
 		it("deletes a tag with confirmation", async () => {

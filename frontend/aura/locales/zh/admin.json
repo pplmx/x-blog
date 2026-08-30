@@ -23,7 +23,8 @@
 			"saving": "保存中…",
 			"saved": "设置已保存",
 			"saveFailed": "保存设置失败，请重试。",
-			"loadFailed": "加载设置失败，请重试。"
+			"loadFailed": "加载设置失败，请重试。",
+			"loadRetry": "重试"
 		},
 		"backToSite": "返回前台",
 		"changePassword": "修改密码",
@@ -36,7 +37,8 @@
 			"success": "密码修改成功",
 			"minLength": "密码至少 8 位",
 			"mismatch": "两次输入的密码不一致",
-			"failed": "修改密码失败"
+			"failed": "修改密码失败",
+			"saving": "保存中…"
 		},
 		"moderationPush": {
 			"label": "新评论待审核通知",
@@ -56,6 +58,7 @@
 			"loadFailed": "加载读者列表失败，请重试。",
 			"toggleFailed": "更新读者失败，请重试。",
 			"pending": "处理中…",
+			"loading": "正在加载读者…",
 			"empty": "没有匹配的读者。",
 			"prevPage": "上一页",
 			"nextPage": "下一页",

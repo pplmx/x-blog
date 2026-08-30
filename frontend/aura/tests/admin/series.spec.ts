@@ -148,7 +148,8 @@ describe("Admin Series Page", () => {
 
 			const createButton = wrapper.findAll("button").find((b) => b.text().includes("创建"));
 			expect(createButton).toBeTruthy();
-			await createButton?.trigger("click");
+			// Create form is a real <form> (submit-on-Enter); submit it.
+			await wrapper.find("form").trigger("submit");
 			await flushPromises();
 
 			expect(mockCreateAdminSeries).toHaveBeenCalled();
@@ -167,7 +168,8 @@ describe("Admin Series Page", () => {
 			await inputs[0].setValue("中文系列");
 
 			const createButton = wrapper.findAll("button").find((b) => b.text().includes("创建"));
-			await createButton?.trigger("click");
+			expect(createButton).toBeDefined();
+			await wrapper.find("form").trigger("submit");
 			await flushPromises();
 
 			const [payload] = mockCreateAdminSeries.mock.calls.at(-1) as any[];
@@ -185,7 +187,8 @@ describe("Admin Series Page", () => {
 			const inputs = wrapper.findAll('input[type="text"]');
 			await inputs[0].setValue("Duplicate");
 			const createButton = wrapper.findAll("button").find((b) => b.text().includes("创建"));
-			await createButton?.trigger("click");
+			expect(createButton).toBeDefined();
+			await wrapper.find("form").trigger("submit");
 			await flushPromises();
 
 			expect(wrapper.text()).toContain("Series already exists");
@@ -250,7 +253,7 @@ describe("Admin Series Page", () => {
 			await inputs[0].setValue("Will Throw");
 			const createButton = wrapper.findAll("button").find((b) => b.text().includes("创建"));
 			expect(createButton).toBeDefined();
-			await createButton?.trigger("click");
+			await wrapper.find("form").trigger("submit");
 			await flushPromises();
 
 			expect(wrapper.text()).toContain("boom");
@@ -264,7 +267,8 @@ describe("Admin Series Page", () => {
 			const inputs = wrapper.findAll('input[type="text"]');
 			await inputs[0].setValue("Will Throw");
 			const createButton = wrapper.findAll("button").find((b) => b.text().includes("创建"));
-			await createButton?.trigger("click");
+			expect(createButton).toBeDefined();
+			await wrapper.find("form").trigger("submit");
 			await flushPromises();
 
 			expect(wrapper.text()).toContain("操作失败");
@@ -280,7 +284,8 @@ describe("Admin Series Page", () => {
 			const inputs = wrapper.findAll('input[type="text"]');
 			await inputs[0].setValue("Duplicate");
 			const createButton = wrapper.findAll("button").find((b) => b.text().includes("创建"));
-			await createButton?.trigger("click");
+			expect(createButton).toBeDefined();
+			await wrapper.find("form").trigger("submit");
 			await flushPromises();
 
 			expect(wrapper.text()).toContain("操作失败");

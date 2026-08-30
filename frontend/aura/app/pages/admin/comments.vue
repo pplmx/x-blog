@@ -447,6 +447,7 @@ async function submitReply(id: number) {
     </div>
 
     <div v-else-if="!comments || !comments.items || comments.items.length === 0" class="flex flex-col items-center justify-center py-16 bg-gradient-to-br from-gray-50 dark:from-gray-800/50 to-white dark:to-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800">
+      <p v-if="deletedMessage" class="text-sm text-emerald-600 dark:text-emerald-400 mb-4">{{ deletedMessage }}</p>
       <Icon icon="lucide:message-circle" class="w-12 h-12 text-gray-400 mb-4" />
       <h3 class="text-lg font-medium text-gray-700 dark:text-gray-300 mb-1">
         {{ t("admin.comments.empty.title") }}
@@ -513,6 +514,7 @@ async function submitReply(id: number) {
                 rows="2"
                 :placeholder="t('admin.comments.replyPlaceholder')"
                 class="w-full px-3 py-2 text-sm rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500/40"
+                @keydown.esc="closeReply"
               ></textarea>
               <div class="flex gap-2 mt-1.5">
                 <button
@@ -545,6 +547,7 @@ async function submitReply(id: number) {
               v-if="comment.is_approved"
               type="button"
               :disabled="isProcessing"
+              :aria-expanded="replyOpenId === comment.id"
               class="px-3 py-1.5 text-xs text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 hover:bg-blue-100 dark:hover:bg-blue-900/50 rounded-lg transition-colors"
               @click="replyOpenId === comment.id ? closeReply() : openReply(comment.id)"
             >

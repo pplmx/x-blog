@@ -167,7 +167,15 @@ async function toggleActive(reader: AdminReader) {
         </tbody>
       </table>
       <div
-        v-if="!pending && items.length === 0"
+        v-if="pending"
+        class="flex items-center justify-center gap-2 px-4 py-12 text-sm text-gray-500 dark:text-gray-400"
+        role="status"
+      >
+        <Icon icon="lucide:loader-2" class="w-4 h-4 animate-spin" />
+        {{ t("admin.readers.loading") }}
+      </div>
+      <div
+        v-else-if="items.length === 0"
         class="px-4 py-12 text-center text-sm text-gray-500 dark:text-gray-400"
       >
         {{ t("admin.readers.empty") }}
