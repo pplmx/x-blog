@@ -421,19 +421,63 @@ const { t, locale } = useLang();
 
 const { data: commentData, pending } = await useComments(props.postId, 1, 20);
 
-// Deep-link landing (DEC-072): a reply notification opens /posts/<slug>#comment-<id>;
-// once the list renders, scroll the anchor into view (comments carry scroll-mt
-// so the sticky header doesn't cover the target).
-onMounted(() => {
-	if (typeof window === "undefined" || !window.location.hash.startsWith("#comment-")) return;
-	const el = document.getElementById(window.location.hash.slice(1));
-	if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
-});
-
 const comments = computed(() => commentData.value?.items || []);
 const total = computed(() => commentData.value?.total || 0);
 const totalPages = computed(() => commentData.value?.total_pages || 0);
 const currentPage = ref(1);
+
+// Deep-link landing (DEC-072): a reply notification opens /posts/<slug>#comment-<id>;
+// once the list renders, scroll the anchor into view (comments carry scroll-mt
+// so the sticky header doesn't cover the target). The anchor may live on a page
+// past the first (only page 1 is loaded at mount): walk the pages until the
+// comment appears, then highlight + scroll (deep-dive finding — a reply on page
+// 2+ used to silently do nothing).
+let deepLinkResolved = false;
+/** Walk the comment pages (each 20 rows) looking for a deep-linked comment
+ * that isn't on the initially-loaded page 1, then land on its page and scroll
+ * to it. Stops at the thread's last page (authoritative total_pages comes from
+ * the page-1 payload; later fetches refresh it) or when a page falls short of
+ * a full page. */
+function scrollToComment(targetId: string): void {
+	document.getElementById(targetId)?.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+async function landOnDeepLink(): Promise<void> {
+	if (deepLinkResolved) return;
+	const targetId = window.location.hash.slice(1);
+	if (!targetId.startsWith("comment-")) return;
+	const targetNum = Number.parseInt(targetId.slice("comment-".length), 10);
+	if (Number.isNaN(targetNum)) return;
+	const perPage = 20;
+	const totalPagesKnown = commentData.value?.total_pages || 1;
+	for (let page = 2; page <= totalPagesKnown; page++) {
+		const pageRes = await getComments(props.postId, page, perPage, currentSort.value);
+		if (!pageRes?.items) break;
+		if (pageRes.items.some((c) => c.id === targetNum)) {
+			// Load the found page into the rendered list (mirrors loadPage),
+			// then scroll to the freshly-rendered anchor.
+			currentPage.value = page;
+			commentData.value = pageRes;
+			await nextTick();
+			scrollToComment(targetId);
+			deepLinkResolved = true;
+			return;
+		}
+		// The response carries the authoritative total; stop when past it.
+		const realTotal = pageRes.total_pages || 0;
+		if (page >= realTotal || pageRes.items.length < perPage) break;
+	}
+}
+onMounted(async () => {
+	if (typeof window === "undefined" || !window.location.hash.startsWith("#comment-")) return;
+	// First try page 1 (already loaded); walk further pages only if absent.
+	const el = document.getElementById(window.location.hash.slice(1));
+	if (el) {
+		scrollToComment(window.location.hash.slice(1));
+		deepLinkResolved = true;
+		return;
+	}
+	void landOnDeepLink();
+});
 
 // Comment sort (DEC-094/TASK-159): newest is the default; changing it resets
 // to page 1 and re-fetches so the reorder is immediately visible.

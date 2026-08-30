@@ -20,7 +20,7 @@
 - 🎨 **精美 UI** - Tailwind CSS v4 构建
 - 📱 **响应式设计** - 完美适配移动端
 - 🔒 **管理后台** - 内置内容管理后台
-- 🧪 **完善测试** - 2341 个测试 (后端 1129 + Nuxt 前端 1212), 后端覆盖率 94.6%
+- 🧪 **完善测试** - 2500+ 个测试 (后端 1243 + Nuxt 前端 1280), 后端覆盖率 93.5%
 - ✅ **类型安全** - 完整 TypeScript 支持 + Pydantic 验证
 - 🔍 **全文搜索** - 文章搜索功能
 - 🌙 **深色模式** - 跟随系统偏好的深色模式
@@ -241,7 +241,7 @@ x-blog/
 │   │   ├── schemas.py      # Pydantic schemas
 │   │   ├── crud.py         # 数据库操作
 │   │   └── routers/        # API 路由
-│   ├── tests/              # pytest 测试 (1129 个)
+│   ├── tests/              # pytest 测试 (1243 个)
 │   └── pyproject.toml      # Python 配置
 │
 ├── frontend/
@@ -317,9 +317,9 @@ PostgreSQL 测试包含专门的连接验证测试 (`tests/test_postgres_connect
 
 **测试统计:**
 
-- 后端: 1129 个测试 (pytest + pytest-xdist), 94.6% 覆盖率
-- 前端: 1212 个测试 (Vitest)
-- **总计: 2341 个测试**
+- 后端: 1243 个测试 (pytest + pytest-xdist), 93.5% 覆盖率
+- 前端: 1280 个测试 (Vitest)
+- **总计: 2523 个测试**
 
 ## 🤝 贡献
 

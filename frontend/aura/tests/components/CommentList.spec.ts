@@ -93,11 +93,14 @@ async function mountCommentList({
 	pending = false,
 	postId = 1,
 	attachToBody = false,
+	getCommentsImpl,
 }: {
 	comments?: typeof mockComments | null;
 	pending?: boolean;
 	postId?: number;
 	attachToBody?: boolean;
+	/** Override the getComments mock (used by sort/pagination/deep-link walk). */
+	getCommentsImpl?: (postId: number, page: number, limit: number, sort?: string) => Promise<any>;
 } = {}) {
 	const mockData = ref(comments ? { ...comments } : null);
 	const mockResult = {
@@ -110,7 +113,9 @@ async function mountCommentList({
 	mockFetchComments.mockReset().mockReturnValue(mockResult);
 	// The imperative re-fetch (sort change / pagination) resolves with the
 	// settled data object, which refreshList assigns straight to commentData.
-	mockGetComments.mockReset().mockResolvedValue(comments ? { ...comments } : null);
+	mockGetComments.mockReset();
+	if (getCommentsImpl) mockGetComments.mockImplementation(getCommentsImpl);
+	else mockGetComments.mockResolvedValue(comments ? { ...comments } : null);
 
 	// The component uses `await useComments(...)` (via fetchComments' reactive
 	// replacement) in <script setup>, making setup async. We wrap it in a
@@ -240,6 +245,56 @@ describe("CommentList", () => {
 				const { wrapper } = await mountCommentList({ attachToBody: true });
 				expect(document.getElementById("comment-2")).toBeTruthy();
 				expect(scrollIntoView).toHaveBeenCalledTimes(1);
+			} finally {
+				Element.prototype.scrollIntoView = original;
+				window.history.replaceState(null, "", "/");
+			}
+		});
+
+		it("walks to the comment's page when it is beyond page 1 (deep-dive fix)", async () => {
+			const original = Element.prototype.scrollIntoView;
+			const scrollIntoView = vi.fn();
+			Element.prototype.scrollIntoView =
+				scrollIntoView as unknown as typeof Element.prototype.scrollIntoView;
+			window.history.replaceState(null, "", "/posts/x#comment-99");
+
+			// Page 1 (already loaded) doesn't contain it; page 2 does.
+			const p1 = {
+				items: [{ ...mockComments.items[0] }],
+				total: 21,
+				total_pages: 2,
+				page: 1,
+				limit: 20,
+			};
+			const p2 = {
+				items: [
+					{
+						id: 99,
+						post_id: 1,
+						parent_id: null,
+						nickname: "Deeplink",
+						email: "dl@x.com",
+						content: "past page 1",
+						is_approved: true,
+						created_at: "2024-03-01T10:00:00Z",
+					},
+				],
+				total: 21,
+				total_pages: 2,
+				page: 2,
+				limit: 20,
+			};
+			try {
+				const { wrapper } = await mountCommentList({
+					comments: p1,
+					attachToBody: true,
+					getCommentsImpl: () => Promise.resolve(p2),
+				});
+				await vi.waitFor(() => {
+					expect(scrollIntoView).toHaveBeenCalledTimes(1);
+				});
+				// The walk exercised the imperative fetch (getComments) for page 2.
+				expect(mockGetComments).toHaveBeenCalled();
 			} finally {
 				Element.prototype.scrollIntoView = original;
 				window.history.replaceState(null, "", "/");
