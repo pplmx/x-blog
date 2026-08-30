@@ -12,10 +12,13 @@ from app.cache import (
     cache_clear,
     categories_cache,
     clear_categories_cache,
+    clear_counter_caches,
     clear_posts_list_cache,
     clear_tags_cache,
+    feed_cache,
     get_cache_info,
     posts_list_cache,
+    series_cache,
     tags_cache,
 )
 from app.database import get_db
@@ -62,6 +65,22 @@ def test_clear_posts_list_cache():
     clear_posts_list_cache()
 
     assert len(posts_list_cache) == 0
+
+
+def test_clear_counter_caches_leaves_feeds_and_series():
+    """A pageview/like must drop the list cache (counters embed there) without
+    tearing down the rendered RSS/Atom/sitemap feeds or the series details,
+    which don't carry views/likes (backend deep-dive: per-view full-stack
+    clears kept the expensive feed render permanently cold)."""
+    posts_list_cache[(1, 10, None, None)] = [{"id": 1}]
+    feed_cache[("feed",)] = "<rss/>"
+    series_cache["deep-dive"] = {"items": []}
+
+    clear_counter_caches()
+
+    assert len(posts_list_cache) == 0
+    assert len(feed_cache) == 1
+    assert len(series_cache) == 1
 
 
 def test_posts_list_cache_set_get():

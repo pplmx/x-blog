@@ -9,6 +9,7 @@ from app import auth, models, schemas
 from app.cache import (
     categories_cache,
     clear_categories_cache,
+    clear_counter_caches,
     clear_posts_list_cache,
     clear_series_cache,
     clear_tags_cache,
@@ -880,10 +881,7 @@ def delete_comment_reparent(db: Session, comment_id: int) -> bool:
     comment = db.query(models.Comment).filter(models.Comment.id == comment_id).first()
     if not comment:
         return False
-    has_replies = (
-        db.query(models.Comment.id).filter(models.Comment.parent_id == comment_id).first()
-        is not None
-    )
+    has_replies = db.query(models.Comment.id).filter(models.Comment.parent_id == comment_id).first() is not None
     if has_replies:
         # Nearest surviving ancestor of the deleted comment: its own parent,
         # which by definition is not in the deletion set (only this one comment
@@ -1095,9 +1093,11 @@ def increment_views(db: Session, post_id: int) -> models.Post | None:
     except Exception:
         db.rollback()
         raise
-    # The cached list/series payloads embed the view counter — invalidate so a
-    # public list never shows stale counts for up to the 5-min TTL (ISS-141).
-    clear_posts_list_cache()
+    # The cached list payloads embed the view counter — invalidate so a public
+    # list never shows stale counts for up to the 5-min TTL (ISS-141). Only the
+    # list cache needs to drop; the RSS/Atom/sitemap feeds and series details
+    # don't carry views, so a pageview must not tear down the whole stack.
+    clear_counter_caches()
     post = db.get(models.Post, post_id)
     if post:
         db.refresh(post)
@@ -1107,7 +1107,8 @@ def increment_views(db: Session, post_id: int) -> models.Post | None:
 def increment_likes(db: Session, post_id: int) -> models.Post | None:
     """Increment the like count for a post using atomic SQL update.
 
-    Invalidates the cached list payloads, which embed the like counter (ISS-141).
+    Invalidates the cached list payloads, which embed the like counter (ISS-141);
+    feeds/series don't embed likes, so only the list cache is dropped.
     """
     stmt = update(models.Post).where(models.Post.id == post_id).values(likes=models.Post.likes + 1)
     db.execute(stmt)
@@ -1116,7 +1117,7 @@ def increment_likes(db: Session, post_id: int) -> models.Post | None:
     except Exception:
         db.rollback()
         raise
-    clear_posts_list_cache()
+    clear_counter_caches()
     post = db.get(models.Post, post_id)
     if post:
         db.refresh(post)
@@ -2653,7 +2654,17 @@ def get_reader_comments(
     # "all" -> no filter
 
     total = query.count()
-    items = query.order_by(models.Comment.created_at.desc()).offset((page - 1) * limit).limit(limit).all()
+    # joinedload(reader) — matching get_comments_paginated's ISS-139 fix: the
+    # serialized CommentPublic.reader reads c.reader.id/display_name, so without
+    # this each attributed comment costs one lazy query (N+1 on the reader's own
+    # comment history list).
+    items = (
+        query.options(joinedload(models.Comment.reader))
+        .order_by(models.Comment.created_at.desc())
+        .offset((page - 1) * limit)
+        .limit(limit)
+        .all()
+    )
     return items, total
 
 
@@ -2935,7 +2946,17 @@ def get_reader_notification_prefs(db: Session, reader_id: int) -> models.ReaderN
     if row is None:
         row = models.ReaderNotificationPref(reader_id=reader_id)
         db.add(row)
-        db.commit()
+        try:
+            db.commit()
+        except IntegrityError:
+            # Two concurrent first-reads raced to materialize the row (reader_id
+            # is that table's PK): we lost the insert. The winner's row is now
+            # committed — read it back instead of 500ing (backend deep-dive).
+            db.rollback()
+            row = db.get(models.ReaderNotificationPref, reader_id)
+            if row is not None:
+                return row
+            raise
         db.refresh(row)
     return row
 
@@ -2984,8 +3005,21 @@ def set_reader_notification_kind(
         db.add(row)
     setattr(row, kind, enabled)
     row.updated_at = utc_now_naive()
-    db.commit()
-    db.refresh(row)
+    try:
+        db.commit()
+    except IntegrityError:
+        # Same first-materialization race as get_reader_notification_prefs: a
+        # concurrent request inserted the row between our get and commit. Its
+        # row is now committed — re-read it (all-defaults + the other writer's
+        # toggles), apply this toggle, and commit on top instead of 500ing.
+        db.rollback()
+        row = db.get(models.ReaderNotificationPref, reader_id)
+        if row is None:
+            raise
+        setattr(row, kind, enabled)
+        row.updated_at = utc_now_naive()
+        db.commit()
+        db.refresh(row)
     return row
 
 

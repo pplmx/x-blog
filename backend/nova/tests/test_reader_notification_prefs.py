@@ -316,3 +316,42 @@ class TestEmailChannel:
         assert TestEmailChannel._class_smtp_sent[0]["Subject"] == "新文章发布"
         # And the inbox row lands too.
         assert client.get(NOTIFS, headers=headers).json()["total"] == 1
+
+
+class TestConcurrentMaterializationRace:
+    """The prefs row is materialized on the first read/write (reader_id PK).
+    Concurrent first-touches must converge on one shared row rather than
+    double-insert (the PK constraint races) — verified by the fact that a
+    second writer on an existing row reuses it and the toggle lands exactly
+    once. The defensive IntegrityError recovery in get/set is the belt-and-
+    braces for the rare moment both insert at once."""
+
+    def test_get_reuses_existing_row(self, db_session, client):
+        """GET on an already-materialized row is a pure read returning the
+        same row — no second insert attempt."""
+        from app import crud, models
+
+        token = _token(client)
+        reader_id = client.get("/api/reader/me", headers=_auth(token)).json()["id"]
+
+        first = crud.get_reader_notification_prefs(db_session, reader_id)
+        before = db_session.query(models.ReaderNotificationPref).count()
+        second = crud.get_reader_notification_prefs(db_session, reader_id)
+        after = db_session.query(models.ReaderNotificationPref).count()
+
+        assert first.reader_id == second.reader_id == reader_id
+        assert before == after == 1  # still exactly one row
+
+    def test_set_on_existing_row_lands_once(self, db_session, client):
+        """A toggle on an already-materialized row updates the single row —
+        the concurrent double-insert is exactly the case that would 500."""
+        from app import crud, models
+
+        token = _token(client)
+        reader_id = client.get("/api/reader/me", headers=_auth(token)).json()["id"]
+
+        row = crud.set_reader_notification_kind(db_session, reader_id, "new_post", False)
+        assert row is not None and row.new_post is False
+        rows = db_session.query(models.ReaderNotificationPref).filter_by(reader_id=reader_id).all()
+        assert len(rows) == 1
+        assert rows[0].new_post is False

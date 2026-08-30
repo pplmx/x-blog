@@ -93,6 +93,20 @@ def clear_posts_list_cache():
     logger.info("posts_list_cache_cleared")
 
 
+def clear_counter_caches():
+    """Clear only the posts-list cache after a live counter (views/likes) bump.
+
+    Pageviews/likes embed in the cached list payloads, so those must drop — but
+    the rendered RSS/Atom/sitemap feeds and series details don't contain
+    views/likes, so clearing them per pageview was avoidable amplification:
+    under real traffic the expensive feed render never went warm because one
+    popular post's view burst invalidated it every time (backend deep-dive
+    review). Only a post write (publish/content/series membership) busts feeds.
+    """
+    posts_list_cache.clear()
+    logger.info("posts_list_cache_cleared")
+
+
 def clear_series_cache():
     """Clear the series cache (invalidated on any series write)."""
     series_cache.clear()
