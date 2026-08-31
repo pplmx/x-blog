@@ -391,6 +391,53 @@ describe("Admin Post Editor Page", () => {
 			expect(mockUpdateAdminPost).toHaveBeenCalledWith(1, expect.any(Object));
 		});
 
+		it("does not lose keystrokes typed while an autosave is in flight (deep-dive autosave race)", async () => {
+			vi.useFakeTimers();
+			try {
+				setupRoute("1");
+				setupMocks();
+
+				// First autosave stays in flight until we resolve it, so the
+				// "second edit made during the request" window is real.
+				let resolveSave: (v: { id: number }) => void = () => {};
+				mockUpdateAdminPost.mockImplementationOnce(
+					() =>
+						new Promise((res) => {
+							resolveSave = res;
+						}),
+				);
+
+				const PostEditor = await loadPage();
+				const wrapper = await mountWithSuspense(PostEditor);
+				const titleInput = wrapper.find('input[type="text"]');
+
+				// Type once -> the debounced autosave starts and hangs in flight
+				// (an autosave may already have run from the edit-mode load, so
+				// the exact count is irrelevant — the hang is what matters).
+				await titleInput.setValue("Draft One");
+				await flushPromises();
+				await vi.advanceTimersByTimeAsync(800);
+				expect(mockUpdateAdminPost.mock.calls.length).toBeGreaterThanOrEqual(1);
+
+				// Type more while the save is still in flight. When the in-flight
+				// save lands, the completion must NOT mark this edit as saved —
+				// it was never persisted.
+				await titleInput.setValue("Draft One Plus");
+				resolveSave({ id: 1 });
+				await flushPromises();
+				await vi.advanceTimersByTimeAsync(800);
+				await flushPromises();
+
+				// The tail edit was persisted by a second update, not dropped.
+				const calls = mockUpdateAdminPost.mock.calls;
+				expect(calls.length).toBeGreaterThanOrEqual(2);
+				const last = calls[calls.length - 1][1] as { title: string };
+				expect(last.title).toBe("Draft One Plus");
+			} finally {
+				vi.useRealTimers();
+			}
+		});
+
 		it("shows loading state while fetching post", async () => {
 			mockFetchAdminPost.mockReturnValue({
 				data: ref(null),

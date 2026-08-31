@@ -261,6 +261,15 @@ async function runAutosave() {
 	if (isSubmitting.value || isNotifying.value) return;
 	if (!isDirty.value) return;
 
+	// Snapshot the form exactly as it's about to be persisted (all of this is
+	// synchronous, so the form cannot change between this capture and the
+	// payload spread below). On completion we reload from THIS capture, not the
+	// live form: keystrokes typed while the request was in flight were never
+	// persisted, and loading snapshot() would wrongly clear dirty and mark that
+	// lost tail as "saved" — disabling the beforeunload/route-leave guards too
+	// (regression found in the deep-dive re-audit).
+	const startedSnapshot = snapshot();
+
 	const payload = { ...formData.value } as Partial<PostCreate>;
 	// publish_at is "" when unset (edit-mode round-trip) — normalize to null so
 	// the backend datetime field doesn't 422 (RIL TASK-190).
@@ -306,9 +315,12 @@ async function runAutosave() {
 				navigateTo(`/admin/posts/${createdId}`, { replace: true });
 			}
 		}
-		loadedSnapshot = snapshot();
-		isDirty.value = false;
-		autoSaveStatus.value = "saved";
+		loadedSnapshot = startedSnapshot;
+		// Recompute dirty against what was actually persisted: any edits that
+		// arrived mid-flight remain dirty so the debounce/queue flushes them and
+		// the unload guards stay armed. The queued re-run then flips the status.
+		isDirty.value = snapshot() !== startedSnapshot;
+		autoSaveStatus.value = isDirty.value ? "saving" : "saved";
 	} catch (err) {
 		const detail = (err as { data?: { detail?: string } } | null)?.data?.detail;
 		autoSaveError.value = typeof detail === "string" ? detail : t("admin.postEdit.autoSaveError");
@@ -480,6 +492,17 @@ async function toggleRevisions() {
 /** Restore a saved revision as the live post, then reload the form. */
 async function handleRestoreRevision(revId: number) {
 	if (postId === null || restoringId.value !== null) return;
+	// Restoring immediately replaces the form with the revision's state, wiping
+	// any in-progress edits — same destructive class as cancel/route-leave, so
+	// ask when dirty (deep-dive re-audit finding).
+	if (
+		isDirty.value &&
+		typeof window !== "undefined" &&
+		typeof window.confirm === "function" &&
+		!window.confirm(t("admin.postEdit.confirmDiscard"))
+	) {
+		return;
+	}
 	restoringId.value = revId;
 	revisionMessage.value = null;
 	try {
