@@ -161,4 +161,20 @@ describe("ThreadSubscribeButton", () => {
 		expect(mockSubscribeToPostThread).not.toHaveBeenCalled();
 		expect(w.text()).toContain("components.threadSubscribe.blockedHint");
 	});
+
+	it("announces a failed follow with role=alert (not a silent no-op)", async () => {
+		isAuthenticated.value = true;
+		mockStatus(false);
+		status.value = "subscribed";
+		mockSubscribeToPostThread.mockRejectedValue(new Error("network"));
+		const w = await mountButton();
+		await w.find("button").trigger("click");
+		await flushPromises();
+
+		const alert = w.find('[role="alert"]');
+		expect(alert.exists()).toBe(true);
+		expect(alert.text()).toContain("components.threadSubscribe.error");
+		// Busy clears once the failure settles.
+		expect(w.find("button").attributes("aria-busy")).toBe("false");
+	});
 });

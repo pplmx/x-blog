@@ -95,6 +95,7 @@ async function toggle() {
     :title="pushBlocked ? t('components.threadSubscribe.pushNeeded') : label"
     :aria-pressed="following ? 'true' : 'false'"
     :aria-label="label"
+    :aria-busy="busy"
     class="inline-flex shrink-0 items-center gap-1.5 rounded-lg p-2 text-sm text-gray-500 dark:text-gray-400 transition-all duration-200 hover:bg-gray-100 hover:text-gray-700 dark:hover:bg-gray-800 dark:hover:text-gray-200 disabled:cursor-not-allowed disabled:opacity-50"
     @click="toggle"
   >
@@ -103,11 +104,12 @@ async function toggle() {
   </button>
   <p
     v-if="blocked && isAuthenticated"
+    role="status"
     class="mt-1 text-xs text-amber-600 dark:text-amber-400"
   >
     {{ t("components.threadSubscribe.blockedHint") }}
   </p>
-  <p v-else-if="error && isAuthenticated" class="mt-1 text-xs text-red-600 dark:text-red-400">
+  <p v-else-if="error && isAuthenticated" role="alert" class="mt-1 text-xs text-red-600 dark:text-red-400">
     {{ t("components.threadSubscribe.error") }}
   </p>
 </template>

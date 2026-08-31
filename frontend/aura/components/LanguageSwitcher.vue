@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref } from "vue";
+import { computed, nextTick, onBeforeUnmount, onMounted, ref } from "vue";
 
 import { type Locale } from "~~/composables/i18n";
 import { useLang } from "~~/composables/useLang";
@@ -14,18 +14,64 @@ const currentLabel = computed(
 // Dropdown open state, closed by selecting, outside click, or Escape.
 const open = ref(false);
 const root = ref<HTMLElement | null>(null);
+const trigger = ref<HTMLButtonElement | null>(null);
+
+const menuItems = () =>
+	Array.from(root.value?.querySelectorAll<HTMLElement>('[role="menuitem"]') ?? []);
+
+// Closing removes the focused menuitem from the DOM — return focus to the
+// trigger so a keyboard/SR user keeps their place in the nav instead of
+// landing on <body> (ISS/MENU a11y class).
+function closeMenu() {
+	open.value = false;
+	trigger.value?.focus({ preventScroll: true });
+}
 
 function onSelect(code: Locale) {
 	setLocale(code);
-	open.value = false;
+	closeMenu();
+}
+
+function toggle() {
+	if (open.value) {
+		closeMenu();
+		return;
+	}
+	open.value = true;
+	// ARIA menu pattern: focus moves into the list on open, onto the current
+	// locale's item (falling back to the first).
+	nextTick(() => {
+		const items = menuItems();
+		const current = locales.findIndex((l) => l.code === locale.value);
+		(items[Math.max(0, current)] ?? items[0])?.focus({ preventScroll: true });
+	});
 }
 
 function onDocPointer(e: Event) {
 	if (root.value && !root.value.contains(e.target as Node)) open.value = false;
 }
 
+// Full menu keyboard contract: Escape closes (focus back to trigger);
+// ArrowDown/ArrowUp/Home/End move focus between the locale items.
 function onKeydown(e: KeyboardEvent) {
-	if (e.key === "Escape") open.value = false;
+	if (e.key === "Escape") {
+		if (open.value) closeMenu();
+		return;
+	}
+	if (!open.value) return;
+	const keys = ["ArrowDown", "ArrowUp", "Home", "End"];
+	if (!keys.includes(e.key)) return;
+	const items = menuItems();
+	if (items.length === 0) return;
+	e.preventDefault();
+	const active = document.activeElement as HTMLElement | null;
+	const idx = active ? items.indexOf(active) : -1;
+	let next: number;
+	if (e.key === "Home") next = 0;
+	else if (e.key === "End") next = items.length - 1;
+	else if (e.key === "ArrowDown") next = idx < 0 ? 0 : (idx + 1) % items.length;
+	else next = idx <= 0 ? items.length - 1 : idx - 1;
+	items[next]?.focus();
 }
 
 onMounted(() => {
@@ -41,12 +87,13 @@ onBeforeUnmount(() => {
 <template>
   <div ref="root" class="relative select-none">
     <button
+      ref="trigger"
       type="button"
       class="flex w-24 shrink-0 items-center justify-center gap-1 whitespace-nowrap rounded-md py-1 text-xs font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
-      :aria-haspopup="true"
+      aria-haspopup="menu"
       :aria-expanded="open"
       :aria-label="currentLabel"
-      @click="open = !open"
+      @click="toggle"
     >
       {{ currentLabel }}
       <Icon

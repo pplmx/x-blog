@@ -149,4 +149,31 @@ describe("TagFollowButton", () => {
 		expect(w.find('button[aria-label="rust tags.followingTitle"]').exists()).toBe(false);
 		expect(w.find('button[aria-label="rust tags.followTitle"]').exists()).toBe(true);
 	});
+
+	it("surfaces a transient error bubble when the follow fails (regression: silent no-op)", async () => {
+		localStorage.setItem("reader_token", "tok-1");
+		mockGet.mockResolvedValue({ items: [], total: 0 });
+		mockFollow.mockRejectedValue(new Error("network"));
+		const w = await mountButton();
+		await w.find('button[aria-label="rust tags.followTitle"]').trigger("click");
+		await flushPromises();
+
+		const bubble = w.find('[role="status"]');
+		expect(bubble.exists()).toBe(true);
+		expect(bubble.text()).toContain("tags.followFailed");
+		// The chip itself stays in its pre-failure state (retryable).
+		expect(w.find('button[aria-label="rust tags.followTitle"]').exists()).toBe(true);
+	});
+
+	it("exposes follow and notify state via aria-pressed", async () => {
+		localStorage.setItem("reader_token", "tok-1");
+		followed();
+		const w = await mountButton();
+		expect(w.find('button[aria-label="rust tags.followingTitle"]').attributes("aria-pressed")).toBe(
+			"true",
+		);
+		expect(w.find('button[aria-label="rust tags.notifyOn"]').attributes("aria-pressed")).toBe(
+			"true",
+		);
+	});
 });

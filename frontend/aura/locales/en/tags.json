@@ -18,6 +18,7 @@
 		"followingTitle": "Unfollow this tag",
 		"notifyTitle": "Toggle new-post notifications for this tag",
 		"notifyOn": "Notifications on",
-		"notifyOff": "Notifications off"
+		"notifyOff": "Notifications off",
+		"followFailed": "Couldn't update, please try again"
 	}
 }

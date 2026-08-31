@@ -35,6 +35,9 @@
 		"empty": {
 			"posts": "暂无文章"
 		},
+		"pagination": {
+			"announce": "第 {page} 页"
+		},
 		"sidebar": {
 			"stats": "站点统计",
 			"quickNav": "快速导航",

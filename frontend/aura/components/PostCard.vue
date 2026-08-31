@@ -37,6 +37,8 @@ const date = computed(() =>
         <img
           :src="coverImageUrl"
           :alt="post.title"
+          loading="lazy"
+          decoding="async"
           class="object-cover w-full h-full group-hover:scale-105 transition-transform duration-500"
         >
       </div>

@@ -256,11 +256,21 @@ describe("MarkdownContent", () => {
 			expect(img.attributes("loading")).toBe("lazy");
 		});
 
-		it("wraps images in a zoomed container", async () => {
+		it("renders images at their natural aspect ratio (no fixed-crop frame)", async () => {
 			const wrapper = mountMarkdown('<img src="test.png" alt="alt" />');
 			await flushPromises();
-			const container = wrapper.find("img").element.closest('div[class*="h-64"]');
-			expect(container).toBeTruthy();
+			const img = wrapper.find("img");
+			// No fixed h-64 center-crop frame and no cursor-zoom-in promising a
+			// lightbox that doesn't exist (the old frame cropped tall images).
+			expect(img.element.closest('div[class*="h-64"]')).toBeNull();
+			expect(img.element.closest('div[class*="cursor-zoom-in"]')).toBeNull();
+			expect(img.attributes("decoding")).toBe("async");
+		});
+
+		it("treats a missing alt as decorative (empty alt, not filename)", async () => {
+			const wrapper = mountMarkdown('<img src="test.png" />');
+			await flushPromises();
+			expect(wrapper.find("img").attributes("alt")).toBe("");
 		});
 	});
 
@@ -324,6 +334,36 @@ describe("MarkdownContent", () => {
 			await flushPromises();
 
 			expect(writeText).toHaveBeenCalledWith("const x = 1;");
+		});
+
+		it("surfaces a copy failure when clipboard AND execCommand fallback fail", async () => {
+			Object.defineProperty(navigator, "clipboard", {
+				value: { writeText: vi.fn().mockRejectedValue(new Error("denied")) },
+				configurable: true,
+			});
+			const originalExec = document.execCommand?.bind(document);
+			Object.defineProperty(document, "execCommand", {
+				configurable: true,
+				value: () => false,
+			});
+
+			try {
+				const wrapper = mountMarkdown("```ts\nconst x = 1;\n```");
+				await flushPromises();
+				const copyButton = wrapper.find("button");
+				await copyButton.trigger("click");
+				await flushPromises();
+				// The failure is surfaced on the button + announced via role=alert.
+				expect(copyButton.attributes("data-copied-error")).toBe("true");
+				expect(wrapper.find('[role="alert"]').exists()).toBe(true);
+			} finally {
+				if (originalExec) {
+					Object.defineProperty(document, "execCommand", {
+						configurable: true,
+						value: originalExec,
+					});
+				}
+			}
 		});
 
 		it("toggles copied state and resets after 2 seconds", async () => {

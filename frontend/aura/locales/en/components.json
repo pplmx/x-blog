@@ -87,7 +87,8 @@
 			"copy": "Copy",
 			"copied": "Copied",
 			"copyCode": "Copy code",
-			"katexError": "[KaTeX render error]"
+			"katexError": "[KaTeX render error]",
+			"copyFailed": "Copy failed"
 		},
 		"postCard": {
 			"pinned": "Pinned",

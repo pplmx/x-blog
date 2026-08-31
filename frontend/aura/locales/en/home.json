@@ -35,6 +35,9 @@
 		"empty": {
 			"posts": "No articles yet"
 		},
+		"pagination": {
+			"announce": "Page {page}"
+		},
 		"sidebar": {
 			"stats": "Site Stats",
 			"quickNav": "Quick Links",

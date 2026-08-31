@@ -52,6 +52,26 @@ function retryLoad() {
 	void refreshPosts();
 }
 
+// A stale/out-of-range page deep link (e.g. /?page=999 after posts were
+// deleted) would otherwise render the "no posts" empty state while the blog
+// clearly has content — clamp back to the last real page once pagination is
+// known. Loop-safe: the clamp target is valid by construction, so the refetch
+// it triggers settles on total_pages === page.
+watch(
+	() => posts.value?.pagination?.total_pages,
+	(totalPages) => {
+		if (totalPages && totalPages > 0 && page.value > totalPages) {
+			page.value = totalPages;
+		}
+	},
+);
+
+// Screen-reader page announcement: pagination swaps the whole feed silently,
+// so a polite live region announces which page is showing.
+const pageAnnouncement = computed(() =>
+	t("home.pagination.announce", { page: posts.value?.pagination?.page ?? page.value }),
+);
+
 const { data: popularPosts } = await usePopularPosts();
 
 // Personalized "Recommended for you" (DEC-128, TASK-176): shown only to
@@ -463,6 +483,10 @@ const stats = computed(() => {
             </button>
           </div>
         </div>
+
+        <!-- Screen-reader page announcement (kept out of layout; updates when
+             pagination refetches so a page change is announced). -->
+        <span role="status" aria-live="polite" class="sr-only">{{ pageAnnouncement }}</span>
 
         <!-- Loading skeleton -->
         <div v-if="pending" class="space-y-4">

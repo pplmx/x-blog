@@ -172,6 +172,9 @@ onMounted(() => {
                 {{ t(link.labelKey) }}
                 <span
                   v-if="link.badge && unreadCount > 0"
+                  role="status"
+                  aria-live="polite"
+                  aria-atomic="true"
                   class="inline-flex items-center justify-center min-w-[1.25rem] h-5 px-1 rounded-full text-[11px] font-bold bg-amber-500 text-white"
                 >{{ unreadCount > 99 ? '99+' : unreadCount }}</span>
               </NuxtLink>
@@ -253,6 +256,9 @@ onMounted(() => {
               {{ t(link.labelKey) }}
               <span
                 v-if="link.badge && unreadCount > 0"
+                role="status"
+                aria-live="polite"
+                aria-atomic="true"
                 class="inline-flex items-center justify-center min-w-[1.25rem] h-5 px-1 rounded-full text-[11px] font-bold bg-amber-500 text-white"
               >{{ unreadCount > 99 ? '99+' : unreadCount }}</span>
             </NuxtLink>

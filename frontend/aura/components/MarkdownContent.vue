@@ -83,19 +83,49 @@ const renderedMermaidKeys = ref<Set<string>>(new Set());
 
 // --- Copy-to-clipboard state (per code block) ---
 const copiedStates = ref<Set<string>>(new Set());
+const copyFailedKeys = ref<Set<string>>(new Set());
 
 const { t } = useLang();
 
+// A rejected navigator.clipboard (insecure context, permission denied) used to
+// be silently swallowed — the Copy button just did nothing. Fall back to a
+// hidden textarea + execCommand (same pattern as ShareButtons), and only if
+// THAT fails surface a transient "Copy failed" on the button + an alert.
+function fallbackCopy(code: string): boolean {
+	try {
+		const ta = document.createElement("textarea");
+		ta.value = code;
+		ta.style.position = "fixed";
+		ta.style.opacity = "0";
+		document.body.appendChild(ta);
+		ta.focus();
+		ta.select();
+		const ok = document.execCommand("copy");
+		document.body.removeChild(ta);
+		return ok;
+	} catch {
+		return false;
+	}
+}
+
 async function copyCode(code: string, key: string) {
+	let ok = false;
 	try {
 		await navigator.clipboard.writeText(code);
-		copiedStates.value.add(key);
-		setTimeout(() => {
-			copiedStates.value.delete(key);
-		}, 2000);
+		ok = true;
 	} catch {
-		// ignore
+		ok = fallbackCopy(code);
 	}
+	if (!ok) {
+		copyFailedKeys.value.add(key);
+		setTimeout(() => copyFailedKeys.value.delete(key), 2000);
+		return;
+	}
+	copyFailedKeys.value.delete(key);
+	copiedStates.value.add(key);
+	setTimeout(() => {
+		copiedStates.value.delete(key);
+	}, 2000);
 }
 
 // --- Mermaid rendering ---
@@ -212,12 +242,23 @@ function lineNumbers(code: string): number[] {
           <button
             @click="copyCode(seg.code, seg.key)"
             :data-copied="copiedStates.has(seg.key)"
-            class="flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs transition-all duration-200 hover:bg-gray-700 hover:text-white text-gray-400"
-            :title="t('components.markdown.copyCode')"
+            :data-copied-error="copyFailedKeys.has(seg.key)"
+            :title="copyFailedKeys.has(seg.key) ? t('components.markdown.copyFailed') : t('components.markdown.copyCode')"
+            class="flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs transition-all duration-200"
+            :class="copyFailedKeys.has(seg.key)
+              ? 'text-red-400 hover:bg-gray-700 hover:text-red-300'
+              : 'text-gray-400 hover:bg-gray-700 hover:text-white'"
           >
+            <span v-if="copyFailedKeys.has(seg.key)" role="alert" class="sr-only">{{ t('components.markdown.copyFailed') }}</span>
             <Icon icon="lucide:copy" class="w-3.5 h-3.5" v-if="!copiedStates.has(seg.key)" />
             <Icon icon="lucide:check" class="w-3.5 h-3.5" v-else />
-            <span>{{ copiedStates.has(seg.key) ? t('components.markdown.copied') : t('components.markdown.copy') }}</span>
+            <span>{{
+              copiedStates.has(seg.key)
+                ? t('components.markdown.copied')
+                : (copyFailedKeys.has(seg.key)
+                    ? t('components.markdown.copyFailed')
+                    : t('components.markdown.copy'))
+            }}</span>
           </button>
         </div>
         <div class="flex bg-[#1a1b26]">
@@ -254,19 +295,22 @@ function lineNumbers(code: string): number[] {
         :ref="(el: HTMLElement | null) => { if (el) renderKatex(seg.formula, el, seg.displayMode, seg.key) }"
       />
 
-      <!-- Image (lazy + lightbox-ready) -->
-      <div
+      <!-- Image: preserve the natural aspect ratio. The old fixed h-64 +
+           object-cover frame center-cropped tall diagrams/screenshots with a
+           cursor-zoom-in that promised a (nonexistent) lightbox — readers could
+           never see the full image. :deep(img) styles supply sizing/margins; the
+           bg class is the loading placeholder (anti-CLS), and a missing alt is
+           treated as decorative (alt="") per WCAG rather than announced by
+           filename. -->
+      <img
         v-else-if="seg.type === 'image'"
-        class="relative w-full h-64 my-4 overflow-hidden rounded-lg bg-gray-100 dark:bg-gray-800 cursor-zoom-in border-0 p-0"
+        :src="sanitizeUrl(seg.src)"
+        :alt="seg.alt ?? ''"
+        class="bg-gray-100 dark:bg-gray-800"
+        loading="lazy"
+        decoding="async"
+        referrerpolicy="no-referrer"
       >
-        <img
-          :src="sanitizeUrl(seg.src)"
-          :alt="seg.alt"
-          class="absolute inset-0 w-full h-full object-cover transition-opacity duration-500"
-          loading="lazy"
-          referrerpolicy="no-referrer"
-        >
-      </div>
 
       <!-- Unknown segment type — render nothing -->
       <template v-else />

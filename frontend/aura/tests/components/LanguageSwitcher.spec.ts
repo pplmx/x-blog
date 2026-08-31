@@ -43,8 +43,9 @@ const iconStub = {
 	props: ["icon"],
 };
 
-function mountSwitcher() {
+function mountSwitcher(opts: { attachTo?: HTMLElement | string } = {}) {
 	return mount(LanguageSwitcher, {
+		...opts,
 		global: { stubs: { Icon: iconStub } },
 	});
 }
@@ -59,7 +60,7 @@ describe("LanguageSwitcher", () => {
 
 	it("renders the current locale as a compact, fixed-width trigger", () => {
 		const wrapper = mountSwitcher();
-		const trigger = wrapper.find('button[aria-haspopup="true"]');
+		const trigger = wrapper.find('button[aria-haspopup="menu"]');
 		expect(trigger.exists()).toBe(true);
 		expect(trigger.text()).toContain("简体中文");
 		// Fixed width + centered so the trigger does not resize when the
@@ -71,7 +72,7 @@ describe("LanguageSwitcher", () => {
 
 	it("opens the menu and lists every supported locale uniformly", async () => {
 		const wrapper = mountSwitcher();
-		await wrapper.get('button[aria-haspopup="true"]').trigger("click");
+		await wrapper.get('button[aria-haspopup="menu"]').trigger("click");
 		await flushPromises();
 
 		const menu = wrapper.find('[role="menu"]');
@@ -84,12 +85,12 @@ describe("LanguageSwitcher", () => {
 		for (const it of items) {
 			expect(it.classes()).toContain("whitespace-nowrap");
 		}
-		expect(wrapper.get('button[aria-haspopup="true"]').attributes("aria-expanded")).toBe("true");
+		expect(wrapper.get('button[aria-haspopup="menu"]').attributes("aria-expanded")).toBe("true");
 	});
 
 	it("marks the active locale and selects a different one", async () => {
 		const wrapper = mountSwitcher();
-		await wrapper.get('button[aria-haspopup="true"]').trigger("click");
+		await wrapper.get('button[aria-haspopup="menu"]').trigger("click");
 		await flushPromises();
 
 		const active = wrapper.find('[role="menuitem"][aria-current="true"]');
@@ -105,7 +106,7 @@ describe("LanguageSwitcher", () => {
 
 	it("closes the menu on an outside click", async () => {
 		const wrapper = mountSwitcher();
-		await wrapper.get('button[aria-haspopup="true"]').trigger("click");
+		await wrapper.get('button[aria-haspopup="menu"]').trigger("click");
 		await flushPromises();
 		expect(wrapper.find('[role="menu"]').exists()).toBe(true);
 
@@ -116,12 +117,68 @@ describe("LanguageSwitcher", () => {
 
 	it("closes the menu on Escape", async () => {
 		const wrapper = mountSwitcher();
-		await wrapper.get('button[aria-haspopup="true"]').trigger("click");
+		await wrapper.get('button[aria-haspopup="menu"]').trigger("click");
 		await flushPromises();
 		expect(wrapper.find('[role="menu"]').exists()).toBe(true);
 
 		document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" }));
 		await flushPromises();
 		expect(wrapper.find('[role="menu"]').exists()).toBe(false);
+	});
+
+	it("moves focus between locale items with ArrowDown/ArrowUp", async () => {
+		// Focus assertions need the tree attached (VTU mounts detached by default,
+		// where .focus() never becomes document.activeElement).
+		const wrapper = mountSwitcher({ attachTo: document.body });
+		try {
+			await wrapper.get('button[aria-haspopup="menu"]').trigger("click");
+			await flushPromises();
+
+			// Opening moves focus onto the current locale's item (first, zh-Hans).
+			const items = wrapper.findAll('[role="menuitem"]');
+			expect(items[0].element).toBe(document.activeElement);
+
+			document.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowDown" }));
+			expect(items[1].element).toBe(document.activeElement); // 繁體中文
+			document.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowUp" }));
+			expect(items[0].element).toBe(document.activeElement); // wraps back
+			document.dispatchEvent(new KeyboardEvent("keydown", { key: "End" }));
+			expect(items[items.length - 1].element).toBe(document.activeElement);
+		} finally {
+			wrapper.unmount();
+		}
+	});
+
+	it("returns focus to the trigger when a language is selected", async () => {
+		const wrapper = mountSwitcher({ attachTo: document.body });
+		try {
+			const trigger = wrapper.get('button[aria-haspopup="menu"]');
+			await trigger.trigger("click");
+			await flushPromises();
+
+			await wrapper.get('[role="menuitem"]:nth-child(3)').trigger("click");
+			await flushPromises();
+			expect(wrapper.find('[role="menu"]').exists()).toBe(false);
+			// Focus returns to the trigger, not <body> (the menuitem is un-mounted).
+			expect(window.document.activeElement).toBe(trigger.element);
+		} finally {
+			wrapper.unmount();
+		}
+	});
+
+	it("returns focus to the trigger when the menu closes on Escape", async () => {
+		const wrapper = mountSwitcher({ attachTo: document.body });
+		try {
+			const trigger = wrapper.get('button[aria-haspopup="menu"]');
+			await trigger.trigger("click");
+			await flushPromises();
+
+			document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" }));
+			await flushPromises();
+			expect(wrapper.find('[role="menu"]').exists()).toBe(false);
+			expect(window.document.activeElement).toBe(trigger.element);
+		} finally {
+			wrapper.unmount();
+		}
 	});
 });

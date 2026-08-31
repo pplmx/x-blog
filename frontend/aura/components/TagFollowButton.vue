@@ -8,7 +8,7 @@
  * surrounding chip looks unchanged for anonymous readers. Follow state comes
  * from the shared useTagFollowStore (one list fetch for every chip on a page).
  */
-import { computed, onMounted } from "vue";
+import { computed, onMounted, ref } from "vue";
 import { useLang } from "~~/composables/useLang";
 import { useTagFollowStore } from "~~/composables/useTagFollowStore";
 
@@ -37,31 +37,71 @@ onMounted(() => {
 	store.ensureLoaded().catch(() => {});
 });
 
-// Keep the chip's last state on failure: the store clears its busy flag in a
-// finally, so a failed follow/unfollow/notify leaves the button consistent
-// instead of throwing an unhandled rejection from a click handler.
-function handleToggleFollow() {
-	store.toggleFollow(props.tagId).catch(() => {});
+// A failed follow/notify used to be silently swallowed — the store clears its
+// busy flag in a finally, so the button just did nothing. That is a silent
+// no-op from the reader's perspective: the chip never toggles and nothing
+// explains why. Surface a transient error (visible bubble + role=status live
+// region, auto-clears) instead. The store state stays put on failure (same
+// keep-last-state behavior), so the reader can simply retry.
+const error = ref(false);
+let errorTimer: ReturnType<typeof setTimeout> | undefined;
+function flashError() {
+	error.value = true;
+	clearTimeout(errorTimer);
+	errorTimer = setTimeout(() => {
+		error.value = false;
+	}, 2600);
 }
 
-function handleSetNotify() {
-	store.setNotify(props.tagId, !notify.value).catch(() => {});
+async function handleToggleFollow() {
+	if (busy.value) return;
+	error.value = false;
+	try {
+		await store.toggleFollow(props.tagId);
+	} catch {
+		flashError();
+	}
+}
+
+async function handleSetNotify() {
+	if (busy.value) return;
+	error.value = false;
+	try {
+		await store.setNotify(props.tagId, !notify.value);
+	} catch {
+		flashError();
+	}
 }
 </script>
 
 <template>
 	<span
 		v-if="signedIn"
-		class="inline-flex items-center"
+		class="relative inline-flex items-center"
 		:title="tagName"
 		@click.stop.prevent
 	>
+		<!-- Transient failure bubble: visible above the chip and announced via
+		     role=status when a follow/notify call rejects. Anchored absolutely so
+		     it never shifts the tag row. -->
+		<span
+			v-if="error"
+			role="status"
+			aria-live="polite"
+			class="absolute bottom-full left-1/2 z-10 mb-1.5 -translate-x-1/2 whitespace-nowrap rounded-md border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/40 px-2 py-0.5 text-[10px] font-medium text-red-600 dark:text-red-400 shadow-sm"
+		>
+			{{ t('tags.followFailed') }}
+		</span>
 		<button
 			type="button"
 			:disabled="busy"
 			:title="`${tagName} ${t(following ? 'tags.followingTitle' : 'tags.followTitle')}`"
 			:aria-label="`${tagName} ${t(following ? 'tags.followingTitle' : 'tags.followTitle')}`"
-			class="inline-flex items-center p-1 rounded-full text-gray-400 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors disabled:opacity-40"
+			:aria-pressed="following ? 'true' : 'false'"
+			class="inline-flex items-center p-1 rounded-full transition-colors disabled:opacity-40"
+			:class="error
+				? 'text-red-500 hover:text-red-600 dark:text-red-400 dark:hover:text-red-300'
+				: 'text-gray-400 hover:text-emerald-600 dark:hover:text-emerald-400'"
 			@click="handleToggleFollow"
 		>
 			<Icon :icon="following ? 'lucide:bookmark-check' : 'lucide:bookmark'" class="w-3.5 h-3.5" />
@@ -72,7 +112,11 @@ function handleSetNotify() {
 			:disabled="busy"
 			:title="`${tagName} ${t('tags.notifyTitle')}`"
 			:aria-label="`${tagName} ${t(notify ? 'tags.notifyOn' : 'tags.notifyOff')}`"
-			class="inline-flex items-center p-1 rounded-full text-gray-400 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors disabled:opacity-40"
+			:aria-pressed="notify ? 'true' : 'false'"
+			class="inline-flex items-center p-1 rounded-full transition-colors disabled:opacity-40"
+			:class="error
+				? 'text-red-500 hover:text-red-600 dark:text-red-400 dark:hover:text-red-300'
+				: 'text-gray-400 hover:text-emerald-600 dark:hover:text-emerald-400'"
 			@click="handleSetNotify"
 		>
 			<Icon :icon="notify ? 'lucide:bell' : 'lucide:bell-off'" class="w-3.5 h-3.5" />

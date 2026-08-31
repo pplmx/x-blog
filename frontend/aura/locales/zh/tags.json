@@ -18,6 +18,7 @@
 		"followingTitle": "取消关注该标签",
 		"notifyTitle": "切换该标签的新文章通知",
 		"notifyOn": "通知已开",
-		"notifyOff": "通知已关"
+		"notifyOff": "通知已关",
+		"followFailed": "操作失败，请重试"
 	}
 }
