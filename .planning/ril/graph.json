@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 199,
+  "round": 200,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-08-31T05:44:56+00:00",
+  "updated_at": "2026-08-31T06:37:31+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -22,7 +22,7 @@
       "version": 1,
       "created_at": "2026-08-06T13:23:41+00:00",
       "updated_at": "2026-08-06T13:23:41+00:00",
-      "touched_round": 191,
+      "touched_round": 199,
       "title": "frontend-aura",
       "description": "Nuxt 4 Vue 3 TypeScript frontend at frontend/aura; composables; admin pages; e2e Playwright; biome lint"
     },
@@ -13784,6 +13784,112 @@
       "updated_at": "2026-08-31T05:42:54+00:00",
       "touched_round": 198,
       "commit": "8b77cd0"
+    },
+    "ISS-205": {
+      "id": "ISS-205",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-08-31T06:31:24+00:00",
+      "updated_at": "2026-08-31T06:31:25+00:00",
+      "touched_round": 199,
+      "title": "Media page failed fetch co-renders with the empty state",
+      "summary": "admin/media.vue rendered the loadFailed error <p> and the empty-state block in the same frame: the error was a standalone v-if, so the v-else-if items.length===0 branch still matched underneath it. refresh was also never wired into the template, so a network 500 looked like \"No uploads yet\" with only a manual reload as recovery.",
+      "severity": "high"
+    },
+    "ISS-206": {
+      "id": "ISS-206",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-08-31T06:31:24+00:00",
+      "updated_at": "2026-08-31T06:31:25+00:00",
+      "touched_round": 199,
+      "title": "Users page fetch error is a reload-only dead end",
+      "summary": "admin/users.vue error branch was a bare text div with no Retry button and no back affordance; a superuser hitting a failed /users fetch was stuck on a dead-end message (distinct from empty, but nothing to do about it).",
+      "severity": "medium"
+    },
+    "ISS-207": {
+      "id": "ISS-207",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-08-31T06:31:24+00:00",
+      "updated_at": "2026-08-31T06:31:25+00:00",
+      "touched_round": 199,
+      "title": "Calendar failed month fetch shows a blank grid and no Retry",
+      "summary": "admin/calendar.vue load error was a lone message above a grid that still rendered empty beneath it; the unscheduled sidebar lied \"empty\" on failure; only implicit month navigation recovered.",
+      "severity": "medium"
+    },
+    "ISS-208": {
+      "id": "ISS-208",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-08-31T06:31:24+00:00",
+      "updated_at": "2026-08-31T06:31:25+00:00",
+      "touched_round": 199,
+      "title": "Admin async feedback invisible to screen readers",
+      "summary": "users create/delete results, media delete failures and calendar load errors rendered as plain divs with no role=alert/role=status, inconsistent with the post editor role=alert convention.",
+      "severity": "medium"
+    },
+    "ISS-209": {
+      "id": "ISS-209",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-08-31T06:31:24+00:00",
+      "updated_at": "2026-08-31T06:31:25+00:00",
+      "touched_round": 199,
+      "title": "Users create form fields are placeholder-only",
+      "summary": "username/password/confirm inputs had no <label> or aria-label and no required/minlength, so screen readers get no field name and browsers allow weak passwords the handler later rejects.",
+      "severity": "low"
+    },
+    "ISS-210": {
+      "id": "ISS-210",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-08-31T06:31:24+00:00",
+      "updated_at": "2026-08-31T06:31:25+00:00",
+      "touched_round": 199,
+      "title": "Users summary claims 0 admin users while loading/failed",
+      "summary": "\"users?.length || 0\" rendered \"0 admin users\" during pending and after error, contradicting the spinner/error shown below it.",
+      "severity": "low"
+    },
+    "ISS-211": {
+      "id": "ISS-211",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-08-31T06:31:24+00:00",
+      "updated_at": "2026-08-31T06:31:26+00:00",
+      "touched_round": 199,
+      "title": "Reader tags/series load error and skeleton lack aria-live roles",
+      "summary": "tags.vue, series/index.vue and series/[slug].vue error branches have no role=alert and their skeleton loaders no role=status/aria-busy — the aria-live half of the app-wide error/retry standard was missing on these three.",
+      "severity": "low"
+    },
+    "ISS-212": {
+      "id": "ISS-212",
+      "type": "issue",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-31T06:31:24+00:00",
+      "updated_at": "2026-08-31T06:31:24+00:00",
+      "touched_round": 199,
+      "title": "Calendar month grid lacks ARIA grid semantics",
+      "summary": "Month days are plain divs with no role=grid/gridcell or labelled region, so a screen reader hears an unlabeled wall of day numbers (only chips carry titles). Structural a11y — deferred: larger refactor, kept as active backlog.",
+      "severity": "low"
+    },
+    "CHG-274": {
+      "id": "CHG-274",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-31T06:31:25+00:00",
+      "updated_at": "2026-08-31T06:31:25+00:00",
+      "touched_round": 199,
+      "commit": "12e2c4c"
     }
   },
   "edges": [
@@ -19905,6 +20011,54 @@
       "to": "ISS-204",
       "type": "resolves",
       "created_at": "2026-08-31T05:44:55+00:00"
+    },
+    {
+      "from": "CHG-274",
+      "to": "ISS-205",
+      "type": "resolves",
+      "created_at": "2026-08-31T06:31:25+00:00"
+    },
+    {
+      "from": "CHG-274",
+      "to": "ISS-206",
+      "type": "resolves",
+      "created_at": "2026-08-31T06:31:25+00:00"
+    },
+    {
+      "from": "CHG-274",
+      "to": "ISS-207",
+      "type": "resolves",
+      "created_at": "2026-08-31T06:31:25+00:00"
+    },
+    {
+      "from": "CHG-274",
+      "to": "ISS-208",
+      "type": "resolves",
+      "created_at": "2026-08-31T06:31:25+00:00"
+    },
+    {
+      "from": "CHG-274",
+      "to": "ISS-209",
+      "type": "resolves",
+      "created_at": "2026-08-31T06:31:25+00:00"
+    },
+    {
+      "from": "CHG-274",
+      "to": "ISS-210",
+      "type": "resolves",
+      "created_at": "2026-08-31T06:31:25+00:00"
+    },
+    {
+      "from": "CHG-274",
+      "to": "ISS-211",
+      "type": "resolves",
+      "created_at": "2026-08-31T06:31:25+00:00"
+    },
+    {
+      "from": "ISS-212",
+      "to": "COMP-002",
+      "type": "located_in",
+      "created_at": "2026-08-31T06:36:15+00:00"
     }
   ]
 }
