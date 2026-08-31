@@ -12,38 +12,23 @@
  * reply notifications turn on without requiring a re-subscribe.
  */
 const { t } = useLang();
-const {
-	status,
-	error: pushError,
-	init,
-	subscribe,
-	unsubscribe,
-	syncReaderBinding,
-} = usePushSubscription();
+const { status, init, subscribe, unsubscribe, syncReaderBinding } = usePushSubscription();
 const { isAuthenticated } = useReaderAuth();
 
-// A transient subscribe/unsubscribe failure flashes a short error bubble.
-// Previously the composable reverted the status to idle/subscribed with no
-// feedback at all — a failed opt-in looked like a no-op (ISS-215).
+// A transient subscribe/unsubscribe failure flashes a short error bubble. The
+// push composable RETHROWS on failure (per-call-site surfacing — a shared error
+// ref previously made a comment-thread/category follow failure flash this
+// header button, the wrong widget), so this component owns its error state and
+// catches at its own click boundary.
 const errorVisible = ref(false);
 let errorTimer: ReturnType<typeof setTimeout> | undefined;
-watch(
-	pushError,
-	(failed) => {
-		if (failed) {
-			errorVisible.value = true;
-			clearTimeout(errorTimer);
-			errorTimer = setTimeout(() => {
-				errorVisible.value = false;
-			}, 2600);
-		} else {
-			errorVisible.value = false;
-		}
-	},
-	// immediate: a failure reported while the button was hidden (e.g. a diff
-	// consumer of the shared singleton) should still show on first render.
-	{ immediate: true },
-);
+function flashError() {
+	errorVisible.value = true;
+	clearTimeout(errorTimer);
+	errorTimer = setTimeout(() => {
+		errorVisible.value = false;
+	}, 2600);
+}
 
 onMounted(() => {
 	init();
@@ -120,8 +105,12 @@ const props = defineProps<{ compact?: boolean }>();
 
 async function onClick() {
 	if (busy.value) return;
-	if (status.value === "subscribed") await unsubscribe();
-	else await subscribe();
+	try {
+		if (status.value === "subscribed") await unsubscribe();
+		else await subscribe();
+	} catch {
+		flashError();
+	}
 }
 </script>
 

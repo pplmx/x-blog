@@ -30,11 +30,6 @@ export type PushStatus =
 // useBookmarks module-scoped-state pattern.
 const status = ref<PushStatus>("unsupported");
 
-// A transient subscribe/unsubscribe failure is *surfaced* here instead of being
-// swallowed (the status reverts to a retryable state but consumers flash this
-// as a message — previously a failed opt-in just silently did nothing, ISS-215).
-const error = ref(false);
-
 // New-post notification preference for THIS browser (DEC-076/TASK-147): whether
 // it wants new-post pushes and, if so, whether narrowed to one followed
 // category (null = all new posts). Kept in module scope so the category-page
@@ -147,7 +142,6 @@ async function syncBackend(
  * the "subscribed" state without an extra backend round-trip.
  */
 async function init(): Promise<void> {
-	error.value = false;
 	if (!isSupported()) {
 		status.value = "unsupported";
 		return;
@@ -165,7 +159,6 @@ async function init(): Promise<void> {
 
 /** Opt this browser in: register the SW, request permission once, subscribe. */
 async function subscribe(prefs?: NewPostPrefs): Promise<void> {
-	error.value = false;
 	if (prefs) newPostPrefs.value = prefs;
 	if (!isSupported() || status.value === "denied") return;
 	const publicKey = await fetchBackendPublicKey();
@@ -193,15 +186,18 @@ async function subscribe(prefs?: NewPostPrefs): Promise<void> {
 		}
 		await syncBackend(sub, "subscribe");
 		status.value = "subscribed";
-	} catch {
-		status.value = "idle"; // transient failure; the button retries on click
-		error.value = true;
+	} catch (err) {
+		// Transient failure: the browser state reverts to a retryable "idle"
+		// HERE, and the error is RETHROWN so the initiating caller surfaces it.
+		// (A module-scoped error ref caused a comment-thread/category follow
+		// failure to flash the header button — the wrong widget, ISS-215 re-open.)
+		status.value = "idle";
+		throw err;
 	}
 }
 
 /** Opt this browser out: forget it on the backend, then unsubscribe locally. */
 async function unsubscribe(): Promise<void> {
-	error.value = false;
 	if (!isSupported()) return;
 	status.value = "unsubscribing";
 	try {
@@ -212,9 +208,9 @@ async function unsubscribe(): Promise<void> {
 			await sub.unsubscribe();
 		}
 		status.value = "idle";
-	} catch {
+	} catch (err) {
 		status.value = "subscribed";
-		error.value = true;
+		throw err;
 	}
 }
 
@@ -247,7 +243,6 @@ async function setNewPostPrefs(prefs: NewPostPrefs): Promise<void> {
 export function usePushSubscription() {
 	return {
 		status,
-		error,
 		init,
 		subscribe,
 		unsubscribe,

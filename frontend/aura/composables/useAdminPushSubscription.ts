@@ -37,11 +37,6 @@ export type AdminPushStatus =
 // Singleton state shared by every consumer of the admin moderation toggle.
 const status = ref<AdminPushStatus>("unsupported");
 
-// Transient subscribe/unsubscribe failures are surfaced here (status reverts to
-// a retryable state; consumers flash this as a message). Mirrors the reader
-// composable — a failed admin opt-in used to silently do nothing (ISS-215).
-const error = ref(false);
-
 function apiBase(): string {
 	return useRuntimeConfig().public.apiUrl || "";
 }
@@ -113,7 +108,6 @@ async function syncBackend(
  * subscription may also back reader notifications.
  */
 async function init(): Promise<void> {
-	error.value = false;
 	if (!isSupported()) {
 		status.value = "unsupported";
 		return;
@@ -133,7 +127,6 @@ async function init(): Promise<void> {
 
 /** Opt this browser into moderation alerts (reuses an existing push subscription). */
 async function subscribe(): Promise<void> {
-	error.value = false;
 	if (!isSupported() || status.value === "denied") return;
 	const publicKey = await fetchBackendPublicKey();
 	if (!publicKey) {
@@ -160,16 +153,17 @@ async function subscribe(): Promise<void> {
 		}
 		await syncBackend(sub, "subscribe");
 		status.value = "subscribed";
-	} catch {
-		status.value = "idle"; // transient failure; the toggle retries on click
-		error.value = true;
+	} catch (err) {
+		// Rethrow so the initiating toggle surfaces the transient failure
+		// (per-call-site feedback, matching the reader composable — ISS-215).
+		status.value = "idle";
+		throw err;
 	}
 }
 
 /** Opt this browser out. Removes ONLY the backend admin row — never destroys
  * the shared browser subscription, so the reader's notifications survive. */
 async function unsubscribe(): Promise<void> {
-	error.value = false;
 	if (!isSupported()) return;
 	status.value = "unsubscribing";
 	try {
@@ -179,12 +173,12 @@ async function unsubscribe(): Promise<void> {
 			await syncBackend(sub, "unsubscribe").catch(() => {});
 		}
 		status.value = "idle";
-	} catch {
+	} catch (err) {
 		status.value = "subscribed";
-		error.value = true;
+		throw err;
 	}
 }
 
 export function useAdminPushSubscription() {
-	return { status, error, init, subscribe, unsubscribe };
+	return { status, init, subscribe, unsubscribe };
 }

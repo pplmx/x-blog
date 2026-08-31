@@ -91,30 +91,31 @@ const { t } = useLang();
 // be silently swallowed — the Copy button just did nothing. Fall back to a
 // hidden textarea + execCommand (same pattern as ShareButtons), and only if
 // THAT fails surface a transient "Copy failed" on the button + an alert.
-function fallbackCopy(code: string): boolean {
+function fallbackCopy(code: string, trigger: HTMLButtonElement | null): boolean {
+	const ta = document.createElement("textarea");
 	try {
-		const ta = document.createElement("textarea");
 		ta.value = code;
 		ta.style.position = "fixed";
 		ta.style.opacity = "0";
 		document.body.appendChild(ta);
 		ta.focus();
 		ta.select();
-		const ok = document.execCommand("copy");
-		document.body.removeChild(ta);
-		return ok;
-	} catch {
-		return false;
+		return document.execCommand("copy");
+	} finally {
+		// Never leak the hidden (tabbable!) textarea into the DOM, and never
+		// strand the keyboard user's focus in limbo — return it to the button.
+		if (ta.parentNode === document.body) document.body.removeChild(ta);
+		trigger?.focus({ preventScroll: true });
 	}
 }
 
-async function copyCode(code: string, key: string) {
+async function copyCode(code: string, key: string, trigger: HTMLButtonElement | null) {
 	let ok = false;
 	try {
 		await navigator.clipboard.writeText(code);
 		ok = true;
 	} catch {
-		ok = fallbackCopy(code);
+		ok = fallbackCopy(code, trigger);
 	}
 	if (!ok) {
 		copyFailedKeys.value.add(key);
@@ -240,7 +241,7 @@ function lineNumbers(code: string): number[] {
             <span class="font-mono font-medium">{{ seg.lang }}</span>
           </div>
           <button
-            @click="copyCode(seg.code, seg.key)"
+            @click="copyCode(seg.code, seg.key, $event.currentTarget as HTMLButtonElement)"
             :data-copied="copiedStates.has(seg.key)"
             :data-copied-error="copyFailedKeys.has(seg.key)"
             :title="copyFailedKeys.has(seg.key) ? t('components.markdown.copyFailed') : t('components.markdown.copyCode')"
@@ -298,10 +299,12 @@ function lineNumbers(code: string): number[] {
       <!-- Image: preserve the natural aspect ratio. The old fixed h-64 +
            object-cover frame center-cropped tall diagrams/screenshots with a
            cursor-zoom-in that promised a (nonexistent) lightbox — readers could
-           never see the full image. :deep(img) styles supply sizing/margins; the
-           bg class is the loading placeholder (anti-CLS), and a missing alt is
-           treated as decorative (alt="") per WCAG rather than announced by
-           filename. -->
+           never see the full image. :deep(img) styles supply sizing/margins; a
+           missing alt is decorative (alt="") per WCAG. The bg class masks the
+           brief unpainted flash; markdown segments carry no width/height, so
+           the image cannot reserve its box in advance — a small scroll-position
+           shift on lazy load is the accepted cost of showing tall images whole
+           rather than cropping them. -->
       <img
         v-else-if="seg.type === 'image'"
         :src="sanitizeUrl(seg.src)"

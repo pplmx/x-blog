@@ -211,6 +211,25 @@ describe("usePushSubscription", () => {
 		localStorage.removeItem("reader_token");
 	});
 
+	it("subscribe rejects and reverts to idle when persisting to the backend fails (rethrow contract)", async () => {
+		const { reg } = setupBrowser({ permission: "granted" });
+		reg.pushManager.subscribe.mockResolvedValue(fakePushSubscription(ENDPOINT));
+		// VAPID key fetch succeeds, but the subscribe POST returns 500 — a
+		// transient failure the CALLER must be able to observe (per-call-site
+		// surfacing; the initiating button decides the feedback, ISS-215).
+		globalThis.fetch = vi.fn().mockImplementation(async (url: string) => {
+			if (String(url).includes("/api/push/vapid-public-key")) {
+				return { ok: true, json: () => Promise.resolve({ public_key: PUBLIC_KEY }) };
+			}
+			return { ok: false, status: 500 };
+		});
+		const { usePushSubscription } = await import("~/composables/usePushSubscription");
+		const { status, subscribe } = usePushSubscription();
+
+		await expect(subscribe()).rejects.toThrow();
+		expect(status.value).toBe("idle");
+	});
+
 	it("subscribe stays idle when permission is refused", async () => {
 		setupBrowser({ permission: "default" });
 		const { usePushSubscription } = await import("~/composables/usePushSubscription");

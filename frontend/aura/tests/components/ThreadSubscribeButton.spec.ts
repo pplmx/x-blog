@@ -177,4 +177,21 @@ describe("ThreadSubscribeButton", () => {
 		// Busy clears once the failure settles.
 		expect(w.find("button").attributes("aria-busy")).toBe("false");
 	});
+
+	it("shows the error (not 'blocked') when the push opt-in itself fails transiently", async () => {
+		isAuthenticated.value = true;
+		mockStatus(false);
+		status.value = "idle";
+		// A transient SW/backend hiccup during the push opt-in (NOT a permission
+		// denial): the composable rethrows, so the thread button must surface
+		// "error" — the pre-rethrow code mislabeled this as "blocked".
+		subscribe.mockRejectedValue(new Error("network"));
+		const w = await mountButton();
+		await w.find("button").trigger("click");
+		await flushPromises();
+
+		expect(w.find('[role="alert"]').text()).toContain("components.threadSubscribe.error");
+		expect(w.text()).not.toContain("components.threadSubscribe.blockedHint");
+		subscribe.mockResolvedValue(undefined);
+	});
 });

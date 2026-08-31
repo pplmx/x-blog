@@ -16,33 +16,26 @@
 import { useAdminPushSubscription } from "~~/composables/useAdminPushSubscription";
 
 const { t } = useLang();
-const { status, error: pushError, init, subscribe, unsubscribe } = useAdminPushSubscription();
+const { status, init, subscribe, unsubscribe } = useAdminPushSubscription();
 
 onMounted(() => {
 	void init();
 });
 
 // A transient subscribe/unsubscribe failure flashes a short error line below
-// the toggle — previously the composable reverted with no feedback at all
-// (ISS-215: the admin opt-in silently "did nothing" on a network hiccup).
+// the toggle. The composable RETHROWS on failure so this component owns the
+// feedback at its own click boundary (a shared error ref would fire on any
+// consumer's failure — there is only one, but per-call-site is the correct
+// contract, matching the reader composable, ISS-215).
 const errorVisible = ref(false);
 let errorTimer: ReturnType<typeof setTimeout> | undefined;
-watch(
-	pushError,
-	(failed) => {
-		if (failed) {
-			errorVisible.value = true;
-			clearTimeout(errorTimer);
-			errorTimer = setTimeout(() => {
-				errorVisible.value = false;
-			}, 2600);
-		} else {
-			errorVisible.value = false;
-		}
-	},
-	// immediate: a failure reported while the toggle was hidden still shows.
-	{ immediate: true },
-);
+function flashError() {
+	errorVisible.value = true;
+	clearTimeout(errorTimer);
+	errorTimer = setTimeout(() => {
+		errorVisible.value = false;
+	}, 2600);
+}
 
 const busy = computed(() => status.value === "subscribing" || status.value === "unsubscribing");
 // No delivery is possible: unsupported/unconfigured/denied all mean a click
@@ -82,8 +75,12 @@ const icon = computed(() => {
 
 async function onClick() {
 	if (busy.value) return;
-	if (status.value === "subscribed") await unsubscribe();
-	else await subscribe();
+	try {
+		if (status.value === "subscribed") await unsubscribe();
+		else await subscribe();
+	} catch {
+		flashError();
+	}
 }
 </script>
 

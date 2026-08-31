@@ -59,6 +59,13 @@ function onKeydown(e: KeyboardEvent) {
 		return;
 	}
 	if (!open.value) return;
+	// ARIA menu pattern: Tab leaves the menu and closes it — without trapping
+	// focus (preventDefault would), the browser's default Tab continues from
+	// where focus currently is.
+	if (e.key === "Tab") {
+		open.value = false;
+		return;
+	}
 	const keys = ["ArrowDown", "ArrowUp", "Home", "End"];
 	if (!keys.includes(e.key)) return;
 	const items = menuItems();

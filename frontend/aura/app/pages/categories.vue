@@ -119,14 +119,21 @@ const followingThisCategory = computed(
 
 async function toggleFollowNewPosts() {
 	if (!categoryId.value || pushBusy.value) return;
-	if (followingThisCategory.value) {
-		await setNewPostPrefs({ want: false, categoryId: null });
-	} else if (pushStatus.value === "subscribed") {
-		// Already subscribed (perhaps following all, or replies only) — upsert
-		// the follow for this category without re-asking permission.
-		await setNewPostPrefs({ want: true, categoryId: categoryId.value });
-	} else {
-		await pushSubscribe({ want: true, categoryId: categoryId.value });
+	try {
+		if (followingThisCategory.value) {
+			await setNewPostPrefs({ want: false, categoryId: null });
+		} else if (pushStatus.value === "subscribed") {
+			// Already subscribed (perhaps following all, or replies only) — upsert
+			// the follow for this category without re-asking permission.
+			await setNewPostPrefs({ want: true, categoryId: categoryId.value });
+		} else {
+			await pushSubscribe({ want: true, categoryId: categoryId.value });
+		}
+	} catch {
+		// Transient push/network failure: the composable reverts to a retryable
+		// state, so a later tap retries. Never let a click handler reject
+		// unhandled (the composable rethrows so the initiating caller decides
+		// feedback — its own toast is a future improvement).
 	}
 }
 
