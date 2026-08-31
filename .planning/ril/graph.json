@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 208,
+  "round": 209,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-08-31T18:40:44+00:00",
+  "updated_at": "2026-08-31T19:18:38+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -22,7 +22,7 @@
       "version": 1,
       "created_at": "2026-08-06T13:23:41+00:00",
       "updated_at": "2026-08-06T13:23:41+00:00",
-      "touched_round": 206,
+      "touched_round": 208,
       "title": "frontend-aura",
       "description": "Nuxt 4 Vue 3 TypeScript frontend at frontend/aura; composables; admin pages; e2e Playwright; biome lint"
     },
@@ -14024,11 +14024,11 @@
     "ISS-221": {
       "id": "ISS-221",
       "type": "issue",
-      "status": "active",
-      "version": 1,
+      "status": "resolved",
+      "version": 2,
       "created_at": "2026-08-31T08:57:38+00:00",
-      "updated_at": "2026-08-31T08:57:38+00:00",
-      "touched_round": 201,
+      "updated_at": "2026-08-31T19:16:12+00:00",
+      "touched_round": 208,
       "title": "Raw-HTML links/images lack rel/target and alt fallback",
       "summary": "components/MarkdownContent.vue sanitised <a> segments get no target/rel (external links leave the page) and raw images may render with no alt. Mutating sanitised HTML strings needs a DOM rewrite pass — deferred.",
       "severity": "low"
@@ -14468,11 +14468,11 @@
     "TASK-242": {
       "id": "TASK-242",
       "type": "task",
-      "status": "active",
-      "version": 1,
+      "status": "stale",
+      "version": 2,
       "created_at": "2026-08-31T18:17:12+00:00",
-      "updated_at": "2026-08-31T18:17:12+00:00",
-      "touched_round": 206,
+      "updated_at": "2026-08-31T19:18:38+00:00",
+      "touched_round": 208,
       "category": "stability",
       "severity": 0.8,
       "title": "Shared/versioned cache store so multi-worker deployments never serve stale public payloads",
@@ -14481,11 +14481,11 @@
     "TASK-243": {
       "id": "TASK-243",
       "type": "task",
-      "status": "active",
-      "version": 1,
+      "status": "stale",
+      "version": 2,
       "created_at": "2026-08-31T18:17:12+00:00",
-      "updated_at": "2026-08-31T18:17:12+00:00",
-      "touched_round": 206,
+      "updated_at": "2026-08-31T19:18:38+00:00",
+      "touched_round": 208,
       "category": "security",
       "severity": 0.7,
       "title": "Shared rate-limit storage + production trusted-proxy config",
@@ -14552,6 +14552,42 @@
       "touched_round": 207,
       "commit": "48166f0",
       "title": "perf(backend): rate-limit post-detail + comments-list"
+    },
+    "ISS-247": {
+      "id": "ISS-247",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-08-31T19:04:40+00:00",
+      "updated_at": "2026-08-31T19:05:50+00:00",
+      "touched_round": 208,
+      "title": "Admin change-password modal drops focus to <body> on close",
+      "summary": "Deep-dive re-audit finding (same pass as ISS-225..229): closing the admin change-password modal (X / cancel / overlay / Escape / success auto-close) left keyboard focus on <body>, so the user had to re-tab through the entire sidebar. Also no Tab trap inside the modal panel — focus could escape into the page behind it. Fixed by recording the opening trigger and restoring focus on close, plus a Tab/Shift+Tab wrap over the panel's focusables (mirrors the MediaPickerModal a11y pattern).",
+      "severity": "medium"
+    },
+    "CHG-289": {
+      "id": "CHG-289",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-31T19:05:40+00:00",
+      "updated_at": "2026-08-31T19:05:40+00:00",
+      "touched_round": 208,
+      "commit": "491dd5c",
+      "title": "fix(a11y): admin change-password modal restores focus + traps Tab (ISS-247)",
+      "summary": "Closing the admin change-password modal now restores keyboard focus to the opening trigger (recorded in a module-level let at open, restored via nextTick on close) instead of dropping it to <body>; Tab/Shift+Tab wrap inside the panel over its focusables, mirroring the MediaPickerModal pattern. Regression test in layout.spec.ts drives the modal from the real sidebar button and asserts focus-in on open and focus-return after Escape."
+    },
+    "CHG-290": {
+      "id": "CHG-290",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-31T19:16:12+00:00",
+      "updated_at": "2026-08-31T19:16:12+00:00",
+      "touched_round": 208,
+      "commit": "3476abf",
+      "title": "fix(content): external links open noopened new-tab; alt-less imgs get decorative alt (ISS-221)",
+      "summary": "sanitizeHtml chains a serialized (no-DOM, SSR-safe) addSafeLinkAttrs pass: absolute http(s) <a> gain target=_blank + rel=noopener noreferrer (deduped/merged with existing rel); author-set targets and relative/fragment/mailto links untouched; alt-less <img> get alt='' (decorative). Covers post + comment v-html surfaces. 6 unit tests added."
     }
   },
   "edges": [
@@ -21069,6 +21105,24 @@
       "to": "ISS-245",
       "type": "resolves",
       "created_at": "2026-08-31T18:39:44+00:00"
+    },
+    {
+      "from": "CHG-289",
+      "to": "ISS-247",
+      "type": "resolves",
+      "created_at": "2026-08-31T19:05:50+00:00"
+    },
+    {
+      "from": "ISS-247",
+      "to": "COMP-002",
+      "type": "located_in",
+      "created_at": "2026-08-31T19:05:51+00:00"
+    },
+    {
+      "from": "CHG-290",
+      "to": "ISS-221",
+      "type": "resolves",
+      "created_at": "2026-08-31T19:16:12+00:00"
     }
   ]
 }
