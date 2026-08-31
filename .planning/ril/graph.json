@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 206,
+  "round": 207,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-08-31T14:51:22+00:00",
+  "updated_at": "2026-08-31T18:19:50+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -22,7 +22,7 @@
       "version": 1,
       "created_at": "2026-08-06T13:23:41+00:00",
       "updated_at": "2026-08-06T13:23:41+00:00",
-      "touched_round": 204,
+      "touched_round": 206,
       "title": "frontend-aura",
       "description": "Nuxt 4 Vue 3 TypeScript frontend at frontend/aura; composables; admin pages; e2e Playwright; biome lint"
     },
@@ -14254,6 +14254,291 @@
       "title": "PG sessions pinned to UTC — naive-UTC is the storage contract",
       "rationale": "The codebase documents \"naive UTC\" as the storage contract (digest domain notes; crud utc_now_naive), but model defaults use aware datetime.now(UTC) on naive DateTime columns. On a non-UTC PG server psycopg2 adapts aware->naive via the session TimeZone, skewing created_at/updated_at by the offset and breaking every naive-UTC comparison (digest idempotency, date-bounded queries, RSS). Pin the session TimeZone to UTC on connect so aware-UTC defaults store the UTC wall clock on every deployment, independent of server config.",
       "alternatives_rejected": "Sweep all model defaults to naive utc_now_naive (large blast radius: SQLite aware read-back, isoformat suffix, digest SQLite branch); migrate columns to DateTime(timezone=True) (schema+wire-format change, big frontend impact); require operators to set PG TimeZone=UTC (silent footgun, unenforceable)."
+    },
+    "ISS-233": {
+      "id": "ISS-233",
+      "type": "issue",
+      "status": "resolved",
+      "version": 1,
+      "created_at": "2026-08-31T18:11:49+00:00",
+      "updated_at": "2026-08-31T18:11:49+00:00",
+      "touched_round": 206,
+      "severity": "medium",
+      "title": "Admin autosave marks mid-flight keystrokes as saved",
+      "summary": "runAutosave reloaded loadedSnapshot from the live form after the request resolved, so keystrokes typed while the save was in flight (never persisted) were marked saved: isDirty=false disarmed the beforeunload + route-leave guards and the pending debounce bailed. Fixed by capturing startedSnapshot pre-request and recomputing dirty on completion (6c7eb9f); regression test drives the real race."
+    },
+    "ISS-234": {
+      "id": "ISS-234",
+      "type": "issue",
+      "status": "resolved",
+      "version": 1,
+      "created_at": "2026-08-31T18:11:49+00:00",
+      "updated_at": "2026-08-31T18:11:49+00:00",
+      "touched_round": 206,
+      "severity": "low",
+      "title": "Restore revision silently discards unsaved editor edits",
+      "summary": "handleRestoreRevision immediately replaced the form with the restored revision's state, wiping in-progress edits with no confirm. Now confirms when dirty (6c7eb9f), matching every other destructive path in the editor."
+    },
+    "ISS-235": {
+      "id": "ISS-235",
+      "type": "issue",
+      "status": "resolved",
+      "version": 1,
+      "created_at": "2026-08-31T18:11:49+00:00",
+      "updated_at": "2026-08-31T18:11:49+00:00",
+      "touched_round": 206,
+      "severity": "high",
+      "title": "Home page personalization permanently dead for signed-in readers",
+      "summary": "The flag-ship 'Recommended for you' / 'Latest from your follows' / 'Your series' loaders called query()/useFetch wrappers from onMounted, which silently never send outside a setup/suspense context (ISS-110/111/117/118/119, TASK-220) — sections stayed empty in real browsers while suite mocks hid it. Rewired to the imperative getReaderRecommendations/getReaderFollowsFeed/getReaderSeriesFollows/getReaderSeriesProgress seam (d9baf1c)."
+    },
+    "ISS-236": {
+      "id": "ISS-236",
+      "type": "issue",
+      "status": "resolved",
+      "version": 1,
+      "created_at": "2026-08-31T18:11:49+00:00",
+      "updated_at": "2026-08-31T18:11:49+00:00",
+      "touched_round": 206,
+      "severity": "medium",
+      "title": "Frontend renders naive-UTC API timestamps as local wall-clock",
+      "summary": "new Date(value) on a zone-less backend timestamp parses as the viewer's local time, rendering the wrong instant outside UTC and flipping dates near midnight. Added parseApiDate (append Z) and routed every API-date display site + the admin isScheduled check through it (9d56e52, DEC-213)."
+    },
+    "ISS-237": {
+      "id": "ISS-237",
+      "type": "issue",
+      "status": "resolved",
+      "version": 1,
+      "created_at": "2026-08-31T18:11:49+00:00",
+      "updated_at": "2026-08-31T18:11:49+00:00",
+      "touched_round": 206,
+      "severity": "medium",
+      "title": "Zone-marked publish_at flows into the naive-UTC domain as aware datetime",
+      "summary": "A client can send publish_at with offset/Z; the bare schema field kept it aware, risking aware-vs-naive TypeError in comparisons and timezone-dependent storage. Schema field_validators + _from_iso now normalize to the same absolute instant in naive UTC (121622e, DEC-213)."
+    },
+    "ISS-238": {
+      "id": "ISS-238",
+      "type": "issue",
+      "status": "resolved",
+      "version": 1,
+      "created_at": "2026-08-31T18:11:49+00:00",
+      "updated_at": "2026-08-31T18:11:49+00:00",
+      "touched_round": 206,
+      "severity": "low",
+      "title": "Admin list delete strands the operator on an out-of-range empty page",
+      "summary": "posts/comments/media reloaded at the same page after a delete; deleting the last item of the last page left an out-of-range page that rendered 'empty' with no pagination controls. Clamped back a page after reload (2d45242)."
+    },
+    "ISS-239": {
+      "id": "ISS-239",
+      "type": "issue",
+      "status": "resolved",
+      "version": 1,
+      "created_at": "2026-08-31T18:11:49+00:00",
+      "updated_at": "2026-08-31T18:11:49+00:00",
+      "touched_round": 206,
+      "severity": "low",
+      "title": "Admin micro-polish: readers error-vs-empty, calendar month race, reply-cancel raw key",
+      "summary": "readers list showed the load-failed note AND the 'no readers' empty state together; the calendar month loader was unsequenced (rapid nav could paint the old month over the new); the comment reply box used the literal missing key common.cancel. Fixed in 2d45242."
+    },
+    "ISS-240": {
+      "id": "ISS-240",
+      "type": "issue",
+      "status": "resolved",
+      "version": 1,
+      "created_at": "2026-08-31T18:11:50+00:00",
+      "updated_at": "2026-08-31T18:11:50+00:00",
+      "touched_round": 206,
+      "severity": "low",
+      "title": "Preview page drops category badge + tag chips; series follow/progress stale on SPA nav",
+      "summary": "preview/posts/[id] loaded taxonomy via useFetch from onMounted (silent no-op); series/[slug] kept the previous series' follow/progress between routes. Rewired preview to getAdminCategories/getAdminTags and series state to an immediate watch keyed on the resolved series id (dc973d7)."
+    },
+    "ISS-241": {
+      "id": "ISS-241",
+      "type": "issue",
+      "status": "resolved",
+      "version": 1,
+      "created_at": "2026-08-31T18:11:50+00:00",
+      "updated_at": "2026-08-31T18:11:50+00:00",
+      "touched_round": 206,
+      "severity": "low",
+      "title": "Archive year-only pagination emits month=undefined",
+      "summary": "Paging a /archive?year=2024 deep link built query with String(undefined) -> Invalid Date heading + NaN request; now omitted (dc973d7)."
+    },
+    "CHG-282": {
+      "id": "CHG-282",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-31T18:12:53+00:00",
+      "updated_at": "2026-08-31T18:12:53+00:00",
+      "touched_round": 206,
+      "commit": "6c7eb9f",
+      "title": "fix(admin): autosave no longer marks mid-flight keystrokes as saved; guard restore"
+    },
+    "CHG-283": {
+      "id": "CHG-283",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-31T18:12:54+00:00",
+      "updated_at": "2026-08-31T18:12:54+00:00",
+      "touched_round": 206,
+      "commit": "d9baf1c",
+      "title": "fix(frontend): home page personalization actually loads for signed-in readers"
+    },
+    "CHG-284": {
+      "id": "CHG-284",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-31T18:12:54+00:00",
+      "updated_at": "2026-08-31T18:12:54+00:00",
+      "touched_round": 206,
+      "commit": "9d56e52",
+      "title": "fix(frontend): parse naive-UTC API timestamps as UTC"
+    },
+    "CHG-285": {
+      "id": "CHG-285",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-31T18:12:54+00:00",
+      "updated_at": "2026-08-31T18:12:54+00:00",
+      "touched_round": 206,
+      "commit": "2d45242",
+      "title": "fix(admin): list deletes clamp out-of-range pages; readers error-vs-empty; calendar seq; reply-cancel key"
+    },
+    "CHG-286": {
+      "id": "CHG-286",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-31T18:12:54+00:00",
+      "updated_at": "2026-08-31T18:12:54+00:00",
+      "touched_round": 206,
+      "commit": "dc973d7",
+      "title": "fix(frontend): series follow/progress reload; preview regains category+tags; archive page URL; account separators"
+    },
+    "CHG-287": {
+      "id": "CHG-287",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-31T18:12:54+00:00",
+      "updated_at": "2026-08-31T18:12:54+00:00",
+      "touched_round": 206,
+      "commit": "121622e",
+      "title": "feat(backend): coerce zone-marked publish_at to naive UTC"
+    },
+    "ISS-242": {
+      "id": "ISS-242",
+      "type": "issue",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-31T18:15:32+00:00",
+      "updated_at": "2026-08-31T18:15:32+00:00",
+      "touched_round": 206,
+      "severity": "high",
+      "title": "Multi-worker in-process caches serve stale posts/feeds/counters across workers",
+      "summary": "app/cache.py caches are module-level TTLCaches (per-process, no shared store). With --workers 2 (Dockerfile) writes invalidate only the handling worker, so public lists/RSS/counters can serve stale payloads for up to the TTL, alternating by worker. Data is safe in the DB; the UI/feed is inconsistent. Fix needs shared storage (Redis) or a version-stamp invalidation or a single worker."
+    },
+    "ISS-243": {
+      "id": "ISS-243",
+      "type": "issue",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-31T18:15:32+00:00",
+      "updated_at": "2026-08-31T18:15:32+00:00",
+      "touched_round": 206,
+      "severity": "medium",
+      "title": "Rate-limit buckets are per-process: 2 workers double every per-IP limit; restarts reset them",
+      "summary": "app/limiter.py uses in-memory buckets with no storage_uri; each worker drains its own bucket, so registration/login/comment/search limits are effectively doubled in the shipped 2-worker config and a worker restart empties its buckets. Needs shared storage (Redis) or a DB/file-backed limiter store."
+    },
+    "ISS-244": {
+      "id": "ISS-244",
+      "type": "issue",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-31T18:15:32+00:00",
+      "updated_at": "2026-08-31T18:15:32+00:00",
+      "touched_round": 206,
+      "severity": "medium",
+      "title": "X-Forwarded-For trust misconfiguration breaks per-client identity (spoofable or global-shared buckets)",
+      "summary": "TRUSTED_PROXIES=* trusts any peer: a direct client can spoof X-Forwarded-For to get a fresh rate-limit bucket and to mint unlimited comment flags / store a fake ip_address. With TRUSTED_PROXIES unset behind a reverse proxy, every user collapses into one shared bucket. Needs an explicit trusted-proxy list in production and per-IP identity that does not rely on a client-controlled header."
+    },
+    "TASK-242": {
+      "id": "TASK-242",
+      "type": "task",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-31T18:17:12+00:00",
+      "updated_at": "2026-08-31T18:17:12+00:00",
+      "touched_round": 206,
+      "category": "stability",
+      "severity": 0.8,
+      "title": "Shared/versioned cache store so multi-worker deployments never serve stale public payloads",
+      "description": "ISS-242: back app/cache.py TTLCaches with a shared store (Redis via cachetools.ext) or a DB-backed version stamp embedded in cache keys/ETags, so writes invalidate cross-worker. Blocked on deployment shape (Redis availability)."
+    },
+    "TASK-243": {
+      "id": "TASK-243",
+      "type": "task",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-31T18:17:12+00:00",
+      "updated_at": "2026-08-31T18:17:12+00:00",
+      "touched_round": 206,
+      "category": "security",
+      "severity": 0.7,
+      "title": "Shared rate-limit storage + production trusted-proxy config",
+      "description": "ISS-243/244: point the limiter at shared storage (Redis/file/DB) so per-IP buckets survive --workers 2 and restarts; require an explicit, non-* TRUSTED_PROXIES list in production and stop deriving per-IP identity (comment flags, stored ip_address) from a client-controlled header."
+    },
+    "TASK-244": {
+      "id": "TASK-244",
+      "type": "task",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-31T18:17:12+00:00",
+      "updated_at": "2026-08-31T18:17:12+00:00",
+      "touched_round": 206,
+      "category": "correctness",
+      "severity": 0.6,
+      "title": "Rate-limit + ETag hardening: limit public post-detail reads; ETag over the gzipped body",
+      "description": "ISS-245/246: POST detail + comments list have no limiter (the highest-hit public endpoints) while view/like/search are limited; the ETag is computed on the uncompressed body while GZip middleware serves compressed (RFC7232/304 encoding ambiguity for shared caches)."
+    },
+    "ISS-245": {
+      "id": "ISS-245",
+      "type": "issue",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-31T18:18:42+00:00",
+      "updated_at": "2026-08-31T18:18:42+00:00",
+      "touched_round": 206,
+      "severity": "low",
+      "title": "Public post-detail and comments-list reads are unlimited and uncached",
+      "summary": "GET /api/posts/{id} (a full joined query per request, never cached) and GET /api/comments/post/{id} carry no rate limit while view/like/search are limited — the highest-hit public endpoints are the unlimited ones (a5405f deep-dive). Consider RATE_LIMIT_READ + an ETagged post-detail cache."
+    },
+    "ISS-246": {
+      "id": "ISS-246",
+      "type": "issue",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-31T18:18:42+00:00",
+      "updated_at": "2026-08-31T18:18:42+00:00",
+      "touched_round": 206,
+      "severity": "low",
+      "title": "ETag computed on uncompressed body while GZip middleware serves compressed",
+      "summary": "conditional.py hashes the raw JSON body but main.py gzipped after; the 304 path omits Content-Encoding/Vary, so a shared cache keyed on the ETag can mismatch encodings. Compute the ETag after gzip or carry Content-Encoding/Vary on 304s."
+    },
+    "DEC-214": {
+      "id": "DEC-214",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-31T18:18:43+00:00",
+      "updated_at": "2026-08-31T18:18:43+00:00",
+      "touched_round": 206,
+      "title": "Defer multi-worker backend hardening (shared cache, shared rate-limit storage, XFF trust)",
+      "rationale": "The deep-dive surfaced three backend issues whose fixes need a shared store (Redis) or an ops config change: TASK-242 (cross-worker cache invalidation), TASK-243 (per-process rate-limit buckets + TRUSTED_PROXIES=* spoofing). The shipped docker-compose runs a single backend worker; CI/e2e run one; the dev host is low-traffic. None of the three causes data corruption — they are consistency/abuse-limit quality gaps that only bite multi-worker or internet-exposed topologies. Defer until a shared-store deployment is actually introduced; TASK-244 (limit public reads + ETag-encoding) is independent and can be taken anytime.",
+      "alternatives_rejected": "Fix now with a DB-backed cache/limiter (adds write load + latency to every read; Redis is not in the current dependency set); pin to a single worker in production (loses the intended --workers 2 for a small site that never needs it); set TRUSTED_PROXIES to a fixed IP list today (deployment-specific, unknown proxy IPs in the sandbox)."
     }
   },
   "edges": [
@@ -20591,6 +20876,174 @@
       "to": "COMP-001",
       "type": "located_in",
       "created_at": "2026-08-31T14:51:22+00:00"
+    },
+    {
+      "from": "CHG-282",
+      "to": "ISS-233",
+      "type": "resolves",
+      "created_at": "2026-08-31T18:14:09+00:00"
+    },
+    {
+      "from": "CHG-282",
+      "to": "ISS-234",
+      "type": "resolves",
+      "created_at": "2026-08-31T18:14:09+00:00"
+    },
+    {
+      "from": "CHG-283",
+      "to": "ISS-235",
+      "type": "resolves",
+      "created_at": "2026-08-31T18:14:09+00:00"
+    },
+    {
+      "from": "CHG-284",
+      "to": "ISS-236",
+      "type": "resolves",
+      "created_at": "2026-08-31T18:14:09+00:00"
+    },
+    {
+      "from": "CHG-287",
+      "to": "ISS-237",
+      "type": "resolves",
+      "created_at": "2026-08-31T18:14:09+00:00"
+    },
+    {
+      "from": "CHG-285",
+      "to": "ISS-238",
+      "type": "resolves",
+      "created_at": "2026-08-31T18:14:09+00:00"
+    },
+    {
+      "from": "CHG-285",
+      "to": "ISS-239",
+      "type": "resolves",
+      "created_at": "2026-08-31T18:14:09+00:00"
+    },
+    {
+      "from": "CHG-286",
+      "to": "ISS-240",
+      "type": "resolves",
+      "created_at": "2026-08-31T18:14:09+00:00"
+    },
+    {
+      "from": "CHG-286",
+      "to": "ISS-241",
+      "type": "resolves",
+      "created_at": "2026-08-31T18:14:10+00:00"
+    },
+    {
+      "from": "ISS-233",
+      "to": "COMP-002",
+      "type": "located_in",
+      "created_at": "2026-08-31T18:14:10+00:00"
+    },
+    {
+      "from": "ISS-234",
+      "to": "COMP-002",
+      "type": "located_in",
+      "created_at": "2026-08-31T18:14:10+00:00"
+    },
+    {
+      "from": "ISS-235",
+      "to": "COMP-002",
+      "type": "located_in",
+      "created_at": "2026-08-31T18:14:10+00:00"
+    },
+    {
+      "from": "ISS-236",
+      "to": "COMP-002",
+      "type": "located_in",
+      "created_at": "2026-08-31T18:14:10+00:00"
+    },
+    {
+      "from": "ISS-237",
+      "to": "COMP-002",
+      "type": "located_in",
+      "created_at": "2026-08-31T18:14:10+00:00"
+    },
+    {
+      "from": "ISS-238",
+      "to": "COMP-002",
+      "type": "located_in",
+      "created_at": "2026-08-31T18:14:10+00:00"
+    },
+    {
+      "from": "ISS-239",
+      "to": "COMP-002",
+      "type": "located_in",
+      "created_at": "2026-08-31T18:14:10+00:00"
+    },
+    {
+      "from": "ISS-240",
+      "to": "COMP-002",
+      "type": "located_in",
+      "created_at": "2026-08-31T18:14:10+00:00"
+    },
+    {
+      "from": "ISS-241",
+      "to": "COMP-002",
+      "type": "located_in",
+      "created_at": "2026-08-31T18:14:10+00:00"
+    },
+    {
+      "from": "TASK-242",
+      "to": "ISS-242",
+      "type": "addresses",
+      "created_at": "2026-08-31T18:18:42+00:00"
+    },
+    {
+      "from": "TASK-243",
+      "to": "ISS-243",
+      "type": "addresses",
+      "created_at": "2026-08-31T18:18:42+00:00"
+    },
+    {
+      "from": "TASK-243",
+      "to": "ISS-244",
+      "type": "addresses",
+      "created_at": "2026-08-31T18:18:42+00:00"
+    },
+    {
+      "from": "TASK-244",
+      "to": "ISS-245",
+      "type": "addresses",
+      "created_at": "2026-08-31T18:18:42+00:00"
+    },
+    {
+      "from": "TASK-244",
+      "to": "ISS-246",
+      "type": "addresses",
+      "created_at": "2026-08-31T18:18:42+00:00"
+    },
+    {
+      "from": "ISS-242",
+      "to": "COMP-001",
+      "type": "located_in",
+      "created_at": "2026-08-31T18:18:42+00:00"
+    },
+    {
+      "from": "ISS-243",
+      "to": "COMP-001",
+      "type": "located_in",
+      "created_at": "2026-08-31T18:18:42+00:00"
+    },
+    {
+      "from": "ISS-244",
+      "to": "COMP-001",
+      "type": "located_in",
+      "created_at": "2026-08-31T18:18:43+00:00"
+    },
+    {
+      "from": "ISS-245",
+      "to": "COMP-001",
+      "type": "located_in",
+      "created_at": "2026-08-31T18:18:43+00:00"
+    },
+    {
+      "from": "ISS-246",
+      "to": "COMP-001",
+      "type": "located_in",
+      "created_at": "2026-08-31T18:18:43+00:00"
     }
   ]
 }
