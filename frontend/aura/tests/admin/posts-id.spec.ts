@@ -847,7 +847,7 @@ describe("Admin Post Editor Page", () => {
 		it("does NOT confirm on leave when the form is untouched", async () => {
 			const wrapper = await freshGuard();
 			expect(typeof capturedRouteLeave).toBe("function");
-			const allowed = (capturedRouteLeave as () => boolean)();
+			const allowed = await (capturedRouteLeave as () => boolean | Promise<boolean>)();
 			expect(globalThis.confirm as ReturnType<typeof vi.fn>).not.toHaveBeenCalled();
 			expect(allowed).toBe(true);
 		});
@@ -860,12 +860,27 @@ describe("Admin Post Editor Page", () => {
 			await titleInput.setValue("Changed Title");
 			await flushPromises();
 
-			const decided = (capturedRouteLeave as () => boolean)();
-			await flushPromises();
+			const decided = await (capturedRouteLeave as () => boolean | Promise<boolean>)();
 			// Auto-save persists the edit instead of prompting to abandon it…
 			expect(globalThis.confirm).not.toHaveBeenCalled();
 			expect(mockCreateAdminPost).toHaveBeenCalled();
 			// …and navigation proceeds.
+			expect(decided).toBe(true);
+		});
+
+		it("confirms before leaving when the leave-flush fails (deep-dive finding)", async () => {
+			const wrapper = await freshGuard();
+			const titleInput = wrapper.find('input[type="text"]');
+			await titleInput.setValue("Changed Title");
+			await flushPromises();
+
+			// The flush now FAILS (e.g. network blip): the old fire-and-forget
+			// silently dropped the draft past the route change. A confirmation
+			// must surface the loss instead.
+			mockCreateAdminPost.mockRejectedValueOnce(new Error("offline"));
+			const decided = await (capturedRouteLeave as () => boolean | Promise<boolean>)();
+			expect(globalThis.confirm).toHaveBeenCalledWith("有未保存的修改，确定离开吗？");
+			// The stubbed confirm returns true → the operator chose to leave anyway.
 			expect(decided).toBe(true);
 		});
 	});

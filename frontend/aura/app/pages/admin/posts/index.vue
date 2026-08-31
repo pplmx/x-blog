@@ -29,35 +29,37 @@ const total = computed(() => data.value?.pagination?.total ?? 0);
 const totalPages = computed(() => Math.ceil(total.value / pageSize));
 
 const isDeleting = ref(false);
+const deleteError = ref<string | null>(null);
 const debounceTimer = ref<ReturnType<typeof setTimeout> | null>(null);
 
-watch(
-	queryParams,
-	() => {
-		refresh();
-	},
-	{ deep: true },
-);
-
+// NO deep watch on queryParams: searchQuery updates on every keystroke, so a
+// deep watcher would fire a fetch per keystroke AND the debounced onSearchInput
+// would fire a second one (double-fetch + table flicker on every key). Each
+// change path owns its own (single) refresh: debounced search, status change,
+// pagination, delete.
 function onSearchInput() {
 	if (debounceTimer.value) clearTimeout(debounceTimer.value);
 	debounceTimer.value = setTimeout(() => {
 		currentPage.value = 0;
-		refresh();
+		void refresh();
 	}, 300);
 }
 
 function onStatusChange() {
 	currentPage.value = 0;
-	refresh();
+	void refresh();
 }
 
 async function handleDelete(id: number) {
 	if (!confirm(t("admin.postsList.confirmDelete"))) return;
 	isDeleting.value = true;
+	deleteError.value = null;
 	try {
 		await deleteAdminPost(id);
 		await refresh();
+	} catch (e) {
+		// A silent failure looks like "nothing happened" — surface it.
+		deleteError.value = e instanceof Error ? e.message : t("admin.postsList.deleteFailed");
 	} finally {
 		isDeleting.value = false;
 	}
@@ -112,6 +114,10 @@ function statusDot(post: AdminPost): string {
       </NuxtLink>
     </div>
 
+    <div role="alert" v-if="deleteError" class="mb-4 px-4 py-3 rounded-xl border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20 text-sm text-red-600 dark:text-red-400">
+      {{ deleteError }}
+    </div>
+
     <div class="flex flex-col sm:flex-row gap-3 mb-4">
       <div class="relative flex-1">
         <Icon icon="lucide:search" class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
@@ -119,12 +125,14 @@ function statusDot(post: AdminPost): string {
           v-model="searchQuery"
           type="text"
           :placeholder="t('admin.postsList.searchPlaceholder')"
+          :aria-label="t('admin.postsList.searchPlaceholder')"
           class="search-input w-full pl-9 pr-4 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
           @input="onSearchInput"
         />
       </div>
       <select
         v-model="statusFilter"
+        :aria-label="t('admin.postsList.allStatus')"
         class="w-full sm:w-40 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
         @change="onStatusChange"
       >
@@ -135,7 +143,14 @@ function statusDot(post: AdminPost): string {
       </select>
     </div>
 
-    <div v-if="pending" class="text-center py-12">
+    <!-- In-flight refetch bar: keeps stale rows mounted while the list
+         refreshes (search/status/page) instead of wiping to a spinner. -->
+    <div v-if="pending && posts.length > 0" class="h-0.5 overflow-hidden rounded mb-4">
+      <div class="h-full w-full bg-blue-500/60 animate-pulse" />
+    </div>
+
+    <!-- Spinner only when there is no content at all (initial load). -->
+    <div v-if="pending && posts.length === 0" class="text-center py-12">
       <div class="inline-flex items-center gap-2 text-gray-500">
         <svg :aria-label="t('admin.postsList.loading')" class="animate-spin w-5 h-5" viewBox="0 0 24 24">
           <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none" />
@@ -146,7 +161,14 @@ function statusDot(post: AdminPost): string {
     </div>
 
     <div v-else-if="error" class="text-center py-12 text-red-500">
-      {{ error?.message || String(error) }}
+      <p class="mb-4">{{ error?.message || String(error) }}</p>
+      <button
+        type="button"
+        class="px-4 py-2 rounded-lg text-sm font-medium border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+        @click="() => refresh()"
+      >
+        {{ t("common.action.retry") }}
+      </button>
     </div>
 
     <div v-else-if="posts.length === 0" class="flex flex-col items-center justify-center py-16 bg-gradient-to-br from-gray-50 dark:from-gray-800/50 to-white dark:to-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800">
@@ -172,12 +194,12 @@ function statusDot(post: AdminPost): string {
         <table class="w-full">
           <thead>
             <tr class="bg-gradient-to-r from-gray-50 dark:from-gray-800 to-white dark:to-gray-950 border-b border-gray-100 dark:border-gray-800">
-              <th class="px-5 py-4 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">{{ t("admin.postsList.columns.title") }}</th>
-              <th class="px-5 py-4 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider hidden md:table-cell">{{ t("admin.postsList.columns.category") }}</th>
-              <th class="px-5 py-4 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">{{ t("admin.postsList.columns.status") }}</th>
-              <th class="px-5 py-4 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider hidden sm:table-cell">{{ t("admin.postsList.columns.views") }}</th>
-              <th class="px-5 py-4 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider hidden sm:table-cell">{{ t("admin.postsList.columns.date") }}</th>
-              <th class="px-5 py-4 text-right text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">{{ t("admin.postsList.columns.actions") }}</th>
+              <th scope="col" class="px-5 py-4 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">{{ t("admin.postsList.columns.title") }}</th>
+              <th scope="col" class="px-5 py-4 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider hidden md:table-cell">{{ t("admin.postsList.columns.category") }}</th>
+              <th scope="col" class="px-5 py-4 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">{{ t("admin.postsList.columns.status") }}</th>
+              <th scope="col" class="px-5 py-4 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider hidden sm:table-cell">{{ t("admin.postsList.columns.views") }}</th>
+              <th scope="col" class="px-5 py-4 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider hidden sm:table-cell">{{ t("admin.postsList.columns.date") }}</th>
+              <th scope="col" class="px-5 py-4 text-right text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">{{ t("admin.postsList.columns.actions") }}</th>
             </tr>
           </thead>
           <tbody class="divide-y divide-gray-50 dark:divide-gray-800">

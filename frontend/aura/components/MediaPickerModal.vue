@@ -22,7 +22,7 @@ const currentPage = ref(0);
 const apiPage = computed(() => currentPage.value + 1);
 // fetch lazily only when opened (server:false keeps SSR/CSR honest); refresh
 // on open so a brand-new upload appears immediately.
-const { data, pending, refresh } = await useAdminMedia(apiPage, props.pageSize);
+const { data, pending, error, refresh } = await useAdminMedia(apiPage, props.pageSize);
 const items = computed(() => data.value?.items ?? []);
 const totalPages = computed(() => data.value?.pagination?.total_pages ?? 0);
 
@@ -126,6 +126,18 @@ function goToPage(page: number) {
 
         <div class="flex-1 overflow-y-auto p-4">
           <p v-if="pending" class="py-12 text-center text-sm text-gray-500 dark:text-gray-400">{{ t("components.mediaPicker.loading") }}</p>
+          <!-- A failed fetch must not masquerade as "no media" — surface it
+               with a retry (deep-dive finding). -->
+          <div v-else-if="error" class="py-12 text-center" role="alert">
+            <p class="text-sm text-red-600 dark:text-red-400 mb-3">{{ t("components.mediaPicker.loadFailed") }}</p>
+            <button
+              type="button"
+              class="px-3 py-1.5 rounded-lg text-xs font-medium border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+              @click="refresh()"
+            >
+              {{ t("common.action.retry") }}
+            </button>
+          </div>
           <p v-else-if="items.length === 0" class="py-12 text-center text-sm text-gray-500 dark:text-gray-400">
             {{ t("components.mediaPicker.empty") }}
           </p>

@@ -63,6 +63,10 @@
 		"notifying": "Notifying…",
 		"notifySent": "Subscribers notified",
 		"notifyFailed": "Failed to notify subscribers. Try again later.",
-		"notifyFallbackTitle": "New post published"
+		"notifyFallbackTitle": "New post published",
+		"confirmDiscard": "You have unsaved changes. Leave anyway?",
+		"taxonomyLoadFailed": "Couldn't load categories/tags/series. The pickers may be incomplete.",
+		"scheduledBadge": "Scheduled",
+		"notifyRequiresSlug": "Save the post first to generate a slug, then notify subscribers."
 	}
 }

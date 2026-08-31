@@ -58,6 +58,10 @@ const autoSaveError = ref<string | null>(null);
 let autosaveTimer: ReturnType<typeof setTimeout> | null = null;
 let autosaveInFlight = false;
 let autosaveQueued = false;
+/** True while a route-leave flush is running: the "point the address bar at
+ * the created draft" redirect must then be skipped — we're already navigating
+ * somewhere else, and calling navigateTo mid-leave fights the pending nav. */
+let isLeavingRoute = false;
 /** Id of the draft created from a /admin/posts/new session (postId is null). */
 let autosavedId: number | null = null;
 
@@ -84,12 +88,23 @@ const tags = ref<Array<{ id: number; name: string }>>([]);
 const series = ref<Array<{ id: number; title: string; slug: string }>>([]);
 const existingPost = ref<AdminPostDetail | null>(null);
 
-const { data: catsData } = await useAdminCategories();
-const { data: tagsData } = await useAdminTags();
+const { data: catsData, error: catsError, refresh: refreshCategories } = await useAdminCategories();
+const { data: tagsData, error: tagsError, refresh: refreshTags } = await useAdminTags();
 // Series list for the membership dropdown (DEC-056/TASK-123). The admin keeps
 // the option to create series on the /admin/series page; here a post is simply
 // assigned into an existing series with a 0-based position.
-const { data: seriesData } = await useAdminSeries();
+const { data: seriesData, error: seriesError, refresh: refreshSeries } = await useAdminSeries();
+
+// A failed taxonomy fetch must NOT silently leave empty pickers (the author
+// would assign nothing believing the lists were empty) — surface it + retry.
+const taxonomyFailed = computed(
+	() => !!catsError.value || !!tagsError.value || !!seriesError.value,
+);
+function retryTaxonomy() {
+	void refreshCategories();
+	void refreshTags();
+	void refreshSeries();
+}
 
 watch(
 	() => catsData.value,
@@ -284,8 +299,10 @@ async function runAutosave() {
 			// Point the address bar at the newly created draft so a manual
 			// refresh doesn't re-create a second draft — but only when the
 			// form still matches what we just saved, so a remount can't drop
-			// keystrokes that arrived while the request was in flight.
-			if (snapshot() === savedSnapshot) {
+			// keystrokes that arrived while the request was in flight, and
+			// never during a route-leave flush (we're already navigating away;
+			// redirecting mid-leave would fight the pending navigation).
+			if (snapshot() === savedSnapshot && !isLeavingRoute) {
 				navigateTo(`/admin/posts/${createdId}`, { replace: true });
 			}
 		}
@@ -317,10 +334,12 @@ function onBeforeUnload(e: BeforeUnloadEvent) {
 }
 
 onMounted(() => {
-	if (postId) return; // existing posts capture their snapshot in the watch below
-	// For a new post, snapshot the empty form once mounted so the first edit
-	// flips isDirty.
-	loadedSnapshot = snapshot();
+	// The native close/refresh guard MUST apply to every post, existing or new:
+	// hard-refreshing an edited, previously-saved draft is the highest-value
+	// save path and was previously unprotected (the guard only registered for
+	// new posts — deep-dive finding). Existing posts get their snapshot in the
+	// postData watch; new posts snapshot the empty form here.
+	if (!postId) loadedSnapshot = snapshot();
 	window.addEventListener("beforeunload", onBeforeUnload);
 });
 
@@ -329,13 +348,23 @@ onBeforeUnmount(() => {
 	window.removeEventListener("beforeunload", onBeforeUnload);
 });
 
-onBeforeRouteLeave(() => {
-	// Auto-save first: the dispatched request keeps running during the SPA
-	// route change, so edits are persisted instead of prompting to abandon
-	// them. Only a full-page unload (handled above) keeps the native guard.
+onBeforeRouteLeave(async () => {
+	// Cancel explicitly discards in-memory edits: no flush, no prompt.
+	if (discardRequested.value) return true;
+	if (!isDirty.value) return true;
+	// Otherwise persist before leaving and AWAIT the result — a flush that fails
+	// (network blip / 422) must not silently drop the draft past the route
+	// change. Only when the save genuinely did not land do we ask.
+	isLeavingRoute = true;
+	if (autosaveTimer) clearTimeout(autosaveTimer);
+	await runAutosave();
 	if (isDirty.value) {
-		if (autosaveTimer) clearTimeout(autosaveTimer);
-		void runAutosave();
+		// The flush didn't clear dirty (it failed or couldn't run): surface the
+		// loss the fire-and-forget version hid. Fall back to allowing the
+		// departure when confirm is unavailable (non-browser / test harness).
+		return typeof window !== "undefined" && typeof window.confirm === "function"
+			? window.confirm(t("admin.postEdit.confirmDiscard"))
+			: true;
 	}
 	return true;
 });
@@ -374,14 +403,33 @@ async function handleSubmit(e: Event) {
 	}
 }
 
+// Cancel abandons in-memory edits (route-leave skips the flush when this is
+// set), so a mis-clicked save never silently persists accidental changes.
+const discardRequested = ref(false);
 function handleCancel() {
+	discardRequested.value = true;
 	navigateTo("/admin/posts", { replace: true });
 }
 
+// A published+future publish_at post is "scheduled", matching the list page's
+// Scheduled chip — don't let the editor's "Published on" text contradict it.
+const isScheduledFuture = computed(() => {
+	if (!formData.value.published || !formData.value.publish_at) return false;
+	const d = new Date(formData.value.publish_at);
+	return !Number.isNaN(d.getTime()) && d.getTime() > Date.now();
+});
+
 /** Broadcast a Web Push notification about this published post (DEC-055). */
 async function handleNotify() {
-	if (!formData.value.published || !formData.value.slug) return;
+	if (!formData.value.published) return;
 	notifyMessage.value = null;
+	// A published post without a slug can't be deep-linked; say so instead of
+	// silently no-oping (deep-dive finding).
+	if (!formData.value.slug) {
+		notifyFailed.value = true;
+		notifyMessage.value = t("admin.postEdit.notifyRequiresSlug");
+		return;
+	}
 	isNotifying.value = true;
 	try {
 		await notifyPushSubscribers({
@@ -593,14 +641,39 @@ function handleFileInput(e: Event) {
     </div>
 
     <div v-else-if="!isNew && postError" class="text-center py-12 text-red-500">
-      {{ postError?.message || t('admin.postEdit.loadErrorFallback') }}
+      <p class="mb-4">{{ postError?.message || t('admin.postEdit.loadErrorFallback') }}</p>
+      <button
+        type="button"
+        class="px-4 py-2 rounded-lg text-sm font-medium border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+        @click="() => postRefresh()"
+      >
+        {{ t('common.action.retry') }}
+      </button>
     </div>
 
     <form v-else @submit.prevent="handleSubmit" class="space-y-6">
+      <!-- Taxonomy load failure: never let the pickers render as empty lists
+           when the fetch failed — surface it with a retry (deep-dive finding). -->
+      <div
+        v-if="taxonomyFailed"
+        role="alert"
+        class="flex items-center justify-between gap-3 px-4 py-2.5 rounded-xl border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20 text-sm text-red-600 dark:text-red-400"
+      >
+        <span>{{ t('admin.postEdit.taxonomyLoadFailed') }}</span>
+        <button
+          type="button"
+          class="shrink-0 text-xs font-medium text-red-600 dark:text-red-400 hover:underline"
+          @click="retryTaxonomy"
+        >
+          {{ t('common.action.retry') }}
+        </button>
+      </div>
+
       <!-- Auto-save status indicator (RIL TASK-190) -->
       <div
         v-if="autoSaveStatus !== 'idle'"
         data-testid="autosave-status"
+        :role="autoSaveStatus === 'error' ? 'alert' : 'status'"
         class="flex items-center gap-2 text-sm px-4 py-2.5 rounded-xl border"
         :class="autoSaveStatus === 'saving'
           ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800 text-blue-600 dark:text-blue-300'
@@ -617,11 +690,12 @@ function handleFileInput(e: Event) {
         <template v-else-if="autoSaveStatus === 'saved'">{{ t('admin.postEdit.autoSaved') }}</template>
         <template v-else>{{ autoSaveError || t('admin.postEdit.autoSaveError') }}</template>
       </div>
-      <div v-if="submitError" class="p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl text-red-600 dark:text-red-400">
+      <div v-if="submitError" role="alert" class="p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl text-red-600 dark:text-red-400">
         {{ submitError }}
       </div>
       <div
         v-if="notifyMessage"
+        :role="notifyFailed ? 'alert' : 'status'"
         :class="notifyFailed
           ? 'p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl text-red-600 dark:text-red-400'
           : 'p-4 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-xl text-green-700 dark:text-green-300'"
@@ -647,13 +721,14 @@ function handleFileInput(e: Event) {
           <div
             v-if="revisionMessage"
             data-testid="revision-message"
+            :role="revisionFailed ? 'alert' : 'status'"
             :class="revisionFailed
               ? 'text-sm text-red-600 dark:text-red-400'
               : 'text-sm text-green-600 dark:text-green-400'"
           >
             {{ revisionMessage }}
           </div>
-          <div v-if="revisionsError" class="text-sm text-red-600 dark:text-red-400">{{ revisionsError }}</div>
+          <div v-if="revisionsError" role="alert" class="text-sm text-red-600 dark:text-red-400">{{ revisionsError }}</div>
           <div v-if="revisionsLoading" class="flex items-center gap-2 text-sm text-gray-500">
             <Icon icon="lucide:loader-2" class="w-4 h-4 animate-spin" />
             {{ t("admin.postEdit.revisionLoading") }}
@@ -691,11 +766,12 @@ function handleFileInput(e: Event) {
 
       <div class="bg-gradient-to-br from-gray-50 dark:from-gray-800/50 to-white dark:to-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl p-5 space-y-5">
         <div>
-          <label class="flex items-center gap-2 text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+          <label for="post-title" class="flex items-center gap-2 text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
             <Icon icon="lucide:file-text" class="w-4 h-4 text-blue-500" />
             {{ t("admin.postEdit.title") }} <span class="text-red-500">*</span>
           </label>
           <input
+            id="post-title"
             v-model="formData.title"
             type="text"
             required
@@ -729,11 +805,12 @@ function handleFileInput(e: Event) {
         </div>
 
         <div>
-          <label class="flex items-center gap-2 text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+          <label for="post-excerpt" class="flex items-center gap-2 text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
             <Icon icon="lucide:align-left" class="w-4 h-4 text-gray-400" />
             {{ t("admin.postEdit.excerpt") }}
           </label>
           <textarea
+            id="post-excerpt"
             v-model="formData.excerpt"
             rows="2"
             :placeholder="t('admin.postEdit.excerptPlaceholder')"
@@ -821,7 +898,7 @@ function handleFileInput(e: Event) {
 
       <div class="bg-gradient-to-br from-gray-50 dark:from-gray-800/50 to-white dark:to-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl p-5">
         <div class="flex items-center justify-between mb-3">
-          <label class="flex items-center gap-2 text-sm font-semibold text-gray-700 dark:text-gray-300">
+          <label for="post-content" class="flex items-center gap-2 text-sm font-semibold text-gray-700 dark:text-gray-300">
             <Icon icon="lucide:edit-3" class="w-4 h-4 text-blue-500" />
             {{ t("admin.postEdit.contentLabel") }} <span class="text-red-500">*</span>
           </label>
@@ -839,16 +916,16 @@ function handleFileInput(e: Event) {
         </div>
 
         <div class="flex items-center gap-1 mb-3 flex-wrap">
-          <button type="button" @click="wrapSelection('**', '**')" :title="t('admin.postEdit.toolbar.bold')" class="toolbar-btn">
+          <button type="button" @click="wrapSelection('**', '**')" :title="t('admin.postEdit.toolbar.bold')" :aria-label="t('admin.postEdit.toolbar.bold')" class="toolbar-btn">
             <b>B</b>
           </button>
-          <button type="button" @click="wrapSelection('*', '*')" :title="t('admin.postEdit.toolbar.italic')" class="toolbar-btn italic">
+          <button type="button" @click="wrapSelection('*', '*')" :title="t('admin.postEdit.toolbar.italic')" :aria-label="t('admin.postEdit.toolbar.italic')" class="toolbar-btn italic">
             <i>I</i>
           </button>
           <span class="w-px h-5 bg-gray-200 dark:bg-gray-700 mx-1" />
-          <button type="button" @click="insertHeading(1)" :title="t('admin.postEdit.toolbar.heading1')" class="toolbar-btn">H1</button>
-          <button type="button" @click="insertHeading(2)" :title="t('admin.postEdit.toolbar.heading2')" class="toolbar-btn">H2</button>
-          <button type="button" @click="insertHeading(3)" :title="t('admin.postEdit.toolbar.heading3')" class="toolbar-btn">H3</button>
+          <button type="button" @click="insertHeading(1)" :title="t('admin.postEdit.toolbar.heading1')" :aria-label="t('admin.postEdit.toolbar.heading1')" class="toolbar-btn">H1</button>
+          <button type="button" @click="insertHeading(2)" :title="t('admin.postEdit.toolbar.heading2')" :aria-label="t('admin.postEdit.toolbar.heading2')" class="toolbar-btn">H2</button>
+          <button type="button" @click="insertHeading(3)" :title="t('admin.postEdit.toolbar.heading3')" :aria-label="t('admin.postEdit.toolbar.heading3')" class="toolbar-btn">H3</button>
           <span class="w-px h-5 bg-gray-200 dark:bg-gray-700 mx-1" />
           <button type="button" @click="insertLink()" :title="t('admin.postEdit.toolbar.link')" :aria-label="t('admin.postEdit.toolbar.link')" class="toolbar-btn">
             <Icon icon="lucide:link" class="w-3.5 h-3.5" />
@@ -870,6 +947,7 @@ function handleFileInput(e: Event) {
         >
           <div v-if="showPreview" class="grid grid-cols-2 gap-4">
             <textarea
+              id="post-content"
               ref="textareaRef"
               v-model="formData.content"
               rows="15"
@@ -891,6 +969,7 @@ function handleFileInput(e: Event) {
           </div>
           <textarea
             v-else
+            id="post-content"
             ref="textareaRef"
             v-model="formData.content"
             rows="15"
@@ -910,6 +989,7 @@ function handleFileInput(e: Event) {
           </div>
           <div
             v-if="uploadError"
+            role="alert"
             class="mt-2 text-xs text-red-500"
           >
             {{ uploadError }}
@@ -932,6 +1012,14 @@ function handleFileInput(e: Event) {
           <label for="published" class="cursor-pointer">
             <span class="text-sm font-medium text-gray-700 dark:text-gray-300">
               {{ formData.published ? t('admin.postEdit.publishedOn') : t('admin.postEdit.saveAsDraft') }}
+            </span>
+            <!-- A published post with a future publish_at is scheduled — mirror
+                 the list page's Scheduled chip so the two surfaces agree. -->
+            <span
+              v-if="isScheduledFuture"
+              class="ml-2 text-xs px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300"
+            >
+              {{ t('admin.postEdit.scheduledBadge') }}
             </span>
           </label>
         </div>
@@ -989,6 +1077,7 @@ function handleFileInput(e: Event) {
             type="button"
             class="shrink-0 px-2.5 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
             :title="t('admin.postEdit.toolbar.coverFromLibrary')"
+            :aria-label="t('admin.postEdit.toolbar.coverFromLibrary')"
             @click="showCoverPicker = true"
           >
             <Icon icon="lucide:images" class="w-4 h-4" />
