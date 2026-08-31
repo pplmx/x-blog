@@ -62,8 +62,8 @@
       type="button"
       @click="handleCopyLink"
       class="p-2 rounded-full bg-gray-50 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-      :title="t('components.share.copyLink')"
-      :aria-label="t('components.share.copyLink')"
+      :title="copied ? t('components.share.linkCopied') : (copyFailed ? t('components.share.copyFailed') : t('components.share.copyLink'))"
+      :aria-label="copied ? t('components.share.linkCopied') : (copyFailed ? t('components.share.copyFailed') : t('components.share.copyLink'))"
     >
       <Icon
         v-if="copied"
@@ -71,11 +71,28 @@
         class="w-5 h-5 text-green-600"
       />
       <Icon
+        v-else-if="copyFailed"
+        icon="lucide:x"
+        class="w-5 h-5 text-red-500"
+      />
+      <Icon
         v-else
         icon="lucide:link-2"
         class="w-5 h-5"
       />
     </button>
+
+    <!-- Live region: screen-reader users hear the clipboard outcome (success
+         and failure), not just a silent icon swap. -->
+    <span class="sr-only" role="status" aria-live="polite">
+      {{
+        copied
+          ? t('components.share.linkCopied')
+          : copyFailed
+            ? t('components.share.copyFailed')
+            : ''
+      }}
+    </span>
   </div>
 </template>
 
@@ -92,6 +109,17 @@ const props = defineProps<Props>();
 const { t } = useLang();
 
 const copied = ref(false);
+const copyFailed = ref(false);
+let copyTimer: ReturnType<typeof setTimeout> | undefined;
+function flashCopy(ok: boolean) {
+	copied.value = ok;
+	copyFailed.value = !ok;
+	if (copyTimer) clearTimeout(copyTimer);
+	copyTimer = setTimeout(() => {
+		copied.value = false;
+		copyFailed.value = false;
+	}, 2000);
+}
 
 const currentUrl = computed(
 	() => props.url || (typeof window === "undefined" ? "" : window.location.href),
@@ -138,12 +166,11 @@ function shareToLinkedIn() {
 async function handleCopyLink() {
 	try {
 		await navigator.clipboard.writeText(currentUrl.value);
-		copied.value = true;
-		setTimeout(() => {
-			copied.value = false;
-		}, 2000);
-	} catch (e) {
-		console.error("Failed to copy link:", e);
+		flashCopy(true);
+	} catch {
+		// No clipboard permission (non-secure context / denied): never fail
+		// silently — flip the icon to a red X and announce the outcome.
+		flashCopy(false);
 	}
 }
 </script>

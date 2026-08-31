@@ -7,7 +7,7 @@ import { useSeo } from "~~/composables/useSeo";
 
 const { t, locale } = useLang();
 const { bookmarks, bookmarkCount } = useBookmarks();
-const { remove, clearAll, mergeLocalToCloud, syncing } = useBookmarkSync();
+const { add, remove, clearAll, mergeLocalToCloud, syncing } = useBookmarkSync();
 const {
 	folders,
 	load: loadFolders,
@@ -38,6 +38,27 @@ function handleClearAll() {
 		// only cleared local storage and the next cloud merge resurrected rows.
 		void clearAll();
 	}
+}
+
+// One-click row removal mirrors straight to the cloud — a mis-click must not be
+// unrecoverable, so keep the removed bookmark and offer a short Undo inline
+// (differs from Clear-all / folder-delete, which confirm up front).
+const undoItem = ref<Bookmark | null>(null);
+let undoClearTimer: ReturnType<typeof setTimeout> | undefined;
+function handleRemove(bookmark: Bookmark) {
+	remove(bookmark.id);
+	undoItem.value = bookmark;
+	if (undoClearTimer) clearTimeout(undoClearTimer);
+	undoClearTimer = setTimeout(() => {
+		undoItem.value = null;
+	}, 6000);
+}
+function undoRemove() {
+	if (!undoItem.value) return;
+	add(undoItem.value);
+	if (undoClearTimer) clearTimeout(undoClearTimer);
+	undoClearTimer = undefined;
+	undoItem.value = null;
 }
 
 // When a signed-in reader opens the page, reconcile with the cloud: push any
@@ -166,6 +187,22 @@ async function handleAssign(bookmark: Bookmark, raw: string) {
       {{ t('bookmarks.assignFailed') }}
     </p>
 
+    <!-- Removal undo (single bookmark remove is one-click + clouds immediately) -->
+    <div
+      v-if="undoItem"
+      class="mb-4 flex items-center justify-between gap-3 rounded-xl border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-950/40 px-4 py-3 text-sm text-blue-700 dark:text-blue-300"
+      role="status"
+    >
+      <span class="min-w-0 truncate">{{ t('bookmarks.removedToast', { title: undoItem.title }) }}</span>
+      <button
+        type="button"
+        class="shrink-0 font-medium text-blue-700 dark:text-blue-300 hover:underline"
+        @click="undoRemove"
+      >
+        {{ t('bookmarks.undo') }}
+      </button>
+    </div>
+
     <!-- Bookmark search (DEC-124, TASK-174) -->
     <div v-if="bookmarkCount > 0" class="mb-6">
       <div class="relative max-w-md">
@@ -174,6 +211,7 @@ async function handleAssign(bookmark: Bookmark, raw: string) {
           v-model="searchQuery"
           type="search"
           :placeholder="t('bookmarks.searchPlaceholder')"
+          :aria-label="t('bookmarks.searchPlaceholder')"
           class="w-full pl-9 pr-9 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-transparent text-sm text-gray-700 dark:text-gray-200 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/40"
         />
         <button
@@ -215,11 +253,12 @@ async function handleAssign(bookmark: Bookmark, raw: string) {
         <button
           v-if="folders.length"
           type="button"
+          :aria-expanded="showManage"
           class="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl text-sm font-medium text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
           @click="showManage = !showManage"
         >
-          <Icon icon="lucide:settings-2" class="w-4 h-4" />
-          {{ t('bookmarks.manageFolders') }}
+          <Icon :icon="showManage ? 'lucide:x' : 'lucide:settings-2'" class="w-4 h-4" />
+          {{ t(showManage ? 'bookmarks.closeManage' : 'bookmarks.manageFolders') }}
         </button>
       </div>
 
@@ -355,7 +394,7 @@ async function handleAssign(bookmark: Bookmark, raw: string) {
           <!-- Remove button (aria-label, not just a title tooltip, ISS-137) -->
           <button
             type="button"
-            @click.stop="remove(bookmark.id)"
+            @click.stop="handleRemove(bookmark)"
             :title="t('bookmarks.remove')"
             :aria-label="t('bookmarks.remove')"
             class="shrink-0 p-2 text-gray-400 hover:text-red-500 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-xl transition-colors"

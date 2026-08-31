@@ -20,7 +20,7 @@ A modern full-stack blog application built with FastAPI + Nuxt
 - 🎨 **Beautiful UI** - Clean design with Tailwind CSS v4
 - 📱 **Responsive** - Mobile-friendly responsive layout
 - 🔒 **Admin Panel** - Built-in admin dashboard for content management
-- 🧪 **Well Tested** - 2500+ tests (1243 backend + 1296 Nuxt), 93.5% backend coverage
+- 🧪 **Well Tested** - 2500+ tests (1243 backend + 1297 Nuxt), 93.5% backend coverage
 - ✅ **Type Safe** - Full TypeScript support + Pydantic validation
 - 🔍 **Full-text Search** - Post search functionality
 - 🌙 **Dark Mode** - System preference aware dark mode
@@ -357,7 +357,7 @@ The PostgreSQL test suite includes dedicated connection validation tests (`tests
 **Test Statistics:**
 
 - Backend: 1243 tests (pytest + pytest-xdist), 93.5% coverage
-- Nuxt (frontend): 1296 tests (Vitest)
+- Nuxt (frontend): 1297 tests (Vitest)
 - **Total: 2523 tests, 0 failures**
 
 ## 🤝 Contributing

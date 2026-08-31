@@ -204,11 +204,13 @@ describe("My comments page", () => {
 	});
 
 	describe("filter + pagination (DEC-102, TASK-163)", () => {
-		it("renders the four status filter tabs", async () => {
+		it("renders the four status filter buttons", async () => {
 			isAuthenticated.value = true;
 			mockData.value = { items: [makeComment()], total: 1 };
 			const wrapper = await mountPage();
-			const tabs = wrapper.findAll('[role="tab"]');
+			// The four filters use aria-pressed (mutually exclusive buttons), not
+			// a fake role="tab" that would imply unsupported arrow-key navigation.
+			const tabs = wrapper.findAll("[aria-pressed]");
 			expect(tabs.map((t) => t.text())).toEqual(["全部", "待审核", "已通过", "未通过"]);
 		});
 
@@ -218,7 +220,7 @@ describe("My comments page", () => {
 			mockFetchMyComments.mockClear();
 			const wrapper = await mountPage();
 			// Value "approved" maps to the "已通过" tab (third), via setStatus.
-			const tabs = wrapper.findAll('[role="tab"]');
+			const tabs = wrapper.findAll("[aria-pressed]");
 			expect(mockFetchMyComments).toHaveBeenLastCalledWith("all", 1, 20);
 			await tabs[2].trigger("click");
 			await flushPromises();

@@ -148,18 +148,19 @@ function formatDate(dateStr: string): string {
       </div>
     </div>
 
-    <!-- Status filter tabs (DEC-102, TASK-163) -->
+    <!-- Status filter buttons (DEC-102, TASK-163). These are mutually
+         exclusive filter buttons, not a roving-tabindex tablist — plain
+         buttons with aria-pressed is the honest semantics (a fake role="tab"
+         promised arrow-key navigation the buttons don't implement). -->
     <div
       v-if="isAuthenticated && !loading"
       class="flex items-center gap-2 mb-6 flex-wrap"
-      role="tablist"
     >
       <button
         v-for="status in (['all', 'pending', 'approved', 'rejected'] as const)"
         :key="status"
         type="button"
-        role="tab"
-        :aria-selected="statusFilter === status"
+        :aria-pressed="statusFilter === status"
         :class="[
           'px-3 py-1 rounded-full text-sm transition-colors',
           statusFilter === status

@@ -481,7 +481,9 @@ function shortEndpoint(endpoint: string): string {
         <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
           {{ t('account.profile.title') }}
         </h2>
-        <div class="flex flex-col gap-4">
+        <!-- A real <form> so Enter in the display-name field saves (was a bare
+             div — Enter did nothing and the form relied on mouse-only buttons). -->
+        <form class="flex flex-col gap-4" @submit.prevent="saveProfileName">
           <label class="flex flex-col gap-1.5 text-sm">
             <span class="text-gray-600 dark:text-gray-400">{{ t('account.profile.displayNameLabel') }}</span>
             <input
@@ -494,10 +496,9 @@ function shortEndpoint(endpoint: string): string {
           <span class="text-xs text-gray-400">{{ t('account.profile.emailNote') }}：{{ reader?.email }}</span>
           <div class="flex items-center gap-3">
             <button
-              type="button"
+              type="submit"
               :disabled="savingProfile"
               class="px-4 py-2 rounded-lg text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 transition-colors disabled:opacity-50"
-              @click="saveProfileName"
             >
               {{ t('account.profile.save') }}
             </button>
@@ -508,7 +509,7 @@ function shortEndpoint(endpoint: string): string {
               {{ t('account.profile.saveFailed') }}
             </span>
           </div>
-        </div>
+        </form>
       </section>
 
       <!-- Password -->
@@ -516,7 +517,7 @@ function shortEndpoint(endpoint: string): string {
         <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
           {{ t('account.password.title') }}
         </h2>
-        <div class="flex flex-col gap-4 max-w-sm">
+        <form class="flex flex-col gap-4 max-w-sm" @submit.prevent="submitPassword">
           <label class="flex flex-col gap-1.5 text-sm">
             <span class="text-gray-600 dark:text-gray-400">{{ t('account.password.currentLabel') }}</span>
             <input
@@ -547,10 +548,9 @@ function shortEndpoint(endpoint: string): string {
           </label>
           <div class="flex items-center gap-3">
             <button
-              type="button"
+              type="submit"
               :disabled="passwordState === 'busy'"
               class="px-4 py-2 rounded-lg text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 transition-colors disabled:opacity-50"
-              @click="submitPassword"
             >
               {{ t('account.password.change') }}
             </button>
@@ -574,7 +574,7 @@ function shortEndpoint(endpoint: string): string {
             v-if="passwordState === 'failed'"
             class="text-sm text-red-500 dark:text-red-400"
           >{{ t('account.password.failed') }}</p>
-        </div>
+        </form>
       </section>
 
       <!-- Push devices -->
@@ -920,7 +920,7 @@ function shortEndpoint(endpoint: string): string {
         </h2>
         <p class="text-xs text-gray-400 mb-4">{{ t('account.deleteAccount.description') }}</p>
 
-        <div class="flex flex-col sm:flex-row sm:items-end gap-3">
+        <form class="flex flex-col sm:flex-row sm:items-end gap-3" @submit.prevent="deleteAccount">
           <label class="flex-1 min-w-0">
             <span class="text-sm text-gray-600 dark:text-gray-400">{{ t('account.deleteAccount.passwordLabel') }}</span>
             <input
@@ -931,14 +931,13 @@ function shortEndpoint(endpoint: string): string {
             />
           </label>
           <button
-            type="button"
+            type="submit"
             :disabled="deletingAccount || !deletePassword"
             class="shrink-0 px-4 py-2 rounded-lg text-sm font-medium text-white bg-red-600 hover:bg-red-700 disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
-            @click="deleteAccount"
           >
             {{ t('account.deleteAccount.delete') }}
           </button>
-        </div>
+        </form>
         <p
           v-if="deleteError?.code === 'wrong'"
           class="mt-2 text-sm text-red-500 dark:text-red-400"

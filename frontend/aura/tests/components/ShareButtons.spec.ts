@@ -276,7 +276,7 @@ describe("ShareButtons", () => {
 	});
 
 	describe("Copy link failure", () => {
-		it("swallows clipboard errors without throwing", async () => {
+		it("surfaces a visible failure (not a silent console.error) and never throws", async () => {
 			clipboardSpy.mockRejectedValueOnce(new Error("clipboard unavailable"));
 			const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
 			const wrapper = mountShareButtons();
@@ -284,7 +284,12 @@ describe("ShareButtons", () => {
 			const copyButton = buttons[buttons.length - 1];
 
 			await expect(copyButton.trigger("click")).resolves.not.toThrow();
-			expect(consoleSpy).toHaveBeenCalled();
+			// No console.error — the outcome is reported in the UI instead.
+			expect(consoleSpy).not.toHaveBeenCalled();
+			// The copy button flips to a failure state (x icon, failure label).
+			expect(copyButton.attributes("aria-label")).toBe("复制链接失败");
+			// The live region announces the failure to screen readers.
+			expect(wrapper.find('[role="status"]').text()).toContain("复制链接失败");
 			consoleSpy.mockRestore();
 		});
 	});

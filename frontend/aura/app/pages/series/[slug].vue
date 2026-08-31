@@ -15,7 +15,15 @@ const { t, locale } = useLang();
 const route = useRoute();
 // Reactive getter so useFetch refetches when the slug changes via SPA
 // navigation between series (mirrors the posts/[slug] pattern, TASK-090).
-const { data: series, pending, error } = await useSeriesBySlug(() => route.params.slug as string);
+const {
+	data: series,
+	pending,
+	error,
+	refresh: refreshSeries,
+} = await useSeriesBySlug(() => route.params.slug as string);
+function retryLoad() {
+	void refreshSeries();
+}
 
 useSeo(() => ({
 	title: series.value?.title ? `${series.value.title} — ${t("series.all")}` : t("series.all"),
@@ -140,7 +148,14 @@ async function toggleNotify() {
 
     <div v-else-if="error" class="text-center py-20 text-gray-500">
       <Icon icon="lucide:alert-circle" class="w-12 h-12 mx-auto mb-4 text-gray-300" />
-      <p>{{ t('common.state.loadFailed') }}</p>
+      <p class="mb-4">{{ t('common.state.loadFailed') }}</p>
+      <button
+        type="button"
+        class="px-4 py-2 rounded-lg text-sm font-medium border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+        @click="retryLoad"
+      >
+        {{ t('common.action.retry') }}
+      </button>
     </div>
 
     <div v-else-if="!series" class="text-center py-20 text-gray-500">

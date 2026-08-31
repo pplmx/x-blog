@@ -174,6 +174,7 @@
               <textarea
                 v-model="editContent"
                 rows="3"
+                :aria-label="t('components.commentList.editLabel')"
                 class="w-full rounded border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm text-gray-700 dark:text-gray-300 p-2"
               ></textarea>
               <div class="flex gap-2">
@@ -308,6 +309,7 @@
               <textarea
                 v-model="editContent"
                 rows="3"
+                :aria-label="t('components.commentList.editLabel')"
                 class="w-full rounded border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm text-gray-700 dark:text-gray-300 p-2"
               ></textarea>
               <div class="flex gap-2">
@@ -342,6 +344,7 @@
         type="button"
         v-for="page in visiblePages"
         :key="page"
+        :aria-current="page === currentPage ? 'page' : undefined"
         @click="loadPage(page)"
         :class="[
           'px-3 py-1 rounded text-sm',

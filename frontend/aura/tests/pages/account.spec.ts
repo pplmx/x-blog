@@ -205,7 +205,9 @@ describe("Account settings page", () => {
 
 		const input = wrapper.get("input[type='text']");
 		await input.setValue("NewName");
-		await wrapper.get("button").trigger("click"); // save
+		// Profile + password + delete sections are real <form>s (submit-on-Enter);
+		// submit the first form instead of clicking the now-type=submit button.
+		await wrapper.get("form").trigger("submit");
 		await flushPromises();
 
 		expect(mockUpdateMyProfile).toHaveBeenCalledWith({ display_name: "NewName" });
@@ -224,7 +226,7 @@ describe("Account settings page", () => {
 
 		const input = wrapper.get("input[type='text']");
 		await input.setValue("");
-		await wrapper.get("button").trigger("click"); // save
+		await wrapper.get("form").trigger("submit");
 		await flushPromises();
 
 		expect(mockUpdateMyProfile).not.toHaveBeenCalled();
@@ -232,7 +234,7 @@ describe("Account settings page", () => {
 
 		// Still functional afterwards — a valid name saves fine.
 		await input.setValue("NewName");
-		await wrapper.get("button").trigger("click");
+		await wrapper.get("form").trigger("submit");
 		await flushPromises();
 		expect(mockUpdateMyProfile).toHaveBeenCalledWith({ display_name: "NewName" });
 	});
@@ -244,7 +246,7 @@ describe("Account settings page", () => {
 		await inputs[0].setValue("currentpass");
 		await inputs[1].setValue("short");
 		await inputs[2].setValue("short");
-		await wrapper.findAll("button")[1].trigger("click");
+		await wrapper.findAll("form")[1].trigger("submit");
 		await flushPromises();
 
 		expect(mockChangeMyPassword).not.toHaveBeenCalled();
@@ -258,7 +260,7 @@ describe("Account settings page", () => {
 		await inputs[0].setValue("currentpass");
 		await inputs[1].setValue("newpass456");
 		await inputs[2].setValue("newpass000");
-		await wrapper.findAll("button")[1].trigger("click");
+		await wrapper.findAll("form")[1].trigger("submit");
 		await flushPromises();
 
 		expect(mockChangeMyPassword).not.toHaveBeenCalled();
@@ -277,7 +279,7 @@ describe("Account settings page", () => {
 		await inputs[0].setValue("currentpass123");
 		await inputs[1].setValue("newpass456");
 		await inputs[2].setValue("newpass456");
-		await wrapper.findAll("button")[1].trigger("click");
+		await wrapper.findAll("form")[1].trigger("submit");
 		await flushPromises();
 
 		expect(mockChangeMyPassword).toHaveBeenCalledWith({
@@ -298,7 +300,7 @@ describe("Account settings page", () => {
 		await inputs[0].setValue("nope");
 		await inputs[1].setValue("newpass456");
 		await inputs[2].setValue("newpass456");
-		await wrapper.findAll("button")[1].trigger("click");
+		await wrapper.findAll("form")[1].trigger("submit");
 		await flushPromises();
 
 		expect(wrapper.text()).toContain("当前密码不正确");
@@ -318,7 +320,7 @@ describe("Account settings page", () => {
 			expect(section).toBeDefined();
 			if (!section) throw new Error("delete section not found");
 			await section.findAll("input[type='password']")[0].setValue("readerpass123");
-			await section.find("button").trigger("click");
+			await section.find("form").trigger("submit");
 			await flushPromises();
 
 			expect(mockDeleteReaderAccount).toHaveBeenCalledWith("readerpass123");
@@ -338,7 +340,7 @@ describe("Account settings page", () => {
 			const section = wrapper.findAll("section").find((s) => s.text().includes("删除账号"));
 			if (!section) throw new Error("delete section not found");
 			await section.findAll("input[type='password']")[0].setValue("nope");
-			await section.find("button").trigger("click");
+			await section.find("form").trigger("submit");
 			await flushPromises();
 
 			expect(wrapper.text()).toContain("密码错误");

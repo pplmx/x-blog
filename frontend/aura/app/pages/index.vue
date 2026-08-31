@@ -44,7 +44,13 @@ watch([categoryId, tagId], () => {
 	if (page.value !== 1) page.value = 1;
 });
 
-const { data: posts, pending, error } = await usePosts(postsFilters);
+const { data: posts, pending, error, refresh: refreshPosts } = await usePosts(postsFilters);
+
+// A failed home fetch shows the error branch — let the reader retry in place
+// rather than forcing a full reload.
+function retryLoad() {
+	void refreshPosts();
+}
 
 const { data: popularPosts } = await usePopularPosts();
 
@@ -470,7 +476,14 @@ const stats = computed(() => {
 
         <div v-else-if="error" class="text-center py-16 text-gray-500">
           <Icon icon="lucide:alert-circle" class="w-12 h-12 mx-auto mb-3 text-gray-300" />
-          <p>{{ t("common.state.loadFailed") }}</p>
+          <p class="mb-4">{{ t("common.state.loadFailed") }}</p>
+          <button
+            type="button"
+            class="px-4 py-2 rounded-lg text-sm font-medium border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+            @click="retryLoad"
+          >
+            {{ t("common.action.retry") }}
+          </button>
         </div>
 
         <div v-else-if="posts?.items?.length" class="space-y-5">
@@ -482,6 +495,7 @@ const stats = computed(() => {
               v-for="(pg, i) in paginationTokens"
               :key="pg === '…' ? `ellipsis-${i}` : pg"
               :disabled="pg === '…'"
+              :aria-current="pg !== '…' && pg === posts.pagination.page ? 'page' : undefined"
               :class="[
                 'w-9 h-9 rounded-xl text-sm font-medium transition-all duration-200',
                 pg === '…'

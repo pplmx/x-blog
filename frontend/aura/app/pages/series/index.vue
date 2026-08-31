@@ -3,7 +3,10 @@ import { useSeries } from "~~/api/public/series";
 import { useSeo } from "~~/composables/useSeo";
 
 const { t } = useLang();
-const { data: series, pending, error } = await useSeries();
+const { data: series, pending, error, refresh: refreshSeries } = await useSeries();
+function retryLoad() {
+	void refreshSeries();
+}
 
 useSeo(() => ({
 	title: t("series.all"),
@@ -28,7 +31,14 @@ useSeo(() => ({
 
     <div v-else-if="error" class="text-center py-20 text-gray-500">
       <Icon icon="lucide:alert-circle" class="w-12 h-12 mx-auto mb-4 text-gray-300" />
-      <p>{{ t('common.state.loadFailed') }}</p>
+      <p class="mb-4">{{ t('common.state.loadFailed') }}</p>
+      <button
+        type="button"
+        class="px-4 py-2 rounded-lg text-sm font-medium border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+        @click="retryLoad"
+      >
+        {{ t('common.action.retry') }}
+      </button>
     </div>
 
     <div v-else class="space-y-6">

@@ -24,6 +24,9 @@
 		"assignFailed": "Couldn't move this bookmark — check your connection and try again.",
 		"searchPlaceholder": "Search bookmarks…",
 		"clearSearch": "Clear search",
-		"noSearchResults": "No bookmarks match your search."
+		"noSearchResults": "No bookmarks match your search.",
+		"closeManage": "Done",
+		"removedToast": "Removed “{title}”",
+		"undo": "Undo"
 	}
 }

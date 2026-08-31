@@ -185,6 +185,7 @@ function heatMapSummary(): string {
           v-model="searchQuery"
           type="search"
           :placeholder="t('history.searchPlaceholder')"
+          :aria-label="t('history.searchAria')"
           class="w-full pl-10 pr-4 py-2.5 border border-gray-200 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 rounded-xl focus:outline-none focus:ring-2 focus:ring-violet-500 transition-colors"
           @input="onSearch"
         >
@@ -305,6 +306,16 @@ function heatMapSummary(): string {
 
     <!-- History list -->
     <div v-else class="space-y-3">
+      <!-- Loading feedback: skeletons on first load (no rows yet) so the page
+           doesn't look dead; a spinner above stale rows during a recall search
+           so the in-flight swap is not silent (deep-dive finding). -->
+      <template v-if="loading && !history.length">
+        <div v-for="i in 4" :key="i" class="bg-gray-100 dark:bg-gray-800 animate-pulse h-20 rounded-2xl" />
+      </template>
+      <p v-else-if="loading" class="flex items-center justify-center gap-2 py-4 text-sm text-gray-400" role="status">
+        <Icon icon="lucide:loader-2" class="w-4 h-4 animate-spin" />
+        {{ t('history.loading') }}
+      </p>
       <NuxtLink
         v-for="item in history"
         :key="item.slug"

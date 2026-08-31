@@ -28,9 +28,26 @@ const postsFilters = computed(() => ({
 	page: page.value > 1 ? page.value : undefined,
 }));
 
-const { data: categories, pending: categoriesPending } = await useCategories();
-const { data: posts, pending: postsPending } = await usePosts(postsFilters);
+const {
+	data: categories,
+	pending: categoriesPending,
+	error: categoriesError,
+	refresh: refreshCategories,
+} = await useCategories();
+const {
+	data: posts,
+	pending: postsPending,
+	error: postsError,
+	refresh: refreshPosts,
+} = await usePosts(postsFilters);
 const pending = computed(() => categoriesPending.value || postsPending.value);
+// A failed fetch must NOT fall through to the empty state and be mistaken for
+// "this category simply has no posts" — surface it as an error with a retry.
+const error = computed(() => categoriesError.value || postsError.value);
+function retry() {
+	void refreshCategories();
+	void refreshPosts();
+}
 
 // Windowed, ellipsis-aware pagination buttons (RIL TASK-083, ISS-052).
 const paginationTokens = computed(() =>
@@ -207,6 +224,19 @@ watch(categoryId, () => {
       </div>
     </div>
 
+    <!-- Load failed — distinct from "empty": never tell the reader the category
+         has nothing when we simply couldn't load it. -->
+    <div v-else-if="error" class="text-center py-12">
+      <p class="text-gray-500 dark:text-gray-400 mb-4">{{ t('common.state.loadFailed') }}</p>
+      <button
+        type="button"
+        class="px-4 py-2 rounded-lg text-sm font-medium border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+        @click="retry"
+      >
+        {{ t('common.action.retry') }}
+      </button>
+    </div>
+
     <!-- All categories view (no category_id selected) -->
     <div v-else-if="!categoryId" class="space-y-6">
       <div class="mb-8">
@@ -346,6 +376,7 @@ watch(categoryId, () => {
             v-for="(pg, i) in paginationTokens"
             :key="pg === '…' ? `ellipsis-${i}` : pg"
             :disabled="pg === '…'"
+            :aria-current="pg !== '…' && pg === posts.pagination.page ? 'page' : undefined"
             :class="[
               'px-3 py-1 rounded',
               pg === '…'

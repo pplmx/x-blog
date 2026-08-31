@@ -53,7 +53,8 @@
 			"verifiedReader": "Verified reader",
 			"like": "Like",
 			"liked": "Liked",
-			"likeError": "Couldn't like this comment. Please try again."
+			"likeError": "Couldn't like this comment. Please try again.",
+			"editLabel": "Edit your comment"
 		},
 		"threadSubscribe": {
 			"follow": "Follow discussion",
@@ -68,7 +69,9 @@
 			"x": "Share to X",
 			"facebook": "Share to Facebook",
 			"linkedin": "Share to LinkedIn",
-			"copyLink": "Copy link"
+			"copyLink": "Copy link",
+			"linkCopied": "Link copied",
+			"copyFailed": "Couldn't copy link"
 		},
 		"sidebar": {
 			"clearFilters": "Clear filters",

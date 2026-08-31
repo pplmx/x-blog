@@ -228,7 +228,12 @@ const unscheduledPosts = computed(() => data.value?.unscheduled ?? []);
             </div>
           </div>
 
-          <div class="grid grid-cols-7">
+          <div v-if="loading" class="flex items-center gap-2 px-4 py-6 text-sm text-gray-400" role="status">
+            <Icon icon="lucide:loader-2" class="w-4 h-4 animate-spin" />
+            {{ t('admin.calendar.loading') }}
+          </div>
+
+          <div v-else class="grid grid-cols-7">
             <template v-for="cell in gridCells" :key="cell.key">
               <div
                 :data-date="cell.key"

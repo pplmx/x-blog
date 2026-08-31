@@ -288,9 +288,17 @@ function kindIcon(kind: string): string {
       </button>
     </div>
 
-    <p v-if="error || markActionFailed" class="mb-4 text-sm text-red-600 dark:text-red-400">
-      {{ t('common.errors.network') }}
-    </p>
+    <div v-if="error || markActionFailed" class="mb-4 flex flex-wrap items-center gap-3 text-sm text-red-600 dark:text-red-400">
+      <p>{{ t('common.errors.network') }}</p>
+      <button
+        v-if="error"
+        type="button"
+        class="px-3 py-1.5 rounded-lg text-xs font-medium border border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30 transition-colors"
+        @click="load"
+      >
+        {{ t('common.action.retry') }}
+      </button>
+    </div>
 
     <section
       v-if="isAuthenticated"
@@ -365,35 +373,36 @@ function kindIcon(kind: string): string {
         <!-- With a URL the row is a link; without one it falls back to a
              focusable row that still marks-read on activation — a bare .url-less
              anchor (href=undefined) was neither focusable nor keyboard-
-             activatable, a dead interactive-looking row (deep-dive finding). -->
-        <component
-          :is="item.url ? 'a' : 'button'"
-          :href="item.url || undefined"
-          :type="item.url ? undefined : 'button'"
-          class="flex items-start gap-3 p-4 text-left w-full hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:outline-none rounded-xl"
-          @click="markRead(item)"
-        >
-          <Icon :icon="kindIcon(item.kind)" class="w-5 h-5 mt-0.5 shrink-0 text-amber-500" />
-          <div class="min-w-0 flex-1">
-            <div class="flex items-center gap-2">
-              <span class="text-sm text-amber-600 dark:text-amber-400">{{ kindLabel(item) }}</span>
-              <span v-if="!item.read" class="shrink-0 text-[10px] uppercase tracking-wide text-amber-700 dark:text-amber-400">
-                {{ t('notifications.unread') }}
-              </span>
+             activatable, a dead interactive-looking row (deep-dive finding).
+             The mark-read control must NOT nest inside the link (invalid HTML,
+             two focus stops in one row) — it is a sibling in the flex row. -->
+        <div class="flex items-stretch">
+          <component
+            :is="item.url ? 'a' : 'button'"
+            :href="item.url || undefined"
+            :type="item.url ? undefined : 'button'"
+            class="flex items-start gap-3 p-4 text-left flex-1 min-w-0 rounded-l-xl hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:outline-none focus-visible:z-10"
+            @click="markRead(item)"
+          >
+            <Icon :icon="kindIcon(item.kind)" class="w-5 h-5 mt-0.5 shrink-0 text-amber-500" />
+            <div class="min-w-0 flex-1">
+              <div class="flex items-center gap-2">
+                <span class="text-sm text-amber-600 dark:text-amber-400">{{ kindLabel(item) }}</span>
+                <span v-if="!item.read" class="shrink-0 text-[10px] uppercase tracking-wide text-amber-700 dark:text-amber-400">
+                  {{ t('notifications.unread') }}
+                </span>
+              </div>
+              <p class="mt-0.5 text-sm font-medium text-gray-900 dark:text-gray-100">{{ item.title }}</p>
+              <p v-if="item.body" class="mt-0.5 text-sm text-gray-500 dark:text-gray-400">{{ item.body }}</p>
+              <p class="mt-1 text-xs text-gray-400 dark:text-gray-500">{{ timeLabel(item) }}</p>
             </div>
-            <p class="mt-0.5 text-sm font-medium text-gray-900 dark:text-gray-100">{{ item.title }}</p>
-            <p v-if="item.body" class="mt-0.5 text-sm text-gray-500 dark:text-gray-400">{{ item.body }}</p>
-            <p class="mt-1 text-xs text-gray-400 dark:text-gray-500">{{ timeLabel(item) }}</p>
-          </div>
-          <!-- Only as a link (url present) does the row need a separate
-               mark-read control — clicking the row itself navigates. For a
-               no-url row the whole row IS the mark-read button, so the inner
-               button is omitted (nesting a button in a button is invalid). -->
+          </component>
           <button
             v-if="!item.read && item.url"
             type="button"
             :disabled="markingIds.has(item.id)"
-            class="shrink-0 self-center text-xs font-medium text-amber-600 dark:text-amber-400 hover:underline disabled:opacity-60 disabled:cursor-not-allowed"
+            :aria-label="t('notifications.markRead')"
+            class="shrink-0 self-center p-4 text-xs font-medium whitespace-nowrap text-amber-600 dark:text-amber-400 hover:text-amber-700 dark:hover:text-amber-300 hover:bg-amber-50 dark:hover:bg-amber-950/40 rounded-r-xl disabled:opacity-60 disabled:cursor-not-allowed transition-colors focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:outline-none"
             @click.stop="markRead(item)"
           >
             <span v-if="markingIds.has(item.id)" class="inline-flex items-center gap-1">
@@ -401,7 +410,7 @@ function kindIcon(kind: string): string {
             </span>
             <template v-else>{{ t('notifications.markRead') }}</template>
           </button>
-        </component>
+        </div>
       </li>
     </ul>
   </div>

@@ -12,6 +12,7 @@ import { computed, ref } from "vue";
 // Mock useBookmarks composable
 const mockBookmarks = ref([]);
 const mockRemoveBookmark = vi.fn();
+const mockAddBookmark = vi.fn();
 const mockClearAll = vi.fn();
 const mockBookmarkCount = computed(() => mockBookmarks.value.length);
 
@@ -24,11 +25,13 @@ vi.mock("../../composables/useBookmarks", () => ({
 }));
 
 // Mock useBookmarkSync: the page's "Clear all" now goes through clearAll
-// (local wipe + cloud clear, TASK-233), not a bare clearBookmarks.
+// (local wipe + cloud clear, TASK-233), not a bare clearBookmarks. `add` backs
+// the single-removal Undo.
 const mockSyncing = ref(false);
 vi.mock("../../composables/useBookmarkSync", () => ({
 	useBookmarkSync: () => ({
 		bookmarks: mockBookmarks,
+		add: mockAddBookmark,
 		remove: mockRemoveBookmark,
 		clearAll: mockClearAll,
 		mergeLocalToCloud: vi.fn(() => Promise.resolve()),
@@ -171,6 +174,24 @@ describe("Bookmarks page", () => {
 			const wrapper = mountBookmarks();
 			await wrapper.find("button[title='移除收藏']").trigger("click");
 			expect(mockRemoveBookmark).toHaveBeenCalledWith(1);
+		});
+
+		it("offers an inline Undo after a one-click removal and restores via add", async () => {
+			mockBookmarks.value = [sampleBookmark];
+			mockRemoveBookmark.mockClear();
+			mockAddBookmark.mockClear();
+
+			const wrapper = mountBookmarks();
+			await wrapper.find("button[title='移除收藏']").trigger("click");
+			// The removed bookmark is kept with a visible Undo affordance.
+			const undoBtn = wrapper.findAll("button").find((b) => b.text().includes("撤销"));
+			expect(undoBtn).toBeDefined();
+			await undoBtn?.trigger("click");
+
+			// Undo re-adds the same bookmark (which mirrors back to the cloud).
+			expect(mockAddBookmark).toHaveBeenCalledWith(sampleBookmark);
+			// And the undo banner is dismissed.
+			expect(wrapper.find("[role='status']").exists()).toBe(false);
 		});
 
 		it("calls clearAll when clear all is confirmed", async () => {

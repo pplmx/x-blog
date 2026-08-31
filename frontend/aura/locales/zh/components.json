@@ -53,7 +53,8 @@
 			"verifiedReader": "已认证读者",
 			"like": "点赞",
 			"liked": "已点赞",
-			"likeError": "点赞失败，请重试。"
+			"likeError": "点赞失败，请重试。",
+			"editLabel": "编辑你的评论"
 		},
 		"threadSubscribe": {
 			"follow": "订阅讨论",
@@ -68,7 +69,9 @@
 			"x": "分享到 X",
 			"facebook": "分享到 Facebook",
 			"linkedin": "分享到 LinkedIn",
-			"copyLink": "复制链接"
+			"copyLink": "复制链接",
+			"linkCopied": "链接已复制",
+			"copyFailed": "复制链接失败"
 		},
 		"sidebar": {
 			"clearFilters": "清除筛选",

@@ -29,9 +29,26 @@ const postsFilters = computed(() => ({
 	page: page.value > 1 ? page.value : undefined,
 }));
 
-const { data: archive, pending: archivePending } = await usePostArchive();
-const { data: posts, pending: postsPending } = await usePosts(postsFilters, { enabled: hasPeriod });
+const {
+	data: archive,
+	pending: archivePending,
+	error: archiveError,
+	refresh: refreshArchive,
+} = await usePostArchive();
+const {
+	data: posts,
+	pending: postsPending,
+	error: postsError,
+	refresh: refreshPosts,
+} = await usePosts(postsFilters, { enabled: hasPeriod });
 const pending = computed(() => archivePending.value || postsPending.value);
+// A failed fetch must NOT fall through to the empty state and be mistaken for
+// "this archive simply has no posts" — surface it as an error with a retry.
+const error = computed(() => archiveError.value || postsError.value);
+function retry() {
+	void refreshArchive();
+	void refreshPosts();
+}
 
 // Group flat (year, month, count) buckets into years, newest first.
 const years = computed<{ year: number; months: ArchiveEntry[] }[]>(() => {
@@ -81,6 +98,19 @@ useSeo(() => ({
       <div class="space-y-2">
         <div v-for="i in 6" :key="i" class="bg-gray-100 animate-pulse h-4 rounded w-2/3" />
       </div>
+    </div>
+
+    <!-- Load failed — distinct from "empty": never tell the reader the archive
+         has nothing when we simply couldn't load it. -->
+    <div v-else-if="error" class="text-center py-12">
+      <p class="text-gray-500 dark:text-gray-400 mb-4">{{ t('common.state.loadFailed') }}</p>
+      <button
+        type="button"
+        class="px-4 py-2 rounded-lg text-sm font-medium border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+        @click="retry"
+      >
+        {{ t('common.action.retry') }}
+      </button>
     </div>
 
     <!-- Archive index view (no year/month selected) -->
@@ -194,6 +224,7 @@ useSeo(() => ({
             v-for="(pg, i) in paginationTokens"
             :key="pg === '…' ? `ellipsis-${i}` : pg"
             :disabled="pg === '…'"
+            :aria-current="pg !== '…' && pg === posts.pagination.page ? 'page' : undefined"
             :class="[
               'px-3 py-1 rounded transition-colors',
               pg === '…'
