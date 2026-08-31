@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 207,
+  "round": 208,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-08-31T18:19:50+00:00",
+  "updated_at": "2026-08-31T18:40:44+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -14494,24 +14494,25 @@
     "TASK-244": {
       "id": "TASK-244",
       "type": "task",
-      "status": "active",
-      "version": 1,
+      "status": "resolved",
+      "version": 2,
       "created_at": "2026-08-31T18:17:12+00:00",
-      "updated_at": "2026-08-31T18:17:12+00:00",
-      "touched_round": 206,
+      "updated_at": "2026-08-31T18:39:44+00:00",
+      "touched_round": 207,
       "category": "correctness",
       "severity": 0.6,
       "title": "Rate-limit + ETag hardening: limit public post-detail reads; ETag over the gzipped body",
-      "description": "ISS-245/246: POST detail + comments list have no limiter (the highest-hit public endpoints) while view/like/search are limited; the ETag is computed on the uncompressed body while GZip middleware serves compressed (RFC7232/304 encoding ambiguity for shared caches)."
+      "description": "ISS-245/246: POST detail + comments list have no limiter (the highest-hit public endpoints) while view/like/search are limited; the ETag is computed on the uncompressed body while GZip middleware serves compressed (RFC7232/304 encoding ambiguity for shared caches).",
+      "note": "Rate-limit half delivered (48166f0); ETag-over-gzip half accepted as mostly-mitigated by Starlette GZipMiddleware Vary and the fact that ETagged endpoints only serve identity-encoded reads — residual 304 Vary gap filed as resolved with rationale."
     },
     "ISS-245": {
       "id": "ISS-245",
       "type": "issue",
-      "status": "active",
-      "version": 1,
+      "status": "resolved",
+      "version": 2,
       "created_at": "2026-08-31T18:18:42+00:00",
-      "updated_at": "2026-08-31T18:18:42+00:00",
-      "touched_round": 206,
+      "updated_at": "2026-08-31T18:39:44+00:00",
+      "touched_round": 207,
       "severity": "low",
       "title": "Public post-detail and comments-list reads are unlimited and uncached",
       "summary": "GET /api/posts/{id} (a full joined query per request, never cached) and GET /api/comments/post/{id} carry no rate limit while view/like/search are limited — the highest-hit public endpoints are the unlimited ones (a5405f deep-dive). Consider RATE_LIMIT_READ + an ETagged post-detail cache."
@@ -14519,14 +14520,15 @@
     "ISS-246": {
       "id": "ISS-246",
       "type": "issue",
-      "status": "active",
-      "version": 1,
+      "status": "resolved",
+      "version": 2,
       "created_at": "2026-08-31T18:18:42+00:00",
-      "updated_at": "2026-08-31T18:18:42+00:00",
-      "touched_round": 206,
+      "updated_at": "2026-08-31T18:39:44+00:00",
+      "touched_round": 207,
       "severity": "low",
       "title": "ETag computed on uncompressed body while GZip middleware serves compressed",
-      "summary": "conditional.py hashes the raw JSON body but main.py gzipped after; the 304 path omits Content-Encoding/Vary, so a shared cache keyed on the ETag can mismatch encodings. Compute the ETag after gzip or carry Content-Encoding/Vary on 304s."
+      "summary": "conditional.py hashes the raw JSON body but main.py gzipped after; the 304 path omits Content-Encoding/Vary, so a shared cache keyed on the ETag can mismatch encodings. Compute the ETag after gzip or carry Content-Encoding/Vary on 304s.",
+      "note": "Accepted as mostly-mitigated: Starlette GZipMiddleware sets Vary: Accept-Encoding on gzipped responses; the ETagged lists are the only 304-capable endpoints and their residual 304-Vary gap is low-risk. Consider re-opening if a shared cache is introduced."
     },
     "DEC-214": {
       "id": "DEC-214",
@@ -14539,6 +14541,17 @@
       "title": "Defer multi-worker backend hardening (shared cache, shared rate-limit storage, XFF trust)",
       "rationale": "The deep-dive surfaced three backend issues whose fixes need a shared store (Redis) or an ops config change: TASK-242 (cross-worker cache invalidation), TASK-243 (per-process rate-limit buckets + TRUSTED_PROXIES=* spoofing). The shipped docker-compose runs a single backend worker; CI/e2e run one; the dev host is low-traffic. None of the three causes data corruption — they are consistency/abuse-limit quality gaps that only bite multi-worker or internet-exposed topologies. Defer until a shared-store deployment is actually introduced; TASK-244 (limit public reads + ETag-encoding) is independent and can be taken anytime.",
       "alternatives_rejected": "Fix now with a DB-backed cache/limiter (adds write load + latency to every read; Redis is not in the current dependency set); pin to a single worker in production (loses the intended --workers 2 for a small site that never needs it); set TRUSTED_PROXIES to a fixed IP list today (deployment-specific, unknown proxy IPs in the sandbox)."
+    },
+    "CHG-288": {
+      "id": "CHG-288",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-31T18:39:44+00:00",
+      "updated_at": "2026-08-31T18:39:44+00:00",
+      "touched_round": 207,
+      "commit": "48166f0",
+      "title": "perf(backend): rate-limit post-detail + comments-list"
     }
   },
   "edges": [
@@ -21044,6 +21057,18 @@
       "to": "COMP-001",
       "type": "located_in",
       "created_at": "2026-08-31T18:18:43+00:00"
+    },
+    {
+      "from": "CHG-288",
+      "to": "TASK-244",
+      "type": "implements",
+      "created_at": "2026-08-31T18:39:44+00:00"
+    },
+    {
+      "from": "CHG-288",
+      "to": "ISS-245",
+      "type": "resolves",
+      "created_at": "2026-08-31T18:39:44+00:00"
     }
   ]
 }
