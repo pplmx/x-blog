@@ -1,5 +1,6 @@
 import { beforeAll, describe, expect, it } from "vitest";
 import {
+	addSafeLinkAttrs,
 	regexSanitize,
 	type Segment,
 	sanitizeHtml,
@@ -179,6 +180,55 @@ describe("sanitizeHtml", () => {
 		// hold the line regardless of which sanitizer is active (DEC-088).
 		const result = sanitizeHtml('hello <a href="javascript:alert(1)">click</a>');
 		expect(result).not.toContain('href="javascript:');
+	});
+
+	it("adds target/rel to absolute links and alt to img without alt (ISS-221)", () => {
+		const result = sanitizeHtml('<p><a href="https://example.com">link</a><img src="/a.png"></p>');
+		expect(result).toContain('href="https://example.com"');
+		expect(result).toContain('target="_blank"');
+		expect(result).toContain('rel="noopener noreferrer"');
+		expect(result).toContain('alt=""');
+	});
+});
+
+describe("addSafeLinkAttrs (ISS-221)", () => {
+	it("opens absolute http(s) links in a new tab with rel=noopener noreferrer", () => {
+		expect(addSafeLinkAttrs('<a href="https://example.com">x</a>')).toBe(
+			'<a href="https://example.com" target="_blank" rel="noopener noreferrer">x</a>',
+		);
+		expect(addSafeLinkAttrs('<a href="http://example.com">x</a>')).toContain(
+			'rel="noopener noreferrer"',
+		);
+	});
+
+	it("merges with, and dedupes against, an existing rel attribute", () => {
+		expect(addSafeLinkAttrs('<a rel="nofollow" href="https://example.com">x</a>')).toContain(
+			'rel="nofollow noopener noreferrer"',
+		);
+		const deduped = addSafeLinkAttrs(
+			'<a rel="noopener noreferrer" href="https://example.com">x</a>',
+		);
+		expect(deduped.match(/noreferrer/g)).toHaveLength(1);
+	});
+
+	it("leaves relative, fragment, mailto and href-less links untouched", () => {
+		expect(addSafeLinkAttrs('<a href="/posts/foo">x</a>')).toBe('<a href="/posts/foo">x</a>');
+		expect(addSafeLinkAttrs('<a href="#frag">x</a>')).toBe('<a href="#frag">x</a>');
+		expect(addSafeLinkAttrs('<a href="mailto:a@b.c">x</a>')).toBe('<a href="mailto:a@b.c">x</a>');
+		expect(addSafeLinkAttrs('<a name="anchor">x</a>')).toBe('<a name="anchor">x</a>');
+	});
+
+	it("honors an author-set target and reads single-quoted hrefs", () => {
+		expect(addSafeLinkAttrs('<a target="_self" href="https://example.com">x</a>')).toBe(
+			'<a target="_self" href="https://example.com">x</a>',
+		);
+		expect(addSafeLinkAttrs("<a href='https://example.com'>x</a>")).toContain('target="_blank"');
+	});
+
+	it("adds a decorative alt to images missing one, leaving existing alt intact", () => {
+		expect(addSafeLinkAttrs('<img src="/a.png">')).toContain('alt=""');
+		expect(addSafeLinkAttrs('<img src="/a.png" alt="hi">')).toBe('<img src="/a.png" alt="hi">');
+		expect(addSafeLinkAttrs('<img src="/a.png"/>')).toContain('alt=""');
 	});
 });
 

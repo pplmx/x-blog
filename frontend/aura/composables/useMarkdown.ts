@@ -228,15 +228,63 @@ export async function loadPurify(): Promise<void> {
 	purify = regexSanitize;
 }
 
+// --- Link/image attribute hardening (runs AFTER sanitization) ---
+
+/** Read a quoted attribute value (double or single quotes) from a tag's attrs. */
+function attrValue(attrs: string, name: string): string | null {
+	const m = attrs.match(new RegExp(`\\b${name}\\s*=\\s*("([^"]*)"|'([^']*)')`, "i"));
+	return m ? (m[2] ?? m[3] ?? "") : null;
+}
+
+/**
+ * Harden links/images in sanitized HTML without touching their URLs.
+ *
+ * Sanitization strips dangerous content but leaves authored markup as-is, so a
+ * post/comment link out to the web opens in the SAME tab and raw `<img>` tags
+ * can render with no alt text (ISS-221). This serialized pass — no DOM, so it
+ * works under SSR and on the regex-fallback path alike — upgrades the output:
+ *
+ *   - absolute http(s) ``<a>`` links get ``target="_blank"`` and
+ *     ``rel="noopener noreferrer"`` (merging with, and deduping against, any
+ *     existing rel) so external links open in a fresh tab without granting the
+ *     destination a ``window.opener`` (tabnabbing);
+ *   - relative/internal/``mailto:`` links, href-less anchors, and any link
+ *     where the author already set a target are left untouched;
+ *   - ``<img>`` with no alt attribute gets ``alt=""`` (decorative), matching
+ *     how MarkdownContent marks its extracted image segments.
+ *
+ * It only ADDS attributes and never rewrites a URL, so it cannot reintroduce a
+ * scheme the sanitizer already nulled.
+ */
+export function addSafeLinkAttrs(html: string): string {
+	return html
+		.replace(/<a\b([^>]*)>/gi, (match, attrs: string) => {
+			const href = attrValue(attrs, "href");
+			if (!href || !/^https?:\/\//i.test(href)) return match;
+			if (/\btarget\s*=/i.test(attrs)) return match;
+			const tokens = new Set((attrValue(attrs, "rel") ?? "").split(/\s+/).filter(Boolean));
+			const extra: string[] = [];
+			if (!tokens.has("noopener")) extra.push("noopener");
+			if (!tokens.has("noreferrer")) extra.push("noreferrer");
+			if (extra.length === 0) return `<a${attrs} target="_blank">`;
+			return `<a${attrs} target="_blank" rel="${[...tokens, ...extra].join(" ")}">`;
+		})
+		.replace(/<img\b([^>]*)>/gi, (match, attrs: string) => {
+			if (/\balt\s*=/i.test(attrs)) return match;
+			return `<img${attrs} alt="">`;
+		});
+}
+
 /**
  * Synchronous sanitization: DOMPurify when loaded, otherwise the always-active
  * regex fallback. Never identity — v-html consumers rely on this guarantee.
+ * Sanitized output then gets the link/image hardening pass (ISS-221).
  */
 export function sanitizeHtml(html: string): string {
 	try {
-		return purify ? purify(html) : regexSanitize(html);
+		return purify ? addSafeLinkAttrs(purify(html)) : addSafeLinkAttrs(regexSanitize(html));
 	} catch {
-		return regexSanitize(html);
+		return addSafeLinkAttrs(regexSanitize(html));
 	}
 }
 
