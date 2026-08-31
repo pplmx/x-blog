@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 198,
+  "round": 199,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-08-31T04:13:30+00:00",
+  "updated_at": "2026-08-31T05:44:56+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -13714,6 +13714,76 @@
       "updated_at": "2026-08-31T04:12:31+00:00",
       "touched_round": 197,
       "commit": "4f6697f"
+    },
+    "ISS-200": {
+      "id": "ISS-200",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-08-31T05:42:54+00:00",
+      "updated_at": "2026-08-31T05:44:55+00:00",
+      "touched_round": 198,
+      "title": "Post editor leaves could silently drop unsaved drafts",
+      "summary": "onBeforeRouteLeave flushed autosave fire-and-forget and always allowed departure — a failed flush (network/422) dropped edits with no prompt; the new-draft address-bar redirect even ran mid-leave. beforeunload guarded only NEW posts, leaving existing-draft hard-refresh unprotected; Cancel silently persisted instead of discarding",
+      "severity": "high"
+    },
+    "ISS-201": {
+      "id": "ISS-201",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-08-31T05:42:54+00:00",
+      "updated_at": "2026-08-31T05:44:55+00:00",
+      "touched_round": 198,
+      "title": "Editor/MediaPicker failures masquerade as empty",
+      "summary": "post-load and taxonomy fetch failures left an empty form or empty pickers with no retry (author assigned nothing believing lists were empty); MediaPickerModal media fetch failure fell through to the no-media state",
+      "severity": "medium"
+    },
+    "ISS-202": {
+      "id": "ISS-202",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-08-31T05:42:54+00:00",
+      "updated_at": "2026-08-31T05:44:55+00:00",
+      "touched_round": 198,
+      "title": "Editor status messages are invisible to screen readers",
+      "summary": "autosave/save/notify/revision/upload results were plain text with no role=status/alert; toolbar B/I/H and the cover-from-library button lacked accessible names; headline/excerpt/content labels were decorative (no for/id)",
+      "severity": "medium"
+    },
+    "ISS-203": {
+      "id": "ISS-203",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-08-31T05:42:54+00:00",
+      "updated_at": "2026-08-31T05:44:55+00:00",
+      "touched_round": 198,
+      "title": "Posts list double-fetches on search and hides feedback",
+      "summary": "deep watch on queryParams plus the debounced search fired two fetches per keystroke with full-table spinner flicker; delete failures were swallowed (looked like nothing happened); load error had no retry; controls unlabeled",
+      "severity": "medium"
+    },
+    "ISS-204": {
+      "id": "ISS-204",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-08-31T05:42:54+00:00",
+      "updated_at": "2026-08-31T05:44:55+00:00",
+      "touched_round": 198,
+      "title": "Scheduled-post state contradicts the list in the editor",
+      "summary": "editor showed 'Published on' for a published+future publish_at post while the list rightly chips it 'Scheduled'; notify button silently no-oped without a slug",
+      "severity": "medium"
+    },
+    "CHG-273": {
+      "id": "CHG-273",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-31T05:42:54+00:00",
+      "updated_at": "2026-08-31T05:42:54+00:00",
+      "touched_round": 198,
+      "commit": "8b77cd0"
     }
   },
   "edges": [
@@ -19805,6 +19875,36 @@
       "to": "ISS-199",
       "type": "resolves",
       "created_at": "2026-08-31T04:13:30+00:00"
+    },
+    {
+      "from": "CHG-273",
+      "to": "ISS-200",
+      "type": "resolves",
+      "created_at": "2026-08-31T05:44:55+00:00"
+    },
+    {
+      "from": "CHG-273",
+      "to": "ISS-201",
+      "type": "resolves",
+      "created_at": "2026-08-31T05:44:55+00:00"
+    },
+    {
+      "from": "CHG-273",
+      "to": "ISS-202",
+      "type": "resolves",
+      "created_at": "2026-08-31T05:44:55+00:00"
+    },
+    {
+      "from": "CHG-273",
+      "to": "ISS-203",
+      "type": "resolves",
+      "created_at": "2026-08-31T05:44:55+00:00"
+    },
+    {
+      "from": "CHG-273",
+      "to": "ISS-204",
+      "type": "resolves",
+      "created_at": "2026-08-31T05:44:55+00:00"
     }
   ]
 }
