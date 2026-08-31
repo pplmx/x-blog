@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 201,
+  "round": 202,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-08-31T07:10:34+00:00",
+  "updated_at": "2026-08-31T08:58:48+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -22,7 +22,7 @@
       "version": 1,
       "created_at": "2026-08-06T13:23:41+00:00",
       "updated_at": "2026-08-06T13:23:41+00:00",
-      "touched_round": 199,
+      "touched_round": 201,
       "title": "frontend-aura",
       "description": "Nuxt 4 Vue 3 TypeScript frontend at frontend/aura; composables; admin pages; e2e Playwright; biome lint"
     },
@@ -13900,6 +13900,160 @@
       "updated_at": "2026-08-31T07:06:55+00:00",
       "touched_round": 200,
       "commit": "eb28baf"
+    },
+    "ISS-213": {
+      "id": "ISS-213",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-08-31T08:57:37+00:00",
+      "updated_at": "2026-08-31T08:57:38+00:00",
+      "touched_round": 201,
+      "title": "Tag follow/notify failures are fully swallowed",
+      "summary": "components/TagFollowButton.vue handlers did store.toggleFollow().catch(() => {}) and the store clears busy in a finally — a failed follow leaves the chip exactly as it was with zero feedback; the reader sees a brief disabled flash and a no-op. One GET and two mutations shared a single silent failure mode.",
+      "severity": "high"
+    },
+    "ISS-214": {
+      "id": "ISS-214",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-08-31T08:57:37+00:00",
+      "updated_at": "2026-08-31T08:57:39+00:00",
+      "touched_round": 201,
+      "title": "Article images cropped to fixed 256px with a dead zoom affordance",
+      "summary": "components/MarkdownContent.vue image block: fixed h-64 + object-cover center-crops tall diagrams/screenshots, and cursor-zoom-in promises a lightbox that does not exist anywhere in the repo — readers can never see the full image.",
+      "severity": "medium"
+    },
+    "ISS-216": {
+      "id": "ISS-216",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-08-31T08:57:37+00:00",
+      "updated_at": "2026-08-31T08:57:39+00:00",
+      "touched_round": 201,
+      "title": "LanguageSwitcher loses focus on close and fakes menu semantics",
+      "summary": "Selecting or pressing Escape unmounts the focused menuitem; focus is not returned to the trigger (keyboard/SR users land on <body>). role=menu is used with plain buttons and no roving tabindex/arrow keys, so the widget does not behave like the menu it claims to be.",
+      "severity": "medium"
+    },
+    "ISS-217": {
+      "id": "ISS-217",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-08-31T08:57:38+00:00",
+      "updated_at": "2026-08-31T08:57:39+00:00",
+      "touched_round": 201,
+      "title": "Home pagination silent to SR; out-of-range pages show a false empty",
+      "summary": "index.vue flips the whole feed on page change with nothing announced; /?page=999 (no clamp — callers only Math.max(1,...)) renders the \"no posts\" empty state while the blog clearly has posts.",
+      "severity": "medium"
+    },
+    "ISS-218": {
+      "id": "ISS-218",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-08-31T08:57:38+00:00",
+      "updated_at": "2026-08-31T08:57:39+00:00",
+      "touched_round": 201,
+      "title": "Tag follow/notify toggles missing aria-pressed",
+      "summary": "TagFollowButton follow and notify bell are boolean state buttons with only an aria-label; SR users cannot tell state without re-reading the label.",
+      "severity": "medium"
+    },
+    "ISS-219": {
+      "id": "ISS-219",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-08-31T08:57:38+00:00",
+      "updated_at": "2026-08-31T08:57:39+00:00",
+      "touched_round": 201,
+      "title": "ThreadSubscribeButton error/blocked messages not live regions",
+      "summary": "The error and blockedHint <p> appear/disappear with no role=alert/role=status and the button exposes no aria-busy, so SR users never hear a follow failed.",
+      "severity": "medium"
+    },
+    "ISS-220": {
+      "id": "ISS-220",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-08-31T08:57:38+00:00",
+      "updated_at": "2026-08-31T08:57:39+00:00",
+      "touched_round": 201,
+      "title": "MarkdownContent copy failures swallowed",
+      "summary": "copyCode caught navigator.clipboard rejection with /* ignore */ — in insecure/permission-denied contexts the Copy button silently does nothing.",
+      "severity": "medium"
+    },
+    "ISS-223": {
+      "id": "ISS-223",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-08-31T08:57:38+00:00",
+      "updated_at": "2026-08-31T08:57:39+00:00",
+      "touched_round": 201,
+      "title": "Unread notification badge never announced",
+      "summary": "default.vue nav badges (desktop + mobile) get no aria-live/aria-atomic; the poll increments them invisibly to SR users.",
+      "severity": "low"
+    },
+    "ISS-224": {
+      "id": "ISS-224",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-08-31T08:57:38+00:00",
+      "updated_at": "2026-08-31T08:57:40+00:00",
+      "touched_round": 201,
+      "title": "PostCard feed covers load eagerly",
+      "summary": "Cover <img> has no loading=lazy (contrast: MarkdownContent does) — a 10-post feed fires all cover requests at first paint.",
+      "severity": "low"
+    },
+    "ISS-215": {
+      "id": "ISS-215",
+      "type": "issue",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-31T08:57:38+00:00",
+      "updated_at": "2026-08-31T08:57:38+00:00",
+      "touched_round": 201,
+      "title": "Push subscribe/unsubscribe failure is silently invisible",
+      "summary": "SubscribeButton/AdminPushToggle catch sets status=idle, reverting to the pre-click state with no error text (ThreadSubscribeButton is the only push surface with feedback). Needs a distinguishable error state in the composable + both buttons; heavier — deferred.",
+      "severity": "medium"
+    },
+    "ISS-221": {
+      "id": "ISS-221",
+      "type": "issue",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-31T08:57:38+00:00",
+      "updated_at": "2026-08-31T08:57:38+00:00",
+      "touched_round": 201,
+      "title": "Raw-HTML links/images lack rel/target and alt fallback",
+      "summary": "components/MarkdownContent.vue sanitised <a> segments get no target/rel (external links leave the page) and raw images may render with no alt. Mutating sanitised HTML strings needs a DOM rewrite pass — deferred.",
+      "severity": "low"
+    },
+    "ISS-222": {
+      "id": "ISS-222",
+      "type": "issue",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-31T08:57:38+00:00",
+      "updated_at": "2026-08-31T08:57:38+00:00",
+      "touched_round": 201,
+      "title": "Cloud bookmark mirror failures invisible to signed-in readers",
+      "summary": "useBookmarkSync mirror add/remove failures leave the reader\\x27s cloud list silently divergent (local toggle still works). \"Will sync when online\" affordance is a design decision — deferred.",
+      "severity": "low"
+    },
+    "CHG-276": {
+      "id": "CHG-276",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-31T08:57:38+00:00",
+      "updated_at": "2026-08-31T08:57:38+00:00",
+      "touched_round": 201,
+      "commit": "9bbdc10"
     }
   },
   "edges": [
@@ -20075,6 +20229,78 @@
       "to": "ISS-212",
       "type": "resolves",
       "created_at": "2026-08-31T07:06:56+00:00"
+    },
+    {
+      "from": "CHG-276",
+      "to": "ISS-213",
+      "type": "resolves",
+      "created_at": "2026-08-31T08:57:38+00:00"
+    },
+    {
+      "from": "CHG-276",
+      "to": "ISS-214",
+      "type": "resolves",
+      "created_at": "2026-08-31T08:57:38+00:00"
+    },
+    {
+      "from": "CHG-276",
+      "to": "ISS-216",
+      "type": "resolves",
+      "created_at": "2026-08-31T08:57:39+00:00"
+    },
+    {
+      "from": "CHG-276",
+      "to": "ISS-217",
+      "type": "resolves",
+      "created_at": "2026-08-31T08:57:39+00:00"
+    },
+    {
+      "from": "CHG-276",
+      "to": "ISS-218",
+      "type": "resolves",
+      "created_at": "2026-08-31T08:57:39+00:00"
+    },
+    {
+      "from": "CHG-276",
+      "to": "ISS-219",
+      "type": "resolves",
+      "created_at": "2026-08-31T08:57:39+00:00"
+    },
+    {
+      "from": "CHG-276",
+      "to": "ISS-220",
+      "type": "resolves",
+      "created_at": "2026-08-31T08:57:39+00:00"
+    },
+    {
+      "from": "CHG-276",
+      "to": "ISS-223",
+      "type": "resolves",
+      "created_at": "2026-08-31T08:57:39+00:00"
+    },
+    {
+      "from": "CHG-276",
+      "to": "ISS-224",
+      "type": "resolves",
+      "created_at": "2026-08-31T08:57:39+00:00"
+    },
+    {
+      "from": "ISS-215",
+      "to": "COMP-002",
+      "type": "located_in",
+      "created_at": "2026-08-31T08:57:40+00:00"
+    },
+    {
+      "from": "ISS-221",
+      "to": "COMP-002",
+      "type": "located_in",
+      "created_at": "2026-08-31T08:57:40+00:00"
+    },
+    {
+      "from": "ISS-222",
+      "to": "COMP-002",
+      "type": "located_in",
+      "created_at": "2026-08-31T08:57:40+00:00"
     }
   ]
 }
