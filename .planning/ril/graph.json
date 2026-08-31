@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 203,
+  "round": 204,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-08-31T09:21:16+00:00",
+  "updated_at": "2026-08-31T09:29:44+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -14064,6 +14064,18 @@
       "updated_at": "2026-08-31T09:21:16+00:00",
       "touched_round": 202,
       "commit": "19904f4"
+    },
+    "DEC-212": {
+      "id": "DEC-212",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-31T09:28:55+00:00",
+      "updated_at": "2026-08-31T09:28:55+00:00",
+      "touched_round": 203,
+      "title": "Frontend polish program converged (CHG-270..277, rounds 196-203)",
+      "rationale": "Operator polish directive (DEC-207) delivered across rounds 196-203: every frontend page and component swept for error-vs-empty disambiguation, retry affordances, a11y roles (alert/status/aria-pressed/aria-expanded/aria-live), keyboard navigation, focus management, form semantics, draft-loss safety and silent-failure surfacing. Last VERIFY: full suite 1315 Nuxt tests green, vue-tsc and biome clean. Graph consistent (1152 nodes/1036 edges); all HIGH/MEDIUM issues resolved; 0 active tasks. A residual scan of empty catch handlers finds only intentional background paths (reading-history/view telemetry, best-effort backend sync) where surfacing an error would be wrong.",
+      "alternatives_rejected": "ISS-221 (new-tab rel/target on raw-HTML links): same-tab is a defensible blog choice and DOM-rewriting sanitized HTML adds risk for low value. ISS-222 (bookmark cloud-mirror affordance): contradicts the documented DEC-059 offline-first merge design; per-op mirror has no pending queue to display. Manufacturing further micro-rounds would violate the anti-churn discipline."
     }
   },
   "edges": [
