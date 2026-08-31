@@ -76,7 +76,12 @@ def list_posts(
 
 
 @router.get("/{post_id}", response_model=schemas.Post)
-def get_post(post_id: str, db: Session = Depends(get_db)):
+@limiter.limit(f"{RATE_LIMIT_READ}/minute")
+def get_post(
+    request: Request,  # noqa: ARG001 — keyed by the rate limiter (RATE_LIMIT_READ)
+    post_id: str,
+    db: Session = Depends(get_db),
+):
     # Post ids are SQLite/Postgres autoincrement integers, so a "numeric"
     # segment longer than 15 digits (64-bit int range) is never a real id —
     # only a slug or garbage. Cap the int() path: Python 3.14 raises

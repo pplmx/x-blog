@@ -8,7 +8,7 @@ from app import auth, crud, models, schemas
 from app.auth import User, get_current_admin
 from app.database import get_db
 from app.emailer import EmailItem, dispatch_notification_emails, email_channel_enabled
-from app.limiter import RATE_LIMIT_COMMENT, client_rate_key, limiter
+from app.limiter import RATE_LIMIT_COMMENT, RATE_LIMIT_READ, client_rate_key, limiter
 from app.middleware import get_logger
 from app.webpush import (
     dispatch_moderation_pending,
@@ -228,7 +228,9 @@ class CommentApproval(BaseModel):
 
 
 @router.get("/post/{post_id}", response_model=CommentListResponse)
+@limiter.limit(f"{RATE_LIMIT_READ}/minute")
 def list_comments(
+    request: Request,  # noqa: ARG001 — keyed by the rate limiter (RATE_LIMIT_READ)
     post_id: int,
     page: int = Query(1, ge=1),
     limit: int = Query(20, ge=1, le=100),
