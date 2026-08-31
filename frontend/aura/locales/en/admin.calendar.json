@@ -14,6 +14,7 @@
 		"unscheduledEmpty": "No undated drafts",
 		"loading": "Loading calendar…",
 		"loadError": "Failed to load the calendar. Please try again.",
+		"postsOnDate": "{n} posts",
 		"emptyDay": "No posts"
 	}
 }

@@ -152,6 +152,29 @@ function typeSpec(tp: CalendarPost["type"]): { cls: string; labelKey: string } {
 
 // Keep the unscheduled list out of the primary "bottom navigation" test focus.
 const unscheduledPosts = computed(() => data.value?.unscheduled ?? []);
+
+// Screen-reader label wiring (ISS-212): the month grid is a data table, not an
+// interactive widget — declaring role=grid here would falsely promise arrow-key
+// navigation and wouldn't coexist with the post chips' Tab-traversal (ARIA
+// authoring practice: use table for non-widget structured content). role=table
+// still gives SR users the month name (aria-labelledby) plus a labelled per-day
+// cell instead of an unlabeled wall of day numbers.
+const monthTitleId = "calendar-month-title";
+
+// Each day cell announces its FULL date (visible "7" gives no month/year) plus
+// how many posts sit on it, so the operator hears "Wednesday, July 15, 2026 · 2
+// posts" rather than silently more links.
+function cellLabel(date: Date, key: string): string {
+	const posts = postsOnDay(key);
+	const dateText = date.toLocaleDateString(locale.value === "zh" ? "zh-CN" : "en-US", {
+		year: "numeric",
+		month: "long",
+		day: "numeric",
+		weekday: "long",
+	});
+	if (posts.length === 0) return dateText;
+	return `${dateText} · ${t("admin.calendar.postsOnDate", { n: posts.length })}`;
+}
 </script>
 
 <template>
@@ -207,23 +230,13 @@ const unscheduledPosts = computed(() => data.value?.unscheduled ?? []);
       <div>
         <div class="rounded-xl border border-gray-200 dark:border-gray-800 overflow-hidden">
           <div class="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-900">
-            <h2 class="text-base font-semibold text-gray-900 dark:text-gray-100">{{ monthTitle }}</h2>
+            <h2 :id="monthTitleId" class="text-base font-semibold text-gray-900 dark:text-gray-100">{{ monthTitle }}</h2>
             <div class="flex items-center gap-3 text-xs text-gray-500 dark:text-gray-400">
               <span class="inline-flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>{{ t('admin.calendar.legendPublished') }}</span>
               <span class="inline-flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-full bg-amber-500"></span>{{ t('admin.calendar.legendScheduled') }}</span>
               <span class="inline-flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-full bg-gray-400"></span>{{ t('admin.calendar.legendDraft') }}</span>
             </div>
           </div>
-          <div class="grid grid-cols-7 border-b border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-900">
-            <div
-              v-for="w in weekdayLabels"
-              :key="w"
-              class="px-2 py-2 text-center text-xs font-medium text-gray-500 dark:text-gray-400"
-            >
-              {{ w }}
-            </div>
-          </div>
-
           <div v-if="loading" class="flex items-center gap-2 px-4 py-6 text-sm text-gray-400" role="status">
             <Icon icon="lucide:loader-2" class="w-4 h-4 animate-spin" />
             {{ t('admin.calendar.loading') }}
@@ -243,9 +256,27 @@ const unscheduledPosts = computed(() => data.value?.unscheduled ?? []);
             </button>
           </div>
 
-          <div v-else class="grid grid-cols-7">
-            <template v-for="cell in gridCells" :key="cell.key">
+          <!-- A labelled data table (ISS-212), not a grid widget: role=table keeps
+               the weekday columnheaders and per-day cells meaningful to screen
+               readers without falsely promising arrow-key navigation (the post
+               chips stay plain Tab-traversable links). -->
+          <div v-else role="table" :aria-labelledby="monthTitleId">
+            <div role="row" class="grid grid-cols-7 border-b border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-900">
               <div
+                v-for="w in weekdayLabels"
+                :key="w"
+                role="columnheader"
+                class="px-2 py-2 text-center text-xs font-medium text-gray-500 dark:text-gray-400"
+              >
+                {{ w }}
+              </div>
+            </div>
+            <div v-for="row in gridRows" :key="row[0].key" role="row" class="grid grid-cols-7">
+              <div
+                v-for="cell in row"
+                :key="cell.key"
+                role="cell"
+                :aria-label="cellLabel(cell.date, cell.key)"
                 :data-date="cell.key"
                 data-testid="calendar-day"
                 class="min-h-[72px] border-b border-r border-gray-100 dark:border-gray-800 p-1.5"
@@ -272,12 +303,12 @@ const unscheduledPosts = computed(() => data.value?.unscheduled ?? []);
                   >
                     {{ p.title }}
                   </a>
-                  <p v-if="postsOnDay(cell.key).length === 0 && !loading" class="text-[10px] text-gray-300 dark:text-gray-700">
+                  <p v-if="postsOnDay(cell.key).length === 0" class="text-[10px] text-gray-300 dark:text-gray-700">
                     {{ t('admin.calendar.emptyDay') }}
                   </p>
                 </div>
               </div>
-            </template>
+            </div>
           </div>
         </div>
       </div>

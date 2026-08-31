@@ -14,6 +14,7 @@
 		"unscheduledEmpty": "没有未排期草稿",
 		"loading": "正在加载日历…",
 		"loadError": "加载日历失败，请重试。",
+		"postsOnDate": "{n} 篇文章",
 		"emptyDay": "暂无文章"
 	}
 }

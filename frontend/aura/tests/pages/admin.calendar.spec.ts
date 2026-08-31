@@ -150,4 +150,40 @@ describe("Admin calendar page (TASK-194)", () => {
 			expect.objectContaining({ query: expect.objectContaining({ month: "2026-05" }) }),
 		);
 	});
+
+	it("exposes the month grid as a labelled table, not an unlabeled wall of numbers (ISS-212)", async () => {
+		const wrapper = await mountPage();
+		const table = wrapper.find('[role="table"]');
+		expect(table.exists()).toBe(true);
+
+		// aria-labelledby resolves to the month <h2>, so SR announces the month.
+		const labelId = table.attributes("aria-labelledby");
+		expect(labelId).toBe("calendar-month-title");
+		expect(wrapper.find(`#${labelId}`).exists()).toBe(true);
+
+		// 7 weekday columnheaders and a header row + 6 week rows.
+		expect(wrapper.findAll('[role="columnheader"]')).toHaveLength(7);
+		expect(wrapper.findAll('[role="row"]')).toHaveLength(7);
+		expect(wrapper.findAll('[role="cell"]')).toHaveLength(42);
+
+		// Each day cell carries full-date context, not just the visible number.
+		const first = wrapper.findAll('[role="cell"]')[0];
+		expect(first.attributes("aria-label") ?? "").toContain("2026");
+	});
+
+	it("announces the post count inside a day cell label (ISS-212)", async () => {
+		const date = noonLocalIso(2026, 6, 15);
+		mockFetch.mockResolvedValue({
+			month: "2026-06",
+			items: [
+				{ id: 7, title: "Live post", slug: "live", type: "published", date, published: true },
+				{ id: 8, title: "Second", slug: "two", type: "draft", date, published: false },
+			],
+			unscheduled: [],
+		});
+		const wrapper = await mountPage();
+		const label = wrapper.find('[role="cell"][data-date$="06-15"]').attributes("aria-label") ?? "";
+		expect(label).toContain("2026");
+		expect(label).toContain("2 篇文章");
+	});
 });
