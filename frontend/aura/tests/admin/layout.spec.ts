@@ -9,9 +9,9 @@
  * provides slot content, then checking the rendered output.
  */
 
-import { mount } from "@vue/test-utils";
+import { flushPromises, mount } from "@vue/test-utils";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { ref } from "vue";
+import { nextTick, ref } from "vue";
 
 // We need to use a module-level ref for authentication state
 // that the mock can access. Use vi.hoisted for the mock functions.
@@ -160,6 +160,54 @@ describe("Admin Layout", () => {
 				slots: { default: "<div>Content</div>" },
 			});
 			expect(wrapper.text()).toContain("修改密码");
+		});
+
+		it("moves focus into the current-password field on open and restores it on Escape (deep-dive re-audit)", async () => {
+			vi.stubGlobal("useRoute", () => ({
+				path: "/admin",
+				params: {},
+				query: {},
+			}));
+			const { default: AdminLayout } = await import("@/layouts/admin.vue");
+			const wrapper = mount(AdminLayout, {
+				global: {
+					stubs: { Icon: IconStubComponent, NuxtLink: NuxtLinkStub },
+				},
+				slots: { default: "<div>Content</div>" },
+			});
+
+			// Mirror the MediaPickerModal focus-restore test: the dialog is
+			// teleported to <body>, so query document (wrapper.find cannot see it).
+			// happy-dom refuses focus() on the off-canvas sidebar button
+			// (-translate-x-full makes it invisible), so a real, visible trigger
+			// owns focus before the modal opens — the element the opening-capture
+			// must hand focus back to on close.
+			const trigger = document.createElement("button");
+			trigger.textContent = "site-trigger";
+			document.body.appendChild(trigger);
+			trigger.focus();
+
+			const buttons = wrapper.findAll("button");
+			const passwordBtn = buttons.find((b) => b.text().includes("修改密码"));
+			expect(passwordBtn).toBeDefined();
+			await passwordBtn?.trigger("click");
+			await nextTick();
+			await flushPromises();
+
+			// Modal opened with focus moved into the first (current-password) field.
+			expect(document.querySelector('[role="dialog"]')).not.toBeNull();
+			expect(document.activeElement).toBe(document.querySelector('input[type="password"]'));
+
+			// Escape closes the modal and returns focus to the opening trigger.
+			document
+				.querySelector('[role="dialog"]')
+				?.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+			await nextTick();
+			expect(document.querySelector('[role="dialog"]')).toBeNull();
+			await nextTick();
+			expect(document.activeElement).toBe(trigger);
+
+			document.body.removeChild(trigger);
 		});
 
 		it("renders a logout button", async () => {

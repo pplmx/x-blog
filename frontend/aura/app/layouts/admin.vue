@@ -69,15 +69,59 @@ const passwordError = ref<string | null>(null);
 const passwordSuccess = ref(false);
 const passwordBusy = ref(false);
 const passwordCurrentInput = ref<HTMLInputElement | null>(null);
+const passwordPanelRef = ref<HTMLElement | null>(null);
+/** Element to return focus to when the modal closes (the opening trigger). */
+let passwordFocusReturn: HTMLElement | null = null;
 
 // Reset transient state and move focus into the first field every time the
 // modal reopens, so a fresh open never shows a stale error/success banner.
+// Record the opening trigger first so close can restore focus (deep-dive
+// re-audit: closing previously dropped focus to <body>, forcing a re-tab
+// through the whole sidebar).
 watch(showPasswordModal, (open) => {
 	if (!open) return;
 	passwordError.value = null;
 	passwordSuccess.value = false;
+	passwordFocusReturn =
+		document.activeElement instanceof HTMLElement ? document.activeElement : null;
 	nextTick(() => passwordCurrentInput.value?.focus());
 });
+
+/** Close the modal and return focus to whatever opened it. */
+function closePasswordModal() {
+	showPasswordModal.value = false;
+	nextTick(() => passwordFocusReturn?.focus());
+}
+
+// Focusable elements inside the modal panel, for the Tab trap (mirrors the
+// MediaPickerModal pattern applied by the a11y pass).
+const PASSWORD_FOCUSABLE = "a[href], button, input, select, textarea";
+
+function onPasswordKeydown(e: KeyboardEvent) {
+	if (e.key === "Escape") {
+		closePasswordModal();
+		return;
+	}
+	if (e.key !== "Tab") return;
+	const panel = passwordPanelRef.value;
+	if (!panel) return;
+	const focusables = Array.from(panel.querySelectorAll<HTMLElement>(PASSWORD_FOCUSABLE)).filter(
+		(el) => !el.hasAttribute("disabled"),
+	);
+	if (focusables.length === 0) return;
+	const first = focusables[0];
+	const last = focusables[focusables.length - 1];
+	const active = document.activeElement;
+	// Wrap Tab/Shift+Tab at the panel boundaries so keyboard focus cannot
+	// escape into the page behind the modal.
+	if (e.shiftKey && (active === first || !panel.contains(active))) {
+		e.preventDefault();
+		last.focus();
+	} else if (!e.shiftKey && (active === last || !panel.contains(active))) {
+		e.preventDefault();
+		first.focus();
+	}
+}
 
 async function handleChangePassword() {
 	passwordError.value = null;
@@ -111,7 +155,7 @@ async function handleChangePassword() {
 		passwordSuccess.value = true;
 		passwordForm.value = { current_password: "", new_password: "", confirm: "" };
 		setTimeout(() => {
-			showPasswordModal.value = false;
+			closePasswordModal();
 		}, 1500);
 	} catch (err) {
 		passwordError.value = err instanceof Error ? err.message : t("admin.password.failed");
@@ -274,16 +318,19 @@ const navItems = computed(() => {
         aria-modal="true"
         aria-labelledby="password-modal-title"
         class="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
-        @click.self="showPasswordModal = false"
-        @keydown.esc="showPasswordModal = false"
+        @click.self="closePasswordModal"
+        @keydown="onPasswordKeydown"
       >
-        <div class="relative bg-white dark:bg-gray-900 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-700 p-6 w-full max-w-sm mx-4">
+        <div
+          ref="passwordPanelRef"
+          class="relative bg-white dark:bg-gray-900 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-700 p-6 w-full max-w-sm mx-4"
+        >
           <button
             type="button"
             :aria-label="t('common.menu.close')"
             :title="t('common.menu.close')"
             class="absolute top-3 right-3 p-1.5 rounded-lg text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
-            @click="showPasswordModal = false"
+            @click="closePasswordModal"
           >
             <Icon icon="lucide:x" class="w-4 h-4" />
           </button>
@@ -330,7 +377,7 @@ const navItems = computed(() => {
               <button type="submit" :disabled="passwordBusy" class="flex-1 px-4 py-2 bg-blue-500 text-white rounded-xl text-sm font-medium hover:bg-blue-600 disabled:opacity-50 transition-colors">
                 {{ passwordBusy ? t('admin.password.saving') : t('common.action.save') }}
               </button>
-              <button type="button" :disabled="passwordBusy" class="flex-1 px-4 py-2 border border-gray-200 dark:border-gray-700 rounded-xl text-sm font-medium hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors" @click="showPasswordModal = false">
+              <button type="button" :disabled="passwordBusy" class="flex-1 px-4 py-2 border border-gray-200 dark:border-gray-700 rounded-xl text-sm font-medium hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors" @click="closePasswordModal">
                 {{ t('common.action.cancel') }}
               </button>
             </div>
