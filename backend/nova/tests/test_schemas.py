@@ -126,6 +126,44 @@ class TestPostBaseSchemas:
             assert post.slug == slug
 
 
+class TestPublishAtNormalization:
+    """Zone-marked publish_at must land in the naive-UTC domain (DEC-213).
+
+    The frontend sends naive-UTC publish_at, but a client can still pass an
+    offset/Z ISO (e.g. a date-picker's toISOString()). It must be stored as
+    the SAME absolute instant in naive UTC — an aware value kept as-is would
+    skew scheduled publishing by the offset and could raise aware-vs-naive
+    TypeError in comparisons against utc_now_naive().
+    """
+
+    MINIMAL = {"title": "Scheduled", "slug": "scheduled-post", "content": "x"}
+
+    def test_post_create_offset_marked_publish_at_normalized_to_naive_utc(self):
+        post = schemas.PostCreate(publish_at="2026-08-31T08:00:00+08:00", **self.MINIMAL)
+        # +08:00 08:00 == 00:00Z — same absolute instant, now naive.
+        assert post.publish_at == datetime(2026, 8, 31, 0, 0)
+        assert post.publish_at.tzinfo is None
+
+    def test_post_create_z_marked_publish_at_normalized_to_naive_utc(self):
+        post = schemas.PostCreate(publish_at="2026-08-31T08:00:00Z", **self.MINIMAL)
+        assert post.publish_at == datetime(2026, 8, 31, 8, 0)
+        assert post.publish_at.tzinfo is None
+
+    def test_post_create_naive_publish_at_passes_through_untouched(self):
+        post = schemas.PostCreate(publish_at="2026-08-31T08:00:00", **self.MINIMAL)
+        assert post.publish_at == datetime(2026, 8, 31, 8, 0)
+        assert post.publish_at.tzinfo is None
+
+    def test_post_update_offset_marked_publish_at_normalized_to_naive_utc(self):
+        upd = schemas.PostUpdate(publish_at="2026-08-31T08:00:00+08:00")
+        assert upd.publish_at == datetime(2026, 8, 31, 0, 0)
+        assert upd.publish_at.tzinfo is None
+
+    def test_post_update_unset_publish_at_stays_none(self):
+        upd = schemas.PostUpdate()
+        assert upd.publish_at is None
+
+
 class TestPostCreateSchema:
     """Tests for PostCreate schema."""
 

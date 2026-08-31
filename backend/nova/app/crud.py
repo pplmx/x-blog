@@ -3131,9 +3131,15 @@ def _from_iso(value: str | None) -> datetime | None:
     if not value:
         return None
     try:
-        return datetime.fromisoformat(value)
+        parsed = datetime.fromisoformat(value)
     except ValueError:
         return None
+    # Restore the same absolute instant in the naive-UTC domain (DEC-213): an
+    # exported aware value must not re-enter the DB shifted by the reader's
+    # timezone or the session TimeZone.
+    if parsed.tzinfo is not None:
+        parsed = parsed.astimezone(UTC).replace(tzinfo=None)
+    return parsed
 
 
 def build_backup_snapshot(db: Session) -> dict:

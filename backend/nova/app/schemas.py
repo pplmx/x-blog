@@ -1,5 +1,5 @@
 import re
-from datetime import datetime
+from datetime import UTC, datetime
 from urllib.parse import urlparse
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
@@ -16,6 +16,21 @@ SLUG_PATTERN = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
 EMAIL_PATTERN = r"^[^@\s]+@[^@\s]+\.[^@\s]+\z"
 
 _ALLOWED_COVER_SCHEMES = {"http", "https"}
+
+
+def _normalize_naive_utc(value: datetime | None) -> datetime | None:
+    """Coerce an aware datetime to the naive-UTC domain (DEC-213).
+
+    Timestamps are stored/serialized as naive UTC (see crud.utc_now_naive).
+    A caller can still send a zone-marked ISO (e.g. a date-picker's
+    `toISOString()`); treat it as the same instant the author meant: convert
+    to UTC and drop the tz so downstream ``publish_at`` comparisons against
+    naive-UTC now can never raise aware-vs-naive TypeError, and storage is
+    unambiguous regardless of the DB session timezone.
+    """
+    if value is None or value.tzinfo is None:
+        return value
+    return value.astimezone(UTC).replace(tzinfo=None)
 
 
 def _validate_cover_image_url(value: str | None) -> str | None:
@@ -128,6 +143,13 @@ class PostBase(BaseModel):
     series_order: int = 0
     cover_image: str | None = Field(default=None, max_length=500)
 
+    @field_validator("publish_at")
+    @classmethod
+    def normalize_publish_at(cls, value: datetime | None) -> datetime | None:
+        # Aware input (offset/Z) becomes the same absolute instant as naive UTC
+        # (see _normalize_naive_utc); naive passes through untouched.
+        return _normalize_naive_utc(value)
+
 
 class PostCreate(PostBase):
     tags: list[str] = []
@@ -160,6 +182,13 @@ class PostUpdate(BaseModel):
     @classmethod
     def check_cover_image_scheme(cls, value: str | None) -> str | None:
         return _validate_cover_image_url(value)
+
+    @field_validator("publish_at")
+    @classmethod
+    def normalize_publish_at(cls, value: datetime | None) -> datetime | None:
+        # None = "don't update the field" (exclude_unset contract); aware input
+        # becomes the same absolute instant as naive UTC (see _normalize_naive_utc).
+        return _normalize_naive_utc(value)
 
 
 class Post(PostBase):
