@@ -3,9 +3,8 @@
 from io import BytesIO
 from pathlib import Path
 
-from PIL import Image
-
 import pytest
+from PIL import Image
 
 from app import models
 from app.routers import upload as upload_module

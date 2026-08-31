@@ -37,6 +37,7 @@ if not is_sqlite:
         with dbapi_connection.cursor() as cur:
             cur.execute("SET TIME ZONE 'UTC'")
 
+
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
 
