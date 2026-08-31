@@ -2,7 +2,7 @@
   "ril_version": 1,
   "round": 206,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-08-31T12:08:54+00:00",
+  "updated_at": "2026-08-31T14:51:22+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -11,7 +11,7 @@
       "version": 1,
       "created_at": "2026-08-06T13:23:41+00:00",
       "updated_at": "2026-08-06T13:23:41+00:00",
-      "touched_round": 191,
+      "touched_round": 206,
       "title": "backend-nova",
       "description": "FastAPI Python 3.14 backend at backend/nova; SQLAlchemy ORM; routers in app/routers, crud.py business logic, 656 lines"
     },
@@ -14196,6 +14196,64 @@
       "touched_round": 205,
       "commit": "dbdc778",
       "title": "fix(a11y): tag-follow failure bubble anchors below chip (ISS-230)"
+    },
+    "ISS-231": {
+      "id": "ISS-231",
+      "type": "issue",
+      "status": "resolved",
+      "version": 1,
+      "created_at": "2026-08-31T14:46:52+00:00",
+      "updated_at": "2026-08-31T14:46:52+00:00",
+      "touched_round": 206,
+      "severity": "medium",
+      "title": "PG session timezone skews aware-UTC model defaults into wrong naive values",
+      "summary": "Repro on dev PG (Asia/Shanghai): Post.created_at default is aware datetime.now(UTC); the column is naive DateTime; psycopg2 adapts aware values into the session TimeZone, so a 13:14Z default was stored as 21:14 (UTC+8) while the app compares against naive utc_now_naive(). Post appeared 8h in the future: broke weekly-digest idempotency (2nd run redelivered) and skewed every naive-UTC-bounded query/RSS timestamp. Fixed by pinning the PG session to UTC via a connect event (2f209de); CJK PG-gated test made self-cleaning so PG files share a scratch DB."
+    },
+    "ISS-232": {
+      "id": "ISS-232",
+      "type": "issue",
+      "status": "resolved",
+      "version": 1,
+      "created_at": "2026-08-31T14:49:14+00:00",
+      "updated_at": "2026-08-31T14:49:14+00:00",
+      "touched_round": 206,
+      "severity": "low",
+      "title": "Media-library tests flake under pytest -n auto (shared static/uploads dir)",
+      "summary": "All xdist workers used the real static/uploads directory; a delete test in one worker removed a file while another worker list test stat-ed it -> FileNotFoundError, a different upload test failed every run. Fixed by isolating uploads per test (monkeypatch upload.STATIC_DIR to tmp_path, requested via pytestmark; tests resolve the constant through the module) — 36/36 across 4 parallel runs (1ac3e9a)."
+    },
+    "CHG-280": {
+      "id": "CHG-280",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-31T14:49:14+00:00",
+      "updated_at": "2026-08-31T14:49:14+00:00",
+      "touched_round": 206,
+      "commit": "2f209de",
+      "title": "fix(backend): pin PG session timezone to UTC (naive-UTC contract)"
+    },
+    "CHG-281": {
+      "id": "CHG-281",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-31T14:49:14+00:00",
+      "updated_at": "2026-08-31T14:49:14+00:00",
+      "touched_round": 206,
+      "commit": "1ac3e9a",
+      "title": "test(backend): isolate media-library uploads per test"
+    },
+    "DEC-213": {
+      "id": "DEC-213",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-31T14:51:22+00:00",
+      "updated_at": "2026-08-31T14:51:22+00:00",
+      "touched_round": 206,
+      "title": "PG sessions pinned to UTC — naive-UTC is the storage contract",
+      "rationale": "The codebase documents \"naive UTC\" as the storage contract (digest domain notes; crud utc_now_naive), but model defaults use aware datetime.now(UTC) on naive DateTime columns. On a non-UTC PG server psycopg2 adapts aware->naive via the session TimeZone, skewing created_at/updated_at by the offset and breaking every naive-UTC comparison (digest idempotency, date-bounded queries, RSS). Pin the session TimeZone to UTC on connect so aware-UTC defaults store the UTC wall clock on every deployment, independent of server config.",
+      "alternatives_rejected": "Sweep all model defaults to naive utc_now_naive (large blast radius: SQLite aware read-back, isoformat suffix, digest SQLite branch); migrate columns to DateTime(timezone=True) (schema+wire-format change, big frontend impact); require operators to set PG TimeZone=UTC (silent footgun, unenforceable)."
     }
   },
   "edges": [
@@ -20509,6 +20567,30 @@
       "to": "TASK-240",
       "type": "implements",
       "created_at": "2026-08-31T12:06:50+00:00"
+    },
+    {
+      "from": "CHG-280",
+      "to": "ISS-231",
+      "type": "resolves",
+      "created_at": "2026-08-31T14:51:22+00:00"
+    },
+    {
+      "from": "CHG-281",
+      "to": "ISS-232",
+      "type": "resolves",
+      "created_at": "2026-08-31T14:51:22+00:00"
+    },
+    {
+      "from": "ISS-231",
+      "to": "COMP-001",
+      "type": "located_in",
+      "created_at": "2026-08-31T14:51:22+00:00"
+    },
+    {
+      "from": "ISS-232",
+      "to": "COMP-001",
+      "type": "located_in",
+      "created_at": "2026-08-31T14:51:22+00:00"
     }
   ]
 }
