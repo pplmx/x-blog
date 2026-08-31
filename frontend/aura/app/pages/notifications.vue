@@ -18,6 +18,7 @@ import {
 	type ReaderNotificationPrefs,
 	updateReaderNotificationPref,
 } from "~~/api/reader/notifications";
+import { parseApiDate } from "~~/composables/apiDate";
 import { useNotificationBadge } from "~~/composables/useNotificationBadge";
 import { useReaderAuth } from "~~/composables/useReaderAuth";
 import { useSeo } from "~~/composables/useSeo";
@@ -245,7 +246,8 @@ function kindLabel(item: ReaderNotification): string {
 
 function timeLabel(item: ReaderNotification): string {
 	if (!item.created_at) return "";
-	const d = new Date(item.created_at);
+	const d = parseApiDate(item.created_at);
+	if (!d) return "";
 	const fmt = new Intl.DateTimeFormat(locale.value === "zh" ? "zh-CN" : "en-US", {
 		year: "numeric",
 		month: "long",

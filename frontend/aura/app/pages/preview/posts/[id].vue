@@ -11,6 +11,7 @@ import { computed, onMounted, ref } from "vue";
 import type { AdminPostDetail } from "~~/api/admin/posts";
 import { getAdminPost } from "~~/api/admin/posts";
 import { useAdminCategories, useAdminTags } from "~~/api/admin/taxonomy";
+import { parseApiDate } from "~~/composables/apiDate";
 import { coverImageSrc } from "~~/composables/useCoverImage";
 import { readingMinutes } from "~~/composables/useReadingTime";
 import { useSeo } from "~~/composables/useSeo";
@@ -107,7 +108,7 @@ onMounted(async () => {
           </span>
           <span class="text-xs text-gray-400 flex items-center gap-1">
             <Icon icon="lucide:calendar" class="w-3.5 h-3.5" />
-            {{ new Date(post.publish_at ?? post.created_at).toLocaleDateString(locale === 'zh' ? 'zh-CN' : 'en-US', { year: 'numeric', month: 'long', day: 'numeric' }) }}
+            {{ parseApiDate(post.publish_at ?? post.created_at)?.toLocaleDateString(locale === 'zh' ? 'zh-CN' : 'en-US', { year: 'numeric', month: 'long', day: 'numeric' }) ?? "" }}
           </span>
         </div>
 

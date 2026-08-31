@@ -9,6 +9,7 @@
  * trail (see composables/useReadingHistory).
  */
 import { computed, onMounted, onUnmounted, ref } from "vue";
+import { parseApiDate } from "~~/composables/apiDate";
 import { type HistoryEntry, useReadingHistory } from "~~/composables/useReadingHistory";
 import { useSeo } from "~~/composables/useSeo";
 
@@ -57,7 +58,8 @@ async function clearHistory() {
 // back to a "recently viewed" label.
 function viewedLabel(item: HistoryEntry): string {
 	if (!item.viewedAt) return t("history.unviewed");
-	const d = new Date(item.viewedAt);
+	const d = parseApiDate(item.viewedAt);
+	if (!d) return t("history.unviewed");
 	const fmt = new Intl.DateTimeFormat(locale.value === "zh" ? "zh-CN" : "en-US", {
 		year: "numeric",
 		month: "long",
@@ -73,7 +75,8 @@ function viewedLabel(item: HistoryEntry): string {
 // as an absolute localized date-time (same shape as viewedLabel).
 function lastActivityLabel(): string {
 	if (!stats.value?.lastViewedAt) return t("history.noActivity");
-	const d = new Date(stats.value.lastViewedAt);
+	const d = parseApiDate(stats.value.lastViewedAt);
+	if (!d) return t("history.noActivity");
 	const fmt = new Intl.DateTimeFormat(locale.value === "zh" ? "zh-CN" : "en-US", {
 		year: "numeric",
 		month: "long",

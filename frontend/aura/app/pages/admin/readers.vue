@@ -9,6 +9,7 @@
 <script setup lang="ts">
 import { activateReader, deactivateReader, useAdminReaders } from "~~/api/admin/readers";
 import type { AdminReader } from "~~/api/contracts/reader";
+import { parseApiDate } from "~~/composables/apiDate";
 
 definePageMeta({ layout: "admin" });
 
@@ -41,8 +42,8 @@ const actionError = ref<string | null>(null);
 
 function formatDate(value: string | null): string {
 	if (!value) return "—";
-	const d = new Date(value);
-	if (Number.isNaN(d.getTime())) return "—";
+	const d = parseApiDate(value);
+	if (!d) return "—";
 	return d.toLocaleDateString(locale.value === "zh" ? "zh-CN" : "en-US", {
 		year: "numeric",
 		month: "short",

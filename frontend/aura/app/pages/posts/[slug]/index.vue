@@ -9,6 +9,7 @@ import {
 } from "~~/api/public/posts";
 import { useSeriesBySlug } from "~~/api/public/series";
 import { recordReaderHistory } from "~~/api/reader/history";
+import { parseApiDate } from "~~/composables/apiDate";
 import { coverImageSrc } from "~~/composables/useCoverImage";
 import { markdownToHtml } from "~~/composables/useMarkdown";
 import { useReaderAuth } from "~~/composables/useReaderAuth";
@@ -448,7 +449,7 @@ function handleCommentSubmitted() {
           <div class="flex items-center gap-4 text-sm text-gray-400">
             <span class="flex items-center gap-1.5">
               <Icon icon="lucide:calendar" class="w-3.5 h-3.5" />
-              {{ new Date(post.created_at).toLocaleDateString(locale === "zh" ? "zh-CN" : "en-US", { year: 'numeric', month: 'long', day: 'numeric' }) }}
+              {{ parseApiDate(post.created_at)?.toLocaleDateString(locale === "zh" ? "zh-CN" : "en-US", { year: 'numeric', month: 'long', day: 'numeric' }) ?? "" }}
             </span>
           </div>
 

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed } from "vue";
 import { usePost } from "~~/api/public/posts";
+import { parseApiDate } from "~~/composables/apiDate";
 import { readingMinutes } from "~~/composables/useReadingTime";
 
 // Print / PDF view of a post (DEC-112, TASK-168).
@@ -73,7 +74,7 @@ function printPage() {
           <div class="flex flex-wrap items-center gap-4 text-sm text-gray-500 dark:text-gray-400">
             <span class="inline-flex items-center gap-1.5">
               <Icon icon="lucide:calendar" class="w-3.5 h-3.5" />
-              {{ new Date(post.created_at).toLocaleDateString(locale === "zh" ? "zh-CN" : "en-US", { year: 'numeric', month: 'long', day: 'numeric' }) }}
+              {{ parseApiDate(post.created_at)?.toLocaleDateString(locale === "zh" ? "zh-CN" : "en-US", { year: 'numeric', month: 'long', day: 'numeric' }) ?? "" }}
             </span>
             <span class="inline-flex items-center gap-1.5">
               <Icon icon="lucide:clock" class="w-3.5 h-3.5" />

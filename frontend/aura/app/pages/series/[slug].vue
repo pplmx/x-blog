@@ -9,6 +9,7 @@ import {
 } from "~~/api/reader/follows";
 import type { SeriesProgress } from "~~/api/reader/history";
 import { getReaderSeriesProgress } from "~~/api/reader/history";
+import { parseApiDate } from "~~/composables/apiDate";
 import { useSeo } from "~~/composables/useSeo";
 
 const { t, locale } = useLang();
@@ -285,7 +286,7 @@ async function toggleNotify() {
             <div class="mt-2 ml-11 flex items-center gap-4 text-xs text-gray-400">
               <span class="flex items-center gap-1">
                 <Icon icon="lucide:calendar" class="w-3.5 h-3.5" />
-                {{ new Date(post.created_at).toLocaleDateString(locale === "zh" ? "zh-CN" : "en-US") }}
+                {{ parseApiDate(post.created_at)?.toLocaleDateString(locale === "zh" ? "zh-CN" : "en-US") ?? "" }}
               </span>
               <span class="flex items-center gap-1">
                 <Icon icon="lucide:eye" class="w-3.5 h-3.5" />

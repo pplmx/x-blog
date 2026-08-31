@@ -10,6 +10,7 @@ import { approveAdminComment } from "~~/api/admin/comments";
 import type { AdminPost, AdminPostListResponse } from "~~/api/admin/posts";
 import type { Category, Tag } from "~~/api/contracts/shared";
 import type { BlogStats } from "~~/api/public/stats";
+import { parseApiDate } from "~~/composables/apiDate";
 
 definePageMeta({ layout: "admin" });
 
@@ -820,7 +821,7 @@ const stats = computed(() => [
                 {{ post.title }}
               </p>
               <p class="text-sm text-gray-500 dark:text-gray-400">
-                {{ new Date(post.created_at).toLocaleDateString(locale === "zh" ? "zh-CN" : "en-US") }}
+                {{ parseApiDate(post.created_at)?.toLocaleDateString(locale === "zh" ? "zh-CN" : "en-US") ?? "" }}
               </p>
             </div>
             <div class="flex items-center gap-3 text-sm text-gray-400 dark:text-gray-500">

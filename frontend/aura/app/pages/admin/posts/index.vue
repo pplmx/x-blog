@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { AdminPost } from "~~/api/admin/posts";
 import { deleteAdminPost, useAdminPosts } from "~~/api/admin/posts";
+import { parseApiDate } from "~~/composables/apiDate";
 
 definePageMeta({ layout: "admin" });
 
@@ -71,7 +72,11 @@ async function handleDelete(id: number) {
 // is False). The old `!published && publish_at` rule was inverted: it mislabeled
 // a real scheduled post as published and a draft-with-future-date as scheduled.
 function isScheduled(post: AdminPost): boolean {
-	return post.published && !!post.publish_at && new Date(post.publish_at).getTime() > Date.now();
+	return (
+		post.published &&
+		!!post.publish_at &&
+		(parseApiDate(post.publish_at)?.getTime() ?? 0) > Date.now()
+	);
 }
 
 function statusLabel(post: AdminPost): string {
@@ -226,7 +231,7 @@ function statusDot(post: AdminPost): string {
                 {{ post.views || 0 }}
               </td>
               <td class="px-5 py-4 text-sm text-gray-500 dark:text-gray-400 hidden sm:table-cell">
-                {{ new Date(post.created_at).toLocaleDateString(locale === "zh" ? "zh-CN" : "en-US") }}
+                {{ parseApiDate(post.created_at)?.toLocaleDateString(locale === "zh" ? "zh-CN" : "en-US") ?? "" }}
               </td>
               <td class="px-5 py-4 text-right">
                 <div class="flex items-center justify-end gap-1">

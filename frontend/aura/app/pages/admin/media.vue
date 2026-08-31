@@ -13,6 +13,7 @@ import {
 	useAdminMedia,
 } from "~~/api/admin/media";
 import type { UploadFileInfo } from "~~/api/contracts/media";
+import { parseApiDate } from "~~/composables/apiDate";
 
 definePageMeta({ layout: "admin" });
 
@@ -254,7 +255,7 @@ function goToPage(page: number) {
             {{ formatSize(item.size) }}
           </div>
           <div class="text-[11px] text-gray-400 dark:text-gray-500">
-            {{ t("admin.media.uploadedAt", { date: new Date(item.uploaded_at).toLocaleDateString() }) }}
+            {{ t("admin.media.uploadedAt", { date: parseApiDate(item.uploaded_at)?.toLocaleDateString() ?? "" }) }}
           </div>
 
           <div class="mt-auto pt-2 flex gap-1.5">

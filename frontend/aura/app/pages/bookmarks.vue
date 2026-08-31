@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from "vue";
+import { parseApiDate } from "~~/composables/apiDate";
 import { useBookmarkFolders } from "~~/composables/useBookmarkFolders";
 import { useBookmarkSync } from "~~/composables/useBookmarkSync";
 import { type Bookmark, useBookmarks } from "~~/composables/useBookmarks";
@@ -360,7 +361,7 @@ async function handleAssign(bookmark: Bookmark, raw: string) {
               </span>
               <span class="flex items-center gap-1">
                 <Icon icon="lucide:calendar" class="w-4 h-4" />
-                {{ new Date(bookmark.created_at).toLocaleDateString(locale === "zh" ? "zh-CN" : "en-US", { year: 'numeric', month: 'long', day: 'numeric' }) }}
+                {{ parseApiDate(bookmark.created_at)?.toLocaleDateString(locale === "zh" ? "zh-CN" : "en-US", { year: 'numeric', month: 'long', day: 'numeric' }) ?? "" }}
               </span>
             </div>
 

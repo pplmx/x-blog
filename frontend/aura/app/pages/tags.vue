@@ -8,6 +8,7 @@ import {
 	setTagFollowNotify,
 	unfollowReaderTag,
 } from "~~/api/reader/follows";
+import { parseApiDate } from "~~/composables/apiDate";
 import { paginationPages } from "~~/composables/usePagination";
 import { useSeo } from "~~/composables/useSeo";
 
@@ -308,7 +309,7 @@ watch(
               {{ post.category.name }}
             </span>
             <span>
-              {{ new Date(post.created_at).toLocaleDateString(locale === "zh" ? "zh-CN" : "en-US") }}
+              {{ parseApiDate(post.created_at)?.toLocaleDateString(locale === "zh" ? "zh-CN" : "en-US") ?? "" }}
             </span>
             <span>{{ t('tags.views', { count: post.views }) }}</span>
           </div>

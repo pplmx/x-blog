@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed } from "vue";
 import { type ArchiveEntry, usePostArchive, usePosts } from "~~/api/public/posts";
+import { parseApiDate } from "~~/composables/apiDate";
 import { paginationPages } from "~~/composables/usePagination";
 import { useSeo } from "~~/composables/useSeo";
 
@@ -209,7 +210,7 @@ useSeo(() => ({
               {{ post.category.name }}
             </span>
             <span>
-              {{ new Date(post.created_at).toLocaleDateString(locale === "zh" ? "zh-CN" : "en-US") }}
+              {{ parseApiDate(post.created_at)?.toLocaleDateString(locale === "zh" ? "zh-CN" : "en-US") ?? "" }}
             </span>
             <span>{{ t('archive.views', { count: post.views }) }}</span>
           </div>

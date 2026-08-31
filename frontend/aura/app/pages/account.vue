@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { parseApiDate } from "~~/composables/apiDate";
 /**
  * Reader account settings (DEC-067, TASK-142): edit display name, rotate the
  * password (verifying the current one; the fresh token keeps this session
@@ -440,11 +441,13 @@ onMounted(() => {
 
 function formatDate(dateStr: string | null): string {
 	if (!dateStr) return "—";
-	return new Date(dateStr).toLocaleDateString(locale.value === "zh" ? "zh-CN" : "en-US", {
-		year: "numeric",
-		month: "short",
-		day: "numeric",
-	});
+	return (
+		parseApiDate(dateStr)?.toLocaleDateString(locale.value === "zh" ? "zh-CN" : "en-US", {
+			year: "numeric",
+			month: "short",
+			day: "numeric",
+		}) ?? "—"
+	);
 }
 
 function shortEndpoint(endpoint: string): string {

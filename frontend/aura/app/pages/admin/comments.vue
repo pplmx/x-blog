@@ -9,6 +9,7 @@ import {
 	getAdminComments,
 	replyAdminComment,
 } from "~~/api/admin/comments";
+import { parseApiDate } from "~~/composables/apiDate";
 
 definePageMeta({ layout: "admin" });
 
@@ -538,7 +539,7 @@ async function submitReply(id: number) {
             <div class="text-xs text-gray-400 dark:text-gray-500 space-x-3">
               <span>{{ comment.post_title }}</span>
               <span>{{ comment.ip_address }}</span>
-              <span>{{ new Date(comment.created_at).toLocaleString(locale === "zh" ? "zh-CN" : "en-US") }}</span>
+              <span>{{ parseApiDate(comment.created_at)?.toLocaleString(locale === "zh" ? "zh-CN" : "en-US") ?? "" }}</span>
             </div>
           </div>
 

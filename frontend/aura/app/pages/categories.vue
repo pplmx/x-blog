@@ -8,6 +8,7 @@ import {
 	setCategoryFollowNotify,
 	unfollowReaderCategory,
 } from "~~/api/reader/follows";
+import { parseApiDate } from "~~/composables/apiDate";
 import { paginationPages } from "~~/composables/usePagination";
 import { usePushSubscription } from "~~/composables/usePushSubscription";
 import { useSeo } from "~~/composables/useSeo";
@@ -368,7 +369,7 @@ watch(categoryId, () => {
               {{ post.category.name }}
             </span>
             <span>
-              {{ new Date(post.created_at).toLocaleDateString(locale === "zh" ? "zh-CN" : "en-US") }}
+              {{ parseApiDate(post.created_at)?.toLocaleDateString(locale === "zh" ? "zh-CN" : "en-US") ?? "" }}
             </span>
             <span>{{ t('categories.views', { count: post.views }) }}</span>
           </div>

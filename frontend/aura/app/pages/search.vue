@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from "vue";
 import { usePostSearch } from "~~/api/public/posts";
+import { parseApiDate } from "~~/composables/apiDate";
 import { loadPurify, sanitizeHtml } from "~~/composables/useMarkdown";
 import { paginationPages } from "~~/composables/usePagination";
 import { useSeo } from "~~/composables/useSeo";
@@ -393,7 +394,7 @@ function handleSearchInput() {
               {{ post.category.name }}
             </span>
             <span>
-              {{ new Date(post.created_at).toLocaleDateString(locale === "zh" ? "zh-CN" : "en-US") }}
+              {{ parseApiDate(post.created_at)?.toLocaleDateString(locale === "zh" ? "zh-CN" : "en-US") ?? "" }}
             </span>
             <span>{{ post.views }} {{ t("search.posts.views") }}</span>
           </div>
