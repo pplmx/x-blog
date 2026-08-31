@@ -81,14 +81,17 @@ async function handleSetNotify() {
 		:title="tagName"
 		@click.stop.prevent
 	>
-		<!-- Transient failure bubble: visible above the chip and announced via
-		     role=status when a follow/notify call rejects. Anchored absolutely so
-		     it never shifts the tag row. -->
+		<!-- Transient failure bubble: visible and announced via role=status when a
+		     follow/notify call rejects. Anchored absolutely so it never shifts the
+		     tag row. Anchored BELOW the chip (top-full): the tags row is a wrapping
+		     flex, so an above-anchored bubble (bottom-full) painted over the chip in
+		     the row above (ISS-230); dropping it downward lands it in the whitespace
+		     below the footer for the common single-row / last-row cases. -->
 		<span
 			v-if="error"
 			role="status"
 			aria-live="polite"
-			class="absolute bottom-full left-1/2 z-10 mb-1.5 -translate-x-1/2 whitespace-nowrap rounded-md border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/40 px-2 py-0.5 text-[10px] font-medium text-red-600 dark:text-red-400 shadow-sm"
+			class="absolute top-full left-1/2 z-10 mt-1.5 -translate-x-1/2 whitespace-nowrap pointer-events-none rounded-md border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/40 px-2 py-0.5 text-[10px] font-medium text-red-600 dark:text-red-400 shadow-sm"
 		>
 			{{ t('tags.followFailed') }}
 		</span>

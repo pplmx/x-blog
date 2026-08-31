@@ -165,6 +165,25 @@ describe("TagFollowButton", () => {
 		expect(w.find('button[aria-label="rust tags.followTitle"]').exists()).toBe(true);
 	});
 
+	it("anchors the failure bubble below the chip so it cannot occlude the row above (ISS-230)", async () => {
+		localStorage.setItem("reader_token", "tok-1");
+		mockGet.mockResolvedValue({ items: [], total: 0 });
+		mockFollow.mockRejectedValue(new Error("network"));
+		const w = await mountButton();
+		await w.find('button[aria-label="rust tags.followTitle"]').trigger("click");
+		await flushPromises();
+
+		// The tags row wraps (flex-wrap); an above-anchored bubble painted over the
+		// chip in the row above. Anchored below instead (top-full), landing in the
+		// whitespace under the footer, and made pointer-events-none so a retry click
+		// never hits the bubble.
+		const bubble = w.find('[role="status"]');
+		const cls = bubble.attributes("class") ?? "";
+		expect(cls).toContain("top-full");
+		expect(cls).not.toContain("bottom-full");
+		expect(cls).toContain("pointer-events-none");
+	});
+
 	it("exposes follow and notify state via aria-pressed", async () => {
 		localStorage.setItem("reader_token", "tok-1");
 		followed();
