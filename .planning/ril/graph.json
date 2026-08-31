@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 196,
+  "round": 197,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-08-30T19:47:33+00:00",
+  "updated_at": "2026-08-31T03:11:55+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -13526,6 +13526,124 @@
       "updated_at": "2026-08-30T19:46:16+00:00",
       "touched_round": 195,
       "commit": "6de514c"
+    },
+    "ISS-186": {
+      "id": "ISS-186",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-08-31T03:10:20+00:00",
+      "updated_at": "2026-08-31T03:11:54+00:00",
+      "touched_round": 196,
+      "title": "Public page failed fetches render as empty or dead-end without retry",
+      "summary": "archive/categories/tags showed the empty state on fetch failure (no error branch); home/search/series/notifications error lines had no Retry / back affordance — transient outages looked like data loss or forced a reload",
+      "severity": "high"
+    },
+    "ISS-187": {
+      "id": "ISS-187",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-08-31T03:10:20+00:00",
+      "updated_at": "2026-08-31T03:11:54+00:00",
+      "touched_round": 196,
+      "title": "history page lacks loading/in-flight feedback",
+      "summary": "initial load rendered a blank list (no skeleton), recall search swapped stale rows silently; the search input had no aria-label",
+      "severity": "medium"
+    },
+    "ISS-188": {
+      "id": "ISS-188",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-08-31T03:10:20+00:00",
+      "updated_at": "2026-08-31T03:11:55+00:00",
+      "touched_round": 196,
+      "title": "account settings forms were mouse-only (no Enter-to-submit)",
+      "summary": "profile / change-password / delete-account were bare divs — Enter in any field did nothing; no form semantics",
+      "severity": "medium"
+    },
+    "ISS-189": {
+      "id": "ISS-189",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-08-31T03:10:20+00:00",
+      "updated_at": "2026-08-31T03:11:55+00:00",
+      "touched_round": 196,
+      "title": "Unlabeled inputs in reader search/edit surfaces",
+      "summary": "search empty-query box, bookmarks search, and CommentList edit-comment textareas had no accessible name (placeholder-only / unlabeled)",
+      "severity": "medium"
+    },
+    "ISS-190": {
+      "id": "ISS-190",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-08-31T03:10:20+00:00",
+      "updated_at": "2026-08-31T03:11:55+00:00",
+      "touched_round": 196,
+      "title": "Bookmark removal unrecoverable; manage-folders disclosure opaque",
+      "summary": "single one-click remove mirrored straight to the cloud with no confirm/undo; Manage-folders disclosure lacked aria-expanded and had no explicit close (label never flipped)",
+      "severity": "medium"
+    },
+    "ISS-191": {
+      "id": "ISS-191",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-08-31T03:11:18+00:00",
+      "updated_at": "2026-08-31T03:11:55+00:00",
+      "touched_round": 196,
+      "title": "Notifications rows nest a button inside the row link; inbox error no retry",
+      "summary": "mark-read button was nested inside the <a> (invalid HTML, two focus stops); inbox error line had no Retry",
+      "severity": "medium"
+    },
+    "ISS-192": {
+      "id": "ISS-192",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-08-31T03:11:18+00:00",
+      "updated_at": "2026-08-31T03:11:55+00:00",
+      "touched_round": 196,
+      "title": "Reader comment status 'tabs' fake role=tab without tab behavior",
+      "summary": "filter buttons claimed role=tab/aria-selected but had no roving tabindex or arrow-key nav — a broken expected interaction for keyboard/AT users",
+      "severity": "low"
+    },
+    "ISS-193": {
+      "id": "ISS-193",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-08-31T03:11:18+00:00",
+      "updated_at": "2026-08-31T03:11:55+00:00",
+      "touched_round": 196,
+      "title": "ShareButtons copy-link failure silent; success unannounced",
+      "summary": "clipboard failure only console.error'd (zero reader feedback); success was a bare icon swap with no live region",
+      "severity": "low"
+    },
+    "ISS-194": {
+      "id": "ISS-194",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-08-31T03:11:18+00:00",
+      "updated_at": "2026-08-31T03:11:55+00:00",
+      "touched_round": 196,
+      "title": "Pagination lacks aria-current on the active page",
+      "summary": "home/search/archive/categories/tags/comments pagination omitted aria-current=page — AT users couldn't tell where they were",
+      "severity": "low"
+    },
+    "CHG-271": {
+      "id": "CHG-271",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-31T03:11:18+00:00",
+      "updated_at": "2026-08-31T03:11:18+00:00",
+      "touched_round": 196,
+      "commit": "51b030f"
     }
   },
   "edges": [
@@ -19524,6 +19642,69 @@
       "type": "resolves",
       "created_at": "2026-08-30T19:46:46+00:00",
       "note": "commit 6de514c fixes ISS-185"
+    },
+    {
+      "from": "CHG-271",
+      "to": "ISS-186",
+      "type": "resolves",
+      "created_at": "2026-08-31T03:11:54+00:00",
+      "note": "commit 51b030f fixes ISS-186"
+    },
+    {
+      "from": "CHG-271",
+      "to": "ISS-187",
+      "type": "resolves",
+      "created_at": "2026-08-31T03:11:54+00:00",
+      "note": "commit 51b030f fixes ISS-187"
+    },
+    {
+      "from": "CHG-271",
+      "to": "ISS-188",
+      "type": "resolves",
+      "created_at": "2026-08-31T03:11:54+00:00",
+      "note": "commit 51b030f fixes ISS-188"
+    },
+    {
+      "from": "CHG-271",
+      "to": "ISS-189",
+      "type": "resolves",
+      "created_at": "2026-08-31T03:11:54+00:00",
+      "note": "commit 51b030f fixes ISS-189"
+    },
+    {
+      "from": "CHG-271",
+      "to": "ISS-190",
+      "type": "resolves",
+      "created_at": "2026-08-31T03:11:54+00:00",
+      "note": "commit 51b030f fixes ISS-190"
+    },
+    {
+      "from": "CHG-271",
+      "to": "ISS-191",
+      "type": "resolves",
+      "created_at": "2026-08-31T03:11:54+00:00",
+      "note": "commit 51b030f fixes ISS-191"
+    },
+    {
+      "from": "CHG-271",
+      "to": "ISS-192",
+      "type": "resolves",
+      "created_at": "2026-08-31T03:11:54+00:00",
+      "note": "commit 51b030f fixes ISS-192"
+    },
+    {
+      "from": "CHG-271",
+      "to": "ISS-193",
+      "type": "resolves",
+      "created_at": "2026-08-31T03:11:54+00:00",
+      "note": "commit 51b030f fixes ISS-193"
+    },
+    {
+      "from": "CHG-271",
+      "to": "ISS-194",
+      "type": "resolves",
+      "created_at": "2026-08-31T03:11:54+00:00",
+      "note": "commit 51b030f fixes ISS-194"
     }
   ]
 }
