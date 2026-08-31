@@ -195,4 +195,13 @@ class TestChineseSearchPostgres:
             assert "<mark>" in snippet and "</mark>" in snippet
         finally:
             db.close()
+            # Self-cleaning: this test commits rows (the created post) into the
+            # shared scratch DB. Leaving them behind contaminated other PG-gated
+            # files — e.g. test_digest saw the leftover post as a new in-window
+            # post with a skewed (aware-default) created_at, breaking its
+            # idempotency assertion. Drop the schema like the digest and
+            # postgres_connection PG tests do (each create_all's up front).
+            from app.database import Base
+
+            Base.metadata.drop_all(bind=engine)
             engine.dispose()

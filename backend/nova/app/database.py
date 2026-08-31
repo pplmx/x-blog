@@ -1,4 +1,4 @@
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, event
 from sqlalchemy.orm import declarative_base, sessionmaker
 
 from app.config import settings
@@ -18,6 +18,25 @@ if not is_sqlite:
     }
 
 engine = create_engine(settings.database_url, connect_args=_connect_args, **_pool_opts)
+
+# Timezone contract: every timestamp column is naive UTC ("timestamp without
+# time zone" storing the UTC wall clock — see the digest domain notes and the
+# `naive publish_at/now_naive` convention across crud). Model defaults use
+# aware `datetime.now(UTC)`, and psycopg2 adapts an aware value into the
+# SESSION TimeZone before storing it in a naive column — so on a server whose
+# TimeZone is not UTC (e.g. the dev host's Asia/Shanghai) that aware default is
+# silently stored as UTC+offset, skewing every created_at/updated_at vs the
+# naive `utc_now_naive()` values the app writes and compares. Pin the session
+# to UTC so aware→naive storage is the UTC wall clock on every deployment,
+# independent of the server's configured TimeZone. (SQLite has no tz concept;
+# its FKs pragma is set up in tests' conftest.)
+if not is_sqlite:
+
+    @event.listens_for(engine, "connect")
+    def _set_utc_session(dbapi_connection, _connection_record):
+        with dbapi_connection.cursor() as cur:
+            cur.execute("SET TIME ZONE 'UTC'")
+
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
 
