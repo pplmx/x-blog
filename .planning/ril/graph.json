@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 205,
+  "round": 206,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-08-31T10:56:00+00:00",
+  "updated_at": "2026-08-31T12:08:54+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -14140,11 +14140,11 @@
     "ISS-230": {
       "id": "ISS-230",
       "type": "issue",
-      "status": "active",
-      "version": 1,
+      "status": "resolved",
+      "version": 2,
       "created_at": "2026-08-31T10:55:59+00:00",
-      "updated_at": "2026-08-31T10:55:59+00:00",
-      "touched_round": 204,
+      "updated_at": "2026-08-31T12:03:51+00:00",
+      "touched_round": 205,
       "title": "TagFollowButton error bubble can occlude the chip in the row above",
       "summary": "In the wrapped flex-wrap tag footer (posts slug page), a lower-row chip transient 2.6s bubble (absolute bottom-full, z-10) paints over the chip above. Cosmetic; accepted as deferred.",
       "severity": "low"
@@ -14158,6 +14158,44 @@
       "updated_at": "2026-08-31T10:55:59+00:00",
       "touched_round": 204,
       "commit": "e11a757"
+    },
+    "TASK-240": {
+      "id": "TASK-240",
+      "type": "task",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-08-31T12:02:26+00:00",
+      "updated_at": "2026-08-31T12:06:50+00:00",
+      "touched_round": 205,
+      "category": "correctness",
+      "severity": "low",
+      "title": "Tag-follow failure bubble must not occlude the chip in the row above",
+      "description": "ISS-230: in the wrapping flex-wrap tags footer on the posts slug page, the transient 2.6s error bubble was anchored above the chip (absolute bottom-full), painting over the chip in the row above. Fix: anchor below (top-full) into the whitespace under the footer, pointer-events-none, regression test."
+    },
+    "TASK-241": {
+      "id": "TASK-241",
+      "type": "task",
+      "status": "abandoned",
+      "version": 3,
+      "created_at": "2026-08-31T12:02:50+00:00",
+      "updated_at": "2026-08-31T12:07:08+00:00",
+      "touched_round": 205,
+      "category": "correctness",
+      "severity": 0.2,
+      "title": "Tag-follow failure bubble must not occlude the chip in the row above",
+      "description": "ISS-230: in the wrapping flex-wrap tags footer on the posts slug page, the transient 2.6s error bubble was anchored above the chip (absolute bottom-full), painting over the chip in the row above. Fix: anchor below (top-full) into the whitespace under the footer, pointer-events-none, regression test.",
+      "note": "Duplicate of TASK-240 (same ISS-230 backlog item created earlier same day and left orphaned); consolidated into TASK-240."
+    },
+    "CHG-279": {
+      "id": "CHG-279",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-31T12:03:51+00:00",
+      "updated_at": "2026-08-31T12:03:51+00:00",
+      "touched_round": 205,
+      "commit": "dbdc778",
+      "title": "fix(a11y): tag-follow failure bubble anchors below chip (ISS-230)"
     }
   },
   "edges": [
@@ -20447,6 +20485,30 @@
       "to": "COMP-002",
       "type": "located_in",
       "created_at": "2026-08-31T10:55:59+00:00"
+    },
+    {
+      "from": "TASK-241",
+      "to": "ISS-230",
+      "type": "addresses",
+      "created_at": "2026-08-31T12:03:51+00:00"
+    },
+    {
+      "from": "CHG-279",
+      "to": "ISS-230",
+      "type": "resolves",
+      "created_at": "2026-08-31T12:03:51+00:00"
+    },
+    {
+      "from": "TASK-240",
+      "to": "ISS-230",
+      "type": "addresses",
+      "created_at": "2026-08-31T12:06:50+00:00"
+    },
+    {
+      "from": "CHG-279",
+      "to": "TASK-240",
+      "type": "implements",
+      "created_at": "2026-08-31T12:06:50+00:00"
     }
   ]
 }
