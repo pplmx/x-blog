@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 197,
+  "round": 198,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-08-31T03:11:55+00:00",
+  "updated_at": "2026-08-31T04:13:30+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -13644,6 +13644,76 @@
       "updated_at": "2026-08-31T03:11:18+00:00",
       "touched_round": 196,
       "commit": "51b030f"
+    },
+    "ISS-195": {
+      "id": "ISS-195",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-08-31T04:12:31+00:00",
+      "updated_at": "2026-08-31T04:13:29+00:00",
+      "touched_round": 197,
+      "title": "Post error/not-found states were dead ends; no retry or onward path",
+      "summary": "post detail load-error and 404 rendered a bare icon+message with only a back link inside the (never-rendered) article branch — share-link arrivals stranded with no Retry or Back-home",
+      "severity": "medium"
+    },
+    "ISS-196": {
+      "id": "ISS-196",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-08-31T04:12:31+00:00",
+      "updated_at": "2026-08-31T04:13:29+00:00",
+      "touched_round": 197,
+      "title": "SPA post navigation unmounts the article and drops keyboard focus",
+      "summary": "prev/next/related nav swapped the whole article to a skeleton then reset scroll (no continuity), and nothing moved focus to the new post — the previously focused element was destroyed and SR focus fell to body",
+      "severity": "medium"
+    },
+    "ISS-197": {
+      "id": "ISS-197",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-08-31T04:12:31+00:00",
+      "updated_at": "2026-08-31T04:13:29+00:00",
+      "touched_round": 197,
+      "title": "Async result messages are invisible to screen readers",
+      "summary": "login failure, CommentForm submit success/failure, and post like-error were plain text with no role=alert/status — SR users got no confirmation or failure cue",
+      "severity": "medium"
+    },
+    "ISS-198": {
+      "id": "ISS-198",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-08-31T04:12:31+00:00",
+      "updated_at": "2026-08-31T04:13:29+00:00",
+      "touched_round": 197,
+      "title": "Login/register toggle has no selected state and no focus flow",
+      "summary": "mode toggle buttons exposed no aria-pressed; switching to register revealed display-name with no focus move; no autocomplete hints for password managers",
+      "severity": "low"
+    },
+    "ISS-199": {
+      "id": "ISS-199",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-08-31T04:12:31+00:00",
+      "updated_at": "2026-08-31T04:13:30+00:00",
+      "touched_round": 197,
+      "title": "CommentForm discards reply drafts silently; header search under-announces",
+      "summary": "switching reply target wiped an in-progress draft with no confirm; HeaderSearch aria-expanded stayed false while visibly open during debounce and no live region reported result count / no results",
+      "severity": "low"
+    },
+    "CHG-272": {
+      "id": "CHG-272",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-31T04:12:31+00:00",
+      "updated_at": "2026-08-31T04:12:31+00:00",
+      "touched_round": 197,
+      "commit": "4f6697f"
     }
   },
   "edges": [
@@ -19705,6 +19775,36 @@
       "type": "resolves",
       "created_at": "2026-08-31T03:11:54+00:00",
       "note": "commit 51b030f fixes ISS-194"
+    },
+    {
+      "from": "CHG-272",
+      "to": "ISS-195",
+      "type": "resolves",
+      "created_at": "2026-08-31T04:13:29+00:00"
+    },
+    {
+      "from": "CHG-272",
+      "to": "ISS-196",
+      "type": "resolves",
+      "created_at": "2026-08-31T04:13:29+00:00"
+    },
+    {
+      "from": "CHG-272",
+      "to": "ISS-197",
+      "type": "resolves",
+      "created_at": "2026-08-31T04:13:29+00:00"
+    },
+    {
+      "from": "CHG-272",
+      "to": "ISS-198",
+      "type": "resolves",
+      "created_at": "2026-08-31T04:13:29+00:00"
+    },
+    {
+      "from": "CHG-272",
+      "to": "ISS-199",
+      "type": "resolves",
+      "created_at": "2026-08-31T04:13:30+00:00"
     }
   ]
 }
