@@ -18,7 +18,7 @@
 		"profile": {
 			"title": "Profile",
 			"displayNameLabel": "Display name",
-			"emailNote": "Sign-in email (cannot be changed)",
+			"emailNote": "Sign-in email (cannot be changed): ",
 			"save": "Save",
 			"saved": "Saved",
 			"saveFailed": "Couldn't save — please try again"

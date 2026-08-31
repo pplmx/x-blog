@@ -21,8 +21,8 @@ vi.mock("~~/api/admin/posts", () => ({
 	getAdminPost: mockFetchPost,
 }));
 vi.mock("~~/api/admin/taxonomy", () => ({
-	useAdminCategories: mockFetchCategories,
-	useAdminTags: mockFetchTags,
+	getAdminCategories: mockFetchCategories,
+	getAdminTags: mockFetchTags,
 }));
 vi.mock("~~/composables/useSeo", () => ({ useSeo: vi.fn() }));
 vi.mock("~~/composables/useLang", () => ({
@@ -77,8 +77,10 @@ describe("Author preview page (TASK-187)", () => {
 		window.localStorage.setItem("admin_token", "admin");
 		stubRoute("5");
 		mockFetchPost.mockResolvedValue(detail);
-		mockFetchCategories.mockResolvedValue({ data: { value: [{ id: 1, name: "AI" }] } });
-		mockFetchTags.mockResolvedValue({ data: { value: [{ id: 2, name: "rust" }] } });
+		// getAdminCategories/getAdminTags are the imperative $fetch seam — they
+		// resolve to the raw arrays, not the useFetch AsyncData shape.
+		mockFetchCategories.mockResolvedValue([{ id: 1, name: "AI" }]);
+		mockFetchTags.mockResolvedValue([{ id: 2, name: "rust" }]);
 
 		const wrapper = await mountPreview();
 		expect(wrapper.text()).toContain("Draft Post");

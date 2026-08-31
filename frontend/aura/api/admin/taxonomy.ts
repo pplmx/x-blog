@@ -10,6 +10,18 @@ export function useAdminCategories() {
 	});
 }
 
+/**
+ * Imperative categories list (lifecycle-hook loader on the preview page) — the
+ * imperative seam; a useFetch query called from onMounted silently never sends
+ * (ISS-110/111/117/118/119, TASK-220), which left the preview's category badge
+ * missing. Mirrors getReaderSeriesFollows.
+ */
+export function getAdminCategories(): Promise<Category[]> {
+	return command<Category[]>("/api/admin/categories", {
+		headers: adminAuthHeaders(),
+	});
+}
+
 /** Create a category (auth required). */
 export function createAdminCategory(name: string): Promise<Category> {
 	return command<Category>("/api/admin/categories", {
@@ -41,6 +53,13 @@ export function useAdminTags() {
 	return query<Tag[]>("/api/admin/tags", {
 		headers: adminAuthHeaders(),
 		server: false,
+	});
+}
+
+/** Imperative tags list for lifecycle-hook loaders — see getAdminCategories. */
+export function getAdminTags(): Promise<Tag[]> {
+	return command<Tag[]>("/api/admin/tags", {
+		headers: adminAuthHeaders(),
 	});
 }
 

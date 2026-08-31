@@ -234,7 +234,7 @@ useSeo(() => ({
                   ? 'bg-purple-600 text-white'
                   : 'border hover:bg-gray-50',
             ]"
-            @click="pg !== '…' && navigateTo({ query: { year: String(year), month: String(month), page: pg } })"
+            @click="pg !== '…' && navigateTo({ query: { year: String(year), ...(month ? { month: String(month) } : {}), page: pg } })"
           >
             {{ pg }}
           </button>

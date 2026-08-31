@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from "vue";
+import { computed, ref, watch } from "vue";
 import { useSeriesBySlug } from "~~/api/public/series";
 import {
 	followReaderSeries,
@@ -43,12 +43,6 @@ const signedIn = computed(
 );
 const progress = ref<SeriesProgress | null>(null);
 
-onMounted(async () => {
-	if (!signedIn.value || !series.value?.slug) return;
-	void loadFollowState();
-	void loadProgress();
-});
-
 const progressPercent = computed(() => {
 	if (!progress.value || progress.value.total <= 0) return 0;
 	return Math.round((progress.value.read_count / progress.value.total) * 100);
@@ -73,6 +67,28 @@ useHead(() => ({
 const followsSeries = ref(false);
 const followNotify = ref(true);
 const followBusy = ref(false);
+
+// Per-series reader state, reloaded whenever the resolved series changes:
+// SPA navigation between /series/a -> /series/b reuses this component (the
+// useSeriesBySlug getter refetches), so without a keyed watch the new series
+// would keep the previous one's follow/progress (deep-dive re-audit; mirrors
+// the categories/tags pages' routeParam watch). Keyed on the RESOLVED id, not
+// the slug — loadFollowState/loadProgress read series.value.id, which only
+// holds the new series after the refetch resolves. Immediate so the initial
+// hydration load (signedIn flipping true) is covered too. Lives after the
+// follow refs so the immediate callback never touches a TDZ binding.
+watch(
+	[() => series.value?.id, signedIn],
+	([id, inSigned]) => {
+		followsSeries.value = false;
+		followNotify.value = true;
+		progress.value = null;
+		if (!inSigned || !id) return;
+		void loadFollowState();
+		void loadProgress();
+	},
+	{ immediate: true },
+);
 
 async function loadFollowState() {
 	if (!signedIn.value || !series.value?.id) return;

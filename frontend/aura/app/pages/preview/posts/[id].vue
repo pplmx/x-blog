@@ -10,7 +10,7 @@
 import { computed, onMounted, ref } from "vue";
 import type { AdminPostDetail } from "~~/api/admin/posts";
 import { getAdminPost } from "~~/api/admin/posts";
-import { useAdminCategories, useAdminTags } from "~~/api/admin/taxonomy";
+import { getAdminCategories, getAdminTags } from "~~/api/admin/taxonomy";
 import { parseApiDate } from "~~/composables/apiDate";
 import { coverImageSrc } from "~~/composables/useCoverImage";
 import { readingMinutes } from "~~/composables/useReadingTime";
@@ -47,13 +47,16 @@ onMounted(async () => {
 	try {
 		const [data, cats, tgs] = await Promise.all([
 			getAdminPost(Number(route.params.id)),
-			useAdminCategories(),
-			useAdminTags(),
+			// Imperative seam: a useFetch query called from onMounted silently
+			// never sends, which dropped the preview's category badge + tag chips
+			// (ISS-110/111/117/118/119, TASK-220).
+			getAdminCategories(),
+			getAdminTags(),
 		]);
 		if (data) post.value = data;
 		else failed.value = true;
-		categories.value = cats.data?.value ?? [];
-		tags.value = tgs.data?.value ?? [];
+		categories.value = cats ?? [];
+		tags.value = tgs ?? [];
 	} catch {
 		failed.value = true;
 	} finally {
