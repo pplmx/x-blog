@@ -108,16 +108,25 @@ function isToday(key: string): boolean {
 	return key === `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 }
 
+// Sequence the loader: rapid next/prev navigation fires several month fetches,
+// and without a stale-response guard the OLD month can resolve last and paint
+// its posts under the NEW month's header (deep-dive re-audit; mirrors the
+// comments page's listRequestSeq).
+let calendarRequestSeq = 0;
 async function load() {
+	const seq = ++calendarRequestSeq;
 	loading.value = true;
 	error.value = false;
 	try {
-		data.value = await getAdminCalendar(monthKey.value);
+		const res = await getAdminCalendar(monthKey.value);
+		if (seq !== calendarRequestSeq) return; // stale response, drop it
+		data.value = res;
 	} catch {
+		if (seq !== calendarRequestSeq) return;
 		data.value = null;
 		error.value = true;
 	} finally {
-		loading.value = false;
+		if (seq === calendarRequestSeq) loading.value = false;
 	}
 }
 watch(monthKey, () => void load(), { immediate: true });

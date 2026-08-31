@@ -192,6 +192,12 @@ async function batchDelete() {
 		selectedIds.value = new Set();
 		deletedMessage.value = t("admin.comments.deletedFeedback", { n: deleted });
 		await loadComments(activeFilters(), currentPage.value);
+		// Deleting the last item of the last page strands on an out-of-range
+		// page showing a false "empty" — clamp back (deep-dive re-audit).
+		if (currentPage.value > totalPages.value && totalPages.value >= 1) {
+			currentPage.value = totalPages.value;
+			await loadComments(activeFilters(), totalPages.value);
+		}
 	} catch (e) {
 		actionError.value = getErrorMessage(e);
 	} finally {
@@ -531,7 +537,7 @@ async function submitReply(id: number) {
                   class="px-3 py-1.5 text-xs text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
                   @click="closeReply"
                 >
-                  {{ t("common.cancel") }}
+                  {{ t("common.action.cancel") }}
                 </button>
               </div>
             </div>
@@ -552,7 +558,7 @@ async function submitReply(id: number) {
               class="px-3 py-1.5 text-xs text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 hover:bg-blue-100 dark:hover:bg-blue-900/50 rounded-lg transition-colors"
               @click="replyOpenId === comment.id ? closeReply() : openReply(comment.id)"
             >
-              {{ replyOpenId === comment.id ? t("common.cancel") : t("admin.comments.reply") }}
+              {{ replyOpenId === comment.id ? t("common.action.cancel") : t("admin.comments.reply") }}
             </button>
             <button
               v-if="!comment.is_approved"

@@ -176,7 +176,7 @@ async function toggleActive(reader: AdminReader) {
         {{ t("admin.readers.loading") }}
       </div>
       <div
-        v-else-if="items.length === 0"
+        v-else-if="!error && items.length === 0"
         class="px-4 py-12 text-center text-sm text-gray-500 dark:text-gray-400"
       >
         {{ t("admin.readers.empty") }}

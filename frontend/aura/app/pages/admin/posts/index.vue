@@ -58,6 +58,14 @@ async function handleDelete(id: number) {
 	try {
 		await deleteAdminPost(id);
 		await refresh();
+		// Deleting the last item of the last page must not strand the operator
+		// on an out-of-range page showing a false "empty" (deep-dive re-audit):
+		// the new page count is known only after the refresh, so clamp + reload.
+		const maxPage = Math.max(0, totalPages.value - 1);
+		if (currentPage.value > maxPage) {
+			currentPage.value = maxPage;
+			await refresh();
+		}
 	} catch (e) {
 		// A silent failure looks like "nothing happened" — surface it.
 		deleteError.value = e instanceof Error ? e.message : t("admin.postsList.deleteFailed");

@@ -75,6 +75,12 @@ async function handleBatchDelete() {
 		await batchDeleteAdminMediaFiles([...selected.value]);
 		selected.value = [];
 		await refresh();
+		// Deleting the last item of the last page strands on an out-of-range
+		// page showing a false "empty" — clamping currentPage re-runs the
+		// reactive listing path (deep-dive re-audit).
+		if (currentPage.value > totalPages.value && totalPages.value >= 1) {
+			currentPage.value = totalPages.value;
+		}
 	} catch (e) {
 		actionError.value = e instanceof Error ? e.message : t("admin.media.deleteFailed");
 	} finally {
@@ -123,6 +129,11 @@ async function handleDelete(item: UploadFileInfo) {
 	try {
 		await deleteAdminMediaFile(item);
 		await refresh();
+		// Clamp an out-of-range page after deleting the last item of the last
+		// page (see handleBatchDelete); currentPage change re-fetches.
+		if (currentPage.value > totalPages.value && totalPages.value >= 1) {
+			currentPage.value = totalPages.value;
+		}
 	} catch (e) {
 		actionError.value = e instanceof Error ? e.message : t("admin.media.deleteFailed");
 	} finally {
