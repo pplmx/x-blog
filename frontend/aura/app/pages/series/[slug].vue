@@ -138,7 +138,7 @@ async function toggleNotify() {
 <template>
   <div class="max-w-4xl mx-auto">
     <!-- Loading state -->
-    <div v-if="pending" class="space-y-6 pt-8">
+    <div v-if="pending" class="space-y-6 pt-8" role="status" aria-busy="true">
       <div class="bg-gray-100 dark:bg-gray-800 animate-pulse h-8 rounded-lg w-1/2" />
       <div class="bg-gray-100 dark:bg-gray-800 animate-pulse h-4 rounded w-1/3" />
       <div class="space-y-4">
@@ -146,7 +146,7 @@ async function toggleNotify() {
       </div>
     </div>
 
-    <div v-else-if="error" class="text-center py-20 text-gray-500">
+    <div v-else-if="error" class="text-center py-20 text-gray-500" role="alert">
       <Icon icon="lucide:alert-circle" class="w-12 h-12 mx-auto mb-4 text-gray-300" />
       <p class="mb-4">{{ t('common.state.loadFailed') }}</p>
       <button

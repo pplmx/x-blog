@@ -123,20 +123,28 @@ async function handleDelete(id: number) {
       >
         {{ t("admin.users.title") }}
       </h1>
+      <!-- Never claim "0 admin users" while the list is still loading or failed —
+           the count is only honest once the fetch has actually resolved. -->
       <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">
-        {{ t("admin.users.summary", { n: users?.length || 0 }) }}
+        {{ pending
+          ? t("admin.users.loading")
+          : error
+            ? t("common.state.loadFailed")
+            : t("admin.users.summary", { n: users?.length || 0 }) }}
       </p>
     </div>
 
     <!-- Feedback -->
     <div
       v-if="actionError"
+      role="alert"
       class="mb-6 px-4 py-3 rounded-xl border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20 text-sm text-red-600 dark:text-red-400"
     >
       {{ actionError }}
     </div>
     <div
       v-if="actionSuccess"
+      role="status"
       class="mb-6 px-4 py-3 rounded-xl border border-green-200 dark:border-green-800 bg-green-50 dark:bg-green-900/20 text-sm text-green-600 dark:text-green-400"
     >
       {{ actionSuccess }}
@@ -153,6 +161,8 @@ async function handleDelete(id: number) {
           type="text"
           autocomplete="off"
           :placeholder="t('admin.users.usernamePlaceholder')"
+          :aria-label="t('admin.users.usernamePlaceholder')"
+          required
           class="px-4 py-3 border border-gray-200 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
         >
         <input
@@ -160,6 +170,9 @@ async function handleDelete(id: number) {
           type="password"
           autocomplete="new-password"
           :placeholder="t('admin.users.passwordPlaceholder')"
+          :aria-label="t('admin.users.passwordPlaceholder')"
+          required
+          minlength="8"
           class="px-4 py-3 border border-gray-200 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
         >
         <input
@@ -167,6 +180,9 @@ async function handleDelete(id: number) {
           type="password"
           autocomplete="new-password"
           :placeholder="t('admin.users.confirmPasswordPlaceholder')"
+          :aria-label="t('admin.users.confirmPasswordPlaceholder')"
+          required
+          minlength="8"
           class="px-4 py-3 border border-gray-200 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
         >
         <button
@@ -188,8 +204,15 @@ async function handleDelete(id: number) {
       {{ t("admin.users.loading") }}
     </div>
 
-    <div v-else-if="error" class="text-center py-12 text-red-500">
-      {{ error?.message || String(error) }}
+    <div v-else-if="error" class="text-center py-12" role="alert">
+      <p class="text-red-500 mb-4">{{ error?.message || String(error) }}</p>
+      <button
+        type="button"
+        class="px-4 py-2 rounded-lg text-sm font-medium border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+        @click="refresh()"
+      >
+        {{ t("common.action.retry") }}
+      </button>
     </div>
 
     <div

@@ -18,7 +18,7 @@ useSeo(() => ({
 <template>
   <div class="max-w-5xl mx-auto">
     <!-- Loading state -->
-    <div v-if="pending" class="space-y-4">
+    <div v-if="pending" class="space-y-4" role="status" aria-busy="true">
       <div class="bg-gray-100 dark:bg-gray-800 animate-pulse h-8 rounded-lg mb-4 w-1/3" />
       <div class="grid gap-4 sm:grid-cols-2">
         <div
@@ -29,7 +29,7 @@ useSeo(() => ({
       </div>
     </div>
 
-    <div v-else-if="error" class="text-center py-20 text-gray-500">
+    <div v-else-if="error" class="text-center py-20 text-gray-500" role="alert">
       <Icon icon="lucide:alert-circle" class="w-12 h-12 mx-auto mb-4 text-gray-300" />
       <p class="mb-4">{{ t('common.state.loadFailed') }}</p>
       <button

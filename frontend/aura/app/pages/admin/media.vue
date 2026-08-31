@@ -173,16 +173,28 @@ function goToPage(page: number) {
       </div>
     </div>
 
-    <div v-if="actionError" class="mb-4 p-3 bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-400 rounded-xl text-sm">
+    <div v-if="actionError" role="alert" class="mb-4 p-3 bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-400 rounded-xl text-sm">
       {{ actionError }}
     </div>
 
-    <p v-if="error" class="mb-4 p-3 bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-400 rounded-xl text-sm">
-      {{ t("admin.media.loadFailed") }}
-    </p>
-
-    <div v-if="pending" class="py-16 text-center text-gray-500 dark:text-gray-400 text-sm">
+    <!-- pending / error / empty / grid are one mutually-exclusive chain: a failed
+         fetch must never render alongside the empty state ("Failed to load media"
+         + "No uploads yet" was the pre-fix double render), and it gets a Retry
+         affordance instead of being a reload-only dead end. -->
+    <div v-if="pending" class="py-16 text-center text-gray-500 dark:text-gray-400 text-sm" role="status">
       {{ t("admin.media.loading") }}
+    </div>
+
+    <div v-else-if="error" class="py-16 text-center" role="alert">
+      <Icon icon="lucide:alert-circle" class="w-12 h-12 mx-auto mb-4 text-gray-300 dark:text-gray-600" />
+      <p class="mb-4 text-sm text-red-600 dark:text-red-400">{{ t("admin.media.loadFailed") }}</p>
+      <button
+        type="button"
+        class="px-4 py-2 rounded-lg text-sm font-medium border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+        @click="refresh()"
+      >
+        {{ t("common.action.retry") }}
+      </button>
     </div>
 
     <div v-else-if="items.length === 0" class="py-16 text-center">

@@ -171,7 +171,7 @@ watch(
 <template>
   <div class="max-w-5xl mx-auto">
     <!-- Loading state -->
-    <div v-if="pending" class="space-y-4">
+    <div v-if="pending" class="space-y-4" role="status" aria-busy="true">
       <div class="bg-gray-100 animate-pulse h-8 rounded-lg mb-4 w-1/3" />
       <div class="flex flex-wrap gap-3">
         <div
@@ -184,7 +184,7 @@ watch(
 
     <!-- Load failed — distinct from "empty": never tell the reader the tag has
          nothing when we simply couldn't load it. -->
-    <div v-else-if="error" class="text-center py-12">
+    <div v-else-if="error" class="text-center py-12" role="alert">
       <p class="text-gray-500 dark:text-gray-400 mb-4">{{ t('common.state.loadFailed') }}</p>
       <button
         type="button"

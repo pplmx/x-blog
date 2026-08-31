@@ -203,10 +203,6 @@ const unscheduledPosts = computed(() => data.value?.unscheduled ?? []);
       </div>
     </div>
 
-    <p v-if="error" class="mb-4 text-sm text-red-600 dark:text-red-400">
-      {{ t('admin.calendar.loadError') }}
-    </p>
-
     <div class="grid lg:grid-cols-[1fr_260px] gap-6">
       <div>
         <div class="rounded-xl border border-gray-200 dark:border-gray-800 overflow-hidden">
@@ -231,6 +227,20 @@ const unscheduledPosts = computed(() => data.value?.unscheduled ?? []);
           <div v-if="loading" class="flex items-center gap-2 px-4 py-6 text-sm text-gray-400" role="status">
             <Icon icon="lucide:loader-2" class="w-4 h-4 animate-spin" />
             {{ t('admin.calendar.loading') }}
+          </div>
+
+          <!-- A failed month fetch must not masquerade as a genuinely empty month:
+               distinct error block with Retry in place of the grid (previously the
+               error was a lone reload-only message above a blank grid). -->
+          <div v-else-if="error" class="px-4 py-6 text-sm" role="alert">
+            <p class="text-red-600 dark:text-red-400 mb-3">{{ t('admin.calendar.loadError') }}</p>
+            <button
+              type="button"
+              class="px-4 py-2 rounded-lg text-xs font-medium border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+              @click="load()"
+            >
+              {{ t('common.action.retry') }}
+            </button>
           </div>
 
           <div v-else class="grid grid-cols-7">
@@ -278,6 +288,9 @@ const unscheduledPosts = computed(() => data.value?.unscheduled ?? []);
           {{ t('admin.calendar.unscheduled') }}
         </h2>
         <p v-if="loading" class="text-sm text-gray-400">{{ t('admin.calendar.loading') }}</p>
+        <!-- On a failed month fetch neither "loading" nor "no unscheduled posts"
+             are true — say so instead of lying empty. -->
+        <p v-else-if="error" class="text-sm text-gray-400" role="status">{{ t('admin.calendar.loadError') }}</p>
         <p v-else-if="unscheduledPosts.length === 0" class="text-sm text-gray-400">
           {{ t('admin.calendar.unscheduledEmpty') }}
         </p>

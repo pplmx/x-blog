@@ -148,6 +148,36 @@ describe("Admin Media page", () => {
 		}
 	});
 
+	it("shows the loading message while the listing is pending", async () => {
+		listMock.mockReturnValue({ ...mockFetchResult(null, { pending: true }) });
+		const wrapper = await mountPage();
+		expect(wrapper.text()).toContain("正在加载媒体");
+	});
+
+	it("renders load error with Retry and never the empty state (regression: pre-fix union)", async () => {
+		const refresh = vi.fn(() => Promise.resolve());
+		listMock.mockReturnValue({
+			...mockFetchResult(
+				{ items: [], pagination: { total: 0, page: 1, limit: 60, total_pages: 0 } },
+				{ error: new Error("boom") },
+			),
+			refresh,
+		});
+		const wrapper = await mountPage();
+
+		// The failure is surfaced...
+		expect(wrapper.text()).toContain("加载媒体失败");
+		// ...while the empty title must NOT share the frame (the pre-fix bug
+		// rendered "Failed to load media" directly above "No uploads yet").
+		expect(wrapper.text()).not.toContain("还没有上传的图片");
+
+		// Retry is wired to the real refresh — no reload-only dead end.
+		const retry = wrapper.findAll("button").find((b) => b.text().includes("重试"));
+		if (!retry) throw new Error("expected a 重试 button");
+		await retry.trigger("click");
+		expect(refresh).toHaveBeenCalled();
+	});
+
 	it("filters by filename through the debounced search box (DEC-189)", async () => {
 		listMock.mockReturnValue(fakeListing([]));
 		const wrapper = await mountPage();
