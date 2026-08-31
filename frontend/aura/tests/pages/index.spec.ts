@@ -100,19 +100,14 @@ vi.mock("../../api/public/stats", () => ({
 	}),
 }));
 vi.mock("../../api/reader/history", () => ({
-	useReaderRecommendations: () => ({
-		data: ref(mockState.recommended),
-	}),
-	useReaderSeriesProgress: async (slug: string) => ({
-		data: { value: mockState.seriesProgress[slug] ?? null },
-	}),
+	getReaderRecommendations: async () => mockState.recommended,
+	getReaderSeriesProgress: async (slug: string) => mockState.seriesProgress[slug] ?? null,
 }));
 vi.mock("../../api/reader/follows", () => ({
-	useReaderFollowsFeed: async () => ({
-		data: { value: mockState.followsFeed },
-	}),
-	useReaderSeriesFollows: async () => ({
-		data: { value: { items: mockState.followedSeries, total: mockState.followedSeries.length } },
+	getReaderFollowsFeed: async () => mockState.followsFeed,
+	getReaderSeriesFollows: async () => ({
+		items: mockState.followedSeries,
+		total: mockState.followedSeries.length,
 	}),
 }));
 

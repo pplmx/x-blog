@@ -73,6 +73,18 @@ export function useReaderFollowsFeed(limit = 12) {
 	});
 }
 
+/**
+ * Imperative "latest from your follows" list (home page onMounted loader) —
+ * the imperative seam; see getReaderSeriesFollows for why lifecycle-hook
+ * loaders must never run a useFetch query (ISS-110/111/117/118/119, TASK-220).
+ */
+export function getReaderFollowsFeed(limit = 12): Promise<PostList[]> {
+	return command<PostList[]>("/api/reader/me/follows-feed", {
+		query: { limit },
+		headers: readerAuthHeaders(),
+	});
+}
+
 /** Reactive list of the series the signed-in reader follows. */
 export function useReaderSeriesFollows() {
 	return query<FollowedSeriesListResponse>("/api/reader/me/series-follows", {

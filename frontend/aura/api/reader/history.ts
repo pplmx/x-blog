@@ -123,6 +123,18 @@ export function useReaderRecommendations(limit = 6) {
 	});
 }
 
+/**
+ * Imperative "Recommended for you" list (home page onMounted loader) — the
+ * imperative seam; see getReaderSeriesProgress for why lifecycle-hook loaders
+ * must never run a useFetch query (ISS-110/111/117/118/119, TASK-220).
+ */
+export function getReaderRecommendations(limit = 6): Promise<PostList[]> {
+	return command<PostList[]>("/api/reader/me/recommendations", {
+		query: { limit },
+		headers: readerAuthHeaders(),
+	});
+}
+
 /** Reactive per-series progress read from the signed-in reader's history. */
 export function useReaderSeriesProgress(slug: string) {
 	return query<SeriesProgress>(`/api/reader/me/series/${slug}/progress`, {

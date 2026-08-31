@@ -4,9 +4,9 @@ import { usePopularPosts, usePosts } from "~~/api/public/posts";
 import { useBlogStats } from "~~/api/public/stats";
 import { useCategories, useTags } from "~~/api/public/taxonomy";
 import type { FollowedSeriesItem } from "~~/api/reader/follows";
-import { useReaderFollowsFeed, useReaderSeriesFollows } from "~~/api/reader/follows";
+import { getReaderFollowsFeed, getReaderSeriesFollows } from "~~/api/reader/follows";
 import type { SeriesProgress } from "~~/api/reader/history";
-import { useReaderRecommendations, useReaderSeriesProgress } from "~~/api/reader/history";
+import { getReaderRecommendations, getReaderSeriesProgress } from "~~/api/reader/history";
 import { paginationPages } from "~~/composables/usePagination";
 import { useRecentlyViewed } from "~~/composables/useRecentlyViewed";
 import { useSeo } from "~~/composables/useSeo";
@@ -88,8 +88,8 @@ onMounted(async () => {
 	if (!recSignedIn.value) return;
 	recommending.value = true;
 	try {
-		const res = await useReaderRecommendations(6);
-		recommendedPosts.value = res.data?.value ?? [];
+		const recs = await getReaderRecommendations(6);
+		recommendedPosts.value = recs ?? [];
 	} catch {
 		recommendedPosts.value = [];
 	} finally {
@@ -109,8 +109,8 @@ async function loadFollowsFeed() {
 	if (!recSignedIn.value) return;
 	followsFeedLoading.value = true;
 	try {
-		const res = await useReaderFollowsFeed(12);
-		followsFeed.value = res.data?.value ?? [];
+		const feed = await getReaderFollowsFeed(12);
+		followsFeed.value = feed ?? [];
 	} catch {
 		followsFeed.value = [];
 	} finally {
@@ -135,14 +135,14 @@ async function loadFollowedSeries() {
 	if (!recSignedIn.value) return;
 	followedLoading.value = true;
 	try {
-		const res = await useReaderSeriesFollows();
-		const items = res.data?.value?.items ?? [];
+		const res = await getReaderSeriesFollows();
+		const items = res?.items ?? [];
 		followedSeries.value = items;
 		const entries = await Promise.all(
 			items.map(async (s) => {
 				try {
-					const p = await useReaderSeriesProgress(s.slug);
-					return [s.slug, p.data?.value ?? null] as const;
+					const p = await getReaderSeriesProgress(s.slug);
+					return [s.slug, p ?? null] as const;
 				} catch {
 					return [s.slug, null] as const;
 				}
