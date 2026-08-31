@@ -31,6 +31,18 @@ const displayName = ref("");
 const error = ref<string | null>(null);
 const isPending = ref(false);
 
+// Mode toggle announced to AT (aria-pressed) and, on switching to register,
+// focus moves into the newly revealed display-name field so keyboard/AT users
+// aren't left wondering where the extra input appeared.
+const displayNameInput = ref<HTMLInputElement | null>(null);
+function setMode(next: "login" | "register") {
+	if (isPending.value || mode.value === next) return;
+	mode.value = next;
+	nextTick(() => {
+		if (next === "register") displayNameInput.value?.focus();
+	});
+}
+
 const route = useRoute();
 // Sign in once, land where the reader started: /login?redirect=/account keeps a
 // guest on the page that prompted their login instead of always dumping them on
@@ -89,22 +101,24 @@ async function handleSubmit() {
         <button
           type="button"
           :disabled="isPending"
+          :aria-pressed="mode === 'login'"
           class="py-2 text-sm font-medium rounded-lg transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
           :class="mode === 'login'
             ? 'bg-white dark:bg-gray-700 text-blue-600 dark:text-blue-400 shadow-sm'
             : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'"
-          @click="mode = 'login'"
+          @click="setMode('login')"
         >
           {{ t("reader.login.hasAccount") }}
         </button>
         <button
           type="button"
           :disabled="isPending"
+          :aria-pressed="mode === 'register'"
           class="py-2 text-sm font-medium rounded-lg transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
           :class="mode === 'register'
             ? 'bg-white dark:bg-gray-700 text-blue-600 dark:text-blue-400 shadow-sm'
             : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'"
-          @click="mode = 'register'"
+          @click="setMode('register')"
         >
           {{ t("reader.login.noAccount") }}
         </button>
@@ -116,8 +130,10 @@ async function handleSubmit() {
             {{ t("reader.login.displayName") }}
           </label>
           <input
+            ref="displayNameInput"
             v-model="displayName"
             type="text"
+            autocomplete="name"
             :placeholder="t('reader.login.displayNamePlaceholder')"
             class="w-full px-4 py-3 border border-gray-200 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
           >
@@ -131,6 +147,7 @@ async function handleSubmit() {
           <input
             v-model="email"
             type="email"
+            autocomplete="email"
             :placeholder="t('reader.login.emailPlaceholder')"
             required
             class="w-full px-4 py-3 border border-gray-200 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
@@ -145,6 +162,7 @@ async function handleSubmit() {
           <input
             v-model="password"
             type="password"
+            :autocomplete="mode === 'register' ? 'new-password' : 'current-password'"
             :placeholder="t('reader.login.passwordPlaceholder')"
             required
             :minlength="mode === 'register' ? 8 : undefined"
@@ -152,7 +170,11 @@ async function handleSubmit() {
           >
         </div>
 
-        <div v-if="error" class="p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
+        <div
+          v-if="error"
+          role="alert"
+          class="p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg"
+        >
           <p class="text-sm text-red-600 dark:text-red-400">{{ error }}</p>
         </div>
 

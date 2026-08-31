@@ -49,6 +49,25 @@ describe("login page", () => {
 		expect(wrapper.vm.$data.mode ?? wrapper.vm.mode).toBe("register");
 	});
 
+	it("announces the active mode via aria-pressed and adapts password autocomplete", async () => {
+		const wrapper = mountLogin();
+		const buttons = wrapper.findAll("button");
+		expect(buttons[0].attributes("aria-pressed")).toBe("true");
+		expect(buttons[1].attributes("aria-pressed")).toBe("false");
+		// Login mode: password managers fill current-password.
+		expect(wrapper.find('input[type="password"]').attributes("autocomplete")).toBe(
+			"current-password",
+		);
+
+		await buttons[1].trigger("click");
+		expect(buttons[0].attributes("aria-pressed")).toBe("false");
+		expect(buttons[1].attributes("aria-pressed")).toBe("true");
+		// Register mode: a new-password field for the sign-up form.
+		expect(wrapper.find('input[type="password"]').attributes("autocomplete")).toBe("new-password");
+		// The register-only display-name field is present with a name autocomplete.
+		expect(wrapper.find('input[autocomplete="name"]').exists()).toBe(true);
+	});
+
 	it("submits login with email + password", async () => {
 		loginMock.mockResolvedValue({
 			access_token: "token",

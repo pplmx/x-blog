@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, watch, watchEffect } from "vue";
+import { computed, nextTick, ref, watch, watchEffect } from "vue";
 import {
 	likePost,
 	recordPostView,
@@ -22,7 +22,27 @@ const { t, locale } = useLang();
 const route = useRoute();
 // Pass a reactive getter (not a static string) so useFetch refetches when the
 // slug changes via SPA navigation between posts (TASK-090, ISS-073).
-const { data: post, pending, error } = await usePost(() => route.params.slug as string);
+const {
+	data: post,
+	pending,
+	error,
+	refresh: refreshPost,
+} = await usePost(() => route.params.slug as string);
+
+// A failed load/page-miss must not dead-end a reader arriving via a share
+// link — offer Retry and a way back home.
+function retryLoad() {
+	void refreshPost();
+}
+
+// Move keyboard/SR focus to the h1 when SPA navigation swaps the post, so the
+// reader lands in the new article (not silently dumped to <body>).
+const postTitleEl = ref<HTMLHeadingElement | null>(null);
+function focusPostTitle() {
+	nextTick(() => {
+		postTitleEl.value?.focus({ preventScroll: true });
+	});
+}
 
 // Continue-reading trail (DEC-104, TASK-164): remember this post client-side
 // when its detail page loads (dedup/cap/prune live in useRecentlyViewed).
@@ -205,6 +225,9 @@ watch(postId, (newId, oldId) => {
 		// Re-observe the new post's headings so the TOC highlight tracks it
 		// instead of staying pinned to the previous article.
 		setupTocObserver();
+		// Announce the new article to keyboard/SR users (the previous post's
+		// focused element was torn down with the swap).
+		focusPostTitle();
 	}
 });
 
@@ -292,8 +315,15 @@ function handleCommentSubmitted() {
       </div>
     </transition>
 
-    <!-- Loading skeleton -->
-    <div v-if="pending" class="max-w-4xl mx-auto space-y-6 pt-8">
+    <!-- In-place refetch bar: SPA navigation to the prev/next post keeps the
+         current article mounted (reading continuity — no full-page pulse) while
+         the new post loads; the article below swaps when it resolves. -->
+    <div v-if="pending && post" class="fixed top-1 left-0 right-0 z-40 h-0.5 overflow-hidden">
+      <div class="h-full w-full bg-blue-500/60 animate-pulse" />
+    </div>
+
+    <!-- Loading skeleton: only the very first load, when no content exists yet. -->
+    <div v-if="pending && !post" class="max-w-4xl mx-auto space-y-6 pt-8">
       <div class="h-8 bg-gray-200 dark:bg-gray-800 rounded-lg w-3/4 animate-pulse" />
       <div class="h-64 bg-gray-200 dark:bg-gray-800 rounded-2xl animate-pulse" />
       <div class="space-y-3">
@@ -303,14 +333,32 @@ function handleCommentSubmitted() {
       </div>
     </div>
 
+    <!-- Load error (or a failed refetch to a new slug): give the reader a way
+         onward instead of a dead end (they often arrive via a share link). -->
     <div v-else-if="error" class="text-center py-20 text-gray-500">
       <Icon icon="lucide:alert-circle" class="w-12 h-12 mx-auto mb-4 text-gray-300" />
-      <p>{{ t('common.state.loadFailed') }}</p>
+      <p class="mb-4">{{ t('common.state.loadFailed') }}</p>
+      <div class="flex items-center justify-center gap-3">
+        <button
+          type="button"
+          class="px-4 py-2 rounded-lg text-sm font-medium border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+          @click="retryLoad"
+        >
+          {{ t('common.action.retry') }}
+        </button>
+        <NuxtLink to="/" class="px-4 py-2 rounded-lg text-sm font-medium text-blue-600 dark:text-blue-400 hover:underline">
+          {{ t('common.action.backHome') }}
+        </NuxtLink>
+      </div>
     </div>
 
+    <!-- Not found: a path back home instead of a bare dead end. -->
     <div v-else-if="!post" class="text-center py-20 text-gray-500">
       <Icon icon="lucide:file-question" class="w-12 h-12 mx-auto mb-4 text-gray-300" />
-      <p>{{ t('post.notFound') }}</p>
+      <p class="mb-4">{{ t('post.notFound') }}</p>
+      <NuxtLink to="/" class="px-4 py-2 rounded-lg text-sm font-medium text-blue-600 dark:text-blue-400 hover:underline">
+        {{ t('common.action.backHome') }}
+      </NuxtLink>
     </div>
 
     <div v-else class="flex gap-10 relative">
@@ -389,7 +437,11 @@ function handleCommentSubmitted() {
             </NuxtLink>
           </div>
 
-          <h1 class="text-3xl sm:text-4xl lg:text-5xl font-bold text-gray-900 dark:text-gray-100 leading-tight mb-6 text-balance">
+          <h1
+            ref="postTitleEl"
+            tabindex="-1"
+            class="text-3xl sm:text-4xl lg:text-5xl font-bold text-gray-900 dark:text-gray-100 leading-tight mb-6 text-balance focus:outline-none"
+          >
             {{ post.title }}
           </h1>
 
@@ -444,7 +496,7 @@ function handleCommentSubmitted() {
             <Icon :icon="likeLoading ? 'lucide:loader-2' : 'lucide:heart'" class="w-4 h-4" :class="{ 'animate-spin': likeLoading }" />
             {{ (post.likes ?? 0).toLocaleString() }}
           </button>
-          <span v-if="likeError" class="text-sm text-red-500">{{ likeError }}</span>
+          <span v-if="likeError" role="alert" class="text-sm text-red-500">{{ likeError }}</span>
         </div>
 
         <!-- Share -->

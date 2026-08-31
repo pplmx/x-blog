@@ -125,7 +125,7 @@ function onBlur(): void {
         v-model="query"
         type="search"
         role="combobox"
-        :aria-expanded="open && (results.length > 0 || searched)"
+        :aria-expanded="open"
         aria-controls="header-search-listbox"
         aria-haspopup="listbox"
         :aria-activedescendant="activeIndex >= 0 ? `header-search-option-${activeIndex}` : undefined"
@@ -176,6 +176,14 @@ function onBlur(): void {
       >
         {{ t('headerSearch.noResults') }}
       </div>
+
+      <!-- Live region: announces the settled result count to screen readers,
+           and the zero-result state (the no-results div above is not live). -->
+      <span class="sr-only" role="status" aria-live="polite">
+        <template v-if="searched && !loading">
+          {{ results.length === 0 ? t('headerSearch.noResults') : t('headerSearch.resultsCount', { count: results.length }) }}
+        </template>
+      </span>
 
       <button
         type="button"

@@ -26,7 +26,8 @@
 			"replyingTo": "Replying to {name}",
 			"asReader": "Submitting as {name}",
 			"asReaderHint": "Your verified reader identity is used automatically.",
-			"markdownHint": "Supports Markdown — code blocks, bold and links render."
+			"markdownHint": "Supports Markdown — code blocks, bold and links render.",
+			"discardConfirm": "Discard your unsent reply?"
 		},
 		"commentList": {
 			"flag": "Report",

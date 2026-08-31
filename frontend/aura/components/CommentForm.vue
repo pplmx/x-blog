@@ -49,6 +49,7 @@
             v-model="form.nickname"
             type="text"
             required
+            autocomplete="nickname"
             :placeholder="t('components.commentForm.nickname')"
             class="px-3 py-2 w-full border border-gray-200 dark:border-gray-700 dark:bg-gray-800 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
           >
@@ -63,6 +64,7 @@
             v-model="form.email"
             type="email"
             required
+            autocomplete="email"
             :placeholder="t('components.commentForm.email')"
             class="px-3 py-2 w-full border border-gray-200 dark:border-gray-700 dark:bg-gray-800 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
           >
@@ -102,8 +104,8 @@
         {{ submitting ? t('components.commentForm.submitting') : t('components.commentForm.submit') }}
       </button>
 
-      <p v-if="error" class="text-sm text-red-600 dark:text-red-400">{{ error }}</p>
-      <p v-if="success" class="text-sm text-green-600 dark:text-green-400">{{ t('components.commentForm.submitSuccess') }}</p>
+      <p v-if="error" role="alert" class="text-sm text-red-600 dark:text-red-400">{{ error }}</p>
+      <p v-if="success" role="status" class="text-sm text-green-600 dark:text-green-400">{{ t('components.commentForm.submitSuccess') }}</p>
     </form>
   </section>
 </template>
@@ -161,10 +163,20 @@ const submitting = ref(false);
 const error = ref("");
 const success = ref("");
 
-// Reset the form whenever the reply target changes.
+// Reset the form whenever the reply target changes. Switching reply targets
+// with an in-progress draft would silently discard the reader's unsent text —
+// if anything is typed, confirm before wiping (deep-dive finding).
 watch(
 	() => props.parentId,
 	() => {
+		const dirty =
+			Boolean(form.value.content.trim()) ||
+			Boolean(form.value.nickname.trim()) ||
+			Boolean(form.value.email.trim());
+		if (dirty) {
+			const subject = t("components.commentForm.discardConfirm");
+			if (typeof window !== "undefined" && !window.confirm(subject)) return;
+		}
 		form.value = { nickname: "", email: "", content: "", website: "" };
 		error.value = "";
 		success.value = "";

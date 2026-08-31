@@ -266,4 +266,36 @@ describe("CommentForm", () => {
 			expect(wrapper.text()).not.toContain("评论提交成功");
 		});
 	});
+
+	describe("Reply-target draft protection", () => {
+		it("confirms before discarding a typed draft when the reply target changes", async () => {
+			const wrapper = await mountCommentForm({ postId: 1 });
+			const confirmMock = vi.fn(() => false);
+			vi.stubGlobal("confirm", confirmMock);
+
+			await wrapper.find("textarea").setValue("Half-typed reply");
+			// Switching reply targets (opening a reply box elsewhere) would wipe
+			// the draft — a confirm is shown and a dismissal keeps the text.
+			await wrapper.setProps({ parentId: 7 });
+			expect(confirmMock).toHaveBeenCalled();
+			expect((wrapper.find("textarea").element as HTMLTextAreaElement).value).toBe(
+				"Half-typed reply",
+			);
+
+			// Confirming permission discards the draft.
+			confirmMock.mockReturnValue(true);
+			await wrapper.setProps({ parentId: 8 });
+			expect((wrapper.find("textarea").element as HTMLTextAreaElement).value).toBe("");
+			vi.unstubAllGlobals();
+		});
+
+		it("does not prompt on a reply-target change when the form is clean", async () => {
+			const wrapper = await mountCommentForm({ postId: 1 });
+			const confirmMock = vi.fn(() => true);
+			vi.stubGlobal("confirm", confirmMock);
+			await wrapper.setProps({ parentId: 7 });
+			expect(confirmMock).not.toHaveBeenCalled();
+			vi.unstubAllGlobals();
+		});
+	});
 });

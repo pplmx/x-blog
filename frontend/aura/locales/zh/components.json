@@ -26,7 +26,8 @@
 			"replyingTo": "正在回复 {name}",
 			"asReader": "以 {name} 的身份发表",
 			"asReaderHint": "将使用你已验证的读者身份。",
-			"markdownHint": "支持 Markdown，代码块、加粗和链接会渲染。"
+			"markdownHint": "支持 Markdown，代码块、加粗和链接会渲染。",
+			"discardConfirm": "放弃未发送的回复吗？"
 		},
 		"commentList": {
 			"flag": "举报",
