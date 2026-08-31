@@ -75,6 +75,27 @@ def worker_id(request: pytest.FixtureRequest) -> str:
     return "master"
 
 
+@pytest.fixture
+def isolated_upload_dir(monkeypatch: pytest.MonkeyPatch, tmp_path: Path):
+    """Give each media-library test its OWN upload root.
+
+    The media-library tests otherwise fall back to the real ``static/uploads``
+    directory that every xdist worker shares. Under ``-n auto`` a delete test in
+    one worker removes a file while another worker's list test stats it
+    (FileNotFoundError), so the full suite flaked with a different upload test
+    failing on every run. Point ``app.routers.upload.STATIC_DIR`` at a fresh
+    temp dir per test (requested via ``pytestmark`` on test_upload) so workers
+    never touch each other's files, mirroring the per-worker SQLite database
+    above. The route derives ``upload_dir``/``uploads_root`` from this module
+    constant at call time; the tests resolve it through the module too, so both
+    stay consistent.
+    """
+    from app.routers import upload
+
+    monkeypatch.setattr(upload, "STATIC_DIR", tmp_path)
+    yield tmp_path
+
+
 @pytest.fixture(scope="session")
 def test_engine(worker_id: str):
     """Create a SQLite test database unique per worker process."""

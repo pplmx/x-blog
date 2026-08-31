@@ -5,8 +5,16 @@ from pathlib import Path
 
 from PIL import Image
 
+import pytest
+
 from app import models
-from app.routers.upload import STATIC_DIR
+from app.routers import upload as upload_module
+
+# Media-library tests must not share the real static/uploads directory (every
+# xdist worker + every test gets an isolated root via isolated_upload_dir in
+# conftest, pointed at by monkeypatching upload.STATIC_DIR). Resolve STATIC_DIR
+# through the module at call time so route writes and test assertions agree.
+pytestmark = pytest.mark.usefixtures("isolated_upload_dir")
 
 
 def _image_bytes(image_format: str) -> bytes:
@@ -202,7 +210,7 @@ class TestIngestOptimization:
         url = resp.json()["url"]
         try:
             parts = url.split("/")
-            stored = Path(STATIC_DIR) / "uploads" / parts[-3] / parts[-2] / parts[-1]
+            stored = Path(upload_module.STATIC_DIR) / "uploads" / parts[-3] / parts[-2] / parts[-1]
             with Image.open(stored) as image:
                 assert not image.getexif(), "EXIF metadata must be stripped at ingest"
                 assert image.size == (8, 8)
@@ -222,7 +230,7 @@ class TestIngestOptimization:
         url = resp.json()["url"]
         try:
             parts = url.split("/")
-            stored = Path(STATIC_DIR) / "uploads" / parts[-3] / parts[-2] / parts[-1]
+            stored = Path(upload_module.STATIC_DIR) / "uploads" / parts[-3] / parts[-2] / parts[-1]
             assert stored.stat().st_size <= len(original)
         finally:
             _delete_file(client, auth_headers, url)
@@ -239,7 +247,7 @@ class TestIngestOptimization:
         url = resp.json()["url"]
         try:
             parts = url.split("/")
-            stored = Path(STATIC_DIR) / "uploads" / parts[-3] / parts[-2] / parts[-1]
+            stored = Path(upload_module.STATIC_DIR) / "uploads" / parts[-3] / parts[-2] / parts[-1]
             assert stored.read_bytes() == gif
         finally:
             _delete_file(client, auth_headers, url)
@@ -255,7 +263,7 @@ class TestIngestOptimization:
         url = resp.json()["url"]
         try:
             parts = url.split("/")
-            stored = Path(STATIC_DIR) / "uploads" / parts[-3] / parts[-2] / parts[-1]
+            stored = Path(upload_module.STATIC_DIR) / "uploads" / parts[-3] / parts[-2] / parts[-1]
             assert stored.suffix == ".webp"
             with Image.open(stored) as image:
                 image.load()
@@ -278,7 +286,7 @@ class TestIngestOptimization:
         url = resp.json()["url"]
         try:
             parts = url.split("/")
-            stored = Path(STATIC_DIR) / "uploads" / parts[-3] / parts[-2] / parts[-1]
+            stored = Path(upload_module.STATIC_DIR) / "uploads" / parts[-3] / parts[-2] / parts[-1]
             with Image.open(stored) as image:
                 image.load()
                 # Pillow reports "RGBA" for an alpha-bearing WebP (not "RGB").
@@ -409,7 +417,7 @@ class TestMediaLibrary:
         # Gone from the listing and no longer on disk.
         listing = client.get("/api/upload/files", headers=auth_headers).json()
         assert all(item["url"] != url for item in listing["items"])
-        assert not (Path(STATIC_DIR) / "uploads" / year / month / filename).exists()
+        assert not (Path(upload_module.STATIC_DIR) / "uploads" / year / month / filename).exists()
 
     def test_delete_referenced_rejected(self, client, auth_headers, db_session):
         url = _upload_and_get_url(client, auth_headers)
@@ -427,7 +435,7 @@ class TestMediaLibrary:
             assert "referenced by post" in resp.json()["error"]["message"]
             # Still present on disk after the refused delete.
             parts = url.split("/")
-            assert (Path(STATIC_DIR) / "uploads" / parts[-3] / parts[-2] / parts[-1]).exists()
+            assert (Path(upload_module.STATIC_DIR) / "uploads" / parts[-3] / parts[-2] / parts[-1]).exists()
         finally:
             _delete_file(client, auth_headers, url)
 
@@ -519,7 +527,7 @@ class TestMediaLibraryBulkDelete:
         # so assert on the files themselves).
         for url in urls:
             parts = url.split("/")
-            assert not (Path(STATIC_DIR) / "uploads" / parts[-3] / parts[-2] / parts[-1]).exists()
+            assert not (Path(upload_module.STATIC_DIR) / "uploads" / parts[-3] / parts[-2] / parts[-1]).exists()
 
     def test_batch_delete_referenced_rejected_fail_closed(self, client, auth_headers, db_session):
         """Any referenced image blocks the WHOLE batch (nothing deleted)."""
