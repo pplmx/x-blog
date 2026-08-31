@@ -47,7 +47,8 @@
 			"denied": "通知已被浏览器阻止",
 			"subscribing": "开启中…",
 			"unsubscribing": "关闭中…",
-			"hint": "有新的待审评论时推送提醒"
+			"hint": "有新的待审评论时推送提醒",
+			"subscribeFailed": "开启失败，请重试"
 		},
 		"readers": {
 			"seoTitle": "读者 - 管理后台",

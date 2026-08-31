@@ -43,7 +43,8 @@
 			"denied": "Notifications blocked by browser",
 			"subscribing": "Subscribing…",
 			"unsubscribing": "Unsubscribing…",
-			"repliesIn": "You'll also be notified when someone replies to your comment"
+			"repliesIn": "You'll also be notified when someone replies to your comment",
+			"subscribeFailed": "Couldn't update notifications — try again"
 		},
 		"errors": {
 			"network": "Network error, please try again later"

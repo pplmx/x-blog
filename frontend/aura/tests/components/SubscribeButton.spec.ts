@@ -16,12 +16,20 @@ vi.mock("~~/composables/useLang", () => ({
 }));
 
 const status = ref("idle");
+const pushError = ref(false);
 const init = vi.fn().mockResolvedValue(undefined);
 const subscribe = vi.fn().mockResolvedValue(undefined);
 const unsubscribe = vi.fn().mockResolvedValue(undefined);
 const syncReaderBinding = vi.fn().mockResolvedValue(undefined);
 vi.mock("~~/composables/usePushSubscription", () => ({
-	usePushSubscription: () => ({ status, init, subscribe, unsubscribe, syncReaderBinding }),
+	usePushSubscription: () => ({
+		status,
+		error: pushError,
+		init,
+		subscribe,
+		unsubscribe,
+		syncReaderBinding,
+	}),
 }));
 
 const isAuthenticated = ref(false);
@@ -55,6 +63,7 @@ describe("SubscribeButton", () => {
 		wrapper?.unmount();
 		wrapper = undefined;
 		isAuthenticated.value = false;
+		pushError.value = false;
 	});
 
 	it("is hidden when the browser does not support push (unsupported)", () => {
@@ -98,6 +107,20 @@ describe("SubscribeButton", () => {
 		await wrapper.get("button").trigger("click");
 		expect(subscribe).toHaveBeenCalledOnce();
 		expect(unsubscribe).not.toHaveBeenCalled();
+	});
+
+	it("flashes a transient error bubble when a push failure is reported (ISS-215)", async () => {
+		status.value = "idle";
+		pushError.value = true;
+		const wrapper = mountButton();
+		await nextTick();
+
+		const bubble = wrapper.find('[role="alert"]');
+		expect(bubble.exists()).toBe(true);
+		expect(bubble.text()).toContain("common.push.subscribeFailed");
+		pushError.value = false;
+		await nextTick();
+		expect(wrapper.find('[role="alert"]').exists()).toBe(false);
 	});
 
 	it("is disabled when the browser has blocked notifications", () => {

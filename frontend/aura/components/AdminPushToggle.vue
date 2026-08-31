@@ -16,11 +16,33 @@
 import { useAdminPushSubscription } from "~~/composables/useAdminPushSubscription";
 
 const { t } = useLang();
-const { status, init, subscribe, unsubscribe } = useAdminPushSubscription();
+const { status, error: pushError, init, subscribe, unsubscribe } = useAdminPushSubscription();
 
 onMounted(() => {
 	void init();
 });
+
+// A transient subscribe/unsubscribe failure flashes a short error line below
+// the toggle — previously the composable reverted with no feedback at all
+// (ISS-215: the admin opt-in silently "did nothing" on a network hiccup).
+const errorVisible = ref(false);
+let errorTimer: ReturnType<typeof setTimeout> | undefined;
+watch(
+	pushError,
+	(failed) => {
+		if (failed) {
+			errorVisible.value = true;
+			clearTimeout(errorTimer);
+			errorTimer = setTimeout(() => {
+				errorVisible.value = false;
+			}, 2600);
+		} else {
+			errorVisible.value = false;
+		}
+	},
+	// immediate: a failure reported while the toggle was hidden still shows.
+	{ immediate: true },
+);
 
 const busy = computed(() => status.value === "subscribing" || status.value === "unsubscribing");
 // No delivery is possible: unsupported/unconfigured/denied all mean a click
@@ -81,6 +103,9 @@ async function onClick() {
     </button>
     <p class="mt-1 px-4 text-xs text-gray-400 dark:text-gray-500">
       {{ t('admin.moderationPush.hint') }}
+    </p>
+    <p v-if="errorVisible" role="alert" class="mt-1 px-4 text-xs text-red-600 dark:text-red-400">
+      {{ t('admin.moderationPush.subscribeFailed') }}
     </p>
   </div>
 </template>

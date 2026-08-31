@@ -47,7 +47,8 @@
 			"denied": "Notifications blocked by browser",
 			"subscribing": "Enabling…",
 			"unsubscribing": "Disabling…",
-			"hint": "Get a push when a comment awaits your approval"
+			"hint": "Get a push when a comment awaits your approval",
+			"subscribeFailed": "Failed to update alerts — try again"
 		},
 		"readers": {
 			"seoTitle": "Readers - Admin",

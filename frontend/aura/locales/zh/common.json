@@ -43,7 +43,8 @@
 			"denied": "通知已被浏览器阻止",
 			"subscribing": "订阅中…",
 			"unsubscribing": "退订中…",
-			"repliesIn": "评论被回复时也会收到通知"
+			"repliesIn": "评论被回复时也会收到通知",
+			"subscribeFailed": "通知更新失败，请重试"
 		},
 		"errors": {
 			"network": "网络错误，请稍后重试"

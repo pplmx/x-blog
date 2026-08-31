@@ -10,7 +10,7 @@
 
 import { mount } from "@vue/test-utils";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { ref } from "vue";
+import { nextTick, ref } from "vue";
 
 const t = vi.fn((key: string) => key);
 vi.mock("~~/composables/useLang", () => ({
@@ -18,11 +18,12 @@ vi.mock("~~/composables/useLang", () => ({
 }));
 
 const status = ref("idle");
+const pushError = ref(false);
 const init = vi.fn().mockResolvedValue(undefined);
 const subscribe = vi.fn().mockResolvedValue(undefined);
 const unsubscribe = vi.fn().mockResolvedValue(undefined);
 vi.mock("~~/composables/useAdminPushSubscription", () => ({
-	useAdminPushSubscription: () => ({ status, init, subscribe, unsubscribe }),
+	useAdminPushSubscription: () => ({ status, error: pushError, init, subscribe, unsubscribe }),
 }));
 
 import AdminPushToggle from "../../components/AdminPushToggle.vue";
@@ -48,6 +49,7 @@ describe("AdminPushToggle", () => {
 	afterEach(() => {
 		wrapper?.unmount();
 		wrapper = undefined;
+		pushError.value = false;
 	});
 
 	it("is disabled with a hint when the browser does not support push (unsupported)", () => {
@@ -117,5 +119,19 @@ describe("AdminPushToggle", () => {
 		expect(wrapper.get("button").attributes("disabled")).toBeDefined();
 		await wrapper.get("button").trigger("click");
 		expect(subscribe).not.toHaveBeenCalled();
+	});
+
+	it("flashes a transient error line when a push failure is reported (ISS-215)", async () => {
+		status.value = "idle";
+		pushError.value = true;
+		const wrapper = mountToggle();
+		await nextTick();
+
+		const alert = wrapper.find('[role="alert"]');
+		expect(alert.exists()).toBe(true);
+		expect(alert.text()).toContain("admin.moderationPush.subscribeFailed");
+		pushError.value = false;
+		await nextTick();
+		expect(wrapper.find('[role="alert"]').exists()).toBe(false);
 	});
 });
