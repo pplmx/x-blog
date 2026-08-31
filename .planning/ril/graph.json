@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 204,
+  "round": 205,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-08-31T09:29:44+00:00",
+  "updated_at": "2026-08-31T10:56:00+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -22,7 +22,7 @@
       "version": 1,
       "created_at": "2026-08-06T13:23:41+00:00",
       "updated_at": "2026-08-06T13:23:41+00:00",
-      "touched_round": 201,
+      "touched_round": 204,
       "title": "frontend-aura",
       "description": "Nuxt 4 Vue 3 TypeScript frontend at frontend/aura; composables; admin pages; e2e Playwright; biome lint"
     },
@@ -14076,6 +14076,88 @@
       "title": "Frontend polish program converged (CHG-270..277, rounds 196-203)",
       "rationale": "Operator polish directive (DEC-207) delivered across rounds 196-203: every frontend page and component swept for error-vs-empty disambiguation, retry affordances, a11y roles (alert/status/aria-pressed/aria-expanded/aria-live), keyboard navigation, focus management, form semantics, draft-loss safety and silent-failure surfacing. Last VERIFY: full suite 1315 Nuxt tests green, vue-tsc and biome clean. Graph consistent (1152 nodes/1036 edges); all HIGH/MEDIUM issues resolved; 0 active tasks. A residual scan of empty catch handlers finds only intentional background paths (reading-history/view telemetry, best-effort backend sync) where surfacing an error would be wrong.",
       "alternatives_rejected": "ISS-221 (new-tab rel/target on raw-HTML links): same-tab is a defensible blog choice and DOM-rewriting sanitized HTML adds risk for low value. ISS-222 (bookmark cloud-mirror affordance): contradicts the documented DEC-059 offline-first merge design; per-op mirror has no pending queue to display. Manufacturing further micro-rounds would violate the anti-churn discipline."
+    },
+    "ISS-225": {
+      "id": "ISS-225",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-08-31T10:55:58+00:00",
+      "updated_at": "2026-08-31T10:55:59+00:00",
+      "touched_round": 204,
+      "title": "Push failure feedback cross-contaminates other widgets",
+      "summary": "Post-fix re-audit regression of ISS-215: the singleton error ref in usePushSubscription meant a comment-thread follow or category follow failure flashed the HEADER push button bubble — feedback on a widget the user never touched, while the real button stayed silent.",
+      "severity": "medium"
+    },
+    "ISS-226": {
+      "id": "ISS-226",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-08-31T10:55:58+00:00",
+      "updated_at": "2026-08-31T10:55:59+00:00",
+      "touched_round": 204,
+      "title": "ThreadSubscribeButton mislabels transient push failures as blocked",
+      "summary": "After the composable swallowed the rejection, the code checked only status!=subscribed and showed the amber \"notifications unavailable or blocked\" hint for a plain retryable backend/SW failure — factually wrong cause.",
+      "severity": "medium"
+    },
+    "ISS-227": {
+      "id": "ISS-227",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-08-31T10:55:58+00:00",
+      "updated_at": "2026-08-31T10:55:59+00:00",
+      "touched_round": 204,
+      "title": "MarkdownContent lazy image has no box reservation (CLS)",
+      "summary": "The bare natural-aspect image reserves no height; the bg placeholder paints on a 0x0 box, so lazy in-body images shift following content on load. Markdown segments carry no width/height, so box reservation is impossible from data — re-scoped to honest documentation; showing images whole trumps the old center-crop.",
+      "severity": "medium"
+    },
+    "ISS-228": {
+      "id": "ISS-228",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-08-31T10:55:58+00:00",
+      "updated_at": "2026-08-31T10:55:59+00:00",
+      "touched_round": 204,
+      "title": "Copy fallback leaks a tabbable textarea and strands focus",
+      "summary": "fallbackCopy focuses the hidden textarea and only removes it on the non-throwing path; if execCommand throws, a fixed opacity:0 TABBABLE textarea leaks into the DOM and keyboard focus is lost from the Copy button.",
+      "severity": "low"
+    },
+    "ISS-229": {
+      "id": "ISS-229",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-08-31T10:55:59+00:00",
+      "updated_at": "2026-08-31T10:55:59+00:00",
+      "touched_round": 204,
+      "title": "LanguageSwitcher Tab leaves the menu open",
+      "summary": "The keydown contract covered Escape plus arrows only; Tab moved focus out while open stayed true, leaving the menu lingering over the nav until an outside click.",
+      "severity": "low"
+    },
+    "ISS-230": {
+      "id": "ISS-230",
+      "type": "issue",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-31T10:55:59+00:00",
+      "updated_at": "2026-08-31T10:55:59+00:00",
+      "touched_round": 204,
+      "title": "TagFollowButton error bubble can occlude the chip in the row above",
+      "summary": "In the wrapped flex-wrap tag footer (posts slug page), a lower-row chip transient 2.6s bubble (absolute bottom-full, z-10) paints over the chip above. Cosmetic; accepted as deferred.",
+      "severity": "low"
+    },
+    "CHG-278": {
+      "id": "CHG-278",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-08-31T10:55:59+00:00",
+      "updated_at": "2026-08-31T10:55:59+00:00",
+      "touched_round": 204,
+      "commit": "e11a757"
     }
   },
   "edges": [
@@ -20329,6 +20411,42 @@
       "to": "ISS-215",
       "type": "resolves",
       "created_at": "2026-08-31T09:21:16+00:00"
+    },
+    {
+      "from": "CHG-278",
+      "to": "ISS-225",
+      "type": "resolves",
+      "created_at": "2026-08-31T10:55:59+00:00"
+    },
+    {
+      "from": "CHG-278",
+      "to": "ISS-226",
+      "type": "resolves",
+      "created_at": "2026-08-31T10:55:59+00:00"
+    },
+    {
+      "from": "CHG-278",
+      "to": "ISS-227",
+      "type": "resolves",
+      "created_at": "2026-08-31T10:55:59+00:00"
+    },
+    {
+      "from": "CHG-278",
+      "to": "ISS-228",
+      "type": "resolves",
+      "created_at": "2026-08-31T10:55:59+00:00"
+    },
+    {
+      "from": "CHG-278",
+      "to": "ISS-229",
+      "type": "resolves",
+      "created_at": "2026-08-31T10:55:59+00:00"
+    },
+    {
+      "from": "ISS-230",
+      "to": "COMP-002",
+      "type": "located_in",
+      "created_at": "2026-08-31T10:55:59+00:00"
     }
   ]
 }
