@@ -394,3 +394,39 @@ def test_pg_delivers_in_window_and_advisory_lock_blocks_concurrent_run(smtp_sink
     finally:
         Base.metadata.drop_all(bind=engine)
         engine.dispose()
+
+
+class TestBuilderEscape:
+    """Display-name escaping in the digest HTML part.
+
+    greeting already html-escapes the display name; applying html.escape again
+    double-escapes the entity (A&B -> A&amp;B in the message source, rendered
+    as literal "A&amp;B") — a BadHtml safety smell and a visible typo."""
+
+    def _msg_for_name(self, display_name: str) -> EmailMessage:
+        now = datetime(2026, 8, 28, 12, 0, 0)
+        post = models.Post(title="t", slug="s", content="x")
+        return build_digest_message(
+            from_addr="blog@example.com",
+            to_email="reader@example.com",
+            display_name=display_name,
+            posts=[post],
+            base_url="https://blog.example.com",
+            window_start=now - timedelta(days=7),
+            now_naive=now,
+        )
+
+    def test_html_display_name_is_not_double_escaped(self):
+        msg = self._msg_for_name("A&B")
+        html = next(p for p in msg.walk() if p.get_content_type() == "text/html").get_content()
+        # The name should appear once-escaped: A&amp;B, never A&amp;amp;B.
+        assert "A&amp;B" in html
+        assert "A&amp;amp;B" not in html
+
+    def test_html_script_name_is_escaped_once(self):
+        msg = self._msg_for_name("<script>alert(1)</script>")
+        html = next(p for p in msg.walk() if p.get_content_type() == "text/html").get_content()
+        assert "<script>" not in html
+        assert "&lt;script&gt;" in html
+        # And not double-escaped into &amp;lt;script…
+        assert "&amp;lt;" not in html
