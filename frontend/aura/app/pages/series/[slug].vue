@@ -10,7 +10,7 @@ import {
 import type { SeriesProgress } from "~~/api/reader/history";
 import { getReaderSeriesProgress } from "~~/api/reader/history";
 // biome-ignore lint/correctness/noUnusedImports: used from the template — biome cannot resolve Vue script-setup template bindings (vue-tsc verifies).
-import { parseApiDate } from "~~/composables/apiDate";
+import { effectivePublishTs, parseApiDate } from "~~/composables/apiDate";
 import { useSeo } from "~~/composables/useSeo";
 
 const { t, locale } = useLang();
@@ -303,7 +303,7 @@ async function toggleNotify() {
             <div class="mt-2 ml-11 flex items-center gap-4 text-xs text-gray-400">
               <span class="flex items-center gap-1">
                 <Icon icon="lucide:calendar" class="w-3.5 h-3.5" />
-                {{ parseApiDate(post.created_at)?.toLocaleDateString(locale === "zh" ? "zh-CN" : "en-US") ?? "" }}
+                {{ parseApiDate(effectivePublishTs(post))?.toLocaleDateString(locale === "zh" ? "zh-CN" : "en-US") ?? "" }}
               </span>
               <span class="flex items-center gap-1">
                 <Icon icon="lucide:eye" class="w-3.5 h-3.5" />

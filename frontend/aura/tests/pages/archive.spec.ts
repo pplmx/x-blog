@@ -218,5 +218,28 @@ describe("Archive Page", () => {
 			});
 			expect(wrapper.text()).toContain("该时间段暂无文章");
 		});
+
+		it("dates a scheduled post by its publish month, not its draft month (RIL ISS-265)", async () => {
+			// Drafted in January, scheduled for June: the archive card shows the
+			// June date that matches its June bucket (feed filters/orders and
+			// archive buckets all key off effective publish time now).
+			const scheduled = {
+				items: [
+					{
+						...mockArchivePosts.items[0],
+						created_at: "2024-01-15T10:00:00Z",
+						publish_at: "2024-06-01T10:00:00Z",
+					},
+				],
+				pagination: mockArchivePosts.pagination,
+			};
+			const wrapper = await mountArchivePage({
+				posts: scheduled,
+				routeQuery: { year: "2024", month: "6" },
+			});
+			// Archive card dates use the compact locale format (2024/6/1).
+			expect(wrapper.text()).toContain("2024/6/1");
+			expect(wrapper.text()).not.toContain("2024/1/15");
+		});
 	});
 });

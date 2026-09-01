@@ -102,6 +102,26 @@ describe("PostCard", () => {
 		});
 	});
 
+	describe("date display (RIL ISS-265)", () => {
+		it("defaults to created_at for immediately-published posts", () => {
+			const wrapper = mountPostCard({ ...mockPost, created_at: "2024-01-15T10:00:00Z" });
+			expect(wrapper.text()).toContain("2024年1月15日");
+		});
+
+		it("renders publish_at (not the draft date) for a scheduled post", () => {
+			// Drafted in January, published in June: the card must say June —
+			// the month readers actually got it — matching the feed order.
+			const scheduled = {
+				...mockPost,
+				created_at: "2024-01-15T10:00:00Z",
+				publish_at: "2024-06-01T10:00:00Z",
+			};
+			const wrapper = mountPostCard(scheduled);
+			expect(wrapper.text()).toContain("2024年6月1日");
+			expect(wrapper.text()).not.toContain("2024年1月15日");
+		});
+	});
+
 	describe("cover image", () => {
 		it("renders algorithmic SVG data URI when no cover image", () => {
 			const wrapper = mountPostCard();

@@ -93,6 +93,19 @@ def _populate_post_metrics(db: Session, posts: list[models.Post]) -> None:
         p.reading_time = schemas.reading_minutes(p.content or "")
 
 
+def _effective_publish_col():
+    """SQL expression for a post's effective-publish timestamp.
+
+    A post is "published when" its scheduled ``publish_at`` (if set), else its
+    ``created_at`` — the same line ``effective_publish_ts`` draws in Python,
+    expressed in SQL so ordering/grouping/filtering agree (RIL ISS-265). On
+    SQLite the created_at column may carry a ``+00:00`` suffix while publish_at
+    is bare naive-UTC text; COALESCE returns whichever is set, and both format
+    identically up to the suffix, so string ordering stays aligned.
+    """
+    return func.coalesce(models.Post.publish_at, models.Post.created_at)
+
+
 def get_posts(
     db: Session,
     skip: int = 0,
@@ -118,10 +131,13 @@ def get_posts(
     if tag_id:
         query = query.join(models.Post.tags).filter(models.Tag.id == tag_id).distinct()
 
+    # Year/month filters key off the effective publish time, matching the
+    # archive buckets and feed ordering — a scheduled post appears under the
+    # month it actually went live, not the month it was drafted (RIL ISS-265).
     if year:
-        query = query.filter(extract("year", models.Post.created_at) == year)
+        query = query.filter(extract("year", _effective_publish_col()) == year)
     if month:
-        query = query.filter(extract("month", models.Post.created_at) == month)
+        query = query.filter(extract("month", _effective_publish_col()) == month)
 
     # Count before pagination
     total = query.count()
@@ -132,8 +148,16 @@ def get_posts(
         joinedload(models.Post.tags),
     )
 
-    # Sort by pinned first, then by created_at
-    posts = query.order_by(models.Post.pinned.desc(), models.Post.created_at.desc()).offset(skip).limit(limit).all()
+    # Sort by pinned first, then by effective publish time (a scheduled post
+    # reaches the top of the feed when it actually goes live — previously a
+    # post drafted in January and published in June stayed buried in January's
+    # position while its digest/SEO/feeds all reported June, RIL ISS-265).
+    posts = (
+        query.order_by(models.Post.pinned.desc(), _effective_publish_col().desc())
+        .offset(skip)
+        .limit(limit)
+        .all()
+    )
 
     # Populate comment_count (approved) + reading_time in one pass (no N+1).
     _populate_post_metrics(db, posts)
@@ -141,17 +165,21 @@ def get_posts(
 
 
 def get_archive(db: Session) -> list[tuple[int, int, int]]:
-    """Group publicly-visible posts by (year, month) of their created_at.
+    """Group publicly-visible posts by (year, month) of their effective
+    publish time (scheduled publish_at when set, else created_at).
 
     Returns rows ordered newest-first as (year, month, count). Only posts that
     are published and whose publish_at (if set) has passed are counted, so the
-    archive index never reveals drafts or scheduled future posts.
+    archive index never reveals drafts or scheduled future posts. Grouping by
+    effective publish time puts a scheduled post in the month it actually went
+    live — previously it appeared under the month it was drafted, so a post
+    published in June was invisible in June's archive (RIL ISS-265).
     """
     now = utc_now_naive()
     rows = (
         db.query(
-            extract("year", models.Post.created_at).label("year"),
-            extract("month", models.Post.created_at).label("month"),
+            extract("year", _effective_publish_col()).label("year"),
+            extract("month", _effective_publish_col()).label("month"),
             func.count(models.Post.id).label("count"),
         )
         .filter(
@@ -159,7 +187,10 @@ def get_archive(db: Session) -> list[tuple[int, int, int]]:
             or_(models.Post.publish_at.is_(None), models.Post.publish_at <= now),
         )
         .group_by("year", "month")
-        .order_by(extract("year", models.Post.created_at).desc(), extract("month", models.Post.created_at).desc())
+        .order_by(
+            extract("year", _effective_publish_col()).desc(),
+            extract("month", _effective_publish_col()).desc(),
+        )
         .all()
     )
     # Positional Row access (year, month, count — the SELECT order): pyright

@@ -22,3 +22,14 @@ export function parseApiDate(value: string | number | null | undefined): Date | 
 	const d = new Date(normalized);
 	return Number.isNaN(d.getTime()) ? null : d;
 }
+
+/** Raw effective-publish timestamp string for a post: its scheduled
+ *  publish_at when set, else its created_at (RIL ISS-265). List cards and the
+ *  archive date a post by when it went live — a scheduled post must not show
+ *  the month it was drafted. */
+export function effectivePublishTs(post: {
+	publish_at?: string | null;
+	created_at: string;
+}): string {
+	return post.publish_at ?? post.created_at;
+}

@@ -30,6 +30,8 @@
  *   usePostSeo(post);
  */
 
+import { effectivePublishTs } from "./apiDate";
+
 // ─── Types ───────────────────────────────────────────────────────────
 
 /** Minimum post data needed for SEO (matches the Post interface in useApi.ts). */
@@ -52,9 +54,11 @@ export interface SeoPostData {
 /** The post's effective publication timestamp: its scheduled publish_at when
  *  set, else its created_at. Scheduled posts are only publicly visible after
  *  publish_at (crud.is_publicly_visible), so this is when readers actually got
- *  the article — reporting the draft's created_at would mis-date it. */
+ *  the article — reporting the draft's created_at would mis-date it. Delegates
+ *  to the shared apiDate helper so list cards, pages and SEO all draw the same
+ *  line (RIL ISS-264/ISS-265). */
 export function effectivePublishAt(post: Pick<SeoPostData, "publish_at" | "created_at">): string {
-	return post.publish_at ?? post.created_at;
+	return effectivePublishTs(post);
 }
 
 /** Article metadata for JSON-LD BlogPosting schema. */

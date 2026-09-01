@@ -272,6 +272,9 @@ class PostList(BaseModel):
     snippet: str | None = None
     published: bool
     pinned: bool = False
+    # Scheduled publication time: lets list cards date a post by when it went
+    # live (publish_at ?? created_at) instead of its draft time (RIL ISS-265).
+    publish_at: datetime | None = None
     created_at: datetime
     views: int = 0
     likes: int = 0

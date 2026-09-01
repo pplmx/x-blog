@@ -2,7 +2,7 @@
   "ril_version": 1,
   "round": 227,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-01T16:07:57+00:00",
+  "updated_at": "2026-09-01T17:26:32+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -11,7 +11,7 @@
       "version": 1,
       "created_at": "2026-08-06T13:23:41+00:00",
       "updated_at": "2026-08-06T13:23:41+00:00",
-      "touched_round": 226,
+      "touched_round": 227,
       "title": "backend-nova",
       "description": "FastAPI Python 3.14 backend at backend/nova; SQLAlchemy ORM; routers in app/routers, crud.py business logic, 656 lines"
     },
@@ -22,7 +22,7 @@
       "version": 1,
       "created_at": "2026-08-06T13:23:41+00:00",
       "updated_at": "2026-08-06T13:23:41+00:00",
-      "touched_round": 226,
+      "touched_round": 227,
       "title": "frontend-aura",
       "description": "Nuxt 4 Vue 3 TypeScript frontend at frontend/aura; composables; admin pages; e2e Playwright; biome lint"
     },
@@ -15375,22 +15375,22 @@
     "ISS-265": {
       "id": "ISS-265",
       "type": "issue",
-      "status": "active",
-      "version": 1,
+      "status": "resolved",
+      "version": 2,
       "created_at": "2026-09-01T16:04:56+00:00",
-      "updated_at": "2026-09-01T16:04:56+00:00",
-      "touched_round": 226,
+      "updated_at": "2026-09-01T17:26:31+00:00",
+      "touched_round": 227,
       "title": "Feed/list/archive surfaces order & group scheduled posts by draft created_at, not publish time",
       "severity": "low"
     },
     "HYP-017": {
       "id": "HYP-017",
       "type": "hypothesis",
-      "status": "active",
-      "version": 1,
+      "status": "resolved",
+      "version": 2,
       "created_at": "2026-09-01T16:04:56+00:00",
-      "updated_at": "2026-09-01T16:04:56+00:00",
-      "touched_round": 226,
+      "updated_at": "2026-09-01T17:26:32+00:00",
+      "touched_round": 227,
       "title": "PostList schema omits publish_at and get_posts/get_archive/frontend cards key off created_at, so a scheduled post mis-sorts/mis-groups in every list surface",
       "confidence": 0.85
     },
@@ -15413,24 +15413,46 @@
       "version": 1,
       "created_at": "2026-09-01T16:05:21+00:00",
       "updated_at": "2026-09-01T16:05:21+00:00",
-      "touched_round": 226,
+      "touched_round": 227,
       "rationale": "Scheduled posts already display/date correctly on the detail page, SEO, and feeds (ISS-264/DEC-230) via effective_publish_ts. The remaining inconsistency is list *ordering/grouping*: the feed sorts by created_at desc and the archive groups by created_at month while PostList omits publish_at. Changing ordering is a deliberate product/UX choice (feed recency semantics + cache-visible reorder + archive buckets), not a localized fix; it is recorded as ISS-265 for a separate scoped round rather than rolled into the ISS-264 date fix.",
       "alternatives_rejected": "Silently reordering the public feed within the ISS-264 round — cache-visible behavior change beyond a date-label fix, and the archive-bucket migration deserves its own review."
     },
     "TASK-248": {
       "id": "TASK-248",
       "type": "task",
+      "status": "resolved",
+      "version": 3,
+      "created_at": "2026-09-01T16:05:55+00:00",
+      "updated_at": "2026-09-01T17:26:31+00:00",
+      "touched_round": 227,
+      "title": "Scope and deliver feed/list/archive ordering by effective publish time (publish_at ?? created_at), incl. PostList exposure",
+      "category": "correctness",
+      "severity": "medium",
+      "confidence": 0.9,
+      "effort": 2.0,
+      "unlock_factor": 1.0
+    },
+    "DEC-232": {
+      "id": "DEC-232",
+      "type": "decision",
       "status": "active",
       "version": 1,
-      "created_at": "2026-09-01T16:05:55+00:00",
-      "updated_at": "2026-09-01T16:05:55+00:00",
-      "touched_round": 226,
-      "title": "Scope and deliver feed/list/archive ordering by effective publish time (publish_at ?? created_at), incl. PostList exposure",
-      "category": "core-feature",
-      "severity": "low",
-      "confidence": 0.85,
-      "effort": 1.5,
-      "unlock_factor": 1.0
+      "created_at": "2026-09-01T17:20:45+00:00",
+      "updated_at": "2026-09-01T17:20:45+00:00",
+      "touched_round": 227,
+      "rationale": "The scheduling feature promises 'the post appears publicly at publish_at', yet list surfaces still keyed off draft created_at: the feed sorted by created_at desc, archive buckets grouped by created_at year/month, and every list card (PostCard/search/archive/series/categories/tags/print) rendered the draft date. A post drafted in January but published in June was buried in January's feed position, invisible in June's archive bucket, and mis-dated everywhere — while its digest/SEO/RSS all already reported June (ISS-264). Fix: introduce crud._effective_publish_col() (SQL COALESCE(publish_at, created_at)) and use it for feed ordering, year/month filtering, and archive grouping; expose publish_at on the PostList schema; render list-card dates via a shared apiDate.effectivePublishTs.",
+      "alternatives_rejected": "Leave list surfaces on created_at — would keep the scheduling feature internally inconsistent (list says Jan, detail/feeds say Jun). Keep ordering on created_at and only fix the card dates — the card would then display June while sorting in January's position, a new mismatch. Do a Python-side re-sort after count() — pagination would be wrong (an offset/limit query cannot order by a value computed after the fact)."
+    },
+    "CHG-310": {
+      "id": "CHG-310",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-01T17:21:13+00:00",
+      "updated_at": "2026-09-01T17:21:13+00:00",
+      "touched_round": 227,
+      "commit": "<pending>",
+      "title": "List surfaces honor effective publish time: feed order, year/month filter, archive buckets, PostList publish_at exposure, all list-card dates"
     }
   },
   "edges": [
@@ -22344,6 +22366,30 @@
       "to": "TASK-248",
       "type": "governs",
       "created_at": "2026-09-01T16:06:27+00:00"
+    },
+    {
+      "from": "DEC-232",
+      "to": "DEC-231",
+      "type": "supersedes",
+      "created_at": "2026-09-01T17:21:13+00:00"
+    },
+    {
+      "from": "DEC-232",
+      "to": "TASK-248",
+      "type": "governs",
+      "created_at": "2026-09-01T17:21:39+00:00"
+    },
+    {
+      "from": "DEC-232",
+      "to": "COMP-001",
+      "type": "governs",
+      "created_at": "2026-09-01T17:21:39+00:00"
+    },
+    {
+      "from": "DEC-232",
+      "to": "COMP-002",
+      "type": "governs",
+      "created_at": "2026-09-01T17:21:40+00:00"
     }
   ]
 }

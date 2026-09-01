@@ -21,6 +21,9 @@ export interface PostList {
 	published: boolean;
 	pinned?: boolean;
 	created_at: string;
+	/** Scheduled publication time (backend PostList serializes it, RIL ISS-265);
+	 *  null/absent for immediately-published posts. */
+	publish_at?: string | null;
 	views: number;
 	likes: number;
 	comment_count?: number;

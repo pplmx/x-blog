@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { PostList } from "~~/api/contracts/shared";
+import { effectivePublishTs, parseApiDate } from "~~/composables/apiDate";
 import { coverImageSrc } from "~~/composables/useCoverImage";
 
 interface Props {
@@ -13,12 +14,19 @@ const { locale, t } = useLang();
 
 const coverImageUrl = computed(() => coverImageSrc(post.value.title));
 
-const date = computed(() =>
-	new Date(props.post.created_at).toLocaleDateString(locale.value === "zh" ? "zh-CN" : "en-US", {
-		year: "numeric",
-		month: "long",
-		day: "numeric",
-	}),
+// A card dates a post by when it went live (publish_at ?? created_at): the
+// feed now orders by effective publish time, so a scheduled post must show
+// the date readers actually got it, not the month it was drafted (RIL ISS-265).
+const date = computed(
+	() =>
+		parseApiDate(effectivePublishTs(props.post))?.toLocaleDateString(
+			locale.value === "zh" ? "zh-CN" : "en-US",
+			{
+				year: "numeric",
+				month: "long",
+				day: "numeric",
+			},
+		) ?? "",
 );
 </script>
 

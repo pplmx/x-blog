@@ -68,6 +68,97 @@ class TestGetPosts:
         assert isinstance(posts, list)
         assert total == 0 or all(p.category_id == 999 for p in posts)
 
+    def test_get_posts_orders_scheduled_posts_by_effective_publish_time(self, db_session):
+        """A post drafted in January but scheduled for June sorts by June —
+        it must surface at the top of the feed when it actually goes live,
+        not stay buried in its draft position (RIL ISS-265)."""
+        from datetime import UTC  # noqa: PLC0415 — local to keep the header tidy
+
+        db_session.add_all(
+            [
+                models.Post(
+                    title="Drafted Jan, live Jun",
+                    slug="scheduled-jun",
+                    content="c",
+                    published=True,
+                    created_at=datetime(2024, 1, 15, 10, 30, 0),
+                    publish_at=datetime(2024, 6, 1, 9, 0, 0),
+                ),
+                models.Post(
+                    title="Unscheduled May",
+                    slug="plain-may",
+                    content="c",
+                    published=True,
+                    created_at=datetime(2024, 5, 10, 8, 0, 0),
+                ),
+                models.Post(
+                    title="Unscheduled July",
+                    slug="plain-jul",
+                    content="c",
+                    published=True,
+                    created_at=datetime(2024, 7, 2, 8, 0, 0),
+                ),
+            ]
+        )
+        db_session.commit()
+
+        posts, _ = crud.get_posts(db_session, skip=0, limit=10)
+        titles = [p.title for p in posts]
+        # The June-scheduled post (effective Jun 1) sits after July, before May.
+        assert titles == ["Unscheduled July", "Drafted Jan, live Jun", "Unscheduled May"]
+
+    def test_get_posts_year_month_filters_by_effective_publish_time(self, db_session):
+        """The year/month feed filter keys off publish time: a post drafted in
+        January and scheduled for June is found under June, not January."""
+        db_session.add(
+            models.Post(
+                title="Drafted Jan, live Jun",
+                slug="sched-jun-filter",
+                content="c",
+                published=True,
+                created_at=datetime(2024, 1, 15, 10, 30, 0),
+                publish_at=datetime(2024, 6, 1, 9, 0, 0),
+            )
+        )
+        db_session.commit()
+
+        _, jan_total = crud.get_posts(db_session, year=2024, month=1)
+        _, jun_total = crud.get_posts(db_session, year=2024, month=6)
+        assert jan_total == 0
+        assert jun_total == 1
+
+    def test_get_archive_groups_by_effective_publish_time(self, db_session):
+        """The archive buckets a scheduled post in the month it went live —
+        before this it landed under its draft month and was unfindable in the
+        archive (RIL ISS-265)."""
+        db_session.add_all(
+            [
+                models.Post(
+                    title="Drafted Jan, live Jun",
+                    slug="sched-jun-arch",
+                    content="c",
+                    published=True,
+                    created_at=datetime(2024, 1, 15, 10, 30, 0),
+                    publish_at=datetime(2024, 6, 1, 9, 0, 0),
+                ),
+                models.Post(
+                    title="Plain May",
+                    slug="plain-may-arch",
+                    content="c",
+                    published=True,
+                    created_at=datetime(2024, 5, 10, 8, 0, 0),
+                ),
+            ]
+        )
+        db_session.commit()
+
+        rows = crud.get_archive(db_session)
+        buckets = {(y, m): count for y, m, count in rows}
+        # No January bucket (the drafted post is not "published in January")
+        assert (2024, 1) not in buckets
+        assert buckets.get((2024, 6)) == 1
+        assert buckets.get((2024, 5)) == 1
+
     def test_get_posts_filter_by_tag_correct_count(self, db_session):
         """Test get_posts returns correct total when filtering by tag_id.
 
