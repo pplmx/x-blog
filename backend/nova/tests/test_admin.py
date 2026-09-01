@@ -1430,3 +1430,57 @@ class TestAdminPostStatusFilters:
             p["title"] for p in client.get("/api/admin/posts?status=published", headers=auth_headers).json()["items"]
         ]
         assert "Boundary" in published_titles
+
+
+class TestCommentsDateOnlyInclusive:
+    """date_only date_to in admin comments must include the whole day.
+
+    <input type='date'> submits YYYY-MM-DD; parsed as midnight it excluded
+    every comment created later that day. A bare date_to means end-of-day."""
+
+    def test_date_only_date_to_includes_same_day(self, client, auth_headers, db_session):
+        from datetime import UTC, datetime
+
+        post = models.Post(title="Date Post", slug="date-post-2", content="Content", published=True)
+        db_session.add(post)
+        db_session.commit()
+        today = datetime.now(UTC).replace(microsecond=0)
+        c = models.Comment(
+            post_id=post.id,
+            nickname="SameDay",
+            content="same day",
+            created_at=today,  # a real time today, not midnight
+        )
+        db_session.add(c)
+        db_session.commit()
+
+        day = today.strftime("%Y-%m-%d")
+        resp = client.get(f"/api/admin/comments?date_to={day}", headers=auth_headers)
+        assert resp.status_code == 200, resp.text
+        assert any(i["nickname"] == "SameDay" for i in resp.json()["items"])
+
+    def test_date_only_date_to_excludes_after_day(self, client, auth_headers, db_session):
+        from datetime import UTC, datetime, timedelta
+
+        post = models.Post(title="Date Post", slug="date-post-3", content="Content", published=True)
+        db_session.add(post)
+        db_session.commit()
+        # Comment created "tomorrow" relative to a date_to of today.
+        tomorrow = datetime.now(UTC).replace(microsecond=0) + timedelta(days=1)
+        c = models.Comment(
+            post_id=post.id,
+            nickname="Tomorrow",
+            content="tomorrow",
+            created_at=tomorrow,
+        )
+        db_session.add(c)
+        db_session.commit()
+
+        day = (tomorrow - timedelta(days=1)).strftime("%Y-%m-%d")
+        resp = client.get(f"/api/admin/comments?date_to={day}", headers=auth_headers)
+        assert resp.status_code == 200, resp.text
+        assert not any(i["nickname"] == "Tomorrow" for i in resp.json()["items"])
+
+    def test_malformed_date_still_422(self, client, auth_headers):
+        resp = client.get("/api/admin/comments?date_to=not-a-date", headers=auth_headers)
+        assert resp.status_code == 422

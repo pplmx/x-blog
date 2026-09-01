@@ -137,3 +137,64 @@ class TestSearchSort:
     def test_invalid_sort_rejected(self, client, db_session):
         resp = client.get(BASE, params={"q": "python", "sort": "bogus"})
         assert resp.status_code == 422
+
+
+class TestDateOnlyInclusiveBounds:
+    """Date-only (YYYY-MM-DD) bounds must be inclusive of the chosen day.
+
+    <input type="date"> always submits date-only strings. The old behavior
+    parsed date_to=2026-09-01 as midnight and filtered created_at <= that
+    midnight, silently dropping every post published later the same day the
+    reader picked. A date-only bound must mean "the whole day"."""
+
+    def test_date_to_dateonly_includes_same_day_posts(self, client, db_session):
+        now = _seed_search_blog(db_session)["p3"].created_at.replace(tzinfo=None)
+        day = now.strftime("%Y-%m-%d")
+        # p3 (today-life) is created at `now` (today's real time, not midnight).
+        resp = client.get(BASE, params={"q": "随笔", "date_to": day})
+        assert resp.status_code == 200, resp.text
+        assert "today-life" in _slugs(resp)
+
+    def test_date_from_dateonly_excludes_previous_day(self, client, db_session):
+        # p2 (py-viz) is 1 day old; p1 (py-async) is 3 days old.
+        now = datetime.now(UTC)
+        _seed_search_blog(db_session)
+        start_day = (now - timedelta(days=2)).strftime("%Y-%m-%d")
+        # From 2 days ago (00:00) with an open end: p1 (3 days ago) excluded,
+        # p2 (1 day ago) and p3 (today) included.
+        resp = client.get(BASE, params={"q": "python", "date_from": start_day})
+        assert set(_slugs(resp)) == {"py-viz"}
+
+    def test_date_to_full_iso_bound_unchanged(self, client, db_session):
+        now = datetime.now(UTC)
+        _seed_search_blog(db_session)
+        # A full ISO date_to with a time part keeps exact-bound semantics.
+        resp = client.get(
+            BASE,
+            params={
+                "q": "python",
+                "date_to": (now - timedelta(days=2) - timedelta(seconds=1)).isoformat(),
+            },
+        )
+        assert resp.status_code == 200
+        assert "py-viz" not in _slugs(resp)
+
+    def test_malformed_date_bound_rejected(self, client, db_session):
+        _seed_search_blog(db_session)
+        resp = client.get(BASE, params={"q": "python", "date_to": "not-a-date"})
+        assert resp.status_code == 422
+
+    def test_aware_datetime_from_still_works(self, client, db_session):
+        now = datetime.now(UTC)
+        _seed_search_blog(db_session)
+        # Full tz-aware ISO datetime must keep working through the raw-string
+        # boundary (naive-UTC coercion).
+        resp = client.get(
+            BASE,
+            params={
+                "q": "python",
+                "date_from": (now - timedelta(days=2)).isoformat(),
+                "date_to": now.isoformat(),
+            },
+        )
+        assert set(_slugs(resp)) == {"py-viz"}

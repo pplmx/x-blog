@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 217,
+  "round": 218,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-01T09:56:08+00:00",
+  "updated_at": "2026-09-01T10:52:11+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -11,7 +11,7 @@
       "version": 1,
       "created_at": "2026-08-06T13:23:41+00:00",
       "updated_at": "2026-08-06T13:23:41+00:00",
-      "touched_round": 217,
+      "touched_round": 218,
       "title": "backend-nova",
       "description": "FastAPI Python 3.14 backend at backend/nova; SQLAlchemy ORM; routers in app/routers, crud.py business logic, 656 lines"
     },
@@ -14819,11 +14819,11 @@
     "ISS-252": {
       "id": "ISS-252",
       "type": "issue",
-      "status": "active",
-      "version": 1,
+      "status": "resolved",
+      "version": 2,
       "created_at": "2026-09-01T07:12:15+00:00",
-      "updated_at": "2026-09-01T07:12:15+00:00",
-      "touched_round": 212,
+      "updated_at": "2026-09-01T09:58:54+00:00",
+      "touched_round": 218,
       "severity": "low",
       "title": "Deploy nginx: deprecated X-XSS-Protection header + uploads location drops XFO/HSTS",
       "description": "deploy/nginx.conf set X-XSS-Protection '1; mode=block' (the XSS auditor it enables is removed from modern browsers and can itself be abused in legacy Edge — OWASP/MDN recommend removing it), and the /static/uploads/ location only re-asserted nosniff, so uploads responses dropped X-Frame-Options and Strict-Transport-Security via add_header inheritance. Removed the deprecated header and re-asserted XFO+HSTS on uploads (COMP-005 was untouched for ~180 rounds)."
@@ -14984,11 +14984,11 @@
     "ISS-256": {
       "id": "ISS-256",
       "type": "issue",
-      "status": "active",
-      "version": 1,
+      "status": "resolved",
+      "version": 2,
       "created_at": "2026-09-01T09:52:04+00:00",
-      "updated_at": "2026-09-01T09:52:04+00:00",
-      "touched_round": 217,
+      "updated_at": "2026-09-01T09:58:41+00:00",
+      "touched_round": 218,
       "title": "ril.py tasks crashes on categorical severity values",
       "description": "TASK-240 (severity=low) and TASK-245 (severity=medium) stored categorical strings; priority_score() does float('low') → ValueError → ril.py tasks exits with traceback, blocking the whole EVALUATE loop"
     },
@@ -15007,13 +15007,13 @@
     "CHG-301": {
       "id": "CHG-301",
       "type": "change",
-      "status": "active",
-      "version": 1,
+      "status": "resolved",
+      "version": 2,
       "created_at": "2026-09-01T09:52:16+00:00",
-      "updated_at": "2026-09-01T09:52:16+00:00",
+      "updated_at": "2026-09-01T09:58:03+00:00",
       "touched_round": 217,
       "summary": "Normalize TASK-240/TASK-245 severity to numeric; harden priority_score to map categorical levels and default on parse failure",
-      "commit": "PENDING"
+      "commit": "727a8c2"
     },
     "DEC-222": {
       "id": "DEC-222",
@@ -15030,14 +15030,72 @@
     "HYP-014": {
       "id": "HYP-014",
       "type": "hypothesis",
-      "status": "active",
-      "version": 1,
+      "status": "resolved",
+      "version": 2,
       "created_at": "2026-09-01T09:53:11+00:00",
-      "updated_at": "2026-09-01T09:53:11+00:00",
-      "touched_round": 217,
+      "updated_at": "2026-09-01T09:58:41+00:00",
+      "touched_round": 218,
       "confidence": 1.0,
       "title": "priority_score float() cast on categorical severity is the crash cause",
       "description": "Two resolved task nodes stored severity as 'low'/'medium'; priority_score() calls float(severity) unconditionally, so any tasks listing (including resolved rows being sorted) raises ValueError. Root cause confirmed by direct repro before/after the fix."
+    },
+    "ISS-257": {
+      "id": "ISS-257",
+      "type": "issue",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-01T10:51:23+00:00",
+      "updated_at": "2026-09-01T10:51:23+00:00",
+      "touched_round": 218,
+      "title": "Date-only date_to filter silently excludes the entire picked day",
+      "description": "<input type=date> submits YYYY-MM-DD; parsed as a datetime it becomes midnight, so created_at <= day-00:00 drops every post/comment/export row timestamped later that day. Affected /api/search, /api/admin/comments and both /api/export CSV routes — a reader/admin filtering 'up to Sep 1' got nothing from Sep 1 itself."
+    },
+    "HYP-015": {
+      "id": "HYP-015",
+      "type": "hypothesis",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-01T10:51:23+00:00",
+      "updated_at": "2026-09-01T10:51:23+00:00",
+      "touched_round": 218,
+      "confidence": 1.0,
+      "title": "Bare-date bound widens to midnight and excludes the day",
+      "description": "Confirmed by repro: date_to=2026-09-01 with a row at 2026-09-01T10:25 returned []. FastAPI parses the date-only string to midnight; <= midnight excludes the whole day."
+    },
+    "EV-219": {
+      "id": "EV-219",
+      "type": "evidence",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-01T10:51:48+00:00",
+      "updated_at": "2026-09-01T10:51:48+00:00",
+      "touched_round": 218,
+      "source": "tests/test_search_filters.py::TestDateOnlyInclusiveBounds + manual repro (round 218)",
+      "summary": "date_to=2026-09-01 against a post at 2026-09-01T10:25 returned [] before the fix (midnight bound); after widening to 23:59:59.999999 the same-day post matches. Same reproduction on /api/admin/comments and both /api/export CSV routes.",
+      "confidence": 1.0
+    },
+    "CHG-302": {
+      "id": "CHG-302",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-01T10:52:10+00:00",
+      "updated_at": "2026-09-01T10:52:10+00:00",
+      "touched_round": 218,
+      "summary": "Shared app/dates.py: inclusive_end_of_day + parse_bound; /api/search, /api/admin/comments and both /api/export routes now accept raw date strings and widen bare-date date_to to end-of-day (422 preserved)",
+      "commit": "PENDING"
+    },
+    "DEC-223": {
+      "id": "DEC-223",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-01T10:52:10+00:00",
+      "updated_at": "2026-09-01T10:52:10+00:00",
+      "touched_round": 218,
+      "title": "Date-only to-bounds are inclusive of the whole day, enforced server-side",
+      "rationale": "Every date filter source is <input type=date> (search, admin comments, export dashboard) which always submits date-only strings. Widening only the to-bound to 23:59:59.999999 (never the from-bound, already inclusive at midnight) matches user intent with zero frontend change. Centralized in app/dates.py since three routers share the semantics.",
+      "alternatives_rejected": "['Frontend sends 23:59:59 itself (spreads the magic value into every caller and still needs parsing)','Keep datetime params and special-case midnight (cannot distinguish an explicit midnight from a date-only value)','Per-router copies (fourth duplication source)']"
     }
   },
   "edges": [
@@ -21741,6 +21799,30 @@
       "to": "ISS-256",
       "type": "resolves",
       "created_at": "2026-09-01T09:53:46+00:00"
+    },
+    {
+      "from": "EV-219",
+      "to": "HYP-015",
+      "type": "validates",
+      "created_at": "2026-09-01T10:51:48+00:00"
+    },
+    {
+      "from": "ISS-257",
+      "to": "COMP-001",
+      "type": "located_in",
+      "created_at": "2026-09-01T10:51:48+00:00"
+    },
+    {
+      "from": "CHG-302",
+      "to": "ISS-257",
+      "type": "resolves",
+      "created_at": "2026-09-01T10:52:11+00:00"
+    },
+    {
+      "from": "DEC-223",
+      "to": "COMP-001",
+      "type": "governs",
+      "created_at": "2026-09-01T10:52:11+00:00"
     }
   ]
 }

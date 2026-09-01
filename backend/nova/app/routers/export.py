@@ -1,6 +1,5 @@
 import csv
 import io
-from datetime import UTC, datetime
 
 from fastapi import APIRouter, Depends, Query, Request
 from fastapi.responses import StreamingResponse
@@ -9,6 +8,7 @@ from sqlalchemy.orm import Session
 from app import crud, models
 from app.auth import User, get_current_superuser
 from app.database import get_db
+from app.dates import inclusive_end_of_day, parse_bound
 from app.limiter import RATE_LIMIT_EXPORT, limiter
 
 router = APIRouter(prefix="/api/export", tags=["export"])
@@ -28,20 +28,15 @@ def _csv_safe(value: object) -> object:
     return value
 
 
-def _normalize_naive(value: datetime) -> datetime:
-    """Coerce an (optionally tz-aware) filter datetime to naive-UTC for the column."""
-    if value.tzinfo is not None:
-        return value.astimezone(UTC).replace(tzinfo=None)
-    return value
-
-
 @router.get("/posts.csv")
 @limiter.limit(f"{RATE_LIMIT_EXPORT}/minute")
 def export_posts_csv(
     request: Request,  # noqa: ARG001
     status: str | None = Query(None, description="published | draft | scheduled | all"),
-    date_from: datetime | None = Query(None, description="ISO date: created >= date_from"),
-    date_to: datetime | None = Query(None, description="ISO date: created <= date_to"),
+    date_from: str | None = Query(None, max_length=40, description="ISO date: created >= date_from"),
+    date_to: str | None = Query(
+        None, max_length=40, description="ISO date: created <= date_to (a bare date includes the whole day)"
+    ),
     limit: int = Query(10000, ge=1, le=100000),
     db: Session = Depends(get_db),
     _current_user: User = Depends(get_current_superuser),
@@ -61,11 +56,14 @@ def export_posts_csv(
     elif status == "scheduled":
         now = crud.utc_now_naive()
         query = query.filter(models.Post.publish_at > now)
-    # status None/"all" → every post regardless of state.
-    if date_from:
-        query = query.filter(models.Post.created_at >= _normalize_naive(date_from))
-    if date_to:
-        query = query.filter(models.Post.created_at <= _normalize_naive(date_to))
+    # status None/"all" → every post regardless of state. A bare-date date_to
+    # is widened to end-of-day so the picked day is included in the export.
+    start = parse_bound(date_from)
+    end = parse_bound(inclusive_end_of_day(date_to)) if date_to else None
+    if start is not None:
+        query = query.filter(models.Post.created_at >= start)
+    if end is not None:
+        query = query.filter(models.Post.created_at <= end)
 
     posts = query.limit(limit).all()
 
@@ -122,8 +120,10 @@ def export_posts_csv(
 def export_comments_csv(
     request: Request,  # noqa: ARG001
     is_approved: bool | None = Query(None, description="Filter by moderation status"),
-    date_from: datetime | None = Query(None, description="ISO date: created >= date_from"),
-    date_to: datetime | None = Query(None, description="ISO date: created <= date_to"),
+    date_from: str | None = Query(None, max_length=40, description="ISO date: created >= date_from"),
+    date_to: str | None = Query(
+        None, max_length=40, description="ISO date: created <= date_to (a bare date includes the whole day)"
+    ),
     limit: int = Query(10000, ge=1, le=100000),
     db: Session = Depends(get_db),
     _current_user: User = Depends(get_current_superuser),
@@ -137,10 +137,12 @@ def export_comments_csv(
     query = db.query(models.Comment)
     if is_approved is not None:
         query = query.filter(models.Comment.is_approved.is_(is_approved))
-    if date_from:
-        query = query.filter(models.Comment.created_at >= _normalize_naive(date_from))
-    if date_to:
-        query = query.filter(models.Comment.created_at <= _normalize_naive(date_to))
+    start = parse_bound(date_from)
+    end = parse_bound(inclusive_end_of_day(date_to)) if date_to else None
+    if start is not None:
+        query = query.filter(models.Comment.created_at >= start)
+    if end is not None:
+        query = query.filter(models.Comment.created_at <= end)
 
     comments = query.order_by(models.Comment.created_at.desc()).limit(limit).all()
 

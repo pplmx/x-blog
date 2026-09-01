@@ -1,7 +1,6 @@
 import html
 import re
 from contextlib import suppress
-from datetime import UTC, datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy import func
@@ -10,6 +9,7 @@ from sqlalchemy.orm import Session
 from .. import models
 from ..crud import _has_cjk, _has_searchable_token, log_search_query, search_posts
 from ..database import get_db
+from ..dates import inclusive_end_of_day, parse_bound
 from ..limiter import RATE_LIMIT_SEARCH, limiter
 from ..models import Post
 from ..schemas import PostList
@@ -134,20 +134,6 @@ def _build_postgres_snippets(db: Session, posts: list[Post], query: str) -> dict
 VALID_SORTS = ("relevance", "newest", "oldest", "views")
 
 
-def _naive_utc(value: datetime | None) -> datetime | None:
-    """Coerce a client-supplied (possibly tz-aware) filter to naive UTC.
-
-    The created_at columns are naive UTC; comparing a tz-aware bind against a
-    naive timestamp column errors on PostgreSQL, so normalize at the boundary —
-    a date-only value parses as midnight naive and is left as-is.
-    """
-    if value is None:
-        return None
-    if value.tzinfo is not None:
-        return value.astimezone(UTC).replace(tzinfo=None)
-    return value
-
-
 @router.get("")
 @limiter.limit(f"{RATE_LIMIT_SEARCH}/minute")
 def search(
@@ -157,14 +143,20 @@ def search(
     limit: int = Query(10, ge=1, le=50),
     category: str | None = Query(None, max_length=50, description="narrow to a category by name"),
     tag: str | None = Query(None, max_length=50, description="narrow to a tag by name"),
-    date_from: datetime | None = Query(None, description="created_at >= (ISO date or datetime)"),
-    date_to: datetime | None = Query(None, description="created_at <= (ISO date or datetime)"),
+    date_from: str | None = Query(None, max_length=40, description="created_at >= (ISO date or datetime)"),
+    date_to: str | None = Query(
+        None, max_length=40, description="created_at <= (ISO date or datetime; a bare date includes the whole day)"
+    ),
     sort: str = Query("relevance", description="relevance | newest | oldest | views"),
     db: Session = Depends(get_db),
 ):
     if sort not in VALID_SORTS:
         raise HTTPException(status_code=422, detail=f"sort must be one of {list(VALID_SORTS)}")
     is_postgres = db.get_bind().dialect.name == "postgresql"
+    # date-only "to" bounds are inclusive of the picked day (see
+    # dates.inclusive_end_of_day); parse both raw strings back to naive-UTC
+    # datetimes, widening a bare-date date_to to end-of-day first.
+    date_to = date_to and inclusive_end_of_day(date_to)
     posts, total = search_posts(
         db,
         query=q,
@@ -172,8 +164,8 @@ def search(
         limit=limit,
         category=category or None,
         tag=tag or None,
-        date_from=_naive_utc(date_from),
-        date_to=_naive_utc(date_to),
+        date_from=parse_bound(date_from),
+        date_to=parse_bound(date_to),
         sort=sort,
     )
 

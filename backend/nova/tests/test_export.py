@@ -150,3 +150,55 @@ class TestExportCommentsCsv:
         )
         assert any("PendingCommenter" in r for r in pending_rows)
         assert not any("ApprovedCommenter" in r for r in pending_rows)
+
+
+class TestExportDateOnlyInclusive:
+    """A bare-date date_to must include the whole picked day in exports.
+
+    <input type="date"> submits YYYY-MM-DD; parsed as midnight it dropped every
+    row created later that day. The export dashboard uses date inputs for both
+    posts and comments, so the to-bound must widen to end-of-day."""
+
+    def test_posts_csv_date_only_date_to_includes_same_day(self, client, auth_headers, db_session):
+        from datetime import UTC, datetime
+
+        from app import models
+
+        post = models.Post(
+            title="Today Export",
+            slug="today-export",
+            content="C",
+            published=True,
+            created_at=datetime.now(UTC).replace(microsecond=0),
+        )
+        db_session.add(post)
+        db_session.commit()
+
+        day = post.created_at.strftime("%Y-%m-%d")
+        rows = client.get(f"/api/export/posts.csv?date_to={day}", headers=auth_headers).text.strip().split("\n")
+        assert any("today-export" in r for r in rows)
+
+    def test_comments_csv_date_only_date_to_includes_same_day(self, client, auth_headers, db_session):
+        from datetime import UTC, datetime
+
+        from app import models
+
+        post = models.Post(title="C", slug="c-date-exp", content="C", published=True)
+        db_session.add(post)
+        db_session.commit()
+        comment = models.Comment(
+            post_id=post.id,
+            nickname="TodayComment",
+            content="x",
+            created_at=datetime.now(UTC).replace(microsecond=0),
+        )
+        db_session.add(comment)
+        db_session.commit()
+
+        day = comment.created_at.strftime("%Y-%m-%d")
+        rows = client.get(f"/api/export/comments.csv?date_to={day}", headers=auth_headers).text.strip().split("\n")
+        assert any("TodayComment" in r for r in rows)
+
+    def test_malformed_bound_still_422(self, client, auth_headers):
+        resp = client.get("/api/export/posts.csv?date_to=not-a-date", headers=auth_headers)
+        assert resp.status_code == 422

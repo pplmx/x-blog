@@ -18,6 +18,7 @@ from app.cache import (
 )
 from app.crud import utc_now_naive
 from app.database import get_db
+from app.dates import inclusive_end_of_day, parse_bound
 from app.limiter import RATE_LIMIT_AUTH, RATE_LIMIT_WRITE, client_rate_key, limiter
 from app.routers.comments import AUTO_APPROVE_READER_COMMENTS, _notify_comment_approved
 from app.schemas import (
@@ -731,8 +732,10 @@ def admin_list_comments(
     post_id: int | None = None,
     is_approved: bool | None = Query(None, description="Filter by moderation status"),
     q: str | None = Query(None, description="Search nickname/email/content"),
-    date_from: datetime | None = Query(None, description="ISO date filter: created >= date_from"),
-    date_to: datetime | None = Query(None, description="ISO date filter: created <= date_to"),
+    date_from: str | None = Query(None, max_length=40, description="ISO date filter: created >= date_from"),
+    date_to: str | None = Query(
+        None, max_length=40, description="ISO date filter: created <= date_to (a bare date includes the whole day)"
+    ),
     flagged: bool | None = Query(None, description="Filter to comments that have reader flags"),
     page: int = Query(1, ge=1),
     limit: int = Query(20, ge=1, le=100),
@@ -754,16 +757,17 @@ def admin_list_comments(
                 models.Comment.content.ilike(like, escape="\\"),
             )
         )
-    if date_from:
-        start = date_from
-        if start.tzinfo is not None:
-            start = start.astimezone(UTC).replace(tzinfo=None)
-        query = query.filter(models.Comment.created_at >= start)
-    if date_to:
-        end = date_to
-        if end.tzinfo is not None:
-            end = end.astimezone(UTC).replace(tzinfo=None)
-        query = query.filter(models.Comment.created_at <= end)
+    if date_from or date_to:
+        # FastAPI previously type-enforced these as datetimes (422 on garbage).
+        # They're raw strings now so a date-only date_to can be widened to
+        # end-of-day; the shared helpers keep the 422 contract and normalize
+        # tz-aware input to naive UTC (same as the search route).
+        start = parse_bound(date_from)
+        end = parse_bound(inclusive_end_of_day(date_to)) if date_to else None
+        if start is not None:
+            query = query.filter(models.Comment.created_at >= start)
+        if end is not None:
+            query = query.filter(models.Comment.created_at <= end)
     if flagged is not None:
         flagged_ids = db.query(models.CommentFlag.comment_id)
         if flagged:
