@@ -2,7 +2,7 @@
   "ril_version": 1,
   "round": 225,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-01T15:47:16+00:00",
+  "updated_at": "2026-09-01T15:49:19+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -15349,6 +15349,28 @@
       "confidence": 0.9,
       "effort": 0.3,
       "priority_score": 0
+    },
+    "CHG-309": {
+      "id": "CHG-309",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-01T15:49:00+00:00",
+      "updated_at": "2026-09-01T15:49:00+00:00",
+      "touched_round": 225,
+      "commit": "76bb02f",
+      "title": "Effective publish time (publish_at ?? created_at) honored across post page, SEO JSON-LD/og, RSS/Atom, digest"
+    },
+    "DEC-230": {
+      "id": "DEC-230",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-01T15:49:00+00:00",
+      "updated_at": "2026-09-01T15:49:00+00:00",
+      "touched_round": 225,
+      "rationale": "The backend already models 'published when' as publish_at ?? created_at (digest, is_publicly_visible) and serializes publish_at on the detail Post; the frontend dropped it, so scheduled posts were mis-dated on the page and in SEO/feed metadata. Fix: surface publish_at on the frontend types and route every outward-facing date through one crud.effective_publish_ts semantic consolidated from the digest's private copy.",
+      "alternatives_rejected": "Leaving the inconsistency — reader page, preview page, JSON-LD, feed pubDate already disagreed, and crawlers/feed readers consume these; local frontend-only patch without a shared crud helper would leave RSS/Atom still using created_at and invite re-divergence."
     }
   },
   "edges": [
@@ -22208,6 +22230,30 @@
       "to": "ISS-264",
       "type": "addresses",
       "created_at": "2026-09-01T15:20:23+00:00"
+    },
+    {
+      "from": "CHG-309",
+      "to": "ISS-264",
+      "type": "resolves",
+      "created_at": "2026-09-01T15:49:19+00:00"
+    },
+    {
+      "from": "CHG-309",
+      "to": "TASK-247",
+      "type": "implements",
+      "created_at": "2026-09-01T15:49:19+00:00"
+    },
+    {
+      "from": "DEC-230",
+      "to": "COMP-002",
+      "type": "governs",
+      "created_at": "2026-09-01T15:49:19+00:00"
+    },
+    {
+      "from": "DEC-230",
+      "to": "TASK-247",
+      "type": "governs",
+      "created_at": "2026-09-01T15:49:19+00:00"
     }
   ]
 }
