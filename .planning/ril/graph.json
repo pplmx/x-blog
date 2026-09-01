@@ -2,7 +2,7 @@
   "ril_version": 1,
   "round": 221,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-01T12:49:39+00:00",
+  "updated_at": "2026-09-01T12:50:18+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -15202,10 +15202,10 @@
     "ISS-261": {
       "id": "ISS-261",
       "type": "issue",
-      "status": "active",
-      "version": 1,
+      "status": "resolved",
+      "version": 2,
       "created_at": "2026-09-01T12:49:01+00:00",
-      "updated_at": "2026-09-01T12:49:01+00:00",
+      "updated_at": "2026-09-01T12:50:18+00:00",
       "touched_round": 221,
       "title": "Duplicate headings emit duplicate id anchors; later TOC links scroll to the first section",
       "description": "Both the marked heading renderer and useToc.extractToc slugify heading text with no dedup, so a post with repeated heading text (e.g. two '## 前言' or '## 总结' sections) renders duplicate id= attributes (invalid HTML) and a TOC whose later entries all point at the FIRST occurrence — dead/broken in-page navigation for a real, common long-form pattern."
@@ -15213,13 +15213,13 @@
     "CHG-306": {
       "id": "CHG-306",
       "type": "change",
-      "status": "active",
-      "version": 1,
+      "status": "resolved",
+      "version": 2,
       "created_at": "2026-09-01T12:49:01+00:00",
-      "updated_at": "2026-09-01T12:49:01+00:00",
+      "updated_at": "2026-09-01T12:50:18+00:00",
       "touched_round": 221,
       "summary": "Shared uniqueHeadingId()/beginHeadingIds() in useToc.ts apply GitHub-style -1/-2 disambiguation in document order; marked headingRenderer and extractToc both use it; commentMarkdownToHtml/convertMarkdownToHtml reset the per-document counter",
-      "commit": "PENDING"
+      "commit": "aa05881"
     },
     "DEC-227": {
       "id": "DEC-227",
