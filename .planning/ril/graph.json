@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 212,
+  "round": 213,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-01T07:05:59+00:00",
+  "updated_at": "2026-09-01T07:12:49+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -2416,7 +2416,7 @@
       "version": 1,
       "created_at": "2026-08-15T13:01:27+00:00",
       "updated_at": "2026-08-15T13:01:27+00:00",
-      "touched_round": 29,
+      "touched_round": 212,
       "title": "deploy-nginx",
       "description": "Production nginx edge config (deploy/nginx.conf) and container topology (docker-compose.yml): TLS termination, /api proxy, uploads serving, Nuxt SSR cache, and network exposure."
     },
@@ -14804,6 +14804,41 @@
       "title": "Global 429 notice rides the transport seam, not per-page toasts",
       "rationale": "Every API call funnels through api/transport.ts query/command; hooking 429 detection there (command .catch keeps options byte-identical; query merges onResponseError) covers every rate-limited action with one banner instead of per-page handling. A module-level singleton dedupes bursts into a single auto-dismissing notice; text is translated in component context where useLang is safe.",
       "alternatives_rejected": "Per-page toasts (N touch points, inconsistent); a raw slowapi message passthrough (technical, unhelpful); a full toast framework (scope creep)."
+    },
+    "CHG-297": {
+      "id": "CHG-297",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-01T07:12:15+00:00",
+      "updated_at": "2026-09-01T07:12:15+00:00",
+      "touched_round": 212,
+      "commit": "1fac9df",
+      "title": "Drop deprecated X-XSS-Protection; re-assert XFO+HSTS on uploads location"
+    },
+    "ISS-252": {
+      "id": "ISS-252",
+      "type": "issue",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-01T07:12:15+00:00",
+      "updated_at": "2026-09-01T07:12:15+00:00",
+      "touched_round": 212,
+      "severity": "low",
+      "title": "Deploy nginx: deprecated X-XSS-Protection header + uploads location drops XFO/HSTS",
+      "description": "deploy/nginx.conf set X-XSS-Protection '1; mode=block' (the XSS auditor it enables is removed from modern browsers and can itself be abused in legacy Edge — OWASP/MDN recommend removing it), and the /static/uploads/ location only re-asserted nosniff, so uploads responses dropped X-Frame-Options and Strict-Transport-Security via add_header inheritance. Removed the deprecated header and re-asserted XFO+HSTS on uploads (COMP-005 was untouched for ~180 rounds)."
+    },
+    "DEC-218": {
+      "id": "DEC-218",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-01T07:12:16+00:00",
+      "updated_at": "2026-09-01T07:12:16+00:00",
+      "touched_round": 212,
+      "title": "Remove X-XSS-Protection and re-assert XFO/HSTS on cached uploads",
+      "rationale": "X-XSS-Protection is deprecated (auditor removed from all modern browsers; old Edge could be exploited); uploads are served for 30d immutable so resending the server-level headers there closes an add_header inheritance gap for the duration.",
+      "alternatives_rejected": "Keep the header (against current guidance); migrate to CSP framing rules (out of scope for this config touch)."
     }
   },
   "edges": [
@@ -21417,6 +21452,24 @@
       "to": "COMP-002",
       "type": "governs",
       "created_at": "2026-09-01T07:05:58+00:00"
+    },
+    {
+      "from": "ISS-252",
+      "to": "COMP-005",
+      "type": "located_in",
+      "created_at": "2026-09-01T07:12:49+00:00"
+    },
+    {
+      "from": "CHG-297",
+      "to": "ISS-252",
+      "type": "resolves",
+      "created_at": "2026-09-01T07:12:49+00:00"
+    },
+    {
+      "from": "DEC-218",
+      "to": "COMP-005",
+      "type": "governs",
+      "created_at": "2026-09-01T07:12:49+00:00"
     }
   ]
 }
