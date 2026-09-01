@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 227,
+  "round": 229,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-01T17:33:58+00:00",
+  "updated_at": "2026-09-01T17:40:24+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -15453,6 +15453,28 @@
       "touched_round": 227,
       "commit": "516ca85",
       "title": "List surfaces honor effective publish time: feed order, year/month filter, archive buckets, PostList publish_at exposure, all list-card dates"
+    },
+    "DEC-233": {
+      "id": "DEC-233",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-01T17:39:21+00:00",
+      "updated_at": "2026-09-01T17:39:21+00:00",
+      "touched_round": 229,
+      "rationale": "Round 229 deep-dive re-audited the remaining unexamined surfaces: webpush dispatch (pywebpush handles endpoint calls; registration validates absolute http(s) scheme + netloc), conditional_json (strong ETag is a body hash so the ISS-265 feed reorder cannot serve stale bodies), and RSS full-content sanitization (_FeedSanitizer allow-list). All were already hardened; no new above-threshold defect found. Remaining active issues (ISS-242/243/244) are deployment-topology items (shared cache, shared rate-limit buckets, proxy trust) already deferred by DEC-004/DEC-014 and cannot be fixed in this single-process dev environment.",
+      "alternatives_rejected": "Inventing a churn task from the clean surfaces to keep producing commits — contrary to the converged-idle discipline in section 8/10 (rounds 226-229 deep-dives produced no above-threshold defects beyond the two already delivered: ISS-264, ISS-265)."
+    },
+    "DEC-234": {
+      "id": "DEC-234",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-01T17:39:55+00:00",
+      "updated_at": "2026-09-01T17:39:55+00:00",
+      "touched_round": 229,
+      "rationale": "Bug-convergence reached for this session: the effective-publish-time story is now consistent end-to-end (detail page, SEO JSON-LD/og, RSS/Atom pubDate, digest window, feed ordering, archive buckets, year/month filter, and all list-card dates — ISS-264 + ISS-265). The RIL backlog is clean: no active tasks, and the only unresolved issues (ISS-242/243/244) are deployment infrastructure that cannot be addressed in this single-process dev repo. Per the quality-convergence stop conditions (section 10), the engine enters the converged-idle state: it will not emit further round-dial chore commits and will re-activate on a new operator direction, a new real issue, or substantive repository change.",
+      "alternatives_rejected": "Forcing further feature work without an operator product direction or enabling decision (section 11.1 requires '功能演进已启用' before feature-evolution mode); continuing to scan for cosmetic churn contradicts the no-idle discipline."
     }
   },
   "edges": [
@@ -22402,6 +22424,12 @@
       "to": "TASK-248",
       "type": "implements",
       "created_at": "2026-09-01T17:33:58+00:00"
+    },
+    {
+      "from": "DEC-234",
+      "to": "DEC-233",
+      "type": "supersedes",
+      "created_at": "2026-09-01T17:40:24+00:00"
     }
   ]
 }
