@@ -2,7 +2,7 @@
   "ril_version": 1,
   "round": 227,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-01T17:26:32+00:00",
+  "updated_at": "2026-09-01T17:33:58+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -15447,11 +15447,11 @@
       "id": "CHG-310",
       "type": "change",
       "status": "active",
-      "version": 1,
+      "version": 2,
       "created_at": "2026-09-01T17:21:13+00:00",
-      "updated_at": "2026-09-01T17:21:13+00:00",
+      "updated_at": "2026-09-01T17:33:58+00:00",
       "touched_round": 227,
-      "commit": "<pending>",
+      "commit": "516ca85",
       "title": "List surfaces honor effective publish time: feed order, year/month filter, archive buckets, PostList publish_at exposure, all list-card dates"
     }
   },
@@ -22390,6 +22390,18 @@
       "to": "COMP-002",
       "type": "governs",
       "created_at": "2026-09-01T17:21:40+00:00"
+    },
+    {
+      "from": "CHG-310",
+      "to": "ISS-265",
+      "type": "resolves",
+      "created_at": "2026-09-01T17:33:58+00:00"
+    },
+    {
+      "from": "CHG-310",
+      "to": "TASK-248",
+      "type": "implements",
+      "created_at": "2026-09-01T17:33:58+00:00"
     }
   ]
 }
