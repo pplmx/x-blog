@@ -111,6 +111,9 @@ function onPasswordKeydown(e: KeyboardEvent) {
 	if (focusables.length === 0) return;
 	const first = focusables[0];
 	const last = focusables[focusables.length - 1];
+	// Narrow the length-checked indexed access for noUncheckedIndexedAccess:
+	// a non-empty panel guarantees both ends exist.
+	if (!first || !last) return;
 	const active = document.activeElement;
 	// Wrap Tab/Shift+Tab at the panel boundaries so keyboard focus cannot
 	// escape into the page behind the modal.

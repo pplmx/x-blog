@@ -55,9 +55,17 @@ const gridCells = computed(() => {
 		};
 	});
 });
+// 6 rows of exactly 7 cells. Each row carries its own stable key (the lead
+// cell's date) so the template never indexes `row[0]` — which
+// noUncheckedIndexedAccess would flag as possibly undefined even though the
+// grid is always full (42 cells).
 const gridRows = computed(() => {
-	const rows: (typeof gridCells.value)[] = [];
-	for (let i = 0; i < 42; i += 7) rows.push(gridCells.value.slice(i, i + 7));
+	const rows: { key: string; cells: (typeof gridCells.value)[number][] }[] = [];
+	for (let i = 0; i < 42; i += 7) {
+		const cells = gridCells.value.slice(i, i + 7);
+		const lead = cells[0];
+		rows.push({ key: lead?.key ?? `week-${i / 7}`, cells });
+	}
 	return rows;
 });
 const weekdayLabels = computed(() => {
@@ -280,9 +288,9 @@ function cellLabel(date: Date, key: string): string {
                 {{ w }}
               </div>
             </div>
-            <div v-for="row in gridRows" :key="row[0].key" role="row" class="grid grid-cols-7">
+            <div v-for="row in gridRows" :key="row.key" role="row" class="grid grid-cols-7">
               <div
-                v-for="cell in row"
+                v-for="cell in row.cells"
                 :key="cell.key"
                 role="cell"
                 :aria-label="cellLabel(cell.date, cell.key)"
