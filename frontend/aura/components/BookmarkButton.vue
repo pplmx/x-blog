@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { useBookmarkSync } from "~~/composables/useBookmarkSync";
+import { syncIssue, useBookmarkSync } from "~~/composables/useBookmarkSync";
 import type { Bookmark } from "~~/composables/useBookmarks";
 
 interface Props {
@@ -31,15 +31,26 @@ function handleClick() {
 	}
 	emit("toggle", props.postId);
 }
+
+// When the stored session is dead (syncIssue === "auth", ISS-222) the toggle
+// works locally but the cloud silently rejects the mirror. Tell the reader on
+// the button itself, not just later on /bookmarks — the icon stays truthful
+// (the local bookmark IS saved), so only the hint text changes.
+const label = computed(() => {
+	if (syncIssue.value === "auth") return t("components.bookmark.sessionExpired");
+	return isBookmarked(props.postId)
+		? t("components.bookmark.remove")
+		: t("components.bookmark.article");
+});
 </script>
 
 <template>
   <button
     type="button"
     @click.stop="handleClick"
-    :title="isBookmarked(postId) ? t('components.bookmark.remove') : t('components.bookmark.article')"
+    :title="label"
     :aria-pressed="isBookmarked(postId) ? 'true' : 'false'"
-    :aria-label="isBookmarked(postId) ? t('components.bookmark.remove') : t('components.bookmark.article')"
+    :aria-label="label"
     :class="[
       'inline-flex items-center justify-center rounded-xl transition-all duration-200',
       variant === 'icon'

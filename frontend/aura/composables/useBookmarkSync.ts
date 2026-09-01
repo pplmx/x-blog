@@ -43,7 +43,22 @@ function hasReaderToken(): boolean {
  * merge would pull the never-saved bookmark away (ISS-222). Transient failures
  * (offline, 5xx) deliberately stay silent: the next merge re-conciliates.
  */
-type SyncIssue = "auth" | null;
+export type SyncIssue = "auth" | null;
+
+/**
+ * Module-scoped so every useBookmarkSync() instance shares ONE auth-warning
+ * flag: a mirror failure on a post-page BookmarkButton (its own instance) still
+ * lights the banner on /bookmarks (a different instance). Same singleton
+ * rationale as useBookmarks()/useReaderAuth(). Tests reset it in beforeEach.
+ */
+export const syncIssue = ref<SyncIssue>(null);
+
+/** Non-null when the last sync attempt proved the stored session is dead
+ *  (ISS-222). The bookmarks page renders a dismissible warning off this; the
+ *  toggle itself keeps working locally. */
+export function clearSyncIssue(): void {
+	syncIssue.value = null;
+}
 
 /** True when a mirror/merge rejection means the stored session is unusable. */
 function isAuthFailure(err: unknown): boolean {
@@ -83,15 +98,6 @@ export function useBookmarkSync() {
 	// local list is empty until the cloud pull lands, and showing "you have no
 	// bookmarks yet" during that window is a false negative (deep-dive finding).
 	const syncing = ref(false);
-
-	// Non-null when the last sync attempt proved the stored session is dead
-	// (ISS-222). The bookmarks page renders a dismissible warning off this; the
-	// toggle itself keeps working locally.
-	const syncIssue = ref<SyncIssue>(null);
-
-	const clearSyncIssue = (): void => {
-		syncIssue.value = null;
-	};
 
 	/** Interpret a mirror/merge rejection: auth failures are surfaced, the rest
 	 *  (offline/5xx) keep their offline-safe silence. */

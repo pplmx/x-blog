@@ -2,6 +2,7 @@ import { mount, type VueWrapper } from "@vue/test-utils";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import BookmarkButton from "../../components/BookmarkButton.vue";
+import { syncIssue } from "../../composables/useBookmarkSync";
 
 const mockBookmark = {
 	id: 1,
@@ -26,11 +27,13 @@ describe("BookmarkButton", () => {
 
 	beforeEach(() => {
 		localStorage.clear();
+		syncIssue.value = null;
 	});
 
 	afterEach(() => {
 		if (wrapper) wrapper.unmount();
 		localStorage.clear();
+		syncIssue.value = null;
 	});
 
 	describe("rendering", () => {
@@ -88,6 +91,24 @@ describe("BookmarkButton", () => {
 				global: { stubs },
 			});
 			expect(wrapper.find("button").attributes("title")).toBe("收藏文章");
+		});
+
+		it("hints that the sign-in expired when the shared sync warning is set (ISS-222)", async () => {
+			// Dead-session flag is module-scoped: a 401 mirror failure anywhere
+			// (another button, the bookmarks page) updates this button's hint.
+			syncIssue.value = "auth";
+			wrapper = mount(BookmarkButton, {
+				props: { postId: 1, post: mockBookmark },
+				global: { stubs },
+			});
+			const button = wrapper.find("button");
+			expect(button.attributes("title")).toContain("登录已过期");
+			expect(button.attributes("aria-label")).toContain("登录已过期");
+
+			// A successful later mirror clears the hint for every button.
+			syncIssue.value = null;
+			await wrapper.vm.$nextTick();
+			expect(button.attributes("title")).toBe("收藏文章");
 		});
 	});
 

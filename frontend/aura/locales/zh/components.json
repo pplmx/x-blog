@@ -12,7 +12,8 @@
 			"add": "收藏",
 			"remove": "取消收藏",
 			"added": "已收藏",
-			"article": "收藏文章"
+			"article": "收藏文章",
+			"sessionExpired": "登录已过期——仅保存在本设备，尚未同步到云端"
 		},
 		"commentForm": {
 			"title": "发表评论",

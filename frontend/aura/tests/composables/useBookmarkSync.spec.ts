@@ -17,7 +17,7 @@ vi.mock("~~/api/reader/bookmarks", async (importOriginal) => {
 	};
 });
 
-import { useBookmarkSync } from "../../composables/useBookmarkSync";
+import { syncIssue, useBookmarkSync } from "../../composables/useBookmarkSync";
 import { useBookmarks } from "../../composables/useBookmarks";
 
 const cloudItem = {
@@ -62,11 +62,14 @@ beforeEach(() => {
 	addReaderBookmarkMock.mockReset();
 	removeReaderBookmarkMock.mockReset();
 	fetchReaderBookmarksMock.mockReset();
+	// syncIssue is module-scoped (shared by every useBookmarkSync instance).
+	syncIssue.value = null;
 });
 
 afterEach(() => {
 	localStorage.clear();
 	sharedBookmarks.value = [];
+	syncIssue.value = null;
 });
 
 describe("useBookmarkSync", () => {
@@ -244,6 +247,45 @@ describe("useBookmarkSync", () => {
 		sync.syncIssue.value = "auth";
 		sync.clearSyncIssue();
 		expect(sync.syncIssue.value).toBeNull();
+	});
+
+	it("shares ONE auth warning across useBookmarkSync instances (post-page toggle lights the /bookmarks banner)", async () => {
+		localStorage.setItem("reader_token", "jwt.token");
+		// Two independent callers observe the same module-scoped syncIssue ref:
+		// a BookmarkButton on the post page and the /bookmarks page banner.
+		const postPage = useBookmarkSync();
+		const bookmarksPage = useBookmarkSync();
+		expect(postPage.syncIssue).toBe(bookmarksPage.syncIssue);
+
+		// A 401 on the post-page toggle is visible to the bookmarks page.
+		addReaderBookmarkMock.mockRejectedValue({ response: { status: 401 } });
+		postPage.add({
+			id: 15,
+			title: "Cross",
+			slug: "x",
+			excerpt: null,
+			cover_image: null,
+			created_at: "2026-01-01",
+			category: null,
+			tags: [],
+		});
+		await vi.waitFor(() => expect(bookmarksPage.syncIssue.value).toBe("auth"));
+
+		// And a later successful mirror from either instance clears it for both.
+		postPage.clearSyncIssue();
+		addReaderBookmarkMock.mockResolvedValue(okFetch([null]));
+		bookmarksPage.add({
+			id: 16,
+			title: "Cross2",
+			slug: "x2",
+			excerpt: null,
+			cover_image: null,
+			created_at: "2026-01-01",
+			category: null,
+			tags: [],
+		});
+		await vi.waitFor(() => expect(addReaderBookmarkMock).toHaveBeenCalledWith(16));
+		expect(postPage.syncIssue.value).toBeNull();
 	});
 
 	it("merge with a 401 keeps the local list and warns instead of adopting it", async () => {

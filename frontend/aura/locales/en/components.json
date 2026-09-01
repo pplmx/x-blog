@@ -12,7 +12,8 @@
 			"add": "Bookmark",
 			"remove": "Remove bookmark",
 			"added": "Bookmarked",
-			"article": "Bookmark article"
+			"article": "Bookmark article",
+			"sessionExpired": "Sign-in expired — saved on this device only, not yet in the cloud"
 		},
 		"commentForm": {
 			"title": "Post a comment",
