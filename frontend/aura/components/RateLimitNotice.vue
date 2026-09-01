@@ -17,7 +17,6 @@ const { active, dismiss } = useRateLimitNotice();
   <Teleport to="body">
     <div
       v-if="active"
-      role="status"
       aria-live="polite"
       class="fixed bottom-4 right-4 z-[100] flex max-w-sm items-start gap-3 rounded-xl border border-amber-200 dark:border-amber-800 bg-white dark:bg-gray-900 p-4 shadow-lg"
     >
