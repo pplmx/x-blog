@@ -2,7 +2,7 @@
   "ril_version": 1,
   "round": 210,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-01T02:05:30+00:00",
+  "updated_at": "2026-09-01T02:17:58+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -14040,7 +14040,7 @@
       "version": 2,
       "created_at": "2026-08-31T08:57:38+00:00",
       "updated_at": "2026-09-01T02:02:57+00:00",
-      "touched_round": 209,
+      "touched_round": 210,
       "title": "Cloud bookmark mirror failures invisible to signed-in readers",
       "summary": "useBookmarkSync mirror add/remove failures leave the reader\\x27s cloud list silently divergent (local toggle still works). \"Will sync when online\" affordance is a design decision — deferred.",
       "severity": "low"
@@ -14660,6 +14660,18 @@
       "title": "Biome 2.5.10 lint gate reports 12 false positives on template-used script-setup imports",
       "summary": "noUnusedImports cannot resolve Vue script-setup template bindings, so every page importing parseApiDate for template use was flagged unused (vue-tsc verifies them; minimal probe reproduced). 12 pages fixed with self-documenting biome-ignore directives (config-protection hook forbade weakening biome.json) + one real style finding; pnpm lint back to 0 warnings (6618bf9).",
       "severity": "low"
+    },
+    "CHG-294": {
+      "id": "CHG-294",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-01T02:17:58+00:00",
+      "updated_at": "2026-09-01T02:17:58+00:00",
+      "touched_round": 210,
+      "commit": "1f4b1ad",
+      "title": "fix(frontend): make the dead-session bookmark warning shared app-wide (ISS-222 follow-up)",
+      "summary": "Per-instance syncIssue meant a 401 on a post-page BookmarkButton never lit the /bookmarks banner. Hoisted syncIssue/clearSyncIssue to module scope (shared singleton); BookmarkButton reads the flag and swaps its title/aria-label to a session-expired hint while the session is dead. 3 tests added (cross-instance sharing, button hint, reset)."
     }
   },
   "edges": [
@@ -21213,6 +21225,12 @@
       "to": "ISS-249",
       "type": "resolves",
       "created_at": "2026-09-01T02:05:29+00:00"
+    },
+    {
+      "from": "CHG-294",
+      "to": "ISS-222",
+      "type": "resolves",
+      "created_at": "2026-09-01T02:17:58+00:00"
     }
   ]
 }
