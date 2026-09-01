@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 209,
+  "round": 210,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-08-31T19:18:38+00:00",
+  "updated_at": "2026-09-01T02:05:30+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -14036,11 +14036,11 @@
     "ISS-222": {
       "id": "ISS-222",
       "type": "issue",
-      "status": "active",
-      "version": 1,
+      "status": "resolved",
+      "version": 2,
       "created_at": "2026-08-31T08:57:38+00:00",
-      "updated_at": "2026-08-31T08:57:38+00:00",
-      "touched_round": 201,
+      "updated_at": "2026-09-01T02:02:57+00:00",
+      "touched_round": 209,
       "title": "Cloud bookmark mirror failures invisible to signed-in readers",
       "summary": "useBookmarkSync mirror add/remove failures leave the reader\\x27s cloud list silently divergent (local toggle still works). \"Will sync when online\" affordance is a design decision — deferred.",
       "severity": "low"
@@ -14588,6 +14588,78 @@
       "commit": "3476abf",
       "title": "fix(content): external links open noopened new-tab; alt-less imgs get decorative alt (ISS-221)",
       "summary": "sanitizeHtml chains a serialized (no-DOM, SSR-safe) addSafeLinkAttrs pass: absolute http(s) <a> gain target=_blank + rel=noopener noreferrer (deduped/merged with existing rel); author-set targets and relative/fragment/mailto links untouched; alt-less <img> get alt='' (decorative). Covers post + comment v-html surfaces. 6 unit tests added."
+    },
+    "CHG-291": {
+      "id": "CHG-291",
+      "type": "change",
+      "status": "active",
+      "version": 2,
+      "created_at": "2026-09-01T02:02:02+00:00",
+      "updated_at": "2026-09-01T02:04:05+00:00",
+      "touched_round": 210,
+      "commit": "845d1f7",
+      "title": "fix(frontend): surface dead-session cloud bookmark-sync failures (ISS-222)",
+      "summary": "Stored-but-expired reader token silently dropped every mirror write (toggle said saved, server rejected, next merge pulled the never-saved bookmark away). useBookmarkSync now separates auth failures (401/403) from transient offline/5xx: auth sets syncIssue='auth', surfaced as a dismissible amber banner with re-login link on /bookmarks; success clears it; a dead-session merge still refuses to replace the local list with the unreachable server truth. 6+4 tests."
+    },
+    "CHG-292": {
+      "id": "CHG-292",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-01T02:02:21+00:00",
+      "updated_at": "2026-09-01T02:02:21+00:00",
+      "touched_round": 210,
+      "commit": "d621de0",
+      "title": "fix(frontend): clear the typecheck gate (noUncheckedIndexedAccess, TS18048/TS2532)",
+      "summary": "nuxt typecheck exited 2 on main for pre-existing baseline errors: admin.vue modal Tab-trap indexed access focusables[0]/[length-1] and calendar.vue template :key=row[0].key. Narrowed with explicit non-empty check (admin) and restructured gridRows to carry a stable per-row key (calendar). nuxt typecheck green again."
+    },
+    "CHG-293": {
+      "id": "CHG-293",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-01T02:02:21+00:00",
+      "updated_at": "2026-09-01T02:02:21+00:00",
+      "touched_round": 210,
+      "commit": "6618bf9",
+      "title": "style(frontend): restore the biome gate to 0 warnings",
+      "summary": "biome 2.5.10 noUnusedImports cannot resolve Vue script-setup template bindings, so 12 template-used parseApiDate imports were flagged unused (false positives; vue-tsc verifies them). Added self-documenting biome-ignore directives per import line; applied the one real style finding (template literal in apiDate.spec.ts). pnpm lint 0 warnings again."
+    },
+    "DEC-215": {
+      "id": "DEC-215",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-01T02:03:40+00:00",
+      "updated_at": "2026-09-01T02:03:40+00:00",
+      "touched_round": 210,
+      "title": "Round 210: ISS-222 resolved + quality gates restored to green (typecheck + biome)",
+      "rationale": "Operator polish directive (round 209+): detail optimization / bug-fix / usability. Picked ISS-222 (the only untracked actionable issue): dead-session cloud bookmark-sync failures were invisible — an expired-but-present token made the toggle claim 'saved' while every mirror was rejected and the next merge silently dropped the bookmark. Fix: useBookmarkSync distinguishes auth failures (401/403) from transient offline (unchanged offline-safe design), sets syncIssue='auth' surfaced as a dismissible re-login banner on /bookmarks, clears on later success, and a dead-session merge never replaces the local list with the unreachable server truth. Verification: 1338 vitest pass, nuxt typecheck exit 0, biome 0 warnings. Also fixed pre-existing main gate-breakage found during VERIFY: typecheck exit 2 (admin.vue/calendar.vue noUncheckedIndexedAccess) and 12 biome 2.5.10 Vue-template false positives (noUnusedImports cannot resolve script-setup template bindings; vue-tsc verifies them) via self-documenting per-import biome-ignore directives. Config-protection hook forbade weakening biome.json, so suppressions are code-level.",
+      "alternatives_rejected": "(a) Full 'will sync when online' pending-sync affordance — explicitly deferred in ISS-222 summary as a design decision, out of scope; (b) logging the reader out on 401 mirror failure — too aggressive/global a visual change from one mirror path; the warning + re-login link is honest and minimal; (c) global toast system for the failure — no such infra exists and adding one is scope creep; the bookmarks page alert matches the existing assignFailed/undo pattern; (d) biome.json override to silence noUnusedImports for .vue — blocked by the config-protection hook and would hide genuine dead imports; (e) leaving the 12 biome warnings — they violate the repo's own 0-warning convergence baseline and accrue on every new template-used import."
+    },
+    "ISS-248": {
+      "id": "ISS-248",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-01T02:05:15+00:00",
+      "updated_at": "2026-09-01T02:05:30+00:00",
+      "touched_round": 210,
+      "title": "Typecheck gate red on main: noUncheckedIndexedAccess errors in admin layout + calendar grid",
+      "summary": "nuxt typecheck exited 2: admin.vue modal Tab-trap reading focusables[0]/[length-1] (TS18048 possibly-undefined) and admin/calendar.vue template :key=row[0].key on a 6x7 grid (TS2532). Pre-existing baseline breakage found during round-210 VERIFY; fixed in d621de0 by explicit non-empty narrowing + per-row key.",
+      "severity": "medium"
+    },
+    "ISS-249": {
+      "id": "ISS-249",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-01T02:05:15+00:00",
+      "updated_at": "2026-09-01T02:05:30+00:00",
+      "touched_round": 210,
+      "title": "Biome 2.5.10 lint gate reports 12 false positives on template-used script-setup imports",
+      "summary": "noUnusedImports cannot resolve Vue script-setup template bindings, so every page importing parseApiDate for template use was flagged unused (vue-tsc verifies them; minimal probe reproduced). 12 pages fixed with self-documenting biome-ignore directives (config-protection hook forbade weakening biome.json) + one real style finding; pnpm lint back to 0 warnings (6618bf9).",
+      "severity": "low"
     }
   },
   "edges": [
@@ -21123,6 +21195,24 @@
       "to": "ISS-221",
       "type": "resolves",
       "created_at": "2026-08-31T19:16:12+00:00"
+    },
+    {
+      "from": "CHG-291",
+      "to": "ISS-222",
+      "type": "resolves",
+      "created_at": "2026-09-01T02:02:57+00:00"
+    },
+    {
+      "from": "CHG-292",
+      "to": "ISS-248",
+      "type": "resolves",
+      "created_at": "2026-09-01T02:05:29+00:00"
+    },
+    {
+      "from": "CHG-293",
+      "to": "ISS-249",
+      "type": "resolves",
+      "created_at": "2026-09-01T02:05:29+00:00"
     }
   ]
 }
