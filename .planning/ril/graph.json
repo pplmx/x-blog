@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 222,
+  "round": 223,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-01T13:37:17+00:00",
+  "updated_at": "2026-09-01T13:42:50+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -15236,24 +15236,24 @@
     "ISS-262": {
       "id": "ISS-262",
       "type": "issue",
-      "status": "active",
-      "version": 1,
+      "status": "resolved",
+      "version": 2,
       "created_at": "2026-09-01T13:35:48+00:00",
-      "updated_at": "2026-09-01T13:35:48+00:00",
-      "touched_round": 222,
+      "updated_at": "2026-09-01T13:42:50+00:00",
+      "touched_round": 223,
       "title": "Weekly-digest HTML double-escapes the reader's display name",
       "description": "build_digest_message escapes display_name once into greeting, then the HTML part ran html.escape(greeting) again — a name like 'A&B' became A&amp;amp;B in the email source (rendered as literal 'A&amp;B'), and a script-looking name became &amp;lt;script&gt;. Wrong in the HTML part only; the text part was correct."
     },
     "CHG-307": {
       "id": "CHG-307",
       "type": "change",
-      "status": "active",
-      "version": 1,
+      "status": "resolved",
+      "version": 2,
       "created_at": "2026-09-01T13:35:48+00:00",
-      "updated_at": "2026-09-01T13:35:48+00:00",
-      "touched_round": 222,
+      "updated_at": "2026-09-01T13:42:50+00:00",
+      "touched_round": 223,
       "summary": "Unable digest HTML: use the already-escaped greeting verbatim instead of re-escaping; docstring notes the once-only rule. Tests pin one-escaped display names (A&B and <script>)",
-      "commit": "PENDING"
+      "commit": "4504649"
     },
     "DEC-228": {
       "id": "DEC-228",
