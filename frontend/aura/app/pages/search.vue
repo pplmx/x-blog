@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from "vue";
 import { usePostSearch } from "~~/api/public/posts";
+// biome-ignore lint/correctness/noUnusedImports: used from the template — biome cannot resolve Vue script-setup template bindings (vue-tsc verifies).
 import { parseApiDate } from "~~/composables/apiDate";
 import { loadPurify, sanitizeHtml } from "~~/composables/useMarkdown";
 import { paginationPages } from "~~/composables/usePagination";

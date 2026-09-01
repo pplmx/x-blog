@@ -9,6 +9,7 @@ import {
 } from "~~/api/reader/follows";
 import type { SeriesProgress } from "~~/api/reader/history";
 import { getReaderSeriesProgress } from "~~/api/reader/history";
+// biome-ignore lint/correctness/noUnusedImports: used from the template — biome cannot resolve Vue script-setup template bindings (vue-tsc verifies).
 import { parseApiDate } from "~~/composables/apiDate";
 import { useSeo } from "~~/composables/useSeo";
 

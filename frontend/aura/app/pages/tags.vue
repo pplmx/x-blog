@@ -8,6 +8,7 @@ import {
 	setTagFollowNotify,
 	unfollowReaderTag,
 } from "~~/api/reader/follows";
+// biome-ignore lint/correctness/noUnusedImports: used from the template — biome cannot resolve Vue script-setup template bindings (vue-tsc verifies).
 import { parseApiDate } from "~~/composables/apiDate";
 import { paginationPages } from "~~/composables/usePagination";
 import { useSeo } from "~~/composables/useSeo";

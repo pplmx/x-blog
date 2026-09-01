@@ -28,7 +28,7 @@ describe("parseApiDate", () => {
 	it("is timezone-independent: the absolute instant is stable", () => {
 		// Round-tripping through UTC must be exact; a local parse would shift.
 		const d = parseApiDate(NAIVE);
-		expect(d?.getTime()).toBe(Date.parse(NAIVE + "Z"));
+		expect(d?.getTime()).toBe(Date.parse(`${NAIVE}Z`));
 	});
 
 	it("passes zone-marked values through untouched", () => {

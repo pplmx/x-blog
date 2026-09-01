@@ -10,6 +10,7 @@ import { approveAdminComment } from "~~/api/admin/comments";
 import type { AdminPost, AdminPostListResponse } from "~~/api/admin/posts";
 import type { Category, Tag } from "~~/api/contracts/shared";
 import type { BlogStats } from "~~/api/public/stats";
+// biome-ignore lint/correctness/noUnusedImports: used from the template — biome cannot resolve Vue script-setup template bindings (vue-tsc verifies).
 import { parseApiDate } from "~~/composables/apiDate";
 
 definePageMeta({ layout: "admin" });

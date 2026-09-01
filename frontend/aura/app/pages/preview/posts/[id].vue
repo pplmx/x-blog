@@ -11,6 +11,7 @@ import { computed, onMounted, ref } from "vue";
 import type { AdminPostDetail } from "~~/api/admin/posts";
 import { getAdminPost } from "~~/api/admin/posts";
 import { getAdminCategories, getAdminTags } from "~~/api/admin/taxonomy";
+// biome-ignore lint/correctness/noUnusedImports: used from the template — biome cannot resolve Vue script-setup template bindings (vue-tsc verifies).
 import { parseApiDate } from "~~/composables/apiDate";
 import { coverImageSrc } from "~~/composables/useCoverImage";
 import { readingMinutes } from "~~/composables/useReadingTime";

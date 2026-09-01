@@ -13,6 +13,7 @@ import {
 	useAdminMedia,
 } from "~~/api/admin/media";
 import type { UploadFileInfo } from "~~/api/contracts/media";
+// biome-ignore lint/correctness/noUnusedImports: used from the template — biome cannot resolve Vue script-setup template bindings (vue-tsc verifies).
 import { parseApiDate } from "~~/composables/apiDate";
 
 definePageMeta({ layout: "admin" });
