@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 215,
+  "round": 216,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-01T07:30:34+00:00",
+  "updated_at": "2026-09-01T08:35:42+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -22,7 +22,7 @@
       "version": 1,
       "created_at": "2026-08-06T13:23:41+00:00",
       "updated_at": "2026-08-06T13:23:41+00:00",
-      "touched_round": 211,
+      "touched_round": 215,
       "title": "frontend-aura",
       "description": "Nuxt 4 Vue 3 TypeScript frontend at frontend/aura; composables; admin pages; e2e Playwright; biome lint"
     },
@@ -14933,6 +14933,53 @@
       "title": "PG dialect-parity suite is a required CI gate",
       "rationale": "Production runs PostgreSQL; the SQLite-only gate let PG-only branches and dialect drift go undetected until round 211's harness. Enabling it in CI makes the deployment dialect a first-class check on every PR/push, mirroring the e2e job's postgres service. Bounded -n 8 with conftest per-worker schemas keeps the shared service DB safe and within connection limits.",
       "alternatives_rejected": "Keep PG verification manual only (regressable); gate just the PG-connection smoke (does not exercise app ORM paths)."
+    },
+    "ISS-255": {
+      "id": "ISS-255",
+      "type": "issue",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-01T08:35:01+00:00",
+      "updated_at": "2026-09-01T08:35:01+00:00",
+      "touched_round": 215,
+      "severity": "medium",
+      "title": "App-wide rate-limit banner claimed role=status, colliding with other live regions in strict-mode locators",
+      "description": "Round-212 banner used role=status; when a 429 fired mid-e2e, locator('[role=\"status\"]') (e.g. the post page resume chip) resolved to 2 elements → strict-mode violation on resume-reading.spec. Removed the generic role, kept aria-live='polite' (polite live region still announced). Note: the 3 red specs (resume-reading/admin-post-preview/my-comments-filter) also reproduce on pristine HEAD — pre-existing load-timing flakes in this sandbox, not regressions."
+    },
+    "CHG-300": {
+      "id": "CHG-300",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-01T08:35:01+00:00",
+      "updated_at": "2026-09-01T08:35:01+00:00",
+      "touched_round": 215,
+      "commit": "f149648",
+      "title": "Drop role=status from the 429 banner (keep aria-live) + component test"
+    },
+    "EV-217": {
+      "id": "EV-217",
+      "type": "evidence",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-01T08:35:01+00:00",
+      "updated_at": "2026-09-01T08:35:01+00:00",
+      "touched_round": 215,
+      "source": "frontend 1353 tests green, lint+typecheck clean; e2e baseline: 3 red specs reproduce on pristine HEAD",
+      "title": "Banner collision fixed; flakes confirmed pre-existing",
+      "confidence": 1.0
+    },
+    "DEC-221": {
+      "id": "DEC-221",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-01T08:35:01+00:00",
+      "updated_at": "2026-09-01T08:35:01+00:00",
+      "touched_round": 215,
+      "title": "App-wide live-region UI must not claim generic ARIA roles",
+      "rationale": "A transient app-wide banner occupying role=status makes any strict-mode getByRole('status') locator ambiguous whenever the banner is live. Volume live regions should announce via aria-live without absorbing a generic role the page already uses.",
+      "alternatives_rejected": "Keep role=status and fix the consuming test (fragile — other tests may target the role later); drop the live region entirely (loses a11y announcement)."
     }
   },
   "edges": [
@@ -21600,6 +21647,24 @@
       "to": "COMP-003",
       "type": "governs",
       "created_at": "2026-09-01T07:30:34+00:00"
+    },
+    {
+      "from": "ISS-255",
+      "to": "COMP-002",
+      "type": "located_in",
+      "created_at": "2026-09-01T08:35:42+00:00"
+    },
+    {
+      "from": "CHG-300",
+      "to": "ISS-255",
+      "type": "resolves",
+      "created_at": "2026-09-01T08:35:42+00:00"
+    },
+    {
+      "from": "DEC-221",
+      "to": "COMP-002",
+      "type": "governs",
+      "created_at": "2026-09-01T08:35:42+00:00"
     }
   ]
 }
