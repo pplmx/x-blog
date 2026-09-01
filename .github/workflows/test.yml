@@ -59,6 +59,48 @@ jobs:
           cd backend/nova
           uv run pytest --cov=app --cov-report=term-missing --cov-fail-under=80
 
+  # Run the whole backend suite against real PostgreSQL — the deployment
+  # dialect (DEC-216, round 211). The SQLite-only suite never exercised the
+  # PG-only branches (tsvector @@, ts_headline, pg advisory locks) nor the
+  # naive-UTC/String(N) semantics, and silently passes tests that assumed
+  # SQLite id-reuse. conftest gives each xdist worker its own schema on the
+  # shared service container, so -n 8 is safe and bounded.
+  backend-test-postgres:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_DB: xblog_test
+          POSTGRES_USER: xblog
+          POSTGRES_PASSWORD: xblog
+        options: >-
+          --health-cmd "pg_isready -U xblog -d xblog_test"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Setup Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: '3.14'
+
+      - name: Setup uv
+        uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+          cache-dependency-glob: backend/nova/uv.lock
+
+      - name: Backend tests against PostgreSQL
+        run: |
+          cd backend/nova
+          TEST_DATABASE_URL="postgresql://xblog:xblog@localhost:5432/xblog_test" \
+          uv run pytest -n 8 --cov=app --cov-report=term-missing --cov-fail-under=80
+
   frontend-test:
     runs-on: ubuntu-latest
     steps:
