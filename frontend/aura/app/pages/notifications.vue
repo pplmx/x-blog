@@ -44,6 +44,18 @@ const unread = ref(0);
 const loading = ref(false);
 const error = ref(false);
 
+// Paged inbox (bounded reachability, deep-dive finding): the API returns at
+// most 100 rows per page, so a reader with >100 notifications could never see
+// the older ones. We page on with a load-more button; totalPages is the
+// server's page count from the last response.
+const page = ref(1);
+const totalPages = ref(1);
+const loadingMore = ref(false);
+const loadMoreError = ref(false);
+
+/** True while an older page still exists (there is more to load). */
+const hasMore = computed(() => !loading.value && page.value < totalPages.value);
+
 // Per-kind preferences (DEC-171, TASK-202). A reader who turns a kind off stops
 // receiving it everywhere (inbox row + push), via the server gate.
 const prefs = ref<ReaderNotificationPrefs | null>(null);
@@ -69,6 +81,8 @@ async function load() {
 		const data = await getReaderNotifications(1, 100);
 		items.value = data.items;
 		unread.value = data.unread;
+		page.value = data.page || 1;
+		totalPages.value = data.total_pages || 1;
 		void refreshBadge();
 	} catch (cause) {
 		// The inbox is auth-scoped: a 401 means the stored reader token is
@@ -83,6 +97,37 @@ async function load() {
 		error.value = true;
 	} finally {
 		loading.value = false;
+	}
+}
+
+// Fetch the next page and append to the existing rows (deduped by id so a
+// returned page boundary can never double-render a notification). A failure
+// keeps the current rows and surfaces a small retry hint rather than dropping
+// everything the reader already has.
+async function loadMore() {
+	if (!isAuthenticated.value || loading.value || loadingMore.value) return;
+	const next = page.value + 1;
+	if (next > totalPages.value) return;
+	loadingMore.value = true;
+	loadMoreError.value = false;
+	try {
+		const data = await getReaderNotifications(next, 100);
+		const seen = new Set(items.value.map((i) => i.id));
+		const fresh = data.items.filter((i) => !seen.has(i.id));
+		items.value.push(...fresh);
+		unread.value = data.unread;
+		page.value = data.page || next;
+		totalPages.value = data.total_pages || totalPages.value;
+		void refreshBadge();
+	} catch (cause) {
+		if (isStaleSession(cause)) {
+			logout();
+			void router.replace("/login");
+			return;
+		}
+		loadMoreError.value = true;
+	} finally {
+		loadingMore.value = false;
 	}
 }
 
@@ -415,5 +460,23 @@ function kindIcon(kind: string): string {
         </div>
       </li>
     </ul>
+
+    <!-- Load-more: a paged inbox must not trap older notifications behind the
+         first 100 (bounded reachability, deep-dive finding). A failure keeps
+         the rows already shown and offers retry instead of a dead end. -->
+    <div v-if="hasMore" class="mt-6 flex flex-col items-center gap-2">
+      <button
+        type="button"
+        :disabled="loadingMore"
+        class="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+        @click="loadMore"
+      >
+        <Icon v-if="loadingMore" icon="lucide:loader-2" class="w-4 h-4 animate-spin" aria-hidden="true" role="presentation" />
+        {{ loadingMore ? t('notifications.loadingMore') : t('notifications.loadMore') }}
+      </button>
+      <p v-if="loadMoreError" class="text-sm text-red-600 dark:text-red-400">
+        {{ t('common.errors.network') }}
+      </p>
+    </div>
   </div>
 </template>

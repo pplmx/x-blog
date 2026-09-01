@@ -2,7 +2,7 @@
   "ril_version": 1,
   "round": 223,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-01T13:42:50+00:00",
+  "updated_at": "2026-09-01T14:56:02+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -22,7 +22,7 @@
       "version": 1,
       "created_at": "2026-08-06T13:23:41+00:00",
       "updated_at": "2026-08-06T13:23:41+00:00",
-      "touched_round": 221,
+      "touched_round": 223,
       "title": "frontend-aura",
       "description": "Nuxt 4 Vue 3 TypeScript frontend at frontend/aura; composables; admin pages; e2e Playwright; biome lint"
     },
@@ -15266,6 +15266,40 @@
       "title": "Escape user-controlled email content exactly once per field",
       "rationale": "Digest built greeting (with display_name escaped) then re-escaped the whole greeting in the HTML part, turning &amp; into &amp;amp;. The emailer escapes each field once; digest now follows the same rule. Visible output was wrong (literal entity text) — a real correctness bug, not just hygiene.",
       "alternatives_rejected": "['Escape the raw name separately in each part (keeps two sources of truth for one piece of data)','Strip special chars from the name at registration (destroys legitimate names)']"
+    },
+    "ISS-263": {
+      "id": "ISS-263",
+      "type": "issue",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-01T14:54:34+00:00",
+      "updated_at": "2026-09-01T14:54:34+00:00",
+      "touched_round": 223,
+      "title": "Reader notification inbox traps older notifications behind the first page",
+      "description": "The API paginates /api/reader/me/notifications (limit up to 100, total_pages returned) but notifications.vue fetched getReaderNotifications(1, 100) once and never paged on — a reader with >100 accumulated notifications could never see the older ones. Same bounded-reachability class as the bookmarks/subscriptions pagination fixes (ISS-142)."
+    },
+    "CHG-308": {
+      "id": "CHG-308",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-01T14:54:34+00:00",
+      "updated_at": "2026-09-01T14:54:34+00:00",
+      "touched_round": 223,
+      "summary": "notifications.vue now pages: hasMore = page < total_pages renders a Load-more button that fetches the next 100 and appends (deduped by id), tracks loadingMore/error, keeps rows on failure; + locale keys + 2 unit tests",
+      "commit": "PENDING"
+    },
+    "DEC-229": {
+      "id": "DEC-229",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-01T14:56:02+00:00",
+      "updated_at": "2026-09-01T14:56:02+00:00",
+      "touched_round": 223,
+      "title": "The notification inbox must surface pagination, not truncate",
+      "rationale": "The backend has supported paged notifications (limit/total_pages) since DEC-160, but the frontend silently truncated at 100 rows with no way to reach older activity — a data-reachability gap, not a UI preference. A load-more button (deduped append, rows kept on failure) restores access to the full history using the documented API, consistent with how bookmarks already page.",
+      "alternatives_rejected": "['Raise the client limit to 1000 (loads ever-growing payloads; unbounded memory/DOM)','Infinite scroll (needs intersection-observer plumbing for a low-frequency inbox; a button is simpler and clearer)']"
     }
   },
   "edges": [
@@ -22083,6 +22117,24 @@
       "to": "COMP-001",
       "type": "governs",
       "created_at": "2026-09-01T13:37:17+00:00"
+    },
+    {
+      "from": "ISS-263",
+      "to": "COMP-002",
+      "type": "located_in",
+      "created_at": "2026-09-01T14:56:02+00:00"
+    },
+    {
+      "from": "CHG-308",
+      "to": "ISS-263",
+      "type": "resolves",
+      "created_at": "2026-09-01T14:56:02+00:00"
+    },
+    {
+      "from": "DEC-229",
+      "to": "COMP-002",
+      "type": "governs",
+      "created_at": "2026-09-01T14:56:02+00:00"
     }
   ]
 }

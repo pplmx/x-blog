@@ -51,6 +51,8 @@
 					"desc": "One weekly email summarizing the week's new posts."
 				}
 			}
-		}
+		},
+		"loadMore": "Load more",
+		"loadingMore": "Loading…"
 	}
 }

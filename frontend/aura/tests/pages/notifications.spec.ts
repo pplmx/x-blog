@@ -350,4 +350,53 @@ describe("Notifications page (TASK-192)", () => {
 		expect(switches[0].attributes("aria-checked")).toBe("true"); // rolled back
 		expect(wrapper.text()).toContain("网络错误，请稍后重试");
 	});
+
+	it("loads more pages when the inbox has more than one page (bounded reachability)", async () => {
+		// One 100-row page hides older notifications forever unless the page can
+		// page on — total_pages > 1 must surface a load-more affordance.
+		mockFetch.mockResolvedValue({
+			items: [makeNotif({ id: 101 }), makeNotif({ id: 100 })],
+			total: 150,
+			unread: 2,
+			page: 1,
+			limit: 100,
+			total_pages: 2,
+		});
+		const wrapper = await mountPage();
+		const loadMore = wrapper.findAll("button").find((b) => b.text().includes("加载更多"));
+		expect(loadMore).toBeDefined();
+
+		// Clicking fetchs page 2 and appends to the existing rows (no duplicates,
+		// newest-first preserved). The badge poll also refreshes from the server,
+		// so assert the page-2 request happened AND the appended row renders.
+		mockFetch.mockResolvedValue({
+			items: [makeNotif({ id: 1, title: "最旧的那条" })],
+			total: 150,
+			unread: 2,
+			page: 2,
+			limit: 100,
+			total_pages: 2,
+		});
+		await loadMore?.trigger("click");
+		await flushPromises();
+		expect(mockFetch).toHaveBeenCalledWith(2, 100);
+		expect(wrapper.text()).toContain("最旧的那条");
+		// All loaded rows are present, and the (still older) page-3 affordance is gone.
+		expect(wrapper.findAll("button").some((b) => b.text().includes("加载更多"))).toBe(false);
+		expect(wrapper.text()).not.toContain("网络错误");
+	});
+
+	it("hides the load-more affordance when there is only one page", async () => {
+		mockFetch.mockResolvedValue({
+			items: [makeNotif({ id: 101 })],
+			total: 101,
+			unread: 1,
+			page: 1,
+			limit: 100,
+			total_pages: 1,
+		});
+		const wrapper = await mountPage();
+		const loadMore = wrapper.findAll("button").find((b) => b.text().includes("加载更多"));
+		expect(loadMore).toBeUndefined();
+	});
 });
