@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from "vue";
+// biome-ignore lint/correctness/noUnusedImports: used from the template — biome cannot resolve Vue script-setup template bindings (vue-tsc verifies).
 import { parseApiDate } from "~~/composables/apiDate";
 import { useBookmarkFolders } from "~~/composables/useBookmarkFolders";
 import { useBookmarkSync } from "~~/composables/useBookmarkSync";
@@ -8,7 +9,8 @@ import { useSeo } from "~~/composables/useSeo";
 
 const { t, locale } = useLang();
 const { bookmarks, bookmarkCount } = useBookmarks();
-const { add, remove, clearAll, mergeLocalToCloud, syncing } = useBookmarkSync();
+const { add, remove, clearAll, mergeLocalToCloud, syncing, syncIssue, clearSyncIssue } =
+	useBookmarkSync();
 const {
 	folders,
 	load: loadFolders,
@@ -187,6 +189,34 @@ async function handleAssign(bookmark: Bookmark, raw: string) {
     >
       {{ t('bookmarks.assignFailed') }}
     </p>
+
+    <!-- Dead-session sync warning (ISS-222): the stored token is no longer
+         accepted, so bookmarks are saved locally but silently dropped by the
+         cloud. The reader must know — otherwise the next merge re-imports the
+         server list and their "saved" bookmark vanishes without a trace. -->
+    <div
+      v-if="syncIssue === 'auth'"
+      class="mb-4 flex items-center justify-between gap-3 rounded-xl border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/40 px-4 py-3 text-sm text-amber-800 dark:text-amber-200"
+      role="alert"
+    >
+      <span class="min-w-0">
+        {{ t('bookmarks.sessionExpired') }}
+        <NuxtLink
+          to="/login"
+          class="shrink-0 font-medium text-amber-800 dark:text-amber-200 underline underline-offset-2 hover:opacity-80"
+        >
+          {{ t('bookmarks.login') }}
+        </NuxtLink>
+      </span>
+      <button
+        type="button"
+        :aria-label="t('bookmarks.dismiss')"
+        class="shrink-0 p-1 rounded-lg text-amber-600 dark:text-amber-300 hover:bg-amber-100 dark:hover:bg-amber-900/40 transition-colors"
+        @click="clearSyncIssue"
+      >
+        <Icon icon="lucide:x" class="w-4 h-4" />
+      </button>
+    </div>
 
     <!-- Removal undo (single bookmark remove is one-click + clouds immediately) -->
     <div

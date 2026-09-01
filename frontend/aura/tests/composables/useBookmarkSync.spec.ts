@@ -142,6 +142,132 @@ describe("useBookmarkSync", () => {
 		// The failed mirror must not throw or undo the local add.
 		await vi.waitFor(() => expect(addReaderBookmarkMock).toHaveBeenCalledWith(5));
 		expect(useBookmarks().isBookmarked(5)).toBe(true);
+		// Transient failures stay silent — only a dead session warns (ISS-222).
+		expect(sync.syncIssue.value).toBeNull();
+	});
+
+	it("surfaces an auth mirror failure (401 token expired) via syncIssue", async () => {
+		localStorage.setItem("reader_token", "jwt.token");
+		addReaderBookmarkMock.mockRejectedValue({ response: { status: 401 } });
+		const sync = useBookmarkSync();
+
+		sync.add({
+			id: 6,
+			title: "Expired",
+			slug: "e",
+			excerpt: null,
+			cover_image: null,
+			created_at: "2026-01-01",
+			category: null,
+			tags: [],
+		});
+		await vi.waitFor(() => expect(addReaderBookmarkMock).toHaveBeenCalledWith(6));
+		// The local toggle still works, but the reader is now warned that the
+		// save never reached the cloud (dead session), instead of being silently
+		// divergent until the next merge pulls the bookmark away.
+		expect(useBookmarks().isBookmarked(6)).toBe(true);
+		expect(sync.syncIssue.value).toBe("auth");
+	});
+
+	it("treats a 403 mirror failure as auth too (wrong-audience token)", async () => {
+		localStorage.setItem("reader_token", "jwt.token");
+		removeReaderBookmarkMock.mockRejectedValue({ status: 403 });
+		const sync = useBookmarkSync();
+		useBookmarks().addBookmark({
+			id: 7,
+			title: "Forbidden",
+			slug: "f",
+			excerpt: null,
+			cover_image: null,
+			created_at: "2026-01-01",
+			category: null,
+			tags: [],
+		});
+
+		sync.remove(7);
+		await vi.waitFor(() => expect(removeReaderBookmarkMock).toHaveBeenCalledWith(7));
+		expect(useBookmarks().isBookmarked(7)).toBe(false);
+		expect(sync.syncIssue.value).toBe("auth");
+	});
+
+	it("recognises the ofetch FetchError shape (status on the error itself)", async () => {
+		localStorage.setItem("reader_token", "jwt.token");
+		const err = Object.assign(new Error("401"), { status: 401, statusCode: 401 });
+		addReaderBookmarkMock.mockRejectedValue(err);
+		const sync = useBookmarkSync();
+
+		sync.add({
+			id: 8,
+			title: "FetchError",
+			slug: "fe",
+			excerpt: null,
+			cover_image: null,
+			created_at: "2026-01-01",
+			category: null,
+			tags: [],
+		});
+		await vi.waitFor(() => expect(addReaderBookmarkMock).toHaveBeenCalledWith(8));
+		expect(sync.syncIssue.value).toBe("auth");
+	});
+
+	it("clears a stale auth warning once a later mirror succeeds", async () => {
+		localStorage.setItem("reader_token", "jwt.token");
+		addReaderBookmarkMock
+			.mockRejectedValueOnce({ response: { status: 401 } })
+			.mockResolvedValueOnce(okFetch([null]));
+		const sync = useBookmarkSync();
+		const post = {
+			id: 12,
+			title: "Recover",
+			slug: "r",
+			excerpt: null,
+			cover_image: null,
+			created_at: "2026-01-01",
+			category: null,
+			tags: [],
+		};
+
+		sync.add(post);
+		await vi.waitFor(() => expect(addReaderBookmarkMock).toHaveBeenCalledTimes(1));
+		expect(sync.syncIssue.value).toBe("auth");
+
+		// Reader re-authenticated (fresh token): the next mirror works and the
+		// warning is no longer relevant.
+		sync.add({ ...post, id: 13 });
+		await vi.waitFor(() => expect(addReaderBookmarkMock).toHaveBeenCalledTimes(2));
+		expect(sync.syncIssue.value).toBeNull();
+	});
+
+	it("exposes clearSyncIssue to dismiss the warning", () => {
+		localStorage.setItem("reader_token", "jwt.token");
+		const sync = useBookmarkSync();
+		sync.syncIssue.value = "auth";
+		sync.clearSyncIssue();
+		expect(sync.syncIssue.value).toBeNull();
+	});
+
+	it("merge with a 401 keeps the local list and warns instead of adopting it", async () => {
+		localStorage.setItem("reader_token", "jwt.token");
+		fetchReaderBookmarksMock.mockRejectedValue({ response: { status: 401 } });
+		const sync = useBookmarkSync();
+		useBookmarks().addBookmark({
+			id: 14,
+			title: "Fragile",
+			slug: "fr",
+			excerpt: null,
+			cover_image: null,
+			created_at: "2026-01-01",
+			category: null,
+			tags: [],
+		});
+
+		await sync.mergeLocalToCloud();
+
+		// The failed pull must NOT replace the local list with the (unreachable)
+		// server truth — otherwise a dead session silently deletes local-only
+		// bookmarks. Instead the reader gets the auth warning.
+		expect(useBookmarks().bookmarks.value.map((b) => b.id)).toEqual([14]);
+		expect(sync.syncIssue.value).toBe("auth");
 	});
 
 	it("merge pushes local up then adopts the cloud list (union outcome)", async () => {

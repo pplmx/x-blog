@@ -28,6 +28,8 @@ vi.mock("../../composables/useBookmarks", () => ({
 // (local wipe + cloud clear, TASK-233), not a bare clearBookmarks. `add` backs
 // the single-removal Undo.
 const mockSyncing = ref(false);
+const mockSyncIssue = ref<"auth" | null>(null);
+const mockClearSyncIssue = vi.fn();
 vi.mock("../../composables/useBookmarkSync", () => ({
 	useBookmarkSync: () => ({
 		bookmarks: mockBookmarks,
@@ -36,6 +38,8 @@ vi.mock("../../composables/useBookmarkSync", () => ({
 		clearAll: mockClearAll,
 		mergeLocalToCloud: vi.fn(() => Promise.resolve()),
 		syncing: mockSyncing,
+		syncIssue: mockSyncIssue,
+		clearSyncIssue: mockClearSyncIssue,
 	}),
 }));
 
@@ -112,6 +116,31 @@ describe("Bookmarks page", () => {
 			expect(wrapper.text()).toContain("正在同步收藏");
 			expect(wrapper.text()).not.toContain("还没有收藏的文章");
 			mockSyncing.value = false;
+		});
+
+		it("warns (with a re-login link) when the cloud sync hits a dead session and dismisses on X", async () => {
+			// ISS-222: a stored-but-expired reader token silently drops mirror
+			// writes. The page must surface it instead of pretending "saved".
+			mockBookmarks.value = [];
+			mockSyncIssue.value = "auth";
+			const wrapper = mountBookmarks();
+			const alert = wrapper.find("[role='alert']");
+			expect(alert.exists()).toBe(true);
+			expect(alert.text()).toContain("登录已过期");
+			expect(alert.find(".nuxt-link-stub").exists()).toBe(true);
+
+			mockClearSyncIssue.mockClear();
+			await alert.find("button").trigger("click");
+			expect(mockClearSyncIssue).toHaveBeenCalled();
+
+			mockSyncIssue.value = null;
+		});
+
+		it("stays quiet when cloud sync has no issue", () => {
+			mockBookmarks.value = [];
+			mockSyncIssue.value = null;
+			const wrapper = mountBookmarks();
+			expect(wrapper.find("[role='alert']").exists()).toBe(false);
 		});
 
 		it("shows the real empty state once sync finishes", () => {

@@ -27,6 +27,9 @@
 		"noSearchResults": "没有匹配的收藏。",
 		"closeManage": "完成",
 		"removedToast": "已移除「{title}」",
-		"undo": "撤销"
+		"undo": "撤销",
+		"sessionExpired": "您的登录已过期——以下收藏仅保存在本设备，重新登录前不会同步到云端：",
+		"login": "重新登录",
+		"dismiss": "关闭"
 	}
 }

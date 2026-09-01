@@ -34,6 +34,25 @@ function hasReaderToken(): boolean {
 	);
 }
 
+/**
+ * The kinds of cloud-sync problems we surface to the reader. Currently only
+ * "auth": the stored token is present but no longer accepted (expired/revoked
+ * — the backend answers 401; a wrong-audience token answers 403). hasReaderToken
+ * checks *presence* only, so without this a dead session would keep presenting
+ * "saved to cloud" while the server silently rejects every mirror — and a later
+ * merge would pull the never-saved bookmark away (ISS-222). Transient failures
+ * (offline, 5xx) deliberately stay silent: the next merge re-conciliates.
+ */
+type SyncIssue = "auth" | null;
+
+/** True when a mirror/merge rejection means the stored session is unusable. */
+function isAuthFailure(err: unknown): boolean {
+	const status =
+		(err as { response?: { status?: number } })?.response?.status ??
+		(err as { status?: number })?.status;
+	return status === 401 || status === 403;
+}
+
 /** Map a cloud bookmark row to the local Bookmark shape (they already mirror;
  * only created_at nullability differs, which the page tolerates). */
 function toLocalBookmark(item: ReaderBookmarkItem): Bookmark {
@@ -65,14 +84,34 @@ export function useBookmarkSync() {
 	// bookmarks yet" during that window is a false negative (deep-dive finding).
 	const syncing = ref(false);
 
+	// Non-null when the last sync attempt proved the stored session is dead
+	// (ISS-222). The bookmarks page renders a dismissible warning off this; the
+	// toggle itself keeps working locally.
+	const syncIssue = ref<SyncIssue>(null);
+
+	const clearSyncIssue = (): void => {
+		syncIssue.value = null;
+	};
+
+	/** Interpret a mirror/merge rejection: auth failures are surfaced, the rest
+	 *  (offline/5xx) keep their offline-safe silence. */
+	function noteFailure(err: unknown): void {
+		if (isAuthFailure(err)) {
+			syncIssue.value = "auth";
+		}
+	}
+
 	/** Mirror a single add to the cloud. Offline-safe: errors are swallowed. */
 	async function mirrorAdd(postId: number): Promise<void> {
 		if (!hasReaderToken()) return;
 		try {
 			const { addReaderBookmark } = await import("~~/api/reader/bookmarks");
 			await addReaderBookmark(postId);
-		} catch {
-			// offline — local list is authoritative until next merge
+			clearSyncIssue(); // the session works again — drop any stale warning
+		} catch (err) {
+			// offline — local list is authoritative until next merge; a dead
+			// session is the one case the reader must not be left in the dark.
+			noteFailure(err);
 		}
 	}
 
@@ -82,8 +121,10 @@ export function useBookmarkSync() {
 		try {
 			const { removeReaderBookmark } = await import("~~/api/reader/bookmarks");
 			await removeReaderBookmark(postId);
-		} catch {
+			clearSyncIssue();
+		} catch (err) {
 			// offline — next merge re-conciliates
+			noteFailure(err);
 		}
 	}
 
@@ -111,8 +152,12 @@ export function useBookmarkSync() {
 				page += 1;
 			}
 			replaceBookmarks(all.map(toLocalBookmark));
-		} catch {
-			// Cloud unreachable — keep the local list untouched.
+			clearSyncIssue();
+		} catch (err) {
+			// Cloud unreachable — keep the local list untouched. A dead session
+			// must NOT replace the local list with the unreachable server truth
+			// (silent deletion of local-only bookmarks), so warn instead (ISS-222).
+			noteFailure(err);
 		} finally {
 			syncing.value = false;
 		}
@@ -145,8 +190,10 @@ export function useBookmarkSync() {
 		try {
 			const { clearReaderBookmarks } = await import("~~/api/reader/bookmarks");
 			await clearReaderBookmarks();
-		} catch {
+			clearSyncIssue();
+		} catch (err) {
 			// offline — local cleared; server rows clear on the next clear/merge
+			noteFailure(err);
 		}
 	}
 
@@ -154,6 +201,8 @@ export function useBookmarkSync() {
 		...store,
 		isSignedIn: hasReaderToken,
 		syncing,
+		syncIssue,
+		clearSyncIssue,
 		add,
 		remove,
 		clearAll,

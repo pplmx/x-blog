@@ -27,6 +27,9 @@
 		"noSearchResults": "No bookmarks match your search.",
 		"closeManage": "Done",
 		"removedToast": "Removed “{title}”",
-		"undo": "Undo"
+		"undo": "Undo",
+		"sessionExpired": "Your sign-in has expired — bookmarks below are saved on this device only and won't reach the cloud until you sign in again:",
+		"login": "Sign in",
+		"dismiss": "Dismiss"
 	}
 }
