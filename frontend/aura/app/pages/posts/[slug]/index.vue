@@ -450,7 +450,7 @@ function handleCommentSubmitted() {
           <div class="flex items-center gap-4 text-sm text-gray-400">
             <span class="flex items-center gap-1.5">
               <Icon icon="lucide:calendar" class="w-3.5 h-3.5" />
-              {{ parseApiDate(post.created_at)?.toLocaleDateString(locale === "zh" ? "zh-CN" : "en-US", { year: 'numeric', month: 'long', day: 'numeric' }) ?? "" }}
+              {{ parseApiDate(post.publish_at ?? post.created_at)?.toLocaleDateString(locale === "zh" ? "zh-CN" : "en-US", { year: 'numeric', month: 'long', day: 'numeric' }) ?? "" }}
             </span>
           </div>
 

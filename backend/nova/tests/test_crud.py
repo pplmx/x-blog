@@ -1,11 +1,39 @@
 """Tests for CRUD operations."""
 
+from datetime import UTC, datetime
 from unittest.mock import MagicMock, patch
 
 import pytest
 from sqlalchemy.exc import IntegrityError
 
 from app import cache, crud, models, schemas
+
+
+class TestEffectivePublishTs:
+    """effective_publish_ts: the timestamp that puts a post on the
+    "published when" line (scheduled publish_at when set, else created_at)
+    so scheduled posts are never mis-dated by their draft time (RIL ISS-264)."""
+
+    def test_uses_publish_at_when_set(self):
+        post = models.Post(
+            published=True,
+            publish_at=datetime(2024, 6, 1, 10, 0, 0),
+            created_at=datetime(2024, 1, 15, 10, 30, 0),
+        )
+        assert crud.effective_publish_ts(post) == datetime(2024, 6, 1, 10, 0, 0)
+
+    def test_falls_back_to_created_at_without_publish_at(self):
+        post = models.Post(published=True, publish_at=None, created_at=datetime(2024, 3, 2, 9, 0, 0))
+        assert crud.effective_publish_ts(post) == datetime(2024, 3, 2, 9, 0, 0)
+
+    def test_normalizes_aware_created_at_to_naive_utc(self):
+        # created_at carries an aware ORM default on some dialects; the
+        # returned timestamp must be naive UTC (matching publish_at's domain).
+        aware = datetime(2024, 3, 2, 9, 0, 0, tzinfo=UTC)
+        post = models.Post(published=True, publish_at=None, created_at=aware)
+        result = crud.effective_publish_ts(post)
+        assert result.tzinfo is None
+        assert result == datetime(2024, 3, 2, 9, 0, 0)
 
 
 class TestGetPosts:

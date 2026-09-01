@@ -231,6 +231,49 @@ def test_atom_feed_returns_xml(client):
     assert "<title>" in content
 
 
+def test_rss_pubdate_uses_publish_at_for_scheduled_post(client, auth_headers):
+    """A scheduled post's RSS pubDate must be its publish_at, not the draft's
+    created_at — otherwise feed readers mis-date/mis-order it (RIL ISS-264)."""
+    client.post(
+        "/api/posts",
+        json={
+            "title": "Scheduled Feed Post",
+            "slug": "scheduled-feed-post",
+            "content": "Scheduled feed content",
+            "published": True,
+            "publish_at": "2024-06-01T10:00:00Z",
+        },
+        headers=auth_headers,
+    )
+    response = client.get("/rss/feed.xml")
+    assert response.status_code == 200
+    content = response.text
+    assert "Scheduled Feed Post" in content
+    # The item's pubDate must be the scheduled publish_at; if created_at (the
+    # test DB clock) leaked instead, this exact string would not appear.
+    assert "Sat, 01 Jun 2024 10:00:00 GMT" in content
+
+
+def test_atom_published_uses_publish_at_for_scheduled_post(client, auth_headers):
+    """A scheduled post's Atom <published> must be its publish_at, never the
+    draft's created_at (RIL ISS-264)."""
+    client.post(
+        "/api/posts",
+        json={
+            "title": "Scheduled Atom Post",
+            "slug": "scheduled-atom-post",
+            "content": "Scheduled atom content",
+            "published": True,
+            "publish_at": "2024-06-01T10:00:00Z",
+        },
+        headers=auth_headers,
+    )
+    response = client.get("/rss/atom.xml")
+    assert response.status_code == 200
+    content = response.text
+    assert "<published>2024-06-01T10:00:00Z</published>" in content
+
+
 def test_atom_feed_with_posts(client, auth_headers):
     """Atom feed should include published posts."""
     client.post(

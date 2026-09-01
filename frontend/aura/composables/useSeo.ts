@@ -40,9 +40,21 @@ export interface SeoPostData {
 	excerpt: string | null;
 	created_at: string;
 	updated_at: string;
+	/** Scheduled publication time (null for immediate posts). When set, it is
+	 *  the TRUE publish time — JSON-LD/og datePublished must report it, never
+	 *  the draft's created_at (RIL ISS-264). */
+	publish_at?: string | null;
 	cover_image: string | null;
 	category: { id: number; name: string } | null;
 	tags: { id: number; name: string }[];
+}
+
+/** The post's effective publication timestamp: its scheduled publish_at when
+ *  set, else its created_at. Scheduled posts are only publicly visible after
+ *  publish_at (crud.is_publicly_visible), so this is when readers actually got
+ *  the article — reporting the draft's created_at would mis-date it. */
+export function effectivePublishAt(post: Pick<SeoPostData, "publish_at" | "created_at">): string {
+	return post.publish_at ?? post.created_at;
 }
 
 /** Article metadata for JSON-LD BlogPosting schema. */
@@ -180,7 +192,7 @@ export function buildArticleJsonLd(
 				url: buildAbsoluteImageUrl(siteConfig.image),
 			},
 		},
-		datePublished: post.created_at,
+		datePublished: effectivePublishAt(post),
 		dateModified: post.updated_at,
 		mainEntityOfPage: {
 			"@type": "WebPage",
@@ -354,7 +366,7 @@ export function usePostSeo(post: SeoPostData): void {
 		image: ogImage,
 		tags,
 		article: {
-			datePublished: post.created_at,
+			datePublished: effectivePublishAt(post),
 			dateModified: post.updated_at,
 			author: siteConfig.name,
 			section: post.category?.name || "Blog",

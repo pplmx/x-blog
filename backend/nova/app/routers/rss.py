@@ -242,7 +242,10 @@ def generate_rss_feed(
     """
     items = []
     for post in posts:
-        pub_date = (post.created_at or crud.utc_now_naive()).strftime("%a, %d %b %Y %H:%M:%S GMT")
+        # Feed dates must report when readers actually got the post: a
+        # scheduled post's item keyed to its draft created_at would push the
+        # entry down readers' "new" ordering and mis-date it (RIL ISS-264).
+        pub_date = crud.effective_publish_ts(post).strftime("%a, %d %b %Y %H:%M:%S GMT")
         link = f"{site_url}/posts/{post.slug}"
 
         if full_content:
@@ -359,7 +362,9 @@ def get_atom_feed(
     items = []
     for post in posts:
         updated = (post.updated_at or crud.utc_now_naive()).strftime("%Y-%m-%dT%H:%M:%SZ")
-        published = (post.created_at or crud.utc_now_naive()).strftime("%Y-%m-%dT%H:%M:%SZ")
+        # Same policy as the RSS pubDate: a scheduled post's <published> is its
+        # publish_at, never the draft's created_at (RIL ISS-264).
+        published = crud.effective_publish_ts(post).strftime("%Y-%m-%dT%H:%M:%SZ")
         content = _feed_content_html(post.content)
         link = f"{site_url}/posts/{post.slug}"
         items.append(f"""<entry>

@@ -209,6 +209,17 @@ describe("buildArticleJsonLd", () => {
 		expect(jsonLd.description).toBe("");
 	});
 
+	it("prefers publish_at over created_at when computing datePublished", () => {
+		const scheduled = { ...mockPost, publish_at: "2024-03-01T10:00:00Z" };
+		const jsonLd = buildArticleJsonLd(scheduled, options);
+		expect(jsonLd.datePublished).toBe("2024-03-01T10:00:00Z");
+	});
+
+	it("defaults datePublished to created_at when publish_at is absent", () => {
+		const jsonLd = buildArticleJsonLd(mockPost, options);
+		expect(jsonLd.datePublished).toBe(mockPost.created_at);
+	});
+
 	it("handles null cover_image (image is undefined)", () => {
 		const jsonLd = buildArticleJsonLd(mockPostNoCover, options);
 		expect(jsonLd.image).toBeUndefined();
@@ -670,5 +681,34 @@ describe("usePostSeo composable", () => {
 		const jsonLd = JSON.parse(ldScripts[0].textContent);
 		expect(jsonLd.articleSection).toBe("Blog");
 		expect(jsonLd.keywords).toBe("");
+	});
+
+	it("uses publish_at as datePublished for a scheduled post (RIL ISS-264)", () => {
+		// A post scheduled for later publication (publish_at > created_at) must
+		// report its TRUE publish time to Google/social — the draft's created_at
+		// would mis-date the article and hurt freshness signals.
+		usePostSeo({ ...mockPost, publish_at: "2024-03-01T10:00:00Z" });
+
+		const callArg = useHeadSpy.mock.calls[0][0];
+		const publishedTime = callArg.meta.find(
+			(m: { property?: string }) => m.property === "article:published_time",
+		);
+		expect(publishedTime?.content).toBe("2024-03-01T10:00:00Z");
+
+		const ldScripts = callArg.script.filter(
+			(s: { type: string }) => s.type === "application/ld+json",
+		);
+		const jsonLd = JSON.parse(ldScripts[0].textContent);
+		expect(jsonLd.datePublished).toBe("2024-03-01T10:00:00Z");
+	});
+
+	it("falls back to created_at when publish_at is null (unscheduled posts)", () => {
+		usePostSeo({ ...mockPost, publish_at: null });
+
+		const callArg = useHeadSpy.mock.calls[0][0];
+		const publishedTime = callArg.meta.find(
+			(m: { property?: string }) => m.property === "article:published_time",
+		);
+		expect(publishedTime?.content).toBe(mockPost.created_at);
 	});
 });

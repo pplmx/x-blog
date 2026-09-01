@@ -819,6 +819,22 @@ describe("Post Detail Page", () => {
 			expect(wrapper.text()).toContain("1月");
 			expect(wrapper.text()).toContain("15");
 		});
+
+		it("renders the publish date for a scheduled post, not the draft date (RIL ISS-264)", async () => {
+			// A post scheduled for a release date (publish_at) must show the date
+			// readers actually got it, not the draft's created_at — the admin
+			// preview page already does publish_at ?? created_at; the reader page
+			// must agree (the API returns publish_at on the detail Post).
+			const scheduled = {
+				...mockPost,
+				created_at: "2024-01-15T10:30:00Z",
+				publish_at: "2024-06-01T10:00:00Z",
+			};
+			const wrapper = await mountPostPage({ post: scheduled });
+			expect(wrapper.text()).toContain("2024");
+			expect(wrapper.text()).toContain("6月");
+			expect(wrapper.text()).toContain("1");
+		});
 	});
 
 	describe("Tags", () => {

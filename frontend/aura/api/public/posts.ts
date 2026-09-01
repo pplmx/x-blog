@@ -22,6 +22,9 @@ export interface Post extends PostList {
 	content: string;
 	likes: number;
 	updated_at: string;
+	/** Scheduled publication time (the backend detail Post serializes it, RIL
+	 *  ISS-264); null/absent for immediately-published posts. */
+	publish_at?: string | null;
 }
 
 export interface AdjacentPosts {

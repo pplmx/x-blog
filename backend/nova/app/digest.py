@@ -43,7 +43,7 @@ from sqlalchemy.orm import Session
 
 from app import models
 from app.auth import ReaderAccount
-from app.crud import utc_now_naive
+from app.crud import effective_publish_ts, utc_now_naive
 from app.emailer import _env, is_email_configured, send_messages
 from app.middleware import get_logger
 
@@ -62,16 +62,11 @@ def _dialect_name(db: Session) -> str:
 
 def _effective_publish_ts(post: models.Post, now_naive: datetime) -> datetime:
     """The timestamp that puts a post on the "published when" line: its
-    scheduled publish_at when set, else its created_at (created_at has an ORM
-    default of ``datetime.now(UTC)`` — an AWARE value — so normalize to naive
-    UTC here, matching the naive ``publish_at``/``now_naive`` domain and the
-    columns' storage intent). Both holes fall back to ``now_naive``."""
-    ts = post.publish_at if post.publish_at is not None else post.created_at
-    if ts is None:
-        return now_naive
-    if ts.tzinfo is not None:
-        ts = ts.astimezone(UTC).replace(tzinfo=None)
-    return ts
+    scheduled publish_at when set, else its created_at. Shared semantic with
+    the RSS/Atom feeds via ``crud.effective_publish_ts`` (RIL ISS-264); this
+    thin wrapper pins the ``now`` fallback where the digest code expects it
+    naive."""
+    return effective_publish_ts(post, fallback=now_naive)
 
 
 def collect_digest_posts(db: Session, now_naive: datetime) -> list[models.Post]:

@@ -50,6 +50,22 @@ def is_publicly_visible(post: models.Post) -> bool:
     return publish_at <= utc_now_naive()
 
 
+def effective_publish_ts(post: models.Post, fallback: datetime | None = None) -> datetime:
+    """The timestamp at which readers actually got a post: its scheduled
+    publish_at when set, else its created_at (created_at is an ORM default of
+    ``datetime.now(UTC)`` — an AWARE value — so normalize to naive UTC here,
+    matching the naive ``publish_at`` domain). Both holes fall back to
+    ``fallback`` (defaulting to now). Shared by the digest window, RSS/Atom
+    feed dates and any "published when" surface so a scheduled post is never
+    mis-dated by its draft time (RIL ISS-264)."""
+    ts = post.publish_at if post.publish_at is not None else post.created_at
+    if ts is None:
+        return fallback if fallback is not None else utc_now_naive()
+    if ts.tzinfo is not None:
+        ts = ts.astimezone(UTC).replace(tzinfo=None)
+    return ts
+
+
 def _populate_post_metrics(db: Session, posts: list[models.Post]) -> None:
     """Fill `comment_count` + `reading_time` on a list of Post in-place.
 
