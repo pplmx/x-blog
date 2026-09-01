@@ -25,6 +25,11 @@ function mountLayout() {
 					template: '<svg class="iconstub" data-icon=":icon"></svg>',
 					props: ["icon"],
 				},
+				// Nuxt auto-import is not active in vitest; the fixed 429 banner
+				// resolves through this stub in tests.
+				RateLimitNotice: {
+					template: '<div class="rate-limit-stub" />',
+				},
 			},
 		},
 	});

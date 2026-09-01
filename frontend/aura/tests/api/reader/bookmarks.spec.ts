@@ -53,6 +53,7 @@ describe("reader bookmark queries", () => {
 				query: { folder_id: undefined },
 				headers: { Authorization: "Bearer reader-jwt" },
 				server: false,
+				onResponseError: expect.any(Function),
 			},
 		});
 	});

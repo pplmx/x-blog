@@ -30,7 +30,8 @@
 			"cancel": "Cancel",
 			"backHome": "Back to home",
 			"backToList": "Back to list",
-			"retry": "Retry"
+			"retry": "Retry",
+			"close": "Close"
 		},
 		"state": {
 			"loading": "Loading",
@@ -47,7 +48,9 @@
 			"subscribeFailed": "Couldn't update notifications — try again"
 		},
 		"errors": {
-			"network": "Network error, please try again later"
+			"network": "Network error, please try again later",
+			"rateLimit": "You're going a bit fast — please slow down",
+			"rateLimitHint": "Actions are limited to protect the site. Try again in a minute."
 		}
 	}
 }

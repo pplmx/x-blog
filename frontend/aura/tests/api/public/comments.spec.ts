@@ -45,6 +45,7 @@ describe("public comments queries", () => {
 				options: {
 					baseURL: "https://api.example.test",
 					query: { page: 2, limit: 20, sort: "likes" },
+					onResponseError: expect.any(Function),
 				},
 			},
 		]);

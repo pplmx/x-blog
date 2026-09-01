@@ -28,7 +28,7 @@ describe("public stats", () => {
 
 		expect(queryCalls[0]).toEqual({
 			path: "/api/stats",
-			options: { baseURL: "https://api.example.test" },
+			options: { baseURL: "https://api.example.test", onResponseError: expect.any(Function) },
 		});
 	});
 });

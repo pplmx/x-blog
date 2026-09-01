@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, type Mock, vi } from "vitest";
 
 import { command, query, withQuery } from "../../api/transport.ts";
+import { useRateLimitNotice } from "../../composables/useRateLimitNotice";
 
 let useFetchCalls: Array<{
 	path: unknown;
@@ -48,6 +49,8 @@ describe("query", () => {
 					baseURL: "https://api.example.test",
 					query: { page: 2 },
 					server: false,
+					// transport adds a 429 rate-limit detector to every query
+					onResponseError: expect.any(Function),
 				},
 			},
 		]);
@@ -93,6 +96,71 @@ describe("command", () => {
 			headers,
 			body,
 		});
+	});
+});
+
+describe("rate-limit notice wiring", () => {
+	beforeEach(() => {
+		// The notice is a module-level singleton shared across calls; reset it so
+		// later tests don't observe a flag flipped (or timer left running) by an
+		// earlier one.
+		useRateLimitNotice().dismiss();
+	});
+
+	it("command raises the app-wide notice when a 429 response arrives", async () => {
+		const notifier = useRateLimitNotice();
+		vi.stubGlobal(
+			"$fetch",
+			vi.fn(async () => {
+				const err = new Error("Rate limit exceeded") as Error & { response: { status: number } };
+				err.response = { status: 429 };
+				throw err;
+			}),
+		);
+
+		await expect(command("/api/comments/post/1")).rejects.toThrow("Rate limit exceeded");
+
+		expect(notifier.active.value).toBe(true);
+	});
+
+	it("command leaves the notice off on a non-429 failure", async () => {
+		const notifier = useRateLimitNotice();
+		vi.stubGlobal(
+			"$fetch",
+			vi.fn(async () => {
+				const err = new Error("boom") as Error & { response: { status: number } };
+				err.response = { status: 503 };
+				throw err;
+			}),
+		);
+
+		await expect(command("/api/search")).rejects.toThrow("boom");
+
+		expect(notifier.active.value).toBe(false);
+	});
+
+	it("command success does not trigger the notice", async () => {
+		const notifier = useRateLimitNotice();
+		vi.stubGlobal(
+			"$fetch",
+			vi.fn(async () => ({ ok: true })),
+		);
+
+		await expect(command("/api/posts")).resolves.toEqual({ ok: true });
+
+		expect(notifier.active.value).toBe(false);
+	});
+
+	it("query registers a 429 detector that flips the notice", async () => {
+		const notifier = useRateLimitNotice();
+		query("/api/posts");
+
+		const onResponseError = useFetchCalls[0].options.onResponseError as (ctx: {
+			response: { status: number };
+		}) => unknown;
+		await onResponseError({ response: { status: 429 } });
+
+		expect(notifier.active.value).toBe(true);
 	});
 });
 

@@ -2,6 +2,8 @@ import type { AvailableRouterMethod, NitroFetchRequest } from "nitropack/types";
 import type { AsyncData, NuxtError, UseFetchOptions } from "nuxt/app";
 import type { Ref } from "vue";
 
+import { useRateLimitNotice } from "~~/composables/useRateLimitNotice";
+
 export type ApiQueryPath = Parameters<typeof useFetch>[0];
 export type ApiQueryOptions<
 	ResT,
@@ -97,14 +99,64 @@ export function query(path: ApiQueryPath, options: object = {}) {
 		baseURL: apiBaseUrl(),
 		...options,
 	};
+	// Merge a 429 detector in front of any caller-provided handler so every
+	// query (useFetch) path surfaces the notice without breaking local handling.
+	const callerOnResponseError = resolvedOptions.onResponseError as
+		| ResponseErrorHook
+		| ResponseErrorHook[]
+		| undefined;
+	resolvedOptions.onResponseError = (context) => {
+		const c = context as { response: { status?: number } };
+		flagRateLimit(c.response);
+		return runResponseErrorHook(callerOnResponseError, context);
+	};
 	return useFetch<unknown>(path, resolvedOptions);
 }
 
 export function command<T>(path: string, options?: ApiCommandOptions): Promise<T> {
+	// 429 detector on the promise (not in the options bag): options stay
+	// byte-for-byte as the caller wrote them so per-call option-assertion tests
+	// and ofetch hook semantics are untouched; on a rate-limit failure we raise
+	// the app-wide notice and rethrow the original error for local handling.
 	return $fetch<T>(path, {
 		baseURL: apiBaseUrl(),
 		...(options ?? {}),
-	} as ApiCommandOptions);
+	} as ApiCommandOptions).catch((error: unknown) => {
+		flagRateLimit(fetcherResponseError(error));
+		throw error;
+	});
+}
+
+/**
+ * Surface a friendly app-wide notice when the backend rate-limits a request
+ * (HTTP 429). slowapi's body is a technical "Rate limit exceeded: N per
+ * minute"; the RateLimitNotice banner renders a localized, actionable message
+ * instead of whichever unhelpful text the page happened to show (round 211).
+ */
+function flagRateLimit(response: { status?: number } | undefined): void {
+	if (response?.status === 429) useRateLimitNotice().show();
+}
+
+/** Detect a 429 on an ofetch error (FetchError carries `.response`). */
+function fetcherResponseError(error: unknown): { status?: number } | undefined {
+	const response = (error as { response?: { status?: number } } | undefined)?.response;
+	return Array.isArray(response) ? undefined : response;
+}
+
+/** An ofetch/useFetch onResponseError hook (single fn or array of fns). */
+type ResponseErrorHook = (context: unknown) => void | Promise<void> | undefined;
+
+/** Run an onResponseError hook that may be a function or an array. */
+function runResponseErrorHook(
+	hook: ResponseErrorHook | ResponseErrorHook[] | undefined,
+	context: unknown,
+): unknown {
+	if (!hook) return undefined;
+	if (Array.isArray(hook)) {
+		for (const h of hook) h(context);
+		return undefined;
+	}
+	return hook(context);
 }
 
 export function withQuery(path: string, params: QueryParams): string {

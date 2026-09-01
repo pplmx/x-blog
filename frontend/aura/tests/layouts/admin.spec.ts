@@ -67,6 +67,11 @@ const stubs = {
 		props: ["to"],
 		template: '<a :href="to"><slot/></a>',
 	},
+	// Nuxt auto-import is not active in vitest; the layout's fixed 429 banner
+	// resolves through this prod-style stub in tests.
+	RateLimitNotice: {
+		template: '<div class="rate-limit-stub" />',
+	},
 };
 
 // Helper: mount with attachTo body for Teleport support

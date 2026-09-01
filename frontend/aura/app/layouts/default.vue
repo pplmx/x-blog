@@ -336,6 +336,7 @@ onMounted(() => {
         </div>
       </div>
     </footer>
+    <RateLimitNotice />
   </div>
 </template>
 

@@ -388,5 +388,6 @@ const navItems = computed(() => {
         </div>
       </div>
     </Teleport>
+    <RateLimitNotice />
   </div>
 </template>
