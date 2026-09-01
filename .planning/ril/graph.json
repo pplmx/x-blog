@@ -2,7 +2,7 @@
   "ril_version": 1,
   "round": 223,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-01T14:56:02+00:00",
+  "updated_at": "2026-09-01T14:57:42+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -15270,10 +15270,10 @@
     "ISS-263": {
       "id": "ISS-263",
       "type": "issue",
-      "status": "active",
-      "version": 1,
+      "status": "resolved",
+      "version": 2,
       "created_at": "2026-09-01T14:54:34+00:00",
-      "updated_at": "2026-09-01T14:54:34+00:00",
+      "updated_at": "2026-09-01T14:57:42+00:00",
       "touched_round": 223,
       "title": "Reader notification inbox traps older notifications behind the first page",
       "description": "The API paginates /api/reader/me/notifications (limit up to 100, total_pages returned) but notifications.vue fetched getReaderNotifications(1, 100) once and never paged on — a reader with >100 accumulated notifications could never see the older ones. Same bounded-reachability class as the bookmarks/subscriptions pagination fixes (ISS-142)."
@@ -15281,13 +15281,13 @@
     "CHG-308": {
       "id": "CHG-308",
       "type": "change",
-      "status": "active",
-      "version": 1,
+      "status": "resolved",
+      "version": 2,
       "created_at": "2026-09-01T14:54:34+00:00",
-      "updated_at": "2026-09-01T14:54:34+00:00",
+      "updated_at": "2026-09-01T14:57:42+00:00",
       "touched_round": 223,
       "summary": "notifications.vue now pages: hasMore = page < total_pages renders a Load-more button that fetches the next 100 and appends (deduped by id), tracks loadingMore/error, keeps rows on failure; + locale keys + 2 unit tests",
-      "commit": "PENDING"
+      "commit": "ebe6506"
     },
     "DEC-229": {
       "id": "DEC-229",
