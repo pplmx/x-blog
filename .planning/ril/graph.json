@@ -2,7 +2,7 @@
   "ril_version": 1,
   "round": 218,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-01T11:17:05+00:00",
+  "updated_at": "2026-09-01T11:18:17+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -15100,10 +15100,10 @@
     "ISS-258": {
       "id": "ISS-258",
       "type": "issue",
-      "status": "active",
-      "version": 1,
+      "status": "resolved",
+      "version": 2,
       "created_at": "2026-09-01T11:16:11+00:00",
-      "updated_at": "2026-09-01T11:16:11+00:00",
+      "updated_at": "2026-09-01T11:18:17+00:00",
       "touched_round": 218,
       "title": "Search 'clear filters' affordance appears for the default relevance sort",
       "description": "Selecting the default 'Relevance' option in the search sort dropdown writes sort=relevance into the URL; activeFilters counted it, so hasActiveFilters lit up the one-click 'clear filters' pill even though nothing was actually narrowed (relevance is the backend default and searchParams already omitted it from the request). The clear button promised action where there was nothing to clear."
@@ -15111,13 +15111,13 @@
     "CHG-303": {
       "id": "CHG-303",
       "type": "change",
-      "status": "active",
-      "version": 1,
+      "status": "resolved",
+      "version": 2,
       "created_at": "2026-09-01T11:16:11+00:00",
-      "updated_at": "2026-09-01T11:16:11+00:00",
+      "updated_at": "2026-09-01T11:18:17+00:00",
       "touched_round": 218,
       "summary": "search.vue activeFilters now skips sort=relevance (the default), consistent with searchParams; non-default sorts still count; + unit test",
-      "commit": "PENDING"
+      "commit": "144a200"
     },
     "DEC-224": {
       "id": "DEC-224",
