@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 213,
+  "round": 214,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-01T07:12:49+00:00",
+  "updated_at": "2026-09-01T07:24:31+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -11,7 +11,7 @@
       "version": 1,
       "created_at": "2026-08-06T13:23:41+00:00",
       "updated_at": "2026-08-06T13:23:41+00:00",
-      "touched_round": 210,
+      "touched_round": 213,
       "title": "backend-nova",
       "description": "FastAPI Python 3.14 backend at backend/nova; SQLAlchemy ORM; routers in app/routers, crud.py business logic, 656 lines"
     },
@@ -14839,6 +14839,53 @@
       "title": "Remove X-XSS-Protection and re-assert XFO/HSTS on cached uploads",
       "rationale": "X-XSS-Protection is deprecated (auditor removed from all modern browsers; old Edge could be exploited); uploads are served for 30d immutable so resending the server-level headers there closes an add_header inheritance gap for the duration.",
       "alternatives_rejected": "Keep the header (against current guidance); migrate to CSP framing rules (out of scope for this config touch)."
+    },
+    "ISS-253": {
+      "id": "ISS-253",
+      "type": "issue",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-01T07:23:52+00:00",
+      "updated_at": "2026-09-01T07:23:52+00:00",
+      "touched_round": 213,
+      "severity": "high",
+      "title": "test_postgres_schema_creation drops all PUBLIC-schema tables of the target PG DB",
+      "description": "It ran Base.metadata.drop_all()+create_all() on the PUBLIC schema of whichever db TEST_DATABASE_URL points at. Intra-test this 'verified schema creation' but destroyed every table of a shared/dev database if the suite is pointed at it. Harmless before round 211 (conftest ignored TEST_DATABASE_URL, so the whole module was skipped), but round 211 made the target runnable and the justfile documents .../postgres as the default — a real data-loss footgun. Rewritten to create/inspect inside a dedicated temp schema (search_path, listener registered before the first connection) and drop only that schema."
+    },
+    "CHG-298": {
+      "id": "CHG-298",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-01T07:23:53+00:00",
+      "updated_at": "2026-09-01T07:23:53+00:00",
+      "touched_round": 213,
+      "commit": "90322bf",
+      "title": "Isolate the PG-connection schema test in a temp schema (never drop_all public)"
+    },
+    "EV-215": {
+      "id": "EV-215",
+      "type": "evidence",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-01T07:23:53+00:00",
+      "updated_at": "2026-09-01T07:23:53+00:00",
+      "touched_round": 213,
+      "source": "public table count unchanged 0->0 on scratch PG; full suites green PG 1259 / SQLite 1249",
+      "title": "Isolation verified; both dialect suites green",
+      "confidence": 1.0
+    },
+    "DEC-219": {
+      "id": "DEC-219",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-01T07:23:53+00:00",
+      "updated_at": "2026-09-01T07:23:53+00:00",
+      "touched_round": 213,
+      "title": "PG-connection tests must never touch the target DB's public schema",
+      "rationale": "test_postgres_schema_creation previously drop_all'ed the PUBLIC schema to prove schema management, which silently destroys every table of a shared/dev DB simply by pointing TEST_DATABASE_URL at it — a footgun round 211's harness made real. Schema-verification tests belong in a dedicated temp schema (search_path-isolated, listener registered before any connection so the pool carries it), exactly like the per-worker harness schemas.",
+      "alternatives_rejected": "Skip the test when the db name is not a test db (brittle name sniffing); require an explicit DESTRUCTIVE_OK flag (forget-to-set = footgun remains armed)."
     }
   },
   "edges": [
@@ -21470,6 +21517,24 @@
       "to": "COMP-005",
       "type": "governs",
       "created_at": "2026-09-01T07:12:49+00:00"
+    },
+    {
+      "from": "ISS-253",
+      "to": "COMP-001",
+      "type": "located_in",
+      "created_at": "2026-09-01T07:24:30+00:00"
+    },
+    {
+      "from": "CHG-298",
+      "to": "ISS-253",
+      "type": "resolves",
+      "created_at": "2026-09-01T07:24:30+00:00"
+    },
+    {
+      "from": "DEC-219",
+      "to": "COMP-001",
+      "type": "governs",
+      "created_at": "2026-09-01T07:24:30+00:00"
     }
   ]
 }
