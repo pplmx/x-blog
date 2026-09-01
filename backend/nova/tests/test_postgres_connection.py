@@ -58,21 +58,47 @@ def test_postgres_database_name():
 
 @skip_postgres
 def test_postgres_schema_creation():
-    """Verify SQLAlchemy can create schema (tables) in PostgreSQL."""
+    """Verify SQLAlchemy can create schema (tables) in PostgreSQL.
+
+    Isolation: created/dropped inside a dedicated temp schema via search_path so
+    this test NEVER touches the target database's public schema — an earlier
+    version did ``Base.metadata.drop_all()`` on public, which silently destroys
+    every table of whatever database TEST_DATABASE_URL points at (the round-211
+    harness made `just test-backend-postgres` actually runnable, arming that
+    footgun against a shared/dev DB). Nodes only act on the temp schema now.
+    """
+    from sqlalchemy import event
+
     from app.database import Base
 
+    SCHEMA = "xblog_pgconn_schema_test"
     engine = create_engine(_get_test_url())
+
+    # Point every pooled connection at the temp schema (create + inspect).
+    # IMPORTANT: register BEFORE any connection is opened — a pooled connection
+    # established earlier is reused as-is, and without the search_path the
+    # unqualified CREATE TABLEs would land in the public schema.
+    @event.listens_for(engine, "connect")
+    def _set_search_path(dbapi_connection, _connection_record):
+        cur = dbapi_connection.cursor()
+        cur.execute(f'SET search_path TO "{SCHEMA}"')
+        cur.close()
+
+    with engine.begin() as conn:
+        conn.execute(text(f'DROP SCHEMA IF EXISTS "{SCHEMA}" CASCADE'))
+        conn.execute(text(f'CREATE SCHEMA "{SCHEMA}"'))
+
     try:
-        # Drop all then create all to verify schema management works.
-        Base.metadata.drop_all(bind=engine)
         Base.metadata.create_all(bind=engine)
 
-        # Verify at least one table was created.
+        # Verify at least one table was created inside the temp schema.
         inspector = __import__("sqlalchemy", fromlist=["inspect"]).inspect(engine)
         tables = inspector.get_table_names()
         assert len(tables) > 0, "Expected at least one table to be created in PostgreSQL"
     finally:
-        Base.metadata.drop_all(bind=engine)
+        with engine.connect() as conn:
+            conn.execute(text(f'DROP SCHEMA IF EXISTS "{SCHEMA}" CASCADE'))
+            conn.commit()
         engine.dispose()
 
 
