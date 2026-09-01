@@ -45,6 +45,10 @@ const activeFilters = computed(() => {
 	for (const [k, v] of Object.entries(route.query)) {
 		if (typeof v !== "string" || !v) continue;
 		if (k === "q" || k === "page") continue;
+		// A default `relevance` sort is not a narrowing filter: it is what the
+		// API does anyway (searchParams omits it too), so it must not light up
+		// the "clear filters" button or survive a clear. (search-filters e2e)
+		if (k === "sort" && v === "relevance") continue;
 		out[k] = v;
 	}
 	return out;

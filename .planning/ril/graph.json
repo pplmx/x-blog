@@ -2,7 +2,7 @@
   "ril_version": 1,
   "round": 218,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-01T10:54:11+00:00",
+  "updated_at": "2026-09-01T11:17:05+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -22,7 +22,7 @@
       "version": 1,
       "created_at": "2026-08-06T13:23:41+00:00",
       "updated_at": "2026-08-06T13:23:41+00:00",
-      "touched_round": 215,
+      "touched_round": 218,
       "title": "frontend-aura",
       "description": "Nuxt 4 Vue 3 TypeScript frontend at frontend/aura; composables; admin pages; e2e Playwright; biome lint"
     },
@@ -15096,6 +15096,40 @@
       "title": "Date-only to-bounds are inclusive of the whole day, enforced server-side",
       "rationale": "Every date filter source is <input type=date> (search, admin comments, export dashboard) which always submits date-only strings. Widening only the to-bound to 23:59:59.999999 (never the from-bound, already inclusive at midnight) matches user intent with zero frontend change. Centralized in app/dates.py since three routers share the semantics.",
       "alternatives_rejected": "['Frontend sends 23:59:59 itself (spreads the magic value into every caller and still needs parsing)','Keep datetime params and special-case midnight (cannot distinguish an explicit midnight from a date-only value)','Per-router copies (fourth duplication source)']"
+    },
+    "ISS-258": {
+      "id": "ISS-258",
+      "type": "issue",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-01T11:16:11+00:00",
+      "updated_at": "2026-09-01T11:16:11+00:00",
+      "touched_round": 218,
+      "title": "Search 'clear filters' affordance appears for the default relevance sort",
+      "description": "Selecting the default 'Relevance' option in the search sort dropdown writes sort=relevance into the URL; activeFilters counted it, so hasActiveFilters lit up the one-click 'clear filters' pill even though nothing was actually narrowed (relevance is the backend default and searchParams already omitted it from the request). The clear button promised action where there was nothing to clear."
+    },
+    "CHG-303": {
+      "id": "CHG-303",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-01T11:16:11+00:00",
+      "updated_at": "2026-09-01T11:16:11+00:00",
+      "touched_round": 218,
+      "summary": "search.vue activeFilters now skips sort=relevance (the default), consistent with searchParams; non-default sorts still count; + unit test",
+      "commit": "PENDING"
+    },
+    "DEC-224": {
+      "id": "DEC-224",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-01T11:17:05+00:00",
+      "updated_at": "2026-09-01T11:17:05+00:00",
+      "touched_round": 218,
+      "title": "Default-value URL params are not active filters",
+      "rationale": "A sort=relevance in the URL is present because the user clicked the default select option, not because they narrowed anything — the backend would apply relevance anyway (and the API request already omits it). Treating the default as an active filter caused a phantom 'clear filters' button (and meant clearing 'preserved' a filter that wasn't narrowing). Skew consistency with searchParams in one place: activeFilters.",
+      "alternatives_rejected": "['Drop the clear-filters button entirely (loses the real affordance for category/date filters)','Normalize the URL on select-change to omit default sort (extra navigation churn on every default pick)']"
     }
   },
   "edges": [
@@ -21823,6 +21857,24 @@
       "to": "COMP-001",
       "type": "governs",
       "created_at": "2026-09-01T10:52:11+00:00"
+    },
+    {
+      "from": "ISS-258",
+      "to": "COMP-002",
+      "type": "located_in",
+      "created_at": "2026-09-01T11:17:04+00:00"
+    },
+    {
+      "from": "CHG-303",
+      "to": "ISS-258",
+      "type": "resolves",
+      "created_at": "2026-09-01T11:17:05+00:00"
+    },
+    {
+      "from": "DEC-224",
+      "to": "COMP-002",
+      "type": "governs",
+      "created_at": "2026-09-01T11:17:05+00:00"
     }
   ]
 }

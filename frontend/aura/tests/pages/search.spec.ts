@@ -297,6 +297,20 @@ describe("Search Page", () => {
 			expect(clearBtn).toBeDefined();
 		});
 
+		it("default relevance sort is not treated as an active filter", async () => {
+			// sort=relevance is what the API does by default; it is written to
+			// the URL when the select shows "Relevance", so it must not light
+			// up the clear-filters button or survive a clear.
+			const wrapper = await mountSearchPage({ routeQuery: { q: "test query", sort: "relevance" } });
+			let clearBtn = wrapper.findAll("button").find((b) => b.text().includes("清除筛选"));
+			expect(clearBtn).toBeUndefined();
+
+			// A non-default sort still counts as an active filter.
+			const sorted = await mountSearchPage({ routeQuery: { q: "test query", sort: "newest" } });
+			clearBtn = sorted.findAll("button").find((b) => b.text().includes("清除筛选"));
+			expect(clearBtn).toBeDefined();
+		});
+
 		it("clear-filters drops every narrowing filter but keeps the query", async () => {
 			const wrapper = await mountSearchPage({
 				routeQuery: { q: "test query", category: "Tech", sort: "newest" },
