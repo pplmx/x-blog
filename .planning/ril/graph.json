@@ -2,7 +2,7 @@
   "ril_version": 1,
   "round": 220,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-01T11:54:07+00:00",
+  "updated_at": "2026-09-01T11:54:58+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -15168,10 +15168,10 @@
     "ISS-260": {
       "id": "ISS-260",
       "type": "issue",
-      "status": "active",
-      "version": 1,
+      "status": "resolved",
+      "version": 2,
       "created_at": "2026-09-01T11:53:33+00:00",
-      "updated_at": "2026-09-01T11:53:33+00:00",
+      "updated_at": "2026-09-01T11:54:58+00:00",
       "touched_round": 220,
       "title": "Date-range filter inputs allow an inverted from > to range with no feedback",
       "description": "Search, admin-comments, and export-dashboard date pickers let the operator pick date_from after date_to (or the reverse) — the browser date input has no min/max cross-constraints, so an inverted range is accepted into the URL and silently returns an empty result set with no explanation. Same family as the date-only bounds fix (ISS-257): the picker should prevent the invalid range at the source."
@@ -15179,13 +15179,13 @@
     "CHG-305": {
       "id": "CHG-305",
       "type": "change",
-      "status": "active",
-      "version": 1,
+      "status": "resolved",
+      "version": 2,
       "created_at": "2026-09-01T11:53:33+00:00",
-      "updated_at": "2026-09-01T11:53:33+00:00",
+      "updated_at": "2026-09-01T11:54:58+00:00",
       "touched_round": 220,
       "summary": "Search/admin-comments/export date inputs now cross-constrain: date_from gets max=date_to, date_to gets min=date_from (undefined when the other bound is unset); + unit test for search",
-      "commit": "PENDING"
+      "commit": "561190c"
     },
     "DEC-226": {
       "id": "DEC-226",
