@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 225,
+  "round": 226,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-01T15:49:19+00:00",
+  "updated_at": "2026-09-01T16:06:27+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -11,7 +11,7 @@
       "version": 1,
       "created_at": "2026-08-06T13:23:41+00:00",
       "updated_at": "2026-08-06T13:23:41+00:00",
-      "touched_round": 222,
+      "touched_round": 226,
       "title": "backend-nova",
       "description": "FastAPI Python 3.14 backend at backend/nova; SQLAlchemy ORM; routers in app/routers, crud.py business logic, 656 lines"
     },
@@ -22,7 +22,7 @@
       "version": 1,
       "created_at": "2026-08-06T13:23:41+00:00",
       "updated_at": "2026-08-06T13:23:41+00:00",
-      "touched_round": 225,
+      "touched_round": 226,
       "title": "frontend-aura",
       "description": "Nuxt 4 Vue 3 TypeScript frontend at frontend/aura; composables; admin pages; e2e Playwright; biome lint"
     },
@@ -15371,6 +15371,66 @@
       "touched_round": 225,
       "rationale": "The backend already models 'published when' as publish_at ?? created_at (digest, is_publicly_visible) and serializes publish_at on the detail Post; the frontend dropped it, so scheduled posts were mis-dated on the page and in SEO/feed metadata. Fix: surface publish_at on the frontend types and route every outward-facing date through one crud.effective_publish_ts semantic consolidated from the digest's private copy.",
       "alternatives_rejected": "Leaving the inconsistency — reader page, preview page, JSON-LD, feed pubDate already disagreed, and crawlers/feed readers consume these; local frontend-only patch without a shared crud helper would leave RSS/Atom still using created_at and invite re-divergence."
+    },
+    "ISS-265": {
+      "id": "ISS-265",
+      "type": "issue",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-01T16:04:56+00:00",
+      "updated_at": "2026-09-01T16:04:56+00:00",
+      "touched_round": 226,
+      "title": "Feed/list/archive surfaces order & group scheduled posts by draft created_at, not publish time",
+      "severity": "low"
+    },
+    "HYP-017": {
+      "id": "HYP-017",
+      "type": "hypothesis",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-01T16:04:56+00:00",
+      "updated_at": "2026-09-01T16:04:56+00:00",
+      "touched_round": 226,
+      "title": "PostList schema omits publish_at and get_posts/get_archive/frontend cards key off created_at, so a scheduled post mis-sorts/mis-groups in every list surface",
+      "confidence": 0.85
+    },
+    "EV-221": {
+      "id": "EV-221",
+      "type": "evidence",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-01T16:04:56+00:00",
+      "updated_at": "2026-09-01T16:04:56+00:00",
+      "touched_round": 226,
+      "title": "get_posts orders by created_at (crud.py:120), get_archive groups by created_at (crud.py:137-141), PostList schema has no publish_at (schemas.py:267), PostCard/archive/search/series cards render created_at",
+      "source": "backend/nova/app/crud.py:120,137; backend/nova/app/schemas.py:267; frontend/aura/components/PostCard.vue:17",
+      "confidence": 1.0
+    },
+    "DEC-231": {
+      "id": "DEC-231",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-01T16:05:21+00:00",
+      "updated_at": "2026-09-01T16:05:21+00:00",
+      "touched_round": 226,
+      "rationale": "Scheduled posts already display/date correctly on the detail page, SEO, and feeds (ISS-264/DEC-230) via effective_publish_ts. The remaining inconsistency is list *ordering/grouping*: the feed sorts by created_at desc and the archive groups by created_at month while PostList omits publish_at. Changing ordering is a deliberate product/UX choice (feed recency semantics + cache-visible reorder + archive buckets), not a localized fix; it is recorded as ISS-265 for a separate scoped round rather than rolled into the ISS-264 date fix.",
+      "alternatives_rejected": "Silently reordering the public feed within the ISS-264 round — cache-visible behavior change beyond a date-label fix, and the archive-bucket migration deserves its own review."
+    },
+    "TASK-248": {
+      "id": "TASK-248",
+      "type": "task",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-01T16:05:55+00:00",
+      "updated_at": "2026-09-01T16:05:55+00:00",
+      "touched_round": 226,
+      "title": "Scope and deliver feed/list/archive ordering by effective publish time (publish_at ?? created_at), incl. PostList exposure",
+      "category": "core-feature",
+      "severity": "low",
+      "confidence": 0.85,
+      "effort": 1.5,
+      "unlock_factor": 1.0
     }
   },
   "edges": [
@@ -22254,6 +22314,36 @@
       "to": "TASK-247",
       "type": "governs",
       "created_at": "2026-09-01T15:49:19+00:00"
+    },
+    {
+      "from": "ISS-265",
+      "to": "COMP-002",
+      "type": "located_in",
+      "created_at": "2026-09-01T16:05:21+00:00"
+    },
+    {
+      "from": "ISS-265",
+      "to": "COMP-001",
+      "type": "located_in",
+      "created_at": "2026-09-01T16:05:21+00:00"
+    },
+    {
+      "from": "EV-221",
+      "to": "HYP-017",
+      "type": "validates",
+      "created_at": "2026-09-01T16:05:21+00:00"
+    },
+    {
+      "from": "TASK-248",
+      "to": "ISS-265",
+      "type": "addresses",
+      "created_at": "2026-09-01T16:06:26+00:00"
+    },
+    {
+      "from": "DEC-231",
+      "to": "TASK-248",
+      "type": "governs",
+      "created_at": "2026-09-01T16:06:27+00:00"
     }
   ]
 }
