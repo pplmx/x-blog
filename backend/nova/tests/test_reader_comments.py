@@ -64,7 +64,11 @@ class TestSignedInIdentity:
         assert data["nickname"] == "Riki"
         reader = data.get("reader")
         assert reader is not None
-        assert reader["id"] == 1
+        # Dialect-safe account id check: SQLite (re)uses id 1 after a rollback
+        # but PostgreSQL advances sequences even when the insert rolls back, so
+        # an absolute id assertion only holds for the first registration. The
+        # identity contract is the stamped display_name, not the id number.
+        assert isinstance(reader["id"], int) and reader["id"] > 0
         assert reader["display_name"] == "Riki"
         # The account email is PII and must never ride a public comment —
         # neither the forged client email nor the stored account email.
@@ -84,7 +88,10 @@ class TestSignedInIdentity:
         )
         assert resp.status_code == 201, resp.text
         assert resp.json()["reader"]["display_name"] == "Clara"
-        assert resp.json()["reader"]["id"] == 1
+        # See test_signed_in_comment_uses_account_display_name: no absolute id
+        # assertion — PG sequences advance on rolled-back inserts (SQLite reuses
+        # ids), so a later registration in the process has a nonzero id > 1.
+        assert isinstance(resp.json()["reader"]["id"], int) and resp.json()["reader"]["id"] > 0
         assert "impostor@example.com" not in resp.text
 
     def test_anonymous_comment_unaffected(self, client, db_session):

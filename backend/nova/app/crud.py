@@ -929,6 +929,20 @@ def _has_cjk(query: str) -> bool:
     )
 
 
+def _has_searchable_token(query: str) -> bool:
+    """True when the query contains at least one alphanumeric character.
+
+    ``plainto_tsquery('english', ...)`` tokenizes punctuation-only input (a
+    bare ``%``, ``_``, ``.``, ...) to an EMPTY tsquery, which matches nothing —
+    while the ILIKE substring path escapes and matches those literals (issue
+    #20). Treating such queries as tsvector on Postgres silently returns zero
+    hits for a query that finds literal matches on SQLite, so route them down
+    the same dialect-agnostic substring path for consistent cross-backend
+    results. (PG-harness finding, TASK-246)
+    """
+    return any(ch.isalnum() for ch in query)
+
+
 def search_posts(
     db: Session,
     query: str,
@@ -942,9 +956,11 @@ def search_posts(
 ) -> tuple[list[models.Post], int]:
     offset = (page - 1) * limit
     is_postgres = db.get_bind().dialect.name == "postgresql"
-    # CJK/mixed queries go through the dialect-agnostic ILIKE substring path on
-    # every backend; only pure-ASCII Postgres queries keep tsvector relevance.
-    use_tsvector = is_postgres and not _has_cjk(query)
+    # CJK/mixed queries (and punctuation-only queries that tsvector cannot
+    # tokenize into a non-empty tsquery) go through the dialect-agnostic ILIKE
+    # substring path on every backend; only pure-ASCII Postgres queries keep
+    # tsvector relevance. See _has_searchable_token.
+    use_tsvector = is_postgres and not _has_cjk(query) and _has_searchable_token(query)
 
     now = utc_now_naive()
     # Scheduled posts are not searchable before their publish_at (same rule as list)

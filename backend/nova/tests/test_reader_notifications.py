@@ -80,12 +80,16 @@ class TestListAndMarkRead:
         assert data["unread"] == 0
 
     def test_lists_newest_first_and_counts_unread(self, client, db_session):
-        token = _token(client, email="list@example.com")
+        # Use the registered reader's real id — PG does not give the first
+        # registration in a batch id 1 (sequences advance on rollback).
+        reg = _register(client, email="list@example.com")
+        token = reg.json()["access_token"]
+        rid = reg.json()["reader"]["id"]
         headers = _auth(token)
         from app import models
 
-        first = models.ReaderNotification(reader_id=1, kind="reply", title="t1", body="b1", url="/posts/x#c1")
-        second = models.ReaderNotification(reader_id=1, kind="new_post", title="t2", body="b2", url="/posts/y")
+        first = models.ReaderNotification(reader_id=rid, kind="reply", title="t1", body="b1", url="/posts/x#c1")
+        second = models.ReaderNotification(reader_id=rid, kind="new_post", title="t2", body="b2", url="/posts/y")
         db_session.add_all([first, second])
         db_session.commit()
 
@@ -107,15 +111,17 @@ class TestListAndMarkRead:
         assert again.json()["unread"] == 1
 
     def test_unread_filter(self, client, db_session):
-        token = _token(client, email="unread@example.com")
+        reg = _register(client, email="unread@example.com")
+        token = reg.json()["access_token"]
+        rid = reg.json()["reader"]["id"]
         headers = _auth(token)
         from datetime import datetime
 
         from app import models
 
-        db_session.add(models.ReaderNotification(reader_id=1, kind="reply", title="unread1"))
+        db_session.add(models.ReaderNotification(reader_id=rid, kind="reply", title="unread1"))
         db_session.add(
-            models.ReaderNotification(reader_id=1, kind="reply", title="read1", read_at=datetime(2026, 1, 1))
+            models.ReaderNotification(reader_id=rid, kind="reply", title="read1", read_at=datetime(2026, 1, 1))
         )
         db_session.commit()
 
@@ -126,12 +132,14 @@ class TestListAndMarkRead:
         assert data["unread"] == 1
 
     def test_read_all(self, client, db_session):
-        token = _token(client, email="all@example.com")
+        reg = _register(client, email="all@example.com")
+        token = reg.json()["access_token"]
+        rid = reg.json()["reader"]["id"]
         headers = _auth(token)
         from app import models
 
-        db_session.add(models.ReaderNotification(reader_id=1, kind="reply", title="a"))
-        db_session.add(models.ReaderNotification(reader_id=1, kind="reply", title="b"))
+        db_session.add(models.ReaderNotification(reader_id=rid, kind="reply", title="a"))
+        db_session.add(models.ReaderNotification(reader_id=rid, kind="reply", title="b"))
         db_session.commit()
 
         resp = client.post(f"{NOTIFS}/read-all", headers=headers)

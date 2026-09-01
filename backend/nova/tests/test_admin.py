@@ -115,7 +115,9 @@ class TestAdminPosts:
             },
         )
         assert response.status_code == 201
-        assert response.json()["id"] == 1
+        # No absolute id assert: PG sequences advance on rolled-back inserts, so
+        # the created post is not necessarily id 1 in a batched process.
+        assert isinstance(response.json()["id"], int) and response.json()["id"] > 0
 
     def test_get_post(self, client, auth_headers, db_session):
         post = models.Post(title="Test", slug="test", content="Content", published=True)

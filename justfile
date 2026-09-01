@@ -86,11 +86,15 @@ test-backend:
 test-backend-seq:
     cd backend/nova && uv run pytest
 
-# Run backend tests against a PostgreSQL database
+# Run backend tests against a PostgreSQL database (the real deployment dialect —
+# conftest gives each xdist worker its own schema on the shared server).
 # Set TEST_DATABASE_URL to your PostgreSQL connection string.
 # Example: TEST_DATABASE_URL=postgresql://user:pass@host:port/dbname just test-backend-postgres
-test-backend-postgres:
-    cd backend/nova && TEST_DATABASE_URL=$$DATABASE_URL uv run pytest -n auto
+# Workers default to 8 (not -n auto): auto spawns one per core and can exceed
+# the server's max_connections on many-core boxes, e.g. 128 workers × 8 pooled
+# connections vs a 100-connection PostgreSQL. Override: just test-backend-postgres 16
+test-backend-postgres WORKERS='8':
+    cd backend/nova && TEST_DATABASE_URL=$$DATABASE_URL uv run pytest -n {{WORKERS}}
 
 # Run frontend tests (alias for test-nuxt)
 test-frontend:

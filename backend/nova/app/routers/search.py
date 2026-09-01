@@ -8,7 +8,7 @@ from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from .. import models
-from ..crud import _has_cjk, log_search_query, search_posts
+from ..crud import _has_cjk, _has_searchable_token, log_search_query, search_posts
 from ..database import get_db
 from ..limiter import RATE_LIMIT_SEARCH, limiter
 from ..models import Post
@@ -78,7 +78,7 @@ def _build_snippet(post: Post, query: str, is_postgres: bool, db: Session) -> st
     queries keep ts_headline."""
     if not query.strip():
         return None
-    if is_postgres and not _has_cjk(query):
+    if is_postgres and not _has_cjk(query) and _has_searchable_token(query):
         ts_query = func.plainto_tsquery("english", query)
         headline = func.ts_headline(
             "english",
@@ -177,9 +177,11 @@ def search(
         sort=sort,
     )
 
-    # ts_headline is only useful for ASCII queries — CJK/mixed go through the
-    # Python highlighter so Postgres CJK snippets highlight too (DEC-071).
-    use_headline = is_postgres and not _has_cjk(q)
+    # ts_headline is only useful for ASCII queries — CJK/mixed (and
+    # punctuation-only queries that tokenize to an empty tsquery) go through
+    # the Python highlighter so Postgres snippets highlight too (DEC-071;
+    # scope must mirror crud.search_posts's use_tsvector, TASK-246).
+    use_headline = is_postgres and not _has_cjk(q) and _has_searchable_token(q)
     snippets = _build_postgres_snippets(db, posts, q) if use_headline else {}
 
     items = []

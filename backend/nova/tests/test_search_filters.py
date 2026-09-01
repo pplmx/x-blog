@@ -127,11 +127,12 @@ class TestSearchSort:
 
     def test_relevance_degrades_to_newest_without_tsvector(self, client, db_session):
         # SQLite has no tsvector, so "relevance" falls back to newest order.
+        # PostgreSQL ranks with ts_rank over the seeded content (py-async
+        # consistently outranks py-viz there), so assert per dialect.
         _seed_search_blog(db_session)
-        assert _slugs(client.get(BASE, params={"q": "python", "sort": "relevance"})) == [
-            "py-viz",
-            "py-async",
-        ]
+        is_pg = db_session.get_bind().dialect.name == "postgresql"
+        expected = ["py-async", "py-viz"] if is_pg else ["py-viz", "py-async"]
+        assert _slugs(client.get(BASE, params={"q": "python", "sort": "relevance"})) == expected
 
     def test_invalid_sort_rejected(self, client, db_session):
         resp = client.get(BASE, params={"q": "python", "sort": "bogus"})

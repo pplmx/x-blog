@@ -61,8 +61,11 @@ def test_like_post(client, db_session):
     )
     db_session.add(post)
     db_session.commit()
+    # Use the created post's real id — on PostgreSQL a batch run does not give
+    # the first committed row id 1 (sequences advance on rolled-back inserts).
+    post_id: int = post.id  # type: ignore[assignment]
 
-    response = client.post("/api/posts/1/like")
+    response = client.post(f"/api/posts/{post_id}/like")
     assert response.status_code == 200
     data = response.json()
     assert data["likes"] == 6

@@ -678,6 +678,23 @@ class TestSearchPosts:
         assert isinstance(posts, list)
         assert len(posts) <= 5
 
+    def test_has_searchable_token(self):
+        """Only queries tsvector can tokenize should take the tsvector path.
+
+        Postgres plainto_tsquery('english', ...) tokenizes punctuation-only
+        input to an empty tsquery matching nothing, while the ILIKE substring
+        path escapes and matches those literals — so punctuation-only queries
+        must stay on the substring path for consistent cross-backend results
+        (TASK-246, PG-harness finding).
+        """
+        from app.crud import _has_searchable_token
+
+        assert _has_searchable_token("python asyncio")
+        assert _has_searchable_token("c++ 40%")
+        assert not _has_searchable_token("%")
+        assert not _has_searchable_token("___ ..")
+        assert not _has_searchable_token("--")
+
     def test_search_posts_percent_wildcard_matches_literally(self, db_session):
         """A bare % must not match every post — it is escaped (issue #20)."""
         db_session.add_all(
