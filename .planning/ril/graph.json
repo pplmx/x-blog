@@ -2,7 +2,7 @@
   "ril_version": 1,
   "round": 218,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-01T10:52:11+00:00",
+  "updated_at": "2026-09-01T10:54:11+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -15042,10 +15042,10 @@
     "ISS-257": {
       "id": "ISS-257",
       "type": "issue",
-      "status": "active",
-      "version": 1,
+      "status": "resolved",
+      "version": 2,
       "created_at": "2026-09-01T10:51:23+00:00",
-      "updated_at": "2026-09-01T10:51:23+00:00",
+      "updated_at": "2026-09-01T10:54:11+00:00",
       "touched_round": 218,
       "title": "Date-only date_to filter silently excludes the entire picked day",
       "description": "<input type=date> submits YYYY-MM-DD; parsed as a datetime it becomes midnight, so created_at <= day-00:00 drops every post/comment/export row timestamped later that day. Affected /api/search, /api/admin/comments and both /api/export CSV routes — a reader/admin filtering 'up to Sep 1' got nothing from Sep 1 itself."
@@ -15053,10 +15053,10 @@
     "HYP-015": {
       "id": "HYP-015",
       "type": "hypothesis",
-      "status": "active",
-      "version": 1,
+      "status": "resolved",
+      "version": 2,
       "created_at": "2026-09-01T10:51:23+00:00",
-      "updated_at": "2026-09-01T10:51:23+00:00",
+      "updated_at": "2026-09-01T10:54:11+00:00",
       "touched_round": 218,
       "confidence": 1.0,
       "title": "Bare-date bound widens to midnight and excludes the day",
@@ -15077,13 +15077,13 @@
     "CHG-302": {
       "id": "CHG-302",
       "type": "change",
-      "status": "active",
-      "version": 1,
+      "status": "resolved",
+      "version": 2,
       "created_at": "2026-09-01T10:52:10+00:00",
-      "updated_at": "2026-09-01T10:52:10+00:00",
+      "updated_at": "2026-09-01T10:54:10+00:00",
       "touched_round": 218,
       "summary": "Shared app/dates.py: inclusive_end_of_day + parse_bound; /api/search, /api/admin/comments and both /api/export routes now accept raw date strings and widen bare-date date_to to end-of-day (422 preserved)",
-      "commit": "PENDING"
+      "commit": "6b4fb33"
     },
     "DEC-223": {
       "id": "DEC-223",
