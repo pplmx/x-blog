@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 214,
+  "round": 215,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-01T07:24:31+00:00",
+  "updated_at": "2026-09-01T07:30:34+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -33,7 +33,7 @@
       "version": 1,
       "created_at": "2026-08-06T13:23:41+00:00",
       "updated_at": "2026-08-06T13:23:41+00:00",
-      "touched_round": 183,
+      "touched_round": 214,
       "title": "ci-pipeline",
       "description": "GitHub Actions workflows test.yml and deploy.yml; 3-node docker compose for e2e"
     },
@@ -14886,6 +14886,53 @@
       "title": "PG-connection tests must never touch the target DB's public schema",
       "rationale": "test_postgres_schema_creation previously drop_all'ed the PUBLIC schema to prove schema management, which silently destroys every table of a shared/dev DB simply by pointing TEST_DATABASE_URL at it — a footgun round 211's harness made real. Schema-verification tests belong in a dedicated temp schema (search_path-isolated, listener registered before any connection so the pool carries it), exactly like the per-worker harness schemas.",
       "alternatives_rejected": "Skip the test when the db name is not a test db (brittle name sniffing); require an explicit DESTRUCTIVE_OK flag (forget-to-set = footgun remains armed)."
+    },
+    "ISS-254": {
+      "id": "ISS-254",
+      "type": "issue",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-01T07:30:01+00:00",
+      "updated_at": "2026-09-01T07:30:01+00:00",
+      "touched_round": 214,
+      "severity": "medium",
+      "title": "PG dialect-parity suite was runnable only manually — no CI gate",
+      "description": "Round 211 added TEST_DATABASE_URL support so the whole backend suite runs against real PostgreSQL, but nothing enforced it: a future PR could break PG-only branches (tsvector/ts_headline/advisory locks) or re-introduce SQLite-only assumptions (absolute autoincrement ids) and CI would stay green. Add a backend-test-postgres job to test.yml reusing the postgres:17-alpine service pattern from the e2e job, running pytest -n 8 (per-worker schemas; bounded workers stay under the service connection limit)."
+    },
+    "CHG-299": {
+      "id": "CHG-299",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-01T07:30:01+00:00",
+      "updated_at": "2026-09-01T07:30:01+00:00",
+      "touched_round": 214,
+      "commit": "72d141b",
+      "title": "CI job: full backend suite against PostgreSQL"
+    },
+    "EV-216": {
+      "id": "EV-216",
+      "type": "evidence",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-01T07:30:01+00:00",
+      "updated_at": "2026-09-01T07:30:01+00:00",
+      "touched_round": 214,
+      "source": "test.yml YAML parses; identical command passes on PG 18 scratch db (1259 passed)",
+      "title": "CI PG gate validated",
+      "confidence": 1.0
+    },
+    "DEC-220": {
+      "id": "DEC-220",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-01T07:30:01+00:00",
+      "updated_at": "2026-09-01T07:30:01+00:00",
+      "touched_round": 214,
+      "title": "PG dialect-parity suite is a required CI gate",
+      "rationale": "Production runs PostgreSQL; the SQLite-only gate let PG-only branches and dialect drift go undetected until round 211's harness. Enabling it in CI makes the deployment dialect a first-class check on every PR/push, mirroring the e2e job's postgres service. Bounded -n 8 with conftest per-worker schemas keeps the shared service DB safe and within connection limits.",
+      "alternatives_rejected": "Keep PG verification manual only (regressable); gate just the PG-connection smoke (does not exercise app ORM paths)."
     }
   },
   "edges": [
@@ -21535,6 +21582,24 @@
       "to": "COMP-001",
       "type": "governs",
       "created_at": "2026-09-01T07:24:30+00:00"
+    },
+    {
+      "from": "ISS-254",
+      "to": "COMP-003",
+      "type": "located_in",
+      "created_at": "2026-09-01T07:30:34+00:00"
+    },
+    {
+      "from": "CHG-299",
+      "to": "ISS-254",
+      "type": "resolves",
+      "created_at": "2026-09-01T07:30:34+00:00"
+    },
+    {
+      "from": "DEC-220",
+      "to": "COMP-003",
+      "type": "governs",
+      "created_at": "2026-09-01T07:30:34+00:00"
     }
   ]
 }
