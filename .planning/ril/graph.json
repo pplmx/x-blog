@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 211,
+  "round": 212,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-01T05:53:16+00:00",
+  "updated_at": "2026-09-01T07:05:59+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -22,7 +22,7 @@
       "version": 1,
       "created_at": "2026-08-06T13:23:41+00:00",
       "updated_at": "2026-08-06T13:23:41+00:00",
-      "touched_round": 208,
+      "touched_round": 211,
       "title": "frontend-aura",
       "description": "Nuxt 4 Vue 3 TypeScript frontend at frontend/aura; composables; admin pages; e2e Playwright; biome lint"
     },
@@ -14757,6 +14757,53 @@
       "title": "PG-parity backend test harness is now the default way to verify the deployment dialect",
       "rationale": "Production DB is PostgreSQL yet the whole suite only ran on SQLite (per-worker files), so PG-only branches (tsvector, ts_headline, pg advisory locks) and dialect drift were never exercised; the documented just test-backend-postgres target silently did nothing because conftest ignored TEST_DATABASE_URL. Adding TEST_DATABASE_URL support (per-worker schema + UTC pin + bounded pool) immediately surfaced a real search inconsistency (punctuation-only queries match nothing on PG) plus several SQLite-only test assumptions. Harness verified green on both dialects.",
       "alternatives_rejected": "Skip PG verification (drift stays invisible); keep a separate thin PG smoke module (already exists, test_postgres_connection.py, but never exercises the app's ORM paths)."
+    },
+    "ISS-251": {
+      "id": "ISS-251",
+      "type": "issue",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-01T07:05:12+00:00",
+      "updated_at": "2026-09-01T07:05:12+00:00",
+      "touched_round": 211,
+      "severity": "medium",
+      "title": "No friendly feedback when the API rate-limits a request (HTTP 429)",
+      "description": "slowapi 429s carry a technical detail string; pages surfaced it as raw text or a generic network error with no 'slow down' cue. Since router-level limits (comment/register/login/search/write) are a normal part of use, a localized app-wide notice is real usability. Fixed via a 429 detector on the transport seam (command .catch + query onResponseError) driving a module-level useRateLimitNotice singleton rendered by the RateLimitNotice banner in both layouts (ISS-133-adjacent UX polish)."
+    },
+    "CHG-296": {
+      "id": "CHG-296",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-01T07:05:12+00:00",
+      "updated_at": "2026-09-01T07:05:12+00:00",
+      "touched_round": 211,
+      "commit": "a88dcc1",
+      "title": "App-wide 429 rate-limit notice"
+    },
+    "EV-214": {
+      "id": "EV-214",
+      "type": "evidence",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-01T07:05:12+00:00",
+      "updated_at": "2026-09-01T07:05:12+00:00",
+      "touched_round": 211,
+      "source": "frontend suite 1349 passed; biome lint + vue-tsc typecheck clean",
+      "title": "Frontend full VERIFY green after 429 notice",
+      "confidence": 1.0
+    },
+    "DEC-217": {
+      "id": "DEC-217",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-01T07:05:12+00:00",
+      "updated_at": "2026-09-01T07:05:12+00:00",
+      "touched_round": 211,
+      "title": "Global 429 notice rides the transport seam, not per-page toasts",
+      "rationale": "Every API call funnels through api/transport.ts query/command; hooking 429 detection there (command .catch keeps options byte-identical; query merges onResponseError) covers every rate-limited action with one banner instead of per-page handling. A module-level singleton dedupes bursts into a single auto-dismissing notice; text is translated in component context where useLang is safe.",
+      "alternatives_rejected": "Per-page toasts (N touch points, inconsistent); a raw slowapi message passthrough (technical, unhelpful); a full toast framework (scope creep)."
     }
   },
   "edges": [
@@ -21352,6 +21399,24 @@
       "to": "TASK-245",
       "type": "implements",
       "created_at": "2026-09-01T05:52:28+00:00"
+    },
+    {
+      "from": "ISS-251",
+      "to": "COMP-002",
+      "type": "located_in",
+      "created_at": "2026-09-01T07:05:58+00:00"
+    },
+    {
+      "from": "CHG-296",
+      "to": "ISS-251",
+      "type": "resolves",
+      "created_at": "2026-09-01T07:05:58+00:00"
+    },
+    {
+      "from": "DEC-217",
+      "to": "COMP-002",
+      "type": "governs",
+      "created_at": "2026-09-01T07:05:58+00:00"
     }
   ]
 }
