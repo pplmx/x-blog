@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 210,
+  "round": 211,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-01T02:30:04+00:00",
+  "updated_at": "2026-09-01T05:53:16+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -11,7 +11,7 @@
       "version": 1,
       "created_at": "2026-08-06T13:23:41+00:00",
       "updated_at": "2026-08-06T13:23:41+00:00",
-      "touched_round": 206,
+      "touched_round": 210,
       "title": "backend-nova",
       "description": "FastAPI Python 3.14 backend at backend/nova; SQLAlchemy ORM; routers in app/routers, crud.py business logic, 656 lines"
     },
@@ -14684,6 +14684,79 @@
       "source": "round-210 full-repo VERIFY",
       "summary": "Frontend: 1340 vitest passed (101 files), nuxt typecheck exit 0, biome 0 findings; Backend: 1248 passed / 10 skipped @93.40% (python -m pytest --cov=app). Compiled after ISS-222 + gate-restore commits.",
       "confidence": 1.0
+    },
+    "TASK-245": {
+      "id": "TASK-245",
+      "type": "task",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-01T05:11:37+00:00",
+      "updated_at": "2026-09-01T05:52:28+00:00",
+      "touched_round": 210,
+      "category": "test-quality",
+      "severity": "medium",
+      "title": "Run the backend test suite against real PostgreSQL (dialect-parity harness)",
+      "description": "Production DB is PostgreSQL but the whole 1248-test suite only ran on SQLite. conftest's test_engine hardcoded per-worker SQLite files, so just test-backend-postgres (TEST_DATABASE_URL) silently did nothing and the PG-only branches (tsvector @@ search, ts_headline snippets, pg advisory digest locks, String(N)/unique/naive-UTC semantics) were never exercised. Add TEST_DATABASE_URL support to conftest (per-worker schema isolation + UTC pin) and fix whatever breaks on the deployment dialect."
+    },
+    "TASK-246": {
+      "id": "TASK-246",
+      "type": "task",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-01T05:12:05+00:00",
+      "updated_at": "2026-09-01T05:50:10+00:00",
+      "touched_round": 210,
+      "category": "test-quality",
+      "severity": 0.6,
+      "title": "Run the backend test suite against real PostgreSQL (dialect-parity harness)",
+      "description": "Production DB is PostgreSQL but the whole 1248-test suite only ran on SQLite. conftest's test_engine hardcoded per-worker SQLite files, so just test-backend-postgres (TEST_DATABASE_URL) silently did nothing and the PG-only branches (tsvector @@ search, ts_headline snippets, pg advisory digest locks, String(N)/unique/naive-UTC semantics) were never exercised. Add TEST_DATABASE_URL support to conftest (per-worker schema isolation + UTC pin) and fix whatever breaks on the deployment dialect."
+    },
+    "ISS-250": {
+      "id": "ISS-250",
+      "type": "issue",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-01T05:48:50+00:00",
+      "updated_at": "2026-09-01T05:48:50+00:00",
+      "touched_round": 210,
+      "severity": "high",
+      "title": "Punctuation-only search queries match nothing on PostgreSQL",
+      "description": "crud.search_posts routed any pure-ASCII non-CJK query to the tsvector path on PG; plainto_tsquery('english','%')/'_' tokenizes to an EMPTY tsquery which matches nothing, while SQLite's ILIKE substring path escapes and matches the literal. Same query, different results per backend — caught by the new PG-parity test harness (TASK-246). Fixed with a _has_searchable_token guard routing non-tokenizable queries to the literal substring path (and mirroring in routers/search.py headline logic)."
+    },
+    "CHG-295": {
+      "id": "CHG-295",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-01T05:48:50+00:00",
+      "updated_at": "2026-09-01T05:48:50+00:00",
+      "touched_round": 210,
+      "commit": "06d50d2",
+      "title": "PG-parity test harness + search wildcard fix"
+    },
+    "EV-213": {
+      "id": "EV-213",
+      "type": "evidence",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-01T05:48:50+00:00",
+      "updated_at": "2026-09-01T05:48:50+00:00",
+      "touched_round": 210,
+      "source": "full PG suite: 1258 passed / SQLite regression: 1248 passed @ 93.39-93.89%",
+      "title": "Backend suite green on both SQLite and PostgreSQL after harness + fixes",
+      "confidence": 1.0
+    },
+    "DEC-216": {
+      "id": "DEC-216",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-01T05:48:50+00:00",
+      "updated_at": "2026-09-01T05:48:50+00:00",
+      "touched_round": 210,
+      "title": "PG-parity backend test harness is now the default way to verify the deployment dialect",
+      "rationale": "Production DB is PostgreSQL yet the whole suite only ran on SQLite (per-worker files), so PG-only branches (tsvector, ts_headline, pg advisory locks) and dialect drift were never exercised; the documented just test-backend-postgres target silently did nothing because conftest ignored TEST_DATABASE_URL. Adding TEST_DATABASE_URL support (per-worker schema + UTC pin + bounded pool) immediately surfaced a real search inconsistency (punctuation-only queries match nothing on PG) plus several SQLite-only test assumptions. Harness verified green on both dialects.",
+      "alternatives_rejected": "Skip PG verification (drift stays invisible); keep a separate thin PG smoke module (already exists, test_postgres_connection.py, but never exercises the app's ORM paths)."
     }
   },
   "edges": [
@@ -21243,6 +21316,42 @@
       "to": "ISS-222",
       "type": "resolves",
       "created_at": "2026-09-01T02:17:58+00:00"
+    },
+    {
+      "from": "ISS-250",
+      "to": "COMP-001",
+      "type": "located_in",
+      "created_at": "2026-09-01T05:50:09+00:00"
+    },
+    {
+      "from": "TASK-246",
+      "to": "ISS-250",
+      "type": "addresses",
+      "created_at": "2026-09-01T05:50:09+00:00"
+    },
+    {
+      "from": "CHG-295",
+      "to": "ISS-250",
+      "type": "resolves",
+      "created_at": "2026-09-01T05:50:09+00:00"
+    },
+    {
+      "from": "CHG-295",
+      "to": "TASK-246",
+      "type": "implements",
+      "created_at": "2026-09-01T05:50:09+00:00"
+    },
+    {
+      "from": "DEC-216",
+      "to": "COMP-001",
+      "type": "governs",
+      "created_at": "2026-09-01T05:50:10+00:00"
+    },
+    {
+      "from": "CHG-295",
+      "to": "TASK-245",
+      "type": "implements",
+      "created_at": "2026-09-01T05:52:28+00:00"
     }
   ]
 }
