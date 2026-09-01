@@ -158,14 +158,27 @@ def parse_fields(pairs: list[str]) -> dict:
     return fields
 
 
+SEVERITY_LEVELS = {"low": 0.3, "medium": 0.5, "high": 0.7, "critical": 0.9}
+
+
+def _as_float(value, default: float) -> float:
+    """Tolerate numeric strings and categorical levels for scoring fields."""
+    if isinstance(value, str) and value.lower() in SEVERITY_LEVELS:
+        return SEVERITY_LEVELS[value.lower()]
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return default
+
+
 def priority_score(task: dict) -> float:
     weight = CATEGORY_WEIGHTS.get(task.get("category", ""), 1)
     if "category_weight" in task:
         weight = float(task["category_weight"])
-    severity = float(task.get("severity", 0.5))
-    confidence = float(task.get("confidence", 0.5))
-    effort = max(float(task.get("effort", 1.0)), 0.1)
-    unlock = float(task.get("unlock_factor", 1.0))
+    severity = _as_float(task.get("severity"), 0.5)
+    confidence = _as_float(task.get("confidence"), 0.5)
+    effort = max(_as_float(task.get("effort"), 1.0), 0.1)
+    unlock = _as_float(task.get("unlock_factor"), 1.0)
     return round(weight * severity * confidence * (1.0 / (effort**0.5)) * unlock, 3)
 
 

@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 216,
+  "round": 217,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-01T08:35:42+00:00",
+  "updated_at": "2026-09-01T09:56:08+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -11,7 +11,7 @@
       "version": 1,
       "created_at": "2026-08-06T13:23:41+00:00",
       "updated_at": "2026-08-06T13:23:41+00:00",
-      "touched_round": 213,
+      "touched_round": 217,
       "title": "backend-nova",
       "description": "FastAPI Python 3.14 backend at backend/nova; SQLAlchemy ORM; routers in app/routers, crud.py business logic, 656 lines"
     },
@@ -416,7 +416,7 @@
       "version": 2,
       "created_at": "2026-08-09T13:23:55+00:00",
       "updated_at": "2026-08-10T05:08:10+00:00",
-      "touched_round": 6,
+      "touched_round": 217,
       "confidence": 0.95,
       "title": "Admin post update cannot clear cover_image to null",
       "description": "app/routers/admin.py admin_update_post only assigns cover_image when value is not None, so an explicit null in the request is silently ignored; the public crud.update_post path handles null via model_dump(exclude_unset=True). Inconsistent."
@@ -14163,12 +14163,12 @@
       "id": "TASK-240",
       "type": "task",
       "status": "resolved",
-      "version": 2,
+      "version": 3,
       "created_at": "2026-08-31T12:02:26+00:00",
-      "updated_at": "2026-08-31T12:06:50+00:00",
-      "touched_round": 205,
+      "updated_at": "2026-09-01T09:51:03+00:00",
+      "touched_round": 217,
       "category": "correctness",
-      "severity": "low",
+      "severity": 0.3,
       "title": "Tag-follow failure bubble must not occlude the chip in the row above",
       "description": "ISS-230: in the wrapping flex-wrap tags footer on the posts slug page, the transient 2.6s error bubble was anchored above the chip (absolute bottom-full), painting over the chip in the row above. Fix: anchor below (top-full) into the whitespace under the footer, pointer-events-none, regression test."
     },
@@ -14689,12 +14689,12 @@
       "id": "TASK-245",
       "type": "task",
       "status": "resolved",
-      "version": 2,
+      "version": 3,
       "created_at": "2026-09-01T05:11:37+00:00",
-      "updated_at": "2026-09-01T05:52:28+00:00",
-      "touched_round": 210,
+      "updated_at": "2026-09-01T09:51:04+00:00",
+      "touched_round": 217,
       "category": "test-quality",
-      "severity": "medium",
+      "severity": 0.5,
       "title": "Run the backend test suite against real PostgreSQL (dialect-parity harness)",
       "description": "Production DB is PostgreSQL but the whole 1248-test suite only ran on SQLite. conftest's test_engine hardcoded per-worker SQLite files, so just test-backend-postgres (TEST_DATABASE_URL) silently did nothing and the PG-only branches (tsvector @@ search, ts_headline snippets, pg advisory digest locks, String(N)/unique/naive-UTC semantics) were never exercised. Add TEST_DATABASE_URL support to conftest (per-worker schema isolation + UTC pin) and fix whatever breaks on the deployment dialect."
     },
@@ -14714,11 +14714,11 @@
     "ISS-250": {
       "id": "ISS-250",
       "type": "issue",
-      "status": "active",
-      "version": 1,
+      "status": "resolved",
+      "version": 2,
       "created_at": "2026-09-01T05:48:50+00:00",
-      "updated_at": "2026-09-01T05:48:50+00:00",
-      "touched_round": 210,
+      "updated_at": "2026-09-01T09:56:08+00:00",
+      "touched_round": 217,
       "severity": "high",
       "title": "Punctuation-only search queries match nothing on PostgreSQL",
       "description": "crud.search_posts routed any pure-ASCII non-CJK query to the tsvector path on PG; plainto_tsquery('english','%')/'_' tokenizes to an EMPTY tsquery which matches nothing, while SQLite's ILIKE substring path escapes and matches the literal. Same query, different results per backend — caught by the new PG-parity test harness (TASK-246). Fixed with a _has_searchable_token guard routing non-tokenizable queries to the literal substring path (and mirroring in routers/search.py headline logic)."
@@ -14761,11 +14761,11 @@
     "ISS-251": {
       "id": "ISS-251",
       "type": "issue",
-      "status": "active",
-      "version": 1,
+      "status": "resolved",
+      "version": 2,
       "created_at": "2026-09-01T07:05:12+00:00",
-      "updated_at": "2026-09-01T07:05:12+00:00",
-      "touched_round": 211,
+      "updated_at": "2026-09-01T09:55:17+00:00",
+      "touched_round": 217,
       "severity": "medium",
       "title": "No friendly feedback when the API rate-limits a request (HTTP 429)",
       "description": "slowapi 429s carry a technical detail string; pages surfaced it as raw text or a generic network error with no 'slow down' cue. Since router-level limits (comment/register/login/search/write) are a normal part of use, a localized app-wide notice is real usability. Fixed via a 429 detector on the transport seam (command .catch + query onResponseError) driving a module-level useRateLimitNotice singleton rendered by the RateLimitNotice banner in both layouts (ISS-133-adjacent UX polish)."
@@ -14843,11 +14843,11 @@
     "ISS-253": {
       "id": "ISS-253",
       "type": "issue",
-      "status": "active",
-      "version": 1,
+      "status": "resolved",
+      "version": 2,
       "created_at": "2026-09-01T07:23:52+00:00",
-      "updated_at": "2026-09-01T07:23:52+00:00",
-      "touched_round": 213,
+      "updated_at": "2026-09-01T09:55:17+00:00",
+      "touched_round": 217,
       "severity": "high",
       "title": "test_postgres_schema_creation drops all PUBLIC-schema tables of the target PG DB",
       "description": "It ran Base.metadata.drop_all()+create_all() on the PUBLIC schema of whichever db TEST_DATABASE_URL points at. Intra-test this 'verified schema creation' but destroyed every table of a shared/dev database if the suite is pointed at it. Harmless before round 211 (conftest ignored TEST_DATABASE_URL, so the whole module was skipped), but round 211 made the target runnable and the justfile documents .../postgres as the default — a real data-loss footgun. Rewritten to create/inspect inside a dedicated temp schema (search_path, listener registered before the first connection) and drop only that schema."
@@ -14890,11 +14890,11 @@
     "ISS-254": {
       "id": "ISS-254",
       "type": "issue",
-      "status": "active",
-      "version": 1,
+      "status": "resolved",
+      "version": 2,
       "created_at": "2026-09-01T07:30:01+00:00",
-      "updated_at": "2026-09-01T07:30:01+00:00",
-      "touched_round": 214,
+      "updated_at": "2026-09-01T09:55:17+00:00",
+      "touched_round": 217,
       "severity": "medium",
       "title": "PG dialect-parity suite was runnable only manually — no CI gate",
       "description": "Round 211 added TEST_DATABASE_URL support so the whole backend suite runs against real PostgreSQL, but nothing enforced it: a future PR could break PG-only branches (tsvector/ts_headline/advisory locks) or re-introduce SQLite-only assumptions (absolute autoincrement ids) and CI would stay green. Add a backend-test-postgres job to test.yml reusing the postgres:17-alpine service pattern from the e2e job, running pytest -n 8 (per-worker schemas; bounded workers stay under the service connection limit)."
@@ -14937,11 +14937,11 @@
     "ISS-255": {
       "id": "ISS-255",
       "type": "issue",
-      "status": "active",
-      "version": 1,
+      "status": "resolved",
+      "version": 2,
       "created_at": "2026-09-01T08:35:01+00:00",
-      "updated_at": "2026-09-01T08:35:01+00:00",
-      "touched_round": 215,
+      "updated_at": "2026-09-01T09:55:17+00:00",
+      "touched_round": 217,
       "severity": "medium",
       "title": "App-wide rate-limit banner claimed role=status, colliding with other live regions in strict-mode locators",
       "description": "Round-212 banner used role=status; when a 429 fired mid-e2e, locator('[role=\"status\"]') (e.g. the post page resume chip) resolved to 2 elements → strict-mode violation on resume-reading.spec. Removed the generic role, kept aria-live='polite' (polite live region still announced). Note: the 3 red specs (resume-reading/admin-post-preview/my-comments-filter) also reproduce on pristine HEAD — pre-existing load-timing flakes in this sandbox, not regressions."
@@ -14980,6 +14980,64 @@
       "title": "App-wide live-region UI must not claim generic ARIA roles",
       "rationale": "A transient app-wide banner occupying role=status makes any strict-mode getByRole('status') locator ambiguous whenever the banner is live. Volume live regions should announce via aria-live without absorbing a generic role the page already uses.",
       "alternatives_rejected": "Keep role=status and fix the consuming test (fragile — other tests may target the role later); drop the live region entirely (loses a11y announcement)."
+    },
+    "ISS-256": {
+      "id": "ISS-256",
+      "type": "issue",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-01T09:52:04+00:00",
+      "updated_at": "2026-09-01T09:52:04+00:00",
+      "touched_round": 217,
+      "title": "ril.py tasks crashes on categorical severity values",
+      "description": "TASK-240 (severity=low) and TASK-245 (severity=medium) stored categorical strings; priority_score() does float('low') → ValueError → ril.py tasks exits with traceback, blocking the whole EVALUATE loop"
+    },
+    "EV-218": {
+      "id": "EV-218",
+      "type": "evidence",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-01T09:52:05+00:00",
+      "updated_at": "2026-09-01T09:52:05+00:00",
+      "touched_round": 217,
+      "source": "ril.py cmd_tasks crash, round 217",
+      "summary": "ril.py tasks --top 15 raised ValueError: could not convert string to float: 'low'; reproduced with all tasks sorted including resolved ones",
+      "confidence": 1.0
+    },
+    "CHG-301": {
+      "id": "CHG-301",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-01T09:52:16+00:00",
+      "updated_at": "2026-09-01T09:52:16+00:00",
+      "touched_round": 217,
+      "summary": "Normalize TASK-240/TASK-245 severity to numeric; harden priority_score to map categorical levels and default on parse failure",
+      "commit": "PENDING"
+    },
+    "DEC-222": {
+      "id": "DEC-222",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-01T09:52:16+00:00",
+      "updated_at": "2026-09-01T09:52:16+00:00",
+      "touched_round": 217,
+      "title": "Severity normalization is data hygiene + tool-hardening, not schema change",
+      "rationale": "Two resolved tasks carried categorical severity; priority_score float() cast crashed the CLI on every tasks listing. Normalized data to the 0-1 numeric scale used elsewhere (low=0.3, medium=0.5) and made _as_float() tolerant so a future string severity no longer takes down EVALUATE.",
+      "alternatives_rejected": "['Left data as-is and only fixed the CLI (still leaves corrupt data in the graph)','Migrated the whole severity field to a categorical enum (schema churn, breaks 200+ numeric task nodes)']"
+    },
+    "HYP-014": {
+      "id": "HYP-014",
+      "type": "hypothesis",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-01T09:53:11+00:00",
+      "updated_at": "2026-09-01T09:53:11+00:00",
+      "touched_round": 217,
+      "confidence": 1.0,
+      "title": "priority_score float() cast on categorical severity is the crash cause",
+      "description": "Two resolved task nodes stored severity as 'low'/'medium'; priority_score() calls float(severity) unconditionally, so any tasks listing (including resolved rows being sorted) raises ValueError. Root cause confirmed by direct repro before/after the fix."
     }
   },
   "edges": [
@@ -21665,6 +21723,24 @@
       "to": "COMP-002",
       "type": "governs",
       "created_at": "2026-09-01T08:35:42+00:00"
+    },
+    {
+      "from": "ISS-256",
+      "to": "COMP-001",
+      "type": "located_in",
+      "created_at": "2026-09-01T09:52:42+00:00"
+    },
+    {
+      "from": "EV-218",
+      "to": "HYP-014",
+      "type": "validates",
+      "created_at": "2026-09-01T09:53:46+00:00"
+    },
+    {
+      "from": "CHG-301",
+      "to": "ISS-256",
+      "type": "resolves",
+      "created_at": "2026-09-01T09:53:46+00:00"
     }
   ]
 }
