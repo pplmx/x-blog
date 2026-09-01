@@ -311,6 +311,23 @@ describe("Search Page", () => {
 			expect(clearBtn).toBeDefined();
 		});
 
+		it("cross-constrains the date range so from never exceeds to", async () => {
+			// With only a date_to set, date_from is clamped above by it; with a
+			// date_from set, date_to is clamped below. Prevents a silently empty
+			// inverted range at the picker instead of after the query.
+			const wrapper = await mountSearchPage({
+				routeQuery: { q: "test query", date_to: "2026-08-31" },
+			});
+			const [fromInput, toInput] = wrapper.findAll('input[type="date"]');
+			expect(fromInput.attributes("max")).toBe("2026-08-31");
+
+			const other = await mountSearchPage({
+				routeQuery: { q: "test query", date_from: "2026-01-01" },
+			});
+			const [otherFrom, otherTo] = other.findAll('input[type="date"]');
+			expect(otherTo.attributes("min")).toBe("2026-01-01");
+		});
+
 		it("clear-filters drops every narrowing filter but keeps the query", async () => {
 			const wrapper = await mountSearchPage({
 				routeQuery: { q: "test query", category: "Tech", sort: "newest" },

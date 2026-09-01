@@ -414,6 +414,7 @@ async function submitReply(id: number) {
         <input
           v-model="dateFrom"
           type="date"
+          :max="dateTo || undefined"
           class="px-3 py-1.5 text-sm border border-gray-200 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
         >
       </div>
@@ -424,6 +425,7 @@ async function submitReply(id: number) {
         <input
           v-model="dateTo"
           type="date"
+          :min="dateFrom || undefined"
           class="px-3 py-1.5 text-sm border border-gray-200 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
         >
       </div>
