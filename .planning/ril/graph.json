@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 220,
+  "round": 221,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-01T11:54:58+00:00",
+  "updated_at": "2026-09-01T12:49:39+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -22,7 +22,7 @@
       "version": 1,
       "created_at": "2026-08-06T13:23:41+00:00",
       "updated_at": "2026-08-06T13:23:41+00:00",
-      "touched_round": 220,
+      "touched_round": 221,
       "title": "frontend-aura",
       "description": "Nuxt 4 Vue 3 TypeScript frontend at frontend/aura; composables; admin pages; e2e Playwright; biome lint"
     },
@@ -15198,6 +15198,40 @@
       "title": "Date-range pickers must prevent inverted ranges at the source",
       "rationale": "The three date-range filter surfaces (search, admin comments, export dashboard) all pair <input type=date> controls with no cross-constraints; a reader/operator can pick from > to and gets a silent empty result (the backend ANDs the bounds, correctly returning nothing). Binding min/max between the two pickers (undefined while the peer is unset) prevents the invalid range before it becomes a URL, the same source-level fix family as ISS-257. Native date inputs enforce min/max in the picker, so no custom validation loop is needed.",
       "alternatives_rejected": "['Show an inline validation message when from > to (reactive comparison + i18n text + tests; heavier than preventing it, and still lets the operator submit a confusing URL)','Clamp/swap the bounds on submit (silently rewriting the operator intent is more surprising than preventing it)']"
+    },
+    "ISS-261": {
+      "id": "ISS-261",
+      "type": "issue",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-01T12:49:01+00:00",
+      "updated_at": "2026-09-01T12:49:01+00:00",
+      "touched_round": 221,
+      "title": "Duplicate headings emit duplicate id anchors; later TOC links scroll to the first section",
+      "description": "Both the marked heading renderer and useToc.extractToc slugify heading text with no dedup, so a post with repeated heading text (e.g. two '## 前言' or '## 总结' sections) renders duplicate id= attributes (invalid HTML) and a TOC whose later entries all point at the FIRST occurrence — dead/broken in-page navigation for a real, common long-form pattern."
+    },
+    "CHG-306": {
+      "id": "CHG-306",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-01T12:49:01+00:00",
+      "updated_at": "2026-09-01T12:49:01+00:00",
+      "touched_round": 221,
+      "summary": "Shared uniqueHeadingId()/beginHeadingIds() in useToc.ts apply GitHub-style -1/-2 disambiguation in document order; marked headingRenderer and extractToc both use it; commentMarkdownToHtml/convertMarkdownToHtml reset the per-document counter",
+      "commit": "PENDING"
+    },
+    "DEC-227": {
+      "id": "DEC-227",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-01T12:49:39+00:00",
+      "updated_at": "2026-09-01T12:49:39+00:00",
+      "touched_round": 221,
+      "title": "Heading ids dedup GitHub-style in one shared counter (renderer and extractor must agree)",
+      "rationale": "The id the marked renderer writes into the HTML must equal the id extractToc derives, or the TOC anchor points at the wrong/duplicate heading. Centralizing document-order dedup in uniqueHeadingId() with per-conversion resets keeps both sides in lockstep; -1/-2 suffixes match the familiar GitHub anchor convention and preserve links for the common (first) occurrence.",
+      "alternatives_rejected": "['Dedup only in extractToc (rendered HTML ids would still collide — anchors broken)','Append a random/session suffix to every heading id (unstable, breaks shared anchor links)','Drop the id for repeats (second heading gets no anchor at all — worse)']"
     }
   },
   "edges": [
@@ -21979,6 +22013,24 @@
       "to": "COMP-002",
       "type": "governs",
       "created_at": "2026-09-01T11:54:07+00:00"
+    },
+    {
+      "from": "ISS-261",
+      "to": "COMP-002",
+      "type": "located_in",
+      "created_at": "2026-09-01T12:49:39+00:00"
+    },
+    {
+      "from": "CHG-306",
+      "to": "ISS-261",
+      "type": "resolves",
+      "created_at": "2026-09-01T12:49:39+00:00"
+    },
+    {
+      "from": "DEC-227",
+      "to": "COMP-002",
+      "type": "governs",
+      "created_at": "2026-09-01T12:49:39+00:00"
     }
   ]
 }

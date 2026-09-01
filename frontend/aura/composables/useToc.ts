@@ -45,6 +45,33 @@ export function slugify(text: string): string {
 	);
 }
 
+// Per-document running count so repeated heading text gets GitHub-style -1/-2
+// suffixes instead of duplicate id="" anchors (invalid HTML, and every later
+// TOC entry would scroll to the FIRST occurrence). Shared with useMarkdown.ts
+// so the id the renderer writes into the HTML and the id extractToc derives
+// stay in lockstep.
+const seenHeadingIds = new Map<string, number>();
+
+/** Reset the duplicate-heading counter at the start of a document. */
+export function beginHeadingIds(): void {
+	seenHeadingIds.clear();
+}
+
+/**
+ * Unique per-document heading id for raw heading text.
+ *
+ * First occurrence of a slug keeps its bare form; repeats get ``-1``, ``-2``,
+ * ... in document order (GitHub behavior). A purely-symbol heading that
+ * slugifies to "" is left empty (as before) and never collides.
+ */
+export function uniqueHeadingId(text: string): string {
+	const base = slugify(text);
+	if (!base) return base;
+	const used = seenHeadingIds.get(base) ?? 0;
+	seenHeadingIds.set(base, used + 1);
+	return used === 0 ? base : `${base}-${used}`;
+}
+
 /**
  * Extract TOC items from HTML content.
  * Returns an array of { id, level, text } for each heading found.
@@ -55,6 +82,9 @@ export function extractToc(html: string): TocItem[] {
 	// Use a simple regex to find all heading tags. Using String.replace
 	// with a callback avoids both manual RegExp.exec loop state and the
 	// esbuild 0.28.1 transpilation bug with exec+while patterns.
+	// duplicate(-1/-2) suffixing is per-document: reset before walking so a
+	// fresh page never inherits counters from the previous post.
+	beginHeadingIds();
 	const toc: TocItem[] = [];
 
 	html.replace(
@@ -65,7 +95,7 @@ export function extractToc(html: string): TocItem[] {
 			const text = rawText.replace(/<[^>]+>/g, "").trim();
 
 			if (text) {
-				const id = slugify(text);
+				const id = uniqueHeadingId(text);
 				toc.push({ id, level, text });
 			}
 			return _fullMatch;

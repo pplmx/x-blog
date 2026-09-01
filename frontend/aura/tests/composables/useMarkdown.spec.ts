@@ -317,6 +317,26 @@ describe("heading ids for TOC anchors", () => {
 		const toc = extractToc(`<h2>我的 文章</h2>`);
 		expect(htmlSeg?.html).toContain(`id="${toc[0].id}"`);
 	});
+
+	it("duplicate headings get -1/-2 ids in both the HTML and the TOC", () => {
+		// The anchor coordination invariant: the id the renderer writes into
+		// the HTML for a repeated heading must equal the id extractToc derives
+		// for the same document position, or the second TOC link scrolls to the
+		// first heading.
+		const content = "## 前言\n\n一\n\n## 前言\n\n二\n\n## 安装\n\n三";
+		const { segments } = useMarkdown(content);
+		const html = segments
+			.filter((s) => s.type === "html")
+			.map((s) => s.html)
+			.join("");
+		expect(html).toContain('<h2 id="前言">前言</h2>');
+		expect(html).toContain('<h2 id="前言-1">前言</h2>');
+		expect(html).toContain('<h2 id="安装">安装</h2>');
+		// And extractToc over the RENDERED html (what the post page does: it
+		// feeds markdownToHtml output, not raw markdown) agrees with it.
+		const toc = extractToc(html);
+		expect(toc.map((t) => t.id)).toEqual(["前言", "前言-1", "安装"]);
+	});
 });
 
 describe("segment extraction edge cases", () => {

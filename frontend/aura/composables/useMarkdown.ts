@@ -20,7 +20,7 @@
 
 import { marked } from "marked";
 
-import { slugify } from "./useToc";
+import { beginHeadingIds, uniqueHeadingId } from "./useToc";
 
 export type Segment =
 	| { type: "html"; html: string; key: string }
@@ -290,13 +290,14 @@ export function sanitizeHtml(html: string): string {
 
 // --- Markdown-to-HTML conversion (marked) ---
 
-// Markdown heading renderer: emit the same id that useToc.extractToc computes,
-// so TOC anchor links resolve to real heading elements.
+// Markdown heading renderer: emit the same id that useToc.extractToc computes
+// (with GitHub-style -1/-2 disambiguation for repeated heading text), so TOC
+// anchor links resolve to real, unique heading elements.
 const headingRenderer = new marked.Renderer();
 headingRenderer.heading = function (token: { tokens: unknown[]; depth: number }) {
 	const html = String(this.parser.parseInline(token.tokens as never));
 	const text = html.replace(/<[^>]+>/g, "").trim();
-	return `<h${token.depth} id="${slugify(text)}">${html}</h${token.depth}>`;
+	return `<h${token.depth} id="${uniqueHeadingId(text)}">${html}</h${token.depth}>`;
 };
 marked.use({ renderer: headingRenderer });
 
@@ -306,6 +307,9 @@ marked.use({ renderer: headingRenderer });
  * Uses `marked` which is imported statically (available for synchronous use).
  */
 function convertMarkdownToHtml(md: string): string {
+	// The heading renderer suffixes duplicate ids against a shared per-document
+	// counter — reset it so counters from the previous conversion can't leak.
+	beginHeadingIds();
 	try {
 		const placeholder = "";
 		const safeMd = md.replace(/(<!--[\s\S]*?-->)/g, `${placeholder}$1${placeholder}`);
@@ -337,6 +341,7 @@ export function markdownToHtml(md: string): string {
  * execute regardless of render timing.
  */
 export function commentMarkdownToHtml(md: string): string {
+	beginHeadingIds(); // per-document duplicate-heading counter (see convertMarkdownToHtml)
 	try {
 		const html = String(marked.parse(md || "", { breaks: true }));
 		return sanitizeHtml(html);

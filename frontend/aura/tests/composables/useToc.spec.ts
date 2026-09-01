@@ -125,3 +125,16 @@ describe("useToc", () => {
 		expect(toc.value[1].level).toBe(2);
 	});
 });
+
+it("disambiguates duplicate heading text with -1/-2 suffixes (GitHub-style)", () => {
+	const html = "<h2>前言</h2><h2>前言</h2><h2>安装</h2><h2>前言</h2>";
+	const result = extractToc(html);
+	expect(result.map((r) => r.id)).toEqual(["前言", "前言-1", "安装", "前言-2"]);
+	// Every id stays unique so TOC anchors resolve to distinct sections.
+	expect(new Set(result.map((r) => r.id)).size).toBe(result.length);
+});
+
+it("keeps distinct headings' ids unchanged when there is no duplicate", () => {
+	const html = "<h1>简介</h1><h2>安装</h2>";
+	expect(extractToc(html).map((r) => r.id)).toEqual(["简介", "安装"]);
+});
