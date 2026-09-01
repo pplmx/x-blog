@@ -2,7 +2,7 @@
   "ril_version": 1,
   "round": 210,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-01T02:17:58+00:00",
+  "updated_at": "2026-09-01T02:30:04+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -14672,6 +14672,18 @@
       "commit": "1f4b1ad",
       "title": "fix(frontend): make the dead-session bookmark warning shared app-wide (ISS-222 follow-up)",
       "summary": "Per-instance syncIssue meant a 401 on a post-page BookmarkButton never lit the /bookmarks banner. Hoisted syncIssue/clearSyncIssue to module scope (shared singleton); BookmarkButton reads the flag and swaps its title/aria-label to a session-expired hint while the session is dead. 3 tests added (cross-instance sharing, button hint, reset)."
+    },
+    "EV-212": {
+      "id": "EV-212",
+      "type": "evidence",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-01T02:30:04+00:00",
+      "updated_at": "2026-09-01T02:30:04+00:00",
+      "touched_round": 210,
+      "source": "round-210 full-repo VERIFY",
+      "summary": "Frontend: 1340 vitest passed (101 files), nuxt typecheck exit 0, biome 0 findings; Backend: 1248 passed / 10 skipped @93.40% (python -m pytest --cov=app). Compiled after ISS-222 + gate-restore commits.",
+      "confidence": 1.0
     }
   },
   "edges": [
