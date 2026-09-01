@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 218,
+  "round": 219,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-01T11:18:17+00:00",
+  "updated_at": "2026-09-01T11:39:35+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -11,7 +11,7 @@
       "version": 1,
       "created_at": "2026-08-06T13:23:41+00:00",
       "updated_at": "2026-08-06T13:23:41+00:00",
-      "touched_round": 218,
+      "touched_round": 219,
       "title": "backend-nova",
       "description": "FastAPI Python 3.14 backend at backend/nova; SQLAlchemy ORM; routers in app/routers, crud.py business logic, 656 lines"
     },
@@ -15130,6 +15130,40 @@
       "title": "Default-value URL params are not active filters",
       "rationale": "A sort=relevance in the URL is present because the user clicked the default select option, not because they narrowed anything — the backend would apply relevance anyway (and the API request already omits it). Treating the default as an active filter caused a phantom 'clear filters' button (and meant clearing 'preserved' a filter that wasn't narrowing). Skew consistency with searchParams in one place: activeFilters.",
       "alternatives_rejected": "['Drop the clear-filters button entirely (loses the real affordance for category/date filters)','Normalize the URL on select-change to omit default sort (extra navigation churn on every default pick)']"
+    },
+    "ISS-259": {
+      "id": "ISS-259",
+      "type": "issue",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-01T11:39:04+00:00",
+      "updated_at": "2026-09-01T11:39:04+00:00",
+      "touched_round": 219,
+      "title": "RSS/Atom feeds hardcode zh-CN regardless of deployment language",
+      "description": "site_url/site_title/site_description are operator-configured via env, but the RSS <language> element and (missing) Atom xml:lang stayed hardcoded zh-CN — an English-configured site ships a feed that mislabels its language to feed readers/crawlers. Frontend is bilingual (zh/en) with browser auto-detect."
+    },
+    "CHG-304": {
+      "id": "CHG-304",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-01T11:39:04+00:00",
+      "updated_at": "2026-09-01T11:39:04+00:00",
+      "touched_round": 219,
+      "summary": "New SITE_LANGUAGE setting (default zh-CN, backward compatible); generate_rss_feed takes language= and all three RSS call sites pass settings.site_language; Atom <feed> gains xml:lang",
+      "commit": "PENDING"
+    },
+    "DEC-225": {
+      "id": "DEC-225",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-01T11:39:35+00:00",
+      "updated_at": "2026-09-01T11:39:35+00:00",
+      "touched_round": 219,
+      "title": "Feed language is a deployment setting, not a constant",
+      "rationale": "The feed declares the SITE's language to readers/crawlers, and the site identity fields are already operator-configurable (site_url/title/description). Hardcoding zh-CN breaks English deployments. Adding SITE_LANGUAGE (default zh-CN = unchanged behavior) keeps backward compatibility while letting operators correct the feed metadata; no frontend change needed.",
+      "alternatives_rejected": "['Derive language from request Accept-Language (feeds are cacheable/global and have no natural per-request locale; cache key would need to branch)','Drop the language element (RSS 2.0 treats it as optional, but removing metadata is a regression, not a fix)']"
     }
   },
   "edges": [
@@ -21875,6 +21909,24 @@
       "to": "COMP-002",
       "type": "governs",
       "created_at": "2026-09-01T11:17:05+00:00"
+    },
+    {
+      "from": "ISS-259",
+      "to": "COMP-001",
+      "type": "located_in",
+      "created_at": "2026-09-01T11:39:35+00:00"
+    },
+    {
+      "from": "CHG-304",
+      "to": "ISS-259",
+      "type": "resolves",
+      "created_at": "2026-09-01T11:39:35+00:00"
+    },
+    {
+      "from": "DEC-225",
+      "to": "COMP-001",
+      "type": "governs",
+      "created_at": "2026-09-01T11:39:35+00:00"
     }
   ]
 }

@@ -225,6 +225,7 @@ def generate_rss_feed(
     description: str,
     full_content: bool = False,
     self_url: str | None = None,
+    language: str = "zh-CN",
 ) -> str:
     """Generate RSS 2.0 feed.
 
@@ -237,6 +238,7 @@ def generate_rss_feed(
         self_url: The feed's own URL for atom:link rel=self; defaults to the
             global feed URL. Scoped feeds pass their scoped URL so feed readers
             validate the subscription (DEC-074, TASK-146).
+        language: RSS <language> tag (defaults to the deployment's site_language).
     """
     items = []
     for post in posts:
@@ -272,7 +274,7 @@ def generate_rss_feed(
     <title>{escape(title)}</title>
     <link>{escape(site_url)}</link>
     <description>{escape(description)}</description>
-    <language>zh-CN</language>
+    <language>{escape(language)}</language>
     <lastBuildDate>{datetime.now(UTC).strftime("%a, %d %b %Y %H:%M:%S GMT")}</lastBuildDate>
     <atom:link href="{escape(rss_self)}" rel="self" type="application/rss+xml"/>
     {"".join(items)}
@@ -317,7 +319,15 @@ def get_rss_feed(
     title, description = _scoped_feed_meta(site_title, site_description, category, tag)
     self_url = _feed_self_url(site_url, "rss", category_id, tag_id)
 
-    rss_content = generate_rss_feed(posts, site_url, title, description, full_content=full, self_url=self_url)
+    rss_content = generate_rss_feed(
+        posts,
+        site_url,
+        title,
+        description,
+        full_content=full,
+        self_url=self_url,
+        language=settings.site_language,
+    )
     feed_cache[key] = rss_content
 
     return _feed_response(rss_content, "application/rss+xml", request)
@@ -363,7 +373,7 @@ def get_atom_feed(
     </entry>""")
 
     atom = f"""<?xml version="1.0" encoding="UTF-8"?>
-<feed xmlns="http://www.w3.org/2005/Atom">
+<feed xmlns="http://www.w3.org/2005/Atom" xml:lang="{escape(settings.site_language)}">
     <title>{escape(title)}</title>
     <link href="{escape(site_url)}"/>
     <link href="{escape(self_url)}" rel="self"/>
@@ -406,7 +416,15 @@ def get_category_rss_feed(
     description = f"{site_description} · category: {category.name}"
     self_url = f"{site_url}/rss/category/{quote(name)}.xml"
 
-    rss = generate_rss_feed(posts, site_url, title, description, full_content=full, self_url=self_url)
+    rss = generate_rss_feed(
+        posts,
+        site_url,
+        title,
+        description,
+        full_content=full,
+        self_url=self_url,
+        language=settings.site_language,
+    )
     feed_cache[key] = rss
     return _feed_response(rss, "application/rss+xml", request)
 
@@ -439,7 +457,15 @@ def get_series_rss_feed(
     description = f"{site_description} · series: {series.title}"
     self_url = f"{site_url}/rss/series/{quote(slug)}.xml"
 
-    rss = generate_rss_feed(posts, site_url, title, description, full_content=full, self_url=self_url)
+    rss = generate_rss_feed(
+        posts,
+        site_url,
+        title,
+        description,
+        full_content=full,
+        self_url=self_url,
+        language=settings.site_language,
+    )
     feed_cache[key] = rss
     return _feed_response(rss, "application/rss+xml", request)
 

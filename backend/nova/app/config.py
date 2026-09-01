@@ -19,6 +19,9 @@ class Settings(BaseSettings):
     site_url: str = "http://localhost:3000"
     site_title: str = "X-Blog"
     site_description: str = "A modern blog built with FastAPI and Next.js"
+    # Feed language tag (RSS <language> + Atom xml:lang). zh-CN preserves the
+    # long-standing default; an English-configured site can set SITE_LANGUAGE.
+    site_language: str = "zh-CN"
     sentry_dsn: str | None = None
     model_config = SettingsConfigDict(env_file=".env")
 

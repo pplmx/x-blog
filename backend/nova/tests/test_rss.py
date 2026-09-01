@@ -520,3 +520,33 @@ def test_global_feed_unaffected_by_scope_support(client, auth_headers):
     assert 'rel="self"' in content
     assert "category_id=" not in content
     assert "tag_id=" not in content
+
+
+# ---------------------------------------------------------------------------
+# Feed language (DEC-…, deployment-config parity): <language> / xml:lang must
+# follow the configured site_language, not a hardcoded zh-CN.
+# ---------------------------------------------------------------------------
+
+
+def test_rss_language_follows_configured_site_language(client, monkeypatch):
+    """RSS <language> reflects site_language (default zh-CN, configurable)."""
+    monkeypatch.setattr("app.routers.rss.settings.site_language", "en-gb")
+    response = client.get("/rss/feed.xml")
+    assert response.status_code == 200
+    assert "<language>en-gb</language>" in response.text
+
+
+def test_rss_language_default_is_zh_cn(client):
+    """Without configuration the feed keeps the previous zh-CN default."""
+    response = client.get("/rss/feed.xml")
+    assert response.status_code == 200
+    assert "<language>zh-CN</language>" in response.text
+
+
+def test_atom_xml_lang_follows_configuration(client, monkeypatch):
+    """Atom feed carries xml:lang from site_language on the <feed> element."""
+    monkeypatch.setattr("app.routers.rss.settings.site_language", "en")
+    response = client.get("/rss/atom.xml")
+    assert response.status_code == 200
+    assert 'xmlns="http://www.w3.org/2005/Atom"' in response.text
+    assert 'xml:lang="en"' in response.text
