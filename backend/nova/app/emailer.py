@@ -22,6 +22,7 @@ post titles) is HTML-escaped in the HTML part.
 """
 
 import html
+import logging
 import os
 import smtplib
 import ssl
@@ -33,6 +34,8 @@ from sqlalchemy.orm import Session
 
 from app import models
 from app.auth import ReaderAccount
+
+logger = logging.getLogger(__name__)
 
 # Event kind -> email-pref column. series_new_part is a label refinement of
 # new_post (ISS-114/DEC-181) and shares its email pref, mirroring how the
@@ -113,7 +116,15 @@ def dispatch_notification_emails(db: Session, items: Iterable[EmailItem], logger
         addr_by_reader = {
             row[0]: row[1]
             for row in db.query(ReaderAccount.id, ReaderAccount.email)
-            .filter(ReaderAccount.id.in_(by_reader.keys()))
+            .filter(
+                ReaderAccount.id.in_(by_reader.keys()),
+                # A deactivated reader is a moderation action: they keep their
+                # follow rows and prefs, but every notification channel must go
+                # silent (the weekly digest already filters is_active — RIL
+                # ISS-278, DEC-194). Without this, disabling an account still
+                # left them receiving per-event mail.
+                ReaderAccount.is_active.is_(True),
+            )
             .all()
         }
 
@@ -148,6 +159,24 @@ def send_messages(messages: Iterable[EmailMessage]) -> int:
     Returns how many messages the server accepted; a broken/missing config
     raises for the caller to swallow (the fan-out and digest both treat mail as
     best-effort).
+
+    One recipient is refused (``SMTPRecipientsRefused``, e.g. a full mailbox)
+    or a single message fails mid-session: that failure is skipped and the
+    remaining recipients still get their mail, instead of one bad address
+    aborting the whole batch — previously every recipient after the failure
+    was silently dropped (RIL ISS-280). Connection-level errors still raise.
+    """
+    delivered = send_messages_flags(messages)
+    return sum(delivered)
+
+
+def send_messages_flags(messages: Iterable[EmailMessage]) -> list[bool]:
+    """Like :func:`send_messages`, but returns a per-message accepted flag.
+
+    Used by the weekly digest to stamp ``digest_sent_at`` per reader only after
+    *that* message was accepted: with an all-or-nothing batch, messages sent
+    before a mid-loop failure were delivered but no reader was stamped, so the
+    next cron re-mailed everyone (duplicates, RIL ISS-280).
     """
     host = _env("SMTP_HOST")
     port = int(_env("SMTP_PORT") or 587)
@@ -160,11 +189,24 @@ def send_messages(messages: Iterable[EmailMessage]) -> int:
             server.starttls(context=ssl.create_default_context())
         if user:
             server.login(user, password)
-        sent = 0
+        flags: list[bool] = []
         for msg in messages:
-            server.send_message(msg)
-            sent += 1
-        return sent
+            try:
+                server.send_message(msg)
+                flags.append(True)
+            except smtplib.SMTPRecipientsRefused:
+                # A recipient-level refusal (full/dead mailbox, bad address)
+                # drops only this message; the connection stays usable for the
+                # rest of the batch (RFC 5321: RCPT TO failure is not fatal).
+                logger.warning("SMTP refused a recipient in send_messages_flags")
+                flags.append(False)
+            except OSError:
+                # A connection-level failure (server dropped the session) can't
+                # be retried on this connection; stop rather than continue into
+                # a broken session, and let the caller's best-effort handling
+                # (digest idempotency / fan-out catch) decide.
+                raise
+        return flags
 
 
 def _build_message(item: EmailItem, from_addr: str, to_addr: str, base_url: str) -> EmailMessage:

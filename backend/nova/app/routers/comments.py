@@ -68,6 +68,20 @@ def _notify_thread_subscribers(
     dispatch helper. (DEC-078, TASK-150)
     """
     target_ids = [rid for rid in crud.comment_subscription_reader_ids(db, post.id) if rid not in exclude_reader_ids]
+    # Deactivation silences every channel (DEC-194, RIL ISS-278): a deactivated
+    # reader keeps their thread subscription row, but must not get the inbox
+    # push below (their email is already filtered in dispatch_notification_emails).
+    if target_ids:
+        active_ids = {
+            rid
+            for (rid,) in db.query(auth.ReaderAccount.id)
+            .filter(
+                auth.ReaderAccount.id.in_(target_ids),
+                auth.ReaderAccount.is_active.is_(True),
+            )
+            .all()
+        }
+        target_ids = [rid for rid in target_ids if rid in active_ids]
     # Per-kind opt-out (DEC-171, TASK-202): readers who turned 'thread_comment'
     # off are dropped before both the inbox row and the push fan-out below.
     target_prefs = crud.reader_notification_prefs_for(db, target_ids)
@@ -193,10 +207,12 @@ def _notify_comment_approved(db: Session, comment: models.Comment) -> None:
     parent = db.get(models.Comment, comment.parent_id) if comment.parent_id is not None else None
 
     # An approved REPLY notifies the replied-to reader (its author is not
-    # notified). (DEC-064, TASK-137)
+    # notified). (DEC-064, TASK-137). A deactivated reader gets no notification —
+    # deactivation silences every channel, reply pushes included (DEC-194,
+    # RIL ISS-278).
     if parent is not None and parent.reader_id is not None and parent.reader_id != comment.reader_id:
         parent_reader = db.get(auth.ReaderAccount, parent.reader_id)
-        if post is not None and parent_reader is not None:
+        if post is not None and parent_reader is not None and parent_reader.is_active:
             _notify_replied_to(parent_reader, post, parent.id, db)
 
     # Any approved comment notifies the thread's followers (DEC-078), excluding

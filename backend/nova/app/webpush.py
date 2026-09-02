@@ -28,7 +28,7 @@ from pywebpush import webpush
 from sqlalchemy import or_
 
 from app import models
-from app.auth import User  # noqa: F401 — moderation fan-out targets admins (User, not ReaderAccount)
+from app.auth import ReaderAccount, User
 
 
 def _b64url_decode(value: str) -> bytes | None:
@@ -267,6 +267,24 @@ def dispatch_new_post(db, post: models.Post, logger) -> dict[str, int]:
         }
         if opt_out_reader_ids:
             by_endpoint = {endpoint: s for endpoint, s in by_endpoint.items() if s.reader_id not in opt_out_reader_ids}
+
+    # Deactivated readers must go silent on every channel (DEC-194, RIL
+    # ISS-278): their follow rows still carry notify=True, so without this an
+    # operator who disabled an account would still have its devices pushed.
+    # Anonymous subscriptions (reader_id NULL) have no account to deactivate.
+    linked_ids = [s.reader_id for s in by_endpoint.values() if s.reader_id is not None]
+    if linked_ids:
+        deactivated_ids = {
+            rid
+            for (rid,) in db.query(ReaderAccount.id)
+            .filter(
+                ReaderAccount.id.in_(linked_ids),
+                ReaderAccount.is_active.is_(False),
+            )
+            .all()
+        }
+        if deactivated_ids:
+            by_endpoint = {endpoint: s for endpoint, s in by_endpoint.items() if s.reader_id not in deactivated_ids}
 
     if not by_endpoint:
         return {"sent": 0, "failed": 0, "removed": 0}

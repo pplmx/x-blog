@@ -437,6 +437,20 @@ def admin_update_post(
         else:
             post.category_id = None
 
+    # Series membership (DEC-056/TASK-123): the editor must be able to assign a
+    # post to a series (null = clear membership), mirroring crud.update_post — a
+    # bare title/slug update must never silently drop the post out of its series.
+    if "series_id" in update_fields:
+        if post_data.series_id is not None:
+            series = db.query(models.Series).filter(models.Series.id == post_data.series_id).first()
+            if not series:
+                raise HTTPException(status_code=400, detail=f"Series with id {post_data.series_id} not found")
+            post.series_id = post_data.series_id
+        else:
+            post.series_id = None
+    if "series_order" in update_fields:
+        post.series_order = post_data.series_order or 0
+
     if post_data.tag_ids is not None:
         tags = db.query(models.Tag).filter(models.Tag.id.in_(post_data.tag_ids)).all()
         post.tags = tags

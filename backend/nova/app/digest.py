@@ -21,8 +21,8 @@ Design contract (recorded in DEC-201):
   double-message one reader — a weekly duplicate, never a lost window.
 - Best-effort like the fan-out: SMTP down, config missing, or a render error
   never raises — the job reports and returns.
-- One SMTP session for all recipients, via ``emailer.send_messages`` so digest
-  mail always travels the same single configured path as the fan-out.
+- One SMTP session for all recipients, via ``emailer.send_messages_flags`` so
+  digest mail always travels the same single configured path as the fan-out.
 - Every reader-controlled value (titles, display names) is HTML-escaped in the
   HTML part; the unsubscribe button points at the prefs page.
 
@@ -44,7 +44,7 @@ from sqlalchemy.orm import Session
 from app import models
 from app.auth import ReaderAccount
 from app.crud import effective_publish_ts, utc_now_naive
-from app.emailer import _env, is_email_configured, send_messages
+from app.emailer import _env, is_email_configured, send_messages_flags
 from app.middleware import get_logger
 
 #: Rolling window: a reader never receives more than the last 7 days of posts,
@@ -312,7 +312,11 @@ def send_weekly_digest(db: Session, *, now_naive: datetime | None = None, logger
             }
 
         try:
-            sent = send_messages([msg for _, msg in built])
+            # Per-message flags: a mid-batch failure (one refused recipient)
+            # must not stall the rest — and only messages the server accepted
+            # stamp digest_sent_at, so a partial delivery never re-mails readers
+            # who already got theirs on the next run (RIL ISS-280).
+            delivered = send_messages_flags([msg for _, msg in built])
         except Exception:  # noqa: BLE001 — best effort, retryable
             log.exception("weekly digest SMTP delivery failed")
             return {
@@ -324,14 +328,16 @@ def send_weekly_digest(db: Session, *, now_naive: datetime | None = None, logger
                 "reason": "smtp_error",
             }
 
-        # Stamp idempotency ONLY on delivered readers, after SMTP accepted.
-        for pref, _msg in built:
-            pref.digest_sent_at = now
+        # Stamp idempotency ONLY on delivered readers, after SMTP accepted the
+        # specific message (never a batch-wide assumption).
+        for (pref, _msg), was_sent in zip(built, delivered, strict=True):
+            if was_sent:
+                pref.digest_sent_at = now
         db.commit()
         return {
             "locked": False,
             "readers": len(deliveries),
-            "emails_sent": sent,
+            "emails_sent": sum(delivered),
             "posts": len(posts),
             "skipped": skipped,
         }

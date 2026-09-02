@@ -35,6 +35,12 @@ _MONTH_RE = re.compile(r"^(0[1-9]|1[0-2])$")
 _UPLOAD_URL_RE = re.compile(r"/static/uploads/(\d{4})/(\d{2})/([0-9a-f-]{36}\.[a-z]+)")
 MAX_SIZE = 5 * 1024 * 1024  # 5MB
 
+# Cap how many pixels Pillow will decode, well below its default (~178MP) bomb
+# threshold: a small file can still declare a huge pixel grid, and decoding it
+# is exactly the memory-spike the admin upload must not trigger. An image above
+# this cap is rejected as invalid (HTTP 400), never decoded (RIL ISS-281).
+Image.MAX_IMAGE_PIXELS = 40_000_000  # ~8000x5000
+
 # Magic bytes for each allowed image type — the Content-Type header alone is
 # client-controlled and must not be trusted (issue #20).
 _MAGIC_BYTES = {
@@ -65,8 +71,21 @@ def _verify_image_decodes(contents: bytes) -> None:
     real, well-formed image (rejects truncated/corrupt/polyglot uploads that
     would otherwise be stored and break rendering). (RIL round 17)
     """
-    with Image.open(BytesIO(contents)) as image:
-        image.load()
+    try:
+        with Image.open(BytesIO(contents)) as image:
+            image.load()
+    except Image.DecompressionBombError:
+        # A small file declaring a huge pixel grid: reject it rather than
+        # decoding the bomb (Image.MAX_IMAGE_PIXELS caps us well below Pillow's
+        # default). DecompressionBombError is NOT an OSError subclass, so the
+        # pre-existing handler missed it and let the 400 path become a 500.
+        # (RIL ISS-281)
+        raise ValueError from None
+    except Image.DecompressionBombWarning:
+        # Between the warning threshold and the hard cap, PIL still decodes but
+        # warns; our explicit cap keeps that window small, and this stays a
+        # pass-through (the warning is deprecation-safe to ignore).
+        pass
 
 
 def _optimize_image(image_bytes: bytes, content_type: str) -> bytes:

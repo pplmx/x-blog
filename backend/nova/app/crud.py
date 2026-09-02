@@ -1038,15 +1038,20 @@ def search_posts(
     # newest there — documented in DEC-084). newest/oldest also key off
     # effective publish time so search order matches the feed order.
     def _sort_order(ts_vector=None, ts_query=None):
+        # Every branch ends with a Post.id tiebreak: equal keys (two posts
+        # batch-scheduled to the same whole-second publish_at, equal view
+        # counts) would otherwise resolve by query plan, making pages unstable
+        # (a post appearing on page 1 and again on page 2) — the same
+        # deterministic ordering get_posts already enforces (RIL ISS-284).
         if sort == "newest":
-            return _effective_publish_col().desc()
+            return (_effective_publish_col().desc(), models.Post.id.desc())
         if sort == "oldest":
-            return _effective_publish_col().asc()
+            return (_effective_publish_col().asc(), models.Post.id.asc())
         if sort == "views":
-            return models.Post.views.desc()
+            return (models.Post.views.desc(), models.Post.id.desc())
         if sort == "relevance" and ts_vector is not None:
-            return func.ts_rank(ts_vector, ts_query).desc()
-        return _effective_publish_col().desc()
+            return (func.ts_rank(ts_vector, ts_query).desc(), models.Post.id.desc())
+        return (_effective_publish_col().desc(), models.Post.id.desc())
 
     if use_tsvector:
         ts_query = func.plainto_tsquery("english", query)
@@ -1061,7 +1066,7 @@ def search_posts(
             .where(scheduled_filter)
             .where(*filters)
             .where(ts_vector.op("@@")(ts_query))
-            .order_by(_sort_order(ts_vector, ts_query))
+            .order_by(*_sort_order(ts_vector, ts_query))
             .options(
                 joinedload(models.Post.category),
                 joinedload(models.Post.tags),
@@ -1100,7 +1105,7 @@ def search_posts(
             .where(models.Post.published.is_(True))
             .where(scheduled_filter)
             .where(*filters)
-            .order_by(_sort_order())
+            .order_by(*_sort_order())
             .options(
                 joinedload(models.Post.category),
                 joinedload(models.Post.tags),
@@ -1363,11 +1368,15 @@ def get_related_posts(db: Session, post_id: int, limit: int = 5) -> list[models.
                 else_=func.coalesce(tag_match_count_subq.c.match_count, 0),
             ).desc(),
             _effective_publish_col().desc(),
+            # Deterministic on ties (equal priority + publish time), matching
+            # get_posts' id tiebreak (RIL ISS-284).
+            models.Post.id.desc(),
         )
     else:
         query = query.order_by(
             tag_match_count_subq.c.match_count.desc().nullslast(),
             _effective_publish_col().desc(),
+            models.Post.id.desc(),
         )
 
     results = query.limit(limit).all()
@@ -1942,8 +1951,15 @@ def export_reader_data(db: Session, reader_id: int) -> dict:
     comment_rows = (
         db.query(models.Comment).filter(models.Comment.reader_id == reader_id).order_by(models.Comment.created_at).all()
     )
+    # One query for all parent posts, not one db.get per comment — a prolific
+    # commenter's export was O(comments) round trips on an unbounded endpoint
+    # (RIL ISS-282).
+    post_by_id: dict[int, models.Post] = {}
+    comment_post_ids = {c.post_id for c in comment_rows if c.post_id is not None}
+    if comment_post_ids:
+        post_by_id = {p.id: p for p in db.query(models.Post).filter(models.Post.id.in_(comment_post_ids)).all()}
     for c in comment_rows:
-        post = db.get(models.Post, c.post_id)
+        post = post_by_id.get(c.post_id)
         if c.is_approved is True:
             status = "approved"
         elif c.reviewed_at is not None:
@@ -2055,7 +2071,11 @@ def recommend_posts(db: Session, reader_id: int, limit: int = 6) -> list[models.
     scored.sort(
         key=lambda item: (
             -item[0],
-            -(item[1].created_at or now).timestamp() if item[1].created_at else 0,
+            # Recency is the effective publish time (publish_at ?? created_at),
+            # the same "published when" line every other list surface uses —
+            # ranking a June-scheduled post by its January draft date pushed it
+            # below a later-drafted post published sooner (RIL ISS-283, ISS-265).
+            -effective_publish_ts(item[1], fallback=now).timestamp(),
             -item[1].id,
         )
     )
@@ -2943,6 +2963,21 @@ def record_new_post_notifications(db: Session, post: models.Post) -> None:
         if tag_ids:
             tag_reader_ids.update(list_tag_follow_reader_ids(db, tag_ids))
         target_reader_ids = series_reader_ids | category_reader_ids | tag_reader_ids
+        # A deactivated reader is a moderation action: they keep their follow
+        # rows, but must not still receive the durable inbox row (DEC-194,
+        # RIL ISS-278). The email fan-out and push already filter is_active —
+        # the inbox was the last channel that didn't.
+        if target_reader_ids:
+            active_ids = {
+                rid
+                for (rid,) in db.query(auth.ReaderAccount.id)
+                .filter(
+                    auth.ReaderAccount.id.in_(target_reader_ids),
+                    auth.ReaderAccount.is_active.is_(True),
+                )
+                .all()
+            }
+            target_reader_ids &= active_ids
         # Per-kind opt-out (DEC-171, TASK-202): batch-load every target's prefs
         # once. The same reader-level intent gates the push in
         # webpush.dispatch_new_post (which also reaches want_new_posts push

@@ -165,6 +165,47 @@ class TestListAndMarkRead:
 
 
 class TestPersistenceHooks:
+    def test_deactivated_follower_gets_no_inbox_row(self, client, db_session, auth_headers):
+        """Deactivation is a moderation action: a deactivated reader keeps their
+        follow rows but must not receive the durable inbox row (RIL ISS-278,
+        DEC-194) — all notification channels go silent."""
+        token = _token(client, email="deact@example.com")
+        headers = _auth(token)
+
+        cat = client.post("/api/categories", json={"name": "Quiet"}, headers=auth_headers)
+        assert cat.status_code == 201, cat.text
+        cat_id = cat.json()["id"]
+        f = client.put(f"/api/reader/me/categories/{cat_id}/follow", headers=headers)
+        assert f.status_code in (200, 201), f.text
+
+        # Prove the follow actually delivers while active.
+        client.post(
+            "/api/posts",
+            json={"title": "one", "slug": "deact-1", "content": "c", "published": True, "category_id": cat_id},
+            headers=auth_headers,
+        )
+        assert client.get(NOTIFS, headers=headers).json()["total"] == 1
+
+        # Deactivate the reader directly (is_active=False; the admin endpoint
+        # goes through the same column). The follow rows stay intact.
+        from app import models
+        from app.auth import ReaderAccount
+
+        ra = db_session.query(ReaderAccount).filter(ReaderAccount.email == "deact@example.com").one()
+        ra.is_active = False
+        db_session.commit()
+
+        # A following-but-deactivated reader gets no new inbox row.
+        client.post(
+            "/api/posts",
+            json={"title": "two", "slug": "deact-2", "content": "c", "published": True, "category_id": cat_id},
+            headers=auth_headers,
+        )
+        rows = db_session.query(models.ReaderNotification).filter(models.ReaderNotification.reader_id == ra.id).all()
+        assert len(rows) == 1  # only the pre-deactivation row
+        # and the reader cannot even list (deactivated accounts are rejected).
+        assert client.get(NOTIFS, headers=headers).status_code == 403
+
     def test_new_post_in_followed_category_persists(self, client, db_session, auth_headers):
         token = _token(client, email="cat@example.com")
         headers = _auth(token)

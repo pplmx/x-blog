@@ -18,6 +18,7 @@ tables, so never point it at a real database).
 """
 
 import os
+import smtplib
 from datetime import datetime, timedelta
 from email.message import EmailMessage
 
@@ -46,6 +47,10 @@ class _FakeSMTP:
     instances: list[_FakeSMTP] = []
     sent: list[EmailMessage] = []
     fail_on_send: bool = False
+    # Recipients that get an SMTPRecipientsRefused per-message rejection — used
+    # to exercise the digest's partial-delivery idempotency (ISS-280): a full
+    # mailbox drops that reader only, not the whole batch.
+    refuse_to: set[str] | None = None
 
     def __init__(self, host: str, port: int, timeout: float | None = None):
         self.host = host
@@ -67,6 +72,8 @@ class _FakeSMTP:
     def send_message(self, msg: EmailMessage) -> None:
         if _FakeSMTP.fail_on_send:
             raise OSError("smtp down")
+        if _FakeSMTP.refuse_to and msg["To"] in _FakeSMTP.refuse_to:
+            raise smtplib.SMTPRecipientsRefused({msg["To"]: (550, b"mailbox full")})
         _FakeSMTP.sent.append(msg)
 
 
@@ -77,6 +84,7 @@ def smtp_sink(monkeypatch: pytest.MonkeyPatch) -> type[_FakeSMTP]:
     _FakeSMTP.instances = []
     _FakeSMTP.sent = []
     _FakeSMTP.fail_on_send = False
+    _FakeSMTP.refuse_to = None
     monkeypatch.setattr("app.emailer.smtplib.SMTP", _FakeSMTP)
     monkeypatch.setenv("SMTP_HOST", "smtp.test.example")
     monkeypatch.setenv("SMTP_PORT", "2525")
@@ -221,6 +229,34 @@ class TestSend:
         assert summary["reason"] == "smtp_error"
         pref = db_session.get(models.ReaderNotificationPref, rid)
         assert pref.digest_sent_at is None
+
+    def test_refused_recipient_not_stamped_but_rest_delivered(self, db_session, smtp_sink):
+        # A full/dead mailbox (SMTPRecipientsRefused) must drop ONLY that
+        # reader: the batch continues, and only the accepted message stamps
+        # digest_sent_at — so a partial delivery never re-mails the reader who
+        # already got theirs on the next run (RIL ISS-280).
+        ok_rid = _reader(db_session, "ok@example.com")
+        bad_rid = _reader(db_session, "full@example.com")
+        _make_post(db_session, "本周文章", "week-post")
+        db_session.commit()
+        smtp_sink.refuse_to = {"full@example.com"}
+
+        summary = send_weekly_digest(db_session)
+        assert summary["readers"] == 2
+        assert summary["emails_sent"] == 1  # only the accepted message
+        assert {m["To"] for m in smtp_sink.sent} == {"ok@example.com"}
+
+        ok_pref = db_session.get(models.ReaderNotificationPref, ok_rid)
+        bad_pref = db_session.get(models.ReaderNotificationPref, bad_rid)
+        assert ok_pref.digest_sent_at is not None
+        assert bad_pref.digest_sent_at is None
+
+        # Next run: the refused reader's window is still open (re-sent), the
+        # delivered reader is skipped — no duplicate for anyone.
+        smtp_sink.refuse_to = None
+        second = send_weekly_digest(db_session)
+        assert second["emails_sent"] == 1
+        assert {m["To"] for m in smtp_sink.sent[1:]} == {"full@example.com"}
 
     def test_dry_run_sends_nothing_and_stamps_nothing(self, db_session, smtp_sink):
         rid = _reader(db_session, "preview@example.com")

@@ -220,6 +220,65 @@ class TestAdminPosts:
         assert updated.status_code == 200
         assert updated.json()["category_id"] == category.id
 
+    def test_update_post_assigns_and_clears_series(self, client, auth_headers, db_session):
+        """The admin editor's PUT must persist series membership (RIL ISS-279).
+
+        Previously series_id/series_order were accepted by the schema but never
+        applied — assigning an existing post to a series from the editor was a
+        silent no-op while the parallel public PUT /api/posts/{id} honored it.
+        """
+        post = models.Post(title="Test", slug="series-test", content="Content", published=True)
+        db_session.add(post)
+        db_session.commit()
+
+        series = models.Series(title="S1", slug="s1", description="d")
+        db_session.add(series)
+        db_session.commit()
+
+        response = client.put(
+            f"/api/admin/posts/{post.id}",
+            headers={**auth_headers, "Content-Type": "application/json"},
+            json={"series_id": series.id, "series_order": 2},
+        )
+        assert response.status_code == 200
+
+        updated = client.get(f"/api/admin/posts/{post.id}", headers=auth_headers)
+        assert updated.status_code == 200
+        assert updated.json()["series_id"] == series.id
+        assert updated.json()["series_order"] == 2
+
+        # Explicit null clears membership (same semantics as category_id).
+        cleared = client.put(
+            f"/api/admin/posts/{post.id}",
+            headers={**auth_headers, "Content-Type": "application/json"},
+            json={"series_id": None},
+        )
+        assert cleared.status_code == 200
+        after = client.get(f"/api/admin/posts/{post.id}", headers=auth_headers)
+        assert after.json()["series_id"] is None
+
+        # Unknown series -> 400, not a silent 200.
+        bad = client.put(
+            f"/api/admin/posts/{post.id}",
+            headers={**auth_headers, "Content-Type": "application/json"},
+            json={"series_id": 99999},
+        )
+        assert bad.status_code == 400
+
+    def test_update_post_does_not_require_series(self, client, auth_headers, db_session):
+        """A plain title/slug update must not 422 for wanting series fields."""
+        post = models.Post(title="Test", slug="no-series-test", content="Content", published=True)
+        db_session.add(post)
+        db_session.commit()
+
+        response = client.put(
+            f"/api/admin/posts/{post.id}",
+            headers={**auth_headers, "Content-Type": "application/json"},
+            json={"title": "Renamed"},
+        )
+        assert response.status_code == 200
+        assert client.get(f"/api/admin/posts/{post.id}", headers=auth_headers).json()["series_id"] is None
+
     def test_delete_post(self, client, auth_headers, db_session):
         post = models.Post(title="Test", slug="test", content="Content", published=True)
         db_session.add(post)
