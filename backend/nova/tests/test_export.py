@@ -63,6 +63,51 @@ class TestExportPostsCsv:
         headers = response.text.strip().split("\n")[0].split(",")
         assert "Status" in headers and "Pinned" in headers and "Publish At" in headers
 
+    def test_future_scheduled_post_labels_scheduled_and_filters_consistently(self, client, auth_headers, db_session):
+        """A published post whose publish_at is still in the future reads
+        "scheduled" in the Status column (it is not live yet), and only such
+        posts — never future-publish_at drafts — appear under status=scheduled
+        (RIL ISS-290)."""
+        from datetime import timedelta
+
+        from app import crud, models
+
+        future = crud.utc_now_naive() + timedelta(days=2)
+        db_session.add_all(
+            [
+                models.Post(title="Live", slug="live-export", content="C", published=True),
+                models.Post(
+                    title="Scheduled",
+                    slug="scheduled-export",
+                    content="C",
+                    published=True,
+                    publish_at=future,
+                ),
+                models.Post(
+                    title="Sched Draft",
+                    slug="sched-draft-export",
+                    content="C",
+                    published=False,
+                    publish_at=future,
+                ),
+            ]
+        )
+        db_session.commit()
+
+        def find(all_rows, slug):
+            return next(r for r in all_rows if slug in r)
+
+        # Status is column index 8 (0-based) in the posts CSV header row.
+        all_rows = client.get("/api/export/posts.csv", headers=auth_headers).text.strip().split("\n")
+        assert find(all_rows, "live-export").split(",")[8] == "published"
+        assert find(all_rows, "scheduled-export").split(",")[8] == "scheduled"
+        assert find(all_rows, "sched-draft-export").split(",")[8] == "draft"
+
+        sched_rows = client.get("/api/export/posts.csv?status=scheduled", headers=auth_headers).text.strip().split("\n")
+        assert any("scheduled-export" in r for r in sched_rows)
+        assert not any("sched-draft-export" in r for r in sched_rows)  # a draft never goes live
+        assert not any("live-export" in r for r in sched_rows)
+
 
 class TestExportCommentsCsv:
     def test_export_comments_csv(self, client, auth_headers):

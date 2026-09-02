@@ -89,6 +89,23 @@ class TestExport:
         assert b["slug"] == "saved-post"
         assert b["folder_name"] == "Tech"
 
+    def test_export_is_not_truncated_at_list_page_size(self, client, db_session):
+        # The bookmarks LIST endpoint pages at a default 100 (max 100); the
+        # portable data bundle must be complete, never silently cut to that
+        # page size (RIL ISS-288). 105 bookmarks -> all 105 in the export,
+        # while the list endpoint itself still pages at 100.
+        token = _token(client)
+        for i in range(105):
+            post = _create_post(db_session, title=f"Saved {i}", slug=f"saved-{i}")
+            client.put(f"{BOOKMARKS}/{post.id}", headers=_auth(token))
+
+        body = _do_export(client, token)
+        assert len(body["bookmarks"]) == 105
+        assert {b["slug"] for b in body["bookmarks"]} == {f"saved-{i}" for i in range(105)}
+
+        page = client.get(f"{BOOKMARKS}?limit=100", headers=_auth(token)).json()
+        assert len(page["items"]) == 100  # list paging unchanged
+
     def test_includes_own_comments(self, client, db_session):
         token = _token(client)
         post = _create_post(db_session)

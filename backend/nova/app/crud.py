@@ -1935,7 +1935,9 @@ def export_reader_data(db: Session, reader_id: int) -> dict:
     }
 
     bookmarks = []
-    rows, _total = list_reader_bookmarks(db, reader_id)
+    # limit=None — a backup must be complete, never silently capped at the
+    # list endpoint's default 100 bookmarks (RIL ISS-288).
+    rows, _total = list_reader_bookmarks(db, reader_id, limit=None)
     for post, _, folder_name in rows:
         bookmarks.append(
             {
@@ -2134,6 +2136,7 @@ def list_reader_series_follows(db: Session, reader_id: int) -> list[models.Serie
     """The reader's follow rows (with ``series`` loaded), newest follow first."""
     rows = (
         db.query(models.SeriesFollow)
+        .options(joinedload(models.SeriesFollow.series))
         .filter(models.SeriesFollow.reader_id == reader_id)
         .order_by(models.SeriesFollow.created_at.desc(), models.SeriesFollow.id.desc())
         .all()
@@ -2206,6 +2209,7 @@ def list_reader_category_follows(db: Session, reader_id: int) -> list[models.Cat
     """The reader's category follow rows (with ``category`` loaded), newest first."""
     rows = (
         db.query(models.CategoryFollow)
+        .options(joinedload(models.CategoryFollow.category))
         .filter(models.CategoryFollow.reader_id == reader_id)
         .order_by(models.CategoryFollow.created_at.desc(), models.CategoryFollow.id.desc())
         .all()
@@ -2465,7 +2469,7 @@ def list_reader_bookmarks(
     reader_id: int,
     folder_id: int | None = None,
     page: int = 1,
-    limit: int = 100,
+    limit: int | None = 100,
 ) -> tuple[list[tuple[models.Post, int | None, str | None]], int]:
     """Return the reader's bookmark rows as (post, folder_id, folder_name),
     publicly-visible only, newest bookmark first, paginated.
@@ -2476,7 +2480,10 @@ def list_reader_bookmarks(
     WHERE so pages are stable and non-visible posts simply don't appear.
     ``folder_id`` (if given) filters to that folder. Returns (items, total),
     where total counts the reader's publicly-visible bookmarks (bounded paging
-    instead of loading every row — ISS-142; DEC-120/TASK-172).
+    instead of loading every row — ISS-142; DEC-120/TASK-172). Pass
+    ``limit=None`` for the *complete* list (no offset/LIMIT) — the reader data
+    export uses that so its portable bundle is never silently truncated to
+    this default page size (RIL ISS-288).
     """
     now = utc_now_naive()
     query = (
@@ -2492,13 +2499,12 @@ def list_reader_bookmarks(
     if folder_id is not None:
         query = query.filter(models.ReaderBookmark.folder_id == folder_id)
     total = query.count()
-    rows = (
-        query.options(joinedload(models.Post.category), joinedload(models.Post.tags))
-        .order_by(models.ReaderBookmark.created_at.desc(), models.Post.id.desc())
-        .offset((page - 1) * limit)
-        .limit(limit)
-        .all()
+    query = query.options(joinedload(models.Post.category), joinedload(models.Post.tags)).order_by(
+        models.ReaderBookmark.created_at.desc(), models.Post.id.desc()
     )
+    if limit is not None:
+        query = query.offset((page - 1) * limit).limit(limit)
+    rows = query.all()
     # SQL already guarantees visibility; the predicate stays as a belt-and-braces
     # guard against any drift between the SQL filter and is_publicly_visible.
     return [(post, fid, fname) for post, fid, fname in rows if is_publicly_visible(post)], total
@@ -3272,7 +3278,15 @@ def build_backup_snapshot(db: Session) -> dict:
     posts_out: list[dict] = []
     for post in (
         db.query(models.Post)
-        .options(joinedload(models.Post.tags), joinedload(models.Post.comments))
+        # category/series are read per row below (name/slug); eager-load them
+        # with the joinedloads so a full-blog snapshot stays a handful of
+        # queries, not 2 per post (RIL ISS-289).
+        .options(
+            joinedload(models.Post.category),
+            joinedload(models.Post.series),
+            joinedload(models.Post.tags),
+            joinedload(models.Post.comments),
+        )
         .order_by(models.Post.slug)
         .all()
     ):

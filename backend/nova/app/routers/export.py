@@ -1,9 +1,10 @@
 import csv
 import io
+from datetime import datetime
 
 from fastapi import APIRouter, Depends, Query, Request
 from fastapi.responses import StreamingResponse
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 
 from app import crud, models
 from app.auth import User, get_current_superuser
@@ -26,6 +27,15 @@ def _csv_safe(value: object) -> object:
     if isinstance(value, str) and value.startswith(_CSV_FORMULA_PREFIXES):
         return f"'{value}"
     return value
+
+
+def _csv_status(post: models.Post, now: datetime) -> str:
+    """CSV Status cell, aligned with the read-path semantics: a published post
+    whose ``publish_at`` is still in the future reads "scheduled" — it is not
+    live yet — not "published" (RIL ISS-290)."""
+    if not post.published:
+        return "draft"
+    return "scheduled" if post.publish_at and post.publish_at > now else "published"
 
 
 @router.get("/posts.csv")
@@ -54,8 +64,10 @@ def export_posts_csv(
     elif status == "draft":
         query = query.filter(models.Post.published == False)  # noqa: E712
     elif status == "scheduled":
-        now = crud.utc_now_naive()
-        query = query.filter(models.Post.publish_at > now)
+        # "Scheduled" means actually going live: published AND not yet its
+        # publish time. A future-publish_at DRAFT never goes live, so it does
+        # not belong under this filter (RIL ISS-290).
+        query = query.filter(models.Post.published.is_(True), models.Post.publish_at > crud.utc_now_naive())
     # status None/"all" → every post regardless of state. A bare-date date_to
     # is widened to end-of-day so the picked day is included in the export.
     start = parse_bound(date_from)
@@ -65,7 +77,9 @@ def export_posts_csv(
     if end is not None:
         query = query.filter(models.Post.created_at <= end)
 
-    posts = query.limit(limit).all()
+    # category/tags are read per row below; eager-load so a 10k-post export
+    # stays a handful of queries instead of ~2 lazy loads per row (RIL ISS-289).
+    posts = query.options(joinedload(models.Post.category), joinedload(models.Post.tags)).limit(limit).all()
 
     output = io.StringIO()
     writer = csv.writer(output)
@@ -86,6 +100,7 @@ def export_posts_csv(
         ]
     )
 
+    now = crud.utc_now_naive()
     for post in posts:
         writer.writerow(
             [
@@ -97,7 +112,7 @@ def export_posts_csv(
                 _csv_safe(",".join(t.name for t in post.tags)),
                 post.views or 0,
                 post.likes or 0,
-                "published" if post.published else "draft",
+                _csv_status(post, now),
                 "yes" if post.pinned else "no",
                 post.publish_at.isoformat() if post.publish_at else "",
                 post.created_at.isoformat() if post.created_at else "",
