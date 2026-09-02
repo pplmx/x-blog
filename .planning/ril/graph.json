@@ -2,7 +2,7 @@
   "ril_version": 1,
   "round": 230,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-02T03:38:54+00:00",
+  "updated_at": "2026-09-02T03:41:59+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -15545,6 +15545,17 @@
       "touched_round": 230,
       "rationale": "The admin dashboard 'Recently published' card is a publication surface: it must date/sort by effective publish time (publish_at ?? created_at) exactly like the public feed (ISS-265/DEC-232). AdminPost already carries publish_at, so this is a pure frontend fix in recentPosts + the card's date render. Boundary: the admin management TABLE (admin/posts/index.vue + backend admin_list_posts ordering by created_at) is intentionally left on draft-created date — that is the operator's workspace where drafts legitimately have no publish date yet; changing it would be a separate product decision, not a defect.",
       "alternatives_rejected": "Change the admin management table too — mixes two different semantics (operator workspace vs publication surface) and would mis-state future-scheduled drafts as published. Leave everything on created_at — keeps the 'Recently published' card internally inconsistent with the feed it mirrors."
+    },
+    "CHG-311": {
+      "id": "CHG-311",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-02T03:41:16+00:00",
+      "updated_at": "2026-09-02T03:41:16+00:00",
+      "touched_round": 230,
+      "commit": "01fb022",
+      "title": "Admin dashboard recent-posts card sorts/dates by effective publish time"
     }
   },
   "edges": [
@@ -22530,6 +22541,18 @@
       "to": "TASK-249",
       "type": "governs",
       "created_at": "2026-09-02T03:38:54+00:00"
+    },
+    {
+      "from": "CHG-311",
+      "to": "ISS-266",
+      "type": "resolves",
+      "created_at": "2026-09-02T03:41:59+00:00"
+    },
+    {
+      "from": "CHG-311",
+      "to": "TASK-249",
+      "type": "implements",
+      "created_at": "2026-09-02T03:41:59+00:00"
     }
   ]
 }
