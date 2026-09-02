@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 230,
+  "round": 231,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-02T03:41:59+00:00",
+  "updated_at": "2026-09-02T04:19:55+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -11,7 +11,7 @@
       "version": 1,
       "created_at": "2026-08-06T13:23:41+00:00",
       "updated_at": "2026-08-06T13:23:41+00:00",
-      "touched_round": 227,
+      "touched_round": 231,
       "title": "backend-nova",
       "description": "FastAPI Python 3.14 backend at backend/nova; SQLAlchemy ORM; routers in app/routers, crud.py business logic, 656 lines"
     },
@@ -15556,6 +15556,65 @@
       "touched_round": 230,
       "commit": "01fb022",
       "title": "Admin dashboard recent-posts card sorts/dates by effective publish time"
+    },
+    "ISS-267": {
+      "id": "ISS-267",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-02T04:15:37+00:00",
+      "updated_at": "2026-09-02T04:19:55+00:00",
+      "touched_round": 231,
+      "title": "Search date filters + newest/oldest sort key off draft created_at, not effective publish time",
+      "severity": "low"
+    },
+    "HYP-019": {
+      "id": "HYP-019",
+      "type": "hypothesis",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-02T04:15:37+00:00",
+      "updated_at": "2026-09-02T04:19:55+00:00",
+      "touched_round": 231,
+      "title": "search_posts binds created_at for date_from/date_to and newest/oldest, so a scheduled post is in the archive month it went live but escapes the matching search window (inconsistency from ISS-265)",
+      "confidence": 0.9
+    },
+    "EV-223": {
+      "id": "EV-223",
+      "type": "evidence",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-02T04:15:37+00:00",
+      "updated_at": "2026-09-02T04:15:37+00:00",
+      "touched_round": 231,
+      "title": "crud.search_posts: filters.append(created_at >= date_from / <= date_to) and _sort_order returns created_at.desc()/asc(); get_archive + get_posts order by _effective_publish_col (ISS-265/DEC-232)",
+      "source": "backend/nova/app/crud.py:search_posts",
+      "confidence": 1.0
+    },
+    "TASK-250": {
+      "id": "TASK-250",
+      "type": "task",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-02T04:16:25+00:00",
+      "updated_at": "2026-09-02T04:19:54+00:00",
+      "touched_round": 231,
+      "title": "Search date range + newest/oldest must use effective publish time (crud.search_posts)",
+      "category": "correctness",
+      "severity": "low",
+      "confidence": 0.9,
+      "effort": 0.4
+    },
+    "DEC-237": {
+      "id": "DEC-237",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-02T04:18:05+00:00",
+      "updated_at": "2026-09-02T04:18:05+00:00",
+      "touched_round": 231,
+      "rationale": "Search date filters + newest/oldest sort must key off effective publish time (publish_at ?? created_at), the same line the feed and archive use (DEC-232). A reader who finds a scheduled post in June's archive should reproduce that in search with date_from=June; binding created_at made the post visible in the archive month it went live yet invisible in the matching search window, and put it at wrong positions in newest/oldest sorts. Fix: use crud._effective_publish_col() in search_posts date filters and the newest/oldest sort branches (both dialect paths share these).",
+      "alternatives_rejected": "Leave search on created_at — the archive/feed/search are the same reader-facing discovery surfaces; keeping them on different 'published when' lines is a visible inconsistency. Bind search to created_at only for the relevance default — no; the whole point of newest/oldest is recency, which is effective publish."
     }
   },
   "edges": [
@@ -22553,6 +22612,30 @@
       "to": "TASK-249",
       "type": "implements",
       "created_at": "2026-09-02T03:41:59+00:00"
+    },
+    {
+      "from": "ISS-267",
+      "to": "COMP-001",
+      "type": "located_in",
+      "created_at": "2026-09-02T04:16:25+00:00"
+    },
+    {
+      "from": "EV-223",
+      "to": "HYP-019",
+      "type": "validates",
+      "created_at": "2026-09-02T04:16:25+00:00"
+    },
+    {
+      "from": "TASK-250",
+      "to": "ISS-267",
+      "type": "addresses",
+      "created_at": "2026-09-02T04:16:25+00:00"
+    },
+    {
+      "from": "DEC-237",
+      "to": "TASK-250",
+      "type": "governs",
+      "created_at": "2026-09-02T04:19:54+00:00"
     }
   ]
 }

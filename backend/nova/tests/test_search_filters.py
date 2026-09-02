@@ -4,11 +4,13 @@ Adds category/tag/date-range narrowing and sort (relevance/newest/oldest/
 views) to /api/search. Key properties:
 
 - category/tag filter by NAME (unknown name → empty result, no error).
-- date_from/date_to bound created_at (naive-UTC coercion: an aware ISO
-  datetime works and never hits a PG tz-mismatch).
+- date_from/date_to bound the effective publish time (publish_at ??
+  created_at; naive-UTC coercion: an aware ISO datetime works and never
+  hits a PG tz-mismatch) so a scheduled post is searchable in the window it
+  went live, matching the feed/archive (RIL ISS-266).
 - sort=newest/oldest/views reorder deterministically on the dialect-agnostic
-  substring path; sort=relevance on a non-tsvector (SQLite / CJK) query
-  degrades to newest. Invalid sort is a 422.
+  substring path; newest/oldest key off effective publish time. sort=relevance
+  on a non-tsvector (SQLite / CJK) query degrades to newest. Invalid sort is a 422.
 - Filters compose with the keyword term (AND semantics).
 """
 
@@ -68,6 +70,64 @@ def _seed_search_blog(db_session):
 def _slugs(resp):
     assert resp.status_code == 200, resp.text
     return [p["slug"] for p in resp.json()["items"]]
+
+
+class TestEffectivePublishDateBounds:
+    """Search date filters + newest/oldest sort key off effective publish time.
+
+    A post drafted a month ago but scheduled/live today must be findable in
+    today's date window (it is a "today" post to readers, matching the feed and
+    archive which already use publish_at ?? created_at — RIL ISS-266). The old
+    code bound created_at, so a scheduled post appeared in the archive month it
+    went live but escaped the equivalent search window.
+    """
+
+    def _seed_scheduled(self, db_session):
+        """One post drafted 30 days ago, published (publish_at) today."""
+        p = create_post(
+            db_session,
+            schemas.PostCreate(title="定时发布 在六月", slug="sched-jun", content="# 定时内容", published=True),
+        )
+        p.created_at = datetime.now(UTC) - timedelta(days=30)
+        p.publish_at = datetime.now(UTC)  # live today
+        db_session.flush()
+        return p
+
+    def test_date_from_matches_scheduled_post_by_publish_date(self, client, db_session):
+        p = self._seed_scheduled(db_session)
+        today = (p.publish_at or datetime.now(UTC)).strftime("%Y-%m-%d")
+        # The draft's created_at is 30 days out of range — only effective
+        # publish time puts it inside this week's window.
+        resp = client.get(BASE, params={"q": "定时", "date_from": today})
+        assert resp.status_code == 200, resp.text
+        assert set(_slugs(resp)) == {"sched-jun"}
+
+    def test_date_to_excludes_scheduled_post_before_publish(self, client, db_session):
+        p = self._seed_scheduled(db_session)
+        created_day = (p.created_at.replace(tzinfo=None) - timedelta(days=1)).strftime("%Y-%m-%d")
+        # date_to = the day before draft-created: even the draft is excluded, so
+        # nothing matches — the post is NOT findable under its draft window.
+        resp = client.get(BASE, params={"q": "定时", "date_to": created_day})
+        assert resp.status_code == 200, resp.text
+        assert "sched-jun" not in _slugs(resp)
+
+    def test_sort_newest_uses_effective_publish_time(self, client, db_session):
+        # Drafted 30 days ago, live today → effective publish is newest, so it
+        # sorts above the "python" 3-day-old posts on the same match.
+        sched = self._seed_scheduled(db_session)
+        for i in range(1, 3):
+            q = create_post(
+                db_session,
+                schemas.PostCreate(title=f"定时 对比 {i}", slug=f"sched-cmp-{i}", content="# 定时", published=True),
+            )
+            q.created_at = datetime.now(UTC) - timedelta(days=i)
+            db_session.flush()
+        resp = client.get(BASE, params={"q": "定时", "sort": "newest"})
+        assert resp.status_code == 200, resp.text
+        slugs = _slugs(resp)
+        # The today-live scheduled post leads the two newer-drafted ones.
+        assert slugs[0] == "sched-jun"
+        assert sched.publish_at is not None
 
 
 class TestSearchFilters:

@@ -152,12 +152,7 @@ def get_posts(
     # reaches the top of the feed when it actually goes live — previously a
     # post drafted in January and published in June stayed buried in January's
     # position while its digest/SEO/feeds all reported June, RIL ISS-265).
-    posts = (
-        query.order_by(models.Post.pinned.desc(), _effective_publish_col().desc())
-        .offset(skip)
-        .limit(limit)
-        .all()
-    )
+    posts = query.order_by(models.Post.pinned.desc(), _effective_publish_col().desc()).offset(skip).limit(limit).all()
 
     # Populate comment_count (approved) + reading_time in one pass (no N+1).
     _populate_post_metrics(db, posts)
@@ -1014,32 +1009,35 @@ def search_posts(
     scheduled_filter = or_(models.Post.publish_at.is_(None), models.Post.publish_at <= now)
 
     # Narrowing filters (DEC-084, TASK-154): category/tag by NAME, plus a
-    # created_at range. Applied identically on both dialect paths. The range
-    # columns are naive UTC (see utc_now_naive); coerce whatever the client
-    # sent (naive or aware, ISO or date) to naive UTC before comparing.
+    # date range over the EFFECTIVE publish time — a scheduled post is
+    # findable in the window it actually went live, matching the feed/archive
+    # (RIL ISS-266). Applied identically on both dialect paths. The columns
+    # are naive UTC (see utc_now_naive); coerce whatever the client sent
+    # (naive or aware, ISO or date) to naive UTC before comparing.
     filters = []
     if category:
         filters.append(models.Post.category_id.in_(select(models.Category.id).where(models.Category.name == category)))
     if tag:
         filters.append(models.Post.tags.any(models.Tag.name == tag))
     if date_from is not None:
-        filters.append(models.Post.created_at >= date_from)
+        filters.append(_effective_publish_col() >= date_from)
     if date_to is not None:
-        filters.append(models.Post.created_at <= date_to)
+        filters.append(_effective_publish_col() <= date_to)
 
     # Sort applied below per dialect branch (tsvector relevance is a real
     # metric; the CJK substring path has none, so "relevance" degrades to
-    # newest there — documented in DEC-084).
+    # newest there — documented in DEC-084). newest/oldest also key off
+    # effective publish time so search order matches the feed order.
     def _sort_order(ts_vector=None, ts_query=None):
         if sort == "newest":
-            return models.Post.created_at.desc()
+            return _effective_publish_col().desc()
         if sort == "oldest":
-            return models.Post.created_at.asc()
+            return _effective_publish_col().asc()
         if sort == "views":
             return models.Post.views.desc()
         if sort == "relevance" and ts_vector is not None:
             return func.ts_rank(ts_vector, ts_query).desc()
-        return models.Post.created_at.desc()
+        return _effective_publish_col().desc()
 
     if use_tsvector:
         ts_query = func.plainto_tsquery("english", query)
