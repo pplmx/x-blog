@@ -102,6 +102,16 @@ export POSTGRES_PASSWORD=your-strong-password
 # 前端配置 (可选) - Nuxt 使用 Docker 环境变量
 ```
 
+### 登录会话有效期（session expiry）
+
+后台 JWT 自带到期时间（`exp` claim），到期后前端自动登出并把受保护页面（如 `/admin` 仪表盘）重定向到登录页：
+
+- `JWT_EXPIRE_DAYS`：后台登录有效期（整天数，默认 `1` 天）。
+- `JWT_EXPIRE_MINUTES`：更短的会话（如 `30` 表示 30 分钟）；设置后优先于 `JWT_EXPIRE_DAYS`。需要“30 分钟就过期”的管理会话用这个。
+- `READER_TOKEN_EXPIRE_DAYS`：读者端登录有效期（默认 `30` 天，读者 JWT 更短于后台避免长期滞留）。
+
+修改后重启后端生效；会话到期不依赖重启（`exp` 由服务端校验）。
+
 ### 2. 一键启动
 
 ```bash

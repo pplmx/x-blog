@@ -18,7 +18,24 @@ from app.database import Base, get_db
 # silent in dev; the key itself is still a well-known, development-only value.
 DEV_SECRET_KEY = "x-blog-secret-key-dev-only-32-bytes-min"
 ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_DAYS = int(os.getenv("JWT_EXPIRE_DAYS", "1"))
+def admin_token_expire_days() -> float:
+    """Admin JWT lifetime in (fractional) days, active per session creation.
+
+    ``JWT_EXPIRE_MINUTES`` (e.g. ``"30"``) takes precedence when set — a
+    whole-day integer cannot express a sub-day session like the "30 minutes"
+    the operator asked for; otherwise ``JWT_EXPIRE_DAYS`` is the whole-day
+    knob, default 1 day. Expiry itself lives in the JWT ``exp`` claim and is
+    enforced by the backend (RIL ISS-273).
+    """
+    minutes = os.getenv("JWT_EXPIRE_MINUTES")
+    if minutes:
+        return float(minutes) / (24 * 60)
+    return float(os.getenv("JWT_EXPIRE_DAYS", "1"))
+
+
+# Kept for backwards compatibility / tests that read it directly; the live
+# value is re-read per token, so an env change takes effect without a restart.
+ACCESS_TOKEN_EXPIRE_DAYS = admin_token_expire_days()
 # Reader JWT expiry (shorter than admin: readers authenticate from many
 # browsers/scripts, and cloud-sync clients should re-login periodically).
 READER_TOKEN_EXPIRE_DAYS = int(os.getenv("READER_TOKEN_EXPIRE_DAYS", "30"))
@@ -125,7 +142,7 @@ def create_access_token(data: dict, token_version: int = 0) -> str:
     if "sub" in to_encode:
         to_encode["sub"] = str(to_encode["sub"])
     to_encode["ver"] = token_version
-    expire = datetime.now(UTC) + timedelta(days=ACCESS_TOKEN_EXPIRE_DAYS)
+    expire = datetime.now(UTC) + timedelta(days=admin_token_expire_days())
     to_encode["exp"] = expire
     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
     return encoded_jwt

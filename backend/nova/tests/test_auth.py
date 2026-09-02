@@ -39,6 +39,38 @@ class TestAuth:
         assert data.user_id == 1
 
 
+class TestTokenExpiry:
+    """Session-expiry knobs (RIL ISS-273).
+
+    Admin JWTs carry an ``exp`` claim defaulting to 1 day (JWT_EXPIRE_DAYS). An
+    operator who wants a shorter session, e.g. 30 minutes, must be able to
+    express it — whole days cannot, so JWT_EXPIRE_MINUTES takes precedence."""
+
+    def test_default_expire_days_is_one(self, monkeypatch):
+        monkeypatch.delenv("JWT_EXPIRE_MINUTES", raising=False)
+        monkeypatch.delenv("JWT_EXPIRE_DAYS", raising=False)
+        from app import auth as auth_mod
+
+        assert auth_mod.admin_token_expire_days() == 1
+
+    def test_expire_minutes_overrides_days(self, monkeypatch):
+        monkeypatch.setenv("JWT_EXPIRE_MINUTES", "30")
+        monkeypatch.setenv("JWT_EXPIRE_DAYS", "365")  # day knob must lose
+        from app import auth as auth_mod
+
+        days = auth_mod.admin_token_expire_days()
+        assert days == 30 / (24 * 60)
+
+    def test_jwt_exp_reflects_minutes_override(self, monkeypatch):
+        from datetime import UTC, datetime, timedelta
+
+        monkeypatch.setenv("JWT_EXPIRE_MINUTES", "30")
+        token = create_access_token({"sub": 9})
+        payload = jwt.decode(token, SECRET_KEY, algorithms=["HS256"])
+        exp = datetime.fromtimestamp(payload["exp"], tz=UTC)
+        assert abs((exp - datetime.now(UTC)) - timedelta(minutes=30)) < timedelta(seconds=60)
+
+
 class TestAuthEdgeCases:
     def test_verify_password_empty(self):
         hashed = get_password_hash("")
