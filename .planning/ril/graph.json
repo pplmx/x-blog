@@ -2,7 +2,7 @@
   "ril_version": 1,
   "round": 232,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-02T06:41:34+00:00",
+  "updated_at": "2026-09-02T07:03:16+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -15723,10 +15723,10 @@
     "ISS-271": {
       "id": "ISS-271",
       "type": "issue",
-      "status": "active",
-      "version": 1,
+      "status": "resolved",
+      "version": 2,
       "created_at": "2026-09-02T06:40:42+00:00",
-      "updated_at": "2026-09-02T06:40:42+00:00",
+      "updated_at": "2026-09-02T07:01:10+00:00",
       "touched_round": 232,
       "title": "No deterministic tiebreak on equal effective publish times in get_posts/get_adjacent_posts, so prev/next can disagree with the feed order (batch-scheduled whole-second publish_at makes exact ties realistic)",
       "severity": "low"
@@ -15742,6 +15742,17 @@
       "title": "Feed-order tiebreak is Post.id desc in get_posts, get_adjacent_posts, and the related same-category fallback",
       "rationale": "Round-234 review (e26c152) flagged the missing deterministic tiebreak: with both COALESCE keys equal (two posts batch-scheduled to the same whole-second publish_at), the get_posts query (joinedload JOINs) can resolve the tie in a different physical order than the adjacent-posts bare-column scan, so previous/next could reference a position that disagrees with the feed the reader is scanning. get_posts already filtered ties only on the effective-time key. Adding Post.id.desc() as the final key to both (plus the related no-tags fallback, which shares 'recent posts' semantics) makes adjacent literally 'matching get_posts' including tie resolution. follows_feed_posts already had id.desc() secondary.",
       "alternatives_rejected": "(1) order by created_at as tertiary (the old pre-ISS-265 key): would re-introduce the draft-time signal the effective-publish work removed. (2) no tiebreak / rely on DB plan: nondeterministic across queries. (3) add tiebreak only to adjacent, not get_posts: the two orderings then still differ on ties."
+    },
+    "CHG-316": {
+      "id": "CHG-316",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-02T06:59:34+00:00",
+      "updated_at": "2026-09-02T06:59:34+00:00",
+      "touched_round": 232,
+      "commit": "83dafaa",
+      "title": "id-desc tiebreak on equal effective publish times in get_posts/get_adjacent_posts/related fallback"
     }
   },
   "edges": [
@@ -22841,6 +22852,12 @@
       "to": "COMP-001",
       "type": "governs",
       "created_at": "2026-09-02T06:41:34+00:00"
+    },
+    {
+      "from": "CHG-316",
+      "to": "ISS-271",
+      "type": "resolves",
+      "created_at": "2026-09-02T07:01:10+00:00"
     }
   ]
 }
