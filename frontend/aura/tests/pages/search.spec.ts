@@ -285,6 +285,43 @@ describe("Search Page", () => {
 			expect(navMock).toHaveBeenCalledWith({ query: { page: "1", q: "nuxt" } });
 		});
 
+		it("native clear (×) returns from a live search to the bare /search landing", async () => {
+			// Chromium's type="search" clear button fires a `search` event with an
+			// emptied box; previously this left stale results under a blank field —
+			// a dead-end with no way back to the landing.
+			const wrapper = await mountSearchPage(); // q=test query
+			const navMock = vi.fn();
+			vi.stubGlobal("navigateTo", navMock);
+			const input = wrapper.find('input[type="search"]');
+			await input.setValue("");
+			await input.trigger("search");
+			expect(navMock).toHaveBeenCalledWith({ query: {} });
+		});
+
+		it("Enter with an emptied results box also clears the search", async () => {
+			// Select-all + Delete then Enter was a silent no-op before; an empty
+			// term in the results view must mean "clear back to the landing".
+			const wrapper = await mountSearchPage(); // q=test query
+			const navMock = vi.fn();
+			vi.stubGlobal("navigateTo", navMock);
+			const input = wrapper.find('input[type="search"]');
+			await input.setValue("");
+			await input.trigger("keydown.enter");
+			expect(navMock).toHaveBeenCalledWith({ query: {} });
+		});
+
+		it("a still-non-empty search event does NOT clear (no double-nav on Enter)", async () => {
+			// Some browsers fire `search` on Enter as well as the clear ×; with a
+			// non-empty box that must be a no-op so a re-search isn't wiped.
+			const wrapper = await mountSearchPage(); // q=test query
+			const navMock = vi.fn();
+			vi.stubGlobal("navigateTo", navMock);
+			const input = wrapper.find('input[type="search"]');
+			await input.setValue("nuxt");
+			await input.trigger("search");
+			expect(navMock).not.toHaveBeenCalled();
+		});
+
 		it("renders a one-click clear-filters button only when a filter is active", async () => {
 			// No narrowing filter active (only q): no clear button.
 			const plain = await mountSearchPage();
