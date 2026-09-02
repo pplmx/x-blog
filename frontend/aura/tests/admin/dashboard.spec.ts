@@ -160,6 +160,9 @@ let statsOverride: Record<string, number> = { ...mockStatsResult };
 let postsOverride: unknown = null;
 // True → the /api/admin/posts route throws (401/network failure drill).
 let failPostsOverride = false;
+// True → /api/admin/posts rejects with a FetchError-shaped statusCode 401
+// (expired/revoked admin session drill, RIL ISS-273).
+let posts401Override = false;
 let commentsOverride: unknown = null;
 let trendOverride: unknown = null;
 let followsOverride: unknown = null;
@@ -205,6 +208,7 @@ vi.stubGlobal(
 	vi.fn(async (url: unknown) => {
 		const u = String(url);
 		if (u.includes("/api/admin/posts")) {
+			if (posts401Override) throw Object.assign(new Error("Unauthorized"), { statusCode: 401 });
 			if (failPostsOverride) throw new Error("401 Unauthorized");
 			return postsOverride ?? mockPostsResponse;
 		}
@@ -247,6 +251,8 @@ describe("Admin Dashboard Page", () => {
 		vi.restoreAllMocks();
 		vi.clearAllMocks();
 		postsOverride = null;
+		posts401Override = false;
+		failPostsOverride = false;
 		commentsOverride = null;
 	});
 
@@ -302,6 +308,21 @@ describe("Admin Dashboard Page", () => {
 			// The stat cards (which would read 0) are replaced by the error branch.
 			expect(wrapper.text()).not.toContain("文章总数");
 			failPostsOverride = false;
+		});
+
+		it("redirects to /admin/login on a 401 (expired/revoked admin session)", async () => {
+			// Session expiry is NOT a transient outage: a 401 from the first
+			// admin call must drop the stale token and hard-redirect to login
+			// (RIL ISS-273) instead of the generic load-error branch above.
+			const replace = vi.spyOn(window.location, "replace").mockImplementation(() => undefined);
+			posts401Override = true;
+			const DashboardPage = await loadPage();
+			const wrapper = await mountWithSuspense(DashboardPage);
+			await flushPromises();
+			expect(replace).toHaveBeenCalledWith("/admin/login");
+			// The stale-error dashboard did not render.
+			expect(wrapper.text()).not.toContain("无法加载仪表盘");
+			posts401Override = false;
 		});
 
 		it("renders the subtitle", async () => {

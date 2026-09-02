@@ -2,7 +2,7 @@
   "ril_version": 1,
   "round": 232,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-02T07:36:48+00:00",
+  "updated_at": "2026-09-02T08:20:50+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -15775,6 +15775,41 @@
       "touched_round": 232,
       "commit": "2d1fce9",
       "title": "Admin recently-published card excludes future-scheduled posts"
+    },
+    "ISS-273": {
+      "id": "ISS-273",
+      "type": "issue",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-02T08:16:34+00:00",
+      "updated_at": "2026-09-02T08:16:34+00:00",
+      "touched_round": 232,
+      "title": "Admin session expiry not handled client-side: an expired/revoked JWT (backend JWT_EXPIRE_DAYS) left isAuthenticated true and every admin call 401'd into a generic error, with no logout or login redirect",
+      "severity": "medium"
+    },
+    "DEC-240": {
+      "id": "DEC-240",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-02T08:17:42+00:00",
+      "updated_at": "2026-09-02T08:17:42+00:00",
+      "touched_round": 232,
+      "title": "Admin JWT expiry is enforced backend-side (JWT_EXPIRE_DAYS); the client drops expired tokens and a 401 hard-redirects to /admin/login",
+      "rationale": "User-requested session-expiry UX: the backend already expires admin tokens (ACCESS_TOKEN_EXPIRE_DAYS default 1 day,  claim; reader tokens shorter;  bump revokes on password change) but the frontend only checked token existence. So an expired/revoked token left isAuthenticated=true and every admin call 401'd into a generic load-error with no path back to login. Fix: useAdminAuth decodes the JWT  claim — an expired stored token reads as logged-out and is dropped (the admin layout's existing unauth guard then hard-redirects to /admin/login on the next navigation), and a new handleAdminUnauthorized() clears + hard-redirects on a live server 401; the admin dashboard (the page the user cited) now calls it instead of rendering a stale-looking error.",
+      "alternatives_rejected": "(1) Sliding 30-minute idle timeout implemented client-side with a timer: adds a second, client-only authority over session length that fights the server's exp claim and surprises operators working in an editor for >30min; the server's JWT expiry is the single source of truth. (2) A global  onResponseError interceptor: Nuxt's auto-imported  is not replaceable app-wide without rewriting every admin call site to a custom instance; per-page adoption of handleAdminUnauthorized (layout-gate for navigation + dashboard for the live 401) covers the user's scenario now, and other pages can adopt the same helper incrementally. (3) Server-side idle timeout / DB-backed sessions: a larger machinery change; the existing JWT  + revocation already bounds sessions."
+    },
+    "DEC-241": {
+      "id": "DEC-241",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-02T08:19:48+00:00",
+      "updated_at": "2026-09-02T08:19:48+00:00",
+      "touched_round": 232,
+      "title": "Admin JWT expiry is enforced backend-side (JWT_EXPIRE_DAYS); the client drops expired tokens and a 401 hard-redirects to /admin/login",
+      "rationale": "User-requested session-expiry UX: the backend already expires admin tokens (ACCESS_TOKEN_EXPIRE_DAYS default 1 day, \"exp\" claim; reader tokens shorter; \"ver\" bump revokes on password change) but the frontend only checked token existence. So an expired/revoked token left isAuthenticated=true and every admin call 401ed into a generic load-error with no path back to login. Fix: useAdminAuth decodes the JWT \"exp\" claim - an expired stored token reads as logged-out and is dropped (the admin layout existing unauth guard then hard-redirects to /admin/login on the next navigation), and a new handleAdminUnauthorized() clears + hard-redirects on a live server 401; the admin dashboard (the page the user cited) now calls it instead of rendering a stale-looking error. This supersedes DEC-240 which lost quoted terms to shell backtick expansion in its rationale field.",
+      "alternatives_rejected": "(1) Sliding 30-minute idle timeout implemented client-side with a timer: adds a second, client-only authority over session length that fights the server expiry and surprises operators working in an editor for >30min; the server JWT expiry is the single source of truth. (2) A global $fetch onResponseError interceptor: Nuxt auto-imported $fetch is not replaceable app-wide without rewriting every admin call site to a custom instance; per-page adoption of handleAdminUnauthorized (layout-gate for navigation + dashboard for the live 401) covers the user scenario now, other pages can adopt the same helper incrementally. (3) Server-side idle timeout / DB-backed sessions: a larger machinery change; the existing JWT exp + revocation already bounds sessions."
     }
   },
   "edges": [
@@ -22892,6 +22927,24 @@
       "to": "ISS-272",
       "type": "resolves",
       "created_at": "2026-09-02T07:36:48+00:00"
+    },
+    {
+      "from": "ISS-273",
+      "to": "COMP-001",
+      "type": "located_in",
+      "created_at": "2026-09-02T08:17:42+00:00"
+    },
+    {
+      "from": "DEC-241",
+      "to": "DEC-240",
+      "type": "supersedes",
+      "created_at": "2026-09-02T08:20:50+00:00"
+    },
+    {
+      "from": "DEC-241",
+      "to": "COMP-001",
+      "type": "governs",
+      "created_at": "2026-09-02T08:20:50+00:00"
     }
   ]
 }

@@ -17,6 +17,10 @@ definePageMeta({ layout: "admin" });
 const { t, locale } = useLang();
 const config = useRuntimeConfig();
 const apiBase = (config.public.apiUrl || "").replace(/\/+$/, "");
+// Session-expiry handling (RIL ISS-273): a 401 from any admin call means the
+// token expired or was revoked server-side — drop it and go to login instead
+// of rendering a stale-looking error dashboard.
+const { handleAdminUnauthorized } = useAdminAuth();
 
 useHead({ title: computed(() => t("admin.dashboard.seoTitle")) });
 
@@ -175,7 +179,18 @@ async function loadDashboard(): Promise<void> {
 		followStats.value = followsData;
 		topSearches.value = searchesData;
 		commentActivity.value = commentsActivityData;
-	} catch {
+	} catch (cause) {
+		// An expired/revoked admin session makes every admin call 401 — that is
+		// not a transient failure: drop the stale token and hard-redirect to
+		// /admin/login (session expiry = logged out, protected page = login
+		// prompt, RIL ISS-273) rather than a load-error that looks temporary.
+		const status =
+			(cause as { statusCode?: number } | undefined)?.statusCode ??
+			(cause as { response?: { status?: number } } | undefined)?.response?.status;
+		if (status === 401) {
+			handleAdminUnauthorized();
+			return;
+		}
 		// Keep every list empty and flag the failure — the error branch below
 		// explains what happened and offers a retry instead of presenting zeros
 		// as a real (empty) install (deep-dive finding).
