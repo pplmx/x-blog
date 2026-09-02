@@ -2,7 +2,7 @@
   "ril_version": 1,
   "round": 232,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-02T05:20:40+00:00",
+  "updated_at": "2026-09-02T05:36:08+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -15630,10 +15630,10 @@
     "ISS-268": {
       "id": "ISS-268",
       "type": "issue",
-      "status": "active",
-      "version": 1,
+      "status": "resolved",
+      "version": 2,
       "created_at": "2026-09-02T05:18:42+00:00",
-      "updated_at": "2026-09-02T05:18:42+00:00",
+      "updated_at": "2026-09-02T05:36:08+00:00",
       "touched_round": 232,
       "title": "Remaining Post.created_at orderings break feed-surface contract: adjacent/related/follows-feed don't use effective publish time",
       "severity": "low"
@@ -15641,10 +15641,10 @@
     "TASK-251": {
       "id": "TASK-251",
       "type": "task",
-      "status": "active",
-      "version": 1,
+      "status": "resolved",
+      "version": 2,
       "created_at": "2026-09-02T05:18:56+00:00",
-      "updated_at": "2026-09-02T05:18:56+00:00",
+      "updated_at": "2026-09-02T05:36:08+00:00",
       "touched_round": 232,
       "category": "correctness",
       "severity": "low",
@@ -15664,6 +15664,17 @@
       "title": "Adjacent/related/follows-feed order by effective publish time; admin list stays on created_at",
       "rationale": "ISS-265/267 established publish_at ?? created_at as the single 'published when' for all reader-facing feed/archive/date surfaces. get_adjacent_posts's docstring already claimed 'matching get_posts' but still ordered created_at; get_related_posts tiebreak and follows_feed_posts (reader's personalized feed) were the last three Post.created_at ordering sites in crud.py. Verified by 3 TDD tests (scheduled-post ordering) on SQLite + PostgreSQL.",
       "alternatives_rejected": "(1) admin_list_posts: kept on created_at — it is an editorial management queue over all statuses incl. future-scheduled, where effective-publish ordering would surface not-yet-live posts above live ones; not a reader feed. (2) full rewrite of _effective_publish_col into a shared order helper: unnecessary churn for 3 one-line sites."
+    },
+    "CHG-313": {
+      "id": "CHG-313",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-02T05:35:16+00:00",
+      "updated_at": "2026-09-02T05:35:16+00:00",
+      "touched_round": 232,
+      "commit": "e26c152",
+      "title": "Adjacent/related/follows-feed order by _effective_publish_col()"
     }
   },
   "edges": [
@@ -22715,6 +22726,18 @@
       "to": "COMP-001",
       "type": "governs",
       "created_at": "2026-09-02T05:20:19+00:00"
+    },
+    {
+      "from": "CHG-313",
+      "to": "TASK-251",
+      "type": "implements",
+      "created_at": "2026-09-02T05:35:47+00:00"
+    },
+    {
+      "from": "CHG-313",
+      "to": "ISS-268",
+      "type": "resolves",
+      "created_at": "2026-09-02T05:35:47+00:00"
     }
   ]
 }
