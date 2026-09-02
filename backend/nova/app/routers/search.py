@@ -143,9 +143,13 @@ def search(
     limit: int = Query(10, ge=1, le=50),
     category: str | None = Query(None, max_length=50, description="narrow to a category by name"),
     tag: str | None = Query(None, max_length=50, description="narrow to a tag by name"),
-    date_from: str | None = Query(None, max_length=40, description="created_at >= (ISO date or datetime)"),
+    date_from: str | None = Query(
+        None, max_length=40, description="effective publish time >= (ISO date or datetime) — publish_at ?? created_at"
+    ),
     date_to: str | None = Query(
-        None, max_length=40, description="created_at <= (ISO date or datetime; a bare date includes the whole day)"
+        None,
+        max_length=40,
+        description="effective publish time <= (ISO date or datetime; a bare date includes the whole day)",
     ),
     sort: str = Query("relevance", description="relevance | newest | oldest | views"),
     db: Session = Depends(get_db),

@@ -19,8 +19,9 @@ const query = computed(() => (route.query.q as string) || "");
 const page = computed(() => (route.query.page ? Number.parseInt(String(route.query.page), 10) : 1));
 
 // Filter state lives in the URL query so a filtered search is shareable and
-// survives reload (DEC-084): category/tag by name, sort, and a created_at
-// range. Each is bound to the route; changing one resets to page 1.
+// survives reload (DEC-084): category/tag by name, sort, and an effective
+// publish-time date range (publish_at ?? created_at, matching the feed).
+// Each is bound to the route; changing one resets to page 1.
 const filterCategory = computed(() => (route.query.category as string) || "");
 const filterTag = computed(() => (route.query.tag as string) || "");
 const filterSort = computed(() => (route.query.sort as string) || "relevance");
