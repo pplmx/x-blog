@@ -152,7 +152,16 @@ def get_posts(
     # reaches the top of the feed when it actually goes live — previously a
     # post drafted in January and published in June stayed buried in January's
     # position while its digest/SEO/feeds all reported June, RIL ISS-265).
-    posts = query.order_by(models.Post.pinned.desc(), _effective_publish_col().desc()).offset(skip).limit(limit).all()
+    # id desc is a deterministic tiebreak: a batch-scheduled post shares its
+    # whole-second publish_at with others, and without it equal times would
+    # resolve by query plan (joinedload here, bare column in adjacent) and
+    # prev/next could disagree with this feed (round-234 review).
+    posts = (
+        query.order_by(models.Post.pinned.desc(), _effective_publish_col().desc(), models.Post.id.desc())
+        .offset(skip)
+        .limit(limit)
+        .all()
+    )
 
     # Populate comment_count (approved) + reading_time in one pass (no N+1).
     _populate_post_metrics(db, posts)
@@ -1291,7 +1300,7 @@ def get_related_posts(db: Session, post_id: int, limit: int = 5) -> list[models.
                 joinedload(models.Post.category),
                 joinedload(models.Post.tags),
             )
-            .order_by(_effective_publish_col().desc())
+            .order_by(_effective_publish_col().desc(), models.Post.id.desc())
             .limit(limit)
             .all()
         )
@@ -1392,7 +1401,10 @@ def get_adjacent_posts(db: Session, post_id: int) -> tuple[models.Post | None, m
             models.Post.published.is_(True),
             or_(models.Post.publish_at.is_(None), models.Post.publish_at <= now),
         )
-        .order_by(models.Post.pinned.desc(), _effective_publish_col().desc())
+        # Must match get_posts EXACTLY (pinned, effective publish, id tiebreak)
+        # so a tie on publish time never yields a prev/next that disagrees with
+        # the feed order the reader is scanning (round-234 review).
+        .order_by(models.Post.pinned.desc(), _effective_publish_col().desc(), models.Post.id.desc())
         .all()
     ]
     try:

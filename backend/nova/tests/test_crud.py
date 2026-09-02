@@ -72,8 +72,6 @@ class TestGetPosts:
         """A post drafted in January but scheduled for June sorts by June —
         it must surface at the top of the feed when it actually goes live,
         not stay buried in its draft position (RIL ISS-265)."""
-        from datetime import UTC  # noqa: PLC0415 — local to keep the header tidy
-
         db_session.add_all(
             [
                 models.Post(
@@ -106,6 +104,50 @@ class TestGetPosts:
         titles = [p.title for p in posts]
         # The June-scheduled post (effective Jun 1) sits after July, before May.
         assert titles == ["Unscheduled July", "Drafted Jan, live Jun", "Unscheduled May"]
+
+    def test_get_posts_ties_on_effective_publish_break_by_id_desc(self, db_session):
+        """Equal effective publish times (two posts batch-scheduled to the same
+        whole second) must order deterministically by id desc — otherwise the
+        feed query (with joinedload JOINs) and the adjacent-posts bare-column
+        scan can resolve a tie in different physical orders, so prev/next would
+        disagree with the feed the reader is looking at (round-234 review)."""
+        db_session.add_all(
+            [
+                # Same publish_at on purpose: an exact effective-time tie.
+                models.Post(
+                    title="Tie Low",
+                    slug="tie-low",
+                    content="c",
+                    published=True,
+                    created_at=datetime(2024, 1, 15, 10, 30, 0),
+                    publish_at=datetime(2024, 6, 1, 9, 0, 0),
+                ),
+                models.Post(
+                    title="Tie High",
+                    slug="tie-high",
+                    content="c",
+                    published=True,
+                    created_at=datetime(2024, 1, 16, 10, 30, 0),
+                    publish_at=datetime(2024, 6, 1, 9, 0, 0),
+                ),
+            ]
+        )
+        db_session.commit()
+
+        posts, _ = crud.get_posts(db_session, skip=0, limit=10)
+        assert [p.title for p in posts] == ["Tie High", "Tie Low"]
+
+        # get_adjacent_posts must agree with the feed exactly, tie included:
+        # the lower-id tied post sits BELOW the higher-id one (id desc), so its
+        # "previous" is Tie High and it has no next — never the reverse, and
+        # never a None on the higher-id post where the feed has Tie Low below.
+        low, high = posts[1], posts[0]  # posts = [Tie High, Tie Low]
+        prev, next_ = crud.get_adjacent_posts(db_session, low.id)
+        assert prev is not None and prev.title == "Tie High"
+        assert next_ is None
+        prev2, next2 = crud.get_adjacent_posts(db_session, high.id)
+        assert prev2 is None  # head of the tied run
+        assert next2 is not None and next2.title == "Tie Low"
 
     def test_get_posts_year_month_filters_by_effective_publish_time(self, db_session):
         """The year/month feed filter keys off publish time: a post drafted in
