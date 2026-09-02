@@ -10,8 +10,7 @@ import { approveAdminComment } from "~~/api/admin/comments";
 import type { AdminPost, AdminPostListResponse } from "~~/api/admin/posts";
 import type { Category, Tag } from "~~/api/contracts/shared";
 import type { BlogStats } from "~~/api/public/stats";
-// biome-ignore lint/correctness/noUnusedImports: used from the template — biome cannot resolve Vue script-setup template bindings (vue-tsc verifies).
-import { parseApiDate } from "~~/composables/apiDate";
+import { effectivePublishTs, parseApiDate } from "~~/composables/apiDate";
 
 definePageMeta({ layout: "admin" });
 
@@ -354,11 +353,18 @@ const pendingCommentsCount = computed(
 	() => blogStats.value?.pending_comments ?? pendingComments.value.length,
 );
 
-// Recent 5 published posts sorted by date (newest first)
+// Recent 5 published posts sorted by effective publish time (publish_at ??
+// created_at, newest first) — a scheduled post reaches this card when it
+// actually goes live, not when it was drafted (matches the public feed,
+// RIL ISS-266). The sort uses the same line the card's date will show.
 const recentPosts = computed(() =>
 	posts.value
 		.filter((p) => p.published)
-		.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+		.sort(
+			(a, b) =>
+				(parseApiDate(effectivePublishTs(b))?.getTime() ?? 0) -
+				(parseApiDate(effectivePublishTs(a))?.getTime() ?? 0),
+		)
 		.slice(0, 5),
 );
 
@@ -822,7 +828,7 @@ const stats = computed(() => [
                 {{ post.title }}
               </p>
               <p class="text-sm text-gray-500 dark:text-gray-400">
-                {{ parseApiDate(post.created_at)?.toLocaleDateString(locale === "zh" ? "zh-CN" : "en-US") ?? "" }}
+                {{ parseApiDate(effectivePublishTs(post))?.toLocaleDateString(locale === "zh" ? "zh-CN" : "en-US") ?? "" }}
               </p>
             </div>
             <div class="flex items-center gap-3 text-sm text-gray-400 dark:text-gray-500">

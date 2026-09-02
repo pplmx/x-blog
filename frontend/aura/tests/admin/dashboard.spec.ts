@@ -748,6 +748,53 @@ describe("Admin Dashboard Page", () => {
 			expect(editLink.exists()).toBe(true);
 		});
 
+		it("dates and sorts a scheduled post by its publish time, not its draft time (RIL ISS-266)", async () => {
+			// Drafted in January, published in February: the "recently published"
+			// card must sort/date it by the effective publish time (publish_at ??
+			// created_at), matching the public feed — not show the draft month.
+			const scheduledPost = {
+				id: 9,
+				title: "Scheduled Feb",
+				slug: "scheduled-feb",
+				excerpt: "Excerpt",
+				published: true,
+				created_at: "2024-01-05T10:00:00Z",
+				publish_at: "2024-02-01T10:00:00Z",
+				views: 30,
+				comment_count: 0,
+				cover_image: null,
+				category: "Tech",
+				category_id: 1,
+				tags: [],
+			};
+			// An immediately-published March post — effective publish = created_at.
+			const marchPost = {
+				id: 10,
+				title: "Plain March",
+				slug: "plain-march",
+				excerpt: "Excerpt",
+				published: true,
+				created_at: "2024-03-05T10:00:00Z",
+				views: 40,
+				comment_count: 0,
+				cover_image: null,
+				category: "Tech",
+				category_id: 1,
+				tags: [],
+			};
+			postsOverride = {
+				items: [scheduledPost, marchPost],
+				pagination: { total: 2, page: 1, limit: 100, total_pages: 1 },
+			};
+			const DashboardPage = await loadPage();
+			const wrapper = await mountWithSuspense(DashboardPage);
+			expect(wrapper.text()).toContain("Plain March");
+			expect(wrapper.text()).toContain("Scheduled Feb");
+			// Both dates appear; the scheduled one shows Feb, never January.
+			expect(wrapper.text()).toContain("2024/2/1");
+			expect(wrapper.text()).not.toContain("2024/1/5");
+		});
+
 		it("renders view counts next to recent posts", async () => {
 			const DashboardPage = await loadPage();
 			const wrapper = await mountWithSuspense(DashboardPage);

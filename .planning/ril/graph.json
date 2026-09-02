@@ -2,7 +2,7 @@
   "ril_version": 1,
   "round": 230,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-02T02:40:00+00:00",
+  "updated_at": "2026-09-02T03:38:54+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -22,7 +22,7 @@
       "version": 1,
       "created_at": "2026-08-06T13:23:41+00:00",
       "updated_at": "2026-08-06T13:23:41+00:00",
-      "touched_round": 227,
+      "touched_round": 230,
       "title": "frontend-aura",
       "description": "Nuxt 4 Vue 3 TypeScript frontend at frontend/aura; composables; admin pages; e2e Playwright; biome lint"
     },
@@ -15486,6 +15486,65 @@
       "touched_round": 229,
       "rationale": "Operator explicitly reactivated the loop ('看goal没有结束呢, 继续'): the goal condition (continuous detail optimization / bug fixing / polish / interactivity / usability) is still unmet, so the converged-idle state (DEC-234) is superseded and the engine returns to the quality-convergence mode (section 1-8, 10).",
       "alternatives_rejected": "Staying idle — the operator's standing directive requires continued improvement work."
+    },
+    "ISS-266": {
+      "id": "ISS-266",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-02T03:35:28+00:00",
+      "updated_at": "2026-09-02T03:38:54+00:00",
+      "touched_round": 230,
+      "title": "Admin dashboard 'Recently published' card dates and sorts by draft created_at",
+      "severity": "low"
+    },
+    "HYP-018": {
+      "id": "HYP-018",
+      "type": "hypothesis",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-02T03:35:28+00:00",
+      "updated_at": "2026-09-02T03:38:54+00:00",
+      "touched_round": 230,
+      "title": "The dashboard recentPosts computed + date render both use created_at while AdminPost already carries publish_at; effective publish should apply like the public feed",
+      "confidence": 0.95
+    },
+    "EV-222": {
+      "id": "EV-222",
+      "type": "evidence",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-02T03:35:28+00:00",
+      "updated_at": "2026-09-02T03:35:28+00:00",
+      "touched_round": 230,
+      "title": "admin/index.vue recentPosts sorts by new Date(created_at) and renders parseApiDate(post.created_at); the AdminPost type has publish_at (api/admin/posts.ts:11); the label is 'Recently published' (最近发布的文章)",
+      "source": "frontend/aura/app/pages/admin/index.vue:363,842; frontend/aura/api/admin/posts.ts:11",
+      "confidence": 1.0
+    },
+    "TASK-249": {
+      "id": "TASK-249",
+      "type": "task",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-02T03:36:54+00:00",
+      "updated_at": "2026-09-02T03:38:54+00:00",
+      "touched_round": 230,
+      "title": "Dashboard 'Recently published' card must sort/date by effective publish time",
+      "category": "correctness",
+      "severity": "low",
+      "confidence": 0.95,
+      "effort": 0.4
+    },
+    "DEC-236": {
+      "id": "DEC-236",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-02T03:38:03+00:00",
+      "updated_at": "2026-09-02T03:38:03+00:00",
+      "touched_round": 230,
+      "rationale": "The admin dashboard 'Recently published' card is a publication surface: it must date/sort by effective publish time (publish_at ?? created_at) exactly like the public feed (ISS-265/DEC-232). AdminPost already carries publish_at, so this is a pure frontend fix in recentPosts + the card's date render. Boundary: the admin management TABLE (admin/posts/index.vue + backend admin_list_posts ordering by created_at) is intentionally left on draft-created date — that is the operator's workspace where drafts legitimately have no publish date yet; changing it would be a separate product decision, not a defect.",
+      "alternatives_rejected": "Change the admin management table too — mixes two different semantics (operator workspace vs publication surface) and would mis-state future-scheduled drafts as published. Leave everything on created_at — keeps the 'Recently published' card internally inconsistent with the feed it mirrors."
     }
   },
   "edges": [
@@ -22447,6 +22506,30 @@
       "to": "DEC-234",
       "type": "supersedes",
       "created_at": "2026-09-02T02:39:31+00:00"
+    },
+    {
+      "from": "ISS-266",
+      "to": "COMP-002",
+      "type": "located_in",
+      "created_at": "2026-09-02T03:36:54+00:00"
+    },
+    {
+      "from": "EV-222",
+      "to": "HYP-018",
+      "type": "validates",
+      "created_at": "2026-09-02T03:36:54+00:00"
+    },
+    {
+      "from": "TASK-249",
+      "to": "ISS-266",
+      "type": "addresses",
+      "created_at": "2026-09-02T03:38:03+00:00"
+    },
+    {
+      "from": "DEC-236",
+      "to": "TASK-249",
+      "type": "governs",
+      "created_at": "2026-09-02T03:38:54+00:00"
     }
   ]
 }
