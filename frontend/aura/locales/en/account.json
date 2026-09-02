@@ -13,6 +13,8 @@
 		"seoTitle": "Account settings — X-Blog",
 		"seoDesc": "Manage your reader account: display name, password, and push devices.",
 		"loading": "Loading…",
+		"loadFailed": "Couldn't load this list — please check your connection",
+		"retry": "Retry",
 		"signInPrompt": "Sign in to manage your account settings",
 		"signInLink": "Sign in",
 		"profile": {

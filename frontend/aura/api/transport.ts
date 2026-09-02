@@ -156,9 +156,13 @@ function fetcherResponseError(error: unknown): { status?: number } | undefined {
  * reader pages handle by redirecting to /login) never kicks an admin redirect.
  */
 function resolveRequestPath(path: ApiQueryPath): string {
+	// ApiQueryPath derives from useFetch's request param, whose type widens to
+	// NitroFetchRequest (string | Request | string[]) even though every call site
+	// here passes a string path — String() keeps the resolved value a string
+	// (identity for real paths) so the 401-scope check can safely startsWith it.
 	if (typeof path === "string") return path;
-	if (typeof path === "function") return path() ?? "";
-	return unref(path) ?? "";
+	if (typeof path === "function") return String(path() ?? "");
+	return String(unref(path) ?? "");
 }
 
 /**

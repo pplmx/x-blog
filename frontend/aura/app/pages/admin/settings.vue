@@ -4,7 +4,7 @@
   setting surfaced is the verified-reader auto-approve trust tier toggle.
 -->
 <script setup lang="ts">
-import { computed, ref } from "vue";
+import { computed, ref, watch } from "vue";
 import { getSiteSetting, updateSiteSetting } from "~~/api/admin/settings";
 
 definePageMeta({ layout: "admin" });
@@ -55,6 +55,13 @@ async function save() {
 }
 
 await load();
+
+// The "Saved" confirmation describes persisted state — the instant the toggle
+// moves away from what's saved, it's a lie. Clear it on any change so the UI
+// never shows "Saved" while an uncommitted value is pending (RIL ISS-285).
+watch(enabled, () => {
+	saved.value = false;
+});
 </script>
 
 <template>

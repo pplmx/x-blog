@@ -114,16 +114,19 @@ async function submitPassword() {
 /* Push devices ---------------------------------------------------------- */
 const devices = ref<ReaderPushSubscription[]>([]);
 const devicesLoaded = ref(false);
+const devicesLoadFailed = ref(false);
 const revokingId = ref<number | null>(null);
 const deviceError = ref(false);
 
 async function loadDevices() {
 	if (!isAuthenticated.value) return;
+	devicesLoadFailed.value = false;
 	try {
 		const data = await getMyPushSubscriptions();
 		devices.value = data.items;
 	} catch {
 		devices.value = [];
+		devicesLoadFailed.value = true;
 	}
 	devicesLoaded.value = true;
 }
@@ -208,16 +211,19 @@ function onDeviceCategoryChange(device: ReaderPushSubscription, event: Event) {
 /* Followed discussions (DEC-078, TASK-150) -------------------------------- */
 const threads = ref<SubscribedThreadItem[]>([]);
 const threadsLoaded = ref(false);
+const threadsLoadFailed = ref(false);
 const unsubscribingId = ref<number | null>(null);
 const threadsError = ref(false);
 
 async function loadThreads() {
 	if (!isAuthenticated.value) return;
+	threadsLoadFailed.value = false;
 	try {
 		const data = await getMyPostSubscriptions();
 		threads.value = data.items;
 	} catch {
 		threads.value = [];
+		threadsLoadFailed.value = true;
 	}
 	threadsLoaded.value = true;
 }
@@ -240,16 +246,19 @@ async function unfollowThread(thread: SubscribedThreadItem) {
 /* Followed series for new-part push (DEC-134, TASK-179) -------------------- */
 const seriesFollows = ref<FollowedSeriesItem[]>([]);
 const seriesFollowsLoaded = ref(false);
+const seriesFollowsLoadFailed = ref(false);
 const seriesUnfollowId = ref<number | null>(null);
 const seriesNotifyId = ref<number | null>(null);
 const seriesFollowsError = ref(false);
 
 async function loadSeriesFollows() {
 	if (!isAuthenticated.value) return;
+	seriesFollowsLoadFailed.value = false;
 	try {
 		seriesFollows.value = (await getReaderSeriesFollows()).items ?? [];
 	} catch {
 		seriesFollows.value = [];
+		seriesFollowsLoadFailed.value = true;
 	}
 	seriesFollowsLoaded.value = true;
 }
@@ -287,16 +296,19 @@ async function toggleSeriesNotify(item: FollowedSeriesItem) {
 /* Followed categories for new-post push (DEC-140, TASK-182) --------------- */
 const categoryFollows = ref<FollowedCategoryItem[]>([]);
 const categoryFollowsLoaded = ref(false);
+const categoryFollowsLoadFailed = ref(false);
 const categoryUnfollowId = ref<number | null>(null);
 const categoryNotifyId = ref<number | null>(null);
 const categoryFollowsError = ref(false);
 
 async function loadCategoryFollows() {
 	if (!isAuthenticated.value) return;
+	categoryFollowsLoadFailed.value = false;
 	try {
 		categoryFollows.value = (await getReaderCategoryFollows()).items ?? [];
 	} catch {
 		categoryFollows.value = [];
+		categoryFollowsLoadFailed.value = true;
 	}
 	categoryFollowsLoaded.value = true;
 }
@@ -333,16 +345,19 @@ async function toggleCategoryNotify(item: FollowedCategoryItem) {
 /* Followed tags for new-post push (DEC-195, TASK-215) ---------------------- */
 const tagFollows = ref<FollowedTagItem[]>([]);
 const tagFollowsLoaded = ref(false);
+const tagFollowsLoadFailed = ref(false);
 const tagUnfollowId = ref<number | null>(null);
 const tagNotifyId = ref<number | null>(null);
 const tagFollowsError = ref(false);
 
 async function loadTagFollows() {
 	if (!isAuthenticated.value) return;
+	tagFollowsLoadFailed.value = false;
 	try {
 		tagFollows.value = (await getReaderTagFollows()).items ?? [];
 	} catch {
 		tagFollows.value = [];
+		tagFollowsLoadFailed.value = true;
 	}
 	tagFollowsLoaded.value = true;
 }
@@ -594,6 +609,16 @@ function shortEndpoint(endpoint: string): string {
           <Icon icon="lucide:loader-2" class="w-4 h-4 animate-spin" aria-hidden="true" role="presentation" />
           {{ t('account.loading') }}
         </p>
+        <div v-else-if="devicesLoadFailed" class="flex items-center gap-3 text-sm text-red-500 dark:text-red-400">
+          {{ t('account.loadFailed') }}
+          <button
+            type="button"
+            class="px-2 py-0.5 rounded border border-red-200 dark:border-red-800 hover:bg-red-50 dark:hover:bg-red-900/30 transition-colors"
+            @click="loadDevices"
+          >
+            {{ t('account.retry') }}
+          </button>
+        </div>
         <p v-else-if="devices.length === 0" class="text-sm text-gray-500 dark:text-gray-400">
           {{ t('account.devices.empty') }}
         </p>
@@ -681,6 +706,16 @@ function shortEndpoint(endpoint: string): string {
           <Icon icon="lucide:loader-2" class="w-4 h-4 animate-spin" aria-hidden="true" role="presentation" />
           {{ t('account.loading') }}
         </p>
+        <div v-else-if="threadsLoadFailed" class="flex items-center gap-3 text-sm text-red-500 dark:text-red-400">
+          {{ t('account.loadFailed') }}
+          <button
+            type="button"
+            class="px-2 py-0.5 rounded border border-red-200 dark:border-red-800 hover:bg-red-50 dark:hover:bg-red-900/30 transition-colors"
+            @click="loadThreads"
+          >
+            {{ t('account.retry') }}
+          </button>
+        </div>
         <p v-else-if="threads.length === 0" class="text-sm text-gray-500 dark:text-gray-400">
           {{ t('account.threads.empty') }}
         </p>
@@ -728,6 +763,16 @@ function shortEndpoint(endpoint: string): string {
           <Icon icon="lucide:loader-2" class="w-4 h-4 animate-spin" aria-hidden="true" role="presentation" />
           {{ t('account.loading') }}
         </p>
+        <div v-else-if="seriesFollowsLoadFailed" class="flex items-center gap-3 text-sm text-red-500 dark:text-red-400">
+          {{ t('account.loadFailed') }}
+          <button
+            type="button"
+            class="px-2 py-0.5 rounded border border-red-200 dark:border-red-800 hover:bg-red-50 dark:hover:bg-red-900/30 transition-colors"
+            @click="loadSeriesFollows"
+          >
+            {{ t('account.retry') }}
+          </button>
+        </div>
         <p v-else-if="seriesFollows.length === 0" class="text-sm text-gray-500 dark:text-gray-400">
           {{ t('account.series.empty') }}
         </p>
@@ -787,6 +832,16 @@ function shortEndpoint(endpoint: string): string {
           <Icon icon="lucide:loader-2" class="w-4 h-4 animate-spin" aria-hidden="true" role="presentation" />
           {{ t('account.loading') }}
         </p>
+        <div v-else-if="categoryFollowsLoadFailed" class="flex items-center gap-3 text-sm text-red-500 dark:text-red-400">
+          {{ t('account.loadFailed') }}
+          <button
+            type="button"
+            class="px-2 py-0.5 rounded border border-red-200 dark:border-red-800 hover:bg-red-50 dark:hover:bg-red-900/30 transition-colors"
+            @click="loadCategoryFollows"
+          >
+            {{ t('account.retry') }}
+          </button>
+        </div>
         <p v-else-if="categoryFollows.length === 0" class="text-sm text-gray-500 dark:text-gray-400">
           {{ t('account.categories.empty') }}
         </p>
@@ -846,6 +901,16 @@ function shortEndpoint(endpoint: string): string {
           <Icon icon="lucide:loader-2" class="w-4 h-4 animate-spin" aria-hidden="true" role="presentation" />
           {{ t('account.loading') }}
         </p>
+        <div v-else-if="tagFollowsLoadFailed" class="flex items-center gap-3 text-sm text-red-500 dark:text-red-400">
+          {{ t('account.loadFailed') }}
+          <button
+            type="button"
+            class="px-2 py-0.5 rounded border border-red-200 dark:border-red-800 hover:bg-red-50 dark:hover:bg-red-900/30 transition-colors"
+            @click="loadTagFollows"
+          >
+            {{ t('account.retry') }}
+          </button>
+        </div>
         <p v-else-if="tagFollows.length === 0" class="text-sm text-gray-500 dark:text-gray-400">
           {{ t('account.tags.empty') }}
         </p>

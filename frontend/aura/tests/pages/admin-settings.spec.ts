@@ -93,4 +93,31 @@ describe("Admin Settings page", () => {
 		expect(mockUpdateSiteSetting).toHaveBeenCalledWith("auto_approve_reader_comments", "true");
 		expect(wrapper.text()).toContain("设置已保存");
 	});
+
+	it("clears the saved banner when the toggle changes after saving", async () => {
+		// "设置已保存" describes persisted state — flipping the checkbox after a
+		// save makes it stale, so the banner must vanish until saved again
+		// (RIL ISS-285).
+		mockFetchSiteSetting.mockResolvedValue({
+			key: "auto_approve_reader_comments",
+			value: "false",
+		});
+		mockUpdateSiteSetting.mockResolvedValue({
+			data: { value: { key: "auto_approve_reader_comments", value: "true" } },
+			pending: false,
+		});
+		const wrapper = await mountPage();
+		await flushPromises();
+
+		const checkbox = wrapper.find('input[type="checkbox"]');
+		await checkbox.setValue(true);
+		await wrapper.find("button").trigger("click");
+		await flushPromises();
+		expect(wrapper.text()).toContain("设置已保存");
+
+		// Flip again without saving: the banner disappears immediately.
+		await checkbox.setValue(false);
+		await flushPromises();
+		expect(wrapper.text()).not.toContain("设置已保存");
+	});
 });

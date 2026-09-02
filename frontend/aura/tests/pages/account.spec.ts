@@ -125,6 +125,26 @@ describe("Account settings page", () => {
 		expect(wrapper.text()).toContain("还没有绑定任何推送设备");
 	});
 
+	it("shows a load-failure message with Retry instead of the empty state when the list fetch fails", async () => {
+		// A network failure must not masquerade as "no devices" (RIL ISS-286):
+		// the section renders the error + a Retry action, never the empty copy.
+		isAuthenticated.value = true;
+		mockFetchPushSubscriptions.mockRejectedValueOnce(new Error("network down"));
+		const wrapper = await mountPage();
+		expect(wrapper.text()).toContain("列表加载失败，请检查网络后重试");
+		expect(wrapper.text()).toContain("重试");
+		expect(wrapper.text()).not.toContain("还没有绑定任何推送设备");
+
+		// Retry re-runs the loader and recovers to the real empty state.
+		mockFetchPushSubscriptions.mockResolvedValueOnce({ items: [], total: 0 });
+		const retry = wrapper.findAll("button").find((b) => b.text() === "重试");
+		expect(retry).toBeDefined();
+		await retry?.trigger("click");
+		await flushPromises();
+		expect(mockFetchPushSubscriptions).toHaveBeenCalledTimes(2);
+		expect(wrapper.text()).toContain("还没有绑定任何推送设备");
+	});
+
 	it("renders a bound device with a revoke action", async () => {
 		isAuthenticated.value = true;
 		mockFetchPushSubscriptions.mockResolvedValue({ items: [makeDevice()], total: 1 });
