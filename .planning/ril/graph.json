@@ -2,7 +2,7 @@
   "ril_version": 1,
   "round": 232,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-02T08:22:55+00:00",
+  "updated_at": "2026-09-02T08:40:15+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -15821,6 +15821,17 @@
       "touched_round": 232,
       "commit": "e3da412",
       "title": "Admin session expiry UX: exp-aware auth state + handleAdminUnauthorized + dashboard 401 redirect"
+    },
+    "CHG-319": {
+      "id": "CHG-319",
+      "type": "change",
+      "status": "active",
+      "version": 2,
+      "created_at": "2026-09-02T08:39:10+00:00",
+      "updated_at": "2026-09-02T08:39:11+00:00",
+      "touched_round": 232,
+      "commit": "5853aad",
+      "title": "JWT_EXPIRE_MINUTES knob for sub-day admin sessions + deployment doc note"
     }
   },
   "edges": [
@@ -22962,6 +22973,12 @@
       "to": "ISS-273",
       "type": "resolves",
       "created_at": "2026-09-02T08:22:55+00:00"
+    },
+    {
+      "from": "CHG-319",
+      "to": "ISS-273",
+      "type": "resolves",
+      "created_at": "2026-09-02T08:40:15+00:00"
     }
   ]
 }
