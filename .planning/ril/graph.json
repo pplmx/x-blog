@@ -2,7 +2,7 @@
   "ril_version": 1,
   "round": 231,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-02T04:19:55+00:00",
+  "updated_at": "2026-09-02T04:36:48+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -15615,6 +15615,17 @@
       "touched_round": 231,
       "rationale": "Search date filters + newest/oldest sort must key off effective publish time (publish_at ?? created_at), the same line the feed and archive use (DEC-232). A reader who finds a scheduled post in June's archive should reproduce that in search with date_from=June; binding created_at made the post visible in the archive month it went live yet invisible in the matching search window, and put it at wrong positions in newest/oldest sorts. Fix: use crud._effective_publish_col() in search_posts date filters and the newest/oldest sort branches (both dialect paths share these).",
       "alternatives_rejected": "Leave search on created_at — the archive/feed/search are the same reader-facing discovery surfaces; keeping them on different 'published when' lines is a visible inconsistency. Bind search to created_at only for the relevance default — no; the whole point of newest/oldest is recency, which is effective publish."
+    },
+    "CHG-312": {
+      "id": "CHG-312",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-02T04:35:34+00:00",
+      "updated_at": "2026-09-02T04:35:34+00:00",
+      "touched_round": 231,
+      "commit": "f4428d6",
+      "title": "search_posts date range + newest/oldest use effective publish time"
     }
   },
   "edges": [
@@ -22636,6 +22647,18 @@
       "to": "TASK-250",
       "type": "governs",
       "created_at": "2026-09-02T04:19:54+00:00"
+    },
+    {
+      "from": "CHG-312",
+      "to": "ISS-267",
+      "type": "resolves",
+      "created_at": "2026-09-02T04:36:48+00:00"
+    },
+    {
+      "from": "CHG-312",
+      "to": "TASK-250",
+      "type": "implements",
+      "created_at": "2026-09-02T04:36:48+00:00"
     }
   ]
 }
