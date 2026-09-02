@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 232,
+  "round": 236,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-02T08:40:15+00:00",
+  "updated_at": "2026-09-02T21:49:06+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -11,7 +11,7 @@
       "version": 1,
       "created_at": "2026-08-06T13:23:41+00:00",
       "updated_at": "2026-08-06T13:23:41+00:00",
-      "touched_round": 232,
+      "touched_round": 234,
       "title": "backend-nova",
       "description": "FastAPI Python 3.14 backend at backend/nova; SQLAlchemy ORM; routers in app/routers, crud.py business logic, 656 lines"
     },
@@ -22,7 +22,7 @@
       "version": 1,
       "created_at": "2026-08-06T13:23:41+00:00",
       "updated_at": "2026-08-06T13:23:41+00:00",
-      "touched_round": 230,
+      "touched_round": 234,
       "title": "frontend-aura",
       "description": "Nuxt 4 Vue 3 TypeScript frontend at frontend/aura; composables; admin pages; e2e Playwright; biome lint"
     },
@@ -15832,6 +15832,520 @@
       "touched_round": 232,
       "commit": "5853aad",
       "title": "JWT_EXPIRE_MINUTES knob for sub-day admin sessions + deployment doc note"
+    },
+    "ISS-274": {
+      "id": "ISS-274",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-02T11:42:56+00:00",
+      "updated_at": "2026-09-02T15:25:23+00:00",
+      "touched_round": 234,
+      "severity": "critical",
+      "title": "restore_backup never commits: production restore silently persists nothing",
+      "description": "crud.restore_backup (crud.py:3292) only flushes and returns counts; get_db (database.py:50) closes without commit and SQLAlchemy rolls back the pending transaction. Production /api/admin/backup/restore returns 200 with counts but writes nothing. Tests miss it: conftest injects the same uncommitted session so the test queries see the flushed rows. Fix: db.commit() at the end plus rollback on exception."
+    },
+    "ISS-275": {
+      "id": "ISS-275",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-02T11:43:44+00:00",
+      "updated_at": "2026-09-02T15:25:24+00:00",
+      "touched_round": 234,
+      "severity": "high",
+      "title": "Admin posts list search/status/pagination never take effect (static URL snapshot)",
+      "description": "app/pages/admin/posts/index.vue:27 calls useAdminPosts(queryParams.value) which snapshots the computed once and stringifies it into a static URL (api/admin/posts.ts:105-110 uses withQuery + query=useFetch). Every interaction only calls refresh(), which refetches the same static URL, so the server never sees the search term, status filter, or new skip. Use the usePosts getter pattern: query(() => withQuery(...), ...)."
+    },
+    "ISS-276": {
+      "id": "ISS-276",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-02T11:43:44+00:00",
+      "updated_at": "2026-09-02T15:25:24+00:00",
+      "touched_round": 234,
+      "severity": "high",
+      "title": "Followed-categories link on account page is a no-op",
+      "description": "app/pages/account.vue:801 NuxtLink :to=\"{ query: { category_id: ... } }\" is a query-only location that resolves against the current route -> lands on /account?category_id=X, which account.vue never reads. Sibling links (series=path, tags=path+query) are correct. Fix: :to=\"{ path: /, query: { category_id } }\" (home honors it as a deep link)."
+    },
+    "ISS-277": {
+      "id": "ISS-277",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-02T11:43:44+00:00",
+      "updated_at": "2026-09-02T15:25:24+00:00",
+      "touched_round": 234,
+      "severity": "medium",
+      "title": "Admin session-expiry 401 handling only wired on the dashboard",
+      "description": "useAdminAuth.handleAdminUnauthorized is only called from app/pages/admin/index.vue. Every other admin page (posts, comments, media, readers, series, settings, tags, users, categories, calendar, editor) treats a 401 from an expired/revoked token as a generic network error instead of dropping the stale session and redirecting to /admin/login. With the new JWT_EXPIRE_MINUTES sub-day knob (ISS-273) mid-session expiry is increasingly common."
+    },
+    "TASK-252": {
+      "id": "TASK-252",
+      "type": "task",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-02T11:44:51+00:00",
+      "updated_at": "2026-09-02T15:25:23+00:00",
+      "touched_round": 234,
+      "category": "correctness",
+      "severity": "critical",
+      "title": "Add db.commit() to restore_backup so production restore persists",
+      "description": "Fix crud.restore_backup (crud.py:3292): flush only, never commits; get_db closes without commit -> rollback. Commit at end, rollback on exception. ISS-274."
+    },
+    "TASK-253": {
+      "id": "TASK-253",
+      "type": "task",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-02T11:44:51+00:00",
+      "updated_at": "2026-09-02T15:25:23+00:00",
+      "touched_round": 234,
+      "category": "correctness",
+      "severity": "high",
+      "title": "Make useAdminPosts reactive so admin list search/status/pagination work",
+      "description": "Switch api/admin/posts.ts useAdminPosts to the query(() => withQuery(...)) getter pattern (like public/posts.ts usePosts) and call it with the computed queryParams in admin/posts/index.vue. ISS-275."
+    },
+    "TASK-254": {
+      "id": "TASK-254",
+      "type": "task",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-02T11:44:51+00:00",
+      "updated_at": "2026-09-02T15:25:23+00:00",
+      "touched_round": 234,
+      "category": "core-feature",
+      "severity": "medium",
+      "title": "Wire admin session-expiry 401 handling across all admin pages",
+      "description": "Extend handleAdminUnauthorized wiring beyond the dashboard: on a 401 from any admin API call, drop token + redirect to /admin/login. Consider a central onResponseError hook in api/transport.ts scoped to /api/admin paths, excluding login itself. ISS-277."
+    },
+    "TASK-255": {
+      "id": "TASK-255",
+      "type": "task",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-02T11:47:05+00:00",
+      "updated_at": "2026-09-02T15:25:23+00:00",
+      "touched_round": 234,
+      "category": "core-feature",
+      "severity": "medium",
+      "title": "Fix followed-categories link on account page to navigate to home with category_id",
+      "description": "account.vue:801 uses a query-only :to which lands on /account?category_id=X (a no-op). Point it at { path: /, query: { category_id } } like the sibling series/tags links. ISS-276."
+    },
+    "CHG-320": {
+      "id": "CHG-320",
+      "type": "change",
+      "status": "active",
+      "version": 2,
+      "created_at": "2026-09-02T15:10:43+00:00",
+      "updated_at": "2026-09-02T15:25:23+00:00",
+      "touched_round": 234,
+      "title": "Add db.commit/rollback to restore_backup so production restore persists",
+      "commit": "ed8814c"
+    },
+    "CHG-321": {
+      "id": "CHG-321",
+      "type": "change",
+      "status": "active",
+      "version": 2,
+      "created_at": "2026-09-02T15:10:43+00:00",
+      "updated_at": "2026-09-02T15:25:23+00:00",
+      "touched_round": 234,
+      "title": "Make useAdminPosts reactive getter path so admin list search/status/pagination work",
+      "commit": "ed8814c"
+    },
+    "CHG-322": {
+      "id": "CHG-322",
+      "type": "change",
+      "status": "active",
+      "version": 2,
+      "created_at": "2026-09-02T15:10:44+00:00",
+      "updated_at": "2026-09-02T15:25:23+00:00",
+      "touched_round": 234,
+      "title": "Centralize admin session-expiry 401 handling in api/transport.ts",
+      "commit": "ed8814c"
+    },
+    "CHG-323": {
+      "id": "CHG-323",
+      "type": "change",
+      "status": "active",
+      "version": 2,
+      "created_at": "2026-09-02T15:10:44+00:00",
+      "updated_at": "2026-09-02T15:25:23+00:00",
+      "touched_round": 234,
+      "title": "Fix followed-categories link on account page to deep-link home category filter",
+      "commit": "ed8814c"
+    },
+    "DEC-242": {
+      "id": "DEC-242",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-02T15:13:02+00:00",
+      "updated_at": "2026-09-02T15:13:02+00:00",
+      "touched_round": 234,
+      "title": "Round 234 deep-dive: restore commit bug, admin list reactivity, admin 401 wiring, followed-category link",
+      "rationale": "Two explore agents audited backend edge-cases and frontend UX. Confirmed + fixed: (1) CRITICAL crud.restore_backup flushed but never committed (get_db closes without commit -> production restore silently persisted nothing; tests passed only because conftest shares the same uncommitted session) — now commits + rolls back on exception; (2) admin posts list search/status/pagination never reached the server (useAdminPosts snapshotted params into a static URL; refresh re-pulled the same URL) — now passes a getter-backed reactive path like useAdminMedia/usePosts; (3) admin session-expiry 401 handling was dashboard-only — centralized in api/transport.ts flagAdminUnauthorized, scoped to /api/admin/* excluding /api/admin/login; (4) followed-categories NuxtLink on account page was a query-only location resolving to /account itself (no-op) — now deep-links to /?category_id=. Each fix has a regression test. Verified: backend 1283 pass, frontend 1387 pass, vue-tsc clean, biome clean.",
+      "alternatives_rejected": "Per-page handleAdminUnauthorized wiring across 11 admin pages (central transport hook covers all current+future pages); keeping useAdminPosts static with manual load() (the getter path matches the established DEC-189 media pattern)."
+    },
+    "ISS-278": {
+      "id": "ISS-278",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-02T15:34:00+00:00",
+      "updated_at": "2026-09-02T21:48:09+00:00",
+      "touched_round": 235,
+      "severity": "high",
+      "title": "Deactivated/banned readers keep receiving per-event emails, inbox rows, and pushes",
+      "description": "emailer.dispatch_notification_emails (emailer.py:113-128) batches ReaderAccount addresses with no is_active filter; crud.record_new_post_notifications and webpush.dispatch_new_post also lack it. A deactivated reader still holds CategoryFollow/SeriesFollow/TagFollow rows with notify=True, so every new post mails/pushes/inboxes them. Only the weekly digest filters is_active (digest.py:132). Deactivation is a moderation action — it must silence all channels."
+    },
+    "ISS-279": {
+      "id": "ISS-279",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-02T15:34:00+00:00",
+      "updated_at": "2026-09-02T21:48:09+00:00",
+      "touched_round": 235,
+      "severity": "high",
+      "title": "Admin editor PUT /api/admin/posts/{id} silently drops series_id/series_order",
+      "description": "admin.py admin_update_post (391-468) applies title/slug/content/... but never reads series_id/series_order even though schemas.PostUpdate declares them. The parallel PUT /api/posts/{id} (posts.py:120 via crud.update_post) DOES apply them. So assigning a post to a series in the admin editor is silently ignored, while the public route honors it — inconsistent, silent-drop functional gap on the main editor."
+    },
+    "ISS-280": {
+      "id": "ISS-280",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-02T15:36:14+00:00",
+      "updated_at": "2026-09-02T21:48:09+00:00",
+      "touched_round": 235,
+      "severity": "medium",
+      "title": "Weekly digest partial SMTP failure resends to every recipient next run",
+      "description": "digest.send_weekly_digest (314-330) catches any send_messages exception and returns without stamping digest_sent_at on anyone, but messages for recipients before the failure were already delivered. Next cron re-applies the window and re-mails everyone (duplicates). Loop per-recipient send + stamp after each accepted message."
+    },
+    "ISS-281": {
+      "id": "ISS-281",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-02T15:36:14+00:00",
+      "updated_at": "2026-09-02T21:48:09+00:00",
+      "touched_round": 235,
+      "severity": "medium",
+      "title": "Upload DecompressionBombError -> HTTP 500 instead of 400",
+      "description": "upload.py _verify_image_decodes runs image.load(); the handler catches only UnidentifiedImageError/OSError/ValueError. PIL raises Image.DecompressionBombError (not OSError) for oversized pixel counts — crafted image -> 500 + memory spike. Catch it (and cap MAX_IMAGE_PIXELS) -> 400."
+    },
+    "ISS-282": {
+      "id": "ISS-282",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-02T15:36:14+00:00",
+      "updated_at": "2026-09-02T21:48:09+00:00",
+      "touched_round": 235,
+      "severity": "medium",
+      "title": "export_reader_data N+1 post lookup per comment",
+      "description": "crud.export_reader_data (1946) issues db.get(models.Post, c.post_id) once per comment — O(comments) round trips on an unbounded privacy-export endpoint. Gather post_ids, one IN query, map by id."
+    },
+    "ISS-283": {
+      "id": "ISS-283",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-02T15:36:14+00:00",
+      "updated_at": "2026-09-02T21:48:09+00:00",
+      "touched_round": 235,
+      "severity": "medium",
+      "title": "recommend_posts ranks scheduled posts by draft created_at instead of effective publish time",
+      "description": "crud.recommend_posts (2056-2061) sorts recency by item[1].created_at — a post drafted in January and scheduled to June ranks below a May draft published immediately. Use effective_publish_ts everywhere else the module guarantees that line (ISS-265)."
+    },
+    "ISS-284": {
+      "id": "ISS-284",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-02T15:39:06+00:00",
+      "updated_at": "2026-09-02T21:48:10+00:00",
+      "touched_round": 235,
+      "severity": "medium",
+      "title": "Missing deterministic id tiebreak in search_posts (newest/oldest) and get_related_posts ordering",
+      "description": "crud._sort_order (1040-1049, search newest/oldest) and get_related_posts (1357-1371) order by _effective_publish_col() / priority purely — tied whole-second batch-scheduled posts resolve by query plan, making pagination unstable (a post can appear on page 1 and 2). get_posts already adds id desc as the tiebreak (159-164). Append .id tiebreak to both."
+    },
+    "TASK-256": {
+      "id": "TASK-256",
+      "type": "task",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-02T15:39:06+00:00",
+      "updated_at": "2026-09-02T21:48:08+00:00",
+      "touched_round": 235,
+      "category": "security",
+      "severity": "high",
+      "title": "Gate notification fan-out and inbox on ReaderAccount.is_active",
+      "description": "Add is_active.is_(True) to dispatch_notification_emails address query, record_new_post_notifications readers, and webpush.dispatch_new_post targets so deactivation silences email+inbox+push like the digest already does. ISS-278."
+    },
+    "TASK-257": {
+      "id": "TASK-257",
+      "type": "task",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-02T15:39:06+00:00",
+      "updated_at": "2026-09-02T21:48:08+00:00",
+      "touched_round": 235,
+      "category": "correctness",
+      "severity": "high",
+      "title": "Apply series_id/series_order in admin PUT /api/admin/posts/{id}",
+      "description": "admin_update_post must read post_data.series_id/series_order (validate series exists, explicit null clears) matching crud.update_post, so the admin editor honestly persists series membership. ISS-279."
+    },
+    "TASK-258": {
+      "id": "TASK-258",
+      "type": "task",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-02T15:41:53+00:00",
+      "updated_at": "2026-09-02T21:48:08+00:00",
+      "touched_round": 235,
+      "category": "stability",
+      "severity": "medium",
+      "title": "Fix weekly digest partial-SMTP duplicate resend",
+      "description": "Stamp digest_sent_at per reader after each accepted send instead of only at the end; tolerate per-recipient failure so one bad address never blocks or duplicates the rest. ISS-280."
+    },
+    "TASK-259": {
+      "id": "TASK-259",
+      "type": "task",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-02T15:41:53+00:00",
+      "updated_at": "2026-09-02T21:48:08+00:00",
+      "touched_round": 235,
+      "category": "security",
+      "severity": "medium",
+      "title": "Catch PIL DecompressionBombError in upload verify -> 400",
+      "description": "Add Image.DecompressionBombError to upload validation exception handling (and cap MAX_IMAGE_PIXELS) so oversized crafted images get 400 not 500. ISS-281."
+    },
+    "TASK-260": {
+      "id": "TASK-260",
+      "type": "task",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-02T15:41:53+00:00",
+      "updated_at": "2026-09-02T21:48:09+00:00",
+      "touched_round": 235,
+      "category": "performance",
+      "severity": "medium",
+      "title": "Eliminate N+1 post lookup in export_reader_data",
+      "description": "Collect comment post_ids, one Post.id.in_(...) query, map by id instead of db.get per comment. ISS-282."
+    },
+    "TASK-261": {
+      "id": "TASK-261",
+      "type": "task",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-02T15:41:53+00:00",
+      "updated_at": "2026-09-02T21:48:09+00:00",
+      "touched_round": 235,
+      "category": "correctness",
+      "severity": "medium",
+      "title": "Rank recommend_posts by effective publish time",
+      "description": "Use effective_publish_ts for the recency term in recommend_posts sorting so a future-scheduled post ranks by publish_at, matching every other list surface (ISS-265). ISS-283."
+    },
+    "TASK-262": {
+      "id": "TASK-262",
+      "type": "task",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-02T15:41:53+00:00",
+      "updated_at": "2026-09-02T21:48:09+00:00",
+      "touched_round": 235,
+      "category": "stability",
+      "severity": "medium",
+      "title": "Add id tiebreak to search newest/oldest and related-posts ordering",
+      "description": "Append Post.id desc (asc for oldest) to _sort_order and get_related_posts orders for deterministic pagination on tied timestamps. ISS-284."
+    },
+    "ISS-285": {
+      "id": "ISS-285",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-02T15:44:01+00:00",
+      "updated_at": "2026-09-02T21:48:10+00:00",
+      "touched_round": 235,
+      "severity": "medium",
+      "title": "Admin settings shows stale Saved confirmation after an uncommitted toggle",
+      "description": "admin/settings.vue saved is set true after a save and cleared only on the NEXT save attempt. Flipping the checkbox again leaves the green Saved banner implying persistence that isnt there. Clear saved when the toggle changes (watch enabled) so the UI never claims an uncommitted state landed."
+    },
+    "ISS-286": {
+      "id": "ISS-286",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-02T15:44:01+00:00",
+      "updated_at": "2026-09-02T21:48:10+00:00",
+      "touched_round": 235,
+      "severity": "low",
+      "title": "Account page follow/device lists show network failure as empty state",
+      "description": "account.vue loaders catch network errors, set list=[], mark loaded -> templates render empty-state copy with no error/retry. A failed /me/push-subscriptions or follows fetch looks like the reader has nothing. Track per-section error and render Failed to load + Retry instead."
+    },
+    "TASK-263": {
+      "id": "TASK-263",
+      "type": "task",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-02T15:44:01+00:00",
+      "updated_at": "2026-09-02T21:48:09+00:00",
+      "touched_round": 235,
+      "category": "usability",
+      "severity": "medium",
+      "title": "Clear settings Saved banner when the toggle changes",
+      "description": "watch enabled -> saved=false in admin/settings.vue so the UI never shows persisted while uncommitted. ISS-285."
+    },
+    "TASK-264": {
+      "id": "TASK-264",
+      "type": "task",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-02T15:44:01+00:00",
+      "updated_at": "2026-09-02T21:48:09+00:00",
+      "touched_round": 235,
+      "category": "usability",
+      "severity": "low",
+      "title": "Surface list-load failure with Retry on account page follow/device sections",
+      "description": "Give each loader a per-section error flag and render Failed-to-load + Retry rather than the empty state on a network failure. ISS-286."
+    },
+    "ISS-287": {
+      "id": "ISS-287",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-02T21:45:03+00:00",
+      "updated_at": "2026-09-02T21:48:10+00:00",
+      "touched_round": 235,
+      "title": "api/transport resolveRequestPath getter/ref branches typed NitroFetchRequest, breaking the vue-tsc typecheck gate",
+      "severity": "low"
+    },
+    "TASK-265": {
+      "id": "TASK-265",
+      "type": "task",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-02T21:45:03+00:00",
+      "updated_at": "2026-09-02T21:48:09+00:00",
+      "touched_round": 235,
+      "category": "correctness",
+      "severity": "low",
+      "title": "String()-coerce resolveRequestPath getter/ref branches in api/transport.ts"
+    },
+    "CHG-324": {
+      "id": "CHG-324",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-02T21:46:07+00:00",
+      "updated_at": "2026-09-02T21:46:07+00:00",
+      "touched_round": 235,
+      "title": "Gate every reader notification channel (inbox row, email fan-out, new-post push, comment pings) on ReaderAccount.is_active",
+      "commit": "83f2e26"
+    },
+    "CHG-325": {
+      "id": "CHG-325",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-02T21:46:07+00:00",
+      "updated_at": "2026-09-02T21:46:07+00:00",
+      "touched_round": 235,
+      "title": "Apply series_id/series_order in admin PUT /api/admin/posts/{id} with unknown-series 400 and null clears membership",
+      "commit": "83f2e26"
+    },
+    "CHG-326": {
+      "id": "CHG-326",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-02T21:46:07+00:00",
+      "updated_at": "2026-09-02T21:46:07+00:00",
+      "touched_round": 235,
+      "title": "Weekly digest stamps digest_sent_at per reader only for SMTP-accepted messages (send_messages_flags)",
+      "commit": "83f2e26"
+    },
+    "CHG-327": {
+      "id": "CHG-327",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-02T21:46:07+00:00",
+      "updated_at": "2026-09-02T21:46:07+00:00",
+      "touched_round": 235,
+      "title": "Reject DecompressionBombError uploads as 400 via MAX_IMAGE_PIXELS cap and ValueError bridge",
+      "commit": "83f2e26"
+    },
+    "CHG-328": {
+      "id": "CHG-328",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-02T21:46:07+00:00",
+      "updated_at": "2026-09-02T21:46:07+00:00",
+      "touched_round": 235,
+      "title": "Batch parent-post lookup in export_reader_data to eliminate the per-comment N+1",
+      "commit": "83f2e26"
+    },
+    "CHG-329": {
+      "id": "CHG-329",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-02T21:46:07+00:00",
+      "updated_at": "2026-09-02T21:46:07+00:00",
+      "touched_round": 235,
+      "title": "Rank recommend_posts recency by effective publish time (publish_at ?? created_at)",
+      "commit": "83f2e26"
+    },
+    "CHG-330": {
+      "id": "CHG-330",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-02T21:46:07+00:00",
+      "updated_at": "2026-09-02T21:46:07+00:00",
+      "touched_round": 235,
+      "title": "Deterministic Post.id tiebreakers in search_posts sort and get_related_posts ordering",
+      "commit": "83f2e26"
+    },
+    "CHG-331": {
+      "id": "CHG-331",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-02T21:46:07+00:00",
+      "updated_at": "2026-09-02T21:46:07+00:00",
+      "touched_round": 235,
+      "title": "Clear the admin settings Saved banner when the auto-approve toggle changes",
+      "commit": "936f518"
+    },
+    "CHG-332": {
+      "id": "CHG-332",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-02T21:46:07+00:00",
+      "updated_at": "2026-09-02T21:46:07+00:00",
+      "touched_round": 235,
+      "title": "Account page follow/device lists render load-failure + Retry instead of empty state",
+      "commit": "936f518"
+    },
+    "CHG-333": {
+      "id": "CHG-333",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-02T21:46:07+00:00",
+      "updated_at": "2026-09-02T21:46:07+00:00",
+      "touched_round": 235,
+      "title": "String()-coerce resolveRequestPath getter/ref branches in api/transport for the typecheck gate",
+      "commit": "936f518"
     }
   },
   "edges": [
@@ -22979,6 +23493,318 @@
       "to": "ISS-273",
       "type": "resolves",
       "created_at": "2026-09-02T08:40:15+00:00"
+    },
+    {
+      "from": "TASK-252",
+      "to": "ISS-274",
+      "type": "addresses",
+      "created_at": "2026-09-02T11:45:17+00:00"
+    },
+    {
+      "from": "ISS-274",
+      "to": "COMP-001",
+      "type": "located_in",
+      "created_at": "2026-09-02T11:45:17+00:00"
+    },
+    {
+      "from": "TASK-253",
+      "to": "ISS-275",
+      "type": "addresses",
+      "created_at": "2026-09-02T11:45:17+00:00"
+    },
+    {
+      "from": "TASK-254",
+      "to": "ISS-277",
+      "type": "addresses",
+      "created_at": "2026-09-02T11:45:18+00:00"
+    },
+    {
+      "from": "ISS-276",
+      "to": "COMP-002",
+      "type": "located_in",
+      "created_at": "2026-09-02T11:47:05+00:00"
+    },
+    {
+      "from": "TASK-255",
+      "to": "ISS-276",
+      "type": "addresses",
+      "created_at": "2026-09-02T11:47:05+00:00"
+    },
+    {
+      "from": "CHG-320",
+      "to": "TASK-252",
+      "type": "implements",
+      "created_at": "2026-09-02T15:14:58+00:00"
+    },
+    {
+      "from": "CHG-320",
+      "to": "ISS-274",
+      "type": "resolves",
+      "created_at": "2026-09-02T15:14:58+00:00"
+    },
+    {
+      "from": "CHG-321",
+      "to": "TASK-253",
+      "type": "implements",
+      "created_at": "2026-09-02T15:14:58+00:00"
+    },
+    {
+      "from": "CHG-321",
+      "to": "ISS-275",
+      "type": "resolves",
+      "created_at": "2026-09-02T15:14:58+00:00"
+    },
+    {
+      "from": "CHG-322",
+      "to": "TASK-254",
+      "type": "implements",
+      "created_at": "2026-09-02T15:14:58+00:00"
+    },
+    {
+      "from": "CHG-322",
+      "to": "ISS-277",
+      "type": "resolves",
+      "created_at": "2026-09-02T15:14:58+00:00"
+    },
+    {
+      "from": "CHG-323",
+      "to": "TASK-255",
+      "type": "implements",
+      "created_at": "2026-09-02T15:14:58+00:00"
+    },
+    {
+      "from": "CHG-323",
+      "to": "ISS-276",
+      "type": "resolves",
+      "created_at": "2026-09-02T15:14:59+00:00"
+    },
+    {
+      "from": "TASK-256",
+      "to": "ISS-278",
+      "type": "addresses",
+      "created_at": "2026-09-02T15:46:11+00:00"
+    },
+    {
+      "from": "ISS-278",
+      "to": "COMP-001",
+      "type": "located_in",
+      "created_at": "2026-09-02T15:46:11+00:00"
+    },
+    {
+      "from": "TASK-257",
+      "to": "ISS-279",
+      "type": "addresses",
+      "created_at": "2026-09-02T15:46:11+00:00"
+    },
+    {
+      "from": "ISS-279",
+      "to": "COMP-001",
+      "type": "located_in",
+      "created_at": "2026-09-02T15:46:11+00:00"
+    },
+    {
+      "from": "TASK-258",
+      "to": "ISS-280",
+      "type": "addresses",
+      "created_at": "2026-09-02T15:46:11+00:00"
+    },
+    {
+      "from": "ISS-280",
+      "to": "COMP-001",
+      "type": "located_in",
+      "created_at": "2026-09-02T15:46:11+00:00"
+    },
+    {
+      "from": "TASK-259",
+      "to": "ISS-281",
+      "type": "addresses",
+      "created_at": "2026-09-02T15:46:11+00:00"
+    },
+    {
+      "from": "ISS-281",
+      "to": "COMP-001",
+      "type": "located_in",
+      "created_at": "2026-09-02T15:46:11+00:00"
+    },
+    {
+      "from": "TASK-260",
+      "to": "ISS-282",
+      "type": "addresses",
+      "created_at": "2026-09-02T15:46:12+00:00"
+    },
+    {
+      "from": "ISS-282",
+      "to": "COMP-001",
+      "type": "located_in",
+      "created_at": "2026-09-02T15:46:12+00:00"
+    },
+    {
+      "from": "TASK-261",
+      "to": "ISS-283",
+      "type": "addresses",
+      "created_at": "2026-09-02T15:46:12+00:00"
+    },
+    {
+      "from": "ISS-283",
+      "to": "COMP-001",
+      "type": "located_in",
+      "created_at": "2026-09-02T15:46:12+00:00"
+    },
+    {
+      "from": "TASK-262",
+      "to": "ISS-284",
+      "type": "addresses",
+      "created_at": "2026-09-02T15:46:12+00:00"
+    },
+    {
+      "from": "ISS-284",
+      "to": "COMP-001",
+      "type": "located_in",
+      "created_at": "2026-09-02T15:46:12+00:00"
+    },
+    {
+      "from": "TASK-263",
+      "to": "ISS-285",
+      "type": "addresses",
+      "created_at": "2026-09-02T15:46:12+00:00"
+    },
+    {
+      "from": "ISS-285",
+      "to": "COMP-001",
+      "type": "located_in",
+      "created_at": "2026-09-02T15:46:12+00:00"
+    },
+    {
+      "from": "TASK-264",
+      "to": "ISS-286",
+      "type": "addresses",
+      "created_at": "2026-09-02T15:46:12+00:00"
+    },
+    {
+      "from": "ISS-286",
+      "to": "COMP-001",
+      "type": "located_in",
+      "created_at": "2026-09-02T15:46:12+00:00"
+    },
+    {
+      "from": "CHG-324",
+      "to": "TASK-256",
+      "type": "implements",
+      "created_at": "2026-09-02T21:47:15+00:00"
+    },
+    {
+      "from": "CHG-324",
+      "to": "ISS-278",
+      "type": "resolves",
+      "created_at": "2026-09-02T21:47:15+00:00"
+    },
+    {
+      "from": "CHG-325",
+      "to": "TASK-257",
+      "type": "implements",
+      "created_at": "2026-09-02T21:47:15+00:00"
+    },
+    {
+      "from": "CHG-325",
+      "to": "ISS-279",
+      "type": "resolves",
+      "created_at": "2026-09-02T21:47:15+00:00"
+    },
+    {
+      "from": "CHG-326",
+      "to": "TASK-258",
+      "type": "implements",
+      "created_at": "2026-09-02T21:47:15+00:00"
+    },
+    {
+      "from": "CHG-326",
+      "to": "ISS-280",
+      "type": "resolves",
+      "created_at": "2026-09-02T21:47:15+00:00"
+    },
+    {
+      "from": "CHG-327",
+      "to": "TASK-259",
+      "type": "implements",
+      "created_at": "2026-09-02T21:47:15+00:00"
+    },
+    {
+      "from": "CHG-327",
+      "to": "ISS-281",
+      "type": "resolves",
+      "created_at": "2026-09-02T21:47:15+00:00"
+    },
+    {
+      "from": "CHG-328",
+      "to": "TASK-260",
+      "type": "implements",
+      "created_at": "2026-09-02T21:47:15+00:00"
+    },
+    {
+      "from": "CHG-328",
+      "to": "ISS-282",
+      "type": "resolves",
+      "created_at": "2026-09-02T21:47:15+00:00"
+    },
+    {
+      "from": "CHG-329",
+      "to": "TASK-261",
+      "type": "implements",
+      "created_at": "2026-09-02T21:47:16+00:00"
+    },
+    {
+      "from": "CHG-329",
+      "to": "ISS-283",
+      "type": "resolves",
+      "created_at": "2026-09-02T21:47:16+00:00"
+    },
+    {
+      "from": "CHG-330",
+      "to": "TASK-262",
+      "type": "implements",
+      "created_at": "2026-09-02T21:47:16+00:00"
+    },
+    {
+      "from": "CHG-330",
+      "to": "ISS-284",
+      "type": "resolves",
+      "created_at": "2026-09-02T21:47:16+00:00"
+    },
+    {
+      "from": "CHG-331",
+      "to": "TASK-263",
+      "type": "implements",
+      "created_at": "2026-09-02T21:47:16+00:00"
+    },
+    {
+      "from": "CHG-331",
+      "to": "ISS-285",
+      "type": "resolves",
+      "created_at": "2026-09-02T21:47:16+00:00"
+    },
+    {
+      "from": "CHG-332",
+      "to": "TASK-264",
+      "type": "implements",
+      "created_at": "2026-09-02T21:47:16+00:00"
+    },
+    {
+      "from": "CHG-332",
+      "to": "ISS-286",
+      "type": "resolves",
+      "created_at": "2026-09-02T21:47:16+00:00"
+    },
+    {
+      "from": "CHG-333",
+      "to": "TASK-265",
+      "type": "implements",
+      "created_at": "2026-09-02T21:47:16+00:00"
+    },
+    {
+      "from": "CHG-333",
+      "to": "ISS-287",
+      "type": "resolves",
+      "created_at": "2026-09-02T21:47:16+00:00"
     }
   ]
 }
