@@ -356,10 +356,17 @@ const pendingCommentsCount = computed(
 // Recent 5 published posts sorted by effective publish time (publish_at ??
 // created_at, newest first) — a scheduled post reaches this card when it
 // actually goes live, not when it was drafted (matches the public feed,
-// RIL ISS-266). The sort uses the same line the card's date will show.
+// RIL ISS-266). A future-scheduled post (publish_at still ahead) is NOT live
+// and is excluded, exactly as the public feed hides it (the previously
+// published-only filter surfaced a not-yet-live post as "newest published").
+// The sort uses the same line the card's date will show.
 const recentPosts = computed(() =>
 	posts.value
-		.filter((p) => p.published)
+		.filter(
+			(p) =>
+				p.published &&
+				(!p.publish_at || (parseApiDate(p.publish_at)?.getTime() ?? 0) <= Date.now()),
+		)
 		.sort(
 			(a, b) =>
 				(parseApiDate(effectivePublishTs(b))?.getTime() ?? 0) -
@@ -806,7 +813,10 @@ const stats = computed(() => [
     <!-- Recent posts + Pending comments -->
     <div class="grid gap-6 lg:grid-cols-2 mb-8">
       <!-- Recent posts -->
-      <div class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 p-5">
+      <div
+        data-testid="recent-posts"
+        class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 p-5"
+      >
         <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4 flex items-center gap-2">
           <Icon icon="lucide:clock" class="w-5 h-5 text-green-500" />
           {{ t("admin.dashboard.recentPosts.title") }}

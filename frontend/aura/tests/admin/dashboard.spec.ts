@@ -795,6 +795,55 @@ describe("Admin Dashboard Page", () => {
 			expect(wrapper.text()).not.toContain("2024/1/5");
 		});
 
+		it("excludes future-scheduled posts from 'recently published'", async () => {
+			// A published post whose publish_at is still in the future has NOT
+			// gone live: the public feed hides it, so the "recently published"
+			// card must too (it previously surfaced the not-yet-live post as
+			// the newest "published" row). 2999 is unambiguously in the future
+			// from any client clock/timezone.
+			const futureScheduled = {
+				id: 90,
+				title: "Future Draft",
+				slug: "future-draft",
+				excerpt: "Excerpt",
+				published: true,
+				created_at: "2026-01-05T10:00:00Z",
+				publish_at: "2999-01-01T10:00:00Z",
+				views: 5,
+				comment_count: 0,
+				cover_image: null,
+				category: "Tech",
+				category_id: 1,
+				tags: [],
+			};
+			const livePost = {
+				id: 91,
+				title: "Actually Live",
+				slug: "actually-live",
+				excerpt: "Excerpt",
+				published: true,
+				created_at: "2026-02-05T10:00:00Z",
+				views: 5,
+				comment_count: 0,
+				cover_image: null,
+				category: "Tech",
+				category_id: 1,
+				tags: [],
+			};
+			postsOverride = {
+				items: [futureScheduled, livePost],
+				pagination: { total: 2, page: 1, limit: 100, total_pages: 1 },
+			};
+			const DashboardPage = await loadPage();
+			const wrapper = await mountWithSuspense(DashboardPage);
+			// Scope to the "recently published" card itself — "Future Draft" may
+			// legitimately appear in the top-posts-by-views card, but never here.
+			const section = wrapper.find('[data-testid="recent-posts"]');
+			const sectionText = section.text();
+			expect(sectionText).toContain("Actually Live");
+			expect(sectionText).not.toContain("Future Draft");
+		});
+
 		it("renders view counts next to recent posts", async () => {
 			const DashboardPage = await loadPage();
 			const wrapper = await mountWithSuspense(DashboardPage);
