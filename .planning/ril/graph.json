@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 229,
+  "round": 230,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-01T17:40:24+00:00",
+  "updated_at": "2026-09-02T02:40:00+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -15475,6 +15475,17 @@
       "touched_round": 229,
       "rationale": "Bug-convergence reached for this session: the effective-publish-time story is now consistent end-to-end (detail page, SEO JSON-LD/og, RSS/Atom pubDate, digest window, feed ordering, archive buckets, year/month filter, and all list-card dates — ISS-264 + ISS-265). The RIL backlog is clean: no active tasks, and the only unresolved issues (ISS-242/243/244) are deployment infrastructure that cannot be addressed in this single-process dev repo. Per the quality-convergence stop conditions (section 10), the engine enters the converged-idle state: it will not emit further round-dial chore commits and will re-activate on a new operator direction, a new real issue, or substantive repository change.",
       "alternatives_rejected": "Forcing further feature work without an operator product direction or enabling decision (section 11.1 requires '功能演进已启用' before feature-evolution mode); continuing to scan for cosmetic churn contradicts the no-idle discipline."
+    },
+    "DEC-235": {
+      "id": "DEC-235",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-02T02:39:30+00:00",
+      "updated_at": "2026-09-02T02:39:30+00:00",
+      "touched_round": 229,
+      "rationale": "Operator explicitly reactivated the loop ('看goal没有结束呢, 继续'): the goal condition (continuous detail optimization / bug fixing / polish / interactivity / usability) is still unmet, so the converged-idle state (DEC-234) is superseded and the engine returns to the quality-convergence mode (section 1-8, 10).",
+      "alternatives_rejected": "Staying idle — the operator's standing directive requires continued improvement work."
     }
   },
   "edges": [
@@ -22430,6 +22441,12 @@
       "to": "DEC-233",
       "type": "supersedes",
       "created_at": "2026-09-01T17:40:24+00:00"
+    },
+    {
+      "from": "DEC-235",
+      "to": "DEC-234",
+      "type": "supersedes",
+      "created_at": "2026-09-02T02:39:31+00:00"
     }
   ]
 }
