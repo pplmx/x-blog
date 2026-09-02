@@ -2,7 +2,7 @@
   "ril_version": 1,
   "round": 232,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-02T05:36:08+00:00",
+  "updated_at": "2026-09-02T05:45:45+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -15675,6 +15675,28 @@
       "touched_round": 232,
       "commit": "e26c152",
       "title": "Adjacent/related/follows-feed order by _effective_publish_col()"
+    },
+    "ISS-269": {
+      "id": "ISS-269",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-02T05:44:57+00:00",
+      "updated_at": "2026-09-02T05:45:45+00:00",
+      "touched_round": 232,
+      "title": "Search API docstrings still say date filters bound created_at; actual behavior bounds effective publish time (publish_at ?? created_at)",
+      "severity": "low"
+    },
+    "CHG-314": {
+      "id": "CHG-314",
+      "type": "change",
+      "status": "active",
+      "version": 2,
+      "created_at": "2026-09-02T05:45:10+00:00",
+      "updated_at": "2026-09-02T05:45:45+00:00",
+      "touched_round": 232,
+      "commit": "f12eee8",
+      "title": "Search date-filter docstrings describe effective publish time; frontend search.vue comment aligned"
     }
   },
   "edges": [
@@ -22738,6 +22760,18 @@
       "to": "ISS-268",
       "type": "resolves",
       "created_at": "2026-09-02T05:35:47+00:00"
+    },
+    {
+      "from": "ISS-269",
+      "to": "COMP-001",
+      "type": "located_in",
+      "created_at": "2026-09-02T05:45:10+00:00"
+    },
+    {
+      "from": "CHG-314",
+      "to": "ISS-269",
+      "type": "resolves",
+      "created_at": "2026-09-02T05:45:45+00:00"
     }
   ]
 }
