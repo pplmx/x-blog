@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, type Mock, vi } from "vitest";
+import { ref } from "vue";
 
 import {
 	createAdminPost,
@@ -45,15 +46,27 @@ describe("admin post queries", () => {
 	it("lists posts reactively with search/filter/pagination query", () => {
 		useAdminPosts({ q: "vue", status: "published", skip: 20, limit: 10 });
 
-		expect(queryCalls[0].path).toBe("/api/admin/posts?q=vue&status=published&skip=20&limit=10");
+		const path = queryCalls[0].path as () => string;
+		expect(path()).toBe("/api/admin/posts?q=vue&status=published&skip=20&limit=10");
 		expect(queryCalls[0].options.headers).toEqual({ Authorization: "Bearer admin-jwt" });
 		expect(queryCalls[0].options.server).toBe(false);
+	});
+
+	it("re-evaluates the listing path when a filter params ref changes", () => {
+		const params = ref({ q: "vue", status: "draft", skip: 20, limit: 10 });
+		useAdminPosts(params);
+
+		const path = queryCalls[0].path as () => string;
+		expect(path()).toBe("/api/admin/posts?q=vue&status=draft&skip=20&limit=10");
+		params.value = { status: "published", skip: 40, limit: 10 };
+		expect(path()).toBe("/api/admin/posts?status=published&skip=40&limit=10");
 	});
 
 	it("omits empty list filters", () => {
 		useAdminPosts();
 
-		expect(queryCalls[0].path).toBe("/api/admin/posts");
+		const path = queryCalls[0].path as () => string;
+		expect(path()).toBe("/api/admin/posts");
 	});
 
 	it("fetches a post for editing reactively", () => {

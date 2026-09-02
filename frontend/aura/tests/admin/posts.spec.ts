@@ -245,41 +245,55 @@ describe("Admin Posts Page", () => {
 			expect(wrapper.text()).toContain("定时发布");
 		});
 
-		it("refreshes the list when the search query changes", async () => {
-			const refreshMock = vi.fn();
-			mockFetchAdminPosts.mockReturnValue({
-				data: ref(mockResponse),
-				pending: ref(false),
-				error: ref(null),
-				refresh: refreshMock,
+		it("feeds the debounced search term into the reactive listing params", async () => {
+			const paramsRefs: Array<Record<string, unknown>> = [];
+			mockFetchAdminPosts.mockImplementation((params: Record<string, unknown>) => {
+				paramsRefs.push(params);
+				return {
+					data: ref(mockResponse),
+					pending: ref(false),
+					error: ref(null),
+					refresh: vi.fn(),
+				};
 			});
 			const PostsPage = await loadPage();
 			const wrapper = await mountWithSuspense(PostsPage);
-			refreshMock.mockClear();
 
 			const searchInput = wrapper.find('input[type="text"]');
 			await searchInput.setValue("test");
-			// debounced 300ms
+			// debounced 300ms — the reactive path, not refresh(), carries the term
 			await new Promise((r) => setTimeout(r, 350));
-			expect(refreshMock).toHaveBeenCalled();
+
+			// The page passes useAdminPosts the live computed (a getter-backed
+			// ref); after the debounce its resolved params carry the search term +
+			// a reset skip (RIL ISS-275). Without this the snapshot URL never
+			// carried the term and searching did nothing.
+			const params = paramsRefs[0] as { value: { q?: string; skip?: number } };
+			expect(params.value.q).toBe("test");
+			expect(params.value.skip).toBe(0);
 		});
 
-		it("refreshes the list when the status filter changes", async () => {
-			const refreshMock = vi.fn();
-			mockFetchAdminPosts.mockReturnValue({
-				data: ref(mockResponse),
-				pending: ref(false),
-				error: ref(null),
-				refresh: refreshMock,
+		it("feeds the selected status into the reactive listing params", async () => {
+			const paramsRefs: Array<Record<string, unknown>> = [];
+			mockFetchAdminPosts.mockImplementation((params: Record<string, unknown>) => {
+				paramsRefs.push(params);
+				return {
+					data: ref(mockResponse),
+					pending: ref(false),
+					error: ref(null),
+					refresh: vi.fn(),
+				};
 			});
 			const PostsPage = await loadPage();
 			const wrapper = await mountWithSuspense(PostsPage);
-			refreshMock.mockClear();
 
 			const statusSelect = wrapper.find("select");
 			await statusSelect.setValue("published");
 			await flushPromises();
-			expect(refreshMock).toHaveBeenCalled();
+
+			const params = paramsRefs[0] as { value: { status?: string; skip?: number } };
+			expect(params.value.status).toBe("published");
+			expect(params.value.skip).toBe(0);
 		});
 
 		it("calls deleteAdminPost with confirmation when delete is clicked", async () => {

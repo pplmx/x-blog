@@ -1,3 +1,4 @@
+import { type Ref, unref } from "vue";
 import { adminAuthHeaders } from "../auth";
 import type { QueryParams } from "../transport";
 import { command, query, withQuery } from "../transport";
@@ -101,9 +102,27 @@ export interface AdminPostsQuery {
 	limit?: number;
 }
 
+type Getter<T> = () => T;
+type MaybeGetter<T> = T | Getter<T> | Ref<T>;
+
+/**
+ * Build a reactive listing path for /api/admin/posts.
+ *
+ * `params` may be a plain object, a ref, or a getter. Returning a getter
+ * (rather than a static string) means useFetch re-runs when the params change
+ * — so search/status/pagination edits trigger a real refetch instead of a
+ * refresh() that re-pulls the original snapshot URL (deep-dive finding,
+ * mached by the media page's useAdminMedia pattern).
+ */
+function postsListPath(params: MaybeGetter<AdminPostsQuery>): string | Getter<string> {
+	if (typeof params === "function")
+		return () => withQuery("/api/admin/posts", params() as QueryParams);
+	return () => withQuery("/api/admin/posts", unref(params) as QueryParams);
+}
+
 /** Posts for the admin panel with search/filter/pagination (reactive). */
-export function useAdminPosts(params: AdminPostsQuery = {}) {
-	return query<AdminPostListResponse>(withQuery("/api/admin/posts", params as QueryParams), {
+export function useAdminPosts(params: MaybeGetter<AdminPostsQuery> = {}) {
+	return query<AdminPostListResponse>(postsListPath(params), {
 		headers: adminAuthHeaders(),
 		server: false,
 	});

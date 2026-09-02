@@ -3314,111 +3314,122 @@ def restore_backup(db: Session, payload: dict) -> dict:
         "comments_skipped": 0,
     }
 
-    # Categories, tags, series — upsert by natural key, then flush so ids exist
-    # for the post FK/relationship assignments below.
-    cat_by_name = {c.name: c for c in db.query(models.Category).all()}
-    for item in payload.get("categories", []):
-        name = (item.get("name") or "").strip()
-        if not name or name in cat_by_name:
-            continue
-        cat_by_name[name] = models.Category(name=name)
-        db.add(cat_by_name[name])
-        counts["categories"] += 1
+    # The whole import must COMMIT: get_db closes the session without committing
+    # (a bare db.close() rolls back the pending transaction), so flush-only work
+    # here silently persisted nothing in production even though the endpoint
+    # returned 200 with created/updated counts (ISS-274). Every other write path
+    # in crud.py commits explicitly for exactly this reason. A mid-import
+    # exception rolls back so no half-imported state survives.
+    try:
+        # Categories, tags, series — upsert by natural key, then flush so ids
+        # exist for the post FK/relationship assignments below.
+        cat_by_name = {c.name: c for c in db.query(models.Category).all()}
+        for item in payload.get("categories", []):
+            name = (item.get("name") or "").strip()
+            if not name or name in cat_by_name:
+                continue
+            cat_by_name[name] = models.Category(name=name)
+            db.add(cat_by_name[name])
+            counts["categories"] += 1
 
-    tag_by_name = {t.name: t for t in db.query(models.Tag).all()}
-    for item in payload.get("tags", []):
-        name = (item.get("name") or "").strip()
-        if not name or name in tag_by_name:
-            continue
-        tag_by_name[name] = models.Tag(name=name)
-        db.add(tag_by_name[name])
-        counts["tags"] += 1
+        tag_by_name = {t.name: t for t in db.query(models.Tag).all()}
+        for item in payload.get("tags", []):
+            name = (item.get("name") or "").strip()
+            if not name or name in tag_by_name:
+                continue
+            tag_by_name[name] = models.Tag(name=name)
+            db.add(tag_by_name[name])
+            counts["tags"] += 1
 
-    series_by_slug = {s.slug: s for s in db.query(models.Series).all()}
-    for item in payload.get("series", []):
-        slug = (item.get("slug") or "").strip()
-        if not slug:
-            continue
-        series = series_by_slug.get(slug)
-        if series is None:
-            series = models.Series(slug=slug)
-            db.add(series)
-            series_by_slug[slug] = series
-            counts["series"] += 1
-        series.title = item.get("title") or series.title
-        series.description = item.get("description")
+        series_by_slug = {s.slug: s for s in db.query(models.Series).all()}
+        for item in payload.get("series", []):
+            slug = (item.get("slug") or "").strip()
+            if not slug:
+                continue
+            series = series_by_slug.get(slug)
+            if series is None:
+                series = models.Series(slug=slug)
+                db.add(series)
+                series_by_slug[slug] = series
+                counts["series"] += 1
+            series.title = item.get("title") or series.title
+            series.description = item.get("description")
 
-    db.flush()
+        db.flush()
 
-    # Posts — upsert by slug; tags rebuilt; comments merged by import_key.
-    post_by_slug = {p.slug: p for p in db.query(models.Post).all()}
-    for item in payload.get("posts", []):
-        slug = (item.get("slug") or "").strip()
-        if not slug:
-            continue
-        post = post_by_slug.get(slug)
-        if post is None:
-            post = models.Post(slug=slug)
-            db.add(post)
-            post_by_slug[slug] = post
-            counts["posts_created"] += 1
-        else:
-            counts["posts_updated"] += 1
-        post.title = (item.get("title") or "Untitled")[:200]
-        post.content = item.get("content") or ""
-        post.excerpt = item.get("excerpt")
-        post.published = bool(item.get("published", True))
-        post.pinned = bool(item.get("pinned", False))
-        post.publish_at = _from_iso(item.get("publish_at"))
-        restored_created = _from_iso(item.get("created_at"))
-        if restored_created is not None:
-            post.created_at = restored_created
-        post.cover_image = item.get("cover_image")
-        post.views = int(item.get("views") or 0)
-        post.likes = int(item.get("likes") or 0)
-        category_name = item.get("category")
-        post.category = cat_by_name.get(category_name) if category_name else None
-        post.series = series_by_slug.get(item.get("series")) if item.get("series") else None
-        post.series_order = int(item.get("series_order") or 0)
-        post.tags = [tag_by_name[t] for t in (item.get("tags") or []) if t in tag_by_name]
-        db.flush()  # post.id (and ids it links) must exist for the comment pass
+        # Posts — upsert by slug; tags rebuilt; comments merged by import_key.
+        post_by_slug = {p.slug: p for p in db.query(models.Post).all()}
+        for item in payload.get("posts", []):
+            slug = (item.get("slug") or "").strip()
+            if not slug:
+                continue
+            post = post_by_slug.get(slug)
+            if post is None:
+                post = models.Post(slug=slug)
+                db.add(post)
+                post_by_slug[slug] = post
+                counts["posts_created"] += 1
+            else:
+                counts["posts_updated"] += 1
+            post.title = (item.get("title") or "Untitled")[:200]
+            post.content = item.get("content") or ""
+            post.excerpt = item.get("excerpt")
+            post.published = bool(item.get("published", True))
+            post.pinned = bool(item.get("pinned", False))
+            post.publish_at = _from_iso(item.get("publish_at"))
+            restored_created = _from_iso(item.get("created_at"))
+            if restored_created is not None:
+                post.created_at = restored_created
+            post.cover_image = item.get("cover_image")
+            post.views = int(item.get("views") or 0)
+            post.likes = int(item.get("likes") or 0)
+            category_name = item.get("category")
+            post.category = cat_by_name.get(category_name) if category_name else None
+            post.series = series_by_slug.get(item.get("series")) if item.get("series") else None
+            post.series_order = int(item.get("series_order") or 0)
+            post.tags = [tag_by_name[t] for t in (item.get("tags") or []) if t in tag_by_name]
+            db.flush()  # post.id (and ids it links) must exist for the comment pass
 
-        new_by_ordinal: dict[int, models.Comment] = {}
-        metas = item.get("comments") or []
-        for ordinal, cmeta in enumerate(metas):
-            key = cmeta.get("import_key")
-            if key is not None:
-                existing = (
-                    db.query(models.Comment)
-                    .filter(models.Comment.import_key == key, models.Comment.post_id == post.id)
-                    .first()
+            new_by_ordinal: dict[int, models.Comment] = {}
+            metas = item.get("comments") or []
+            for ordinal, cmeta in enumerate(metas):
+                key = cmeta.get("import_key")
+                if key is not None:
+                    existing = (
+                        db.query(models.Comment)
+                        .filter(models.Comment.import_key == key, models.Comment.post_id == post.id)
+                        .first()
+                    )
+                    if existing is not None:
+                        new_by_ordinal[ordinal] = existing
+                        counts["comments_skipped"] += 1
+                        continue
+                comment = models.Comment(
+                    post_id=post.id,
+                    nickname=(cmeta.get("nickname") or "")[:50],
+                    email=cmeta.get("email"),
+                    content=cmeta.get("content") or "",
+                    ip_address=cmeta.get("ip_address"),
+                    is_approved=bool(cmeta.get("is_approved", True)),
+                    reviewed_at=_from_iso(cmeta.get("reviewed_at")),
+                    created_at=_from_iso(cmeta.get("created_at")),
+                    # Reader accounts don't round-trip (DEC-082): a reader-attributed
+                    # comment restores as anonymous free-text.
+                    import_key=key,
                 )
-                if existing is not None:
-                    new_by_ordinal[ordinal] = existing
-                    counts["comments_skipped"] += 1
-                    continue
-            comment = models.Comment(
-                post_id=post.id,
-                nickname=(cmeta.get("nickname") or "")[:50],
-                email=cmeta.get("email"),
-                content=cmeta.get("content") or "",
-                ip_address=cmeta.get("ip_address"),
-                is_approved=bool(cmeta.get("is_approved", True)),
-                reviewed_at=_from_iso(cmeta.get("reviewed_at")),
-                created_at=_from_iso(cmeta.get("created_at")),
-                # Reader accounts don't round-trip (DEC-082): a reader-attributed
-                # comment restores as anonymous free-text.
-                import_key=key,
-            )
-            db.add(comment)
-            new_by_ordinal[ordinal] = comment
-            counts["comments_created"] += 1
-        db.flush()  # comment ids for parent re-wiring
-        for ordinal, cmeta in enumerate(metas):
-            parent_ordinal = cmeta.get("parent_ordinal")
-            if parent_ordinal is not None and parent_ordinal in new_by_ordinal:
-                new_by_ordinal[ordinal].parent_id = new_by_ordinal[parent_ordinal].id
+                db.add(comment)
+                new_by_ordinal[ordinal] = comment
+                counts["comments_created"] += 1
+            db.flush()  # comment ids for parent re-wiring
+            for ordinal, cmeta in enumerate(metas):
+                parent_ordinal = cmeta.get("parent_ordinal")
+                if parent_ordinal is not None and parent_ordinal in new_by_ordinal:
+                    new_by_ordinal[ordinal].parent_id = new_by_ordinal[parent_ordinal].id
+    except Exception:
+        db.rollback()
+        raise
 
+    db.commit()
     return counts
 
 

@@ -9,7 +9,13 @@ const { t, locale } = useLang();
 
 useHead({ title: computed(() => t("admin.postsList.seoTitle")) });
 
+// Two refs for the search box: the input's live text (v-model, per keystroke)
+// and the debounced term that actually drives the query. Only the debounced
+// value feeds queryParams, so the reactive listing path (below) refetches at
+// most once per settled search — never on every keypress (media page pattern,
+// DEC-189).
 const searchQuery = ref("");
+const searchInput = ref("");
 const statusFilter = ref("");
 const currentPage = ref(0);
 const pageSize = 20;
@@ -24,7 +30,11 @@ const queryParams = computed(() => {
 	return params;
 });
 
-const { data, pending, error, refresh } = await useAdminPosts(queryParams.value);
+// Pass the computed (a getter-backed path), NOT queryParams.value (a one-time
+// snapshot): useFetch watches the path, so changing q/status/skip re-fetches
+// with the new params. snapshotting at setup locked every later refresh() to
+// the original URL and search/status/pagination did nothing (RIL ISS-275).
+const { data, pending, error, refresh } = await useAdminPosts(queryParams);
 const posts = computed(() => data.value?.items ?? []);
 const total = computed(() => data.value?.pagination?.total ?? 0);
 const totalPages = computed(() => Math.ceil(total.value / pageSize));
@@ -33,22 +43,20 @@ const isDeleting = ref(false);
 const deleteError = ref<string | null>(null);
 const debounceTimer = ref<ReturnType<typeof setTimeout> | null>(null);
 
-// NO deep watch on queryParams: searchQuery updates on every keystroke, so a
-// deep watcher would fire a fetch per keystroke AND the debounced onSearchInput
-// would fire a second one (double-fetch + table flicker on every key). Each
-// change path owns its own (single) refresh: debounced search, status change,
-// pagination, delete.
+// Debounced search: typing updates searchInput immediately (the box stays
+// responsive) but only the settled term flips searchQuery, which re-runs the
+// watched path — one refetch per search, not per keystroke. Reset to page 1
+// for the fresh result set.
 function onSearchInput() {
 	if (debounceTimer.value) clearTimeout(debounceTimer.value);
 	debounceTimer.value = setTimeout(() => {
+		searchQuery.value = searchInput.value.trim();
 		currentPage.value = 0;
-		void refresh();
 	}, 300);
 }
 
 function onStatusChange() {
 	currentPage.value = 0;
-	void refresh();
 }
 
 async function handleDelete(id: number) {
@@ -60,11 +68,11 @@ async function handleDelete(id: number) {
 		await refresh();
 		// Deleting the last item of the last page must not strand the operator
 		// on an out-of-range page showing a false "empty" (deep-dive re-audit):
-		// the new page count is known only after the refresh, so clamp + reload.
+		// the new page count is known only after the refresh, so clamp — the
+		// clamped currentPage re-runs the watched listing path automatically.
 		const maxPage = Math.max(0, totalPages.value - 1);
 		if (currentPage.value > maxPage) {
 			currentPage.value = maxPage;
-			await refresh();
 		}
 	} catch (e) {
 		// A silent failure looks like "nothing happened" — surface it.
@@ -135,7 +143,7 @@ function statusDot(post: AdminPost): string {
       <div class="relative flex-1">
         <Icon icon="lucide:search" class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
         <input
-          v-model="searchQuery"
+          v-model="searchInput"
           type="text"
           :placeholder="t('admin.postsList.searchPlaceholder')"
           :aria-label="t('admin.postsList.searchPlaceholder')"
@@ -287,7 +295,7 @@ function statusDot(post: AdminPost): string {
         type="button"
         :disabled="currentPage === 0"
         class="px-3 py-1.5 text-sm rounded-lg border border-gray-200 dark:border-gray-700 disabled:opacity-40 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
-        @click="currentPage--; refresh()"
+        @click="currentPage--"
       >
         {{ t("admin.postsList.pagination.prev") }}
       </button>
@@ -298,7 +306,7 @@ function statusDot(post: AdminPost): string {
         type="button"
         :disabled="currentPage >= totalPages - 1"
         class="px-3 py-1.5 text-sm rounded-lg border border-gray-200 dark:border-gray-700 disabled:opacity-40 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
-        @click="currentPage++; refresh()"
+        @click="currentPage++"
       >
         {{ t("admin.postsList.pagination.next") }}
       </button>

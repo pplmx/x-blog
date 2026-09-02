@@ -798,7 +798,7 @@ function shortEndpoint(endpoint: string): string {
           >
             <div class="flex items-center justify-between gap-3 text-sm">
               <NuxtLink
-                :to="{ query: { category_id: String(cf.id) } }"
+                :to="{ path: '/', query: { category_id: String(cf.id) } }"
                 class="min-w-0 truncate text-gray-900 dark:text-gray-100 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
               >
                 {{ cf.name }}

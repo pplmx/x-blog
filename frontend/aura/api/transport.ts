@@ -1,7 +1,8 @@
 import type { AvailableRouterMethod, NitroFetchRequest } from "nitropack/types";
 import type { AsyncData, NuxtError, UseFetchOptions } from "nuxt/app";
-import type { Ref } from "vue";
+import { type Ref, unref } from "vue";
 
+import { useAdminAuth } from "~~/composables/useAdminAuth";
 import { useRateLimitNotice } from "~~/composables/useRateLimitNotice";
 
 export type ApiQueryPath = Parameters<typeof useFetch>[0];
@@ -99,8 +100,9 @@ export function query(path: ApiQueryPath, options: object = {}) {
 		baseURL: apiBaseUrl(),
 		...options,
 	};
-	// Merge a 429 detector in front of any caller-provided handler so every
-	// query (useFetch) path surfaces the notice without breaking local handling.
+	// Merge a 429 detector + the 401 session-expiry handler in front of any
+	// caller-provided handler so every query (useFetch) path surfaces them
+	// without breaking local handling.
 	const callerOnResponseError = resolvedOptions.onResponseError as
 		| ResponseErrorHook
 		| ResponseErrorHook[]
@@ -108,21 +110,24 @@ export function query(path: ApiQueryPath, options: object = {}) {
 	resolvedOptions.onResponseError = (context) => {
 		const c = context as { response: { status?: number } };
 		flagRateLimit(c.response);
+		flagAdminUnauthorized(c.response, resolveRequestPath(path));
 		return runResponseErrorHook(callerOnResponseError, context);
 	};
 	return useFetch<unknown>(path, resolvedOptions);
 }
 
 export function command<T>(path: string, options?: ApiCommandOptions): Promise<T> {
-	// 429 detector on the promise (not in the options bag): options stay
-	// byte-for-byte as the caller wrote them so per-call option-assertion tests
-	// and ofetch hook semantics are untouched; on a rate-limit failure we raise
-	// the app-wide notice and rethrow the original error for local handling.
+	// 429 detector + admin-401 handler on the promise (not in the options bag):
+	// options stay byte-for-byte as the caller wrote them so per-call
+	// option-assertion tests and ofetch hook semantics are untouched; on a
+	// rate-limit failure we raise the app-wide notice and rethrow the original
+	// error for local handling.
 	return $fetch<T>(path, {
 		baseURL: apiBaseUrl(),
 		...(options ?? {}),
 	} as ApiCommandOptions).catch((error: unknown) => {
 		flagRateLimit(fetcherResponseError(error));
+		flagAdminUnauthorized(fetcherResponseError(error), path);
 		throw error;
 	});
 }
@@ -141,6 +146,33 @@ function flagRateLimit(response: { status?: number } | undefined): void {
 function fetcherResponseError(error: unknown): { status?: number } | undefined {
 	const response = (error as { response?: { status?: number } } | undefined)?.response;
 	return Array.isArray(response) ? undefined : response;
+}
+
+/**
+ * Resolve the actually-requested path from a query() argument (string, ref,
+ * or getter — the getter form is what reactive listings pass, e.g. the admin
+ * posts list path built in api/admin/posts.ts, ISS-275). Used to scope the
+ * admin-401 handler to /api/admin/* so a 401 on a reader endpoint (which the
+ * reader pages handle by redirecting to /login) never kicks an admin redirect.
+ */
+function resolveRequestPath(path: ApiQueryPath): string {
+	if (typeof path === "string") return path;
+	if (typeof path === "function") return path() ?? "";
+	return unref(path) ?? "";
+}
+
+/**
+ * React to a 401 from an ADMIN endpoint: an expired/revoked admin token makes
+ * every admin call 401 — that is not a transient failure. Drop the stale token
+ * and hard-redirect to /admin/login instead of letting the page render a
+ * misleading generic error (RIL ISS-277, ISS-273). Scoped to /api/admin/* and
+ * the login call explicitly excluded: a 401 from POST /api/admin/login means
+ * wrong credentials, which the login page already handles in-place.
+ */
+function flagAdminUnauthorized(response: { status?: number } | undefined, path: string): void {
+	if (response?.status !== 401) return;
+	if (!path.startsWith("/api/admin/") || path.startsWith("/api/admin/login")) return;
+	useAdminAuth().handleAdminUnauthorized();
 }
 
 /** An ofetch/useFetch onResponseError hook (single fn or array of fns). */

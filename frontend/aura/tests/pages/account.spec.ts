@@ -78,7 +78,12 @@ vi.mock("../../api/public/taxonomy", () => ({
 
 const stubs = {
 	Icon: { template: '<svg class="icon-stub" />' },
-	NuxtLink: { template: '<a class="nuxt-link-stub"><slot/></a>' },
+	// Render the `to` prop as data-to so tests can assert link targets (e.g.
+	// a followed category deep-links to the home filter, ISS-276).
+	NuxtLink: {
+		props: ["to"],
+		template: '<a class="nuxt-link-stub" :data-to="JSON.stringify(to)"><slot/></a>',
+	},
 };
 
 let Account: unknown;
@@ -518,6 +523,30 @@ describe("Account settings page", () => {
 			expect(mockFetchReaderCategoryFollows).toHaveBeenCalledTimes(2);
 			expect(wrapper.text()).toContain("还没有关注任何分类");
 			vi.unstubAllGlobals();
+		});
+
+		it("deep-links a followed category to the category-filtered home feed", async () => {
+			isAuthenticated.value = true;
+			mockFetchPushSubscriptions.mockResolvedValue({ items: [], total: 0 });
+			mockFetchReaderCategoryFollows.mockResolvedValue({
+				items: [{ id: 4, name: "AI", notify: true }],
+				total: 1,
+			});
+
+			const wrapper = await mountPage();
+			const section = wrapper.findAll("section").find((s) => s.text().includes("关注的分类"));
+			expect(section).toBeDefined();
+			if (!section) throw new Error("categories section not found");
+
+			// The followed-category name links to the homepage's category filter
+			// (which honors /?category_id=X, RIL ISS-276) — not a query-only
+			// location that would resolve to the account page itself.
+			const link = section?.find("a");
+			const to = link?.attributes("data-to") ?? link?.props("to");
+			expect(JSON.parse(String(to))).toEqual({
+				path: "/",
+				query: { category_id: "4" },
+			});
 		});
 
 		it("toggles notifications for a followed category (TASK-182)", async () => {

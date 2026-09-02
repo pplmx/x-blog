@@ -164,6 +164,101 @@ describe("rate-limit notice wiring", () => {
 	});
 });
 
+describe("admin session-expiry 401 handling (ISS-277)", () => {
+	beforeEach(() => {
+		vi.restoreAllMocks(); // a prior test's replace spy must not leak its call count
+		localStorage.clear();
+		vi.spyOn(window.location, "replace").mockImplementation(() => undefined);
+	});
+
+	afterEach(() => {
+		vi.restoreAllMocks();
+	});
+
+	it("command hard-redirects to /admin/login on a 401 from an admin endpoint", async () => {
+		localStorage.setItem("admin_token", "admin-jwt");
+		vi.stubGlobal(
+			"$fetch",
+			vi.fn(async () => {
+				const err = new Error("Unauthorized") as Error & { response: { status: number } };
+				err.response = { status: 401 };
+				throw err;
+			}),
+		);
+
+		await expect(command("/api/admin/posts")).rejects.toThrow("Unauthorized");
+
+		expect(localStorage.getItem("admin_token")).toBeNull();
+		expect(window.location.replace).toHaveBeenCalledWith("/admin/login");
+	});
+
+	it("does NOT redirect for a 401 on a reader endpoint (reader pages handle it)", async () => {
+		localStorage.setItem("admin_token", "admin-jwt");
+		vi.stubGlobal(
+			"$fetch",
+			vi.fn(async () => {
+				const err = new Error("Unauthorized") as Error & { response: { status: number } };
+				err.response = { status: 401 };
+				throw err;
+			}),
+		);
+
+		await expect(command("/api/reader/me/bookmarks")).rejects.toThrow("Unauthorized");
+
+		expect(localStorage.getItem("admin_token")).toBe("admin-jwt");
+		expect(window.location.replace).not.toHaveBeenCalled();
+	});
+
+	it("does NOT redirect for a 401 from /api/admin/login (invalid credentials)", async () => {
+		localStorage.setItem("admin_token", "admin-jwt");
+		vi.stubGlobal(
+			"$fetch",
+			vi.fn(async () => {
+				const err = new Error("Unauthorized") as Error & { response: { status: number } };
+				err.response = { status: 401 };
+				throw err;
+			}),
+		);
+
+		await expect(command("/api/admin/login")).rejects.toThrow("Unauthorized");
+
+		// The token is not the login failure — it stays; the login page shows
+		// its own "invalid credentials" error in place.
+		expect(localStorage.getItem("admin_token")).toBe("admin-jwt");
+		expect(window.location.replace).not.toHaveBeenCalled();
+	});
+
+	it("does NOT touch the session on a non-401 admin failure", async () => {
+		localStorage.setItem("admin_token", "admin-jwt");
+		vi.stubGlobal(
+			"$fetch",
+			vi.fn(async () => {
+				const err = new Error("boom") as Error & { response: { status: number } };
+				err.response = { status: 503 };
+				throw err;
+			}),
+		);
+
+		await expect(command("/api/admin/posts")).rejects.toThrow("boom");
+
+		expect(localStorage.getItem("admin_token")).toBe("admin-jwt");
+		expect(window.location.replace).not.toHaveBeenCalled();
+	});
+
+	it("query redirects on a 401 from an admin path (getter-backed reactive path)", async () => {
+		localStorage.setItem("admin_token", "admin-jwt");
+		query(() => "/api/admin/posts?q=vue");
+
+		const onResponseError = useFetchCalls[0].options.onResponseError as (ctx: {
+			response: { status: number };
+		}) => unknown;
+		await onResponseError({ response: { status: 401 } });
+
+		expect(localStorage.getItem("admin_token")).toBeNull();
+		expect(window.location.replace).toHaveBeenCalledWith("/admin/login");
+	});
+});
+
 describe("withQuery", () => {
 	it("omits nullish and empty values while preserving zero and false", () => {
 		expect(withQuery("/api/x", { zero: 0, off: false, empty: "", none: null })).toBe(
