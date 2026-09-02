@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 236,
+  "round": 237,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-02T21:49:06+00:00",
+  "updated_at": "2026-09-02T23:48:51+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -11,7 +11,7 @@
       "version": 1,
       "created_at": "2026-08-06T13:23:41+00:00",
       "updated_at": "2026-08-06T13:23:41+00:00",
-      "touched_round": 234,
+      "touched_round": 236,
       "title": "backend-nova",
       "description": "FastAPI Python 3.14 backend at backend/nova; SQLAlchemy ORM; routers in app/routers, crud.py business logic, 656 lines"
     },
@@ -16346,6 +16346,108 @@
       "touched_round": 235,
       "title": "String()-coerce resolveRequestPath getter/ref branches in api/transport for the typecheck gate",
       "commit": "936f518"
+    },
+    "ISS-288": {
+      "id": "ISS-288",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-02T23:31:38+00:00",
+      "updated_at": "2026-09-02T23:48:51+00:00",
+      "touched_round": 236,
+      "title": "Reader data export silently truncates bookmarks at the 100-item list default; the portable bundle is incomplete",
+      "severity": "high"
+    },
+    "ISS-289": {
+      "id": "ISS-289",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-02T23:31:39+00:00",
+      "updated_at": "2026-09-02T23:48:51+00:00",
+      "touched_round": 236,
+      "title": "Missing eager loads cause per-row N+1s in backup snapshot, posts CSV export, and series/category follow lists",
+      "severity": "medium"
+    },
+    "ISS-290": {
+      "id": "ISS-290",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-02T23:31:39+00:00",
+      "updated_at": "2026-09-02T23:48:51+00:00",
+      "touched_round": 236,
+      "title": "Admin posts CSV Status column/filter disagree with app-wide scheduled-vs-live semantics",
+      "severity": "low"
+    },
+    "TASK-266": {
+      "id": "TASK-266",
+      "type": "task",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-02T23:31:39+00:00",
+      "updated_at": "2026-09-02T23:48:51+00:00",
+      "touched_round": 236,
+      "category": "correctness",
+      "severity": "high",
+      "title": "Never truncate the reader data export: bookmarks fetch with limit=None complete mode"
+    },
+    "TASK-267": {
+      "id": "TASK-267",
+      "type": "task",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-02T23:31:39+00:00",
+      "updated_at": "2026-09-02T23:48:51+00:00",
+      "touched_round": 236,
+      "category": "performance",
+      "severity": "medium",
+      "title": "Eager-load category/series/tags in backup snapshot, posts CSV export, and series/category follow queries"
+    },
+    "TASK-268": {
+      "id": "TASK-268",
+      "type": "task",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-02T23:31:39+00:00",
+      "updated_at": "2026-09-02T23:48:51+00:00",
+      "touched_round": 236,
+      "category": "correctness",
+      "severity": "low",
+      "title": "Align admin posts CSV Status column + scheduled filter with scheduled-vs-live semantics"
+    },
+    "CHG-334": {
+      "id": "CHG-334",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-02T23:48:16+00:00",
+      "updated_at": "2026-09-02T23:48:16+00:00",
+      "touched_round": 236,
+      "title": "Complete reader data export — list_reader_bookmarks limit=None mode, never truncate bookmarks",
+      "commit": "7c7406f"
+    },
+    "CHG-335": {
+      "id": "CHG-335",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-02T23:48:16+00:00",
+      "updated_at": "2026-09-02T23:48:16+00:00",
+      "touched_round": 236,
+      "title": "Eager-load category/series/tags in backup snapshot, posts CSV export, and series/category follow lists",
+      "commit": "7c7406f"
+    },
+    "CHG-336": {
+      "id": "CHG-336",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-02T23:48:17+00:00",
+      "updated_at": "2026-09-02T23:48:17+00:00",
+      "touched_round": 236,
+      "title": "Align admin posts CSV Status column + scheduled filter with scheduled-vs-live semantics",
+      "commit": "7c7406f"
     }
   },
   "edges": [
@@ -23805,6 +23907,78 @@
       "to": "ISS-287",
       "type": "resolves",
       "created_at": "2026-09-02T21:47:16+00:00"
+    },
+    {
+      "from": "ISS-288",
+      "to": "COMP-001",
+      "type": "located_in",
+      "created_at": "2026-09-02T23:32:42+00:00"
+    },
+    {
+      "from": "ISS-289",
+      "to": "COMP-001",
+      "type": "located_in",
+      "created_at": "2026-09-02T23:32:42+00:00"
+    },
+    {
+      "from": "ISS-290",
+      "to": "COMP-001",
+      "type": "located_in",
+      "created_at": "2026-09-02T23:32:42+00:00"
+    },
+    {
+      "from": "TASK-266",
+      "to": "ISS-288",
+      "type": "addresses",
+      "created_at": "2026-09-02T23:32:42+00:00"
+    },
+    {
+      "from": "TASK-267",
+      "to": "ISS-289",
+      "type": "addresses",
+      "created_at": "2026-09-02T23:32:42+00:00"
+    },
+    {
+      "from": "TASK-268",
+      "to": "ISS-290",
+      "type": "addresses",
+      "created_at": "2026-09-02T23:32:43+00:00"
+    },
+    {
+      "from": "CHG-334",
+      "to": "TASK-266",
+      "type": "implements",
+      "created_at": "2026-09-02T23:48:50+00:00"
+    },
+    {
+      "from": "CHG-334",
+      "to": "ISS-288",
+      "type": "resolves",
+      "created_at": "2026-09-02T23:48:50+00:00"
+    },
+    {
+      "from": "CHG-335",
+      "to": "TASK-267",
+      "type": "implements",
+      "created_at": "2026-09-02T23:48:50+00:00"
+    },
+    {
+      "from": "CHG-335",
+      "to": "ISS-289",
+      "type": "resolves",
+      "created_at": "2026-09-02T23:48:50+00:00"
+    },
+    {
+      "from": "CHG-336",
+      "to": "TASK-268",
+      "type": "implements",
+      "created_at": "2026-09-02T23:48:50+00:00"
+    },
+    {
+      "from": "CHG-336",
+      "to": "ISS-290",
+      "type": "resolves",
+      "created_at": "2026-09-02T23:48:51+00:00"
     }
   ]
 }
