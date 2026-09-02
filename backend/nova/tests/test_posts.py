@@ -522,6 +522,102 @@ def test_adjacent_popular_related_include_comment_count(client, db_session, auth
     assert all("comment_count" in it for it in rel.json())
 
 
+def test_adjacent_posts_follow_effective_publish_order(client, db_session):
+    """Adjacent prev/next must match the real feed order (effective publish
+    time), not draft created_at — the route's contract is "matching get_posts",
+    and get_posts orders by publish_at ?? created_at (RIL ISS-265/267).
+
+    A post drafted in Jan but live in Jun sits where a June post sits — after a
+    Jul-created post and before a Jun-created post — NOT at its January slot.
+    """
+    from datetime import UTC, datetime
+
+    from app import models
+
+    for title, created, publish_at in [
+        ("MayPost", datetime(2024, 5, 1, 12, 0, 0, tzinfo=UTC), None),
+        ("SchedJun", datetime(2024, 1, 1, 12, 0, 0, tzinfo=UTC), datetime(2024, 6, 1, 12, 0, 0)),  # draft Jan, live Jun
+        ("JulPost", datetime(2024, 7, 1, 12, 0, 0, tzinfo=UTC), None),
+    ]:
+        db_session.add(
+            models.Post(
+                title=title,
+                slug=title.lower(),
+                content="Content",
+                published=True,
+                created_at=created,
+                publish_at=publish_at,
+            )
+        )
+    db_session.commit()
+
+    ids = {
+        p.title: p.id
+        for p in db_session.query(models.Post).filter(models.Post.title.in_(["MayPost", "SchedJun", "JulPost"]))
+    }
+
+    resp = client.get(f"/api/posts/{ids['SchedJun']}/adjacent")
+    assert resp.status_code == 200
+    data = resp.json()
+    # Effective feed order: JulPost, SchedJun, MayPost. Buggy created_at order
+    # would give SchedJun previous=MayPost (Jan slot) — this pins the fix.
+    assert data["previous"]["title"] == "JulPost"
+    assert data["next"]["title"] == "MayPost"
+
+
+def test_related_posts_candidates_rank_by_effective_publish(client, db_session):
+    """Related posts in the same category must rank newest-by-effective-publish,
+    so a post drafted long ago but live today leads a draft-created-today post
+    that actually went live earlier — mirroring the feed (RIL ISS-265/267).
+    """
+    from datetime import UTC, datetime, timedelta
+
+    from app import models
+
+    now = datetime.now(UTC)
+    tech = models.Category(name="Tech")
+    db_session.add(tech)
+    db_session.flush()
+    # Source post: no tags → get_related_posts takes the same-category fallback.
+    source = models.Post(
+        title="Source",
+        slug="source",
+        category_id=tech.id,
+        content="Content",
+        published=True,
+        created_at=now - timedelta(days=5),
+    )
+    # Candidate drafted 30 days ago but scheduled to go live yesterday → its
+    # effective publish (yesterday) is newer than any draft-created-then post.
+    sched = models.Post(
+        title="SchedCand",
+        slug="schedcand",
+        category_id=tech.id,
+        content="Content",
+        published=True,
+        created_at=now - timedelta(days=30),
+        publish_at=now - timedelta(days=1),
+    )
+    recent_draft = models.Post(
+        title="RecentDraft",
+        slug="recentdraft",
+        category_id=tech.id,
+        content="Content",
+        published=True,
+        created_at=now - timedelta(days=3),
+    )
+    db_session.add_all([source, sched, recent_draft])
+    db_session.flush()
+
+    resp = client.get(f"/api/posts/{source.id}/related")
+    assert resp.status_code == 200, resp.text
+    slugs = [it["slug"] for it in resp.json()]
+    # Effective-publish order leads with schedcand (yesterday) over recentdraft
+    # (created 3 days ago); the buggy created_at order reversed them (schedcand
+    # is 30 days old).
+    assert slugs.index("schedcand") < slugs.index("recentdraft")
+
+
 def _seed_archive_posts(db_session):
     """Seed published/unpublished posts across distinct (year, month) buckets."""
     from datetime import UTC, datetime

@@ -1291,7 +1291,7 @@ def get_related_posts(db: Session, post_id: int, limit: int = 5) -> list[models.
                 joinedload(models.Post.category),
                 joinedload(models.Post.tags),
             )
-            .order_by(models.Post.created_at.desc())
+            .order_by(_effective_publish_col().desc())
             .limit(limit)
             .all()
         )
@@ -1353,12 +1353,12 @@ def get_related_posts(db: Session, post_id: int, limit: int = 5) -> list[models.
                 ),
                 else_=func.coalesce(tag_match_count_subq.c.match_count, 0),
             ).desc(),
-            models.Post.created_at.desc(),
+            _effective_publish_col().desc(),
         )
     else:
         query = query.order_by(
             tag_match_count_subq.c.match_count.desc().nullslast(),
-            models.Post.created_at.desc(),
+            _effective_publish_col().desc(),
         )
 
     results = query.limit(limit).all()
@@ -1372,10 +1372,11 @@ def get_related_posts(db: Session, post_id: int, limit: int = 5) -> list[models.
 def get_adjacent_posts(db: Session, post_id: int) -> tuple[models.Post | None, models.Post | None]:
     """Return the linear previous/next posts around `post_id` in public feed order.
 
-    Feed order is pinned desc, then created_at desc (matching ``get_posts``), so
-    "previous" is the post immediately above the current one and "next" is the
-    one immediately below it when scanning the homepage feed. Only publicly
-    visible (published, publish_at passed) posts count, matching the feed.
+    Feed order is pinned desc, then effective publish time desc (publish_at ??
+    created_at, matching ``get_posts`` — RIL ISS-265/267), so "previous" is the
+    post immediately above the current one and "next" is the one immediately
+    below it when scanning the homepage feed. Only publicly visible (published,
+    publish_at passed) posts count, matching the feed.
 
     Returns ``(previous, next)``; either side is None at the ends of the feed,
     and both are None when the post is not publicly visible.
@@ -1391,7 +1392,7 @@ def get_adjacent_posts(db: Session, post_id: int) -> tuple[models.Post | None, m
             models.Post.published.is_(True),
             or_(models.Post.publish_at.is_(None), models.Post.publish_at <= now),
         )
-        .order_by(models.Post.pinned.desc(), models.Post.created_at.desc())
+        .order_by(models.Post.pinned.desc(), _effective_publish_col().desc())
         .all()
     ]
     try:
@@ -2280,9 +2281,10 @@ def follows_feed_posts(db: Session, reader_id: int, limit: int = 12) -> list[mod
     DEC-195/TASK-215): a post matches if its category is one the reader follows
     OR its series is one they follow OR it carries a tag they follow
     (independent of per-follow notify — tracking, not push). Results are
-    public, published, deduped (a post is its own row), newest first, capped at
-    ``limit``. A reader following nothing gets an empty list (the frontend
-    hides the row).
+    public, published, deduped (a post is its own row), newest by effective
+    publish time first (publish_at ?? created_at, matching the global feed),
+    capped at ``limit``. A reader following nothing gets an empty list (the
+    frontend hides the row).
     """
     category_ids = [
         cid
@@ -2319,7 +2321,7 @@ def follows_feed_posts(db: Session, reader_id: int, limit: int = 12) -> list[mod
             or_(*scope),
         )
         .options(joinedload(models.Post.category), joinedload(models.Post.tags))
-        .order_by(models.Post.created_at.desc(), models.Post.id.desc())
+        .order_by(_effective_publish_col().desc(), models.Post.id.desc())
         .limit(limit)
     )
     result = [post for post in query.all() if is_publicly_visible(post)]

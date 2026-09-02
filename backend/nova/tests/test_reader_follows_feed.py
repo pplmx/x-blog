@@ -173,3 +173,35 @@ class TestFollowsFeed:
 
         feed = client.get(FOLLOWS_FEED + "?limit=3", headers=_auth(token)).json()
         assert len(feed) == 3
+
+    def test_orders_by_effective_publish_time(self, client, auth_headers, db_session):
+        """The follows-feed is a feed surface: a post drafted long ago but live
+        today leads one drafted-today that went live earlier — effective publish
+        at ?? created_at ordering, matching the global feed (RIL ISS-265/267)."""
+        from datetime import UTC, datetime, timedelta
+
+        from app import models
+
+        token = _token(client)
+        category = _create_category(client, auth_headers)
+        client.put(f"/api/reader/me/categories/{category['id']}/follow", headers=_auth(token))
+
+        sched = _create_post(client, auth_headers, "sched-feed", category_id=category["id"])
+        recent = _create_post(client, auth_headers, "recent-feed", category_id=category["id"])
+
+        now = datetime.now(UTC)
+        # sched: drafted 30 days ago, scheduled to go live yesterday.
+        db_session.query(models.Post).filter(models.Post.id == sched["id"]).update(
+            {"created_at": now - timedelta(days=30), "publish_at": now - timedelta(days=1)}
+        )
+        # recent: actually created 3 days ago, no publish_at.
+        db_session.query(models.Post).filter(models.Post.id == recent["id"]).update(
+            {"created_at": now - timedelta(days=3)}
+        )
+        db_session.commit()
+
+        feed = client.get(FOLLOWS_FEED, headers=_auth(token)).json()
+        slugs = [p["slug"] for p in feed]
+        # Effective publish: sched (yesterday) leads recent (3 days ago).
+        # Buggy created_at order put recent first (sched looks 30 days old).
+        assert slugs.index(sched["slug"]) < slugs.index(recent["slug"])
