@@ -654,6 +654,100 @@ describe("CommentList", () => {
 		});
 	});
 
+	describe("Refresh failures + page drain (ISS-307)", () => {
+		it("surfaces a sort-refresh failure with a working retry instead of staying silent", async () => {
+			const { wrapper } = await mountCommentList();
+			mockGetComments.mockRejectedValueOnce(new Error("network down"));
+			const select = wrapper.find("select#comment-sort");
+			await select.setValue("likes");
+			await flushPromises();
+
+			// The failure renders a visible, retryable banner (previously the
+			// void refreshList() rejection was silent and the UI never moved).
+			expect(wrapper.text()).toContain("评论刷新失败，请重试。");
+
+			mockGetComments.mockResolvedValueOnce({ ...mockComments, page: 1 });
+			const retry = wrapper.findAll("button").find((b) => b.text() === "重试");
+			expect(retry).toBeDefined();
+			await retry?.trigger("click");
+			await flushPromises();
+			expect(mockGetComments).toHaveBeenLastCalledWith(1, 1, 20, "likes");
+			expect(wrapper.text()).not.toContain("评论刷新失败，请重试。");
+		});
+
+		it("clamps back to the last valid page after deleting the only comment on it", async () => {
+			// Deleting the last comment of the LAST page must not drop the list
+			// into the misleading "No comments yet — be the first!" empty state:
+			// refresh sees an empty page under a non-zero total and clamps to
+			// the last valid page.
+			const ownReader = { id: 7, display_name: "Me" };
+			const page1Data = {
+				items: [
+					{
+						id: 80,
+						post_id: 1,
+						parent_id: null,
+						nickname: "Someone",
+						content: "first page comment",
+						is_approved: true,
+						ip_address: "127.0.0.1",
+						created_at: "2024-01-10T10:00:00Z",
+					},
+				],
+				total: 5,
+				total_pages: 2,
+				page: 1,
+				limit: 20,
+			};
+			const page2Data = {
+				items: [
+					{
+						id: 90,
+						post_id: 1,
+						parent_id: null,
+						nickname: "Me",
+						content: "my last comment",
+						is_approved: true,
+						ip_address: "127.0.0.1",
+						likes: 0,
+						created_at: "2024-01-15T10:30:00Z",
+						edited_at: null,
+						reader: ownReader,
+					},
+				],
+				total: 5,
+				total_pages: 2,
+				page: 2,
+				limit: 20,
+			};
+			const drainedPage2 = { items: [], total: 4, total_pages: 1, page: 2, limit: 20 };
+			const clampedPage1 = { items: page1Data.items, total: 4, total_pages: 1, page: 1, limit: 20 };
+
+			localStorage.setItem("reader_token", "reader.jwt");
+			localStorage.setItem(
+				"reader_profile",
+				JSON.stringify({ id: 7, email: "me@x.com", display_name: "Me", created_at: null }),
+			);
+			mockDeleteMyComment.mockResolvedValue(undefined);
+			vi.stubGlobal("confirm", () => true);
+
+			const { wrapper } = await mountCommentList({ comments: page1Data });
+			mockGetComments.mockResolvedValueOnce(page2Data);
+			await wrapper.findAll("nav button")[1].trigger("click");
+			await flushPromises();
+			expect(wrapper.text()).toContain("my last comment");
+
+			mockGetComments.mockResolvedValueOnce(drainedPage2).mockResolvedValueOnce(clampedPage1);
+			await wrapper.find(".comment-delete").trigger("click");
+			await flushPromises();
+
+			expect(mockGetComments).toHaveBeenLastCalledWith(1, 1, 20, "newest");
+			expect(wrapper.text()).toContain("first page comment");
+			expect(wrapper.text()).not.toContain("还没有评论，来发第一个评论吧！");
+			vi.unstubAllGlobals();
+		});
+	});
+
 	describe("Pagination", () => {
 		it("renders pagination when total_pages > 1", async () => {
 			const { wrapper } = await mountCommentList();

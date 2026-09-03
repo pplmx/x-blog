@@ -9,6 +9,19 @@
     <p v-if="likeError" class="mb-3 text-sm text-red-500">{{ likeError }}</p>
     <p v-if="actionError" class="mb-3 text-sm text-red-500">{{ actionError }}</p>
     <p v-if="flagError" class="mb-3 text-sm text-red-500">{{ flagError }}</p>
+    <!-- Sort/pagination refresh failures used to be silent — an offline reader
+         flipped the sort arrow and saw nothing change. Surfaced + retryable. -->
+    <p v-if="refreshError" role="alert" class="mb-3 flex items-center gap-2 text-sm text-red-500">
+      {{ refreshError }}
+      <button
+        type="button"
+        class="text-xs text-blue-500 hover:text-blue-700 dark:hover:text-blue-300 underline"
+        :disabled="refreshing"
+        @click="retryRefresh"
+      >
+        {{ t('components.commentList.retry') }}
+      </button>
+    </p>
 
     <!-- Comment sort (DEC-094/TASK-159): reorder the thread by newest / oldest
          / most helpful (likes). Shown once there is a discussion to sort. -->
@@ -43,12 +56,14 @@
       </div>
     </div>
 
-    <!-- Empty state -->
+    <!-- Empty state: only a genuinely empty discussion says "be the first".
+         An empty page under a non-zero total means deletion just drained the
+         last page — refreshing clamps back to it, and the copy stays truthful. -->
     <div
       v-else-if="comments.length === 0"
       class="text-center py-8 text-gray-500 dark:text-gray-400"
     >
-      {{ t('components.commentList.empty') }}
+      {{ total === 0 ? t('components.commentList.empty') : t('components.commentList.emptyPage') }}
     </div>
 
     <!-- Comment list -->
@@ -722,20 +737,47 @@ function toggleReply(comment: Comment) {
 }
 
 const refreshing = ref(false);
+// Sort/pagination refetch failures were silent (void refreshList() + unhandled
+// rejections): an offline reader flipped the sort and saw nothing change (ISS-307).
+const refreshError = ref<string | null>(null);
 // Monotonic request sequence so a slow earlier response (page fetch) cannot
 // overwrite a newer sort/filter response (same guard as comments.vue/mine,
 // useReadingHistory ISS-128, HeaderSearch).
 let refreshSeq = 0;
+
+async function fetchPage(): Promise<void> {
+	const data = await getComments(props.postId, currentPage.value, 20, currentSort.value);
+	commentData.value = data;
+	if (data.items.length === 0 && data.total > 0) {
+		// The current page drained (e.g. the last comment of the LAST page was
+		// just deleted) yet comments remain on earlier pages — clamp back to the
+		// last valid page instead of showing a misleading "no comments yet".
+		const last = Math.max(1, data.total_pages || 1);
+		if (currentPage.value !== last) {
+			currentPage.value = last;
+			await fetchPage(); // bounded: last page resolves with items or is terminal
+		}
+	}
+}
+
 async function refreshList() {
 	const seq = ++refreshSeq; // invalidate any in-flight older request
 	refreshing.value = true;
+	refreshError.value = null;
 	try {
-		const data = await getComments(props.postId, currentPage.value, 20, currentSort.value);
-		if (seq !== refreshSeq) return; // stale — a sort/page change is in flight
-		commentData.value = data;
+		await fetchPage();
+	} catch {
+		// Only the latest attempt owns the error banner (a stale in-flight
+		// rejection from an older sort/page must not blame the current state).
+		if (seq === refreshSeq) refreshError.value = t("components.commentList.refreshError");
 	} finally {
 		if (seq === refreshSeq) refreshing.value = false;
 	}
+}
+
+function retryRefresh(): void {
+	if (refreshing.value) return;
+	void refreshList();
 }
 
 async function handleReplied() {
