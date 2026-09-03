@@ -1244,6 +1244,31 @@ class TestDeletePostForeignKey:
         result = crud.delete_post(db_session, 99999)
         assert result is False
 
+    def test_delete_post_purges_orphan_child_rows(self, db_session):
+        """delete_post must purge rows in the DEC-009 child tables (no DB-level
+        FK, no ORM cascade) or every post delete leaves permanent orphan rows
+        behind (RIL ISS-296)."""
+        post = models.Post(title="Orphan Purge Post", slug="orphan-purge-post", content="Content")
+        db_session.add(post)
+        db_session.flush()
+
+        bookmark = models.ReaderBookmark(reader_id=42, post_id=post.id)
+        history = models.ReadingHistory(reader_id=42, post_id=post.id, viewed_at=crud.utc_now_naive())
+        subscription = models.CommentSubscription(reader_id=42, post_id=post.id)
+        daily = models.PostViewsDaily(post_id=post.id, day=crud.utc_now_naive().date())
+        db_session.add_all([bookmark, history, subscription, daily])
+        db_session.commit()
+        post_id = post.id
+
+        result = crud.delete_post(db_session, post_id)
+
+        assert result is True
+        assert db_session.query(models.ReaderBookmark).filter_by(post_id=post_id).count() == 0
+        assert db_session.query(models.ReadingHistory).filter_by(post_id=post_id).count() == 0
+        assert db_session.query(models.CommentSubscription).filter_by(post_id=post_id).count() == 0
+        assert db_session.query(models.PostViewsDaily).filter_by(post_id=post_id).count() == 0
+        assert db_session.get(models.Post, post_id) is None
+
 
 class TestDeleteCategoryForeignKey:
     """Tests for delete_category with foreign key constraints."""

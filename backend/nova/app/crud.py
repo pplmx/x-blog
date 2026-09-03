@@ -21,6 +21,17 @@ from app.webpush import dispatch_new_post
 
 logger = get_logger(__name__)
 
+# Tables whose post_id column is a plain integer — no DB-level FK and no ORM
+# cascade from Post (the DEC-009 additive-table convention, integrity enforced
+# at the API layer). delete_post must purge these rows explicitly or every post
+# delete leaves permanent orphan rows (RIL ISS-296).
+_POST_CHILD_TABLES: list[tuple[type[models.Base], object]] = [
+    (models.ReaderBookmark, models.ReaderBookmark.post_id),
+    (models.ReadingHistory, models.ReadingHistory.post_id),
+    (models.CommentSubscription, models.CommentSubscription.post_id),
+    (models.PostViewsDaily, models.PostViewsDaily.post_id),
+]
+
 
 def utc_now_naive() -> datetime:
     """Current UTC time as a naive datetime.
@@ -485,6 +496,14 @@ def delete_post(db: Session, post_id: int) -> bool:
     db_post = db.get(models.Post, post_id)
     if not db_post:
         return False
+    # Dependent tables carry post_id as a plain integer with no DB-level FK and
+    # no ORM cascade from Post (the DEC-009 additive-table convention, enforced
+    # at the API layer) — delete them explicitly so a post delete never leaves
+    # orphaned reader bookmarks / reading history / comment subscriptions /
+    # per-day view rows behind (RIL ISS-296). Comments and revisions cascade
+    # through Post.comments/Post.revisions, so they are not listed here.
+    for model, _col in _POST_CHILD_TABLES:
+        db.query(model).filter(_col == post_id).delete(synchronize_session=False)
     db.delete(db_post)
     try:
         db.commit()
@@ -1411,45 +1430,58 @@ def get_adjacent_posts(db: Session, post_id: int) -> tuple[models.Post | None, m
     and both are None when the post is not publicly visible.
     """
     now = utc_now_naive()
-    # Fetch public post ids in exact feed order (single cheap column query),
-    # find the current post's position, then load only the two neighbours with
-    # their relationships. Avoids loading every post row for a small result.
-    feed_ids = [
-        row[0]
-        for row in db.query(models.Post.id)
-        .filter(
-            models.Post.published.is_(True),
-            or_(models.Post.publish_at.is_(None), models.Post.publish_at <= now),
+    public_filter = (
+        models.Post.published.is_(True),
+        or_(models.Post.publish_at.is_(None), models.Post.publish_at <= now),
+    )
+    # Rank every public post in exact feed order with a SQL window function,
+    # then read only the current post's rank and its two neighbours. Ordering
+    # MUST match get_posts (pinned, effective publish, id tiebreak) so a tie on
+    # publish time never yields a prev/next that disagrees with the feed the
+    # reader is scanning (round-234 review). Replaces the previous load-all-ids
+    # O(n) scan (RIL ISS-295); the existing indexes serve the bounded query.
+    ranked = (
+        db.query(
+            models.Post.id.label("post_id"),
+            func.row_number()
+            .over(
+                order_by=(
+                    models.Post.pinned.desc(),
+                    _effective_publish_col().desc(),
+                    models.Post.id.desc(),
+                )
+            )
+            .label("rn"),
         )
-        # Must match get_posts EXACTLY (pinned, effective publish, id tiebreak)
-        # so a tie on publish time never yields a prev/next that disagrees with
-        # the feed order the reader is scanning (round-234 review).
-        .order_by(models.Post.pinned.desc(), _effective_publish_col().desc(), models.Post.id.desc())
-        .all()
-    ]
-    try:
-        idx = feed_ids.index(post_id)
-    except ValueError:
+        .filter(public_filter[0], public_filter[1])
+        .subquery()
+    )
+    my_rank = db.query(ranked.c.rn).filter(ranked.c.post_id == post_id).scalar()
+    if my_rank is None:
         return None, None
 
-    neighbour_ids = []
-    if idx > 0:
-        neighbour_ids.append(feed_ids[idx - 1])
-    if idx + 1 < len(feed_ids):
-        neighbour_ids.append(feed_ids[idx + 1])
-    if not neighbour_ids:
+    neighbour_rows = (
+        db.query(ranked.c.post_id, ranked.c.rn)
+        .filter(ranked.c.rn.between(my_rank - 1, my_rank + 1))
+        .order_by(ranked.c.rn)
+        .all()
+    )
+    by_rn = {rn: post_id for post_id, rn in neighbour_rows}
+    previous_id = by_rn.get(my_rank - 1)
+    following_id = by_rn.get(my_rank + 1)
+    if previous_id is None and following_id is None:
         return None, None
 
     rows = (
         db.query(models.Post)
-        .filter(models.Post.id.in_(neighbour_ids))
+        .filter(models.Post.id.in_([pid for pid in (previous_id, following_id) if pid is not None]))
         .options(joinedload(models.Post.category), joinedload(models.Post.tags))
         .all()
     )
     by_id = {p.id: p for p in rows}
     _populate_post_metrics(db, list(by_id.values()))
-    previous = by_id.get(feed_ids[idx - 1]) if idx > 0 else None
-    following = by_id.get(feed_ids[idx + 1]) if idx + 1 < len(feed_ids) else None
+    previous = by_id.get(previous_id) if previous_id is not None else None
+    following = by_id.get(following_id) if following_id is not None else None
     return previous, following
 
 

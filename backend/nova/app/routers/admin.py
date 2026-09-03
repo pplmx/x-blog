@@ -490,15 +490,15 @@ def admin_delete_post(
     db: Session = Depends(get_db),
     _current_user: auth.User = Depends(get_current_admin),
 ):
-    post = db.query(models.Post).filter(models.Post.id == post_id).first()
-    if not post:
+    # crud.delete_post purges the DEC-009 child tables (bookmarks/history/
+    # subscriptions/daily views) along with the post and its cascaded comments
+    # and revisions — keep the admin route on the same code path (RIL ISS-296).
+    try:
+        success = crud.delete_post(db, post_id)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    if not success:
         raise HTTPException(status_code=404, detail="Post not found")
-
-    db.delete(post)
-    db.commit()
-    clear_tags_cache()
-    clear_categories_cache()
-    clear_posts_list_cache()
 
 
 @router.get("/posts/{post_id}/revisions", response_model=list[PostRevisionSummary])
