@@ -2,7 +2,7 @@
   "ril_version": 1,
   "round": 240,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-03T02:39:56+00:00",
+  "updated_at": "2026-09-03T03:48:42+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -22,7 +22,7 @@
       "version": 1,
       "created_at": "2026-08-06T13:23:41+00:00",
       "updated_at": "2026-08-06T13:23:41+00:00",
-      "touched_round": 234,
+      "touched_round": 240,
       "title": "frontend-aura",
       "description": "Nuxt 4 Vue 3 TypeScript frontend at frontend/aura; composables; admin pages; e2e Playwright; biome lint"
     },
@@ -16496,24 +16496,26 @@
     "ISS-295": {
       "id": "ISS-295",
       "type": "issue",
-      "status": "active",
-      "version": 1,
+      "status": "resolved",
+      "version": 2,
       "created_at": "2026-09-03T01:10:51+00:00",
-      "updated_at": "2026-09-03T01:10:51+00:00",
-      "touched_round": 237,
+      "updated_at": "2026-09-03T03:38:21+00:00",
+      "touched_round": 240,
       "title": "get_adjacent_posts pulls the whole public id list into Python (O(n)) per request on an uncached hot endpoint",
-      "severity": "low"
+      "severity": "low",
+      "resolution": "window-function rank reads only the two neighbour ids; bounded query on existing indexes"
     },
     "ISS-296": {
       "id": "ISS-296",
       "type": "issue",
-      "status": "active",
-      "version": 1,
+      "status": "resolved",
+      "version": 2,
       "created_at": "2026-09-03T01:10:51+00:00",
-      "updated_at": "2026-09-03T01:10:51+00:00",
-      "touched_round": 237,
+      "updated_at": "2026-09-03T03:38:21+00:00",
+      "touched_round": 240,
       "title": "Post delete leaves orphan ReaderBookmark/ReadingHistory/CommentSubscription/PostViewsDaily/CommentFlag rows",
-      "severity": "low"
+      "severity": "low",
+      "resolution": "delete_post + admin route purge the 4 additive child tables before deleting the post"
     },
     "TASK-269": {
       "id": "TASK-269",
@@ -16534,7 +16536,7 @@
       "version": 2,
       "created_at": "2026-09-03T01:10:51+00:00",
       "updated_at": "2026-09-03T01:48:38+00:00",
-      "touched_round": 237,
+      "touched_round": 240,
       "category": "performance",
       "severity": "medium",
       "title": "Compute all series visible-post counts in one grouped query (kill list_series N+1)"
@@ -16546,7 +16548,7 @@
       "version": 2,
       "created_at": "2026-09-03T01:10:51+00:00",
       "updated_at": "2026-09-03T01:33:15+00:00",
-      "touched_round": 237,
+      "touched_round": 240,
       "category": "usability",
       "severity": "low",
       "title": "Match comment batch-approve to editor level and clamp series_order to >= 0"
@@ -16603,10 +16605,44 @@
       "version": 1,
       "created_at": "2026-09-03T01:56:19+00:00",
       "updated_at": "2026-09-03T01:56:19+00:00",
-      "touched_round": 238,
+      "touched_round": 240,
       "title": "Converged (idle): quality-convergence stop — no high-value task remains",
       "rationale": "All five stop conditions hold. (1) Zero active tasks: ril tasks returns empty. (2) High-severity issues closed or deferred: ISS-242/243/244 covered by DEC-214; rounds 236-239 resolved ISS-278..294. (3) VERIFY green: backend 1291 passed @93.64% coverage, digest 18, frontend 1389 passed, nuxt typecheck 0 errors, pyright 0, ruff/biome/format clean. (4) Two consecutive deep-dive rounds produced no >=3.0 task: round 238 max 2.5 (TASK-269/270/271), round 239 sweep of limiter/conditional/cache/push/admin_push/main found nothing new. (5) ril check consistent (1368 nodes, 1265 edges).",
       "alternatives_rejected": "Keep iterating to also fix the tracked low-severity backlog now (ISS-295 adjacent-posts O(n) scan, ISS-296 post-delete orphan rows): both are sub-threshold perf/hygiene on a small single-worker blog, and fixing them would extend the loop past its stop point. They stay as tracked backlog issues for activation by a future operator direction or real traffic signal."
+    },
+    "CHG-340": {
+      "id": "CHG-340",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-03T03:35:39+00:00",
+      "updated_at": "2026-09-03T03:35:39+00:00",
+      "touched_round": 240,
+      "title": "purge orphan child rows on post delete (reader_bookmarks/reading_history/comment_subscriptions/post_views_daily), admin route reuses crud.delete_post",
+      "commit": "14b441f"
+    },
+    "CHG-341": {
+      "id": "CHG-341",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-03T03:35:39+00:00",
+      "updated_at": "2026-09-03T03:35:39+00:00",
+      "touched_round": 240,
+      "title": "get_adjacent_posts ranks public posts via ROW_NUMBER() OVER window in exact feed order, reads only the two neighbour ranks (was O(n) load-all-ids)",
+      "commit": "14b441f"
+    },
+    "DEC-244": {
+      "id": "DEC-244",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-03T03:39:35+00:00",
+      "updated_at": "2026-09-03T03:39:35+00:00",
+      "touched_round": 240,
+      "title": "Round 240: operator reactivates the loop; delivers the two deferred backlog issues (ISS-295/296)",
+      "rationale": "The converged-idle QUIESCE (DEC-243) is re-activated by a new operator directive (detail polish / bug-fix / usability mode). Activation round first re-ran VERIFY (backend 1291 @93.64%, frontend 1389 — the transient 15 frontend timeouts were parallel-load flakes, clean re-run 1389 passed) then delivered the two tracked sub-threshold backlog issues the stop decision had explicitly deferred: ISS-296 orphan rows on post delete (correctness/hygiene) and ISS-295 O(n) adjacent-posts scan (perf).",
+      "alternatives_rejected": "Not yet starting frontend UX polish (the rest of the operator directive): this round stays small and verifiable (2 backend fixes, 94-line diff). Frontend usability/interactivity work is the main thread of subsequent rounds."
     }
   },
   "edges": [
@@ -24234,6 +24270,30 @@
       "to": "ISS-294",
       "type": "resolves",
       "created_at": "2026-09-03T01:48:38+00:00"
+    },
+    {
+      "from": "CHG-341",
+      "to": "ISS-295",
+      "type": "resolves",
+      "created_at": "2026-09-03T03:36:41+00:00"
+    },
+    {
+      "from": "CHG-340",
+      "to": "ISS-296",
+      "type": "resolves",
+      "created_at": "2026-09-03T03:36:41+00:00"
+    },
+    {
+      "from": "DEC-244",
+      "to": "DEC-243",
+      "type": "supersedes",
+      "created_at": "2026-09-03T03:40:59+00:00"
+    },
+    {
+      "from": "DEC-244",
+      "to": "COMP-002",
+      "type": "governs",
+      "created_at": "2026-09-03T03:40:59+00:00"
     }
   ]
 }
