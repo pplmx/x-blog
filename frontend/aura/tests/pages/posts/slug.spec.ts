@@ -100,6 +100,7 @@ async function mountPostPage({
 	adjacentPosts = mockAdjacentPosts,
 	seriesDetail = null,
 	$fetchImpl,
+	attachToDoc = false,
 }: {
 	post?: typeof mockPost | null;
 	pending?: boolean;
@@ -110,6 +111,9 @@ async function mountPostPage({
 	seriesDetail?: Record<string, unknown> | null;
 	/** Override the global $fetch mock (e.g. to serve a saved resume position). */
 	$fetchImpl?: (url: string, opts?: Record<string, unknown>) => Promise<unknown>;
+	/** Attach to document.body so document.getElementById resolves rendered nodes
+	 * (needed to exercise scroll-to-heading, which walks the real DOM). */
+	attachToDoc?: boolean;
 } = {}) {
 	vi.stubGlobal("useRuntimeConfig", () => ({
 		public: {
@@ -181,6 +185,7 @@ async function mountPostPage({
 	};
 
 	const wrapper = mount(SuspenseWrapper, {
+		attachTo: attachToDoc ? document.body : undefined,
 		global: {
 			stubs: {
 				NuxtLink: {
@@ -1263,6 +1268,137 @@ describe("Post Detail Page", () => {
 
 			const headingLinks = wrapper.findAll('a[href^="#"]');
 			expect(headingLinks.length).toBe(0);
+		});
+	});
+
+	describe("Mobile/tablet TOC sheet (TASK-223)", () => {
+		const multiHeadingContent =
+			'<h1 id="introduction">Introduction</h1>\n<p>Text here.</p>\n' +
+			'<h2 id="getting-started">Getting Started</h2>\n<p>More text.</p>\n' +
+			'<h3 id="basics">Basics</h3>\n<p>Even more.</p>\n' +
+			'<h2 id="advanced">Advanced</h2>\n<p>Final section.</p>';
+
+		function stubScrollY(value: number) {
+			Object.defineProperty(window, "scrollY", {
+				value,
+				configurable: true,
+				writable: true,
+			});
+		}
+
+		async function scrollPage(to: number) {
+			stubScrollY(to);
+			window.dispatchEvent(new Event("scroll"));
+			await flushPromises();
+		}
+
+		it("hides the floating trigger until the reader scrolls past the header", async () => {
+			const postWithHeadings = { ...mockPost, content: multiHeadingContent };
+			const wrapper = await mountPostPage({ post: postWithHeadings });
+
+			// At the top of the article the trigger must not cover the hero.
+			expect(wrapper.find('[data-testid="toc-fab"]').exists()).toBe(false);
+
+			// Once scrolled past the header it appears (multi-heading post only).
+			await scrollPage(400);
+			expect(wrapper.find('[data-testid="toc-fab"]').exists()).toBe(true);
+			wrapper.unmount();
+		});
+
+		it("opens the sheet from the trigger with all headings listed", async () => {
+			const postWithHeadings = { ...mockPost, content: multiHeadingContent };
+			const wrapper = await mountPostPage({ post: postWithHeadings });
+			await scrollPage(400);
+
+			await wrapper.find('[data-testid="toc-fab"]').trigger("click");
+			await flushPromises();
+
+			const sheet = wrapper.find('[data-testid="mobile-toc-sheet"]');
+			expect(sheet.exists()).toBe(true);
+			expect(sheet.attributes("role")).toBe("dialog");
+			// aria-expanded on the trigger flips once the sheet is open.
+			expect(wrapper.find('[data-testid="toc-fab"]').attributes("aria-expanded")).toBe("true");
+			// Background is scroll-locked while the sheet is up.
+			expect(document.body.style.overflow).toBe("hidden");
+
+			const sheetLinks = sheet.findAll('a[href^="#"]');
+			const hrefs = sheetLinks.map((a) => a.attributes("href"));
+			expect(hrefs).toEqual(
+				expect.arrayContaining(["#introduction", "#getting-started", "#basics", "#advanced"]),
+			);
+			wrapper.unmount();
+		});
+
+		it("clicking a heading scrolls to it and dismisses the sheet", async () => {
+			window.scrollTo = vi.fn();
+			Element.prototype.scrollIntoView = vi.fn();
+			const postWithHeadings = { ...mockPost, content: multiHeadingContent };
+			// Attach to the real DOM so document.getElementById resolves the
+			// rendered heading ids (scroll-to-heading walks the actual document).
+			const wrapper = await mountPostPage({ post: postWithHeadings, attachToDoc: true });
+			await scrollPage(400);
+
+			await wrapper.find('[data-testid="toc-fab"]').trigger("click");
+			await flushPromises();
+
+			const sheet = wrapper.find('[data-testid="mobile-toc-sheet"]');
+			const gettingStarted = sheet.findAll('a[href="#getting-started"]');
+			expect(gettingStarted.length).toBeGreaterThan(0);
+			await gettingStarted[0].trigger("click");
+			await flushPromises();
+
+			expect(Element.prototype.scrollIntoView).toHaveBeenCalled();
+			expect(wrapper.find('[data-testid="mobile-toc-sheet"]').exists()).toBe(false);
+			expect(document.body.style.overflow).toBe("");
+			wrapper.unmount();
+		});
+
+		it("Escape and the backdrop both close the sheet and restore focus", async () => {
+			Element.prototype.scrollIntoView = vi.fn();
+			const postWithHeadings = { ...mockPost, content: multiHeadingContent };
+			const wrapper = await mountPostPage({ post: postWithHeadings });
+			await scrollPage(400);
+
+			await wrapper.find('[data-testid="toc-fab"]').trigger("click");
+			await flushPromises();
+
+			// Escape on the focused sheet panel closes it.
+			await wrapper.find(".toc-sheet-panel").trigger("keydown", { key: "Escape" });
+			await flushPromises();
+			expect(wrapper.find('[data-testid="mobile-toc-sheet"]').exists()).toBe(false);
+			expect(document.body.style.overflow).toBe("");
+
+			// Reopen, then dismiss via the backdrop.
+			await wrapper.find('[data-testid="toc-fab"]').trigger("click");
+			await flushPromises();
+			await wrapper.find('[data-testid="toc-backdrop"]').trigger("click");
+			await flushPromises();
+			expect(wrapper.find('[data-testid="mobile-toc-sheet"]').exists()).toBe(false);
+			wrapper.unmount();
+		});
+
+		it("does not show the trigger on a single-heading or empty post", async () => {
+			const singleHeadingPost = {
+				...mockPost,
+				content: "<h1>Only One Heading</h1>\n<p>No other headings here.</p>",
+			};
+			const wrapper = await mountPostPage({ post: singleHeadingPost });
+			await scrollPage(400);
+
+			expect(wrapper.find('[data-testid="toc-fab"]').exists()).toBe(false);
+			wrapper.unmount();
+		});
+
+		it("leaves the background unlocked when the sheet is closed and the reader navigates away", async () => {
+			const postWithHeadings = { ...mockPost, content: multiHeadingContent };
+			const wrapper = await mountPostPage({ post: postWithHeadings });
+			await scrollPage(400);
+			await wrapper.find('[data-testid="toc-fab"]').trigger("click");
+			await flushPromises();
+			expect(document.body.style.overflow).toBe("hidden");
+			wrapper.unmount();
+			// Unmount (SPA navigation away) restores the scroll lock.
+			expect(document.body.style.overflow).toBe("");
 		});
 	});
 

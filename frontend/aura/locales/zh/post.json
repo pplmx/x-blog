@@ -18,6 +18,7 @@
 		"printPdf": "打印 / PDF",
 		"backToArticle": "返回文章",
 		"resumeReading": "已续读至 {percent}%",
-		"backToTop": "回到顶部"
+		"backToTop": "回到顶部",
+		"tableOfContents": "目录"
 	}
 }

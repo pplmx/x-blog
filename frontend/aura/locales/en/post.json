@@ -18,6 +18,7 @@
 		"printPdf": "Print / PDF",
 		"backToArticle": "Back to article",
 		"resumeReading": "Resumed at {percent}%",
-		"backToTop": "Back to top"
+		"backToTop": "Back to top",
+		"tableOfContents": "Table of contents"
 	}
 }

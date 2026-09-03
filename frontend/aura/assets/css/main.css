@@ -84,6 +84,27 @@
 	max-height: 500px;
 }
 
+/* Mobile TOC bottom sheet (TASK-223): backdrop fades as the panel slides up. */
+.toc-sheet-enter-active,
+.toc-sheet-leave-active {
+	transition: opacity 0.2s ease;
+}
+
+.toc-sheet-enter-from,
+.toc-sheet-leave-to {
+	opacity: 0;
+}
+
+.toc-sheet-enter-active .toc-sheet-panel,
+.toc-sheet-leave-active .toc-sheet-panel {
+	transition: transform 0.22s ease-out;
+}
+
+.toc-sheet-enter-from .toc-sheet-panel,
+.toc-sheet-leave-to .toc-sheet-panel {
+	transform: translateY(100%);
+}
+
 /* Page transition */
 .page-enter-active {
 	transition:

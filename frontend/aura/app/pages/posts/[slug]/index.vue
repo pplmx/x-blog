@@ -146,6 +146,33 @@ async function handleLike() {
 
 const scrollProgress = ref(0);
 const activeTocId = ref("");
+// Mobile/tablet TOC (TASK-223): the sticky sidebar is xl+ only, so below that
+// width a floating trigger opens a slide-up sheet with the same outline. The
+// trigger appears once the reader scrolls past the header so it never covers
+// the cover image; the sheet locks background scroll and shares the desktop
+// scroll-spy so the active heading stays in sync while reading.
+const tocOpen = ref(false);
+const tocFabVisible = ref(false);
+const tocFabEl = ref<HTMLButtonElement | null>(null);
+const tocSheetEl = ref<HTMLElement | null>(null);
+const TOC_FAB_SCROLL_PX = 160;
+
+function openToc() {
+	tocOpen.value = true;
+	// Lock the article behind the sheet so it neither scrolls nor jumps while
+	// the reader picks a section (restored in closeToc / onUnmounted).
+	document.body.style.overflow = "hidden";
+	nextTick(() => tocSheetEl.value?.focus());
+}
+
+function closeToc() {
+	if (!tocOpen.value) return;
+	tocOpen.value = false;
+	document.body.style.overflow = "";
+	// Return focus to the trigger so keyboard users resume where they left off.
+	tocFabEl.value?.focus();
+}
+
 // Re-created per post so SPA navigation between posts re-observes the new
 // article's headings (TASK-231-era deep-dive finding): the old single-shot
 // onMounted observer stayed pinned to the first post's headings and the TOC
@@ -246,6 +273,9 @@ onMounted(() => {
 		const scrolled = window.scrollY;
 		const maxScroll = document.body.scrollHeight - window.innerHeight;
 		scrollProgress.value = maxScroll > 0 ? (scrolled / maxScroll) * 100 : 0;
+		// Reveal the mobile TOC trigger once the reader scrolls past the header
+		// (safe to read here on the shared scroll handler — one listener for both).
+		tocFabVisible.value = scrolled > TOC_FAB_SCROLL_PX;
 		// Best-effort, debounced in the composable; no-ops for guests.
 		resume.save(scrolled);
 	};
@@ -255,6 +285,9 @@ onMounted(() => {
 	onUnmounted(() => {
 		window.removeEventListener("scroll", updateProgress);
 		tocObserver?.disconnect();
+		// Never leave the background scroll locked if the reader navigates away
+		// while the mobile TOC sheet is open (SPA nav / unmount).
+		document.body.style.overflow = "";
 		if (resumeChipTimer) {
 			clearTimeout(resumeChipTimer);
 			resumeChipTimer = null;
@@ -271,6 +304,13 @@ function scrollToHeading(event: MouseEvent) {
 		el.scrollIntoView({ behavior: "smooth", block: "start" });
 		history.replaceState(null, "", `#${id}`);
 	}
+}
+
+// Tapping a section in the mobile sheet scrolls to it (shared smooth-scroll
+// logic with the desktop sidebar) then dismisses the sheet.
+function handleSheetTocSelect(event: MouseEvent) {
+	scrollToHeading(event);
+	closeToc();
 }
 
 // Reading time (shared with the print/PDF view so they agree). The CJK-aware
@@ -314,6 +354,86 @@ function handleCommentSubmitted() {
         >
           {{ t('post.backToTop') }}
         </button>
+      </div>
+    </transition>
+
+    <!-- Mobile/tablet TOC (TASK-223): below xl the sticky sidebar is hidden, so
+         a floating trigger opens a slide-up sheet with the same outline. The
+         trigger appears once the reader scrolls past the header (never over the
+         hero); the sheet reuses the shared scroll-spy to highlight the active
+         section. -->
+    <button
+      v-if="toc.length > 1 && tocFabVisible"
+      ref="tocFabEl"
+      type="button"
+      class="xl:hidden fixed bottom-20 right-4 z-40 inline-flex items-center gap-1.5 rounded-full bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-lg px-4 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+      :aria-expanded="tocOpen ? 'true' : 'false'"
+      aria-controls="mobile-toc-sheet"
+      :aria-label="t('post.tableOfContents')"
+      data-testid="toc-fab"
+      @click="openToc"
+    >
+      <Icon icon="lucide:list-tree" class="w-4 h-4 text-blue-500" />
+      {{ t('post.tableOfContents') }}
+    </button>
+
+    <transition name="toc-sheet">
+      <div
+        v-if="tocOpen"
+        id="mobile-toc-sheet"
+        class="xl:hidden fixed inset-0 z-50"
+        role="dialog"
+        aria-modal="true"
+        :aria-label="t('post.tableOfContents')"
+        data-testid="mobile-toc-sheet"
+      >
+        <!-- Backdrop: click anywhere outside the panel to dismiss. -->
+        <button
+          type="button"
+          class="absolute inset-0 w-full h-full bg-black/40 backdrop-blur-[2px] cursor-default"
+          :aria-label="t('common.action.close')"
+          data-testid="toc-backdrop"
+          @click="closeToc"
+        />
+        <div
+          ref="tocSheetEl"
+          tabindex="-1"
+          class="toc-sheet-panel absolute bottom-0 inset-x-0 max-h-[70vh] overflow-y-auto rounded-t-2xl bg-white dark:bg-gray-900 shadow-2xl outline-none p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))]"
+          @keydown.esc="closeToc"
+        >
+          <div class="flex items-center justify-between mb-3">
+            <h2 class="text-base font-bold text-gray-900 dark:text-gray-100 flex items-center gap-2">
+              <Icon icon="lucide:list-tree" class="w-4 h-4 text-blue-500" />
+              {{ t('post.tableOfContents') }}
+            </h2>
+            <button
+              type="button"
+              class="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+              :aria-label="t('common.action.close')"
+              data-testid="toc-close"
+              @click="closeToc"
+            >
+              <Icon icon="lucide:x" class="w-5 h-5" />
+            </button>
+          </div>
+          <nav class="space-y-1" :aria-label="t('post.tableOfContents')">
+            <a
+              v-for="item in toc"
+              :key="item.id"
+              :href="`#${item.id}`"
+              :style="{ paddingLeft: `${(item.level - 1) * 12 + 8}px` }"
+              :class="[
+                'block text-sm py-1.5 rounded-lg transition-colors',
+                activeTocId === item.id
+                  ? 'text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 font-medium'
+                  : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800',
+              ]"
+              @click.prevent="handleSheetTocSelect"
+            >
+              {{ item.text }}
+            </a>
+          </nav>
+        </div>
       </div>
     </transition>
 
@@ -375,9 +495,9 @@ function handleCommentSubmitted() {
               v-for="item in toc"
               :key="item.id"
               :href="`#${item.id}`"
+              :style="{ marginLeft: item.level === 1 ? '0px' : `${(item.level - 1) * 16}px` }"
               :class="[
                 'block text-sm py-1.5 transition-all duration-200 border-l-2 -ml-[18px] pl-3',
-                item.level === 1 ? '' : 'ml-' + (item.level - 1) * 4,
                 activeTocId === item.id
                   ? 'text-blue-600 dark:text-blue-400 border-blue-500 font-medium'
                   : 'text-gray-500 dark:text-gray-400 border-transparent hover:text-gray-700 dark:hover:text-gray-300 hover:border-gray-300',
