@@ -2,7 +2,7 @@
   "ril_version": 1,
   "round": 240,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-03T12:09:06+00:00",
+  "updated_at": "2026-09-03T12:47:47+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -16814,14 +16814,15 @@
     "ISS-308": {
       "id": "ISS-308",
       "type": "issue",
-      "status": "active",
-      "version": 1,
+      "status": "resolved",
+      "version": 2,
       "created_at": "2026-09-03T10:15:29+00:00",
-      "updated_at": "2026-09-03T10:15:29+00:00",
+      "updated_at": "2026-09-03T12:47:47+00:00",
       "touched_round": 240,
       "title": "Archive month-only deep link yields year=undefined on pagination; out-of-range page deep links on category/tag/archive show a misleading empty state",
       "severity": "medium",
-      "summary": "archive.vue page nav uses unguarded String(year); categories/tags/archive lack the home/search last-page clamp so a stale page=999 URL reads as no posts with no way back"
+      "summary": "archive.vue page nav uses unguarded String(year); categories/tags/archive lack the home/search last-page clamp so a stale page=999 URL reads as no posts with no way back",
+      "resolution": "archive pagination no longer drops year=undefined; category/tag/archive clamp out-of-range deep links to the last real page"
     },
     "ISS-309": {
       "id": "ISS-309",
@@ -16869,6 +16870,17 @@
       "touched_round": 240,
       "title": "Follow/notify toggle failure feedback on categories/tags/series pages",
       "commit": "5ba6ffd"
+    },
+    "CHG-346": {
+      "id": "CHG-346",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-03T12:47:47+00:00",
+      "updated_at": "2026-09-03T12:47:47+00:00",
+      "touched_round": 240,
+      "title": "Archive month-only pagination URL fix + out-of-range page clamps on categories/tags/archive",
+      "commit": "239cbf5"
     }
   },
   "edges": [
@@ -24670,6 +24682,12 @@
       "to": "ISS-306",
       "type": "resolves",
       "created_at": "2026-09-03T12:09:06+00:00"
+    },
+    {
+      "from": "CHG-346",
+      "to": "ISS-308",
+      "type": "resolves",
+      "created_at": "2026-09-03T12:47:47+00:00"
     }
   ]
 }
