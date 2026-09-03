@@ -47,20 +47,15 @@ onUnmounted(() => {
 	stopPolling();
 });
 
-const isDark = ref(false);
 const mobileMenuOpen = ref(false);
 // The menu toggle itself: Escape/focus-restore (ISS-131, TASK-231) sends focus
 // back here when the panel closes so keyboard users never lose their place.
 const mobileMenuToggle = ref<HTMLButtonElement | null>(null);
 
-function updateDarkClass() {
-	if (typeof document === "undefined") return;
-	document.documentElement.classList.toggle("dark", isDark.value);
-}
-
-function toggleDark() {
-	isDark.value = !isDark.value;
-}
+// Theme is a shared singleton (useTheme) so the admin layout applies and
+// toggles the SAME preference — a dark-mode setting made here is honored on
+// /admin/* too (deep-dive finding).
+const { isDark, initTheme, toggleTheme } = useTheme();
 
 // Keyboard semantics for the mobile nav (ISS-131): Escape closes and returns
 // focus to the toggle; opening the panel moves focus to its first link so the
@@ -107,22 +102,7 @@ onUnmounted(() => {
 	window.removeEventListener("keydown", handleNavKeydown);
 });
 
-onMounted(() => {
-	try {
-		const saved = localStorage.getItem("theme");
-		if (saved === "dark") isDark.value = true;
-		else if (saved === "light") isDark.value = false;
-		else if (window.matchMedia?.("(prefers-color-scheme: dark)").matches) isDark.value = true;
-		updateDarkClass();
-		watch(isDark, (v) => {
-			updateDarkClass();
-			localStorage.setItem("theme", v ? "dark" : "light");
-		});
-	} catch {
-		isDark.value = false;
-		updateDarkClass();
-	}
-});
+onMounted(initTheme);
 </script>
 
 <template>
@@ -215,7 +195,7 @@ onMounted(() => {
               type="button"
               :aria-label="isDark ? t('common.theme.toggleLight') : t('common.theme.toggleDark')"
               class="shrink-0 p-2 rounded-lg text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-700 dark:hover:text-gray-200 transition-all duration-200"
-              @click="toggleDark"
+              @click="toggleTheme"
             >
               <Icon v-if="isDark" icon="lucide:sun" class="w-4 h-4" />
               <Icon v-else icon="lucide:moon" class="w-4 h-4" />
@@ -292,7 +272,7 @@ onMounted(() => {
             <button
               type="button"
               class="flex items-center gap-3 w-full px-4 py-3 rounded-xl text-sm font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
-              @click="toggleDark"
+              @click="toggleTheme"
             >
               <Icon :icon="isDark ? 'lucide:sun' : 'lucide:moon'" class="w-4 h-4" />
               {{ isDark ? t('common.theme.light') : t('common.theme.dark') }}

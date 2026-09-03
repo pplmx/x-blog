@@ -8,10 +8,15 @@
 -->
 <script setup lang="ts">
 import { useAdminAuth } from "~~/composables/useAdminAuth";
+import { useTheme } from "~~/composables/useTheme";
 
 const { isAuthenticated, logout } = useAdminAuth();
 const { t } = useLang();
 const route = useRoute();
+// Theme is a shared singleton (useTheme) so the admin UI applies the reader's
+// persisted dark-mode preference and the public toggle affects /admin/* too.
+const { isDark, initTheme, toggleTheme } = useTheme();
+onMounted(initTheme);
 // Reactive, not a setup-time snapshot: an unauthenticated user hitting /admin
 // is redirected to /admin/login via SPA navigation, and the layout instance is
 // reused — a plain `route.path === ...` const would stay false and render
@@ -267,6 +272,18 @@ const navItems = computed(() => {
             {{ t('admin.backToSite') }}
           </NuxtLink>
 
+          <!-- Theme toggle (shared useTheme): the admin UI had no control and
+               ignored the saved preference until this addition (deep-dive). -->
+          <button
+            type="button"
+            class="flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 hover:text-gray-700 dark:hover:text-gray-200 transition-all duration-200 w-full"
+            @click="toggleTheme"
+            :aria-label="isDark ? t('common.theme.toggleLight') : t('common.theme.toggleDark')"
+          >
+            <Icon :icon="isDark ? 'lucide:sun' : 'lucide:moon'" class="w-4 h-4" />
+            {{ isDark ? t('common.theme.light') : t('common.theme.dark') }}
+          </button>
+
           <!-- Comment-moderation alerts (DEC-080): opt this browser into a push
                when a new comment awaits approval. Admin-context only. -->
           <AdminPushToggle />
@@ -305,6 +322,14 @@ const navItems = computed(() => {
             <Icon icon="lucide:menu" class="w-6 h-6" />
           </button>
           <span class="font-bold text-gray-900 dark:text-gray-100">{{ t('admin.title') }}</span>
+          <button
+            type="button"
+            class="ml-auto p-2 -mr-2 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"
+            @click="toggleTheme"
+            :aria-label="isDark ? t('common.theme.toggleLight') : t('common.theme.toggleDark')"
+          >
+            <Icon :icon="isDark ? 'lucide:sun' : 'lucide:moon'" class="w-5 h-5" />
+          </button>
         </header>
 
         <main class="flex-1 p-6 lg:p-8 overflow-x-auto">

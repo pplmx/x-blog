@@ -7,9 +7,9 @@
  * Uses attachTo: document.body for Teleport rendering.
  */
 
-import { DOMWrapper, mount } from "@vue/test-utils";
+import { DOMWrapper, flushPromises, mount } from "@vue/test-utils";
 import { describe, expect, it, vi } from "vitest";
-import { ref } from "vue";
+import { nextTick, ref } from "vue";
 
 const mockIsAuthenticated = ref(true);
 const mockLogout = vi.fn();
@@ -124,6 +124,33 @@ describe("Admin Layout", () => {
 		expect(wrapper.text()).toContain("评论");
 		expect(wrapper.text()).toContain("分类");
 		expect(wrapper.text()).toContain("标签");
+		wrapper.unmount();
+	});
+
+	it("renders a theme toggle that honors the saved dark preference and flips it", async () => {
+		// Regression (deep-dive): the admin UI previously had no theme control
+		// and never applied the persisted preference — a saved dark-mode admin
+		// was stranded in light mode.
+		localStorageStore.theme = "dark";
+		const wrapper = mountWithBody({
+			global: { stubs, slots: { default: "<div>Content</div>" } },
+		});
+		// initTheme applies the class synchronously but the button label is a
+		// reactive render — settle it before asserting.
+		await nextTick();
+		await flushPromises();
+
+		// Sidebar toggle reflects the persisted dark preference ("浅色模式" = go
+		// light from dark) and clicking it flips to the light-mode action.
+		const toggle = wrapper
+			.findAll("button")
+			.find((b) => b.text().includes("浅色模式") || b.text().includes("深色模式"));
+		expect(toggle).toBeDefined();
+		expect(toggle?.text()).toContain("浅色模式");
+		await toggle?.trigger("click");
+		await flushPromises();
+		expect(toggle?.text()).toContain("深色模式");
+		delete localStorageStore.theme;
 		wrapper.unmount();
 	});
 
