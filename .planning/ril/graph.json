@@ -2,7 +2,7 @@
   "ril_version": 1,
   "round": 240,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-03T10:19:04+00:00",
+  "updated_at": "2026-09-03T12:09:06+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -16789,14 +16789,15 @@
     "ISS-306": {
       "id": "ISS-306",
       "type": "issue",
-      "status": "active",
-      "version": 1,
+      "status": "resolved",
+      "version": 2,
       "created_at": "2026-09-03T10:15:29+00:00",
-      "updated_at": "2026-09-03T10:15:29+00:00",
+      "updated_at": "2026-09-03T12:09:05+00:00",
       "touched_round": 240,
       "title": "Follow/notify toggles on category/tag/series pages silently swallow failures",
       "severity": "medium",
-      "summary": "categories.vue/tags.vue/series/[slug].vue catch blocks are empty best-effort; tapping follow while offline/429/500 just no-ops with no error (code comments note a future toast)"
+      "summary": "categories.vue/tags.vue/series/[slug].vue catch blocks are empty best-effort; tapping follow while offline/429/500 just no-ops with no error (code comments note a future toast)",
+      "resolution": "follow/notify toggle failures on category/tag/series pages now surface a transient localized error line"
     },
     "ISS-307": {
       "id": "ISS-307",
@@ -16857,6 +16858,17 @@
       "title": "Admin editor Save/Cancel return to the unfiltered first page; comments moderation gives no success feedback; taxonomy lists have no search",
       "severity": "low",
       "summary": "hardcoded navigateTo(\"/admin/posts\") loses filter/page context; approve/reject/batch-approve silently reload; tags/categories lists (and the editor tag picker) are unbounded scrolls"
+    },
+    "CHG-345": {
+      "id": "CHG-345",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-03T12:09:05+00:00",
+      "updated_at": "2026-09-03T12:09:05+00:00",
+      "touched_round": 240,
+      "title": "Follow/notify toggle failure feedback on categories/tags/series pages",
+      "commit": "5ba6ffd"
     }
   },
   "edges": [
@@ -24652,6 +24664,12 @@
       "to": "COMP-002",
       "type": "located_in",
       "created_at": "2026-09-03T10:19:04+00:00"
+    },
+    {
+      "from": "CHG-345",
+      "to": "ISS-306",
+      "type": "resolves",
+      "created_at": "2026-09-03T12:09:06+00:00"
     }
   ]
 }
