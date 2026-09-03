@@ -9,6 +9,11 @@
 		"batchDelete": "删除所选 ({n})",
 		"confirmBatchDelete": "确定删除选中的 {n} 条评论吗？此操作无法撤销。",
 		"deletedFeedback": "已删除 {n} 条评论",
+		"deletedOneFeedback": "评论已删除",
+		"approvedFeedback": "评论已通过审核",
+		"revokedFeedback": "已撤销该评论的审核通过",
+		"batchApprovedFeedback": "已通过 {n} 条评论",
+		"batchRejectedFeedback": "已拒绝 {n} 条评论",
 		"selectAll": "全选",
 		"empty": {
 			"title": "暂无评论",

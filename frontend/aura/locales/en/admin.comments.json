@@ -9,6 +9,11 @@
 		"batchDelete": "Delete selected ({n})",
 		"confirmBatchDelete": "Delete {n} selected comments? This can't be undone.",
 		"deletedFeedback": "Deleted {n} comments",
+		"deletedOneFeedback": "Comment deleted",
+		"approvedFeedback": "Comment approved",
+		"revokedFeedback": "Approval revoked",
+		"batchApprovedFeedback": "Approved {n} comments",
+		"batchRejectedFeedback": "Rejected {n} comments",
 		"selectAll": "Select all",
 		"empty": {
 			"title": "No comments",

@@ -242,6 +242,8 @@ describe("Admin Comments Page", () => {
 			await flushPromises();
 
 			expect(mockApproveAdminComment).toHaveBeenCalledWith(2, true);
+			// The queue reload is silent — the success feedback (ISS-311) must render.
+			expect(wrapper.text()).toContain("评论已通过审核");
 		});
 
 		it("calls approveAdminComment with approved=false when unapproving", async () => {
@@ -258,6 +260,8 @@ describe("Admin Comments Page", () => {
 			await flushPromises();
 
 			expect(mockApproveAdminComment).toHaveBeenCalledWith(1, false);
+			// Reject/revoke feedback (ISS-311).
+			expect(wrapper.text()).toContain("已撤销该评论的审核通过");
 		});
 
 		it("replies to an approved comment as the author, then reloads (DEC-192)", async () => {
@@ -365,6 +369,8 @@ describe("Admin Comments Page", () => {
 			await flushPromises();
 
 			expect(mockBatchApproveAdminComments).toHaveBeenCalledWith([2], true);
+			// Batch success feedback (ISS-311).
+			expect(wrapper.text()).toContain("已通过 1 条评论");
 		});
 
 		it("calls batchApproveAdminComment with approved=false when batch reject clicked", async () => {
@@ -386,6 +392,8 @@ describe("Admin Comments Page", () => {
 			await flushPromises();
 
 			expect(mockBatchApproveAdminComments).toHaveBeenCalledWith([2], false);
+			// Batch reject feedback (ISS-311).
+			expect(wrapper.text()).toContain("已拒绝 1 条评论");
 		});
 
 		it("does NOT call batchApproveAdminComment when no comments are selected", async () => {

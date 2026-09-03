@@ -80,6 +80,9 @@ const currentPage = ref(1);
 const isProcessing = ref(false);
 const selectedIds = ref<Set<number>>(new Set());
 const actionError = ref<string | null>(null);
+// Success feedback for approve/reject/delete — the queue just silently
+// reloads on success otherwise (ISS-311).
+const actionSuccess = ref<string | null>(null);
 const deletedMessage = ref<string>("");
 
 let listRequestSeq = 0;
@@ -167,12 +170,19 @@ function toggleSelectAll() {
 }
 
 async function batchApprove(approved: boolean) {
-	if (selectedIds.value.size === 0) return;
+	const ids = Array.from(selectedIds.value);
+	if (ids.length === 0) return;
 	isProcessing.value = true;
 	actionError.value = null;
+	actionSuccess.value = null;
 	try {
-		await batchApproveAdminComments(Array.from(selectedIds.value), approved);
+		await batchApproveAdminComments(ids, approved);
 		selectedIds.value = new Set();
+		// The queue just reloads on success — a silent reload reads as "nothing
+		// happened" (ISS-311), so confirm the outcome explicitly.
+		actionSuccess.value = approved
+			? t("admin.comments.batchApprovedFeedback", { n: ids.length })
+			: t("admin.comments.batchRejectedFeedback", { n: ids.length });
 		await loadComments(activeFilters(), currentPage.value);
 	} catch (e) {
 		actionError.value = getErrorMessage(e);
@@ -187,6 +197,7 @@ async function batchDelete() {
 	if (!confirm(t("admin.comments.confirmBatchDelete", { n: ids.length }))) return;
 	isProcessing.value = true;
 	actionError.value = null;
+	actionSuccess.value = null;
 	deletedMessage.value = "";
 	try {
 		const { deleted } = await batchDeleteAdminComments(ids);
@@ -210,8 +221,10 @@ async function handleDelete(id: number) {
 	if (!confirm(t("admin.comments.confirmDelete"))) return;
 	isProcessing.value = true;
 	actionError.value = null;
+	actionSuccess.value = null;
 	try {
 		await deleteAdminComment(id);
+		actionSuccess.value = t("admin.comments.deletedOneFeedback");
 		await loadComments(activeFilters(), currentPage.value);
 	} catch (e) {
 		actionError.value = getErrorMessage(e);
@@ -237,8 +250,12 @@ async function handleDismissFlags(id: number) {
 async function handleApprove(id: number, approved: boolean) {
 	isProcessing.value = true;
 	actionError.value = null;
+	actionSuccess.value = null;
 	try {
 		await approveAdminComment(id, approved);
+		actionSuccess.value = approved
+			? t("admin.comments.approvedFeedback")
+			: t("admin.comments.revokedFeedback");
 		await loadComments(activeFilters(), currentPage.value);
 	} catch (e) {
 		actionError.value = getErrorMessage(e);
@@ -298,6 +315,12 @@ async function submitReply(id: number) {
         class="mb-6 px-4 py-3 rounded-xl border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20 text-sm text-red-600 dark:text-red-400"
       >
         {{ actionError }}
+      </div>
+      <div
+        v-if="actionSuccess"
+        class="mb-6 px-4 py-3 rounded-xl border border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-900/20 text-sm text-emerald-600 dark:text-emerald-400"
+      >
+        {{ actionSuccess }}
       </div>
       <div
         v-if="canBatch && comments && comments.items.length > 0"
