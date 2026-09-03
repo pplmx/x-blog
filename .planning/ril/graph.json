@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 241,
+  "round": 242,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-03T16:14:24+00:00",
+  "updated_at": "2026-09-03T16:48:06+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -16852,14 +16852,14 @@
     "ISS-311": {
       "id": "ISS-311",
       "type": "issue",
-      "status": "active",
-      "version": 4,
+      "status": "resolved",
+      "version": 6,
       "created_at": "2026-09-03T10:15:30+00:00",
-      "updated_at": "2026-09-03T16:14:24+00:00",
+      "updated_at": "2026-09-03T16:47:11+00:00",
       "touched_round": 241,
       "title": "Admin editor Save/Cancel return to the unfiltered first page; comments moderation gives no success feedback; taxonomy lists have no search",
       "severity": "low",
-      "summary": "REMAINING: (3) taxonomy lists (tags/categories + editor tag picker) are unbounded scrolls with no search. DONE: (1) editor round-trip context ISS-318/CHG-354; (2) moderation feedback ISS-317/CHG-353"
+      "summary": "All three parts landed: (1) editor round-trip context ISS-318/CHG-354; (2) moderation feedback ISS-317/CHG-353; (3) taxonomy + tag-picker search ISS-319/CHG-355"
     },
     "CHG-345": {
       "id": "CHG-345",
@@ -17030,6 +17030,29 @@
       "touched_round": 241,
       "title": "Module-singleton admin posts-list state (search/filter/page survive editor round-trips)",
       "commit": "fef9a5d"
+    },
+    "ISS-319": {
+      "id": "ISS-319",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-03T16:47:11+00:00",
+      "updated_at": "2026-09-03T16:47:11+00:00",
+      "touched_round": 241,
+      "title": "Admin taxonomy lists (tags/categories) and the editor tag picker are unbounded scrolls with no search",
+      "severity": "low",
+      "summary": "The taxonomy endpoint returns every item and the pages rendered them all with no way to narrow — the editor chip picker had a bounded-height scroll over all tags (split out of ISS-311 part 3)"
+    },
+    "CHG-355": {
+      "id": "CHG-355",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-03T16:47:11+00:00",
+      "updated_at": "2026-09-03T16:47:11+00:00",
+      "touched_round": 241,
+      "title": "Client-side filters for taxonomy lists + editor tag picker",
+      "commit": "5b5f367"
     }
   },
   "edges": [
@@ -24885,6 +24908,12 @@
       "to": "ISS-318",
       "type": "resolves",
       "created_at": "2026-09-03T16:14:23+00:00"
+    },
+    {
+      "from": "CHG-355",
+      "to": "ISS-319",
+      "type": "resolves",
+      "created_at": "2026-09-03T16:47:11+00:00"
     }
   ]
 }
