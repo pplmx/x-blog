@@ -1,16 +1,19 @@
 <script setup lang="ts">
 import { ref } from "vue";
 import type { PostList, PostListResponse } from "~~/api/contracts/shared";
+import { command } from "~~/api/transport";
 
 const { t } = useLang();
-const config = useRuntimeConfig();
-const apiBase = (config.public.apiUrl || "").replace(/\/+$/, "");
 
 const query = ref("");
 const open = ref(false);
 const results = ref<PostList[]>([]);
 const loading = ref(false);
 const searched = ref(false);
+// True when the last search attempt errored (rate limit / network / 5xx) — a
+// real failure is NOT "no matches", and a rate-limited search-as-you-type must
+// not read as an empty dead end (deep-dive finding).
+const failed = ref(false);
 const activeIndex = ref(-1);
 let timer: ReturnType<typeof setTimeout> | null = null;
 // Monotonic token so a slow, out-of-order response can't clobber a newer one:
@@ -21,19 +24,24 @@ async function runSearch(q: string): Promise<void> {
 	if (!q.trim()) {
 		results.value = [];
 		searched.value = false;
+		failed.value = false;
 		return;
 	}
 	const seq = ++requestSeq;
 	try {
-		const data = await $fetch<PostListResponse>(`${apiBase}/api/search`, {
+		// Through the command seam (not a raw $fetch) so the transport's 429
+		// detector raises the app-wide RateLimitNotice on throttling.
+		const data = await command<PostListResponse>("/api/search", {
 			query: { q: q.trim(), page: 1, limit: 5 },
 		});
 		// Ignore stale responses from an earlier keystroke.
 		if (seq !== requestSeq) return;
 		results.value = data.items;
+		failed.value = false;
 	} catch {
 		if (seq !== requestSeq) return;
 		results.value = [];
+		failed.value = true;
 	} finally {
 		if (seq === requestSeq) {
 			loading.value = false;
@@ -171,17 +179,26 @@ function onBlur(): void {
       </ul>
 
       <div
-        v-if="searched && !loading && results.length === 0"
+        v-if="searched && !loading && failed"
+        class="px-3 py-3 text-sm text-red-600 dark:text-red-400"
+      >
+        {{ t('headerSearch.searchFailed') }}
+      </div>
+
+      <div
+        v-else-if="searched && !loading && results.length === 0"
         class="px-3 py-3 text-sm text-gray-500 dark:text-gray-400"
       >
         {{ t('headerSearch.noResults') }}
       </div>
 
       <!-- Live region: announces the settled result count to screen readers,
-           and the zero-result state (the no-results div above is not live). -->
+           and the zero-result state (the no-results div above is not live).
+           A failed search announces the error too — never a false "no matches". -->
       <span class="sr-only" role="status" aria-live="polite">
         <template v-if="searched && !loading">
-          {{ results.length === 0 ? t('headerSearch.noResults') : t('headerSearch.resultsCount', { count: results.length }) }}
+          <template v-if="failed">{{ t('headerSearch.searchFailed') }}</template>
+          <template v-else>{{ results.length === 0 ? t('headerSearch.noResults') : t('headerSearch.resultsCount', { count: results.length }) }}</template>
         </template>
       </span>
 

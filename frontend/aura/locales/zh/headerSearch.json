@@ -4,6 +4,7 @@
 		"ariaInput": "站内搜索",
 		"viewAll": "查看全部结果",
 		"noResults": "未找到匹配的文章",
+		"searchFailed": "搜索未完成，请检查网络后重试。",
 		"goToSearch": "前往搜索页",
 		"hint": "输入关键词快速查找文章",
 		"resultsCount": "{count} 条结果"

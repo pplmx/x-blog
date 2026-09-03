@@ -26,21 +26,21 @@ const mockSearchResponse = {
 	pagination: { total: 1, page: 1, limit: 5, total_pages: 1 },
 };
 
-function mountHeaderSearch() {
+function mountHeaderSearch(fetchImpl?: (url: string) => unknown) {
 	const navigateToMock = vi.fn();
 
 	vi.stubGlobal("useRuntimeConfig", () => ({
 		public: { apiUrl: "http://localhost:18888" },
 	}));
 	vi.stubGlobal("navigateTo", navigateToMock);
-	vi.stubGlobal(
-		"$fetch",
+	const searchFetch =
+		fetchImpl ??
 		vi.fn(async (url: string) => {
 			const u = String(url);
 			if (u.includes("/api/search")) return mockSearchResponse;
 			throw new Error(`Unexpected $fetch in HeaderSearch test: ${u}`);
-		}),
-	);
+		});
+	vi.stubGlobal("$fetch", searchFetch);
 	vi.stubGlobal("useLang", () => ({ t: (key: string) => key }));
 
 	const wrapper = mount(HeaderSearch, {
@@ -97,5 +97,50 @@ describe("HeaderSearch", () => {
 		const viewAll = wrapper.find("button");
 		await viewAll.trigger("click"); // keyboard activation path
 		expect(navigateToMock).toHaveBeenCalledWith({ path: "/search", query: { q: "nuxt" } });
+	});
+
+	it("renders matching results once the debounced search settles", async () => {
+		// Locks the transport → results path: `command` (transport.ts) resolves
+		// via $fetch through the mock, and the debounced timer is advanced by
+		// hand — the older tests only ever exercised the synchronous dropdown
+		// open + view-all navigation, never an actual settled search.
+		vi.useFakeTimers();
+		const { wrapper } = mountHeaderSearch();
+		const input = wrapper.find('input[role="combobox"]');
+		await input.setValue("nuxt");
+		await vi.advanceTimersByTimeAsync(300); // fire the debounce
+		await flushPromises();
+		vi.useRealTimers();
+
+		expect(wrapper.findAll("li").length).toBe(1);
+		expect(wrapper.text()).toContain("Nuxt Guide");
+		expect(wrapper.find(".text-red-600").exists()).toBe(false);
+	});
+
+	it("shows a failure notice — not 'no matches' — when the search request errors", async () => {
+		// Regression (ISS-309): the search used a raw $fetch that bypassed the
+		// transport's 429 detector, so a rate-limited search-as-you-type read as
+		// an empty dead end ("No matching posts") instead of an error.
+		// The component debounces via setTimeout(300) — flushPromises alone never
+		// advances a real timer, so the running search must be driven by fake
+		// timers. `command` in transport.ts calls $fetch, so a rejecting $fetch
+		// propagates through the seam into the component's catch.
+		vi.useFakeTimers();
+		const { wrapper } = mountHeaderSearch(() => {
+			throw new Error("rate limited");
+		});
+		const input = wrapper.find('input[role="combobox"]');
+		await input.setValue("nuxt");
+		await vi.advanceTimersByTimeAsync(300); // let the debounce fire
+		await flushPromises();
+		vi.useRealTimers();
+
+		// The red failure notice renders…
+		expect(wrapper.find(".text-red-600").exists()).toBe(true);
+		// …no options are shown…
+		expect(wrapper.findAll("li").length).toBe(0);
+		// …and the gray "no matches" state is NOT rendered (neither visible nor
+		// live-region text lies about the error).
+		expect(wrapper.find(".text-gray-500").exists()).toBe(false);
 	});
 });
