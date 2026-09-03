@@ -2,7 +2,7 @@
   "ril_version": 1,
   "round": 240,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-03T12:47:47+00:00",
+  "updated_at": "2026-09-03T13:24:01+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -16839,14 +16839,15 @@
     "ISS-310": {
       "id": "ISS-310",
       "type": "issue",
-      "status": "active",
-      "version": 1,
+      "status": "resolved",
+      "version": 2,
       "created_at": "2026-09-03T10:15:30+00:00",
-      "updated_at": "2026-09-03T10:15:30+00:00",
+      "updated_at": "2026-09-03T13:24:01+00:00",
       "touched_round": 240,
       "title": "Dashboard Updated-at frozen at page load; restore summary has a hardcoded Chinese fragment",
       "severity": "low",
-      "summary": "loadedAt computed once in setup so post-action reloads show a stale timestamp; backupCounts concatenates 评论+N (跳过 0) literally in en locale"
+      "summary": "loadedAt computed once in setup so post-action reloads show a stale timestamp; backupCounts concatenates 评论+N (跳过 0) literally in en locale",
+      "resolution": "dashboard Updated-at re-stamped on every loadDashboard; restore summary comment segment localized (commentsCreated/skipped keys)"
     },
     "ISS-311": {
       "id": "ISS-311",
