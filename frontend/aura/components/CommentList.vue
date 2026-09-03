@@ -165,7 +165,8 @@
                 :replying-to="comment.nickname"
                 :submit-label="t('components.commentList.reply')"
                 @submitted="handleReplied"
-                @cancel="replyTo = null"
+                @cancel="cancelReply"
+                @update:dirty="replyDirty = $event"
               />
             </div>
 
@@ -300,7 +301,8 @@
                 :replying-to="reply.nickname"
                 :submit-label="t('components.commentList.reply')"
                 @submitted="handleReplied"
-                @cancel="replyTo = null"
+                @cancel="cancelReply"
+                @update:dirty="replyDirty = $event"
               />
             </div>
 
@@ -687,10 +689,36 @@ function descendantsOf(commentId: number): Comment[] {
 
 // Expand a top-level comment into itself plus its nested replies (one level).
 const replyTo = ref<{ id: number; nickname: string } | null>(null);
+// Whether the currently-open reply form holds an unsent draft (reported by
+// CommentForm via update:dirty). Cancelling a reply or re-targeting another
+// comment unmounts that form, silently discarding the unsent text if unguarded.
+const replyDirty = ref(false);
+
+// Ask before any reply-target transition that would unmount a form holding a
+// draft. The old guard lived in CommentForm's parentId watch, but each reply
+// form is a FRESH instance mounted inside `v-if="replyTo?.id === comment.id"`,
+// so a target switch replaces the instance entirely — the watch never fired
+// and the draft was lost before anyone could decline (deep-dive finding).
+function confirmDiscardReplyDraft(): boolean {
+	if (replyTo.value && replyDirty.value) {
+		const subject = t("components.commentList.discardConfirm");
+		if (typeof window !== "undefined" && !window.confirm(subject)) return false;
+	}
+	return true;
+}
+
+// Cancel via the reply form's own cancel button (CommentForm emits `cancel`).
+function cancelReply(): void {
+	if (!confirmDiscardReplyDraft()) return;
+	replyTo.value = null;
+	replyDirty.value = false;
+}
 
 function toggleReply(comment: Comment) {
+	if (!confirmDiscardReplyDraft()) return;
 	replyTo.value =
 		replyTo.value?.id === comment.id ? null : { id: comment.id, nickname: comment.nickname };
+	replyDirty.value = false; // a freshly-mounted target starts clean
 }
 
 const refreshing = ref(false);
@@ -713,6 +741,7 @@ async function refreshList() {
 async function handleReplied() {
 	await refreshList();
 	replyTo.value = null;
+	replyDirty.value = false;
 }
 
 const visiblePages = computed(() => {

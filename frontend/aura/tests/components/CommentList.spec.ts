@@ -795,6 +795,150 @@ describe("CommentList", () => {
 		});
 	});
 
+	describe("Reply draft protection (deep-dive)", () => {
+		// Regression: the old discard-confirm lived in CommentForm's parentId
+		// watch, but every reply form is a FRESH instance mounted inside
+		// `v-if="replyTo?.id === comment.id"` — re-targeting unmounts it before
+		// the watch can fire, so a draft vanished silently. The guard now lives
+		// in CommentList on the transition itself.
+		const comments = {
+			items: [
+				{
+					id: 1,
+					post_id: 1,
+					parent_id: null,
+					nickname: "Alice",
+					email: "alice@test.com",
+					content: "Top-level comment",
+					is_approved: true,
+					ip_address: "127.0.0.1",
+					created_at: "2024-01-15T10:30:00Z",
+				},
+				{
+					id: 2,
+					post_id: 1,
+					parent_id: 1,
+					nickname: "Bob",
+					email: "bob@test.com",
+					content: "A reply to Alice",
+					is_approved: true,
+					ip_address: "127.0.0.1",
+					created_at: "2024-01-16T10:30:00Z",
+				},
+				{
+					id: 3,
+					post_id: 1,
+					parent_id: null,
+					nickname: "Carol",
+					email: "carol@test.com",
+					content: "Another top-level",
+					is_approved: true,
+					ip_address: "127.0.0.1",
+					created_at: "2024-01-17T10:30:00Z",
+				},
+			],
+			total: 3,
+			total_pages: 1,
+			page: 1,
+			limit: 20,
+		};
+
+		it("declining the discard keeps the draft on its original reply target", async () => {
+			const confirmSpy = vi.fn(() => false);
+			vi.stubGlobal("confirm", confirmSpy);
+			const { wrapper } = await mountCommentList({ comments });
+			// Open the reply form on Alice (first "回复" in DOM order).
+			const aliceBtn = wrapper.findAll("button").find((b) => b.text() === "回复");
+			expect(aliceBtn).toBeDefined();
+			if (!aliceBtn) throw new Error("expected a reply button");
+			await aliceBtn.trigger("click");
+			await flushPromises();
+			const textarea = wrapper.find("#comment-content");
+			expect(textarea.exists()).toBe(true);
+			await textarea.setValue("Careful draft.");
+			await flushPromises();
+
+			// Try to re-target to the next comment (Bob's nested reply button —
+			// Alice's row now reads "取消回复" so the first remaining "回复" is Bob).
+			const nextReply = wrapper.findAll("button").find((b) => b.text() === "回复");
+			expect(nextReply).toBeDefined();
+			if (!nextReply) throw new Error("expected a reply button");
+			await nextReply.trigger("click");
+			await flushPromises();
+
+			expect(confirmSpy).toHaveBeenCalled();
+			// Still replying to Alice, draft intact, form still mounted.
+			expect(wrapper.text()).toContain("正在回复 Alice");
+			expect((wrapper.find("#comment-content").element as HTMLTextAreaElement).value).toBe(
+				"Careful draft.",
+			);
+		});
+
+		it("switches the reply target to the new comment when the discard is accepted", async () => {
+			const confirmSpy = vi.fn(() => true);
+			vi.stubGlobal("confirm", confirmSpy);
+			const { wrapper } = await mountCommentList({ comments });
+			const aliceBtn = wrapper.findAll("button").find((b) => b.text() === "回复");
+			if (!aliceBtn) throw new Error("expected a reply button");
+			await aliceBtn.trigger("click");
+			await flushPromises();
+			await wrapper.find("#comment-content").setValue("Draft to trash.");
+			await flushPromises();
+
+			const nextReply = wrapper.findAll("button").find((b) => b.text() === "回复");
+			if (!nextReply) throw new Error("expected a reply button");
+			await nextReply.trigger("click");
+			await flushPromises();
+
+			expect(confirmSpy).toHaveBeenCalled();
+			expect(wrapper.text()).toContain("正在回复 Bob");
+		});
+
+		it("cancelling a dirty reply via the form's own cancel button asks first", async () => {
+			const confirmSpy = vi.fn(() => false);
+			vi.stubGlobal("confirm", confirmSpy);
+			const { wrapper } = await mountCommentList({ comments });
+			const aliceBtn = wrapper.findAll("button").find((b) => b.text() === "回复");
+			if (!aliceBtn) throw new Error("expected a reply button");
+			await aliceBtn.trigger("click");
+			await flushPromises();
+			await wrapper.find("#comment-content").setValue("Careful draft.");
+			await flushPromises();
+
+			// Two "取消回复" buttons now: Alice's row toggle (earlier in DOM) and
+			// the reply form's cancel (inside the reply-context box, later).
+			const cancels = wrapper.findAll("button").filter((b) => b.text() === "取消回复");
+			const formCancel = cancels[cancels.length - 1];
+			expect(formCancel).toBeDefined();
+			await formCancel.trigger("click");
+			await flushPromises();
+
+			expect(confirmSpy).toHaveBeenCalled();
+			expect(wrapper.text()).toContain("正在回复 Alice");
+			expect((wrapper.find("#comment-content").element as HTMLTextAreaElement).value).toBe(
+				"Careful draft.",
+			);
+		});
+
+		it("does not prompt when switching replies with no draft typed", async () => {
+			const confirmSpy = vi.fn(() => true);
+			vi.stubGlobal("confirm", confirmSpy);
+			const { wrapper } = await mountCommentList({ comments });
+			const aliceBtn = wrapper.findAll("button").find((b) => b.text() === "回复");
+			if (!aliceBtn) throw new Error("expected a reply button");
+			await aliceBtn.trigger("click");
+			await flushPromises();
+
+			const nextReply = wrapper.findAll("button").find((b) => b.text() === "回复");
+			if (!nextReply) throw new Error("expected a reply button");
+			await nextReply.trigger("click");
+			await flushPromises();
+
+			expect(confirmSpy).not.toHaveBeenCalled();
+			expect(wrapper.text()).toContain("正在回复 Bob");
+		});
+	});
+
 	describe("Deep replies (reply to a reply, RIL ISS-037)", () => {
 		const deepComments = {
 			items: [

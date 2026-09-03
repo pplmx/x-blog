@@ -28,8 +28,7 @@
 			"replyingTo": "Replying to {name}",
 			"asReader": "Submitting as {name}",
 			"asReaderHint": "Your verified reader identity is used automatically.",
-			"markdownHint": "Supports Markdown — code blocks, bold and links render.",
-			"discardConfirm": "Discard your unsent reply?"
+			"markdownHint": "Supports Markdown — code blocks, bold and links render."
 		},
 		"commentList": {
 			"flag": "Report",
@@ -50,6 +49,7 @@
 			"title": "Comments",
 			"empty": "No comments yet — be the first to comment!",
 			"reply": "Reply",
+			"discardConfirm": "Discard your unsent reply?",
 			"cancelReply": "Cancel reply",
 			"replyingTo": "Replying to {name}",
 			"authorReply": "Author",

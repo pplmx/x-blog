@@ -28,8 +28,7 @@
 			"replyingTo": "正在回复 {name}",
 			"asReader": "以 {name} 的身份发表",
 			"asReaderHint": "将使用你已验证的读者身份。",
-			"markdownHint": "支持 Markdown，代码块、加粗和链接会渲染。",
-			"discardConfirm": "放弃未发送的回复吗？"
+			"markdownHint": "支持 Markdown，代码块、加粗和链接会渲染。"
 		},
 		"commentList": {
 			"flag": "举报",
@@ -50,6 +49,7 @@
 			"title": "评论",
 			"empty": "还没有评论，来发第一个评论吧！",
 			"reply": "回复",
+			"discardConfirm": "放弃未发送的回复吗？",
 			"cancelReply": "取消回复",
 			"replyingTo": "正在回复 {name}",
 			"authorReply": "作者",

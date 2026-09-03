@@ -128,7 +128,7 @@ const props = withDefaults(defineProps<Props>(), {
 	submitLabel: undefined,
 });
 
-const emit = defineEmits<{ submitted: []; cancel: [] }>();
+const emit = defineEmits<{ submitted: []; cancel: []; "update:dirty": [value: boolean] }>();
 
 const { t } = useLang();
 const { isAuthenticated, reader } = useReaderAuth();
@@ -163,25 +163,23 @@ const submitting = ref(false);
 const error = ref("");
 const success = ref("");
 
-// Reset the form whenever the reply target changes. Switching reply targets
-// with an in-progress draft would silently discard the reader's unsent text —
-// if anything is typed, confirm before wiping (deep-dive finding).
-watch(
-	() => props.parentId,
-	() => {
-		const dirty =
-			Boolean(form.value.content.trim()) ||
-			Boolean(form.value.nickname.trim()) ||
-			Boolean(form.value.email.trim());
-		if (dirty) {
-			const subject = t("components.commentForm.discardConfirm");
-			if (typeof window !== "undefined" && !window.confirm(subject)) return;
-		}
-		form.value = { nickname: "", email: "", content: "", website: "" };
-		error.value = "";
-		success.value = "";
-	},
+// Dirty = the reader has typed something unsent. Used to guard reply-target
+// switches so an in-progress draft is never silently discarded. The parent
+// (CommentList) owns the reply target transition and asks for confirmation;
+// this component only REPORTS dirtiness via `update:dirty` — it can't revert
+// a parentId prop change once made, so an inline confirm here would leave the
+// draft attached to the NEW target (deep-dive finding: comment form now emits
+// dirty state instead).
+const dirty = computed(
+	() =>
+		Boolean(form.value.content.trim()) ||
+		Boolean(form.value.nickname.trim()) ||
+		Boolean(form.value.email.trim()),
 );
+watch(dirty, (isDirty) => emit("update:dirty", isDirty));
+// Report the baseline on mount too — a form that mounts with content (e.g. a
+// future same-instance reply switch) must not be mistaken for a clean one.
+onMounted(() => emit("update:dirty", dirty.value));
 
 async function handleSubmit() {
 	// Signed-in readers only need content; anonymous must give nickname+email.
@@ -204,6 +202,7 @@ async function handleSubmit() {
 		});
 		success.value = t("components.commentForm.submitSuccess");
 		form.value = { nickname: "", email: "", content: "", website: "" };
+		emit("update:dirty", false);
 		emit("submitted");
 	} catch (e: any) {
 		error.value = e?.message || t("components.commentForm.submitFailed");

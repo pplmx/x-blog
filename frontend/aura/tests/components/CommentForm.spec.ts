@@ -55,6 +55,36 @@ describe("CommentForm", () => {
 		vi.restoreAllMocks();
 	});
 
+	describe("Dirty-state reporting (deep-dive)", () => {
+		// The parent (CommentList) guards reply-target switches by subscribing to
+		// `update:dirty` — CommentForm reports whether the reader has unsent text.
+		it("emits update:dirty(false) on mount when the form is clean", async () => {
+			const wrapper = await mountCommentForm();
+			expect(wrapper.emitted("update:dirty")?.at(-1)).toEqual([false]);
+		});
+
+		it("emits update:dirty(true) once the reader types, and false again when cleared", async () => {
+			const wrapper = await mountCommentForm();
+			await wrapper.find("#comment-content").setValue("hello");
+			await flushPromises();
+			expect(wrapper.emitted("update:dirty")?.at(-1)).toEqual([true]);
+
+			await wrapper.find("#comment-content").setValue("");
+			await flushPromises();
+			expect(wrapper.emitted("update:dirty")?.at(-1)).toEqual([false]);
+		});
+
+		it("emits update:dirty(false) after a successful submit clears the form", async () => {
+			const wrapper = await mountCommentForm();
+			await wrapper.find("#comment-nickname").setValue("n");
+			await wrapper.find("#comment-email").setValue("a@b.c");
+			await wrapper.find("#comment-content").setValue("hi");
+			await wrapper.find("form").trigger("submit.prevent");
+			await flushPromises();
+			expect(wrapper.emitted("update:dirty")?.at(-1)).toEqual([false]);
+		});
+	});
+
 	describe("Rendering", () => {
 		it("renders the form title", async () => {
 			const wrapper = await mountCommentForm();
@@ -268,33 +298,25 @@ describe("CommentForm", () => {
 	});
 
 	describe("Reply-target draft protection", () => {
-		it("confirms before discarding a typed draft when the reply target changes", async () => {
+		it("keeps a typed draft across a parentId prop change — the form never wipes unsent text unilaterally", async () => {
+			// The old design confirmed inside a parentId watch — but every reply
+			// form is a FRESH instance mounted inside `v-if="replyTo?.id ===
+			// comment.id"`, so re-targeting replaces the instance before that
+			// watch can fire: the protection was structurally dead and a draft
+			// vanished silently. The guard now lives in CommentList on the
+			// actual transition (see CommentList.spec "Reply draft
+			// protection"); CommentForm is a passive dirty reporter and must
+			// never destroy unsent text on a bare prop change.
 			const wrapper = await mountCommentForm({ postId: 1 });
 			const confirmMock = vi.fn(() => false);
 			vi.stubGlobal("confirm", confirmMock);
 
 			await wrapper.find("textarea").setValue("Half-typed reply");
-			// Switching reply targets (opening a reply box elsewhere) would wipe
-			// the draft — a confirm is shown and a dismissal keeps the text.
 			await wrapper.setProps({ parentId: 7 });
-			expect(confirmMock).toHaveBeenCalled();
+			expect(confirmMock).not.toHaveBeenCalled();
 			expect((wrapper.find("textarea").element as HTMLTextAreaElement).value).toBe(
 				"Half-typed reply",
 			);
-
-			// Confirming permission discards the draft.
-			confirmMock.mockReturnValue(true);
-			await wrapper.setProps({ parentId: 8 });
-			expect((wrapper.find("textarea").element as HTMLTextAreaElement).value).toBe("");
-			vi.unstubAllGlobals();
-		});
-
-		it("does not prompt on a reply-target change when the form is clean", async () => {
-			const wrapper = await mountCommentForm({ postId: 1 });
-			const confirmMock = vi.fn(() => true);
-			vi.stubGlobal("confirm", confirmMock);
-			await wrapper.setProps({ parentId: 7 });
-			expect(confirmMock).not.toHaveBeenCalled();
 			vi.unstubAllGlobals();
 		});
 	});
