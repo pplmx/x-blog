@@ -5,7 +5,7 @@
  * Mocks useBookmarks and useSeo composables, stubs Icon and NuxtLink.
  */
 
-import { mount } from "@vue/test-utils";
+import { flushPromises, mount } from "@vue/test-utils";
 import { describe, expect, it, vi } from "vitest";
 import { computed, ref } from "vue";
 
@@ -46,6 +46,27 @@ vi.mock("../../composables/useBookmarkSync", () => ({
 // Mock useSeo composable
 vi.mock("../../composables/useSeo", () => ({
 	useSeo: vi.fn(),
+}));
+
+// Reactive reader-auth so the page's sign-out watcher can be driven in-test.
+const mockIsAuthenticated = ref(true);
+vi.mock("../../composables/useReaderAuth", () => ({
+	useReaderAuth: () => ({ isAuthenticated: mockIsAuthenticated, logout: vi.fn() }),
+}));
+
+// Folder API: create/rename failures return false and must surface an alert.
+const mockFolders = ref<{ id: number; name: string; count: number }[]>([]);
+const mockCreateFolder = vi.fn(async () => false);
+vi.mock("../../composables/useBookmarkFolders", () => ({
+	useBookmarkFolders: () => ({
+		folders: mockFolders,
+		loading: ref(false),
+		load: vi.fn(),
+		create: mockCreateFolder,
+		rename: vi.fn(async () => true),
+		remove: vi.fn(async () => true),
+		assign: vi.fn(async () => true),
+	}),
 }));
 
 import Bookmarks from "../../app/pages/bookmarks.vue";
@@ -289,6 +310,62 @@ describe("Bookmarks page", () => {
 			mockBookmarks.value = [];
 			const wrapper = mountBookmarks();
 			expect(wrapper.find('input[type="search"]').exists()).toBe(false);
+		});
+	});
+
+	describe("folder sign-out state (deep-dive finding)", () => {
+		const folderBookmark = {
+			...sampleBookmark,
+			id: 1,
+			folder_id: 1 as number | null,
+			folder_name: "AI" as string | null,
+		};
+		const looseBookmark = {
+			...sampleBookmark,
+			id: 2,
+			folder_id: null,
+			folder_name: null,
+			title: "No Folder Post",
+		};
+
+		afterEach(() => {
+			mockIsAuthenticated.value = true;
+			mockFolders.value = [];
+		});
+
+		it("resets the active folder filter on sign-out so the list is not trapped behind a hidden bar", async () => {
+			mockBookmarks.value = [folderBookmark, looseBookmark];
+			mockFolders.value = [{ id: 1, name: "AI", count: 1 }];
+			const wrapper = mountBookmarks();
+			// Select the AI folder chip → only the filed bookmark shows.
+			await wrapper
+				.findAll("button")
+				.find((b) => b.text().includes("AI"))
+				?.trigger("click");
+			expect(wrapper.text()).toContain("Test Bookmarked Post");
+			expect(wrapper.text()).not.toContain("No Folder Post");
+
+			// Sign out in the header: the folder bar (and its "All" chip) vanishes,
+			// so the active filter must reset or the list stays invisibly filtered.
+			mockIsAuthenticated.value = false;
+			await flushPromises();
+			expect(wrapper.text()).toContain("No Folder Post");
+		});
+
+		it("shows an alert when folder creation fails instead of a silent no-op", async () => {
+			mockBookmarks.value = [folderBookmark];
+			mockIsAuthenticated.value = true;
+			mockCreateFolder.mockResolvedValueOnce(false);
+			vi.stubGlobal("prompt", () => "New Folder");
+			const wrapper = mountBookmarks();
+			await wrapper
+				.findAll("button")
+				.find((b) => b.text().includes("新建文件夹"))
+				?.trigger("click");
+			await flushPromises();
+			expect(wrapper.text()).toContain("文件夹操作失败，请检查网络后重试。");
+			expect(mockCreateFolder).toHaveBeenCalledWith("New Folder");
+			vi.unstubAllGlobals();
 		});
 	});
 });

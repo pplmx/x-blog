@@ -251,4 +251,24 @@ describe("Reading-history page (TASK-170)", () => {
 		await wrapper.vm.$nextTick();
 		expect(wrapper.text()).toContain("暂无阅读历史");
 	});
+
+	it("shows a transient 'cleared' confirmation after clearing (deep-dive finding)", async () => {
+		vi.useFakeTimers();
+		mockHistory.value = [{ slug: "a", title: "Article A", viewedAt: Date.now() }];
+		const wrapper = mountHistory();
+		const headerClear = wrapper.findAll("button").filter((b) => b.text().includes("清空历史"));
+		await headerClear[0].trigger("click");
+		await wrapper
+			.find('[role="alert"]')
+			.findAll("button")
+			.find((b) => b.text().includes("清空历史"))
+			?.trigger("click");
+		await wrapper.vm.$nextTick();
+		expect(wrapper.text()).toContain("阅读历史已清空");
+		// Auto-dismisses so the confirmation doesn't linger on the page.
+		await vi.advanceTimersByTimeAsync(4000);
+		await flushPromises();
+		expect(wrapper.text()).not.toContain("阅读历史已清空");
+		vi.useRealTimers();
+	});
 });

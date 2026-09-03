@@ -1,10 +1,11 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from "vue";
+import { computed, onMounted, onUnmounted, ref, watch } from "vue";
 // biome-ignore lint/correctness/noUnusedImports: used from the template — biome cannot resolve Vue script-setup template bindings (vue-tsc verifies).
 import { parseApiDate } from "~~/composables/apiDate";
 import { useBookmarkFolders } from "~~/composables/useBookmarkFolders";
 import { useBookmarkSync } from "~~/composables/useBookmarkSync";
 import { type Bookmark, useBookmarks } from "~~/composables/useBookmarks";
+import { useReaderAuth } from "~~/composables/useReaderAuth";
 import { useSeo } from "~~/composables/useSeo";
 
 const { t, locale } = useLang();
@@ -26,13 +27,12 @@ useSeo({
 	path: "/bookmarks",
 });
 
-// Folders are a signed-in (cloud) feature. Mirror useBookmarkSync's token check.
-const signedIn = computed(
-	() =>
-		typeof window !== "undefined" &&
-		typeof localStorage?.getItem === "function" &&
-		!!localStorage.getItem("reader_token"),
-);
+// Folders are a signed-in (cloud) feature. Uses the reactive reader-auth
+// singleton (not an ad-hoc localStorage read) so the folder UI and nav react
+// to sign-out while the page is mounted — a plain `localStorage.getItem` in a
+// computed never invalidates, leaving the bar and filter stale after logout
+// (deep-dive finding).
+const { isAuthenticated: signedIn } = useReaderAuth();
 
 function handleClearAll() {
 	if (confirm(t("bookmarks.confirmClear"))) {
@@ -64,6 +64,13 @@ function undoRemove() {
 	undoItem.value = null;
 }
 
+// Clear both timers so a delayed ref-set can't fire after unmount (same
+// hygiene as the history page's debounce cleanup).
+onUnmounted(() => {
+	if (undoClearTimer) clearTimeout(undoClearTimer);
+	if (folderActionTimer) clearTimeout(folderActionTimer);
+});
+
 // When a signed-in reader opens the page, reconcile with the cloud: push any
 // local-only bookmarks up and adopt the merged server list (other-device
 // changes appear here). Safe while logged out — no-op. (TASK-134)
@@ -78,6 +85,9 @@ onMounted(() => {
 
 const activeFolderId = ref<"all" | number>("all");
 const showManage = ref(false);
+// Folder create/rename/reassign failures surface here (deep-dive finding).
+const folderActionFailed = ref(false);
+let folderActionTimer: ReturnType<typeof setTimeout> | undefined;
 
 // Keyword search (DEC-124, TASK-174): matches title, category, or tag names,
 // case-insensitive, and composes with the active folder filter.
@@ -103,17 +113,27 @@ const searchedBookmarks = computed<Bookmark[]>(() => {
 // Matches the rendered list in every case (folder filter, search, or neither).
 const showingCount = computed(() => searchedBookmarks.value.length);
 
+function noteFolderActionFailure() {
+	folderActionFailed.value = true;
+	if (folderActionTimer) clearTimeout(folderActionTimer);
+	folderActionTimer = setTimeout(() => {
+		folderActionFailed.value = false;
+	}, 4000);
+}
+
 async function handleNewFolder() {
 	const name = window.prompt(t("bookmarks.newFolderPrompt"))?.trim();
-	if (name) {
-		await createFolder(name);
+	if (name && !(await createFolder(name))) {
+		// create returns false on failure — surface it instead of silently
+		// ignoring the reader's input (deep-dive finding).
+		noteFolderActionFailure();
 	}
 }
 
 async function handleRename(folder: { id: number; name: string }) {
 	const name = window.prompt(t("bookmarks.renameFolderPrompt"), folder.name)?.trim();
-	if (name && name !== folder.name) {
-		await renameFolder(folder.id, name);
+	if (name && name !== folder.name && !(await renameFolder(folder.id, name))) {
+		noteFolderActionFailure();
 	}
 }
 
@@ -131,6 +151,19 @@ function activeClass(active: boolean): string {
 }
 
 const assignFailed = ref(false);
+
+// On sign-out the folder bar (signed-in only, v-if=signedIn) disappears but
+// the local bookmark rows keep their folder_id — without resetting the active
+// folder the list stayed stuck filtered to a folder whose bar (including the
+// "All" chip that would clear it) is gone: an invisible, un-clearable filter
+// (deep-dive finding).
+watch(signedIn, (authed) => {
+	if (authed) return;
+	activeFolderId.value = "all";
+	searchQuery.value = "";
+	showManage.value = false;
+	assignFailed.value = false;
+});
 
 async function handleAssign(bookmark: Bookmark, raw: string) {
 	const folderId = raw === "" ? null : Number(raw);
@@ -188,6 +221,16 @@ async function handleAssign(bookmark: Bookmark, raw: string) {
       role="alert"
     >
       {{ t('bookmarks.assignFailed') }}
+    </p>
+
+    <!-- Folder create/rename failure (deep-dive finding): the prompt closed and
+         the list did not change — surface why instead of a silent no-op. -->
+    <p
+      v-if="folderActionFailed"
+      class="mb-4 text-sm text-red-600 dark:text-red-400"
+      role="alert"
+    >
+      {{ t('bookmarks.folderFailed') }}
     </p>
 
     <!-- Dead-session sync warning (ISS-222): the stored token is no longer

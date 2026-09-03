@@ -399,4 +399,50 @@ describe("Notifications page (TASK-192)", () => {
 		const loadMore = wrapper.findAll("button").find((b) => b.text().includes("加载更多"));
 		expect(loadMore).toBeUndefined();
 	});
+
+	it("signs out mid-page: clears the inbox and redirects to /login (deep-dive finding)", async () => {
+		mockFetch.mockResolvedValue({
+			items: [makeNotif({ id: 5, title: "私有通知" })],
+			total: 1,
+			unread: 1,
+			page: 1,
+			limit: 100,
+			total_pages: 1,
+		});
+		mockFetchPrefs.mockResolvedValue({ new_post: true, reply: true, thread_comment: true });
+		const wrapper = await mountPage();
+		expect(wrapper.text()).toContain("私有通知");
+
+		// Sign out from the header while on the inbox: the private rows must not
+		// stay visible under a now-dead session, and the reader lands on /login
+		// like the guest guard / stale-session path.
+		isAuthenticated.value = false;
+		await flushPromises();
+		expect(mockReplace).toHaveBeenCalledWith("/login");
+		expect(wrapper.text()).not.toContain("私有通知");
+		expect(wrapper.text()).not.toContain("通知偏好");
+	});
+
+	it("offers a retry on preference-load failure and reloads on click (deep-dive finding)", async () => {
+		mockFetch.mockResolvedValue({
+			items: [],
+			total: 0,
+			unread: 0,
+			page: 1,
+			limit: 100,
+			total_pages: 0,
+		});
+		mockFetchPrefs.mockRejectedValueOnce(new Error("boom"));
+		mockFetchPrefs.mockResolvedValue({ new_post: true, reply: true, thread_comment: true });
+		const wrapper = await mountPage();
+		expect(wrapper.findAll('button[role="switch"]')).toHaveLength(0);
+		// The prefs card's failure hint now carries a retry affordance instead of
+		// a dead end (deep-dive finding).
+		const retry = wrapper.findAll("button").find((b) => b.text().includes("重试"));
+		expect(retry).toBeDefined();
+		await retry?.trigger("click");
+		await flushPromises();
+		expect(wrapper.findAll('button[role="switch"]')).toHaveLength(7);
+		expect(wrapper.text()).not.toContain("网络错误");
+	});
 });

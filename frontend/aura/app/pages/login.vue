@@ -57,6 +57,12 @@ const redirectTarget = computed(() => {
 });
 
 async function handleSubmit() {
+	// The submit button is disabled while pending, but a redundant submit event
+	// (Enter then click, or a double fire before the disabled state paints)
+	// would otherwise issue two login/register requests — a duplicate register
+	// then fails with a server error the reader can't attribute. Same guard the
+	// mode toggle uses (deep-dive finding).
+	if (isPending.value) return;
 	if (!(email.value && password.value)) return;
 	error.value = null;
 	isPending.value = true;

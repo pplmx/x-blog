@@ -8,7 +8,7 @@
  * /login (the inbox is auth-scoped). Unlike the fire-and-forget browser push,
  * these rows persist server-side so a reader can review activity they missed.
  */
-import { computed, onMounted, ref } from "vue";
+import { computed, onMounted, ref, watch } from "vue";
 import {
 	getReaderNotificationPrefs,
 	getReaderNotifications,
@@ -242,6 +242,26 @@ onMounted(() => {
 	void loadPrefs();
 });
 
+// The inbox is auth-scoped: when the reader signs out in the header while on
+// this page, clear the shown state and send them to the same /login the guest
+// guard and stale-session path use — otherwise the private inbox (rows, unread
+// badges) stayed visible under a now-dead session and every interaction 401'd
+// with a misleading "network error" (deep-dive finding).
+watch(isAuthenticated, (authed) => {
+	if (authed) return;
+	items.value = [];
+	unread.value = 0;
+	page.value = 1;
+	totalPages.value = 1;
+	loading.value = false;
+	loadingMore.value = false;
+	error.value = false;
+	loadMoreError.value = false;
+	prefs.value = null;
+	prefsError.value = false;
+	void router.replace("/login");
+});
+
 // In-flight + failure state for the mark-read actions so the buttons disable
 // while running and surface a failure instead of failing silently (ISS-133).
 const markingIds = ref<Set<number>>(new Set());
@@ -393,8 +413,19 @@ function kindIcon(kind: string): string {
           </button>
         </li>
       </ul>
-      <p v-if="prefsError" class="mt-3 text-xs text-red-600 dark:text-red-400">
+      <p
+        v-if="prefsError"
+        class="mt-3 flex flex-wrap items-center gap-2 text-xs text-red-600 dark:text-red-400"
+      >
         {{ t('common.errors.network') }}
+        <button
+          type="button"
+          :disabled="prefsLoading"
+          class="px-2 py-1 rounded-lg text-[11px] font-medium border border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+          @click="loadPrefs"
+        >
+          {{ t('common.action.retry') }}
+        </button>
       </p>
     </section>
 

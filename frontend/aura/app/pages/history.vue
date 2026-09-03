@@ -33,6 +33,10 @@ onUnmounted(() => {
 		clearTimeout(searchTimer);
 		searchTimer = null;
 	}
+	if (clearedTimer) {
+		clearTimeout(clearedTimer);
+		clearedTimer = null;
+	}
 });
 
 useSeo({
@@ -48,10 +52,20 @@ onMounted(() => {
 
 // Single-action clear with an inline confirmation (destructive, no undo).
 const confirmClear = ref(false);
+// Transient success confirmation — the empty state after clearing is ambiguous
+// (it looks identical to "you've never read anything"), so say what happened
+// (deep-dive finding; the clearDone key existed but was never rendered).
+const cleared = ref(false);
+let clearedTimer: ReturnType<typeof setTimeout> | null = null;
 
 async function clearHistory() {
 	await clear();
 	confirmClear.value = false;
+	cleared.value = true;
+	if (clearedTimer) clearTimeout(clearedTimer);
+	clearedTimer = setTimeout(() => {
+		cleared.value = false;
+	}, 4000);
 }
 
 // Absolute viewed date, localized. Legacy entries without a timestamp fall
@@ -289,6 +303,20 @@ function heatMapSummary(): string {
           {{ t('common.action.cancel') }}
         </button>
       </div>
+    </div>
+
+    <!-- Clear-done confirmation (deep-dive finding): give the destructive,
+         non-undoable clear an explicit success signal instead of silently
+         swapping to the ambiguous empty state. -->
+    <div
+      v-if="cleared"
+      aria-live="polite"
+      class="mb-6 flex items-center justify-between gap-4 p-4 rounded-xl border border-emerald-200 dark:border-emerald-800 bg-emerald-50/60 dark:bg-emerald-900/20"
+    >
+      <p class="flex items-center gap-2 text-sm text-emerald-700 dark:text-emerald-300">
+        <Icon icon="lucide:check-circle-2" class="w-4 h-4" />
+        {{ t('history.clearDone') }}
+      </p>
     </div>
 
     <!-- Empty state: only when history is genuinely empty. A recall-search that

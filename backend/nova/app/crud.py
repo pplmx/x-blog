@@ -1,5 +1,6 @@
 from collections.abc import Iterable
 from datetime import UTC, datetime, timedelta
+from typing import Any
 
 from sqlalchemy import and_, extract, func, or_, select, update
 from sqlalchemy.exc import IntegrityError
@@ -25,7 +26,7 @@ logger = get_logger(__name__)
 # cascade from Post (the DEC-009 additive-table convention, integrity enforced
 # at the API layer). delete_post must purge these rows explicitly or every post
 # delete leaves permanent orphan rows (RIL ISS-296).
-_POST_CHILD_TABLES: list[tuple[type[models.Base], object]] = [
+_POST_CHILD_TABLES: list[tuple[Any, Any]] = [
     (models.ReaderBookmark, models.ReaderBookmark.post_id),
     (models.ReadingHistory, models.ReadingHistory.post_id),
     (models.CommentSubscription, models.CommentSubscription.post_id),

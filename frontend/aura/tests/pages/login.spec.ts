@@ -80,6 +80,21 @@ describe("login page", () => {
 		await wrapper.find("form").trigger("submit.prevent");
 		expect(loginMock).toHaveBeenCalledWith("r@example.com", "secret123");
 	});
+
+	it("ignores a redundant submit while a login is in flight (deep-dive finding)", async () => {
+		// A never-resolving login keeps isPending true across a double submit, so
+		// the second event (Enter then click, or a pre-paint double-fire) must be
+		// dropped instead of issuing two requests.
+		loginMock.mockReturnValue(new Promise(() => {})).mockClear();
+		const wrapper = mountLogin();
+		await wrapper.find('input[type="email"]').setValue("r@example.com");
+		await wrapper.find('input[type="password"]').setValue("secret123");
+		const form = wrapper.find("form");
+		await form.trigger("submit.prevent");
+		await form.trigger("submit.prevent");
+		await flushPromises();
+		expect(loginMock).toHaveBeenCalledTimes(1);
+	});
 });
 
 describe("login redirect (deep-dive fix)", () => {
