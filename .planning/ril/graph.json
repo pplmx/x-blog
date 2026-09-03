@@ -2,7 +2,7 @@
   "ril_version": 1,
   "round": 241,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-03T15:16:53+00:00",
+  "updated_at": "2026-09-03T15:36:42+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -16802,11 +16802,11 @@
     "ISS-307": {
       "id": "ISS-307",
       "type": "issue",
-      "status": "active",
-      "version": 1,
+      "status": "resolved",
+      "version": 2,
       "created_at": "2026-09-03T10:15:29+00:00",
-      "updated_at": "2026-09-03T10:15:29+00:00",
-      "touched_round": 240,
+      "updated_at": "2026-09-03T15:36:42+00:00",
+      "touched_round": 241,
       "title": "CommentList sort/pagination/reply failures are silent; deleting the last comment of the last page shows a misleading empty state",
       "severity": "medium",
       "summary": "refreshList has try/finally without catch and callers do not surface errors; delete on the final page refetches an out-of-range page → empty state while earlier pages still hold comments and the pagination bar highlights nothing"
@@ -16973,6 +16973,17 @@
       "touched_round": 240,
       "title": "Shared useReaderAuth.isStaleSession + account.vue stale-401 redirect",
       "commit": "853dbed"
+    },
+    "CHG-352": {
+      "id": "CHG-352",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-03T15:36:42+00:00",
+      "updated_at": "2026-09-03T15:36:42+00:00",
+      "touched_round": 241,
+      "title": "CommentList refresh-error banner + drained-last-page clamp",
+      "commit": "b197f14"
     }
   },
   "edges": [
@@ -24810,6 +24821,12 @@
       "to": "ISS-314",
       "type": "resolves",
       "created_at": "2026-09-03T15:13:51+00:00"
+    },
+    {
+      "from": "CHG-352",
+      "to": "ISS-307",
+      "type": "resolves",
+      "created_at": "2026-09-03T15:36:42+00:00"
     }
   ]
 }
