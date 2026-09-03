@@ -15,10 +15,12 @@ import type { HistoryEntry, ReadingStats } from "../../composables/useReadingHis
 const mockHistory = ref<HistoryEntry[]>([]);
 const mockStats = ref<ReadingStats | null>(null);
 const mockLoad = vi.fn();
+const mockLoadMore = vi.fn();
 const mockClear = vi.fn(async () => {
 	mockHistory.value = [];
 	mockStats.value = null;
 });
+const mockHasMore = ref(false);
 
 vi.mock("../../composables/useReadingHistory", () => ({
 	useReadingHistory: () => ({
@@ -26,7 +28,11 @@ vi.mock("../../composables/useReadingHistory", () => ({
 		stats: mockStats,
 		loading: ref(false),
 		serverEnabled: ref(false),
+		hasMore: mockHasMore,
+		loadingMore: ref(false),
+		loadMoreError: ref(false),
 		load: mockLoad,
+		loadMore: mockLoadMore,
 		clear: mockClear,
 	}),
 }));
@@ -52,7 +58,9 @@ describe("Reading-history page (TASK-170)", () => {
 	beforeEach(() => {
 		mockHistory.value = [];
 		mockStats.value = null;
+		mockHasMore.value = false;
 		mockLoad.mockClear();
+		mockLoadMore.mockClear();
 		mockClear.mockClear();
 	});
 
@@ -270,5 +278,22 @@ describe("Reading-history page (TASK-170)", () => {
 		await flushPromises();
 		expect(wrapper.text()).not.toContain("阅读历史已清空");
 		vi.useRealTimers();
+	});
+
+	it("loads older server history via a load-more affordance (bounded reachability, ISS-303)", async () => {
+		mockHistory.value = [{ slug: "a", title: "Article A", viewedAt: Date.now() }];
+		mockHasMore.value = true;
+		const wrapper = mountHistory();
+		const loadMore = wrapper.findAll("button").find((b) => b.text().includes("加载更多历史"));
+		expect(loadMore).toBeDefined();
+		await loadMore?.trigger("click");
+		expect(mockLoadMore).toHaveBeenCalledTimes(1);
+	});
+
+	it("hides the load-more affordance when the server has no more pages", () => {
+		mockHistory.value = [{ slug: "a", title: "Article A", viewedAt: Date.now() }];
+		mockHasMore.value = false;
+		const wrapper = mountHistory();
+		expect(wrapper.findAll("button").some((b) => b.text().includes("加载更多历史"))).toBe(false);
 	});
 });

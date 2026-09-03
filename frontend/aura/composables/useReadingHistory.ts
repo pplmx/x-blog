@@ -59,6 +59,22 @@ export function useReadingHistory() {
 	const stats = ref<ReadingStats | null>(null);
 	const loading = ref(false);
 
+	// Server-side paging (bounded reachability, RIL ISS-303): the API returns
+	// at most HISTORY_FETCH_LIMIT rows per page, so a reader with more history
+	// could never reach the older entries. load() resets to page 1; loadMore()
+	// appends the next page. Guests use the bounded local trail and never page.
+	const page = ref(1);
+	const totalPages = ref(1);
+	const loadingMore = ref(false);
+	const loadMoreError = ref(false);
+	const activeQuery = ref("");
+
+	/** True while an older server page still exists (there is more to load). */
+	const hasMore = computed(
+		() =>
+			serverEnabled.value && !loading.value && !loadingMore.value && page.value < totalPages.value,
+	);
+
 	// Monotonic request sequence so a slow earlier response cannot overwrite a
 	// newer one after the recall-search query changed (ISS-128).
 	let loadSeq = 0;
@@ -73,15 +89,22 @@ export function useReadingHistory() {
 			const all = fromLocal(local.recent.value);
 			history.value = term ? all.filter((h) => h.title.toLowerCase().includes(term)) : all;
 			stats.value = null;
+			page.value = 1;
+			totalPages.value = 1;
 			// A sign-out mid-flight must still clear the spinner left by the
 			// superseded server request (this load is now the latest).
 			if (seq === loadSeq) loading.value = false;
 			return;
 		}
+		activeQuery.value = query;
+		page.value = 1;
+		totalPages.value = 1;
 		loading.value = true;
 		try {
 			const data = await getReaderHistory(1, HISTORY_FETCH_LIMIT, query);
 			if (seq !== loadSeq) return; // stale response — a newer search is in flight
+			page.value = data?.page ?? 1;
+			totalPages.value = data?.total_pages ?? 1;
 			history.value = (data?.items ?? []).map((i) => ({
 				slug: i.slug,
 				title: i.title,
@@ -114,6 +137,41 @@ export function useReadingHistory() {
 		}
 	}
 
+	/**
+	 * Append the next server page of history (bounded reachability, ISS-303).
+	 * Dedupes by slug so a page boundary can never double-render a row; a
+	 * failure keeps the rows already shown and surfaces a retry hint. Guests
+	 * never page (the local trail is bounded).
+	 */
+	async function loadMore(): Promise<void> {
+		if (!serverEnabled.value || loading.value || loadingMore.value) return;
+		const next = page.value + 1;
+		if (next > totalPages.value) return;
+		loadingMore.value = true;
+		loadMoreError.value = false;
+		const seq = ++loadSeq;
+		try {
+			const data = await getReaderHistory(next, HISTORY_FETCH_LIMIT, activeQuery.value);
+			if (seq !== loadSeq) return;
+			const seen = new Set(history.value.map((h) => h.slug));
+			const fresh = (data?.items ?? [])
+				.map((i) => ({
+					slug: i.slug,
+					title: i.title,
+					viewedAt: toEpoch(i.viewed_at),
+				}))
+				.filter((h) => !seen.has(h.slug));
+			history.value = [...history.value, ...fresh];
+			page.value = data?.page ?? next;
+			totalPages.value = data?.total_pages ?? totalPages.value;
+		} catch {
+			if (seq !== loadSeq) return;
+			loadMoreError.value = true;
+		} finally {
+			if (seq === loadSeq) loadingMore.value = false;
+		}
+	}
+
 	/** Clear the history (and stats) from the active source (server + local both cleared). */
 	async function clear(): Promise<void> {
 		if (serverEnabled.value) {
@@ -126,7 +184,20 @@ export function useReadingHistory() {
 		local.clear();
 		history.value = [];
 		stats.value = null;
+		page.value = 1;
+		totalPages.value = 1;
 	}
 
-	return { history, stats, loading, serverEnabled, load, clear };
+	return {
+		history,
+		stats,
+		loading,
+		serverEnabled,
+		hasMore,
+		loadingMore,
+		loadMoreError,
+		load,
+		loadMore,
+		clear,
+	};
 }

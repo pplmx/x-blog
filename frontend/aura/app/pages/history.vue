@@ -14,7 +14,8 @@ import { type HistoryEntry, useReadingHistory } from "~~/composables/useReadingH
 import { useSeo } from "~~/composables/useSeo";
 
 const { t, locale } = useLang();
-const { history, stats, loading, load, clear } = useReadingHistory();
+const { history, stats, loading, hasMore, loadingMore, loadMoreError, load, loadMore, clear } =
+	useReadingHistory();
 
 // Recall search (DEC-148/TASK-186): filter history to viewed posts matching
 // the term (server for signed-in readers, in-place for guests).
@@ -371,6 +372,24 @@ function heatMapSummary(): string {
         </div>
         <Icon icon="lucide:chevron-right" class="w-5 h-5 text-gray-300 dark:text-gray-600 group-hover:text-violet-400 transition-colors shrink-0" />
       </NuxtLink>
+
+      <!-- Load-more (bounded reachability, ISS-303): the server returns at most
+           100 rows per page, so older history must not be trapped behind the
+           first page. A failure keeps the rows and offers retry. -->
+      <div v-if="hasMore" class="mt-6 flex flex-col items-center gap-2">
+        <button
+          type="button"
+          :disabled="loadingMore"
+          class="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+          @click="loadMore"
+        >
+          <Icon v-if="loadingMore" icon="lucide:loader-2" class="w-4 h-4 animate-spin" aria-hidden="true" role="presentation" />
+          {{ loadingMore ? t('history.loading') : t('history.loadMore') }}
+        </button>
+        <p v-if="loadMoreError" class="text-sm text-red-600 dark:text-red-400">
+          {{ t('common.errors.network') }}
+        </p>
+      </div>
     </div>
   </div>
 </template>

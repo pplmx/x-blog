@@ -27,6 +27,7 @@
 		"activityPosts": "{count} 篇",
 		"activitySummary": "过去一年共有 {count} 天有阅读记录",
 		"loading": "正在加载历史…",
+		"loadMore": "加载更多历史",
 		"searchAria": "搜索你的浏览历史"
 	}
 }
