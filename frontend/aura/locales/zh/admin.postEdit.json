@@ -30,6 +30,8 @@
 		"seriesOrder": "系列内序号",
 		"tags": "标签",
 		"noTags": "暂无标签",
+		"searchTags": "搜索标签…",
+		"noMatchingTags": "没有匹配的标签",
 		"contentLabel": "内容 (Markdown)",
 		"content": "内容",
 		"edit": "编辑",

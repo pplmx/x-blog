@@ -50,6 +50,15 @@ async function loadPage() {
 	return TagsPage;
 }
 
+/** Page text inputs EXCLUDING the taxonomy search box (added ISS-311 part 3):
+ * the create form (index 0) and the per-chip inline edit input stay in the
+ * same relative order the older tests were written against. */
+function textInputs(wrapper: ReturnType<typeof mountWithSuspense>) {
+	return wrapper
+		.findAll('input[type="text"]')
+		.filter((i) => i.attributes("data-testid") !== "taxonomy-search");
+}
+
 describe("Admin Tags Page", () => {
 	afterEach(() => {
 		vi.restoreAllMocks();
@@ -230,8 +239,8 @@ describe("Admin Tags Page", () => {
 			await editBtn?.trigger("click");
 			await flushPromises();
 
-			// Find the edit input (second input on the page, after the create form input)
-			const allInputs = wrapper.findAll('input[type="text"]');
+			// Find the edit input (second input excluding the taxonomy search box)
+			const allInputs = textInputs(wrapper);
 			const editInput = allInputs[1]; // First is create form, second is edit
 			expect(editInput.exists()).toBe(true);
 			await editInput.setValue("Updated Tag");
@@ -292,11 +301,35 @@ describe("Admin Tags Page", () => {
 			await editBtn?.trigger("click");
 			await flushPromises();
 
-			const editInput = wrapper.findAll('input[type="text"]')[1];
+			const editInput = textInputs(wrapper)[1];
 			await editInput.trigger("keydown", { key: "Escape" });
 			await flushPromises();
 			expect(mockUpdateAdminTag).not.toHaveBeenCalled();
 			expect(wrapper.find('svg[data-icon="lucide:check"]').exists()).toBe(false);
+		});
+
+		it("filters the tag list with the taxonomy search box (ISS-311 part 3)", async () => {
+			const TagsPage = await loadPage();
+			const wrapper = await mountWithSuspense(TagsPage);
+			expect(wrapper.text()).toContain("#javascript");
+			expect(wrapper.text()).toContain("#vue");
+
+			const search = wrapper.find('[data-testid="taxonomy-search"]');
+			expect(search.exists()).toBe(true);
+			await search.setValue("vue");
+			await flushPromises();
+
+			// Only the matching chip remains; the search-empty hint otherwise.
+			expect(wrapper.text()).toContain("#vue");
+			expect(wrapper.text()).not.toContain("#javascript");
+
+			await search.setValue("zzz-none");
+			await flushPromises();
+			expect(wrapper.text()).toContain("没有匹配的标签");
+
+			await search.setValue("");
+			await flushPromises();
+			expect(wrapper.text()).toContain("#javascript");
 		});
 
 		it("exposes accessible names on the icon-only action buttons", async () => {

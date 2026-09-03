@@ -12,6 +12,8 @@
 		"delete": "删除",
 		"confirmDelete": "确定要删除这个分类吗？",
 		"empty": "还没有任何分类",
+		"searchPlaceholder": "搜索分类…",
+		"searchEmpty": "没有匹配的分类",
 		"operationFailed": "操作失败，请重试",
 		"loading": "加载中..."
 	}

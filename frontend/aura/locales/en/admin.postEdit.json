@@ -30,6 +30,8 @@
 		"seriesOrder": "Position in series",
 		"tags": "Tags",
 		"noTags": "No tags yet",
+		"searchTags": "Search tags…",
+		"noMatchingTags": "No tags match your search",
 		"contentLabel": "Content (Markdown)",
 		"content": "Content",
 		"edit": "Edit",

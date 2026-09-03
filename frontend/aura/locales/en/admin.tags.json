@@ -12,6 +12,8 @@
 		"delete": "Delete",
 		"confirmDelete": "Delete this tag?",
 		"empty": "No tags yet",
+		"searchPlaceholder": "Search tags…",
+		"searchEmpty": "No tags match your search",
 		"operationFailed": "Operation failed, please retry",
 		"loading": "Loading..."
 	}

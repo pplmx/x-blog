@@ -24,6 +24,15 @@ const isProcessing = ref(false);
 const editingId = ref<number | null>(null);
 const editingName = ref("");
 const actionError = ref<string | null>(null);
+// Client-side filter: the taxonomy endpoint returns every tag and a long
+// unbounded list with no way to narrow it is wasted scrolling (ISS-311 part 3).
+// Tags are small enough that in-memory filtering beats server paging.
+const search = ref("");
+const visibleTags = computed(() => {
+	const q = search.value.trim().toLowerCase();
+	if (!q) return tags.value ?? [];
+	return (tags.value ?? []).filter((t: { name: string }) => t.name.toLowerCase().includes(q));
+});
 
 function getErrorMessage(e: unknown): string {
 	if (e instanceof Error) return e.message;
@@ -150,12 +159,30 @@ async function handleDelete(id: number) {
       </p>
     </div>
 
-    <div v-else class="flex flex-wrap gap-3">
+    <div v-else>
+      <div class="relative mb-4">
+        <Icon icon="lucide:search" class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+        <input
+          v-model="search"
+          type="text"
+          data-testid="taxonomy-search"
+          :placeholder="t('admin.tags.searchPlaceholder')"
+          :aria-label="t('admin.tags.searchPlaceholder')"
+          class="w-full pl-9 pr-4 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
+        />
+      </div>
       <div
-        v-for="tag in tags"
-        :key="tag.id"
-        class="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800"
+        v-if="visibleTags.length === 0"
+        class="text-center py-8 text-gray-500 dark:text-gray-400"
       >
+        {{ t('admin.tags.searchEmpty') }}
+      </div>
+      <div v-else class="flex flex-wrap gap-3">
+        <div
+          v-for="tag in visibleTags"
+          :key="tag.id"
+          class="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800"
+        >
         <div v-if="editingId === tag.id" class="flex items-center gap-2 flex-1">
           <input
             v-model="editingName"
@@ -213,6 +240,7 @@ async function handleDelete(id: number) {
             <Icon icon="lucide:trash-2" class="w-4 h-4" />
           </button>
         </template>
+      </div>
       </div>
     </div>
   </div>

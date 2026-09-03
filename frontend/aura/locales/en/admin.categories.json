@@ -12,6 +12,8 @@
 		"delete": "Delete",
 		"confirmDelete": "Delete this category?",
 		"empty": "No categories yet",
+		"searchPlaceholder": "Search categories…",
+		"searchEmpty": "No categories match your search",
 		"operationFailed": "Operation failed, please retry",
 		"loading": "Loading..."
 	}

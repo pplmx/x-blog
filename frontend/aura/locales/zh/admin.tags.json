@@ -12,6 +12,8 @@
 		"delete": "删除",
 		"confirmDelete": "确定要删除这个标签吗？",
 		"empty": "还没有任何标签",
+		"searchPlaceholder": "搜索标签…",
+		"searchEmpty": "没有匹配的标签",
 		"operationFailed": "操作失败，请重试",
 		"loading": "加载中..."
 	}

@@ -55,6 +55,15 @@ async function loadPage() {
 	return CategoriesPage;
 }
 
+/** Page text inputs EXCLUDING the taxonomy search box (added ISS-311 part 3):
+ * the create form (index 0) and the per-row inline edit input stay in the
+ * same relative order the older tests were written against. */
+function textInputs(wrapper: ReturnType<typeof mountWithSuspense>) {
+	return wrapper
+		.findAll('input[type="text"]')
+		.filter((i) => i.attributes("data-testid") !== "taxonomy-search");
+}
+
 describe("Admin Categories Page", () => {
 	afterEach(() => {
 		vi.restoreAllMocks();
@@ -240,8 +249,8 @@ describe("Admin Categories Page", () => {
 			await editBtn?.trigger("click");
 			await flushPromises();
 
-			// Find the edit input (second input on the page, after the create form input)
-			const allInputs = wrapper.findAll('input[type="text"]');
+			// Find the edit input (second input excluding the taxonomy search box)
+			const allInputs = textInputs(wrapper);
 			const editInput = allInputs[1]; // First is create form, second is edit
 			expect(editInput.exists()).toBe(true);
 			await editInput.setValue("Updated Category");
@@ -279,7 +288,7 @@ describe("Admin Categories Page", () => {
 			await flushPromises();
 			expect(mockUpdateAdminCategory).not.toHaveBeenCalled();
 			// The row is back to its static (non-editing) state.
-			expect(wrapper.findAll('input[type="text"]').length).toBe(1); // create-form only
+			expect(textInputs(wrapper).length).toBe(1); // create-form only
 		});
 
 		it("Escape exits edit mode like the cancel button", async () => {
@@ -289,13 +298,38 @@ describe("Admin Categories Page", () => {
 			const editBtn = wrapper.findAll("button").find((b) => b.text().includes("编辑"));
 			await editBtn?.trigger("click");
 			await flushPromises();
-			expect(wrapper.findAll('input[type="text"]').length).toBe(2);
+			expect(textInputs(wrapper).length).toBe(2);
 
-			const editInput = wrapper.findAll('input[type="text"]')[1];
+			const editInput = textInputs(wrapper)[1];
 			await editInput.trigger("keydown", { key: "Escape" });
 			await flushPromises();
 			expect(mockUpdateAdminCategory).not.toHaveBeenCalled();
-			expect(wrapper.findAll('input[type="text"]').length).toBe(1);
+			expect(textInputs(wrapper).length).toBe(1);
+		});
+
+		it("filters the category list with the taxonomy search box (ISS-311 part 3)", async () => {
+			const CategoriesPage = await loadPage();
+			const wrapper = await mountWithSuspense(CategoriesPage);
+			expect(wrapper.text()).toContain("Technology");
+			expect(wrapper.text()).toContain("Design");
+
+			const search = wrapper.find('[data-testid="taxonomy-search"]');
+			expect(search.exists()).toBe(true);
+			await search.setValue("tech");
+			await flushPromises();
+
+			// Only the matching name remains; the search-empty hint renders.
+			expect(wrapper.text()).toContain("Technology");
+			expect(wrapper.text()).not.toContain("Design");
+
+			await search.setValue("zzz-none");
+			await flushPromises();
+			expect(wrapper.text()).toContain("没有匹配的分类");
+
+			// Clearing restores the full list.
+			await search.setValue("");
+			await flushPromises();
+			expect(wrapper.text()).toContain("Design");
 		});
 
 		it("deletes a category with confirmation", async () => {

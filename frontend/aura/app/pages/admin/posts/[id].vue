@@ -86,6 +86,14 @@ function snapshot(): string {
 const categories = ref<Array<{ id: number; name: string }>>([]);
 const tags = ref<Array<{ id: number; name: string }>>([]);
 const series = ref<Array<{ id: number; title: string; slug: string }>>([]);
+// Filter for the tag picker: with many tags the bounded-height scroll is still
+// an unbounded guess-the-name jog (ISS-311 part 3).
+const tagSearch = ref("");
+const visibleEditorTags = computed(() => {
+	const q = tagSearch.value.trim().toLowerCase();
+	if (!q) return tags.value;
+	return tags.value.filter((tag: { name: string }) => tag.name.toLowerCase().includes(q));
+});
 const existingPost = ref<AdminPostDetail | null>(null);
 
 const { data: catsData, error: catsError, refresh: refreshCategories } = await useAdminCategories();
@@ -871,23 +879,41 @@ function handleFileInput(e: Event) {
             <Icon icon="lucide:tag" class="w-4 h-4 text-pink-500" />
             {{ t("admin.postEdit.tags") }}
           </label>
-          <div v-if="tags.length > 0" class="flex flex-wrap gap-2 max-h-32 overflow-y-auto">
-            <label
-              v-for="tag in tags"
-              :key="tag.id"
-              class="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm cursor-pointer transition-all"
-              :class="formData.tag_ids?.includes(tag.id)
-                ? 'bg-gradient-to-r from-pink-500 to-rose-500 text-white shadow-md'
-                : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-pink-100 dark:hover:bg-pink-900/50'"
-            >
+          <div v-if="tags.length > 0">
+            <div class="relative mb-2">
+              <Icon icon="lucide:search" class="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
               <input
-                type="checkbox"
-                class="sr-only"
-                :checked="formData.tag_ids?.includes(tag.id) ?? false"
-                @change="toggleTag(tag.id)"
+                v-model="tagSearch"
+                type="text"
+                :placeholder="t('admin.postEdit.searchTags')"
+                :aria-label="t('admin.postEdit.searchTags')"
+                class="w-full pl-8 pr-3 py-1.5 text-sm rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 focus:ring-2 focus:ring-pink-500 focus:border-transparent transition-all"
+              />
+            </div>
+            <div
+              v-if="visibleEditorTags.length === 0"
+              class="text-sm text-gray-400 dark:text-gray-500 mb-2"
+            >
+              {{ t("admin.postEdit.noMatchingTags") }}
+            </div>
+            <div v-else class="flex flex-wrap gap-2 max-h-32 overflow-y-auto">
+              <label
+                v-for="tag in visibleEditorTags"
+                :key="tag.id"
+                class="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm cursor-pointer transition-all"
+                :class="formData.tag_ids?.includes(tag.id)
+                  ? 'bg-gradient-to-r from-pink-500 to-rose-500 text-white shadow-md'
+                  : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-pink-100 dark:hover:bg-pink-900/50'"
               >
-              #{{ tag.name }}
-            </label>
+                <input
+                  type="checkbox"
+                  class="sr-only"
+                  :checked="formData.tag_ids?.includes(tag.id) ?? false"
+                  @change="toggleTag(tag.id)"
+                >
+                #{{ tag.name }}
+              </label>
+            </div>
           </div>
           <p v-else class="text-sm text-gray-400 dark:text-gray-500">{{ t("admin.postEdit.noTags") }}</p>
         </div>
