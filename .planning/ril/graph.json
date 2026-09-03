@@ -2,7 +2,7 @@
   "ril_version": 1,
   "round": 240,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-03T09:49:17+00:00",
+  "updated_at": "2026-09-03T10:19:04+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -16750,6 +16750,113 @@
       "touched_round": 240,
       "title": "Reading-history server paging (load-more older entries), mirrors the notifications inbox pattern",
       "commit": "a434f35"
+    },
+    "ISS-304": {
+      "id": "ISS-304",
+      "type": "issue",
+      "status": "resolved",
+      "version": 1,
+      "created_at": "2026-09-03T10:11:42+00:00",
+      "updated_at": "2026-09-03T10:11:42+00:00",
+      "touched_round": 240,
+      "title": "Comment thread shows previous posts comments after SPA navigation between posts",
+      "severity": "high",
+      "summary": "CommentList/CommentForm were not keyed by post id; useComments builds its URL once at setup so a reused instance on param-only navigation kept the old articles thread"
+    },
+    "ISS-305": {
+      "id": "ISS-305",
+      "type": "issue",
+      "status": "resolved",
+      "version": 1,
+      "created_at": "2026-09-03T10:11:42+00:00",
+      "updated_at": "2026-09-03T10:11:42+00:00",
+      "touched_round": 240,
+      "title": "New-post manual Save after auto-save 400s Slug already exists (or duplicates the post)",
+      "severity": "critical",
+      "summary": "isNew/postId are setup-time consts; after auto-save creates the draft and moves the address bar, manual Save still took the create path and regenerated the same slug"
+    },
+    "CHG-344": {
+      "id": "CHG-344",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-03T10:11:42+00:00",
+      "updated_at": "2026-09-03T10:11:42+00:00",
+      "touched_round": 240,
+      "title": "Key CommentList/CommentForm by post id (remount on SPA nav); editor manual Save targets the autosaved draft",
+      "commit": "7eb87f9"
+    },
+    "ISS-306": {
+      "id": "ISS-306",
+      "type": "issue",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-03T10:15:29+00:00",
+      "updated_at": "2026-09-03T10:15:29+00:00",
+      "touched_round": 240,
+      "title": "Follow/notify toggles on category/tag/series pages silently swallow failures",
+      "severity": "medium",
+      "summary": "categories.vue/tags.vue/series/[slug].vue catch blocks are empty best-effort; tapping follow while offline/429/500 just no-ops with no error (code comments note a future toast)"
+    },
+    "ISS-307": {
+      "id": "ISS-307",
+      "type": "issue",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-03T10:15:29+00:00",
+      "updated_at": "2026-09-03T10:15:29+00:00",
+      "touched_round": 240,
+      "title": "CommentList sort/pagination/reply failures are silent; deleting the last comment of the last page shows a misleading empty state",
+      "severity": "medium",
+      "summary": "refreshList has try/finally without catch and callers do not surface errors; delete on the final page refetches an out-of-range page → empty state while earlier pages still hold comments and the pagination bar highlights nothing"
+    },
+    "ISS-308": {
+      "id": "ISS-308",
+      "type": "issue",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-03T10:15:29+00:00",
+      "updated_at": "2026-09-03T10:15:29+00:00",
+      "touched_round": 240,
+      "title": "Archive month-only deep link yields year=undefined on pagination; out-of-range page deep links on category/tag/archive show a misleading empty state",
+      "severity": "medium",
+      "summary": "archive.vue page nav uses unguarded String(year); categories/tags/archive lack the home/search last-page clamp so a stale page=999 URL reads as no posts with no way back"
+    },
+    "ISS-309": {
+      "id": "ISS-309",
+      "type": "issue",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-03T10:15:30+00:00",
+      "updated_at": "2026-09-03T10:15:30+00:00",
+      "touched_round": 240,
+      "title": "HeaderSearch bypasses the transport layer: rate-limit/server errors render as misleading no results",
+      "severity": "medium",
+      "summary": "HeaderSearch calls raw $fetch instead of the command seam so the 429 detector and RateLimitNotice never fire; any failure sets results=[] and searched=true → not-found dropdown"
+    },
+    "ISS-310": {
+      "id": "ISS-310",
+      "type": "issue",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-03T10:15:30+00:00",
+      "updated_at": "2026-09-03T10:15:30+00:00",
+      "touched_round": 240,
+      "title": "Dashboard Updated-at frozen at page load; restore summary has a hardcoded Chinese fragment",
+      "severity": "low",
+      "summary": "loadedAt computed once in setup so post-action reloads show a stale timestamp; backupCounts concatenates 评论+N (跳过 0) literally in en locale"
+    },
+    "ISS-311": {
+      "id": "ISS-311",
+      "type": "issue",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-03T10:15:30+00:00",
+      "updated_at": "2026-09-03T10:15:30+00:00",
+      "touched_round": 240,
+      "title": "Admin editor Save/Cancel return to the unfiltered first page; comments moderation gives no success feedback; taxonomy lists have no search",
+      "severity": "low",
+      "summary": "hardcoded navigateTo(\"/admin/posts\") loses filter/page context; approve/reject/batch-approve silently reload; tags/categories lists (and the editor tag picker) are unbounded scrolls"
     }
   },
   "edges": [
@@ -24485,6 +24592,66 @@
       "to": "ISS-303",
       "type": "resolves",
       "created_at": "2026-09-03T09:49:17+00:00"
+    },
+    {
+      "from": "CHG-344",
+      "to": "ISS-304",
+      "type": "resolves",
+      "created_at": "2026-09-03T10:11:42+00:00"
+    },
+    {
+      "from": "CHG-344",
+      "to": "ISS-305",
+      "type": "resolves",
+      "created_at": "2026-09-03T10:11:42+00:00"
+    },
+    {
+      "from": "ISS-304",
+      "to": "COMP-002",
+      "type": "located_in",
+      "created_at": "2026-09-03T10:11:42+00:00"
+    },
+    {
+      "from": "ISS-305",
+      "to": "COMP-002",
+      "type": "located_in",
+      "created_at": "2026-09-03T10:11:42+00:00"
+    },
+    {
+      "from": "ISS-306",
+      "to": "COMP-002",
+      "type": "located_in",
+      "created_at": "2026-09-03T10:19:04+00:00"
+    },
+    {
+      "from": "ISS-307",
+      "to": "COMP-002",
+      "type": "located_in",
+      "created_at": "2026-09-03T10:19:04+00:00"
+    },
+    {
+      "from": "ISS-308",
+      "to": "COMP-002",
+      "type": "located_in",
+      "created_at": "2026-09-03T10:19:04+00:00"
+    },
+    {
+      "from": "ISS-309",
+      "to": "COMP-002",
+      "type": "located_in",
+      "created_at": "2026-09-03T10:19:04+00:00"
+    },
+    {
+      "from": "ISS-310",
+      "to": "COMP-002",
+      "type": "located_in",
+      "created_at": "2026-09-03T10:19:04+00:00"
+    },
+    {
+      "from": "ISS-311",
+      "to": "COMP-002",
+      "type": "located_in",
+      "created_at": "2026-09-03T10:19:04+00:00"
     }
   ]
 }
