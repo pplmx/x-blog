@@ -43,6 +43,28 @@ function saveProfile(profile: ReaderProfile | null): void {
 const isAuthenticated = ref(false);
 const reader = ref<ReaderProfile | null>(null);
 
+/**
+ * True when a rejected reader API call means an expired/invalid reader session
+ * (ISS-110) — NOT a business-level 401. The backend uses the same status for
+ * two different conditions: the auth dependency raises 401 (detail "Could not
+ * validate credentials") on an expired/revoked token, while /me/password and
+ * /me/account raise 401 ("Incorrect current password") on a genuinely wrong
+ * current password. Conflating the two made the account page report "wrong
+ * password" for a dead session (and, via the wrong status shape, sometimes
+ * show a generic error). Distinguish by the error body's detail.
+ */
+function isStaleSession(cause: unknown): boolean {
+	const status =
+		(cause as { statusCode?: number } | undefined)?.statusCode ??
+		(cause as { response?: { status?: number } } | undefined)?.response?.status;
+	if (status !== 401) return false;
+	const detail = (cause as { response?: { _data?: { detail?: string } } } | undefined)?.response
+		?._data?.detail;
+	// An explicit wrong-password 401 is a form-level error, not a dead session.
+	if (typeof detail === "string" && detail.toLowerCase().includes("password")) return false;
+	return true;
+}
+
 export function useReaderAuth() {
 	// Re-read the store on every call so a re-used module instance (SSR → client
 	// hydration) picks up the persisted token/profile.
@@ -114,5 +136,14 @@ export function useReaderAuth() {
 		saveProfile(profile);
 	};
 
-	return { isAuthenticated, reader, login, register, logout, updateToken, setProfile };
+	return {
+		isAuthenticated,
+		reader,
+		login,
+		register,
+		logout,
+		updateToken,
+		setProfile,
+		isStaleSession,
+	};
 }

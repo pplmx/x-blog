@@ -17,9 +17,30 @@ const reader = ref<ReaderProfile | null>(null);
 const setProfile = vi.fn();
 const updateToken = vi.fn();
 const logout = vi.fn();
+// Faithful copy of useReaderAuth.isStaleSession so account.vue's dual-401
+// handling (dead session vs wrong current password) is exercised realistically
+// — the page passes the raw rejected error straight through to it.
+const isStaleSession = vi.fn((cause: unknown) => {
+	const e = cause as {
+		statusCode?: number;
+		response?: { status?: number; _data?: { detail?: string } };
+	};
+	const status = e?.statusCode ?? e?.response?.status;
+	if (status !== 401) return false;
+	const detail = e?.response?._data?.detail;
+	if (typeof detail === "string" && detail.toLowerCase().includes("password")) return false;
+	return true;
+});
 
 vi.mock("../../composables/useReaderAuth", () => ({
-	useReaderAuth: () => ({ isAuthenticated, reader, setProfile, updateToken, logout }),
+	useReaderAuth: () => ({
+		isAuthenticated,
+		reader,
+		setProfile,
+		updateToken,
+		logout,
+		isStaleSession,
+	}),
 }));
 
 vi.mock("../../composables/useSeo", () => ({
@@ -331,6 +352,33 @@ describe("Account settings page", () => {
 		expect(wrapper.text()).toContain("当前密码不正确");
 	});
 
+	it("returns a stale session to sign-in instead of reporting a wrong password", async () => {
+		// The same 401 status covers BOTH a dead token (auth dependency, detail
+		// "Could not validate credentials") and an incorrect current password —
+		// the page must tell them apart or a reader with an expired session is
+		// told their password is simply wrong.
+		isAuthenticated.value = true;
+		mockChangeMyPassword.mockRejectedValue({
+			statusCode: 401,
+			response: { status: 401, _data: { detail: "Could not validate credentials" } },
+		});
+		const navigateTo = vi.fn();
+		vi.stubGlobal("navigateTo", navigateTo);
+
+		const wrapper = await mountPage();
+		const inputs = wrapper.findAll("input[type='password']");
+		await inputs[0].setValue("whatever123");
+		await inputs[1].setValue("newpass456");
+		await inputs[2].setValue("newpass456");
+		await wrapper.findAll("form")[1].trigger("submit");
+		await flushPromises();
+
+		expect(logout).toHaveBeenCalled();
+		expect(navigateTo).toHaveBeenCalledWith("/login");
+		expect(wrapper.text()).not.toContain("当前密码不正确");
+		vi.unstubAllGlobals();
+	});
+
 	describe("delete account (DEC-106, TASK-165)", () => {
 		it("deletes the account after confirming the password", async () => {
 			isAuthenticated.value = true;
@@ -357,7 +405,10 @@ describe("Account settings page", () => {
 		it("shows a wrong-password error when deletion is rejected 401", async () => {
 			isAuthenticated.value = true;
 			mockFetchPushSubscriptions.mockResolvedValue({ items: [], total: 0 });
-			mockDeleteReaderAccount.mockRejectedValue({ status: 401 });
+			mockDeleteReaderAccount.mockRejectedValue({
+				statusCode: 401,
+				response: { status: 401, _data: { detail: "Incorrect current password" } },
+			});
 			vi.stubGlobal("confirm", () => true);
 			vi.stubGlobal("navigateTo", vi.fn());
 
@@ -369,6 +420,30 @@ describe("Account settings page", () => {
 			await flushPromises();
 
 			expect(wrapper.text()).toContain("密码错误");
+			vi.unstubAllGlobals();
+		});
+
+		it("returns a stale session to sign-in instead of a wrong-password error on delete", async () => {
+			isAuthenticated.value = true;
+			mockFetchPushSubscriptions.mockResolvedValue({ items: [], total: 0 });
+			mockDeleteReaderAccount.mockRejectedValue({
+				statusCode: 401,
+				response: { status: 401, _data: { detail: "Could not validate credentials" } },
+			});
+			vi.stubGlobal("confirm", () => true);
+			const navigateTo = vi.fn();
+			vi.stubGlobal("navigateTo", navigateTo);
+
+			const wrapper = await mountPage();
+			const section = wrapper.findAll("section").find((s) => s.text().includes("删除账号"));
+			if (!section) throw new Error("delete section not found");
+			await section.findAll("input[type='password']")[0].setValue("whatever123");
+			await section.find("form").trigger("submit");
+			await flushPromises();
+
+			expect(logout).toHaveBeenCalled();
+			expect(navigateTo).toHaveBeenCalledWith("/login");
+			expect(wrapper.text()).not.toContain("密码错误");
 			vi.unstubAllGlobals();
 		});
 	});

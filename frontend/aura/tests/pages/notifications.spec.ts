@@ -16,8 +16,20 @@ import type { ReaderNotification, ReaderNotificationPrefs } from "../../api/read
 const isAuthenticated = ref(false);
 const mockLogout = vi.fn();
 const mockReplace = vi.fn();
+// Faithful copy of useReaderAuth.isStaleSession (the inbox has no
+// business-level 401, so a bare statusCode 401 is always a dead session).
+const isStaleSession = vi.fn(
+	(cause: unknown) =>
+		(cause as { statusCode?: number } | undefined)?.statusCode === 401 ||
+		(cause as { response?: { status?: number } } | undefined)?.response?.status === 401,
+);
 vi.mock("../../composables/useReaderAuth", () => ({
-	useReaderAuth: () => ({ isAuthenticated, reader: ref(null), logout: mockLogout }),
+	useReaderAuth: () => ({
+		isAuthenticated,
+		reader: ref(null),
+		logout: mockLogout,
+		isStaleSession,
+	}),
 }));
 
 vi.mock("../../composables/useSeo", () => ({ useSeo: vi.fn() }));

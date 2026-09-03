@@ -96,4 +96,39 @@ describe("useReaderAuth", () => {
 		const { isAuthenticated } = useReaderAuth();
 		expect(isAuthenticated.value).toBe(true);
 	});
+
+	describe("isStaleSession (dual-401 disambiguation, deep-dive)", () => {
+		// The backend raises the SAME 401 status for a dead session (auth
+		// dependency: "Could not validate credentials") and for an incorrect
+		// current password (/me/password, /me/account: "Incorrect current
+		// password"). A reader whose session expired must be sent back to
+		// sign-in, not told their password is wrong.
+		const { isStaleSession } = useReaderAuth();
+
+		it("is false for non-401 failures", () => {
+			expect(isStaleSession(new Error("network down"))).toBe(false);
+			expect(isStaleSession({ statusCode: 500 })).toBe(false);
+		});
+
+		it("is true for an expired/revoked token 401 (credentials detail)", () => {
+			expect(
+				isStaleSession({
+					statusCode: 401,
+					response: { status: 401, _data: { detail: "Could not validate credentials" } },
+				}),
+			).toBe(true);
+			// No detail at all → still a dead session (reader endpoints only
+			// 401 for auth unless a business 401 is explicitly detailed).
+			expect(isStaleSession({ statusCode: 401 })).toBe(true);
+		});
+
+		it("is false for a wrong-current-password 401 (business detail)", () => {
+			expect(
+				isStaleSession({
+					statusCode: 401,
+					response: { status: 401, _data: { detail: "Incorrect current password" } },
+				}),
+			).toBe(false);
+		});
+	});
 });

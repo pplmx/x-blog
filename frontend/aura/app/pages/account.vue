@@ -46,7 +46,8 @@ import { useReaderAuth } from "~~/composables/useReaderAuth";
 import { useSeo } from "~~/composables/useSeo";
 
 const { t, locale } = useLang();
-const { isAuthenticated, reader, setProfile, updateToken, logout } = useReaderAuth();
+const { isAuthenticated, reader, setProfile, updateToken, logout, isStaleSession } =
+	useReaderAuth();
 
 useSeo({
 	title: t("account.seoTitle"),
@@ -106,8 +107,16 @@ async function submitPassword() {
 		pw.value = { current: "", next: "", confirm: "" };
 		passwordState.value = "success";
 	} catch (err) {
-		const status = (err as { status?: number })?.status;
-		passwordState.value = status === 401 ? "wrong" : "failed";
+		// /me/password 401s twice: an expired/revoked token (auth dependency —
+		// a dead session must send the reader back to sign-in, NOT claim their
+		// current password was wrong) and an incorrect current password (a
+		// form-level error). isStaleSession distinguishes them by detail.
+		if (isStaleSession(err)) {
+			logout();
+			void navigateTo("/login");
+			return;
+		}
+		passwordState.value = statusOf(err) === 401 ? "wrong" : "failed";
 	}
 }
 
@@ -436,11 +445,28 @@ async function deleteAccount() {
 		logout();
 		navigateTo("/");
 	} catch (e) {
-		const status = (e as { status?: number }).status;
-		deleteError.value = { code: status === 401 ? "wrong" : "failed" };
+		// Same dual-401 as the password change: an expired/revoked token is a
+		// dead session, not a wrong password.
+		if (isStaleSession(e)) {
+			logout();
+			void navigateTo("/login");
+			return;
+		}
+		deleteError.value = { code: statusOf(e) === 401 ? "wrong" : "failed" };
 	} finally {
 		deletingAccount.value = false;
 	}
+}
+
+/**
+ * Extract an HTTP status from a rejected API call whether the error carries
+ * ofetch's `.status`/`.statusCode` or the plain response shape. Used to tell a
+ * wrong-password 401 (form error) from other failures once isStaleSession has
+ * ruled out a dead session.
+ */
+function statusOf(err: unknown): number | undefined {
+	const e = err as { status?: number; statusCode?: number } | undefined;
+	return e?.status ?? e?.statusCode;
 }
 
 onMounted(() => {

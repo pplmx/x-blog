@@ -24,7 +24,7 @@ import { useReaderAuth } from "~~/composables/useReaderAuth";
 import { useSeo } from "~~/composables/useSeo";
 
 const { t, locale } = useLang();
-const { isAuthenticated, logout } = useReaderAuth();
+const { isAuthenticated, logout, isStaleSession } = useReaderAuth();
 const router = useRouter();
 
 // The nav badge and this inbox share one count (ISS-124, TASK-224): every
@@ -64,14 +64,6 @@ const prefsError = ref(false);
 // hint so the card isn't a blank box while it loads (deep-dive finding).
 const prefsLoading = ref(false);
 const prefsSaving = ref<keyof ReaderNotificationPrefs | null>(null);
-
-/** True when a 401 means an expired/invalid reader session (see ISS-110). */
-function isStaleSession(cause: unknown): boolean {
-	return (
-		(cause as { statusCode?: number } | undefined)?.statusCode === 401 ||
-		(cause as { response?: { status?: number } } | undefined)?.response?.status === 401
-	);
-}
 
 async function load() {
 	if (!isAuthenticated.value) return;
