@@ -2,7 +2,7 @@
   "ril_version": 1,
   "round": 240,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-03T09:12:52+00:00",
+  "updated_at": "2026-09-03T09:49:17+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -16719,14 +16719,15 @@
     "ISS-303": {
       "id": "ISS-303",
       "type": "issue",
-      "status": "active",
-      "version": 1,
+      "status": "resolved",
+      "version": 2,
       "created_at": "2026-09-03T09:11:26+00:00",
-      "updated_at": "2026-09-03T09:11:26+00:00",
+      "updated_at": "2026-09-03T09:49:17+00:00",
       "touched_round": 240,
       "title": "Reading history silently truncates at 100 entries (no load-more)",
       "severity": "medium",
-      "summary": "useReadingHistory fetches a single page of 100 and never pages; readers with more server-side history cannot reach older entries. (Deferred to a follow-up round: notifications page already models the paging pattern.)"
+      "summary": "useReadingHistory fetches a single page of 100 and never pages; readers with more server-side history cannot reach older entries. (Deferred to a follow-up round: notifications page already models the paging pattern.)",
+      "resolution": "/history pages on the server-backed list via load-more; guest local trail stays bounded and un-paged"
     },
     "CHG-342": {
       "id": "CHG-342",
@@ -16738,6 +16739,17 @@
       "touched_round": 240,
       "title": "Reader-account UI fixes: notifications sign-out reset+redirect, prefs retry, bookmarks reactive auth + folder filter reset + folder-action failure alert, login isPending guard, history clear confirmation",
       "commit": "3508d66"
+    },
+    "CHG-343": {
+      "id": "CHG-343",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-03T09:49:17+00:00",
+      "updated_at": "2026-09-03T09:49:17+00:00",
+      "touched_round": 240,
+      "title": "Reading-history server paging (load-more older entries), mirrors the notifications inbox pattern",
+      "commit": "a434f35"
     }
   },
   "edges": [
@@ -24467,6 +24479,12 @@
       "to": "COMP-002",
       "type": "located_in",
       "created_at": "2026-09-03T09:12:52+00:00"
+    },
+    {
+      "from": "CHG-343",
+      "to": "ISS-303",
+      "type": "resolves",
+      "created_at": "2026-09-03T09:49:17+00:00"
     }
   ]
 }
