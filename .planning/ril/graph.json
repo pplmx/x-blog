@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 237,
+  "round": 238,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-02T23:48:51+00:00",
+  "updated_at": "2026-09-03T01:48:39+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -11,7 +11,7 @@
       "version": 1,
       "created_at": "2026-08-06T13:23:41+00:00",
       "updated_at": "2026-08-06T13:23:41+00:00",
-      "touched_round": 236,
+      "touched_round": 237,
       "title": "backend-nova",
       "description": "FastAPI Python 3.14 backend at backend/nova; SQLAlchemy ORM; routers in app/routers, crud.py business logic, 656 lines"
     },
@@ -16448,6 +16448,153 @@
       "touched_round": 236,
       "title": "Align admin posts CSV Status column + scheduled filter with scheduled-vs-live semantics",
       "commit": "7c7406f"
+    },
+    "ISS-291": {
+      "id": "ISS-291",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-03T01:10:50+00:00",
+      "updated_at": "2026-09-03T01:48:38+00:00",
+      "touched_round": 237,
+      "title": "restore_post_revision misses the publish fan-out on a draft -> visible restore; followers get no inbox row or push",
+      "severity": "medium"
+    },
+    "ISS-292": {
+      "id": "ISS-292",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-03T01:10:50+00:00",
+      "updated_at": "2026-09-03T01:48:38+00:00",
+      "touched_round": 237,
+      "title": "list_series runs one visible-post count query per series (N+1) on an uncached public endpoint",
+      "severity": "medium"
+    },
+    "ISS-293": {
+      "id": "ISS-293",
+      "type": "issue",
+      "status": "abandoned",
+      "version": 2,
+      "created_at": "2026-09-03T01:10:51+00:00",
+      "updated_at": "2026-09-03T01:33:15+00:00",
+      "touched_round": 237,
+      "title": "Comment batch-approve requires superuser while single-approve/batch-delete/flag-dismiss are editor-level",
+      "severity": "low"
+    },
+    "ISS-294": {
+      "id": "ISS-294",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-03T01:10:51+00:00",
+      "updated_at": "2026-09-03T01:33:15+00:00",
+      "touched_round": 237,
+      "title": "PostUpdate.series_order accepts negatives, sorting an episode ahead of its peers in public series detail",
+      "severity": "low"
+    },
+    "ISS-295": {
+      "id": "ISS-295",
+      "type": "issue",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-03T01:10:51+00:00",
+      "updated_at": "2026-09-03T01:10:51+00:00",
+      "touched_round": 237,
+      "title": "get_adjacent_posts pulls the whole public id list into Python (O(n)) per request on an uncached hot endpoint",
+      "severity": "low"
+    },
+    "ISS-296": {
+      "id": "ISS-296",
+      "type": "issue",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-03T01:10:51+00:00",
+      "updated_at": "2026-09-03T01:10:51+00:00",
+      "touched_round": 237,
+      "title": "Post delete leaves orphan ReaderBookmark/ReadingHistory/CommentSubscription/PostViewsDaily/CommentFlag rows",
+      "severity": "low"
+    },
+    "TASK-269": {
+      "id": "TASK-269",
+      "type": "task",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-03T01:10:51+00:00",
+      "updated_at": "2026-09-03T01:48:38+00:00",
+      "touched_round": 237,
+      "category": "correctness",
+      "severity": "medium",
+      "title": "Fan out new-post notifications when restore_post_revision makes a post publicly visible again"
+    },
+    "TASK-270": {
+      "id": "TASK-270",
+      "type": "task",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-03T01:10:51+00:00",
+      "updated_at": "2026-09-03T01:48:38+00:00",
+      "touched_round": 237,
+      "category": "performance",
+      "severity": "medium",
+      "title": "Compute all series visible-post counts in one grouped query (kill list_series N+1)"
+    },
+    "TASK-271": {
+      "id": "TASK-271",
+      "type": "task",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-03T01:10:51+00:00",
+      "updated_at": "2026-09-03T01:33:15+00:00",
+      "touched_round": 237,
+      "category": "usability",
+      "severity": "low",
+      "title": "Match comment batch-approve to editor level and clamp series_order to >= 0"
+    },
+    "EV-224": {
+      "id": "EV-224",
+      "type": "evidence",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-03T01:33:15+00:00",
+      "updated_at": "2026-09-03T01:33:15+00:00",
+      "touched_round": 237,
+      "source": "tests/test_role_tiers.py::test_editor_cannot_batch_approve",
+      "title": "Existing role-tier test asserts editors get 403 on batch-approve; superuser-only bulk-approve is a deliberate privilege, not an inconsistency",
+      "confidence": 1.0
+    },
+    "CHG-337": {
+      "id": "CHG-337",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-03T01:48:37+00:00",
+      "updated_at": "2026-09-03T01:48:37+00:00",
+      "touched_round": 237,
+      "title": "restore_post_revision re-fans-out the new-post inbox + push when a restore makes the post publicly visible again",
+      "commit": "f626102"
+    },
+    "CHG-338": {
+      "id": "CHG-338",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-03T01:48:38+00:00",
+      "updated_at": "2026-09-03T01:48:38+00:00",
+      "touched_round": 237,
+      "title": "One grouped query for all series visible-post counts (visible_series_post_counts) kills the list_series N+1",
+      "commit": "f626102"
+    },
+    "CHG-339": {
+      "id": "CHG-339",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-03T01:48:38+00:00",
+      "updated_at": "2026-09-03T01:48:38+00:00",
+      "touched_round": 237,
+      "title": "Clamp PostUpdate.series_order to >= 0 so an episode cannot sort ahead of its peers",
+      "commit": "f626102"
     }
   },
   "edges": [
@@ -23979,6 +24126,102 @@
       "to": "ISS-290",
       "type": "resolves",
       "created_at": "2026-09-02T23:48:51+00:00"
+    },
+    {
+      "from": "ISS-291",
+      "to": "COMP-001",
+      "type": "located_in",
+      "created_at": "2026-09-03T01:11:50+00:00"
+    },
+    {
+      "from": "ISS-292",
+      "to": "COMP-001",
+      "type": "located_in",
+      "created_at": "2026-09-03T01:11:50+00:00"
+    },
+    {
+      "from": "ISS-293",
+      "to": "COMP-001",
+      "type": "located_in",
+      "created_at": "2026-09-03T01:11:50+00:00"
+    },
+    {
+      "from": "ISS-294",
+      "to": "COMP-001",
+      "type": "located_in",
+      "created_at": "2026-09-03T01:11:50+00:00"
+    },
+    {
+      "from": "ISS-295",
+      "to": "COMP-001",
+      "type": "located_in",
+      "created_at": "2026-09-03T01:11:50+00:00"
+    },
+    {
+      "from": "ISS-296",
+      "to": "COMP-001",
+      "type": "located_in",
+      "created_at": "2026-09-03T01:11:50+00:00"
+    },
+    {
+      "from": "TASK-269",
+      "to": "ISS-291",
+      "type": "addresses",
+      "created_at": "2026-09-03T01:11:50+00:00"
+    },
+    {
+      "from": "TASK-270",
+      "to": "ISS-292",
+      "type": "addresses",
+      "created_at": "2026-09-03T01:11:50+00:00"
+    },
+    {
+      "from": "TASK-271",
+      "to": "ISS-293",
+      "type": "addresses",
+      "created_at": "2026-09-03T01:11:50+00:00"
+    },
+    {
+      "from": "TASK-271",
+      "to": "ISS-294",
+      "type": "addresses",
+      "created_at": "2026-09-03T01:11:50+00:00"
+    },
+    {
+      "from": "CHG-337",
+      "to": "TASK-269",
+      "type": "implements",
+      "created_at": "2026-09-03T01:48:38+00:00"
+    },
+    {
+      "from": "CHG-337",
+      "to": "ISS-291",
+      "type": "resolves",
+      "created_at": "2026-09-03T01:48:38+00:00"
+    },
+    {
+      "from": "CHG-338",
+      "to": "TASK-270",
+      "type": "implements",
+      "created_at": "2026-09-03T01:48:38+00:00"
+    },
+    {
+      "from": "CHG-338",
+      "to": "ISS-292",
+      "type": "resolves",
+      "created_at": "2026-09-03T01:48:38+00:00"
+    },
+    {
+      "from": "CHG-339",
+      "to": "TASK-271",
+      "type": "implements",
+      "created_at": "2026-09-03T01:48:38+00:00"
+    },
+    {
+      "from": "CHG-339",
+      "to": "ISS-294",
+      "type": "resolves",
+      "created_at": "2026-09-03T01:48:38+00:00"
     }
   ]
 }
