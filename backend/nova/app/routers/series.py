@@ -12,25 +12,23 @@ from app.limiter import RATE_LIMIT_WRITE, limiter
 router = APIRouter(prefix="/api/series", tags=["series"])
 
 
-def _public_series_summary(db: Session, series: models.Series) -> schemas.SeriesPublic:
-    """Live public summary with a visible-post count.
-
-    The list is small and the count is one cheap grouped query per series, so
-    it is computed per request instead of cached — only the detail payload
-    (which builds reading_time per post) is cached (TASK-121).
-    """
-    return schemas.SeriesPublic(
-        id=series.id,
-        title=series.title,
-        slug=series.slug,
-        description=series.description,
-        post_count=crud.count_visible_series_posts(db, series.id),
-    )
-
-
 @router.get("", response_model=list[schemas.SeriesPublic])
 def list_series(request: Request, db: Session = Depends(get_db)):
-    summaries = [_public_series_summary(db, s) for s in crud.list_series(db)]
+    # One grouped count query for every series' visible-post count, not a
+    # per-series count (RIL ISS-292). The list is small and computed per
+    # request instead of cached — only the detail payload (which builds
+    # reading_time per post) is cached (TASK-121).
+    counts = crud.visible_series_post_counts(db)
+    summaries = [
+        schemas.SeriesPublic(
+            id=s.id,
+            title=s.title,
+            slug=s.slug,
+            description=s.description,
+            post_count=counts.get(s.id, 0),
+        )
+        for s in crud.list_series(db)
+    ]
     return conditional_json([s.model_dump(mode="json") for s in summaries], request)
 
 

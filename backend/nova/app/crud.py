@@ -446,6 +446,13 @@ def restore_post_revision(
     if not target:
         raise ValueError("Revision not found")
 
+    # Same draft/scheduled -> published transition rule as create/update: a
+    # restore that makes the post publicly visible again (publish -> unpublish
+    # -> undo via history) must re-fan-out the new-post inbox rows + Web Push.
+    # Every other publish path fires it; restore was the silent miss, leaving
+    # followers un-notified on a legitimate republish (RIL ISS-291).
+    was_visible = is_publicly_visible(db_post)
+
     _snapshot_revision(db, db_post)
     db_post.title = target.title
     db_post.slug = target.slug
@@ -467,6 +474,10 @@ def restore_post_revision(
     clear_tags_cache()
     clear_categories_cache()
     clear_posts_list_cache()
+
+    if not was_visible and is_publicly_visible(db_post):
+        record_new_post_notifications(db, db_post)
+        dispatch_new_post(db, db_post, logger)
     return db_post
 
 
@@ -1460,19 +1471,23 @@ def list_series(db: Session) -> list[models.Series]:
     return db.query(models.Series).order_by(models.Series.title).all()
 
 
-def count_visible_series_posts(db: Session, series_id: int) -> int:
-    """Number of publicly visible posts in a series (drafts/scheduled excluded)."""
+def visible_series_post_counts(db: Session) -> dict[int, int]:
+    """Map series_id -> count of publicly visible posts (drafts/scheduled
+    excluded), for ALL series in one grouped query. The public series list
+    used a per-series count query (N+1 on an uncached public endpoint — one
+    count per series on every anonymous hit, RIL ISS-292)."""
     now = utc_now_naive()
-    return (
-        db.query(models.Series.id)
-        .join(models.Post, models.Post.series_id == models.Series.id)
+    rows = (
+        db.query(models.Post.series_id, func.count(models.Post.id))
         .filter(
-            models.Series.id == series_id,
+            models.Post.series_id.isnot(None),
             models.Post.published.is_(True),
             or_(models.Post.publish_at.is_(None), models.Post.publish_at <= now),
         )
-        .count()
+        .group_by(models.Post.series_id)
+        .all()
     )
+    return {row[0]: row[1] for row in rows}
 
 
 def get_series_visible_posts(db: Session, series: models.Series) -> list[models.Post]:

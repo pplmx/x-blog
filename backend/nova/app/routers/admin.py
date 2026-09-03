@@ -833,6 +833,9 @@ def admin_batch_approve_comments(
     request: Request,  # noqa: ARG001
     body: BatchApproveRequest,
     db: Session = Depends(get_db),
+    # Superuser-only by design (test_role_tiers: "a non-superuser editor CANNOT
+    # ... batch-approve"): bulk-approve touches many comments at once and is a
+    # privileged bulk action, unlike the point moderation peers.
     _current_user: auth.User = Depends(get_current_superuser),
 ):
     comments = db.query(models.Comment).filter(models.Comment.id.in_(body.ids)).all()

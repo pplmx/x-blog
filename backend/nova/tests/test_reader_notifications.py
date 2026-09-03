@@ -236,6 +236,59 @@ class TestPersistenceHooks:
         assert data["items"][0]["kind"] == "new_post"
         assert data["items"][0]["url"] == "/posts/cat-notif-post"
 
+    def test_restore_to_published_refans_out_to_followers(self, client, db_session, auth_headers):
+        # publish -> unpublish -> history-restore of a published snapshot: the
+        # restore makes the post publicly visible again, so the new-post fan-out
+        # must fire exactly like any other publish transition (create/update/
+        # admin-update all do). Restore was the silent miss — followers got no
+        # inbox row on a legitimate republish (RIL ISS-291).
+        token = _token(client, email="rst@example.com")
+        headers = _auth(token)
+
+        cat = client.post("/api/categories", json={"name": "RST"}, headers=auth_headers)
+        assert cat.status_code == 201, cat.text
+        cat_id = cat.json()["id"]
+        follow = client.put(f"/api/reader/me/categories/{cat_id}/follow", headers=headers)
+        assert follow.status_code in (200, 201), follow.text
+
+        post = client.post(
+            "/api/posts",
+            json={
+                "title": "Once visible",
+                "slug": "rst-once",
+                "content": "c",
+                "published": True,
+                "category_id": cat_id,
+            },
+            headers=auth_headers,
+        )
+        assert post.status_code == 201, post.text
+        post_id = post.json()["id"]
+        assert client.get(NOTIFS, headers=headers).json()["total"] == 1  # published fan-out
+
+        # Unpublish (-> draft): out of visibility, no additional fan-out.
+        down = client.put(
+            f"/api/admin/posts/{post_id}",
+            json={"published": False},
+            headers=auth_headers,
+        )
+        assert down.status_code == 200, down.text
+
+        # Restore the create-time published snapshot (admin_update_post captures
+        # AFTER commit, so the newest revision is the draft — the published one
+        # is the oldest, mirroring test_admin_post_revisions).
+        revisions = client.get(f"/api/admin/posts/{post_id}/revisions", headers=auth_headers).json()
+        assert revisions, "create should capture a revision"
+        restored = client.post(
+            f"/api/admin/posts/{post_id}/revisions/{revisions[-1]['id']}/restore",
+            headers=auth_headers,
+        )
+        assert restored.status_code == 200, restored.text
+
+        data = client.get(NOTIFS, headers=headers).json()
+        assert data["total"] == 2
+        assert sum(1 for item in data["items"] if item["url"] == "/posts/rst-once") == 2
+
     def test_new_post_in_followed_series_persists(self, client, db_session, auth_headers):
         token = _token(client, email="ser@example.com")
         headers = _auth(token)

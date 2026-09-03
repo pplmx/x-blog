@@ -279,6 +279,20 @@ class TestAdminPosts:
         assert response.status_code == 200
         assert client.get(f"/api/admin/posts/{post.id}", headers=auth_headers).json()["series_id"] is None
 
+    def test_update_post_rejects_negative_series_order(self, client, auth_headers, db_session):
+        """A negative series_order would sort an episode ahead of its peers in
+        the public series detail — reject it at the boundary (RIL ISS-294)."""
+        post = models.Post(title="Test", slug="neg-order", content="Content", published=True)
+        db_session.add(post)
+        db_session.commit()
+
+        response = client.put(
+            f"/api/admin/posts/{post.id}",
+            headers={**auth_headers, "Content-Type": "application/json"},
+            json={"series_order": -1},
+        )
+        assert response.status_code == 422
+
     def test_delete_post(self, client, auth_headers, db_session):
         post = models.Post(title="Test", slug="test", content="Content", published=True)
         db_session.add(post)

@@ -174,7 +174,10 @@ class PostUpdate(BaseModel):
     # series_id: int = assign/change, null = clear the series membership
     # (mirrors category_id semantics under model_dump(exclude_unset=True)).
     series_id: int | None = None
-    series_order: int | None = None
+    # Negative order would sort an episode ahead of its peers in the public
+    # series detail (order_by series_order, id) — reject rather than persist
+    # a wrong-visible-state edge (RIL ISS-294).
+    series_order: int | None = Field(default=None, ge=0)
     cover_image: str | None = Field(default=None, max_length=500)
     tag_ids: list[int] | None = None
 
