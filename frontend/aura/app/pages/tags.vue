@@ -55,6 +55,21 @@ const paginationTokens = computed(() =>
 	paginationPages(posts.value?.pagination?.total_pages ?? 0, posts.value?.pagination?.page ?? 1),
 );
 
+// A stale/out-of-range page deep link would otherwise render "No posts yet"
+// with no way back — clamp to the last real page once pagination is known
+// (home/search/archive already do this; deep-dive finding ISS-308).
+watch(
+	() => posts.value?.pagination,
+	(p) => {
+		const requested = Number.parseInt(String(route.query.page), 10);
+		if (!p || Number.isNaN(requested) || requested < 2) return;
+		const last = p.total_pages ?? 1;
+		if (requested > last && last >= 1 && tagId.value) {
+			navigateTo({ query: { tag_id: String(tagId.value), page: String(last) }, replace: true });
+		}
+	},
+);
+
 // Look up the tag name for SEO when a tag is selected
 const tagName = computed(() =>
 	tagId.value ? tags.value?.find((t) => t.id === tagId.value)?.name : undefined,

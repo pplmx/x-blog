@@ -81,6 +81,31 @@ const paginationTokens = computed(() =>
 	paginationPages(posts.value?.pagination?.total_pages ?? 0, posts.value?.pagination?.page ?? 1),
 );
 
+// A stale/out-of-range page deep link (e.g. /archive?year=2020&month=1&page=999
+// after posts were deleted) would otherwise render the "no posts" empty state
+// while earlier pages still hold content — clamp back to the last real page
+// once pagination is known, preserving the year/month period (home/search
+// already do this; deep-dive finding ISS-308). Loop-safe: the clamp target is
+// valid by construction, so the refetch settles on total_pages === page.
+watch(
+	() => posts.value?.pagination,
+	(p) => {
+		const requested = Number.parseInt(String(route.query.page), 10);
+		if (!p || Number.isNaN(requested) || requested < 2) return;
+		const last = p.total_pages ?? 1;
+		if (requested > last && last >= 1) {
+			navigateTo({
+				query: {
+					...(year.value ? { year: String(year.value) } : {}),
+					...(month.value ? { month: String(month.value) } : {}),
+					page: String(last),
+				},
+				replace: true,
+			});
+		}
+	},
+);
+
 useSeo(() => ({
 	title: hasPeriod.value
 		? t("archive.monthTitle", { year: year.value ?? "", month: monthLabel.value })
@@ -235,7 +260,7 @@ useSeo(() => ({
                   ? 'bg-purple-600 text-white'
                   : 'border hover:bg-gray-50',
             ]"
-            @click="pg !== '…' && navigateTo({ query: { year: String(year), ...(month ? { month: String(month) } : {}), page: pg } })"
+            @click="pg !== '…' && navigateTo({ query: { ...(year ? { year: String(year) } : {}), ...(month ? { month: String(month) } : {}), page: pg } })"
           >
             {{ pg }}
           </button>

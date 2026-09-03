@@ -56,6 +56,26 @@ const paginationTokens = computed(() =>
 	paginationPages(posts.value?.pagination?.total_pages ?? 0, posts.value?.pagination?.page ?? 1),
 );
 
+// A stale/out-of-range page deep link (e.g. /categories?category_id=2&page=999
+// after posts were deleted) would otherwise render "No posts yet" with the
+// pagination bar hidden and no way back — clamp to the last real page once
+// pagination is known (home/search already do this; deep-dive finding
+// ISS-308). Loop-safe: the clamp target is valid by construction.
+watch(
+	() => posts.value?.pagination,
+	(p) => {
+		const requested = Number.parseInt(String(route.query.page), 10);
+		if (!p || Number.isNaN(requested) || requested < 2) return;
+		const last = p.total_pages ?? 1;
+		if (requested > last && last >= 1 && categoryId.value) {
+			navigateTo({
+				query: { category_id: String(categoryId.value), page: String(last) },
+				replace: true,
+			});
+		}
+	},
+);
+
 // Look up the category name for SEO when a category is selected
 const categoryName = computed(() =>
 	categoryId.value ? categories.value?.find((c) => c.id === categoryId.value)?.name : undefined,

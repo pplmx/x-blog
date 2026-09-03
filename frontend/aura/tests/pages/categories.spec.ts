@@ -556,4 +556,85 @@ describe("Categories Page", () => {
 			catFollowsState.total = 0;
 		});
 	});
+
+	describe("out-of-range page clamp (ISS-308)", () => {
+		it("clamps a stale page=999 deep link back to the last real page once pagination arrives", async () => {
+			const navMock = vi.fn();
+			vi.stubGlobal("useRuntimeConfig", () => ({
+				public: { apiUrl: "http://localhost:18888" },
+			}));
+			vi.stubGlobal("useRoute", () => reactive({ query: { category_id: "1", page: "999" } }));
+			vi.stubGlobal("navigateTo", navMock);
+			vi.stubGlobal("useHead", vi.fn());
+			vi.stubGlobal("computed", computed);
+			// Posts load AFTER mount (a watch, which is non-immediate, only fires
+			// on a change — mirror the async arrival instead of seeding data at
+			// setup, which would be the watcher's baseline).
+			const postsData = ref<null | { items: unknown[]; pagination: Record<string, number> }>(null);
+			vi.stubGlobal(
+				"useFetch",
+				vi.fn((url: string | (() => string) | { value: string }) => {
+					const urlStr =
+						typeof url === "function" ? url() : typeof url === "string" ? url : (url.value ?? "");
+					if (urlStr.includes("/api/categories") && !urlStr.includes("/posts")) {
+						return {
+							data: ref(mockCategories),
+							pending: ref(false),
+							error: ref(null),
+							refresh: vi.fn(),
+						};
+					}
+					if (urlStr.includes("/api/posts")) {
+						return {
+							data: postsData,
+							pending: ref(false),
+							error: ref(null),
+							refresh: vi.fn(),
+						};
+					}
+					return { data: ref(null), pending: ref(false), error: ref(null), refresh: vi.fn() };
+				}),
+			);
+			vi.stubGlobal(
+				"$fetch",
+				vi.fn((url: unknown, opts: { method?: string } = {}) => {
+					if (
+						String(url).includes("/me/category-follows") &&
+						!["PUT", "PATCH", "DELETE"].includes(opts.method ?? "")
+					) {
+						return Promise.resolve({ items: [], total: 0 });
+					}
+					return Promise.resolve({});
+				}),
+			);
+
+			const { default: CategoriesPage } = await import("../../app/pages/categories.vue");
+			const SuspenseWrapper: any = {
+				components: { CategoriesPage },
+				template:
+					"<Suspense>" +
+					"<template #default><CategoriesPage /></template>" +
+					"<template #fallback>Loading...</template>" +
+					"</Suspense>",
+			};
+			const wrapper = mount(SuspenseWrapper, {
+				global: { stubs: { Icon: { template: "<svg />" } } },
+			});
+			await flushPromises();
+			expect(wrapper.exists()).toBe(true);
+			expect(navMock).not.toHaveBeenCalled();
+
+			// The response lands with total_pages=1 while the URL asks for 999 →
+			// the clamp rewrites the URL (replace) to the last real page.
+			postsData.value = {
+				items: [],
+				pagination: { total: 0, page: 1, limit: 10, total_pages: 1 },
+			};
+			await flushPromises();
+			expect(navMock).toHaveBeenCalledWith({
+				query: { category_id: "1", page: "1" },
+				replace: true,
+			});
+		});
+	});
 });
