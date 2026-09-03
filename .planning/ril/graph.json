@@ -2,7 +2,7 @@
   "ril_version": 1,
   "round": 240,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-03T13:59:47+00:00",
+  "updated_at": "2026-09-03T14:13:59+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -16904,6 +16904,29 @@
       "touched_round": 240,
       "title": "HeaderSearch via transport command seam + failure notice",
       "commit": "84bea34"
+    },
+    "ISS-312": {
+      "id": "ISS-312",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-03T14:13:12+00:00",
+      "updated_at": "2026-09-03T14:13:59+00:00",
+      "touched_round": 240,
+      "title": "TOC / rendered-post heading ids diverge across markdown segments (duplicate DOM ids)",
+      "severity": "medium",
+      "summary": "useMarkdown resets seenHeadingIds per html segment (each convertMarkdownToHtml call), so the same heading text on either side of a mermaid/math/code/image block renders with the SAME bare id in the DOM while extractToc(markdownToHtml) emits a -1 suffix — duplicate ids and TOC anchors pointing at nothing"
+    },
+    "CHG-349": {
+      "id": "CHG-349",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-03T14:13:59+00:00",
+      "updated_at": "2026-09-03T14:13:59+00:00",
+      "touched_round": 240,
+      "title": "Per-document heading-id counter reset in useMarkdown (cross-segment uniqueness)",
+      "commit": "32be420"
     }
   },
   "edges": [
@@ -24723,6 +24746,12 @@
       "to": "ISS-309",
       "type": "resolves",
       "created_at": "2026-09-03T13:59:24+00:00"
+    },
+    {
+      "from": "CHG-349",
+      "to": "ISS-312",
+      "type": "resolves",
+      "created_at": "2026-09-03T14:13:59+00:00"
     }
   ]
 }
