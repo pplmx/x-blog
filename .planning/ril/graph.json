@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 238,
+  "round": 239,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-03T01:48:39+00:00",
+  "updated_at": "2026-09-03T01:57:21+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -16595,6 +16595,18 @@
       "touched_round": 237,
       "title": "Clamp PostUpdate.series_order to >= 0 so an episode cannot sort ahead of its peers",
       "commit": "f626102"
+    },
+    "DEC-243": {
+      "id": "DEC-243",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-03T01:56:19+00:00",
+      "updated_at": "2026-09-03T01:56:19+00:00",
+      "touched_round": 238,
+      "title": "Converged (idle): quality-convergence stop — no high-value task remains",
+      "rationale": "All five stop conditions hold. (1) Zero active tasks: ril tasks returns empty. (2) High-severity issues closed or deferred: ISS-242/243/244 covered by DEC-214; rounds 236-239 resolved ISS-278..294. (3) VERIFY green: backend 1291 passed @93.64% coverage, digest 18, frontend 1389 passed, nuxt typecheck 0 errors, pyright 0, ruff/biome/format clean. (4) Two consecutive deep-dive rounds produced no >=3.0 task: round 238 max 2.5 (TASK-269/270/271), round 239 sweep of limiter/conditional/cache/push/admin_push/main found nothing new. (5) ril check consistent (1368 nodes, 1265 edges).",
+      "alternatives_rejected": "Keep iterating to also fix the tracked low-severity backlog now (ISS-295 adjacent-posts O(n) scan, ISS-296 post-delete orphan rows): both are sub-threshold perf/hygiene on a small single-worker blog, and fixing them would extend the loop past its stop point. They stay as tracked backlog issues for activation by a future operator direction or real traffic signal."
     }
   },
   "edges": [
