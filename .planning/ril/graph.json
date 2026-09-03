@@ -2,7 +2,7 @@
   "ril_version": 1,
   "round": 240,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-03T13:24:01+00:00",
+  "updated_at": "2026-09-03T13:29:36+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -16882,6 +16882,17 @@
       "touched_round": 240,
       "title": "Archive month-only pagination URL fix + out-of-range page clamps on categories/tags/archive",
       "commit": "239cbf5"
+    },
+    "CHG-347": {
+      "id": "CHG-347",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-03T13:29:36+00:00",
+      "updated_at": "2026-09-03T13:29:36+00:00",
+      "touched_round": 240,
+      "title": "Dashboard updated-at refresh + localized restore-summary comment segment",
+      "commit": "79e4217"
     }
   },
   "edges": [
@@ -24689,6 +24700,12 @@
       "to": "ISS-308",
       "type": "resolves",
       "created_at": "2026-09-03T12:47:47+00:00"
+    },
+    {
+      "from": "CHG-347",
+      "to": "ISS-310",
+      "type": "resolves",
+      "created_at": "2026-09-03T13:29:36+00:00"
     }
   ]
 }
