@@ -21,6 +21,7 @@
 		"followingTitle": "Following this category — click to unfollow",
 		"notifyTitle": "Toggle new-post notifications for this category",
 		"notifyOn": "Notifications on",
-		"notifyOff": "Notifications off"
+		"notifyOff": "Notifications off",
+		"followFailed": "Couldn't update this follow — check your connection and try again."
 	}
 }

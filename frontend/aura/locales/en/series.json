@@ -23,6 +23,7 @@
 		"followingNewPartsTitle": "Following this series — click to unfollow",
 		"notifyTitle": "Toggle new-part notifications for this series",
 		"notifyOn": "Notifications on",
-		"notifyOff": "Notifications off"
+		"notifyOff": "Notifications off",
+		"followFailed": "Couldn't update this follow — check your connection and try again."
 	}
 }

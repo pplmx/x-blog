@@ -23,6 +23,7 @@
 		"followingNewPartsTitle": "已关注本系列 — 点击取消关注",
 		"notifyTitle": "切换本系列的新篇通知",
 		"notifyOn": "通知已开",
-		"notifyOff": "通知已关"
+		"notifyOff": "通知已关",
+		"followFailed": "关注操作失败，请检查网络后重试。"
 	}
 }

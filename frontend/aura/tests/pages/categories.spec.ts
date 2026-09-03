@@ -497,5 +497,63 @@ describe("Categories Page", () => {
 			catFollowsState.items = [];
 			catFollowsState.total = 0;
 		});
+
+		it("surfaces a follow failure instead of a silent no-op (deep-dive finding)", async () => {
+			window.localStorage.setItem("reader_token", "token");
+			catFollowsState.items = [{ id: 1, name: "Tech", notify: true }];
+			catFollowsState.total = 1;
+
+			// Unfollow (DELETE) fails — the toggle must say so.
+			vi.stubGlobal(
+				"$fetch",
+				vi.fn((url: unknown, opts: { method?: string } = {}) => {
+					if (String(url).includes("/me/categories/") && opts.method === "DELETE") {
+						return Promise.reject(new Error("offline"));
+					}
+					if (
+						String(url).includes("/me/category-follows") &&
+						!["PUT", "PATCH", "DELETE"].includes(opts.method ?? "")
+					) {
+						return Promise.resolve({
+							items: [...catFollowsState.items],
+							total: catFollowsState.items.length,
+						});
+					}
+					return Promise.resolve({});
+				}),
+			);
+
+			vi.stubGlobal("useRoute", () => reactive({ query: { category_id: "1" } }));
+
+			const { default: CategoriesPage } = await import("../../app/pages/categories.vue");
+			const SuspenseWrapper: any = {
+				components: { CategoriesPage },
+				template:
+					"<Suspense>" +
+					"<template #default><CategoriesPage /></template>" +
+					"<template #fallback>Loading...</template>" +
+					"</Suspense>",
+			};
+			const wrapper = mount(SuspenseWrapper, {
+				global: {
+					stubs: {
+						NuxtLink: { template: '<a :href="to"><slot/></a>', props: ["to"] },
+						Icon: { template: '<svg class="iconstub" />' },
+					},
+				},
+			});
+			await flushPromises();
+			// Following state shown; click the follow/unfollow button (its label is
+			// the localized "Following category" text) → the DELETE fails.
+			const followBtn = wrapper.findAll("button").find((b) => b.text().includes("已关注分类"));
+			expect(followBtn).toBeDefined();
+			await followBtn?.trigger("click");
+			await flushPromises();
+			expect(wrapper.text()).toContain("关注操作失败，请检查网络后重试。");
+
+			window.localStorage.removeItem("reader_token");
+			catFollowsState.items = [];
+			catFollowsState.total = 0;
+		});
 	});
 });

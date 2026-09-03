@@ -101,6 +101,18 @@ const tagSignedIn = computed(
 const tagFollowing = ref(false);
 const tagNotify = ref(true);
 const tagFollowBusy = ref(false);
+// Follow/notify toggle failures surface here (deep-dive finding): the previous
+// empty catch blocks made an offline/429/500 tap a silent no-op.
+const followError = ref(false);
+let followErrorTimer: ReturnType<typeof setTimeout> | undefined;
+function noteFollowError() {
+	if (followErrorTimer) clearTimeout(followErrorTimer);
+	followError.value = true;
+	followErrorTimer = setTimeout(() => {
+		followError.value = false;
+		followErrorTimer = undefined;
+	}, 4000);
+}
 
 async function loadTagFollow() {
 	if (!tagSignedIn.value || !tagId.value) return;
@@ -132,7 +144,9 @@ async function toggleTagFollow() {
 			tagNotify.value = res?.notify ?? true;
 		}
 	} catch {
-		// best-effort — keep current state on failure
+		// best-effort — keep current state on failure, but say so (deep-dive:
+		// a silent no-op was indistinguishable from "in progress").
+		noteFollowError();
 	} finally {
 		tagFollowBusy.value = false;
 	}
@@ -146,7 +160,8 @@ async function toggleTagNotify() {
 		const res = await setTagFollowNotify(tagId.value, next);
 		tagNotify.value = res?.notify ?? next;
 	} catch {
-		// best-effort — keep current state on failure
+		// best-effort — keep current state on failure, but say so (deep-dive).
+		noteFollowError();
 	} finally {
 		tagFollowBusy.value = false;
 	}
@@ -281,6 +296,10 @@ watch(
             </a>
           </div>
         </div>
+        <!-- Follow/notify failure (deep-dive finding): never a silent no-op. -->
+        <p v-if="followError" role="alert" class="mt-3 text-sm text-red-600 dark:text-red-400">
+          {{ t('tags.followFailed') }}
+        </p>
       </div>
 
       <!-- Posts list -->

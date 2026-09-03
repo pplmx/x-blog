@@ -118,6 +118,19 @@ async function loadProgress() {
 	}
 }
 
+// Follow/notify failures surface here (deep-dive finding): the previous empty
+// catch blocks made an offline/429/500 tap a silent no-op.
+const followError = ref(false);
+let followErrorTimer: ReturnType<typeof setTimeout> | undefined;
+function noteFollowError() {
+	if (followErrorTimer) clearTimeout(followErrorTimer);
+	followError.value = true;
+	followErrorTimer = setTimeout(() => {
+		followError.value = false;
+		followErrorTimer = undefined;
+	}, 4000);
+}
+
 async function toggleFollow() {
 	if (followBusy.value || !series.value?.id) return;
 	followBusy.value = true;
@@ -131,7 +144,9 @@ async function toggleFollow() {
 			followNotify.value = res?.notify ?? true;
 		}
 	} catch {
-		// best-effort — keep current state on failure
+		// best-effort — keep current state on failure, but say so (deep-dive:
+		// a silent no-op was indistinguishable from "in progress").
+		noteFollowError();
 	} finally {
 		followBusy.value = false;
 	}
@@ -146,7 +161,8 @@ async function toggleNotify() {
 		const res = await setSeriesFollowNotify(series.value.id, next);
 		followNotify.value = res?.notify ?? next;
 	} catch {
-		// best-effort — keep current brightness on failure
+		// best-effort — keep current state on failure, but say so (deep-dive).
+		noteFollowError();
 	} finally {
 		followBusy.value = false;
 	}
@@ -234,6 +250,10 @@ async function toggleNotify() {
             {{ t(followNotify ? 'series.notifyOn' : 'series.notifyOff') }}
           </button>
         </div>
+        <!-- Follow/notify failure (deep-dive finding): never a silent no-op. -->
+        <p v-if="followError" role="alert" class="mt-3 text-sm text-red-600 dark:text-red-400">
+          {{ t('series.followFailed') }}
+        </p>
         <p v-if="series.description" class="mt-4 text-lg text-gray-600 dark:text-gray-400 leading-relaxed">
           {{ series.description }}
         </p>

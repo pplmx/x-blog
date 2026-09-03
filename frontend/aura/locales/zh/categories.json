@@ -21,6 +21,7 @@
 		"followingTitle": "已关注此分类 — 点击取消关注",
 		"notifyTitle": "切换此分类的新文章通知",
 		"notifyOn": "通知已开",
-		"notifyOff": "通知已关"
+		"notifyOff": "通知已关",
+		"followFailed": "关注操作失败，请检查网络后重试。"
 	}
 }

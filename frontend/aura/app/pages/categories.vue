@@ -135,7 +135,8 @@ async function toggleFollowNewPosts() {
 		// Transient push/network failure: the composable reverts to a retryable
 		// state, so a later tap retries. Never let a click handler reject
 		// unhandled (the composable rethrows so the initiating caller decides
-		// feedback — its own toast is a future improvement).
+		// feedback — deep-dive finding, surface it rather than staying silent).
+		noteFollowError();
 	}
 }
 
@@ -155,6 +156,18 @@ const catSignedIn = computed(
 const catFollowing = ref(false);
 const catNotify = ref(true);
 const catFollowBusy = ref(false);
+// Follow/notify toggle failures surface here (deep-dive finding): the previous
+// empty catch blocks made an offline/429/500 tap a silent no-op.
+const followError = ref(false);
+let followErrorTimer: ReturnType<typeof setTimeout> | undefined;
+function noteFollowError() {
+	if (followErrorTimer) clearTimeout(followErrorTimer);
+	followError.value = true;
+	followErrorTimer = setTimeout(() => {
+		followError.value = false;
+		followErrorTimer = undefined;
+	}, 4000);
+}
 
 async function loadCategoryFollow() {
 	if (!catSignedIn.value || !categoryId.value) return;
@@ -186,7 +199,9 @@ async function toggleCategoryFollow() {
 			catNotify.value = res?.notify ?? true;
 		}
 	} catch {
-		// best-effort — keep current state on failure
+		// best-effort — keep current state on failure, but say so (deep-dive
+		// finding: a silent no-op was indistinguishable from "in progress").
+		noteFollowError();
 	} finally {
 		catFollowBusy.value = false;
 	}
@@ -200,7 +215,8 @@ async function toggleCategoryNotify() {
 		const res = await setCategoryFollowNotify(categoryId.value, next);
 		catNotify.value = res?.notify ?? next;
 	} catch {
-		// best-effort — keep current state on failure
+		// best-effort — keep current state on failure, but say so (deep-dive).
+		noteFollowError();
 	} finally {
 		catFollowBusy.value = false;
 	}
@@ -341,6 +357,10 @@ watch(categoryId, () => {
             </a>
           </div>
         </div>
+        <!-- Follow/notify failure (deep-dive finding): never a silent no-op. -->
+        <p v-if="followError" role="alert" class="mt-3 text-sm text-red-600 dark:text-red-400">
+          {{ t('categories.followFailed') }}
+        </p>
       </div>
 
       <!-- Posts list -->
