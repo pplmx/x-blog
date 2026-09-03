@@ -307,9 +307,11 @@ marked.use({ renderer: headingRenderer });
  * Uses `marked` which is imported statically (available for synchronous use).
  */
 function convertMarkdownToHtml(md: string): string {
-	// The heading renderer suffixes duplicate ids against a shared per-document
-	// counter — reset it so counters from the previous conversion can't leak.
-	beginHeadingIds();
+	// NOTE: does NOT reset the duplicate-heading counter — ownership lives with
+	// the document-level caller. `useMarkdown` resets once per post so ids stay
+	// globally unique ACROSS its html segments (else the same heading text in
+	// two segments collides on duplicated DOM ids and TOC anchors); the
+	// standalone `markdownToHtml` resets at its own entry. (TOC-anchor bug)
 	try {
 		const placeholder = "";
 		const safeMd = md.replace(/(<!--[\s\S]*?-->)/g, `${placeholder}$1${placeholder}`);
@@ -327,6 +329,10 @@ function convertMarkdownToHtml(md: string): string {
  * anchors resolve to real heading elements. (RIL TASK-104, ISS-084)
  */
 export function markdownToHtml(md: string): string {
+	// Standalone whole-document conversion: reset the shared heading counter so
+	// the emitted ids are unique across the entire document (previous document's
+	// counters can't leak in either).
+	beginHeadingIds();
 	return convertMarkdownToHtml(md);
 }
 
@@ -354,6 +360,15 @@ export function commentMarkdownToHtml(md: string): string {
 
 export function useMarkdown(content: string): UseMarkdownResult {
 	if (!content) return { segments: [] };
+
+	// Per-document reset of the duplicate-heading counter BEFORE segmenting:
+	// the same heading text appearing before and after an extracted
+	// mermaid/math/code/image block sits in two different html segments, and
+	// each segment is rendered independently — a per-segment reset would give
+	// both occurrences the SAME bare id (duplicate DOM ids, and the TOC's
+	// `-1`-suffixed anchor would point at nothing). Resetting once per document
+	// keeps the ids globally unique and in lockstep with extractToc.
+	beginHeadingIds();
 
 	const keygen = { v: 0 };
 

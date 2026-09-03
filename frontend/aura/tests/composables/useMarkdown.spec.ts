@@ -1,6 +1,7 @@
 import { beforeAll, describe, expect, it } from "vitest";
 import {
 	addSafeLinkAttrs,
+	markdownToHtml,
 	regexSanitize,
 	type Segment,
 	sanitizeHtml,
@@ -8,6 +9,7 @@ import {
 	useMarkdown,
 	useMarkdownSanitised,
 } from "~/composables/useMarkdown";
+import { extractToc } from "~/composables/useToc";
 
 describe("useMarkdown debug", () => {
 	it("HTML", () => {
@@ -115,6 +117,27 @@ describe("useMarkdown features", () => {
 		expect(mathSeg).toBeDefined();
 		expect(mathSeg.displayMode).toBe(true);
 		expect(mathSeg.formula).toContain("sqrt");
+	});
+
+	it("keeps heading ids globally unique ACROSS html segments, in lockstep with the TOC", () => {
+		// The same heading text on both sides of a code/mermaid/math block lands
+		// in two different html segments (each rendered independently). A
+		// per-segment reset of the duplicate-heading counter gave BOTH the bare
+		// id — duplicated DOM ids, and the TOC's `-1`-suffixed anchor pointed at
+		// nothing. The counter must be per-document, reset once by useMarkdown.
+		const md = "# Setup\n\n```ts\nconst x = 1;\n```\n\n# Setup\n";
+		const html = useMarkdown(md)
+			.segments.map((s) => (s.type === "html" ? s.html : ""))
+			.join("\n");
+
+		const ids = Array.from(html.matchAll(/<h1[^>]*\bid="([^"]*)"/g)).map((m) => m[1]);
+		expect(ids).toEqual(["setup", "setup-1"]);
+
+		// The page builds its TOC via extractToc(markdownToHtml(content)) — the
+		// ids it emits must be byte-for-byte what useMarkdown renders, or TOC
+		// anchor links break.
+		const tocIds = extractToc(markdownToHtml(md)).map((t) => t.id);
+		expect(ids).toEqual(tocIds);
 	});
 });
 
