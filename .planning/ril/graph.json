@@ -2,7 +2,7 @@
   "ril_version": 1,
   "round": 240,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-03T14:41:00+00:00",
+  "updated_at": "2026-09-03T15:13:51+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -16950,6 +16950,29 @@
       "touched_round": 240,
       "title": "CommentList-owned discard guard via CommentForm update:dirty reporting",
       "commit": "de0b3b3"
+    },
+    "ISS-314": {
+      "id": "ISS-314",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-03T15:13:51+00:00",
+      "updated_at": "2026-09-03T15:13:51+00:00",
+      "touched_round": 240,
+      "title": "Reader session-expiry 401 conflated with wrong-current-password 401 (account.vue)",
+      "severity": "medium",
+      "summary": "account.vue treated every 401 from /me/password and /me/account as incorrect current password — an expired/revoked reader token (auth dependency 401, detail Could not validate credentials) showed a misleading wrong-password error, and the .status-only read sometimes degraded it to a generic failure"
+    },
+    "CHG-351": {
+      "id": "CHG-351",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-03T15:13:51+00:00",
+      "updated_at": "2026-09-03T15:13:51+00:00",
+      "touched_round": 240,
+      "title": "Shared useReaderAuth.isStaleSession + account.vue stale-401 redirect",
+      "commit": "853dbed"
     }
   },
   "edges": [
@@ -24781,6 +24804,12 @@
       "to": "ISS-313",
       "type": "resolves",
       "created_at": "2026-09-03T14:41:00+00:00"
+    },
+    {
+      "from": "CHG-351",
+      "to": "ISS-314",
+      "type": "resolves",
+      "created_at": "2026-09-03T15:13:51+00:00"
     }
   ]
 }
