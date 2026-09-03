@@ -2,7 +2,7 @@
   "ril_version": 1,
   "round": 240,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-03T03:48:42+00:00",
+  "updated_at": "2026-09-03T09:12:52+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -16643,6 +16643,101 @@
       "title": "Round 240: operator reactivates the loop; delivers the two deferred backlog issues (ISS-295/296)",
       "rationale": "The converged-idle QUIESCE (DEC-243) is re-activated by a new operator directive (detail polish / bug-fix / usability mode). Activation round first re-ran VERIFY (backend 1291 @93.64%, frontend 1389 — the transient 15 frontend timeouts were parallel-load flakes, clean re-run 1389 passed) then delivered the two tracked sub-threshold backlog issues the stop decision had explicitly deferred: ISS-296 orphan rows on post delete (correctness/hygiene) and ISS-295 O(n) adjacent-posts scan (perf).",
       "alternatives_rejected": "Not yet starting frontend UX polish (the rest of the operator directive): this round stays small and verifiable (2 backend fixes, 94-line diff). Frontend usability/interactivity work is the main thread of subsequent rounds."
+    },
+    "ISS-297": {
+      "id": "ISS-297",
+      "type": "issue",
+      "status": "resolved",
+      "version": 1,
+      "created_at": "2026-09-03T09:09:24+00:00",
+      "updated_at": "2026-09-03T09:09:24+00:00",
+      "touched_round": 240,
+      "title": "Notifications inbox stays visible under a dead session after sign-out",
+      "severity": "high",
+      "summary": "/notifications renders the list purely on items.length, so a header sign-out (which only flips auth state, no navigation) leaves the private inbox + unread badges visible with every interaction 401ing"
+    },
+    "ISS-298": {
+      "id": "ISS-298",
+      "type": "issue",
+      "status": "resolved",
+      "version": 1,
+      "created_at": "2026-09-03T09:09:24+00:00",
+      "updated_at": "2026-09-03T09:09:24+00:00",
+      "touched_round": 240,
+      "title": "Bookmark folder filter becomes an invisible un-clearable filter after sign-out",
+      "severity": "high",
+      "summary": "activeFolderId is a plain ref never reset on auth change and signedIn was a non-reactive localStorage computed; the folder bar (with its All chip) disappears but the list stays filtered"
+    },
+    "ISS-299": {
+      "id": "ISS-299",
+      "type": "issue",
+      "status": "resolved",
+      "version": 1,
+      "created_at": "2026-09-03T09:11:25+00:00",
+      "updated_at": "2026-09-03T09:11:25+00:00",
+      "touched_round": 240,
+      "title": "Notification-preference load failure is a dead end (no retry)",
+      "severity": "medium",
+      "summary": "prefsError shows a bare network-error line with no retry button, unlike the inbox error which has one; only recovery was a full reload"
+    },
+    "ISS-300": {
+      "id": "ISS-300",
+      "type": "issue",
+      "status": "resolved",
+      "version": 1,
+      "created_at": "2026-09-03T09:11:25+00:00",
+      "updated_at": "2026-09-03T09:11:25+00:00",
+      "touched_round": 240,
+      "title": "Folder create/rename fails silently",
+      "severity": "medium",
+      "summary": "handleNewFolder/handleRename ignore the boolean result of createFolder/renameFolder which return false on failure and swallow the exception; no error or retry surfaced"
+    },
+    "ISS-301": {
+      "id": "ISS-301",
+      "type": "issue",
+      "status": "resolved",
+      "version": 1,
+      "created_at": "2026-09-03T09:11:25+00:00",
+      "updated_at": "2026-09-03T09:11:25+00:00",
+      "touched_round": 240,
+      "title": "Login/register handler has no in-flight guard (double-submit window)",
+      "severity": "low",
+      "summary": "handleSubmit checks email/password but not isPending; a redundant submit before the disabled state paints issues two requests"
+    },
+    "ISS-302": {
+      "id": "ISS-302",
+      "type": "issue",
+      "status": "resolved",
+      "version": 1,
+      "created_at": "2026-09-03T09:11:26+00:00",
+      "updated_at": "2026-09-03T09:11:26+00:00",
+      "touched_round": 240,
+      "title": "Clearing reading history gives no success feedback",
+      "severity": "low",
+      "summary": "history.clearDone locale key existed but was never rendered; destructive clear silently swaps to the ambiguous empty state"
+    },
+    "ISS-303": {
+      "id": "ISS-303",
+      "type": "issue",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-03T09:11:26+00:00",
+      "updated_at": "2026-09-03T09:11:26+00:00",
+      "touched_round": 240,
+      "title": "Reading history silently truncates at 100 entries (no load-more)",
+      "severity": "medium",
+      "summary": "useReadingHistory fetches a single page of 100 and never pages; readers with more server-side history cannot reach older entries. (Deferred to a follow-up round: notifications page already models the paging pattern.)"
+    },
+    "CHG-342": {
+      "id": "CHG-342",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-03T09:11:26+00:00",
+      "updated_at": "2026-09-03T09:11:26+00:00",
+      "touched_round": 240,
+      "title": "Reader-account UI fixes: notifications sign-out reset+redirect, prefs retry, bookmarks reactive auth + folder filter reset + folder-action failure alert, login isPending guard, history clear confirmation",
+      "commit": "3508d66"
     }
   },
   "edges": [
@@ -24294,6 +24389,84 @@
       "to": "COMP-002",
       "type": "governs",
       "created_at": "2026-09-03T03:40:59+00:00"
+    },
+    {
+      "from": "CHG-342",
+      "to": "ISS-297",
+      "type": "resolves",
+      "created_at": "2026-09-03T09:12:51+00:00"
+    },
+    {
+      "from": "CHG-342",
+      "to": "ISS-298",
+      "type": "resolves",
+      "created_at": "2026-09-03T09:12:51+00:00"
+    },
+    {
+      "from": "CHG-342",
+      "to": "ISS-299",
+      "type": "resolves",
+      "created_at": "2026-09-03T09:12:51+00:00"
+    },
+    {
+      "from": "CHG-342",
+      "to": "ISS-300",
+      "type": "resolves",
+      "created_at": "2026-09-03T09:12:51+00:00"
+    },
+    {
+      "from": "CHG-342",
+      "to": "ISS-301",
+      "type": "resolves",
+      "created_at": "2026-09-03T09:12:51+00:00"
+    },
+    {
+      "from": "CHG-342",
+      "to": "ISS-302",
+      "type": "resolves",
+      "created_at": "2026-09-03T09:12:52+00:00"
+    },
+    {
+      "from": "ISS-297",
+      "to": "COMP-002",
+      "type": "located_in",
+      "created_at": "2026-09-03T09:12:52+00:00"
+    },
+    {
+      "from": "ISS-298",
+      "to": "COMP-002",
+      "type": "located_in",
+      "created_at": "2026-09-03T09:12:52+00:00"
+    },
+    {
+      "from": "ISS-299",
+      "to": "COMP-002",
+      "type": "located_in",
+      "created_at": "2026-09-03T09:12:52+00:00"
+    },
+    {
+      "from": "ISS-300",
+      "to": "COMP-002",
+      "type": "located_in",
+      "created_at": "2026-09-03T09:12:52+00:00"
+    },
+    {
+      "from": "ISS-301",
+      "to": "COMP-002",
+      "type": "located_in",
+      "created_at": "2026-09-03T09:12:52+00:00"
+    },
+    {
+      "from": "ISS-302",
+      "to": "COMP-002",
+      "type": "located_in",
+      "created_at": "2026-09-03T09:12:52+00:00"
+    },
+    {
+      "from": "ISS-303",
+      "to": "COMP-002",
+      "type": "located_in",
+      "created_at": "2026-09-03T09:12:52+00:00"
     }
   ]
 }
