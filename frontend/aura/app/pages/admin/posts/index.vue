@@ -13,11 +13,11 @@ useHead({ title: computed(() => t("admin.postsList.seoTitle")) });
 // and the debounced term that actually drives the query. Only the debounced
 // value feeds queryParams, so the reactive listing path (below) refetches at
 // most once per settled search — never on every keypress (media page pattern,
-// DEC-189).
-const searchQuery = ref("");
-const searchInput = ref("");
-const statusFilter = ref("");
-const currentPage = ref(0);
+// DEC-189). The state is a module singleton (useAdminPostListState): an editor
+// Save/Cancel round-trip unmounts this page, and without the singleton the
+// search/filter/page would reset to the unfiltered first page on return
+// (ISS-311 part 1).
+const { searchQuery, searchInput, statusFilter, currentPage } = useAdminPostListState();
 const pageSize = 20;
 
 const queryParams = computed(() => {

@@ -1,6 +1,7 @@
 import { flushPromises } from "@vue/test-utils";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ref } from "vue";
+import { resetAdminPostListState } from "../../composables/adminPostListState";
 import { mountWithSuspense } from "./helpers.ts";
 
 const { mockFetchAdminPosts, mockDeleteAdminPost } = vi.hoisted(() => ({
@@ -92,6 +93,11 @@ async function loadPage() {
 }
 
 describe("Admin Posts Page", () => {
+	beforeEach(() => {
+		// The list state is a module singleton (round-trip through the editor);
+		// a test that searched/filtered/paged must not leak into the next mount.
+		resetAdminPostListState();
+	});
 	afterEach(() => {
 		vi.restoreAllMocks();
 		window.confirm = originalConfirm;
@@ -243,6 +249,28 @@ describe("Admin Posts Page", () => {
 			expect(wrapper.text()).toContain("已发布");
 			expect(wrapper.text()).toContain("草稿");
 			expect(wrapper.text()).toContain("定时发布");
+		});
+
+		it("restores the search box and status filter across a remount (editor round-trip, ISS-311)", async () => {
+			// The editor returns via a hardcoded /admin/posts URL; the list's
+			// search/filter used to live in per-mount setup refs and reset on
+			// every return. The module singleton must survive the round-trip.
+			mockFetchAdminPosts.mockReturnValue({
+				data: ref(mockResponse),
+				pending: ref(false),
+				error: ref(null),
+				refresh: vi.fn(),
+			});
+			const PostsPage = await loadPage();
+			const w1 = await mountWithSuspense(PostsPage);
+			await w1.find('input[type="text"]').setValue("nuxt");
+			await w1.find("select").setValue("published");
+			await flushPromises();
+			w1.unmount();
+
+			const w2 = await mountWithSuspense(PostsPage);
+			expect((w2.find('input[type="text"]').element as HTMLInputElement).value).toBe("nuxt");
+			expect((w2.find("select").element as HTMLSelectElement).value).toBe("published");
 		});
 
 		it("feeds the debounced search term into the reactive listing params", async () => {
