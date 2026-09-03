@@ -60,6 +60,8 @@
 			"downloading": "下载中…",
 			"restoring": "恢复中…",
 			"restored": "恢复完成：{summary}",
+			"commentsCreated": "评论 +{count}",
+			"skipped": "（跳过 {count}）",
 			"parseError": "无法解析所选文件：不是有效的备份 JSON"
 		},
 		"trend": {

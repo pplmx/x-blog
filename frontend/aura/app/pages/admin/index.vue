@@ -202,6 +202,10 @@ async function loadDashboard(): Promise<void> {
 		loadError.value = true;
 	} finally {
 		loading.value = false;
+		// Stamp the data-freshness time when the load actually completes (deep-dive
+		// finding ISS-310): the previous const captured setup-time once, so a
+		// post-action reload showed a stale "Updated at" despite fresh numbers.
+		loadedAt.value = new Date().toLocaleString(locale.value === "zh" ? "zh-CN" : "en-US");
 	}
 }
 onMounted(() => {
@@ -287,7 +291,10 @@ function backupCounts(counts: Record<string, number>): string {
 		`${t("admin.dashboard.stats.categories")} +${counts.categories ?? 0}`,
 		`${t("admin.dashboard.stats.tags")} +${counts.tags ?? 0}`,
 		`${t("admin.dashboard.stats.posts")} +${counts.posts_created ?? 0}`,
-		`评论 +${counts.comments_created ?? 0} (跳过 ${counts.comments_skipped ?? 0})`,
+		t("admin.dashboard.backup.commentsCreated", { count: counts.comments_created ?? 0 }) +
+			((counts.comments_skipped ?? 0) > 0
+				? ` ${t("admin.dashboard.backup.skipped", { count: counts.comments_skipped ?? 0 })}`
+				: ""),
 	].join(" · ");
 }
 
@@ -434,7 +441,7 @@ async function handleApprove(commentId: number, approved: boolean) {
 	}
 }
 
-const loadedAt = new Date().toLocaleString(locale.value === "zh" ? "zh-CN" : "en-US");
+const loadedAt = ref(new Date().toLocaleString(locale.value === "zh" ? "zh-CN" : "en-US"));
 
 const stats = computed(() => [
 	{

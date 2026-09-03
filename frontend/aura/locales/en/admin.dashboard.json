@@ -60,6 +60,8 @@
 			"downloading": "Downloading…",
 			"restoring": "Restoring…",
 			"restored": "Restore complete: {summary}",
+			"commentsCreated": "Comments +{count}",
+			"skipped": "({count} skipped)",
 			"parseError": "Could not parse the chosen file: not a valid backup JSON"
 		},
 		"trend": {
