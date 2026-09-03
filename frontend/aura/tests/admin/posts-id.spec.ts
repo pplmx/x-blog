@@ -1004,6 +1004,35 @@ describe("Admin Post Editor Page", () => {
 			);
 		});
 
+		it("manual Save after auto-save updates the autosaved draft instead of a second create (CRITICAL)", async () => {
+			// After the debounced auto-save creates the draft and points the
+			// address bar at /admin/posts/7, this component instance still holds
+			// isNew/postId = null (setup-time consts; SPA reuses the instance on
+			// param-only navigation). A plain create in manual Save would regenerate
+			// the identical slug → backend 400 "Slug already exists" (or duplicate
+			// the post with a changed slug). Save must target the autosaved draft.
+			const { wrapper } = await autosavePage("new");
+
+			const titleInput = wrapper.find('input[type="text"]');
+			await titleInput.setValue("My Auto Draft");
+			const contentTextarea = wrapper.find('textarea[rows="15"]');
+			await contentTextarea.setValue("# Draft body");
+			await vi.advanceTimersByTimeAsync(1000);
+			await flushPromises();
+			expect(mockCreateAdminPost).toHaveBeenCalledTimes(1); // draft exists
+
+			mockCreateAdminPost.mockClear();
+			const form = wrapper.find("form");
+			await form.trigger("submit.prevent");
+			await flushPromises();
+
+			expect(mockCreateAdminPost).not.toHaveBeenCalled();
+			expect(mockUpdateAdminPost).toHaveBeenCalledTimes(1);
+			const [targetId, payload] = mockUpdateAdminPost.mock.calls[0] as [number, object];
+			expect(targetId).toBe(7);
+			expect(payload).toMatchObject({ slug: "my-auto-draft", title: "My Auto Draft" });
+		});
+
 		it("auto-saves edits to an existing post via the update endpoint", async () => {
 			const { wrapper } = await autosavePage("1");
 

@@ -506,11 +506,14 @@ function handleCommentSubmitted() {
           <ShareButtons :title="post.title" />
         </div>
 
-        <!-- Comments -->
+        <!-- Comments: keyed by post id so SPA navigation (prev/next, related,
+             TOC) between posts remounts the thread — useComments builds its path
+             once at setup, so a reused instance would keep showing the previous
+             article's comments (deep-dive finding). -->
         <section v-if="post.id" class="mt-12 pt-8 border-t border-gray-100 dark:border-gray-800">
-          <CommentList ref="commentListRef" :post-id="post.id" />
+          <CommentList :key="post.id" ref="commentListRef" :post-id="post.id" />
           <div class="mt-10 pt-8 border-t border-gray-100 dark:border-gray-800">
-            <CommentForm :post-id="post.id" @submitted="handleCommentSubmitted" />
+            <CommentForm :key="post.id" :post-id="post.id" @submitted="handleCommentSubmitted" />
           </div>
         </section>
 

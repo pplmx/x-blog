@@ -400,10 +400,17 @@ async function handleSubmit(e: Event) {
 	try {
 		// These commands reject with a FetchError on HTTP failure (422 detail
 		// lands in .data.detail); success resolves with the persisted post id.
-		if (postId === null) {
+		// A new post whose auto-save already created the draft lives under
+		// `autosavedId` — isNew/postId are setup-time consts, so after the
+		// address bar was pointed at /admin/posts/{id} this instance still sees
+		// postId === null and a plain create would regenerate the identical slug
+		// and 400 "Slug already exists" (or duplicate the post with a different
+		// slug). Save INTO the autosaved draft instead. (CRITICAL deep-dive)
+		const targetId = postId ?? autosavedId;
+		if (targetId === null) {
 			await createAdminPost(payload as PostCreate);
 		} else {
-			await updateAdminPost(postId, payload);
+			await updateAdminPost(targetId, payload);
 		}
 		isDirty.value = false; // don't re-prompt during the redirect
 		navigateTo("/admin/posts", { replace: true });
