@@ -1329,6 +1329,43 @@ describe("Post Detail Page", () => {
 			wrapper.unmount();
 		});
 
+		it("keeps Tab inside the sheet and the backdrop is not a tab stop", async () => {
+			const postWithHeadings = { ...mockPost, content: multiHeadingContent };
+			// Attach so document.activeElement resolves real focus in the sheet.
+			const wrapper = await mountPostPage({ post: postWithHeadings, attachToDoc: true });
+			await scrollPage(400);
+			await wrapper.find('[data-testid="toc-fab"]').trigger("click");
+			await flushPromises();
+
+			const sheet = wrapper.find('[data-testid="mobile-toc-sheet"]');
+			const links = sheet.findAll('a[href^="#"]');
+			expect(links.length).toBeGreaterThan(1);
+
+			// The backdrop is a role=presentation div (aria-hidden, no tabindex),
+			// NOT a button — so it is not an indistinct full-screen tab stop.
+			const backdrop = wrapper.find('[data-testid="toc-backdrop"]');
+			expect(backdrop.element.tagName).toBe("DIV");
+			expect(backdrop.attributes("aria-hidden")).toBe("true");
+			expect(backdrop.attributes("tabindex")).toBeUndefined();
+
+			// The panel's first focusable in DOM order is the close button (it
+			// precedes the links); last is the final heading link. Tab from the
+			// last link wraps back to the close button instead of escaping into
+			// the article behind the modal.
+			const firstFocusable = wrapper.find('[data-testid="toc-close"]').element as HTMLElement;
+			const lastLink = links[links.length - 1].element as HTMLAnchorElement;
+
+			lastLink.focus();
+			await wrapper.find(".toc-sheet-panel").trigger("keydown", { key: "Tab" });
+			expect(document.activeElement).toBe(firstFocusable);
+
+			// Shift+Tab on the close button wraps to the last link.
+			firstFocusable.focus();
+			await wrapper.find(".toc-sheet-panel").trigger("keydown", { key: "Tab", shiftKey: true });
+			expect(document.activeElement).toBe(lastLink);
+			wrapper.unmount();
+		});
+
 		it("clicking a heading scrolls to it and dismisses the sheet", async () => {
 			window.scrollTo = vi.fn();
 			Element.prototype.scrollIntoView = vi.fn();

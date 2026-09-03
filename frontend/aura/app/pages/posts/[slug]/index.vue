@@ -129,7 +129,11 @@ async function handleLike() {
 		if (liked) {
 			post.value = liked;
 		} else {
-			await usePost(route.params.slug as string);
+			// No post payload returned: refresh through the useFetch seam
+			// (refreshPost) — calling usePost() here would silently no-op, since
+			// useFetch-driven composables must be called during setup, not from
+			// an event handler.
+			await refreshPost();
 		}
 	} catch (_err) {
 		likeError.value = t("post.likeError");
@@ -171,6 +175,29 @@ function closeToc() {
 	document.body.style.overflow = "";
 	// Return focus to the trigger so keyboard users resume where they left off.
 	tocFabEl.value?.focus();
+}
+
+// Keep Tab inside the sheet (aria-modal dialog): without a trap, a keyboard
+// user tabs out of the outline into the article that is supposed to be inert
+// behind the backdrop. Wraps between the first and last focusable inside the
+// panel (the backdrop is deliberately non-focusable, see template).
+function onSheetKeydown(event: KeyboardEvent) {
+	if (event.key !== "Tab") return;
+	const panel = tocSheetEl.value;
+	if (!panel) return;
+	const focusables = panel.querySelectorAll<HTMLElement>(
+		'a[href], button:not([disabled]), [tabindex]:not([tabindex="-1"])',
+	);
+	if (focusables.length === 0) return;
+	const first = focusables[0];
+	const last = focusables[focusables.length - 1];
+	if (event.shiftKey && document.activeElement === first) {
+		event.preventDefault();
+		last.focus();
+	} else if (!event.shiftKey && document.activeElement === last) {
+		event.preventDefault();
+		first.focus();
+	}
 }
 
 // Re-created per post so SPA navigation between posts re-observes the new
@@ -387,11 +414,14 @@ function handleCommentSubmitted() {
         :aria-label="t('post.tableOfContents')"
         data-testid="mobile-toc-sheet"
       >
-        <!-- Backdrop: click anywhere outside the panel to dismiss. -->
-        <button
-          type="button"
+        <!-- Backdrop: click anywhere outside the panel to dismiss. A plain div
+             (role=presentation, aria-hidden) so it is NOT a focusable tab stop —
+             the sheet's dialog must keep keyboard focus inside the panel; Escape
+             and the close button cover keyboard dismissal. -->
+        <div
+          role="presentation"
+          aria-hidden="true"
           class="absolute inset-0 w-full h-full bg-black/40 backdrop-blur-[2px] cursor-default"
-          :aria-label="t('common.action.close')"
           data-testid="toc-backdrop"
           @click="closeToc"
         />
@@ -400,6 +430,7 @@ function handleCommentSubmitted() {
           tabindex="-1"
           class="toc-sheet-panel absolute bottom-0 inset-x-0 max-h-[70vh] overflow-y-auto rounded-t-2xl bg-white dark:bg-gray-900 shadow-2xl outline-none p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))]"
           @keydown.esc="closeToc"
+          @keydown="onSheetKeydown"
         >
           <div class="flex items-center justify-between mb-3">
             <h2 class="text-base font-bold text-gray-900 dark:text-gray-100 flex items-center gap-2">
