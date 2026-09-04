@@ -95,6 +95,51 @@ describe("useMarkdown features", () => {
 		expect(mathSeg.displayMode).toBe(false);
 	});
 
+	it("does not turn prose dollar amounts or shell vars into inline math", () => {
+		// "$5 to $10", "`$PATH $HOME`" and "$5–$10" must stay literal prose, not
+		// become math "5 to " / "PATH " / "5–" (the regex pairs the first two $
+		// it finds — English prose and backtick code were unprotected, only CJK
+		// text was).
+		const prose = useMarkdown("The price is $5 to $10 depending on the plan");
+		expect(prose.segments.some((s) => s.type === "math")).toBe(false);
+
+		const shell = useMarkdown("Use `$PATH $HOME` in your profile");
+		expect(shell.segments.some((s) => s.type === "math")).toBe(false);
+
+		const dash = useMarkdown("Ticket is $5–$10 for students");
+		expect(dash.segments.some((s) => s.type === "math")).toBe(false);
+	});
+
+	it("still extracts valid inline math next to prose", () => {
+		// The token guard must not break real formulas, including ones that
+		// open with a backslash/delimiter or end with a closing brace.
+		const simple = useMarkdown("Area is $A = \\pi r^2$ for a circle");
+		const m1 = simple.segments.find((s) => s.type === "math") as any;
+		expect(m1).toBeDefined();
+		expect(m1.formula).toBe("A = \\pi r^2");
+		expect(m1.displayMode).toBe(false);
+
+		const braced = useMarkdown("Sets satisfy $\\{x \\mid x > 0\\}$");
+		expect(braced.segments.some((s) => s.type === "math")).toBe(true);
+	});
+
+	it("keeps a figure-wrapped image with its caption instead of extracting it", () => {
+		// <figure><img><figcaption> must render as one block: extracting the
+		// <img> into its own segment would leave an empty box + a detached
+		// image + an orphaned caption.
+		const r = useMarkdown(
+			'<figure><img src="/img/a.png" alt="Diagram"><figcaption>Caption text</figcaption></figure>',
+		);
+		expect(r.segments.some((s) => s.type === "image")).toBe(false);
+		const html = r.segments
+			.filter((s) => s.type === "html")
+			.map((s) => (s as { html: string }).html)
+			.join("");
+		expect(html).toContain("<figure");
+		expect(html).toContain("figcaption");
+		expect(html).toContain('src="/img/a.png"');
+	});
+
 	it("extracts single-line display math", () => {
 		const r = useMarkdown("$$\\frac{a}{b}$$");
 		const mathSeg = r.segments.find((s) => s.type === "math") as any;

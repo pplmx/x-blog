@@ -166,6 +166,25 @@ describe("Account settings page", () => {
 		expect(wrapper.text()).toContain("还没有绑定任何推送设备");
 	});
 
+	it("routes an expired reader session back to sign-in instead of per-section load failures", async () => {
+		// A stale reader JWT 401s every account loader at once; the page must
+		// logout + redirect (matching notifications.vue and the password/delete
+		// flows) rather than sit in unrecoverable "Failed to load" states that
+		// still look signed-in.
+		isAuthenticated.value = true;
+		const navigateTo = vi.fn();
+		vi.stubGlobal("navigateTo", navigateTo);
+		mockFetchPushSubscriptions.mockRejectedValue({
+			statusCode: 401,
+			response: { status: 401, _data: { detail: "Could not validate credentials" } },
+		});
+		const wrapper = await mountPage();
+		await flushPromises();
+		expect(logout).toHaveBeenCalled();
+		expect(navigateTo).toHaveBeenCalledWith("/login");
+		wrapper.unmount();
+	});
+
 	it("renders a bound device with a revoke action", async () => {
 		isAuthenticated.value = true;
 		mockFetchPushSubscriptions.mockResolvedValue({ items: [makeDevice()], total: 1 });

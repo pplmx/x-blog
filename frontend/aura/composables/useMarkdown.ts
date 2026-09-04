@@ -94,13 +94,28 @@ function extractMath(
 	const processed = content.replace(
 		/\$\$(\s*[\s\S]*?\s*)\$\$|\$(.*?)\$/g,
 		(_match, displayFormula: string | undefined, inlineFormula: string | undefined) => {
+			// Keep the raw inline capture: its leading/trailing whitespace is the
+			// corruption telltale ("$5 to $" pairs two unrelated dollars across a
+			// space), and .trim() below would scrub it away.
+			const rawInline = inlineFormula ?? "";
 			const formula = (displayFormula ?? inlineFormula ?? "").trim();
 			if (!formula) return _match;
 			// Guard against prose with dollar signs (prices, shell vars):
-			// "原价 $5，现价 $10" must not become math "5，现价". Reject inline
-			// formulas that contain CJK characters outside \text{...} groups
-			// (legitimate formulas use \text{中文} for CJK text).
+			// "原价 $5，现价 $10" must not become math "5，现价", and backtick
+			// code/English prose like "`$PATH $HOME`" or "costs $5 to $10" must
+			// not become "PATH " / "5 to " (the regex pairs the first two `$`s
+			// it finds). First signal: the raw capture is bounded by whitespace
+			// — the two `$` were never meant to pair. Second: a real formula
+			// starts and ends with a letter, digit, backslash (LaTeX command
+			// opener) or a closing brace, so fragments like "5–" (a price
+			// range) are not math either.
 			if (inlineFormula !== undefined) {
+				if (/^\s|\s$/.test(rawInline)) return _match;
+				if (!/^[A-Za-z0-9\\]/.test(formula) || !/[A-Za-z0-9\\}]$/.test(formula)) {
+					return _match;
+				}
+				// Reject inline formulas that contain CJK characters outside
+				// \text{...} groups (legitimate formulas use \text{中文}).
 				const withoutTextGroup = formula.replace(/\\text\{[^}]*\}/g, "");
 				// CJK range: 一-鿿 (common) + 㐀-䶿 (extended)
 				if (/[一-鿿㐀-䶿]/.test(withoutTextGroup)) return _match;
@@ -145,17 +160,30 @@ function extractImages(
 	content: string,
 	keygen: { v: number },
 ): { segments: Segment[]; processed: string } {
-	const segments: Segment[] = [];
-	const processed = content.replace(/<img\s+([^>]*?)>/gi, (_match, attrs: string) => {
-		const srcMatch = attrs.match(/src\s*=\s*"([^"]*)"/);
-		const altMatch = attrs.match(/alt\s*=\s*"([^"]*)"/);
-		if (!srcMatch) return _match; // leave intact if no src
-		const src = srcMatch[1] ?? "";
-		const alt = altMatch ? (altMatch[1] ?? "") : "";
-		const key = makeKey("image", keygen);
-		segments.push({ type: "image", src, alt, key });
-		return `<!--image:${key}-->`;
+	// A <figure> wraps its <img> WITH a <figcaption>: extracting just the <img>
+	// would leave an empty box + a detached image + an orphaned caption. Keep
+	// figure blocks intact so the image renders inside its caption (plain img,
+	// no lazy-load, but correctly associated). Stash + restore via unbreakable
+	// markers so their inner <img> also never trips the segment extraction.
+	const figures: string[] = [];
+	const stashed = content.replace(/<figure\b[^>]*>[\s\S]*?<\/figure>/gi, (fig) => {
+		figures.push(fig);
+		return `<!--figure:${figures.length - 1}-->`;
 	});
+
+	const segments: Segment[] = [];
+	const processed = stashed
+		.replace(/<img\s+([^>]*?)>/gi, (_match, attrs: string) => {
+			const srcMatch = attrs.match(/src\s*=\s*"([^"]*)"/);
+			const altMatch = attrs.match(/alt\s*=\s*"([^"]*)"/);
+			if (!srcMatch) return _match; // leave intact if no src
+			const src = srcMatch[1] ?? "";
+			const alt = altMatch ? (altMatch[1] ?? "") : "";
+			const key = makeKey("image", keygen);
+			segments.push({ type: "image", src, alt, key });
+			return `<!--image:${key}-->`;
+		})
+		.replace(/<!--figure:(\d+)-->/g, (_m, i: string) => figures[Number(i)] ?? "");
 	return { segments, processed };
 }
 

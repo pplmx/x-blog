@@ -235,7 +235,11 @@ function lineNumbers(code: string): number[] {
         v-else-if="seg.type === 'code'"
         class="relative group my-4 rounded-lg overflow-hidden border border-gray-200 dark:border-gray-800"
       >
-        <div class="flex items-center justify-between px-4 py-2.5 bg-gray-800 dark:bg-gray-950 text-gray-300 text-sm border-b border-gray-700">
+        <!-- The header bar (language + Copy button) and the line-number gutter
+             are editor chrome, not article content: no-print so the print/PDF
+             route emits only the code itself (main.css @media print hides
+             header/footer/nav/.no-print). -->
+        <div class="no-print flex items-center justify-between px-4 py-2.5 bg-gray-800 dark:bg-gray-950 text-gray-300 text-sm border-b border-gray-700">
           <div class="flex items-center gap-2">
             <Icon icon="lucide:file-code" class="w-4 h-4 opacity-60" />
             <span class="font-mono font-medium">{{ seg.lang }}</span>
@@ -265,7 +269,7 @@ function lineNumbers(code: string): number[] {
         <div class="flex bg-[#1a1b26]">
           <!-- Line numbers -->
           <div
-            class="py-4 pr-4 pl-4 text-right select-none text-gray-500 text-xs font-mono leading-6 border-r border-gray-700/50"
+            class="no-print py-4 pr-4 pl-4 text-right select-none text-gray-500 text-xs font-mono leading-6 border-r border-gray-700/50"
             aria-hidden="true"
           >
             <div v-for="n in lineNumbers(seg.code)" :key="`ln-${n}`">{{ n }}</div>

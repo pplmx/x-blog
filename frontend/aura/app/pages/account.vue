@@ -127,15 +127,32 @@ const devicesLoadFailed = ref(false);
 const revokingId = ref<number | null>(null);
 const deviceError = ref(false);
 
+/** Shared catch for the account page's reader-scoped loads: an expired/revoked
+ * reader JWT 401s every reader endpoint at once (they share the auth
+ * dependency), so without this the whole page sits in per-section "Failed to
+ * load" states whose Retry can never succeed while still looking signed-in.
+ * Route to sign-in on a stale session (notifications.vue + the password/delete
+ * flows already do this); any other failure just marks that section failed. */
+function handleLoadFailure(err: unknown, markFailed: () => void): void {
+	if (isStaleSession(err)) {
+		logout();
+		void navigateTo("/login");
+		return;
+	}
+	markFailed();
+}
+
 async function loadDevices() {
 	if (!isAuthenticated.value) return;
 	devicesLoadFailed.value = false;
 	try {
 		const data = await getMyPushSubscriptions();
 		devices.value = data.items;
-	} catch {
+	} catch (err) {
 		devices.value = [];
-		devicesLoadFailed.value = true;
+		handleLoadFailure(err, () => {
+			devicesLoadFailed.value = true;
+		});
 	}
 	devicesLoaded.value = true;
 }
@@ -230,9 +247,11 @@ async function loadThreads() {
 	try {
 		const data = await getMyPostSubscriptions();
 		threads.value = data.items;
-	} catch {
+	} catch (err) {
 		threads.value = [];
-		threadsLoadFailed.value = true;
+		handleLoadFailure(err, () => {
+			threadsLoadFailed.value = true;
+		});
 	}
 	threadsLoaded.value = true;
 }
@@ -265,9 +284,11 @@ async function loadSeriesFollows() {
 	seriesFollowsLoadFailed.value = false;
 	try {
 		seriesFollows.value = (await getReaderSeriesFollows()).items ?? [];
-	} catch {
+	} catch (err) {
 		seriesFollows.value = [];
-		seriesFollowsLoadFailed.value = true;
+		handleLoadFailure(err, () => {
+			seriesFollowsLoadFailed.value = true;
+		});
 	}
 	seriesFollowsLoaded.value = true;
 }
@@ -315,9 +336,11 @@ async function loadCategoryFollows() {
 	categoryFollowsLoadFailed.value = false;
 	try {
 		categoryFollows.value = (await getReaderCategoryFollows()).items ?? [];
-	} catch {
+	} catch (err) {
 		categoryFollows.value = [];
-		categoryFollowsLoadFailed.value = true;
+		handleLoadFailure(err, () => {
+			categoryFollowsLoadFailed.value = true;
+		});
 	}
 	categoryFollowsLoaded.value = true;
 }
@@ -364,9 +387,11 @@ async function loadTagFollows() {
 	tagFollowsLoadFailed.value = false;
 	try {
 		tagFollows.value = (await getReaderTagFollows()).items ?? [];
-	} catch {
+	} catch (err) {
 		tagFollows.value = [];
-		tagFollowsLoadFailed.value = true;
+		handleLoadFailure(err, () => {
+			tagFollowsLoadFailed.value = true;
+		});
 	}
 	tagFollowsLoaded.value = true;
 }
