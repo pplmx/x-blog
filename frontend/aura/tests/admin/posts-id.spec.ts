@@ -734,8 +734,201 @@ describe("Admin Post Editor Page", () => {
 			// last call — earlier tests in the file already submitted updates
 			const [id, payload] = mockUpdateAdminPost.mock.calls.at(-1) as any[];
 			expect(id).toBe(1);
-			expect(payload.series_id).toBeUndefined();
+			// Explicit null (not undefined/absent) — the backend's exclude_unset
+			// contract only treats a present null as "clear the series".
+			expect(payload.series_id).toBe(null);
 			expect(payload.series_order).toBe(0);
+		});
+	});
+
+	describe("Deep-dive payload normalization (round 257)", () => {
+		beforeEach(() => {
+			setupRoute("new");
+			setupMocks();
+		});
+
+		it("clears an assigned category with an explicit null on save (round 257)", async () => {
+			// Edit-mode: mockExistingPost has category_id 1 (Tech). Clearing it
+			// to "无分类" used to serialize to `undefined` → JSON.stringify drops
+			// the key → the backend's exclude_unset treated it as "unchanged" and
+			// the category was never actually cleared — a silent no-op.
+			setupRoute("1");
+			const PostEditor = await loadPage();
+			const wrapper = await mountWithSuspense(PostEditor);
+			await flushPromises();
+
+			const selects = wrapper.findAll("select");
+			await selects[0].setValue(""); // category "unassigned" option
+			await flushPromises();
+
+			const form = wrapper.find("form");
+			await form.trigger("submit.prevent");
+			await flushPromises();
+
+			expect(mockUpdateAdminPost).toHaveBeenCalled();
+			const [id, payload] = mockUpdateAdminPost.mock.calls.at(-1) as any[];
+			expect(id).toBe(1);
+			expect(payload.category_id).toBe(null);
+		});
+
+		it("sends the selected tags as NAMES on create (round 257)", async () => {
+			// The backend create schema takes `tags: list[str]` (names); update
+			// takes `tag_ids`. The picker edits ids — the editor must translate
+			// them into names for a create, or a fast Save silently drops them.
+			const PostEditor = await loadPage();
+			const wrapper = await mountWithSuspense(PostEditor);
+			await flushPromises();
+
+			const titleInput = wrapper.find('input[type="text"]');
+			await titleInput.setValue("Tagged Draft");
+			const slugInput = wrapper.findAll('input[type="text"]')[1];
+			await slugInput.setValue("tagged-draft");
+			const contentTextarea = wrapper.find("textarea");
+			await contentTextarea.setValue("# body");
+
+			const tagCheckbox = wrapper.find('input[type="checkbox"]');
+			await tagCheckbox.setChecked(); // React (id 1)
+			await flushPromises();
+
+			const form = wrapper.find("form");
+			await form.trigger("submit.prevent");
+			await flushPromises();
+
+			const [payload] = mockCreateAdminPost.mock.calls.at(-1) as any[];
+			expect(payload.tags).toEqual(["React"]);
+			expect(payload.tag_ids).toBeUndefined();
+		});
+	});
+
+	describe("Round 257 autosave races", () => {
+		beforeEach(() => {
+			vi.useFakeTimers();
+			mockCreateAdminPost.mockClear();
+			mockUpdateAdminPost.mockClear();
+		});
+		afterEach(() => {
+			vi.useRealTimers();
+			vi.restoreAllMocks();
+			// Re-establish the module-scope Nuxt stubs this spec file relies on
+			// for the describes that run AFTER this one (Markdown Toolbar etc.) —
+			// an unconditional unstubAllGlobals here would strip them mid-file.
+			vi.stubGlobal("useRuntimeConfig", () => ({
+				public: { apiUrl: "http://localhost:18888" },
+			}));
+			vi.stubGlobal("navigateTo", vi.fn());
+			vi.stubGlobal("useHead", vi.fn());
+			vi.stubGlobal("definePageMeta", vi.fn());
+		});
+
+		async function autosaveNewPage() {
+			const mockNavigateTo = vi.fn();
+			vi.stubGlobal("navigateTo", mockNavigateTo);
+			vi.stubGlobal("useRuntimeConfig", () => ({
+				public: { apiUrl: "http://localhost:18888" },
+			}));
+			vi.stubGlobal("useHead", vi.fn());
+			vi.stubGlobal("definePageMeta", vi.fn());
+			setupRoute("new");
+			setupMocks();
+			mockCreateAdminPost.mockResolvedValue({ id: 7 });
+			mockUpdateAdminPost.mockResolvedValue({ id: 7 });
+			const PostEditor = await loadPage();
+			const wrapper = await mountWithSuspense(PostEditor);
+			await flushPromises();
+			return { wrapper, mockNavigateTo };
+		}
+
+		it("points the address bar at the created draft even when publish_at is set (round 257)", async () => {
+			// The old bridge compared snapshot() (raw form, local publish_at
+			// string) against savedSnapshot (UTC-naive serialized) — unequal once
+			// a publish_at was set, so the redirect never fired and a hard refresh
+			// re-created a second draft. serializePayload() normalizes both sides.
+			const { wrapper, mockNavigateTo } = await autosaveNewPage();
+
+			const titleInput = wrapper.find('input[type="text"]');
+			await titleInput.setValue("Scheduled Draft");
+			const contentTextarea = wrapper.find('textarea[rows="15"]');
+			await contentTextarea.setValue("# body");
+			await wrapper.find("#publish_at").setValue("2026-09-01T12:34");
+			await vi.advanceTimersByTimeAsync(1000);
+			await flushPromises();
+
+			expect(mockCreateAdminPost).toHaveBeenCalledTimes(1);
+			expect(mockNavigateTo).toHaveBeenCalledWith("/admin/posts/7", { replace: true });
+		});
+
+		it("manual Save waits for an in-flight autosave-create instead of racing a second create (round 257)", async () => {
+			const { wrapper } = await autosaveNewPage();
+
+			// The first autosave-create stays in flight until we resolve it:
+			// autosavedId is still null when the manual Save lands.
+			let resolveCreate!: (v: { id: number }) => void;
+			mockCreateAdminPost.mockImplementation(
+				() =>
+					new Promise((res) => {
+						resolveCreate = res;
+					}),
+			);
+
+			const titleInput = wrapper.find('input[type="text"]');
+			await titleInput.setValue("Raced Draft");
+			const contentTextarea = wrapper.find('textarea[rows="15"]');
+			await contentTextarea.setValue("# body");
+			await vi.advanceTimersByTimeAsync(1000);
+			await flushPromises();
+			expect(mockCreateAdminPost).toHaveBeenCalledTimes(1);
+
+			// Manual Save while the create is mid-flight: before the fix this
+			// computed targetId=null and fired a SECOND create with the identical
+			// slug (backend 422).
+			const form = wrapper.find("form");
+			await form.trigger("submit.prevent");
+			await flushPromises();
+			expect(mockCreateAdminPost).toHaveBeenCalledTimes(1);
+
+			// Once the autosave create lands, the parked Save continues against
+			// the autosaved draft — one update targeting id 7, never a re-create.
+			resolveCreate({ id: 7 });
+			await flushPromises();
+
+			expect(mockCreateAdminPost).toHaveBeenCalledTimes(1);
+			expect(mockUpdateAdminPost).toHaveBeenCalledTimes(1);
+			const [targetId] = mockUpdateAdminPost.mock.calls[0] as [number, unknown];
+			expect(targetId).toBe(7);
+		});
+
+		it("Cancel during an in-flight autosave-create does NOT redirect back to the editor (round 257)", async () => {
+			const { wrapper, mockNavigateTo } = await autosaveNewPage();
+
+			let resolveCreate!: (v: { id: number }) => void;
+			mockCreateAdminPost.mockImplementation(
+				() =>
+					new Promise((res) => {
+						resolveCreate = res;
+					}),
+			);
+
+			const titleInput = wrapper.find('input[type="text"]');
+			await titleInput.setValue("Cancel Draft");
+			const contentTextarea = wrapper.find('textarea[rows="15"]');
+			await contentTextarea.setValue("# body");
+			await vi.advanceTimersByTimeAsync(1000);
+			await flushPromises();
+			expect(mockCreateAdminPost).toHaveBeenCalledTimes(1);
+
+			// Cancel navigates to the list while the create is still in flight…
+			const cancelButton = wrapper
+				.findAll('button[type="button"]')
+				.find((b) => b.text().includes("取消"));
+			await cancelButton?.trigger("click");
+			await flushPromises();
+			expect(mockNavigateTo).toHaveBeenCalledWith("/admin/posts", { replace: true });
+
+			// …and when the create completes, the navigateTo bridge must NOT
+			// fight the cancel by redirecting back to /admin/posts/7.
+			resolveCreate({ id: 7 });
+			await flushPromises();
+			expect(mockNavigateTo).toHaveBeenCalledTimes(1);
 		});
 	});
 

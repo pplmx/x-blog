@@ -87,11 +87,19 @@ export interface PostCreate {
 	published: boolean;
 	pinned?: boolean;
 	publish_at?: string | null;
-	category_id?: number;
+	/** null (not just absent) clears the category on update — the backend's
+	 *  exclude_unset contract distinguishes "unchanged" from "cleared". */
+	category_id?: number | null;
+	/** Picker-selected tag ids; the backend UPDATE schema takes these
+	 *  (`tag_ids`, schemas.py PostUpdate). The CREATE schema instead takes tag
+	 *  NAMES (`tags`) — the editor translates ids→names before POSTing. */
 	tag_ids?: number[];
+	/** Create-path tag names (backend schemas.py PostCreate). */
+	tags?: string[];
 	cover_image?: string;
-	/** Series membership (DEC-056/TASK-123); undefined = standalone post. */
-	series_id?: number;
+	/** Series membership; explicit null (not just absent) removes the post
+	 *  from the series, same exclude_unset distinction as category_id. */
+	series_id?: number | null;
 	series_order?: number;
 }
 

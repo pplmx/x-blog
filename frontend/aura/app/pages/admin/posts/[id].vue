@@ -11,6 +11,7 @@ import {
 import { notifyPushSubscribers } from "~~/api/admin/push";
 import { useAdminSeries } from "~~/api/admin/series";
 import { useAdminCategories, useAdminTags } from "~~/api/admin/taxonomy";
+import { parseApiDate } from "~~/composables/apiDate";
 
 definePageMeta({ layout: "admin" });
 
@@ -75,6 +76,19 @@ let autosaveQueued = false;
 let isLeavingRoute = false;
 /** Id of the draft created from a /admin/posts/new session (postId is null). */
 let autosavedId: number | null = null;
+/** Manual-Save callers parked until the autosave pipeline drains. */
+let autosaveWaiters: Array<() => void> = [];
+/** Resolve when no autosave is in flight and none is queued. handleSubmit
+ *  awaits this when a manual Save lands while the first autosave-create of a
+ *  /new session is still running: autosavedId isn't set yet, and the naive
+ *  create-vs-update decision below would fire a SECOND create with the
+ *  identical slug → backend 422 (deep-dive finding). */
+function waitForAutosaveIdle(): Promise<void> {
+	if (!autosaveInFlight && !autosaveQueued) return Promise.resolve();
+	return new Promise((resolve) => {
+		autosaveWaiters.push(resolve);
+	});
+}
 
 // Version history (DEC-158, TASK-191): per-post saved snapshots, list +
 // restore. Only meaningful for an existing post.
@@ -93,6 +107,40 @@ const isDirty = ref(false);
 let loadedSnapshot = "";
 function snapshot(): string {
 	return JSON.stringify(formData.value);
+}
+
+/**
+ * Normalize the live form into the exact wire payload.
+ *
+ * `publish_at` is "" when unset (edit-mode round-trip) → null so the backend
+ * datetime field doesn't 422. `category_id`/`series_id` are `undefined` when
+ * the picker's "unassigned" option is selected, and JSON.stringify silently
+ * drops undefined keys — combined with the backend's exclude_unset contract
+ * ("absent field = unchanged") that made CLEARING a category or series a
+ * silent no-op that looked saved but never landed. Explicit null is the only
+ * form that actually clears. (deep-dive finding)
+ */
+function serializePayload(): PostCreate {
+	const payload = { ...formData.value } as PostCreate;
+	payload.publish_at = payload.publish_at ? toUtcNaiveIso(payload.publish_at) : null;
+	payload.category_id = payload.category_id ?? null;
+	payload.series_id = payload.series_id ?? null;
+	return payload;
+}
+
+/**
+ * The backend CREATE schema takes tag names (`tags: list[str]`), while UPDATE
+ * takes `tag_ids` (backend/app/schemas.py PostCreate vs PostUpdate). The tag
+ * picker edits ids, so translate ids→names for a create — otherwise a fast
+ * Save on a new post silently drops the just-selected tags (deep-dive finding).
+ */
+function withCreateTags(payload: PostCreate): PostCreate {
+	const tagIds = payload.tag_ids ?? [];
+	const { tag_ids: _tagIds, ...rest } = payload;
+	return {
+		...rest,
+		tags: tags.value.filter((tag) => tagIds.includes(tag.id)).map((tag) => tag.name),
+	};
 }
 const categories = ref<Array<{ id: number; name: string }>>([]);
 const tags = ref<Array<{ id: number; name: string }>>([]);
@@ -289,10 +337,7 @@ async function runAutosave() {
 	// (regression found in the deep-dive re-audit).
 	const startedSnapshot = snapshot();
 
-	const payload = { ...formData.value } as Partial<PostCreate>;
-	// publish_at is "" when unset (edit-mode round-trip) — normalize to null so
-	// the backend datetime field doesn't 422 (RIL TASK-190).
-	payload.publish_at = payload.publish_at ? toUtcNaiveIso(payload.publish_at) : null;
+	const payload = serializePayload();
 	// Snapshot of exactly what we're about to persist, used below to decide
 	// whether it's safe to point the address bar at the created draft.
 	const savedSnapshot = JSON.stringify(payload);
@@ -319,7 +364,7 @@ async function runAutosave() {
 		// failure, so no .data.value/.error.value ref reading is needed.
 		const created =
 			targetId === null
-				? await createAdminPost(payload as PostCreate)
+				? await createAdminPost(withCreateTags(payload))
 				: await updateAdminPost(targetId, payload);
 		const createdId = created.id;
 		if (targetId === null && createdId !== null) {
@@ -331,7 +376,11 @@ async function runAutosave() {
 			// keystrokes that arrived while the request was in flight, and
 			// never during a route-leave flush (we're already navigating away;
 			// redirecting mid-leave would fight the pending navigation).
-			if (snapshot() === savedSnapshot && !isLeavingRoute) {
+			// Compare via serializePayload(), not snapshot(): the saved payload
+			// has publish_at normalized to UTC-naive, so the raw local string
+			// comparison never equaled once a publish_at was set and the
+			// address bar was never pointed at the draft (deep-dive finding).
+			if (JSON.stringify(serializePayload()) === savedSnapshot && !isLeavingRoute) {
 				navigateTo(`/admin/posts/${createdId}`, { replace: true });
 			}
 		}
@@ -351,6 +400,14 @@ async function runAutosave() {
 			autosaveQueued = false;
 			if (autosaveTimer) clearTimeout(autosaveTimer);
 			void runAutosave();
+		}
+		// A queued re-run re-arms autosaveInFlight synchronously at its top, so
+		// this drain check is only true once the whole pipeline has truly
+		// settled — and only then are parked manual-Save waiters released.
+		if (!autosaveInFlight && !autosaveQueued && autosaveWaiters.length > 0) {
+			const waiters = autosaveWaiters;
+			autosaveWaiters = [];
+			for (const resolve of waiters) resolve();
 		}
 	}
 }
@@ -403,13 +460,22 @@ onBeforeRouteLeave(async () => {
 
 async function handleSubmit(e: Event) {
 	e.preventDefault();
+	// Re-entry guard for the handler itself: the Save button is disabled while
+	// isSubmitting, but Enter-in-form / a double click races the disabled
+	// attribute patch — same class as the taxonomy create forms (deep-dive).
+	if (isSubmitting.value) return;
+	// A manual Save landing while the first autosave-create of a /new session
+	// is still in flight must not race it: autosavedId isn't set yet, so the
+	// naive targetId below would be null → a SECOND create with the identical
+	// slug → backend 422. Let the autosave pipeline drain first (it sets
+	// autosavedId from the create's response), then target that draft.
+	if ((autosaveInFlight || autosaveQueued) && (postId ?? autosavedId) === null) {
+		await waitForAutosaveIdle();
+	}
 	isSubmitting.value = true;
 	submitError.value = null;
 
-	const payload = { ...formData.value };
-	// publish_at is "" when unset (edit-mode round-trip); normalize to null so
-	// the backend datetime field doesn't 422 on save/update (RIL TASK-190).
-	payload.publish_at = payload.publish_at ? toUtcNaiveIso(payload.publish_at) : null;
+	const payload = serializePayload();
 	// New posts start with an empty slug, which fails the backend schema
 	// pattern (^[a-z0-9]+(?:-[a-z0-9]+)*$) with a 422. Generate one from the
 	// title so a plain "fill title + content, save" flow always works.
@@ -428,7 +494,7 @@ async function handleSubmit(e: Event) {
 		// slug). Save INTO the autosaved draft instead. (CRITICAL deep-dive)
 		const targetId = postId ?? autosavedId;
 		if (targetId === null) {
-			await createAdminPost(payload as PostCreate);
+			await createAdminPost(withCreateTags(payload));
 		} else {
 			await updateAdminPost(targetId, payload);
 		}
@@ -447,6 +513,12 @@ async function handleSubmit(e: Event) {
 const discardRequested = ref(false);
 function handleCancel() {
 	discardRequested.value = true;
+	// Mark the leave BEFORE navigating — same flag the autosave bridge checks.
+	// Without it, an in-flight autosave (create) that completes after Cancel's
+	// nav starts would redirect the address bar back to the created draft,
+	// fighting the cancel and stranding the operator on the editor (deep-dive
+	// finding).
+	isLeavingRoute = true;
 	navigateTo("/admin/posts", { replace: true });
 }
 
@@ -502,8 +574,12 @@ async function loadRevisions() {
 }
 
 function formatRevisionTime(iso: string): string {
-	const d = new Date(iso);
-	return Number.isNaN(d.getTime()) ? iso : d.toLocaleString();
+	// Revision timestamps are naive-UTC (backend pins the PG session to UTC);
+	// the bare `new Date()` here parsed them as the browser's local wall-clock
+	// and showed every revision time shifted by the operator's offset.
+	// parseApiDate appends the Z the wire contract implies (deep-dive finding).
+	const d = parseApiDate(iso);
+	return d ? d.toLocaleString() : iso;
 }
 
 /** Open/close the version-history panel (lazily loads on first open). */
@@ -841,11 +917,12 @@ function handleFileInput(e: Event) {
         </div>
 
         <div>
-          <label class="flex items-center gap-2 text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+          <label for="post-slug" class="flex items-center gap-2 text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
             <Icon icon="lucide:link" class="w-4 h-4 text-gray-400" />
             {{ t("admin.postEdit.slug") }}
           </label>
           <input
+            id="post-slug"
             v-model="formData.slug"
             type="text"
             placeholder="article-slug"
@@ -873,11 +950,12 @@ function handleFileInput(e: Event) {
 
       <div class="grid gap-4 sm:grid-cols-2">
         <div class="bg-gradient-to-br from-purple-50 dark:from-purple-900/20 to-white dark:to-gray-900 border border-purple-100 dark:border-purple-900/30 rounded-2xl p-5">
-          <label class="flex items-center gap-2 text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">
+          <label for="post-category" class="flex items-center gap-2 text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">
             <Icon icon="lucide:folder" class="w-4 h-4 text-purple-500" />
             {{ t("admin.postEdit.category") }}
           </label>
           <select
+            id="post-category"
             v-model="formData.category_id"
             class="w-full rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-2.5 text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
           >
@@ -933,12 +1011,13 @@ function handleFileInput(e: Event) {
         </div>
 
         <div class="bg-gradient-to-br from-indigo-50 dark:from-indigo-900/20 to-white dark:to-gray-900 border border-indigo-100 dark:border-indigo-900/30 rounded-2xl p-5">
-          <label class="flex items-center gap-2 text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">
+          <label for="post-series" class="flex items-center gap-2 text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">
             <Icon icon="lucide:layers" class="w-4 h-4 text-indigo-500" />
             {{ t("admin.postEdit.series") }}
           </label>
           <div class="space-y-3">
             <select
+              id="post-series"
               v-model="formData.series_id"
               class="w-full rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-2.5 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
             >
@@ -951,10 +1030,11 @@ function handleFileInput(e: Event) {
                  clears the membership, drop the order back to 0 so a standalone
                  post never carries a stray position -->
             <div class="flex items-center gap-3">
-              <label class="text-sm text-gray-600 dark:text-gray-400 shrink-0">
+              <label for="post-series-order" class="text-sm text-gray-600 dark:text-gray-400 shrink-0">
                 {{ t("admin.postEdit.seriesOrder") }}
               </label>
               <input
+                id="post-series-order"
                 v-model.number="formData.series_order"
                 type="number"
                 min="0"
