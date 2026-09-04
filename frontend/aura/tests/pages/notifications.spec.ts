@@ -292,6 +292,9 @@ describe("Notifications page (TASK-192)", () => {
 		expect(wrapper.text()).toContain("网络错误，请稍后重试");
 		expect(mockLogout).not.toHaveBeenCalled();
 		expect(mockReplace).not.toHaveBeenCalled();
+		// A failed load must never masquerade as an empty inbox: the "no
+		// notifications" empty state is suppressed while the error banner shows.
+		expect(wrapper.text()).not.toContain("暂无通知");
 	});
 
 	it("logs an expired session out and redirects to login on a 401 (ISS-110)", async () => {

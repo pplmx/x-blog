@@ -425,13 +425,16 @@ function kindIcon(kind: string): string {
       <Icon icon="lucide:loader-2" class="w-8 h-8 animate-spin mx-auto" />
     </div>
 
-    <div v-else-if="items.length === 0" class="py-16 text-center">
+    <!-- A failed initial load must NOT masquerade as an empty inbox: when error
+         is set the banner above already explains + offers retry, so neither the
+         "no notifications" empty state nor an empty list renders beneath it. -->
+    <div v-else-if="!error && items.length === 0" class="py-16 text-center">
       <Icon icon="lucide:bell-off" class="w-12 h-12 text-gray-300 dark:text-gray-700 mx-auto mb-4" />
       <p class="text-lg font-semibold text-gray-700 dark:text-gray-300">{{ t('notifications.empty') }}</p>
       <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">{{ t('notifications.emptyDesc') }}</p>
     </div>
 
-    <ul v-else class="space-y-3">
+    <ul v-else-if="!error" class="space-y-3">
       <li
         v-for="item in items"
         :key="item.id"

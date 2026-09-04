@@ -194,7 +194,24 @@ async function toggleNotify() {
 
     <div v-else-if="!series" class="text-center py-20 text-gray-500">
       <Icon icon="lucide:layers" class="w-12 h-12 mx-auto mb-4 text-gray-300" />
-      <p>{{ t('series.notFound') }}</p>
+      <p class="mb-4">{{ t('series.notFound') }}</p>
+      <p class="text-sm mb-6">
+        {{ t('series.notFoundHint') }}
+      </p>
+      <div class="flex items-center justify-center gap-3">
+        <NuxtLink
+          to="/series"
+          class="px-4 py-2 rounded-lg text-sm font-medium border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+        >
+          {{ t('series.backToAll') }}
+        </NuxtLink>
+        <NuxtLink
+          to="/"
+          class="px-4 py-2 rounded-lg text-sm font-medium text-blue-600 dark:text-blue-400 hover:underline"
+        >
+          {{ t('common.action.backHome') }}
+        </NuxtLink>
+      </div>
     </div>
 
     <div v-else class="space-y-8 pt-8">

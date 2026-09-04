@@ -172,6 +172,12 @@ describe("Series Detail Page", () => {
 	it("renders the not-found state when there is no series", async () => {
 		const wrapper = await mountSeriesDetailPage({ series: null });
 		expect(wrapper.text()).toContain("系列不存在");
+		// A dead end is never acceptable: the not-found state offers a way back
+		// to the series index and home (mirrors the post page's not-found exits).
+		expect(wrapper.text()).toContain("返回全部系列");
+		expect(wrapper.text()).toContain("返回首页");
+		expect(wrapper.findAll('a[href="/series"]').length).toBeGreaterThan(0);
+		expect(wrapper.findAll('a[href="/"]').length).toBeGreaterThan(0);
 	});
 
 	it("renders loading skeletons while pending", async () => {

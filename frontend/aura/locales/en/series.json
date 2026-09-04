@@ -5,6 +5,7 @@
 		"countLabel": "{count} series in total",
 		"empty": "No series yet",
 		"notFound": "Series not found",
+		"notFoundHint": "The series may have been removed or renamed. Browse the others below.",
 		"backToAll": "Back to all series",
 		"partLabel": "Part {position} of {count}",
 		"serialLabel": "In this series",

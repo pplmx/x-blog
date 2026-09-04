@@ -5,6 +5,7 @@
 		"countLabel": "共 {count} 个系列",
 		"empty": "暂无系列",
 		"notFound": "系列不存在",
+		"notFoundHint": "该系列可能已被删除或改名，看看其他系列吧。",
 		"backToAll": "返回全部系列",
 		"partLabel": "第 {position} 篇 / 共 {count} 篇",
 		"serialLabel": "本系列文章",
