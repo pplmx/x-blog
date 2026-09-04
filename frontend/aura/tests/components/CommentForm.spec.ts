@@ -193,6 +193,38 @@ describe("CommentForm", () => {
 		});
 	});
 
+	describe("Double-submit guard (deep-dive)", () => {
+		it("does not POST twice when the form is submitted again mid-flight", async () => {
+			// The submit BUTTON is disabled while `submitting`, but the native
+			// form submit also fires on Enter in the nickname/email inputs, and a
+			// fast double-click can beat Vue patching `disabled` in the same
+			// frame — a quick second submit must be a no-op, not a second POST.
+			const wrapper = await mountCommentForm();
+			// mountCommentForm resets the mock on setup, so arm the deferred
+			// implementation only now (before any submit triggers one).
+			let resolveCreate!: (v: unknown) => void;
+			mockCreateComment.mockImplementation(
+				() =>
+					new Promise((resolve) => {
+						resolveCreate = resolve;
+					}),
+			);
+			await (wrapper.find("#comment-nickname") as any).setValue("Alice");
+			await (wrapper.find('input[type="email"]') as any).setValue("alice@test.com");
+			await (wrapper.find("textarea") as any).setValue("Great post!");
+
+			await wrapper.find("form").trigger("submit.prevent");
+			await wrapper.find("form").trigger("submit.prevent");
+			await wrapper.find("form").trigger("submit.prevent");
+			// Nothing resolved yet — all three submits were in-flight together.
+			expect(mockCreateComment).toHaveBeenCalledTimes(1);
+
+			resolveCreate({});
+			await flushPromises();
+			expect(mockCreateComment).toHaveBeenCalledTimes(1);
+		});
+	});
+
 	describe("Submission success", () => {
 		it("shows success message after successful submission", async () => {
 			const wrapper = await mountCommentForm();

@@ -175,9 +175,9 @@ describe("MarkdownContent", () => {
 			// is excluded from print/PDF output so the article prints only the
 			// code itself (main.css @media print hides .no-print).
 			expect(wrapper.findAll(".no-print.text-right.select-none").length).toBe(lineNumbers.length);
-			expect(
-				wrapper.findAll(".no-print.flex.items-center.justify-between").length,
-			).toBeGreaterThan(0);
+			expect(wrapper.findAll(".no-print.flex.items-center.justify-between").length).toBeGreaterThan(
+				0,
+			);
 		});
 
 		it('renders non-language code blocks as "text"', async () => {

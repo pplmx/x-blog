@@ -805,8 +805,14 @@ const refreshError = ref<string | null>(null);
 // useReadingHistory ISS-128, HeaderSearch).
 let refreshSeq = 0;
 
-async function fetchPage(): Promise<void> {
+async function fetchPage(seq: number): Promise<void> {
 	const data = await getComments(props.postId, currentPage.value, 20, currentSort.value);
+	// The sequence is authoritative for the DATA too, not just the error banner:
+	// a slow page-3 response landing after the reader already clicked to page 4
+	// must not overwrite page 4 with page 3 (deep-dive finding — the old guard
+	// only protected refreshError/refreshing, so the list could show page 3
+	// while pagination highlighted page 4).
+	if (seq !== refreshSeq) return;
 	commentData.value = data;
 	if (data.items.length === 0 && data.total > 0) {
 		// The current page drained (e.g. the last comment of the LAST page was
@@ -815,7 +821,7 @@ async function fetchPage(): Promise<void> {
 		const last = Math.max(1, data.total_pages || 1);
 		if (currentPage.value !== last) {
 			currentPage.value = last;
-			await fetchPage(); // bounded: last page resolves with items or is terminal
+			await fetchPage(seq); // bound: same intent, so keep its sequence slot
 		}
 	}
 }
@@ -825,7 +831,7 @@ async function refreshList(): Promise<boolean> {
 	refreshing.value = true;
 	refreshError.value = null;
 	try {
-		await fetchPage();
+		await fetchPage(seq);
 	} catch {
 		// Only the latest attempt owns the error banner (a stale in-flight
 		// rejection from an older sort/page must not blame the current state).

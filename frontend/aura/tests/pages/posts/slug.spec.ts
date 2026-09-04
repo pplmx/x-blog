@@ -13,7 +13,7 @@
 
 import { flushPromises, mount } from "@vue/test-utils";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { ref } from "vue";
+import { type Ref, ref } from "vue";
 
 // Mock post data matching the Post interface
 const mockPost = {
@@ -1508,6 +1508,166 @@ describe("Post Detail Page", () => {
 			await flushPromises();
 			await flushPromises();
 			expect(wrapper.find('[role="status"]').exists()).toBe(false);
+			wrapper.unmount();
+		});
+	});
+
+	describe("SPA round-trip races (deep-dive)", () => {
+		/** Self-contained mount that exposes the post data ref so a test can
+		 * switch the post mid-flight (as an SPA navigation does) by mutating it. */
+		async function mountWithDataRef(postData: Ref<typeof mockPost | null>) {
+			vi.stubGlobal("useRuntimeConfig", () => ({
+				public: { apiUrl: "http://localhost:18888" },
+			}));
+			vi.stubGlobal("useHead", vi.fn());
+			vi.stubGlobal("useRoute", () => ({
+				params: { slug: "test-article-post" },
+				query: {},
+			}));
+			vi.stubGlobal("navigateTo", vi.fn());
+			vi.stubGlobal(
+				"useFetch",
+				vi.fn((_url: string) => ({
+					data: postData,
+					pending: ref(false),
+					error: ref(null),
+					refresh: vi.fn(),
+				})),
+			);
+			// No $fetch default here: the view/like writes are fire-and-forget
+			// $fetch calls the TEST instruments via its own stub, so a mount-time
+			// default must not shadow it.
+
+			const { default: PostPage } = await import("@/pages/posts/[slug]/index.vue");
+			const SuspenseWrapper: any = {
+				components: { PostPage },
+				template:
+					"<Suspense>" +
+					"<template #default><PostPage /></template>" +
+					"<template #fallback>Loading...</template>" +
+					"</Suspense>",
+			};
+			const wrapper = mount(SuspenseWrapper, {
+				global: {
+					stubs: {
+						NuxtLink: { template: '<a :href="to"><slot/></a>', props: ["to"] },
+						Icon: { template: '<svg class="iconstub" :data-icon="icon"></svg>', props: ["icon"] },
+						MarkdownContent: {
+							template: '<div class="markdown-content"><div v-html="content"></div></div>',
+							props: ["content"],
+						},
+					},
+				},
+			});
+			await flushPromises();
+			return wrapper;
+		}
+
+		it("counts a post's view once per client session, not per A→B→A round-trip", async () => {
+			const postA = { ...mockPost, id: 1, title: "Article A" };
+			const postB = { ...mockPost, id: 2, title: "Article B" };
+			const postData = ref<typeof mockPost | null>(postA);
+
+			let viewCalls = 0;
+			vi.stubGlobal(
+				"$fetch",
+				vi.fn((url: string) => {
+					if (typeof url === "string" && url.includes("/view")) viewCalls += 1;
+					return Promise.resolve(mockPost);
+				}),
+			);
+
+			await mountWithDataRef(postData);
+			// Initial load counts A's view.
+			expect(viewCalls).toBe(1);
+
+			// SPA navigation A → B counts B.
+			postData.value = postB;
+			await flushPromises();
+			expect(viewCalls).toBe(2);
+
+			// Back to A (B → A): history/resume still re-sync, but the VIEW
+			// counter must not re-inflate the public count for a post already
+			// read this session.
+			postData.value = postA;
+			await flushPromises();
+			expect(viewCalls).toBe(2);
+		});
+
+		it("does not let a like that resolves after navigation stomp the new post", async () => {
+			const postA = { ...mockPost, id: 1, title: "Article A", likes: 56 };
+			const postB = { ...mockPost, id: 2, title: "Article B", likes: 5 };
+			const postData = ref<typeof mockPost | null>(postA);
+
+			let resolveLike!: (v: unknown) => void;
+			vi.stubGlobal(
+				"$fetch",
+				vi.fn((url: string) => {
+					if (typeof url === "string" && url.includes("/like")) {
+						// The like for A hangs while the reader navigates to B.
+						return new Promise((r) => {
+							resolveLike = r;
+						});
+					}
+					return Promise.resolve(mockPost);
+				}),
+			);
+
+			const wrapper = await mountWithDataRef(postData);
+
+			// Like A.
+			await wrapper.find('button[type="button"]').trigger("click");
+			await flushPromises();
+
+			// Reader SPA-navigates to B before the like resolves.
+			postData.value = postB;
+			await flushPromises();
+			expect(wrapper.text()).toContain("Article B");
+
+			// A's like finally resolves (with A's incremented payload) — the
+			// guard must NOT replace B's payload with it.
+			resolveLike({ ...postA, likes: 57 });
+			await flushPromises();
+
+			expect(wrapper.text()).toContain("Article B");
+			expect(wrapper.text()).not.toContain("Article A");
+			expect(wrapper.text()).not.toContain("57");
+			wrapper.unmount();
+		});
+
+		it("does not show the like error on a post navigated to while the like was failing", async () => {
+			const postA = { ...mockPost, id: 1, title: "Article A", likes: 56 };
+			const postB = { ...mockPost, id: 2, title: "Article B", likes: 5 };
+			const postData = ref<typeof mockPost | null>(postA);
+
+			let rejectLike!: (e: Error) => void;
+			vi.stubGlobal(
+				"$fetch",
+				vi.fn((url: string) => {
+					if (typeof url === "string" && url.includes("/like")) {
+						return new Promise((_, rj) => {
+							rejectLike = rj;
+						});
+					}
+					return Promise.resolve(mockPost);
+				}),
+			);
+
+			const wrapper = await mountWithDataRef(postData);
+
+			// Like A — hangs.
+			await wrapper.find('button[type="button"]').trigger("click");
+			await flushPromises();
+
+			// Reader navigates to B while A's like is still in flight.
+			postData.value = postB;
+			await flushPromises();
+			expect(wrapper.text()).toContain("Article B");
+
+			// A's like fails LATE — the failure must not blame B's action bar.
+			rejectLike(new Error("network"));
+			await flushPromises();
+			expect(wrapper.text()).not.toContain("点赞失败，请稍后重试。");
 			wrapper.unmount();
 		});
 	});

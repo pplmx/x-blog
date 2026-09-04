@@ -187,7 +187,7 @@ describe("useResumeReading (TASK-200)", () => {
 		wrapper.unmount();
 	});
 
-	it("reset() clears the restored marker and pending save for an SPA post switch", async () => {
+	it("reset() flushes the pending save (not drops it) for an SPA post switch", async () => {
 		authRef.value = true;
 		fetchPosition.mockResolvedValue({ post_id: 7, scroll_position: 1200 });
 		const { api, wrapper } = mountResume(7);
@@ -195,13 +195,75 @@ describe("useResumeReading (TASK-200)", () => {
 		await api.restore();
 		expect(api.restoredPosition.value).toBe(1200);
 
-		api.save(900); // pending
+		api.save(900); // pending, debounce not yet fired
 		api.reset();
 
 		expect(api.restoredPosition.value).toBeNull();
+		// The old behaviour DROPPED the pending offset here (up to 2.5s of the
+		// reader's end-of-article position lost on every SPA post hop); reset()
+		// now flushes it immediately so the previous post keeps its resume point.
+		expect(recordHistory).toHaveBeenCalledTimes(1);
+		expect(recordHistory).toHaveBeenCalledWith(7, 900);
 		vi.advanceTimersByTime(5000);
-		// The pending 900 was dropped and nothing new was written.
-		expect(recordHistory).not.toHaveBeenCalled();
+		// The flushed write ate the pending slot — nothing double-sends later.
+		expect(recordHistory).toHaveBeenCalledTimes(1);
+
+		wrapper.unmount();
+	});
+
+	it("reset() writes the pending offset to the post it belonged to, not the live getter", async () => {
+		// The SPA post-switch watcher calls reset() AFTER the id getter already
+		// returns the NEXT post; a flush that recomputed the id would tag the old
+		// post's offset onto the new post's history row. pendingId must win.
+		authRef.value = true;
+		const postIdRef = ref(7);
+		const Wrapper = defineComponent({
+			setup() {
+				return { api: useResumeReading(() => postIdRef.value) };
+			},
+			render: () => h("div"),
+		});
+		const wrapper = mount(Wrapper);
+		const api = (wrapper.vm as unknown as { api: ReturnType<typeof useResumeReading> }).api;
+
+		api.save(900); // pending save recorded against post 7
+		postIdRef.value = 8; // reader navigated to post 8
+		api.reset();
+
+		expect(recordHistory).toHaveBeenCalledTimes(1);
+		expect(recordHistory).toHaveBeenCalledWith(7, 900);
+
+		wrapper.unmount();
+	});
+
+	it("reset() clears the dedup register so the next post can save the same pixel", async () => {
+		// reset() flushes the old post (advancing lastSaved to its offset); if
+		// that register leaked into the next post, a reader who happens to pause
+		// at the same pixel would have their new-post save silently suppressed
+		// (pos === lastSaved guard) and the server keep the older position.
+		authRef.value = true;
+		const postIdRef = ref(7);
+		const Wrapper = defineComponent({
+			setup() {
+				return { api: useResumeReading(() => postIdRef.value) };
+			},
+			render: () => h("div"),
+		});
+		const wrapper = mount(Wrapper);
+		const api = (wrapper.vm as unknown as { api: ReturnType<typeof useResumeReading> }).api;
+
+		api.save(1200); // pending for post 7
+		api.reset(); // flushes 1200 → lastSaved = 1200
+		expect(recordHistory).toHaveBeenCalledWith(7, 1200);
+
+		// SPA switch to post 8; scroll to the exact same pixel — must not be
+		// dropped by post 7's flushed register.
+		postIdRef.value = 8;
+		api.save(1200);
+		vi.advanceTimersByTime(2500);
+
+		expect(recordHistory).toHaveBeenCalledTimes(2);
+		expect(recordHistory).toHaveBeenLastCalledWith(8, 1200);
 
 		wrapper.unmount();
 	});

@@ -10,9 +10,9 @@
  * unsupported/blocked on this browser, following is disabled with a hint.
  */
 import {
+	getPostSubscription,
 	subscribeToPostThread,
 	unsubscribeFromPostThread,
-	usePostSubscription,
 } from "~~/api/reader/subscriptions";
 
 interface Props {
@@ -37,8 +37,11 @@ onMounted(() => {
 
 async function loadFollowing() {
 	try {
-		const { data } = await usePostSubscription(props.postId);
-		following.value = data.value?.subscribed === true;
+		// Imperative read: usePostSubscription wraps useFetch, which silently
+		// no-ops outside setup scope — from onMounted the button would never
+		// learn it was already following and would mislabel itself "Follow".
+		const status = await getPostSubscription(props.postId);
+		following.value = status.subscribed === true;
 	} catch {
 		// Token/network hiccup: leave the button un-followed; an actual click
 		// will surface a real error instead of silently lying about state.

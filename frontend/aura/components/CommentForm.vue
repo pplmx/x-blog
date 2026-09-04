@@ -204,6 +204,11 @@ watch(dirty, (isDirty) => emit("update:dirty", isDirty));
 onMounted(() => emit("update:dirty", dirty.value));
 
 async function handleSubmit() {
+	// Re-entry guard: `submitting` only disables the submit BUTTON, but the
+	// form's native submit also fires on Enter inside the nickname/email inputs
+	// (and a fast double-click can beat Vue patching `disabled` in the same
+	// frame) — without this, two quick submits POST two comments.
+	if (submitting.value) return;
 	// Signed-in readers only need content; anonymous must give nickname+email.
 	if (!form.value.content) return;
 	if (!signedIn.value && !(form.value.nickname && form.value.email)) return;

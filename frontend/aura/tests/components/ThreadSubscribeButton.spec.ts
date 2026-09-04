@@ -30,14 +30,14 @@ vi.mock("~~/composables/useReaderAuth", () => ({
 	useReaderAuth: () => ({ isAuthenticated }),
 }));
 
-const { mockUsePostSubscription, mockSubscribeToPostThread, mockUnsubscribeFromPostThread } =
+const { mockGetPostSubscription, mockSubscribeToPostThread, mockUnsubscribeFromPostThread } =
 	vi.hoisted(() => ({
-		mockUsePostSubscription: vi.fn(),
+		mockGetPostSubscription: vi.fn(),
 		mockSubscribeToPostThread: vi.fn(),
 		mockUnsubscribeFromPostThread: vi.fn(),
 	}));
 vi.mock("~~/api/reader/subscriptions", () => ({
-	usePostSubscription: mockUsePostSubscription,
+	getPostSubscription: mockGetPostSubscription,
 	subscribeToPostThread: mockSubscribeToPostThread,
 	unsubscribeFromPostThread: mockUnsubscribeFromPostThread,
 }));
@@ -51,8 +51,10 @@ const iconStub = {
 };
 
 function mockStatus(subscribed: boolean) {
-	const data = ref({ post_id: 1, subscribed });
-	mockUsePostSubscription.mockResolvedValue({ data });
+	// The imperative read resolves the status object directly (no useFetch
+	// AsyncData wrapper — the whole point of the fix: useFetch silently no-ops
+	// from onMounted, so the follow state must be read via $fetch/command).
+	mockGetPostSubscription.mockResolvedValue({ post_id: 1, subscribed });
 }
 
 let wrapper: ReturnType<typeof mount> | undefined;
@@ -81,7 +83,7 @@ describe("ThreadSubscribeButton", () => {
 		const w = await mountButton();
 		expect(w.find("button").exists()).toBe(false);
 		// No follow-state fetch fires for anonymous visitors.
-		expect(mockUsePostSubscription).not.toHaveBeenCalled();
+		expect(mockGetPostSubscription).not.toHaveBeenCalled();
 	});
 
 	it("initializes push and loads the follow state on mount when signed in", async () => {
@@ -89,7 +91,7 @@ describe("ThreadSubscribeButton", () => {
 		mockStatus(false);
 		await mountButton();
 		expect(init).toHaveBeenCalledOnce();
-		expect(mockUsePostSubscription).toHaveBeenCalledWith(1);
+		expect(mockGetPostSubscription).toHaveBeenCalledWith(1);
 		expect(wrapper?.text()).toContain("components.threadSubscribe.follow");
 	});
 

@@ -853,6 +853,55 @@ describe("CommentList", () => {
 		});
 	});
 
+	describe("Stale-response race (deep-dive)", () => {
+		it("does not let a slow earlier page overwrite a newer one in the list", async () => {
+			// Rapid page clicks (page 3 then page 4) put two fetches in flight; if
+			// the earlier page-3 response resolves LAST, it must be ignored —
+			// otherwise the list shows page-3 comments while pagination highlights
+			// page 4 (the old guard only covered the error banner/refreshing, not
+			// the data assignment itself).
+			let resolvePage3!: (v: unknown) => void;
+			let resolvePage4!: (v: unknown) => void;
+			const { wrapper } = await mountCommentList({
+				comments: { ...mockComments, total_pages: 4, total: 80 },
+			});
+			const buttons = wrapper.findAll("nav button");
+			expect(buttons.length).toBe(4);
+
+			mockGetComments
+				.mockImplementationOnce(() => new Promise((r) => (resolvePage3 = r)) as never)
+				.mockImplementationOnce(() => new Promise((r) => (resolvePage4 = r)) as never);
+			await buttons[2].trigger("click"); // page 3 — hangs
+			await buttons[3].trigger("click"); // page 4 — hangs, newest intent
+			expect(mockGetComments).toHaveBeenCalledTimes(2);
+
+			// Page 4 resolves first; the newer page owns the list.
+			resolvePage4({
+				...mockComments,
+				total: 80,
+				total_pages: 4,
+				page: 4,
+				items: [{ ...mockComments.items[0], id: 40, content: "PAGE4-ITEM" }],
+			});
+			await flushPromises();
+
+			// The slow page-3 response finally lands — it must NOT overwrite page 4.
+			resolvePage3({
+				...mockComments,
+				total: 80,
+				total_pages: 4,
+				page: 3,
+				items: [{ ...mockComments.items[0], id: 30, content: "PAGE3-ITEM" }],
+			});
+			await flushPromises();
+
+			expect(wrapper.text()).toContain("PAGE4-ITEM");
+			expect(wrapper.text()).not.toContain("PAGE3-ITEM");
+			expect(buttons[3].classes()).toContain("bg-blue-600");
+			expect(buttons[2].classes()).not.toContain("bg-blue-600");
+		});
+	});
+
 	describe("Threaded replies", () => {
 		const threadedComments = {
 			items: [

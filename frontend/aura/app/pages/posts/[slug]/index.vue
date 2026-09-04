@@ -76,16 +76,21 @@ const coverImageUrl = computed(() => {
 });
 
 // Derive the id reactively so related/adjacent follow the post when the slug
-// changes via SPA navigation (TASK-090, ISS-073).
+// changes via SPA navigation (TASK-090, ISS-073). The per-query `pending` flags
+// gate their template sections: on SPA nav they refetch while retaining the
+// PREVIOUS post's data, and without the gate the reader would see the old
+// post's "Related Posts"/prev-next/series cards under the new article.
 const postId = computed(() => post.value?.id);
-const { data: relatedPosts } = await useRelatedPosts(() => postId.value);
-const { data: adjacent } = await useAdjacentPosts(() => postId.value);
+const { data: relatedPosts, pending: relatedPending } = await useRelatedPosts(() => postId.value);
+const { data: adjacent, pending: adjacentPending } = await useAdjacentPosts(() => postId.value);
 
 // In-series navigation (DEC-056): when this post belongs to a series, load the
 // series' ordered posts and locate this post so we can render a series chip and
 // next/previous-in-series links. The getter returns null when the post has no
 // series, which makes useFetch skip the request entirely.
-const { data: seriesDetail } = await useSeriesBySlug(() => post.value?.series?.slug ?? null);
+const { data: seriesDetail, pending: seriesPending } = await useSeriesBySlug(
+	() => post.value?.series?.slug ?? null,
+);
 const seriesNav = computed(() => {
 	if (!post.value?.series || !seriesDetail.value?.posts) return null;
 	const idx = seriesDetail.value.posts.findIndex((p) => p.id === post.value?.id);
@@ -117,18 +122,26 @@ const likedThisPost = computed(() => (post.value?.id ? isLiked(post.value.id) : 
 async function handleLike() {
 	if (!post.value?.id || likeLoading.value) return;
 	if (likedThisPost.value) return; // already liked — no-op
+	// Capture the target id: the reader can SPA-navigate (related/prev-next) to
+	// another post while this request is in flight, and `post.value` would then
+	// point at the new post. The result must only ever apply to the post the
+	// click was for.
+	const targetId = post.value.id;
 	likeLoading.value = true;
 	likeError.value = null;
-	recordLike(post.value.id); // optimistic local marker
+	recordLike(targetId); // optimistic local marker
 	persist();
 	try {
-		const liked = await likePost(post.value.id);
+		const liked = await likePost(targetId);
 		// POST /like returns the updated Post (response_model=schemas.Post); use
 		// it to refresh the rendered count instead of a discarded refetch, which
-		// left post.value.likes stale in the UI.
+		// left post.value.likes stale in the UI. Guard the assignment by id so a
+		// late resolve can never stomp the navigating-to post's payload.
 		if (liked) {
-			post.value = liked;
-		} else {
+			if (post.value?.id === targetId) {
+				post.value = liked;
+			}
+		} else if (post.value?.id === targetId) {
 			// No post payload returned: refresh through the useFetch seam
 			// (refreshPost) — calling usePost() here would silently no-op, since
 			// useFetch-driven composables must be called during setup, not from
@@ -136,12 +149,18 @@ async function handleLike() {
 			await refreshPost();
 		}
 	} catch (_err) {
-		likeError.value = t("post.likeError");
+		// Show the banner only on the post the click was for: a failure that
+		// lands after an SPA navigation to another post must not blame the new
+		// post's action bar (the postId watch cleared likeError at nav time).
+		if (post.value?.id === targetId) {
+			likeError.value = t("post.likeError");
+		}
 		// Roll the optimistic "liked" marker back so a failed like doesn't leave
 		// the button permanently disabled & pre-filled (TASK-234). The marker
 		// was persisted before the request; undo + persist restores the prior
-		// local state and lets the reader retry.
-		undoLike(post.value.id);
+		// local state and lets the reader retry. Use the captured id — undoing
+		// `post.value` here could un-like the wrong (new) post in localStorage.
+		undoLike(targetId);
 		persist();
 	} finally {
 		likeLoading.value = false;
@@ -250,10 +269,21 @@ function showResumeChip() {
 	}, 8000);
 }
 
+/** Post ids whose view was already counted this client session: an SPA
+ * A→B→A round-trip must not re-inflate the public counter (the metric is meant
+ * to count real reads, not navigation cycles). Module-scoped so it spans the
+ * whole page instance; a full reload resets it, which is a fresh session.
+ * History/resume still re-record on return — the reader deliberately came back
+ * to a saved place. */
+const countedViewsThisSession = new Set<number>();
+
 /** Client-only per-post session: count the view, sync reading history, and
  * restore/save the signed-in reader's resume position. */
 function beginReadingSession(postId: number) {
-	recordPostView(postId).catch(() => {});
+	if (!countedViewsThisSession.has(postId)) {
+		countedViewsThisSession.add(postId);
+		recordPostView(postId).catch(() => {});
+	}
 	if (isAuthenticated.value) {
 		recordReaderHistory(postId).catch(() => {});
 		// Drop the reader back where they left off, surfacing a small chip so
@@ -275,6 +305,8 @@ function beginReadingSession(postId: number) {
 watch(postId, (newId, oldId) => {
 	if (oldId === undefined || newId === oldId) return;
 	resumeChipVisible.value = false;
+	// A previous post's like failure must not blame the new one's action bar.
+	likeError.value = null;
 	resume.reset();
 	if (newId) {
 		beginReadingSession(newId);
@@ -668,8 +700,9 @@ function handleCommentSubmitted() {
           </div>
         </section>
 
-        <!-- Related Posts -->
-        <section v-if="relatedPosts?.length" class="mt-12 pt-8 border-t border-gray-100 dark:border-gray-800">
+        <!-- Related Posts (gated on its own pending; on SPA nav it refetches for
+             the new post and would otherwise keep showing the old post's set) -->
+        <section v-if="!relatedPending && relatedPosts?.length" class="mt-12 pt-8 border-t border-gray-100 dark:border-gray-800">
           <h2 class="text-xl font-bold text-gray-900 dark:text-gray-100 mb-6 flex items-center gap-2">
             <Icon icon="lucide:file-text" class="w-5 h-5 text-blue-500" />
             {{ t('post.related') }}
@@ -695,9 +728,10 @@ function handleCommentSubmitted() {
           </div>
         </section>
 
-        <!-- Prev / Next linear navigation (public feed order) -->
+        <!-- Prev / Next linear navigation (public feed order); gated on its
+             pending like Related so the old post's neighbors vanish on SPA nav -->
         <nav
-          v-if="adjacent?.previous || adjacent?.next"
+          v-if="!adjacentPending && (adjacent?.previous || adjacent?.next)"
           class="mt-12 pt-8 border-t border-gray-100 dark:border-gray-800 grid gap-4 sm:grid-cols-2"
           :aria-label="t('post.navigation')"
         >
@@ -731,9 +765,11 @@ function handleCommentSubmitted() {
         </nav>
 
         <!-- In-series navigation (DEC-056): prev/next within the series order,
-             shown only when the post belongs to a series with a resolved position. -->
+             shown only when the post belongs to a series with a resolved
+             position. Gated on seriesPending so an SPA switch to a post from a
+             DIFFERENT series never shows the old series' next/prev links. -->
         <nav
-          v-if="seriesNav"
+          v-if="!seriesPending && seriesNav"
           class="mt-12 pt-8 border-t border-gray-100 dark:border-gray-800"
           :aria-label="t('series.serialLabel')"
         >

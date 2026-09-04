@@ -62,6 +62,11 @@ export function useResumeReading(postId: () => number | undefined): ResumeReadin
 
 	let lastSaved = -1;
 	let pendingPos: number | null = null;
+	// The post a pending save belongs to. Kept alongside the offset so a later
+	// `flush()`/`reset()` still writes to the post the reader was actually on —
+	// recomputing the id via the `activePostId()` getter after an SPA post
+	// switch would tag the old post's offset onto the NEW post's history row.
+	let pendingId: number | null = null;
 	let saveTimer: ReturnType<typeof setTimeout> | null = null;
 	let cancelRestores: (() => void) | null = null;
 	// While non-zero, scroll events are ignored (used briefly after the
@@ -169,20 +174,27 @@ export function useResumeReading(postId: () => number | undefined): ResumeReadin
 		const pos = Math.max(0, Math.floor(position));
 		if (pos < MIN_SAVE_PX || pos === lastSaved) return;
 		pendingPos = pos;
+		pendingId = id;
 		if (saveTimer) clearTimeout(saveTimer);
 		saveTimer = setTimeout(() => {
 			saveTimer = null;
 			if (pendingPos == null || pendingPos === lastSaved) return;
 			lastSaved = pendingPos;
-			recordReaderHistory(id, pendingPos).catch(() => {});
+			recordReaderHistory(pendingId ?? id, pendingPos).catch(() => {});
 			pendingPos = null;
+			pendingId = null;
 		}, SAVE_DEBOUNCE_MS);
 	}
 
 	function flush(): void {
-		const id = activePostId();
+		// The id comes from what the pending save was recorded AGAINST, never
+		// recomputed live: on an SPA post switch the getter already points at
+		// the next post, and writing the old post's offset under the new post's
+		// id would corrupt the resume trail.
+		const id = pendingId ?? activePostId();
 		const pos = pendingPos;
 		pendingPos = null;
+		pendingId = null;
 		if (saveTimer) {
 			clearTimeout(saveTimer);
 			saveTimer = null;
@@ -212,10 +224,11 @@ export function useResumeReading(postId: () => number | undefined): ResumeReadin
 		}
 	}
 
-	/** Drop any scheduled/tracked save without writing it (used when changing
-	 * posts or jumping back to the top, where the residual offset is stale). */
+	/** Drop any scheduled/tracked save without writing it (used when jumping
+	 * back to the top, where the residual offset is intentionally stale). */
 	function clearPendingSave(): void {
 		pendingPos = null;
+		pendingId = null;
 		if (saveTimer) {
 			clearTimeout(saveTimer);
 			saveTimer = null;
@@ -229,7 +242,18 @@ export function useResumeReading(postId: () => number | undefined): ResumeReadin
 	function reset(): void {
 		cancelRestores?.();
 		suppressSavesUntil = 0;
-		clearPendingSave();
+		// Flush before discarding: on an SPA post switch the previous post's
+		// trailing-debounced offset may still be pending (up to SAVE_DEBOUNCE_MS
+		// of reading) — dropping it would lose the reader's end-of-article
+		// restore point for that post. flush() writes to the recorded pendingId,
+		// so it lands on the RIGHT post even though the getter now returns the
+		// next one.
+		flush();
+		// Fresh dedup register for the incoming post: lastSaved now holds the
+		// PREVIOUS post's flushed pixel, and without resetting it the next post
+		// would silently skip saving an offset that happens to equal it (the
+		// exact-pixel collision the shared register allows).
+		lastSaved = -1;
 		restoredPosition.value = null;
 	}
 
