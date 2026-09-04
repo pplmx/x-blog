@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 253,
+  "round": 256,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-04T16:32:40+00:00",
+  "updated_at": "2026-09-04T17:20:25+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -22,7 +22,7 @@
       "version": 1,
       "created_at": "2026-08-06T13:23:41+00:00",
       "updated_at": "2026-08-06T13:23:41+00:00",
-      "touched_round": 253,
+      "touched_round": 256,
       "title": "frontend-aura",
       "description": "Nuxt 4 Vue 3 TypeScript frontend at frontend/aura; composables; admin pages; e2e Playwright; biome lint"
     },
@@ -17712,6 +17712,43 @@
       "touched_round": 253,
       "commit": "c2e2cc8",
       "summary": "fix(frontend): admin area hardening — per-row reader toggle, taxonomy single-flight, a11y (ISS-343/344/345)"
+    },
+    "ISS-346": {
+      "id": "ISS-346",
+      "type": "issue",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-04T17:05:39+00:00",
+      "updated_at": "2026-09-04T17:05:39+00:00",
+      "touched_round": 256,
+      "title": "Admin post-list: stale deleteError, no delete single-flight, unbounded page-nav, stale error over refetch",
+      "summary": "Admin post-list state/failure hygiene: a failed delete's role=alert banner lingered as a stale claim over later unrelated filtered lists (only cleared at the next delete start); handleDelete lacked the single-flight guard the repo's mutation handlers use; rapid next-clicks on stale totalPages could push currentPage past the last page and strand on a false empty/'create first post' state; a stale error block could replace the stale table during an in-flight refetch. Fix: watch(queryParams) clears deleteError on any search/status/page change, isDeleting re-entry guard, bounded goToPage navigation, and the error branch gated on !pending.",
+      "severity": "medium",
+      "component": "frontend-aura"
+    },
+    "ISS-347": {
+      "id": "ISS-347",
+      "type": "issue",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-04T17:05:39+00:00",
+      "updated_at": "2026-09-04T17:05:39+00:00",
+      "touched_round": 256,
+      "title": "Admin post-list a11y: silent refetch/spinner, unannounced page indicator",
+      "summary": "Admin post-list a11y gaps below the repo's bar: the in-flight refetch (slim bar) and the full spinner were silent (the spinner label sat on an svg :aria-label — not a reliable live region), and the page indicator was a bare span (a screen-reader user could not tell which page is current or that a page changed). Fix: role=status on the slim refetch bar (with sr-only label), on the spinner, and on the page-indicator span.",
+      "severity": "low",
+      "component": "frontend-aura"
+    },
+    "CHG-373": {
+      "id": "CHG-373",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-04T17:20:24+00:00",
+      "updated_at": "2026-09-04T17:20:24+00:00",
+      "touched_round": 256,
+      "commit": "43798f1",
+      "summary": "fix(frontend): admin posts list deep-dive — stale-error/delete hygiene, bounded nav, a11y (ISS-346/347)"
     }
   },
   "edges": [
@@ -26041,6 +26078,30 @@
       "to": "ISS-345",
       "type": "resolves",
       "created_at": "2026-09-04T16:32:40+00:00"
+    },
+    {
+      "from": "ISS-346",
+      "to": "COMP-002",
+      "type": "located_in",
+      "created_at": "2026-09-04T17:05:39+00:00"
+    },
+    {
+      "from": "ISS-347",
+      "to": "COMP-002",
+      "type": "located_in",
+      "created_at": "2026-09-04T17:05:39+00:00"
+    },
+    {
+      "from": "CHG-373",
+      "to": "ISS-346",
+      "type": "resolves",
+      "created_at": "2026-09-04T17:20:24+00:00"
+    },
+    {
+      "from": "CHG-373",
+      "to": "ISS-347",
+      "type": "resolves",
+      "created_at": "2026-09-04T17:20:25+00:00"
     }
   ]
 }
