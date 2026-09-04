@@ -192,6 +192,36 @@ describe("Admin Tags Page", () => {
 			expect((input.element as HTMLInputElement).value).toBe("");
 		});
 
+		it("does not double-submit the create form while a create is in flight (deep-dive)", async () => {
+			// The create button disables during processing, but Enter in the form
+			// still fires submit — without a re-entry guard that races a second
+			// create (duplicate tag / error) on fast repeat.
+			let resolveCreate!: (v: unknown) => void;
+			mockCreateAdminTag.mockImplementation(
+				() =>
+					new Promise((resolve) => {
+						resolveCreate = resolve;
+					}),
+			);
+			const TagsPage = await loadPage();
+			const wrapper = await mountWithSuspense(TagsPage);
+
+			const input = wrapper.find('input[type="text"]');
+			await input.setValue("New Tag");
+			await wrapper.find("form").trigger("submit");
+			await flushPromises();
+			expect(mockCreateAdminTag).toHaveBeenCalledTimes(1);
+
+			// Second Enter while the first is still pending → guarded, no second call.
+			await wrapper.find("form").trigger("submit");
+			await flushPromises();
+			expect(mockCreateAdminTag).toHaveBeenCalledTimes(1);
+
+			resolveCreate({});
+			await flushPromises();
+			expect(mockCreateAdminTag).toHaveBeenCalledTimes(1);
+		});
+
 		it("renders edit buttons for each tag", async () => {
 			const TagsPage = await loadPage();
 			const wrapper = await mountWithSuspense(TagsPage);

@@ -39,6 +39,7 @@ function getErrorMessage(e: unknown): string {
 }
 
 async function handleCreate() {
+	if (isProcessing.value) return; // single-flight — Enter in the form can fire
 	if (!newCategoryName.value.trim()) return;
 	isProcessing.value = true;
 	actionError.value = null;
@@ -66,6 +67,7 @@ function cancelEdit() {
 }
 
 async function confirmEdit(id: number) {
+	if (isProcessing.value) return; // single-flight
 	if (!editingName.value.trim()) return;
 	isProcessing.value = true;
 	actionError.value = null;
@@ -81,6 +83,7 @@ async function confirmEdit(id: number) {
 }
 
 async function handleDelete(id: number) {
+	if (isProcessing.value) return; // single-flight
 	if (!confirm(t("admin.categories.confirmDelete"))) return;
 	isProcessing.value = true;
 	actionError.value = null;
@@ -111,6 +114,7 @@ async function handleDelete(id: number) {
     <!-- Action error feedback -->
     <div
       v-if="actionError"
+      role="alert"
       class="mb-6 px-4 py-3 rounded-xl border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20 text-sm text-red-600 dark:text-red-400"
     >
       {{ actionError }}

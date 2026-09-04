@@ -37,7 +37,12 @@ const items = computed(() => data.value?.items ?? []);
 const total = computed(() => data.value?.pagination?.total ?? 0);
 const totalPages = computed(() => data.value?.pagination?.total_pages ?? 0);
 
-const busyId = ref<number | null>(null);
+// The rows whose activate/deactivate is in flight, tracked per-row (a single
+// `busyId` slot let a second row's toggle clear the first row's in-flight marker
+// and re-enable its button while its PATCH was still running — the same
+// single-slot race as the bookmark-folder assign, on a security-relevant action
+// that revokes the reader's JWTs, deep-dive finding).
+const busyIds = ref<Set<number>>(new Set());
 const actionError = ref<string | null>(null);
 
 function formatDate(value: string | null): string {
@@ -52,10 +57,11 @@ function formatDate(value: string | null): string {
 }
 
 async function toggleActive(reader: AdminReader) {
+	if (busyIds.value.has(reader.id)) return; // single-flight per row
 	const deactivating = reader.is_active;
 	const key = deactivating ? "admin.readers.confirmDeactivate" : "admin.readers.confirmActivate";
 	if (!window.confirm(t(key, { email: reader.email }))) return;
-	busyId.value = reader.id;
+	busyIds.value.add(reader.id);
 	actionError.value = null;
 	try {
 		const status = deactivating
@@ -67,7 +73,7 @@ async function toggleActive(reader: AdminReader) {
 	} catch (e) {
 		actionError.value = e instanceof Error ? e.message : t("admin.readers.toggleFailed");
 	} finally {
-		busyId.value = null;
+		busyIds.value.delete(reader.id);
 	}
 }
 </script>
@@ -92,11 +98,11 @@ async function toggleActive(reader: AdminReader) {
       </p>
     </div>
 
-    <p v-if="actionError" class="mb-4 p-3 bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-400 rounded-xl text-sm">
+    <p v-if="actionError" role="alert" class="mb-4 p-3 bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-400 rounded-xl text-sm">
       {{ actionError }}
     </p>
     <div v-if="error" class="mb-4 p-3 bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-400 rounded-xl text-sm flex flex-wrap items-center gap-3">
-      <p>{{ t("admin.readers.loadFailed") }}</p>
+      <p role="alert">{{ t("admin.readers.loadFailed") }}</p>
       <button
         type="button"
         class="px-2 py-1 rounded-lg text-xs font-medium border border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors"
@@ -155,7 +161,8 @@ async function toggleActive(reader: AdminReader) {
             <td class="px-4 py-3 text-right">
               <button
                 type="button"
-                :disabled="busyId === reader.id"
+                :disabled="busyIds.has(reader.id)"
+                :aria-busy="busyIds.has(reader.id)"
                 class="text-xs px-3 py-1.5 rounded-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                 :class="
                   reader.is_active
@@ -165,7 +172,7 @@ async function toggleActive(reader: AdminReader) {
                 @click="toggleActive(reader)"
               >
                 {{
-                  busyId === reader.id
+                  busyIds.has(reader.id)
                     ? t("admin.readers.pending")
                     : t(reader.is_active ? "admin.readers.deactivate" : "admin.readers.activate")
                 }}

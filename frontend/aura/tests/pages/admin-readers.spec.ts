@@ -173,4 +173,55 @@ describe("Admin Readers page", () => {
 		expect(wrapper.find("tbody tr").text()).toContain("正常");
 		expect(wrapper.text()).not.toContain("加载读者列表失败");
 	});
+
+	it("tracks each row's deactivate in flight independently (deep-dive)", async () => {
+		// A single `busyId` slot let Bob's toggle COMPLETE while Alice's PATCH was
+		// still running and clear the shared marker — re-enabling Alice's
+		// (security-relevant) button mid-flight. This test drives Bob's toggle
+		// to completion while Alice is still pending and asserts Alice's marker
+		// survives until her OWN promise resolves (the previous single-slot code
+		// fails this: Bob's finally cleared Alice's busy state).
+		listMock.mockReturnValue(
+			fakeListing([fakeReader(), fakeReader({ id: 2, email: "bob@example.com" })]),
+		);
+		vi.stubGlobal(
+			"confirm",
+			vi.fn(() => true),
+		);
+		let resolveFirst!: (v: unknown) => void;
+		const firstCall = new Promise((resolve) => {
+			resolveFirst = resolve;
+		});
+		deactivateMock
+			.mockImplementationOnce(() => firstCall)
+			.mockResolvedValue({
+				id: 2,
+				email: "bob@example.com",
+				is_active: false,
+				last_login_at: "2026-07-10T00:00:00Z",
+			});
+		const wrapper = await mountPage();
+
+		const rowButtons = () => wrapper.findAll("tbody tr button");
+		await rowButtons()[0].trigger("click"); // deactivate Alice (in flight)
+		await flushPromises();
+		expect((rowButtons()[0].element as HTMLButtonElement).disabled).toBe(true);
+		expect(rowButtons()[0].attributes("aria-busy")).toBe("true");
+		expect(rowButtons()[0].text()).toContain("处理中");
+		// Bob's row is unaffected — its own marker is not set by Alice's flight.
+		expect((rowButtons()[1].element as HTMLButtonElement).disabled).toBe(false);
+
+		// Bob's toggle RUNS AND COMPLETES while Alice's is still pending.
+		await rowButtons()[1].trigger("click");
+		await flushPromises();
+		expect((rowButtons()[1].element as HTMLButtonElement).disabled).toBe(false); // Bob done
+		// Alice's marker was NOT cleared by Bob's completion — still in flight.
+		expect((rowButtons()[0].element as HTMLButtonElement).disabled).toBe(true);
+		expect(rowButtons()[0].attributes("aria-busy")).toBe("true");
+
+		resolveFirst({ id: 1, email: "alice@example.com", is_active: false });
+		await flushPromises();
+		expect((rowButtons()[0].element as HTMLButtonElement).disabled).toBe(false);
+		expect(rowButtons()[0].text()).toContain("启用");
+	});
 });
