@@ -288,7 +288,15 @@ describe("Account settings page", () => {
 		const checkboxes = wrapper.findAll("input[type='checkbox']");
 		await checkboxes[0].setValue(true); // device 1 — in flight
 		await flushPromises();
-		await checkboxes[1].setValue(true); // device 2 — guarded
+		// Device 2's checkbox is now `:disabled="savingPrefsId !== null"` — VTU
+		// setValue wouldn't fire a change event on a disabled input in happy-dom,
+		// so the handler guard would never be reached and the single-call
+		// assertion would pass with or without it (review finding: trivial pass).
+		// Dispatch change directly on the disabled element to reach the handler
+		// and prove the re-entry guard drops the competing write.
+		const second = checkboxes[1].element as HTMLInputElement;
+		second.checked = true;
+		second.dispatchEvent(new Event("change"));
 		await flushPromises();
 		expect(mockUpdatePushSubscriptionPrefs).toHaveBeenCalledTimes(1);
 
