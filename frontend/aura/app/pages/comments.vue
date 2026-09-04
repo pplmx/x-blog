@@ -20,7 +20,7 @@ import { useReaderAuth } from "~~/composables/useReaderAuth";
 import { useSeo } from "~~/composables/useSeo";
 
 const { t, locale } = useLang();
-const { isAuthenticated } = useReaderAuth();
+const { isAuthenticated, logout, isStaleSession } = useReaderAuth();
 
 useSeo({
 	title: t("myComments.seoTitle"),
@@ -43,6 +43,22 @@ const currentPage = ref(1);
 // guard as useReadingHistory's recall-search (ISS-128) and HeaderSearch.
 let loadSeq = 0;
 
+/**
+ * Route a stale reader session (expired/revoked token → the backend's 401 with
+ * the auth-dependency detail) to sign-in instead of a misleading network error
+ * whose Retry can never succeed, while the page still looks signed-in. Any
+ * other failure just marks the target failed. Same handling as account.vue and
+ * notifications.vue (ISS-110); the reader shows the sign-in prompt mid-route.
+ */
+function handleLoadFailure(err: unknown, markFailed: () => void): void {
+	if (isStaleSession(err)) {
+		logout();
+		void navigateTo("/login");
+		return;
+	}
+	markFailed();
+}
+
 async function load() {
 	const seq = ++loadSeq; // invalidate any in-flight older request
 	// Re-enter loading on refetch (tab/page change) so the swap is visible, and
@@ -64,12 +80,15 @@ async function load() {
 			}
 		}
 		commentData.value = data;
-	} catch {
+	} catch (err) {
 		if (seq !== loadSeq) return;
-		// Missing/invalid token, offline, etc — signal failure instead of
+		// A dead session must not present as "network error": log out and go to
+		// /login. Missing token, offline, etc — signal failure instead of
 		// pretending the list is empty (ISS-129).
 		commentData.value = null;
-		loadFailed.value = true;
+		handleLoadFailure(err, () => {
+			loadFailed.value = true;
+		});
 	}
 	if (seq === loadSeq) loading.value = false;
 }
@@ -105,21 +124,28 @@ function goToPage(page: number): void {
 	void load();
 }
 
-const deleting = ref<number | null>(null);
+// The rows whose delete is in flight, tracked per-row so two comments can be
+// deleted at once without clearing each other's in-flight marker (a single
+// `deleting` slot let the second delete re-enable the first row's button
+// mid-request — same class of race as the bookmark-folder assign, deep-dive).
+const deletingIds = ref<Set<number>>(new Set());
 const deleteFailed = ref(false);
 
 async function removeComment(comment: MyComment) {
 	if (!confirm(t("myComments.deleteConfirm"))) return;
-	deleting.value = comment.id;
+	if (deletingIds.value.has(comment.id)) return; // single-flight per row
+	deletingIds.value.add(comment.id);
 	deleteFailed.value = false;
 	try {
 		await deleteMyComment(comment.id);
-	} catch {
-		deleteFailed.value = true;
-		deleting.value = null;
+	} catch (err) {
+		handleLoadFailure(err, () => {
+			deleteFailed.value = true;
+		});
 		return;
+	} finally {
+		deletingIds.value.delete(comment.id);
 	}
-	deleting.value = null;
 	await load();
 }
 
@@ -156,7 +182,7 @@ function formatDate(dateStr: string): string {
         >
           {{ t('myComments.title') }}
         </h1>
-        <p v-if="total > 0" class="text-sm text-gray-500 dark:text-gray-400 mt-2">
+        <p v-if="isAuthenticated && total > 0" class="text-sm text-gray-500 dark:text-gray-400 mt-2">
           {{ t('myComments.countLabel', { count: total }) }}
         </p>
       </div>
@@ -273,7 +299,8 @@ function formatDate(dateStr: string): string {
 
           <button
             type="button"
-            :disabled="deleting === comment.id"
+            :disabled="deletingIds.has(comment.id)"
+            :aria-busy="deletingIds.has(comment.id)"
             class="inline-flex items-center gap-1 text-xs text-gray-400 hover:text-red-500 transition-colors disabled:opacity-50"
             @click="removeComment(comment)"
           >

@@ -21,8 +21,21 @@ const mockData = ref<MyCommentListResponse | null>(null);
 const mockDeleteMyComment = vi.fn();
 const mockFetchMyComments = vi.fn();
 
+// Faithful copy of useReaderAuth.isStaleSession (this page has no
+// business-level wrong-password 401, so a bare 401 is always a dead session).
+const isStaleSession = vi.fn(
+	(cause: unknown) =>
+		(cause as { statusCode?: number } | undefined)?.statusCode === 401 ||
+		(cause as { response?: { status?: number } } | undefined)?.response?.status === 401,
+);
+// Flips isAuthenticated like the real logout, so a routed stale session leaves
+// the inbox and shows the sign-in prompt instead of a dead-looking state.
+const mockLogout = vi.fn(() => {
+	isAuthenticated.value = false;
+});
+
 vi.mock("../../composables/useReaderAuth", () => ({
-	useReaderAuth: () => ({ isAuthenticated }),
+	useReaderAuth: () => ({ isAuthenticated, logout: mockLogout, isStaleSession }),
 }));
 
 vi.mock("../../composables/useSeo", () => ({
@@ -200,6 +213,79 @@ describe("My comments page", () => {
 		await wrapper.vm.$nextTick();
 
 		expect(wrapper.text()).toContain("删除失败");
+		vi.unstubAllGlobals();
+	});
+
+	it("routes an expired session to /login instead of a misleading network error (ISS-110)", async () => {
+		// A dead reader token 401s with no recoverable meaning; the old path
+		// showed a "网络错误 + retry" that could never succeed while the page
+		// still looked signed-in. Now it logs out and sends the reader to sign-in,
+		// matching account.vue / notifications.vue.
+		isAuthenticated.value = true;
+		const navigateTo = vi.fn();
+		vi.stubGlobal("navigateTo", navigateTo);
+		mockFetchMyComments.mockRejectedValueOnce({ statusCode: 401 });
+
+		const wrapper = await mountPage();
+
+		expect(mockLogout).toHaveBeenCalledTimes(1);
+		expect(navigateTo).toHaveBeenCalledWith("/login");
+		// A failed load must NOT present as a network error the reader can never
+		// outgrow; the inbox is auth-scoped, so only the sign-in prompt remains.
+		expect(wrapper.text()).not.toContain("网络错误，请稍后重试");
+		expect(wrapper.text()).toContain("登录后可以查看和管理你的评论");
+		vi.unstubAllGlobals();
+	});
+
+	it("routes an expired session to /login when a delete hits a 401 (deep-dive)", async () => {
+		isAuthenticated.value = true;
+		mockData.value = { items: [makeComment()], total: 1 };
+		const navigateTo = vi.fn();
+		vi.stubGlobal("navigateTo", navigateTo);
+		mockDeleteMyComment.mockRejectedValue({ statusCode: 401 });
+		vi.stubGlobal("confirm", () => true);
+
+		const wrapper = await mountPage();
+		const deleteBtn = wrapper.findAll("button").find((b) => b.text().includes("删除"));
+		await deleteBtn?.trigger("click");
+		await flushPromises();
+
+		expect(mockLogout).toHaveBeenCalledTimes(1);
+		expect(navigateTo).toHaveBeenCalledWith("/login");
+		// No misleading "删除失败" for a dead session — the reader is redirected.
+		expect(wrapper.text()).not.toContain("删除失败");
+		vi.unstubAllGlobals();
+	});
+
+	it("disables the row's delete button while its delete is in flight (deep-dive)", async () => {
+		// Two rapid deletes on different rows previously shared one `deleting`
+		// slot — the second row's finally re-enabled the first row's button
+		// mid-request. Each row tracks its own in-flight marker now.
+		isAuthenticated.value = true;
+		mockData.value = { items: [makeComment(), makeComment({ id: 2 })], total: 2 };
+		let resolveDelete!: (v: unknown) => void;
+		mockDeleteMyComment.mockImplementation(
+			() =>
+				new Promise((resolve) => {
+					resolveDelete = resolve;
+				}),
+		);
+		vi.stubGlobal("confirm", () => true);
+
+		const wrapper = await mountPage();
+		const deleteBtns = wrapper.findAll("button").filter((b) => b.text().includes("删除"));
+		await deleteBtns[0].trigger("click");
+		await flushPromises();
+		expect((deleteBtns[0].element as HTMLButtonElement).disabled).toBe(true);
+		expect(deleteBtns[0].attributes("aria-busy")).toBe("true");
+		// A different row's delete may still be clicked while row 1 is pending.
+		expect((deleteBtns[1].element as HTMLButtonElement).disabled).toBe(false);
+
+		resolveDelete(undefined);
+		await flushPromises();
+		// After the reload both rows' deletes are enabled again.
+		const after = wrapper.findAll("button").filter((b) => b.text().includes("删除"));
+		expect(after.every((b) => !(b.element as HTMLButtonElement).disabled)).toBe(true);
 		vi.unstubAllGlobals();
 	});
 
