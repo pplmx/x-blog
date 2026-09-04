@@ -140,6 +140,11 @@ export function useBookmarkSync() {
 		syncing.value = true;
 		try {
 			const { addReaderBookmark, getReaderBookmarks } = await import("~~/api/reader/bookmarks");
+			// Snapshot the ids we start with: the push+walk is several network
+			// round-trips, and a bookmark the reader ADDS meanwhile (post page or
+			// this page) is live intent that the pull must not wipe from the UI —
+			// even if its mirrorAdd hasn't landed yet, the next merge reconciles.
+			const startedWith = new Set(bookmarks.value.map((b) => b.id));
 			// Push local bookmarks up (idempotent PUT; a full Bookmark carries the
 			// post id we PUT with).
 			for (const b of bookmarks.value) {
@@ -157,7 +162,20 @@ export function useBookmarkSync() {
 				if (page >= (res.total_pages ?? 1)) break;
 				page += 1;
 			}
-			replaceBookmarks(all.map(toLocalBookmark));
+			// Reconcile the server snapshot against live local intent from DURING
+			// the merge (each several round-trips):
+			//  - adds: re-adopt bookmarks created mid-merge (their mirrorAdd may
+			//    not have landed yet), so a fresh tap survives the replace;
+			//  - removes: drop ids the reader removed mid-merge whose DELETE has
+			//    not hit the server yet — the stale pull snapshot would otherwise
+			//    resurrect them in the UI until the next merge.
+			// Id-deduped at the end; the next merge reconciles the server rows.
+			const pulled = all.map(toLocalBookmark);
+			const currentIds = new Set(bookmarks.value.map((b) => b.id));
+			const removedDuringMerge = new Set([...startedWith].filter((id) => !currentIds.has(id)));
+			const midMergeAdds = bookmarks.value.filter((b) => !startedWith.has(b.id));
+			const merged = pulled.filter((b) => !removedDuringMerge.has(b.id)).concat(midMergeAdds);
+			replaceBookmarks(merged.filter((b, i) => merged.findIndex((x) => x.id === b.id) === i));
 			clearSyncIssue();
 		} catch (err) {
 			// Cloud unreachable — keep the local list untouched. A dead session

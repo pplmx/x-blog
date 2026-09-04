@@ -29,6 +29,11 @@ const entries = ref<Record<number, TagFollowEntry>>({});
 const busyById = ref<Record<number, boolean>>({});
 let loadedForKey: string | null = null;
 let loadPromise: Promise<boolean> | null = null;
+// Bumped by invalidate()/reset(): an in-flight getReaderTagFollows that
+// resolves after an invalidation must NOT commit its (pre-mutation) snapshot —
+// it would re-stamp loadedForKey === key and freeze every chip on stale follow
+// state for the whole session (deep-dive finding).
+let generation = 0;
 
 /** The synchronous auth gate the app already uses for reader-only controls. */
 function currentReaderKey(): string {
@@ -52,8 +57,12 @@ async function ensureLoaded(): Promise<boolean> {
 	// buttons never render the previous reader's follows during the load.
 	reset();
 	loadPromise = (async () => {
+		const gen = generation;
 		try {
 			const res = await getReaderTagFollows();
+			// Discard a snapshot that resolved after invalidate()/reset() — it
+			// predates the mutation that invalidated the cache.
+			if (gen !== generation) return false;
 			const next: Record<number, TagFollowEntry> = {};
 			for (const item of res.items) next[item.id] = { notify: item.notify };
 			entries.value = next;
@@ -62,7 +71,9 @@ async function ensureLoaded(): Promise<boolean> {
 		} catch {
 			return false;
 		} finally {
-			loadPromise = null;
+			// Only the load that still owns the current generation clears the
+			// shared slot; a superseded load must not wipe a newer one's promise.
+			if (gen === generation) loadPromise = null;
 		}
 	})();
 	return loadPromise;
@@ -100,8 +111,22 @@ async function setNotify(tagId: number, notify: boolean): Promise<void> {
 
 /** Drop all cached follow state (tests, logout, reader switch). */
 function reset(): void {
+	generation += 1;
 	entries.value = {};
 	busyById.value = {};
+	loadedForKey = null;
+	loadPromise = null;
+}
+
+/** Invalidate only the LOAD cache (keep the rendered entries until new data
+ * arrives): the next ensureLoaded refetches. The account page mutates tag
+ * follows through its own array + API (not this store), so without an explicit
+ * invalidate after those mutations every tag chip elsewhere would keep serving
+ * the pre-change follow state for the whole session (deep-dive finding). */
+function invalidate(): void {
+	// Bump the generation so an in-flight getReaderTagFollows that resolves
+	// after this point cannot resurrect the stale snapshot (see ensureLoaded).
+	generation += 1;
 	loadedForKey = null;
 	loadPromise = null;
 }
@@ -112,6 +137,7 @@ export function useTagFollowStore() {
 		toggleFollow,
 		setNotify,
 		reset,
+		invalidate,
 		following: (tagId: number): ComputedRef<boolean> => computed(() => isFollowing(tagId)),
 		notify: (tagId: number): ComputedRef<boolean> =>
 			computed(() => (isFollowing(tagId) ? (entries.value[tagId]?.notify ?? true) : true)),

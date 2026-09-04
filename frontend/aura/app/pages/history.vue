@@ -14,8 +14,18 @@ import { type HistoryEntry, useReadingHistory } from "~~/composables/useReadingH
 import { useSeo } from "~~/composables/useSeo";
 
 const { t, locale } = useLang();
-const { history, stats, loading, hasMore, loadingMore, loadMoreError, load, loadMore, clear } =
-	useReadingHistory();
+const {
+	history,
+	stats,
+	loading,
+	loadFailed,
+	hasMore,
+	loadingMore,
+	loadMoreError,
+	load,
+	loadMore,
+	clear,
+} = useReadingHistory();
 
 // Recall search (DEC-148/TASK-186): filter history to viewed posts matching
 // the term (server for signed-in readers, in-place for guests).
@@ -320,10 +330,32 @@ function heatMapSummary(): string {
       </p>
     </div>
 
-    <!-- Empty state: only when history is genuinely empty. A recall-search that
+    <!-- Server-load failure: a transient failure offers a labeled local-trail
+         fallback + retry instead of a misleading "no reading history yet" empty
+         state (a multi-device reader's local trail is often empty, deep-dive). -->
+    <div
+      v-if="loadFailed && !loading"
+      role="alert"
+      class="mb-6 flex flex-wrap items-center justify-between gap-3 p-4 rounded-xl border border-amber-200 dark:border-amber-800 bg-amber-50/60 dark:bg-amber-900/20"
+    >
+      <p class="flex items-center gap-2 text-sm text-amber-700 dark:text-amber-300">
+        <Icon icon="lucide:triangle-alert" class="w-4 h-4 shrink-0" />
+        {{ t('history.loadFailedFallback') }}
+      </p>
+      <button
+        type="button"
+        class="px-3 py-1.5 rounded-lg text-xs font-medium border border-amber-300 dark:border-amber-700 text-amber-700 dark:text-amber-300 hover:bg-amber-100 dark:hover:bg-amber-900/40 transition-colors"
+        @click="load(searchQuery)"
+      >
+        {{ t('common.action.retry') }}
+      </button>
+    </div>
+
+    <!-- Empty state: only when history is genuinely empty (and the load did not
+         fail — fallback rows may legitimately be empty). A recall-search that
          matches nothing shows the small "no results" hint above instead — never
          both (that claimed the reader has no history AND prompted them to browse). -->
-    <div v-if="!loading && !history.length && !searchQuery.trim()" class="text-center py-20">
+    <div v-if="!loading && !loadFailed && !history.length && !searchQuery.trim()" class="text-center py-20">
       <Icon icon="lucide:history" class="w-14 h-14 mx-auto mb-5 text-gray-300 dark:text-gray-600" />
       <p class="font-medium text-gray-700 dark:text-gray-200 mb-2">{{ t('history.empty') }}</p>
       <p class="text-sm text-gray-500 dark:text-gray-400 mb-7">{{ t('history.emptyDesc') }}</p>

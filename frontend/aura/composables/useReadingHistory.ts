@@ -14,6 +14,7 @@
 
 import { computed, ref } from "vue";
 import { clearReaderHistory, getReaderHistory, getReaderHistoryStats } from "~~/api/reader/history";
+import { parseApiDate } from "./apiDate";
 import { useReaderAuth } from "./useReaderAuth";
 import { useRecentlyViewed } from "./useRecentlyViewed";
 
@@ -42,8 +43,11 @@ const HISTORY_FETCH_LIMIT = 100;
 
 function toEpoch(viewedAt?: string | null): number | undefined {
 	if (!viewedAt) return undefined;
-	const ms = Date.parse(viewedAt);
-	return Number.isNaN(ms) ? undefined : ms;
+	// The server sends viewed_at as naive UTC (no zone marker); Date.parse would
+	// read it as the browser's LOCAL wall-clock and shift the displayed instant
+	// by the reader's UTC offset (deep-dive finding). parseApiDate asserts "Z".
+	const d = parseApiDate(viewedAt);
+	return d ? d.getTime() : undefined;
 }
 
 function fromLocal(items: { slug: string; title: string; viewedAt?: number }[]): HistoryEntry[] {
@@ -58,6 +62,12 @@ export function useReadingHistory() {
 	const history = ref<HistoryEntry[]>([]);
 	const stats = ref<ReadingStats | null>(null);
 	const loading = ref(false);
+	// True when the last SERVER load failed and history fell back to the local
+	// trail. The /history page renders a labeled fallback + retry off this so a
+	// transient failure is never mistaken for "no reading history yet" (a
+	// false-empty state for a multi-device reader with a mostly-empty local
+	// trail, deep-dive finding).
+	const loadFailed = ref(false);
 
 	// Server-side paging (bounded reachability, RIL ISS-303): the API returns
 	// at most HISTORY_FETCH_LIMIT rows per page, so a reader with more history
@@ -89,6 +99,7 @@ export function useReadingHistory() {
 			const all = fromLocal(local.recent.value);
 			history.value = term ? all.filter((h) => h.title.toLowerCase().includes(term)) : all;
 			stats.value = null;
+			loadFailed.value = false;
 			page.value = 1;
 			totalPages.value = 1;
 			// A sign-out mid-flight must still clear the spinner left by the
@@ -110,9 +121,13 @@ export function useReadingHistory() {
 				title: i.title,
 				viewedAt: toEpoch(i.viewed_at),
 			}));
+			loadFailed.value = false;
 		} catch {
 			if (seq !== loadSeq) return;
-			// Best-effort: fall back to the local trail if the call fails.
+			// Best-effort: fall back to the local trail if the call fails, but
+			// flag it so the page labels the fallback instead of presenting a
+			// false "no history yet" empty state.
+			loadFailed.value = true;
 			history.value = fromLocal(local.recent.value);
 		}
 		try {
@@ -184,6 +199,10 @@ export function useReadingHistory() {
 		local.clear();
 		history.value = [];
 		stats.value = null;
+		// Clear the failure flag too: after clearing the (fallback) trail a stale
+		// banner would otherwise keep hiding the legitimate empty state while
+		// claiming "showing this device's records" for a list that is now empty.
+		loadFailed.value = false;
 		page.value = 1;
 		totalPages.value = 1;
 	}
@@ -192,6 +211,7 @@ export function useReadingHistory() {
 		history,
 		stats,
 		loading,
+		loadFailed,
 		serverEnabled,
 		hasMore,
 		loadingMore,

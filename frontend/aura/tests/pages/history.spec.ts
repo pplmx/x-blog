@@ -14,6 +14,7 @@ import type { HistoryEntry, ReadingStats } from "../../composables/useReadingHis
 
 const mockHistory = ref<HistoryEntry[]>([]);
 const mockStats = ref<ReadingStats | null>(null);
+const mockLoadFailed = ref(false);
 const mockLoad = vi.fn();
 const mockLoadMore = vi.fn();
 const mockClear = vi.fn(async () => {
@@ -27,6 +28,7 @@ vi.mock("../../composables/useReadingHistory", () => ({
 		history: mockHistory,
 		stats: mockStats,
 		loading: ref(false),
+		loadFailed: mockLoadFailed,
 		serverEnabled: ref(false),
 		hasMore: mockHasMore,
 		loadingMore: ref(false),
@@ -120,6 +122,32 @@ describe("Reading-history page (TASK-170)", () => {
 		// ...and the per-day cells are hidden from screen readers as noise.
 		const cells = wrapper.findAll('[aria-hidden="true"]');
 		expect(cells.length).toBeGreaterThan(0);
+	});
+
+	it("shows a labeled fallback + retry instead of the empty state when the server load failed (deep-dive)", async () => {
+		// A transient server failure that falls back to an (empty) local trail
+		// must NOT render the misleading "暂无阅读历史" empty state.
+		mockLoadFailed.value = true;
+		mockHistory.value = [];
+		const wrapper = mountHistory();
+		await flushPromises();
+
+		expect(wrapper.text()).toContain("阅读历史加载失败，已临时显示本机记录。");
+		expect(wrapper.text()).not.toContain("暂无阅读历史");
+
+		// Retry re-runs the same load.
+		const retry = wrapper.findAll("button").find((b) => b.text() === "重试");
+		expect(retry).toBeDefined();
+		retry?.trigger("click");
+		expect(mockLoad).toHaveBeenCalled();
+	});
+
+	it("hides the fallback banner once the load is healthy again", () => {
+		mockLoadFailed.value = false;
+		mockHistory.value = [{ slug: "a", title: "Article A" }];
+		const wrapper = mountHistory();
+		expect(wrapper.text()).not.toContain("阅读历史加载失败");
+		expect(wrapper.text()).toContain("Article A");
 	});
 
 	it("renders the empty state when there is no history", () => {

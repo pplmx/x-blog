@@ -28,6 +28,7 @@
 		"activitySummary": "{count} days with reading activity in the past year",
 		"loading": "Loading history…",
 		"loadMore": "Load more history",
-		"searchAria": "Search your history"
+		"searchAria": "Search your history",
+		"loadFailedFallback": "Couldn't load your reading history — showing this device's records for now."
 	}
 }

@@ -81,13 +81,58 @@ describe("useReadingHistory (TASK-170)", () => {
 		expect(history.value[1]).toEqual({ slug: "s-b", title: "Server B", viewedAt: undefined });
 	});
 
-	it("falls back to the local trail when the API call fails", async () => {
+	it("maps a zone-less viewed_at as UTC, not local wall-clock (deep-dive)", async () => {
+		// The server serializes viewed_at as naive UTC (no zone marker);
+		// Date.parse would have read it as the browser's LOCAL wall-clock and
+		// shifted the instant by the reader's UTC offset. parseApiDate appends
+		// "Z" (DEC-213).
+		authRef.value = true;
+		fetchHistory.mockResolvedValue({
+			items: [{ id: 1, title: "Server A", slug: "s-a", viewed_at: "2024-01-15T10:30:00" }],
+			total: 1,
+			page: 1,
+			limit: 100,
+			total_pages: 1,
+		});
+		fetchStats.mockResolvedValue(null);
+		const { load, history } = useReadingHistory();
+		await load();
+		expect(history.value[0].viewedAt).toBe(Date.UTC(2024, 0, 15, 10, 30, 0));
+	});
+
+	it("falls back to the local trail when the API call fails, flagging loadFailed", async () => {
 		authRef.value = true;
 		localRecent.value = [{ slug: "l", title: "Local", viewedAt: 5 }];
 		fetchHistory.mockRejectedValue(new Error("network"));
-		const { load, history } = useReadingHistory();
+		const { load, history, loadFailed } = useReadingHistory();
 		await load();
 		expect(history.value).toEqual([{ slug: "l", title: "Local", viewedAt: 5 }]);
+		// The page renders a labeled fallback + retry off this flag instead of
+		// presenting a false "no history yet" empty state.
+		expect(loadFailed.value).toBe(true);
+	});
+
+	it("clear() resets loadFailed so a stale banner cannot hide the empty state", async () => {
+		authRef.value = true;
+		fetchHistory.mockRejectedValue(new Error("network"));
+		const { load, clear, loadFailed } = useReadingHistory();
+		await load();
+		expect(loadFailed.value).toBe(true);
+		// Clearing the (fallback) trail must also clear the failure flag, or the
+		// banner would keep hiding the now-legitimate empty state.
+		await clear();
+		expect(loadFailed.value).toBe(false);
+	});
+
+	it("clears loadFailed once a retry succeeds", async () => {
+		authRef.value = true;
+		fetchHistory.mockRejectedValueOnce(new Error("network"));
+		fetchHistory.mockResolvedValue({ items: [], total: 0, page: 1, limit: 100, total_pages: 1 });
+		const { load, loadFailed } = useReadingHistory();
+		await load();
+		expect(loadFailed.value).toBe(true);
+		await load();
+		expect(loadFailed.value).toBe(false);
 	});
 
 	it("a stale response cannot overwrite a newer one (ISS-128 seq guard)", async () => {

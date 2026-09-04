@@ -1,5 +1,6 @@
 /** useBookmarkSync tests (DEC-059, TASK-134). */
 
+import { flushPromises } from "@vue/test-utils";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ref } from "vue";
 
@@ -350,6 +351,93 @@ describe("useBookmarkSync", () => {
 
 		expect(fetchReaderBookmarksMock).toHaveBeenCalledTimes(2);
 		expect(useBookmarks().bookmarks.value.map((b) => b.id)).toEqual([9, 10]);
+	});
+
+	it("keeps a bookmark added mid-merge in the UI (deep-dive)", async () => {
+		localStorage.setItem("reader_token", "jwt.token");
+		addReaderBookmarkMock.mockResolvedValue(okFetch([null]));
+		// The cloud pull hangs so the test can add a bookmark mid-merge.
+		let resolveFetch!: (v: unknown) => void;
+		fetchReaderBookmarksMock.mockImplementation(
+			() =>
+				new Promise((resolve) => {
+					resolveFetch = resolve;
+				}),
+		);
+		const sync = useBookmarkSync();
+		const bookmarksStore = useBookmarks();
+		bookmarksStore.addBookmark({
+			id: 3,
+			title: "Local",
+			slug: "l",
+			excerpt: null,
+			cover_image: null,
+			created_at: "2026-01-02",
+			category: null,
+			tags: [],
+		});
+
+		const mergePromise = sync.mergeLocalToCloud(); // hangs on the GET stage
+		await flushPromises();
+		// The reader taps a bookmark while the merge is pulling the server list.
+		sync.add({
+			id: 7,
+			title: "New",
+			slug: "n",
+			excerpt: null,
+			cover_image: null,
+			created_at: "2026-01-03",
+			category: null,
+			tags: [],
+		});
+
+		// The cloud pull resolves WITHOUT the mid-merge add (its PUT may not even
+		// have landed yet) — the union guard must keep it in the UI, not clobber
+		// it back to the pre-merge server truth.
+		resolveFetch({ items: [cloudItem], total: 1 });
+		await mergePromise;
+
+		const ids = bookmarksStore.bookmarks.value.map((b) => b.id).sort((a, b) => a - b);
+		expect(ids).toEqual([7, 9]);
+	});
+
+	it("does not resurrect a bookmark removed mid-merge (deep-dive)", async () => {
+		localStorage.setItem("reader_token", "jwt.token");
+		addReaderBookmarkMock.mockResolvedValue(okFetch([null]));
+		const sync = useBookmarkSync();
+		const bookmarksStore = useBookmarks();
+		bookmarksStore.addBookmark({
+			id: 3,
+			title: "Local",
+			slug: "l",
+			excerpt: null,
+			cover_image: null,
+			created_at: "2026-01-02",
+			category: null,
+			tags: [],
+		});
+
+		// The cloud pull hangs so the test can remove a bookmark mid-merge.
+		let resolveFetch!: (v: unknown) => void;
+		fetchReaderBookmarksMock.mockImplementation(
+			() =>
+				new Promise((resolve) => {
+					resolveFetch = resolve;
+				}),
+		);
+		const mergePromise = sync.mergeLocalToCloud();
+		await flushPromises();
+
+		// The reader removes bookmark 3 while the merge is pulling the list.
+		sync.remove(3);
+		await flushPromises();
+
+		// The (stale) server snapshot still contains 3 — its DELETE has not
+		// landed yet, so the pull must not resurrect it in the UI.
+		resolveFetch({ items: [{ ...cloudItem, id: 3 }], total: 1 });
+		await mergePromise;
+
+		expect(bookmarksStore.bookmarks.value.map((b) => b.id)).toEqual([]);
 	});
 
 	it("merge is a no-op when signed out", async () => {

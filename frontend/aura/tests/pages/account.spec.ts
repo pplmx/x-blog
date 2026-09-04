@@ -211,6 +211,31 @@ describe("Account settings page", () => {
 		vi.unstubAllGlobals();
 	});
 
+	it("routes a dead reader session to sign-in when a device revoke 401s (deep-dive)", async () => {
+		// Mutation handlers used to swallow every rejection as a section error, so
+		// an expired token left the reader on a signed-in-looking page where every
+		// action failed permanently. They now share the loaders' stale-session
+		// routing.
+		isAuthenticated.value = true;
+		mockFetchPushSubscriptions.mockResolvedValue({ items: [makeDevice()], total: 1 });
+		mockRevokePushSubscription.mockRejectedValue({
+			statusCode: 401,
+			response: { status: 401, _data: { detail: "Could not validate credentials" } },
+		});
+		vi.stubGlobal("confirm", () => true);
+		const navigateTo = vi.fn();
+		vi.stubGlobal("navigateTo", navigateTo);
+
+		const wrapper = await mountPage();
+		// Buttons: [0]=save profile, [1]=change password, [2]=revoke device.
+		await wrapper.findAll("button")[2].trigger("click");
+		await flushPromises();
+
+		expect(logout).toHaveBeenCalled();
+		expect(navigateTo).toHaveBeenCalledWith("/login");
+		vi.unstubAllGlobals();
+	});
+
 	it("defaults a device to no new-post notifications", async () => {
 		isAuthenticated.value = true;
 		mockFetchPushSubscriptions.mockResolvedValue({ items: [makeDevice()], total: 1 });
@@ -355,6 +380,40 @@ describe("Account settings page", () => {
 			expect.objectContaining({ access_token: "fresh.jwt" }),
 		);
 		expect(wrapper.text()).toContain("密码已修改");
+	});
+
+	it("ignores a second password submit while the first is in flight (deep-dive)", async () => {
+		// `busy` disables the submit BUTTON, but Enter in any of the three
+		// password inputs fires the form submit regardless; without a re-entry
+		// guard the second submit would 401 (post-rotation token) and the stale-
+		// session branch would sign the reader out right after a success.
+		isAuthenticated.value = true;
+		let resolveChange!: (v: unknown) => void;
+		mockChangeMyPassword.mockImplementation(
+			() =>
+				new Promise((resolve) => {
+					resolveChange = resolve;
+				}),
+		);
+		const wrapper = await mountPage();
+		const inputs = wrapper.findAll("input[type='password']");
+		await inputs[0].setValue("currentpass123");
+		await inputs[1].setValue("newpass456");
+		await inputs[2].setValue("newpass456");
+		const form = wrapper.findAll("form")[1];
+		await form.trigger("submit");
+		await form.trigger("submit"); // rapid second submit before the first resolves
+		await form.trigger("submit");
+		expect(mockChangeMyPassword).toHaveBeenCalledTimes(1);
+
+		resolveChange({
+			access_token: "fresh.jwt",
+			token_type: "bearer",
+			reader: { id: 1, email: "x@x.com", display_name: "R" },
+		});
+		await flushPromises();
+		expect(updateToken).toHaveBeenCalledTimes(1);
+		expect(logout).not.toHaveBeenCalled();
 	});
 
 	it("shows a wrong-current-password error surfaced from the API", async () => {
@@ -593,6 +652,53 @@ describe("Account settings page", () => {
 			expect(mockSetSeriesFollowNotify).toHaveBeenCalledWith(5, false);
 			expect(mockUnfollowReaderSeries).not.toHaveBeenCalled();
 			expect(section.text()).toContain("通知已关");
+		});
+
+		it("exposes the notify toggle state via aria-pressed (deep-dive)", async () => {
+			isAuthenticated.value = true;
+			mockFetchPushSubscriptions.mockResolvedValue({ items: [], total: 0 });
+			mockFetchReaderSeriesFollows.mockResolvedValue({
+				items: [
+					{ id: 5, title: "Tutorial", slug: "tutorial", notify: true },
+					{ id: 6, title: "Other", slug: "other", notify: false },
+				],
+				total: 2,
+			});
+
+			const wrapper = await mountPage();
+			const section = wrapper.findAll("section").find((s) => s.text().includes("关注的系列"));
+			if (!section) throw new Error("series section not found");
+			const notifyBtns = section
+				.findAll("button")
+				.filter((b) => ["通知已开", "通知已关"].includes(b.text()));
+			expect(notifyBtns.length).toBe(2);
+			expect(notifyBtns[0].attributes("aria-pressed")).toBe("true");
+			expect(notifyBtns[1].attributes("aria-pressed")).toBe("false");
+		});
+
+		it("disables every notify toggle in the section while any one is in flight (deep-dive)", async () => {
+			isAuthenticated.value = true;
+			mockFetchPushSubscriptions.mockResolvedValue({ items: [], total: 0 });
+			mockFetchReaderSeriesFollows.mockResolvedValue({
+				items: [
+					{ id: 5, title: "Tutorial", slug: "tutorial", notify: true },
+					{ id: 6, title: "Other", slug: "other", notify: false },
+				],
+				total: 2,
+			});
+			mockSetSeriesFollowNotify.mockImplementation(() => new Promise(() => {})); // hangs
+
+			const wrapper = await mountPage();
+			const section = wrapper.findAll("section").find((s) => s.text().includes("关注的系列"));
+			if (!section) throw new Error("series section not found");
+			const notifyBtns = () =>
+				section.findAll("button").filter((b) => ["通知已开", "通知已关"].includes(b.text()));
+			await notifyBtns()[0].trigger("click");
+			await flushPromises();
+			// Both toggles (not just the in-flight one) are disabled while the
+			// single-flight request runs — no clickable-but-silent rows.
+			expect(notifyBtns()[0].attributes("disabled")).toBeDefined();
+			expect(notifyBtns()[1].attributes("disabled")).toBeDefined();
 		});
 	});
 

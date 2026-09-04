@@ -44,6 +44,7 @@ import {
 } from "~~/api/reader/subscriptions";
 import { useReaderAuth } from "~~/composables/useReaderAuth";
 import { useSeo } from "~~/composables/useSeo";
+import { useTagFollowStore } from "~~/composables/useTagFollowStore";
 
 const { t, locale } = useLang();
 const { isAuthenticated, reader, setProfile, updateToken, logout, isStaleSession } =
@@ -86,6 +87,13 @@ const passwordState = ref<"idle" | "busy" | "success" | "wrong" | "mismatch" | "
 );
 
 async function submitPassword() {
+	// Re-entry guard: `busy` only disables the button, but Enter in any of the
+	// three password inputs fires the form submit regardless. Two rapid submits
+	// both use the OLD token; #1 succeeds and bumps the version, #2 then 401s
+	// with the auth-dependency detail and isStaleSession signs the reader out —
+	// the user who just rotated their password is unexpectedly logged out
+	// (deep-dive finding; login.vue guards the same scenario with isPending).
+	if (passwordState.value === "busy") return;
 	const next = pw.value.next;
 	if (next.length < 8) {
 		passwordState.value = "short";
@@ -164,8 +172,12 @@ async function revokeDevice(device: ReaderPushSubscription) {
 	try {
 		await revokeMyPushSubscription(device.id);
 		await loadDevices();
-	} catch {
-		deviceError.value = true;
+	} catch (err) {
+		// A dead session must send the reader to sign-in, not just red-flag
+		// the section (the same invariant as the mount loaders).
+		handleLoadFailure(err, () => {
+			deviceError.value = true;
+		});
 	} finally {
 		revokingId.value = null;
 	}
@@ -197,8 +209,10 @@ async function setDeviceNewPosts(device: ReaderPushSubscription, want: boolean) 
 			new_post_category_id: want ? device.new_post_category_id : null,
 		});
 		device.want_new_posts = want;
-	} catch {
-		prefsError.value = true;
+	} catch (err) {
+		handleLoadFailure(err, () => {
+			prefsError.value = true;
+		});
 	} finally {
 		savingPrefsId.value = null;
 	}
@@ -215,8 +229,10 @@ async function setDeviceFollowCategory(device: ReaderPushSubscription, categoryI
 		});
 		device.new_post_category_id = categoryId;
 		device.want_new_posts = true;
-	} catch {
-		prefsError.value = true;
+	} catch (err) {
+		handleLoadFailure(err, () => {
+			prefsError.value = true;
+		});
 	} finally {
 		savingPrefsId.value = null;
 	}
@@ -264,8 +280,10 @@ async function unfollowThread(thread: SubscribedThreadItem) {
 	try {
 		await unsubscribeFromPostThread(thread.id);
 		await loadThreads();
-	} catch {
-		threadsError.value = true;
+	} catch (err) {
+		handleLoadFailure(err, () => {
+			threadsError.value = true;
+		});
 	} finally {
 		unsubscribingId.value = null;
 	}
@@ -300,8 +318,10 @@ async function unfollowFollowedSeries(item: FollowedSeriesItem) {
 	try {
 		await unfollowReaderSeries(item.id);
 		await loadSeriesFollows();
-	} catch {
-		seriesFollowsError.value = true;
+	} catch (err) {
+		handleLoadFailure(err, () => {
+			seriesFollowsError.value = true;
+		});
 	} finally {
 		seriesUnfollowId.value = null;
 	}
@@ -316,8 +336,10 @@ async function toggleSeriesNotify(item: FollowedSeriesItem) {
 	try {
 		const res = await setSeriesFollowNotify(item.id, next);
 		item.notify = res?.notify ?? next;
-	} catch {
-		seriesFollowsError.value = true;
+	} catch (err) {
+		handleLoadFailure(err, () => {
+			seriesFollowsError.value = true;
+		});
 	} finally {
 		seriesNotifyId.value = null;
 	}
@@ -352,8 +374,10 @@ async function unfollowFollowedCategory(item: FollowedCategoryItem) {
 	try {
 		await unfollowReaderCategory(item.id);
 		await loadCategoryFollows();
-	} catch {
-		categoryFollowsError.value = true;
+	} catch (err) {
+		handleLoadFailure(err, () => {
+			categoryFollowsError.value = true;
+		});
 	} finally {
 		categoryUnfollowId.value = null;
 	}
@@ -367,8 +391,10 @@ async function toggleCategoryNotify(item: FollowedCategoryItem) {
 	try {
 		const res = await setCategoryFollowNotify(item.id, next);
 		item.notify = res?.notify ?? next;
-	} catch {
-		categoryFollowsError.value = true;
+	} catch (err) {
+		handleLoadFailure(err, () => {
+			categoryFollowsError.value = true;
+		});
 	} finally {
 		categoryNotifyId.value = null;
 	}
@@ -403,8 +429,14 @@ async function unfollowFollowedTag(item: FollowedTagItem) {
 	try {
 		await unfollowReaderTag(item.id);
 		await loadTagFollows();
-	} catch {
-		tagFollowsError.value = true;
+		// The shared TagFollowButton store caches follow state per token; without
+		// an explicit invalidate the tag chips on /tags and post pages keep
+		// rendering this tag as followed for the whole session (deep-dive).
+		useTagFollowStore().invalidate();
+	} catch (err) {
+		handleLoadFailure(err, () => {
+			tagFollowsError.value = true;
+		});
 	} finally {
 		tagUnfollowId.value = null;
 	}
@@ -418,8 +450,13 @@ async function toggleTagNotify(item: FollowedTagItem) {
 	try {
 		const res = await setTagFollowNotify(item.id, next);
 		item.notify = res?.notify ?? next;
-	} catch {
-		tagFollowsError.value = true;
+		// Invalidate the shared tag-follow cache so chips elsewhere follow the
+		// new notify state (see unfollowFollowedTag).
+		useTagFollowStore().invalidate();
+	} catch (err) {
+		handleLoadFailure(err, () => {
+			tagFollowsError.value = true;
+		});
 	} finally {
 		tagNotifyId.value = null;
 	}
@@ -448,8 +485,10 @@ async function downloadMyData() {
 		document.body.removeChild(a);
 		URL.revokeObjectURL(url);
 		exportState.value = "done";
-	} catch {
-		exportState.value = "failed";
+	} catch (err) {
+		handleLoadFailure(err, () => {
+			exportState.value = "failed";
+		});
 	} finally {
 		exportingData.value = false;
 	}
@@ -702,7 +741,7 @@ function shortEndpoint(endpoint: string): string {
                   type="checkbox"
                   class="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                   :checked="device.want_new_posts"
-                  :disabled="savingPrefsId === device.id"
+                  :disabled="savingPrefsId !== null"
                   @change="onDeviceNewPostsChange(device, $event)"
                 />
                 <span class="text-gray-700 dark:text-gray-300">
@@ -719,7 +758,7 @@ function shortEndpoint(endpoint: string): string {
                 <select
                   class="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-2 py-1 text-xs text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
                   :value="device.new_post_category_id ?? ''"
-                  :disabled="savingPrefsId === device.id"
+                  :disabled="savingPrefsId !== null"
                   @change="onDeviceCategoryChange(device, $event)"
                 >
                   <option value="">{{ t('account.devices.allNewPosts') }}</option>
@@ -731,14 +770,15 @@ function shortEndpoint(endpoint: string): string {
               <span
                 v-if="savingPrefsId === device.id"
                 class="text-xs text-gray-400 animate-pulse"
+                aria-hidden="true"
               >…</span>
             </div>
           </li>
         </ul>
-        <p v-if="deviceError" class="mt-2 text-sm text-red-500 dark:text-red-400">
+        <p v-if="deviceError" aria-live="polite" class="mt-2 text-sm text-red-500 dark:text-red-400">
           {{ t('account.devices.revokeFailed') }}
         </p>
-        <p v-if="prefsError" class="mt-2 text-sm text-red-500 dark:text-red-400">
+        <p v-if="prefsError" aria-live="polite" class="mt-2 text-sm text-red-500 dark:text-red-400">
           {{ t('account.devices.prefsFailed') }}
         </p>
       </section>
@@ -795,7 +835,7 @@ function shortEndpoint(endpoint: string): string {
             </div>
           </li>
         </ul>
-        <p v-if="threadsError" class="mt-2 text-sm text-red-500 dark:text-red-400">
+        <p v-if="threadsError" aria-live="polite" class="mt-2 text-sm text-red-500 dark:text-red-400">
           {{ t('account.threads.failed') }}
         </p>
       </section>
@@ -843,7 +883,8 @@ function shortEndpoint(endpoint: string): string {
               <div class="shrink-0 flex items-center gap-3">
                 <button
                   type="button"
-                  :disabled="seriesNotifyId === sf.id"
+                  :disabled="seriesNotifyId !== null"
+                  :aria-pressed="sf.notify ? 'true' : 'false'"
                   :title="t('account.series.notifyTitle')"
                   class="inline-flex items-center gap-1 text-xs text-gray-400 hover:text-indigo-600 transition-colors disabled:opacity-50"
                   @click="toggleSeriesNotify(sf)"
@@ -853,7 +894,7 @@ function shortEndpoint(endpoint: string): string {
                 </button>
                 <button
                   type="button"
-                  :disabled="seriesUnfollowId === sf.id"
+                  :disabled="seriesUnfollowId !== null"
                   class="inline-flex items-center gap-1 text-xs text-gray-400 hover:text-red-500 transition-colors disabled:opacity-50"
                   @click="unfollowFollowedSeries(sf)"
                 >
@@ -864,7 +905,7 @@ function shortEndpoint(endpoint: string): string {
             </div>
           </li>
         </ul>
-        <p v-if="seriesFollowsError" class="mt-2 text-sm text-red-500 dark:text-red-400">
+        <p v-if="seriesFollowsError" aria-live="polite" class="mt-2 text-sm text-red-500 dark:text-red-400">
           {{ t('account.series.failed') }}
         </p>
       </section>
@@ -912,7 +953,8 @@ function shortEndpoint(endpoint: string): string {
               <div class="shrink-0 flex items-center gap-3">
                 <button
                   type="button"
-                  :disabled="categoryNotifyId === cf.id"
+                  :disabled="categoryNotifyId !== null"
+                  :aria-pressed="cf.notify ? 'true' : 'false'"
                   :title="t('account.categories.notifyTitle')"
                   class="inline-flex items-center gap-1 text-xs text-gray-400 hover:text-emerald-600 transition-colors disabled:opacity-50"
                   @click="toggleCategoryNotify(cf)"
@@ -922,7 +964,7 @@ function shortEndpoint(endpoint: string): string {
                 </button>
                 <button
                   type="button"
-                  :disabled="categoryUnfollowId === cf.id"
+                  :disabled="categoryUnfollowId !== null"
                   class="inline-flex items-center gap-1 text-xs text-gray-400 hover:text-red-500 transition-colors disabled:opacity-50"
                   @click="unfollowFollowedCategory(cf)"
                 >
@@ -933,7 +975,7 @@ function shortEndpoint(endpoint: string): string {
             </div>
           </li>
         </ul>
-        <p v-if="categoryFollowsError" class="mt-2 text-sm text-red-500 dark:text-red-400">
+        <p v-if="categoryFollowsError" aria-live="polite" class="mt-2 text-sm text-red-500 dark:text-red-400">
           {{ t('account.categories.failed') }}
         </p>
       </section>
@@ -981,7 +1023,8 @@ function shortEndpoint(endpoint: string): string {
               <div class="shrink-0 flex items-center gap-3">
                 <button
                   type="button"
-                  :disabled="tagNotifyId === tf.id"
+                  :disabled="tagNotifyId !== null"
+                  :aria-pressed="tf.notify ? 'true' : 'false'"
                   :title="t('account.tags.notifyTitle')"
                   class="inline-flex items-center gap-1 text-xs text-gray-400 hover:text-emerald-600 transition-colors disabled:opacity-50"
                   @click="toggleTagNotify(tf)"
@@ -991,7 +1034,7 @@ function shortEndpoint(endpoint: string): string {
                 </button>
                 <button
                   type="button"
-                  :disabled="tagUnfollowId === tf.id"
+                  :disabled="tagUnfollowId !== null"
                   class="inline-flex items-center gap-1 text-xs text-gray-400 hover:text-red-500 transition-colors disabled:opacity-50"
                   @click="unfollowFollowedTag(tf)"
                 >
@@ -1002,7 +1045,7 @@ function shortEndpoint(endpoint: string): string {
             </div>
           </li>
         </ul>
-        <p v-if="tagFollowsError" class="mt-2 text-sm text-red-500 dark:text-red-400">
+        <p v-if="tagFollowsError" aria-live="polite" class="mt-2 text-sm text-red-500 dark:text-red-400">
           {{ t('account.tags.failed') }}
         </p>
       </section>
