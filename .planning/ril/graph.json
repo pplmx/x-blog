@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 260,
+  "round": 261,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-04T20:16:40+00:00",
+  "updated_at": "2026-09-04T20:25:03+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -17924,6 +17924,17 @@
       "updated_at": "2026-09-04T20:08:59+00:00",
       "touched_round": 259,
       "commit": "dd9c821"
+    },
+    "DEC-254": {
+      "id": "DEC-254",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-04T20:25:03+00:00",
+      "updated_at": "2026-09-04T20:25:03+00:00",
+      "touched_round": 261,
+      "rationale": "Round 261: quality-convergence stop (QUIESCE). Rounds 256-261 closed: posts list (ISS-346/347), admin post editor payload-contract + autosave races (ISS-348..352), account page per-row single-flight markers (ISS-353), media page per-row delete markers + batch/single mutex + phantom selection (ISS-354/355), and 23 orphan issue nodes realigned to resolved. Convergence evidence: frontend suite runs SILENT green (1506 tests) — the pre-session happy-dom blob-download URL-noise is gone; lint + typecheck green; every interaction surface (posts list/editor, comments, readers, taxonomy, bookmarks, account, media, notifications, categories, post page) now carries the hardened patterns (per-row Set markers, handler re-entry guards, SPA-nav re-loads, stale-session routing, explicit error surfacing) — the remaining surfaces (archive/history/calendar/settings/tags/search/series) verified clean in the round-260/261 sweep; RIL graph consistent (1483 nodes / 1398 edges), zero active tasks above threshold, all issues resolved or decisioned (the 3 outstanding ISS-242/243/244 are consciously deferred infra caveats governed by DEC-004/DEC-014). Rejected alternatives: further rounds on the remaining polished surfaces (would be patch-stacking the same-class fixes the loop already applied — the exact round-spin the QUIESCE program exists to prevent); reopening the deferred infra notes (deliberate, documented deferrals, not actionable bugs). Reactivation only from a new operator directive (superseding decision) or a genuine new signal (new issue / material change), with a VERIFY-first re-entry.",
+      "alternatives_rejected": "continue round-spinning on the remaining polished surfaces; reopen the decisioned infra deferrals"
     }
   },
   "edges": [
