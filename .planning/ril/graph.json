@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 251,
+  "round": 252,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-04T13:42:38+00:00",
+  "updated_at": "2026-09-04T14:38:42+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -22,7 +22,7 @@
       "version": 1,
       "created_at": "2026-08-06T13:23:41+00:00",
       "updated_at": "2026-08-06T13:23:41+00:00",
-      "touched_round": 250,
+      "touched_round": 252,
       "title": "frontend-aura",
       "description": "Nuxt 4 Vue 3 TypeScript frontend at frontend/aura; composables; admin pages; e2e Playwright; biome lint"
     },
@@ -17466,6 +17466,115 @@
       "touched_round": 250,
       "summary": "fix(frontend): account area deep-dive — naive-UTC history epochs, dead-session mutation routing, password re-entry guard, toggle busy/a11y, tag-store + bookmark-merge race guards (e52c62f).",
       "commit": "e52c62f"
+    },
+    "ISS-333": {
+      "id": "ISS-333",
+      "type": "issue",
+      "status": "active",
+      "version": 2,
+      "created_at": "2026-09-04T14:17:04+00:00",
+      "updated_at": "2026-09-04T14:36:18+00:00",
+      "touched_round": 252,
+      "title": "Bookmark-folder assign race: two rapid row-select changes clobber each other's optimistic state",
+      "summary": "Two folder-select changes could clobber each other's optimistic state. Review found the first fix (a single assigningId ref slot) BROKE per-row single-flight: a second row's finally wiped the first row's in-flight marker, re-enabling its select mid-PATCH. Final fix: assigningIds is a reactive Set — each row's in-flight marker is independent, its select disabled + aria-busy until ONLY its own PATCH settles, and rollback only fires if the row still holds that call's optimistic value.",
+      "severity": "high",
+      "component": "frontend-aura"
+    },
+    "ISS-334": {
+      "id": "ISS-334",
+      "type": "issue",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-04T14:17:04+00:00",
+      "updated_at": "2026-09-04T14:17:04+00:00",
+      "touched_round": 252,
+      "title": "Bookmark-folder rename leaves stale folder_name on bookmark rows",
+      "summary": "renameFolder() refreshes the folder list but local bookmark rows kept the old folder_name, so chips and the manage panel disagreed. Fix: handleRename reconciles rows with b.folder_id === folder.id to the new name on success.",
+      "severity": "medium",
+      "component": "frontend-aura"
+    },
+    "ISS-335": {
+      "id": "ISS-335",
+      "type": "issue",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-04T14:17:04+00:00",
+      "updated_at": "2026-09-04T14:17:04+00:00",
+      "touched_round": 252,
+      "title": "Bookmark-folder delete resets the filter and swallows offline failure",
+      "summary": "removeFolder() was a best-effort void: the page reset the active filter optimistically and a failed delete left rows claiming a folder the server still holds. Fix: remove() returns boolean; handleDelete awaits it — on failure keeps filter + rows and surfaces the folder-action error; on success unfiles the deleted folder's rows (folder_id/folder_name null) and only then drops the filter.",
+      "severity": "medium",
+      "component": "frontend-aura"
+    },
+    "ISS-336": {
+      "id": "ISS-336",
+      "type": "issue",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-04T14:17:04+00:00",
+      "updated_at": "2026-09-04T14:17:04+00:00",
+      "touched_round": 252,
+      "title": "/bookmarks empty state flashes 'no bookmarks yet' on a signed-in fresh device before the merge lands",
+      "summary": "syncing started false, so the first paint on a signed-in device with an empty local list showed the false negative empty state until mount's mergeLocalToCloud set syncing. Fix: syncing now initializes to hasReaderToken() — signed-in reads start with the in-flight hint, guests still see the real empty state immediately.",
+      "severity": "medium",
+      "component": "frontend-aura"
+    },
+    "ISS-337": {
+      "id": "ISS-337",
+      "type": "issue",
+      "status": "active",
+      "version": 2,
+      "created_at": "2026-09-04T14:17:04+00:00",
+      "updated_at": "2026-09-04T14:36:18+00:00",
+      "touched_round": 252,
+      "title": "Clear-all mid-merge resurrects cleared bookmarks",
+      "summary": "A Clear-all clicked mid-merge could leave a pushed id resurrected: the per-PUT membership check stops FUTURE PUTs but an already-in-flight PUT can land after the cloud DELETE; the epoch gate keeps the local list clean only. Final fix adds cloud-write serialization: every mirror/merge PUT runs through withPendingWrite, and clearAll awaits all in-flight writes before issuing the DELETE so the DELETE is the last write. Test models the ordering and now asserts the DELETE fires only after the PUT settles.",
+      "severity": "high",
+      "component": "frontend-aura"
+    },
+    "DEC-248": {
+      "id": "DEC-248",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-04T14:17:28+00:00",
+      "updated_at": "2026-09-04T14:17:28+00:00",
+      "touched_round": 252,
+      "rationale": "Round-252 bookmarks deep-dive finding (LOW): an optimistic folder assignment can be wiped by a concurrent mount-time mergeLocalToCloud replace (the merge adopts the server snapshot which predates the just-assigned SAVE). Accepted as-is: the window is tiny (merge is a mount-time pull, assign is a user action), the next merge re-conciliates by pulling the server truth which will include the saved assignment, and the rollback guard in handleAssign (only roll back if the row still holds this call's value) prevents the worse failure. Fixing it fully (creating a folder-assign epoch inside the merge) adds complexity to the merge for a self-healing race.",
+      "alternatives_rejected": "Gating the merge replace on a folder-assign epoch (complex, rare); serializing assign into the merge (couples unrelated paths)."
+    },
+    "DEC-249": {
+      "id": "DEC-249",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-04T14:17:28+00:00",
+      "updated_at": "2026-09-04T14:17:28+00:00",
+      "touched_round": 252,
+      "rationale": "Round-252 bookmarks deep-dive finding (LOW): the /bookmarks list is fetched without pagination from the reader bookmarks API (which is page-bounded per ISS-142, total_pages walk inside mergeLocalToCloud) but the page renders the whole local list. Accepted as-is for a reader-facing saved-posts page: the list is the reader's own saved posts and mergeLocalToCloud already walks all pages so nothing is dropped; paginating the UI would fight the merge reconciliation (adopt-server-union) and add complexity for a list of personal saves. If a reader accumulates thousands of bookmarks this is a follow-up candidate.",
+      "alternatives_rejected": "UI pagination over the merged list (conflicts with merge-replace semantics); API-side limit."
+    },
+    "DEC-250": {
+      "id": "DEC-250",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-04T14:36:18+00:00",
+      "updated_at": "2026-09-04T14:36:18+00:00",
+      "touched_round": 252,
+      "rationale": "Round-252 review (LOW, accepted): the folder assign/rename/delete row reconciles (folder_id/folder_name mutations on bookmark objects) are not persisted to localStorage — same pre-existing pattern as handleAssign's optimistic update. Accepted: folders are a signed-in server-backed feature whose mount-time mergeLocalToCloud self-heals any transient divergence, and persisting folder on the local-only list would create a second truth to keep in sync. Also accepted: useBookmarkFolders.remove() returns true even if the post-delete load() reload fails (load() swallows its errors) — the delete outcome is the meaningful part and the peer create()/rename() share the same shape; the page drops the filter/filter-bar-stale-window-self-heals on the next load.",
+      "alternatives_rejected": "Persisting folder fields to localStorage (second truth, no merge story for guests); making remove() return false when only the reload fails (false 'delete failed' to the reader for a succeeded server delete)."
+    },
+    "CHG-369": {
+      "id": "CHG-369",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-04T14:38:18+00:00",
+      "updated_at": "2026-09-04T14:38:18+00:00",
+      "touched_round": 252,
+      "commit": "d968c66",
+      "summary": "fix(frontend): bookmarks page deep-dive — assign/rename/delete races + clear-vs-merge hardening (ISS-333/334/335/336/337, DEC-248/249/250, TASK-233 hardening)"
     }
   },
   "edges": [
@@ -25621,6 +25730,84 @@
       "to": "TASK-278",
       "type": "implements",
       "created_at": "2026-09-04T13:42:38+00:00"
+    },
+    {
+      "from": "ISS-333",
+      "to": "COMP-002",
+      "type": "located_in",
+      "created_at": "2026-09-04T14:17:55+00:00"
+    },
+    {
+      "from": "ISS-334",
+      "to": "COMP-002",
+      "type": "located_in",
+      "created_at": "2026-09-04T14:17:55+00:00"
+    },
+    {
+      "from": "ISS-335",
+      "to": "COMP-002",
+      "type": "located_in",
+      "created_at": "2026-09-04T14:17:55+00:00"
+    },
+    {
+      "from": "ISS-336",
+      "to": "COMP-002",
+      "type": "located_in",
+      "created_at": "2026-09-04T14:17:56+00:00"
+    },
+    {
+      "from": "ISS-337",
+      "to": "COMP-002",
+      "type": "located_in",
+      "created_at": "2026-09-04T14:17:56+00:00"
+    },
+    {
+      "from": "DEC-248",
+      "to": "COMP-002",
+      "type": "governs",
+      "created_at": "2026-09-04T14:17:56+00:00"
+    },
+    {
+      "from": "DEC-249",
+      "to": "COMP-002",
+      "type": "governs",
+      "created_at": "2026-09-04T14:17:56+00:00"
+    },
+    {
+      "from": "DEC-250",
+      "to": "COMP-002",
+      "type": "governs",
+      "created_at": "2026-09-04T14:36:31+00:00"
+    },
+    {
+      "from": "CHG-369",
+      "to": "ISS-333",
+      "type": "resolves",
+      "created_at": "2026-09-04T14:38:42+00:00"
+    },
+    {
+      "from": "CHG-369",
+      "to": "ISS-334",
+      "type": "resolves",
+      "created_at": "2026-09-04T14:38:42+00:00"
+    },
+    {
+      "from": "CHG-369",
+      "to": "ISS-335",
+      "type": "resolves",
+      "created_at": "2026-09-04T14:38:42+00:00"
+    },
+    {
+      "from": "CHG-369",
+      "to": "ISS-336",
+      "type": "resolves",
+      "created_at": "2026-09-04T14:38:42+00:00"
+    },
+    {
+      "from": "CHG-369",
+      "to": "ISS-337",
+      "type": "resolves",
+      "created_at": "2026-09-04T14:38:42+00:00"
     }
   ]
 }
