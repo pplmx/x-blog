@@ -144,6 +144,13 @@ async function handleDelete(item: UploadFileInfo) {
 	actionError.value = null;
 	try {
 		await deleteAdminMediaFile(item);
+		// A card that was BOTH ticked for the bulk selection and single-deleted
+		// must leave the selection — otherwise "已选 N 张" counts a deleted file
+		// and 删除选中 operates on a phantom (review finding on round 259; the
+		// batch path already resets selection on success).
+		if (selected.value.includes(item.url)) {
+			selected.value = selected.value.filter((u) => u !== item.url);
+		}
 		await refresh();
 		// Clamp an out-of-range page after deleting the last item of the last
 		// page (see handleBatchDelete); currentPage change re-fetches.

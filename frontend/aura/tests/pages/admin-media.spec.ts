@@ -113,6 +113,46 @@ describe("Admin Media page", () => {
 		}
 	});
 
+	it("drops a single-deleted image from the bulk selection (round 259 review)", async () => {
+		// A card that was ticked for the bulk selection and then single-deleted
+		// must leave the selection — otherwise "已选 N 张" counts a deleted file
+		// and 删除选中 operates on a phantom URL (backend skips it idempotently,
+		// so no error, but the count/button are wrong). Round-259 review finding.
+		const refresh = vi.fn(() => Promise.resolve());
+		listMock.mockReturnValue(
+			fakeListing(
+				[
+					{ ...unreferenced },
+					{
+						...unreferenced,
+						url: "/static/uploads/2026/07/11111111-2222-4444-8888-000000000003.png",
+					},
+				],
+				refresh,
+			),
+		);
+		deleteMock.mockResolvedValue({ message: "ok" });
+		const originalConfirm = window.confirm;
+		window.confirm = vi.fn(() => true);
+
+		try {
+			const wrapper = await mountPage();
+			const select = wrapper.find('button[aria-label="选择"]');
+			await select.trigger("click"); // tick row 1
+			expect(wrapper.text()).toContain("已选 1 张");
+
+			const deleteBtn = wrapper.findAll("button").find((b) => b.text().trim() === "删除");
+			await deleteBtn?.trigger("click"); // single-delete the SAME card
+			await flushPromises();
+
+			// The deleted card left the selection — no phantom count or batch button.
+			expect(wrapper.text()).not.toContain("已选 1 张");
+			expect(wrapper.findAll("button").find((b) => b.text().trim() === "删除选中")).toBeUndefined();
+		} finally {
+			window.confirm = originalConfirm;
+		}
+	});
+
 	it("keeps other rows deletable while one delete is in flight (per-row markers, round 259)", async () => {
 		// A global `isDeleting` flag froze the whole grid on the first click. The
 		// per-row marker keeps other rows clickable — which also makes the busy
