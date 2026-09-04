@@ -113,6 +113,117 @@ describe("Admin Media page", () => {
 		}
 	});
 
+	it("keeps other rows deletable while one delete is in flight (per-row markers, round 259)", async () => {
+		// A global `isDeleting` flag froze the whole grid on the first click. The
+		// per-row marker keeps other rows clickable — which also makes the busy
+		// state genuinely observable, since happy-dom swallows clicks on disabled
+		// buttons — and row 1's marker survives row 2's completion (no cross-row
+		// clobber, the same property the readers/account fixes enforce).
+		const refresh = vi.fn(() => Promise.resolve());
+		listMock.mockReturnValue(
+			fakeListing(
+				[
+					{ ...unreferenced },
+					{
+						...unreferenced,
+						url: "/static/uploads/2026/07/11111111-2222-4444-8888-000000000003.png",
+					},
+				],
+				refresh,
+			),
+		);
+		let resolveDelete!: (v: unknown) => void;
+		deleteMock
+			.mockImplementationOnce(
+				() =>
+					new Promise((res) => {
+						resolveDelete = res;
+					}),
+			)
+			.mockResolvedValue({ message: "ok" });
+		const originalConfirm = window.confirm;
+		window.confirm = vi.fn(() => true);
+
+		try {
+			const wrapper = await mountPage();
+			const deleteBtns = () => wrapper.findAll("button").filter((b) => b.text().trim() === "删除");
+			await deleteBtns()[0].trigger("click"); // row 1 — in flight
+			await flushPromises();
+			expect((deleteBtns()[0].element as HTMLButtonElement).disabled).toBe(true);
+			// Row 2 was NOT frozen out — the old global flag disabled it here.
+			expect((deleteBtns()[1].element as HTMLButtonElement).disabled).toBe(false);
+
+			// Row 2's delete RUNS AND COMPLETES while row 1 is still pending.
+			await deleteBtns()[1].trigger("click");
+			await flushPromises();
+			expect(deleteMock).toHaveBeenCalledTimes(2);
+			// Row 1's marker was NOT cleared by row 2's completion.
+			expect((deleteBtns()[0].element as HTMLButtonElement).disabled).toBe(true);
+
+			resolveDelete({ message: "ok" });
+			await flushPromises();
+			expect((deleteBtns()[0].element as HTMLButtonElement).disabled).toBe(false);
+			expect(refresh).toHaveBeenCalled();
+		} finally {
+			window.confirm = originalConfirm;
+		}
+	});
+
+	it("blocks a batch delete while a single-row delete is in flight (round 259)", async () => {
+		// A batch delete and an in-flight single delete must not run
+		// concurrently (their refreshes interleave; a file in both would
+		// double-delete → 404 on the second). The batch guard must drop the
+		// click while the single delete holds the bus.
+		const refresh = vi.fn(() => Promise.resolve());
+		listMock.mockReturnValue(
+			fakeListing(
+				[
+					{ ...unreferenced },
+					{
+						...unreferenced,
+						url: "/static/uploads/2026/07/11111111-2222-4444-8888-000000000003.png",
+					},
+				],
+				refresh,
+			),
+		);
+		let resolveDelete!: (v: unknown) => void;
+		deleteMock.mockImplementationOnce(
+			() =>
+				new Promise((res) => {
+					resolveDelete = res;
+				}),
+		);
+		const originalConfirm = window.confirm;
+		window.confirm = vi.fn(() => true);
+
+		try {
+			const wrapper = await mountPage();
+			const deleteBtns = () => wrapper.findAll("button").filter((b) => b.text().trim() === "删除");
+			await deleteBtns()[0].trigger("click"); // single delete — in flight
+			await flushPromises();
+
+			// Tick another unreferenced row and hit "删除选中": the single
+			// delete still holds the bus, so the batch must NOT fire.
+			const select = wrapper.find('button[aria-label="选择"]');
+			await select.trigger("click");
+			await flushPromises();
+			const batchBtn = wrapper.findAll("button").find((b) => b.text().trim() === "删除选中");
+			expect(batchBtn).toBeDefined();
+			await batchBtn?.trigger("click");
+			await flushPromises();
+
+			expect(batchDeleteMock).not.toHaveBeenCalled();
+			expect(deleteMock).toHaveBeenCalledTimes(1);
+
+			resolveDelete({ message: "ok" });
+			await flushPromises();
+			expect(deleteMock).toHaveBeenCalledTimes(1);
+		} finally {
+			window.confirm = originalConfirm;
+		}
+	});
+
 	it("batch-deletes selected unreferenced images (DEC-191)", async () => {
 		const refresh = vi.fn(() => Promise.resolve());
 		listMock.mockReturnValue(

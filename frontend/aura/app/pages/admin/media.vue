@@ -44,7 +44,12 @@ const items = computed(() => data.value?.items ?? []);
 const total = computed(() => data.value?.pagination?.total ?? 0);
 const totalPages = computed(() => data.value?.pagination?.total_pages ?? 0);
 
-const isDeleting = ref(false);
+// Per-PATH in-flight single-delete markers keyed by URL. Keeping them per row
+// (not one global `isDeleting` that disables the whole grid) means one card's
+// in-flight delete doesn't freeze the others — and the frozen-grid variant
+// made the re-entry guard untestable, since happy-dom swallows clicks on
+// disabled buttons (deep-dive, round 259).
+const deletingUrls = ref(new Set<string>());
 const actionError = ref<string | null>(null);
 const copiedUrl = ref<string | null>(null);
 
@@ -68,7 +73,10 @@ watch([currentPage, searchQ], () => {
 
 const batchDeleting = ref(false);
 async function handleBatchDelete() {
-	if (selectedCount.value === 0 || batchDeleting.value) return;
+	// A batch delete and a single-row delete must not run concurrently: their
+	// refreshes interleave, and a file in both batches would double-delete
+	// (404 on the second). Single-flight both paths (deep-dive, round 259).
+	if (selectedCount.value === 0 || batchDeleting.value || deletingUrls.value.size > 0) return;
 	if (!confirm(t("admin.media.confirmBatchDelete", { n: selectedCount.value }))) return;
 	batchDeleting.value = true;
 	actionError.value = null;
@@ -124,8 +132,15 @@ async function copyUrl(item: UploadFileInfo) {
 }
 
 async function handleDelete(item: UploadFileInfo) {
+	// Re-entry guard for the handler itself: this row's delete button disables
+	// while the request is in flight, but a duplicate click queued in the same
+	// tick still reaches the handler (and happy-dom suppresses clicks on the
+	// disabled button, making the guard the only real protection) — and a
+	// single delete never runs concurrently with a batch delete. (deep-dive,
+	// round 259; same class as the editor Save.)
+	if (deletingUrls.value.has(item.url) || batchDeleting.value) return;
 	if (!confirm(t("admin.media.confirmDelete"))) return;
-	isDeleting.value = true;
+	deletingUrls.value.add(item.url);
 	actionError.value = null;
 	try {
 		await deleteAdminMediaFile(item);
@@ -138,7 +153,7 @@ async function handleDelete(item: UploadFileInfo) {
 	} catch (e) {
 		actionError.value = e instanceof Error ? e.message : t("admin.media.deleteFailed");
 	} finally {
-		isDeleting.value = false;
+		deletingUrls.value.delete(item.url);
 	}
 }
 
@@ -280,7 +295,7 @@ function goToPage(page: number) {
             </button>
             <button
               type="button"
-              :disabled="item.referenced || isDeleting"
+              :disabled="item.referenced || deletingUrls.has(item.url)"
               class="text-xs px-2 py-1.5 rounded-lg bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/50 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
               :title="item.referenced
                 ? t('admin.media.referencedTitle', { n: item.referencing_posts.length })
