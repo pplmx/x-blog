@@ -254,5 +254,62 @@ describe("My comments page", () => {
 			const wrapper = await mountPage();
 			expect(wrapper.find("nav").exists()).toBe(false);
 		});
+
+		it("clamps back to the last valid page after deleting the only comment on it (deep-dive)", async () => {
+			// Reader is on page 2 (the last page). After deleting its only
+			// comment, the reload sees an empty page under a non-zero total —
+			// this must clamp currentPage back to the last valid page and re-fetch
+			// instead of rendering a fake "you haven't commented yet" under a
+			// stale count.
+			isAuthenticated.value = true;
+			const page1 = {
+				items: [makeComment()],
+				total: 2,
+				page: 1,
+				limit: 20,
+				total_pages: 2,
+			};
+			const page2 = {
+				items: [makeComment({ id: 2, content: "Second comment" })],
+				total: 2,
+				page: 2,
+				limit: 20,
+				total_pages: 2,
+			};
+			mockFetchMyComments.mockImplementation((_status: string, page: number) =>
+				Promise.resolve(page === 2 ? page2 : page1),
+			);
+			mockDeleteMyComment.mockResolvedValue(undefined);
+			vi.stubGlobal("confirm", () => true);
+
+			const wrapper = await mountPage(); // initial load → page 1
+			const nav = wrapper.find("nav");
+			expect(nav.exists()).toBe(true);
+			await nav.findAll("button")[1].trigger("click"); // go to page 2
+			await flushPromises();
+			expect(wrapper.text()).toContain("Second comment");
+
+			// Now the reload after delete returns the drained page 2 (empty items
+			// but total still > 0 because page 1 holds comments); the clamp's
+			// recursive refetch of page 1 must see the still-populated page 1.
+			mockFetchMyComments.mockImplementation((_status: string, page: number) =>
+				Promise.resolve(
+					page === 2
+						? { items: [], total: 1, page: 2, limit: 20, total_pages: 1 }
+						: { ...page1, items: page1.items.slice(0, 1), total: 1 },
+				),
+			);
+			const deleteBtn = wrapper.findAll("button").find((b) => b.text().includes("删除"));
+			expect(deleteBtn).toBeDefined();
+			await deleteBtn?.trigger("click");
+			await flushPromises();
+
+			// Clamped to page 1 and re-fetched: the drained page 2 was visited,
+			// then the clamp's re-fetch landed back on the populated page 1.
+			expect(mockFetchMyComments).toHaveBeenLastCalledWith("all", 1, 20);
+			expect(wrapper.text()).toContain("A comment");
+			expect(wrapper.text()).not.toContain("还没有发表过评论");
+			vi.unstubAllGlobals();
+		});
 	});
 });

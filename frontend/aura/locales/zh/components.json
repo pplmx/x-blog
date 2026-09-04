@@ -31,6 +31,7 @@
 			"markdownHint": "支持 Markdown，代码块、加粗和链接会渲染。"
 		},
 		"commentList": {
+			"loadError": "评论加载失败，请稍后重试。",
 			"flag": "举报",
 			"flagged": "已举报",
 			"flagError": "举报失败，请重试。",

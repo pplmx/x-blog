@@ -31,6 +31,7 @@
 			"markdownHint": "Supports Markdown — code blocks, bold and links render."
 		},
 		"commentList": {
+			"loadError": "Couldn't load comments. Please try again.",
 			"flag": "Report",
 			"flagged": "Reported",
 			"flagError": "Couldn't report this comment. Please try again.",

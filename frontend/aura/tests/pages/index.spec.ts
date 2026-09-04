@@ -67,8 +67,23 @@ const { mockState } = vi.hoisted(() => ({
 			views: number;
 			category: { id: number; name: string } | null;
 		}>,
+		// Pending gates for the personalized fetch mocks: when true, the mock
+		// never settles — lets tests observe the loading-skeleton branch (the
+		// resolves-in-one-microtask real default makes it unobservable).
+		followsPending: false,
+		seriesPending: false,
 	},
 }));
+
+/** A promise the mocks await while a pending gate is up (so the loading
+ *  branch stays mounted until the test flips it). */
+let pendingGate: { resolve: () => void; promise: Promise<void> };
+function openPendingGate() {
+	pendingGate = { resolve: () => {}, promise: Promise.resolve() };
+	pendingGate.promise = new Promise<void>((resolve) => {
+		pendingGate.resolve = resolve;
+	});
+}
 
 // --- Mock the public API modules so we control the real data lists. ---
 // index.vue loads the post feed through the real usePosts (which hits the
@@ -104,11 +119,17 @@ vi.mock("../../api/reader/history", () => ({
 	getReaderSeriesProgress: async (slug: string) => mockState.seriesProgress[slug] ?? null,
 }));
 vi.mock("../../api/reader/follows", () => ({
-	getReaderFollowsFeed: async () => mockState.followsFeed,
-	getReaderSeriesFollows: async () => ({
-		items: mockState.followedSeries,
-		total: mockState.followedSeries.length,
-	}),
+	getReaderFollowsFeed: async () => {
+		if (mockState.followsPending) await pendingGate.promise;
+		return mockState.followsFeed;
+	},
+	getReaderSeriesFollows: async () => {
+		if (mockState.seriesPending) await pendingGate.promise;
+		return {
+			items: mockState.followedSeries,
+			total: mockState.followedSeries.length,
+		};
+	},
 }));
 
 // --- Mock useSeo so it's a no-op (no real SEO side effects in tests) ---
@@ -131,6 +152,11 @@ vi.mock("../../composables/useRecentlyViewed", async () => {
 
 // --- Stub Nuxt globals used by the page ---
 let lastFetchUrl: string = "";
+// The feed data rides a boxed ref so a test can change the PAYLOAD after mount
+// (the page-clamp watch fires on total_pages CHANGING — a snapshotted
+// ref(mockState.posts) holds the initial value forever and can never trigger
+// it). setupNuxtStubs seeds it from mockState; the clamp test flips it later.
+const postsBoxed = ref<typeof mockState.posts>(null);
 function setupNuxtStubs({ query = {} }: { query?: Record<string, string> } = {}) {
 	vi.stubGlobal("useRoute", () => ({ path: "/", query }));
 	vi.stubGlobal("navigateTo", vi.fn());
@@ -146,7 +172,7 @@ function setupNuxtStubs({ query = {} }: { query?: Record<string, string> } = {})
 			lastFetchUrl =
 				typeof url === "function" ? url() : typeof url === "string" ? url : (url.value ?? "");
 			return {
-				data: ref(mockState.posts),
+				data: postsBoxed,
 				pending: ref(mockState.pending),
 				error: ref(mockState.error),
 				refresh: vi.fn(),
@@ -154,6 +180,7 @@ function setupNuxtStubs({ query = {} }: { query?: Record<string, string> } = {})
 		}),
 	);
 	vi.stubGlobal("$fetch", vi.fn());
+	postsBoxed.value = mockState.posts;
 }
 
 // --- Helper: mount the index page with a Suspense boundary ---
@@ -256,6 +283,8 @@ function resetMockState() {
 	mockState.followedSeries = [];
 	mockState.seriesProgress = {};
 	mockState.followsFeed = [];
+	mockState.followsPending = false;
+	mockState.seriesPending = false;
 	try {
 		window.localStorage.removeItem("reader_token");
 	} catch {
@@ -591,6 +620,83 @@ describe("Index Page", () => {
 			expect(navigateToMock).toHaveBeenCalledWith({
 				query: { page: "2", category_id: "1" },
 			});
+		});
+
+		it("rewrites the URL when a stale page deep link is clamped (deep-dive)", async () => {
+			// /?page=999 with only 3 pages: the local clamp was fixing the ref
+			// but leaving ?page=999 in the address bar — refresh/bookmark repeated
+			// the empty-state flash and the URL never matched what was rendered.
+			// Mount with an empty feed first (so the clamp watch starts with no
+			// total_pages), then land real pagination to trigger the clamp.
+			mockState.posts = null;
+			const wrapper = await mountIndexPage({ query: { page: "999" } });
+			const navigateToMock = vi.fn();
+			vi.stubGlobal("navigateTo", navigateToMock);
+
+			postsBoxed.value = {
+				items: mockPostsData.items,
+				pagination: { total: 20, page: 1, limit: 10, total_pages: 3 },
+			};
+			await flushPromises();
+
+			// The clamp must rewrite ?page=999 → ?page=3 in place (no push, no
+			// filter dropped).
+			expect(navigateToMock).toHaveBeenCalledWith({ query: { page: "3" } }, { replace: true });
+		});
+
+		it("disables the active page button instead of scroll-jacking clicks (deep-dive)", async () => {
+			mockState.posts = {
+				...mockPostsData,
+				pagination: { total: 20, page: 2, limit: 10, total_pages: 3 },
+			};
+			const wrapper = await mountIndexPage();
+			const activeBtn = wrapper
+				.findAll("button")
+				.find((b) => b.text() === "2" && b.attributes("aria-current") === "page");
+			expect(activeBtn).toBeDefined();
+			if (!activeBtn) throw new Error("expected the active page button");
+			expect((activeBtn.element as HTMLButtonElement).disabled).toBe(true);
+		});
+	});
+
+	describe("Follows loading skeletons (deep-dive)", () => {
+		it("renders the follows row + skeleton during the slow first fetch", async () => {
+			// The section gate must include the loading flag, or the skeleton
+			// never renders (whole section absent until data lands — layout jump).
+			window.localStorage.setItem("reader_token", "token");
+			openPendingGate();
+			mockState.followsPending = true;
+			const wrapper = await mountIndexPage();
+			expect(wrapper.text()).toContain("关注内容的最新文章");
+			expect(wrapper.findAll(".animate-pulse").length).toBeGreaterThan(0);
+			// Release the gate: the row settles into its list.
+			mockState.followsPending = false;
+			mockState.followsFeed = [
+				{
+					id: 9,
+					title: "Followed Post",
+					slug: "followed-post",
+					views: 4,
+					category: { id: 2, name: "AI" },
+				},
+			];
+			pendingGate.resolve();
+			await flushPromises();
+			expect(wrapper.text()).toContain("Followed Post");
+		});
+
+		it("renders the series row + skeleton during the slow first fetch", async () => {
+			window.localStorage.setItem("reader_token", "token");
+			openPendingGate();
+			mockState.seriesPending = true;
+			const wrapper = await mountIndexPage();
+			expect(wrapper.text()).toContain("我的系列");
+			expect(wrapper.findAll(".animate-pulse").length).toBeGreaterThan(0);
+			mockState.seriesPending = false;
+			mockState.followedSeries = [{ id: 3, title: "Tutorial", slug: "tutorial" }];
+			pendingGate.resolve();
+			await flushPromises();
+			expect(wrapper.text()).toContain("Tutorial");
 		});
 	});
 

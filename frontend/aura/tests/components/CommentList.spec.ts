@@ -11,6 +11,7 @@
 import { flushPromises, mount } from "@vue/test-utils";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { ref } from "vue";
+import { parseApiDate } from "~~/composables/apiDate";
 
 // Mock the API module before importing the component.
 // In the vitest config the ~/ alias resolves to the frontend root
@@ -94,6 +95,7 @@ async function mountCommentList({
 	postId = 1,
 	attachToBody = false,
 	getCommentsImpl,
+	initialError = null,
 }: {
 	comments?: typeof mockComments | null;
 	pending?: boolean;
@@ -101,13 +103,21 @@ async function mountCommentList({
 	attachToBody?: boolean;
 	/** Override the getComments mock (used by sort/pagination/deep-link walk). */
 	getCommentsImpl?: (postId: number, page: number, limit: number, sort?: string) => Promise<any>;
+	/** Error ref for the initial useComments fetch (initial-load failure). */
+	initialError?: unknown;
 } = {}) {
 	const mockData = ref(comments ? { ...comments } : null);
+	const errorRef = ref(initialError);
 	const mockResult = {
 		data: mockData,
 		pending: ref(pending),
-		error: ref(null),
-		refresh: vi.fn(),
+		error: errorRef,
+		refresh: vi.fn(async () => {
+			// A retry clears the error and repopulates with the mock payload,
+			// mirroring how useFetch's refresh() settles a failed initial load.
+			errorRef.value = null;
+			mockData.value = comments ? { ...comments } : null;
+		}),
 	};
 
 	mockFetchComments.mockReset().mockReturnValue(mockResult);
@@ -191,6 +201,39 @@ describe("CommentList", () => {
 				comments: mockEmptyComments,
 			});
 			expect(wrapper.text()).toContain("发第一个评论");
+		});
+	});
+
+	describe("Initial-load failure (deep-dive)", () => {
+		it("renders a retryable error instead of the fake 'be the first' empty state", async () => {
+			// A null data payload from a failed initial fetch must NOT fall through
+			// to the "no comments yet" branch above an active form (a reader on a
+			// flaky connection would believe a busy thread was empty).
+			const { wrapper } = await mountCommentList({
+				comments: null,
+				initialError: new Error("offline"),
+			});
+			expect(wrapper.text()).toContain("评论加载失败，请稍后重试。");
+			expect(wrapper.text()).not.toContain("还没有评论");
+			// And it offers a retry to re-run the same initial fetch.
+			const retry = wrapper.findAll("button").find((b) => b.text() === "重试");
+			expect(retry).toBeDefined();
+		});
+
+		it("retry clears the error and re-renders the thread", async () => {
+			// Keep the mock payload available so the retry's refresh() can
+			// repopulate the list (the refresh impl restores the initial comments).
+			const { wrapper } = await mountCommentList({
+				comments: mockComments,
+				initialError: new Error("offline"),
+			});
+			const retry = wrapper.findAll("button").find((b) => b.text() === "重试");
+			expect(retry).toBeDefined();
+			if (!retry) throw new Error("expected a retry button");
+			await retry.trigger("click");
+			await flushPromises();
+			expect(wrapper.text()).not.toContain("评论加载失败，请稍后重试。");
+			expect(wrapper.text()).toContain("Alice");
 		});
 	});
 
@@ -1151,6 +1194,158 @@ describe("CommentList", () => {
 			// The anonymous comment has none.
 			expect(wrapper.text()).toContain("Riki");
 			expect(wrapper.text()).toContain("Guest");
+		});
+	});
+
+	describe("Naive-UTC dates (deep-dive)", () => {
+		it("renders a zone-less timestamp via parseApiDate (not raw local parse)", async () => {
+			// The backend serializes naive-UTC datetimes without a zone marker;
+			// `new Date("2024-01-15T10:30:00")` would treat the wall-clock as the
+			// browser's LOCAL time. Assert the rendered day matches what
+			// parseApiDate produces (the UTC-anchored instant converted to local).
+			const naive = "2024-01-15T10:30:00"; // no Z
+			const expected = parseApiDate(naive)?.toLocaleDateString("zh-CN", {
+				year: "numeric",
+				month: "short",
+				day: "numeric",
+			});
+			expect(expected).toBeTruthy();
+			const { wrapper } = await mountCommentList({
+				comments: {
+					...mockComments,
+					items: [{ ...mockComments.items[0], created_at: naive }],
+				},
+			});
+			expect(wrapper.text()).toContain(String(expected));
+		});
+	});
+
+	describe("Reply after a failed refresh (deep-dive)", () => {
+		// Replying POSTs the comment, then CommentList refreshes the list to show
+		// it. If that refresh fails, the old code closed the reply form anyway —
+		// dropping the "posted" flash and leaving a reader unsure whether their
+		// comment landed (a re-click risks a duplicate). The form must stay open
+		// with the success message visible until the list refreshes.
+		const replyData = {
+			items: [
+				{
+					id: 1,
+					post_id: 1,
+					parent_id: null,
+					nickname: "Alice",
+					email: "alice@test.com",
+					content: "Original",
+					is_approved: true,
+					ip_address: "127.0.0.1",
+					created_at: "2024-01-15T10:30:00Z",
+				},
+			],
+			total: 1,
+			total_pages: 1,
+			page: 1,
+			limit: 20,
+		};
+
+		it("keeps the reply form open when the post-refresh fetch fails", async () => {
+			// Sign the "reader" in so the reply form needs only content (the
+			// anonymous path would also require nickname+email, muddying the test).
+			localStorage.setItem("reader_token", "reader.jwt");
+			localStorage.setItem(
+				"reader_profile",
+				JSON.stringify({ id: 7, email: "me@x.com", display_name: "Me", created_at: null }),
+			);
+			const { wrapper } = await mountCommentList({ comments: replyData });
+			const replyBtn = wrapper.findAll("button").find((b) => b.text() === "回复");
+			expect(replyBtn).toBeDefined();
+			if (!replyBtn) throw new Error("expected a reply button");
+			await replyBtn.trigger("click");
+			await flushPromises();
+			await vi.waitFor(() => {
+				expect(wrapper.find("#comment-content").exists()).toBe(true);
+			});
+
+			await wrapper.find("#comment-content").setValue("A fresh reply");
+			await flushPromises();
+			// The POST succeeds; the refresh that follows it fails.
+			mockCreateComment.mockResolvedValueOnce({
+				...replyData.items[0],
+				id: 99,
+				content: "A fresh reply",
+			});
+			mockGetComments.mockRejectedValueOnce(new Error("offline"));
+
+			const submit = wrapper.find('form button[type="submit"]');
+			expect(submit.exists()).toBe(true);
+			await submit.trigger("submit");
+			await flushPromises();
+
+			// The reply was created...
+			expect(mockCreateComment).toHaveBeenCalled();
+			// ...but the refresh failed: the form must STAY open (a re-click would
+			// now re-open), and the success note must still be visible so the
+			// reader knows their comment posted.
+			expect(wrapper.find("#comment-content").exists()).toBe(true);
+			expect(wrapper.text()).toContain("评论提交成功，等待审核中！");
+			expect(wrapper.text()).toContain("评论刷新失败，请重试。");
+		});
+	});
+
+	describe("Reply/flag no-op states (deep-dive)", () => {
+		it("disables an already-liked like button (no silent no-op)", async () => {
+			localStorage.setItem("liked-comments:1", "1");
+			const { wrapper } = await mountCommentList();
+			const likeButton = wrapper.find("#comment-1 .comment-like");
+			expect((likeButton.element as HTMLButtonElement).disabled).toBe(true);
+			expect(likeButton.attributes("aria-pressed")).toBe("true");
+		});
+
+		it("disables an already-flagged flag button and marks it pressed", async () => {
+			localStorage.setItem("flagged-comments:1", "1");
+			const { wrapper } = await mountCommentList();
+			const flagButton = wrapper.find("#comment-1 .comment-flag");
+			expect((flagButton.element as HTMLButtonElement).disabled).toBe(true);
+			expect(flagButton.attributes("aria-pressed")).toBe("true");
+		});
+	});
+
+	describe("Nested verified-reader badge (deep-dive)", () => {
+		it("shows the display_name on a nested reply badge like the top-level one", async () => {
+			const nestedData = {
+				items: [
+					{
+						id: 1,
+						post_id: 1,
+						parent_id: null,
+						nickname: "Alice",
+						email: "alice@test.com",
+						content: "Top",
+						is_approved: true,
+						ip_address: "127.0.0.1",
+						created_at: "2024-01-15T10:30:00Z",
+					},
+					{
+						id: 2,
+						post_id: 1,
+						parent_id: 1,
+						nickname: "rinn",
+						email: "rinn@test.com",
+						content: "Reply",
+						is_approved: true,
+						ip_address: "127.0.0.1",
+						created_at: "2024-01-16T10:30:00Z",
+						reader: { id: 5, display_name: "Rinn Cooper" },
+					},
+				],
+				total: 2,
+				total_pages: 1,
+				page: 1,
+				limit: 20,
+			};
+			const { wrapper } = await mountCommentList({ comments: nestedData });
+			// The nested badge previously dropped display_name (icon + title only);
+			// it must now announce "Rinn Cooper" like the top-level badge does.
+			expect(wrapper.findAll('[data-icon="lucide:badge-check"]').length).toBe(1);
+			expect(wrapper.text()).toContain("Rinn Cooper");
 		});
 	});
 

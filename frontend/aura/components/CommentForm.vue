@@ -2,9 +2,11 @@
   <section>
     <h2 class="text-xl font-bold text-gray-900 dark:text-gray-100 mb-4">{{ submitLabel || t('components.commentForm.title') }}</h2>
 
-    <!-- Reply context -->
+    <!-- Reply context (keydown.esc bubbles from the panel below to cancel
+         without reaching for the Cancel button) -->
     <div
       v-if="replyingTo"
+      @keydown.esc.prevent="emit('cancel')"
       class="flex items-center justify-between gap-2 mb-4 px-4 py-3 rounded-xl bg-blue-50 dark:bg-blue-950/40 border border-blue-100 dark:border-blue-900/40"
     >
       <p class="text-sm text-blue-700 dark:text-blue-300">
@@ -78,11 +80,15 @@
         >{{ t('components.commentForm.content') }}</label>
         <textarea
           id="comment-content"
+          ref="contentRef"
           v-model="form.content"
           required
           rows="4"
           :placeholder="t('components.commentForm.content')"
           class="w-full px-3 py-2 border border-gray-200 dark:border-gray-700 dark:bg-gray-800 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm resize-y"
+          @keydown.exact.esc.prevent="emit('cancel')"
+          @keydown.ctrl.enter.prevent="submitWithShortcut()"
+          @keydown.meta.enter.prevent="submitWithShortcut()"
         />
         <!-- Markdown hint (DEC-088): comments render as sanitized Markdown. -->
         <p class="mt-1 text-xs text-gray-400 dark:text-gray-500">
@@ -111,7 +117,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from "vue";
+import { computed, nextTick, onMounted, ref, watch } from "vue";
 import { createComment } from "~~/api/public/comments";
 import { useReaderAuth } from "~~/composables/useReaderAuth";
 
@@ -120,13 +126,18 @@ interface Props {
 	parentId?: number | null;
 	replyingTo?: string | null;
 	submitLabel?: string | null;
+	/** Focus the textarea on mount (reply/edit call sites). */
+	autofocus?: boolean;
 }
 
 const props = withDefaults(defineProps<Props>(), {
 	parentId: undefined,
 	replyingTo: undefined,
 	submitLabel: undefined,
+	autofocus: false,
 });
+
+const contentRef = ref<HTMLTextAreaElement | null>(null);
 
 const emit = defineEmits<{ submitted: []; cancel: []; "update:dirty": [value: boolean] }>();
 
@@ -146,7 +157,18 @@ const { isAuthenticated, reader } = useReaderAuth();
 const hydrated = ref(false);
 onMounted(() => {
 	hydrated.value = true;
+	// Reply/edit call sites pass autofocus so a keyboard user lands straight in
+	// the editor instead of Tabbing through the rest of the thread (a11y).
+	if (props.autofocus) {
+		nextTick(() => contentRef.value?.focus());
+	}
 });
+
+/** Ctrl/⌘+Enter submits the form without a mouse click (keyboard parity). */
+function submitWithShortcut(): void {
+	if (submitting.value) return;
+	void handleSubmit();
+}
 const signedIn = computed(() => hydrated.value && isAuthenticated.value && !!reader.value);
 const identityLabel = computed(() => reader.value?.display_name || reader.value?.email || "");
 

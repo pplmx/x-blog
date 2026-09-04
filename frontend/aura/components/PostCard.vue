@@ -40,11 +40,15 @@ const date = computed(
       />
     </div>
     <NuxtLink :to="`/posts/${post.slug}`">
-      <!-- Cover Image -->
-      <div class="relative w-full aspect-[2/1] overflow-hidden">
+      <!-- Cover image. The algorithmic gradient SVG literally renders the
+           title inside the artwork, and the <h2> below announces the same
+           title — :alt="post.title" read it a third time per card. The image
+           is decorative next to its adjacent title, so alt="" (WCAG — the
+           card's accessible name comes from the real heading text). -->
+      <div class="relative w-full aspect-[2/1] overflow-hidden" aria-hidden="true">
         <img
           :src="coverImageUrl"
-          :alt="post.title"
+          alt=""
           loading="lazy"
           decoding="async"
           class="object-cover w-full h-full group-hover:scale-105 transition-transform duration-500"
@@ -71,7 +75,6 @@ const date = computed(
           <span
             v-if="post.reading_time"
             class="flex items-center gap-1"
-            :title="t('components.postCard.readingTime', { count: post.reading_time })"
           >
             <Icon icon="lucide:clock" class="w-4 h-4" />
             {{ t('components.postCard.readingTime', { count: post.reading_time }) }}

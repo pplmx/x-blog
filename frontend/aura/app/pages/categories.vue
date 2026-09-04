@@ -435,17 +435,17 @@ watch(categoryId, () => {
           <button
             v-for="(pg, i) in paginationTokens"
             :key="pg === '…' ? `ellipsis-${i}` : pg"
-            :disabled="pg === '…'"
+            :disabled="pg === '…' || pg === posts.pagination.page"
             :aria-current="pg !== '…' && pg === posts.pagination.page ? 'page' : undefined"
             :class="[
               'px-3 py-1 rounded',
               pg === '…'
                 ? 'cursor-default text-gray-400'
                 : pg === posts.pagination.page
-                  ? 'bg-purple-600 text-white'
+                  ? 'bg-purple-600 text-white cursor-default'
                   : 'border hover:bg-gray-50',
             ]"
-            @click="pg !== '…' && goToPage(pg)"
+            @click="pg !== '…' && pg !== posts.pagination.page && goToPage(pg)"
           >
             {{ pg }}
           </button>

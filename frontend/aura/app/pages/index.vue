@@ -56,12 +56,19 @@ function retryLoad() {
 // deleted) would otherwise render the "no posts" empty state while the blog
 // clearly has content — clamp back to the last real page once pagination is
 // known. Loop-safe: the clamp target is valid by construction, so the refetch
-// it triggers settles on total_pages === page.
+// it triggers settles on total_pages === page. The URL is rewritten too
+// (replace, preserving filters) so the address bar and the rendered content
+// never disagree — a bare local clamp left ?page=999 yielding an empty-state
+// flash on every refresh (deep-dive finding; mirrors tags.vue).
 watch(
 	() => posts.value?.pagination?.total_pages,
 	(totalPages) => {
 		if (totalPages && totalPages > 0 && page.value > totalPages) {
 			page.value = totalPages;
+			const query: Record<string, string> = { page: String(totalPages) };
+			if (categoryId.value) query.category_id = String(categoryId.value);
+			if (tagId.value) query.tag_id = String(tagId.value);
+			void navigateTo({ query }, { replace: true });
 		}
 	},
 );
@@ -103,7 +110,13 @@ onMounted(async () => {
 // reader's followed categories + series, gated to signed-in followers.
 const followsFeed = ref<PostList[]>([]);
 const followsFeedLoading = ref(false);
-const followsFeedVisible = computed(() => recSignedIn.value && followsFeed.value.length > 0);
+// The loading flag must gate the section too, or the skeleton never renders:
+// during the slow first fetch the array is still empty so the whole section
+// (and its `v-if=followsFeedLoading` skeleton) would be absent, making the
+// section pop in with a layout jump (deep-dive finding).
+const followsFeedVisible = computed(
+	() => recSignedIn.value && (followsFeedLoading.value || followsFeed.value.length > 0),
+);
 
 async function loadFollowsFeed() {
 	if (!recSignedIn.value) return;
@@ -124,7 +137,12 @@ async function loadFollowsFeed() {
 const followedSeries = ref<FollowedSeriesItem[]>([]);
 const followedProgress = ref<Record<string, SeriesProgress | null>>({});
 const followedLoading = ref(false);
-const followedVisible = computed(() => recSignedIn.value && followedSeries.value.length > 0);
+// Same skeleton-gate as followsFeedVisible: the loading flag must render the
+// section (and its skeleton) during the slow first fetch, not just after the
+// data lands (deep-dive finding).
+const followedVisible = computed(
+	() => recSignedIn.value && (followedLoading.value || followedSeries.value.length > 0),
+);
 
 function seriesProgressPercent(p: SeriesProgress): number {
 	if (!p || p.total <= 0) return 0;
@@ -183,11 +201,14 @@ const filterIndicatorText = computed(() =>
 		: t("home.sections.filteredUnknown"),
 );
 
-useSeo({
+// Getter form so an in-app language switch re-localizes <title>/og meta
+// without a reload (tags.vue/categories.vue/search.vue pass getters; a static
+// object froze the initial language into useHead — deep-dive finding).
+useSeo(() => ({
 	title: t("home.seo.title"),
 	description: t("home.seo.description"),
 	path: "/",
-});
+}));
 
 // Continue-reading trail (DEC-104, TASK-164): recently opened posts, rendered
 // as a compact row on the home page when the visitor has read something.
@@ -518,17 +539,17 @@ const stats = computed(() => {
             <button
               v-for="(pg, i) in paginationTokens"
               :key="pg === '…' ? `ellipsis-${i}` : pg"
-              :disabled="pg === '…'"
+              :disabled="pg === '…' || pg === posts.pagination.page"
               :aria-current="pg !== '…' && pg === posts.pagination.page ? 'page' : undefined"
               :class="[
                 'w-9 h-9 rounded-xl text-sm font-medium transition-all duration-200',
                 pg === '…'
                   ? 'cursor-default text-gray-400 dark:text-gray-500'
                   : pg === posts.pagination.page
-                    ? 'bg-blue-600 text-white shadow-md shadow-blue-500/20'
+                    ? 'bg-blue-600 text-white shadow-md shadow-blue-500/20 cursor-default'
                     : 'border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800',
               ]"
-              @click="pg !== '…' && fetchPosts(pg)"
+              @click="pg !== '…' && pg !== posts.pagination.page && fetchPosts(pg)"
             >
               {{ pg }}
             </button>

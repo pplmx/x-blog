@@ -56,6 +56,26 @@
       </div>
     </div>
 
+    <!-- Initial-load failure: `useFetch`'s error, not an empty thread. A null
+         data payload used to fall through to "be the first to comment!" above
+         an active form (deep-dive finding); the reader gets a distinct error
+         with a retry that re-runs the same initial fetch. -->
+    <div
+      v-else-if="initialLoadError"
+      role="alert"
+      class="text-center py-8 text-red-500 dark:text-red-400"
+    >
+      <p class="mb-3">{{ t('components.commentList.loadError') }}</p>
+      <button
+        type="button"
+        class="text-xs text-blue-500 hover:text-blue-700 dark:hover:text-blue-300 underline"
+        :disabled="pending"
+        @click="retryInitialLoad()"
+      >
+        {{ t('components.commentList.retry') }}
+      </button>
+    </div>
+
     <!-- Empty state: only a genuinely empty discussion says "be the first".
          An empty page under a non-zero total means deletion just drained the
          last page — refreshing clamps back to it, and the copy stays truthful. -->
@@ -120,7 +140,7 @@
               <button
                 type="button"
                 class="comment-like inline-flex items-center gap-1 text-xs text-gray-500 hover:text-pink-600 dark:text-gray-400 dark:hover:text-pink-400 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
-                :disabled="likingIds.has(comment.id)"
+                :disabled="isCommentLiked(comment.id) || likingIds.has(comment.id)"
                 :title="isCommentLiked(comment.id) ? t('components.commentList.liked') : t('components.commentList.like')"
                 :aria-pressed="isCommentLiked(comment.id) ? 'true' : 'false'"
                 :aria-label="isCommentLiked(comment.id) ? t('components.commentList.liked') : t('components.commentList.like')"
@@ -138,8 +158,9 @@
               <button
                 type="button"
                 class="comment-flag inline-flex items-center gap-1 text-xs text-gray-400 dark:text-gray-500 hover:text-amber-600 dark:hover:text-amber-400 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
-                :disabled="flaggingIds.has(comment.id)"
+                :disabled="isCommentFlagged(comment.id) || flaggingIds.has(comment.id)"
                 :title="isCommentFlagged(comment.id) ? t('components.commentList.flagged') : t('components.commentList.flag')"
+                :aria-pressed="isCommentFlagged(comment.id) ? 'true' : 'false'"
                 @click="handleCommentFlag(comment)"
               >
                 <Icon
@@ -179,6 +200,7 @@
                 :parent-id="comment.id"
                 :replying-to="comment.nickname"
                 :submit-label="t('components.commentList.reply')"
+                autofocus
                 @submitted="handleReplied"
                 @cancel="cancelReply"
                 @update:dirty="replyDirty = $event"
@@ -186,12 +208,19 @@
             </div>
 
             <!-- Inline edit form for the author's own comment (DEC-096) -->
-            <div v-if="editingId === comment.id" class="mt-3 space-y-2">
+            <div
+              v-if="editingId === comment.id"
+              class="mt-3 space-y-2"
+              @keydown.exact.esc.prevent="cancelEdit"
+            >
               <textarea
+                ref="editTextarea"
                 v-model="editContent"
                 rows="3"
                 :aria-label="t('components.commentList.editLabel')"
                 class="w-full rounded border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm text-gray-700 dark:text-gray-300 p-2"
+                @keydown.ctrl.enter.prevent="saveEdit(comment)"
+                @keydown.meta.enter.prevent="saveEdit(comment)"
               ></textarea>
               <div class="flex gap-2">
                 <button
@@ -237,10 +266,13 @@
               </span>
               <span
                 v-if="reply.reader"
-                class="text-[11px] text-blue-600 dark:text-blue-400"
+                class="inline-flex items-center gap-0.5 text-[11px] text-blue-600 dark:text-blue-400"
                 :title="t('components.commentList.verifiedReader')"
               >
-                <Icon icon="lucide:badge-check" class="w-3.5 h-3.5 inline" />
+                <Icon icon="lucide:badge-check" class="w-3.5 h-3.5" />
+                <span v-if="reply.reader.display_name && reply.reader.display_name !== reply.nickname">
+                  {{ reply.reader.display_name }}
+                </span>
               </span>
               <span class="text-xs text-gray-500 dark:text-gray-400">{{ formatDate(reply.created_at) }}</span>
             </div>
@@ -260,7 +292,7 @@
               <button
                 type="button"
                 class="comment-like inline-flex items-center gap-1 text-xs text-gray-500 hover:text-pink-600 dark:text-gray-400 dark:hover:text-pink-400 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
-                :disabled="likingIds.has(reply.id)"
+                :disabled="isCommentLiked(reply.id) || likingIds.has(reply.id)"
                 :title="isCommentLiked(reply.id) ? t('components.commentList.liked') : t('components.commentList.like')"
                 :aria-pressed="isCommentLiked(reply.id) ? 'true' : 'false'"
                 :aria-label="isCommentLiked(reply.id) ? t('components.commentList.liked') : t('components.commentList.like')"
@@ -276,8 +308,9 @@
               <button
                 type="button"
                 class="comment-flag inline-flex items-center gap-1 text-xs text-gray-400 dark:text-gray-500 hover:text-amber-600 dark:hover:text-amber-400 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
-                :disabled="flaggingIds.has(reply.id)"
+                :disabled="isCommentFlagged(reply.id) || flaggingIds.has(reply.id)"
                 :title="isCommentFlagged(reply.id) ? t('components.commentList.flagged') : t('components.commentList.flag')"
+                :aria-pressed="isCommentFlagged(reply.id) ? 'true' : 'false'"
                 @click="handleCommentFlag(reply)"
               >
                 <Icon
@@ -315,6 +348,7 @@
                 :parent-id="reply.id"
                 :replying-to="reply.nickname"
                 :submit-label="t('components.commentList.reply')"
+                autofocus
                 @submitted="handleReplied"
                 @cancel="cancelReply"
                 @update:dirty="replyDirty = $event"
@@ -322,12 +356,19 @@
             </div>
 
             <!-- Inline edit form for the author's own reply (DEC-096) -->
-            <div v-if="editingId === reply.id" class="mt-3 space-y-2">
+            <div
+              v-if="editingId === reply.id"
+              class="mt-3 space-y-2"
+              @keydown.exact.esc.prevent="cancelEdit"
+            >
               <textarea
+                ref="editTextarea"
                 v-model="editContent"
                 rows="3"
                 :aria-label="t('components.commentList.editLabel')"
                 class="w-full rounded border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm text-gray-700 dark:text-gray-300 p-2"
+                @keydown.ctrl.enter.prevent="saveEdit(reply)"
+                @keydown.meta.enter.prevent="saveEdit(reply)"
               ></textarea>
               <div class="flex gap-2">
                 <button
@@ -387,6 +428,7 @@ import {
 	useComments,
 } from "~~/api/public/comments";
 import { deleteMyComment, updateMyComment } from "~~/api/reader/comments";
+import { parseApiDate } from "~~/composables/apiDate";
 import { highlightCode, loadHighlighter } from "~~/composables/useCodeHighlight";
 import { commentMarkdownToHtml, loadPurify } from "~~/composables/useMarkdown";
 import { useReaderAuth } from "~~/composables/useReaderAuth";
@@ -439,7 +481,16 @@ const props = defineProps<Props>();
 
 const { t, locale } = useLang();
 
-const { data: commentData, pending } = await useComments(props.postId, 1, 20);
+// `error` from the useFetch wrapper: a thread whose INITIAL fetch failed must
+// render an error + retry, never the fake "be the first to comment" empty
+// state that a null data payload would otherwise fall through to (the
+// refreshError banner only covers *subsequent* refreshList() calls).
+const {
+	data: commentData,
+	pending,
+	error: initialLoadError,
+	refresh: retryInitialLoad,
+} = await useComments(props.postId, 1, 20);
 
 const comments = computed(() => commentData.value?.items || []);
 const total = computed(() => commentData.value?.total || 0);
@@ -576,10 +627,19 @@ const editContent = ref("");
 const actionIds = ref<Set<number>>(new Set());
 const actionError = ref<string | null>(null);
 
+// The edit box focuses itself on open so a keyboard user lands in the editor
+// (Ctrl/⌘+Enter submits, Escape cancels — both on the textarea/wrapper above).
+const editTextarea = ref<HTMLTextAreaElement | null>(null);
+
 function startEdit(comment: Comment): void {
 	editingId.value = comment.id;
 	editContent.value = comment.content;
 	actionError.value = null;
+	// happy-dom (and teardown) may hand back a detached element without focus;
+	// focus is a progressive nicety, never a requirements gate.
+	nextTick(() => {
+		if (typeof editTextarea.value?.focus === "function") editTextarea.value.focus();
+	});
 }
 
 function cancelEdit(): void {
@@ -760,7 +820,7 @@ async function fetchPage(): Promise<void> {
 	}
 }
 
-async function refreshList() {
+async function refreshList(): Promise<boolean> {
 	const seq = ++refreshSeq; // invalidate any in-flight older request
 	refreshing.value = true;
 	refreshError.value = null;
@@ -770,9 +830,11 @@ async function refreshList() {
 		// Only the latest attempt owns the error banner (a stale in-flight
 		// rejection from an older sort/page must not blame the current state).
 		if (seq === refreshSeq) refreshError.value = t("components.commentList.refreshError");
+		return false;
 	} finally {
 		if (seq === refreshSeq) refreshing.value = false;
 	}
+	return true;
 }
 
 function retryRefresh(): void {
@@ -781,9 +843,16 @@ function retryRefresh(): void {
 }
 
 async function handleReplied() {
-	await refreshList();
-	replyTo.value = null;
-	replyDirty.value = false;
+	// Only collapse the reply form when the list actually refreshed: the reply
+	// POST already succeeded, but closing the form anyway would drop its
+	// "posted" feedback while the list still lacks the new comment — a reader
+	// could re-submit and double-post (deep-dive finding). On refresh failure
+	// keep the form open (success message visible, refreshError banner offers
+	// retry) so the outcome is unambiguous.
+	if (await refreshList()) {
+		replyTo.value = null;
+		replyDirty.value = false;
+	}
 }
 
 const visiblePages = computed(() => {
@@ -804,11 +873,16 @@ async function loadPage(page: number) {
 }
 
 function formatDate(dateStr: string): string {
-	return new Date(dateStr).toLocaleDateString(locale.value === "zh" ? "zh-CN" : "en-US", {
-		year: "numeric",
-		month: "short",
-		day: "numeric",
-	});
+	// Naive-UTC wire values parse as UTC (parseApiDate appends "Z"); the raw
+	// `new Date(dateStr)` form treated them as local wall-clock and showed the
+	// wrong day to readers east/west of UTC (deep-dive finding).
+	return (
+		parseApiDate(dateStr)?.toLocaleDateString(locale.value === "zh" ? "zh-CN" : "en-US", {
+			year: "numeric",
+			month: "short",
+			day: "numeric",
+		}) ?? ""
+	);
 }
 
 // Expose the imperative refetch so a sibling comment form (post page) can

@@ -52,6 +52,17 @@ async function load() {
 	try {
 		const data = await getMyComments(statusFilter.value, currentPage.value, 20);
 		if (seq !== loadSeq) return; // stale response — a newer filter/page is in flight
+		// Deleting the last comment of the last page drains it: an empty page
+		// under a non-zero total must clamp back to the last valid page instead
+		// of showing a fake "You haven't commented yet" under a stale count
+		// (same drain-clamp as CommentList, deep-dive finding).
+		if (data.items.length === 0 && data.total > 0) {
+			const last = Math.max(1, data.total_pages || 1);
+			if (currentPage.value !== last) {
+				currentPage.value = last;
+				return load(); // bounded: the last page resolves with items or is terminal
+			}
+		}
 		commentData.value = data;
 	} catch {
 		if (seq !== loadSeq) return;
