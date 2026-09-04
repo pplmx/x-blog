@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 250,
+  "round": 251,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-04T12:06:13+00:00",
+  "updated_at": "2026-09-04T13:42:38+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -22,7 +22,7 @@
       "version": 1,
       "created_at": "2026-08-06T13:23:41+00:00",
       "updated_at": "2026-08-06T13:23:41+00:00",
-      "touched_round": 249,
+      "touched_round": 250,
       "title": "frontend-aura",
       "description": "Nuxt 4 Vue 3 TypeScript frontend at frontend/aura; composables; admin pages; e2e Playwright; biome lint"
     },
@@ -17432,6 +17432,40 @@
       "summary": "Related/adjacent/series stay awaited in SSR setup for now: deferring them to a client-side fetch to cut SSR TTFB is a real optimization but changes hydration semantics (SEO-visible content region) and risks first-page layout shift; parked as future work rather than this round.",
       "rationale": "Server round trips for related/adjacent/series add TTFB on SSR, but gating already removes the stale-frame UX bug; deferring breaks the SSR-rendered related section that crawlers/tests rely on.",
       "alternatives_rejected": "Make related/adjacent client-only (server:false) composables to cut SSR latency."
+    },
+    "ISS-332": {
+      "id": "ISS-332",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-04T13:42:00+00:00",
+      "updated_at": "2026-09-04T13:42:38+00:00",
+      "touched_round": 250,
+      "summary": "Account area: useReadingHistory.toEpoch parsed zone-less UTC viewed_at as local wall-clock (shifted timestamps); server-load failures silently fell back to the local trail with no seam (false \"no history yet\" for multi-device readers); account-page mutation handlers swallowed dead-session 401s leaving a signed-in-looking page where every action failed; submitPassword double-submit signed the reader out post-rotation; single-flight notify ids left other rows clickable-but-silent and the shared pref busy id leaked across devices; tag-follow store never invalidated so account tag mutations left chips stale for the session; bookmark merge clobbered mid-merge adds and resurrected mid-merge removes.",
+      "severity": "high"
+    },
+    "TASK-278": {
+      "id": "TASK-278",
+      "type": "task",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-04T13:42:00+00:00",
+      "updated_at": "2026-09-04T13:42:38+00:00",
+      "touched_round": 250,
+      "summary": "Round 251 account-area deep-dive: parseApiDate history epochs, loadFailed fallback seam, stale-session routing for every mutation, password re-entry guard, section-wide busy + aria-pressed/aria-live, tag-store invalidate + generation guard, bookmark-merge add/remove reconciliation; 14 regression tests.",
+      "category": "correctness",
+      "severity": 3
+    },
+    "CHG-368": {
+      "id": "CHG-368",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-04T13:42:00+00:00",
+      "updated_at": "2026-09-04T13:42:00+00:00",
+      "touched_round": 250,
+      "summary": "fix(frontend): account area deep-dive — naive-UTC history epochs, dead-session mutation routing, password re-entry guard, toggle busy/a11y, tag-store + bookmark-merge race guards (e52c62f).",
+      "commit": "e52c62f"
     }
   },
   "edges": [
@@ -25563,6 +25597,30 @@
       "to": "COMP-002",
       "type": "governs",
       "created_at": "2026-09-04T12:06:13+00:00"
+    },
+    {
+      "from": "TASK-278",
+      "to": "ISS-332",
+      "type": "addresses",
+      "created_at": "2026-09-04T13:42:38+00:00"
+    },
+    {
+      "from": "ISS-332",
+      "to": "COMP-002",
+      "type": "located_in",
+      "created_at": "2026-09-04T13:42:38+00:00"
+    },
+    {
+      "from": "CHG-368",
+      "to": "ISS-332",
+      "type": "resolves",
+      "created_at": "2026-09-04T13:42:38+00:00"
+    },
+    {
+      "from": "CHG-368",
+      "to": "TASK-278",
+      "type": "implements",
+      "created_at": "2026-09-04T13:42:38+00:00"
     }
   ]
 }
