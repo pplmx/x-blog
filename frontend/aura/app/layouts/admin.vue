@@ -23,6 +23,57 @@ onMounted(initTheme);
 // neither branch, leaving a blank page (e2e: homepage "admin page loads").
 const isLoginPage = computed(() => route.path === "/admin/login");
 const sidebarOpen = ref(false);
+// Mobile drawer focus management (mirrors the password modal's pattern): move
+// focus into the drawer on open, trap Tab while it is open, and return focus
+// to the opening trigger on close. Desktop is unaffected — the sidebar is a
+// permanent static column there (sidebarOpen stays false: the only setter is
+// the lg:hidden mobile menu button).
+const sidebarCloseRef = ref<HTMLButtonElement | null>(null);
+const sidebarAsideRef = ref<HTMLElement | null>(null);
+/** Element that opened the mobile drawer — restored on close. */
+let sidebarFocusReturn: HTMLElement | null = null;
+
+watch(sidebarOpen, (open) => {
+	if (!open) return;
+	sidebarFocusReturn =
+		document.activeElement instanceof HTMLElement ? document.activeElement : null;
+	nextTick(() => sidebarCloseRef.value?.focus());
+});
+
+/** Close the mobile drawer and return focus to whatever opened it. */
+function closeMobileSidebar() {
+	sidebarOpen.value = false;
+	nextTick(() => sidebarFocusReturn?.focus());
+}
+
+const SIDEBAR_FOCUSABLE = "a[href], button, input, select, textarea";
+
+/** Escape closes the drawer; Tab is trapped inside it while it is open. */
+function onSidebarKeydown(e: KeyboardEvent) {
+	if (!sidebarOpen.value) return;
+	if (e.key === "Escape") {
+		closeMobileSidebar();
+		return;
+	}
+	if (e.key !== "Tab") return;
+	const aside = sidebarAsideRef.value;
+	if (!aside) return;
+	const focusables = Array.from(aside.querySelectorAll<HTMLElement>(SIDEBAR_FOCUSABLE)).filter(
+		(el) => !el.hasAttribute("disabled"),
+	);
+	if (focusables.length === 0) return;
+	const first = focusables[0];
+	const last = focusables[focusables.length - 1];
+	if (!first || !last) return;
+	const active = document.activeElement;
+	if (e.shiftKey && (active === first || !aside.contains(active))) {
+		e.preventDefault();
+		last.focus();
+	} else if (!e.shiftKey && (active === last || !aside.contains(active))) {
+		e.preventDefault();
+		first.focus();
+	}
+}
 
 // Current admin's role (superuser | editor). Editors (non-superuser) can
 // moderate content but must not see superuser-only sections (users/export/batch).
@@ -215,29 +266,31 @@ const navItems = computed(() => {
     <div
       v-else-if="isAuthenticated"
       class="flex min-h-screen"
-      @keydown.esc="sidebarOpen = false"
     >
-      <!-- Mobile overlay -->
+      <!-- Mobile overlay (Escape / focus handling lives in onSidebarKeydown). -->
       <div
         v-if="sidebarOpen"
         class="fixed inset-0 bg-black/50 z-40 lg:hidden"
-        @click="sidebarOpen = false"
+        @click="closeMobileSidebar"
         aria-hidden="true"
       />
 
-      <!-- Sidebar -->
+      <!-- Sidebar (mobile drawer focus + Tab trap via onSidebarKeydown) -->
       <aside
+        ref="sidebarAsideRef"
         class="fixed lg:static inset-y-0 left-0 z-50 w-64 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 min-h-screen transform transition-transform duration-200"
         :class="sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'"
+        @keydown="onSidebarKeydown"
       >
         <div class="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700">
           <h2 class="text-xl font-bold text-gray-900 dark:text-gray-100">
             {{ t('admin.title') }}
           </h2>
           <button
+            ref="sidebarCloseRef"
             type="button"
             class="lg:hidden p-1 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
-            @click="sidebarOpen = false"
+            @click="closeMobileSidebar"
             :aria-label="t('common.menu.close')"
           >
             <Icon icon="lucide:x" class="w-5 h-5" />

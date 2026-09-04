@@ -95,9 +95,16 @@ async function toggleActive(reader: AdminReader) {
     <p v-if="actionError" class="mb-4 p-3 bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-400 rounded-xl text-sm">
       {{ actionError }}
     </p>
-    <p v-if="error" class="mb-4 p-3 bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-400 rounded-xl text-sm">
-      {{ t("admin.readers.loadFailed") }}
-    </p>
+    <div v-if="error" class="mb-4 p-3 bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-400 rounded-xl text-sm flex flex-wrap items-center gap-3">
+      <p>{{ t("admin.readers.loadFailed") }}</p>
+      <button
+        type="button"
+        class="px-2 py-1 rounded-lg text-xs font-medium border border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors"
+        @click="() => refresh()"
+      >
+        {{ t("common.action.retry") }}
+      </button>
+    </div>
 
     <div class="overflow-hidden rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
       <table class="w-full text-sm">

@@ -41,7 +41,7 @@ test.describe("Blog backup & restore (superuser-gated)", () => {
 
 		// An empty snapshot is a valid no-op restore: the UI must surface the
 		// counts summary (all zeros) without touching existing content — while
-		// still exercising the full upload → POST → feedback path.
+		// still exercising the full upload → confirm → POST → feedback path.
 		const snap = {
 			format: "x-blog-backup",
 			version: 1,
@@ -51,6 +51,14 @@ test.describe("Blog backup & restore (superuser-gated)", () => {
 			series: [],
 			posts: [],
 		};
+		// Restore is destructive (it overwrites matching live content), so the
+		// UI gates on a confirm() dialog — accept it to complete the journey;
+		// Playwright would otherwise auto-dismiss the dialog as a cancel.
+		let restoreDialogSeen = false;
+		page.once("dialog", (dialog) => {
+			restoreDialogSeen = true;
+			dialog.accept();
+		});
 		await page.locator('input[type="file"]').setInputFiles({
 			name: "backup.json",
 			mimeType: "application/json",
@@ -60,6 +68,7 @@ test.describe("Blog backup & restore (superuser-gated)", () => {
 		await expect(page.locator("text=/恢复完成|Restore complete/")).toBeVisible({
 			timeout: 10_000,
 		});
+		expect(restoreDialogSeen).toBe(true);
 	});
 
 	test("editor does not see the backup card (superuser-only)", async ({ page }) => {

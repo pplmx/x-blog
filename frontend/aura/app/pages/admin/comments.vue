@@ -108,6 +108,12 @@ async function loadComments(filters: ReturnType<typeof activeFilters>, page: num
 	}
 }
 
+/** Retry the failed list load in place (same loader, current page) so a
+ * transient failure isn't a dead end. */
+function retryComments() {
+	void loadComments(activeFilters(), currentPage.value);
+}
+
 /** Initial load (same guarded loader as every other writer). */
 onMounted(() => {
 	void loadComments(activeFilters(), 1);
@@ -476,7 +482,14 @@ async function submitReply(id: number) {
     </div>
 
     <div v-else-if="error" class="text-center py-12 text-red-500">
-      {{ error }}
+      <p class="mb-4">{{ error }}</p>
+      <button
+        type="button"
+        class="px-4 py-2 rounded-lg text-sm font-medium border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+        @click="retryComments"
+      >
+        {{ t("common.action.retry") }}
+      </button>
     </div>
 
     <div v-else-if="!comments || !comments.items || comments.items.length === 0" class="flex flex-col items-center justify-center py-16 bg-gradient-to-br from-gray-50 dark:from-gray-800/50 to-white dark:to-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800">

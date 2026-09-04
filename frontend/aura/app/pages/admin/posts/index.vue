@@ -202,11 +202,13 @@ function statusDot(post: AdminPost): string {
       <p class="text-sm text-gray-500 dark:text-gray-400 mb-4">
         {{ searchQuery || statusFilter ? t('admin.postsList.empty.noMatchHint') : t('admin.postsList.empty.hint') }}
       </p>
-      <NuxtLink v-if="!searchQuery && !statusFilter" to="/admin/posts/new">
-        <button type="button" class="inline-flex items-center gap-2 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors">
-          <Icon icon="lucide:plus" class="w-4 h-4" />
-          {{ t("admin.postsList.newPost") }}
-        </button>
+      <NuxtLink
+        v-if="!searchQuery && !statusFilter"
+        to="/admin/posts/new"
+        class="inline-flex items-center gap-2 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
+      >
+        <Icon icon="lucide:plus" class="w-4 h-4" />
+        {{ t("admin.postsList.newPost") }}
       </NuxtLink>
     </div>
 

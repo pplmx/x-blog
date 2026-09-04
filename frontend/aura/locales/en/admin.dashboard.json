@@ -60,6 +60,7 @@
 			"downloading": "Downloading…",
 			"restoring": "Restoring…",
 			"restored": "Restore complete: {summary}",
+			"confirmRestore": "This will restore the selected backup into the live blog and OVERWRITE existing posts, categories, tags and series that match. Continue?",
 			"commentsCreated": "Comments +{count}",
 			"skipped": "({count} skipped)",
 			"parseError": "Could not parse the chosen file: not a valid backup JSON"

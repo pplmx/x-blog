@@ -21,6 +21,17 @@ useHead({ title: computed(() => t("admin.postEdit.seoTitle")) });
 const route = useRoute();
 const isNew = route.params.id === "new";
 const postId = isNew ? null : Number.parseInt(route.params.id as string, 10);
+// Post identity is a setup-time snapshot (route.params.id). After the first
+// auto-save of a /admin/posts/new session the address bar is pointed at the
+// created draft (navigateTo replace), but isNew/postId stay frozen — so the
+// heading kept saying "New Post" and version history never appeared until a
+// full reload (review finding). hydratedId bridges that gap: once a draft id
+// exists, the post behaves as an existing post for all UI purposes.
+const hydratedId = ref<number | null>(null);
+const effIsNew = computed(() => isNew && hydratedId.value === null);
+const currentPostId = computed<number | null>(() =>
+	effIsNew.value ? null : (postId ?? hydratedId.value),
+);
 
 const formData = ref<Partial<PostCreate>>({
 	title: "",
@@ -313,6 +324,7 @@ async function runAutosave() {
 		const createdId = created.id;
 		if (targetId === null && createdId !== null) {
 			autosavedId = createdId;
+			hydratedId.value = createdId;
 			// Point the address bar at the newly created draft so a manual
 			// refresh doesn't re-create a second draft — but only when the
 			// form still matches what we just saved, so a remount can't drop
@@ -476,11 +488,12 @@ async function handleNotify() {
 
 /** Load the saved revision history for the current (existing) post. */
 async function loadRevisions() {
-	if (postId === null) return;
+	const id = currentPostId.value;
+	if (id === null) return;
 	revisionsLoading.value = true;
 	revisionsError.value = null;
 	try {
-		revisions.value = await getPostRevisions(postId);
+		revisions.value = await getPostRevisions(id);
 	} catch {
 		revisionsError.value = t("admin.postEdit.revisionLoadError");
 	} finally {
@@ -506,7 +519,8 @@ async function toggleRevisions() {
 
 /** Restore a saved revision as the live post, then reload the form. */
 async function handleRestoreRevision(revId: number) {
-	if (postId === null || restoringId.value !== null) return;
+	const id = currentPostId.value;
+	if (id === null || restoringId.value !== null) return;
 	// Restoring immediately replaces the form with the revision's state, wiping
 	// any in-progress edits — same destructive class as cancel/route-leave, so
 	// ask when dirty (deep-dive re-audit finding).
@@ -521,7 +535,7 @@ async function handleRestoreRevision(revId: number) {
 	restoringId.value = revId;
 	revisionMessage.value = null;
 	try {
-		await restorePostRevision(postId, revId);
+		await restorePostRevision(id, revId);
 		revisionMessage.value = t("admin.postEdit.revisionRestored");
 		revisionFailed.value = false;
 		// Re-fetch the live post so the form reflects the restored state.
@@ -657,7 +671,7 @@ function handleFileInput(e: Event) {
   <div class="max-w-4xl">
     <div class="flex items-center justify-between mb-6">
       <h1 class="text-2xl font-bold text-gray-900 dark:text-gray-100">
-        {{ isNew ? t('admin.postEdit.titleNew') : t('admin.postEdit.titleEdit') }}
+        {{ effIsNew ? t('admin.postEdit.titleNew') : t('admin.postEdit.titleEdit') }}
       </h1>
       <NuxtLink
         to="/admin/posts"
@@ -742,7 +756,7 @@ function handleFileInput(e: Event) {
       </div>
 
       <!-- Version history (DEC-158, TASK-191) -->
-      <div v-if="!isNew" data-testid="revision-history" class="border border-gray-100 dark:border-gray-800 rounded-2xl overflow-hidden">
+      <div v-if="!effIsNew" data-testid="revision-history" class="border border-gray-100 dark:border-gray-800 rounded-2xl overflow-hidden">
         <button
           type="button"
           data-testid="revision-toggle"

@@ -330,6 +330,15 @@ async function onRestoreFileChange(event: Event): Promise<void> {
 	const input = event.target as HTMLInputElement;
 	const file = input.files?.[0];
 	if (!file) return;
+	// Restore is a destructive write: the backend upserts matching posts by
+	// slug, overwriting their live title/content/published/tags (and matching
+	// categories/tags/series). Every other destructive admin action gates on a
+	// confirmation — restore must too, so a stray or out-of-date file can never
+	// silently clobber the live blog.
+	if (!window.confirm(t("admin.dashboard.backup.confirmRestore"))) {
+		input.value = "";
+		return;
+	}
 	backupState.value = "restoring";
 	backupError.value = "";
 	restoreSummary.value = "";

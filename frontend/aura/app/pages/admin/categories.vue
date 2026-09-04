@@ -145,7 +145,14 @@ async function handleDelete(id: number) {
     </div>
 
     <div v-else-if="error" class="text-center py-12 text-red-500">
-      {{ error?.message || String(error) }}
+      <p class="mb-4">{{ error?.message || String(error) }}</p>
+      <button
+        type="button"
+        class="px-4 py-2 rounded-lg text-sm font-medium border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+        @click="() => refresh()"
+      >
+        {{ t("common.action.retry") }}
+      </button>
     </div>
 
     <div

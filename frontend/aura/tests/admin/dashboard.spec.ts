@@ -1111,4 +1111,80 @@ describe("Admin Dashboard Page", () => {
 			expect(vi.mocked(URL.createObjectURL)).toHaveBeenCalled();
 		});
 	});
+
+	describe("Backup & restore confirmation (DEC-082, TASK-153)", () => {
+		const originalConfirm = window.confirm;
+		const originalFetch = globalThis.$fetch;
+
+		afterEach(() => {
+			// Restore only what these tests override — never unstubAllGlobals,
+			// which would also remove the file-scoped useRuntimeConfig/useHead/
+			// navigateTo/definePageMeta stubs the other tests rely on.
+			window.confirm = originalConfirm;
+			globalThis.$fetch = originalFetch;
+		});
+
+		function driveRestoreFileInput(wrapper: { find: (sel: string) => any }, contents: string) {
+			const input = wrapper.find('input[type="file"]');
+			const file = new File([contents], "backup.json", { type: "application/json" });
+			Object.defineProperty(input.element, "files", {
+				value: [file],
+				configurable: true,
+			});
+			return input;
+		}
+
+		it("declines restore without confirmation: no POST and no summary", async () => {
+			// Restore upserts matching posts by slug, overwriting live content —
+			// it must be gated on a confirmation exactly like every other
+			// destructive admin action. A declined confirm sends nothing.
+			window.confirm = vi.fn(() => false);
+			const restoreFetch = vi.fn(() => Promise.resolve({}));
+			globalThis.$fetch = restoreFetch;
+
+			const wrapper = await mountWithSuspense(await loadPage());
+			await flushPromises();
+
+			const input = driveRestoreFileInput(
+				wrapper,
+				JSON.stringify({ format: "x-blog-backup", version: 1, posts: [] }),
+			);
+			await input.trigger("change");
+			await flushPromises();
+
+			expect(window.confirm).toHaveBeenCalledTimes(1);
+			expect(restoreFetch).not.toHaveBeenCalledWith(
+				expect.stringContaining("/api/admin/backup/restore"),
+				expect.anything(),
+			);
+			expect(wrapper.text()).not.toContain("恢复完成");
+			wrapper.unmount();
+		});
+
+		it("restores only after the operator confirms the destructive overwrite", async () => {
+			window.confirm = vi.fn(() => true);
+			const restoreFetch = vi.fn(() =>
+				Promise.resolve({ posts_created: 0, categories: 0, tags: 0, comments_created: 0 }),
+			);
+			globalThis.$fetch = restoreFetch;
+
+			const wrapper = await mountWithSuspense(await loadPage());
+			await flushPromises();
+
+			const input = driveRestoreFileInput(
+				wrapper,
+				JSON.stringify({ format: "x-blog-backup", version: 1, posts: [] }),
+			);
+			await input.trigger("change");
+			await flushPromises();
+
+			expect(window.confirm).toHaveBeenCalledTimes(1);
+			expect(restoreFetch).toHaveBeenCalledWith(
+				expect.stringContaining("/api/admin/backup/restore"),
+				expect.objectContaining({ method: "POST" }),
+			);
+			expect(wrapper.text()).toContain("恢复完成");
+			wrapper.unmount();
+		});
+	});
 });

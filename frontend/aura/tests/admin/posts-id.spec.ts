@@ -1004,6 +1004,30 @@ describe("Admin Post Editor Page", () => {
 			);
 		});
 
+		it("behaves as an existing post (Edit heading + version history) after the first auto-save creates the draft", async () => {
+			// Regression: isNew/postId were setup-time consts, so after the first
+			// auto-save pointed the address bar at the created draft the heading
+			// kept saying "New Post" and version history never appeared until a
+			// full reload. The hydratedId bridge must flip the UI in place.
+			const { wrapper, mockNavigateTo } = await autosavePage("new");
+
+			expect(wrapper.find("h1").text()).toContain("新建文章");
+			expect(wrapper.find('[data-testid="revision-history"]').exists()).toBe(false);
+
+			const titleInput = wrapper.find('input[type="text"]');
+			await titleInput.setValue("My Auto Draft");
+			const contentTextarea = wrapper.find('textarea[rows="15"]');
+			await contentTextarea.setValue("# Draft body");
+			await vi.advanceTimersByTimeAsync(1000);
+			await flushPromises();
+
+			expect(mockNavigateTo).toHaveBeenCalledWith("/admin/posts/7", { replace: true });
+			await flushPromises();
+
+			expect(wrapper.find("h1").text()).not.toContain("新建文章");
+			expect(wrapper.find('[data-testid="revision-history"]').exists()).toBe(true);
+		});
+
 		it("manual Save after auto-save updates the autosaved draft instead of a second create (CRITICAL)", async () => {
 			// After the debounced auto-save creates the draft and points the
 			// address bar at /admin/posts/7, this component instance still holds
