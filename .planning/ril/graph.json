@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 247,
+  "round": 248,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-04T05:36:30+00:00",
+  "updated_at": "2026-09-04T06:59:11+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -17250,6 +17250,41 @@
       "touched_round": 246,
       "rationale": "The only remaining finding from the markdown/render review was LOW: mermaid diagrams render once (securityLevel strict) and don't re-initialize when the reader toggles dark mode (theme read at init, renderedMermaidKeys blocks re-render). Leaving as a recorded-deferral rather than churning the most safety-sensitive rendering path (strict mode prevents HTML/click injection in diagram labels) for a cosmetic theme-preference refresh that a reload already handles.",
       "alternatives_rejected": "Re-initialize mermaid + re-render all diagrams on theme change (touches async ref-callback rendering, risks double-render/leak of the hardened path); force a full reload on theme toggle (defeats SPA UX); scope re-render to only diagram containers already rendered."
+    },
+    "ISS-324": {
+      "id": "ISS-324",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-04T06:58:32+00:00",
+      "updated_at": "2026-09-04T06:59:11+00:00",
+      "touched_round": 248,
+      "summary": "Comment + home-page deep-dive (round 248): (1) initial comment-load failure rendered the fake 'be the first' empty state with no retry; (2) reply form closed with no confirmation when the post-submit refresh failed (double-post risk); (3) 'my comments' no drain-clamp after deleting last-comment page; (4) CommentList naive-UTC dates rendered without parseApiDate; (5) home follows/series skeletons unreachable during slow first fetch; (6) home useSeo froze initial-language head meta (no re-localize on in-app switch); (7) stale-page clamp left ?page=999 in URL; (8) active pagination button scroll-jacked to top on click (5 pages); (9) LOW polish: nested verified badge drop, cover alt triplication, redundant reading-time title, no-op like/flag buttons, no reply/edit keyboard affordance.",
+      "severity": "high"
+    },
+    "TASK-275": {
+      "id": "TASK-275",
+      "type": "task",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-04T06:58:32+00:00",
+      "updated_at": "2026-09-04T06:58:32+00:00",
+      "touched_round": 248,
+      "summary": "Resolve comment + home-page deep-dive batch (ISS-325): load-error retry seam, reply-confirm gating, drain clamp, parseApiDate, skeleton gates, useSeo getter, URL rewrite on clamp, active-page disable, keyboard/no-op a11y polish.",
+      "category": "correctness",
+      "severity": 3
+    },
+    "CHG-365": {
+      "id": "CHG-365",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-04T06:58:32+00:00",
+      "updated_at": "2026-09-04T06:58:32+00:00",
+      "touched_round": 248,
+      "title": "Comment + home-page deep-dive batch: load-error retry, reply confirm, drain clamp, naive-UTC dates, pagination no-op buttons",
+      "commit": "47dad6d",
+      "description": "All findings resolved with +12 tests; full frontend suite 1453 green, typecheck + biome clean."
     }
   },
   "edges": [
@@ -25225,6 +25260,24 @@
       "to": "ISS-323",
       "type": "resolves",
       "created_at": "2026-09-04T05:29:15+00:00"
+    },
+    {
+      "from": "CHG-365",
+      "to": "TASK-275",
+      "type": "implements",
+      "created_at": "2026-09-04T06:58:32+00:00"
+    },
+    {
+      "from": "TASK-275",
+      "to": "ISS-324",
+      "type": "addresses",
+      "created_at": "2026-09-04T06:59:11+00:00"
+    },
+    {
+      "from": "CHG-365",
+      "to": "ISS-324",
+      "type": "resolves",
+      "created_at": "2026-09-04T06:59:11+00:00"
     }
   ]
 }
