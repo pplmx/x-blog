@@ -2,7 +2,7 @@
   "ril_version": 1,
   "round": 258,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-04T19:03:38+00:00",
+  "updated_at": "2026-09-04T19:23:44+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -17862,6 +17862,17 @@
       "touched_round": 258,
       "rationale": "Round 258: the account page's follow/revoke/device management must not let one row's in-flight operation clear another row's busy state. Convert single-slot markers to per-row Sets with handler re-entry guards (the pattern already applied to bookmarks/comments/admin readers); add the same guard to the shared device-prefs slot whose protection was a disabled attribute only. Also silence the happy-dom blob-download navigation noise in export tests. Rejected: keeping the single-slot markers (they race), and leaving the test noise (pollutes every suite run).",
       "alternatives_rejected": "keep single-slot markers; disable-all template only"
+    },
+    "CHG-377": {
+      "id": "CHG-377",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-04T19:23:44+00:00",
+      "updated_at": "2026-09-04T19:23:44+00:00",
+      "touched_round": 258,
+      "commit": "e414063",
+      "summary": "Harden the round-258 device-prefs re-entry-guard test: VTU setValue on the disabled second checkbox never fired change in happy-dom, so the single-call assertion passed with or without the guard; dispatch change directly on the disabled element so the test genuinely gates on the handler guard (review finding)."
     }
   },
   "edges": [
@@ -26269,6 +26280,12 @@
       "to": "ISS-353",
       "type": "resolves",
       "created_at": "2026-09-04T19:03:38+00:00"
+    },
+    {
+      "from": "CHG-377",
+      "to": "ISS-353",
+      "type": "resolves",
+      "created_at": "2026-09-04T19:23:44+00:00"
     }
   ]
 }
