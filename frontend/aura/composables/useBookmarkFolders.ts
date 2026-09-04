@@ -53,12 +53,16 @@ export function useBookmarkFolders() {
 		}
 	}
 
-	async function remove(folderId: number): Promise<void> {
+	async function remove(folderId: number): Promise<boolean> {
 		try {
 			await deleteReaderBookmarkFolder(folderId);
 			await load();
+			return true;
 		} catch {
-			// best effort
+			// Keep the folder list unchanged on failure and let the caller
+			// surface it — a silent "best effort" delete hid an offline failure
+			// while the page had already dropped the filter (deep-dive finding).
+			return false;
 		}
 	}
 

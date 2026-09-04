@@ -21,6 +21,11 @@ const mockFolders = ref<BookmarkFolder[]>([]);
 const mockBookmarkCount = computed(() => mockBookmarks.value.length);
 const mockRemove = vi.fn();
 const mockMerge = vi.fn();
+const mockAdd = vi.fn();
+const mockClearAll = vi.fn();
+const mockSyncing = ref(false);
+const mockSyncIssue = ref(null);
+const mockClearSyncIssue = vi.fn();
 const mockLoadFolders = vi.fn();
 const mockCreateFolder = vi.fn();
 const mockRenameFolder = vi.fn();
@@ -40,6 +45,11 @@ vi.mock("../../composables/useBookmarkSync", () => ({
 	useBookmarkSync: () => ({
 		remove: mockRemove,
 		mergeLocalToCloud: mockMerge,
+		add: mockAdd,
+		clearAll: mockClearAll,
+		syncing: mockSyncing,
+		syncIssue: mockSyncIssue,
+		clearSyncIssue: mockClearSyncIssue,
 	}),
 }));
 
@@ -87,7 +97,13 @@ describe("Bookmark folders page (TASK-172)", () => {
 		window.localStorage.setItem(READER_TOKEN_KEY, "reader-token");
 		mockBookmarks.value = [];
 		mockFolders.value = [];
-		vi.clearAllMocks();
+		// resetAllMocks (not clearAllMocks) so a hanging implementation set by one
+		// test (e.g. the never-resolving mockAssignFolder in the single-flight
+		// test) cannot leak into the next and make it time out (deep-dive finding).
+		vi.resetAllMocks();
+		mockAssignFolder.mockImplementation(() => Promise.resolve(true));
+		mockSyncing.value = false;
+		mockSyncIssue.value = null;
 		// happy-dom has no prompt/confirm; provide them for the page's dialogs.
 		(window as unknown as { prompt: () => string | null }).prompt = vi.fn(() => null);
 		(window as unknown as { confirm: () => boolean }).confirm = vi.fn(() => false);
@@ -196,5 +212,113 @@ describe("Bookmark folders page (TASK-172)", () => {
 		expect(wrapper.text()).toContain("移动收藏失败");
 		// The optimistic change was rolled back to "no folder".
 		expect((select.element as HTMLSelectElement).value).toBe("");
+	});
+
+	it("disables the row's select while its folder assignment is in flight (deep-dive)", async () => {
+		// Two rapid changes on the same row clobbered each other's optimistic
+		// state; the select is disabled while the PATCH is pending (single-flight
+		// per row, and the row's aria-busy reflects it).
+		mockFolders.value = [folder(2, "Frontend")];
+		mockBookmarks.value = [bm(1, "A", null)];
+		let resolveAssign!: (v: unknown) => void;
+		mockAssignFolder.mockImplementation(
+			() =>
+				new Promise((resolve) => {
+					resolveAssign = resolve;
+				}),
+		);
+		const wrapper = mountPage();
+
+		const select = wrapper.find("select");
+		await select.setValue("2");
+		await flushPromises();
+		expect((select.element as HTMLSelectElement).disabled).toBe(true);
+		expect(select.attributes("aria-busy")).toBe("true");
+
+		resolveAssign(true);
+		await flushPromises();
+		expect((select.element as HTMLSelectElement).disabled).toBe(false);
+	});
+
+	it("syncs bookmark folder_name after a successful rename (deep-dive)", async () => {
+		// The folder list refreshes on rename, but the local bookmark rows kept
+		// the old name — chips must agree with the manage panel. The mock models
+		// the real rename()->load() reload of the folder list.
+		mockFolders.value = [folder(1, "Old")];
+		mockBookmarks.value = [bm(1, "A", 1)];
+		mockRenameFolder.mockImplementation(async (id: number, name: string) => {
+			mockFolders.value = mockFolders.value.map((f) => (f.id === id ? { ...f, name } : f));
+			return true;
+		});
+		(window as unknown as { prompt: () => string | null }).prompt = vi.fn(() => "New");
+		const wrapper = mountPage();
+
+		await wrapper
+			.findAll("button")
+			.find((b) => b.text().includes("管理文件夹"))
+			?.trigger("click");
+		await wrapper
+			.findAll("button")
+			.find((b) => b.text().includes("重命名"))
+			?.trigger("click");
+		await flushPromises();
+
+		expect(mockRenameFolder).toHaveBeenCalledWith(1, "New");
+		expect(mockBookmarks.value[0].folder_name).toBe("New");
+		expect(wrapper.text()).toContain("New");
+		expect(wrapper.text()).not.toContain("Old");
+	});
+
+	it("unfiles bookmarks from a deleted folder (deep-dive)", async () => {
+		mockFolders.value = [folder(1, "Go")];
+		mockBookmarks.value = [bm(1, "A", 1)];
+		mockRemoveFolder.mockResolvedValue(true);
+		(window as unknown as { confirm: () => boolean }).confirm = vi.fn(() => true);
+		const wrapper = mountPage();
+
+		await wrapper
+			.findAll("button")
+			.find((b) => b.text().includes("管理文件夹"))
+			?.trigger("click");
+		await wrapper
+			.findAll("button")
+			.find((b) => b.text().includes("删除"))
+			?.trigger("click");
+		await flushPromises();
+
+		// The deleted folder's rows are implicitly unfiled — no stale chip, no
+		// select binding to an option that no longer exists. (The mock's folder
+		// list still holds "Go"; the assertion targets the bookmark row's chip,
+		// which the real removeFolder+load() would also drop.)
+		expect(mockBookmarks.value[0].folder_id).toBeNull();
+		expect(mockBookmarks.value[0].folder_name).toBeNull();
+		expect(wrapper.text()).not.toContain("Folder1");
+	});
+
+	it("keeps the folder filter and shows an error when the delete fails (deep-dive)", async () => {
+		mockFolders.value = [folder(1, "Go")];
+		mockBookmarks.value = [bm(1, "A", 1)];
+		mockRemoveFolder.mockResolvedValue(false); // offline / server error
+		(window as unknown as { confirm: () => boolean }).confirm = vi.fn(() => true);
+		const wrapper = mountPage();
+
+		// Filter to the "Go" folder first.
+		const chip = wrapper.findAll("button").find((b) => b.text().includes("Go"));
+		await chip?.trigger("click");
+		await wrapper
+			.findAll("button")
+			.find((b) => b.text().includes("管理文件夹"))
+			?.trigger("click");
+		await wrapper
+			.findAll("button")
+			.find((b) => b.text().includes("删除"))
+			?.trigger("click");
+		await flushPromises();
+
+		// The failed delete must NOT unfile rows nor drop the filter, and the
+		// failure is surfaced (the old path swallowed it and reset the filter).
+		expect(mockBookmarks.value[0].folder_id).toBe(1);
+		expect(wrapper.text()).toContain("文件夹操作失败，请检查网络后重试。");
+		expect(wrapper.text()).toContain("A");
 	});
 });

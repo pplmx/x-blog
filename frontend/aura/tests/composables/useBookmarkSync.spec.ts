@@ -7,6 +7,7 @@ import { ref } from "vue";
 const addReaderBookmarkMock = vi.fn();
 const removeReaderBookmarkMock = vi.fn();
 const fetchReaderBookmarksMock = vi.fn();
+const clearReaderBookmarksMock = vi.fn(() => Promise.resolve(null));
 
 vi.mock("~~/api/reader/bookmarks", async (importOriginal) => {
 	const actual = await importOriginal<typeof import("../../api/reader/bookmarks")>();
@@ -15,6 +16,7 @@ vi.mock("~~/api/reader/bookmarks", async (importOriginal) => {
 		addReaderBookmark: addReaderBookmarkMock,
 		removeReaderBookmark: removeReaderBookmarkMock,
 		getReaderBookmarks: fetchReaderBookmarksMock,
+		clearReaderBookmarks: clearReaderBookmarksMock,
 	};
 });
 
@@ -63,6 +65,7 @@ beforeEach(() => {
 	addReaderBookmarkMock.mockReset();
 	removeReaderBookmarkMock.mockReset();
 	fetchReaderBookmarksMock.mockReset();
+	clearReaderBookmarksMock.mockReset();
 	// syncIssue is module-scoped (shared by every useBookmarkSync instance).
 	syncIssue.value = null;
 });
@@ -399,6 +402,77 @@ describe("useBookmarkSync", () => {
 
 		const ids = bookmarksStore.bookmarks.value.map((b) => b.id).sort((a, b) => a - b);
 		expect(ids).toEqual([7, 9]);
+	});
+
+	it("starts syncing when a reader token is present (empty-state gate, deep-dive)", () => {
+		// /bookmarks gates its empty state behind `syncing`; if it starts false
+		// on a signed-in fresh device, the very first paint flashes "you have no
+		// bookmarks yet" before mount's merge sets the flag.
+		localStorage.setItem("reader_token", "jwt");
+		expect(useBookmarkSync().syncing.value).toBe(true);
+
+		localStorage.removeItem("reader_token");
+		expect(useBookmarkSync().syncing.value).toBe(false);
+	});
+
+	it("stops pushing cleared ids when Clear-all lands mid-push (TASK-233, deep-dive)", async () => {
+		localStorage.setItem("reader_token", "jwt.token");
+		addReaderBookmarkMock.mockResolvedValue(okFetch([null]));
+		fetchReaderBookmarksMock.mockResolvedValue({ items: [cloudItem], total: 1 });
+		const sync = useBookmarkSync();
+		const bookmarksStore = useBookmarks();
+		bookmarksStore.addBookmark({
+			id: 1,
+			title: "One",
+			slug: "1",
+			excerpt: null,
+			cover_image: null,
+			created_at: "2026-01-01",
+			category: null,
+			tags: [],
+		});
+		bookmarksStore.addBookmark({
+			id: 2,
+			title: "Two",
+			slug: "2",
+			excerpt: null,
+			cover_image: null,
+			created_at: "2026-01-02",
+			category: null,
+			tags: [],
+		});
+
+		// The first PUT (id 1) hangs so the test can clear mid-push.
+		let resolvePut!: (v: unknown) => void;
+		addReaderBookmarkMock.mockImplementationOnce(
+			() =>
+				new Promise((resolve) => {
+					resolvePut = resolve;
+				}),
+		);
+		const mergePromise = sync.mergeLocalToCloud();
+		await flushPromises();
+
+		// The reader clicks Clear-all while the merge is still pushing. The local
+		// list wipes immediately, but the cloud DELETE must WAIT for the in-flight
+		// PUT to settle first (otherwise it can land after the DELETE and
+		// resurrect the id server-side) — so clearAll stays pending until the PUT
+		// is released.
+		const clearPromise = sync.clearAll();
+		await flushPromises();
+		expect(clearReaderBookmarksMock).not.toHaveBeenCalled();
+
+		// Release the in-flight PUT; the second id must NOT be pushed (the
+		// per-PUT membership check skips ids no longer in the local list), and
+		// the stale pull snapshot must not restore anything. Only once the PUT
+		// settled does the clear's DELETE fire.
+		resolvePut(okFetch([null]));
+		await flushPromises();
+		expect(addReaderBookmarkMock).not.toHaveBeenCalledWith(2);
+		await clearPromise;
+		expect(clearReaderBookmarksMock).toHaveBeenCalled();
+		await mergePromise;
+		expect(bookmarksStore.bookmarks.value.map((b) => b.id)).toEqual([]);
 	});
 
 	it("does not resurrect a bookmark removed mid-merge (deep-dive)", async () => {

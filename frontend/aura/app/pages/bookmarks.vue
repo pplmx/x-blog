@@ -132,16 +132,40 @@ async function handleNewFolder() {
 
 async function handleRename(folder: { id: number; name: string }) {
 	const name = window.prompt(t("bookmarks.renameFolderPrompt"), folder.name)?.trim();
-	if (name && name !== folder.name && !(await renameFolder(folder.id, name))) {
+	if (name && name !== folder.name && (await renameFolder(folder.id, name))) {
+		// The folder list refreshed, but the local bookmark rows still carry the
+		// old folder_name — sync them so chips and the manage panel agree
+		// (deep-dive finding: rename left rows showing the previous name).
+		for (const b of bookmarks.value) {
+			if (b.folder_id === folder.id) b.folder_name = name;
+		}
+	} else if (name && name !== folder.name) {
 		noteFolderActionFailure();
 	}
 }
 
-function handleDelete(folder: { id: number; name: string }) {
-	if (confirm(t("bookmarks.deleteFolderConfirm", { name: folder.name }))) {
-		void removeFolder(folder.id);
-		if (activeFolderId.value === folder.id) activeFolderId.value = "all";
+async function handleDelete(folder: { id: number; name: string }) {
+	if (!confirm(t("bookmarks.deleteFolderConfirm", { name: folder.name }))) return;
+	const ok = await removeFolder(folder.id);
+	if (!ok) {
+		// Offline failed delete: keep the folder, keep the filter, and say so —
+		// the old path reset the filter optimistically and swallowed the error.
+		noteFolderActionFailure();
+		return;
 	}
+	// The folder is gone from the list, and any bookmarks filed in it are
+	// implicitly unfiled: reconcile the local rows so no bookmarked post still
+	// shows a deleted folder's chip or binds a select option that no longer
+	// exists (deep-dive finding).
+	for (const b of bookmarks.value) {
+		if (b.folder_id === folder.id) {
+			b.folder_id = null;
+			b.folder_name = null;
+		}
+	}
+	// Drop the filter only once the delete actually succeeded — an active filter
+	// on the deleted folder is an invisible list otherwise.
+	if (activeFolderId.value === folder.id) activeFolderId.value = "all";
 }
 
 function activeClass(active: boolean): string {
@@ -151,6 +175,13 @@ function activeClass(active: boolean): string {
 }
 
 const assignFailed = ref(false);
+// The rows whose folder select has an assignment in flight. Each row is tracked
+// INDEPENDENTLY in a Set so two different rows can be in flight at once without
+// clearing each other's guard — a single slot let the second row's finally wipe
+// the first row's in-flight marker, re-enabling its select mid-PATCH (deep-dive
+// finding). Disables THAT row's select only, so two rapid changes can't fire
+// overlapping PATCHes that clobber each other's optimistic state and rollback.
+const assigningIds = ref(new Set<number>());
 
 // On sign-out the folder bar (signed-in only, v-if=signedIn) disappears but
 // the local bookmark rows keep their folder_id — without resetting the active
@@ -163,26 +194,37 @@ watch(signedIn, (authed) => {
 	searchQuery.value = "";
 	showManage.value = false;
 	assignFailed.value = false;
+	assigningIds.value.clear();
 });
 
 async function handleAssign(bookmark: Bookmark, raw: string) {
+	if (assigningIds.value.has(bookmark.id)) return; // single-flight per row
 	const folderId = raw === "" ? null : Number(raw);
 	const prevId = bookmark.folder_id;
 	const prevName = bookmark.folder_name;
+	assigningIds.value.add(bookmark.id);
 	// Optimistic local update so the list re-renders immediately.
 	bookmark.folder_id = folderId;
 	bookmark.folder_name =
 		folderId === null ? null : (folders.value.find((f) => f.id === folderId)?.name ?? null);
-	const ok = await assignFolder(bookmark.id, folderId);
-	// Roll the row back when the server rejected the change, so the UI never
-	// claims a folder assignment the cloud did not persist (deep-dive finding).
-	if (!ok) {
-		bookmark.folder_id = prevId;
-		bookmark.folder_name = prevName;
-		assignFailed.value = true;
-		setTimeout(() => {
-			assignFailed.value = false;
-		}, 4000);
+	try {
+		const ok = await assignFolder(bookmark.id, folderId);
+		// Roll the row back when the server rejected the change, so the UI never
+		// claims a folder assignment the cloud did not persist (deep-dive finding).
+		// Only roll back if this call's optimistic value is still on the row —
+		// a newer assign or the mount merge could have moved it on.
+		if (!ok) {
+			if (bookmark.folder_id === folderId) {
+				bookmark.folder_id = prevId;
+				bookmark.folder_name = prevName;
+			}
+			assignFailed.value = true;
+			setTimeout(() => {
+				assignFailed.value = false;
+			}, 4000);
+		}
+	} finally {
+		assigningIds.value.delete(bookmark.id);
 	}
 }
 </script>
@@ -455,7 +497,9 @@ async function handleAssign(bookmark: Bookmark, raw: string) {
                 <span>{{ t('bookmarks.assign') }}</span>
                 <select
                   :value="bookmark.folder_id ?? ''"
-                  class="ml-1 text-sm bg-transparent border border-gray-200 dark:border-gray-700 rounded-lg px-2 py-1 text-gray-700 dark:text-gray-200 focus:outline-none"
+                  :disabled="assigningIds.has(bookmark.id)"
+                  :aria-busy="assigningIds.has(bookmark.id)"
+                  class="ml-1 text-sm bg-transparent border border-gray-200 dark:border-gray-700 rounded-lg px-2 py-1 text-gray-700 dark:text-gray-200 focus:outline-none disabled:opacity-50"
                   @change="handleAssign(bookmark, ($event.target as HTMLSelectElement).value)"
                 >
                   <option value="">{{ t('bookmarks.noFolder') }}</option>
