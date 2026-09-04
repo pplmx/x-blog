@@ -897,6 +897,46 @@ describe("Admin Post Editor Page", () => {
 			expect(targetId).toBe(7);
 		});
 
+		it("guards a second manual Save during the autosave wait window (round 257 review)", async () => {
+			// The re-entry guard flips isSubmitting BEFORE awaiting the autosave
+			// drain — a top-only guard left a wait window where a double-click /
+			// Enter re-entered handleSubmit, parked a second waiter, and both
+			// resumed to fire duplicate requests (second-review finding).
+			const { wrapper } = await autosaveNewPage();
+
+			let resolveCreate!: (v: { id: number }) => void;
+			mockCreateAdminPost.mockImplementation(
+				() =>
+					new Promise((res) => {
+						resolveCreate = res;
+					}),
+			);
+
+			const titleInput = wrapper.find('input[type="text"]');
+			await titleInput.setValue("Race Draft");
+			const contentTextarea = wrapper.find('textarea[rows="15"]');
+			await contentTextarea.setValue("# body");
+			await vi.advanceTimersByTimeAsync(1000);
+			await flushPromises();
+			expect(mockCreateAdminPost).toHaveBeenCalledTimes(1);
+
+			// First Save parks on the autosave drain wait…
+			const form = wrapper.find("form");
+			await form.trigger("submit.prevent");
+			await flushPromises();
+			// …a second Save during that wait is re-entry-guarded (isSubmitting
+			// is already true), so it must NOT enqueue a second request.
+			await form.trigger("submit.prevent");
+			await flushPromises();
+			expect(mockCreateAdminPost).toHaveBeenCalledTimes(1);
+
+			resolveCreate({ id: 7 });
+			await flushPromises();
+
+			expect(mockCreateAdminPost).toHaveBeenCalledTimes(1);
+			expect(mockUpdateAdminPost).toHaveBeenCalledTimes(1);
+		});
+
 		it("Cancel during an in-flight autosave-create does NOT redirect back to the editor (round 257)", async () => {
 			const { wrapper, mockNavigateTo } = await autosaveNewPage();
 

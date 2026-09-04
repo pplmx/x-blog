@@ -78,15 +78,25 @@ let isLeavingRoute = false;
 let autosavedId: number | null = null;
 /** Manual-Save callers parked until the autosave pipeline drains. */
 let autosaveWaiters: Array<() => void> = [];
+/** Bounded wait cap for waitForAutosaveIdle: a hung in-flight autosave (fetch
+ *  never settles) must not leave the Save button dead forever (deep-dive). */
+const AUTOSAVE_WAIT_TIMEOUT_MS = 3000;
 /** Resolve when no autosave is in flight and none is queued. handleSubmit
  *  awaits this when a manual Save lands while the first autosave-create of a
  *  /new session is still running: autosavedId isn't set yet, and the naive
  *  create-vs-update decision below would fire a SECOND create with the
- *  identical slug → backend 422 (deep-dive finding). */
+ *  identical slug → backend 422 (deep-dive finding). Falls back to the create
+ *  path after a cap if the autosave hangs, so the submit can't stall forever. */
 function waitForAutosaveIdle(): Promise<void> {
 	if (!autosaveInFlight && !autosaveQueued) return Promise.resolve();
 	return new Promise((resolve) => {
-		autosaveWaiters.push(resolve);
+		const waiter = () => resolve();
+		autosaveWaiters.push(waiter);
+		setTimeout(() => {
+			const i = autosaveWaiters.indexOf(waiter);
+			if (i >= 0) autosaveWaiters.splice(i, 1);
+			resolve();
+		}, AUTOSAVE_WAIT_TIMEOUT_MS);
 	});
 }
 
@@ -120,8 +130,11 @@ function snapshot(): string {
  * silent no-op that looked saved but never landed. Explicit null is the only
  * form that actually clears. (deep-dive finding)
  */
-function serializePayload(): PostCreate {
-	const payload = { ...formData.value } as PostCreate;
+function serializePayload(): Partial<PostCreate> {
+	// Spread of the Partial form needs no cast; the honest type keeps a future
+	// `payload.title.trim()` from compiling cleanly on a form that can be empty
+	// (review finding — the old `as PostCreate` over-claimed required fields).
+	const payload = { ...formData.value };
 	payload.publish_at = payload.publish_at ? toUtcNaiveIso(payload.publish_at) : null;
 	payload.category_id = payload.category_id ?? null;
 	payload.series_id = payload.series_id ?? null;
@@ -133,14 +146,16 @@ function serializePayload(): PostCreate {
  * takes `tag_ids` (backend/app/schemas.py PostCreate vs PostUpdate). The tag
  * picker edits ids, so translate ids→names for a create — otherwise a fast
  * Save on a new post silently drops the just-selected tags (deep-dive finding).
+ * The `as PostCreate` is the single boundary where the create contract asserts
+ * completeness (title/slug/content guarded by the call sites).
  */
-function withCreateTags(payload: PostCreate): PostCreate {
+function withCreateTags(payload: Partial<PostCreate>): PostCreate {
 	const tagIds = payload.tag_ids ?? [];
 	const { tag_ids: _tagIds, ...rest } = payload;
 	return {
 		...rest,
 		tags: tags.value.filter((tag) => tagIds.includes(tag.id)).map((tag) => tag.name),
-	};
+	} as PostCreate;
 }
 const categories = ref<Array<{ id: number; name: string }>>([]);
 const tags = ref<Array<{ id: number; name: string }>>([]);
@@ -463,27 +478,32 @@ async function handleSubmit(e: Event) {
 	// Re-entry guard for the handler itself: the Save button is disabled while
 	// isSubmitting, but Enter-in-form / a double click races the disabled
 	// attribute patch — same class as the taxonomy create forms (deep-dive).
+	// The flag is flipped BEFORE the autosave wait below: an awaits leaves a
+	// window where a second submit re-enters past a top-only guard (review
+	// finding on the round-257 race work).
 	if (isSubmitting.value) return;
-	// A manual Save landing while the first autosave-create of a /new session
-	// is still in flight must not race it: autosavedId isn't set yet, so the
-	// naive targetId below would be null → a SECOND create with the identical
-	// slug → backend 422. Let the autosave pipeline drain first (it sets
-	// autosavedId from the create's response), then target that draft.
-	if ((autosaveInFlight || autosaveQueued) && (postId ?? autosavedId) === null) {
-		await waitForAutosaveIdle();
-	}
 	isSubmitting.value = true;
 	submitError.value = null;
 
-	const payload = serializePayload();
-	// New posts start with an empty slug, which fails the backend schema
-	// pattern (^[a-z0-9]+(?:-[a-z0-9]+)*$) with a 422. Generate one from the
-	// title so a plain "fill title + content, save" flow always works.
-	if (isNew && !payload.slug && payload.title) {
-		payload.slug = generateSlug(payload.title);
-	}
-
 	try {
+		// A manual Save landing while the first autosave-create of a /new
+		// session is still in flight must not race it: autosavedId isn't set
+		// yet, so the naive targetId below would be null → a SECOND create with
+		// the identical slug → backend 422. Let the autosave pipeline drain
+		// first (it sets autosavedId from the create's response), then target
+		// that draft.
+		if ((autosaveInFlight || autosaveQueued) && (postId ?? autosavedId) === null) {
+			await waitForAutosaveIdle();
+		}
+
+		const payload = serializePayload();
+		// New posts start with an empty slug, which fails the backend schema
+		// pattern (^[a-z0-9]+(?:-[a-z0-9]+)*$) with a 422. Generate one from the
+		// title so a plain "fill title + content, save" flow always works.
+		if (isNew && !payload.slug && payload.title) {
+			payload.slug = generateSlug(payload.title);
+		}
+
 		// These commands reject with a FetchError on HTTP failure (422 detail
 		// lands in .data.detail); success resolves with the persisted post id.
 		// A new post whose auto-save already created the draft lives under
