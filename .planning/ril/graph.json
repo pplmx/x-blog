@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 248,
+  "round": 249,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-04T06:59:11+00:00",
+  "updated_at": "2026-09-04T10:09:31+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -11,7 +11,7 @@
       "version": 1,
       "created_at": "2026-08-06T13:23:41+00:00",
       "updated_at": "2026-08-06T13:23:41+00:00",
-      "touched_round": 237,
+      "touched_round": 248,
       "title": "backend-nova",
       "description": "FastAPI Python 3.14 backend at backend/nova; SQLAlchemy ORM; routers in app/routers, crud.py business logic, 656 lines"
     },
@@ -17285,6 +17285,107 @@
       "title": "Comment + home-page deep-dive batch: load-error retry, reply confirm, drain clamp, naive-UTC dates, pagination no-op buttons",
       "commit": "47dad6d",
       "description": "All findings resolved with +12 tests; full frontend suite 1453 green, typecheck + biome clean."
+    },
+    "ISS-325": {
+      "id": "ISS-325",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-04T10:06:08+00:00",
+      "updated_at": "2026-09-04T10:09:08+00:00",
+      "touched_round": 248,
+      "summary": "Web Push subscription layer lacks SSRF protection, per-source caps, ownership binding, and proof-of-possession revoke: attacker-supplied endpoints could later be dialled (metadata 169.254.169.254 / internal hosts, DNS rebinding), anonymous rows grew unboundedly and amplified the serial dispatch loop, one reader could re-bind/revoke another's subscription with only its logged endpoint, and unsubscribe accepted endpoint alone as possession.",
+      "severity": "high"
+    },
+    "ISS-326": {
+      "id": "ISS-326",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-04T10:06:08+00:00",
+      "updated_at": "2026-09-04T10:09:08+00:00",
+      "touched_round": 248,
+      "summary": "Comment likes were a client-guarded count++ (localStorage dedup only): a caller could inflate the 'most helpful' ordering by re-sending the like request, contradicting the idempotency hardening applied to flags.",
+      "severity": "high"
+    },
+    "ISS-327": {
+      "id": "ISS-327",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-04T10:06:08+00:00",
+      "updated_at": "2026-09-04T10:09:08+00:00",
+      "touched_round": 248,
+      "summary": "Admin login leaked username existence via response timing: unknown usernames short-circuited before bcrypt, so latency revealed whether an admin account existed (enumeration).",
+      "severity": "medium"
+    },
+    "ISS-328": {
+      "id": "ISS-328",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-04T10:06:08+00:00",
+      "updated_at": "2026-09-04T10:09:08+00:00",
+      "touched_round": 248,
+      "summary": "Reader edit-own-comment kept is_approved=True: an approved comment could silently republish swapped-in spam/phishing text without re-entering moderation (security review finding #1).",
+      "severity": "high"
+    },
+    "ISS-329": {
+      "id": "ISS-329",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-04T10:06:08+00:00",
+      "updated_at": "2026-09-04T10:09:08+00:00",
+      "touched_round": 248,
+      "summary": "/me/export (portable data bundle) had no rate limit — an authenticated reader could hammer an expensive export endpoint (security review finding #2).",
+      "severity": "low"
+    },
+    "ISS-330": {
+      "id": "ISS-330",
+      "type": "issue",
+      "status": "abandoned",
+      "version": 2,
+      "created_at": "2026-09-04T10:06:08+00:00",
+      "updated_at": "2026-09-04T10:09:08+00:00",
+      "touched_round": 248,
+      "summary": "Reader list endpoints return 200-empty when page exceeds total_pages (bookmarks, subscriptions, history, comments, notifications); correctness finding #3. Disposition: frontend already drain-clamps; backend clamp declined (re-query across 5 endpoints+crud, masks client bugs).",
+      "severity": "low"
+    },
+    "TASK-276": {
+      "id": "TASK-276",
+      "type": "task",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-04T10:06:21+00:00",
+      "updated_at": "2026-09-04T10:09:08+00:00",
+      "touched_round": 248,
+      "summary": "Round 249 backend security/correctness batch: webpush SSRF two-layer guards, per-source subscription caps, ownership+proof-of-possession, admin login timing equalization, server-side comment-like idempotency, reader-comment edit re-moderation, export rate-limit; additive migrations + contract tests.",
+      "category": "security",
+      "severity": 4
+    },
+    "CHG-366": {
+      "id": "CHG-366",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-04T10:06:21+00:00",
+      "updated_at": "2026-09-04T10:06:21+00:00",
+      "touched_round": 248,
+      "summary": "fix(backend): security + correctness batch — push SSRF/DoS guards, caps, proof-of-possession unsubscribe, admin login timing, comment-like idempotency, reader-comment edit re-moderation, export rate-limit (480dcd9).",
+      "commit": "480dcd9"
+    },
+    "DEC-246": {
+      "id": "DEC-246",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-04T10:08:39+00:00",
+      "updated_at": "2026-09-04T10:08:39+00:00",
+      "touched_round": 248,
+      "summary": "Page-beyond-total_pages accepted as 200-empty on reader list endpoints: clamping would require re-querying all 5 paginated readers (bookmarks/subscriptions/history/comments/notifications) + crud, risks masking client bugs, and the frontend already drain-clamps to the last page on empty pages. Declined as a backend fix (correctness finding #3).",
+      "rationale": "Frontend drain-clamp (comments.vue and friends) already recovers; API returning 200-empty for out-of-range pages is common pagination semantics; clamping adds re-query complexity across 5 endpoints for no user-visible gain.",
+      "alternatives_rejected": "Backend clamp page to total_pages by re-querying crud with clamped offset in every list endpoint."
     }
   },
   "edges": [
@@ -25278,6 +25379,114 @@
       "to": "ISS-324",
       "type": "resolves",
       "created_at": "2026-09-04T06:59:11+00:00"
+    },
+    {
+      "from": "TASK-276",
+      "to": "ISS-325",
+      "type": "addresses",
+      "created_at": "2026-09-04T10:08:52+00:00"
+    },
+    {
+      "from": "TASK-276",
+      "to": "ISS-326",
+      "type": "addresses",
+      "created_at": "2026-09-04T10:08:52+00:00"
+    },
+    {
+      "from": "TASK-276",
+      "to": "ISS-327",
+      "type": "addresses",
+      "created_at": "2026-09-04T10:08:53+00:00"
+    },
+    {
+      "from": "TASK-276",
+      "to": "ISS-328",
+      "type": "addresses",
+      "created_at": "2026-09-04T10:08:53+00:00"
+    },
+    {
+      "from": "TASK-276",
+      "to": "ISS-329",
+      "type": "addresses",
+      "created_at": "2026-09-04T10:08:53+00:00"
+    },
+    {
+      "from": "ISS-325",
+      "to": "COMP-001",
+      "type": "located_in",
+      "created_at": "2026-09-04T10:08:53+00:00"
+    },
+    {
+      "from": "ISS-326",
+      "to": "COMP-001",
+      "type": "located_in",
+      "created_at": "2026-09-04T10:08:53+00:00"
+    },
+    {
+      "from": "ISS-327",
+      "to": "COMP-001",
+      "type": "located_in",
+      "created_at": "2026-09-04T10:08:53+00:00"
+    },
+    {
+      "from": "ISS-328",
+      "to": "COMP-001",
+      "type": "located_in",
+      "created_at": "2026-09-04T10:08:53+00:00"
+    },
+    {
+      "from": "ISS-329",
+      "to": "COMP-001",
+      "type": "located_in",
+      "created_at": "2026-09-04T10:08:53+00:00"
+    },
+    {
+      "from": "ISS-330",
+      "to": "COMP-001",
+      "type": "located_in",
+      "created_at": "2026-09-04T10:08:53+00:00"
+    },
+    {
+      "from": "CHG-366",
+      "to": "ISS-325",
+      "type": "resolves",
+      "created_at": "2026-09-04T10:08:53+00:00"
+    },
+    {
+      "from": "CHG-366",
+      "to": "ISS-326",
+      "type": "resolves",
+      "created_at": "2026-09-04T10:08:53+00:00"
+    },
+    {
+      "from": "CHG-366",
+      "to": "ISS-327",
+      "type": "resolves",
+      "created_at": "2026-09-04T10:08:53+00:00"
+    },
+    {
+      "from": "CHG-366",
+      "to": "ISS-328",
+      "type": "resolves",
+      "created_at": "2026-09-04T10:08:54+00:00"
+    },
+    {
+      "from": "CHG-366",
+      "to": "ISS-329",
+      "type": "resolves",
+      "created_at": "2026-09-04T10:08:54+00:00"
+    },
+    {
+      "from": "CHG-366",
+      "to": "TASK-276",
+      "type": "implements",
+      "created_at": "2026-09-04T10:08:54+00:00"
+    },
+    {
+      "from": "DEC-246",
+      "to": "COMP-001",
+      "type": "governs",
+      "created_at": "2026-09-04T10:08:54+00:00"
     }
   ]
 }
