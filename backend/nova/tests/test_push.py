@@ -135,6 +135,95 @@ class TestUnsubscribe:
         assert len(remaining) == 1
         assert remaining[0].endpoint == NEW_ENDPOINT
 
+    def test_requires_proof_of_possession_for_unsubscribe(self, client, db_session):
+        """Deleting by endpoint ALONE must not work — the keys the browser
+        holds are the proof of possession, so a captured endpoint (dispatch
+        logs, the reader's own listing) cannot be used to kill someone's
+        subscription (security review)."""
+        client.post("/api/push/subscribe", json=_subscribe_body())
+        # Correct endpoint, wrong keys (attacker knows the endpoint's URL only).
+        forged = _subscribe_body(prefix=99)  # different p256dh/auth
+        forged["endpoint"] = ENDPOINT
+        response = client.post("/api/push/unsubscribe", json=forged)
+        assert response.status_code == 204
+        assert db_session.query(models.PushSubscription).count() == 1
+        # The true browser, holding its real keys, still revokes normally.
+        response = client.post("/api/push/unsubscribe", json=_subscribe_body())
+        assert response.status_code == 204
+        assert db_session.query(models.PushSubscription).count() == 0
+
+
+class TestSubscribeHardening:
+    """SSRF literal guard + per-source caps + reader-binding ownership (sec review)."""
+
+    @pytest.mark.parametrize(
+        "endpoint",
+        [
+            "https://127.0.0.1:9090/push",
+            "http://10.0.0.5:8080/internal",
+            "https://[::1]/push",
+            "https://169.254.169.254/latest/meta-data",
+            "https://localhost/push",
+            "https://db.internal/push",
+            "https://printer.local/push",
+        ],
+    )
+    def test_rejects_internal_literal_hosts(self, client, endpoint):
+        """A push endpoint pointing at loopback/private/link-local/literal
+        internal hosts is refused at subscribe (SSRF layer 1, DNS-free)."""
+        response = client.post("/api/push/subscribe", json=_subscribe_body(endpoint=endpoint))
+        assert response.status_code == 422
+
+    def test_rejects_reader_stealing_another_readers_binding(self, client, db_session):
+        """Re-subscribing an endpoint already bound to another reader must not
+        silently repoint it (would let reader B steal + revoke reader A's
+        subscriptions using only A's logged endpoint)."""
+
+        # Reader A subscribes while signed in.
+        register_a = client.post(
+            "/api/reader/register",
+            json={"email": "a@test.com", "password": "password123"},
+        )
+        token_a = register_a.json()["access_token"]
+        client.post("/api/push/subscribe", json=_subscribe_body(), headers={"Authorization": f"Bearer {token_a}"})
+        row = db_session.query(models.PushSubscription).one()
+        assert row.reader_id is not None
+
+        # Reader B tries to bind the same endpoint to themselves.
+        register_b = client.post(
+            "/api/reader/register",
+            json={"email": "b@test.com", "password": "password123"},
+        )
+        token_b = register_b.json()["access_token"]
+        response = client.post(
+            "/api/push/subscribe",
+            json=_subscribe_body(),
+            headers={"Authorization": f"Bearer {token_b}"},
+        )
+        assert response.status_code == 409
+        db_session.refresh(row)
+        # Binding unchanged — A still owns it.
+        assert row.reader_id == register_a.json()["reader"]["id"]
+
+    def test_caps_anonymous_subscriptions_per_ip(self, client, db_session):
+        """Anonymous growth is bounded per client IP (one browser = one
+        endpoint, so a handful of rows per IP is generous; security review)."""
+        from app import webpush
+
+        cap = webpush.MAX_PUSH_SUBSCRIPTIONS_PER_SOURCE
+        for i in range(cap):
+            r = client.post(
+                "/api/push/subscribe",
+                json=_subscribe_body(endpoint=f"https://push.example.com/push-{i}", prefix=i),
+            )
+            assert r.status_code == 200, r.text
+        # At the cap, one more anonymous endpoint is denied.
+        over = client.post(
+            "/api/push/subscribe",
+            json=_subscribe_body(endpoint=f"https://push.example.com/push-{cap}", prefix=99),
+        )
+        assert over.status_code == 429
+
 
 class TestNotifyAuth:
     def test_anonymous_forbidden(self, client):
@@ -184,7 +273,7 @@ class TestNotifyDispatch:
 
         assert response.status_code == 200
         assert mock_send.call_count == 2
-        assert response.json() == {"total": 2, "sent": 2, "failed": 0, "removed": 0}
+        assert response.json() == {"total": 2, "sent": 2, "failed": 0, "removed": 0, "skipped": 0}
         endpoints = {c["endpoint"] for c in captured}
         assert endpoints == {ENDPOINT, NEW_ENDPOINT}
         for call in captured:
@@ -236,7 +325,7 @@ class TestNotifyDispatch:
             )
 
         assert response.status_code == 200
-        assert response.json() == {"total": 1, "sent": 0, "failed": 1, "removed": 0}
+        assert response.json() == {"total": 1, "sent": 0, "failed": 1, "removed": 0, "skipped": 0}
         assert db_session.query(models.PushSubscription).count() == 1
 
     def test_fails_closed_when_unconfigured(self, client, auth_headers, monkeypatch):
@@ -256,7 +345,13 @@ class TestSendPushTimeout:
         """A dead push service must not stall the whole broadcast forever: the
         requests call gets a bounded timeout, so a hanging endpoint is counted
         as failed instead of eating the app's 30s request budget (504)."""
-        with patch("app.webpush.webpush") as mock_webpush:
+        with (
+            patch("app.webpush.webpush") as mock_webpush,
+            # The SSRF guard resolves the host live at dispatch (DNS); tests
+            # may run offline, and this case is about timeout wiring, not
+            # SSRF. The literal guard + resolver are covered separately.
+            patch("app.webpush._endpoint_targets_internal", return_value=False),
+        ):
             webpush.send_push(
                 endpoint=ENDPOINT,
                 p256dh=_valid_keys()["p256dh"],
@@ -268,3 +363,15 @@ class TestSendPushTimeout:
         assert kwargs["vapid_claims"] == {"sub": "mailto:test@example.com"}
         assert kwargs["data"] == '{"title": "x"}'
         assert kwargs["vapid_private_key"]  # lazy env read present in tests
+
+    def test_send_push_refuses_a_non_public_endpoint(self):
+        """The authoritative SSRF guard resolves the host now and refuses an
+        internal destination before any outbound request (DNS rebinding)."""
+        with patch("app.webpush.webpush") as mock_webpush, pytest.raises(ValueError, match="non-public"):
+            webpush.send_push(
+                endpoint="https://127.0.0.1:9090/push",
+                p256dh=_valid_keys()["p256dh"],
+                auth=_valid_keys()["auth"],
+                payload={"title": "x"},
+            )
+        mock_webpush.assert_not_called()

@@ -106,24 +106,37 @@ class TestSubscribeBindsReader:
         assert sub is not None
         assert sub.reader_id is not None
 
-    def test_reader_resubscribe_refreshes_reader_id(self, client, db_session):
+    def test_reader_cannot_claim_another_readers_endpoint(self, client, db_session):
+        """A reader re-subscribing another reader's endpoint is refused (409).
+
+        Re-subscription used to blindly rebind ``reader_id`` to whichever
+        reader subscribed last — so B could log B's account over A's fresh
+        endpoint and steal+revoke A's push (security review). The row stays A's
+        device binding; only a fresh endpoint (or A re-subscribing A's own row
+        with rotated keys) binds/updates.
+        """
         from app import models
 
         t1 = _token(client, email="a@example.com", display_name="A")
         t2 = _token(client, email="b@example.com", display_name="B")
         _subscribe(client, p256dh=_valid_p256dh(), auth_=_valid_auth(), headers=_auth(t1))
-        _subscribe(client, p256dh=_valid_p256dh(), auth_=_valid_auth(), headers=_auth(t2))
+        # B re-subscribing the SAME endpoint (A's row) with fresh keys: refused.
+        stolen = _subscribe(client, p256dh=_valid_p256dh(), auth_=_valid_auth(), headers=_auth(t2))
+        assert stolen.status_code == 409
         sub = (
             db_session.query(models.PushSubscription)
             .filter(models.PushSubscription.endpoint == "https://fcm.example.com/abc")
             .first()
         )
-        assert sub.reader_id is not None
-        # endpoint re-subscribed by B -> reader_id now B's
         from app.auth import ReaderAccount
 
-        reader_b = db_session.query(ReaderAccount).filter(ReaderAccount.email == "b@example.com").first()
-        assert sub.reader_id == reader_b.id
+        reader_a = db_session.query(ReaderAccount).filter(ReaderAccount.email == "a@example.com").first()
+        assert sub.reader_id == reader_a.id
+        # A re-subscribing A's own row with rotated keys still updates in place.
+        refreshed = _subscribe(client, p256dh=_valid_p256dh(), auth_=_valid_auth(), headers=_auth(t1))
+        assert refreshed.status_code == 200
+        db_session.refresh(sub)
+        assert sub.reader_id == reader_a.id
 
 
 class TestReplyNotification:

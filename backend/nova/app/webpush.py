@@ -20,9 +20,13 @@ key. (DEC-055, TASK-117)
 """
 
 import base64
+import ipaddress
 import json
 import os
+import socket
+import time
 from typing import Any
+from urllib.parse import urlparse
 
 from pywebpush import webpush
 from sqlalchemy import or_
@@ -79,6 +83,13 @@ def send_push(
     requests has no timeout and a hanging endpoint eats the app's 30s request
     budget, turning the admin notify into a 504).
     """
+    # SSRF layer 2 (authoritative): resolve the hostname *now* and refuse
+    # non-public destinations. The DNS resolution between subscribe and here is
+    # attacker-controlled (rebinding); the request must only ever go to a public
+    # push service. A non-public target raises so the dispatch loop counts it as
+    # failed and never dials an internal address.
+    if _endpoint_targets_internal(endpoint):
+        raise ValueError("push endpoint resolves to a non-public address")
     webpush(
         subscription_info={"endpoint": endpoint, "keys": {"p256dh": p256dh, "auth": auth}},
         data=json.dumps(payload, ensure_ascii=False),
@@ -102,6 +113,92 @@ def push_removed_status(exc: BaseException) -> int | None:
     return status if status in (404, 410) else None
 
 
+# SSRF guard (security review, round 249): a push *endpoint* is an attacker-
+# supplied URL the server will later connect to. /api/push/subscribe is
+# unauthenticated and rate-limited.
+#
+# Layer 1 (below, DNS-free so it is deterministic and offline-safe): reject
+# hostnames that are inherently internal literals (localhost, .local, bare
+# private/loopback/... IPs) at BOTH subscribe time and dispatch time — a
+# poisoned row from before the guard is retired without ever being dialled.
+#
+# Layer 2 (in send_push, the authoritative check): resolve the hostname *now*
+# and refuse non-public destinations. Only this catches DNS rebinding — the
+# attacker controls resolution between subscribe and dispatch — so it runs at
+# the point of connection, exactly where the outbound request happens.
+
+# Internal-named hosts never legitimately receive browser pushes: localhost,
+# mDNS (.local), Windows (.localhost) and RFC 6762-style private suffixes.
+_PRIVATE_HOST_SUFFIXES = (".local", ".localhost", ".internal")
+
+
+def _addr_is_non_public(addr: ipaddress.IPv4Address | ipaddress.IPv6Address) -> bool:
+    """True for any address that is never a public Web Push service target."""
+    return (
+        addr.is_loopback
+        or addr.is_link_local
+        or addr.is_private
+        or addr.is_reserved
+        or addr.is_multicast
+        or addr.is_unspecified
+    )
+
+
+def _endpoint_host_is_internal_literal(endpoint: str) -> bool:
+    """True when the endpoint host is an inherent internal literal (DNS-free)."""
+    parsed = urlparse(endpoint)
+    host = (parsed.hostname or "").lower()
+    if not host:
+        return True
+    if host == "localhost" or host.endswith(_PRIVATE_HOST_SUFFIXES):
+        return True
+    try:
+        addr = ipaddress.ip_address(host)
+    except ValueError:
+        return False  # a hostname — DNS-free check can't classify it
+    return _addr_is_non_public(addr)
+
+
+def _endpoint_targets_internal(endpoint: str) -> bool:
+    """True when the endpoint hostname resolves to a non-public address now.
+
+    The authoritative dispatch-time check (DNS rebinding protection). DNS
+    failures are treated as internal: an endpoint that cannot resolve cannot
+    be delivered and is conservatively retired. Callers that must stay
+    offline-safe should use ``_endpoint_host_is_internal_literal`` instead.
+    """
+    parsed = urlparse(endpoint)
+    host = parsed.hostname
+    if not host:
+        return True
+    try:
+        infos = socket.getaddrinfo(host, parsed.port or 443, proto=socket.IPPROTO_TCP)
+    except OSError:
+        return True
+    for info in infos:
+        try:
+            addr = ipaddress.ip_address(info[4][0])
+        except ValueError:
+            continue
+        if _addr_is_non_public(addr):
+            return True
+    return False
+
+
+# A global wall-clock budget for one dispatch: with a per-endpoint 10s timeout,
+# N poisoned/hanging endpoints could serially stall a broadcast past the app's
+# 30s request budget (504). Stop dialling once the budget is spent — the
+# remaining rows stay for the next publish, so no subscriber is permanently
+# skipped.
+DISPATCH_TIME_BUDGET_SECONDS = float(os.getenv("PUSH_DISPATCH_TIME_BUDGET_SECONDS", "20"))
+
+# Per-source subscription cap (security review): unbounded rows driven by
+# anonymous input grew the table without limit and amplified the dispatch loop.
+# One browser = one endpoint; a source (reader account, or anonymous IP) needs
+# only a handful of devices, so hard-cap per source at subscribe.
+MAX_PUSH_SUBSCRIPTIONS_PER_SOURCE = int(os.getenv("MAX_PUSH_SUBSCRIPTIONS_PER_SOURCE", "10"))
+
+
 def dispatch_to_subscriptions(
     subscriptions,
     payload: dict[str, Any],
@@ -115,8 +212,29 @@ def dispatch_to_subscriptions(
     stays invisible to the caller), and tolerates individual failures so one
     dead endpoint cannot fail the whole dispatch or the triggering request.
     """
-    sent = failed = removed = 0
+    sent = failed = removed = skipped = 0
+    deadline = time.monotonic() + DISPATCH_TIME_BUDGET_SECONDS
     for sub in subscriptions:
+        if time.monotonic() >= deadline:
+            # Budget exhausted: stop dialling so a batch of hanging/poisoned
+            # endpoints cannot burn the app's whole request budget (504).
+            # Un-dialled rows survive for the next publish.
+            skipped += 1
+            continue
+        # Dispatch-time SSRF layer 1 (DNS-free): a poisoned row registered
+        # before the subscribe guard is retired without ever being dialled.
+        # (The authoritative resolve-and-reject lives in send_push itself —
+        # see _endpoint_targets_internal — where the connection is actually
+        # attempted, covering DNS rebinding without breaking offline tests.)
+        if _endpoint_host_is_internal_literal(sub.endpoint):
+            if db is not None:
+                db.delete(sub)
+            removed += 1
+            logger.warning(
+                "push_subscription_blocked",
+                extra={"endpoint": sub.endpoint, "reason": "internal literal host"},
+            )
+            continue
         try:
             send_push(endpoint=sub.endpoint, p256dh=sub.p256dh, auth=sub.auth, payload=payload)
             sent += 1
@@ -137,7 +255,7 @@ def dispatch_to_subscriptions(
                 )
     if db is not None:
         db.commit()
-    return {"sent": sent, "failed": failed, "removed": removed}
+    return {"sent": sent, "failed": failed, "removed": removed, "skipped": skipped}
 
 
 # New-post notification copy (server-generated push, so not i18n-able per

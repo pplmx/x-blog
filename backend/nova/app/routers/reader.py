@@ -18,7 +18,8 @@ from sqlalchemy.orm import Session
 
 from app import auth, crud, models, schemas
 from app.database import get_db
-from app.limiter import RATE_LIMIT_AUTH, RATE_LIMIT_REGISTER, limiter
+from app.limiter import RATE_LIMIT_AUTH, RATE_LIMIT_EXPORT, RATE_LIMIT_REGISTER, limiter
+from app.routers.comments import AUTO_APPROVE_READER_COMMENTS, _notify_comment_approved
 
 router = APIRouter(prefix="/api/reader", tags=["reader"])
 
@@ -945,12 +946,19 @@ def series_reading_progress(
 
 
 @router.get("/me/export", response_model=DataExportResponse)
+@limiter.limit(f"{RATE_LIMIT_EXPORT}/minute")
 def export_my_data(
+    request: Request,  # noqa: ARG001
     current_reader: auth.ReaderAccount = Depends(auth.get_current_reader),
     db: Session = Depends(get_db),
 ):
     """Return the caller's portable data bundle (account, bookmarks, comments,
-    history). Auth-scoped — only the signed-in reader's own data (DEC-126)."""
+    history). Auth-scoped — only the signed-in reader's own data (DEC-126).
+
+    Rate-limited like the other export/backup surfaces (RATE_LIMIT_EXPORT):
+    the bundle assembles every comment + history row, so an unthrottled reader
+    token could otherwise serialize large payloads on demand (security review).
+    """
     return DataExportResponse(**crud.export_reader_data(db, current_reader.id))
 
 
@@ -1420,10 +1428,25 @@ def edit_my_comment(
     may change (post_id/parent_id/identity are preserved); the body is stored
     raw and re-rendered through the sanitized markdown pipeline, and
     ``edited_at`` is stamped. (DEC-096, TASK-160)
+
+    Moderation re-entry (security review): the edit resets approval because it
+    replaces public content; ``updated`` now returns unapproved. Re-apply the
+    same verified-reader trust tier as comment create (DEC-098/100) — with
+    auto-approve enabled an edited comment republishes immediately (consistent
+    with how that tier treats new comments), otherwise it waits for a
+    moderator exactly like a fresh comment. Fires the approval notifications
+    on the trusted branch so the republish is as visible as the original.
     """
     updated = crud.update_reader_comment(db, comment_id, current_reader.id, edit.content)
     if not updated:
         raise HTTPException(status_code=404, detail="Comment not found")
+    if updated.reader_id is not None and crud.boolean_setting(
+        db, "auto_approve_reader_comments", AUTO_APPROVE_READER_COMMENTS
+    ):
+        approved = crud.approve_comment(db, updated.id, approved=True)
+        if approved is not None:
+            _notify_comment_approved(db, approved)
+            return approved
     return updated
 
 

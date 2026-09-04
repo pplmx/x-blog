@@ -68,6 +68,14 @@ class UserResponse(BaseModel):
     is_superuser: bool
 
 
+# A valid bcrypt hash of a random throwaway password, at the same cost as a
+# real user hash. When the username is unknown we still run bcrypt against this
+# so the login endpoint's response *timing* does not reveal whether an admin
+# username exists (unknown username must not short-circuit faster than a wrong
+# password — same pattern as reader login in reader.py; security review).
+_FAKE_ADMIN_BCRYPT_HASH = "$2b$12$K7LqkVaQ1OiOsahF1P17/uM5UQi7QkS5d8ZqS3mDzW0yPj2k9VxG"
+
+
 @router.post("/login", response_model=LoginResponse)
 @limiter.limit(f"{RATE_LIMIT_AUTH}/minute")
 def login(
@@ -76,6 +84,11 @@ def login(
     db: Session = Depends(get_db),
 ):
     user = db.query(auth.User).filter(auth.User.username == form_data.username).first()
+    if not user:
+        # Time the miss like a real verification so a known username is not
+        # distinguishable from an unknown one by response latency.
+        auth.verify_password(form_data.password, _FAKE_ADMIN_BCRYPT_HASH)
+        user = None
     if not user or not auth.verify_password(form_data.password, user.password):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,

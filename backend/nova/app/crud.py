@@ -860,6 +860,14 @@ def update_reader_comment(db: Session, comment_id: int, reader_id: int, content:
     re-rendered through the same sanitized markdown pipeline as a new comment,
     so an edit can never weaken the XSS guarantees (DEC-096, TASK-160). The
     ``edited_at`` marker is stamped so the UI can surface it.
+
+    Moderation integrity (security review): an edit REPLACES the comment's
+    public content, so an approved comment must not silently republish the new
+    text — the reader could swap in spam/phishing after an admin approved the
+    original. Reset approval so the edited version re-enters the same
+    moderation policy as a new comment (the caller re-applies the verified-
+    reader trust tier if enabled, exactly like create). Pending/rejected
+    comments were already not public, so resetting them is a no-op in practice.
     """
     comment = (
         db.query(models.Comment).filter(models.Comment.id == comment_id, models.Comment.reader_id == reader_id).first()
@@ -868,6 +876,8 @@ def update_reader_comment(db: Session, comment_id: int, reader_id: int, content:
         return None
     comment.content = content
     comment.edited_at = datetime.now(UTC)
+    comment.is_approved = False
+    comment.reviewed_at = None
     db.commit()
     db.refresh(comment)
     return comment
@@ -1292,6 +1302,35 @@ def increment_comment_likes(db: Session, comment_id: int) -> models.Comment | No
     if comment:
         db.refresh(comment)
     return comment
+
+
+def like_comment(db: Session, comment_id: int, ip_key: str) -> tuple[bool, models.Comment]:
+    """Register a like from one source; idempotent per (comment, ip_key).
+
+    Returns (is_new, updated_comment). Mirrors flag_comment's dedupe (security
+    review): the unique pair means a second like from the same source is a
+    no-op, so the count reflects distinct supporters instead of a client-guarded
+    count++ an attacker could inflate to skew the "most helpful" ordering.
+    """
+    existing = (
+        db.query(models.CommentLike)
+        .filter(models.CommentLike.comment_id == comment_id, models.CommentLike.ip_key == ip_key)
+        .first()
+    )
+    is_new = existing is None
+    if is_new:
+        db.add(models.CommentLike(comment_id=comment_id, ip_key=ip_key))
+        try:
+            db.commit()
+        except IntegrityError:
+            db.rollback()  # concurrent duplicate → treat as idempotent no-op
+            is_new = False
+    if is_new:
+        increment_comment_likes(db, comment_id)
+    comment = db.get(models.Comment, comment_id)
+    if comment:
+        db.refresh(comment)
+    return is_new, comment
 
 
 def get_popular_posts(db: Session, limit: int = 5) -> list[models.Post]:

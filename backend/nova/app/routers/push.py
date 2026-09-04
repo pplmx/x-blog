@@ -8,10 +8,12 @@ from sqlalchemy.orm import Session
 from app import auth, crud, models
 from app.auth import get_current_superuser
 from app.database import get_db
-from app.limiter import RATE_LIMIT_WRITE, limiter
+from app.limiter import RATE_LIMIT_WRITE, client_rate_key, limiter
 from app.middleware import get_logger
 from app.webpush import (
+    MAX_PUSH_SUBSCRIPTIONS_PER_SOURCE,
     _b64url_decode,
+    _endpoint_host_is_internal_literal,
     dispatch_to_subscriptions,
     vapid_configured,
     vapid_public_key,
@@ -45,6 +47,15 @@ class PushSubscriptionCreate(BaseModel):
         parsed = urlparse(value)
         if parsed.scheme not in ("http", "https") or not parsed.netloc:
             raise ValueError("endpoint must be an absolute http(s) URL")
+        # SSRF guard, DNS-free layer (security review): reject hosts that are
+        # inherently internal literals — localhost, mDNS (.local), private
+        # suffixes, and bare private/loopback/link-local IPs. A bespoke push
+        # endpoint pointing at cloud metadata (http://169.254.169.254/) or an
+        # internal service must never be stored, or the server would later be
+        # made to dial it. (Hostnames resolving internally are blocked at
+        # dispatch in webpush._endpoint_targets_internal where DNS is real.)
+        if _endpoint_host_is_internal_literal(value):
+            raise ValueError("endpoint must be a public push-service URL")
         return value
 
 
@@ -126,19 +137,59 @@ def subscribe(
     reader_id = reader.id if reader else None
     existing = db.query(models.PushSubscription).filter(models.PushSubscription.endpoint == data.endpoint).first()
     if existing:
-        existing.p256dh = data.keys.p256dh
-        existing.auth = data.keys.auth
-        existing.reader_id = reader_id or existing.reader_id
-        existing.want_new_posts = data.want_new_posts
-        existing.new_post_category_id = data.new_post_category_id
+        # Ownership guard (security review): re-subscribing must not let one
+        # reader silently repoint another reader's subscription to themselves —
+        # the row is that reader's device binding, and the attacker needs only
+        # the (logged) endpoint + keys to steal and revoke it. Only bind when
+        # the row is unclaimed (anonymous) or already belongs to this reader.
+        if reader_id is not None and existing.reader_id is not None and existing.reader_id != reader_id:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="This push endpoint is already bound to another account",
+            )
+        sub = existing
+        sub.p256dh = data.keys.p256dh
+        sub.auth = data.keys.auth
+        sub.reader_id = reader_id or existing.reader_id
+        sub.want_new_posts = data.want_new_posts
+        sub.new_post_category_id = data.new_post_category_id
         db.commit()
-        db.refresh(existing)
-        return existing
+        db.refresh(sub)
+        return sub
+    # Unbounded rows driven by anonymous input grew the table without limit and
+    # amplified the (serial) dispatch loop; cap per source. One browser = one
+    # endpoint, so a handful of subscriptions per source is generous: bound by
+    # the subscribing reader when signed in, else by the client IP (stamped on
+    # the row via ip_key, DEC-009 additive) since anonymous subs have no reader
+    # identity.
+    cap = MAX_PUSH_SUBSCRIPTIONS_PER_SOURCE
+    ip_key = client_rate_key(request)
+    if reader_id is not None:
+        existing_count = (
+            db.query(models.PushSubscription).filter(models.PushSubscription.reader_id == reader_id).count()
+        )
+        note = f"reader {reader_id}"
+    else:
+        existing_count = (
+            db.query(models.PushSubscription)
+            .filter(
+                models.PushSubscription.reader_id.is_(None),
+                models.PushSubscription.ip_key == ip_key,
+            )
+            .count()
+        )
+        note = f"IP {ip_key}"
+    if existing_count >= cap:
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail=f"Too many push subscriptions ({note})",
+        )
     sub = models.PushSubscription(
         endpoint=data.endpoint,
         p256dh=data.keys.p256dh,
         auth=data.keys.auth,
         reader_id=reader_id,
+        ip_key=ip_key if reader_id is None else None,
         want_new_posts=data.want_new_posts,
         new_post_category_id=data.new_post_category_id,
     )
@@ -170,8 +221,19 @@ def unsubscribe(
     Deliberately POST, not DELETE: the (httpx2) backend client and several
     browser fetch stacks do not serialize bodies on DELETE, and the request
     carries the endpoint the way subscribe does. (DEC-055, TASK-117)
+
+    Proof-of-possession guard (security review): only the browser that holds
+    the subscription's encryption keys may revoke it. Endpoints circulate
+    (dispatch-failure logs, the reader's own list endpoint), so deleting by
+    endpoint ALONE let anyone who captured one silently kill a target's
+    subscriptions. The keys the browser sends back are high-entropy and known
+    only to it — match on both.
     """
-    db.query(models.PushSubscription).filter(models.PushSubscription.endpoint == data.endpoint).delete()
+    db.query(models.PushSubscription).filter(
+        models.PushSubscription.endpoint == data.endpoint,
+        models.PushSubscription.p256dh == data.keys.p256dh,
+        models.PushSubscription.auth == data.keys.auth,
+    ).delete()
     db.commit()
 
 

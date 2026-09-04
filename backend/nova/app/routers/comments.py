@@ -1,6 +1,6 @@
 import os
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
@@ -351,29 +351,42 @@ def approve_comment(
     return comment
 
 
+class CommentLikeBody(BaseModel):
+    """Optional client-side marker for the like (unused by the server today)."""
+
+    source: str | None = Field(default=None, max_length=50)
+
+
 @router.post("/{comment_id}/like", response_model=schemas.CommentPublic)
 @limiter.limit(f"{RATE_LIMIT_COMMENT}/minute")
 def like_comment(
     request: Request,  # noqa: ARG001
+    response: Response,
     comment_id: int,
     db: Session = Depends(get_db),
+    body: CommentLikeBody | None = None,
 ):
     """Increment the like count for a comment (DEC-092, TASK-158).
 
-    Anonymous count++, mirroring POST /posts/{id}/like (the frontend guards
-    a visitor to one like per comment via localStorage). A comment on a draft
-    or otherwise non-public post responds 404 — the same as an unknown id —
-    so the endpoint never answers existence questions about drafts.
+    Idempotent per (comment, source IP) like the flag path (security review):
+    a second like from the same source is a no-op, so the count means distinct
+    supporters rather than a client-guarded count++ an attacker could inflate
+    to skew the "most helpful" ranking. The 201-vs-200 status tells the
+    frontend whether this click registered a new like (mirrors flag). A comment
+    on a draft or otherwise non-public post responds 404 — the same as an
+    unknown id — so the endpoint never answers existence questions about drafts.
     """
+    del body
     comment = db.get(models.Comment, comment_id)
     if not comment:
         raise HTTPException(status_code=404, detail="Comment not found")
     post = db.get(models.Post, comment.post_id)
     if not post or not crud.is_publicly_visible(post):
         raise HTTPException(status_code=404, detail="Comment not found")
-    updated = crud.increment_comment_likes(db, comment_id)
+    is_new, updated = crud.like_comment(db, comment_id, client_rate_key(request))
     if not updated:
         raise HTTPException(status_code=404, detail="Comment not found")
+    response.status_code = status.HTTP_201_CREATED if is_new else status.HTTP_200_OK
     return updated
 
 

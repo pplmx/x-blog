@@ -317,6 +317,28 @@ class CommentFlag(Base):
     __table_args__ = (UniqueConstraint("comment_id", "ip_key", name="uq_comment_flags_comment_ip"),)
 
 
+class CommentLike(Base):
+    """A visitor liking a comment for the "most helpful" ranking (DEC-092).
+
+    Mirrors CommentFlag: one like per comment per visitor enforced by the
+    unique (comment_id, ip_key) pair, so repeated clicks by the same person are
+    idempotent and the like count means distinct supporters, not click spam.
+    Previously the count++ was guarded only by browser localStorage (abuse-
+    hardening gap flagged in security review) — server-side dedupe now matches
+    the flag dedupe. Additive table, no DB-level FK (DEC-009).
+    """
+
+    __tablename__ = "comment_likes"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    comment_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
+    # Proxy-aware source key (same resolver as the rate limiter / stored ip).
+    ip_key: Mapped[str] = mapped_column(String(50), nullable=False, index=True)
+    created_at: Mapped[datetime | None] = mapped_column(DateTime, default=lambda: datetime.now(UTC))
+
+    __table_args__ = (UniqueConstraint("comment_id", "ip_key", name="uq_comment_likes_comment_ip"),)
+
+
 class BookmarkFolder(Base):
     """A reader's bookmark folder/collection (DEC-120, TASK-172).
 
@@ -578,6 +600,10 @@ class PushSubscription(Base):
     # Reader account that subscribed this browser (None = anonymous). Enables
     # targeted per-reader notifications (DEC-064, TASK-137).
     reader_id: Mapped[int | None] = mapped_column(Integer, nullable=True, index=True)
+    # Client rate-limit key stamped only on ANONYMOUS rows (None when signed
+    # in), so per-IP caps bound anonymous growth (security review; additive,
+    # DEC-009).
+    ip_key: Mapped[str | None] = mapped_column(String(50), nullable=True, index=True)
     # New-post notification opt-in (DEC-076, TASK-147). When True the browser
     # receives a push when a post is published; new_post_category_id narrows
     # that to a single followed category (None = all new posts). Both additive,

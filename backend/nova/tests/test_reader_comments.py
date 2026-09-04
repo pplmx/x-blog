@@ -228,6 +228,9 @@ class TestEditOwnComment:
         return post, created["id"], token
 
     def test_edit_own_approved_comment(self, client, db_session):
+        """Editing resets approval (the edited text is new content and must
+        pass moderation again) — an approved comment does not silently
+        republish replaced text (security review)."""
         post, comment_id, token = self._own_approved(client, db_session)
         resp = client.patch(
             f"/api/reader/me/comments/{comment_id}",
@@ -238,7 +241,29 @@ class TestEditOwnComment:
         data = resp.json()
         assert data["content"] == "edited body"
         assert data["edited_at"] is not None
-        # The public thread reflects the edit.
+        # The edit fell back to pending: the public thread no longer lists it
+        # until a moderator re-approves the replacement text.
+        assert data["is_approved"] is False
+        listed = client.get(f"/api/comments/post/{post.id}").json()["items"]
+        assert [c["id"] for c in listed if c["id"] == comment_id] == []
+
+    def test_edit_republishes_when_verified_reader_trust_tier_enabled(self, client, db_session, monkeypatch):
+        """With AUTO_APPROVE_READER_COMMENTS on, an edit republishes through
+        the same trust tier as a new comment (DEC-098/100) — consistent, not
+        a second, stricter fence."""
+        from app.routers import comments as comments_router
+        from app.routers import reader as reader_router
+
+        monkeypatch.setattr(comments_router, "AUTO_APPROVE_READER_COMMENTS", True)
+        monkeypatch.setattr(reader_router, "AUTO_APPROVE_READER_COMMENTS", True)
+        post, comment_id, token = self._own_approved(client, db_session)
+        resp = client.patch(
+            f"/api/reader/me/comments/{comment_id}",
+            json={"content": "edited body"},
+            headers=_auth(token),
+        )
+        assert resp.status_code == 200, resp.text
+        assert resp.json()["is_approved"] is True
         listed = client.get(f"/api/comments/post/{post.id}").json()["items"]
         assert [c["content"] for c in listed if c["id"] == comment_id] == ["edited body"]
 

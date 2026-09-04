@@ -399,21 +399,30 @@ def test_like_comment(client, post):
     )
     comment_id = create_response.json()["id"]
     response = client.post(f"/api/comments/{comment_id}/like")
-    assert response.status_code == 200
+    assert response.status_code == 201  # first like from this source creates
     data = response.json()
     assert data["id"] == comment_id
     assert data["likes"] == 1
 
 
-def test_like_comment_increments_each_request(client, post):
+def test_like_comment_is_idempotent_per_source(client, post):
+    """A second like from the same source is a no-op (security review).
+
+    Comments ranking by 'most helpful' must count distinct supporters, not
+    click spam: the same dedupe semantics as flags, so one caller (or many
+    calls from one IP) cannot inflate the count.
+    """
     create_response = client.post(
         f"/api/comments/post/{post['id']}",
         json={"nickname": "Test User", "email": "test@example.com", "content": "Again"},
     )
     comment_id = create_response.json()["id"]
-    assert client.post(f"/api/comments/{comment_id}/like").json()["likes"] == 1
-    # The API allows repeated likes (the frontend dedups), mirroring posts.
-    assert client.post(f"/api/comments/{comment_id}/like").json()["likes"] == 2
+    first = client.post(f"/api/comments/{comment_id}/like")
+    assert first.status_code == 201  # new like from this source
+    assert first.json()["likes"] == 1
+    second = client.post(f"/api/comments/{comment_id}/like")
+    assert second.status_code == 200  # idempotent no-op
+    assert second.json()["likes"] == 1
 
 
 def test_like_comment_exposes_likes_on_public_list(client, post, auth_headers):
@@ -423,7 +432,7 @@ def test_like_comment_exposes_likes_on_public_list(client, post, auth_headers):
     )
     comment_id = create_response.json()["id"]
     liked = client.post(f"/api/comments/{comment_id}/like")
-    assert liked.status_code == 200
+    assert liked.status_code == 201  # first like from this source creates
     # The public list only exposes approved comments — approve before listing.
     approved = client.patch(
         f"/api/comments/{comment_id}/approve",
@@ -458,26 +467,40 @@ def test_like_comment_on_non_public_post_returns_404(client, db_session, draft_p
     assert response.json()["error"]["code"] == "NOT_FOUND"
 
 
-def _create_approved_comment(client, post_id, nickname, content, auth_headers, likes=0):
-    """Create a comment, optionally like it, then approve it (public)."""
+def _create_approved_comment(client, db_session, post_id, nickname, content, auth_headers, likes=0):
+    """Create a comment, seed it with likes from DISTINCT sources, approve it.
+
+    Likes are per-(comment, ip_key), so seeding them through repeated same-IP
+    HTTP calls (the TestClient always peers from 127.0.0.1) would collapse to a
+    single like. Insert distinct source rows directly so the 'most helpful'
+    ordering tests exercise real distinct supporters.
+    """
+    from app import models
+
     created = client.post(
         f"/api/comments/post/{post_id}",
         json={"nickname": nickname, "email": f"{nickname}@example.com", "content": content},
     )
     assert created.status_code == 201
     cid = created.json()["id"]
-    for _ in range(likes):
-        assert client.post(f"/api/comments/{cid}/like").status_code == 200
+    for i in range(likes):
+        db_session.add(models.CommentLike(comment_id=cid, ip_key=f"127.0.0.{i + 2}"))
+    if likes:
+        db_session.query(models.Comment).filter(models.Comment.id == cid).update(
+            {models.Comment.likes: likes},
+            synchronize_session=False,
+        )
+        db_session.commit()
     approved = client.patch(f"/api/comments/{cid}/approve", json={"approved": True}, headers=auth_headers)
     assert approved.status_code == 200
     return cid
 
 
-def test_list_comments_sort_likes_most_helpful_first(client, post, auth_headers):
+def test_list_comments_sort_likes_most_helpful_first(client, db_session, post, auth_headers):
     """sort=likes orders approved comments by like count desc (DEC-094, TASK-159)."""
-    low = _create_approved_comment(client, post["id"], "Low", "not as helpful", auth_headers, likes=1)
-    high = _create_approved_comment(client, post["id"], "High", "the helpful answer", auth_headers, likes=5)
-    mid = _create_approved_comment(client, post["id"], "Mid", "kinda helpful", auth_headers, likes=3)
+    low = _create_approved_comment(client, db_session, post["id"], "Low", "not as helpful", auth_headers, likes=1)
+    high = _create_approved_comment(client, db_session, post["id"], "High", "the helpful answer", auth_headers, likes=5)
+    mid = _create_approved_comment(client, db_session, post["id"], "Mid", "kinda helpful", auth_headers, likes=3)
 
     items = client.get(f"/api/comments/post/{post['id']}", params={"sort": "likes"}).json()["items"]
     ids = [c["id"] for c in items]
@@ -485,21 +508,21 @@ def test_list_comments_sort_likes_most_helpful_first(client, post, auth_headers)
     assert [c for c in ids if c in {low, high, mid}] == [high, mid, low]
 
 
-def test_list_comments_sort_oldest_first(client, post, auth_headers):
+def test_list_comments_sort_oldest_first(client, db_session, post, auth_headers):
     """sort=oldest returns approved comments by created_at asc (DEC-094, TASK-159)."""
-    first = _create_approved_comment(client, post["id"], "First", "first comment", auth_headers)
-    second = _create_approved_comment(client, post["id"], "Second", "second comment", auth_headers)
-    third = _create_approved_comment(client, post["id"], "Third", "third comment", auth_headers)
+    first = _create_approved_comment(client, db_session, post["id"], "First", "first comment", auth_headers)
+    second = _create_approved_comment(client, db_session, post["id"], "Second", "second comment", auth_headers)
+    third = _create_approved_comment(client, db_session, post["id"], "Third", "third comment", auth_headers)
 
     items = client.get(f"/api/comments/post/{post['id']}", params={"sort": "oldest"}).json()["items"]
     ids = [c["id"] for c in items]
     assert [c for c in ids if c in {first, second, third}] == [first, second, third]
 
 
-def test_list_comments_default_sort_newest_first(client, post, auth_headers):
+def test_list_comments_default_sort_newest_first(client, db_session, post, auth_headers):
     """With no sort param, comments return newest-first (backwards compatible)."""
-    first = _create_approved_comment(client, post["id"], "Old", "older comment", auth_headers)
-    second = _create_approved_comment(client, post["id"], "New", "newer comment", auth_headers)
+    first = _create_approved_comment(client, db_session, post["id"], "Old", "older comment", auth_headers)
+    second = _create_approved_comment(client, db_session, post["id"], "New", "newer comment", auth_headers)
 
     items = client.get(f"/api/comments/post/{post['id']}").json()["items"]
     ids = [c["id"] for c in items]
