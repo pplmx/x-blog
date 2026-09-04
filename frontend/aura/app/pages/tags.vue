@@ -10,6 +10,7 @@ import {
 } from "~~/api/reader/follows";
 // biome-ignore lint/correctness/noUnusedImports: used from the template — biome cannot resolve Vue script-setup template bindings (vue-tsc verifies).
 import { effectivePublishTs, parseApiDate } from "~~/composables/apiDate";
+import { scrollToPageTop } from "~~/composables/scrollToTop";
 import { paginationPages } from "~~/composables/usePagination";
 import { useSeo } from "~~/composables/useSeo";
 
@@ -48,6 +49,16 @@ const error = computed(() => tagsError.value || postsError.value);
 function retry() {
 	void refreshTags();
 	void refreshPosts();
+}
+
+// Paging from the bottom of the list swaps it in place; return the reader to
+// the top so the new page is visible above the fold (same behaviour the home
+// feed established for its pagination).
+function goToPage(pg: number | string) {
+	navigateTo({
+		query: { tag_id: tagId.value ? String(tagId.value) : undefined, page: pg },
+	});
+	scrollToPageTop();
 }
 
 // Windowed, ellipsis-aware pagination buttons (RIL TASK-083, ISS-052).
@@ -368,7 +379,7 @@ watch(
                   ? 'bg-blue-600 text-white'
                   : 'border hover:bg-gray-50',
             ]"
-            @click="pg !== '…' && navigateTo({ query: { tag_id: tagId ? String(tagId) : undefined, page: pg } })"
+            @click="pg !== '…' && goToPage(pg)"
           >
             {{ pg }}
           </button>

@@ -332,6 +332,11 @@ describe("Categories Page", () => {
 
 			vi.stubGlobal("useHead", vi.fn());
 
+			// Page navigation now runs through goToPage (script scope) after the
+			// shared paginate-and-scroll refactor, so stub the auto-import the way
+			// search.spec does — VTU's template-only `mocks:` no longer applies.
+			vi.stubGlobal("navigateTo", navigateToMock);
+
 			vi.stubGlobal(
 				"useFetch",
 				vi.fn((url: string | (() => string) | { value: string }) => {
@@ -384,9 +389,6 @@ describe("Categories Page", () => {
 							template: '<svg class="iconstub" :data-icon="icon"></svg>',
 							props: ["icon"],
 						},
-					},
-					mocks: {
-						navigateTo: navigateToMock,
 					},
 				},
 			});

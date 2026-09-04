@@ -3,6 +3,7 @@ import { computed } from "vue";
 import { type ArchiveEntry, usePostArchive, usePosts } from "~~/api/public/posts";
 // biome-ignore lint/correctness/noUnusedImports: used from the template — biome cannot resolve Vue script-setup template bindings (vue-tsc verifies).
 import { effectivePublishTs, parseApiDate } from "~~/composables/apiDate";
+import { scrollToPageTop } from "~~/composables/scrollToTop";
 import { paginationPages } from "~~/composables/usePagination";
 import { useSeo } from "~~/composables/useSeo";
 
@@ -50,6 +51,20 @@ const error = computed(() => archiveError.value || postsError.value);
 function retry() {
 	void refreshArchive();
 	void refreshPosts();
+}
+
+// Paging from the bottom of the grid swaps it in place; return the reader to
+// the top so the new page is visible above the fold (same behaviour the home
+// feed established for its pagination).
+function goToPage(pg: number | string) {
+	navigateTo({
+		query: {
+			...(year.value ? { year: String(year.value) } : {}),
+			...(month.value ? { month: String(month.value) } : {}),
+			page: pg,
+		},
+	});
+	scrollToPageTop();
 }
 
 // Group flat (year, month, count) buckets into years, newest first.
@@ -260,7 +275,7 @@ useSeo(() => ({
                   ? 'bg-purple-600 text-white'
                   : 'border hover:bg-gray-50',
             ]"
-            @click="pg !== '…' && navigateTo({ query: { ...(year ? { year: String(year) } : {}), ...(month ? { month: String(month) } : {}), page: pg } })"
+            @click="pg !== '…' && goToPage(pg)"
           >
             {{ pg }}
           </button>

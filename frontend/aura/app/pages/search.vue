@@ -3,6 +3,7 @@ import { computed, onMounted, ref, watch } from "vue";
 import { usePostSearch } from "~~/api/public/posts";
 // biome-ignore lint/correctness/noUnusedImports: used from the template — biome cannot resolve Vue script-setup template bindings (vue-tsc verifies).
 import { effectivePublishTs, parseApiDate } from "~~/composables/apiDate";
+import { scrollToPageTop } from "~~/composables/scrollToTop";
 import { loadPurify, sanitizeHtml } from "~~/composables/useMarkdown";
 import { paginationPages } from "~~/composables/usePagination";
 import { useSeo } from "~~/composables/useSeo";
@@ -202,6 +203,14 @@ function handleSearchInput() {
 function handleTermCleared() {
 	if (searchInput.value.trim() !== "" || !query.value) return;
 	navigateTo({ query: {} });
+}
+
+// Paging from the bottom of the results list swaps it in place; return the
+// reader to the top so the new page is visible above the fold (same behaviour
+// the home feed established for its pagination). Keeps every active filter.
+function goToPage(pg: number | string) {
+	navigateTo({ query: { ...activeFilters.value, q: query.value, page: pg } });
+	scrollToPageTop();
 }
 </script>
 
@@ -446,7 +455,7 @@ function handleTermCleared() {
                   ? 'bg-blue-600 text-white'
                   : 'border hover:bg-gray-50',
             ]"
-            @click="pg !== '…' && navigateTo({ query: { ...activeFilters, q: query, page: pg } })"
+            @click="pg !== '…' && goToPage(pg)"
           >
             {{ pg }}
           </button>
