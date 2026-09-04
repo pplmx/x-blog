@@ -211,6 +211,92 @@ describe("Account settings page", () => {
 		vi.unstubAllGlobals();
 	});
 
+	it("tracks each device's revoke in flight independently and guards duplicates (round 258)", async () => {
+		// A single `revokingId` slot let device 2's revoke COMPLETE while
+		// device 1's was still running and clear the shared marker —
+		// re-enabling device 1's (destructive) revoke button mid-flight. The
+		// per-row Set keeps device 1's button busy until ITS OWN promise
+		// settles, and a duplicate click on the in-flight row is guarded.
+		isAuthenticated.value = true;
+		mockFetchPushSubscriptions.mockResolvedValue({
+			items: [
+				makeDevice({ id: 1 }),
+				makeDevice({ id: 2, endpoint: "https://fcm.example.com/wpush/v2/efgh" }),
+			],
+			total: 2,
+		});
+		vi.stubGlobal("confirm", () => true);
+		let resolveDev1!: () => void;
+		mockRevokePushSubscription
+			.mockImplementationOnce(
+				() =>
+					new Promise<void>((res) => {
+						resolveDev1 = res;
+					}),
+			)
+			.mockResolvedValue(undefined);
+
+		const wrapper = await mountPage();
+		const revokeBtns = () => wrapper.findAll("button").filter((b) => b.text() === "移除");
+		expect(revokeBtns()).toHaveLength(2);
+
+		// Revoke device 1 — stays in flight.
+		await revokeBtns()[0].trigger("click");
+		await flushPromises();
+		expect((revokeBtns()[0].element as HTMLButtonElement).disabled).toBe(true);
+		// Duplicate click on the same in-flight row is guarded — no 2nd DELETE.
+		await revokeBtns()[0].trigger("click");
+		await flushPromises();
+		expect(mockRevokePushSubscription).toHaveBeenCalledTimes(1);
+
+		// Device 2's revoke RUNS AND COMPLETES while device 1 is pending.
+		await revokeBtns()[1].trigger("click");
+		await flushPromises();
+		expect(mockRevokePushSubscription).toHaveBeenCalledTimes(2);
+		// Device 1's marker was NOT cleared by device 2's completion.
+		expect((revokeBtns()[0].element as HTMLButtonElement).disabled).toBe(true);
+
+		// Only when device 1's own promise resolves does its row leave busy.
+		resolveDev1();
+		await flushPromises();
+		expect((revokeBtns()[0].element as HTMLButtonElement).disabled).toBe(false);
+		vi.unstubAllGlobals();
+	});
+
+	it("guards a second device-prefs toggle while one is in flight (round 258)", async () => {
+		// The prefs checkbox/select disable on `savingPrefsId !== null`, but a
+		// change queued in the same tick passes the disabled attribute — the
+		// handler guard is what single-flights the write; without it a second
+		// device's toggle fired a second PATCH racing the first.
+		isAuthenticated.value = true;
+		mockFetchPushSubscriptions.mockResolvedValue({
+			items: [
+				makeDevice({ id: 1 }),
+				makeDevice({ id: 2, endpoint: "https://fcm.example.com/wpush/v2/efgh" }),
+			],
+			total: 2,
+		});
+		let resolvePrefs!: (v: unknown) => void;
+		mockUpdatePushSubscriptionPrefs.mockImplementation(
+			() =>
+				new Promise((res) => {
+					resolvePrefs = res;
+				}),
+		);
+
+		const wrapper = await mountPage();
+		const checkboxes = wrapper.findAll("input[type='checkbox']");
+		await checkboxes[0].setValue(true); // device 1 — in flight
+		await flushPromises();
+		await checkboxes[1].setValue(true); // device 2 — guarded
+		await flushPromises();
+		expect(mockUpdatePushSubscriptionPrefs).toHaveBeenCalledTimes(1);
+
+		resolvePrefs({});
+		await flushPromises();
+		expect(mockUpdatePushSubscriptionPrefs).toHaveBeenCalledTimes(1);
+	});
+
 	it("routes a dead reader session to sign-in when a device revoke 401s (deep-dive)", async () => {
 		// Mutation handlers used to swallow every rejection as a section error, so
 		// an expired token left the reader on a signed-in-looking page where every
@@ -527,6 +613,19 @@ describe("Account settings page", () => {
 	});
 
 	describe("data export (TASK-175)", () => {
+		beforeEach(() => {
+			// A fake download anchor's click() must not trigger a real page
+			// navigation: happy-dom's frame navigator can't build a URL from a
+			// blob: href and logs a noisy "URL is not a constructor" on every
+			// export test (round 258 test-hygiene fix — the production flow is
+			// correct, this silences the environment's navigation attempt).
+			vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => {});
+		});
+		afterEach(() => {
+			vi.restoreAllMocks();
+			vi.unstubAllGlobals();
+		});
+
 		it("downloads the data bundle after confirmation", async () => {
 			isAuthenticated.value = true;
 			mockFetchPushSubscriptions.mockResolvedValue({ items: [], total: 0 });
@@ -621,6 +720,56 @@ describe("Account settings page", () => {
 			expect(mockUnfollowReaderSeries).toHaveBeenCalledWith(5);
 			expect(mockFetchReaderSeriesFollows).toHaveBeenCalledTimes(2); // initial + reload
 			expect(wrapper.text()).toContain("还没有关注任何系列");
+			vi.unstubAllGlobals();
+		});
+
+		it("tracks each series unfollow in flight independently (round 258)", async () => {
+			// Same single-slot race as the device revoke: row 2's unfollow
+			// completing must not clear row 1's in-flight marker / re-enable its
+			// button. Per-row Set fixes it; the old `seriesUnfollowId !== null`
+			// shared disable still let row 2's completion re-enable row 1.
+			isAuthenticated.value = true;
+			mockFetchPushSubscriptions.mockResolvedValue({ items: [], total: 0 });
+			mockFetchReaderSeriesFollows.mockResolvedValue({
+				items: [
+					{ id: 5, title: "Tutorial", slug: "tutorial", notify: true },
+					{ id: 6, title: "Other", slug: "other", notify: false },
+				],
+				total: 2,
+			});
+			vi.stubGlobal("confirm", () => true);
+			let resolveS1!: () => void;
+			mockUnfollowReaderSeries
+				.mockImplementationOnce(
+					() =>
+						new Promise<void>((res) => {
+							resolveS1 = res;
+						}),
+				)
+				.mockResolvedValue(undefined);
+
+			const wrapper = await mountPage();
+			const section = wrapper.findAll("section").find((s) => s.text().includes("关注的系列"));
+			if (!section) throw new Error("series section not found");
+			const unfollowBtns = () => section.findAll("button").filter((b) => b.text() === "取消关注");
+			expect(unfollowBtns()).toHaveLength(2);
+
+			await unfollowBtns()[0].trigger("click"); // series 5 — in flight
+			await flushPromises();
+			expect((unfollowBtns()[0].element as HTMLButtonElement).disabled).toBe(true);
+			await unfollowBtns()[0].trigger("click"); // duplicate — guarded
+			await flushPromises();
+			expect(mockUnfollowReaderSeries).toHaveBeenCalledTimes(1);
+
+			await unfollowBtns()[1].trigger("click"); // series 6 completes
+			await flushPromises();
+			expect(mockUnfollowReaderSeries).toHaveBeenCalledTimes(2);
+			// Row 1 stayed busy across row 2's completion.
+			expect((unfollowBtns()[0].element as HTMLButtonElement).disabled).toBe(true);
+
+			resolveS1();
+			await flushPromises();
+			expect((unfollowBtns()[0].element as HTMLButtonElement).disabled).toBe(false);
 			vi.unstubAllGlobals();
 		});
 

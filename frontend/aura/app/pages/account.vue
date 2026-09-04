@@ -132,7 +132,11 @@ async function submitPassword() {
 const devices = ref<ReaderPushSubscription[]>([]);
 const devicesLoaded = ref(false);
 const devicesLoadFailed = ref(false);
-const revokingId = ref<number | null>(null);
+// Per-row in-flight marker (deep-dive, round 258): a single `revokingId` slot
+// let a second row's revoke-overlap clear the first row's marker when IT
+// finished — re-enabling the first row's (destructive revoke) button mid-flight,
+// the same race closed on bookmarks/comments/readers.
+const revokingIds = ref(new Set<number>());
 const deviceError = ref(false);
 
 /** Shared catch for the account page's reader-scoped loads: an expired/revoked
@@ -166,8 +170,9 @@ async function loadDevices() {
 }
 
 async function revokeDevice(device: ReaderPushSubscription) {
+	if (revokingIds.value.has(device.id)) return; // single-flight per row
 	if (!confirm(t("account.devices.revokeConfirm"))) return;
-	revokingId.value = device.id;
+	revokingIds.value.add(device.id);
 	deviceError.value = false;
 	try {
 		await revokeMyPushSubscription(device.id);
@@ -179,7 +184,7 @@ async function revokeDevice(device: ReaderPushSubscription) {
 			deviceError.value = true;
 		});
 	} finally {
-		revokingId.value = null;
+		revokingIds.value.delete(device.id);
 	}
 }
 
@@ -201,6 +206,10 @@ async function loadCategories() {
 
 /** Toggle the device's new-post opt-in (null scope = all new posts). */
 async function setDeviceNewPosts(device: ReaderPushSubscription, want: boolean) {
+	// The checkbox disables while `savingPrefsId !== null`, but a change already
+	// queued in the same tick passes the disabled attribute — the handler guard
+	// is what actually single-flights both prefs writes (deep-dive, round 258).
+	if (savingPrefsId.value !== null) return;
 	prefsError.value = false;
 	savingPrefsId.value = device.id;
 	try {
@@ -220,6 +229,7 @@ async function setDeviceNewPosts(device: ReaderPushSubscription, want: boolean) 
 
 /** Pin a device's follow to one category (or null for all new posts). */
 async function setDeviceFollowCategory(device: ReaderPushSubscription, categoryId: number | null) {
+	if (savingPrefsId.value !== null) return; // single-flight, see setDeviceNewPosts
 	prefsError.value = false;
 	savingPrefsId.value = device.id;
 	try {
@@ -254,7 +264,9 @@ function onDeviceCategoryChange(device: ReaderPushSubscription, event: Event) {
 const threads = ref<SubscribedThreadItem[]>([]);
 const threadsLoaded = ref(false);
 const threadsLoadFailed = ref(false);
-const unsubscribingId = ref<number | null>(null);
+// Per-row in-flight marker (deep-dive, round 258): see revokingIds — a single
+// slot let a second row's unfollow clear the first row's marker on completion.
+const unsubscribingIds = ref(new Set<number>());
 const threadsError = ref(false);
 
 async function loadThreads() {
@@ -274,8 +286,9 @@ async function loadThreads() {
 
 /** Unfollow a discussion (unsubscribes on the post-scoped toggle endpoint). */
 async function unfollowThread(thread: SubscribedThreadItem) {
+	if (unsubscribingIds.value.has(thread.id)) return; // single-flight per row
 	if (!confirm(t("account.threads.unfollowConfirm"))) return;
-	unsubscribingId.value = thread.id;
+	unsubscribingIds.value.add(thread.id);
 	threadsError.value = false;
 	try {
 		await unsubscribeFromPostThread(thread.id);
@@ -285,7 +298,7 @@ async function unfollowThread(thread: SubscribedThreadItem) {
 			threadsError.value = true;
 		});
 	} finally {
-		unsubscribingId.value = null;
+		unsubscribingIds.value.delete(thread.id);
 	}
 }
 
@@ -293,7 +306,9 @@ async function unfollowThread(thread: SubscribedThreadItem) {
 const seriesFollows = ref<FollowedSeriesItem[]>([]);
 const seriesFollowsLoaded = ref(false);
 const seriesFollowsLoadFailed = ref(false);
-const seriesUnfollowId = ref<number | null>(null);
+// Per-row in-flight markers (deep-dive, round 258): single slots clobbered
+// across rows — convert to Sets like the devices/threads sections above.
+const seriesUnfollowIds = ref(new Set<number>());
 const seriesNotifyId = ref<number | null>(null);
 const seriesFollowsError = ref(false);
 
@@ -312,8 +327,9 @@ async function loadSeriesFollows() {
 }
 
 async function unfollowFollowedSeries(item: FollowedSeriesItem) {
+	if (seriesUnfollowIds.value.has(item.id)) return; // single-flight per row
 	if (!confirm(t("account.series.unfollowConfirm"))) return;
-	seriesUnfollowId.value = item.id;
+	seriesUnfollowIds.value.add(item.id);
 	seriesFollowsError.value = false;
 	try {
 		await unfollowReaderSeries(item.id);
@@ -323,7 +339,7 @@ async function unfollowFollowedSeries(item: FollowedSeriesItem) {
 			seriesFollowsError.value = true;
 		});
 	} finally {
-		seriesUnfollowId.value = null;
+		seriesUnfollowIds.value.delete(item.id);
 	}
 }
 
@@ -349,7 +365,8 @@ async function toggleSeriesNotify(item: FollowedSeriesItem) {
 const categoryFollows = ref<FollowedCategoryItem[]>([]);
 const categoryFollowsLoaded = ref(false);
 const categoryFollowsLoadFailed = ref(false);
-const categoryUnfollowId = ref<number | null>(null);
+// Per-row in-flight marker (deep-dive, round 258); see seriesUnfollowIds.
+const categoryUnfollowIds = ref(new Set<number>());
 const categoryNotifyId = ref<number | null>(null);
 const categoryFollowsError = ref(false);
 
@@ -368,8 +385,9 @@ async function loadCategoryFollows() {
 }
 
 async function unfollowFollowedCategory(item: FollowedCategoryItem) {
+	if (categoryUnfollowIds.value.has(item.id)) return; // single-flight per row
 	if (!confirm(t("account.categories.unfollowConfirm"))) return;
-	categoryUnfollowId.value = item.id;
+	categoryUnfollowIds.value.add(item.id);
 	categoryFollowsError.value = false;
 	try {
 		await unfollowReaderCategory(item.id);
@@ -379,7 +397,7 @@ async function unfollowFollowedCategory(item: FollowedCategoryItem) {
 			categoryFollowsError.value = true;
 		});
 	} finally {
-		categoryUnfollowId.value = null;
+		categoryUnfollowIds.value.delete(item.id);
 	}
 }
 
@@ -404,7 +422,8 @@ async function toggleCategoryNotify(item: FollowedCategoryItem) {
 const tagFollows = ref<FollowedTagItem[]>([]);
 const tagFollowsLoaded = ref(false);
 const tagFollowsLoadFailed = ref(false);
-const tagUnfollowId = ref<number | null>(null);
+// Per-row in-flight marker (deep-dive, round 258); see seriesUnfollowIds.
+const tagUnfollowIds = ref(new Set<number>());
 const tagNotifyId = ref<number | null>(null);
 const tagFollowsError = ref(false);
 
@@ -423,8 +442,9 @@ async function loadTagFollows() {
 }
 
 async function unfollowFollowedTag(item: FollowedTagItem) {
+	if (tagUnfollowIds.value.has(item.id)) return; // single-flight per row
 	if (!confirm(t("account.tags.unfollowConfirm"))) return;
-	tagUnfollowId.value = item.id;
+	tagUnfollowIds.value.add(item.id);
 	tagFollowsError.value = false;
 	try {
 		await unfollowReaderTag(item.id);
@@ -438,7 +458,7 @@ async function unfollowFollowedTag(item: FollowedTagItem) {
 			tagFollowsError.value = true;
 		});
 	} finally {
-		tagUnfollowId.value = null;
+		tagUnfollowIds.value.delete(item.id);
 	}
 }
 
@@ -725,7 +745,7 @@ function shortEndpoint(endpoint: string): string {
               </div>
               <button
                 type="button"
-                :disabled="revokingId === device.id"
+                :disabled="revokingIds.has(device.id)"
                 class="shrink-0 inline-flex items-center gap-1 text-xs text-gray-400 hover:text-red-500 transition-colors disabled:opacity-50"
                 @click="revokeDevice(device)"
               >
@@ -825,7 +845,7 @@ function shortEndpoint(endpoint: string): string {
               </NuxtLink>
               <button
                 type="button"
-                :disabled="unsubscribingId === thread.id"
+                :disabled="unsubscribingIds.has(thread.id)"
                 class="shrink-0 inline-flex items-center gap-1 text-xs text-gray-400 hover:text-red-500 transition-colors disabled:opacity-50"
                 @click="unfollowThread(thread)"
               >
@@ -894,7 +914,7 @@ function shortEndpoint(endpoint: string): string {
                 </button>
                 <button
                   type="button"
-                  :disabled="seriesUnfollowId !== null"
+                  :disabled="seriesUnfollowIds.has(sf.id)"
                   class="inline-flex items-center gap-1 text-xs text-gray-400 hover:text-red-500 transition-colors disabled:opacity-50"
                   @click="unfollowFollowedSeries(sf)"
                 >
@@ -964,7 +984,7 @@ function shortEndpoint(endpoint: string): string {
                 </button>
                 <button
                   type="button"
-                  :disabled="categoryUnfollowId !== null"
+                  :disabled="categoryUnfollowIds.has(cf.id)"
                   class="inline-flex items-center gap-1 text-xs text-gray-400 hover:text-red-500 transition-colors disabled:opacity-50"
                   @click="unfollowFollowedCategory(cf)"
                 >
@@ -1034,7 +1054,7 @@ function shortEndpoint(endpoint: string): string {
                 </button>
                 <button
                   type="button"
-                  :disabled="tagUnfollowId !== null"
+                  :disabled="tagUnfollowIds.has(tf.id)"
                   class="inline-flex items-center gap-1 text-xs text-gray-400 hover:text-red-500 transition-colors disabled:opacity-50"
                   @click="unfollowFollowedTag(tf)"
                 >

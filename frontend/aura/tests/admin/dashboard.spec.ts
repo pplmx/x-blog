@@ -1049,6 +1049,11 @@ describe("Admin Dashboard Page", () => {
 				revokeObjectURL: vi.fn(),
 				...URL,
 			});
+			// A fake download anchor's click() must not navigate: happy-dom's
+			// frame navigator can't build a URL from a blob: href and logs a
+			// noisy "URL is not a constructor" on every export test (round 258
+			// test-hygiene fix; restored by the file-scoped afterEach).
+			vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => {});
 		});
 
 		it("renders the export card title", async () => {
