@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 246,
+  "round": 247,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-04T02:49:56+00:00",
+  "updated_at": "2026-09-04T05:36:30+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -17204,6 +17204,52 @@
       "title": "Admin-surface review batch: restore confirm, list retries, drawer focus, a11y, editor hydration",
       "commit": "d067220",
       "description": "Resolves all five admin review findings (ISS-322). 2 new dashboard restore-confirm tests, 1 posts-id hydration test; e2e admin-backup accepts + asserts the confirm dialog. Full frontend suite 1437 green, typecheck + biome clean."
+    },
+    "ISS-323": {
+      "id": "ISS-323",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-04T05:29:15+00:00",
+      "updated_at": "2026-09-04T05:29:15+00:00",
+      "touched_round": 246,
+      "summary": "Markdown/render + account review batch: (1) expired reader session left account.vue in per-section unrecoverable 'Failed to load' states (no redirect); (2) print/PDF emitted code-block copy-button header + line-number gutter; (3) inline-math regex mangled English prose/shell vars ('5 to ', 'PATH '); (4) figure-wrapped images detached from captions by image extraction; (5) LOW mermaid theme not re-rendering on dark toggle — deferred.",
+      "severity": "high"
+    },
+    "TASK-274": {
+      "id": "TASK-274",
+      "type": "task",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-04T05:29:15+00:00",
+      "updated_at": "2026-09-04T05:29:15+00:00",
+      "touched_round": 246,
+      "summary": "Resolve markdown/render + account review batch (ISS-323): stale-session redirect via shared handleLoadFailure, no-print code chrome, math-token guard + raw-whitespace check, figure preservation in extractImages; mermaid theme re-render deferred by decision.",
+      "category": "correctness",
+      "severity": 3
+    },
+    "CHG-364": {
+      "id": "CHG-364",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-04T05:29:15+00:00",
+      "updated_at": "2026-09-04T05:29:15+00:00",
+      "touched_round": 246,
+      "title": "Markdown/render + account review batch: stale-session redirect, print chrome, math guard, figure images",
+      "commit": "c64a27e",
+      "description": "(1)-(4) resolved with new tests; (5) mermaid theme re-render deferred — securityLevel-strict rendering path, cosmetic. Full frontend suite 1441 green, typecheck + biome clean."
+    },
+    "DEC-245": {
+      "id": "DEC-245",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-04T05:29:16+00:00",
+      "updated_at": "2026-09-04T05:29:16+00:00",
+      "touched_round": 246,
+      "rationale": "The only remaining finding from the markdown/render review was LOW: mermaid diagrams render once (securityLevel strict) and don't re-initialize when the reader toggles dark mode (theme read at init, renderedMermaidKeys blocks re-render). Leaving as a recorded-deferral rather than churning the most safety-sensitive rendering path (strict mode prevents HTML/click injection in diagram labels) for a cosmetic theme-preference refresh that a reload already handles.",
+      "alternatives_rejected": "Re-initialize mermaid + re-render all diagrams on theme change (touches async ref-callback rendering, risks double-render/leak of the hardened path); force a full reload on theme toggle (defeats SPA UX); scope re-render to only diagram containers already rendered."
     }
   },
   "edges": [
@@ -25161,6 +25207,24 @@
       "to": "ISS-322",
       "type": "resolves",
       "created_at": "2026-09-04T02:49:05+00:00"
+    },
+    {
+      "from": "TASK-274",
+      "to": "ISS-323",
+      "type": "addresses",
+      "created_at": "2026-09-04T05:29:15+00:00"
+    },
+    {
+      "from": "CHG-364",
+      "to": "TASK-274",
+      "type": "implements",
+      "created_at": "2026-09-04T05:29:15+00:00"
+    },
+    {
+      "from": "CHG-364",
+      "to": "ISS-323",
+      "type": "resolves",
+      "created_at": "2026-09-04T05:29:15+00:00"
     }
   ]
 }
