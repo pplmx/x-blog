@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 258,
+  "round": 259,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-04T19:23:44+00:00",
+  "updated_at": "2026-09-04T19:50:06+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -17873,6 +17873,37 @@
       "touched_round": 258,
       "commit": "e414063",
       "summary": "Harden the round-258 device-prefs re-entry-guard test: VTU setValue on the disabled second checkbox never fired change in happy-dom, so the single-call assertion passed with or without the guard; dispatch change directly on the disabled element so the test genuinely gates on the handler guard (review finding)."
+    },
+    "ISS-354": {
+      "id": "ISS-354",
+      "type": "issue",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-04T19:49:32+00:00",
+      "updated_at": "2026-09-04T19:49:32+00:00",
+      "touched_round": 259,
+      "summary": "Admin media page: the per-row single delete used one global `isDeleting` flag that froze the whole grid on the first click, with no handler re-entry guard (a same-tick duplicate click on the in-flight row still reached the handler) and no mutex against a concurrent batch delete — a file in both a single and a batch delete would double-delete (404 on the second), and their refreshes interleaved. Fix: per-row Set markers (other rows stay deletable; the frozen grid also made the race untestable in happy-dom, which swallows clicks on disabled buttons) plus handler re-entry guards and a batch-vs-single mutex on both delete paths (deep-dive, round 259)."
+    },
+    "CHG-378": {
+      "id": "CHG-378",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-04T19:49:32+00:00",
+      "updated_at": "2026-09-04T19:49:32+00:00",
+      "touched_round": 259,
+      "commit": "a42ae0c"
+    },
+    "DEC-253": {
+      "id": "DEC-253",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-04T19:49:32+00:00",
+      "updated_at": "2026-09-04T19:49:32+00:00",
+      "touched_round": 259,
+      "rationale": "Round 259: the media page's single delete gets the same single-flight treatment the loop already applied to bookmarks/comments/readers/account — per-row Set markers instead of a whole-grid `isDeleting` flag, so one card's delete doesn't freeze the others and cross-row completions can't clobber a row's busy state. Both delete paths (single and batch) are mutually exclusive. Rejected: keeping the global flag (froze the grid and made the race untestable) and adding only a handler guard without the per-row design (happy-dom suppresses clicks on disabled buttons, so the guard could never be exercised).",
+      "alternatives_rejected": "keep global isDeleting flag; guard-only without per-row markers"
     }
   },
   "edges": [
@@ -26286,6 +26317,12 @@
       "to": "ISS-353",
       "type": "resolves",
       "created_at": "2026-09-04T19:23:44+00:00"
+    },
+    {
+      "from": "CHG-378",
+      "to": "ISS-354",
+      "type": "resolves",
+      "created_at": "2026-09-04T19:50:06+00:00"
     }
   ]
 }
