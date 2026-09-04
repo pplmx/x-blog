@@ -611,4 +611,193 @@ describe("Admin Comments Page", () => {
 			);
 		});
 	});
+
+	describe("Deep-dive polish (round 254)", () => {
+		beforeEach(() => {
+			mockFetchAdminComments.mockResolvedValue(mockCommentList);
+		});
+
+		it("clamps back after deleting the only comment on the last page (deep-dive)", async () => {
+			// Deleting the single comment on the last page strands on an
+			// out-of-range page unless the page clamps back — otherwise the
+			// moderator sees a false "暂无评论" over a list that still exists.
+			// After the delete the world shrinks to 20 comments / 1 page, and the
+			// clamp's re-fetch of page 1 reflects that (total 20, total_pages 1).
+			window.confirm = vi.fn(() => true);
+			mockDeleteAdminComment.mockResolvedValue({});
+			const page1 = {
+				items: [mockComments[0]],
+				pagination: { total: 21, page: 1, limit: 20, total_pages: 2 },
+			};
+			const page2 = {
+				items: [{ ...mockComments[1], id: 3, content: "Page 2 only", is_approved: true }],
+				pagination: { total: 21, page: 2, limit: 20, total_pages: 2 },
+			};
+			const page1PostDelete = {
+				items: [mockComments[0]],
+				pagination: { total: 20, page: 1, limit: 20, total_pages: 1 },
+			};
+			let drained = false;
+			mockFetchAdminComments.mockImplementation((_f: unknown, page: number) => {
+				if (page === 2) {
+					return Promise.resolve(
+						drained
+							? { items: [], pagination: { total: 20, page: 2, limit: 20, total_pages: 1 } }
+							: page2,
+					);
+				}
+				return Promise.resolve(drained ? page1PostDelete : page1);
+			});
+
+			const CommentsPage = await loadPage();
+			const wrapper = await mountWithSuspense(CommentsPage);
+			const nextButton = wrapper.findAll("button").find((b) => b.text().trim() === "下一页");
+			await nextButton?.trigger("click");
+			await flushPromises();
+			expect(wrapper.text()).toContain("第 2 / 2 页");
+
+			drained = true;
+			const deleteBtn = wrapper.findAll("button").find((b) => b.text().trim() === "删除");
+			await deleteBtn?.trigger("click");
+			await flushPromises();
+
+			// Clamped back to the (now single) page 1 instead of a false
+			// "暂无评论": the remaining comment from page 1 renders, the empty
+			// state is gone, and the nav (hidden for a single page) confirms the
+			// list no longer claims two pages.
+			expect(wrapper.text()).toContain("Test Post Title");
+			expect(wrapper.text()).not.toContain("第 2 /");
+			expect(wrapper.text()).not.toContain("暂无评论");
+		});
+
+		it("marks exactly one status filter as pressed (deep-dive)", async () => {
+			const CommentsPage = await loadPage();
+			const wrapper = await mountWithSuspense(CommentsPage);
+
+			const chips = wrapper.findAll("[aria-pressed]");
+			expect(chips).toHaveLength(4);
+			// Default: only "全部" is pressed.
+			expect(chips.map((c) => c.attributes("aria-pressed"))).toEqual([
+				"true",
+				"false",
+				"false",
+				"false",
+			]);
+
+			await chips[1].trigger("click"); // 待审核
+			await flushPromises();
+			const after = wrapper.findAll("[aria-pressed]");
+			expect(after.map((c) => c.attributes("aria-pressed"))).toEqual([
+				"false",
+				"true",
+				"false",
+				"false",
+			]);
+		});
+
+		it("clears a moderated comment out of the batch selection (deep-dive)", async () => {
+			// Approving a selected pending comment under the pending filter makes
+			// it leave the page; its stale id must not keep the batch buttons
+			// claiming a selection that no longer exists (batch-deleting it would
+			// just 404).
+			mockApproveAdminComment.mockResolvedValue({});
+			const CommentsPage = await loadPage();
+			const wrapper = await mountWithSuspense(CommentsPage);
+
+			const checkboxes = wrapper.findAll('input[type="checkbox"]');
+			await checkboxes[checkboxes.length - 1].setChecked(); // Bob (pending)
+			await flushPromises();
+			expect(wrapper.findAll("button").some((b) => b.text().trim().includes("批量通过 (1)"))).toBe(
+				true,
+			);
+
+			const approveButton = wrapper.findAll("button").find((b) => b.text().trim() === "通过");
+			await approveButton?.trigger("click");
+			await flushPromises();
+
+			// Selection is empty again → the batch bar is gone.
+			expect(wrapper.findAll("button").some((b) => b.text().trim().includes("批量通过"))).toBe(
+				false,
+			);
+		});
+
+		it("clears the deleted-count feedback once the filter changes (deep-dive)", async () => {
+			// After a batch delete the "已删除 N 条评论" feedback must not linger
+			// over a totally different, later filtered list.
+			mockBatchDeleteAdminComments.mockResolvedValue({ deleted: 2 });
+			window.confirm = vi.fn(() => true);
+			const CommentsPage = await loadPage();
+			const wrapper = await mountWithSuspense(CommentsPage);
+
+			await wrapper.find('input[type="checkbox"]').setChecked(); // select all
+			await flushPromises();
+			const deleteBtn = wrapper.findAll("button").find((b) => b.text().trim().includes("删除所选"));
+			await deleteBtn?.trigger("click");
+			await flushPromises();
+			expect(wrapper.text()).toContain("已删除 2 条评论");
+
+			const searchInput = wrapper.find('input[placeholder*="昵称"]');
+			await searchInput.setValue("zzzz");
+			await searchInput.trigger("keydown.enter");
+			await flushPromises();
+			expect(wrapper.text()).not.toContain("已删除 2 条评论");
+		});
+
+		it("asks before discarding an unsent reply draft when switching (deep-dive)", async () => {
+			// Two approved comments → two reply buttons. Typing a draft in the
+			// first box and clicking reply on the second must ask before dropping
+			// the draft; declining keeps the first box and its text.
+			const confirmMock = vi.fn(() => false);
+			window.confirm = confirmMock;
+			mockFetchAdminComments.mockImplementation(async () => ({
+				items: [mockComments[0], { ...mockComments[1], is_approved: true }],
+				pagination: mockCommentList.pagination,
+			}));
+
+			const CommentsPage = await loadPage();
+			const wrapper = await mountWithSuspense(CommentsPage);
+
+			const replyButtons = () =>
+				wrapper.findAll("button").filter((b) => b.text().trim() === "回复");
+			const buttons = replyButtons(); // capture both BEFORE the box opens
+			expect(buttons.length).toBe(2);
+			await buttons[0].trigger("click");
+			const textarea = wrapper.find("textarea");
+			await textarea.setValue("a draft");
+
+			// The second row's button still reads 回复 (row 1 now shows 取消).
+			await buttons[1].trigger("click");
+			expect(confirmMock).toHaveBeenCalledTimes(1);
+			// Declined → the original box stays open with the draft intact.
+			expect(wrapper.find("textarea").exists()).toBe(true);
+			expect((wrapper.find("textarea").element as HTMLTextAreaElement).value).toBe("a draft");
+		});
+
+		it("keeps an open reply draft when a DIFFERENT row is moderated (deep-dive)", async () => {
+			// A reply draft must not be wiped by the reload that follows
+			// approving/revoking some OTHER comment — the box only closes when its
+			// own row leaves the page (deep-dive finding).
+			mockApproveAdminComment.mockResolvedValue({});
+			const CommentsPage = await loadPage();
+			const wrapper = await mountWithSuspense(CommentsPage);
+
+			// Alice (approved) has the reply action; Bob (pending) has 通过.
+			await wrapper
+				.findAll("button")
+				.find((b) => b.text().trim() === "回复")
+				?.trigger("click");
+			const textarea = wrapper.find("textarea");
+			await textarea.setValue("a draft");
+
+			await wrapper
+				.findAll("button")
+				.find((b) => b.text().trim() === "通过")
+				?.trigger("click");
+			await flushPromises();
+
+			// The reload kept Alice on the page, so her box stays open, draft intact.
+			expect(wrapper.find("textarea").exists()).toBe(true);
+			expect((wrapper.find("textarea").element as HTMLTextAreaElement).value).toBe("a draft");
+		});
+	});
 });

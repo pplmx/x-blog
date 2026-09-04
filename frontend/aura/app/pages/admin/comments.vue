@@ -94,6 +94,15 @@ async function loadComments(filters: ReturnType<typeof activeFilters>, page: num
 	try {
 		const data = await getAdminComments(filters, page, PAGE_SIZE);
 		if (seq === listRequestSeq) {
+			// Close the reply box ONLY when its target row left the page — a
+			// reload that keeps the row (e.g. approving/revoking a DIFFERENT
+			// comment while the moderator is still typing) must not silently drop
+			// the draft, which would contradict the confirm-protect in openReply
+			// (deep-dive finding). A row that is gone has no box; the draft is
+			// acknowledged to be lost when the moderator changes that context.
+			if (replyOpenId.value !== null && !data.items.some((c) => c.id === replyOpenId.value)) {
+				closeReply();
+			}
 			comments.value = data;
 			error.value = null;
 		}
@@ -105,6 +114,18 @@ async function loadComments(filters: ReturnType<typeof activeFilters>, page: num
 		if (seq === listRequestSeq) {
 			loading.value = false;
 		}
+	}
+}
+
+/** Reload the current page, then clamp back to the last valid page when a delete
+ * drained the current one past the end — otherwise the moderator strands on an
+ * out-of-range page showing a false "暂无评论" (deep-dive finding). Shared by the
+ * batch and single delete paths. */
+async function reloadWithClamp() {
+	await loadComments(activeFilters(), currentPage.value);
+	if (currentPage.value > totalPages.value && totalPages.value >= 1) {
+		currentPage.value = totalPages.value;
+		await loadComments(activeFilters(), totalPages.value);
 	}
 }
 
@@ -123,6 +144,7 @@ onMounted(() => {
 async function applyFilters() {
 	currentPage.value = 1;
 	selectedIds.value = new Set();
+	resetFeedback();
 	await loadComments(activeFilters(), 1);
 }
 
@@ -152,6 +174,7 @@ async function gotoPage(page: number) {
 	if (page < 1 || page > totalPages.value || page === currentPage.value) return;
 	currentPage.value = page;
 	selectedIds.value = new Set();
+	resetFeedback();
 	await loadComments(activeFilters(), page);
 }
 
@@ -175,12 +198,28 @@ function toggleSelectAll() {
 	}
 }
 
+/** Drop one id from the current batch selection (row was moderated/deleted). */
+function deselect(id: number) {
+	if (!selectedIds.value.has(id)) return;
+	const s = new Set(selectedIds.value);
+	s.delete(id);
+	selectedIds.value = s;
+}
+
+/** Begin a new action: a fresh action replaces any prior error/success/deleted
+ * feedback so a stale claim never sits under unrelated context (deep-dive). */
+function resetFeedback() {
+	actionError.value = null;
+	actionSuccess.value = null;
+	deletedMessage.value = "";
+}
+
 async function batchApprove(approved: boolean) {
+	if (isProcessing.value) return; // single-flight
 	const ids = Array.from(selectedIds.value);
 	if (ids.length === 0) return;
 	isProcessing.value = true;
-	actionError.value = null;
-	actionSuccess.value = null;
+	resetFeedback();
 	try {
 		await batchApproveAdminComments(ids, approved);
 		selectedIds.value = new Set();
@@ -198,24 +237,19 @@ async function batchApprove(approved: boolean) {
 }
 
 async function batchDelete() {
+	if (isProcessing.value) return; // single-flight
 	const ids = Array.from(selectedIds.value);
 	if (ids.length === 0) return;
 	if (!confirm(t("admin.comments.confirmBatchDelete", { n: ids.length }))) return;
 	isProcessing.value = true;
-	actionError.value = null;
-	actionSuccess.value = null;
-	deletedMessage.value = "";
+	resetFeedback();
 	try {
 		const { deleted } = await batchDeleteAdminComments(ids);
 		selectedIds.value = new Set();
 		deletedMessage.value = t("admin.comments.deletedFeedback", { n: deleted });
-		await loadComments(activeFilters(), currentPage.value);
 		// Deleting the last item of the last page strands on an out-of-range
 		// page showing a false "empty" — clamp back (deep-dive re-audit).
-		if (currentPage.value > totalPages.value && totalPages.value >= 1) {
-			currentPage.value = totalPages.value;
-			await loadComments(activeFilters(), totalPages.value);
-		}
+		await reloadWithClamp();
 	} catch (e) {
 		actionError.value = getErrorMessage(e);
 	} finally {
@@ -224,14 +258,16 @@ async function batchDelete() {
 }
 
 async function handleDelete(id: number) {
+	if (isProcessing.value) return; // single-flight
 	if (!confirm(t("admin.comments.confirmDelete"))) return;
 	isProcessing.value = true;
-	actionError.value = null;
-	actionSuccess.value = null;
+	resetFeedback();
 	try {
 		await deleteAdminComment(id);
+		deselect(id); // the row is gone — don't batch against a stale id
 		actionSuccess.value = t("admin.comments.deletedOneFeedback");
-		await loadComments(activeFilters(), currentPage.value);
+		// Same drain-clamp as the batch delete (deep-dive finding).
+		await reloadWithClamp();
 	} catch (e) {
 		actionError.value = getErrorMessage(e);
 	} finally {
@@ -241,10 +277,12 @@ async function handleDelete(id: number) {
 
 /** Dismiss all reader flags on a comment, then reload the queue. (DEC-108) */
 async function handleDismissFlags(id: number) {
+	if (isProcessing.value) return; // single-flight
 	isProcessing.value = true;
-	actionError.value = null;
+	resetFeedback();
 	try {
 		await dismissAdminCommentFlags(id);
+		deselect(id);
 		await loadComments(activeFilters(), currentPage.value);
 	} catch (e) {
 		actionError.value = getErrorMessage(e);
@@ -254,11 +292,12 @@ async function handleDismissFlags(id: number) {
 }
 
 async function handleApprove(id: number, approved: boolean) {
+	if (isProcessing.value) return; // single-flight
 	isProcessing.value = true;
-	actionError.value = null;
-	actionSuccess.value = null;
+	resetFeedback();
 	try {
 		await approveAdminComment(id, approved);
+		deselect(id); // under a pending/flagged filter the row may leave the page
 		actionSuccess.value = approved
 			? t("admin.comments.approvedFeedback")
 			: t("admin.comments.revokedFeedback");
@@ -278,6 +317,16 @@ const replyText = ref("");
 const replySending = ref(false);
 
 function openReply(id: number) {
+	// One inline box at a time: don't silently drop the draft already being
+	// typed into — ask before abandoning it (deep-dive finding).
+	if (
+		replyOpenId.value !== null &&
+		replyOpenId.value !== id &&
+		replyText.value.trim() &&
+		!confirm(t("admin.comments.confirmDiscardReply"))
+	) {
+		return;
+	}
 	replyOpenId.value = id;
 	replyText.value = "";
 }
@@ -291,7 +340,7 @@ async function submitReply(id: number) {
 	const content = replyText.value.trim();
 	if (!content || replySending.value) return;
 	replySending.value = true;
-	actionError.value = null;
+	resetFeedback();
 	try {
 		await replyAdminComment(id, content);
 		replyOpenId.value = null;
@@ -315,18 +364,6 @@ async function submitReply(id: number) {
         <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">
           {{ t("admin.comments.summary", { total: comments?.pagination?.total ?? 0 }) }}<span class="text-amber-600 dark:text-amber-400">{{ t("admin.comments.pendingSummary", { n: pendingComments.length }) }}</span>
         </p>
-      </div>
-      <div
-        v-if="actionError"
-        class="mb-6 px-4 py-3 rounded-xl border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20 text-sm text-red-600 dark:text-red-400"
-      >
-        {{ actionError }}
-      </div>
-      <div
-        v-if="actionSuccess"
-        class="mb-6 px-4 py-3 rounded-xl border border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-900/20 text-sm text-emerald-600 dark:text-emerald-400"
-      >
-        {{ actionSuccess }}
       </div>
       <div
         v-if="canBatch && comments && comments.items.length > 0"
@@ -375,6 +412,25 @@ async function submitReply(id: number) {
       </div>
     </div>
 
+    <!-- Action feedback: full-width blocks BELOW the header row (siblings inside
+         the header flex got squeezed/collapsed the layout and vertically centered
+         a tall box against the title, deep-dive finding), announced to screen
+         readers instead of silent (deep-dive finding). -->
+    <div
+      v-if="actionError"
+      role="alert"
+      class="mb-6 px-4 py-3 rounded-xl border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20 text-sm text-red-600 dark:text-red-400"
+    >
+      {{ actionError }}
+    </div>
+    <div
+      v-if="actionSuccess"
+      role="status"
+      class="mb-6 px-4 py-3 rounded-xl border border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-900/20 text-sm text-emerald-600 dark:text-emerald-400"
+    >
+      {{ actionSuccess }}
+    </div>
+
     <!-- Moderation filters (RIL TASK-078, ISS-047) -->
     <div class="bg-white dark:bg-gray-900 rounded-xl border border-gray-100 dark:border-gray-800 p-4 mb-6 flex flex-wrap items-end gap-3">
       <div class="flex flex-col gap-1">
@@ -384,7 +440,8 @@ async function submitReply(id: number) {
         <div class="inline-flex rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700">
           <button
             type="button"
-            :class="statusFilter === 'all'
+            :aria-pressed="!flaggedOnly && statusFilter === 'all'"
+            :class="!flaggedOnly && statusFilter === 'all'
               ? 'bg-blue-500 text-white'
               : 'bg-white dark:bg-gray-900 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800'"
             class="px-3 py-1.5 text-sm font-medium transition-colors"
@@ -394,7 +451,8 @@ async function submitReply(id: number) {
           </button>
           <button
             type="button"
-            :class="statusFilter === 'pending'
+            :aria-pressed="!flaggedOnly && statusFilter === 'pending'"
+            :class="!flaggedOnly && statusFilter === 'pending'
               ? 'bg-amber-500 text-white'
               : 'bg-white dark:bg-gray-900 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800'"
             class="px-3 py-1.5 text-sm font-medium transition-colors"
@@ -404,7 +462,8 @@ async function submitReply(id: number) {
           </button>
           <button
             type="button"
-            :class="statusFilter === 'approved'
+            :aria-pressed="!flaggedOnly && statusFilter === 'approved'"
+            :class="!flaggedOnly && statusFilter === 'approved'
               ? 'bg-green-500 text-white'
               : 'bg-white dark:bg-gray-900 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800'"
             class="px-3 py-1.5 text-sm font-medium transition-colors"
@@ -414,6 +473,7 @@ async function submitReply(id: number) {
           </button>
           <button
             type="button"
+            :aria-pressed="flaggedOnly"
             :class="flaggedOnly
               ? 'bg-red-500 text-white'
               : 'bg-white dark:bg-gray-900 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800'"
@@ -425,10 +485,11 @@ async function submitReply(id: number) {
         </div>
       </div>
       <div class="flex flex-col gap-1 flex-1 min-w-48">
-        <label class="text-xs font-medium text-gray-500 dark:text-gray-400">
+        <label for="admin-comments-search" class="text-xs font-medium text-gray-500 dark:text-gray-400">
           {{ t("admin.comments.search") }}
         </label>
         <input
+          id="admin-comments-search"
           v-model="searchQuery"
           type="text"
           :placeholder="t('admin.comments.searchPlaceholder')"
@@ -437,10 +498,11 @@ async function submitReply(id: number) {
         >
       </div>
       <div class="flex flex-col gap-1">
-        <label class="text-xs font-medium text-gray-500 dark:text-gray-400">
+        <label for="admin-comments-date-from" class="text-xs font-medium text-gray-500 dark:text-gray-400">
           {{ t("admin.comments.dateFrom") }}
         </label>
         <input
+          id="admin-comments-date-from"
           v-model="dateFrom"
           type="date"
           :max="dateTo || undefined"
@@ -448,10 +510,11 @@ async function submitReply(id: number) {
         >
       </div>
       <div class="flex flex-col gap-1">
-        <label class="text-xs font-medium text-gray-500 dark:text-gray-400">
+        <label for="admin-comments-date-to" class="text-xs font-medium text-gray-500 dark:text-gray-400">
           {{ t("admin.comments.dateTo") }}
         </label>
         <input
+          id="admin-comments-date-to"
           v-model="dateTo"
           type="date"
           :min="dateFrom || undefined"
@@ -517,6 +580,7 @@ async function submitReply(id: number) {
                 v-if="canBatch"
                 type="checkbox"
                 class="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                :aria-label="t('admin.comments.selectRow', { nickname: comment.nickname })"
                 :checked="selectedIds.has(comment.id)"
                 @change="toggleSelect(comment.id)"
               >

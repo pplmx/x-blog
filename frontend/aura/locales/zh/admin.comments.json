@@ -15,6 +15,8 @@
 		"batchApprovedFeedback": "已通过 {n} 条评论",
 		"batchRejectedFeedback": "已拒绝 {n} 条评论",
 		"selectAll": "全选",
+		"selectRow": "选择 {nickname} 的评论",
+		"confirmDiscardReply": "你有一条未发送的回复草稿，放弃并切换吗？",
 		"empty": {
 			"title": "暂无评论",
 			"subtitle": "还没有任何评论"
