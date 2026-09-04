@@ -250,32 +250,12 @@ function goToPage(pg: number | string) {
       </div>
     </div>
 
-    <!-- Loading state -->
-    <div v-else-if="pending" class="space-y-4">
-      <div class="bg-gray-100 animate-pulse h-8 rounded-lg mb-4 w-1/3" />
-      <div
-        v-for="i in 3"
-        :key="i"
-        class="bg-gray-100 animate-pulse h-24 rounded-lg"
-      />
-    </div>
-
-    <!-- Error state -->
-    <div
-      v-else-if="error"
-      class="text-center py-12 text-gray-500"
-    >
-      <p class="mb-4">{{ t("search.error") }}</p>
-      <button
-        type="button"
-        class="px-4 py-2 rounded-lg text-sm font-medium border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
-        @click="retrySearch"
-      >
-        {{ t("common.action.retry") }}
-      </button>
-    </div>
-
-    <!-- Search results -->
+    <!-- Search results view. Deliberately NOT a top-level pending/error branch:
+         the editable query box and every filter below must stay mounted during
+         refetches (pagination, filter change, new term) — a whole-block skeleton
+         unmounted them, silently dropping keyboard focus to <body> and hiding
+         the controls the reader needs mid-interaction. Only the results area
+         below reflects pending/error. -->
     <div v-else>
       <!-- Header with an editable query box so a reader who landed on
            /search?q=... (header/home search, or a shared deep link) can refine
@@ -381,9 +361,34 @@ function goToPage(pg: number | string) {
         </button>
       </div>
 
+      <!-- Results area: only here do loading/error swap in, leaving the query
+           box and filters mounted (see note at the top of the results view). -->
+      <div v-if="pending" class="space-y-4">
+        <div class="bg-gray-100 animate-pulse h-8 rounded-lg mb-4 w-1/3" />
+        <div
+          v-for="i in 3"
+          :key="i"
+          class="bg-gray-100 animate-pulse h-24 rounded-lg"
+        />
+      </div>
+
+      <div
+        v-else-if="error"
+        class="text-center py-12 text-gray-500"
+      >
+        <p class="mb-4">{{ t("search.error") }}</p>
+        <button
+          type="button"
+          class="px-4 py-2 rounded-lg text-sm font-medium border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+          @click="retrySearch"
+        >
+          {{ t("common.action.retry") }}
+        </button>
+      </div>
+
       <!-- Empty results -->
       <div
-        v-if="!searchResult?.items?.length"
+        v-else-if="!searchResult?.items?.length"
         class="flex flex-col items-center justify-center py-16 bg-gradient-to-br from-gray-50 dark:from-gray-800/50 to-white dark:to-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800"
       >
         <div

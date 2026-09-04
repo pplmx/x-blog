@@ -244,6 +244,24 @@ describe("Search Page", () => {
 			const skeletons = wrapper.findAll(".animate-pulse");
 			expect(skeletons.length).toBeGreaterThan(0);
 		});
+
+		it("keeps the query box and filters mounted while results are pending", async () => {
+			// Regression: the whole results block used to swap for a bare skeleton
+			// on every refetch, unmounting the editable search box and every filter
+			// select (keyboard focus dropped to <body> mid-interaction). Only the
+			// results area should show the loading state.
+			const wrapper = await mountSearchPage({
+				pending: true,
+				searchResult: null,
+			});
+			// The results-view search box (type=search; the landing uses type=text)
+			// stays in the DOM during the refetch.
+			expect(wrapper.find('input[type="search"]').exists()).toBe(true);
+			// Category/tag/sort selects stay mounted too.
+			expect(wrapper.findAll('select').length).toBeGreaterThanOrEqual(3);
+			// And the skeleton is still the only thing in the results area.
+			expect(wrapper.findAll(".animate-pulse").length).toBeGreaterThan(0);
+		});
 	});
 
 	describe("Error state", () => {
