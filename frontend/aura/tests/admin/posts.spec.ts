@@ -87,6 +87,24 @@ const mockResponse = {
 	pagination: { total: 4, skip: 0, limit: 20 },
 };
 
+function makePost(id: number, overrides: Record<string, unknown> = {}) {
+	return {
+		id,
+		title: `Post ${id}`,
+		slug: `post-${id}`,
+		published: true,
+		pinned: false,
+		publish_at: null,
+		views: 0,
+		cover_image: null,
+		category: "Tech",
+		tags: [],
+		created_at: "2024-01-15T10:30:00Z",
+		updated_at: "2024-01-15T10:30:00Z",
+		...overrides,
+	};
+}
+
 async function loadPage() {
 	const { default: PostsPage } = await import("@/pages/admin/posts/index.vue");
 	return PostsPage;
@@ -367,6 +385,97 @@ describe("Admin Posts Page", () => {
 
 			await trashButton?.trigger("click");
 			expect(mockDeleteAdminPost).not.toHaveBeenCalled();
+		});
+
+		it("surfaces a delete failure banner (deep-dive)", async () => {
+			window.confirm = vi.fn(() => true);
+			mockDeleteAdminPost.mockRejectedValue(new Error("boom"));
+			const PostsPage = await loadPage();
+			const wrapper = await mountWithSuspense(PostsPage);
+
+			const trashButton = wrapper
+				.findAll("button")
+				.find((b) => b.find('svg[data-icon="lucide:trash-2"]').exists());
+			await trashButton?.trigger("click");
+			await flushPromises();
+
+			expect(wrapper.text()).toContain("boom");
+		});
+	});
+
+	describe("Pagination + delete clamp (deep-dive)", () => {
+		beforeEach(() => {
+			mockDeleteAdminPost.mockResolvedValue({});
+			window.confirm = vi.fn(() => true);
+		});
+
+		it("renders pagination bounds and jumps pages within them", async () => {
+			// 21 posts → 2 pages. prev disabled on page 1, next disabled on page 2.
+			const items = Array.from({ length: 21 }, (_, i) => makePost(i + 1));
+			mockFetchAdminPosts.mockReturnValue({
+				data: ref({ items, pagination: { total: 21, skip: 0, limit: 20 } }),
+				pending: ref(false),
+				error: ref(null),
+				refresh: vi.fn(),
+			});
+			const PostsPage = await loadPage();
+			const wrapper = await mountWithSuspense(PostsPage);
+			expect(wrapper.text()).toContain("1 / 2");
+
+			const btn = (text: string) => wrapper.findAll("button").find((b) => b.text().includes(text));
+			const prev = btn("上一页");
+			expect(prev?.attributes("disabled")).toBeDefined();
+
+			await btn("下一页")?.trigger("click");
+			await flushPromises();
+			expect(wrapper.text()).toContain("2 / 2");
+			const next = btn("下一页");
+			expect(next?.attributes("disabled")).toBeDefined();
+		});
+
+		it("clamps back to the last valid page after deleting the last post of the final page (deep-dive)", async () => {
+			// 21 posts span 2 pages. On page 2 (0-based 1), deleting one post
+			// shrinks the list to 20 → one page, so the page must clamp currentPage
+			// back to 0 or the operator strands on an out-of-range skip.
+			const items = Array.from({ length: 21 }, (_, i) => makePost(i + 1));
+			const dataRef = ref({ items, pagination: { total: 21, skip: 0, limit: 20 } });
+			const paramsRefs: Array<Record<string, unknown>> = [];
+			mockFetchAdminPosts.mockImplementation((params: Record<string, unknown>) => {
+				paramsRefs.push(params);
+				return {
+					data: dataRef,
+					pending: ref(false),
+					error: ref(null),
+					refresh: vi.fn(() => {
+						// The refetch reflects the post-delete world: one fewer post,
+						// now a single page.
+						dataRef.value = {
+							items: items.slice(0, 20),
+							pagination: { total: 20, skip: 20, limit: 20 },
+						};
+					}),
+				};
+			});
+
+			const PostsPage = await loadPage();
+			const wrapper = await mountWithSuspense(PostsPage);
+			expect(wrapper.text()).toContain("1 / 2");
+
+			const nextBtn = wrapper.findAll("button").find((b) => b.text().includes("下一页"));
+			await nextBtn?.trigger("click"); // page 2 (0-based 1)
+			await flushPromises();
+			expect(wrapper.text()).toContain("2 / 2");
+			expect((paramsRefs[0] as { value: { skip: number } }).value.skip).toBe(20);
+
+			const trashButton = wrapper
+				.findAll("button")
+				.find((b) => b.find('svg[data-icon="lucide:trash-2"]').exists());
+			await trashButton?.trigger("click");
+			await flushPromises();
+
+			// refresh() collapsed the list to 20 (single page); the clamp must put
+			// the operator back on page 1 — the reactive skip is 0 again.
+			expect((paramsRefs[0] as { value: { skip: number } }).value.skip).toBe(0);
 		});
 	});
 });

@@ -43,6 +43,13 @@ const isDeleting = ref(false);
 const deleteError = ref<string | null>(null);
 const debounceTimer = ref<ReturnType<typeof setTimeout> | null>(null);
 
+// A failed delete's banner must not linger as a stale claim over a later,
+// unrelated filtered list — any search/status/page change clears it (deep-dive
+// finding; same hygiene rule as the comments page's resetFeedback).
+watch(queryParams, () => {
+	deleteError.value = null;
+});
+
 // Debounced search: typing updates searchInput immediately (the box stays
 // responsive) but only the settled term flips searchQuery, which re-runs the
 // watched path — one refetch per search, not per keystroke. Reset to page 1
@@ -59,7 +66,18 @@ function onStatusChange() {
 	currentPage.value = 0;
 }
 
+/** Bounded 0-based navigation: rapid Next clicks on stale `totalPages` could
+ *  push currentPage past the last page and strand on a false empty/"create
+ *  first post" state — each click is guarded against the current bounds
+ *  (deep-dive finding; 0-based analogue of the media page's goToPage). */
+function goToPage(page: number) {
+	const last = Math.max(0, totalPages.value - 1);
+	if (page < 0 || page > last) return;
+	currentPage.value = page;
+}
+
 async function handleDelete(id: number) {
+	if (isDeleting.value) return; // single-flight
 	if (!confirm(t("admin.postsList.confirmDelete"))) return;
 	isDeleting.value = true;
 	deleteError.value = null;
@@ -165,15 +183,18 @@ function statusDot(post: AdminPost): string {
     </div>
 
     <!-- In-flight refetch bar: keeps stale rows mounted while the list
-         refreshes (search/status/page) instead of wiping to a spinner. -->
-    <div v-if="pending && posts.length > 0" class="h-0.5 overflow-hidden rounded mb-4">
+         refreshes (search/status/page) instead of wiping to a spinner.
+         role=status so the refetch swap is announced, not silent (deep-dive). -->
+    <div v-if="pending && posts.length > 0" role="status" class="h-0.5 overflow-hidden rounded mb-4">
       <div class="h-full w-full bg-blue-500/60 animate-pulse" />
+      <span class="sr-only">{{ t("admin.postsList.loading") }}</span>
     </div>
 
     <!-- Spinner only when there is no content at all (initial load). -->
     <div v-if="pending && posts.length === 0" class="text-center py-12">
-      <div class="inline-flex items-center gap-2 text-gray-500">
-        <svg :aria-label="t('admin.postsList.loading')" class="animate-spin w-5 h-5" viewBox="0 0 24 24">
+      <div role="status" class="inline-flex items-center gap-2 text-gray-500">
+        <!-- Decorative: the role=status region's visible text already announces loading. -->
+        <svg aria-hidden="true" class="animate-spin w-5 h-5" viewBox="0 0 24 24">
           <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none" />
           <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
         </svg>
@@ -181,7 +202,10 @@ function statusDot(post: AdminPost): string {
       </div>
     </div>
 
-    <div v-else-if="error" class="text-center py-12 text-red-500">
+    <!-- Error, but never while a refetch is in flight over stale rows: the stale
+         table (with the slim bar above) is the honest view during a pending
+         retry, not a stale error block (deep-dive finding). -->
+    <div v-else-if="!pending && error" class="text-center py-12 text-red-500">
       <p class="mb-4">{{ error?.message || String(error) }}</p>
       <button
         type="button"
@@ -297,18 +321,18 @@ function statusDot(post: AdminPost): string {
         type="button"
         :disabled="currentPage === 0"
         class="px-3 py-1.5 text-sm rounded-lg border border-gray-200 dark:border-gray-700 disabled:opacity-40 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
-        @click="currentPage--"
+        @click="goToPage(currentPage - 1)"
       >
         {{ t("admin.postsList.pagination.prev") }}
       </button>
-      <span class="text-sm text-gray-500 dark:text-gray-400">
+      <span role="status" class="text-sm text-gray-500 dark:text-gray-400">
         {{ currentPage + 1 }} / {{ totalPages }}
       </span>
       <button
         type="button"
         :disabled="currentPage >= totalPages - 1"
         class="px-3 py-1.5 text-sm rounded-lg border border-gray-200 dark:border-gray-700 disabled:opacity-40 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
-        @click="currentPage++"
+        @click="goToPage(currentPage + 1)"
       >
         {{ t("admin.postsList.pagination.next") }}
       </button>
