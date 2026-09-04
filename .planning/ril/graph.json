@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 256,
+  "round": 257,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-04T17:20:25+00:00",
+  "updated_at": "2026-09-04T18:15:59+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -17749,6 +17749,77 @@
       "touched_round": 256,
       "commit": "43798f1",
       "summary": "fix(frontend): admin posts list deep-dive — stale-error/delete hygiene, bounded nav, a11y (ISS-346/347)"
+    },
+    "ISS-348": {
+      "id": "ISS-348",
+      "type": "issue",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-04T18:11:08+00:00",
+      "updated_at": "2026-09-04T18:11:08+00:00",
+      "touched_round": 257,
+      "summary": "Admin post editor: clearing a category or series is a silent no-op — the picker's \"unassigned\" <option :value=\"undefined\"> serializes to undefined, JSON.stringify drops the key, and the backend's exclude_unset contract treats an absent field as \"unchanged\", so the clear never lands (deep-dive, round 257). Fix: serializePayload() normalizes category_id/series_id to explicit null (the only form that clears)."
+    },
+    "ISS-349": {
+      "id": "ISS-349",
+      "type": "issue",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-04T18:11:08+00:00",
+      "updated_at": "2026-09-04T18:11:08+00:00",
+      "touched_round": 257,
+      "summary": "Admin post editor: the create path sends tag_ids, which the backend PostCreate schema ignores (it takes tags: list[str] names; only PostUpdate takes tag_ids) — selected tags are silently dropped on the first save of a new post. Fix: withCreateTags() translates picker ids to names for the create call only (deep-dive, round 257)."
+    },
+    "ISS-350": {
+      "id": "ISS-350",
+      "type": "issue",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-04T18:11:08+00:00",
+      "updated_at": "2026-09-04T18:11:08+00:00",
+      "touched_round": 257,
+      "summary": "Admin post editor: two autosave races — (1) a manual Save landing while the first autosave-create of a /new session is in flight computes targetId null and fires a second create with the identical slug (backend 422); (2) Cancel never set isLeavingRoute, so an in-flight create's address-bar redirect fought the cancel and returned the operator to the editor. Fix: waitForAutosaveIdle() drain + handleCancel sets isLeavingRoute (deep-dive, round 257)."
+    },
+    "ISS-351": {
+      "id": "ISS-351",
+      "type": "issue",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-04T18:11:08+00:00",
+      "updated_at": "2026-09-04T18:11:08+00:00",
+      "touched_round": 257,
+      "summary": "Admin post editor: the draft-bridge comparison snapshot() === savedSnapshot never equaled once publish_at was set (raw local string vs UTC-naive serialized), so the address bar was never pointed at the auto-created draft and a hard refresh re-created a second draft. Fix: compare JSON.stringify(serializePayload()) (deep-dive, round 257)."
+    },
+    "ISS-352": {
+      "id": "ISS-352",
+      "type": "issue",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-04T18:11:08+00:00",
+      "updated_at": "2026-09-04T18:11:08+00:00",
+      "touched_round": 257,
+      "summary": "Admin post editor: revision timestamps are naive-UTC but formatRevisionTime used a bare new Date(), parsing them as the browser's local wall-clock and shifting every displayed time; several form controls (slug/category/series/series_order) also lacked label for/id pairs. Fix: parse via parseApiDate() + add for/id (deep-dive, round 257)."
+    },
+    "CHG-374": {
+      "id": "CHG-374",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-04T18:11:52+00:00",
+      "updated_at": "2026-09-04T18:11:52+00:00",
+      "touched_round": 257,
+      "commit": "a26817a"
+    },
+    "DEC-251": {
+      "id": "DEC-251",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-04T18:11:52+00:00",
+      "updated_at": "2026-09-04T18:11:52+00:00",
+      "touched_round": 257,
+      "rationale": "Round 257: the admin post editor's save path must send payloads the backend contract actually understands. normalize clear-as-explicit-null (category_id/series_id) for exclude_unset; translate picker tag_ids to names for the CREATE call only (PostCreate.tags vs PostUpdate.tag_ids); gate the address-bar bridge on a serialized (UTC-naive) comparison; and make manual Save wait for an in-flight autosave-create to settle so it never races a duplicate-slug create. Rejected: leaving tag_ids in the create body (backend silently ignores them — the exact bug), and accepting absent-key as \"clear\" (untrue under exclude_unset).",
+      "alternatives_rejected": "leave as-is; send tag_ids on create"
     }
   },
   "edges": [
@@ -26102,6 +26173,36 @@
       "to": "ISS-347",
       "type": "resolves",
       "created_at": "2026-09-04T17:20:25+00:00"
+    },
+    {
+      "from": "CHG-374",
+      "to": "ISS-348",
+      "type": "resolves",
+      "created_at": "2026-09-04T18:12:07+00:00"
+    },
+    {
+      "from": "CHG-374",
+      "to": "ISS-349",
+      "type": "resolves",
+      "created_at": "2026-09-04T18:12:07+00:00"
+    },
+    {
+      "from": "CHG-374",
+      "to": "ISS-350",
+      "type": "resolves",
+      "created_at": "2026-09-04T18:12:08+00:00"
+    },
+    {
+      "from": "CHG-374",
+      "to": "ISS-351",
+      "type": "resolves",
+      "created_at": "2026-09-04T18:12:08+00:00"
+    },
+    {
+      "from": "CHG-374",
+      "to": "ISS-352",
+      "type": "resolves",
+      "created_at": "2026-09-04T18:12:08+00:00"
     }
   ]
 }
