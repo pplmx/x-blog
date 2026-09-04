@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 257,
+  "round": 258,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-04T18:29:09+00:00",
+  "updated_at": "2026-09-04T19:03:38+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -17831,6 +17831,37 @@
       "touched_round": 257,
       "commit": "02521f8",
       "summary": "Admin post editor: two autosave races — (1) a manual Save landing while the first autosave-create of a /new session is... follow-up: guard during autosave wait, bounded wait, honest typing"
+    },
+    "ISS-353": {
+      "id": "ISS-353",
+      "type": "issue",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-04T19:03:00+00:00",
+      "updated_at": "2026-09-04T19:03:00+00:00",
+      "touched_round": 258,
+      "summary": "Account page (app/pages/account.vue): the in-flight markers for device revoke, thread unfollow, and series/category/tag unfollow were single `ref<number|null>` slots shared across rows — a second row's operation completing cleared the first row's marker, re-enabling its (destructive revoke/unfollow) button mid-flight and allowing duplicate requests; the device-prefs toggles (savingPrefsId) also relied on the disabled attribute alone with no handler re-entry guard. Fix: per-row Set markers + handler guards, matching the bookmarks/comments/admin-readers pattern; plus a test-hygiene fix so blob-download anchors don't trigger happy-dom frame-navigation noise (URL is not a constructor) in the export specs (deep-dive, round 258)."
+    },
+    "CHG-376": {
+      "id": "CHG-376",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-04T19:03:00+00:00",
+      "updated_at": "2026-09-04T19:03:00+00:00",
+      "touched_round": 258,
+      "commit": "300ff26"
+    },
+    "DEC-252": {
+      "id": "DEC-252",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-04T19:03:38+00:00",
+      "updated_at": "2026-09-04T19:03:38+00:00",
+      "touched_round": 258,
+      "rationale": "Round 258: the account page's follow/revoke/device management must not let one row's in-flight operation clear another row's busy state. Convert single-slot markers to per-row Sets with handler re-entry guards (the pattern already applied to bookmarks/comments/admin readers); add the same guard to the shared device-prefs slot whose protection was a disabled attribute only. Also silence the happy-dom blob-download navigation noise in export tests. Rejected: keeping the single-slot markers (they race), and leaving the test noise (pollutes every suite run).",
+      "alternatives_rejected": "keep single-slot markers; disable-all template only"
     }
   },
   "edges": [
@@ -26232,6 +26263,12 @@
       "to": "ISS-350",
       "type": "resolves",
       "created_at": "2026-09-04T18:29:09+00:00"
+    },
+    {
+      "from": "CHG-376",
+      "to": "ISS-353",
+      "type": "resolves",
+      "created_at": "2026-09-04T19:03:38+00:00"
     }
   ]
 }
