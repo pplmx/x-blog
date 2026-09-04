@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 252,
+  "round": 253,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-04T14:38:42+00:00",
+  "updated_at": "2026-09-04T15:02:22+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -22,7 +22,7 @@
       "version": 1,
       "created_at": "2026-08-06T13:23:41+00:00",
       "updated_at": "2026-08-06T13:23:41+00:00",
-      "touched_round": 252,
+      "touched_round": 253,
       "title": "frontend-aura",
       "description": "Nuxt 4 Vue 3 TypeScript frontend at frontend/aura; composables; admin pages; e2e Playwright; biome lint"
     },
@@ -17575,6 +17575,43 @@
       "touched_round": 252,
       "commit": "d968c66",
       "summary": "fix(frontend): bookmarks page deep-dive — assign/rename/delete races + clear-vs-merge hardening (ISS-333/334/335/336/337, DEC-248/249/250, TASK-233 hardening)"
+    },
+    "ISS-338": {
+      "id": "ISS-338",
+      "type": "issue",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-04T14:49:46+00:00",
+      "updated_at": "2026-09-04T14:49:46+00:00",
+      "touched_round": 253,
+      "title": "Reader /comments page shows a dead-end network error for an expired session",
+      "summary": "A dead/revoked reader token makes getMyComments 401 with the auth-dependency detail; the old /comments load() catch treated it like any outage — '网络错误，请稍后重试' with a Retry that can never succeed while the page still looked signed-in. account.vue and notifications.vue already route stale sessions to logout()+navigateTo('/login') (ISS-110). Fix: handleLoadFailure(err, markFailed) in load() and removeComment() — a stale session logs out and redirects; any other failure just marks the target failed.",
+      "severity": "high",
+      "component": "frontend-aura"
+    },
+    "ISS-339": {
+      "id": "ISS-339",
+      "type": "issue",
+      "status": "active",
+      "version": 3,
+      "created_at": "2026-09-04T14:49:47+00:00",
+      "updated_at": "2026-09-04T14:51:01+00:00",
+      "touched_round": 253,
+      "title": "Reader /comments page delete button uses a single slot, so concurrent row deletes clobber each other's in-flight marker",
+      "summary": "removeComment guarded the delete button with a single `deleting` ref (number | null); a second row's delete overwrote the slot and its cleanup re-enabled the first row's button mid-request (same class of race as the bookmark-folder assign). Fix: deletingIds ref of Set<number> — per-row in-flight marker, finally deletes only that row's id, disabled + aria-busy per row; different rows may delete concurrently.",
+      "severity": "medium",
+      "component": "frontend-aura"
+    },
+    "CHG-370": {
+      "id": "CHG-370",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-04T15:01:59+00:00",
+      "updated_at": "2026-09-04T15:01:59+00:00",
+      "touched_round": 253,
+      "commit": "e5e9834",
+      "summary": "fix(frontend): reader /comments page — dead-session routing + per-row delete guard (ISS-338/339)"
     }
   },
   "edges": [
@@ -25808,6 +25845,30 @@
       "to": "ISS-337",
       "type": "resolves",
       "created_at": "2026-09-04T14:38:42+00:00"
+    },
+    {
+      "from": "ISS-338",
+      "to": "COMP-002",
+      "type": "located_in",
+      "created_at": "2026-09-04T14:51:01+00:00"
+    },
+    {
+      "from": "ISS-339",
+      "to": "COMP-002",
+      "type": "located_in",
+      "created_at": "2026-09-04T14:51:01+00:00"
+    },
+    {
+      "from": "CHG-370",
+      "to": "ISS-338",
+      "type": "resolves",
+      "created_at": "2026-09-04T15:02:22+00:00"
+    },
+    {
+      "from": "CHG-370",
+      "to": "ISS-339",
+      "type": "resolves",
+      "created_at": "2026-09-04T15:02:22+00:00"
     }
   ]
 }
