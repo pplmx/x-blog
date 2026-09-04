@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 249,
+  "round": 250,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-04T10:09:31+00:00",
+  "updated_at": "2026-09-04T12:06:13+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -22,7 +22,7 @@
       "version": 1,
       "created_at": "2026-08-06T13:23:41+00:00",
       "updated_at": "2026-08-06T13:23:41+00:00",
-      "touched_round": 240,
+      "touched_round": 249,
       "title": "frontend-aura",
       "description": "Nuxt 4 Vue 3 TypeScript frontend at frontend/aura; composables; admin pages; e2e Playwright; biome lint"
     },
@@ -17386,6 +17386,52 @@
       "summary": "Page-beyond-total_pages accepted as 200-empty on reader list endpoints: clamping would require re-querying all 5 paginated readers (bookmarks/subscriptions/history/comments/notifications) + crud, risks masking client bugs, and the frontend already drain-clamps to the last page on empty pages. Declined as a backend fix (correctness finding #3).",
       "rationale": "Frontend drain-clamp (comments.vue and friends) already recovers; API returning 200-empty for out-of-range pages is common pagination semantics; clamping adds re-query complexity across 5 endpoints for no user-visible gain.",
       "alternatives_rejected": "Backend clamp page to total_pages by re-querying crud with clamped offset in every list endpoint."
+    },
+    "ISS-331": {
+      "id": "ISS-331",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-04T12:05:33+00:00",
+      "updated_at": "2026-09-04T12:06:13+00:00",
+      "touched_round": 249,
+      "summary": "Post-detail page + directly-involved components: thread-follow state loaded via useFetch-from-onMounted silently no-ops (button lies about follow state); CommentForm double-submit duplicates comments; CommentList stale page-3 response can overwrite newer page-4 (seq guard covered only the error banner); handleLike/undoLike/error apply to the wrong post after SPA navigation; views re-inflate on A->B->A round-trips; related/adjacent/series show the old post under the new one during SPA nav; resume save up to 2.5s dropped on every post hop and misattributed post-id on flush.",
+      "severity": "high"
+    },
+    "TASK-277": {
+      "id": "TASK-277",
+      "type": "task",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-04T12:05:33+00:00",
+      "updated_at": "2026-09-04T12:06:13+00:00",
+      "touched_round": 249,
+      "summary": "Round 250 post-detail deep-dive: imperative thread-follow status read, CommentForm re-entry guard, CommentList sequence-guarded data assignment, like target-id capture, per-session view dedup, related/adjacent/series pending gates, resume flush-on-switch with per-post pendingId + register reset; 7 regression tests.",
+      "category": "correctness",
+      "severity": 3
+    },
+    "CHG-367": {
+      "id": "CHG-367",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-04T12:05:33+00:00",
+      "updated_at": "2026-09-04T12:05:33+00:00",
+      "touched_round": 249,
+      "summary": "fix(frontend): post-detail page deep-dive — follow-state read, double-submit/like-race guards, per-session view dedup, SPA pending gates, resume flush-on-switch (ef1c43c).",
+      "commit": "ef1c43c"
+    },
+    "DEC-247": {
+      "id": "DEC-247",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-04T12:05:33+00:00",
+      "updated_at": "2026-09-04T12:05:33+00:00",
+      "touched_round": 249,
+      "summary": "Related/adjacent/series stay awaited in SSR setup for now: deferring them to a client-side fetch to cut SSR TTFB is a real optimization but changes hydration semantics (SEO-visible content region) and risks first-page layout shift; parked as future work rather than this round.",
+      "rationale": "Server round trips for related/adjacent/series add TTFB on SSR, but gating already removes the stale-frame UX bug; deferring breaks the SSR-rendered related section that crawlers/tests rely on.",
+      "alternatives_rejected": "Make related/adjacent client-only (server:false) composables to cut SSR latency."
     }
   },
   "edges": [
@@ -25487,6 +25533,36 @@
       "to": "COMP-001",
       "type": "governs",
       "created_at": "2026-09-04T10:08:54+00:00"
+    },
+    {
+      "from": "TASK-277",
+      "to": "ISS-331",
+      "type": "addresses",
+      "created_at": "2026-09-04T12:06:13+00:00"
+    },
+    {
+      "from": "ISS-331",
+      "to": "COMP-002",
+      "type": "located_in",
+      "created_at": "2026-09-04T12:06:13+00:00"
+    },
+    {
+      "from": "CHG-367",
+      "to": "ISS-331",
+      "type": "resolves",
+      "created_at": "2026-09-04T12:06:13+00:00"
+    },
+    {
+      "from": "CHG-367",
+      "to": "TASK-277",
+      "type": "implements",
+      "created_at": "2026-09-04T12:06:13+00:00"
+    },
+    {
+      "from": "DEC-247",
+      "to": "COMP-002",
+      "type": "governs",
+      "created_at": "2026-09-04T12:06:13+00:00"
     }
   ]
 }
