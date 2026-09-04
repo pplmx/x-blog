@@ -188,9 +188,9 @@ function onSheetKeydown(event: KeyboardEvent) {
 	const focusables = panel.querySelectorAll<HTMLElement>(
 		'a[href], button:not([disabled]), [tabindex]:not([tabindex="-1"])',
 	);
-	if (focusables.length === 0) return;
 	const first = focusables[0];
 	const last = focusables[focusables.length - 1];
+	if (!first || !last) return;
 	if (event.shiftKey && document.activeElement === first) {
 		event.preventDefault();
 		last.focus();
