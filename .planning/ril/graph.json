@@ -2,7 +2,7 @@
   "ril_version": 1,
   "round": 253,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-04T15:02:22+00:00",
+  "updated_at": "2026-09-04T15:57:23+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -17612,6 +17612,56 @@
       "touched_round": 253,
       "commit": "e5e9834",
       "summary": "fix(frontend): reader /comments page — dead-session routing + per-row delete guard (ISS-338/339)"
+    },
+    "ISS-340": {
+      "id": "ISS-340",
+      "type": "issue",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-04T15:36:32+00:00",
+      "updated_at": "2026-09-04T15:36:32+00:00",
+      "touched_round": 253,
+      "title": "Admin comments single-delete lacks the batch drain-clamp; no single-flight guards; stale selection + feedback",
+      "summary": "Deleting the only comment on the last page (single delete) stranded on an out-of-range page showing a false '暂无评论' over data that still existed — batch-delete had a drain-clamp but handleDelete did not. Also the single-delete/approve/dismiss handlers lacked the isProcessing single-flight guard (the disabled attribute alone could let a fast double-fire slip through), a moderated comment's id lingered in the batch selection (batch buttons claimed a selection pointing at a gone row; batch-deleting it 404'd), and the deleted-count feedback persisted over unrelated later lists. Fix: drain-clamp + single-flight guards + deselect(id) + resetFeedback() cleared on every action and on applyFilters/gotoPage.",
+      "severity": "high",
+      "component": "frontend-aura"
+    },
+    "ISS-341": {
+      "id": "ISS-341",
+      "type": "issue",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-04T15:36:32+00:00",
+      "updated_at": "2026-09-04T15:36:32+00:00",
+      "touched_round": 253,
+      "title": "Admin comments reply draft silently discarded when switching or on reload",
+      "summary": "Admin comment-moderation state hygiene: openReply() silently discarded a non-empty unsent reply draft when the moderator switched to another comment, and on a list reload (filter/page/mutation) an open reply box's id+draft dangled and could reappear later without context. Fix: openReply() asks via confirm() before dropping a non-empty draft; closeReply() runs on every fresh list render in loadComments. (Anunsent draft is acknowledged as lost if the moderator confirms the switch.)",
+      "severity": "medium",
+      "component": "frontend-aura"
+    },
+    "ISS-342": {
+      "id": "ISS-342",
+      "type": "issue",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-04T15:36:33+00:00",
+      "updated_at": "2026-09-04T15:36:33+00:00",
+      "touched_round": 253,
+      "title": "Admin comments a11y: silent feedback, no aria-pressed chips, unlabeled row checks",
+      "summary": "Admin comment-moderation a11y gaps: action error/success feedback banners were silent to screen readers (no role=alert/status) and sat inside the header flex row where an appearing error reshuffled/collapsed the layout; the 4 status/flagged filter chips had no aria-pressed (and the '全部' chip highlighted simultaneously with '被举报' since it only checked statusFilter==='all'); search/date labels lacked for/id linking; per-row selection checkboxes had no accessible name. Fix: banners moved to full-width blocks below the header with role alert/status; chips get aria-pressed with the 'all' active condition fixed to (!flaggedOnly && statusFilter==='all'); label for/id wired; row checkboxes aria-label via admin.comments.selectRow.",
+      "severity": "medium",
+      "component": "frontend-aura"
+    },
+    "CHG-371": {
+      "id": "CHG-371",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-04T15:56:54+00:00",
+      "updated_at": "2026-09-04T15:56:54+00:00",
+      "touched_round": 253,
+      "commit": "5f30ad4",
+      "summary": "fix(frontend): admin comments moderation deep-dive — drain-clamp, state hygiene, a11y (ISS-340/341/342)"
     }
   },
   "edges": [
@@ -25869,6 +25919,42 @@
       "to": "ISS-339",
       "type": "resolves",
       "created_at": "2026-09-04T15:02:22+00:00"
+    },
+    {
+      "from": "ISS-340",
+      "to": "COMP-002",
+      "type": "located_in",
+      "created_at": "2026-09-04T15:37:00+00:00"
+    },
+    {
+      "from": "ISS-341",
+      "to": "COMP-002",
+      "type": "located_in",
+      "created_at": "2026-09-04T15:37:00+00:00"
+    },
+    {
+      "from": "ISS-342",
+      "to": "COMP-002",
+      "type": "located_in",
+      "created_at": "2026-09-04T15:37:00+00:00"
+    },
+    {
+      "from": "CHG-371",
+      "to": "ISS-340",
+      "type": "resolves",
+      "created_at": "2026-09-04T15:57:23+00:00"
+    },
+    {
+      "from": "CHG-371",
+      "to": "ISS-341",
+      "type": "resolves",
+      "created_at": "2026-09-04T15:57:23+00:00"
+    },
+    {
+      "from": "CHG-371",
+      "to": "ISS-342",
+      "type": "resolves",
+      "created_at": "2026-09-04T15:57:23+00:00"
     }
   ]
 }
