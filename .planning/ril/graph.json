@@ -2,7 +2,7 @@
   "ril_version": 1,
   "round": 253,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-04T15:57:23+00:00",
+  "updated_at": "2026-09-04T16:32:40+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -17662,6 +17662,56 @@
       "touched_round": 253,
       "commit": "5f30ad4",
       "summary": "fix(frontend): admin comments moderation deep-dive — drain-clamp, state hygiene, a11y (ISS-340/341/342)"
+    },
+    "ISS-343": {
+      "id": "ISS-343",
+      "type": "issue",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-04T16:21:11+00:00",
+      "updated_at": "2026-09-04T16:21:11+00:00",
+      "touched_round": 253,
+      "title": "Admin readers toggle uses a single slot — clobbers per-row in-flight state",
+      "summary": "Admin readers activation toggle used a single busyId slot: a second row's toggle overwrote the first row's in-flight marker, re-enabling its button (label flipping back from 处理中 to 停用/启用) while its PATCH was still running — on a security-relevant action that revokes the reader's JWTs. Fix: per-row busyIds Set (single-flight per row with a re-entry guard), each row tracks aria-busy + disabled independently; concurrent row toggles no longer clobber each other.",
+      "severity": "high",
+      "component": "frontend-aura"
+    },
+    "ISS-344": {
+      "id": "ISS-344",
+      "type": "issue",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-04T16:21:11+00:00",
+      "updated_at": "2026-09-04T16:21:11+00:00",
+      "touched_round": 253,
+      "title": "Admin taxonomy actions lack single-flight guards (double-Enter double-create)",
+      "summary": "Admin taxonomy pages (tags/categories/series) handlers lacked re-entry guards: the create form's Enter key still fires submit while the submit button is disabled, so a fast double-Enter (or a second submit) raced a second create/edit/delete while one was in flight. Fix: isProcessing single-flight guard at the top of handleCreate / confirmEdit / handleDelete on all three pages.",
+      "severity": "medium",
+      "component": "frontend-aura"
+    },
+    "ISS-345": {
+      "id": "ISS-345",
+      "type": "issue",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-04T16:21:11+00:00",
+      "updated_at": "2026-09-04T16:21:11+00:00",
+      "touched_round": 253,
+      "title": "Admin readers/taxonomy error banners silent to screen readers",
+      "summary": "Admin readers + taxonomy action-error banners were silent to screen readers (plain colored divs, no role=alert), so moderation/management failures were never announced. Fix: role=\"alert\" on the actionError banners (and the readers load-error div) across readers/tags/categories/series.",
+      "severity": "low",
+      "component": "frontend-aura"
+    },
+    "CHG-372": {
+      "id": "CHG-372",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-04T16:32:39+00:00",
+      "updated_at": "2026-09-04T16:32:39+00:00",
+      "touched_round": 253,
+      "commit": "c2e2cc8",
+      "summary": "fix(frontend): admin area hardening — per-row reader toggle, taxonomy single-flight, a11y (ISS-343/344/345)"
     }
   },
   "edges": [
@@ -25955,6 +26005,42 @@
       "to": "ISS-342",
       "type": "resolves",
       "created_at": "2026-09-04T15:57:23+00:00"
+    },
+    {
+      "from": "ISS-343",
+      "to": "COMP-002",
+      "type": "located_in",
+      "created_at": "2026-09-04T16:21:11+00:00"
+    },
+    {
+      "from": "ISS-344",
+      "to": "COMP-002",
+      "type": "located_in",
+      "created_at": "2026-09-04T16:21:11+00:00"
+    },
+    {
+      "from": "ISS-345",
+      "to": "COMP-002",
+      "type": "located_in",
+      "created_at": "2026-09-04T16:21:11+00:00"
+    },
+    {
+      "from": "CHG-372",
+      "to": "ISS-343",
+      "type": "resolves",
+      "created_at": "2026-09-04T16:32:40+00:00"
+    },
+    {
+      "from": "CHG-372",
+      "to": "ISS-344",
+      "type": "resolves",
+      "created_at": "2026-09-04T16:32:40+00:00"
+    },
+    {
+      "from": "CHG-372",
+      "to": "ISS-345",
+      "type": "resolves",
+      "created_at": "2026-09-04T16:32:40+00:00"
     }
   ]
 }
