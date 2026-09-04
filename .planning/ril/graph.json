@@ -2,7 +2,7 @@
   "ril_version": 1,
   "round": 259,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-04T19:50:06+00:00",
+  "updated_at": "2026-09-04T20:08:59+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -17904,6 +17904,26 @@
       "touched_round": 259,
       "rationale": "Round 259: the media page's single delete gets the same single-flight treatment the loop already applied to bookmarks/comments/readers/account — per-row Set markers instead of a whole-grid `isDeleting` flag, so one card's delete doesn't freeze the others and cross-row completions can't clobber a row's busy state. Both delete paths (single and batch) are mutually exclusive. Rejected: keeping the global flag (froze the grid and made the race untestable) and adding only a handler guard without the per-row design (happy-dom suppresses clicks on disabled buttons, so the guard could never be exercised).",
       "alternatives_rejected": "keep global isDeleting flag; guard-only without per-row markers"
+    },
+    "ISS-355": {
+      "id": "ISS-355",
+      "type": "issue",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-04T20:08:59+00:00",
+      "updated_at": "2026-09-04T20:08:59+00:00",
+      "touched_round": 259,
+      "summary": "Admin media page (round-259 review finding): a card ticked for the bulk selection and then single-deleted stayed in `selected` — \"已选 N 张\" counted a deleted file and 删除选中 operated on a phantom URL (backend skipped it idempotently, so no error, but the count/button were wrong). Fix: handleDelete drops the deleted URL from `selected` on success, mirroring the batch path's reset."
+    },
+    "CHG-379": {
+      "id": "CHG-379",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-04T20:08:59+00:00",
+      "updated_at": "2026-09-04T20:08:59+00:00",
+      "touched_round": 259,
+      "commit": "dd9c821"
     }
   },
   "edges": [
@@ -26323,6 +26343,12 @@
       "to": "ISS-354",
       "type": "resolves",
       "created_at": "2026-09-04T19:50:06+00:00"
+    },
+    {
+      "from": "CHG-379",
+      "to": "ISS-355",
+      "type": "resolves",
+      "created_at": "2026-09-04T20:08:59+00:00"
     }
   ]
 }
