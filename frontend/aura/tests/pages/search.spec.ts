@@ -258,7 +258,7 @@ describe("Search Page", () => {
 			// stays in the DOM during the refetch.
 			expect(wrapper.find('input[type="search"]').exists()).toBe(true);
 			// Category/tag/sort selects stay mounted too.
-			expect(wrapper.findAll('select').length).toBeGreaterThanOrEqual(3);
+			expect(wrapper.findAll("select").length).toBeGreaterThanOrEqual(3);
 			// And the skeleton is still the only thing in the results area.
 			expect(wrapper.findAll(".animate-pulse").length).toBeGreaterThan(0);
 		});
