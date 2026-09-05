@@ -20,9 +20,16 @@ const { t } = useLang();
 // page (DEC-189) — the previous literal 1 left Next/Prev re-fetching page 1.
 const currentPage = ref(0);
 const apiPage = computed(() => currentPage.value + 1);
-// fetch lazily only when opened (server:false keeps SSR/CSR honest); refresh
-// on open so a brand-new upload appears immediately.
-const { data, pending, error, refresh } = await useAdminMedia(apiPage, props.pageSize);
+// Fetch lazily ONLY when opened: immediate:false suppresses the mount-time
+// request, and the open-watcher below (immediate:true so a picker that mounts
+// already open still requests) calls refresh() on every open. round 263 —
+// the modal is always-mounted twice in the post editor (media + cover), so a
+// plain eager useFetch fired two duplicate /api/upload/files?page_size=60
+// calls on EVERY editor page load before the picker was ever opened, despite
+// the old comment claiming laziness. server:false keeps SSR/CSR honest.
+const { data, pending, error, refresh } = await useAdminMedia(apiPage, props.pageSize, undefined, {
+	immediate: false,
+});
 const items = computed(() => data.value?.items ?? []);
 const totalPages = computed(() => data.value?.pagination?.total_pages ?? 0);
 
@@ -49,7 +56,10 @@ watch(
 			previouslyFocused.value = null;
 		}
 	},
-	{ flush: "post" },
+	// immediate: the initial fetch is suppressed (immediate:false above), so a
+	// picker that mounts ALREADY open must still request its list — this is the
+	// only path that now loads data.
+	{ flush: "post", immediate: true },
 );
 
 onMounted(() => {

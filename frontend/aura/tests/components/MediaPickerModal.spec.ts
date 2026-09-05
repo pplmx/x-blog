@@ -87,6 +87,24 @@ describe("MediaPickerModal", () => {
 		expect(document.body.textContent || "").not.toContain("components.mediaPicker.title");
 	});
 
+	it("requests the media list only when opened (round 263 lazy-fetch contract)", async () => {
+		// The picker is always-mounted twice in the post editor (media + cover).
+		// Before round 263 its eager useFetch fired two duplicate
+		// /api/upload/files?page_size=60 calls on EVERY editor page load even
+		// though the file's comment claimed laziness. The fix suppresses the
+		// mount fetch (immediate:false) and drives loading from the open-watcher
+		// (immediate:true), so a closed picker must not request, and opening it
+		// must — locking in the only remaining data path.
+		const result = fakeQuery([image]);
+		listMock.mockReturnValue(result);
+		const wrapper = mountPicker(false);
+		expect(result.refresh).not.toHaveBeenCalled();
+		await wrapper.setProps({ open: true });
+		await vi.waitFor(() => {
+			expect(result.refresh).toHaveBeenCalled();
+		});
+	});
+
 	it("lists media from the API", async () => {
 		listMock.mockReturnValue(fakeQuery([image]));
 		mountPicker();

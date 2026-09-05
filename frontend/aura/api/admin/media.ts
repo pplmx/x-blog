@@ -11,7 +11,12 @@ import { command, query, withQuery } from "../transport";
  * useFetch's path watching. `q` narrows by filename substring (case-insensitive,
  * backend DEC-189) — empty is omitted so an unfiltered call stays q-free.
  */
-export function useAdminMedia(page: Ref<number> | number = 1, pageSize = 60, q?: Ref<string>) {
+export function useAdminMedia(
+	page: Ref<number> | number = 1,
+	pageSize = 60,
+	q?: Ref<string>,
+	options: { immediate?: boolean } = {},
+) {
 	const pageRef = typeof page === "number" ? ref(page) : page;
 	const qRef = q ?? ref("");
 	const path = computed(() =>
@@ -24,6 +29,10 @@ export function useAdminMedia(page: Ref<number> | number = 1, pageSize = 60, q?:
 	return query<UploadListResponse>(path, {
 		headers: adminAuthHeaders(),
 		server: false,
+		// The media-picker modal passes immediate:false and refreshes on open —
+		// an always-mounted picker must not fetch its 60-row list on every editor
+		// page load before it is ever opened (round 263).
+		...options,
 	});
 }
 
