@@ -102,6 +102,11 @@ onUnmounted(() => {
 	window.removeEventListener("keydown", handleNavKeydown);
 });
 
+// Global "/" → focus the header search (GitHub/forum convention; round 262,
+// TASK-279). The admin layout has no HeaderSearch and intentionally doesn't
+// install this — the shortcut only makes sense where a search box is visible.
+useSearchShortcut();
+
 onMounted(initTheme);
 </script>
 

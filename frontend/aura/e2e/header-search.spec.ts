@@ -35,4 +35,21 @@ test.describe("Header search suggestions", () => {
 		await input.press("Enter");
 		await page.waitForURL(/\/search\?q=Python/);
 	});
+
+	test("pressing '/' anywhere focuses the header search (round 262, TASK-279)", async ({
+		page,
+	}) => {
+		// The reader is mid-page (focus on the main region, not the header) —
+		// the shortcut must reach the search box regardless of position.
+		await page.goto("/?page=1");
+		await page.getByRole("main").click();
+		await page.keyboard.press("/");
+		const input = page.getByRole("combobox");
+		await expect(input).toBeFocused();
+		// The opening "/" keystroke must not leak into the box as a query, and
+		// a second press in the focused box is ignored (still editing there).
+		await expect(input).toHaveValue("");
+		await page.keyboard.press("/");
+		await expect(input).toHaveValue("/");
+	});
 });

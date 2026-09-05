@@ -5,8 +5,8 @@
 		"viewAll": "View all results",
 		"noResults": "No matching posts",
 		"searchFailed": "Search didn't complete — check your connection and try again.",
-		"goToSearch": "Go to search page",
 		"hint": "Type to quickly find posts",
+		"kbdHint": "Press / to search",
 		"resultsCount": "{count} results"
 	}
 }

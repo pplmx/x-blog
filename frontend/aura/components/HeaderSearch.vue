@@ -7,6 +7,11 @@ const { t } = useLang();
 
 const query = ref("");
 const open = ref(false);
+// Tracks focus immediately (not the blur-delayed dropdown close) so the "/"
+// kbd-hint chip can step aside the moment the reader is typing in here — the
+// chip advertises the global '/' shortcut (round 262, TASK-279), it is not
+// signal once the box itself has focus.
+const focused = ref(false);
 const results = ref<PostList[]>([]);
 const loading = ref(false);
 const searched = ref(false);
@@ -115,9 +120,16 @@ function close(): void {
 	if (timer) clearTimeout(timer);
 }
 
+function onFocus(): void {
+	focused.value = true;
+	open.value = true;
+}
+
 // Delayed so a click inside the popup (mousedown.prevent) still lands before
-// we unmount it on blur.
+// we unmount it on blur. The focused flag clears immediately — the reader has
+// left the box, so the "/" shortcut chip may return.
 function onBlur(): void {
+	focused.value = false;
 	setTimeout(close, 150);
 }
 </script>
@@ -133,6 +145,7 @@ function onBlur(): void {
         v-model="query"
         type="search"
         role="combobox"
+        data-header-search
         :aria-expanded="open"
         aria-controls="header-search-listbox"
         aria-haspopup="listbox"
@@ -140,12 +153,23 @@ function onBlur(): void {
         :placeholder="t('headerSearch.placeholder')"
         :aria-label="t('headerSearch.ariaInput')"
         autocomplete="off"
-        class="w-full pl-9 pr-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-950 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
+        class="w-full pl-9 pr-8 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-950 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
         @input="onInput"
         @keydown="onKeydown"
-        @focus="open = true"
+        @focus="onFocus"
         @blur="onBlur"
       />
+      <!-- "/" shortcut chip (round 262): advertises the global press-/ shortcut
+           the reader layout installs (composables/useSearchShortcut.ts). Shown
+           only while the box is empty AND unfocused — once the reader is typing
+           in here the chip has said its piece. Purely decorative (aria-hidden);
+           the input already carries a real label for screen readers. -->
+      <kbd
+        v-if="!query.trim() && !focused"
+        aria-hidden="true"
+        :title="t('headerSearch.kbdHint')"
+        class="absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none select-none px-1.5 py-0.5 rounded border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-[10px] font-medium leading-none text-gray-400 dark:text-gray-500"
+      >/</kbd>
       <div v-if="loading" class="absolute right-3 top-1/2 -translate-y-1/2">
         <Icon icon="lucide:loader-2" class="w-4 h-4 text-gray-400 animate-spin" />
       </div>
@@ -155,6 +179,19 @@ function onBlur(): void {
       v-if="open"
       class="absolute z-50 mt-2 w-full rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 shadow-xl overflow-hidden"
     >
+      <!-- Focused, still-empty dropdown: explain what this box does instead of
+           a bare list-less popup (resolves the verifiably-dead headerSearch.hint
+           key — the intent was always to show it here). Disappears the moment
+           the reader types; not rendered for the settled no-results/failed
+           states (those are the dedicated blocks below). -->
+      <p
+        v-if="!query.trim()"
+        data-testid="header-search-hint"
+        class="px-3 pt-3 pb-1 text-xs text-gray-400"
+      >
+        {{ t('headerSearch.hint') }}
+      </p>
+
       <ul id="header-search-listbox" role="listbox" class="max-h-80 overflow-auto py-1">
         <li
           v-for="(post, index) in results"

@@ -67,6 +67,34 @@ describe("HeaderSearch", () => {
 		expect(input.exists()).toBe(true);
 	});
 
+	it("labels the input for the global '/' shortcut and shows a kbd hint chip while empty & unfocused", async () => {
+		const { wrapper } = mountHeaderSearch();
+		const input = wrapper.find('input[role="combobox"]');
+		// The composables/useSearchShortcut.ts handler locates inputs by this
+		// attribute; the reader layout installs the global keydown listener.
+		expect(input.attributes("data-header-search")).toBeDefined();
+		// Empty + not focused → the "/" chip advertises the shortcut…
+		expect(wrapper.find("kbd").exists()).toBe(true);
+		expect(wrapper.find("kbd").text()).toBe("/");
+		// …typing hides it (it only advertises the shortcut, no signal value).
+		await input.setValue("nuxt");
+		expect(wrapper.find("kbd").exists()).toBe(false);
+	});
+
+	it("hides the kbd chip on focus and shows the type-to-search hint in the empty dropdown", async () => {
+		const { wrapper } = mountHeaderSearch();
+		const input = wrapper.find('input[role="combobox"]');
+		await input.trigger("focus");
+		// Focused empty box: the "/" chip gives way (the reader is already
+		// inside the search), and the dropdown explains itself instead of a
+		// bare "View all results" affordance (headerSearch.hint was dead).
+		expect(wrapper.find("kbd").exists()).toBe(false);
+		expect(wrapper.find('[data-testid="header-search-hint"]').exists()).toBe(true);
+		// The "View all results" affordance is still offered alongside the hint
+		// (its navigation behavior is covered by the dedicated tests below).
+		expect(wrapper.find("button").exists()).toBe(true);
+	});
+
 	it("navigates to the full search page when the view-all button is mouse-clicked", async () => {
 		const { wrapper, navigateToMock } = mountHeaderSearch();
 		const input = wrapper.find('input[role="combobox"]');
