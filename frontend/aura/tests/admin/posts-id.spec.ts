@@ -9,7 +9,7 @@
  * composables in <script setup>.
  */
 
-import { flushPromises } from "@vue/test-utils";
+import { flushPromises, type VueWrapper } from "@vue/test-utils";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ref } from "vue";
 import MarkdownContent from "~~/components/MarkdownContent.vue";
@@ -393,6 +393,7 @@ describe("Admin Post Editor Page", () => {
 
 		it("does not lose keystrokes typed while an autosave is in flight (deep-dive autosave race)", async () => {
 			vi.useFakeTimers();
+			let wrapper: VueWrapper | null = null;
 			try {
 				setupRoute("1");
 				setupMocks();
@@ -408,7 +409,7 @@ describe("Admin Post Editor Page", () => {
 				);
 
 				const PostEditor = await loadPage();
-				const wrapper = await mountWithSuspense(PostEditor);
+				wrapper = await mountWithSuspense(PostEditor);
 				const titleInput = wrapper.find('input[type="text"]');
 
 				// Type once -> the debounced autosave starts and hangs in flight
@@ -434,6 +435,10 @@ describe("Admin Post Editor Page", () => {
 				const last = calls[calls.length - 1][1] as { title: string };
 				expect(last.title).toBe("Draft One Plus");
 			} finally {
+				// Drop the instance so its onBeforeUnmount clears the autosave
+				// debounce and window beforeunload listener before real timers
+				// return (TASK-280 isolation).
+				wrapper?.unmount();
 				vi.useRealTimers();
 			}
 		});
@@ -801,12 +806,20 @@ describe("Admin Post Editor Page", () => {
 	});
 
 	describe("Round 257 autosave races", () => {
+		let currentWrapper: VueWrapper | null = null;
 		beforeEach(() => {
 			vi.useFakeTimers();
 			mockCreateAdminPost.mockClear();
 			mockUpdateAdminPost.mockClear();
 		});
 		afterEach(() => {
+			// Unmount the editor wrapper BEFORE restoring real timers: the page's
+			// onBeforeUnmount clears its pending autosave debounce against the
+			// CURRENT (fake) timer pool and removes the window beforeunload
+			// listener, so no timers/listeners leak into the next test's pool
+			// (TASK-280: coverage-timing flakes in this file).
+			currentWrapper?.unmount();
+			currentWrapper = null;
 			vi.useRealTimers();
 			vi.restoreAllMocks();
 			// Re-establish the module-scope Nuxt stubs this spec file relies on
@@ -835,6 +848,7 @@ describe("Admin Post Editor Page", () => {
 			const PostEditor = await loadPage();
 			const wrapper = await mountWithSuspense(PostEditor);
 			await flushPromises();
+			currentWrapper = wrapper;
 			return { wrapper, mockNavigateTo };
 		}
 
@@ -1166,6 +1180,7 @@ describe("Admin Post Editor Page", () => {
 	});
 
 	describe("Draft auto-save (TASK-190)", () => {
+		let currentWrapper: VueWrapper | null = null;
 		beforeEach(() => {
 			vi.useFakeTimers();
 			// The module-level mocks accumulate call history across tests;
@@ -1174,6 +1189,12 @@ describe("Admin Post Editor Page", () => {
 			mockUpdateAdminPost.mockClear();
 		});
 		afterEach(() => {
+			// Unmount before restoring real timers (same reason as the Round 257
+			// autosave describe): the editor's onBeforeUnmount clears its pending
+			// debounce against the current fake pool and drops the window
+			// beforeunload listener, isolating each test from the last (TASK-280).
+			currentWrapper?.unmount();
+			currentWrapper = null;
 			vi.useRealTimers();
 			vi.restoreAllMocks();
 			vi.unstubAllGlobals();
@@ -1194,6 +1215,7 @@ describe("Admin Post Editor Page", () => {
 			const PostEditor = await loadPage();
 			const wrapper = await mountWithSuspense(PostEditor);
 			await flushPromises();
+			currentWrapper = wrapper;
 			return { wrapper, mockNavigateTo };
 		}
 
