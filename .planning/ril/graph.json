@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 270,
+  "round": 271,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-05T22:07:03+00:00",
+  "updated_at": "2026-09-05T23:00:23+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -18310,33 +18310,33 @@
     "ISS-367": {
       "id": "ISS-367",
       "type": "issue",
-      "status": "active",
-      "version": 1,
+      "status": "resolved",
+      "version": 2,
       "created_at": "2026-09-05T19:05:48+00:00",
-      "updated_at": "2026-09-05T19:05:48+00:00",
-      "touched_round": 269,
+      "updated_at": "2026-09-05T22:58:52+00:00",
+      "touched_round": 270,
       "title": "series/[slug].vue reading-progress fetch has no stale-response guard",
       "description": "loadProgress (series/[slug].vue:112-119) writes getReaderSeriesProgress(series.value.slug) unconditionally. SPA navigation /series/a -> /series/b reuses the component; if a's slower response resolves last it clobbers b's progress (read count, bar, continue-link pointing into a's episodes). Every other async handler here and elsewhere guards with a monotonic seq (comments.vue loadSeq, CommentList refreshSeq, useTagFollowStore generation)."
     },
     "ISS-368": {
       "id": "ISS-368",
       "type": "issue",
-      "status": "active",
-      "version": 1,
+      "status": "resolved",
+      "version": 2,
       "created_at": "2026-09-05T19:05:48+00:00",
-      "updated_at": "2026-09-05T19:05:48+00:00",
-      "touched_round": 269,
+      "updated_at": "2026-09-05T22:58:52+00:00",
+      "touched_round": 270,
       "title": "tags.vue/categories.vue fire an unconditional /api/posts fetch on the all-items view that is never rendered",
       "description": "usePosts(postsFilters) has no enabled gate: /tags or /categories (no tag_id/category_id selected) fetches /api/posts page 1, whose pending/error still gate the whole page (template v-if=pending/v-else-if=error before the !xxxId cloud branch). A 429 or error bricks the correctly-loaded tag/category cloud; even success burns a rate-limit slot per visit. Contrast archive.vue which uses enabled: hasPeriod. Both files also embed post_count from the (buggy) backend counts."
     },
     "ISS-369": {
       "id": "ISS-369",
       "type": "issue",
-      "status": "active",
-      "version": 1,
+      "status": "resolved",
+      "version": 2,
       "created_at": "2026-09-05T19:05:48+00:00",
-      "updated_at": "2026-09-05T19:05:48+00:00",
-      "touched_round": 269,
+      "updated_at": "2026-09-05T22:58:52+00:00",
+      "touched_round": 270,
       "title": "series/[slug].vue progressPercent not clamped to 100",
       "description": "series/[slug].vue:47-50 progressPercent lacks the Math.min(100, ...) the identical helper uses on index.vue:147-150. read_count can exceed total when a post leaves a series; the bar renders >100% width overflowing its track at lines 310-314."
     },
@@ -18391,11 +18391,11 @@
     "TASK-285": {
       "id": "TASK-285",
       "type": "task",
-      "status": "active",
-      "version": 1,
+      "status": "resolved",
+      "version": 2,
       "created_at": "2026-09-05T19:09:24+00:00",
-      "updated_at": "2026-09-05T19:09:24+00:00",
-      "touched_round": 269,
+      "updated_at": "2026-09-05T22:58:52+00:00",
+      "touched_round": 270,
       "category": "correctness",
       "severity": 0.7,
       "title": "Frontend: series page progress race, percent clamp, tags/categories dead fetch",
@@ -18447,6 +18447,17 @@
       "title": "resume after converged-idle: deep-dive surfaced backend taxonomy/cache defects",
       "rationale": "The round-268 converged-idle (DEC-261) ended when a fresh deep-dive re-audit of the public read surface (categories/tags count semantics, single-item post_count, rename/restore cache invalidation, stats pending) surfaced five confirmed defects (ISS-362..366) above the 3.0 bar, all in one high-value backend correctness cluster (TASK-283/284). Executed: visibility-guarded grouped counts, derived post_count for item endpoints, rename+restore cache invalidation (posts/feed/series/categories/tags), stats pending reviewed_at filter — each with contract tests. Full backend suite green: 1311 passed, coverage 93.45%; pyright + ruff clean.",
       "alternatives_rejected": "Frontend race/affordance items (ISS-367..369) held for the next task (TASK-285); below-bar UX affordances (ISS-370/371, TASK-286 score 1.65) deferred per QUIESCE rules. Backend infra hardening (DEC-214 deferrals) still out of scope."
+    },
+    "CHG-392": {
+      "id": "CHG-392",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-05T22:58:52+00:00",
+      "updated_at": "2026-09-05T22:58:52+00:00",
+      "touched_round": 270,
+      "commit": "8cda9a7",
+      "title": "Series progress stale guard + clamp, tags/categories enabled-gate (TASK-285 — ISS-367/368/369)"
     }
   },
   "edges": [
@@ -27124,6 +27135,30 @@
       "to": "ISS-365",
       "type": "resolves",
       "created_at": "2026-09-05T22:06:16+00:00"
+    },
+    {
+      "from": "CHG-392",
+      "to": "ISS-367",
+      "type": "resolves",
+      "created_at": "2026-09-05T22:58:52+00:00"
+    },
+    {
+      "from": "CHG-392",
+      "to": "ISS-368",
+      "type": "resolves",
+      "created_at": "2026-09-05T22:58:52+00:00"
+    },
+    {
+      "from": "CHG-392",
+      "to": "ISS-369",
+      "type": "resolves",
+      "created_at": "2026-09-05T22:58:52+00:00"
+    },
+    {
+      "from": "CHG-392",
+      "to": "TASK-285",
+      "type": "implements",
+      "created_at": "2026-09-05T22:58:52+00:00"
     }
   ]
 }
