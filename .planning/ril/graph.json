@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 262,
+  "round": 263,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-05T07:33:06+00:00",
+  "updated_at": "2026-09-05T08:31:57+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -18007,6 +18007,87 @@
       "category": "dx",
       "severity": 0.5,
       "title": "Restore CI formatter-gate compliance (backend noexcept ruff format drift in app/auth.py)"
+    },
+    "ISS-356": {
+      "id": "ISS-356",
+      "type": "issue",
+      "status": "resolved",
+      "version": 1,
+      "created_at": "2026-09-05T08:23:21+00:00",
+      "updated_at": "2026-09-05T08:23:21+00:00",
+      "touched_round": 262,
+      "severity": 0.6,
+      "title": "MediaPickerModal prefetches 60-row media list twice on every admin editor page load",
+      "description": "Two always-mounted MediaPickerModal instances (media + cover) in the post editor run eager useAdminMedia (useFetch) at script-setup top level, so every editor page load fires 2 duplicate GET /api/upload/files?page_size=60 before the picker is ever opened — contradicting the file's own 'fetch lazily only when opened' comment. Fixed: useAdminMedia accepts options; the modal passes immediate:false and the open-watcher (now immediate:true) refreshes on open (round 263)."
+    },
+    "ISS-357": {
+      "id": "ISS-357",
+      "type": "issue",
+      "status": "resolved",
+      "version": 1,
+      "created_at": "2026-09-05T08:23:21+00:00",
+      "updated_at": "2026-09-05T08:23:21+00:00",
+      "touched_round": 262,
+      "severity": 0.55,
+      "title": "history page Clear can be undone by an in-flight initial load (stale-response race)",
+      "description": "clear() in useReadingHistory bypassed the monotonic loadSeq guard (ISS-128) that load()/loadMore() use. The Clear button renders during the skeleton, so a Clear clicked while the onMounted load is still running lets the slow pre-clear response pass the stale check and repopulate the just-deleted list while the 'cleared' toast claimed success. Fixed: clear() bumps the guard and clears spinner/error flags first (round 263)."
+    },
+    "CHG-382": {
+      "id": "CHG-382",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-05T08:25:56+00:00",
+      "updated_at": "2026-09-05T08:25:56+00:00",
+      "touched_round": 262,
+      "commit": "9a5d3b5",
+      "title": "Media picker fetches only on open (ISS-356)"
+    },
+    "CHG-383": {
+      "id": "CHG-383",
+      "type": "change",
+      "status": "active",
+      "version": 2,
+      "created_at": "2026-09-05T08:25:56+00:00",
+      "updated_at": "2026-09-05T08:29:25+00:00",
+      "touched_round": 262,
+      "commit": "35547e8",
+      "title": "History clear invalidates in-flight load (ISS-357)"
+    },
+    "CHG-384": {
+      "id": "CHG-384",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-05T08:29:25+00:00",
+      "updated_at": "2026-09-05T08:29:25+00:00",
+      "touched_round": 262,
+      "commit": "fa54025",
+      "title": "Round-262 CI lint-gate follow-up: biome import collapse in useSearchShortcut spec"
+    },
+    "TASK-282": {
+      "id": "TASK-282",
+      "type": "task",
+      "status": "resolved",
+      "version": 1,
+      "created_at": "2026-09-05T08:29:25+00:00",
+      "updated_at": "2026-09-05T08:29:25+00:00",
+      "touched_round": 262,
+      "category": "dx",
+      "severity": 0.5,
+      "title": "Keep new spec files under the biome formatter gate before commit"
+    },
+    "DEC-256": {
+      "id": "DEC-256",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-05T08:31:57+00:00",
+      "updated_at": "2026-09-05T08:31:57+00:00",
+      "touched_round": 262,
+      "title": "Round 263: fix the two highest-ranked survey bugs (media-picker prefetch, history clear race)",
+      "rationale": "Continued operator polish directive. Applied the frontend survey's two top concrete findings (ISS-356/ISS-357): the always-mounted media picker prefetched its 60-row list twice on every editor load (perf/API-load, contradicting its own lazy comment), and the history Clear button could be undone by an in-flight initial load (stale-response race of the ISS-128 class clear() bypassed). Both verified in code, fixed, regression-tested (full suite 1518/1518, typecheck + lint clean). Also remediated a round-262 CI lint-gate miss (biome import collapse) the round-262 lint run predated.",
+      "alternatives_rejected": "Defensive hardening of the reserved-flake autosave tests is queued as TASK-280 (deferred: environment was too loaded for a reliable diagnosis under coverage; evidence captured). Remaining survey findings (#3 account save-on-empty, #4 my-comments pagination nav, #5 BookmarkButton dead emit, #6 readers search a11y) recorded for later rounds rather than rushed this round."
     }
   },
   "edges": [
@@ -26456,6 +26537,30 @@
       "to": "TASK-281",
       "type": "implements",
       "created_at": "2026-09-05T07:33:06+00:00"
+    },
+    {
+      "from": "CHG-382",
+      "to": "ISS-356",
+      "type": "resolves",
+      "created_at": "2026-09-05T08:25:56+00:00"
+    },
+    {
+      "from": "CHG-383",
+      "to": "ISS-357",
+      "type": "resolves",
+      "created_at": "2026-09-05T08:29:25+00:00"
+    },
+    {
+      "from": "CHG-384",
+      "to": "TASK-282",
+      "type": "implements",
+      "created_at": "2026-09-05T08:29:25+00:00"
+    },
+    {
+      "from": "DEC-256",
+      "to": "TASK-280",
+      "type": "governs",
+      "created_at": "2026-09-05T08:31:57+00:00"
     }
   ]
 }
