@@ -18,6 +18,8 @@ from app.database import Base, get_db
 # silent in dev; the key itself is still a well-known, development-only value.
 DEV_SECRET_KEY = "x-blog-secret-key-dev-only-32-bytes-min"
 ALGORITHM = "HS256"
+
+
 def admin_token_expire_days() -> float:
     """Admin JWT lifetime in (fractional) days, active per session creation.
 
