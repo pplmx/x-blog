@@ -23,11 +23,14 @@ import { useSeo } from "~~/composables/useSeo";
 const { t, locale } = useLang();
 const { isAuthenticated, logout, isStaleSession } = useReaderAuth();
 
-useSeo({
+// Getter form: an in-app language switch re-evaluates the title/OG tags,
+// which a static object would have frozen in the initial language (same
+// reason every other page passes a getter — deep-dive, ISS-371).
+useSeo(() => ({
 	title: t("myComments.seoTitle"),
 	description: t("myComments.seoDesc"),
 	path: "/comments",
-});
+}));
 
 // Load on mount (not async setup, so the page is testable and SSR-hydration
 // friendly; reader auth is localStorage-only). getMyComments uses $fetch so

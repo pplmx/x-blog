@@ -828,6 +828,24 @@ describe("CommentList", () => {
 			expect(mockGetComments).toHaveBeenLastCalledWith(1, 2, 20, "newest");
 		});
 
+		it("offers first/last + ellipsis far-page affordance (ISS-370)", async () => {
+			const { wrapper } = await mountCommentList({
+				comments: { ...mockComments, total_pages: 10 },
+			});
+			const texts = wrapper.findAll("nav button").map((b) => b.text());
+			// first page, current window, ellipsis, last page — jumpable directly
+			expect(texts[0]).toBe("1");
+			expect(texts).toContain("…");
+			expect(texts[texts.length - 1]).toBe("10");
+
+			const lastBtn = wrapper.findAll("nav button").find((b) => b.text() === "10");
+			expect(lastBtn).toBeDefined();
+			if (!lastBtn) throw new Error("last-page button not rendered");
+			await lastBtn.trigger("click");
+			await flushPromises();
+			expect(mockGetComments).toHaveBeenLastCalledWith(1, 10, 20, "newest");
+		});
+
 		it("shows an in-flight spinner while a pagination refetch runs (ISS-130)", async () => {
 			let resolvePage!: (v: unknown) => void;
 			const { wrapper } = await mountCommentList();

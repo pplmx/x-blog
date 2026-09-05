@@ -393,25 +393,30 @@
       </li>
     </ul>
 
-    <!-- Pagination -->
+    <!-- Pagination (DEC-102, TASK-163; ISS-370: first/current/last + ellipsis
+         like the my-comments/feed pages, so deep history can reach the far
+         pages instead of a fixed local window) -->
     <nav
       v-if="totalPages > 1"
       class="flex justify-center gap-2 mt-6"
     >
       <button
         type="button"
-        v-for="page in visiblePages"
-        :key="page"
-        :aria-current="page === currentPage ? 'page' : undefined"
-        @click="loadPage(page)"
+        v-for="(pg, i) in paginationTokens"
+        :key="pg === '…' ? `ellipsis-${i}` : pg"
+        :disabled="pg === '…' || pg === currentPage"
+        :aria-current="pg !== '…' && pg === currentPage ? 'page' : undefined"
+        @click="loadPage(pg)"
         :class="[
           'px-3 py-1 rounded text-sm',
-          page === currentPage
-            ? 'bg-blue-600 text-white'
-            : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700',
+          pg === '…'
+            ? 'cursor-default text-gray-400'
+            : pg === currentPage
+              ? 'bg-blue-600 text-white cursor-default'
+              : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700',
         ]"
       >
-        {{ page }}
+        {{ pg }}
       </button>
     </nav>
   </section>
@@ -431,6 +436,7 @@ import { deleteMyComment, updateMyComment } from "~~/api/reader/comments";
 import { parseApiDate } from "~~/composables/apiDate";
 import { highlightCode, loadHighlighter } from "~~/composables/useCodeHighlight";
 import { commentMarkdownToHtml, loadPurify } from "~~/composables/useMarkdown";
+import { paginationPages } from "~~/composables/usePagination";
 import { useReaderAuth } from "~~/composables/useReaderAuth";
 // biome-ignore lint/correctness/noUnusedImports: CommentForm is rendered in the SFC <template> (lines 59/105).
 import CommentForm from "./CommentForm.vue";
@@ -861,19 +867,15 @@ async function handleReplied() {
 	}
 }
 
-const visiblePages = computed(() => {
-	const pages = [];
-	const maxVisible = 5;
-	let start = Math.max(1, currentPage.value - Math.floor(maxVisible / 2));
-	let end = Math.min(totalPages.value, start + maxVisible - 1);
-	start = Math.max(1, end - maxVisible + 1);
-	for (let i = start; i <= end; i++) {
-		pages.push(i);
-	}
-	return pages;
-});
+// Windowed, ellipsis-aware page tokens (first / current-window / last joined
+// by "…"), matching the shared archive/search/category/tag/my-comments feeds —
+// the previous hand-rolled 5-window had no far-page affordance, so a deep
+// thread offered no way to jump to the first/last page without walking the
+// window (survey finding, ISS-370).
+const paginationTokens = computed(() => paginationPages(totalPages.value, currentPage.value));
 
-async function loadPage(page: number) {
+async function loadPage(page: number | "…") {
+	if (typeof page !== "number" || page === currentPage.value) return;
 	currentPage.value = page;
 	await refreshList();
 }
