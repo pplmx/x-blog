@@ -2,7 +2,7 @@
   "ril_version": 1,
   "round": 262,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-05T07:29:23+00:00",
+  "updated_at": "2026-09-05T07:33:06+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -17956,7 +17956,7 @@
       "version": 1,
       "created_at": "2026-09-04T23:57:35+00:00",
       "updated_at": "2026-09-04T23:57:35+00:00",
-      "touched_round": 261,
+      "touched_round": 262,
       "title": "Round 262: /-to-search keyboard shortcut + search empty-state polish (TASK-279)",
       "rationale": "Operator reactivates the loop (supersedes DEC-254 converged-idle) for detail polish/interactivity/usability. Deep-dive found no residual active tasks and a uniformly high-quality surface (401 handling centralized in transport, locale parity at 100%, no TODO/debug markers, 71 e2e specs). Highest-value directive-matching increment: the GitHub/forum-standard '/' shortcut focusing the header search — a real keyboard-user affordance (易用性/交互性). Wraps in two verified polish items on the same seam: a discoverable / kbd chip, and rendering the verifiably-dead headerSearch.hint key as the focused-empty-dropdown message (fixes a bare 'View all' wart + resolves the dead key). Plus two hygiene fixes folded in: remove dead headerSearch.goToSearch key, restore ruff format compliance in app/auth.py.",
       "alternatives_rejected": "Sweeping more per-row single-flight or aria polish — that pattern has already been applied to every list/detail surface this loop owns (bookmarks/comments/readers/account/media/taxonomy/admin posts). A full browser e2e round was deferred: baseline VERIFY (backend 1304 @93.43%, frontend 1506) is already green and the change is additive to one component."
@@ -17968,7 +17968,7 @@
       "version": 1,
       "created_at": "2026-09-05T07:15:43+00:00",
       "updated_at": "2026-09-05T07:15:43+00:00",
-      "touched_round": 261,
+      "touched_round": 262,
       "category": "test-quality",
       "severity": 0.45,
       "title": "Harden admin editor autosave tests against coverage-timing flakes (posts-id.spec.ts)",
@@ -17992,9 +17992,21 @@
       "version": 1,
       "created_at": "2026-09-05T07:27:22+00:00",
       "updated_at": "2026-09-05T07:27:22+00:00",
-      "touched_round": 261,
+      "touched_round": 262,
       "commit": "",
       "title": "Ruff format compliance restore in app/auth.py"
+    },
+    "TASK-281": {
+      "id": "TASK-281",
+      "type": "task",
+      "status": "resolved",
+      "version": 1,
+      "created_at": "2026-09-05T07:33:06+00:00",
+      "updated_at": "2026-09-05T07:33:06+00:00",
+      "touched_round": 262,
+      "category": "dx",
+      "severity": 0.5,
+      "title": "Restore CI formatter-gate compliance (backend noexcept ruff format drift in app/auth.py)"
     }
   },
   "edges": [
@@ -26432,6 +26444,18 @@
       "to": "TASK-279",
       "type": "implements",
       "created_at": "2026-09-05T07:29:23+00:00"
+    },
+    {
+      "from": "DEC-255",
+      "to": "TASK-280",
+      "type": "governs",
+      "created_at": "2026-09-05T07:33:06+00:00"
+    },
+    {
+      "from": "CHG-381",
+      "to": "TASK-281",
+      "type": "implements",
+      "created_at": "2026-09-05T07:33:06+00:00"
     }
   ]
 }
