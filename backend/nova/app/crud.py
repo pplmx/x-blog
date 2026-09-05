@@ -526,10 +526,22 @@ def get_categories(db: Session) -> list[dict]:
     # Query database
     categories = db.query(models.Category).all()
 
-    # Post count per category in a single grouped query (no N+1).
+    # Post count per category in a single grouped query (no N+1). Counts only
+    # PUBLICLY VISIBLE posts (published + effective publish time passed), the
+    # same guard every public post-list path applies (compare
+    # visible_series_post_counts) — the previous query counted drafts and
+    # scheduled-future posts too, which (a) leaked their existence to
+    # anonymous visitors on this unauthenticated endpoint and (b) reported
+    # counts that could never match the posts actually listable under the
+    # category (deep-dive review, ISS-362).
+    now = utc_now_naive()
     rows = (
         db.query(models.Post.category_id, func.count(models.Post.id))
-        .filter(models.Post.category_id.isnot(None))
+        .filter(
+            models.Post.category_id.isnot(None),
+            models.Post.published.is_(True),
+            or_(models.Post.publish_at.is_(None), models.Post.publish_at <= now),
+        )
         .group_by(models.Post.category_id)
         .all()
     )
@@ -543,6 +555,25 @@ def get_categories(db: Session) -> list[dict]:
     # Cache the result
     categories_cache[cache_key] = result
     return result
+
+
+def category_visible_post_count(db: Session, category_id: int) -> int:
+    """Count of publicly visible posts in a category (published + effective
+    publish time passed), for the single-item /api/categories/{id} endpoint.
+    get_categories computes the same number in one grouped query for the list
+    payload; without it the item endpoint always reported post_count=0 because
+    post_count is derived (not a column) and the schema defaulted (ISS-363)."""
+    now = utc_now_naive()
+    return (
+        db.query(func.count(models.Post.id))
+        .filter(
+            models.Post.category_id == category_id,
+            models.Post.published.is_(True),
+            or_(models.Post.publish_at.is_(None), models.Post.publish_at <= now),
+        )
+        .scalar()
+        or 0
+    )
 
 
 def get_category(db: Session, category_id: int) -> models.Category | None:
@@ -578,8 +609,12 @@ def update_category(db: Session, category_id: int, category: schemas.CategoryCre
         db.rollback()
         raise ValueError(f"Category with name '{category.name}' already exists")
     db.refresh(db_category)
-    # Clear cache
+    # Clear cache — and the POSTS-list + feed caches too: PostList embeds the
+    # category's name and the sitemap/scoped feeds render it, so a rename that
+    # only invalidated the enumeration cache left /api/posts cards and
+    # /sitemap.xml serving the old name for up to the 5-min TTL (ISS-364).
     clear_categories_cache()
+    clear_posts_list_cache()
     return db_category
 
 
@@ -612,8 +647,19 @@ def get_tags(db: Session) -> list[dict]:
     tags = db.query(models.Tag).all()
 
     # Post count per tag through the many-to-many join, one grouped query.
+    # Counts only PUBLICLY VISIBLE posts (published + effective publish time
+    # passed) — the grouped query must JOIN Post to apply the guard, otherwise
+    # drafts/scheduled posts leak their existence into the unauthenticated
+    # /api/tags payload and the count can never match what listing the tag
+    # actually returns (deep-dive review, ISS-362; mirrors get_categories).
+    now = utc_now_naive()
     rows = (
         db.query(models.post_tags.c.tag_id, func.count(models.post_tags.c.post_id))
+        .join(models.Post, models.Post.id == models.post_tags.c.post_id)
+        .filter(
+            models.Post.published.is_(True),
+            or_(models.Post.publish_at.is_(None), models.Post.publish_at <= now),
+        )
         .group_by(models.post_tags.c.tag_id)
         .all()
     )
@@ -627,6 +673,25 @@ def get_tags(db: Session) -> list[dict]:
     # Cache the result
     tags_cache[cache_key] = result
     return result
+
+
+def tag_visible_post_count(db: Session, tag_id: int) -> int:
+    """Count of publicly visible posts with a tag (published + effective publish
+    time passed), for the single-item /api/tags/{id} endpoint. Same rationale as
+    category_visible_post_count: post_count is derived, and the item endpoint
+    used to report 0 unconditionally (ISS-363)."""
+    now = utc_now_naive()
+    return (
+        db.query(func.count(models.post_tags.c.post_id))
+        .join(models.Post, models.Post.id == models.post_tags.c.post_id)
+        .filter(
+            models.post_tags.c.tag_id == tag_id,
+            models.Post.published.is_(True),
+            or_(models.Post.publish_at.is_(None), models.Post.publish_at <= now),
+        )
+        .scalar()
+        or 0
+    )
 
 
 def get_tag(db: Session, tag_id: int) -> models.Tag | None:
@@ -661,8 +726,12 @@ def update_tag(db: Session, tag_id: int, tag: schemas.TagCreate) -> models.Tag |
             db.rollback()
             raise ValueError(f"Tag with name '{tag.name}' already exists")
         db.refresh(db_tag)
-        # Clear cache
+        # Clear cache — and the POSTS-list + feed caches too: PostList embeds
+        # this tag's name and the sitemap renders it, so the rename must not
+        # leave /api/posts cards and /sitemap.xml showing the old name until the
+        # 5-min TTL (ISS-364; same rationale as update_category).
         clear_tags_cache()
+        clear_posts_list_cache()
     return db_tag
 
 
@@ -3566,6 +3635,15 @@ def restore_backup(db: Session, payload: dict) -> dict:
         raise
 
     db.commit()
+    # Restored content is live immediately, so every public cache the restore
+    # could have changed must be invalidated: posts lists + feeds + series
+    # (clear_posts_list_cache) and the category/tag enumeration (30-min TTL,
+    # otherwise a newly-restored category/tag could stay invisible for half an
+    # hour). Other write paths do exactly this; restore was the one bulk write
+    # that left the public read surface serving pre-restore data (ISS-365).
+    clear_posts_list_cache()
+    clear_categories_cache()
+    clear_tags_cache()
     return counts
 
 

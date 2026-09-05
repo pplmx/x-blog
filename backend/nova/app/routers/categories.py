@@ -21,7 +21,13 @@ def get_category(request: Request, category_id: int, db: Session = Depends(get_d
     category = crud.get_category(db, category_id)
     if not category:
         raise HTTPException(status_code=404, detail="Category not found")
-    return conditional_json(schemas.Category.model_validate(category).model_dump(mode="json"), request)
+    # post_count is derived (not a column); the list endpoint computes it in a
+    # grouped query, and validating the bare ORM object here would leave the
+    # schema default 0 even for categories with many publicly visible posts
+    # (ISS-363).
+    data = schemas.Category.model_validate(category).model_dump(mode="json")
+    data["post_count"] = crud.category_visible_post_count(db, category_id)
+    return conditional_json(data, request)
 
 
 @router.post("", response_model=schemas.Category, status_code=status.HTTP_201_CREATED)

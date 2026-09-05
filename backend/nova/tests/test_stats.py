@@ -118,3 +118,29 @@ def test_stats_scheduled_post_is_not_a_draft(client, auth_headers):
     assert data["scheduled_posts"] == 1
     # The dashboard's draft derivation must leave exactly 1 draft.
     assert data["total_posts"] - data["published_posts"] - data["scheduled_posts"] == 1
+
+
+def test_stats_pending_excludes_rejected(client, db_session):
+    """GET /api/stats pending_comments must count only unreviewed comments —
+    a rejected (reviewed_at set) comment must not overcount pending (ISS-366)."""
+    from datetime import datetime
+
+    from app import models
+
+    post = models.Post(title="Stats Pending Post", slug="stats-pending-post", content="x", published=True)
+    db_session.add(post)
+    db_session.flush()
+    db_session.add_all(
+        [
+            models.Comment(post_id=post.id, nickname="A", content="pending", is_approved=False, reviewed_at=None),
+            models.Comment(
+                post_id=post.id, nickname="B", content="rejected", is_approved=False, reviewed_at=datetime(2024, 1, 1)
+            ),
+            models.Comment(post_id=post.id, nickname="C", content="approved", is_approved=True),
+        ]
+    )
+    db_session.commit()
+
+    data = client.get("/api/stats").json()
+    assert data["pending_comments"] == 1
+    assert data["total_comments"] == 3

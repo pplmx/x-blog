@@ -145,3 +145,50 @@ def test_update_tag_duplicate_name_returns_400(client, auth_headers, db_session)
     )
     assert response.status_code == 400
     assert "already exists" in response.json()["error"]["message"]
+
+
+def test_tag_post_count_excludes_drafts_and_scheduled(client, auth_headers, db_session):
+    """Public /api/tags post_count counts only publicly visible posts — a
+    draft or scheduled-future post under a tag must not leak existence or
+    inflate the count (ISS-362)."""
+    from datetime import datetime
+
+    from app import models
+
+    tag_resp = client.post("/api/tags", json={"name": "VisTag"}, headers=auth_headers)
+    tag_id = tag_resp.json()["id"]
+    # Wire posts to the tag through the DB (the public API takes tag names on
+    # create, so seed the junction directly for precision). The db_session
+    # fixture is the test transaction; committing through it is the same
+    # session the client override uses.
+    tag = db_session.get(models.Tag, tag_id)
+    publ = models.Post(title="Pub", slug="vis-tag-pub", content="x", published=True)
+    publ.tags.append(tag)
+    db_session.add(publ)
+    draft = models.Post(title="Draft", slug="vis-tag-draft", content="x", published=False)
+    draft.tags.append(tag)
+    db_session.add(draft)
+    sched = models.Post(
+        title="Sched", slug="vis-tag-sched", content="x", published=True, publish_at=datetime(2099, 1, 1)
+    )
+    sched.tags.append(tag)
+    db_session.add(sched)
+    db_session.commit()
+    data = client.get("/api/tags").json()
+    row = next(t for t in data if t["id"] == tag_id)
+    assert row["post_count"] == 1
+
+
+def test_get_tag_post_count_present(client, auth_headers, db_session):
+    """Single-item GET /api/tags/{id} must report the real visible count, not
+    the schema default 0 (ISS-363)."""
+    from app import models
+
+    tag_id = client.post("/api/tags", json={"name": "ItemTag"}, headers=auth_headers).json()["id"]
+    tag = db_session.get(models.Tag, tag_id)
+    p = models.Post(title="Pub", slug="item-tag-pub", content="x", published=True)
+    p.tags.append(tag)
+    db_session.add(p)
+    db_session.commit()
+    data = client.get(f"/api/tags/{tag_id}").json()
+    assert data["post_count"] == 1

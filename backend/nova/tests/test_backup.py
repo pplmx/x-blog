@@ -246,6 +246,45 @@ class TestBackupRestore:
         assert db_session.query(models.Post).count() == 2
         assert db_session.query(models.Comment).count() == 2
 
+    def test_restore_invalidates_public_caches(self, client, db_session, auth_headers):
+        """Restoring must invalidate the public categories/posts caches (ISS-365):
+        an imported category + published post become visible immediately, not
+        after the 30-min categories / 5-min posts-list TTL."""
+        # Warm the public list caches with the (empty) blog, so stale data would
+        # otherwise be served for the whole TTL.
+        assert client.get("/api/categories").json() == []
+        assert client.get("/api/posts?limit=10").json()["items"] == []
+
+        snap = {
+            "format": "x-blog-backup",
+            "version": 1,
+            "categories": [{"name": "Restored Cat"}],
+            "tags": [],
+            "series": [],
+            "posts": [
+                {
+                    "slug": "restored-post",
+                    "title": "Restored Post",
+                    "content": "imported",
+                    "published": True,
+                    # Wire the post to the restored category so the category's
+                    # post_count reflects it (restore assigns by name).
+                    "category": "Restored Cat",
+                }
+            ],
+        }
+        response = client.post("/api/admin/backup/restore", json=snap, headers=auth_headers)
+        assert response.status_code == 200, response.text
+        counts = response.json()
+        assert counts["categories"] == 1
+        assert counts["posts_created"] == 1
+
+        cats = client.get("/api/categories").json()
+        assert [c["name"] for c in cats] == ["Restored Cat"]
+        assert cats[0]["post_count"] == 1
+        posts = client.get("/api/posts?limit=10").json()
+        assert posts["items"][0]["slug"] == "restored-post"
+
     def test_restore_rejects_unknown_format(self, client, auth_headers):
         response = client.post(
             "/api/admin/backup/restore",

@@ -21,7 +21,11 @@ def get_tag(request: Request, tag_id: int, db: Session = Depends(get_db)):
     tag = crud.get_tag(db, tag_id)
     if not tag:
         raise HTTPException(status_code=404, detail="Tag not found")
-    return conditional_json(schemas.Tag.model_validate(tag).model_dump(mode="json"), request)
+    # post_count is derived (not a column); validating the bare ORM object
+    # would leave the schema default 0 even for tags with many posts (ISS-363).
+    data = schemas.Tag.model_validate(tag).model_dump(mode="json")
+    data["post_count"] = crud.tag_visible_post_count(db, tag_id)
+    return conditional_json(data, request)
 
 
 @router.post("", response_model=schemas.Tag, status_code=status.HTTP_201_CREATED)

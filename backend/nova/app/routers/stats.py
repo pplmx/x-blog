@@ -73,11 +73,17 @@ def get_blog_stats(request: Request, db: Session = Depends(get_db)):  # noqa: AR
     # Total comments
     total_comments = db.query(func.count(models.Comment.id)).scalar() or 0
 
-    # Pending (unapproved) comments
+    # Pending comments = unapproved AND not yet reviewed. The codebase
+    # distinguishes "pending" (is_approved=False, reviewed_at NULL) from
+    # "rejected" (is_approved=False, reviewed_at set) — see get_reader_comments
+    # and approve_comment's reviewed_at stamp. Counting every is_approved=False
+    # row overcounted on this unauthenticated endpoint by folding rejected
+    # comments back into pending (deep-dive review, ISS-366).
     pending_comments = (
         db.query(func.count(models.Comment.id))
         .filter(
-            models.Comment.is_approved == False  # noqa: E712
+            models.Comment.is_approved == False,  # noqa: E712
+            models.Comment.reviewed_at.is_(None),
         )
         .scalar()
         or 0

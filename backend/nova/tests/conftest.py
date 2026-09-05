@@ -46,7 +46,7 @@ from fastapi.testclient import TestClient
 from sqlalchemy import create_engine, event, text
 from sqlalchemy.orm import Session, sessionmaker
 
-from app.cache import clear_posts_list_cache
+from app.cache import clear_categories_cache, clear_posts_list_cache, clear_tags_cache
 from app.database import Base, get_db
 from app.main import app
 
@@ -55,14 +55,21 @@ from app.main import app
 TEST_DATABASE_URL = os.environ.get("TEST_DATABASE_URL")
 
 # ---------------------------------------------------------------------------
-# The in-memory posts_list_cache survives DB-transaction rollbacks, so without
-# clearing it tests can see rolled-back data. Clear it before every test.
+# The in-memory TTL caches survive DB-transaction rollbacks, so without
+# clearing them tests can see rolled-back data. Clear every one before each
+# test: posts_list_cache was handled historically, but categories_cache and
+# tags_cache (30-min TTL) leaked stale taxonomy from earlier tests too — e.g.
+# GET /api/categories asserted empty from a test whose DB was rolled back
+# would see a previous test's cached categories. Clearing forces recompute
+# against the current (empty) transaction.
 # ---------------------------------------------------------------------------
 
 
 @pytest.fixture(autouse=True)
-def _clear_posts_list_cache():
+def _clear_public_caches():
     clear_posts_list_cache()
+    clear_categories_cache()
+    clear_tags_cache()
     yield
 
 
