@@ -87,6 +87,17 @@ describe("Admin Readers page", () => {
 		expect(wrapper.text()).toContain("没有匹配的读者");
 	});
 
+	it("gives the reader search box an accessible name (round 264 a11y)", async () => {
+		listMock.mockReturnValue(fakeListing([]));
+		const wrapper = await mountPage();
+		const search = wrapper.find('input[type="search"]');
+		// The box previously had only a placeholder as its name — invisible to
+		// screen readers. It now carries the same text as an explicit aria-label.
+		const label = search.attributes("aria-label");
+		expect(label).toBeTruthy();
+		expect(search.attributes("placeholder")).toBe(label);
+	});
+
 	it("surfaces a load error", async () => {
 		listMock.mockReturnValue(mockFetchResult(null, { error: new Error("network") }));
 		const wrapper = await mountPage();
