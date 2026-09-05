@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 267,
+  "round": 268,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-05T14:41:24+00:00",
+  "updated_at": "2026-09-05T14:51:02+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -18239,6 +18239,18 @@
       "title": "Round 267: harden autosave tests against coverage-timing flakes (TASK-280)",
       "rationale": "Continued polish/bug-fix directive. Attacked the last active task: the admin editor autosave tests mounted the page and never unmounted, so the editor's onBeforeUnmount cleanup (autosave debounce clearTimeout + window beforeunload listener teardown) never ran — a pending debounce held a handle into the previous test's fake-timer pool and beforeunload listeners accumulated. This is the load-sensitive residue behind the intermittent coverage-gate flake at expect(mockCreateAdminPost).toHaveBeenCalledTimes(1). Unmount each autosave wrapper in afterEach before vi.useRealTimers() (and the standalone in-file test in its finally) with zero assertion changes — the CRITICAL no-second-create tests still pass. Full suite 1520/1520, typecheck + lint clean.",
       "alternatives_rejected": "Splitting the autosave tests into their own file was rejected: unmounting addresses the root residue mechanism directly with a minimal diff, and a file split would not remove listeners/timers from window. Skipping/deferring was rejected — this was the graph's only remaining active task and CI stability is the verification gate the whole loop leans on."
+    },
+    "DEC-261": {
+      "id": "DEC-261",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-05T14:51:02+00:00",
+      "updated_at": "2026-09-05T14:51:02+00:00",
+      "touched_round": 268,
+      "title": "converged-idle: quality convergence reached for the polish/bug-fix directive",
+      "rationale": "Rounds 266-267 delivered the last two queued-priority items under the active polish directive: the deferred BookmarkButton dead toggle emit (ISS-361 via CHG-388) and the final active task — the admin-editor autosave coverage flake (TASK-280 via CHG-389, resolved). This round's exhaustive audit across the remaining reader/admin surfaces (ShareButtons, LanguageSwitcher, notifications inbox + prefs, post page resume/TOC, theme FOUC, CommentForm, admin dashboard, search a11y, bookmarks/editor) found no new confirmed defect above the 3.0 bar, and a survey of every fake-timer spec confirmed posts-id.spec.ts was the only page-mounting case (no latent duplicate of the flake family). VERIFY green this session: full suite 1520/1520, typecheck + lint clean, graph consistent (1510 nodes / 1412 edges), task queue empty.",
+      "alternatives_rejected": "Backend multi-worker hardening (ISS-242/243/244) remains deferred per DEC-214 — genuine but infra-scale, needs shared cache/rate-limit store decisions beyond the polish directive's scope. Inventing new UI affordances (theme keyboard shortcut etc.) would fail the value gate: no user signal, speculation not a confirmed gap. More identical-flake hardening would be manufactured work — no other file exhibits the pattern."
     }
   },
   "edges": [
