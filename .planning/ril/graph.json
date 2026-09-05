@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 264,
+  "round": 265,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-05T09:07:11+00:00",
+  "updated_at": "2026-09-05T11:05:55+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -18146,6 +18146,41 @@
       "title": "Round 264: account save-affordance + readers search a11y (ISS-358/ISS-359)",
       "rationale": "Continued polish directive. Verified and fixed the remaining two small survey findings that were cheap, unit-testable and user-visible: the account profile Save silently swallowed empty-name submits (dead affordance), and the admin readers search lacked an accessible name. Both fixed with regression tests; full suite 1520/1520, typecheck + lint clean.",
       "alternatives_rejected": "Survey #4 (my-comments pagination prev/next) and #5 (BookmarkButton dead toggle emit) left for a future round — page-level/contract changes beyond this round's small-a11y cap. The environment's classifier/subagent instability discouraged larger diffs mid-round."
+    },
+    "ISS-360": {
+      "id": "ISS-360",
+      "type": "issue",
+      "status": "resolved",
+      "version": 1,
+      "created_at": "2026-09-05T11:05:55+00:00",
+      "updated_at": "2026-09-05T11:05:55+00:00",
+      "touched_round": 264,
+      "severity": 0.5,
+      "title": "my-comments pagination lacks far-page navigation (first/last/ellipsis)",
+      "description": "The reader my-comments nav used a hand-rolled fixed 5-window with no ellipsis or first/last page affordance — on deep history the first/last pages required walking the window one page at a time, unlike every other paginated feed (archive/search/categories/tags/home use the shared paginationPages). Fixed: adopt paginationPages first/current-window/last + ellipsis tokens (round 265)."
+    },
+    "CHG-387": {
+      "id": "CHG-387",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-05T11:05:55+00:00",
+      "updated_at": "2026-09-05T11:05:55+00:00",
+      "touched_round": 264,
+      "commit": "fd1f42e",
+      "title": "my-comments pagination shared first/last + ellipsis tokens (ISS-360)"
+    },
+    "DEC-258": {
+      "id": "DEC-258",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-05T11:05:55+00:00",
+      "updated_at": "2026-09-05T11:05:55+00:00",
+      "touched_round": 264,
+      "title": "Round 265: my-comments pagination far-page navigation (ISS-360 via CHG-387)",
+      "rationale": "Continued polish directive; applied the survey's #4 finding. Deep comment history could not reach the first/last page (fixed local 5-window, unlike every other feed). Adopted the shared paginationPages tokens — the codebase's established first/current/last + ellipsis pattern — with a regression test for the 10-page far-page case. Full suite 1521/1521, typecheck + lint clean.",
+      "alternatives_rejected": "Adding explicit prev/next chevrons was rejected: no paginated reader/admin feed in this codebase renders chevrons, and the ellipsis tokens already give one-click access to page 1 and page N — consistency with the established pattern, not a new widget."
     }
   },
   "edges": [
@@ -26631,6 +26666,12 @@
       "to": "ISS-359",
       "type": "resolves",
       "created_at": "2026-09-05T09:07:11+00:00"
+    },
+    {
+      "from": "CHG-387",
+      "to": "ISS-360",
+      "type": "resolves",
+      "created_at": "2026-09-05T11:05:55+00:00"
     }
   ]
 }
