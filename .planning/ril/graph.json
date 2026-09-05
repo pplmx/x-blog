@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 261,
+  "round": 262,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-04T20:25:03+00:00",
+  "updated_at": "2026-09-05T07:29:23+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -17935,6 +17935,66 @@
       "touched_round": 261,
       "rationale": "Round 261: quality-convergence stop (QUIESCE). Rounds 256-261 closed: posts list (ISS-346/347), admin post editor payload-contract + autosave races (ISS-348..352), account page per-row single-flight markers (ISS-353), media page per-row delete markers + batch/single mutex + phantom selection (ISS-354/355), and 23 orphan issue nodes realigned to resolved. Convergence evidence: frontend suite runs SILENT green (1506 tests) — the pre-session happy-dom blob-download URL-noise is gone; lint + typecheck green; every interaction surface (posts list/editor, comments, readers, taxonomy, bookmarks, account, media, notifications, categories, post page) now carries the hardened patterns (per-row Set markers, handler re-entry guards, SPA-nav re-loads, stale-session routing, explicit error surfacing) — the remaining surfaces (archive/history/calendar/settings/tags/search/series) verified clean in the round-260/261 sweep; RIL graph consistent (1483 nodes / 1398 edges), zero active tasks above threshold, all issues resolved or decisioned (the 3 outstanding ISS-242/243/244 are consciously deferred infra caveats governed by DEC-004/DEC-014). Rejected alternatives: further rounds on the remaining polished surfaces (would be patch-stacking the same-class fixes the loop already applied — the exact round-spin the QUIESCE program exists to prevent); reopening the deferred infra notes (deliberate, documented deferrals, not actionable bugs). Reactivation only from a new operator directive (superseding decision) or a genuine new signal (new issue / material change), with a VERIFY-first re-entry.",
       "alternatives_rejected": "continue round-spinning on the remaining polished surfaces; reopen the decisioned infra deferrals"
+    },
+    "TASK-279": {
+      "id": "TASK-279",
+      "type": "task",
+      "status": "resolved",
+      "version": 3,
+      "created_at": "2026-09-04T23:55:09+00:00",
+      "updated_at": "2026-09-05T07:29:23+00:00",
+      "touched_round": 261,
+      "category": "core-feature",
+      "severity": 0.6,
+      "title": "Global / keyboard shortcut focuses the header search + kbd hint + honest empty dropdown",
+      "description": "Reader-facing search convenience (交互性/易用性): pressing / anywhere on a reader page focuses the visible HeaderSearch input (GitHub/forum convention). HeaderSearch gains a data-header-search attr + a / kbd hint chip (new headerSearch.kbdHint key), and the focused-empty dropdown renders the currently-dead headerSearch.hint text ('Type to quickly find posts' / zh) instead of a bare 'View all' button. New composable useSearchShortcut.ts + default.vue wiring. Dead key headerSearch.goToSearch removed (verified unused) + auth.py ruff format-drift fix."
+    },
+    "DEC-255": {
+      "id": "DEC-255",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-04T23:57:35+00:00",
+      "updated_at": "2026-09-04T23:57:35+00:00",
+      "touched_round": 261,
+      "title": "Round 262: /-to-search keyboard shortcut + search empty-state polish (TASK-279)",
+      "rationale": "Operator reactivates the loop (supersedes DEC-254 converged-idle) for detail polish/interactivity/usability. Deep-dive found no residual active tasks and a uniformly high-quality surface (401 handling centralized in transport, locale parity at 100%, no TODO/debug markers, 71 e2e specs). Highest-value directive-matching increment: the GitHub/forum-standard '/' shortcut focusing the header search — a real keyboard-user affordance (易用性/交互性). Wraps in two verified polish items on the same seam: a discoverable / kbd chip, and rendering the verifiably-dead headerSearch.hint key as the focused-empty-dropdown message (fixes a bare 'View all' wart + resolves the dead key). Plus two hygiene fixes folded in: remove dead headerSearch.goToSearch key, restore ruff format compliance in app/auth.py.",
+      "alternatives_rejected": "Sweeping more per-row single-flight or aria polish — that pattern has already been applied to every list/detail surface this loop owns (bookmarks/comments/readers/account/media/taxonomy/admin posts). A full browser e2e round was deferred: baseline VERIFY (backend 1304 @93.43%, frontend 1506) is already green and the change is additive to one component."
+    },
+    "TASK-280": {
+      "id": "TASK-280",
+      "type": "task",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-05T07:15:43+00:00",
+      "updated_at": "2026-09-05T07:15:43+00:00",
+      "touched_round": 261,
+      "category": "test-quality",
+      "severity": 0.45,
+      "title": "Harden admin editor autosave tests against coverage-timing flakes (posts-id.spec.ts)",
+      "description": "Under `pnpm test --coverage` (the CI gate) on a loaded runner, 1-2 of the Draft auto-save (TASK-190) tests in tests/admin/posts-id.spec.ts intermittently fail at the expect(mockCreateAdminPost).toHaveBeenCalledTimes(1) assertion (a DIFFERENT test failed on each of 3 runs). NOT caused by round-262: the editor component graph is import-disjoint from HeaderSearch/useSearchShortcut, the spec passes in isolation and with coverage off, and the failing test varies run-to-run. Suspected mechanism: fake-timer pool / mock-count interaction between autosave tests in the same file under coverage instrumentation; the per-instance script-setup autosave timers may not be isolated because wrappers are not unmounted between tests. Investigate: unmount each autosave wrapper in afterEach (triggers the existing onBeforeUnmount clearTimeout) and/or isolate fake timers per test, WITHOUT weakening the CRITICAL no-second-create assertions."
+    },
+    "CHG-380": {
+      "id": "CHG-380",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-05T07:27:22+00:00",
+      "updated_at": "2026-09-05T07:27:22+00:00",
+      "touched_round": 261,
+      "commit": "",
+      "title": "Press / focuses the header search + kbd hint + empty-dropdown hint (TASK-279)"
+    },
+    "CHG-381": {
+      "id": "CHG-381",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-05T07:27:22+00:00",
+      "updated_at": "2026-09-05T07:27:22+00:00",
+      "touched_round": 261,
+      "commit": "",
+      "title": "Ruff format compliance restore in app/auth.py"
     }
   },
   "edges": [
@@ -26360,6 +26420,18 @@
       "to": "ISS-355",
       "type": "resolves",
       "created_at": "2026-09-04T20:08:59+00:00"
+    },
+    {
+      "from": "DEC-255",
+      "to": "TASK-279",
+      "type": "governs",
+      "created_at": "2026-09-04T23:57:55+00:00"
+    },
+    {
+      "from": "CHG-380",
+      "to": "TASK-279",
+      "type": "implements",
+      "created_at": "2026-09-05T07:29:23+00:00"
     }
   ]
 }
