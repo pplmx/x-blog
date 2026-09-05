@@ -62,9 +62,23 @@ const savingProfile = ref(false);
 const profileSaved = ref(false);
 const profileFailed = ref(false);
 
+// An empty-name submit (round 264): the Save button is disabled on an empty
+// field, but Enter in a text input still submits the form regardless — so the
+// form must never swallow that submit as a silent no-op. Flag it inline.
+const nameError = ref(false);
+// Clear the inline error as soon as the reader types something back, so it
+// doesn't nag over a name that is now presentable.
+watch(displayName, () => {
+	if (displayName.value.trim()) nameError.value = false;
+});
+
 async function saveProfileName() {
 	const name = displayName.value.trim();
-	if (!name) return; // guard before touching state so Save never sticks disabled (ISS-127)
+	if (!name) {
+		nameError.value = true;
+		return; // guard before touching state so Save never sticks disabled (ISS-127)
+	}
+	nameError.value = false;
 	savingProfile.value = true;
 	profileSaved.value = false;
 	profileFailed.value = false;
@@ -620,6 +634,13 @@ function shortEndpoint(endpoint: string): string {
               maxlength="50"
               class="max-w-sm rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-2 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
+            <!-- Save stays enabled on an empty name (ISS-127: never a stuck-
+                 disabled control), so submitting nothing must be explained, not
+                 silently swallowed. Click or Enter on the empty field shows the
+                 reason inline (round 264). -->
+            <span v-if="nameError" role="alert" class="text-sm text-red-500 dark:text-red-400">
+              {{ t('account.profile.nameRequired') }}
+            </span>
           </label>
           <span class="text-xs text-gray-400">{{ t('account.profile.emailNote') }}{{ reader?.email }}</span>
           <div class="flex items-center gap-3">

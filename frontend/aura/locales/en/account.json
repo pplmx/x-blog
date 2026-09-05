@@ -23,7 +23,8 @@
 			"emailNote": "Sign-in email (cannot be changed): ",
 			"save": "Save",
 			"saved": "Saved",
-			"saveFailed": "Couldn't save — please try again"
+			"saveFailed": "Couldn't save — please try again",
+			"nameRequired": "Display name can't be empty"
 		},
 		"password": {
 			"title": "Change password",

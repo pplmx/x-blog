@@ -423,6 +423,34 @@ describe("Account settings page", () => {
 		expect(mockUpdateMyProfile).toHaveBeenCalledWith({ display_name: "NewName" });
 	});
 
+	it("explains an empty-name submit instead of silently doing nothing (round 264)", async () => {
+		// Save stays enabled on an empty field (ISS-127), so a click or Enter
+		// with nothing typed used to be a silent no-op with zero feedback. The
+		// form must surface the reason inline and recover once the reader types.
+		isAuthenticated.value = true;
+		mockUpdateMyProfile.mockResolvedValue({
+			id: 1,
+			email: "r@example.com",
+			display_name: "X",
+		});
+		const wrapper = await mountPage();
+
+		const input = wrapper.get("input[type='text']");
+		await input.setValue("");
+		await wrapper.get("form").trigger("submit");
+		await flushPromises();
+
+		// No API call, and the required-name message appears (not a silent no-op).
+		expect(mockUpdateMyProfile).not.toHaveBeenCalled();
+		const alert = wrapper.find('[role="alert"]');
+		expect(alert.text()).toBe("显示名称不能为空");
+
+		// Typing a name clears the inline error so a subsequent save is clean.
+		await input.setValue("NewName");
+		await flushPromises();
+		expect(wrapper.find('[role="alert"]').exists()).toBe(false);
+	});
+
 	it("rejects a short new password without calling the API", async () => {
 		isAuthenticated.value = true;
 		const wrapper = await mountPage();

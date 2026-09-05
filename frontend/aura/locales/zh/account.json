@@ -23,7 +23,8 @@
 			"emailNote": "登录邮箱（不可修改）：",
 			"save": "保存",
 			"saved": "已保存",
-			"saveFailed": "保存失败，请稍后再试"
+			"saveFailed": "保存失败，请稍后再试",
+			"nameRequired": "显示名称不能为空"
 		},
 		"password": {
 			"title": "修改密码",
