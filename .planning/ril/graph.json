@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 263,
+  "round": 264,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-05T08:31:57+00:00",
+  "updated_at": "2026-09-05T09:07:11+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -18088,6 +18088,64 @@
       "title": "Round 263: fix the two highest-ranked survey bugs (media-picker prefetch, history clear race)",
       "rationale": "Continued operator polish directive. Applied the frontend survey's two top concrete findings (ISS-356/ISS-357): the always-mounted media picker prefetched its 60-row list twice on every editor load (perf/API-load, contradicting its own lazy comment), and the history Clear button could be undone by an in-flight initial load (stale-response race of the ISS-128 class clear() bypassed). Both verified in code, fixed, regression-tested (full suite 1518/1518, typecheck + lint clean). Also remediated a round-262 CI lint-gate miss (biome import collapse) the round-262 lint run predated.",
       "alternatives_rejected": "Defensive hardening of the reserved-flake autosave tests is queued as TASK-280 (deferred: environment was too loaded for a reliable diagnosis under coverage; evidence captured). Remaining survey findings (#3 account save-on-empty, #4 my-comments pagination nav, #5 BookmarkButton dead emit, #6 readers search a11y) recorded for later rounds rather than rushed this round."
+    },
+    "ISS-358": {
+      "id": "ISS-358",
+      "type": "issue",
+      "status": "resolved",
+      "version": 1,
+      "created_at": "2026-09-05T09:07:10+00:00",
+      "updated_at": "2026-09-05T09:07:10+00:00",
+      "touched_round": 263,
+      "severity": 0.45,
+      "title": "Account display-name Save silently no-ops on an empty field",
+      "description": "saveProfileName early-returned on an empty trimmed name with the Save button enabled, so a click or Enter submit produced zero feedback (dead affordance). Fixed: the form now shows an inline nameRequired error (role=alert) on an empty submit and clears it once the reader types (round 264). Button kept enabled per ISS-127."
+    },
+    "ISS-359": {
+      "id": "ISS-359",
+      "type": "issue",
+      "status": "resolved",
+      "version": 1,
+      "created_at": "2026-09-05T09:07:10+00:00",
+      "updated_at": "2026-09-05T09:07:10+00:00",
+      "touched_round": 263,
+      "severity": 0.4,
+      "title": "Admin readers search input has no accessible name (placeholder only)",
+      "description": "The reader-search on admin/readers.vue was named solely by its placeholder — invisible to screen readers, the last search input without an aria-label (admin/categories already had one). Fixed with aria-label = searchPlaceholder (round 264)."
+    },
+    "CHG-385": {
+      "id": "CHG-385",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-05T09:07:10+00:00",
+      "updated_at": "2026-09-05T09:07:10+00:00",
+      "touched_round": 263,
+      "commit": "3350c74",
+      "title": "Account empty-name submit inline error (ISS-358)"
+    },
+    "CHG-386": {
+      "id": "CHG-386",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-05T09:07:10+00:00",
+      "updated_at": "2026-09-05T09:07:10+00:00",
+      "touched_round": 263,
+      "commit": "afc4d19",
+      "title": "Admin readers search aria-label (ISS-359)"
+    },
+    "DEC-257": {
+      "id": "DEC-257",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-05T09:07:11+00:00",
+      "updated_at": "2026-09-05T09:07:11+00:00",
+      "touched_round": 263,
+      "title": "Round 264: account save-affordance + readers search a11y (ISS-358/ISS-359)",
+      "rationale": "Continued polish directive. Verified and fixed the remaining two small survey findings that were cheap, unit-testable and user-visible: the account profile Save silently swallowed empty-name submits (dead affordance), and the admin readers search lacked an accessible name. Both fixed with regression tests; full suite 1520/1520, typecheck + lint clean.",
+      "alternatives_rejected": "Survey #4 (my-comments pagination prev/next) and #5 (BookmarkButton dead toggle emit) left for a future round — page-level/contract changes beyond this round's small-a11y cap. The environment's classifier/subagent instability discouraged larger diffs mid-round."
     }
   },
   "edges": [
@@ -26561,6 +26619,18 @@
       "to": "TASK-280",
       "type": "governs",
       "created_at": "2026-09-05T08:31:57+00:00"
+    },
+    {
+      "from": "CHG-385",
+      "to": "ISS-358",
+      "type": "resolves",
+      "created_at": "2026-09-05T09:07:10+00:00"
+    },
+    {
+      "from": "CHG-386",
+      "to": "ISS-359",
+      "type": "resolves",
+      "created_at": "2026-09-05T09:07:11+00:00"
     }
   ]
 }
