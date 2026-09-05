@@ -10,10 +10,7 @@
 
 import { mount } from "@vue/test-utils";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import {
-	handleGlobalSearchShortcut,
-	useSearchShortcut,
-} from "../../composables/useSearchShortcut";
+import { handleGlobalSearchShortcut, useSearchShortcut } from "../../composables/useSearchShortcut";
 
 /** Append a `[data-header-search]` input. The visibility filter uses
  *  getClientRects(), which happy-dom cannot reflect (no layout): a real browser
