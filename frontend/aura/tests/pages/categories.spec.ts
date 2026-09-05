@@ -61,6 +61,11 @@ const catFollowsState = {
 	total: 0,
 };
 
+// Captured by the useFetch mock for the /api/posts URL — assert the ISS-368
+// enabled-gate (no posts fetch on the all-categories view; fire once a category
+// is picked).
+let lastPostsEnabled: unknown;
+
 async function mountCategoriesPage({
 	categories = mockCategories,
 	posts = mockCategoryPosts,
@@ -109,7 +114,7 @@ async function mountCategoriesPage({
 
 	vi.stubGlobal(
 		"useFetch",
-		vi.fn((url: string | (() => string) | { value: string }) => {
+		vi.fn((url: string | (() => string) | { value: string }, opts: { enabled?: unknown } = {}) => {
 			const urlStr =
 				typeof url === "function" ? url() : typeof url === "string" ? url : (url.value ?? "");
 			if (urlStr.includes("/api/categories") && !urlStr.includes("/posts")) {
@@ -121,6 +126,11 @@ async function mountCategoriesPage({
 				};
 			}
 			if (urlStr.includes("/api/posts")) {
+				// enabled arrives as a Vue computed ref (the page passes
+				// { enabled: hasCategory }) — resolve it to its boolean value.
+				lastPostsEnabled = Boolean(
+					(opts.enabled as { value?: unknown } | undefined)?.value ?? opts.enabled,
+				);
 				return {
 					data: ref(posts),
 					pending: ref(pending),
@@ -170,6 +180,19 @@ async function mountCategoriesPage({
 describe("Categories Page", () => {
 	afterEach(() => {
 		vi.restoreAllMocks();
+		lastPostsEnabled = undefined;
+	});
+
+	describe("Posts fetch gating (ISS-368)", () => {
+		it("does not enable the /api/posts fetch on the all-categories view", async () => {
+			await mountCategoriesPage({ routeQuery: {} });
+			expect(lastPostsEnabled).toBe(false);
+		});
+
+		it("enables the /api/posts fetch once a category is selected", async () => {
+			await mountCategoriesPage({ routeQuery: { category_id: "1" } });
+			expect(lastPostsEnabled).toBe(true);
+		});
 	});
 
 	describe("All categories view (no category_id)", () => {

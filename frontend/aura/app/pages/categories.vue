@@ -31,6 +31,14 @@ const postsFilters = computed(() => ({
 	page: page.value > 1 ? page.value : undefined,
 }));
 
+// Only fetch posts when a category is actually selected — the all-categories
+// view renders no post list. `enabled: false` makes Nuxt skip the request
+// without firing it, so the unauth'd /api/posts call on the cloud view no
+// longer burns a rate-limit slot, and a posts failure can no longer brick the
+// correctly-loaded category cloud (same pattern as archive.vue's hasPeriod
+// gate and tags.vue's hasTag, deep-dive ISS-368).
+const hasCategory = computed(() => !!categoryId.value);
+
 const {
 	data: categories,
 	pending: categoriesPending,
@@ -42,7 +50,7 @@ const {
 	pending: postsPending,
 	error: postsError,
 	refresh: refreshPosts,
-} = await usePosts(postsFilters);
+} = await usePosts(postsFilters, { enabled: hasCategory });
 const pending = computed(() => categoriesPending.value || postsPending.value);
 // A failed fetch must NOT fall through to the empty state and be mistaken for
 // "this category simply has no posts" — surface it as an error with a retry.

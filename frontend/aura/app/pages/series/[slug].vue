@@ -44,9 +44,20 @@ const signedIn = computed(
 );
 const progress = ref<SeriesProgress | null>(null);
 
+// Guard against stale responses across /series/a -> /series/b SPA navigation:
+// a slow response for the previous series must not overwrite the new series'
+// progress once its own (faster) response lands. Same monotonic-seq pattern as
+// comments.vue loadSeq / admin comments listRequestSeq (deep-dive, ISS-367).
+// Declared above the keyed watch so the immediate callback (which calls
+// loadProgress) never touches a TDZ binding.
+let progressSeq = 0;
+
 const progressPercent = computed(() => {
 	if (!progress.value || progress.value.total <= 0) return 0;
-	return Math.round((progress.value.read_count / progress.value.total) * 100);
+	// Clamp to 100: read_count can exceed total when a post leaves the series
+	// (reordered/removed episodes), and the bar must never overflow its track
+	// (same guard as index.vue seriesProgressPercent).
+	return Math.min(100, Math.round((progress.value.read_count / progress.value.total) * 100));
 });
 
 // Scoped RSS feed (DEC-130/TASK-177): subscribe to just this series.
@@ -111,10 +122,13 @@ async function loadFollowState() {
 /** Load the reader's progress through this series ($fetch seam, TASK-220). */
 async function loadProgress() {
 	if (!signedIn.value || !series.value?.slug) return;
+	const seq = ++progressSeq; // invalidate any in-flight older series' request
 	try {
-		progress.value = await getReaderSeriesProgress(series.value.slug);
+		const res = await getReaderSeriesProgress(series.value.slug);
+		if (seq !== progressSeq) return; // stale — a newer series is in flight
+		progress.value = res;
 	} catch {
-		progress.value = null;
+		if (seq === progressSeq) progress.value = null;
 	}
 }
 

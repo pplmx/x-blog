@@ -30,6 +30,14 @@ const postsFilters = computed(() => ({
 	page: page.value > 1 ? page.value : undefined,
 }));
 
+// Only fetch posts when a tag is actually selected — the all-tags view renders
+// no post list. `enabled: false` makes Nuxt skip the request without firing it,
+// so the unauth'd /api/posts call on the cloud view no longer burns a
+// rate-limit slot, and a posts failure can no longer brick the correctly-loaded
+// tag cloud (its pending/error used to gate the whole page; same pattern as
+// archive.vue's hasPeriod gate, deep-dive ISS-368).
+const hasTag = computed(() => !!tagId.value);
+
 const {
 	data: tags,
 	pending: tagsPending,
@@ -41,7 +49,7 @@ const {
 	pending: postsPending,
 	error: postsError,
 	refresh: refreshPosts,
-} = await usePosts(postsFilters);
+} = await usePosts(postsFilters, { enabled: hasTag });
 const pending = computed(() => tagsPending.value || postsPending.value);
 // A failed fetch must NOT fall through to the empty state and be mistaken for
 // "this tag simply has no posts" — surface it as an error with a retry.

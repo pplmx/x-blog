@@ -62,16 +62,24 @@ const h = vi.hoisted(() => {
 		followSeries,
 		unfollowSeries,
 		setNotify,
+		// Injected with a real Vue ref after imports: the series `data` the
+		// useSeriesBySlug mock returns, so a test can SPA-navigate the page's
+		// id-watch by swapping its value (the stale-response race, ISS-367).
+		seriesRef: null as unknown as { value: typeof mockSeries | null },
 	};
 });
 
 vi.mock("../../../api/public/series", () => ({
 	useSeriesBySlug: () => ({
-		data: ref(h.mockSeries),
+		data: h.seriesRef,
 		pending: ref(false),
 		error: ref(null),
 	}),
 }));
+
+// Must be assigned before the page import below (which first triggers the mock
+// factory); the ref is what the tests mutate to drive the page's series watch.
+h.seriesRef = ref(h.mockSeries);
 vi.mock("../../../api/reader/history", () => ({
 	getReaderSeriesProgress: h.fetchProgress,
 }));
@@ -110,6 +118,7 @@ describe("Series reading progress (TASK-173)", () => {
 	beforeEach(() => {
 		window.localStorage.setItem("reader_token", "token");
 		h.progress.value = null;
+		h.seriesRef.value = h.mockSeries;
 		h.fetchProgress.mockClear();
 		h.fetchFollows.mockClear();
 		h.followSeries.mockClear();
@@ -226,5 +235,65 @@ describe("Series reading progress (TASK-173)", () => {
 		expect(h.unfollowSeries).not.toHaveBeenCalled();
 		expect(wrapper.text()).toContain("通知已关");
 		expect(wrapper.text()).toContain("已关注新篇"); // still followed
+	});
+
+	it("clamps the progress bar to 100% when read_count exceeds total (ISS-369)", async () => {
+		// A post left the series after being read: read_count > total.
+		h.progress.value = {
+			series_slug: "tutorial",
+			series_title: "Tutorial",
+			total: 2,
+			read_count: 5,
+			completed: true,
+			read_post_ids: [1, 2],
+			next_slug: null,
+		};
+		const wrapper = await mountPage();
+		// Unclamped this would be 250% — the bar must cap at the track width.
+		expect(
+			wrapper.find(".bg-gradient-to-r.from-indigo-500.to-violet-500").attributes("style"),
+		).toContain("100%");
+	});
+
+	it("drops a stale progress response when a newer series is in flight (ISS-367)", async () => {
+		// Slow (older) request for the first series — stays in flight.
+		let resolveStale!: (v: unknown) => void;
+		h.fetchProgress.mockImplementationOnce(
+			() =>
+				new Promise((res) => {
+					resolveStale = res;
+				}),
+		);
+		const wrapper = await mountPage(); // loadProgress #1 in flight, sequence 1
+
+		// SPA-navigate to a second series: same component, id changes → the
+		// keyed watch refires loadProgress (#2, fast) with the new progress.
+		h.seriesRef.value = { ...h.mockSeries, id: 2, slug: "other", title: "Other Series" };
+		h.progress.value = {
+			series_slug: "other",
+			series_title: "Other Series",
+			total: 2,
+			read_count: 2,
+			completed: true,
+			read_post_ids: [1, 2],
+			next_slug: null,
+		};
+		await flushPromises();
+		expect(wrapper.text()).toContain("已读 2 / 2");
+
+		// The OLD response lands late with the first series' stale progress —
+		// the seq guard must drop it, not clobber the live series.
+		resolveStale({
+			series_slug: "tutorial",
+			series_title: "Tutorial",
+			total: 2,
+			read_count: 1,
+			completed: false,
+			read_post_ids: [1],
+			next_slug: "ep-b",
+		});
+		await flushPromises();
+		expect(wrapper.text()).toContain("已读 2 / 2");
+		expect(wrapper.text()).not.toContain("已读 1 / 2");
 	});
 });

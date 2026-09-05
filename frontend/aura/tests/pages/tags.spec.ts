@@ -44,6 +44,10 @@ const mockTagPosts = {
 	},
 };
 
+// Captured by the useFetch mock for the /api/posts URL — assert the ISS-368
+// enabled-gate (no posts fetch on the all-tags view; fire once a tag is picked).
+let lastPostsEnabled: unknown;
+
 const mockEmptyPosts = {
 	items: [],
 	pagination: {
@@ -86,7 +90,7 @@ async function mountTagsPage({
 	// when route query params change).
 	vi.stubGlobal(
 		"useFetch",
-		vi.fn((url: string | (() => string) | { value: string }) => {
+		vi.fn((url: string | (() => string) | { value: string }, opts: { enabled?: unknown } = {}) => {
 			const urlStr =
 				typeof url === "function" ? url() : typeof url === "string" ? url : (url.value ?? "");
 			if (urlStr.includes("/api/tags") && !urlStr.includes("/posts")) {
@@ -98,6 +102,11 @@ async function mountTagsPage({
 				};
 			}
 			if (urlStr.includes("/api/posts")) {
+				// enabled arrives as a Vue computed ref (the page passes
+				// { enabled: hasTag }) — resolve it to its boolean value.
+				lastPostsEnabled = Boolean(
+					(opts.enabled as { value?: unknown } | undefined)?.value ?? opts.enabled,
+				);
 				return {
 					data: ref(posts),
 					pending: ref(pending),
@@ -148,6 +157,19 @@ async function mountTagsPage({
 describe("Tags Page", () => {
 	afterEach(() => {
 		vi.restoreAllMocks();
+		lastPostsEnabled = undefined;
+	});
+
+	describe("Posts fetch gating (ISS-368)", () => {
+		it("does not enable the /api/posts fetch on the all-tags view", async () => {
+			await mountTagsPage({ routeQuery: {} });
+			expect(lastPostsEnabled).toBe(false);
+		});
+
+		it("enables the /api/posts fetch once a tag is selected", async () => {
+			await mountTagsPage({ routeQuery: { tag_id: "1" } });
+			expect(lastPostsEnabled).toBe(true);
+		});
 	});
 
 	describe("All tags view (no tag_id)", () => {
