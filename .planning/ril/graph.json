@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 266,
+  "round": 267,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-05T14:07:27+00:00",
+  "updated_at": "2026-09-05T14:41:24+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -17964,11 +17964,11 @@
     "TASK-280": {
       "id": "TASK-280",
       "type": "task",
-      "status": "active",
-      "version": 1,
+      "status": "resolved",
+      "version": 2,
       "created_at": "2026-09-05T07:15:43+00:00",
-      "updated_at": "2026-09-05T07:15:43+00:00",
-      "touched_round": 262,
+      "updated_at": "2026-09-05T14:40:18+00:00",
+      "touched_round": 267,
       "category": "test-quality",
       "severity": 0.45,
       "title": "Harden admin editor autosave tests against coverage-timing flakes (posts-id.spec.ts)",
@@ -18216,6 +18216,29 @@
       "touched_round": 266,
       "commit": "4384f86",
       "title": "BookmarkButton drops its dead toggle emit (ISS-361)"
+    },
+    "CHG-389": {
+      "id": "CHG-389",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-05T14:40:18+00:00",
+      "updated_at": "2026-09-05T14:40:18+00:00",
+      "touched_round": 267,
+      "commit": "5536f58",
+      "title": "Unmount autosave editor wrappers in afterEach (TASK-280 coverage-flake isolation)"
+    },
+    "DEC-260": {
+      "id": "DEC-260",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-05T14:41:24+00:00",
+      "updated_at": "2026-09-05T14:41:24+00:00",
+      "touched_round": 267,
+      "title": "Round 267: harden autosave tests against coverage-timing flakes (TASK-280)",
+      "rationale": "Continued polish/bug-fix directive. Attacked the last active task: the admin editor autosave tests mounted the page and never unmounted, so the editor's onBeforeUnmount cleanup (autosave debounce clearTimeout + window beforeunload listener teardown) never ran — a pending debounce held a handle into the previous test's fake-timer pool and beforeunload listeners accumulated. This is the load-sensitive residue behind the intermittent coverage-gate flake at expect(mockCreateAdminPost).toHaveBeenCalledTimes(1). Unmount each autosave wrapper in afterEach before vi.useRealTimers() (and the standalone in-file test in its finally) with zero assertion changes — the CRITICAL no-second-create tests still pass. Full suite 1520/1520, typecheck + lint clean.",
+      "alternatives_rejected": "Splitting the autosave tests into their own file was rejected: unmounting addresses the root residue mechanism directly with a minimal diff, and a file split would not remove listeners/timers from window. Skipping/deferring was rejected — this was the graph's only remaining active task and CI stability is the verification gate the whole loop leans on."
     }
   },
   "edges": [
@@ -26719,6 +26742,12 @@
       "to": "ISS-361",
       "type": "resolves",
       "created_at": "2026-09-05T14:07:27+00:00"
+    },
+    {
+      "from": "CHG-389",
+      "to": "TASK-280",
+      "type": "implements",
+      "created_at": "2026-09-05T14:40:18+00:00"
     }
   ]
 }
