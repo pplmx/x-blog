@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 265,
+  "round": 266,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-05T11:05:55+00:00",
+  "updated_at": "2026-09-05T14:07:27+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -22,7 +22,7 @@
       "version": 1,
       "created_at": "2026-08-06T13:23:41+00:00",
       "updated_at": "2026-08-06T13:23:41+00:00",
-      "touched_round": 256,
+      "touched_round": 266,
       "title": "frontend-aura",
       "description": "Nuxt 4 Vue 3 TypeScript frontend at frontend/aura; composables; admin pages; e2e Playwright; biome lint"
     },
@@ -18181,6 +18181,41 @@
       "title": "Round 265: my-comments pagination far-page navigation (ISS-360 via CHG-387)",
       "rationale": "Continued polish directive; applied the survey's #4 finding. Deep comment history could not reach the first/last page (fixed local 5-window, unlike every other feed). Adopted the shared paginationPages tokens — the codebase's established first/current/last + ellipsis pattern — with a regression test for the 10-page far-page case. Full suite 1521/1521, typecheck + lint clean.",
       "alternatives_rejected": "Adding explicit prev/next chevrons was rejected: no paginated reader/admin feed in this codebase renders chevrons, and the ellipsis tokens already give one-click access to page 1 and page N — consistency with the established pattern, not a new widget."
+    },
+    "ISS-361": {
+      "id": "ISS-361",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-05T13:55:24+00:00",
+      "updated_at": "2026-09-05T14:07:27+00:00",
+      "touched_round": 266,
+      "severity": 0.4,
+      "title": "BookmarkButton emits an unused `toggle` event (dead affordance)",
+      "description": "The component declared and emitted a `toggle` event with the postId, but no consumer binds @toggle: PostCard and the post detail page both render it with only :post, relying on the shared useBookmarks/useBookmarkSync reactive singletons for state. The only other reference was a test asserting the emit. Dead contract surface (survey finding #5, deferred from round 264). Removed the emit type/call + the obsolete test (round 266)."
+    },
+    "DEC-259": {
+      "id": "DEC-259",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-05T13:59:22+00:00",
+      "updated_at": "2026-09-05T13:59:22+00:00",
+      "touched_round": 266,
+      "title": "Round 266: remove BookmarkButton dead toggle emit (ISS-361)",
+      "rationale": "Continued polish directive. Applied the survey's #5 finding deferred from round 264: BookmarkButton declared and emitted a `toggle` event that no consumer binds (PostCard and the post page state flows through the shared useBookmarks/useBookmarkSync singletons, not events). Removed the emit type, the emit call, and the test that asserted the dead contract. Full suite 1520/1520, typecheck + lint clean.",
+      "alternatives_rejected": "Keeping the emit as 'future public API' was rejected — there is no signal a consumer needs it, the parents already react to state via the singletons, and the survey explicitly flagged it as dead affordance."
+    },
+    "CHG-388": {
+      "id": "CHG-388",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-05T14:07:27+00:00",
+      "updated_at": "2026-09-05T14:07:27+00:00",
+      "touched_round": 266,
+      "commit": "4384f86",
+      "title": "BookmarkButton drops its dead toggle emit (ISS-361)"
     }
   },
   "edges": [
@@ -26672,6 +26707,18 @@
       "to": "ISS-360",
       "type": "resolves",
       "created_at": "2026-09-05T11:05:55+00:00"
+    },
+    {
+      "from": "ISS-361",
+      "to": "COMP-002",
+      "type": "located_in",
+      "created_at": "2026-09-05T14:05:24+00:00"
+    },
+    {
+      "from": "CHG-388",
+      "to": "ISS-361",
+      "type": "resolves",
+      "created_at": "2026-09-05T14:07:27+00:00"
     }
   ]
 }
