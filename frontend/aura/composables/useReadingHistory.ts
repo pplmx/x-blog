@@ -189,6 +189,16 @@ export function useReadingHistory() {
 
 	/** Clear the history (and stats) from the active source (server + local both cleared). */
 	async function clear(): Promise<void> {
+		// Invalidate any in-flight load()/loadMore() FIRST — the same monotonic
+		// guard those two use (ISS-128), which clear() previously bypassed. A
+		// Clear clicked while the initial onMounted load is still running would
+		// otherwise be overwritten by that stale pre-clear response: the guarded
+		// seq is unchanged, so the old list resurrects beneath the "cleared"
+		// confirmation while the reader watches (destructive-action race).
+		loadSeq += 1;
+		loading.value = false;
+		loadingMore.value = false;
+		loadMoreError.value = false;
 		if (serverEnabled.value) {
 			try {
 				await clearReaderHistory();

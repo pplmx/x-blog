@@ -180,6 +180,41 @@ describe("useReadingHistory (TASK-170)", () => {
 		expect(stats.value).toBeNull();
 	});
 
+	it("clear invalidates an in-flight load, so its stale response cannot resurrect the cleared list", async () => {
+		// Round 263: the history page's Clear button is reachable while the
+		// initial onMounted load() is still in flight (it renders during the
+		// skeleton). clear() must bump the monotonic guard (ISS-128) that
+		// load()/loadMore() use — otherwise the slow, pre-clear response passes
+		// the stale check and repopulates the list the reader just deleted.
+		authRef.value = true;
+		let resolveHistory!: (v: unknown) => void;
+		fetchHistory.mockReturnValue(
+			new Promise((r) => {
+				resolveHistory = r;
+			}),
+		);
+		fetchStats.mockResolvedValue({ total_posts: 1, total_reading_minutes: 2 });
+		const { load, clear, history, loading } = useReadingHistory();
+
+		const inFlight = load(); // not awaited — the request is still running
+		expect(loading.value).toBe(true);
+		await clear(); // reader clears while the load is unresolved
+		expect(history.value).toEqual([]);
+
+		// The stale pre-clear response lands AFTER the clear…
+		resolveHistory({
+			items: [{ id: 1, title: "Old A", slug: "old-a", viewed_at: "2024-01-15T10:30:00Z" }],
+			total: 1,
+			page: 1,
+			limit: 100,
+		});
+		await inFlight;
+
+		// …and must NOT repopulate the list, nor leave the spinner stuck.
+		expect(history.value).toEqual([]);
+		expect(loading.value).toBe(false);
+	});
+
 	it("exposes serverEnabled reflecting auth", () => {
 		const a = useReadingHistory();
 		expect(a.serverEnabled.value).toBe(false);
