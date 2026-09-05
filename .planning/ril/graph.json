@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 268,
+  "round": 270,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-05T14:51:02+00:00",
+  "updated_at": "2026-09-05T22:07:03+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -11,7 +11,7 @@
       "version": 1,
       "created_at": "2026-08-06T13:23:41+00:00",
       "updated_at": "2026-08-06T13:23:41+00:00",
-      "touched_round": 248,
+      "touched_round": 269,
       "title": "backend-nova",
       "description": "FastAPI Python 3.14 backend at backend/nova; SQLAlchemy ORM; routers in app/routers, crud.py business logic, 656 lines"
     },
@@ -22,7 +22,7 @@
       "version": 1,
       "created_at": "2026-08-06T13:23:41+00:00",
       "updated_at": "2026-08-06T13:23:41+00:00",
-      "touched_round": 266,
+      "touched_round": 269,
       "title": "frontend-aura",
       "description": "Nuxt 4 Vue 3 TypeScript frontend at frontend/aura; composables; admin pages; e2e Playwright; biome lint"
     },
@@ -18247,10 +18247,206 @@
       "version": 1,
       "created_at": "2026-09-05T14:51:02+00:00",
       "updated_at": "2026-09-05T14:51:02+00:00",
-      "touched_round": 268,
+      "touched_round": 269,
       "title": "converged-idle: quality convergence reached for the polish/bug-fix directive",
       "rationale": "Rounds 266-267 delivered the last two queued-priority items under the active polish directive: the deferred BookmarkButton dead toggle emit (ISS-361 via CHG-388) and the final active task — the admin-editor autosave coverage flake (TASK-280 via CHG-389, resolved). This round's exhaustive audit across the remaining reader/admin surfaces (ShareButtons, LanguageSwitcher, notifications inbox + prefs, post page resume/TOC, theme FOUC, CommentForm, admin dashboard, search a11y, bookmarks/editor) found no new confirmed defect above the 3.0 bar, and a survey of every fake-timer spec confirmed posts-id.spec.ts was the only page-mounting case (no latent duplicate of the flake family). VERIFY green this session: full suite 1520/1520, typecheck + lint clean, graph consistent (1510 nodes / 1412 edges), task queue empty.",
       "alternatives_rejected": "Backend multi-worker hardening (ISS-242/243/244) remains deferred per DEC-214 — genuine but infra-scale, needs shared cache/rate-limit store decisions beyond the polish directive's scope. Inventing new UI affordances (theme keyboard shortcut etc.) would fail the value gate: no user signal, speculation not a confirmed gap. More identical-flake hardening would be manufactured work — no other file exhibits the pattern."
+    },
+    "ISS-362": {
+      "id": "ISS-362",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-05T18:59:09+00:00",
+      "updated_at": "2026-09-05T22:06:41+00:00",
+      "touched_round": 269,
+      "title": "Public category/tag post_count counts drafts and scheduled posts",
+      "description": "get_categories (crud.py:530-536) counts posts by category_id without the published+publish_at guard; get_tags (crud.py:615-619) groups raw post_tags rows likewise. Served by unauthenticated /api/categories and /api/tags (cached 30 min). Anonymous visitors learn draft/scheduled existence counts, and the counts never match what GET /api/posts lists (which filters published+effective publish)."
+    },
+    "ISS-363": {
+      "id": "ISS-363",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-05T19:02:44+00:00",
+      "updated_at": "2026-09-05T22:06:41+00:00",
+      "touched_round": 269,
+      "title": "GET /api/categories/{id} and /api/tags/{id} always return post_count: 0",
+      "description": "Single-item handlers (routers/categories.py:19-24, routers/tags.py:19-24) validate the ORM object via schemas.Category/Tag which have post_count: int = 0 default and from_attributes=True; post_count is computed only in get_tags/get_categories list paths. A tag detail endpoint always reports 0 posts regardless of real count."
+    },
+    "ISS-364": {
+      "id": "ISS-364",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-05T19:02:44+00:00",
+      "updated_at": "2026-09-05T22:06:41+00:00",
+      "touched_round": 269,
+      "title": "Renaming a category/tag leaves cached post list + sitemap showing the old name",
+      "description": "update_category/update_tag clear only categories_cache/tags_cache, not posts_list_cache/feed_cache. PostList embeds category/tag names and the sitemap embeds them, so a rename is served stale (old name) for up to 5 min on /api/posts payloads + sitemap."
+    },
+    "ISS-365": {
+      "id": "ISS-365",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-05T19:02:44+00:00",
+      "updated_at": "2026-09-05T22:06:41+00:00",
+      "touched_round": 269,
+      "title": "restore_backup never invalidates any public cache",
+      "description": "restore_backup creates/updates posts, categories, tags, series and commits (crud.py:3428-3569) but never clears posts_list_cache/categories_cache/tags_cache/series_cache/feed_cache; restored content can be invisible for up to 30 min (categories/tags) or 5 min (posts/feeds)."
+    },
+    "ISS-366": {
+      "id": "ISS-366",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-05T19:02:44+00:00",
+      "updated_at": "2026-09-05T22:06:41+00:00",
+      "touched_round": 269,
+      "title": "stats pending_comments counts rejected comments",
+      "description": "app/routers/stats.py:77-84 counts is_approved == False with no reviewed_at check; codebase pending = is_approved False AND reviewed_at IS NULL (see get_reader_comments crud.py:2830-2841). Rejected comments (reviewed_at set) overcount the public unauthenticated /api/stats pending_comments."
+    },
+    "ISS-367": {
+      "id": "ISS-367",
+      "type": "issue",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-05T19:05:48+00:00",
+      "updated_at": "2026-09-05T19:05:48+00:00",
+      "touched_round": 269,
+      "title": "series/[slug].vue reading-progress fetch has no stale-response guard",
+      "description": "loadProgress (series/[slug].vue:112-119) writes getReaderSeriesProgress(series.value.slug) unconditionally. SPA navigation /series/a -> /series/b reuses the component; if a's slower response resolves last it clobbers b's progress (read count, bar, continue-link pointing into a's episodes). Every other async handler here and elsewhere guards with a monotonic seq (comments.vue loadSeq, CommentList refreshSeq, useTagFollowStore generation)."
+    },
+    "ISS-368": {
+      "id": "ISS-368",
+      "type": "issue",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-05T19:05:48+00:00",
+      "updated_at": "2026-09-05T19:05:48+00:00",
+      "touched_round": 269,
+      "title": "tags.vue/categories.vue fire an unconditional /api/posts fetch on the all-items view that is never rendered",
+      "description": "usePosts(postsFilters) has no enabled gate: /tags or /categories (no tag_id/category_id selected) fetches /api/posts page 1, whose pending/error still gate the whole page (template v-if=pending/v-else-if=error before the !xxxId cloud branch). A 429 or error bricks the correctly-loaded tag/category cloud; even success burns a rate-limit slot per visit. Contrast archive.vue which uses enabled: hasPeriod. Both files also embed post_count from the (buggy) backend counts."
+    },
+    "ISS-369": {
+      "id": "ISS-369",
+      "type": "issue",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-05T19:05:48+00:00",
+      "updated_at": "2026-09-05T19:05:48+00:00",
+      "touched_round": 269,
+      "title": "series/[slug].vue progressPercent not clamped to 100",
+      "description": "series/[slug].vue:47-50 progressPercent lacks the Math.min(100, ...) the identical helper uses on index.vue:147-150. read_count can exceed total when a post leaves a series; the bar renders >100% width overflowing its track at lines 310-314."
+    },
+    "ISS-370": {
+      "id": "ISS-370",
+      "type": "issue",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-05T19:05:48+00:00",
+      "updated_at": "2026-09-05T19:05:48+00:00",
+      "touched_round": 269,
+      "title": "CommentList.vue pagination has no far-page affordance (contradicts sibling fix)",
+      "description": "CommentList.vue visiblePages (864-874) + template (397-416) use the hand-rolled 5-window with no first/last button. The reader's own /comments page was upgraded in round 265 to paginationPages (first/current/last + ellipsis) precisely because deep history offered no way to jump to the first/last page; the post-page thread retains the trap."
+    },
+    "ISS-371": {
+      "id": "ISS-371",
+      "type": "issue",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-05T19:05:48+00:00",
+      "updated_at": "2026-09-05T19:05:48+00:00",
+      "touched_round": 269,
+      "title": "comments.vue passes a static object to useSeo, freezing title/OG in the old language",
+      "description": "comments.vue:26-30 useSeo({ title: t(...) }) captures the initial language; an in-app switch to 中文 leaves <title>/og tags in English while the body re-localizes. Every other page in scope passes a getter (tags/categories/archive/series/index) for this exact reason."
+    },
+    "TASK-283": {
+      "id": "TASK-283",
+      "type": "task",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-05T19:09:23+00:00",
+      "updated_at": "2026-09-05T22:06:41+00:00",
+      "touched_round": 269,
+      "category": "correctness",
+      "severity": 0.85,
+      "title": "Public category/tag enumeration must count only publicly-visible posts",
+      "description": "get_categories/get_tags count drafts+scheduled; single-item endpoints report post_count:0; renames and backup-restore leave posts_list_cache/feed_cache stale. Fix by reusing the published+publish_at guard in the grouped counts, computing post_count for item endpoints, and wiring clear_posts_list_cache+feed clears into update_category/update_tag and restore_backup."
+    },
+    "TASK-284": {
+      "id": "TASK-284",
+      "type": "task",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-05T19:09:23+00:00",
+      "updated_at": "2026-09-05T22:06:42+00:00",
+      "touched_round": 269,
+      "category": "correctness",
+      "severity": 0.7,
+      "title": "stats pending_comments must exclude rejected (reviewed) comments",
+      "description": "/api/stats pending_comments counts every is_approved==False row; align with the codebase pending definition (also review admin get_pending_comments for the same drift)."
+    },
+    "TASK-285": {
+      "id": "TASK-285",
+      "type": "task",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-05T19:09:24+00:00",
+      "updated_at": "2026-09-05T19:09:24+00:00",
+      "touched_round": 269,
+      "category": "correctness",
+      "severity": 0.7,
+      "title": "Frontend: series page progress race, percent clamp, tags/categories dead fetch",
+      "description": "seq-guard loadProgress in series/[slug].vue; clamp progressPercent to 100 like index.vue; gate the /api/posts fetch in tags.vue+categories.vue behind enabled: !!tagId/categoryId (archive pattern)."
+    },
+    "TASK-286": {
+      "id": "TASK-286",
+      "type": "task",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-05T19:09:24+00:00",
+      "updated_at": "2026-09-05T19:09:24+00:00",
+      "touched_round": 269,
+      "category": "core-feature",
+      "severity": 0.55,
+      "title": "CommentList pagination far-page + comments.vue useSeo getter",
+      "description": "Swap CommentList's 5-window for paginationPages (first/last + ellipsis) to match the sibling /comments page; convert comments.vue useSeo to getter form so language switch re-localizes head meta."
+    },
+    "CHG-390": {
+      "id": "CHG-390",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-05T22:04:04+00:00",
+      "updated_at": "2026-09-05T22:04:04+00:00",
+      "touched_round": 269,
+      "commit": "18a7bcf",
+      "title": "Public taxonomy counts, rename/restore cache invalidation (TASK-283 — ISS-362/363/364/365)"
+    },
+    "CHG-391": {
+      "id": "CHG-391",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-05T22:04:05+00:00",
+      "updated_at": "2026-09-05T22:04:05+00:00",
+      "touched_round": 269,
+      "commit": "18a7bcf",
+      "title": "stats pending_comments excludes rejected (TASK-284 — ISS-366)"
+    },
+    "DEC-262": {
+      "id": "DEC-262",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-05T22:04:05+00:00",
+      "updated_at": "2026-09-05T22:04:05+00:00",
+      "touched_round": 269,
+      "title": "resume after converged-idle: deep-dive surfaced backend taxonomy/cache defects",
+      "rationale": "The round-268 converged-idle (DEC-261) ended when a fresh deep-dive re-audit of the public read surface (categories/tags count semantics, single-item post_count, rename/restore cache invalidation, stats pending) surfaced five confirmed defects (ISS-362..366) above the 3.0 bar, all in one high-value backend correctness cluster (TASK-283/284). Executed: visibility-guarded grouped counts, derived post_count for item endpoints, rename+restore cache invalidation (posts/feed/series/categories/tags), stats pending reviewed_at filter — each with contract tests. Full backend suite green: 1311 passed, coverage 93.45%; pyright + ruff clean.",
+      "alternatives_rejected": "Frontend race/affordance items (ISS-367..369) held for the next task (TASK-285); below-bar UX affordances (ISS-370/371, TASK-286 score 1.65) deferred per QUIESCE rules. Backend infra hardening (DEC-214 deferrals) still out of scope."
     }
   },
   "edges": [
@@ -26760,6 +26956,174 @@
       "to": "TASK-280",
       "type": "implements",
       "created_at": "2026-09-05T14:40:18+00:00"
+    },
+    {
+      "from": "TASK-283",
+      "to": "ISS-362",
+      "type": "addresses",
+      "created_at": "2026-09-05T19:12:56+00:00"
+    },
+    {
+      "from": "TASK-283",
+      "to": "ISS-363",
+      "type": "addresses",
+      "created_at": "2026-09-05T19:12:56+00:00"
+    },
+    {
+      "from": "TASK-283",
+      "to": "ISS-364",
+      "type": "addresses",
+      "created_at": "2026-09-05T19:12:56+00:00"
+    },
+    {
+      "from": "TASK-283",
+      "to": "ISS-365",
+      "type": "addresses",
+      "created_at": "2026-09-05T19:12:56+00:00"
+    },
+    {
+      "from": "TASK-284",
+      "to": "ISS-366",
+      "type": "addresses",
+      "created_at": "2026-09-05T19:12:56+00:00"
+    },
+    {
+      "from": "TASK-285",
+      "to": "ISS-367",
+      "type": "addresses",
+      "created_at": "2026-09-05T19:12:56+00:00"
+    },
+    {
+      "from": "TASK-285",
+      "to": "ISS-369",
+      "type": "addresses",
+      "created_at": "2026-09-05T19:12:56+00:00"
+    },
+    {
+      "from": "TASK-285",
+      "to": "ISS-368",
+      "type": "addresses",
+      "created_at": "2026-09-05T19:12:56+00:00"
+    },
+    {
+      "from": "TASK-286",
+      "to": "ISS-370",
+      "type": "addresses",
+      "created_at": "2026-09-05T19:12:56+00:00"
+    },
+    {
+      "from": "TASK-286",
+      "to": "ISS-371",
+      "type": "addresses",
+      "created_at": "2026-09-05T19:12:56+00:00"
+    },
+    {
+      "from": "ISS-362",
+      "to": "COMP-001",
+      "type": "located_in",
+      "created_at": "2026-09-05T19:12:57+00:00"
+    },
+    {
+      "from": "ISS-363",
+      "to": "COMP-001",
+      "type": "located_in",
+      "created_at": "2026-09-05T19:21:18+00:00"
+    },
+    {
+      "from": "ISS-364",
+      "to": "COMP-001",
+      "type": "located_in",
+      "created_at": "2026-09-05T19:21:18+00:00"
+    },
+    {
+      "from": "ISS-365",
+      "to": "COMP-001",
+      "type": "located_in",
+      "created_at": "2026-09-05T19:21:19+00:00"
+    },
+    {
+      "from": "ISS-366",
+      "to": "COMP-001",
+      "type": "located_in",
+      "created_at": "2026-09-05T19:21:19+00:00"
+    },
+    {
+      "from": "ISS-367",
+      "to": "COMP-002",
+      "type": "located_in",
+      "created_at": "2026-09-05T19:21:19+00:00"
+    },
+    {
+      "from": "ISS-368",
+      "to": "COMP-002",
+      "type": "located_in",
+      "created_at": "2026-09-05T19:21:19+00:00"
+    },
+    {
+      "from": "ISS-369",
+      "to": "COMP-002",
+      "type": "located_in",
+      "created_at": "2026-09-05T19:21:19+00:00"
+    },
+    {
+      "from": "ISS-370",
+      "to": "COMP-002",
+      "type": "located_in",
+      "created_at": "2026-09-05T19:21:19+00:00"
+    },
+    {
+      "from": "ISS-371",
+      "to": "COMP-002",
+      "type": "located_in",
+      "created_at": "2026-09-05T19:21:19+00:00"
+    },
+    {
+      "from": "CHG-391",
+      "to": "ISS-366",
+      "type": "resolves",
+      "created_at": "2026-09-05T22:04:41+00:00"
+    },
+    {
+      "from": "CHG-390",
+      "to": "TASK-283",
+      "type": "implements",
+      "created_at": "2026-09-05T22:04:41+00:00"
+    },
+    {
+      "from": "CHG-391",
+      "to": "TASK-284",
+      "type": "implements",
+      "created_at": "2026-09-05T22:04:41+00:00"
+    },
+    {
+      "from": "DEC-262",
+      "to": "DEC-261",
+      "type": "supersedes",
+      "created_at": "2026-09-05T22:04:41+00:00"
+    },
+    {
+      "from": "CHG-390",
+      "to": "ISS-362",
+      "type": "resolves",
+      "created_at": "2026-09-05T22:06:16+00:00"
+    },
+    {
+      "from": "CHG-390",
+      "to": "ISS-363",
+      "type": "resolves",
+      "created_at": "2026-09-05T22:06:16+00:00"
+    },
+    {
+      "from": "CHG-390",
+      "to": "ISS-364",
+      "type": "resolves",
+      "created_at": "2026-09-05T22:06:16+00:00"
+    },
+    {
+      "from": "CHG-390",
+      "to": "ISS-365",
+      "type": "resolves",
+      "created_at": "2026-09-05T22:06:16+00:00"
     }
   ]
 }
