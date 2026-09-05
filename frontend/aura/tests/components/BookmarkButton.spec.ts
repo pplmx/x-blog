@@ -113,16 +113,6 @@ describe("BookmarkButton", () => {
 	});
 
 	describe("click behavior", () => {
-		it("emits toggle event with postId on click", async () => {
-			wrapper = mount(BookmarkButton, {
-				props: { postId: 42, post: mockBookmark },
-				global: { stubs },
-			});
-			await wrapper.find("button").trigger("click");
-			expect(wrapper.emitted("toggle")).toBeTruthy();
-			expect(wrapper.emitted("toggle")?.[0]).toEqual([42]);
-		});
-
 		it("toggles bookmark state on click", async () => {
 			wrapper = mount(BookmarkButton, {
 				props: { postId: 1, post: mockBookmark },

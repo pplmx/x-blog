@@ -8,13 +8,9 @@ interface Props {
 	variant?: "icon" | "full";
 }
 
-type Emits = (e: "toggle", postId: number) => void;
-
 const props = withDefaults(defineProps<Props>(), {
 	variant: "icon",
 });
-
-const emit = defineEmits<Emits>();
 
 const { t } = useLang();
 const { isBookmarked, add, remove } = useBookmarkSync();
@@ -29,7 +25,6 @@ function handleClick() {
 			add(props.post);
 		}
 	}
-	emit("toggle", props.postId);
 }
 
 // When the stored session is dead (syncIssue === "auth", ISS-222) the toggle
