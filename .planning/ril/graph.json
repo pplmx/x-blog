@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 271,
+  "round": 272,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-05T23:00:23+00:00",
+  "updated_at": "2026-09-05T23:36:35+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -18343,22 +18343,22 @@
     "ISS-370": {
       "id": "ISS-370",
       "type": "issue",
-      "status": "active",
-      "version": 1,
+      "status": "resolved",
+      "version": 2,
       "created_at": "2026-09-05T19:05:48+00:00",
-      "updated_at": "2026-09-05T19:05:48+00:00",
-      "touched_round": 269,
+      "updated_at": "2026-09-05T23:36:35+00:00",
+      "touched_round": 271,
       "title": "CommentList.vue pagination has no far-page affordance (contradicts sibling fix)",
       "description": "CommentList.vue visiblePages (864-874) + template (397-416) use the hand-rolled 5-window with no first/last button. The reader's own /comments page was upgraded in round 265 to paginationPages (first/current/last + ellipsis) precisely because deep history offered no way to jump to the first/last page; the post-page thread retains the trap."
     },
     "ISS-371": {
       "id": "ISS-371",
       "type": "issue",
-      "status": "active",
-      "version": 1,
+      "status": "resolved",
+      "version": 2,
       "created_at": "2026-09-05T19:05:48+00:00",
-      "updated_at": "2026-09-05T19:05:48+00:00",
-      "touched_round": 269,
+      "updated_at": "2026-09-05T23:36:35+00:00",
+      "touched_round": 271,
       "title": "comments.vue passes a static object to useSeo, freezing title/OG in the old language",
       "description": "comments.vue:26-30 useSeo({ title: t(...) }) captures the initial language; an in-app switch to 中文 leaves <title>/og tags in English while the body re-localizes. Every other page in scope passes a getter (tags/categories/archive/series/index) for this exact reason."
     },
@@ -18404,11 +18404,11 @@
     "TASK-286": {
       "id": "TASK-286",
       "type": "task",
-      "status": "active",
-      "version": 1,
+      "status": "resolved",
+      "version": 2,
       "created_at": "2026-09-05T19:09:24+00:00",
-      "updated_at": "2026-09-05T19:09:24+00:00",
-      "touched_round": 269,
+      "updated_at": "2026-09-05T23:36:35+00:00",
+      "touched_round": 271,
       "category": "core-feature",
       "severity": 0.55,
       "title": "CommentList pagination far-page + comments.vue useSeo getter",
@@ -18458,6 +18458,17 @@
       "touched_round": 270,
       "commit": "8cda9a7",
       "title": "Series progress stale guard + clamp, tags/categories enabled-gate (TASK-285 — ISS-367/368/369)"
+    },
+    "CHG-393": {
+      "id": "CHG-393",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-05T23:36:35+00:00",
+      "updated_at": "2026-09-05T23:36:35+00:00",
+      "touched_round": 271,
+      "commit": "7a0de61",
+      "title": "Comments page useSeo getter + thread far-page pagination (TASK-286 — ISS-370/371)"
     }
   },
   "edges": [
@@ -27159,6 +27170,24 @@
       "to": "TASK-285",
       "type": "implements",
       "created_at": "2026-09-05T22:58:52+00:00"
+    },
+    {
+      "from": "CHG-393",
+      "to": "ISS-370",
+      "type": "resolves",
+      "created_at": "2026-09-05T23:36:35+00:00"
+    },
+    {
+      "from": "CHG-393",
+      "to": "ISS-371",
+      "type": "resolves",
+      "created_at": "2026-09-05T23:36:35+00:00"
+    },
+    {
+      "from": "CHG-393",
+      "to": "TASK-286",
+      "type": "implements",
+      "created_at": "2026-09-05T23:36:35+00:00"
     }
   ]
 }
