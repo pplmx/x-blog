@@ -16,6 +16,7 @@ import type {
 } from "~~/api/reader/comments";
 import { deleteMyComment, getMyComments } from "~~/api/reader/comments";
 import { parseApiDate } from "~~/composables/apiDate";
+import { paginationPages } from "~~/composables/usePagination";
 import { useReaderAuth } from "~~/composables/useReaderAuth";
 import { useSeo } from "~~/composables/useSeo";
 
@@ -101,15 +102,12 @@ const comments = computed(() => commentData.value?.items || []);
 const total = computed(() => commentData.value?.total || 0);
 const totalPages = computed(() => commentData.value?.total_pages || 0);
 
-const visiblePages = computed(() => {
-	const pages = [];
-	const maxVisible = 5;
-	let start = Math.max(1, currentPage.value - Math.floor(maxVisible / 2));
-	let end = Math.min(totalPages.value, start + maxVisible - 1);
-	start = Math.max(1, end - maxVisible + 1);
-	for (let i = start; i <= end; i++) pages.push(i);
-	return pages;
-});
+// Windowed, ellipsis-aware page tokens (first / current-window / last joined
+// by "…"), matching the archive/search/category/tag feeds — the previous
+// hand-rolled 5-window had no far-page affordance, so deep comment history
+// offered no way to jump to the first/last page without walking the window
+// (survey finding #4, round 265).
+const paginationTokens = computed(() => paginationPages(totalPages.value, currentPage.value));
 
 function setStatus(status: MyCommentStatusFilter): void {
 	if (status === statusFilter.value) return;
@@ -118,8 +116,8 @@ function setStatus(status: MyCommentStatusFilter): void {
 	void load();
 }
 
-function goToPage(page: number): void {
-	if (page === currentPage.value) return;
+function goToPage(page: number | "…"): void {
+	if (typeof page !== "number" || page === currentPage.value) return;
 	currentPage.value = page;
 	void load();
 }
@@ -315,22 +313,27 @@ function formatDate(dateStr: string): string {
       {{ t('myComments.deleteFailed') }}
     </p>
 
-    <!-- Pagination (DEC-102, TASK-163) -->
+    <!-- Pagination (DEC-102, TASK-163; round 265: shared first/last + ellipsis
+         tokens like the archive/search feeds, so deep history can reach the
+         far pages instead of a fixed local window) -->
     <nav v-if="isAuthenticated && totalPages > 1" class="flex justify-center gap-2 mt-6">
       <button
         type="button"
-        v-for="page in visiblePages"
-        :key="page"
-        :aria-current="page === currentPage ? 'page' : undefined"
+        v-for="(pg, i) in paginationTokens"
+        :key="pg === '…' ? `ellipsis-${i}` : pg"
+        :disabled="pg === '…' || pg === currentPage"
+        :aria-current="pg !== '…' && pg === currentPage ? 'page' : undefined"
         :class="[
           'px-3 py-1 rounded text-sm',
-          page === currentPage
-            ? 'bg-blue-600 text-white'
-            : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700',
+          pg === '…'
+            ? 'cursor-default text-gray-400'
+            : pg === currentPage
+              ? 'bg-blue-600 text-white cursor-default'
+              : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700',
         ]"
-        @click="goToPage(page)"
+        @click="pg !== '…' && pg !== currentPage && goToPage(pg)"
       >
-        {{ page }}
+        {{ pg }}
       </button>
     </nav>
   </div>

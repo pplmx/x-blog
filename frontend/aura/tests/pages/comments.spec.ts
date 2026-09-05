@@ -341,6 +341,39 @@ describe("My comments page", () => {
 			expect(wrapper.find("nav").exists()).toBe(false);
 		});
 
+		it("offers first/last + ellipsis far-page navigation on deep history (round 265)", async () => {
+			// Regression (survey #4): the previous hand-rolled 5-window showed
+			// only pages 3..7 around page 5 on a 10-page history — no path to the
+			// far pages. The shared paginationPages tokens now include page 1,
+			// page 10 and an ellipsis so the first/last pages are one click away.
+			isAuthenticated.value = true;
+			mockData.value = {
+				items: [],
+				total: 200,
+				page: 5,
+				limit: 20,
+				total_pages: 10,
+			};
+			mockFetchMyComments.mockClear();
+			const wrapper = await mountPage();
+			await flushPromises();
+
+			const buttons = wrapper.findAll("nav button");
+			const labels = buttons.map((b) => b.text());
+			expect(labels[0]).toBe("1");
+			expect(labels).toContain("5");
+			expect(labels[labels.length - 1]).toBe("10");
+			expect(labels).toContain("…");
+			// The ellipsis is a non-clickable spacer, not a page link.
+			const ellipsis = buttons.find((b) => b.text() === "…");
+			expect(ellipsis?.attributes("disabled")).toBeDefined();
+
+			// Clicking the far last page navigates there.
+			await buttons[buttons.length - 1].trigger("click");
+			await flushPromises();
+			expect(mockFetchMyComments).toHaveBeenLastCalledWith("all", 10, 20);
+		});
+
 		it("clamps back to the last valid page after deleting the only comment on it (deep-dive)", async () => {
 			// Reader is on page 2 (the last page). After deleting its only
 			// comment, the reload sees an empty page under a non-zero total —
