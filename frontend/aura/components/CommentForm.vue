@@ -118,6 +118,7 @@
 
 <script setup lang="ts">
 import { computed, nextTick, onMounted, ref, watch } from "vue";
+import type { Comment } from "~~/api/contracts/shared";
 import { createComment } from "~~/api/public/comments";
 import { useReaderAuth } from "~~/composables/useReaderAuth";
 
@@ -139,7 +140,14 @@ const props = withDefaults(defineProps<Props>(), {
 
 const contentRef = ref<HTMLTextAreaElement | null>(null);
 
-const emit = defineEmits<{ submitted: []; cancel: []; "update:dirty": [value: boolean] }>();
+// `submitted` carries the freshly-created comment so the parent can navigate
+// to it (a reply on comment page 2+ sorted to page 1 under newest and vanished
+// off-screen — the parent needs the id to jump to the row, ISS-384).
+const emit = defineEmits<{
+	submitted: [comment: Comment];
+	cancel: [];
+	"update:dirty": [value: boolean];
+}>();
 
 const { t } = useLang();
 const { isAuthenticated, reader } = useReaderAuth();
@@ -218,7 +226,7 @@ async function handleSubmit() {
 	success.value = "";
 
 	try {
-		await createComment(props.postId, {
+		const created = await createComment(props.postId, {
 			// For signed-in readers the backend ignores nickname/email and stamps
 			// the account identity; the empty email still satisfies the schema.
 			nickname: signedIn.value ? identityLabel.value : form.value.nickname,
@@ -230,7 +238,7 @@ async function handleSubmit() {
 		success.value = t("components.commentForm.submitSuccess");
 		form.value = { nickname: "", email: "", content: "", website: "" };
 		emit("update:dirty", false);
-		emit("submitted");
+		emit("submitted", created);
 	} catch (e: any) {
 		error.value = e?.message || t("components.commentForm.submitFailed");
 	} finally {

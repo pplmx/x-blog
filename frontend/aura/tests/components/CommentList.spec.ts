@@ -920,6 +920,52 @@ describe("CommentList", () => {
 		});
 	});
 
+	describe("Reply on a far page jumps to the new comment (ISS-384)", () => {
+		it("moves to page 1 and re-fetches when a new comment is submitted from page 2+", async () => {
+			// A reader replying from page 2 under the default newest sort: the new
+			// comment (newest created_at) lands on page 1, so refreshing the current
+			// page left their post off-screen — reading as a silent failure and
+			// inviting a double-post. handleReplied must jump to page 1 (oldest
+			// sort to the last page) and re-fetch so the new row renders.
+			const page2 = { ...mockComments, page: 2, items: [{ ...mockComments.items[0], id: 21 }] };
+			const page1WithNew = {
+				items: [{ ...mockComments.items[0], id: 99, content: "MY-NEW-REPLY" }],
+				page: 1,
+				total: 21,
+				total_pages: 2,
+				limit: 20,
+			};
+			const fetchCalls: Array<[number, number, string]> = [];
+			const impl = async (_id: number, page: number, _limit?: number, sort?: string) => {
+				fetchCalls.push([_id, page, sort ?? "newest"]);
+				return page === 2 ? { ...page2 } : { ...page1WithNew };
+			};
+
+			const { wrapper } = await mountCommentList({
+				comments: { ...mockComments, total: 21, total_pages: 2 },
+				getCommentsImpl: impl as never,
+			});
+
+			// Navigate to page 2 (replying context).
+			const buttons = wrapper.findAll("nav button");
+			await buttons[1].trigger("click");
+			await flushPromises();
+			expect(fetchCalls.at(-1)?.[1]).toBe(2);
+
+			// A new comment is submitted from this page — handleReplied must jump
+			// back to page 1 to reveal it.
+			const vm = wrapper.findComponent(CommentList).vm as unknown as {
+				handleReplied: (c: { id: number; parent_id?: number | null } | undefined) => Promise<void>;
+			};
+			await vm.handleReplied({ id: 99, parent_id: null });
+			await flushPromises();
+
+			expect(fetchCalls.at(-1)?.[1]).toBe(1);
+			expect(fetchCalls.at(-1)?.[0]).toBe(1);
+			expect(wrapper.text()).toContain("MY-NEW-REPLY");
+		});
+	});
+
 	describe("Threaded replies", () => {
 		const threadedComments = {
 			items: [

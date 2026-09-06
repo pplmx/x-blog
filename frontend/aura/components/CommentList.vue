@@ -518,11 +518,13 @@ let deepLinkResolved = false;
 function scrollToComment(targetId: string): void {
 	document.getElementById(targetId)?.scrollIntoView({ behavior: "smooth", block: "start" });
 }
-async function landOnDeepLink(): Promise<void> {
+async function landOnDeepLink(targetId?: string): Promise<void> {
 	if (deepLinkResolved) return;
-	const targetId = window.location.hash.slice(1);
-	if (!targetId.startsWith("comment-")) return;
-	const targetNum = Number.parseInt(targetId.slice("comment-".length), 10);
+	// Optional explicit target (a freshly-posted comment that needs locating on
+	// a non-newest page, ISS-384); default keeps reading window.location.hash.
+	const resolvedId = targetId ?? window.location.hash.slice(1);
+	if (!resolvedId.startsWith("comment-")) return;
+	const targetNum = Number.parseInt(resolvedId.slice("comment-".length), 10);
 	if (Number.isNaN(targetNum)) return;
 	const perPage = 20;
 	const totalPagesKnown = commentData.value?.total_pages || 1;
@@ -535,7 +537,7 @@ async function landOnDeepLink(): Promise<void> {
 			currentPage.value = page;
 			commentData.value = pageRes;
 			await nextTick();
-			scrollToComment(targetId);
+			scrollToComment(`comment-${targetNum}`);
 			deepLinkResolved = true;
 			return;
 		}
@@ -544,6 +546,7 @@ async function landOnDeepLink(): Promise<void> {
 		if (page >= realTotal || pageRes.items.length < perPage) break;
 	}
 }
+
 onMounted(async () => {
 	if (typeof window === "undefined" || !window.location.hash.startsWith("#comment-")) return;
 	// First try page 1 (already loaded); walk further pages only if absent.
@@ -854,7 +857,21 @@ function retryRefresh(): void {
 	void refreshList();
 }
 
-async function handleReplied() {
+async function handleReplied(created: Comment | undefined) {
+	// A just-posted comment has the newest timestamp, so under the default
+	// newest sort it lands on page 1 — for a reader replying from page 2+, the
+	// old code refreshed the CURRENT page and their reply was nowhere on screen
+	// (no toast, no jump), reading as a silent failure and inviting a double
+	// post (ISS-384). Jump to the page that holds the new row and scroll to it.
+	const newId = created?.id;
+	const hasParentPresence = created?.parent_id != null && byId.value.has(created.parent_id);
+	const jumpToPage = currentSort.value !== "oldest" ? 1 : commentData.value?.total_pages || 1;
+	// A reply nests under its parent (same page at most times); a top-level
+	// comment on non-oldest sorts always sorts to page 1. See the sort's final
+	// page for oldest, then locate the row precisely.
+	if (newId) {
+		currentPage.value = jumpToPage;
+	}
 	// Only collapse the reply form when the list actually refreshed: the reply
 	// POST already succeeded, but closing the form anyway would drop its
 	// "posted" feedback while the list still lacks the new comment — a reader
@@ -864,6 +881,21 @@ async function handleReplied() {
 	if (await refreshList()) {
 		replyTo.value = null;
 		replyDirty.value = false;
+	}
+	// Scroll the freshly-created row into view once it's rendered (the reply
+	// form's own "posted" success may be below the fold). Bounded to the
+	// comment's OWN page context: if the server nested it elsewhere (e.g. under
+	// a parent pulled onto the page), land on the anchor that actually exists.
+	if (newId) {
+		await nextTick();
+		const anchor = document.getElementById(`comment-${newId}`);
+		if (anchor) {
+			anchor.scrollIntoView({ behavior: "smooth", block: "start" });
+		} else if (!hasParentPresence) {
+			// The new row didn't render where we jumped (edge: an exotic sort or
+			// moderation re-order) — walk pages like the deep-link path does.
+			void landOnDeepLink(`comment-${newId}`);
+		}
 	}
 }
 
