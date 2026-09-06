@@ -94,16 +94,20 @@ def clear_posts_list_cache():
 
 
 def clear_counter_caches():
-    """Clear only the posts-list cache after a live counter (views/likes) bump.
+    """Clear the soon-stale counters from a views/likes bump.
 
-    Pageviews/likes embed in the cached list payloads, so those must drop — but
-    the rendered RSS/Atom/sitemap feeds and series details don't contain
-    views/likes, so clearing them per pageview was avoidable amplification:
-    under real traffic the expensive feed render never went warm because one
-    popular post's view burst invalidated it every time (backend deep-dive
-    review). Only a post write (publish/content/series membership) busts feeds.
+    Pageviews/likes embed in the cached list payloads, so those must drop. The
+    series DETAIL cache embeds the same PostList objects (per-episode views/likes
+    render on series/[slug].vue), so it must drop too — the old docstring's
+    claim that "series details don't contain views/likes" was wrong (ISS-373).
+    Only the rendered RSS/Atom/sitemap FEEDS are counter-free, so they stay warm
+    across pageviews: a popular post's view burst must not re-render them every
+    time. Series/count recalc is cheap (one series recompute on its next view).
+    A post write (publish/content/series membership) busts feeds via
+    clear_posts_list_cache.
     """
     posts_list_cache.clear()
+    series_cache.clear()
     logger.info("posts_list_cache_cleared")
 
 

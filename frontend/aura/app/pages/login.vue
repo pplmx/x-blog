@@ -16,11 +16,13 @@ const readerAuth = useReaderAuth();
 
 const { t } = useLang();
 
-useSeo({
+// Getter form: an in-app language switch re-evaluates the title/og tags
+// (static object froze them in the initial language — deep-dive, ISS-372).
+useSeo(() => ({
 	title: t("reader.login.seoTitle"),
 	description: t("reader.login.seoDesc"),
 	path: "/login",
-});
+}));
 
 const { mergeLocalToCloud } = useBookmarkSync();
 

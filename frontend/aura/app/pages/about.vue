@@ -3,12 +3,14 @@ import { useSeo } from "~~/composables/useSeo";
 
 const { t } = useLang();
 
-// SEO: set dynamic head metadata
-useSeo({
+// SEO: set dynamic head metadata. Getter form so an in-app language switch
+// re-evaluates title/og tags instead of freezing the initial language
+// (same reason every reader page passes a getter, ISS-372).
+useSeo(() => ({
 	title: t("about.seo.title"),
 	description: t("about.seo.description"),
 	path: "/about",
-});
+}));
 
 const techStack = [
 	{

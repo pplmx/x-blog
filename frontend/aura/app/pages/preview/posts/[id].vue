@@ -27,7 +27,9 @@ const failed = ref(false);
 const categories = ref<Array<{ id: number; name: string }>>([]);
 const tags = ref<Array<{ id: number; name: string }>>([]);
 
-useSeo({ title: t("preview.seoTitle"), path: "" });
+// Getter form: an in-app language switch re-evaluates the title/og tags
+// (static object froze them in the initial language — deep-dive, ISS-372).
+useSeo(() => ({ title: t("preview.seoTitle"), path: "" }));
 
 const readingTime = computed(() => readingMinutes(post.value?.content));
 const coverImageUrl = computed(() => (post.value ? coverImageSrc(post.value.title) : ""));

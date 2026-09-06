@@ -21,11 +21,11 @@ const {
 	assign: assignFolder,
 } = useBookmarkFolders();
 
-useSeo({
+useSeo(() => ({
 	title: t("bookmarks.seoTitle"),
 	description: t("bookmarks.seoDesc"),
 	path: "/bookmarks",
-});
+}));
 
 // Folders are a signed-in (cloud) feature. Uses the reactive reader-auth
 // singleton (not an ad-hoc localStorage read) so the folder UI and nav react

@@ -296,4 +296,30 @@ describe("Series reading progress (TASK-173)", () => {
 		expect(wrapper.text()).toContain("已读 2 / 2");
 		expect(wrapper.text()).not.toContain("已读 1 / 2");
 	});
+
+	it("drops a stale follow-state response so it can't clobber a newer toggle (ISS-374)", async () => {
+		// The initial follow-state GET stays in flight (slow).
+		let resolveStale!: (v: unknown) => void;
+		h.fetchFollows.mockImplementationOnce(
+			() =>
+				new Promise((res) => {
+					resolveStale = res;
+				}),
+		);
+		const wrapper = await mountPage();
+
+		// The reader follows while the stale GET is still in flight — the PUT
+		// commits and flips the button to following.
+		const followBtn = wrapper.find("button");
+		await followBtn.trigger("click");
+		await flushPromises();
+		expect(wrapper.text()).toContain("已关注新篇");
+
+		// The OLD GET (a pre-follow snapshot saying "not following") resolves
+		// late — the seq guard must drop it, not flip the button back.
+		resolveStale({ items: [], total: 0 });
+		await flushPromises();
+		expect(wrapper.text()).toContain("已关注新篇");
+		expect(wrapper.text()).not.toContain("有新篇时通知我");
+	});
 });

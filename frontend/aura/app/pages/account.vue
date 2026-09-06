@@ -50,11 +50,13 @@ const { t, locale } = useLang();
 const { isAuthenticated, reader, setProfile, updateToken, logout, isStaleSession } =
 	useReaderAuth();
 
-useSeo({
+// Getter form: an in-app language switch re-evaluates the title/og tags
+// (static object froze them in the initial language — deep-dive, ISS-372).
+useSeo(() => ({
 	title: t("account.seoTitle"),
 	description: t("account.seoDesc"),
 	path: "/account",
-});
+}));
 
 /* Profile --------------------------------------------------------------- */
 const displayName = ref(reader.value?.display_name ?? "");

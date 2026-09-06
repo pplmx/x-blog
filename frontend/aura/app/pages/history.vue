@@ -50,11 +50,13 @@ onUnmounted(() => {
 	}
 });
 
-useSeo({
+// Getter form: an in-app language switch re-evaluates the title/og tags
+// (static object froze them in the initial language — deep-dive, ISS-372).
+useSeo(() => ({
 	title: t("history.seoTitle"),
 	description: t("history.seoDesc"),
 	path: "/history",
-});
+}));
 
 // Load from the active source (server when signed in, else local).
 onMounted(() => {

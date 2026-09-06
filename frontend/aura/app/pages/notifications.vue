@@ -33,11 +33,13 @@ const router = useRouter();
 // fresher value the layout's 60s poll already fetched.
 const { refresh: refreshBadge } = useNotificationBadge();
 
-useSeo({
+// Getter form: an in-app language switch re-evaluates the title/og tags
+// (static object frozen them in the initial language — deep-dive, ISS-372).
+useSeo(() => ({
 	title: t("notifications.seoTitle"),
 	description: t("notifications.seoDesc"),
 	path: "/notifications",
-});
+}));
 
 const items = ref<ReaderNotification[]>([]);
 const unread = ref(0);

@@ -51,6 +51,11 @@ const progress = ref<SeriesProgress | null>(null);
 // Declared above the keyed watch so the immediate callback (which calls
 // loadProgress) never touches a TDZ binding.
 let progressSeq = 0;
+// Follow-state gets the same guard (deep-dive, ISS-374): without it, a slow
+// in-flight GET can overwrite a follow toggle the reader just made — the PUT
+// commits and flips the button to "following", then the stale pre-follow GET
+// resolver flips it back to not-following and resets the notify flag.
+let followSeq = 0;
 
 const progressPercent = computed(() => {
 	if (!progress.value || progress.value.total <= 0) return 0;
@@ -104,18 +109,22 @@ watch(
 
 async function loadFollowState() {
 	if (!signedIn.value || !series.value?.id) return;
+	const seq = ++followSeq; // invalidate any in-flight older series' request
 	try {
 		// Imperative $fetch seam: the old useReaderSeriesFollows (useFetch query)
 		// silently never sent its request from onMounted, so the follow state was
 		// always reset to "not following" on every full load/reload (ISS-119,
 		// TASK-220 — same class as the account/tag GETs, getReaderTagFollows).
 		const res = await getReaderSeriesFollows();
+		if (seq !== followSeq) return; // stale — a newer series is in flight
 		const item = res.items.find((f) => f.id === series.value?.id) ?? null;
 		followsSeries.value = !!item;
 		followNotify.value = item?.notify ?? true;
 	} catch {
-		followsSeries.value = false;
-		followNotify.value = true;
+		if (seq === followSeq) {
+			followsSeries.value = false;
+			followNotify.value = true;
+		}
 	}
 }
 
@@ -148,6 +157,7 @@ function noteFollowError() {
 async function toggleFollow() {
 	if (followBusy.value || !series.value?.id) return;
 	followBusy.value = true;
+	followSeq++; // a user action supersedes any in-flight follow-state loader
 	try {
 		if (followsSeries.value) {
 			await unfollowReaderSeries(series.value.id);
@@ -170,6 +180,7 @@ async function toggleFollow() {
 async function toggleNotify() {
 	if (followBusy.value || !series.value?.id || !followsSeries.value) return;
 	followBusy.value = true;
+	followSeq++; // a user action supersedes any in-flight follow-state loader
 	const next = !followNotify.value;
 	try {
 		const res = await setSeriesFollowNotify(series.value.id, next);

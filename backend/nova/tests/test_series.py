@@ -237,3 +237,25 @@ def test_series_cache_invalidated_on_series_update(client, auth_headers):
     assert resp.json()["title"] == "Renamed"
     # old slug is gone from both cache and DB
     assert client.get("/api/series/tutorial-series").status_code == 404
+
+
+def test_series_cache_invalidated_on_counter_bump(client, auth_headers):
+    """A pageview/like must bust the cached SERIES detail, not just the posts
+    list: the detail embeds the same PostList views/likes (rendered per-episode
+    on series/[slug].vue), so without clearing series_cache a hot series served
+    pre-bump counters for the full 300s TTL while the feed updated instantly
+    (deep-dive review, ISS-373)."""
+    series = _create_series(client, auth_headers).json()
+    post = _create_post(client, auth_headers, "Part 1", "part-1", series["id"], 0).json()
+
+    # Warm the series-detail cache with the pre-bump counters.
+    first = client.get(f"/api/series/{series['slug']}").json()
+    assert first["posts"][0]["views"] == 0
+
+    # Bump the post's view counter (public pageview endpoint).
+    bumped = client.post(f"/api/posts/{post['id']}/view").json()
+    assert bumped["views"] == 1
+
+    # The series detail must recompute — not serve the cached pre-bump payload.
+    second = client.get(f"/api/series/{series['slug']}").json()
+    assert second["posts"][0]["views"] == 1
