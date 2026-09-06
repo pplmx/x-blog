@@ -25,6 +25,7 @@
 		"notifyTitle": "切换本系列的新篇通知",
 		"notifyOn": "通知已开",
 		"notifyOff": "通知已关",
-		"followFailed": "关注操作失败，请检查网络后重试。"
+		"followFailed": "关注操作失败，请检查网络后重试。",
+		"upNext": "下一篇"
 	}
 }

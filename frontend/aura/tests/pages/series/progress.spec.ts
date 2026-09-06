@@ -95,7 +95,7 @@ vi.mock("../../../composables/useSeo", () => ({ useSeo: vi.fn() }));
 import SeriesPage from "../../../app/pages/series/[slug].vue";
 
 const stubs = {
-	Icon: { template: '<svg class="icon-stub" />' },
+	Icon: { template: '<svg class="icon-stub" :data-icon="icon" />', props: ["icon"] },
 	NuxtLink: { template: '<a class="nuxt-link-stub"><slot/></a>' },
 };
 
@@ -180,11 +180,32 @@ describe("Series reading progress (TASK-173)", () => {
 		expect(wrapper.text()).not.toContain("继续阅读");
 	});
 
-	it("shows no progress for a guest", async () => {
+	it("marks read episodes with a check and highlights the up-next episode (ISS-379)", async () => {
+		h.progress.value = {
+			series_slug: "tutorial",
+			series_title: "Tutorial",
+			total: 2,
+			read_count: 1,
+			completed: false,
+			read_post_ids: [1],
+			next_slug: "ep-b",
+		};
+		const wrapper = await mountPage();
+		// Episode 1 (id 1) is read → a check badge, not its ordinal number.
+		expect(wrapper.findAll('[data-icon="lucide:check"]').length).toBe(1);
+		// Episode 2 is the up-next post → explicit "up next" highlight.
+		expect(wrapper.text()).toContain("下一篇");
+	});
+
+	it("shows no reader progress for a guest", async () => {
 		window.localStorage.removeItem("reader_token");
 		const wrapper = await mountPage();
 		expect(h.fetchProgress).not.toHaveBeenCalled();
 		expect(wrapper.text()).not.toContain("阅读进度");
+		// The read-marker mapping is progress-gated: no check badges, no up-next
+		// highlights for a guest (ISS-379).
+		expect(wrapper.findAll('[data-icon="lucide:check"]').length).toBe(0);
+		expect(wrapper.text()).not.toContain("下一篇");
 	});
 
 	it("links the scoped series RSS feed (TASK-177)", async () => {

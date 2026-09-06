@@ -65,6 +65,23 @@ const progressPercent = computed(() => {
 	return Math.min(100, Math.round((progress.value.read_count / progress.value.total) * 100));
 });
 
+// Map the reader's progress onto the ordered episode list (deep-dive finding,
+// ISS-379): the progress box said "3/10 read → continue" but the list itself
+// marked nothing — a mid-series reader scrolling the episodes couldn't tell
+// where they left off. read_post_ids is authoritative (server records each
+// read post), so an episode's number badge gets a ✓ once read, and the post
+// the "continue" link points at gets an "up next" highlight so the reading
+// position is obvious from the list alone. Guests (no progress) see none of
+// this — the plain numbered list stays.
+const readPostIds = computed(() => new Set(progress.value?.read_post_ids ?? []));
+function isEpisodeRead(postId: number): boolean {
+	return readPostIds.value.has(postId);
+}
+const nextUpSlug = computed(() => progress.value?.next_slug ?? null);
+function isEpisodeNext(post: { slug: string }): boolean {
+	return nextUpSlug.value != null && post.slug === nextUpSlug.value;
+}
+
 // Scoped RSS feed (DEC-130/TASK-177): subscribe to just this series.
 const feedUrl = computed(() => (series.value?.slug ? `/rss/series/${series.value.slug}.xml` : ""));
 useHead(() => ({
@@ -349,15 +366,36 @@ async function toggleNotify() {
           v-for="(post, idx) in series.posts"
           :key="post.id"
           class="border border-gray-100 dark:border-gray-800 rounded-2xl p-5 hover:shadow-lg hover:border-blue-200 dark:hover:border-blue-800 transition-all duration-200"
+          :class="(signedIn && isEpisodeNext(post)) ? 'border-indigo-200 dark:border-indigo-700 bg-indigo-50/40 dark:bg-indigo-900/10' : ''"
         >
           <NuxtLink :to="`/posts/${post.slug}`" class="block group">
             <div class="flex items-center gap-3">
-              <span class="shrink-0 inline-flex items-center justify-center w-8 h-8 rounded-full bg-gradient-to-r from-blue-500 to-indigo-500 text-white text-sm font-semibold">
-                {{ idx + 1 }}
+              <!-- Episode number badge: a ✓ marks an already-read episode so a
+                   mid-series reader can see where they left off from the list
+                   alone (ISS-379); the "up next" episode gets an explicit
+                   highlight instead of just the badge colour change. Guests
+                   (no progress) keep the plain numbered badge. -->
+              <span
+                :class="[
+                  'shrink-0 inline-flex items-center justify-center w-8 h-8 rounded-full text-sm font-semibold transition-colors',
+                  signedIn && isEpisodeRead(post.id)
+                    ? 'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-600 dark:text-emerald-400'
+                    : 'bg-gradient-to-r from-blue-500 to-indigo-500 text-white',
+                ]"
+              >
+                <Icon v-if="signedIn && isEpisodeRead(post.id)" icon="lucide:check" class="w-4 h-4" />
+                <span v-else>{{ idx + 1 }}</span>
               </span>
               <h2 class="text-lg font-bold text-gray-900 dark:text-gray-100 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors line-clamp-2">
                 {{ post.title }}
               </h2>
+              <span
+                v-if="signedIn && isEpisodeNext(post)"
+                class="shrink-0 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-indigo-100 dark:bg-indigo-900/50 text-indigo-600 dark:text-indigo-300"
+              >
+                <Icon icon="lucide:play" class="w-3 h-3" />
+                {{ t('series.upNext') }}
+              </span>
             </div>
             <div v-if="post.excerpt" class="mt-2 ml-11 text-sm text-gray-500 dark:text-gray-400 line-clamp-2">
               {{ post.excerpt }}
