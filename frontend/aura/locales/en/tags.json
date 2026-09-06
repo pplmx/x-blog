@@ -19,6 +19,7 @@
 		"notifyTitle": "Toggle new-post notifications for this tag",
 		"notifyOn": "Notifications on",
 		"notifyOff": "Notifications off",
-		"followFailed": "Couldn't update, please try again"
+		"followFailed": "Couldn't update, please try again",
+		"filterPlaceholder": "Filter tags…"
 	}
 }

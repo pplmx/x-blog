@@ -195,6 +195,32 @@ describe("Tags Page", () => {
 			expect(wrapper.text()).toContain("#React");
 			expect(wrapper.text()).toContain("#TypeScript");
 		});
+
+		it("narrows the cloud via the filter box (ISS-381)", async () => {
+			const wrapper = await mountTagsPage();
+			// Filter input present on the all-tags view.
+			const input = wrapper.find('input[type="search"]');
+			expect(input.exists()).toBe(true);
+
+			await input.setValue("react");
+			await flushPromises();
+			expect(wrapper.text()).toContain("#React");
+			expect(wrapper.text()).not.toContain("#TypeScript");
+			expect(wrapper.text()).not.toContain("#Vue");
+		});
+
+		it("shows all tags again when the filter is cleared (ISS-381)", async () => {
+			const wrapper = await mountTagsPage();
+			const input = wrapper.find('input[type="search"]');
+			await input.setValue("typescript");
+			await flushPromises();
+			expect(wrapper.text()).not.toContain("#React");
+
+			await input.setValue("");
+			await flushPromises();
+			expect(wrapper.text()).toContain("#React");
+			expect(wrapper.text()).toContain("#Vue");
+		});
 	});
 
 	describe("Loading state", () => {

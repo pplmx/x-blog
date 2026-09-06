@@ -212,6 +212,31 @@ describe("Categories Page", () => {
 			expect(wrapper.text()).toContain("Design");
 			expect(wrapper.text()).toContain("Life");
 		});
+
+		it("narrows the category cloud via the filter box (ISS-381)", async () => {
+			const wrapper = await mountCategoriesPage();
+			const input = wrapper.find('input[type="search"]');
+			expect(input.exists()).toBe(true);
+
+			await input.setValue("tech");
+			await flushPromises();
+			expect(wrapper.text()).toContain("Tech");
+			expect(wrapper.text()).not.toContain("Design");
+			expect(wrapper.text()).not.toContain("Life");
+		});
+
+		it("shows all categories again when the filter is cleared (ISS-381)", async () => {
+			const wrapper = await mountCategoriesPage();
+			const input = wrapper.find('input[type="search"]');
+			await input.setValue("design");
+			await flushPromises();
+			expect(wrapper.text()).not.toContain("Tech");
+
+			await input.setValue("");
+			await flushPromises();
+			expect(wrapper.text()).toContain("Tech");
+			expect(wrapper.text()).toContain("Life");
+		});
 	});
 
 	describe("Loading state", () => {

@@ -89,6 +89,16 @@ watch(
 	},
 );
 
+// Client-side filter for the all-tags view (deep-dive, ISS-381): a real blog's
+// tag cloud can hold dozens of pills with no way to find one except scanning.
+// A small substring box narrows the cloud as you type; empty filter shows all.
+const tagFilter = ref("");
+const filteredTags = computed(() => {
+	const q = tagFilter.value.trim().toLowerCase();
+	if (!q) return tags.value ?? [];
+	return (tags.value ?? []).filter((tag) => tag.name.toLowerCase().includes(q));
+});
+
 // Look up the tag name for SEO when a tag is selected
 const tagName = computed(() =>
 	tagId.value ? tags.value?.find((t) => t.id === tagId.value)?.name : undefined,
@@ -274,12 +284,27 @@ watch(
         </p>
       </div>
 
+      <!-- Tag-cloud filter (ISS-381): a large cloud is unscannable without it.
+           Client-side substring match so typing narrows the pills in place. -->
+      <div v-if="tags?.length" class="max-w-md">
+        <div class="relative">
+          <Icon icon="lucide:search" class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+          <input
+            v-model="tagFilter"
+            type="search"
+            :placeholder="t('tags.filterPlaceholder')"
+            :aria-label="t('tags.filterPlaceholder')"
+            class="w-full pl-9 pr-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
+          />
+        </div>
+      </div>
+
       <div
-        v-if="tags?.length"
+        v-if="filteredTags.length"
         class="flex flex-wrap gap-3"
       >
         <NuxtLink
-          v-for="tag in tags"
+          v-for="tag in filteredTags"
           :key="tag.id"
           :to="{ query: { tag_id: String(tag.id) } }"
           class="px-5 py-2.5 bg-gradient-to-r from-blue-500 to-indigo-500 text-white rounded-xl text-sm font-medium hover:from-blue-600 hover:to-indigo-600 transition-all shadow-md hover:shadow-lg"

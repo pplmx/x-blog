@@ -95,6 +95,16 @@ watch(
 	},
 );
 
+// Client-side filter for the all-categories view (deep-dive, ISS-381): a large
+// category cloud is unscannable without a way to narrow it. Substring match on
+// the name; empty filter shows everything.
+const categoryFilter = ref("");
+const filteredCategories = computed(() => {
+	const q = categoryFilter.value.trim().toLowerCase();
+	if (!q) return categories.value ?? [];
+	return (categories.value ?? []).filter((c) => c.name.toLowerCase().includes(q));
+});
+
 // Look up the category name for SEO when a category is selected
 const categoryName = computed(() =>
 	categoryId.value ? categories.value?.find((c) => c.id === categoryId.value)?.name : undefined,
@@ -329,12 +339,27 @@ watch(categoryId, () => {
         </p>
       </div>
 
+      <!-- Category-cloud filter (ISS-381): same substring narrowing the tags
+           page got, so a large category set stays scannable. -->
+      <div v-if="categories?.length" class="max-w-md">
+        <div class="relative">
+          <Icon icon="lucide:search" class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+          <input
+            v-model="categoryFilter"
+            type="search"
+            :placeholder="t('categories.filterPlaceholder')"
+            :aria-label="t('categories.filterPlaceholder')"
+            class="w-full pl-9 pr-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
+          />
+        </div>
+      </div>
+
       <div
-        v-if="categories?.length"
+        v-if="filteredCategories.length"
         class="flex flex-wrap gap-3"
       >
         <NuxtLink
-          v-for="category in categories"
+          v-for="category in filteredCategories"
           :key="category.id"
           :to="{ query: { category_id: String(category.id) } }"
           class="px-5 py-2.5 bg-gradient-to-r from-purple-500 to-indigo-500 text-white rounded-xl text-sm font-medium hover:from-purple-600 hover:to-indigo-600 transition-all shadow-md hover:shadow-lg"
