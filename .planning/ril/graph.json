@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 273,
+  "round": 276,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-06T03:40:52+00:00",
+  "updated_at": "2026-09-06T16:26:14+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -22,7 +22,7 @@
       "version": 1,
       "created_at": "2026-08-06T13:23:41+00:00",
       "updated_at": "2026-08-06T13:23:41+00:00",
-      "touched_round": 269,
+      "touched_round": 274,
       "title": "frontend-aura",
       "description": "Nuxt 4 Vue 3 TypeScript frontend at frontend/aura; composables; admin pages; e2e Playwright; biome lint"
     },
@@ -18534,10 +18534,615 @@
       "version": 1,
       "created_at": "2026-09-06T03:40:52+00:00",
       "updated_at": "2026-09-06T03:40:52+00:00",
-      "touched_round": 273,
+      "touched_round": 275,
       "title": "converged-idle: quality convergence reached after the audit wave (rounds 269-273)",
       "rationale": "Rounds 269-273 delivered the entire deep-dive wave that re-activated the round-268 converged-idle (DEC-261 -> DEC-262): TASK-283/284 (backend public taxonomy counts, single-item post_count, rename+restore cache invalidation, stats pending, ISS-362..366 via CHG-390/391), TASK-285 (series progress stale guard + clamp, tags/categories posts-fetch gate, ISS-367..369 via CHG-392), TASK-286 (comments useSeo getter + far-page pagination, ISS-370/371 via CHG-393) and TASK-287 (sibling pages SEO-head getters, series counter cache, follow-state race, ISS-372..374 via CHG-394). Every issue resolved, task queue empty. VERIFY green: backend full suite 1312 passed / 93.45% coverage on SQLite plus 44 tests on the dev PostgreSQL dialect, frontend 1528/1528 vitest, nuxt typecheck + biome + ruff + pyright clean. Independent code review APPROVED the wave (0 CRITICAL/HIGH).",
       "alternatives_rejected": "The reviewer MEDIUM (categories/tags LIST post_count cached with a 30-min TTL goes stale for a silent scheduled-publish crossing while the item endpoints recompute fresh) is a bounded, self-healing staleness tradeoff: any taxonomy write or the TTL resolves it, any write path clears posts list caches, and fixing the crossing needs scheduler infra — the same class as the multi-worker cache/rate-limit deferrals (ISS-242/243/244 kept deferred per DEC-214/261). No further task was worth the 3.0 bar: remaining candidates were manufactured scope (no user signal) or infra-scale."
+    },
+    "ISS-375": {
+      "id": "ISS-375",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-06T04:21:36+00:00",
+      "updated_at": "2026-09-06T16:11:29+00:00",
+      "touched_round": 275,
+      "title": "PostCard category chip looks clickable but is an inert span — dead click on the highest-traffic surface",
+      "severity": "medium",
+      "inference": "The category pill on PostCard renders with gradient/rounded-full/shadow styling identical to the tag chips (which ARE NuxtLinks to /?tag_id=), so a visitor on the feed naturally clicks it expecting a filtered category view and nothing happens."
+    },
+    "ISS-376": {
+      "id": "ISS-376",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-06T04:22:02+00:00",
+      "updated_at": "2026-09-06T16:11:29+00:00",
+      "touched_round": 275,
+      "title": "Archive month view dead-ends — no prev/next month navigation between selected months",
+      "severity": "low",
+      "inference": "The selected-month view on archive.vue has only a 'back to all' link; paging chronologically means back → scan → click each time. Real visitors browsing old content hit this repeatedly."
+    },
+    "ISS-377": {
+      "id": "ISS-377",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-06T04:22:16+00:00",
+      "updated_at": "2026-09-06T16:11:29+00:00",
+      "touched_round": 275,
+      "title": "PostCard truncated titles have no tooltip or full-text access in the feed",
+      "severity": "low",
+      "inference": "The h2 is line-clamp-2 with no :title on the wrapping NuxtLink; a long title cuts with no way to preview the rest before clicking in."
+    },
+    "ISS-378": {
+      "id": "ISS-378",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-06T04:22:46+00:00",
+      "updated_at": "2026-09-06T16:11:30+00:00",
+      "touched_round": 275,
+      "title": "Tags/categories follow state race on fast SPA navigation (stale GET overwrites toggled follow)",
+      "severity": "medium",
+      "inference": "tags.vue loadTagFollow / categories.vue loadCategoryFollow fetch getReaderXFollows and unconditionally commit state with no monotonic seq guard, unlike series/[slug].vue which fixed the identical class with followSeq (ISS-374). A reader clicking tag A then tag B can see A's follow state on B or a stale GET flip a just-toggled button back."
+    },
+    "ISS-379": {
+      "id": "ISS-379",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-06T04:22:50+00:00",
+      "updated_at": "2026-09-06T16:11:30+00:00",
+      "touched_round": 275,
+      "title": "Series detail — reading progress not mapped onto the episode list (no checkmarks / up-next)",
+      "severity": "low",
+      "inference": "Signed-in reader sees '3/10 read → Continue reading' in the progress box but the ordered episode list marks nothing — no checkmarks, no up-next highlight on progress.next_slug. The data (read_count/next_slug) already exists on the page; mid-series readers can't tell where they left off from the list alone."
+    },
+    "ISS-380": {
+      "id": "ISS-380",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-06T04:23:16+00:00",
+      "updated_at": "2026-09-06T16:11:30+00:00",
+      "touched_round": 275,
+      "title": "TagFollowButton — ~22px hit targets and no in-flight indicator; follow tap looks like a silent no-op on slow networks",
+      "severity": "low",
+      "inference": "Bookmark/bell controls are p-1 around 14px icons (~22px targets, under the 44px mobile guideline); while busy the only feedback is disabled:opacity-40 and the icon never swaps to a spinner/check. Matches SubscribeButton's loader pattern elsewhere."
+    },
+    "ISS-381": {
+      "id": "ISS-381",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-06T04:23:27+00:00",
+      "updated_at": "2026-09-06T16:11:30+00:00",
+      "touched_round": 275,
+      "title": "Taxonomy pages — no search/filter on large clouds and far-page jumps blocked by non-interactive ellipses",
+      "severity": "low",
+      "inference": "All-tags/all-categories views render every item as an unsorted pill with no search box; windowed pagination renders '…' as a :disabled button so only first/last pages are reachable, forcing serial clicks through many pages."
+    },
+    "ISS-382": {
+      "id": "ISS-382",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-06T04:23:51+00:00",
+      "updated_at": "2026-09-06T16:11:30+00:00",
+      "touched_round": 275,
+      "title": "ThreadSubscribeButton — pre-denied push state is a disabled button explained only by hover tooltip; feature invisible to guests",
+      "severity": "low",
+      "inference": "When push state is 'denied' the follow button is :disabled with the explanation only in a :title tooltip (unreliable on disabled buttons, absent on touch); guests see no follow affordance or 'sign in to follow' hint at all."
+    },
+    "TASK-288": {
+      "id": "TASK-288",
+      "type": "task",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-06T04:24:16+00:00",
+      "updated_at": "2026-09-06T13:19:07+00:00",
+      "touched_round": 275,
+      "category": "dx",
+      "title": "Make PostCard category chip a real NuxtLink to the category-filtered view + add :title to the card link for truncated titles",
+      "severity": "medium",
+      "confidence": 1.0,
+      "effort": 1.5
+    },
+    "TASK-289": {
+      "id": "TASK-289",
+      "type": "task",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-06T04:24:22+00:00",
+      "updated_at": "2026-09-06T04:51:00+00:00",
+      "touched_round": 275,
+      "category": "correctness",
+      "title": "Add monotonic followSeq guard to tags.vue loadTagFollow / categories.vue loadCategoryFollow (port series/[slug].vue ISS-374 pattern)",
+      "severity": "medium",
+      "confidence": 1.0,
+      "effort": 1.5
+    },
+    "TASK-290": {
+      "id": "TASK-290",
+      "type": "task",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-06T04:24:50+00:00",
+      "updated_at": "2026-09-06T11:35:43+00:00",
+      "touched_round": 275,
+      "category": "core-feature",
+      "title": "Add prev/next month navigation to archive month view (compute neighbors, preserve year/month query, clamp at bounds)",
+      "severity": "medium",
+      "confidence": 1.0,
+      "effort": 2.0
+    },
+    "TASK-291": {
+      "id": "TASK-291",
+      "type": "task",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-06T04:25:08+00:00",
+      "updated_at": "2026-09-06T12:24:02+00:00",
+      "touched_round": 275,
+      "category": "core-feature",
+      "title": "Map series reading progress onto the episode list — completed checkmarks + 'Up next' highlight on progress.next_slug",
+      "severity": "medium",
+      "confidence": 0.9,
+      "effort": 2.0
+    },
+    "TASK-292": {
+      "id": "TASK-292",
+      "type": "task",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-06T04:26:02+00:00",
+      "updated_at": "2026-09-06T13:44:10+00:00",
+      "touched_round": 275,
+      "category": "dx",
+      "title": "TagFollowButton — enlarge hit targets (p-1→p-2) and swap icon to a spinner while busy",
+      "severity": "low",
+      "confidence": 0.9,
+      "effort": 1.5
+    },
+    "TASK-293": {
+      "id": "TASK-293",
+      "type": "task",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-06T04:26:07+00:00",
+      "updated_at": "2026-09-06T14:59:34+00:00",
+      "touched_round": 275,
+      "category": "dx",
+      "title": "Add client-side filter input above taxonomy clouds (tags.vue/categories.vue all-items view)",
+      "severity": "low",
+      "confidence": 0.9,
+      "effort": 2.0
+    },
+    "TASK-294": {
+      "id": "TASK-294",
+      "type": "task",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-06T04:26:54+00:00",
+      "updated_at": "2026-09-06T12:51:10+00:00",
+      "touched_round": 275,
+      "category": "correctness",
+      "title": "ThreadSubscribeButton — render inline muted explanation when push state is denied; add 'sign in to follow' hint for guests",
+      "severity": "low",
+      "confidence": 0.85,
+      "effort": 2.0
+    },
+    "ISS-383": {
+      "id": "ISS-383",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-06T04:43:27+00:00",
+      "updated_at": "2026-09-06T16:11:30+00:00",
+      "touched_round": 275,
+      "title": "Guest opening /comments gets silently bounced to /login without redirect-back — defeats the page's own sign-in UX",
+      "severity": "high",
+      "inference": "comments.vue load() has no isAuthenticated guard (unlike notifications/account), so a guest follows the visible nav link, sees the in-page 'Sign in' prompt for a split second, then a 401 from getMyComments triggers isStaleSession → logout + navigateTo('/login') with no redirect query. After signing in they land on home, not back on comments."
+    },
+    "ISS-384": {
+      "id": "ISS-384",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-06T04:44:07+00:00",
+      "updated_at": "2026-09-06T16:11:30+00:00",
+      "touched_round": 275,
+      "title": "Replying on comment page 2+ silently shows nothing — the new comment lands on page 1",
+      "severity": "high",
+      "inference": "CommentList handleReplied refreshes the CURRENT page (fetchPage uses currentPage), but a brand-new reply has the newest timestamp so it sorts to page 1, which is not re-fetched. A reader on page 2/3 replies, sees the form collapse, their post is nowhere on screen — no toast, no jump — and may double-post."
+    },
+    "ISS-385": {
+      "id": "ISS-385",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-06T04:44:18+00:00",
+      "updated_at": "2026-09-06T16:11:30+00:00",
+      "touched_round": 275,
+      "title": "Comments status-filter empty state lies: 'You haven't commented yet' on Pending/Approved/Rejected tabs that merely return zero",
+      "severity": "medium",
+      "inference": "comments.vue empty branch renders myComments.empty for any zero-item filter and the only CTA is 'Browse posts'. A reader with 20 approved comments who taps Pending (0 results) is told they've never commented and steered away from the filter that would show their content."
+    },
+    "ISS-386": {
+      "id": "ISS-386",
+      "type": "issue",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-06T04:45:06+00:00",
+      "updated_at": "2026-09-06T04:45:06+00:00",
+      "touched_round": 274,
+      "title": "Guest reading history silently disappears after signing in — no migration or explanation",
+      "severity": "medium",
+      "inference": "History source is server-only when signed in; the guest's local trail is only a device fallback and never backfilled to the server (unlike bookmarks which mergeLocalToCloud). The /history page never reloads on auth change, and re-opening it after sign-in shows 'No reading history yet' with no hint the device trail was left behind."
+    },
+    "ISS-387": {
+      "id": "ISS-387",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-06T04:46:02+00:00",
+      "updated_at": "2026-09-06T16:00:00+00:00",
+      "touched_round": 275,
+      "title": "Offline Clear-all reports success but the server copy survives and resurrects on next load",
+      "severity": "medium",
+      "inference": "bookmarks clearAll and history clearHistory swallow the cloud call's non-auth failure: offline, the DELETE fails silently and the next merge pulls the surviving server rows straight back (history even shows a green 'cleared' banner while the server history is intact)."
+    },
+    "ISS-388": {
+      "id": "ISS-388",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-06T04:46:32+00:00",
+      "updated_at": "2026-09-06T15:38:53+00:00",
+      "touched_round": 275,
+      "title": "Undoing a bookmark removal loses its folder on the next cloud merge",
+      "severity": "low",
+      "inference": "handleRemove DELETEs the cloud row (folder included); undoRemove restores locally then mirrorAdd only PUTs the post id, so the re-created cloud row has no folder, and after the next merge pull the restored bookmark silently reverts to 'No folder'."
+    },
+    "ISS-389": {
+      "id": "ISS-389",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-06T04:46:36+00:00",
+      "updated_at": "2026-09-06T16:11:31+00:00",
+      "touched_round": 275,
+      "title": "Admin posts list 'Date' column is actually created_at — misleads on scheduled vs live (highest-use page)",
+      "severity": "medium",
+      "inference": "admin/posts/index.vue renders parseApiDate(post.created_at) in the Date cell while the backend sorts by created_at desc; a Scheduled post shows a purple 'Scheduled' chip next to its creation date so the operator can't see when it goes live, and stale drafts are indistinguishable from fresh ones. publish_at/updated_at are already on the wire."
+    },
+    "ISS-390": {
+      "id": "ISS-390",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-06T04:47:00+00:00",
+      "updated_at": "2026-09-06T16:11:31+00:00",
+      "touched_round": 275,
+      "title": "Admin session expiry mid-edit: silent hard reload, no 'session expired' path, unsaved tail lost",
+      "severity": "medium",
+      "inference": "Any /api/admin/* 401 (including background autosave) instantly triggers handleAdminUnauthorized → window.location.replace('/admin/login'). The editor's autosave catch never runs meaningfully and onBeforeUnload can't flush with a dead token; after re-login the tail typed since last autosave is silently dropped, with no expired-session notice on login.vue."
+    },
+    "ISS-391": {
+      "id": "ISS-391",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-06T04:47:03+00:00",
+      "updated_at": "2026-09-06T16:11:31+00:00",
+      "touched_round": 275,
+      "title": "Manual save/publish in admin editor returns to posts list page 1 with no success feedback; edited post vanishes from view",
+      "severity": "medium",
+      "inference": "[id].vue every manual Save/Publish does navigateTo('/admin/posts', { replace: true }) with no toast; since the list is created_at desc, editing an older post and saving drops the operator on page 1 with zero indication the save landed and the post not even visible."
+    },
+    "TASK-295": {
+      "id": "TASK-295",
+      "type": "task",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-06T04:47:29+00:00",
+      "updated_at": "2026-09-06T05:01:30+00:00",
+      "touched_round": 275,
+      "category": "correctness",
+      "title": "comments.vue: early-return load() for guests (mirror notifications/account) so a 401 no longer races the in-page sign-in prompt into a redirect",
+      "severity": "high",
+      "confidence": 1.0,
+      "effort": 1.5
+    },
+    "TASK-296": {
+      "id": "TASK-296",
+      "type": "task",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-06T04:47:33+00:00",
+      "updated_at": "2026-09-06T05:34:08+00:00",
+      "touched_round": 275,
+      "category": "correctness",
+      "title": "CommentList: after a successful reply on page 2+, jump to page 1 (or the page with the new comment) and scroll to it; add a success signal",
+      "severity": "high",
+      "confidence": 1.0,
+      "effort": 2.5
+    },
+    "TASK-297": {
+      "id": "TASK-297",
+      "type": "task",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-06T04:47:58+00:00",
+      "updated_at": "2026-09-06T13:33:02+00:00",
+      "touched_round": 275,
+      "category": "dx",
+      "title": "comments.vue: differentiate per-filter empty-state copy + 'Show all' link that resets to all (keep browse CTA only for genuinely-empty all)",
+      "severity": "low",
+      "confidence": 1.0,
+      "effort": 1.5
+    },
+    "TASK-298": {
+      "id": "TASK-298",
+      "type": "task",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-06T04:48:21+00:00",
+      "updated_at": "2026-09-06T11:53:08+00:00",
+      "touched_round": 275,
+      "category": "core-feature",
+      "title": "Admin posts list Date column: render publish_at for scheduled posts and updated_at for drafts (effective-publish semantics, mirroring dashboard)",
+      "severity": "medium",
+      "confidence": 1.0,
+      "effort": 2.0
+    },
+    "TASK-299": {
+      "id": "TASK-299",
+      "type": "task",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-06T04:48:48+00:00",
+      "updated_at": "2026-09-06T11:26:47+00:00",
+      "touched_round": 275,
+      "category": "correctness",
+      "title": "Admin editor: surface an inline 'session expired — log in again' state in the autosave catch on 401 (keep in-memory form); stop the hard reload + silent tail loss",
+      "severity": "medium",
+      "confidence": 0.85,
+      "effort": 2.5
+    },
+    "TASK-300": {
+      "id": "TASK-300",
+      "type": "task",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-06T04:48:53+00:00",
+      "updated_at": "2026-09-06T14:29:56+00:00",
+      "touched_round": 275,
+      "category": "dx",
+      "title": "Admin editor: show success feedback on manual save/publish and don't navigate away for existing posts (re-arm autosave 'saved' indicator instead; leave only on explicit Cancel)",
+      "severity": "medium",
+      "confidence": 0.85,
+      "effort": 2.0
+    },
+    "TASK-301": {
+      "id": "TASK-301",
+      "type": "task",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-06T15:04:38+00:00",
+      "updated_at": "2026-09-06T15:38:53+00:00",
+      "touched_round": 275,
+      "category": "correctness",
+      "title": "Bookmark undo: restore the folder assignment on the re-created cloud row (undoRemove → PUT + assignFolder)",
+      "severity": "low",
+      "confidence": 1.0,
+      "effort": 1.5
+    },
+    "TASK-302": {
+      "id": "TASK-302",
+      "type": "task",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-06T15:04:52+00:00",
+      "updated_at": "2026-09-06T16:00:00+00:00",
+      "touched_round": 275,
+      "category": "correctness",
+      "title": "Warn when an offline clear-all can't reach the cloud (bookmarks/history): don't show a permanent-looking success for a server copy that survives",
+      "severity": "low",
+      "confidence": 0.85,
+      "effort": 2.0
+    },
+    "TASK-303": {
+      "id": "TASK-303",
+      "type": "task",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-06T15:05:45+00:00",
+      "updated_at": "2026-09-06T15:05:45+00:00",
+      "touched_round": 274,
+      "category": "core-feature",
+      "title": "Guest reading-history migration: on sign-in, backfill the local device trail to the server (or offer a one-time import)",
+      "severity": "low",
+      "confidence": 0.8,
+      "effort": 3.0
+    },
+    "CHG-395": {
+      "id": "CHG-395",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-06T15:38:31+00:00",
+      "updated_at": "2026-09-06T15:38:31+00:00",
+      "touched_round": 275,
+      "commit": "0058a2b",
+      "title": "Bookmark undo restores the folder assignment on the re-created cloud row (TASK-301 — ISS-388)"
+    },
+    "CHG-396": {
+      "id": "CHG-396",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-06T16:00:00+00:00",
+      "updated_at": "2026-09-06T16:00:00+00:00",
+      "touched_round": 275,
+      "commit": "39a1925",
+      "title": "Offline clear-all warns when the cloud copy survives (bookmarks/history — TASK-302, ISS-387)"
+    },
+    "CHG-397": {
+      "id": "CHG-397",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-06T16:06:18+00:00",
+      "updated_at": "2026-09-06T16:06:18+00:00",
+      "touched_round": 275,
+      "commit": "e8978cf",
+      "title": "wave e8978cf — follow-state race guard on tags/categories pages"
+    },
+    "CHG-398": {
+      "id": "CHG-398",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-06T16:06:18+00:00",
+      "updated_at": "2026-09-06T16:06:18+00:00",
+      "touched_round": 275,
+      "commit": "05b970a",
+      "title": "wave 05b970a — guests on /comments keep the in-page sign-in prompt"
+    },
+    "CHG-399": {
+      "id": "CHG-399",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-06T16:06:18+00:00",
+      "updated_at": "2026-09-06T16:06:18+00:00",
+      "touched_round": 275,
+      "commit": "967bc30",
+      "title": "wave 967bc30 — reply from comment page 2+ jumps to the page holding the new comment"
+    },
+    "CHG-400": {
+      "id": "CHG-400",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-06T16:06:18+00:00",
+      "updated_at": "2026-09-06T16:06:18+00:00",
+      "touched_round": 275,
+      "commit": "c540fcc",
+      "title": "wave c540fcc — admin session expiry mid-edit returns the operator to the editor"
+    },
+    "CHG-401": {
+      "id": "CHG-401",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-06T16:06:19+00:00",
+      "updated_at": "2026-09-06T16:06:19+00:00",
+      "touched_round": 275,
+      "commit": "c49cf77",
+      "title": "wave c49cf77 — adjacent-month navigation on the selected-month archive view"
+    },
+    "CHG-402": {
+      "id": "CHG-402",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-06T16:08:07+00:00",
+      "updated_at": "2026-09-06T16:08:07+00:00",
+      "touched_round": 275,
+      "commit": "b751ea6",
+      "title": "wave b751ea6 — series reading progress mapped onto the episode list"
+    },
+    "CHG-403": {
+      "id": "CHG-403",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-06T16:08:07+00:00",
+      "updated_at": "2026-09-06T16:08:07+00:00",
+      "touched_round": 275,
+      "commit": "d383e35",
+      "title": "wave d383e35 — discoverable thread-follow for guests + persistent push-denied explanation"
+    },
+    "CHG-404": {
+      "id": "CHG-404",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-06T16:08:07+00:00",
+      "updated_at": "2026-09-06T16:08:07+00:00",
+      "touched_round": 275,
+      "commit": "f339e45",
+      "title": "wave f339e45 — PostCard category chip real link + full-title tooltip"
+    },
+    "CHG-405": {
+      "id": "CHG-405",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-06T16:08:08+00:00",
+      "updated_at": "2026-09-06T16:08:08+00:00",
+      "touched_round": 275,
+      "commit": "5dabaa0",
+      "title": "wave 5dabaa0 — my-comments filtered-empty state names the filter + show-all reset"
+    },
+    "CHG-406": {
+      "id": "CHG-406",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-06T16:08:08+00:00",
+      "updated_at": "2026-09-06T16:08:08+00:00",
+      "touched_round": 275,
+      "commit": "fc1c239",
+      "title": "wave fc1c239 — TagFollowButton larger hit targets + in-flight spinner"
+    },
+    "CHG-407": {
+      "id": "CHG-407",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-06T16:08:08+00:00",
+      "updated_at": "2026-09-06T16:08:08+00:00",
+      "touched_round": 275,
+      "commit": "c96c2c0",
+      "title": "wave c96c2c0 — admin manual save keeps the editor open with inline success flash"
+    },
+    "CHG-408": {
+      "id": "CHG-408",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-06T16:08:08+00:00",
+      "updated_at": "2026-09-06T16:08:08+00:00",
+      "touched_round": 275,
+      "commit": "7ea748b",
+      "title": "wave 7ea748b — client-side filter on the all-tags/all-categories clouds"
+    },
+    "CHG-409": {
+      "id": "CHG-409",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-06T16:10:34+00:00",
+      "updated_at": "2026-09-06T16:10:34+00:00",
+      "touched_round": 275,
+      "commit": "29669e4",
+      "title": "wave 29669e4 — admin posts list Date column per-status go-live/effective-publish/last-edit"
+    },
+    "DEC-264": {
+      "id": "DEC-264",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-06T16:26:14+00:00",
+      "updated_at": "2026-09-06T16:26:14+00:00",
+      "touched_round": 275,
+      "title": "converged-idle: quality convergence reached — audit wave + offline-clear closure (rounds 274-275)",
+      "rationale": "Rounds 274-275 delivered the reactivation wave on top of the round-273 converged-idle (DEC-263): the 13-commit audit wave (TASK-288..300, ISS-375..385/389..391 via CHG-397..409) that fixed follow-state races, guest redirect/no-op paths, far-page reply jumps, archive/series/taxonomy/admin/comment/PostCard usability, plus TASK-301 (bookmark undo folder restore, ISS-388 via CHG-395), TASK-302 (offline clear-all warns when the cloud copy survives, ISS-387 via CHG-396) and the backfilled change nodes + resolves edges closing the wave issues in the graph. VERIFY green this round: backend 1312 passed / 93.45% coverage + ruff + pyright clean; frontend 1559/1559 vitest (108 files) + nuxt typecheck + biome clean; ril graph consistent (1571 nodes / 1493 edges). Every issue the audit surfaced is resolved; the only active issue is ISS-386 (guest history migration), tracked by TASK-303 at 0.83 priority — below the 3.0 convergence bar.",
+      "alternatives_rejected": "TASK-303 (guest reading-history migration, ISS-386, 0.83) is the sole remaining active task: below the 3.0 threshold and a feature-evolution candidate (backfill/import needs new API surface + sign-in hooks), not a quality-convergence bug — feature evolution is not enabled (DEC-214 defers the only higher-value infra work: multi-worker cache/rate-limit/XFF, ISS-242/243/244, per DEC-004/DEC-214). Doing it now would manufacture scope below the bar; it stays active backlog for a future operator direction or feature-evolution decision. The reviewer-flagged LIST post_count TTL staleness remains a bounded self-healing tradeoff (declined under DEC-263)."
     }
   },
   "edges": [
@@ -27323,6 +27928,384 @@
       "to": "DEC-262",
       "type": "supersedes",
       "created_at": "2026-09-06T03:40:52+00:00"
+    },
+    {
+      "from": "TASK-288",
+      "to": "ISS-375",
+      "type": "addresses",
+      "created_at": "2026-09-06T04:27:28+00:00"
+    },
+    {
+      "from": "TASK-288",
+      "to": "ISS-377",
+      "type": "addresses",
+      "created_at": "2026-09-06T04:27:28+00:00"
+    },
+    {
+      "from": "TASK-289",
+      "to": "ISS-378",
+      "type": "addresses",
+      "created_at": "2026-09-06T04:27:28+00:00"
+    },
+    {
+      "from": "TASK-290",
+      "to": "ISS-376",
+      "type": "addresses",
+      "created_at": "2026-09-06T04:27:28+00:00"
+    },
+    {
+      "from": "TASK-291",
+      "to": "ISS-379",
+      "type": "addresses",
+      "created_at": "2026-09-06T04:27:28+00:00"
+    },
+    {
+      "from": "TASK-292",
+      "to": "ISS-380",
+      "type": "addresses",
+      "created_at": "2026-09-06T04:27:28+00:00"
+    },
+    {
+      "from": "TASK-293",
+      "to": "ISS-381",
+      "type": "addresses",
+      "created_at": "2026-09-06T04:27:28+00:00"
+    },
+    {
+      "from": "TASK-294",
+      "to": "ISS-382",
+      "type": "addresses",
+      "created_at": "2026-09-06T04:27:28+00:00"
+    },
+    {
+      "from": "ISS-375",
+      "to": "COMP-002",
+      "type": "located_in",
+      "created_at": "2026-09-06T04:29:27+00:00"
+    },
+    {
+      "from": "ISS-376",
+      "to": "COMP-002",
+      "type": "located_in",
+      "created_at": "2026-09-06T04:29:27+00:00"
+    },
+    {
+      "from": "ISS-377",
+      "to": "COMP-002",
+      "type": "located_in",
+      "created_at": "2026-09-06T04:29:27+00:00"
+    },
+    {
+      "from": "ISS-378",
+      "to": "COMP-002",
+      "type": "located_in",
+      "created_at": "2026-09-06T04:29:27+00:00"
+    },
+    {
+      "from": "ISS-379",
+      "to": "COMP-002",
+      "type": "located_in",
+      "created_at": "2026-09-06T04:29:27+00:00"
+    },
+    {
+      "from": "ISS-380",
+      "to": "COMP-002",
+      "type": "located_in",
+      "created_at": "2026-09-06T04:29:27+00:00"
+    },
+    {
+      "from": "ISS-381",
+      "to": "COMP-002",
+      "type": "located_in",
+      "created_at": "2026-09-06T04:29:27+00:00"
+    },
+    {
+      "from": "ISS-382",
+      "to": "COMP-002",
+      "type": "located_in",
+      "created_at": "2026-09-06T04:29:27+00:00"
+    },
+    {
+      "from": "TASK-295",
+      "to": "ISS-383",
+      "type": "addresses",
+      "created_at": "2026-09-06T04:49:36+00:00"
+    },
+    {
+      "from": "ISS-383",
+      "to": "COMP-002",
+      "type": "located_in",
+      "created_at": "2026-09-06T04:49:36+00:00"
+    },
+    {
+      "from": "TASK-296",
+      "to": "ISS-384",
+      "type": "addresses",
+      "created_at": "2026-09-06T04:49:36+00:00"
+    },
+    {
+      "from": "ISS-384",
+      "to": "COMP-002",
+      "type": "located_in",
+      "created_at": "2026-09-06T04:49:36+00:00"
+    },
+    {
+      "from": "TASK-297",
+      "to": "ISS-385",
+      "type": "addresses",
+      "created_at": "2026-09-06T04:49:36+00:00"
+    },
+    {
+      "from": "ISS-385",
+      "to": "COMP-002",
+      "type": "located_in",
+      "created_at": "2026-09-06T04:49:36+00:00"
+    },
+    {
+      "from": "TASK-298",
+      "to": "ISS-389",
+      "type": "addresses",
+      "created_at": "2026-09-06T04:49:36+00:00"
+    },
+    {
+      "from": "ISS-389",
+      "to": "COMP-002",
+      "type": "located_in",
+      "created_at": "2026-09-06T04:49:36+00:00"
+    },
+    {
+      "from": "TASK-299",
+      "to": "ISS-390",
+      "type": "addresses",
+      "created_at": "2026-09-06T04:49:36+00:00"
+    },
+    {
+      "from": "ISS-390",
+      "to": "COMP-002",
+      "type": "located_in",
+      "created_at": "2026-09-06T04:49:36+00:00"
+    },
+    {
+      "from": "TASK-300",
+      "to": "ISS-391",
+      "type": "addresses",
+      "created_at": "2026-09-06T04:49:37+00:00"
+    },
+    {
+      "from": "ISS-391",
+      "to": "COMP-002",
+      "type": "located_in",
+      "created_at": "2026-09-06T04:49:37+00:00"
+    },
+    {
+      "from": "TASK-301",
+      "to": "ISS-388",
+      "type": "addresses",
+      "created_at": "2026-09-06T15:05:49+00:00"
+    },
+    {
+      "from": "TASK-302",
+      "to": "ISS-387",
+      "type": "addresses",
+      "created_at": "2026-09-06T15:05:49+00:00"
+    },
+    {
+      "from": "TASK-303",
+      "to": "ISS-386",
+      "type": "addresses",
+      "created_at": "2026-09-06T15:05:50+00:00"
+    },
+    {
+      "from": "CHG-395",
+      "to": "ISS-388",
+      "type": "resolves",
+      "created_at": "2026-09-06T15:38:53+00:00"
+    },
+    {
+      "from": "CHG-395",
+      "to": "TASK-301",
+      "type": "implements",
+      "created_at": "2026-09-06T15:38:53+00:00"
+    },
+    {
+      "from": "CHG-396",
+      "to": "ISS-387",
+      "type": "resolves",
+      "created_at": "2026-09-06T16:00:00+00:00"
+    },
+    {
+      "from": "CHG-396",
+      "to": "TASK-302",
+      "type": "implements",
+      "created_at": "2026-09-06T16:00:00+00:00"
+    },
+    {
+      "from": "CHG-397",
+      "to": "TASK-289",
+      "type": "implements",
+      "created_at": "2026-09-06T16:06:18+00:00"
+    },
+    {
+      "from": "CHG-397",
+      "to": "ISS-378",
+      "type": "resolves",
+      "created_at": "2026-09-06T16:06:18+00:00"
+    },
+    {
+      "from": "CHG-398",
+      "to": "TASK-295",
+      "type": "implements",
+      "created_at": "2026-09-06T16:06:18+00:00"
+    },
+    {
+      "from": "CHG-398",
+      "to": "ISS-383",
+      "type": "resolves",
+      "created_at": "2026-09-06T16:06:18+00:00"
+    },
+    {
+      "from": "CHG-399",
+      "to": "TASK-296",
+      "type": "implements",
+      "created_at": "2026-09-06T16:06:18+00:00"
+    },
+    {
+      "from": "CHG-399",
+      "to": "ISS-384",
+      "type": "resolves",
+      "created_at": "2026-09-06T16:06:18+00:00"
+    },
+    {
+      "from": "CHG-400",
+      "to": "TASK-299",
+      "type": "implements",
+      "created_at": "2026-09-06T16:06:18+00:00"
+    },
+    {
+      "from": "CHG-400",
+      "to": "ISS-390",
+      "type": "resolves",
+      "created_at": "2026-09-06T16:06:19+00:00"
+    },
+    {
+      "from": "CHG-401",
+      "to": "TASK-290",
+      "type": "implements",
+      "created_at": "2026-09-06T16:06:19+00:00"
+    },
+    {
+      "from": "CHG-401",
+      "to": "ISS-376",
+      "type": "resolves",
+      "created_at": "2026-09-06T16:06:19+00:00"
+    },
+    {
+      "from": "CHG-402",
+      "to": "TASK-291",
+      "type": "implements",
+      "created_at": "2026-09-06T16:08:07+00:00"
+    },
+    {
+      "from": "CHG-402",
+      "to": "ISS-379",
+      "type": "resolves",
+      "created_at": "2026-09-06T16:08:07+00:00"
+    },
+    {
+      "from": "CHG-403",
+      "to": "TASK-294",
+      "type": "implements",
+      "created_at": "2026-09-06T16:08:07+00:00"
+    },
+    {
+      "from": "CHG-403",
+      "to": "ISS-382",
+      "type": "resolves",
+      "created_at": "2026-09-06T16:08:07+00:00"
+    },
+    {
+      "from": "CHG-404",
+      "to": "TASK-288",
+      "type": "implements",
+      "created_at": "2026-09-06T16:08:07+00:00"
+    },
+    {
+      "from": "CHG-404",
+      "to": "ISS-375",
+      "type": "resolves",
+      "created_at": "2026-09-06T16:08:07+00:00"
+    },
+    {
+      "from": "CHG-404",
+      "to": "ISS-377",
+      "type": "resolves",
+      "created_at": "2026-09-06T16:08:08+00:00"
+    },
+    {
+      "from": "CHG-405",
+      "to": "TASK-297",
+      "type": "implements",
+      "created_at": "2026-09-06T16:08:08+00:00"
+    },
+    {
+      "from": "CHG-405",
+      "to": "ISS-385",
+      "type": "resolves",
+      "created_at": "2026-09-06T16:08:08+00:00"
+    },
+    {
+      "from": "CHG-406",
+      "to": "TASK-292",
+      "type": "implements",
+      "created_at": "2026-09-06T16:08:08+00:00"
+    },
+    {
+      "from": "CHG-406",
+      "to": "ISS-380",
+      "type": "resolves",
+      "created_at": "2026-09-06T16:08:08+00:00"
+    },
+    {
+      "from": "CHG-407",
+      "to": "TASK-300",
+      "type": "implements",
+      "created_at": "2026-09-06T16:08:08+00:00"
+    },
+    {
+      "from": "CHG-407",
+      "to": "ISS-391",
+      "type": "resolves",
+      "created_at": "2026-09-06T16:08:08+00:00"
+    },
+    {
+      "from": "CHG-408",
+      "to": "TASK-293",
+      "type": "implements",
+      "created_at": "2026-09-06T16:08:08+00:00"
+    },
+    {
+      "from": "CHG-408",
+      "to": "ISS-381",
+      "type": "resolves",
+      "created_at": "2026-09-06T16:08:09+00:00"
+    },
+    {
+      "from": "CHG-409",
+      "to": "TASK-298",
+      "type": "implements",
+      "created_at": "2026-09-06T16:10:34+00:00"
+    },
+    {
+      "from": "CHG-409",
+      "to": "ISS-389",
+      "type": "resolves",
+      "created_at": "2026-09-06T16:10:34+00:00"
+    },
+    {
+      "from": "DEC-264",
+      "to": "DEC-263",
+      "type": "supersedes",
+      "created_at": "2026-09-06T16:26:14+00:00"
     }
   ]
 }
