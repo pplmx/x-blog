@@ -116,6 +116,24 @@ describe("My comments page", () => {
 		expect(wrapper.text()).toContain("登录后可以查看和管理你的评论");
 	});
 
+	it("does not fire an authenticated fetch (or a redirect) for a guest (ISS-383)", async () => {
+		// Guests see the in-page sign-in prompt; the old code called getMyComments
+		// on mount, whose 401 raced the prompt into logout()+navigateTo('/login') —
+		// stealing the reader's intended post-login landing. The guard must keep
+		// the prompt in place without the redirect (mirror notifications/account).
+		isAuthenticated.value = false;
+		const navigateTo = vi.fn();
+		vi.stubGlobal("navigateTo", navigateTo);
+
+		await mountPage();
+
+		expect(mockFetchMyComments).not.toHaveBeenCalled();
+		expect(mockLogout).not.toHaveBeenCalled();
+		expect(navigateTo).not.toHaveBeenCalled();
+		expect(navigateTo).not.toHaveBeenCalledWith("/login");
+		vi.unstubAllGlobals();
+	});
+
 	it("shows the empty state when the reader has no comments", async () => {
 		isAuthenticated.value = true;
 		mockData.value = { items: [], total: 0 };

@@ -64,6 +64,11 @@ function handleLoadFailure(err: unknown, markFailed: () => void): void {
 }
 
 async function load() {
+	// Guests see the in-page sign-in prompt — do not fire an authenticated
+	// request (the resulting 401 would otherwise race the prompt into a
+	// redirect to /login, stealing the reader's intended post-login landing;
+	// mirror notifications/account, ISS-383).
+	if (!isAuthenticated.value) return;
 	const seq = ++loadSeq; // invalidate any in-flight older request
 	// Re-enter loading on refetch (tab/page change) so the swap is visible, and
 	// keep errors distinct from a genuinely empty list (ISS-129).
