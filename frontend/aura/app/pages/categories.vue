@@ -208,26 +208,40 @@ function noteFollowError() {
 	}, 4000);
 }
 
+// Follow-state gets the same stale-response guard the series page uses
+// (deep-dive, ISS-374): without it, a slow in-flight GET can overwrite a
+// follow toggle the reader just made — the PUT commits and flips the button
+// to "following", then the stale pre-follow GET resolver flips it back and
+// resets the notify flag; SPA navigation between categories can likewise
+// surface the previous category's state. Declared above the watcher so the
+// immediate callback never touches a TDZ binding.
+let followSeq = 0;
+
 async function loadCategoryFollow() {
 	if (!catSignedIn.value || !categoryId.value) return;
+	const seq = ++followSeq; // invalidate any in-flight older category request
 	try {
 		// Imperative $fetch seam (ISS-110/111, TASK-199): useFetch-based query()
 		// wrappers silently no-op when called from onMounted in a sync-setup
 		// component — the same class of regression ISS-117 fixed on the account
 		// page. Await the plain response directly.
 		const res = await getReaderCategoryFollows();
+		if (seq !== followSeq) return; // stale — a newer category is in flight
 		const item = res.items.find((c) => c.id === categoryId.value) ?? null;
 		catFollowing.value = !!item;
 		catNotify.value = item?.notify ?? true;
 	} catch {
-		catFollowing.value = false;
-		catNotify.value = true;
+		if (seq === followSeq) {
+			catFollowing.value = false;
+			catNotify.value = true;
+		}
 	}
 }
 
 async function toggleCategoryFollow() {
 	if (catFollowBusy.value || !categoryId.value) return;
 	catFollowBusy.value = true;
+	followSeq++; // a user action supersedes any in-flight follow-state loader
 	try {
 		if (catFollowing.value) {
 			await unfollowReaderCategory(categoryId.value);
@@ -249,6 +263,7 @@ async function toggleCategoryFollow() {
 async function toggleCategoryNotify() {
 	if (catFollowBusy.value || !categoryId.value || !catFollowing.value) return;
 	catFollowBusy.value = true;
+	followSeq++; // a user action supersedes any in-flight follow-state loader
 	const next = !catNotify.value;
 	try {
 		const res = await setCategoryFollowNotify(categoryId.value, next);

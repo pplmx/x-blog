@@ -148,26 +148,40 @@ function noteFollowError() {
 	}, 4000);
 }
 
+// Follow-state gets the same stale-response guard the series page uses
+// (deep-dive, ISS-374): without it, a slow in-flight GET can overwrite a
+// follow toggle the reader just made — the PUT commits and flips the button
+// to "following", then the stale pre-follow GET resolver flips it back and
+// resets the notify flag; SPA navigation between tags can likewise surface
+// the previous tag's state. Declared above the watcher so the immediate
+// callback never touches a TDZ binding.
+let followSeq = 0;
+
 async function loadTagFollow() {
 	if (!tagSignedIn.value || !tagId.value) return;
+	const seq = ++followSeq; // invalidate any in-flight older tag request
 	try {
 		// Imperative $fetch seam (ISS-110/111, TASK-199): useFetch-based query()
 		// wrappers silently no-op when called outside a setup/suspense context —
 		// the same class of regression ISS-117 fixed on the account page and
 		// ISS-118 extended to SPA navigation. Await the plain response directly.
 		const res = await getReaderTagFollows();
+		if (seq !== followSeq) return; // stale — a newer tag is in flight
 		const item = res.items.find((t) => t.id === tagId.value) ?? null;
 		tagFollowing.value = !!item;
 		tagNotify.value = item?.notify ?? true;
 	} catch {
-		tagFollowing.value = false;
-		tagNotify.value = true;
+		if (seq === followSeq) {
+			tagFollowing.value = false;
+			tagNotify.value = true;
+		}
 	}
 }
 
 async function toggleTagFollow() {
 	if (tagFollowBusy.value || !tagId.value) return;
 	tagFollowBusy.value = true;
+	followSeq++; // a user action supersedes any in-flight follow-state loader
 	try {
 		if (tagFollowing.value) {
 			await unfollowReaderTag(tagId.value);
@@ -189,6 +203,7 @@ async function toggleTagFollow() {
 async function toggleTagNotify() {
 	if (tagFollowBusy.value || !tagId.value || !tagFollowing.value) return;
 	tagFollowBusy.value = true;
+	followSeq++; // a user action supersedes any in-flight follow-state loader
 	const next = !tagNotify.value;
 	try {
 		const res = await setTagFollowNotify(tagId.value, next);

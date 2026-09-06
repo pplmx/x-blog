@@ -580,6 +580,70 @@ describe("Categories Page", () => {
 			catFollowsState.items = [];
 			catFollowsState.total = 0;
 		});
+
+		it("drops a stale follow-state response so it can't clobber a newer toggle (ISS-378)", async () => {
+			window.localStorage.setItem("reader_token", "token");
+			// The initial follow-state GET stays in flight (slow).
+			let resolveStale!: (v: unknown) => void;
+			vi.stubGlobal(
+				"$fetch",
+				vi.fn((url: unknown, opts: { method?: string } = {}) => {
+					if (
+						String(url).includes("/me/category-follows") &&
+						!["PUT", "PATCH", "DELETE"].includes(opts.method ?? "")
+					) {
+						return new Promise((res) => {
+							resolveStale = res;
+						});
+					}
+					return Promise.resolve({});
+				}),
+			);
+
+			const { default: CategoriesPage } = await import("../../app/pages/categories.vue");
+			const SuspenseWrapper: any = {
+				components: { CategoriesPage },
+				template:
+					"<Suspense>" +
+					"<template #default><CategoriesPage /></template>" +
+					"<template #fallback>Loading...</template>" +
+					"</Suspense>",
+			};
+			const wrapper = mount(SuspenseWrapper, {
+				global: {
+					stubs: {
+						NuxtLink: { template: '<a :href="to"><slot/></a>', props: ["to"] },
+						Icon: { template: '<svg class="iconstub" />' },
+					},
+				},
+			});
+			await flushPromises();
+
+			// The reader follows while the stale GET is still in flight — the PUT
+			// commits and flips the button to following.
+			const followBtn = wrapper.findAll("button").find((b) => b.text().includes("关注分类"));
+			expect(followBtn).toBeDefined();
+			await followBtn?.trigger("click");
+			await flushPromises();
+			expect(wrapper.text()).toContain("已关注分类");
+
+			// The OLD GET (a pre-follow snapshot saying "not following") resolves
+			// late — the seq guard must drop it, not flip the button back. The
+			// unfollow button must NOT revert to the "Following category" prompt.
+			resolveStale({ items: [], total: 0 });
+			await flushPromises();
+			const followingBtn = wrapper.findAll("button").find((b) => b.text().includes("已关注分类"));
+			expect(followingBtn).toBeDefined();
+			// The exact "关注分类" prompt (excluding the "已关注分类" following label).
+			const promptBtn = wrapper
+				.findAll("button")
+				.find((b) => b.text().includes("关注分类") && !b.text().includes("已关注分类"));
+			expect(promptBtn).toBeUndefined();
+
+			window.localStorage.removeItem("reader_token");
+			catFollowsState.items = [];
+			catFollowsState.total = 0;
+		});
 	});
 
 	describe("out-of-range page clamp (ISS-308)", () => {

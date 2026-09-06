@@ -494,5 +494,38 @@ describe("Tags Page", () => {
 			expect(deleteMock).toHaveBeenCalled();
 			expect(wrapper.text()).toContain("关注标签");
 		});
+
+		it("drops a stale follow-state response so it can't clobber a newer toggle (ISS-378)", async () => {
+			window.localStorage.setItem("reader_token", "reader-jwt");
+			// The initial follow-state GET stays in flight (slow).
+			let resolveStale!: (v: unknown) => void;
+			vi.stubGlobal(
+				"$fetch",
+				vi.fn((url: string, opts: { method?: string } = {}) =>
+					url.includes("/tag-follows") && opts.method !== "PUT"
+						? new Promise((res) => {
+								resolveStale = res;
+							})
+						: Promise.resolve({ tag_id: 1, tag_name: "React", following: true, notify: true }),
+				),
+			);
+
+			const wrapper = await mountTagsPage({ routeQuery: { tag_id: "1" } });
+			const followButton = wrapper.findAll("button").find((b) => b.text().includes("关注标签"));
+			expect(followButton).toBeTruthy();
+
+			// The reader follows while the stale GET is still in flight — the PUT
+			// commits and flips the button to following.
+			await followButton?.trigger("click");
+			await flushPromises();
+			expect(wrapper.text()).toContain("已关注");
+
+			// The OLD GET (a pre-follow snapshot saying "not following") resolves
+			// late — the seq guard must drop it, not flip the button back.
+			resolveStale({ items: [], total: 0 });
+			await flushPromises();
+			expect(wrapper.text()).toContain("已关注");
+			expect(wrapper.text()).not.toContain("关注标签");
+		});
 	});
 });
