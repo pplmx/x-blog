@@ -42,12 +42,22 @@ vi.mock("~~/api/reader/subscriptions", () => ({
 	unsubscribeFromPostThread: mockUnsubscribeFromPostThread,
 }));
 
+// The guest branch renders a sign-in link target built from the current route
+// (ISS-382); the components reads route.path/query so its tests stub useRoute.
+vi.stubGlobal("useRoute", () => ({ path: "/posts/demo", query: {} }));
+
 import ThreadSubscribeButton from "../../components/ThreadSubscribeButton.vue";
 
 const iconStub = {
 	name: "Icon",
 	template: '<i data-testid="icon" :data-icon="icon"></i>',
 	props: ["icon"],
+};
+
+const nuxtLinkStub = {
+	name: "NuxtLink",
+	template: '<a class="nuxt-link-stub"><slot /></a>',
+	props: ["to"],
 };
 
 function mockStatus(subscribed: boolean) {
@@ -61,7 +71,7 @@ let wrapper: ReturnType<typeof mount> | undefined;
 async function mountButton() {
 	wrapper = mount(ThreadSubscribeButton, {
 		props: { postId: 1 },
-		global: { stubs: { Icon: iconStub } },
+		global: { stubs: { Icon: iconStub, NuxtLink: nuxtLinkStub } },
 	});
 	await flushPromises();
 	return wrapper;
@@ -79,9 +89,13 @@ describe("ThreadSubscribeButton", () => {
 		wrapper = undefined;
 	});
 
-	it("is hidden when nobody is signed in", async () => {
+	it("shows a sign-in prompt (not the toggle) when nobody is signed in", async () => {
 		const w = await mountButton();
 		expect(w.find("button").exists()).toBe(false);
+		// The guest discoverability branch (ISS-382): a reader-scoped feature is
+		// pointed at sign-in instead of being silently absent.
+		expect(w.find(".nuxt-link-stub").exists()).toBe(true);
+		expect(w.text()).toContain("components.threadSubscribe.guestPrompt");
 		// No follow-state fetch fires for anonymous visitors.
 		expect(mockGetPostSubscription).not.toHaveBeenCalled();
 	});
@@ -146,11 +160,35 @@ describe("ThreadSubscribeButton", () => {
 		expect((w.find("button").attributes("disabled") ?? "") !== undefined).toBe(true);
 	});
 
+	it("shows a persistent inline explanation when push is pre-denied (ISS-382)", async () => {
+		// The disabled button's :title tooltip is the only explanation and is
+		// unreliable on disabled controls / absent on touch — a persistently
+		// denied state must render an inline line under the button.
+		isAuthenticated.value = true;
+		mockStatus(false);
+		status.value = "denied";
+		const w = await mountButton();
+		expect(w.text()).toContain("components.threadSubscribe.deniedHint");
+	});
+
+	it("shows the generic push-needed line (not 'denied') when push is unsupported", async () => {
+		// Non-denied delivery gaps (VAPID unconfigured / API unsupported) get the
+		// generic hint, not the permission-blocked copy.
+		isAuthenticated.value = true;
+		mockStatus(false);
+		status.value = "unsupported";
+		const w = await mountButton();
+		expect(w.text()).toContain("components.threadSubscribe.pushNeeded");
+		expect(w.text()).not.toContain("components.threadSubscribe.deniedHint");
+	});
+
 	it("shows a hint instead of following when push permission stays denied", async () => {
 		isAuthenticated.value = true;
 		mockStatus(false);
 		status.value = "idle";
 		// Permission requested but denied -> composable leaves status "denied".
+		// The inline hint is the 'denied' copy (more precise than the generic
+		// blockedHint), and no thread follow is issued (ISS-382).
 		subscribe.mockImplementation(() => {
 			status.value = "denied";
 			return Promise.resolve();
@@ -161,7 +199,7 @@ describe("ThreadSubscribeButton", () => {
 		await nextTick();
 		expect(subscribe).toHaveBeenCalledOnce();
 		expect(mockSubscribeToPostThread).not.toHaveBeenCalled();
-		expect(w.text()).toContain("components.threadSubscribe.blockedHint");
+		expect(w.text()).toContain("components.threadSubscribe.deniedHint");
 	});
 
 	it("announces a failed follow with role=alert (not a silent no-op)", async () => {

@@ -57,6 +57,28 @@ const pushBlocked = computed(() =>
 	["unsupported", "unconfigured", "denied"].includes(pushStatus.value),
 );
 
+// Persistent inline explanation for a pre-blocked browser (ISS-382): the
+// disabled button's :title tooltip is unreliable on disabled controls and
+// absent on touch, so a reader who once dismissed the permission prompt gets a
+// visible "blocked in browser settings" line instead of a greyed mystery
+// button. Distinguish the explicit-permission-denied case from generic
+// non-delivery (VAPID unconfigured / API unsupported) so the copy is honest.
+const deniedHint = computed(() =>
+	pushStatus.value === "denied"
+		? t("components.threadSubscribe.deniedHint")
+		: t("components.threadSubscribe.pushNeeded"),
+);
+
+// Guest branch (ISS-382): the follow feature is reader-scoped, but instead of
+// hiding it entirely point sign-in back at the current page so a guest
+// discovers a discussion can be followed and returns here after signing in.
+// Same-origin relative path only (no open redirect via an absolute URL).
+const route = useRoute();
+const signInTarget = computed(() => {
+	const path = `${route.path}${route.query && Object.keys(route.query).length ? `?${new URLSearchParams(route.query as Record<string, string>).toString()}` : ""}`;
+	return { path: "/login", query: { redirect: path } };
+});
+
 const label = computed(() =>
 	following.value
 		? t("components.threadSubscribe.unfollow")
@@ -91,6 +113,8 @@ async function toggle() {
 </script>
 
 <template>
+  <!-- Signed-in: the follow toggle. Guest branch below replaces the button so
+       the feature is discoverable instead of silently absent. -->
   <button
     v-if="isAuthenticated"
     type="button"
@@ -105,8 +129,18 @@ async function toggle() {
     <Icon :icon="following ? 'lucide:bell-ring' : 'lucide:bell'" :class="{ 'animate-spin': busy }" class="h-4 w-4" />
     {{ label }}
   </button>
+  <!-- Pre-denied push state: the disabled button's :title tooltip is the ONLY
+       explanation, and tooltips don't reliably appear on disabled buttons and
+       never on touch — surface a persistent inline line instead (ISS-382). -->
   <p
-    v-if="blocked && isAuthenticated"
+    v-if="isAuthenticated && pushBlocked"
+    role="status"
+    class="mt-1 text-xs text-amber-600 dark:text-amber-400"
+  >
+    {{ deniedHint }}
+  </p>
+  <p
+    v-else-if="blocked && isAuthenticated"
     role="status"
     class="mt-1 text-xs text-amber-600 dark:text-amber-400"
   >
@@ -115,4 +149,15 @@ async function toggle() {
   <p v-else-if="error && isAuthenticated" role="alert" class="mt-1 text-xs text-red-600 dark:text-red-400">
     {{ t("components.threadSubscribe.error") }}
   </p>
+  <!-- Guest: the feature needs an account (follows are not anonymous) — instead
+       of hiding the affordance entirely, point sign-in at the current page so a
+       guest discovers the discussion can be followed (ISS-382). -->
+  <NuxtLink
+    v-else
+    :to="signInTarget"
+    class="inline-flex shrink-0 items-center gap-1.5 rounded-lg p-2 text-sm text-gray-500 dark:text-gray-400 transition-all duration-200 hover:bg-gray-100 hover:text-gray-700 dark:hover:bg-gray-800 dark:hover:text-gray-200"
+  >
+    <Icon icon="lucide:log-in" class="h-4 w-4" />
+    {{ t("components.threadSubscribe.guestPrompt") }}
+  </NuxtLink>
 </template>

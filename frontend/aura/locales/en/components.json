@@ -68,7 +68,9 @@
 			"unfollow": "Following",
 			"pushNeeded": "Turn on browser notifications (Web Push) to get alerts for new comments",
 			"blockedHint": "Browser notifications are unavailable or blocked — can't follow this discussion",
-			"error": "Something went wrong, please try again"
+			"error": "Something went wrong, please try again",
+			"deniedHint": "Browser notifications are blocked in your browser settings — enable them to follow this discussion",
+			"guestPrompt": "Sign in to follow this discussion and get notified about new comments"
 		},
 		"share": {
 			"shareTo": "Share to",
