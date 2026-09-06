@@ -5,7 +5,7 @@
 # -----------------------------------------------------------------------------
 # Stage 1: Builder - Install dependencies
 # -----------------------------------------------------------------------------
-FROM python:3.14.1-slim-bookworm AS builder
+FROM python:3.14.7-slim-bookworm AS builder
 
 WORKDIR /app
 
@@ -27,7 +27,7 @@ RUN uv sync --frozen
 # -----------------------------------------------------------------------------
 # Stage 2: Production - Minimal runtime image
 # -----------------------------------------------------------------------------
-FROM python:3.14.1-slim-bookworm AS production
+FROM python:3.14.7-slim-bookworm AS production
 
 WORKDIR /app
 
