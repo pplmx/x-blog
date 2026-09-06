@@ -172,11 +172,24 @@ function resolveRequestPath(path: ApiQueryPath): string {
  * misleading generic error (RIL ISS-277, ISS-273). Scoped to /api/admin/* and
  * the login call explicitly excluded: a 401 from POST /api/admin/login means
  * wrong credentials, which the login page already handles in-place.
+ *
+ * When the failure happens while the operator is ON an admin subpage (e.g. a
+ * background autosave 401 in the post editor), carry the current path to the
+ * login page via ?next= so re-authentication lands them back where they were
+ * instead of the bare posts list — an editor whose session expired mid-draft
+ * saw every subsequent call 401 → hard redirect to /admin/login, and after
+ * re-login landed on the posts list with no path back to the draft they were
+ * writing (ISS-390). Only a same-origin internal admin path is honored (the
+ * composable re-validates); non-admin pages pass nothing → plain login URL.
  */
 function flagAdminUnauthorized(response: { status?: number } | undefined, path: string): void {
 	if (response?.status !== 401) return;
 	if (!path.startsWith("/api/admin/") || path.startsWith("/api/admin/login")) return;
-	useAdminAuth().handleAdminUnauthorized();
+	const returnTo =
+		typeof window !== "undefined" && window.location.pathname.startsWith("/admin/")
+			? window.location.pathname + window.location.search
+			: undefined;
+	useAdminAuth().handleAdminUnauthorized(returnTo);
 }
 
 /** An ofetch/useFetch onResponseError hook (single fn or array of fns). */

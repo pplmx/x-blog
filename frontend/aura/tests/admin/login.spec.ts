@@ -39,6 +39,12 @@ vi.stubGlobal("useRuntimeConfig", () => ({
 vi.stubGlobal("navigateTo", vi.fn());
 vi.stubGlobal("useHead", vi.fn());
 vi.stubGlobal("definePageMeta", vi.fn());
+// The page reads route.query.next for the session-expiry return landing
+// (ISS-390); default to an empty query so its presence decides the behavior.
+vi.stubGlobal("useRoute", () => ({
+	params: {},
+	query: {},
+}));
 
 // Stub the Icon component used in the login page template
 const IconStubComponent = {
@@ -49,6 +55,17 @@ const IconStubComponent = {
 async function loadLoginPage() {
 	const { default: LoginPage } = await import("@/pages/admin/login.vue");
 	return LoginPage;
+}
+
+/** Stub useRoute with a specific query then mount the page. */
+async function mountLoginWithQuery(query: Record<string, unknown> = {}) {
+	vi.stubGlobal("useRoute", () => ({ params: {}, query }));
+	const LoginPage = await loadLoginPage();
+	return mount(LoginPage, {
+		global: {
+			stubs: { NuxtLink: NuxtLinkStub, Icon: IconStubComponent },
+		},
+	});
 }
 
 describe("Admin Login Page", () => {
@@ -296,6 +313,51 @@ describe("Admin Login Page", () => {
 				error: ref(null),
 			});
 			await flushPromises();
+		});
+
+		it("navigates back to the editor path carried by ?next= (ISS-390)", async () => {
+			// The admin-401 handler bounces an operator whose session died
+			// mid-edit to /admin/login?next=/admin/posts/42 — after login they
+			// must land back in the editor, not the bare posts list.
+			const wrapper = await mountLoginWithQuery({ next: "/admin/posts/42" });
+			mockAdminLoginRequest.mockResolvedValue({
+				data: ref({ access_token: "fake-jwt-token" }),
+				error: ref(null),
+			});
+
+			const inputs = wrapper.findAll("input");
+			await inputs[0].setValue("admin");
+			await inputs[1].setValue("secretpass");
+			await wrapper.find("form").trigger("submit.prevent");
+			await flushPromises();
+
+			expect(navigateTo).toHaveBeenCalledWith("/admin/posts/42", { replace: true });
+		});
+
+		it("ignores an external ?next= and falls back to /admin/posts (no open redirect)", async () => {
+			const wrapper = await mountLoginWithQuery({ next: "https://evil.example.com" });
+			mockAdminLoginRequest.mockResolvedValue({
+				data: ref({ access_token: "fake-jwt-token" }),
+				error: ref(null),
+			});
+
+			const inputs = wrapper.findAll("input");
+			await inputs[0].setValue("admin");
+			await inputs[1].setValue("secretpass");
+			await wrapper.find("form").trigger("submit.prevent");
+			await flushPromises();
+
+			expect(navigateTo).toHaveBeenCalledWith("/admin/posts", { replace: true });
+		});
+
+		it("shows the session-expired notice only when bounced back via ?next=", async () => {
+			// With ?next= (an expired session mid-edit), the notice explains the
+			// otherwise-unexplained re-login; a fresh login stays notice-free.
+			const bounced = await mountLoginWithQuery({ next: "/admin/posts/42" });
+			expect(bounced.text()).toContain("你的登录已过期");
+
+			const fresh = await mountLoginWithQuery();
+			expect(fresh.text()).not.toContain("你的登录已过期");
 		});
 	});
 });

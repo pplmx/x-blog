@@ -77,4 +77,25 @@ describe("admin session expiry (ISS-273)", () => {
 		expect(localStorage.getItem(ADMIN_TOKEN_KEY)).toBeNull();
 		expect(replace).toHaveBeenCalledWith("/admin/login");
 	});
+
+	it("handleAdminUnauthorized carries an internal admin returnTo to the login page (ISS-390)", () => {
+		const replace = vi.spyOn(window.location, "replace").mockImplementation(() => undefined);
+		const { isAuthenticated, handleAdminUnauthorized } = useAdminAuth();
+		// An autosave 401 in the post editor: the operator must land BACK in the
+		// editor after re-login, not on the bare posts list.
+		handleAdminUnauthorized("/admin/posts/42");
+		expect(isAuthenticated.value).toBe(false);
+		expect(replace).toHaveBeenCalledWith("/admin/login?next=%2Fadmin%2Fposts%2F42");
+	});
+
+	it("handleAdminUnauthorized ignores a non-admin or external returnTo (no open redirect)", () => {
+		const replace = vi.spyOn(window.location, "replace").mockImplementation(() => undefined);
+		const { handleAdminUnauthorized } = useAdminAuth();
+		handleAdminUnauthorized("//evil.example.com");
+		expect(replace).toHaveBeenCalledWith("/admin/login");
+		handleAdminUnauthorized("https://evil.example.com/admin/posts");
+		expect(replace).toHaveBeenCalledWith("/admin/login");
+		handleAdminUnauthorized("/reader/account");
+		expect(replace).toHaveBeenCalledWith("/admin/login");
+	});
 });

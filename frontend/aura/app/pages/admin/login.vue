@@ -19,6 +19,24 @@ const password = ref("");
 const error = ref<string | null>(null);
 const isPending = ref(false);
 
+// Session-expired return landing (ISS-390): the transport's admin-401 handler
+// carries the path the operator was editing via ?next= when their session died
+// mid-work. Honor it after login so they land back on the draft instead of the
+// bare posts list — but only same-origin internal admin paths (no open
+// redirect through an absolute/external value).
+const route = useRoute();
+const postLoginTarget = computed(() => {
+	const n = route.query.next;
+	if (typeof n !== "string" || !n) return "/admin/posts";
+	if (!n.startsWith("/admin/") || n.startsWith("//") || n.includes("://")) return "/admin/posts";
+	return n;
+});
+// A ?next= internal-admin-path means the admin-401 handler bounced an operator
+// whose session died mid-work — surface the "session expired" notice.
+const hasSessionExpiredNotice = computed(
+	() => postLoginTarget.value !== "/admin/posts" && !!route.query.next,
+);
+
 async function handleLogin() {
 	if (!(username.value && password.value)) return;
 
@@ -51,7 +69,7 @@ async function handleLogin() {
 			} catch {
 				/* keep superuser default */
 			}
-			navigateTo("/admin/posts", { replace: true });
+			navigateTo(postLoginTarget.value, { replace: true });
 		} else {
 			error.value = t("admin.login.errors.noToken");
 		}
@@ -77,6 +95,20 @@ async function handleLogin() {
         </h1>
         <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">
           {{ t("admin.login.subtitle") }}
+        </p>
+      </div>
+
+      <!-- Session-expired notice (ISS-390): the transport's admin-401 handler
+           redirected here with ?next= when the session died mid-edit. Surface
+           why the operator was bounced instead of an unexplained login. -->
+      <div
+        v-if="hasSessionExpiredNotice"
+        role="status"
+        class="mb-4 p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg"
+      >
+        <p class="text-sm text-amber-700 dark:text-amber-300">
+          <Icon icon="lucide:clock" class="w-4 h-4 inline mr-1" />
+          {{ t("admin.login.sessionExpired") }}
         </p>
       </div>
 

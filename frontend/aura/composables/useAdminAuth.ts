@@ -102,14 +102,28 @@ export function useAdminAuth() {
 	 * rationale as the layout gate, where a SPA navigateTo to a page sharing the
 	 * 'admin' layout can leave the slot blank. Pages that surface a 401 also
 	 * call this instead of rendering a misleading generic error (RIL ISS-273).
+	 *
+	 * Passing `returnTo` (an internal admin path, e.g. the post editor URL) makes
+	 * the login page land the operator back WHERE they were — an autosave 401
+	 * mid-draft otherwise dumped them on the bare posts list regardless of what
+	 * they were editing, a jarring context loss that read as "my work vanished"
+	 * (ISS-390). Only internal admin paths are accepted (same guard login.vue
+	 * applies); anything else falls back to the plain login URL.
 	 */
-	const handleAdminUnauthorized = (): void => {
+	const handleAdminUnauthorized = (returnTo?: string): void => {
 		if (hasLocalStorage()) {
 			localStorage.removeItem(ADMIN_TOKEN_KEY);
 		}
 		isAuthenticated.value = false;
 		if (typeof window !== "undefined") {
-			window.location.replace("/admin/login");
+			const isInternalAdminPath =
+				typeof returnTo === "string" &&
+				returnTo.startsWith("/admin/") &&
+				!returnTo.startsWith("//") &&
+				!returnTo.includes("://");
+			window.location.replace(
+				isInternalAdminPath ? `/admin/login?next=${encodeURIComponent(returnTo)}` : "/admin/login",
+			);
 		}
 	};
 
