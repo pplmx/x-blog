@@ -39,7 +39,7 @@ const date = computed(
         variant="icon"
       />
     </div>
-    <NuxtLink :to="`/posts/${post.slug}`">
+    <NuxtLink :to="`/posts/${post.slug}`" :title="post.title">
       <!-- Cover image. The algorithmic gradient SVG literally renders the
            title inside the artwork, and the <h2> below announces the same
            title — :alt="post.title" read it a third time per card. The image
@@ -79,12 +79,6 @@ const date = computed(
             <Icon icon="lucide:clock" class="w-4 h-4" />
             {{ t('components.postCard.readingTime', { count: post.reading_time }) }}
           </span>
-          <span
-            v-if="post.category"
-            class="px-3 py-1 bg-gradient-to-r from-gray-50 dark:from-gray-800 to-gray-100 dark:to-gray-700 rounded-full text-xs font-medium text-gray-600 dark:text-gray-300"
-          >
-            {{ post.category.name }}
-          </span>
           <span class="flex items-center gap-1 ml-auto">
             <Icon icon="lucide:eye" class="w-4 h-4" />
             {{ post.views || 0 }}
@@ -104,12 +98,22 @@ const date = computed(
       </div>
     </NuxtLink>
 
-    <!-- Tag chips sit OUTSIDE the card link (a nested interactive element
-         inside a NuxtLink is invalid HTML, DEC-196/TASK-216), and each chip is
-         itself a link to the tag-filtered view so the feed's tags are
-         discoverable: feed chip -> tag view -> follow control. -->
-    <div v-if="post.tags?.length" class="px-6 pb-6">
+    <!-- Category + tag chips sit OUTSIDE the card link (a nested interactive
+         element inside a NuxtLink is invalid HTML, DEC-196/TASK-216), and each
+         chip is itself a link to the filtered view so the feed's taxonomy is
+         discoverable: the category chip (once a dead pill that looked clickable
+         but did nothing, deep-dive ISS-375) now goes to /?category_id=, and
+         tag chips go to /?tag_id= — exactly the sidebar/jump pattern. -->
+    <div v-if="post.category || post.tags?.length" class="px-6 pb-6">
       <div class="flex flex-wrap gap-2 pt-2 border-t border-gray-50 dark:border-gray-800">
+        <NuxtLink
+          v-if="post.category"
+          :to="{ path: '/', query: { category_id: String(post.category.id) } }"
+          class="text-xs px-3 py-1.5 bg-gradient-to-r from-gray-50 dark:from-gray-800 to-gray-100 dark:to-gray-700 text-gray-600 dark:text-gray-300 rounded-full font-medium hover:from-gray-100 dark:hover:from-gray-700 hover:to-gray-200 dark:hover:to-gray-600 hover:text-blue-600 dark:hover:text-blue-400 transition-colors duration-200"
+        >
+          <Icon icon="lucide:folder" class="w-3 h-3 inline mr-0.5" />
+          {{ post.category.name }}
+        </NuxtLink>
         <NuxtLink
           v-for="tag in post.tags" :key="tag.id"
           :to="{ path: '/', query: { tag_id: String(tag.id) } }"

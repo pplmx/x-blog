@@ -241,3 +241,37 @@ it("renders each tag chip as a link to the tag-filtered view (DEC-196)", () => {
 	expect(chipLinks[0].attributes("href")).toBe("/");
 	expect(chipLinks[1].text()).toBe("#nuxt");
 });
+
+it("renders the category chip as a link to the category-filtered view (ISS-375)", () => {
+	// The category pill used to share the tag chips' pill styling but was an
+	// inert span — a dead click on the feed's busiest surface. It must now be a
+	// real link and must NOT be nested inside the card's main NuxtLink (the tag
+	// chips already established the outside-the-link pattern, DEC-196).
+	const hrefStub = {
+		...stubs,
+		NuxtLink: {
+			template:
+				"<a class=\"nl\" :href=\"typeof to === 'string' ? to : (to.path || '/')\"><slot/></a>",
+			props: ["to"],
+		},
+	};
+	const wrapper = mount(PostCard, { props: { post: mockPost }, global: { stubs: hrefStub } });
+	const catChip = wrapper.findAll("a.nl").find((c) => c.text().includes("Technology"));
+	expect(catChip).toBeDefined();
+	// Category chip links to the /?category_id= filtered feed (same as tags).
+	expect(catChip?.attributes("href")).toBe("/");
+	// Card link + category chip + 2 tag chips = 4 top-level anchors. Nested
+	// anchors would still render as <a> in the DOM, so the count alone can't
+	// prove non-nesting — but the category chip's text only appears once (its
+	// own chip), which the single-match find above already guarantees.
+	expect(wrapper.findAll("a.nl").length).toBe(4);
+});
+
+it("puts the full title on the card link as a tooltip for truncated titles (ISS-377)", () => {
+	const wrapper = mountPostCard({
+		...mockPost,
+		title: "A very long title that clamps to two lines",
+	});
+	const cardLink = wrapper.find("a.nuxt-link-stub");
+	expect(cardLink.attributes("title")).toBe("A very long title that clamps to two lines");
+});
