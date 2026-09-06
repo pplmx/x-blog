@@ -95,19 +95,29 @@ async function handleSetNotify() {
 		>
 			{{ t('tags.followFailed') }}
 		</span>
+		<!-- Hit-target + in-flight feedback (deep-dive ISS-380): p-1 padding made
+		     ~22px touch targets well under the 44px guideline, and while busy the
+		     only feedback was disabled:opacity-40 — a follow tap on a slow network
+		     looked like a silent no-op. p-2 grows the target; the icon swaps to a
+		     spinner while busy (matching SubscribeButton / the post like button). -->
 		<button
 			type="button"
 			:disabled="busy"
 			:title="`${tagName} ${t(following ? 'tags.followingTitle' : 'tags.followTitle')}`"
 			:aria-label="`${tagName} ${t(following ? 'tags.followingTitle' : 'tags.followTitle')}`"
 			:aria-pressed="following ? 'true' : 'false'"
-			class="inline-flex items-center p-1 rounded-full transition-colors disabled:opacity-40"
+			:aria-busy="busy"
+			class="inline-flex items-center p-2 rounded-full transition-colors disabled:opacity-40"
 			:class="error
 				? 'text-red-500 hover:text-red-600 dark:text-red-400 dark:hover:text-red-300'
 				: 'text-gray-400 hover:text-emerald-600 dark:hover:text-emerald-400'"
 			@click="handleToggleFollow"
 		>
-			<Icon :icon="following ? 'lucide:bookmark-check' : 'lucide:bookmark'" class="w-3.5 h-3.5" />
+			<Icon
+				:icon="busy ? 'lucide:loader-2' : (following ? 'lucide:bookmark-check' : 'lucide:bookmark')"
+				class="w-3.5 h-3.5"
+				:class="{ 'animate-spin': busy }"
+			/>
 		</button>
 		<button
 			v-if="following"
@@ -116,13 +126,18 @@ async function handleSetNotify() {
 			:title="`${tagName} ${t('tags.notifyTitle')}`"
 			:aria-label="`${tagName} ${t(notify ? 'tags.notifyOn' : 'tags.notifyOff')}`"
 			:aria-pressed="notify ? 'true' : 'false'"
-			class="inline-flex items-center p-1 rounded-full transition-colors disabled:opacity-40"
+			:aria-busy="busy"
+			class="inline-flex items-center p-2 rounded-full transition-colors disabled:opacity-40"
 			:class="error
 				? 'text-red-500 hover:text-red-600 dark:text-red-400 dark:hover:text-red-300'
 				: 'text-gray-400 hover:text-emerald-600 dark:hover:text-emerald-400'"
 			@click="handleSetNotify"
 		>
-			<Icon :icon="notify ? 'lucide:bell' : 'lucide:bell-off'" class="w-3.5 h-3.5" />
+			<Icon
+				:icon="busy ? 'lucide:loader-2' : (notify ? 'lucide:bell' : 'lucide:bell-off')"
+				class="w-3.5 h-3.5"
+				:class="{ 'animate-spin': busy }"
+			/>
 		</button>
 	</span>
 </template>

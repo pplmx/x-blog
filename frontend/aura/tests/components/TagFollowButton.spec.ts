@@ -150,6 +150,34 @@ describe("TagFollowButton", () => {
 		expect(w.find('button[aria-label="rust tags.followTitle"]').exists()).toBe(true);
 	});
 
+	it("shows an in-flight spinner and grows the hit target (ISS-380)", async () => {
+		localStorage.setItem("reader_token", "tok-1");
+		mockGet.mockResolvedValue({ items: [], total: 0 });
+		// Leave the follow request pending so the busy state is observable.
+		let resolveFollow!: (v: unknown) => void;
+		mockFollow.mockReturnValue(
+			new Promise((res) => {
+				resolveFollow = res;
+			}),
+		);
+		const w = await mountButton();
+		const followBtn = w.find('button[aria-label="rust tags.followTitle"]');
+
+		// p-2 padding (~30px with the 14px icon) instead of p-1's ~22px.
+		expect(followBtn.classes()).toContain("p-2");
+
+		await followBtn.trigger("click");
+		await flushPromises();
+		// While busy the bookmark icon swaps for a spinning loader; the button
+		// announces busy state for screen readers.
+		expect(w.find('[data-icon="lucide:loader-2"]').exists()).toBe(true);
+		expect(followBtn.attributes("aria-busy")).toBe("true");
+
+		resolveFollow({ tag_id: 7, tag_name: "rust", following: true, notify: true });
+		await flushPromises();
+		expect(w.find('[data-icon="lucide:loader-2"]').exists()).toBe(false);
+	});
+
 	it("surfaces a transient error bubble when the follow fails (regression: silent no-op)", async () => {
 		localStorage.setItem("reader_token", "tok-1");
 		mockGet.mockResolvedValue({ items: [], total: 0 });
