@@ -244,6 +244,46 @@ describe("Admin Posts Page", () => {
 			expect(wrapper.text()).toContain("2024");
 		});
 
+		it("shows the publish date for a scheduled post, not its draft creation date (ISS-389)", async () => {
+			// Scheduled Post: created 2026-07-28, published + publish_at future
+			// (2999-08-01). The Date column must present the go-live date so the
+			// operator can see when it goes public — created_at misled by showing
+			// the draft date instead.
+			const PostsPage = await loadPage();
+			const wrapper = await mountWithSuspense(PostsPage);
+			expect(wrapper.text()).toContain("2024"); // published/draft rows keep their dates
+			// zh-CN toLocaleDateString("2999/8/1"); the scheduled chip itself shows
+			// as "定时发布" together with the future date.
+			expect(wrapper.text()).toContain("2999");
+			expect(wrapper.text()).toContain("定时发布");
+		});
+
+		it("shows the last-edit date for a draft, not its creation date (ISS-389)", async () => {
+			// A draft whose updated_at differs from created_at must show updated_at
+			// so a fresh draft stands out from a stale one.
+			const staleDraft = makePost(9, {
+				published: false,
+				created_at: "2024-01-15T10:30:00Z",
+				updated_at: "2026-09-01T09:00:00Z",
+				title: "Stale-Looking Draft",
+			});
+			mockFetchAdminPosts.mockReturnValue({
+				data: ref({
+					items: [staleDraft],
+					pagination: { total: 1, skip: 0, limit: 20 },
+				}),
+				pending: ref(false),
+				error: ref(null),
+				refresh: vi.fn(),
+			});
+			const PostsPage = await loadPage();
+			const wrapper = await mountWithSuspense(PostsPage);
+			expect(wrapper.text()).toContain("Stale-Looking Draft");
+			// zh-CN toLocaleDateString of updated_at 2026-09-01 → "2026/9/1".
+			expect(wrapper.text()).toContain("2026");
+			expect(wrapper.text()).not.toContain("2024/1/15");
+		});
+
 		it("renders edit links for each post", async () => {
 			const PostsPage = await loadPage();
 			const wrapper = await mountWithSuspense(PostsPage);

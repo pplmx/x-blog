@@ -131,6 +131,24 @@ function statusDot(post: AdminPost): string {
 	if (post.published) return "bg-green-500";
 	return "bg-amber-500";
 }
+
+// What the "Date" column means per status (deep-dive finding, ISS-389): the old
+// column always showed created_at, so a Scheduled post showed its *draft*
+// creation date next to the "Scheduled" chip — the operator could not see when
+// it goes live — and stale drafts were indistinguishable from fresh ones. Now:
+//   · scheduled → publish_at (when it actually goes live)
+//   · published → publish_at ?? created_at (the effective publish time the
+//     feed/readers see — matches dashboard/detail effective-publish semantics)
+//   · draft     → updated_at (most recent edit, so fresh drafts stand out)
+// Falls back to created_at for any missing field.
+function displayDate(post: AdminPost): string {
+	const target = isScheduled(post)
+		? post.publish_at
+		: post.published
+			? (post.publish_at ?? post.created_at)
+			: (post.updated_at ?? post.created_at);
+	return parseApiDate(target)?.toLocaleDateString(locale.value === "zh" ? "zh-CN" : "en-US") ?? "";
+}
 </script>
 
 <template>
@@ -273,7 +291,7 @@ function statusDot(post: AdminPost): string {
                 {{ post.views || 0 }}
               </td>
               <td class="px-5 py-4 text-sm text-gray-500 dark:text-gray-400 hidden sm:table-cell">
-                {{ parseApiDate(post.created_at)?.toLocaleDateString(locale === "zh" ? "zh-CN" : "en-US") ?? "" }}
+                {{ displayDate(post) }}
               </td>
               <td class="px-5 py-4 text-right">
                 <div class="flex items-center justify-end gap-1">
