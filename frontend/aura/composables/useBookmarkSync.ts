@@ -273,13 +273,15 @@ export function useBookmarkSync() {
 	 * The previous ``clearBookmarks()`` wiped only localStorage, so a signed-in
 	 * reader's "Clear all" silently resurrected on the next mount when
 	 * mergeLocalToCloud pulled the server list back down. Offline-safe: if the
-	 * cloud clear fails we keep the local wipe (the cloud has nothing new) and
-	 * the next merge re-reconciles; a signed-out reader just clears locally.
+	 * cloud clear fails we keep the local wipe, but the reader must know the
+	 * server copy survived — the next merge would otherwise pull those rows back
+	 * down and undo the clear in front of them (ISS-387). Returns false exactly
+	 * when a cloud copy still exists (guests clear only local, so they get true).
 	 */
-	async function clearAll(): Promise<void> {
+	async function clearAll(): Promise<boolean> {
 		clearEpoch += 1; // any in-flight merge must not restore what we're wiping
 		clearBookmarks();
-		if (!hasReaderToken()) return;
+		if (!hasReaderToken()) return true;
 		try {
 			// Let every in-flight cloud write (mirror PUTs/DELETEs and the merge's
 			// push) land BEFORE the clear's DELETE, so none can arrive after it and
@@ -289,9 +291,13 @@ export function useBookmarkSync() {
 			const { clearReaderBookmarks } = await import("~~/api/reader/bookmarks");
 			await clearReaderBookmarks();
 			clearSyncIssue();
+			return true;
 		} catch (err) {
-			// offline — local cleared; server rows clear on the next clear/merge
+			// Cloud unreachable (or the session died) — local cleared, but the
+			// server rows survive and the next merge resurrects them. Signal that
+			// instead of letting the page claim a permanent clear.
 			noteFailure(err);
+			return false;
 		}
 	}
 

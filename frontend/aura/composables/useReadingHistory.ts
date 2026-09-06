@@ -187,8 +187,15 @@ export function useReadingHistory() {
 		}
 	}
 
-	/** Clear the history (and stats) from the active source (server + local both cleared). */
-	async function clear(): Promise<void> {
+	/**
+	 * Clear the history (and stats) from the active source (server + local both
+	 * cleared). Returns false when a signed-in clear could not reach the server —
+	 * the on-device trail is wiped but the server copy survives and will come
+	 * back on the next signed-in load, so the page must warn instead of showing
+	 * a permanent-looking success (ISS-387). Guests only have the local trail,
+	 * so they always get true.
+	 */
+	async function clear(): Promise<boolean> {
 		// Invalidate any in-flight load()/loadMore() FIRST — the same monotonic
 		// guard those two use (ISS-128), which clear() previously bypassed. A
 		// Clear clicked while the initial onMounted load is still running would
@@ -199,11 +206,14 @@ export function useReadingHistory() {
 		loading.value = false;
 		loadingMore.value = false;
 		loadMoreError.value = false;
+		let serverCleared = true;
 		if (serverEnabled.value) {
 			try {
 				await clearReaderHistory();
 			} catch {
-				// Best-effort: still clear the local mirror even if the API call fails.
+				// Best-effort: still clear the local mirror, but say the server
+				// copy survived instead of silently claiming a full clear.
+				serverCleared = false;
 			}
 		}
 		local.clear();
@@ -215,6 +225,7 @@ export function useReadingHistory() {
 		loadFailed.value = false;
 		page.value = 1;
 		totalPages.value = 1;
+		return serverCleared;
 	}
 
 	return {

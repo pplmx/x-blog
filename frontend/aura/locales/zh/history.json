@@ -29,6 +29,7 @@
 		"loading": "正在加载历史…",
 		"loadMore": "加载更多历史",
 		"searchAria": "搜索你的浏览历史",
-		"loadFailedFallback": "阅读历史加载失败，已临时显示本机记录。"
+		"loadFailedFallback": "阅读历史加载失败，已临时显示本机记录。",
+		"clearOffline": "无法连接服务器 —— 已清除本设备的浏览历史，但云端副本会在联网后重新同步回来。"
 	}
 }

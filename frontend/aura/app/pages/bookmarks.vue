@@ -34,12 +34,19 @@ useSeo(() => ({
 // (deep-dive finding).
 const { isAuthenticated: signedIn } = useReaderAuth();
 
-function handleClearAll() {
+// Clear-all cloud failure (ISS-387): offline (or a dead session) leaves the
+// server copy alive, and the next merge pulls those rows straight back — so a
+// permanent-looking "cleared" state would be a lie. Flag it instead.
+const clearFailed = ref(false);
+
+async function handleClearAll() {
 	if (confirm(t("bookmarks.confirmClear"))) {
 		// clearAll wipes the localStorage mirror AND the cloud copy when signed
 		// in, so the clear actually sticks (TASK-233). The old clearBookmarks
 		// only cleared local storage and the next cloud merge resurrected rows.
-		void clearAll();
+		clearFailed.value = false;
+		const ok = await clearAll();
+		if (!ok) clearFailed.value = true;
 	}
 }
 
@@ -203,6 +210,7 @@ watch(signedIn, (authed) => {
 	searchQuery.value = "";
 	showManage.value = false;
 	assignFailed.value = false;
+	clearFailed.value = false;
 	assigningIds.value.clear();
 });
 
@@ -282,6 +290,17 @@ async function handleAssign(bookmark: Bookmark, raw: string) {
       role="alert"
     >
       {{ t('bookmarks.folderFailed') }}
+    </p>
+
+    <!-- Clear-all cloud failure (ISS-387): the local mirror is empty but the
+         server copy survived (offline/dead session) and will return on the next
+         merge — never present that as a done deal. -->
+    <p
+      v-if="clearFailed"
+      class="mb-4 text-sm text-red-600 dark:text-red-400"
+      role="alert"
+    >
+      {{ t('bookmarks.clearOffline') }}
     </p>
 
     <!-- Dead-session sync warning (ISS-222): the stored token is no longer

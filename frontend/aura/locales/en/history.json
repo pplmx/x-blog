@@ -29,6 +29,7 @@
 		"loading": "Loading history…",
 		"loadMore": "Load more history",
 		"searchAria": "Search your history",
-		"loadFailedFallback": "Couldn't load your reading history — showing this device's records for now."
+		"loadFailedFallback": "Couldn't load your reading history — showing this device's records for now.",
+		"clearOffline": "Couldn't reach the server — history was cleared on this device, but the server copy will return when you're back online."
 	}
 }

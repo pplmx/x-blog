@@ -17,9 +17,13 @@ const mockStats = ref<ReadingStats | null>(null);
 const mockLoadFailed = ref(false);
 const mockLoad = vi.fn();
 const mockLoadMore = vi.fn();
+// clear resolves true when the server copy is gone (or there was none to
+// reach); resolves false when an offline clear left the server copy alive
+// (ISS-387) — the page must then warn instead of claiming success.
 const mockClear = vi.fn(async () => {
 	mockHistory.value = [];
 	mockStats.value = null;
+	return true;
 });
 const mockHasMore = ref(false);
 
@@ -305,6 +309,29 @@ describe("Reading-history page (TASK-170)", () => {
 		await vi.advanceTimersByTimeAsync(4000);
 		await flushPromises();
 		expect(wrapper.text()).not.toContain("阅读历史已清空");
+		vi.useRealTimers();
+	});
+
+	it("warns instead of claiming success when the server copy survives an offline clear (ISS-387)", async () => {
+		vi.useFakeTimers();
+		mockHistory.value = [{ slug: "a", title: "Article A", viewedAt: Date.now() }];
+		mockClear.mockResolvedValueOnce(false);
+		const wrapper = mountHistory();
+		const headerClear = wrapper.findAll("button").filter((b) => b.text().includes("清空历史"));
+		await headerClear[0].trigger("click");
+		await wrapper
+			.find('[role="alert"]')
+			.findAll("button")
+			.find((b) => b.text().includes("清空历史"))
+			?.trigger("click");
+		await wrapper.vm.$nextTick();
+		// No green "cleared" claim — an amber warning that the copy will return.
+		expect(wrapper.text()).not.toContain("阅读历史已清空");
+		expect(wrapper.text()).toContain("联网后重新同步回来");
+		// Same auto-dismiss as the success confirmation.
+		await vi.advanceTimersByTimeAsync(4000);
+		await flushPromises();
+		expect(wrapper.text()).not.toContain("联网后重新同步回来");
 		vi.useRealTimers();
 	});
 

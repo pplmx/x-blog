@@ -31,6 +31,7 @@
 		"undo": "Undo",
 		"sessionExpired": "Your sign-in has expired — bookmarks below are saved on this device only and won't reach the cloud until you sign in again:",
 		"login": "Sign in",
-		"dismiss": "Dismiss"
+		"dismiss": "Dismiss",
+		"clearOffline": "Couldn't reach the server — bookmarks were cleared on this device, but the cloud copy will return when you're back online."
 	}
 }

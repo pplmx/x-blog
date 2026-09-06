@@ -70,14 +70,20 @@ const confirmClear = ref(false);
 // (deep-dive finding; the clearDone key existed but was never rendered).
 const cleared = ref(false);
 let clearedTimer: ReturnType<typeof setTimeout> | null = null;
+// Clear-failure warning (ISS-387): offline, the local trail is wiped but the
+// server copy survives and re-appears on the next signed-in load — show that
+// instead of the green "cleared" claim. Dismissed with the same timer.
+const clearFailed = ref(false);
 
 async function clearHistory() {
-	await clear();
+	const ok = await clear();
 	confirmClear.value = false;
-	cleared.value = true;
+	cleared.value = ok;
+	clearFailed.value = !ok;
 	if (clearedTimer) clearTimeout(clearedTimer);
 	clearedTimer = setTimeout(() => {
 		cleared.value = false;
+		clearFailed.value = false;
 	}, 4000);
 }
 
@@ -320,7 +326,8 @@ function heatMapSummary(): string {
 
     <!-- Clear-done confirmation (deep-dive finding): give the destructive,
          non-undoable clear an explicit success signal instead of silently
-         swapping to the ambiguous empty state. -->
+         swapping to the ambiguous empty state. Only when the cloud copy (if
+         any) actually cleared — see the clearOffline warning below (ISS-387). -->
     <div
       v-if="cleared"
       aria-live="polite"
@@ -329,6 +336,20 @@ function heatMapSummary(): string {
       <p class="flex items-center gap-2 text-sm text-emerald-700 dark:text-emerald-300">
         <Icon icon="lucide:check-circle-2" class="w-4 h-4" />
         {{ t('history.clearDone') }}
+      </p>
+    </div>
+
+    <!-- Clear-all could not reach the server (ISS-387): the on-device trail is
+         gone, but the server copy survives and returns on the next signed-in
+         load — a green "cleared" here would be a lie, so warn instead. -->
+    <div
+      v-if="clearFailed"
+      role="alert"
+      class="mb-6 flex items-center justify-between gap-4 p-4 rounded-xl border border-amber-200 dark:border-amber-800 bg-amber-50/60 dark:bg-amber-900/20"
+    >
+      <p class="flex items-center gap-2 text-sm text-amber-700 dark:text-amber-300">
+        <Icon icon="lucide:triangle-alert" class="w-4 h-4 shrink-0" />
+        {{ t('history.clearOffline') }}
       </p>
     </div>
 

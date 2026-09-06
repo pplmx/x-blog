@@ -273,12 +273,32 @@ describe("Bookmarks page", () => {
 		it("calls clearAll when clear all is confirmed", async () => {
 			mockBookmarks.value = [sampleBookmark];
 			mockClearAll.mockClear();
+			mockClearAll.mockResolvedValueOnce(true);
 			vi.stubGlobal("confirm", () => true);
 
 			const wrapper = mountBookmarks();
 			await wrapper.find("button[title='清空全部']").trigger("click");
+			await flushPromises();
 
 			expect(mockClearAll).toHaveBeenCalled();
+			vi.unstubAllGlobals();
+		});
+
+		it("warns when the cloud copy survives an offline clear-all (ISS-387)", async () => {
+			// The local mirror is wiped, but the server copy is still there and
+			// the next merge resurrects it — the page must not present the wipe
+			// as a done deal.
+			mockBookmarks.value = [sampleBookmark];
+			mockClearAll.mockClear();
+			mockClearAll.mockResolvedValueOnce(false);
+			vi.stubGlobal("confirm", () => true);
+
+			const wrapper = mountBookmarks();
+			await wrapper.find("button[title='清空全部']").trigger("click");
+			await flushPromises();
+
+			expect(mockClearAll).toHaveBeenCalled();
+			expect(wrapper.find("[role='alert']").text()).toContain("联网后重新同步回来");
 			vi.unstubAllGlobals();
 		});
 
