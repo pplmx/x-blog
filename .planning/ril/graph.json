@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 272,
+  "round": 273,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-05T23:36:35+00:00",
+  "updated_at": "2026-09-06T03:40:52+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -11,7 +11,7 @@
       "version": 1,
       "created_at": "2026-08-06T13:23:41+00:00",
       "updated_at": "2026-08-06T13:23:41+00:00",
-      "touched_round": 269,
+      "touched_round": 272,
       "title": "backend-nova",
       "description": "FastAPI Python 3.14 backend at backend/nova; SQLAlchemy ORM; routers in app/routers, crud.py business logic, 656 lines"
     },
@@ -44,7 +44,7 @@
       "version": 1,
       "created_at": "2026-08-06T13:23:41+00:00",
       "updated_at": "2026-08-06T13:23:41+00:00",
-      "touched_round": 31,
+      "touched_round": 272,
       "title": "database-layer",
       "description": "SQLAlchemy models.py; alembic migrations; init_db.py seeding; SQLite dev + PostgreSQL prod"
     },
@@ -18443,7 +18443,7 @@
       "version": 1,
       "created_at": "2026-09-05T22:04:05+00:00",
       "updated_at": "2026-09-05T22:04:05+00:00",
-      "touched_round": 269,
+      "touched_round": 273,
       "title": "resume after converged-idle: deep-dive surfaced backend taxonomy/cache defects",
       "rationale": "The round-268 converged-idle (DEC-261) ended when a fresh deep-dive re-audit of the public read surface (categories/tags count semantics, single-item post_count, rename/restore cache invalidation, stats pending) surfaced five confirmed defects (ISS-362..366) above the 3.0 bar, all in one high-value backend correctness cluster (TASK-283/284). Executed: visibility-guarded grouped counts, derived post_count for item endpoints, rename+restore cache invalidation (posts/feed/series/categories/tags), stats pending reviewed_at filter — each with contract tests. Full backend suite green: 1311 passed, coverage 93.45%; pyright + ruff clean.",
       "alternatives_rejected": "Frontend race/affordance items (ISS-367..369) held for the next task (TASK-285); below-bar UX affordances (ISS-370/371, TASK-286 score 1.65) deferred per QUIESCE rules. Backend infra hardening (DEC-214 deferrals) still out of scope."
@@ -18469,6 +18469,75 @@
       "touched_round": 271,
       "commit": "7a0de61",
       "title": "Comments page useSeo getter + thread far-page pagination (TASK-286 — ISS-370/371)"
+    },
+    "ISS-372": {
+      "id": "ISS-372",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-06T02:35:52+00:00",
+      "updated_at": "2026-09-06T03:38:20+00:00",
+      "touched_round": 272,
+      "title": "Seven sibling pages freeze the localized SEO head on a language switch",
+      "description": "Same defect class as ISS-371 just fixed on comments.vue. about.vue bookmarks.vue notifications.vue account.vue history.vue login.vue and preview/posts id.vue pass useSeo a static object so title and og tags are built once in the initial language. LanguageSwitcher lives in the shared layout; switching zh en re-localizes the body but not the tab title or share tags."
+    },
+    "ISS-373": {
+      "id": "ISS-373",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-06T02:37:51+00:00",
+      "updated_at": "2026-09-06T03:38:21+00:00",
+      "touched_round": 272,
+      "title": "clear_counter_caches skips series_cache; series page serves frozen views/likes",
+      "description": "clear_counter_caches only clears posts_list_cache and claims series details do not contain views or likes. False: SeriesDetail embeds PostList objects which carry views and likes, cached in series_cache and rendered on series slug page as post.views. increment_views and increment_likes run clear_counter_caches on every pageview or like, so a hot series shows stale per-episode counters for the full 300s TTL while home feed updates instantly."
+    },
+    "ISS-374": {
+      "id": "ISS-374",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-06T02:40:25+00:00",
+      "updated_at": "2026-09-06T03:38:21+00:00",
+      "touched_round": 272,
+      "title": "series page loadFollowState keeps the stale-response race loadProgress just gained a guard for",
+      "description": "The follow-state loader on series slug page writes followsSeries and followNotify after an await with no sequence guard, while loadProgress got the monotonic progressSeq guard for SPA navigation. A slow in-flight GET can overwrite a newer follow toggle the reader just made: the PUT commits server-side and flips the button to following, then the stale pre-follow GET resolver flips it back and resets notify. Narrow window, same defect shape as ISS-367."
+    },
+    "TASK-287": {
+      "id": "TASK-287",
+      "type": "task",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-06T02:45:05+00:00",
+      "updated_at": "2026-09-06T03:38:21+00:00",
+      "touched_round": 272,
+      "category": "correctness",
+      "severity": 0.8,
+      "title": "Final polish tail: frozen SEO head siblings, series counter cache, follow-state race",
+      "description": "Fix the wave-tail cluster from the post-round-271 deep dive: (1) convert the seven sibling pages useSeo calls to getter form (ISS-372), (2) clear series_cache in clear_counter_caches and correct its wrong docstring (ISS-373), (3) add the monotonic seq guard to loadFollowState on series slug page (ISS-374). Each with a contract test."
+    },
+    "CHG-394": {
+      "id": "CHG-394",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-06T03:38:20+00:00",
+      "updated_at": "2026-09-06T03:38:20+00:00",
+      "touched_round": 272,
+      "commit": "7ee8928",
+      "title": "SEO-head getters, series counter cache, follow-state race (TASK-287 — ISS-372/373/374)"
+    },
+    "DEC-263": {
+      "id": "DEC-263",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-06T03:40:52+00:00",
+      "updated_at": "2026-09-06T03:40:52+00:00",
+      "touched_round": 273,
+      "title": "converged-idle: quality convergence reached after the audit wave (rounds 269-273)",
+      "rationale": "Rounds 269-273 delivered the entire deep-dive wave that re-activated the round-268 converged-idle (DEC-261 -> DEC-262): TASK-283/284 (backend public taxonomy counts, single-item post_count, rename+restore cache invalidation, stats pending, ISS-362..366 via CHG-390/391), TASK-285 (series progress stale guard + clamp, tags/categories posts-fetch gate, ISS-367..369 via CHG-392), TASK-286 (comments useSeo getter + far-page pagination, ISS-370/371 via CHG-393) and TASK-287 (sibling pages SEO-head getters, series counter cache, follow-state race, ISS-372..374 via CHG-394). Every issue resolved, task queue empty. VERIFY green: backend full suite 1312 passed / 93.45% coverage on SQLite plus 44 tests on the dev PostgreSQL dialect, frontend 1528/1528 vitest, nuxt typecheck + biome + ruff + pyright clean. Independent code review APPROVED the wave (0 CRITICAL/HIGH).",
+      "alternatives_rejected": "The reviewer MEDIUM (categories/tags LIST post_count cached with a 30-min TTL goes stale for a silent scheduled-publish crossing while the item endpoints recompute fresh) is a bounded, self-healing staleness tradeoff: any taxonomy write or the TTL resolves it, any write path clears posts list caches, and fixing the crossing needs scheduler infra — the same class as the multi-worker cache/rate-limit deferrals (ISS-242/243/244 kept deferred per DEC-214/261). No further task was worth the 3.0 bar: remaining candidates were manufactured scope (no user signal) or infra-scale."
     }
   },
   "edges": [
@@ -27188,6 +27257,72 @@
       "to": "TASK-286",
       "type": "implements",
       "created_at": "2026-09-05T23:36:35+00:00"
+    },
+    {
+      "from": "TASK-287",
+      "to": "ISS-372",
+      "type": "addresses",
+      "created_at": "2026-09-06T02:46:53+00:00"
+    },
+    {
+      "from": "TASK-287",
+      "to": "ISS-373",
+      "type": "addresses",
+      "created_at": "2026-09-06T02:46:53+00:00"
+    },
+    {
+      "from": "TASK-287",
+      "to": "ISS-374",
+      "type": "addresses",
+      "created_at": "2026-09-06T02:46:53+00:00"
+    },
+    {
+      "from": "ISS-373",
+      "to": "COMP-001",
+      "type": "located_in",
+      "created_at": "2026-09-06T02:46:53+00:00"
+    },
+    {
+      "from": "ISS-372",
+      "to": "COMP-004",
+      "type": "located_in",
+      "created_at": "2026-09-06T02:46:53+00:00"
+    },
+    {
+      "from": "ISS-374",
+      "to": "COMP-004",
+      "type": "located_in",
+      "created_at": "2026-09-06T02:46:54+00:00"
+    },
+    {
+      "from": "CHG-394",
+      "to": "ISS-372",
+      "type": "resolves",
+      "created_at": "2026-09-06T03:38:20+00:00"
+    },
+    {
+      "from": "CHG-394",
+      "to": "ISS-373",
+      "type": "resolves",
+      "created_at": "2026-09-06T03:38:20+00:00"
+    },
+    {
+      "from": "CHG-394",
+      "to": "ISS-374",
+      "type": "resolves",
+      "created_at": "2026-09-06T03:38:20+00:00"
+    },
+    {
+      "from": "CHG-394",
+      "to": "TASK-287",
+      "type": "implements",
+      "created_at": "2026-09-06T03:38:20+00:00"
+    },
+    {
+      "from": "DEC-263",
+      "to": "DEC-262",
+      "type": "supersedes",
+      "created_at": "2026-09-06T03:40:52+00:00"
     }
   ]
 }
