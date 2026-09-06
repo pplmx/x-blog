@@ -258,18 +258,35 @@ function formatDate(dateStr: string): string {
       </button>
     </div>
 
-    <!-- Empty -->
+    <!-- Empty: a non-'all' filter that returns zero must not claim the reader
+         has "never commented" — it's this filter that has nothing. Per-filter
+         copy plus a one-click reset to the full list (ISS-385). Only the
+         genuinely-empty 'all' view keeps the browse-to-posts CTA. -->
     <div
       v-else-if="comments.length === 0"
       class="text-center py-12 text-gray-500 dark:text-gray-400 border border-dashed border-gray-200 dark:border-gray-700 rounded-xl"
     >
-      <p class="mb-3">{{ t('myComments.empty') }}</p>
-      <NuxtLink
-        to="/"
-        class="text-sm text-blue-500 hover:text-blue-700 dark:hover:text-blue-300 transition-colors"
-      >
-        {{ t('myComments.browse') }}
-      </NuxtLink>
+      <template v-if="statusFilter !== 'all'">
+        <p class="mb-3">
+          {{ t('myComments.emptyFilter', { status: t(`myComments.filter.${statusFilter}`) }) }}
+        </p>
+        <button
+          type="button"
+          class="text-sm text-blue-500 hover:text-blue-700 dark:hover:text-blue-300 transition-colors"
+          @click="setStatus('all')"
+        >
+          {{ t('myComments.showAll') }}
+        </button>
+      </template>
+      <template v-else>
+        <p class="mb-3">{{ t('myComments.empty') }}</p>
+        <NuxtLink
+          to="/"
+          class="text-sm text-blue-500 hover:text-blue-700 dark:hover:text-blue-300 transition-colors"
+        >
+          {{ t('myComments.browse') }}
+        </NuxtLink>
+      </template>
     </div>
 
     <!-- Comment list -->

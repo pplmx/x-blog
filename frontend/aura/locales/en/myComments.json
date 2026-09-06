@@ -27,6 +27,8 @@
 		"deleteFailed": "Couldn't delete the comment — please try again",
 		"onPost": "On “{title}”",
 		"seoTitle": "My comments — X-Blog",
-		"seoDesc": "Comments you've left, with their moderation status."
+		"seoDesc": "Comments you've left, with their moderation status.",
+		"emptyFilter": "No {status} comments",
+		"showAll": "Show all comments"
 	}
 }

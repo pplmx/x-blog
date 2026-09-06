@@ -359,6 +359,36 @@ describe("My comments page", () => {
 			expect(wrapper.find("nav").exists()).toBe(false);
 		});
 
+		it("says this filter is empty (not 'never commented') with a show-all reset (ISS-385)", async () => {
+			// A reader with approved comments on the Pending tab got told "you
+			// haven't commented yet" and steered to Browse posts — a lie that hid
+			// where their content is. A filtered-empty view must name the filter
+			// and offer a one-click reset to the full list.
+			isAuthenticated.value = true;
+			mockData.value = { items: [], total: 0, total_pages: 1 };
+			mockFetchMyComments.mockClear();
+			const wrapper = await mountPage();
+
+			// Switch to the Pending tab → zero results.
+			const pendingTab = wrapper.findAll("[aria-pressed]")[1];
+			await pendingTab.trigger("click");
+			await flushPromises();
+			expect(mockFetchMyComments).toHaveBeenLastCalledWith("pending", 1, 20);
+
+			// The empty branch names the filter and offers "show all", not the
+			// browse-to-posts CTA.
+			expect(wrapper.text()).toContain("没有待审核的评论");
+			expect(wrapper.text()).toContain("查看全部评论");
+			expect(wrapper.text()).not.toContain("还没有发表过评论");
+			expect(wrapper.text()).not.toContain("去发表评论");
+
+			// The show-all reset refetches the unfiltered list.
+			const showAll = wrapper.findAll("button").find((b) => b.text().includes("查看全部评论"));
+			await showAll?.trigger("click");
+			await flushPromises();
+			expect(mockFetchMyComments).toHaveBeenLastCalledWith("all", 1, 20);
+		});
+
 		it("offers first/last + ellipsis far-page navigation on deep history (round 265)", async () => {
 			// Regression (survey #4): the previous hand-rolled 5-window showed
 			// only pages 3..7 around page 5 on a 10-page history — no path to the

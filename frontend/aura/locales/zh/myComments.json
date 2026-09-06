@@ -27,6 +27,8 @@
 		"deleteFailed": "删除失败，请稍后再试",
 		"onPost": "评论于《{title}》",
 		"seoTitle": "我的评论 — X-Blog",
-		"seoDesc": "您发表过的评论，含审核状态。"
+		"seoDesc": "您发表过的评论，含审核状态。",
+		"emptyFilter": "没有{status}的评论",
+		"showAll": "查看全部评论"
 	}
 }
