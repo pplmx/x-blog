@@ -56,9 +56,18 @@ function handleRemove(bookmark: Bookmark) {
 		undoItem.value = null;
 	}, 6000);
 }
-function undoRemove() {
+async function undoRemove() {
 	if (!undoItem.value) return;
-	add(undoItem.value);
+	const { ...restored } = undoItem.value;
+	add(restored);
+	// The undo re-PUTs the bookmark to the cloud (via add -> mirrorAdd), but
+	// that PUT carries only the post id — a removed bookmark that lived in a
+	// folder would come back UN-filed on the next cloud merge when the pull
+	// re-adopts the server row. Re-apply the folder assignment explicitly so
+	// the restored row keeps its folder across devices (deep-dive, ISS-388).
+	if (undoItem.value.folder_id != null && signedIn.value) {
+		await assignFolder(undoItem.value.id, undoItem.value.folder_id);
+	}
 	if (undoClearTimer) clearTimeout(undoClearTimer);
 	undoClearTimer = undefined;
 	undoItem.value = null;

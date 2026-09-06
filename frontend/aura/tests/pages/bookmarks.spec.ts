@@ -54,9 +54,12 @@ vi.mock("../../composables/useReaderAuth", () => ({
 	useReaderAuth: () => ({ isAuthenticated: mockIsAuthenticated, logout: vi.fn() }),
 }));
 
-// Folder API: create/rename failures return false and must surface an alert.
+// Folder API: create/rename failures return false and must surface an alert;
+// assign is hoisted so the undo-restores-folder regression (ISS-388) can assert
+// the re-created cloud row is re-filed. Mirrors bookmarks-folders.spec.ts.
 const mockFolders = ref<{ id: number; name: string; count: number }[]>([]);
 const mockCreateFolder = vi.fn(async () => false);
+const mockAssignFolder = vi.fn(async () => true);
 vi.mock("../../composables/useBookmarkFolders", () => ({
 	useBookmarkFolders: () => ({
 		folders: mockFolders,
@@ -65,7 +68,7 @@ vi.mock("../../composables/useBookmarkFolders", () => ({
 		create: mockCreateFolder,
 		rename: vi.fn(async () => true),
 		remove: vi.fn(async () => true),
-		assign: vi.fn(async () => true),
+		assign: mockAssignFolder,
 	}),
 }));
 
@@ -242,6 +245,29 @@ describe("Bookmarks page", () => {
 			expect(mockAddBookmark).toHaveBeenCalledWith(sampleBookmark);
 			// And the undo banner is dismissed.
 			expect(wrapper.find("[role='status']").exists()).toBe(false);
+		});
+
+		it("restores a removed bookmark's folder assignment on undo (ISS-388)", async () => {
+			// A bookmark inside a folder that gets removed + undone: the undo's
+			// add() re-PUTs only the post id, so without an explicit folder
+			// re-assign the cloud row loses its folder and the next merge pull
+			// silently un-files it. The undo must re-apply the folder on the
+			// re-created cloud row.
+			const folded = { ...sampleBookmark, folder_id: 3, folder_name: "Reading" };
+			mockBookmarks.value = [folded];
+			mockRemoveBookmark.mockClear();
+			mockAddBookmark.mockClear();
+			mockAssignFolder.mockClear();
+
+			const wrapper = mountBookmarks();
+			await wrapper.find("button[title='移除收藏']").trigger("click");
+			const undoBtn = wrapper.findAll("button").find((b) => b.text().includes("撤销"));
+			expect(undoBtn).toBeDefined();
+			await undoBtn?.trigger("click");
+			await flushPromises();
+
+			expect(mockAddBookmark).toHaveBeenCalledWith(folded);
+			expect(mockAssignFolder).toHaveBeenCalledWith(1, 3);
 		});
 
 		it("calls clearAll when clear all is confirmed", async () => {
