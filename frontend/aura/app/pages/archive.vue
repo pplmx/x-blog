@@ -90,6 +90,45 @@ const monthLabel = computed(() => {
 	);
 });
 
+// Flatten the year buckets into one chronologically-ordered list of months that
+// actually hold posts, newest first — the navigation bounds for paging between
+// archive months. Ordering derived from `years` (already grouped/sorted).
+const populatedMonths = computed<{ year: number; month: number }[]>(() =>
+	years.value.flatMap((y) => y.months.map((m) => ({ year: y.year, month: m.month }))),
+);
+
+// Adjacent-month navigation (deep-dive finding, ISS-376): a selected month view
+// previously dead-ended in a single "back to all" link — paging chronologically
+// meant back → scan the pills → click each time. Now compute the previous and
+// next month that actually has posts and link them directly, preserving the
+// period query, so a reader browsing old content steps month-to-month. The link
+// is omitted when there is no month with content in that direction (the archive
+// bounds). monthLabel reuses the same UTC-locale formatting as the index pills.
+const prevAdjacent = computed(() => {
+	if (month.value == null) return null;
+	const idx = populatedMonths.value.findIndex(
+		(p) => p.year === year.value && p.month === month.value,
+	);
+	if (idx < 0 || idx >= populatedMonths.value.length - 1) return null;
+	return populatedMonths.value[idx + 1];
+});
+const nextAdjacent = computed(() => {
+	if (month.value == null) return null;
+	const idx = populatedMonths.value.findIndex(
+		(p) => p.year === year.value && p.month === month.value,
+	);
+	if (idx <= 0) return null;
+	return populatedMonths.value[idx - 1];
+});
+
+function adjacentLabel(p: { year: number; month: number } | null): string {
+	if (!p) return "";
+	return new Date(Date.UTC(p.year, p.month - 1, 1)).toLocaleString(
+		locale.value === "zh" ? "zh-CN" : "en-US",
+		{ month: "long", year: "numeric" },
+	);
+}
+
 // Windowed, ellipsis-aware pagination buttons (same pattern as home/search):
 // a month with 50+ pages of posts must not render one button per page.
 const paginationTokens = computed(() =>
@@ -209,13 +248,36 @@ useSeo(() => ({
     <!-- Posts for a selected year/month -->
     <div v-else>
       <div class="mb-8">
-        <NuxtLink
-          to="/archive"
-          class="inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-purple-600 transition-colors mb-4"
-        >
-          <Icon icon="lucide:arrow-left" class="w-4 h-4" />
-          {{ t('archive.backToAll') }}
-        </NuxtLink>
+        <div class="flex items-center justify-between gap-3 mb-4">
+          <NuxtLink
+            to="/archive"
+            class="inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-purple-600 transition-colors"
+          >
+            <Icon icon="lucide:arrow-left" class="w-4 h-4" />
+            {{ t('archive.backToAll') }}
+          </NuxtLink>
+          <!-- Adjacent-month navigation (ISS-376): the selected-month view used
+               to dead-end in "back to all" — step to the previous/next month
+               that actually has posts directly, bounded at the archive ends. -->
+          <div class="flex items-center gap-2">
+            <NuxtLink
+              v-if="prevAdjacent"
+              :to="{ query: { year: String(prevAdjacent.year), month: String(prevAdjacent.month) } }"
+              class="inline-flex items-center gap-1 text-sm text-gray-500 hover:text-purple-600 transition-colors"
+            >
+              <Icon icon="lucide:chevron-left" class="w-4 h-4" />
+              {{ adjacentLabel(prevAdjacent) }}
+            </NuxtLink>
+            <NuxtLink
+              v-if="nextAdjacent"
+              :to="{ query: { year: String(nextAdjacent.year), month: String(nextAdjacent.month) } }"
+              class="inline-flex items-center gap-1 text-sm text-gray-500 hover:text-purple-600 transition-colors text-right"
+            >
+              {{ adjacentLabel(nextAdjacent) }}
+              <Icon icon="lucide:chevron-right" class="w-4 h-4" />
+            </NuxtLink>
+          </div>
+        </div>
         <h1 class="text-3xl font-bold bg-gradient-to-r from-gray-900 dark:from-gray-100 to-gray-600 dark:to-gray-400 bg-clip-text text-transparent">
           {{ t('archive.monthTitle', { year: year ?? '', month: monthLabel }) }}
         </h1>

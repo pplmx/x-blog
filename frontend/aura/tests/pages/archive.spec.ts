@@ -219,6 +219,43 @@ describe("Archive Page", () => {
 			expect(wrapper.text()).toContain("该时间段暂无文章");
 		});
 
+		it("renders previous/next month navigation with an interior month (ISS-376)", async () => {
+			// 2024-03 sits between 2024-01 (older, has posts) and 2025-11
+			// (newer, has posts) in the populated-month ordering.
+			const wrapper = await mountArchivePage({ routeQuery: { year: "2024", month: "3" } });
+			expect(wrapper.text()).toContain("2024年");
+			expect(wrapper.text()).toContain("2025年");
+			// The adjacent month labels carry month + year, so both directions exist.
+			expect(wrapper.text()).toContain("2024年1月");
+			expect(wrapper.text()).toContain("2025年11月");
+		});
+
+		it("omits the previous-month link at the oldest archive month (ISS-376)", async () => {
+			// 2024-01 is the earliest populated month — no older month exists,
+			// so only the next-month link renders.
+			const wrapper = await mountArchivePage({ routeQuery: { year: "2024", month: "1" } });
+			expect(wrapper.text()).toContain("2024年3月"); // next (newer)
+			// No back-in-time link: the previous direction dead-ends at the bound.
+			const chevrons = wrapper.findAll('[data-icon="lucide:chevron-left"]');
+			expect(chevrons.length).toBe(0);
+		});
+
+		it("omits the next-month link at the newest archive month (ISS-376)", async () => {
+			// 2025-11 is the newest populated month — no newer month exists.
+			const wrapper = await mountArchivePage({ routeQuery: { year: "2025", month: "11" } });
+			expect(wrapper.text()).toContain("2024年3月"); // prev (older)
+			const chevrons = wrapper.findAll('[data-icon="lucide:chevron-right"]');
+			expect(chevrons.length).toBe(0);
+		});
+
+		it("shows no adjacent-month links when the selected month is out of the archive bounds", async () => {
+			// A query for a month that has no posts at all (e.g. 2020-01) must
+			// not render bogus navigation — both links absent, like the bounds.
+			const wrapper = await mountArchivePage({ routeQuery: { year: "2020", month: "1" } });
+			expect(wrapper.findAll('[data-icon="lucide:chevron-left"]').length).toBe(0);
+			expect(wrapper.findAll('[data-icon="lucide:chevron-right"]').length).toBe(0);
+		});
+
 		it("dates a scheduled post by its publish month, not its draft month (RIL ISS-265)", async () => {
 			// Drafted in January, scheduled for June: the archive card shows the
 			// June date that matches its June bucket (feed filters/orders and
