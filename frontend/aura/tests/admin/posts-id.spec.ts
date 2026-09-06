@@ -237,6 +237,29 @@ describe("Admin Post Editor Page", () => {
 			expect(mockCreateAdminPost).toHaveBeenCalled();
 		});
 
+		it("navigates to the NEW post's editor after a manual create, not list page 1 (ISS-391)", async () => {
+			// The old save dropped a newly-created draft on list page 1 where it
+			// wasn't even visible (created_at-desc ordering) with no context.
+			// Manual-save of a new post now lands on its editor so the author can
+			// keep working / review what just got created.
+			const mockNavigateTo = vi.fn();
+			vi.stubGlobal("navigateTo", mockNavigateTo);
+			mockCreateAdminPost.mockResolvedValue({ id: 42 });
+
+			const PostEditor = await loadPage();
+			const wrapper = await mountWithSuspense(PostEditor);
+			await flushPromises();
+
+			// Fill required fields so the create proceeds.
+			await wrapper.find('input[type="text"]').setValue("Brand New");
+			await wrapper.find("textarea").setValue("# Body");
+			await wrapper.find("form").trigger("submit.prevent");
+			await flushPromises();
+
+			expect(mockCreateAdminPost).toHaveBeenCalled();
+			expect(mockNavigateTo).toHaveBeenCalledWith("/admin/posts/42", { replace: true });
+		});
+
 		it("auto-generates slug from title", async () => {
 			const PostEditor = await loadPage();
 			const wrapper = await mountWithSuspense(PostEditor);
@@ -389,6 +412,29 @@ describe("Admin Post Editor Page", () => {
 			await flushPromises();
 
 			expect(mockUpdateAdminPost).toHaveBeenCalledWith(1, expect.any(Object));
+		});
+
+		it("stays in the editor and shows an inline success flash on manual save of an existing post (ISS-391)", async () => {
+			// The old flow navigated to list page 1 on every save with no
+			// confirmation — an older post (created_at-desc) vanished from view
+			// and there was no signal the save landed. Saving an existing post
+			// now keeps the operator in the editor with a visible "Saved" flash.
+			const mockNavigateTo = vi.fn();
+			vi.stubGlobal("navigateTo", mockNavigateTo);
+			const PostEditor = await loadPage();
+			const wrapper = await mountWithSuspense(PostEditor);
+			await flushPromises();
+
+			const form = wrapper.find("form");
+			await form.trigger("submit.prevent");
+			await flushPromises();
+
+			expect(mockUpdateAdminPost).toHaveBeenCalledWith(1, expect.any(Object));
+			expect(mockNavigateTo).not.toHaveBeenCalled();
+			expect(wrapper.find('[data-testid="save-success"]').exists()).toBe(true);
+			expect(wrapper.text()).toContain("已保存");
+			// NOTE: no unstubAllGlobals — it strips the file-level useRuntimeConfig/
+			// useHead stubs that later tests depend on (they re-stub navigateTo).
 		});
 
 		it("does not lose keystrokes typed while an autosave is in flight (deep-dive autosave race)", async () => {

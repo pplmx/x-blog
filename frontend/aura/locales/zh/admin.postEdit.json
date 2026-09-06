@@ -69,6 +69,7 @@
 		"confirmDiscard": "有未保存的修改，确定离开吗？",
 		"taxonomyLoadFailed": "分类/标签/系列加载失败，选择器可能不完整。",
 		"scheduledBadge": "定时发布",
-		"notifyRequiresSlug": "请先保存文章以生成 slug，再通知订阅者。"
+		"notifyRequiresSlug": "请先保存文章以生成 slug，再通知订阅者。",
+		"saveSuccess": "已保存"
 	}
 }

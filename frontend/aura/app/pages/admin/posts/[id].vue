@@ -50,6 +50,12 @@ const formData = ref<Partial<PostCreate>>({
 });
 const isSubmitting = ref(false);
 const submitError = ref<string | null>(null);
+// Inline "saved" flash for a manual save of an EXISTING post (ISS-391): saving
+// no longer navigates away, so the operator needs an explicit confirmation the
+// save landed. Auto-clears after a few seconds.
+const saveSuccess = ref(false);
+let saveSuccessTimer: ReturnType<typeof setTimeout> | undefined;
+
 // Web Push notify-subscribers (DEC-055, TASK-118): only offered on published
 // posts; superuser-only on the backend, but the button simply surfaces the
 // backend's 403 if this account is an editor.
@@ -514,17 +520,37 @@ async function handleSubmit(e: Event) {
 		// slug). Save INTO the autosaved draft instead. (CRITICAL deep-dive)
 		const targetId = postId ?? autosavedId;
 		if (targetId === null) {
-			await createAdminPost(withCreateTags(payload));
+			const created = await createAdminPost(withCreateTags(payload));
+			// New post saved → keep editing it rather than dropping back to the
+			// list page 1 (where a fresh draft isn't even visible under
+			// created_at-desc ordering). Landing on its editor (via /new's SPA
+			// form address) preserves the author's context (ISS-391).
+			isDirty.value = false;
+			navigateTo(`/admin/posts/${created.id}`, { replace: true });
 		} else {
 			await updateAdminPost(targetId, payload);
+			// Existing post saved → STAY in the editor. The old always-navigate
+			// dropped the operator on list page 1 with no confirmation the save
+			// landed, and an older post (created_at-desc) wasn't even visible
+			// there. Surface an inline success flash and let them keep working or
+			// hit Cancel/back explicitly (ISS-391).
+			isDirty.value = false;
+			saveSuccess.value = true;
+			saveSuccessTimer = setTimeout(() => {
+				saveSuccess.value = false;
+			}, 3000);
 		}
-		isDirty.value = false; // don't re-prompt during the redirect
-		navigateTo("/admin/posts", { replace: true });
 	} catch (err) {
 		const detail = (err as { data?: { detail?: string } } | null)?.data?.detail;
 		submitError.value = typeof detail === "string" ? detail : t("admin.postEdit.saveError");
 	} finally {
 		isSubmitting.value = false;
+		// An in-flight pending success flash from an earlier save must not
+		// resurrect after a later failed save cleared it.
+		if (saveSuccessTimer) {
+			clearTimeout(saveSuccessTimer);
+			saveSuccessTimer = undefined;
+		}
 	}
 }
 
@@ -840,6 +866,17 @@ function handleFileInput(e: Event) {
       </div>
       <div v-if="submitError" role="alert" class="p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl text-red-600 dark:text-red-400">
         {{ submitError }}
+      </div>
+      <!-- Manual-save success flash (ISS-391): saving an existing post stays in
+           the editor, so confirm the save landed explicitly instead of the old
+           silent navigate-to-list-page-1. -->
+      <div
+        v-else-if="saveSuccess"
+        data-testid="save-success"
+        role="status"
+        class="p-4 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-xl text-green-700 dark:text-green-300"
+      >
+        {{ t("admin.postEdit.saveSuccess") }}
       </div>
       <div
         v-if="notifyMessage"
