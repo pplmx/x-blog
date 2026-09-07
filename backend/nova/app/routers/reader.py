@@ -1498,14 +1498,18 @@ def edit_my_comment(
     ``edited_at`` is stamped. (DEC-096, TASK-160)
 
     Moderation re-entry (security review): the edit resets approval because it
-    replaces public content; ``updated`` now returns unapproved. Re-apply the
-    same verified-reader trust tier as comment create (DEC-098/100) — with
-    auto-approve enabled an edited comment republishes immediately (consistent
-    with how that tier treats new comments), otherwise it waits for a
-    moderator exactly like a fresh comment. Fires the approval notifications
-    on the trusted branch so the republish is as visible as the original.
+    replaces public content; the second return value reports whether the
+    comment was public before the edit. Re-apply the same verified-reader trust
+    tier as comment create (DEC-098/100) — with auto-approve enabled an edited
+    comment republishes immediately (consistent with how that tier treats new
+    comments), otherwise it waits for a moderator exactly like a fresh comment.
+    Approval notifications fire only when the edit genuinely brings the comment
+    onto the public surface for the first time: a comment that was already
+    approved never left it, so its subscribers were notified on the original
+    publication and a mere edit must not re-fan out reply + thread
+    notifications (RIL ISS-404).
     """
-    updated = crud.update_reader_comment(db, comment_id, current_reader.id, edit.content)
+    updated, was_public = crud.update_reader_comment(db, comment_id, current_reader.id, edit.content)
     if not updated:
         raise HTTPException(status_code=404, detail="Comment not found")
     if updated.reader_id is not None and crud.boolean_setting(
@@ -1513,7 +1517,8 @@ def edit_my_comment(
     ):
         approved = crud.approve_comment(db, updated.id, approved=True)
         if approved is not None:
-            _notify_comment_approved(db, approved)
+            if not was_public:
+                _notify_comment_approved(db, approved)
             return approved
     return updated
 

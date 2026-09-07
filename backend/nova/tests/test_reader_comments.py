@@ -326,6 +326,76 @@ class TestEditOwnComment:
         listed = client.get(f"/api/comments/post/{post.id}").json()["items"]
         assert [c["content"] for c in listed if c["id"] == comment_id] == ["edited body"]
 
+    def test_edit_of_public_comment_does_not_renotify_thread_followers(self, client, db_session, monkeypatch):
+        """Editing an already-public comment never leaves the public surface, so
+        it must not re-fan out thread notifications to followers (ISS-404): the
+        follower seen the original publication; a mere edit is not a new one."""
+        from app import models
+        from app.routers import comments as comments_router
+        from app.routers import reader as reader_router
+
+        monkeypatch.setattr(comments_router, "AUTO_APPROVE_READER_COMMENTS", True)
+        monkeypatch.setattr(reader_router, "AUTO_APPROVE_READER_COMMENTS", True)
+
+        post = _create_post(db_session, slug=f"nr-post-{id(self)}")
+        fan = _token(client, email=f"nr-fan-{id(self)}@example.com", display_name="Fan")
+        fan_id = client.get("/api/reader/me", headers=_auth(fan)).json()["id"]
+        db_session.add(models.CommentSubscription(reader_id=fan_id, post_id=post.id))
+        db_session.commit()
+
+        token = _token(client, email=f"nr-editor-{id(self)}@example.com", display_name="Editor")
+        created = _post_comment(client, post.id, headers=_auth(token)).json()
+        assert created["is_approved"] is True, created
+        # The original publication notified the follower once.
+        assert client.get("/api/reader/me/notifications", headers=_auth(fan)).json()["total"] == 1
+
+        resp = client.patch(
+            f"/api/reader/me/comments/{created['id']}",
+            json={"content": "edited body"},
+            headers=_auth(token),
+        )
+        assert resp.status_code == 200, resp.text
+        assert resp.json()["is_approved"] is True
+        # No duplicate thread notification: the comment stayed public the whole time.
+        assert client.get("/api/reader/me/notifications", headers=_auth(fan)).json()["total"] == 1
+
+    def test_edit_of_pending_comment_notifies_on_republish(self, client, db_session, monkeypatch):
+        """A comment pending BEFORE the edit genuinely becomes public on the
+        auto-approve republish, so followers ARE notified then (ISS-404 keeps
+        the notification for real new publications, only)."""
+        from app import models
+        from app.routers import comments as comments_router
+        from app.routers import reader as reader_router
+
+        # Auto-approve off at create: the reader's comment stays pending.
+        monkeypatch.setattr(comments_router, "AUTO_APPROVE_READER_COMMENTS", False)
+        monkeypatch.setattr(reader_router, "AUTO_APPROVE_READER_COMMENTS", False)
+
+        post = _create_post(db_session, slug=f"pd-post-{id(self)}")
+        fan = _token(client, email=f"pd-fan-{id(self)}@example.com", display_name="Fan")
+        fan_id = client.get("/api/reader/me", headers=_auth(fan)).json()["id"]
+        db_session.add(models.CommentSubscription(reader_id=fan_id, post_id=post.id))
+        db_session.commit()
+
+        token = _token(client, email=f"pd-editor-{id(self)}@example.com", display_name="Editor")
+        created = _post_comment(client, post.id, headers=_auth(token)).json()
+        assert created["is_approved"] is False, created
+        # Pending → nothing public, no notification yet.
+        assert client.get("/api/reader/me/notifications", headers=_auth(fan)).json()["total"] == 0
+
+        # The edit republishes through the trust tier → a real new publication
+        # that the follower should hear about.
+        monkeypatch.setattr(comments_router, "AUTO_APPROVE_READER_COMMENTS", True)
+        monkeypatch.setattr(reader_router, "AUTO_APPROVE_READER_COMMENTS", True)
+        resp = client.patch(
+            f"/api/reader/me/comments/{created['id']}",
+            json={"content": "edited body"},
+            headers=_auth(token),
+        )
+        assert resp.status_code == 200, resp.text
+        assert resp.json()["is_approved"] is True
+        assert client.get("/api/reader/me/notifications", headers=_auth(fan)).json()["total"] == 1
+
     def test_cannot_edit_another_readers_comment(self, client, db_session):
         _post, comment_id, token = self._own_approved(client, db_session)
         other = _token(client, email=f"edit-other-{id(self)}@example.com", display_name="Other")

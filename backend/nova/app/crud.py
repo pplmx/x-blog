@@ -932,14 +932,20 @@ def delete_reader_comment(db: Session, comment_id: int, reader_id: int) -> bool:
     return True
 
 
-def update_reader_comment(db: Session, comment_id: int, reader_id: int, content: str) -> models.Comment | None:
+def update_reader_comment(
+    db: Session, comment_id: int, reader_id: int, content: str
+) -> tuple[models.Comment | None, bool]:
     """Edit one of the reader's own comments (any status).
 
-    Returns the updated comment, or None if it is missing or belongs to a
-    different reader (indistinguishable 404). Content is stored raw and
-    re-rendered through the same sanitized markdown pipeline as a new comment,
-    so an edit can never weaken the XSS guarantees (DEC-096, TASK-160). The
-    ``edited_at`` marker is stamped so the UI can surface it.
+    Returns ``(comment, was_public)`` — the updated comment (or None if it is
+    missing or belongs to a different reader, indistinguishable 404) and whether
+    the comment was publicly visible (approved) BEFORE the edit. ``was_public``
+    tells the caller whether this edit took the comment off the public surface;
+    if it was already public, an auto-approve republish must not re-notify its
+    subscribers (RIL ISS-404). Content is stored raw and re-rendered through the
+    same sanitized markdown pipeline as a new comment, so an edit can never
+    weaken the XSS guarantees (DEC-096, TASK-160). The ``edited_at`` marker is
+    stamped so the UI can surface it.
 
     Moderation integrity (security review): an edit REPLACES the comment's
     public content, so an approved comment must not silently republish the new
@@ -953,14 +959,16 @@ def update_reader_comment(db: Session, comment_id: int, reader_id: int, content:
         db.query(models.Comment).filter(models.Comment.id == comment_id, models.Comment.reader_id == reader_id).first()
     )
     if not comment:
-        return None
+        return None, False
+    # is_approved is nullable; NULL is not public, so coerce for the bool contract.
+    was_public = bool(comment.is_approved)
     comment.content = content
     comment.edited_at = datetime.now(UTC)
     comment.is_approved = False
     comment.reviewed_at = None
     db.commit()
     db.refresh(comment)
-    return comment
+    return comment, was_public
 
 
 def get_pending_comments(db: Session) -> list[models.Comment]:
