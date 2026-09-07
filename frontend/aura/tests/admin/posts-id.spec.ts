@@ -13,7 +13,24 @@ import { flushPromises, type VueWrapper } from "@vue/test-utils";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ref } from "vue";
 import MarkdownContent from "~~/components/MarkdownContent.vue";
-import { mountWithSuspense } from "./helpers.ts";
+import { mountWithSuspense as baseMountWithSuspense } from "./helpers.ts";
+
+/**
+ * Editor wrappers stay live across tests unless unmounted, and every live
+ * editor instance keeps its per-instance 800ms autosave debounce timer armed
+ * (a REAL timer in the non-fake-timer describes). A leaked timer firing
+ * ~800ms of real time later — naturally within a full-dir run — calls
+ * createAdminPost/updateAdminPost through the shared module mocks and makes
+ * the fake-timer auto-save tests see 2 calls instead of 1 (RIL ISS-410).
+ * Register every wrapper here and unmount them in the top-level afterEach so
+ * onBeforeUnmount clears each debounce before it can misfire into later tests.
+ */
+const mountedWrappers: VueWrapper[] = [];
+async function mountWithSuspense(PageComponent: any, stubs: Record<string, any> = {}) {
+	const wrapper = await baseMountWithSuspense(PageComponent, stubs);
+	mountedWrappers.push(wrapper);
+	return wrapper;
+}
 
 const {
 	mockFetchAdminCategories,
@@ -154,6 +171,11 @@ async function loadPage() {
 
 describe("Admin Post Editor Page", () => {
 	afterEach(() => {
+		// Unmount any editor wrappers a test left live so their per-instance
+		// real debounce timers are cleared (RIL ISS-410) — this runs after the
+		// Draft auto-save describe's own fake-timer-aware unmount, so already-
+		// unmounted wrappers here are safe no-ops.
+		for (const wrapper of mountedWrappers.splice(0)) wrapper.unmount();
 		vi.restoreAllMocks();
 	});
 
