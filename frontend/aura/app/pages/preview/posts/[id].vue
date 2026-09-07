@@ -42,11 +42,20 @@ const tagNames = computed(() =>
 		.filter(Boolean),
 );
 
-onMounted(async () => {
+onMounted(() => {
 	if (typeof localStorage === "undefined" || !localStorage.getItem("admin_token")) {
 		return;
 	}
+	void load();
+});
+
+// Loader (also the retry entry point): a transient failure must not dead-end
+// the author's preview — the rest of the app's load-error surfaces offer Retry
+// + a way back, this one previously showed the failure with no way to re-fetch
+// (deep-dive finding, round 276).
+async function load() {
 	loading.value = true;
+	failed.value = false;
 	try {
 		const [data, cats, tgs] = await Promise.all([
 			getAdminPost(Number(route.params.id)),
@@ -65,7 +74,7 @@ onMounted(async () => {
 	} finally {
 		loading.value = false;
 	}
-});
+}
 </script>
 
 <template>
@@ -93,9 +102,16 @@ onMounted(async () => {
       <div class="h-4 bg-gray-200 dark:bg-gray-800 rounded w-5/6 animate-pulse" />
     </div>
 
-    <div v-else-if="failed || !post" class="text-center py-16 text-red-500">
+    <div v-else-if="failed || !post" class="text-center py-16">
       <Icon icon="lucide:alert-circle" class="w-10 h-10 mx-auto mb-3 text-red-300" />
-      <p>{{ t('preview.loadFailed') }}</p>
+      <p class="text-red-500 mb-4">{{ t('preview.loadFailed') }}</p>
+      <button
+        type="button"
+        class="px-4 py-2 rounded-lg text-sm font-medium border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+        @click="load"
+      >
+        {{ t('common.action.retry') }}
+      </button>
     </div>
 
     <article v-else>
