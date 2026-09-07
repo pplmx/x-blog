@@ -11,7 +11,7 @@ from datetime import UTC, datetime
 from typing import Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 from sqlalchemy import func
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
@@ -1251,6 +1251,73 @@ def reading_history_stats(
         longest_streak=stats["longest_streak"],
         activity=[DayActivity(**a) for a in stats["activity"]],
     )
+
+
+class HistoryImportItem(BaseModel):
+    """One device-local read to merge into the server history (TASK-303).
+
+    ``slug`` identifies the post (the localStorage trail stores slugs, not ids);
+    ``viewed_at`` is the guest's original read instant as naive UTC and is
+    preserved when newer than any server row. Timestamp-less legacy rows send
+    null. Declared BEFORE ``/me/history/{post_id}`` so the literal ``import``
+    segment never gets captured as an integer post id.
+    """
+
+    slug: str = Field(min_length=1, max_length=150, description="public post slug")
+    viewed_at: datetime | None = None
+
+    @field_validator("viewed_at", mode="after")
+    @classmethod
+    def _coerce_naive_utc(cls, value: datetime | None) -> datetime | None:
+        # Same naive-UTC coercion every schema timestamp uses (DEC-213): a
+        # zone-marked ISO from a device is stored as the same instant the
+        # author read, never a local-wall-clock shift, so downstream compares
+        # against stored naive-UTC rows cannot raise.
+        return schemas._normalize_naive_utc(value)
+
+
+class HistoryImportRequest(BaseModel):
+    """Device-local trail to merge (TASK-303). Capped so a misbehaving client
+    cannot flood the reader's history in a single request."""
+
+    items: list[HistoryImportItem] = Field(min_length=1, max_length=1000)
+
+
+class HistoryImportResponse(BaseModel):
+    """Counts of the records that merged vs. were skipped.
+
+    ``imported`` counts every record whose post resolved and is now part of the
+    reader's server history (added, or already present with the newer read
+    instant kept — idempotent). ``skipped`` counts records whose slug is
+    unknown or whose post is not publicly visible; those stay on the device and
+    can be retried as-is.
+    """
+
+    imported: int = 0
+    skipped: int = 0
+
+
+@router.post("/me/history/import", response_model=HistoryImportResponse)
+def import_reading_history(
+    body: HistoryImportRequest,
+    current_reader: auth.ReaderAccount = Depends(auth.get_current_reader),
+    db: Session = Depends(get_db),
+):
+    """Merge the device-local reading trail into this reader's server history.
+
+    Guests record reads to the localStorage trail (DEC-104/TASK-169); after
+    sign-in the /history page reads the server trail and those device records
+    silently disappear (RIL ISS-386, TASK-303). This idempotent, merge-by-slug
+    bulk upsert preserves each record's original read time and only ever
+    imports publicly visible posts (drafts/scheduled never leak — the same
+    invariant as every other history read path).
+    """
+    imported, skipped = crud.import_reader_history(
+        db,
+        current_reader.id,
+        [(item.slug, item.viewed_at) for item in body.items],
+    )
+    return HistoryImportResponse(imported=imported, skipped=skipped)
 
 
 @router.get("/me/history/{post_id}", response_model=ReadingPositionResponse)

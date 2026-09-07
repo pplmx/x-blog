@@ -1914,6 +1914,80 @@ def record_reading_history(
     raise RuntimeError("history insert lost the unique-key race but no row was found")
 
 
+def import_reader_history(
+    db: Session,
+    reader_id: int,
+    items: list[tuple[str, datetime | None]],
+) -> tuple[int, int]:
+    """Bulk-merge a device-local reading trail into a reader's server history.
+
+    Signing in switches the history source from the on-device localStorage
+    trail to the server trail (DEC-116/TASK-170); without a migration the
+    guest's reads silently vanish from the page (RIL ISS-386, TASK-303). This
+    upserts by post slug: a public post absent from the server history is added
+    with the guest's original ``viewed_at`` (falling back to now for
+    timestamp-less legacy rows), while an already-present entry keeps the LATER
+    of the two read instants — a cross-device sync must never move a read
+    backwards. Unresolvable or non-public slugs are skipped (same
+    draft/scheduled non-leak invariant as every other history read path).
+
+    Duplicate slugs within one request fold to a single row carrying the newest
+    read instant, so a malformed client cannot trip the unique
+    (reader_id, post_id) constraint. Returns ``(imported, skipped)``.
+    """
+    if not items:
+        return 0, 0
+
+    # Fold duplicates and normalize each record to its newest read instant.
+    by_slug: dict[str, datetime | None] = {}
+    for slug, viewed_at in items:
+        prev = by_slug.get(slug)
+        if viewed_at is None or prev is None or viewed_at > prev:
+            by_slug[slug] = viewed_at
+    slugs = list(by_slug)
+
+    posts = db.query(models.Post).filter(models.Post.slug.in_(slugs)).all()
+    by_slug_post = {p.slug: p for p in posts}
+    resolved_ids = [p.id for p in posts if is_publicly_visible(p)]
+
+    existing_by_post: dict[int, models.ReadingHistory] = {}
+    if resolved_ids:
+        existing_rows = (
+            db.query(models.ReadingHistory)
+            .filter(
+                models.ReadingHistory.reader_id == reader_id,
+                models.ReadingHistory.post_id.in_(resolved_ids),
+            )
+            .all()
+        )
+        existing_by_post = {row.post_id: row for row in existing_rows}
+
+    imported = 0
+    skipped = 0
+    for slug, viewed_at in by_slug.items():
+        post = by_slug_post.get(slug)
+        if post is None or not is_publicly_visible(post):
+            skipped += 1
+            continue
+        row = existing_by_post.get(post.id)
+        if row is not None:
+            if viewed_at is not None and (row.viewed_at is None or viewed_at > row.viewed_at):
+                row.viewed_at = viewed_at
+                db.add(row)
+            imported += 1
+            continue
+        db.add(
+            models.ReadingHistory(
+                reader_id=reader_id,
+                post_id=post.id,
+                viewed_at=viewed_at or utc_now_naive(),
+            )
+        )
+        imported += 1
+    db.commit()
+    return imported, skipped
+
+
 def list_reader_history(
     db: Session, reader_id: int, page: int = 1, limit: int = 20, q: str | None = None
 ) -> tuple[list[tuple[models.Post, datetime]], int]:
