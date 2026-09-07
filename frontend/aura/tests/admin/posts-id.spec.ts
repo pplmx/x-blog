@@ -489,6 +489,55 @@ describe("Admin Post Editor Page", () => {
 			}
 		});
 
+		it("does not lose keystrokes typed while a MANUAL save is in flight (round 278)", async () => {
+			// handleSubmit used to blanket-clear isDirty on success, so edits made
+			// while the manual save was in flight were dropped (the debounced
+			// autosave early-returns on a clean flag) and the unflush guards were
+			// disarmed. It must recompute dirtiness against the persisted snapshot
+			// and flush the tail through the autosave pipeline.
+			vi.useFakeTimers();
+			let wrapper: VueWrapper | null = null;
+			try {
+				setupRoute("1");
+				setupMocks();
+				mockUpdateAdminPost.mockResolvedValue({ id: 1 });
+
+				let resolveSave: (v: { id: number }) => void = () => {};
+				mockUpdateAdminPost.mockImplementationOnce(
+					() =>
+						new Promise((res) => {
+							resolveSave = res;
+						}),
+				);
+
+				const PostEditor = await loadPage();
+				wrapper = await mountWithSuspense(PostEditor);
+				const titleInput = wrapper.find('input[type="text"]');
+				await titleInput.setValue("Manual Save Draft");
+
+				// Start a manual save on the existing post (id 1); it stays in flight.
+				await wrapper.find("form").trigger("submit.prevent");
+				await flushPromises();
+				expect(mockUpdateAdminPost.mock.calls.length).toBeGreaterThanOrEqual(1);
+
+				// Type MORE while the manual save is in flight — this tail must not
+				// be dropped when the save resolves.
+				await titleInput.setValue("Manual Save Draft Plus");
+				resolveSave({ id: 1 });
+				await flushPromises();
+				await vi.advanceTimersByTimeAsync(800);
+				await flushPromises();
+
+				const calls = mockUpdateAdminPost.mock.calls;
+				expect(calls.length).toBeGreaterThanOrEqual(2);
+				const last = calls[calls.length - 1][1] as { title: string };
+				expect(last.title).toBe("Manual Save Draft Plus");
+			} finally {
+				wrapper?.unmount();
+				vi.useRealTimers();
+			}
+		});
+
 		it("shows loading state while fetching post", async () => {
 			mockFetchAdminPost.mockReturnValue({
 				data: ref(null),
@@ -952,6 +1001,38 @@ describe("Admin Post Editor Page", () => {
 			await flushPromises();
 
 			expect(mockCreateAdminPost).toHaveBeenCalledTimes(1);
+			expect(mockUpdateAdminPost).toHaveBeenCalledTimes(1);
+			const [targetId] = mockUpdateAdminPost.mock.calls[0] as [number, unknown];
+			expect(targetId).toBe(7);
+		});
+
+		it("manual Save that beats the first autosave stamps the draft so later edits update it, never a second create (round 278)", async () => {
+			// A manual Save firing BEFORE the 800ms autosave debounce creates the
+			// post, but pre-fix never stamped autosavedId — so the next keystroke's
+			// autosave re-created with the identical slug (backend 422) or, if the
+			// slug changed, silently duplicated a draft. The manual create must
+			// mirror runAutosave and adopt the created draft.
+			const { wrapper } = await autosaveNewPage();
+			mockCreateAdminPost.mockResolvedValue({ id: 7 });
+			mockUpdateAdminPost.mockResolvedValue({ id: 7 });
+
+			const titleInput = wrapper.find('input[type="text"]');
+			await titleInput.setValue("Fast Save Draft");
+			const contentTextarea = wrapper.find('textarea[rows="15"]');
+			await contentTextarea.setValue("# body");
+
+			// Manual Save before the debounced autosave ever fires.
+			await wrapper.find("form").trigger("submit.prevent");
+			await flushPromises();
+			expect(mockCreateAdminPost).toHaveBeenCalledTimes(1);
+			expect(mockUpdateAdminPost).not.toHaveBeenCalled();
+
+			// A subsequent edit must autosave INTO the created draft.
+			await titleInput.setValue("Fast Save Draft v2");
+			await vi.advanceTimersByTimeAsync(1000);
+			await flushPromises();
+
+			expect(mockCreateAdminPost).toHaveBeenCalledTimes(1); // never re-created
 			expect(mockUpdateAdminPost).toHaveBeenCalledTimes(1);
 			const [targetId] = mockUpdateAdminPost.mock.calls[0] as [number, unknown];
 			expect(targetId).toBe(7);

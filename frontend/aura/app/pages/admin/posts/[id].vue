@@ -502,6 +502,11 @@ async function handleSubmit(e: Event) {
 			await waitForAutosaveIdle();
 		}
 
+		// Snapshot the form exactly as this save is about to persist it, mirroring
+		// runAutosave: on success we recompute dirtiness against THIS capture, not
+		// the live form, so keystrokes that land while the request is in flight are
+		// never mislabeled "saved" (round 278 admin-find).
+		const startedSnapshot = snapshot();
 		const payload = serializePayload();
 		// New posts start with an empty slug, which fails the backend schema
 		// pattern (^[a-z0-9]+(?:-[a-z0-9]+)*$) with a 422. Generate one from the
@@ -521,11 +526,19 @@ async function handleSubmit(e: Event) {
 		const targetId = postId ?? autosavedId;
 		if (targetId === null) {
 			const created = await createAdminPost(withCreateTags(payload));
+			// Stamp the created draft exactly like runAutosave does: a manual Save
+			// that beat the first autosave-create must not leave autosavedId null,
+			// or the next keystroke's autosave re-creates with the identical slug
+			// (backend 422) or — if the slug changed — silently duplicates a draft
+			// (round 278 admin-find).
+			if (created.id !== null) {
+				autosavedId = created.id;
+				hydratedId.value = created.id;
+			}
 			// New post saved → keep editing it rather than dropping back to the
 			// list page 1 (where a fresh draft isn't even visible under
 			// created_at-desc ordering). Landing on its editor (via /new's SPA
 			// form address) preserves the author's context (ISS-391).
-			isDirty.value = false;
 			navigateTo(`/admin/posts/${created.id}`, { replace: true });
 		} else {
 			await updateAdminPost(targetId, payload);
@@ -534,11 +547,24 @@ async function handleSubmit(e: Event) {
 			// landed, and an older post (created_at-desc) wasn't even visible
 			// there. Surface an inline success flash and let them keep working or
 			// hit Cancel/back explicitly (ISS-391).
-			isDirty.value = false;
 			saveSuccess.value = true;
 			saveSuccessTimer = setTimeout(() => {
 				saveSuccess.value = false;
 			}, 3000);
+		}
+		// Recompute dirtiness against what was actually persisted, mirroring
+		// runAutosave. A blanket isDirty=false here silently drops any keystrokes
+		// typed while the save was in flight (the debounce early-returns on a
+		// clean flag) AND disarms the beforeunload/route-leave guards for that
+		// unflushed tail. Flush the tail through the autosave pipeline, which now
+		// targets the known draft id (round 278 admin-find).
+		loadedSnapshot = startedSnapshot;
+		isDirty.value = snapshot() !== startedSnapshot;
+		if (isDirty.value) {
+			autoSaveStatus.value = "saving";
+			scheduleAutosave();
+		} else {
+			autoSaveStatus.value = "saved";
 		}
 	} catch (err) {
 		const detail = (err as { data?: { detail?: string } } | null)?.data?.detail;
