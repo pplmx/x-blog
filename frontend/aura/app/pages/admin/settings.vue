@@ -44,9 +44,16 @@ async function save() {
 	saving.value = true;
 	saved.value = false;
 	error.value = null;
+	// The exact value this request persists. The "Saved" flash must describe
+	// persisted state relative to the CURRENT control: if the toggle moved
+	// while the request was in flight (persisted X, control now shows !X), the
+	// last flip was never sent and showing "Saved" next to the opposite value
+	// is a lie — the watch already cleared the banner, the completion must not
+	// resurrect it (round 278).
+	const persistedValue = enabled.value;
 	try {
-		await updateSiteSetting(SETTING_KEY, enabled.value ? "true" : "false");
-		saved.value = true;
+		await updateSiteSetting(SETTING_KEY, persistedValue ? "true" : "false");
+		saved.value = enabled.value === persistedValue;
 	} catch {
 		error.value = t("admin.settings.saveFailed");
 	} finally {

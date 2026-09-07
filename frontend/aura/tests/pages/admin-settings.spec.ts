@@ -120,4 +120,36 @@ describe("Admin Settings page", () => {
 		await flushPromises();
 		expect(wrapper.text()).not.toContain("设置已保存");
 	});
+
+	it("does not flash Saved when the toggle moved to the opposite value mid-save (round 278)", async () => {
+		// Save persisted "true" while the operator flipped the toggle back to
+		// false before the request resolved: the completion must not resurrect
+		// the banner next to a control whose value was never persisted.
+		mockFetchSiteSetting.mockResolvedValue({
+			key: "auto_approve_reader_comments",
+			value: "false",
+		});
+		let resolveUpdate!: (v: unknown) => void;
+		mockUpdateSiteSetting.mockImplementation(
+			() =>
+				new Promise((res) => {
+					resolveUpdate = res;
+				}),
+		);
+		const wrapper = await mountPage();
+		await flushPromises();
+
+		const checkbox = wrapper.find('input[type="checkbox"]');
+		await checkbox.setValue(true);
+		await wrapper.find("button").trigger("click"); // save starts, in flight (persists "true")
+		await flushPromises();
+
+		// Flip back while the save is still pending — this value was never sent.
+		await checkbox.setValue(false);
+		await flushPromises();
+		resolveUpdate({ data: { value: { key: "auto_approve_reader_comments", value: "true" } }, pending: false });
+		await flushPromises();
+
+		expect(wrapper.text()).not.toContain("设置已保存");
+	});
 });
