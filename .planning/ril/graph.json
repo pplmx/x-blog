@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 280,
+  "round": 281,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-07T13:51:36+00:00",
+  "updated_at": "2026-09-07T14:42:55+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -19511,11 +19511,11 @@
     "ISS-404": {
       "id": "ISS-404",
       "type": "issue",
-      "status": "active",
-      "version": 1,
+      "status": "resolved",
+      "version": 2,
       "created_at": "2026-09-07T08:25:22+00:00",
-      "updated_at": "2026-09-07T08:25:22+00:00",
-      "touched_round": 278,
+      "updated_at": "2026-09-07T14:29:54+00:00",
+      "touched_round": 280,
       "title": "Editing an already-public comment re-fans out reply + thread notifications to followers when auto-approve is on — update_reader_comment resets is_approved (deliberate anti-spam), but the auto-approve branch then re-notifies everyone though the comment never left the public surface; candidates: only re-notify when the comment was pending/rejected before the edit",
       "severity": "low",
       "confidence": 0.7,
@@ -19932,6 +19932,30 @@
       "rationale": "TASK-303/ISS-386: a guest localStorage read trail silently vanishes once sign-in switches /history to the server trail. Implemented a one-time, reader-initiated import: POST /me/history/import (idempotent merge-by-slug, preserves each record original viewed_at, only public posts) plus a dismissible offer banner on /history driven by pendingDeviceCount (local slugs missing from the loaded server history), with an inline success/none/failure flash. The offer (not silent auto-backfill) keeps the device trail as source of truth until the reader opts in and avoids surprising writes to their cloud history; skipped (unpublished) records are not re-offered per page view. Backend contract tests plus frontend composable/api tests; full suites green.",
       "alternatives_rejected": "Silent auto-backfill on sign-in (writes the cloud history without an opt-in and needs delicate first-login detection); showing nothing (the original issue); migrating inside useReaderAuth.login() globally (a page-level offer is more discoverable and testable).",
       "title": "Guest reading-history migration as an explicit one-time import on /history"
+    },
+    "CHG-427": {
+      "id": "CHG-427",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-07T14:29:54+00:00",
+      "updated_at": "2026-09-07T14:29:54+00:00",
+      "touched_round": 280,
+      "commit": "1e0287a",
+      "title": "fix(reader): editing an already-public comment no longer re-fans out reply + thread notifications (ISS-404)"
+    },
+    "EV-228": {
+      "id": "EV-228",
+      "type": "evidence",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-07T14:29:54+00:00",
+      "updated_at": "2026-09-07T14:29:54+00:00",
+      "touched_round": 280,
+      "source": "1e0287a + tests",
+      "confidence": 1.0,
+      "title": "ISS-404 verified: regression test fails on the old unconditional notify (2==1) and passes with the gate",
+      "content": "test_edit_of_public_comment_does_not_renotify_thread_followers asserts the follower durable-inbox total stays 1 across an edit of an approved comment; temporarily restoring the pre-fix unconditional _notify_comment_approved made it fail (assert 2 == 1), then pass after the gate. TestEditOwnComment 7 passed; approval/reply/thread + notification suites 39 passed."
     }
   },
   "edges": [
@@ -29629,6 +29653,12 @@
       "to": "TASK-312",
       "type": "implements",
       "created_at": "2026-09-07T13:48:29+00:00"
+    },
+    {
+      "from": "CHG-427",
+      "to": "ISS-404",
+      "type": "resolves",
+      "created_at": "2026-09-07T14:29:54+00:00"
     }
   ]
 }
