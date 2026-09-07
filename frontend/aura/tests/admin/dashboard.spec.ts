@@ -151,7 +151,6 @@ const mockStatsResult = {
 	total_categories: 2,
 	total_tags: 2,
 	total_comments: 3,
-	pending_comments: 2,
 	total_views: 350,
 };
 

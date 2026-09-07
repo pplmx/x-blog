@@ -80,11 +80,16 @@ function searchPct(count: number): number {
 	return Math.round((count / searchMax.value) * 100);
 }
 // Comment activity analytics (DEC-154/TASK-189): engagement axis.
+// pending_count is the authoritative moderation-queue depth (round 276): it
+// moved from the public /api/stats (a moderation-state oracle any visitor
+// could poll) onto this admin-scoped endpoint, so the dashboard's pending
+// stat reads it here instead of blogStats.pending_comments.
 interface CommentActivity {
 	days: number;
 	total: number;
 	series: Array<{ day: string; count: number }>;
 	top_posts: Array<{ id: number; title: string; slug: string; count: number }>;
+	pending_count: number;
 }
 const commentActivity = ref<CommentActivity | null>(null);
 const commentMax = computed(() =>
@@ -380,8 +385,12 @@ const totalViews = computed(
 	() => blogStats.value?.total_views ?? posts.value.reduce((sum, p) => sum + (p.views || 0), 0),
 );
 const pendingComments = computed(() => allComments.value.filter((c) => !c.is_approved));
+// Round 276: the authoritative pending count comes from the admin-scoped
+// comment-activity stats (commentActivity.pending_count) — never the public
+// /api/stats, which no longer exposes the moderation backlog. The page-1
+// allComments filter is only a fallback while stats are still loading.
 const pendingCommentsCount = computed(
-	() => blogStats.value?.pending_comments ?? pendingComments.value.length,
+	() => commentActivity.value?.pending_count ?? pendingComments.value.length,
 );
 
 // Recent 5 published posts sorted by effective publish time (publish_at ??
