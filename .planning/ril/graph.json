@@ -2,7 +2,7 @@
   "ril_version": 1,
   "round": 278,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-07T08:25:22+00:00",
+  "updated_at": "2026-09-07T09:09:58+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -22,7 +22,7 @@
       "version": 1,
       "created_at": "2026-08-06T13:23:41+00:00",
       "updated_at": "2026-08-06T13:23:41+00:00",
-      "touched_round": 277,
+      "touched_round": 278,
       "title": "frontend-aura",
       "description": "Nuxt 4 Vue 3 TypeScript frontend at frontend/aura; composables; admin pages; e2e Playwright; biome lint"
     },
@@ -19520,6 +19520,96 @@
       "severity": "low",
       "confidence": 0.7,
       "effort": 1.0
+    },
+    "ISS-405": {
+      "id": "ISS-405",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-07T09:08:56+00:00",
+      "updated_at": "2026-09-07T09:09:58+00:00",
+      "touched_round": 278,
+      "title": "Admin post editor: a manual Save that beats the first autosave never stamps the created draft, so the next edit re-creates with the identical slug (backend 422) or duplicates a draft when the slug changed; a manual save resolving over in-flight keystrokes blanket-clears isDirty, silently dropping the tail and disarming the unload guards",
+      "severity": "high",
+      "confidence": 0.95,
+      "effort": 1.0
+    },
+    "TASK-310": {
+      "id": "TASK-310",
+      "type": "task",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-07T09:08:56+00:00",
+      "updated_at": "2026-09-07T09:09:58+00:00",
+      "touched_round": 278,
+      "category": "correctness",
+      "title": "Admin post editor: manual Save adopts the created draft (autosavedId/hydratedId) and recomputes dirtiness against the persisted snapshot, flushing any in-flight tail through the autosave pipeline",
+      "severity": "high",
+      "confidence": 0.95,
+      "effort": 1.0
+    },
+    "CHG-416": {
+      "id": "CHG-416",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-07T09:08:56+00:00",
+      "updated_at": "2026-09-07T09:08:56+00:00",
+      "touched_round": 278,
+      "commit": "484ee5d",
+      "title": "fix(admin): manual Save on a new post adopts the draft; a save resolving over in-flight keystrokes no longer drops them (TASK-310, ISS-405)"
+    },
+    "ISS-406": {
+      "id": "ISS-406",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-07T09:08:57+00:00",
+      "updated_at": "2026-09-07T09:09:58+00:00",
+      "touched_round": 278,
+      "title": "A just-posted comment can be invisible: the standalone top-level form refreshed only the current page (a comment on page 1 never fetched when the reader was on page 2+), and a reply under most-helpful sorts to the thread tail while the surfacing path skipped the page-walk because the parent was on page 1",
+      "severity": "high",
+      "confidence": 0.95,
+      "effort": 1.0
+    },
+    "TASK-311": {
+      "id": "TASK-311",
+      "type": "task",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-07T09:08:57+00:00",
+      "updated_at": "2026-09-07T09:09:58+00:00",
+      "touched_round": 278,
+      "category": "usability",
+      "title": "CommentList must surface a freshly-posted comment for every sort and page position (shared surfaceComment: jump to holding page, refresh, scroll, always page-walk)",
+      "severity": "high",
+      "confidence": 0.95,
+      "effort": 1.0
+    },
+    "CHG-417": {
+      "id": "CHG-417",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-07T09:08:57+00:00",
+      "updated_at": "2026-09-07T09:08:57+00:00",
+      "touched_round": 278,
+      "commit": "e12cfb1",
+      "title": "fix(reader): just-posted comments surfaced for all sorts/pages (top-level + most-helpful replies) (TASK-311, ISS-406)"
+    },
+    "TASK-312": {
+      "id": "TASK-312",
+      "type": "task",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-07T09:09:58+00:00",
+      "updated_at": "2026-09-07T09:09:58+00:00",
+      "touched_round": 278,
+      "category": "test-quality",
+      "title": "flaky timing-sensitive fake-timer specs in tests/admin/posts-id.spec.ts (Draft auto-save describe): \"coalesces a burst of edits into a single save\" and \"manual Save after auto-save\" intermittently call updateAdminPost twice under full-dir load — pre-existing, reproduces on original code; harden the timing (the debounce path re-arms behind a 400ms advance window)",
+      "severity": "low",
+      "confidence": 0.8,
+      "effort": 1.5
     }
   },
   "edges": [
@@ -28947,6 +29037,54 @@
       "to": "TASK-308",
       "type": "implements",
       "created_at": "2026-09-07T08:24:53+00:00"
+    },
+    {
+      "from": "ISS-405",
+      "to": "COMP-002",
+      "type": "located_in",
+      "created_at": "2026-09-07T09:09:22+00:00"
+    },
+    {
+      "from": "ISS-406",
+      "to": "COMP-002",
+      "type": "located_in",
+      "created_at": "2026-09-07T09:09:57+00:00"
+    },
+    {
+      "from": "TASK-310",
+      "to": "ISS-405",
+      "type": "addresses",
+      "created_at": "2026-09-07T09:09:57+00:00"
+    },
+    {
+      "from": "TASK-311",
+      "to": "ISS-406",
+      "type": "addresses",
+      "created_at": "2026-09-07T09:09:57+00:00"
+    },
+    {
+      "from": "CHG-416",
+      "to": "ISS-405",
+      "type": "resolves",
+      "created_at": "2026-09-07T09:09:57+00:00"
+    },
+    {
+      "from": "CHG-416",
+      "to": "TASK-310",
+      "type": "implements",
+      "created_at": "2026-09-07T09:09:58+00:00"
+    },
+    {
+      "from": "CHG-417",
+      "to": "ISS-406",
+      "type": "resolves",
+      "created_at": "2026-09-07T09:09:58+00:00"
+    },
+    {
+      "from": "CHG-417",
+      "to": "TASK-311",
+      "type": "implements",
+      "created_at": "2026-09-07T09:09:58+00:00"
     }
   ]
 }
