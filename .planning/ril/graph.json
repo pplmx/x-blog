@@ -2,7 +2,7 @@
   "ril_version": 1,
   "round": 278,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-07T07:43:49+00:00",
+  "updated_at": "2026-09-07T08:25:22+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -19431,6 +19431,95 @@
       "touched_round": 278,
       "commit": "4c8c174",
       "title": "fix(frontend): dashboard reads moderation backlog from admin-scoped comment stats, not public /api/stats (TASK-307, ISS-401)"
+    },
+    "ISS-402": {
+      "id": "ISS-402",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-07T08:24:29+00:00",
+      "updated_at": "2026-09-07T08:25:22+00:00",
+      "touched_round": 278,
+      "title": "Comment/subscription offset paging can repeat or skip rows when timestamps tie — sorts lack a unique tiebreak (bulk-restore stamps verbatim created_at; ties resolved by query plan)",
+      "severity": "medium",
+      "confidence": 0.9,
+      "effort": 0.5
+    },
+    "ISS-403": {
+      "id": "ISS-403",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-07T08:24:29+00:00",
+      "updated_at": "2026-09-07T08:25:22+00:00",
+      "touched_round": 278,
+      "title": "Search-term analytics counter is a non-atomic read-modify-write — concurrent searches for the same term drop increments (lost-update, same class as the round-276 daily-views fix)",
+      "severity": "medium",
+      "confidence": 0.95,
+      "effort": 0.5
+    },
+    "TASK-308": {
+      "id": "TASK-308",
+      "type": "task",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-07T08:24:29+00:00",
+      "updated_at": "2026-09-07T08:25:22+00:00",
+      "touched_round": 278,
+      "category": "correctness",
+      "title": "Deterministic pagination tiebreaks (id) on comment/subscription sort orders + atomic search-term counter (crud round 278)",
+      "severity": "medium",
+      "confidence": 0.95,
+      "effort": 1.5
+    },
+    "CHG-415": {
+      "id": "CHG-415",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-07T08:24:29+00:00",
+      "updated_at": "2026-09-07T08:24:29+00:00",
+      "touched_round": 278,
+      "commit": "9fd0388",
+      "title": "fix(backend): atomic search-term counter + deterministic pagination tiebreaks (TASK-308, ISS-402/403)"
+    },
+    "EV-225": {
+      "id": "EV-225",
+      "type": "evidence",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-07T08:24:53+00:00",
+      "updated_at": "2026-09-07T08:24:53+00:00",
+      "touched_round": 278,
+      "source": "tests/test_comments.py::test_list_comments_pagination_stable_with_tied_timestamps (RED on pre-fix crud.py, GREEN after)",
+      "confidence": 1.0
+    },
+    "TASK-309": {
+      "id": "TASK-309",
+      "type": "task",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-07T08:25:22+00:00",
+      "updated_at": "2026-09-07T08:25:22+00:00",
+      "touched_round": 278,
+      "category": "performance",
+      "title": "Unbounded loads on reader endpoints: /api/reader/me/recommendations materializes every public post (+ tags/category) before scoring (crud recommend_posts, no LIMIT), and /me/history/stats loads every history row incl. full post content to sum reading minutes — bound both (SQL ranking / capped window)",
+      "severity": "low",
+      "confidence": 0.85,
+      "effort": 2.0
+    },
+    "ISS-404": {
+      "id": "ISS-404",
+      "type": "issue",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-07T08:25:22+00:00",
+      "updated_at": "2026-09-07T08:25:22+00:00",
+      "touched_round": 278,
+      "title": "Editing an already-public comment re-fans out reply + thread notifications to followers when auto-approve is on — update_reader_comment resets is_approved (deliberate anti-spam), but the auto-approve branch then re-notifies everyone though the comment never left the public surface; candidates: only re-notify when the comment was pending/rejected before the edit",
+      "severity": "low",
+      "confidence": 0.7,
+      "effort": 1.0
     }
   },
   "edges": [
@@ -28816,6 +28905,48 @@
       "to": "TASK-307",
       "type": "governs",
       "created_at": "2026-09-07T07:43:16+00:00"
+    },
+    {
+      "from": "ISS-402",
+      "to": "COMP-001",
+      "type": "located_in",
+      "created_at": "2026-09-07T08:24:52+00:00"
+    },
+    {
+      "from": "ISS-403",
+      "to": "COMP-001",
+      "type": "located_in",
+      "created_at": "2026-09-07T08:24:52+00:00"
+    },
+    {
+      "from": "TASK-308",
+      "to": "ISS-402",
+      "type": "addresses",
+      "created_at": "2026-09-07T08:24:52+00:00"
+    },
+    {
+      "from": "TASK-308",
+      "to": "ISS-403",
+      "type": "addresses",
+      "created_at": "2026-09-07T08:24:52+00:00"
+    },
+    {
+      "from": "CHG-415",
+      "to": "ISS-402",
+      "type": "resolves",
+      "created_at": "2026-09-07T08:24:52+00:00"
+    },
+    {
+      "from": "CHG-415",
+      "to": "ISS-403",
+      "type": "resolves",
+      "created_at": "2026-09-07T08:24:52+00:00"
+    },
+    {
+      "from": "CHG-415",
+      "to": "TASK-308",
+      "type": "implements",
+      "created_at": "2026-09-07T08:24:53+00:00"
     }
   ]
 }
