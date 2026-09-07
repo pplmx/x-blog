@@ -2,7 +2,7 @@
   "ril_version": 1,
   "round": 278,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-07T09:09:58+00:00",
+  "updated_at": "2026-09-07T09:58:36+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -19610,6 +19610,108 @@
       "severity": "low",
       "confidence": 0.8,
       "effort": 1.5
+    },
+    "ISS-407": {
+      "id": "ISS-407",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-07T09:56:14+00:00",
+      "updated_at": "2026-09-07T09:57:02+00:00",
+      "touched_round": 278,
+      "title": "Header search repopulates stale results under a cleared input (empty branch never invalidates the in-flight request); comment form field ids (comment-content etc.) are hardcoded so the standalone bottom form and an open inline reply form share them — label for binds to the wrong textarea (WCAG 4.1.1)",
+      "severity": "medium",
+      "confidence": 0.95,
+      "effort": 1.0
+    },
+    "TASK-313": {
+      "id": "TASK-313",
+      "type": "task",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-07T09:56:14+00:00",
+      "updated_at": "2026-09-07T09:57:02+00:00",
+      "touched_round": 278,
+      "category": "usability",
+      "title": "HeaderSearch: invalidate in-flight search on the cleared-query branch; CommentForm: per-instance unique field ids via useId captured once",
+      "severity": "medium",
+      "confidence": 0.95,
+      "effort": 1.0
+    },
+    "CHG-418": {
+      "id": "CHG-418",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-07T09:56:14+00:00",
+      "updated_at": "2026-09-07T09:56:14+00:00",
+      "touched_round": 278,
+      "commit": "29a1a02",
+      "title": "fix(frontend): header search stale-result race + per-instance comment field ids (TASK-313, ISS-407/408)"
+    },
+    "ISS-408": {
+      "id": "ISS-408",
+      "type": "issue",
+      "status": "resolved",
+      "version": 3,
+      "created_at": "2026-09-07T09:56:14+00:00",
+      "updated_at": "2026-09-07T09:57:46+00:00",
+      "touched_round": 278,
+      "title": "Admin readers pagination mutates currentPage directly (no clamp), unlike posts/media lists — route steps through goToPage clamped to [1, totalPages]",
+      "severity": "low",
+      "confidence": 0.8,
+      "effort": 0.5
+    },
+    "CHG-419": {
+      "id": "CHG-419",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-07T09:56:15+00:00",
+      "updated_at": "2026-09-07T09:56:15+00:00",
+      "touched_round": 278,
+      "commit": "16fad12",
+      "title": "fix(admin): readers pagination clamped goToPage (TASK-314, ISS-409)"
+    },
+    "TASK-314": {
+      "id": "TASK-314",
+      "type": "task",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-07T09:57:01+00:00",
+      "updated_at": "2026-09-07T09:57:02+00:00",
+      "touched_round": 278,
+      "category": "maintainability",
+      "title": "Admin readers pagination: clamped goToPage consistent with posts/media",
+      "severity": "low",
+      "confidence": 0.8,
+      "effort": 0.5
+    },
+    "ISS-409": {
+      "id": "ISS-409",
+      "type": "issue",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-07T09:58:36+00:00",
+      "updated_at": "2026-09-07T09:58:36+00:00",
+      "touched_round": 278,
+      "title": "Reader endpoints with unbounded loads: /api/reader/me/recommendations materializes every public post, /me/history/stats loads full post content per history row (performance)",
+      "severity": "low",
+      "confidence": 0.85,
+      "effort": 2.0
+    },
+    "ISS-410": {
+      "id": "ISS-410",
+      "type": "issue",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-07T09:58:36+00:00",
+      "updated_at": "2026-09-07T09:58:36+00:00",
+      "touched_round": 278,
+      "title": "flaky timing-sensitive fake-timer specs in tests/admin/posts-id.spec.ts (Draft auto-save describe) intermittently call updateAdminPost twice under full-dir load (test-quality)",
+      "severity": "low",
+      "confidence": 0.8,
+      "effort": 1.5
     }
   },
   "edges": [
@@ -29085,6 +29187,96 @@
       "to": "TASK-311",
       "type": "implements",
       "created_at": "2026-09-07T09:09:58+00:00"
+    },
+    {
+      "from": "ISS-407",
+      "to": "COMP-002",
+      "type": "located_in",
+      "created_at": "2026-09-07T09:57:01+00:00"
+    },
+    {
+      "from": "ISS-408",
+      "to": "COMP-002",
+      "type": "located_in",
+      "created_at": "2026-09-07T09:57:01+00:00"
+    },
+    {
+      "from": "TASK-313",
+      "to": "ISS-407",
+      "type": "addresses",
+      "created_at": "2026-09-07T09:57:01+00:00"
+    },
+    {
+      "from": "TASK-313",
+      "to": "ISS-408",
+      "type": "addresses",
+      "created_at": "2026-09-07T09:57:01+00:00"
+    },
+    {
+      "from": "CHG-418",
+      "to": "ISS-407",
+      "type": "resolves",
+      "created_at": "2026-09-07T09:57:01+00:00"
+    },
+    {
+      "from": "CHG-418",
+      "to": "ISS-408",
+      "type": "resolves",
+      "created_at": "2026-09-07T09:57:02+00:00"
+    },
+    {
+      "from": "CHG-418",
+      "to": "TASK-313",
+      "type": "implements",
+      "created_at": "2026-09-07T09:57:02+00:00"
+    },
+    {
+      "from": "CHG-419",
+      "to": "TASK-314",
+      "type": "implements",
+      "created_at": "2026-09-07T09:57:02+00:00"
+    },
+    {
+      "from": "TASK-314",
+      "to": "ISS-408",
+      "type": "addresses",
+      "created_at": "2026-09-07T09:57:46+00:00"
+    },
+    {
+      "from": "CHG-419",
+      "to": "ISS-408",
+      "type": "resolves",
+      "created_at": "2026-09-07T09:57:46+00:00"
+    },
+    {
+      "from": "ISS-409",
+      "to": "COMP-001",
+      "type": "located_in",
+      "created_at": "2026-09-07T09:58:36+00:00"
+    },
+    {
+      "from": "TASK-309",
+      "to": "ISS-409",
+      "type": "addresses",
+      "created_at": "2026-09-07T09:58:36+00:00"
+    },
+    {
+      "from": "ISS-404",
+      "to": "COMP-002",
+      "type": "located_in",
+      "created_at": "2026-09-07T09:58:36+00:00"
+    },
+    {
+      "from": "ISS-410",
+      "to": "COMP-002",
+      "type": "located_in",
+      "created_at": "2026-09-07T09:58:36+00:00"
+    },
+    {
+      "from": "TASK-312",
+      "to": "ISS-410",
+      "type": "addresses",
+      "created_at": "2026-09-07T09:58:36+00:00"
     }
   ]
 }
