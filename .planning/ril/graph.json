@@ -2,7 +2,7 @@
   "ril_version": 1,
   "round": 278,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-07T09:58:36+00:00",
+  "updated_at": "2026-09-07T10:17:32+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -19712,6 +19712,82 @@
       "severity": "low",
       "confidence": 0.8,
       "effort": 1.5
+    },
+    "ISS-411": {
+      "id": "ISS-411",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-07T10:17:31+00:00",
+      "updated_at": "2026-09-07T10:17:32+00:00",
+      "touched_round": 278,
+      "title": "Admin settings: the green Saved banner resurrects beside a toggle that moved to the opposite value mid-save (the last flip was never persisted; saved.value re-asserted on completion)",
+      "severity": "low",
+      "confidence": 0.9,
+      "effort": 0.5
+    },
+    "TASK-315": {
+      "id": "TASK-315",
+      "type": "task",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-07T10:17:31+00:00",
+      "updated_at": "2026-09-07T10:17:32+00:00",
+      "touched_round": 278,
+      "category": "correctness",
+      "title": "Settings save flash: only show Saved when the current toggle matches the value actually persisted",
+      "severity": "low",
+      "confidence": 0.9,
+      "effort": 0.5
+    },
+    "CHG-420": {
+      "id": "CHG-420",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-07T10:17:31+00:00",
+      "updated_at": "2026-09-07T10:17:31+00:00",
+      "touched_round": 278,
+      "commit": "e017757",
+      "title": "fix(admin): settings Saved flash no longer lies when the toggle moved mid-save (TASK-315, ISS-411)"
+    },
+    "ISS-412": {
+      "id": "ISS-412",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-07T10:17:31+00:00",
+      "updated_at": "2026-09-07T10:17:32+00:00",
+      "touched_round": 278,
+      "title": "Search empty state always blames keywords even when a category/tag/date filter caused the zero, pointing the reader away from the actual cause",
+      "severity": "low",
+      "confidence": 0.9,
+      "effort": 0.5
+    },
+    "TASK-316": {
+      "id": "TASK-316",
+      "type": "task",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-07T10:17:31+00:00",
+      "updated_at": "2026-09-07T10:17:32+00:00",
+      "touched_round": 278,
+      "category": "usability",
+      "title": "Search empty state: name the active filter + offer one-click reset when a filter caused the zero",
+      "severity": "low",
+      "confidence": 0.9,
+      "effort": 0.5
+    },
+    "CHG-421": {
+      "id": "CHG-421",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-07T10:17:31+00:00",
+      "updated_at": "2026-09-07T10:17:31+00:00",
+      "touched_round": 278,
+      "commit": "f6937c2",
+      "title": "feat(search): filter-aware empty state + inline reset (TASK-316, ISS-412)"
     }
   },
   "edges": [
@@ -29277,6 +29353,54 @@
       "to": "ISS-410",
       "type": "addresses",
       "created_at": "2026-09-07T09:58:36+00:00"
+    },
+    {
+      "from": "ISS-411",
+      "to": "COMP-002",
+      "type": "located_in",
+      "created_at": "2026-09-07T10:17:31+00:00"
+    },
+    {
+      "from": "TASK-315",
+      "to": "ISS-411",
+      "type": "addresses",
+      "created_at": "2026-09-07T10:17:31+00:00"
+    },
+    {
+      "from": "CHG-420",
+      "to": "ISS-411",
+      "type": "resolves",
+      "created_at": "2026-09-07T10:17:31+00:00"
+    },
+    {
+      "from": "CHG-420",
+      "to": "TASK-315",
+      "type": "implements",
+      "created_at": "2026-09-07T10:17:31+00:00"
+    },
+    {
+      "from": "ISS-412",
+      "to": "COMP-002",
+      "type": "located_in",
+      "created_at": "2026-09-07T10:17:32+00:00"
+    },
+    {
+      "from": "TASK-316",
+      "to": "ISS-412",
+      "type": "addresses",
+      "created_at": "2026-09-07T10:17:32+00:00"
+    },
+    {
+      "from": "CHG-421",
+      "to": "ISS-412",
+      "type": "resolves",
+      "created_at": "2026-09-07T10:17:32+00:00"
+    },
+    {
+      "from": "CHG-421",
+      "to": "TASK-316",
+      "type": "implements",
+      "created_at": "2026-09-07T10:17:32+00:00"
     }
   ]
 }
