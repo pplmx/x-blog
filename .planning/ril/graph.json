@@ -2,7 +2,7 @@
   "ril_version": 1,
   "round": 278,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-07T10:17:32+00:00",
+  "updated_at": "2026-09-07T10:58:28+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -19788,6 +19788,44 @@
       "touched_round": 278,
       "commit": "f6937c2",
       "title": "feat(search): filter-aware empty state + inline reset (TASK-316, ISS-412)"
+    },
+    "ISS-413": {
+      "id": "ISS-413",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-07T10:58:28+00:00",
+      "updated_at": "2026-09-07T10:58:28+00:00",
+      "touched_round": 278,
+      "title": "Admin dashboard: a single failing analytics axis rendered a permanently missing card with no message and no recovery (the global loadError/retry only fires when the whole load fails)",
+      "severity": "low",
+      "confidence": 0.9,
+      "effort": 1.0
+    },
+    "TASK-317": {
+      "id": "TASK-317",
+      "type": "task",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-07T10:58:28+00:00",
+      "updated_at": "2026-09-07T10:58:28+00:00",
+      "touched_round": 278,
+      "category": "usability",
+      "title": "Dashboard: per-axis failure state with an inline retry that re-runs just that fetch",
+      "severity": "low",
+      "confidence": 0.9,
+      "effort": 1.0
+    },
+    "CHG-422": {
+      "id": "CHG-422",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-07T10:58:28+00:00",
+      "updated_at": "2026-09-07T10:58:28+00:00",
+      "touched_round": 278,
+      "commit": "74de22c",
+      "title": "fix(admin): dashboard analytics card inline retry (TASK-317, ISS-413)"
     }
   },
   "edges": [
@@ -29401,6 +29439,30 @@
       "to": "TASK-316",
       "type": "implements",
       "created_at": "2026-09-07T10:17:32+00:00"
+    },
+    {
+      "from": "ISS-413",
+      "to": "COMP-002",
+      "type": "located_in",
+      "created_at": "2026-09-07T10:58:28+00:00"
+    },
+    {
+      "from": "TASK-317",
+      "to": "ISS-413",
+      "type": "addresses",
+      "created_at": "2026-09-07T10:58:28+00:00"
+    },
+    {
+      "from": "CHG-422",
+      "to": "ISS-413",
+      "type": "resolves",
+      "created_at": "2026-09-07T10:58:28+00:00"
+    },
+    {
+      "from": "CHG-422",
+      "to": "TASK-317",
+      "type": "implements",
+      "created_at": "2026-09-07T10:58:28+00:00"
     }
   ]
 }
