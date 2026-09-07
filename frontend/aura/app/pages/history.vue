@@ -19,9 +19,12 @@ const {
 	stats,
 	loading,
 	loadFailed,
+	serverEnabled,
 	hasMore,
 	loadingMore,
 	loadMoreError,
+	pendingDeviceCount,
+	importLocalTrail,
 	load,
 	loadMore,
 	clear,
@@ -47,6 +50,10 @@ onUnmounted(() => {
 	if (clearedTimer) {
 		clearTimeout(clearedTimer);
 		clearedTimer = null;
+	}
+	if (importTimer) {
+		clearTimeout(importTimer);
+		importTimer = null;
 	}
 });
 
@@ -74,6 +81,44 @@ let clearedTimer: ReturnType<typeof setTimeout> | null = null;
 // server copy survives and re-appears on the next signed-in load — show that
 // instead of the green "cleared" claim. Dismissed with the same timer.
 const clearFailed = ref(false);
+
+// Device-trail import offer (TASK-303/ISS-386): guests record reads to the
+// localStorage trail, and after sign-in the page reads the server trail, so
+// those records silently disappear. When the signed-in history does not yet
+// cover the device trail, offer a one-time merge. Dismissal is per-page-view
+// (session-only), so the offer returns if the reader signs in again elsewhere.
+const importDismissed = ref(false);
+const importing = ref(false);
+const importMessage = ref<string | null>(null);
+const importError = ref(false);
+let importTimer: ReturnType<typeof setTimeout> | null = null;
+
+async function importLocal() {
+	if (importing.value) return; // single-flight — double-click guards
+	importing.value = true;
+	try {
+		const result = await importLocalTrail();
+		if (result) {
+			importMessage.value =
+				result.imported > 0
+					? t("history.importDone", { count: result.imported })
+					: t("history.importNone");
+			importError.value = false;
+			// Records the backend can't import (post unpublished/unknown) must not
+			// be re-offered on every visit — stop offering for this page view.
+			importDismissed.value = true;
+		}
+	} catch {
+		importMessage.value = t("history.importFailed");
+		importError.value = true;
+	} finally {
+		importing.value = false;
+		if (importTimer) clearTimeout(importTimer);
+		importTimer = setTimeout(() => {
+			importMessage.value = null;
+		}, 4000);
+	}
+}
 
 // In-flight guard + busy state for the destructive clear (deep-dive finding):
 // the confirm button stays enabled for the whole DELETE round-trip, so a fast
@@ -223,6 +268,57 @@ function heatMapSummary(): string {
         <Icon icon="lucide:trash-2" class="w-4 h-4" />
         {{ t('history.clear') }}
       </button>
+    </div>
+
+    <!-- Device-trail import offer (TASK-303/ISS-386): signed-in history is
+         server-backed, so the guest's local reads need a one-time merge. -->
+    <div
+      v-if="serverEnabled && !loading && pendingDeviceCount > 0 && !importDismissed && !importMessage"
+      class="mb-6 flex flex-wrap items-center justify-between gap-4 p-4 rounded-xl border border-violet-200 dark:border-violet-800/70 bg-violet-50/70 dark:bg-violet-950/40"
+      role="region"
+      :aria-label="t('history.importOfferTitle', { count: pendingDeviceCount })"
+    >
+      <div class="flex items-start gap-3">
+        <Icon icon="lucide:archive-restore" class="w-5 h-5 mt-0.5 text-violet-500 shrink-0" />
+        <div>
+          <p class="text-sm font-medium text-violet-800 dark:text-violet-200">
+            {{ t('history.importOfferTitle', { count: pendingDeviceCount }) }}
+          </p>
+          <p class="text-xs mt-0.5 text-violet-600/80 dark:text-violet-300/70">{{ t('history.importOfferDesc') }}</p>
+        </div>
+      </div>
+      <div class="flex gap-3 items-center">
+        <button
+          type="button"
+          :disabled="importing"
+          class="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium text-white bg-violet-500 hover:bg-violet-600 disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
+          @click="importLocal"
+        >
+          <Icon icon="lucide:download" class="w-4 h-4" />
+          {{ importing ? t('history.importDeviceBusy') : t('history.importDevice') }}
+        </button>
+        <button
+          type="button"
+          class="text-sm font-medium text-violet-600/70 dark:text-violet-300/60 hover:text-violet-800 dark:hover:text-violet-200 transition-colors"
+          @click="importDismissed = true"
+        >
+          {{ t('history.importDismiss') }}
+        </button>
+      </div>
+    </div>
+
+    <!-- Transient import result (success / nothing-to-import / failure) -->
+    <div
+      v-if="importMessage"
+      class="mb-6 p-4 rounded-xl border text-sm"
+      :class="
+        importError
+          ? 'border-red-200 dark:border-red-800 bg-red-50/60 dark:bg-red-900/20 text-red-700 dark:text-red-300'
+          : 'border-emerald-200 dark:border-emerald-800 bg-emerald-50/60 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-300'
+      "
+      role="status"
+    >
+      {{ importMessage }}
     </div>
 
     <!-- Recall search (DEC-148/TASK-186): find a past read -->

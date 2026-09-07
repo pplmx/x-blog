@@ -30,6 +30,14 @@
 		"loading": "正在加载历史…",
 		"loadMore": "加载更多历史",
 		"searchAria": "搜索你的浏览历史",
+		"importOfferTitle": "发现 {count} 条此设备上的阅读记录",
+		"importOfferDesc": "登录后阅读历史来自云端。可将本机记录导入账号，继续查看。",
+		"importDevice": "导入记录",
+		"importDeviceBusy": "导入中…",
+		"importDismiss": "忽略",
+		"importDone": "已导入 {count} 条记录",
+		"importNone": "没有可导入的新记录",
+		"importFailed": "导入失败，请稍后重试",
 		"loadFailedFallback": "阅读历史加载失败，已临时显示本机记录。",
 		"clearOffline": "无法连接服务器 —— 已清除本设备的浏览历史，但云端副本会在联网后重新同步回来。"
 	}

@@ -5,6 +5,7 @@ import {
 	getReaderHistory,
 	getReaderHistoryStats,
 	getReaderReadingPosition,
+	importReaderHistory,
 	recordReaderHistory,
 	useReaderRecommendations,
 	useReaderSeriesProgress,
@@ -104,5 +105,16 @@ describe("reader history commands", () => {
 
 		expect(commandCalls[0].path).toBe("/api/reader/me/history");
 		expect(commandCalls[0].options.method).toBe("DELETE");
+	});
+
+	it("imports the device trail with the reader token and body intact", async () => {
+		await importReaderHistory([{ slug: "my-post", viewed_at: "2024-03-01T10:30:00" }]);
+
+		expect(commandCalls[0].path).toBe("/api/reader/me/history/import");
+		expect(commandCalls[0].options.method).toBe("POST");
+		expect(commandCalls[0].options.headers).toEqual({ Authorization: "Bearer reader-jwt" });
+		expect(commandCalls[0].options.body).toEqual({
+			items: [{ slug: "my-post", viewed_at: "2024-03-01T10:30:00" }],
+		});
 	});
 });

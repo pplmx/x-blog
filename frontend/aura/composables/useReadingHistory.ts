@@ -13,7 +13,13 @@
  */
 
 import { computed, ref } from "vue";
-import { clearReaderHistory, getReaderHistory, getReaderHistoryStats } from "~~/api/reader/history";
+import {
+	clearReaderHistory,
+	getReaderHistory,
+	getReaderHistoryStats,
+	type HistoryImportItem,
+	importReaderHistory,
+} from "~~/api/reader/history";
 import { parseApiDate } from "./apiDate";
 import { useReaderAuth } from "./useReaderAuth";
 import { useRecentlyViewed } from "./useRecentlyViewed";
@@ -84,6 +90,48 @@ export function useReadingHistory() {
 		() =>
 			serverEnabled.value && !loading.value && !loadingMore.value && page.value < totalPages.value,
 	);
+
+	/**
+	 * Local-trail entries not yet on the server (TASK-303, ISS-386).
+	 *
+	 * Signing in switches the source to the server trail, so the guest's device
+	 * records have no path into it and silently vanish from the page. This is
+	 * the count of local entries whose slug is not in the server history we've
+	 * loaded so far (bounded by server reach / current page); /history renders
+	 * a one-time import offer off it. 0 for guests and when the server history
+	 * already covers every device record.
+	 */
+	const pendingDeviceCount = computed(() => {
+		if (!serverEnabled.value || local.recent.value.length === 0) return 0;
+		const serverSlugs = new Set(history.value.map((h) => h.slug));
+		return local.recent.value.filter((l) => !serverSlugs.has(l.slug)).length;
+	});
+
+	/** Map a local trail entry to the import payload (epoch ms → naive-UTC ISO). */
+	function toImportItem(l: { slug: string; title: string; viewedAt?: number }): HistoryImportItem {
+		return {
+			slug: l.slug,
+			viewed_at: l.viewedAt !== undefined ? new Date(l.viewedAt).toISOString() : undefined,
+		};
+	}
+
+	/** Merge the device-local trail into the server history, then refresh.
+	 * Returns the backend's imported/skipped counts (null when there is nothing
+	 * to offer, e.g. a guest or an already-merged trail). A skipped entry's post
+	 * is unpublished/unknown, so it stays off the server and drops out of the
+	 * pending offer on the next load instead of being retried forever.
+	 */
+	async function importLocalTrail(): Promise<{ imported: number; skipped: number } | null> {
+		if (!serverEnabled.value || local.recent.value.length === 0) return null;
+		const serverSlugs = new Set(history.value.map((h) => h.slug));
+		const fresh = local.recent.value.filter((l) => !serverSlugs.has(l.slug));
+		if (fresh.length === 0) return { imported: 0, skipped: 0 };
+		const result = await importReaderHistory(fresh.map(toImportItem));
+		// Refresh the list + stats so the page reflects what just merged (and the
+		// pending offer collapses once every device record is server-side).
+		await load(activeQuery.value);
+		return result;
+	}
 
 	// Monotonic request sequence so a slow earlier response cannot overwrite a
 	// newer one after the recall-search query changed (ISS-128).
@@ -237,6 +285,8 @@ export function useReadingHistory() {
 		hasMore,
 		loadingMore,
 		loadMoreError,
+		pendingDeviceCount,
+		importLocalTrail,
 		load,
 		loadMore,
 		clear,

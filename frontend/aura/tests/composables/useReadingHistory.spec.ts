@@ -17,11 +17,13 @@ const localClear = vi.fn(() => {
 const fetchHistory = vi.fn();
 const fetchStats = vi.fn();
 const clearHistoryApi = vi.fn();
+const importHistoryApi = vi.fn();
 
 vi.mock("~~/api/reader/history", () => ({
 	getReaderHistory: (...a: unknown[]) => fetchHistory(...a),
 	getReaderHistoryStats: (...a: unknown[]) => fetchStats(...a),
 	clearReaderHistory: (...a: unknown[]) => clearHistoryApi(...a),
+	importReaderHistory: (...a: unknown[]) => importHistoryApi(...a),
 }));
 
 vi.mock("../../composables/useReaderAuth", () => ({
@@ -45,6 +47,7 @@ describe("useReadingHistory (TASK-170)", () => {
 		fetchHistory.mockReset();
 		fetchStats.mockReset();
 		clearHistoryApi.mockReset();
+		importHistoryApi.mockReset();
 		localClear.mockClear();
 	});
 
@@ -249,5 +252,93 @@ describe("useReadingHistory (TASK-170)", () => {
 				{ date: "2026-08-23", count: 3 },
 			],
 		});
+	});
+
+	it("pendingDeviceCount is 0 for guests even with a local trail", async () => {
+		localRecent.value = [{ slug: "a", title: "A", viewedAt: 1 }];
+		const { load, pendingDeviceCount } = useReadingHistory();
+		await load();
+		expect(pendingDeviceCount.value).toBe(0);
+	});
+
+	it("pendingDeviceCount counts device records the server history does not cover yet", async () => {
+		authRef.value = true;
+		localRecent.value = [
+			{ slug: "a", title: "A", viewedAt: 10 },
+			{ slug: "b", title: "B", viewedAt: 20 },
+		];
+		fetchHistory.mockResolvedValue({
+			items: [{ id: 1, title: "A", slug: "a", viewed_at: null }],
+			total: 1,
+			page: 1,
+			limit: 100,
+			total_pages: 1,
+		});
+		const { load, pendingDeviceCount } = useReadingHistory();
+		await load();
+		// "a" is already server-side; only "b" is pending migration.
+		expect(pendingDeviceCount.value).toBe(1);
+	});
+
+	it("importLocalTrail sends only fresh records mapped to UTC ISO, then reloads", async () => {
+		authRef.value = true;
+		localRecent.value = [{ slug: "b", title: "B", viewedAt: Date.UTC(2024, 2, 1, 10, 30, 0) }];
+		// First load: only "a" is server-side, so "b" is pending.
+		fetchHistory.mockResolvedValueOnce({
+			items: [{ id: 1, title: "A", slug: "a", viewed_at: null }],
+			total: 1,
+			page: 1,
+			limit: 100,
+			total_pages: 1,
+		});
+		// After import the reload sees the server list covering "b" as well.
+		fetchHistory.mockResolvedValue({
+			items: [
+				{ id: 1, title: "A", slug: "a", viewed_at: null },
+				{ id: 2, title: "B", slug: "b", viewed_at: "2024-03-01T10:30:00" },
+			],
+			total: 2,
+			page: 1,
+			limit: 100,
+			total_pages: 1,
+		});
+		importHistoryApi.mockResolvedValue({ imported: 1, skipped: 0 });
+
+		const { load, pendingDeviceCount, importLocalTrail } = useReadingHistory();
+		await load();
+		expect(pendingDeviceCount.value).toBe(1);
+
+		const result = await importLocalTrail();
+		expect(result).toEqual({ imported: 1, skipped: 0 });
+		// Only the not-yet-server record is sent, with its read instant preserved.
+		expect(importHistoryApi).toHaveBeenCalledWith([
+			{ slug: "b", viewed_at: "2024-03-01T10:30:00.000Z" },
+		]);
+		// The reload pulled "b" into the server list, so the offer collapses.
+		expect(pendingDeviceCount.value).toBe(0);
+	});
+
+	it("importLocalTrail is a no-op for a guest (nothing to offer)", async () => {
+		localRecent.value = [{ slug: "a", title: "A", viewedAt: 1 }];
+		const { importLocalTrail } = useReadingHistory();
+		expect(await importLocalTrail()).toBeNull();
+		expect(importHistoryApi).not.toHaveBeenCalled();
+	});
+
+	it("importLocalTrail skips the API when the server already covers the whole device trail", async () => {
+		authRef.value = true;
+		localRecent.value = [{ slug: "a", title: "A", viewedAt: 10 }];
+		fetchHistory.mockResolvedValue({
+			items: [{ id: 1, title: "A", slug: "a", viewed_at: null }],
+			total: 1,
+			page: 1,
+			limit: 100,
+			total_pages: 1,
+		});
+		const { load, pendingDeviceCount, importLocalTrail } = useReadingHistory();
+		await load();
+		expect(pendingDeviceCount.value).toBe(0);
+		expect(await importLocalTrail()).toEqual({ imported: 0, skipped: 0 });
+		expect(importHistoryApi).not.toHaveBeenCalled();
 	});
 });

@@ -111,6 +111,35 @@ export function clearReaderHistory(): Promise<null> {
 	});
 }
 
+/** One device-local read to merge into the server history (TASK-303). */
+export interface HistoryImportItem {
+	slug: string;
+	/** The guest's original read instant as naive-UTC ISO; legacy rows omit it. */
+	viewed_at?: string;
+}
+
+export interface HistoryImportResult {
+	imported: number;
+	skipped: number;
+}
+
+/**
+ * Merge the on-device reading trail into the server history (TASK-303, ISS-386).
+ *
+ * Guests record reads to localStorage; after sign-in the history source is the
+ * server trail, so the device records silently vanish unless migrated. The
+ * backend merges by post slug — idempotent, preserves each record's original
+ * read instant, and only ever imports publicly visible posts. Requires the
+ * reader token; the global cache middleware defaults it to no-store.
+ */
+export function importReaderHistory(items: HistoryImportItem[]): Promise<HistoryImportResult> {
+	return command<HistoryImportResult>("/api/reader/me/history/import", {
+		method: "POST",
+		headers: readerAuthHeaders(),
+		body: { items },
+	});
+}
+
 /**
  * Personalized "Recommended for you" list (DEC-128, TASK-176).
  * Returns posts scored from the signed-in reader's history/bookmark affinity.

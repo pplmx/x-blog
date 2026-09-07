@@ -30,6 +30,14 @@
 		"loading": "Loading history…",
 		"loadMore": "Load more history",
 		"searchAria": "Search your history",
+		"importOfferTitle": "Found {count} reading records on this device",
+		"importOfferDesc": "Reading history is server-backed after you sign in. Import these device records to keep them.",
+		"importDevice": "Import records",
+		"importDeviceBusy": "Importing…",
+		"importDismiss": "Dismiss",
+		"importDone": "Imported {count} records",
+		"importNone": "No new records to import",
+		"importFailed": "Couldn't import records — try again later",
 		"loadFailedFallback": "Couldn't load your reading history — showing this device's records for now.",
 		"clearOffline": "Couldn't reach the server — history was cleared on this device, but the server copy will return when you're back online."
 	}
