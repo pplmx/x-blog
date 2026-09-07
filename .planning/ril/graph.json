@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 276,
+  "round": 277,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-06T16:26:14+00:00",
+  "updated_at": "2026-09-07T06:07:56+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -11,7 +11,7 @@
       "version": 1,
       "created_at": "2026-08-06T13:23:41+00:00",
       "updated_at": "2026-08-06T13:23:41+00:00",
-      "touched_round": 272,
+      "touched_round": 276,
       "title": "backend-nova",
       "description": "FastAPI Python 3.14 backend at backend/nova; SQLAlchemy ORM; routers in app/routers, crud.py business logic, 656 lines"
     },
@@ -22,7 +22,7 @@
       "version": 1,
       "created_at": "2026-08-06T13:23:41+00:00",
       "updated_at": "2026-08-06T13:23:41+00:00",
-      "touched_round": 274,
+      "touched_round": 276,
       "title": "frontend-aura",
       "description": "Nuxt 4 Vue 3 TypeScript frontend at frontend/aura; composables; admin pages; e2e Playwright; biome lint"
     },
@@ -19143,6 +19143,195 @@
       "title": "converged-idle: quality convergence reached — audit wave + offline-clear closure (rounds 274-275)",
       "rationale": "Rounds 274-275 delivered the reactivation wave on top of the round-273 converged-idle (DEC-263): the 13-commit audit wave (TASK-288..300, ISS-375..385/389..391 via CHG-397..409) that fixed follow-state races, guest redirect/no-op paths, far-page reply jumps, archive/series/taxonomy/admin/comment/PostCard usability, plus TASK-301 (bookmark undo folder restore, ISS-388 via CHG-395), TASK-302 (offline clear-all warns when the cloud copy survives, ISS-387 via CHG-396) and the backfilled change nodes + resolves edges closing the wave issues in the graph. VERIFY green this round: backend 1312 passed / 93.45% coverage + ruff + pyright clean; frontend 1559/1559 vitest (108 files) + nuxt typecheck + biome clean; ril graph consistent (1571 nodes / 1493 edges). Every issue the audit surfaced is resolved; the only active issue is ISS-386 (guest history migration), tracked by TASK-303 at 0.83 priority — below the 3.0 convergence bar.",
       "alternatives_rejected": "TASK-303 (guest reading-history migration, ISS-386, 0.83) is the sole remaining active task: below the 3.0 threshold and a feature-evolution candidate (backfill/import needs new API surface + sign-in hooks), not a quality-convergence bug — feature evolution is not enabled (DEC-214 defers the only higher-value infra work: multi-worker cache/rate-limit/XFF, ISS-242/243/244, per DEC-004/DEC-214). Doing it now would manufacture scope below the bar; it stays active backlog for a future operator direction or feature-evolution decision. The reviewer-flagged LIST post_count TTL staleness remains a bounded self-healing tradeoff (declined under DEC-263)."
+    },
+    "TASK-304": {
+      "id": "TASK-304",
+      "type": "task",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-07T05:42:17+00:00",
+      "updated_at": "2026-09-07T05:48:15+00:00",
+      "touched_round": 276,
+      "title": "Frontend action single-flight + in-flight feedback gaps: admin user create / admin login double-submit, history clear busy state, notification prefs saving indicator",
+      "category": "correctness",
+      "severity": "medium",
+      "confidence": 0.9,
+      "effort": 1.5
+    },
+    "ISS-392": {
+      "id": "ISS-392",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-07T05:43:26+00:00",
+      "updated_at": "2026-09-07T05:48:14+00:00",
+      "touched_round": 276,
+      "title": "Admin user-create has no single-flight guard: Enter+click (or a pre-paint double fire) creates two admin accounts with identical credentials",
+      "severity": "high",
+      "confidence": 0.9,
+      "effort": 0.5
+    },
+    "ISS-393": {
+      "id": "ISS-393",
+      "type": "issue",
+      "status": "resolved",
+      "version": 3,
+      "created_at": "2026-09-07T05:43:26+00:00",
+      "updated_at": "2026-09-07T06:02:36+00:00",
+      "touched_round": 276,
+      "title": "Admin login lacks the re-entry guard the reader login has: a double submit issues two login and /api/admin/me calls",
+      "severity": "low",
+      "confidence": 0.9,
+      "effort": 0.5
+    },
+    "ISS-394": {
+      "id": "ISS-394",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-07T05:43:26+00:00",
+      "updated_at": "2026-09-07T05:48:14+00:00",
+      "touched_round": 276,
+      "title": "History clear is not single-flight and gives no in-flight feedback: fast double-click fires two server DELETEs and the destructive action shows nothing until it resolves",
+      "severity": "medium",
+      "confidence": 0.9,
+      "effort": 0.5
+    },
+    "ISS-395": {
+      "id": "ISS-395",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-07T05:43:26+00:00",
+      "updated_at": "2026-09-07T05:48:14+00:00",
+      "touched_round": 276,
+      "title": "Notification preference toggles give no per-row saving feedback while the request round-trips (all six disabled with no indicator)",
+      "severity": "low",
+      "confidence": 0.9,
+      "effort": 0.5
+    },
+    "TASK-305": {
+      "id": "TASK-305",
+      "type": "task",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-07T05:44:41+00:00",
+      "updated_at": "2026-09-07T05:48:15+00:00",
+      "touched_round": 276,
+      "title": "Backend public-route hardening: bound int path/query params to 422 (no 500 on oversized ids/pages), atomic daily-views increment, strip-blank input on titles/names/comment bodies, naive-UTC upload/export timestamps",
+      "category": "correctness",
+      "severity": "high",
+      "confidence": 0.95,
+      "effort": 2.5
+    },
+    "ISS-396": {
+      "id": "ISS-396",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-07T05:44:41+00:00",
+      "updated_at": "2026-09-07T05:48:14+00:00",
+      "touched_round": 276,
+      "title": "Out-of-64-bit ints in path/query params raise an uncaught 500 on public routes (posts/comments/reader/search page oversized ids and ?page=huge feed raw Python ints into the DBAPI bind)",
+      "severity": "high",
+      "confidence": 0.95,
+      "effort": 1.0
+    },
+    "ISS-397": {
+      "id": "ISS-397",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-07T05:44:41+00:00",
+      "updated_at": "2026-09-07T05:48:14+00:00",
+      "touched_round": 276,
+      "title": "post_views_daily counter is a SELECT-then-assign read-modify-write: concurrent pageviews on the same post/day drop one increment from the admin reading-trend series (IntegrityError fallback only covers the insert race)",
+      "severity": "medium",
+      "confidence": 0.9,
+      "effort": 0.5
+    },
+    "ISS-398": {
+      "id": "ISS-398",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-07T05:44:41+00:00",
+      "updated_at": "2026-09-07T05:48:15+00:00",
+      "touched_round": 276,
+      "title": "Schemas accept empty/whitespace-only titles, tag/category names and comment bodies — blank cards, empty RSS/Atom titles, blank moderation rows",
+      "severity": "medium",
+      "confidence": 0.9,
+      "effort": 0.5
+    },
+    "ISS-399": {
+      "id": "ISS-399",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-07T05:44:41+00:00",
+      "updated_at": "2026-09-07T05:48:15+00:00",
+      "touched_round": 276,
+      "title": "Media-library uploaded_at and export exported_at use server-local / aware UTC while every other timestamp is naive UTC — 8h off on UTC+8 hosts, mixed tz semantics in one bundle",
+      "severity": "low",
+      "confidence": 0.9,
+      "effort": 0.5
+    },
+    "CHG-410": {
+      "id": "CHG-410",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-07T05:45:34+00:00",
+      "updated_at": "2026-09-07T05:45:34+00:00",
+      "touched_round": 276,
+      "commit": "16480eb",
+      "title": "Frontend single-flight guards + in-flight feedback on admin create/login, history clear, notif prefs (TASK-304, ISS-392..395)"
+    },
+    "CHG-411": {
+      "id": "CHG-411",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-07T05:45:34+00:00",
+      "updated_at": "2026-09-07T05:45:34+00:00",
+      "touched_round": 276,
+      "commit": "bb0012f",
+      "title": "Backend: bound int params to 422, atomic daily-views, strip-blank input, naive-UTC upload/export timestamps (TASK-305, ISS-396..399)"
+    },
+    "COMP-008": {
+      "id": "COMP-008",
+      "type": "component",
+      "status": "abandoned",
+      "version": 2,
+      "created_at": "2026-09-07T05:59:20+00:00",
+      "updated_at": "2026-09-07T06:01:14+00:00",
+      "touched_round": 276,
+      "title": "frontend-aura",
+      "description": "Nuxt 4 frontend at frontend/aura (Vue 3 pages, components, composables)"
+    },
+    "DEC-265": {
+      "id": "DEC-265",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-07T06:05:28+00:00",
+      "updated_at": "2026-09-07T06:05:28+00:00",
+      "touched_round": 276,
+      "title": "defer: porte /api/stats pending_comments (moderation backlog) off the public response",
+      "rationale": "Round-276 backend hunt flagged that unauthenticated /api/stats exposes pending_comments (live unmoderated-queue depth), an inconsistency with the codebase's careful pending/rejected non-leak posture (CommentPublic strips it, reader lists filter it). Not shipped now because the admin dashboard's own metrics card reads the SAME public /api/stats for that value (admin/index.vue lines 154/384: blogStats.value?.pending_comments ?? local computed fallback) — removing it from the public response without moving the admin read to an admin-scoped endpoint would break/regress the dashboard's pending count and it already has a local fallback (allComments filter). Follow-up: add pending_comments (or better, a moderation-queue depth) to the existing admin-scoped /api/admin/stats surface and switch the dashboard over, then drop it from BlogStatsResponse.",
+      "alternatives_rejected": "Immediately deleting the field from BlogStatsResponse (breaks the admin dashboard's primary source without a local fallback in all configs); leaving it undocumented (posture leak stays)."
+    },
+    "DEC-266": {
+      "id": "DEC-266",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-07T06:05:28+00:00",
+      "updated_at": "2026-09-07T06:05:28+00:00",
+      "touched_round": 276,
+      "title": "defer: standardize the list-response pagination envelope",
+      "rationale": "Round-276 backend hunt flagged envelope inconsistency: /api/posts and /api/search nest {items, pagination:{...}}, /api/comments and reader lists return flat {items,total,page,limit,total_pages}, /api/admin/posts names the cursor skip and omits total_pages, related/popular return bare arrays. Aligning is a cross-endpoint contract change that would break every existing client (frontend api/* domain readers parse each shape) and is pure internal-consistency churn, not a user-visible defect; follows the established single-context frontend that already special-cases each shape. Not shipped this round.",
+      "alternatives_rejected": "Wholesale rename to one nested envelope in one commit (breaks frontend + any external consumers with no migration); renaming only the admin skip key (cosmetic, churn outweighs value)."
     }
   },
   "edges": [
@@ -28306,6 +28495,162 @@
       "to": "DEC-263",
       "type": "supersedes",
       "created_at": "2026-09-06T16:26:14+00:00"
+    },
+    {
+      "from": "TASK-304",
+      "to": "ISS-392",
+      "type": "addresses",
+      "created_at": "2026-09-07T05:46:53+00:00"
+    },
+    {
+      "from": "TASK-304",
+      "to": "ISS-393",
+      "type": "addresses",
+      "created_at": "2026-09-07T05:46:54+00:00"
+    },
+    {
+      "from": "TASK-304",
+      "to": "ISS-394",
+      "type": "addresses",
+      "created_at": "2026-09-07T05:46:54+00:00"
+    },
+    {
+      "from": "TASK-304",
+      "to": "ISS-395",
+      "type": "addresses",
+      "created_at": "2026-09-07T05:46:54+00:00"
+    },
+    {
+      "from": "CHG-410",
+      "to": "TASK-304",
+      "type": "implements",
+      "created_at": "2026-09-07T05:46:54+00:00"
+    },
+    {
+      "from": "CHG-410",
+      "to": "ISS-392",
+      "type": "resolves",
+      "created_at": "2026-09-07T05:46:54+00:00"
+    },
+    {
+      "from": "CHG-410",
+      "to": "ISS-393",
+      "type": "resolves",
+      "created_at": "2026-09-07T05:46:54+00:00"
+    },
+    {
+      "from": "CHG-410",
+      "to": "ISS-394",
+      "type": "resolves",
+      "created_at": "2026-09-07T05:46:54+00:00"
+    },
+    {
+      "from": "CHG-410",
+      "to": "ISS-395",
+      "type": "resolves",
+      "created_at": "2026-09-07T05:46:54+00:00"
+    },
+    {
+      "from": "TASK-305",
+      "to": "ISS-396",
+      "type": "addresses",
+      "created_at": "2026-09-07T05:46:54+00:00"
+    },
+    {
+      "from": "TASK-305",
+      "to": "ISS-397",
+      "type": "addresses",
+      "created_at": "2026-09-07T05:46:54+00:00"
+    },
+    {
+      "from": "TASK-305",
+      "to": "ISS-398",
+      "type": "addresses",
+      "created_at": "2026-09-07T05:46:54+00:00"
+    },
+    {
+      "from": "TASK-305",
+      "to": "ISS-399",
+      "type": "addresses",
+      "created_at": "2026-09-07T05:46:54+00:00"
+    },
+    {
+      "from": "CHG-411",
+      "to": "TASK-305",
+      "type": "implements",
+      "created_at": "2026-09-07T05:46:55+00:00"
+    },
+    {
+      "from": "CHG-411",
+      "to": "ISS-396",
+      "type": "resolves",
+      "created_at": "2026-09-07T05:46:55+00:00"
+    },
+    {
+      "from": "CHG-411",
+      "to": "ISS-397",
+      "type": "resolves",
+      "created_at": "2026-09-07T05:46:55+00:00"
+    },
+    {
+      "from": "CHG-411",
+      "to": "ISS-398",
+      "type": "resolves",
+      "created_at": "2026-09-07T05:46:55+00:00"
+    },
+    {
+      "from": "CHG-411",
+      "to": "ISS-399",
+      "type": "resolves",
+      "created_at": "2026-09-07T05:46:55+00:00"
+    },
+    {
+      "from": "ISS-396",
+      "to": "COMP-001",
+      "type": "located_in",
+      "created_at": "2026-09-07T05:58:36+00:00"
+    },
+    {
+      "from": "ISS-397",
+      "to": "COMP-001",
+      "type": "located_in",
+      "created_at": "2026-09-07T05:58:36+00:00"
+    },
+    {
+      "from": "ISS-398",
+      "to": "COMP-001",
+      "type": "located_in",
+      "created_at": "2026-09-07T05:58:36+00:00"
+    },
+    {
+      "from": "ISS-399",
+      "to": "COMP-001",
+      "type": "located_in",
+      "created_at": "2026-09-07T05:58:37+00:00"
+    },
+    {
+      "from": "ISS-392",
+      "to": "COMP-002",
+      "type": "located_in",
+      "created_at": "2026-09-07T05:59:20+00:00"
+    },
+    {
+      "from": "ISS-393",
+      "to": "COMP-002",
+      "type": "located_in",
+      "created_at": "2026-09-07T05:59:20+00:00"
+    },
+    {
+      "from": "ISS-394",
+      "to": "COMP-002",
+      "type": "located_in",
+      "created_at": "2026-09-07T05:59:20+00:00"
+    },
+    {
+      "from": "ISS-395",
+      "to": "COMP-002",
+      "type": "located_in",
+      "created_at": "2026-09-07T05:59:21+00:00"
     }
   ]
 }
