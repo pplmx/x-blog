@@ -120,9 +120,15 @@ def test_stats_scheduled_post_is_not_a_draft(client, auth_headers):
     assert data["total_posts"] - data["published_posts"] - data["scheduled_posts"] == 1
 
 
-def test_stats_pending_excludes_rejected(client, db_session):
-    """GET /api/stats pending_comments must count only unreviewed comments —
-    a rejected (reviewed_at set) comment must not overcount pending (ISS-366)."""
+def test_stats_no_longer_exposes_pending(client, db_session):
+    """GET /api/stats must NOT expose the moderation backlog (round 276).
+
+    The unauthenticated endpoint previously answered pending_comments — the
+    live unmoderated-queue depth. That let a spammer poll to learn whether
+    their comment was still pending and scrape queue depth. The count moved
+    to the admin-scoped /api/admin/stats/comments; the public response must
+    not carry it (ISS-366 semantics preserved by test_reader_comment_stats).
+    """
     from datetime import datetime
 
     from app import models
@@ -134,7 +140,11 @@ def test_stats_pending_excludes_rejected(client, db_session):
         [
             models.Comment(post_id=post.id, nickname="A", content="pending", is_approved=False, reviewed_at=None),
             models.Comment(
-                post_id=post.id, nickname="B", content="rejected", is_approved=False, reviewed_at=datetime(2024, 1, 1)
+                post_id=post.id,
+                nickname="B",
+                content="rejected",
+                is_approved=False,
+                reviewed_at=datetime(2024, 1, 1),
             ),
             models.Comment(post_id=post.id, nickname="C", content="approved", is_approved=True),
         ]
@@ -142,5 +152,6 @@ def test_stats_pending_excludes_rejected(client, db_session):
     db_session.commit()
 
     data = client.get("/api/stats").json()
-    assert data["pending_comments"] == 1
+    # Pending is gone from the public surface entirely.
+    assert "pending_comments" not in data
     assert data["total_comments"] == 3

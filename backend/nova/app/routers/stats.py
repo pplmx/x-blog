@@ -24,9 +24,14 @@ class BlogStatsResponse(BaseModel):
     total_categories: int
     total_tags: int
     total_comments: int
-    pending_comments: int
     total_views: int
     total_likes: int
+    # NO pending_comments here (round 276): it is the live unmoderated-queue
+    # depth, a moderator-only signal. Exposing it on this unauthenticated
+    # endpoint let a spammer poll to learn whether their comment is still
+    # pending and scrape queue depth. The admin dashboard reads the
+    # authoritative pending_count from the admin-scoped
+    # /api/admin/stats/comments instead (ISS-396/404).
 
 
 router = APIRouter(prefix="/api/stats", tags=["Stats"])
@@ -73,22 +78,6 @@ def get_blog_stats(request: Request, db: Session = Depends(get_db)):  # noqa: AR
     # Total comments
     total_comments = db.query(func.count(models.Comment.id)).scalar() or 0
 
-    # Pending comments = unapproved AND not yet reviewed. The codebase
-    # distinguishes "pending" (is_approved=False, reviewed_at NULL) from
-    # "rejected" (is_approved=False, reviewed_at set) — see get_reader_comments
-    # and approve_comment's reviewed_at stamp. Counting every is_approved=False
-    # row overcounted on this unauthenticated endpoint by folding rejected
-    # comments back into pending (deep-dive review, ISS-366).
-    pending_comments = (
-        db.query(func.count(models.Comment.id))
-        .filter(
-            models.Comment.is_approved == False,  # noqa: E712
-            models.Comment.reviewed_at.is_(None),
-        )
-        .scalar()
-        or 0
-    )
-
     # Total views
     total_views = db.query(func.sum(models.Post.views)).scalar() or 0
 
@@ -102,7 +91,6 @@ def get_blog_stats(request: Request, db: Session = Depends(get_db)):  # noqa: AR
         total_categories=total_categories,
         total_tags=total_tags,
         total_comments=total_comments,
-        pending_comments=pending_comments,
         total_views=total_views,
         total_likes=total_likes,
     )

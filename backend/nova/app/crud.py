@@ -3765,9 +3765,25 @@ def get_comment_activity_stats(db: Session, days: int = 30) -> dict:
         .all()
     )
 
+    # Authoritative pending-queue count for the dashboard (DEC-154/TASK-189,
+    # round 276): this admin-scoped endpoint is where the moderation backlog
+    # belongs, mirroring the non-leak posture everywhere else. The public
+    # /api/stats previously exposed the same count to anonymous visitors (a
+    # moderation-state oracle) so the public field was dropped (ISS-396/404).
+    pending_count = (
+        db.query(func.count(models.Comment.id))
+        .filter(
+            models.Comment.is_approved == False,  # noqa: E712
+            models.Comment.reviewed_at.is_(None),
+        )
+        .scalar()
+        or 0
+    )
+
     return {
         "days": days,
         "total": sum(by_day.values()),
         "series": series,
         "top_posts": [{"id": pid, "title": title, "slug": slug, "count": int(c)} for pid, title, slug, c in top],
+        "pending_count": int(pending_count),
     }

@@ -68,3 +68,23 @@ class TestCommentActivity:
         data = client.get(COMMENTS_STATS, headers=auth_headers).json()
         assert data["total"] == 1
         assert data["top_posts"][0]["count"] == 1
+
+    def test_pending_count_is_the_unreviewed_queue_depth(self, client, auth_headers, db_session):
+        """pending_count counts only unreviewed comments — a rejected comment
+        (reviewed_at stamped) must not inflate it (round 276: the moderation
+        backlog moved from the public /api/stats to this admin-scoped
+        endpoint; see also test_stats::test_stats_no_longer_exposes_pending)."""
+        from datetime import datetime
+
+        from app import models
+
+        post = _create_post(client, auth_headers)
+        _create_comment(client, post["id"], "still pending")
+        _create_comment(client, post["id"], "to be rejected")
+        rejected = db_session.query(models.Comment).filter(models.Comment.content == "to be rejected").first()
+        rejected.reviewed_at = datetime(2024, 1, 1)
+        db_session.commit()
+
+        data = client.get(COMMENTS_STATS, headers=auth_headers).json()
+        assert data["pending_count"] == 1
+        assert data["total"] == 0  # nothing approved yet
