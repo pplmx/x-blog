@@ -399,9 +399,22 @@ function goToPage(pg: number | string) {
         <h3 class="text-lg font-medium text-gray-700 dark:text-gray-300 mb-1">
           {{ t("search.noResults.title") }}
         </h3>
+        <!-- A negative result caused by a category/tag/date filter must not be
+             blamed on the keywords — narrow a filter far enough and "try
+             different keywords" misleads the reader away from the actual cause
+             (round 278). Name the filter and offer the one-click reset. -->
         <p class="text-sm text-gray-500 dark:text-gray-400">
-          {{ t("search.noResults.hint") }}
+          {{ hasActiveFilters ? t("search.noResults.tryAdjustFilters") : t("search.noResults.hint") }}
         </p>
+        <button
+          v-if="hasActiveFilters"
+          type="button"
+          class="mt-3 inline-flex items-center gap-1.5 px-4 py-2 text-xs font-medium text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-800 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900/30 transition-colors"
+          @click="clearFilters"
+        >
+          <Icon icon="lucide:filter-x" class="w-3.5 h-3.5" />
+          {{ t("search.filters.clearAll") }}
+        </button>
       </div>
 
       <!-- Results list -->

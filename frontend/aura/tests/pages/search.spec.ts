@@ -421,6 +421,20 @@ describe("Search Page", () => {
 			const wrapper = await mountSearchPage({ searchResult: mockEmptyResult });
 			expect(wrapper.text()).toContain("试试其他关键词吧");
 		});
+
+		it("names the active filter instead of blaming keywords when a filter caused the zero (round 278)", async () => {
+			const wrapper = await mountSearchPage({
+				searchResult: mockEmptyResult,
+				routeQuery: { q: "test query", category: "Tech" },
+			});
+			// The category filter is the actual cause — "try different keywords"
+			// would point the reader away from it.
+			expect(wrapper.text()).toContain("没有文章符合当前筛选条件，试试调整或清除筛选条件");
+			expect(wrapper.text()).not.toContain("试试其他关键词吧");
+			// The one-click reset is offered right in the empty state, not just
+			// in the filter bar.
+			expect(wrapper.findAll("button").some((b) => b.text() === "清除筛选")).toBe(true);
+		});
 	});
 
 	describe("Results listing", () => {

@@ -18,7 +18,8 @@
 		},
 		"noResults": {
 			"title": "No matching articles found",
-			"hint": "Try different keywords"
+			"hint": "Try different keywords",
+			"tryAdjustFilters": "No articles match these filters — try adjusting or clearing them"
 		},
 		"posts": {
 			"views": "reads"

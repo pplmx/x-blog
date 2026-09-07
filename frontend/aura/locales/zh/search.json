@@ -18,7 +18,8 @@
 		},
 		"noResults": {
 			"title": "没有找到相关文章",
-			"hint": "试试其他关键词吧"
+			"hint": "试试其他关键词吧",
+			"tryAdjustFilters": "没有文章符合当前筛选条件，试试调整或清除筛选条件"
 		},
 		"posts": {
 			"views": "次阅读"
