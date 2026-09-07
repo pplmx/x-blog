@@ -518,8 +518,8 @@ let deepLinkResolved = false;
 function scrollToComment(targetId: string): void {
 	document.getElementById(targetId)?.scrollIntoView({ behavior: "smooth", block: "start" });
 }
-async function landOnDeepLink(targetId?: string): Promise<void> {
-	if (deepLinkResolved) return;
+async function landOnDeepLink(targetId?: string, force = false): Promise<void> {
+	if (deepLinkResolved && !force) return;
 	// Optional explicit target (a freshly-posted comment that needs locating on
 	// a non-newest page, ISS-384); default keeps reading window.location.hash.
 	const resolvedId = targetId ?? window.location.hash.slice(1);
@@ -857,18 +857,25 @@ function retryRefresh(): void {
 	void refreshList();
 }
 
-async function handleReplied(created: Comment | undefined) {
-	// A just-posted comment has the newest timestamp, so under the default
-	// newest sort it lands on page 1 — for a reader replying from page 2+, the
-	// old code refreshed the CURRENT page and their reply was nowhere on screen
-	// (no toast, no jump), reading as a silent failure and inviting a double
-	// post (ISS-384). Jump to the page that holds the new row and scroll to it.
+/**
+ * Jump the list to the page that holds a just-created comment, refresh, then
+ * scroll it into view — walking pages if the initial guess was off. Shared by
+ * inline replies (handleReplied) and the standalone bottom-of-page form via
+ * defineExpose (round 278).
+ *
+ * The old top-level path (posts/[slug]/index.vue) only refreshed the CURRENT
+ * page, so a comment posted from page 2+ was never fetched at all; and the
+ * reply path guessed page 1 for every non-oldest sort, but under "most
+ * helpful" a brand-new comment has 0 likes and sorts to the TAIL of the
+ * thread — neither rendered, both read as a silent failure inviting a double
+ * post (ISS-384 fixed newest; round 278 closes likes + the top-level form).
+ */
+async function surfaceComment(created: Comment | undefined): Promise<void> {
 	const newId = created?.id;
-	const hasParentPresence = created?.parent_id != null && byId.value.has(created.parent_id);
-	const jumpToPage = currentSort.value !== "oldest" ? 1 : commentData.value?.total_pages || 1;
-	// A reply nests under its parent (same page at most times); a top-level
-	// comment on non-oldest sorts always sorts to page 1. See the sort's final
-	// page for oldest, then locate the row precisely.
+	// Under the newest sort a fresh comment (newest timestamp) sorts to page 1;
+	// under oldest AND most-helpful a 0-like new comment sorts to the tail, so
+	// target the final page and let the walk correct any off-by-one below.
+	const jumpToPage = currentSort.value === "newest" ? 1 : commentData.value?.total_pages || 1;
 	if (newId) {
 		currentPage.value = jumpToPage;
 	}
@@ -883,20 +890,25 @@ async function handleReplied(created: Comment | undefined) {
 		replyDirty.value = false;
 	}
 	// Scroll the freshly-created row into view once it's rendered (the reply
-	// form's own "posted" success may be below the fold). Bounded to the
-	// comment's OWN page context: if the server nested it elsewhere (e.g. under
-	// a parent pulled onto the page), land on the anchor that actually exists.
+	// form's own "posted" success may be below the fold).
 	if (newId) {
 		await nextTick();
 		const anchor = document.getElementById(`comment-${newId}`);
 		if (anchor) {
 			anchor.scrollIntoView({ behavior: "smooth", block: "start" });
-		} else if (!hasParentPresence) {
-			// The new row didn't render where we jumped (edge: an exotic sort or
-			// moderation re-order) — walk pages like the deep-link path does.
-			void landOnDeepLink(`comment-${newId}`);
+		} else {
+			// The row didn't render where we jumped (exotic sort, moderation
+			// re-order, or a multi-page 0-like block whose start page we
+			// guessed) — walk pages like the deep-link path does. Always walk:
+			// gating on the parent's presence let a "most helpful" reply with
+			// its parent on page 1 stay invisible (round 278, ISS-384 follow-up).
+			void landOnDeepLink(`comment-${newId}`, true);
 		}
 	}
+}
+
+function handleReplied(created: Comment | undefined) {
+	void surfaceComment(created);
 }
 
 // Windowed, ellipsis-aware page tokens (first / current-window / last joined
@@ -927,7 +939,7 @@ function formatDate(dateStr: string): string {
 
 // Expose the imperative refetch so a sibling comment form (post page) can
 // refresh the list/count after a successful top-level submission (ISS-126).
-defineExpose({ refreshList });
+defineExpose({ refreshList, surfaceComment });
 </script>
 
 <!-- Comment markdown typography (DEC-088): code blocks/links/quotes inside the

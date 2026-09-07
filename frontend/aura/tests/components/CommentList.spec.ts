@@ -8,7 +8,7 @@
  * correctly in each state.
  */
 
-import { flushPromises, mount } from "@vue/test-utils";
+import { flushPromises, mount, type VueWrapper } from "@vue/test-utils";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { ref } from "vue";
 import { parseApiDate } from "~~/composables/apiDate";
@@ -694,6 +694,111 @@ describe("CommentList", () => {
 			await select.setValue("likes");
 			await flushPromises();
 			expect(mockGetComments).toHaveBeenLastCalledWith(1, 1, 20, "likes");
+		});
+	});
+
+	describe("Comment surfacing (ISS-384 / round 278)", () => {
+		const parentComment = {
+			id: 5,
+			post_id: 1,
+			parent_id: null,
+			nickname: "Parent",
+			content: "top-level with likes",
+			is_approved: true,
+			created_at: "2024-01-01T00:00:00Z",
+		};
+
+		it("surfaces a reply posted under the most-helpful sort even though its parent is on page 1 (round 278)", async () => {
+			// The new reply (0 likes) sorts to the TAIL of a most-helpful
+			// thread, not page 1. Pre-fix handleReplied jumped to page 1 for
+			// every non-oldest sort and — because the parent WAS on page 1 —
+			// skipped the page-walk, so the reply was nowhere on screen (silent
+			// failure inviting a double post). It must target the tail page and
+			// walk to the row.
+			vi.useFakeTimers();
+			const original = Element.prototype.scrollIntoView;
+			const scrollIntoView = vi.fn();
+			Element.prototype.scrollIntoView =
+				scrollIntoView as unknown as typeof Element.prototype.scrollIntoView;
+			let wrapper: VueWrapper | null = null;
+			try {
+				const newReply = {
+					id: 30,
+					post_id: 1,
+					parent_id: 5,
+					nickname: "Replier",
+					content: "brand new reply",
+					is_approved: true,
+					created_at: "2024-03-01T00:00:00Z",
+				};
+				const page1 = { items: [parentComment], total: 2, total_pages: 3, page: 1, limit: 20 };
+				const page3 = { items: [newReply], total: 2, total_pages: 3, page: 3, limit: 20 };
+				mockCreateComment.mockResolvedValue(newReply);
+
+				({ wrapper } = await mountCommentList({
+					comments: page1,
+					attachToBody: true,
+					getCommentsImpl: async (_postId, page) =>
+						page === 1 ? page1 : page === 3 ? page3 : { items: [], ...page1, page },
+				}));
+
+				// Switch to most-helpful and reply to the page-1 comment.
+				await wrapper.find("select#comment-sort").setValue("likes");
+				await flushPromises();
+				const replyBtn = wrapper.findAll("button").find((b) => b.text() === "回复");
+				expect(replyBtn).toBeDefined();
+				await replyBtn?.trigger("click");
+				await flushPromises();
+
+				// Anonymous reply: fill the inline form and submit.
+				await wrapper.find("#comment-nickname").setValue("Replier");
+				await wrapper.find("#comment-email").setValue("r@example.com");
+				await wrapper.find("#comment-content").setValue("brand new reply");
+				await wrapper.find("form").trigger("submit.prevent");
+				await flushPromises();
+
+				// The surfacing targets the LAST page for a 0-like tail comment…
+				expect(mockGetComments.mock.calls.some((c) => c[1] === 3)).toBe(true);
+				// …renders the new reply…
+				expect(wrapper.text()).toContain("brand new reply");
+				// …and scrolls to its anchor.
+				expect(scrollIntoView).toHaveBeenCalled();
+			} finally {
+				wrapper?.unmount();
+				vi.useRealTimers();
+				Element.prototype.scrollIntoView = original;
+			}
+		});
+
+		it("surfaceComment under newest jumps to page 1 and scrolls the fresh comment (ISS-384 regression guard)", async () => {
+			const original = Element.prototype.scrollIntoView;
+			const scrollIntoView = vi.fn();
+			Element.prototype.scrollIntoView =
+				scrollIntoView as unknown as typeof Element.prototype.scrollIntoView;
+			try {
+				const fresh = {
+					...parentComment,
+					id: 40,
+					nickname: "Newcomer",
+					content: "just posted",
+					created_at: "2024-04-01T00:00:00Z",
+				};
+				const page1 = { items: [fresh], total: 1, total_pages: 1, page: 1, limit: 20 };
+				const { wrapper } = await mountCommentList({
+					comments: page1,
+					attachToBody: true,
+					getCommentsImpl: async () => page1,
+				});
+				const list = wrapper.findComponent(CommentList);
+				await (
+					list.vm as unknown as { surfaceComment: (c: unknown) => Promise<void> }
+				).surfaceComment(fresh);
+				await flushPromises();
+				expect(wrapper.text()).toContain("just posted");
+				expect(scrollIntoView).toHaveBeenCalled();
+			} finally {
+				Element.prototype.scrollIntoView = original;
+			}
 		});
 	});
 

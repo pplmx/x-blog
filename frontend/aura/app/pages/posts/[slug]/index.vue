@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, nextTick, ref, watch, watchEffect } from "vue";
+import type { Comment } from "~~/api/contracts/shared";
 import {
 	likePost,
 	recordPostView,
@@ -377,11 +378,15 @@ function handleSheetTocSelect(event: MouseEvent) {
 // print route consistent with backend crud.reading_minutes (RIL round 72).
 const readingTime = computed(() => readingMinutes(post.value?.content));
 
-// Refresh the comment list after the standalone top-level form submits, so the
-// new comment + count are visible without a reload (ISS-126).
-const commentListRef = ref<{ refreshList: () => Promise<void> } | null>(null);
-function handleCommentSubmitted() {
-	void commentListRef.value?.refreshList();
+// After the standalone top-level form submits, surface the new comment: the
+// list jumps to the page that holds it, refreshes, and scrolls it into view —
+// a mere refreshList() was a silent failure for anyone above the fold or on
+// page 2+, because the top-level form on "newest" sorts the new comment to
+// page 1 which the current-page refresh never fetched (round 278; the same
+// surfacing the inline reply path got with ISS-384).
+const commentListRef = ref<{ surfaceComment: (c?: Comment) => Promise<void> } | null>(null);
+function handleCommentSubmitted(created: Comment | undefined) {
+	void commentListRef.value?.surfaceComment(created);
 }
 </script>
 
