@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 278,
+  "round": 280,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-07T11:15:59+00:00",
+  "updated_at": "2026-09-07T13:51:36+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -18772,11 +18772,11 @@
     "ISS-386": {
       "id": "ISS-386",
       "type": "issue",
-      "status": "active",
-      "version": 1,
+      "status": "resolved",
+      "version": 2,
       "created_at": "2026-09-06T04:45:06+00:00",
-      "updated_at": "2026-09-06T04:45:06+00:00",
-      "touched_round": 274,
+      "updated_at": "2026-09-07T13:47:56+00:00",
+      "touched_round": 279,
       "title": "Guest reading history silently disappears after signing in — no migration or explanation",
       "severity": "medium",
       "inference": "History source is server-only when signed in; the guest's local trail is only a device fallback and never backfilled to the server (unlike bookmarks which mergeLocalToCloud). The /history page never reloads on auth change, and re-opening it after sign-in shows 'No reading history yet' with no hint the device trail was left behind."
@@ -18956,11 +18956,11 @@
     "TASK-303": {
       "id": "TASK-303",
       "type": "task",
-      "status": "active",
-      "version": 1,
+      "status": "resolved",
+      "version": 2,
       "created_at": "2026-09-06T15:05:45+00:00",
-      "updated_at": "2026-09-06T15:05:45+00:00",
-      "touched_round": 274,
+      "updated_at": "2026-09-07T13:47:55+00:00",
+      "touched_round": 279,
       "category": "core-feature",
       "title": "Guest reading-history migration: on sign-in, backfill the local device trail to the server (or offer a one-time import)",
       "severity": "low",
@@ -19497,11 +19497,11 @@
     "TASK-309": {
       "id": "TASK-309",
       "type": "task",
-      "status": "active",
-      "version": 1,
+      "status": "resolved",
+      "version": 2,
       "created_at": "2026-09-07T08:25:22+00:00",
-      "updated_at": "2026-09-07T08:25:22+00:00",
-      "touched_round": 278,
+      "updated_at": "2026-09-07T12:22:37+00:00",
+      "touched_round": 279,
       "category": "performance",
       "title": "Unbounded loads on reader endpoints: /api/reader/me/recommendations materializes every public post (+ tags/category) before scoring (crud recommend_posts, no LIMIT), and /me/history/stats loads every history row incl. full post content to sum reading minutes — bound both (SQL ranking / capped window)",
       "severity": "low",
@@ -19600,11 +19600,11 @@
     "TASK-312": {
       "id": "TASK-312",
       "type": "task",
-      "status": "active",
-      "version": 1,
+      "status": "resolved",
+      "version": 2,
       "created_at": "2026-09-07T09:09:58+00:00",
-      "updated_at": "2026-09-07T09:09:58+00:00",
-      "touched_round": 278,
+      "updated_at": "2026-09-07T12:22:37+00:00",
+      "touched_round": 279,
       "category": "test-quality",
       "title": "flaky timing-sensitive fake-timer specs in tests/admin/posts-id.spec.ts (Draft auto-save describe): \"coalesces a burst of edits into a single save\" and \"manual Save after auto-save\" intermittently call updateAdminPost twice under full-dir load — pre-existing, reproduces on original code; harden the timing (the debounce path re-arms behind a 400ms advance window)",
       "severity": "low",
@@ -19690,11 +19690,11 @@
     "ISS-409": {
       "id": "ISS-409",
       "type": "issue",
-      "status": "active",
-      "version": 1,
+      "status": "resolved",
+      "version": 2,
       "created_at": "2026-09-07T09:58:36+00:00",
-      "updated_at": "2026-09-07T09:58:36+00:00",
-      "touched_round": 278,
+      "updated_at": "2026-09-07T12:22:37+00:00",
+      "touched_round": 279,
       "title": "Reader endpoints with unbounded loads: /api/reader/me/recommendations materializes every public post, /me/history/stats loads full post content per history row (performance)",
       "severity": "low",
       "confidence": 0.85,
@@ -19703,11 +19703,11 @@
     "ISS-410": {
       "id": "ISS-410",
       "type": "issue",
-      "status": "active",
-      "version": 1,
+      "status": "resolved",
+      "version": 2,
       "created_at": "2026-09-07T09:58:36+00:00",
-      "updated_at": "2026-09-07T09:58:36+00:00",
-      "touched_round": 278,
+      "updated_at": "2026-09-07T12:22:37+00:00",
+      "touched_round": 279,
       "title": "flaky timing-sensitive fake-timer specs in tests/admin/posts-id.spec.ts (Draft auto-save describe) intermittently call updateAdminPost twice under full-dir load (test-quality)",
       "severity": "low",
       "confidence": 0.8,
@@ -19834,7 +19834,7 @@
       "version": 1,
       "created_at": "2026-09-07T11:15:17+00:00",
       "updated_at": "2026-09-07T11:15:17+00:00",
-      "touched_round": 278,
+      "touched_round": 279,
       "title": "Bound the recommendations candidate pool; retain reader_history_stats totals as a deliberate whole-history sum",
       "rationale": "TASK-309 flagged two unbounded loads. recommend_posts scored in Python over a retrieve-all of every public post - capped to CANDIDATE_SCAN_LIMIT=2000 most-recent (CHG-423). reader_history_stats totals are defined over the whole history and need each visible post content - a bounded window would change user-visible numbers, so retained; the recent-6 surface is already bounded. Remaining TASK-309 half is reviewed-and-retained.",
       "alternatives_rejected": "SQL rewrite of per-reader affinity weights (fragile); windowing history totals (changes public API semantics)."
@@ -19846,9 +19846,92 @@
       "version": 1,
       "created_at": "2026-09-07T11:15:59+00:00",
       "updated_at": "2026-09-07T11:15:59+00:00",
-      "touched_round": 278,
+      "touched_round": 279,
       "commit": "b28407d",
       "title": "perf(reader): bound the recommendations candidate scan (TASK-309, DEC-268, round 279)"
+    },
+    "EV-226": {
+      "id": "EV-226",
+      "type": "evidence",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-07T12:21:03+00:00",
+      "updated_at": "2026-09-07T12:21:03+00:00",
+      "touched_round": 279,
+      "source": "9fbd024 (repro + fix verification)",
+      "confidence": 1.0,
+      "title": "ISS-410 root cause: unmounted editor wrappers leak REAL autosave debounces into later fake-timer specs",
+      "content": "Create/Edit-Mode tests mounted the editor and typed a title without unmounting, so each live instance kept its per-instance 800ms autosave debounce armed against the REAL clock (AUTOSAVE_DEBOUNCE_MS in app/pages/admin/posts/[id].vue). Under full-dir load >=800ms of real time elapsed and those leaked timers fired during later fake-timer Draft auto-save tests, calling createAdminPost/updateAdminPost through the shared module mocks — captured leaked titles \"My Test Article\" (auto-generates slug test) and \"Test Title\" (displays submit error test) under 4x-concurrent reproduction. Fix: track every wrapper via a local mountWithSuspense and unmount in the top-level afterEach (real timers active) so onBeforeUnmount clears each debounce. Verified: 0 failures in 60 concurrent runs (was ~1/3 batches failing before), full suite 1576 green, typecheck green."
+    },
+    "CHG-424": {
+      "id": "CHG-424",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-07T12:21:32+00:00",
+      "updated_at": "2026-09-07T12:21:32+00:00",
+      "touched_round": 279,
+      "commit": "9fbd024",
+      "title": "fix(test): unmount editor wrappers in top-level afterEach — leaked real autosave debounces no longer misfire into later fake-timer specs (TASK-312, ISS-410)"
+    },
+    "DEC-269": {
+      "id": "DEC-269",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-07T12:25:48+00:00",
+      "updated_at": "2026-09-07T12:25:48+00:00",
+      "touched_round": 279,
+      "rationale": "TASK-312/ISS-410 flake: Create/Edit-Mode tests mounted the post editor and typed without unmounting, leaking per-instance REAL 800ms autosave debounces that fired during later fake-timer Draft auto-save tests (evidence EV-226). Fixed at the test-infrastructure root: track every editor wrapper and unmount in the top-level afterEach (real timers active), so onBeforeUnmount cancels each debounce. Not a debounce-timing defect in the editor — the existing assertions are correct and were kept unchanged. 60 concurrent runs: 0 failures (was ~1/3 batches). Separately closed TASK-309/ISS-409: recommendations candidate pool bounded by CHG-423; reader_history_stats whole-history totals deliberately retained per DEC-268.",
+      "alternatives_rejected": "Harden the fake-timer advances (400ms window) as originally diagnosed — treats a symptom; weakening call-count assertions — masks a real leaked-pathway; adding runtime timer-drain to the editor — production code cosmetically appeasing tests.",
+      "title": "Fix ISS-410 at the leaked-instance root; close TASK-309 with DEC-268 retained-half"
+    },
+    "CHG-425": {
+      "id": "CHG-425",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-07T13:44:56+00:00",
+      "updated_at": "2026-09-07T13:44:56+00:00",
+      "touched_round": 279,
+      "commit": "a4cfd8e",
+      "title": "feat(reader): device-trail history import endpoint POST /api/reader/me/history/import (TASK-303, ISS-386)"
+    },
+    "CHG-426": {
+      "id": "CHG-426",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-07T13:44:56+00:00",
+      "updated_at": "2026-09-07T13:44:56+00:00",
+      "touched_round": 279,
+      "commit": "1aa5037",
+      "title": "feat(history): one-time import offer banner on /history (TASK-303, ISS-386)"
+    },
+    "EV-227": {
+      "id": "EV-227",
+      "type": "evidence",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-07T13:44:56+00:00",
+      "updated_at": "2026-09-07T13:44:56+00:00",
+      "touched_round": 279,
+      "source": "a4cfd8e + 1aa5037",
+      "confidence": 1.0,
+      "title": "Guest-history migration verified end-to-end: backend + frontend + tests",
+      "content": "POST /api/reader/me/history/import merges the device localStorage trail by slug — idempotent, preserves the original read instant (later of two wins), skips drafts/unknown (no leak), no-store via global middleware. 11 contract tests. Frontend: pendingDeviceCount + importLocalTrail in useReadingHistory, dismissible offer banner on /history with zh/en i18n, transient result flash. Full backend suite 1334 passed, full frontend suite 1582 passed, typecheck + ruff + pyright + biome green."
+    },
+    "DEC-270": {
+      "id": "DEC-270",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-07T13:47:11+00:00",
+      "updated_at": "2026-09-07T13:47:11+00:00",
+      "touched_round": 279,
+      "rationale": "TASK-303/ISS-386: a guest localStorage read trail silently vanishes once sign-in switches /history to the server trail. Implemented a one-time, reader-initiated import: POST /me/history/import (idempotent merge-by-slug, preserves each record original viewed_at, only public posts) plus a dismissible offer banner on /history driven by pendingDeviceCount (local slugs missing from the loaded server history), with an inline success/none/failure flash. The offer (not silent auto-backfill) keeps the device trail as source of truth until the reader opts in and avoids surprising writes to their cloud history; skipped (unpublished) records are not re-offered per page view. Backend contract tests plus frontend composable/api tests; full suites green.",
+      "alternatives_rejected": "Silent auto-backfill on sign-in (writes the cloud history without an opt-in and needs delicate first-login detection); showing nothing (the original issue); migrating inside useReaderAuth.login() globally (a page-level offer is more discoverable and testable).",
+      "title": "Guest reading-history migration as an explicit one-time import on /history"
     }
   },
   "edges": [
@@ -29498,6 +29581,54 @@
       "to": "TASK-309",
       "type": "implements",
       "created_at": "2026-09-07T11:15:59+00:00"
+    },
+    {
+      "from": "CHG-424",
+      "to": "ISS-410",
+      "type": "resolves",
+      "created_at": "2026-09-07T12:22:08+00:00"
+    },
+    {
+      "from": "CHG-423",
+      "to": "ISS-409",
+      "type": "resolves",
+      "created_at": "2026-09-07T12:24:25+00:00"
+    },
+    {
+      "from": "DEC-269",
+      "to": "TASK-312",
+      "type": "governs",
+      "created_at": "2026-09-07T12:26:48+00:00"
+    },
+    {
+      "from": "CHG-425",
+      "to": "TASK-303",
+      "type": "implements",
+      "created_at": "2026-09-07T13:47:55+00:00"
+    },
+    {
+      "from": "CHG-426",
+      "to": "TASK-303",
+      "type": "implements",
+      "created_at": "2026-09-07T13:47:55+00:00"
+    },
+    {
+      "from": "CHG-425",
+      "to": "ISS-386",
+      "type": "resolves",
+      "created_at": "2026-09-07T13:47:55+00:00"
+    },
+    {
+      "from": "DEC-270",
+      "to": "TASK-303",
+      "type": "governs",
+      "created_at": "2026-09-07T13:47:55+00:00"
+    },
+    {
+      "from": "CHG-424",
+      "to": "TASK-312",
+      "type": "implements",
+      "created_at": "2026-09-07T13:48:29+00:00"
     }
   ]
 }
