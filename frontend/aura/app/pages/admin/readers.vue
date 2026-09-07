@@ -37,6 +37,16 @@ const items = computed(() => data.value?.items ?? []);
 const total = computed(() => data.value?.pagination?.total ?? 0);
 const totalPages = computed(() => data.value?.pagination?.total_pages ?? 0);
 
+// Clamped page navigation — the prev/next buttons must never drive currentPage
+// past totalPages (a rapid double-click or a list that shrank between loads
+// stranded the operator on a blank out-of-range page with no recovery: the
+// backend returns empty items and only Prev was responsive). Same guard as the
+// posts list / media page goToPage (round 278).
+function goToPage(page: number) {
+	if (page < 1 || page > totalPages.value) return;
+	currentPage.value = page;
+}
+
 // The rows whose activate/deactivate is in flight, tracked per-row (a single
 // `busyId` slot let a second row's toggle clear the first row's in-flight marker
 // and re-enable its button while its PATCH was still running — the same
@@ -203,7 +213,7 @@ async function toggleActive(reader: AdminReader) {
         type="button"
         :disabled="currentPage <= 1"
         class="px-3 py-1.5 text-sm rounded-lg bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 disabled:opacity-40 transition-colors"
-        @click="currentPage--"
+        @click="goToPage(currentPage - 1)"
       >
         {{ t("admin.readers.prevPage") }}
       </button>
@@ -214,7 +224,7 @@ async function toggleActive(reader: AdminReader) {
         type="button"
         :disabled="currentPage >= totalPages"
         class="px-3 py-1.5 text-sm rounded-lg bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 disabled:opacity-40 transition-colors"
-        @click="currentPage++"
+        @click="goToPage(currentPage + 1)"
       >
         {{ t("admin.readers.nextPage") }}
       </button>

@@ -104,6 +104,31 @@ describe("Admin Readers page", () => {
 		expect(wrapper.text()).toContain("加载读者列表失败");
 	});
 
+	it("clamps pagination so the page indicator never overshoots the last page (round 278)", async () => {
+		// The prev/next buttons used to mutate currentPage directly, unlike the
+		// posts list and media page which route every step through a clamped
+		// goToPage(); this page is the odd one out. The clamp makes the page
+		// indicator unable to read past totalPages even under an in-flight
+		// refetch (regression guard for the established guard pattern).
+		listMock.mockReturnValue(
+			mockFetchResult({
+				items: [fakeReader({ id: 1 }), fakeReader({ id: 2 })],
+				pagination: { total: 2, page: 1, limit: 20, total_pages: 2 },
+			}),
+		);
+		const wrapper = await mountPage();
+		expect(wrapper.text()).toContain("第 1 / 2 页");
+
+		const next = wrapper.findAll("button").find((b) => b.text() === "下一页");
+		expect(next).toBeDefined();
+		await next?.trigger("click");
+		await next?.trigger("click"); // a re-fire while already at the last page
+		await flushPromises();
+
+		expect(wrapper.text()).toContain("第 2 / 2 页");
+		expect(wrapper.text()).not.toContain("第 3 / 2 页");
+	});
+
 	it("deactivates a reader after confirmation and patches the row inactive", async () => {
 		listMock.mockReturnValue(fakeListing([fakeReader()]));
 		vi.stubGlobal(
