@@ -2,7 +2,7 @@
   "ril_version": 1,
   "round": 278,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-07T10:58:28+00:00",
+  "updated_at": "2026-09-07T11:15:59+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -19826,6 +19826,29 @@
       "touched_round": 278,
       "commit": "74de22c",
       "title": "fix(admin): dashboard analytics card inline retry (TASK-317, ISS-413)"
+    },
+    "DEC-268": {
+      "id": "DEC-268",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-07T11:15:17+00:00",
+      "updated_at": "2026-09-07T11:15:17+00:00",
+      "touched_round": 278,
+      "title": "Bound the recommendations candidate pool; retain reader_history_stats totals as a deliberate whole-history sum",
+      "rationale": "TASK-309 flagged two unbounded loads. recommend_posts scored in Python over a retrieve-all of every public post - capped to CANDIDATE_SCAN_LIMIT=2000 most-recent (CHG-423). reader_history_stats totals are defined over the whole history and need each visible post content - a bounded window would change user-visible numbers, so retained; the recent-6 surface is already bounded. Remaining TASK-309 half is reviewed-and-retained.",
+      "alternatives_rejected": "SQL rewrite of per-reader affinity weights (fragile); windowing history totals (changes public API semantics)."
+    },
+    "CHG-423": {
+      "id": "CHG-423",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-07T11:15:59+00:00",
+      "updated_at": "2026-09-07T11:15:59+00:00",
+      "touched_round": 278,
+      "commit": "b28407d",
+      "title": "perf(reader): bound the recommendations candidate scan (TASK-309, DEC-268, round 279)"
     }
   },
   "edges": [
@@ -29463,6 +29486,18 @@
       "to": "TASK-317",
       "type": "implements",
       "created_at": "2026-09-07T10:58:28+00:00"
+    },
+    {
+      "from": "DEC-268",
+      "to": "TASK-309",
+      "type": "governs",
+      "created_at": "2026-09-07T11:15:17+00:00"
+    },
+    {
+      "from": "CHG-423",
+      "to": "TASK-309",
+      "type": "implements",
+      "created_at": "2026-09-07T11:15:59+00:00"
     }
   ]
 }
