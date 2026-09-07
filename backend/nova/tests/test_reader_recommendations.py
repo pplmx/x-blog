@@ -144,6 +144,39 @@ class TestRecommendations:
         rev = [p.slug for p in reversed(posts)]
         assert [r["slug"] for r in all_recs] == rev
 
+    def test_candidate_scan_is_bounded(self, client, db_session):
+        """The Python-side candidate pool is capped (round 278 perf): an
+        unbounded retrieve would materialize every public post per request.
+        Shrinking the cap to 2 must limit recommendations to the two newest
+        candidates even when older same-affinity posts exist."""
+        from datetime import datetime, timedelta
+
+        import app.crud as crud
+
+        original = crud.CANDIDATE_SCAN_LIMIT
+        crud.CANDIDATE_SCAN_LIMIT = 2
+        try:
+            token = _token(client)
+            ai = _category(db_session, "AI")
+            source = _post(db_session, "Source", category=ai)
+            posts = [_post(db_session, f"Cap{i}", category=ai) for i in range(5)]
+            _read(client, token, source.id)
+
+            # Make the created_at order explicit (recency is the cap's axis):
+            # posts[0] oldest … posts[4] newest.
+            base = datetime(2024, 9, 1)
+            for i, p in enumerate(posts):
+                p.created_at = base + timedelta(minutes=i)
+            db_session.commit()
+
+            recs = _recs(client, token)
+            # Only the two most-recent candidates survive the capped scan — the
+            # older same-affinity posts are beyond the window, proving the cap
+            # binds rather than scanning the whole table.
+            assert [r["slug"] for r in recs] == [posts[4].slug, posts[3].slug]
+        finally:
+            crud.CANDIDATE_SCAN_LIMIT = original
+
     def test_isolated_between_readers(self, client, db_session):
         ai = _category(db_session, "AI")
         dev = _category(db_session, "DevOps")

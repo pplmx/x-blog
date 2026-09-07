@@ -27,6 +27,12 @@ logger = get_logger(__name__)
 # cascade from Post (the DEC-009 additive-table convention, integrity enforced
 # at the API layer). delete_post must purge these rows explicitly or every post
 # delete leaves permanent orphan rows (RIL ISS-296).
+# Cap on the recommendation candidate pool (round 278): recommend_posts scores
+# candidates in Python, so without a bound it would materialize every public
+# post per request — an O(all posts) authenticated-triggerable load. 2000 keeps
+# behavior identical on blogs under the cap and hard-bounds a pathological one.
+CANDIDATE_SCAN_LIMIT = 2000
+
 _POST_CHILD_TABLES: list[tuple[Any, Any]] = [
     (models.ReaderBookmark, models.ReaderBookmark.post_id),
     (models.ReadingHistory, models.ReadingHistory.post_id),
@@ -2236,13 +2242,26 @@ def recommend_posts(db: Session, reader_id: int, limit: int = 6) -> list[models.
     if not category_weight and not tag_weight:
         return []
 
+    # Bound the candidate scan: scoring runs in Python, so a retrieve-all would
+    # materialize EVERY public post (incl. their 200KB+ content column) per
+    # request — an O(all posts) load on an authenticated-triggerable endpoint
+    # (round 278 perf finding). Cap the pool to the most-recent
+    # CANDIDATE_SCAN_LIMIT posts (effective-publish desc — the same "when it
+    # went live" line every other list uses), which keeps the heuristic's
+    # quality identical on blogs under the cap while hard-bounding a
+    # pathological install. Already-known posts are excluded before the cap.
     candidate_query = db.query(models.Post).filter(
         models.Post.published.is_(True),
         or_(models.Post.publish_at.is_(None), models.Post.publish_at <= now),
     )
     if known_ids:
         candidate_query = candidate_query.filter(models.Post.id.notin_(list(known_ids)))
-    candidates = candidate_query.options(joinedload(models.Post.category), joinedload(models.Post.tags)).all()
+    candidates = (
+        candidate_query.options(joinedload(models.Post.category), joinedload(models.Post.tags))
+        .order_by(_effective_publish_col().desc(), models.Post.id.desc())
+        .limit(CANDIDATE_SCAN_LIMIT)
+        .all()
+    )
 
     def affinity(post: models.Post) -> int:
         score = 0
