@@ -43,8 +43,8 @@ describe("CommentForm reader identity", () => {
 		reader.value = { id: 1, email: "r@example.com", display_name: "Riki" };
 		const wrapper = await mountForm();
 		expect(wrapper.find("#reader-comment-identity").exists()).toBe(true);
-		expect(wrapper.find("#comment-nickname").exists()).toBe(false);
-		expect(wrapper.find("#comment-email").exists()).toBe(false);
+		expect(wrapper.find('input[autocomplete="nickname"]').exists()).toBe(false);
+		expect(wrapper.find('input[autocomplete="email"]').exists()).toBe(false);
 	});
 
 	it("submits account identity when signed in", async () => {
@@ -76,7 +76,7 @@ describe("CommentForm reader identity", () => {
 	it("keeps anonymous nickname/email inputs when signed out", async () => {
 		const wrapper = await mountForm();
 		expect(wrapper.find("#reader-comment-identity").exists()).toBe(false);
-		expect(wrapper.find("#comment-nickname").exists()).toBe(true);
-		expect(wrapper.find("#comment-email").exists()).toBe(true);
+		expect(wrapper.find('input[autocomplete="nickname"]').exists()).toBe(true);
+		expect(wrapper.find('input[autocomplete="email"]').exists()).toBe(true);
 	});
 });

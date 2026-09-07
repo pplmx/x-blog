@@ -751,9 +751,9 @@ describe("CommentList", () => {
 				await flushPromises();
 
 				// Anonymous reply: fill the inline form and submit.
-				await wrapper.find("#comment-nickname").setValue("Replier");
-				await wrapper.find("#comment-email").setValue("r@example.com");
-				await wrapper.find("#comment-content").setValue("brand new reply");
+				await wrapper.find('input[autocomplete="nickname"]').setValue("Replier");
+				await wrapper.find('input[autocomplete="email"]').setValue("r@example.com");
+				await wrapper.find("textarea").setValue("brand new reply");
 				await wrapper.find("form").trigger("submit.prevent");
 				await flushPromises();
 
@@ -1208,7 +1208,7 @@ describe("CommentList", () => {
 			if (!aliceBtn) throw new Error("expected a reply button");
 			await aliceBtn.trigger("click");
 			await flushPromises();
-			const textarea = wrapper.find("#comment-content");
+			const textarea = wrapper.find("textarea");
 			expect(textarea.exists()).toBe(true);
 			await textarea.setValue("Careful draft.");
 			await flushPromises();
@@ -1224,7 +1224,7 @@ describe("CommentList", () => {
 			expect(confirmSpy).toHaveBeenCalled();
 			// Still replying to Alice, draft intact, form still mounted.
 			expect(wrapper.text()).toContain("正在回复 Alice");
-			expect((wrapper.find("#comment-content").element as HTMLTextAreaElement).value).toBe(
+			expect((wrapper.find("textarea").element as HTMLTextAreaElement).value).toBe(
 				"Careful draft.",
 			);
 		});
@@ -1237,7 +1237,7 @@ describe("CommentList", () => {
 			if (!aliceBtn) throw new Error("expected a reply button");
 			await aliceBtn.trigger("click");
 			await flushPromises();
-			await wrapper.find("#comment-content").setValue("Draft to trash.");
+			await wrapper.find("textarea").setValue("Draft to trash.");
 			await flushPromises();
 
 			const nextReply = wrapper.findAll("button").find((b) => b.text() === "回复");
@@ -1257,7 +1257,7 @@ describe("CommentList", () => {
 			if (!aliceBtn) throw new Error("expected a reply button");
 			await aliceBtn.trigger("click");
 			await flushPromises();
-			await wrapper.find("#comment-content").setValue("Careful draft.");
+			await wrapper.find("textarea").setValue("Careful draft.");
 			await flushPromises();
 
 			// Two "取消回复" buttons now: Alice's row toggle (earlier in DOM) and
@@ -1270,7 +1270,7 @@ describe("CommentList", () => {
 
 			expect(confirmSpy).toHaveBeenCalled();
 			expect(wrapper.text()).toContain("正在回复 Alice");
-			expect((wrapper.find("#comment-content").element as HTMLTextAreaElement).value).toBe(
+			expect((wrapper.find("textarea").element as HTMLTextAreaElement).value).toBe(
 				"Careful draft.",
 			);
 		});
@@ -1479,10 +1479,10 @@ describe("CommentList", () => {
 			await replyBtn.trigger("click");
 			await flushPromises();
 			await vi.waitFor(() => {
-				expect(wrapper.find("#comment-content").exists()).toBe(true);
+				expect(wrapper.find("textarea").exists()).toBe(true);
 			});
 
-			await wrapper.find("#comment-content").setValue("A fresh reply");
+			await wrapper.find("textarea").setValue("A fresh reply");
 			await flushPromises();
 			// The POST succeeds; the refresh that follows it fails.
 			mockCreateComment.mockResolvedValueOnce({
@@ -1502,7 +1502,7 @@ describe("CommentList", () => {
 			// ...but the refresh failed: the form must STAY open (a re-click would
 			// now re-open), and the success note must still be visible so the
 			// reader knows their comment posted.
-			expect(wrapper.find("#comment-content").exists()).toBe(true);
+			expect(wrapper.find("textarea").exists()).toBe(true);
 			expect(wrapper.text()).toContain("评论提交成功，等待审核中！");
 			expect(wrapper.text()).toContain("评论刷新失败，请重试。");
 		});

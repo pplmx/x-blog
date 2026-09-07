@@ -145,6 +145,38 @@ describe("HeaderSearch", () => {
 		expect(wrapper.find(".text-red-600").exists()).toBe(false);
 	});
 
+	it("does not repopulate stale results after the query is cleared mid-flight (round 278)", async () => {
+		// Clearing the box while a previous keystroke's search is in flight must
+		// invalidate it: the empty branch used to leave requestSeq untouched, so
+		// the slow response resolved with seq === requestSeq and committed
+		// results under an already-empty input — a reader could click a
+		// "result" that had nothing to do with the box.
+		vi.useFakeTimers();
+		let resolveSearch!: (v: unknown) => void;
+		const { wrapper } = mountHeaderSearch(
+			() =>
+				new Promise((res) => {
+					resolveSearch = res;
+				}),
+		);
+		const input = wrapper.find('input[role="combobox"]');
+		await input.setValue("fast");
+		await vi.advanceTimersByTimeAsync(300); // debounce fires; request hangs
+		await flushPromises();
+
+		// Clear the query while the search is still in flight…
+		await input.setValue("");
+		await flushPromises();
+		expect(wrapper.findAll("li").length).toBe(0);
+
+		// …the stale response must NOT repopulate the dropdown.
+		resolveSearch(mockSearchResponse);
+		await flushPromises();
+		expect(wrapper.findAll("li").length).toBe(0);
+		expect(wrapper.text()).not.toContain("Nuxt Guide");
+		vi.useRealTimers();
+	});
+
 	it("shows a failure notice — not 'no matches' — when the search request errors", async () => {
 		// Regression (ISS-309): the search used a raw $fetch that bypassed the
 		// transport's 429 detector, so a rate-limited search-as-you-type read as

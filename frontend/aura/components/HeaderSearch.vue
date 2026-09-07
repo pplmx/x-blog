@@ -64,6 +64,12 @@ function onInput(): void {
 	activeIndex.value = -1;
 	const q = query.value.trim();
 	if (!q) {
+		// Invalidate any in-flight search: a slow response from a PREVIOUS
+		// keystroke must not repopulate the dropdown under an already-cleared
+		// box (the empty branch previously left requestSeq untouched, so the
+		// stale response committed and a reader could click a result unrelated
+		// to the query — round 278).
+		requestSeq += 1;
 		results.value = [];
 		searched.value = false;
 		loading.value = false;

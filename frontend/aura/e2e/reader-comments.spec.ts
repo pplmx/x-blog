@@ -56,13 +56,13 @@ test.describe("Reader-attributed comments", () => {
 		// The signed-in comment form shows the verified identity instead of the
 		// nickname/email inputs (SSR renders the anonymous form first, so wait
 		// for client hydration to flip the form to the reader identity).
-		await expect(page.locator("#comment-content")).toBeVisible({ timeout: 10000 });
+		await expect(page.locator("[id^='comment-content']")).toBeVisible({ timeout: 10000 });
 		await expect(page.locator("#reader-comment-identity")).toBeVisible({ timeout: 10000 });
-		await expect(page.locator("#comment-nickname")).toHaveCount(0);
-		await expect(page.locator("#comment-email")).toHaveCount(0);
+		await expect(page.locator("[id^='comment-nickname']")).toHaveCount(0);
+		await expect(page.locator("[id^='comment-email']")).toHaveCount(0);
 
 		// Submit a comment; it's pending moderation but recorded with our identity.
-		await page.locator("#comment-content").fill("A verified reader comment");
+		await page.locator("[id^='comment-content']").fill("A verified reader comment");
 		await page.locator("button[type='submit']").first().click();
 		await expect(page.locator("text=评论提交成功，等待审核中！")).toBeVisible({ timeout: 5000 });
 	});

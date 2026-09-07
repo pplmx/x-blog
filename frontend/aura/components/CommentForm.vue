@@ -25,8 +25,8 @@
       <!-- Anti-spam honeypot: visually hidden, screens off for AT/human users.
            A bot filling every field lands here and the backend rejects it. -->
       <div class="absolute left-[-9999px] top-auto h-1 w-1 overflow-hidden" aria-hidden="true">
-        <label for="comment-hp">Website</label>
-        <input id="comment-hp" v-model="form.website" type="text" tabindex="-1" autocomplete="off" />
+        <label :for="fieldId('comment-hp')">Website</label>
+        <input :id="fieldId('comment-hp')" v-model="form.website" type="text" tabindex="-1" autocomplete="off" />
       </div>
 
       <!-- Signed-in reader: identity comes from the account, no name/email
@@ -43,11 +43,11 @@
       <div v-else class="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
           <label
-            for="comment-nickname"
+            :for="fieldId('comment-nickname')"
             class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5"
           >{{ t('components.commentForm.nickname') }}</label>
           <input
-            id="comment-nickname"
+            :id="fieldId('comment-nickname')"
             v-model="form.nickname"
             type="text"
             required
@@ -58,11 +58,11 @@
         </div>
         <div>
           <label
-            for="comment-email"
+            :for="fieldId('comment-email')"
             class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5"
           >{{ t('components.commentForm.email') }}</label>
           <input
-            id="comment-email"
+            :id="fieldId('comment-email')"
             v-model="form.email"
             type="email"
             required
@@ -75,11 +75,11 @@
 
       <div>
         <label
-          for="comment-content"
+          :for="fieldId('comment-content')"
           class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5"
         >{{ t('components.commentForm.content') }}</label>
         <textarea
-          id="comment-content"
+          :id="fieldId('comment-content')"
           ref="contentRef"
           v-model="form.content"
           required
@@ -117,10 +117,20 @@
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, onMounted, ref, watch } from "vue";
+import { computed, nextTick, onMounted, ref, useId, watch } from "vue";
 import type { Comment } from "~~/api/contracts/shared";
 import { createComment } from "~~/api/public/comments";
 import { useReaderAuth } from "~~/composables/useReaderAuth";
+
+// A post page mounts TWO CommentForms at once — the standalone bottom-of-page
+// form and (while open) an inline reply form — so the DOM ids must be unique
+// per instance: duplicate `comment-content` etc. made `label for` resolve to
+// the FIRST element in document order (clicking one form's label focused the
+// other's textarea) and broke WCAG 4.1.1 (round 278). useId() is captured ONCE
+// per instance (it returns a fresh id on every call) and is SSR-hydration
+// stable, so label `for` and input `id` always agree.
+const instanceId = useId();
+const fieldId = (name: string) => `${name}-${instanceId}`;
 
 interface Props {
 	postId: number;

@@ -75,7 +75,7 @@ test.describe("Reader my-comments journey", () => {
 		await page.locator("form").press("Enter");
 		await page.waitForURL("**/bookmarks");
 		await page.goto(postHref);
-		await page.locator("#comment-content").fill("A pending comment from my-comments e2e");
+		await page.locator("[id^='comment-content']").fill("A pending comment from my-comments e2e");
 		await page.locator("button[type='submit']").first().click();
 		await expect(page.locator("text=评论提交成功，等待审核中！")).toBeVisible({ timeout: 5000 });
 

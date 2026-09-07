@@ -65,20 +65,20 @@ describe("CommentForm", () => {
 
 		it("emits update:dirty(true) once the reader types, and false again when cleared", async () => {
 			const wrapper = await mountCommentForm();
-			await wrapper.find("#comment-content").setValue("hello");
+			await wrapper.find("textarea").setValue("hello");
 			await flushPromises();
 			expect(wrapper.emitted("update:dirty")?.at(-1)).toEqual([true]);
 
-			await wrapper.find("#comment-content").setValue("");
+			await wrapper.find("textarea").setValue("");
 			await flushPromises();
 			expect(wrapper.emitted("update:dirty")?.at(-1)).toEqual([false]);
 		});
 
 		it("emits update:dirty(false) after a successful submit clears the form", async () => {
 			const wrapper = await mountCommentForm();
-			await wrapper.find("#comment-nickname").setValue("n");
-			await wrapper.find("#comment-email").setValue("a@b.c");
-			await wrapper.find("#comment-content").setValue("hi");
+			await wrapper.find('input[autocomplete="nickname"]').setValue("n");
+			await wrapper.find('input[autocomplete="email"]').setValue("a@b.c");
+			await wrapper.find("textarea").setValue("hi");
 			await wrapper.find("form").trigger("submit.prevent");
 			await flushPromises();
 			expect(wrapper.emitted("update:dirty")?.at(-1)).toEqual([false]);
@@ -93,14 +93,14 @@ describe("CommentForm", () => {
 
 		it("renders nickname input field", async () => {
 			const wrapper = await mountCommentForm();
-			const nicknameInput = wrapper.find("#comment-nickname");
+			const nicknameInput = wrapper.find('input[autocomplete="nickname"]');
 			expect(nicknameInput.exists()).toBe(true);
 			expect(nicknameInput.attributes("placeholder")).toContain("昵称");
 		});
 
 		it("renders email input field", async () => {
 			const wrapper = await mountCommentForm();
-			const emailInput = wrapper.find("#comment-email");
+			const emailInput = wrapper.find('input[autocomplete="email"]');
 			expect(emailInput.exists()).toBe(true);
 			expect(emailInput.attributes("placeholder")).toContain("邮箱");
 		});
@@ -128,7 +128,7 @@ describe("CommentForm", () => {
 	describe("Form binding", () => {
 		it("binds nickname input to form.nickname", async () => {
 			const wrapper = await mountCommentForm();
-			const nicknameInput = wrapper.find("#comment-nickname") as any;
+			const nicknameInput = wrapper.find('input[autocomplete="nickname"]') as any;
 			await nicknameInput.setValue("Alice");
 			expect(nicknameInput.element.value).toBe("Alice");
 		});
@@ -158,7 +158,7 @@ describe("CommentForm", () => {
 
 		it("does NOT call createComment when email is empty", async () => {
 			const wrapper = await mountCommentForm();
-			await (wrapper.find("#comment-nickname") as any).setValue("Alice");
+			await (wrapper.find('input[autocomplete="nickname"]') as any).setValue("Alice");
 			// Don't set email
 			await (wrapper.find("textarea") as any).setValue("Content here");
 			await wrapper.find("form").trigger("submit.prevent");
@@ -167,7 +167,7 @@ describe("CommentForm", () => {
 
 		it("does NOT call createComment when content is empty", async () => {
 			const wrapper = await mountCommentForm();
-			await (wrapper.find("#comment-nickname") as any).setValue("Alice");
+			await (wrapper.find('input[autocomplete="nickname"]') as any).setValue("Alice");
 			await (wrapper.find('input[type="email"]') as any).setValue("alice@test.com");
 			// Don't set content
 			await wrapper.find("form").trigger("submit.prevent");
@@ -176,7 +176,7 @@ describe("CommentForm", () => {
 
 		it("submits when all fields are filled", async () => {
 			const wrapper = await mountCommentForm();
-			await (wrapper.find("#comment-nickname") as any).setValue("Alice");
+			await (wrapper.find('input[autocomplete="nickname"]') as any).setValue("Alice");
 			await (wrapper.find('input[type="email"]') as any).setValue("alice@test.com");
 			await (wrapper.find("textarea") as any).setValue("Great post!");
 			await wrapper.find("form").trigger("submit.prevent");
@@ -209,7 +209,7 @@ describe("CommentForm", () => {
 						resolveCreate = resolve;
 					}),
 			);
-			await (wrapper.find("#comment-nickname") as any).setValue("Alice");
+			await (wrapper.find('input[autocomplete="nickname"]') as any).setValue("Alice");
 			await (wrapper.find('input[type="email"]') as any).setValue("alice@test.com");
 			await (wrapper.find("textarea") as any).setValue("Great post!");
 
@@ -228,7 +228,7 @@ describe("CommentForm", () => {
 	describe("Submission success", () => {
 		it("shows success message after successful submission", async () => {
 			const wrapper = await mountCommentForm();
-			await (wrapper.find("#comment-nickname") as any).setValue("Alice");
+			await (wrapper.find('input[autocomplete="nickname"]') as any).setValue("Alice");
 			await (wrapper.find('input[type="email"]') as any).setValue("alice@test.com");
 			await (wrapper.find("textarea") as any).setValue("Great post!");
 			await wrapper.find("form").trigger("submit.prevent");
@@ -239,13 +239,13 @@ describe("CommentForm", () => {
 
 		it("clears the form after successful submission", async () => {
 			const wrapper = await mountCommentForm();
-			await (wrapper.find("#comment-nickname") as any).setValue("Alice");
+			await (wrapper.find('input[autocomplete="nickname"]') as any).setValue("Alice");
 			await (wrapper.find('input[type="email"]') as any).setValue("alice@test.com");
 			await (wrapper.find("textarea") as any).setValue("Great post!");
 			await wrapper.find("form").trigger("submit.prevent");
 			await flushPromises();
 
-			expect((wrapper.find("#comment-nickname") as any).element.value).toBe("");
+			expect((wrapper.find('input[autocomplete="nickname"]') as any).element.value).toBe("");
 			expect((wrapper.find('input[type="email"]') as any).element.value).toBe("");
 			expect((wrapper.find("textarea") as any).element.value).toBe("");
 		});
@@ -254,7 +254,7 @@ describe("CommentForm", () => {
 			// First, do a successful submission
 			mockCreateComment.mockResolvedValue({});
 			let wrapper = await mountCommentForm({ postId: 1 });
-			await (wrapper.find("#comment-nickname") as any).setValue("Alice");
+			await (wrapper.find('input[autocomplete="nickname"]') as any).setValue("Alice");
 			await (wrapper.find('input[type="email"]') as any).setValue("alice@test.com");
 			await (wrapper.find("textarea") as any).setValue("Great post!");
 			await wrapper.find("form").trigger("submit.prevent");
@@ -266,7 +266,7 @@ describe("CommentForm", () => {
 			// Now do an error submission — need to re-mount since form is cleared
 			mockCreateComment.mockRejectedValue(new Error("Network error"));
 			wrapper = await mountCommentForm({ postId: 1, submitResult: "error" });
-			await (wrapper.find("#comment-nickname") as any).setValue("Alice");
+			await (wrapper.find('input[autocomplete="nickname"]') as any).setValue("Alice");
 			await (wrapper.find('input[type="email"]') as any).setValue("alice@test.com");
 			await (wrapper.find("textarea") as any).setValue("Great post!");
 			await wrapper.find("form").trigger("submit.prevent");
@@ -281,7 +281,7 @@ describe("CommentForm", () => {
 	describe("Submission error", () => {
 		it("shows error message when submission fails", async () => {
 			const wrapper = await mountCommentForm({ submitResult: "error" });
-			await (wrapper.find("#comment-nickname") as any).setValue("Alice");
+			await (wrapper.find('input[autocomplete="nickname"]') as any).setValue("Alice");
 			await (wrapper.find('input[type="email"]') as any).setValue("alice@test.com");
 			await (wrapper.find("textarea") as any).setValue("Great post!");
 			await wrapper.find("form").trigger("submit.prevent");
@@ -293,7 +293,7 @@ describe("CommentForm", () => {
 
 		it("shows error message with the error text", async () => {
 			const wrapper = await mountCommentForm({ submitResult: "error" });
-			await (wrapper.find("#comment-nickname") as any).setValue("Alice");
+			await (wrapper.find('input[autocomplete="nickname"]') as any).setValue("Alice");
 			await (wrapper.find('input[type="email"]') as any).setValue("alice@test.com");
 			await (wrapper.find("textarea") as any).setValue("Great post!");
 			await wrapper.find("form").trigger("submit.prevent");
@@ -314,7 +314,7 @@ describe("CommentForm", () => {
 			mockCreateComment.mockReturnValue(submitPromise);
 
 			// Set fields
-			await (wrapper.find("#comment-nickname") as any).setValue("Alice");
+			await (wrapper.find('input[autocomplete="nickname"]') as any).setValue("Alice");
 			await (wrapper.find('input[type="email"]') as any).setValue("alice@test.com");
 			await (wrapper.find("textarea") as any).setValue("Great post!");
 
@@ -350,6 +350,49 @@ describe("CommentForm", () => {
 				"Half-typed reply",
 			);
 			vi.unstubAllGlobals();
+		});
+	});
+
+	describe("Per-instance field ids (round 278)", () => {
+		it("gives coexisting forms distinct field ids so labels bind within their own form", async () => {
+			// A post page mounts the standalone bottom form and (while open) an
+			// inline reply form at once. Duplicate `comment-nickname`/`comment-
+			// content` etc. made `label for` resolve to the FIRST element in
+			// document order — clicking one form's label focused the other's
+			// textarea — and broke WCAG 4.1.1 (unique id values).
+			mockCreateComment.mockReset().mockResolvedValue({});
+			const wrapper = mount(
+				{
+					components: { CommentForm },
+					template: "<div><CommentForm :post-id='1'/><CommentForm :post-id='1'/></div>",
+				},
+				{
+					attachTo: document.body,
+					global: {
+						stubs: {
+							Icon: { template: '<svg class="iconstub" />', props: ["icon"] },
+						},
+					},
+				},
+			);
+			await flushPromises();
+
+			// Two nickname inputs, each with its own unique id…
+			const nicknameIds = [...document.querySelectorAll('input[autocomplete="nickname"]')].map(
+				(el) => el.id,
+			);
+			expect(nicknameIds.length).toBe(2);
+			expect(new Set(nicknameIds).size).toBe(2);
+			// …and no id on the page is duplicated (WCAG 4.1.1 first test)…
+			const allIds = [...document.querySelectorAll("[id]")].map((el) => el.id);
+			const dupes = allIds.filter((v, i) => allIds.indexOf(v) !== i);
+			expect(dupes).toEqual([]);
+			// …each label's for targets an input in its own form (both textareas
+			// find their own label, not the sibling form's).
+			for (const ta of document.querySelectorAll("textarea")) {
+				expect(document.querySelector(`label[for="${ta.id}"]`)).not.toBeNull();
+			}
+			wrapper.unmount();
 		});
 	});
 });
