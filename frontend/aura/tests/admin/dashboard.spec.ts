@@ -164,6 +164,8 @@ let failPostsOverride = false;
 let posts401Override = false;
 let commentsOverride: unknown = null;
 let trendOverride: unknown = null;
+// True → the reading-trend analytics endpoint 500s (per-card failure drill).
+let failTrendOverride = false;
 let followsOverride: unknown = null;
 let searchesOverride: unknown = null;
 let commentStatsOverride: unknown = null;
@@ -217,7 +219,10 @@ vi.stubGlobal(
 		if (u.includes("/api/stats")) return { ...statsOverride };
 		// Reading-trend analytics (DEC-086): zero-filled 30-day series so the
 		// trend card renders (and stays deterministic) without real data.
-		if (u.includes("/api/admin/stats/views")) return trendOverride ?? mockTrendResult;
+		if (u.includes("/api/admin/stats/views")) {
+			if (failTrendOverride) throw new Error("trend analytics 500");
+			return trendOverride ?? mockTrendResult;
+		}
 		// Follow analytics (DEC-144/TASK-184).
 		if (u.includes("/api/admin/stats/follows")) return followsOverride ?? mockFollowsResult;
 		// Search-term analytics (DEC-152/TASK-188).
@@ -582,6 +587,37 @@ describe("Admin Dashboard Page", () => {
 			const wrapper = await mountWithSuspense(DashboardPage);
 			expect(wrapper.text()).toContain("评论活跃度");
 			expect(wrapper.text()).toContain("Hot Thread");
+		});
+	});
+
+	describe("Per-card analytics failure (round 278)", () => {
+		it("surfaces a failed analytics card with an inline retry that recovers it", async () => {
+			// A single failing analytics endpoint used to silently hide its card
+			// with no message — the global loadError/retry only fires when the
+			// whole load fails, so the operator saw a permanently missing card
+			// with no recovery short of a full reload.
+			failTrendOverride = true;
+			try {
+				const DashboardPage = await loadPage();
+				const wrapper = await mountWithSuspense(DashboardPage);
+				await flushPromises();
+
+				// The failed axis is visible as an inline failure, not a gap…
+				expect(wrapper.text()).toContain("此数据块加载失败，可点重试重新获取。");
+				// …and its healthy siblings still render.
+				expect(wrapper.text()).toContain("热门搜索");
+
+				// The inline retry re-runs just that fetch and the card returns.
+				failTrendOverride = false;
+				const retryBtn = wrapper.findAll("button").find((b) => b.text() === "重试");
+				expect(retryBtn).toBeDefined();
+				await retryBtn?.trigger("click");
+				await flushPromises();
+				expect(wrapper.text()).not.toContain("此数据块加载失败，可点重试重新获取。");
+				expect(wrapper.text()).toContain("阅读趋势"); // the trend card is back
+			} finally {
+				failTrendOverride = false;
+			}
 		});
 	});
 

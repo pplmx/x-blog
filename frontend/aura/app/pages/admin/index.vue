@@ -98,6 +98,78 @@ const commentMax = computed(() =>
 function commentPct(count: number): number {
 	return Math.round((count / commentMax.value) * 100);
 }
+
+// Per-analytics failure state (round 278): a failing axis used to hide its
+// card with no message and no recovery except a full reload — the global
+// loadError/retry only fires when the WHOLE dashboard load fails, so a single
+// endpoint 500 silently orphaned that card. Each axis now records its own
+// failure and the card renders an inline "failed — retry" affordance that
+// re-runs just that fetch.
+type AnalyticsKey = "views" | "follows" | "searches" | "comments";
+const analyticsFailed = ref<Set<AnalyticsKey>>(new Set());
+function setAnalyticsFailed(key: AnalyticsKey, failed: boolean): void {
+	const next = new Set(analyticsFailed.value);
+	if (failed) next.add(key);
+	else next.delete(key);
+	analyticsFailed.value = next;
+}
+function isAnalyticsFailed(key: AnalyticsKey): boolean {
+	return analyticsFailed.value.has(key);
+}
+
+async function loadViewsTrend(): Promise<void> {
+	try {
+		viewsTrend.value = await $fetch<ViewsTrend>(`${apiBase}/api/admin/stats/views?days=30`, {
+			headers: authHeaders(),
+		});
+		setAnalyticsFailed("views", false);
+	} catch {
+		viewsTrend.value = null;
+		setAnalyticsFailed("views", true);
+	}
+}
+async function loadFollowStats(): Promise<void> {
+	try {
+		followStats.value = await $fetch<FollowStats>(`${apiBase}/api/admin/stats/follows`, {
+			headers: authHeaders(),
+		});
+		setAnalyticsFailed("follows", false);
+	} catch {
+		followStats.value = null;
+		setAnalyticsFailed("follows", true);
+	}
+}
+async function loadTopSearches(): Promise<void> {
+	try {
+		topSearches.value = await $fetch<SearchTerm[]>(`${apiBase}/api/admin/stats/searches`, {
+			headers: authHeaders(),
+		});
+		setAnalyticsFailed("searches", false);
+	} catch {
+		topSearches.value = null;
+		setAnalyticsFailed("searches", true);
+	}
+}
+async function loadCommentActivity(): Promise<void> {
+	try {
+		commentActivity.value = await $fetch<CommentActivity>(`${apiBase}/api/admin/stats/comments`, {
+			headers: authHeaders(),
+		});
+		setAnalyticsFailed("comments", false);
+	} catch {
+		commentActivity.value = null;
+		setAnalyticsFailed("comments", true);
+	}
+}
+const analyticsLoaders: Record<AnalyticsKey, () => Promise<void>> = {
+	views: loadViewsTrend,
+	follows: loadFollowStats,
+	searches: loadTopSearches,
+	comments: loadCommentActivity,
+};
+function retryAnalyticsCard(key: AnalyticsKey): void {
+	void analyticsLoaders[key]();
+}
 function commentDayShort(iso: string): string {
 	const [, m, d] = iso.split("-");
 	return `${Number(m)}/${Number(d)}`;
@@ -140,16 +212,7 @@ async function loadDashboard(): Promise<void> {
 			if (postsPage.length >= res.pagination.total) break;
 			page += 1;
 		}
-		const [
-			catData,
-			tagData,
-			commentsData,
-			statsData,
-			trendData,
-			followsData,
-			searchesData,
-			commentsActivityData,
-		] = await Promise.all([
+		const [catData, tagData, commentsData, statsData] = await Promise.all([
 			$fetch<Category[]>(`${apiBase}/api/admin/categories`, { headers: authHeaders() }),
 			$fetch<Tag[]>(`${apiBase}/api/admin/tags`, { headers: authHeaders() }),
 			$fetch<AdminCommentListResponse>(`${apiBase}/api/admin/comments`, {
@@ -157,33 +220,20 @@ async function loadDashboard(): Promise<void> {
 				headers: authHeaders(),
 			}),
 			$fetch<BlogStats>(`${apiBase}/api/stats`),
-			// Reading-trend analytics (DEC-086): best-effort — a failure just
-			// hides the trend card rather than blocking the whole dashboard.
-			$fetch<ViewsTrend>(`${apiBase}/api/admin/stats/views?days=30`, {
-				headers: authHeaders(),
-			}).catch(() => null),
-			// Follow analytics (DEC-144/TASK-184): best-effort.
-			$fetch<FollowStats>(`${apiBase}/api/admin/stats/follows`, {
-				headers: authHeaders(),
-			}).catch(() => null),
-			// Search-term analytics (DEC-152/TASK-188): best-effort.
-			$fetch<SearchTerm[]>(`${apiBase}/api/admin/stats/searches`, {
-				headers: authHeaders(),
-			}).catch(() => null),
-			// Comment activity (DEC-154/TASK-189): best-effort.
-			$fetch<CommentActivity>(`${apiBase}/api/admin/stats/comments`, {
-				headers: authHeaders(),
-			}).catch(() => null),
+			// Analytics axes (DEC-086/144/152/154): best-effort loads that fill
+			// their own refs and record per-axis failure — a single 500 hides
+			// that card WITH an inline retry instead of silently vanishing or
+			// blocking the whole dashboard (round 278).
+			loadViewsTrend(),
+			loadFollowStats(),
+			loadTopSearches(),
+			loadCommentActivity(),
 		]);
 		posts.value = postsPage;
 		categories.value = catData;
 		tags.value = tagData;
 		allComments.value = commentsData.items;
 		blogStats.value = statsData;
-		viewsTrend.value = trendData;
-		followStats.value = followsData;
-		topSearches.value = searchesData;
-		commentActivity.value = commentsActivityData;
 	} catch (cause) {
 		// An expired/revoked admin session makes every admin call 401 — that is
 		// not a transient failure: drop the stale token and hard-redirect to
@@ -713,6 +763,22 @@ const stats = computed(() => [
         </div>
       </div>
     </div>
+    <div
+      v-else-if="isAnalyticsFailed('follows')"
+      class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 p-5 mb-8 flex items-center justify-between"
+    >
+      <div>
+        <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-1">{{ t("admin.dashboard.follows.title") }}</h3>
+        <p class="text-xs text-gray-400">{{ t("admin.dashboard.analyticsFailed") }}</p>
+      </div>
+      <button
+        type="button"
+        class="px-3 py-1.5 text-xs font-medium rounded-lg bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+        @click="retryAnalyticsCard('follows')"
+      >
+        {{ t("common.action.retry") }}
+      </button>
+    </div>
 
     <!-- Search-term analytics (DEC-152, TASK-188): what readers look for -->
     <div
@@ -740,6 +806,22 @@ const stats = computed(() => [
         </div>
       </div>
       <p v-else class="text-sm text-gray-400">{{ t("admin.dashboard.searches.empty") }}</p>
+    </div>
+    <div
+      v-else-if="isAnalyticsFailed('searches')"
+      class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 p-5 mb-8 flex items-center justify-between"
+    >
+      <div>
+        <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-1">{{ t("admin.dashboard.searches.title") }}</h3>
+        <p class="text-xs text-gray-400">{{ t("admin.dashboard.analyticsFailed") }}</p>
+      </div>
+      <button
+        type="button"
+        class="px-3 py-1.5 text-xs font-medium rounded-lg bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+        @click="retryAnalyticsCard('searches')"
+      >
+        {{ t("common.action.retry") }}
+      </button>
     </div>
 
     <!-- Comment activity (DEC-154, TASK-189): engagement axis -->
@@ -795,6 +877,22 @@ const stats = computed(() => [
         </ul>
       </div>
     </div>
+    <div
+      v-else-if="isAnalyticsFailed('comments')"
+      class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 p-5 mb-8 flex items-center justify-between"
+    >
+      <div>
+        <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-1">{{ t("admin.dashboard.comments.title") }}</h3>
+        <p class="text-xs text-gray-400">{{ t("admin.dashboard.analyticsFailed") }}</p>
+      </div>
+      <button
+        type="button"
+        class="px-3 py-1.5 text-xs font-medium rounded-lg bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+        @click="retryAnalyticsCard('comments')"
+      >
+        {{ t("common.action.retry") }}
+      </button>
+    </div>
 
     <!-- Reading trend (DEC-086): last-30-days view series + top posts -->
     <div
@@ -848,6 +946,22 @@ const stats = computed(() => [
           </li>
         </ul>
       </div>
+    </div>
+    <div
+      v-else-if="isAnalyticsFailed('views')"
+      class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 p-5 mb-8 flex items-center justify-between"
+    >
+      <div>
+        <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-1">{{ t("admin.dashboard.trend.title") }}</h3>
+        <p class="text-xs text-gray-400">{{ t("admin.dashboard.analyticsFailed") }}</p>
+      </div>
+      <button
+        type="button"
+        class="px-3 py-1.5 text-xs font-medium rounded-lg bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+        @click="retryAnalyticsCard('views')"
+      >
+        {{ t("common.action.retry") }}
+      </button>
     </div>
 
     <!-- Recent posts + Pending comments -->
