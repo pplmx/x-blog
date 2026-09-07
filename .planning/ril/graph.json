@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 281,
+  "round": 282,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-07T14:42:55+00:00",
+  "updated_at": "2026-09-07T14:48:55+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -19956,6 +19956,18 @@
       "confidence": 1.0,
       "title": "ISS-404 verified: regression test fails on the old unconditional notify (2==1) and passes with the gate",
       "content": "test_edit_of_public_comment_does_not_renotify_thread_followers asserts the follower durable-inbox total stays 1 across an edit of an approved comment; temporarily restoring the pre-fix unconditional _notify_comment_approved made it fail (assert 2 == 1), then pass after the gate. TestEditOwnComment 7 passed; approval/reply/thread + notification suites 39 passed."
+    },
+    "DEC-271": {
+      "id": "DEC-271",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-07T14:48:09+00:00",
+      "updated_at": "2026-09-07T14:48:09+00:00",
+      "touched_round": 281,
+      "rationale": "Quality-convergence reached for the polish/bug-fix directive (rounds 280-282): ISS-410 fake-timer flake fixed at the leaked-instance root (CHG-424, EV-226), guest reading-history migration delivered end-to-end (TASK-303/ISS-386 via CHG-425/426, DEC-270, EV-227), TASK-309 perf bounded (CHG-423, DEC-268), ISS-404 comment-edit notification re-fanout fixed (CHG-427, EV-228). Graph has 0 active tasks; every issue is resolved or deliberately deferred (multi-worker hardening ISS-242/243/244 via DEC-214). No TODO/FIXME in app code; only open GitHub issue is the Renovate dependency dashboard (not coding work). VERIFY fully green: backend 1336 passed, frontend 1582 passed, typecheck/ruff/pyright/biome clean. Parked; re-activated by a new operator direction.",
+      "alternatives_rejected": "Bumping dependencies via the Renovate dashboard (risk of formatter-gate drift, not user-visible polish); forcing the deliberately-deferred multi-worker hardening into the single-worker scope (DEC-214 said defer); manufacturing trivial per-page polish to keep commits flowing (the round-100+ grind anti-pattern).",
+      "title": "converged-idle: quality convergence reached for the polish/bug-fix directive (rounds 280-282)"
     }
   },
   "edges": [
