@@ -2,7 +2,7 @@
   "ril_version": 1,
   "round": 277,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-07T06:07:56+00:00",
+  "updated_at": "2026-09-07T07:13:00+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -22,7 +22,7 @@
       "version": 1,
       "created_at": "2026-08-06T13:23:41+00:00",
       "updated_at": "2026-08-06T13:23:41+00:00",
-      "touched_round": 276,
+      "touched_round": 277,
       "title": "frontend-aura",
       "description": "Nuxt 4 Vue 3 TypeScript frontend at frontend/aura; composables; admin pages; e2e Playwright; biome lint"
     },
@@ -19332,6 +19332,44 @@
       "title": "defer: standardize the list-response pagination envelope",
       "rationale": "Round-276 backend hunt flagged envelope inconsistency: /api/posts and /api/search nest {items, pagination:{...}}, /api/comments and reader lists return flat {items,total,page,limit,total_pages}, /api/admin/posts names the cursor skip and omits total_pages, related/popular return bare arrays. Aligning is a cross-endpoint contract change that would break every existing client (frontend api/* domain readers parse each shape) and is pure internal-consistency churn, not a user-visible defect; follows the established single-context frontend that already special-cases each shape. Not shipped this round.",
       "alternatives_rejected": "Wholesale rename to one nested envelope in one commit (breaks frontend + any external consumers with no migration); renaming only the admin skip key (cosmetic, churn outweighs value)."
+    },
+    "TASK-306": {
+      "id": "TASK-306",
+      "type": "task",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-07T07:11:34+00:00",
+      "updated_at": "2026-09-07T07:13:00+00:00",
+      "touched_round": 277,
+      "title": "Author preview load-failure dead end: no retry affordance on /preview/posts/:id",
+      "category": "usability",
+      "severity": "low",
+      "confidence": 0.95,
+      "effort": 0.5
+    },
+    "ISS-400": {
+      "id": "ISS-400",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-07T07:11:34+00:00",
+      "updated_at": "2026-09-07T07:13:00+00:00",
+      "touched_round": 277,
+      "title": "Preview page failed state shows the error but no Retry — the only load-error surface in the app without one",
+      "severity": "low",
+      "confidence": 0.95,
+      "effort": 0.5
+    },
+    "CHG-412": {
+      "id": "CHG-412",
+      "type": "change",
+      "status": "active",
+      "version": 2,
+      "created_at": "2026-09-07T07:12:15+00:00",
+      "updated_at": "2026-09-07T07:12:59+00:00",
+      "touched_round": 277,
+      "commit": "eb5d0f1",
+      "title": "Preview retry (TASK-306, ISS-400)"
     }
   },
   "edges": [
@@ -28651,6 +28689,30 @@
       "to": "COMP-002",
       "type": "located_in",
       "created_at": "2026-09-07T05:59:21+00:00"
+    },
+    {
+      "from": "TASK-306",
+      "to": "ISS-400",
+      "type": "addresses",
+      "created_at": "2026-09-07T07:12:59+00:00"
+    },
+    {
+      "from": "CHG-412",
+      "to": "TASK-306",
+      "type": "implements",
+      "created_at": "2026-09-07T07:12:59+00:00"
+    },
+    {
+      "from": "CHG-412",
+      "to": "ISS-400",
+      "type": "resolves",
+      "created_at": "2026-09-07T07:12:59+00:00"
+    },
+    {
+      "from": "ISS-400",
+      "to": "COMP-002",
+      "type": "located_in",
+      "created_at": "2026-09-07T07:12:59+00:00"
     }
   ]
 }
