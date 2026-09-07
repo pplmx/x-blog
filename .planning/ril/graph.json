@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 277,
+  "round": 278,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-07T07:13:00+00:00",
+  "updated_at": "2026-09-07T07:43:49+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -11,7 +11,7 @@
       "version": 1,
       "created_at": "2026-08-06T13:23:41+00:00",
       "updated_at": "2026-08-06T13:23:41+00:00",
-      "touched_round": 276,
+      "touched_round": 278,
       "title": "backend-nova",
       "description": "FastAPI Python 3.14 backend at backend/nova; SQLAlchemy ORM; routers in app/routers, crud.py business logic, 656 lines"
     },
@@ -19312,11 +19312,11 @@
     "DEC-265": {
       "id": "DEC-265",
       "type": "decision",
-      "status": "active",
-      "version": 1,
+      "status": "superseded",
+      "version": 2,
       "created_at": "2026-09-07T06:05:28+00:00",
-      "updated_at": "2026-09-07T06:05:28+00:00",
-      "touched_round": 276,
+      "updated_at": "2026-09-07T07:43:49+00:00",
+      "touched_round": 278,
       "title": "defer: porte /api/stats pending_comments (moderation backlog) off the public response",
       "rationale": "Round-276 backend hunt flagged that unauthenticated /api/stats exposes pending_comments (live unmoderated-queue depth), an inconsistency with the codebase's careful pending/rejected non-leak posture (CommentPublic strips it, reader lists filter it). Not shipped now because the admin dashboard's own metrics card reads the SAME public /api/stats for that value (admin/index.vue lines 154/384: blogStats.value?.pending_comments ?? local computed fallback) — removing it from the public response without moving the admin read to an admin-scoped endpoint would break/regress the dashboard's pending count and it already has a local fallback (allComments filter). Follow-up: add pending_comments (or better, a moderation-queue depth) to the existing admin-scoped /api/admin/stats surface and switch the dashboard over, then drop it from BlogStatsResponse.",
       "alternatives_rejected": "Immediately deleting the field from BlogStatsResponse (breaks the admin dashboard's primary source without a local fallback in all configs); leaving it undocumented (posture leak stays)."
@@ -19370,6 +19370,67 @@
       "touched_round": 277,
       "commit": "eb5d0f1",
       "title": "Preview retry (TASK-306, ISS-400)"
+    },
+    "ISS-401": {
+      "id": "ISS-401",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-07T07:42:20+00:00",
+      "updated_at": "2026-09-07T07:43:49+00:00",
+      "touched_round": 278,
+      "title": "Public /api/stats leaks the moderation backlog (pending_comments) to anonymous visitors — a spammer-prompt \"is my comment still pending?\" oracle and queue-depth scrape (DEC-265 defer now implemented)",
+      "severity": "high",
+      "confidence": 0.98,
+      "effort": 1.0
+    },
+    "TASK-307": {
+      "id": "TASK-307",
+      "type": "task",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-07T07:42:39+00:00",
+      "updated_at": "2026-09-07T07:43:49+00:00",
+      "touched_round": 278,
+      "category": "security",
+      "title": "Move the moderation backlog (pending_comments) off the public /api/stats onto the admin-scoped pending_count, and point the admin dashboard at it",
+      "severity": "high",
+      "confidence": 0.98,
+      "effort": 1.0
+    },
+    "DEC-267": {
+      "id": "DEC-267",
+      "type": "decision",
+      "status": "active",
+      "version": 2,
+      "created_at": "2026-09-07T07:42:39+00:00",
+      "updated_at": "2026-09-07T07:43:49+00:00",
+      "touched_round": 278,
+      "title": "implement: moderation backlog on public /api/stats is removed; authoritative pending_count lives on admin-scoped /api/admin/stats/comments (supersedes the DEC-265 defer)",
+      "rationale": "Round-276 hunt (TASK-305) flagged the anonymous moderation-state oracle; DEC-265 deferred it because the admin dashboard read blogStats.pending_comments from the same public endpoint. The deferral follow-up is now done exactly as scoped: crud.get_comment_activity_stats computes pending_count (is_approved False AND reviewed_at NULL), the dashboard reads commentActivity.pending_count from /api/admin/stats/comments (falling back to the loaded pending list), and BlogStatsResponse.drop the field. Tests: backend test_stats_no_longer_exposes_pending + test_admin_comment_activity::test_pending_count_is_the_unreviewed_queue_depth; frontend dashboard spec still green on the fallback path.",
+      "alternatives_rejected": "Keeping the leak while adding an admin copy (two inconsistent sources); removing the field without moving the admin read (breaks the dashboard primary source, per DEC-265)."
+    },
+    "CHG-413": {
+      "id": "CHG-413",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-07T07:43:03+00:00",
+      "updated_at": "2026-09-07T07:43:03+00:00",
+      "touched_round": 278,
+      "commit": "b95d951",
+      "title": "fix(backend): drop moderation backlog from public /api/stats; expose pending_count on admin comment stats (TASK-307, ISS-401)"
+    },
+    "CHG-414": {
+      "id": "CHG-414",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-07T07:43:03+00:00",
+      "updated_at": "2026-09-07T07:43:03+00:00",
+      "touched_round": 278,
+      "commit": "4c8c174",
+      "title": "fix(frontend): dashboard reads moderation backlog from admin-scoped comment stats, not public /api/stats (TASK-307, ISS-401)"
     }
   },
   "edges": [
@@ -28713,6 +28774,48 @@
       "to": "COMP-002",
       "type": "located_in",
       "created_at": "2026-09-07T07:12:59+00:00"
+    },
+    {
+      "from": "ISS-401",
+      "to": "COMP-001",
+      "type": "located_in",
+      "created_at": "2026-09-07T07:43:15+00:00"
+    },
+    {
+      "from": "TASK-307",
+      "to": "ISS-401",
+      "type": "addresses",
+      "created_at": "2026-09-07T07:43:15+00:00"
+    },
+    {
+      "from": "DEC-267",
+      "to": "DEC-265",
+      "type": "supersedes",
+      "created_at": "2026-09-07T07:43:16+00:00"
+    },
+    {
+      "from": "CHG-413",
+      "to": "ISS-401",
+      "type": "resolves",
+      "created_at": "2026-09-07T07:43:16+00:00"
+    },
+    {
+      "from": "CHG-413",
+      "to": "TASK-307",
+      "type": "implements",
+      "created_at": "2026-09-07T07:43:16+00:00"
+    },
+    {
+      "from": "CHG-414",
+      "to": "TASK-307",
+      "type": "implements",
+      "created_at": "2026-09-07T07:43:16+00:00"
+    },
+    {
+      "from": "DEC-267",
+      "to": "TASK-307",
+      "type": "governs",
+      "created_at": "2026-09-07T07:43:16+00:00"
     }
   ]
 }
