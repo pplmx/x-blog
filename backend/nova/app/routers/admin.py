@@ -23,6 +23,7 @@ from app.limiter import RATE_LIMIT_AUTH, RATE_LIMIT_WRITE, client_rate_key, limi
 from app.routers.comments import AUTO_APPROVE_READER_COMMENTS, _notify_comment_approved
 from app.schemas import (
     Comment,
+    PageInt,
     Post,
     PostCreate,
     PostRevisionDetail,
@@ -764,7 +765,7 @@ def admin_list_comments(
         None, max_length=40, description="ISO date filter: created <= date_to (a bare date includes the whole day)"
     ),
     flagged: bool | None = Query(None, description="Filter to comments that have reader flags"),
-    page: int = Query(1, ge=1),
+    page: PageInt = 1,
     limit: int = Query(20, ge=1, le=100),
     db: Session = Depends(get_db),
     _current_user: auth.User = Depends(get_current_admin),
@@ -1107,7 +1108,7 @@ class AdminReaderStatusResponse(BaseModel):
 
 @router.get("/readers")
 def admin_list_readers(
-    page: int = Query(1, ge=1),
+    page: PageInt = 1,
     limit: int = Query(20, ge=1, le=100),
     q: str | None = Query(None, description="Search email / display name"),
     db: Session = Depends(get_db),

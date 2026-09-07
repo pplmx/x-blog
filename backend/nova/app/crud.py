@@ -1,8 +1,9 @@
 from collections.abc import Iterable
 from datetime import UTC, datetime, timedelta
-from typing import Any
+from typing import Any, cast
 
 from sqlalchemy import and_, extract, func, or_, select, update
+from sqlalchemy.engine import CursorResult
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, joinedload
 
@@ -1250,11 +1251,29 @@ def increment_views(db: Session, post_id: int) -> models.Post | None:
     """
     stmt = update(models.Post).where(models.Post.id == post_id).values(views=models.Post.views + 1)
     db.execute(stmt)
+    # Atomic daily-row increment (round 276 deep-dive): the previous
+    # SELECT-then-assign (`daily.views = (daily.views or 0) + 1`) raced — two
+    # concurrent pageviews on the same post/day both read the same value, then
+    # both wrote +1, silently dropping one increment from the admin dashboard's
+    # reading-trend series (the IntegrityError fallback below only covered the
+    # INSERT race on the unique row, not the UPDATE race). Mirror the atomic
+    # UPDATE used for Post.views; insert (views=1) only when no row exists yet.
     today = utc_now_naive().date()
-    daily = db.query(models.PostViewsDaily).filter_by(post_id=post_id, day=today).first()
-    if daily is not None:
-        daily.views = (daily.views or 0) + 1
-    else:
+    # rowcount distinguishes "incremented an existing row" from "no row yet".
+    # CursorResult is what Session.execute returns for DML; cast past the
+    # generic Result[Any] typing (which has no rowcount) so pyright is quiet.
+    daily_updated = cast(
+        CursorResult[Any],
+        db.execute(
+            update(models.PostViewsDaily)
+            .where(
+                models.PostViewsDaily.post_id == post_id,
+                models.PostViewsDaily.day == today,
+            )
+            .values(views=models.PostViewsDaily.views + 1)
+        ),
+    )
+    if daily_updated.rowcount == 0:
         db.add(models.PostViewsDaily(post_id=post_id, day=today, views=1))
     try:
         db.commit()
@@ -2158,7 +2177,11 @@ def export_reader_data(db: Session, reader_id: int) -> dict:
 
     return {
         "account": account_data,
-        "exported_at": datetime.now(UTC).isoformat(),
+        # Naive UTC, matching every other timestamp in the bundle (DEC-213):
+        # an aware "+00:00" exported_at next to zone-less created_at/viewed_at
+        # made a client that parses datetimes uniformly see mixed semantics.
+        # (round 276 deep-dive)
+        "exported_at": utc_now_naive().isoformat(),
         "bookmarks": bookmarks,
         "comments": comments,
         "history": history,
@@ -3486,7 +3509,11 @@ def build_backup_snapshot(db: Session) -> dict:
     return {
         "format": "x-blog-backup",
         "version": 1,
-        "exported_at": datetime.now(UTC).isoformat(),
+        # Naive UTC, matching every other timestamp in the bundle (DEC-213):
+        # an aware "+00:00" exported_at next to zone-less created_at/viewed_at
+        # made a client that parses datetimes uniformly see mixed semantics.
+        # (round 276 deep-dive)
+        "exported_at": utc_now_naive().isoformat(),
         "categories": categories,
         "tags": tags,
         "series": series,

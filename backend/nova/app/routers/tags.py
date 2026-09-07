@@ -6,6 +6,7 @@ from app.auth import User, get_current_admin
 from app.conditional import conditional_json
 from app.database import get_db
 from app.limiter import RATE_LIMIT_WRITE, limiter
+from app.schemas import IdInt
 
 router = APIRouter(prefix="/api/tags", tags=["tags"])
 
@@ -17,7 +18,7 @@ def list_tags(request: Request, db: Session = Depends(get_db)):
 
 
 @router.get("/{tag_id}", response_model=schemas.Tag)
-def get_tag(request: Request, tag_id: int, db: Session = Depends(get_db)):
+def get_tag(request: Request, tag_id: IdInt, db: Session = Depends(get_db)):
     tag = crud.get_tag(db, tag_id)
     if not tag:
         raise HTTPException(status_code=404, detail="Tag not found")
@@ -49,7 +50,7 @@ def create_tag(
 @limiter.limit(f"{RATE_LIMIT_WRITE}/minute")
 def update_tag(
     request: Request,  # noqa: ARG001
-    tag_id: int,
+    tag_id: IdInt,
     tag: schemas.TagCreate,
     _current_user: User = Depends(get_current_admin),
     db: Session = Depends(get_db),
@@ -67,7 +68,7 @@ def update_tag(
 @limiter.limit(f"{RATE_LIMIT_WRITE}/minute")
 def delete_tag(
     request: Request,  # noqa: ARG001
-    tag_id: int,
+    tag_id: IdInt,
     _current_user: User = Depends(get_current_admin),
     db: Session = Depends(get_db),
 ):

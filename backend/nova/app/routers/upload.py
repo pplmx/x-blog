@@ -1,7 +1,7 @@
 import re
 import uuid
 from contextlib import suppress
-from datetime import datetime
+from datetime import UTC, datetime
 from io import BytesIO
 from pathlib import Path
 
@@ -14,6 +14,7 @@ from app.auth import User, get_current_admin
 from app.database import get_db
 from app.limiter import RATE_LIMIT_WRITE, limiter
 from app.schemas import (
+    PageInt,
     PaginationMeta,
     UploadBatchDeleteRequest,
     UploadFileInfo,
@@ -226,7 +227,11 @@ def _upload_file_info(full_path: Path, refs: dict[str, list[tuple[int, str]]]) -
         pass  # filesystem metadata only; dims are best-effort
     # uploaded_at falls back to the file's mtime when the read/decoded size is
     # unavailable — the month directory is the upload's authoritative date.
-    uploaded_at = datetime.fromtimestamp(full_path.stat().st_mtime)
+    # mtime is a UTC epoch; fromtimestamp without tz would render the server's
+    # LOCAL wall clock (a UTC+8 host shows uploads 8h off from every other
+    # timestamp in the same dashboard). Convert to naive UTC, matching the
+    # app-wide naive-UTC wire contract (DEC-213; round 276 deep-dive).
+    uploaded_at = datetime.fromtimestamp(full_path.stat().st_mtime, UTC).replace(tzinfo=None)
     post_refs = [UploadPostRef(id=post_id, title=title) for post_id, title in refs.get(url, [])]
     return UploadFileInfo(
         url=url,
@@ -246,7 +251,7 @@ def _upload_file_info(full_path: Path, refs: dict[str, list[tuple[int, str]]]) -
 def list_uploaded_files(
     db: Session = Depends(get_db),
     q: str | None = Query(None, max_length=200, description="Filename substring filter (case-insensitive)"),
-    page: int = Query(1, ge=1),
+    page: PageInt = 1,
     page_size: int = Query(100, ge=1, le=500),
     _current_user: User = Depends(get_current_admin),
 ):
@@ -276,7 +281,9 @@ def list_uploaded_files(
                 continue
             for path in month_dir.iterdir():
                 if path.is_file() and (needle is None or needle in path.name.lower()):
-                    files.append((datetime.fromtimestamp(path.stat().st_mtime), path))
+                    # Same naive-UTC interpretation as _upload_file_info (round
+                    # 276): the mtime epoch is UTC, not the server's local clock.
+                    files.append((datetime.fromtimestamp(path.stat().st_mtime, UTC).replace(tzinfo=None), path))
     files.sort(key=lambda pair: pair[0], reverse=True)
 
     total = len(files)

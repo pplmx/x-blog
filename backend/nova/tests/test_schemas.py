@@ -17,10 +17,12 @@ class TestTagSchemas:
         assert tag.name == "python"
 
     def test_tag_create_empty_name(self):
-        """Test TagCreate with empty string (Pydantic allows empty strings by default)."""
-        # Note: Base Pydantic str field allows empty strings unless explicitly constrained
-        tag = schemas.TagCreate(name="")
-        assert tag.name == ""
+        """A blank tag name is rejected (round 276: a whitespace-only name
+        persisted and rendered as an empty chip / empty RSS channel title)."""
+        with pytest.raises(ValidationError):
+            schemas.TagCreate(name="")
+        with pytest.raises(ValidationError):
+            schemas.TagCreate(name="   ")
 
     def test_tag_response_valid(self):
         """Test Tag response schema with ORM object."""
@@ -43,10 +45,11 @@ class TestCategorySchemas:
         assert category.name == "Technology"
 
     def test_category_create_empty_name(self):
-        """Test CategoryCreate with empty string (Pydantic allows empty strings by default)."""
-        # Note: Base Pydantic str field allows empty strings unless explicitly constrained
-        category = schemas.CategoryCreate(name="")
-        assert category.name == ""
+        """A blank category name is rejected (round 276, blank-name cleanup)."""
+        with pytest.raises(ValidationError):
+            schemas.CategoryCreate(name="")
+        with pytest.raises(ValidationError):
+            schemas.CategoryCreate(name="   ")
 
     def test_category_response_valid(self):
         """Test Category response schema with ORM object."""
@@ -186,6 +189,12 @@ class TestPostCreateSchema:
             content="Content",
         )
         assert post.tags == []
+
+    def test_post_create_blank_title_rejected(self):
+        """A whitespace-only title is rejected (round 276) — a blank card and
+        an empty RSS/Atom channel title were previously persisted."""
+        with pytest.raises(ValidationError):
+            schemas.PostCreate(title="   ", slug="blank-title", content="x")
 
     def test_post_create_with_optional_fields(self):
         """Test PostCreate with all optional fields."""
@@ -664,6 +673,17 @@ class TestColumnLengthParity:
     def test_comment_nickname_boundary_50_accepted(self):
         c = schemas.CommentCreate(nickname="n" * 50, email="a@b.c", content="hi")
         assert len(c.nickname) == 50
+
+    def test_comment_nickname_blank_rejected(self):
+        """Whitespace-only nicknames must not reach the moderation queue
+        (round 276: min_length=1 alone can't catch ' ', the strip does)."""
+        with pytest.raises(ValidationError):
+            schemas.CommentCreate(nickname="   ", email="a@b.c", content="hi")
+
+    def test_comment_content_blank_rejected(self):
+        """Whitespace-only content is an empty comment — reject it."""
+        with pytest.raises(ValidationError):
+            schemas.CommentCreate(nickname="ok", email="a@b.c", content="  \n  ")
 
     def test_comment_email_rejects_over_100(self):
         with pytest.raises(ValidationError):

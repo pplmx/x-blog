@@ -1,8 +1,23 @@
 import re
 from datetime import UTC, datetime
+from typing import Annotated
 from urllib.parse import urlparse
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
+
+# Bounded integer alias for path/query id + pagination params (deep-dive,
+# round 276). Post/Comment id columns are 32-bit autoincrement integers;
+# SQLite holds 64-bit but no real id ever exceeds 2^31-1. An unbounded
+# `id: int` param accepted garbage like /api/posts/99999999999999999999/like
+# (a valid Python int) then fed it into SQLAlchemy, where the DBAPI raised
+# OverflowError/DataError -> an uncaught 500 on a public route (only the
+# 15-digit cap on /posts/{slug} guarded it). Bounding at the schema turns
+# oversized input into a clean 422, matching the codebase's "422 over
+# uncaught 500" policy (cf. the max_length comments below). Also bounds
+# page/limit so a huge page can't overflow the OFFSET arithmetic.
+IdInt = Annotated[int, Field(ge=1, le=2_147_483_647)]
+PageInt = Annotated[int, Field(ge=1, le=1_000_000)]
+
 
 # Slug pattern: lowercase alphanumerics joined by single hyphens. Free-form
 # slugs with spaces/&/CJK produce broken RSS/Atom/sitemap URLs and can never
@@ -16,6 +31,19 @@ SLUG_PATTERN = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
 EMAIL_PATTERN = r"^[^@\s]+@[^@\s]+\.[^@\s]+\z"
 
 _ALLOWED_COVER_SCHEMES = {"http", "https"}
+
+
+def _strip_blank(value: str) -> str:
+    """Trim surrounding whitespace; blank/whitespace-only input becomes a 422.
+
+    ``min_length=1`` alone does not reject ``"   "`` — Pydantic counts the raw
+    characters — so a whitespace-only title/name/nickname/body was persisted
+    and surfaced as a blank card, an empty RSS/Atom ``<title>``/``<description>``
+    (rss.py emits these unconditionally), or blank moderation-queue rows.
+    Stripping *before* length validation makes whitespace-only equal "" and
+    lets ``min_length=1`` reject it (round 276 deep-dive).
+    """
+    return value.strip()
 
 
 def _normalize_naive_utc(value: datetime | None) -> datetime | None:
@@ -55,8 +83,14 @@ def _validate_cover_image_url(value: str | None) -> str | None:
 class TagBase(BaseModel):
     # max_length 50 matches the Tag.name VARCHAR(50) column (issue #20 debt).
     # Without it, over-length input stores fine on SQLite but raises an
-    # uncaught DataError -> 500 on PostgreSQL.
-    name: str = Field(max_length=50)
+    # uncaught DataError -> 500 on PostgreSQL. min_length=1 (after stripping,
+    # _strip_blank) rejects blank names.
+    name: str = Field(min_length=1, max_length=50)
+
+    @field_validator("name", mode="before")
+    @classmethod
+    def strip_name(cls, value: object) -> object:
+        return _strip_blank(value) if isinstance(value, str) else value
 
 
 class TagCreate(TagBase):
@@ -71,7 +105,12 @@ class Tag(TagBase):
 
 class CategoryBase(BaseModel):
     # max_length 50 matches the Category.name VARCHAR(50) column.
-    name: str = Field(max_length=50)
+    name: str = Field(min_length=1, max_length=50)
+
+    @field_validator("name", mode="before")
+    @classmethod
+    def strip_name(cls, value: object) -> object:
+        return _strip_blank(value) if isinstance(value, str) else value
 
 
 class CategoryCreate(CategoryBase):
@@ -130,8 +169,10 @@ class SeriesUpdate(BaseModel):
 class PostBase(BaseModel):
     # max_length values match the Post VARCHAR columns (title/slug 200,
     # excerpt/cover_image 500) so PostgreSQL rejects over-length input with
-    # 422 instead of an uncaught DataError -> 500.
-    title: str = Field(max_length=200)
+    # 422 instead of an uncaught DataError -> 500. min_length=1 (after
+    # stripping) rejects a blank title that would render a blank card and an
+    # empty RSS/Atom channel title (round 276 deep-dive).
+    title: str = Field(min_length=1, max_length=200)
     slug: str = Field(max_length=200, pattern=SLUG_PATTERN.pattern)
     content: str
     excerpt: str | None = Field(default=None, max_length=500)
@@ -142,6 +183,11 @@ class PostBase(BaseModel):
     series_id: int | None = None
     series_order: int = 0
     cover_image: str | None = Field(default=None, max_length=500)
+
+    @field_validator("title", mode="before")
+    @classmethod
+    def strip_title(cls, value: object) -> object:
+        return _strip_blank(value) if isinstance(value, str) else value
 
     @field_validator("publish_at")
     @classmethod
@@ -361,10 +407,18 @@ class CommentBase(BaseModel):
     # schemas (Comment/CommentPublic) either carry it back from the DB row
     # (full Comment, nullable for readers) or drop it entirely (CommentPublic
     # drops PII). Keeps the schemas free of conflicting overrides.
-    nickname: str = Field(max_length=50)
+    # min_length=1 (after stripping) rejects whitespace-only nickname/content —
+    # a blank body would otherwise pass moderation toward the queue and
+    # blank-nickname reader accounts were sign-up-able (round 276 deep-dive).
+    nickname: str = Field(min_length=1, max_length=50)
     # Bounded so the public, unauthenticated comment endpoint cannot bloat the DB
     # / response with unbounded bodies (security audit round 16).
-    content: str = Field(max_length=5000)
+    content: str = Field(min_length=1, max_length=5000)
+
+    @field_validator("nickname", "content", mode="before")
+    @classmethod
+    def strip_comment_text(cls, value: object) -> object:
+        return _strip_blank(value) if isinstance(value, str) else value
 
 
 class CommentCreate(CommentBase):

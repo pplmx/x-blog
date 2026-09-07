@@ -8,6 +8,7 @@ from app.cache import posts_list_cache
 from app.conditional import conditional_json
 from app.database import get_db
 from app.limiter import RATE_LIMIT_READ, RATE_LIMIT_WRITE, limiter
+from app.schemas import IdInt, PageInt
 
 router = APIRouter(prefix="/api/posts", tags=["posts"])
 
@@ -30,10 +31,10 @@ def get_archive(request: Request, db: Session = Depends(get_db)):
 @router.get("", response_model=schemas.PostListResponse)
 def list_posts(
     request: Request,
-    page: int = Query(1, ge=1),
+    page: PageInt = 1,
     limit: int = Query(10, ge=1, le=100),
-    category_id: int | None = None,
-    tag_id: int | None = None,
+    category_id: IdInt | None = None,
+    tag_id: IdInt | None = None,
     year: int | None = Query(None, ge=2000, le=2100),
     month: int | None = Query(None, ge=1, le=12),
     db: Session = Depends(get_db),
@@ -121,7 +122,7 @@ def create_post(
 @limiter.limit(f"{RATE_LIMIT_WRITE}/minute")
 def update_post(
     request: Request,  # noqa: ARG001
-    post_id: int,
+    post_id: IdInt,
     post: schemas.PostUpdate,
     _current_user: User = Depends(get_current_admin),
     db: Session = Depends(get_db),
@@ -139,7 +140,7 @@ def update_post(
 @limiter.limit(f"{RATE_LIMIT_WRITE}/minute")
 def delete_post(
     request: Request,  # noqa: ARG001
-    post_id: int,
+    post_id: IdInt,
     _current_user: User = Depends(get_current_admin),
     db: Session = Depends(get_db),
 ):
@@ -155,7 +156,7 @@ def delete_post(
 @limiter.limit(f"{RATE_LIMIT_READ}/minute")
 def increment_views(
     request: Request,  # noqa: ARG001
-    post_id: int,
+    post_id: IdInt,
     db: Session = Depends(get_db),
 ):
     """Increment the view count for a post."""
@@ -173,7 +174,7 @@ def increment_views(
 @limiter.limit(f"{RATE_LIMIT_READ}/minute")
 def increment_likes(
     request: Request,  # noqa: ARG001
-    post_id: int,
+    post_id: IdInt,
     db: Session = Depends(get_db),
 ):
     """Increment the like count for a post."""
@@ -198,7 +199,7 @@ def get_popular_posts(request: Request, limit: int = Query(5, ge=1, le=50), db: 
 @router.get("/{post_id}/related", response_model=list[schemas.PostList])
 def get_related_posts(
     request: Request,
-    post_id: int,
+    post_id: IdInt,
     limit: int = Query(5, ge=1, le=50),
     db: Session = Depends(get_db),
 ):
@@ -219,7 +220,7 @@ def get_related_posts(
 
 
 @router.get("/{post_id}/adjacent", response_model=schemas.AdjacentPosts)
-def get_adjacent_posts(request: Request, post_id: int, db: Session = Depends(get_db)):
+def get_adjacent_posts(request: Request, post_id: IdInt, db: Session = Depends(get_db)):
     """Get the linear previous/next posts around a post, in public feed order.
 
     Returns ``{previous, next}`` (either may be null at the ends of the feed).
@@ -242,7 +243,7 @@ def get_adjacent_posts(request: Request, post_id: int, db: Session = Depends(get
 
 @router.get("/{post_id}/subscription", response_model=PostSubscriptionStatus)
 def get_post_subscription_status(
-    post_id: int,
+    post_id: IdInt,
     db: Session = Depends(get_db),
     reader: auth.ReaderAccount | None = Depends(auth.get_optional_reader),
 ):
@@ -261,7 +262,7 @@ def get_post_subscription_status(
 
 @router.put("/{post_id}/subscription", response_model=PostSubscriptionStatus, status_code=201)
 def subscribe_to_post_thread(
-    post_id: int,
+    post_id: IdInt,
     response: Response,
     db: Session = Depends(get_db),
     reader: auth.ReaderAccount = Depends(auth.get_current_reader),
@@ -280,7 +281,7 @@ def subscribe_to_post_thread(
 
 @router.delete("/{post_id}/subscription", status_code=204)
 def unsubscribe_from_post_thread(
-    post_id: int,
+    post_id: IdInt,
     db: Session = Depends(get_db),
     reader: auth.ReaderAccount = Depends(auth.get_current_reader),
 ):

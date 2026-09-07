@@ -20,6 +20,7 @@ from app import auth, crud, models, schemas
 from app.database import get_db
 from app.limiter import RATE_LIMIT_AUTH, RATE_LIMIT_EXPORT, RATE_LIMIT_REGISTER, limiter
 from app.routers.comments import AUTO_APPROVE_READER_COMMENTS, _notify_comment_approved
+from app.schemas import IdInt, PageInt
 
 router = APIRouter(prefix="/api/reader", tags=["reader"])
 
@@ -745,7 +746,7 @@ def revoke_my_push_subscription(
 def list_bookmarks(
     current_reader: auth.ReaderAccount = Depends(auth.get_current_reader),
     folder_id: int | None = Query(None, description="filter to this folder"),
-    page: int = Query(1, ge=1),
+    page: PageInt = 1,
     limit: int = Query(100, ge=1, le=100),
     db: Session = Depends(get_db),
 ):
@@ -772,7 +773,7 @@ def list_bookmarks(
 @router.get("/me/post-subscriptions", response_model=SubscribedThreadListResponse)
 def list_my_post_subscriptions(
     current_reader: auth.ReaderAccount = Depends(auth.get_current_reader),
-    page: int = Query(1, ge=1),
+    page: PageInt = 1,
     limit: int = Query(100, ge=1, le=100),
     db: Session = Depends(get_db),
 ):
@@ -796,7 +797,7 @@ def list_my_post_subscriptions(
 
 @router.put("/me/bookmarks/{post_id}", response_model=AddBookmarkResponse)
 def add_bookmark(
-    post_id: int,
+    post_id: IdInt,
     response: Response,
     current_reader: auth.ReaderAccount = Depends(auth.get_current_reader),
     db: Session = Depends(get_db),
@@ -835,7 +836,7 @@ def clear_bookmarks(
 
 @router.delete("/me/bookmarks/{post_id}", status_code=204)
 def remove_bookmark(
-    post_id: int,
+    post_id: IdInt,
     current_reader: auth.ReaderAccount = Depends(auth.get_current_reader),
     db: Session = Depends(get_db),
 ):
@@ -908,7 +909,7 @@ def delete_bookmark_folder(
 
 @router.patch("/me/bookmarks/{post_id}/folder", response_model=AssignFolderResponse)
 def assign_bookmark_folder(
-    post_id: int,
+    post_id: IdInt,
     body: AssignFolder,
     current_reader: auth.ReaderAccount = Depends(auth.get_current_reader),
     db: Session = Depends(get_db),
@@ -1008,7 +1009,7 @@ def list_series_follows(
 
 @router.put("/me/series/{series_id}/follow", response_model=SeriesFollowResponse)
 def follow_series(
-    series_id: int,
+    series_id: IdInt,
     response: Response,
     current_reader: auth.ReaderAccount = Depends(auth.get_current_reader),
     db: Session = Depends(get_db),
@@ -1030,7 +1031,7 @@ class SeriesFollowNotifyUpdate(BaseModel):
 
 @router.patch("/me/series/{series_id}/follow", response_model=SeriesFollowResponse)
 def set_series_follow_notify(
-    series_id: int,
+    series_id: IdInt,
     payload: SeriesFollowNotifyUpdate,
     current_reader: auth.ReaderAccount = Depends(auth.get_current_reader),
     db: Session = Depends(get_db),
@@ -1047,7 +1048,7 @@ def set_series_follow_notify(
 
 @router.delete("/me/series/{series_id}/follow", status_code=204)
 def unfollow_series(
-    series_id: int,
+    series_id: IdInt,
     current_reader: auth.ReaderAccount = Depends(auth.get_current_reader),
     db: Session = Depends(get_db),
 ):
@@ -1078,7 +1079,7 @@ def list_category_follows(
 
 @router.put("/me/categories/{category_id}/follow", response_model=CategoryFollowResponse)
 def follow_category(
-    category_id: int,
+    category_id: IdInt,
     response: Response,
     current_reader: auth.ReaderAccount = Depends(auth.get_current_reader),
     db: Session = Depends(get_db),
@@ -1099,7 +1100,7 @@ def follow_category(
 
 @router.patch("/me/categories/{category_id}/follow", response_model=CategoryFollowResponse)
 def set_category_follow_notify(
-    category_id: int,
+    category_id: IdInt,
     payload: CategoryFollowNotifyUpdate,
     current_reader: auth.ReaderAccount = Depends(auth.get_current_reader),
     db: Session = Depends(get_db),
@@ -1121,7 +1122,7 @@ def set_category_follow_notify(
 
 @router.delete("/me/categories/{category_id}/follow", status_code=204)
 def unfollow_category(
-    category_id: int,
+    category_id: IdInt,
     current_reader: auth.ReaderAccount = Depends(auth.get_current_reader),
     db: Session = Depends(get_db),
 ):
@@ -1152,7 +1153,7 @@ def list_tag_follows(
 
 @router.put("/me/tags/{tag_id}/follow", response_model=TagFollowResponse)
 def follow_tag(
-    tag_id: int,
+    tag_id: IdInt,
     response: Response,
     current_reader: auth.ReaderAccount = Depends(auth.get_current_reader),
     db: Session = Depends(get_db),
@@ -1173,7 +1174,7 @@ def follow_tag(
 
 @router.patch("/me/tags/{tag_id}/follow", response_model=TagFollowResponse)
 def set_tag_follow_notify(
-    tag_id: int,
+    tag_id: IdInt,
     payload: TagFollowNotifyUpdate,
     current_reader: auth.ReaderAccount = Depends(auth.get_current_reader),
     db: Session = Depends(get_db),
@@ -1195,7 +1196,7 @@ def set_tag_follow_notify(
 
 @router.delete("/me/tags/{tag_id}/follow", status_code=204)
 def unfollow_tag(
-    tag_id: int,
+    tag_id: IdInt,
     current_reader: auth.ReaderAccount = Depends(auth.get_current_reader),
     db: Session = Depends(get_db),
 ):
@@ -1211,7 +1212,7 @@ def unfollow_tag(
 @router.get("/me/history", response_model=ReadingHistoryListResponse)
 def list_reading_history(
     current_reader: auth.ReaderAccount = Depends(auth.get_current_reader),
-    page: int = Query(1, ge=1),
+    page: PageInt = 1,
     limit: int = Query(20, ge=1, le=100),
     q: str | None = Query(None, description="filter history to posts matching this term"),
     db: Session = Depends(get_db),
@@ -1254,7 +1255,7 @@ def reading_history_stats(
 
 @router.get("/me/history/{post_id}", response_model=ReadingPositionResponse)
 def reading_position(
-    post_id: int,
+    post_id: IdInt,
     current_reader: auth.ReaderAccount = Depends(auth.get_current_reader),
     db: Session = Depends(get_db),
 ):
@@ -1275,7 +1276,7 @@ def reading_position(
 
 @router.post("/me/history/{post_id}", response_model=RecordHistoryResponse)
 def record_reading_view(
-    post_id: int,
+    post_id: IdInt,
     body: RecordHistoryRequest | None = None,
     current_reader: auth.ReaderAccount = Depends(auth.get_current_reader),
     db: Session = Depends(get_db),
@@ -1340,7 +1341,7 @@ VALID_READER_COMMENT_STATUSES = ("all", "pending", "approved", "rejected")
 def list_my_comments(
     current_reader: auth.ReaderAccount = Depends(auth.get_current_reader),
     status: str = Query("all", description="all | pending | approved | rejected"),
-    page: int = Query(1, ge=1),
+    page: PageInt = 1,
     limit: int = Query(20, ge=1, le=100),
     db: Session = Depends(get_db),
 ):
@@ -1387,7 +1388,7 @@ def list_my_comments(
 
 @router.delete("/me/comments/{comment_id}", status_code=204)
 def delete_my_comment(
-    comment_id: int,
+    comment_id: IdInt,
     current_reader: auth.ReaderAccount = Depends(auth.get_current_reader),
     db: Session = Depends(get_db),
 ):
@@ -1416,7 +1417,7 @@ class ReaderCommentEdit(BaseModel):
 
 @router.patch("/me/comments/{comment_id}", response_model=schemas.CommentPublic)
 def edit_my_comment(
-    comment_id: int,
+    comment_id: IdInt,
     edit: ReaderCommentEdit,
     current_reader: auth.ReaderAccount = Depends(auth.get_current_reader),
     db: Session = Depends(get_db),
@@ -1482,7 +1483,7 @@ class NotificationListResponse(BaseModel):
 @router.get("/me/notifications", response_model=NotificationListResponse)
 def list_my_notifications(
     current_reader: auth.ReaderAccount = Depends(auth.get_current_reader),
-    page: int = Query(1, ge=1),
+    page: PageInt = 1,
     limit: int = Query(20, ge=1, le=100),
     unread: bool = Query(False, description="filter to unread notifications only"),
     db: Session = Depends(get_db),

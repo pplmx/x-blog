@@ -6,6 +6,7 @@ from app.auth import User, get_current_admin
 from app.conditional import conditional_json
 from app.database import get_db
 from app.limiter import RATE_LIMIT_WRITE, limiter
+from app.schemas import IdInt
 
 router = APIRouter(prefix="/api/categories", tags=["categories"])
 
@@ -17,7 +18,7 @@ def list_categories(request: Request, db: Session = Depends(get_db)):
 
 
 @router.get("/{category_id}", response_model=schemas.Category)
-def get_category(request: Request, category_id: int, db: Session = Depends(get_db)):
+def get_category(request: Request, category_id: IdInt, db: Session = Depends(get_db)):
     category = crud.get_category(db, category_id)
     if not category:
         raise HTTPException(status_code=404, detail="Category not found")
@@ -51,7 +52,7 @@ def create_category(
 @limiter.limit(f"{RATE_LIMIT_WRITE}/minute")
 def update_category(
     request: Request,  # noqa: ARG001
-    category_id: int,
+    category_id: IdInt,
     category: schemas.CategoryCreate,
     _current_user: User = Depends(get_current_admin),
     db: Session = Depends(get_db),
@@ -69,7 +70,7 @@ def update_category(
 @limiter.limit(f"{RATE_LIMIT_WRITE}/minute")
 def delete_category(
     request: Request,  # noqa: ARG001
-    category_id: int,
+    category_id: IdInt,
     _current_user: User = Depends(get_current_admin),
     db: Session = Depends(get_db),
 ):

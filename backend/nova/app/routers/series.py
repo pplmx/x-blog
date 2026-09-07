@@ -8,6 +8,7 @@ from app.cache import series_cache
 from app.conditional import conditional_json
 from app.database import get_db
 from app.limiter import RATE_LIMIT_WRITE, limiter
+from app.schemas import IdInt
 
 router = APIRouter(prefix="/api/series", tags=["series"])
 
@@ -82,7 +83,7 @@ def create_series(
 @limiter.limit(f"{RATE_LIMIT_WRITE}/minute")
 def update_series(
     request: Request,  # noqa: ARG001
-    series_id: int,
+    series_id: IdInt,
     series: schemas.SeriesUpdate,
     _current_user: User = Depends(get_current_admin),
     db: Session = Depends(get_db),
@@ -100,7 +101,7 @@ def update_series(
 @limiter.limit(f"{RATE_LIMIT_WRITE}/minute")
 def delete_series(
     request: Request,  # noqa: ARG001
-    series_id: int,
+    series_id: IdInt,
     _current_user: User = Depends(get_current_admin),
     db: Session = Depends(get_db),
 ):
@@ -130,7 +131,7 @@ class SeriesReorderBody(BaseModel):
 
 @router.get("/{series_id}/episodes", response_model=list[SeriesEpisodeItem])
 def list_series_episodes(
-    series_id: int,
+    series_id: IdInt,
     _current_user: User = Depends(get_current_admin),
     db: Session = Depends(get_db),
 ):
@@ -155,7 +156,7 @@ def list_series_episodes(
 @limiter.limit(f"{RATE_LIMIT_WRITE}/minute")
 def reorder_series_episodes(
     request: Request,  # noqa: ARG001
-    series_id: int,
+    series_id: IdInt,
     body: SeriesReorderBody,
     _current_user: User = Depends(get_current_admin),
     db: Session = Depends(get_db),

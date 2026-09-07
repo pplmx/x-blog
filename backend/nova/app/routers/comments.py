@@ -10,6 +10,7 @@ from app.database import get_db
 from app.emailer import EmailItem, dispatch_notification_emails, email_channel_enabled
 from app.limiter import RATE_LIMIT_COMMENT, RATE_LIMIT_READ, client_rate_key, limiter
 from app.middleware import get_logger
+from app.schemas import IdInt, PageInt
 from app.webpush import (
     dispatch_moderation_pending,
     dispatch_to_subscriptions,
@@ -247,8 +248,8 @@ class CommentApproval(BaseModel):
 @limiter.limit(f"{RATE_LIMIT_READ}/minute")
 def list_comments(
     request: Request,  # noqa: ARG001 — keyed by the rate limiter (RATE_LIMIT_READ)
-    post_id: int,
-    page: int = Query(1, ge=1),
+    post_id: IdInt,
+    page: PageInt = 1,
     limit: int = Query(20, ge=1, le=100),
     sort: str = Query("newest", description="newest | oldest | likes"),
     db: Session = Depends(get_db),
@@ -284,7 +285,7 @@ def list_comments(
 @router.post("/post/{post_id}", response_model=schemas.Comment, status_code=201)
 @limiter.limit(f"{RATE_LIMIT_COMMENT}/minute")
 def create_comment(
-    post_id: int,
+    post_id: IdInt,
     comment: schemas.CommentCreate,
     request: Request,
     db: Session = Depends(get_db),
@@ -335,7 +336,7 @@ def create_comment(
 @limiter.limit(f"{RATE_LIMIT_COMMENT}/minute")
 def approve_comment(
     request: Request,  # noqa: ARG001
-    comment_id: int,
+    comment_id: IdInt,
     approval: CommentApproval,
     _current_user: User = Depends(get_current_admin),
     db: Session = Depends(get_db),
@@ -362,7 +363,7 @@ class CommentLikeBody(BaseModel):
 def like_comment(
     request: Request,  # noqa: ARG001
     response: Response,
-    comment_id: int,
+    comment_id: IdInt,
     db: Session = Depends(get_db),
     body: CommentLikeBody | None = None,
 ):
@@ -401,7 +402,7 @@ class CommentFlagBody(BaseModel):
 def flag_comment(
     request: Request,  # noqa: ARG001
     response: Response,
-    comment_id: int,
+    comment_id: IdInt,
     body: CommentFlagBody | None = None,
     db: Session = Depends(get_db),
 ):
@@ -428,7 +429,7 @@ def flag_comment(
 @limiter.limit(f"{RATE_LIMIT_COMMENT}/minute")
 def delete_comment(
     request: Request,  # noqa: ARG001
-    comment_id: int,
+    comment_id: IdInt,
     _current_user: User = Depends(get_current_admin),
     db: Session = Depends(get_db),
 ):

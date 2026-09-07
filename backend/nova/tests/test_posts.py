@@ -324,6 +324,45 @@ def test_get_post_huge_numeric_id_does_not_crash(client):
     assert response.status_code != 500
 
 
+def test_huge_int_params_are_422_not_500(client, auth_headers):
+    """Out-of-range id/page params must be rejected with 422, never a 500.
+
+    An unbounded ``post_id: int`` path param accepted input like
+    99999999999999999999 (a valid Python int — arbitrary precision — only
+    overflowing at the DBAPI bind on SQLite) and 500'd the public route
+    (round 276 deep-dive). Bound both path ids and query page to the real
+    id range so garbage input gets the repo-standard 422 instead.
+    """
+    huge = "9" * 25  # valid big int, way past any real autoincrement id
+    for endpoint in (
+        f"/api/posts/{huge}/like",
+        f"/api/posts/{huge}/view",
+        f"/api/posts/{huge}/adjacent",
+        f"/api/posts/{huge}/related",
+    ):
+        r = client.get(endpoint) if "adjacent" in endpoint or "related" in endpoint else client.post(endpoint)
+        assert r.status_code == 422, f"{endpoint} -> {r.status_code}"
+
+    # page beyond the pagination bound (avoids OFFSET overflow).
+    r = client.get("/api/posts?page=999999999999")
+    assert r.status_code == 422
+
+    # A normal id still works (no regression for real requests).
+    create_response = client.post(
+        "/api/posts",
+        json={
+            "title": "Huge-int Guard Post",
+            "slug": "huge-int-guard-post",
+            "content": "body",
+            "published": True,
+        },
+        headers=auth_headers,
+    )
+    post_id = create_response.json()["id"]
+    r = client.post(f"/api/posts/{post_id}/like")
+    assert r.status_code in (200, 201)
+
+
 def test_create_post_with_cover_image(client, auth_headers):
     """Creating a post with cover_image should save it."""
     response = client.post(

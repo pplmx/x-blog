@@ -450,6 +450,19 @@ def test_like_comment_not_found(client):
     assert response.json()["error"]["code"] == "NOT_FOUND"
 
 
+def test_huge_comment_id_is_422_not_500(client):
+    """An out-of-range comment id must be a 422, never a 500.
+
+    Mirrors the posts fix (round 276): an unbounded ``comment_id: int`` path
+    param fed an oversized-beyond-64-bit value into the DBAPI bind and 500'd
+    the public like route. The IdInt bound turns it into the repo-standard 422.
+    """
+    huge = "9" * 25
+    response = client.post(f"/api/comments/{huge}/like")
+    assert response.status_code == 422
+    assert "error" in response.json()
+
+
 def test_like_comment_on_non_public_post_returns_404(client, db_session, draft_post):
     """A comment on a hidden post must 404 like an unknown id."""
     from app import models
