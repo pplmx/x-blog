@@ -161,6 +161,65 @@ class TestCommentHistory:
         resp = client.get("/api/reader/me/comments")
         assert resp.status_code == 401
 
+    def test_history_pagination_stable_with_tied_timestamps(self, client, db_session):
+        """The reader's own history must not repeat/skip across pages when
+        several comments share one created_at — crud appends an id tiebreak to
+        the newest-first ordering (round 278, same class as the public list).
+        """
+        from app import models
+
+        post = _create_post(db_session)
+        token = _token(client)
+        for _ in range(7):
+            _post_comment(client, post.id, headers=_auth(token))
+
+        stamp = datetime(2024, 5, 1, 12, 0, 0)
+        db_session.query(models.Comment).update({models.Comment.created_at: stamp}, synchronize_session=False)
+        db_session.commit()
+        comment_ids = [row[0] for row in db_session.query(models.Comment.id).order_by(models.Comment.id).all()]
+        assert len(comment_ids) == 7
+
+        seen: list[int] = []
+        page = 1
+        for _ in range(10):
+            body = client.get(
+                "/api/reader/me/comments",
+                params={"page": page, "limit": 3},
+                headers=_auth(token),
+            ).json()
+            seen.extend(c["id"] for c in body["items"])
+            if page >= body["total_pages"]:
+                break
+            page += 1
+        # Newest-first history: with all timestamps tied, id desc is the
+        # deterministic order — the full page set must be exactly that.
+        assert seen == list(reversed(comment_ids)), f"expected {list(reversed(comment_ids))}, got {seen}"
+
+    def test_post_subscriptions_pagination_stable_with_tied_timestamps(self, client, db_session):
+        """/me/post-subscriptions newest-first paging must not repeat/skip
+        threads when follows tie on created_at — crud appends the subscription
+        id tiebreak (round 278, same class as the comment lists).
+        """
+        from app import models
+        from app.auth import ReaderAccount
+        from app.crud import list_reader_comment_subscriptions
+
+        _token(client)  # registers the reader
+        reader = db_session.query(ReaderAccount).order_by(ReaderAccount.id.desc()).first()
+        posts = [_create_post(db_session, slug=f"tie-sub-{i}") for i in range(6)]
+        stamp = datetime(2024, 5, 1, 12, 0, 0)
+        for p in posts:
+            db_session.add(models.CommentSubscription(reader_id=reader.id, post_id=p.id, created_at=stamp))
+        db_session.commit()
+
+        rows, total = list_reader_comment_subscriptions(db_session, reader.id, page=1, limit=4)
+        assert total == 6
+        ids = [r.id for r in rows]
+        # Newest follow first; with all timestamps tied the id desc tiebreak is
+        # deterministic — first page must be the 4 most-recent subscriber rows.
+        assert len(ids) == 4
+        assert ids == sorted(ids, reverse=True), f"expected id desc, got {ids}"
+
     def test_comment_shape_has_identity_fields(self, client, db_session):
         """The history item exposes the same reader-attributed shape as the post
         comment list, plus post context for navigation from the page."""

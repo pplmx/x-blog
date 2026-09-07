@@ -301,6 +301,51 @@ def test_list_comments_pagination(client, post, auth_headers):
     assert data["page"] == 2
 
 
+def test_list_comments_pagination_stable_with_tied_timestamps(client, db_session, post, auth_headers):
+    """Offset paging must never repeat/skip comments when many share a created_at.
+
+    A bulk-restore (restore_backup stamps created_at verbatim from the snapshot)
+    or a same-instant burst yields tied timestamps. Sorting on created_at alone
+    resolves ties by query plan, so the same comment can surface on two pages
+    while another is skipped — crud pagination appends an id tiebreak, making
+    the paging order deterministic (round 278).
+    """
+    from datetime import datetime
+
+    from app import models
+
+    for i in range(7):
+        _create_approved_comment(client, db_session, post["id"], f"Tie{i}", f"tied {i}", auth_headers)
+    # Collapse every comment into a single instant (the tied-timestamp scenario).
+    stamp = datetime(2024, 5, 1, 12, 0, 0)
+    db_session.query(models.Comment).update({models.Comment.created_at: stamp}, synchronize_session=False)
+    db_session.commit()
+    # The 7 comment ids in insertion order — the deterministic tiebreak axis.
+    comment_ids = [row[0] for row in db_session.query(models.Comment.id).order_by(models.Comment.id).all()]
+    assert len(comment_ids) == 7
+
+    expected = {
+        # With all timestamps tied, id is the deterministic tiebreak:
+        "newest": list(reversed(comment_ids)),  # created_at desc, then id desc
+        "oldest": comment_ids,  # created_at asc, then id asc
+        "likes": list(reversed(comment_ids)),  # likes tie, then created_at desc, id desc
+    }
+    for sort, order in expected.items():
+        seen: list[int] = []
+        page = 1
+        for _ in range(10):
+            data = client.get(
+                f"/api/comments/post/{post['id']}",
+                params={"sort": sort, "page": page, "limit": 3},
+            ).json()
+            seen.extend(c["id"] for c in data["items"])
+            if page >= data["total_pages"]:
+                break
+            page += 1
+        assert len(seen) == 7, f"{sort}: got {len(seen)} rows across pages (repeat or skip?): {seen}"
+        assert seen == order, f"{sort}: expected deterministic order {order}, got {seen}"
+
+
 def test_delete_comment(client, post, auth_headers):
     create_response = client.post(
         f"/api/comments/post/{post['id']}",

@@ -42,6 +42,21 @@ class TestSearchLogging:
     def test_empty_when_no_searches(self, client, auth_headers):
         assert client.get(SEARCHES, headers=auth_headers).json() == []
 
+    def test_crud_logging_exact_counts(self, client, db_session):
+        """crud.log_search_query upserts an exact count: first call creates the
+        row, every follow-up increments by exactly one — the counter update is
+        an atomic SQL expression, never a read-modify-write that can drop
+        increments under concurrent searches (round 278).
+        """
+        from app import crud, models
+
+        crud.log_search_query(db_session, "async rust")
+        crud.log_search_query(db_session, "async rust")
+        crud.log_search_query(db_session, "  ASYNC RUST  ")  # normalized identically
+
+        (row,) = db_session.query(models.SearchLog).filter(models.SearchLog.query == "async rust").all()
+        assert row.count == 3
+
     def test_top_searches_ordered_by_count(self, client, auth_headers):
         _create_post(client, auth_headers, "Common Topic")
         for _ in range(5):

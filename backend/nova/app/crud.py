@@ -787,13 +787,17 @@ def get_comments_paginated(
     )
 
     total = query.count()
+    # Every sort appends id as a deterministic tiebreak: offset paging would
+    # otherwise repeat/skip rows when two comments share a created_at (e.g. a
+    # bulk-restore stamps verbatim timestamps), resolving ties by query plan
+    # instead of a stable key (round 278).
     if sort == "oldest":
-        order = [models.Comment.created_at.asc()]
+        order = [models.Comment.created_at.asc(), models.Comment.id.asc()]
     elif sort == "likes":
-        # Most helpful first; newest wins ties among equal like counts.
-        order = [models.Comment.likes.desc(), models.Comment.created_at.desc()]
+        # Most helpful first; newest wins ties among equal like counts, then id.
+        order = [models.Comment.likes.desc(), models.Comment.created_at.desc(), models.Comment.id.desc()]
     else:
-        order = [models.Comment.created_at.desc()]
+        order = [models.Comment.created_at.desc(), models.Comment.id.desc()]
     # Eager-load the author reader on the page query so serializing
     # CommentPublic (which touches c.reader) doesn't fire one lazy query per
     # reader-attributed comment (ISS-139).
@@ -2610,26 +2614,41 @@ def log_search_query(db: Session, query: str | None) -> None:
     Normalizes to lowercased, trimmed (≤200 chars) and upserts a counter on the
     matching row. Never tied to a reader. A logging failure is swallowed — it
     must never break search.
+
+    The counter increment is an atomic UPDATE expression (``count = count + 1``),
+    never a read-modify-write: two concurrent searches for the same term each
+    issuing SELECT-then-assign would both read N and both write N+1, silently
+    dropping one increment (round 278 — the same lost-update class the
+    daily-views counter was hardened against). The first-seen path inserts with
+    count=1 and keeps the IntegrityError retry for the racing-first-insert case.
     """
     q = (query or "").strip().lower()[:200]
     if not q:
         return
     now = datetime.now(UTC)
-    row = db.query(models.SearchLog).filter(models.SearchLog.query == q).first()
-    if row:
-        row.count = (row.count or 0) + 1
-        row.last_searched_at = now
-    else:
-        db.add(models.SearchLog(query=q, count=1, last_searched_at=now))
+    bumped = cast(
+        CursorResult[Any],
+        db.execute(
+            update(models.SearchLog)
+            .where(models.SearchLog.query == q)
+            .values(count=models.SearchLog.count + 1, last_searched_at=now),
+        ),
+    )
     try:
+        if bumped.rowcount == 0:
+            db.add(models.SearchLog(query=q, count=1, last_searched_at=now))
         db.commit()
     except IntegrityError:
+        # Two first-time searches for the same term raced: the other request
+        # inserted the row between our UPDATE-miss and INSERT. Roll back and
+        # re-apply the atomic increment so the count is never stuck at 0.
         db.rollback()
-        row = db.query(models.SearchLog).filter(models.SearchLog.query == q).first()
-        if row:
-            row.count = (row.count or 0) + 1
-            row.last_searched_at = now
-            db.commit()
+        db.execute(
+            update(models.SearchLog)
+            .where(models.SearchLog.query == q)
+            .values(count=models.SearchLog.count + 1, last_searched_at=now),
+        )
+        db.commit()
 
 
 def get_top_searches(db: Session, limit: int = 10) -> list[dict]:
@@ -2877,7 +2896,10 @@ def list_reader_comment_subscriptions(
     total = query.count()
     rows = (
         query.options(joinedload(models.Post.category), joinedload(models.Post.tags))
-        .order_by(models.CommentSubscription.created_at.desc())
+        .order_by(
+            models.CommentSubscription.created_at.desc(),
+            models.CommentSubscription.id.desc(),  # id tiebreak (round 278)
+        )
         .offset((page - 1) * limit)
         .limit(limit)
         .all()
@@ -2940,7 +2962,7 @@ def get_reader_comments(
     # comment history list).
     items = (
         query.options(joinedload(models.Comment.reader))
-        .order_by(models.Comment.created_at.desc())
+        .order_by(models.Comment.created_at.desc(), models.Comment.id.desc())  # id tiebreak (round 278)
         .offset((page - 1) * limit)
         .limit(limit)
         .all()
