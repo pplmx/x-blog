@@ -356,6 +356,36 @@ describe("Notifications page (TASK-192)", () => {
 		expect(switches[2].attributes("aria-checked")).toBe("true");
 	});
 
+	it("shows a per-row saving indicator on the touched toggle while the request is in flight (deep-dive finding)", async () => {
+		// A bare disable (prefsSaving !== null) looked like the tap did nothing —
+		// the touched row must surface that persistence is under way.
+		let resolveUpdate: (v: ReaderNotificationPrefs) => void;
+		const pending = new Promise<ReaderNotificationPrefs>((resolve) => {
+			resolveUpdate = resolve;
+		});
+		mockUpdatePref.mockReturnValueOnce(pending);
+		const wrapper = await mountPage();
+		const switches = wrapper.findAll('button[role="switch"]');
+		await switches[0].trigger("click");
+		await flushPromises();
+
+		// The row being saved shows the spinner; no other row does.
+		const saving = wrapper.findAll('[data-testid="pref-saving"]');
+		expect(saving).toHaveLength(1);
+
+		resolveUpdate?.({
+			new_post: false,
+			reply: true,
+			thread_comment: true,
+			email_new_post: false,
+			email_reply: false,
+			email_thread_comment: false,
+			email_weekly_digest: false,
+		});
+		await flushPromises();
+		expect(wrapper.findAll('[data-testid="pref-saving"]')).toHaveLength(0);
+	});
+
 	it("rolls a failed toggle back and shows the error hint", async () => {
 		mockUpdatePref.mockRejectedValueOnce(new Error("boom"));
 		const wrapper = await mountPage();

@@ -21,6 +21,7 @@
 			"title": "Notification preferences",
 			"subtitle": "Choose which activity types notify you (off silences that type).",
 			"loading": "Loading preferences…",
+			"saving": "Saving…",
 			"kind": {
 				"new_post": {
 					"label": "New posts",

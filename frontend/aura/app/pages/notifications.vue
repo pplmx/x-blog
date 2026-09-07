@@ -388,23 +388,38 @@ function kindIcon(kind: string): string {
               <p class="mt-0.5 text-xs text-gray-500 dark:text-gray-400">{{ row.desc }}</p>
             </div>
           </div>
-          <button
-            type="button"
-            role="switch"
-            :aria-checked="row.on ? 'true' : 'false'"
-            :aria-label="row.label"
-            :disabled="prefsSaving !== null"
-            class="relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors duration-200 disabled:cursor-not-allowed disabled:opacity-60"
-            :class="row.on
-              ? 'bg-amber-500'
-              : 'bg-gray-200 dark:bg-gray-700'"
-            @click="togglePref(row.key)"
-          >
+          <div class="flex items-center gap-2">
+            <!-- Per-row in-flight indicator (deep-dive finding): while a save
+                 round-trips, every toggle is disabled to serialize the requests,
+                 but the touched row needs to say SO — a bare disable looked like
+                 the tap did nothing (the switch flips optimistically in
+                 togglePref, then this spinner marks the persistence). -->
             <span
-              class="inline-block h-5 w-5 transform rounded-full bg-white shadow transition-transform duration-200"
-              :class="row.on ? 'translate-x-[22px]' : 'translate-x-0.5'"
-            />
-          </button>
+              v-if="prefsSaving === row.key"
+              class="flex items-center justify-center w-5 h-5 text-amber-500"
+              role="status"
+              :aria-label="t('notifications.prefs.saving')"
+            >
+              <Icon icon="lucide:loader-2" class="w-4 h-4 animate-spin" aria-hidden="true" role="presentation" data-testid="pref-saving" />
+            </span>
+            <button
+              type="button"
+              role="switch"
+              :aria-checked="row.on ? 'true' : 'false'"
+              :aria-label="row.label"
+              :disabled="prefsSaving !== null"
+              class="relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors duration-200 disabled:cursor-not-allowed disabled:opacity-60"
+              :class="row.on
+                ? 'bg-amber-500'
+                : 'bg-gray-200 dark:bg-gray-700'"
+              @click="togglePref(row.key)"
+            >
+              <span
+                class="inline-block h-5 w-5 transform rounded-full bg-white shadow transition-transform duration-200"
+                :class="row.on ? 'translate-x-[22px]' : 'translate-x-0.5'"
+              />
+            </button>
+          </div>
         </li>
       </ul>
       <p

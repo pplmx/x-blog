@@ -312,6 +312,41 @@ describe("Reading-history page (TASK-170)", () => {
 		vi.useRealTimers();
 	});
 
+	it("single-flights clear and shows a busy, disabled confirm while the request is in flight", async () => {
+		// The clear action issues a server DELETE when signed in; a fast double-click
+		// on the red confirm button must not fire two DELETEs, and the reader needs
+		// feedback that the clear started (the list stays visible until it resolves).
+		let resolveClear: (v: boolean) => void;
+		const pendingClear = new Promise<boolean>((resolve) => {
+			resolveClear = resolve;
+		});
+		mockClear.mockReturnValue(pendingClear);
+		mockHistory.value = [{ slug: "a", title: "Article A", viewedAt: Date.now() }];
+		const wrapper = mountHistory();
+
+		const headerClear = wrapper.findAll("button").filter((b) => b.text().includes("清空历史"));
+		await headerClear[0].trigger("click");
+		const confirmBtn = wrapper
+			.find('[role="alert"]')
+			.findAll("button")
+			.find((b) => b.text().includes("清空历史"));
+		expect(confirmBtn).toBeDefined();
+
+		// Double-click while the clear is in flight: single-flight guard drops the
+		// second invocation (deep-dive finding).
+		await confirmBtn?.trigger("click");
+		await confirmBtn?.trigger("click");
+		await wrapper.vm.$nextTick();
+		expect(mockClear).toHaveBeenCalledTimes(1);
+		// The confirm button is disabled and shows busy feedback while awaiting.
+		expect(confirmBtn?.attributes("disabled")).toBeDefined();
+		expect(wrapper.find('[role="alert"]').text()).toContain("清空中");
+
+		resolveClear?.(true);
+		await flushPromises();
+		expect(wrapper.text()).toContain("阅读历史已清空");
+	});
+
 	it("warns instead of claiming success when the server copy survives an offline clear (ISS-387)", async () => {
 		vi.useFakeTimers();
 		mockHistory.value = [{ slug: "a", title: "Article A", viewedAt: Date.now() }];

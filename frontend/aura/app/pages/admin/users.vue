@@ -57,6 +57,7 @@ function getErrorMessage(e: unknown): string {
 }
 
 async function handleCreate() {
+	if (isProcessing.value) return; // single-flight — Enter in the form can fire
 	const username = newUsername.value.trim();
 	if (!username || newPassword.value.length < 8) {
 		actionError.value = t("admin.users.validation");
@@ -84,6 +85,7 @@ async function handleCreate() {
 }
 
 async function handleDelete(id: number) {
+	if (isProcessing.value) return; // single-flight
 	if (id === currentUserId.value) {
 		actionError.value = t("admin.users.cannotDeleteSelf");
 		return;

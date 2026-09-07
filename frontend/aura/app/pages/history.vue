@@ -75,16 +75,28 @@ let clearedTimer: ReturnType<typeof setTimeout> | null = null;
 // instead of the green "cleared" claim. Dismissed with the same timer.
 const clearFailed = ref(false);
 
+// In-flight guard + busy state for the destructive clear (deep-dive finding):
+// the confirm button stays enabled for the whole DELETE round-trip, so a fast
+// double-click would issue two server clears — and the reader got no feedback
+// that the clear started (nothing visible changes until the response lands).
+const clearing = ref(false);
+
 async function clearHistory() {
-	const ok = await clear();
-	confirmClear.value = false;
-	cleared.value = ok;
-	clearFailed.value = !ok;
-	if (clearedTimer) clearTimeout(clearedTimer);
-	clearedTimer = setTimeout(() => {
-		cleared.value = false;
-		clearFailed.value = false;
-	}, 4000);
+	if (clearing.value) return; // single-flight — a fast double-click on the confirm
+	clearing.value = true;
+	try {
+		const ok = await clear();
+		confirmClear.value = false;
+		cleared.value = ok;
+		clearFailed.value = !ok;
+		if (clearedTimer) clearTimeout(clearedTimer);
+		clearedTimer = setTimeout(() => {
+			cleared.value = false;
+			clearFailed.value = false;
+		}, 4000);
+	} finally {
+		clearing.value = false;
+	}
 }
 
 // Absolute viewed date, localized. Legacy entries without a timestamp fall
@@ -308,11 +320,13 @@ function heatMapSummary(): string {
       <div class="flex gap-3">
         <button
           type="button"
-          class="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium text-white bg-red-500 hover:bg-red-600 transition-colors"
+          :disabled="clearing"
+          class="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium text-white bg-red-500 hover:bg-red-600 disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
           @click="clearHistory"
         >
-          <Icon icon="lucide:trash-2" class="w-4 h-4" />
-          {{ t('history.clearConfirmAction') }}
+          <Icon v-if="clearing" icon="lucide:loader-2" class="w-4 h-4 animate-spin" aria-hidden="true" role="presentation" />
+          <Icon v-else icon="lucide:trash-2" class="w-4 h-4" />
+          {{ clearing ? t('history.clearing') : t('history.clearConfirmAction') }}
         </button>
         <button
           type="button"

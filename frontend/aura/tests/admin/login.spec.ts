@@ -284,6 +284,40 @@ describe("Admin Login Page", () => {
 			expect(wrapper.text()).toContain("登录失败");
 		});
 
+		it("single-flights a double submit so only one auth request is issued (reader-login parity)", async () => {
+			// Same re-entry guard the reader login carries (app/pages/login.vue):
+			// Enter then click (or a double fire before the disabled state lands) must
+			// not issue two adminLoginRequest POSTs or two role-refetch /me calls.
+			let resolveLogin: (value: unknown) => void;
+			const pendingLogin = new Promise((resolve) => {
+				resolveLogin = resolve;
+			});
+			mockAdminLoginRequest.mockReturnValue(pendingLogin);
+
+			const LoginPage = await loadLoginPage();
+			const wrapper = mount(LoginPage, {
+				global: {
+					stubs: { NuxtLink: NuxtLinkStub, Icon: IconStubComponent },
+				},
+			});
+
+			const inputs = wrapper.findAll("input");
+			await inputs[0].setValue("admin");
+			await inputs[1].setValue("secretpass");
+			const form = wrapper.find("form");
+			await form.trigger("submit.prevent");
+			await form.trigger("submit.prevent");
+			await flushPromises();
+
+			expect(mockAdminLoginRequest).toHaveBeenCalledTimes(1);
+
+			resolveLogin?.({
+				data: ref({ access_token: "token" }),
+				error: ref(null),
+			});
+			await flushPromises();
+		});
+
 		it("shows loading state while login is pending", async () => {
 			const LoginPage = await loadLoginPage();
 			const wrapper = mount(LoginPage, {

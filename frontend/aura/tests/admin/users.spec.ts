@@ -168,6 +168,40 @@ describe("Admin Users Page", () => {
 			expect(wrapper.text()).toContain("两次输入的密码不一致");
 		});
 
+		it("single-flights a double submit so a duplicate admin is never created (sibling-guard parity)", async () => {
+			// The submit button is disabled once processing starts, but a redundant
+			// submit event (Enter then click, or a double fire before the disabled
+			// state paints) would otherwise issue two createAdminUser calls — two
+			// admin accounts with the same credentials. Every sibling create form
+			// (categories/tags/series) carries this guard (deep-dive finding).
+			let resolveCreate: (v: unknown) => void;
+			const pendingCreate = new Promise((resolve) => {
+				resolveCreate = resolve;
+			});
+			mockCreateAdminUser.mockReturnValue(pendingCreate);
+
+			const UsersPage = await loadPage();
+			const wrapper = await mountWithSuspense(UsersPage);
+
+			const inputs = wrapper.findAll("input");
+			await inputs[0].setValue("newadmin");
+			await inputs[1].setValue("secretpass1");
+			await inputs[2].setValue("secretpass1");
+			// Trigger on the FORM (like the reader-login single-flight spec): the
+			// submit button disables once processing starts, so clicking IT twice is
+			// already inert — the real double-fire is a form submit that bypasses
+			// the disabled button (Enter in the input fires the <form>`s handler).
+			const form = wrapper.find("form");
+			await form.trigger("submit");
+			await form.trigger("submit");
+			await flushPromises();
+
+			expect(mockCreateAdminUser).toHaveBeenCalledTimes(1);
+
+			resolveCreate?.({});
+			await flushPromises();
+		});
+
 		it("deletes a user after confirmation", async () => {
 			mockDeleteAdminUser.mockResolvedValue({});
 			window.confirm = vi.fn(() => true);

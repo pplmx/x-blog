@@ -38,6 +38,11 @@ const hasSessionExpiredNotice = computed(
 );
 
 async function handleLogin() {
+	// The submit button is disabled while pending, but a redundant submit event
+	// (Enter then click, or a double fire before the disabled state paints)
+	// would otherwise issue two login requests — same re-entry guard the reader
+	// login carries (app/pages/login.vue, deep-dive finding).
+	if (isPending.value) return;
 	if (!(username.value && password.value)) return;
 
 	error.value = null;
