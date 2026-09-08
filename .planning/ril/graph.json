@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 282,
+  "round": 284,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-07T14:48:55+00:00",
+  "updated_at": "2026-09-08T03:08:34+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -22,7 +22,7 @@
       "version": 1,
       "created_at": "2026-08-06T13:23:41+00:00",
       "updated_at": "2026-08-06T13:23:41+00:00",
-      "touched_round": 278,
+      "touched_round": 283,
       "title": "frontend-aura",
       "description": "Nuxt 4 Vue 3 TypeScript frontend at frontend/aura; composables; admin pages; e2e Playwright; biome lint"
     },
@@ -19968,6 +19968,119 @@
       "rationale": "Quality-convergence reached for the polish/bug-fix directive (rounds 280-282): ISS-410 fake-timer flake fixed at the leaked-instance root (CHG-424, EV-226), guest reading-history migration delivered end-to-end (TASK-303/ISS-386 via CHG-425/426, DEC-270, EV-227), TASK-309 perf bounded (CHG-423, DEC-268), ISS-404 comment-edit notification re-fanout fixed (CHG-427, EV-228). Graph has 0 active tasks; every issue is resolved or deliberately deferred (multi-worker hardening ISS-242/243/244 via DEC-214). No TODO/FIXME in app code; only open GitHub issue is the Renovate dependency dashboard (not coding work). VERIFY fully green: backend 1336 passed, frontend 1582 passed, typecheck/ruff/pyright/biome clean. Parked; re-activated by a new operator direction.",
       "alternatives_rejected": "Bumping dependencies via the Renovate dashboard (risk of formatter-gate drift, not user-visible polish); forcing the deliberately-deferred multi-worker hardening into the single-worker scope (DEC-214 said defer); manufacturing trivial per-page polish to keep commits flowing (the round-100+ grind anti-pattern).",
       "title": "converged-idle: quality convergence reached for the polish/bug-fix directive (rounds 280-282)"
+    },
+    "ISS-414": {
+      "id": "ISS-414",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-08T02:16:41+00:00",
+      "updated_at": "2026-09-08T02:21:49+00:00",
+      "touched_round": 283,
+      "summary": "useToc composable snapshots ref.value at call time — a post's TOC never populates when content loads asynchronously after setup (documented usage \"useToc(postContent)\")",
+      "severity": "medium"
+    },
+    "TASK-318": {
+      "id": "TASK-318",
+      "type": "task",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-08T02:16:54+00:00",
+      "updated_at": "2026-09-08T02:21:49+00:00",
+      "touched_round": 283,
+      "category": "test-quality",
+      "severity": "medium",
+      "summary": "Fix useToc reactivity snapshot + add regression tests"
+    },
+    "CHG-428": {
+      "id": "CHG-428",
+      "type": "change",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-08T02:21:23+00:00",
+      "updated_at": "2026-09-08T02:22:10+00:00",
+      "touched_round": 283,
+      "commit": "eccc39a",
+      "summary": "useToc recomputes on late content load + async regression test (ISS-414)"
+    },
+    "TASK-319": {
+      "id": "TASK-319",
+      "type": "task",
+      "status": "resolved",
+      "version": 1,
+      "created_at": "2026-09-08T02:35:21+00:00",
+      "updated_at": "2026-09-08T02:35:21+00:00",
+      "touched_round": 283,
+      "category": "maintainability",
+      "severity": "low",
+      "summary": "Remove dead HTML-comment placeholder wrapper in convertMarkdownToHtml + pin comment pass-through with a test"
+    },
+    "ISS-415": {
+      "id": "ISS-415",
+      "type": "issue",
+      "status": "resolved",
+      "version": 1,
+      "created_at": "2026-09-08T02:35:21+00:00",
+      "updated_at": "2026-09-08T02:35:21+00:00",
+      "touched_round": 283,
+      "severity": "low",
+      "summary": "convertMarkdownToHtml's comment-protecting placeholders are dead code (empty string placeholder); comment claims behavior the code does not perform"
+    },
+    "CHG-429": {
+      "id": "CHG-429",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-08T02:35:39+00:00",
+      "updated_at": "2026-09-08T02:35:39+00:00",
+      "touched_round": 283,
+      "commit": "599a2d3",
+      "summary": "drop dead HTML-comment placeholder wrapper in markdown pipeline + regression test"
+    },
+    "TASK-320": {
+      "id": "TASK-320",
+      "type": "task",
+      "status": "resolved",
+      "version": 1,
+      "created_at": "2026-09-08T03:00:10+00:00",
+      "updated_at": "2026-09-08T03:00:10+00:00",
+      "touched_round": 283,
+      "category": "correctness",
+      "severity": "medium",
+      "summary": "Gate article action row + comment form during SPA refetch; keep admin Posts nav lit on editor sub-pages"
+    },
+    "CHG-430": {
+      "id": "CHG-430",
+      "type": "change",
+      "status": "active",
+      "version": 2,
+      "created_at": "2026-09-08T03:00:10+00:00",
+      "updated_at": "2026-09-08T03:07:00+00:00",
+      "touched_round": 283,
+      "commit": "38b7c80",
+      "summary": "gate action row/comment form on pending + admin nav sub-page highlight (ISS-416/417)"
+    },
+    "ISS-416": {
+      "id": "ISS-416",
+      "type": "issue",
+      "status": "resolved",
+      "version": 1,
+      "created_at": "2026-09-08T03:00:39+00:00",
+      "updated_at": "2026-09-08T03:00:39+00:00",
+      "touched_round": 283,
+      "severity": "medium",
+      "summary": "Article page action row + comment form stay live and bound to the OLD post during prev/next SPA refetch — like/bookmark/comment act on the wrong post"
+    },
+    "ISS-417": {
+      "id": "ISS-417",
+      "type": "issue",
+      "status": "resolved",
+      "version": 1,
+      "created_at": "2026-09-08T03:00:39+00:00",
+      "updated_at": "2026-09-08T03:00:39+00:00",
+      "touched_round": 283,
+      "severity": "low",
+      "summary": "Admin sidebar active-nav highlight lost on /admin/posts/[id] and /admin/posts/new (route.path === item.href exact match only)"
     }
   },
   "edges": [
@@ -29671,6 +29784,96 @@
       "to": "ISS-404",
       "type": "resolves",
       "created_at": "2026-09-07T14:29:54+00:00"
+    },
+    {
+      "from": "ISS-414",
+      "to": "COMP-002",
+      "type": "located_in",
+      "created_at": "2026-09-08T02:18:10+00:00"
+    },
+    {
+      "from": "TASK-318",
+      "to": "ISS-414",
+      "type": "addresses",
+      "created_at": "2026-09-08T02:18:10+00:00"
+    },
+    {
+      "from": "CHG-428",
+      "to": "ISS-414",
+      "type": "resolves",
+      "created_at": "2026-09-08T02:21:23+00:00"
+    },
+    {
+      "from": "CHG-428",
+      "to": "TASK-318",
+      "type": "implements",
+      "created_at": "2026-09-08T02:21:23+00:00"
+    },
+    {
+      "from": "CHG-429",
+      "to": "TASK-319",
+      "type": "implements",
+      "created_at": "2026-09-08T02:35:39+00:00"
+    },
+    {
+      "from": "CHG-429",
+      "to": "ISS-415",
+      "type": "resolves",
+      "created_at": "2026-09-08T02:35:40+00:00"
+    },
+    {
+      "from": "TASK-319",
+      "to": "ISS-415",
+      "type": "addresses",
+      "created_at": "2026-09-08T02:35:40+00:00"
+    },
+    {
+      "from": "ISS-415",
+      "to": "COMP-002",
+      "type": "located_in",
+      "created_at": "2026-09-08T02:35:40+00:00"
+    },
+    {
+      "from": "CHG-430",
+      "to": "TASK-320",
+      "type": "implements",
+      "created_at": "2026-09-08T03:00:10+00:00"
+    },
+    {
+      "from": "TASK-320",
+      "to": "ISS-416",
+      "type": "addresses",
+      "created_at": "2026-09-08T03:01:05+00:00"
+    },
+    {
+      "from": "TASK-320",
+      "to": "ISS-417",
+      "type": "addresses",
+      "created_at": "2026-09-08T03:01:05+00:00"
+    },
+    {
+      "from": "CHG-430",
+      "to": "ISS-416",
+      "type": "resolves",
+      "created_at": "2026-09-08T03:01:05+00:00"
+    },
+    {
+      "from": "CHG-430",
+      "to": "ISS-417",
+      "type": "resolves",
+      "created_at": "2026-09-08T03:01:05+00:00"
+    },
+    {
+      "from": "ISS-416",
+      "to": "COMP-002",
+      "type": "located_in",
+      "created_at": "2026-09-08T03:01:05+00:00"
+    },
+    {
+      "from": "ISS-417",
+      "to": "COMP-002",
+      "type": "located_in",
+      "created_at": "2026-09-08T03:01:05+00:00"
     }
   ]
 }
