@@ -2,7 +2,7 @@
   "ril_version": 1,
   "round": 287,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-08T05:28:45+00:00",
+  "updated_at": "2026-09-08T06:22:29+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -20405,10 +20405,10 @@
     "ISS-426": {
       "id": "ISS-426",
       "type": "issue",
-      "status": "active",
-      "version": 1,
+      "status": "resolved",
+      "version": 3,
       "created_at": "2026-09-08T05:28:05+00:00",
-      "updated_at": "2026-09-08T05:28:05+00:00",
+      "updated_at": "2026-09-08T06:22:29+00:00",
       "touched_round": 287,
       "summary": "Post like counter (POST /api/posts/{id}/like) is a blind atomic likes+1 with no per-reader/per-IP dedupe — a network retry or script double-counts (comment likes already dedupe on a unique (comment_id, ip_key)); full fix needs a schema change + migration",
       "severity": "low"
@@ -20416,10 +20416,10 @@
     "ISS-427": {
       "id": "ISS-427",
       "type": "issue",
-      "status": "active",
-      "version": 1,
+      "status": "resolved",
+      "version": 2,
       "created_at": "2026-09-08T05:28:05+00:00",
-      "updated_at": "2026-09-08T05:28:05+00:00",
+      "updated_at": "2026-09-08T06:11:07+00:00",
       "touched_round": 287,
       "summary": "Comment approval fans out one notification per follower with a per-follower flush+commit+prune (O(N) transactions); the new-post fan-out path already batches — batch the comment path too",
       "severity": "low"
@@ -20427,13 +20427,89 @@
     "ISS-428": {
       "id": "ISS-428",
       "type": "issue",
-      "status": "active",
-      "version": 1,
+      "status": "resolved",
+      "version": 2,
       "created_at": "2026-09-08T05:28:05+00:00",
-      "updated_at": "2026-09-08T05:28:05+00:00",
+      "updated_at": "2026-09-08T05:53:08+00:00",
       "touched_round": 287,
       "summary": "bookmarks.vue undoRemove discards assignFolder's return value: if the re-assignment fails at undo time the folder silently drops off the restored bookmark on the next cloud merge (every sibling path on the page surfaces the failure)",
       "severity": "low"
+    },
+    "TASK-328": {
+      "id": "TASK-328",
+      "type": "task",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-08T05:53:08+00:00",
+      "updated_at": "2026-09-08T05:53:08+00:00",
+      "touched_round": 287,
+      "category": "correctness",
+      "severity": "low",
+      "confidence": 0.9,
+      "effort": 1.0,
+      "summary": "bookmarks.vue undoRemove must surface a failed folder re-assign via noteFolderActionFailure instead of discarding the result",
+      "priority_score": 0
+    },
+    "CHG-439": {
+      "id": "CHG-439",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-08T05:53:08+00:00",
+      "updated_at": "2026-09-08T05:53:08+00:00",
+      "touched_round": 287,
+      "commit": "f1bcc08",
+      "summary": "Fail-open bookmark undo folder banner (TASK-328/ISS-428)"
+    },
+    "TASK-329": {
+      "id": "TASK-329",
+      "type": "task",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-08T06:11:06+00:00",
+      "updated_at": "2026-09-08T06:11:07+00:00",
+      "touched_round": 287,
+      "category": "performance",
+      "severity": "low",
+      "confidence": 0.9,
+      "effort": 2.0,
+      "summary": "Batch the thread-comment notification fan-out (record_thread_comment_notifications), replacing the per-follower flush+commit loop",
+      "priority_score": 0
+    },
+    "CHG-440": {
+      "id": "CHG-440",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-08T06:11:07+00:00",
+      "updated_at": "2026-09-08T06:11:07+00:00",
+      "touched_round": 287,
+      "commit": "2c04cb9",
+      "summary": "Batch thread-comment notification fan-out (TASK-329/ISS-427)"
+    },
+    "DEC-273": {
+      "id": "DEC-273",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-08T06:18:08+00:00",
+      "updated_at": "2026-09-08T06:18:08+00:00",
+      "touched_round": 287,
+      "title": "Defer server-side post-like dedupe (ISS-426)",
+      "rationale": "Post like counter is a blind likes+1 with no per-source dedupe, but: (1) the shipped frontend hard-dedups per browser (recordLike before the request, rollback on failure), so real readers cannot double-count through the UI; (2) the route carries a 120/min per-IP rate limit, bounding scripted inflation; (3) post likes drive no ordering or ranking (get_popular_posts ranks by views, comment 'most helpful' ranks comment likes) — the counter is decorative. A proper fix (PostLike table + alembic migration mirroring CommentLike's unique (post, ip_key)) adds schema surface for a cosmetic metric. Defer until post likes gain ranking/display semantics that make the counter integrity matter.",
+      "alternatives_rejected": "Mirror CommentLike now: needs a new additive table + migration + route rebuild for a decorative counter; frontend already enforces one-like-per-browser be urated"
+    },
+    "DEC-274": {
+      "id": "DEC-274",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-08T06:21:38+00:00",
+      "updated_at": "2026-09-08T06:21:38+00:00",
+      "touched_round": 287,
+      "title": "Defer server-side post-like dedupe (ISS-426, supersedes DEC-273)",
+      "rationale": "Post like counter is a blind likes+1 with no per-source dedupe, but: (1) the shipped frontend hard-dedups per browser (recordLike before the request, rollback on failure), so real readers cannot double-count through the UI; (2) the route carries a 120/min per-IP rate limit, bounding scripted inflation; (3) post likes drive no ordering or ranking — get_popular_posts ranks by views and comment 'most helpful' ranks comment likes, so the counter is purely decorative. A proper fix (PostLike table + alembic migration mirroring CommentLike's unique (post, ip_key)) adds schema surface for a cosmetic metric. Defer until post likes gain ranking/display semantics that make counter integrity matter.",
+      "alternatives_rejected": "Mirror CommentLike now: requires a new additive table + migration + route rebuild for a decorative counter; the frontend already enforces one-like-per-browser and the 120/min IP cap bounds a script"
     }
   },
   "edges": [
@@ -30425,6 +30501,66 @@
       "to": "COMP-002",
       "type": "located_in",
       "created_at": "2026-09-08T05:28:45+00:00"
+    },
+    {
+      "from": "TASK-328",
+      "to": "ISS-428",
+      "type": "addresses",
+      "created_at": "2026-09-08T05:53:08+00:00"
+    },
+    {
+      "from": "CHG-439",
+      "to": "ISS-428",
+      "type": "resolves",
+      "created_at": "2026-09-08T05:53:08+00:00"
+    },
+    {
+      "from": "CHG-439",
+      "to": "TASK-328",
+      "type": "implements",
+      "created_at": "2026-09-08T05:53:08+00:00"
+    },
+    {
+      "from": "TASK-329",
+      "to": "ISS-427",
+      "type": "addresses",
+      "created_at": "2026-09-08T06:11:06+00:00"
+    },
+    {
+      "from": "CHG-440",
+      "to": "ISS-427",
+      "type": "resolves",
+      "created_at": "2026-09-08T06:11:07+00:00"
+    },
+    {
+      "from": "CHG-440",
+      "to": "TASK-329",
+      "type": "implements",
+      "created_at": "2026-09-08T06:11:07+00:00"
+    },
+    {
+      "from": "DEC-273",
+      "to": "COMP-001",
+      "type": "governs",
+      "created_at": "2026-09-08T06:18:58+00:00"
+    },
+    {
+      "from": "ISS-426",
+      "to": "ISS-426",
+      "type": "causes",
+      "created_at": "2026-09-08T06:18:58+00:00"
+    },
+    {
+      "from": "DEC-274",
+      "to": "DEC-273",
+      "type": "supersedes",
+      "created_at": "2026-09-08T06:22:29+00:00"
+    },
+    {
+      "from": "DEC-274",
+      "to": "COMP-001",
+      "type": "governs",
+      "created_at": "2026-09-08T06:22:29+00:00"
     }
   ]
 }
