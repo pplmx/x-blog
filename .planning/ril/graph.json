@@ -2,7 +2,7 @@
   "ril_version": 1,
   "round": 287,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-08T06:22:29+00:00",
+  "updated_at": "2026-09-08T07:05:05+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -20135,7 +20135,7 @@
       "version": 2,
       "created_at": "2026-09-08T03:50:11+00:00",
       "updated_at": "2026-09-08T04:01:15+00:00",
-      "touched_round": 285,
+      "touched_round": 287,
       "summary": "POST /me/history/import can 500 on a unique-key race: two concurrent imports of the same new post slug both pass the existing_by_post check, the second db.commit() raises bare IntegrityError (idempotency is documented but not enforced under concurrency)",
       "severity": "medium"
     },
@@ -20510,6 +20510,43 @@
       "title": "Defer server-side post-like dedupe (ISS-426, supersedes DEC-273)",
       "rationale": "Post like counter is a blind likes+1 with no per-source dedupe, but: (1) the shipped frontend hard-dedups per browser (recordLike before the request, rollback on failure), so real readers cannot double-count through the UI; (2) the route carries a 120/min per-IP rate limit, bounding scripted inflation; (3) post likes drive no ordering or ranking — get_popular_posts ranks by views and comment 'most helpful' ranks comment likes, so the counter is purely decorative. A proper fix (PostLike table + alembic migration mirroring CommentLike's unique (post, ip_key)) adds schema surface for a cosmetic metric. Defer until post likes gain ranking/display semantics that make counter integrity matter.",
       "alternatives_rejected": "Mirror CommentLike now: requires a new additive table + migration + route rebuild for a decorative counter; the frontend already enforces one-like-per-browser and the 120/min IP cap bounds a script"
+    },
+    "TASK-330": {
+      "id": "TASK-330",
+      "type": "task",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-08T06:27:49+00:00",
+      "updated_at": "2026-09-08T07:05:05+00:00",
+      "touched_round": 287,
+      "category": "security",
+      "severity": "high",
+      "confidence": 0.9,
+      "effort": 3.0,
+      "summary": "Rate-limit authenticated reader mutations: bookmark/folder/follow/history(import up to 1000 rows)/notification-write endpoints carry no @limiter.limit; self-registration is allowed (5/min) so one account can hammer writes and the bulk import unthrottled. Apply RATE_LIMIT_WRITE caps per route (orthogonal to DEC-214's shared-storage deferral)",
+      "priority_score": 0
+    },
+    "ISS-429": {
+      "id": "ISS-429",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-08T07:05:04+00:00",
+      "updated_at": "2026-09-08T07:05:05+00:00",
+      "touched_round": 287,
+      "summary": "Every authenticated reader mutation — bookmarks, folders, series/category/tag follows + notify toggles, reading-history import/record/clear, comment edit/delete, notification reads, push prefs — had no rate limit at all; the 1000-row bulk history import and repeated comment/like-style writes are parked behind get_current_reader but a single client/IP could hammer them with no per-IP backstop (unlike register/login/export)",
+      "severity": "high"
+    },
+    "CHG-441": {
+      "id": "CHG-441",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-08T07:05:05+00:00",
+      "updated_at": "2026-09-08T07:05:05+00:00",
+      "touched_round": 287,
+      "commit": "34b0ba9",
+      "summary": "Rate-limit all 26 authenticated reader writer routes with the shared RATE_LIMIT_WRITE cap (30/min default); regression test proves a 2/min cap 429s the bookmark PUT burst while the GET stays 200"
     }
   },
   "edges": [
@@ -30561,6 +30598,30 @@
       "to": "COMP-001",
       "type": "governs",
       "created_at": "2026-09-08T06:22:29+00:00"
+    },
+    {
+      "from": "TASK-330",
+      "to": "ISS-419",
+      "type": "addresses",
+      "created_at": "2026-09-08T06:27:49+00:00"
+    },
+    {
+      "from": "TASK-330",
+      "to": "ISS-429",
+      "type": "addresses",
+      "created_at": "2026-09-08T07:05:04+00:00"
+    },
+    {
+      "from": "CHG-441",
+      "to": "TASK-330",
+      "type": "implements",
+      "created_at": "2026-09-08T07:05:05+00:00"
+    },
+    {
+      "from": "CHG-441",
+      "to": "ISS-429",
+      "type": "resolves",
+      "created_at": "2026-09-08T07:05:05+00:00"
     }
   ]
 }
