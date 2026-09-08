@@ -2,7 +2,7 @@
   "ril_version": 1,
   "round": 284,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-08T03:08:34+00:00",
+  "updated_at": "2026-09-08T03:11:31+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -20081,6 +20081,18 @@
       "touched_round": 283,
       "severity": "low",
       "summary": "Admin sidebar active-nav highlight lost on /admin/posts/[id] and /admin/posts/new (route.path === item.href exact match only)"
+    },
+    "DEC-272": {
+      "id": "DEC-272",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-08T03:11:31+00:00",
+      "updated_at": "2026-09-08T03:11:31+00:00",
+      "touched_round": 284,
+      "label": "converged-idle (round 284 reactivation satisfied)",
+      "rationale": "Reactivation round delivered 3 verified changes (reactivity bug + security-path dead-code cleanup + the two fresh-eyes sweep findings, ISS-414..417 via CHG-428/429/430). All 5 stop conditions hold again: 0 active tasks, high-severity issues resolved or DEC-214-deferred, VERIFY green (backend 1336 @93.59%, frontend 1588, nuxt typecheck, biome), 3-task deep-dive cap met, graph consistent (1661 nodes). No idle rounds to run.",
+      "alternatives_rejected": "Rejected as below-threshold/speculative: useUpload.ts extra tests (already works; transport handles 401s), import_reader_history fold edge (malformed-client-only, primary unique-constraint guard holds), encoded-scheme XSS in regex fallback (documented weaker-than-DOMPurify tradeoff, no live execution path), Renovate dependency churn (tasks exist as PRs; bump risks formatter-gate drift)"
     }
   },
   "edges": [
