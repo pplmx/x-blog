@@ -108,9 +108,12 @@ export function extractToc(html: string): TocItem[] {
 /**
  * Composable that returns TOC items for the given HTML content.
  * @param html The HTML content string (reactive ref or plain string)
+ *
+ * The ref is read INSIDE the computed, not captured at call time: post content
+ * usually arrives via useFetch after setup, and a snapshot (`html.value` read
+ * once) would freeze the TOC on the initial empty value forever.
  */
 export function useToc(html: string | { value: string }) {
-	const content = typeof html === "string" ? html : html.value;
-	const toc = computed(() => extractToc(content));
+	const toc = computed(() => extractToc(typeof html === "string" ? html : html.value));
 	return { toc };
 }

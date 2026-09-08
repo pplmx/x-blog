@@ -6,6 +6,7 @@
  */
 
 import { describe, expect, it } from "vitest";
+import { ref } from "vue";
 
 import { extractToc, useToc } from "../../composables/useToc";
 
@@ -123,6 +124,24 @@ describe("useToc", () => {
 		expect(toc.value).toHaveLength(2);
 		expect(toc.value[0].text).toBe("Reactive");
 		expect(toc.value[1].level).toBe(2);
+	});
+
+	it("recomputes when a ref's value changes after setup (async content load)", async () => {
+		// Post content usually arrives via useFetch AFTER the composable is
+		// created, so the TOC must track later value changes. The old snapshot
+		// read ref.value once at call time and froze the TOC on the initial
+		// (empty) value — a permanently-empty TOC for async content (regression).
+		const content = ref("");
+		const { toc } = useToc(content);
+		expect(toc.value).toHaveLength(0);
+		content.value = "<h1>Loaded late</h1><h2>Also here</h2>";
+		await Promise.resolve(); // let the scheduler flush the computed
+		expect(toc.value).toHaveLength(2);
+		expect(toc.value[0].text).toBe("Loaded late");
+		content.value = "<h1>Replaced</h1>";
+		await Promise.resolve();
+		expect(toc.value).toHaveLength(1);
+		expect(toc.value[0].text).toBe("Replaced");
 	});
 });
 
