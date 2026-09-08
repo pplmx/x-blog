@@ -22,6 +22,12 @@ const POLL_INTERVAL_MS = 60_000;
 
 const unreadCount = ref(0);
 let pollTimer: ReturnType<typeof setInterval> | null = null;
+// Monotonic guard so a stale in-flight refresh response can't clobber a newer
+// one (survey finding): a 60s poll already in flight when the reader marks all
+// read can resolve AFTER markAllRead commits and write the old pre-read count
+// back until the next tick. The LAST refresh to START wins; stragglers discard
+// their out-of-date snapshot.
+let refreshEpoch = 0;
 
 export function useNotificationBadge() {
 	const { isAuthenticated } = useReaderAuth();
@@ -32,8 +38,10 @@ export function useNotificationBadge() {
 			unreadCount.value = 0;
 			return;
 		}
+		const seq = ++refreshEpoch;
 		try {
 			const data = await getReaderNotifications(1, 1);
+			if (seq !== refreshEpoch) return; // a newer refresh superseded this one
 			// Re-check auth after the await: a fetch started while signed in can
 			// resolve after logout(), and writing a signed-in count then would
 			// leave a stale nonzero badge visible for the next login.

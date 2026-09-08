@@ -148,4 +148,30 @@ describe("useNotificationBadge (TASK-224)", () => {
 		vi.advanceTimersByTime(120_000);
 		expect(fetchNotifications.mock.calls.length).toBe(callsAfterStart);
 	});
+
+	it("discards a stale in-flight poll that resolves after a newer refresh (survey finding)", async () => {
+		authRef.value = true;
+		const { unreadCount, refresh } = useNotificationBadge();
+
+		// A 60s poll starts (it will read the pre-mark-all count) and hangs.
+		let resolveStale!: (v: { unread: number }) => void;
+		fetchNotifications.mockImplementationOnce(
+			() =>
+				new Promise<{ unread: number }>((res) => {
+					resolveStale = res;
+				}),
+		);
+		const stalePoll = refresh();
+
+		// The reader marks all read: a newer refresh starts and lands in time.
+		fetchNotifications.mockResolvedValueOnce({ unread: 0 });
+		await refresh();
+		expect(unreadCount.value).toBe(0);
+
+		// The stale poll resolves late with the old count — the epoch guard must
+		// discard it, not flash the badge back to 5 until the next tick.
+		resolveStale({ unread: 5 });
+		await stalePoll;
+		expect(unreadCount.value).toBe(0);
+	});
 });
