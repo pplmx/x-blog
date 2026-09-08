@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 288,
+  "round": 289,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-08T08:04:41+00:00",
+  "updated_at": "2026-09-08T14:42:23+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -11,7 +11,7 @@
       "version": 1,
       "created_at": "2026-08-06T13:23:41+00:00",
       "updated_at": "2026-08-06T13:23:41+00:00",
-      "touched_round": 287,
+      "touched_round": 288,
       "title": "backend-nova",
       "description": "FastAPI Python 3.14 backend at backend/nova; SQLAlchemy ORM; routers in app/routers, crud.py business logic, 656 lines"
     },
@@ -22,7 +22,7 @@
       "version": 1,
       "created_at": "2026-08-06T13:23:41+00:00",
       "updated_at": "2026-08-06T13:23:41+00:00",
-      "touched_round": 287,
+      "touched_round": 288,
       "title": "frontend-aura",
       "description": "Nuxt 4 Vue 3 TypeScript frontend at frontend/aura; composables; admin pages; e2e Playwright; biome lint"
     },
@@ -20562,10 +20562,10 @@
     "TASK-333": {
       "id": "TASK-333",
       "type": "task",
-      "status": "active",
-      "version": 1,
+      "status": "resolved",
+      "version": 2,
       "created_at": "2026-09-08T07:48:32+00:00",
-      "updated_at": "2026-09-08T07:48:32+00:00",
+      "updated_at": "2026-09-08T12:24:20+00:00",
       "touched_round": 288,
       "category": "performance",
       "severity": "medium",
@@ -20640,10 +20640,10 @@
     "ISS-433": {
       "id": "ISS-433",
       "type": "issue",
-      "status": "active",
-      "version": 1,
+      "status": "resolved",
+      "version": 2,
       "created_at": "2026-09-08T08:01:26+00:00",
-      "updated_at": "2026-09-08T08:01:26+00:00",
+      "updated_at": "2026-09-08T12:24:20+00:00",
       "touched_round": 288,
       "summary": "The media-library LIST page still runs the full _collect_upload_references scan (every post body streaming+regex) once per request to power the referenced badge on each thumbnail — a per-render O(total content) cost with no pagination/caching bound",
       "severity": "low"
@@ -20659,6 +20659,288 @@
       "title": "converged-idle (quality-convergence reached for the polish/bug-fix directive)",
       "rationale": "All five stop conditions hold after rounds 287-289. (1) No active task above the 3.0 threshold: the graph holds no active tasks except TASK-333 (media-list scan, priority 1.30). (2) High-severity issues are resolved or decision-deferred (ISS-242/243/244 by DEC-214; every deep-dive finding of this wave closed: ISS-429 reader write rate limits, ISS-430 series reorder single-flight, ISS-431 dashboard pending queue, ISS-432 media delete probe). (3) VERIFY green: backend SQLite 1342 passed @93.59%, dev PG 1352 passed @94.00%, frontend 1602 passed, pnpm lint clean (377 files), nuxt typecheck clean. (4) Two consecutive deep-dive rounds produced only sub-threshold new tasks (round 288: TASK-332 2.85 / TASK-333 1.30; round 289: TASK-334 2.38) — the exploration well has genuinely dried, not just been paused. (5) ril check consistent (1707 nodes / 1680 edges). The last wave delivered 5 real changes: reader-mutation rate limits, media-delete targeted probe, series reorder single-flight, dashboard pending queue, plus the earlier batched fan-out",
       "alternatives_rejected": "Emitted further round-tick chore commits (rejected: stop conditions hold, nothing above threshold to do). Fixed TASK-333 (media-list per-request scan) now (rejected: priority 1.3 below threshold and the fix carries a real tradeoff — the per-request scan is what powers the referenced badge on every thumbnail; needs a design decision like a short-TTL cache with post-edit invalidation). Started feature work (rejected: no feature-evolution decision is active; the directive is quality convergence)."
+    },
+    "ISS-434": {
+      "id": "ISS-434",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-08T12:06:40+00:00",
+      "updated_at": "2026-09-08T12:24:21+00:00",
+      "touched_round": 288,
+      "title": "Expired reader session dead-ends the tag/category/series follow controls",
+      "summary": "An expired reader JWT (normal token expiry, still present in localStorage) makes the follow-state GET on the public tags/categories/series pages 401 silently: a followed tag renders as 'Follow', and every follow/notify tap 401s into a transient toast forever, with no path back to /login. account/notifications pages detect the same 401 via isStaleSession and redirect; these public pages had no equivalent.",
+      "severity": "high"
+    },
+    "TASK-335": {
+      "id": "TASK-335",
+      "type": "task",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-08T12:07:25+00:00",
+      "updated_at": "2026-09-08T12:24:21+00:00",
+      "touched_round": 288,
+      "category": "correctness",
+      "severity": "medium",
+      "confidence": 0.9,
+      "effort": 2.0,
+      "title": "Detect dead reader session on follow controls and offer sign-in",
+      "summary": "Wire the shared useFollowSessionGuard into tags/categories/series follow-state loads and follow/notify toggles: on a 401 (isStaleSession) drop the dead token (signed-in gate is localStorage presence, control flips signed-out) and show a sign-in prompt with a /login link instead of a forever-failing button."
+    },
+    "CHG-445": {
+      "id": "CHG-445",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-08T12:23:44+00:00",
+      "updated_at": "2026-09-08T12:23:44+00:00",
+      "touched_round": 288,
+      "commit": "bb2afad",
+      "summary": "Media library reference map served from a short-TTL cache (30s) with invalidation on every post write (clear_posts_list_cache) + test-fixture clear; list render/search/pagination no longer scans all post bodies per request. Display-only — delete guards keep the live _referencing_posts probe. Tests: scan-runs-once, clear-wiring, post-create-reflected; SQLite 1345 @93.61% + dev PG green."
+    },
+    "CHG-446": {
+      "id": "CHG-446",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-08T12:23:45+00:00",
+      "updated_at": "2026-09-08T12:23:45+00:00",
+      "touched_round": 288,
+      "commit": "0918ead",
+      "summary": "Shared useFollowSessionGuard detects dead-session 401s (isStaleSession) on the tags/categories/series follow controls: drops the expired token (control flips to signed-out), shows a sign-in prompt + /login link. Wired into follow-state loads and follow/notify toggles; follow buttons gate on !sessionExpired. Tests: composable unit + one case per page; frontend 1608, lint + typecheck clean."
+    },
+    "ISS-435": {
+      "id": "ISS-435",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-08T13:05:16+00:00",
+      "updated_at": "2026-09-08T13:09:32+00:00",
+      "touched_round": 288,
+      "severity": "medium",
+      "title": "Search category/tag filter options silently vanish on a taxonomy fetch failure"
+    },
+    "ISS-436": {
+      "id": "ISS-436",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-08T13:05:16+00:00",
+      "updated_at": "2026-09-08T13:09:32+00:00",
+      "touched_round": 288,
+      "severity": "low",
+      "title": "Search filter changes do not scroll the reader back to the top of the results"
+    },
+    "ISS-437": {
+      "id": "ISS-437",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-08T13:05:16+00:00",
+      "updated_at": "2026-09-08T13:09:33+00:00",
+      "touched_round": 288,
+      "severity": "low",
+      "title": "Notifications load-more failure has no Retry affordance"
+    },
+    "ISS-438": {
+      "id": "ISS-438",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-08T13:05:16+00:00",
+      "updated_at": "2026-09-08T13:09:33+00:00",
+      "touched_round": 288,
+      "severity": "low",
+      "title": "Account device follow-category select silently empties on a categories load failure"
+    },
+    "TASK-336": {
+      "id": "TASK-336",
+      "type": "task",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-08T13:06:00+00:00",
+      "updated_at": "2026-09-08T13:09:32+00:00",
+      "touched_round": 288,
+      "category": "correctness",
+      "severity": "medium",
+      "confidence": 0.9,
+      "effort": 1.5,
+      "title": "Surface silent filter/load failures and missing navigation feedback on search/notifications/account",
+      "summary": "Survey findings #3/#4/#6/#7: (a) failing category/tag or device-category loads must not render as empty selects — show why + retry; (b) a search filter change must scroll back to the top like pagination does; (c) a notifications load-more failure must read Retry."
+    },
+    "CHG-447": {
+      "id": "CHG-447",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-08T13:08:54+00:00",
+      "updated_at": "2026-09-08T13:08:54+00:00",
+      "touched_round": 288,
+      "commit": "248a127",
+      "summary": "Search + account taxonomy failures surface a note with Retry instead of silent empty selects; search filter change scrolls to top; notifications load-more failure labels the button Retry. One test per fix; full suite + lint + typecheck green."
+    },
+    "ISS-439": {
+      "id": "ISS-439",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-08T13:35:57+00:00",
+      "updated_at": "2026-09-08T13:41:35+00:00",
+      "touched_round": 288,
+      "severity": "medium",
+      "title": "Admin comments header shows a page-local pending count as if queue-wide",
+      "summary": "admin/comments.vue derived N 待审核 from the CURRENT page's unapproved rows, so an approved-heavy page (e.g. page 2) reads 0 pending while the moderation queue still has work elsewhere — and the label literally said '本页 N 条待审核'. Needs a filter-independent global pending count from the list endpoint (which the dashboard already has via comment-activity stats)."
+    },
+    "TASK-337": {
+      "id": "TASK-337",
+      "type": "task",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-08T13:35:57+00:00",
+      "updated_at": "2026-09-08T13:41:35+00:00",
+      "touched_round": 288,
+      "category": "correctness",
+      "severity": "medium",
+      "confidence": 0.9,
+      "effort": 1.5,
+      "title": "Make the admin comments header pending count the true global moderation backlog",
+      "summary": "Add pending_count (global unapproved comment count, filter-independent) to GET /api/admin/comments; use it in admin/comments.vue's header; drop the '本页' page-local framing from the label."
+    },
+    "CHG-448": {
+      "id": "CHG-448",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-08T13:40:48+00:00",
+      "updated_at": "2026-09-08T13:40:48+00:00",
+      "touched_round": 288,
+      "commit": "38bdeb6",
+      "summary": "Admin comments list endpoint returns filter-independent pending_count; header uses it instead of the page-local unapproved count; label drops the '本页/on this page' framing. Backend 1346 @93.6% + comments tests green on SQLite and dev PG; frontend 1613, lint + typecheck clean."
+    },
+    "ISS-440": {
+      "id": "ISS-440",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-08T13:55:32+00:00",
+      "updated_at": "2026-09-08T14:00:17+00:00",
+      "touched_round": 289,
+      "severity": "low",
+      "title": "Media picker pager has no busy/disable state during an in-flight page refetch",
+      "summary": "MediaPickerModal's Prev/Next disable only by page-bound; during a pagination refetch (pending true) a rapid double-click advances two pages past what the moderator wanted. The single-delete grid (admin/media.vue) has per-row busy states; the modal pager had none."
+    },
+    "TASK-338": {
+      "id": "TASK-338",
+      "type": "task",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-08T13:55:32+00:00",
+      "updated_at": "2026-09-08T14:00:17+00:00",
+      "touched_round": 289,
+      "category": "usability",
+      "severity": "low",
+      "confidence": 0.9,
+      "effort": 1.0,
+      "title": "Disable + guard the media picker pager during an in-flight refetch",
+      "summary": "Gate goToPage on pending and disable Prev/Next while the fetch is in flight (mirror admin/media.vue single-flight), so a double-click cannot skip a page."
+    },
+    "CHG-449": {
+      "id": "CHG-449",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-08T13:58:35+00:00",
+      "updated_at": "2026-09-08T13:58:35+00:00",
+      "touched_round": 288,
+      "commit": "676d21d",
+      "summary": "MediaPickerModal pager disabled + goToPage guarded while the listing fetch is in flight; test asserts the page ref stays on 1 when Next is clicked mid-fetch."
+    },
+    "CHG-450": {
+      "id": "CHG-450",
+      "type": "change",
+      "status": "superseded",
+      "version": 3,
+      "created_at": "2026-09-08T13:58:35+00:00",
+      "updated_at": "2026-09-08T14:42:23+00:00",
+      "touched_round": 289,
+      "commit": "676d21d",
+      "summary": "DUPLICATE of CHG-449 (same commit 676d21d; creation slip) — kept only as an audit record, connected so it is not an orphan."
+    },
+    "ISS-441": {
+      "id": "ISS-441",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-08T14:21:07+00:00",
+      "updated_at": "2026-09-08T14:23:33+00:00",
+      "touched_round": 288,
+      "severity": "medium",
+      "title": "Archive index has no narrowing filter, unlike its sibling taxonomy pages",
+      "summary": "The year/month pill stack is long and unscannable on a multi-year blog with no way to jump — the exact problem tags/categories fixed with the ISS-381 substring filter, left in place here."
+    },
+    "TASK-339": {
+      "id": "TASK-339",
+      "type": "task",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-08T14:21:07+00:00",
+      "updated_at": "2026-09-08T14:23:33+00:00",
+      "touched_round": 288,
+      "category": "core-feature",
+      "severity": "low",
+      "confidence": 0.9,
+      "effort": 1.0,
+      "title": "Add a substring filter to the archive index",
+      "summary": "Filter the year/month pills by localized month label / year / month number, with a no-results hint; only when there is something to filter (mirror the tags/categories ISS-381 fix)."
+    },
+    "CHG-451": {
+      "id": "CHG-451",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-08T14:22:36+00:00",
+      "updated_at": "2026-09-08T14:22:36+00:00",
+      "touched_round": 288,
+      "commit": "27f2002",
+      "summary": "Archive index gets a substring filter over localized month labels / year / month number with a no-results hint; restored the AdminComment import kn the comments page. Test: filter by year + month label + clear."
+    },
+    "ISS-442": {
+      "id": "ISS-442",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-08T14:36:01+00:00",
+      "updated_at": "2026-09-08T14:38:28+00:00",
+      "touched_round": 288,
+      "severity": "low",
+      "title": "Shared unread badge can momentarily show a stale count after mark-all-read",
+      "summary": "A 60s nav-badge poll already in flight when markAllRead commits can resolve after and write the old pre-read count back until the next tick."
+    },
+    "TASK-340": {
+      "id": "TASK-340",
+      "type": "task",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-08T14:36:01+00:00",
+      "updated_at": "2026-09-08T14:38:28+00:00",
+      "touched_round": 288,
+      "category": "correctness",
+      "severity": "low",
+      "confidence": 0.9,
+      "effort": 1.0,
+      "title": "Sequence unread-badge refreshes so a stale poll cannot clobber a newer count",
+      "summary": "Monotonic epoch in useNotificationBadge.refresh: the last refresh to start wins; a straggling poll snapshot is discarded."
+    },
+    "CHG-452": {
+      "id": "CHG-452",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-08T14:37:14+00:00",
+      "updated_at": "2026-09-08T14:37:14+00:00",
+      "touched_round": 288,
+      "commit": "9ad67c5",
+      "summary": "useNotificationBadge.refresh sequences via a monotonic epoch — a stale in-flight poll snapshot cannot clobber a newer count (e.g. after mark-all-read). Frontend 1616 green."
     }
   },
   "edges": [
@@ -30776,6 +31058,234 @@
       "to": "ISS-433",
       "type": "addresses",
       "created_at": "2026-09-08T08:01:26+00:00"
+    },
+    {
+      "from": "TASK-335",
+      "to": "ISS-434",
+      "type": "addresses",
+      "created_at": "2026-09-08T12:09:51+00:00"
+    },
+    {
+      "from": "ISS-434",
+      "to": "COMP-002",
+      "type": "located_in",
+      "created_at": "2026-09-08T12:15:41+00:00"
+    },
+    {
+      "from": "CHG-445",
+      "to": "TASK-333",
+      "type": "implements",
+      "created_at": "2026-09-08T12:24:20+00:00"
+    },
+    {
+      "from": "CHG-445",
+      "to": "ISS-433",
+      "type": "resolves",
+      "created_at": "2026-09-08T12:24:20+00:00"
+    },
+    {
+      "from": "CHG-446",
+      "to": "TASK-335",
+      "type": "implements",
+      "created_at": "2026-09-08T12:24:20+00:00"
+    },
+    {
+      "from": "CHG-446",
+      "to": "ISS-434",
+      "type": "resolves",
+      "created_at": "2026-09-08T12:24:20+00:00"
+    },
+    {
+      "from": "TASK-336",
+      "to": "ISS-435",
+      "type": "addresses",
+      "created_at": "2026-09-08T13:07:22+00:00"
+    },
+    {
+      "from": "ISS-435",
+      "to": "COMP-002",
+      "type": "located_in",
+      "created_at": "2026-09-08T13:07:22+00:00"
+    },
+    {
+      "from": "TASK-336",
+      "to": "ISS-436",
+      "type": "addresses",
+      "created_at": "2026-09-08T13:07:22+00:00"
+    },
+    {
+      "from": "ISS-436",
+      "to": "COMP-002",
+      "type": "located_in",
+      "created_at": "2026-09-08T13:07:22+00:00"
+    },
+    {
+      "from": "TASK-336",
+      "to": "ISS-437",
+      "type": "addresses",
+      "created_at": "2026-09-08T13:07:22+00:00"
+    },
+    {
+      "from": "ISS-437",
+      "to": "COMP-002",
+      "type": "located_in",
+      "created_at": "2026-09-08T13:07:22+00:00"
+    },
+    {
+      "from": "TASK-336",
+      "to": "ISS-438",
+      "type": "addresses",
+      "created_at": "2026-09-08T13:07:22+00:00"
+    },
+    {
+      "from": "ISS-438",
+      "to": "COMP-002",
+      "type": "located_in",
+      "created_at": "2026-09-08T13:07:22+00:00"
+    },
+    {
+      "from": "CHG-447",
+      "to": "TASK-336",
+      "type": "implements",
+      "created_at": "2026-09-08T13:09:32+00:00"
+    },
+    {
+      "from": "CHG-447",
+      "to": "ISS-435",
+      "type": "resolves",
+      "created_at": "2026-09-08T13:09:32+00:00"
+    },
+    {
+      "from": "CHG-447",
+      "to": "ISS-436",
+      "type": "resolves",
+      "created_at": "2026-09-08T13:09:32+00:00"
+    },
+    {
+      "from": "CHG-447",
+      "to": "ISS-437",
+      "type": "resolves",
+      "created_at": "2026-09-08T13:09:32+00:00"
+    },
+    {
+      "from": "CHG-447",
+      "to": "ISS-438",
+      "type": "resolves",
+      "created_at": "2026-09-08T13:09:32+00:00"
+    },
+    {
+      "from": "TASK-337",
+      "to": "ISS-439",
+      "type": "addresses",
+      "created_at": "2026-09-08T13:36:32+00:00"
+    },
+    {
+      "from": "ISS-439",
+      "to": "COMP-001",
+      "type": "located_in",
+      "created_at": "2026-09-08T13:36:32+00:00"
+    },
+    {
+      "from": "ISS-439",
+      "to": "COMP-002",
+      "type": "located_in",
+      "created_at": "2026-09-08T13:36:33+00:00"
+    },
+    {
+      "from": "CHG-448",
+      "to": "TASK-337",
+      "type": "implements",
+      "created_at": "2026-09-08T13:41:35+00:00"
+    },
+    {
+      "from": "CHG-448",
+      "to": "ISS-439",
+      "type": "resolves",
+      "created_at": "2026-09-08T13:41:35+00:00"
+    },
+    {
+      "from": "TASK-338",
+      "to": "ISS-440",
+      "type": "addresses",
+      "created_at": "2026-09-08T13:57:05+00:00"
+    },
+    {
+      "from": "ISS-440",
+      "to": "COMP-002",
+      "type": "located_in",
+      "created_at": "2026-09-08T13:57:05+00:00"
+    },
+    {
+      "from": "CHG-449",
+      "to": "TASK-338",
+      "type": "implements",
+      "created_at": "2026-09-08T14:00:17+00:00"
+    },
+    {
+      "from": "CHG-449",
+      "to": "ISS-440",
+      "type": "resolves",
+      "created_at": "2026-09-08T14:00:17+00:00"
+    },
+    {
+      "from": "TASK-339",
+      "to": "ISS-441",
+      "type": "addresses",
+      "created_at": "2026-09-08T14:22:36+00:00"
+    },
+    {
+      "from": "ISS-441",
+      "to": "COMP-002",
+      "type": "located_in",
+      "created_at": "2026-09-08T14:22:36+00:00"
+    },
+    {
+      "from": "CHG-451",
+      "to": "TASK-339",
+      "type": "implements",
+      "created_at": "2026-09-08T14:23:32+00:00"
+    },
+    {
+      "from": "CHG-451",
+      "to": "ISS-441",
+      "type": "resolves",
+      "created_at": "2026-09-08T14:23:33+00:00"
+    },
+    {
+      "from": "TASK-340",
+      "to": "ISS-442",
+      "type": "addresses",
+      "created_at": "2026-09-08T14:37:14+00:00"
+    },
+    {
+      "from": "ISS-442",
+      "to": "COMP-002",
+      "type": "located_in",
+      "created_at": "2026-09-08T14:37:14+00:00"
+    },
+    {
+      "from": "CHG-452",
+      "to": "TASK-340",
+      "type": "implements",
+      "created_at": "2026-09-08T14:38:28+00:00"
+    },
+    {
+      "from": "CHG-452",
+      "to": "ISS-442",
+      "type": "resolves",
+      "created_at": "2026-09-08T14:38:28+00:00"
+    },
+    {
+      "from": "CHG-450",
+      "to": "TASK-338",
+      "type": "implements",
+      "created_at": "2026-09-08T14:42:23+00:00"
+    },
+    {
+      "from": "CHG-450",
+      "to": "ISS-440",
+      "type": "resolves",
+      "created_at": "2026-09-08T14:42:23+00:00"
     }
   ]
 }
