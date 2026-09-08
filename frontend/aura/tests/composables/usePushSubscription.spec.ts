@@ -246,6 +246,42 @@ describe("usePushSubscription", () => {
 		expect(status.value).toBe("denied");
 	});
 
+	it("coalesces a second subscribe() fired while the first is in flight (single-flight, ISS-423)", async () => {
+		// A double-click, or the header bell + a thread/category follow in the
+		// same tick, calls subscribe() twice before status flips to
+		// "subscribing" (that only happens after the backend key round-trip).
+		// The second flow used to run its own Notification.requestPermission()
+		// and its loser catch painted the shared module status a false "denied".
+		const { svc, reg } = setupBrowser({ permission: "granted" });
+		reg.pushManager.subscribe.mockResolvedValue(fakePushSubscription(ENDPOINT));
+		const { usePushSubscription } = await import("~/composables/usePushSubscription");
+		const { status, subscribe } = usePushSubscription();
+
+		// Hold the VAPID key fetch open so both calls land inside the window
+		// where status is still "(not yet) subscribing".
+		let releaseKey: (() => void) | undefined;
+		const keyHeld = new Promise<void>((r) => {
+			releaseKey = r;
+		});
+		globalThis.fetch = vi.fn().mockImplementation(async (url: string) => {
+			if (String(url).includes("/api/push/vapid-public-key")) {
+				await keyHeld;
+				return { ok: true, json: () => Promise.resolve({ public_key: PUBLIC_KEY }) };
+			}
+			return { ok: true, status: 200, json: () => Promise.resolve({}) };
+		});
+
+		const first = subscribe();
+		const second = subscribe();
+		releaseKey?.();
+		await Promise.all([first, second]);
+
+		// One permission flow, one backend persist — no duplicate subscribe.
+		expect(svc.register).toHaveBeenCalledTimes(1);
+		expect(globalThis.fetch).toHaveBeenCalledTimes(2); // key + single persist
+		expect(status.value).toBe("subscribed");
+	});
+
 	it("subscribe falls back to unconfigured when the backend key is missing", async () => {
 		setupBrowser();
 		globalThis.fetch = vi.fn().mockResolvedValue({ ok: false, status: 503 });

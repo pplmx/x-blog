@@ -157,42 +157,63 @@ async function init(): Promise<void> {
 	status.value = (await activeSubscription()) ? "subscribed" : "idle";
 }
 
+// In-flight single-flight: a second subscribe() call while one is pending must
+// coalesce onto the running flow, not start its own. status flips to
+// "subscribing" only AFTER the backend key round-trip, so a double-click (or
+// the header bell + a thread/category follow in the same tick) used to slip
+// two `Notification.requestPermission()` flows through that window — the
+// browser rejects the second, and the loser's catch reverted the SHARED module
+// status to a false "denied", disabling every push affordance app-wide until
+// the reader resets browser settings (deep-dive finding, ISS-423).
+let inFlight: Promise<void> | null = null;
+
 /** Opt this browser in: register the SW, request permission once, subscribe. */
 async function subscribe(prefs?: NewPostPrefs): Promise<void> {
 	if (prefs) newPostPrefs.value = prefs;
 	if (!isSupported() || status.value === "denied") return;
-	const publicKey = await fetchBackendPublicKey();
-	if (!publicKey) {
-		status.value = "unconfigured";
-		return;
-	}
-	status.value = "subscribing";
-	try {
-		const registration = await navigator.serviceWorker.register("/sw.js");
-		await navigator.serviceWorker.ready;
-		if (Notification.permission !== "granted") {
-			const permission = await Notification.requestPermission();
-			if (permission !== "granted") {
-				status.value = "denied";
-				return;
+	if (inFlight) return inFlight; // single-flight: join the running subscribe
+	const flow = (async () => {
+		const publicKey = await fetchBackendPublicKey();
+		if (!publicKey) {
+			status.value = "unconfigured";
+			return;
+		}
+		status.value = "subscribing";
+		try {
+			const registration = await navigator.serviceWorker.register("/sw.js");
+			await navigator.serviceWorker.ready;
+			if (Notification.permission !== "granted") {
+				const permission = await Notification.requestPermission();
+				if (permission !== "granted") {
+					status.value = "denied";
+					return;
+				}
 			}
+			let sub = await registration.pushManager.getSubscription();
+			if (!sub) {
+				sub = await registration.pushManager.subscribe({
+					userVisibleOnly: true,
+					applicationServerKey: urlBase64ToUint8Array(publicKey),
+				});
+			}
+			await syncBackend(sub, "subscribe");
+			status.value = "subscribed";
+		} catch (err) {
+			// Transient failure: the browser state reverts to a retryable "idle"
+			// HERE, and the error is RETHROWN so the initiating caller surfaces it.
+			// (A module-scoped error ref caused a comment-thread/category follow
+			// failure to flash the header button — the wrong widget, ISS-215 re-open.)
+			status.value = "idle";
+			throw err;
 		}
-		let sub = await registration.pushManager.getSubscription();
-		if (!sub) {
-			sub = await registration.pushManager.subscribe({
-				userVisibleOnly: true,
-				applicationServerKey: urlBase64ToUint8Array(publicKey),
-			});
-		}
-		await syncBackend(sub, "subscribe");
-		status.value = "subscribed";
-	} catch (err) {
-		// Transient failure: the browser state reverts to a retryable "idle"
-		// HERE, and the error is RETHROWN so the initiating caller surfaces it.
-		// (A module-scoped error ref caused a comment-thread/category follow
-		// failure to flash the header button — the wrong widget, ISS-215 re-open.)
-		status.value = "idle";
-		throw err;
+	})();
+	inFlight = flow;
+	try {
+		return await flow;
+	} finally {
+		// Clear only our own flow: if prefs changed between the coalesced call and
+		// this one the guard still holds one in-flight subscribe at a time.
+		if (inFlight === flow) inFlight = null;
 	}
 }
 
