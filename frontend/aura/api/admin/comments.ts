@@ -26,6 +26,13 @@ export interface AdminCommentListResponse {
 		limit: number;
 		total_pages: number;
 	};
+	/**
+	 * Global moderation backlog (unapproved comment count, filter-independent).
+	 * The header's "N pending" must be this, never the current page's pending
+	 * rows — the page-local count read 0 on an approved-heavy page (survey
+	 * finding). Same authoritative number as the dashboard's activity stats.
+	 */
+	pending_count?: number;
 }
 
 export interface AdminCommentFilters {

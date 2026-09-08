@@ -645,6 +645,30 @@ class TestAdminComments:
         assert len(approved_items) == 1
         assert approved_items[0]["nickname"] == "ApprovedUser"
 
+    def test_list_comments_pending_count_is_global_backlog(self, client, auth_headers, db_session):
+        """The header's pending count is the WHOLE queue, never the current page
+        or filter. The old page-local computation read 0 pending on an
+        approved-heavy page while the queue still had work (survey finding)."""
+        post = models.Post(title="Queue Post", slug="queue-post", content="Content", published=True)
+        db_session.add(post)
+        db_session.commit()
+        self._create_comment(db_session, post)  # helper default = approved
+        for i in range(3):
+            db_session.add(
+                models.Comment(
+                    post_id=post.id, nickname=f"Pending{i}", content=f"waiting {i}", is_approved=False
+                )
+            )
+        db_session.commit()
+
+        # Even an approved-only listing reports the FULL pending backlog: the
+        # page shows only approved rows but the queue depth is still 3.
+        resp = client.get("/api/admin/comments?is_approved=true", headers=auth_headers)
+        assert resp.status_code == 200
+        body = resp.json()
+        assert all(c["is_approved"] for c in body["items"])
+        assert body["pending_count"] == 3
+
     def test_list_comments_filtered_by_search(self, client, auth_headers, db_session):
         """Search comments by nickname/email/content (RIL TASK-078, ISS-047)."""
         post = models.Post(title="Search Post", slug="search-post", content="Content", published=True)

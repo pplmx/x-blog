@@ -3,7 +3,7 @@
 		"seoTitle": "Comments - X-Blog",
 		"title": "Manage Comments",
 		"summary": "{total} comments total, ",
-		"pendingSummary": "{n} pending on this page",
+		"pendingSummary": "{n} pending",
 		"batchApprove": "Approve selected ({n})",
 		"batchReject": "Reject selected ({n})",
 		"batchDelete": "Delete selected ({n})",

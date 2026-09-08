@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { AdminComment, AdminCommentListResponse } from "~~/api/admin/comments";
+import type { AdminCommentListResponse } from "~~/api/admin/comments";
 import {
 	approveAdminComment,
 	batchApproveAdminComments,
@@ -178,9 +178,12 @@ async function gotoPage(page: number) {
 	await loadComments(activeFilters(), page);
 }
 
-const pendingComments = computed(() =>
-	(comments.value?.items ?? []).filter((c: AdminComment) => !c.is_approved),
-);
+// Global moderation backlog straight from the server (survey finding). The
+// old page-local computed (pending rows on the CURRENT page) read 0 on an
+// approved-heavy page while the queue still had unmoderated comments — a
+// misleading moderation signal. The endpoint returns the filter-independent
+// count; total_pending falls back to 0 (e.g. an older cached response).
+const pendingCount = computed(() => comments.value?.pending_count ?? 0);
 
 function toggleSelect(id: number) {
 	const s = new Set(selectedIds.value);
@@ -362,7 +365,7 @@ async function submitReply(id: number) {
           {{ t("admin.comments.title") }}
         </h1>
         <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">
-          {{ t("admin.comments.summary", { total: comments?.pagination?.total ?? 0 }) }}<span class="text-amber-600 dark:text-amber-400">{{ t("admin.comments.pendingSummary", { n: pendingComments.length }) }}</span>
+          {{ t("admin.comments.summary", { total: comments?.pagination?.total ?? 0 }) }}<span class="text-amber-600 dark:text-amber-400">{{ t("admin.comments.pendingSummary", { n: pendingCount }) }}</span>
         </p>
       </div>
       <div

@@ -803,6 +803,12 @@ def admin_list_comments(
         else:
             query = query.filter(models.Comment.id.notin_(flagged_ids))
     total = query.count()
+    # Global moderation backlog, independent of the page's post/q/status filters:
+    # the header's "N pending" must not be the current page's pending rows (which
+    # reads 0 on an approved-heavy page while the queue still has work), nor the
+    # filter-scoped total. Same authoritative pending_count the dashboard uses
+    # (round 276); a tiny COUNT over one boolean-filtered column.
+    pending_count = db.query(models.Comment).filter(models.Comment.is_approved.is_(False)).count()
 
     comment_rows = query.order_by(models.Comment.created_at.desc()).offset((page - 1) * limit).limit(limit).all()
     page_ids = [c.id for c, _ in comment_rows]
@@ -832,6 +838,7 @@ def admin_list_comments(
             "limit": limit,
             "total_pages": (total + limit - 1) // limit if total > 0 else 0,
         },
+        "pending_count": pending_count,
     }
 
 

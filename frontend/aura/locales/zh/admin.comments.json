@@ -3,7 +3,7 @@
 		"seoTitle": "评论管理 - X-Blog",
 		"title": "评论管理",
 		"summary": "共 {total} 条评论，",
-		"pendingSummary": "本页 {n} 条待审核",
+		"pendingSummary": "{n} 条待审核",
 		"batchApprove": "批量通过 ({n})",
 		"batchReject": "批量拒绝 ({n})",
 		"batchDelete": "删除所选 ({n})",

@@ -186,6 +186,24 @@ describe("Admin Comments Page", () => {
 			expect(wrapper.text()).toContain("待审核");
 		});
 
+		it("shows the global pending queue depth, never the current page's pending rows (survey finding)", async () => {
+			// The page shows only approved rows, but 5 comments await moderation
+			// elsewhere — the header must read 5 (server pending_count), not the
+			// page-local 0 the pre-fix code computed.
+			mockFetchAdminComments.mockResolvedValue({
+				items: [mockComments[0]],
+				pagination: { total: 6, page: 1, limit: 100, total_pages: 1 },
+				pending_count: 5,
+			});
+			const CommentsPage = await loadPage();
+			const wrapper = await mountWithSuspense(CommentsPage);
+			expect(wrapper.text()).toContain("共 6 条评论");
+			expect(wrapper.text()).toContain("5 条待审核");
+			expect(wrapper.text()).not.toContain("0 条待审核");
+			// The label no longer claims the count is page-local.
+			expect(wrapper.text()).not.toContain("本页 5 条待审核");
+		});
+
 		it("renders post titles", async () => {
 			const CommentsPage = await loadPage();
 			const wrapper = await mountWithSuspense(CommentsPage);
