@@ -377,5 +377,52 @@ describe("Admin Series Page", () => {
 
 			expect(mockReorderAdminSeriesEpisodes).toHaveBeenCalledWith(1, [2, 1]);
 		});
+
+		it("single-flights a reorder: buttons disabled and a second tap cannot double-fire", async () => {
+			// Deep-dive finding: the move buttons stayed enabled while the
+			// reorder PUT was in flight, so two rapid taps issued two concurrent
+			// reorders built from the same optimistic array — the page is
+			// last-*response*-wins while the server is last-*arrival*-wins, and
+			// the two can resolve out of order, silently diverging the list
+			// from the persisted order (only a reload recovers).
+			const initial = [
+				{ id: 1, title: "Part One", slug: "part-one", series_order: 1, published: true },
+				{ id: 2, title: "Part Two", slug: "part-two", series_order: 2, published: true },
+			];
+			mockFetchAdminSeriesEpisodes.mockResolvedValue(initial);
+			let resolveReorder!: (v: unknown) => void;
+			mockReorderAdminSeriesEpisodes.mockImplementation(
+				() => new Promise((resolve) => (resolveReorder = resolve)),
+			);
+			const SeriesPage = await loadPage();
+			const wrapper = await mountWithSuspense(SeriesPage);
+
+			const episodesBtn = wrapper.findAll("button").find((b) => b.text().includes("章节"));
+			await episodesBtn?.trigger("click");
+			await flushPromises();
+
+			const downArrow = wrapper.find('button[aria-label="下移"]');
+			await downArrow.trigger("click"); // reorder launches, stays in flight
+			await flushPromises();
+
+			// The whole episode list's move buttons are disabled mid-flight…
+			expect(downArrow.element.disabled).toBe(true);
+			expect(wrapper.find('button[aria-label="上移"]').element.disabled).toBe(true);
+
+			// …and a second tap (even one forced) cannot issue a second request.
+			await downArrow.trigger("click");
+			await flushPromises();
+			expect(mockReorderAdminSeriesEpisodes).toHaveBeenCalledTimes(1);
+
+			// Server confirms [2, 1]: the list takes the server order and the
+			// buttons re-enable for the next move.
+			resolveReorder([
+				{ id: 2, title: "Part Two", slug: "part-two", series_order: 1, published: true },
+				{ id: 1, title: "Part One", slug: "part-one", series_order: 2, published: true },
+			]);
+			await flushPromises();
+			expect(wrapper.find('button[aria-label="下移"]').element.disabled).toBe(false);
+			expect(mockReorderAdminSeriesEpisodes).toHaveBeenCalledTimes(1);
+		});
 	});
 });

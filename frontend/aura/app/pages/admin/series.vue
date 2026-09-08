@@ -44,6 +44,14 @@ const openEpisodesId = ref<number | null>(null);
 const episodesBySeries = ref<Record<number, SeriesEpisode[]>>({});
 const episodesLoading = ref(false);
 const episodesError = ref(false);
+// Single-flight marker for an in-flight episode reorder (deep-dive finding):
+// the up/down buttons stay enabled during the PUT, so two rapid taps issue
+// two concurrent reorders built from the same optimistic array — the page is
+// last-*response*-wins while the server is last-*arrival*-wins, and under
+// threadpool/HTTP concurrency the two can resolve out of order, leaving the
+// list claiming an order the server never persisted. Guard the entry and
+// disable the buttons for that series while a move is in flight.
+const movingSeriesId = ref<number | null>(null);
 // Tracks which series' episodes loaded successfully, so a failed fetch is NOT
 // cached as "no episodes": the truthy-[] guard below would then skip every
 // later refetch and permanently fake an empty series until full reload.
@@ -71,6 +79,10 @@ async function toggleEpisodes(s: { id: number }) {
 }
 
 async function moveEpisode(seriesId: number, index: number, dir: -1 | 1) {
+	// Reject a second tap while the previous reorder is still in flight — the
+	// buttons are disabled too, but the guard makes the single-flight explicit
+	// (deep-dive finding: concurrent reorders can diverge from the server).
+	if (movingSeriesId.value === seriesId) return;
 	const current = episodesBySeries.value[seriesId] ?? [];
 	const target = index + dir;
 	if (target < 0 || target >= current.length) return;
@@ -84,6 +96,7 @@ async function moveEpisode(seriesId: number, index: number, dir: -1 | 1) {
 	next.splice(index, 1);
 	next.splice(target, 0, item);
 	episodesError.value = false;
+	movingSeriesId.value = seriesId;
 	try {
 		episodesBySeries.value[seriesId] = await reorderAdminSeriesEpisodes(
 			seriesId,
@@ -95,6 +108,8 @@ async function moveEpisode(seriesId: number, index: number, dir: -1 | 1) {
 		// (a reload would snap it back — deep-dive finding).
 		episodesBySeries.value[seriesId] = previous;
 		episodesError.value = true;
+	} finally {
+		movingSeriesId.value = null;
 	}
 }
 
@@ -421,7 +436,7 @@ async function handleDelete(id: number) {
                 </span>
                 <button
                   type="button"
-                  :disabled="idx === 0"
+                  :disabled="idx === 0 || movingSeriesId === s.id"
                   class="p-1 rounded-md text-gray-400 hover:text-indigo-600 hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
                   :aria-label="t('admin.series.moveUp')"
                   @click="moveEpisode(s.id, idx, -1)"
@@ -430,7 +445,7 @@ async function handleDelete(id: number) {
                 </button>
                 <button
                   type="button"
-                  :disabled="idx === (episodesBySeries[s.id] ?? []).length - 1"
+                  :disabled="idx === (episodesBySeries[s.id] ?? []).length - 1 || movingSeriesId === s.id"
                   class="p-1 rounded-md text-gray-400 hover:text-indigo-600 hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
                   :aria-label="t('admin.series.moveDown')"
                   @click="moveEpisode(s.id, idx, 1)"
