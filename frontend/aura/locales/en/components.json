@@ -54,6 +54,7 @@
 			"retry": "Retry",
 			"reply": "Reply",
 			"discardConfirm": "Discard your unsent reply?",
+			"editDiscardConfirm": "Discard your unsaved edit?",
 			"cancelReply": "Cancel reply",
 			"replyingTo": "Replying to {name}",
 			"authorReply": "Author",

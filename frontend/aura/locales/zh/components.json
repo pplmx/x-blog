@@ -54,6 +54,7 @@
 			"retry": "重试",
 			"reply": "回复",
 			"discardConfirm": "放弃未发送的回复吗？",
+			"editDiscardConfirm": "放弃未保存的编辑吗？",
 			"cancelReply": "取消回复",
 			"replyingTo": "正在回复 {name}",
 			"authorReply": "作者",

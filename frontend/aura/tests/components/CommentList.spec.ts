@@ -1294,6 +1294,160 @@ describe("CommentList", () => {
 		});
 	});
 
+	describe("Unsaved-input guard on sort/page refresh (deep-dive)", () => {
+		// Regression (ISS-421): the reply-draft guard covered cancel/re-target
+		// only. A sort switch or page turn re-fetches page 1 / swaps rows in
+		// place — the per-row reply form and the author edit box unmount and the
+		// typed text vanishes with no prompt. The refresh paths must ask first.
+		const comments = {
+			items: [
+				{
+					id: 1,
+					post_id: 1,
+					parent_id: null,
+					nickname: "Alice",
+					content: "Top-level comment",
+					is_approved: true,
+					created_at: "2024-01-15T10:30:00Z",
+				},
+				{
+					id: 2,
+					post_id: 1,
+					parent_id: null,
+					nickname: "Bob",
+					content: "Second top-level",
+					is_approved: true,
+					created_at: "2024-01-16T10:30:00Z",
+				},
+			],
+			total: 2,
+			total_pages: 1,
+			page: 1,
+			limit: 20,
+		};
+
+		it("sort change asks before discarding a dirty reply draft", async () => {
+			const confirmSpy = vi.fn(() => false);
+			vi.stubGlobal("confirm", confirmSpy);
+			const { wrapper } = await mountCommentList({ comments });
+			const replyBtn = wrapper.findAll("button").find((b) => b.text() === "回复");
+			if (!replyBtn) throw new Error("expected a reply button");
+			await replyBtn.trigger("click");
+			await flushPromises();
+			await wrapper.find("textarea").setValue("Half-typed reply.");
+			await flushPromises();
+
+			const select = wrapper.find("select#comment-sort");
+			await select.setValue("likes");
+			await flushPromises();
+
+			expect(confirmSpy).toHaveBeenCalled();
+			// Draft survives, sort did not change, no re-fetch happened.
+			expect((wrapper.find("textarea").element as HTMLTextAreaElement).value).toBe(
+				"Half-typed reply.",
+			);
+			expect(mockGetComments).not.toHaveBeenCalled();
+		});
+
+		it("sort change proceeds when the draft is confirmed discarded", async () => {
+			const confirmSpy = vi.fn(() => true);
+			vi.stubGlobal("confirm", confirmSpy);
+			const { wrapper } = await mountCommentList({ comments });
+			const replyBtn = wrapper.findAll("button").find((b) => b.text() === "回复");
+			if (!replyBtn) throw new Error("expected a reply button");
+			await replyBtn.trigger("click");
+			await flushPromises();
+			await wrapper.find("textarea").setValue("Half-typed reply.");
+			await flushPromises();
+
+			await wrapper.find("select#comment-sort").setValue("likes");
+			await flushPromises();
+
+			expect(confirmSpy).toHaveBeenCalled();
+			expect(mockGetComments).toHaveBeenLastCalledWith(1, 1, 20, "likes");
+		});
+
+		it("sort/pagination do not prompt when nothing is typed", async () => {
+			const confirmSpy = vi.fn(() => false);
+			vi.stubGlobal("confirm", confirmSpy);
+			const { wrapper } = await mountCommentList({ comments });
+			await wrapper.find("select#comment-sort").setValue("likes");
+			await flushPromises();
+			expect(confirmSpy).not.toHaveBeenCalled();
+			expect(mockGetComments).toHaveBeenLastCalledWith(1, 1, 20, "likes");
+		});
+
+		it("an author edit box with unsaved changes is guarded on Esc and Cancel", async () => {
+			const confirmSpy = vi.fn(() => false);
+			vi.stubGlobal("confirm", confirmSpy);
+			localStorage.setItem("reader_token", "reader.jwt");
+			localStorage.setItem(
+				"reader_profile",
+				JSON.stringify({
+					id: 7,
+					email: "me@x.com",
+					display_name: "Me",
+					created_at: null,
+				}),
+			);
+			const own = {
+				...comments,
+				items: [
+					{
+						...comments.items[0],
+						nickname: "Me",
+						reader: { id: 7, display_name: "Me" },
+						edited_at: null,
+					},
+				],
+			};
+			const { wrapper } = await mountCommentList({ comments: own });
+			await wrapper.find(".comment-edit").trigger("click");
+			await flushPromises();
+			await wrapper.find("textarea").setValue("Unfinished edit...");
+			await flushPromises();
+
+			// Esc on the textarea's wrapper asks before discarding.
+			await wrapper.find("textarea").trigger("keydown.esc");
+			await flushPromises();
+			expect(confirmSpy).toHaveBeenCalled();
+			// Declining keeps the editor open with the typed text.
+			expect(wrapper.find("textarea").exists()).toBe(true);
+			expect((wrapper.find("textarea").element as HTMLTextAreaElement).value).toBe(
+				"Unfinished edit...",
+			);
+		});
+
+		it("an unsaved edit with no changes typed is not guarded (open alone is fine)", async () => {
+			const confirmSpy = vi.fn(() => false);
+			vi.stubGlobal("confirm", confirmSpy);
+			localStorage.setItem("reader_token", "reader.jwt");
+			localStorage.setItem(
+				"reader_profile",
+				JSON.stringify({ id: 7, email: "me@x.com", display_name: "Me", created_at: null }),
+			);
+			const own = {
+				...comments,
+				items: [
+					{
+						...comments.items[0],
+						nickname: "Me",
+						reader: { id: 7, display_name: "Me" },
+						edited_at: null,
+					},
+				],
+			};
+			const { wrapper } = await mountCommentList({ comments: own });
+			await wrapper.find(".comment-edit").trigger("click");
+			await flushPromises();
+
+			await wrapper.find("textarea").trigger("keydown.esc");
+			await flushPromises();
+			expect(confirmSpy).not.toHaveBeenCalled();
+			expect(wrapper.find("textarea").exists()).toBe(false);
+		});
+	});
+
 	describe("Deep replies (reply to a reply, RIL ISS-037)", () => {
 		const deepComments = {
 			items: [

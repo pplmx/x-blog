@@ -211,7 +211,7 @@
             <div
               v-if="editingId === comment.id"
               class="mt-3 space-y-2"
-              @keydown.exact.esc.prevent="cancelEdit"
+              @keydown.exact.esc.prevent="cancelEditGuarded"
             >
               <textarea
                 ref="editTextarea"
@@ -234,7 +234,7 @@
                 <button
                   type="button"
                   class="px-3 py-1 rounded text-sm bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300"
-                  @click="cancelEdit"
+                  @click="cancelEditGuarded"
                 >
                   {{ t('components.commentList.cancel') }}
                 </button>
@@ -359,7 +359,7 @@
             <div
               v-if="editingId === reply.id"
               class="mt-3 space-y-2"
-              @keydown.exact.esc.prevent="cancelEdit"
+              @keydown.exact.esc.prevent="cancelEditGuarded"
             >
               <textarea
                 ref="editTextarea"
@@ -382,7 +382,7 @@
                 <button
                   type="button"
                   class="px-3 py-1 rounded text-sm bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300"
-                  @click="cancelEdit"
+                  @click="cancelEditGuarded"
                 >
                   {{ t('components.commentList.cancel') }}
                 </button>
@@ -566,6 +566,13 @@ const currentSort = ref<CommentSort>("newest");
 function onSortChange(event: Event): void {
 	const value = (event.target as HTMLSelectElement).value as CommentSort;
 	if (value === currentSort.value) return;
+	// A sort switch re-fetches page 1: replies/comments the reader is typing in
+	// would unmount with the row swap — ask before discarding (deep-dive
+	// finding; the standalone reply draft guard only covered cancel/re-target).
+	if (!confirmDiscardUnsaved()) {
+		(event.target as HTMLSelectElement).value = currentSort.value;
+		return;
+	}
 	currentSort.value = value;
 	currentPage.value = 1;
 	void refreshList();
@@ -632,6 +639,10 @@ function isOwnComment(comment: Comment): boolean {
 
 const editingId = ref<number | null>(null);
 const editContent = ref("");
+// The original content at startEdit — a typed edit is "dirty" when it differs,
+// so Esc/Cancel (and a list refresh that hides the row) ask before discarding
+// it instead of silently wiping the author's work (deep-dive finding).
+const editOriginal = ref("");
 // Comment ids with an in-flight edit/delete (disables the buttons + spinner).
 const actionIds = ref<Set<number>>(new Set());
 const actionError = ref<string | null>(null);
@@ -643,12 +654,45 @@ const editTextarea = ref<HTMLTextAreaElement | null>(null);
 function startEdit(comment: Comment): void {
 	editingId.value = comment.id;
 	editContent.value = comment.content;
+	editOriginal.value = comment.content;
 	actionError.value = null;
 	// happy-dom (and teardown) may hand back a detached element without focus;
 	// focus is a progressive nicety, never a requirements gate.
 	nextTick(() => {
 		if (typeof editTextarea.value?.focus === "function") editTextarea.value.focus();
 	});
+}
+
+/** True while the author's edit box holds a change that would be lost on cancel. */
+function editDirty(): boolean {
+	return editingId.value !== null && editContent.value !== editOriginal.value;
+}
+
+/** Ask before discarding a dirty edit (Esc / Cancel / a list-changing refresh). */
+function confirmDiscardEditDraft(): boolean {
+	if (editDirty()) {
+		const subject = t("components.commentList.editDiscardConfirm");
+		if (typeof window !== "undefined" && !window.confirm(subject)) return false;
+	}
+	return true;
+}
+
+/**
+ * Ask before any transition that would drop unsaved input — the reply draft OR
+ * a dirty author edit. Wired into sort/pagination (both would unmount the
+ * per-row forms) so a reader who typed something can decline the switch.
+ */
+function confirmDiscardUnsaved(): boolean {
+	if (!confirmDiscardReplyDraft()) return false;
+	if (!confirmDiscardEditDraft()) return false;
+	return true;
+}
+
+// Esc / the Cancel button discard a typed edit — guard the author's work before
+// clearing it. The delete path calls plain cancelEdit() (already confirmed).
+function cancelEditGuarded(): void {
+	if (!confirmDiscardEditDraft()) return;
+	cancelEdit();
 }
 
 function cancelEdit(): void {
@@ -920,6 +964,10 @@ const paginationTokens = computed(() => paginationPages(totalPages.value, curren
 
 async function loadPage(page: number | "…") {
 	if (typeof page !== "number" || page === currentPage.value) return;
+	// Page turns swap the rendered rows in place — a reply draft or dirty edit
+	// on the outgoing page would unmount and be lost. Ask first (deep-dive
+	// finding; sort had the same hole, wired in onSortChange).
+	if (!confirmDiscardUnsaved()) return;
 	currentPage.value = page;
 	await refreshList();
 }
