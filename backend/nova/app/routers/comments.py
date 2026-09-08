@@ -91,15 +91,16 @@ def _notify_thread_subscribers(
         return
     # Persist to the durable reader inbox (independent of VAPID) so a reader
     # sees the new comment in-app even if the browser push is missed/unconfigured.
-    for rid in target_ids:
-        crud.record_reader_notification(
-            db,
-            rid,
-            kind="thread_comment",
-            title=THREAD_NOTIF_TITLE,
-            body=THREAD_NOTIF_BODY.replace("{post_title}", post.title or ""),
-            url=f"/posts/{post.slug}#comment-{new_comment_id}",
-        )
+    # Batched (ISS-427): build every follower's row, flush + prune + commit once
+    # — the old per-follower record_reader_notification loop paid O(2n) queries
+    # and N transactions per approved comment on a big thread.
+    crud.record_thread_comment_notifications(
+        db,
+        target_ids,
+        title=THREAD_NOTIF_TITLE,
+        body=THREAD_NOTIF_BODY.replace("{post_title}", post.title or ""),
+        url=f"/posts/{post.slug}#comment-{new_comment_id}",
+    )
     # Email channel (DEC-197, TASK-217): best-effort off-site copy for thread
     # followers who opted into email for the kind.
     dispatch_notification_emails(

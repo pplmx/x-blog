@@ -3360,6 +3360,40 @@ def record_new_post_notifications(db: Session, post: models.Post) -> None:
         db.rollback()
 
 
+def record_thread_comment_notifications(
+    db: Session,
+    reader_ids: list[int],
+    title: str,
+    body: str,
+    url: str,
+) -> None:
+    """Persist a thread-comment inbox row for every follower at once.
+
+    Batched counterpart of record_reader_notification for the thread-comment
+    approval fan-out (ISS-427): the previous per-follower loop called
+    record_reader_notification for N readers, each doing a flush + a
+    SELECT-recent-200 + a DELETE + a commit — O(2n) queries and N transactions
+    for one approved comment on a heavily subscribed thread. Build every row,
+    flush once, prune once, commit once (the same batched pattern
+    record_new_post_notifications introduced for new-post fan-out, ISS-113).
+    The single commit also makes the fan-out atomic. Best effort: never raises
+    so a notify path cannot break the approving write.
+    """
+    try:
+        rows = [
+            models.ReaderNotification(reader_id=rid, kind="thread_comment", title=title, body=body, url=url)
+            for rid in reader_ids
+        ]
+        if not rows:
+            return
+        db.add_all(rows)
+        db.flush()  # assign ids so the prune's id ordering is exact
+        _prune_notifications_for_readers(db, set(reader_ids))
+        db.commit()  # inserts + prune land atomically
+    except Exception:  # noqa: BLE001 — best effort, never fail the caller
+        db.rollback()
+
+
 # Notification-kind opt-outs (DEC-171, TASK-202). The preferences surface
 # exposes exactly these toggles. Dispatch can also produce series_new_part as a
 # label refinement of new_post (ISS-114, DEC-181) — it is never a separate

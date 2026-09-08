@@ -694,3 +694,42 @@ class TestFanOutPrune:
         assert data["total"] == 200  # cap enforced after the fan-out
         assert any(i["url"] == "/posts/capped-notif-post" for i in data["items"])
         assert crud.MAX_NOTIFICATIONS_PER_READER == 200  # keep the constant honest
+
+    def test_record_thread_comment_notifications_batches_all_readers(self, db_session):
+        """The batched thread-comment fan-out (ISS-427) persists a row for every
+        target and prunes each reader's cap back in one pass — the batched
+        counterpart of the per-follower record_reader_notification loop it
+        replaced. One pre-existing reader below the cap stays untouched."""
+        from app import crud, models
+
+        # Reader 1 is over the cap (205 rows); reader 2 empty; reader 3 empty.
+        db_session.add_all(
+            [
+                models.ReaderNotification(reader_id=1, kind="reply", title=f"old-{i}", body="b", url="/x")
+                for i in range(205)
+            ]
+        )
+        db_session.commit()
+
+        crud.record_thread_comment_notifications(
+            db_session,
+            [1, 2, 3],
+            title="你订阅的讨论有新评论",
+            body="《T》有新评论",
+            url="/posts/t#comment-9",
+        )
+
+        from sqlalchemy import func
+
+        # All three get exactly one new thread_comment row.
+        rows = (
+            db_session.query(models.ReaderNotification).filter(models.ReaderNotification.kind == "thread_comment").all()
+        )
+        assert sorted(r.reader_id for r in rows) == [1, 2, 3]
+        # Reader 1's cap was pruned back to 200 (205 old + 1 new -> 200 kept).
+        count_1 = (
+            db_session.query(func.count(models.ReaderNotification.id))
+            .filter(models.ReaderNotification.reader_id == 1)
+            .scalar()
+        )
+        assert count_1 == 200
