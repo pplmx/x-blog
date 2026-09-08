@@ -515,7 +515,7 @@ function kindIcon(kind: string): string {
         @click="loadMore"
       >
         <Icon v-if="loadingMore" icon="lucide:loader-2" class="w-4 h-4 animate-spin" aria-hidden="true" role="presentation" />
-        {{ loadingMore ? t('notifications.loadingMore') : t('notifications.loadMore') }}
+        {{ loadingMore ? t('notifications.loadingMore') : loadMoreError ? t('common.action.retry') : t('notifications.loadMore') }}
       </button>
       <p v-if="loadMoreError" class="text-sm text-red-600 dark:text-red-400">
         {{ t('common.errors.network') }}

@@ -559,4 +559,74 @@ describe("Search Page", () => {
 			});
 		});
 	});
+
+	describe("Taxonomy filter load failure (survey finding)", () => {
+		it("explains the thin selects and offers a retry when categories/tags fail to load", async () => {
+			vi.stubGlobal("useRuntimeConfig", () => ({ public: { apiUrl: "http://localhost:18888" } }));
+			vi.stubGlobal("useRoute", () => reactive({ query: { q: "test query" } }));
+			vi.stubGlobal("navigateTo", vi.fn());
+			vi.stubGlobal("useHead", vi.fn());
+			vi.stubGlobal(
+				"useFetch",
+				vi.fn(() => ({
+					data: ref({
+						items: [],
+						pagination: { total: 0, page: 1, limit: 10, total_pages: 1 },
+					}),
+					pending: ref(false),
+					error: ref(null),
+					refresh: vi.fn(),
+				})),
+			);
+			// Both taxonomy fetches fail — the banner must explain, not silently
+			// render the selects as if there were no categories/tags.
+			vi.stubGlobal(
+				"$fetch",
+				vi.fn(() => Promise.reject(new Error("offline"))),
+			);
+
+			const { default: SearchPage } = await import("../../app/pages/search.vue");
+			const SuspenseWrapper: any = {
+				components: { SearchPage },
+				template:
+					"<Suspense>" +
+					"<template #default><SearchPage /></template>" +
+					"<template #fallback>Loading...</template>" +
+					"</Suspense>",
+			};
+			const wrapper = mount(SuspenseWrapper, {
+				global: {
+					stubs: {
+						NuxtLink: { template: '<a :href="to"><slot/></a>', props: ["to"] },
+						Icon: { template: '<svg class="iconstub" />' },
+					},
+				},
+			});
+			await flushPromises();
+
+			expect(wrapper.text()).toContain("筛选选项加载失败，请检查网络。");
+			const retry = wrapper.findAll("button").find((b) => b.text().includes("重试"));
+			expect(retry).toBeDefined();
+		});
+	});
+
+	describe("Filter change navigation (survey finding)", () => {
+		it("scrolls the reader back to the top when a filter changes", async () => {
+			const scrollSpy = vi.spyOn(window, "scrollTo").mockImplementation(() => {});
+			try {
+				const wrapper = await mountSearchPage({ routeQuery: { q: "test query" } });
+				const categorySelect = wrapper.find("select");
+				expect(categorySelect.exists()).toBe(true);
+
+				await categorySelect.setValue("Tech");
+				await flushPromises();
+
+				// Changing a filter resets to page 1 — like pagination, the reader
+				// must land back at the top so the fresh result set is visible.
+				expect(scrollSpy).toHaveBeenCalled();
+			} finally {
+				scrollSpy.mockRestore();
+			}
+		});
+	});
 });

@@ -38,6 +38,11 @@ function setFilter(key: string, value: string): void {
 	else delete merged[key];
 	merged.page = "1"; // a filter change starts a fresh result set
 	navigateTo({ query: merged });
+	// A filter change resets to page 1, so carry the reader back to the top of
+	// the results — without this, a reader at the bottom of a long page-3 set
+	// who changes sort/category sees the URL reset but the viewport stay put,
+	// which reads as "nothing happened" (survey finding).
+	scrollToPageTop();
 }
 
 // The current filter set (everything except q/page), reused when paging so
@@ -132,14 +137,32 @@ watch(
 // category/tag lists for the filter selects (DEC-084).
 const categories = ref<{ id: number; name: string }[]>([]);
 const tags = ref<{ id: number; name: string }[]>([]);
-onMounted(async () => {
-	void loadPurify();
-	const [cats, tgs] = await Promise.all([
-		$fetch<{ id: number; name: string }[]>("/api/categories").catch(() => []),
-		$fetch<{ id: number; name: string }[]>("/api/tags").catch(() => []),
+// A taxonomy fetch failure must not look like "there are no categories/tags":
+// the selects would silently shrink to just "All" with no explanation (survey
+// finding). Flag it and offer a retry right by the filters.
+const taxonomyFailed = ref(false);
+async function loadTaxonomy() {
+	taxonomyFailed.value = false;
+	await Promise.all([
+		$fetch<{ id: number; name: string }[]>("/api/categories")
+			.then((v) => {
+				categories.value = v ?? [];
+			})
+			.catch(() => {
+				taxonomyFailed.value = true;
+			}),
+		$fetch<{ id: number; name: string }[]>("/api/tags")
+			.then((v) => {
+				tags.value = v ?? [];
+			})
+			.catch(() => {
+				taxonomyFailed.value = true;
+			}),
 	]);
-	categories.value = cats;
-	tags.value = tgs;
+}
+onMounted(() => {
+	void loadPurify();
+	void loadTaxonomy();
 });
 
 // SEO: set dynamic head metadata based on search query. Passed as a getter so
@@ -360,6 +383,25 @@ function goToPage(pg: number | string) {
           {{ t("search.filters.clearAll") }}
         </button>
       </div>
+
+      <!-- Taxonomy load failure (survey finding): never let a failed category/
+           tag fetch look like "there are no categories/tags" — say why the
+           selects are thin and offer a retry. -->
+      <p
+        v-if="taxonomyFailed"
+        role="alert"
+        class="mb-6 flex items-center gap-2 text-sm text-amber-600 dark:text-amber-400"
+      >
+        <Icon icon="lucide:triangle-alert" class="w-4 h-4 shrink-0" aria-hidden="true" role="presentation" />
+        {{ t("search.filters.loadFailed") }}
+        <button
+          type="button"
+          class="px-2 py-1 rounded-lg text-xs font-medium border border-amber-300 dark:border-amber-700 text-amber-700 dark:text-amber-300 hover:bg-amber-100 dark:hover:bg-amber-900/40 transition-colors"
+          @click="loadTaxonomy"
+        >
+          {{ t("common.action.retry") }}
+        </button>
+      </p>
 
       <!-- Results area: only here do loading/error swap in, leaving the query
            box and filters mounted (see note at the top of the results view). -->

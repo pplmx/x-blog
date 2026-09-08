@@ -50,7 +50,8 @@
 			"newPostsNote": "Push this device when a new post is published.",
 			"allNewPosts": "All new posts",
 			"followCategory": "Followed category",
-			"prefsFailed": "Couldn't save — please try again"
+			"prefsFailed": "Couldn't save — please try again",
+			"categoriesLoadFailed": "Couldn't load categories — filter options may be missing."
 		},
 		"threads": {
 			"title": "Followed discussions",

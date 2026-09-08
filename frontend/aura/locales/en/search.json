@@ -36,7 +36,8 @@
 			"sortViews": "Most viewed",
 			"dateFrom": "From",
 			"dateTo": "To",
-			"clearAll": "Clear filters"
+			"clearAll": "Clear filters",
+			"loadFailed": "Couldn't load filter options — check your connection."
 		}
 	}
 }

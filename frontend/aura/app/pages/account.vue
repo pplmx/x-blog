@@ -212,11 +212,17 @@ const prefsError = ref(false);
 // The public /api/categories list drives the "followed category" options for
 // every device. Loaded on mount via $fetch (not useFetch) so setup stays
 // synchronous and tests can mock getCategories like any taxonomy helper.
+// A failed load must not look like "there are no categories": the device
+// follow-category select would silently shrink to just "All new posts" with
+// no explanation (survey finding) — flag it and offer a retry.
+const categoriesFailed = ref(false);
 async function loadCategories() {
+	categoriesFailed.value = false;
 	try {
 		categories.value = await getCategories();
 	} catch {
 		categories.value = [];
+		categoriesFailed.value = true;
 	}
 }
 
@@ -734,6 +740,22 @@ function shortEndpoint(endpoint: string): string {
           {{ t('account.devices.title') }}
         </h2>
         <p class="text-xs text-gray-400 mb-4">{{ t('account.devices.note') }}</p>
+
+        <p
+          v-if="categoriesFailed"
+          role="alert"
+          class="mb-4 flex items-center gap-2 text-sm text-amber-600 dark:text-amber-400"
+        >
+          <Icon icon="lucide:triangle-alert" class="w-4 h-4 shrink-0" aria-hidden="true" role="presentation" />
+          {{ t('account.devices.categoriesLoadFailed') }}
+          <button
+            type="button"
+            class="px-2 py-1 rounded-lg text-xs font-medium border border-amber-300 dark:border-amber-700 text-amber-700 dark:text-amber-300 hover:bg-amber-100 dark:hover:bg-amber-900/40 transition-colors"
+            @click="loadCategories"
+          >
+            {{ t('common.action.retry') }}
+          </button>
+        </p>
 
         <p
           v-if="!devicesLoaded"

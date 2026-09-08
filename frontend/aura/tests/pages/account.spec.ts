@@ -166,6 +166,29 @@ describe("Account settings page", () => {
 		expect(wrapper.text()).toContain("还没有绑定任何推送设备");
 	});
 
+	it("explains when the device follow-category options fail to load (survey finding)", async () => {
+		// A failed public /api/categories load must not look like "no categories":
+		// the device follow-category select would silently shrink to just "All new
+		// posts" with no explanation — show why + offer a retry.
+		isAuthenticated.value = true;
+		mockFetchCategories.mockRejectedValueOnce(new Error("network down"));
+		mockFetchPushSubscriptions.mockResolvedValue({
+			items: [makeDevice({ want_new_posts: true })],
+			total: 1,
+		});
+		const wrapper = await mountPage();
+		expect(wrapper.text()).toContain("分类加载失败，筛选选项可能缺失。");
+		const retry = wrapper.findAll("button").find((b) => b.text().includes("重试"));
+		expect(retry).toBeDefined();
+
+		// Retry recovers: the select options populate.
+		mockFetchCategories.mockResolvedValueOnce([{ id: 7, name: "Python" }]);
+		await retry?.trigger("click");
+		await flushPromises();
+		expect(wrapper.text()).not.toContain("分类加载失败，筛选选项可能缺失。");
+		expect(wrapper.findAll("option").some((o) => o.text() === "Python")).toBe(true);
+	});
+
 	it("routes an expired reader session back to sign-in instead of per-section load failures", async () => {
 		// A stale reader JWT 401s every account loader at once; the page must
 		// logout + redirect (matching notifications.vue and the password/delete

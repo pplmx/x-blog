@@ -431,6 +431,44 @@ describe("Notifications page (TASK-192)", () => {
 		expect(wrapper.text()).not.toContain("网络错误");
 	});
 
+	it("labels the load-more button as Retry when a page fails to load (survey finding)", async () => {
+		mockFetch.mockResolvedValue({
+			items: [makeNotif({ id: 101 })],
+			total: 150,
+			unread: 1,
+			page: 1,
+			limit: 100,
+			total_pages: 2,
+		});
+		const wrapper = await mountPage();
+		const loadMore = wrapper.findAll("button").find((b) => b.text().includes("加载更多"));
+		expect(loadMore).toBeDefined();
+
+		// The next page fails — the button must read Retry (same handler already
+		// re-runs), so the reader doesn't have to guess that clicking again retries.
+		mockFetch.mockRejectedValueOnce(new Error("boom"));
+		await loadMore?.trigger("click");
+		await flushPromises();
+		expect(wrapper.text()).toContain("网络错误，请稍后重试");
+		const retry = wrapper.findAll("button").find((b) => b.text().includes("重试"));
+		expect(retry).toBeDefined();
+		expect(wrapper.findAll("button").some((b) => b.text().includes("加载更多"))).toBe(false);
+
+		// Clicking Retry re-fetches page 2 and appends (bounded reachability kept).
+		mockFetch.mockResolvedValueOnce({
+			items: [makeNotif({ id: 1, title: "最旧的那条" })],
+			total: 150,
+			unread: 1,
+			page: 2,
+			limit: 100,
+			total_pages: 2,
+		});
+		await retry?.trigger("click");
+		await flushPromises();
+		expect(mockFetch).toHaveBeenCalledWith(2, 100);
+		expect(wrapper.text()).toContain("最旧的那条");
+	});
+
 	it("hides the load-more affordance when there is only one page", async () => {
 		mockFetch.mockResolvedValue({
 			items: [makeNotif({ id: 101 })],

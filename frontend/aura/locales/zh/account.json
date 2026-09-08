@@ -50,7 +50,8 @@
 			"newPostsNote": "有新文章发布时，通过浏览器推送通知这台设备。",
 			"allNewPosts": "全部新文章",
 			"followCategory": "关注分类",
-			"prefsFailed": "保存失败，请稍后再试"
+			"prefsFailed": "保存失败，请稍后再试",
+			"categoriesLoadFailed": "分类加载失败，筛选选项可能缺失。"
 		},
 		"threads": {
 			"title": "订阅的讨论",
