@@ -73,7 +73,14 @@ async function undoRemove() {
 	// re-adopts the server row. Re-apply the folder assignment explicitly so
 	// the restored row keeps its folder across devices (deep-dive, ISS-388).
 	if (undoItem.value.folder_id != null && signedIn.value) {
-		await assignFolder(undoItem.value.id, undoItem.value.folder_id);
+		// A failed re-assign (offline / dead session) must not be silent: the
+		// bookmark returns locally with its folder chip, but the cloud row has
+		// no folder and the next merge drops it — tell the reader so the
+		// restored bookmark's folder isn't lost without a trace (deep-dive,
+		// ISS-428 — every sibling folder action surfaces its failure).
+		if (!(await assignFolder(undoItem.value.id, undoItem.value.folder_id))) {
+			noteFolderActionFailure();
+		}
 	}
 	if (undoClearTimer) clearTimeout(undoClearTimer);
 	undoClearTimer = undefined;

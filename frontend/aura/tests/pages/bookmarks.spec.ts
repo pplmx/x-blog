@@ -270,6 +270,34 @@ describe("Bookmarks page", () => {
 			expect(mockAssignFolder).toHaveBeenCalledWith(1, 3);
 		});
 
+		it("surfaces a failed folder re-assign on undo instead of silently dropping the folder (ISS-428)", async () => {
+			// The undo's re-assign can fail (offline, dead session): the bookmark
+			// comes back locally with its folder chip, but the cloud row has no
+			// folder and the next merge silently un-files it. The page must tell
+			// the reader — the old path discarded assignFolder's result, hiding
+			// the loss behind the restore.
+			const folded = { ...sampleBookmark, folder_id: 3, folder_name: "Reading" };
+			mockBookmarks.value = [folded];
+			mockRemoveBookmark.mockClear();
+			mockAddBookmark.mockClear();
+			mockAssignFolder.mockClear();
+			mockAssignFolder.mockResolvedValue(false);
+
+			const wrapper = mountBookmarks();
+			await wrapper.find("button[title='移除收藏']").trigger("click");
+			const undoBtn = wrapper.findAll("button").find((b) => b.text().includes("撤销"));
+			expect(undoBtn).toBeDefined();
+			await undoBtn?.trigger("click");
+			await flushPromises();
+
+			// The failure banner (folderActionFailed -> bookmarks.folderFailed,
+			// real zh copy) is visible, not silent.
+			const banner = wrapper.find("[role='alert']");
+			expect(banner.exists()).toBe(true);
+			expect(banner.text()).toContain("文件夹操作失败");
+			mockAssignFolder.mockResolvedValue(true);
+		});
+
 		it("calls clearAll when clear all is confirmed", async () => {
 			mockBookmarks.value = [sampleBookmark];
 			mockClearAll.mockClear();
