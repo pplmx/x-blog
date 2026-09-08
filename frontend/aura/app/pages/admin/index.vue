@@ -216,7 +216,13 @@ async function loadDashboard(): Promise<void> {
 			$fetch<Category[]>(`${apiBase}/api/admin/categories`, { headers: authHeaders() }),
 			$fetch<Tag[]>(`${apiBase}/api/admin/tags`, { headers: authHeaders() }),
 			$fetch<AdminCommentListResponse>(`${apiBase}/api/admin/comments`, {
-				query: { page: 1, limit: 100 },
+				// The pending quick-card derives from these items, so request the
+				// moderation queue itself (is_approved=false) instead of the newest
+				// 100 comments and slicing — on a blog with >100 approved comments,
+				// a pending item parked behind them was invisible on the dashboard
+				// while the count badge said pending ≥1 (deep-dive finding). limit 5
+				// matches the newest-5 the card renders.
+				query: { page: 1, limit: 5, is_approved: false },
 				headers: authHeaders(),
 			}),
 			$fetch<BlogStats>(`${apiBase}/api/stats`),
