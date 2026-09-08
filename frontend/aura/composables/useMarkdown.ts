@@ -331,20 +331,24 @@ marked.use({ renderer: headingRenderer });
 
 /**
  * Convert remaining Markdown (headings, lists, tables, bold, etc.) to HTML.
- * Preserves HTML comments (placeholders) by wrapping them so marked doesn't touch them.
  * Uses `marked` which is imported statically (available for synchronous use).
+ *
+ * HTML comments pass through marked verbatim (inline and as blocks) — confirmed
+ * by test ("preserves HTML comments through the markdown pipeline"). The old
+ * "wrap comments in a placeholder so marked doesn't touch them" wrapper was
+ * dead for years: its placeholder constant was an empty string, so both
+ * replaces were no-ops. Removed rather than resurrected, since a NUL-wrap would
+ * have shoved comments inside <p> instead of letting them stay block-level.
+ *
+ * NOTE: this helper does NOT reset the duplicate-heading counter — ownership
+ * lives with the document-level caller. `useMarkdown` resets once per post so
+ * ids stay globally unique ACROSS its html segments (else the same heading text
+ * in two segments collides on duplicated DOM ids and TOC anchors); the
+ * standalone `markdownToHtml` resets at its own entry. (TOC-anchor bug)
  */
 function convertMarkdownToHtml(md: string): string {
-	// NOTE: does NOT reset the duplicate-heading counter — ownership lives with
-	// the document-level caller. `useMarkdown` resets once per post so ids stay
-	// globally unique ACROSS its html segments (else the same heading text in
-	// two segments collides on duplicated DOM ids and TOC anchors); the
-	// standalone `markdownToHtml` resets at its own entry. (TOC-anchor bug)
 	try {
-		const placeholder = "";
-		const safeMd = md.replace(/(<!--[\s\S]*?-->)/g, `${placeholder}$1${placeholder}`);
-		const html = String(marked.parse(safeMd));
-		return html.replace(new RegExp(`${placeholder}(<![\\s\\S]*?-->)${placeholder}`, "g"), "$1");
+		return String(marked.parse(md));
 	} catch {
 		return md;
 	}

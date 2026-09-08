@@ -184,6 +184,22 @@ describe("useMarkdown features", () => {
 		const tocIds = extractToc(markdownToHtml(md)).map((t) => t.id);
 		expect(ids).toEqual(tocIds);
 	});
+
+	it("preserves HTML comments through the markdown pipeline", () => {
+		// Post prose can carry HTML comments (excerpt markers, notes). The old
+		// convertMarkdownToHtml claimed to wrap them in a NUL "placeholder" so
+		// marked "doesn't touch them" — but the placeholder constant was emptied
+		// long ago, so the wrapper is (and has been) a dead no-op. Pin the REAL
+		// behavior: marked passes comments through verbatim, both inline and as
+		// standalone blocks, so whatever they gate never silently disappears.
+		const inline = useMarkdown("before <!--quiet note--> after");
+		const combined = inline.segments.map((s) => (s.type === "html" ? s.html : "")).join("");
+		expect(combined).toContain("<!--quiet note-->");
+
+		const block = useMarkdown("# Setup\n\n<!--more-->\n\nBody");
+		const blockHtml = block.segments.map((s) => (s.type === "html" ? s.html : "")).join("");
+		expect(blockHtml).toContain("<!--more-->");
+	});
 });
 
 describe("sanitizeUrl", () => {
