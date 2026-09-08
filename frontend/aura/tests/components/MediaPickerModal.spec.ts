@@ -9,7 +9,7 @@
 
 import { mount } from "@vue/test-utils";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { computed, ref } from "vue";
+import { computed, nextTick, ref } from "vue";
 
 const t = vi.fn((key: string) => key);
 vi.mock("~~/composables/useLang", () => ({
@@ -154,6 +154,42 @@ describe("MediaPickerModal", () => {
 		});
 		// The ref used to request the data now points at page 2.
 		expect(pageRefState.ref?.value).toBe(2);
+	});
+
+	it("does not advance the page while a refetch is in flight (survey finding)", async () => {
+		// Two pages; after the first loads, a refetch is pending (the grid
+		// flashes "Loading"), so a double-clicked Next must not skip two pages.
+		const pendingRef = ref(false);
+		const pageRefState = { ref: null as null | { value: number } };
+		listMock.mockImplementation((page: { value: number }) => {
+			pageRefState.ref = page;
+			return {
+				data: computed(() => ({
+					items: [{ ...image }],
+					pagination: { total: 2, page: page.value, limit: 60, total_pages: 2 },
+				})),
+				pending: pendingRef,
+				error: ref(null),
+				refresh: vi.fn(() => Promise.resolve()),
+			};
+		});
+		mountPicker();
+		await vi.waitFor(() => {
+			expect(document.body.querySelectorAll("img").length).toBe(1);
+		});
+
+		pendingRef.value = true; // a page fetch is now in flight
+		await nextTick();
+		const nextBtn = Array.from(document.body.querySelectorAll("button")).find((b) =>
+			b.textContent?.includes("components.mediaPicker.next"),
+		);
+		if (!nextBtn) throw new Error("expected a next button");
+		expect((nextBtn as HTMLButtonElement).disabled).toBe(true);
+		(nextBtn as HTMLButtonElement).click();
+
+		// The pager rejects the queued click while pending — the request page
+		// stays on 1 instead of landing on 2 (the grid skipped a page).
+		expect(pageRefState.ref?.value).toBe(1);
 	});
 
 	it("emits select with the image URL on click", async () => {

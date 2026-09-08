@@ -100,7 +100,12 @@ function select(item: UploadFileInfo) {
 }
 
 function goToPage(page: number) {
-	if (page < 0 || page >= totalPages.value) return;
+	// Re-entry guard during the in-flight refetch: apiPage drives useAdminMedia's
+	// reactive path, but useFetch's pending flag updates on the NEXT render — a
+	// rapid double-click on Next could otherwise advance two pages before the
+	// button disabled (the grid flashing "Loading" between). Same class as the
+	// admin media page's single-flight guards (survey finding).
+	if (pending.value || page < 0 || page >= totalPages.value) return;
 	currentPage.value = page;
 	// No manual refresh: apiPage is a reactive source of useAdminMedia's path,
 	// so useFetch re-fetches this page automatically.
@@ -171,7 +176,7 @@ function goToPage(page: number) {
         <div v-if="totalPages > 1" class="flex items-center justify-between p-3 border-t border-gray-200 dark:border-gray-700">
           <button
             type="button"
-            :disabled="currentPage === 0"
+            :disabled="pending || currentPage === 0"
             class="px-3 py-1 text-xs rounded-lg bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 disabled:opacity-40"
             @click="goToPage(currentPage - 1)"
           >
@@ -180,7 +185,7 @@ function goToPage(page: number) {
           <span class="text-xs text-gray-500 dark:text-gray-400">{{ currentPage + 1 }} / {{ totalPages }}</span>
           <button
             type="button"
-            :disabled="currentPage >= totalPages - 1"
+            :disabled="pending || currentPage >= totalPages - 1"
             class="px-3 py-1 text-xs rounded-lg bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 disabled:opacity-40"
             @click="goToPage(currentPage + 1)"
           >
