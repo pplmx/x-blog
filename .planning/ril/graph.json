@@ -2,7 +2,7 @@
   "ril_version": 1,
   "round": 288,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-08T07:49:01+00:00",
+  "updated_at": "2026-09-08T08:01:26+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -20551,10 +20551,10 @@
     "ISS-432": {
       "id": "ISS-432",
       "type": "issue",
-      "status": "active",
-      "version": 1,
+      "status": "resolved",
+      "version": 2,
       "created_at": "2026-09-08T07:48:32+00:00",
-      "updated_at": "2026-09-08T07:48:32+00:00",
+      "updated_at": "2026-09-08T08:01:26+00:00",
       "touched_round": 288,
       "summary": "_collect_upload_references (upload.py:210) reads every post row full markdown content + cover URL into Python and regexes them on EVERY media-library request (list, page change, filename search debounce, delete) regardless of page size. On a blog with ~8k posts / ~60MB of markdown the /admin/media page streams the whole content table and re-scans it per load: minutes of work, no pagination/caching bound",
       "severity": "medium"
@@ -20610,6 +20610,43 @@
       "effort": 1.0,
       "priority_score": 3.6,
       "summary": "Admin dashboard pending-comments quick-card must fetch the moderation queue (is_approved=false) instead of slicing the newest 100 comments, so pending items behind a flood of approved comments still surface"
+    },
+    "TASK-334": {
+      "id": "TASK-334",
+      "type": "task",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-08T08:01:25+00:00",
+      "updated_at": "2026-09-08T08:01:25+00:00",
+      "touched_round": 288,
+      "category": "performance",
+      "severity": "medium",
+      "confidence": 0.95,
+      "effort": 1.0,
+      "priority_score": 4.2,
+      "summary": "Replace the full _collect_upload_references regex pass on single + batch media deletes with a per-URL contains() probe (_referencing_posts) that streams only matching rows"
+    },
+    "CHG-444": {
+      "id": "CHG-444",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-08T08:01:25+00:00",
+      "updated_at": "2026-09-08T08:01:25+00:00",
+      "touched_round": 288,
+      "commit": "eafd4bc",
+      "summary": "Media delete guards use _referencing_posts() (per-URL contains probe over content+cover_image) instead of the full content-table scan; unit + existing 409-guard tests green on both dialects"
+    },
+    "ISS-433": {
+      "id": "ISS-433",
+      "type": "issue",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-08T08:01:26+00:00",
+      "updated_at": "2026-09-08T08:01:26+00:00",
+      "touched_round": 288,
+      "summary": "The media-library LIST page still runs the full _collect_upload_references scan (every post body streaming+regex) once per request to power the referenced badge on each thumbnail — a per-render O(total content) cost with no pagination/caching bound",
+      "severity": "low"
     }
   },
   "edges": [
@@ -30703,6 +30740,30 @@
       "to": "TASK-332",
       "type": "implements",
       "created_at": "2026-09-08T07:49:01+00:00"
+    },
+    {
+      "from": "TASK-334",
+      "to": "ISS-432",
+      "type": "addresses",
+      "created_at": "2026-09-08T08:01:25+00:00"
+    },
+    {
+      "from": "CHG-444",
+      "to": "TASK-334",
+      "type": "implements",
+      "created_at": "2026-09-08T08:01:25+00:00"
+    },
+    {
+      "from": "CHG-444",
+      "to": "ISS-432",
+      "type": "resolves",
+      "created_at": "2026-09-08T08:01:25+00:00"
+    },
+    {
+      "from": "TASK-333",
+      "to": "ISS-433",
+      "type": "addresses",
+      "created_at": "2026-09-08T08:01:26+00:00"
     }
   ]
 }
