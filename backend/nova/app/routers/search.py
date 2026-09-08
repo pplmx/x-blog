@@ -88,7 +88,10 @@ def _build_snippet(post: Post, query: str, is_postgres: bool, db: Session) -> st
         )
         result = db.execute(headline).scalar()
         if not result:
-            return post.excerpt or post.content[:200]
+            # Raw excerpt/content fallback: same escaping guarantee as the
+            # ts_headline branch (the module's snippet-XSS contract holds for
+            # every path, not only the highlighted one).
+            return html.escape(post.excerpt or post.content[:200])
         # ts_headline output is NOT guaranteed HTML-safe (see PostgreSQL docs
         # "Cross-site Scripting (XSS) Safety"): escape it, then restore only
         # the <mark> highlight delimiters we configured above.
@@ -185,7 +188,10 @@ def search(
         if use_headline:
             snippet = snippets.get(p.id)
             if snippet is None and q.strip():
-                snippet = p.excerpt or p.content[:200]
+                # No ts_headline match for this individual post (or query) —
+                # mirror the _build_snippet fallback's escaping so a raw
+                # excerpt/content cannot break the snippet XSS-safety guarantee.
+                snippet = html.escape(p.excerpt or p.content[:200])
         else:
             snippet = _build_snippet(p, q, is_postgres, db)
         post_dict = PostList.model_validate(p).model_dump()

@@ -158,6 +158,31 @@ class TestSearchSnippet:
         out = _highlight_sqlite("Some content here", "")
         assert "Some content here" in out or out == ""
 
+    def test_pg_snippet_fallback_escapes_raw_content(self):
+        # Regression (ISS-424): when ts_headline yields no scalar for a post,
+        # the epilogue used to return the RAW excerpt/content[:200] — breaking
+        # the snippet XSS-safety contract that every other branch guarantees.
+        # Force that branch with a mocked nil scalar and a non-CJK (ts_headline
+        # eligible) query, then assert the fallback output is escaped.
+        from unittest.mock import MagicMock
+
+        from app import models
+
+        post = models.Post(
+            title="Fallback",
+            slug="xss-fallback",
+            content="<img src=x onerror=alert(1)> body",
+            excerpt="<script>alert(1)</script> excerpt only",
+            published=True,
+        )
+        mock_db = MagicMock()
+        mock_db.execute.return_value.scalar.return_value = None  # no headline hit
+
+        snippet = _build_snippet(post, "surely-no-such-term", True, mock_db)
+
+        assert snippet == "&lt;script&gt;alert(1)&lt;/script&gt; excerpt only"
+        assert "<script>" not in snippet
+
 
 @pytest.mark.skipif(
     not os.getenv("TEST_DATABASE_URL", "").startswith("postgresql"),
