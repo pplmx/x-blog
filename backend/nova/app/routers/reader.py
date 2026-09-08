@@ -18,7 +18,7 @@ from sqlalchemy.orm import Session
 
 from app import auth, crud, models, schemas
 from app.database import get_db
-from app.limiter import RATE_LIMIT_AUTH, RATE_LIMIT_EXPORT, RATE_LIMIT_REGISTER, limiter
+from app.limiter import RATE_LIMIT_AUTH, RATE_LIMIT_EXPORT, RATE_LIMIT_REGISTER, RATE_LIMIT_WRITE, limiter
 from app.routers.comments import AUTO_APPROVE_READER_COMMENTS, _notify_comment_approved
 from app.schemas import IdInt, PageInt
 
@@ -565,7 +565,9 @@ class ReaderPushSubscriptionListResponse(BaseModel):
 
 
 @router.patch("/me", response_model=ReaderProfile)
+@limiter.limit(f"{RATE_LIMIT_WRITE}/minute")
 def update_my_profile(
+    request: Request,  # noqa: ARG001
     payload: ReaderProfileUpdate,
     current_reader: auth.ReaderAccount = Depends(auth.get_current_reader),
     db: Session = Depends(get_db),
@@ -672,7 +674,9 @@ def list_my_push_subscriptions(
 
 
 @router.patch("/me/push-subscriptions/{subscription_id}", response_model=ReaderPushSubscriptionItem)
+@limiter.limit(f"{RATE_LIMIT_WRITE}/minute")
 def update_my_push_subscription_prefs(
+    request: Request,  # noqa: ARG001
     subscription_id: int,
     payload: ReaderPushSubscriptionUpdate,
     current_reader: auth.ReaderAccount = Depends(auth.get_current_reader),
@@ -712,7 +716,9 @@ def update_my_push_subscription_prefs(
 
 
 @router.delete("/me/push-subscriptions/{subscription_id}", status_code=204)
+@limiter.limit(f"{RATE_LIMIT_WRITE}/minute")
 def revoke_my_push_subscription(
+    request: Request,  # noqa: ARG001
     subscription_id: int,
     current_reader: auth.ReaderAccount = Depends(auth.get_current_reader),
     db: Session = Depends(get_db),
@@ -796,7 +802,9 @@ def list_my_post_subscriptions(
 
 
 @router.put("/me/bookmarks/{post_id}", response_model=AddBookmarkResponse)
+@limiter.limit(f"{RATE_LIMIT_WRITE}/minute")
 def add_bookmark(
+    request: Request,  # noqa: ARG001
     post_id: IdInt,
     response: Response,
     current_reader: auth.ReaderAccount = Depends(auth.get_current_reader),
@@ -818,7 +826,9 @@ def add_bookmark(
 
 
 @router.delete("/me/bookmarks", status_code=204)
+@limiter.limit(f"{RATE_LIMIT_WRITE}/minute")
 def clear_bookmarks(
+    request: Request,  # noqa: ARG001
     current_reader: auth.ReaderAccount = Depends(auth.get_current_reader),
     db: Session = Depends(get_db),
 ):
@@ -835,7 +845,9 @@ def clear_bookmarks(
 
 
 @router.delete("/me/bookmarks/{post_id}", status_code=204)
+@limiter.limit(f"{RATE_LIMIT_WRITE}/minute")
 def remove_bookmark(
+    request: Request,  # noqa: ARG001
     post_id: IdInt,
     current_reader: auth.ReaderAccount = Depends(auth.get_current_reader),
     db: Session = Depends(get_db),
@@ -864,7 +876,9 @@ def list_bookmark_folders(
 
 
 @router.post("/me/bookmarks/folders", response_model=BookmarkFolderResponse, status_code=201)
+@limiter.limit(f"{RATE_LIMIT_WRITE}/minute")
 def create_bookmark_folder(
+    request: Request,  # noqa: ARG001
     body: FolderCreate,
     response: Response,
     current_reader: auth.ReaderAccount = Depends(auth.get_current_reader),
@@ -878,7 +892,9 @@ def create_bookmark_folder(
 
 
 @router.patch("/me/bookmarks/folders/{folder_id}", response_model=BookmarkFolderResponse)
+@limiter.limit(f"{RATE_LIMIT_WRITE}/minute")
 def rename_bookmark_folder(
+    request: Request,  # noqa: ARG001
     folder_id: int,
     body: FolderRename,
     current_reader: auth.ReaderAccount = Depends(auth.get_current_reader),
@@ -897,7 +913,9 @@ def rename_bookmark_folder(
 
 
 @router.delete("/me/bookmarks/folders/{folder_id}", status_code=204)
+@limiter.limit(f"{RATE_LIMIT_WRITE}/minute")
 def delete_bookmark_folder(
+    request: Request,  # noqa: ARG001
     folder_id: int,
     current_reader: auth.ReaderAccount = Depends(auth.get_current_reader),
     db: Session = Depends(get_db),
@@ -908,7 +926,9 @@ def delete_bookmark_folder(
 
 
 @router.patch("/me/bookmarks/{post_id}/folder", response_model=AssignFolderResponse)
+@limiter.limit(f"{RATE_LIMIT_WRITE}/minute")
 def assign_bookmark_folder(
+    request: Request,  # noqa: ARG001
     post_id: IdInt,
     body: AssignFolder,
     current_reader: auth.ReaderAccount = Depends(auth.get_current_reader),
@@ -1008,7 +1028,9 @@ def list_series_follows(
 
 
 @router.put("/me/series/{series_id}/follow", response_model=SeriesFollowResponse)
+@limiter.limit(f"{RATE_LIMIT_WRITE}/minute")
 def follow_series(
+    request: Request,  # noqa: ARG001
     series_id: IdInt,
     response: Response,
     current_reader: auth.ReaderAccount = Depends(auth.get_current_reader),
@@ -1030,7 +1052,9 @@ class SeriesFollowNotifyUpdate(BaseModel):
 
 
 @router.patch("/me/series/{series_id}/follow", response_model=SeriesFollowResponse)
+@limiter.limit(f"{RATE_LIMIT_WRITE}/minute")
 def set_series_follow_notify(
+    request: Request,  # noqa: ARG001
     series_id: IdInt,
     payload: SeriesFollowNotifyUpdate,
     current_reader: auth.ReaderAccount = Depends(auth.get_current_reader),
@@ -1047,7 +1071,9 @@ def set_series_follow_notify(
 
 
 @router.delete("/me/series/{series_id}/follow", status_code=204)
+@limiter.limit(f"{RATE_LIMIT_WRITE}/minute")
 def unfollow_series(
+    request: Request,  # noqa: ARG001
     series_id: IdInt,
     current_reader: auth.ReaderAccount = Depends(auth.get_current_reader),
     db: Session = Depends(get_db),
@@ -1078,7 +1104,9 @@ def list_category_follows(
 
 
 @router.put("/me/categories/{category_id}/follow", response_model=CategoryFollowResponse)
+@limiter.limit(f"{RATE_LIMIT_WRITE}/minute")
 def follow_category(
+    request: Request,  # noqa: ARG001
     category_id: IdInt,
     response: Response,
     current_reader: auth.ReaderAccount = Depends(auth.get_current_reader),
@@ -1099,7 +1127,9 @@ def follow_category(
 
 
 @router.patch("/me/categories/{category_id}/follow", response_model=CategoryFollowResponse)
+@limiter.limit(f"{RATE_LIMIT_WRITE}/minute")
 def set_category_follow_notify(
+    request: Request,  # noqa: ARG001
     category_id: IdInt,
     payload: CategoryFollowNotifyUpdate,
     current_reader: auth.ReaderAccount = Depends(auth.get_current_reader),
@@ -1121,7 +1151,9 @@ def set_category_follow_notify(
 
 
 @router.delete("/me/categories/{category_id}/follow", status_code=204)
+@limiter.limit(f"{RATE_LIMIT_WRITE}/minute")
 def unfollow_category(
+    request: Request,  # noqa: ARG001
     category_id: IdInt,
     current_reader: auth.ReaderAccount = Depends(auth.get_current_reader),
     db: Session = Depends(get_db),
@@ -1152,7 +1184,9 @@ def list_tag_follows(
 
 
 @router.put("/me/tags/{tag_id}/follow", response_model=TagFollowResponse)
+@limiter.limit(f"{RATE_LIMIT_WRITE}/minute")
 def follow_tag(
+    request: Request,  # noqa: ARG001
     tag_id: IdInt,
     response: Response,
     current_reader: auth.ReaderAccount = Depends(auth.get_current_reader),
@@ -1173,7 +1207,9 @@ def follow_tag(
 
 
 @router.patch("/me/tags/{tag_id}/follow", response_model=TagFollowResponse)
+@limiter.limit(f"{RATE_LIMIT_WRITE}/minute")
 def set_tag_follow_notify(
+    request: Request,  # noqa: ARG001
     tag_id: IdInt,
     payload: TagFollowNotifyUpdate,
     current_reader: auth.ReaderAccount = Depends(auth.get_current_reader),
@@ -1195,7 +1231,9 @@ def set_tag_follow_notify(
 
 
 @router.delete("/me/tags/{tag_id}/follow", status_code=204)
+@limiter.limit(f"{RATE_LIMIT_WRITE}/minute")
 def unfollow_tag(
+    request: Request,  # noqa: ARG001
     tag_id: IdInt,
     current_reader: auth.ReaderAccount = Depends(auth.get_current_reader),
     db: Session = Depends(get_db),
@@ -1298,7 +1336,9 @@ class HistoryImportResponse(BaseModel):
 
 
 @router.post("/me/history/import", response_model=HistoryImportResponse)
+@limiter.limit(f"{RATE_LIMIT_WRITE}/minute")
 def import_reading_history(
+    request: Request,  # noqa: ARG001
     body: HistoryImportRequest,
     current_reader: auth.ReaderAccount = Depends(auth.get_current_reader),
     db: Session = Depends(get_db),
@@ -1342,7 +1382,9 @@ def reading_position(
 
 
 @router.post("/me/history/{post_id}", response_model=RecordHistoryResponse)
+@limiter.limit(f"{RATE_LIMIT_WRITE}/minute")
 def record_reading_view(
+    request: Request,  # noqa: ARG001
     post_id: IdInt,
     body: RecordHistoryRequest | None = None,
     current_reader: auth.ReaderAccount = Depends(auth.get_current_reader),
@@ -1365,7 +1407,9 @@ def record_reading_view(
 
 
 @router.delete("/me/history", status_code=204)
+@limiter.limit(f"{RATE_LIMIT_WRITE}/minute")
 def clear_reading_history(
+    request: Request,  # noqa: ARG001
     current_reader: auth.ReaderAccount = Depends(auth.get_current_reader),
     db: Session = Depends(get_db),
 ):
@@ -1454,7 +1498,9 @@ def list_my_comments(
 
 
 @router.delete("/me/comments/{comment_id}", status_code=204)
+@limiter.limit(f"{RATE_LIMIT_WRITE}/minute")
 def delete_my_comment(
+    request: Request,  # noqa: ARG001
     comment_id: IdInt,
     current_reader: auth.ReaderAccount = Depends(auth.get_current_reader),
     db: Session = Depends(get_db),
@@ -1483,7 +1529,9 @@ class ReaderCommentEdit(BaseModel):
 
 
 @router.patch("/me/comments/{comment_id}", response_model=schemas.CommentPublic)
+@limiter.limit(f"{RATE_LIMIT_WRITE}/minute")
 def edit_my_comment(
+    request: Request,  # noqa: ARG001
     comment_id: IdInt,
     edit: ReaderCommentEdit,
     current_reader: auth.ReaderAccount = Depends(auth.get_current_reader),
@@ -1595,7 +1643,9 @@ def list_my_notifications(
 
 
 @router.post("/me/notifications/{notification_id}/read", response_model=NotificationItem)
+@limiter.limit(f"{RATE_LIMIT_WRITE}/minute")
 def mark_notification_read(
+    request: Request,  # noqa: ARG001
     notification_id: int,
     current_reader: auth.ReaderAccount = Depends(auth.get_current_reader),
     db: Session = Depends(get_db),
@@ -1618,7 +1668,9 @@ def mark_notification_read(
 
 
 @router.post("/me/notifications/read-all", response_model=dict[str, int])
+@limiter.limit(f"{RATE_LIMIT_WRITE}/minute")
 def mark_all_notifications_read(
+    request: Request,  # noqa: ARG001
     current_reader: auth.ReaderAccount = Depends(auth.get_current_reader),
     db: Session = Depends(get_db),
 ):
