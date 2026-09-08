@@ -140,6 +140,19 @@ describe("BookmarkButton", () => {
 			wrapper.find("button").element.dispatchEvent(event);
 			expect(stopPropagation).toHaveBeenCalled();
 		});
+
+		it("does not toggle when disabled (mid-refetch guard, ISS-416)", async () => {
+			wrapper = mount(BookmarkButton, {
+				props: { postId: 1, post: mockBookmark, disabled: true },
+				global: { stubs },
+			});
+			const button = wrapper.find("button");
+			expect(button.attributes("disabled")).toBeDefined();
+			await button.trigger("click");
+			await wrapper.vm.$nextTick();
+			// Still not bookmarked: the click was a no-op.
+			expect(wrapper.find(".icon-stub").attributes("data-icon")).toBe("lucide:bookmark");
+		});
 	});
 
 	describe("with variant full", () => {

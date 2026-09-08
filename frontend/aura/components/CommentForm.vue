@@ -84,8 +84,9 @@
           v-model="form.content"
           required
           rows="4"
+          :disabled="submitting || disabled"
           :placeholder="t('components.commentForm.content')"
-          class="w-full px-3 py-2 border border-gray-200 dark:border-gray-700 dark:bg-gray-800 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm resize-y"
+          class="w-full px-3 py-2 border border-gray-200 dark:border-gray-700 dark:bg-gray-800 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm resize-y disabled:opacity-60 disabled:cursor-not-allowed"
           @keydown.exact.esc.prevent="emit('cancel')"
           @keydown.ctrl.enter.prevent="submitWithShortcut()"
           @keydown.meta.enter.prevent="submitWithShortcut()"
@@ -99,7 +100,7 @@
 
       <button
         type="submit"
-        :disabled="submitting"
+        :disabled="submitting || disabled"
         class="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-xl font-medium hover:bg-blue-700 transition-colors disabled:opacity-50"
       >
         <Icon
@@ -139,6 +140,10 @@ interface Props {
 	submitLabel?: string | null;
 	/** Focus the textarea on mount (reply/edit call sites). */
 	autofocus?: boolean;
+	/** Disabled while the surrounding page is mid-SPA-refetch: submitting during
+	 * the prev/next window would attach the comment to the OLD post the reader
+	 * is still looking at. (ISS-416, article-page deep-dive) */
+	disabled?: boolean;
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -146,6 +151,7 @@ const props = withDefaults(defineProps<Props>(), {
 	replyingTo: undefined,
 	submitLabel: undefined,
 	autofocus: false,
+	disabled: false,
 });
 
 const contentRef = ref<HTMLTextAreaElement | null>(null);
@@ -184,7 +190,7 @@ onMounted(() => {
 
 /** Ctrl/⌘+Enter submits the form without a mouse click (keyboard parity). */
 function submitWithShortcut(): void {
-	if (submitting.value) return;
+	if (submitting.value || props.disabled) return;
 	void handleSubmit();
 }
 const signedIn = computed(() => hydrated.value && isAuthenticated.value && !!reader.value);
@@ -226,7 +232,7 @@ async function handleSubmit() {
 	// form's native submit also fires on Enter inside the nickname/email inputs
 	// (and a fast double-click can beat Vue patching `disabled` in the same
 	// frame) — without this, two quick submits POST two comments.
-	if (submitting.value) return;
+	if (submitting.value || props.disabled) return;
 	// Signed-in readers only need content; anonymous must give nickname+email.
 	if (!form.value.content) return;
 	if (!signedIn.value && !(form.value.nickname && form.value.email)) return;

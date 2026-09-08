@@ -233,6 +233,16 @@ watch(
 
 // Navigation items matching the Next.js admin layout. The Users section
 // (manage admins) is superuser-only — hidden for editors (DEC-054, TASK-116).
+/** True when a sidebar item is the reader's current section. Dashboard is
+ * EXACTLY /admin (its "/admin/" children are the other sections); every other
+ * item also stays lit on its sub-pages — the post editor (/admin/posts/[id])
+ * and /admin/posts/new are the most-used admin surface and previously lost
+ * all nav highlight (deep-dive, ISS-417). */
+function isNavActive(href: string, path: string): boolean {
+	if (href === "/admin") return path === "/admin";
+	return path === href || path.startsWith(`${href}/`);
+}
+
 const navItems = computed(() => {
 	const items = [
 		{ href: "/admin", labelKey: "admin.nav.dashboard", icon: "lucide:layout-dashboard" },
@@ -304,10 +314,11 @@ const navItems = computed(() => {
             :to="item.href"
             :class="[
               'flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium transition-all duration-200',
-              route.path === item.href
+              isNavActive(item.href, route.path)
                 ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 shadow-sm'
                 : 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-gray-200',
             ]"
+            :aria-current="isNavActive(item.href, route.path) ? 'page' : undefined"
             @click="sidebarOpen = false"
           >
             <Icon :icon="item.icon" class="w-4 h-4" />

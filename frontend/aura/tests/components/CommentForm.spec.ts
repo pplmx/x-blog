@@ -395,4 +395,33 @@ describe("CommentForm", () => {
 			wrapper.unmount();
 		});
 	});
+
+	describe("disabled prop (mid-refetch guard, ISS-416)", () => {
+		// The post page disables the comment form while the main post is mid-SPA-
+		// refetch (prev/next): submitting in that window would attach the comment
+		// to the OLD post the reader is still looking at.
+		it("renders the submit button disabled and never POSTs", async () => {
+			const wrapper = mount(CommentForm, {
+				props: { postId: 1, disabled: true },
+				global: {
+					stubs: {
+						Icon: {
+							template: '<svg class="iconstub" :data-icon="icon"></svg>',
+							props: ["icon"],
+						},
+					},
+				},
+			});
+			await flushPromises();
+			expect(wrapper.find('button[type="submit"]').attributes("disabled")).toBeDefined();
+			// A full form submit while disabled must not reach the API.
+			await (wrapper.find('input[autocomplete="nickname"]') as any).setValue("Alice");
+			await (wrapper.find('input[type="email"]') as any).setValue("alice@test.com");
+			await (wrapper.find("textarea") as any).setValue("Great post!");
+			await wrapper.find("form").trigger("submit.prevent");
+			await flushPromises();
+			expect(mockCreateComment).not.toHaveBeenCalled();
+			wrapper.unmount();
+		});
+	});
 });

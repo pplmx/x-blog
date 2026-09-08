@@ -6,24 +6,31 @@ interface Props {
 	postId: number;
 	post?: Bookmark;
 	variant?: "icon" | "full";
+	/** Disabled while the surrounding page is mid-SPA-refetch: a bookmark click
+	 * during the prev/next window would target the OLD post the reader is still
+	 * looking at. (ISS-416, article-page deep-dive) */
+	disabled?: boolean;
 }
 
 const props = withDefaults(defineProps<Props>(), {
 	variant: "icon",
+	disabled: false,
 });
 
 const { t } = useLang();
 const { isBookmarked, add, remove } = useBookmarkSync();
 
 function handleClick() {
-	if (props.post) {
-		// Mirror to the cloud when signed in (TASK-134); local remains the
-		// single source of truth for the button state.
-		if (isBookmarked(props.postId)) {
-			remove(props.postId);
-		} else {
-			add(props.post);
-		}
+	// Double guard: the button is also `:disabled`, but an Enter-pressed button
+	// still fires click in some browsers; keep the handler a no-op while disabled.
+	if (props.disabled) return;
+	if (!props.post) return;
+	// Mirror to the cloud when signed in (TASK-134); local remains the
+	// single source of truth for the button state.
+	if (isBookmarked(props.postId)) {
+		remove(props.postId);
+	} else {
+		add(props.post);
 	}
 }
 
@@ -46,8 +53,10 @@ const label = computed(() => {
     :title="label"
     :aria-pressed="isBookmarked(postId) ? 'true' : 'false'"
     :aria-label="label"
+    :disabled="disabled"
     :class="[
       'inline-flex items-center justify-center rounded-xl transition-all duration-200',
+      'disabled:opacity-60 disabled:cursor-not-allowed',
       variant === 'icon'
         ? 'w-9 h-9 p-0 hover:bg-gray-100 dark:hover:bg-gray-800'
         : 'gap-2 px-3 py-1.5 text-sm',

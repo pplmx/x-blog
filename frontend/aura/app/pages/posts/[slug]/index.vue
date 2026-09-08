@@ -678,11 +678,16 @@ function handleCommentSubmitted(created: Comment | undefined) {
           </div>
         </footer>
 
-        <!-- Actions -->
-        <div class="mt-10 pt-8 border-t border-gray-100 dark:border-gray-800 flex flex-wrap items-center gap-4">
-          <BookmarkButton :post-id="post.id" :post="post" variant="full" />
+        <!-- Actions. While the main post is mid-SPA-refetch (prev/next or
+             in-series "next part"), these controls still visibly belong to the
+             OLD article the reader is looking at — a click would act on the
+             wrong post. Disable them during the in-place refetch window (deep-
+             dive: the related/adjacent/series sections already gate on their
+             own pending; the action row was the one live surface left). -->
+        <div class="mt-10 pt-8 border-t border-gray-100 dark:border-gray-800 flex flex-wrap items-center gap-4" :class="{ 'opacity-60': pending }">
+          <BookmarkButton :post-id="post.id" :post="post" variant="full" :disabled="pending" />
           <span class="w-px h-6 bg-gray-200 dark:bg-gray-700" />
-          <button type="button" :disabled="likeLoading || likedThisPost" :title="likedThisPost ? t('post.liked') : t('post.likes')" :aria-pressed="likedThisPost ? 'true' : 'false'" :aria-label="likedThisPost ? t('post.liked') : t('post.likes')" class="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all duration-200 border disabled:opacity-60 disabled:cursor-not-allowed" :class="likedThisPost ? 'border-pink-200 dark:border-pink-800 bg-pink-50 dark:bg-pink-900/20 text-pink-600 dark:text-pink-400' : 'border-gray-200 dark:border-gray-700 hover:bg-pink-50 dark:hover:bg-pink-900/20 hover:text-pink-600 dark:hover:text-pink-400 hover:border-pink-200 dark:hover:border-pink-800 active:scale-95'" @click="handleLike">
+          <button type="button" :disabled="likeLoading || likedThisPost || pending" :title="likedThisPost ? t('post.liked') : t('post.likes')" :aria-pressed="likedThisPost ? 'true' : 'false'" :aria-label="likedThisPost ? t('post.liked') : t('post.likes')" class="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all duration-200 border disabled:opacity-60 disabled:cursor-not-allowed" :class="likedThisPost ? 'border-pink-200 dark:border-pink-800 bg-pink-50 dark:bg-pink-900/20 text-pink-600 dark:text-pink-400' : 'border-gray-200 dark:border-gray-700 hover:bg-pink-50 dark:hover:bg-pink-900/20 hover:text-pink-600 dark:hover:text-pink-400 hover:border-pink-200 dark:hover:border-pink-800 active:scale-95'" @click="handleLike">
             <Icon :icon="likeLoading ? 'lucide:loader-2' : 'lucide:heart'" class="w-4 h-4" :class="{ 'animate-spin': likeLoading }" />
             {{ (post.likes ?? 0).toLocaleString() }}
           </button>
@@ -700,8 +705,8 @@ function handleCommentSubmitted(created: Comment | undefined) {
              article's comments (deep-dive finding). -->
         <section v-if="post.id" class="mt-12 pt-8 border-t border-gray-100 dark:border-gray-800">
           <CommentList :key="post.id" ref="commentListRef" :post-id="post.id" />
-          <div class="mt-10 pt-8 border-t border-gray-100 dark:border-gray-800">
-            <CommentForm :key="post.id" :post-id="post.id" @submitted="handleCommentSubmitted" />
+          <div class="mt-10 pt-8 border-t border-gray-100 dark:border-gray-800" :class="{ 'opacity-60': pending }">
+            <CommentForm :key="post.id" :post-id="post.id" :disabled="pending" @submitted="handleCommentSubmitted" />
           </div>
         </section>
 

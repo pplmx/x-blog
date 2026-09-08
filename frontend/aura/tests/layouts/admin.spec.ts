@@ -445,6 +445,45 @@ describe("Admin Layout", () => {
 		wrapper.unmount();
 	});
 
+	it("keeps the Posts item lit on the post editor sub-page (ISS-417)", () => {
+		// /admin/posts/[id] and /admin/posts/new are the most-used admin surface;
+		// the old exact-match comparison left the sidebar with NO item lit there.
+		mockRoutePath.value = "/admin/posts/7";
+		const wrapper = mountWithBody({
+			global: { stubs, slots: { default: "<div>Content</div>" } },
+		});
+		const links = wrapper.findAll("a");
+		const postsLink = links.find((a) => a.text().includes("文章"));
+		expect(postsLink).toBeDefined();
+		expect(postsLink?.classes().some((c) => c.includes("blue") || c.includes("active"))).toBe(true);
+		expect(postsLink?.attributes("aria-current")).toBe("page");
+		// …and no OTHER section lights up on the sub-page.
+		for (const a of links) {
+			if (a === postsLink) continue;
+			expect(a.classes().some((c) => c.includes("blue") && a.text().includes("日历"))).toBe(false);
+		}
+		wrapper.unmount();
+	});
+
+	it("keeps only Dashboard lit on /admin itself (not its section children)", () => {
+		mockRoutePath.value = "/admin";
+		const wrapper = mountWithBody({
+			global: { stubs, slots: { default: "<div>Content</div>" } },
+		});
+		const links = wrapper.findAll("a");
+		const dashLink = links.find(
+			(a) => a.text().includes("仪表盘") || a.text().includes("Dashboard"),
+		);
+		expect(dashLink).toBeDefined();
+		expect(dashLink?.classes().some((c) => c.includes("blue") || c.includes("active"))).toBe(true);
+		// Posts must NOT be lit on bare /admin (prefix match would false-light it).
+		const postsLink = links.find((a) => a.text().includes("文章"));
+		expect(postsLink?.classes().some((c) => c.includes("blue") || c.includes("active"))).toBe(
+			false,
+		);
+		wrapper.unmount();
+	});
+
 	it("renders mobile header with menu button", () => {
 		const wrapper = mountWithBody({
 			global: { stubs, slots: { default: "<div>Content</div>" } },
