@@ -576,3 +576,26 @@ class TestMediaLibraryBulkDelete:
         urls = [f"/static/uploads/2026/07/{i:08d}-0000-0000-0000-000000000000.png" for i in range(51)]
         resp = _batch_delete(client, auth_headers, urls)
         assert resp.status_code == 422, resp.text
+
+
+def test_referencing_posts_matches_content_and_cover_only(db_session):
+    """The targeted delete-guard probe (TASK-334/ISS-432) finds a URL embedded
+    in content OR cover_image, and ignores posts that reference neither —
+    replacing the full _collect_upload_references regex pass over every body
+    with a per-URL contains() probe on the delete paths."""
+    from app.routers.upload import _referencing_posts
+
+    url = "/static/uploads/2026/07/aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa.png"
+    db_session.add_all(
+        [
+            models.Post(title="Inline", slug="inline", content=f"![alt]({url})", published=False),
+            models.Post(title="Cover", slug="cover", content="no image", cover_image=url, published=False),
+            models.Post(title="Clean", slug="clean", content="nothing here", published=False),
+        ]
+    )
+    db_session.commit()
+
+    result = {title for _, title in _referencing_posts(db_session, url)}
+    assert result == {"Inline", "Cover"}
+    # A URL nothing references resolves to no rows, not a full scan answer.
+    assert _referencing_posts(db_session, "/static/uploads/2026/07/bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb.png") == []

@@ -7,6 +7,7 @@ from pathlib import Path
 
 from fastapi import APIRouter, Depends, File, HTTPException, Query, Request, UploadFile, status
 from PIL import Image, UnidentifiedImageError
+from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
 from app import models
@@ -214,6 +215,32 @@ def _collect_upload_references(db: Session) -> dict[str, list[tuple[int, str]]]:
     return refs
 
 
+def _referencing_posts(db: Session, url: str) -> list[tuple[int, str]]:
+    """Posts whose content or cover_image embed ``url`` (targeted, bounded).
+
+    The delete guards used to share the media-listing scan
+    (``_collect_upload_references``) — a regex pass over EVERY post's stored
+    markdown, run just to check one file (single delete) or a handful (batch).
+    On a big content table each delete action paid the same O(total content)
+    cost as the whole listing. A delete only cares about its own URL(s), so a
+    targeted contains() probe streams just the matching rows instead of
+    loading every body into Python. Every caller validates the URL against the
+    exact upload shape (4-digit year / zero-padded month / uuid.ext), so it
+    cannot contain LIKE wildcards and needs no escaping.
+    """
+    return [
+        (post_id, title)
+        for post_id, title in db.query(models.Post.id, models.Post.title)
+        .filter(
+            or_(
+                models.Post.content.contains(url),
+                models.Post.cover_image.contains(url),
+            )
+        )
+        .all()
+    ]
+
+
 def _upload_file_info(full_path: Path, refs: dict[str, list[tuple[int, str]]]) -> UploadFileInfo:
     """Derive the media-library row for one stored upload (DEC-183)."""
     year, month, filename = full_path.parent.parent.name, full_path.parent.name, full_path.name
@@ -317,9 +344,9 @@ def delete_uploaded_file(
     if not _YEAR_RE.match(year) or not _MONTH_RE.match(month) or not _FILENAME_RE.match(filename):
         raise HTTPException(status_code=400, detail="Invalid upload path")
     url = f"/static/uploads/{year}/{month}/{filename}"
-    refs = _collect_upload_references(db)
-    if url in refs:
-        titles = ", ".join(title for _, title in refs[url])
+    referencing = _referencing_posts(db, url)
+    if referencing:
+        titles = ", ".join(title for _, title in referencing)
         raise HTTPException(
             status_code=409,
             detail=f"Cannot delete image: referenced by post(s): {titles}",
@@ -386,12 +413,15 @@ def delete_uploaded_files_batch(
     if invalid:
         raise HTTPException(status_code=400, detail=f"Invalid upload path(s): {', '.join(invalid)}")
 
-    refs = _collect_upload_references(db)
+    # Per-URL targeted probes (batch capped at 50) instead of the full
+    # _collect_upload_references scan for every batch action — a delete of N
+    # unreferenced files used to pay the whole-content pass each time.
     referenced: dict[str, list[tuple[int, str]]] = {}
     for year, month, filename in parsed:
         url = f"/static/uploads/{year}/{month}/{filename}"
-        if url in refs:
-            referenced[url] = refs[url]
+        posts = _referencing_posts(db, url)
+        if posts:
+            referenced[url] = posts
     if referenced:
         block = "; ".join(f"{u} ({', '.join(t for _, t in posts)})" for u, posts in referenced.items())
         raise HTTPException(status_code=409, detail=f"Cannot delete images referenced by post(s): {block}")
