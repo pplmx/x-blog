@@ -147,7 +147,10 @@ describe("Admin Settings page", () => {
 		// Flip back while the save is still pending — this value was never sent.
 		await checkbox.setValue(false);
 		await flushPromises();
-		resolveUpdate({ data: { value: { key: "auto_approve_reader_comments", value: "true" } }, pending: false });
+		resolveUpdate({
+			data: { value: { key: "auto_approve_reader_comments", value: "true" } },
+			pending: false,
+		});
 		await flushPromises();
 
 		expect(wrapper.text()).not.toContain("设置已保存");
