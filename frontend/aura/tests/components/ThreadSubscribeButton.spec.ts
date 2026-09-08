@@ -13,6 +13,18 @@ import { flushPromises, mount } from "@vue/test-utils";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { nextTick, ref } from "vue";
 
+// A stale in-flight follow-state GET must not overwrite a follow the reader
+// just made (ISS-374 sibling-page guard). The follow PUT commits and flips the
+// button, then the slow pre-follow GET resolver would flip it back — unless
+// the sequence counter invalidates it.
+function deferred<T>() {
+	let resolve!: (v: T) => void;
+	const promise = new Promise<T>((r) => {
+		resolve = r;
+	});
+	return { promise, resolve };
+}
+
 const t = vi.fn((key: string) => key);
 vi.mock("~~/composables/useLang", () => ({
 	useLang: () => ({ t }),
@@ -150,6 +162,36 @@ describe("ThreadSubscribeButton", () => {
 		expect(mockUnsubscribeFromPostThread).toHaveBeenCalledWith(1);
 		expect(mockSubscribeToPostThread).not.toHaveBeenCalled();
 		expect(w.text()).toContain("components.threadSubscribe.follow");
+	});
+
+	it("keeps a just-made follow when the in-flight state load resolves late (ISS-374 race)", async () => {
+		// Slow network: the follow-state GET is still in flight when the reader
+		// clicks, and its (stale, pre-follow) snapshot resolves AFTER the follow
+		// PUT commits. Without the sequence guard it flips the button back to
+		// "Follow" even though the server holds the follow.
+		isAuthenticated.value = true;
+		const slowGet = deferred<{ post_id: number; subscribed: boolean }>();
+		mockGetPostSubscription.mockReturnValue(slowGet.promise);
+		status.value = "subscribed";
+		mockSubscribeToPostThread.mockResolvedValue({ data: { post_id: 1, subscribed: true } });
+
+		const w = await mount(ThreadSubscribeButton, {
+			props: { postId: 1 },
+			global: { stubs: { Icon: iconStub, NuxtLink: nuxtLinkStub } },
+		});
+		await flushPromises();
+
+		// Follow commits while the GET is still pending.
+		await w.find("button").trigger("click");
+		await flushPromises();
+		expect(w.text()).toContain("components.threadSubscribe.unfollow");
+
+		// The stale pre-follow snapshot now resolves — it must NOT revert the toggle.
+		slowGet.resolve({ post_id: 1, subscribed: false });
+		await flushPromises();
+		expect(mockGetPostSubscription).toHaveBeenCalledWith(1);
+		expect(w.text()).toContain("components.threadSubscribe.unfollow");
+		w.unmount();
 	});
 
 	it("is disabled when push is blocked on this browser", async () => {

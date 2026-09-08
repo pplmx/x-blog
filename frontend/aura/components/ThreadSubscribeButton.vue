@@ -30,22 +30,31 @@ const busy = ref(false);
 const blocked = ref(false);
 const error = ref(false);
 
+// Follow-state gets the same stale-response guard the sibling pages use
+// (categories/series/tags, deep-dive ISS-374): without it a slow in-flight
+// GET can overwrite a follow toggle the reader just made — the PUT commits
+// and flips the button to "following", then the stale pre-follow GET
+// resolver flips it back to "Follow" even though the server has the follow.
+let followSeq = 0;
+
 onMounted(() => {
 	void init();
 	if (isAuthenticated.value) void loadFollowing();
 });
 
 async function loadFollowing() {
+	const seq = ++followSeq; // invalidate any in-flight older follow-state read
 	try {
 		// Imperative read: usePostSubscription wraps useFetch, which silently
 		// no-ops outside setup scope — from onMounted the button would never
 		// learn it was already following and would mislabel itself "Follow".
 		const status = await getPostSubscription(props.postId);
+		if (seq !== followSeq) return; // stale — a user action superseded it
 		following.value = status.subscribed === true;
 	} catch {
 		// Token/network hiccup: leave the button un-followed; an actual click
 		// will surface a real error instead of silently lying about state.
-		following.value = false;
+		if (seq === followSeq) following.value = false;
 	}
 }
 
@@ -90,6 +99,7 @@ async function toggle() {
 	busy.value = true;
 	error.value = false;
 	blocked.value = false;
+	followSeq++; // a user action supersedes any in-flight follow-state loader
 	try {
 		if (following.value) {
 			await unsubscribeFromPostThread(props.postId);
