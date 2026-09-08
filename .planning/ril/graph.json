@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 287,
+  "round": 288,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-08T07:05:05+00:00",
+  "updated_at": "2026-09-08T07:49:01+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -20547,6 +20547,69 @@
       "touched_round": 287,
       "commit": "34b0ba9",
       "summary": "Rate-limit all 26 authenticated reader writer routes with the shared RATE_LIMIT_WRITE cap (30/min default); regression test proves a 2/min cap 429s the bookmark PUT burst while the GET stays 200"
+    },
+    "ISS-432": {
+      "id": "ISS-432",
+      "type": "issue",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-08T07:48:32+00:00",
+      "updated_at": "2026-09-08T07:48:32+00:00",
+      "touched_round": 288,
+      "summary": "_collect_upload_references (upload.py:210) reads every post row full markdown content + cover URL into Python and regexes them on EVERY media-library request (list, page change, filename search debounce, delete) regardless of page size. On a blog with ~8k posts / ~60MB of markdown the /admin/media page streams the whole content table and re-scans it per load: minutes of work, no pagination/caching bound",
+      "severity": "medium"
+    },
+    "TASK-333": {
+      "id": "TASK-333",
+      "type": "task",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-08T07:48:32+00:00",
+      "updated_at": "2026-09-08T07:48:32+00:00",
+      "touched_round": 288,
+      "category": "performance",
+      "severity": "medium",
+      "confidence": 0.9,
+      "effort": 3.0,
+      "priority_score": 2.6,
+      "summary": "Bound the media library usage scan: compute per-file referencing_posts lazily (on delete / on demand) or via an indexed map instead of streaming every post body on every list render. Design decision required before fixing (the current scan is how the page locates where a file is used)"
+    },
+    "ISS-431": {
+      "id": "ISS-431",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-08T07:48:32+00:00",
+      "updated_at": "2026-09-08T07:48:32+00:00",
+      "touched_round": 288,
+      "summary": "Admin dashboard pending-comments quick-card sliced the newest 100 fetched comments, so pending items parked behind >100 approved comments were invisible on the card while the authoritative count badge said pending>=1",
+      "severity": "low"
+    },
+    "CHG-443": {
+      "id": "CHG-443",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-08T07:48:32+00:00",
+      "updated_at": "2026-09-08T07:48:32+00:00",
+      "touched_round": 288,
+      "commit": "189895d",
+      "summary": "Dashboard fetches the pending queue directly (is_approved=false, limit 5) via the existing admin comments filter instead of slicing the newest 100; regression spec asserts the pending filter and that an old pending comment renders"
+    },
+    "TASK-332": {
+      "id": "TASK-332",
+      "type": "task",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-08T07:49:00+00:00",
+      "updated_at": "2026-09-08T07:49:01+00:00",
+      "touched_round": 288,
+      "category": "correctness",
+      "severity": "low",
+      "confidence": 0.95,
+      "effort": 1.0,
+      "priority_score": 3.6,
+      "summary": "Admin dashboard pending-comments quick-card must fetch the moderation queue (is_approved=false) instead of slicing the newest 100 comments, so pending items behind a flood of approved comments still surface"
     }
   },
   "edges": [
@@ -30622,6 +30685,24 @@
       "to": "ISS-429",
       "type": "resolves",
       "created_at": "2026-09-08T07:05:05+00:00"
+    },
+    {
+      "from": "CHG-443",
+      "to": "ISS-431",
+      "type": "resolves",
+      "created_at": "2026-09-08T07:48:32+00:00"
+    },
+    {
+      "from": "TASK-333",
+      "to": "ISS-432",
+      "type": "addresses",
+      "created_at": "2026-09-08T07:49:01+00:00"
+    },
+    {
+      "from": "CHG-443",
+      "to": "TASK-332",
+      "type": "implements",
+      "created_at": "2026-09-08T07:49:01+00:00"
     }
   ]
 }
