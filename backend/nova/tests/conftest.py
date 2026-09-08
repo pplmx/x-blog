@@ -46,7 +46,12 @@ from fastapi.testclient import TestClient
 from sqlalchemy import create_engine, event, text
 from sqlalchemy.orm import Session, sessionmaker
 
-from app.cache import clear_categories_cache, clear_posts_list_cache, clear_tags_cache
+from app.cache import (
+    clear_categories_cache,
+    clear_posts_list_cache,
+    clear_tags_cache,
+    clear_upload_refs_cache,
+)
 from app.database import Base, get_db
 from app.main import app
 
@@ -70,6 +75,7 @@ def _clear_public_caches():
     clear_posts_list_cache()
     clear_categories_cache()
     clear_tags_cache()
+    clear_upload_refs_cache()
     yield
 
 

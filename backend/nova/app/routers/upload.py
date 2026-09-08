@@ -12,6 +12,7 @@ from sqlalchemy.orm import Session
 
 from app import models
 from app.auth import User, get_current_admin
+from app.cache import upload_refs_cache
 from app.database import get_db
 from app.limiter import RATE_LIMIT_WRITE, limiter
 from app.schemas import (
@@ -215,6 +216,27 @@ def _collect_upload_references(db: Session) -> dict[str, list[tuple[int, str]]]:
     return refs
 
 
+def _get_upload_references(db: Session) -> dict[str, list[tuple[int, str]]]:
+    """Cached media-library reference map (TASK-333/ISS-432).
+
+    The listing used to run the full _collect_upload_references scan — a regex
+    pass streaming every post's stored markdown — for EACH list render, filename
+    search, and page turn. The map is stable between post writes, so serve it
+    from a short-TTL cache: 30s as a safety net, and every post write already
+    clears it via clear_posts_list_cache (content/cover_image are its sources).
+    Display-only decoration — the delete/batch-delete guards probe the DB live
+    through _referencing_posts, so a transiently stale badge can never bypass
+    the reference check. The cached value is read-only to callers (built once,
+    consumed via .get), so sharing the dict across requests is safe.
+    """
+    cached = upload_refs_cache.get("all")
+    if cached is not None:
+        return cached
+    refs = _collect_upload_references(db)
+    upload_refs_cache["all"] = refs
+    return refs
+
+
 def _referencing_posts(db: Session, url: str) -> list[tuple[int, str]]:
     """Posts whose content or cover_image embed ``url`` (targeted, bounded).
 
@@ -296,7 +318,7 @@ def list_uploaded_files(
             items=[], pagination=PaginationMeta(total=0, page=page, limit=page_size, total_pages=0)
         )
 
-    refs = _collect_upload_references(db)
+    refs = _get_upload_references(db)
     needle = q.lower() if q else None
 
     files: list[tuple[datetime, Path]] = []

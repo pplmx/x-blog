@@ -55,6 +55,17 @@ series_cache: TTLCache[str, dict, float] = TTLCache(  # type: ignore[reportAssig
 feed_cache: TTLCache[tuple | str, str, float] = TTLCache(  # type: ignore[reportAssignmentType]
     maxsize=8, ttl=300
 )
+# Media-library reference map (TASK-333/ISS-432): the per-upload
+# "which posts reference me" map built by uploading posts' stored markdown.
+# Building it streams every post's full content, so a media list render (and
+# its search/pagination) must not pay that each request. Short 30s TTL is a
+# safety net only — every post write invalidates via clear_posts_list_cache
+# (the URLs this map tracks are what post content/cover_image embed). The map
+# is display-only decoration: the delete/batch-delete guards probe the DB live
+# (_referencing_posts), so staleness here can never bypass the reference check.
+upload_refs_cache: TTLCache[str, dict[str, list[tuple[int, str]]], float] = TTLCache(  # type: ignore[reportAssignmentType]
+    maxsize=8, ttl=30
+)
 
 
 def cache_clear():
@@ -64,6 +75,7 @@ def cache_clear():
     posts_list_cache.clear()
     feed_cache.clear()
     series_cache.clear()
+    upload_refs_cache.clear()
     logger.info("cache_cleared")
 
 
@@ -86,10 +98,14 @@ def clear_posts_list_cache():
     published post set (and content), so a write must invalidate them too.
     And the series detail cache: a post write can change which posts appear in
     a series and their order (TASK-121).
+    And the media-library reference map: a post's content/cover_image are
+    exactly the URL sources that map indexes, so any post write moves it
+    (TASK-333).
     """
     posts_list_cache.clear()
     feed_cache.clear()
     series_cache.clear()
+    upload_refs_cache.clear()
     logger.info("posts_list_cache_cleared")
 
 
@@ -115,6 +131,16 @@ def clear_series_cache():
     """Clear the series cache (invalidated on any series write)."""
     series_cache.clear()
     logger.info("series_cache_cleared")
+
+
+def clear_upload_refs_cache():
+    """Clear the media-library reference map (post-write invalidation, TASK-333).
+
+    Called by clear_posts_list_cache on every post write, and by the test
+    fixture so cross-test DB rollbacks never leak a stale reference map.
+    """
+    upload_refs_cache.clear()
+    logger.info("upload_refs_cache_cleared")
 
 
 def get_cache_info() -> dict[str, dict[str, int | float]]:

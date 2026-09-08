@@ -578,6 +578,82 @@ class TestMediaLibraryBulkDelete:
         assert resp.status_code == 422, resp.text
 
 
+# ---------------------------------------------------------------------------
+# Media library reference cache (TASK-333): the list render must not rescan
+# every post body per request; a post write invalidates the cached map.
+# ---------------------------------------------------------------------------
+
+
+class TestMediaReferenceCache:
+    def test_reference_scan_runs_once_across_renders(self, client, auth_headers, monkeypatch):
+        """Two list renders share ONE full-content scan — the second is a cache hit.
+
+        Guard against regressing to the per-render _collect_upload_references
+        pass (the pre-TASK-333 behavior): every media render, search and page
+        turn used to stream all post bodies. The uploads root must exist for the
+        route to reach the reference computation at all.
+        """
+        from app.routers import upload as upload_module
+
+        (upload_module.STATIC_DIR / "uploads").mkdir(parents=True, exist_ok=False)
+        calls = 0
+        original = upload_module._collect_upload_references
+
+        def counting_scan(db):
+            nonlocal calls
+            calls += 1
+            return original(db)
+
+        monkeypatch.setattr(upload_module, "_collect_upload_references", counting_scan)
+
+        first = client.get("/api/upload/files", headers=auth_headers)
+        assert first.status_code == 200, first.text
+        assert calls == 1
+        second = client.get("/api/upload/files", headers=auth_headers)
+        assert second.status_code == 200, second.text
+        assert calls == 1, "second render must be served from the reference cache"
+
+    def test_clear_posts_list_cache_drops_reference_map(self, client, auth_headers):
+        """Every post write clears the reference map (wired through the shared
+        clear_posts_list_cache, which all post create/update/delete paths call)."""
+        from app.cache import clear_posts_list_cache, upload_refs_cache
+        from app.routers import upload as upload_module
+
+        (upload_module.STATIC_DIR / "uploads").mkdir(parents=True, exist_ok=False)
+        client.get("/api/upload/files", headers=auth_headers)  # populates the map
+        assert len(upload_refs_cache) > 0
+        clear_posts_list_cache()
+        assert len(upload_refs_cache) == 0
+
+    def test_post_write_reflected_on_next_render(self, client, auth_headers):
+        """End-to-end: create a post embedding an image, then the next media
+        render reports it referenced — the create invalidated the cached map."""
+        url = _upload_and_get_url(client, auth_headers)
+        try:
+            # Pre-warm the cache with a render showing the image unreferenced.
+            render1 = client.get("/api/upload/files", headers=auth_headers).json()
+            assert next(i for i in render1["items"] if i["url"] == url)["referenced"] is False
+
+            resp = client.post(
+                "/api/posts",
+                json={
+                    "title": "Embeds media",
+                    "slug": "embeds-media",
+                    "content": f"![inline]({url})",
+                    "excerpt": "x",
+                    "published": False,
+                },
+                headers=auth_headers,
+            )
+            assert resp.status_code == 201, resp.text
+
+            render2 = client.get("/api/upload/files", headers=auth_headers).json()
+            item = next(i for i in render2["items"] if i["url"] == url)
+            assert item["referenced"] is True, "post create must invalidate the ref map"
+        finally:
+            _delete_file(client, auth_headers, url)
+
+
 def test_referencing_posts_matches_content_and_cover_only(db_session):
     """The targeted delete-guard probe (TASK-334/ISS-432) finds a URL embedded
     in content OR cover_image, and ignores posts that reference neither —
