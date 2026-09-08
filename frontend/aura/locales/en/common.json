@@ -51,6 +51,7 @@
 			"network": "Network error, please try again later",
 			"rateLimit": "You're going a bit fast — please slow down",
 			"rateLimitHint": "Actions are limited to protect the site. Try again in a minute."
-		}
+		},
+		"sessionExpired": "Your session expired — sign in to continue."
 	}
 }

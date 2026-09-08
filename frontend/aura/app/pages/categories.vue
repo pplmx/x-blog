@@ -11,6 +11,7 @@ import {
 // biome-ignore lint/correctness/noUnusedImports: used from the template — biome cannot resolve Vue script-setup template bindings (vue-tsc verifies).
 import { effectivePublishTs, parseApiDate } from "~~/composables/apiDate";
 import { scrollToPageTop } from "~~/composables/scrollToTop";
+import { useFollowSessionGuard } from "~~/composables/useFollowSessionGuard";
 import { paginationPages } from "~~/composables/usePagination";
 import { usePushSubscription } from "~~/composables/usePushSubscription";
 import { useSeo } from "~~/composables/useSeo";
@@ -217,6 +218,12 @@ function noteFollowError() {
 		followErrorTimer = undefined;
 	}, 4000);
 }
+// Dead-session guard (survey finding): the follow APIs are reader-auth-scoped,
+// so an expired stored token made the control signed-in-but-broken — the state
+// GET silently reset to "Follow" and every tap 401'd with no path back to
+// sign-in. On a 401 we drop the dead token (the signed-in gate is localStorage
+// presence, so the button flips to signed-out) and prompt to sign back in.
+const { sessionExpired, guardFollowFailure } = useFollowSessionGuard();
 
 // Follow-state gets the same stale-response guard the series page uses
 // (deep-dive, ISS-374): without it, a slow in-flight GET can overwrite a
@@ -240,10 +247,15 @@ async function loadCategoryFollow() {
 		const item = res.items.find((c) => c.id === categoryId.value) ?? null;
 		catFollowing.value = !!item;
 		catNotify.value = item?.notify ?? true;
-	} catch {
+	} catch (cause) {
 		if (seq === followSeq) {
 			catFollowing.value = false;
 			catNotify.value = true;
+			// A dead session is not a transient outage: drop the token so the
+			// control flips to signed-out, and show the sign-in prompt instead
+			// of silently looking like the reader never followed (survey
+			// finding: expired-session dead-end).
+			guardFollowFailure(cause);
 		}
 	}
 }
@@ -261,7 +273,10 @@ async function toggleCategoryFollow() {
 			catFollowing.value = true;
 			catNotify.value = res?.notify ?? true;
 		}
-	} catch {
+	} catch (cause) {
+		// Dead session: the action can never succeed signed-out, so drop the
+		// token + prompt to sign in instead of the transient "failed" toast.
+		if (guardFollowFailure(cause)) return;
 		// best-effort — keep current state on failure, but say so (deep-dive
 		// finding: a silent no-op was indistinguishable from "in progress").
 		noteFollowError();
@@ -278,7 +293,8 @@ async function toggleCategoryNotify() {
 	try {
 		const res = await setCategoryFollowNotify(categoryId.value, next);
 		catNotify.value = res?.notify ?? next;
-	} catch {
+	} catch (cause) {
+		if (guardFollowFailure(cause)) return;
 		// best-effort — keep current state on failure, but say so (deep-dive).
 		noteFollowError();
 	} finally {
@@ -392,7 +408,7 @@ watch(categoryId, () => {
           </h1>
           <div class="flex items-center gap-2">
             <button
-              v-if="catSignedIn"
+              v-if="catSignedIn && !sessionExpired"
               type="button"
               :disabled="catFollowBusy"
               :title="t(catFollowing ? 'categories.followingTitle' : 'categories.followTitle')"
@@ -439,6 +455,15 @@ watch(categoryId, () => {
         <!-- Follow/notify failure (deep-dive finding): never a silent no-op. -->
         <p v-if="followError" role="alert" class="mt-3 text-sm text-red-600 dark:text-red-400">
           {{ t('categories.followFailed') }}
+        </p>
+        <!-- Dead-session prompt (survey finding): the follow control flipped to
+             signed-out when the reader token expired — offer the way back in. -->
+        <p v-if="sessionExpired" role="alert" class="mt-3 flex items-center gap-2 text-sm text-amber-600 dark:text-amber-400">
+          <Icon icon="lucide:triangle-alert" class="w-4 h-4 shrink-0" aria-hidden="true" role="presentation" />
+          {{ t('common.sessionExpired') }}
+          <NuxtLink to="/login" class="font-medium underline underline-offset-2 hover:opacity-80">
+            {{ t('reader.nav.signIn') }}
+          </NuxtLink>
         </p>
       </div>
 

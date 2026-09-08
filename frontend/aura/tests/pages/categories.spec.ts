@@ -669,6 +669,81 @@ describe("Categories Page", () => {
 			catFollowsState.items = [];
 			catFollowsState.total = 0;
 		});
+
+		it("dead session: drops the broken token, hides the button, and offers sign-in (survey finding)", async () => {
+			window.localStorage.setItem("reader_token", "expired-jwt");
+			const staleCause = new Error("401");
+			(staleCause as { response?: unknown }).response = {
+				status: 401,
+				_data: { detail: "Not authenticated" },
+			};
+			vi.stubGlobal("useRoute", () => reactive({ query: { category_id: "1" } }));
+			vi.stubGlobal("useHead", vi.fn());
+			vi.stubGlobal(
+				"useFetch",
+				vi.fn((url: string | (() => string) | { value: string }) => {
+					const urlStr =
+						typeof url === "function" ? url() : typeof url === "string" ? url : (url.value ?? "");
+					if (urlStr.includes("/api/categories") && !urlStr.includes("/posts")) {
+						return {
+							data: ref(mockCategories),
+							pending: ref(false),
+							error: ref(null),
+							refresh: vi.fn(),
+						};
+					}
+					if (urlStr.includes("/api/posts")) {
+						return {
+							data: ref(mockCategoryPosts),
+							pending: ref(false),
+							error: ref(null),
+							refresh: vi.fn(),
+						};
+					}
+					return { data: ref(null), pending: ref(false), error: ref(null), refresh: vi.fn() };
+				}),
+			);
+			// The follow-state GET is auth-scoped: an expired token 401s.
+			vi.stubGlobal(
+				"$fetch",
+				vi.fn((url: unknown, opts: { method?: string } = {}) =>
+					String(url).includes("/me/category-follows") &&
+					!["PUT", "PATCH", "DELETE"].includes(opts.method ?? "")
+						? Promise.reject(staleCause)
+						: Promise.resolve({}),
+				),
+			);
+
+			const { default: CategoriesPage } = await import("../../app/pages/categories.vue");
+			const SuspenseWrapper: any = {
+				components: { CategoriesPage },
+				template:
+					"<Suspense>" +
+					"<template #default><CategoriesPage /></template>" +
+					"<template #fallback>Loading...</template>" +
+					"</Suspense>",
+			};
+			const wrapper = mount(SuspenseWrapper, {
+				global: {
+					stubs: {
+						NuxtLink: { template: '<a :href="to"><slot/></a>', props: ["to"] },
+						Icon: { template: '<svg class="iconstub" />' },
+					},
+				},
+			});
+			await flushPromises();
+
+			// The dead token is dropped → the signed-in gate (localStorage
+			// presence) flips to signed-out, so the broken follow button no
+			// longer renders instead of failing forever...
+			expect(window.localStorage.getItem("reader_token")).toBeNull();
+			expect(wrapper.text()).not.toContain("关注分类");
+			// ...and the sign-in prompt offers the way back in.
+			expect(wrapper.text()).toContain("登录已过期，请重新登录后继续。");
+			expect(wrapper.find('a[href="/login"]').exists()).toBe(true);
+
+			window.localStorage.removeItem("reader_token");
+		});
 	});
 
 	describe("out-of-range page clamp (ISS-308)", () => {

@@ -11,6 +11,7 @@ import type { SeriesProgress } from "~~/api/reader/history";
 import { getReaderSeriesProgress } from "~~/api/reader/history";
 // biome-ignore lint/correctness/noUnusedImports: used from the template — biome cannot resolve Vue script-setup template bindings (vue-tsc verifies).
 import { effectivePublishTs, parseApiDate } from "~~/composables/apiDate";
+import { useFollowSessionGuard } from "~~/composables/useFollowSessionGuard";
 import { useSeo } from "~~/composables/useSeo";
 
 const { t, locale } = useLang();
@@ -101,6 +102,13 @@ useHead(() => ({
 const followsSeries = ref(false);
 const followNotify = ref(true);
 const followBusy = ref(false);
+// Dead-session guard (survey finding): the follow/progress APIs are
+// reader-auth-scoped, so an expired stored token made the control
+// signed-in-but-broken — the state GET silently reset to "not following" and
+// every tap 401'd with no path back to sign-in. On a 401 we drop the dead
+// token (the signed-in gate is localStorage presence, so the control flips to
+// signed-out) and prompt to sign back in.
+const { sessionExpired, guardFollowFailure } = useFollowSessionGuard();
 
 // Per-series reader state, reloaded whenever the resolved series changes:
 // SPA navigation between /series/a -> /series/b reuses this component (the
@@ -137,10 +145,15 @@ async function loadFollowState() {
 		const item = res.items.find((f) => f.id === series.value?.id) ?? null;
 		followsSeries.value = !!item;
 		followNotify.value = item?.notify ?? true;
-	} catch {
+	} catch (cause) {
 		if (seq === followSeq) {
 			followsSeries.value = false;
 			followNotify.value = true;
+			// A dead session is not a transient outage: drop the token so the
+			// control flips to signed-out, and show the sign-in prompt instead
+			// of silently looking like the reader never followed (survey
+			// finding: expired-session dead-end).
+			guardFollowFailure(cause);
 		}
 	}
 }
@@ -153,8 +166,12 @@ async function loadProgress() {
 		const res = await getReaderSeriesProgress(series.value.slug);
 		if (seq !== progressSeq) return; // stale — a newer series is in flight
 		progress.value = res;
-	} catch {
+	} catch (cause) {
 		if (seq === progressSeq) progress.value = null;
+		// The progress endpoint is auth-scoped too: a dead session hides the
+		// progress box for the same reason as the follow state, so route it
+		// through the same sign-in prompt (guard is idempotent).
+		guardFollowFailure(cause);
 	}
 }
 
@@ -184,7 +201,10 @@ async function toggleFollow() {
 			followsSeries.value = true;
 			followNotify.value = res?.notify ?? true;
 		}
-	} catch {
+	} catch (cause) {
+		// Dead session: the action can never succeed signed-out, so drop the
+		// token + prompt to sign in instead of the transient "failed" toast.
+		if (guardFollowFailure(cause)) return;
 		// best-effort — keep current state on failure, but say so (deep-dive:
 		// a silent no-op was indistinguishable from "in progress").
 		noteFollowError();
@@ -202,7 +222,8 @@ async function toggleNotify() {
 	try {
 		const res = await setSeriesFollowNotify(series.value.id, next);
 		followNotify.value = res?.notify ?? next;
-	} catch {
+	} catch (cause) {
+		if (guardFollowFailure(cause)) return;
 		// best-effort — keep current state on failure, but say so (deep-dive).
 		noteFollowError();
 	} finally {
@@ -287,7 +308,7 @@ async function toggleNotify() {
             {{ t('series.subscribeFeed') }}
           </a>
           <button
-            v-if="signedIn"
+            v-if="signedIn && !sessionExpired"
             type="button"
             :disabled="followBusy"
             :title="t(followsSeries ? 'series.followingNewPartsTitle' : 'series.followNewPartsTitle')"
@@ -312,6 +333,15 @@ async function toggleNotify() {
         <!-- Follow/notify failure (deep-dive finding): never a silent no-op. -->
         <p v-if="followError" role="alert" class="mt-3 text-sm text-red-600 dark:text-red-400">
           {{ t('series.followFailed') }}
+        </p>
+        <!-- Dead-session prompt (survey finding): the follow control flipped to
+             signed-out when the reader token expired — offer the way back in. -->
+        <p v-if="sessionExpired" role="alert" class="mt-3 flex items-center gap-2 text-sm text-amber-600 dark:text-amber-400">
+          <Icon icon="lucide:triangle-alert" class="w-4 h-4 shrink-0" aria-hidden="true" role="presentation" />
+          {{ t('common.sessionExpired') }}
+          <NuxtLink to="/login" class="font-medium underline underline-offset-2 hover:opacity-80">
+            {{ t('reader.nav.signIn') }}
+          </NuxtLink>
         </p>
         <p v-if="series.description" class="mt-4 text-lg text-gray-600 dark:text-gray-400 leading-relaxed">
           {{ series.description }}

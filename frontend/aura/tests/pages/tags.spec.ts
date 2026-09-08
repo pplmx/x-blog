@@ -553,5 +553,35 @@ describe("Tags Page", () => {
 			expect(wrapper.text()).toContain("已关注");
 			expect(wrapper.text()).not.toContain("关注标签");
 		});
+
+		it("dead session: drops the broken token, hides the button, and offers sign-in (survey finding)", async () => {
+			window.localStorage.setItem("reader_token", "expired-jwt");
+			const staleCause = new Error("401");
+			(staleCause as { response?: unknown }).response = {
+				status: 401,
+				_data: { detail: "Not authenticated" },
+			};
+			vi.stubGlobal(
+				"$fetch",
+				vi.fn((url: string, opts: { method?: string } = {}) =>
+					// The follow-state GET is auth-scoped: an expired token 401s.
+					url.includes("/tag-follows") && opts.method !== "PUT"
+						? Promise.reject(staleCause)
+						: Promise.resolve({}),
+				),
+			);
+
+			const wrapper = await mountTagsPage({ routeQuery: { tag_id: "1" } });
+			await flushPromises();
+
+			// The dead token is dropped → the signed-in gate (localStorage
+			// presence) flips to signed-out, so the broken follow button no
+			// longer renders instead of failing forever...
+			expect(window.localStorage.getItem("reader_token")).toBeNull();
+			expect(wrapper.text()).not.toContain("关注标签");
+			// ...and the sign-in prompt offers the way back in.
+			expect(wrapper.text()).toContain("登录已过期，请重新登录后继续。");
+			expect(wrapper.find('a[href="/login"]').exists()).toBe(true);
+		});
 	});
 });

@@ -343,4 +343,24 @@ describe("Series reading progress (TASK-173)", () => {
 		expect(wrapper.text()).toContain("已关注新篇");
 		expect(wrapper.text()).not.toContain("有新篇时通知我");
 	});
+
+	it("dead session: drops the broken token, hides the button, and offers sign-in (survey finding)", async () => {
+		const staleCause = new Error("401");
+		(staleCause as { response?: unknown }).response = {
+			status: 401,
+			_data: { detail: "Not authenticated" },
+		};
+		h.fetchFollows.mockRejectedValueOnce(staleCause);
+
+		const wrapper = await mountPage();
+		await flushPromises();
+
+		// The dead token is dropped → the signed-in gate (localStorage
+		// presence) flips to signed-out, so the broken follow button no
+		// longer renders instead of failing forever...
+		expect(window.localStorage.getItem("reader_token")).toBeNull();
+		expect(wrapper.text()).not.toContain("有新篇时通知我");
+		// ...and the sign-in prompt offers the way back in.
+		expect(wrapper.text()).toContain("登录已过期，请重新登录后继续。");
+	});
 });
