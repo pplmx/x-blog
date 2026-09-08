@@ -187,12 +187,16 @@ class TestSearchSort:
 
     def test_relevance_degrades_to_newest_without_tsvector(self, client, db_session):
         # SQLite has no tsvector, so "relevance" falls back to newest order.
-        # PostgreSQL ranks with ts_rank over the seeded content (py-async
-        # consistently outranks py-viz there), so assert per dialect.
+        # PostgreSQL DOES rank with ts_rank over the seeded content — but the
+        # two "python" posts tie (each has exactly two "python" tokens: one in
+        # the title, one in the content), so the deterministic Post.id.desc()
+        # tiebreak (ISS-271/DEC-239) resolves the tie to py-viz (newer,
+        # higher id) — the same newest-first order as the fallback. The result
+        # is dialect-consistent. (PG-harness finding: the old per-dialect
+        # expectation ["py-async", "py-viz"] encoded pre-tiebreak query-plan
+        # ordering that a real PG 18 server never produced.)
         _seed_search_blog(db_session)
-        is_pg = db_session.get_bind().dialect.name == "postgresql"
-        expected = ["py-async", "py-viz"] if is_pg else ["py-viz", "py-async"]
-        assert _slugs(client.get(BASE, params={"q": "python", "sort": "relevance"})) == expected
+        assert _slugs(client.get(BASE, params={"q": "python", "sort": "relevance"})) == ["py-viz", "py-async"]
 
     def test_invalid_sort_rejected(self, client, db_session):
         resp = client.get(BASE, params={"q": "python", "sort": "bogus"})
