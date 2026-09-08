@@ -1390,6 +1390,60 @@ describe("Post Detail Page", () => {
 			wrapper.unmount();
 		});
 
+		it("Ctrl/Cmd+click on a TOC heading lets the browser open the link (no SPA scroll)", async () => {
+			// A TOC anchor is a real <a href="#id">: a modified click must
+			// open-in-new-tab rather than smooth-scroll the current page (the old
+			// @click.prevent swallowed it entirely). We assert the browser
+			// default is NOT prevented and no smooth scroll fires (TASK-324).
+			window.scrollTo = vi.fn();
+			Element.prototype.scrollIntoView = vi.fn();
+			// A previous test's TOC click replaceState'd a #hash that persists
+			// across tests in happy-dom — clear it so mount's own deep-link
+			// scroll (scrollToHeadingHash) can't muddy the click assertion.
+			history.replaceState(null, "", window.location.pathname);
+			const postWithHeadings = { ...mockPost, content: multiHeadingContent };
+			// Use the DESKTOP sidebar (tablet/sheet path is covered above).
+			const wrapper = await mountPostPage({ post: postWithHeadings, attachToDoc: true });
+
+			// The desktop TOC sidebar is the only source of heading links here
+			// (article body has no <a href="#...">).
+			const tocLinks = wrapper.findAll('nav a[href="#getting-started"]');
+			const anchor = tocLinks[0];
+			expect(anchor).toBeDefined();
+			// Mount performs its own scrolls (resume/hash); zero the mock so the
+			// assertion measures only the dispatched click.
+			(Element.prototype.scrollIntoView as ReturnType<typeof vi.fn>).mockClear();
+
+			// Trigger a ctrl+click: happy-dom fires the click handler; the
+			// handler must NOT call preventDefault and must NOT scroll. (A real
+			// modified click is not cancelable by our handler, so asserting
+			// "no scroll ran" is the observable contract.)
+			await anchor.trigger("click", { ctrlKey: true });
+			await flushPromises();
+			expect(Element.prototype.scrollIntoView).not.toHaveBeenCalled();
+			wrapper.unmount();
+		});
+
+		it("mounts with a heading hash and scrolls to that section (deep-link landing)", async () => {
+			// A shared #getting-started URL (opened in a new tab via a TOC
+			// anchor, or pasted) used to land at the article top with a dead
+			// hash — nothing scrolled to the heading (TASK-324).
+			window.scrollTo = vi.fn();
+			Element.prototype.scrollIntoView = vi.fn();
+			const postWithHeadings = { ...mockPost, content: multiHeadingContent };
+			history.replaceState(null, "", "#getting-started");
+			try {
+				const wrapper = await mountPostPage({ post: postWithHeadings, attachToDoc: true });
+				// scrollToHeadingHash defers a frame to let the async content render.
+				await new Promise((r) => requestAnimationFrame(r));
+				await flushPromises();
+				expect(Element.prototype.scrollIntoView).toHaveBeenCalled();
+				wrapper.unmount();
+			} finally {
+				history.replaceState(null, "", window.location.pathname);
+			}
+		});
+
 		it("Escape and the backdrop both close the sheet and restore focus", async () => {
 			Element.prototype.scrollIntoView = vi.fn();
 			const postWithHeadings = { ...mockPost, content: multiHeadingContent };

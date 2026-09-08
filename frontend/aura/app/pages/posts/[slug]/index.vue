@@ -329,6 +329,10 @@ onMounted(() => {
 	if (postId) {
 		beginReadingSession(postId);
 	}
+	// A heading deep link (#section-id, as opposed to CommentList's
+	// #comment-<id>) must land the reader ON the section, not at the article
+	// top with a dead hash in the address bar (TASK-324).
+	scrollToHeadingHash();
 	const updateProgress = () => {
 		const scrolled = window.scrollY;
 		const maxScroll = document.body.scrollHeight - window.innerHeight;
@@ -355,7 +359,33 @@ onMounted(() => {
 	});
 });
 
+// Mount-time heading deep link: #section-id in the URL (opened in a new tab
+// via a TOC anchor's middle/cmd-click, a shared link, or a manual edit) must
+// scroll to that section instead of leaving the reader at the top with a dead
+// hash (TASK-324). comment-* hashes belong to CommentList's own deep-link
+// handling below the article.
+function scrollToHeadingHash(): void {
+	if (typeof window === "undefined") return;
+	const id = window.location.hash.slice(1);
+	if (!id || id.startsWith("comment-")) return;
+	// Headings render after the async content fetch; give it a beat before
+	// looking them up, then scroll. Only the ANCHOR is a hard requirement —
+	// heading ids are machine-generated from the markdown.
+	requestAnimationFrame(() => {
+		const el = document.getElementById(id);
+		if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+	});
+}
+
 function scrollToHeading(event: MouseEvent) {
+	// A real <a href="#id"> must behave like a link: Ctrl/Cmd/Shift/middle-
+	// click opens the heading URL in a new tab instead of only smooth-scrolling
+	// the current page. Let the browser's default action run for modified/
+	// auxiliary clicks; only plain left-clicks get the SPA scroll (TASK-324).
+	if (event.button !== 0 || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) {
+		return;
+	}
+	event.preventDefault();
 	const href = (event.currentTarget as HTMLAnchorElement)?.getAttribute("href");
 	if (!href?.startsWith("#")) return;
 	const id = href.slice(1);
@@ -496,7 +526,7 @@ function handleCommentSubmitted(created: Comment | undefined) {
                   ? 'text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 font-medium'
                   : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800',
               ]"
-              @click.prevent="handleSheetTocSelect"
+              @click="handleSheetTocSelect"
             >
               {{ item.text }}
             </a>
@@ -570,7 +600,7 @@ function handleCommentSubmitted(created: Comment | undefined) {
                   ? 'text-blue-600 dark:text-blue-400 border-blue-500 font-medium'
                   : 'text-gray-500 dark:text-gray-400 border-transparent hover:text-gray-700 dark:hover:text-gray-300 hover:border-gray-300',
               ]"
-              @click.prevent="scrollToHeading"
+              @click="scrollToHeading"
             >
               {{ item.text }}
             </a>
