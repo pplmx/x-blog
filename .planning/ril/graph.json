@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 284,
+  "round": 287,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-08T03:11:31+00:00",
+  "updated_at": "2026-09-08T05:28:45+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -11,7 +11,7 @@
       "version": 1,
       "created_at": "2026-08-06T13:23:41+00:00",
       "updated_at": "2026-08-06T13:23:41+00:00",
-      "touched_round": 278,
+      "touched_round": 287,
       "title": "backend-nova",
       "description": "FastAPI Python 3.14 backend at backend/nova; SQLAlchemy ORM; routers in app/routers, crud.py business logic, 656 lines"
     },
@@ -22,7 +22,7 @@
       "version": 1,
       "created_at": "2026-08-06T13:23:41+00:00",
       "updated_at": "2026-08-06T13:23:41+00:00",
-      "touched_round": 283,
+      "touched_round": 287,
       "title": "frontend-aura",
       "description": "Nuxt 4 Vue 3 TypeScript frontend at frontend/aura; composables; admin pages; e2e Playwright; biome lint"
     },
@@ -20093,6 +20093,347 @@
       "label": "converged-idle (round 284 reactivation satisfied)",
       "rationale": "Reactivation round delivered 3 verified changes (reactivity bug + security-path dead-code cleanup + the two fresh-eyes sweep findings, ISS-414..417 via CHG-428/429/430). All 5 stop conditions hold again: 0 active tasks, high-severity issues resolved or DEC-214-deferred, VERIFY green (backend 1336 @93.59%, frontend 1588, nuxt typecheck, biome), 3-task deep-dive cap met, graph consistent (1661 nodes). No idle rounds to run.",
       "alternatives_rejected": "Rejected as below-threshold/speculative: useUpload.ts extra tests (already works; transport handles 401s), import_reader_history fold edge (malformed-client-only, primary unique-constraint guard holds), encoded-scheme XSS in regex fallback (documented weaker-than-DOMPurify tradeoff, no live execution path), Renovate dependency churn (tasks exist as PRs; bump risks formatter-gate drift)"
+    },
+    "ISS-418": {
+      "id": "ISS-418",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-08T03:43:49+00:00",
+      "updated_at": "2026-09-08T03:45:00+00:00",
+      "touched_round": 285,
+      "summary": "Search relevance PG-parity test asserted py-async outranks py-viz, but both seeded posts tie on ts_rank on PG 18 — encoded pre-tiebreak query-plan ordering (PG-harness finding, round 285)",
+      "severity": "low"
+    },
+    "CHG-431": {
+      "id": "CHG-431",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-08T03:44:05+00:00",
+      "updated_at": "2026-09-08T03:44:05+00:00",
+      "touched_round": 285,
+      "commit": "5a16935",
+      "summary": "Collapse stale is_pg branch in test_relevance_degrades_to_newest_without_tsvector to the deterministic dialect-consistent result (PG-harness round 285)"
+    },
+    "EV-229": {
+      "id": "EV-229",
+      "type": "evidence",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-08T03:44:05+00:00",
+      "updated_at": "2026-09-08T03:44:05+00:00",
+      "touched_round": 285,
+      "source": "uv run pytest -q -n 8 with TEST_DATABASE_URL=postgresql://postgres@10.112.9.49:13310/postgres",
+      "summary": "Full backend suite green against real PG 18.4 after fix: 1346 passed, 0 failed; both seeded posts tie at ts_rank=0.07599 so id.desc() tiebreak decides",
+      "confidence": 1.0
+    },
+    "ISS-419": {
+      "id": "ISS-419",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-08T03:50:11+00:00",
+      "updated_at": "2026-09-08T04:01:15+00:00",
+      "touched_round": 285,
+      "summary": "POST /me/history/import can 500 on a unique-key race: two concurrent imports of the same new post slug both pass the existing_by_post check, the second db.commit() raises bare IntegrityError (idempotency is documented but not enforced under concurrency)",
+      "severity": "medium"
+    },
+    "ISS-420": {
+      "id": "ISS-420",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-08T03:50:11+00:00",
+      "updated_at": "2026-09-08T04:05:23+00:00",
+      "touched_round": 285,
+      "summary": "ThreadSubscribeButton has no stale-response guard on loadFollowing: a just-made follow is silently reverted when the early GET snapshot (pre-follow, subscribed=false) resolves after the follow POST (sibling pages guard with seq counters, ISS-374)",
+      "severity": "medium"
+    },
+    "ISS-421": {
+      "id": "ISS-421",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-08T03:50:11+00:00",
+      "updated_at": "2026-09-08T04:20:15+00:00",
+      "touched_round": 285,
+      "summary": "CommentList sort/pagination refreshes silently destroy comment drafts and unsaved author edits: reply form lives inside v-if per-row and unmounts when the row leaves the page; draft guard confirmDiscardReplyDraft only wired into cancel/toggle, not onSortChange/loadPage; edit form has no dirty check at all",
+      "severity": "medium"
+    },
+    "TASK-321": {
+      "id": "TASK-321",
+      "type": "task",
+      "status": "resolved",
+      "version": 3,
+      "created_at": "2026-09-08T03:50:31+00:00",
+      "updated_at": "2026-09-08T04:01:15+00:00",
+      "touched_round": 285,
+      "category": "correctness",
+      "severity": "medium",
+      "summary": "Make POST /me/history/import idempotent under concurrency: route the per-post upsert through the existing _commit_reader_upsert IntegrityError-retry path so a raced duplicate import returns success instead of 500",
+      "priority_score": 12.0,
+      "confidence": 0.9,
+      "effort": 1.5,
+      "unlock_factor": 1.2
+    },
+    "TASK-322": {
+      "id": "TASK-322",
+      "type": "task",
+      "status": "resolved",
+      "version": 3,
+      "created_at": "2026-09-08T03:50:31+00:00",
+      "updated_at": "2026-09-08T04:05:23+00:00",
+      "touched_round": 285,
+      "category": "correctness",
+      "severity": "medium",
+      "summary": "ThreadSubscribeButton: guard loadFollowing against stale responses (monotonic sequence counter, mirroring categories/tags/series pages) so an in-flight GET cannot revert a just-made follow",
+      "priority_score": 9.0,
+      "confidence": 0.9,
+      "effort": 1.5,
+      "unlock_factor": 1.0
+    },
+    "TASK-323": {
+      "id": "TASK-323",
+      "type": "task",
+      "status": "resolved",
+      "version": 3,
+      "created_at": "2026-09-08T03:50:32+00:00",
+      "updated_at": "2026-09-08T04:20:14+00:00",
+      "touched_round": 285,
+      "category": "correctness",
+      "severity": "medium",
+      "summary": "CommentList: wire the draft-guard confirmDiscardReplyDraft into onSortChange/loadPage and add dirty-check protection to the author edit form so sort/pagination cannot silently destroy typed drafts or edits",
+      "priority_score": 9.0,
+      "confidence": 0.9,
+      "effort": 2.5,
+      "unlock_factor": 1.2
+    },
+    "CHG-432": {
+      "id": "CHG-432",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-08T04:01:15+00:00",
+      "updated_at": "2026-09-08T04:01:15+00:00",
+      "touched_round": 285,
+      "commit": "1eb9fa2",
+      "summary": "Fix /me/history/import unique-key race: roll back + retry the idempotent merge once on IntegrityError instead of 500 (TASK-321/ISS-419)"
+    },
+    "CHG-433": {
+      "id": "CHG-433",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-08T04:05:23+00:00",
+      "updated_at": "2026-09-08T04:05:23+00:00",
+      "touched_round": 285,
+      "commit": "9e1a3e8",
+      "summary": "Add followSeq stale-response guard to ThreadSubscribeButton loadFollowing (TASK-322/ISS-420)"
+    },
+    "CHG-434": {
+      "id": "CHG-434",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-08T04:20:14+00:00",
+      "updated_at": "2026-09-08T04:20:14+00:00",
+      "touched_round": 285,
+      "commit": "46333c6",
+      "summary": "Guard reply drafts + unsaved author edits against sort/pagination refresh loss via confirmDiscardUnsaved + editDirty (TASK-323/ISS-421)"
+    },
+    "EV-230": {
+      "id": "EV-230",
+      "type": "evidence",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-08T04:21:11+00:00",
+      "updated_at": "2026-09-08T04:21:11+00:00",
+      "touched_round": 285,
+      "source": "uv run pytest -q -n auto (SQLite) + TEST_DATABASE_URL=... (PG 18.4)",
+      "summary": "Round 285 full VERIFY green after the wave: 1337 (SQLite) / 1346 (PG) backend tests, 1594 frontend tests, ruff+biome clean",
+      "confidence": 1.0
+    },
+    "ISS-422": {
+      "id": "ISS-422",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-08T04:25:00+00:00",
+      "updated_at": "2026-09-08T05:08:19+00:00",
+      "touched_round": 286,
+      "summary": "Post TOC anchors: @click.prevent swallows Ctrl/Cmd+click (no open-in-new-tab) and there is no mount-time heading-hash scroll — a shared #heading URL lands at the article top with a dead hash; only #comment- deep links are handled",
+      "severity": "medium"
+    },
+    "ISS-423": {
+      "id": "ISS-423",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-08T04:25:01+00:00",
+      "updated_at": "2026-09-08T04:46:12+00:00",
+      "touched_round": 286,
+      "summary": "push subscribe() is not single-flighted: status only flips to 'subscribing' after the fetchBackendPublicKey round-trip, so a double-click (bell + thread follow together) runs two permission flows; the loser paints the shared module status 'denied', disabling every push widget app-wide until browser settings are reset",
+      "severity": "medium"
+    },
+    "ISS-424": {
+      "id": "ISS-424",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-08T04:25:01+00:00",
+      "updated_at": "2026-09-08T04:38:46+00:00",
+      "touched_round": 286,
+      "summary": "Search snippet fallback branches (search.py:91, :188) return raw excerpt/content up to 200 chars unescaped when ts_headline yields no match, breaking the module's documented snippet-XSS-safety guarantee (mitigated client-side by DOMPurify today)",
+      "severity": "medium"
+    },
+    "TASK-324": {
+      "id": "TASK-324",
+      "type": "task",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-08T04:25:33+00:00",
+      "updated_at": "2026-09-08T05:08:19+00:00",
+      "touched_round": 286,
+      "category": "correctness",
+      "severity": "medium",
+      "confidence": 0.9,
+      "effort": 2.0,
+      "summary": "Post TOC anchors: keep @click.prevent smooth-scroll for unmodified clicks but let Ctrl/Cmd/Shift/middle-click open the link (check event flags, don't preventDefault when modified); add mount-time #heading scroll for non-comment hashes",
+      "priority_score": 0
+    },
+    "TASK-325": {
+      "id": "TASK-325",
+      "type": "task",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-08T04:25:33+00:00",
+      "updated_at": "2026-09-08T04:46:12+00:00",
+      "touched_round": 286,
+      "category": "correctness",
+      "severity": "medium",
+      "confidence": 0.9,
+      "effort": 1.5,
+      "summary": "usePushSubscription.subscribe: single-flight guard — return early (or coalesce) when a subscribe is already in progress, so a double-click cannot run two permission flows and paint the shared status a spurious 'denied'",
+      "priority_score": 0
+    },
+    "TASK-326": {
+      "id": "TASK-326",
+      "type": "task",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-08T04:25:33+00:00",
+      "updated_at": "2026-09-08T04:38:46+00:00",
+      "touched_round": 286,
+      "category": "security",
+      "severity": "medium",
+      "confidence": 0.9,
+      "effort": 1.0,
+      "summary": "Search snippet fallbacks: html.escape the raw-excerpt/content[:200] branches so the endpoint's snippet-XSS-safety guarantee holds regardless of client-side sanitization",
+      "priority_score": 0
+    },
+    "CHG-435": {
+      "id": "CHG-435",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-08T04:38:46+00:00",
+      "updated_at": "2026-09-08T04:38:46+00:00",
+      "touched_round": 286,
+      "commit": "b5e2778",
+      "summary": "html.escape the two search snippet fallback branches (TASK-326/ISS-424)"
+    },
+    "CHG-436": {
+      "id": "CHG-436",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-08T04:46:12+00:00",
+      "updated_at": "2026-09-08T04:46:12+00:00",
+      "touched_round": 286,
+      "commit": "9a2c71e",
+      "summary": "Single-flight guard on push subscribe (TASK-325/ISS-423)"
+    },
+    "CHG-437": {
+      "id": "CHG-437",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-08T05:08:19+00:00",
+      "updated_at": "2026-09-08T05:08:19+00:00",
+      "touched_round": 286,
+      "commit": "c443211",
+      "summary": "TOC anchors: modified clicks open link, mount-time heading-hash scroll (TASK-324/ISS-422)"
+    },
+    "ISS-425": {
+      "id": "ISS-425",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-08T05:21:48+00:00",
+      "updated_at": "2026-09-08T05:25:58+00:00",
+      "touched_round": 286,
+      "summary": "Bookmark add→remove rapid re-toggle races the cloud mirror: PUT/DELETE fire independently so the DELETE can land first, the server keeps the bookmark, and the next /bookmarks merge silently resurrects a bookmark the reader removed (Clear-all is serialized via withPendingWrite but per-post toggles are not)",
+      "severity": "medium"
+    },
+    "TASK-327": {
+      "id": "TASK-327",
+      "type": "task",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-08T05:22:24+00:00",
+      "updated_at": "2026-09-08T05:25:58+00:00",
+      "touched_round": 286,
+      "category": "correctness",
+      "severity": "medium",
+      "confidence": 0.9,
+      "effort": 2.0,
+      "summary": "Serialize per-post bookmark cloud writes (chainPostWrite per post id) so the last local add/remove intent is the last request to reach the server, preventing merge resurrection of a removed bookmark",
+      "priority_score": 0
+    },
+    "CHG-438": {
+      "id": "CHG-438",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-08T05:25:58+00:00",
+      "updated_at": "2026-09-08T05:25:58+00:00",
+      "touched_round": 286,
+      "commit": "a5d2b0f",
+      "summary": "Per-post bookmark cloud-write serialization (TASK-327/ISS-425)"
+    },
+    "ISS-426": {
+      "id": "ISS-426",
+      "type": "issue",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-08T05:28:05+00:00",
+      "updated_at": "2026-09-08T05:28:05+00:00",
+      "touched_round": 287,
+      "summary": "Post like counter (POST /api/posts/{id}/like) is a blind atomic likes+1 with no per-reader/per-IP dedupe — a network retry or script double-counts (comment likes already dedupe on a unique (comment_id, ip_key)); full fix needs a schema change + migration",
+      "severity": "low"
+    },
+    "ISS-427": {
+      "id": "ISS-427",
+      "type": "issue",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-08T05:28:05+00:00",
+      "updated_at": "2026-09-08T05:28:05+00:00",
+      "touched_round": 287,
+      "summary": "Comment approval fans out one notification per follower with a per-follower flush+commit+prune (O(N) transactions); the new-post fan-out path already batches — batch the comment path too",
+      "severity": "low"
+    },
+    "ISS-428": {
+      "id": "ISS-428",
+      "type": "issue",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-08T05:28:05+00:00",
+      "updated_at": "2026-09-08T05:28:05+00:00",
+      "touched_round": 287,
+      "summary": "bookmarks.vue undoRemove discards assignFolder's return value: if the re-assignment fails at undo time the folder silently drops off the restored bookmark on the next cloud merge (every sibling path on the page surfaces the failure)",
+      "severity": "low"
     }
   },
   "edges": [
@@ -29886,6 +30227,204 @@
       "to": "COMP-002",
       "type": "located_in",
       "created_at": "2026-09-08T03:01:05+00:00"
+    },
+    {
+      "from": "CHG-431",
+      "to": "ISS-418",
+      "type": "resolves",
+      "created_at": "2026-09-08T03:44:31+00:00"
+    },
+    {
+      "from": "ISS-418",
+      "to": "COMP-001",
+      "type": "located_in",
+      "created_at": "2026-09-08T03:44:32+00:00"
+    },
+    {
+      "from": "TASK-321",
+      "to": "ISS-419",
+      "type": "addresses",
+      "created_at": "2026-09-08T03:51:40+00:00"
+    },
+    {
+      "from": "TASK-322",
+      "to": "ISS-420",
+      "type": "addresses",
+      "created_at": "2026-09-08T03:51:40+00:00"
+    },
+    {
+      "from": "TASK-323",
+      "to": "ISS-421",
+      "type": "addresses",
+      "created_at": "2026-09-08T03:51:40+00:00"
+    },
+    {
+      "from": "ISS-419",
+      "to": "COMP-001",
+      "type": "located_in",
+      "created_at": "2026-09-08T03:51:40+00:00"
+    },
+    {
+      "from": "ISS-420",
+      "to": "COMP-002",
+      "type": "located_in",
+      "created_at": "2026-09-08T03:51:41+00:00"
+    },
+    {
+      "from": "ISS-421",
+      "to": "COMP-002",
+      "type": "located_in",
+      "created_at": "2026-09-08T03:51:41+00:00"
+    },
+    {
+      "from": "CHG-432",
+      "to": "ISS-419",
+      "type": "resolves",
+      "created_at": "2026-09-08T04:01:33+00:00"
+    },
+    {
+      "from": "CHG-432",
+      "to": "TASK-321",
+      "type": "implements",
+      "created_at": "2026-09-08T04:01:33+00:00"
+    },
+    {
+      "from": "CHG-433",
+      "to": "ISS-420",
+      "type": "resolves",
+      "created_at": "2026-09-08T04:05:24+00:00"
+    },
+    {
+      "from": "CHG-433",
+      "to": "TASK-322",
+      "type": "implements",
+      "created_at": "2026-09-08T04:05:24+00:00"
+    },
+    {
+      "from": "CHG-434",
+      "to": "ISS-421",
+      "type": "resolves",
+      "created_at": "2026-09-08T04:20:15+00:00"
+    },
+    {
+      "from": "CHG-434",
+      "to": "TASK-323",
+      "type": "implements",
+      "created_at": "2026-09-08T04:20:15+00:00"
+    },
+    {
+      "from": "TASK-324",
+      "to": "ISS-422",
+      "type": "addresses",
+      "created_at": "2026-09-08T04:25:33+00:00"
+    },
+    {
+      "from": "TASK-325",
+      "to": "ISS-423",
+      "type": "addresses",
+      "created_at": "2026-09-08T04:25:33+00:00"
+    },
+    {
+      "from": "TASK-326",
+      "to": "ISS-424",
+      "type": "addresses",
+      "created_at": "2026-09-08T04:25:33+00:00"
+    },
+    {
+      "from": "ISS-422",
+      "to": "COMP-002",
+      "type": "located_in",
+      "created_at": "2026-09-08T04:25:33+00:00"
+    },
+    {
+      "from": "ISS-423",
+      "to": "COMP-002",
+      "type": "located_in",
+      "created_at": "2026-09-08T04:25:33+00:00"
+    },
+    {
+      "from": "ISS-424",
+      "to": "COMP-001",
+      "type": "located_in",
+      "created_at": "2026-09-08T04:25:33+00:00"
+    },
+    {
+      "from": "CHG-435",
+      "to": "ISS-424",
+      "type": "resolves",
+      "created_at": "2026-09-08T04:38:46+00:00"
+    },
+    {
+      "from": "CHG-435",
+      "to": "TASK-326",
+      "type": "implements",
+      "created_at": "2026-09-08T04:38:46+00:00"
+    },
+    {
+      "from": "CHG-436",
+      "to": "ISS-423",
+      "type": "resolves",
+      "created_at": "2026-09-08T04:46:12+00:00"
+    },
+    {
+      "from": "CHG-436",
+      "to": "TASK-325",
+      "type": "implements",
+      "created_at": "2026-09-08T04:46:12+00:00"
+    },
+    {
+      "from": "CHG-437",
+      "to": "ISS-422",
+      "type": "resolves",
+      "created_at": "2026-09-08T05:08:19+00:00"
+    },
+    {
+      "from": "CHG-437",
+      "to": "TASK-324",
+      "type": "implements",
+      "created_at": "2026-09-08T05:08:19+00:00"
+    },
+    {
+      "from": "TASK-327",
+      "to": "ISS-425",
+      "type": "addresses",
+      "created_at": "2026-09-08T05:22:25+00:00"
+    },
+    {
+      "from": "ISS-425",
+      "to": "COMP-002",
+      "type": "located_in",
+      "created_at": "2026-09-08T05:22:25+00:00"
+    },
+    {
+      "from": "CHG-438",
+      "to": "ISS-425",
+      "type": "resolves",
+      "created_at": "2026-09-08T05:25:58+00:00"
+    },
+    {
+      "from": "CHG-438",
+      "to": "TASK-327",
+      "type": "implements",
+      "created_at": "2026-09-08T05:25:59+00:00"
+    },
+    {
+      "from": "ISS-426",
+      "to": "COMP-001",
+      "type": "located_in",
+      "created_at": "2026-09-08T05:28:45+00:00"
+    },
+    {
+      "from": "ISS-427",
+      "to": "COMP-001",
+      "type": "located_in",
+      "created_at": "2026-09-08T05:28:45+00:00"
+    },
+    {
+      "from": "ISS-428",
+      "to": "COMP-002",
+      "type": "located_in",
+      "created_at": "2026-09-08T05:28:45+00:00"
     }
   ]
 }
