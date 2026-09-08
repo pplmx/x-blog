@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from "vue";
+import { computed, ref } from "vue";
 import { type ArchiveEntry, usePostArchive, usePosts } from "~~/api/public/posts";
 // biome-ignore lint/correctness/noUnusedImports: used from the template — biome cannot resolve Vue script-setup template bindings (vue-tsc verifies).
 import { effectivePublishTs, parseApiDate } from "~~/composables/apiDate";
@@ -78,6 +78,26 @@ const years = computed<{ year: number; months: ArchiveEntry[] }[]>(() => {
 	return [...map.entries()]
 		.sort((a, b) => b[0] - a[0])
 		.map(([year, months]) => ({ year, months: months.sort((a, b) => b.month - a.month) }));
+});
+
+// Archive index narrowing filter (survey finding): on a multi-year blog the
+// year/month pill stack is long and unscannable with no way to jump — the
+// exact problem tags/categories fixed in ISS-381. Filter the month pills by
+// label/years text (localized label + year/month digits).
+const archiveQuery = ref("");
+const filteredYears = computed<{ year: number; months: ArchiveEntry[] }[]>(() => {
+	const q = archiveQuery.value.trim().toLowerCase();
+	if (!q) return years.value;
+	const label = (m: ArchiveEntry) =>
+		new Date(Date.UTC(m.year, m.month - 1, 1)).toLocaleString(
+			locale.value === "zh" ? "zh-CN" : "en-US",
+			{ month: "long" },
+		);
+	const matches = (m: ArchiveEntry) =>
+		label(m).toLowerCase().includes(q) || String(m.year).includes(q) || String(m.month).includes(q);
+	return years.value
+		.map((y) => ({ year: y.year, months: y.months.filter(matches) }))
+		.filter((y) => y.months.length > 0);
 });
 
 // Look up month label for display/SEO. Always returns a string so the i18n
@@ -211,8 +231,26 @@ useSeo(() => ({
         v-if="years.length"
         class="space-y-6"
       >
+        <!-- Narrowing filter (survey finding): matches the tags/categories
+             filter the ISS-381 fix added — a long multi-year archive is
+             otherwise unscannable. Rendered only when there is something to
+             filter. -->
+        <div class="relative max-w-sm">
+          <Icon icon="lucide:search" class="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+          <input
+            v-model="archiveQuery"
+            type="search"
+            :placeholder="t('archive.searchPlaceholder')"
+            :aria-label="t('archive.searchAria')"
+            class="w-full pl-10 pr-4 py-2.5 border border-gray-200 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 transition-colors"
+          >
+        </div>
+        <p v-if="archiveQuery.trim() && filteredYears.length === 0" class="text-sm text-gray-500 dark:text-gray-400">
+          {{ t('archive.noResults') }}
+        </p>
+
         <section
-          v-for="y in years"
+          v-for="y in filteredYears"
           :key="y.year"
         >
           <h2 class="text-xl font-bold text-gray-800 dark:text-gray-100 mb-3">

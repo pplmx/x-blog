@@ -184,6 +184,27 @@ describe("Archive Page", () => {
 			// First section is 2025, second is 2024; both 2024 months present.
 			expect(year2024.length).toBe(2);
 		});
+
+		it("narrows the month pills via the filter box (survey finding)", async () => {
+			const wrapper = await mountArchivePage();
+			const input = wrapper.find('input[type="search"]');
+			expect(input.exists()).toBe(true);
+
+			await input.setValue("2024");
+			await flushPromises();
+			expect(wrapper.text()).toContain("(1)"); // January 2024
+			expect(wrapper.text()).toContain("(2)"); // March 2024
+			expect(wrapper.text()).not.toContain("2025");
+
+			await input.setValue("三");
+			await flushPromises();
+			expect(wrapper.text()).toContain("(2)"); // just March
+			expect(wrapper.text()).not.toContain("(1)");
+
+			await input.setValue("");
+			await flushPromises();
+			expect(wrapper.text()).toContain("2025"); // everything back
+		});
 	});
 
 	describe("Empty archive state", () => {

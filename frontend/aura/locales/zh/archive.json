@@ -8,6 +8,9 @@
 		"countLabel": "共 {count} 篇文章",
 		"postsEmpty": "该时间段暂无文章",
 		"views": "{count} 次阅读",
-		"monthDesc": "{year}年{month}发布的所有文章"
+		"monthDesc": "{year}年{month}发布的所有文章",
+		"searchPlaceholder": "筛选月份…",
+		"searchAria": "按月份或年份筛选归档",
+		"noResults": "没有匹配的归档月份"
 	}
 }

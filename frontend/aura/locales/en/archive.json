@@ -8,6 +8,9 @@
 		"countLabel": "{count} articles",
 		"postsEmpty": "No articles in this period",
 		"views": "{count} views",
-		"monthDesc": "All articles published in {month} {year}"
+		"monthDesc": "All articles published in {month} {year}",
+		"searchPlaceholder": "Filter by month…",
+		"searchAria": "Filter archive by month or year",
+		"noResults": "No archived months match your filter"
 	}
 }

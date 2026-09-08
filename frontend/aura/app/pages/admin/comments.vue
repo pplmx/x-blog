@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { AdminCommentListResponse } from "~~/api/admin/comments";
+import type { AdminComment, AdminCommentListResponse } from "~~/api/admin/comments";
 import {
 	approveAdminComment,
 	batchApproveAdminComments,
