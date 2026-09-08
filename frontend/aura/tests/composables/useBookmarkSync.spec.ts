@@ -131,6 +131,81 @@ describe("useBookmarkSync", () => {
 		expect(useBookmarks().isBookmarked(2)).toBe(false);
 	});
 
+	it("serializes per-post add→remove: DELETE is not issued until the PUT settles (deep-dive)", async () => {
+		// A rapid add-then-remove on the same post must not let the DELETE race
+		// past the PUT: if the DELETE lands first the server keeps the bookmark
+		// and the next /bookmarks merge resurrects it. The per-id write chain
+		// guarantees the LAST local intent is the LAST request to reach the
+		// server (URL ordering, useBookmarkSync deep-dive finding).
+		localStorage.setItem("reader_token", "jwt.token");
+		let releasePut!: () => void;
+		addReaderBookmarkMock.mockReturnValue(
+			new Promise<void>((resolve) => {
+				releasePut = resolve;
+			}),
+		);
+		removeReaderBookmarkMock.mockResolvedValue(okFetch([null]));
+
+		const sync = useBookmarkSync();
+		useBookmarks().addBookmark({
+			id: 3,
+			title: "T",
+			slug: "t",
+			excerpt: null,
+			cover_image: null,
+			created_at: "2026-01-01",
+			category: null,
+			tags: [],
+		});
+
+		// The reader clicks add then immediately removes.
+		sync.add({
+			id: 3,
+			title: "T",
+			slug: "t",
+			excerpt: null,
+			cover_image: null,
+			created_at: "2026-01-01",
+			category: null,
+			tags: [],
+		});
+		sync.remove(3);
+		await flushPromises();
+
+		// PUT is in flight; the DELETE must NOT have been issued yet.
+		expect(addReaderBookmarkMock).toHaveBeenCalledWith(3);
+		expect(removeReaderBookmarkMock).not.toHaveBeenCalled();
+
+		// Once the PUT settles the queued DELETE fires — last intent last.
+		releasePut();
+		await vi.waitFor(() => expect(removeReaderBookmarkMock).toHaveBeenCalledWith(3));
+	});
+
+	it("still surfaces a 401 remove failure via syncIssue after a chained write (auth surface)", async () => {
+		// The chain stores a swallowed tail so a failed write cannot wedge the
+		// next one — but the CALLER must still observe the rejection so the
+		// auth warning fires (regression guard for the chain's error contract).
+		localStorage.setItem("reader_token", "jwt.token");
+		addReaderBookmarkMock.mockResolvedValue(okFetch([null]));
+		removeReaderBookmarkMock.mockRejectedValue({ status: 401, message: "expired" } as Error & {
+			status: number;
+		});
+		const sync = useBookmarkSync();
+		useBookmarks().addBookmark({
+			id: 4,
+			title: "T",
+			slug: "t",
+			excerpt: null,
+			cover_image: null,
+			created_at: "2026-01-01",
+			category: null,
+			tags: [],
+		});
+
+		sync.remove(4);
+		await vi.waitFor(() => expect(syncIssue.value).toBe("auth"));
+	});
+
 	it("swallows a failed cloud mirror (offline keeps local)", async () => {
 		localStorage.setItem("reader_token", "jwt.token");
 		addReaderBookmarkMock.mockRejectedValue(new Error("offline"));

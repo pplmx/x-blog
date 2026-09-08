@@ -105,6 +105,34 @@ function waitForWritesIdle(): Promise<void> {
 	});
 }
 
+// Per-post cloud-write serialization (deep-dive finding): a rapid add→remove
+// (or remove→add) re-toggle on the SAME post issues mirrorAdd (PUT) and
+// mirrorRemove (DELETE) as independent in-flight requests. HTTP gives no
+// ordering guarantee, so the DELETE can land BEFORE the PUT — the server keeps
+// the bookmark and the next /bookmarks merge (mergeLocalToCloud) silently
+// resurrects it, undoing the reader's removal with no recovery path. The
+// plain pendingWrites count only orders Clear-all vs other writes, not two
+// mirrors of one post. Chain per-post id so the LAST local intent is always
+// the LAST request to reach the server.
+const postWriteChains = new Map<number, Promise<void>>();
+
+/** Run a cloud write for `postId` AFTER any earlier in-flight write for the
+ *  same post settles, preserving add/remove intent order (see above).
+ *
+ *  Returns the write's own promise (a failure rejects to the caller, so
+ *  mirrorAdd/mirrorRemove's noteFailure/auth surface still fires), while the
+ *  stored chain tail is the caught variant — a failed write never wedges the
+ *  next queued write for that post. */
+function chainPostWrite(postId: number, fn: () => Promise<void>): Promise<void> {
+	const prev = postWriteChains.get(postId) ?? Promise.resolve();
+	const run = prev.then(fn);
+	postWriteChains.set(
+		postId,
+		run.catch(() => {}),
+	);
+	return run;
+}
+
 /** True when a mirror/merge rejection means the stored session is unusable. */
 function isAuthFailure(err: unknown): boolean {
 	const status =
@@ -160,11 +188,13 @@ export function useBookmarkSync() {
 	async function mirrorAdd(postId: number): Promise<void> {
 		if (!hasReaderToken()) return;
 		try {
-			await withPendingWrite(async () => {
-				const { addReaderBookmark } = await import("~~/api/reader/bookmarks");
-				await addReaderBookmark(postId);
-				clearSyncIssue(); // the session works again — drop any stale warning
-			});
+			await chainPostWrite(postId, () =>
+				withPendingWrite(async () => {
+					const { addReaderBookmark } = await import("~~/api/reader/bookmarks");
+					await addReaderBookmark(postId);
+					clearSyncIssue(); // the session works again — drop any stale warning
+				}),
+			);
 		} catch (err) {
 			// offline — local list is authoritative until next merge; a dead
 			// session is the one case the reader must not be left in the dark.
@@ -176,11 +206,13 @@ export function useBookmarkSync() {
 	async function mirrorRemove(postId: number): Promise<void> {
 		if (!hasReaderToken()) return;
 		try {
-			await withPendingWrite(async () => {
-				const { removeReaderBookmark } = await import("~~/api/reader/bookmarks");
-				await removeReaderBookmark(postId);
-				clearSyncIssue();
-			});
+			await chainPostWrite(postId, () =>
+				withPendingWrite(async () => {
+					const { removeReaderBookmark } = await import("~~/api/reader/bookmarks");
+					await removeReaderBookmark(postId);
+					clearSyncIssue();
+				}),
+			);
 		} catch (err) {
 			// offline — next merge re-conciliates
 			noteFailure(err);
