@@ -1952,8 +1952,28 @@ def import_reader_history(
         prev = by_slug.get(slug)
         if viewed_at is None or prev is None or viewed_at > prev:
             by_slug[slug] = viewed_at
-    slugs = list(by_slug)
 
+    # The merge is idempotent (existing rows are updated in place, racing rows
+    # resolve as existing), so a lost unique-key race needs no special-casing —
+    # on IntegrityError we roll back and re-run once, and the row the winner
+    # committed is now found by the existing_by_post query, committing cleanly
+    # instead of 500ing (RIL ISS-419/TASK-321; same retry contract as
+    # _commit_reader_upsert).
+    for _attempt in range(2):
+        try:
+            return _import_reader_history_pass(db, reader_id, by_slug)
+        except IntegrityError:
+            db.rollback()
+    raise RuntimeError("history import lost the unique-key race twice")
+
+
+def _import_reader_history_pass(
+    db: Session,
+    reader_id: int,
+    by_slug: dict[str, datetime | None],
+) -> tuple[int, int]:
+    """One idempotent merge pass over the folded slug set (see caller)."""
+    slugs = list(by_slug)
     posts = db.query(models.Post).filter(models.Post.slug.in_(slugs)).all()
     by_slug_post = {p.slug: p for p in posts}
     resolved_ids = [p.id for p in posts if is_publicly_visible(p)]

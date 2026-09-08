@@ -1199,6 +1199,44 @@ class TestReaderUpsertIdempotency:
         assert mock_db.commit.call_count == 1
         mock_db.rollback.assert_called_once()
 
+    def test_import_reader_history_recovers_from_duplicate_key_race(self):
+        """Concurrent imports of the same previously-unseen post slug must not
+        500 on the unique (reader_id, post_id) row (RIL ISS-419/TASK-321).
+
+        Both race through the existing_by_post check, both add a fresh row, and
+        the loser's commit raises IntegrityError. The retry re-runs the merge:
+        the winner's row is now found by the existing query, so it resolves as
+        an idempotent existing entry instead of escaping as a 500. The docstring
+        promises idempotency for exactly this retry-without-duplication case.
+        """
+        mock_db = MagicMock()
+        post = models.Post(id=2, slug="race-post", published=True, publish_at=None)
+        winner = MagicMock()
+        winner.post_id = 2
+        winner.viewed_at = datetime(2024, 3, 1, 10, 30, 0)
+
+        def _query(model):
+            q = MagicMock()
+            if model is models.Post:
+                q.filter.return_value.all.return_value = [post]
+            else:  # ReadingHistory — first pass empty, retry sees the winner
+                q.filter.return_value.all.side_effect = [[], [winner]]
+            return q
+
+        mock_db.query.side_effect = _query
+        # First commit loses the unique-key race; the recovery commit wins.
+        mock_db.commit.side_effect = [
+            IntegrityError("INSERT INTO reading_history", {}, Exception("UNIQUE constraint")),
+            None,
+        ]
+
+        imported, skipped = crud.import_reader_history(mock_db, 1, [("race-post", None)])
+
+        assert (imported, skipped) == (1, 0)
+        # Initial commit + recovery commit; the failed one was rolled back.
+        assert mock_db.commit.call_count == 2
+        mock_db.rollback.assert_called_once()
+
     def test_increment_likes_commit_failure_rolls_back(self):
         """Test increment_likes rolls back on commit failure."""
         mock_db = MagicMock()
