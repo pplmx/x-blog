@@ -41,15 +41,28 @@ async function postAndApprove(
 	return commentId;
 }
 
-/** Like a comment `times` times via the API (backend allows repeats; the frontend dedups). */
+/**
+ * Like a comment `times` times as DISTINCT supporters.
+ *
+ * The backend counts distinct sources per comment — repeated likes from one
+ * source are idempotent no-ops (comment-like idempotency, 480dcd9), so this
+ * simulates separate visitors by sending a distinct X-Forwarded-For per like.
+ * It must hit the BACKEND directly (not through the Nuxt proxy, which
+ * overwrites the client-supplied header to the peer): the e2e backend runs
+ * with TRUSTED_PROXIES=* (CI workflow + justfile) precisely so this header is
+ * honored from a direct peer. A NEW like is 201, a repeat is 200.
+ */
+const BACKEND = process.env.E2E_BACKEND_URL ?? "http://localhost:18888";
 async function likeTimes(
 	request: import("@playwright/test").APIRequestContext,
 	commentId: number,
 	times: number,
 ): Promise<void> {
 	for (let i = 0; i < times; i++) {
-		const resp = await request.post(`/api/comments/${commentId}/like`);
-		expect(resp.status()).toBe(200);
+		const resp = await request.post(`${BACKEND}/api/comments/${commentId}/like`, {
+			headers: { "X-Forwarded-For": `203.0.113.${i + 1}` },
+		});
+		expect([200, 201]).toContain(resp.status());
 	}
 }
 

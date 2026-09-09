@@ -113,7 +113,10 @@ test.describe("Post series (admin)", () => {
 		await orderInput.fill("0");
 
 		await page.locator('button[type="submit"]').click();
-		await page.waitForURL("**/admin/posts");
+		// Saving a new post lands on the post's own editor page (draft/autosave
+		// flow) — head to the list for the round-trip assertion.
+		await page.waitForURL(/\/admin\/posts\/\d+/);
+		await page.goto("/admin/posts");
 
 		// Round-trip: the list row links back to the editor; reopening it must
 		// reflect the saved series assignment (select pre-selected + position).

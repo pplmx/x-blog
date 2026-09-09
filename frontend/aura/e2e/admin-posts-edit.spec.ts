@@ -73,9 +73,11 @@ test.describe("Admin post editing", () => {
 		await expect(saveBtn).toBeVisible();
 		await saveBtn.click();
 
-		// Should redirect back to posts list
-		await page.waitForURL("**/admin/posts");
-		await expect(page.locator(`text=${postTitle}`)).toBeVisible();
+		// The editor saves a new post and navigates to its own edit page (the
+		// autosave/draft flow), not back to the list — assert the title
+		// round-trips into the editor.
+		await page.waitForURL(/\/admin\/posts\/\d+/);
+		await expect(titleInput).toHaveValue(postTitle);
 	});
 
 	test("admin can update post status (publish/draft)", async ({ page }) => {

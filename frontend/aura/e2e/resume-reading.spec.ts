@@ -127,15 +127,16 @@ test.describe("Per-post resume reading (TASK-200)", () => {
 		await page.goto(url);
 		await page.waitForFunction(() => window.scrollY > 300, undefined, { timeout: 6000 });
 
-		// 6. The resume chip announces the jump and offers back-to-top.
-		const chip = page.locator('[role="status"]');
+		// 6. The resume chip announces the jump and offers back-to-top. Scope to
+		// the toast: the page now has several role="status" regions (an sr-only
+		// live region and a blocked-notification hint).
+		const chip = page.locator('[role="status"]').filter({ hasText: "已续读" });
 		await expect(chip).toBeVisible({ timeout: 5000 });
-		await expect(chip).toContainText("已续读");
 
 		// 7. Back-to-top scrolls up, dismisses the chip, and clears the saved
 		// position so the next visit starts at the top (DEC-167 MEDIUM fix).
 		await page.locator('[data-testid="resume-back-to-top"]').click();
-		await expect(page.locator('[role="status"]')).toBeHidden({ timeout: 4000 });
+		await expect(chip).toBeHidden({ timeout: 4000 });
 		const cleared = await waitForPosition(request, token, postId, (p) => p === 0);
 		expect(cleared).toBe(0);
 	});

@@ -18,84 +18,104 @@ import { expect, type Page, test } from "@playwright/test";
 
 The subscription's endpoint is persisted to localStorage so reloads simulate a
 browser that still holds the SW subscription (init re-detects it without
-re-subscribing). Endpoint points at 127.0.0.1:9 (closed port) so the admin
-notify dispatch fails fast instead of hanging on DNS/connect. */
+re-subscribing). The endpoint host is *.invalid (RFC 6761: guaranteed not to
+resolve) so it passes the backend's SSRF guard (loopback literals 422 since the
+Sept-04 security batch) AND the admin-notify dispatch fails fast on DNS instead
+of hanging — once resolved, name resolution of .invalid is an immediate NXDOMAIN,
+and the backend treats unresolvable endpoints as retired (delete + count). */
 
-async function stubPushStack(page: Page) {
-	await page.addInitScript(() => {
-		const bytes = (n: number) => {
-			const a = new Uint8Array(n);
-			for (let i = 0; i < n; i++) a[i] = (i * 7 + 1) & 0xff;
-			return a;
-		};
-		const subscribeCalls = Number(
-			// @ts-expect-error localStorage may be absent on about:blank
-			localStorage.getItem("__pushE2E_subscribeCalls") || 0,
-		);
-		const state = {
-			sub: null as {
-				endpoint: string;
-				getKey(k: string): ArrayBuffer;
-				unsubscribe(): Promise<boolean>;
-			} | null,
-			registerCalls: 0,
-			subscribeCalls,
-			subscribeKeyBytes: 0,
-			unsubscribed: false,
-		};
-		const makeSub = () => ({
-			endpoint: "https://127.0.0.1:9/wpush/v2/e2e-endpoint",
-			getKey: (k: string) => bytes(k === "auth" ? 16 : 65).buffer,
-			unsubscribe: async () => {
-				state.sub = null;
-				localStorage.removeItem("__pushE2E_endpoint");
-				state.unsubscribed = true;
-				return true;
-			},
-		});
-		// Reloads rebuild state from localStorage (browser retains the sub).
-		// Guarded: on the initial about:blank frame localStorage access throws a
-		// SecurityError that would abort the rest of the stub install.
-		let persisted = false;
-		try {
-			persisted = !!localStorage.getItem("__pushE2E_endpoint");
-		} catch {
-			persisted = false;
-		}
-		if (persisted) state.sub = makeSub();
-		// @ts-expect-error accessing a test-only global
-		window.__pushE2E = state;
-		class FakePushManager {
-			async getSubscription() {
-				return state.sub;
-			}
-			async subscribe(options: { userVisibleOnly: boolean; applicationServerKey: ArrayBuffer }) {
-				state.subscribeCalls++;
-				localStorage.setItem("__pushE2E_subscribeCalls", String(state.subscribeCalls));
-				state.subscribeKeyBytes = options.applicationServerKey?.byteLength ?? 0;
-				state.sub = state.sub ?? makeSub();
-				localStorage.setItem("__pushE2E_endpoint", state.sub.endpoint);
-				return state.sub;
-			}
-		}
-		Object.defineProperty(window, "PushManager", { value: FakePushManager, configurable: true });
-		const fakeReg = { pushManager: new FakePushManager(), showNotification: () => {} };
-		Object.defineProperty(window.navigator, "serviceWorker", {
-			value: {
-				register: async () => {
-					state.registerCalls++;
-					return fakeReg;
+async function stubPushStack(page: Page, endpoint = uniqueEndpoint()) {
+	await page.addInitScript(
+		(ep) => {
+			const bytes = (n: number) => {
+				const a = new Uint8Array(n);
+				for (let i = 0; i < n; i++) a[i] = (i * 7 + 1) & 0xff;
+				return a;
+			};
+			const subscribeCalls = Number(
+				// @ts-expect-error localStorage may be absent on about:blank
+				localStorage.getItem("__pushE2E_subscribeCalls") || 0,
+			);
+			const state = {
+				// The unique endpoint claimed by this test, readable by assertions.
+				endpoint: ep as string,
+				sub: null as {
+					endpoint: string;
+					getKey(k: string): ArrayBuffer;
+					unsubscribe(): Promise<boolean>;
+				} | null,
+				registerCalls: 0,
+				subscribeCalls,
+				subscribeKeyBytes: 0,
+				unsubscribed: false,
+			};
+			const makeSub = () => ({
+				endpoint: ep,
+				getKey: (k: string) => bytes(k === "auth" ? 16 : 65).buffer,
+				unsubscribe: async () => {
+					state.sub = null;
+					localStorage.removeItem("__pushE2E_endpoint");
+					state.unsubscribed = true;
+					return true;
 				},
-				getRegistration: async () => (state.sub ? fakeReg : null),
-				ready: Promise.resolve(fakeReg),
-			},
-			configurable: true,
-		});
-		Object.defineProperty(window, "Notification", {
-			value: { permission: "granted", requestPermission: async () => "granted" },
-			configurable: true,
-		});
-	});
+			});
+			// Reloads rebuild state from localStorage (browser retains the sub).
+			// Guarded: on the initial about:blank frame localStorage access throws a
+			// SecurityError that would abort the rest of the stub install.
+			let persisted = false;
+			try {
+				persisted = !!localStorage.getItem("__pushE2E_endpoint");
+			} catch {
+				persisted = false;
+			}
+			if (persisted) state.sub = makeSub();
+			// @ts-expect-error accessing a test-only global
+			window.__pushE2E = state;
+			class FakePushManager {
+				async getSubscription() {
+					return state.sub;
+				}
+				async subscribe(options: { userVisibleOnly: boolean; applicationServerKey: ArrayBuffer }) {
+					state.subscribeCalls++;
+					localStorage.setItem("__pushE2E_subscribeCalls", String(state.subscribeCalls));
+					state.subscribeKeyBytes = options.applicationServerKey?.byteLength ?? 0;
+					state.sub = state.sub ?? makeSub();
+					localStorage.setItem("__pushE2E_endpoint", state.sub.endpoint);
+					return state.sub;
+				}
+			}
+			Object.defineProperty(window, "PushManager", { value: FakePushManager, configurable: true });
+			const fakeReg = { pushManager: new FakePushManager(), showNotification: () => {} };
+			Object.defineProperty(window.navigator, "serviceWorker", {
+				value: {
+					register: async () => {
+						state.registerCalls++;
+						return fakeReg;
+					},
+					getRegistration: async () => (state.sub ? fakeReg : null),
+					ready: Promise.resolve(fakeReg),
+				},
+				configurable: true,
+			});
+			Object.defineProperty(window, "Notification", {
+				value: { permission: "granted", requestPermission: async () => "granted" },
+				configurable: true,
+			});
+		},
+		endpoint,
+	);
+}
+
+let pushEndpointSeq = 0;
+
+/** Endpoint for a single test's fake PushManager, unique per test. The backend
+ * refuses to re-bind an endpoint already bound to another account (409
+ * CONFLICT, Sept-04 security batch), and the whole suite shares one backend/
+ * DB, so a fixed endpoint would let one test's subscription poison the next
+ * (ordering pollution, CI run 34333725353) — every test claims its own. */
+function uniqueEndpoint(): string {
+	pushEndpointSeq += 1;
+	return `https://push.e2e.test.invalid/wpush/v2/e2e-${Date.now()}-${pushEndpointSeq}`;
 }
 
 const subscribeBtn = (page: Page) =>
@@ -229,6 +249,9 @@ test.describe("Web Push reader opt-in", () => {
 		//    the browser "still holds" the anonymous subscription. The mount-time
 		//    re-stamp must bind it (the reader's push-subscriptions list surfaces
 		//    only reader-bound subscriptions, so its appearance proves the bind).
+		const claimed = await page.evaluate(
+			() => (window as unknown as { __pushE2E: { endpoint: string } }).__pushE2E.endpoint,
+		);
 		await page.goto("/");
 		await expect(subscribedBtn(page)).toBeVisible({ timeout: 10000 });
 		await expect(async () => {
@@ -237,9 +260,7 @@ test.describe("Web Push reader opt-in", () => {
 			});
 			expect(res.status()).toBe(200);
 			const body = (await res.json()) as { items: { endpoint: string }[] };
-			expect(body.items.map((i) => i.endpoint)).toContain(
-				"https://127.0.0.1:9/wpush/v2/e2e-endpoint",
-			);
+			expect(body.items.map((i) => i.endpoint)).toContain(claimed);
 		}).toPass({ timeout: 15000 });
 	});
 

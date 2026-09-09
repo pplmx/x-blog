@@ -38,7 +38,10 @@ test.describe("Admin post preview (TASK-187)", () => {
 		// Preview from the admin post list.
 		await page.goto("/admin/posts");
 		const row = page.locator("tr", { hasText: "Draft For Preview" }).first();
-		await row.getByRole("link").getByTitle("预览").click();
+		// Match by accessible name: the icon-only preview link carries its label
+		// in aria-label (title present too), and the role→title chain
+		// (getByRole("link").getByTitle()) resolves to zero for icon-only links.
+		await row.getByRole("link", { name: "预览" }).click();
 		await page.waitForURL(`**/preview/posts/${postId}`);
 
 		await expect(page.locator("h1", { hasText: "Draft For Preview" })).toBeVisible({

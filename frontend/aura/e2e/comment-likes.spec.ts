@@ -58,8 +58,10 @@ test.describe("Comment likes (DEC-092)", () => {
 		await expect(like.locator(".like-count")).toHaveText("1");
 		await expect(like).toHaveAttribute("aria-pressed", "true");
 
-		// Dedup: the second click is a no-op (localStorage guard).
-		await like.click();
+		// Dedup is enforced by disabling the button once liked (CommentList
+		// sets :disabled="isCommentLiked(id)") — a second click is impossible.
+		// Assert the guard and that the count still reads 1 after the toggle.
+		await expect(like).toBeDisabled();
 		await expect(like.locator(".like-count")).toHaveText("1");
 	});
 });

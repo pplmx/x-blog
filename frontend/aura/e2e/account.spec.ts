@@ -23,6 +23,10 @@ async function stubPushStack(page: Page) {
 			for (let i = 0; i < n; i++) a[i] = (i * 7 + 1) & 0xff;
 			return a;
 		};
+		// Unique endpoint per run: the backend refuses to re-bind an endpoint
+		// already claimed by another account (Sept-04 security batch), and the
+		// shared dev/CI DB persists rows between runs.
+		const claimed = `https://push.e2e.test.invalid/wpush/v2/account-${Date.now()}`;
 		const state = {
 			sub: null as { endpoint: string; getKey(k: string): ArrayBuffer } | null,
 		};
@@ -32,7 +36,7 @@ async function stubPushStack(page: Page) {
 			}
 			async subscribe() {
 				state.sub = state.sub ?? {
-					endpoint: "https://127.0.0.1:9/wpush/v2/account-device",
+					endpoint: claimed,
 					getKey: (k: string) => bytes(k === "auth" ? 16 : 65).buffer,
 				};
 				return state.sub;
@@ -112,7 +116,7 @@ test.describe("Reader account settings", () => {
 
 		await page.goto("/account");
 		await expect(page.locator("text=推送设备")).toBeVisible({ timeout: 10000 });
-		const endpointHost = page.locator("text=127.0.0.1:9…");
+		const endpointHost = page.locator("text=push.e2e.test.invalid…");
 		await expect(endpointHost).toBeVisible({ timeout: 10000 });
 
 		page.once("dialog", (d) => d.accept());

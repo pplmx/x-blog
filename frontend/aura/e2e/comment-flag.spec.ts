@@ -50,8 +50,9 @@ test.describe("Comment flagging (DEC-108)", () => {
 		await expect(flag).toBeVisible({ timeout: 10000 });
 		await flag.click();
 		await expect(flag).toContainText("已举报", { timeout: 10000 });
-		// Re-click is a no-op (localStorage dedup).
-		await flag.click();
+		// Dedup is enforced by disabling the button once flagged (CommentList
+		// sets :disabled="isCommentFlagged(id)") — assert the guard.
+		await expect(flag).toBeDisabled();
 		await expect(flag).toContainText("已举报");
 
 		// The flag surfaced in the admin queue with a distinct-flag count.

@@ -79,11 +79,13 @@ test.describe("My Comments filter (DEC-102)", () => {
 		await postAndApprove(request, postId, readerToken, `filtered approved ${stamp}`);
 
 		await page.goto("/comments");
-		const tabs = page.locator('[role="tab"]');
-		await expect(tabs.first()).toBeVisible({ timeout: 10000 });
+		// The status filters are mutually exclusive buttons with aria-pressed,
+		// not a tablist (comments.vue deliberately avoids a fake role="tab").
+		const approved = page.getByRole("button", { name: "已通过" });
+		await expect(approved).toBeVisible({ timeout: 10000 });
 
-		// "Approved" tab (已通过).
-		await page.locator('[role="tab"]', { hasText: "已通过" }).click();
+		// "Approved" filter (已通过).
+		await approved.click();
 		await expect(page.locator(`text=filtered approved ${stamp}`)).toBeVisible({ timeout: 10000 });
 	});
 });
