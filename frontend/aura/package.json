@@ -45,7 +45,7 @@
 		"globals": "^17.11.0",
 		"happy-dom": "^20.11.8",
 		"katex": "^0.18.4",
-		"marked": "^16.4.2",
+		"marked": "^18.0.0",
 		"mermaid": "^11.17.2",
 		"typescript": "6.0.3",
 		"unplugin-auto-import": "^21.1.0",
