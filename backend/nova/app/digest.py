@@ -154,10 +154,13 @@ def build_digest_message(
     per-event emailer (the backend has no i18n; the site default locale is zh)."""
     posts = list(posts)
     base = base_url.rstrip("/")
-    # display_name is user-controlled: escape it ONCE here. The text part uses
-    # this exact string; the HTML part must NOT re-escape greeting, or the
-    # entity becomes double-escaped (A&B -> A&amp;amp;B, rendered literally).
-    greeting = f"{html.escape(display_name or '')}，" if display_name else "你好，"
+    # display_name is user-controlled. Escape it for the HTML part so markup
+    # can never render (A&B -> A&amp;B in HTML source, displayed as A&B); the
+    # TEXT part uses the RAW name — HTML entities like &amp; are meaningless in
+    # plain text and previously displayed literally as "A&amp;B" to the reader
+    # in text-only mail clients (ISS-447).
+    html_greeting = f"{html.escape(display_name or '')}，" if display_name else "你好，"
+    text_greeting = f"{display_name or ''}，" if display_name else "你好，"
     subject = f"本周精选：{len(posts)} 篇新文章"
 
     lines = []
@@ -172,7 +175,7 @@ def build_digest_message(
             lines.append(f"    {excerpt}")
 
     text = (
-        f"{greeting}\n"
+        f"{text_greeting}\n"
         f"本周精选（{_format_date(window_start)} ~ {_format_date(now_naive)}）共 {len(posts)} 篇新文章：\n\n"
         + "\n".join(lines)
         + "\n\n—\n管理或关闭每周精选："
@@ -199,7 +202,7 @@ def build_digest_message(
         '<div style="font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;'
         'max-width:640px;margin:0 auto;padding:24px">'
         f'<h1 style="font-size:20px">本周精选 · {len(posts)} 篇新文章</h1>'
-        f"<p>{greeting}这是过去一周发布的新文章"
+        f"<p>{html_greeting}这是过去一周发布的新文章"
         f"（{_format_date(window_start)} ~ {_format_date(now_naive)}）：</p>"
         f'<ol style="line-height:1.6">{rows}</ol>'
         f'<p style="color:#888;font-size:13px">不想再收到每周精选？'

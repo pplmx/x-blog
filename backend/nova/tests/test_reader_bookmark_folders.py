@@ -67,6 +67,26 @@ class TestAuthRequired:
         assert client.get(FOLDERS, headers=headers).status_code == 401
 
 
+class TestFolderIdOverflowCaps:
+    """Folder/subscription ids are bounded by IdInt, so a >bigint id in a path
+    or query param is a 422 on every backend — not a Postgres-only DataError
+    500 (backend deep-dive, ISS-448)."""
+
+    BIG_ID = "99999999999999999999999999"
+
+    def test_rename_folder_huge_id_is_422(self, client):
+        token = _token(client)
+        assert client.patch(f"{FOLDERS}/{self.BIG_ID}", json={"name": "Y"}, headers=_auth(token)).status_code == 422
+
+    def test_delete_folder_huge_id_is_422(self, client):
+        token = _token(client)
+        assert client.delete(f"{FOLDERS}/{self.BIG_ID}", headers=_auth(token)).status_code == 422
+
+    def test_list_bookmarks_huge_folder_query_is_422(self, client):
+        token = _token(client)
+        assert client.get(f"{BOOKMARKS}?folder_id={self.BIG_ID}", headers=_auth(token)).status_code == 422
+
+
 class TestCreateFolder:
     def test_create_returns_201_and_lists(self, client):
         token = _token(client)

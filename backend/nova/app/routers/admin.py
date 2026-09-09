@@ -23,6 +23,7 @@ from app.limiter import RATE_LIMIT_AUTH, RATE_LIMIT_WRITE, client_rate_key, limi
 from app.routers.comments import AUTO_APPROVE_READER_COMMENTS, _notify_comment_approved
 from app.schemas import (
     Comment,
+    IdInt,
     PageInt,
     Post,
     PostCreate,
@@ -157,7 +158,7 @@ def list_users(
 @router.delete("/users/{user_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_user(
     request: Request,  # noqa: ARG001
-    user_id: int,
+    user_id: IdInt,
     db: Session = Depends(get_db),
     _current_user: auth.User = Depends(get_current_superuser),
 ):
@@ -350,7 +351,7 @@ def admin_calendar(
 
 @router.get("/posts/{post_id}", response_model=dict)
 def admin_get_post(
-    post_id: int,
+    post_id: IdInt,
     db: Session = Depends(get_db),
     _current_user: auth.User = Depends(get_current_admin),
 ):
@@ -406,7 +407,7 @@ def admin_create_post(
 @router.put("/posts/{post_id}", response_model=dict)
 def admin_update_post(
     request: Request,  # noqa: ARG001
-    post_id: int,
+    post_id: IdInt,
     post_data: PostUpdate,
     db: Session = Depends(get_db),
     _current_user: auth.User = Depends(get_current_admin),
@@ -500,7 +501,7 @@ def admin_update_post(
 @router.delete("/posts/{post_id}", status_code=status.HTTP_204_NO_CONTENT)
 def admin_delete_post(
     request: Request,  # noqa: ARG001
-    post_id: int,
+    post_id: IdInt,
     db: Session = Depends(get_db),
     _current_user: auth.User = Depends(get_current_admin),
 ):
@@ -517,7 +518,7 @@ def admin_delete_post(
 
 @router.get("/posts/{post_id}/revisions", response_model=list[PostRevisionSummary])
 def admin_list_post_revisions(
-    post_id: int,
+    post_id: IdInt,
     db: Session = Depends(get_db),
     _current_user: auth.User = Depends(get_current_admin),
 ):
@@ -529,8 +530,8 @@ def admin_list_post_revisions(
 
 @router.get("/posts/{post_id}/revisions/{revision_id}", response_model=PostRevisionDetail)
 def admin_get_post_revision(
-    post_id: int,
-    revision_id: int,
+    post_id: IdInt,
+    revision_id: IdInt,
     db: Session = Depends(get_db),
     _current_user: auth.User = Depends(get_current_admin),
 ):
@@ -544,8 +545,8 @@ def admin_get_post_revision(
 @router.post("/posts/{post_id}/revisions/{revision_id}/restore", response_model=Post)
 def admin_restore_post_revision(
     request: Request,  # noqa: ARG001
-    post_id: int,
-    revision_id: int,
+    post_id: IdInt,
+    revision_id: IdInt,
     db: Session = Depends(get_db),
     _current_user: auth.User = Depends(get_current_admin),
 ):
@@ -603,7 +604,7 @@ def admin_create_category(
 @router.put("/categories/{category_id}", response_model=dict)
 def admin_update_category(
     request: Request,  # noqa: ARG001
-    category_id: int,
+    category_id: IdInt,
     body: NameRequest,
     db: Session = Depends(get_db),
     _current_user: auth.User = Depends(get_current_admin),
@@ -628,7 +629,7 @@ def admin_update_category(
 @router.delete("/categories/{category_id}", status_code=status.HTTP_204_NO_CONTENT)
 def admin_delete_category(
     request: Request,  # noqa: ARG001
-    category_id: int,
+    category_id: IdInt,
     db: Session = Depends(get_db),
     _current_user: auth.User = Depends(get_current_admin),
 ):
@@ -701,7 +702,7 @@ def admin_create_tag(
 @router.put("/tags/{tag_id}", response_model=dict)
 def admin_update_tag(
     request: Request,  # noqa: ARG001
-    tag_id: int,
+    tag_id: IdInt,
     body: NameRequest,
     db: Session = Depends(get_db),
     _current_user: auth.User = Depends(get_current_admin),
@@ -726,7 +727,7 @@ def admin_update_tag(
 @router.delete("/tags/{tag_id}", status_code=status.HTTP_204_NO_CONTENT)
 def admin_delete_tag(
     request: Request,  # noqa: ARG001
-    tag_id: int,
+    tag_id: IdInt,
     db: Session = Depends(get_db),
     _current_user: auth.User = Depends(get_current_admin),
 ):
@@ -757,7 +758,7 @@ def admin_delete_tag(
 # Comments management
 @router.get("/comments")
 def admin_list_comments(
-    post_id: int | None = None,
+    post_id: IdInt | None = None,
     is_approved: bool | None = Query(None, description="Filter by moderation status"),
     q: str | None = Query(None, description="Search nickname/email/content"),
     date_from: str | None = Query(None, max_length=40, description="ISO date filter: created >= date_from"),
@@ -912,7 +913,7 @@ class PasswordChangeRequest(BaseModel):
 
 @router.delete("/comments/{comment_id}/flags")
 def dismiss_comment_flags(
-    comment_id: int,
+    comment_id: IdInt,
     db: Session = Depends(get_db),
     _current_user: auth.User = Depends(get_current_admin),
 ):
@@ -946,7 +947,7 @@ def change_password(
 @router.delete("/comments/{comment_id}", status_code=status.HTTP_204_NO_CONTENT)
 def admin_delete_comment(
     request: Request,  # noqa: ARG001
-    comment_id: int,
+    comment_id: IdInt,
     db: Session = Depends(get_db),
     _current_user: auth.User = Depends(get_current_admin),
 ):
@@ -985,7 +986,7 @@ class AdminReplyRequest(BaseModel):
 @limiter.limit(f"{RATE_LIMIT_WRITE}/minute")
 def admin_reply_comment(
     request: Request,
-    comment_id: int,
+    comment_id: IdInt,
     body: AdminReplyRequest,
     db: Session = Depends(get_db),
     _current_user: auth.User = Depends(get_current_admin),
@@ -1193,7 +1194,7 @@ def _get_reader_or_404(db: Session, reader_id: int) -> auth.ReaderAccount:
 
 @router.post("/readers/{reader_id}/deactivate", response_model=AdminReaderStatusResponse)
 def admin_deactivate_reader(
-    reader_id: int,
+    reader_id: IdInt,
     db: Session = Depends(get_db),
     _current_user: auth.User = Depends(get_current_admin),
 ):
@@ -1221,7 +1222,7 @@ def admin_deactivate_reader(
 
 @router.post("/readers/{reader_id}/activate", response_model=AdminReaderStatusResponse)
 def admin_activate_reader(
-    reader_id: int,
+    reader_id: IdInt,
     db: Session = Depends(get_db),
     _current_user: auth.User = Depends(get_current_admin),
 ):

@@ -459,6 +459,16 @@ class TestBuilderEscape:
         assert "A&amp;B" in html
         assert "A&amp;amp;B" not in html
 
+    def test_text_display_name_is_raw_not_html_escaped(self):
+        # The plain-TEXT part has no markup context: an HTML entity like
+        # &amp; renders literally as "A&amp;B" in a text-only mail client.
+        # The raw name must appear verbatim in text while the HTML part keeps
+        # its escaped copy (ISS-447).
+        msg = self._msg_for_name("A&B")
+        text = next(p for p in msg.walk() if p.get_content_type() == "text/plain").get_content()
+        assert "A&B" in text
+        assert "A&amp;B" not in text
+
     def test_html_script_name_is_escaped_once(self):
         msg = self._msg_for_name("<script>alert(1)</script>")
         html = next(p for p in msg.walk() if p.get_content_type() == "text/html").get_content()

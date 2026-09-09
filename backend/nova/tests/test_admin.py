@@ -512,6 +512,55 @@ class TestAdminPostNotFoundPaths:
         assert data["error"]["code"] == "NOT_FOUND"
 
 
+class TestAdminIdOverflowCaps:
+    """Admin path/query ids are bounded by IdInt so a >bigint id parses to a
+    422 on EVERY backend, not a Postgres-only 500 (the SQLite dev/e2e backend
+    returned a clean 404 while PG raised DataError -> generic 500 — backend
+    deep-dive, ISS-448)."""
+
+    BIG_ID = "99999999999999999999999999"  # 26 digits > int32 and > PG bigint
+
+    def test_get_post_huge_id_is_422(self, client, auth_headers):
+        response = client.get(f"/api/admin/posts/{self.BIG_ID}", headers=auth_headers)
+        assert response.status_code == 422
+
+    def test_update_post_huge_id_is_422(self, client, auth_headers):
+        response = client.put(
+            f"/api/admin/posts/{self.BIG_ID}",
+            headers={**auth_headers, "Content-Type": "application/json"},
+            json={"title": "x"},
+        )
+        assert response.status_code == 422
+
+    def test_delete_post_huge_id_is_422(self, client, auth_headers):
+        response = client.delete(f"/api/admin/posts/{self.BIG_ID}", headers=auth_headers)
+        assert response.status_code == 422
+
+    def test_delete_user_huge_id_is_422(self, client, auth_headers):
+        response = client.delete(f"/api/admin/users/{self.BIG_ID}", headers=auth_headers)
+        assert response.status_code == 422
+
+    def test_delete_category_huge_id_is_422(self, client, auth_headers):
+        response = client.delete(f"/api/admin/categories/{self.BIG_ID}", headers=auth_headers)
+        assert response.status_code == 422
+
+    def test_delete_tag_huge_id_is_422(self, client, auth_headers):
+        response = client.delete(f"/api/admin/tags/{self.BIG_ID}", headers=auth_headers)
+        assert response.status_code == 422
+
+    def test_delete_comment_huge_id_is_422(self, client, auth_headers):
+        response = client.delete(f"/api/admin/comments/{self.BIG_ID}", headers=auth_headers)
+        assert response.status_code == 422
+
+    def test_deactivate_reader_huge_id_is_422(self, client, auth_headers):
+        response = client.post(f"/api/admin/readers/{self.BIG_ID}/deactivate", headers=auth_headers)
+        assert response.status_code == 422
+
+    def test_comments_list_huge_post_id_query_is_422(self, client, auth_headers):
+        response = client.get(f"/api/admin/comments?post_id={self.BIG_ID}", headers=auth_headers)
+        assert response.status_code == 422
+
+
 class TestAdminCategoryErrors:
     """Tests for category conflict and not-found error paths."""
 

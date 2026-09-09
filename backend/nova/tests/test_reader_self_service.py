@@ -212,3 +212,14 @@ class TestPushSubscriptionManagement:
     def test_requires_token(self, client):
         assert client.get("/api/reader/me/push-subscriptions").status_code == 401
         assert client.delete("/api/reader/me/push-subscriptions/1").status_code == 401
+
+    def test_revoke_huge_subscription_id_is_422(self, client, db_session):
+        # >bigint subscription id is rejected at the boundary (IdInt) with a
+        # clean 422 on every backend, not a Postgres-only bigint-overflow 500
+        # (backend deep-dive, ISS-448).
+        token = _register(client, email="bigid@example.com").json()["access_token"]
+        resp = client.delete(
+            "/api/reader/me/push-subscriptions/99999999999999999999999999",
+            headers=_auth(token),
+        )
+        assert resp.status_code == 422

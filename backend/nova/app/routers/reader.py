@@ -677,7 +677,7 @@ def list_my_push_subscriptions(
 @limiter.limit(f"{RATE_LIMIT_WRITE}/minute")
 def update_my_push_subscription_prefs(
     request: Request,  # noqa: ARG001
-    subscription_id: int,
+    subscription_id: IdInt,
     payload: ReaderPushSubscriptionUpdate,
     current_reader: auth.ReaderAccount = Depends(auth.get_current_reader),
     db: Session = Depends(get_db),
@@ -719,7 +719,7 @@ def update_my_push_subscription_prefs(
 @limiter.limit(f"{RATE_LIMIT_WRITE}/minute")
 def revoke_my_push_subscription(
     request: Request,  # noqa: ARG001
-    subscription_id: int,
+    subscription_id: IdInt,
     current_reader: auth.ReaderAccount = Depends(auth.get_current_reader),
     db: Session = Depends(get_db),
 ):
@@ -751,7 +751,7 @@ def revoke_my_push_subscription(
 @router.get("/me/bookmarks", response_model=BookmarkListResponse)
 def list_bookmarks(
     current_reader: auth.ReaderAccount = Depends(auth.get_current_reader),
-    folder_id: int | None = Query(None, description="filter to this folder"),
+    folder_id: IdInt | None = Query(None, description="filter to this folder"),
     page: PageInt = 1,
     limit: int = Query(100, ge=1, le=100),
     db: Session = Depends(get_db),
@@ -895,7 +895,7 @@ def create_bookmark_folder(
 @limiter.limit(f"{RATE_LIMIT_WRITE}/minute")
 def rename_bookmark_folder(
     request: Request,  # noqa: ARG001
-    folder_id: int,
+    folder_id: IdInt,
     body: FolderRename,
     current_reader: auth.ReaderAccount = Depends(auth.get_current_reader),
     db: Session = Depends(get_db),
@@ -916,7 +916,7 @@ def rename_bookmark_folder(
 @limiter.limit(f"{RATE_LIMIT_WRITE}/minute")
 def delete_bookmark_folder(
     request: Request,  # noqa: ARG001
-    folder_id: int,
+    folder_id: IdInt,
     current_reader: auth.ReaderAccount = Depends(auth.get_current_reader),
     db: Session = Depends(get_db),
 ):
