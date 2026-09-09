@@ -655,9 +655,7 @@ class TestAdminComments:
         self._create_comment(db_session, post)  # helper default = approved
         for i in range(3):
             db_session.add(
-                models.Comment(
-                    post_id=post.id, nickname=f"Pending{i}", content=f"waiting {i}", is_approved=False
-                )
+                models.Comment(post_id=post.id, nickname=f"Pending{i}", content=f"waiting {i}", is_approved=False)
             )
         db_session.commit()
 
