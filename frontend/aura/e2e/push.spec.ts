@@ -25,85 +25,82 @@ of hanging — once resolved, name resolution of .invalid is an immediate NXDOMA
 and the backend treats unresolvable endpoints as retired (delete + count). */
 
 async function stubPushStack(page: Page, endpoint = uniqueEndpoint()) {
-	await page.addInitScript(
-		(ep) => {
-			const bytes = (n: number) => {
-				const a = new Uint8Array(n);
-				for (let i = 0; i < n; i++) a[i] = (i * 7 + 1) & 0xff;
-				return a;
-			};
-			const subscribeCalls = Number(
-				// @ts-expect-error localStorage may be absent on about:blank
-				localStorage.getItem("__pushE2E_subscribeCalls") || 0,
-			);
-			const state = {
-				// The unique endpoint claimed by this test, readable by assertions.
-				endpoint: ep as string,
-				sub: null as {
-					endpoint: string;
-					getKey(k: string): ArrayBuffer;
-					unsubscribe(): Promise<boolean>;
-				} | null,
-				registerCalls: 0,
-				subscribeCalls,
-				subscribeKeyBytes: 0,
-				unsubscribed: false,
-			};
-			const makeSub = () => ({
-				endpoint: ep,
-				getKey: (k: string) => bytes(k === "auth" ? 16 : 65).buffer,
-				unsubscribe: async () => {
-					state.sub = null;
-					localStorage.removeItem("__pushE2E_endpoint");
-					state.unsubscribed = true;
-					return true;
-				},
-			});
-			// Reloads rebuild state from localStorage (browser retains the sub).
-			// Guarded: on the initial about:blank frame localStorage access throws a
-			// SecurityError that would abort the rest of the stub install.
-			let persisted = false;
-			try {
-				persisted = !!localStorage.getItem("__pushE2E_endpoint");
-			} catch {
-				persisted = false;
+	await page.addInitScript((ep) => {
+		const bytes = (n: number) => {
+			const a = new Uint8Array(n);
+			for (let i = 0; i < n; i++) a[i] = (i * 7 + 1) & 0xff;
+			return a;
+		};
+		const subscribeCalls = Number(
+			// @ts-expect-error localStorage may be absent on about:blank
+			localStorage.getItem("__pushE2E_subscribeCalls") || 0,
+		);
+		const state = {
+			// The unique endpoint claimed by this test, readable by assertions.
+			endpoint: ep as string,
+			sub: null as {
+				endpoint: string;
+				getKey(k: string): ArrayBuffer;
+				unsubscribe(): Promise<boolean>;
+			} | null,
+			registerCalls: 0,
+			subscribeCalls,
+			subscribeKeyBytes: 0,
+			unsubscribed: false,
+		};
+		const makeSub = () => ({
+			endpoint: ep,
+			getKey: (k: string) => bytes(k === "auth" ? 16 : 65).buffer,
+			unsubscribe: async () => {
+				state.sub = null;
+				localStorage.removeItem("__pushE2E_endpoint");
+				state.unsubscribed = true;
+				return true;
+			},
+		});
+		// Reloads rebuild state from localStorage (browser retains the sub).
+		// Guarded: on the initial about:blank frame localStorage access throws a
+		// SecurityError that would abort the rest of the stub install.
+		let persisted = false;
+		try {
+			persisted = !!localStorage.getItem("__pushE2E_endpoint");
+		} catch {
+			persisted = false;
+		}
+		if (persisted) state.sub = makeSub();
+		// @ts-expect-error accessing a test-only global
+		window.__pushE2E = state;
+		class FakePushManager {
+			async getSubscription() {
+				return state.sub;
 			}
-			if (persisted) state.sub = makeSub();
-			// @ts-expect-error accessing a test-only global
-			window.__pushE2E = state;
-			class FakePushManager {
-				async getSubscription() {
-					return state.sub;
-				}
-				async subscribe(options: { userVisibleOnly: boolean; applicationServerKey: ArrayBuffer }) {
-					state.subscribeCalls++;
-					localStorage.setItem("__pushE2E_subscribeCalls", String(state.subscribeCalls));
-					state.subscribeKeyBytes = options.applicationServerKey?.byteLength ?? 0;
-					state.sub = state.sub ?? makeSub();
-					localStorage.setItem("__pushE2E_endpoint", state.sub.endpoint);
-					return state.sub;
-				}
+			async subscribe(options: { userVisibleOnly: boolean; applicationServerKey: ArrayBuffer }) {
+				state.subscribeCalls++;
+				localStorage.setItem("__pushE2E_subscribeCalls", String(state.subscribeCalls));
+				state.subscribeKeyBytes = options.applicationServerKey?.byteLength ?? 0;
+				state.sub = state.sub ?? makeSub();
+				localStorage.setItem("__pushE2E_endpoint", state.sub.endpoint);
+				return state.sub;
 			}
-			Object.defineProperty(window, "PushManager", { value: FakePushManager, configurable: true });
-			const fakeReg = { pushManager: new FakePushManager(), showNotification: () => {} };
-			Object.defineProperty(window.navigator, "serviceWorker", {
-				value: {
-					register: async () => {
-						state.registerCalls++;
-						return fakeReg;
-					},
-					getRegistration: async () => (state.sub ? fakeReg : null),
-					ready: Promise.resolve(fakeReg),
+		}
+		Object.defineProperty(window, "PushManager", { value: FakePushManager, configurable: true });
+		const fakeReg = { pushManager: new FakePushManager(), showNotification: () => {} };
+		Object.defineProperty(window.navigator, "serviceWorker", {
+			value: {
+				register: async () => {
+					state.registerCalls++;
+					return fakeReg;
 				},
-				configurable: true,
-			});
-			Object.defineProperty(window, "Notification", {
-				value: { permission: "granted", requestPermission: async () => "granted" },
-				configurable: true,
-			});
-		},
-		endpoint,
-	);
+				getRegistration: async () => (state.sub ? fakeReg : null),
+				ready: Promise.resolve(fakeReg),
+			},
+			configurable: true,
+		});
+		Object.defineProperty(window, "Notification", {
+			value: { permission: "granted", requestPermission: async () => "granted" },
+			configurable: true,
+		});
+	}, endpoint);
 }
 
 let pushEndpointSeq = 0;
