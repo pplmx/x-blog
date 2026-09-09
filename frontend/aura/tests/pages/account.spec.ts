@@ -1081,4 +1081,420 @@ describe("Account settings page", () => {
 			expect(section.text()).toContain("通知已关");
 		});
 	});
+
+	describe("profile + password failure surfaces", () => {
+		it("shows a save-failure message when the profile update fails", async () => {
+			isAuthenticated.value = true;
+			mockUpdateMyProfile.mockRejectedValue(new Error("boom"));
+			const wrapper = await mountPage();
+			const input = wrapper.get("input[type='text']");
+			await input.setValue("NewName");
+			await wrapper.get("form").trigger("submit");
+			await flushPromises();
+			expect(wrapper.text()).toContain("保存失败，请稍后再试");
+		});
+
+		it("empties the input when the profile response omits a display name", async () => {
+			isAuthenticated.value = true;
+			mockUpdateMyProfile.mockResolvedValue({
+				id: 1,
+				email: "r@example.com",
+				display_name: "" as string,
+			});
+			const wrapper = await mountPage();
+			const input = wrapper.get("input[type='text']");
+			await input.setValue("NewName");
+			await wrapper.get("form").trigger("submit");
+			await flushPromises();
+			// `updated.display_name ?? ""` back-patches the input to the response.
+			expect((input.element as HTMLInputElement).value).toBe("");
+			expect(wrapper.text()).toContain("已保存");
+		});
+
+		it("shows a generic failure message when the password change fails with a non-401 error", async () => {
+			isAuthenticated.value = true;
+			mockChangeMyPassword.mockRejectedValue(new Error("network down"));
+			const wrapper = await mountPage();
+			const inputs = wrapper.findAll("input[type='password']");
+			await inputs[0].setValue("currentpass123");
+			await inputs[1].setValue("newpass456");
+			await inputs[2].setValue("newpass456");
+			await wrapper.findAll("form")[1].trigger("submit");
+			await flushPromises();
+			expect(wrapper.text()).toContain("修改失败，请稍后再试");
+		});
+	});
+
+	describe("device revoke/prefs failure surfaces", () => {
+		it("does not revoke a device when the confirmation is cancelled", async () => {
+			isAuthenticated.value = true;
+			mockFetchPushSubscriptions.mockResolvedValue({ items: [makeDevice()], total: 1 });
+			vi.stubGlobal("confirm", () => false);
+			const wrapper = await mountPage();
+			await wrapper.findAll("button")[2].trigger("click");
+			await flushPromises();
+			expect(mockRevokePushSubscription).not.toHaveBeenCalled();
+			vi.unstubAllGlobals();
+		});
+
+		it("shows a revoke-failed message when the revoke fails with a non-401 error", async () => {
+			isAuthenticated.value = true;
+			mockFetchPushSubscriptions.mockResolvedValue({ items: [makeDevice()], total: 1 });
+			mockRevokePushSubscription.mockRejectedValue(new Error("boom"));
+			vi.stubGlobal("confirm", () => true);
+			const wrapper = await mountPage();
+			await wrapper.findAll("button")[2].trigger("click");
+			await flushPromises();
+			expect(wrapper.text()).toContain("移除失败，请稍后再试");
+			vi.unstubAllGlobals();
+		});
+
+		it("shows a prefs-save failure when the new-post toggle fails", async () => {
+			isAuthenticated.value = true;
+			mockFetchPushSubscriptions.mockResolvedValue({ items: [makeDevice()], total: 1 });
+			mockUpdatePushSubscriptionPrefs.mockRejectedValue(new Error("boom"));
+			const wrapper = await mountPage();
+			await wrapper.get("input[type='checkbox']").setValue(true);
+			await flushPromises();
+			expect(wrapper.text()).toContain("保存失败，请稍后再试");
+		});
+
+		it("renders an em dash for a device without a created date", async () => {
+			isAuthenticated.value = true;
+			mockFetchPushSubscriptions.mockResolvedValue({
+				items: [makeDevice({ created_at: null as unknown as string })],
+				total: 1,
+			});
+			const wrapper = await mountPage();
+			expect(wrapper.text()).toContain("—");
+		});
+
+		it("clears the category scope when new-post notifications are switched off", async () => {
+			isAuthenticated.value = true;
+			mockFetchPushSubscriptions.mockResolvedValue({
+				items: [makeDevice({ want_new_posts: true, new_post_category_id: 7 })],
+				total: 1,
+			});
+			mockUpdatePushSubscriptionPrefs.mockResolvedValue(makeDevice());
+			const wrapper = await mountPage();
+			await wrapper.get("input[type='checkbox']").setValue(false);
+			await flushPromises();
+			// want=false drops the category scope (null), not the stale id.
+			expect(mockUpdatePushSubscriptionPrefs).toHaveBeenCalledWith(1, {
+				want_new_posts: false,
+				new_post_category_id: null,
+			});
+		});
+
+		it("clearing the follow-category select pins the device to all new posts", async () => {
+			isAuthenticated.value = true;
+			mockFetchCategories.mockResolvedValue([{ id: 7, name: "Python" }]);
+			mockFetchPushSubscriptions.mockResolvedValue({
+				items: [makeDevice({ want_new_posts: true, new_post_category_id: 7 })],
+				total: 1,
+			});
+			mockUpdatePushSubscriptionPrefs.mockResolvedValue(
+				makeDevice({ want_new_posts: true, new_post_category_id: null }),
+			);
+			const wrapper = await mountPage();
+			await wrapper.get("select").setValue("");
+			await flushPromises();
+			expect(mockUpdatePushSubscriptionPrefs).toHaveBeenCalledWith(1, {
+				want_new_posts: true,
+				new_post_category_id: null,
+			});
+		});
+	});
+
+	describe("followed discussions (DEC-078, TASK-150)", () => {
+		it("shows the empty state when subscribing to no discussions", async () => {
+			isAuthenticated.value = true;
+			mockFetchPushSubscriptions.mockResolvedValue({ items: [], total: 0 });
+			mockFetchMyPostSubscriptions.mockResolvedValue({ items: [], total: 0 });
+			const wrapper = await mountPage();
+			expect(wrapper.text()).toContain("还没有订阅任何讨论");
+		});
+
+		it("lists followed discussions and unsubscribes after confirmation", async () => {
+			isAuthenticated.value = true;
+			mockFetchPushSubscriptions.mockResolvedValue({ items: [], total: 0 });
+			mockFetchMyPostSubscriptions
+				.mockResolvedValueOnce({
+					items: [{ id: 9, title: "Thread A", slug: "thread-a" }],
+					total: 1,
+				})
+				.mockResolvedValueOnce({ items: [], total: 0 });
+			mockUnsubscribeFromPostThread.mockResolvedValue(undefined);
+			vi.stubGlobal("confirm", () => true);
+			const wrapper = await mountPage();
+			expect(wrapper.text()).toContain("Thread A");
+
+			const section = wrapper.findAll("section").find((s) => s.text().includes("订阅的讨论"));
+			expect(section).toBeDefined();
+			if (!section) throw new Error("threads section not found");
+			const unfollowBtn = section.findAll("button").find((b) => b.text() === "取消订阅");
+			expect(unfollowBtn).toBeDefined();
+			await unfollowBtn?.trigger("click");
+			await flushPromises();
+			expect(mockUnsubscribeFromPostThread).toHaveBeenCalledWith(9);
+			expect(wrapper.text()).toContain("还没有订阅任何讨论");
+			vi.unstubAllGlobals();
+		});
+
+		it("does not unsubscribe when the confirmation is cancelled", async () => {
+			isAuthenticated.value = true;
+			mockFetchPushSubscriptions.mockResolvedValue({ items: [], total: 0 });
+			mockFetchMyPostSubscriptions.mockResolvedValue({
+				items: [{ id: 9, title: "Thread A", slug: "thread-a" }],
+				total: 1,
+			});
+			vi.stubGlobal("confirm", () => false);
+			const wrapper = await mountPage();
+			const section = wrapper.findAll("section").find((s) => s.text().includes("订阅的讨论"));
+			if (!section) throw new Error("threads section not found");
+			const unfollowBtn = section.findAll("button").find((b) => b.text() === "取消订阅");
+			await unfollowBtn?.trigger("click");
+			await flushPromises();
+			expect(mockUnsubscribeFromPostThread).not.toHaveBeenCalled();
+			vi.unstubAllGlobals();
+		});
+
+		it("shows an error line when unsubscribing fails", async () => {
+			isAuthenticated.value = true;
+			mockFetchPushSubscriptions.mockResolvedValue({ items: [], total: 0 });
+			mockFetchMyPostSubscriptions.mockResolvedValue({
+				items: [{ id: 9, title: "Thread A", slug: "thread-a" }],
+				total: 1,
+			});
+			mockUnsubscribeFromPostThread.mockRejectedValue(new Error("boom"));
+			vi.stubGlobal("confirm", () => true);
+			const wrapper = await mountPage();
+			const section = wrapper.findAll("section").find((s) => s.text().includes("订阅的讨论"));
+			if (!section) throw new Error("threads section not found");
+			const unfollowBtn = section.findAll("button").find((b) => b.text() === "取消订阅");
+			await unfollowBtn?.trigger("click");
+			await flushPromises();
+			expect(section.text()).toContain("操作失败，请稍后再试");
+			vi.unstubAllGlobals();
+		});
+	});
+
+	describe("cancel-guard + failure surfaces for series/category/tag unfollows", () => {
+		it("does not unfollow a series when the confirmation is cancelled", async () => {
+			isAuthenticated.value = true;
+			mockFetchPushSubscriptions.mockResolvedValue({ items: [], total: 0 });
+			mockFetchReaderSeriesFollows.mockResolvedValue({
+				items: [{ id: 5, title: "Tutorial", slug: "tutorial", notify: true }],
+				total: 1,
+			});
+			vi.stubGlobal("confirm", () => false);
+			const wrapper = await mountPage();
+			const section = wrapper.findAll("section").find((s) => s.text().includes("关注的系列"));
+			if (!section) throw new Error("series section not found");
+			const unfollowBtn = section.findAll("button").find((b) => b.text() === "取消关注");
+			await unfollowBtn?.trigger("click");
+			await flushPromises();
+			expect(mockUnfollowReaderSeries).not.toHaveBeenCalled();
+			vi.unstubAllGlobals();
+		});
+
+		it("shows an error line when a series unfollow fails", async () => {
+			isAuthenticated.value = true;
+			mockFetchPushSubscriptions.mockResolvedValue({ items: [], total: 0 });
+			mockFetchReaderSeriesFollows.mockResolvedValue({
+				items: [{ id: 5, title: "Tutorial", slug: "tutorial", notify: true }],
+				total: 1,
+			});
+			mockUnfollowReaderSeries.mockRejectedValue(new Error("boom"));
+			vi.stubGlobal("confirm", () => true);
+			const wrapper = await mountPage();
+			const section = wrapper.findAll("section").find((s) => s.text().includes("关注的系列"));
+			if (!section) throw new Error("series section not found");
+			const unfollowBtn = section.findAll("button").find((b) => b.text() === "取消关注");
+			await unfollowBtn?.trigger("click");
+			await flushPromises();
+			expect(section.text()).toContain("操作失败，请稍后再试");
+			vi.unstubAllGlobals();
+		});
+
+		it("unfollows a followed category after confirmation and reloads the section", async () => {
+			isAuthenticated.value = true;
+			mockFetchPushSubscriptions.mockResolvedValue({ items: [], total: 0 });
+			mockFetchReaderCategoryFollows
+				.mockResolvedValueOnce({ items: [{ id: 4, name: "AI", notify: true }], total: 1 })
+				.mockResolvedValueOnce({ items: [], total: 0 });
+			mockUnfollowReaderCategory.mockResolvedValue(undefined);
+			vi.stubGlobal("confirm", () => true);
+			const wrapper = await mountPage();
+			const section = wrapper.findAll("section").find((s) => s.text().includes("关注的分类"));
+			if (!section) throw new Error("categories section not found");
+			const unfollowBtn = section.findAll("button").find((b) => b.text() === "取消关注");
+			await unfollowBtn?.trigger("click");
+			await flushPromises();
+			expect(mockUnfollowReaderCategory).toHaveBeenCalledWith(4);
+			expect(section.text()).toContain("还没有关注任何分类");
+			vi.unstubAllGlobals();
+		});
+
+		it("does not unfollow a category when the confirmation is cancelled", async () => {
+			isAuthenticated.value = true;
+			mockFetchPushSubscriptions.mockResolvedValue({ items: [], total: 0 });
+			mockFetchReaderCategoryFollows.mockResolvedValue({
+				items: [{ id: 4, name: "AI", notify: true }],
+				total: 1,
+			});
+			vi.stubGlobal("confirm", () => false);
+			const wrapper = await mountPage();
+			const section = wrapper.findAll("section").find((s) => s.text().includes("关注的分类"));
+			if (!section) throw new Error("categories section not found");
+			const unfollowBtn = section.findAll("button").find((b) => b.text() === "取消关注");
+			await unfollowBtn?.trigger("click");
+			await flushPromises();
+			expect(mockUnfollowReaderCategory).not.toHaveBeenCalled();
+			vi.unstubAllGlobals();
+		});
+
+		it("shows an error line when a category notify toggle fails", async () => {
+			isAuthenticated.value = true;
+			mockFetchPushSubscriptions.mockResolvedValue({ items: [], total: 0 });
+			mockFetchReaderCategoryFollows.mockResolvedValue({
+				items: [{ id: 4, name: "AI", notify: true }],
+				total: 1,
+			});
+			mockSetCategoryFollowNotify.mockRejectedValue(new Error("boom"));
+			const wrapper = await mountPage();
+			const section = wrapper.findAll("section").find((s) => s.text().includes("关注的分类"));
+			if (!section) throw new Error("categories section not found");
+			const notifyBtn = section.findAll("button").find((b) => b.text() === "通知已开");
+			await notifyBtn?.trigger("click");
+			await flushPromises();
+			expect(section.text()).toContain("操作失败，请稍后再试");
+		});
+
+		it("unfollows a followed tag after confirmation and reloads the section", async () => {
+			isAuthenticated.value = true;
+			mockFetchPushSubscriptions.mockResolvedValue({ items: [], total: 0 });
+			mockFetchReaderTagFollows
+				.mockResolvedValueOnce({ items: [{ id: 3, name: "Rust", notify: true }], total: 1 })
+				.mockResolvedValueOnce({ items: [], total: 0 });
+			mockUnfollowReaderTag.mockResolvedValue(null);
+			vi.stubGlobal("confirm", () => true);
+			const wrapper = await mountPage();
+			const section = wrapper.findAll("section").find((s) => s.text().includes("关注的标签"));
+			if (!section) throw new Error("tags section not found");
+			const unfollowBtn = section.findAll("button").find((b) => b.text() === "取消关注");
+			await unfollowBtn?.trigger("click");
+			await flushPromises();
+			expect(mockUnfollowReaderTag).toHaveBeenCalledWith(3);
+			expect(section.text()).toContain("还没有关注任何标签");
+			vi.unstubAllGlobals();
+		});
+
+		it("does not unfollow a tag when the confirmation is cancelled", async () => {
+			isAuthenticated.value = true;
+			mockFetchPushSubscriptions.mockResolvedValue({ items: [], total: 0 });
+			mockFetchReaderTagFollows.mockResolvedValue({
+				items: [{ id: 3, name: "Rust", notify: true }],
+				total: 1,
+			});
+			vi.stubGlobal("confirm", () => false);
+			const wrapper = await mountPage();
+			const section = wrapper.findAll("section").find((s) => s.text().includes("关注的标签"));
+			if (!section) throw new Error("tags section not found");
+			const unfollowBtn = section.findAll("button").find((b) => b.text() === "取消关注");
+			await unfollowBtn?.trigger("click");
+			await flushPromises();
+			expect(mockUnfollowReaderTag).not.toHaveBeenCalled();
+			vi.unstubAllGlobals();
+		});
+
+		it("shows an error line when a tag notify toggle fails", async () => {
+			isAuthenticated.value = true;
+			mockFetchPushSubscriptions.mockResolvedValue({ items: [], total: 0 });
+			mockFetchReaderTagFollows.mockResolvedValue({
+				items: [{ id: 3, name: "Rust", notify: true }],
+				total: 1,
+			});
+			mockSetTagFollowNotify.mockRejectedValue(new Error("boom"));
+			const wrapper = await mountPage();
+			const section = wrapper.findAll("section").find((s) => s.text().includes("关注的标签"));
+			if (!section) throw new Error("tags section not found");
+			const notifyBtn = section.findAll("button").find((b) => b.text() === "通知已开");
+			await notifyBtn?.trigger("click");
+			await flushPromises();
+			expect(section.text()).toContain("操作失败，请稍后再试");
+		});
+	});
+
+	describe("delete account guards + generic failure", () => {
+		it("does not delete the account when the confirmation is cancelled", async () => {
+			isAuthenticated.value = true;
+			mockFetchPushSubscriptions.mockResolvedValue({ items: [], total: 0 });
+			vi.stubGlobal("confirm", () => false);
+			const wrapper = await mountPage();
+			const section = wrapper.findAll("section").find((s) => s.text().includes("删除账号"));
+			if (!section) throw new Error("delete section not found");
+			await section.findAll("input[type='password']")[0].setValue("readerpass123");
+			await section.find("form").trigger("submit");
+			await flushPromises();
+			expect(mockDeleteReaderAccount).not.toHaveBeenCalled();
+			vi.unstubAllGlobals();
+		});
+
+		it("does not call the delete API when the password is empty", async () => {
+			isAuthenticated.value = true;
+			mockFetchPushSubscriptions.mockResolvedValue({ items: [], total: 0 });
+			vi.stubGlobal("confirm", () => true);
+			const wrapper = await mountPage();
+			const section = wrapper.findAll("section").find((s) => s.text().includes("删除账号"));
+			if (!section) throw new Error("delete section not found");
+			// Enter on the empty form still reaches deleteAccount — the empty-
+			// password guard must keep it from calling the API.
+			await section.find("form").trigger("submit");
+			await flushPromises();
+			expect(mockDeleteReaderAccount).not.toHaveBeenCalled();
+			vi.unstubAllGlobals();
+		});
+
+		it("shows a generic failure message when deletion fails with a non-401 error", async () => {
+			isAuthenticated.value = true;
+			mockFetchPushSubscriptions.mockResolvedValue({ items: [], total: 0 });
+			mockDeleteReaderAccount.mockRejectedValue(new Error("boom"));
+			vi.stubGlobal("confirm", () => true);
+			const wrapper = await mountPage();
+			const section = wrapper.findAll("section").find((s) => s.text().includes("删除账号"));
+			if (!section) throw new Error("delete section not found");
+			await section.findAll("input[type='password']")[0].setValue("readerpass123");
+			await section.find("form").trigger("submit");
+			await flushPromises();
+			expect(wrapper.text()).toContain("删除账号失败，请重试。");
+			vi.unstubAllGlobals();
+		});
+	});
+
+	describe("data export with an empty payload", () => {
+		beforeEach(() => {
+			vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => {});
+		});
+		afterEach(() => {
+			vi.restoreAllMocks();
+			vi.unstubAllGlobals();
+		});
+
+		it("surfaces a failure when the export returns no data", async () => {
+			isAuthenticated.value = true;
+			mockFetchPushSubscriptions.mockResolvedValue({ items: [], total: 0 });
+			mockFetchReaderDataExport.mockResolvedValue(null as unknown as never);
+			vi.stubGlobal("URL", { ...URL, createObjectURL: vi.fn(), revokeObjectURL: vi.fn() });
+			vi.stubGlobal("confirm", () => true);
+
+			const wrapper = await mountPage();
+			const btn = wrapper.findAll("button").find((b) => b.text().includes("下载我的数据"));
+			await btn?.trigger("click");
+			await flushPromises();
+
+			expect(mockFetchReaderDataExport).toHaveBeenCalled();
+			expect(wrapper.text()).toContain("导出失败，请重试。");
+		});
+	});
 });

@@ -75,4 +75,31 @@ describe("useTheme", () => {
 		expect(localStorage.getItem("theme")).toBe("light");
 		expect(document.documentElement.classList.contains("dark")).toBe(false);
 	});
+
+	it("still initializes and toggles when localStorage is unavailable", async () => {
+		// storage() returns null when localStorage is missing; initTheme must
+		// fall back to the system preference and the toggle must apply the class
+		// without a persistence write (private-mode-safe).
+		const originalLS = window.localStorage;
+		Object.defineProperty(window, "localStorage", { value: undefined, configurable: true });
+		try {
+			matchMediaMock.mockReturnValue({
+				matches: true,
+				media: "",
+				onchange: null,
+				addEventListener: vi.fn(),
+			});
+			window.matchMedia = matchMediaMock as unknown as typeof window.matchMedia;
+
+			const { isDark, initTheme, toggleTheme } = useTheme();
+			initTheme();
+			expect(isDark.value).toBe(true); // from the system preference
+			toggleTheme();
+			await nextTick();
+			expect(isDark.value).toBe(false);
+			expect(document.documentElement.classList.contains("dark")).toBe(false);
+		} finally {
+			Object.defineProperty(window, "localStorage", { value: originalLS, configurable: true });
+		}
+	});
 });

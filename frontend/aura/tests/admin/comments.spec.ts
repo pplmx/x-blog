@@ -818,4 +818,191 @@ describe("Admin Comments Page", () => {
 			expect((wrapper.find("textarea").element as HTMLTextAreaElement).value).toBe("a draft");
 		});
 	});
+
+	describe("Branch-gap coverage", () => {
+		beforeEach(() => {
+			mockFetchAdminComments.mockResolvedValue(mockCommentList);
+		});
+
+		it("probes /me without an Authorization header when no token is stored", async () => {
+			const originalFetch = globalThis.$fetch;
+			localStorage.removeItem("admin_token");
+			globalThis.$fetch = vi.fn(async () => ({ role: "superuser" }));
+			try {
+				const CommentsPage = await loadPage();
+				const wrapper = await mountWithSuspense(CommentsPage);
+				await flushPromises();
+				const headers = (
+					vi.mocked(globalThis.$fetch).mock.calls[0]?.[1] as
+						| { headers?: Record<string, string> }
+						| undefined
+				)?.headers;
+				expect(headers?.Authorization).toBeUndefined();
+			} finally {
+				globalThis.$fetch = originalFetch;
+			}
+		});
+
+		it("hides the batch controls for an editor role and stamps auth headers on /me", async () => {
+			const originalFetch = globalThis.$fetch;
+			localStorage.setItem("admin_token", "tok");
+			globalThis.$fetch = vi.fn(
+				async (_url: unknown, opts: { headers?: Record<string, string> } = {}) => {
+					// The /me probe carries the stored admin token.
+					expect(opts?.headers?.Authorization).toBe("Bearer tok");
+					return { role: "editor" };
+				},
+			);
+			try {
+				const CommentsPage = await loadPage();
+				const wrapper = await mountWithSuspense(CommentsPage);
+				await flushPromises();
+
+				// Editor role downgrades batch UI: no row/select-all checkboxes and
+				// no batch action buttons (they would 403 on the backend anyway).
+				expect(wrapper.findAll('input[type="checkbox"]')).toHaveLength(0);
+				expect(wrapper.findAll("button").some((b) => b.text().includes("批量通过"))).toBe(false);
+				expect(wrapper.text()).not.toContain("全选");
+			} finally {
+				globalThis.$fetch = originalFetch;
+				localStorage.removeItem("admin_token");
+			}
+		});
+
+		it("filters by flagged and by approved status with the right query", async () => {
+			const CommentsPage = await loadPage();
+			const wrapper = await mountWithSuspense(CommentsPage);
+
+			// 被举报 tab → q keeps flagged, isApproved goes undefined.
+			await wrapper
+				.findAll("button")
+				.find((b) => b.text().includes("被举报"))
+				?.trigger("click");
+			await flushPromises();
+			expect(mockFetchAdminComments).toHaveBeenLastCalledWith(
+				{
+					isApproved: undefined,
+					flagged: true,
+					q: undefined,
+					dateFrom: undefined,
+					dateTo: undefined,
+				},
+				1,
+				20,
+			);
+
+			// 已审核 tab → isApproved true.
+			await wrapper
+				.findAll("button")
+				.find((b) => b.text() === "已审核")
+				?.trigger("click");
+			await flushPromises();
+			expect(mockFetchAdminComments).toHaveBeenLastCalledWith(
+				{
+					isApproved: true,
+					flagged: undefined,
+					q: undefined,
+					dateFrom: undefined,
+					dateTo: undefined,
+				},
+				1,
+				20,
+			);
+		});
+
+		it("deselects a comment and clears the whole selection via the select-all toggle", async () => {
+			const CommentsPage = await loadPage();
+			const wrapper = await mountWithSuspense(CommentsPage);
+
+			const bobBox = wrapper.find('input[aria-label="选择 Bob 的评论"]');
+			await bobBox.setChecked();
+			expect(wrapper.findAll("button").some((b) => b.text().includes("批量通过 (1)"))).toBe(true);
+
+			// Unchecking removes it again.
+			await bobBox.setChecked(false);
+			expect(wrapper.findAll("button").some((b) => b.text().includes("批量通过"))).toBe(false);
+
+			// Select all, then select all again → clears.
+			const selectAll = wrapper.findAll('input[type="checkbox"]')[0];
+			await selectAll.setChecked();
+			expect(wrapper.findAll("button").some((b) => b.text().includes("批量通过 (2)"))).toBe(true);
+			await selectAll.setChecked(false);
+			expect(wrapper.findAll("button").some((b) => b.text().includes("批量通过"))).toBe(false);
+		});
+
+		it("does not batch-delete when the confirmation is cancelled", async () => {
+			window.confirm = vi.fn(() => false);
+			mockBatchDeleteAdminComments.mockResolvedValue({ deleted: 1 });
+			const CommentsPage = await loadPage();
+			const wrapper = await mountWithSuspense(CommentsPage);
+
+			const selectAll = wrapper.findAll('input[type="checkbox"]')[0];
+			await selectAll.setChecked();
+			await flushPromises();
+			const batchDeleteBtn = wrapper
+				.findAll("button")
+				.find((b) => b.text().trim().includes("删除所选"));
+			await batchDeleteBtn?.trigger("click");
+			await flushPromises();
+
+			expect(window.confirm).toHaveBeenCalled();
+			expect(mockBatchDeleteAdminComments).not.toHaveBeenCalled();
+		});
+
+		it("dismisses reader flags on a flagged comment (DEC-108)", async () => {
+			mockFetchAdminComments.mockResolvedValue({
+				items: [{ ...mockComments[0], flag_count: 2 }],
+				pagination: { total: 1, page: 1, limit: 20, total_pages: 1 },
+			});
+			mockDismissAdminCommentFlags.mockResolvedValue({});
+			const CommentsPage = await loadPage();
+			const wrapper = await mountWithSuspense(CommentsPage);
+
+			expect(wrapper.text()).toContain("2 条举报");
+			const dismissBtn = wrapper.findAll("button").find((b) => b.text().trim() === "处理举报");
+			expect(dismissBtn).toBeDefined();
+			await dismissBtn?.trigger("click");
+			await flushPromises();
+			expect(mockDismissAdminCommentFlags).toHaveBeenCalledWith(1);
+		});
+
+		it("renders the author-reply badge for a moderator-authored comment", async () => {
+			mockFetchAdminComments.mockResolvedValue({
+				items: [{ ...mockComments[0], is_author_reply: true }],
+				pagination: { total: 1, page: 1, limit: 20, total_pages: 1 },
+			});
+			const CommentsPage = await loadPage();
+			const wrapper = await mountWithSuspense(CommentsPage);
+			expect(wrapper.text()).toContain("作者回复");
+		});
+
+		it("surfaces an action failure carried as an object message", async () => {
+			mockApproveAdminComment.mockRejectedValue({ message: "custom boom" });
+			const CommentsPage = await loadPage();
+			const wrapper = await mountWithSuspense(CommentsPage);
+
+			await wrapper
+				.findAll("button")
+				.find((b) => b.text().trim() === "通过")
+				?.trigger("click");
+			await flushPromises();
+
+			expect(wrapper.find('[role="alert"]').exists()).toBe(true);
+			expect(wrapper.text()).toContain("custom boom");
+		});
+
+		it("closes an open reply box when its toggle is clicked again", async () => {
+			const CommentsPage = await loadPage();
+			const wrapper = await mountWithSuspense(CommentsPage);
+
+			const replyBtn = wrapper.findAll("button").find((b) => b.text().trim() === "回复");
+			await replyBtn?.trigger("click");
+			expect(wrapper.find("textarea").exists()).toBe(true);
+
+			const openToggle = wrapper.find('button[aria-expanded="true"]');
+			await openToggle.trigger("click");
+			await flushPromises();
+			expect(wrapper.find("textarea").exists()).toBe(false);
+		});
+	});
 });

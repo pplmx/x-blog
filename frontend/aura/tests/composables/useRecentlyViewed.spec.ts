@@ -7,8 +7,11 @@
  * browseable trail while the home row still slices to a small subset.
  */
 
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { useRecentlyViewed } from "../../composables/useRecentlyViewed";
+
+/** 31 days in ms — used to build entries older than the prune window. */
+const MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000;
 
 describe("useRecentlyViewed", () => {
 	beforeEach(() => {
@@ -65,5 +68,75 @@ describe("useRecentlyViewed", () => {
 		expect(recent.value.length).toBe(1);
 		clear();
 		expect(recent.value.length).toBe(0);
+	});
+
+	it("ignores records without a slug or title", () => {
+		const { record, recent } = useRecentlyViewed();
+		record({ slug: "", title: "Empty slug" });
+		record({ slug: "ok", title: "" });
+		record({ slug: "", title: "" });
+		record({ slug: "good", title: "Good" });
+		expect(recent.value.map((x) => x.slug)).toEqual(["good"]);
+	});
+
+	// The module-scoped `recent` mirror is read from localStorage exactly once at
+	// module load, so reading a SEEDED trail requires a fresh module import.
+	describe("persisted-trail reads (fresh module per case)", () => {
+		it("treats a corrupt or non-array persisted trail as empty", async () => {
+			vi.resetModules();
+			localStorage.clear();
+			localStorage.setItem("recently-viewed", "not json");
+			let mod = await import("../../composables/useRecentlyViewed");
+			expect(mod.useRecentlyViewed().recent.value).toEqual([]);
+
+			vi.resetModules();
+			localStorage.setItem("recently-viewed", JSON.stringify({ slug: "not-an-array" }));
+			mod = await import("../../composables/useRecentlyViewed");
+			expect(mod.useRecentlyViewed().recent.value).toEqual([]);
+		});
+
+		it("drops persisted entries that lack a slug or title", async () => {
+			vi.resetModules();
+			localStorage.clear();
+			localStorage.setItem(
+				"recently-viewed",
+				JSON.stringify([
+					{ slug: "ok", title: "T" },
+					{ title: "no slug" },
+					{ slug: "no title" },
+					null,
+				]),
+			);
+			const { useRecentlyViewed } = await import("../../composables/useRecentlyViewed");
+			expect(useRecentlyViewed().recent.value.map((x) => x.slug)).toEqual(["ok"]);
+		});
+
+		it("prunes stale timestamps while keeping legacy entries that predate them", async () => {
+			vi.resetModules();
+			localStorage.clear();
+			const stale = { slug: "old", title: "Old", viewedAt: Date.now() - (MAX_AGE_MS + 1000) };
+			const legacy = { slug: "legacy", title: "Legacy" }; // no timestamp field
+			const fresh = { slug: "fresh", title: "Fresh", viewedAt: Date.now() };
+			localStorage.setItem("recently-viewed", JSON.stringify([stale, legacy, fresh]));
+
+			const { useRecentlyViewed } = await import("../../composables/useRecentlyViewed");
+			const { recent } = useRecentlyViewed();
+			expect(recent.value.map((x) => x.slug)).toEqual(["legacy", "fresh"]);
+		});
+	});
+
+	it("still records in memory when localStorage is unavailable", () => {
+		const originalLS = window.localStorage;
+		Object.defineProperty(window, "localStorage", { value: undefined, configurable: true });
+		try {
+			useRecentlyViewed().clear();
+			const { record, recent } = useRecentlyViewed();
+			record({ slug: "a", title: "A" });
+			// read()/write() are inert without storage, but the in-memory mirror
+			// still updates this visit (no crash).
+			expect(recent.value[0]?.slug).toBe("a");
+		} finally {
+			Object.defineProperty(window, "localStorage", { value: originalLS, configurable: true });
+		}
 	});
 });

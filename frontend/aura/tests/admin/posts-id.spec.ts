@@ -1326,6 +1326,28 @@ describe("Admin Post Editor Page", () => {
 			// The stubbed confirm returns true → the operator chose to leave anyway.
 			expect(decided).toBe(true);
 		});
+
+		it("skips the leave guard after Cancel explicitly requested a discard", async () => {
+			// Cancel abandons in-memory edits by design: once discardRequested is
+			// set the route-leave guard must NOT flush or prompt, even when the
+			// form is dirty — a mis-clicked save must never silently persist.
+			const wrapper = await freshGuard();
+			vi.stubGlobal("navigateTo", vi.fn());
+			vi.stubGlobal(
+				"confirm",
+				vi.fn(() => false),
+			);
+			await wrapper.find('input[type="text"]').setValue("Changed Title");
+			await flushPromises();
+
+			const cancelBtn = wrapper.findAll("button").find((b) => b.text().includes("取消"));
+			await cancelBtn?.trigger("click");
+			await flushPromises();
+
+			const decided = await (capturedRouteLeave as () => boolean | Promise<boolean>)();
+			expect(globalThis.confirm as ReturnType<typeof vi.fn>).not.toHaveBeenCalled();
+			expect(decided).toBe(true);
+		});
 	});
 
 	describe("Draft auto-save (TASK-190)", () => {
@@ -1566,6 +1588,426 @@ describe("Admin Post Editor Page", () => {
 			expect(mockRestorePostRevision).toHaveBeenCalledWith(1, 2); // newest revision id
 			expect(refreshFn).toHaveBeenCalled();
 			expect(wrapper.find('[data-testid="revision-message"]').text()).toContain("已恢复所选版本");
+		});
+	});
+
+	describe("Branch-gap coverage (editor)", () => {
+		beforeEach(() => {
+			vi.stubGlobal("navigateTo", vi.fn());
+		});
+
+		it("does not auto-create a draft while the title is empty", async () => {
+			// runAutosave early-returns on a title-less new form — an empty new
+			// post has nothing worth persisting (L373 `if (!payload.title) return`).
+			vi.useFakeTimers();
+			let wrapper: VueWrapper | null = null;
+			try {
+				setupRoute("new");
+				setupMocks();
+				mockCreateAdminPost.mockClear();
+				mockUpdateAdminPost.mockClear();
+				const PostEditor = await loadPage();
+				wrapper = await mountWithSuspense(PostEditor);
+				const contentTextarea = wrapper.find('textarea[rows="15"]');
+				await contentTextarea.setValue("# only content, no title");
+				await vi.advanceTimersByTimeAsync(1000);
+				await flushPromises();
+
+				expect(mockCreateAdminPost).not.toHaveBeenCalled();
+				expect(mockUpdateAdminPost).not.toHaveBeenCalled();
+			} finally {
+				wrapper?.unmount();
+				vi.useRealTimers();
+			}
+		});
+
+		it("flushes and warns via beforeunload when the form is dirty", async () => {
+			vi.useFakeTimers();
+			let wrapper: VueWrapper | null = null;
+			try {
+				setupRoute("new");
+				setupMocks();
+				mockCreateAdminPost.mockClear();
+				mockUpdateAdminPost.mockClear();
+				const PostEditor = await loadPage();
+				wrapper = await mountWithSuspense(PostEditor);
+				await wrapper.find('input[type="text"]').setValue("Dirty Title");
+				await flushPromises();
+
+				const event = new Event("beforeunload", { cancelable: true });
+				window.dispatchEvent(event);
+				await vi.advanceTimersByTimeAsync(1000);
+				await flushPromises();
+
+				expect((event as Event & { defaultPrevented?: boolean }).defaultPrevented).toBe(true);
+				expect(mockCreateAdminPost).toHaveBeenCalled();
+			} finally {
+				wrapper?.unmount();
+				vi.useRealTimers();
+			}
+		});
+
+		it("round-trips a naive-UTC publish_at into the local datetime input on load", async () => {
+			setupRoute("1");
+			setupMocks();
+			mockFetchAdminPost.mockReturnValue({
+				data: ref({ ...mockExistingPost, publish_at: "2024-05-05T10:00:00" }),
+				pending: ref(false),
+				error: ref(null),
+				refresh: vi.fn(),
+			});
+			const PostEditor = await loadPage();
+			const wrapper = await mountWithSuspense(PostEditor);
+			await flushPromises();
+			expect((wrapper.find("#publish_at").element as HTMLInputElement).value).not.toBe("");
+		});
+
+		it("tolerates an invalid publish_at on an existing post", async () => {
+			setupRoute("1");
+			setupMocks();
+			mockFetchAdminPost.mockReturnValue({
+				data: ref({ ...mockExistingPost, publish_at: "garbage-date" }),
+				pending: ref(false),
+				error: ref(null),
+				refresh: vi.fn(),
+			});
+			const PostEditor = await loadPage();
+			const wrapper = await mountWithSuspense(PostEditor);
+			await flushPromises();
+			expect((wrapper.find("#publish_at").element as HTMLInputElement).value).toBe("");
+		});
+
+		it("fills safe defaults when an existing post omits optional fields", async () => {
+			setupRoute("5");
+			setupMocks();
+			mockFetchAdminPost.mockReturnValue({
+				data: ref({
+					id: 5,
+					title: null,
+					slug: null,
+					content: null,
+					excerpt: null,
+					published: false,
+					pinned: false,
+					publish_at: null,
+					category_id: null,
+					tag_ids: null,
+					cover_image: null,
+					series_id: null,
+					series_order: null,
+				}),
+				pending: ref(false),
+				error: ref(null),
+				refresh: vi.fn(),
+			});
+			const PostEditor = await loadPage();
+			const wrapper = await mountWithSuspense(PostEditor);
+			await flushPromises();
+
+			expect((wrapper.find('input[type="text"]').element as HTMLInputElement).value).toBe("");
+			expect((wrapper.find('input[type="number"]').element as HTMLInputElement).value).toBe("0");
+			const tagCbx = wrapper.find('input[type="checkbox"]');
+			expect((tagCbx.element as HTMLInputElement).checked).toBe(false);
+		});
+
+		it("refuses to notify a published post that has no slug yet", async () => {
+			setupRoute("1");
+			setupMocks();
+			mockNotifyPushSubscribers.mockClear();
+			const PostEditor = await loadPage();
+			const wrapper = await mountWithSuspense(PostEditor);
+			await flushPromises();
+
+			await wrapper.find("#post-slug").setValue("");
+			await flushPromises();
+			const notifyBtn = wrapper.findAll("button").find((b) => b.text().includes("通知订阅者"));
+			await notifyBtn?.trigger("click");
+			await flushPromises();
+
+			expect(mockNotifyPushSubscribers).not.toHaveBeenCalled();
+			expect(wrapper.text()).toContain("请先保存文章以生成 slug");
+		});
+
+		it("uses generic title/body when notifying a published post without them", async () => {
+			setupRoute("new");
+			setupMocks();
+			mockNotifyPushSubscribers.mockClear();
+			mockNotifyPushSubscribers.mockResolvedValue({ total: 1, sent: 1, failed: 0, removed: 0 });
+			const PostEditor = await loadPage();
+			const wrapper = await mountWithSuspense(PostEditor);
+			await flushPromises();
+
+			await wrapper.find("#published").setChecked();
+			await wrapper.find("#post-slug").setValue("abc");
+			await flushPromises();
+
+			const notifyBtn = wrapper.findAll("button").find((b) => b.text().includes("通知订阅者"));
+			await notifyBtn?.trigger("click");
+			await flushPromises();
+
+			const [payload] = mockNotifyPushSubscribers.mock.calls[0] as any[];
+			expect(payload.title).toBe("新文章已发布");
+			expect(payload.body).toBe("");
+			expect(payload.url).toBe("/posts/abc");
+		});
+
+		it("shows an unparseable revision timestamp as-is", async () => {
+			setupRoute("1");
+			setupMocks();
+			mockFetchPostRevisions.mockResolvedValue([
+				{ id: 1, created_at: "not-a-date", title: "existing-post", published: false },
+			]);
+			const PostEditor = await loadPage();
+			const wrapper = await mountWithSuspense(PostEditor);
+			await flushPromises();
+			await wrapper.find('[data-testid="revision-toggle"]').trigger("click");
+			await flushPromises();
+			expect(wrapper.text()).toContain("not-a-date");
+		});
+
+		it("closes the revision panel on a second toggle without refetching", async () => {
+			setupRoute("1");
+			setupMocks();
+			mockFetchPostRevisions.mockClear();
+			mockFetchPostRevisions.mockResolvedValue([
+				{ id: 1, created_at: "2026-01-01T00:00:00Z", title: "existing-post", published: false },
+			]);
+			const PostEditor = await loadPage();
+			const wrapper = await mountWithSuspense(PostEditor);
+			await flushPromises();
+			const toggle = wrapper.find('[data-testid="revision-toggle"]');
+			await toggle.trigger("click");
+			await flushPromises();
+			expect(mockFetchPostRevisions).toHaveBeenCalledTimes(1);
+			await toggle.trigger("click");
+			await flushPromises();
+			expect(wrapper.findAll('[data-testid="revision-row"]')).toHaveLength(0);
+			expect(mockFetchPostRevisions).toHaveBeenCalledTimes(1);
+		});
+
+		it("removes a tag from the selection when its checkbox is unchecked", async () => {
+			setupRoute("1");
+			setupMocks();
+			mockUpdateAdminPost.mockClear();
+			mockUpdateAdminPost.mockResolvedValue({ id: 1 });
+			const PostEditor = await loadPage();
+			const wrapper = await mountWithSuspense(PostEditor);
+			await flushPromises();
+
+			// mockExistingPost ships tag_ids [1] (React) → pre-checked.
+			const tagCbx = wrapper.find('input[type="checkbox"]');
+			expect((tagCbx.element as HTMLInputElement).checked).toBe(true);
+			await tagCbx.setChecked(false);
+			await flushPromises();
+			expect((tagCbx.element as HTMLInputElement).checked).toBe(false);
+
+			await wrapper.find("form").trigger("submit.prevent");
+			await flushPromises();
+			const [id, payload] = mockUpdateAdminPost.mock.calls.at(-1) as any[];
+			expect(id).toBe(1);
+			expect(payload.tag_ids).toEqual([]);
+		});
+
+		it("wraps selected text in an edit link from the toolbar", async () => {
+			setupRoute("new");
+			setupMocks();
+			const PostEditor = await loadPage();
+			const wrapper = await mountWithSuspense(PostEditor);
+			const textarea = wrapper.find('textarea[rows="15"]');
+			await textarea.setValue("hello world");
+			textarea.element.setSelectionRange(0, 5);
+			const linkBtn = wrapper.findAll("button").find((b) => b.attributes("title") === "链接");
+			expect(linkBtn).toBeDefined();
+			await linkBtn?.trigger("click");
+			await flushPromises();
+			expect((textarea.element as HTMLTextAreaElement).value).toBe("[hello](url) world");
+		});
+
+		it("renders the empty version-history message", async () => {
+			setupRoute("1");
+			setupMocks();
+			mockFetchPostRevisions.mockResolvedValue([]);
+			const PostEditor = await loadPage();
+			const wrapper = await mountWithSuspense(PostEditor);
+			await flushPromises();
+			await wrapper.find('[data-testid="revision-toggle"]').trigger("click");
+			await flushPromises();
+			expect(wrapper.text()).toContain("暂无历史版本");
+		});
+
+		it("renders the version-history load error", async () => {
+			setupRoute("1");
+			setupMocks();
+			mockFetchPostRevisions.mockRejectedValue(new Error("revs down"));
+			const PostEditor = await loadPage();
+			const wrapper = await mountWithSuspense(PostEditor);
+			await flushPromises();
+			await wrapper.find('[data-testid="revision-toggle"]').trigger("click");
+			await flushPromises();
+			expect(wrapper.find('[role="alert"]').text()).toContain("加载版本历史失败");
+		});
+
+		it("aborts a revision restore when dirty edits are declined", async () => {
+			setupRoute("1");
+			setupMocks();
+			mockFetchPostRevisions.mockResolvedValue([
+				{ id: 2, created_at: "2026-01-02T00:00:00Z", title: "existing-post", published: false },
+			]);
+			mockRestorePostRevision.mockClear();
+			const originalConfirm = window.confirm;
+			window.confirm = vi.fn(() => false);
+			try {
+				const PostEditor = await loadPage();
+				const wrapper = await mountWithSuspense(PostEditor);
+				await flushPromises();
+				await wrapper.find('input[type="text"]').setValue("Changed title");
+				await flushPromises();
+				await wrapper.find('[data-testid="revision-toggle"]').trigger("click");
+				await flushPromises();
+				const restoreBtn = wrapper.findAll("button").find((b) => b.text().includes("恢复此版本"));
+				await restoreBtn?.trigger("click");
+				await flushPromises();
+				expect(window.confirm).toHaveBeenCalled();
+				expect(mockRestorePostRevision).not.toHaveBeenCalled();
+			} finally {
+				window.confirm = originalConfirm;
+			}
+		});
+
+		it("surfaces the restore failure detail from the backend", async () => {
+			setupRoute("1");
+			setupMocks();
+			mockFetchPostRevisions.mockResolvedValue([
+				{ id: 2, created_at: "2026-01-02T00:00:00Z", title: "existing-post", published: false },
+			]);
+			mockRestorePostRevision.mockRejectedValue({ data: { detail: "Restore blocked" } });
+			const PostEditor = await loadPage();
+			const wrapper = await mountWithSuspense(PostEditor);
+			await flushPromises();
+			await wrapper.find('[data-testid="revision-toggle"]').trigger("click");
+			await flushPromises();
+			const restoreBtn = wrapper.findAll("button").find((b) => b.text().includes("恢复此版本"));
+			await restoreBtn?.trigger("click");
+			await flushPromises();
+			expect(wrapper.find('[data-testid="revision-message"]').text()).toContain("Restore blocked");
+			expect(wrapper.find('[data-testid="revision-message"]').attributes("role")).toBe("alert");
+		});
+
+		it("shows the no-matching-tags hint while searching the tag picker", async () => {
+			setupRoute("new");
+			setupMocks();
+			const PostEditor = await loadPage();
+			const wrapper = await mountWithSuspense(PostEditor);
+			const search = wrapper.find('input[aria-label="搜索标签…"]');
+			expect(search.exists()).toBe(true);
+			await search.setValue("zzz-none");
+			await flushPromises();
+			expect(wrapper.text()).toContain("没有匹配的标签");
+		});
+
+		it("renders the no-tags placeholder when the tag list is empty", async () => {
+			setupRoute("new");
+			setupMocks();
+			mockFetchAdminTags.mockReturnValue({
+				data: ref([]),
+				pending: ref(false),
+				error: ref(null),
+				refresh: vi.fn(),
+			});
+			const PostEditor = await loadPage();
+			const wrapper = await mountWithSuspense(PostEditor);
+			expect(wrapper.text()).toContain("暂无标签");
+		});
+
+		it("auto-generates a slug from the title via the auto-Slug button", async () => {
+			setupRoute("new");
+			setupMocks();
+			const PostEditor = await loadPage();
+			const wrapper = await mountWithSuspense(PostEditor);
+			await wrapper.find('input[type="text"]').setValue("My Cool Post");
+			const slugBtn = wrapper.findAll("button").find((b) => b.text().includes("自动生成 Slug"));
+			expect(slugBtn).toBeDefined();
+			await slugBtn?.trigger("click");
+			await flushPromises();
+			const slugInput = wrapper.findAll('input[type="text"]')[1];
+			expect((slugInput.element as HTMLInputElement).value).toBe("my-cool-post");
+		});
+
+		it("falls back to the generic load error when the fetch error has no message", async () => {
+			setupRoute("1");
+			setupMocks();
+			mockFetchAdminPost.mockReturnValue({
+				data: ref(null),
+				pending: ref(false),
+				error: ref({}),
+				refresh: vi.fn(),
+			});
+			const PostEditor = await loadPage();
+			const wrapper = await mountWithSuspense(PostEditor);
+			expect(wrapper.text()).toContain("加载文章失败");
+		});
+
+		it("surfaces a taxonomy load failure with a working retry", async () => {
+			setupRoute("new");
+			setupMocks();
+			const refreshCats = vi.fn();
+			mockFetchAdminCategories.mockReturnValue({
+				data: ref(null),
+				pending: ref(false),
+				error: ref(new Error("cats down")),
+				refresh: refreshCats,
+			});
+			const PostEditor = await loadPage();
+			const wrapper = await mountWithSuspense(PostEditor);
+			expect(wrapper.text()).toContain("分类/标签/系列加载失败");
+			await wrapper.find('[role="alert"] button').trigger("click");
+			expect(refreshCats).toHaveBeenCalled();
+		});
+
+		it("falls back to the generic autosave error message", async () => {
+			vi.useFakeTimers();
+			let wrapper: VueWrapper | null = null;
+			try {
+				setupRoute("new");
+				setupMocks();
+				mockCreateAdminPost.mockClear();
+				mockCreateAdminPost.mockRejectedValue(new Error("net down"));
+				const PostEditor = await loadPage();
+				wrapper = await mountWithSuspense(PostEditor);
+				await wrapper.find('input[type="text"]').setValue("A Draft");
+				await vi.advanceTimersByTimeAsync(1000);
+				await flushPromises();
+				expect(wrapper.find('[data-testid="autosave-status"]').text()).toContain(
+					"自动保存失败，请重试",
+				);
+			} finally {
+				wrapper?.unmount();
+				vi.useRealTimers();
+			}
+		});
+
+		it("shows the scheduled badge for a published post with a future publish time", async () => {
+			setupRoute("new");
+			setupMocks();
+			const PostEditor = await loadPage();
+			const wrapper = await mountWithSuspense(PostEditor);
+			await wrapper.find("#published").setChecked();
+			await wrapper.find("#publish_at").setValue("2030-01-05T10:00");
+			await flushPromises();
+			// The badge is its own span with the exact label (the schedule label
+			// row reads "定时发布 (可选)", so match the badge text exactly).
+			expect(wrapper.findAll("span").some((s) => s.text().trim() === "定时发布")).toBe(true);
+		});
+
+		it("toggles the pinned label when the pinned checkbox is checked", async () => {
+			setupRoute("new");
+			setupMocks();
+			const PostEditor = await loadPage();
+			const wrapper = await mountWithSuspense(PostEditor);
+			expect(wrapper.text()).toContain("📌 置顶文章");
+			await wrapper.find("#pinned").setChecked();
+			await flushPromises();
+			expect(wrapper.text()).toContain("已置顶");
 		});
 	});
 });

@@ -52,4 +52,23 @@ describe("useRateLimitNotice", () => {
 		vi.advanceTimersByTime(2000);
 		expect(notifier.active.value).toBe(false);
 	});
+
+	it("dismiss with nothing showing is a no-op (no pending timer)", async () => {
+		const notifier = (await import("../../composables/useRateLimitNotice")).useRateLimitNotice();
+		notifier.dismiss();
+		expect(notifier.active.value).toBe(false);
+		vi.advanceTimersByTime(6000);
+		expect(notifier.active.value).toBe(false);
+	});
+
+	it("after the window auto-dismisses, the timer slot is not reused twice", async () => {
+		// The timer callback flips active off; a later dismiss must not re-arm or
+		// throw even though the (already-fired) timer handle is still stored.
+		const notifier = (await import("../../composables/useRateLimitNotice")).useRateLimitNotice();
+		notifier.show();
+		vi.advanceTimersByTime(6000); // auto-dismiss fires
+		expect(notifier.active.value).toBe(false);
+		notifier.dismiss(); // clears the fired handle
+		expect(notifier.active.value).toBe(false);
+	});
 });

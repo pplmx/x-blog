@@ -100,6 +100,36 @@ describe("handleGlobalSearchShortcut", () => {
 		expect(focusSpy).not.toHaveBeenCalled();
 	});
 
+	it("never steals '/' typed inside a textarea, select, or contenteditable", () => {
+		const search = appendSearchInput(true);
+		const focusSpy = vi.spyOn(search, "focus");
+		for (const el of [
+			document.createElement("textarea"),
+			document.createElement("select"),
+			document.createElement("div"),
+		]) {
+			document.body.appendChild(el);
+			if (el.tagName === "DIV") (el as HTMLDivElement).contentEditable = "true";
+			const event = fireKey("/");
+			Object.defineProperty(event, "target", { value: el });
+			expect(handleGlobalSearchShortcut(event)).toBe(false);
+			expect(event.defaultPrevented).toBe(false);
+		}
+		expect(focusSpy).not.toHaveBeenCalled();
+		document.body.innerHTML = "";
+	});
+
+	it("treats a non-HTMLElement target (e.g. window) as not editable", () => {
+		// isEditableTarget returns false for non-element targets, so '/' on the
+		// document/window still reaches the header search.
+		const input = appendSearchInput(true);
+		const focusSpy = vi.spyOn(input, "focus");
+		const event = fireKey("/");
+		Object.defineProperty(event, "target", { value: window });
+		expect(handleGlobalSearchShortcut(event)).toBe(true);
+		expect(focusSpy).toHaveBeenCalledTimes(1);
+	});
+
 	it("does nothing when no search input is mounted", () => {
 		document.body.innerHTML = "";
 		const event = fireKey("/");

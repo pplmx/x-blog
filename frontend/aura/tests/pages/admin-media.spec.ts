@@ -343,4 +343,152 @@ describe("Admin Media page", () => {
 		await new Promise((r) => setTimeout(r, 400));
 		expect(wrapper.text()).toContain("没有匹配的图片");
 	});
+
+	describe("Branch-gap coverage", () => {
+		it("deselects an image when its select button is clicked again", async () => {
+			listMock.mockReturnValue(fakeListing([{ ...unreferenced }]));
+			const wrapper = await mountPage();
+
+			const select = wrapper.find('button[aria-label="选择"]');
+			await select.trigger("click");
+			expect(wrapper.text()).toContain("已选 1 张");
+			await select.trigger("click");
+			expect(wrapper.text()).not.toContain("已选 1 张");
+			expect(wrapper.findAll("button").find((b) => b.text().trim() === "删除选中")).toBeUndefined();
+		});
+
+		it("does not delete an image when the confirmation is cancelled", async () => {
+			listMock.mockReturnValue(fakeListing([{ ...unreferenced }]));
+			deleteMock.mockResolvedValue({});
+			const originalConfirm = window.confirm;
+			window.confirm = vi.fn(() => false);
+			try {
+				const wrapper = await mountPage();
+				const deleteBtn = wrapper.findAll("button").find((b) => b.text().trim() === "删除");
+				await deleteBtn?.trigger("click");
+				await flushPromises();
+				expect(window.confirm).toHaveBeenCalledWith("确认删除这张图片？");
+				expect(deleteMock).not.toHaveBeenCalled();
+			} finally {
+				window.confirm = originalConfirm;
+			}
+		});
+
+		it("surfaces a single-delete failure as an inline alert", async () => {
+			listMock.mockReturnValue(fakeListing([{ ...unreferenced }]));
+			deleteMock.mockRejectedValue(new Error("disk full"));
+			const originalConfirm = window.confirm;
+			window.confirm = vi.fn(() => true);
+			try {
+				const wrapper = await mountPage();
+				const deleteBtn = wrapper.findAll("button").find((b) => b.text().trim() === "删除");
+				await deleteBtn?.trigger("click");
+				await flushPromises();
+				expect(wrapper.find('[role="alert"]').exists()).toBe(true);
+				expect(wrapper.text()).toContain("disk full");
+			} finally {
+				window.confirm = originalConfirm;
+			}
+		});
+
+		it("surfaces a batch-delete failure as an inline alert", async () => {
+			listMock.mockReturnValue(
+				fakeListing([
+					{ ...unreferenced },
+					{
+						...unreferenced,
+						url: "/static/uploads/2026/07/11111111-2222-4444-8888-000000000003.png",
+					},
+				]),
+			);
+			batchDeleteMock.mockRejectedValue(new Error("batch boom"));
+			const originalConfirm = window.confirm;
+			window.confirm = vi.fn(() => true);
+			try {
+				const wrapper = await mountPage();
+				const selects = wrapper.findAll('button[aria-label="选择"]');
+				await selects[0].trigger("click");
+				const batchBtn = wrapper.findAll("button").find((b) => b.text().trim() === "删除选中");
+				await batchBtn?.trigger("click");
+				await flushPromises();
+				expect(wrapper.text()).toContain("batch boom");
+			} finally {
+				window.confirm = originalConfirm;
+			}
+		});
+
+		it("omits the dimensions suffix when the image has no size metadata", async () => {
+			listMock.mockReturnValue(
+				fakeListing([{ ...unreferenced, width: null, height: null, size: 512 }]),
+			);
+			const wrapper = await mountPage();
+			// formatSize(512) renders; the "W×H · " prefix is dropped.
+			expect(wrapper.text()).toContain("512 B");
+			expect(wrapper.text()).not.toContain("600×300");
+		});
+
+		it("tolerates an unparseable uploaded_at date", async () => {
+			listMock.mockReturnValue(fakeListing([{ ...unreferenced, uploaded_at: "not-a-date" }]));
+			const wrapper = await mountPage();
+			expect(wrapper.text()).toContain(unreferenced.filename);
+			// The date fallback renders an empty label instead of crashing.
+			expect(wrapper.text()).toContain("上传于");
+		});
+
+		it("copies a URL, shows 已复制, then clears after the 1.5s window", async () => {
+			const writeText = vi.fn().mockResolvedValue(undefined);
+			Object.defineProperty(navigator, "clipboard", {
+				value: { writeText },
+				configurable: true,
+			});
+			listMock.mockReturnValue(fakeListing([{ ...unreferenced }]));
+			vi.useFakeTimers();
+			try {
+				const wrapper = await mountPage();
+				const copyBtn = wrapper.findAll("button").find((b) => b.text().trim() === "复制链接");
+				expect(copyBtn).toBeDefined();
+				await copyBtn?.trigger("click");
+				await flushPromises();
+
+				expect(writeText).toHaveBeenCalledWith(unreferenced.url);
+				expect(wrapper.text()).toContain("链接已复制");
+
+				vi.advanceTimersByTime(1500);
+				await flushPromises();
+				expect(wrapper.findAll("button").find((b) => b.text().trim() === "复制链接")).toBeDefined();
+				expect(wrapper.text()).not.toContain("链接已复制");
+			} finally {
+				vi.useRealTimers();
+			}
+		});
+
+		it("renders pager controls and clamps out-of-range page navigation", async () => {
+			listMock.mockReturnValue(
+				mockFetchResult({
+					items: [{ ...unreferenced }],
+					pagination: { total: 120, page: 1, limit: 60, total_pages: 3 },
+				}),
+			);
+			const wrapper = await mountPage();
+			expect(wrapper.text()).toContain("1 / 3");
+
+			const next = wrapper.findAll("button").find((b) => b.text().trim() === "下一页");
+			const prev = wrapper.findAll("button").find((b) => b.text().trim() === "上一页");
+			expect(next).toBeDefined();
+			expect(prev).toBeDefined();
+
+			// page 1 → prev is clamped (goToPage(0) early-returns).
+			await prev?.trigger("click");
+			expect(wrapper.text()).toContain("1 / 3");
+
+			await next?.trigger("click");
+			expect(wrapper.text()).toContain("2 / 3");
+			await next?.trigger("click");
+			expect(wrapper.text()).toContain("3 / 3");
+
+			// At the last page, next stays clamped.
+			await next?.trigger("click");
+			expect(wrapper.text()).toContain("3 / 3");
+		});
+	});
 });

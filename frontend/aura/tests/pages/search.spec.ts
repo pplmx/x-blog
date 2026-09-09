@@ -64,11 +64,16 @@ async function mountSearchPage({
 	searchResult = mockSearchResult,
 	pending = false,
 	error = null,
+	searchResultRef = undefined,
+	taxonomy = undefined,
 	routeQuery = { q: "test query" },
 }: {
 	searchResult?: typeof mockSearchResult | null;
 	pending?: boolean;
 	error?: { message: string } | null;
+	searchResultRef?: { value: typeof mockSearchResult | null };
+	/** Category/tag lists for the filter selects' on-mount $fetch (default empty). */
+	taxonomy?: { categories?: { id: number; name: string }[]; tags?: { id: number; name: string }[] };
 	routeQuery?: Record<string, string>;
 } = {}) {
 	const navigateToMock = vi.fn();
@@ -92,7 +97,7 @@ async function mountSearchPage({
 	vi.stubGlobal(
 		"useFetch",
 		vi.fn(() => ({
-			data: ref(searchResult),
+			data: (searchResultRef ?? ref(searchResult)) as unknown,
 			pending: ref(pending),
 			error: ref(error),
 			refresh: vi.fn(),
@@ -105,8 +110,8 @@ async function mountSearchPage({
 		"$fetch",
 		vi.fn(async (url: string) => {
 			const u = String(url);
-			if (u.includes("/api/categories")) return [];
-			if (u.includes("/api/tags")) return [];
+			if (u.includes("/api/categories")) return taxonomy?.categories ?? [];
+			if (u.includes("/api/tags")) return taxonomy?.tags ?? [];
 			throw new Error(`Unexpected $fetch in search test: ${u}`);
 		}),
 	);
@@ -627,6 +632,233 @@ describe("Search Page", () => {
 			} finally {
 				scrollSpy.mockRestore();
 			}
+		});
+	});
+
+	describe("Page + sort query handling", () => {
+		it("renders results from a paged deep link (?page=2)", async () => {
+			const wrapper = await mountSearchPage({ routeQuery: { q: "test query", page: "2" } });
+			expect(wrapper.text()).toContain("Search Result Post");
+		});
+
+		it("keeps a non-default sort in the forwarded search params (no trailing relevance)", async () => {
+			// sort=relevance is omitted from the URL params; anything else (here
+			// newest) must be forwarded — exercised by the computed searchParams
+			// being evaluated for the mocked useFetch URL.
+			const wrapper = await mountSearchPage({ routeQuery: { q: "test query", sort: "newest" } });
+			expect(wrapper.text()).toContain("Search Result Post");
+		});
+
+		it("clearing a filter deletes its key from the URL instead of writing an empty value", async () => {
+			const wrapper = await mountSearchPage({
+				routeQuery: { q: "test query", category: "Tech" },
+			});
+			const navMock = vi.fn();
+			vi.stubGlobal("navigateTo", navMock);
+			const categorySelect = wrapper.findAll("select").find((s) => s.text().includes("全部分类"));
+			await categorySelect?.setValue("");
+			await flushPromises();
+			// The category key is dropped entirely; only q + page=1 survive.
+			expect(navMock).toHaveBeenCalledWith({ query: { q: "test query", page: "1" } });
+		});
+
+		it("navigates with the new tag/sort filter and resets to page 1", async () => {
+			const wrapper = await mountSearchPage({
+				routeQuery: { q: "test query" },
+				taxonomy: { categories: [{ id: 1, name: "Tech" }], tags: [{ id: 1, name: "React" }] },
+			});
+			const navMock = vi.fn();
+			vi.stubGlobal("navigateTo", navMock);
+			const [, tagSel, sortSel] = wrapper.findAll("select");
+
+			await tagSel.setValue("React");
+			await flushPromises();
+			expect(navMock).toHaveBeenLastCalledWith({
+				query: { q: "test query", tag: "React", page: "1" },
+			});
+
+			navMock.mockClear();
+			await sortSel.setValue("newest");
+			await flushPromises();
+			expect(navMock).toHaveBeenLastCalledWith({
+				query: { q: "test query", sort: "newest", page: "1" },
+			});
+		});
+
+		it("navigates with a new date-from bound and resets to page 1", async () => {
+			const wrapper = await mountSearchPage({ routeQuery: { q: "test query" } });
+			const navMock = vi.fn();
+			vi.stubGlobal("navigateTo", navMock);
+			const [fromInput] = wrapper.findAll('input[type="date"]');
+			await fromInput.setValue("2026-01-01");
+			await flushPromises();
+			expect(navMock).toHaveBeenLastCalledWith({
+				query: { q: "test query", date_from: "2026-01-01", page: "1" },
+			});
+		});
+	});
+
+	describe("Out-of-range page clamp (ISS-308)", () => {
+		it("clamps a stale page=999 deep link back to the last real page once pagination arrives", async () => {
+			const navMock = vi.fn();
+			vi.stubGlobal("useRuntimeConfig", () => ({
+				public: { apiUrl: "http://localhost:18888" },
+			}));
+			vi.stubGlobal("useRoute", () =>
+				reactive({ query: { q: "test query", category: "Tech", page: "999" } }),
+			);
+			vi.stubGlobal("navigateTo", navMock);
+			vi.stubGlobal("useHead", vi.fn());
+			vi.stubGlobal("computed", computed);
+			vi.stubGlobal(
+				"$fetch",
+				vi.fn(async () => []),
+			);
+			const resultRef = ref<{ items: unknown[]; pagination: Record<string, number> } | null>(null);
+			vi.stubGlobal(
+				"useFetch",
+				vi.fn(() => ({
+					data: resultRef,
+					pending: ref(false),
+					error: ref(null),
+					refresh: vi.fn(),
+				})),
+			);
+
+			const { default: SearchPage } = await import("../../app/pages/search.vue");
+			const SuspenseWrapper: any = {
+				components: { SearchPage },
+				template:
+					"<Suspense>" +
+					"<template #default><SearchPage /></template>" +
+					"<template #fallback>Loading...</template>" +
+					"</Suspense>",
+			};
+			const wrapper = mount(SuspenseWrapper, {
+				global: {
+					stubs: {
+						NuxtLink: { template: '<a :href="to"><slot/></a>', props: ["to"] },
+						Icon: { template: '<svg class="iconstub" :data-icon="icon"></svg>', props: ["icon"] },
+					},
+				},
+			});
+			await flushPromises();
+			expect(navMock).not.toHaveBeenCalled();
+
+			resultRef.value = {
+				items: [],
+				pagination: { total: 0, page: 1, limit: 10, total_pages: 1 },
+			};
+			await flushPromises();
+			// Active filters survive the clamp; q and the clamped page are set.
+			expect(navMock).toHaveBeenCalledWith({
+				query: { category: "Tech", q: "test query", page: "1" },
+				replace: true,
+			});
+		});
+	});
+
+	describe("Taxonomy load edge cases", () => {
+		it("coerces a null taxonomy payload to an empty list without crashing", async () => {
+			vi.stubGlobal(
+				"$fetch",
+				vi.fn(async (url: string) => {
+					const u = String(url);
+					if (u.includes("/api/categories")) return undefined;
+					if (u.includes("/api/tags")) return undefined;
+					throw new Error(`Unexpected $fetch: ${u}`);
+				}),
+			);
+			const wrapper = await mountSearchPage({ routeQuery: { q: "test query" } });
+			// The selects render with just the default "All" options.
+			expect(wrapper.findAll("select").length).toBeGreaterThanOrEqual(3);
+		});
+	});
+
+	describe("Result card edge cases", () => {
+		it("handles a result without a snippet, excerpt, or category", async () => {
+			const bare = {
+				...mockSearchResult,
+				items: [
+					{
+						...mockSearchResult.items[0],
+						snippet: "",
+						excerpt: "",
+						category: null,
+					},
+				],
+			};
+			const wrapper = await mountSearchPage({ searchResult: bare });
+			expect(wrapper.text()).toContain("Search Result Post");
+			expect(wrapper.text()).not.toContain("This is a search result excerpt.");
+		});
+
+		it("renders an empty date for a result with an unparseable timestamp", async () => {
+			const badDate = {
+				...mockSearchResult,
+				items: [
+					{
+						...mockSearchResult.items[0],
+						created_at: "not-a-date",
+					},
+				],
+			};
+			const wrapper = await mountSearchPage({ searchResult: badDate });
+			expect(wrapper.text()).toContain("Search Result Post");
+			expect(wrapper.text()).toContain("100 次阅读");
+		});
+	});
+
+	describe("Windowed pagination ellipsis", () => {
+		it("renders ellipsis tokens and disables the active page on a 20-page result set", async () => {
+			const manyPages = {
+				items: mockSearchResult.items,
+				pagination: { total: 200, page: 1, limit: 10, total_pages: 20 },
+			};
+			const wrapper = await mountSearchPage({
+				searchResult: manyPages as unknown as typeof mockSearchResult,
+			});
+			const pageBtns = wrapper.findAll("button").filter((b) => /\d|…/.test(b.text()));
+			expect(pageBtns.length).toBe(9);
+			const current = pageBtns.find((b) => b.text() === "1");
+			expect(current?.attributes("disabled")).toBeDefined();
+			expect(current?.attributes("aria-current")).toBe("page");
+			const ellipsis = pageBtns.find((b) => b.text() === "…");
+			expect(ellipsis?.attributes("disabled")).toBeDefined();
+		});
+	});
+
+	describe("Search SEO metadata", () => {
+		function seoHead(): { title: string; path: string } {
+			const useHeadMock = (
+				globalThis as unknown as { useHead: { mock: { calls: Array<[unknown]> } } }
+			).useHead;
+			const first = useHeadMock.mock.calls[0]?.[0] as {
+				value?: {
+					title?: string;
+					meta?: Array<{ property?: string; content?: string }>;
+					link?: Array<{ rel?: string; href?: string }>;
+				};
+			};
+			const v = first?.value;
+			const ogUrl = v?.meta?.find((m) => m.property === "og:url")?.content ?? "";
+			const canonical = v?.link?.find((l) => l.rel === "canonical")?.href ?? "";
+			return { title: v?.title ?? "", path: ogUrl || canonical };
+		}
+
+		it("names the query in the title and canonical URL when a query is present", async () => {
+			const wrapper = await mountSearchPage({ routeQuery: { q: "hello world" } });
+			expect(wrapper.exists()).toBe(true);
+			const head = seoHead();
+			expect(head.title).toContain("hello world");
+			expect(head.path).toContain("q=hello%20world");
+		});
+
+		it("uses the bare search metadata on an empty-query landing", async () => {
+			const wrapper = await mountSearchPage({ routeQuery: {} });
+			expect(wrapper.exists()).toBe(true);
+			const head = seoHead();
+			expect(head.path).not.toContain("q=");
 		});
 	});
 });

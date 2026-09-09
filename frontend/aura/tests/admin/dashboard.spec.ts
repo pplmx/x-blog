@@ -169,6 +169,17 @@ let failTrendOverride = false;
 let followsOverride: unknown = null;
 let searchesOverride: unknown = null;
 let commentStatsOverride: unknown = null;
+// Per-axis failure levers (round-278/: the follow/search/comment-activity cards
+// each keep their own inline "failed — retry" block like the trend card).
+let failFollowsOverride = false;
+let failSearchesOverride = false;
+let failCommentsOverride = false;
+// /admin/me role probe: defaults to superuser so export stays visible; set to
+// { role: "editor" } to drill the editor downgrade. (DEC-054, TASK-116.)
+let meRoleOverride: unknown = null;
+// True → the CSV export / full backup downloads 500.
+let exportFailOverride = false;
+let backupFailOverride = false;
 
 const mockFollowsResult = {
 	total_series_follows: 0,
@@ -224,13 +235,35 @@ vi.stubGlobal(
 			return trendOverride ?? mockTrendResult;
 		}
 		// Follow analytics (DEC-144/TASK-184).
-		if (u.includes("/api/admin/stats/follows")) return followsOverride ?? mockFollowsResult;
+		if (u.includes("/api/admin/stats/follows")) {
+			if (failFollowsOverride) throw new Error("follows analytics 500");
+			return followsOverride ?? mockFollowsResult;
+		}
 		// Search-term analytics (DEC-152/TASK-188).
-		if (u.includes("/api/admin/stats/searches")) return searchesOverride ?? mockSearchesResult;
+		if (u.includes("/api/admin/stats/searches")) {
+			if (failSearchesOverride) throw new Error("searches analytics 500");
+			return searchesOverride ?? mockSearchesResult;
+		}
 		// Comment activity (DEC-154/TASK-189).
-		if (u.includes("/api/admin/stats/comments")) return commentStatsOverride ?? mockCommentsResult;
-		if (u.includes("/api/export/posts.csv")) return "ID,Title\n1,Hello\n";
-		if (u.includes("/api/export/comments.csv")) return "ID,Content\n1,Great post\n";
+		if (u.includes("/api/admin/stats/comments")) {
+			if (failCommentsOverride) throw new Error("comments analytics 500");
+			return commentStatsOverride ?? mockCommentsResult;
+		}
+		// CSVs and /admin/me / backup endpoints.
+		if (u.includes("/api/export/")) {
+			if (exportFailOverride) throw new Error("export 500");
+			if (u.includes("posts.csv")) return "ID,Title\n1,Hello\n";
+			return "ID,Content\n1,Great post\n";
+		}
+		if (u.endsWith("/api/admin/me")) return meRoleOverride ?? { role: "superuser" };
+		if (u.includes("/api/admin/backup/restore")) {
+			if (backupFailOverride) throw new Error("backup 500");
+			return { posts_created: 0, categories: 0, tags: 0, comments_created: 0 };
+		}
+		if (u.includes("/api/admin/backup")) {
+			if (backupFailOverride) throw new Error("backup 500");
+			return { format: "x-blog-backup", version: 1, posts: [] };
+		}
 		throw new Error(`Unexpected $fetch in dashboard test: ${u}`);
 	}),
 );
@@ -258,6 +291,12 @@ describe("Admin Dashboard Page", () => {
 		posts401Override = false;
 		failPostsOverride = false;
 		commentsOverride = null;
+		failFollowsOverride = false;
+		failSearchesOverride = false;
+		failCommentsOverride = false;
+		meRoleOverride = null;
+		exportFailOverride = false;
+		backupFailOverride = false;
 	});
 
 	describe("Rendering", () => {
@@ -1225,6 +1264,207 @@ describe("Admin Dashboard Page", () => {
 			);
 			expect(wrapper.text()).toContain("恢复完成");
 			wrapper.unmount();
+		});
+
+		it("rejects a malformed backup file with a parse error and no POST", async () => {
+			// JSON.parse of a non-snapshot file must surface a clear parse error
+			// and never hit the restore endpoint.
+			window.confirm = vi.fn(() => true);
+			const restoreFetch = vi.fn(() => Promise.resolve({}));
+			globalThis.$fetch = restoreFetch;
+
+			const wrapper = await mountWithSuspense(await loadPage());
+			await flushPromises();
+
+			const input = driveRestoreFileInput(wrapper, "this is not json {");
+			await input.trigger("change");
+			await flushPromises();
+
+			expect(restoreFetch).not.toHaveBeenCalledWith(
+				expect.stringContaining("/api/admin/backup/restore"),
+				expect.anything(),
+			);
+			expect(wrapper.text()).toContain("无法解析所选文件");
+			wrapper.unmount();
+		});
+	});
+
+	describe("Branch-gap coverage", () => {
+		it("stamps the stored admin token on every request (authHeaders)", async () => {
+			localStorage.setItem("admin_token", "tok-123");
+			try {
+				const DashboardPage = await loadPage();
+				const wrapper = await mountWithSuspense(DashboardPage);
+				await flushPromises();
+				const calls = vi.mocked($fetch).mock.calls;
+				const authed = calls.some((c) => {
+					const opts = c[1] as { headers?: Record<string, string> } | undefined;
+					return opts?.headers?.Authorization === "Bearer tok-123";
+				});
+				expect(authed).toBe(true);
+			} finally {
+				localStorage.removeItem("admin_token");
+			}
+		});
+
+		it("hides export and backup for an editor /me role (DEC-054)", async () => {
+			meRoleOverride = { role: "editor" };
+			const DashboardPage = await loadPage();
+			const wrapper = await mountWithSuspense(DashboardPage);
+			await flushPromises();
+			expect(wrapper.text()).not.toContain("数据导出");
+			expect(wrapper.text()).not.toContain("备份与恢复");
+		});
+
+		it("passes the comment-approval status and date range as export query params (TASK-079)", async () => {
+			vi.spyOn(URL, "createObjectURL").mockImplementation(() => "blob:mock");
+			vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => {});
+			const DashboardPage = await loadPage();
+			const wrapper = await mountWithSuspense(DashboardPage);
+			await flushPromises();
+
+			const selects = wrapper.findAll("select");
+			await selects[1].setValue("approved");
+			const [fromInput, toInput] = wrapper.findAll('input[type="date"]');
+			await fromInput.setValue("2026-01-01");
+			await toInput.setValue("2026-02-01");
+
+			const commentsBtn = wrapper.findAll("button").find((b) => b.text().includes("导出评论 CSV"));
+			await commentsBtn?.trigger("click");
+			await flushPromises();
+			const calls = vi.mocked($fetch).mock.calls;
+			const exportCall = calls.find(([u]) => String(u).includes("/api/export/comments.csv"));
+			expect(exportCall).toBeDefined();
+			const url = String(exportCall?.[0]);
+			expect(url).toContain("is_approved=true");
+			expect(url).toContain("date_from=2026-01-01");
+			expect(url).toContain("date_to=2026-02-01");
+
+			// pending status flips the flag.
+			await selects[1].setValue("pending");
+			await commentsBtn?.trigger("click");
+			await flushPromises();
+			const pendingCall = vi
+				.mocked($fetch)
+				.mock.calls.filter(([u]) => String(u).includes("/api/export/comments.csv"))
+				.at(-1);
+			expect(String(pendingCall?.[0])).toContain("is_approved=false");
+		});
+
+		it("surfaces an export failure as an inline error", async () => {
+			exportFailOverride = true;
+			const DashboardPage = await loadPage();
+			const wrapper = await mountWithSuspense(DashboardPage);
+			await flushPromises();
+			const postsBtn = wrapper.findAll("button").find((b) => b.text().includes("导出文章 CSV"));
+			await postsBtn?.trigger("click");
+			await flushPromises();
+			expect(wrapper.text()).toContain("export 500");
+		});
+
+		it("surfaces a full-backup download failure as an inline error", async () => {
+			backupFailOverride = true;
+			const DashboardPage = await loadPage();
+			const wrapper = await mountWithSuspense(DashboardPage);
+			await flushPromises();
+			const backupBtn = wrapper.findAll("button").find((b) => b.text().includes("下载完整备份"));
+			await backupBtn?.trigger("click");
+			await flushPromises();
+			expect(wrapper.text()).toContain("backup 500");
+		});
+
+		it("sends requests without an Authorization header when no token is stored", async () => {
+			localStorage.removeItem("admin_token");
+			const DashboardPage = await loadPage();
+			const wrapper = await mountWithSuspense(DashboardPage);
+			await flushPromises();
+			const calls = vi.mocked($fetch).mock.calls;
+			expect(
+				calls.some((c) => {
+					const opts = c[1] as { headers?: Record<string, string> } | undefined;
+					return !!opts?.headers?.Authorization;
+				}),
+			).toBe(false);
+		});
+
+		it("shows the downloading state while a full backup is in flight", async () => {
+			const originalImpl = vi.mocked($fetch).getMockImplementation();
+			const DashboardPage = await loadPage();
+			const wrapper = await mountWithSuspense(DashboardPage);
+			await flushPromises();
+
+			// Intercept ONLY the next /api/admin/backup call: the dashboard load
+			// has already finished, so the in-flight slot is unambiguous.
+			vi.mocked($fetch).mockImplementationOnce(async (url: unknown) => {
+				if (String(url).includes("/api/admin/backup")) return new Promise(() => {});
+				return (originalImpl as (u: unknown) => Promise<unknown>)?.(url);
+			});
+			const backupBtn = wrapper.findAll("button").find((b) => b.text().includes("下载完整备份"));
+			await backupBtn?.trigger("click");
+			await flushPromises();
+
+			expect(wrapper.text()).toContain("下载中…");
+			expect(backupBtn?.attributes("disabled")).toBeDefined();
+		});
+
+		it("ignores a restore-file change with no file selected", async () => {
+			const originalFetch = globalThis.$fetch;
+			const restoreFetch = vi.fn(() => Promise.resolve({}));
+			globalThis.$fetch = restoreFetch;
+			try {
+				const wrapper = await mountWithSuspense(await loadPage());
+				await flushPromises();
+
+				const input = wrapper.find('input[type="file"]');
+				Object.defineProperty(input.element, "files", { value: [], configurable: true });
+				await input.trigger("change");
+				await flushPromises();
+
+				// No file → the handler early-returns before any confirm / POST.
+				// (The stubbed $fetch also serves the dashboard's own data-load
+				// calls, so scope the assertion to the restore endpoint only.)
+				expect(
+					restoreFetch.mock.calls.filter(([url]) =>
+						String(url).includes("/api/admin/backup/restore"),
+					),
+				).toHaveLength(0);
+				wrapper.unmount();
+			} finally {
+				globalThis.$fetch = originalFetch;
+			}
+		});
+
+		it("falls back to summing post views when /api/stats omits total_views", async () => {
+			stubBlogStatsWith({ total_views: undefined });
+			const DashboardPage = await loadPage();
+			const wrapper = await mountWithSuspense(DashboardPage);
+			await flushPromises();
+			// 100 + 50 + 200 from the three mock posts.
+			expect(wrapper.text()).toContain("总浏览量");
+			expect(wrapper.text()).toContain("350");
+		});
+
+		it("shows per-card failures for every analytics axis and recovers one via retry (round 278)", async () => {
+			failFollowsOverride = true;
+			failSearchesOverride = true;
+			failCommentsOverride = true;
+			const DashboardPage = await loadPage();
+			const wrapper = await mountWithSuspense(DashboardPage);
+			await flushPromises();
+
+			const failedBlocks = wrapper.text().split("此数据块加载失败，可点重试重新获取。").length - 1;
+			expect(failedBlocks).toBeGreaterThanOrEqual(3);
+
+			// Recover follows only — its retry is the first in DOM order.
+			failFollowsOverride = false;
+			const retryBtns = wrapper.findAll("button").filter((b) => b.text().trim() === "重试");
+			await retryBtns[0].trigger("click");
+			await flushPromises();
+			expect(wrapper.text()).toContain("系列关注总数");
+			// The other two axes still show their failed blocks.
+			expect(
+				wrapper.text().split("此数据块加载失败，可点重试重新获取。").length - 1,
+			).toBeGreaterThanOrEqual(2);
 		});
 	});
 });

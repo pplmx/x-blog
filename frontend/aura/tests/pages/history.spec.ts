@@ -26,17 +26,27 @@ const mockClear = vi.fn(async () => {
 	return true;
 });
 const mockHasMore = ref(false);
+// Loading/busy/failure flags as shared refs so tests can drive the skeleton,
+// spinner, load-more busy state and the load-more error independently.
+const mockLoading = ref(false);
+const mockServerEnabled = ref(false);
+const mockLoadingMore = ref(false);
+const mockLoadMoreError = ref(false);
+const mockPendingDeviceCount = ref(0);
+const mockImportLocalTrail = vi.fn();
 
 vi.mock("../../composables/useReadingHistory", () => ({
 	useReadingHistory: () => ({
 		history: mockHistory,
 		stats: mockStats,
-		loading: ref(false),
+		loading: mockLoading,
 		loadFailed: mockLoadFailed,
-		serverEnabled: ref(false),
+		serverEnabled: mockServerEnabled,
 		hasMore: mockHasMore,
-		loadingMore: ref(false),
-		loadMoreError: ref(false),
+		loadingMore: mockLoadingMore,
+		loadMoreError: mockLoadMoreError,
+		pendingDeviceCount: mockPendingDeviceCount,
+		importLocalTrail: mockImportLocalTrail,
 		load: mockLoad,
 		loadMore: mockLoadMore,
 		clear: mockClear,
@@ -65,9 +75,15 @@ describe("Reading-history page (TASK-170)", () => {
 		mockHistory.value = [];
 		mockStats.value = null;
 		mockHasMore.value = false;
+		mockLoading.value = false;
+		mockServerEnabled.value = false;
+		mockLoadingMore.value = false;
+		mockLoadMoreError.value = false;
+		mockPendingDeviceCount.value = 0;
 		mockLoad.mockClear();
 		mockLoadMore.mockClear();
 		mockClear.mockClear();
+		mockImportLocalTrail.mockClear();
 	});
 
 	it("invokes load with the search term after debounce (ISS-128)", async () => {
@@ -385,5 +401,164 @@ describe("Reading-history page (TASK-170)", () => {
 		mockHasMore.value = false;
 		const wrapper = mountHistory();
 		expect(wrapper.findAll("button").some((b) => b.text().includes("加载更多历史"))).toBe(false);
+	});
+
+	it("clears a pending recall-search debounce on unmount", async () => {
+		vi.useFakeTimers();
+		const wrapper = mountHistory();
+		const input = wrapper.get('input[type="search"]');
+		await input.setValue("rust");
+		await vi.advanceTimersByTimeAsync(0); // flush the input dispatch
+		// The 300ms debounce is now armed; leaving the page must cancel it so a
+		// delayed load() can't fire against an unmounted component.
+		wrapper.unmount();
+		await vi.advanceTimersByTimeAsync(1000);
+		await flushPromises();
+		mockLoad.mock.calls.forEach((call) => {
+			expect(call[0]).not.toBe("rust");
+		});
+		vi.useRealTimers();
+	});
+
+	it("shows loading skeletons on the first load (no rows yet) and a spinner over stale rows", async () => {
+		mockLoading.value = true;
+		mockHistory.value = [];
+		const empty = mountHistory();
+		expect(empty.findAll(".animate-pulse").length).toBeGreaterThan(0);
+
+		mockHistory.value = [{ slug: "a", title: "Article A", viewedAt: Date.now() }];
+		const stale = mountHistory();
+		const spinner = stale.find('[role="status"]');
+		expect(spinner.exists()).toBe(true);
+		expect(stale.text()).toContain("正在加载历史");
+	});
+
+	it("load-more shows busy + an error line when the page fetch fails", () => {
+		mockHasMore.value = true;
+		mockLoadingMore.value = true;
+		mockLoadMoreError.value = true;
+		mockHistory.value = [{ slug: "a", title: "Article A", viewedAt: Date.now() }];
+		const wrapper = mountHistory();
+		// While a page is loading the button label swaps to the busy copy and the
+		// action is disabled.
+		const busyBtn = wrapper.findAll("button").find((b) => b.text().includes("正在加载历史"));
+		expect(busyBtn?.attributes("disabled")).toBeDefined();
+		// The failed-page error line is shown under the affordance.
+		expect(wrapper.text()).toContain("网络错误");
+	});
+
+	describe("device-trail import offer (TASK-303/ISS-386)", () => {
+		it("offers a one-time merge when the server history doesn't cover the device trail", () => {
+			mockServerEnabled.value = true;
+			mockPendingDeviceCount.value = 3;
+			const wrapper = mountHistory();
+			expect(wrapper.text()).toContain("发现 3 条此设备上的阅读记录");
+			expect(wrapper.findAll("button").some((b) => b.text() === "导入记录")).toBe(true);
+		});
+
+		it("imports the pending trail and reports the imported count", async () => {
+			mockServerEnabled.value = true;
+			mockPendingDeviceCount.value = 3;
+			mockImportLocalTrail.mockResolvedValue({ imported: 2 });
+			const wrapper = mountHistory();
+			const importBtn = wrapper.findAll("button").find((b) => b.text() === "导入记录");
+			expect(importBtn).toBeDefined();
+			await importBtn?.trigger("click");
+			await flushPromises();
+			expect(mockImportLocalTrail).toHaveBeenCalledTimes(1);
+			expect(wrapper.text()).toContain("已导入 2 条记录");
+			// A successful import stops offering the merge for this page view.
+			const offer = wrapper.text().includes("发现 3 条此设备上的阅读记录");
+			expect(offer).toBe(false);
+		});
+
+		it("reports when there was nothing new to import", async () => {
+			mockServerEnabled.value = true;
+			mockPendingDeviceCount.value = 1;
+			mockImportLocalTrail.mockResolvedValue({ imported: 0 });
+			const wrapper = mountHistory();
+			const importBtn = wrapper.findAll("button").find((b) => b.text() === "导入记录");
+			await importBtn?.trigger("click");
+			await flushPromises();
+			expect(wrapper.text()).toContain("没有可导入的新记录");
+		});
+
+		it("surfaces an import failure and allows a retry (re-arming the hide timer)", async () => {
+			vi.useFakeTimers();
+			mockServerEnabled.value = true;
+			mockPendingDeviceCount.value = 1;
+			mockImportLocalTrail.mockRejectedValue(new Error("offline"));
+			const wrapper = mountHistory();
+			const importBtn = () => wrapper.findAll("button").find((b) => b.text() === "导入记录");
+			await importBtn()?.trigger("click");
+			await flushPromises();
+			expect(wrapper.text()).toContain("导入失败，请稍后重试");
+			// The failure message replaces the offer for 4s; once it auto-clears the
+			// offer returns, and a second tap re-runs the import — clearing the
+			// previous hide timer in the process.
+			await vi.advanceTimersByTimeAsync(4000);
+			await flushPromises();
+			expect(wrapper.findAll("button").some((b) => b.text() === "导入记录")).toBe(true);
+			await importBtn()?.trigger("click");
+			await flushPromises();
+			expect(mockImportLocalTrail).toHaveBeenCalledTimes(2);
+			expect(wrapper.text()).toContain("导入失败，请稍后重试");
+			vi.useRealTimers();
+		});
+
+		it("dismisses the offer without importing", async () => {
+			mockServerEnabled.value = true;
+			mockPendingDeviceCount.value = 2;
+			const wrapper = mountHistory();
+			const dismiss = wrapper.findAll("button").find((b) => b.text() === "忽略");
+			expect(dismiss).toBeDefined();
+			await dismiss?.trigger("click");
+			await flushPromises();
+			expect(wrapper.text()).not.toContain("发现 2 条此设备上的阅读记录");
+			expect(mockImportLocalTrail).not.toHaveBeenCalled();
+		});
+	});
+
+	describe("date formatting edge cases", () => {
+		it("falls back to 'recently viewed' for a legacy entry with an unparseable timestamp", () => {
+			mockHistory.value = [{ slug: "a", title: "Article A", viewedAt: Number.NaN }];
+			const wrapper = mountHistory();
+			expect(wrapper.text()).toContain("最近浏览");
+		});
+
+		it("shows 'no record' when the latest activity timestamp cannot be parsed", () => {
+			mockStats.value = {
+				totalPosts: 4,
+				totalReadingMinutes: 37,
+				lastViewedAt: Number.NaN,
+			};
+			const wrapper = mountHistory();
+			expect(wrapper.text()).toContain("最近阅读活动");
+			expect(wrapper.text()).toContain("暂无记录");
+		});
+	});
+
+	describe("heatmap shading bands", () => {
+		it("shades cells by relative intensity across all four bands", () => {
+			// Max activity = 10 → counts shade 0.1 (blue-200), 0.6 (indigo),
+			// 1.0 (violet); a zero-count day stays neutral gray.
+			mockStats.value = {
+				totalPosts: 0,
+				totalReadingMinutes: 0,
+				activity: [
+					{ date: "2026-08-30", count: 1 },
+					{ date: "2026-08-31", count: 6 },
+					{ date: "2026-09-01", count: 10 },
+					{ date: "2026-09-02", count: 0 },
+				],
+			};
+			const wrapper = mountHistory();
+			expect(wrapper.text()).toContain("阅读活跃度（近一年）");
+			const cells = wrapper.findAll("[aria-hidden='true']");
+			expect(cells.length).toBeGreaterThan(0);
+			// The max-count day's tooltip names the count.
+			const titles = wrapper.findAll("[title]").map((el) => el.attributes("title"));
+			expect(titles.some((t) => (t ?? "").includes("10 篇"))).toBe(true);
+		});
 	});
 });

@@ -424,5 +424,177 @@ describe("Admin Series Page", () => {
 			expect(wrapper.find('button[aria-label="下移"]').element.disabled).toBe(false);
 			expect(mockReorderAdminSeriesEpisodes).toHaveBeenCalledTimes(1);
 		});
+
+		it("closes the episode panel on a second toggle and does not refetch (round)", async () => {
+			mockFetchAdminSeriesEpisodes.mockResolvedValue([]);
+			const SeriesPage = await loadPage();
+			const wrapper = await mountWithSuspense(SeriesPage);
+
+			const episodesBtn = wrapper.findAll("button").find((b) => b.text().includes("章节"));
+			await episodesBtn?.trigger("click");
+			await flushPromises();
+			expect(mockFetchAdminSeriesEpisodes).toHaveBeenCalledTimes(1);
+
+			// Second toggle closes the panel — no second fetch.
+			await episodesBtn?.trigger("click");
+			await flushPromises();
+			expect(wrapper.text()).not.toContain("章节顺序");
+
+			// Reopening uses the already-loaded episodes — still one fetch.
+			await episodesBtn?.trigger("click");
+			await flushPromises();
+			expect(mockFetchAdminSeriesEpisodes).toHaveBeenCalledTimes(1);
+		});
+
+		it("renders the no-episodes hint for a series without posts", async () => {
+			mockFetchAdminSeriesEpisodes.mockResolvedValue([]);
+			const SeriesPage = await loadPage();
+			const wrapper = await mountWithSuspense(SeriesPage);
+
+			const episodesBtn = wrapper.findAll("button").find((b) => b.text().includes("章节"));
+			await episodesBtn?.trigger("click");
+			await flushPromises();
+			expect(wrapper.text()).toContain("该系列还没有文章");
+		});
+
+		it("surfaces an episode-load failure with the failure hint", async () => {
+			mockFetchAdminSeriesEpisodes.mockRejectedValue(new Error("episodes down"));
+			const SeriesPage = await loadPage();
+			const wrapper = await mountWithSuspense(SeriesPage);
+
+			const episodesBtn = wrapper.findAll("button").find((b) => b.text().includes("章节"));
+			await episodesBtn?.trigger("click");
+			await flushPromises();
+			expect(wrapper.text()).toContain("调整失败，请重试");
+		});
+
+		it("disables both move arrows for a single-episode series", async () => {
+			mockFetchAdminSeriesEpisodes.mockResolvedValue([
+				{ id: 1, title: "Only Part", slug: "only-part", series_order: 1, published: true },
+			]);
+			const SeriesPage = await loadPage();
+			const wrapper = await mountWithSuspense(SeriesPage);
+
+			const episodesBtn = wrapper.findAll("button").find((b) => b.text().includes("章节"));
+			await episodesBtn?.trigger("click");
+			await flushPromises();
+
+			expect(wrapper.find('button[aria-label="上移"]').element.disabled).toBe(true);
+			expect(wrapper.find('button[aria-label="下移"]').element.disabled).toBe(true);
+		});
+	});
+
+	describe("Branch-gap coverage (forms)", () => {
+		beforeEach(() => {
+			mockFetchAdminSeries.mockReturnValue(mockFetchResult(mockSeries));
+		});
+
+		it("does not create when the form is submitted with an empty title", async () => {
+			mockCreateAdminSeries.mockResolvedValue({ id: 5 });
+			const SeriesPage = await loadPage();
+			const wrapper = await mountWithSuspense(SeriesPage);
+
+			// Submitting the <form> fires handleCreate even though the button is
+			// disabled — the handler's own empty-title guard must short-circuit.
+			await wrapper.find("form").trigger("submit");
+			await flushPromises();
+			expect(mockCreateAdminSeries).not.toHaveBeenCalled();
+		});
+
+		it("auto-generates a slug from the create-form title via the slug button", async () => {
+			mockCreateAdminSeries.mockResolvedValue({ id: 6 });
+			const SeriesPage = await loadPage();
+			const wrapper = await mountWithSuspense(SeriesPage);
+
+			const inputs = wrapper.findAll('input[type="text"]');
+			await inputs[0].setValue("My Cool Series");
+			const slugBtn = wrapper.findAll("button").find((b) => b.text().includes("自动生成"));
+			expect(slugBtn).toBeDefined();
+			await slugBtn?.trigger("click");
+			expect((wrapper.findAll('input[type="text"]')[1].element as HTMLInputElement).value).toBe(
+				"my-cool-series",
+			);
+		});
+
+		it("starts an edit with an empty description when the series has none", async () => {
+			const SeriesPage = await loadPage();
+			const wrapper = await mountWithSuspense(SeriesPage);
+
+			// Series id 2 ("Nuxt 3") is the second row — its description is null,
+			// so startEdit must map it to an empty editing form.
+			const editBtns = wrapper.findAll("button").filter((b) => b.text().includes("编辑"));
+			await editBtns[1].trigger("click");
+			await flushPromises();
+
+			const textareas = wrapper.findAll("textarea");
+			// textareas[0] = create form; textareas[1] = inline edit form.
+			expect((textareas[1].element as HTMLTextAreaElement).value).toBe("");
+		});
+
+		it("does not save an edit when its title is cleared", async () => {
+			mockUpdateAdminSeries.mockResolvedValue({ id: 1 });
+			const SeriesPage = await loadPage();
+			const wrapper = await mountWithSuspense(SeriesPage);
+
+			const editBtn = wrapper.findAll("button").find((b) => b.text().includes("编辑"));
+			await editBtn?.trigger("click");
+			await flushPromises();
+
+			const inputs = wrapper.findAll('input[type="text"]');
+			await inputs[2].setValue(""); // edit-form title
+			const confirmBtn = wrapper.findAll("button").find((b) => b.text().includes("确认"));
+			await confirmBtn?.trigger("click");
+			await flushPromises();
+			expect(mockUpdateAdminSeries).not.toHaveBeenCalled();
+		});
+
+		it("serializes a cleared description as null on edit save", async () => {
+			mockUpdateAdminSeries.mockResolvedValue({ id: 1 });
+			const SeriesPage = await loadPage();
+			const wrapper = await mountWithSuspense(SeriesPage);
+
+			const editBtn = wrapper.findAll("button").find((b) => b.text().includes("编辑"));
+			await editBtn?.trigger("click");
+			await flushPromises();
+
+			const textareas = wrapper.findAll("textarea");
+			await textareas[1].setValue(""); // clear the edit-form description
+			const confirmBtn = wrapper.findAll("button").find((b) => b.text().includes("确认"));
+			await confirmBtn?.trigger("click");
+			await flushPromises();
+
+			expect(mockUpdateAdminSeries).toHaveBeenCalled();
+			const [, payload] = mockUpdateAdminSeries.mock.calls.at(-1) as any[];
+			expect(payload.description).toBe(null);
+		});
+
+		it("surfaces a backend detail on edit save failure", async () => {
+			mockUpdateAdminSeries.mockRejectedValue({ data: { detail: "Slug already in use" } });
+			const SeriesPage = await loadPage();
+			const wrapper = await mountWithSuspense(SeriesPage);
+
+			const editBtn = wrapper.findAll("button").find((b) => b.text().includes("编辑"));
+			await editBtn?.trigger("click");
+			await flushPromises();
+
+			const inputs = wrapper.findAll('input[type="text"]');
+			await inputs[2].setValue("Renamed");
+			const confirmBtn = wrapper.findAll("button").find((b) => b.text().includes("确认"));
+			await confirmBtn?.trigger("click");
+			await flushPromises();
+
+			expect(wrapper.text()).toContain("Slug already in use");
+		});
+
+		it("renders a zero post count when post_count is null", async () => {
+			mockFetchAdminSeries.mockReturnValue(
+				mockFetchResult([
+					{ id: 9, title: "Countless", slug: "countless", description: null, post_count: null },
+				]),
+			);
+			const SeriesPage = await loadPage();
+			const wrapper = await mountWithSuspense(SeriesPage);
+			expect(wrapper.text()).toContain("0 篇文章");
+		});
 	});
 });

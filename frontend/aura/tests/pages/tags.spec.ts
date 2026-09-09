@@ -62,11 +62,13 @@ async function mountTagsPage({
 	tags = mockTags,
 	posts = mockTagPosts,
 	pending = false,
+	postsError = null,
 	routeQuery = {},
 }: {
 	tags?: typeof mockTags | null;
 	posts?: typeof mockTagPosts | null;
 	pending?: boolean;
+	postsError?: unknown;
 	routeQuery?: Record<string, string>;
 } = {}) {
 	vi.stubGlobal("useRuntimeConfig", () => ({
@@ -110,7 +112,7 @@ async function mountTagsPage({
 				return {
 					data: ref(posts),
 					pending: ref(pending),
-					error: ref(null),
+					error: ref(postsError),
 					refresh: vi.fn(),
 				};
 			}
@@ -582,6 +584,269 @@ describe("Tags Page", () => {
 			// ...and the sign-in prompt offers the way back in.
 			expect(wrapper.text()).toContain("登录已过期，请重新登录后继续。");
 			expect(wrapper.find('a[href="/login"]').exists()).toBe(true);
+		});
+	});
+
+	describe("Tag posts failure", () => {
+		it("surfaces a load-failed message with retry instead of an empty state", async () => {
+			const wrapper = await mountTagsPage({
+				postsError: { message: "boom" },
+				routeQuery: { tag_id: "1" },
+			});
+			expect(wrapper.text()).toContain("加载失败");
+			expect(wrapper.text()).not.toContain("暂无文章");
+			const retry = wrapper.findAll("button").find((b) => b.text() === "重试");
+			expect(retry).toBeDefined();
+			// Retry re-runs the refreshes (the error state's recovery action).
+			await retry?.trigger("click");
+			await flushPromises();
+			expect(wrapper.text()).toContain("加载失败");
+		});
+	});
+
+	describe("Post card edge cases", () => {
+		it("handles a post without an excerpt or category", async () => {
+			const bare = {
+				items: [
+					{
+						...mockTagPosts.items[0],
+						excerpt: "",
+						category: null,
+					},
+				],
+				pagination: mockTagPosts.pagination,
+			};
+			const wrapper = await mountTagsPage({
+				posts: bare as unknown as typeof mockTagPosts,
+				routeQuery: { tag_id: "1" },
+			});
+			expect(wrapper.text()).toContain("Tagged Post One");
+			expect(wrapper.find("p.line-clamp-2").exists()).toBe(false);
+		});
+
+		it("renders an empty date for a post with an unparseable timestamp", async () => {
+			const badDate = {
+				items: [
+					{
+						...mockTagPosts.items[0],
+						created_at: "not-a-date",
+					},
+				],
+				pagination: mockTagPosts.pagination,
+			};
+			const wrapper = await mountTagsPage({
+				posts: badDate as unknown as typeof mockTagPosts,
+				routeQuery: { tag_id: "1" },
+			});
+			expect(wrapper.text()).toContain("Tagged Post One");
+			expect(wrapper.text()).toContain("100 次阅读");
+		});
+	});
+
+	describe("Windowed pagination ellipsis + clamp", () => {
+		it("renders ellipsis tokens and disables the active page on a 20-page result set", async () => {
+			const manyPages = {
+				items: [mockTagPosts.items[0]],
+				pagination: {
+					total: 200,
+					page: 1,
+					limit: 10,
+					total_pages: 20,
+				},
+			};
+			const wrapper = await mountTagsPage({
+				posts: manyPages as unknown as typeof mockTagPosts,
+				routeQuery: { tag_id: "1" },
+			});
+			const pageBtns = wrapper.findAll("button").filter((b) => /\d|…/.test(b.text()));
+			expect(pageBtns.length).toBe(9);
+			const current = pageBtns.find((b) => b.text() === "1");
+			expect(current?.attributes("disabled")).toBeDefined();
+			expect(current?.attributes("aria-current")).toBe("page");
+			const ellipsis = pageBtns.find((b) => b.text() === "…");
+			expect(ellipsis?.attributes("disabled")).toBeDefined();
+		});
+
+		it("clamps a stale page=999 deep link back to the last real page (ISS-308)", async () => {
+			const navMock = vi.fn();
+			vi.stubGlobal("useRuntimeConfig", () => ({
+				public: { apiUrl: "http://localhost:18888" },
+			}));
+			vi.stubGlobal("useRoute", () => reactive({ query: { tag_id: "1", page: "999" } }));
+			vi.stubGlobal("navigateTo", navMock);
+			vi.stubGlobal("useHead", vi.fn());
+			vi.stubGlobal("computed", computed);
+			const postsData = ref<{ items: unknown[]; pagination: Record<string, number> } | null>(null);
+			vi.stubGlobal(
+				"useFetch",
+				vi.fn((url: string | (() => string) | { value: string }) => {
+					const urlStr =
+						typeof url === "function" ? url() : typeof url === "string" ? url : (url.value ?? "");
+					if (urlStr.includes("/api/tags") && !urlStr.includes("/posts")) {
+						return {
+							data: ref(mockTags),
+							pending: ref(false),
+							error: ref(null),
+							refresh: vi.fn(),
+						};
+					}
+					if (urlStr.includes("/api/posts")) {
+						return {
+							data: postsData,
+							pending: ref(false),
+							error: ref(null),
+							refresh: vi.fn(),
+						};
+					}
+					return { data: ref(null), pending: ref(false), error: ref(null), refresh: vi.fn() };
+				}),
+			);
+			const { default: TagsPage } = await import("../../app/pages/tags.vue");
+			const SuspenseWrapper: any = {
+				components: { TagsPage },
+				template:
+					"<Suspense>" +
+					"<template #default><TagsPage /></template>" +
+					"<template #fallback>Loading...</template>" +
+					"</Suspense>",
+			};
+			const wrapper = mount(SuspenseWrapper, {
+				global: {
+					stubs: {
+						NuxtLink: { template: '<a :href="to"><slot/></a>', props: ["to"] },
+						Icon: { template: '<svg class="iconstub" :data-icon="icon"></svg>', props: ["icon"] },
+					},
+				},
+			});
+			await flushPromises();
+			expect(navMock).not.toHaveBeenCalled();
+
+			postsData.value = {
+				items: [],
+				pagination: { total: 0, page: 1, limit: 10, total_pages: 1 },
+			};
+			await flushPromises();
+			expect(navMock).toHaveBeenCalledWith({
+				query: { tag_id: "1", page: "1" },
+				replace: true,
+			});
+		});
+	});
+
+	describe("Tag notify toggle and tap failures", () => {
+		function fetchMockFor(handlers: {
+			put?: () => Promise<unknown>;
+			patch?: () => Promise<unknown>;
+		}) {
+			return vi.fn((url: string, opts: { method?: string } = {}) => {
+				const u = String(url);
+				const m = opts.method ?? "GET";
+				if (u.includes("/tag-follows") && m !== "PUT" && m !== "PATCH") {
+					return Promise.resolve({ items: [], total: 0 });
+				}
+				if (u.includes("/tags/") && m === "PUT") {
+					return handlers.put?.() ?? Promise.resolve({});
+				}
+				if (u.includes("/tags/") && m === "PATCH") {
+					return handlers.patch?.() ?? Promise.resolve({});
+				}
+				return Promise.resolve({});
+			});
+		}
+
+		it("follows then toggles the notify bell off (TASK-215)", async () => {
+			window.localStorage.setItem("reader_token", "reader-jwt");
+			vi.stubGlobal(
+				"$fetch",
+				fetchMockFor({
+					put: () =>
+						Promise.resolve({ tag_id: 1, tag_name: "React", following: true, notify: true }),
+					patch: () =>
+						Promise.resolve({ tag_id: 1, tag_name: "React", following: true, notify: false }),
+				}),
+			);
+
+			const wrapper = await mountTagsPage({ routeQuery: { tag_id: "1" } });
+			const followBtn = wrapper.findAll("button").find((b) => b.text().includes("关注标签"));
+			await followBtn?.trigger("click");
+			await flushPromises();
+			expect(wrapper.text()).toContain("已关注");
+			expect(wrapper.text()).toContain("通知已开");
+
+			const notifyBtn = wrapper.findAll("button").find((b) => b.text() === "通知已开");
+			expect(notifyBtn).toBeDefined();
+			await notifyBtn?.trigger("click");
+			await flushPromises();
+			expect(wrapper.text()).toContain("通知已关");
+
+			window.localStorage.removeItem("reader_token");
+		});
+
+		it("surfaces a follow failure and re-clear before the next toast (not a silent no-op)", async () => {
+			window.localStorage.setItem("reader_token", "reader-jwt");
+			vi.stubGlobal("$fetch", fetchMockFor({ put: () => Promise.reject(new Error("offline")) }));
+
+			const wrapper = await mountTagsPage({ routeQuery: { tag_id: "1" } });
+			const followBtn = wrapper.findAll("button").find((b) => b.text().includes("关注标签"));
+			expect(followBtn).toBeTruthy();
+			// Two failed taps inside the 4s error window: the second must clear
+			// the pending hide timer (the re-clear branch of noteFollowError).
+			await followBtn?.trigger("click");
+			await flushPromises();
+			expect(wrapper.text()).toContain("操作失败，请重试");
+			await followBtn?.trigger("click");
+			await flushPromises();
+			expect(wrapper.text()).toContain("操作失败，请重试");
+
+			window.localStorage.removeItem("reader_token");
+		});
+
+		it("surfaces a notify-toggle failure (not a silent no-op)", async () => {
+			window.localStorage.setItem("reader_token", "reader-jwt");
+			vi.stubGlobal(
+				"$fetch",
+				fetchMockFor({
+					put: () =>
+						Promise.resolve({ tag_id: 1, tag_name: "React", following: true, notify: true }),
+					patch: () => Promise.reject(new Error("offline")),
+				}),
+			);
+
+			const wrapper = await mountTagsPage({ routeQuery: { tag_id: "1" } });
+			const followBtn = wrapper.findAll("button").find((b) => b.text().includes("关注标签"));
+			await followBtn?.trigger("click");
+			await flushPromises();
+			expect(wrapper.text()).toContain("已关注");
+
+			const notifyBtn = wrapper.findAll("button").find((b) => b.text() === "通知已开");
+			await notifyBtn?.trigger("click");
+			await flushPromises();
+			expect(wrapper.text()).toContain("操作失败，请重试");
+
+			window.localStorage.removeItem("reader_token");
+		});
+	});
+
+	describe("Tag SEO metadata", () => {
+		function seoTitle(): string {
+			const useHeadMock = (
+				globalThis as unknown as { useHead: { mock: { calls: Array<[unknown]> } } }
+			).useHead;
+			const first = useHeadMock.mock.calls[0]?.[0] as { value?: { title?: string } };
+			return first?.value?.title ?? "";
+		}
+
+		it("uses the tag-name title when a tag is selected", async () => {
+			const wrapper = await mountTagsPage({ routeQuery: { tag_id: "1" } });
+			expect(wrapper.exists()).toBe(true);
+			expect(seoTitle()).toContain("React");
+			window.localStorage.removeItem("reader_token");
+		});
+
+		it("uses the plain title on the all-tags view", async () => {
+			const wrapper = await mountTagsPage();
+			expect(wrapper.exists()).toBe(true);
+			expect(seoTitle()).toBe("所有标签");
 		});
 	});
 });

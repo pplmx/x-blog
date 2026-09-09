@@ -57,11 +57,17 @@ async function mountArchivePage({
 	archive = mockArchive,
 	posts = mockArchivePosts,
 	pending = false,
+	postsError = null,
+	archiveError = null,
+	postsRef = undefined,
 	routeQuery = {},
 }: {
 	archive?: typeof mockArchive | null;
 	posts?: typeof mockArchivePosts | null;
 	pending?: boolean;
+	postsError?: unknown;
+	archiveError?: unknown;
+	postsRef?: { value: typeof mockArchivePosts | null };
 	routeQuery?: Record<string, string>;
 } = {}) {
 	vi.stubGlobal("useRuntimeConfig", () => ({
@@ -96,15 +102,15 @@ async function mountArchivePage({
 				return {
 					data: ref(archive),
 					pending: ref(pending),
-					error: ref(null),
+					error: ref(archiveError),
 					refresh: vi.fn(),
 				};
 			}
 			if (urlStr.includes("/api/posts")) {
 				return {
-					data: ref(posts),
+					data: (postsRef ?? ref(posts)) as unknown,
 					pending: ref(pending),
-					error: ref(null),
+					error: ref(postsError),
 					refresh: vi.fn(),
 				};
 			}
@@ -298,6 +304,234 @@ describe("Archive Page", () => {
 			// Archive card dates use the compact locale format (2024/6/1).
 			expect(wrapper.text()).toContain("2024/6/1");
 			expect(wrapper.text()).not.toContain("2024/1/15");
+		});
+	});
+
+	describe("Page parameter handling", () => {
+		it("reads a page number from the query and forwards it to the posts fetch", async () => {
+			// A paged deep link (?page=2) must survive into the posts query:
+			// page 1 leaves no trailing param, a higher page includes it.
+			const wrapper = await mountArchivePage({
+				routeQuery: { year: "2024", month: "3", page: "2" },
+			});
+			expect(wrapper.text()).toContain("Archived Post");
+		});
+
+		it("renders windowed pagination with ellipsis and disables the current page", async () => {
+			// 20 pages centres the window [1..7] + ellipsis + last page — the
+			// ellipsis and current-page branches of the token renderer.
+			const manyPages = {
+				items: [mockArchivePosts.items[0]],
+				pagination: {
+					total: 200,
+					page: 1,
+					limit: 10,
+					total_pages: 20,
+				},
+			};
+			const wrapper = await mountArchivePage({
+				posts: manyPages as unknown as typeof mockArchivePosts,
+				routeQuery: { year: "2024", month: "3" },
+			});
+			const pageBtns = wrapper.findAll("button").filter((b) => /\d|…/.test(b.text()));
+			// 1..7 + ellipsis + 20 = 9 tokens.
+			expect(pageBtns.length).toBe(9);
+			const ellipsis = pageBtns.find((b) => b.text() === "…");
+			expect(ellipsis?.attributes("disabled")).toBeDefined();
+			const current = pageBtns.find((b) => b.text() === "1");
+			expect(current?.attributes("disabled")).toBeDefined();
+			expect(current?.attributes("aria-current")).toBe("page");
+		});
+
+		it("goToPage preserves the year/month period and sets the page (click)", async () => {
+			const manyPages = {
+				items: [mockArchivePosts.items[0]],
+				pagination: {
+					total: 200,
+					page: 1,
+					limit: 10,
+					total_pages: 20,
+				},
+			};
+			const wrapper = await mountArchivePage({
+				posts: manyPages as unknown as typeof mockArchivePosts,
+				routeQuery: { year: "2024", month: "1" },
+			});
+			const pageBtns = wrapper.findAll("button").filter((b) => /\d/.test(b.text()));
+			const page2 = pageBtns.find((b) => b.text() === "2");
+			expect(page2).toBeDefined();
+			await page2?.trigger("click");
+			const nav = (globalThis as unknown as { navigateTo: ReturnType<typeof vi.fn> }).navigateTo;
+			expect(nav).toHaveBeenCalledWith({
+				query: { year: "2024", month: "1", page: 2 },
+			});
+		});
+
+		it("clamps a stale page=999 deep link back to the last real page once pagination lands", async () => {
+			const navMock = vi.fn();
+			vi.stubGlobal("useRuntimeConfig", () => ({
+				public: { apiUrl: "http://localhost:18888" },
+			}));
+			vi.stubGlobal("useRoute", () =>
+				reactive({ query: { year: "2024", month: "1", page: "999" } }),
+			);
+			vi.stubGlobal("navigateTo", navMock);
+			vi.stubGlobal("useHead", vi.fn());
+			vi.stubGlobal("computed", computed);
+			const postsData = ref<{ items: unknown[]; pagination: Record<string, number> } | null>(null);
+			vi.stubGlobal(
+				"useFetch",
+				vi.fn((url: string | (() => string) | { value: string }) => {
+					const urlStr =
+						typeof url === "function" ? url() : typeof url === "string" ? url : (url.value ?? "");
+					if (urlStr.includes("/api/posts/archive")) {
+						return {
+							data: ref(mockArchive),
+							pending: ref(false),
+							error: ref(null),
+							refresh: vi.fn(),
+						};
+					}
+					if (urlStr.includes("/api/posts")) {
+						return {
+							data: postsData,
+							pending: ref(false),
+							error: ref(null),
+							refresh: vi.fn(),
+						};
+					}
+					return { data: ref(null), pending: ref(false), error: ref(null), refresh: vi.fn() };
+				}),
+			);
+			const { default: ArchivePage } = await import("../../app/pages/archive.vue");
+			const SuspenseWrapper: any = {
+				components: { ArchivePage },
+				template:
+					"<Suspense>" +
+					"<template #default><ArchivePage /></template>" +
+					"<template #fallback>Loading...</template>" +
+					"</Suspense>",
+			};
+			const wrapper = mount(SuspenseWrapper, {
+				global: {
+					stubs: {
+						NuxtLink: { template: '<a :href="to"><slot/></a>', props: ["to"] },
+						Icon: {
+							template: '<svg class="iconstub" :data-icon="icon"></svg>',
+							props: ["icon"],
+						},
+					},
+				},
+			});
+			await flushPromises();
+			expect(navMock).not.toHaveBeenCalled();
+
+			postsData.value = {
+				items: [],
+				pagination: { total: 0, page: 1, limit: 10, total_pages: 1 },
+			};
+			await flushPromises();
+			expect(navMock).toHaveBeenCalledWith({
+				query: { year: "2024", month: "1", page: "1" },
+				replace: true,
+			});
+		});
+	});
+
+	describe("Posts fetch failure", () => {
+		it("surfaces a load-failed message with a retry instead of an empty state", async () => {
+			const wrapper = await mountArchivePage({
+				postsError: { message: "boom" },
+				routeQuery: { year: "2024", month: "3" },
+			});
+			expect(wrapper.text()).toContain("加载失败");
+			expect(wrapper.text()).not.toContain("暂无文章");
+			const retry = wrapper.findAll("button").find((b) => b.text() === "重试");
+			expect(retry).toBeDefined();
+			expect(retry?.exists()).toBe(true);
+			// Retry re-runs both refreshes (the error state's recovery action).
+			await retry?.trigger("click");
+			await flushPromises();
+			expect(wrapper.text()).toContain("加载失败");
+		});
+	});
+
+	describe("Archive index edge cases", () => {
+		it("renders the empty state when the archive index is null", async () => {
+			const wrapper = await mountArchivePage({ archive: null });
+			expect(wrapper.text()).toContain("暂无文章");
+		});
+
+		it("shows a no-results hint when the narrowing filter matches nothing", async () => {
+			const wrapper = await mountArchivePage();
+			const input = wrapper.find('input[type="search"]');
+			await input.setValue("not-a-real-month");
+			await flushPromises();
+			expect(wrapper.text()).toContain("没有匹配");
+			// The year headers all disappear once nothing matches.
+			expect(wrapper.text()).not.toContain("2025");
+		});
+	});
+
+	describe("Post card edge cases", () => {
+		it("handles a post without an excerpt or category", async () => {
+			const bare = {
+				items: [
+					{
+						...mockArchivePosts.items[0],
+						excerpt: "",
+						category: null,
+					},
+				],
+				pagination: mockArchivePosts.pagination,
+			};
+			const wrapper = await mountArchivePage({
+				posts: bare as unknown as typeof mockArchivePosts,
+				routeQuery: { year: "2024", month: "3" },
+			});
+			expect(wrapper.text()).toContain("Archived Post");
+			// No excerpt paragraph, no category chip.
+			expect(wrapper.find("p.line-clamp-2").exists()).toBe(false);
+		});
+
+		it("renders an empty date for a post with an unparseable timestamp", async () => {
+			const badDate = {
+				items: [
+					{
+						...mockArchivePosts.items[0],
+						created_at: "not-a-date",
+					},
+				],
+				pagination: mockArchivePosts.pagination,
+			};
+			const wrapper = await mountArchivePage({
+				posts: badDate as unknown as typeof mockArchivePosts,
+				routeQuery: { year: "2024", month: "3" },
+			});
+			expect(wrapper.text()).toContain("Archived Post");
+			expect(wrapper.text()).toContain("42 次阅读");
+		});
+	});
+
+	describe("SEO metadata", () => {
+		function seoTitle(): string {
+			const useHeadMock = (
+				globalThis as unknown as { useHead: { mock: { calls: Array<[unknown]> } } }
+			).useHead;
+			const first = useHeadMock.mock.calls[0]?.[0] as { value?: { title?: string } };
+			return first?.value?.title ?? "";
+		}
+
+		it("uses the period-aware title when a year/month is selected", async () => {
+			const wrapper = await mountArchivePage({ routeQuery: { year: "2024", month: "3" } });
+			expect(wrapper.exists()).toBe(true);
+			expect(seoTitle()).toContain("2024");
+		});
+
+		it("uses the plain archive title on the index view", async () => {
+			const wrapper = await mountArchivePage();
+			expect(wrapper.exists()).toBe(true);
+			expect(seoTitle()).toBe("归档");
 		});
 	});
 });

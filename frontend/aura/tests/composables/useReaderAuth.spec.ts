@@ -24,6 +24,9 @@ const session = {
 
 beforeEach(() => {
 	localStorage.clear();
+	// Force the module-level singleton back to a known state so tests are
+	// order-independent (isAuthenticated/reader persist across tests otherwise).
+	useReaderAuth().logout();
 	readerLoginMock.mockReset();
 	readerRegisterMock.mockReset();
 });
@@ -95,6 +98,101 @@ describe("useReaderAuth", () => {
 		localStorage.setItem("reader_token", "saved.jwt.token");
 		const { isAuthenticated } = useReaderAuth();
 		expect(isAuthenticated.value).toBe(true);
+	});
+
+	it("login falls back to 'Login failed' when the API sends no token and no error message", async () => {
+		readerLoginMock.mockResolvedValue({ data: { value: null }, error: { value: null } });
+		const { login } = useReaderAuth();
+		await expect(login("r@example.com", "secret123")).rejects.toThrow("Login failed");
+	});
+
+	it("register rejects with the API's message", async () => {
+		readerRegisterMock.mockResolvedValue(err("Email already registered"));
+		const { register } = useReaderAuth();
+		await expect(register("r@example.com", "secret123")).rejects.toThrow(
+			"Email already registered",
+		);
+	});
+
+	it("register falls back to 'Registration failed' when the error carries no message", async () => {
+		readerRegisterMock.mockResolvedValue({
+			data: { value: null },
+			error: { value: { message: "" } },
+		});
+		const { register } = useReaderAuth();
+		await expect(register("r@example.com", "secret123")).rejects.toThrow("Registration failed");
+	});
+
+	it("register falls back to 'Registration failed' when no token comes back", async () => {
+		readerRegisterMock.mockResolvedValue({ data: { value: null }, error: { value: null } });
+		const { register } = useReaderAuth();
+		await expect(register("r@example.com", "secret123", "Riki")).rejects.toThrow(
+			"Registration failed",
+		);
+	});
+
+	it("updateToken stores token + profile and flips auth (DEC-067/TASK-141)", () => {
+		const { updateToken, isAuthenticated, reader } = useReaderAuth();
+		expect(isAuthenticated.value).toBe(false);
+
+		updateToken(session);
+
+		expect(isAuthenticated.value).toBe(true);
+		expect(reader.value?.email).toBe("r@example.com");
+		expect(localStorage.getItem("reader_token")).toBe("reader.jwt.token");
+		expect(JSON.parse(localStorage.getItem("reader_profile") ?? "{}")).toMatchObject({
+			id: 1,
+			email: "r@example.com",
+		});
+	});
+
+	it("login/logout keep working in-memory when localStorage is unavailable", async () => {
+		// Environment without localStorage (denied storage / awkward SSR): the
+		// composable must not crash and must still manage the in-memory state —
+		// it just cannot persist anything.
+		const originalLS = window.localStorage;
+		Object.defineProperty(window, "localStorage", { value: undefined, configurable: true });
+		try {
+			readerLoginMock.mockResolvedValue(ok(session));
+			const { isAuthenticated, reader, login, logout } = useReaderAuth();
+			expect(isAuthenticated.value).toBe(false);
+
+			await login("r@example.com", "secret123");
+
+			expect(isAuthenticated.value).toBe(true);
+			expect(reader.value?.email).toBe("r@example.com");
+			// Nothing was persisted (and no read/write threw).
+			expect(typeof (window as unknown as { localStorage: unknown }).localStorage).toBe(
+				"undefined",
+			);
+
+			logout();
+			expect(isAuthenticated.value).toBe(false);
+			expect(reader.value).toBeNull();
+		} finally {
+			Object.defineProperty(window, "localStorage", { value: originalLS, configurable: true });
+		}
+	});
+
+	it("a corrupted persisted profile reads as no profile instead of crashing", () => {
+		localStorage.setItem("reader_token", "some.jwt");
+		localStorage.setItem("reader_profile", "{not json");
+		const { isAuthenticated, reader } = useReaderAuth();
+		expect(isAuthenticated.value).toBe(true);
+		expect(reader.value).toBeNull();
+	});
+
+	it("setProfile updates the in-memory profile and persists it without a token change", () => {
+		const { isAuthenticated, reader, setProfile } = useReaderAuth();
+		setProfile({ id: 2, email: "new@example.com", display_name: "Myst", created_at: null });
+
+		expect(reader.value?.email).toBe("new@example.com");
+		expect(isAuthenticated.value).toBe(false); // no token was touched
+		expect(JSON.parse(localStorage.getItem("reader_profile") ?? "{}")).toMatchObject({
+			id: 2,
+			email: "new@example.com",
+		});
+		expect(localStorage.getItem("reader_token")).toBeNull();
 	});
 
 	describe("isStaleSession (dual-401 disambiguation, deep-dive)", () => {

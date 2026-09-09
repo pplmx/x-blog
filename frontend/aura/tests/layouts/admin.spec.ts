@@ -9,7 +9,9 @@
 
 import { DOMWrapper, flushPromises, mount } from "@vue/test-utils";
 import { describe, expect, it, vi } from "vitest";
-import { nextTick, ref } from "vue";
+import { nextTick, reactive, ref } from "vue";
+
+import { useTheme } from "../../composables/useTheme";
 
 const mockIsAuthenticated = ref(true);
 const mockLogout = vi.fn();
@@ -510,5 +512,364 @@ describe("Admin Layout", () => {
 		const mod = await import("../../app/layouts/admin.vue");
 		expect(mod).toBeDefined();
 		expect(mod.default).toBeDefined();
+	});
+
+	it("shows the Users section for a superuser (default when no role stored)", () => {
+		delete localStorageStore.admin_role;
+		const wrapper = mountWithBody({ global: { stubs, slots: { default: "<div>Content</div>" } } });
+		expect(wrapper.find('a[href="/admin/users"]').exists()).toBe(true);
+		// Reader-account moderation is available to every role.
+		expect(wrapper.find('a[href="/admin/readers"]').exists()).toBe(true);
+		wrapper.unmount();
+	});
+
+	it("hides the superuser-only Users section for an editor role", () => {
+		localStorageStore.admin_role = "editor";
+		const wrapper = mountWithBody({ global: { stubs, slots: { default: "<div>Content</div>" } } });
+		expect(wrapper.find('a[href="/admin/users"]').exists()).toBe(false);
+		wrapper.unmount();
+		delete localStorageStore.admin_role;
+	});
+
+	it("opens the mobile drawer with an overlay and closes it via Escape", async () => {
+		const wrapper = mountWithBody({ global: { stubs, slots: { default: "<div>Content</div>" } } });
+		const menuButton = wrapper.find('button[aria-label="打开菜单"]');
+		await menuButton.trigger("click");
+		await nextTick();
+		expect(wrapper.find(".fixed.inset-0").exists()).toBe(true);
+
+		const aside = wrapper.find("aside");
+		await aside.trigger("keydown", { key: "Escape" });
+		await nextTick();
+		expect(wrapper.find(".fixed.inset-0").exists()).toBe(false);
+		expect(menuButton.attributes("aria-expanded")).toBe("false");
+		wrapper.unmount();
+	});
+
+	it("ignores non-navigation keys inside the open drawer", async () => {
+		const wrapper = mountWithBody({ global: { stubs, slots: { default: "<div>Content</div>" } } });
+		const menuButton = wrapper.find('button[aria-label="打开菜单"]');
+		await menuButton.trigger("click");
+		await nextTick();
+		expect(wrapper.find(".fixed.inset-0").exists()).toBe(true);
+
+		// A plain key (not Escape/Tab) must leave the drawer open and focused element untouched.
+		await wrapper.find("aside").trigger("keydown", { key: "a" });
+		await nextTick();
+		expect(wrapper.find(".fixed.inset-0").exists()).toBe(true);
+		wrapper.unmount();
+	});
+
+	it("ignores Escape when the drawer is already closed", async () => {
+		const wrapper = mountWithBody({ global: { stubs, slots: { default: "<div>Content</div>" } } });
+		const aside = wrapper.find("aside");
+		await aside.trigger("keydown", { key: "Escape" });
+		await nextTick();
+		expect(wrapper.find(".fixed.inset-0").exists()).toBe(false);
+		wrapper.unmount();
+	});
+
+	it("closes the drawer when the mobile overlay is clicked", async () => {
+		const wrapper = mountWithBody({ global: { stubs, slots: { default: "<div>Content</div>" } } });
+		const menuButton = wrapper.find('button[aria-label="打开菜单"]');
+		await menuButton.trigger("click");
+		await nextTick();
+		const overlay = wrapper.find(".fixed.inset-0");
+		expect(overlay.exists()).toBe(true);
+
+		await overlay.trigger("click");
+		await nextTick();
+		expect(wrapper.find(".fixed.inset-0").exists()).toBe(false);
+		wrapper.unmount();
+	});
+
+	it("closes the drawer via the sidebar close button", async () => {
+		const wrapper = mountWithBody({ global: { stubs, slots: { default: "<div>Content</div>" } } });
+		const menuButton = wrapper.find('button[aria-label="打开菜单"]');
+		await menuButton.trigger("click");
+		await nextTick();
+
+		const closeBtn = wrapper.find('button[aria-label="关闭菜单"]');
+		expect(closeBtn.exists()).toBe(true);
+		await closeBtn.trigger("click");
+		await nextTick();
+		expect(wrapper.find(".fixed.inset-0").exists()).toBe(false);
+		wrapper.unmount();
+	});
+
+	it("closes the drawer when a sidebar nav item is clicked", async () => {
+		const wrapper = mountWithBody({ global: { stubs, slots: { default: "<div>Content</div>" } } });
+		const menuButton = wrapper.find('button[aria-label="打开菜单"]');
+		await menuButton.trigger("click");
+		await nextTick();
+		expect(wrapper.find(".fixed.inset-0").exists()).toBe(true);
+
+		const postsLink = wrapper.find('aside a[href="/admin/posts"]');
+		await postsLink.trigger("click");
+		await nextTick();
+		expect(wrapper.find(".fixed.inset-0").exists()).toBe(false);
+		wrapper.unmount();
+	});
+
+	it("closes the drawer when the back-to-site link is clicked", async () => {
+		const wrapper = mountWithBody({ global: { stubs, slots: { default: "<div>Content</div>" } } });
+		const menuButton = wrapper.find('button[aria-label="打开菜单"]');
+		await menuButton.trigger("click");
+		await nextTick();
+		expect(wrapper.find(".fixed.inset-0").exists()).toBe(true);
+
+		const backLink = wrapper.find('aside a[href="/"]');
+		await backLink.trigger("click");
+		await nextTick();
+		expect(wrapper.find(".fixed.inset-0").exists()).toBe(false);
+		wrapper.unmount();
+	});
+
+	it("traps Tab and Shift+Tab inside the open mobile drawer", async () => {
+		const wrapper = mountWithBody({ global: { stubs, slots: { default: "<div>Content</div>" } } });
+		const menuButton = wrapper.find('button[aria-label="打开菜单"]');
+		await menuButton.trigger("click");
+		await nextTick();
+
+		const aside = wrapper.find("aside");
+		const focusables = aside.findAll("a, button");
+		expect(focusables.length).toBeGreaterThan(0);
+
+		// Focus leaves the drawer (behind the overlay)…
+		(document.activeElement as HTMLElement | null)?.blur();
+		// …a plain Tab wraps focus into the FIRST focusable.
+		await aside.trigger("keydown", { key: "Tab" });
+		await nextTick();
+		expect(aside.element.contains(document.activeElement)).toBe(true);
+		expect(document.activeElement).toBe(focusables.at(0)?.element);
+
+		// Shift+Tab from outside wraps to the LAST focusable.
+		(document.activeElement as HTMLElement | null)?.blur();
+		await aside.trigger("keydown", { key: "Tab", shiftKey: true });
+		await nextTick();
+		expect(document.activeElement).toBe(focusables.at(-1)?.element);
+
+		// Tab while sitting on the LAST focusable wraps forward to the FIRST.
+		const last = focusables.at(-1)?.element as HTMLElement | undefined;
+		last?.focus();
+		await aside.trigger("keydown", { key: "Tab" });
+		await nextTick();
+		expect(document.activeElement).toBe(focusables.at(0)?.element);
+		wrapper.unmount();
+	});
+
+	it("closes the password modal with Escape", async () => {
+		const wrapper = mountWithBody({ global: { stubs, slots: { default: "<div>Content</div>" } } });
+		const openBtn = wrapper.findAll("button").find((b) => b.text().includes("修改密码"));
+		await openBtn?.trigger("click");
+		await wrapper.vm.$nextTick();
+
+		const dialog = document.body.querySelector('[role="dialog"]');
+		expect(dialog).not.toBeNull();
+		await new DOMWrapper(dialog as Element).trigger("keydown", { key: "Escape" });
+		await wrapper.vm.$nextTick();
+		expect(document.body.querySelector('[role="dialog"]')).toBeNull();
+		wrapper.unmount();
+	});
+
+	it("ignores non-Escape, non-Tab keys inside the password modal", async () => {
+		const wrapper = mountWithBody({ global: { stubs, slots: { default: "<div>Content</div>" } } });
+		const openBtn = wrapper.findAll("button").find((b) => b.text().includes("修改密码"));
+		await openBtn?.trigger("click");
+		await wrapper.vm.$nextTick();
+
+		const dialog = document.body.querySelector('[role="dialog"]') as Element;
+		expect(dialog).not.toBeNull();
+		await new DOMWrapper(dialog).trigger("keydown", { key: "a" });
+		await wrapper.vm.$nextTick();
+		// The modal stays open and is not the focus being moved.
+		expect(document.body.querySelector('[role="dialog"]')).not.toBeNull();
+		wrapper.unmount();
+	});
+
+	it("traps Tab and Shift+Tab inside the password modal", async () => {
+		const wrapper = mountWithBody({ global: { stubs, slots: { default: "<div>Content</div>" } } });
+		const openBtn = wrapper.findAll("button").find((b) => b.text().includes("修改密码"));
+		await openBtn?.trigger("click");
+		await wrapper.vm.$nextTick();
+
+		const dialog = document.body.querySelector('[role="dialog"]') as Element;
+		expect(dialog).not.toBeNull();
+		const focusables = dialog.querySelectorAll("a[href], button, input, select, textarea");
+		expect(focusables.length).toBeGreaterThan(0);
+
+		(document.activeElement as HTMLElement | null)?.blur();
+		await new DOMWrapper(dialog).trigger("keydown", { key: "Tab" });
+		await wrapper.vm.$nextTick();
+		expect(document.activeElement).toBe(focusables[0]);
+
+		(document.activeElement as HTMLElement | null)?.blur();
+		await new DOMWrapper(dialog).trigger("keydown", { key: "Tab", shiftKey: true });
+		await wrapper.vm.$nextTick();
+		expect(document.activeElement).toBe(focusables[focusables.length - 1]);
+
+		// Forward Tab while on the last field wraps back to the first.
+		(focusables[focusables.length - 1] as HTMLElement).focus();
+		await new DOMWrapper(dialog).trigger("keydown", { key: "Tab" });
+		await wrapper.vm.$nextTick();
+		expect(document.activeElement).toBe(focusables[0]);
+		wrapper.unmount();
+	});
+
+	it("shows the generic failure message when a non-Error is thrown", async () => {
+		mockFetch.mockRejectedValue("boom"); // a bare string, not an Error
+		const wrapper = mountWithBody({ global: { stubs, slots: { default: "<div>Content</div>" } } });
+		const openBtn = wrapper.findAll("button").find((b) => b.text().includes("修改密码"));
+		await openBtn?.trigger("click");
+		await wrapper.vm.$nextTick();
+
+		const passwordInputs = document.body.querySelectorAll('input[type="password"]');
+		await new DOMWrapper(passwordInputs[0] as Element).setValue("current");
+		await new DOMWrapper(passwordInputs[1] as Element).setValue("newpass123");
+		await new DOMWrapper(passwordInputs[2] as Element).setValue("newpass123");
+
+		const submitButton = document.body.querySelector('button[type="submit"]');
+		await new DOMWrapper(submitButton as Element).trigger("click");
+		await wrapper.vm.$nextTick();
+
+		expect(document.body.textContent || "").toContain("修改密码失败");
+		wrapper.unmount();
+	});
+
+	it("falls back to a generic error when the API error omits a detail message", async () => {
+		mockFetch.mockResolvedValue({ ok: false, json: () => Promise.resolve({}) });
+		const wrapper = mountWithBody({ global: { stubs, slots: { default: "<div>Content</div>" } } });
+		const openBtn = wrapper.findAll("button").find((b) => b.text().includes("修改密码"));
+		await openBtn?.trigger("click");
+		await wrapper.vm.$nextTick();
+
+		const passwordInputs = document.body.querySelectorAll('input[type="password"]');
+		await new DOMWrapper(passwordInputs[0] as Element).setValue("current");
+		await new DOMWrapper(passwordInputs[1] as Element).setValue("newpass123");
+		await new DOMWrapper(passwordInputs[2] as Element).setValue("newpass123");
+
+		const submitButton = document.body.querySelector('button[type="submit"]');
+		await new DOMWrapper(submitButton as Element).trigger("click");
+		await wrapper.vm.$nextTick();
+
+		expect(document.body.textContent || "").toContain("Failed to change password");
+		wrapper.unmount();
+	});
+
+	it("blocks a second submit while a password change is in flight", async () => {
+		mockFetch.mockReturnValue(new Promise(() => {})); // hangs forever
+		const wrapper = mountWithBody({ global: { stubs, slots: { default: "<div>Content</div>" } } });
+		const openBtn = wrapper.findAll("button").find((b) => b.text().includes("修改密码"));
+		await openBtn?.trigger("click");
+		await wrapper.vm.$nextTick();
+
+		const passwordInputs = document.body.querySelectorAll('input[type="password"]');
+		await new DOMWrapper(passwordInputs[0] as Element).setValue("current");
+		await new DOMWrapper(passwordInputs[1] as Element).setValue("newpass123");
+		await new DOMWrapper(passwordInputs[2] as Element).setValue("newpass123");
+
+		// First submit starts the in-flight request (fetch never resolves).
+		const form = document.body.querySelector("form") as Element;
+		const dispatchSubmit = () => {
+			const event = new Event("submit", { bubbles: true, cancelable: true });
+			event.preventDefault = () => {};
+			form.dispatchEvent(event);
+		};
+		dispatchSubmit();
+		await wrapper.vm.$nextTick();
+		// A second submit while busy must be ignored — no second fetch.
+		dispatchSubmit();
+		await wrapper.vm.$nextTick();
+
+		expect(mockFetch).toHaveBeenCalledTimes(1);
+		wrapper.unmount();
+	});
+
+	it("auto-closes the password modal after a successful change", async () => {
+		vi.useFakeTimers();
+		mockFetch.mockResolvedValue({ ok: true, json: () => Promise.resolve({}) });
+
+		const wrapper = mountWithBody({ global: { stubs, slots: { default: "<div>Content</div>" } } });
+		const openBtn = wrapper.findAll("button").find((b) => b.text().includes("修改密码"));
+		await openBtn?.trigger("click");
+		await wrapper.vm.$nextTick();
+
+		const passwordInputs = document.body.querySelectorAll('input[type="password"]');
+		await new DOMWrapper(passwordInputs[0] as Element).setValue("current");
+		await new DOMWrapper(passwordInputs[1] as Element).setValue("newpass123");
+		await new DOMWrapper(passwordInputs[2] as Element).setValue("newpass123");
+
+		const submitButton = document.body.querySelector('button[type="submit"]');
+		await new DOMWrapper(submitButton as Element).trigger("click");
+		await vi.advanceTimersByTimeAsync(0); // let the promise + success settle
+		await wrapper.vm.$nextTick();
+		expect(document.body.textContent || "").toContain("密码修改成功");
+
+		// The success banner auto-closes after 1500ms.
+		await vi.advanceTimersByTimeAsync(1600);
+		await wrapper.vm.$nextTick();
+		expect(document.body.querySelector('[role="dialog"]')).toBeNull();
+
+		vi.useRealTimers();
+		wrapper.unmount();
+	});
+
+	it("toggles the theme from the mobile header button", async () => {
+		const wrapper = mountWithBody({ global: { stubs, slots: { default: "<div>Content</div>" } } });
+		const toggle = wrapper
+			.findAll("header button")
+			.find((b) => (b.attributes("aria-label") || "").includes("模式"));
+		expect(toggle).toBeDefined();
+		expect(toggle?.attributes("aria-label")).toBe("切换到深色模式");
+
+		await toggle?.trigger("click");
+		await flushPromises();
+		expect(toggle?.attributes("aria-label")).toBe("切换到浅色模式");
+
+		useTheme().isDark.value = false;
+		delete localStorageStore.theme;
+		wrapper.unmount();
+	});
+});
+
+describe("Admin Layout route-reactive behavior", () => {
+	const sharedRoute = reactive({ path: "/admin", query: {} });
+
+	beforeEach(() => {
+		sharedRoute.path = "/admin";
+		mockIsAuthenticated.value = true;
+		vi.stubGlobal("useRoute", () => sharedRoute);
+	});
+
+	afterEach(() => {
+		vi.stubGlobal("useRoute", () => ({ path: mockRoutePath.value, query: {} }));
+	});
+
+	it("closes the mobile drawer when the route changes", async () => {
+		const wrapper = mountWithBody({ global: { stubs, slots: { default: "<div>Content</div>" } } });
+		const menuButton = wrapper.find('button[aria-label="打开菜单"]');
+		await menuButton.trigger("click");
+		await nextTick();
+		expect(wrapper.find(".fixed.inset-0").exists()).toBe(true);
+
+		sharedRoute.path = "/admin/posts";
+		await nextTick();
+		expect(wrapper.find(".fixed.inset-0").exists()).toBe(false);
+		wrapper.unmount();
+	});
+
+	it("re-reads the stored role when the route changes", async () => {
+		localStorageStore.admin_role = "editor";
+		const wrapper = mountWithBody({ global: { stubs, slots: { default: "<div>Content</div>" } } });
+		expect(wrapper.find('a[href="/admin/users"]').exists()).toBe(false);
+
+		// Role flips to superuser in storage, then a route change re-reads it.
+		localStorageStore.admin_role = "superuser";
+		sharedRoute.path = "/admin/posts";
+		await nextTick();
+		expect(wrapper.find('a[href="/admin/users"]').exists()).toBe(true);
+
+		delete localStorageStore.admin_role;
+		wrapper.unmount();
 	});
 });

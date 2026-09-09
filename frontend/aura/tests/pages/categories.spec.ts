@@ -61,6 +61,24 @@ const catFollowsState = {
 	total: 0,
 };
 
+// New-post push follow on this category (DEC-076/TASK-147): mock the push
+// composable so tests can drive status/newPostPrefs like any other state.
+const pushStatus = ref("unsupported");
+const newPostPrefs = ref({ want: false, categoryId: null as number | null });
+const mockInitPush = vi.fn();
+const mockPushSubscribe = vi.fn();
+const mockSetNewPostPrefs = vi.fn();
+
+vi.mock("~~/composables/usePushSubscription", () => ({
+	usePushSubscription: () => ({
+		status: pushStatus,
+		init: mockInitPush,
+		subscribe: mockPushSubscribe,
+		setNewPostPrefs: mockSetNewPostPrefs,
+		newPostPrefs,
+	}),
+}));
+
 // Captured by the useFetch mock for the /api/posts URL — assert the ISS-368
 // enabled-gate (no posts fetch on the all-categories view; fire once a category
 // is picked).
@@ -70,11 +88,15 @@ async function mountCategoriesPage({
 	categories = mockCategories,
 	posts = mockCategoryPosts,
 	pending = false,
+	postsError = null,
+	customFetch = undefined,
 	routeQuery = {},
 }: {
 	categories?: typeof mockCategories | null;
 	posts?: typeof mockCategoryPosts | null;
 	pending?: boolean;
+	postsError?: unknown;
+	customFetch?: unknown;
 	routeQuery?: Record<string, string>;
 } = {}) {
 	vi.stubGlobal("useRuntimeConfig", () => ({
@@ -97,19 +119,20 @@ async function mountCategoriesPage({
 	// (getReaderCategoryFollows, ISS-110/111 pattern) — not useFetch.
 	vi.stubGlobal(
 		"$fetch",
-		vi.fn((url: unknown, opts: { method?: string } = {}) => {
-			if (
-				String(url).includes("/me/category-follows") &&
-				!["PUT", "PATCH", "DELETE"].includes(opts.method ?? "")
-			) {
-				// snapshot the shared state so tests can mutate it between mounts
-				return Promise.resolve({
-					items: [...catFollowsState.items],
-					total: catFollowsState.items.length,
-				});
-			}
-			return Promise.resolve({});
-		}),
+		customFetch ??
+			vi.fn((url: unknown, opts: { method?: string } = {}) => {
+				if (
+					String(url).includes("/me/category-follows") &&
+					!["PUT", "PATCH", "DELETE"].includes(opts.method ?? "")
+				) {
+					// snapshot the shared state so tests can mutate it between mounts
+					return Promise.resolve({
+						items: [...catFollowsState.items],
+						total: catFollowsState.items.length,
+					});
+				}
+				return Promise.resolve({});
+			}),
 	);
 
 	vi.stubGlobal(
@@ -134,7 +157,7 @@ async function mountCategoriesPage({
 				return {
 					data: ref(posts),
 					pending: ref(pending),
-					error: ref(null),
+					error: ref(postsError),
 					refresh: vi.fn(),
 				};
 			}
@@ -181,6 +204,9 @@ describe("Categories Page", () => {
 	afterEach(() => {
 		vi.restoreAllMocks();
 		lastPostsEnabled = undefined;
+		pushStatus.value = "unsupported";
+		newPostPrefs.value = { want: false, categoryId: null };
+		window.localStorage.removeItem("reader_token");
 	});
 
 	describe("Posts fetch gating (ISS-368)", () => {
@@ -824,6 +850,279 @@ describe("Categories Page", () => {
 				query: { category_id: "1", page: "1" },
 				replace: true,
 			});
+		});
+	});
+
+	describe("Category posts failure", () => {
+		it("surfaces a load-failed message with retry instead of an empty state", async () => {
+			const wrapper = await mountCategoriesPage({
+				postsError: { message: "boom" },
+				routeQuery: { category_id: "1" },
+			});
+			expect(wrapper.text()).toContain("加载失败");
+			expect(wrapper.text()).not.toContain("暂无文章");
+			const retry = wrapper.findAll("button").find((b) => b.text() === "重试");
+			expect(retry).toBeDefined();
+			// Retry re-runs the refreshes (the error state's recovery action).
+			await retry?.trigger("click");
+			await flushPromises();
+			expect(wrapper.text()).toContain("加载失败");
+		});
+	});
+
+	describe("Post card edge cases", () => {
+		it("handles a post without an excerpt or category", async () => {
+			const bare = {
+				items: [
+					{
+						...mockCategoryPosts.items[0],
+						excerpt: "",
+						category: null,
+					},
+				],
+				pagination: mockCategoryPosts.pagination,
+			};
+			const wrapper = await mountCategoriesPage({
+				posts: bare as unknown as typeof mockCategoryPosts,
+				routeQuery: { category_id: "1" },
+			});
+			expect(wrapper.text()).toContain("Categorized Post One");
+			expect(wrapper.find("p.line-clamp-2").exists()).toBe(false);
+		});
+
+		it("renders an empty date for a post with an unparseable timestamp", async () => {
+			const badDate = {
+				items: [
+					{
+						...mockCategoryPosts.items[0],
+						created_at: "not-a-date",
+					},
+				],
+				pagination: mockCategoryPosts.pagination,
+			};
+			const wrapper = await mountCategoriesPage({
+				posts: badDate as unknown as typeof mockCategoryPosts,
+				routeQuery: { category_id: "1" },
+			});
+			expect(wrapper.text()).toContain("Categorized Post One");
+			expect(wrapper.text()).toContain("100 次阅读");
+		});
+	});
+
+	describe("Windowed pagination ellipsis", () => {
+		it("renders ellipsis tokens and disables the active page on a 20-page result set", async () => {
+			const manyPages = {
+				items: [mockCategoryPosts.items[0]],
+				pagination: {
+					total: 200,
+					page: 1,
+					limit: 10,
+					total_pages: 20,
+				},
+			};
+			const wrapper = await mountCategoriesPage({
+				posts: manyPages as unknown as typeof mockCategoryPosts,
+				routeQuery: { category_id: "1" },
+			});
+			const pageBtns = wrapper.findAll("button").filter((b) => /\d|…/.test(b.text()));
+			expect(pageBtns.length).toBe(9);
+			const current = pageBtns.find((b) => b.text() === "1");
+			expect(current?.attributes("disabled")).toBeDefined();
+			expect(current?.attributes("aria-current")).toBe("page");
+			const ellipsis = pageBtns.find((b) => b.text() === "…");
+			expect(ellipsis?.attributes("disabled")).toBeDefined();
+		});
+	});
+
+	describe("Reader-level category notify + failures", () => {
+		function customFetch(handlers: {
+			put?: () => Promise<unknown>;
+			patch?: () => Promise<unknown>;
+			followsGet?: () => Promise<unknown>;
+			del?: () => Promise<unknown>;
+		}) {
+			return vi.fn((url: string, opts: { method?: string } = {}) => {
+				const u = String(url);
+				const method = opts.method ?? "GET";
+				if (u.includes("/me/category-follows") && method === "GET") {
+					return handlers.followsGet?.() ?? Promise.resolve({ items: [], total: 0 });
+				}
+				if (u.includes("/me/categories/") && method === "PUT") {
+					return handlers.put?.() ?? Promise.resolve({});
+				}
+				if (u.includes("/me/categories/") && method === "PATCH") {
+					return handlers.patch?.() ?? Promise.resolve({});
+				}
+				if (u.includes("/me/categories/") && method === "DELETE") {
+					return handlers.del?.() ?? Promise.resolve({});
+				}
+				return Promise.resolve({});
+			});
+		}
+
+		it("toggles the notify bell off after following (TASK-182)", async () => {
+			window.localStorage.setItem("reader_token", "token");
+			const wrapper = await mountCategoriesPage({
+				routeQuery: { category_id: "1" },
+				customFetch: customFetch({
+					put: () =>
+						Promise.resolve({
+							category_id: 1,
+							category_name: "Tech",
+							following: true,
+							notify: true,
+						}),
+					patch: () =>
+						Promise.resolve({
+							category_id: 1,
+							category_name: "Tech",
+							following: true,
+							notify: false,
+						}),
+				}),
+			});
+			const followBtn = wrapper.findAll("button").find((b) => b.text() === "关注分类");
+			expect(followBtn).toBeDefined();
+			await followBtn?.trigger("click");
+			await flushPromises();
+			expect(wrapper.text()).toContain("已关注分类");
+			expect(wrapper.text()).toContain("通知已开");
+
+			const notifyBtn = wrapper.findAll("button").find((b) => b.text() === "通知已开");
+			expect(notifyBtn).toBeDefined();
+			await notifyBtn?.trigger("click");
+			await flushPromises();
+			expect(wrapper.text()).toContain("通知已关");
+
+			window.localStorage.removeItem("reader_token");
+		});
+
+		it("surfaces a follow failure on the follow tap (not a silent no-op)", async () => {
+			window.localStorage.setItem("reader_token", "token");
+			const wrapper = await mountCategoriesPage({
+				routeQuery: { category_id: "1" },
+				customFetch: customFetch({
+					put: () => Promise.reject(new Error("offline")),
+				}),
+			});
+			const followBtn = wrapper.findAll("button").find((b) => b.text() === "关注分类");
+			await followBtn?.trigger("click");
+			await flushPromises();
+			expect(wrapper.text()).toContain("关注操作失败，请检查网络后重试。");
+
+			window.localStorage.removeItem("reader_token");
+		});
+
+		it("unfollows an already-followed category (DELETE succeeds) and flips the button back", async () => {
+			window.localStorage.setItem("reader_token", "token");
+			catFollowsState.items = [{ id: 1, name: "Tech", notify: true }];
+			catFollowsState.total = 1;
+			const wrapper = await mountCategoriesPage({
+				routeQuery: { category_id: "1" },
+				customFetch: customFetch({
+					followsGet: () =>
+						Promise.resolve({
+							items: [...catFollowsState.items],
+							total: catFollowsState.items.length,
+						}),
+					del: () => Promise.resolve(null),
+				}),
+			});
+			expect(wrapper.text()).toContain("已关注分类");
+			const followBtn = wrapper.findAll("button").find((b) => b.text().includes("已关注分类"));
+			await followBtn?.trigger("click");
+			await flushPromises();
+			expect(wrapper.text()).toContain("关注分类");
+			expect(wrapper.text()).not.toContain("已关注分类");
+
+			window.localStorage.removeItem("reader_token");
+			catFollowsState.items = [];
+			catFollowsState.total = 0;
+		});
+
+		it("surfaces a notify-toggle failure (not a silent no-op)", async () => {
+			window.localStorage.setItem("reader_token", "token");
+			const wrapper = await mountCategoriesPage({
+				routeQuery: { category_id: "1" },
+				customFetch: customFetch({
+					put: () =>
+						Promise.resolve({
+							category_id: 1,
+							category_name: "Tech",
+							following: true,
+							notify: true,
+						}),
+					patch: () => Promise.reject(new Error("offline")),
+				}),
+			});
+			const followBtn = wrapper.findAll("button").find((b) => b.text() === "关注分类");
+			await followBtn?.trigger("click");
+			await flushPromises();
+			expect(wrapper.text()).toContain("通知已开");
+
+			const notifyBtn = wrapper.findAll("button").find((b) => b.text() === "通知已开");
+			await notifyBtn?.trigger("click");
+			await flushPromises();
+			expect(wrapper.text()).toContain("关注操作失败，请检查网络后重试。");
+
+			window.localStorage.removeItem("reader_token");
+		});
+	});
+
+	describe("New-post push follow (DEC-076, TASK-147)", () => {
+		it("hides the push follow button before push is configured", async () => {
+			pushStatus.value = "unsupported";
+			const wrapper = await mountCategoriesPage({ routeQuery: { category_id: "1" } });
+			expect(wrapper.text()).not.toContain("关注新文章");
+		});
+
+		it("subscribes when the reader taps follow on an unsubscribed browser", async () => {
+			pushStatus.value = "idle";
+			mockPushSubscribe.mockResolvedValue(undefined);
+			const wrapper = await mountCategoriesPage({ routeQuery: { category_id: "1" } });
+			const pushBtn = wrapper.findAll("button").find((b) => b.text().includes("关注新文章"));
+			expect(pushBtn).toBeDefined();
+			await pushBtn?.trigger("click");
+			await flushPromises();
+			expect(mockPushSubscribe).toHaveBeenCalledWith({ want: true, categoryId: 1 });
+		});
+
+		it("upserts the follow without re-asking when the browser is already subscribed", async () => {
+			pushStatus.value = "subscribed";
+			newPostPrefs.value = { want: false, categoryId: null };
+			const wrapper = await mountCategoriesPage({ routeQuery: { category_id: "1" } });
+			const pushBtn = wrapper.findAll("button").find((b) => b.text().includes("关注新文章"));
+			await pushBtn?.trigger("click");
+			await flushPromises();
+			expect(mockSetNewPostPrefs).toHaveBeenCalledWith({ want: true, categoryId: 1 });
+		});
+
+		it("turns the push follow back off when already following this category", async () => {
+			pushStatus.value = "idle";
+			newPostPrefs.value = { want: true, categoryId: 1 };
+			const wrapper = await mountCategoriesPage({ routeQuery: { category_id: "1" } });
+			expect(wrapper.text()).toContain("已关注新文章");
+			const pushBtn = wrapper.findAll("button").find((b) => b.text().includes("已关注新文章"));
+			await pushBtn?.trigger("click");
+			await flushPromises();
+			expect(mockSetNewPostPrefs).toHaveBeenCalledWith({ want: false, categoryId: null });
+		});
+
+		it("disables the push button and shows busy feedback while subscribing", async () => {
+			pushStatus.value = "subscribing";
+			const wrapper = await mountCategoriesPage({ routeQuery: { category_id: "1" } });
+			const pushBtn = wrapper.findAll("button").find((b) => b.text().includes("关注新文章"));
+			expect(pushBtn?.attributes("disabled")).toBeDefined();
+		});
+
+		it("surfaces a push subscribe failure instead of a silent no-op", async () => {
+			pushStatus.value = "idle";
+			mockPushSubscribe.mockRejectedValue(new Error("denied"));
+			const wrapper = await mountCategoriesPage({ routeQuery: { category_id: "1" } });
+			const pushBtn = wrapper.findAll("button").find((b) => b.text().includes("关注新文章"));
+			await pushBtn?.trigger("click");
+			await flushPromises();
+			expect(wrapper.text()).toContain("关注操作失败，请检查网络后重试。");
 		});
 	});
 });

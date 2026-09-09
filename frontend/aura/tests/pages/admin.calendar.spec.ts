@@ -186,4 +186,112 @@ describe("Admin calendar page (TASK-194)", () => {
 		expect(label).toContain("2026");
 		expect(label).toContain("2 篇文章");
 	});
+
+	describe("Branch-gap coverage", () => {
+		it("falls back to the current month when no month query is present", async () => {
+			routeQuery.month = ""; // empty string is falsy
+			const now = new Date();
+			const expected = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+			const wrapper = await mountPage();
+			expect(mockFetch).toHaveBeenCalledWith(expected);
+			expect(wrapper.findAll('[data-testid="calendar-day"]')).toHaveLength(42);
+		});
+
+		it("tolerates an unparseable month query", async () => {
+			routeQuery.month = "2026-qq"; // parseInt('qq') → NaN
+			const wrapper = await mountPage();
+			expect(mockFetch).toHaveBeenCalledWith("2026-qq");
+			expect(wrapper.findAll('[data-testid="calendar-day"]')).toHaveLength(42);
+		});
+
+		it("parses a Z-suffixed post date onto its day cell", async () => {
+			mockFetch.mockResolvedValue({
+				month: "2026-06",
+				items: [
+					{
+						id: 21,
+						title: "Zoned",
+						slug: "zoned",
+						type: "published",
+						date: "2026-06-15T12:00:00Z",
+						published: true,
+					},
+				],
+				unscheduled: [],
+			});
+			const wrapper = await mountPage();
+			const chip = wrapper.find('[data-testid="calendar-day"] a[data-testid="calendar-post-chip"]');
+			expect(chip.exists()).toBe(true);
+			expect(chip.text()).toBe("Zoned");
+		});
+
+		it("skips items with missing or invalid dates (never lands on the grid)", async () => {
+			mockFetch.mockResolvedValue({
+				month: "2026-06",
+				items: [
+					{ id: 30, title: "No date", slug: "nodate", type: "draft", date: null, published: false },
+					{
+						id: 31,
+						title: "Junk date",
+						slug: "junk",
+						type: "draft",
+						date: "not-a-date",
+						published: false,
+					},
+				],
+				unscheduled: [],
+			});
+			const wrapper = await mountPage();
+			expect(
+				wrapper.findAll('[data-testid="calendar-day"] a[data-testid="calendar-post-chip"]'),
+			).toHaveLength(0);
+		});
+
+		it("renders the error block with a Retry that recovers the grid", async () => {
+			mockFetch
+				.mockRejectedValueOnce(new Error("boom"))
+				.mockResolvedValue({ month: "2026-06", items: [], unscheduled: [] });
+			const wrapper = await mountPage();
+			expect(wrapper.text()).toContain("加载日历失败，请重试。");
+
+			// The unscheduled sidebar also says the load failed rather than lying empty.
+			expect(wrapper.text()).toContain("加载日历失败");
+
+			const retry = wrapper.findAll("button").find((b) => b.text().includes("重试"));
+			expect(retry).toBeDefined();
+			await retry?.trigger("click");
+			await flushPromises();
+			expect(wrapper.findAll('[data-testid="calendar-day"]')).toHaveLength(42);
+		});
+
+		it("styles cells from other months differently (dayInOtherMonth)", async () => {
+			const wrapper = await mountPage();
+			const cells = wrapper.findAll('[data-testid="calendar-day"]');
+			const otherMonthCells = cells.filter((c) => {
+				const date = c.attributes("data-date") ?? "";
+				return !date.startsWith("2026-06");
+			});
+			expect(otherMonthCells.length).toBeGreaterThan(0);
+			for (const cell of otherMonthCells) {
+				expect(cell.element.className).toContain("bg-gray-50");
+			}
+		});
+
+		it("highlights today's cell when the grid shows the current month", async () => {
+			const now = new Date();
+			const current = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+			routeQuery.month = current;
+			mockFetch.mockResolvedValue({
+				month: current,
+				items: [],
+				unscheduled: [],
+			});
+			const wrapper = await mountPage();
+			const todayKey = `${current}-${String(now.getDate()).padStart(2, "0")}`;
+			const todayCell = wrapper.find(`[data-testid="calendar-day"][data-date="${todayKey}"]`);
+			expect(todayCell.exists()).toBe(true);
+			expect(todayCell.element.className).toContain("ring-amber-400");
+			expect(todayCell.element.className).toContain("bg-white");
+		});
+	});
 });

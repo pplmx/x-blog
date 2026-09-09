@@ -348,4 +348,209 @@ describe("usePushSubscription", () => {
 		const bytes = urlBase64ToUint8Array("ARut");
 		expect([...bytes]).toEqual([0x01, 0x1b, 0xad]);
 	});
+
+	it("apiBase falls back to an empty string when apiUrl is not configured", async () => {
+		vi.stubGlobal("useRuntimeConfig", () => ({ public: { apiUrl: undefined } }));
+		const { apiBase } = await import("~/composables/usePushSubscription");
+		expect(apiBase()).toBe("");
+	});
+
+	it("fetchBackendPublicKey returns null when the public_key is not a string", async () => {
+		globalThis.fetch = vi
+			.fn()
+			.mockResolvedValue({ ok: true, json: () => Promise.resolve({ public_key: 42 }) });
+		const { fetchBackendPublicKey } = await import("~/composables/usePushSubscription");
+		expect(await fetchBackendPublicKey()).toBeNull();
+	});
+
+	it("subscribe serializes null key buffers as empty base64url on the wire", async () => {
+		const noKeys = (endpoint: string = ENDPOINT) => ({
+			endpoint,
+			getKey: () => null, // key material unavailable (e.g. cross-origin SW)
+			unsubscribe: vi.fn().mockResolvedValue(true),
+		});
+		const { reg } = setupBrowser({ permission: "granted" });
+		reg.pushManager.subscribe.mockResolvedValue(noKeys());
+		const { usePushSubscription } = await import("~/composables/usePushSubscription");
+		const { status, subscribe } = usePushSubscription();
+
+		await subscribe();
+
+		expect(status.value).toBe("subscribed");
+		expect(globalThis.fetch).toHaveBeenCalledWith(
+			expect.stringContaining("/api/push/subscribe"),
+			expect.objectContaining({
+				body: expect.stringContaining('"p256dh":""'),
+			}),
+		);
+	});
+
+	it("init reports idle when no service worker registration exists", async () => {
+		setupBrowser({ register: false }); // getRegistration → null
+		const { usePushSubscription } = await import("~/composables/usePushSubscription");
+		const { status, init } = usePushSubscription();
+		await init();
+		expect(status.value).toBe("idle");
+	});
+
+	it("subscribe early-returns when notifications are already denied", async () => {
+		const { svc } = setupBrowser({ permission: "denied" });
+		const { usePushSubscription } = await import("~/composables/usePushSubscription");
+		const { status, init, subscribe } = usePushSubscription();
+		await init();
+		expect(status.value).toBe("denied");
+
+		const callsBefore = (globalThis.fetch as ReturnType<typeof vi.fn>).mock.calls.length;
+		await subscribe();
+
+		expect(svc.register).not.toHaveBeenCalled();
+		expect((globalThis.fetch as ReturnType<typeof vi.fn>).mock.calls.length).toBe(callsBefore);
+		expect(status.value).toBe("denied");
+	});
+
+	it("subscribe early-returns when the browser has no push stack", async () => {
+		// Earlier tests' setupBrowser stubs leak onto window (defineProperty, not
+		// stubGlobal) — delete the props entirely so the `in` checks are false and
+		// isSupported() is genuinely false (isSupported only guards on existence).
+		// @ts-expect-error deleting a stubbed global
+		delete window.PushManager;
+		// @ts-expect-error deleting a stubbed global
+		delete window.Notification;
+		// @ts-expect-error deleting a stubbed global
+		delete window.navigator.serviceWorker;
+		const { usePushSubscription } = await import("~/composables/usePushSubscription");
+		const { status, subscribe } = usePushSubscription();
+		await subscribe();
+		expect(status.value).toBe("unsupported");
+		expect(globalThis.fetch).not.toHaveBeenCalled();
+	});
+
+	it("subscribe proceeds once permission is granted at the prompt", async () => {
+		const { reg } = setupBrowser({ permission: "default" });
+		reg.pushManager.subscribe.mockResolvedValue(fakePushSubscription(ENDPOINT));
+		// First visit: permission is "default", so subscribe must ask — and once
+		// granted, must continue the flow rather than bail to "denied".
+		Object.defineProperty(window, "Notification", {
+			value: {
+				permission: "default",
+				requestPermission: vi.fn().mockResolvedValue("granted"),
+			},
+			configurable: true,
+		});
+		const { usePushSubscription } = await import("~/composables/usePushSubscription");
+		const { status, subscribe } = usePushSubscription();
+
+		await subscribe();
+
+		expect(status.value).toBe("subscribed");
+		expect(reg.pushManager.subscribe).toHaveBeenCalled();
+	});
+
+	it("subscribe reuses an existing browser subscription instead of creating a new one", async () => {
+		const existing = fakePushSubscription(ENDPOINT);
+		const { svc, reg } = setupBrowser({ permission: "granted", existingSubscription: existing });
+		const { usePushSubscription } = await import("~/composables/usePushSubscription");
+		const { status, subscribe } = usePushSubscription();
+
+		await subscribe();
+
+		expect(reg.pushManager.subscribe).not.toHaveBeenCalled();
+		expect(svc.register).toHaveBeenCalledWith("/sw.js");
+		expect(status.value).toBe("subscribed");
+		expect(globalThis.fetch).toHaveBeenCalledWith(
+			expect.stringContaining("/api/push/subscribe"),
+			expect.objectContaining({ body: expect.stringContaining(ENDPOINT) }),
+		);
+	});
+
+	it("unsubscribe is a no-op when the browser has no push stack", async () => {
+		// Force an absent push stack (earlier setupBrowser stubs leak on window).
+		// @ts-expect-error deleting a stubbed global
+		delete window.PushManager;
+		// @ts-expect-error deleting a stubbed global
+		delete window.Notification;
+		// @ts-expect-error deleting a stubbed global
+		delete window.navigator.serviceWorker;
+		const { usePushSubscription } = await import("~/composables/usePushSubscription");
+		const { status, unsubscribe } = usePushSubscription();
+		await unsubscribe();
+		expect(status.value).toBe("unsupported");
+		expect(globalThis.fetch).not.toHaveBeenCalled();
+	});
+
+	it("unsubscribe with no active subscription just returns to idle", async () => {
+		setupBrowser(); // registration present, but no subscription yet
+		const { usePushSubscription } = await import("~/composables/usePushSubscription");
+		const { status, init, unsubscribe } = usePushSubscription();
+		await init();
+		expect(status.value).toBe("idle");
+
+		await unsubscribe();
+
+		expect(status.value).toBe("idle");
+		const unsubCalls = (globalThis.fetch as ReturnType<typeof vi.fn>).mock.calls.filter(([u]) =>
+			String(u).includes("/api/push/unsubscribe"),
+		);
+		expect(unsubCalls).toHaveLength(0);
+	});
+
+	it("setNewPostPrefs remembers prefs without a backend call when not subscribed", async () => {
+		setupBrowser();
+		const { usePushSubscription } = await import("~/composables/usePushSubscription");
+		const { status, init, setNewPostPrefs, newPostPrefs } = usePushSubscription();
+		await init();
+		expect(status.value).toBe("idle");
+
+		await setNewPostPrefs({ want: true, categoryId: 3 });
+
+		expect(newPostPrefs.value).toEqual({ want: true, categoryId: 3 });
+		const subCalls = (globalThis.fetch as ReturnType<typeof vi.fn>).mock.calls.filter(([u]) =>
+			String(u).includes("/api/push/subscribe"),
+		);
+		expect(subCalls).toHaveLength(0);
+	});
+
+	it("subscribe sends no Authorization header when localStorage is unavailable", async () => {
+		// localStorage can be inaccessible (denied storage); syncBackend must
+		// skip the reader JWT instead of throwing on the read.
+		const originalLS = window.localStorage;
+		Object.defineProperty(window, "localStorage", { value: undefined, configurable: true });
+		try {
+			const { reg } = setupBrowser({ permission: "granted" });
+			reg.pushManager.subscribe.mockResolvedValue(fakePushSubscription(ENDPOINT));
+			const { usePushSubscription } = await import("~/composables/usePushSubscription");
+			const { status, subscribe } = usePushSubscription();
+			await subscribe();
+			expect(status.value).toBe("subscribed");
+			expect(globalThis.fetch).toHaveBeenCalledWith(
+				expect.stringContaining("/api/push/subscribe"),
+				expect.objectContaining({
+					headers: { "Content-Type": "application/json" } as Record<string, string>,
+				}),
+			);
+		} finally {
+			Object.defineProperty(window, "localStorage", { value: originalLS, configurable: true });
+		}
+	});
+
+	it("setNewPostPrefs skips the backend when the browser subscription disappeared", async () => {
+		// Status can be "subscribed" while the browser-side subscription is
+		// already gone (service worker reclaimed). The upsert must no-op, not 500.
+		const { svc } = setupBrowser({
+			permission: "granted",
+			existingSubscription: fakePushSubscription(ENDPOINT),
+		});
+		const { usePushSubscription } = await import("~/composables/usePushSubscription");
+		const { status, init, setNewPostPrefs } = usePushSubscription();
+		await init();
+		expect(status.value).toBe("subscribed");
+
+		svc.getRegistration.mockResolvedValue(null);
+		await setNewPostPrefs({ want: false, categoryId: null });
+
+		const subCalls = (globalThis.fetch as ReturnType<typeof vi.fn>).mock.calls.filter(([u]) =>
+			String(u).includes("/api/push/subscribe"),
+		);
+		expect(subCalls).toHaveLength(0);
+	});
 });

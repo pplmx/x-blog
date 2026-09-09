@@ -177,6 +177,243 @@ describe("HeaderSearch", () => {
 		vi.useRealTimers();
 	});
 
+	it("debounces: no request fires until the 300ms window has elapsed", async () => {
+		vi.useFakeTimers();
+		const fetchSpy = vi.fn(async () => mockSearchResponse);
+		const { wrapper } = mountHeaderSearch(fetchSpy);
+		const input = wrapper.find('input[role="combobox"]');
+
+		await input.setValue("nuxt");
+		await flushPromises();
+		expect(fetchSpy).not.toHaveBeenCalled();
+
+		// Just short of the window — the request must NOT have fired yet.
+		await vi.advanceTimersByTimeAsync(299);
+		await flushPromises();
+		expect(fetchSpy).not.toHaveBeenCalled();
+
+		// Crossing the boundary fires exactly one search.
+		await vi.advanceTimersByTimeAsync(1);
+		await flushPromises();
+		expect(fetchSpy).toHaveBeenCalledTimes(1);
+		vi.useRealTimers();
+	});
+
+	it("supports ArrowDown/ArrowUp through the results and selects one with Enter", async () => {
+		vi.useFakeTimers();
+		const twoResults = {
+			items: [
+				mockSearchResponse.items[0],
+				{
+					id: 2,
+					title: "Vue Router Deep Dive",
+					slug: "vue-router",
+					views: 7,
+					category: { id: 2, name: "Frontend" },
+				},
+			],
+			pagination: { total: 2, page: 1, limit: 5, total_pages: 1 },
+		};
+		const { wrapper, navigateToMock } = mountHeaderSearch(() => Promise.resolve(twoResults));
+		const input = wrapper.find('input[role="combobox"]');
+		await input.setValue("vue");
+		await vi.advanceTimersByTimeAsync(300);
+		await flushPromises();
+		expect(wrapper.findAll("li").length).toBe(2);
+
+		// ArrowDown activates the first option and announces it via the
+		// combobox's aria-activedescendant; the active class is applied.
+		await input.trigger("keydown", { key: "ArrowDown" });
+		expect(input.attributes("aria-activedescendant")).toBe("header-search-option-0");
+		expect(
+			wrapper
+				.findAll("li")[0]
+				.classes()
+				.some((c) => c.includes("bg-gray-50")),
+		).toBe(true);
+
+		// A second ArrowDown moves to the next option.
+		await input.trigger("keydown", { key: "ArrowDown" });
+		expect(input.attributes("aria-activedescendant")).toBe("header-search-option-1");
+		expect(
+			wrapper
+				.findAll("li")[1]
+				.classes()
+				.some((c) => c.includes("bg-gray-50")),
+		).toBe(true);
+
+		// ArrowUp wraps back to the first option.
+		await input.trigger("keydown", { key: "ArrowUp" });
+		expect(input.attributes("aria-activedescendant")).toBe("header-search-option-0");
+
+		// Mouse hover also drives the highlight (mouseenter).
+		await wrapper.findAll("li")[1].trigger("mouseenter");
+		expect(input.attributes("aria-activedescendant")).toBe("header-search-option-1");
+
+		// Enter picks the highlighted option → navigates to that post and the
+		// dropdown unmounts.
+		await input.trigger("keydown", { key: "Enter" });
+		expect(navigateToMock).toHaveBeenCalledWith("/posts/vue-router");
+		expect(wrapper.find("ul").exists()).toBe(false);
+		vi.useRealTimers();
+	});
+
+	it("Enter without a highlighted result falls back to the full search page", async () => {
+		vi.useFakeTimers();
+		const { wrapper, navigateToMock } = mountHeaderSearch();
+		const input = wrapper.find('input[role="combobox"]');
+		await input.setValue("nuxt");
+		await vi.advanceTimersByTimeAsync(300);
+		await flushPromises();
+		expect(wrapper.findAll("li").length).toBe(1);
+
+		// No arrow press → activeIndex stays -1, so Enter goes to /search.
+		await input.trigger("keydown", { key: "Enter" });
+		expect(navigateToMock).toHaveBeenCalledWith({ path: "/search", query: { q: "nuxt" } });
+		vi.useRealTimers();
+	});
+
+	it("closes the dropdown when Escape is pressed while it is open", async () => {
+		vi.useFakeTimers();
+		const { wrapper } = mountHeaderSearch();
+		const input = wrapper.find('input[role="combobox"]');
+		await input.setValue("nuxt"); // opens the dropdown (open=true) + arms the debounce
+		expect(wrapper.find("ul").exists()).toBe(true); // dropdown open, still settling
+
+		// Escape mid-settle closes the dropdown AND cancels the pending debounce
+		// so the settled results never repopulate it.
+		await input.trigger("keydown", { key: "Escape" });
+		expect(wrapper.find("ul").exists()).toBe(false);
+		await vi.advanceTimersByTimeAsync(400);
+		await flushPromises();
+		expect(wrapper.find("ul").exists()).toBe(false);
+		vi.useRealTimers();
+	});
+
+	it("is a no-op when Escape is pressed with no open dropdown", async () => {
+		const { wrapper } = mountHeaderSearch();
+		const input = wrapper.find('input[role="combobox"]');
+		await input.trigger("keydown", { key: "Escape" });
+		expect(wrapper.find("ul").exists()).toBe(false);
+	});
+
+	it("navigates to the plain /search page when view-all is used with an empty query", async () => {
+		const { wrapper, navigateToMock } = mountHeaderSearch();
+		const input = wrapper.find('input[role="combobox"]');
+		// Focus (no query typed) opens the empty dropdown with the hint.
+		await input.trigger("focus");
+		const viewAll = wrapper.find("button");
+		expect(viewAll.exists()).toBe(true);
+
+		await viewAll.trigger("mousedown");
+		await viewAll.trigger("click");
+		expect(navigateToMock).toHaveBeenCalledWith("/search");
+	});
+
+	it("navigates to the post when a result row is mouse-clicked", async () => {
+		vi.useFakeTimers();
+		const { wrapper, navigateToMock } = mountHeaderSearch();
+		const input = wrapper.find('input[role="combobox"]');
+		await input.setValue("nuxt");
+		await vi.advanceTimersByTimeAsync(300);
+		await flushPromises();
+
+		const li = wrapper.find("li");
+		// mousedown.prevent binds pick() so the click inside the popup lands
+		// before blur would unmount it.
+		await li.trigger("mousedown");
+		expect(navigateToMock).toHaveBeenCalledWith("/posts/nuxt-guide");
+		expect(wrapper.find("ul").exists()).toBe(false);
+		vi.useRealTimers();
+	});
+
+	it("shows the zero-results notice for a settled search with no matches", async () => {
+		vi.useFakeTimers();
+		const { wrapper } = mountHeaderSearch(() =>
+			Promise.resolve({ items: [], pagination: { total: 0, page: 1, limit: 5, total_pages: 0 } }),
+		);
+		const input = wrapper.find('input[role="combobox"]');
+		await input.setValue("nothing");
+		await vi.advanceTimersByTimeAsync(300);
+		await flushPromises();
+
+		expect(wrapper.findAll("li").length).toBe(0);
+		const noResults = wrapper.find(".text-gray-500");
+		expect(noResults.exists()).toBe(true);
+		expect(noResults.text()).toContain("未找到匹配的文章");
+		vi.useRealTimers();
+	});
+
+	it("renders a result whose category is null without crashing (empty fallback)", async () => {
+		vi.useFakeTimers();
+		const { wrapper } = mountHeaderSearch(() =>
+			Promise.resolve({
+				items: [{ id: 2, title: "Untagged", slug: "untagged", views: 7, category: null }],
+				pagination: { total: 1, page: 1, limit: 5, total_pages: 1 },
+			}),
+		);
+		const input = wrapper.find('input[role="combobox"]');
+		await input.setValue("untagged");
+		await vi.advanceTimersByTimeAsync(300);
+		await flushPromises();
+
+		const li = wrapper.find("li");
+		expect(li.exists()).toBe(true);
+		expect(li.text()).toContain("7");
+		vi.useRealTimers();
+	});
+
+	it("closes the dropdown shortly after the input loses focus", async () => {
+		vi.useFakeTimers();
+		const { wrapper } = mountHeaderSearch();
+		const input = wrapper.find('input[role="combobox"]');
+		await input.setValue("nuxt");
+		expect(wrapper.find("ul").exists()).toBe(true); // dropdown open while settling
+
+		// Blur arms a 150ms delayed close (so a click inside the popup can land);
+		// advancing past it must close the dropdown for good.
+		await input.trigger("blur");
+		await vi.advanceTimersByTimeAsync(160);
+		await flushPromises();
+		expect(wrapper.find("ul").exists()).toBe(false);
+		vi.useRealTimers();
+	});
+
+	it("ignores a failed search that was superseded by a newer keystroke", async () => {
+		vi.useFakeTimers();
+		const pending: Array<{ resolve: (v: unknown) => void; reject: (e: unknown) => void }> = [];
+		const fetchImpl = vi.fn(
+			(url: string) =>
+				new Promise<unknown>((resolve, reject) => {
+					void url;
+					pending.push({ resolve, reject });
+				}),
+		);
+		const { wrapper } = mountHeaderSearch(fetchImpl);
+
+		const input = wrapper.find('input[role="combobox"]');
+		await input.setValue("a");
+		await vi.advanceTimersByTimeAsync(300); // search #1 hangs
+		await flushPromises();
+
+		await input.setValue("ab");
+		await vi.advanceTimersByTimeAsync(300); // search #2 hangs, requestSeq bumped
+		await flushPromises();
+		expect(pending.length).toBe(2);
+
+		// #1 rejects AFTER #2 started — the stale catch must discard it: no
+		// failure banner over a newer in-flight query.
+		pending[0].reject(new Error("boom"));
+		await flushPromises();
+		expect(wrapper.find(".text-red-600").exists()).toBe(false);
+
+		// #2 resolves normally and its results win.
+		pending[1].resolve(mockSearchResponse);
+		await flushPromises();
+		expect(wrapper.findAll("li").length).toBe(1);
+		vi.useRealTimers();
+	});
+
 	it("shows a failure notice — not 'no matches' — when the search request errors", async () => {
 		// Regression (ISS-309): the search used a raw $fetch that bypassed the
 		// transport's 429 detector, so a rate-limited search-as-you-type read as

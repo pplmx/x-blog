@@ -1,6 +1,7 @@
 import { beforeAll, describe, expect, it } from "vitest";
 import {
 	addSafeLinkAttrs,
+	commentMarkdownToHtml,
 	markdownToHtml,
 	regexSanitize,
 	type Segment,
@@ -385,6 +386,18 @@ describe("math extraction guards", () => {
 		const mathSeg = r.segments.find((s) => s.type === "math");
 		expect(mathSeg).toBeDefined();
 	});
+
+	it("rejects an inline formula that carries CJK outside \\text{} (kept as prose)", () => {
+		// "x价格y" passes the boundary heuristics (starts/ends alphanumeric) but
+		// must not become math — only \text{中文} groups are legitimate CJK.
+		const r = useMarkdown("值 $x价格y$ 令");
+		expect(r.segments.some((s) => s.type === "math")).toBe(false);
+		const html = r.segments
+			.filter((s) => s.type === "html")
+			.map((s) => (s as { html: string }).html)
+			.join("");
+		expect(html).toContain("$x价格y$");
+	});
 });
 
 describe("heading ids for TOC anchors", () => {
@@ -453,5 +466,45 @@ describe("segment extraction edge cases", () => {
 		const r = useMarkdown("```ts\ncode\n```\n   \n\t\n");
 		const types = r.segments.map((s) => s.type);
 		expect(types).toEqual(["code"]);
+	});
+
+	it("drops a figure placeholder with no corresponding stashed figure", () => {
+		// An authored `<!--figure:N-->` marker that extractImages did NOT stash
+		// (no matching <figure> block) must be removed, not leak into the html.
+		const r = useMarkdown("<p>a</p>\n<!--figure:3-->\n<p>b</p>");
+		const html = r.segments
+			.filter((s) => s.type === "html")
+			.map((s) => (s as { html: string }).html)
+			.join("");
+		expect(html).not.toContain("<!--figure:3");
+	});
+
+	it("leaves a single-quoted img src untouched (not extracted)", () => {
+		// The img extractor only understands double-quoted src attributes; a
+		// single-quoted one must stay in the html stream, not become a segment.
+		const r = useMarkdown("<img src='/a.png' alt='x' />");
+		expect(r.segments.some((s) => s.type === "image")).toBe(false);
+	});
+});
+
+describe("commentMarkdownToHtml (DEC-088, TASK-156)", () => {
+	it("renders comment markdown with breaks and sanitizes it", () => {
+		const out = commentMarkdownToHtml("**hi**\nline two");
+		expect(out).toContain("<strong>hi</strong>");
+		// breaks:true turns a single newline into <br> (comment prose is
+		// line-broken like the old whitespace-pre-wrap text).
+		expect(out).toContain("<br>");
+	});
+
+	it("falls back to an empty string for empty input", () => {
+		expect(commentMarkdownToHtml("")).toBe("");
+	});
+
+	it("still sanitizes when marked rejects the input", () => {
+		// marked throws on a non-string input; the catch path must return
+		// sanitized output rather than propagate a hard error to the comment.
+		// @ts-expect-error deliberate bad input to exercise the catch path
+		const out = commentMarkdownToHtml(Object("x"));
+		expect(typeof out).toBe("string");
 	});
 });

@@ -109,4 +109,74 @@ describe("useTagFollowStore", () => {
 		expect(getTagFollows).toHaveBeenCalledTimes(1);
 		expect(store.following(1).value).toBe(true);
 	});
+
+	it("ensureLoaded is a no-op (with reset) when no reader token is stored", async () => {
+		localStorage.removeItem("reader_token");
+		const store = useTagFollowStore();
+		expect(await store.ensureLoaded()).toBe(false);
+		expect(getTagFollows).not.toHaveBeenCalled();
+		expect(store.following(1).value).toBe(false);
+	});
+
+	it("concurrent ensureLoaded calls share one in-flight fetch", async () => {
+		let resolveLoad!: (v: unknown) => void;
+		getTagFollows.mockReturnValue(new Promise((r) => (resolveLoad = r)));
+		const store = useTagFollowStore();
+		const first = store.ensureLoaded();
+		const second = store.ensureLoaded(); // must join the running load, not refetch
+		resolveLoad({ items: [{ id: 3, name: "t", notify: false }], total: 1 });
+		expect(await first).toBe(true);
+		expect(await second).toBe(true);
+		expect(getTagFollows).toHaveBeenCalledTimes(1);
+		expect(store.following(3).value).toBe(true);
+	});
+
+	it("a failed follow-list fetch resolves false and stays empty", async () => {
+		getTagFollows.mockRejectedValue(new Error("network"));
+		const store = useTagFollowStore();
+		expect(await store.ensureLoaded()).toBe(false);
+		expect(store.following(1).value).toBe(false);
+	});
+
+	it("toggleFollow is a no-op while the same tag is already busy", async () => {
+		getTagFollows.mockResolvedValue({ items: [{ id: 1, name: "t", notify: false }], total: 1 });
+		let resolveUnfollow!: (v: unknown) => void;
+		unfollowTag.mockReturnValue(new Promise((r) => (resolveUnfollow = r)));
+		const store = useTagFollowStore();
+		await store.ensureLoaded();
+		expect(store.following(1).value).toBe(true);
+
+		const first = store.toggleFollow(1); // unfollow in flight → busy
+		expect(store.busy(1).value).toBe(true);
+		store.toggleFollow(1); // busy guard → ignored (one in-flight op per tag)
+		resolveUnfollow({ done: true });
+		await first;
+		expect(unfollowTag).toHaveBeenCalledTimes(1);
+		expect(store.following(1).value).toBe(false);
+		expect(store.busy(1).value).toBe(false);
+	});
+
+	it("toggleFollow follows when not currently followed, persisting the API notify state", async () => {
+		followTag.mockResolvedValue({ id: 9, notify: true });
+		const store = useTagFollowStore();
+		await store.toggleFollow(9);
+		expect(followTag).toHaveBeenCalledWith(9);
+		expect(store.following(9).value).toBe(true);
+		expect(store.busy(9).value).toBe(false);
+	});
+
+	it("setNotify guards locally when the tag is not followed", async () => {
+		const store = useTagFollowStore();
+		await store.setNotify(42, true);
+		expect(setNotify).not.toHaveBeenCalled();
+		expect(store.notify(42).value).toBe(true); // not-followed default
+	});
+
+	it("followed tags surface their persisted notify preference", async () => {
+		getTagFollows.mockResolvedValue({ items: [{ id: 5, name: "t", notify: false }], total: 1 });
+		const store = useTagFollowStore();
+		await store.ensureLoaded();
+		expect(store.following(5).value).toBe(true);
+		expect(store.notify(5).value).toBe(false);
+	});
 });

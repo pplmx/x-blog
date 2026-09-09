@@ -43,4 +43,11 @@ describe("parseApiDate", () => {
 		expect(utcSnapshot("")).toBeNull();
 		expect(utcSnapshot("not-a-date")).toBeNull();
 	});
+
+	it("accepts an epoch-millisecond number and rejects an invalid one", () => {
+		const epoch = Date.UTC(2026, 0, 15, 10, 30, 0);
+		expect(parseApiDate(epoch)?.getTime()).toBe(epoch);
+		// A numeric timestamp that cannot be a real Date → null.
+		expect(parseApiDate(NaN)).toBeNull();
+	});
 });

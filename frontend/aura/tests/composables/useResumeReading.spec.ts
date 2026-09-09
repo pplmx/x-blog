@@ -267,4 +267,128 @@ describe("useResumeReading (TASK-200)", () => {
 
 		wrapper.unmount();
 	});
+
+	it("an immediate scroll event is not mistaken for a manual scroll", async () => {
+		// A programmatic window.scrollTo fires a scroll event too; the first
+		// re-apply must not be cancelled as a user scroll. isUserScroll() is
+		// gated on 200ms since the last auto-scroll.
+		authRef.value = true;
+		fetchPosition.mockResolvedValue({ post_id: 7, scroll_position: 1200 });
+		const { api, wrapper } = mountResume(7);
+		await api.restore();
+		expect(window.scrollTo).toHaveBeenCalledTimes(1);
+
+		// Same-tick scroll event (guard window): must NOT cancel the settle
+		// re-applies.
+		window.dispatchEvent(new Event("scroll"));
+		vi.advanceTimersByTime(350); // first settle window
+		expect(window.scrollTo).toHaveBeenCalledTimes(2); // settle re-apply still ran
+
+		// A load event before settle also re-applies (images/embeds shift layout).
+		window.dispatchEvent(new Event("load"));
+		expect(window.scrollTo).toHaveBeenCalledTimes(3);
+
+		wrapper.unmount();
+	});
+
+	it("a real user scroll cancels the pending restore re-applies", async () => {
+		authRef.value = true;
+		fetchPosition.mockResolvedValue({ post_id: 7, scroll_position: 1200 });
+		const { api, wrapper } = mountResume(7);
+		await api.restore();
+		expect(window.scrollTo).toHaveBeenCalledTimes(1);
+
+		// Past the 200ms guard this is a genuine manual scroll: cancel the
+		// re-applies so we never fight the user.
+		vi.advanceTimersByTime(300);
+		window.dispatchEvent(new Event("scroll"));
+
+		// The listeners were removed and the settle timers cleared — nothing
+		// re-applies afterwards.
+		vi.advanceTimersByTime(5000);
+		window.dispatchEvent(new Event("load"));
+		expect(window.scrollTo).toHaveBeenCalledTimes(1); // initial only
+
+		wrapper.unmount();
+	});
+
+	it("re-applies the restored offset as layout settles, then stops", async () => {
+		authRef.value = true;
+		fetchPosition.mockResolvedValue({ post_id: 7, scroll_position: 800 });
+		const { api, wrapper } = mountResume(7);
+		await api.restore();
+		expect(window.scrollTo).toHaveBeenCalledTimes(1);
+
+		vi.advanceTimersByTime(350);
+		expect(window.scrollTo).toHaveBeenCalledTimes(2); // first settle window
+		vi.advanceTimersByTime(550); // → 900
+		expect(window.scrollTo).toHaveBeenCalledTimes(3); // second
+		vi.advanceTimersByTime(900); // → 1800
+		expect(window.scrollTo).toHaveBeenCalledTimes(4); // third (last settle window)
+
+		// Past the final settle window the listeners are torn down entirely.
+		vi.advanceTimersByTime(1200); // → 3000 > lastSettle + 800 (cancel ran)
+		window.dispatchEvent(new Event("scroll"));
+		window.dispatchEvent(new Event("load"));
+		expect(window.scrollTo).toHaveBeenCalledTimes(4);
+
+		wrapper.unmount();
+	});
+
+	it("suppresses saves right after jumpToTop so intermediate offsets cannot overwrite the clear", async () => {
+		// jumpToTop() sends an explicit `0` (the documented clear value) and then
+		// ignores scroll events for ~1.5s so the smooth animation's intermediate
+		// offsets cannot write a stale position back over it.
+		authRef.value = true;
+		const { api, wrapper } = mountResume(7);
+		api.jumpToTop();
+		expect(recordHistory).toHaveBeenCalledWith(7, 0);
+
+		api.save(1000); // inside the suppression window — must be dropped
+		vi.advanceTimersByTime(5000);
+		expect(recordHistory).toHaveBeenCalledTimes(1); // only the explicit clear
+
+		wrapper.unmount();
+	});
+
+	it("jumpToTop does not touch the server position for a guest", async () => {
+		// Guests have no server trail (activePostId is undefined), so the back-
+		// to-top should scroll but never issue a `0` clear.
+		const { api, wrapper } = mountResume(7);
+		api.jumpToTop();
+		expect(recordHistory).not.toHaveBeenCalled();
+		expect(window.scrollTo).toHaveBeenCalledWith({ top: 0, behavior: "smooth" });
+
+		wrapper.unmount();
+	});
+
+	it("restore stays inert when the saved-position fetch fails", async () => {
+		// Best-effort resume: a failed fetch must not break the post page.
+		authRef.value = true;
+		fetchPosition.mockRejectedValue(new Error("network"));
+		const { api, wrapper } = mountResume(7);
+
+		expect(await api.restore()).toBeNull();
+		expect(api.restoredPosition.value).toBeNull();
+		expect(api.restoring.value).toBe(false);
+		expect(window.scrollTo).not.toHaveBeenCalled();
+
+		wrapper.unmount();
+	});
+
+	it("cancelRestore clears any pending auto-scroll re-applies", async () => {
+		authRef.value = true;
+		fetchPosition.mockResolvedValue({ post_id: 7, scroll_position: 1200 });
+		const { api, wrapper } = mountResume(7);
+		await api.restore();
+		expect(window.scrollTo).toHaveBeenCalledTimes(1);
+
+		api.cancelRestore(); // e.g. the reader grabbed the scroll wheel
+
+		vi.advanceTimersByTime(5000);
+		window.dispatchEvent(new Event("load"));
+		expect(window.scrollTo).toHaveBeenCalledTimes(1); // never re-applied
+
+		wrapper.unmount();
+	});
 });
