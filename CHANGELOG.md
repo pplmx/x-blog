@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- Deploy fix: pin the frontend Docker build to `node:24.20.0-alpine3.24` — the
+  previously pinned `node:24.8.1-alpine3.20` was pruned from Docker Hub, so
+  `Build and push frontend` failed in the Deploy workflow.
+
 ## [0.1.0] - 2026-09-09
 
 First tagged release of X-Blog — a modern full-stack blog built on FastAPI +

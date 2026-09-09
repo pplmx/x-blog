@@ -9,6 +9,10 @@
 
 ## [Unreleased]
 
+- 部署修复：前端 Docker 构建固定到 `node:24.20.0-alpine3.24` — 此前固定的
+  `node:24.8.1-alpine3.20` 已从 Docker Hub 移除，导致 Deploy 工作流中
+  `Build and push frontend` 失败。
+
 ## [0.1.0] - 2026-09-09
 
 X-Blog 的首个标记版本 — 一个基于 FastAPI + Nuxt 构建的现代化全栈博客系统。
