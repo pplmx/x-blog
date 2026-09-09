@@ -198,8 +198,20 @@ jobs:
           RATE_LIMIT_AUTH_PER_MINUTE=1000 \
           RATE_LIMIT_REGISTER_PER_MINUTE=1000 \
           uv run uvicorn app.main:app --host 0.0.0.0 --port 18888 &
-          sleep 3
-          curl -sf http://localhost:18888/health > /dev/null || (echo "Backend failed" && exit 1)
+          # Poll /health instead of a fixed sleep: cold runners take longer than
+          # 3s to boot uvicorn + run the startup alembic migrations, and a
+          # one-shot probe right after `sleep 3` was flaky-red on cold caches
+          # even though the server came up moments later.
+          for _ in $(seq 1 30); do
+            if curl -sf http://localhost:18888/health > /dev/null 2>&1; then
+              break
+            fi
+            sleep 2
+          done
+          if ! curl -sf http://localhost:18888/health > /dev/null 2>&1; then
+            echo "Backend failed"
+            exit 1
+          fi
 
       - name: Install frontend dependencies
         run: |
