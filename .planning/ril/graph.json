@@ -2,7 +2,7 @@
   "ril_version": 1,
   "round": 289,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-09T18:31:31+00:00",
+  "updated_at": "2026-09-09T19:49:40+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -21116,10 +21116,10 @@
     "ISS-449": {
       "id": "ISS-449",
       "type": "issue",
-      "status": "active",
-      "version": 1,
+      "status": "resolved",
+      "version": 2,
       "created_at": "2026-09-09T17:09:03+00:00",
-      "updated_at": "2026-09-09T17:09:03+00:00",
+      "updated_at": "2026-09-09T19:33:37+00:00",
       "touched_round": 289,
       "severity": "low",
       "title": "Push subscribe IntegrityError race drops the re-subscribe's new keys/prefs",
@@ -21128,10 +21128,10 @@
     "ISS-450": {
       "id": "ISS-450",
       "type": "issue",
-      "status": "active",
-      "version": 1,
+      "status": "resolved",
+      "version": 2,
       "created_at": "2026-09-09T17:09:03+00:00",
-      "updated_at": "2026-09-09T17:09:03+00:00",
+      "updated_at": "2026-09-09T19:43:22+00:00",
       "touched_round": 289,
       "severity": "low",
       "title": "History import accepts future/unbounded viewed_at, skewing the merge forever",
@@ -21164,10 +21164,10 @@
     "ISS-453": {
       "id": "ISS-453",
       "type": "issue",
-      "status": "active",
-      "version": 1,
+      "status": "resolved",
+      "version": 2,
       "created_at": "2026-09-09T17:09:04+00:00",
-      "updated_at": "2026-09-09T17:09:04+00:00",
+      "updated_at": "2026-09-09T19:47:15+00:00",
       "touched_round": 289,
       "severity": "low",
       "title": "get_comments returns unapproved comments with full PII — dead code foot-gun",
@@ -21191,10 +21191,10 @@
     "TASK-347": {
       "id": "TASK-347",
       "type": "task",
-      "status": "active",
-      "version": 1,
+      "status": "resolved",
+      "version": 2,
       "created_at": "2026-09-09T17:10:24+00:00",
-      "updated_at": "2026-09-09T17:10:24+00:00",
+      "updated_at": "2026-09-09T19:33:36+00:00",
       "touched_round": 289,
       "category": "correctness",
       "severity": 0.4,
@@ -21206,10 +21206,10 @@
     "TASK-348": {
       "id": "TASK-348",
       "type": "task",
-      "status": "active",
-      "version": 1,
+      "status": "resolved",
+      "version": 2,
       "created_at": "2026-09-09T17:10:24+00:00",
-      "updated_at": "2026-09-09T17:10:24+00:00",
+      "updated_at": "2026-09-09T19:43:22+00:00",
       "touched_round": 289,
       "category": "stability",
       "severity": 0.45,
@@ -21221,10 +21221,10 @@
     "TASK-349": {
       "id": "TASK-349",
       "type": "task",
-      "status": "active",
-      "version": 1,
+      "status": "stale",
+      "version": 2,
       "created_at": "2026-09-09T17:10:24+00:00",
-      "updated_at": "2026-09-09T17:10:24+00:00",
+      "updated_at": "2026-09-09T19:49:40+00:00",
       "touched_round": 289,
       "category": "performance",
       "severity": 0.4,
@@ -21236,10 +21236,10 @@
     "TASK-350": {
       "id": "TASK-350",
       "type": "task",
-      "status": "active",
-      "version": 1,
+      "status": "resolved",
+      "version": 2,
       "created_at": "2026-09-09T17:10:24+00:00",
-      "updated_at": "2026-09-09T17:10:24+00:00",
+      "updated_at": "2026-09-09T19:47:15+00:00",
       "touched_round": 289,
       "category": "maintainability",
       "severity": 0.35,
@@ -21247,6 +21247,72 @@
       "effort": 1.0,
       "title": "Delete or guard crud.get_comments against PII/approval leak",
       "description": "get_comments pairs with the full Comment schema exposing email/ip; add is_approved filter + CommentPublic or delete it since it has no callers."
+    },
+    "CHG-453": {
+      "id": "CHG-453",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-09T18:39:09+00:00",
+      "updated_at": "2026-09-09T18:39:09+00:00",
+      "touched_round": 289,
+      "commit": "de38c71",
+      "title": "Frontend polish/bug batch: dashboard pagination, mermaid/math stale reset, editor saved flash, home filter page reset"
+    },
+    "CHG-454": {
+      "id": "CHG-454",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-09T18:39:09+00:00",
+      "updated_at": "2026-09-09T18:39:09+00:00",
+      "touched_round": 289,
+      "commit": "250ab3c",
+      "title": "Backend: digest plain-text raw name + IdInt caps for admin/reader integer params"
+    },
+    "CHG-455": {
+      "id": "CHG-455",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-09T19:33:22+00:00",
+      "updated_at": "2026-09-09T19:33:22+00:00",
+      "touched_round": 289,
+      "commit": "7a49eaa",
+      "summary": "push.py subscribe race: winner path now applies request keys/prefs and enforces the ownership guard before returning"
+    },
+    "CHG-456": {
+      "id": "CHG-456",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-09T19:43:22+00:00",
+      "updated_at": "2026-09-09T19:43:22+00:00",
+      "touched_round": 289,
+      "commit": "76e2b30",
+      "summary": "history import clamps far-future viewed_at to now (2-min skew tolerance)"
+    },
+    "CHG-457": {
+      "id": "CHG-457",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-09T19:47:14+00:00",
+      "updated_at": "2026-09-09T19:47:14+00:00",
+      "touched_round": 289,
+      "commit": "2e7b87e",
+      "summary": "deleted dead crud.get_comments (no is_approved filter, no callers, PII foot-gun)"
+    },
+    "DEC-278": {
+      "id": "DEC-278",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-09T19:49:25+00:00",
+      "updated_at": "2026-09-09T19:49:25+00:00",
+      "touched_round": 289,
+      "rationale": "TASK-349/ISS-451 (reader_history_stats loads all-time history + every post.content for reading_minutes) stays below the 3.0 priority threshold. Its real fix is a design choice — cache per-post reading minutes (column/cache) vs approximate the aggregate — not a rushed rewrite of streak/activity math. Recorded here so the round can converge green.",
+      "alternatives_rejected": "(a) SQL-side visibility filter only: saves loading drafts/scheduled but leaves the dominant cost (full-content read per visible row for total_minutes) untouched; (b) eager per-post minutes column: schema/migration + backfill, larger than warranted at priority 1.41."
     }
   },
   "edges": [
@@ -31700,6 +31766,126 @@
       "to": "ISS-453",
       "type": "addresses",
       "created_at": "2026-09-09T17:11:43+00:00"
+    },
+    {
+      "from": "CHG-453",
+      "to": "TASK-341",
+      "type": "implements",
+      "created_at": "2026-09-09T18:40:57+00:00"
+    },
+    {
+      "from": "CHG-453",
+      "to": "TASK-342",
+      "type": "implements",
+      "created_at": "2026-09-09T18:40:57+00:00"
+    },
+    {
+      "from": "CHG-453",
+      "to": "TASK-343",
+      "type": "implements",
+      "created_at": "2026-09-09T18:40:57+00:00"
+    },
+    {
+      "from": "CHG-453",
+      "to": "TASK-344",
+      "type": "implements",
+      "created_at": "2026-09-09T18:40:57+00:00"
+    },
+    {
+      "from": "CHG-454",
+      "to": "TASK-345",
+      "type": "implements",
+      "created_at": "2026-09-09T18:40:57+00:00"
+    },
+    {
+      "from": "CHG-454",
+      "to": "TASK-346",
+      "type": "implements",
+      "created_at": "2026-09-09T18:40:57+00:00"
+    },
+    {
+      "from": "CHG-453",
+      "to": "ISS-443",
+      "type": "resolves",
+      "created_at": "2026-09-09T18:41:38+00:00"
+    },
+    {
+      "from": "CHG-453",
+      "to": "ISS-444",
+      "type": "resolves",
+      "created_at": "2026-09-09T18:41:38+00:00"
+    },
+    {
+      "from": "CHG-453",
+      "to": "ISS-445",
+      "type": "resolves",
+      "created_at": "2026-09-09T18:41:38+00:00"
+    },
+    {
+      "from": "CHG-453",
+      "to": "ISS-446",
+      "type": "resolves",
+      "created_at": "2026-09-09T18:41:38+00:00"
+    },
+    {
+      "from": "CHG-454",
+      "to": "ISS-447",
+      "type": "resolves",
+      "created_at": "2026-09-09T18:41:38+00:00"
+    },
+    {
+      "from": "CHG-454",
+      "to": "ISS-448",
+      "type": "resolves",
+      "created_at": "2026-09-09T18:41:39+00:00"
+    },
+    {
+      "from": "ISS-452",
+      "to": "COMP-001",
+      "type": "located_in",
+      "created_at": "2026-09-09T18:42:17+00:00"
+    },
+    {
+      "from": "CHG-455",
+      "to": "ISS-449",
+      "type": "resolves",
+      "created_at": "2026-09-09T19:33:36+00:00"
+    },
+    {
+      "from": "CHG-455",
+      "to": "TASK-347",
+      "type": "implements",
+      "created_at": "2026-09-09T19:33:36+00:00"
+    },
+    {
+      "from": "CHG-456",
+      "to": "ISS-450",
+      "type": "resolves",
+      "created_at": "2026-09-09T19:43:22+00:00"
+    },
+    {
+      "from": "CHG-456",
+      "to": "TASK-348",
+      "type": "implements",
+      "created_at": "2026-09-09T19:43:22+00:00"
+    },
+    {
+      "from": "CHG-457",
+      "to": "ISS-453",
+      "type": "resolves",
+      "created_at": "2026-09-09T19:47:15+00:00"
+    },
+    {
+      "from": "CHG-457",
+      "to": "TASK-350",
+      "type": "implements",
+      "created_at": "2026-09-09T19:47:15+00:00"
+    },
+    {
+      "from": "DEC-278",
+      "to": "TASK-349",
+      "type": "governs",
+      "created_at": "2026-09-09T19:49:40+00:00"
     }
   ]
 }
