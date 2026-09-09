@@ -770,15 +770,6 @@ def delete_tag(db: Session, tag_id: int) -> bool:
     return False
 
 
-def get_comments(db: Session, post_id: int) -> list[models.Comment]:
-    return (
-        db.query(models.Comment)
-        .filter(models.Comment.post_id == post_id)
-        .order_by(models.Comment.created_at.desc())
-        .all()
-    )
-
-
 def get_comments_paginated(
     db: Session,
     post_id: int,

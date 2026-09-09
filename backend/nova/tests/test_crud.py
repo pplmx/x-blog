@@ -718,11 +718,6 @@ class TestTags:
 class TestComments:
     """Tests for comment CRUD operations."""
 
-    def test_get_comments_empty(self, db_session):
-        """Test get_comments returns empty list for post without comments."""
-        comments = crud.get_comments(db_session, 99999)
-        assert comments == []
-
     def test_get_comments_paginated(self, db_session):
         """Test get_comments_paginated returns tuple."""
         comments, total = crud.get_comments_paginated(db_session, 99999)
