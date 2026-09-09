@@ -2,7 +2,7 @@
   "ril_version": 1,
   "round": 289,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-08T14:55:15+00:00",
+  "updated_at": "2026-09-09T18:31:31+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -11,7 +11,7 @@
       "version": 1,
       "created_at": "2026-08-06T13:23:41+00:00",
       "updated_at": "2026-08-06T13:23:41+00:00",
-      "touched_round": 288,
+      "touched_round": 289,
       "title": "backend-nova",
       "description": "FastAPI Python 3.14 backend at backend/nova; SQLAlchemy ORM; routers in app/routers, crud.py business logic, 656 lines"
     },
@@ -22,7 +22,7 @@
       "version": 1,
       "created_at": "2026-08-06T13:23:41+00:00",
       "updated_at": "2026-08-06T13:23:41+00:00",
-      "touched_round": 288,
+      "touched_round": 289,
       "title": "frontend-aura",
       "description": "Nuxt 4 Vue 3 TypeScript frontend at frontend/aura; composables; admin pages; e2e Playwright; biome lint"
     },
@@ -15228,7 +15228,7 @@
       "version": 1,
       "created_at": "2026-09-01T12:49:39+00:00",
       "updated_at": "2026-09-01T12:49:39+00:00",
-      "touched_round": 221,
+      "touched_round": 289,
       "title": "Heading ids dedup GitHub-style in one shared counter (renderer and extractor must agree)",
       "rationale": "The id the marked renderer writes into the HTML must equal the id extractToc derives, or the TOC anchor points at the wrong/duplicate heading. Centralizing document-order dedup in uniqueHeadingId() with per-conversion resets keeps both sides in lockstep; -1/-2 suffixes match the familiar GitHub anchor convention and preserve links for the common (first) occurrence.",
       "alternatives_rejected": "['Dedup only in extractToc (rendered HTML ids would still collide — anchors broken)','Append a random/session suffix to every heading id (unstable, breaks shared anchor links)','Drop the id for repeats (second heading gets no anchor at all — worse)']"
@@ -20953,6 +20953,300 @@
       "title": "post-round 289: quality-convergence stop conditions re-satisfied with the frontend survey well exhausted",
       "rationale": "The re-invoked polish/bug-fix directive delivered a full productive round: 7 changes (CHG-445..449, 451, 452) fixing TASK-333/335/336/337/338/339/340 — media reference cache, dead-session follow controls, silent-failure + nav-feedback batch, admin comments global pending count, media-picker pager single-flight, archive filter, badge refresh epoch. All 10 frontend survey findings addressed (9 fixed; #5 transient reset was validated as deliberate — watchers/catches already reset per-navigation and reload self-heals via idempotent PUT). VERIFY: backend 1346 @93.6% SQLite + PG comments green, frontend 1616, lint + typecheck clean. Graph now holds no active above-threshold task; ril check consistent at 1731 nodes / 1718 edges. The next observation round may park (converged-idle) unless a new signal arrives.",
       "alternatives_rejected": "Started feature-evolution work (rejected: no feature-evolution decision active; the directive is quality convergence). Invented further marginal tasks (rejected: the deep-dive well is genuinely dry — 10/10 findings closed)."
+    },
+    "DEC-277": {
+      "id": "DEC-277",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-09T13:26:37+00:00",
+      "updated_at": "2026-09-09T13:26:37+00:00",
+      "touched_round": 289,
+      "title": "Re-activate loop: fresh polish/bug-fix/usability directive (2026-09-09)",
+      "rationale": "Operator re-invoked graph-engineering with a new directive: detail optimization, bug-fix mode, polishing, interactivity, practicality, usability, ease-of-use. Supersedes the DEC-276 converged-idle state and re-opens quality-convergence rounds (no feature-evolution decision active).",
+      "alternatives_rejected": "Stay converged-idle (rejected: fresh operator directive is an explicit re-activation signal); enter feature-evolution mode (rejected: no feature-evolution decision exists, directive is quality convergence)."
+    },
+    "ISS-443": {
+      "id": "ISS-443",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-09T14:53:56+00:00",
+      "updated_at": "2026-09-09T18:31:31+00:00",
+      "touched_round": 289,
+      "severity": "high",
+      "title": "Admin dashboard post-pagination loop silently reads only the first 100 posts",
+      "description": "loadDashboard (admin/index.vue:203-214) batch-loops /api/admin/posts with query page+limit, but the backend endpoint takes skip/limit (admin.py:179). page is ignored so skip stays 0: every iteration re-fetches the same first 100 posts, posts.length and Top/Recent/category counts are inflated, real posts beyond 100 never load."
+    },
+    "ISS-444": {
+      "id": "ISS-444",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-09T14:53:56+00:00",
+      "updated_at": "2026-09-09T18:31:31+00:00",
+      "touched_round": 289,
+      "severity": "high",
+      "title": "MarkdownContent: mermaid/math segments go stale across SPA post navigation",
+      "description": "Segment keys are per-call counters (useMarkdown.ts keygen reset per call) and MarkdownContent is not keyed by post (posts/[slug]/index.vue:688). renderedMermaidKeys/renderedMathKeys never cleared on content change, so navigating between posts whose diagrams share the same positional key (mermaid-1 etc.) renders the previous post's diagram or nothing (MarkdownContent.vue:155/192)."
+    },
+    "ISS-445": {
+      "id": "ISS-445",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-09T14:53:56+00:00",
+      "updated_at": "2026-09-09T18:31:31+00:00",
+      "touched_round": 289,
+      "severity": "medium",
+      "title": "Post editor green 'Saved' flash never auto-clears after a manual save",
+      "description": "admin/posts/[id].vue:550-553 arms a 3s timer then the finally (576-578) immediately clears it, so saveSuccess stays true forever; the 'Post saved' banner (900-905) claims just-saved over unsaved edits until reload."
+    },
+    "ISS-446": {
+      "id": "ISS-446",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-09T14:53:56+00:00",
+      "updated_at": "2026-09-09T18:31:31+00:00",
+      "touched_round": 289,
+      "severity": "medium",
+      "title": "Home sidebar category/tag chips keep a stale page in the URL when changing filters",
+      "description": "index.vue:596/616 NuxtLink merges query so /?page=3 + category chip -> /?category_id=2&page=3; watcher resets page ref to 1 but never rewrites the URL, so deep links/bookmarks/reload land on the wrong page; both filters can also stack while the chip shows one label."
+    },
+    "ISS-447": {
+      "id": "ISS-447",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-09T14:53:56+00:00",
+      "updated_at": "2026-09-09T18:31:31+00:00",
+      "touched_round": 289,
+      "severity": "medium",
+      "title": "Digest email plain-text part renders HTML-escaped display names",
+      "description": "digest.py:160 greeting is html.escape(display_name) and the SAME string is used in the text part (text=... lines 174-180), so a reader named 'A&B' sees A&amp;B in the plain-text digest. Tests only assert the HTML part (test_digest.py:455-469)."
+    },
+    "TASK-341": {
+      "id": "TASK-341",
+      "type": "task",
+      "status": "resolved",
+      "version": 3,
+      "created_at": "2026-09-09T14:54:43+00:00",
+      "updated_at": "2026-09-09T18:30:51+00:00",
+      "touched_round": 289,
+      "category": "correctness",
+      "severity": 0.9,
+      "title": "Fix admin dashboard pagination: send skip/limit to /api/admin/posts",
+      "description": "Change loadDashboard batch loop in admin/index.vue to send skip=(page-1)*batchSize&limit=batchSize (or iterate via returned pagination) so it actually walks all posts. Backend admin.py:/posts takes skip/limit (admin.py:179-180). Verify with >100 posts.",
+      "confidence": 1.0,
+      "effort": 1.0
+    },
+    "TASK-342": {
+      "id": "TASK-342",
+      "type": "task",
+      "status": "resolved",
+      "version": 3,
+      "created_at": "2026-09-09T14:54:43+00:00",
+      "updated_at": "2026-09-09T18:30:51+00:00",
+      "touched_round": 289,
+      "category": "correctness",
+      "severity": 0.85,
+      "title": "Reset mermaid/math 'already rendered' state on content change",
+      "description": "In MarkdownContent.vue, clear renderedMermaidKeys/renderedMathKeys/renderingKeys (and re-run) when props.content changes, or key the component by post slug at call sites, so SPA post navigation renders the new post's diagrams instead of the previous post's.",
+      "confidence": 1.0,
+      "effort": 1.5
+    },
+    "TASK-343": {
+      "id": "TASK-343",
+      "type": "task",
+      "status": "resolved",
+      "version": 3,
+      "created_at": "2026-09-09T14:54:43+00:00",
+      "updated_at": "2026-09-09T18:30:51+00:00",
+      "touched_round": 289,
+      "category": "correctness",
+      "severity": 0.6,
+      "title": "Fix editor saved-flash: don't clear the 3s timer in finally",
+      "description": "admin/posts/[id].vue finally block clears the saveSuccessTimer it just armed on the success path. Move clearTimeout so it only resets a leftover timer from a PREVIOUS save, not the current success flash; assert the banner auto-hides ~3s.",
+      "confidence": 1.0,
+      "effort": 1.0
+    },
+    "TASK-344": {
+      "id": "TASK-344",
+      "type": "task",
+      "status": "resolved",
+      "version": 3,
+      "created_at": "2026-09-09T14:54:43+00:00",
+      "updated_at": "2026-09-09T18:30:51+00:00",
+      "touched_round": 289,
+      "category": "correctness",
+      "severity": 0.5,
+      "title": "Home filter chips should reset the page query (page=1) when changing category/tag",
+      "description": "index.vue sidebar NuxtLinks should write page=1 (or drop page) in the query on filter change so the URL matches the reset content, mirroring search.vue:39-40.",
+      "confidence": 1.0,
+      "effort": 1.0
+    },
+    "TASK-345": {
+      "id": "TASK-345",
+      "type": "task",
+      "status": "resolved",
+      "version": 3,
+      "created_at": "2026-09-09T14:54:43+00:00",
+      "updated_at": "2026-09-09T18:30:51+00:00",
+      "touched_round": 289,
+      "category": "correctness",
+      "severity": 0.5,
+      "title": "Use raw display name in digest plain-text part",
+      "description": "digest.py: build a text-safe greeting (raw name) and keep the html-escaped one only for the HTML part; add a text-part escaping test that A&B renders literally.",
+      "confidence": 1.0,
+      "effort": 1.0
+    },
+    "ISS-448": {
+      "id": "ISS-448",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-09T17:09:03+00:00",
+      "updated_at": "2026-09-09T18:31:31+00:00",
+      "touched_round": 289,
+      "severity": "medium",
+      "title": "Set max-len on admin/reader integer path+query params (PG bigint overflow -> 500 vs 404 on SQLite)",
+      "description": "admin.py post_id/user_id/comment_id/category_id/tag_id/reader_id/revision_id and reader.py subscription_id/folder_id bind unbounded ints; a 19+ digit id overflows PG bigint -> psycopg2 DataError -> generic 500, while SQLite returns a clean 404. posts.py already caps id digits (IS_NUMERIC_ID <= 15); mirror that in admin/reader routers."
+    },
+    "ISS-449": {
+      "id": "ISS-449",
+      "type": "issue",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-09T17:09:03+00:00",
+      "updated_at": "2026-09-09T17:09:03+00:00",
+      "touched_round": 289,
+      "severity": "low",
+      "title": "Push subscribe IntegrityError race drops the re-subscribe's new keys/prefs",
+      "description": "push.py:197-207: on a concurrent duplicate-endpoint insert the winner row is returned verbatim without applying this request's p256dh/auth/reader_id/want_new_posts; a browser resigning fresh keys can keep a stale row whose http-ece decryption keeps failing."
+    },
+    "ISS-450": {
+      "id": "ISS-450",
+      "type": "issue",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-09T17:09:03+00:00",
+      "updated_at": "2026-09-09T17:09:03+00:00",
+      "touched_round": 289,
+      "severity": "low",
+      "title": "History import accepts future/unbounded viewed_at, skewing the merge forever",
+      "description": "crud.py import_reader_history: viewed_at has no upper bound vs now; a fast-clock device imports a 2031 read which the keep-later merge rule (2002) pins at the top of /me/history, skewing stats, and no real read can correct it."
+    },
+    "ISS-451": {
+      "id": "ISS-451",
+      "type": "issue",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-09T17:09:04+00:00",
+      "updated_at": "2026-09-09T17:09:04+00:00",
+      "touched_round": 289,
+      "severity": "low",
+      "title": "/me/history/stats is O(all-time) with a full-content read per row",
+      "description": "crud.py reader_history_stats scans the reader's ENTIRE history with no SQL-side filter/limit, materializing every post.content for reading_minutes per visible row; cost grows unbounded with lifetime reads (multi-MB per pageview at scale)."
+    },
+    "ISS-452": {
+      "id": "ISS-452",
+      "type": "issue",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-09T17:09:04+00:00",
+      "updated_at": "2026-09-09T17:09:04+00:00",
+      "touched_round": 289,
+      "severity": "low",
+      "title": "Aware datetimes written into naive-UTC reader-history/comment rows (latent)",
+      "description": "crud.py viewed_at/reviewed_at/edited_at + model default write datetime.now(UTC) (aware) into DEC-213 naive-UTC columns; read-back strips tz so no crash today, but a one-char-from-correct latent trap if any row is ever cached/serialized before refresh."
+    },
+    "ISS-453": {
+      "id": "ISS-453",
+      "type": "issue",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-09T17:09:04+00:00",
+      "updated_at": "2026-09-09T17:09:04+00:00",
+      "touched_round": 289,
+      "severity": "low",
+      "title": "get_comments returns unapproved comments with full PII — dead code foot-gun",
+      "description": "crud.py get_comments filters only post_id and pairs with the full Comment schema (email/ip_address); no call sites today, but any future route wired to it would leak pending-spam commenter PII to visitors."
+    },
+    "TASK-346": {
+      "id": "TASK-346",
+      "type": "task",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-09T17:10:24+00:00",
+      "updated_at": "2026-09-09T18:30:52+00:00",
+      "touched_round": 289,
+      "category": "correctness",
+      "severity": 0.7,
+      "confidence": 1.0,
+      "effort": 1.5,
+      "title": "Cap admin/reader integer path+query params to avoid PG bigint 500s",
+      "description": "Add a schema-level bounded int (like IdInt) to admin.py and reader.py integer params so huge ids return 422/404 on every backend instead of a generic 500 on Postgres."
+    },
+    "TASK-347": {
+      "id": "TASK-347",
+      "type": "task",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-09T17:10:24+00:00",
+      "updated_at": "2026-09-09T17:10:24+00:00",
+      "touched_round": 289,
+      "category": "correctness",
+      "severity": 0.4,
+      "confidence": 1.0,
+      "effort": 1.0,
+      "title": "Push subscribe race: apply the request's keys on the IntegrityError winner path",
+      "description": "push.py IntegrityError branch returns the existing row verbatim; update p256dh/auth/reader_id/want_new_posts from the request before returning so a racing re-subscribe never keeps stale keys."
+    },
+    "TASK-348": {
+      "id": "TASK-348",
+      "type": "task",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-09T17:10:24+00:00",
+      "updated_at": "2026-09-09T17:10:24+00:00",
+      "touched_round": 289,
+      "category": "stability",
+      "severity": 0.45,
+      "confidence": 1.0,
+      "effort": 1.5,
+      "title": "Bound reader-history import viewed_at to now (reject future timestamps)",
+      "description": "crud.py import_reader_history: reject/clamp viewed_at in the future (past now + small skew tolerance) so a fast-clock device cannot pin a 2031 read at the top of history permanently."
+    },
+    "TASK-349": {
+      "id": "TASK-349",
+      "type": "task",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-09T17:10:24+00:00",
+      "updated_at": "2026-09-09T17:10:24+00:00",
+      "touched_round": 289,
+      "category": "performance",
+      "severity": 0.4,
+      "confidence": 1.0,
+      "effort": 2.0,
+      "title": "Reader history stats: filter/paginate in SQL instead of materializing all rows",
+      "description": "reader_history_stats reads the reader's entire history with full content per row; compute reading minutes / visibility limits in SQL to bound the cost."
+    },
+    "TASK-350": {
+      "id": "TASK-350",
+      "type": "task",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-09T17:10:24+00:00",
+      "updated_at": "2026-09-09T17:10:24+00:00",
+      "touched_round": 289,
+      "category": "maintainability",
+      "severity": 0.35,
+      "confidence": 1.0,
+      "effort": 1.0,
+      "title": "Delete or guard crud.get_comments against PII/approval leak",
+      "description": "get_comments pairs with the full Comment schema exposing email/ip; add is_approved filter + CommentPublic or delete it since it has no callers."
     }
   },
   "edges": [
@@ -31304,6 +31598,108 @@
       "to": "DEC-275",
       "type": "supersedes",
       "created_at": "2026-09-08T14:55:15+00:00"
+    },
+    {
+      "from": "DEC-227",
+      "to": "DEC-277",
+      "type": "supersedes",
+      "created_at": "2026-09-09T13:27:58+00:00"
+    },
+    {
+      "from": "DEC-276",
+      "to": "DEC-277",
+      "type": "supersedes",
+      "created_at": "2026-09-09T13:27:58+00:00"
+    },
+    {
+      "from": "TASK-341",
+      "to": "ISS-443",
+      "type": "addresses",
+      "created_at": "2026-09-09T14:57:18+00:00"
+    },
+    {
+      "from": "TASK-342",
+      "to": "ISS-444",
+      "type": "addresses",
+      "created_at": "2026-09-09T14:57:19+00:00"
+    },
+    {
+      "from": "TASK-343",
+      "to": "ISS-445",
+      "type": "addresses",
+      "created_at": "2026-09-09T14:57:19+00:00"
+    },
+    {
+      "from": "TASK-344",
+      "to": "ISS-446",
+      "type": "addresses",
+      "created_at": "2026-09-09T14:57:19+00:00"
+    },
+    {
+      "from": "TASK-345",
+      "to": "ISS-447",
+      "type": "addresses",
+      "created_at": "2026-09-09T14:57:19+00:00"
+    },
+    {
+      "from": "ISS-443",
+      "to": "COMP-002",
+      "type": "located_in",
+      "created_at": "2026-09-09T14:57:19+00:00"
+    },
+    {
+      "from": "ISS-444",
+      "to": "COMP-002",
+      "type": "located_in",
+      "created_at": "2026-09-09T14:57:19+00:00"
+    },
+    {
+      "from": "ISS-445",
+      "to": "COMP-002",
+      "type": "located_in",
+      "created_at": "2026-09-09T14:57:19+00:00"
+    },
+    {
+      "from": "ISS-446",
+      "to": "COMP-002",
+      "type": "located_in",
+      "created_at": "2026-09-09T14:57:19+00:00"
+    },
+    {
+      "from": "ISS-447",
+      "to": "COMP-001",
+      "type": "located_in",
+      "created_at": "2026-09-09T14:57:19+00:00"
+    },
+    {
+      "from": "TASK-346",
+      "to": "ISS-448",
+      "type": "addresses",
+      "created_at": "2026-09-09T17:11:42+00:00"
+    },
+    {
+      "from": "TASK-347",
+      "to": "ISS-449",
+      "type": "addresses",
+      "created_at": "2026-09-09T17:11:43+00:00"
+    },
+    {
+      "from": "TASK-348",
+      "to": "ISS-450",
+      "type": "addresses",
+      "created_at": "2026-09-09T17:11:43+00:00"
+    },
+    {
+      "from": "TASK-349",
+      "to": "ISS-451",
+      "type": "addresses",
+      "created_at": "2026-09-09T17:11:43+00:00"
+    },
+    {
+      "from": "TASK-350",
+      "to": "ISS-453",
+      "type": "addresses",
+      "created_at": "2026-09-09T17:11:43+00:00"
     }
   ]
 }

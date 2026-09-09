@@ -58,7 +58,23 @@ onMounted(async () => {
 
 // Watch content changes so newly swapped-in code blocks get highlighted too
 // (loadHighlighter caches internally, so re-runs just re-tokenise).
-watch(() => props.content, applyHighlighting);
+//
+// A content swap must ALSO reset the per-block mermaid/math "already rendered"
+// memo and bump the async-render epoch: the same component instance survives
+// SPA navigation between posts (and editor preview edits), and the memoised
+// sets keyed by positional segment keys (mermaid-1, math-1, ...) would
+// otherwise skip rendering the new content's blocks and leave the previous
+// post's diagrams on screen (ISS-444).
+watch(
+	() => props.content,
+	() => {
+		contentEpoch += 1;
+		renderingKeys.value.clear();
+		renderedMermaidKeys.value.clear();
+		renderedMathKeys.value.clear();
+		void applyHighlighting();
+	},
+);
 
 // Lazily highlight code segments after mount. `highlightCode` escapes its
 // input, so the produced HTML (and the plain-text fallback) is safe for v-html.
@@ -84,6 +100,13 @@ const renderedMermaidKeys = ref<Set<string>>(new Set());
 // --- Copy-to-clipboard state (per code block) ---
 const copiedStates = ref<Set<string>>(new Set());
 const copyFailedKeys = ref<Set<string>>(new Set());
+
+// Content-generation counter: bumped every time props.content changes. Async
+// mermaid/math renders capture it on entry and bail early if a newer content
+// swapped in while they were awaiting — otherwise a slow render could paint
+// the OLD post's diagram into a DOM element the NEW post reuses (stale
+// diagram across SPA navigation, ISS-444).
+let contentEpoch = 0;
 
 const { t } = useLang();
 
@@ -151,23 +174,42 @@ async function initMermaid() {
 	return mermaidInstance;
 }
 
+function mermaidErrorHtml(code: string): string {
+	return `<pre class="p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded text-red-600 dark:text-red-400 text-sm">${escapeHtml(code)}</pre>`;
+}
+
 async function renderMermaid(code: string, el: HTMLElement | null, segKey: string) {
 	if (!el || renderingKeys.value.has(segKey) || renderedMermaidKeys.value.has(segKey)) return;
 	renderingKeys.value.add(segKey);
+	const epoch = contentEpoch;
 	const m = await initMermaid();
+	// The awaited init can outlive a content swap (SPA navigation or an edit
+	// in the editor preview): don't paint a block that no longer belongs to
+	// the current content into a reused element.
+	if (epoch !== contentEpoch) {
+		renderingKeys.value.delete(segKey);
+		return;
+	}
 	if (!m) {
-		el.innerHTML = `<pre class="p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded text-red-600 dark:text-red-400 text-sm">${escapeHtml(code)}</pre>`;
+		el.innerHTML = mermaidErrorHtml(code);
 		return;
 	}
 	try {
 		const id = `mermaid-${Math.random().toString(36).slice(2)}`;
 		const { svg } = await m.render(id, code, el);
+		if (epoch !== contentEpoch) return;
 		el.innerHTML = svg || "";
 		renderedMermaidKeys.value.add(segKey);
 	} catch {
-		el.innerHTML = `<pre class="p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded text-red-600 dark:text-red-400 text-sm">${escapeHtml(code)}</pre>`;
+		if (epoch !== contentEpoch) return;
+		el.innerHTML = mermaidErrorHtml(code);
+	} finally {
+		// Only a current-epoch render may release the in-flight guard: a stale
+		// render's epoch always differs, and deleting the marker here would
+		// unblock a NEWER render of the same segment key that is mid-flight
+		// (it owns the guard now).
+		if (epoch === contentEpoch) renderingKeys.value.delete(segKey);
 	}
-	renderingKeys.value.delete(segKey);
 }
 
 /**
@@ -191,10 +233,13 @@ function renderKatex(
 ) {
 	if (!el || renderedMathKeys.value.has(segKey)) return;
 	renderedMathKeys.value.add(segKey);
+	const epoch = contentEpoch;
 	// Lazy-load KaTeX
 	import("katex")
 		.then(({ default: katex }) => {
-			if (!el.isConnected) return;
+			// Same stale-swap guard as mermaid: a content change mid-import must
+			// not paint the old post's formula into a reused element (ISS-444).
+			if (!el.isConnected || epoch !== contentEpoch) return;
 			try {
 				const html = katex.renderToString(formula, {
 					displayMode,
@@ -209,6 +254,7 @@ function renderKatex(
 			}
 		})
 		.catch(() => {
+			if (epoch !== contentEpoch) return;
 			// KaTeX not available — render formula as plain text so content isn't lost.
 			el.textContent = formula;
 		});

@@ -200,17 +200,27 @@ async function loadDashboard(): Promise<void> {
 		// /api/posts?limit=100 endpoint — published-only and hard-capped, so
 		// top/recency/category rankings under-reported on blogs >100 posts and
 		// drafts never surfaced (RIL TASK-077, ISS-046).
+		// The admin endpoint is skip/limit (admin.py admin_list_posts), NOT
+		// page/limit: sending `page` was ignored (skip stayed 0), so every
+		// iteration re-fetched the same first 100 posts and the loop broke on
+		// the duplicated length — top/recency/category stats silently came from
+		// a first-100 slice on blogs with more posts (ISS-443).
 		const batchSize = 100;
 		const postsPage: AdminPost[] = [];
-		let page = 1;
+		let skip = 0;
 		for (;;) {
 			const res = await $fetch<AdminPostListResponse>(`${apiBase}/api/admin/posts`, {
-				query: { page, limit: batchSize },
+				query: { skip, limit: batchSize },
 				headers: authHeaders(),
 			});
 			postsPage.push(...res.items);
-			if (postsPage.length >= res.pagination.total) break;
-			page += 1;
+			// Stop when we've read the whole set: either the server's total is
+			// reached (exact-multiple batches) or a page came back short (last
+			// partial page / rows deleted mid-walk). Both avoid a pointless
+			// extra request and keep the walk correct when rows change during
+			// it.
+			if (postsPage.length >= res.pagination.total || res.items.length < batchSize) break;
+			skip += batchSize;
 		}
 		const [catData, tagData, commentsData, statsData] = await Promise.all([
 			$fetch<Category[]>(`${apiBase}/api/admin/categories`, { headers: authHeaders() }),

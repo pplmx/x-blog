@@ -316,6 +316,35 @@ describe("MarkdownContent", () => {
 			await flushPromises();
 			expect(wrapper.text()).toContain("Second");
 		});
+
+		it("re-renders a mermaid diagram after a content swap (ISSUE-444 stale-diagram regressions)", async () => {
+			// SPA navigation reuses the SAME MarkdownContent instance for the new
+			// post, and the new post's first diagram shares the runtime key with the
+			// old one ("mermaid-1"). The render memo keys ("already rendered") must
+			// be reset on content change or the new diagram stays blank / shows the
+			// previous post's SVG.
+			mermaidRender
+				.mockResolvedValueOnce({ svg: '<svg data-testid="mermaid-svg">old diagram</svg>' })
+				.mockResolvedValueOnce({ svg: '<svg data-testid="mermaid-svg">new diagram</svg>' });
+
+			const wrapper = mount(MarkdownContent, {
+				props: { content: "```mermaid\ngraph TD\nA --> B\n```" },
+				global: { stubs: { Icon: true } },
+			});
+			await flushPromises();
+			await new Promise((r) => setTimeout(r, 10));
+			await flushPromises();
+			expect(wrapper.find("[data-mermaid-key]").html()).toContain("old diagram");
+
+			await wrapper.setProps({ content: "```mermaid\ngraph TD\nB --> C\n```" });
+			await flushPromises();
+			await new Promise((r) => setTimeout(r, 10));
+			await flushPromises();
+			// Without the memo reset the second render is skipped and the OLD
+			// "old diagram" SVG stays in the (reused) container.
+			expect(wrapper.find("[data-mermaid-key]").html()).toContain("new diagram");
+			expect(mermaidRender).toHaveBeenCalledTimes(2);
+		});
 	});
 
 	describe("Copy to clipboard", () => {

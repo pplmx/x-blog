@@ -459,6 +459,32 @@ describe("Admin Post Editor Page", () => {
 			// useHead stubs that later tests depend on (they re-stub navigateTo).
 		});
 
+		it("auto-clears the 'Saved' flash ~3s after a successful save (ISS-445 regression)", async () => {
+			// The success flash is a transient confirmation, not a sticky banner:
+			// it must fade on its own so it doesn't keep claiming "just saved"
+			// over subsequent edits. The handler's finally used to clear the
+			// just-armed timer, leaving the banner on screen forever.
+			vi.useFakeTimers();
+			try {
+				const PostEditor = await loadPage();
+				const wrapper = await mountWithSuspense(PostEditor);
+				await flushPromises();
+
+				const form = wrapper.find("form");
+				await form.trigger("submit.prevent");
+				await flushPromises();
+
+				expect(wrapper.find('[data-testid="save-success"]').exists()).toBe(true);
+
+				vi.advanceTimersByTime(3000);
+				await flushPromises();
+
+				expect(wrapper.find('[data-testid="save-success"]').exists()).toBe(false);
+			} finally {
+				vi.useRealTimers();
+			}
+		});
+
 		it("does not lose keystrokes typed while an autosave is in flight (deep-dive autosave race)", async () => {
 			vi.useFakeTimers();
 			let wrapper: VueWrapper | null = null;

@@ -578,6 +578,29 @@ describe("Index Page", () => {
 			expect(lastFetchUrl).not.toContain("tag_id=");
 		});
 
+		it("sidebar category/tag chips navigate to page 1, not a stale page (ISS-446)", async () => {
+			// From /?page=3 a category chip used to MERGE its query into the
+			// current one, producing ?category_id=1&page=3 while the watcher reset
+			// the rendered feed to page 1 — the URL stayed on page 3, so a deep
+			// link / reload of that URL landed on page 3 of the filtered set
+			// (wrong content vs address bar). Chips now write page=1 explicitly,
+			// the same contract the search filters use.
+			const wrapper = await mountIndexPage({ query: { page: "3" } });
+
+			// The sidebar category chip for "Tech" (categories: [{id:1, name:"Tech"}]).
+			const catLink = wrapper
+				.findAllComponents({ name: "NuxtLink" })
+				.find((c) => c.text().trim() === "Tech");
+			expect(catLink).toBeDefined();
+			// A filter change must write page=1 into the chip's query so the URL
+			// never keeps a stale ?page=3 whose content disagrees with the
+			// address bar (ISS-446) — the same contract search filters use.
+			expect(catLink).not.toBeUndefined();
+			const to = (catLink?.props("to") ?? {}) as { query?: Record<string, string> };
+			expect(to.query?.category_id).toBe("1");
+			expect(to.query?.page).toBe("1");
+		});
+
 		it("shows an active filter indicator with the category name", async () => {
 			const wrapper = await mountIndexPage({ query: { category_id: "1" } });
 			expect(wrapper.text()).toContain("筛选");

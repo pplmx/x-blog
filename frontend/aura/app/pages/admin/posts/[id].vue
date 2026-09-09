@@ -547,9 +547,21 @@ async function handleSubmit(e: Event) {
 			// landed, and an older post (created_at-desc) wasn't even visible
 			// there. Surface an inline success flash and let them keep working or
 			// hit Cancel/back explicitly (ISS-391).
+			//
+			// Clear any flash from an EARLIER save before arming this one (rapid
+			// successive saves would otherwise stack duplicate banners), then arm
+			// THIS save's timer. The timer must survive the handler's finally —
+			// before, the finally unconditionally cleared it, so the green
+			// "Saved" flash stayed on screen forever, claiming just-saved over
+			// subsequent unsaved edits (ISS-445).
+			if (saveSuccessTimer) {
+				clearTimeout(saveSuccessTimer);
+				saveSuccessTimer = undefined;
+			}
 			saveSuccess.value = true;
 			saveSuccessTimer = setTimeout(() => {
 				saveSuccess.value = false;
+				saveSuccessTimer = undefined;
 			}, 3000);
 		}
 		// Recompute dirtiness against what was actually persisted, mirroring
@@ -569,14 +581,22 @@ async function handleSubmit(e: Event) {
 	} catch (err) {
 		const detail = (err as { data?: { detail?: string } } | null)?.data?.detail;
 		submitError.value = typeof detail === "string" ? detail : t("admin.postEdit.saveError");
-	} finally {
-		isSubmitting.value = false;
-		// An in-flight pending success flash from an earlier save must not
-		// resurrect after a later failed save cleared it.
+		// A FAILED save must not leave an earlier save's success flash on
+		// screen — it would claim "just saved" over the error. Clear any
+		// pending flash timer (the success path that armed it also cancelled
+		// its own old timer beforehand, so this only ever targets a timer from
+		// a *previous* successful save).
 		if (saveSuccessTimer) {
 			clearTimeout(saveSuccessTimer);
 			saveSuccessTimer = undefined;
 		}
+		saveSuccess.value = false;
+	} finally {
+		isSubmitting.value = false;
+		// NOTE: the finally deliberately does NOT clear saveSuccessTimer — the
+		// current save's success flash owns it and must auto-hide after ~3s
+		// (ISS-445). Only the catch (failed save) or a subsequent save's arming
+		// clears it.
 	}
 }
 

@@ -593,7 +593,7 @@ const stats = computed(() => {
               <NuxtLink
                 v-for="cat in categories"
                 :key="cat.id"
-                :to="{ query: { category_id: String(cat.id) } }"
+                :to="{ query: { category_id: String(cat.id), page: '1' } }"
                 class="px-3 py-1 rounded-full text-xs font-medium transition-all duration-200"
                 :class="categoryId === cat.id
                   ? 'bg-gradient-to-r from-purple-500 to-indigo-500 text-white shadow-md'
@@ -613,7 +613,7 @@ const stats = computed(() => {
               <NuxtLink
                 v-for="tag in tags"
                 :key="tag.id"
-                :to="{ query: { tag_id: String(tag.id) } }"
+                :to="{ query: { tag_id: String(tag.id), page: '1' } }"
                 class="px-3 py-1 rounded-full text-xs font-medium transition-all duration-200"
                 :class="tagId === tag.id
                   ? 'bg-gradient-to-r from-pink-500 to-rose-500 text-white shadow-md'

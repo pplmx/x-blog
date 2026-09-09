@@ -157,6 +157,11 @@ const mockStatsResult = {
 /** Mutable overrides for the $fetch responses (per-test). */
 let statsOverride: Record<string, number> = { ...mockStatsResult };
 let postsOverride: unknown = null;
+// When set, answers /api/admin/posts with a PAGE-WALK mock: a function from
+// the parsed { skip, limit } query to the response envelope for that page.
+// Drives the multi-page pagination regression test (ISS-443) — the dashboard
+// must walk skip/limit, not re-fetch page 1 forever.
+let postsPagerOverride: ((skip: number, limit: number) => unknown) | null = null;
 // True → the /api/admin/posts route throws (401/network failure drill).
 let failPostsOverride = false;
 // True → /api/admin/posts rejects with a FetchError-shaped statusCode 401
@@ -217,11 +222,19 @@ const mockTrendResult = {
 // but the component no longer imports them); the $fetch mock is authoritative.
 vi.stubGlobal(
 	"$fetch",
-	vi.fn(async (url: unknown) => {
+	vi.fn(async (url: unknown, options?: { query?: Record<string, unknown> }) => {
 		const u = String(url);
 		if (u.includes("/api/admin/posts")) {
 			if (posts401Override) throw Object.assign(new Error("Unauthorized"), { statusCode: 401 });
 			if (failPostsOverride) throw new Error("401 Unauthorized");
+			if (postsPagerOverride) {
+				// ofetch serializes `query` into the URL itself, so the caller's
+				// options (not the url string) hold the pagination params here.
+				const q = options?.query ?? {};
+				const skip = Number(q.skip ?? 0);
+				const limit = Number(q.limit ?? 100);
+				return postsPagerOverride(skip, limit);
+			}
 			return postsOverride ?? mockPostsResponse;
 		}
 		if (u.includes("/api/admin/categories")) return mockCategories;
@@ -288,6 +301,7 @@ describe("Admin Dashboard Page", () => {
 		vi.restoreAllMocks();
 		vi.clearAllMocks();
 		postsOverride = null;
+		postsPagerOverride = null;
 		posts401Override = false;
 		failPostsOverride = false;
 		commentsOverride = null;
@@ -429,6 +443,59 @@ describe("Admin Dashboard Page", () => {
 			expect(wrapper.text()).toContain("草稿");
 			// 1 draft post among 3 total
 			expect(wrapper.text()).toContain("1");
+		});
+
+		it("walks ALL posts across skip/limit pages, not just the first batch (ISS-443)", async () => {
+			// The dashboard loads every post (all statuses) to build top/recency/
+			// category stats beyond the per-page cap of 100. Regression guard: the
+			// batch loop used to send `page` to a skip/limit endpoint, so every
+			// iteration re-fetched the same first 100 posts — the highest-view
+			// post (page 2) never reached the Top Posts card on >100-post blogs.
+			const batchSize = 100;
+			// 180 posts: the first batch is full (100), the second partial (80).
+			// The most-viewed post lives in the SECOND batch.
+			const makePost = (
+				id: number,
+			): {
+				id: number;
+				title: string;
+				slug: string;
+				excerpt: string;
+				published: boolean;
+				created_at: string;
+				views: number;
+				comment_count: number;
+				cover_image: null;
+				category: string;
+				category_id: number;
+				tags: string[];
+			} => ({
+				id,
+				title: `Post ${id}`,
+				slug: `post-${id}`,
+				excerpt: "",
+				published: true,
+				created_at: `2024-01-${String(Math.min(31, (id % 28) + 1)).padStart(2, "0")}T00:00:00Z`,
+				views: id === 180 ? 1000 : 10,
+				comment_count: 0,
+				cover_image: null,
+				category: "Tech",
+				category_id: 1,
+				tags: [],
+			});
+			postsPagerOverride = (skip: number) => {
+				const pageItems = Array.from({ length: 180 })
+					.map((_, i) => makePost(i + 1))
+					.slice(skip, skip + batchSize);
+				return { items: pageItems, pagination: { total: 180, skip, limit: batchSize } };
+			};
+
+			const DashboardPage = await loadPage();
+			const wrapper = await mountWithSuspense(DashboardPage);
+
+			// The Top Posts card's leading entry must be the page-2 post — proof
+			// the pagination walk actually reached past the first 100.
+			expect(wrapper.text()).toContain("Post 180");
 		});
 
 		it("excludes scheduled posts from the draft bucket", async () => {
