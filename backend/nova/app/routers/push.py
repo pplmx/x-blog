@@ -201,10 +201,29 @@ def subscribe(
         # roll back and treat this as the idempotent re-subscribe path (ISS-143).
         db.rollback()
         existing = db.query(models.PushSubscription).filter(models.PushSubscription.endpoint == data.endpoint).first()
-        if existing:
-            db.refresh(existing)
-            return existing
-        raise
+        if not existing:
+            raise
+        # Ownership guard (mirrors the non-race path above): a racing
+        # re-subscribe must not let one reader repoint another reader's
+        # subscription to themselves.
+        if reader_id is not None and existing.reader_id is not None and existing.reader_id != reader_id:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="This push endpoint is already bound to another account",
+            )
+        # Apply THIS request's fresh keys/prefs to the winner row: the browser
+        # may have re-signed a new p256dh/auth pair during the race, and
+        # returning the row un-updated would keep dispatching against the old
+        # keys, which stop decrypting (http-ece failures) until a later
+        # subscribe happens to land (ISS-449 / backend deep-dive).
+        existing.p256dh = data.keys.p256dh
+        existing.auth = data.keys.auth
+        existing.reader_id = reader_id or existing.reader_id
+        existing.want_new_posts = data.want_new_posts
+        existing.new_post_category_id = data.new_post_category_id
+        db.commit()
+        db.refresh(existing)
+        return existing
     db.refresh(sub)
     return sub
 

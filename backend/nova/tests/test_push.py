@@ -73,6 +73,91 @@ class TestSubscribe:
         assert len(rows) == 1
         assert rows[0].p256dh == updated["keys"]["p256dh"]
 
+    def test_race_winner_path_applies_new_keys(self, client, db_session, monkeypatch):
+        """A concurrent subscribe that loses the unique-key insert race must
+        still refresh the winner row with THIS request's rotated keys/prefs.
+
+        Regression (ISS-449 / backend deep-dive): the IntegrityError branch
+        returned the winner row verbatim, so a browser that re-signed fresh
+        p256dh/auth during the race kept a row with stale keys — every later
+        dispatch to that endpoint failed http-ece decryption (counted as
+        `failed`) until an unlucky future subscribe overwrote them."""
+        from sqlalchemy import delete
+        from sqlalchemy.orm import sessionmaker
+
+        # Pre-make a subscription whose endpoint already exists (the row the
+        # 'racing winner' owns) with OLD keys. The test session shares ONE root
+        # transaction across every request in a test (conftest), so a winner
+        # row written by an earlier client.post would live inside that root
+        # transaction and be rolled back when the losing request's
+        # db.rollback() clears the failed INSERT. Real deployments commit per
+        # request, so committing the winner through its OWN connection is what
+        # reproduces production isolation: the post-rollback re-query then
+        # finds the row, exactly like a real concurrent subscriber would.
+        old = _subscribe_body(prefix=4)
+        engine = db_session.get_bind().engine
+        winner_session = sessionmaker(bind=engine)()
+        try:
+            winner_session.add(
+                models.PushSubscription(
+                    endpoint=old["endpoint"],
+                    p256dh=old["keys"]["p256dh"],
+                    auth=old["keys"]["auth"],
+                )
+            )
+            winner_session.commit()
+            winner_id = winner_session.query(models.PushSubscription).filter_by(endpoint=old["endpoint"]).one().id
+        finally:
+            winner_session.close()
+
+        try:
+            # Force the losing request down the INSERT path: its pre-check query
+            # sees no existing row, but the row actually exists → the INSERT hits
+            # the unique constraint → IntegrityError → the winner path runs.
+            real_query = db_session.query
+            # Exactly ONE miss across every PushSubscription lookup in the
+            # losing request: the pre-check (before the INSERT) must see "no
+            # row", but the post-IntegrityError re-query must find the winner
+            # row so the winner path can refresh it.
+            missed = {"v": False}
+
+            def miss_first_query(cls, *args, **kwargs):
+                q = real_query(cls, *args, **kwargs)
+                if cls is models.PushSubscription:
+                    original_first = q.first
+
+                    def first(*f_args, **f_kwargs):
+                        if not missed["v"]:
+                            missed["v"] = True
+                            return None  # pre-check misses; INSERT will collide
+                        return original_first(*f_args, **f_kwargs)
+
+                    q.first = first  # type: ignore[attr-defined]
+                return q
+
+            monkeypatch.setattr(db_session, "query", miss_first_query)
+
+            fresh = _subscribe_body(prefix=9)
+            response = client.post("/api/push/subscribe", json=fresh)
+            assert response.status_code == 200
+            data = response.json()
+            assert data["id"] == winner_id
+
+            rows = db_session.query(models.PushSubscription).all()
+            assert len(rows) == 1
+            # The winner row now carries the LOSER's fresh keys, so the stored
+            # subscription is decryptable again.
+            assert rows[0].p256dh == fresh["keys"]["p256dh"]
+            assert rows[0].auth == fresh["keys"]["auth"]
+        finally:
+            # Undo the durably-committed winner row so nothing leaks into
+            # later tests. Release the shared session's root transaction first
+            # (SQLite holds a read lock while it is open, which would otherwise
+            # block this separate writer connection).
+            db_session.rollback()
+            with engine.begin() as conn:
+                conn.execute(delete(models.PushSubscription).where(models.PushSubscription.endpoint == old["endpoint"]))
+
     @pytest.mark.parametrize(
         "endpoint",
         [
