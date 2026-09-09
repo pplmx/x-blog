@@ -89,13 +89,36 @@ class TestReaderHistoryImport:
         items, _total = _list_slugs(client, token)
         assert not items[0]["viewed_at"].startswith("2020")
 
-        # A newer device timestamp wins the merge.
+        # A newer device timestamp wins the merge — but only within the
+        # present. A far-future read is clamped to now (TASK-348/ISS-450), so
+        # the merge still applies (imported=1); it just lands at "now" instead
+        # of pinning the post to 2099 forever.
         assert _import(client, token, [{"slug": p["slug"], "viewed_at": "2099-12-31T23:59:59"}]).json() == {
             "imported": 1,
             "skipped": 0,
         }
         items, _total = _list_slugs(client, token)
-        assert items[0]["viewed_at"].startswith("2099-12-31T23:59:59")
+        assert not items[0]["viewed_at"].startswith("2099-12-31")
+
+    def test_import_clamps_a_far_future_viewed_at_to_now(self, client, auth_headers):
+        """A fast-clock device's year-in-the-future read must not pin the post
+        at the top of history forever (TASK-348/ISS-450): the stored instant
+        lands at "now", never at the bogus 2099."""
+        from datetime import UTC, datetime, timedelta
+
+        token = _token(client)
+        p = _create_post(client, auth_headers, "Fast Clock", "fastclock")
+
+        resp = _import(client, token, [{"slug": p["slug"], "viewed_at": "2099-12-31T23:59:59"}])
+        assert resp.status_code == 200, resp.text
+        assert resp.json() == {"imported": 1, "skipped": 0}
+
+        items, _total = _list_slugs(client, token)
+        viewed = items[0]["viewed_at"]
+        assert not viewed.startswith("2099")
+        # Clamped to the present, not to some other arbitrary epoch.
+        parsed = datetime.fromisoformat(viewed)
+        assert datetime.now(UTC).replace(tzinfo=None) - parsed < timedelta(days=1)
 
     def test_unknown_slug_is_skipped(self, client, auth_headers):
         token = _token(client)

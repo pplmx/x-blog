@@ -52,6 +52,15 @@ def utc_now_naive() -> datetime:
     return datetime.now(UTC).replace(tzinfo=None)
 
 
+# Device clocks drift; how far ahead of the server a history-import read time
+# is allowed to be before being treated as a bad clock (TASK-348/ISS-450).
+# A well-synced device is within seconds of the server, so a couple of minutes
+# of slack never trips a legitimate import, while a year-ahead "2031" read —
+# which would otherwise pin the post at the top of history forever — is always
+# caught.
+HISTORY_IMPORT_CLOCK_SKEW = timedelta(minutes=2)
+
+
 def is_publicly_visible(post: models.Post) -> bool:
     """A post is public only when published and its publish_at (if any) has passed.
 
@@ -1946,9 +1955,20 @@ def import_reader_history(
     if not items:
         return 0, 0
 
+    # A fast-clock device can send a read timestamp years in the future; since
+    # the merge only ever moves a read forward, that row would pin its post at
+    # the top of history permanently (TASK-348/ISS-450). Bound each record's
+    # instant to now before folding: a timestamp a small skew window beyond now
+    # is kept as-is (a slightly-ahead but honest device), anything further is
+    # clamped so ordering stays honest.
+    now = utc_now_naive()
+    future_cutoff = now + HISTORY_IMPORT_CLOCK_SKEW
+
     # Fold duplicates and normalize each record to its newest read instant.
     by_slug: dict[str, datetime | None] = {}
     for slug, viewed_at in items:
+        if viewed_at is not None and viewed_at > future_cutoff:
+            viewed_at = now
         prev = by_slug.get(slug)
         if viewed_at is None or prev is None or viewed_at > prev:
             by_slug[slug] = viewed_at
