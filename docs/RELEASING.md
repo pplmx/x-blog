@@ -59,6 +59,9 @@ production only after a successful `Test`, so a red build stalls the pipeline.
    `[x.y.z]: https://github.com/pplmx/x-blog/releases/tag/vx.y.z`
     - Read the recent `feat`/`fix`/`perf`/`security` commits to make sure the
    notable entries are captured.
+    - **Mirror the entry in `CHANGELOG.zh-CN.md`** (Chinese translation) so the
+   release log stays bilingual — the same English/中文 pairing as the READMEs.
+   Both files must pass `rumdl`.
 
 5. **Open a release preparation PR** (`chore(release): prepare vx.y.z`) with the
    version bump + CHANGELOG, and merge it once the `Test` workflow is green.
@@ -71,10 +74,12 @@ production only after a successful `Test`, so a red build stalls the pipeline.
    git push origin v0.1.0
    ```
 
-7. **Create the GitHub Release** with notes from the CHANGELOG:
+7. **Create the GitHub Release** with **bilingual notes** (English section +
+   Chinese section) from `CHANGELOG.md` and `CHANGELOG.zh-CN.md`:
 
    ```bash
-   # extract the changelog body for this version and paste into --notes-file
+   # extract the changelog body for this version into a bilingual notes file
+   # (English entries first, then the Chinese section) and paste via --notes-file
    gh release create v0.1.0 --title "X-Blog v0.1.0" --notes-file /tmp/release-notes.md
    ```
 
