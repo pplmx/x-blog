@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 293,
+  "round": 294,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-10T14:16:19+00:00",
+  "updated_at": "2026-09-10T14:25:35+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -21811,6 +21811,17 @@
       "touched_round": 292,
       "commit": "0267c13",
       "summary": "Feeds/sitemap now order by recency: pinned_first=False at 4 rss.py call sites; regression test asserts newer-first feed/sitemap and pinned-first homepage"
+    },
+    "DEC-282": {
+      "id": "DEC-282",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-10T14:25:11+00:00",
+      "updated_at": "2026-09-10T14:25:11+00:00",
+      "touched_round": 293,
+      "rationale": "TS7 upgrade blocked for frontend typecheck: typescript@7.0.2 ships an exports map that hides every ./lib/* subpath (root . -> lib/version.cjs, only ./unstable/* APIs) so vue-tsc/@volar/typescript (pnpm typecheck / nuxt typecheck) hits ERR_PACKAGE_PATH_NOT_EXPORTED; vue-tsc 3.3.11 peer range >=5.0.0 has no upper bound so pnpm does not guard this. Same ecosystem story as ts-jest (peer <7, feature request ./issues/5366 open). typescript is pinned ===6.0.3 deliberately. Defer until vue-tsc/@volar ship TS7 (tsgo) support.",
+      "alternatives_rejected": "[upgrade-now (breaks nuxt typecheck gate), drop-typecheck-gate (unacceptable quality loss), run-two-major-TS (6.0.3 typecheck + 7 runtime: dual-API mismatch risk, no gain)]"
     }
   },
   "edges": [
