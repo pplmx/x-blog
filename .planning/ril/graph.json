@@ -2,7 +2,7 @@
   "ril_version": 1,
   "round": 292,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-10T12:38:06+00:00",
+  "updated_at": "2026-09-10T12:49:31+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -21680,6 +21680,30 @@
       "title": "Backup restore rewinds views/likes but never touches post_views_daily",
       "severity": "medium",
       "summary": "crud.restore_backup sets post.views/post.likes from the snapshot but neither build_backup_snapshot nor restore_backup references PostViewsDaily. Restoring a week-old snapshot (views=100 over live views=200) sets the published counter to 100 while the admin trend chart and top-posts still sum the pre-restore daily rows — a permanent, non-self-healing inconsistency. Fixed: delete restored posts' daily rows in the same transaction (round-292 deep-dive #4)."
+    },
+    "CHG-467": {
+      "id": "CHG-467",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-10T12:48:18+00:00",
+      "updated_at": "2026-09-10T12:48:18+00:00",
+      "touched_round": 292,
+      "summary": "reader_history_stats now joinedloads category/tags like list_reader_history, removing the per-recent-item lazy N+1 (~12 queries saved per /history page view)",
+      "files": "backend/nova/app/crud.py",
+      "commit": "67baebd"
+    },
+    "ISS-464": {
+      "id": "ISS-464",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-10T12:48:55+00:00",
+      "updated_at": "2026-09-10T12:49:31+00:00",
+      "touched_round": 292,
+      "title": "reader_history_stats materializes full history rows without joinedload (N+1)",
+      "severity": "low",
+      "summary": "crud.reader_history_stats recent items serialized via ReadingHistoryItem.from_post touching post.category/post.tags lazy loads — ~12 extra queries per /history page view; sibling list_reader_history already eager-loads. Fixed to joinedload both. (Full-content materialization for reading_minutes is a separate design choice dispositioned by DEC-278.)"
     }
   },
   "edges": [
@@ -32403,6 +32427,12 @@
       "to": "ISS-463",
       "type": "resolves",
       "created_at": "2026-09-10T12:38:06+00:00"
+    },
+    {
+      "from": "CHG-467",
+      "to": "ISS-464",
+      "type": "resolves",
+      "created_at": "2026-09-10T12:49:31+00:00"
     }
   ]
 }
