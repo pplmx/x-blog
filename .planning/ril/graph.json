@@ -2,7 +2,7 @@
   "ril_version": 1,
   "round": 292,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-10T10:54:19+00:00",
+  "updated_at": "2026-09-10T12:03:50+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -21632,6 +21632,30 @@
       "title": "Editorial calendar hides a draft planned for outside the viewed month",
       "severity": "low",
       "summary": "admin.py calendar classify(): a draft with non-None publish_at outside the viewed month fails the grid range check and lands on NEITHER the grid nor the unscheduled list — the exact plan case unscheduled exists to surface. Fixed: non-grid drafts keep off-grid but go to unscheduled (round-292 deep-dive #8)."
+    },
+    "CHG-465": {
+      "id": "CHG-465",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-10T12:02:28+00:00",
+      "updated_at": "2026-09-10T12:02:28+00:00",
+      "touched_round": 292,
+      "summary": "Posts CSV export now orders by Post.id desc before the limit cap, so the exported subset is deterministic/reproducible past 10k rows",
+      "files": "backend/nova/app/routers/export.py, backend/nova/tests/test_export.py",
+      "commit": "c55669e"
+    },
+    "ISS-462": {
+      "id": "ISS-462",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-10T12:03:10+00:00",
+      "updated_at": "2026-09-10T12:03:50+00:00",
+      "touched_round": 292,
+      "title": "Posts CSV export truncates an arbitrary, nondeterministic subset past the cap",
+      "severity": "low",
+      "summary": "export.py posts CSV query had no ORDER BY before limit (default 10k), so past the cap the exported subset is chosen by the query plan — unreproducible, remainder unreachable. Sibling export_comments_csv already orders. Fixed with Post.id desc (round-292 deep-dive #5)."
     }
   },
   "edges": [
@@ -32343,6 +32367,12 @@
       "to": "ISS-461",
       "type": "resolves",
       "created_at": "2026-09-10T10:54:19+00:00"
+    },
+    {
+      "from": "CHG-465",
+      "to": "ISS-462",
+      "type": "resolves",
+      "created_at": "2026-09-10T12:03:50+00:00"
     }
   ]
 }
