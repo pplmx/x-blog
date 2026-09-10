@@ -32,14 +32,36 @@ def _xff_client(xff: str) -> str | None:
     inside the VARCHAR(50) columns), dedupes equivalent spellings of the same
     IPv6/4-mapped address, and rejects anything non-IP outright. Returns None
     for garbage so the caller can fall back to the peer.
+
+    RFC 7239 nodes may carry a port (``203.0.113.9:8080``,
+    ``[2001:db8::1]:443``) — nginx/frps/ingres add the client port when the
+    client connected to the proxy over a distinct source port. Strip it before
+    validation so a port-carrying entry is still recognized (its bare host is
+    canonical, bounded, and deduped); otherwise it would fall back to the
+    proxy peer and collapse every proxied client into one shared bucket.
     """
     token = xff.split(",")[0].strip()
     if not token:
         return None
-    try:
-        return str(ipaddress.ip_address(token))
-    except ValueError:
-        return None
+    candidates = [token]
+    if token.startswith("["):
+        # [IPv6] or [IPv6]:port — the bracketed form can hold the bare address.
+        end = token.find("]")
+        if end == -1:
+            return None
+        candidates.append(token[1:end])
+    else:
+        # A trailing :port (only possible for v4-unbraced tokens; a bare IPv6
+        # has colons throughout and validates on the first candidate).
+        head, sep, _tail = token.rpartition(":")
+        if sep:
+            candidates.append(head)
+    for cand in candidates:
+        try:
+            return str(ipaddress.ip_address(cand))
+        except ValueError:
+            continue
+    return None
 
 
 def client_rate_key(request: Request) -> str:
