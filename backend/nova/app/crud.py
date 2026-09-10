@@ -143,6 +143,7 @@ def get_posts(
     tag_id: int | None = None,
     year: int | None = None,
     month: int | None = None,
+    pinned_first: bool = True,
 ) -> tuple[list[models.Post], int]:
     query = db.query(models.Post)
 
@@ -176,20 +177,24 @@ def get_posts(
         joinedload(models.Post.tags),
     )
 
-    # Sort by pinned first, then by effective publish time (a scheduled post
-    # reaches the top of the feed when it actually goes live — previously a
-    # post drafted in January and published in June stayed buried in January's
-    # position while its digest/SEO/feeds all reported June, RIL ISS-265).
+    # Sort by pinned first (homepage/list emphasis — pinned is a UI-visibility
+    # flag, so it leads the site's own listings), then by effective publish
+    # time (a scheduled post reaches the top of the feed when it actually goes
+    # live — previously a post drafted in January and published in June stayed
+    # buried in January's position while its digest/SEO/feeds all reported
+    # June, RIL ISS-265).
     # id desc is a deterministic tiebreak: a batch-scheduled post shares its
     # whole-second publish_at with others, and without it equal times would
     # resolve by query plan (joinedload here, bare column in adjacent) and
     # prev/next could disagree with this feed (round-234 review).
-    posts = (
-        query.order_by(models.Post.pinned.desc(), _effective_publish_col().desc(), models.Post.id.desc())
-        .offset(skip)
-        .limit(limit)
-        .all()
-    )
+    # pinned_first=False drops the pinned column entirely for pure recency
+    # channels (RSS/Atom/sitemap): an old pinned post must not float to item 0
+    # and fake a freshly-updated feed when a poller keys off the first entry
+    # (RIL ISS-474).
+    order_cols = [models.Post.pinned.desc(), _effective_publish_col().desc(), models.Post.id.desc()]
+    if not pinned_first:
+        order_cols = [_effective_publish_col().desc(), models.Post.id.desc()]
+    posts = query.order_by(*order_cols).offset(skip).limit(limit).all()
 
     # Populate comment_count (approved) + reading_time in one pass (no N+1).
     _populate_post_metrics(db, posts)

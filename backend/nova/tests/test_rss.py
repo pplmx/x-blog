@@ -231,6 +231,48 @@ def test_atom_feed_returns_xml(client):
     assert "<title>" in content
 
 
+def test_feed_and_sitemap_order_by_recency_not_pinned_first(client, db_session):
+    """Feeds must be pure-recency channels: a pinned old post must not float to
+    item 0 and fake a freshly-updated feed for pollers that key off the first
+    entry — only the site's own listings float pinned (RIL ISS-474)."""
+    from datetime import UTC, datetime
+
+    from app import models
+
+    pinned_old = models.Post(
+        title="Pinned Old Post",
+        slug="pinned-old-post",
+        content="Old pinned content",
+        published=True,
+        pinned=True,
+        created_at=datetime(2024, 1, 1, 12, 0, 0, tzinfo=UTC),
+    )
+    fresh_new = models.Post(
+        title="Fresh New Post",
+        slug="fresh-new-post",
+        content="Fresh new content",
+        published=True,
+        pinned=False,
+        created_at=datetime(2026, 6, 1, 12, 0, 0, tzinfo=UTC),
+    )
+    db_session.add_all([pinned_old, fresh_new])
+    db_session.commit()
+
+    # RSS: the newer post leads, the pinned old post sits below it.
+    rss = client.get("/rss/feed.xml").text
+    assert rss.index("<title><![CDATA[Fresh New Post]]></title>") < rss.index(
+        "<title><![CDATA[Pinned Old Post]]></title>"
+    )
+
+    # Sitemap: same pure-recency order (post locs, after the static pages).
+    sitemap = client.get("/sitemap.xml").text
+    assert sitemap.index("/posts/fresh-new-post") < sitemap.index("/posts/pinned-old-post")
+
+    # The site's own list still floats the pinned post to the top.
+    homepage = client.get("/api/posts").json()["items"]
+    assert [p["title"] for p in homepage[:2]] == ["Pinned Old Post", "Fresh New Post"]
+
+
 def test_rss_pubdate_uses_publish_at_for_scheduled_post(client, auth_headers):
     """A scheduled post's RSS pubDate must be its publish_at, not the draft's
     created_at — otherwise feed readers mis-date/mis-order it (RIL ISS-264)."""

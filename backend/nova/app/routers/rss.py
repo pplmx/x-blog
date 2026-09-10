@@ -314,7 +314,9 @@ def get_rss_feed(
     if cached is not None:
         return _feed_response(cached, "application/rss+xml", request)
 
-    posts, _ = crud.get_posts(db, skip=0, limit=20, published=True, category_id=category_id, tag_id=tag_id)
+    posts, _ = crud.get_posts(
+        db, skip=0, limit=20, published=True, category_id=category_id, tag_id=tag_id, pinned_first=False
+    )
 
     site_url = getattr(settings, "site_url", "http://localhost:3000")
     site_title = getattr(settings, "site_title", "X-Blog")
@@ -351,7 +353,9 @@ def get_atom_feed(
     if cached is not None:
         return _feed_response(cached, "application/atom+xml", request)
 
-    posts, _ = crud.get_posts(db, skip=0, limit=20, published=True, category_id=category_id, tag_id=tag_id)
+    posts, _ = crud.get_posts(
+        db, skip=0, limit=20, published=True, category_id=category_id, tag_id=tag_id, pinned_first=False
+    )
 
     site_url = getattr(settings, "site_url", "http://localhost:3000")
     site_title = getattr(settings, "site_title", "X-Blog")
@@ -412,7 +416,7 @@ def get_category_rss_feed(
     if cached is not None:
         return _feed_response(cached, "application/rss+xml", request)
 
-    posts, _ = crud.get_posts(db, skip=0, limit=20, published=True, category_id=category.id)
+    posts, _ = crud.get_posts(db, skip=0, limit=20, published=True, category_id=category.id, pinned_first=False)
 
     site_url = getattr(settings, "site_url", "http://localhost:3000")
     site_title = getattr(settings, "site_title", "X-Blog")
@@ -483,7 +487,7 @@ def get_sitemap(request: Request = None, db: Session = Depends(get_db)) -> Respo
     if cached is not None:
         return _feed_response(cached, "application/xml", request)
 
-    posts, _ = crud.get_posts(db, skip=0, limit=1000, published=True)
+    posts, _ = crud.get_posts(db, skip=0, limit=1000, published=True, pinned_first=False)
     categories = crud.get_categories(db)
     tags = crud.get_tags(db)
 
