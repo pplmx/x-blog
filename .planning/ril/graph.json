@@ -2,7 +2,7 @@
   "ril_version": 1,
   "round": 292,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-10T12:03:50+00:00",
+  "updated_at": "2026-09-10T12:38:06+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -21656,6 +21656,30 @@
       "title": "Posts CSV export truncates an arbitrary, nondeterministic subset past the cap",
       "severity": "low",
       "summary": "export.py posts CSV query had no ORDER BY before limit (default 10k), so past the cap the exported subset is chosen by the query plan — unreproducible, remainder unreachable. Sibling export_comments_csv already orders. Fixed with Post.id desc (round-292 deep-dive #5)."
+    },
+    "CHG-466": {
+      "id": "CHG-466",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-10T12:36:35+00:00",
+      "updated_at": "2026-09-10T12:36:35+00:00",
+      "touched_round": 292,
+      "summary": "Backup restore now deletes restored posts' post_views_daily rows in the same transaction, so the admin trend chart agrees with the restored published counter instead of permanently disagreeing",
+      "files": "backend/nova/app/crud.py, backend/nova/tests/test_backup.py",
+      "commit": "3c45daf"
+    },
+    "ISS-463": {
+      "id": "ISS-463",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-10T12:37:10+00:00",
+      "updated_at": "2026-09-10T12:38:06+00:00",
+      "touched_round": 292,
+      "title": "Backup restore rewinds views/likes but never touches post_views_daily",
+      "severity": "medium",
+      "summary": "crud.restore_backup sets post.views/post.likes from the snapshot but neither build_backup_snapshot nor restore_backup references PostViewsDaily. Restoring a week-old snapshot (views=100 over live views=200) sets the published counter to 100 while the admin trend chart and top-posts still sum the pre-restore daily rows — a permanent, non-self-healing inconsistency. Fixed: delete restored posts' daily rows in the same transaction (round-292 deep-dive #4)."
     }
   },
   "edges": [
@@ -32373,6 +32397,12 @@
       "to": "ISS-462",
       "type": "resolves",
       "created_at": "2026-09-10T12:03:50+00:00"
+    },
+    {
+      "from": "CHG-466",
+      "to": "ISS-463",
+      "type": "resolves",
+      "created_at": "2026-09-10T12:38:06+00:00"
     }
   ]
 }
