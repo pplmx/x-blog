@@ -79,7 +79,16 @@ def export_posts_csv(
 
     # category/tags are read per row below; eager-load so a 10k-post export
     # stays a handful of queries instead of ~2 lazy loads per row (RIL ISS-289).
-    posts = query.options(joinedload(models.Post.category), joinedload(models.Post.tags)).limit(limit).all()
+    # Deterministic order: without an ORDER BY, the LIMIT-selected subset above
+    # the cap is chosen by the query plan — unreproducible, and the remainder is
+    # unreachable. Post.id desc is cheap (PK index) and matches the DEC-239
+    # tiebreak idiom (the sibling comments export already orders by created_at).
+    posts = (
+        query.options(joinedload(models.Post.category), joinedload(models.Post.tags))
+        .order_by(models.Post.id.desc())
+        .limit(limit)
+        .all()
+    )
 
     output = io.StringIO()
     writer = csv.writer(output)

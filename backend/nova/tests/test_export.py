@@ -22,6 +22,32 @@ class TestExportPostsCsv:
         headers = lines[0].split(",")
         assert len(headers) > 0
 
+    def test_export_posts_csv_is_deterministically_ordered(self, client, auth_headers, db_session):
+        """The LIMIT-bound subset must be deterministic (id desc), not chosen by
+        the query plan — past the cap the exported rows would otherwise be
+        unreproducible and the remainder unreachable (round-292 deep-dive #5)."""
+        from app import models
+
+        for i in range(5):
+            db_session.add(
+                models.Post(
+                    title=f"Ordered Export {i + 1}",
+                    slug=f"ordered-export-{i + 1}",
+                    content="C",
+                    published=True,
+                )
+            )
+        db_session.commit()
+
+        # First data row (after the header) must be the highest id created last.
+        rows = client.get("/api/export/posts.csv", headers=auth_headers).text.strip().split("\n")
+        assert len(rows) >= 6  # header + 5 ordered posts
+        data = rows[1:]
+        slugs = ["ordered-export-1", "ordered-export-2", "ordered-export-3", "ordered-export-4", "ordered-export-5"]
+        indices = [next(i for i, r in enumerate(data) if s in r) for s in slugs]
+        # id desc => post 5 (last created) comes first, post 1 last.
+        assert indices == sorted(indices, reverse=True)
+
     def test_export_posts_csv_requires_auth(self, client):
         """Export endpoints expose post data and must require admin auth."""
         response = client.get("/api/export/posts.csv")
