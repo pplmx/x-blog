@@ -401,6 +401,50 @@ describe("Account settings page", () => {
 		});
 	});
 
+	it("flips the new-post toggle optimistically, before the server round-trip (round 292)", async () => {
+		// The checkbox is `:checked`-bound to the device model; a pessimistic
+		// write (model mutated only after the response) made the control visually
+		// unsnap to its old value for the whole flight. Assert the model moves
+		// the instant the change fires, while the PATCH is still unresolved.
+		isAuthenticated.value = true;
+		mockFetchPushSubscriptions.mockResolvedValue({ items: [makeDevice()], total: 1 });
+		let resolvePrefs!: (v: unknown) => void;
+		mockUpdatePushSubscriptionPrefs.mockImplementation(
+			() =>
+				new Promise((res) => {
+					resolvePrefs = res;
+				}),
+		);
+		const wrapper = await mountPage();
+		await wrapper.get("input[type='checkbox']").setValue(true);
+		// No flushPromises: the render after the pending change reflects the
+		// optimistic model, not a server reply.
+		const checkbox = wrapper.get("input[type='checkbox']") as unknown as {
+			element: { checked: boolean };
+		};
+		expect(checkbox.element.checked).toBe(true);
+		resolvePrefs(makeDevice({ want_new_posts: true }));
+		await flushPromises();
+	});
+
+	it("rolls the follow-category select back when the PATCH fails (round 292)", async () => {
+		// The optimistic mirror must not leave the select pinned to a category
+		// the server rejected — revert to the pre-change value.
+		isAuthenticated.value = true;
+		mockFetchCategories.mockResolvedValue([{ id: 7, name: "Python" }]);
+		mockFetchPushSubscriptions.mockResolvedValue({
+			items: [makeDevice({ want_new_posts: true, new_post_category_id: 7 })],
+			total: 1,
+		});
+		mockUpdatePushSubscriptionPrefs.mockRejectedValue(new Error("network down"));
+		const wrapper = await mountPage();
+		await wrapper.get("select").setValue("");
+		await flushPromises();
+		const select = wrapper.get("select") as unknown as { element: { value: string } };
+		expect(select.element.value).toBe("7");
+		expect(wrapper.text()).toContain("保存失败，请稍后再试");
+	});
+
 	it("saves the display name and refreshes the profile", async () => {
 		isAuthenticated.value = true;
 		mockUpdateMyProfile.mockResolvedValue({

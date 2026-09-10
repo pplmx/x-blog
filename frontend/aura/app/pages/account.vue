@@ -234,13 +234,21 @@ async function setDeviceNewPosts(device: ReaderPushSubscription, want: boolean) 
 	if (savingPrefsId.value !== null) return;
 	prefsError.value = false;
 	savingPrefsId.value = device.id;
+	// Optimistic mirror (round 292): the control is `:checked`-bound, so without
+	// flipping the model before the round-trip the checkbox visually unsnaps to
+	// its old state for the whole flight — a toggle on a slow connection read as
+	// "my toggle was rejected" while the row's "…" spinner pulsed beside the old
+	// value. Same pattern the /notifications prefs toggle uses; the single-flight
+	// guard keeps the rollback race-free (only this write can move the value).
+	const prevWant = device.want_new_posts;
+	device.want_new_posts = want;
 	try {
 		await updateMyPushSubscriptionPrefs(device.id, {
 			want_new_posts: want,
 			new_post_category_id: want ? device.new_post_category_id : null,
 		});
-		device.want_new_posts = want;
 	} catch (err) {
+		device.want_new_posts = prevWant;
 		handleLoadFailure(err, () => {
 			prefsError.value = true;
 		});
@@ -254,14 +262,21 @@ async function setDeviceFollowCategory(device: ReaderPushSubscription, categoryI
 	if (savingPrefsId.value !== null) return; // single-flight, see setDeviceNewPosts
 	prefsError.value = false;
 	savingPrefsId.value = device.id;
+	// Optimistic mirror (round 292): same rationale as setDeviceNewPosts — the
+	// select is `:value`-bound, so the model must move before the round-trip to
+	// keep the visibly-selected option and the follow-pin in sync while saving.
+	const prevWant = device.want_new_posts;
+	const prevCategory = device.new_post_category_id;
+	device.want_new_posts = true;
+	device.new_post_category_id = categoryId;
 	try {
 		await updateMyPushSubscriptionPrefs(device.id, {
 			want_new_posts: true,
 			new_post_category_id: categoryId,
 		});
-		device.new_post_category_id = categoryId;
-		device.want_new_posts = true;
 	} catch (err) {
+		device.want_new_posts = prevWant;
+		device.new_post_category_id = prevCategory;
 		handleLoadFailure(err, () => {
 			prefsError.value = true;
 		});

@@ -119,11 +119,14 @@ export default defineEventHandler(async (event) => {
 
 	// Sanitize + XML-escape before the title reaches the SVG template:
 	// raw input could inject arbitrary SVG markup into the generated image
-	// or break satori's parser (issue #20).
+	// or break satori's parser (issue #20). Title is length-bounded via
+	// sanitizeImageTitle; `site` must get the same trim/strip/cap — an
+	// unbounded site string would let one request drive unbounded CPU/memory
+	// in satori+sharp, the exact exposure the title bound exists to close.
 	const displayTitle = escapeXml(
 		sanitizeImageTitle(title && title.length > 0 ? title : "X-Blog — 一个现代化的技术博客系统"),
 	);
-	const escapedSite = escapeXml(site);
+	const escapedSite = escapeXml(sanitizeImageTitle(site));
 
 	try {
 		// Generate SVG with satori

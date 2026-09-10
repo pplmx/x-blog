@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 291,
+  "round": 292,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-10T05:20:52+00:00",
+  "updated_at": "2026-09-10T09:51:14+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -21548,6 +21548,30 @@
       "title": "Round 291 closure: bug backlog at or below threshold",
       "rationale": "Round 290-291 delivered TASK-351 (NUL boundary), TASK-352 (comment like/flag orphan cascade), TASK-353 + title extension (whitespace-only name/title guards), CHG-459 (XFF port-form hardening) and DEC-280 (ISS-452 disposition) — all verified green (backend 1380 @93.72% SQLite, dev PG suites, frontend 1912, ruff/typecheck). Remaining active issues (ISS-242/243/244/451/452) are architecture-level deferrals already governed by DEC-004/014/278/280 with stale tasks; every fresh-probed surface this round (upload, webpush, emailer, conditional, transport-401, post editor, series, account) is already sound. No code-level task above the 3.0 threshold is discoverable; the §8 per-round task budget (3) is exhausted.",
       "alternatives_rejected": "Continue force-mining marginal tasks below threshold (rejected: violates the 'no idle-spin / no patch-stacking' discipline — remaining items are sub-threshold or deferred); relitigate DEC-278/280 (rejected: they already record the deferral rationale with evidence)."
+    },
+    "ISS-457": {
+      "id": "ISS-457",
+      "type": "issue",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-10T09:48:44+00:00",
+      "updated_at": "2026-09-10T09:48:44+00:00",
+      "touched_round": 292,
+      "title": "account.vue device-pref toggles flicker to old state during every change",
+      "severity": "low",
+      "summary": "app/pages/account.vue setDeviceNewPosts (~L230) / setDeviceFollowCategory (~L253): the checkbox (:checked) and category select (:value) are controlled inputs but the device model mutates only after the PATCH round-trip, so a slow connection shows the control unsnapping to its old value for the whole flight (spinner pulses beside stale value, reads as rejected, control disabled). notifications.vue already uses the optimistic-mirror-with-rollback pattern. Fixed round 292."
+    },
+    "ISS-458": {
+      "id": "ISS-458",
+      "type": "issue",
+      "status": "active",
+      "version": 2,
+      "created_at": "2026-09-10T09:49:13+00:00",
+      "updated_at": "2026-09-10T09:51:14+00:00",
+      "touched_round": 292,
+      "title": "cover/OG image endpoints never length-bound the site query param",
+      "severity": "low",
+      "summary": "server/routes/api/cover.ts and og.ts XML-escape the site query param but run only title through sanitizeImageTitle (trim/strip-invalid-XML/cap 200). The module docstring advertises bounded input as the CPU/memory protection for satori+sharp; an unbounded site string reaches the renderer. Fixed round 292 by routing site through sanitizeImageTitle too (test added in tests/server/imageTitle.spec.ts)."
     }
   },
   "edges": [
