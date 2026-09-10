@@ -2,7 +2,7 @@
   "ril_version": 1,
   "round": 292,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-10T13:23:11+00:00",
+  "updated_at": "2026-09-10T13:46:56+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -21752,6 +21752,30 @@
       "title": "History-import fold lets a timestamp-less record erase a real timestamp in-batch",
       "severity": "low",
       "summary": "crud.import_reader_history fold: 'if viewed_at is None or prev is None or viewed_at > prev' — a datedless legacy item overwrote a sibling's real folded timestamp to None, then the DB pass stamped 'now', inflating streak/activity. Fixed so None only fills an empty slot (round-292 compact tail)."
+    },
+    "CHG-470": {
+      "id": "CHG-470",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-10T13:45:31+00:00",
+      "updated_at": "2026-09-10T13:45:31+00:00",
+      "touched_round": 292,
+      "summary": "Media library list sorts by (mtime, filename) desc; equal-mtime uploads no longer skip/dupe at page boundaries or flip order between requests",
+      "files": "backend/nova/app/routers/upload.py, backend/nova/tests/test_upload.py",
+      "commit": "aed6a25"
+    },
+    "ISS-467": {
+      "id": "ISS-467",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-10T13:46:13+00:00",
+      "updated_at": "2026-09-10T13:46:56+00:00",
+      "touched_round": 292,
+      "title": "Media library list sorts on mtime only (equal-mtime ties skip/dup at page boundaries)",
+      "severity": "low",
+      "summary": "upload.py list_uploaded_files sorted by mtime only; batch uploads sharing a second (coarse fs mtime) had no tiebreak, so offset pages could skip/duplicate and equal-mtime rows flipped order between requests. Fixed to (mtime, filename) desc (round-292 compact tail)."
     }
   },
   "edges": [
@@ -32493,6 +32517,12 @@
       "to": "ISS-466",
       "type": "resolves",
       "created_at": "2026-09-10T13:23:10+00:00"
+    },
+    {
+      "from": "CHG-470",
+      "to": "ISS-467",
+      "type": "resolves",
+      "created_at": "2026-09-10T13:46:56+00:00"
     }
   ]
 }
