@@ -56,6 +56,18 @@ def test_create_series_requires_auth(client):
     assert resp.status_code == 401
 
 
+def test_create_series_whitespace_title_rejected_422(client, auth_headers):
+    """SeriesCreate.title passed min_length=1 without stripping, so '   '
+    stored a blank series that rendered as an empty card — same round-276
+    gap as PostBase.title/tag/category names (ISS-456 class)."""
+    resp = client.post(
+        "/api/series",
+        json={"title": "   ", "slug": "blank-series-title", "description": None},
+        headers=auth_headers,
+    )
+    assert resp.status_code == 422, resp.text
+
+
 def test_create_series_duplicate_slug(client, auth_headers):
     _create_series(client, auth_headers)
     resp = _create_series(client, auth_headers)

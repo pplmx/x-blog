@@ -206,6 +206,21 @@ class TestAdminPosts:
         )
         assert response.status_code == 200
 
+    def test_update_post_whitespace_title_rejected_422(self, client, auth_headers, db_session):
+        """A whitespace-only title passed the old update schema (no strip /
+        min_length on PostUpdate) and would store a blank title rendering as
+        a blank card/feed row — stripped at the boundary like PostBase.create
+        (ISS-456 class)."""
+        post = models.Post(title="Test", slug="test-ws", content="Content", published=True)
+        db_session.add(post)
+        db_session.commit()
+        response = client.put(
+            f"/api/admin/posts/{post.id}",
+            headers={**auth_headers, "Content-Type": "application/json"},
+            json={"title": "   "},
+        )
+        assert response.status_code == 422, response.text
+
     def test_update_post_preserves_category_id(self, client, auth_headers, db_session):
         """Updating a post without category_id should not clear the existing category."""
         category = models.Category(name="Tech")

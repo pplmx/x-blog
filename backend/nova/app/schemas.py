@@ -181,11 +181,26 @@ class SeriesCreate(BaseModel):
     slug: Annotated[NonNulStr, Field(max_length=200, pattern=SLUG_PATTERN.pattern)]
     description: Annotated[NonNulStr | None, Field(default=None, max_length=2000)]
 
+    @field_validator("title", mode="before")
+    @classmethod
+    def strip_title(cls, value: object) -> object:
+        # Whitespace-only title passed min_length=1 (raw char count) and then
+        # rendered as a blank series card/feed row — same round-276 gap as the
+        # other title/name fields, this time on the create path.
+        return _strip_blank(value) if isinstance(value, str) else value
+
 
 class SeriesUpdate(BaseModel):
     title: Annotated[NonNulStr | None, Field(default=None, min_length=1, max_length=200)]
     slug: Annotated[NonNulStr | None, Field(default=None, max_length=200, pattern=SLUG_PATTERN.pattern)]
     description: NonNulStr | None = None
+
+    @field_validator("title", mode="before")
+    @classmethod
+    def strip_title(cls, value: object) -> object:
+        # PATCH semantics: None = "don't touch"; a whitespace-only string is an
+        # attempted blank-out and must 422 like create.
+        return _strip_blank(value) if isinstance(value, str) else value
 
 
 class PostBase(BaseModel):
@@ -229,13 +244,23 @@ class PostCreate(PostBase):
 
 
 class PostUpdate(BaseModel):
-    title: Annotated[NonNulStr | None, Field(default=None, max_length=200)]
+    title: Annotated[NonNulStr | None, Field(default=None, min_length=1, max_length=200)]
     # Same pattern as PostBase.slug so updates can't introduce broken
     # feed/sitemap URLs (issue debt #7). None = "don't update the field".
     slug: Annotated[NonNulStr | None, Field(default=None, max_length=200, pattern=SLUG_PATTERN.pattern)]
     content: NonNulStr | None = None
     excerpt: Annotated[NonNulStr | None, Field(default=None, max_length=500)]
     published: bool | None = None
+
+    @field_validator("title", mode="before")
+    @classmethod
+    def strip_title(cls, value: object) -> object:
+        # PostBase.title strings whitespace-only to a clean 422 at create; the
+        # update path must enforce the same on edits, or an admin PATCH with
+        # "   " would store a blank title (blank card / feed row). None (field
+        # omitted) still means "don't update" — only strings are stripped.
+        return _strip_blank(value) if isinstance(value, str) else value
+
     pinned: bool | None = None
     publish_at: datetime | None = None
     category_id: int | None = None
