@@ -2,7 +2,7 @@
   "ril_version": 1,
   "round": 291,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-10T05:11:35+00:00",
+  "updated_at": "2026-09-10T05:20:52+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -21536,6 +21536,18 @@
       "touched_round": 290,
       "commit": "ece6243",
       "title": "Strip-before-validate PostUpdate/SeriesCreate/SeriesUpdate titles (extend ISS-456 fix)"
+    },
+    "DEC-281": {
+      "id": "DEC-281",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-10T05:20:52+00:00",
+      "updated_at": "2026-09-10T05:20:52+00:00",
+      "touched_round": 291,
+      "title": "Round 291 closure: bug backlog at or below threshold",
+      "rationale": "Round 290-291 delivered TASK-351 (NUL boundary), TASK-352 (comment like/flag orphan cascade), TASK-353 + title extension (whitespace-only name/title guards), CHG-459 (XFF port-form hardening) and DEC-280 (ISS-452 disposition) — all verified green (backend 1380 @93.72% SQLite, dev PG suites, frontend 1912, ruff/typecheck). Remaining active issues (ISS-242/243/244/451/452) are architecture-level deferrals already governed by DEC-004/014/278/280 with stale tasks; every fresh-probed surface this round (upload, webpush, emailer, conditional, transport-401, post editor, series, account) is already sound. No code-level task above the 3.0 threshold is discoverable; the §8 per-round task budget (3) is exhausted.",
+      "alternatives_rejected": "Continue force-mining marginal tasks below threshold (rejected: violates the 'no idle-spin / no patch-stacking' discipline — remaining items are sub-threshold or deferred); relitigate DEC-278/280 (rejected: they already record the deferral rationale with evidence)."
     }
   },
   "edges": [
