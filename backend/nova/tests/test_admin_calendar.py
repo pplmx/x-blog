@@ -93,6 +93,27 @@ class TestBucketing:
         assert "cal-nd" in [i["slug"] for i in data["unscheduled"]]
         assert not any(i["slug"] == "cal-nd" for i in data["items"])
 
+    def test_future_dated_draft_is_unscheduled_not_hidden(self, client, auth_headers, db_session):
+        """A draft planned for a month OTHER than the viewed one (the primary
+        editorial case: "writing for next month") has a non-None publish_at that
+        misses the grid range; it must surface in ``unscheduled`` — landing on
+        neither list made the plan vanish (round-292 deep-dive)."""
+        other_month = utc_now_naive() + timedelta(days=40)
+        db_session.add(
+            models.Post(
+                title="Writing for later",
+                slug="cal-next",
+                content="x",
+                published=False,
+                publish_at=other_month,
+                created_at=utc_now_naive(),
+            )
+        )
+        db_session.commit()
+        data = client.get(CAL, params={"month": _month_of(utc_now_naive())}, headers=auth_headers).json()
+        assert "cal-next" in [i["slug"] for i in data["unscheduled"]]
+        assert not any(i["slug"] == "cal-next" for i in data["items"])
+
     def test_old_post_excluded_from_current_month(self, client, auth_headers, db_session):
         long_ago = utc_now_naive() - timedelta(days=90)
         db_session.add(

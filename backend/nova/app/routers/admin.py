@@ -1,7 +1,7 @@
 import logging
 import os
 from datetime import UTC, datetime, timedelta
-from typing import Annotated
+from typing import Annotated, Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from fastapi.security import OAuth2PasswordRequestForm
@@ -190,7 +190,10 @@ def admin_list_posts(
     skip: int = Query(0, ge=0),
     limit: int = Query(20, ge=1, le=100),
     q: Annotated[NonNulStr | None, Query(description="Search by title")] = None,
-    status: str | None = Query(None, description="published | draft | scheduled"),
+    status: Annotated[
+        Literal["published", "draft", "scheduled"] | None,
+        Query(description="published | draft | scheduled"),
+    ] = None,
 ):
     query = db.query(models.Post)
 
@@ -223,7 +226,10 @@ def admin_list_posts(
             joinedload(models.Post.tags),
             joinedload(models.Post.series),
         )
-        .order_by(models.Post.pinned.desc(), models.Post.created_at.desc())
+        # id tiebreak: imported/bulk-restored rows share created_at; without a
+        # unique final sort key, offset pages can skip/duplicate across page
+        # boundaries on ties (same fix the moderation queue got — get_comments_paginated).
+        .order_by(models.Post.pinned.desc(), models.Post.created_at.desc(), models.Post.id.desc())
         .offset(skip)
         .limit(limit)
         .all()
@@ -353,6 +359,14 @@ def admin_calendar(
             continue
         if month_start <= when < month_end:
             grid.append(entry)
+        elif ptype == "draft":
+            # A draft planned for outside the viewed month (the primary editorial
+            # use case: "I'm writing this for next month") has a non-None
+            # publish_at that fails the grid range — it would land on neither the
+            # grid nor `unscheduled`, exactly the plan item `unscheduled` exists
+            # to surface. A draft is a plan, not a fact: keep it off-grid but
+            # visible in the unscheduled (plan) list (round-292 deep-dive).
+            unscheduled.append(entry)
 
     grid.sort(key=lambda e: (e["date"] or "", e["id"]))
     unscheduled.sort(key=lambda e: e["id"])
@@ -821,7 +835,12 @@ def admin_list_comments(
     # (round 276); a tiny COUNT over one boolean-filtered column.
     pending_count = db.query(models.Comment).filter(models.Comment.is_approved.is_(False)).count()
 
-    comment_rows = query.order_by(models.Comment.created_at.desc()).offset((page - 1) * limit).limit(limit).all()
+    comment_rows = (
+        query.order_by(models.Comment.created_at.desc(), models.Comment.id.desc())
+        .offset((page - 1) * limit)
+        .limit(limit)
+        .all()
+    )
     page_ids = [c.id for c, _ in comment_rows]
     flag_counts = crud.flag_counts_for_comments(db, page_ids)
     result = []
@@ -1148,7 +1167,12 @@ def admin_list_readers(
             )
         )
     total = query.count()
-    rows = query.order_by(auth.ReaderAccount.created_at.desc()).offset((page - 1) * limit).limit(limit).all()
+    rows = (
+        query.order_by(auth.ReaderAccount.created_at.desc(), auth.ReaderAccount.id.desc())
+        .offset((page - 1) * limit)
+        .limit(limit)
+        .all()
+    )
     # Aggregate counts for the page rows in two grouped queries (no N+1).
     reader_ids = [r.id for r in rows]
     comment_counts: dict[int, int] = {}

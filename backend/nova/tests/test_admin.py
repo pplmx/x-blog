@@ -1606,6 +1606,28 @@ class TestAdminPostStatusFilters:
         ]
         assert "Boundary" in published_titles
 
+    def test_admin_list_posts_rejects_unknown_status(self, client, auth_headers, db_session):
+        """An invalid status value must not silently return EVERY post (drafts +
+        scheduled) with 200 — a typo'd `status=live` used to bypass the filter
+        entirely and read like the truth (round-292 deep-dive)."""
+        db_session.add_all(
+            [
+                models.Post(title="Draft", slug="draft-post", content="C", published=False),
+                models.Post(title="Live", slug="live-post", content="C", published=True),
+            ]
+        )
+        db_session.commit()
+
+        resp = client.get("/api/admin/posts?status=live", headers=auth_headers)
+        assert resp.status_code == 422
+        assert resp.json()["error"]["code"] == "VALIDATION_ERROR"
+
+        # The three documented values still work (regression guard against the
+        # Literal annotation collapsing the valid branches).
+        assert client.get("/api/admin/posts?status=draft", headers=auth_headers).status_code == 200
+        assert client.get("/api/admin/posts?status=published", headers=auth_headers).status_code == 200
+        assert client.get("/api/admin/posts?status=scheduled", headers=auth_headers).status_code == 200
+
 
 class TestCommentsDateOnlyInclusive:
     """date_only date_to in admin comments must include the whole day.
