@@ -1956,12 +1956,19 @@ def import_reader_history(
     future_cutoff = now + HISTORY_IMPORT_CLOCK_SKEW
 
     # Fold duplicates and normalize each record to its newest read instant.
+    # A timestamp-less (legacy) record must never clobber a real timestamp seen
+    # elsewhere in the same batch: folding it to None would import as "now" and
+    # inflate the reader's streak/activity (round-292 deep-dive).
     by_slug: dict[str, datetime | None] = {}
     for slug, viewed_at in items:
         if viewed_at is not None and viewed_at > future_cutoff:
             viewed_at = now
         prev = by_slug.get(slug)
-        if viewed_at is None or prev is None or viewed_at > prev:
+        if viewed_at is None:
+            if prev is None:
+                by_slug[slug] = None
+            # else: keep the real timestamp we already folded
+        elif prev is None or viewed_at > prev:
             by_slug[slug] = viewed_at
 
     # The merge is idempotent (existing rows are updated in place, racing rows

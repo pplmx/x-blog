@@ -157,6 +157,27 @@ class TestReaderHistoryImport:
         assert total == 1
         assert items[0]["viewed_at"].startswith("2024-03-01T10:30:00")
 
+    def test_timestamp_less_record_does_not_erase_real_timestamp_in_batch(self, client, auth_headers):
+        """A legacy (viewed_at omitted) record must not clobber the real read
+        instant folded from a sibling record for the same post — folding to None
+        imported as "now", inflating the reader's streak/activity (round-292)."""
+        token = _token(client)
+        p = _create_post(client, auth_headers, "Mixed Batch", "mixedbatch")
+
+        resp = _import(
+            client,
+            token,
+            [
+                {"slug": p["slug"], "viewed_at": "2024-03-01T10:30:00"},
+                {"slug": p["slug"]},  # datedless legacy row — must not win
+            ],
+        )
+        assert resp.status_code == 200, resp.text
+        assert resp.json() == {"imported": 1, "skipped": 0}
+
+        items, _total = _list_slugs(client, token)
+        assert items[0]["viewed_at"].startswith("2024-03-01T10:30:00")
+
     def test_viewed_at_coerced_from_zone_marked_iso(self, client, auth_headers):
         # A device may send a zone-marked instant; it must land as naive-UTC
         # (the stored/read contract, DEC-213) so the list returns the same
