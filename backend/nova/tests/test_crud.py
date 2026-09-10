@@ -789,6 +789,47 @@ class TestComments:
         result = crud.delete_comment(db_session, comment_id)
         assert result is True
 
+    def test_delete_comment_cleans_likes_and_flags(self, db_session):
+        """A like/flag row must never outliven its comment: deleting the
+        comment (or, transitively, its post) removes them with it (ORM
+        delete-orphan cascade, TASK-352). Previously these additive tables
+        orphaned rows pointing at a deleted comment_id forever."""
+        post = models.Post(title="Orphan Test Post", slug="orphan-test-post", content="Content")
+        db_session.add(post)
+        db_session.commit()
+        comment = models.Comment(post_id=post.id, nickname="U", email="u@t.com", content="c")
+        db_session.add(comment)
+        db_session.commit()
+        cid = comment.id
+        db_session.add_all(
+            [
+                models.CommentLike(comment_id=cid, ip_key="127.0.0.2"),
+                models.CommentFlag(comment_id=cid, ip_key="127.0.0.3", reason="spam"),
+            ]
+        )
+        db_session.commit()
+
+        assert crud.delete_comment(db_session, cid) is True
+        assert db_session.query(models.CommentLike).filter_by(comment_id=cid).count() == 0
+        assert db_session.query(models.CommentFlag).filter_by(comment_id=cid).count() == 0
+
+    def test_delete_post_cleans_comment_likes_and_flags(self, db_session):
+        """Post deletion cascades to comments AND their votes/accusations."""
+        post = models.Post(title="Post Orphan", slug="post-orphan", content="Content")
+        db_session.add(post)
+        db_session.commit()
+        comment = models.Comment(post_id=post.id, nickname="U", email="u@t.com", content="c")
+        db_session.add(comment)
+        db_session.commit()
+        cid = comment.id
+        db_session.add(models.CommentLike(comment_id=cid, ip_key="127.0.0.4"))
+        db_session.add(models.CommentFlag(comment_id=cid, ip_key="127.0.0.5"))
+        db_session.commit()
+
+        assert crud.delete_post(db_session, post.id) is True
+        assert db_session.query(models.CommentLike).filter_by(comment_id=cid).count() == 0
+        assert db_session.query(models.CommentFlag).filter_by(comment_id=cid).count() == 0
+
 
 class TestSearchPosts:
     """Tests for search_posts function."""

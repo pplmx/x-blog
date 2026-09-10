@@ -293,6 +293,24 @@ class Comment(Base):
         primaryjoin="Comment.reader_id == ReaderAccount.id",
         foreign_keys="Comment.reader_id",
     )
+    # Votes/accusations die with their comment: CommentLike/CommentFlag are
+    # additive tables with a plain-integer comment_id (no DB-level FK, DEC-009),
+    # so without an ORM cascade removing a comment — directly, via bulk_delete,
+    # or as part of a post delete — stranded rows permanently referenced a
+    # deleted comment_id (deep-dive, TASK-352). ORM-level delete-orphan
+    # mirrors the Post->Comment/PostRevision cascade convention (models.py:118).
+    comment_likes: Mapped[list[CommentLike]] = relationship(
+        "CommentLike",
+        cascade="all, delete-orphan",
+        primaryjoin="Comment.id == CommentLike.comment_id",
+        foreign_keys="CommentLike.comment_id",
+    )
+    comment_flags: Mapped[list[CommentFlag]] = relationship(
+        "CommentFlag",
+        cascade="all, delete-orphan",
+        primaryjoin="Comment.id == CommentFlag.comment_id",
+        foreign_keys="CommentFlag.comment_id",
+    )
 
 
 class CommentFlag(Base):
