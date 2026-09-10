@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 289,
+  "round": 290,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-09T19:49:40+00:00",
+  "updated_at": "2026-09-10T03:33:44+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -11,7 +11,7 @@
       "version": 1,
       "created_at": "2026-08-06T13:23:41+00:00",
       "updated_at": "2026-08-06T13:23:41+00:00",
-      "touched_round": 289,
+      "touched_round": 290,
       "title": "backend-nova",
       "description": "FastAPI Python 3.14 backend at backend/nova; SQLAlchemy ORM; routers in app/routers, crud.py business logic, 656 lines"
     },
@@ -22,7 +22,7 @@
       "version": 1,
       "created_at": "2026-08-06T13:23:41+00:00",
       "updated_at": "2026-08-06T13:23:41+00:00",
-      "touched_round": 289,
+      "touched_round": 290,
       "title": "frontend-aura",
       "description": "Nuxt 4 Vue 3 TypeScript frontend at frontend/aura; composables; admin pages; e2e Playwright; biome lint"
     },
@@ -20961,7 +20961,7 @@
       "version": 1,
       "created_at": "2026-09-09T13:26:37+00:00",
       "updated_at": "2026-09-09T13:26:37+00:00",
-      "touched_round": 289,
+      "touched_round": 290,
       "title": "Re-activate loop: fresh polish/bug-fix/usability directive (2026-09-09)",
       "rationale": "Operator re-invoked graph-engineering with a new directive: detail optimization, bug-fix mode, polishing, interactivity, practicality, usability, ease-of-use. Supersedes the DEC-276 converged-idle state and re-opens quality-convergence rounds (no feature-evolution decision active).",
       "alternatives_rejected": "Stay converged-idle (rejected: fresh operator directive is an explicit re-activation signal); enter feature-evolution mode (rejected: no feature-evolution decision exists, directive is quality convergence)."
@@ -21313,6 +21313,105 @@
       "touched_round": 289,
       "rationale": "TASK-349/ISS-451 (reader_history_stats loads all-time history + every post.content for reading_minutes) stays below the 3.0 priority threshold. Its real fix is a design choice — cache per-post reading minutes (column/cache) vs approximate the aggregate — not a rushed rewrite of streak/activity math. Recorded here so the round can converge green.",
       "alternatives_rejected": "(a) SQL-side visibility filter only: saves loading drafts/scheduled but leaves the dominant cost (full-content read per visible row for total_minutes) untouched; (b) eager per-post minutes column: schema/migration + backfill, larger than warranted at priority 1.41."
+    },
+    "DEC-279": {
+      "id": "DEC-279",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-10T00:24:02+00:00",
+      "updated_at": "2026-09-10T00:24:02+00:00",
+      "touched_round": 290,
+      "title": "Re-activation: detail-optimization / bug-fix / polish directive",
+      "rationale": "Operator re-invoked graph-engineering this session with the same directive: detail optimization, bug-fix mode, polishing, interactivity, practicality, usability, ease-of-use (verified baseline: backend 1361 passed @93.72%, frontend 1912 passed, PG 18.4 reachable). Supersedes the round-289 converged state (DEC-275/277) and re-opens quality-convergence rounds; no feature-evolution decision active.",
+      "alternatives_rejected": "Stay converged-idle (rejected: fresh operator directive is an explicit reactivation signal); enter feature-evolution mode (rejected: no feature-evolution decision exists and directive is quality convergence)."
+    },
+    "ISS-454": {
+      "id": "ISS-454",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-10T01:40:37+00:00",
+      "updated_at": "2026-09-10T03:33:44+00:00",
+      "touched_round": 290,
+      "title": "NUL byte (0x00) in SQL-bound strings crashes PostgreSQL binds -> public 500s",
+      "severity": 0.8,
+      "description": "psycopg refuses to bind a string containing a NUL (0x00) byte ('A string literal cannot contain NUL'); uncaught on public endpoints it surfaces as a 500 (search q/category/tag, reader register email), and as a raw-DB-error 400 on comment create. Same latent class on reader/admin q filters, folder names, push endpoints, and every SQL-bound body string (title/name/nickname/content). Violates the codebase's documented '422 over uncaught 500' boundary policy. Confirmed live against dev PG 18.4."
+    },
+    "TASK-351": {
+      "id": "TASK-351",
+      "type": "task",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-10T01:40:40+00:00",
+      "updated_at": "2026-09-10T03:33:44+00:00",
+      "touched_round": 290,
+      "category": "correctness",
+      "severity": 0.8,
+      "confidence": 0.95,
+      "effort": 2.0,
+      "unlock_factor": 1.0,
+      "title": "Reject NUL bytes at every user-string boundary that reaches a SQL bind (422 not 500)",
+      "description": "Add a shared NUL-rejecting validator (NonNulStr / _reject_nul) in schemas.py, apply to search q/category/tag params, reader history/admin q params, folder names, and all SQL-bound body strings (register email/display_name, comment nickname/content/email, category/tag name, post title/slug/excerpt/content/cover_image, series title, push endpoint/keys). Replace the raw-DB-error 400 on comment create with a clean 422. Add contract tests for every surface; assert no 500 on NUL input on PG."
+    },
+    "EV-231": {
+      "id": "EV-231",
+      "type": "evidence",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-10T03:29:15+00:00",
+      "updated_at": "2026-09-10T03:29:15+00:00",
+      "touched_round": 290,
+      "title": "NUL-search-422-on-psycopg",
+      "source": "routers returned 422 (not 500) for q/category/tag NUL input on dev PostgreSQL via TEST_DATABASE_URL",
+      "confidence": 1.0
+    },
+    "EV-232": {
+      "id": "EV-232",
+      "type": "evidence",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-10T03:31:01+00:00",
+      "updated_at": "2026-09-10T03:31:01+00:00",
+      "touched_round": 290,
+      "title": "XFF-garbage-201-not-500",
+      "source": "in-process TRUSTED_PROXIES=* long-XFF comment create now 201 with peer fallback; short-XFF IP stored verbatim",
+      "confidence": 1.0
+    },
+    "EV-233": {
+      "id": "EV-233",
+      "type": "evidence",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-10T03:31:01+00:00",
+      "updated_at": "2026-09-10T03:31:01+00:00",
+      "touched_round": 290,
+      "title": "NUL-contract-SQLite-1373-green",
+      "source": "full backend suite 1373 passed 10 skipped @93.69% (SQLite) after NonNulStr + limiter changes",
+      "confidence": 1.0
+    },
+    "EV-234": {
+      "id": "EV-234",
+      "type": "evidence",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-10T03:31:01+00:00",
+      "updated_at": "2026-09-10T03:31:01+00:00",
+      "touched_round": 290,
+      "title": "NUL-contract-PG-green",
+      "source": "152 tests (search/comments/limiter/reader-auth/admin-login/folders/push) passed against dev PostgreSQL 18.4",
+      "confidence": 1.0
+    },
+    "CHG-458": {
+      "id": "CHG-458",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-10T03:33:09+00:00",
+      "updated_at": "2026-09-10T03:33:09+00:00",
+      "touched_round": 290,
+      "commit": "1b35017",
+      "title": "NUL-boundary + XFF-canonicalization fix (TASK-351/ISS-454)"
     }
   },
   "edges": [
@@ -31886,6 +31985,48 @@
       "to": "TASK-349",
       "type": "governs",
       "created_at": "2026-09-09T19:49:40+00:00"
+    },
+    {
+      "from": "DEC-279",
+      "to": "DEC-277",
+      "type": "supersedes",
+      "created_at": "2026-09-10T00:24:20+00:00"
+    },
+    {
+      "from": "DEC-279",
+      "to": "COMP-001",
+      "type": "governs",
+      "created_at": "2026-09-10T00:24:20+00:00"
+    },
+    {
+      "from": "DEC-279",
+      "to": "COMP-002",
+      "type": "governs",
+      "created_at": "2026-09-10T00:24:20+00:00"
+    },
+    {
+      "from": "TASK-351",
+      "to": "ISS-454",
+      "type": "addresses",
+      "created_at": "2026-09-10T01:41:36+00:00"
+    },
+    {
+      "from": "ISS-454",
+      "to": "COMP-001",
+      "type": "located_in",
+      "created_at": "2026-09-10T01:41:36+00:00"
+    },
+    {
+      "from": "CHG-458",
+      "to": "TASK-351",
+      "type": "implements",
+      "created_at": "2026-09-10T03:33:25+00:00"
+    },
+    {
+      "from": "CHG-458",
+      "to": "ISS-454",
+      "type": "resolves",
+      "created_at": "2026-09-10T03:33:25+00:00"
     }
   ]
 }
