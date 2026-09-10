@@ -493,6 +493,38 @@ class TestMediaLibrary:
         )
         assert resp.status_code == 404
 
+    def test_list_orders_equal_mtime_files_by_name(self, client, auth_headers):
+        """Two uploads landing in the same second (equal mtime) must still have a
+        deterministic order — mtime-only sorting skipped/duplicated rows at page
+        boundaries and flipped equal files between requests (round-292 deep-dive)."""
+        import os
+        import time
+
+        uploads_root = Path(upload_module.STATIC_DIR) / "uploads"
+        month_dir = uploads_root / "2026" / "06"
+        month_dir.mkdir(parents=True, exist_ok=True)
+        now = int(time.time())
+        files = []
+        for name in ("alpha.png", "bravo.png", "charlie.png"):
+            p = month_dir / name
+            p.write_bytes(PNG_BYTES)
+            os.utime(p, (now, now))  # identical mtimes
+            files.append(p)
+        try:
+            resp = client.get("/api/upload/files", headers=auth_headers)
+            assert resp.status_code == 200
+            names = [
+                item["filename"] for item in resp.json()["items"] if item["url"].startswith("/static/uploads/2026/06/")
+            ]
+            # All three present (no skip/dup), newest-first by mtime then name desc.
+            assert {"alpha.png", "bravo.png", "charlie.png"} <= set(names)
+            expected = sorted(["alpha.png", "bravo.png", "charlie.png"], reverse=True)
+            sub = [n for n in names if n in expected]
+            assert sub == expected
+        finally:
+            for p in files:
+                p.unlink(missing_ok=True)
+
 
 # ---------------------------------------------------------------------------
 # Media library bulk delete (DEC-191, TASK-211): POST /api/upload/files/batch-delete

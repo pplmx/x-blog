@@ -333,7 +333,11 @@ def list_uploaded_files(
                     # Same naive-UTC interpretation as _upload_file_info (round
                     # 276): the mtime epoch is UTC, not the server's local clock.
                     files.append((datetime.fromtimestamp(path.stat().st_mtime, UTC).replace(tzinfo=None), path))
-    files.sort(key=lambda pair: pair[0], reverse=True)
+    # Deterministic tiebreak: two uploads created in the same second (a batch
+    # insert, or filesystem mtime granularity) share st_mtime; with only mtime
+    # as the sort key, offset pages could skip/duplicate a file at page
+    # boundaries, and equal-mtime files would flip order between requests.
+    files.sort(key=lambda pair: (pair[0], pair[1].name), reverse=True)
 
     total = len(files)
     total_pages = (total + page_size - 1) // page_size
