@@ -56,7 +56,17 @@ class ReaderRegister(BaseModel):
     # keeps the effective credential equal to the stored credential (a longer
     # password would silently truncate). (security review, TASK-131)
     password: str = Field(min_length=8, max_length=72)
-    display_name: Annotated[NonNulStr | None, Field(default=None, min_length=1, max_length=50)]
+    display_name: Annotated[NonNulStr | None, Field(default=None, min_length=1, max_length=50)] = None
+
+    @field_validator("display_name", mode="before")
+    @classmethod
+    def strip_display_name(cls, value: object) -> object:
+        # Whitespace-only display_name passed min_length=1 (Pydantic counts raw
+        # chars) and then rendered as a blank comment/feed author name
+        # (crud uses display_name as the comment/author nickname, ISS-456).
+        # Strip before length validation so "   " becomes "" and fails the
+        # same min_length=1 gate the rest of the name fields enforce.
+        return schemas._strip_blank(value) if isinstance(value, str) else value
 
 
 class ReaderLogin(BaseModel):
@@ -137,9 +147,23 @@ class BookmarkFolderListResponse(BaseModel):
 class FolderCreate(BaseModel):
     name: Annotated[NonNulStr, Field(min_length=1, max_length=50)]
 
+    @field_validator("name", mode="before")
+    @classmethod
+    def strip_name(cls, value: object) -> object:
+        # Whitespace-only name passed min_length=1 and was later stored as ""
+        # by crud.create_bookmark_folder's strip (a blank folder in the list,
+        # ISS-456). Strip at the boundary like every other name field so
+        # "   " is rejected as 422 before it can reach storage.
+        return schemas._strip_blank(value) if isinstance(value, str) else value
+
 
 class FolderRename(BaseModel):
     name: Annotated[NonNulStr, Field(min_length=1, max_length=50)]
+
+    @field_validator("name", mode="before")
+    @classmethod
+    def strip_name(cls, value: object) -> object:
+        return schemas._strip_blank(value) if isinstance(value, str) else value
 
 
 class AssignFolder(BaseModel):
@@ -518,7 +542,15 @@ class ReaderProfileUpdate(BaseModel):
     the login identity and there is no email-verification recovery flow, so
     reassigning it silently would orphan the account)."""
 
-    display_name: Annotated[NonNulStr | None, Field(default=None, min_length=1, max_length=50)]
+    display_name: Annotated[NonNulStr | None, Field(default=None, min_length=1, max_length=50)] = None
+
+    @field_validator("display_name", mode="before")
+    @classmethod
+    def strip_display_name(cls, value: object) -> object:
+        # Same blank guard as registration: "   " must not become a stored
+        # display_name that renders as a blank author name (ISS-456). None (no
+        # update) passes through untouched — only non-None strings are stripped.
+        return schemas._strip_blank(value) if isinstance(value, str) else value
 
 
 class ReaderPasswordChange(BaseModel):

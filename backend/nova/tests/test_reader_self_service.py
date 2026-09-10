@@ -90,6 +90,20 @@ class TestReaderProfileUpdate:
         too_long = client.patch("/api/reader/me", json={"display_name": "x" * 51}, headers=_auth(token))
         assert too_long.status_code == 422
 
+    def test_display_name_whitespace_only_rejected_422(self, client):
+        """'   ' passed min_length=1 (Pydantic counts raw chars), then stored a
+        display_name that rendered as a blank author name on comments/digests —
+        strip at the boundary like every other name field (ISS-456)."""
+        token = _register(client).json()["access_token"]
+        blank = client.patch("/api/reader/me", json={"display_name": "   "}, headers=_auth(token))
+        assert blank.status_code == 422, blank.text
+        # Registration path is guarded too.
+        reg = client.post(
+            "/api/reader/register",
+            json={"email": "blank-dn@example.com", "password": "readerpass123", "display_name": "   "},
+        )
+        assert reg.status_code == 422, reg.text
+
     def test_requires_token(self, client, db_session):
         _post(db_session)
         resp = client.patch("/api/reader/me", json={"display_name": "Nope"})
