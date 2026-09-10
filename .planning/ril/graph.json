@@ -2,7 +2,7 @@
   "ril_version": 1,
   "round": 290,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-10T03:53:48+00:00",
+  "updated_at": "2026-09-10T04:09:07+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -21447,6 +21447,45 @@
       "title": "XFF-port-and-garbage-live-verified",
       "source": "live probe: ipv4/ipv4+port/ipv6+port canonicalized; 500-char garbage and multi-garbage fall back to peer; 47 limiter+comments tests green",
       "confidence": 1.0
+    },
+    "ISS-455": {
+      "id": "ISS-455",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-10T04:07:58+00:00",
+      "updated_at": "2026-09-10T04:09:07+00:00",
+      "touched_round": 290,
+      "severity": "low",
+      "title": "Deleting a comment (or its post) leaves CommentLike/CommentFlag rows orphaned",
+      "description": "CommentLike/CommentFlag carry a plain-integer comment_id with no DB FK and no ORM relationship from Comment; remove_comment paths (delete_comment, delete_comment_reparent, bulk_delete_comments, delete_reader_comment, delete_post's Post->Comment cascade) left their rows forever referencing a deleted comment_id. Data-hygiene invariant the codebase explicitly maintains elsewhere (_POST_CHILD_TABLES)."
+    },
+    "TASK-352": {
+      "id": "TASK-352",
+      "type": "task",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-10T04:08:21+00:00",
+      "updated_at": "2026-09-10T04:09:07+00:00",
+      "touched_round": 290,
+      "category": "correctness",
+      "severity": 0.4,
+      "confidence": 1.0,
+      "effort": 2.0,
+      "unlock_factor": 1.0,
+      "title": "ORM cascade-delete CommentLike/CommentFlag with their comment (or post)",
+      "description": "Add Comment.comment_likes / Comment.comment_flags relationship with cascade=all, delete-orphan mirroring the Post->Comment/PostRevision additive-table convention (models.py:118). Regression tests for delete_comment and delete_post paths on both dialects."
+    },
+    "CHG-460": {
+      "id": "CHG-460",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-10T04:08:43+00:00",
+      "updated_at": "2026-09-10T04:08:43+00:00",
+      "touched_round": 290,
+      "commit": "936c010",
+      "title": "CommentLike/CommentFlag ORM delete-orphan cascade (TASK-352)"
     }
   },
   "edges": [
@@ -32074,6 +32113,30 @@
       "to": "ISS-244",
       "type": "addresses",
       "created_at": "2026-09-10T03:53:21+00:00"
+    },
+    {
+      "from": "TASK-352",
+      "to": "ISS-455",
+      "type": "addresses",
+      "created_at": "2026-09-10T04:08:43+00:00"
+    },
+    {
+      "from": "ISS-455",
+      "to": "COMP-001",
+      "type": "located_in",
+      "created_at": "2026-09-10T04:08:43+00:00"
+    },
+    {
+      "from": "CHG-460",
+      "to": "TASK-352",
+      "type": "implements",
+      "created_at": "2026-09-10T04:09:06+00:00"
+    },
+    {
+      "from": "CHG-460",
+      "to": "ISS-455",
+      "type": "resolves",
+      "created_at": "2026-09-10T04:09:06+00:00"
     }
   ]
 }
