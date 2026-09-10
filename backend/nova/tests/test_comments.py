@@ -33,6 +33,23 @@ def test_create_comment(client, post):
     assert data["post_id"] == post["id"]
 
 
+def test_create_comment_nul_rejected_422(client, post):
+    """A NUL byte in any comment string must be a 422 gate, not an uncaught
+    psycopg bind error -> 500 (ISS-454, TASK-351)."""
+    for field in ("nickname", "email", "content"):
+        payload = {
+            "nickname": "Test User",
+            "email": "test@example.com",
+            "content": "Test comment",
+        }
+        payload[field] = "xx\x00yy"
+        response = client.post(
+            f"/api/comments/post/{post['id']}",
+            json=payload,
+        )
+        assert response.status_code == 422, f"{field} should be 422, got {response.status_code}"
+
+
 def test_create_comment_honeypot_rejected(client, post):
     """A non-empty `website` honeypot field must be rejected (bot signal)."""
     response = client.post(

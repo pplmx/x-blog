@@ -153,6 +153,24 @@ def test_search_case_insensitive(client, db_session):
     assert len(data_upper["items"]) == 1
 
 
+def test_search_query_with_nul_is_422_not_500(client):
+    """A NUL byte in the search query used to crash psycopg at bind time ->
+    uncaught 500 on this public endpoint. It must be a clean 422 gate
+    (ISS-454, TASK-351)."""
+    response = client.get("/api/search", params={"q": "term\x00term"})
+    assert response.status_code == 422
+
+
+def test_search_category_with_nul_is_422_not_500(client):
+    response = client.get("/api/search", params={"q": "term", "category": "cat\x00tegory"})
+    assert response.status_code == 422
+
+
+def test_search_tag_with_nul_is_422_not_500(client):
+    response = client.get("/api/search", params={"q": "term", "tag": "tag\x00tag"})
+    assert response.status_code == 422
+
+
 def test_highlight_sqlite_empty_query():
     """Test _highlight_sqlite returns truncated content for empty query."""
     from app.routers.search import _highlight_sqlite

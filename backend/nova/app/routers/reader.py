@@ -8,7 +8,7 @@ endpoints (enforced in auth.get_current_user / get_current_reader).
 """
 
 from datetime import UTC, datetime
-from typing import Literal
+from typing import Annotated, Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status
 from pydantic import BaseModel, ConfigDict, Field, field_validator
@@ -20,7 +20,7 @@ from app import auth, crud, models, schemas
 from app.database import get_db
 from app.limiter import RATE_LIMIT_AUTH, RATE_LIMIT_EXPORT, RATE_LIMIT_REGISTER, RATE_LIMIT_WRITE, limiter
 from app.routers.comments import AUTO_APPROVE_READER_COMMENTS, _notify_comment_approved
-from app.schemas import IdInt, PageInt
+from app.schemas import IdInt, NonNulStr, PageInt
 
 router = APIRouter(prefix="/api/reader", tags=["reader"])
 
@@ -51,16 +51,16 @@ class ReaderLoginResponse(BaseModel):
 
 
 class ReaderRegister(BaseModel):
-    email: str = Field(min_length=3, max_length=254, pattern=_EMAIL_PATTERN)
+    email: Annotated[NonNulStr, Field(min_length=3, max_length=254, pattern=_EMAIL_PATTERN)]
     # bcrypt only hashes the first 72 bytes of a password; capping input at 72
     # keeps the effective credential equal to the stored credential (a longer
     # password would silently truncate). (security review, TASK-131)
     password: str = Field(min_length=8, max_length=72)
-    display_name: str | None = Field(default=None, min_length=1, max_length=50)
+    display_name: Annotated[NonNulStr | None, Field(default=None, min_length=1, max_length=50)]
 
 
 class ReaderLogin(BaseModel):
-    email: str = Field(min_length=3, max_length=254, pattern=_EMAIL_PATTERN)
+    email: Annotated[NonNulStr, Field(min_length=3, max_length=254, pattern=_EMAIL_PATTERN)]
     password: str = Field(min_length=1, max_length=72)
 
 
@@ -135,11 +135,11 @@ class BookmarkFolderListResponse(BaseModel):
 
 
 class FolderCreate(BaseModel):
-    name: str = Field(min_length=1, max_length=50)
+    name: Annotated[NonNulStr, Field(min_length=1, max_length=50)]
 
 
 class FolderRename(BaseModel):
-    name: str = Field(min_length=1, max_length=50)
+    name: Annotated[NonNulStr, Field(min_length=1, max_length=50)]
 
 
 class AssignFolder(BaseModel):
@@ -518,7 +518,7 @@ class ReaderProfileUpdate(BaseModel):
     the login identity and there is no email-verification recovery flow, so
     reassigning it silently would orphan the account)."""
 
-    display_name: str | None = Field(default=None, min_length=1, max_length=50)
+    display_name: Annotated[NonNulStr | None, Field(default=None, min_length=1, max_length=50)]
 
 
 class ReaderPasswordChange(BaseModel):
@@ -1252,7 +1252,7 @@ def list_reading_history(
     current_reader: auth.ReaderAccount = Depends(auth.get_current_reader),
     page: PageInt = 1,
     limit: int = Query(20, ge=1, le=100),
-    q: str | None = Query(None, description="filter history to posts matching this term"),
+    q: Annotated[NonNulStr | None, Query(description="filter history to posts matching this term")] = None,
     db: Session = Depends(get_db),
 ):
     """The reader's viewed posts, newest-first, publicly-visible only.
@@ -1301,7 +1301,7 @@ class HistoryImportItem(BaseModel):
     segment never gets captured as an integer post id.
     """
 
-    slug: str = Field(min_length=1, max_length=150, description="public post slug")
+    slug: Annotated[NonNulStr, Field(min_length=1, max_length=150, description="public post slug")]
     viewed_at: datetime | None = None
 
     @field_validator("viewed_at", mode="after")
@@ -1525,7 +1525,7 @@ def delete_my_comment(
 class ReaderCommentEdit(BaseModel):
     """Edit body for a reader's own comment (DEC-096, TASK-160)."""
 
-    content: str = Field(max_length=5000)
+    content: Annotated[NonNulStr, Field(max_length=5000)]
 
 
 @router.patch("/me/comments/{comment_id}", response_model=schemas.CommentPublic)

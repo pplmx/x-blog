@@ -105,6 +105,13 @@ class TestCreateFolder:
         assert again.status_code == 200
         assert client.get(FOLDERS, headers=_auth(token)).json()["total"] == 1
 
+    def test_create_folder_name_with_nul_is_422(self, client):
+        """A NUL in a folder name would crash psycopg at bind -> 500; the
+        FolderCreate schema must gate it with 422 (ISS-454, TASK-351)."""
+        token = _token(client)
+        resp = _make_folder(client, token, "na\x00me")
+        assert resp.status_code == 422, resp.text
+
     def test_folders_isolated_between_readers(self, client):
         t1 = _token(client, email="fiso1@example.com")
         t2 = _token(client, email="fiso2@example.com")

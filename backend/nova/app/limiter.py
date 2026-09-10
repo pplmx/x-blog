@@ -1,5 +1,6 @@
 """Shared rate limiter instance for the application."""
 
+import ipaddress
 import os
 
 from slowapi import Limiter
@@ -17,6 +18,30 @@ RATE_LIMIT_COMMENT = os.getenv("RATE_LIMIT_COMMENT_PER_MINUTE", "20")
 RATE_LIMIT_EXPORT = os.getenv("RATE_LIMIT_EXPORT_PER_MINUTE", "10")
 
 
+def _xff_client(xff: str) -> str | None:
+    """The original client IP from an X-Forwarded-For entry, or None.
+
+    ``XFF`` is written by the trusted proxy but the header itself is
+    client-supplied, so a forged entry can be any string — a 5000-char line
+    (VARCHAR overflow -> DataError -> 500 on the ``ip_address``/``ip_key``
+    columns *and* a malformed rate-limit key) or a chosen literal that spoofs
+    someone else's bucket (round-17 security review, TASK-351).
+
+    Only trust the entry when it is a genuinely well-formed IP literal:
+    ``ipaddress`` canonicalizes it (bounded, always ≤ 45 chars — comfortably
+    inside the VARCHAR(50) columns), dedupes equivalent spellings of the same
+    IPv6/4-mapped address, and rejects anything non-IP outright. Returns None
+    for garbage so the caller can fall back to the peer.
+    """
+    token = xff.split(",")[0].strip()
+    if not token:
+        return None
+    try:
+        return str(ipaddress.ip_address(token))
+    except ValueError:
+        return None
+
+
 def client_rate_key(request: Request) -> str:
     """Rate-limit key: the caller's real IP when it is knowable, else the peer.
 
@@ -32,7 +57,10 @@ def client_rate_key(request: Request) -> str:
       by sending an X-Forwarded-For header;
     * only when the peer is trusted (``TRUSTED_PROXIES`` = comma-separated IPs,
       or ``*`` to trust any peer, e.g. a single-gateway dev topology) uses the
-      leftmost X-Forwarded-For entry, which is the original client per RFC 7239.
+      leftmost X-Forwarded-For entry — which is the original client per RFC 7239
+      — but only when it is a well-formed IP literal (see ``_xff_client``); a
+      non-IP entry is forged, so it falls back to the peer instead of being
+      stored/spoofed (round-17 security review, TASK-351).
     """
     peer = request.client.host if request.client else "unknown"
     xff = request.headers.get("x-forwarded-for", "").strip()
@@ -40,7 +68,7 @@ def client_rate_key(request: Request) -> str:
         return peer
     trusted = os.getenv("TRUSTED_PROXIES", "").strip()
     if trusted == "*" or peer in {p.strip() for p in trusted.split(",") if p.strip()}:
-        return xff.split(",")[0].strip() or peer
+        return _xff_client(xff) or peer
     return peer
 
 

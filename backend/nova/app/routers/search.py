@@ -1,6 +1,7 @@
 import html
 import re
 from contextlib import suppress
+from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy import func
@@ -12,7 +13,7 @@ from ..database import get_db
 from ..dates import inclusive_end_of_day, parse_bound
 from ..limiter import RATE_LIMIT_SEARCH, limiter
 from ..models import Post
-from ..schemas import PageInt, PostList
+from ..schemas import NonNulStr, PageInt, PostList
 
 router = APIRouter(prefix="/api/search", tags=["search"])
 
@@ -141,11 +142,11 @@ VALID_SORTS = ("relevance", "newest", "oldest", "views")
 @limiter.limit(f"{RATE_LIMIT_SEARCH}/minute")
 def search(
     request: Request,  # noqa: ARG001
-    q: str = Query(..., min_length=1, max_length=MAX_QUERY_LENGTH),
+    q: Annotated[NonNulStr, Query(min_length=1, max_length=MAX_QUERY_LENGTH)],
     page: PageInt = 1,
     limit: int = Query(10, ge=1, le=50),
-    category: str | None = Query(None, max_length=50, description="narrow to a category by name"),
-    tag: str | None = Query(None, max_length=50, description="narrow to a tag by name"),
+    category: Annotated[NonNulStr | None, Query(max_length=50, description="narrow to a category by name")] = None,
+    tag: Annotated[NonNulStr | None, Query(max_length=50, description="narrow to a tag by name")] = None,
     date_from: str | None = Query(
         None, max_length=40, description="effective publish time >= (ISO date or datetime) — publish_at ?? created_at"
     ),

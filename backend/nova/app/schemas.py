@@ -3,7 +3,7 @@ from datetime import UTC, datetime
 from typing import Annotated
 from urllib.parse import urlparse
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import AfterValidator, BaseModel, ConfigDict, Field, field_validator
 
 # Bounded integer alias for path/query id + pagination params (deep-dive,
 # round 276). Post/Comment id columns are 32-bit autoincrement integers;
@@ -17,6 +17,28 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 # page/limit so a huge page can't overflow the OFFSET arithmetic.
 IdInt = Annotated[int, Field(ge=1, le=2_147_483_647)]
 PageInt = Annotated[int, Field(ge=1, le=1_000_000)]
+
+
+def _reject_nul(value: object) -> object:
+    """Reject NUL (0x00) bytes in any string that will reach a SQL bind.
+
+    PostgreSQL/psycopg refuse to bind a string containing a NUL byte
+    (``ValueError: A string literal cannot contain NUL (0x00) characters.``),
+    so a client-supplied NUL in a bound string surfaced as an uncaught 500 on
+    public endpoints (search q/category/tag, reader registration email) instead
+    of the codebase's documented "422 over uncaught 500" boundary behavior
+    (ISS-454). No legitimate input contains a NUL, so rejecting it is safe and
+    matches the existing max_length == VARCHAR-width boundary convention.
+    """
+    if isinstance(value, str) and "\x00" in value:
+        raise ValueError("must not contain NUL (0x00) characters")
+    return value
+
+
+# Reusable annotated alias: fastapi/pydantic run the AfterValidator for query
+# params, path params, and body-string fields alike, so a single declaration
+# guards every SQL-bound user string (see _reject_nul).
+NonNulStr = Annotated[str, AfterValidator(_reject_nul)]
 
 
 # Slug pattern: lowercase alphanumerics joined by single hyphens. Free-form
@@ -85,7 +107,7 @@ class TagBase(BaseModel):
     # Without it, over-length input stores fine on SQLite but raises an
     # uncaught DataError -> 500 on PostgreSQL. min_length=1 (after stripping,
     # _strip_blank) rejects blank names.
-    name: str = Field(min_length=1, max_length=50)
+    name: Annotated[NonNulStr, Field(min_length=1, max_length=50)]
 
     @field_validator("name", mode="before")
     @classmethod
@@ -105,7 +127,7 @@ class Tag(TagBase):
 
 class CategoryBase(BaseModel):
     # max_length 50 matches the Category.name VARCHAR(50) column.
-    name: str = Field(min_length=1, max_length=50)
+    name: Annotated[NonNulStr, Field(min_length=1, max_length=50)]
 
     @field_validator("name", mode="before")
     @classmethod
@@ -155,15 +177,15 @@ class SeriesDetail(SeriesPublic):
 
 class SeriesCreate(BaseModel):
     # max_length 200 matches the Series VARCHAR(200) title/slug columns.
-    title: str = Field(min_length=1, max_length=200)
-    slug: str = Field(max_length=200, pattern=SLUG_PATTERN.pattern)
-    description: str | None = Field(default=None, max_length=2000)
+    title: Annotated[NonNulStr, Field(min_length=1, max_length=200)]
+    slug: Annotated[NonNulStr, Field(max_length=200, pattern=SLUG_PATTERN.pattern)]
+    description: Annotated[NonNulStr | None, Field(default=None, max_length=2000)]
 
 
 class SeriesUpdate(BaseModel):
-    title: str | None = Field(default=None, min_length=1, max_length=200)
-    slug: str | None = Field(default=None, max_length=200, pattern=SLUG_PATTERN.pattern)
-    description: str | None = None
+    title: Annotated[NonNulStr | None, Field(default=None, min_length=1, max_length=200)]
+    slug: Annotated[NonNulStr | None, Field(default=None, max_length=200, pattern=SLUG_PATTERN.pattern)]
+    description: NonNulStr | None = None
 
 
 class PostBase(BaseModel):
@@ -172,17 +194,17 @@ class PostBase(BaseModel):
     # 422 instead of an uncaught DataError -> 500. min_length=1 (after
     # stripping) rejects a blank title that would render a blank card and an
     # empty RSS/Atom channel title (round 276 deep-dive).
-    title: str = Field(min_length=1, max_length=200)
-    slug: str = Field(max_length=200, pattern=SLUG_PATTERN.pattern)
-    content: str
-    excerpt: str | None = Field(default=None, max_length=500)
+    title: Annotated[NonNulStr, Field(min_length=1, max_length=200)]
+    slug: Annotated[NonNulStr, Field(max_length=200, pattern=SLUG_PATTERN.pattern)]
+    content: Annotated[NonNulStr, Field(...)]  # required markdown body
+    excerpt: Annotated[NonNulStr | None, Field(default=None, max_length=500)]
     published: bool = False
     pinned: bool = False
     publish_at: datetime | None = None
     category_id: int | None = None
     series_id: int | None = None
     series_order: int = 0
-    cover_image: str | None = Field(default=None, max_length=500)
+    cover_image: Annotated[NonNulStr | None, Field(default=None, max_length=500)]
 
     @field_validator("title", mode="before")
     @classmethod
@@ -207,12 +229,12 @@ class PostCreate(PostBase):
 
 
 class PostUpdate(BaseModel):
-    title: str | None = Field(default=None, max_length=200)
+    title: Annotated[NonNulStr | None, Field(default=None, max_length=200)]
     # Same pattern as PostBase.slug so updates can't introduce broken
     # feed/sitemap URLs (issue debt #7). None = "don't update the field".
-    slug: str | None = Field(default=None, max_length=200, pattern=SLUG_PATTERN.pattern)
-    content: str | None = None
-    excerpt: str | None = Field(default=None, max_length=500)
+    slug: Annotated[NonNulStr | None, Field(default=None, max_length=200, pattern=SLUG_PATTERN.pattern)]
+    content: NonNulStr | None = None
+    excerpt: Annotated[NonNulStr | None, Field(default=None, max_length=500)]
     published: bool | None = None
     pinned: bool | None = None
     publish_at: datetime | None = None
@@ -224,7 +246,7 @@ class PostUpdate(BaseModel):
     # series detail (order_by series_order, id) — reject rather than persist
     # a wrong-visible-state edge (RIL ISS-294).
     series_order: int | None = Field(default=None, ge=0)
-    cover_image: str | None = Field(default=None, max_length=500)
+    cover_image: Annotated[NonNulStr | None, Field(default=None, max_length=500)]
     tag_ids: list[int] | None = None
 
     @field_validator("cover_image")
@@ -410,10 +432,10 @@ class CommentBase(BaseModel):
     # min_length=1 (after stripping) rejects whitespace-only nickname/content —
     # a blank body would otherwise pass moderation toward the queue and
     # blank-nickname reader accounts were sign-up-able (round 276 deep-dive).
-    nickname: str = Field(min_length=1, max_length=50)
+    nickname: Annotated[NonNulStr, Field(min_length=1, max_length=50)]
     # Bounded so the public, unauthenticated comment endpoint cannot bloat the DB
     # / response with unbounded bodies (security audit round 16).
-    content: str = Field(min_length=1, max_length=5000)
+    content: Annotated[NonNulStr, Field(min_length=1, max_length=5000)]
 
     @field_validator("nickname", "content", mode="before")
     @classmethod
@@ -429,7 +451,7 @@ class CommentCreate(CommentBase):
     # PostgreSQL), and a non-empty address must be well-formed so garbage
     # doesn't reach the moderation queue (ISS-145) — enforced by the validator
     # below, which still lets the signed-in "" placeholder through.
-    email: str = Field(max_length=100)
+    email: Annotated[NonNulStr, Field(max_length=100)]
     # Anti-spam honeypot: a hidden field real humans never see or fill, but
     # naive spam bots do. The frontend submits an empty string; any non-empty
     # value means the submitter is a bot, so the comment is rejected.

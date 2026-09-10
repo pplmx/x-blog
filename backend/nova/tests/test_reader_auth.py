@@ -70,6 +70,18 @@ class TestRegister:
         resp = _register(client, password="short")
         assert resp.status_code == 422
 
+    def test_register_email_with_nul_rejected_422(self, client):
+        """A NUL byte in the registration email used to crash psycopg at bind
+        time -> uncaught 500 on a public endpoint (ISS-454, TASK-351)."""
+        resp = client.post(REGISTER, json={"email": "reader\x00@example.com", "password": "readerpass123"})
+        assert resp.status_code == 422, resp.text
+
+    def test_register_display_name_with_nul_rejected_422(self, client):
+        resp = client.post(
+            REGISTER, json={"email": "dnul@example.com", "password": "readerpass123", "display_name": "n\x00ame"}
+        )
+        assert resp.status_code == 422, resp.text
+
     def test_register_trailing_newline_email_rejected(self, client):
         """A trailing newline after the email must not sneak past the regex
         anchor (uses Rust-regex \\z, not $)."""

@@ -1,3 +1,4 @@
+from typing import Annotated
 from urllib.parse import urlparse
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
@@ -10,6 +11,7 @@ from app.auth import get_current_superuser
 from app.database import get_db
 from app.limiter import RATE_LIMIT_WRITE, client_rate_key, limiter
 from app.middleware import get_logger
+from app.schemas import NonNulStr
 from app.webpush import (
     MAX_PUSH_SUBSCRIPTIONS_PER_SOURCE,
     _b64url_decode,
@@ -25,15 +27,15 @@ router = APIRouter(prefix="/api/push", tags=["push"])
 
 
 class SubscriptionKeys(BaseModel):
-    p256dh: str
-    auth: str
+    p256dh: NonNulStr
+    auth: NonNulStr
 
 
 class PushSubscriptionCreate(BaseModel):
     # Endpoints are vendor push-service URLs (up to a few hundred chars);
     # match the PushSubscription.endpoint VARCHAR(500) column so over-length
     # input is rejected with 422 instead of an uncaught DataError -> 500.
-    endpoint: str = Field(max_length=500)
+    endpoint: Annotated[NonNulStr, Field(max_length=500)]
     keys: SubscriptionKeys
     # New-post notification opt-in (DEC-076, TASK-147): want_new_posts enables
     # new-post pushes for this browser; new_post_category_id narrows them to a

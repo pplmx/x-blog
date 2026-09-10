@@ -33,6 +33,22 @@ class TestAdminLogin:
         )
         assert response.status_code == 401
 
+    def test_login_nul_username_is_422_not_500(self, client, admin_user):
+        """A NUL in the login form username used to crash psycopg at bind ->
+        uncaught 500 on a public endpoint (ISS-454, TASK-351)."""
+        response = client.post(
+            "/api/admin/login",
+            data={"username": "tes\x00tadmin", "password": "testpass123"},
+        )
+        assert response.status_code == 422, response.text
+
+    def test_login_nul_password_is_422_not_500(self, client, admin_user):
+        response = client.post(
+            "/api/admin/login",
+            data={"username": "testadmin", "password": "pass\x00word"},
+        )
+        assert response.status_code == 422, response.text
+
 
 class TestAdminPosts:
     def test_list_posts(self, client, auth_headers, db_session):

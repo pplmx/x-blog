@@ -1,6 +1,7 @@
 import logging
 import os
 from datetime import UTC, datetime, timedelta
+from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from fastapi.security import OAuth2PasswordRequestForm
@@ -24,6 +25,7 @@ from app.routers.comments import AUTO_APPROVE_READER_COMMENTS, _notify_comment_a
 from app.schemas import (
     Comment,
     IdInt,
+    NonNulStr,
     PageInt,
     Post,
     PostCreate,
@@ -58,7 +60,7 @@ class NameRequest(BaseModel):
     """JSON body for category/tag create and rename (the admin UI sends a body)."""
 
     # max_length 50 matches Category/Tag.name VARCHAR(50).
-    name: str = Field(max_length=50)
+    name: Annotated[NonNulStr, Field(max_length=50)]
 
 
 class UserResponse(BaseModel):
@@ -85,6 +87,14 @@ def login(
     form_data: OAuth2PasswordRequestForm = Depends(),
     db: Session = Depends(get_db),
 ):
+    # Reject NUL before it reaches the SQL bind: psycopg cannot bind a string
+    # containing \x00 and raises (uncaught) -> 500 on a public login endpoint
+    # (ISS-454). The JSON bodies get this via NonNulStr; OAuth2PasswordRequestForm
+    # is not a Pydantic model, so guard the form fields by hand. Rejecting the
+    # *pair* keeps the "unknown vs wrong password" timing equalized once we're
+    # past this cheap shape check (a NUL username can never be a real user).
+    if "\x00" in form_data.username or "\x00" in form_data.password:
+        raise HTTPException(status_code=422, detail="Invalid login")
     user = db.query(auth.User).filter(auth.User.username == form_data.username).first()
     if not user:
         # Time the miss like a real verification so a known username is not
@@ -179,7 +189,7 @@ def admin_list_posts(
     _current_user: auth.User = Depends(get_current_admin),
     skip: int = Query(0, ge=0),
     limit: int = Query(20, ge=1, le=100),
-    q: str | None = Query(None, description="Search by title"),
+    q: Annotated[NonNulStr | None, Query(description="Search by title")] = None,
     status: str | None = Query(None, description="published | draft | scheduled"),
 ):
     query = db.query(models.Post)
@@ -760,7 +770,7 @@ def admin_delete_tag(
 def admin_list_comments(
     post_id: IdInt | None = None,
     is_approved: bool | None = Query(None, description="Filter by moderation status"),
-    q: str | None = Query(None, description="Search nickname/email/content"),
+    q: Annotated[NonNulStr | None, Query(description="Search nickname/email/content")] = None,
     date_from: str | None = Query(None, max_length=40, description="ISO date filter: created >= date_from"),
     date_to: str | None = Query(
         None, max_length=40, description="ISO date filter: created <= date_to (a bare date includes the whole day)"
@@ -1118,7 +1128,7 @@ class AdminReaderStatusResponse(BaseModel):
 def admin_list_readers(
     page: PageInt = 1,
     limit: int = Query(20, ge=1, le=100),
-    q: str | None = Query(None, description="Search email / display name"),
+    q: Annotated[NonNulStr | None, Query(description="Search email / display name")] = None,
     db: Session = Depends(get_db),
     _current_user: auth.User = Depends(get_current_admin),
 ):

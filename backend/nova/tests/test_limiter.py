@@ -47,3 +47,29 @@ def test_trusted_specific_peer_xff_used(monkeypatch):
 def test_other_untrusted_peer_still_ignored(monkeypatch):
     monkeypatch.setenv("TRUSTED_PROXIES", "10.0.0.5")
     assert client_rate_key(_req("10.0.0.7", "203.0.113.9")) == "10.0.0.7"
+
+
+def test_trusted_peer_forged_xff_not_an_ip_falls_back_to_peer(monkeypatch):
+    """A trusted-proxy XFF entry that is not a real IP is forged (client
+    supplies the header; only the proxy's presence is trusted): it must not
+    become the rate-limit key -- it would be a spoofable fresh bucket and an
+    unbounded string that overflows the VARCHAR(50) ip_address/ip_key columns
+    (round-17 security review, TASK-351)."""
+    monkeypatch.setenv("TRUSTED_PROXIES", "*")
+    assert client_rate_key(_req("10.0.0.5", "not-an-ip")) == "10.0.0.5"
+    assert client_rate_key(_req("10.0.0.5", "garbage" * 100)) == "10.0.0.5"
+
+
+def test_trusted_peer_garbage_xff_chain_falls_back_to_peer(monkeypatch):
+    """Multiple forged entries before a real-looking one are still garbage."""
+    monkeypatch.setenv("TRUSTED_PROXIES", "*")
+    assert client_rate_key(_req("10.0.0.5", "spam,spam,spam")) == "10.0.0.5"
+
+
+def test_trusted_peer_xff_canonicalizes_ipv4_ipv6(monkeypatch):
+    """Real IP literals are canonicalized (bounded, dedup of equivalent forms)
+    — the form persisted to ip_address/ip_key columns."""
+    monkeypatch.setenv("TRUSTED_PROXIES", "*")
+    assert client_rate_key(_req("10.0.0.1", "192.0.2.9")) == "192.0.2.9"
+    assert client_rate_key(_req("10.0.0.1", "2001:db8::1")) == "2001:db8::1"
+    assert client_rate_key(_req("10.0.0.1", "::ffff:192.0.2.9")) == "::ffff:192.0.2.9"
