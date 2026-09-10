@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 292,
+  "round": 293,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-10T13:46:56+00:00",
+  "updated_at": "2026-09-10T14:16:19+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -11,7 +11,7 @@
       "version": 1,
       "created_at": "2026-08-06T13:23:41+00:00",
       "updated_at": "2026-08-06T13:23:41+00:00",
-      "touched_round": 290,
+      "touched_round": 292,
       "title": "backend-nova",
       "description": "FastAPI Python 3.14 backend at backend/nova; SQLAlchemy ORM; routers in app/routers, crud.py business logic, 656 lines"
     },
@@ -21776,6 +21776,41 @@
       "title": "Media library list sorts on mtime only (equal-mtime ties skip/dup at page boundaries)",
       "severity": "low",
       "summary": "upload.py list_uploaded_files sorted by mtime only; batch uploads sharing a second (coarse fs mtime) had no tiebreak, so offset pages could skip/duplicate and equal-mtime rows flipped order between requests. Fixed to (mtime, filename) desc (round-292 compact tail)."
+    },
+    "ISS-474": {
+      "id": "ISS-474",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-10T14:14:10+00:00",
+      "updated_at": "2026-09-10T14:15:56+00:00",
+      "touched_round": 292,
+      "summary": "Feeds/sitemap order pinned-first from get_posts: an old pinned post floats to item 0 and fakes a freshly-updated feed for pollers keying off the first entry (deep-dive round 292)",
+      "severity": "medium"
+    },
+    "TASK-354": {
+      "id": "TASK-354",
+      "type": "task",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-10T14:14:10+00:00",
+      "updated_at": "2026-09-10T14:15:55+00:00",
+      "touched_round": 292,
+      "category": "correctness",
+      "summary": "Add pinned_first param to crud.get_posts; schedule feeds pass False (pure recency), homepage/list keep pinned-first default",
+      "severity": "medium",
+      "stacks": "ISS-474"
+    },
+    "CHG-471": {
+      "id": "CHG-471",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-10T14:15:55+00:00",
+      "updated_at": "2026-09-10T14:15:55+00:00",
+      "touched_round": 292,
+      "commit": "0267c13",
+      "summary": "Feeds/sitemap now order by recency: pinned_first=False at 4 rss.py call sites; regression test asserts newer-first feed/sitemap and pinned-first homepage"
     }
   },
   "edges": [
@@ -32523,6 +32558,30 @@
       "to": "ISS-467",
       "type": "resolves",
       "created_at": "2026-09-10T13:46:56+00:00"
+    },
+    {
+      "from": "TASK-354",
+      "to": "ISS-474",
+      "type": "addresses",
+      "created_at": "2026-09-10T14:15:12+00:00"
+    },
+    {
+      "from": "ISS-474",
+      "to": "COMP-001",
+      "type": "located_in",
+      "created_at": "2026-09-10T14:15:12+00:00"
+    },
+    {
+      "from": "CHG-471",
+      "to": "TASK-354",
+      "type": "implements",
+      "created_at": "2026-09-10T14:16:19+00:00"
+    },
+    {
+      "from": "CHG-471",
+      "to": "ISS-474",
+      "type": "resolves",
+      "created_at": "2026-09-10T14:16:19+00:00"
     }
   ]
 }
