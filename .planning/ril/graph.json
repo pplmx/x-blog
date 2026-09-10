@@ -2,7 +2,7 @@
   "ril_version": 1,
   "round": 290,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-10T03:46:33+00:00",
+  "updated_at": "2026-09-10T03:53:48+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -14460,7 +14460,7 @@
       "version": 1,
       "created_at": "2026-08-31T18:15:32+00:00",
       "updated_at": "2026-08-31T18:15:32+00:00",
-      "touched_round": 206,
+      "touched_round": 290,
       "severity": "medium",
       "title": "X-Forwarded-For trust misconfiguration breaks per-client identity (spoofable or global-shared buckets)",
       "summary": "TRUSTED_PROXIES=* trusts any peer: a direct client can spoof X-Forwarded-For to get a fresh rate-limit bucket and to mint unlimited comment flags / store a fake ip_address. With TRUSTED_PROXIES unset behind a reverse proxy, every user collapses into one shared bucket. Needs an explicit trusted-proxy list in production and per-IP identity that does not rely on a client-controlled header."
@@ -21424,6 +21424,29 @@
       "title": "Keep aware-UTC model stamps; normalization is the session pin + expire_on_commit",
       "rationale": "ISS-452 flags model defaults and router stamps writing aware datetime.now(UTC) into naive-UTC columns. Verified latent, not live: database.py pins every PG session to UTC so psycopg stores the UTC wall clock in naive columns; SQLite strips tz at read; expire_on_commit reloads committed attrs before serialization (probed post create/reader register/login/comment approve — all serialized naive or excluded). Unifying to naive at the boundary would churn models.py (crate import cycle risk) for a hypothetical pre-refresh serialization that no current path performs. Recorded so the graph disposition matches the code's documented intent (database.py, admin.py:879 DEC-066/TASK-139).",
       "alternatives_rejected": "Rewrite all 20+ model defaults + 2 router stamps to naive UTC (rejected: circular-import awkwardness + no live bug + the UTC session pin is the authoritative normalization already tested by both dialect suites); raise severity (rejected: contradicts the documented latent framing and the no-leak probes)."
+    },
+    "CHG-459": {
+      "id": "CHG-459",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-10T03:52:03+00:00",
+      "updated_at": "2026-09-10T03:52:03+00:00",
+      "touched_round": 290,
+      "commit": "0dc5881",
+      "title": "XFF port-form stripping in client_rate_key (parity with RFC 7239 node grammar)"
+    },
+    "EV-235": {
+      "id": "EV-235",
+      "type": "evidence",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-10T03:53:48+00:00",
+      "updated_at": "2026-09-10T03:53:48+00:00",
+      "touched_round": 290,
+      "title": "XFF-port-and-garbage-live-verified",
+      "source": "live probe: ipv4/ipv4+port/ipv6+port canonicalized; 500-char garbage and multi-garbage fall back to peer; 47 limiter+comments tests green",
+      "confidence": 1.0
     }
   },
   "edges": [
@@ -32039,6 +32062,18 @@
       "to": "ISS-454",
       "type": "resolves",
       "created_at": "2026-09-10T03:33:25+00:00"
+    },
+    {
+      "from": "CHG-459",
+      "to": "TASK-351",
+      "type": "implements",
+      "created_at": "2026-09-10T03:52:23+00:00"
+    },
+    {
+      "from": "TASK-351",
+      "to": "ISS-244",
+      "type": "addresses",
+      "created_at": "2026-09-10T03:53:21+00:00"
     }
   ]
 }
