@@ -2,7 +2,7 @@
   "ril_version": 1,
   "round": 292,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-10T10:01:32+00:00",
+  "updated_at": "2026-09-10T10:54:19+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -21584,6 +21584,54 @@
       "summary": "account.vue device-pref toggles flip optimistically + roll back on failure (ISS-457); cover/OG routes bound the site query param via sanitizeImageTitle (ISS-458)",
       "files": "app/pages/account.vue, server/routes/api/cover.ts, server/routes/api/og.ts, tests/pages/account.spec.ts, tests/server/imageTitle.spec.ts",
       "commit": "bf300e8"
+    },
+    "CHG-464": {
+      "id": "CHG-464",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-10T10:50:11+00:00",
+      "updated_at": "2026-09-10T10:50:11+00:00",
+      "touched_round": 292,
+      "summary": "Admin lists/calendar hardening: Literal status (422 on unknown), id tiebreak on admin posts/comments/readers offset lists, calendar shows future-dated drafts in unscheduled",
+      "files": "backend/nova/app/routers/admin.py, backend/nova/tests/test_admin.py, backend/nova/tests/test_admin_calendar.py",
+      "commit": "f8a4855"
+    },
+    "ISS-459": {
+      "id": "ISS-459",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-10T10:51:20+00:00",
+      "updated_at": "2026-09-10T10:54:19+00:00",
+      "touched_round": 292,
+      "title": "Admin posts list silently returns all posts on invalid status value",
+      "severity": "medium",
+      "summary": "GET /api/admin/posts?status=live (typo, or stale client sending 'all') returned every post including drafts+scheduled with 200 — wrong data with success. Only explicit published/draft/scheduled branches were checked, no else. Fixed to a FastAPI Literal so unknown values 422 (round-292 deep-dive #7)."
+    },
+    "ISS-460": {
+      "id": "ISS-460",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-10T10:52:27+00:00",
+      "updated_at": "2026-09-10T10:54:19+00:00",
+      "touched_round": 292,
+      "title": "Admin offset lists paginate on non-unique ORDER BY (no id tiebreak)",
+      "severity": "medium",
+      "summary": "admin.py posts (pinned,created_at) / comments (created_at) / readers (created_at) lists had no id tiebreak; created_at is a Python-side default and bulk-restored rows share timestamps, so offset pages could skip/duplicate across page boundaries on ties. get_comments_paginated already got the id tiebreak; appended id.desc() to all three admin lists (round-292 deep-dive #6)."
+    },
+    "ISS-461": {
+      "id": "ISS-461",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-10T10:53:03+00:00",
+      "updated_at": "2026-09-10T10:54:19+00:00",
+      "touched_round": 292,
+      "title": "Editorial calendar hides a draft planned for outside the viewed month",
+      "severity": "low",
+      "summary": "admin.py calendar classify(): a draft with non-None publish_at outside the viewed month fails the grid range check and lands on NEITHER the grid nor the unscheduled list — the exact plan case unscheduled exists to surface. Fixed: non-grid drafts keep off-grid but go to unscheduled (round-292 deep-dive #8)."
     }
   },
   "edges": [
@@ -32277,6 +32325,24 @@
       "to": "ISS-458",
       "type": "resolves",
       "created_at": "2026-09-10T10:01:32+00:00"
+    },
+    {
+      "from": "CHG-464",
+      "to": "ISS-459",
+      "type": "resolves",
+      "created_at": "2026-09-10T10:54:19+00:00"
+    },
+    {
+      "from": "CHG-464",
+      "to": "ISS-460",
+      "type": "resolves",
+      "created_at": "2026-09-10T10:54:19+00:00"
+    },
+    {
+      "from": "CHG-464",
+      "to": "ISS-461",
+      "type": "resolves",
+      "created_at": "2026-09-10T10:54:19+00:00"
     }
   ]
 }
