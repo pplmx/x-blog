@@ -2,7 +2,7 @@
   "ril_version": 1,
   "round": 292,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-10T09:51:14+00:00",
+  "updated_at": "2026-09-10T10:01:32+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -21552,10 +21552,10 @@
     "ISS-457": {
       "id": "ISS-457",
       "type": "issue",
-      "status": "active",
-      "version": 1,
+      "status": "resolved",
+      "version": 2,
       "created_at": "2026-09-10T09:48:44+00:00",
-      "updated_at": "2026-09-10T09:48:44+00:00",
+      "updated_at": "2026-09-10T10:00:53+00:00",
       "touched_round": 292,
       "title": "account.vue device-pref toggles flicker to old state during every change",
       "severity": "low",
@@ -21564,14 +21564,26 @@
     "ISS-458": {
       "id": "ISS-458",
       "type": "issue",
-      "status": "active",
-      "version": 2,
+      "status": "resolved",
+      "version": 3,
       "created_at": "2026-09-10T09:49:13+00:00",
-      "updated_at": "2026-09-10T09:51:14+00:00",
+      "updated_at": "2026-09-10T10:00:54+00:00",
       "touched_round": 292,
       "title": "cover/OG image endpoints never length-bound the site query param",
       "severity": "low",
       "summary": "server/routes/api/cover.ts and og.ts XML-escape the site query param but run only title through sanitizeImageTitle (trim/strip-invalid-XML/cap 200). The module docstring advertises bounded input as the CPU/memory protection for satori+sharp; an unbounded site string reaches the renderer. Fixed round 292 by routing site through sanitizeImageTitle too (test added in tests/server/imageTitle.spec.ts)."
+    },
+    "CHG-463": {
+      "id": "CHG-463",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-10T09:59:26+00:00",
+      "updated_at": "2026-09-10T09:59:26+00:00",
+      "touched_round": 292,
+      "summary": "account.vue device-pref toggles flip optimistically + roll back on failure (ISS-457); cover/OG routes bound the site query param via sanitizeImageTitle (ISS-458)",
+      "files": "app/pages/account.vue, server/routes/api/cover.ts, server/routes/api/og.ts, tests/pages/account.spec.ts, tests/server/imageTitle.spec.ts",
+      "commit": "bf300e8"
     }
   },
   "edges": [
@@ -32253,6 +32265,18 @@
       "to": "ISS-456",
       "type": "resolves",
       "created_at": "2026-09-10T04:48:36+00:00"
+    },
+    {
+      "from": "CHG-463",
+      "to": "ISS-457",
+      "type": "resolves",
+      "created_at": "2026-09-10T10:01:32+00:00"
+    },
+    {
+      "from": "CHG-463",
+      "to": "ISS-458",
+      "type": "resolves",
+      "created_at": "2026-09-10T10:01:32+00:00"
     }
   ]
 }
