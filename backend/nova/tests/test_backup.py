@@ -16,6 +16,8 @@ Covers:
 - Unknown format / too many posts are rejected with 422.
 """
 
+from datetime import timedelta
+
 from app import models
 from app.crud import create_post
 from app.schemas import PostCreate
@@ -245,6 +247,32 @@ class TestBackupRestore:
         assert second["comments_skipped"] == 2
         assert db_session.query(models.Post).count() == 2
         assert db_session.query(models.Comment).count() == 2
+
+    def test_restore_reconciles_daily_views_against_restored_counter(self, client, db_session, auth_headers):
+        """Restoring rewinds the published counter to the snapshot but a backup
+        carries no per-day breakdown — the pre-restore post_views_daily rows must
+        be dropped so the admin trend chart agrees with the restored counter
+        instead of permanently disagreeing (round-292 deep-dive)."""
+        from app.crud import utc_now_naive
+
+        _seed_blog(db_session)
+        # Live instance has accumulated daily view rows, and the snapshot was
+        # taken EARLIER (its counter, 123, is below the live accumulated total).
+        post = db_session.query(models.Post).filter_by(slug="hello-world").one()
+        db_session.add(models.PostViewsDaily(post_id=post.id, day=utc_now_naive().date(), views=500))
+        db_session.add(
+            models.PostViewsDaily(post_id=post.id, day=utc_now_naive().date() - timedelta(days=1), views=400)
+        )
+        db_session.commit()
+
+        snap = client.get("/api/admin/backup", headers=auth_headers).json()
+        response = client.post("/api/admin/backup/restore", json=snap, headers=auth_headers)
+        assert response.status_code == 200, response.text
+
+        restored = db_session.query(models.Post).filter_by(slug="hello-world").one()
+        assert restored.views == 123  # restored counter survives
+        # The trend chart must not keep summing the 400/500 pre-restore rows.
+        assert db_session.query(models.PostViewsDaily).filter(models.PostViewsDaily.post_id == restored.id).count() == 0
 
     def test_restore_invalidates_public_caches(self, client, db_session, auth_headers):
         """Restoring must invalidate the public categories/posts caches (ISS-365):

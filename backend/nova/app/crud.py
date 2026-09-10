@@ -3740,6 +3740,7 @@ def restore_backup(db: Session, payload: dict) -> dict:
     # returned 200 with created/updated counts (ISS-274). Every other write path
     # in crud.py commits explicitly for exactly this reason. A mid-import
     # exception rolls back so no half-imported state survives.
+    restored_post_ids: set[int] = set()
     try:
         # Categories, tags, series — upsert by natural key, then flush so ids
         # exist for the post FK/relationship assignments below.
@@ -3803,6 +3804,7 @@ def restore_backup(db: Session, payload: dict) -> dict:
             post.cover_image = item.get("cover_image")
             post.views = int(item.get("views") or 0)
             post.likes = int(item.get("likes") or 0)
+            restored_post_ids.add(post.id)
             category_name = item.get("category")
             post.category = cat_by_name.get(category_name) if category_name else None
             post.series = series_by_slug.get(item.get("series")) if item.get("series") else None
@@ -3845,6 +3847,20 @@ def restore_backup(db: Session, payload: dict) -> dict:
                 parent_ordinal = cmeta.get("parent_ordinal")
                 if parent_ordinal is not None and parent_ordinal in new_by_ordinal:
                     new_by_ordinal[ordinal].parent_id = new_by_ordinal[parent_ordinal].id
+
+        # Restore rewinds each post's published views/likes counter to the
+        # snapshot, but a backup carries NO per-day breakdown — so the pre-restore
+        # post_views_daily rows from the live instance would keep summing into the
+        # admin trend chart, permanently disagreeing with the restored counter
+        # (re-restoring never fixes it; round-292 deep-dive ISS-463). Delete the
+        # daily rows for every restored post in the same transaction: the trend
+        # restarts from the restored counter and only tracks views forward, which
+        # matches both the fresh-instance case (no rows) and the documented
+        # "tracks forward only, no backfill" trend (DEC-086).
+        if restored_post_ids:
+            db.query(models.PostViewsDaily).filter(models.PostViewsDaily.post_id.in_(restored_post_ids)).delete(
+                synchronize_session=False
+            )
     except Exception:
         db.rollback()
         raise
