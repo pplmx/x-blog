@@ -2,7 +2,7 @@
   "ril_version": 1,
   "round": 292,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-10T12:49:31+00:00",
+  "updated_at": "2026-09-10T13:12:29+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -21704,6 +21704,30 @@
       "title": "reader_history_stats materializes full history rows without joinedload (N+1)",
       "severity": "low",
       "summary": "crud.reader_history_stats recent items serialized via ReadingHistoryItem.from_post touching post.category/post.tags lazy loads — ~12 extra queries per /history page view; sibling list_reader_history already eager-loads. Fixed to joinedload both. (Full-content materialization for reading_minutes is a separate design choice dispositioned by DEC-278.)"
+    },
+    "CHG-468": {
+      "id": "CHG-468",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-10T13:11:06+00:00",
+      "updated_at": "2026-09-10T13:11:06+00:00",
+      "touched_round": 292,
+      "summary": "Admin post update rejects unknown tag_ids with the same 400 the handler already gives for unknown category_id/series_id, instead of silently dropping the tags from the save",
+      "files": "backend/nova/app/routers/admin.py, backend/nova/tests/test_admin.py",
+      "commit": "e1d5653"
+    },
+    "ISS-465": {
+      "id": "ISS-465",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-10T13:11:49+00:00",
+      "updated_at": "2026-09-10T13:12:29+00:00",
+      "touched_round": 292,
+      "title": "Admin post update silently drops unknown tag_ids",
+      "severity": "low",
+      "summary": "admin.py PUT /posts/{id}: tag_ids filtered to found rows with no count check, while category_id/series_id in the same handler 400 on unknown ids — a deleted tag vanished from an editor's save without feedback. Fixed to 400 naming the missing id (round-292 compact tail)."
     }
   },
   "edges": [
@@ -32433,6 +32457,12 @@
       "to": "ISS-464",
       "type": "resolves",
       "created_at": "2026-09-10T12:49:31+00:00"
+    },
+    {
+      "from": "CHG-468",
+      "to": "ISS-465",
+      "type": "resolves",
+      "created_at": "2026-09-10T13:12:29+00:00"
     }
   ]
 }
