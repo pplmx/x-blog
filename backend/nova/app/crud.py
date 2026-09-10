@@ -2147,10 +2147,15 @@ def reader_history_stats(db: Session, reader_id: int, recent_limit: int = 6) -> 
     gamification surface on /history. Uses the same public-visibility filter as
     the history list so un-published posts don't leak or count.
     """
+    # joinedload category/tags like list_reader_history: the recent items are
+    # serialized via ReadingHistoryItem.from_post which reads post.category and
+    # post.tags — without eager loading that's a lazy SELECT per recent row on
+    # every /history page view (round-292 deep-dive).
     rows = (
         db.query(models.Post, models.ReadingHistory.viewed_at)
         .join(models.ReadingHistory, models.ReadingHistory.post_id == models.Post.id)
         .filter(models.ReadingHistory.reader_id == reader_id)
+        .options(joinedload(models.Post.category), joinedload(models.Post.tags))
         .order_by(models.ReadingHistory.viewed_at.desc(), models.Post.id.desc())
         .all()
     )
