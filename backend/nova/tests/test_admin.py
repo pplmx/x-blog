@@ -296,6 +296,36 @@ class TestAdminPosts:
         )
         assert bad.status_code == 400
 
+    def test_update_post_rejects_unknown_tag_ids_like_category_series(self, client, auth_headers, db_session):
+        """An unknown tag id must 400, not silently drop the tag from the save.
+        The same handler 400s on unknown category_id/series_id; tag_ids used to
+        be silently filtered to the found subset, so a deleted tag vanished from
+        an editor's save without a peep (round-292 deep-dive)."""
+        post = models.Post(title="Test", slug="tag-contract", content="Content", published=True)
+        db_session.add(post)
+        db_session.commit()
+        tag = models.Tag(name="keep")
+        db_session.add(tag)
+        db_session.commit()
+
+        # Unknown (deleted) id alongside a valid one -> 400 for the whole save.
+        bad = client.put(
+            f"/api/admin/posts/{post.id}",
+            headers={**auth_headers, "Content-Type": "application/json"},
+            json={"tag_ids": [tag.id, 99999]},
+        )
+        assert bad.status_code == 400
+        assert "99999" in bad.json()["error"]["message"]
+
+        # All-known ids save cleanly.
+        good = client.put(
+            f"/api/admin/posts/{post.id}",
+            headers={**auth_headers, "Content-Type": "application/json"},
+            json={"tag_ids": [tag.id]},
+        )
+        assert good.status_code == 200
+        assert client.get(f"/api/admin/posts/{post.id}", headers=auth_headers).json()["tag_ids"] == [tag.id]
+
     def test_update_post_does_not_require_series(self, client, auth_headers, db_session):
         """A plain title/slug update must not 422 for wanting series fields."""
         post = models.Post(title="Test", slug="no-series-test", content="Content", published=True)

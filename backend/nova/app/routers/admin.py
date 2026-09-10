@@ -491,7 +491,19 @@ def admin_update_post(
         post.series_order = post_data.series_order or 0
 
     if post_data.tag_ids is not None:
-        tags = db.query(models.Tag).filter(models.Tag.id.in_(post_data.tag_ids)).all()
+        # Same unknown-id contract as category_id/series_id above: an id that no
+        # longer exists is a stale/dropped selection, not a silent no-op — the
+        # editor asked to associate a tag that isn't there. (Deep-dive: previously
+        # unknown tag_ids were silently filtered out while the same handler 400'd
+        # on an unknown category/series id, so a deleted tag vanished from a save.)
+        tag_id_list = post_data.tag_ids
+        tags = db.query(models.Tag).filter(models.Tag.id.in_(tag_id_list)).all()
+        if len(tags) != len(tag_id_list):
+            missing = [tid for tid in tag_id_list if tid not in {t.id for t in tags}]
+            raise HTTPException(
+                status_code=400,
+                detail=f"Tag(s) with id {missing} not found",
+            )
         post.tags = tags
 
     if "publish_at" in update_fields:
