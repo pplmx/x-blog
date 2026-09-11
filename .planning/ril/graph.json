@@ -2,7 +2,7 @@
   "ril_version": 1,
   "round": 300,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-11T06:01:35+00:00",
+  "updated_at": "2026-09-11T07:20:03+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -453,7 +453,7 @@
       "version": 2,
       "created_at": "2026-08-09T13:24:10+00:00",
       "updated_at": "2026-08-10T05:08:10+00:00",
-      "touched_round": 6,
+      "touched_round": 300,
       "confidence": 0.9,
       "title": "publish_at guards in admin/stats use tz-aware now against naive column",
       "description": "app/routers/admin.py:140,148 and app/routers/stats.py:39 compare naive publish_at DateTime column against aware datetime.now(UTC); the codebase convention (crud.utc_now_naive, posts.py _is_publicly_visible) requires naive-UTC for all publish_at guards. Latent wrong results when Postgres session timezone != UTC."
@@ -619,7 +619,7 @@
       "version": 2,
       "created_at": "2026-08-09T13:44:21+00:00",
       "updated_at": "2026-08-10T05:08:10+00:00",
-      "touched_round": 7,
+      "touched_round": 300,
       "confidence": 0.9,
       "title": "Write schemas lack max_length matching VARCHAR columns -> DataError 500 on PostgreSQL",
       "description": "schemas.py fields (Category/Tag name, Post title/slug/excerpt/cover_image, Comment nickname/email) have no max_length while the models use VARCHAR(n). On SQLite over-length rows store fine (CI stays green); on PostgreSQL they raise sqlalchemy DataError, which the crud IntegrityError handlers do not catch -> 500."
@@ -22410,6 +22410,43 @@
       "title": "SubscribeButton denied tooltip hint (browser site-settings)",
       "summary": "In the denied state the button tooltip appends common.push.deniedHint - 'Enable notifications in your browser's site settings'; aria-label stays stable. New i18n key in en+zh with parity kept.",
       "commit": "19a6ad7"
+    },
+    "EVID-004": {
+      "id": "EVID-004",
+      "type": "evidence",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-11T07:16:31+00:00",
+      "updated_at": "2026-09-11T07:16:31+00:00",
+      "touched_round": 300,
+      "title": "typescript-reviewer reproduction: popover is still in the DOM at nextTick in real browsers",
+      "source": "cface08 review (reproduced probe)",
+      "detail": "The popover is wrapped in a CSS leave transition (~150ms). Vue defers removal to transitionend; nextTick (a microtask) fires first, so the focusables scan still sees the menuitems and re-targets one, which unmounts a moment later - focus falls to body. happy-dom passes the unit tests only because it tears down synchronously (no CSS).",
+      "confidence": 1.0
+    },
+    "CHG-482": {
+      "id": "CHG-482",
+      "type": "change",
+      "status": "resolved",
+      "version": 1,
+      "created_at": "2026-09-11T07:16:31+00:00",
+      "updated_at": "2026-09-11T07:16:31+00:00",
+      "touched_round": 300,
+      "title": "rework: exclude popover subtree from Tab hand-off + guard tag-follow load path",
+      "summary": "Typescript-reviewer follow-up (cface08). (1) LanguageSwitcher: extracted nextFocusable (utils/focusRing.ts) and pass the departing popover as 'exclude', so the Tab hand-off targets the real next/prev page control even mid-leave-transition; new helper unit tests drive that transition-live DOM. (2) TagFollowButton: route the initial follows-GET failure through guardFollowFailure (store rethrows stale-session 401s; isStaleSession exported from useReaderAuth), so an expired token shows the prompt immediately instead of after a wasted tap. (3) Session prompt role=alert (matches /tags pages). (4) useUpload in-flight increment moved inside try.",
+      "commit": "cface08"
+    },
+    "HYP-020": {
+      "id": "HYP-020",
+      "type": "hypothesis",
+      "status": "stale",
+      "version": 2,
+      "created_at": "2026-09-11T07:20:02+00:00",
+      "updated_at": "2026-09-11T07:20:03+00:00",
+      "touched_round": 300,
+      "title": "The popover is gone from the DOM before a nextTick Tab hand-off scan runs",
+      "confidence": 0.8,
+      "detail": "Original assumption behind CHG-480's first Tab fix: open=false + the v-if removal schedule the popover out of the DOM before the nextTick callback, so a nextTick scan sees the menu-free page."
     }
   },
   "edges": [
@@ -33607,6 +33644,30 @@
       "to": "ISS-494",
       "type": "resolves",
       "created_at": "2026-09-11T06:01:34+00:00"
+    },
+    {
+      "from": "CHG-482",
+      "to": "ISS-491",
+      "type": "resolves",
+      "created_at": "2026-09-11T07:16:31+00:00"
+    },
+    {
+      "from": "CHG-482",
+      "to": "ISS-493",
+      "type": "resolves",
+      "created_at": "2026-09-11T07:16:31+00:00"
+    },
+    {
+      "from": "CHG-482",
+      "to": "ISS-492",
+      "type": "resolves",
+      "created_at": "2026-09-11T07:16:31+00:00"
+    },
+    {
+      "from": "EVID-004",
+      "to": "HYP-020",
+      "type": "refutes",
+      "created_at": "2026-09-11T07:20:03+00:00"
     }
   ]
 }
