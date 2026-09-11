@@ -45,6 +45,7 @@
 			"subscribing": "Subscribing…",
 			"unsubscribing": "Unsubscribing…",
 			"repliesIn": "You'll also be notified when someone replies to your comment",
+			"deniedHint": "Enable notifications in your browser's site settings",
 			"subscribeFailed": "Couldn't update notifications — try again"
 		},
 		"errors": {

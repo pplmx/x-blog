@@ -131,6 +131,18 @@ describe("SubscribeButton", () => {
 		expect(wrapper.get('[data-testid="icon"]').attributes("data-icon")).toBe("lucide:bell-off");
 	});
 
+	// Round-300 polish: "blocked" is a dead end — the only recovery is the
+	// browser's own site-settings panel, which nothing on the page hints at.
+	// The tooltip points there (the aria-label stays the stable base label).
+	it("points the tooltip at browser site-settings when notifications are blocked", () => {
+		status.value = "denied";
+		const wrapper = mountButton();
+		expect(wrapper.get("button").attributes("title")).toBe(
+			"common.push.denied · common.push.deniedHint",
+		);
+		expect(wrapper.get("button").attributes("aria-label")).toBe("common.push.denied");
+	});
+
 	it("renders a spinner icon while busy and ignores clicks", async () => {
 		status.value = "subscribing";
 		const wrapper = mountButton();

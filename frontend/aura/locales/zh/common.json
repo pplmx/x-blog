@@ -45,6 +45,7 @@
 			"subscribing": "订阅中…",
 			"unsubscribing": "退订中…",
 			"repliesIn": "评论被回复时也会收到通知",
+			"deniedHint": "请在浏览器的网站设置中重新开启通知",
 			"subscribeFailed": "通知更新失败，请重试"
 		},
 		"errors": {

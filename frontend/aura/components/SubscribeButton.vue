@@ -92,8 +92,14 @@ const icon = computed(() => {
 });
 
 // Tooltip advertises the reply-notification benefit for signed-in readers;
-// anonymous visitors just see the base label.
-const hint = computed(() => (isAuthenticated.value ? ` · ${t("common.push.repliesIn")}` : ""));
+// anonymous visitors just see the base label. A browser-blocked state has no
+// in-page recovery (a denied permission can't be re-requested), so the tooltip
+// points at the browser's own site-settings panel instead (round-300 polish).
+const hint = computed(() => {
+	if (status.value === "denied") return ` · ${t("common.push.deniedHint")}`;
+	if (isAuthenticated.value) return ` · ${t("common.push.repliesIn")}`;
+	return "";
+});
 const title = computed(() => `${label.value}${hint.value}`);
 
 // Compact (desktop header nav) hides the text below 2xl — the nav row is tight
