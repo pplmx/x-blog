@@ -2,7 +2,7 @@
   "ril_version": 1,
   "round": 300,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-11T05:53:05+00:00",
+  "updated_at": "2026-09-11T06:01:35+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -22385,6 +22385,31 @@
       "title": "round-300 reader/editor interaction polish: LS Tab hand-off, useUpload in-flight counter, TagFollowButton session guard",
       "summary": "LanguageSwitcher: on Tab/Shift+Tab with the menu open, preventDefault and hand focus to the next/previous page control after the trigger (menuitem unmounts a tick later, so native Tab would drop focus to body). useUpload: track an in-flight counter instead of a boolean so isUploading clears only when the LAST upload settles. TagFollowButton: wire useFollowSessionGuard into both handlers - a stale-session 401 drops the dead token (reactive isAuthenticated now gates the control instead of a non-invalidating localStorage computed) and renders an amber 'your session expired' prompt with a /login link; transient failures keep the generic bubble.",
       "commit": "a6df1d0"
+    },
+    "ISS-494": {
+      "id": "ISS-494",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-11T06:01:34+00:00",
+      "updated_at": "2026-09-11T06:01:35+00:00",
+      "touched_round": 300,
+      "title": "SubscribeButton: blocked-by-browser state offers no route back to enabling",
+      "detail": "A denied push permission cannot be re-requested from the page; the disabled 'blocked' button gave no hint that recovery lives in the browser's site-settings panel, leaving users who once dismissed the prompt permanently locked out of new-post notifications.",
+      "severity": "low",
+      "category": "correctness"
+    },
+    "CHG-481": {
+      "id": "CHG-481",
+      "type": "change",
+      "status": "resolved",
+      "version": 1,
+      "created_at": "2026-09-11T06:01:34+00:00",
+      "updated_at": "2026-09-11T06:01:34+00:00",
+      "touched_round": 300,
+      "title": "SubscribeButton denied tooltip hint (browser site-settings)",
+      "summary": "In the denied state the button tooltip appends common.push.deniedHint - 'Enable notifications in your browser's site settings'; aria-label stays stable. New i18n key in en+zh with parity kept.",
+      "commit": "19a6ad7"
     }
   },
   "edges": [
@@ -33570,6 +33595,18 @@
       "to": "ISS-493",
       "type": "resolves",
       "created_at": "2026-09-11T05:50:35+00:00"
+    },
+    {
+      "from": "ISS-494",
+      "to": "COMP-002",
+      "type": "located_in",
+      "created_at": "2026-09-11T06:01:34+00:00"
+    },
+    {
+      "from": "CHG-481",
+      "to": "ISS-494",
+      "type": "resolves",
+      "created_at": "2026-09-11T06:01:34+00:00"
     }
   ]
 }
