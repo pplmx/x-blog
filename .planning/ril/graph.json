@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 302,
+  "round": 303,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-11T14:43:34+00:00",
+  "updated_at": "2026-09-11T15:17:56+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -22535,10 +22535,10 @@
     "DEC-287": {
       "id": "DEC-287",
       "type": "decision",
-      "status": "active",
-      "version": 1,
+      "status": "resolved",
+      "version": 2,
       "created_at": "2026-09-11T14:42:30+00:00",
-      "updated_at": "2026-09-11T14:42:30+00:00",
+      "updated_at": "2026-09-11T15:16:13+00:00",
       "touched_round": 302,
       "title": "Feature-evolution round 302 delivered: reader password recovery complete (DEC-286/TASK-371); next candidate selected",
       "rationale": "Round 302 delivered the reader password-recovery slice end-to-end: stateless reset token (own audience, ver-bound), anti-oracle request + confirm with token_version bump and auto-login, forgot/reset pages with zh/en i18n, SMTP sink wired into just e2e, 13 backend + 8 frontend tests plus a real-browser Playwright full journey green (backend 1409 at 93.76 percent, frontend 1951, typecheck/biome/ruff/pyright clean). Not converged-idle: feature-exploration directive active. Next candidate: per-post reading trend in the admin post editor - GET /api/admin/stats/views/posts/{id} returning the zero-filled daily series for one post plus total, rendered as a lightweight CSS-bar sparkline (same pattern as the dashboard custom bars DEC-086). Net-increment over existing post_views_daily, no schema change.",
@@ -22547,16 +22547,65 @@
     "TASK-372": {
       "id": "TASK-372",
       "type": "task",
-      "status": "active",
-      "version": 1,
+      "status": "resolved",
+      "version": 2,
       "created_at": "2026-09-11T14:42:57+00:00",
-      "updated_at": "2026-09-11T14:42:57+00:00",
+      "updated_at": "2026-09-11T15:16:12+00:00",
       "touched_round": 302,
       "category": "core-feature",
       "title": "Per-post reading trend for the admin post editor: GET /api/admin/stats/views/posts/{id} (zero-filled daily series + total) plus CSS-bar sparkline card in admin/posts/[id].vue plus backend/frontend tests",
       "severity": "medium",
       "effort": "small",
       "confidence": 0.9
+    },
+    "CHG-484": {
+      "id": "CHG-484",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-11T15:15:36+00:00",
+      "updated_at": "2026-09-11T15:15:36+00:00",
+      "touched_round": 302,
+      "commit": "49eabe1f1b56b764c56478160caf5cb810172419",
+      "title": "feat(admin): per-post reading trend sparkline in the post editor"
+    },
+    "EV-238": {
+      "id": "EV-238",
+      "type": "evidence",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-11T15:16:12+00:00",
+      "updated_at": "2026-09-11T15:16:12+00:00",
+      "touched_round": 302,
+      "source": "CHG-484 49eabe1f1b56b764c56478160caf5cb810172419",
+      "confidence": 1.0,
+      "title": "Per-post reading trend delivered and browser-verified: GET /api/admin/stats/views/posts/{id} returns a correctly scoped zero-filled daily series (4 new backend contract tests: another post's views never bleed in, 404 unknown post, days bounds, admin gate), frontend API unit test, and a real-browser Playwright check (seed 3 views via the public /view endpoint -> editor shows the trend card and a non-empty bar row) passed. Full gates green: backend 1413 @93.79%, frontend 1952, typecheck + biome + ruff + pyright."
+    },
+    "DEC-288": {
+      "id": "DEC-288",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-11T15:17:21+00:00",
+      "updated_at": "2026-09-11T15:17:21+00:00",
+      "touched_round": 302,
+      "title": "Feature-evolution round 303 delivered: per-post reading trend (TASK-372 complete); next candidate selected",
+      "rationale": "Round 303 delivered the per-post reading-trend slice: crud.get_post_views_trend + GET /api/admin/stats/views/posts/{id} (admin-gated, 404, days bounded) over the existing post_views_daily table, a CSS-bar 30-day sparkline card in the admin post editor with failed-retry, zh/en i18n, 4 backend contract tests + a frontend API test + a real-browser Playwright check (seed views via public /view endpoint -> card renders). Gates green: backend 1413 at 93.79 percent, frontend 1952, typecheck/biome/ruff/pyright. Evidence EV-238. Feature mode continues. Next candidate for the following round: reader reading-density preference on the post page - a small persistent A/AA font-size + content-width control (localStorage), a self-contained frontend vertical slice for long-form readers and accessibility needs; one-sentence acceptance: a reader changes the post reading size/density and the choice is remembered on their device. This is the strongest remaining value-gate-passing candidate after reader password recovery and per-post trend; the residual backlog (avatars, comment reactions, PWA/offline, WebP auto-transcode, one-click email unsubscribe) has repeatedly failed or been deferred at the gate in DEC-055..203.",
+      "alternatives_rejected": "Stop feature mode now (feature backlog not yet two-rounds-rejected, 11.5.3; a passing candidate exists). Chase avatars/reactions/PWA (repeatedly gate-rejected or deferred in earlier decisions). WebP auto-transcode (explicitly deferred DEC-184 as risk to proven upload validation; backend-internal, not a distinct user-visible problem)."
+    },
+    "TASK-373": {
+      "id": "TASK-373",
+      "type": "task",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-11T15:17:55+00:00",
+      "updated_at": "2026-09-11T15:17:55+00:00",
+      "touched_round": 302,
+      "category": "core-feature",
+      "title": "Reader reading-density preference: persistent A/AA font-size + content-width control on the post page (localStorage), frontend vertical slice + component/page tests",
+      "severity": "medium",
+      "effort": "small",
+      "confidence": 0.85
     }
   },
   "edges": [
@@ -33846,6 +33895,25 @@
       "to": "TASK-155",
       "type": "depends_on",
       "created_at": "2026-09-11T14:43:34+00:00"
+    },
+    {
+      "from": "CHG-484",
+      "to": "TASK-372",
+      "type": "implements",
+      "created_at": "2026-09-11T15:16:12+00:00"
+    },
+    {
+      "from": "DEC-288",
+      "to": "DEC-287",
+      "type": "supersedes",
+      "created_at": "2026-09-11T15:17:55+00:00",
+      "note": "round-303 closure chains feature mode forward"
+    },
+    {
+      "from": "DEC-288",
+      "to": "TASK-373",
+      "type": "governs",
+      "created_at": "2026-09-11T15:17:56+00:00"
     }
   ]
 }
