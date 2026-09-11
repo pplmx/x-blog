@@ -306,6 +306,19 @@ class TestEditOwnComment:
         listed = client.get(f"/api/comments/post/{post.id}").json()["items"]
         assert [c["id"] for c in listed if c["id"] == comment_id] == []
 
+    def test_edit_with_blank_content_is_422(self, client, db_session):
+        # A whitespace-only edit used to store a blank body (re-entering
+        # moderation with an empty blob) — the create path rejects it via
+        # CommentBase; the edit path must agree (round-297 deep-dive).
+        post, comment_id, token = self._own_approved(client, db_session)
+        for blank in ("   ", " \t\n "):
+            resp = client.patch(
+                f"/api/reader/me/comments/{comment_id}",
+                json={"content": blank},
+                headers=_auth(token),
+            )
+            assert resp.status_code == 422, resp.text
+
     def test_edit_republishes_when_verified_reader_trust_tier_enabled(self, client, db_session, monkeypatch):
         """With AUTO_APPROVE_READER_COMMENTS on, an edit republishes through
         the same trust tier as a new comment (DEC-098/100) — consistent, not

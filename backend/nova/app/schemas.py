@@ -3,7 +3,7 @@ from datetime import UTC, datetime
 from typing import Annotated
 from urllib.parse import urlparse
 
-from pydantic import AfterValidator, BaseModel, ConfigDict, Field, field_validator
+from pydantic import AfterValidator, BaseModel, ConfigDict, Field, StringConstraints, field_validator
 
 # Bounded integer alias for path/query id + pagination params (deep-dive,
 # round 276). Post/Comment id columns are 32-bit autoincrement integers;
@@ -218,7 +218,11 @@ class PostBase(BaseModel):
     publish_at: datetime | None = None
     category_id: int | None = None
     series_id: int | None = None
-    series_order: int = 0
+    # Negative order would sort an episode ahead of its peers in the public
+    # series detail (order_by series_order, id) — reject rather than persist
+    # a wrong-visible-state edge (RIL ISS-294). The update path guards with
+    # ge=0; create must agree (round-297 deep-dive).
+    series_order: int = Field(default=0, ge=0)
     cover_image: Annotated[NonNulStr | None, Field(default=None, max_length=500)]
 
     @field_validator("title", mode="before")
@@ -235,7 +239,11 @@ class PostBase(BaseModel):
 
 
 class PostCreate(PostBase):
-    tags: list[str] = []
+    # Cap the tag list length and each name at the Tag.name width (String(50),
+    # TagCreate.name max_length=50): an unbounded list lets one admin request
+    # create arbitrary rows, and an over-length name would hit the PostgreSQL
+    # VARCHAR overflow -> uncaught DataError 500 (round-297 deep-dive).
+    tags: list[Annotated[str, StringConstraints(max_length=50)]] = Field(default_factory=list, max_length=50)
 
     @field_validator("cover_image")
     @classmethod
@@ -272,7 +280,9 @@ class PostUpdate(BaseModel):
     # a wrong-visible-state edge (RIL ISS-294).
     series_order: int | None = Field(default=None, ge=0)
     cover_image: Annotated[NonNulStr | None, Field(default=None, max_length=500)]
-    tag_ids: list[int] | None = None
+    # Cap the replacement list at the same width as PostCreate.tags (round-297
+    # deep-dive); unknown ids are still validated in crud.update_post.
+    tag_ids: list[int] | None = Field(default=None, max_length=50)
 
     @field_validator("cover_image")
     @classmethod

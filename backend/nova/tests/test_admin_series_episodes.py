@@ -119,3 +119,24 @@ class TestSeriesEpisodes:
         )
         detail = client.get(f"/api/series/{series['slug']}").json()
         assert [p["id"] for p in detail["posts"]] == [p2["id"], p1["id"]]
+
+
+def test_create_post_negative_series_order_is_422(client, auth_headers):
+    """PostCreate.series_order had no ge=0 (the update path did, ISS-294), so a
+    negative order persisted an episode that sorts ahead of its peers in the
+    public series detail. Create must reject it like update (round-297
+    deep-dive)."""
+    series = _create_series(client, auth_headers, slug="negorder")
+    resp = client.post(
+        "/api/posts",
+        json={
+            "title": "negative order",
+            "slug": "negorder-post",
+            "content": "content",
+            "published": True,
+            "series_id": series["id"],
+            "series_order": -1,
+        },
+        headers=auth_headers,
+    )
+    assert resp.status_code == 422, resp.text

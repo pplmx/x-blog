@@ -135,6 +135,45 @@ class TestAdminPosts:
         # the created post is not necessarily id 1 in a batched process.
         assert isinstance(response.json()["id"], int) and response.json()["id"] > 0
 
+    def test_create_post_rejects_oversized_tag_inputs(self, client, auth_headers):
+        # PostCreate.tags was an unbounded list[str]; a single admin request
+        # could create arbitrary rows and an over-length name would hit the
+        # PostgreSQL VARCHAR(50) overflow -> uncaught DataError 500 (round-297
+        # deep-dive). Both are clean 422s at the schema boundary now.
+        base = {
+            "title": "Tagged",
+            "slug": "tagged-caps",
+            "content": "body",
+            "published": True,
+        }
+        too_many = client.post(
+            "/api/admin/posts",
+            headers={**auth_headers, "Content-Type": "application/json"},
+            json={**base, "tags": [f"tag{i}" for i in range(51)]},
+        )
+        assert too_many.status_code == 422, too_many.text
+        too_long = client.post(
+            "/api/admin/posts",
+            headers={**auth_headers, "Content-Type": "application/json"},
+            json={**base, "tags": ["t" * 51]},
+        )
+        assert too_long.status_code == 422, too_long.text
+
+    def test_update_post_rejects_too_many_tag_ids(self, client, auth_headers):
+        created = client.post(
+            "/api/admin/posts",
+            headers={**auth_headers, "Content-Type": "application/json"},
+            json={"title": "T", "slug": "tagids-cap", "content": "c", "published": True},
+        )
+        assert created.status_code == 201, created.text
+        pid = created.json()["id"]
+        response = client.put(
+            f"/api/admin/posts/{pid}",
+            headers={**auth_headers, "Content-Type": "application/json"},
+            json={"tag_ids": list(range(1, 52))},
+        )
+        assert response.status_code == 422, response.text
+
     def test_get_post(self, client, auth_headers, db_session):
         post = models.Post(title="Test", slug="test", content="Content", published=True)
         db_session.add(post)

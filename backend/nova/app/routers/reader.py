@@ -1562,7 +1562,16 @@ def delete_my_comment(
 class ReaderCommentEdit(BaseModel):
     """Edit body for a reader's own comment (DEC-096, TASK-160)."""
 
-    content: Annotated[NonNulStr, Field(max_length=5000)]
+    # Mirror CommentBase's gate (min_length=1 after stripping) so a
+    # whitespace-only edit cannot blank a comment body — the create path has
+    # rejected it since round 276; the edit path must agree (round-297
+    # deep-dive).
+    content: Annotated[NonNulStr, Field(min_length=1, max_length=5000)]
+
+    @field_validator("content", mode="before")
+    @classmethod
+    def strip_content(cls, value: object) -> object:
+        return schemas._strip_blank(value) if isinstance(value, str) else value
 
 
 @router.patch("/me/comments/{comment_id}", response_model=schemas.CommentPublic)
