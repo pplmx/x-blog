@@ -115,11 +115,21 @@ watchEffect(() => {
 
 const likeLoading = ref(false);
 const likeError = ref<string | null>(null);
+// A transient like failure must not leave a persistent red banner under the
+// action bar for the whole article visit; auto-dismiss after a few seconds
+// (mirrors the resume-chip timer pattern).
+let likeErrorTimer: ReturnType<typeof setTimeout> | null = null;
 // Client-side "liked this post" dedup (RIL ISS-038): a visitor can like at most
 // once per post. isLiked drives the persisted button state; recordLike marks
 // before the API call so later clicks are no-ops.
 const { isLiked, recordLike, undoLike, persist } = useLikes();
 const likedThisPost = computed(() => (post.value?.id ? isLiked(post.value.id) : false));
+
+function clearLikeError() {
+	if (likeErrorTimer) clearTimeout(likeErrorTimer);
+	likeErrorTimer = null;
+	likeError.value = null;
+}
 async function handleLike() {
 	if (!post.value?.id || likeLoading.value) return;
 	if (likedThisPost.value) return; // already liked — no-op
@@ -129,7 +139,7 @@ async function handleLike() {
 	// click was for.
 	const targetId = post.value.id;
 	likeLoading.value = true;
-	likeError.value = null;
+	clearLikeError();
 	recordLike(targetId); // optimistic local marker
 	persist();
 	try {
@@ -155,6 +165,12 @@ async function handleLike() {
 		// post's action bar (the postId watch cleared likeError at nav time).
 		if (post.value?.id === targetId) {
 			likeError.value = t("post.likeError");
+			// Auto-dismiss so a transient failure doesn't linger for the whole
+			// visit; a newer failure re-arms the timer on top of this one.
+			if (likeErrorTimer) clearTimeout(likeErrorTimer);
+			likeErrorTimer = setTimeout(() => {
+				likeError.value = null;
+			}, 5000);
 		}
 		// Roll the optimistic "liked" marker back so a failed like doesn't leave
 		// the button permanently disabled & pre-filled (TASK-234). The marker
@@ -307,7 +323,7 @@ watch(postId, (newId, oldId) => {
 	if (oldId === undefined || newId === oldId) return;
 	resumeChipVisible.value = false;
 	// A previous post's like failure must not blame the new one's action bar.
-	likeError.value = null;
+	clearLikeError();
 	resume.reset();
 	if (newId) {
 		beginReadingSession(newId);
@@ -553,9 +569,21 @@ function handleCommentSubmitted(created: Comment | undefined) {
       </div>
     </div>
 
+    <!-- A real 404 (deleted/renamed post opened from a share/bookmark link):
+         the friendly not-found state, not "load failed" + a Retry that can
+         never succeed. A useFetch 404 sets `error` (statusCode 404), so without
+         this branch the not-found message below was unreachable for real 404s. -->
+    <div v-else-if="error && error.statusCode === 404" class="text-center py-20 text-gray-500">
+      <Icon icon="lucide:file-question" class="w-12 h-12 mx-auto mb-4 text-gray-300" />
+      <p class="mb-4">{{ t('post.notFound') }}</p>
+      <NuxtLink to="/" class="px-4 py-2 rounded-lg text-sm font-medium text-blue-600 dark:text-blue-400 hover:underline">
+        {{ t('common.action.backHome') }}
+      </NuxtLink>
+    </div>
+
     <!-- Load error (or a failed refetch to a new slug): give the reader a way
          onward instead of a dead end (they often arrive via a share link). -->
-    <div v-else-if="error" class="text-center py-20 text-gray-500">
+    <div v-else-if="error && error.statusCode !== 404" class="text-center py-20 text-gray-500">
       <Icon icon="lucide:alert-circle" class="w-12 h-12 mx-auto mb-4 text-gray-300" />
       <p class="mb-4">{{ t('common.state.loadFailed') }}</p>
       <div class="flex items-center justify-center gap-3">

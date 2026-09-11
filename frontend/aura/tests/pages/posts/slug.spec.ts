@@ -502,6 +502,34 @@ describe("Post Detail Page", () => {
 			});
 			expect(wrapper.text()).toContain("文章不存在");
 		});
+
+		it("shows the friendly not-found state for a real 404 (deleted post), not 'load failed' + Retry (round 295)", async () => {
+			// A useFetch 404 sets `error` with statusCode 404; before the round-295
+			// fix the `v-else-if="error"` branch won and a reader opening a stale
+			// share/bookmark link saw "load failed" + a Retry that can never
+			// succeed — the post.notFound message was unreachable for real 404s.
+			const wrapper = await mountPostPage({
+				post: null,
+				pending: false,
+				error: { message: "Not found", statusCode: 404 } as { message: string },
+			});
+			expect(wrapper.text()).toContain("文章不存在");
+			expect(wrapper.text()).not.toContain("加载失败");
+			// No dead-end Retry button; the Home link is the way onward.
+			expect(wrapper.text()).not.toContain("重试");
+			expect(wrapper.find('a[href="/"]').exists()).toBe(true);
+		});
+
+		it("still shows 'load failed' + Retry for a non-404 error (network/5xx)", async () => {
+			const wrapper = await mountPostPage({
+				post: null,
+				pending: false,
+				error: { message: "boom", statusCode: 503 } as { message: string },
+			});
+			expect(wrapper.text()).toContain("加载失败");
+			expect(wrapper.text()).toContain("重试");
+			expect(wrapper.text()).not.toContain("文章不存在");
+		});
 	});
 
 	describe("Post content rendering", () => {
@@ -736,6 +764,82 @@ describe("Post Detail Page", () => {
 			expect(likeBtn.attributes("disabled")).toBeUndefined();
 			expect(likeBtn.attributes("aria-pressed")).toBe("false");
 			expect(localStorage.getItem("x_blog_liked_posts") || "[]").not.toContain(`"${mockPost.id}"`);
+		});
+
+		it("auto-dismisses the like-failure banner after a few seconds (round 295)", async () => {
+			// A transient like failure used to leave a red banner under the action
+			// bar for the whole article visit (only cleared on the next like or an
+			// SPA nav to another post). Mirroring the resume-chip timer, it now
+			// dismisses itself after 5s.
+			vi.useFakeTimers();
+			vi.stubGlobal("useRuntimeConfig", () => ({
+				public: { apiUrl: "http://localhost:18888" },
+			}));
+			vi.stubGlobal("useHead", vi.fn());
+			vi.stubGlobal("useRoute", () => ({
+				params: { slug: "test-article-post" },
+				query: {},
+			}));
+			vi.stubGlobal("navigateTo", vi.fn());
+			vi.stubGlobal(
+				"useFetch",
+				vi.fn((url: string) => {
+					if (typeof url === "function") url = url();
+					return {
+						data: ref(mockPost),
+						pending: ref(false),
+						error: ref(null),
+						refresh: vi.fn(),
+					};
+				}),
+			);
+			vi.stubGlobal(
+				"$fetch",
+				vi.fn((url: string) => {
+					if (String(url).includes("/like")) {
+						return Promise.reject(new Error("Network error"));
+					}
+					return Promise.resolve(mockPost);
+				}),
+			);
+
+			const { default: PostPage } = await import("@/pages/posts/[slug]/index.vue");
+			const SuspenseWrapper: any = {
+				components: { PostPage },
+				template:
+					"<Suspense>" +
+					"<template #default><PostPage /></template>" +
+					"<template #fallback>Loading...</template>" +
+					"</Suspense>",
+			};
+			const wrapper = mount(SuspenseWrapper, {
+				global: {
+					stubs: {
+						NuxtLink: { template: '<a :href="to"><slot/></a>', props: ["to"] },
+						Icon: {
+							template: '<svg class="iconstub" :data-icon="icon"></svg>',
+							props: ["icon"],
+						},
+						MarkdownContent: {
+							template: '<div class="markdown-content"><div v-html="content"></div></div>',
+							props: ["content"],
+						},
+					},
+				},
+			});
+			await flushPromises();
+
+			await wrapper.find('button[type="button"]').trigger("click");
+			await flushPromises();
+			expect(wrapper.text()).toContain("点赞失败，请稍后重试。");
+
+			// After the auto-dismiss window the banner is gone even though the
+			// reader stays on the same post.
+			await vi.advanceTimersByTimeAsync(5001);
+			await flushPromises();
+			expect(wrapper.text()).not.toContain("点赞失败，请稍后重试。");
+			vi.useRealTimers();
+			wrapper.unmount();
 		});
 
 		it("updates the rendered like count after a successful like", async () => {
