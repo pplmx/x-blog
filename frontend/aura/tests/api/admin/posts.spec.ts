@@ -5,6 +5,7 @@ import {
 	createAdminPost,
 	deleteAdminPost,
 	getAdminPost,
+	getAdminPostViewsTrend,
 	getPostRevisions,
 	restorePostRevision,
 	updateAdminPost,
@@ -135,6 +136,14 @@ describe("admin post command", () => {
 
 		expect(commandCalls[0].path).toBe("/api/admin/posts/5");
 		expect(commandCalls[0].options.method).toBe("DELETE");
+		expect(commandCalls[0].options.headers).toEqual({ Authorization: "Bearer admin-jwt" });
+	});
+
+	it("fetches the per-post views trend with an admin GET", async () => {
+		await getAdminPostViewsTrend(42);
+
+		expect(commandCalls[0].path).toBe("/api/admin/stats/views/posts/42?days=30");
+		expect(commandCalls[0].options.method ?? "GET").toBe("GET");
 		expect(commandCalls[0].options.headers).toEqual({ Authorization: "Bearer admin-jwt" });
 	});
 });

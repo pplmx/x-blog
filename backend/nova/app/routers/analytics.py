@@ -8,10 +8,10 @@ The series advances on the write-on-read ``post_views_daily`` table from
 DEC-086 and tracks forward only (no backfill of historic counters).
 """
 
-from fastapi import APIRouter, Depends, Query, Request
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy.orm import Session
 
-from app import crud
+from app import crud, models
 from app.auth import User, get_current_admin
 from app.database import get_db
 from app.limiter import RATE_LIMIT_READ, limiter
@@ -35,6 +35,27 @@ def views_trend(
 ):
     """Last ``days`` days of total views + top posts by in-period views."""
     return crud.get_daily_views_stats(db, days=days)
+
+
+@router.get("/posts/{post_id}")
+@limiter.limit(f"{RATE_LIMIT_READ}/minute")
+def post_views_trend(
+    request: Request,  # noqa: ARG001
+    post_id: int,
+    days: int = Query(30, ge=1, le=365, description="number of days to include"),
+    db: Session = Depends(get_db),
+    _current_user: User = Depends(get_current_admin),
+):
+    """Per-post daily reading series for the post editor (DEC-287/TASK-372).
+
+    The dashboard shows the aggregate trend; this endpoint narrows it to one
+    post so the editor can render a per-post sparkline + period total. Same
+    admin gate as the other stats endpoints. An unknown post is a 404.
+    """
+    post = db.query(models.Post).filter(models.Post.id == post_id).first()
+    if post is None:
+        raise HTTPException(status_code=404, detail="Post not found")
+    return crud.get_post_views_trend(db, post_id, days=days)
 
 
 @follows_router.get("")

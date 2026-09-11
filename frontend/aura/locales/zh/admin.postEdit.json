@@ -70,6 +70,12 @@
 		"taxonomyLoadFailed": "分类/标签/系列加载失败，选择器可能不完整。",
 		"scheduledBadge": "定时发布",
 		"notifyRequiresSlug": "请先保存文章以生成 slug，再通知订阅者。",
-		"saveSuccess": "已保存"
+		"saveSuccess": "已保存",
+		"readingTrend": {
+			"title": "阅读趋势（30 天）",
+			"total": "近 30 天 {total} 次阅读",
+			"hint": "每日阅读量，用于判断内容热度走向",
+			"failed": "阅读趋势加载失败"
+		}
 	}
 }

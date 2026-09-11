@@ -1,8 +1,14 @@
 <script setup lang="ts">
 import { onBeforeRouteLeave } from "vue-router";
-import type { AdminPostDetail, PostCreate, PostRevisionSummary } from "~~/api/admin/posts";
+import type {
+	AdminPostDetail,
+	PostCreate,
+	PostRevisionSummary,
+	PostViewsTrend,
+} from "~~/api/admin/posts";
 import {
 	createAdminPost,
+	getAdminPostViewsTrend,
 	getPostRevisions,
 	restorePostRevision,
 	updateAdminPost,
@@ -32,6 +38,32 @@ const hydratedId = ref<number | null>(null);
 const effIsNew = computed(() => isNew && hydratedId.value === null);
 const currentPostId = computed<number | null>(() =>
 	effIsNew.value ? null : (postId ?? hydratedId.value),
+);
+
+// Per-post reading trend (DEC-287/TASK-372): the last 30 days of views for
+// THIS post, shown as a compact CSS-bar sparkline in the editor sidebar so the
+// operator sees whether the post is gaining or decaying readership. Fetched
+// for existing posts only (a new draft has no views yet). Buy-time research
+// confirmed the dashboard's custom-bar pattern (no chart dependency).
+const viewsTrend = ref<PostViewsTrend | null>(null);
+const viewsTrendFailed = ref(false);
+async function loadViewsTrend() {
+	const id = currentPostId.value;
+	if (id == null) {
+		viewsTrend.value = null;
+		return;
+	}
+	viewsTrendFailed.value = false;
+	try {
+		viewsTrend.value = await getAdminPostViewsTrend(id, 30);
+	} catch {
+		viewsTrend.value = null;
+		viewsTrendFailed.value = true;
+	}
+}
+watch(currentPostId, () => void loadViewsTrend(), { immediate: true });
+const trendMax = computed(() =>
+	Math.max(1, ...(viewsTrend.value?.series.map((d) => d.views) ?? [])),
 );
 
 const formData = ref<Partial<PostCreate>>({
@@ -1342,7 +1374,49 @@ function handleFileInput(e: Event) {
         </div>
       </div>
 
-      <div class="flex items-center gap-3 pt-2">
+      <!-- Per-post reading trend (DEC-287/TASK-372): a compact 30-day
+           sparkline so the operator can tell a gaining post from a decaying
+           one at a glance. The card renders only for existing posts (new
+           drafts have no views); a failed fetch shows an inline retry instead
+           of blocking editing — analytics is garnish, not a gate. -->
+      <div v-if="currentPostId" class="mt-6 border border-gray-200 dark:border-gray-700 rounded-xl p-4">
+        <template v-if="viewsTrend && !viewsTrendFailed">
+          <div class="flex items-baseline justify-between mb-2">
+            <span class="text-sm font-medium text-gray-900 dark:text-gray-100">
+              {{ t("admin.postEdit.readingTrend.title") }}
+            </span>
+            <span class="text-xs text-gray-500 dark:text-gray-400">
+              {{ t("admin.postEdit.readingTrend.total", { total: viewsTrend.total }) }}
+            </span>
+          </div>
+          <div class="flex items-end gap-[2px] h-12" aria-hidden="true">
+            <div
+              v-for="point in viewsTrend.series"
+              :key="point.day"
+              class="flex-1 rounded-sm bg-blue-500/70 dark:bg-blue-400/60"
+              :title="`${point.day}: ${point.views}`"
+              :style="{ height: `${Math.max(2, (point.views / trendMax) * 100)}%` }"
+            />
+          </div>
+          <p class="mt-1 text-[10px] text-gray-400 dark:text-gray-500">
+            {{ t("admin.postEdit.readingTrend.hint") }}
+          </p>
+        </template>
+        <div v-else-if="viewsTrendFailed" class="flex items-center justify-between">
+          <span class="text-sm text-red-600 dark:text-red-400">
+            {{ t("admin.postEdit.readingTrend.failed") }}
+          </span>
+          <button
+            type="button"
+            class="text-xs text-blue-600 dark:text-blue-400 hover:underline"
+            @click="loadViewsTrend"
+          >
+            {{ t("common.action.retry") }}
+          </button>
+        </div>
+      </div>
+
+      <div class="flex items-center gap-3 pt-4">
         <button
           v-if="formData.published"
           type="button"

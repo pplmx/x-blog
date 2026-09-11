@@ -9,6 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- **Per-post reading trend (DEC-287)**: the admin post editor shows a 30-day
+  view sparkline for the open post (`GET /api/admin/stats/views/posts/{id}`) so
+  the author sees whether a post is gaining or decaying readership at a glance.
 - **Reader password recovery (DEC-286)**: a reader who forgot their password can
   request a single-use email reset link at `/forgot-password` and redeem it at
   `/reset-password` (new password → all sessions revoked → auto-login). The

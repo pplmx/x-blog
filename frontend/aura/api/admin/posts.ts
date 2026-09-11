@@ -166,6 +166,21 @@ export function getPostRevisions(id: number): Promise<PostRevisionSummary[]> {
 	});
 }
 
+/** Per-post daily reading series for the editor sparkline (DEC-287/TASK-372). */
+export interface PostViewsTrend {
+	post_id: number;
+	days: number;
+	total: number;
+	series: Array<{ day: string; views: number }>;
+}
+
+/** The last `days` days of views for one post (admin only). */
+export function getAdminPostViewsTrend(postId: number, days: number = 30): Promise<PostViewsTrend> {
+	return command<PostViewsTrend>(`/api/admin/stats/views/posts/${postId}?days=${days}`, {
+		headers: adminAuthHeaders(),
+	});
+}
+
 /** Restore a stored revision as the live post (auth required). */
 export function restorePostRevision(id: number, revisionId: number): Promise<AdminPostDetail> {
 	return command<AdminPostDetail>(`/api/admin/posts/${id}/revisions/${revisionId}/restore`, {

@@ -3970,6 +3970,41 @@ def get_daily_views_stats(db: Session, days: int = 30) -> dict:
     }
 
 
+def get_post_views_trend(db: Session, post_id: int, days: int = 30) -> dict:
+    """Per-post daily reading series for the admin post editor (DEC-287/TASK-372).
+
+    Same zero-filled calendar axis as :func:`get_daily_views_stats`, but scoped
+    to a single post, so the operator sees whether that post is gaining or
+    decaying readership (answer: keep promoting it / follow up / retire). Reads
+    the same ``post_views_daily`` table (tracks forward only, no backfill).
+    The caller is responsible for 404ing an unknown post.
+    """
+    today = utc_now_naive().date()
+    first = today - timedelta(days=days - 1)
+
+    rows = (
+        db.query(models.PostViewsDaily.day, models.PostViewsDaily.views)
+        .filter(
+            models.PostViewsDaily.post_id == post_id,
+            models.PostViewsDaily.day >= first,
+        )
+        .all()
+    )
+    by_day = {day: int(views) for day, views in rows}
+    day = first
+    series = []
+    while day <= today:
+        series.append({"day": day.isoformat(), "views": by_day.get(day, 0)})
+        day += timedelta(days=1)
+
+    return {
+        "post_id": post_id,
+        "days": days,
+        "total": sum(by_day.values()),
+        "series": series,
+    }
+
+
 def get_comment_activity_stats(db: Session, days: int = 30) -> dict:
     """Comment-activity series + in-period top posts for the admin dashboard (DEC-154/TASK-189).
 

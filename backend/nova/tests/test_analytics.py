@@ -103,3 +103,36 @@ class TestViewsStatsAuth:
     def test_editor_allowed(self, client, editor_headers):
         response = client.get("/api/admin/stats/views", headers=editor_headers)
         assert response.status_code == 200
+
+
+class TestPostViewsTrend:
+    """Per-post daily series for the editor (DEC-287, TASK-372)."""
+
+    def test_per_post_series_scoped_and_zero_filled(self, client, db_session, auth_headers):
+        p1 = _create_post(db_session, "trend-a")
+        p2 = _create_post(db_session, "trend-b")
+        increment_views(db_session, p1.id)
+        increment_views(db_session, p1.id)
+        increment_views(db_session, p2.id)
+        response = client.get(f"/api/admin/stats/views/posts/{p1.id}?days=7", headers=auth_headers)
+        assert response.status_code == 200, response.text
+        data = response.json()
+        assert data["post_id"] == p1.id
+        # Only this post's views are summed — the other post's do not bleed in.
+        assert data["total"] == 2
+        assert len(data["series"]) == 7
+        assert data["series"][-1]["views"] == 2
+        assert all(point["views"] == 0 for point in data["series"][:-1])
+
+    def test_unknown_post_404(self, client, auth_headers):
+        response = client.get("/api/admin/stats/views/posts/999999", headers=auth_headers)
+        assert response.status_code == 404
+
+    def test_days_bounded(self, client, db_session, auth_headers):
+        post = _create_post(db_session, "trend-bounds")
+        assert client.get(f"/api/admin/stats/views/posts/{post.id}?days=0", headers=auth_headers).status_code == 422
+        assert client.get(f"/api/admin/stats/views/posts/{post.id}?days=400", headers=auth_headers).status_code == 422
+
+    def test_admin_gated(self, client, db_session):
+        post = _create_post(db_session, "trend-gate")
+        assert client.get(f"/api/admin/stats/views/posts/{post.id}").status_code == 401

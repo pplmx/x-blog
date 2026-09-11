@@ -70,6 +70,12 @@
 		"taxonomyLoadFailed": "Couldn't load categories/tags/series. The pickers may be incomplete.",
 		"scheduledBadge": "Scheduled",
 		"notifyRequiresSlug": "Save the post first to generate a slug, then notify subscribers.",
-		"saveSuccess": "Saved"
+		"saveSuccess": "Saved",
+		"readingTrend": {
+			"title": "Reading trend (30 days)",
+			"total": "{total} views in the last 30 days",
+			"hint": "Daily views — is this post gaining or decaying?",
+			"failed": "Failed to load reading trend"
+		}
 	}
 }

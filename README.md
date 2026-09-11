@@ -272,6 +272,11 @@ unknown addresses), and a reset token can never be replayed as a reader or
 admin credential (dedicated JWT audience). Email recovery needs SMTP configured
 (the same infra as the notification emails, DEC-197).
 
+**Per-post reading trend (DEC-287)**: the post editor shows a 30-day view
+sparkline for the open post (`GET /api/admin/stats/views/posts/{id}`) so the
+author can see whether a post is gaining or decaying readership at a glance —
+the per-post companion to the dashboard's aggregate trend (DEC-086).
+
 ## 🏗️ Architecture
 
 ![Architecture Diagram](./docs/x-blog-architecture.png)
