@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 296,
+  "round": 297,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-11T02:48:41+00:00",
+  "updated_at": "2026-09-11T03:31:28+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -11,7 +11,7 @@
       "version": 1,
       "created_at": "2026-08-06T13:23:41+00:00",
       "updated_at": "2026-08-06T13:23:41+00:00",
-      "touched_round": 296,
+      "touched_round": 297,
       "title": "backend-nova",
       "description": "FastAPI Python 3.14 backend at backend/nova; SQLAlchemy ORM; routers in app/routers, crud.py business logic, 656 lines"
     },
@@ -22052,6 +22052,92 @@
       "touched_round": 296,
       "commit": "a446b13",
       "title": "Idempotent approval + blank-q 422 + reader input bounds"
+    },
+    "ISS-482": {
+      "id": "ISS-482",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-11T03:26:56+00:00",
+      "updated_at": "2026-09-11T03:29:54+00:00",
+      "touched_round": 297,
+      "title": "PostCreate.series_order allows negatives (inconsistent with PostUpdate)",
+      "severity": "low",
+      "detail": "Create persisted a negative order that sorts an episode ahead of its peers in the public series detail; the update path already rejects via ge=0 (ISS-294)."
+    },
+    "ISS-483": {
+      "id": "ISS-483",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-11T03:26:56+00:00",
+      "updated_at": "2026-09-11T03:29:54+00:00",
+      "touched_round": 297,
+      "title": "PostCreate.tags / PostUpdate.tag_ids are unbounded",
+      "severity": "low",
+      "detail": "One admin request could create arbitrary Tag rows, and an over-length tag name hit the PG VARCHAR(50) overflow leading to an uncaught DataError 500; TagCreate.name is already capped at 50."
+    },
+    "ISS-484": {
+      "id": "ISS-484",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-11T03:26:57+00:00",
+      "updated_at": "2026-09-11T03:29:54+00:00",
+      "touched_round": 297,
+      "title": "ReaderCommentEdit.content accepts whitespace-only, storing a blank comment body",
+      "severity": "medium",
+      "detail": "A reader could PATCH their comment to spaces and store a blank body in moderation while CommentBase rejected the same input since round 276."
+    },
+    "TASK-362": {
+      "id": "TASK-362",
+      "type": "task",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-11T03:28:29+00:00",
+      "updated_at": "2026-09-11T03:29:53+00:00",
+      "touched_round": 297,
+      "category": "correctness",
+      "severity": "low",
+      "title": "Reject negative series_order on PostCreate",
+      "detail": "Add ge=0 to PostCreate.series_order (match PostUpdate, ISS-294); test create with -1 -> 422."
+    },
+    "TASK-363": {
+      "id": "TASK-363",
+      "type": "task",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-11T03:28:29+00:00",
+      "updated_at": "2026-09-11T03:29:53+00:00",
+      "touched_round": 297,
+      "category": "correctness",
+      "severity": "low",
+      "title": "Cap PostCreate.tags and PostUpdate.tag_ids",
+      "detail": "Bound list length (50) and per-tag name (50, the VARCHAR width) on create; bound tag_ids on update. Tests for 51 tags / 51-char name / 51 tag_ids -> 422."
+    },
+    "TASK-364": {
+      "id": "TASK-364",
+      "type": "task",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-11T03:28:29+00:00",
+      "updated_at": "2026-09-11T03:29:53+00:00",
+      "touched_round": 297,
+      "category": "correctness",
+      "severity": "medium",
+      "title": "Reject whitespace-only ReaderCommentEdit.content",
+      "detail": "Strip + min_length=1 mirroring CommentBase; test blank edit -> 422."
+    },
+    "CHG-477": {
+      "id": "CHG-477",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-11T03:29:52+00:00",
+      "updated_at": "2026-09-11T03:29:52+00:00",
+      "touched_round": 297,
+      "commit": "6cf7e9e",
+      "title": "Schema hardening: tag caps, series_order ge=0, blank comment edit"
     }
   },
   "edges": [
@@ -32997,6 +33083,78 @@
       "to": "ISS-480",
       "type": "resolves",
       "created_at": "2026-09-11T02:48:00+00:00"
+    },
+    {
+      "from": "ISS-482",
+      "to": "COMP-001",
+      "type": "located_in",
+      "created_at": "2026-09-11T03:31:27+00:00"
+    },
+    {
+      "from": "ISS-483",
+      "to": "COMP-001",
+      "type": "located_in",
+      "created_at": "2026-09-11T03:31:27+00:00"
+    },
+    {
+      "from": "ISS-484",
+      "to": "COMP-001",
+      "type": "located_in",
+      "created_at": "2026-09-11T03:31:27+00:00"
+    },
+    {
+      "from": "TASK-362",
+      "to": "ISS-482",
+      "type": "addresses",
+      "created_at": "2026-09-11T03:31:27+00:00"
+    },
+    {
+      "from": "TASK-363",
+      "to": "ISS-483",
+      "type": "addresses",
+      "created_at": "2026-09-11T03:31:27+00:00"
+    },
+    {
+      "from": "TASK-364",
+      "to": "ISS-484",
+      "type": "addresses",
+      "created_at": "2026-09-11T03:31:27+00:00"
+    },
+    {
+      "from": "CHG-477",
+      "to": "TASK-362",
+      "type": "implements",
+      "created_at": "2026-09-11T03:31:27+00:00"
+    },
+    {
+      "from": "CHG-477",
+      "to": "TASK-363",
+      "type": "implements",
+      "created_at": "2026-09-11T03:31:27+00:00"
+    },
+    {
+      "from": "CHG-477",
+      "to": "TASK-364",
+      "type": "implements",
+      "created_at": "2026-09-11T03:31:27+00:00"
+    },
+    {
+      "from": "CHG-477",
+      "to": "ISS-482",
+      "type": "resolves",
+      "created_at": "2026-09-11T03:31:27+00:00"
+    },
+    {
+      "from": "CHG-477",
+      "to": "ISS-483",
+      "type": "resolves",
+      "created_at": "2026-09-11T03:31:27+00:00"
+    },
+    {
+      "from": "CHG-477",
+      "to": "ISS-484",
+      "type": "resolves",
+      "created_at": "2026-09-11T03:31:28+00:00"
     }
   ]
 }
