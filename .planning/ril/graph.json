@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 298,
+  "round": 299,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-11T04:05:36+00:00",
+  "updated_at": "2026-09-11T04:55:07+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -22224,6 +22224,104 @@
       "touched_round": 298,
       "commit": "d75345e",
       "title": "Reader interaction polish: clipboard fallback, bookmark guard, history fallback"
+    },
+    "ISS-488": {
+      "id": "ISS-488",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-11T04:51:49+00:00",
+      "updated_at": "2026-09-11T04:53:04+00:00",
+      "touched_round": 299,
+      "title": "Print /posts/[slug]/print dead-ends on a missing or deleted post, and the tab title goes stale on SPA navigation between print slugs",
+      "severity": "medium",
+      "detail": "A stale share/bookmark print link to a removed post rendered a bare not-found line with no path onward; and the useHead title was a one-shot evaluated value, so client-side navigation between print slugs left the previous post's title on the tab (print.vue)."
+    },
+    "ISS-489": {
+      "id": "ISS-489",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-11T04:51:49+00:00",
+      "updated_at": "2026-09-11T04:53:04+00:00",
+      "touched_round": 299,
+      "title": "Bookmarks folder chip (n) counts go stale after remove/undo/clear-all",
+      "severity": "medium",
+      "detail": "Folder chips are server-derived (f.count); the sync add/remove is fire-and-forget and only loadFolders recomputes per-folder counts, so after a one-click remove, undo, or clear-all the chip stayed at its pre-action count while the list updated instantly (bookmarks.vue)."
+    },
+    "ISS-490": {
+      "id": "ISS-490",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-11T04:51:49+00:00",
+      "updated_at": "2026-09-11T04:53:04+00:00",
+      "touched_round": 299,
+      "title": "Sign-in prompt flashes at an authenticated reader on /account and /comments during hydration",
+      "severity": "medium",
+      "detail": "The reader token lives in localStorage (client-only): during SSR isAuthenticated is false, so the server rendered the guest 'sign in' prompt; on hydration the client re-reads localStorage and swaps to the account/list view, flashing the prompt at a signed-in reader (round-299 deep-dive, same class as CommentForm)."
+    },
+    "TASK-368": {
+      "id": "TASK-368",
+      "type": "task",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-11T04:52:02+00:00",
+      "updated_at": "2026-09-11T04:53:03+00:00",
+      "touched_round": 299,
+      "category": "correctness",
+      "severity": "medium",
+      "title": "Print view: offer a way home for a missing/deleted post and make the tab title reactive",
+      "detail": "Give the print not-found state a Home NuxtLink (like the article page) and make useHead title a getter closing over the post ref so SPA navigation between print slugs swaps the tab title instead of leaving the previous post's on it."
+    },
+    "TASK-369": {
+      "id": "TASK-369",
+      "type": "task",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-11T04:52:02+00:00",
+      "updated_at": "2026-09-11T04:53:04+00:00",
+      "touched_round": 299,
+      "category": "correctness",
+      "severity": "medium",
+      "title": "Bookmarks: refresh folder chip counts after remove/undo/clear-all",
+      "detail": "Schedule a delayed loadFolders (tracked + cleared on unmount) after the fire-and-forget cloud mirror settles so the (n) chip moves with the action."
+    },
+    "TASK-370": {
+      "id": "TASK-370",
+      "type": "task",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-11T04:52:03+00:00",
+      "updated_at": "2026-09-11T04:53:04+00:00",
+      "touched_round": 299,
+      "category": "correctness",
+      "severity": "medium",
+      "title": "Hydrate-gate guest block on account.vue and comments.vue",
+      "detail": "Render a neutral placeholder pre-mount, then decide guest vs. content after hydration, so the server-rendered sign-in prompt never flashes at an authenticated reader (same pattern as CommentForm)."
+    },
+    "CHG-479": {
+      "id": "CHG-479",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-11T04:52:39+00:00",
+      "updated_at": "2026-09-11T04:52:39+00:00",
+      "touched_round": 299,
+      "commit": "3703578",
+      "title": "Round-299 page polish: print loopback + reactive title, folder-chip count refresh, auth-flash gate"
+    },
+    "DEC-283": {
+      "id": "DEC-283",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-11T04:55:07+00:00",
+      "updated_at": "2026-09-11T04:55:07+00:00",
+      "touched_round": 299,
+      "title": "converged-idle (quality-convergence reached for the polish/bug-fix directive)",
+      "rationale": "All five stop conditions hold after rounds 296-299. (1) No active task above the 3.0 threshold — the graph holds zero active tasks. (2) High-severity issues are resolved or decision-deferred: ISS-242/243/244 remain governed by DEC-214 (multi-worker hardening deferred to a real shared-store deployment); this wave closed ISS-485/486/487 (round 298) and ISS-488/489/490 (round 299). The only remaining active issues are low-severity (ISS-451 /-me-history-stats is O(all-time), ISS-452 aware-datetime rows, both decision-tagged). (3) VERIFY green: frontend 1929 tests pass (113 files), nuxt typecheck clean, biome lint clean (381 files); backend unchanged this round (last baseline 1396 @93.78% SQLite + dev PG subsets 149/226/272 against 10.112.9.49:13310). (4) Four consecutive deep-dive rounds (296-299) produced only sub-threshold new tasks (2.5 max) — the exploration well has dried, not paused. (5) ril check consistent (1842 nodes / 1851 edges). Round 299 delivered genuine user-visible polish: print dead-end loopback + reactive tab title, bookmark folder-chip count refresh, and the sign-in-prompt hydration flash gate on /account and /comments.",
+      "alternatives_rejected": "Emit further round-tick chore commits (rejected: stop conditions hold, nothing above threshold). Keep deep-diving marginal surfaces (rejected: 4 straight sub-threshold rounds). Implement deferred candidates useUpload concurrency / TagFollowButton session guard / MediaPickerModal busy state / SubscribeButton denied hint / LanguageSwitcher Tab focus / useBookmarkFolder callers (rejected: each is a small polish with no user-visible defect open at threshold)."
     }
   },
   "edges": [
@@ -33313,6 +33411,60 @@
       "to": "ISS-487",
       "type": "resolves",
       "created_at": "2026-09-11T04:05:35+00:00"
+    },
+    {
+      "from": "CHG-479",
+      "to": "TASK-368",
+      "type": "implements",
+      "created_at": "2026-09-11T04:52:51+00:00"
+    },
+    {
+      "from": "CHG-479",
+      "to": "TASK-369",
+      "type": "implements",
+      "created_at": "2026-09-11T04:52:51+00:00"
+    },
+    {
+      "from": "CHG-479",
+      "to": "TASK-370",
+      "type": "implements",
+      "created_at": "2026-09-11T04:52:51+00:00"
+    },
+    {
+      "from": "CHG-479",
+      "to": "ISS-488",
+      "type": "resolves",
+      "created_at": "2026-09-11T04:52:51+00:00"
+    },
+    {
+      "from": "CHG-479",
+      "to": "ISS-489",
+      "type": "resolves",
+      "created_at": "2026-09-11T04:52:52+00:00"
+    },
+    {
+      "from": "CHG-479",
+      "to": "ISS-490",
+      "type": "resolves",
+      "created_at": "2026-09-11T04:52:52+00:00"
+    },
+    {
+      "from": "TASK-368",
+      "to": "ISS-488",
+      "type": "addresses",
+      "created_at": "2026-09-11T04:52:52+00:00"
+    },
+    {
+      "from": "TASK-369",
+      "to": "ISS-489",
+      "type": "addresses",
+      "created_at": "2026-09-11T04:52:52+00:00"
+    },
+    {
+      "from": "TASK-370",
+      "to": "ISS-490",
+      "type": "addresses",
+      "created_at": "2026-09-11T04:52:52+00:00"
     }
   ]
 }
