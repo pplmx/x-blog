@@ -16,12 +16,14 @@ from sqlalchemy import func
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from app import auth, crud, models, schemas
+from app import auth, crud, emailer, models, schemas
 from app.database import get_db
 from app.limiter import RATE_LIMIT_AUTH, RATE_LIMIT_EXPORT, RATE_LIMIT_REGISTER, RATE_LIMIT_WRITE, limiter
+from app.middleware import get_logger
 from app.routers.comments import AUTO_APPROVE_READER_COMMENTS, _notify_comment_approved
 from app.schemas import IdInt, NonNulStr, PageInt
 
+logger = get_logger("reader")
 router = APIRouter(prefix="/api/reader", tags=["reader"])
 
 # RFC-5321-ish email shape; deliberately conservative and dependency-free
@@ -570,6 +572,28 @@ class ReaderPasswordChangeResponse(BaseModel):
     reader: ReaderProfile
 
 
+class ReaderPasswordResetRequest(BaseModel):
+    """Body for requesting a password-reset link (forgot-password).
+
+    Only the email. The response is deliberately account-agnostic: the endpoint
+    always returns the same success body whether or not the address maps to an
+    account, so the endpoint is not an account-existence oracle (the register
+    oracle hardening DEC-060 flagged)."""
+
+    email: Annotated[NonNulStr, Field(min_length=3, max_length=254, pattern=_EMAIL_PATTERN)]
+
+
+class ReaderPasswordResetConfirm(BaseModel):
+    """Body for redeeming a password-reset token.
+
+    ``new_password`` bounds mirror registration/rotation (bcrypt only hashes the
+    first 72 bytes — equality between effective and stored credential requires
+    the same cap on both ends, security review TASK-131)."""
+
+    token: str = Field(min_length=1, max_length=2048)
+    new_password: str = Field(min_length=8, max_length=72)
+
+
 class ReaderPushSubscriptionItem(BaseModel):
     """One push subscription bound to the reader (device management view).
 
@@ -638,6 +662,97 @@ def change_my_password(
         "access_token": access_token,
         "token_type": "bearer",
         "reader": ReaderProfile.model_validate(current_reader),
+    }
+
+
+@router.post("/password-reset/request", status_code=202)
+@limiter.limit(f"{RATE_LIMIT_AUTH}/minute")
+def request_password_reset(
+    request: Request,  # noqa: ARG001
+    payload: ReaderPasswordResetRequest,
+    db: Session = Depends(get_db),
+):
+    """Email a password-reset link, without revealing whether the address exists.
+
+    Always returns the same 202 whether or not ``email`` maps to an account, so
+    the endpoint is not an account-existence oracle (DEC-286, TASK-371 — the
+    generic-response outcome DEC-060 wanted for register). The only non-202s are
+    infrastructure 503s (SMTP unconfigured / send failed), which carry no
+    account information either. A reset email is only sent to active accounts;
+    a deactivated reader gets the same generic 202 with no mail, so a reset link
+    can never be used to probe moderation state. Rate-limited like login.
+    """
+    normalized_email = payload.email.lower().strip()
+    if not emailer.is_email_configured():
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Email service is not configured on this server",
+        )
+    reader = (
+        db.query(auth.ReaderAccount)
+        .filter(
+            auth.ReaderAccount.email == normalized_email,
+            auth.ReaderAccount.is_active.is_(True),
+        )
+        .first()
+    )
+    # Unknown email is not an error: the same generic 202 is what matters. Only
+    # compose/send mail when an active account exists.
+    if reader is not None:
+        token = auth.create_password_reset_token(reader.id, token_version=reader.token_version or 0)
+        try:
+            accepted = emailer.send_password_reset_email(reader.email, token)
+        except Exception:
+            # Connection-level SMTP failure → infrastructure 503 (no account info).
+            logger.exception("password-reset email send raised")
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="Could not send the reset email, please try again later",
+            )
+        if not accepted:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="Could not send the reset email, please try again later",
+            )
+    # Generic success — the same body for known and unknown addresses.
+    return {"message": "If that email is registered, a reset link is on its way"}
+
+
+@router.post("/password-reset/confirm", response_model=ReaderPasswordChangeResponse)
+@limiter.limit(f"{RATE_LIMIT_AUTH}/minute")
+def confirm_password_reset(
+    request: Request,  # noqa: ARG001
+    payload: ReaderPasswordResetConfirm,
+    db: Session = Depends(get_db),
+):
+    """Redeem a reset token: set a new password, revoke every session, and log in.
+
+    ``get_reader_for_password_reset`` rejects expired/tampered/wrong-audience
+    tokens and tokens older than the reader's current password epoch. On
+    success the password is set and ``token_version`` is bumped (one bump — the
+    password epoch the new token is issued under), which invalidates every
+    previously issued reader JWT *and* this reset token (its ``ver`` no longer
+    matches). The reader is auto-logged-in with a fresh token, mirroring
+    register/password-change UX (DEC-286, TASK-371).
+    """
+    reader = auth.get_reader_for_password_reset(payload.token, db)
+    if reader is None:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid or expired reset link",
+        )
+    reader.password = auth.get_password_hash(payload.new_password)
+    reader.token_version = (reader.token_version or 0) + 1
+    db.commit()
+    db.refresh(reader)
+    reader.last_login_at = datetime.now(UTC)
+    db.commit()
+
+    access_token = auth.create_reader_token({"sub": reader.id}, token_version=reader.token_version or 0)
+    return {
+        "access_token": access_token,
+        "token_type": "bearer",
+        "reader": ReaderProfile.model_validate(reader),
     }
 
 

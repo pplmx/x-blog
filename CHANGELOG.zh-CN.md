@@ -9,6 +9,12 @@
 
 ## [Unreleased]
 
+- **读者密码找回 (DEC-286)**：忘记密码的读者可在 `/forgot-password` 申请一次性
+  邮件重置链接，并在 `/reset-password` 完成重置（设置新密码 → 撤销所有会话 →
+  自动登录）。请求端点刻意不构成"账号存在性探测"，重置令牌携带独立 JWT
+  audience，无法被重放为读者或管理员凭据。后端
+  `POST /api/reader/password-reset/{request,confirm}` + 测试；前端
+  `/forgot-password` 与 `/reset-password` 页面 + 中英文案 + 测试。
 - 部署修复：前端 Docker 构建固定到 `node:24.20.0-alpine3.24` — 此前固定的
   `node:24.8.1-alpine3.20` 已从 Docker Hub 移除，导致 Deploy 工作流中
   `Build and push frontend` 失败。

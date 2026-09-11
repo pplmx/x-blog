@@ -176,6 +176,13 @@ async function handleSubmit() {
             :minlength="mode === 'register' ? 8 : undefined"
             class="w-full px-4 py-3 border border-gray-200 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
           >
+          <NuxtLink
+            v-if="mode === 'login'"
+            to="/forgot-password"
+            class="inline-block mt-2 text-xs text-gray-500 hover:text-blue-600 transition-colors"
+          >
+            {{ t("reader.forgotPassword.link") }}
+          </NuxtLink>
         </div>
 
         <div

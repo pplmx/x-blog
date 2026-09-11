@@ -1,6 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it, type Mock, vi } from "vitest";
 
-import { readerLogin, readerRegister } from "../../../api/reader/auth.ts";
+import {
+	confirmPasswordReset,
+	readerLogin,
+	readerRegister,
+	requestPasswordReset,
+} from "../../../api/reader/auth.ts";
 
 let queryCalls: Array<{ path: unknown; options: Record<string, unknown> }>;
 
@@ -46,6 +51,28 @@ describe("reader auth queries", () => {
 		expect(queryCalls[0].path).toBe("/api/reader/login");
 		expect(queryCalls[0].options.method).toBe("POST");
 		expect(queryCalls[0].options.body).toEqual({ email: "ana@example.test", password: "secret" });
+		expect(queryCalls[0].options.server).toBe(false);
+	});
+
+	it("requests a password reset with only the email (no oracle)", () => {
+		requestPasswordReset({ email: "ana@example.test" });
+
+		expect(queryCalls[0].path).toBe("/api/reader/password-reset/request");
+		expect(queryCalls[0].options.method).toBe("POST");
+		expect(queryCalls[0].options.body).toEqual({ email: "ana@example.test" });
+		expect(queryCalls[0].options.headers).toEqual({ "Content-Type": "application/json" });
+		expect(queryCalls[0].options.server).toBe(false);
+	});
+
+	it("confirms a password reset with the token and new password", () => {
+		confirmPasswordReset({ token: "abc.def.ghi", new_password: "brandnew456" });
+
+		expect(queryCalls[0].path).toBe("/api/reader/password-reset/confirm");
+		expect(queryCalls[0].options.method).toBe("POST");
+		expect(queryCalls[0].options.body).toEqual({
+			token: "abc.def.ghi",
+			new_password: "brandnew456",
+		});
 		expect(queryCalls[0].options.server).toBe(false);
 	});
 });

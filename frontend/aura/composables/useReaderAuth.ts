@@ -7,7 +7,7 @@
  * never be reused against admin endpoints, so it lives in its own store key.
  *
  * Usage:
- *   const { isAuthenticated, reader, login, register, logout } = useReaderAuth();
+ *   const { isAuthenticated, reader, login, register, resetPassword, logout } = useReaderAuth();
  */
 
 import type { ReaderLoginResponse, ReaderProfile } from "~~/api/reader/auth";
@@ -117,6 +117,35 @@ export function useReaderAuth() {
 	};
 
 	/**
+	 * Redeem a password-reset token and adopt the fresh auto-login session
+	 * (DEC-286, TASK-371). The backend bumps token_version on reset, so the
+	 * returned token supersedes any previously stored one — updateToken (like
+	 * the in-account password change) is the right persistence path.
+	 */
+	const resetPassword = async (
+		token: string,
+		newPassword: string,
+	): Promise<ReaderLoginResponse> => {
+		const { confirmPasswordReset } = await import("~~/api/reader/auth");
+		const { data, error } = await confirmPasswordReset({ token, new_password: newPassword });
+		if (error.value || !data.value?.access_token) {
+			// Preserve the HTTP status (a 400 = used/expired reset token, i.e. a
+			// business-level rejection, NOT a network failure) on the thrown
+			// error so the reset page can tell "invalid link" from "network".
+			const status =
+				(error.value as { statusCode?: number } | undefined)?.statusCode ??
+				(error.value as { status?: number } | undefined)?.status;
+			const err = new Error(error.value?.message || "Password reset failed") as Error & {
+				statusCode?: number;
+			};
+			if (status !== undefined) err.statusCode = status;
+			throw err;
+		}
+		updateToken(data.value);
+		return data.value;
+	};
+
+	/**
 	 * Persist a (possibly rotated) session without clearing the rest — used
 	 * after a password change returns a fresh token whose version supersedes
 	 * the stored one (DEC-067, TASK-141). Login/register use setSession.
@@ -141,6 +170,7 @@ export function useReaderAuth() {
 		reader,
 		login,
 		register,
+		resetPassword,
 		logout,
 		updateToken,
 		setProfile,

@@ -32,6 +32,41 @@
 			"account": "Account",
 			"history": "History",
 			"notifications": "Notifications"
+		},
+		"forgotPassword": {
+			"seoTitle": "Forgot password",
+			"seoDesc": "Reset your X-Blog reader account password by email.",
+			"title": "Forgot password",
+			"subtitle": "Enter the email you registered with and we'll send you a reset link.",
+			"email": "Email",
+			"emailPlaceholder": "you@example.com",
+			"submit": "Send reset link",
+			"submitting": "Sending…",
+			"sent": "If that email is registered, a password-reset email is on its way. Open the link within 30 minutes to set a new password.",
+			"backToLogin": "Back to login",
+			"link": "Forgot password?",
+			"errors": {
+				"network": "A network error occurred. Please try again.",
+				"service": "The email service is unavailable right now. Please try again later."
+			}
+		},
+		"resetPassword": {
+			"seoTitle": "Reset password",
+			"seoDesc": "Set a new password for your X-Blog reader account via the emailed reset link.",
+			"title": "Set a new password",
+			"subtitle": "Enter a new password to regain access to your account.",
+			"password": "New password",
+			"passwordPlaceholder": "At least 8 characters",
+			"confirm": "Confirm new password",
+			"confirmPlaceholder": "Re-enter the new password",
+			"mismatch": "The two passwords do not match.",
+			"submit": "Reset password and sign in",
+			"submitting": "Resetting…",
+			"success": "Password reset. You are now signed in.",
+			"invalid": "This reset link is invalid or has expired. Please request a new one.",
+			"errors": {
+				"network": "A network error occurred. Please try again."
+			}
 		}
 	}
 }

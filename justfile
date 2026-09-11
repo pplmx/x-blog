@@ -132,12 +132,19 @@ e2e:
     # Throwaway VAPID keypair so the Web Push reader/admin e2e journeys run
     # locally too (CI parity, .github/workflows/test.yml) — without it the
     # /api/push/vapid-public-key endpoint 503s and every push-gated test fails.
-    cd backend/nova && VAPID_KEYS=$(.venv/bin/python -c 'import base64; from cryptography.hazmat.primitives.asymmetric import ec; k=ec.generate_private_key(ec.SECP256R1()); p=k.public_key().public_numbers(); print(base64.urlsafe_b64encode(b"\x04"+p.x.to_bytes(32,"big")+p.y.to_bytes(32,"big")).rstrip(b"=").decode()+" "+base64.urlsafe_b64encode(k.private_numbers().private_value.to_bytes(32,"big")).rstrip(b"=").decode())') && VAPID_PUBLIC_KEY=${VAPID_KEYS% *} && VAPID_PRIVATE_KEY=${VAPID_KEYS##* } && APP_ENV=development RATE_LIMIT_AUTH_PER_MINUTE=1000 RATE_LIMIT_REGISTER_PER_MINUTE=1000 RATE_LIMIT_READ_PER_MINUTE=1000 RATE_LIMIT_WRITE_PER_MINUTE=1000 TRUSTED_PROXIES=* VAPID_PUBLIC_KEY="$VAPID_PUBLIC_KEY" VAPID_PRIVATE_KEY="$VAPID_PRIVATE_KEY" VAPID_SUBJECT="mailto:e2e@example.com" uv run uvicorn app.main:app --host 0.0.0.0 --port 18888 &
+    #
+    # A local SMTP sink lets the reader password-reset journey (DEC-286) really
+    # send mail: the backend gets SMTP_HOST=127.0.0.1:2525 and the sink dumps
+    # every message to a JSONL file the password-reset spec reads to extract
+    # the single-use token (scripts/smtp_sink.py, dev-only).
+    @rm -f /tmp/x-blog-smtp-sink.jsonl
+    cd backend/nova && .venv/bin/python scripts/smtp_sink.py --port 2525 --dump /tmp/x-blog-smtp-sink.jsonl &
+    cd backend/nova && VAPID_KEYS=$(.venv/bin/python -c 'import base64; from cryptography.hazmat.primitives.asymmetric import ec; k=ec.generate_private_key(ec.SECP256R1()); p=k.public_key().public_numbers(); print(base64.urlsafe_b64encode(b"\x04"+p.x.to_bytes(32,"big")+p.y.to_bytes(32,"big")).rstrip(b"=").decode()+" "+base64.urlsafe_b64encode(k.private_numbers().private_value.to_bytes(32,"big")).rstrip(b"=").decode())') && VAPID_PUBLIC_KEY=${VAPID_KEYS% *} && VAPID_PRIVATE_KEY=${VAPID_KEYS##* } && APP_ENV=development RATE_LIMIT_AUTH_PER_MINUTE=1000 RATE_LIMIT_REGISTER_PER_MINUTE=1000 RATE_LIMIT_READ_PER_MINUTE=1000 RATE_LIMIT_WRITE_PER_MINUTE=1000 TRUSTED_PROXIES=* SMTP_HOST=127.0.0.1 SMTP_PORT=2525 SMTP_FROM="blog@example.com" SMTP_STARTTLS=false SITE_URL="http://localhost:34567" VAPID_PUBLIC_KEY="$VAPID_PUBLIC_KEY" VAPID_PRIVATE_KEY="$VAPID_PRIVATE_KEY" VAPID_SUBJECT="mailto:e2e@example.com" uv run uvicorn app.main:app --host 0.0.0.0 --port 18888 &
     @sleep 3 && curl -sf http://localhost:18888/health > /dev/null || (echo "Backend failed to start" && exit 1)
     @echo "Running e2e tests (Playwright starts Nuxt on :34567)..."
     cd frontend/aura && pnpm test:e2e
     @echo "Stopping services..."
-    @pkill -f "uvicorn app.main:app" 2>/dev/null; echo "done"
+    @pkill -f "uvicorn app.main:app" 2>/dev/null; @pkill -f "smtp_sink.py" 2>/dev/null; echo "done"
 
 # Run e2e tests against live Nuxt dev server (alias for `e2e`)
 e2e-nuxt: e2e

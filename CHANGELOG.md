@@ -9,6 +9,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- **Reader password recovery (DEC-286)**: a reader who forgot their password can
+  request a single-use email reset link at `/forgot-password` and redeem it at
+  `/reset-password` (new password → all sessions revoked → auto-login). The
+  request endpoint is deliberately not an account-existence oracle, and the
+  reset token carries its own JWT audience so it can never be replayed as a
+  reader or admin credential. Backend endpoints
+  `POST /api/reader/password-reset/{request,confirm}` + tests; frontend
+  `/forgot-password` and `/reset-password` pages + zh/en i18n + tests.
 - Deploy fix: pin the frontend Docker build to `node:24.20.0-alpine3.24` — the
   previously pinned `node:24.8.1-alpine3.20` was pruned from Docker Hub, so
   `Build and push frontend` failed in the Deploy workflow.

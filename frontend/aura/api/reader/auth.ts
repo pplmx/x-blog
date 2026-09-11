@@ -37,3 +37,30 @@ export function readerLogin(body: { email: string; password: string }) {
 		server: false,
 	});
 }
+
+/**
+ * Request a password-reset email (forgot-password). Always returns the same
+ * response whether or not the address exists (the backend deliberately avoids
+ * an account-existence oracle); the UI shows a generic success either way.
+ */
+export function requestPasswordReset(body: { email: string }) {
+	return query<{ message: string }>("/api/reader/password-reset/request", {
+		method: "POST",
+		headers: { "Content-Type": "application/json" },
+		body,
+		server: false,
+	});
+}
+
+/**
+ * Redeem a password-reset token. Same ref-based contract as login/register:
+ * on success the backend returns a fresh reader session (auto-login).
+ */
+export function confirmPasswordReset(body: { token: string; new_password: string }) {
+	return query<ReaderLoginResponse>("/api/reader/password-reset/confirm", {
+		method: "POST",
+		headers: { "Content-Type": "application/json" },
+		body,
+		server: false,
+	});
+}

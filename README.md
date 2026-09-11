@@ -229,6 +229,8 @@ limited (default 5/min/IP).
 | DELETE | `/api/reader/me/comments/{id}`            | Delete one of the reader's own comments (any status)                                         |
 | PATCH  | `/api/reader/me`                          | Update display name (email immutable) (DEC-067)                                              |
 | POST   | `/api/reader/me/password`                 | Change password (revokes other sessions, returns fresh token)                                |
+| POST   | `/api/reader/password-reset/request`      | Email a password-reset link (generic 202; 503 only if email unconfigured) (DEC-286)          |
+| POST   | `/api/reader/password-reset/confirm`      | Redeem the reset token: set a new password, revoke all sessions, auto-login (DEC-286)        |
 | GET    | `/api/reader/me/push-subscriptions`       | Reader's push devices (no keys) (DEC-067)                                                    |
 | DELETE | `/api/reader/me/push-subscriptions/{id}`  | Revoke one push device (DEC-067)                                                             |
 | GET    | `/api/reader/me/notifications`            | Reader's durable notification inbox (read/unread) (DEC-160)                                  |
@@ -260,6 +262,15 @@ link back to each thread, and a delete action scoped to their own comment.
 edit their display name and rotate their password (the current password is
 verified, all other sessions are signed out, and a fresh token is issued), and
 inspect/revoke the browser push devices bound to their account.
+
+**Reader password recovery (DEC-286)**: a reader who forgot their password
+requests a reset link at `/forgot-password`; the backend emails a single-use,
+30-minute reset token to the registered address and `/reset-password` redeems
+it (set a new password → all old sessions revoked → auto-login). The request is
+deliberately not an account-existence oracle (same generic 202 for known and
+unknown addresses), and a reset token can never be replayed as a reader or
+admin credential (dedicated JWT audience). Email recovery needs SMTP configured
+(the same infra as the notification emails, DEC-197).
 
 ## 🏗️ Architecture
 

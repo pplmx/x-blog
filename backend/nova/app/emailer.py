@@ -225,3 +225,42 @@ def _build_message(item: EmailItem, from_addr: str, to_addr: str, base_url: str)
         subtype="html",
     )
     return msg
+
+
+def send_password_reset_email(to_addr: str, reset_token: str) -> bool:
+    """Send a reader's password-reset mail with its single-use reset link.
+
+    The reset email is *not* part of the opt-in notification fan-out (it is a
+    security-recovery delivery a reader explicitly requested), so it bypasses
+    the per-kind pref gate and is sent straight through the configured SMTP
+    path. Requires SMTP to be configured — the caller (the request endpoint)
+    checks ``is_email_configured()`` first and maps a missing config to a 503 so
+    the request never silently appears to succeed. Returns whether SMTP accepted
+    the message (RFC errors -> False); connection-level errors raise, which the
+    caller treats as a 503 (send failed) — in both cases the failure is an
+    infrastructure condition, never account existence. (DEC-286, TASK-371)
+    """
+    from_addr = _env("SMTP_FROM") or "no-reply@localhost"
+    base_url = _env("SITE_URL") or "http://localhost:3000"
+    link = f"{base_url.rstrip('/')}/reset-password?token={reset_token}"
+    subject = "重置密码 / Reset password"
+    body = (
+        "我们收到了重置你 X-Blog 账号密码的请求。\n"
+        "点击下面的链接设置新密码（30 分钟内有效，使用一次后失效）：\n\n"
+        f"{link}\n\n"
+        "如果你没有请求重置密码，请忽略这封邮件，你的密码不会被更改。"
+    )
+    html_body = (
+        "<p>我们收到了重置你 X-Blog 账号密码的请求。</p>"
+        "<p>点击下面的链接设置新密码（30 分钟内有效，使用一次后失效）：</p>"
+        f'<p><a href="{html.escape(link, quote=True)}">重新设置密码</a></p>'
+        "<p>如果你没有请求重置密码，请忽略这封邮件，你的密码不会被更改。</p>"
+    )
+    msg = EmailMessage()
+    msg["From"] = from_addr
+    msg["To"] = to_addr
+    msg["Subject"] = subject
+    msg.set_content(f"{subject}\n\n{body}")
+    msg.add_alternative(html_body, subtype="html")
+    flags = send_messages_flags([msg])
+    return bool(flags and flags[0])

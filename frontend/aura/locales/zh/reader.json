@@ -32,6 +32,41 @@
 			"account": "账号",
 			"history": "阅读历史",
 			"notifications": "通知"
+		},
+		"forgotPassword": {
+			"seoTitle": "忘记密码",
+			"seoDesc": "通过邮箱重置你的 X-Blog 账号密码。",
+			"title": "忘记密码",
+			"subtitle": "输入注册时使用的邮箱，我们会发送一封重置链接给你。",
+			"email": "邮箱",
+			"emailPlaceholder": "you@example.com",
+			"submit": "发送重置链接",
+			"submitting": "发送中…",
+			"sent": "如果该邮箱已注册，我们已发送一封密码重置邮件，请在 30 分钟内点击邮件中的链接设置新密码。",
+			"backToLogin": "返回登录",
+			"link": "忘记密码？",
+			"errors": {
+				"network": "网络错误，请重试。",
+				"service": "邮件服务暂不可用，请稍后再试。"
+			}
+		},
+		"resetPassword": {
+			"seoTitle": "重置密码",
+			"seoDesc": "通过邮箱重置链接设置你的 X-Blog 账号新密码。",
+			"title": "设置新密码",
+			"subtitle": "输入一个新密码来恢复你的账号访问。",
+			"password": "新密码",
+			"passwordPlaceholder": "至少 8 个字符",
+			"confirm": "确认新密码",
+			"confirmPlaceholder": "再次输入新密码",
+			"mismatch": "两次输入的密码不一致。",
+			"submit": "重置密码并登录",
+			"submitting": "重置中…",
+			"success": "密码已重置，已为你自动登录。",
+			"invalid": "重置链接无效或已过期，请重新发起忘记密码流程。",
+			"errors": {
+				"network": "网络错误，请重试。"
+			}
 		}
 	}
 }

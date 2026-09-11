@@ -170,6 +170,57 @@ def create_reader_token(data: dict, token_version: int = 0) -> str:
     return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
 
 
+# Password-reset token audience: a third, separate audience from admin/reader
+# so a reset token can never be replayed as either credential kind (the same
+# audience-separation invariant that keeps reader tokens off admin endpoints).
+# A reset token is short-lived and single-purpose: it only unlocks
+# /api/reader/password-reset/confirm. (DEC-286, TASK-371)
+READER_PASSWORD_RESET_AUDIENCE = "x-blog-password-reset"
+# Lifetime of a password-reset token. Shorter than reader/login tokens: a reset
+# link is usually opened within minutes, and a long-lived token widens the
+# replay window if the mail is ever forwarded/leaked.
+PASSWORD_RESET_EXPIRE_MINUTES = int(os.getenv("PASSWORD_RESET_EXPIRE_MINUTES", "30"))
+
+
+def create_password_reset_token(reader_id: int, token_version: int = 0) -> str:
+    """Create a single-purpose password-reset JWT.
+
+    Stamped with its own audience (x-blog-password-reset), the reader ``sub``
+    and the reader's current ``token_version``. The ``ver`` claim ties the token
+    to the password epoch: any password change (initiated or self-service) bumps
+    ``token_version``, which invalidates not just live reader JWTs but also this
+    reset token — a used reset link cannot be replayed. (DEC-286, TASK-371)
+    """
+    to_encode: dict = {"sub": str(reader_id), "ver": token_version, "aud": READER_PASSWORD_RESET_AUDIENCE}
+    expire = datetime.now(UTC) + timedelta(minutes=PASSWORD_RESET_EXPIRE_MINUTES)
+    to_encode["exp"] = expire
+    return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+
+
+def get_reader_for_password_reset(token: str, db: Session) -> ReaderAccount | None:
+    """Resolve the reader a valid reset token names, else None.
+
+    Mirrors ``get_current_reader``'s checks: audience must match the reset
+    audience (a reader or admin JWT can never unlock a reset), ``ver`` must
+    equal the reader's current ``token_version`` (a token issued before a
+    password change — including a previous successful reset — is dead), and the
+    account must still be active. A deactivated reader is deliberately not
+    recoverable through this flow: the operator disabled the account, so
+    granting a password reset would let them back in. (DEC-286, TASK-371)
+    """
+    payload = _decode_payload(token, audience=READER_PASSWORD_RESET_AUDIENCE)
+    if payload is None or payload.get("aud") != READER_PASSWORD_RESET_AUDIENCE:
+        return None
+    reader_id = payload.get("sub")
+    if reader_id is None:
+        return None
+    token_version = payload.get("ver", 0)
+    reader = db.query(ReaderAccount).filter(ReaderAccount.id == reader_id).first()
+    if reader is None or token_version != (reader.token_version or 0) or reader.is_active is False:
+        return None
+    return reader
+
+
 def _decode_payload(token: str, audience: str | None = None) -> dict | None:
     """Decode+verify a JWT, returning its claims or None on any failure.
 
