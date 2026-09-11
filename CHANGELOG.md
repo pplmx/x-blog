@@ -9,6 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- **Reading density (DEC-288)**: post pages gain an A−/A+ body-text scale
+  (three sizes) remembered per device across page loads — long-form reading
+  comfort with no account required.
 - **Per-post reading trend (DEC-287)**: the admin post editor shows a 30-day
   view sparkline for the open post (`GET /api/admin/stats/views/posts/{id}`) so
   the author sees whether a post is gaining or decaying readership at a glance.

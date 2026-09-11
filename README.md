@@ -277,6 +277,11 @@ sparkline for the open post (`GET /api/admin/stats/views/posts/{id}`) so the
 author can see whether a post is gaining or decaying readership at a glance —
 the per-post companion to the dashboard's aggregate trend (DEC-086).
 
+**Reading density (DEC-288)**: on every post page the reader can scale the
+article body text with A−/A+ (three sizes). The choice is remembered per device
+(localStorage) and applies to freshly loaded documents too — long-form reading
+comfort with no account required.
+
 ## 🏗️ Architecture
 
 ![Architecture Diagram](./docs/x-blog-architecture.png)

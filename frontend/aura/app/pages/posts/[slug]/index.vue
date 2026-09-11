@@ -15,6 +15,7 @@ import { parseApiDate } from "~~/composables/apiDate";
 import { coverImageSrc } from "~~/composables/useCoverImage";
 import { markdownToHtml } from "~~/composables/useMarkdown";
 import { useReaderAuth } from "~~/composables/useReaderAuth";
+import { useReadingDensity } from "~~/composables/useReadingDensity";
 import { readingMinutes } from "~~/composables/useReadingTime";
 import { useRecentlyViewed } from "~~/composables/useRecentlyViewed";
 import { useResumeReading } from "~~/composables/useResumeReading";
@@ -51,6 +52,15 @@ function focusPostTitle() {
 // when its detail page loads (dedup/cap/prune live in useRecentlyViewed).
 const { record } = useRecentlyViewed();
 const { isAuthenticated } = useReaderAuth();
+// Reading density (DEC-288/TASK-373): A-/A+ body-text scale, persisted locally.
+// The composable sets the scale factor on <html> (documentElement), where the
+// Markdown body reads it via the inherited --reader-density CSS var.
+const {
+	increase: densityIncrease,
+	decrease: densityDecrease,
+	isMin: densityMin,
+	isMax: densityMax,
+} = useReadingDensity();
 watch(
 	() => (post.value ? { slug: post.value.slug, title: post.value.title } : null),
 	(p) => {
@@ -711,7 +721,9 @@ function handleCommentSubmitted(created: Comment | undefined) {
           <div class="absolute inset-0 bg-gradient-to-t from-black/10 to-transparent" />
         </div>
 
-        <!-- Markdown content -->
+        <!-- Markdown content (density: the em-based body font/leading in
+             MarkdownContent scale with the inherited --reader-density var set
+             on <html> by useReadingDensity, DEC-288/TASK-373) -->
         <div v-if="post.content" class="prose-config">
           <MarkdownContent :content="post.content" />
         </div>
@@ -755,6 +767,34 @@ function handleCommentSubmitted(created: Comment | undefined) {
         <!-- Share -->
         <div class="mt-6">
           <ShareButtons :title="post.title" />
+        </div>
+
+        <!-- Reading density (DEC-288/TASK-373): A-/A+ body-text scale for
+             long-form comfort, remembered per device. The buttons apply a CSS
+             var to the prose wrapper; heading sizes intentionally stay so the
+             hierarchy survives the scale. -->
+        <div class="mt-8 flex items-center gap-3">
+          <span class="text-sm text-gray-500 dark:text-gray-400">{{ t("post.density.label") }}</span>
+          <span class="inline-flex items-center gap-1 border border-gray-200 dark:border-gray-700 rounded-full px-1 py-0.5" role="group" :aria-label="t('post.density.label')">
+            <button
+              type="button"
+              :disabled="densityMin"
+              :aria-label="t('post.density.decrease')"
+              class="w-7 h-7 inline-flex items-center justify-center rounded-full text-sm text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-700 dark:hover:text-gray-200 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+              @click="densityDecrease"
+            >
+              A−
+            </button>
+            <button
+              type="button"
+              :disabled="densityMax"
+              :aria-label="t('post.density.increase')"
+              class="w-7 h-7 inline-flex items-center justify-center rounded-full text-base text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-700 dark:hover:text-gray-200 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+              @click="densityIncrease"
+            >
+              A+
+            </button>
+          </span>
         </div>
 
         <!-- Comments: keyed by post id so SPA navigation (prev/next, related,

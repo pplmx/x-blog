@@ -19,6 +19,11 @@
 		"backToArticle": "Back to article",
 		"resumeReading": "Resumed at {percent}%",
 		"backToTop": "Back to top",
-		"tableOfContents": "Table of contents"
+		"tableOfContents": "Table of contents",
+		"density": {
+			"label": "Text size",
+			"increase": "Increase text size",
+			"decrease": "Decrease text size"
+		}
 	}
 }

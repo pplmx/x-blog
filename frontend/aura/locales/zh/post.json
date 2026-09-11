@@ -19,6 +19,11 @@
 		"backToArticle": "返回文章",
 		"resumeReading": "已续读至 {percent}%",
 		"backToTop": "回到顶部",
-		"tableOfContents": "目录"
+		"tableOfContents": "目录",
+		"density": {
+			"label": "字号调节",
+			"increase": "增大字号",
+			"decrease": "减小字号"
+		}
 	}
 }

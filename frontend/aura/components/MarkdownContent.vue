@@ -374,8 +374,15 @@ function lineNumbers(code: string): number[] {
 <style scoped>
 @reference "tailwindcss";
 .markdown-content {
-  @apply text-gray-800 dark:text-gray-200 leading-7;
-  font-size: 1.0625rem;
+  @apply text-gray-800 dark:text-gray-200;
+  /* Reading density (DEC-288/TASK-373): the body font/leading are em-based so
+     the post page can scale them with a `--reader-density` factor (a control
+     the reader persists locally). Defaults to the long-standing 1.0625rem/1.75
+     line-height unless the wrapper sets the variable — a no-op everywhere else
+     (print, preview, search snippets). Headings stay rem-based so hierarchy
+     survives scaling. */
+  font-size: calc(1.0625rem * var(--reader-density, 1));
+  line-height: calc(1.75 * var(--reader-density, 1));
 }
 
 .markdown-content :deep(p) {
