@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 303,
+  "round": 304,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-11T15:17:56+00:00",
+  "updated_at": "2026-09-11T16:34:33+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -22455,7 +22455,7 @@
       "version": 1,
       "created_at": "2026-09-11T13:05:41+00:00",
       "updated_at": "2026-09-11T13:05:41+00:00",
-      "touched_round": 302,
+      "touched_round": 303,
       "title": "Switch engine to feature-evolution mode (operator: 功能探索开发模式)",
       "rationale": "Operator re-invoked graph-engineering on 2026-09-11 with an explicit feature-exploration directive (功能探索开发模式), superseding the round-300+ polish directive (DEC-284). Quality convergence was already reached at DEC-283 (zero active tasks, all five stop conditions held), so §11 feature-evolution mode is the correct next mode. Backlog sourcing for this round surfaces a long-deferred candidate that is now unblocked: reader password recovery was repeatedly gate-rejected in DEC-055/060/061/064/066/067/068/070 purely for 'needs SMTP infra' — and DEC-197/201 delivered that SMTP email channel, so the blocker is removed. §11.2 value gate: (user) a registered reader who forgot their password is hard-locked out of cloud bookmarks/history/follows/formats with zero self-service; (slice) a vertical password-reset flow = backend reset-token endpoints + reset email + frontend forgot/reset pages + auto-login, net-new and user-verifiable.",
       "alternatives_rejected": "(a) Keep polishing reader-interaction details (rejected: that was DEC-284's directive, already converged; no active above-threshold task remains). (b) Build a newsletter/one-click-unsubscribe (rejected: increment on the just-delivered email surface, no distinct user-visible problem). (c) Fabricate a button-level feature to keep committing (rejected: value gate §11.2, explicit anti-pattern DEC-073)."
@@ -22584,11 +22584,11 @@
     "DEC-288": {
       "id": "DEC-288",
       "type": "decision",
-      "status": "active",
-      "version": 1,
+      "status": "resolved",
+      "version": 2,
       "created_at": "2026-09-11T15:17:21+00:00",
-      "updated_at": "2026-09-11T15:17:21+00:00",
-      "touched_round": 302,
+      "updated_at": "2026-09-11T16:33:02+00:00",
+      "touched_round": 303,
       "title": "Feature-evolution round 303 delivered: per-post reading trend (TASK-372 complete); next candidate selected",
       "rationale": "Round 303 delivered the per-post reading-trend slice: crud.get_post_views_trend + GET /api/admin/stats/views/posts/{id} (admin-gated, 404, days bounded) over the existing post_views_daily table, a CSS-bar 30-day sparkline card in the admin post editor with failed-retry, zh/en i18n, 4 backend contract tests + a frontend API test + a real-browser Playwright check (seed views via public /view endpoint -> card renders). Gates green: backend 1413 at 93.79 percent, frontend 1952, typecheck/biome/ruff/pyright. Evidence EV-238. Feature mode continues. Next candidate for the following round: reader reading-density preference on the post page - a small persistent A/AA font-size + content-width control (localStorage), a self-contained frontend vertical slice for long-form readers and accessibility needs; one-sentence acceptance: a reader changes the post reading size/density and the choice is remembered on their device. This is the strongest remaining value-gate-passing candidate after reader password recovery and per-post trend; the residual backlog (avatars, comment reactions, PWA/offline, WebP auto-transcode, one-click email unsubscribe) has repeatedly failed or been deferred at the gate in DEC-055..203.",
       "alternatives_rejected": "Stop feature mode now (feature backlog not yet two-rounds-rejected, 11.5.3; a passing candidate exists). Chase avatars/reactions/PWA (repeatedly gate-rejected or deferred in earlier decisions). WebP auto-transcode (explicitly deferred DEC-184 as risk to proven upload validation; backend-internal, not a distinct user-visible problem)."
@@ -22596,16 +22596,51 @@
     "TASK-373": {
       "id": "TASK-373",
       "type": "task",
-      "status": "active",
-      "version": 1,
+      "status": "resolved",
+      "version": 2,
       "created_at": "2026-09-11T15:17:55+00:00",
-      "updated_at": "2026-09-11T15:17:55+00:00",
-      "touched_round": 302,
+      "updated_at": "2026-09-11T16:33:02+00:00",
+      "touched_round": 303,
       "category": "core-feature",
       "title": "Reader reading-density preference: persistent A/AA font-size + content-width control on the post page (localStorage), frontend vertical slice + component/page tests",
       "severity": "medium",
       "effort": "small",
       "confidence": 0.85
+    },
+    "CHG-485": {
+      "id": "CHG-485",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-11T16:33:02+00:00",
+      "updated_at": "2026-09-11T16:33:02+00:00",
+      "touched_round": 303,
+      "commit": "5ce127e050071359964e541a87d46c606443b4bd",
+      "title": "feat(reader): reading-density A-/A+ control on post pages"
+    },
+    "EV-239": {
+      "id": "EV-239",
+      "type": "evidence",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-11T16:33:02+00:00",
+      "updated_at": "2026-09-11T16:33:02+00:00",
+      "touched_round": 303,
+      "source": "CHG-485 5ce127e050071359964e541a87d46c606443b4bd",
+      "confidence": 1.0,
+      "title": "Reading-density feature delivered and browser-verified: 5 composable unit tests (bounds, persistence, style output) + a real-browser Playwright journey (A+ grows the computed body font-size, choice lands in localStorage, fresh document re-applies it, A- steps back and is disabled at the floor). A real bug was caught and fixed by the browser verification: Vue SSR hydration does not reconcile a :style object binding whose server markup carried the default, so the persisted density rendered as default until an interaction; fixed by setting the CSS var on document.documentElement imperatively. Gates green: frontend 1957, typecheck + biome; backend untouched (1413 at 93.79 percent from earlier gates)."
+    },
+    "DEC-289": {
+      "id": "DEC-289",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-11T16:33:49+00:00",
+      "updated_at": "2026-09-11T16:33:49+00:00",
+      "touched_round": 303,
+      "title": "Feature-evolution arc converged: 3 features delivered; core-feature backlog empty (converged-idle)",
+      "rationale": "The feature-exploration directive (2026-09-12, 功能探索开发模式) delivered three user-visible vertical slices across rounds 302-304, each with full verification: (r302) reader password recovery (CHG-483, DEC-286) — stateless reset token, anti-oracle request, auto-login, SMTP-sink e2e; (r303) per-post reading trend in the admin editor (CHG-484, DEC-287) — GET /api/admin/stats/views/posts/{id} + sparkline, browser-verified; (r304) reader reading density A-/A+ (CHG-485, DEC-288) — persisted per-device, browser-verified incl. a real SSR-hydration bug caught and fixed. Every active core-feature task is now delivered and verified (TASK-371/372/373 resolved): section 11.5.1 stop condition holds. A fresh sourcing pass found no value-gate-passing candidate: the dark-mode manual toggle is already implemented (useTheme.ts), and the remaining pool (avatars, comment reactions, PWA/offline, WebP auto-transcode, one-click email unsubscribe, follow-scoped digests) was already rejected or defer-tagged in DEC-055..203. Converging, not idling-by-decision: a new operator direction or a real new-product signal re-activates the arc (it supersedes these decisions).",
+      "alternatives_rejected": "Emit a further round-tick chore (rejected: core-feature backlog is empty, 11.5.1; no value-gate candidate survives sourcing). Chase avatars/reactions/PWA/WebP/email-unsubscribe (rejected at the gate in DEC-055..203, or already implemented)."
     }
   },
   "edges": [
@@ -33914,6 +33949,26 @@
       "to": "TASK-373",
       "type": "governs",
       "created_at": "2026-09-11T15:17:56+00:00"
+    },
+    {
+      "from": "CHG-485",
+      "to": "TASK-373",
+      "type": "implements",
+      "created_at": "2026-09-11T16:33:02+00:00"
+    },
+    {
+      "from": "DEC-289",
+      "to": "DEC-288",
+      "type": "supersedes",
+      "created_at": "2026-09-11T16:34:33+00:00",
+      "note": "feature-mode convergence closes the density decision"
+    },
+    {
+      "from": "DEC-289",
+      "to": "DEC-285",
+      "type": "supersedes",
+      "created_at": "2026-09-11T16:34:33+00:00",
+      "note": "converged-idle supersedes the feature-mode switch directive"
     }
   ]
 }
