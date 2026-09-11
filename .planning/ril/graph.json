@@ -2,7 +2,7 @@
   "ril_version": 1,
   "round": 295,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-11T01:10:29+00:00",
+  "updated_at": "2026-09-11T01:41:22+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -11,7 +11,7 @@
       "version": 1,
       "created_at": "2026-08-06T13:23:41+00:00",
       "updated_at": "2026-08-06T13:23:41+00:00",
-      "touched_round": 292,
+      "touched_round": 295,
       "title": "backend-nova",
       "description": "FastAPI Python 3.14 backend at backend/nova; SQLAlchemy ORM; routers in app/routers, crud.py business logic, 656 lines"
     },
@@ -21930,6 +21930,42 @@
       "touched_round": 295,
       "commit": "bcf3fad",
       "title": "Post page 404 not-found + like-error auto-dismiss"
+    },
+    "ISS-478": {
+      "id": "ISS-478",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-11T01:40:24+00:00",
+      "updated_at": "2026-09-11T01:41:22+00:00",
+      "touched_round": 295,
+      "title": "N+1: PostList serialization lazy-loads Post.series on every list query",
+      "severity": "high",
+      "detail": "PostList.series is serialized for every row but get_posts/search/popular/related/adjacent/series-detail eager-load only category+tags; the default lazy='select' fires up to cputime         unlimited\nfilesize        unlimited\ndatasize        unlimited\nstacksize       8MB\ncoredumpsize    unlimited\nresident        unlimited\nmaxproc         unlimited\ndescriptors     1048576\nmemorylocked    64kB\naddressspace    unlimited\nmaxfilelocks    unlimited\nsigpending      8206412\nmsgqueue        819200\nnice            0\nrt_priority     0\nrt_time         unlimited extra SELECT FROM series per render. posts_list_cache clears on every pageview/like so this runs on almost every uncached list render; search is not cached at all."
+    },
+    "TASK-358": {
+      "id": "TASK-358",
+      "type": "task",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-11T01:40:24+00:00",
+      "updated_at": "2026-09-11T01:41:22+00:00",
+      "touched_round": 295,
+      "category": "performance",
+      "severity": "high",
+      "title": "Eager-load Post.series on all PostList-producing queries",
+      "detail": "Add joinedload(models.Post.series) to get_posts, both search branches, get_popular_posts, get_related_posts (fallback + main), get_adjacent_posts, and series-detail posts; add an N+1 regression test asserting no standalone 'FROM series ... WHERE series.id' statement on an uncached /api/posts render."
+    },
+    "CHG-475": {
+      "id": "CHG-475",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-11T01:41:22+00:00",
+      "updated_at": "2026-09-11T01:41:22+00:00",
+      "touched_round": 295,
+      "commit": "9d2d7ae",
+      "title": "joinedload Post.series on PostList queries"
     }
   },
   "edges": [
@@ -32773,6 +32809,30 @@
       "to": "ISS-477",
       "type": "resolves",
       "created_at": "2026-09-11T01:08:00+00:00"
+    },
+    {
+      "from": "ISS-478",
+      "to": "COMP-001",
+      "type": "located_in",
+      "created_at": "2026-09-11T01:41:22+00:00"
+    },
+    {
+      "from": "TASK-358",
+      "to": "ISS-478",
+      "type": "addresses",
+      "created_at": "2026-09-11T01:41:22+00:00"
+    },
+    {
+      "from": "CHG-475",
+      "to": "TASK-358",
+      "type": "implements",
+      "created_at": "2026-09-11T01:41:22+00:00"
+    },
+    {
+      "from": "CHG-475",
+      "to": "ISS-478",
+      "type": "resolves",
+      "created_at": "2026-09-11T01:41:22+00:00"
     }
   ]
 }
