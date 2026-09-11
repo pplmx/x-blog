@@ -290,6 +290,44 @@ describe("HeaderSearch", () => {
 		vi.useRealTimers();
 	});
 
+	it("clears the stuck loading spinner when the dropdown closes mid-search and reopens (round 295)", async () => {
+		// Closing the dropdown (Escape / blur / picking a result) invalidates the
+		// in-flight request via requestSeq; the request's finally then bails
+		// WITHOUT clearing `loading`, so reopening used to show an eternal spinner
+		// and zero results until the reader typed a new query.
+		vi.useFakeTimers();
+		let resolveSearch!: (v: unknown) => void;
+		const { wrapper } = mountHeaderSearch(
+			() =>
+				new Promise((res) => {
+					resolveSearch = res;
+				}),
+		);
+		const input = wrapper.find('input[role="combobox"]');
+		await input.setValue("fast");
+		await vi.advanceTimersByTimeAsync(300); // debounce fires; request hangs
+		await flushPromises();
+
+		// The spinner is showing while the request is in flight…
+		expect(wrapper.find("div.absolute.right-3").exists()).toBe(true);
+
+		// …Escape closes the dropdown AND must reset `loading`…
+		await input.trigger("keydown", { key: "Escape" });
+		expect(wrapper.find("ul").exists()).toBe(false);
+		expect(wrapper.find("div.absolute.right-3").exists()).toBe(false);
+
+		// …so refocus reopens a clean dropdown (no phantom spinner) even though
+		// the stale in-flight response never resolves.
+		await input.trigger("focus");
+		expect(wrapper.find("ul").exists()).toBe(true);
+		expect(wrapper.find("div.absolute.right-3").exists()).toBe(false);
+		expect(wrapper.find('[data-testid="header-search-hint"]').exists()).toBe(false); // query non-empty
+
+		resolveSearch(mockSearchResponse); // drain the hung request
+		await flushPromises();
+		vi.useRealTimers();
+	});
+
 	it("is a no-op when Escape is pressed with no open dropdown", async () => {
 		const { wrapper } = mountHeaderSearch();
 		const input = wrapper.find('input[role="combobox"]');

@@ -124,6 +124,13 @@ function close(): void {
 	activeIndex.value = -1;
 	requestSeq += 1; // invalidate any in-flight search
 	if (timer) clearTimeout(timer);
+	// An in-flight request's finally only clears `loading` when seq still
+	// matches; the seq bump above means it never does. Reset it (and the
+	// settled-search flag) here so reopening the dropdown after an Escape / blur
+	// mid-search shows a clean state instead of an eternal spinner with zero
+	// results (deep-dive finding).
+	loading.value = false;
+	searched.value = false;
 }
 
 function onFocus(): void {
