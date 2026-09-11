@@ -11,23 +11,27 @@ export function useUpload() {
 	const isUploading = computed(() => inFlight.value > 0);
 
 	async function uploadImage(file: File): Promise<string | null> {
-		inFlight.value += 1;
-		error.value = null;
-
-		const config = useRuntimeConfig();
-		const apiUrl = config.public.apiUrl;
-		// typeof window guards SSR (see useAdminAuth.hasLocalStorage)
-		const token =
-			typeof window !== "undefined" &&
-			typeof localStorage !== "undefined" &&
-			typeof localStorage.getItem === "function"
-				? localStorage.getItem("admin_token")
-				: null;
-
-		const formData = new FormData();
-		formData.append("file", file);
-
 		try {
+			// The increment is inside the try so the finally can never run without
+			// its matching increment — a synchronous throw while preparing the
+			// request (e.g. a bad runtime config resolving) would otherwise leave
+			// inFlight forever ≥1 and isUploading true (round-300 review).
+			inFlight.value += 1;
+			error.value = null;
+
+			const config = useRuntimeConfig();
+			const apiUrl = config.public.apiUrl;
+			// typeof window guards SSR (see useAdminAuth.hasLocalStorage)
+			const token =
+				typeof window !== "undefined" &&
+				typeof localStorage !== "undefined" &&
+				typeof localStorage.getItem === "function"
+					? localStorage.getItem("admin_token")
+					: null;
+
+			const formData = new FormData();
+			formData.append("file", file);
+
 			const res = await fetch(`${apiUrl}/api/upload`, {
 				method: "POST",
 				headers: token ? { Authorization: `Bearer ${token}` } : {},

@@ -53,7 +53,7 @@ const reader = ref<ReaderProfile | null>(null);
  * password" for a dead session (and, via the wrong status shape, sometimes
  * show a generic error). Distinguish by the error body's detail.
  */
-function isStaleSession(cause: unknown): boolean {
+export function isStaleSession(cause: unknown): boolean {
 	const status =
 		(cause as { statusCode?: number } | undefined)?.statusCode ??
 		(cause as { response?: { status?: number } } | undefined)?.response?.status;

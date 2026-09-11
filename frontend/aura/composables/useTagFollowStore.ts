@@ -5,6 +5,7 @@ import {
 	setTagFollowNotify,
 	unfollowReaderTag,
 } from "~~/api/reader/follows";
+import { isStaleSession } from "~~/composables/useReaderAuth";
 
 /**
  * Shared reader tag-follow state for the reading surface (DEC-196/TASK-216).
@@ -68,7 +69,13 @@ async function ensureLoaded(): Promise<boolean> {
 			entries.value = next;
 			loadedForKey = key;
 			return true;
-		} catch {
+		} catch (cause) {
+			// A stale-session 401 is NOT a transient load failure: rethrow it so
+			// the caller (the tag-follow chip) can drop the dead token and show
+			// the sign-in prompt up front — otherwise a returning reader sees
+			// every chip as unfollowed and only discovers the dead session on
+			// the noisy first tap (round-300 review).
+			if (isStaleSession(cause)) throw cause;
 			return false;
 		} finally {
 			// Only the load that still owns the current generation clears the

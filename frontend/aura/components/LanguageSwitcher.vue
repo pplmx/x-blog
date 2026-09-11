@@ -3,6 +3,7 @@ import { computed, nextTick, onBeforeUnmount, onMounted, ref } from "vue";
 
 import { type Locale } from "~~/composables/i18n";
 import { useLang } from "~~/composables/useLang";
+import { nextFocusable } from "~~/utils/focusRing";
 
 const { locale, setLocale, locales } = useLang();
 
@@ -18,15 +19,6 @@ const trigger = ref<HTMLButtonElement | null>(null);
 
 const menuItems = () =>
 	Array.from(root.value?.querySelectorAll<HTMLElement>('[role="menuitem"]') ?? []);
-
-// The page's focusable elements, in DOM order — used to hand focus off on Tab
-// (see onKeydown). Includes links/buttons/inputs plus any explicit tabindex.
-const focusables = () =>
-	Array.from(
-		document.querySelectorAll<HTMLElement>(
-			'a[href], button:not([disabled]), input:not([disabled]), select, textarea, [tabindex]:not([tabindex="-1"])',
-		),
-	);
 
 // Closing removes the focused menuitem from the DOM — return focus to the
 // trigger so a keyboard/SR user keeps their place in the nav instead of
@@ -68,25 +60,26 @@ function onKeydown(e: KeyboardEvent) {
 		return;
 	}
 	if (!open.value) return;
-	// ARIA menu pattern: Tab leaves the menu and closes it — without trapping
-	// focus (preventDefault would), the browser's default Tab continues from
-	// where focus currently is.
-	// Close the menu and hand focus to the next control after the trigger
-	// (Shift+Tab → the one before). Leaving the browser's native Tab in charge
-	// re-targets a same-menu node while the popover is still in the DOM — the
-	// focused menuitem unmounts a tick later and focus falls to <body>, dropping
-	// the keyboard user out of the header entirely (round-300 deep-dive). Manual
-	// hand-off keeps tab order contiguous with the surrounding nav even for a
-	// MIDDLE menuitem.
+	// ARIA menu pattern: Tab leaves the menu and closes it — but hand the focus
+	// off explicitly to the next control after the trigger (Shift+Tab → the one
+	// before). Leaving the browser's native Tab in charge re-targets a same-menu
+	// node while the popover is still in the DOM — the focused menuitem unmounts
+	// a tick later and focus falls to <body>, dropping the keyboard user out of
+	// the header entirely (round-300 deep-dive). Manual hand-off keeps tab order
+	// contiguous with the surrounding nav even for a MIDDLE menuitem.
 	if (e.key === "Tab") {
 		e.preventDefault();
 		open.value = false;
-		// The trigger still exists after the menu unmounts; find it in the page
-		// order and step one focusable on either side.
+		// The popover is inside a CSS leave transition (~150ms) when nextTick
+		// fires, so it is STILL in the DOM — the scan must exclude its subtree
+		// or the hand-off re-targets a menuitem that is about to unmount,
+		// re-creating the focus-to-body bug. (Captured now, before the leave
+		// starts; a no-op once the popover is already gone.)
+		const popover = root.value?.querySelector<HTMLElement>('[role="menu"]') ?? null;
 		nextTick(() => {
-			const all = focusables();
-			const idx = trigger.value ? all.indexOf(trigger.value) : -1;
-			(all[e.shiftKey ? idx - 1 : idx + 1] ?? trigger.value)?.focus({ preventScroll: true });
+			nextFocusable(trigger.value, { exclude: popover, shift: e.shiftKey })?.focus({
+				preventScroll: true,
+			});
 		});
 		return;
 	}

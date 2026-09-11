@@ -253,10 +253,24 @@ describe("TagFollowButton", () => {
 		// The dead token is dropped → the control flips to guest…
 		expect(w.find("button").exists()).toBe(false);
 		// …and the session-expired prompt (with a way back to sign-in) shows.
-		expect(w.find('[role="status"]').text()).toContain("common.sessionExpired");
+		expect(w.find('[role="alert"]').text()).toContain("common.sessionExpired");
 		expect(w.find('a[href="/login"]').exists()).toBe(true);
 		// The generic "follow failed" bubble must not appear.
-		expect(w.find('[role="status"]').text()).not.toContain("tags.followFailed");
+		expect(w.find('[role="status"]').exists()).toBe(false);
+	});
+
+	it("detects the dead session on the initial state load, with no wasted tap", async () => {
+		localStorage.setItem("reader_token", "tok-1");
+		// The follows GET itself 401s — a returning reader with an expired token.
+		mockGet.mockRejectedValue(staleSessionError());
+		const w = await mountButton();
+		await flushPromises();
+
+		// The dead token drops on load → the chip flips to guest…
+		expect(w.find("button").exists()).toBe(false);
+		// …and the sign-in prompt shows immediately, not after a misleading tap.
+		expect(w.find('[role="alert"]').text()).toContain("common.sessionExpired");
+		expect(w.find('[role="status"]').exists()).toBe(false);
 	});
 
 	it("still shows the generic bubble for a transient (non-401) follow failure", async () => {
@@ -268,6 +282,6 @@ describe("TagFollowButton", () => {
 		await flushPromises();
 
 		expect(w.find('[role="status"]').text()).toContain("tags.followFailed");
-		expect(w.find('[role="status"]').text()).not.toContain("common.sessionExpired");
+		expect(w.find('[role="alert"]').exists()).toBe(false);
 	});
 });

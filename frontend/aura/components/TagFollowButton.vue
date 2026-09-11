@@ -44,7 +44,14 @@ const notify = store.notify(props.tagId);
 const busy = store.busy(props.tagId);
 
 onMounted(() => {
-	store.ensureLoaded().catch(() => {});
+	// The same dead-session guard runs on the state LOAD, not just on taps:
+	// with an expired token the follows GET 401s, so chips would render as
+	// "not following" and only a wasted tap would surface the real problem.
+	// Routing the load failure through the guard drops the dead token up
+	// front and shows the sign-in prompt immediately (/tags-page parity).
+	store.ensureLoaded().catch((cause) => {
+		guardFollowFailure(cause);
+	});
 });
 
 // A failed follow/notify used to be silently swallowed — the store clears its
@@ -94,7 +101,7 @@ async function handleSetNotify() {
 	     wrapper — the prompt must survive that to offer the way back in. -->
 	<span
 		v-if="sessionExpired"
-		role="status"
+		role="alert"
 		class="inline-flex items-center gap-1.5 rounded-md border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/40 px-2 py-1 text-[10px] font-medium text-amber-700 dark:text-amber-300 ml-1"
 	>
 		<Icon
