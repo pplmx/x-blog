@@ -20,11 +20,26 @@ const props = withDefaults(defineProps<Props>(), {
 const { t } = useLang();
 const { isBookmarked, add, remove } = useBookmarkSync();
 
+/** Per-post in-flight guard: `add`/`remove` mutate the local list
+ * synchronously, so the second half of a fast double-click would read the
+ * just-changed state and immediately reverse the toggle — the icon blinks on
+ * then off and the post ends up unsaved. Swallow clicks for a short window
+ * after each toggle (like CommentList's likingIds guard), then let a
+ * deliberate later click through. */
+let togglingId: number | null = null;
+let togglingTimer: ReturnType<typeof setTimeout> | null = null;
+
 function handleClick() {
 	// Double guard: the button is also `:disabled`, but an Enter-pressed button
 	// still fires click in some browsers; keep the handler a no-op while disabled.
 	if (props.disabled) return;
 	if (!props.post) return;
+	if (togglingId === props.postId) return;
+	if (togglingTimer) clearTimeout(togglingTimer);
+	togglingId = props.postId;
+	togglingTimer = setTimeout(() => {
+		togglingId = null;
+	}, 200);
 	// Mirror to the cloud when signed in (TASK-134); local remains the
 	// single source of truth for the button state.
 	if (isBookmarked(props.postId)) {

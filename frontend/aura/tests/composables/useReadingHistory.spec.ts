@@ -116,6 +116,47 @@ describe("useReadingHistory (TASK-170)", () => {
 		expect(loadFailed.value).toBe(true);
 	});
 
+	it("applies the recall-search term to the local fallback when the server call fails (round 298)", async () => {
+		authRef.value = true;
+		localRecent.value = [
+			{ slug: "a", title: "Alpha", viewedAt: 1 },
+			{ slug: "b", title: "Beta", viewedAt: 2 },
+		];
+		fetchHistory.mockRejectedValue(new Error("network"));
+		const { load, history, loadFailed } = useReadingHistory();
+		await load("alp");
+		// Only the matching device record is listed under the typed term — the
+		// whole on-device trail must not silently show under a filter.
+		expect(history.value).toEqual([{ slug: "a", title: "Alpha", viewedAt: 1 }]);
+		expect(loadFailed.value).toBe(true);
+	});
+
+	it("collapses paging in the local-trail fallback so loadMore cannot mix server rows in (round 298)", async () => {
+		authRef.value = true;
+		// First load succeeds and reports a second page…
+		fetchHistory.mockResolvedValueOnce({
+			items: [{ id: 1, title: "A", slug: "a", viewed_at: null }],
+			total: 2,
+			page: 1,
+			limit: 100,
+			total_pages: 2,
+		});
+		const { load, loadMore, history, hasMore, loadFailed } = useReadingHistory();
+		await load();
+		expect(hasMore.value).toBe(true);
+		// …the next load fails → fall back to the local trail, which must be a
+		// single non-paged list: hasMore off, and loadMore refuses to append
+		// server rows onto the on-device trail.
+		localRecent.value = [{ slug: "l", title: "Local", viewedAt: 5 }];
+		fetchHistory.mockRejectedValueOnce(new Error("network"));
+		await load();
+		expect(loadFailed.value).toBe(true);
+		expect(history.value).toEqual([{ slug: "l", title: "Local", viewedAt: 5 }]);
+		expect(hasMore.value).toBe(false);
+		await loadMore(); // refused — no pager call can append server rows
+		expect(fetchHistory).toHaveBeenCalledTimes(2); // only the two loads
+	});
+
 	it("clear() resets loadFailed so a stale banner cannot hide the empty state", async () => {
 		authRef.value = true;
 		fetchHistory.mockRejectedValue(new Error("network"));

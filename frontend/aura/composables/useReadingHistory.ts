@@ -85,10 +85,18 @@ export function useReadingHistory() {
 	const loadMoreError = ref(false);
 	const activeQuery = ref("");
 
-	/** True while an older server page still exists (there is more to load). */
+	/** True while an older server page still exists (there is more to load).
+	 * Never true in the local-trail fallback: a server failure collapses the
+	 * list to one non-paged page, so "Load more" must not appear above it — a
+	 * click would otherwise append server rows into the on-device trail
+	 * (round-298 deep-dive). */
 	const hasMore = computed(
 		() =>
-			serverEnabled.value && !loading.value && !loadingMore.value && page.value < totalPages.value,
+			serverEnabled.value &&
+			!loadFailed.value &&
+			!loading.value &&
+			!loadingMore.value &&
+			page.value < totalPages.value,
 	);
 
 	/**
@@ -174,9 +182,17 @@ export function useReadingHistory() {
 			if (seq !== loadSeq) return;
 			// Best-effort: fall back to the local trail if the call fails, but
 			// flag it so the page labels the fallback instead of presenting a
-			// false "no history yet" empty state.
+			// false "no history yet" empty state. Apply the same recall-search
+			// term filter the guest path uses — a typed term must not silently
+			// show the whole trail — and collapse paging to one page so the
+			// fallback can never grow a "Load more" that mixes server rows into
+			// on-device records (round-298 deep-dive).
 			loadFailed.value = true;
-			history.value = fromLocal(local.recent.value);
+			const term = query.trim().toLowerCase();
+			const all = fromLocal(local.recent.value);
+			history.value = term ? all.filter((h) => h.title.toLowerCase().includes(term)) : all;
+			page.value = 1;
+			totalPages.value = 1;
 		}
 		try {
 			const sdata = await getReaderHistoryStats();

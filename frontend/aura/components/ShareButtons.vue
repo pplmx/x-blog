@@ -163,14 +163,41 @@ function shareToLinkedIn() {
 	);
 }
 
+// A rejected navigator.clipboard (insecure http context, denied permission,
+// older Safari) used to permanently fail the Copy button with a red X even
+// though a working fallback exists — copied from MarkdownContent (the comment
+// there claimed "same pattern as ShareButtons", which was false; now it is).
+function fallbackCopy(text: string): boolean {
+	if (typeof document === "undefined") return false;
+	const ta = document.createElement("textarea");
+	try {
+		if (typeof document.execCommand !== "function") return false;
+		ta.value = text;
+		ta.style.position = "fixed";
+		ta.style.opacity = "0";
+		document.body.appendChild(ta);
+		ta.focus();
+		ta.select();
+		return document.execCommand("copy");
+	} catch {
+		return false;
+	} finally {
+		// Never leak the hidden (tabbable!) textarea into the DOM.
+		if (ta.parentNode === document.body) document.body.removeChild(ta);
+	}
+}
+
 async function handleCopyLink() {
+	let ok = false;
 	try {
 		await navigator.clipboard.writeText(currentUrl.value);
-		flashCopy(true);
+		ok = true;
 	} catch {
-		// No clipboard permission (non-secure context / denied): never fail
-		// silently — flip the icon to a red X and announce the outcome.
-		flashCopy(false);
+		// No clipboard permission (non-secure context / denied): fall back to a
+		// hidden textarea + execCommand; only if THAT fails do we surface the
+		// red-X failure — never fail silently either way.
+		ok = fallbackCopy(currentUrl.value);
 	}
+	flashCopy(ok);
 }
 </script>

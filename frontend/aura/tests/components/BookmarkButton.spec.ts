@@ -113,7 +113,8 @@ describe("BookmarkButton", () => {
 	});
 
 	describe("click behavior", () => {
-		it("toggles bookmark state on click", async () => {
+		it("toggles bookmark state on click (deliberate later click)", async () => {
+			vi.useFakeTimers();
 			wrapper = mount(BookmarkButton, {
 				props: { postId: 1, post: mockBookmark },
 				global: { stubs },
@@ -123,10 +124,32 @@ describe("BookmarkButton", () => {
 			await button.trigger("click");
 			await wrapper.vm.$nextTick();
 			expect(wrapper.find(".icon-stub").attributes("data-icon")).toBe("lucide:bookmark-check");
-			// Second click: unbookmark
+			// Second click AFTER the double-click guard window (round-298): a
+			// deliberate later click toggles back.
+			vi.advanceTimersByTime(201);
 			await button.trigger("click");
 			await wrapper.vm.$nextTick();
 			expect(wrapper.find(".icon-stub").attributes("data-icon")).toBe("lucide:bookmark");
+			vi.useRealTimers();
+		});
+
+		it("swallows the second click of a rapid double-click (round-298 toggle race)", async () => {
+			// The local list mutates synchronously, so a fast double-click used to
+			// read the just-changed state and reverse the toggle — the post ended
+			// up unsaved with the icon blinking on then off. The second rapid click
+			// must be ignored.
+			vi.useFakeTimers();
+			wrapper = mount(BookmarkButton, {
+				props: { postId: 1, post: mockBookmark },
+				global: { stubs },
+			});
+			const button = wrapper.find("button");
+			await button.trigger("click"); // bookmark
+			await button.trigger("click"); // (within the guard window)
+			await wrapper.vm.$nextTick();
+			// Still bookmarked — the second click did not reverse it.
+			expect(wrapper.find(".icon-stub").attributes("data-icon")).toBe("lucide:bookmark-check");
+			vi.useRealTimers();
 		});
 
 		it("stops click propagation to prevent navigation", async () => {

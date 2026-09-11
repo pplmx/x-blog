@@ -7,7 +7,7 @@
  * so we can mount it directly without a Suspense wrapper.
  */
 
-import { mount } from "@vue/test-utils";
+import { flushPromises, mount } from "@vue/test-utils";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import ShareButtons from "../../components/ShareButtons.vue";
@@ -276,6 +276,33 @@ describe("ShareButtons", () => {
 	});
 
 	describe("Copy link failure", () => {
+		it("falls back to a textarea + execCommand copy when the clipboard API rejects", async () => {
+			// Insecure context / denied permission: navigator.clipboard rejects,
+			// but the execCommand fallback (same one MarkdownContent uses) should
+			// still make Copy succeed — the round-298 deep-dive found the Copy
+			// button permanently failed with a red X while the fallback existed
+			// elsewhere in the app. happy-dom's document has no execCommand, so
+			// define it (configurable) to simulate the browser fallback.
+			clipboardSpy.mockRejectedValueOnce(new Error("not allowed"));
+			const execFn = vi.fn(() => true);
+			Object.defineProperty(document, "execCommand", { value: execFn, configurable: true });
+			try {
+				const wrapper = mountShareButtons({ url: "https://example.com/fallback" });
+				const buttons = wrapper.findAll("button");
+				const copyButton = buttons[buttons.length - 1];
+
+				await copyButton.trigger("click");
+				await flushPromises();
+
+				expect(execFn).toHaveBeenCalledWith("copy");
+				// Success state (check icon), not the failure X.
+				expect(copyButton.attributes("aria-label")).toBe("链接已复制");
+			} finally {
+				// happy-dom had no execCommand before this test; delete restores it.
+				Reflect.deleteProperty(document, "execCommand");
+			}
+		});
+
 		it("surfaces a visible failure (not a silent console.error) and never throws", async () => {
 			clipboardSpy.mockRejectedValueOnce(new Error("clipboard unavailable"));
 			const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
