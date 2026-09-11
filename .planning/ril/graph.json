@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 300,
+  "round": 302,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-11T07:20:03+00:00",
+  "updated_at": "2026-09-11T14:43:34+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -11,7 +11,7 @@
       "version": 1,
       "created_at": "2026-08-06T13:23:41+00:00",
       "updated_at": "2026-08-06T13:23:41+00:00",
-      "touched_round": 297,
+      "touched_round": 301,
       "title": "backend-nova",
       "description": "FastAPI Python 3.14 backend at backend/nova; SQLAlchemy ORM; routers in app/routers, crud.py business logic, 656 lines"
     },
@@ -4458,7 +4458,7 @@
       "version": 1,
       "created_at": "2026-08-16T16:20:56+00:00",
       "updated_at": "2026-08-16T16:20:56+00:00",
-      "touched_round": 75,
+      "touched_round": 301,
       "note": "rss router"
     },
     "ISS-056": {
@@ -7596,7 +7596,7 @@
       "version": 2,
       "created_at": "2026-08-21T19:08:16+00:00",
       "updated_at": "2026-08-21T21:02:49+00:00",
-      "touched_round": 122,
+      "touched_round": 302,
       "category": "core-feature",
       "severity": 0.55,
       "confidence": 0.9,
@@ -11517,7 +11517,7 @@
       "version": 2,
       "created_at": "2026-08-27T09:46:11+00:00",
       "updated_at": "2026-08-27T12:19:20+00:00",
-      "touched_round": 176,
+      "touched_round": 301,
       "category": "core-feature",
       "severity": 0.6,
       "confidence": 0.95,
@@ -22330,7 +22330,7 @@
       "version": 1,
       "created_at": "2026-09-11T05:49:20+00:00",
       "updated_at": "2026-09-11T05:49:20+00:00",
-      "touched_round": 300,
+      "touched_round": 301,
       "title": "re-activate from converged-idle: operator polish directive (round 300+)",
       "rationale": "Operator re-invoked graph-engineering (goal) on 2026-09-11 with an explicit polish directive: detail optimizations, interactivity, practicality, usability, ease of use. Supersedes the converged-idle at DEC-283 and re-opens the deferred back-burner candidates (LanguageSwitcher Tab focus, useUpload concurrency, TagFollowButton session guard) plus fresh deep-dive.",
       "alternatives_rejected": "Stay idle (rejected: new operator directive); keep emitting round-tick chores (rejected: only commit real changes)."
@@ -22447,6 +22447,116 @@
       "title": "The popover is gone from the DOM before a nextTick Tab hand-off scan runs",
       "confidence": 0.8,
       "detail": "Original assumption behind CHG-480's first Tab fix: open=false + the v-if removal schedule the popover out of the DOM before the nextTick callback, so a nextTick scan sees the menu-free page."
+    },
+    "DEC-285": {
+      "id": "DEC-285",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-11T13:05:41+00:00",
+      "updated_at": "2026-09-11T13:05:41+00:00",
+      "touched_round": 302,
+      "title": "Switch engine to feature-evolution mode (operator: 功能探索开发模式)",
+      "rationale": "Operator re-invoked graph-engineering on 2026-09-11 with an explicit feature-exploration directive (功能探索开发模式), superseding the round-300+ polish directive (DEC-284). Quality convergence was already reached at DEC-283 (zero active tasks, all five stop conditions held), so §11 feature-evolution mode is the correct next mode. Backlog sourcing for this round surfaces a long-deferred candidate that is now unblocked: reader password recovery was repeatedly gate-rejected in DEC-055/060/061/064/066/067/068/070 purely for 'needs SMTP infra' — and DEC-197/201 delivered that SMTP email channel, so the blocker is removed. §11.2 value gate: (user) a registered reader who forgot their password is hard-locked out of cloud bookmarks/history/follows/formats with zero self-service; (slice) a vertical password-reset flow = backend reset-token endpoints + reset email + frontend forgot/reset pages + auto-login, net-new and user-verifiable.",
+      "alternatives_rejected": "(a) Keep polishing reader-interaction details (rejected: that was DEC-284's directive, already converged; no active above-threshold task remains). (b) Build a newsletter/one-click-unsubscribe (rejected: increment on the just-delivered email surface, no distinct user-visible problem). (c) Fabricate a button-level feature to keep committing (rejected: value gate §11.2, explicit anti-pattern DEC-073)."
+    },
+    "DEC-286": {
+      "id": "DEC-286",
+      "type": "decision",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-11T13:06:01+00:00",
+      "updated_at": "2026-09-11T14:33:09+00:00",
+      "touched_round": 301,
+      "title": "Feature: reader password reset (forgot-password flow via email reset token)",
+      "rationale": "Scope: a registered reader who forgot their password can request a reset email and set a new password without admin help — the last remaining reader self-service gap (in-account change, DEC-067, requires an existing session). Delivery: stateless signed JWT reset token (aud=x-blog-password-reset, short expiry, ver bound to token_version) so no DDL/migration is needed (DEC-009 preserved); POST /api/reader/password-reset/request (always generic 200 unless SMTP unconfigured -> 503, killing the account-existence oracle DEC-060 flagged) + POST /api/reader/password-reset/confirm (verifies token, sets new password, bumps token_version to revoke all sessions, auto-login via fresh reader JWT mirroring register). Frontend: /forgot-password + /reset-password pages, forgot link on /login, zh/en i18n, backend+frontend tests. Why now: SMTP infra landed at DEC-197/201; DEC-067 recorded this exact candidate as rejected-for-SMTP. Target user: any registered reader.",
+      "alternatives_rejected": "(a) DB-backed reset-token table (rejected: needs a migration + cleanup job for the same security; a signed short-expiry JWT is stateless, DDL-preserving and matches the existing token_version revocation pattern). (b) Generic 201/email-link register-flow change (rejected: security hardening of a different surface, out of this slice's one-user-visible-problem scope). (c) Admin-resets-reader-password (rejected: no self-service, leaves the privacy/independence gap)."
+    },
+    "ISS-495": {
+      "id": "ISS-495",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-11T13:06:08+00:00",
+      "updated_at": "2026-09-11T14:33:09+00:00",
+      "touched_round": 301,
+      "title": "Reader has no self-service password recovery: a forgotten password hard-locks the account (cloud bookmarks, history, follows, notification prefs) with no reset path",
+      "severity": "medium"
+    },
+    "TASK-371": {
+      "id": "TASK-371",
+      "type": "task",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-11T13:06:08+00:00",
+      "updated_at": "2026-09-11T14:33:09+00:00",
+      "touched_round": 301,
+      "category": "core-feature",
+      "title": "Reader password reset vertical slice: backend reset-token endpoints + reset email (emailer) + /forgot-password + /reset-password pages + login link + zh/en i18n + backend/frontend tests",
+      "severity": "high",
+      "effort": "medium",
+      "confidence": 0.9
+    },
+    "CHG-483": {
+      "id": "CHG-483",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-11T14:31:14+00:00",
+      "updated_at": "2026-09-11T14:31:14+00:00",
+      "touched_round": 301,
+      "commit": "b2d53ca4d0b648456ef62842db6dde7fd7fba0a7",
+      "title": "feat(reader): password recovery — email reset link + forgot/reset pages"
+    },
+    "EV-236": {
+      "id": "EV-236",
+      "type": "evidence",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-11T14:31:51+00:00",
+      "updated_at": "2026-09-11T14:31:51+00:00",
+      "touched_round": 301,
+      "source": "CHG-483 b2d53ca",
+      "confidence": 1.0,
+      "title": "Password-recovery vertical slice delivered and verified: backend 1409 tests @93.76% (13 new contract tests covering anti-oracle request, audience separation, single-use, expiry, tampering, deactivation, auto-login), frontend 1951 tests @0 failures (8 new), nuxt typecheck + biome + ruff + pyright clean, and a real-browser Playwright full journey passed (request -> token from e2e SMTP sink -> redeem -> auto-login on /account -> old password dead, old session revoked)"
+    },
+    "EV-237": {
+      "id": "EV-237",
+      "type": "evidence",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-11T14:32:33+00:00",
+      "updated_at": "2026-09-11T14:32:33+00:00",
+      "touched_round": 301,
+      "source": "CHG-483 b2d53ca tests/test_reader_password_reset.py",
+      "confidence": 1.0,
+      "title": "No account-existence oracle: request returns an identical 202 for known/unknown/deactivated email (and an identical SMTP-config 503 when unconfigured); the confirm token is single-use, 30-min-expiry, wrong-audience/tampered/expired all 400. Evidence: test_unknown_email_is_identical_202_and_no_mail, test_missing_smtp_config_is_account_agnostic_503, test_reset_token_is_single_use, test_reader_jwt_cannot_redeem_as_reset"
+    },
+    "DEC-287": {
+      "id": "DEC-287",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-11T14:42:30+00:00",
+      "updated_at": "2026-09-11T14:42:30+00:00",
+      "touched_round": 302,
+      "title": "Feature-evolution round 302 delivered: reader password recovery complete (DEC-286/TASK-371); next candidate selected",
+      "rationale": "Round 302 delivered the reader password-recovery slice end-to-end: stateless reset token (own audience, ver-bound), anti-oracle request + confirm with token_version bump and auto-login, forgot/reset pages with zh/en i18n, SMTP sink wired into just e2e, 13 backend + 8 frontend tests plus a real-browser Playwright full journey green (backend 1409 at 93.76 percent, frontend 1951, typecheck/biome/ruff/pyright clean). Not converged-idle: feature-exploration directive active. Next candidate: per-post reading trend in the admin post editor - GET /api/admin/stats/views/posts/{id} returning the zero-filled daily series for one post plus total, rendered as a lightweight CSS-bar sparkline (same pattern as the dashboard custom bars DEC-086). Net-increment over existing post_views_daily, no schema change.",
+      "alternatives_rejected": "Continue churning the same round (one feature thread per round, 11.3). Fold the trend into this round (distinct admin-facing slice worth its own decision/task)."
+    },
+    "TASK-372": {
+      "id": "TASK-372",
+      "type": "task",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-11T14:42:57+00:00",
+      "updated_at": "2026-09-11T14:42:57+00:00",
+      "touched_round": 302,
+      "category": "core-feature",
+      "title": "Per-post reading trend for the admin post editor: GET /api/admin/stats/views/posts/{id} (zero-filled daily series + total) plus CSS-bar sparkline card in admin/posts/[id].vue plus backend/frontend tests",
+      "severity": "medium",
+      "effort": "small",
+      "confidence": 0.9
     }
   },
   "edges": [
@@ -33668,6 +33778,74 @@
       "to": "HYP-020",
       "type": "refutes",
       "created_at": "2026-09-11T07:20:03+00:00"
+    },
+    {
+      "from": "DEC-285",
+      "to": "DEC-284",
+      "type": "supersedes",
+      "created_at": "2026-09-11T13:06:21+00:00",
+      "note": "mode switch: feature-evolution supersedes the polish directive"
+    },
+    {
+      "from": "DEC-286",
+      "to": "DEC-285",
+      "type": "supersedes",
+      "created_at": "2026-09-11T13:06:22+00:00"
+    },
+    {
+      "from": "TASK-371",
+      "to": "ISS-495",
+      "type": "addresses",
+      "created_at": "2026-09-11T13:06:22+00:00"
+    },
+    {
+      "from": "DEC-286",
+      "to": "TASK-371",
+      "type": "governs",
+      "created_at": "2026-09-11T13:06:22+00:00"
+    },
+    {
+      "from": "TASK-371",
+      "to": "TASK-217",
+      "type": "depends_on",
+      "created_at": "2026-09-11T13:06:22+00:00"
+    },
+    {
+      "from": "ISS-495",
+      "to": "COMP-001",
+      "type": "located_in",
+      "created_at": "2026-09-11T13:07:46+00:00"
+    },
+    {
+      "from": "CHG-483",
+      "to": "TASK-371",
+      "type": "implements",
+      "created_at": "2026-09-11T14:33:09+00:00"
+    },
+    {
+      "from": "CHG-483",
+      "to": "ISS-495",
+      "type": "resolves",
+      "created_at": "2026-09-11T14:33:09+00:00"
+    },
+    {
+      "from": "DEC-287",
+      "to": "TASK-372",
+      "type": "governs",
+      "created_at": "2026-09-11T14:43:34+00:00"
+    },
+    {
+      "from": "DEC-287",
+      "to": "DEC-285",
+      "type": "supersedes",
+      "created_at": "2026-09-11T14:43:34+00:00",
+      "note": "round-302 closure decision chains the feature-evolution directive forward"
+    },
+    {
+      "from": "TASK-372",
+      "to": "TASK-155",
+      "type": "depends_on",
+      "created_at": "2026-09-11T14:43:34+00:00"
     }
   ]
 }
