@@ -171,10 +171,14 @@ def get_posts(
     # Count before pagination
     total = query.count()
 
-    # Eager load relationships to avoid N+1 queries
+    # Eager load relationships to avoid N+1 queries (series included: every
+    # PostList payload serializes Post.series, and without the join a plain
+    # lazy="select" fires a second query per row — up to `limit` extra
+    # round-trips on every uncached list render, deep-dive finding).
     query = query.options(
         joinedload(models.Post.category),
         joinedload(models.Post.tags),
+        joinedload(models.Post.series),
     )
 
     # Sort by pinned first (homepage/list emphasis — pinned is a UI-visibility
@@ -1204,6 +1208,7 @@ def search_posts(
             .options(
                 joinedload(models.Post.category),
                 joinedload(models.Post.tags),
+                joinedload(models.Post.series),
             )
             .offset(offset)
             .limit(limit)
@@ -1243,6 +1248,7 @@ def search_posts(
             .options(
                 joinedload(models.Post.category),
                 joinedload(models.Post.tags),
+                joinedload(models.Post.series),
             )
             .offset(offset)
             .limit(limit)
@@ -1456,6 +1462,7 @@ def get_popular_posts(db: Session, limit: int = 5) -> list[models.Post]:
         .options(
             joinedload(models.Post.category),
             joinedload(models.Post.tags),
+            joinedload(models.Post.series),
         )
         .order_by(models.Post.views.desc(), models.Post.id.desc())
         .limit(limit)
@@ -1485,6 +1492,7 @@ def get_related_posts(db: Session, post_id: int, limit: int = 5) -> list[models.
             query.options(
                 joinedload(models.Post.category),
                 joinedload(models.Post.tags),
+                joinedload(models.Post.series),
             )
             .order_by(_effective_publish_col().desc(), models.Post.id.desc())
             .limit(limit)
@@ -1523,6 +1531,7 @@ def get_related_posts(db: Session, post_id: int, limit: int = 5) -> list[models.
         .options(
             joinedload(models.Post.category),
             joinedload(models.Post.tags),
+            joinedload(models.Post.series),
         )
     )
 
@@ -1626,7 +1635,11 @@ def get_adjacent_posts(db: Session, post_id: int) -> tuple[models.Post | None, m
     rows = (
         db.query(models.Post)
         .filter(models.Post.id.in_([pid for pid in (previous_id, following_id) if pid is not None]))
-        .options(joinedload(models.Post.category), joinedload(models.Post.tags))
+        .options(
+            joinedload(models.Post.category),
+            joinedload(models.Post.tags),
+            joinedload(models.Post.series),
+        )
         .all()
     )
     by_id = {p.id: p for p in rows}
@@ -1688,7 +1701,11 @@ def get_series_visible_posts(db: Session, series: models.Series) -> list[models.
             models.Post.published.is_(True),
             or_(models.Post.publish_at.is_(None), models.Post.publish_at <= now),
         )
-        .options(joinedload(models.Post.category), joinedload(models.Post.tags))
+        .options(
+            joinedload(models.Post.category),
+            joinedload(models.Post.tags),
+            joinedload(models.Post.series),
+        )
         .order_by(models.Post.series_order, models.Post.id)
         .all()
     )

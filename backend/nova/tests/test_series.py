@@ -271,3 +271,40 @@ def test_series_cache_invalidated_on_counter_bump(client, auth_headers):
     # The series detail must recompute — not serve the cached pre-bump payload.
     second = client.get(f"/api/series/{series['slug']}").json()
     assert second["posts"][0]["views"] == 1
+
+
+def test_posts_list_has_no_series_n_plus_1(client, auth_headers, test_engine):
+    """PostList serializes Post.series, but the list endpoints used to eager-load
+    only category+tags — a plain lazy="select" (default) fired one
+    ``SELECT ... FROM series WHERE series.id = ?`` per row, i.e. up to `limit`
+    extra round-trips on every uncached list render (deep-dive N+1 finding)."""
+    from sqlalchemy import event
+
+    series = _create_series(client, auth_headers, "NplusOne Series", "nplusone-series").json()
+    for i in range(4):
+        _create_post(client, auth_headers, f"Series post {i}", f"npo-series-post-{i}", series["id"], i)
+    _create_post(client, auth_headers, "Standalone", "npo-standalone", published=True)
+
+    statements = []
+
+    def capture_statement(_conn, _cursor, statement, _parameters, _context, _executemany):
+        statements.append(statement)
+
+    event.listen(test_engine, "before_cursor_execute", capture_statement)
+    try:
+        response = client.get("/api/posts")
+    finally:
+        event.remove(test_engine, "before_cursor_execute", capture_statement)
+
+    assert response.status_code == 200
+    items = response.json()["items"]
+    assert len(items) == 5
+    # Every row carried a serialized `series` key, proving PostList.series was
+    # read for each post — so any per-row lazy SELECT would have appeared.
+    assert all("series" in item for item in items)
+
+    # A lazy per-post load renders as a standalone `FROM series ... WHERE
+    # series.id = ?`; the eager fix folds it into the main query as a LEFT
+    # OUTER JOIN instead, so no such statement may be issued.
+    lazy_series = [s for s in statements if "from series" in s.lower() and "where series.id" in s.lower()]
+    assert lazy_series == []
