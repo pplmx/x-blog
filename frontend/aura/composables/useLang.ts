@@ -20,9 +20,19 @@ const canUseNuxt = (): boolean => typeof useState === "function" && typeof useCo
 function initialLocale(cookie?: { value?: Locale }): Locale {
 	const v = cookie?.value;
 	if (v === "zh" || v === "en") return v;
-	return detectBrowserLocale(
-		typeof window !== "undefined" ? (window.navigator?.language ?? "") : "",
-	);
+	const hint =
+		typeof window !== "undefined"
+			? (window.navigator?.language ?? "")
+			: // Server: there is no navigator, so "auto-detect on first visit"
+				// (the contract above) would otherwise fall through to
+				// DEFAULT_LOCALE — an English-browser first-time reader got a fully
+				// Chinese SSR render (HTML + persisted lang cookie). Detect from
+				// the request's Accept-Language instead, mirroring what
+				// navigator.language would have said for that browser.
+				typeof useRequestHeaders === "function"
+				? (useRequestHeaders(["accept-language"])["accept-language"] ?? "")
+				: "";
+	return detectBrowserLocale(hint);
 }
 
 const updateDomLang = (l: Locale): void => {

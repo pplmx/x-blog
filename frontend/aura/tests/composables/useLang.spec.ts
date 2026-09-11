@@ -155,6 +155,18 @@ describe("useLang in Nuxt mode (useState + useCookie stubbed)", () => {
 		expect(cookieRef.value).toBe("zh");
 	});
 
+	it("prefers an existing lang cookie over the Accept-Language header", () => {
+		// A returning reader's cookie is authoritative — the header (and the
+		// no-header default) never override an explicit prior choice.
+		const cookieRef = stubNuxt("en");
+		vi.stubGlobal("window", undefined);
+		vi.stubGlobal("document", undefined);
+		vi.stubGlobal("useRequestHeaders", () => ({ "accept-language": "zh-CN,zh;q=0.9" }));
+		const { locale } = useLang();
+		expect(cookieRef.value).toBe("en");
+		expect(locale.value).toBe("en");
+	});
+
 	it("falls back to browser detection when useCookie is absent", () => {
 		// useState present but useCookie missing -> canUseNuxt() is false, so
 		// no cookie read/write; setup.ts pins navigator.language to zh-CN.
@@ -195,5 +207,26 @@ describe("useLang SSR guards (no window/document)", () => {
 		const { locale } = useLang();
 		expect(locale.value).toBe("zh");
 		if (original) Object.defineProperty(window.navigator, "language", original);
+	});
+
+	it("detects an English first visit from the Accept-Language header on the server (round 295)", () => {
+		// On the server there is no navigator.language; without a lang cookie the
+		// SSR render used to fall through to DEFAULT_LOCALE, so an English-browser
+		// first-time visitor got a fully Chinese page (HTML + persisted cookie).
+		// Nuxt's useRequestHeaders is auto-imported server-side; stub it to answer
+		// the request's Accept-Language like a real English browser would.
+		vi.stubGlobal("window", undefined);
+		vi.stubGlobal("document", undefined);
+		vi.stubGlobal("useRequestHeaders", () => ({ "accept-language": "en-US,en;q=0.9" }));
+		const { locale } = useLang();
+		expect(locale.value).toBe("en");
+	});
+
+	it("still defaults to zh when the server request carries no Accept-Language", () => {
+		vi.stubGlobal("window", undefined);
+		vi.stubGlobal("document", undefined);
+		vi.stubGlobal("useRequestHeaders", () => ({}));
+		const { locale } = useLang();
+		expect(locale.value).toBe("zh");
 	});
 });
