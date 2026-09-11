@@ -75,7 +75,9 @@ export function useReadingDensity() {
 	const isMin = computed(() => step.value === DENSITY_STEPS[0]);
 	const isMax = computed(() => step.value === DENSITY_STEPS[DENSITY_STEPS.length - 1]);
 
-	const wrapperStyle = computed(() => ({ [DENSITY_VAR]: String(step.value) } as Record<string, string>));
+	const wrapperStyle = computed(
+		() => ({ [DENSITY_VAR]: String(step.value) }) as Record<string, string>,
+	);
 
 	return { DENSITY_STEPS, step, increase, decrease, isMin, isMax, wrapperStyle };
 }

@@ -13,10 +13,7 @@ import { expect, test } from "@playwright/test";
 const stamp = Date.now();
 
 test.describe("Admin per-post reading trend (TASK-372)", () => {
-	test("the editor shows a trend card with the seeded daily views", async ({
-		page,
-		request,
-	}) => {
+	test("the editor shows a trend card with the seeded daily views", async ({ page, request }) => {
 		// Log in and capture the admin token to seed a published post.
 		await page.goto("/admin/login");
 		await page.fill('input[type="text"]', "admin");
@@ -51,8 +48,6 @@ test.describe("Admin per-post reading trend (TASK-372)", () => {
 		await expect(card).toBeVisible();
 		await expect(page.getByText(/近 30 天 \d+ 次阅读/)).toBeVisible();
 		// The bar row is present (>= 3 seeded views today -> at least one bar).
-		await expect(
-			page.locator("div[aria-hidden='true'] .rounded-sm"),
-		).not.toHaveCount(0);
+		await expect(page.locator("div[aria-hidden='true'] .rounded-sm")).not.toHaveCount(0);
 	});
 });

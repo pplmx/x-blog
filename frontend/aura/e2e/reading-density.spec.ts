@@ -11,9 +11,8 @@
 
 import { expect, test } from "@playwright/test";
 
-const rootVar = (
-	page: import("@playwright/test").Page,
-) => page.evaluate(() => document.documentElement.style.getPropertyValue("--reader-density"));
+const rootVar = (page: import("@playwright/test").Page) =>
+	page.evaluate(() => document.documentElement.style.getPropertyValue("--reader-density"));
 
 /** Open the first published post from the homepage grid. */
 async function openFirstPost(page: import("@playwright/test").Page): Promise<string> {
@@ -28,9 +27,10 @@ async function openFirstPost(page: import("@playwright/test").Page): Promise<str
 }
 
 function bodyFontSize(page: import("@playwright/test").Page) {
-	return page.locator(".prose-config p").first().evaluate(
-		(el) => Number.parseFloat(getComputedStyle(el as HTMLElement).fontSize),
-	);
+	return page
+		.locator(".prose-config p")
+		.first()
+		.evaluate((el) => Number.parseFloat(getComputedStyle(el as HTMLElement).fontSize));
 }
 
 /** Clear a stored preference exactly once per test (survives reloads). */

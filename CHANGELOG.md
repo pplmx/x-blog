@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- **In-place series-follow (DEC-290)**: the post page's in-series nav box gains
+  a follow control for signed-in readers — follow/unfollow the current series
+  and toggle new-part notifications right where they were reading part N,
+  instead of having to leave the post for the `/series/[slug]` page. Mirrors
+  the in-place tag-follow on the post footer (DEC-196); the follow persists to
+  the account page's Followed-series section.
 - **Reading density (DEC-288)**: post pages gain an A−/A+ body-text scale
   (three sizes) remembered per device across page loads — long-form reading
   comfort with no account required.

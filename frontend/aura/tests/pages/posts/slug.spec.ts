@@ -15,6 +15,8 @@ import { flushPromises, mount } from "@vue/test-utils";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { type Ref, ref } from "vue";
 
+import SeriesFollowButton from "~~/components/SeriesFollowButton.vue";
+
 // Mock post data matching the Post interface
 const mockPost = {
 	id: 1,
@@ -187,6 +189,14 @@ async function mountPostPage({
 	const wrapper = mount(SuspenseWrapper, {
 		attachTo: attachToDoc ? document.body : undefined,
 		global: {
+			// vue-test-utils does NOT resolve Nuxt's `components/` auto-import, so
+			// the page template's SeriesFollowButton would otherwise render as an
+			// unresolved empty custom element (the same reason index.spec
+			// registers PostCard explicitly). Register the real component so the
+			// in-series follow control actually mounts under test.
+			components: {
+				SeriesFollowButton,
+			},
 			stubs: {
 				NuxtLink: {
 					template: '<a :href="to"><slot/></a>',
@@ -1304,6 +1314,37 @@ describe("Post Detail Page", () => {
 			});
 			expect(first.findAll('a[href="/posts/part-one-routing"]').length).toBe(0);
 			expect(first.findAll('a[href="/posts/test-article-post"]').length).toBeGreaterThanOrEqual(1);
+		});
+
+		it("shows no in-place series-follow control for guests (DEC-290/TASK-374)", async () => {
+			localStorage.removeItem("reader_token");
+			const wrapper = await mountPostPage({
+				post: seriesPost,
+				seriesDetail: mockSeriesDetail,
+			});
+			const nav = wrapper.find('nav[aria-label="本系列文章"]');
+			expect(nav.exists()).toBe(true);
+			// The zh new-part follow label ("有新篇时通知我") and its notify
+			// toggle are absent for guests — the control renders nothing.
+			expect(nav.text()).not.toContain("有新篇时通知我");
+			expect(nav.text()).not.toContain("已关注新篇");
+		});
+
+		it("shows the in-place series-follow control to signed-in readers (DEC-290/TASK-374)", async () => {
+			localStorage.setItem("reader_token", "test-token-for-series-follow");
+			// $fetch is stubbed globally; getReaderSeriesFollows rides the same
+			// seam. A resolution without `items` is treated as "not following" by
+			// the control, which is the right initial state for this assertion.
+			const wrapper = await mountPostPage({
+				post: seriesPost,
+				seriesDetail: mockSeriesDetail,
+			});
+			const nav = wrapper.find('nav[aria-label="本系列文章"]');
+			expect(nav.exists()).toBe(true);
+			// Signed-in → the in-place follow toggle renders in the series nav.
+			expect(nav.text()).toContain("有新篇时通知我");
+			// Not following yet → the notify toggle is hidden.
+			expect(nav.text()).not.toContain("已关注新篇");
 		});
 	});
 

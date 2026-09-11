@@ -889,8 +889,18 @@ function handleCommentSubmitted(created: Comment | undefined) {
               <Icon icon="lucide:layers" class="w-4 h-4" />
               <span>{{ t('series.serialLabel') }} — {{ seriesNav.series.title }}</span>
             </NuxtLink>
-            <span class="text-xs text-gray-400 shrink-0">
-              {{ t('series.partLabel', { position: seriesNav.position, count: seriesNav.total }) }}
+            <span class="flex items-center gap-3 shrink-0">
+              <!-- In-place series-follow (DEC-290/TASK-374): a signed-in reader
+                   reading part N can subscribe to future parts without leaving
+                   the post — the identical discoverability gap DEC-196 closed
+                   for tags. Renders nothing for guests. -->
+              <SeriesFollowButton
+                :series-id="seriesNav.series.id"
+                :series-title="seriesNav.series.title"
+              />
+              <span class="text-xs text-gray-400">
+                {{ t('series.partLabel', { position: seriesNav.position, count: seriesNav.total }) }}
+              </span>
             </span>
           </div>
           <div class="grid gap-4 sm:grid-cols-2">
