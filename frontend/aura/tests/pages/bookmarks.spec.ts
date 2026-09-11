@@ -60,11 +60,12 @@ vi.mock("../../composables/useReaderAuth", () => ({
 const mockFolders = ref<{ id: number; name: string; count: number }[]>([]);
 const mockCreateFolder = vi.fn(async () => false);
 const mockAssignFolder = vi.fn(async () => true);
+const mockLoadFolders = vi.fn(async () => {});
 vi.mock("../../composables/useBookmarkFolders", () => ({
 	useBookmarkFolders: () => ({
 		folders: mockFolders,
 		loading: ref(false),
-		load: vi.fn(),
+		load: mockLoadFolders,
 		create: mockCreateFolder,
 		rename: vi.fn(async () => true),
 		remove: vi.fn(async () => true),
@@ -227,6 +228,32 @@ describe("Bookmarks page", () => {
 			const wrapper = mountBookmarks();
 			await wrapper.find("button[title='移除收藏']").trigger("click");
 			expect(mockRemoveBookmark).toHaveBeenCalledWith(1);
+		});
+
+		it("refreshes folder chip counts after a remove so counts stay in sync", async () => {
+			// Folder chip counts go stale after remove/undo/clear-all: the sync
+			// add/remove is fire-and-forget and only loadFolders recomputes each
+			// folder's count, so the page schedules a delayed refresh after the
+			// removal lands (round 299).
+			mockBookmarks.value = [sampleBookmark];
+			mockIsAuthenticated.value = true;
+			mockRemoveBookmark.mockClear();
+			mockLoadFolders.mockClear();
+			vi.useFakeTimers();
+
+			const wrapper = mountBookmarks();
+			// onMounted also loads folder counts for a signed-in reader, so ignore
+			// that baseline before asserting the remove-triggered refresh.
+			mockLoadFolders.mockClear();
+			await wrapper.find("button[title='移除收藏']").trigger("click");
+			expect(mockRemoveBookmark).toHaveBeenCalledWith(1);
+
+			// Counts must not churn before the debounce window elapses.
+			expect(mockLoadFolders).not.toHaveBeenCalled();
+			await vi.advanceTimersByTimeAsync(400);
+			expect(mockLoadFolders).toHaveBeenCalled();
+
+			vi.useRealTimers();
 		});
 
 		it("offers an inline Undo after a one-click removal and restores via add", async () => {

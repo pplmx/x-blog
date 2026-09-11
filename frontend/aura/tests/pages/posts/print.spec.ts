@@ -36,17 +36,19 @@ async function mountPrintPage({
 	pending = false,
 	error = null,
 	slug = "printable-article",
+	headMock,
 }: {
 	post?: typeof mockPost | null;
 	pending?: boolean;
 	error?: { message: string } | null;
 	slug?: string;
+	headMock?: ReturnType<typeof vi.fn>;
 } = {}) {
 	vi.stubGlobal("useRuntimeConfig", () => ({
 		public: { apiUrl: "http://localhost:18888" },
 	}));
 
-	vi.stubGlobal("useHead", vi.fn());
+	vi.stubGlobal("useHead", headMock ?? vi.fn());
 
 	vi.stubGlobal("useRoute", () => ({
 		params: { slug },
@@ -100,6 +102,15 @@ async function mountPrintPage({
 
 	await flushPromises();
 	return wrapper;
+}
+
+/** Mount with a captured useHead mock so a test can inspect the reactive title. */
+async function mountPrintPageWithHead(
+	opts: { post?: typeof mockPost | null; error?: { message: string } | null } = {},
+) {
+	const headMock = vi.fn();
+	const wrapper = await mountPrintPage({ ...opts, headMock });
+	return { wrapper, headMock };
 }
 
 describe("Print / PDF view", () => {
@@ -160,5 +171,28 @@ describe("Print / PDF view", () => {
 	it("renders not-found message when the fetch fails", async () => {
 		const wrapper = await mountPrintPage({ error: { message: "network down" } });
 		expect(wrapper.text()).toContain("文章不存在");
+	});
+
+	it("a missing/deleted print post offers a way home instead of a dead end (round 299)", async () => {
+		const wrapper = await mountPrintPage({ post: null });
+		// Before the round-299 fix this was a bare "not found" line with no path
+		// onward — a stale share/cached print link to a removed post stranded the
+		// reader (the article page always offered Home).
+		expect(wrapper.find('a[href="/"]').exists()).toBe(true);
+		expect(wrapper.text()).toContain("返回首页");
+	});
+
+	it("uses a reactive useHead title so SPA navigation between print slugs updates the tab (round 299)", async () => {
+		// The title is a getter closing over the post ref (not a one-shot
+		// evaluated value): SPA navigation between print slugs keeps this
+		// component mounted, and a static value would leave the previous post's
+		// title on the tab.
+		const { headMock } = await mountPrintPageWithHead({ post: mockPost });
+		expect(headMock).toHaveBeenCalled();
+		const title = headMock.mock.calls.at(-1)?.[0].title;
+		expect(title).toBeDefined();
+		expect(typeof title).toBe("function");
+		expect(title()).toContain("Printable Article");
+		expect(title()).toContain("打印 / PDF");
 	});
 });

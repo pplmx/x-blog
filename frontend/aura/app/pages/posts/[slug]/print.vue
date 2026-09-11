@@ -17,8 +17,12 @@ const readingTime = computed(() => readingMinutes(post.value?.content));
 
 // The print route is a duplicate surface for archiving only — keep search
 // engines from indexing it as a separate page (canonical lives on the article).
+// Getters (not a static value) so SPA navigation between print slugs — the
+// route keeps this component mounted — swaps the tab title with the new post
+// instead of leaving the previous one's title on the tab (round-299 deep-dive).
 useHead({
-	title: post.value ? `${post.value.title} — ${t("post.printPdf")}` : t("post.notFoundTitle"),
+	title: () =>
+		post.value ? `${post.value.title} — ${t("post.printPdf")}` : t("post.notFoundTitle"),
 	meta: [{ name: "robots", content: "noindex, nofollow" }],
 });
 
@@ -63,7 +67,12 @@ function printPage() {
 
       <div v-else-if="error || !post" class="text-center py-20 text-gray-500">
         <Icon icon="lucide:file-question" class="w-12 h-12 mx-auto mb-4 text-gray-300" />
-        <p>{{ t('post.notFound') }}</p>
+        <p class="mb-4">{{ t('post.notFound') }}</p>
+        <!-- A stale share/bookmark print link must not be a dead end (round-299
+             deep-dive): give the reader a path back home, like the article page. -->
+        <NuxtLink to="/" class="px-4 py-2 rounded-lg text-sm font-medium text-blue-600 dark:text-blue-400 hover:underline">
+          {{ t('common.action.backHome') }}
+        </NuxtLink>
       </div>
 
       <!-- Print-ready article -->

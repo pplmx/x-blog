@@ -50,6 +50,16 @@ const { t, locale } = useLang();
 const { isAuthenticated, reader, setProfile, updateToken, logout, isStaleSession } =
 	useReaderAuth();
 
+// The reader token lives in localStorage (client-only): during SSR + the first
+// client render auth is simply unknown, so without a hydration gate the
+// server-rendered "sign in" prompt would flash at a signed-in reader. Render a
+// neutral placeholder until mount, then decide guest vs. account (round-299
+// deep-dive; same pattern as CommentForm).
+const hydrated = ref(false);
+onMounted(() => {
+	hydrated.value = true;
+});
+
 // Getter form: an in-app language switch re-evaluates the title/og tags
 // (static object froze them in the initial language — deep-dive, ISS-372).
 useSeo(() => ({
@@ -625,9 +635,19 @@ function shortEndpoint(endpoint: string): string {
       {{ t('account.title') }}
     </h1>
 
+    <!-- Auth unknown (SSR + pre-hydration): a neutral placeholder so the "sign
+         in" prompt never flashes at an already-authenticated reader. -->
+    <div
+      v-if="!hydrated"
+      class="flex items-center justify-center py-12 text-gray-300 dark:text-gray-600"
+      aria-hidden="true"
+    >
+      <Icon icon="lucide:user" class="w-8 h-8" />
+    </div>
+
     <!-- Logged out: reader-scoped page, prompt to sign in -->
     <div
-      v-if="!isAuthenticated"
+      v-else-if="!isAuthenticated"
       class="text-center py-12 text-gray-500 dark:text-gray-400 border border-dashed border-gray-200 dark:border-gray-700 rounded-xl"
     >
       <p class="mb-3">{{ t('account.signInPrompt') }}</p>

@@ -39,6 +39,17 @@ const { isAuthenticated: signedIn } = useReaderAuth();
 // permanent-looking "cleared" state would be a lie. Flag it instead.
 const clearFailed = ref(false);
 
+// Server-derived folder chips (f.count) would otherwise stay stale after a
+// remove/undo/clear while the local-first list updates instantly — reload
+// them a beat after the fire-and-forget cloud mirror settles so the (n) moves
+// with the action (round-299 deep-dive).
+let countRefreshTimer: ReturnType<typeof setTimeout> | undefined;
+function refreshFolderCountsSoon() {
+	if (!signedIn.value) return;
+	if (countRefreshTimer) clearTimeout(countRefreshTimer);
+	countRefreshTimer = setTimeout(() => void loadFolders(), 400);
+}
+
 async function handleClearAll() {
 	if (confirm(t("bookmarks.confirmClear"))) {
 		// clearAll wipes the localStorage mirror AND the cloud copy when signed
@@ -47,6 +58,7 @@ async function handleClearAll() {
 		clearFailed.value = false;
 		const ok = await clearAll();
 		if (!ok) clearFailed.value = true;
+		refreshFolderCountsSoon();
 	}
 }
 
@@ -62,6 +74,7 @@ function handleRemove(bookmark: Bookmark) {
 	undoClearTimer = setTimeout(() => {
 		undoItem.value = null;
 	}, 6000);
+	refreshFolderCountsSoon();
 }
 async function undoRemove() {
 	if (!undoItem.value) return;
@@ -85,6 +98,7 @@ async function undoRemove() {
 	if (undoClearTimer) clearTimeout(undoClearTimer);
 	undoClearTimer = undefined;
 	undoItem.value = null;
+	refreshFolderCountsSoon();
 }
 
 // Clear both timers so a delayed ref-set can't fire after unmount (same
@@ -92,6 +106,7 @@ async function undoRemove() {
 onUnmounted(() => {
 	if (undoClearTimer) clearTimeout(undoClearTimer);
 	if (folderActionTimer) clearTimeout(folderActionTimer);
+	if (countRefreshTimer) clearTimeout(countRefreshTimer);
 });
 
 // When a signed-in reader opens the page, reconcile with the cloud: push any
