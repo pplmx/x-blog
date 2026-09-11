@@ -97,7 +97,14 @@ def test_search_no_results(client, auth_headers):
     assert data["pagination"]["total"] == 0
 
 
-def test_search_empty_query(client, auth_headers):
+def test_search_blank_query_is_422(client, auth_headers):
+    """A whitespace-only q must be rejected, not full-scanned.
+
+    Before the round-296 fix, q=\" \" passed min_length=1 and crud fell back to
+    the raw term, producing a content ILIKE '% %' that matched nearly every
+    published post — an anonymous full-table scan on this unauthenticated
+    endpoint (this test previously asserted that buggy 200 + corpus).
+    """
     client.post(
         "/api/posts",
         json={
@@ -109,10 +116,11 @@ def test_search_empty_query(client, auth_headers):
         headers=auth_headers,
     )
 
-    response = client.get("/api/search?q=%20")
-    assert response.status_code == 200
-    data = response.json()
-    assert "items" in data
+    for raw in ("%20", "%20%20"):
+        response = client.get(f"/api/search?q={raw}")
+        assert response.status_code == 422, response.text
+        # App-wide error envelope: {"error": {"message": ...}} (main.py handler).
+        assert "non-blank" in response.json()["error"]["message"]
 
 
 def test_search_special_characters(client, db_session):

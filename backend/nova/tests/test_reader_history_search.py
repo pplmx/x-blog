@@ -91,3 +91,12 @@ class TestHistorySearch:
 
     def test_requires_token(self, client):
         assert client.get("/api/reader/me/history", params={"q": "x"}).status_code == 401
+
+    def test_overlong_q_is_422_not_burned_into_an_iliike_bind(self, client, auth_headers):
+        # /me/history is not rate-limited and its q reached the ILIKE bind with
+        # no length cap; bound it to the public search's MAX_QUERY_LENGTH so an
+        # oversized term is a clean 422 instead of a large %..% pattern on the
+        # reader's history rows (round-296 deep-dive).
+        token = _token(client)
+        response = client.get("/api/reader/me/history", params={"q": "x" * 201}, headers=_auth(token))
+        assert response.status_code == 422

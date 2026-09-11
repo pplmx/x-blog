@@ -902,21 +902,31 @@ def admin_batch_approve_comments(
     _current_user: auth.User = Depends(get_current_superuser),
 ):
     comments = db.query(models.Comment).filter(models.Comment.id.in_(body.ids)).all()
-    for c in comments:
+    # Idempotent: a comment already in the requested reviewed state (correct
+    # is_approved AND reviewed_at stamped) is a no-op, so a re-approve of
+    # already-approved comments must not re-fan out reply + thread
+    # notifications (round-296 deep-dive — matches the single-approve guard in
+    # comments.py). A *pending* comment (is_approved=False, reviewed_at NULL)
+    # still enters `changed`: a reject must stamp reviewed_at or it would stay
+    # in the moderation queue forever.
+    changed = [c for c in comments if c.is_approved != body.approved or c.reviewed_at is None]
+    for c in changed:
         c.is_approved = body.approved
         # Stamp reviewed_at on both outcomes so rejected comments leave the
         # moderation pending queue (get_pending_comments filters is_approved
         # AND reviewed_at is NULL) instead of lingering "pending" forever.
         # Mirrors crud.approve_comment's aware-UTC stamp (DEC-066, TASK-139).
         c.reviewed_at = datetime.now(UTC)
-    db.commit()
-    # Approving/rejecting changes the approved comment_count embedded in the
-    # cached public post list, so invalidate it (ISS-056).
-    clear_posts_list_cache()
+    if changed:
+        db.commit()
+        # Approving/rejecting changes the approved comment_count embedded in the
+        # cached public post list, so invalidate it (ISS-056).
+        clear_posts_list_cache()
     # Notify replied-to readers + thread followers when comments are APPROVED
-    # in bulk, the same as the single-approve path (comments.py APPROVE).
+    # in bulk, the same as the single-approve path (comments.py APPROVE) — only
+    # for comments that genuinely transitioned.
     if body.approved:
-        for c in comments:
+        for c in changed:
             _notify_comment_approved(db, c)
     return {"message": f"{len(comments)} comments updated"}
 

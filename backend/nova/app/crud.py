@@ -891,10 +891,20 @@ def create_comment(
 
 
 def approve_comment(db: Session, comment_id: int, approved: bool = True) -> models.Comment | None:
-    """Approve or reject a comment."""
+    """Approve or reject a comment. Idempotent: applying the state the comment
+    already has is a no-op (no reviewed_at bump, no cache clear), so a re-approve
+    click / batch re-run cannot churn state — routers that fan out notifications
+    gate on the transition themselves (round-296 deep-dive; the reader-edit path
+    already guards via ``was_public``, ISS-404)."""
     comment = db.query(models.Comment).filter(models.Comment.id == comment_id).first()
     if not comment:
         return None
+    # Already in the requested reviewed state: no-op. reviewed_at must be set
+    # too — a pending comment is is_approved=False with reviewed_at NULL, so a
+    # REJECT of a pending comment still has to stamp it (moving it out of the
+    # moderation queue), even though is_approved is already False.
+    if comment.is_approved == approved and comment.reviewed_at is not None:
+        return comment
     comment.is_approved = approved
     # Reviewed_at distinguishes "still pending" from "reviewed and rejected" for
     # the author's comment history (DEC-066, TASK-139). Set on both outcomes.

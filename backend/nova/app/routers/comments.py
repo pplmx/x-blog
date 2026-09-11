@@ -342,13 +342,19 @@ def approve_comment(
     _current_user: User = Depends(get_current_admin),
     db: Session = Depends(get_db),
 ):
-    """Approve or reject a comment. Admin only."""
+    """Approve or reject a comment. Admin only. Idempotent: re-approving an
+    already-approved comment (double click / retry) is a no-op that must not
+    fan out duplicate reply + thread notifications (round-296 deep-dive)."""
+    before = db.query(models.Comment.is_approved).filter(models.Comment.id == comment_id).scalar()
     comment = crud.approve_comment(db, comment_id, approved=approval.approved)
     if not comment:
         raise HTTPException(status_code=404, detail="Comment not found")
 
-    if approval.approved:
+    if approval.approved and not before:
         # Shared with the verified-reader auto-approve path (DEC-098, TASK-161).
+        # crud.approve_comment resolved `before` from a real row (we are past
+        # the 404), so `before` is the prior approval state; only a genuine
+        # transition into approved fires the fan-out.
         _notify_comment_approved(db, comment)
     return comment
 

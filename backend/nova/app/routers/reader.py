@@ -1284,7 +1284,12 @@ def list_reading_history(
     current_reader: auth.ReaderAccount = Depends(auth.get_current_reader),
     page: PageInt = 1,
     limit: int = Query(20, ge=1, le=100),
-    q: Annotated[NonNulStr | None, Query(description="filter history to posts matching this term")] = None,
+    # q is bound to the same length as the public search term (search.py
+    # MAX_QUERY_LENGTH) — an unbounded string would otherwise reach the ILIKE
+    # bind on this unthrottled endpoint (round-296 deep-dive).
+    q: Annotated[
+        NonNulStr | None, Query(max_length=200, description="filter history to posts matching this term")
+    ] = None,
     db: Session = Depends(get_db),
 ):
     """The reader's viewed posts, newest-first, publicly-visible only.
@@ -1678,7 +1683,7 @@ def list_my_notifications(
 @limiter.limit(f"{RATE_LIMIT_WRITE}/minute")
 def mark_notification_read(
     request: Request,  # noqa: ARG001
-    notification_id: int,
+    notification_id: IdInt,
     current_reader: auth.ReaderAccount = Depends(auth.get_current_reader),
     db: Session = Depends(get_db),
 ):
@@ -1687,7 +1692,11 @@ def mark_notification_read(
     if not ok:
         raise HTTPException(status_code=404, detail="Notification not found")
     row = db.get(models.ReaderNotification, notification_id)
-    assert row is not None  # mark_reader_notification_read returned True only for an owned row
+    if row is None:
+        # mark_reader_notification_read reported an owned row but it vanished in
+        # the same session (concurrent clear); surface 404 instead of an
+        # unhandled assert (round-296 deep-dive).
+        raise HTTPException(status_code=404, detail="Notification not found")
     return NotificationItem(
         id=row.id,
         kind=row.kind,

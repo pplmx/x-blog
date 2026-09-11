@@ -158,6 +158,13 @@ def search(
     sort: str = Query("relevance", description="relevance | newest | oldest | views"),
     db: Session = Depends(get_db),
 ):
+    if not q.strip():
+        # A whitespace-only q passes min_length=1 but tokenizes to an empty
+        # term, so crud.search_posts' `[t for t in query.split() if t] or [query]`
+        # falls back to the raw " " → a content ILIKE '% %' matching nearly every
+        # published post: an anonymous full-table scan on an unauthenticated
+        # endpoint (round-296 deep-dive). Reject it at the boundary instead.
+        raise HTTPException(status_code=422, detail="q must be a non-blank search term")
     if sort not in VALID_SORTS:
         raise HTTPException(status_code=422, detail=f"sort must be one of {list(VALID_SORTS)}")
     is_postgres = db.get_bind().dialect.name == "postgresql"

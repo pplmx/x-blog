@@ -163,6 +163,14 @@ class TestListAndMarkRead:
         other = client.get(NOTIFS, headers=_auth(token_b)).json()
         assert other["total"] == 0
 
+    def test_mark_read_oversized_id_is_422_not_500(self, client):
+        # A 20+ digit id used to bind an out-of-range Python int and 500 on both
+        # dialects (sqlite OverflowError / psycopg out-of-range); the shared IdInt
+        # alias bounds it to 32-bit so this is a clean 422 (round-296 deep-dive).
+        token = _register(client, email="bigid@example.com").json()["access_token"]
+        response = client.post(f"{NOTIFS}/99999999999999999999/read", headers=_auth(token))
+        assert response.status_code == 422
+
 
 class TestPersistenceHooks:
     def test_deactivated_follower_gets_no_inbox_row(self, client, db_session, auth_headers):
@@ -594,6 +602,43 @@ class TestPersistenceHooks:
 
         data = client.get(NOTIFS, headers=headers).json()
         assert any(i["kind"] == "thread_comment" for i in data["items"])
+
+    def test_reapproving_an_approved_comment_does_not_re_fan_out(self, client, db_session, auth_headers):
+        """Approval is idempotent: re-approving an already-approved comment
+        (double click / retry) is a no-op and must not duplicate the
+        thread-follower inbox row (round-296 deep-dive)."""
+        token = _token(client, email="idem@example.com")
+        headers = _auth(token)
+        post = _create_post(db_session)
+
+        # Reader follows the post's thread.
+        sub = client.put(f"/api/posts/{post.id}/subscription", headers=headers)
+        assert sub.status_code in (200, 201), sub.text
+
+        other = _register(client, email="idem-other@example.com").json()["access_token"]
+        created = client.post(
+            f"/api/comments/post/{post.id}",
+            json={"content": "idempotent comment", "nickname": "O", "email": "o@example.com"},
+            headers=_auth(other),
+        )
+        assert created.status_code == 201, created.text
+        from app import models
+
+        row = db_session.query(models.Comment).filter_by(content="idempotent comment").first()
+        assert row is not None
+
+        # First approve fans out exactly one thread_comment row.
+        ap = client.patch(f"/api/comments/{row.id}/approve", json={"approved": True}, headers=auth_headers)
+        assert ap.status_code == 200, ap.text
+        first = client.get(NOTIFS, headers=headers).json()["items"]
+        assert len([i for i in first if i["kind"] == "thread_comment"]) == 1
+
+        # A re-approve of the already-approved comment must not add a second row
+        # (before the fix the unguarded re-approve re-inserted the row).
+        re = client.patch(f"/api/comments/{row.id}/approve", json={"approved": True}, headers=auth_headers)
+        assert re.status_code == 200, re.text
+        second = client.get(NOTIFS, headers=headers).json()["items"]
+        assert len([i for i in second if i["kind"] == "thread_comment"]) == 1
 
 
 class TestFanOutPrune:
