@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 304,
+  "round": 305,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-11T16:34:33+00:00",
+  "updated_at": "2026-09-11T18:36:09+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -22,7 +22,7 @@
       "version": 1,
       "created_at": "2026-08-06T13:23:41+00:00",
       "updated_at": "2026-08-06T13:23:41+00:00",
-      "touched_round": 300,
+      "touched_round": 305,
       "title": "frontend-aura",
       "description": "Nuxt 4 Vue 3 TypeScript frontend at frontend/aura; composables; admin pages; e2e Playwright; biome lint"
     },
@@ -22637,10 +22637,83 @@
       "version": 1,
       "created_at": "2026-09-11T16:33:49+00:00",
       "updated_at": "2026-09-11T16:33:49+00:00",
-      "touched_round": 303,
+      "touched_round": 304,
       "title": "Feature-evolution arc converged: 3 features delivered; core-feature backlog empty (converged-idle)",
       "rationale": "The feature-exploration directive (2026-09-12, 功能探索开发模式) delivered three user-visible vertical slices across rounds 302-304, each with full verification: (r302) reader password recovery (CHG-483, DEC-286) — stateless reset token, anti-oracle request, auto-login, SMTP-sink e2e; (r303) per-post reading trend in the admin editor (CHG-484, DEC-287) — GET /api/admin/stats/views/posts/{id} + sparkline, browser-verified; (r304) reader reading density A-/A+ (CHG-485, DEC-288) — persisted per-device, browser-verified incl. a real SSR-hydration bug caught and fixed. Every active core-feature task is now delivered and verified (TASK-371/372/373 resolved): section 11.5.1 stop condition holds. A fresh sourcing pass found no value-gate-passing candidate: the dark-mode manual toggle is already implemented (useTheme.ts), and the remaining pool (avatars, comment reactions, PWA/offline, WebP auto-transcode, one-click email unsubscribe, follow-scoped digests) was already rejected or defer-tagged in DEC-055..203. Converging, not idling-by-decision: a new operator direction or a real new-product signal re-activates the arc (it supersedes these decisions).",
       "alternatives_rejected": "Emit a further round-tick chore (rejected: core-feature backlog is empty, 11.5.1; no value-gate candidate survives sourcing). Chase avatars/reactions/PWA/WebP/email-unsubscribe (rejected at the gate in DEC-055..203, or already implemented)."
+    },
+    "DEC-290": {
+      "id": "DEC-290",
+      "type": "decision",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-11T17:16:30+00:00",
+      "updated_at": "2026-09-11T18:36:09+00:00",
+      "touched_round": 305,
+      "title": "Reactivate feature-evolution: in-place series-follow on the post page (subscribes the reader to future series parts where they discover the series)",
+      "rationale": "Operator re-invoked feature-exploration mode on 2026-09-12 (graph-engineering 功能探索开发模式), superseding the DEC-289 converged-idle record. Gap analysis against the shipped feature surface found one surviving value-gate candidate: series-follow is only reachable from /series/[slug] (DEC-132/TASK-178 built the durable follow + notify + account list), yet the post page — the highest-traffic reading surface — renders the in-series nav box with no follow control. A reader landing on part 3 of a series (via search/related/prev-next) has to leave the post to subscribe to new parts. This is the exact gap DEC-196 closed for tags (in-place tag-follow on post chips); series is the missing analogue. Slice: a new SeriesFollowButton component (mirrors TagFollowButton: signedIn gate, dead-session guard, transient error, session-expired prompt) mounted in the post page in-series nav header, wired to the existing followReaderSeries/unfollowReaderSeries/setSeriesFollowNotify + getReaderSeriesFollows imperative seam. Backend endpoints already exist and are tested — this is a pure frontend vertical slice plus component/page/e2e tests.",
+      "alternatives_rejected": "(a) Keep the converged-idle stop (rejected: a fresh operator directive re-activates feature mode; §11 QUIESCE re-entry requires a supersedes decision). (b) Extend in-place follow to categories on the post page too (rejected: categories lack a visible anchor on the post page today — no category chip — so there is no natural in-place affordance; tags and the series box are the two real anchors, and tags are done). (c) Public reader profiles / avatars / reactions / PWA / WebP / email-unsubscribe (rejected at the gate in DEC-055..289 or already shipped — no surviving value-gate candidate except this one)."
+    },
+    "TASK-374": {
+      "id": "TASK-374",
+      "type": "task",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-11T17:16:43+00:00",
+      "updated_at": "2026-09-11T18:29:39+00:00",
+      "touched_round": 305,
+      "category": "core-feature",
+      "title": "In-place series-follow on the post page: SeriesFollowButton in the in-series nav box (follow/unfollow + new-part notify toggle) for signed-in readers, frontend vertical slice + component/page tests + e2e",
+      "severity": "medium",
+      "effort": "small",
+      "confidence": 0.9
+    },
+    "EV-240": {
+      "id": "EV-240",
+      "type": "evidence",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-11T18:29:07+00:00",
+      "updated_at": "2026-09-11T18:29:07+00:00",
+      "touched_round": 304,
+      "source": "frontend/aura/app/pages/posts/[slug]/index.vue:885",
+      "title": "In-place series-follow on the post page verified: SeriesFollowButton mounted in the in-series nav header",
+      "content": "DEC-290/TASK-374 built and verified end-to-end. Component tests (13) cover guest gate, state load via getReaderSeriesFollows imperative seam, follow/unfollow/notify, stale-in-flight seq guard, in-flight spinner, transient failure bubble, dead-session guard (drop token + sign-in prompt) on both tap and initial load. Post-page tests (2) assert guests see no control while signed-in readers get the follow toggle in nav[aria-label=本系列文章]. Real-browser e2e (e2e/series-follow-inline.spec.ts) passes: guest sees nothing; signed-in reader follows the series from the post, toggles new-part notifications off/on (server-confirmed via /me/series-follows), sees it in the account Followed-series section, and unfollows. Full frontend suite 1972 passed, typecheck + biome clean.",
+      "confidence": 1.0
+    },
+    "CHG-486": {
+      "id": "CHG-486",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-11T18:32:22+00:00",
+      "updated_at": "2026-09-11T18:32:22+00:00",
+      "touched_round": 305,
+      "commit": "9c272340e53f639c96c320c8705e3b4842677fa2",
+      "title": "feat(reader): in-place series-follow on the post page (SeriesFollowButton in the in-series nav box)"
+    },
+    "ISS-496": {
+      "id": "ISS-496",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-11T18:32:49+00:00",
+      "updated_at": "2026-09-11T18:33:26+00:00",
+      "touched_round": 305,
+      "title": "Series-follow only reachable from /series/[slug]; post-page series nav box had no follow control (reader discovering a series from part N had to leave the post)",
+      "severity": "low"
+    },
+    "DEC-291": {
+      "id": "DEC-291",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-11T18:35:40+00:00",
+      "updated_at": "2026-09-11T18:35:40+00:00",
+      "touched_round": 305,
+      "title": "Feature-evolution round 305 delivered: in-place series-follow on the post page (TASK-374 complete); feature backlog re-check",
+      "rationale": "Round 305 delivered the in-place series-follow slice from TASK-374 (governed by DEC-290): new SeriesFollowButton component mounted in the post page's in-series nav header — signed-in readers follow/unfollow the current series and toggle new-part notifications in place, closing the same discoverability gap DEC-196 closed for tags. Backend follow APIs already existed (DEC-132/TASK-178) so this was a pure frontend vertical slice: component + 13 component tests + 2 post-page tests + real-browser e2e (e2e/series-follow-inline.spec.ts, both journeys green) + CHANGELOG/README. Verified: frontend suite 1972 passed, nuxt typecheck clean, biome clean (incl. the carried formatting drift from the prior round required by the pnpm lint gate). CHG-486 (9c27234) implements TASK-374 and resolves ISS-496; EV-240 records the verification. 11.5.1 backstop not yet met (this round DID deliver a change); continue feature mode to the next candidate.",
+      "alternatives_rejected": "(a) Stop feature evolution after this round (rejected: 11.5.1 requires backlog empty AND no value-gate candidate survives; the follows-feed / in-place category-follow / reader-profile candidates still pass sourcing review, so at least a re-check round is warranted). (b) Extend the same component to the series page / account list (rejected: out of this round's vertical-slice scope; the series page already has the identical block built directly — deduping it is refactor work for a later maintainability pass, not user-visible feature value)."
     }
   },
   "edges": [
@@ -33969,6 +34042,48 @@
       "type": "supersedes",
       "created_at": "2026-09-11T16:34:33+00:00",
       "note": "converged-idle supersedes the feature-mode switch directive"
+    },
+    {
+      "from": "DEC-290",
+      "to": "DEC-289",
+      "type": "supersedes",
+      "created_at": "2026-09-11T17:16:57+00:00"
+    },
+    {
+      "from": "DEC-290",
+      "to": "TASK-374",
+      "type": "governs",
+      "created_at": "2026-09-11T17:16:57+00:00"
+    },
+    {
+      "from": "CHG-486",
+      "to": "TASK-374",
+      "type": "implements",
+      "created_at": "2026-09-11T18:32:49+00:00"
+    },
+    {
+      "from": "TASK-374",
+      "to": "ISS-496",
+      "type": "addresses",
+      "created_at": "2026-09-11T18:33:26+00:00"
+    },
+    {
+      "from": "CHG-486",
+      "to": "ISS-496",
+      "type": "resolves",
+      "created_at": "2026-09-11T18:33:26+00:00"
+    },
+    {
+      "from": "ISS-496",
+      "to": "COMP-002",
+      "type": "located_in",
+      "created_at": "2026-09-11T18:33:26+00:00"
+    },
+    {
+      "from": "DEC-291",
+      "to": "DEC-290",
+      "type": "supersedes",
+      "created_at": "2026-09-11T18:36:09+00:00"
     }
   ]
 }
