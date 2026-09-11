@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 295,
+  "round": 296,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-11T01:41:22+00:00",
+  "updated_at": "2026-09-11T02:48:41+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -11,7 +11,7 @@
       "version": 1,
       "created_at": "2026-08-06T13:23:41+00:00",
       "updated_at": "2026-08-06T13:23:41+00:00",
-      "touched_round": 295,
+      "touched_round": 296,
       "title": "backend-nova",
       "description": "FastAPI Python 3.14 backend at backend/nova; SQLAlchemy ORM; routers in app/routers, crud.py business logic, 656 lines"
     },
@@ -22,7 +22,7 @@
       "version": 1,
       "created_at": "2026-08-06T13:23:41+00:00",
       "updated_at": "2026-08-06T13:23:41+00:00",
-      "touched_round": 295,
+      "touched_round": 296,
       "title": "frontend-aura",
       "description": "Nuxt 4 Vue 3 TypeScript frontend at frontend/aura; composables; admin pages; e2e Playwright; biome lint"
     },
@@ -21966,6 +21966,92 @@
       "touched_round": 295,
       "commit": "9d2d7ae",
       "title": "joinedload Post.series on PostList queries"
+    },
+    "ISS-479": {
+      "id": "ISS-479",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-11T02:45:29+00:00",
+      "updated_at": "2026-09-11T02:48:40+00:00",
+      "touched_round": 296,
+      "title": "Comment approval is non-idempotent: a re-approve re-fans out notifications",
+      "severity": "medium",
+      "detail": "crud.approve_comment always rewrote is_approved/reviewed_at, and the single (comments.py) + batch (admin.py) approve paths called _notify_comment_approved unconditionally whenever approved=True — a double click / retry / batch re-run of an already-approved comment duplicated durable inbox rows + web-push/email to every thread follower and the replied-to reader. (reader-edit path already guarded via was_public, ISS-404.)"
+    },
+    "ISS-480": {
+      "id": "ISS-480",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-11T02:45:29+00:00",
+      "updated_at": "2026-09-11T02:48:41+00:00",
+      "touched_round": 296,
+      "title": "Reader endpoints: unbounded notification_id int (500 on oversized) and uncapped history q",
+      "severity": "medium",
+      "detail": "mark_notification_read took plain int (20+ digit id 500s on both dialects) + an assert; /me/history q (unthrottled) reached the ILIKE bind with no length cap, unlike search's MAX_QUERY_LENGTH."
+    },
+    "ISS-481": {
+      "id": "ISS-481",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-11T02:46:53+00:00",
+      "updated_at": "2026-09-11T02:48:41+00:00",
+      "touched_round": 296,
+      "title": "Whitespace-only search q runs an anonymous full-corpus ILIKE scan",
+      "severity": "medium",
+      "detail": "q of a single space passes min_length=1 but tokenizes to an empty term list; crud.search_posts falls back to the raw term producing content ILIKE percent-space-percent matching nearly every published post on an unauthenticated 60/min endpoint."
+    },
+    "TASK-359": {
+      "id": "TASK-359",
+      "type": "task",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-11T02:46:53+00:00",
+      "updated_at": "2026-09-11T02:48:40+00:00",
+      "touched_round": 296,
+      "category": "correctness",
+      "severity": "medium",
+      "title": "Make comment approval idempotent (single + batch)",
+      "detail": "Skip re-review when the comment is already in the requested reviewed state (is_approved matches AND reviewed_at stamped); still stamp reviewed_at for a pending reject so it leaves the moderation queue; notify only on a genuine transition into approved."
+    },
+    "TASK-360": {
+      "id": "TASK-360",
+      "type": "task",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-11T02:46:54+00:00",
+      "updated_at": "2026-09-11T02:48:40+00:00",
+      "touched_round": 296,
+      "category": "security",
+      "severity": "medium",
+      "title": "Reject whitespace-only search q at the boundary",
+      "detail": "422 when q.strip() is empty in /api/search, and make the frontend search page treat a blank/space query as an idle prompt (enabled uses trim())."
+    },
+    "TASK-361": {
+      "id": "TASK-361",
+      "type": "task",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-11T02:46:54+00:00",
+      "updated_at": "2026-09-11T02:48:40+00:00",
+      "touched_round": 296,
+      "category": "stability",
+      "severity": "medium",
+      "title": "Bound reader notification_id and history q inputs",
+      "detail": "notification_id -> shared IdInt (422 instead of 500 on oversized), drop the assert for a 404 path, and cap the /me/history q at 200 like public search."
+    },
+    "CHG-476": {
+      "id": "CHG-476",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-11T02:47:59+00:00",
+      "updated_at": "2026-09-11T02:47:59+00:00",
+      "touched_round": 296,
+      "commit": "a446b13",
+      "title": "Idempotent approval + blank-q 422 + reader input bounds"
     }
   },
   "edges": [
@@ -32833,6 +32919,84 @@
       "to": "ISS-478",
       "type": "resolves",
       "created_at": "2026-09-11T01:41:22+00:00"
+    },
+    {
+      "from": "ISS-479",
+      "to": "COMP-001",
+      "type": "located_in",
+      "created_at": "2026-09-11T02:47:59+00:00"
+    },
+    {
+      "from": "ISS-480",
+      "to": "COMP-001",
+      "type": "located_in",
+      "created_at": "2026-09-11T02:47:59+00:00"
+    },
+    {
+      "from": "ISS-481",
+      "to": "COMP-001",
+      "type": "located_in",
+      "created_at": "2026-09-11T02:47:59+00:00"
+    },
+    {
+      "from": "ISS-481",
+      "to": "COMP-002",
+      "type": "located_in",
+      "created_at": "2026-09-11T02:47:59+00:00"
+    },
+    {
+      "from": "TASK-359",
+      "to": "ISS-479",
+      "type": "addresses",
+      "created_at": "2026-09-11T02:47:59+00:00"
+    },
+    {
+      "from": "TASK-360",
+      "to": "ISS-481",
+      "type": "addresses",
+      "created_at": "2026-09-11T02:47:59+00:00"
+    },
+    {
+      "from": "TASK-361",
+      "to": "ISS-480",
+      "type": "addresses",
+      "created_at": "2026-09-11T02:48:00+00:00"
+    },
+    {
+      "from": "CHG-476",
+      "to": "TASK-359",
+      "type": "implements",
+      "created_at": "2026-09-11T02:48:00+00:00"
+    },
+    {
+      "from": "CHG-476",
+      "to": "ISS-479",
+      "type": "resolves",
+      "created_at": "2026-09-11T02:48:00+00:00"
+    },
+    {
+      "from": "CHG-476",
+      "to": "TASK-360",
+      "type": "implements",
+      "created_at": "2026-09-11T02:48:00+00:00"
+    },
+    {
+      "from": "CHG-476",
+      "to": "ISS-481",
+      "type": "resolves",
+      "created_at": "2026-09-11T02:48:00+00:00"
+    },
+    {
+      "from": "CHG-476",
+      "to": "TASK-361",
+      "type": "implements",
+      "created_at": "2026-09-11T02:48:00+00:00"
+    },
+    {
+      "from": "CHG-476",
+      "to": "ISS-480",
+      "type": "resolves",
+      "created_at": "2026-09-11T02:48:00+00:00"
     }
   ]
 }
