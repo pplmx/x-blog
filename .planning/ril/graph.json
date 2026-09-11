@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 294,
+  "round": 295,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-10T14:25:35+00:00",
+  "updated_at": "2026-09-11T01:10:29+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -22,7 +22,7 @@
       "version": 1,
       "created_at": "2026-08-06T13:23:41+00:00",
       "updated_at": "2026-08-06T13:23:41+00:00",
-      "touched_round": 290,
+      "touched_round": 295,
       "title": "frontend-aura",
       "description": "Nuxt 4 Vue 3 TypeScript frontend at frontend/aura; composables; admin pages; e2e Playwright; biome lint"
     },
@@ -21822,6 +21822,114 @@
       "touched_round": 293,
       "rationale": "TS7 upgrade blocked for frontend typecheck: typescript@7.0.2 ships an exports map that hides every ./lib/* subpath (root . -> lib/version.cjs, only ./unstable/* APIs) so vue-tsc/@volar/typescript (pnpm typecheck / nuxt typecheck) hits ERR_PACKAGE_PATH_NOT_EXPORTED; vue-tsc 3.3.11 peer range >=5.0.0 has no upper bound so pnpm does not guard this. Same ecosystem story as ts-jest (peer <7, feature request ./issues/5366 open). typescript is pinned ===6.0.3 deliberately. Defer until vue-tsc/@volar ship TS7 (tsgo) support.",
       "alternatives_rejected": "[upgrade-now (breaks nuxt typecheck gate), drop-typecheck-gate (unacceptable quality loss), run-two-major-TS (6.0.3 typecheck + 7 runtime: dual-API mismatch risk, no gain)]"
+    },
+    "ISS-475": {
+      "id": "ISS-475",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-11T01:04:06+00:00",
+      "updated_at": "2026-09-11T01:10:29+00:00",
+      "touched_round": 295,
+      "title": "SSR first visit ignores Accept-Language: English-browser readers get a fully Chinese site",
+      "severity": "high",
+      "detail": "initialLocale() in composables/useLang.ts has no window on the server and no lang cookie for a first visit, so detectBrowserLocale('') falls through to DEFAULT_LOCALE ('zh'); the SSR HTML, <html lang>, meta description and the persisted lang cookie are all Chinese for an English browser. The code intends non-zh browsers to get 'en' (detectBrowserLocale returns en for anything not zh-prefixed) — detection is simply impossible without reading the request's Accept-Language."
+    },
+    "ISS-476": {
+      "id": "ISS-476",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-11T01:04:06+00:00",
+      "updated_at": "2026-09-11T01:10:29+00:00",
+      "touched_round": 295,
+      "title": "HeaderSearch loading spinner stuck forever when the dropdown closes mid-search then reopens",
+      "severity": "medium",
+      "detail": "close() bumps requestSeq to drop the in-flight response, but runSearch's finally only clears loading when seq===requestSeq, so it never runs; reopening (after Escape/blur mid-flight) shows an eternal spinner and zero results until the reader types again. components/HeaderSearch.vue."
+    },
+    "ISS-477": {
+      "id": "ISS-477",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-11T01:04:06+00:00",
+      "updated_at": "2026-09-11T01:10:29+00:00",
+      "touched_round": 295,
+      "title": "Deleted-post 404 shows 'load failed' + Retry that can never succeed; like-failure banner persists the whole visit",
+      "severity": "medium",
+      "detail": "(a) posts/[slug]/index.vue: a useFetch 404 sets error (statusCode 404), so the v-else-if='error' branch wins and the friendly post.notFound block is unreachable for real 404s — Retry fails identically forever. (b) likeError is set on failure and cleared only on the next like or SPA nav to a different post, so a transient failure leaves a permanent red banner."
+    },
+    "TASK-355": {
+      "id": "TASK-355",
+      "type": "task",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-11T01:04:34+00:00",
+      "updated_at": "2026-09-11T01:10:29+00:00",
+      "touched_round": 295,
+      "category": "correctness",
+      "severity": "high",
+      "title": "Detect the first-visit locale from the request's Accept-Language on the server (SSR)",
+      "detail": "composables/useLang.ts initialLocale(): when no lang cookie and no window, read useRequestHeaders(['accept-language']) before falling back to DEFAULT_LOCALE, so an English-browser first-time visitor gets an English SSR page + cookie instead of the fully-Chinese default. Guard with typeof useRequestHeaders === 'function' so the vitest/no-Nuxt fallback is untouched."
+    },
+    "TASK-356": {
+      "id": "TASK-356",
+      "type": "task",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-11T01:04:35+00:00",
+      "updated_at": "2026-09-11T01:10:29+00:00",
+      "touched_round": 295,
+      "category": "correctness",
+      "severity": "medium",
+      "title": "Reset HeaderSearch loading/searched when the dropdown closes mid-flight",
+      "detail": "components/HeaderSearch.vue close(): the requestSeq bump invalidates the in-flight response whose finally then never clears loading; reset loading (and searched) in close() so reopening shows a clean state instead of an eternal spinner."
+    },
+    "TASK-357": {
+      "id": "TASK-357",
+      "type": "task",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-11T01:04:35+00:00",
+      "updated_at": "2026-09-11T01:10:29+00:00",
+      "touched_round": 295,
+      "category": "usability",
+      "severity": "medium",
+      "title": "Post page: render not-found for a real 404 and auto-dismiss the like-failure banner",
+      "detail": "(a) posts/[slug]/index.vue template: add an error.statusCode===404 branch that renders post.notFound + Home (no dead-end Retry) ahead of the generic error branch. (b) likeError: auto-clear after 5s (mirror resume-chip timer) and through a clearLikeError() helper used at like-start and on postId change."
+    },
+    "CHG-472": {
+      "id": "CHG-472",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-11T01:07:37+00:00",
+      "updated_at": "2026-09-11T01:07:37+00:00",
+      "touched_round": 295,
+      "commit": "78f8b63",
+      "title": "SSR first-visit locale from Accept-Language"
+    },
+    "CHG-473": {
+      "id": "CHG-473",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-11T01:07:37+00:00",
+      "updated_at": "2026-09-11T01:07:37+00:00",
+      "touched_round": 295,
+      "commit": "ce42f47",
+      "title": "HeaderSearch loading reset on close"
+    },
+    "CHG-474": {
+      "id": "CHG-474",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-11T01:07:37+00:00",
+      "updated_at": "2026-09-11T01:07:37+00:00",
+      "touched_round": 295,
+      "commit": "bcf3fad",
+      "title": "Post page 404 not-found + like-error auto-dismiss"
     }
   },
   "edges": [
@@ -32593,6 +32701,78 @@
       "to": "ISS-474",
       "type": "resolves",
       "created_at": "2026-09-10T14:16:19+00:00"
+    },
+    {
+      "from": "ISS-475",
+      "to": "COMP-002",
+      "type": "located_in",
+      "created_at": "2026-09-11T01:05:24+00:00"
+    },
+    {
+      "from": "ISS-476",
+      "to": "COMP-002",
+      "type": "located_in",
+      "created_at": "2026-09-11T01:05:24+00:00"
+    },
+    {
+      "from": "ISS-477",
+      "to": "COMP-002",
+      "type": "located_in",
+      "created_at": "2026-09-11T01:05:24+00:00"
+    },
+    {
+      "from": "TASK-355",
+      "to": "ISS-475",
+      "type": "addresses",
+      "created_at": "2026-09-11T01:05:24+00:00"
+    },
+    {
+      "from": "TASK-356",
+      "to": "ISS-476",
+      "type": "addresses",
+      "created_at": "2026-09-11T01:05:24+00:00"
+    },
+    {
+      "from": "TASK-357",
+      "to": "ISS-477",
+      "type": "addresses",
+      "created_at": "2026-09-11T01:05:24+00:00"
+    },
+    {
+      "from": "CHG-472",
+      "to": "TASK-355",
+      "type": "implements",
+      "created_at": "2026-09-11T01:08:00+00:00"
+    },
+    {
+      "from": "CHG-472",
+      "to": "ISS-475",
+      "type": "resolves",
+      "created_at": "2026-09-11T01:08:00+00:00"
+    },
+    {
+      "from": "CHG-473",
+      "to": "TASK-356",
+      "type": "implements",
+      "created_at": "2026-09-11T01:08:00+00:00"
+    },
+    {
+      "from": "CHG-473",
+      "to": "ISS-476",
+      "type": "resolves",
+      "created_at": "2026-09-11T01:08:00+00:00"
+    },
+    {
+      "from": "CHG-474",
+      "to": "TASK-357",
+      "type": "implements",
+      "created_at": "2026-09-11T01:08:00+00:00"
+    },
+    {
+      "from": "CHG-474",
+      "to": "ISS-477",
+      "type": "resolves",
+      "created_at": "2026-09-11T01:08:00+00:00"
     }
   ]
 }
