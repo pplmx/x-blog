@@ -1,11 +1,17 @@
-import { ref } from "vue";
+import { computed, ref } from "vue";
 
 export function useUpload() {
-	const isUploading = ref(false);
+	// In-flight counter (not a boolean): two overlapping uploads (e.g. pasting
+	// a fresh image while a drop upload is still running) share these refs, so
+	// whichever call finishes FIRST must not clear the busy flag while the other
+	// is still uploading — a shared boolean made the overlay/spinner vanish early
+	// (round-300 deep-dive).
+	const inFlight = ref(0);
 	const error = ref<string | null>(null);
+	const isUploading = computed(() => inFlight.value > 0);
 
 	async function uploadImage(file: File): Promise<string | null> {
-		isUploading.value = true;
+		inFlight.value += 1;
 		error.value = null;
 
 		const config = useRuntimeConfig();
@@ -39,7 +45,7 @@ export function useUpload() {
 			error.value = err instanceof Error ? err.message : "Upload failed";
 			return null;
 		} finally {
-			isUploading.value = false;
+			inFlight.value -= 1;
 		}
 	}
 

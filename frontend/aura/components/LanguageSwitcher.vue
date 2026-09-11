@@ -19,6 +19,15 @@ const trigger = ref<HTMLButtonElement | null>(null);
 const menuItems = () =>
 	Array.from(root.value?.querySelectorAll<HTMLElement>('[role="menuitem"]') ?? []);
 
+// The page's focusable elements, in DOM order — used to hand focus off on Tab
+// (see onKeydown). Includes links/buttons/inputs plus any explicit tabindex.
+const focusables = () =>
+	Array.from(
+		document.querySelectorAll<HTMLElement>(
+			'a[href], button:not([disabled]), input:not([disabled]), select, textarea, [tabindex]:not([tabindex="-1"])',
+		),
+	);
+
 // Closing removes the focused menuitem from the DOM — return focus to the
 // trigger so a keyboard/SR user keeps their place in the nav instead of
 // landing on <body> (ISS/MENU a11y class).
@@ -62,8 +71,23 @@ function onKeydown(e: KeyboardEvent) {
 	// ARIA menu pattern: Tab leaves the menu and closes it — without trapping
 	// focus (preventDefault would), the browser's default Tab continues from
 	// where focus currently is.
+	// Close the menu and hand focus to the next control after the trigger
+	// (Shift+Tab → the one before). Leaving the browser's native Tab in charge
+	// re-targets a same-menu node while the popover is still in the DOM — the
+	// focused menuitem unmounts a tick later and focus falls to <body>, dropping
+	// the keyboard user out of the header entirely (round-300 deep-dive). Manual
+	// hand-off keeps tab order contiguous with the surrounding nav even for a
+	// MIDDLE menuitem.
 	if (e.key === "Tab") {
+		e.preventDefault();
 		open.value = false;
+		// The trigger still exists after the menu unmounts; find it in the page
+		// order and step one focusable on either side.
+		nextTick(() => {
+			const all = focusables();
+			const idx = trigger.value ? all.indexOf(trigger.value) : -1;
+			(all[e.shiftKey ? idx - 1 : idx + 1] ?? trigger.value)?.focus({ preventScroll: true });
+		});
 		return;
 	}
 	const keys = ["ArrowDown", "ArrowUp", "Home", "End"];

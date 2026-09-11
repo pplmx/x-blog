@@ -181,4 +181,60 @@ describe("LanguageSwitcher", () => {
 			wrapper.unmount();
 		}
 	});
+
+	// Round-300 deep dive: pressing Tab while the menu is open must NOT leave
+	// focus on a menuitem that unmounts a tick later (native Tab re-targets it
+	// while the DOM is still present → focus falls to <body>). Close the menu
+	// and hand focus to the next control after the trigger, matching native tab
+	// order outside the popover (Shift+Tab → the control before it).
+	it("hands focus to the next control after the trigger when Tab closes the menu", async () => {
+		const wrapper = mountSwitcher({ attachTo: document.body });
+		const after = document.createElement("button");
+		after.textContent = "after";
+		// The menu popover sits inside the switcher's root div, so native DOM
+		// order after the trigger continues HERE — the natural Tab destination
+		// once the menu is gone.
+		wrapper.element.after(after);
+		try {
+			const trigger = wrapper.get('button[aria-haspopup="menu"]');
+			await trigger.trigger("click");
+			await flushPromises();
+			// Park focus on a MIDDLE item — not the last — the case where a
+			// native Tab re-targets a same-menu node that unmounts afterwards.
+			document.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowDown" }));
+			expect(wrapper.findAll('[role="menuitem"]')[1].element).toBe(document.activeElement);
+
+			document.dispatchEvent(new KeyboardEvent("keydown", { key: "Tab" }));
+			await flushPromises();
+
+			expect(wrapper.find('[role="menu"]').exists()).toBe(false);
+			expect(window.document.activeElement).toBe(after);
+		} finally {
+			after.remove();
+			wrapper.unmount();
+		}
+	});
+
+	it("hands focus to the control before the trigger when Shift+Tab closes the menu", async () => {
+		const wrapper = mountSwitcher({ attachTo: document.body });
+		const before = document.createElement("button");
+		before.textContent = "before";
+		wrapper.element.before(before);
+		try {
+			const trigger = wrapper.get('button[aria-haspopup="menu"]');
+			await trigger.trigger("click");
+			await flushPromises();
+			document.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowDown" }));
+			expect(wrapper.findAll('[role="menuitem"]')[1].element).toBe(document.activeElement);
+
+			document.dispatchEvent(new KeyboardEvent("keydown", { key: "Tab", shiftKey: true }));
+			await flushPromises();
+
+			expect(wrapper.find('[role="menu"]').exists()).toBe(false);
+			expect(window.document.activeElement).toBe(before);
+		} finally {
+			before.remove();
+			wrapper.unmount();
+		}
+	});
 });

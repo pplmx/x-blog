@@ -97,6 +97,42 @@ describe("useUpload", () => {
 		expect(callHeaders).toEqual({});
 	});
 
+	it("keeps isUploading true while any upload is still in flight", async () => {
+		// Round-300 deep-dive: `isUploading` was a single shared boolean, so when
+		// a second upload started while the first was in flight (paste a fresh
+		// image under the uploading overlay), whichever upload finished FIRST
+		// cleared the flag — the overlay/spinner vanished while the other upload
+		// was still uploading. Track an in-flight counter instead.
+		let resolveA: (v: Response) => void = () => {};
+		let resolveB: (v: Response) => void = () => {};
+		const promiseA = new Promise<Response>((res) => {
+			resolveA = res;
+		});
+		const promiseB = new Promise<Response>((res) => {
+			resolveB = res;
+		});
+		globalThis.fetch = vi
+			.fn()
+			.mockImplementationOnce(() => promiseA)
+			.mockImplementationOnce(() => promiseB);
+
+		const { useUpload } = await import("~/composables/useUpload");
+		const { uploadImage, isUploading } = useUpload();
+
+		const a = uploadImage(new File(["a"], "a.png", { type: "image/png" }));
+		expect(isUploading.value).toBe(true);
+		const b = uploadImage(new File(["b"], "b.png", { type: "image/png" }));
+		expect(isUploading.value).toBe(true);
+
+		// The FIRST upload resolves while the second is still pending.
+		resolveA({ ok: true, json: () => Promise.resolve({ url: "/a.jpg" }) } as Response);
+		await a;
+		expect(isUploading.value).toBe(true); // B still uploading
+		resolveB({ ok: true, json: () => Promise.resolve({ url: "/b.jpg" }) } as Response);
+		await b;
+		expect(isUploading.value).toBe(false);
+	});
+
 	it("handles json parsing errors with fallback error message", async () => {
 		globalThis.fetch = vi.fn().mockResolvedValue({
 			ok: false,

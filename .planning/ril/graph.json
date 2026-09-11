@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 299,
+  "round": 300,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-11T04:55:07+00:00",
+  "updated_at": "2026-09-11T05:50:35+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -22,7 +22,7 @@
       "version": 1,
       "created_at": "2026-08-06T13:23:41+00:00",
       "updated_at": "2026-08-06T13:23:41+00:00",
-      "touched_round": 298,
+      "touched_round": 300,
       "title": "frontend-aura",
       "description": "Nuxt 4 Vue 3 TypeScript frontend at frontend/aura; composables; admin pages; e2e Playwright; biome lint"
     },
@@ -22318,10 +22318,73 @@
       "version": 1,
       "created_at": "2026-09-11T04:55:07+00:00",
       "updated_at": "2026-09-11T04:55:07+00:00",
-      "touched_round": 299,
+      "touched_round": 300,
       "title": "converged-idle (quality-convergence reached for the polish/bug-fix directive)",
       "rationale": "All five stop conditions hold after rounds 296-299. (1) No active task above the 3.0 threshold — the graph holds zero active tasks. (2) High-severity issues are resolved or decision-deferred: ISS-242/243/244 remain governed by DEC-214 (multi-worker hardening deferred to a real shared-store deployment); this wave closed ISS-485/486/487 (round 298) and ISS-488/489/490 (round 299). The only remaining active issues are low-severity (ISS-451 /-me-history-stats is O(all-time), ISS-452 aware-datetime rows, both decision-tagged). (3) VERIFY green: frontend 1929 tests pass (113 files), nuxt typecheck clean, biome lint clean (381 files); backend unchanged this round (last baseline 1396 @93.78% SQLite + dev PG subsets 149/226/272 against 10.112.9.49:13310). (4) Four consecutive deep-dive rounds (296-299) produced only sub-threshold new tasks (2.5 max) — the exploration well has dried, not paused. (5) ril check consistent (1842 nodes / 1851 edges). Round 299 delivered genuine user-visible polish: print dead-end loopback + reactive tab title, bookmark folder-chip count refresh, and the sign-in-prompt hydration flash gate on /account and /comments.",
       "alternatives_rejected": "Emit further round-tick chore commits (rejected: stop conditions hold, nothing above threshold). Keep deep-diving marginal surfaces (rejected: 4 straight sub-threshold rounds). Implement deferred candidates useUpload concurrency / TagFollowButton session guard / MediaPickerModal busy state / SubscribeButton denied hint / LanguageSwitcher Tab focus / useBookmarkFolder callers (rejected: each is a small polish with no user-visible defect open at threshold)."
+    },
+    "DEC-284": {
+      "id": "DEC-284",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-11T05:49:20+00:00",
+      "updated_at": "2026-09-11T05:49:20+00:00",
+      "touched_round": 300,
+      "title": "re-activate from converged-idle: operator polish directive (round 300+)",
+      "rationale": "Operator re-invoked graph-engineering (goal) on 2026-09-11 with an explicit polish directive: detail optimizations, interactivity, practicality, usability, ease of use. Supersedes the converged-idle at DEC-283 and re-opens the deferred back-burner candidates (LanguageSwitcher Tab focus, useUpload concurrency, TagFollowButton session guard) plus fresh deep-dive.",
+      "alternatives_rejected": "Stay idle (rejected: new operator directive); keep emitting round-tick chores (rejected: only commit real changes)."
+    },
+    "ISS-491": {
+      "id": "ISS-491",
+      "type": "issue",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-11T05:49:20+00:00",
+      "updated_at": "2026-09-11T05:49:20+00:00",
+      "touched_round": 300,
+      "title": "LanguageSwitcher: Tab-vs-close drops keyboard focus to body",
+      "detail": "With the dropdown open, a Tab keydown closes the menu (open=false) without preventDefault; the browser's native Tab re-targets a same-menu menuitem while the popover is still in the DOM, and that menuitem unmounts a tick later - focus falls to body, ejecting the keyboard user from the header. Only Escape/select restore focus to the trigger; Tab had no hand-off.",
+      "severity": "mid",
+      "category": "correctness"
+    },
+    "ISS-492": {
+      "id": "ISS-492",
+      "type": "issue",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-11T05:49:20+00:00",
+      "updated_at": "2026-09-11T05:49:20+00:00",
+      "touched_round": 300,
+      "title": "useUpload: shared isUploading boolean races on concurrent uploads",
+      "detail": "A single boolean isUploading + single error slot for a composable instance; two overlapping uploads (paste a fresh image while a drop upload is under the overlay) let whichever finishes FIRST clear the busy flag while the other is still uploading - overlay/spinner vanish mid-upload, and an earlier failure's error can linger past a later success. Admin post editor is the only caller.",
+      "severity": "mid",
+      "category": "correctness"
+    },
+    "ISS-493": {
+      "id": "ISS-493",
+      "type": "issue",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-11T05:49:20+00:00",
+      "updated_at": "2026-09-11T05:49:20+00:00",
+      "touched_round": 300,
+      "title": "TagFollowButton: dead stored reader token yields forever-failing generic bubble",
+      "detail": "The post-page inline tag-follow chip is the one follow surface not wired to useFollowSessionGuard. With an expired reader_token (localStorage presence gate says signed-in) every tap 401s into a transient generic 'follow failed' bubble and the button stays a permanent no-op, with no path back to sign-in. /tags /categories /series pages already drop the dead token + prompt.",
+      "severity": "mid",
+      "category": "correctness"
+    },
+    "CHG-480": {
+      "id": "CHG-480",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-11T05:49:20+00:00",
+      "updated_at": "2026-09-11T05:49:20+00:00",
+      "touched_round": 300,
+      "title": "round-300 reader/editor interaction polish: LS Tab hand-off, useUpload in-flight counter, TagFollowButton session guard",
+      "summary": "LanguageSwitcher: on Tab/Shift+Tab with the menu open, preventDefault and hand focus to the next/previous page control after the trigger (menuitem unmounts a tick later, so native Tab would drop focus to body). useUpload: track an in-flight counter instead of a boolean so isUploading clears only when the LAST upload settles. TagFollowButton: wire useFollowSessionGuard into both handlers - a stale-session 401 drops the dead token (reactive isAuthenticated now gates the control instead of a non-invalidating localStorage computed) and renders an amber 'your session expired' prompt with a /login link; transient failures keep the generic bubble.",
+      "commit": "PENDING"
     }
   },
   "edges": [
@@ -33465,6 +33528,48 @@
       "to": "ISS-490",
       "type": "addresses",
       "created_at": "2026-09-11T04:52:52+00:00"
+    },
+    {
+      "from": "DEC-284",
+      "to": "DEC-283",
+      "type": "supersedes",
+      "created_at": "2026-09-11T05:50:35+00:00"
+    },
+    {
+      "from": "ISS-491",
+      "to": "COMP-002",
+      "type": "located_in",
+      "created_at": "2026-09-11T05:50:35+00:00"
+    },
+    {
+      "from": "ISS-492",
+      "to": "COMP-002",
+      "type": "located_in",
+      "created_at": "2026-09-11T05:50:35+00:00"
+    },
+    {
+      "from": "ISS-493",
+      "to": "COMP-002",
+      "type": "located_in",
+      "created_at": "2026-09-11T05:50:35+00:00"
+    },
+    {
+      "from": "CHG-480",
+      "to": "ISS-491",
+      "type": "resolves",
+      "created_at": "2026-09-11T05:50:35+00:00"
+    },
+    {
+      "from": "CHG-480",
+      "to": "ISS-492",
+      "type": "resolves",
+      "created_at": "2026-09-11T05:50:35+00:00"
+    },
+    {
+      "from": "CHG-480",
+      "to": "ISS-493",
+      "type": "resolves",
+      "created_at": "2026-09-11T05:50:35+00:00"
     }
   ]
 }

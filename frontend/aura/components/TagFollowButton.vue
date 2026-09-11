@@ -8,8 +8,10 @@
  * surrounding chip looks unchanged for anonymous readers. Follow state comes
  * from the shared useTagFollowStore (one list fetch for every chip on a page).
  */
-import { computed, onMounted, ref } from "vue";
+import { onMounted, ref } from "vue";
+import { useFollowSessionGuard } from "~~/composables/useFollowSessionGuard";
 import { useLang } from "~~/composables/useLang";
+import { useReaderAuth } from "~~/composables/useReaderAuth";
 import { useTagFollowStore } from "~~/composables/useTagFollowStore";
 
 defineOptions({ name: "TagFollowButton" });
@@ -21,13 +23,21 @@ const props = defineProps<{
 
 const { t } = useLang();
 const store = useTagFollowStore();
+// Dead-session guard (the tags/categories/series pages use the same): the
+// follow APIs are reader-auth-scoped, so an expired stored token used to make
+// every tap on this post-page chip 401 into a generic "follow failed" bubble
+// with no path back to sign-in. On a stale-session 401 the guard drops the
+// dead token — the signed-in gate below is localStorage presence, so the chip
+// flips to guest — and the sign-in prompt renders instead (round-300).
+const { sessionExpired, guardFollowFailure } = useFollowSessionGuard();
 
-// Same synchronous localStorage gate the /tags page follow control uses; in
-// SSR there is no browser storage, so the buttons never render server-side.
-const signedIn = computed(() => {
-	if (typeof window === "undefined") return false;
-	return !!window.localStorage?.getItem("reader_token");
-});
+// Reactive reader-auth singleton (NOT an ad-hoc localStorage read): after
+// guardFollowFailure() drops the dead token, isAuthenticated flips to false
+// and the control unmounts — a raw localStorage.get does not invalidate,
+// leaving a forever-broken button. Same gate the /tags page follow control
+// uses; SSR sees false (no browser storage), so buttons never render
+// server-side.
+const { isAuthenticated: signedIn } = useReaderAuth();
 
 const following = store.following(props.tagId);
 const notify = store.notify(props.tagId);
@@ -58,7 +68,10 @@ async function handleToggleFollow() {
 	error.value = false;
 	try {
 		await store.toggleFollow(props.tagId);
-	} catch {
+	} catch (cause) {
+		// A stale session is not a transient failure — skip the "failed" bubble
+		// (the sign-in prompt renders instead).
+		if (guardFollowFailure(cause)) return;
 		flashError();
 	}
 }
@@ -68,13 +81,36 @@ async function handleSetNotify() {
 	error.value = false;
 	try {
 		await store.setNotify(props.tagId, !notify.value);
-	} catch {
+	} catch (cause) {
+		if (guardFollowFailure(cause)) return;
 		flashError();
 	}
 }
 </script>
 
 <template>
+	<!-- Dead-session prompt sits OUTSIDE the signedIn gate: guardFollowFailure
+	     drops the dead token, which flips signedIn off and unmounts the chip
+	     wrapper — the prompt must survive that to offer the way back in. -->
+	<span
+		v-if="sessionExpired"
+		role="status"
+		class="inline-flex items-center gap-1.5 rounded-md border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/40 px-2 py-1 text-[10px] font-medium text-amber-700 dark:text-amber-300 ml-1"
+	>
+		<Icon
+			icon="lucide:triangle-alert"
+			class="h-3 w-3 shrink-0"
+			aria-hidden="true"
+			role="presentation"
+		/>
+		{{ t("common.sessionExpired") }}
+		<NuxtLink
+			to="/login"
+			class="font-semibold underline underline-offset-2 hover:opacity-80"
+		>
+			{{ t("reader.nav.signIn") }}
+		</NuxtLink>
+	</span>
 	<span
 		v-if="signedIn"
 		class="relative inline-flex items-center"

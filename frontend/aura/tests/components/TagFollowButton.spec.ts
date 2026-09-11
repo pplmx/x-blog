@@ -38,13 +38,19 @@ const iconStub = {
 	props: ["icon"],
 };
 
+const nuxtLinkStub = {
+	name: "NuxtLink",
+	template: '<a :href="to"><slot /></a>',
+	props: ["to"],
+};
+
 let wrapper: ReturnType<typeof mount> | undefined;
 const store = useTagFollowStore();
 
 async function mountButton() {
 	wrapper = mount(TagFollowButton, {
 		props: { tagId: 7, tagName: "rust" },
-		global: { stubs: { Icon: iconStub } },
+		global: { stubs: { Icon: iconStub, NuxtLink: nuxtLinkStub } },
 	});
 	await flushPromises();
 	return wrapper;
@@ -222,5 +228,46 @@ describe("TagFollowButton", () => {
 		expect(w.find('button[aria-label="rust tags.notifyOn"]').attributes("aria-pressed")).toBe(
 			"true",
 		);
+	});
+
+	// Round-300 deep-dive: the post-page chips are the one follow surface that
+	// skipped useFollowSessionGuard — a dead stored token made every tap 401
+	// into a useless "failed" bubble forever (the /tags//categories//series pages
+	// already route this to a sign-in prompt). A 401 with the auth dependency's
+	// detail must drop the dead token (control flips to guest) and show the
+	// session-expired prompt, NOT the generic failure bubble.
+	function staleSessionError() {
+		return {
+			response: { status: 401, _data: { detail: "Could not validate credentials" } },
+		};
+	}
+
+	it("drops the dead session and shows the sign-in prompt instead of a generic failure", async () => {
+		localStorage.setItem("reader_token", "tok-1");
+		mockGet.mockResolvedValue({ items: [], total: 0 });
+		mockFollow.mockRejectedValue(staleSessionError());
+		const w = await mountButton();
+		await w.find('button[aria-label="rust tags.followTitle"]').trigger("click");
+		await flushPromises();
+
+		// The dead token is dropped → the control flips to guest…
+		expect(w.find("button").exists()).toBe(false);
+		// …and the session-expired prompt (with a way back to sign-in) shows.
+		expect(w.find('[role="status"]').text()).toContain("common.sessionExpired");
+		expect(w.find('a[href="/login"]').exists()).toBe(true);
+		// The generic "follow failed" bubble must not appear.
+		expect(w.find('[role="status"]').text()).not.toContain("tags.followFailed");
+	});
+
+	it("still shows the generic bubble for a transient (non-401) follow failure", async () => {
+		localStorage.setItem("reader_token", "tok-1");
+		mockGet.mockResolvedValue({ items: [], total: 0 });
+		mockFollow.mockRejectedValue(new Error("network"));
+		const w = await mountButton();
+		await w.find('button[aria-label="rust tags.followTitle"]').trigger("click");
+		await flushPromises();
+
+		expect(w.find('[role="status"]').text()).toContain("tags.followFailed");
+		expect(w.find('[role="status"]').text()).not.toContain("common.sessionExpired");
 	});
 });
