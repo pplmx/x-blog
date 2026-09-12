@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 312,
+  "round": 313,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-12T18:53:32+00:00",
+  "updated_at": "2026-09-12T20:25:25+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -23075,6 +23075,78 @@
       "touched_round": 312,
       "commit": "f7b0f07",
       "title": "lightbox unit (16 new) + e2e (2) + useMarkdown linear-scan guard"
+    },
+    "DEC-303": {
+      "id": "DEC-303",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-12T19:01:17+00:00",
+      "updated_at": "2026-09-12T19:01:17+00:00",
+      "touched_round": 313,
+      "title": "Reader self-service account deletion (round 313): a signed-in reader can delete their own account",
+      "rationale": "Feature-mode re-sourcing after the lightbox (DEC-302/TASK-379) closed round 312. The reader-identity + lifecycle surface is otherwise complete (profiles DEC-294, avatars DEC-299): what is missing is the far end — a reader who can register cannot delete their account. Real, user-perceivable problem (account hygiene / privacy expectation), acceptance in one sentence: a signed-in reader deletes their own account from /account after confirming their password, which removes their follows/bookmarks/notifications/push subscriptions/reading history/avatar and anonymizes their comments (kept, unlinked — reader_id is nullable, no DB FK per DEC-009) instead of deleting public discussion. Net additive slice: DELETE /api/reader/me + danger-zone UI + confirmation; not a same-kind patch (no deletion exists), not oversized (per-table cleanup by reader_id, reviewer-verified comment linkage).",
+      "alternatives_rejected": "Reader bio/about field (same identity surface avatars just closed — same-kind risk); comment 'top' sort (weak anonymous-like signal); search-result highlighting (enhancement, not net-new); ~~~ fence support (pre-existing markdown correctness, not a user-visible feature); share buttons / reading-progress bar (below value gate)."
+    },
+    "TASK-380": {
+      "id": "TASK-380",
+      "type": "task",
+      "status": "abandoned",
+      "version": 2,
+      "created_at": "2026-09-12T19:01:17+00:00",
+      "updated_at": "2026-09-12T20:16:52+00:00",
+      "touched_round": 313,
+      "category": "core-feature",
+      "severity": 3,
+      "title": "Reader self-service account deletion (DELETE /api/reader/me + /account danger zone)",
+      "priority_score": 6
+    },
+    "DEC-304": {
+      "id": "DEC-304",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-12T20:15:16+00:00",
+      "updated_at": "2026-09-12T20:15:16+00:00",
+      "touched_round": 313,
+      "title": "Sourcing correction: reader account deletion already existed (DEC-106); residual avatar-file leak found and fixed",
+      "rationale": "Round-313 sourcing selected reader self-service account deletion (DEC-303/TASK-380) believing it missing; deep-verification of the shipping surface (not just README/route names) found DELETE /api/reader/me/account + crud.delete_reader_account already implemented since DEC-106/TASK-165, cleaning every reader-scoped table and anonymizing comments. The genuinely fresh finding is a residual leak: the avatar file (DEC-299) was added after the deletion deep-dive and was never reaped, so a deleted reader private upload lingered on disk. Fixed in the endpoint (capture URL pre-delete, path-shape-guarded reap) + comprehensive contract test. Lesson for sourcing discipline: sweep live routers/crud for a feature before declaring a gap.",
+      "alternatives_rejected": "The duplicate DELETE /api/reader/me endpoint + ReaderAccountDeleteRequest schema drafted for DEC-303 were reverted; TASK-380 is abandoned as already-implemented."
+    },
+    "CHG-494": {
+      "id": "CHG-494",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-12T20:16:51+00:00",
+      "updated_at": "2026-09-12T20:16:51+00:00",
+      "touched_round": 313,
+      "commit": "7ddb4d9",
+      "title": "reader account deletion now reaps the avatar file + comprehensive cleanup contract test"
+    },
+    "EV-245": {
+      "id": "EV-245",
+      "type": "evidence",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-12T20:16:52+00:00",
+      "updated_at": "2026-09-12T20:16:52+00:00",
+      "touched_round": 313,
+      "source": "backend tests, 2026-09-13",
+      "title": "EV: avatar-reap-on-delete verified (4/4 delete tests incl avatar assertion, reader suite 38 passed, pyright 0 errors, ruff clean)",
+      "confidence": 1.0
+    },
+    "DEC-305": {
+      "id": "DEC-305",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-12T20:25:25+00:00",
+      "updated_at": "2026-09-12T20:25:25+00:00",
+      "touched_round": 313,
+      "title": "converged-idle: no further value-gate feature candidate after live-code re-sourcing (round 313)",
+      "rationale": "Feature-evolution re-sourcing with the DEC-304 lesson (verify against live routers/crud, not the surface list) swept the shipping surface again: reader account deletion ALREADY exists (DEC-106) and the only residual gap (avatar file not reaped on delete) was fixed this round (CHG-494) with a full contract test; email change does not exist but is a security-shaped confirmation flow (account-takeover vector without new-address verification), not a clean vertical slice; comment top-sort is a weak anonymous-like signal on low-volume comments; ~~~ fences already render via marked (only chrome differs); site branding is author-facing and SSR/SEO-coupled. Two consecutive sourcing rounds (DEC-301, DEC-303→DEC-304) produced no candidate passing the user-value + net-slice gate. §11.5.1 backlog empty (TASK-379 resolved, TASK-380 abandoned), §11.5.3 met. Round delivered a real quality change (avatar reap) so this is a pausing decision, not a report of no work. Re-activation: new operator direction (supersedes) or a real external signal; first round back re-runs full VERIFY.",
+      "alternatives_rejected": "Email-change (heavy identity confirmation flow), comment top-sort (weak signal), ~~~ fence chrome (cosmetic), site-branding settings (author-facing, SSR-coupled, modest value) — all below the value gate."
     }
   },
   "edges": [
@@ -34553,6 +34625,24 @@
       "to": "TASK-379",
       "type": "implements",
       "created_at": "2026-09-12T18:53:32+00:00"
+    },
+    {
+      "from": "DEC-303",
+      "to": "TASK-380",
+      "type": "governs",
+      "created_at": "2026-09-12T19:02:12+00:00"
+    },
+    {
+      "from": "DEC-304",
+      "to": "DEC-303",
+      "type": "supersedes",
+      "created_at": "2026-09-12T20:16:52+00:00"
+    },
+    {
+      "from": "CHG-494",
+      "to": "TASK-380",
+      "type": "implements",
+      "created_at": "2026-09-12T20:16:52+00:00"
     }
   ]
 }
