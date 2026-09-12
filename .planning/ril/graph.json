@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 305,
+  "round": 308,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-11T18:36:09+00:00",
+  "updated_at": "2026-09-12T09:58:51+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -22443,7 +22443,7 @@
       "version": 2,
       "created_at": "2026-09-11T07:20:02+00:00",
       "updated_at": "2026-09-11T07:20:03+00:00",
-      "touched_round": 300,
+      "touched_round": 307,
       "title": "The popover is gone from the DOM before a nextTick Tab hand-off scan runs",
       "confidence": 0.8,
       "detail": "Original assumption behind CHG-480's first Tab fix: open=false + the v-if removal schedule the popover out of the DOM before the nextTick callback, so a nextTick scan sees the menu-free page."
@@ -22714,6 +22714,66 @@
       "title": "Feature-evolution round 305 delivered: in-place series-follow on the post page (TASK-374 complete); feature backlog re-check",
       "rationale": "Round 305 delivered the in-place series-follow slice from TASK-374 (governed by DEC-290): new SeriesFollowButton component mounted in the post page's in-series nav header — signed-in readers follow/unfollow the current series and toggle new-part notifications in place, closing the same discoverability gap DEC-196 closed for tags. Backend follow APIs already existed (DEC-132/TASK-178) so this was a pure frontend vertical slice: component + 13 component tests + 2 post-page tests + real-browser e2e (e2e/series-follow-inline.spec.ts, both journeys green) + CHANGELOG/README. Verified: frontend suite 1972 passed, nuxt typecheck clean, biome clean (incl. the carried formatting drift from the prior round required by the pnpm lint gate). CHG-486 (9c27234) implements TASK-374 and resolves ISS-496; EV-240 records the verification. 11.5.1 backstop not yet met (this round DID deliver a change); continue feature mode to the next candidate.",
       "alternatives_rejected": "(a) Stop feature evolution after this round (rejected: 11.5.1 requires backlog empty AND no value-gate candidate survives; the follows-feed / in-place category-follow / reader-profile candidates still pass sourcing review, so at least a re-check round is warranted). (b) Extend the same component to the series page / account list (rejected: out of this round's vertical-slice scope; the series page already has the identical block built directly — deduping it is refactor work for a later maintainability pass, not user-visible feature value)."
+    },
+    "DEC-292": {
+      "id": "DEC-292",
+      "type": "decision",
+      "status": "active",
+      "version": 2,
+      "created_at": "2026-09-12T08:17:34+00:00",
+      "updated_at": "2026-09-12T08:18:06+00:00",
+      "touched_round": 306,
+      "title": "Feature-evolution round 306: dedicated paginated follows-feed page (/follows) — browse every new post from followed categories+series+tags",
+      "rationale": "Operator re-invoked feature-exploration mode (graph-engineering 功能探索开发模式, 2026-09-12), superseding DEC-291's re-check. Gap analysis against the shipped surface: the follow model (DEC-142/TASK-183) delivers a home 'Latest from your follows' section capped at 12 posts with NO see-all path, and the backend /me/follows-feed endpoint has no pagination (limit 1..50, bare list). A reader following many categories/series/tags (all followable in-place since DEC-195/DEC-290) simply cannot browse the full feed — the highest-value payoff of the whole follow arc is capped at a dozen posts. Slice: add pagination (page/limit + total envelope) to the follows-feed endpoint, build a dedicated /follows page (reuse the compact post card grid) with session gate + pagination controls + i18n, and wire a 'See all' link from the home section. Backend contract tests + frontend page tests + e2e + CHANGELOG/README.",
+      "alternatives_rejected": "(a) In-place category-follow (CategoryFollowButton on the post-page category chip) (rejected: it would be the third near-identical repetition of the TagFollowButton/SeriesFollowButton pattern — patches of the same kind, and adds a button where the follow axis is already complete; lower net user value than opening the follows backlog). (b) Reader-profile public page (rejected: larger scope — new public endpoint + comment-history surface + identity semantics — and depends on comment display being broadly used; the follows-feed page is the more direct payoff of the follow model the last rounds built). (c) Stop feature mode at DEC-291 backstop (rejected: 11.5.1 requires backlog empty AND no value-gate candidate survives; a dedicated follows feed passes the user-value + net-slice gate)"
+    },
+    "TASK-375": {
+      "id": "TASK-375",
+      "type": "task",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-12T08:17:45+00:00",
+      "updated_at": "2026-09-12T09:57:43+00:00",
+      "touched_round": 307,
+      "category": "core-feature",
+      "title": "Dedicated paginated follows-feed page: /follows for signed-in readers browsing every new post from their followed categories+series+tags",
+      "description": "Backend: add page/limit + total envelope to GET /api/reader/me/follows-feed (keep bare-list compat or switch both consumers). Frontend: new /follows page (session-gated, compact post-card grid, pagination controls, zh/en i18n) + 'See all' link from home Latest-from-follows section. Contract tests + page tests + e2e journey + CHANGELOG/README."
+    },
+    "EV-241": {
+      "id": "EV-241",
+      "type": "evidence",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-12T09:24:58+00:00",
+      "updated_at": "2026-09-12T09:24:58+00:00",
+      "touched_round": 307,
+      "source": "round-306 verification, 2026-09-12",
+      "content": "Follows-feed page slice verified: backend suite 1416 passed (incl. 3 new pagination envelope tests in test_reader_follows_feed.py); full frontend suite 1979 passed (follows.spec.ts 7 new, home index.spec adapted, layout default.spec 2 new auth-nav assertions); nuxt typecheck clean; biome check clean (10 changed files); ruff check+format clean; pyright 0 errors; e2e follows-page.spec.ts + home-follows-feed.spec.ts 4 passed against live backend+production preview",
+      "confidence": 1.0
+    },
+    "CHG-487": {
+      "id": "CHG-487",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-12T09:56:01+00:00",
+      "updated_at": "2026-09-12T09:56:01+00:00",
+      "touched_round": 307,
+      "commit": "f581730d3a043c5905dd8c6e535b71de67e39427",
+      "title": "Dedicated paginated /follows page + follows-feed pagination envelope",
+      "description": "Backend /me/follows-feed paginated {items,pagination} (page/limit/total/total_pages); crud.follows_feed_posts returns (posts,total) with offset. Frontend /follows page (session gate, clamp w/ replace, ellipsis pagination, view-all from home row, nav entry). Contract tests + page tests + e2e. Backend 1416 / frontend 1979 / typecheck / biome / ruff / pyright green; e2e 4 passed."
+    },
+    "DEC-293": {
+      "id": "DEC-293",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-12T09:58:22+00:00",
+      "updated_at": "2026-09-12T09:58:22+00:00",
+      "touched_round": 307,
+      "title": "Feature-evolution round 306 delivered: dedicated paginated follows-feed page (TASK-375 complete); feature backlog re-check",
+      "rationale": "Round 306 delivered the follows-feed slice from TASK-375 (governed by DEC-292): GET /api/reader/me/follows-feed upgraded to a paginated {items,pagination} envelope (page/limit + total/total_pages) and a new /follows page for signed-in readers browsing every new post from their followed categories+series+tags — closing the gap where the home 'Latest from your follows' row was capped at 12 with no see-all path. Pure additive backend (crud.follows_feed_posts returns (posts,total) with offset; auth-scoped no-store preserved) + new page (session gate, out-of-range clamp with replace:true and skeleton held to avoid empty-state flash, ellipsis pagination) + nav entry + home view-all link + zh/en i18n. Verified: backend suite 1416 passed (3 new pagination contract tests), frontend suite 1979 passed (8 follows.spec + layout nav + home adaptions), typecheck/biome/ruff/pyright clean, e2e follows-page + home-follows-feed 4 passed. CHG-487 (f581730d) implements TASK-375; EV-241 records the verification. 11.5.1 backstop not yet met (this round DID deliver a change); continue feature mode to the next candidate (in-place category-follow / reader-profile remain).",
+      "alternatives_rejected": "(a) In-place category-follow / reader-profile (rejected for this round: follows-feed was the higher-value payoff of the follow arc the last round built; the others stay pending candidates). (b) Stop feature mode at this round (rejected: 11.5.1 requires backlog empty AND no value-gate candidate survives; category-follow and reader-profile still pass sourcing review)."
     }
   },
   "edges": [
@@ -34084,6 +34144,18 @@
       "to": "DEC-290",
       "type": "supersedes",
       "created_at": "2026-09-11T18:36:09+00:00"
+    },
+    {
+      "from": "DEC-292",
+      "to": "TASK-375",
+      "type": "governs",
+      "created_at": "2026-09-12T08:18:06+00:00"
+    },
+    {
+      "from": "CHG-487",
+      "to": "TASK-375",
+      "type": "implements",
+      "created_at": "2026-09-12T09:56:39+00:00"
     }
   ]
 }
