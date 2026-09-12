@@ -892,12 +892,19 @@ def delete_my_account(
     """
     if not auth.verify_password(payload.password, current_reader.password):
         raise HTTPException(status_code=401, detail="Incorrect current password")
+    # Grab the avatar URL before the row dies (crud commits the DELETE, after
+    # which a lazy refresh of the account object would throw).
+    avatar_url = current_reader.avatar_url
     try:
         deleted = crud.delete_reader_account(db, current_reader.id)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     if not deleted:
         raise HTTPException(status_code=404, detail="Account not found")
+    # The account row is gone; its avatar file (a reader-private upload) goes
+    # too — crud only reaps DB rows (DEC-299/TASK-378 was added after the last
+    # deletion deep-dive, so the file would otherwise linger after delete).
+    _delete_avatar_file(avatar_url)
     return None
 
 
