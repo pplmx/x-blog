@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 311,
+  "round": 312,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-12T16:31:03+00:00",
+  "updated_at": "2026-09-12T18:53:32+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -23003,6 +23003,78 @@
       "title": "Sourcing pass for next feature round: avatar closed the last genuine gap; remaining candidates all rejected — loop remains in feature mode, backlog empty",
       "rationale": "After CHG-490 (avatars) resolved TASK-378, §11.2 re-sourcing for the next round: swept the shipped surface for genuinely missing user-visible capability. PWA/sw.js exists, sitemap.xml exists, full-content RSS/Atom per-category/series/tag scoped exists, comment deep-link anchors exist, dark mode exists. Candidates evaluated and rejected: in-place category-follow (third near-identical follow control — same-kind button patch, already rejected at DEC-290/DEC-292/DEC-297), reader-to-reader following (oversized non-slice social graph, DEC-297), OPML export/import (niche, no backing user problem, weak value gate), post author-byline/author pages (no User→Post authorship column exists; the blog is effectively single-author — adding an author model + pages is a data-model change for a one-person blog, not a user-perceivable gap). No candidate passes the value gate without being a same-kind patch or oversized work; the round delivered a change, so this is not converged-idle — feature mode continues and any future operator direction or real external signal re-sources fresh.",
       "alternatives_rejected": "Same list as rationale — none survived the user-value + net-slice gate."
+    },
+    "DEC-302": {
+      "id": "DEC-302",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-13T00:00:00+00:00",
+      "updated_at": "2026-09-12T16:51:19+00:00",
+      "touched_round": 312,
+      "title": "Markdown image lightbox: readers can inspect post images at full resolution (round 312 sourcing)",
+      "rationale": "Operator re-directed into active feature exploration (fresh source signal). Fresh gap sweep vs the shipped surface: related-posts, ToC+FAB, reader avatars, reader profiles, theme toggle, reader password change, comment likes/flag, bulk moderation, mark-all-read, cover images, home popular/recommended all already exist; DEC-301's rejected list (same-kind follow buttons, reader-to-reader graph, OPML, author bylines) still holds. New candidate that passes the value gate: MarkdownContent.vue's own header comment documents images as 'lazy-loaded + lightbox-ready' — yet NO lightbox exists; the old cursor-zoom-in was removed after the fixed-crop approach was abandoned (img is max-w-full h-auto, never inspectable). A technical blog renders Mermaid diagrams and screenshots: on mobile a column-width image cannot be scrutinized. User-perceivable problem: 'I cannot see the image closely.' Acceptance in one sentence: clicking any post image opens a fullscreen viewer (full-res, esc/backdrop/close to dismiss, arrow keys/buttons to browse the post's images, focus retained). Net additive frontend slice; no backend/DDL.",
+      "alternatives_rejected": "Comment 'top' sort (likes are anonymous counters, weak signal; adds sort UX for marginal gain); reader bio/about field (same identity surface avatars just closed — same-kind patch risk); reading-progress bar and HTML share buttons (minor convenience, below value gate); search result highlighting (enhancement of existing search, not a net new capability); comment thread collapse (minor)."
+    },
+    "TASK-379": {
+      "id": "TASK-379",
+      "type": "task",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-12T16:51:19+00:00",
+      "updated_at": "2026-09-12T18:53:32+00:00",
+      "touched_round": 312,
+      "category": "core-feature",
+      "severity": 3,
+      "title": "Implement markdown image lightbox (fullscreen viewer for post images)",
+      "priority_score": 6
+    },
+    "EV-244": {
+      "id": "EV-244",
+      "type": "evidence",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-12T17:35:59+00:00",
+      "updated_at": "2026-09-12T17:35:59+00:00",
+      "touched_round": 312,
+      "title": "EV: markdown image lightbox frontend verification (round 312)",
+      "source": "unit tests + e2e, 2026-09-13",
+      "detail": "MarkdownContent+MarkdownLightbox+useMarkdown unit suites pass (2018 total frontend), 2/2 lightbox e2e pass against production build (click->open->arrows->ESC/backdrop/close->focus return; javascript: src never opens), nuxt typecheck + biome + rumdl clean",
+      "confidence": 1.0
+    },
+    "CHG-491": {
+      "id": "CHG-491",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-12T18:52:51+00:00",
+      "updated_at": "2026-09-12T18:52:51+00:00",
+      "touched_round": 312,
+      "commit": "7a89278",
+      "title": "extractImages handles markdown-image syntax linearly + MarkdownContent image trigger wiring",
+      "evidence": "EV-244,E2E 2/2"
+    },
+    "CHG-492": {
+      "id": "CHG-492",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-12T18:53:32+00:00",
+      "updated_at": "2026-09-12T18:53:32+00:00",
+      "touched_round": 312,
+      "commit": "50d657a",
+      "title": "MarkdownLightbox.vue fullscreen viewer (a11y: focus trap, aria-live counter, scroll-lock lifecycle)"
+    },
+    "CHG-493": {
+      "id": "CHG-493",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-12T18:53:32+00:00",
+      "updated_at": "2026-09-12T18:53:32+00:00",
+      "touched_round": 312,
+      "commit": "f7b0f07",
+      "title": "lightbox unit (16 new) + e2e (2) + useMarkdown linear-scan guard"
     }
   },
   "edges": [
@@ -34457,6 +34529,30 @@
       "to": "DEC-300",
       "type": "supersedes",
       "created_at": "2026-09-12T16:31:03+00:00"
+    },
+    {
+      "from": "DEC-302",
+      "to": "TASK-379",
+      "type": "governs",
+      "created_at": "2026-09-12T16:51:33+00:00"
+    },
+    {
+      "from": "CHG-491",
+      "to": "TASK-379",
+      "type": "implements",
+      "created_at": "2026-09-12T18:53:32+00:00"
+    },
+    {
+      "from": "CHG-492",
+      "to": "TASK-379",
+      "type": "implements",
+      "created_at": "2026-09-12T18:53:32+00:00"
+    },
+    {
+      "from": "CHG-493",
+      "to": "TASK-379",
+      "type": "implements",
+      "created_at": "2026-09-12T18:53:32+00:00"
     }
   ]
 }
