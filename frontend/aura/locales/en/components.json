@@ -97,7 +97,12 @@
 			"copied": "Copied",
 			"copyCode": "Copy code",
 			"katexError": "[KaTeX render error]",
-			"copyFailed": "Copy failed"
+			"copyFailed": "Copy failed",
+			"lightboxOpen": "View image fullscreen",
+			"lightboxClose": "Close fullscreen image",
+			"lightboxPrevious": "Previous image",
+			"lightboxNext": "Next image",
+			"lightboxCounter": "Image {current} of {total}"
 		},
 		"postCard": {
 			"pinned": "Pinned",

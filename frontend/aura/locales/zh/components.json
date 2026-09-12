@@ -97,7 +97,12 @@
 			"copied": "已复制",
 			"copyCode": "复制代码",
 			"katexError": "[公式渲染失败]",
-			"copyFailed": "复制失败"
+			"copyFailed": "复制失败",
+			"lightboxOpen": "全屏查看图片",
+			"lightboxClose": "关闭全屏图片",
+			"lightboxPrevious": "上一张图片",
+			"lightboxNext": "下一张图片",
+			"lightboxCounter": "第 {current} / {total} 张图片"
 		},
 		"postCard": {
 			"pinned": "置顶",
