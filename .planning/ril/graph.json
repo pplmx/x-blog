@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 308,
+  "round": 309,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-12T09:58:51+00:00",
+  "updated_at": "2026-09-12T13:33:32+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -22774,6 +22774,113 @@
       "title": "Feature-evolution round 306 delivered: dedicated paginated follows-feed page (TASK-375 complete); feature backlog re-check",
       "rationale": "Round 306 delivered the follows-feed slice from TASK-375 (governed by DEC-292): GET /api/reader/me/follows-feed upgraded to a paginated {items,pagination} envelope (page/limit + total/total_pages) and a new /follows page for signed-in readers browsing every new post from their followed categories+series+tags — closing the gap where the home 'Latest from your follows' row was capped at 12 with no see-all path. Pure additive backend (crud.follows_feed_posts returns (posts,total) with offset; auth-scoped no-store preserved) + new page (session gate, out-of-range clamp with replace:true and skeleton held to avoid empty-state flash, ellipsis pagination) + nav entry + home view-all link + zh/en i18n. Verified: backend suite 1416 passed (3 new pagination contract tests), frontend suite 1979 passed (8 follows.spec + layout nav + home adaptions), typecheck/biome/ruff/pyright clean, e2e follows-page + home-follows-feed 4 passed. CHG-487 (f581730d) implements TASK-375; EV-241 records the verification. 11.5.1 backstop not yet met (this round DID deliver a change); continue feature mode to the next candidate (in-place category-follow / reader-profile remain).",
       "alternatives_rejected": "(a) In-place category-follow / reader-profile (rejected for this round: follows-feed was the higher-value payoff of the follow arc the last round built; the others stay pending candidates). (b) Stop feature mode at this round (rejected: 11.5.1 requires backlog empty AND no value-gate candidate survives; category-follow and reader-profile still pass sourcing review)."
+    },
+    "DEC-294": {
+      "id": "DEC-294",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-12T10:05:15+00:00",
+      "updated_at": "2026-09-12T10:05:15+00:00",
+      "touched_round": 308,
+      "title": "Feature-evolution round 307: public reader profile page (/readers/[id]) — commenter display name becomes a linkable public identity",
+      "rationale": "Round 306 delivered the follows-feed page (DEC-292/TASK-375); feature mode continues (11.5 backstop not met — rounds ship changes). Gap analysis against the shipped surface: reader-attributed comments (DEC-062/TASK-135/136) serialize a verified reader profile (id + display_name on CommentPublic) and the comment list renders a verified-reader badge, but the display name is inert — clicking it goes nowhere. There is no public identity surface for a reader's comment history. A reader-profile page makes the display name a linkable public identity: a new public endpoint GET /api/readers/{id} (profile + their approved public comments on publicly-visible posts, paginated, no PII — email stays out, mirroring CommentReaderProfile's contract) + a new /readers/[id] page rendering display_name, join date and their comment list, with the comment list's verified-reader name linking into it. Net-new user-visible capability (not a same-kind button patch): gives the blog a recognizable commenter identity like the author pages other blog engines have. Slice: public endpoint + crud (approved + public-only comments, paginated envelope) + frontend page + comment-name link + i18n + contract/page/e2e tests + CHANGELOG/README.",
+      "alternatives_rejected": "(a) In-place category-follow on the post page (rejected: it would be the third near-identical repetition of the TagFollowButton/SeriesFollowButton component — a same-kind button patch, and DEC-290 already rejected the category anchor; lower net user value than opening a visible reader identity). (b) Stop feature mode (rejected: 11.5.1 requires backlog empty AND no value-gate candidate survives; reader-profile passes the user-value + net-slice gate)."
+    },
+    "TASK-376": {
+      "id": "TASK-376",
+      "type": "task",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-12T10:05:54+00:00",
+      "updated_at": "2026-09-12T13:31:22+00:00",
+      "touched_round": 308,
+      "category": "core-feature",
+      "title": "Public reader profile page: GET /api/readers/{id} (display_name, join date, approved public comments paginated, no PII) + /readers/[id] page + verified-reader comment name links to it",
+      "description": "Backend: public endpoint + crud listing a reader's approved comments on publicly-visible posts (paginated envelope, effective-publish-aware), never exposing email. Frontend: /readers/[id] page (display_name + join date + comment list) + CommentListVerifiedName becomes a link to it. Contract tests + page tests + e2e + i18n."
+    },
+    "EV-242": {
+      "id": "EV-242",
+      "type": "evidence",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-12T12:34:18+00:00",
+      "updated_at": "2026-09-12T12:34:18+00:00",
+      "touched_round": 308,
+      "source": "frontend/aura/e2e/reader-profile.spec.ts (2/2 passed, 2026-09-12)",
+      "content": "Round-307 reader-profile VERIFY: backend test_reader_profile.py 7/7 pass (unknown-reader 404, no-PII, approved-public-only, pagination, empty profile); full frontend vitest suite 1987/1987 pass; Playwright e2e 2/2 (name-link to /readers/{id} + 404 state) pass against a production build; nuxt typecheck + biome + ruff + pyright clean. The e2e rendered the verified-name link in the real preview, confirming the backend nickname-stamping (nickname==display_name) no longer dead-codes the link.",
+      "confidence": 1.0
+    },
+    "ISS-497": {
+      "id": "ISS-497",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-12T12:34:51+00:00",
+      "updated_at": "2026-09-12T13:31:22+00:00",
+      "touched_round": 308,
+      "title": "Verified-reader comment link dead-coded by nickname guard (display_name !== nickname)",
+      "content": "The initial CommentList reader-profile link rendered only when comment.reader.display_name !== comment.nickname. In production the backend stamps a reader comment's nickname with the reader's account display name, so the two are ALWAYS equal and the link (and replies' bolded name) never rendered — caught by the Playwright e2e (reader 117 comment rendered as inert text in the DOM). Fix: key the profile link off comment.reader presence alone and render display_name as the name itself. Guard should not be re-introduced; the nickname/display_name equality is a backend invariant (crud.py comment create overrides nickname for authenticated readers)."
+    },
+    "ISS-498": {
+      "id": "ISS-498",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-12T13:30:29+00:00",
+      "updated_at": "2026-09-12T13:31:22+00:00",
+      "touched_round": 308,
+      "title": "Header nav href goes stale for signed-in readers: /follows rendered as <a href='/comments'>",
+      "content": "Round-306 regression (caught post-commit by the my-comments e2e). Reader auth lives in localStorage, so SSR renders the GUEST nav (no authOnly links); on a hard page load of any SSR'd route (e.g. a post page) the client appends the signed-in links during hydration. /follows was an authOnly entry spliced MID-LIST (between /history and /comments), so hydration reused the SSR /comments node at that index for the /follows vnode: the label and the NuxtLink 'to' were applied but the anchor's href attr was left as /comments — users saw an <a href='/comments'> '我的关注' that actually navigated to /follows, and e2e clicking a header /comments link landed on the follows page. /notifications+'/account' never broke because they append at the END (fresh nodes). Fix committed in CHG: all authOnly nav links now stay in a trailing block so hydration only appends. Keep it that way — never splice an auth-gated nav item into the middle of navLinks."
+    },
+    "CHG-488": {
+      "id": "CHG-488",
+      "type": "change",
+      "status": "active",
+      "version": 2,
+      "created_at": "2026-09-12T13:30:57+00:00",
+      "updated_at": "2026-09-12T13:31:22+00:00",
+      "touched_round": 308,
+      "commit": "e7b9cd5",
+      "content": "Round-307 reader-profile vertical slice (DEC-294/TASK-376). Backend GET /api/readers/{id} (public profile + approved comments on published posts, paginated, no PII, rate-limited; crud get_reader_public_profile + list_reader_public_comments; 7 contract tests). Frontend /readers/[id] page (profile header, comment list w/ post links, notFound for 404+non-numeric id, page-clamp incl. empty-profile drop, plain-text escaped comments) + CommentList verified-reader name now links to the profile (top-level and replies; the link keys off reader identity after the display_name!=nickname guard was found to dead-code it prod, since the backend stamps nickname=display_name). Locales zh/en, page+component tests, Playwright e2e x2, CHANGELOG/README. ALSO fixes the round-306 nav href-staleness regression (authOnly /follows mid-list splice; all authOnly nav links now append at the end — found by the my-comments e2e and confirmed by probes: SSR guest nav had /comments at index 8, hydration reused that node for /follows leaving href=/comments with to=/follows behavior)."
+    },
+    "DEC-295": {
+      "id": "DEC-295",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-12T13:31:57+00:00",
+      "updated_at": "2026-09-12T13:31:57+00:00",
+      "touched_round": 308,
+      "title": "Closes feature-evolution round 307: public reader profiles shipped + two e2e-caught corrections baked in",
+      "rationale": "DEC-294/TASK-376 delivered end-to-end and verified: GET /api/readers/{id} (rate-limited, no PII) + /readers/[id] page + verified-reader comment-name links; 1423 backend + 1989 frontend tests green, reader-profile e2e 2/2, comment/reader/follows e2e group 11/11 on the final build; typecheck/biome/ruff/pyright clean. Code review 1 HIGH (missing rate limit) fixed before merge, MEDIUM documented, 2 LOW robustness fixes applied. Two genuine defects surfaced by VERIFY and fixed in-slice: (1) the display_name != nickname guard dead-coded the reader-profile link (backend stamps nickname=display_name), caught by the e2e DOM; (2) a round-306 nav regression — /follows authOnly mid-list splice left a stale href after SSR/hydration (localStorage auth), caught by the my-comments e2e failing to reach /comments. Both are in ISS/CHG records. One follow-up task logged (ISS-497-linked?: reader without display_name surfaces email as their public comment name — pre-existing, wider than this slice).",
+      "alternatives_rejected": "NOT stopping feature mode (11.5.1 not met — backlog now empty but the round delivered; next round re-sources). NOT pulling the email-fallback fix into this slice (it spans comment-create + list rendering + account UX — separate round). NOT moving reader auth to an HttpOnly cookie to fix the nav at the root (larger, riskier architecture change; the end-append nav rule fully fixes the visible bug and is enforced in-code)."
+    },
+    "ISS-499": {
+      "id": "ISS-499",
+      "type": "issue",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-12T13:33:03+00:00",
+      "updated_at": "2026-09-12T13:33:03+00:00",
+      "touched_round": 308,
+      "title": "Reader with no display_name surfaces their email as the public comment name (pre-existing PII-adjacent)",
+      "content": "create_comment stamps nickname = reader.display_name or reader.email (crud.py). A reader who never set a display_name therefore appears on the PUBLIC comment list (and now their profile) under their email address. Predates round 307 (the old CommentList rendered nickname too) but the rewritten v-else branch and the new public profile surface make it the visible name. Fix direction: fall back to a generic label (e.g. 'reader') on stamping, or render a masked fallback in the UI. Wider than round 307's slice — parked as TASK-377."
+    },
+    "TASK-377": {
+      "id": "TASK-377",
+      "type": "task",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-12T13:33:04+00:00",
+      "updated_at": "2026-09-12T13:33:04+00:00",
+      "touched_round": 308,
+      "category": "security",
+      "severity": 2,
+      "title": "Public commenter with no display_name must not be shown by their email on the comment list / profile",
+      "content": "Fix the nickname fallback so a reader without display_name renders a generic identity (e.g. 'reader'), never their email, on the public comment list and public profile. Decide between backend stamp (crud.create_comment) and frontend mask; cover CommentList + profile + tests. Pre-existing, found during round-307 review.",
+      "confidence": 1,
+      "effort": 2
     }
   },
   "edges": [
@@ -34156,6 +34263,36 @@
       "to": "TASK-375",
       "type": "implements",
       "created_at": "2026-09-12T09:56:39+00:00"
+    },
+    {
+      "from": "DEC-294",
+      "to": "TASK-376",
+      "type": "governs",
+      "created_at": "2026-09-12T10:06:22+00:00"
+    },
+    {
+      "from": "CHG-488",
+      "to": "TASK-376",
+      "type": "implements",
+      "created_at": "2026-09-12T13:31:21+00:00"
+    },
+    {
+      "from": "CHG-488",
+      "to": "ISS-497",
+      "type": "resolves",
+      "created_at": "2026-09-12T13:31:22+00:00"
+    },
+    {
+      "from": "CHG-488",
+      "to": "ISS-498",
+      "type": "resolves",
+      "created_at": "2026-09-12T13:31:22+00:00"
+    },
+    {
+      "from": "TASK-377",
+      "to": "ISS-499",
+      "type": "addresses",
+      "created_at": "2026-09-12T13:33:32+00:00"
     }
   ]
 }
