@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 310,
+  "round": 311,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-12T13:58:23+00:00",
+  "updated_at": "2026-09-12T16:31:03+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -22916,6 +22916,93 @@
       "title": "converged-idle: feature-evolution backlog empty and active-task queue clear after reads/commenter-identity waves (round 310)",
       "rationale": "Stop conditions all met: (1) no active task anywhere (ril tasks empty) after round 309 delivered TASK-377 (CHG-489); (2) the only active high-severity issue ISS-242 (multi-worker cache staleness) is deferred by DEC-004 (accepted per-process caches) + DEC-214 (deferred multi-worker hardening), similarly ISS-243/244 by DEC-014/DEC-214; (3) last VERIFY green — 1423 backend, 1990 frontend unit, comment/reader e2e group, typecheck/biome/ruff/pyright; graph check clean. Feature mode §11.2 sourcing re-run: candidates evaluated and none pass the value gate without being a same-kind control (in-place category-follow — already rejected twice) or an oversized non-slice social graph (reader-to-reader following); the user-visible surface (posts/search/taxonomy/series/comments/bookmarks/follows/notifications/digests/profiles/history/streaks/media/export/RSS/calendar) is complete. Rejections = the 11.5.3 backstop. QUIESCE: stop REPEAT; no further round-tick chore commits until a new operator direction (supersedes) or a real external signal.",
       "alternatives_rejected": "(a) Continuing feature evolution: rejected — no candidate surviving the value gate (11.2), forcing a same-kind patch would violate the anti-trivialization rule. (b) Pulling DEC-004/DEC-214 deferred multi-worker hardening (Redis-backed shared cache + rate-limit store + XFF trust): rejected — already explicitly deferred as deployment-scoped hardening, not a user-visible vertical slice, and outside this feature-mode directive; it re-activates only on an explicit operator ask or deployment incident. (c) Round-tick chore commits to 'stay active': rejected — that is the exact idle-spin the QUIESCE procedure forbids."
+    },
+    "DEC-298": {
+      "id": "DEC-298",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-12T14:12:58+00:00",
+      "updated_at": "2026-09-12T14:12:58+00:00",
+      "touched_round": 310,
+      "title": "Reactivate feature-evolution loop: operator directive (goal: enter feature exploration / 功能探索开发模式) resumes rounds after converged-idle",
+      "rationale": "Operator set a fresh goal to enter feature-exploration development mode and provided the dev PostgreSQL connection (10.112.9.49:13310, postgres/postgres/postgres). Per QUIESCE reactivation rule, this is a new operator direction that supersedes DEC-297 converged-idle. First round: re-ran VERIFY to confirm the real baseline — backend 1423 passed / 93.79% coverage, frontend 1990 passed, graph check clean (1892 nodes, 1897 edges). Then re-sourced §11.2 with fresh eyes; selected reader avatars (profile pictures) as a genuine net-increment user-visible slice. Feature mode continues; regression guardrail (§10 invariants) applies every round.",
+      "alternatives_rejected": "(a) Staying parked: rejected — a new operator goal explicitly re-enters feature-exploration mode. (b) Reusing DEC-297 candidate rejections verbatim: rejected — fresh sourcing re-opens the candidate set; avatar was never evaluated."
+    },
+    "DEC-299": {
+      "id": "DEC-299",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-12T14:13:24+00:00",
+      "updated_at": "2026-09-12T14:13:24+00:00",
+      "touched_round": 310,
+      "title": "Feature round N: reader avatars — a reader sets a profile picture shown across their public identity (reader profile page + every comment they leave)",
+      "rationale": "§11.2 fresh sourcing after DEC-298. The reader-identity wave (DEC-294 reader profiles) made commenter display names linkable, but the identity remains text-only: no avatar/picture exists anywhere in the system (grep: zero avatar hits in models, schemas, frontend). Users of a comment-bearing blog expect a face next to a name — avatars are the single most-requested identity affordance on blog engines and are a natural net-increment completion of the just-shipped reader-profile slice, NOT a same-kind button patch (no existing avatar control/column/data type to repeat). Vertical slice: (1) additive nullable avatar_url column on reader_accounts (DDL-preserving per DEC-009 pattern, migrations chain is alembic add_column); (2) reader-scoped avatar upload endpoint POST /api/reader/me/avatar reusing the proven image validation/optimization from upload.py (magic-bytes + PIL decode + pixel-bomb cap + never-larger re-encode, rate-limited, stored under /static/uploads/... — keep serving for free); (3) serialize avatar_url on ReaderPublicProfile + CommentReaderProfile + self-vuew, so the profile page and CommentList render it; (4) frontend: avatar in reader-profile page, next to verified-reader name in CommentList, and an upload/remove control on /account (reader settings) with zh/en i18n; (5) contract + component + e2e tests + CHANGELOG/README. Why now: identity surface just landed (reader profiles, DEC-294 round 307) and avatars make that identity visually concrete; the operator re-entered feature-exploration mode, giving this round a clean candidate. Target user: any registered reader who comments.",
+      "alternatives_rejected": "(a) Reader-to-reader following: rejected — already evaluated in DEC-297, oversized non-slice social-graph work, not a user-visible single capability. (b) In-place category-follow on the post page: rejected — third near-identical repetition of a follow control (DEC-290/DEC-292 both rejected it); same-kind button patch. (c) Dark-mode/theme work: rejected — already shipped. (d) OPML import/export: rejected — niche power-user tool, no evidence of a backing user problem, weak value gate. (e) Multi-worker cache/rate-limit hardening (ISS-242/243/244): rejected — deployment-scoped, explicitly deferred by DEC-004/DEC-214/DEC-297, not a user-visible vertical slice."
+    },
+    "TASK-378": {
+      "id": "TASK-378",
+      "type": "task",
+      "status": "resolved",
+      "version": 3,
+      "created_at": "2026-09-12T14:13:36+00:00",
+      "updated_at": "2026-09-12T16:22:22+00:00",
+      "touched_round": 310,
+      "category": "core-feature",
+      "title": "Reader avatars: avatar_url column + reader-scoped upload endpoint + render on reader profile / comment list / account settings (zh+en i18n), tests, e2e, docs",
+      "priority": 6.0,
+      "severity": "high",
+      "confidence": 0.9,
+      "effort": 3,
+      "description": "Also covers: additive alembic migration (avatar_url nullable) + POST /api/reader/me/avatar (multipart, magic-byte + PIL-decode + pixel-bomb cap + never-larger re-encode, reader rate-limited) + avatar_url on ReaderPublicProfile/CommentReaderProfile/self view + frontend avatar in reader-profile page, CommentList, /account upload/remove control + zh/en i18n + contract/component/e2e tests + CHANGELOG/README."
+    },
+    "CHG-490": {
+      "id": "CHG-490",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-12T16:21:43+00:00",
+      "updated_at": "2026-09-12T16:21:43+00:00",
+      "touched_round": 310,
+      "commit": "8856a8e",
+      "title": "Reader avatars: avatar_url migration + upload/remove endpoints + shared image-validation extraction + profile/comment rendering + /account control + contract/component/e2e tests + i18n + docs"
+    },
+    "EV-243": {
+      "id": "EV-243",
+      "type": "evidence",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-12T16:23:02+00:00",
+      "updated_at": "2026-09-12T16:23:02+00:00",
+      "touched_round": 310,
+      "confidence": 1.0,
+      "source": "backend pytest + frontend vitest + e2e (commit 8856a8e)",
+      "title": "Avatar feature VERIFY: backend 1437 passed (93.78% cov), frontend 1999 passed, typecheck/pyright/biome/ruff/rumdl clean, avatar e2e journey green (upload → comment+profile render → removal)"
+    },
+    "DEC-300": {
+      "id": "DEC-300",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-12T16:23:45+00:00",
+      "updated_at": "2026-09-12T16:23:45+00:00",
+      "touched_round": 311,
+      "title": "Closes feature-evolution round N: reader avatars shipped end-to-end (DEC-299/TASK-378 via CHG-490, VERIFY EV-243)",
+      "rationale": "Round delivered the avatar vertical slice: additive avatar_url migration (DEC-009-preserving), reader-scoped POST/DELETE /api/reader/me/avatar reusing a newly-extracted shared image_validation module (both uploaders now validate identically — content-type whitelist, size cap, magic bytes, full PIL decode, never-larger re-encode), avatar_url threaded through self/public-profile/comment-reader schemas, frontend rendering on /readers/[id] + CommentList (initial-letter fallback), /account upload/remove control, zh+en i18n. VERIFY (EV-243): backend 1437 / 93.78%, frontend 1999, typecheck+pyright+biome+ruff+rumdl clean, avatar e2e journey passed. Regression guardrail re-checked after the round — all §10 invariants still hold (no new issues, backlog unchanged apart from this delivery).",
+      "alternatives_rejected": "(a) OAuth/Gravatar-style avatar delegation: rejected — adds a third-party dependency + login surface for what a self-contained upload solves with less PII flow. (b) Reusing static/uploads for avatars: rejected — the admin media library walks that namespace; avatars need their own static/avatars to avoid polluting the author media list. (c) Client-side crop/editor before upload: rejected — scope creep; backend already re-encodes and the round limits to a clean vertical slice."
+    },
+    "DEC-301": {
+      "id": "DEC-301",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-12T16:30:26+00:00",
+      "updated_at": "2026-09-12T16:30:26+00:00",
+      "touched_round": 311,
+      "title": "Sourcing pass for next feature round: avatar closed the last genuine gap; remaining candidates all rejected — loop remains in feature mode, backlog empty",
+      "rationale": "After CHG-490 (avatars) resolved TASK-378, §11.2 re-sourcing for the next round: swept the shipped surface for genuinely missing user-visible capability. PWA/sw.js exists, sitemap.xml exists, full-content RSS/Atom per-category/series/tag scoped exists, comment deep-link anchors exist, dark mode exists. Candidates evaluated and rejected: in-place category-follow (third near-identical follow control — same-kind button patch, already rejected at DEC-290/DEC-292/DEC-297), reader-to-reader following (oversized non-slice social graph, DEC-297), OPML export/import (niche, no backing user problem, weak value gate), post author-byline/author pages (no User→Post authorship column exists; the blog is effectively single-author — adding an author model + pages is a data-model change for a one-person blog, not a user-perceivable gap). No candidate passes the value gate without being a same-kind patch or oversized work; the round delivered a change, so this is not converged-idle — feature mode continues and any future operator direction or real external signal re-sources fresh.",
+      "alternatives_rejected": "Same list as rationale — none survived the user-value + net-slice gate."
     }
   },
   "edges": [
@@ -34340,6 +34427,36 @@
       "to": "ISS-499",
       "type": "resolves",
       "created_at": "2026-09-12T13:54:19+00:00"
+    },
+    {
+      "from": "DEC-298",
+      "to": "DEC-297",
+      "type": "supersedes",
+      "created_at": "2026-09-12T14:13:11+00:00"
+    },
+    {
+      "from": "DEC-299",
+      "to": "TASK-378",
+      "type": "governs",
+      "created_at": "2026-09-12T14:14:57+00:00"
+    },
+    {
+      "from": "CHG-490",
+      "to": "TASK-378",
+      "type": "implements",
+      "created_at": "2026-09-12T16:22:22+00:00"
+    },
+    {
+      "from": "DEC-300",
+      "to": "DEC-299",
+      "type": "supersedes",
+      "created_at": "2026-09-12T16:24:23+00:00"
+    },
+    {
+      "from": "DEC-301",
+      "to": "DEC-300",
+      "type": "supersedes",
+      "created_at": "2026-09-12T16:31:03+00:00"
     }
   ]
 }
