@@ -58,6 +58,57 @@ describe("useMarkdown features", () => {
 		expect(r.segments[0].type).toBe("html");
 	});
 
+	it("extracts markdown image syntax (how posts are authored) to the lightbox", () => {
+		const r = useMarkdown("First image:\n\n![Diagram A](/uploads/a.png)");
+		expect(r.segments).toHaveLength(2);
+		const img = r.segments.find((s) => s.type === "image");
+		expect(img?.src).toBe("/uploads/a.png");
+		expect(img?.alt).toBe("Diagram A");
+	});
+
+	it("keeps markdown image order across prose chunks", () => {
+		const r = useMarkdown("![A](/a.png) mid ![B](/b.png) end");
+		const imgs = r.segments.filter((s) => s.type === "image");
+		expect(imgs.map((i) => i.src)).toEqual(["/a.png", "/b.png"]);
+	});
+
+	it("drops an optional markdown image title from the src", () => {
+		const r = useMarkdown('![Alt](/img.png "the title")');
+		const img = r.segments.find((s) => s.type === "image");
+		expect(img?.src).toBe("/img.png");
+		expect(img?.alt).toBe("Alt");
+	});
+
+	it("leaves a backslash-escaped \\! as literal text, not an image", () => {
+		const r = useMarkdown("\\![not an image](/x.png)");
+		expect(r.segments.some((s) => s.type === "image")).toBe(false);
+	});
+
+	it("does not hijack ![...](...) shown inside inline code spans", () => {
+		// A post documenting markdown syntax must not turn its own example into
+		// a real, clickable image.
+		const r = useMarkdown("use `![alt](/x.png)` to add an image");
+		expect(r.segments.some((s) => s.type === "image")).toBe(false);
+		// The code span survives as text (rendered code, not an image trigger).
+		expect(r.segments.some((s) => s.type === "html" && s.html.includes("![alt](/x.png)"))).toBe(
+			true,
+		);
+	});
+
+	it("keeps balanced inner parens in a markdown image src", () => {
+		const r = useMarkdown("![diagram](https://example.com/path_(x).png)");
+		const img = r.segments.find((s) => s.type === "image");
+		expect(img?.src).toBe("https://example.com/path_(x).png");
+	});
+
+	it("scans unterminated ![ runs linearly (no per-start-position quadratic blowup)", () => {
+		// 40 KB of `![` with no `]` used to re-scan from each start position.
+		// The alternation consumes the fragment in one pass; hangs would fail
+		// the default timeout.
+		const r = useMarkdown("![".repeat(40_000));
+		expect(r.segments.some((s) => s.type === "image")).toBe(false);
+	});
+
 	it("extracts mermaid before code blocks", () => {
 		const r = useMarkdown("```mermaid\nflow\n```\n```ts\ncode\n```");
 		expect(r.segments).toHaveLength(2);

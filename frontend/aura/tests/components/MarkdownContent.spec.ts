@@ -281,6 +281,83 @@ describe("MarkdownContent", () => {
 		});
 	});
 
+	describe("Image lightbox (DEC-302/TASK-379)", () => {
+		afterEach(() => {
+			document.body.innerHTML = "";
+			document.body.style.overflow = "";
+		});
+
+		it("wraps each image in a fullscreen-view trigger", async () => {
+			const wrapper = mountMarkdown('<img src="img.png" alt="a" /><img src="img2.png" alt="b" />');
+			await flushPromises();
+			const triggers = wrapper.findAll('[data-testid="markdown-image-trigger"]');
+			expect(triggers.length).toBe(2);
+			// The zoom affordance is truthful once more — a viewer exists now.
+			expect(triggers[0].classes()).toContain("cursor-zoom-in");
+		});
+
+		it("clicking an image opens the lightbox on that image", async () => {
+			const wrapper = mountMarkdown(
+				'<img src="first.png" alt="First" /><img src="second.png" alt="Second" />',
+			);
+			await flushPromises();
+			const triggers = wrapper.findAll('[data-testid="markdown-image-trigger"]');
+			await triggers[1].trigger("click");
+			await flushPromises();
+
+			const overlay = document.querySelector('[data-testid="lightbox"]');
+			expect(overlay).not.toBeNull();
+			// Second image is the one shown ("2 / 2" counter).
+			expect(document.body.textContent).toContain("2 / 2");
+			expect(document.querySelector('[data-testid="lightbox-image"]')?.getAttribute("src")).toBe(
+				"second.png",
+			);
+		});
+
+		it("closes via Escape", async () => {
+			const wrapper = mountMarkdown('<img src="img.png" alt="a" />');
+			await flushPromises();
+			await wrapper.findAll('[data-testid="markdown-image-trigger"]')[0].trigger("click");
+			await flushPromises();
+			const overlay = document.querySelector('[data-testid="lightbox"]');
+			expect(overlay).not.toBeNull();
+
+			overlay?.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+			await flushPromises();
+			expect(document.querySelector('[data-testid="lightbox"]')).toBeNull();
+		});
+
+		it("lightbox also covers markdown image syntax (the authored form)", async () => {
+			const wrapper = mountMarkdown(
+				"First:\n\n![Diagram A](/uploads/a.png)\n\nSecond:\n\n![Diagram B](/uploads/b.png)",
+			);
+			await flushPromises();
+			const triggers = wrapper.findAll('[data-testid="markdown-image-trigger"]');
+			expect(triggers.length).toBe(2);
+
+			await triggers[1].trigger("click");
+			await flushPromises();
+			const overlay = document.querySelector('[data-testid="lightbox"]');
+			expect(overlay).not.toBeNull();
+			expect(document.body.textContent).toContain("2 / 2");
+			expect(document.querySelector('[data-testid="lightbox-image"]')?.getAttribute("src")).toBe(
+				"/uploads/b.png",
+			);
+		});
+
+		it("a dangerous image src never opens the viewer (no viewer slot at all)", async () => {
+			const wrapper = mountMarkdown('<img src="javascript:alert(1)" alt="x" />');
+			await flushPromises();
+			const trigger = wrapper.find('[data-testid="markdown-image-trigger"]');
+			// The trigger is inert: clicking must NOT open the viewer because
+			// the javascript: src was filtered out of the lightbox image set
+			// (sanitizeUrl → "#" → excluded), the same guarantee the e2e pins.
+			await trigger.trigger("click");
+			await flushPromises();
+			expect(document.querySelector('[data-testid="lightbox"]')).toBeNull();
+		});
+	});
+
 	describe("Mixed content", () => {
 		it("renders paragraphs and code blocks together", async () => {
 			const wrapper = mountMarkdown(
