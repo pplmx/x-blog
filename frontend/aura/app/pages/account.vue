@@ -13,7 +13,9 @@ import {
 	changeReaderPassword,
 	deleteReaderAccount,
 	getReaderDataExport,
+	removeReaderAvatar,
 	updateReaderProfile,
+	uploadReaderAvatar,
 } from "~~/api/reader/account";
 import type {
 	FollowedCategoryItem,
@@ -105,6 +107,77 @@ async function saveProfileName() {
 		savingProfile.value = false;
 	}
 }
+
+/* Avatar ---------------------------------------------------------------- */
+// Profile picture (DEC-299/TASK-378): upload raw via a hidden <input type=file>
+// (no client-side resizing — the backend re-encodes), preview the chosen file
+// with a local object URL, and replace/remove against /api/reader/me/avatar.
+const avatarPreview = ref<string | null>(null);
+const avatarInput = ref<HTMLInputElement | null>(null);
+const avatarState = ref<"idle" | "busy" | "success" | "error">("idle");
+const avatarMessage = ref(false);
+
+function pickAvatar() {
+	avatarInput.value?.click();
+}
+
+function previewAvatar(event: Event) {
+	const input = event.target as HTMLInputElement;
+	const file = input.files?.[0];
+	if (!file) return;
+	// Client-side type hint (server enforces authoritatively) so a wrong pick
+	// is surfaced immediately rather than after a round-trip.
+	if (!file.type.startsWith("image/")) {
+		avatarMessage.value = true;
+		avatarState.value = "error";
+		input.value = "";
+		return;
+	}
+	avatarMessage.value = false;
+	if (avatarPreview.value) URL.revokeObjectURL(avatarPreview.value);
+	avatarPreview.value = URL.createObjectURL(file);
+	void uploadAvatar(file);
+}
+
+async function uploadAvatar(file: File) {
+	avatarState.value = "busy";
+	try {
+		const updated = await uploadReaderAvatar(file);
+		setProfile(updated);
+		avatarState.value = "success";
+		avatarMessage.value = true;
+	} catch {
+		avatarState.value = "error";
+		avatarMessage.value = true;
+	} finally {
+		// The input must reset so re-selecting the SAME file after a failed
+		// upload re-fires change (a stale .files won't retrigger). The preview
+		// stays on failure so the reader sees what came back wrong.
+		if (avatarInput.value) avatarInput.value.value = "";
+	}
+}
+
+async function removeAvatar() {
+	avatarState.value = "busy";
+	avatarMessage.value = false;
+	try {
+		const updated = await removeReaderAvatar();
+		setProfile(updated);
+		avatarState.value = "success";
+	} catch {
+		avatarState.value = "error";
+		avatarMessage.value = true;
+	} finally {
+		if (avatarPreview.value) {
+			URL.revokeObjectURL(avatarPreview.value);
+			avatarPreview.value = null;
+		}
+	}
+}
+
+onBeforeUnmount(() => {
+	if (avatarPreview.value) URL.revokeObjectURL(avatarPreview.value);
+});
 
 /* Password -------------------------------------------------------------- */
 const pw = ref({ current: "", next: "", confirm: "" });
@@ -666,6 +739,71 @@ function shortEndpoint(endpoint: string): string {
         <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
           {{ t('account.profile.title') }}
         </h2>
+        <!-- Profile picture (DEC-299/TASK-378): the reader's public face,
+             shown on their profile page and beside their comments. A hidden
+             file input uploads straight to /api/reader/me/avatar; the preview
+             shows the chosen file before the server re-encode round-trip. -->
+        <div class="flex items-center gap-4">
+          <img
+            v-if="(avatarPreview ?? reader?.avatar_url)"
+            :src="(avatarPreview ?? reader?.avatar_url) ?? ''"
+            :alt="reader?.display_name || 'avatar'"
+            class="w-14 h-14 rounded-full object-cover border border-gray-200 dark:border-gray-700"
+          />
+          <div
+            v-else
+            class="flex items-center justify-center w-14 h-14 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 text-white text-xl font-bold"
+          >
+            {{ (reader?.display_name || "R").charAt(0).toUpperCase() }}
+          </div>
+          <div class="flex flex-col gap-1.5">
+            <div class="flex items-center gap-2">
+              <button
+                type="button"
+                :disabled="avatarState === 'busy'"
+                class="px-3 py-1.5 rounded-lg text-sm font-medium border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors disabled:opacity-50"
+                @click="pickAvatar"
+              >
+                {{ t('account.profile.avatarUpload') }}
+              </button>
+              <button
+                v-if="reader?.avatar_url || avatarPreview"
+                type="button"
+                :disabled="avatarState === 'busy'"
+                class="px-3 py-1.5 rounded-lg text-sm font-medium text-red-500 dark:text-red-400 border border-gray-200 dark:border-gray-700 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors disabled:opacity-50"
+                @click="removeAvatar"
+              >
+                {{ t('account.profile.avatarRemove') }}
+              </button>
+              <span v-if="avatarState === 'busy'" class="text-sm text-gray-500" role="status">
+                {{ t('account.profile.avatarUploading') }}
+              </span>
+            </div>
+            <span
+              v-if="avatarMessage && avatarState === 'success'"
+              class="text-sm text-emerald-600 dark:text-emerald-400"
+              role="status"
+            >
+              {{ t('account.profile.avatarSaved') }}
+            </span>
+            <span
+              v-if="avatarState === 'error'"
+              class="text-sm text-red-500 dark:text-red-400"
+              role="alert"
+            >
+              {{ t('account.profile.avatarFailed') }}
+            </span>
+            <span class="text-xs text-gray-400">{{ t('account.profile.avatarHint') }}</span>
+            <input
+              ref="avatarInput"
+              type="file"
+              accept="image/jpeg,image/png,image/gif,image/webp"
+              class="hidden"
+              @change="previewAvatar"
+            />
+          </div>
+        </div>
+
         <!-- A real <form> so Enter in the display-name field saves (was a bare
              div — Enter did nothing and the form relied on mouse-only buttons). -->
         <form class="flex flex-col gap-4" @submit.prevent="saveProfileName">

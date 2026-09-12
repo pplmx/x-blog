@@ -140,7 +140,18 @@ const paginationTokens = computed(() =>
 		<template v-else-if="data">
 			<!-- Profile header -->
 			<div class="flex items-center gap-4 mb-8 rounded-2xl border border-gray-100 dark:border-gray-800 p-6">
-				<div class="shrink-0 flex items-center justify-center w-16 h-16 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 text-white text-2xl font-bold">
+				<!-- Avatar (DEC-299/TASK-378): the reader's uploaded picture when
+					 set, else the initial-letter placeholder (text-only identity). -->
+				<img
+					v-if="data.profile.avatar_url"
+					:src="data.profile.avatar_url"
+					:alt="data.profile.display_name || 'avatar'"
+					class="shrink-0 w-16 h-16 rounded-full object-cover border border-gray-100 dark:border-gray-800"
+				/>
+				<div
+					v-else
+					class="shrink-0 flex items-center justify-center w-16 h-16 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 text-white text-2xl font-bold"
+				>
 					{{ (data.profile.display_name || "R").charAt(0).toUpperCase() }}
 				</div>
 				<div>

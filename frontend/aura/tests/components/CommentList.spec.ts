@@ -1605,6 +1605,54 @@ describe("CommentList", () => {
 			expect(link.text()).toContain("Riki");
 		});
 
+		it("renders a reader's avatar beside their verified name (DEC-299/TASK-378)", async () => {
+			const readerComments = {
+				items: [
+					{
+						id: 34,
+						post_id: 1,
+						parent_id: null,
+						nickname: "Riki",
+						content: "Signed-in comment",
+						is_approved: true,
+						created_at: "2024-06-01T10:00:00Z",
+						reader: { id: 9, display_name: "Riki", avatar_url: "/static/avatars/riki.png" },
+					},
+				],
+				total: 1,
+				total_pages: 1,
+				page: 1,
+				limit: 20,
+			} as const;
+			const { wrapper } = await mountCommentList({ comments: readerComments });
+			const avatar = wrapper.find('img[src="/static/avatars/riki.png"]');
+			expect(avatar.exists()).toBe(true);
+		});
+
+		it("omits the avatar and falls back to the name when a reader has none (DEC-299/TASK-378)", async () => {
+			const readerComments = {
+				items: [
+					{
+						id: 35,
+						post_id: 1,
+						parent_id: null,
+						nickname: "Riki",
+						content: "Signed-in comment",
+						is_approved: true,
+						created_at: "2024-06-01T10:00:00Z",
+						reader: { id: 9, display_name: "Riki" },
+					},
+				],
+				total: 1,
+				total_pages: 1,
+				page: 1,
+				limit: 20,
+			} as const;
+			const { wrapper } = await mountCommentList({ comments: readerComments });
+			expect(wrapper.find("img").exists()).toBe(false);
+			expect(wrapper.text()).toContain("Riki");
+		});
+
 		it("never surfaces a no-display_name reader's email as their public name (TASK-377)", async () => {
 			const readerComments = {
 				items: [

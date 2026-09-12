@@ -14,7 +14,12 @@ import type { ReaderPushSubscription } from "../../api/reader/notifications";
 
 const isAuthenticated = ref(false);
 const reader = ref<ReaderProfile | null>(null);
-const setProfile = vi.fn();
+// Mirrors the real useReaderAuth.setProfile, which replaces the reader state —
+// so avatar upload/remove tests observe the image actually disappearing (they
+// assert on the rendered DOM, not just the mock call).
+const setProfile = vi.fn((profile: ReaderProfile) => {
+	reader.value = profile;
+});
 const updateToken = vi.fn();
 const logout = vi.fn();
 // Faithful copy of useReaderAuth.isStaleSession so account.vue's dual-401
@@ -55,6 +60,8 @@ const mockFetchCategories = vi.fn();
 const mockUpdatePushSubscriptionPrefs = vi.fn();
 const mockDeleteReaderAccount = vi.fn();
 const mockFetchReaderDataExport = vi.fn();
+const mockUploadReaderAvatar = vi.fn();
+const mockRemoveReaderAvatar = vi.fn();
 const mockFetchReaderSeriesFollows = vi.fn();
 const mockUnfollowReaderSeries = vi.fn();
 const mockSetSeriesFollowNotify = vi.fn();
@@ -83,6 +90,8 @@ vi.mock("../../api/reader/account", () => ({
 	deleteReaderAccount: mockDeleteReaderAccount,
 	getReaderDataExport: mockFetchReaderDataExport,
 	updateReaderProfile: mockUpdateMyProfile,
+	uploadReaderAvatar: mockUploadReaderAvatar,
+	removeReaderAvatar: mockRemoveReaderAvatar,
 }));
 vi.mock("../../api/reader/notifications", () => ({
 	getMyPushSubscriptions: mockFetchPushSubscriptions,
@@ -225,8 +234,12 @@ describe("Account settings page", () => {
 		vi.stubGlobal("confirm", () => true);
 
 		const wrapper = await mountPage();
-		// Buttons: [0]=save profile, [1]=change password, [2]=revoke device.
-		await wrapper.findAll("button")[2].trigger("click");
+		// Scope to the push-devices section (its own "移除"/revoke button) —
+		// NOT a global positional index, which the avatar "上传头像" button in
+		// the profile section would shift (DEC-299/TASK-378).
+		const devices = wrapper.findAll("section").find((s) => s.text().includes("推送设备"));
+		const revokeBtn = devices?.findAll("button").find((b) => b.text() === "移除");
+		await revokeBtn?.trigger("click");
 		await flushPromises();
 
 		expect(mockRevokePushSubscription).toHaveBeenCalledWith(1);
@@ -260,7 +273,12 @@ describe("Account settings page", () => {
 			.mockResolvedValue(undefined);
 
 		const wrapper = await mountPage();
-		const revokeBtns = () => wrapper.findAll("button").filter((b) => b.text() === "移除");
+		// Two rows → two revoke buttons, scoped to the devices section so the
+		// avatar remove control (also "移除") stays out of this count.
+		const revokeBtns = () => {
+			const devices = wrapper.findAll("section").find((s) => s.text().includes("推送设备"));
+			return devices ? devices.findAll("button").filter((b) => b.text() === "移除") : [];
+		};
 		expect(revokeBtns()).toHaveLength(2);
 
 		// Revoke device 1 — stays in flight.
@@ -344,8 +362,11 @@ describe("Account settings page", () => {
 		vi.stubGlobal("navigateTo", navigateTo);
 
 		const wrapper = await mountPage();
-		// Buttons: [0]=save profile, [1]=change password, [2]=revoke device.
-		await wrapper.findAll("button")[2].trigger("click");
+		// Revoke button scoped to the devices section (positional index breaks
+		// with the avatar upload button in the profile section above).
+		const devices = wrapper.findAll("section").find((s) => s.text().includes("推送设备"));
+		const revokeBtn = devices?.findAll("button").find((b) => b.text() === "移除");
+		await revokeBtn?.trigger("click");
 		await flushPromises();
 
 		expect(logout).toHaveBeenCalled();
@@ -516,6 +537,120 @@ describe("Account settings page", () => {
 		await input.setValue("NewName");
 		await flushPromises();
 		expect(wrapper.find('[role="alert"]').exists()).toBe(false);
+	});
+
+	describe("avatar (DEC-299, TASK-378)", () => {
+		it("renders the reader's avatar and a Remove action when one is set", async () => {
+			isAuthenticated.value = true;
+			reader.value = {
+				id: 1,
+				email: "r@example.com",
+				display_name: "Avatar User",
+				avatar_url: "/static/avatars/abc.png",
+				created_at: "2024-01-01T00:00:00Z",
+			};
+			const wrapper = await mountPage();
+			const img = wrapper.get("img");
+			expect(img.attributes("src")).toBe("/static/avatars/abc.png");
+			expect(wrapper.text()).toContain("上传头像");
+			expect(wrapper.text()).toContain("移除");
+		});
+
+		it("renders the initial-letter placeholder when no avatar is set", async () => {
+			isAuthenticated.value = true;
+			reader.value = {
+				id: 1,
+				email: "r@example.com",
+				display_name: "Avatar User",
+				avatar_url: null,
+				created_at: "2024-01-01T00:00:00Z",
+			};
+			const wrapper = await mountPage();
+			expect(wrapper.find("img").exists()).toBe(false);
+			expect(wrapper.text()).toContain("A"); // first letter of display name
+		});
+
+		it("uploads a picked file and refreshes the profile", async () => {
+			isAuthenticated.value = true;
+			reader.value = {
+				id: 1,
+				email: "r@example.com",
+				display_name: "Avatar User",
+				avatar_url: null,
+				created_at: "2024-01-01T00:00:00Z",
+			};
+			mockUploadReaderAvatar.mockResolvedValue({
+				id: 1,
+				email: "r@example.com",
+				display_name: "Avatar User",
+				avatar_url: "/static/avatars/xyz.png",
+				created_at: "2024-01-01T00:00:00Z",
+			});
+			vi.stubGlobal("URL", { ...URL, createObjectURL: vi.fn(() => "blob:avatar") });
+			const wrapper = await mountPage();
+
+			const input = wrapper.get("input[type='file']");
+			const file = new File([""], "avatar.png", { type: "image/png" });
+			Object.defineProperty(input.element, "files", { value: [file], configurable: true });
+			await input.trigger("change");
+			await flushPromises();
+
+			expect(mockUploadReaderAvatar).toHaveBeenCalledWith(file);
+			expect(setProfile).toHaveBeenCalledWith(
+				expect.objectContaining({ avatar_url: "/static/avatars/xyz.png" }),
+			);
+			expect(wrapper.text()).toContain("头像已保存");
+			vi.unstubAllGlobals();
+		});
+
+		it("removes the avatar and clears the image", async () => {
+			isAuthenticated.value = true;
+			reader.value = {
+				id: 1,
+				email: "r@example.com",
+				display_name: "Avatar User",
+				avatar_url: "/static/avatars/abc.png",
+				created_at: "2024-01-01T00:00:00Z",
+			};
+			mockRemoveReaderAvatar.mockResolvedValue({
+				id: 1,
+				email: "r@example.com",
+				display_name: "Avatar User",
+				avatar_url: null,
+				created_at: "2024-01-01T00:00:00Z",
+			});
+			const wrapper = await mountPage();
+
+			const remove = wrapper.findAll("button").find((b) => b.text() === "移除");
+			expect(remove).toBeDefined();
+			await remove?.trigger("click");
+			await flushPromises();
+
+			expect(mockRemoveReaderAvatar).toHaveBeenCalled();
+			expect(setProfile).toHaveBeenCalledWith(expect.objectContaining({ avatar_url: null }));
+			expect(wrapper.find("img").exists()).toBe(false);
+		});
+
+		it("rejects a non-image file client-side without an API call", async () => {
+			isAuthenticated.value = true;
+			reader.value = {
+				id: 1,
+				email: "r@example.com",
+				display_name: "Avatar User",
+				avatar_url: null,
+				created_at: "2024-01-01T00:00:00Z",
+			};
+			const wrapper = await mountPage();
+
+			const input = wrapper.get("input[type='file']");
+			const file = new File(["x"], "note.txt", { type: "text/plain" });
+			Object.defineProperty(input.element, "files", { value: [file], configurable: true });
+			await input.trigger("change");
+			await flushPromises();
+
+			expect(mockUploadReaderAvatar).not.toHaveBeenCalled();
+			expect(wrapper.find('[role="alert"]').text()).toContain("头像更新失败");
+		});
 	});
 
 	it("rejects a short new password without calling the API", async () => {
@@ -1187,7 +1322,9 @@ describe("Account settings page", () => {
 			mockRevokePushSubscription.mockRejectedValue(new Error("boom"));
 			vi.stubGlobal("confirm", () => true);
 			const wrapper = await mountPage();
-			await wrapper.findAll("button")[2].trigger("click");
+			const devices = wrapper.findAll("section").find((s) => s.text().includes("推送设备"));
+			const revokeBtn = devices?.findAll("button").find((b) => b.text() === "移除");
+			await revokeBtn?.trigger("click");
 			await flushPromises();
 			expect(wrapper.text()).toContain("移除失败，请稍后再试");
 			vi.unstubAllGlobals();

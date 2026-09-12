@@ -24,7 +24,13 @@
 			"save": "Save",
 			"saved": "Saved",
 			"saveFailed": "Couldn't save — please try again",
-			"nameRequired": "Display name can't be empty"
+			"nameRequired": "Display name can't be empty",
+			"avatarUpload": "Upload picture",
+			"avatarRemove": "Remove",
+			"avatarUploading": "Uploading…",
+			"avatarSaved": "Picture saved",
+			"avatarFailed": "Couldn't update picture — please try again",
+			"avatarHint": "PNG, JPEG, GIF or WebP, up to 5&nbsp;MB"
 		},
 		"password": {
 			"title": "Change password",

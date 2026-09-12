@@ -24,7 +24,13 @@
 			"save": "保存",
 			"saved": "已保存",
 			"saveFailed": "保存失败，请稍后再试",
-			"nameRequired": "显示名称不能为空"
+			"nameRequired": "显示名称不能为空",
+			"avatarUpload": "上传头像",
+			"avatarRemove": "移除",
+			"avatarUploading": "上传中…",
+			"avatarSaved": "头像已保存",
+			"avatarFailed": "头像更新失败，请稍后再试",
+			"avatarHint": "支持 PNG、JPEG、GIF 或 WebP，最大 5&nbsp;MB"
 		},
 		"password": {
 			"title": "修改密码",

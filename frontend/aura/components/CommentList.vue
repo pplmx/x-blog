@@ -104,6 +104,14 @@
                    (that is their email — crud stamps display_name or email,
                    TASK-377), so render a generic identity instead; only a truly
                    anonymous commenter keeps their free-typed nickname. -->
+              <!-- Avatar (DEC-299/TASK-378): a reader-set picture beside the
+                   verified identity, linking to the same public profile. -->
+              <img
+                v-if="comment.reader && comment.reader.avatar_url"
+                :src="comment.reader.avatar_url"
+                :alt="comment.reader.display_name || 'avatar'"
+                class="w-5 h-5 rounded-full object-cover"
+              />
               <span class="font-medium text-sm text-gray-900 dark:text-gray-100">
                 <NuxtLink
                   v-if="comment.reader && comment.reader.display_name"
@@ -269,6 +277,14 @@
               <span v-if="reply.parent_id !== comment.id" class="text-xs text-gray-400 -mr-1">
                 <Icon icon="lucide:corner-down-right" class="w-3 h-3 inline" />
               </span>
+              <!-- Avatar (DEC-299/TASK-378): same treatment as the top-level
+                   comment — shown for any reader who has set a picture. -->
+              <img
+                v-if="reply.reader && reply.reader.avatar_url"
+                :src="reply.reader.avatar_url"
+                :alt="reply.reader.display_name || 'avatar'"
+                class="w-5 h-5 rounded-full object-cover"
+              />
               <span class="font-medium text-sm text-gray-900 dark:text-gray-100">
                 <NuxtLink
                   v-if="reply.reader && reply.reader.display_name"

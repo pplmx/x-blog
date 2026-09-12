@@ -49,7 +49,7 @@ const stubs = {
 };
 
 const samplePage = {
-	profile: { id: 5, display_name: "Riki", created_at: "2024-01-01T00:00:00Z" },
+	profile: { id: 5, display_name: "Riki", avatar_url: null, created_at: "2024-01-01T00:00:00Z" },
 	items: [
 		{
 			id: 1,
@@ -95,6 +95,23 @@ describe("Reader profile page", () => {
 		expect(wrapper.text()).toContain("Riki");
 		expect(wrapper.text()).toContain("readerProfile.joined");
 		expect(wrapper.find('[data-icon="lucide:badge-check"]').exists()).toBe(true);
+	});
+
+	it("renders the reader's avatar when one is set (DEC-299/TASK-378)", async () => {
+		mockPayload = {
+			...samplePage,
+			profile: { ...samplePage.profile, avatar_url: "/static/avatars/riki.png" },
+		};
+		const wrapper = await mountPage();
+		const avatar = wrapper.find('img[src="/static/avatars/riki.png"]');
+		expect(avatar.exists()).toBe(true);
+	});
+
+	it("shows the initial-letter placeholder when the reader has no avatar (DEC-299/TASK-378)", async () => {
+		mockPayload = samplePage;
+		const wrapper = await mountPage();
+		expect(wrapper.find("img").exists()).toBe(false);
+		expect(wrapper.text()).toContain("R"); // first letter of display_name
 	});
 
 	it("renders a comment with a link to its post", async () => {

@@ -65,5 +65,11 @@ export interface Comment {
 	likes: number;
 	created_at: string;
 	edited_at?: string | null;
-	reader: { id: number; display_name: string | null } | null;
+	reader: {
+		id: number;
+		display_name: string | null;
+		// Profile picture (DEC-299/TASK-378): a reader-set avatar rendered
+		// beside the verified name when present.
+		avatar_url?: string | null;
+	} | null;
 }

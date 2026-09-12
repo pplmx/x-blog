@@ -6,6 +6,7 @@ export interface ReaderProfile {
 	id: number;
 	email: string;
 	display_name: string | null;
+	avatar_url: string | null;
 	created_at: string | null;
 }
 
@@ -14,6 +15,25 @@ export function useCurrentReader() {
 	return query<ReaderProfile>("/api/reader/me", {
 		headers: readerAuthHeaders(),
 		server: false,
+	});
+}
+
+/** Upload (or replace) the reader's profile picture (DEC-299/TASK-378). */
+export function uploadReaderAvatar(file: File): Promise<ReaderProfile> {
+	const formData = new FormData();
+	formData.append("file", file);
+	return command<ReaderProfile>("/api/reader/me/avatar", {
+		method: "POST",
+		headers: readerAuthHeaders(),
+		body: formData,
+	});
+}
+
+/** Remove the reader's profile picture (DEC-299/TASK-378). */
+export function removeReaderAvatar(): Promise<ReaderProfile> {
+	return command<ReaderProfile>("/api/reader/me/avatar", {
+		method: "DELETE",
+		headers: readerAuthHeaders(),
 	});
 }
 
