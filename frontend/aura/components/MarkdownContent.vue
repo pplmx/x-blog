@@ -22,6 +22,13 @@ import { type ComponentPublicInstance, computed, onMounted, ref, watch } from "v
 import { escapeHtml, highlightCode, loadHighlighter } from "~~/composables/useCodeHighlight";
 import { loadPurify, sanitizeHtml, sanitizeUrl, useMarkdown } from "~~/composables/useMarkdown";
 
+// Image-lightbox wiring (DEC-302/TASK-379): every `<img>` the post body
+// renders becomes a click target for MarkdownLightbox, so readers can inspect
+// tall diagrams / screenshots / photos at full resolution (a column-width
+// image can't be scrutinised on mobile).
+// biome-ignore lint/correctness/noUnusedImports: rendered as <MarkdownLightbox> in the template — biome cannot resolve Vue template bindings (vue-tsc verifies).
+import MarkdownLightbox, { type LightboxImage } from "./MarkdownLightbox.vue";
+
 // sanitizeUrl and escapeHtml are referenced in template bindings; keep the
 // helpers "used" for Biome (it cannot see template usage).
 void sanitizeUrl;
@@ -109,6 +116,28 @@ const copyFailedKeys = ref<Set<string>>(new Set());
 let contentEpoch = 0;
 
 const { t } = useLang();
+
+// --- Image lightbox (DEC-302/TASK-379) ---
+// All image segments become the lightbox's image set (order = in-post order),
+// keyed so a click on a specific <img> opens the viewer at that index. Srcs
+// reuse the same sanitizeUrl the inline <img> uses — a dangerous src opens
+// nowhere, matching the inline rendering.
+const images = computed<Array<LightboxImage & { key: string }>>(() =>
+	segments.value
+		.filter((s) => s.type === "image")
+		.map((s) => ({ key: s.key, src: sanitizeUrl(s.src), alt: s.alt ?? "" }))
+		// A src sanitizeUrl kills (javascript:/data:/empty → "#") can never
+		// load, so it must not occupy a viewer slot or open anything — the
+		// inline <img> keeps the existing broken-image rendering, but clicks on
+		// it are no-ops. mailto:/tel: pass sanitizeUrl but are no more loadable
+		// as images; only http(s) or relative srcs are valid image targets.
+		.filter((im) => im.src !== "#" && !/^(?!https?:)[a-z][a-z0-9+.-]*:/i.test(im.src)),
+);
+const lightboxIndex = ref<number | null>(null);
+function openLightbox(segKey: string): void {
+	const i = images.value.findIndex((im) => im.key === segKey);
+	if (i >= 0) lightboxIndex.value = i;
+}
 
 // A rejected navigator.clipboard (insecure context, permission denied) used to
 // be silently swallowed — the Copy button just did nothing. Fall back to a
@@ -346,29 +375,44 @@ function lineNumbers(code: string): number[] {
         :ref="(el: HTMLElement | null) => { if (el) renderKatex(seg.formula, el, seg.displayMode, seg.key) }"
       />
 
-      <!-- Image: preserve the natural aspect ratio. The old fixed h-64 +
-           object-cover frame center-cropped tall diagrams/screenshots with a
-           cursor-zoom-in that promised a (nonexistent) lightbox — readers could
-           never see the full image. :deep(img) styles supply sizing/margins; a
-           missing alt is decorative (alt="") per WCAG. The bg class masks the
-           brief unpainted flash; markdown segments carry no width/height, so
-           the image cannot reserve its box in advance — a small scroll-position
-           shift on lazy load is the accepted cost of showing tall images whole
-           rather than cropping them. -->
-      <img
+      <!-- Image: preserve the natural aspect ratio (no fixed h-64 crop frame).
+           The img now wraps in a lightbox trigger (DEC-302/TASK-379): clicking
+           opens MarkdownLightbox at full resolution; cursor-zoom-in is
+           truthful again because the viewer actually exists. :deep(img) styles
+           supply sizing/margins; a missing alt is decorative (alt="") per
+           WCAG. The bg class masks the brief unpainted flash; markdown
+           segments carry no width/height, so the image cannot reserve its box
+           in advance — a small scroll-position shift on lazy load is the
+           accepted cost of showing tall images whole rather than cropping
+           them. -->
+      <button
         v-else-if="seg.type === 'image'"
-        :src="sanitizeUrl(seg.src)"
-        :alt="seg.alt ?? ''"
-        class="bg-gray-100 dark:bg-gray-800"
-        loading="lazy"
-        decoding="async"
-        referrerpolicy="no-referrer"
+        type="button"
+        class="block w-full cursor-zoom-in rounded-xl bg-transparent p-0 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
+        :aria-label="
+          seg.alt
+            ? `${seg.alt} · ${t('components.markdown.lightboxOpen')}`
+            : t('components.markdown.lightboxOpen')
+        "
+        data-testid="markdown-image-trigger"
+        @click="openLightbox(seg.key)"
       >
+        <img
+          :src="sanitizeUrl(seg.src)"
+          :alt="seg.alt ?? ''"
+          class="bg-gray-100 dark:bg-gray-800"
+          loading="lazy"
+          decoding="async"
+          referrerpolicy="no-referrer"
+        >
+      </button>
 
       <!-- Unknown segment type — render nothing -->
       <template v-else />
     </template>
   </div>
+
+  <MarkdownLightbox :images="images" v-model:index="lightboxIndex" />
 </template>
 
 <style scoped>

@@ -155,7 +155,14 @@ function extractCodeBlocks(
 	return { segments, processed };
 }
 
-/** Extracts <img ...> tags as segments (enables lazy + lightbox rendering). */
+/**
+ * Extracts images as segments (enables lazy + lightbox rendering, DEC-302):
+ * BOTH markdown syntax (`![alt](src)` — how posts are authored) and raw HTML
+ * `<img ...>` tags (posts whose content arrives pre-rendered). Markdown images
+ * are pre-empted with placeholder comments before `marked` runs, exactly like
+ * code fences/math — otherwise marked turns them into an `<img>` inside an
+ * HTML chunk where they escape lazy-loading AND the lightbox.
+ */
 function extractImages(
 	content: string,
 	keygen: { v: number },
@@ -172,7 +179,36 @@ function extractImages(
 	});
 
 	const segments: Segment[] = [];
-	const processed = stashed
+	// Inline code spans (`` `code` ``) are stashed so a post documenting
+	// markdown — `` `![a](/x.png)` `` inside backticks — is never hijacked
+	// into a real image. Same rationale as mermaid/code/math running first (a
+	// later pass must not mangle their syntax). Restored at the end, before
+	// marked runs, so backtick code still renders as code.
+	const inlineCodes: string[] = [];
+	const codeStashed = stashed.replace(/`+[^`\n]*`+/g, (code) => {
+		inlineCodes.push(code);
+		return `<!--ic:${inlineCodes.length - 1}-->`;
+	});
+
+	// Markdown `![alt](src)` images. LINEAR-time scanning: the alternation
+	// either matches a complete image or consumes the `![` prefix via the
+	// `[^\]]*` fallback, so a run of unterminated `![` is scanned once rather
+	// than once per start position (a quadratic regex on an unbounded post
+	// body hangs SSR — this runs on every post render). Balanced inner parens
+	// are kept in the src (`path_(x).png`); an optional `(src "title")` is
+	// dropped from the URL; a backslash-escaped `\!` stays literal.
+	const processed = codeStashed
+		.replace(
+			/(?<!\\)!\[(?:[^\]]*\]\(((?:[^()\s]|\([^()]*\))*)(?:\s+[^)]*)?\)|[^\]]*)/g,
+			(_match, src: string | undefined) => {
+				if (src === undefined) return _match; // plain `![` fragment — not an image
+				const altStart = _match.indexOf("[") + 1;
+				const alt = _match.slice(altStart, _match.indexOf("]", altStart));
+				const key = makeKey("image", keygen);
+				segments.push({ type: "image", src, alt: alt.trim(), key });
+				return `<!--image:${key}-->`;
+			},
+		)
 		.replace(/<img\s+([^>]*?)>/gi, (_match, attrs: string) => {
 			const srcMatch = attrs.match(/src\s*=\s*"([^"]*)"/);
 			const altMatch = attrs.match(/alt\s*=\s*"([^"]*)"/);
@@ -183,6 +219,7 @@ function extractImages(
 			segments.push({ type: "image", src, alt, key });
 			return `<!--image:${key}-->`;
 		})
+		.replace(/<!--ic:(\d+)-->/g, (_m, i: string) => inlineCodes[Number(i)] ?? _m)
 		.replace(/<!--figure:(\d+)-->/g, (_m, i: string) => figures[Number(i)] ?? "");
 	return { segments, processed };
 }
