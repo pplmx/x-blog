@@ -17,6 +17,7 @@
 
 - 🚀 **现代技术栈** - Nuxt 4, FastAPI, Vue 3, TypeScript, Python 3.14
 - 📝 **Markdown 支持** - 支持 Mermaid 图表、KaTeX 数学公式、代码高亮
+- 🖼️ **图片灯箱** - 点击任意文章图片（Markdown 或 HTML）进入全屏、原始分辨率查看器，支持方向键浏览、ESC/背景/按钮关闭，焦点自动归还（DEC-302）
 - 🎨 **精美 UI** - Tailwind CSS v4 构建
 - 📱 **响应式设计** - 完美适配移动端
 - 🔒 **管理后台** - 内置内容管理后台

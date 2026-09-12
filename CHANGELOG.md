@@ -9,6 +9,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- **Markdown image lightbox (DEC-302)**: clicking any image inside a post
+  opens it at full resolution in a dark fullscreen viewer — Escape, a backdrop
+  click or the close button dismisses it, arrow keys (or on-screen arrows)
+  browse the post's images with wrap-around and an "n / total" counter, and
+  keyboard focus returns to the image that opened the viewer. Markdown image
+  syntax (`![alt](src)`, the way posts are authored) is now extracted into the
+  same lazy-loaded segment pipeline as HTML `<img>` tags (it previously sailed
+  past the segmenter into a plain inline `<img>`, missing lazy-loading and
+  ever reaching a viewer); a `javascript:`/`data:` image src is sanitised out
+  of the viewer set so it can never open. The `cursor-zoom-in` affordance,
+  removed years ago for promising a viewer that didn't exist, is truthful
+  again. New `MarkdownLightbox.vue` (Teleport overlay with focus management
+  and body-scroll lock) wired into `MarkdownContent.vue`, plus component,
+  composable and Playwright e2e coverage and zh/en i18n.
 - **Reader avatars (DEC-299)**: a reader can now set a profile picture from
   `/account` (upload or remove), completing the reader-identity surface that
   reader profiles (DEC-294) opened. The avatar renders on the public
