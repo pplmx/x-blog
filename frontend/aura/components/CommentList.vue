@@ -97,7 +97,20 @@
         <div class="flex items-start gap-2">
           <div class="flex-1">
             <div class="flex items-center gap-2 mb-1">
-              <span class="font-medium text-sm text-gray-900 dark:text-gray-100">{{ comment.nickname }}</span>
+              <!-- A verified reader's backend-stamped nickname IS their display
+                   name, so the identity is the name itself (DEC-294/TASK-376):
+                   render it as a link to their public profile, otherwise show
+                   the (anonymous) nickname the commenter typed. -->
+              <span class="font-medium text-sm text-gray-900 dark:text-gray-100">
+                <NuxtLink
+                  v-if="comment.reader && comment.reader.display_name"
+                  :to="`/readers/${comment.reader.id}`"
+                  class="hover:underline"
+                >
+                  {{ comment.reader.display_name }}
+                </NuxtLink>
+                <template v-else>{{ comment.nickname }}</template>
+              </span>
               <!-- Author reply (DEC-192): an official answer from the blog owner,
                    distinguished from a commenter so readers trust the source. -->
               <span
@@ -114,9 +127,6 @@
                 :title="t('components.commentList.verifiedReader')"
               >
                 <Icon icon="lucide:badge-check" class="w-3.5 h-3.5" />
-                <span v-if="comment.reader.display_name && comment.reader.display_name !== comment.nickname">
-                  {{ comment.reader.display_name }}
-                </span>
               </span>
               <span class="text-xs text-gray-500 dark:text-gray-400">{{ formatDate(comment.created_at) }}</span>
             </div>
@@ -255,7 +265,16 @@
               <span v-if="reply.parent_id !== comment.id" class="text-xs text-gray-400 -mr-1">
                 <Icon icon="lucide:corner-down-right" class="w-3 h-3 inline" />
               </span>
-              <span class="font-medium text-sm text-gray-900 dark:text-gray-100">{{ reply.nickname }}</span>
+              <span class="font-medium text-sm text-gray-900 dark:text-gray-100">
+                <NuxtLink
+                  v-if="reply.reader && reply.reader.display_name"
+                  :to="`/readers/${reply.reader.id}`"
+                  class="hover:underline"
+                >
+                  {{ reply.reader.display_name }}
+                </NuxtLink>
+                <template v-else>{{ reply.nickname }}</template>
+              </span>
               <span
                 v-if="reply.is_author_reply"
                 class="text-[11px] text-blue-600 dark:text-blue-400"
@@ -270,9 +289,6 @@
                 :title="t('components.commentList.verifiedReader')"
               >
                 <Icon icon="lucide:badge-check" class="w-3.5 h-3.5" />
-                <span v-if="reply.reader.display_name && reply.reader.display_name !== reply.nickname">
-                  {{ reply.reader.display_name }}
-                </span>
               </span>
               <span class="text-xs text-gray-500 dark:text-gray-400">{{ formatDate(reply.created_at) }}</span>
             </div>

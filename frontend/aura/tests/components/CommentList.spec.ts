@@ -148,6 +148,13 @@ async function mountCommentList({
 					template: '<svg class="iconstub" :data-icon="icon"></svg>',
 					props: ["icon"],
 				},
+				// The verified-reader display name links to /readers/{id}
+				// (DEC-294, TASK-376); stub NuxtLink so tests can assert the
+				// href lands on the reader's public profile.
+				NuxtLink: {
+					template: '<a :href="to"><slot/></a>',
+					props: ["to"],
+				},
 			},
 		},
 	});
@@ -1566,6 +1573,36 @@ describe("CommentList", () => {
 			// The anonymous comment has none.
 			expect(wrapper.text()).toContain("Riki");
 			expect(wrapper.text()).toContain("Guest");
+		});
+
+		it("links the verified reader display name to their public profile page (DEC-294, TASK-376)", async () => {
+			const readerComments = {
+				items: [
+					{
+						id: 32,
+						post_id: 1,
+						parent_id: null,
+						// The backend stamps a reader comment's nickname with the
+						// account display name, so the two are EQUAL at render
+						// time — the link must not key off them differing.
+						nickname: "Riki",
+						content: "Signed-in comment",
+						is_approved: true,
+						created_at: "2024-06-01T10:00:00Z",
+						reader: { id: 9, display_name: "Riki" },
+					},
+				],
+				total: 1,
+				total_pages: 1,
+				page: 1,
+				limit: 20,
+			} as const;
+			const { wrapper } = await mountCommentList({ comments: readerComments });
+			// The verified reader's name is a link into /readers/{id}, not inert
+			// text — even when it equals the stored nickname.
+			const link = wrapper.find('a[href="/readers/9"]');
+			expect(link.exists()).toBe(true);
+			expect(link.text()).toContain("Riki");
 		});
 	});
 

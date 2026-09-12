@@ -1,0 +1,15 @@
+{
+	"readerProfile": {
+		"seoTitle": "读者主页 — X-Blog",
+		"seoDesc": "读者的公开主页：TA 在全站的已发布评论。",
+		"anonymousName": "读者",
+		"joined": "加入于 {date}",
+		"commentsTitle": "评论",
+		"countLabel": "（ {count} ）",
+		"empty": "这位读者还没有公开的评论。",
+		"postLink": "文章",
+		"loadFailed": "加载读者主页失败，请检查网络后重试。",
+		"notFoundTitle": "读者不存在",
+		"notFoundDesc": "该读者不存在或账号已被删除。"
+	}
+}

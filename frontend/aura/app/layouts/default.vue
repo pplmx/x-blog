@@ -16,8 +16,15 @@ const navLinks = [
 	{ to: "/search", labelKey: "common.nav.search", icon: "lucide:search" },
 	{ to: "/bookmarks", labelKey: "reader.nav.bookmarks", icon: "lucide:bookmark" },
 	{ to: "/history", labelKey: "reader.nav.history", icon: "lucide:history" },
-	{ to: "/follows", labelKey: "reader.nav.follows", icon: "lucide:rss", authOnly: true },
 	{ to: "/comments", labelKey: "reader.nav.comments", icon: "lucide:message-square" },
+	// ALL authOnly links must stay in this trailing block (never spliced into the
+	// middle of the list): reader auth lives in localStorage, so SSR renders the
+	// guest nav and the client appends the signed-in links during hydration. A
+	// mid-list authOnly entry reuses the SSR node at that index and leaves its
+	// stale href (the /follows entry used to sit between /history and /comments,
+	// rendering as an <a href="/comments"> that navigated to /follows — found via
+	// the my-comments e2e). Appending avoids the reuse entirely.
+	{ to: "/follows", labelKey: "reader.nav.follows", icon: "lucide:rss", authOnly: true },
 	{
 		to: "/notifications",
 		labelKey: "reader.nav.notifications",

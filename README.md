@@ -32,6 +32,7 @@ A modern full-stack blog application built with FastAPI + Nuxt
 - 📰 **Follows feed** - a signed-in reader gets a full paginated `/follows` page of every new post from their followed categories, series and tags (beyond the home row's 12-post cap), with a "View all" entry from the home page (DEC-292)
 - 🔖 **Cloud Bookmark Sync** - Reader accounts keep your bookmarks synced across devices (sign in → local bookmarks merge to the cloud)
 - 💬 **Reader Comment Management** - a signed-in reader sees their own comments with moderation status (pending / approved / rejected) and can delete them (DEC-066)
+- 🪪 **Public Reader Profiles** - an approved signed-in reader's comment name links to their public `/readers/{id}` page (display name, join date, approved comments), no sign-in needed; unknown ids show a "reader not found" state (DEC-294)
 - 🎯 **SEO Optimized** - Open Graph, JSON-LD structured data
 - ⬆️ **Pinned Posts** - Pin important posts to top
 - 📤 **Data Export** - Export posts/comments as CSV
@@ -150,12 +151,13 @@ A series groups posts into an author-ordered sequence (`Post.series_id` + `Post.
 
 ### Comments (Moderated)
 
-| Method | Endpoint                       | Description           |
-| ------ | ------------------------------ | --------------------- |
-| GET    | `/api/comments/post/{id}`      | Get approved comments |
-| POST   | `/api/comments/post/{id}`      | Create comment        |
-| DELETE | `/api/comments/{id}`           | Delete comment (admin)|
-| PATCH  | `/api/comments/{id}/approve`   | Approve/reject (admin)|
+| Method | Endpoint                     | Description                                         |
+| ------ | ---------------------------- | --------------------------------------------------- |
+| GET    | `/api/comments/post/{id}`    | Get approved comments                               |
+| POST   | `/api/comments/post/{id}`    | Create comment                                      |
+| DELETE | `/api/comments/{id}`         | Delete comment (admin)                              |
+| PATCH  | `/api/comments/{id}/approve` | Approve/reject (admin)                              |
+| GET    | `/api/readers/{id}`          | Public reader profile + approved comments (DEC-294) |
 
 Comments are moderation-gated (new comments must be approved). A **signed-in
 reader** comments under their verified account identity (DEC-062): the form

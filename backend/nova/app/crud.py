@@ -3157,6 +3157,50 @@ def get_reader_comments(
     return items, total
 
 
+def get_reader_public_profile(db: Session, reader_id: int) -> models.ReaderAccount | None:
+    """A reader's public identity for the profile page (DEC-294/TASK-376).
+
+    Only the fields a public page may show — no email (PII), no last_login.
+    Returns None for an unknown reader so the caller can 404.
+    """
+    return db.get(auth.ReaderAccount, reader_id)
+
+
+def list_reader_public_comments(
+    db: Session, reader_id: int, page: int = 1, limit: int = 20
+) -> tuple[list[models.Comment], int]:
+    """Approved comments a reader has left on *publicly-visible* posts.
+
+    The profile page (DEC-294/TASK-376) shows a commenter's contribution; it
+    must not leak semi-private rows the same way the private /me/comments path
+    (which includes pending/rejected for the author) or drafts do. So the scope
+    is: is_approved AND the commented post is publicly visible (published,
+    publish_at passed) — mirroring get_comments_paginated's approval gate plus
+    the is_publicly_visible post gate. Newest first with id tiebreak (shared
+    with get_reader_comments).
+    """
+    now = utc_now_naive()
+    query = (
+        db.query(models.Comment)
+        .join(models.Post, models.Comment.post_id == models.Post.id)
+        .filter(
+            models.Comment.reader_id == reader_id,
+            models.Comment.is_approved == True,  # noqa: E712
+            models.Post.published.is_(True),
+            or_(models.Post.publish_at.is_(None), models.Post.publish_at <= now),
+        )
+    )
+    total = query.count()
+    items = (
+        query.options(joinedload(models.Comment.reader), joinedload(models.Comment.post))
+        .order_by(models.Comment.created_at.desc(), models.Comment.id.desc())
+        .offset((page - 1) * limit)
+        .limit(limit)
+        .all()
+    )
+    return items, total
+
+
 # ---------------------------------------------------------------------------
 # Site settings (DEC-100, TASK-162): operator-controlled runtime key/values.
 # ---------------------------------------------------------------------------

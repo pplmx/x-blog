@@ -30,6 +30,7 @@ from app.routers import (
     posts,
     push,
     reader,
+    readers,
     search,
     series,
     tags,
@@ -263,6 +264,7 @@ app.include_router(analytics.follows_router)
 app.include_router(analytics.searches_router)
 app.include_router(analytics.comments_router)
 app.include_router(reader.router)
+app.include_router(readers.router)
 app.include_router(export_router)
 app.include_router(rss_router, prefix="/rss")
 app.include_router(seo_router)

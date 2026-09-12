@@ -9,6 +9,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- **Public reader profiles (DEC-294)**: a commenter's verified display name is
+  now a clickable identity — on a post, an approved signed-in reader's name
+  links to `/readers/{id}`, a public (no sign-in) profile page with their
+  display name, join date and approved comments on publicly-visible posts,
+  paginated. Anonymous commenters stay under their typed nickname; an unknown
+  reader id renders a "reader not found" state instead of an empty page. The
+  comment-list link keys off the reader identity (not the nickname, which the
+  backend stamps with the display name) so it renders for every verified
+  commenter. New `GET /api/readers/{id}` route (profile + comment list, no
+  email/last-login PII) + backend tests, page + component tests, Playwright
+  e2e and zh/en i18n.
 - **Dedicated follows-feed page (DEC-292)**: a new `/follows` page for signed-in
   readers showing every new post from their followed categories, series and
   tags, paged beyond the 12-post home cap. The follows-feed endpoint

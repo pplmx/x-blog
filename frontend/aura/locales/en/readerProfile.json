@@ -1,0 +1,15 @@
+{
+	"readerProfile": {
+		"seoTitle": "Reader — X-Blog",
+		"seoDesc": "A reader's public profile: their approved comments across the blog.",
+		"anonymousName": "Reader",
+		"joined": "Joined {date}",
+		"commentsTitle": "Comments",
+		"countLabel": "( {count} )",
+		"empty": "This reader hasn't commented publicly yet.",
+		"postLink": "Post",
+		"loadFailed": "Couldn't load this reader's profile — check your connection and try again.",
+		"notFoundTitle": "Reader not found",
+		"notFoundDesc": "This reader doesn't exist or their account was deleted."
+	}
+}
