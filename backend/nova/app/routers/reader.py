@@ -7,10 +7,14 @@ so a self-registering reader can never hold a credential that reaches admin
 endpoints (enforced in auth.get_current_user / get_current_reader).
 """
 
+import re
 from datetime import UTC, datetime
+from pathlib import Path
 from typing import Annotated, Literal
+from uuid import uuid4
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status
+from fastapi import APIRouter, Depends, File, HTTPException, Query, Request, Response, UploadFile, status
+from PIL import UnidentifiedImageError
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 from sqlalchemy import func
 from sqlalchemy.exc import IntegrityError
@@ -18,6 +22,14 @@ from sqlalchemy.orm import Session
 
 from app import auth, crud, emailer, models, schemas
 from app.database import get_db
+from app.image_validation import (
+    ALLOWED_TYPES,
+    ALLOWED_TYPES_MAP,
+    MAX_SIZE,
+    has_matching_magic_bytes,
+    optimize_image,
+    verify_image_decodes,
+)
 from app.limiter import RATE_LIMIT_AUTH, RATE_LIMIT_EXPORT, RATE_LIMIT_REGISTER, RATE_LIMIT_WRITE, limiter
 from app.middleware import get_logger
 from app.routers.comments import AUTO_APPROVE_READER_COMMENTS, _notify_comment_approved
@@ -43,6 +55,7 @@ class ReaderProfile(BaseModel):
     id: int
     email: str
     display_name: str | None = None
+    avatar_url: str | None = None
     created_at: datetime | None = None
 
 
@@ -633,6 +646,105 @@ def update_my_profile(
         current_reader.display_name = payload.display_name
     db.commit()
     db.refresh(current_reader)
+    return current_reader
+
+
+# Reader avatar storage lives in a dedicated static/avatars/ namespace, NOT the
+# admin media library's static/uploads/ (DEC-299/TASK-378): the admin media
+# listing walks static/uploads/ only, so a reader's profile picture must not
+# appear in or collide with the author's uploaded post images.
+AVATAR_DIR = Path(__file__).parent.parent.parent / "static" / "avatars"
+# Avatars are stored as `{uuid4}.{ext}` (same shape as media uploads); the
+# remove route whitelists the exact shape so a DB value can never become a
+# filesystem path outside the avatar dir (mirrors upload.py's _FILENAME_RE).
+_AVATAR_FILENAME_RE = re.compile(
+    r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\.(jpg|jpeg|png|gif|webp)$"
+)
+
+
+def _delete_avatar_file(avatar_url: str | None) -> None:
+    """Best-effort delete of a stored avatar file, given its /static URL.
+
+    Only ever removes a file whose name matches the exact avatar shape (so a
+    corrupted/foreign avatar_url value can't be turned into a filesystem path
+    — path-traversal guard, same discipline as upload.py). A missing file is
+    fine — the URL is the source of truth and a stale row shouldn't fail the
+    write that cleans it up.
+    """
+    if not avatar_url:
+        return
+    name = avatar_url.rsplit("/", 1)[-1]
+    if not _AVATAR_FILENAME_RE.match(name):
+        return
+    path = AVATAR_DIR / name
+    try:
+        path.unlink(missing_ok=True)
+    except OSError:
+        logger.warning("could not remove stale avatar file %s", path)
+
+
+@router.post("/me/avatar", response_model=ReaderProfile)
+@limiter.limit(f"{RATE_LIMIT_WRITE}/minute")
+async def upload_my_avatar(
+    request: Request,  # noqa: ARG001
+    file: UploadFile = File(...),
+    current_reader: auth.ReaderAccount = Depends(auth.get_current_reader),
+    db: Session = Depends(get_db),
+):
+    """Set the reader's profile picture (replaces any existing one).
+
+    Same defense-in-depth validation as the admin image upload (content-type
+    whitelist, size cap, magic bytes, full Pillow decode, never-larger re-encode
+    that strips EXIF) — shared via app.image_validation so the two upload
+    surfaces can't drift apart (DEC-299/TASK-378). The new avatar is written to
+    static/avatars/ first, then the DB row is updated and any previous avatar
+    file removed, so a failed write never leaves a dangling avatar_url.
+    """
+    if file.content_type not in ALLOWED_TYPES:
+        raise HTTPException(400, detail="Unsupported file type")
+    # Cap memory: read at most MAX_SIZE+1 bytes and reject before an oversized
+    # body balloons RAM (reading the whole stream first would buffer it all).
+    contents = await file.read(MAX_SIZE + 1)
+    if len(contents) > MAX_SIZE:
+        raise HTTPException(400, detail="File too large (max 5MB)")
+    if not has_matching_magic_bytes(contents, file.content_type):
+        raise HTTPException(400, detail="File content does not match the declared image type")
+    try:
+        verify_image_decodes(contents)
+    except UnidentifiedImageError, OSError, ValueError:
+        raise HTTPException(400, detail="File is not a valid image")
+
+    contents = optimize_image(contents, file.content_type)
+
+    ext = ALLOWED_TYPES_MAP.get(file.content_type, "jpg")
+    filename = f"{uuid4()}.{ext}"
+    AVATAR_DIR.mkdir(parents=True, exist_ok=True)
+    filepath = AVATAR_DIR / filename
+    filepath.write_bytes(contents)
+
+    avatar_url = f"/static/avatars/{filename}"
+    previous = current_reader.avatar_url
+    current_reader.avatar_url = avatar_url
+    db.commit()
+    db.refresh(current_reader)
+    _delete_avatar_file(previous)
+    return current_reader
+
+
+@router.delete("/me/avatar", response_model=ReaderProfile)
+@limiter.limit(f"{RATE_LIMIT_WRITE}/minute")
+def remove_my_avatar(
+    request: Request,  # noqa: ARG001
+    current_reader: auth.ReaderAccount = Depends(auth.get_current_reader),
+    db: Session = Depends(get_db),
+):
+    """Remove the reader's profile picture (stored file + DB row)."""
+    previous = current_reader.avatar_url
+    if previous:
+        current_reader.avatar_url = None
+        db.commit()
+        db.refresh(current_reader)
+        _delete_avatar_file(previous)
     return current_reader
 
 

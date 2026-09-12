@@ -118,6 +118,11 @@ class ReaderAccount(Base):
     email: Mapped[str] = mapped_column(String(254), unique=True, nullable=False, index=True)
     password: Mapped[str] = mapped_column(String(200), nullable=False)
     display_name: Mapped[str | None] = mapped_column(String(50))
+    # Profile picture (DEC-299, TASK-378): a small image the reader uploads,
+    # served from /static/avatars and rendered beside their identity on the
+    # public profile page and comments. Nullable — an avatar is optional, and
+    # existing readers start without one (rendered as a placeholder/initial).
+    avatar_url: Mapped[str | None] = mapped_column(String(255), nullable=True)
     token_version: Mapped[int | None] = mapped_column(Integer, default=0)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, server_default="true", nullable=False)
     last_login_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)

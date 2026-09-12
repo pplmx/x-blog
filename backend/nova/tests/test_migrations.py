@@ -76,6 +76,21 @@ def test_upgrade_is_idempotent(stale_sqlite_url: str):
     assert cols.count("token_version") == 1
 
 
+def test_upgrade_adds_avatar_url_to_reader_accounts(stale_sqlite_url: str):
+    run_migrations(db_url=stale_sqlite_url)
+
+    cols = {row[1] for row in _query(stale_sqlite_url, "PRAGMA table_info(reader_accounts)")}
+    assert "avatar_url" in cols
+
+
+def test_avatar_url_migration_is_idempotent(stale_sqlite_url: str):
+    run_migrations(db_url=stale_sqlite_url)
+    run_migrations(db_url=stale_sqlite_url)
+
+    cols = [row[1] for row in _query(stale_sqlite_url, "PRAGMA table_info(reader_accounts)")]
+    assert cols.count("avatar_url") == 1
+
+
 def test_upgrade_stamps_alembic_version(stale_sqlite_url: str):
     run_migrations(db_url=stale_sqlite_url)
 

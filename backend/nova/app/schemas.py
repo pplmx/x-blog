@@ -546,11 +546,13 @@ class CommentReaderProfile(BaseModel):
 
     Deliberately NO email — a comment's reader_id is verified (stamped from the
     reader JWT), but the account email is PII and must not ride a public
-    comment list. display_name is the author-controlled, reader-facing handle.
+    comment list. display_name is the author-controlled, reader-facing handle;
+    avatar_url is the reader's public profile picture (DEC-299/TASK-378).
     """
 
     id: int
     display_name: str | None = None
+    avatar_url: str | None = None
 
 
 class CommentPostBrief(BaseModel):
@@ -574,10 +576,11 @@ def comment_reader_profile(reader) -> CommentReaderProfile | None:
     if isinstance(reader, dict):
         id_: int | None = reader.get("id") if isinstance(reader.get("id"), int) else None
         display_name = reader.get("display_name")
+        avatar_url = reader.get("avatar_url")
         if id_ is None:
             return None
-        return CommentReaderProfile(id=id_, display_name=display_name)
-    return CommentReaderProfile(id=reader.id, display_name=reader.display_name)
+        return CommentReaderProfile(id=id_, display_name=display_name, avatar_url=avatar_url)
+    return CommentReaderProfile(id=reader.id, display_name=reader.display_name, avatar_url=reader.avatar_url)
 
 
 class CommentPublic(CommentBase):
