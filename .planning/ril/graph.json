@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 309,
+  "round": 310,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-12T13:33:32+00:00",
+  "updated_at": "2026-09-12T13:58:23+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -22859,28 +22859,63 @@
     "ISS-499": {
       "id": "ISS-499",
       "type": "issue",
-      "status": "active",
-      "version": 1,
+      "status": "resolved",
+      "version": 2,
       "created_at": "2026-09-12T13:33:03+00:00",
-      "updated_at": "2026-09-12T13:33:03+00:00",
-      "touched_round": 308,
+      "updated_at": "2026-09-12T13:54:19+00:00",
+      "touched_round": 309,
       "title": "Reader with no display_name surfaces their email as the public comment name (pre-existing PII-adjacent)",
       "content": "create_comment stamps nickname = reader.display_name or reader.email (crud.py). A reader who never set a display_name therefore appears on the PUBLIC comment list (and now their profile) under their email address. Predates round 307 (the old CommentList rendered nickname too) but the rewritten v-else branch and the new public profile surface make it the visible name. Fix direction: fall back to a generic label (e.g. 'reader') on stamping, or render a masked fallback in the UI. Wider than round 307's slice — parked as TASK-377."
     },
     "TASK-377": {
       "id": "TASK-377",
       "type": "task",
-      "status": "active",
-      "version": 1,
+      "status": "resolved",
+      "version": 2,
       "created_at": "2026-09-12T13:33:04+00:00",
-      "updated_at": "2026-09-12T13:33:04+00:00",
-      "touched_round": 308,
+      "updated_at": "2026-09-12T13:54:19+00:00",
+      "touched_round": 309,
       "category": "security",
       "severity": 2,
       "title": "Public commenter with no display_name must not be shown by their email on the comment list / profile",
       "content": "Fix the nickname fallback so a reader without display_name renders a generic identity (e.g. 'reader'), never their email, on the public comment list and public profile. Decide between backend stamp (crud.create_comment) and frontend mask; cover CommentList + profile + tests. Pre-existing, found during round-307 review.",
       "confidence": 1,
       "effort": 2
+    },
+    "CHG-489": {
+      "id": "CHG-489",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-12T13:53:46+00:00",
+      "updated_at": "2026-09-12T13:53:46+00:00",
+      "touched_round": 309,
+      "commit": "129b4b7",
+      "content": "Round 309 TASK-377 privacy fix: a reader with no display_name (register/settings allow None) was named by their email on the public comment list (crud.create_comment stamps display_name or reader.email; ISS-499). Frontend CommentList (top-level + replies) now renders a generic i18n identity (readerNoName: Reader/读者) for reader-attributed comments whose display_name is null, instead of the email; anonymous commenters keep their free-typed nickname and the verified badge stays. Covers existing rows (mask at render, not migration). Frontend-only: email remains only as the stored fallback for the reader's own /comments self-view (not public) and the backend has no locale. 1990 unit tests, comment/reader e2e group green."
+    },
+    "DEC-296": {
+      "id": "DEC-296",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-12T13:54:19+00:00",
+      "updated_at": "2026-09-12T13:54:19+00:00",
+      "touched_round": 309,
+      "title": "Closes feature-evolution round 309: no-display_name readers no longer exposed by email (TASK-377/ISS-499 via CHG-489)",
+      "rationale": "Post-round-307 backlog: TASK-377 was the only active task (priority 14.14, security: email as a reader's public name is a PII exposure). Verified the path is reachable (register + settings accept display_name=None; crud stamps display_name or email) then shipped a render-time mask so historical rows are covered too. VERIFY: 1990 frontend unit tests, comment/reader e2e group 7/7, typecheck/biome clean; backend untouched (1423 baseline). API hardening note: CommentPublic.nickname still carries the email for such comments behind the mask - a future defense-in-depth option should a public API consumer appear; not changed now (contract + consumer tests ripple, UI is the stated surface).",
+      "alternatives_rejected": "Backend stamp change (nickname = display_name or generic) instead of a UI mask: rejected - it leaves existing rows leaking, the backend has no locale for the label, and the reader's own /comments self-view would lose the email signal. API-level nickname masking in CommentPublic: deferred (contract ripple, no consuming client today); recorded as a hardening note rather than a task to keep the graph lean."
+    },
+    "DEC-297": {
+      "id": "DEC-297",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-12T13:58:23+00:00",
+      "updated_at": "2026-09-12T13:58:23+00:00",
+      "touched_round": 310,
+      "title": "converged-idle: feature-evolution backlog empty and active-task queue clear after reads/commenter-identity waves (round 310)",
+      "rationale": "Stop conditions all met: (1) no active task anywhere (ril tasks empty) after round 309 delivered TASK-377 (CHG-489); (2) the only active high-severity issue ISS-242 (multi-worker cache staleness) is deferred by DEC-004 (accepted per-process caches) + DEC-214 (deferred multi-worker hardening), similarly ISS-243/244 by DEC-014/DEC-214; (3) last VERIFY green — 1423 backend, 1990 frontend unit, comment/reader e2e group, typecheck/biome/ruff/pyright; graph check clean. Feature mode §11.2 sourcing re-run: candidates evaluated and none pass the value gate without being a same-kind control (in-place category-follow — already rejected twice) or an oversized non-slice social graph (reader-to-reader following); the user-visible surface (posts/search/taxonomy/series/comments/bookmarks/follows/notifications/digests/profiles/history/streaks/media/export/RSS/calendar) is complete. Rejections = the 11.5.3 backstop. QUIESCE: stop REPEAT; no further round-tick chore commits until a new operator direction (supersedes) or a real external signal.",
+      "alternatives_rejected": "(a) Continuing feature evolution: rejected — no candidate surviving the value gate (11.2), forcing a same-kind patch would violate the anti-trivialization rule. (b) Pulling DEC-004/DEC-214 deferred multi-worker hardening (Redis-backed shared cache + rate-limit store + XFF trust): rejected — already explicitly deferred as deployment-scoped hardening, not a user-visible vertical slice, and outside this feature-mode directive; it re-activates only on an explicit operator ask or deployment incident. (c) Round-tick chore commits to 'stay active': rejected — that is the exact idle-spin the QUIESCE procedure forbids."
     }
   },
   "edges": [
@@ -34293,6 +34328,18 @@
       "to": "ISS-499",
       "type": "addresses",
       "created_at": "2026-09-12T13:33:32+00:00"
+    },
+    {
+      "from": "CHG-489",
+      "to": "TASK-377",
+      "type": "implements",
+      "created_at": "2026-09-12T13:54:19+00:00"
+    },
+    {
+      "from": "CHG-489",
+      "to": "ISS-499",
+      "type": "resolves",
+      "created_at": "2026-09-12T13:54:19+00:00"
     }
   ]
 }
