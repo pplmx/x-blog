@@ -30,7 +30,8 @@
 			"recommended": "为你推荐",
 			"yourSeries": "我的系列",
 			"continue": "继续",
-			"latestFollows": "关注内容的最新文章"
+			"latestFollows": "关注内容的最新文章",
+			"viewAllFollows": "查看全部"
 		},
 		"empty": {
 			"posts": "暂无文章"

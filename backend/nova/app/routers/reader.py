@@ -1141,15 +1141,31 @@ def my_recommendations(
     return [schemas.PostList.model_validate(p) for p in recommended]
 
 
-@router.get("/me/follows-feed", response_model=list[schemas.PostList])
+@router.get("/me/follows-feed", response_model=schemas.PostListResponse)
 def my_follows_feed(
+    page: PageInt = 1,
     limit: int = Query(12, ge=1, le=50),
     current_reader: auth.ReaderAccount = Depends(auth.get_current_reader),
     db: Session = Depends(get_db),
 ):
-    """Recent public posts from the reader's followed categories + series (DEC-142/TASK-183)."""
-    posts = crud.follows_feed_posts(db, current_reader.id, limit=limit)
-    return [schemas.PostList.model_validate(p) for p in posts]
+    """Recent public posts from the reader's followed categories + series + tags.
+
+    Paginated (DEC-142/TASK-183, pagination DEC-292/TASK-375): the home section
+    uses page 1, the dedicated /follows page pages through all of them.
+    """
+    posts, total = crud.follows_feed_posts(db, current_reader.id, limit=limit, offset=(page - 1) * limit)
+    total_pages = (total + limit - 1) // limit
+    return schemas.PostListResponse.model_validate(
+        {
+            "items": [schemas.PostList.model_validate(p) for p in posts],
+            "pagination": {
+                "total": total,
+                "page": page,
+                "limit": limit,
+                "total_pages": total_pages,
+            },
+        }
+    )
 
 
 @router.get("/me/series-follows", response_model=FollowedSeriesListResponse)

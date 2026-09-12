@@ -9,6 +9,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- **Dedicated follows-feed page (DEC-292)**: a new `/follows` page for signed-in
+  readers showing every new post from their followed categories, series and
+  tags, paged beyond the 12-post home cap. The follows-feed endpoint
+  (`GET /api/reader/me/follows-feed`) is now a paginated `{items, pagination}`
+  envelope, the home "Latest from your follows" row gains a "View all" link
+  into it, and a stale/expired session drops the reader back to sign-in like
+  the notifications inbox. Backend contract tests (incl. page/total/total_pages
+  and out-of-range clamps) + frontend page tests + Playwright e2e + zh/en i18n.
 - **In-place series-follow (DEC-290)**: the post page's in-series nav box gains
   a follow control for signed-in readers — follow/unfollow the current series
   and toggle new-part notifications right where they were reading part N,

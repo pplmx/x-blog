@@ -2,11 +2,20 @@
 
 A signed-in reader sees the newest public posts from their followed categories
 or series. Covers auth scoping, empty-when-following-nothing, category/series
-scoping, dedup, exclusion of non-public posts, and the limit cap.
+scoping, dedup, exclusion of non-public posts, the limit cap, and the paginated
+envelope (DEC-292/TASK-375).
 """
 
 FOLLOWS_FEED = "/api/reader/me/follows-feed"
 _n = 0
+
+
+def _items(resp):
+    """The follows-feed is now a paginated envelope (DEC-292/TASK-375):
+    ``{items, pagination}`` instead of a bare list."""
+    assert "items" in resp.json()
+    assert "pagination" in resp.json()
+    return resp.json()["items"]
 
 
 def _register(client, email="feed@example.com", password="readerpass123"):
@@ -86,7 +95,7 @@ class TestFollowsFeed:
         _create_category(client, auth_headers)
         _create_series(client, auth_headers)
         # reader registered but follows nothing.
-        assert client.get(FOLLOWS_FEED, headers=_auth(token)).json() == []
+        assert _items(client.get(FOLLOWS_FEED, headers=_auth(token))) == []
 
     def test_returns_posts_from_followed_category(self, client, auth_headers):
         token = _token(client)
@@ -94,7 +103,7 @@ class TestFollowsFeed:
         _create_post(client, auth_headers, "cat-only", category_id=category["id"])
         client.put(f"/api/reader/me/categories/{category['id']}/follow", headers=_auth(token))
 
-        feed = client.get(FOLLOWS_FEED, headers=_auth(token)).json()
+        feed = _items(client.get(FOLLOWS_FEED, headers=_auth(token)))
         assert len(feed) == 1
         assert feed[0]["slug"].startswith("cat-only-")
 
@@ -104,7 +113,7 @@ class TestFollowsFeed:
         _create_post(client, auth_headers, "series-only", series_id=series["id"])
         client.put(f"/api/reader/me/series/{series['id']}/follow", headers=_auth(token))
 
-        feed = client.get(FOLLOWS_FEED, headers=_auth(token)).json()
+        feed = _items(client.get(FOLLOWS_FEED, headers=_auth(token)))
         assert len(feed) == 1
         assert feed[0]["slug"].startswith("series-only-")
 
@@ -114,7 +123,7 @@ class TestFollowsFeed:
         _create_post(client, auth_headers, "tag-new", tags=["redis"])
         client.put(f"/api/reader/me/tags/{tag_id}/follow", headers=_auth(token))
 
-        feed = client.get(FOLLOWS_FEED, headers=_auth(token)).json()
+        feed = _items(client.get(FOLLOWS_FEED, headers=_auth(token)))
         assert len(feed) == 1
         assert feed[0]["slug"].startswith("tag-new-")
 
@@ -132,7 +141,7 @@ class TestFollowsFeed:
         )
         _create_post(client, auth_headers, "silent-new", tags=["nginx"])
 
-        feed = client.get(FOLLOWS_FEED, headers=_auth(token)).json()
+        feed = _items(client.get(FOLLOWS_FEED, headers=_auth(token)))
         assert len(feed) == 1
         assert feed[0]["slug"].startswith("silent-new-")
 
@@ -150,7 +159,7 @@ class TestFollowsFeed:
         client.put(f"/api/reader/me/categories/{category['id']}/follow", headers=_auth(token))
         client.put(f"/api/reader/me/series/{series['id']}/follow", headers=_auth(token))
 
-        feed = client.get(FOLLOWS_FEED, headers=_auth(token)).json()
+        feed = _items(client.get(FOLLOWS_FEED, headers=_auth(token)))
         assert len(feed) == 1
 
     def test_excludes_unpublished_posts(self, client, auth_headers):
@@ -160,7 +169,7 @@ class TestFollowsFeed:
         live = _create_post(client, auth_headers, "live", published=True, category_id=category["id"])
         client.put(f"/api/reader/me/categories/{category['id']}/follow", headers=_auth(token))
 
-        feed = client.get(FOLLOWS_FEED, headers=_auth(token)).json()
+        feed = _items(client.get(FOLLOWS_FEED, headers=_auth(token)))
         assert [p["slug"] for p in feed] == [live["slug"]]
         assert not any(p["slug"].startswith("draft-") for p in feed)
 
@@ -171,7 +180,7 @@ class TestFollowsFeed:
             _create_post(client, auth_headers, f"p{i}", category_id=category["id"])
         client.put(f"/api/reader/me/categories/{category['id']}/follow", headers=_auth(token))
 
-        feed = client.get(FOLLOWS_FEED + "?limit=3", headers=_auth(token)).json()
+        feed = _items(client.get(FOLLOWS_FEED + "?limit=3", headers=_auth(token)))
         assert len(feed) == 3
 
     def test_orders_by_effective_publish_time(self, client, auth_headers, db_session):
@@ -200,8 +209,53 @@ class TestFollowsFeed:
         )
         db_session.commit()
 
-        feed = client.get(FOLLOWS_FEED, headers=_auth(token)).json()
+        feed = _items(client.get(FOLLOWS_FEED, headers=_auth(token)))
         slugs = [p["slug"] for p in feed]
         # Effective publish: sched (yesterday) leads recent (3 days ago).
         # Buggy created_at order put recent first (sched looks 30 days old).
         assert slugs.index(sched["slug"]) < slugs.index(recent["slug"])
+
+    # --- Pagination (DEC-292/TASK-375): the envelope carries total/total_pages
+    # so the dedicated /follows page can browse past the home cap of 12. ------
+
+    def test_pagination_envelope_reports_total_and_pages(self, client, auth_headers):
+        token = _token(client)
+        category = _create_category(client, auth_headers)
+        for i in range(5):
+            _create_post(client, auth_headers, f"p{i}", category_id=category["id"])
+        client.put(f"/api/reader/me/categories/{category['id']}/follow", headers=_auth(token))
+
+        body = client.get(FOLLOWS_FEED + "?limit=2", headers=_auth(token)).json()
+        assert len(body["items"]) == 2
+        assert body["pagination"] == {"total": 5, "page": 1, "limit": 2, "total_pages": 3}
+
+    def test_pagination_pages_do_not_overlap(self, client, auth_headers):
+        token = _token(client)
+        category = _create_category(client, auth_headers)
+        slugs_created = []
+        for i in range(5):
+            slugs_created.append(_create_post(client, auth_headers, f"pg{i}", category_id=category["id"])["slug"])
+        client.put(f"/api/reader/me/categories/{category['id']}/follow", headers=_auth(token))
+
+        page1 = [p["slug"] for p in _items(client.get(FOLLOWS_FEED + "?limit=2&page=1", headers=_auth(token)))]
+        page2 = [p["slug"] for p in _items(client.get(FOLLOWS_FEED + "?limit=2&page=2", headers=_auth(token)))]
+        assert len(page1) == 2 and len(page2) == 2
+        assert set(page1).isdisjoint(set(page2))
+
+    def test_pagination_last_page_short_and_out_of_range_empty(self, client, auth_headers):
+        token = _token(client)
+        category = _create_category(client, auth_headers)
+        for i in range(3):
+            _create_post(client, auth_headers, f"r{i}", category_id=category["id"])
+        client.put(f"/api/reader/me/categories/{category['id']}/follow", headers=_auth(token))
+
+        # limit=2 → page 2 holds the single remainder, total still 3.
+        body = client.get(FOLLOWS_FEED + "?limit=2&page=2", headers=_auth(token)).json()
+        assert len(body["items"]) == 1
+        assert body["pagination"]["total"] == 3
+        assert body["pagination"]["total_pages"] == 2
+        # Beyond the last page: empty items, pagination still reports the real
+        # page so the frontend can clamp back into range (archive/search pattern).
+        body = client.get(FOLLOWS_FEED + "?limit=2&page=99", headers=_auth(token)).json()
+        assert body["items"] == []
+        assert body["pagination"]["page"] == 99

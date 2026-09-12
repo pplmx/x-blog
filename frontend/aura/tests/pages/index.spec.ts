@@ -121,7 +121,10 @@ vi.mock("../../api/reader/history", () => ({
 vi.mock("../../api/reader/follows", () => ({
 	getReaderFollowsFeed: async () => {
 		if (mockState.followsPending) await pendingGate.promise;
-		return mockState.followsFeed;
+		return {
+			items: mockState.followsFeed,
+			pagination: { total: mockState.followsFeed.length, page: 1, limit: 12, total_pages: 1 },
+		};
 	},
 	getReaderSeriesFollows: async () => {
 		if (mockState.seriesPending) await pendingGate.promise;

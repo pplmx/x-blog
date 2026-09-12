@@ -1,5 +1,5 @@
 import { readerAuthHeaders } from "../auth";
-import type { PostList } from "../contracts/shared";
+import type { PostListResponse } from "../contracts/shared";
 import { command, query } from "../transport";
 
 /** The series the signed-in reader follows for new-part push. */
@@ -64,9 +64,13 @@ export interface TagFollowState {
 	notify: boolean;
 }
 
-/** Recent public posts from the reader's followed categories + series. */
+/**
+ * Recent public posts from the reader's followed categories + series + tags.
+ * Paginated envelope (DEC-292/TASK-375): the home section uses page 1, the
+ * dedicated /follows page pages through everything.
+ */
 export function useReaderFollowsFeed(limit = 12) {
-	return query<PostList[]>("/api/reader/me/follows-feed", {
+	return query<PostListResponse>("/api/reader/me/follows-feed", {
 		query: { limit },
 		headers: readerAuthHeaders(),
 		server: false,
@@ -74,13 +78,14 @@ export function useReaderFollowsFeed(limit = 12) {
 }
 
 /**
- * Imperative "latest from your follows" list (home page onMounted loader) —
- * the imperative seam; see getReaderSeriesFollows for why lifecycle-hook
- * loaders must never run a useFetch query (ISS-110/111/117/118/119, TASK-220).
+ * Imperative "latest from your follows" page (home onMounted loader / /follows
+ * page) — the imperative seam; see getReaderSeriesFollows for why
+ * lifecycle-hook loaders must never run a useFetch query (ISS-110/111/117/118/
+ * 119, TASK-220).
  */
-export function getReaderFollowsFeed(limit = 12): Promise<PostList[]> {
-	return command<PostList[]>("/api/reader/me/follows-feed", {
-		query: { limit },
+export function getReaderFollowsFeed(limit = 12, page = 1): Promise<PostListResponse> {
+	return command<PostListResponse>("/api/reader/me/follows-feed", {
+		query: { limit, page },
 		headers: readerAuthHeaders(),
 	});
 }

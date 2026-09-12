@@ -30,7 +30,8 @@
 			"recommended": "Recommended for you",
 			"yourSeries": "Your series",
 			"continue": "Continue",
-			"latestFollows": "Latest from your follows"
+			"latestFollows": "Latest from your follows",
+			"viewAllFollows": "View all"
 		},
 		"empty": {
 			"posts": "No articles yet"

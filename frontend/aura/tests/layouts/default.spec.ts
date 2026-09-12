@@ -509,8 +509,9 @@ describe("Default Layout", () => {
 	});
 
 	describe("Auth-aware nav", () => {
-		it("hides auth-only nav links (notifications/account) for guests", () => {
+		it("hides auth-only nav links (follows/notifications/account) for guests", () => {
 			const wrapper = mountLayout();
+			expect(wrapper.find('a[href="/follows"]').exists()).toBe(false);
 			expect(wrapper.find('a[href="/notifications"]').exists()).toBe(false);
 			expect(wrapper.find('a[href="/account"]').exists()).toBe(false);
 		});
@@ -518,6 +519,7 @@ describe("Default Layout", () => {
 		it("shows auth-only nav links for signed-in readers", () => {
 			localStorage.setItem("reader_token", "jwt.token");
 			const wrapper = mountLayout();
+			expect(wrapper.find('a[href="/follows"]').exists()).toBe(true);
 			expect(wrapper.find('a[href="/notifications"]').exists()).toBe(true);
 			expect(wrapper.find('a[href="/account"]').exists()).toBe(true);
 			localStorage.removeItem("reader_token");

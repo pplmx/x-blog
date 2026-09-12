@@ -2669,7 +2669,7 @@ def list_tag_follow_reader_ids(db: Session, tag_ids: list[int]) -> list[int]:
     ]
 
 
-def follows_feed_posts(db: Session, reader_id: int, limit: int = 12) -> list[models.Post]:
+def follows_feed_posts(db: Session, reader_id: int, limit: int = 12, offset: int = 0) -> tuple[list[models.Post], int]:
     """Recent public posts from the reader's followed categories + series + tags.
 
     The discovery payoff of the follow model (DEC-142/TASK-183; tag dimension
@@ -2678,8 +2678,9 @@ def follows_feed_posts(db: Session, reader_id: int, limit: int = 12) -> list[mod
     (independent of per-follow notify — tracking, not push). Results are
     public, published, deduped (a post is its own row), newest by effective
     publish time first (publish_at ?? created_at, matching the global feed),
-    capped at ``limit``. A reader following nothing gets an empty list (the
-    frontend hides the row).
+    capped at ``limit`` with ``offset`` pagination (round-306, DEC-292). A
+    reader following nothing gets an empty (list, 0) pair (the frontend hides
+    the row).
     """
     category_ids = [
         cid
@@ -2695,7 +2696,7 @@ def follows_feed_posts(db: Session, reader_id: int, limit: int = 12) -> list[mod
         tid for (tid,) in db.query(models.TagFollow.tag_id).filter(models.TagFollow.reader_id == reader_id).all()
     ]
     if not category_ids and not series_ids and not tag_ids:
-        return []
+        return [], 0
 
     now = utc_now_naive()
     scope = []
@@ -2716,12 +2717,22 @@ def follows_feed_posts(db: Session, reader_id: int, limit: int = 12) -> list[mod
             or_(*scope),
         )
         .options(joinedload(models.Post.category), joinedload(models.Post.tags))
-        .order_by(_effective_publish_col().desc(), models.Post.id.desc())
-        .limit(limit)
     )
-    result = [post for post in query.all() if is_publicly_visible(post)]
+
+    # Count before pagination (the global feed pattern) so the reader can page
+    # through every follow hit, not just the home-section cap.
+    total = query.count()
+
+    result = [
+        post
+        for post in query.order_by(_effective_publish_col().desc(), models.Post.id.desc())
+        .offset(offset)
+        .limit(limit)
+        .all()
+        if is_publicly_visible(post)
+    ]
     _populate_post_metrics(db, result)
-    return result
+    return result, total
 
 
 def get_follow_stats(db: Session, limit: int = 5) -> dict:

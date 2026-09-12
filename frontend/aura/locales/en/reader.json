@@ -31,6 +31,7 @@
 			"comments": "My comments",
 			"account": "Account",
 			"history": "History",
+			"follows": "Your follows",
 			"notifications": "Notifications"
 		},
 		"forgotPassword": {

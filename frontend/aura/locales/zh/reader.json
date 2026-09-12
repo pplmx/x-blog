@@ -31,6 +31,7 @@
 			"comments": "我的评论",
 			"account": "账号",
 			"history": "阅读历史",
+			"follows": "我的关注",
 			"notifications": "通知"
 		},
 		"forgotPassword": {

@@ -106,8 +106,9 @@ onMounted(async () => {
 	await loadFollowsFeed();
 });
 
-// "Latest from your follows" (DEC-142, TASK-183): newest posts from the
-// reader's followed categories + series, gated to signed-in followers.
+// "Latest from your follows" (DEC-142, TASK-183; paginated DEC-292/TASK-375):
+// newest posts from the reader's followed categories + series, gated to
+// signed-in followers. Page 1 of 12 — the /follows page browses everything.
 const followsFeed = ref<PostList[]>([]);
 const followsFeedLoading = ref(false);
 // The loading flag must gate the section too, or the skeleton never renders:
@@ -122,8 +123,8 @@ async function loadFollowsFeed() {
 	if (!recSignedIn.value) return;
 	followsFeedLoading.value = true;
 	try {
-		const feed = await getReaderFollowsFeed(12);
-		followsFeed.value = feed ?? [];
+		const res = await getReaderFollowsFeed(12, 1);
+		followsFeed.value = res?.items ?? [];
 	} catch {
 		followsFeed.value = [];
 	} finally {
@@ -422,6 +423,14 @@ const stats = computed(() => {
       <h2 class="text-lg font-bold text-gray-900 dark:text-gray-100 mb-4 flex items-center gap-2">
         <Icon icon="lucide:rss" class="w-5 h-5 text-emerald-500" />
         {{ t("home.sections.latestFollows") }}
+        <NuxtLink
+          v-if="followsFeed.length"
+          to="/follows"
+          class="ml-auto inline-flex items-center gap-1 text-xs font-medium text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-300 transition-colors"
+        >
+          {{ t("home.sections.viewAllFollows") }}
+          <Icon icon="lucide:arrow-right" class="w-3.5 h-3.5" />
+        </NuxtLink>
       </h2>
 
       <!-- Loading skeleton -->

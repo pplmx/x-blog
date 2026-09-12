@@ -1,0 +1,14 @@
+{
+	"follows": {
+		"seoTitle": "我的关注 — X-Blog",
+		"seoDesc": "你关注的分类、系列与标签下的所有新文章。",
+		"title": "我的关注",
+		"subtitle": "你关注的分类、系列与标签下的新文章",
+		"countLabel": "共 {count} 篇",
+		"empty": "你还没有关注任何内容。关注分类、系列或标签后，新文章会出现在这里。",
+		"emptyAction": "浏览分类",
+		"loadFailed": "加载关注内容失败，请检查网络后重试。",
+		"retry": "重试",
+		"paginationAnnounce": "第 {page} 页"
+	}
+}
