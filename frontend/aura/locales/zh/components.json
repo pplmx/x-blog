@@ -62,7 +62,8 @@
 			"like": "点赞",
 			"liked": "已点赞",
 			"likeError": "点赞失败，请重试。",
-			"editLabel": "编辑你的评论"
+			"editLabel": "编辑你的评论",
+			"readerNoName": "读者"
 		},
 		"threadSubscribe": {
 			"follow": "订阅讨论",

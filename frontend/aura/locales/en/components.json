@@ -62,7 +62,8 @@
 			"like": "Like",
 			"liked": "Liked",
 			"likeError": "Couldn't like this comment. Please try again.",
-			"editLabel": "Edit your comment"
+			"editLabel": "Edit your comment",
+			"readerNoName": "Reader"
 		},
 		"threadSubscribe": {
 			"follow": "Follow discussion",

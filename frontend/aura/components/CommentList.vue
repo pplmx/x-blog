@@ -99,8 +99,11 @@
             <div class="flex items-center gap-2 mb-1">
               <!-- A verified reader's backend-stamped nickname IS their display
                    name, so the identity is the name itself (DEC-294/TASK-376):
-                   render it as a link to their public profile, otherwise show
-                   the (anonymous) nickname the commenter typed. -->
+                   render it as a link to their public profile. A reader without
+                   a display_name must NOT fall back to their stored nickname
+                   (that is their email — crud stamps display_name or email,
+                   TASK-377), so render a generic identity instead; only a truly
+                   anonymous commenter keeps their free-typed nickname. -->
               <span class="font-medium text-sm text-gray-900 dark:text-gray-100">
                 <NuxtLink
                   v-if="comment.reader && comment.reader.display_name"
@@ -109,6 +112,7 @@
                 >
                   {{ comment.reader.display_name }}
                 </NuxtLink>
+                <template v-else-if="comment.reader">{{ t('components.commentList.readerNoName') }}</template>
                 <template v-else>{{ comment.nickname }}</template>
               </span>
               <!-- Author reply (DEC-192): an official answer from the blog owner,
@@ -273,6 +277,7 @@
                 >
                   {{ reply.reader.display_name }}
                 </NuxtLink>
+                <template v-else-if="reply.reader">{{ t('components.commentList.readerNoName') }}</template>
                 <template v-else>{{ reply.nickname }}</template>
               </span>
               <span

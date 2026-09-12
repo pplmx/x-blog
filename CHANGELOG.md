@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- **Reader privacy fix (TASK-377)**: a signed-in reader who never set a display
+  name was shown on the public comment list under their stored email (the
+  comment nickname falls back to the account email). Those comments now render
+  a generic "Reader" identity instead — the email never appears as a public
+  name on the post's comment list (existing rows included), while the
+  verified-reader badge stays.
 - **Public reader profiles (DEC-294)**: a commenter's verified display name is
   now a clickable identity — on a post, an approved signed-in reader's name
   links to `/readers/{id}`, a public (no sign-in) profile page with their

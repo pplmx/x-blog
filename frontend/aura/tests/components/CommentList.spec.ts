@@ -1604,6 +1604,38 @@ describe("CommentList", () => {
 			expect(link.exists()).toBe(true);
 			expect(link.text()).toContain("Riki");
 		});
+
+		it("never surfaces a no-display_name reader's email as their public name (TASK-377)", async () => {
+			const readerComments = {
+				items: [
+					{
+						id: 33,
+						post_id: 1,
+						parent_id: null,
+						// crud stamps `display_name or email` (crud.py create_comment):
+						// with no display_name the stored nickname IS the email — it
+						// must not render as the commenter's public name.
+						nickname: "reader@example.com",
+						content: "No-name reader comment",
+						is_approved: true,
+						created_at: "2024-06-01T10:00:00Z",
+						reader: { id: 10, display_name: null },
+					},
+				],
+				total: 1,
+				total_pages: 1,
+				page: 1,
+				limit: 20,
+			} as const;
+			const { wrapper } = await mountCommentList({ comments: readerComments });
+			// The generic reader identity (zh value of readerNoName) replaces the
+			// email; no profile link, but the verified badge still shows.
+			expect(wrapper.text()).toContain("读者");
+			expect(wrapper.text()).not.toContain("reader@example.com");
+			expect(wrapper.find('a[href="/readers/10"]').exists()).toBe(false);
+			// Sanity: the verified badge is still rendered for the no-name reader.
+			expect(wrapper.findAll('[data-icon="lucide:badge-check"]').length).toBeGreaterThan(0);
+		});
 	});
 
 	describe("Naive-UTC dates (deep-dive)", () => {
