@@ -33,6 +33,7 @@ A modern full-stack blog application built with FastAPI + Nuxt
 - 🔖 **Cloud Bookmark Sync** - Reader accounts keep your bookmarks synced across devices (sign in → local bookmarks merge to the cloud)
 - 💬 **Reader Comment Management** - a signed-in reader sees their own comments with moderation status (pending / approved / rejected) and can delete them (DEC-066)
 - 🪪 **Public Reader Profiles** - an approved signed-in reader's comment name links to their public `/readers/{id}` page (display name, join date, approved comments), no sign-in needed; unknown ids show a "reader not found" state (DEC-294)
+- 🖼️ **Reader Avatars** - readers set a profile picture from `/account` (upload or remove); it renders on their public profile and beside their verified name on every comment, falling back to an initial-letter placeholder when unset (DEC-299)
 - 🎯 **SEO Optimized** - Open Graph, JSON-LD structured data
 - ⬆️ **Pinned Posts** - Pin important posts to top
 - 📤 **Data Export** - Export posts/comments as CSV
@@ -231,6 +232,8 @@ limited (default 5/min/IP).
 | GET    | `/api/reader/me/comments`                 | Reader's own comments across statuses (DEC-066)                                              |
 | DELETE | `/api/reader/me/comments/{id}`            | Delete one of the reader's own comments (any status)                                         |
 | PATCH  | `/api/reader/me`                          | Update display name (email immutable) (DEC-067)                                              |
+| POST   | `/api/reader/me/avatar`                   | Upload/replace the reader's profile picture (DEC-299)                                        |
+| DELETE | `/api/reader/me/avatar`                   | Remove the reader's profile picture (DEC-299)                                                |
 | POST   | `/api/reader/me/password`                 | Change password (revokes other sessions, returns fresh token)                                |
 | POST   | `/api/reader/password-reset/request`      | Email a password-reset link (generic 202; 503 only if email unconfigured) (DEC-286)          |
 | POST   | `/api/reader/password-reset/confirm`      | Redeem the reset token: set a new password, revoke all sessions, auto-login (DEC-286)        |

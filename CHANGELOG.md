@@ -9,6 +9,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- **Reader avatars (DEC-299)**: a reader can now set a profile picture from
+  `/account` (upload or remove), completing the reader-identity surface that
+  reader profiles (DEC-294) opened. The avatar renders on the public
+  `/readers/{id}` profile page and beside the verified reader's name on every
+  comment they leave; readers without a picture keep the initial-letter
+  placeholder. New `POST /api/reader/me/avatar` (multipart, reusing the media
+  uploader's defense-in-depth image validation — content-type whitelist, size
+  cap, magic bytes, full Pillow decode, never-larger re-encode) and
+  `DELETE /api/reader/me/avatar`, an additive `reader_accounts.avatar_url`
+  column (DDL-preserving, DEC-009), and avatar_url threaded through the reader
+  profile, public profile and comment-reader schemas. Backend contract tests,
+  frontend page/component tests, Playwright e2e and zh/en i18n.
 - **Reader privacy fix (TASK-377)**: a signed-in reader who never set a display
   name was shown on the public comment list under their stored email (the
   comment nickname falls back to the account email). Those comments now render
