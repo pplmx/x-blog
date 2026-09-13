@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 325,
+  "round": 326,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-13T15:35:32+00:00",
+  "updated_at": "2026-09-13T16:45:07+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -11,7 +11,7 @@
       "version": 1,
       "created_at": "2026-08-06T13:23:41+00:00",
       "updated_at": "2026-08-06T13:23:41+00:00",
-      "touched_round": 301,
+      "touched_round": 325,
       "title": "backend-nova",
       "description": "FastAPI Python 3.14 backend at backend/nova; SQLAlchemy ORM; routers in app/routers, crud.py business logic, 656 lines"
     },
@@ -23847,6 +23847,84 @@
       "touched_round": 324,
       "rationale": "Round 323 feature delivery: @-mention autocomplete (DEC-324/TASK-390) closed by CHG-519/520/521 (test/feat/docs). Typing @ in the comment box now opens a bounded, prefix-ranked picker of active readers (public GET /api/readers/suggest — id + display name + avatar, never email), keyboard + click selectable, inserting @<display name> at the caret so the DEC-322 word-boundary fan-out really fires. Complements DEC-322 (round 322) which shipped mentions with zero discoverability; this slice makes the capability usable — a one-sentence acceptance verified end to end (type @pick -> pick -> submit -> approve -> named reader inbox gains the mention row). VERIFY green: backend 1469 (cov 93.76%, ruff + pyright clean), frontend 2048 unit tests, typecheck exit 0, biome clean, reader-notifications e2e 4/4 through the Nuxt origin. Feature mode continues.",
       "alternatives_rejected": "Styled mention rendering and a mention email channel remain deferred. Admin items still deferred: comment-moderation context nav, category/tag delete reassign, backup-coverage warning, analytics window preset, admin reader drill-down, dashboard draft-inflated ratio (combined admin cleanup round)."
+    },
+    "DEC-326": {
+      "id": "DEC-326",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-13T15:46:07+00:00",
+      "updated_at": "2026-09-13T15:46:07+00:00",
+      "touched_round": 325,
+      "rationale": "Round 324 feature selection: mention emails (the email-channel delta of the @-mention family). Target user: a reader who opted into per-kind email notifications. Problem: DEC-322 (@-mention fan-out) and DEC-324 (autocomplete) ship inbox + push but NO email copy — a reader who prefers email (DEC-197, off-site) misses the single most personal notification, a direct call-out by name. One-sentence acceptance: a reader with email notifications on receives the @-mention email (per their email_mention opt-in, off by default like the other email kinds), and turning email_mention off stops the email without touching the durable inbox row. Why now: the mention story just closed (rounds 322-323); email parity is its natural completion. Net-additive vertical slice: one additive email_mention boolean column on reader_notification_prefs (DEC-009), emailer._EMAIL_PREF_FOR_KIND maps mention -> email_mention, _notify_mentions enqueues EmailItem for mentioned readers (same title/body/url as the inbox row), prefs GET/PATCH + frontend row + i18n; contract tests (email on/off, inbox unaffected) + page test. Reuses the existing SMTP dispatch + mention infra.",
+      "alternatives_rejected": "Styled mention rendering remains deferred (cosmetic; no behavioral value). Admin items still deferred: comment-moderation context nav, category/tag delete reassign, backup-coverage warning, analytics window preset, admin reader drill-down, dashboard draft-inflated ratio (combined admin cleanup round)."
+    },
+    "TASK-391": {
+      "id": "TASK-391",
+      "type": "task",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-13T15:46:07+00:00",
+      "updated_at": "2026-09-13T16:44:25+00:00",
+      "touched_round": 325,
+      "category": "core-feature",
+      "severity": 3,
+      "confidence": 0.9,
+      "effort": "medium",
+      "priority_score": 23,
+      "title": "Email copy of @-mention notifications with per-kind opt-in (DEC-326)"
+    },
+    "ISS-505": {
+      "id": "ISS-505",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-13T15:46:08+00:00",
+      "updated_at": "2026-09-13T16:44:26+00:00",
+      "touched_round": 325,
+      "severity": "high",
+      "title": "@-mention notifications have no email channel: an opted-in email reader misses direct call-outs"
+    },
+    "CHG-522": {
+      "id": "CHG-522",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-13T16:43:49+00:00",
+      "updated_at": "2026-09-13T16:43:49+00:00",
+      "touched_round": 325,
+      "commit": "284460a"
+    },
+    "CHG-523": {
+      "id": "CHG-523",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-13T16:43:49+00:00",
+      "updated_at": "2026-09-13T16:43:49+00:00",
+      "touched_round": 325,
+      "commit": "a990463"
+    },
+    "CHG-524": {
+      "id": "CHG-524",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-13T16:43:49+00:00",
+      "updated_at": "2026-09-13T16:43:49+00:00",
+      "touched_round": 325,
+      "commit": "8bfea39"
+    },
+    "DEC-327": {
+      "id": "DEC-327",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-13T16:45:07+00:00",
+      "updated_at": "2026-09-13T16:45:07+00:00",
+      "touched_round": 325,
+      "rationale": "Round 324 feature delivery: email copy of @-mentions (DEC-326/TASK-391) closed by CHG-522/523/524 (test/feat/docs). The mention family now reaches opted-in email readers: a new additive email_mention pref (off by default like the other email_* kinds, DEC-009) gates a mention EmailItem that carries the exact inbox-row title/body/deep link, independently of the in-app mention toggle (an inbox opt-out does not mute an opted email and vice versa). One-sentence acceptance verified end to end through the real SMTP sink: register -> opt in email_mention -> guest comment @<name> -> admin approve -> the sink holds the mention email with the deep link AND the inbox row lands. VERIFY green: backend 1473 (cov 93.81%, ruff + pyright clean, migration w2d4e6f8a0b3 round-trips), frontend 2049 unit tests, typecheck exit 0, biome clean; reader-notifications e2e 4/4 + the SMTP-sink mention-email journey. Feature mode continues.",
+      "alternatives_rejected": "Styled mention rendering remains deferred (cosmetic). Admin items still deferred: comment-moderation context nav, category/tag delete reassign, backup-coverage warning, analytics window preset, admin reader drill-down, dashboard draft-inflated ratio (combined admin cleanup round)."
     }
   },
   "edges": [
@@ -35763,6 +35841,54 @@
       "to": "DEC-324",
       "type": "supersedes",
       "created_at": "2026-09-13T15:35:32+00:00"
+    },
+    {
+      "from": "DEC-326",
+      "to": "TASK-391",
+      "type": "governs",
+      "created_at": "2026-09-13T15:48:06+00:00"
+    },
+    {
+      "from": "TASK-391",
+      "to": "ISS-505",
+      "type": "addresses",
+      "created_at": "2026-09-13T15:48:06+00:00"
+    },
+    {
+      "from": "ISS-505",
+      "to": "COMP-001",
+      "type": "located_in",
+      "created_at": "2026-09-13T15:48:06+00:00"
+    },
+    {
+      "from": "CHG-522",
+      "to": "TASK-391",
+      "type": "implements",
+      "created_at": "2026-09-13T16:44:25+00:00"
+    },
+    {
+      "from": "CHG-523",
+      "to": "TASK-391",
+      "type": "implements",
+      "created_at": "2026-09-13T16:44:25+00:00"
+    },
+    {
+      "from": "CHG-524",
+      "to": "TASK-391",
+      "type": "implements",
+      "created_at": "2026-09-13T16:44:25+00:00"
+    },
+    {
+      "from": "CHG-523",
+      "to": "ISS-505",
+      "type": "resolves",
+      "created_at": "2026-09-13T16:44:25+00:00"
+    },
+    {
+      "from": "DEC-327",
+      "to": "DEC-326",
+      "type": "supersedes",
+      "created_at": "2026-09-13T16:45:07+00:00"
     }
   ]
 }
