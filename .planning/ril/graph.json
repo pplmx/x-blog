@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 321,
+  "round": 322,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-13T09:30:01+00:00",
+  "updated_at": "2026-09-13T10:10:03+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -23619,6 +23619,81 @@
       "touched_round": 320,
       "rationale": "Round 320 feature delivery: complete sitemap (DEC-318/TASK-387) closed by CHG-510/511/512 — every published post page-walked with no silent cap and every series gets a /series/{slug} entry, plus create_series busts the rendered sitemap cache. Chosen from the deferred admin-sweep backlog by value gate (indexable-but-unsitemapped series + >1000-post silent cap = real loss-of-reach correctness, backend-only net-additive slice). VERIFY green: backend 1453 tests (incl. 2 new: paged-stub pagination loop + series entries), pyright/ruff clean; seo e2e 8/8 incl. the new series-through-Nuxt-origin journey, typecheck exit 0, biome clean; frontend unit suite untouched (no app-code change). Note: e2e used the global-fetch admin pattern (the Playwright request fixture serializes URLSearchParams so OAuth2 form login 422s — recorded for future e2e that posts to form endpoints). Feature mode continues.",
       "alternatives_rejected": "Still-deferred admin items: comment-moderation context nav (multi-surface), category/tag delete reassign (multi-surface), backup-coverage warning (fuzzy), analytics window preset (single control), admin reader drill-down (prior rejection), dashboard draft-inflated ratio (logged for a combined admin cleanup round). Reader items: @-mentions (largest slice), comment-history deep links (tiny; two #anchors)."
+    },
+    "DEC-320": {
+      "id": "DEC-320",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-13T10:05:46+00:00",
+      "updated_at": "2026-09-13T10:05:46+00:00",
+      "touched_round": 321,
+      "rationale": "Round 321 feature selection (remaining reader-sweep backlog; DEC-319 closed round 320): comment-history deep links. The /comments page and reader profiles link each comment back to its post's HEADLINE — the comment list's landing machinery (landOnDeepLink, proven by reply-notification deep links DEC-072 + e2e) already scrolls to #comment-<id>, so the two NuxtLink targets were the only missing piece. Real user gap (hunting a comment in a long thread starts at the top), one-sentence acceptance (clicking a comment on /comments or a reader profile lands scrolled to that exact comment), net-additive frontend-only slice (two :to append-anchor changes). Verified live-request-path with a full e2e journey (comment -> approve -> /comments -> click -> #comment-id landed) rather than trusting the router alone (DEC-314 lesson).",
+      "alternatives_rejected": "@-mentions remains the largest backlog slice (DDL + notif kind + pref row + autocomplete), deferred. Admin items still deferred: comment-moderation context nav, category/tag delete reassign, backup-coverage warning, analytics window preset, admin reader drill-down (prior rejection), dashboard ratio (combined admin cleanup round)."
+    },
+    "TASK-388": {
+      "id": "TASK-388",
+      "type": "task",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-13T10:05:47+00:00",
+      "updated_at": "2026-09-13T10:09:21+00:00",
+      "touched_round": 321,
+      "category": "core-feature",
+      "severity": 2,
+      "confidence": 1.0,
+      "effort": "low"
+    },
+    "ISS-502": {
+      "id": "ISS-502",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-13T10:05:47+00:00",
+      "updated_at": "2026-09-13T10:09:21+00:00",
+      "touched_round": 321,
+      "description": "comment-history surfaces link to the post headline instead of the comment anchor"
+    },
+    "CHG-513": {
+      "id": "CHG-513",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-13T10:09:20+00:00",
+      "updated_at": "2026-09-13T10:09:20+00:00",
+      "touched_round": 321,
+      "commit": "2b367a9"
+    },
+    "CHG-514": {
+      "id": "CHG-514",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-13T10:09:20+00:00",
+      "updated_at": "2026-09-13T10:09:20+00:00",
+      "touched_round": 321,
+      "commit": "7055672"
+    },
+    "CHG-515": {
+      "id": "CHG-515",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-13T10:09:20+00:00",
+      "updated_at": "2026-09-13T10:09:20+00:00",
+      "touched_round": 321,
+      "commit": "02ad11b"
+    },
+    "DEC-321": {
+      "id": "DEC-321",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-13T10:10:03+00:00",
+      "updated_at": "2026-09-13T10:10:03+00:00",
+      "touched_round": 321,
+      "rationale": "Round 321 feature delivery: comment-history deep links (DEC-320/TASK-388) closed by CHG-513/514/515 — /comments and reader-profile 'on post' jumps now carry #comment-<id> so the reader lands on the exact comment (landing machinery predates, DEC-072). Chosen from the reader-sweep backlog (the smallest clean value-gate slice: real gap, one-sentence acceptance, net-additive frontend-only). VERIFY green: frontend 2041 unit tests (2 specs, incl. the updated reader-profile contract), typecheck exit 0, biome clean; reader-comments e2e 3/3 incl. the new full journey (comment -> approve -> /comments -> anchored click -> landed) through the Nuxt origin. Backend untouched. Feature mode continues.",
+      "alternatives_rejected": "@-mentions (largest slice: DDL + notif kind + pref row + autocomplete) still deferred. Admin items still deferred: comment-moderation context nav, category/tag delete reassign, backup-coverage warning, analytics window preset, admin reader drill-down (prior rejection), dashboard draft-inflated ratio (combined admin cleanup round)."
     }
   },
   "edges": [
@@ -35391,6 +35466,60 @@
       "to": "DEC-318",
       "type": "supersedes",
       "created_at": "2026-09-13T09:30:01+00:00"
+    },
+    {
+      "from": "TASK-388",
+      "to": "ISS-502",
+      "type": "addresses",
+      "created_at": "2026-09-13T10:06:21+00:00"
+    },
+    {
+      "from": "DEC-320",
+      "to": "TASK-388",
+      "type": "governs",
+      "created_at": "2026-09-13T10:06:21+00:00"
+    },
+    {
+      "from": "CHG-513",
+      "to": "TASK-388",
+      "type": "implements",
+      "created_at": "2026-09-13T10:09:20+00:00"
+    },
+    {
+      "from": "CHG-513",
+      "to": "ISS-502",
+      "type": "resolves",
+      "created_at": "2026-09-13T10:09:20+00:00"
+    },
+    {
+      "from": "CHG-514",
+      "to": "TASK-388",
+      "type": "implements",
+      "created_at": "2026-09-13T10:09:20+00:00"
+    },
+    {
+      "from": "CHG-514",
+      "to": "ISS-502",
+      "type": "resolves",
+      "created_at": "2026-09-13T10:09:20+00:00"
+    },
+    {
+      "from": "CHG-515",
+      "to": "TASK-388",
+      "type": "implements",
+      "created_at": "2026-09-13T10:09:20+00:00"
+    },
+    {
+      "from": "CHG-515",
+      "to": "ISS-502",
+      "type": "resolves",
+      "created_at": "2026-09-13T10:09:21+00:00"
+    },
+    {
+      "from": "DEC-321",
+      "to": "DEC-320",
+      "type": "supersedes",
+      "created_at": "2026-09-13T10:10:03+00:00"
     }
   ]
 }
