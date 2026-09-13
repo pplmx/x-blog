@@ -18,6 +18,7 @@ A modern full-stack blog application built with FastAPI + Nuxt
 - 🚀 **Modern Tech Stack** - Nuxt 4, FastAPI, Vue 3, TypeScript, Python 3.14
 - 📝 **Markdown Support** - Write posts with Mermaid diagrams, KaTeX math, code highlighting
 - 💬 **Comment live preview** - the comment form renders your draft on a Write/Preview toggle through the same sanitized-Markdown pipeline the list ships, so what you see is what gets posted (DEC-306)
+- 🖼️ **Comment-image lightbox** - click an image inside a comment to open the same fullscreen viewer as post images, with arrows browsing that comment's own image set (DEC-308)
 - 🖼️ **Image Lightbox** - click any post image (markdown or HTML) for a fullscreen full-resolution viewer with arrow navigation, ESC/backdrop/button close and focus return (DEC-302)
 - 🎨 **Beautiful UI** - Clean design with Tailwind CSS v4
 - 📱 **Responsive** - Mobile-friendly responsive layout

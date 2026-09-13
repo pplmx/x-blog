@@ -9,6 +9,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- **Comment-image lightbox (DEC-308)**: clicking an image inside a comment
+  opens the same fullscreen viewer that post images use (DEC-302) — full
+  resolution, Escape/backdrop/close to dismiss, arrow keys browse THAT
+  comment's images (its body plus nested replies), focus returns to the
+  trigger. The comment body previously rendered markdown images as plain,
+  column-width, un-scrutinizable `<img>` (same marked+sanitizer pipeline as
+  posts, but no viewer); a commenter pasting a screenshot/diagram had no way
+  to zoom. Click delegation on the comment list collects only loadable
+  http(s)/relative srcs through the same `sanitizeUrl` safety filter, so a
+  `javascript:`/`data:` src can never open the viewer. New unit coverage
+  (click opens, dangerous src excluded) and Playwright e2e journeys in
+  `comment-lightbox.spec.ts`.
 - **Comment live preview (DEC-306)**: the comment form advertises
   sanitized-Markdown rendering (DEC-088) and every comment waits in the
   moderation queue (DEC-066), but a commenter had no way to see their draft
