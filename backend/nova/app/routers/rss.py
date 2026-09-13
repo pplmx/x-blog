@@ -480,6 +480,14 @@ def get_series_rss_feed(
 
 
 # Sitemap endpoints (at root)
+
+# Page size for the sitemap's post walk (DEC-318, TASK-387). One page per
+# fetch bounds per-request memory while the loop covers the FULL post set —
+# a single hard limit silently dropped every post past it from the sitemap
+# (and thus from search engines).
+SITEMAP_POST_PAGE = 1000
+
+
 @seo_router.get("/sitemap.xml")
 def get_sitemap(request: Request = None, db: Session = Depends(get_db)) -> Response:  # type: ignore[assignment]
     """Get XML sitemap of the site."""
@@ -487,9 +495,18 @@ def get_sitemap(request: Request = None, db: Session = Depends(get_db)) -> Respo
     if cached is not None:
         return _feed_response(cached, "application/xml", request)
 
-    posts, _ = crud.get_posts(db, skip=0, limit=1000, published=True, pinned_first=False)
+    # Page through ALL published posts until a short page — no silent cap.
+    posts: list = []
+    offset = 0
+    while True:
+        page, _ = crud.get_posts(db, skip=offset, limit=SITEMAP_POST_PAGE, published=True, pinned_first=False)
+        posts.extend(page)
+        offset += len(page)
+        if len(page) < SITEMAP_POST_PAGE:
+            break
     categories = crud.get_categories(db)
     tags = crud.get_tags(db)
+    series_list = crud.list_series(db)
 
     site_url = getattr(settings, "site_url", "http://localhost:3000")
 
@@ -547,6 +564,17 @@ def get_sitemap(request: Request = None, db: Session = Depends(get_db)) -> Respo
 """
         entry += "</url>"
         urls.append(entry)
+
+    # Series (indexable /series/{slug} pages — the old sitemap omitted them
+    # entirely, so serialized content was unreachable-by-sitemap, DEC-318).
+    for series in series_list:
+        updated = (series.updated_at or crud.utc_now_naive()).strftime("%Y-%m-%d")
+        urls.append(f"""<url>
+    <loc>{escape(site_url)}/series/{escape(series.slug)}</loc>
+    <lastmod>{updated}</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+</url>""")
 
     # Categories
     for cat in categories:

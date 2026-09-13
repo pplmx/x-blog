@@ -1780,7 +1780,10 @@ def create_series(db: Session, data: schemas.SeriesCreate) -> models.Series:
         db.rollback()
         raise ValueError(f"Series with slug '{data.slug}' already exists")
     db.refresh(db_series)
-    clear_series_cache()
+    # The sitemap now lists series (DEC-318), so a create must bust the
+    # rendered feeds too — clear_posts_list_cache is the superset that also
+    # clears series_cache, matching update_series/delete_series.
+    clear_posts_list_cache()
     return db_series
 
 
