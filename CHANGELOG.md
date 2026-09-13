@@ -9,6 +9,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- **Reader-local reading streak & heatmap (DEC-316)**: the `/history` reading
+  streak and 52-week activity heatmap used to bucket every read in UTC while
+  rendering in the browser's local time, so for any reader outside UTC the
+  streak credited the wrong calendar day and the heatmap tooltips / "today"
+  column disagreed with the reader's own calendar (an evening read could be
+  booked to the next UTC day, and the tooltip showed one local day earlier). The
+  stats fetch now declares the browser's IANA timezone and the backend buckets
+  reads (and anchors the streak + heatmap window) to the reader's local calendar
+  day; the heatmap labels then read those already-local dates as-is instead of
+  re-shifting them by the browser offset. Backend contract tests (bucket shift
+  across the date line, 422 on an unknown timezone, local-today anchoring),
+  frontend tests, and a timezone-pinned Playwright journey that forces the local
+  date to differ from UTC (UTC−1) — the today cell's tooltip must show the local
+  day and never the UTC-only label; a reverted UTC-only implementation fails it
+  deterministically. No DDL; the backend image now pins `tzdata` so IANA zone
+  resolution is reliable in production (a missing zone would otherwise reject
+  every stats request once the page always declares a timezone).
 - **Tag-scoped RSS works through the Nuxt proxy (DEC-314)**: the tags page
   scopes its feed as `/rss/feed.xml?tag_id={id}` (autodiscovery + subscribe
   button), but the Nuxt origin's feed proxy stripped the query string — in the
