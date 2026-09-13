@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 315,
+  "round": 316,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-13T01:01:34+00:00",
+  "updated_at": "2026-09-13T01:52:15+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -23215,9 +23215,80 @@
       "version": 1,
       "created_at": "2026-09-13T01:01:05+00:00",
       "updated_at": "2026-09-13T01:01:05+00:00",
-      "touched_round": 314,
+      "touched_round": 315,
       "rationale": "Round 314: feature-evolution re-activation (supersedes DEC-305 converged-idle per operator directive). Fresh gap sweep verified against live code found the comment form advertised sanitized-Markdown (DEC-088) with no way to preview a draft before the moderation queue (DEC-066) — delivered DEC-306/TASK-381 as a net-additive frontend slice (CHG-495/496/497), a second real change this re-activation wave beyond the avatar reap (CHG-494). VERIFY baseline fully green after the feature (regression guard): backend 1441 tests @ 93.78%, pyright/ruff/rumdl/biome clean, frontend 2029 unit tests, nuxt typecheck clean, e2e comment-preview + related comment suites all pass. Feature mode continues; next round re-sources from the fresh surface.",
       "alternatives_rejected": "Stopping here would leave the documented comment-surface gap unfixed; the feature is small but genuinely user-visible (GitHub-style draft preview) and the cross-pipeline reuse keeps it low-risk."
+    },
+    "DEC-308": {
+      "id": "DEC-308",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-13T01:12:08+00:00",
+      "updated_at": "2026-09-13T01:12:08+00:00",
+      "touched_round": 315,
+      "rationale": "Round 315 feature re-sourcing. DEC-302 delivered the fullscreen image lightbox for POST bodies only (segment pipeline in MarkdownContent). The comment body renders via the same marked+sanitizer pipeline (DEC-088) but sails straight through as v-html — a commenter pasting a markdown image ![alt](src) (common on a technical blog: screenshots of errors/renders/diagrams) gets a column-width, unscruitinizable image with NO way to zoom, while the identical markdown in a post opens the lightbox. Same user-perceivable problem DEC-302 fixed ('I cannot see the image closely'), now on the comment surface. Acceptance in one sentence: clicking any image inside a comment opens the same fullscreen viewer (full-res, esc/backdrop/close, focus return) as post images. Net additive frontend slice reusing MarkdownLightbox + the same sanitizeUrl safety filter (a dangerous src opens nowhere) over the rendered .comment-body imgs; no backend/DDL. Not a same-kind patch (no comment-image zoom exists).",
+      "alternatives_rejected": "Per-event notification emails lack an unsubscribe/manage-preferences link (digest has one) — real but a small compliance/UX button, below the user-value gate. Post-level emoji reactions (rejected DEC-306). Custom branded error.vue 404 (rejected DEC-306). Comment 'top' sort (rejected DEC-301/302)."
+    },
+    "TASK-382": {
+      "id": "TASK-382",
+      "type": "task",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-13T01:12:33+00:00",
+      "updated_at": "2026-09-13T01:50:43+00:00",
+      "touched_round": 315,
+      "category": "core-feature",
+      "severity": 3,
+      "confidence": 1.0,
+      "effort": 3,
+      "unlock_factor": 1.2,
+      "title": "Comment-image lightbox: click any comment-body image to open the fullscreen viewer (DEC-308)",
+      "description": "Wire MarkdownLightbox into CommentList: collect rendered .comment-body imgs, open on click with the same sanitizeUrl safety filter + fullscreen viewer contract as DEC-302. Reuses MarkdownLightbox.vue unchanged. No backend change."
+    },
+    "CHG-498": {
+      "id": "CHG-498",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-13T01:50:19+00:00",
+      "updated_at": "2026-09-13T01:50:19+00:00",
+      "touched_round": 315,
+      "commit": "76f6cf3",
+      "description": "Comment-image lightbox unit + e2e tests (CommentList.spec describe + comment-lightbox.spec)"
+    },
+    "CHG-499": {
+      "id": "CHG-499",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-13T01:50:19+00:00",
+      "updated_at": "2026-09-13T01:50:19+00:00",
+      "touched_round": 315,
+      "commit": "4cb395f",
+      "description": "CommentList click delegation + MarkdownLightbox integration, sanitizeUrl-filtered bubble-scoped collection"
+    },
+    "CHG-500": {
+      "id": "CHG-500",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-13T01:50:19+00:00",
+      "updated_at": "2026-09-13T01:50:19+00:00",
+      "touched_round": 315,
+      "commit": "229592f",
+      "description": "CHANGELOG/README record comment-image lightbox (both langs)"
+    },
+    "DEC-309": {
+      "id": "DEC-309",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-13T01:51:13+00:00",
+      "updated_at": "2026-09-13T01:51:13+00:00",
+      "touched_round": 315,
+      "rationale": "Round 315 feature-evolution delivery: comment-image lightbox (DEC-308/TASK-382) closed by CHG-498/499/500, completing the lightbox surface DEC-302 opened (posts) onto the comment body, whose images previously rendered unscruitinizable at column width. VERIFY green (regression guard, §11.4): backend untouched this round (1441@93.78% re-verified at round open), frontend 2031 unit tests, nuxt typecheck clean, biome/rumdl clean, comment-lightbox + preview + 6 related comment e2e suites all pass. Feature mode continues: next round re-sources the fresh surface.",
+      "alternatives_rejected": "Stopping here would leave the comment-surface lightbox gap open (posts zoom, comments can't — a visible inconsistency); the reused-viewer design keeps the slice small and low-risk."
     }
   },
   "edges": [
@@ -34750,6 +34821,42 @@
       "to": "DEC-306",
       "type": "supersedes",
       "created_at": "2026-09-13T01:01:34+00:00"
+    },
+    {
+      "from": "DEC-308",
+      "to": "TASK-382",
+      "type": "governs",
+      "created_at": "2026-09-13T01:12:33+00:00"
+    },
+    {
+      "from": "DEC-308",
+      "to": "DEC-307",
+      "type": "supersedes",
+      "created_at": "2026-09-13T01:12:33+00:00"
+    },
+    {
+      "from": "CHG-498",
+      "to": "TASK-382",
+      "type": "implements",
+      "created_at": "2026-09-13T01:50:43+00:00"
+    },
+    {
+      "from": "CHG-499",
+      "to": "TASK-382",
+      "type": "implements",
+      "created_at": "2026-09-13T01:50:43+00:00"
+    },
+    {
+      "from": "CHG-500",
+      "to": "TASK-382",
+      "type": "implements",
+      "created_at": "2026-09-13T01:50:43+00:00"
+    },
+    {
+      "from": "DEC-309",
+      "to": "DEC-308",
+      "type": "supersedes",
+      "created_at": "2026-09-13T01:52:15+00:00"
     }
   ]
 }
