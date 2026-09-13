@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 320,
+  "round": 321,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-13T08:43:37+00:00",
+  "updated_at": "2026-09-13T09:30:01+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -23544,6 +23544,81 @@
       "touched_round": 319,
       "rationale": "Round 319 feature delivery: reader-local reading streak + 52-week heatmap (DEC-316/TASK-386) closed by CHG-507/508/509. Fresh dual-sweep (reader-facing + admin/platform) from an empty backlog; the reader sweep's #1 (streak/heatmap bucketed in UTC but rendered in local time — every non-UTC reader's streak credited the wrong calendar day and tooltip/today disagreed with their own calendar) was the only candidate that cleared the value gate as a corrective line at the frontend/backend seam (pattern of DEC-310/314). VERIFY green: backend 1451 tests (incl. 5 new tz contract/unit tests), pyright/ruff clean; frontend 2040 unit tests (incl. 3 new), typecheck exit 0, biome/rumdl clean; e2e reading-streak (incl. the UTC-1 timezone-pinned journey that deterministically fails a reverted UTC-only implementation) + history/history-sync/history-search pass. Also hardened the deploy: backend image pins tzdata so ZoneInfo resolves in production once the page always declares a timezone. Feature mode continues.",
       "alternatives_rejected": "Admin sweep: reader drill-down re-rejected (prior value-gate rejection); comment-moderation context nav real but multi-surface, deferred; sitemap series+>1000 pagination real backend-only SEO gap, deferred; backup-coverage warning acceptance fuzzy, deferred; analytics window preset below gate, deferred; category/tag delete reassign multi-surface, deferred; dashboard draft-inflated ratio logged for a combined admin cleanup round. Reader sweep: @-mentions largest slice (DDL + notif kind + autocomplete), deferred; comment-history deep links real tiny frontend-only gap, deferred; reading-density off/reset unverified by sweep, dropped."
+    },
+    "DEC-318": {
+      "id": "DEC-318",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-13T08:48:02+00:00",
+      "updated_at": "2026-09-13T08:48:02+00:00",
+      "touched_round": 320,
+      "rationale": "Round 320 feature selection (fresh sourcing from the deferred admin-sweep backlog; DEC-317 closed round 319): sitemap completeness correctness fix. Two factual SEO gaps verified in backend get_sitemap (app/routers/rss.py:483-574): (1) series detail pages are indexable (pages/series/[slug].vue runs useSeo with no noindex) yet get_sitemap emits only home/about/search/tags-browse/posts/categories/tags — zero /series/{slug} entries, so serialized content is unreachable-by-sitemap; (2) the post fetch is crud.get_posts(limit=1000) with no pagination, so a blog past 1000 published posts silently drops every older post from the sitemap (i.e. from Google's index). Fix: page-loop get_posts with a module-level SITEMAP_POST_PAGE page size until a short page (full coverage with bounded per-request memory), and append one /series/{slug} entry per series (all series, mirroring the unconditional category/tag entries), lastmod from series updated_at. Backend-only, no DDL; the Nuxt sitemap route proxies transparently (DEC-314 query-forwarding already covers it). One-sentence acceptance: every published post and every series appears in sitemap.xml with no silent cap — deterministically tested by monkeypatching the page size small.",
+      "alternatives_rejected": "Admin sweep deferred items re-evaluated: comment-moderation context nav real but multi-surface, defer; category/tag delete reassign multi-surface, defer; backup-coverage warning acceptance fuzzy, defer; analytics window preset is a single control, defer; admin reader drill-down prior value-gate rejection stands; dashboard draft-inflated ratio logged for a combined admin cleanup round. Reader sweep: @-mentions largest slice, defer; comment-history deep links real but tiny (two #anchors), defer behind this correctness line."
+    },
+    "TASK-387": {
+      "id": "TASK-387",
+      "type": "task",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-13T08:48:25+00:00",
+      "updated_at": "2026-09-13T09:28:55+00:00",
+      "touched_round": 320,
+      "category": "correctness",
+      "severity": 3,
+      "confidence": 0.9,
+      "effort": "low"
+    },
+    "ISS-501": {
+      "id": "ISS-501",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-13T08:48:25+00:00",
+      "updated_at": "2026-09-13T09:28:55+00:00",
+      "touched_round": 320,
+      "description": "sitemap omits series URLs and silently caps posts at limit=1000 with no pagination"
+    },
+    "CHG-510": {
+      "id": "CHG-510",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-13T09:28:23+00:00",
+      "updated_at": "2026-09-13T09:28:23+00:00",
+      "touched_round": 320,
+      "commit": "2aa310d"
+    },
+    "CHG-511": {
+      "id": "CHG-511",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-13T09:28:23+00:00",
+      "updated_at": "2026-09-13T09:28:23+00:00",
+      "touched_round": 320,
+      "commit": "c5c63ec"
+    },
+    "CHG-512": {
+      "id": "CHG-512",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-13T09:28:23+00:00",
+      "updated_at": "2026-09-13T09:28:23+00:00",
+      "touched_round": 320,
+      "commit": "9edc389"
+    },
+    "DEC-319": {
+      "id": "DEC-319",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-13T09:29:30+00:00",
+      "updated_at": "2026-09-13T09:29:30+00:00",
+      "touched_round": 320,
+      "rationale": "Round 320 feature delivery: complete sitemap (DEC-318/TASK-387) closed by CHG-510/511/512 — every published post page-walked with no silent cap and every series gets a /series/{slug} entry, plus create_series busts the rendered sitemap cache. Chosen from the deferred admin-sweep backlog by value gate (indexable-but-unsitemapped series + >1000-post silent cap = real loss-of-reach correctness, backend-only net-additive slice). VERIFY green: backend 1453 tests (incl. 2 new: paged-stub pagination loop + series entries), pyright/ruff clean; seo e2e 8/8 incl. the new series-through-Nuxt-origin journey, typecheck exit 0, biome clean; frontend unit suite untouched (no app-code change). Note: e2e used the global-fetch admin pattern (the Playwright request fixture serializes URLSearchParams so OAuth2 form login 422s — recorded for future e2e that posts to form endpoints). Feature mode continues.",
+      "alternatives_rejected": "Still-deferred admin items: comment-moderation context nav (multi-surface), category/tag delete reassign (multi-surface), backup-coverage warning (fuzzy), analytics window preset (single control), admin reader drill-down (prior rejection), dashboard draft-inflated ratio (logged for a combined admin cleanup round). Reader items: @-mentions (largest slice), comment-history deep links (tiny; two #anchors)."
     }
   },
   "edges": [
@@ -35262,6 +35337,60 @@
       "to": "DEC-316",
       "type": "supersedes",
       "created_at": "2026-09-13T08:43:37+00:00"
+    },
+    {
+      "from": "TASK-387",
+      "to": "ISS-501",
+      "type": "addresses",
+      "created_at": "2026-09-13T08:48:50+00:00"
+    },
+    {
+      "from": "DEC-318",
+      "to": "TASK-387",
+      "type": "governs",
+      "created_at": "2026-09-13T08:48:50+00:00"
+    },
+    {
+      "from": "CHG-510",
+      "to": "TASK-387",
+      "type": "implements",
+      "created_at": "2026-09-13T09:28:54+00:00"
+    },
+    {
+      "from": "CHG-510",
+      "to": "ISS-501",
+      "type": "resolves",
+      "created_at": "2026-09-13T09:28:54+00:00"
+    },
+    {
+      "from": "CHG-511",
+      "to": "TASK-387",
+      "type": "implements",
+      "created_at": "2026-09-13T09:28:55+00:00"
+    },
+    {
+      "from": "CHG-511",
+      "to": "ISS-501",
+      "type": "resolves",
+      "created_at": "2026-09-13T09:28:55+00:00"
+    },
+    {
+      "from": "CHG-512",
+      "to": "TASK-387",
+      "type": "implements",
+      "created_at": "2026-09-13T09:28:55+00:00"
+    },
+    {
+      "from": "CHG-512",
+      "to": "ISS-501",
+      "type": "resolves",
+      "created_at": "2026-09-13T09:28:55+00:00"
+    },
+    {
+      "from": "DEC-319",
+      "to": "DEC-318",
+      "type": "supersedes",
+      "created_at": "2026-09-13T09:30:01+00:00"
     }
   ]
 }
