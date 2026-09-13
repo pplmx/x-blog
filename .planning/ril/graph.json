@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 316,
+  "round": 317,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-13T01:52:15+00:00",
+  "updated_at": "2026-09-13T02:29:51+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -23286,9 +23286,58 @@
       "version": 1,
       "created_at": "2026-09-13T01:51:13+00:00",
       "updated_at": "2026-09-13T01:51:13+00:00",
-      "touched_round": 315,
+      "touched_round": 316,
       "rationale": "Round 315 feature-evolution delivery: comment-image lightbox (DEC-308/TASK-382) closed by CHG-498/499/500, completing the lightbox surface DEC-302 opened (posts) onto the comment body, whose images previously rendered unscruitinizable at column width. VERIFY green (regression guard, §11.4): backend untouched this round (1441@93.78% re-verified at round open), frontend 2031 unit tests, nuxt typecheck clean, biome/rumdl clean, comment-lightbox + preview + 6 related comment e2e suites all pass. Feature mode continues: next round re-sources the fresh surface.",
       "alternatives_rejected": "Stopping here would leave the comment-surface lightbox gap open (posts zoom, comments can't — a visible inconsistency); the reused-viewer design keeps the slice small and low-risk."
+    },
+    "DEC-310": {
+      "id": "DEC-310",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-13T02:12:41+00:00",
+      "updated_at": "2026-09-13T02:12:41+00:00",
+      "touched_round": 316,
+      "rationale": "Round 316 feature re-sourcing via a fresh surface sweep (Explore subagent, verified against live code). The genuinely user-facing gap: on any moderated deployment (AUTO_APPROVE_READER_COMMENTS off — the default), submitSuccess shows 'awaiting review' but the thread never displays the new comment (the list endpoint only returns approved rows). CommentList.surfaceComment still runs its full jump-to-last-page + walk-every-page landOnDeepLink routine hunting for a row that structurally cannot render — silent scroll flailing that reads as failure and invites a double-post (a real moderation-era commenter, the dominant state, gets no confirmation their comment registered beyond the status line). The fix is a clean vertical slice, frontend-only: surfaceComment sees created.is_approved === false (backend returns the pending row; the Comment contract already carries is_approved) and skips the jump/page-walk entirely, leaving the clear 'awaiting review' feedback as the truth. Acceptance in one sentence: submitting a moderated comment shows the awaiting-review confirmation without any pointless scroll/page-walk (and without letting a reader believe the post failed). Not a button-level patch — it removes real scroll flailing on the default config.",
+      "alternatives_rejected": "Inline category-follow on the post page (explicitly rejected DEC-301: third near-identical follow control — tag/series follows already cover the pattern; category follow lives on /categories). Bookmark-folder-at-save-time (real folder-save workflow friction, but a 'pick the folder in the save button' control addition — DEC-302 rejects same-kind control stitching). Tag-feed stable URL (cosmetic; both forms work server-side, below value gate). asReaderHint dead i18n key (dead copy, not user-visible — cleanup not a feature)."
+    },
+    "TASK-383": {
+      "id": "TASK-383",
+      "type": "task",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-13T02:13:11+00:00",
+      "updated_at": "2026-09-13T02:28:38+00:00",
+      "touched_round": 316,
+      "category": "core-feature",
+      "severity": 3,
+      "confidence": 1.0,
+      "effort": 2,
+      "unlock_factor": 1.3,
+      "title": "Moderated comments: skip scroll/page-walk for pending comments (DEC-310)",
+      "description": "CommentList.surfaceComment: when created.is_approved is false, keep the awaiting-review feedback and skip jumpToPage + landOnDeepLink entirely (the list only returns approved rows, so a walk can never find the pending comment). Verify no double-post risk: success message stays truthful. Update contract/CommentForm.spec assumptions if the top-level form's success path changes."
+    },
+    "CHG-501": {
+      "id": "CHG-501",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-13T02:28:38+00:00",
+      "updated_at": "2026-09-13T02:28:38+00:00",
+      "touched_round": 316,
+      "commit": "81bc955",
+      "description": "CommentList.surfaceComment short-circuits on is_approved=false; unit + e2e coverage; CHANGELOG"
+    },
+    "DEC-311": {
+      "id": "DEC-311",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-13T02:29:15+00:00",
+      "updated_at": "2026-09-13T02:29:15+00:00",
+      "touched_round": 316,
+      "rationale": "Round 316: the fresh surface sweep (Explore) surfaced one user-facing correctness gap that passed the value gate: moderated deployments default to auto-approve OFF, where a submitted comment is returned pending but the thread only serves approved rows — post-submit screen surfacing jumped pages and walked the thread hunting a comment that structurally cannot render (silent scroll flailing, double-post risk). Delivered as CHG-501 (fix commit 81bc955), closing TASK-383. Remaining sweep findings rejected at the value gate: inline category-follow (DEC-301 already rejected the third follow control), bookmark-folder-at-save (button-level control stitching, DEC-302 pattern), tag-feed stable URL (cosmetic), unused asReaderHint key (dead copy, not user-visible — tracked for a cleanup pass, not a feature). VERIFY green: frontend 2033 unit tests, typecheck exit 0, biome/rumdl clean, comment e2e (preview incl. the new no-paging assertion + 6 related comment suites) all pass; backend untouched this round. Feature mode continues.",
+      "alternatives_rejected": "None for the shipped fix (the only candidate that cleared the gate). The four remaining sweep findings were each below the user-value line (see rationale) and are recorded as rejected rather than built."
     }
   },
   "edges": [
@@ -34857,6 +34906,30 @@
       "to": "DEC-308",
       "type": "supersedes",
       "created_at": "2026-09-13T01:52:15+00:00"
+    },
+    {
+      "from": "DEC-310",
+      "to": "TASK-383",
+      "type": "governs",
+      "created_at": "2026-09-13T02:13:11+00:00"
+    },
+    {
+      "from": "DEC-310",
+      "to": "DEC-309",
+      "type": "supersedes",
+      "created_at": "2026-09-13T02:13:12+00:00"
+    },
+    {
+      "from": "CHG-501",
+      "to": "TASK-383",
+      "type": "implements",
+      "created_at": "2026-09-13T02:28:38+00:00"
+    },
+    {
+      "from": "DEC-311",
+      "to": "DEC-310",
+      "type": "supersedes",
+      "created_at": "2026-09-13T02:29:51+00:00"
     }
   ]
 }
