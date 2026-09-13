@@ -38,6 +38,36 @@ def _opt_out(client, token, kind):
     return resp.json()
 
 
+def _opt_in(client, token, kind):
+    resp = client.patch(PREFS, json={"kind": kind, "enabled": True}, headers=_auth(token))
+    assert resp.status_code == 200, resp.text
+    return resp.json()
+
+
+def _comment_mention(client, post_id, name):
+    """Post a guest comment that @-mentions ``name`` (pending moderation)."""
+    resp = client.post(
+        f"/api/comments/post/{post_id}",
+        json={"nickname": "Mentioner", "email": "mentioner@example.com", "content": f"Hey @{name}!"},
+    )
+    assert resp.status_code == 201, resp.text
+    return resp.json()["id"]
+
+
+def _approve(client, auth_headers, comment_id):
+    resp = client.patch(f"/api/comments/{comment_id}/approve", json={"approved": True}, headers=auth_headers)
+    assert resp.status_code == 200, resp.text
+
+
+def _register_named(client, name, email):
+    resp = client.post(
+        "/api/reader/register",
+        json={"email": email, "password": "readerpass123", "display_name": name},
+    )
+    assert resp.status_code == 201, resp.text
+    return resp.json()["access_token"]
+
+
 def _create_post(db_session, **overrides):
     from app.crud import create_post
     from app.schemas import PostCreate
@@ -79,6 +109,7 @@ class TestPrefsContract:
             "email_new_post": False,
             "email_reply": False,
             "email_thread_comment": False,
+            "email_mention": False,
             "email_weekly_digest": False,
         }
 
@@ -99,6 +130,7 @@ class TestPrefsContract:
             "email_new_post": False,
             "email_reply": False,
             "email_thread_comment": False,
+            "email_mention": False,
             "email_weekly_digest": False,
         }
         # back on
@@ -124,6 +156,7 @@ class TestPrefsContract:
             "email_new_post": False,
             "email_reply": False,
             "email_thread_comment": False,
+            "email_mention": False,
             "email_weekly_digest": False,
         }
 
@@ -319,6 +352,51 @@ class TestEmailChannel:
         assert TestEmailChannel._class_smtp_sent[0]["Subject"] == "新文章发布"
         # And the inbox row lands too.
         assert client.get(NOTIFS, headers=headers).json()["total"] == 1
+
+    def test_mention_email_off_by_default_skips_email_but_inbox_row_lands(self, client, auth_headers, db_session):
+        token = _register_named(client, "MailMentionDefault", "mail-mention-default@example.com")
+        post = _create_post(db_session, published=True)
+        cid = _comment_mention(client, post.id, "MailMentionDefault")
+        _approve(client, auth_headers, cid)
+        assert TestEmailChannel._class_smtp_sent == []
+        rows = client.get(NOTIFS, headers=_auth(token)).json()
+        assert any(i["kind"] == "mention" for i in rows["items"])
+
+    def test_mention_email_on_fans_out_email_and_inbox_row(self, client, auth_headers, db_session):
+        token = _register_named(client, "MailMentionOn", "mail-mention-on@example.com")
+        _opt_in(client, token, "email_mention")
+        post = _create_post(db_session, published=True)
+        cid = _comment_mention(client, post.id, "MailMentionOn")
+        _approve(client, auth_headers, cid)
+        assert len(TestEmailChannel._class_smtp_sent) == 1, TestEmailChannel._class_smtp_sent
+        assert TestEmailChannel._class_smtp_sent[0]["To"] == "mail-mention-on@example.com"
+        assert TestEmailChannel._class_smtp_sent[0]["Subject"] == "有人在评论中提到了你"
+        rows = client.get(NOTIFS, headers=_auth(token)).json()
+        assert any(i["kind"] == "mention" for i in rows["items"])
+
+    def test_mention_email_independent_of_inbox_opt_out(self, client, auth_headers, db_session):
+        # Turning the in-app 'mention' kind OFF silences inbox + push (DEC-322)
+        # but must NOT silence the separately-opted email copy (DEC-326): the
+        # two channels are gated by different prefs.
+        token = _register_named(client, "MailMentionSplit", "mail-mention-split@example.com")
+        _opt_out(client, token, "mention")
+        _opt_in(client, token, "email_mention")
+        post = _create_post(db_session, published=True)
+        cid = _comment_mention(client, post.id, "MailMentionSplit")
+        _approve(client, auth_headers, cid)
+        assert len(TestEmailChannel._class_smtp_sent) == 1, TestEmailChannel._class_smtp_sent
+        rows = client.get(NOTIFS, headers=_auth(token)).json()
+        assert all(i["kind"] != "mention" for i in rows["items"])
+
+    def test_email_mention_defaults_off_and_toggles(self, client):
+        token = _token(client, email="mail-mention-pref@example.com")
+        headers = _auth(token)
+        assert client.get(PREFS, headers=headers).json()["email_mention"] is False
+        on = client.patch(PREFS, json={"kind": "email_mention", "enabled": True}, headers=headers)
+        assert on.json()["email_mention"] is True
+        assert client.get(PREFS, headers=headers).json()["email_mention"] is True
+        off = client.patch(PREFS, json={"kind": "email_mention", "enabled": False}, headers=headers)
+        assert off.json()["email_mention"] is False
 
 
 class TestConcurrentMaterializationRace:

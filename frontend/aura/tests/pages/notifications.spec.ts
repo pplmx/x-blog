@@ -52,6 +52,7 @@ const mockFetchPrefs = vi.fn(
 		email_new_post: false,
 		email_reply: false,
 		email_thread_comment: false,
+		email_mention: false,
 		email_weekly_digest: false,
 	}),
 );
@@ -67,6 +68,7 @@ const mockUpdatePref = vi.fn(
 		email_new_post: kind === "email_new_post" ? enabled : false,
 		email_reply: kind === "email_reply" ? enabled : false,
 		email_thread_comment: kind === "email_thread_comment" ? enabled : false,
+		email_mention: kind === "email_mention" ? enabled : false,
 		email_weekly_digest: kind === "email_weekly_digest" ? enabled : false,
 	}),
 );
@@ -150,6 +152,7 @@ describe("Notifications page (TASK-192)", () => {
 			email_new_post: false,
 			email_reply: false,
 			email_thread_comment: false,
+			email_mention: false,
 		});
 	});
 
@@ -336,11 +339,11 @@ describe("Notifications page (TASK-192)", () => {
 		expect(wrapper.text()).toContain("通知偏好");
 		expect(wrapper.text()).toContain("被提及");
 		const switches = wrapper.findAll('button[role="switch"]');
-		expect(switches).toHaveLength(8);
+		expect(switches).toHaveLength(9);
 		for (let i = 0; i < 4; i += 1) {
 			expect(switches[i].attributes("aria-checked")).toBe("true");
 		}
-		for (let i = 4; i < 8; i += 1) {
+		for (let i = 4; i < 9; i += 1) {
 			expect(switches[i].attributes("aria-checked")).toBe("false");
 		}
 	});
@@ -361,12 +364,12 @@ describe("Notifications page (TASK-192)", () => {
 		const switches = wrapper.findAll('button[role="switch"]');
 		// Last toggle = the weekly-digest email opt-in, independent of per-event kinds.
 		expect(wrapper.text()).toContain("每周精选");
-		await switches[7].trigger("click");
+		await switches[8].trigger("click");
 		await flushPromises();
 		expect(mockUpdatePref).toHaveBeenCalledWith("email_weekly_digest", true);
-		expect(switches[7].attributes("aria-checked")).toBe("true");
+		expect(switches[8].attributes("aria-checked")).toBe("true");
 		// Per-event email kinds stay off.
-		expect(switches[6].attributes("aria-checked")).toBe("false");
+		expect(switches[7].attributes("aria-checked")).toBe("false");
 	});
 
 	it("toggles a kind off and persists via updateReaderNotificationPref", async () => {
@@ -399,6 +402,22 @@ describe("Notifications page (TASK-192)", () => {
 		expect(switches[2].attributes("aria-checked")).toBe("true");
 	});
 
+	it("toggles the email copy for @-mentions (DEC-326)", async () => {
+		const wrapper = await mountPage();
+		const switches = wrapper.findAll('button[role="switch"]');
+		// Order: ... email_new_post, email_reply, email_thread_comment,
+		// email_mention, email_weekly_digest.
+		expect(wrapper.text()).toContain("邮件：被提及");
+		expect(switches[7].attributes("aria-checked")).toBe("false");
+		await switches[7].trigger("click");
+		await flushPromises();
+		expect(mockUpdatePref).toHaveBeenCalledWith("email_mention", true);
+		expect(switches[7].attributes("aria-checked")).toBe("true");
+		// The in-app mention toggle (index 3) is untouched — the channels are
+		// independent.
+		expect(switches[3].attributes("aria-checked")).toBe("true");
+	});
+
 	it("shows a per-row saving indicator on the touched toggle while the request is in flight (deep-dive finding)", async () => {
 		// A bare disable (prefsSaving !== null) looked like the tap did nothing —
 		// the touched row must surface that persistence is under way.
@@ -424,6 +443,7 @@ describe("Notifications page (TASK-192)", () => {
 			email_new_post: false,
 			email_reply: false,
 			email_thread_comment: false,
+			email_mention: false,
 			email_weekly_digest: false,
 		});
 		await flushPromises();
@@ -541,6 +561,7 @@ describe("Notifications page (TASK-192)", () => {
 			reply: true,
 			thread_comment: true,
 			mention: true,
+			email_mention: false,
 		});
 		const wrapper = await mountPage();
 		expect(wrapper.text()).toContain("私有通知");
@@ -637,6 +658,7 @@ describe("Notifications page (TASK-192)", () => {
 			reply: true,
 			thread_comment: true,
 			mention: true,
+			email_mention: false,
 		});
 		const wrapper = await mountPage();
 		expect(wrapper.findAll('button[role="switch"]')).toHaveLength(0);
@@ -646,7 +668,7 @@ describe("Notifications page (TASK-192)", () => {
 		expect(retry).toBeDefined();
 		await retry?.trigger("click");
 		await flushPromises();
-		expect(wrapper.findAll('button[role="switch"]')).toHaveLength(8);
+		expect(wrapper.findAll('button[role="switch"]')).toHaveLength(9);
 		expect(wrapper.text()).not.toContain("网络错误");
 	});
 });

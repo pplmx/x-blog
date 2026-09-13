@@ -9,11 +9,39 @@
  * live backend seeded by the justfile e2e task + the Nuxt dev server.
  */
 
+import { readFileSync } from "node:fs";
+
 import { type APIRequestContext, expect, test } from "@playwright/test";
 
 const ADMIN_USERNAME = "admin";
 const ADMIN_PASSWORD = "admin123";
 const password = "e2epass123";
+
+const SINK_FILE = "/tmp/x-blog-smtp-sink.jsonl";
+
+/** The latest SMTP-sink record addressed to ``email`` (or null). */
+function messageFromSink(email: string): { to: string; subject: string; text: string } | null {
+	let latest: { to: string; subject: string; text: string } | null = null;
+	for (const line of readFileSync(SINK_FILE, "utf8").split("\n")) {
+		if (!line.trim()) continue;
+		const record = JSON.parse(line) as { to: string; subject: string; text: string };
+		if (record.to !== email) continue;
+		latest = record;
+	}
+	return latest;
+}
+
+/**
+ * True when the backend under test can actually send email (the e2e SMTP sink
+ * from `just e2e` sets SMTP). Probed at runtime the same way the password-reset
+ * spec does, so a bare `pnpm test:e2e` (no sink) skips the mail journey.
+ */
+async function smtpIsUp(request: APIRequestContext): Promise<boolean> {
+	const resp = await request.post("/api/reader/password-reset/request", {
+		data: { email: "sink-probe@example.com" },
+	});
+	return resp.status() === 202 && resp.status() < 500;
+}
 
 let emailCounter = 0;
 function freshEmail(): string {
@@ -345,5 +373,66 @@ test.describe("Reader notification inbox (TASK-192)", () => {
 		const mention = inboxData.items.find((i) => i.kind === "mention");
 		expect(mention).toBeDefined();
 		expect(mention?.url).toBe(`/posts/${postSlug}#comment-${commentId}`);
+	});
+
+	test("an opted-in reader receives the @-mention email through the SMTP sink (DEC-326)", async ({
+		request,
+	}) => {
+		test.skip(!(await smtpIsUp(request)), "requires the e2e SMTP sink");
+
+		const adminTok = await adminToken(request);
+		const adminH = { Authorization: `Bearer ${adminTok}` };
+		const uid = Date.now();
+		const targetName = `MailE2E${uid}`;
+		const email = freshEmail();
+
+		// The named reader, opted into the mention email copy.
+		const reg = await request.post("/api/reader/register", {
+			data: { email, password, display_name: targetName },
+		});
+		expect(reg.status()).toBe(201);
+		const token = ((await reg.json()) as { access_token: string }).access_token;
+		const readerH = { Authorization: `Bearer ${token}` };
+		const opt = await request.patch("/api/reader/me/notification-preferences", {
+			headers: readerH,
+			data: { kind: "email_mention", enabled: true },
+		});
+		expect(opt.status()).toBe(200);
+
+		// A post + a guest comment naming the reader; approval fans out the email.
+		const postRes = await request.post("/api/posts", {
+			headers: adminH,
+			data: {
+				title: `Mail E2E ${uid}`,
+				slug: `mail-e2e-${uid}`,
+				content: "# M",
+				published: true,
+			},
+		});
+		expect(postRes.status()).toBe(201);
+		const postId = ((await postRes.json()) as { id: number }).id;
+		const created = await request.post(`/api/comments/post/${postId}`, {
+			data: { content: `Hi @${targetName}, check this`, nickname: "Mailer", email: freshEmail() },
+		});
+		expect(created.status()).toBe(201);
+		const commentId = ((await created.json()) as { id: number }).id;
+
+		// Delivery is synchronous with approval (dispatch_notification_emails).
+		const approved = await request.patch(`/api/comments/${commentId}/approve`, {
+			data: { approved: true },
+			headers: adminH,
+		});
+		expect(approved.status()).toBe(200);
+
+		// The sink holds exactly this reader's mention email, with the same deep
+		// link the inbox row carries.
+		const record = messageFromSink(email);
+		expect(record).toBeDefined();
+		expect(record?.subject).toBe("有人在评论中提到了你");
+		expect(record?.text).toContain(`/posts/mail-e2e-${uid}#comment-${commentId}`);
+		// And the durable inbox row still lands.
+		const inbox = await request.get("/api/reader/me/notifications", { headers: readerH });
+		const items = (await inbox.json()) as { items: Array<{ kind: string }> };
+		expect(items.items.some((i) => i.kind === "mention")).toBe(true);
 	});
 });
