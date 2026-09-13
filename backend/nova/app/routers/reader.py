@@ -2041,6 +2041,9 @@ class NotificationPrefs(BaseModel):
     new_post: bool
     reply: bool
     thread_comment: bool
+    # @-mentions (DEC-322, TASK-389): durable inbox rows when an approved
+    # comment names this reader's display name as @<name>.
+    mention: bool
     email_new_post: bool
     email_reply: bool
     email_thread_comment: bool
@@ -2072,6 +2075,7 @@ def get_my_notification_prefs(
         new_post=prefs.new_post,
         reply=prefs.reply,
         thread_comment=prefs.thread_comment,
+        mention=prefs.mention,
         email_new_post=prefs.email_new_post,
         email_reply=prefs.email_reply,
         email_thread_comment=prefs.email_thread_comment,
@@ -2098,6 +2102,7 @@ def set_my_notification_pref(
         new_post=prefs.new_post,
         reply=prefs.reply,
         thread_comment=prefs.thread_comment,
+        mention=prefs.mention,
         email_new_post=prefs.email_new_post,
         email_reply=prefs.email_reply,
         email_thread_comment=prefs.email_thread_comment,

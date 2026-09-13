@@ -16,7 +16,8 @@
 			"new_post": "New post published",
 			"series_new_part": "Series updated",
 			"reply": "You have a reply",
-			"thread_comment": "New comment on a thread you follow"
+			"thread_comment": "New comment on a thread you follow",
+			"mention": "Someone mentioned you"
 		},
 		"prefs": {
 			"title": "Notification preferences",
@@ -35,6 +36,10 @@
 				"thread_comment": {
 					"label": "Followed-thread comments",
 					"desc": "Notify me when a discussion I follow gets a new comment."
+				},
+				"mention": {
+					"label": "Mentions",
+					"desc": "Notify me when someone @-mentions my display name in a comment."
 				},
 				"email_new_post": {
 					"label": "Email: new posts",

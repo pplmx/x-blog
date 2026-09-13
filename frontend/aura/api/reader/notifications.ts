@@ -61,6 +61,8 @@ export interface ReaderNotificationPrefs {
 	new_post: boolean;
 	reply: boolean;
 	thread_comment: boolean;
+	/** In-app at-mention fan-out (DEC-322/TASK-389): opt-out per-kind, on by default. */
+	mention: boolean;
 	/** Email channel (DEC-197, TASK-217): per-kind opt-in SMTP copy of the fan-out. */
 	email_new_post: boolean;
 	email_reply: boolean;

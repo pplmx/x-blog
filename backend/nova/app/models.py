@@ -533,6 +533,10 @@ class ReaderNotificationPref(Base):
     new_post: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True, server_default=true())
     reply: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True, server_default=true())
     thread_comment: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True, server_default=true())
+    # @-mentions (DEC-322, TASK-389): a durable inbox row when an approved
+    # comment names this reader's display name as @<name>. On by default like
+    # the other push/inbox kinds; additive column (DEC-009).
+    mention: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True, server_default=true())
     # Email channel (DEC-197, TASK-217): a per-kind *opt-in* copy of the fan-out,
     # delivered over SMTP to the reader's registered address. Off by default —
     # email must never arrive unless the reader explicitly asked for it — and

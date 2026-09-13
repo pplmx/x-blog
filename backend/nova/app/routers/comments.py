@@ -30,6 +30,11 @@ REPLY_NOTIF_BODY = os.getenv("REPLY_NOTIFICATION_BODY", "《{post_title}》有�
 # approved on a thread the reader follows.
 THREAD_NOTIF_TITLE = os.getenv("THREAD_NOTIFICATION_TITLE", "你订阅的讨论有新评论")
 THREAD_NOTIF_BODY = os.getenv("THREAD_NOTIFICATION_BODY", "《{post_title}》有新评论")
+# @-mention notifications (DEC-322, TASK-389): an approved comment that names a
+# reader's display name as @<name> notifies that reader with a #comment deep
+# link. Like the reply/thread copy, overridable via env.
+MENTION_NOTIF_TITLE = os.getenv("MENTION_NOTIFICATION_TITLE", "有人在评论中提到了你")
+MENTION_NOTIF_BODY = os.getenv("MENTION_NOTIFICATION_BODY", "{commenter} 在《{post_title}》中提到了你")
 
 
 # Sort orders accepted by GET /api/comments/post/{id} (DEC-094, TASK-159).
@@ -227,6 +232,70 @@ def _notify_comment_approved(db: Session, comment: models.Comment) -> None:
         if parent is not None and parent.reader_id is not None:
             excluded.add(parent.reader_id)
         _notify_thread_subscribers(post, comment.id, excluded, db)
+
+    # @-mention fan-out (DEC-322, TASK-389): an approved comment naming a
+    # reader's display name (e.g. "@Riki") notifies them with a deep link to the
+    # comment. Best-effort like the reply/thread fan-out; a comment still
+    # pending notifies nobody (moderation gate).
+    if post is not None and comment.content and "@" in comment.content:
+        mentioned_ids = crud.resolve_mention_reader_ids(db, comment.content)
+        if mentioned_ids:
+            _notify_mentions(post, comment, mentioned_ids, db)
+
+
+def _notify_mentions(
+    post: models.Post,
+    comment: models.Comment,
+    mentioned_ids: list[int],
+    db: Session,
+) -> None:
+    """Notify each reader @-mentioned in an approved comment (DEC-322).
+
+    Excludes the commenter (a reader can't meaningfully mention themselves),
+    skips deactivated readers (deactivation silences every channel, DEC-194 /
+    RIL ISS-278), and drops readers who switched the 'mention' kind off
+    (DEC-171). Durable inbox row only — mention email is a later slice.
+    Best effort: never raises, so approval can't fail on notifications.
+    """
+    if comment.reader_id is not None:
+        mentioned_ids = [rid for rid in mentioned_ids if rid != comment.reader_id]
+    if not mentioned_ids:
+        return
+    active_ids = {
+        rid
+        for (rid,) in db.query(auth.ReaderAccount.id)
+        .filter(
+            auth.ReaderAccount.id.in_(mentioned_ids),
+            auth.ReaderAccount.is_active.is_(True),
+        )
+        .all()
+    }
+    target_ids = [rid for rid in mentioned_ids if rid in active_ids]
+    target_prefs = crud.reader_notification_prefs_for(db, target_ids)
+    target_ids = [rid for rid in target_ids if crud.notification_kind_enabled(target_prefs.get(rid), "mention")]
+    if not target_ids:
+        return
+
+    # The commenter's label for the body: their verified display name when they
+    # commented as a reader, else their typed nickname, else a generic label.
+    commenter_label = "Reader"
+    if comment.reader_id is not None:
+        author = db.get(auth.ReaderAccount, comment.reader_id)
+        if author is not None and author.display_name:
+            commenter_label = author.display_name
+        elif comment.nickname:
+            commenter_label = comment.nickname
+    elif comment.nickname:
+        commenter_label = comment.nickname
+    body = MENTION_NOTIF_BODY.replace("{commenter}", commenter_label).replace("{post_title}", post.title or "")
+    crud.record_mention_notifications(
+        db,
+        target_ids,
+        title=MENTION_NOTIF_TITLE,
+        body=body,
+        # DEC-321 anchor: the landing machinery scrolls to the exact comment.
+        url=f"/posts/{post.slug}#comment-{comment.id}",
+    )
 
 
 class CommentListResponse(BaseModel):

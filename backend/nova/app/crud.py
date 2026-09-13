@@ -1,3 +1,4 @@
+import re
 from collections.abc import Iterable
 from datetime import UTC, date, datetime, timedelta, tzinfo
 from typing import Any, cast
@@ -3505,6 +3506,68 @@ def record_new_post_notifications(db: Session, post: models.Post) -> None:
         db.rollback()
 
 
+# @-mention resolution (DEC-322, TASK-389).
+# Hard cap on reader display-names scanned per approved comment: a personal-blog
+# reader table resolves in milliseconds, but a pathological scale should fail
+# silently (no pick-and-choose partial matching) rather than do unbounded work
+# at approval time.
+MENTION_SCAN_LIMIT = 2000
+
+
+def resolve_mention_reader_ids(db: Session, content: str) -> list[int]:
+    """Reader ids whose display name is @-mentioned verbatim in ``content``.
+
+    A mention is ``@<display_name>`` with word boundaries on both sides — so
+    ``@Riki`` names reader "Riki" but never a reader named "Ri" (a naive
+    substring would misfire on the longer name). Runs only at approval time
+    (human-paced) and fast-paths when the comment has no ``@``, so the read path
+    never pays for it. (DEC-322, TASK-389)
+    """
+    if not content or "@" not in content:
+        return []
+    rows = (
+        db.query(auth.ReaderAccount.id, auth.ReaderAccount.display_name)
+        .filter(auth.ReaderAccount.display_name.is_not(None))
+        .limit(MENTION_SCAN_LIMIT + 1)
+        .all()
+    )
+    if len(rows) > MENTION_SCAN_LIMIT:
+        return []  # beyond resolution scale — never silently partial-match
+    hits: list[int] = []
+    for rid, name in rows:
+        if name and re.search(rf"(?<!\w)@{re.escape(name)}(?!\w)", content):
+            hits.append(rid)
+    return hits
+
+
+def record_mention_notifications(
+    db: Session,
+    reader_ids: list[int],
+    title: str,
+    body: str,
+    url: str,
+) -> None:
+    """Persist an @-mention inbox row for every mentioned reader at once.
+
+    Batched counterpart of record_thread_comment_notifications for the
+    mention approval fan-out (DEC-322, TASK-389): build every row, flush once,
+    prune once, commit once — atomic and failure-proof like the other fan-outs.
+    """
+    try:
+        rows = [
+            models.ReaderNotification(reader_id=rid, kind="mention", title=title, body=body, url=url)
+            for rid in reader_ids
+        ]
+        if not rows:
+            return
+        db.add_all(rows)
+        db.flush()  # assign ids so the prune's id ordering is exact
+        _prune_notifications_for_readers(db, set(reader_ids))
+        db.commit()  # inserts + prune land atomically
+    except Exception:  # noqa: BLE001 — best effort, never fail the caller
+        db.rollback()
+
+
 def record_thread_comment_notifications(
     db: Session,
     reader_ids: list[int],
@@ -3544,7 +3607,7 @@ def record_thread_comment_notifications(
 # label refinement of new_post (ISS-114, DEC-181) — it is never a separate
 # toggle because a series update IS a new post; the new_post kill-switch gates
 # it.
-NOTIFICATION_KINDS: tuple[str, ...] = ("new_post", "reply", "thread_comment")
+NOTIFICATION_KINDS: tuple[str, ...] = ("new_post", "reply", "thread_comment", "mention")
 # Email channel (DEC-197, TASK-217): per-kind opt-ins accepted by the same
 # PATCH endpoint. The fan-out gating for these lives in emailer.email_channel_enabled.
 # email_weekly_digest (DEC-201, TASK-222) is the recurring digest opt-in — same

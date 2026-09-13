@@ -197,6 +197,13 @@ const prefRows = computed(() => {
 			on: prefs.value.thread_comment,
 		},
 		{
+			key: "mention",
+			icon: "lucide:at-sign",
+			label: t("notifications.prefs.kind.mention.label"),
+			desc: t("notifications.prefs.kind.mention.desc"),
+			on: prefs.value.mention,
+		},
+		{
 			key: "email_new_post",
 			icon: "lucide:mail",
 			label: t("notifications.prefs.kind.email_new_post.label"),
@@ -348,6 +355,7 @@ function timeLabel(item: ReaderNotification): string {
 function kindIcon(kind: string): string {
 	if (kind === "reply") return "lucide:message-square";
 	if (kind === "thread_comment") return "lucide:message-circle";
+	if (kind === "mention") return "lucide:at-sign";
 	if (kind === "series_new_part") return "lucide:layers";
 	return "lucide:file-text";
 }
