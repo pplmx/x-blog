@@ -12,6 +12,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Annotated, Literal
 from uuid import uuid4
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from fastapi import APIRouter, Depends, File, HTTPException, Query, Request, Response, UploadFile, status
 from PIL import UnidentifiedImageError
@@ -411,9 +412,10 @@ class ReadingPositionResponse(BaseModel):
 class DayActivity(BaseModel):
     """One day's reads for the 52-week activity heatmap (DEC-169/TASK-201).
 
-    ``date`` is the UTC date (ISO yyyy-mm-dd); ``count`` is how many publicly
-    visible posts were read that day (0 days included so the heatmap renders
-    without gaps).
+    ``date`` is the reader's local calendar date (ISO yyyy-mm-dd; UTC when no
+    timezone was requested, DEC-316); ``count`` is how many publicly visible
+    posts were read that day (0 days included so the heatmap renders without
+    gaps).
     """
 
     date: str
@@ -426,8 +428,9 @@ class ReadingStatsResponse(BaseModel):
     Publicly-visible posts only — un-published posts neither leak nor count.
     ``recent`` mirrors the history-list item shape for continue-reading quick
     jumps. ``current_streak`` / ``longest_streak`` / ``activity`` power the
-    gamification surface (DEC-169): the streak in consecutive active UTC days
-    and the last 52 weeks of per-day read counts.
+    gamification surface (DEC-169): the streak in consecutive active days —
+    anchored to the reader's local calendar when a timezone was sent, UTC
+    otherwise (DEC-316) — and the last 52 weeks of per-day read counts.
     """
 
     total_posts: int = 0
@@ -1563,10 +1566,32 @@ def list_reading_history(
 @router.get("/me/history/stats", response_model=ReadingStatsResponse)
 def reading_history_stats(
     current_reader: auth.ReaderAccount = Depends(auth.get_current_reader),
+    tz: Annotated[
+        NonNulStr | None,
+        Query(
+            max_length=64,
+            description="IANA timezone id (e.g. Asia/Shanghai) so the streak and "
+            "heatmap align to the reader's local calendar day; omitted → UTC (DEC-316)",
+        ),
+    ] = None,
     db: Session = Depends(get_db),
 ):
-    """A reader's reading summary (posts read, minutes, latest activity)."""
-    stats = crud.reader_history_stats(db, current_reader.id, recent_limit=6)
+    """A reader's reading summary (posts read, minutes, latest activity).
+
+    The streak and 52-week activity heatmap are bucketed by the reader's local
+    calendar day when ``tz`` (an IANA id, e.g. ``Asia/Shanghai``) is sent —
+    before DEC-316 they aggregated in UTC, so a non-UTC reader's streak and
+    heatmap disagreed with their own calendar. Omitted → the legacy UTC view.
+    An unknown timezone is a 422, never a silent UTC fallback (a typo must not
+    quietly re-break the alignment this endpoint exists to provide).
+    """
+    tz_info = None
+    if tz:
+        try:
+            tz_info = ZoneInfo(tz)
+        except ZoneInfoNotFoundError as exc:
+            raise HTTPException(status_code=422, detail="Unknown timezone") from exc
+    stats = crud.reader_history_stats(db, current_reader.id, recent_limit=6, tz=tz_info)
     return ReadingStatsResponse(
         total_posts=stats["total_posts"],
         total_reading_minutes=stats["total_reading_minutes"],

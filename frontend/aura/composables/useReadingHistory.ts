@@ -36,16 +36,33 @@ export interface ReadingStats {
 	totalReadingMinutes: number;
 	/** Epoch ms of the most recent view (server-only; undefined for guests). */
 	lastViewedAt?: number;
-	/** Consecutive active days (server-only; 0 for guests). DEC-169/TASK-201. */
+	/** Consecutive active days (server-only; 0 for guests). DEC-169/TASK-201.
+	 * Counted in the reader's local calendar (the browser's tz is sent to the
+	 * backend, DEC-316). */
 	currentStreak?: number;
 	/** Longest run of consecutive active days (server-only). DEC-169/TASK-201. */
 	longestStreak?: number;
-	/** Last 52 weeks of per-day read counts (server-only). DEC-169/TASK-201. */
+	/** Last 52 weeks of per-day read counts (server-only; reader-local calendar
+	 * dates, DEC-316). DEC-169/TASK-201. */
 	activity?: { date: string; count: number }[];
 }
 
 /** HISTORY page limit pulled from the API (newest-first, single page). */
 const HISTORY_FETCH_LIMIT = 100;
+
+/**
+ * The browser's IANA timezone id, when resolvable (DEC-316/TASK-386).
+ *
+ * Sent with the stats fetch so the backend buckets the streak + heatmap to the
+ * reader's own calendar (a non-UTC reader's "today" is not UTC's). Omitted on
+ * the rare environment that cannot resolve one (some embedders report
+ * "systemdefault") — the backend then falls back to UTC rather than 422ing on
+ * a value it can't understand.
+ */
+function clientTimezone(): string | undefined {
+	const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+	return tz && tz !== "systemdefault" ? tz : undefined;
+}
 
 function toEpoch(viewedAt?: string | null): number | undefined {
 	if (!viewedAt) return undefined;
@@ -195,7 +212,9 @@ export function useReadingHistory() {
 			totalPages.value = 1;
 		}
 		try {
-			const sdata = await getReaderHistoryStats();
+			// Declare the client timezone so the backend buckets the streak +
+			// heatmap to the reader's own calendar (DEC-316/TASK-386).
+			const sdata = await getReaderHistoryStats(clientTimezone());
 			if (seq !== loadSeq) return;
 			if (sdata) {
 				stats.value = {

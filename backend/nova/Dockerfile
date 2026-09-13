@@ -14,6 +14,13 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     gcc \
     && rm -rf /var/lib/apt/lists/*
 
+# tzdata: the /history stats endpoint re-anchors reading streaks/heatmaps to
+# the reader's IANA timezone via zoneinfo (DEC-316). slim-bookworm can ship
+# without /usr/share/zoneinfo; pin tzdata so ZoneInfo always resolves.
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    tzdata \
+    && rm -rf /var/lib/apt/lists/*
+
 # Install uv for fast package management
 RUN pip install --no-cache-dir uv
 

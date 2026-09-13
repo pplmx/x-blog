@@ -1,5 +1,5 @@
 from collections.abc import Iterable
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta, tzinfo
 from typing import Any, cast
 
 from sqlalchemy import and_, extract, func, or_, select, update
@@ -2136,12 +2136,39 @@ def clear_reader_history(db: Session, reader_id: int) -> int:
 ACTIVITY_DAYS = 364
 
 
-def _current_streak(dates: set) -> int:
-    """Consecutive active days ending today (or yesterday while today is still
-    inactive — a reader who has not read *yet* today keeps their streak)."""
+def _local_today(tz: tzinfo | None) -> date:
+    """Today's calendar date in the reader's zone (UTC when ``tz`` is absent).
+
+    The streak and heatmap are anchored to the reader's own calendar so a
+    non-UTC reader sees "today" where their wall clock says today (DEC-316).
+    """
+    now_utc = datetime.now(UTC)
+    return now_utc.date() if tz is None else now_utc.astimezone(tz).date()
+
+
+def _read_local_date(viewed_at: datetime, tz: tzinfo | None) -> date:
+    """The calendar date a read falls on in the reader's zone (DEC-316).
+
+    ``viewed_at`` is stored as naive UTC (the naive-UTC wire contract); when no
+    ``tz`` is supplied the UTC calendar date is the answer (the legacy
+    behavior). Otherwise the instant is re-anchored in the reader's zone so
+    the streak and heatmap agree with their own calendar. ``tzinfo`` is
+    attached rather than assumed, so an already-aware timestamp converts
+    correctly instead of being relabelled.
+    """
+    if tz is None:
+        return viewed_at.date()
+    aware = viewed_at if viewed_at.tzinfo is not None else viewed_at.replace(tzinfo=UTC)
+    return aware.astimezone(tz).date()
+
+
+def _current_streak(dates: set, *, today: date) -> int:
+    """Consecutive active days ending ``today`` (or yesterday while today is
+    still inactive — a reader who has not read *yet* today keeps their
+    streak). ``today`` is the caller's calendar anchor: local when the stats
+    request carried a timezone, UTC otherwise (DEC-316)."""
     if not dates:
         return 0
-    today = datetime.now(UTC).date()
     anchor = today if today in dates else today - timedelta(days=1)
     n = 0
     while anchor in dates:
@@ -2163,10 +2190,11 @@ def _longest_streak(dates: set) -> int:
     return longest
 
 
-def _day_activity(counts: dict) -> list[dict]:
-    """Per-day read counts for the last ``ACTIVITY_DAYS`` days (UTC, ascending,
-    zeros included) for a GitHub-style heatmap."""
-    today = datetime.now(UTC).date()
+def _day_activity(counts: dict, *, today: date) -> list[dict]:
+    """Per-day read counts for the last ``ACTIVITY_DAYS`` days ending ``today``
+    (ascending, zeros included) for a GitHub-style heatmap. ``today`` is the
+    caller's calendar anchor — local when the stats request carried a
+    timezone, UTC otherwise (DEC-316)."""
     window_start = today - timedelta(days=ACTIVITY_DAYS - 1)
     out: list[dict] = []
     d = window_start
@@ -2176,14 +2204,17 @@ def _day_activity(counts: dict) -> list[dict]:
     return out
 
 
-def reader_history_stats(db: Session, reader_id: int, recent_limit: int = 6) -> dict:
+def reader_history_stats(db: Session, reader_id: int, recent_limit: int = 6, *, tz: tzinfo | None = None) -> dict:
     """Aggregate a reader's reading summary from their history (DEC-118).
 
     Returns total visible posts read, the sum of their reading minutes, the
     most-recent viewed timestamp, and the ``recent_limit`` most recent
     (post, viewed_at) pairs. Since DEC-169/TASK-201 it also returns the
     current/longest reading streak and a 52-week per-day activity list for the
-    gamification surface on /history. Uses the same public-visibility filter as
+    gamification surface on /history. Since DEC-316 the streak and activity are
+    anchored to the reader's own calendar: ``tz`` (an IANA tzinfo) shifts each
+    read and the "today" window to the reader's local date; without it the
+    legacy UTC bucketing is used. Uses the same public-visibility filter as
     the history list so un-published posts don't leak or count.
     """
     # joinedload category/tags like list_reader_history: the recent items are
@@ -2201,12 +2232,13 @@ def reader_history_stats(db: Session, reader_id: int, recent_limit: int = 6) -> 
     visible = [(post, viewed_at) for post, viewed_at in rows if is_publicly_visible(post)]
     total_minutes = sum(schemas.reading_minutes(post.content or "") for post, _ in visible)
 
+    today = _local_today(tz)
     counts: dict = {}
     dates: set = set()
     for _post, viewed_at in visible:
         if viewed_at is None:
             continue
-        d = viewed_at.date()
+        d = _read_local_date(viewed_at, tz)
         counts[d] = counts.get(d, 0) + 1
         dates.add(d)
 
@@ -2215,9 +2247,9 @@ def reader_history_stats(db: Session, reader_id: int, recent_limit: int = 6) -> 
         "total_reading_minutes": total_minutes,
         "last_viewed_at": visible[0][1] if visible else None,
         "recent": visible[:recent_limit],
-        "current_streak": _current_streak(dates),
+        "current_streak": _current_streak(dates, today=today),
         "longest_streak": _longest_streak(dates),
-        "activity": _day_activity(counts),
+        "activity": _day_activity(counts, today=today),
     }
 
 

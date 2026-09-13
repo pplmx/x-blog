@@ -24,11 +24,19 @@ export interface ReaderHistoryStats {
 	total_reading_minutes: number;
 	last_viewed_at?: string | null;
 	recent: ReaderHistoryItem[];
-	/** Consecutive active days ending today (or yesterday) — DEC-169. */
+	/**
+	 * Consecutive active days ending today (or yesterday) — DEC-169. Counted in
+	 * the reader's local calendar when a timezone was sent, UTC otherwise
+	 * (DEC-316).
+	 */
 	current_streak?: number;
 	/** Longest run of consecutive active days anywhere (DEC-169). */
 	longest_streak?: number;
-	/** Last 52 weeks of per-day read counts (UTC, ascending, zeros included). */
+	/**
+	 * Last 52 weeks of per-day read counts (ascending, zeros included) — the
+	 * dates are the reader's LOCAL calendar days when a timezone was sent, UTC
+	 * otherwise (DEC-316/TASK-386).
+	 */
 	activity?: { date: string; count: number }[];
 }
 
@@ -96,9 +104,17 @@ export function getReaderReadingPosition(
 	);
 }
 
-/** Reader reading-summary stats derived from their history (requires reader token). */
-export function getReaderHistoryStats(): Promise<ReaderHistoryStats> {
+/**
+ * Reader reading-summary stats derived from their history (requires reader token).
+ *
+ * ``tz`` (optional, DEC-316/TASK-386) is the browser's IANA timezone id, e.g.
+ * ``Asia/Shanghai``. The backend buckets the streak and 52-week heatmap to the
+ * reader's own calendar when it is sent — without it the two aggregate in UTC
+ * and silently disagree with a non-UTC reader's wall clock.
+ */
+export function getReaderHistoryStats(tz?: string): Promise<ReaderHistoryStats> {
 	return command<ReaderHistoryStats>("/api/reader/me/history/stats", {
+		query: { tz: tz?.trim() || undefined },
 		headers: readerAuthHeaders(),
 	});
 }

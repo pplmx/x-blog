@@ -179,9 +179,11 @@ function lastActivityLabel(): string {
 
 // Reading gamification (DEC-169/TASK-201): a GitHub-style activity heatmap of
 // the last 52 weeks plus the current/longest reading streak. The server sends
-// ascending UTC per-day counts (zeros included); we align the first column to
-// a Monday and render week columns of 7 day-cells, shaded by read-count
-// intensity (relative to the busiest day in the window).
+// ascending per-day counts (zeros included) whose dates are the reader's LOCAL
+// calendar days — the stats fetch declares the browser's timezone so the
+// backend anchors the window to the reader's own calendar (DEC-316/TASK-386).
+// We align the first column to a Monday and render week columns of 7 day-cells,
+// shaded by read-count intensity (relative to the busiest day in the window).
 
 interface ActivityCell {
 	date: string;
@@ -200,12 +202,14 @@ const heatmapWeeks = computed<(ActivityCell | null)[][]>(() => {
 	const acts = stats.value?.activity ?? [];
 	if (!acts.length) return [];
 	// The server's first entry may not fall on a Monday; pad the front so
-	// columns align and today sits at the end (acts are ascending, end today).
+	// columns align and today sits at the end (acts are ascending, end local
+	// today). Cell dates are the reader's local calendar days (DEC-316), so the
+	// weekday is taken in local time — a UTC parse would mix calendar systems.
 	// acts.length > 0 is checked above; the optional read keeps
 	// noUncheckedIndexedAccess quiet without a non-null assertion.
 	const firstDate = acts[0]?.date;
 	if (!firstDate) return [];
-	const mondayIndex = (new Date(`${firstDate}T00:00:00Z`).getUTCDay() + 6) % 7;
+	const mondayIndex = (new Date(`${firstDate}T00:00:00`).getDay() + 6) % 7;
 	const cells: (ActivityCell | null)[] = [];
 	for (let i = 0; i < mondayIndex; i++) cells.push(null);
 	for (const a of acts) cells.push(a);
@@ -227,7 +231,11 @@ function heatCellClass(cell: ActivityCell | null): string {
 /** Count label shown in a heatmap cell tooltip. */
 function heatCellLabel(cell: ActivityCell | null): string {
 	if (!cell) return "";
-	const d = new Date(`${cell.date}T00:00:00Z`);
+	// cell.date is already the reader's local calendar date (DEC-316) — parse
+	// it as LOCAL midnight so the label shows that date as-is. Parsing with a
+	// "Z" and formatting local would re-shift it by the browser offset and
+	// display the prior local day in every negative-offset zone (round 319).
+	const d = new Date(`${cell.date}T00:00:00`);
 	const fmt = new Intl.DateTimeFormat(locale.value === "zh" ? "zh-CN" : "en-US", {
 		year: "numeric",
 		month: "short",
