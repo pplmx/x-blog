@@ -67,6 +67,8 @@ export interface ReaderNotificationPrefs {
 	email_new_post: boolean;
 	email_reply: boolean;
 	email_thread_comment: boolean;
+	/** Email copy of @-mentions (DEC-326/TASK-391): opt-in like the other email_* kinds. */
+	email_mention: boolean;
 	/** Recurring weekly-digest email opt-in (DEC-201, TASK-222). */
 	email_weekly_digest: boolean;
 }

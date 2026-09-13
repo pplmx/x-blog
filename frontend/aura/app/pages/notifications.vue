@@ -225,6 +225,13 @@ const prefRows = computed(() => {
 			on: prefs.value.email_thread_comment,
 		},
 		{
+			key: "email_mention",
+			icon: "lucide:mail-at",
+			label: t("notifications.prefs.kind.email_mention.label"),
+			desc: t("notifications.prefs.kind.email_mention.desc"),
+			on: prefs.value.email_mention,
+		},
+		{
 			key: "email_weekly_digest",
 			icon: "lucide:calendar-clock",
 			label: t("notifications.prefs.kind.email_weekly_digest.label"),

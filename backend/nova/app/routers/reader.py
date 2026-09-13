@@ -2047,6 +2047,9 @@ class NotificationPrefs(BaseModel):
     email_new_post: bool
     email_reply: bool
     email_thread_comment: bool
+    # Email copy of @-mentions (DEC-326, TASK-391): offline delivery of the
+    # most personal notification, off by default like the other email_* kinds.
+    email_mention: bool
     # Recurring digest opt-in (DEC-201, TASK-222): one aggregated weekly email,
     # independent of the per-event toggles above.
     email_weekly_digest: bool
@@ -2079,6 +2082,7 @@ def get_my_notification_prefs(
         email_new_post=prefs.email_new_post,
         email_reply=prefs.email_reply,
         email_thread_comment=prefs.email_thread_comment,
+        email_mention=prefs.email_mention,
         email_weekly_digest=prefs.email_weekly_digest,
     )
 
@@ -2106,5 +2110,6 @@ def set_my_notification_pref(
         email_new_post=prefs.email_new_post,
         email_reply=prefs.email_reply,
         email_thread_comment=prefs.email_thread_comment,
+        email_mention=prefs.email_mention,
         email_weekly_digest=prefs.email_weekly_digest,
     )

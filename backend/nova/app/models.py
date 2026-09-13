@@ -546,6 +546,12 @@ class ReaderNotificationPref(Base):
     email_new_post: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default=false())
     email_reply: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default=false())
     email_thread_comment: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default=false())
+    # Email copy of @-mentions (DEC-326, TASK-391): the personal "someone
+    # named you" kind reaches opted-in email readers off-site. Off by default
+    # like the other email_* kinds; independent of the in-app 'mention' toggle
+    # (a reader may silence the inbox row but still want the email, or vice
+    # versa). Additive column (DEC-009).
+    email_mention: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default=false())
     # Weekly digest (DEC-201, TASK-222): a separate *opt-in* recurring email —
     # one aggregated summary of the week's public posts, independent of the
     # per-event email_* toggles (a reader may want event mail off but the weekly

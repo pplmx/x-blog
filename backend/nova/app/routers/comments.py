@@ -254,8 +254,11 @@ def _notify_mentions(
     Excludes the commenter (a reader can't meaningfully mention themselves),
     skips deactivated readers (deactivation silences every channel, DEC-194 /
     RIL ISS-278), and drops readers who switched the 'mention' kind off
-    (DEC-171). Durable inbox row only — mention email is a later slice.
-    Best effort: never raises, so approval can't fail on notifications.
+    (DEC-171). Writes the durable inbox row and, independently, the email copy
+    for readers who opted into email_mention (DEC-326) — the two channels are
+    gated by different prefs, so an inbox opt-out does not mute the email and
+    vice versa. Best effort: never raises, so approval can't fail on
+    notifications.
     """
     if comment.reader_id is not None:
         mentioned_ids = [rid for rid in mentioned_ids if rid != comment.reader_id]
@@ -272,8 +275,12 @@ def _notify_mentions(
     }
     target_ids = [rid for rid in mentioned_ids if rid in active_ids]
     target_prefs = crud.reader_notification_prefs_for(db, target_ids)
-    target_ids = [rid for rid in target_ids if crud.notification_kind_enabled(target_prefs.get(rid), "mention")]
-    if not target_ids:
+    # The two channels are gated by DIFFERENT prefs (DEC-326): a reader may
+    # silence the in-app 'mention' kind yet still want the email copy, or vice
+    # versa — an inbox opt-out must not mute an explicitly-opted email.
+    inbox_ids = [rid for rid in target_ids if crud.notification_kind_enabled(target_prefs.get(rid), "mention")]
+    email_ids = [rid for rid in target_ids if email_channel_enabled(target_prefs.get(rid), "mention")]
+    if not inbox_ids and not email_ids:
         return
 
     # The commenter's label for the body: their verified display name when they
@@ -288,14 +295,24 @@ def _notify_mentions(
     elif comment.nickname:
         commenter_label = comment.nickname
     body = MENTION_NOTIF_BODY.replace("{commenter}", commenter_label).replace("{post_title}", post.title or "")
-    crud.record_mention_notifications(
-        db,
-        target_ids,
-        title=MENTION_NOTIF_TITLE,
-        body=body,
-        # DEC-321 anchor: the landing machinery scrolls to the exact comment.
-        url=f"/posts/{post.slug}#comment-{comment.id}",
-    )
+    url = f"/posts/{post.slug}#comment-{comment.id}"
+    if inbox_ids:
+        crud.record_mention_notifications(
+            db,
+            inbox_ids,
+            title=MENTION_NOTIF_TITLE,
+            body=body,
+            # DEC-321 anchor: the landing machinery scrolls to the exact comment.
+            url=url,
+        )
+    # Email copy (DEC-326, TASK-391): same values as the inbox row so both
+    # channels agree.
+    if email_ids:
+        dispatch_notification_emails(
+            db,
+            [EmailItem(rid, "mention", MENTION_NOTIF_TITLE, body, url) for rid in email_ids],
+            logger,
+        )
 
 
 class CommentListResponse(BaseModel):

@@ -45,6 +45,7 @@ _EMAIL_PREF_FOR_KIND: dict[str, str] = {
     "series_new_part": "email_new_post",
     "reply": "email_reply",
     "thread_comment": "email_thread_comment",
+    "mention": "email_mention",
 }
 
 

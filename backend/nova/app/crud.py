@@ -3654,7 +3654,13 @@ NOTIFICATION_KINDS: tuple[str, ...] = ("new_post", "reply", "thread_comment", "m
 # PATCH endpoint. The fan-out gating for these lives in emailer.email_channel_enabled.
 # email_weekly_digest (DEC-201, TASK-222) is the recurring digest opt-in — same
 # toggle surface, but not a fan-out kind (the digest job reads it directly).
-EMAIL_KINDS: tuple[str, ...] = ("email_new_post", "email_reply", "email_thread_comment", "email_weekly_digest")
+EMAIL_KINDS: tuple[str, ...] = (
+    "email_new_post",
+    "email_reply",
+    "email_thread_comment",
+    "email_mention",
+    "email_weekly_digest",
+)
 PREF_KINDS: tuple[str, ...] = NOTIFICATION_KINDS + EMAIL_KINDS
 
 
