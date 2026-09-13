@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 318,
+  "round": 319,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-13T04:47:01+00:00",
+  "updated_at": "2026-09-13T06:58:07+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -23346,7 +23346,7 @@
       "version": 1,
       "created_at": "2026-09-13T02:41:51+00:00",
       "updated_at": "2026-09-13T02:41:51+00:00",
-      "touched_round": 317,
+      "touched_round": 318,
       "rationale": "Round 317 feature sourcing (fresh surface sweep, Explore-verified). The reader notification inbox is otherwise complete (DEC-160 list + read/unread, DEC-171 per-kind prefs, DEC-197 email, DEC-201 digest) but a notification ROW can never be removed: the list only marks read/read-all, so a reader subscribed to several series/categories accumulates an ever-growing archive of consumed notifications with no way to prune it (mark-all-read clears the badge, not the list). Real user-perceivable problem (data hygiene on a durable inbox, like clearing read mail); acceptance in one sentence: from /notifications a signed-in reader deletes any individual consumed notification and the list updates in place. Net additive vertical slice: DELETE /api/reader/me/notifications/{notification_id} (404 on unknown, deletes the reader's own row only — scoped by reader_id like every reader table), a delete button on each row, backend contract tests + frontend tests + e2e. Not a same-kind patch (no deletion exists anywhere in the inbox).",
       "alternatives_rejected": "Inline category-follow on the post page (already rejected at DEC-290/292/297/301 — third near-identical follow control, value gate = button-level patch). Bookmark-folder-at-save (folder pick in the save button — control stitching, DEC-302 pattern). Tag-feed stable URL (cosmetic, both forms work server-side). asReaderHint dead i18n key (dead copy, not user-visible — cleanup not a feature; noted for a later refactor pass)."
     },
@@ -23406,9 +23406,69 @@
       "version": 1,
       "created_at": "2026-09-13T04:45:41+00:00",
       "updated_at": "2026-09-13T04:45:41+00:00",
-      "touched_round": 317,
+      "touched_round": 318,
       "rationale": "Round 317 feature delivery: delete individual notifications (DEC-312/TASK-384) closed by CHG-502/503/504 — the durable inbox (DEC-160) could never be pruned (mark-read/read-all only clear the badge). VERIFY green: backend 1446 tests @ 93.79% (incl. 5 new delete contract tests), pyright/ruff clean, frontend 2035 unit tests, typecheck exit 0, biome/rumdl clean, e2e reader-notifications (delete journey) + account/bookmarks regression all pass. Explore-sweep alternatives rejected at the value gate: inline category-follow (already rejected DEC-290/292/297/301 as a third near-identical follow control), bookmark-folder-at-save (control stitching, DEC-302 pattern), tag-feed stable URL (cosmetic), asReaderHint dead i18n key (not user-visible). Feature mode continues.",
       "alternatives_rejected": "Same as rationale — only the notification-delete candidate cleared the user-value + net-slice gate; the four other sweep findings are below the line and recorded as rejected."
+    },
+    "DEC-314": {
+      "id": "DEC-314",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-13T06:06:06+00:00",
+      "updated_at": "2026-09-13T06:06:06+00:00",
+      "touched_round": 318,
+      "rationale": "Round 318 feature-mode sourcing via a fresh sweep (Explore subagent #2): the tag-scoped RSS feed is BROKEN behind the Nuxt origin. tags.vue emits /rss/feed.xml?tag_id={id} (autodiscovery + subscribe button) but server/routes/rss/feed.xml.ts -> proxyConditionalFeed strips the query string (.raw with no getQuery forwarding), so in the default compose/nuxt-preview stack (no nginx) a reader who subscribes to tag X silently receives the GLOBAL feed — no error, no notice. Sibling scoped feeds (category/series) use path form and proxy correctly; the API proxy forwards queries; the feed proxy is the one inconsistent edge, and e2e/rss-scope fetches at the backend origin directly, so the break is never exercised. This CORRECTS DEC-312's wrong assessment that the tag-feed query URL was 'cosmetic, both forms work server-side' — the query form is the only one tags.vue ships and it does not survive the proxy. Real user-perceivable correctness bug (subscribing for one topic gets everything). Fix: proxyConditionalFeed forwards the inbound query string to the backend (mirroring the api proxy). Acceptance in one sentence: a reader subscribing to a tag feed via the Nuxt origin gets exactly that tag's posts, and the response still revalidates (ETag/Cache-Control preserved).",
+      "alternatives_rejected": "Rejected-comment edit-and-resubmit on /comments (findings #2: real gap but a larger surface — inline edit + resubmit semantics; also comments.vue is the author's moderation review page and delete-only is a defensible minimal first pass). Compose SITE_URL default localhost:3000 for feeds/sitemap (findings #3: deploy config, not a frontend correctness slice; also fixes only the sample stack). Admin reader-count drill-down (#4): operator nicety, no clear user problem below the gate. Unused reactive reader wrappers (#5): dead code cleanup, not user-visible."
+    },
+    "TASK-385": {
+      "id": "TASK-385",
+      "type": "task",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-13T06:06:55+00:00",
+      "updated_at": "2026-09-13T06:50:07+00:00",
+      "touched_round": 318,
+      "category": "core-feature",
+      "severity": 3,
+      "confidence": 1.0,
+      "effort": 2,
+      "unlock_factor": 1.5,
+      "title": "Forward query string through the Nuxt feed proxy (DEC-314)",
+      "description": "server/utils/proxyConditionalFeed drops the inbound query when proxying to the backend, so /rss/feed.xml?tag_id=X serves the unscoped feed. Forward event query (getQuery) onto the  URL, mirroring the api proxy. Add a server unit test (vitest that stubs ) asserting the proxied URL carries tag_id, and an e2e that fetches a scoped feed THROUGH the Nuxt origin (not the backend origin) and verifies items are tag-scoped."
+    },
+    "CHG-505": {
+      "id": "CHG-505",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-13T06:48:05+00:00",
+      "updated_at": "2026-09-13T06:48:05+00:00",
+      "touched_round": 318,
+      "commit": "58b9a23",
+      "description": "proxyFeed query forwarding + unit + e2e"
+    },
+    "CHG-506": {
+      "id": "CHG-506",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-13T06:48:05+00:00",
+      "updated_at": "2026-09-13T06:48:05+00:00",
+      "touched_round": 318,
+      "commit": "c63f8f7",
+      "description": "CHANGELOG/README record tag-feed proxy fix (both langs)"
+    },
+    "DEC-315": {
+      "id": "DEC-315",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-13T06:52:30+00:00",
+      "updated_at": "2026-09-13T06:52:30+00:00",
+      "touched_round": 318,
+      "rationale": "Round 318: tag-scoped RSS through the Nuxt proxy fixed (DEC-314/TASK-385 via CHG-505/506). This round CORRECTS DEC-312's assessment that the tags-page query feed URL was 'cosmetic, both forms work server-side' — DEC-312 evaluated the backend alone; the frontend feed proxy (server/utils/proxyFeed.ts) was the unexamined edge and it stripped the query, silently serving the global feed to a tag subscriber in the default compose/nuxt-preview topology. Lesson re-affirmed (as in DEC-304): verify against the LIVE request path (server routes + proxy), not just routers. Two rounds of error-correcting fixes (DEC-310 moderated surfacing, DEC-314 feed proxy) found by sweep agents at the frontend/backend seam. VERIFY green: frontend 2037 unit tests, typecheck exit 0, biome/rumdl clean, rss-scope e2e (4, incl. tag-scope-through-proxy) passes. Feature mode continues.",
+      "alternatives_rejected": "Rejected-comment edit (sweep finding #2): real gap on /comments but a larger surface (inline edit + resubmit semantics + re-approval), and delete-only is a defensible minimal moderation UX; deferred, not rejected outright. Compose SITE_URL localhost:3000 (#3): deploy-config not a frontend slice; flagged for docs. Admin reader-count drill-down (#4): operator nicety, below gate. Unused reactive reader wrappers (#5): dead code, cleanup pass."
     }
   },
   "edges": [
@@ -35037,6 +35097,42 @@
       "to": "DEC-312",
       "type": "supersedes",
       "created_at": "2026-09-13T04:47:01+00:00"
+    },
+    {
+      "from": "DEC-314",
+      "to": "TASK-385",
+      "type": "governs",
+      "created_at": "2026-09-13T06:06:55+00:00"
+    },
+    {
+      "from": "DEC-314",
+      "to": "DEC-313",
+      "type": "supersedes",
+      "created_at": "2026-09-13T06:06:55+00:00"
+    },
+    {
+      "from": "CHG-505",
+      "to": "TASK-385",
+      "type": "implements",
+      "created_at": "2026-09-13T06:50:07+00:00"
+    },
+    {
+      "from": "CHG-506",
+      "to": "TASK-385",
+      "type": "implements",
+      "created_at": "2026-09-13T06:50:07+00:00"
+    },
+    {
+      "from": "DEC-315",
+      "to": "DEC-314",
+      "type": "supersedes",
+      "created_at": "2026-09-13T06:58:03+00:00"
+    },
+    {
+      "from": "DEC-314",
+      "to": "DEC-312",
+      "type": "supersedes",
+      "created_at": "2026-09-13T06:58:04+00:00"
     }
   ]
 }
