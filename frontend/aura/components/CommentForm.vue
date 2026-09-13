@@ -120,21 +120,71 @@
           >{{ t('components.commentForm.preview') }}</button>
         </div>
 
-        <!-- Write tab: the live editor ctrl/⌘+Enter submits (keyboard parity). -->
-        <textarea
-          v-if="!previewing"
-          :id="fieldId('comment-content')"
-          ref="contentRef"
-          v-model="form.content"
-          required
-          rows="4"
-          :disabled="submitting || disabled"
-          :placeholder="t('components.commentForm.content')"
-          class="w-full px-3 py-2 border border-gray-200 dark:border-gray-700 dark:bg-gray-800 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm resize-y disabled:opacity-60 disabled:cursor-not-allowed"
-          @keydown.exact.esc.prevent="emit('cancel')"
-          @keydown.ctrl.enter.prevent="submitWithShortcut()"
-          @keydown.meta.enter.prevent="submitWithShortcut()"
-        />
+        <!-- Write tab: the live editor ctrl/⌘+Enter submits (keyboard parity).
+             The wrapper is `relative` so the '@'-mention picker (DEC-324) can
+             drop below the textarea's full width. -->
+        <div v-if="!previewing" class="relative">
+          <textarea
+            :id="fieldId('comment-content')"
+            ref="contentRef"
+            v-model="form.content"
+            required
+            rows="4"
+            :disabled="submitting || disabled"
+            :placeholder="t('components.commentForm.content')"
+            role="combobox"
+            aria-autocomplete="list"
+            :aria-expanded="mentionOpen ? 'true' : 'false'"
+            :aria-controls="mentionOpen ? fieldId('mention-list') : undefined"
+            :aria-activedescendant="
+              mentionOpen && mentionSuggestions[mentionIndex]
+                ? mentionOptionId(mentionIndex)
+                : undefined
+            "
+            class="w-full px-3 py-2 border border-gray-200 dark:border-gray-700 dark:bg-gray-800 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm resize-y disabled:opacity-60 disabled:cursor-not-allowed"
+            @input="onContentInput"
+            @keydown="onTextareaKeydown"
+            @keydown.exact.esc.prevent="onEscape()"
+            @keydown.ctrl.enter.prevent="submitWithShortcut()"
+            @keydown.meta.enter.prevent="submitWithShortcut()"
+          />
+          <div
+            v-if="mentionOpen"
+            :id="fieldId('mention-list')"
+            role="listbox"
+            data-testid="mention-list"
+            class="absolute z-20 left-0 right-0 top-full mt-1 max-h-56 overflow-auto rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 shadow-lg py-1"
+          >
+            <button
+              v-for="(s, i) in mentionSuggestions"
+              :key="s.id"
+              :id="mentionOptionId(i)"
+              type="button"
+              role="option"
+              :aria-selected="i === mentionIndex"
+              data-testid="mention-option"
+              :class="[
+                'w-full text-left flex items-center gap-2 px-3 py-2 text-sm text-gray-800 dark:text-gray-100 hover:bg-amber-50 dark:hover:bg-amber-950/40',
+                { 'bg-amber-50 dark:bg-amber-950/40': i === mentionIndex },
+              ]"
+              @mousedown.prevent="insertMention(i)"
+            >
+              <span
+                aria-hidden="true"
+                class="flex items-center justify-center w-5 h-5 rounded-full bg-amber-100 dark:bg-amber-900/50 text-amber-700 dark:text-amber-300 text-xs font-semibold shrink-0 overflow-hidden"
+              >
+                <img
+                  v-if="s.avatar_url"
+                  :src="s.avatar_url"
+                  alt=""
+                  class="w-full h-full object-cover"
+                />
+                <template v-else>{{ (s.display_name[0] ?? '?').toUpperCase() }}</template>
+              </span>
+              <span data-testid="mention-name" class="min-w-0 truncate">{{ s.display_name }}</span>
+            </button>
+          </div>
+        </div>
 
         <!-- Preview tab (role="tabpanel"): the same commentMarkdownToHtml the
              list uses, so a draft renders byte-for-byte as the shipped comment
@@ -182,6 +232,7 @@
 import { computed, nextTick, onMounted, ref, useId, watch } from "vue";
 import type { Comment } from "~~/api/contracts/shared";
 import { createComment } from "~~/api/public/comments";
+import { type ReaderMentionSuggestion, suggestMentionReaders } from "~~/api/public/readers";
 import { highlightCode, loadHighlighter } from "~~/composables/useCodeHighlight";
 import { commentMarkdownToHtml } from "~~/composables/useMarkdown";
 import { useReaderAuth } from "~~/composables/useReaderAuth";
@@ -298,8 +349,147 @@ watch([previewing, () => form.value.content], async () => {
 	}
 });
 
-// Dirty = the reader has typed something unsent. Used to guard reply-target
-// switches so an in-progress draft is never silently discarded. The parent
+// --- '@'-mention picker (DEC-324, TASK-390) ---
+// Typing "@" in the editor opens a suggestion list of active readers whose
+// display name matches what follows the "@" (word left of the caret); picking
+// one inserts "@<display name> " at the caret so the submitted comment's
+// word-boundary match (DEC-322) resolves. State is derived from the caret
+// position, not a regex over the whole draft, so "@" in prose that isn't being
+// typed at (e.g. mid-word) never opens the picker.
+const mentionOpen = ref(false);
+const mentionQuery = ref("");
+const mentionIndex = ref(0);
+const mentionSuggestions = ref<ReaderMentionSuggestion[]>([]);
+const mentionToken = ref<{ start: number; end: number } | null>(null);
+let mentionTimer: ReturnType<typeof setTimeout> | undefined;
+
+function mentionOptionId(index: number): string {
+	return `${fieldId("mention-option")}-${index}`;
+}
+
+function closeMentions(): void {
+	mentionOpen.value = false;
+	mentionSuggestions.value = [];
+	mentionToken.value = null;
+	if (mentionTimer) {
+		clearTimeout(mentionTimer);
+		mentionTimer = undefined;
+	}
+}
+onUnmounted(closeMentions);
+
+/** Recompute the "@" token immediately left of the caret, if any. */
+function updateMentionToken(): void {
+	const el = contentRef.value;
+	if (!el) {
+		mentionToken.value = null;
+		return;
+	}
+	const caret = el.selectionStart ?? form.value.content.length;
+	const before = form.value.content.slice(0, caret);
+	const ws = Math.max(before.lastIndexOf(" "), before.lastIndexOf("\n"), before.lastIndexOf("\t"));
+	const segment = before.slice(ws + 1);
+	// The token is "@" + the (possibly empty) query, with no other "@" or
+	// whitespace inside it — so "@riki," does not open the picker.
+	const m = /^@([^\s@]*)$/.exec(segment);
+	mentionToken.value = m ? { start: ws + 1, end: caret } : null;
+}
+
+async function fetchMentionSuggestions(): Promise<void> {
+	const token = mentionToken.value;
+	if (!token) return;
+	try {
+		const items = await suggestMentionReaders(mentionQuery.value);
+		// Only apply if the user is still mid-token (the draft may have
+		// changed while the request was in flight).
+		if (!mentionToken.value) return;
+		mentionSuggestions.value = items;
+		mentionIndex.value = 0;
+		mentionOpen.value = items.length > 0;
+	} catch {
+		// Best effort: a failed suggestion fetch just leaves the picker closed.
+		if (mentionToken.value) {
+			mentionSuggestions.value = [];
+			mentionOpen.value = false;
+		}
+	}
+}
+
+function scheduleMentionFetch(): void {
+	if (!mentionToken.value) return;
+	if (mentionTimer) clearTimeout(mentionTimer);
+	mentionTimer = setTimeout(() => void fetchMentionSuggestions(), 160);
+}
+
+/** Textarea input: keep the "@" token + suggestion query in sync. */
+function onContentInput(): void {
+	const el = contentRef.value;
+	updateMentionToken();
+	if (!mentionToken.value) {
+		closeMentions();
+		return;
+	}
+	mentionQuery.value = form.value.content.slice(
+		mentionToken.value.start + 1,
+		el?.selectionStart ?? form.value.content.length,
+	);
+	scheduleMentionFetch();
+}
+
+function moveMention(delta: number): void {
+	const n = mentionSuggestions.value.length;
+	if (!n) return;
+	mentionIndex.value = (mentionIndex.value + delta + n) % n;
+}
+
+function insertMention(index: number): void {
+	const picked = mentionSuggestions.value[index];
+	const token = mentionToken.value;
+	const el = contentRef.value;
+	if (!picked || !token || !el) {
+		closeMentions();
+		return;
+	}
+	const value = form.value.content;
+	form.value.content =
+		value.slice(0, token.start) +
+		`@${picked.display_name} ` +
+		value.slice(Math.min(token.end, value.length));
+	closeMentions();
+	nextTick(() => {
+		// Put the caret just after the inserted "@Name " so the reader can
+		// keep typing without a second focus hop.
+		const caret = token.start + picked.display_name.length + 2;
+		el.focus();
+		el.setSelectionRange(caret, caret);
+	});
+}
+
+/** Keyboard handling on the textarea while the picker is open. */
+function onTextareaKeydown(e: KeyboardEvent): void {
+	if (!mentionOpen.value || !mentionSuggestions.value.length) return;
+	// Leave modifier combos alone: Ctrl/⌘+Enter submits, Shift+Enter newlines
+	// — only bare arrows / Enter / Tab steer the picker.
+	if (e.ctrlKey || e.metaKey || e.altKey || e.shiftKey) return;
+	if (e.key === "ArrowDown") {
+		e.preventDefault();
+		moveMention(1);
+	} else if (e.key === "ArrowUp") {
+		e.preventDefault();
+		moveMention(-1);
+	} else if (e.key === "Enter") {
+		// With the picker open Enter selects (it must not submit or newline).
+		e.preventDefault();
+		insertMention(mentionIndex.value);
+	}
+}
+
+/** Escape: close the picker first; only then cancel the whole form. */
+function onEscape(): void {
+	if (mentionOpen.value) closeMentions();
+	else emit("cancel");
+}
+
 // (CommentList) owns the reply target transition and asks for confirmation;
 // this component only REPORTS dirtiness via `update:dirty` — it can't revert
 // a parentId prop change once made, so an inline confirm here would leave the

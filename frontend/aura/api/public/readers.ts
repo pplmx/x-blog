@@ -39,3 +39,23 @@ export function getReaderProfile(
 		query: { page, limit },
 	});
 }
+
+/** One '@'-mention picker suggestion — public identity only (never email). */
+export interface ReaderMentionSuggestion {
+	id: number;
+	display_name: string;
+	// Profile picture (DEC-299/TASK-378) — a public image URL, never PII.
+	avatar_url: string | null;
+}
+
+/**
+ * Reader suggestions for the comment box's '@' picker (GET /api/readers/suggest).
+ * Public like the profile route: active readers whose display name matches the
+ * query, case-insensitive and prefix-ranked, bounded server-side. (DEC-324,
+ * TASK-390)
+ */
+export function suggestMentionReaders(query: string): Promise<ReaderMentionSuggestion[]> {
+	return command<ReaderMentionSuggestion[]>("/api/readers/suggest", {
+		query: { query },
+	});
+}

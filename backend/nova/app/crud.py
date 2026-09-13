@@ -3,7 +3,7 @@ from collections.abc import Iterable
 from datetime import UTC, date, datetime, timedelta, tzinfo
 from typing import Any, cast
 
-from sqlalchemy import and_, extract, func, or_, select, update
+from sqlalchemy import and_, case, extract, func, or_, select, update
 from sqlalchemy.engine import CursorResult
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, joinedload
@@ -3538,6 +3538,48 @@ def resolve_mention_reader_ids(db: Session, content: str) -> list[int]:
         if name and re.search(rf"(?<!\w)@{re.escape(name)}(?!\w)", content):
             hits.append(rid)
     return hits
+
+
+MENTION_SUGGEST_LIMIT = 8
+
+
+def suggest_mention_readers(
+    db: Session,
+    query: str,
+    *,
+    limit: int = MENTION_SUGGEST_LIMIT,
+) -> list[dict[str, Any]]:
+    """Active readers with a display name matching an '@'-mention picker query.
+
+    Public picker data for the comment box (DEC-324, TASK-390): case-insensitive
+    substring match on the display name with LIKE wildcards escaped (a ''%'' query
+    must not match everything), prefix matches ranked before substring-only ones,
+    display-name-asc within a rank, and a hard ``limit`` so a one-character query
+    can never dump the reader table. Only id/display_name/avatar leave the
+    boundary — the caller serializes them; the email never leaves this function.
+    An empty query returns the first few named active readers so a bare '@' still
+    has something to show.
+    """
+    esc = query.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+    stmt = db.query(
+        auth.ReaderAccount.id,
+        auth.ReaderAccount.display_name,
+        auth.ReaderAccount.avatar_url,
+    ).filter(
+        auth.ReaderAccount.is_active.is_(True),
+        auth.ReaderAccount.display_name.is_not(None),
+    )
+    if esc:
+        prefix = auth.ReaderAccount.display_name.ilike(f"{esc}%", escape="\\")
+        contains = auth.ReaderAccount.display_name.ilike(f"%{esc}%", escape="\\")
+        stmt = stmt.filter(contains).order_by(
+            case((prefix, 0), else_=1),
+            auth.ReaderAccount.display_name.asc(),
+        )
+    else:
+        stmt = stmt.order_by(auth.ReaderAccount.display_name.asc())
+    rows = stmt.limit(limit + 1).all()
+    return [{"id": rid, "display_name": name or "", "avatar_url": avatar} for (rid, name, avatar) in rows[:limit]]
 
 
 def record_mention_notifications(

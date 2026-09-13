@@ -74,6 +74,32 @@ class ReaderProfilePage(BaseModel):
     pagination: ReaderProfilePagination
 
 
+class ReaderMentionSuggestion(BaseModel):
+    """One '@'-mention picker suggestion — public identity only (never email)."""
+
+    id: int
+    display_name: str
+    avatar_url: str | None = None
+
+
+@router.get("/suggest", response_model=list[ReaderMentionSuggestion])
+@limiter.limit(f"{RATE_LIMIT_READ}/minute")
+def suggest_mention_readers(
+    request: Request,  # noqa: ARG001 — keyed by the rate limiter (RATE_LIMIT_READ)
+    query: str = Query("", max_length=50),
+    db: Session = Depends(get_db),
+):
+    """Reader suggestions for the comment box's '@' picker (DEC-324, TASK-390).
+
+    Declared before ``/{reader_id}`` so "suggest" is never parsed as an id.
+    Public like the profile: id + display name + avatar, never the email. An
+    empty query returns the first few named active readers so a bare '@' still
+    has something to show.
+    """
+    rows = crud.suggest_mention_readers(db, query)
+    return [ReaderMentionSuggestion(**row) for row in rows]
+
+
 @router.get("/{reader_id}", response_model=ReaderProfilePage)
 @limiter.limit(f"{RATE_LIMIT_READ}/minute")
 def reader_profile(
