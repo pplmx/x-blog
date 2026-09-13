@@ -1871,3 +1871,99 @@ describe("CommentList", () => {
 		});
 	});
 });
+
+describe("Comment image lightbox (DEC-308/TASK-382)", () => {
+	// A comment body containing markdown images (DEC-088 pipeline renders them
+	// as real <img>): clicking one must open the same fullscreen MarkdownLightbox
+	// the post body uses, with the comment's own images as the browse set.
+	const imageComment = {
+		items: [
+			{
+				id: 9,
+				post_id: 1,
+				parent_id: null,
+				nickname: "Img",
+				email: "img@test.com",
+				content: "See ![one](https://example.com/one.png) and ![two](https://example.com/two.png)",
+				is_approved: true,
+				ip_address: "127.0.0.1",
+				created_at: "2024-03-01T10:00:00Z",
+			},
+		],
+		total: 1,
+		total_pages: 1,
+		page: 1,
+		limit: 20,
+	};
+
+	it("opens the lightbox on a .comment-body img click, scoped to that comment's images", async () => {
+		const { wrapper } = await mountCommentList({
+			comments: imageComment,
+			attachToBody: true,
+		});
+		const imgs = wrapper.findAll(".comment-body img");
+		expect(imgs.length).toBe(2);
+
+		await imgs[0].trigger("click");
+		await flushPromises();
+
+		// The lightbox Teleports to <body>; the post-surface viewer already
+		// proves the overlay contract, so assert the comment integration: the
+		// right image is shown and both comment images are browsable.
+		const dialog = document.querySelector('[data-testid="lightbox"]');
+		expect(dialog).not.toBeNull();
+		const shown = document.querySelector('[data-testid="lightbox-image"]');
+		expect(shown?.getAttribute("src")).toBe("https://example.com/one.png");
+		// Counter reflects the comment's own image set (2, not the post's).
+		expect(document.querySelector('[data-testid="lightbox-counter"]')?.textContent).toContain(
+			"/ 2",
+		);
+
+		// Cleanup: close the viewer so body scroll-lock is released for later tests.
+		document
+			.querySelector('[data-testid="lightbox-close"]')
+			?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+		await flushPromises();
+		wrapper.unmount();
+	});
+
+	it("a dangerous (javascript:) image src never opens the viewer", async () => {
+		const evilComment = {
+			items: [
+				{
+					id: 10,
+					post_id: 1,
+					parent_id: null,
+					nickname: "Evil",
+					email: "evil@test.com",
+					content: "![x](javascript:window.__e=1)",
+					is_approved: true,
+					ip_address: "127.0.0.1",
+					created_at: "2024-03-02T10:00:00Z",
+				},
+			],
+			total: 1,
+			total_pages: 1,
+			page: 1,
+			limit: 20,
+		};
+		const { wrapper } = await mountCommentList({
+			comments: evilComment,
+			attachToBody: true,
+		});
+
+		// The marked+sanitize pipeline already neutralizes a javascript: src
+		// (the inline <img> renders with a dead/normalized src), so the comment
+		// body exposes no image the lightbox collector could pick up.
+		const imgs = wrapper.findAll(".comment-body img");
+		const dangerous = imgs.filter((i) => {
+			const src = i.attributes("src") ?? "";
+			return src.replace(/^\/\//, "").startsWith("javascript:");
+		});
+		expect(dangerous.length).toBe(0);
+		await imgs[0]?.trigger("click");
+		await flushPromises();
+		expect(document.querySelector('[data-testid="lightbox"]')).toBeNull();
+		wrapper.unmount();
+	});
+});
