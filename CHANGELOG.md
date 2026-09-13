@@ -9,6 +9,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- **Delete individual notifications (DEC-312)**: the reader notification
+  inbox (DEC-160) is durable but had no prune path — mark read / mark-all-read
+  only clear the badge, so consumed rows accumulated forever for a reader
+  following several series/categories. A signed-in reader can now delete any
+  single notification from `/notifications` (a per-row trash button beside
+  mark-read), and the row leaves the list with an unread-count drop if it was
+  still unread. New `DELETE /api/reader/me/notifications/{id}` (reader_id-
+  scoped like every reader table: an unknown or another reader's id is a 404,
+  never a cross-reader delete). Backend contract tests (delete, isolation,
+  404, oversized-id 422), frontend page tests (row removed, failure keeps the
+  row, badge stays truthful), and a Playwright e2e journey (seed two rows,
+  API-delete one, UI-delete the survivor to empty state).
 - **Moderated-comment surfacing fix (DEC-310)**: on a moderated deployment
   (auto-approve off — the default) the create endpoint returns the pending
   comment but the list only serves approved rows, so after submitting, the
