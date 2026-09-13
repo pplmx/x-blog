@@ -48,6 +48,7 @@ const mockFetchPrefs = vi.fn(
 		new_post: true,
 		reply: true,
 		thread_comment: true,
+		mention: true,
 		email_new_post: false,
 		email_reply: false,
 		email_thread_comment: false,
@@ -62,6 +63,7 @@ const mockUpdatePref = vi.fn(
 		new_post: kind === "new_post" ? enabled : true,
 		reply: kind === "reply" ? enabled : true,
 		thread_comment: kind === "thread_comment" ? enabled : true,
+		mention: kind === "mention" ? enabled : true,
 		email_new_post: kind === "email_new_post" ? enabled : false,
 		email_reply: kind === "email_reply" ? enabled : false,
 		email_thread_comment: kind === "email_thread_comment" ? enabled : false,
@@ -144,6 +146,7 @@ describe("Notifications page (TASK-192)", () => {
 			new_post: true,
 			reply: true,
 			thread_comment: true,
+			mention: true,
 			email_new_post: false,
 			email_reply: false,
 			email_thread_comment: false,
@@ -198,6 +201,19 @@ describe("Notifications page (TASK-192)", () => {
 		expect(wrapper.text()).toContain("系列更新");
 		const link = wrapper.find('a[href="/posts/part-2"]');
 		expect(link.exists()).toBe(true);
+	});
+
+	it("renders a mention notification with its kind label (DEC-322)", async () => {
+		mockFetch.mockResolvedValue({
+			items: [makeNotif({ id: 9, kind: "mention", title: "有人在评论中提到了你" })],
+			total: 1,
+			unread: 1,
+			page: 1,
+			limit: 100,
+			total_pages: 1,
+		});
+		const wrapper = await mountPage();
+		expect(wrapper.text()).toContain("有人在评论中提到了你");
 	});
 
 	it("marks a single notification read", async () => {
@@ -315,15 +331,16 @@ describe("Notifications page (TASK-192)", () => {
 		expect(wrapper.text()).not.toContain("网络错误，请稍后重试");
 	});
 
-	it("loads the preferences card: push/inbox on, email kinds off (DEC-171/DEC-197/DEC-201)", async () => {
+	it("loads the preferences card: push/inbox on, email kinds off (DEC-171/DEC-197/DEC-201/DEC-322)", async () => {
 		const wrapper = await mountPage();
 		expect(wrapper.text()).toContain("通知偏好");
+		expect(wrapper.text()).toContain("被提及");
 		const switches = wrapper.findAll('button[role="switch"]');
-		expect(switches).toHaveLength(7);
-		for (let i = 0; i < 3; i += 1) {
+		expect(switches).toHaveLength(8);
+		for (let i = 0; i < 4; i += 1) {
 			expect(switches[i].attributes("aria-checked")).toBe("true");
 		}
-		for (let i = 3; i < 7; i += 1) {
+		for (let i = 4; i < 8; i += 1) {
 			expect(switches[i].attributes("aria-checked")).toBe("false");
 		}
 	});
@@ -331,12 +348,12 @@ describe("Notifications page (TASK-192)", () => {
 	it("toggles an email kind on via updateReaderNotificationPref (DEC-197)", async () => {
 		const wrapper = await mountPage();
 		const switches = wrapper.findAll('button[role="switch"]');
-		// Order: new_post, reply, thread_comment, email_new_post, email_reply, email_thread_comment, email_weekly_digest.
-		await switches[3].trigger("click");
+		// Order: new_post, reply, thread_comment, mention, email_new_post, email_reply, email_thread_comment, email_weekly_digest.
+		await switches[4].trigger("click");
 		await flushPromises();
 		expect(mockUpdatePref).toHaveBeenCalledWith("email_new_post", true);
-		expect(switches[3].attributes("aria-checked")).toBe("true");
-		expect(switches[4].attributes("aria-checked")).toBe("false");
+		expect(switches[4].attributes("aria-checked")).toBe("true");
+		expect(switches[5].attributes("aria-checked")).toBe("false");
 	});
 
 	it("toggles the weekly digest on via updateReaderNotificationPref (DEC-201)", async () => {
@@ -344,12 +361,12 @@ describe("Notifications page (TASK-192)", () => {
 		const switches = wrapper.findAll('button[role="switch"]');
 		// Last toggle = the weekly-digest email opt-in, independent of per-event kinds.
 		expect(wrapper.text()).toContain("每周精选");
-		await switches[6].trigger("click");
+		await switches[7].trigger("click");
 		await flushPromises();
 		expect(mockUpdatePref).toHaveBeenCalledWith("email_weekly_digest", true);
-		expect(switches[6].attributes("aria-checked")).toBe("true");
+		expect(switches[7].attributes("aria-checked")).toBe("true");
 		// Per-event email kinds stay off.
-		expect(switches[5].attributes("aria-checked")).toBe("false");
+		expect(switches[6].attributes("aria-checked")).toBe("false");
 	});
 
 	it("toggles a kind off and persists via updateReaderNotificationPref", async () => {
@@ -362,6 +379,23 @@ describe("Notifications page (TASK-192)", () => {
 		expect(switches[1].attributes("aria-checked")).toBe("false");
 		// Other kinds are untouched.
 		expect(switches[0].attributes("aria-checked")).toBe("true");
+		expect(switches[2].attributes("aria-checked")).toBe("true");
+	});
+
+	it("toggles the mention kind off and back on via updateReaderNotificationPref (DEC-322)", async () => {
+		const wrapper = await mountPage();
+		const switches = wrapper.findAll('button[role="switch"]');
+		// Order: new_post, reply, thread_comment, mention.
+		expect(wrapper.text()).toContain("被提及");
+		await switches[3].trigger("click");
+		await flushPromises();
+		expect(mockUpdatePref).toHaveBeenCalledWith("mention", false);
+		expect(switches[3].attributes("aria-checked")).toBe("false");
+		await switches[3].trigger("click");
+		await flushPromises();
+		expect(mockUpdatePref).toHaveBeenCalledWith("mention", true);
+		expect(switches[3].attributes("aria-checked")).toBe("true");
+		// Sibling in-app kinds are untouched by the op-out.
 		expect(switches[2].attributes("aria-checked")).toBe("true");
 	});
 
@@ -386,6 +420,7 @@ describe("Notifications page (TASK-192)", () => {
 			new_post: false,
 			reply: true,
 			thread_comment: true,
+			mention: true,
 			email_new_post: false,
 			email_reply: false,
 			email_thread_comment: false,
@@ -501,7 +536,12 @@ describe("Notifications page (TASK-192)", () => {
 			limit: 100,
 			total_pages: 1,
 		});
-		mockFetchPrefs.mockResolvedValue({ new_post: true, reply: true, thread_comment: true });
+		mockFetchPrefs.mockResolvedValue({
+			new_post: true,
+			reply: true,
+			thread_comment: true,
+			mention: true,
+		});
 		const wrapper = await mountPage();
 		expect(wrapper.text()).toContain("私有通知");
 
@@ -592,7 +632,12 @@ describe("Notifications page (TASK-192)", () => {
 			total_pages: 0,
 		});
 		mockFetchPrefs.mockRejectedValueOnce(new Error("boom"));
-		mockFetchPrefs.mockResolvedValue({ new_post: true, reply: true, thread_comment: true });
+		mockFetchPrefs.mockResolvedValue({
+			new_post: true,
+			reply: true,
+			thread_comment: true,
+			mention: true,
+		});
 		const wrapper = await mountPage();
 		expect(wrapper.findAll('button[role="switch"]')).toHaveLength(0);
 		// The prefs card's failure hint now carries a retry affordance instead of
@@ -601,7 +646,7 @@ describe("Notifications page (TASK-192)", () => {
 		expect(retry).toBeDefined();
 		await retry?.trigger("click");
 		await flushPromises();
-		expect(wrapper.findAll('button[role="switch"]')).toHaveLength(7);
+		expect(wrapper.findAll('button[role="switch"]')).toHaveLength(8);
 		expect(wrapper.text()).not.toContain("网络错误");
 	});
 });

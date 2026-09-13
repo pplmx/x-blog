@@ -834,3 +834,146 @@ class TestFanOutPrune:
             .scalar()
         )
         assert count_1 == 200
+
+
+class TestMentionNotifications:
+    """@-mention fan-out (DEC-322, TASK-389).
+
+    When an APPROVED comment contains a reader's exact display name as
+    ``@<name>``, that reader gets a durable ``kind=mention`` inbox row
+    deep-linking to the comment — never the commenter themselves, never a
+    deactivated reader, and never someone who switched the 'mention' pref off
+    (DEC-171). Resolution is boundary-exact: ``@Ri`` inside ``@Riki`` must not
+    notify reader "Ri". Mentions fire at approval (moderation gate), so a
+    comment still pending notifies nobody.
+    """
+
+    def _register_named(self, client, email, display_name):
+        resp = client.post(
+            "/api/reader/register",
+            json={"email": email, "password": "rpass123", "display_name": display_name},
+        )
+        assert resp.status_code == 201, resp.text
+        body = resp.json()
+        return body["access_token"], body["reader"]["id"]
+
+    def _comment(self, client, post_id, content, token=None):
+        # The CommentCreate schema requires nickname/email; a reader-attributed
+        # comment still sends them (they are stamped/ignored server-side).
+        body = {"content": content, "nickname": "Mentioner", "email": "mentioner@example.com"}
+        resp = client.post(f"/api/comments/post/{post_id}", json=body, headers=_auth(token) if token else None)
+        assert resp.status_code == 201, resp.text
+        return resp.json()["id"]
+
+    def _approve(self, client, auth_headers, comment_id):
+        resp = client.patch(f"/api/comments/{comment_id}/approve", json={"approved": True}, headers=auth_headers)
+        assert resp.status_code == 200, resp.text
+
+    def test_approval_mention_persists_a_kind_mention_row_with_comment_deep_link(
+        self, client, db_session, auth_headers
+    ):
+        named_token, _ = self._register_named(client, "mentioned@example.com", "Riki")
+        author_token = _token(client, email="author@example.com")
+        post = _create_post(db_session)
+        comment_id = self._comment(client, post.id, "Hey @Riki, what do you think?", token=author_token)
+        self._approve(client, auth_headers, comment_id)
+
+        inbox = client.get(NOTIFS, headers=_auth(named_token)).json()
+        assert inbox["total"] == 1, inbox
+        item = inbox["items"][0]
+        assert item["kind"] == "mention"
+        assert item["url"] == f"/posts/{post.slug}#comment-{comment_id}"
+
+    def test_pending_mention_notifies_nobody(self, client, db_session):
+        named_token, _ = self._register_named(client, "pending-target@example.com", "Riki")
+        author_token = _token(client, email="pauthor@example.com")
+        post = _create_post(db_session)
+        self._comment(client, post.id, "Hey @Riki", token=author_token)
+        # Never approved -> the mention must not fire (moderation gate).
+        target = client.get(NOTIFS, headers=_auth(named_token)).json()
+        assert target["total"] == 0
+
+    def test_commenter_self_mention_is_skipped(self, client, db_session, auth_headers):
+        author_token, author_id = self._register_named(client, "selfer@example.com", "RikiSelf")
+        post = _create_post(db_session)
+        comment_id = self._comment(client, post.id, "Great point @RikiSelf", token=author_token)
+        self._approve(client, auth_headers, comment_id)
+
+        from app import models
+
+        rows = (
+            db_session.query(models.ReaderNotification).filter(models.ReaderNotification.reader_id == author_id).all()
+        )
+        assert rows == []
+
+    def test_mention_respects_the_disabled_pref(self, client, db_session, auth_headers):
+        named_token, named_id = self._register_named(client, "opted-out@example.com", "RikiOut")
+        # Turn the mention kind off; the fan-out must drop this reader entirely.
+        off = client.patch(PREFS, json={"kind": "mention", "enabled": False}, headers=_auth(named_token))
+        assert off.status_code == 200, off.text
+        assert off.json()["mention"] is False
+
+        author_token = _token(client, email="m-author@example.com")
+        post = _create_post(db_session)
+        comment_id = self._comment(client, post.id, "cc @RikiOut", token=author_token)
+        self._approve(client, auth_headers, comment_id)
+
+        from app import models
+
+        rows = db_session.query(models.ReaderNotification).filter(models.ReaderNotification.reader_id == named_id).all()
+        assert rows == []
+
+    def test_mention_skips_a_deactivated_reader(self, client, db_session, auth_headers):
+        _, named_id = self._register_named(client, "offline@example.com", "RikiOff")
+        from app import auth as auth_mod
+        from app import models as m
+
+        reader = db_session.get(auth_mod.ReaderAccount, named_id)
+        reader.is_active = False
+        db_session.commit()
+
+        author_token = _token(client, email="m-off@example.com")
+        post = _create_post(db_session)
+        comment_id = self._comment(client, post.id, "ping @RikiOff", token=author_token)
+        self._approve(client, auth_headers, comment_id)
+
+        rows = db_session.query(m.ReaderNotification).filter(m.ReaderNotification.reader_id == named_id).all()
+        assert rows == []
+
+    def test_mention_boundary_does_not_partial_match_shorter_names(self, client, db_session, auth_headers):
+        # "Ri" must NOT be notified by "@Riki..." — resolution is boundary-exact
+        # (a naive `"@Ri" in content` substring would misfire on the longer name).
+        ri_token, ri_id = self._register_named(client, "ri@example.com", "Ri")
+        self._register_named(client, "riki@example.com", "Riki")
+
+        author_token = _token(client, email="boundary@example.com")
+        post = _create_post(db_session)
+        comment_id = self._comment(client, post.id, "Please @Riki decide this", token=author_token)
+        self._approve(client, auth_headers, comment_id)
+
+        from app import models
+
+        ri_rows = db_session.query(models.ReaderNotification).filter(models.ReaderNotification.reader_id == ri_id).all()
+        assert ri_rows == []
+
+    def test_mention_ignores_unknown_display_names(self, client, db_session, auth_headers):
+        known_token, _ = self._register_named(client, "onlyme@example.com", "Riki")
+        author_token = _token(client, email="unknown@example.com")
+        post = _create_post(db_session)
+        comment_id = self._comment(client, post.id, "@NobodyReal check this", token=author_token)
+        self._approve(client, auth_headers, comment_id)
+
+        inbox = client.get(NOTIFS, headers=_auth(known_token)).json()
+        assert inbox["total"] == 0
+
+    def test_mention_pref_surface_exposes_the_kind(self, client):
+        token = _token(client, email="pref-view@example.com")
+        prefs = client.get(PREFS, headers=_auth(token)).json()
+        assert prefs["mention"] is True
+
+    def test_resolve_mention_fast_paths_without_at(self, db_session):
+        """A comment with no '@' must skip resolution entirely (no reader scan)."""
+        from app import crud
+
+        assert crud.resolve_mention_reader_ids(db_session, "plain text, no mentions") == []
+        assert crud.resolve_mention_reader_ids(db_session, "") == []

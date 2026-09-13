@@ -185,4 +185,77 @@ test.describe("Reader notification inbox (TASK-192)", () => {
 		// the only remaining row was deleted (row count → 0, "no notifications").
 		await expect(page.locator("body")).toContainText("暂无通知", { timeout: 10000 });
 	});
+
+	test("a @mention in an approved comment notifies the named reader (DEC-322)", async ({
+		page,
+		request,
+	}) => {
+		const adminTok = await adminToken(request);
+		const adminH = { Authorization: `Bearer ${adminTok}` };
+
+		const uid = Date.now();
+
+		// A published post to hang the comment on.
+		const postRes = await request.post("/api/posts", {
+			headers: adminH,
+			data: {
+				title: `Mention Post ${uid}`,
+				slug: `mention-post-${uid}`,
+				content: "# Mention home",
+				published: true,
+			},
+		});
+		expect(postRes.status()).toBe(201);
+		const postId = ((await postRes.json()) as { id: number }).id;
+
+		// The named reader: a display name only this comment mentions.
+		const targetName = `MentionBob${uid}`;
+		const targetEmail = freshEmail();
+		const reg = await request.post("/api/reader/register", {
+			data: { email: targetEmail, password, display_name: targetName },
+		});
+		expect(reg.status()).toBe(201);
+		const token = ((await reg.json()) as { access_token: string }).access_token;
+		const readerH = { Authorization: `Bearer ${token}` };
+
+		// A guest comment mentioning that name; approval is the moderation gate.
+		const created = await request.post(`/api/comments/post/${postId}`, {
+			data: {
+				content: `Hi @${targetName}, please look at this`,
+				nickname: "Mentioner",
+				email: freshEmail(),
+			},
+		});
+		expect(created.status()).toBe(201);
+		const commentId = ((await created.json()) as { id: number }).id;
+		const approved = await request.patch(`/api/comments/${commentId}/approve`, {
+			data: { approved: true },
+			headers: adminH,
+		});
+		expect(approved.status()).toBe(200);
+
+		// The named reader's inbox gains a mention row with a comment deep link.
+		const inbox = await request.get("/api/reader/me/notifications", { headers: readerH });
+		expect(inbox.status()).toBe(200);
+		const inboxData = (await inbox.json()) as {
+			items: Array<{ kind: string; url: string | null }>;
+		};
+		const mention = inboxData.items.find((i) => i.kind === "mention");
+		expect(mention).toBeDefined();
+		expect(mention?.url).toBe(`/posts/mention-post-${uid}#comment-${commentId}`);
+
+		// The inbox page shows the labeled mention row; following it deep-links.
+		await page.addInitScript((tk) => localStorage.setItem("reader_token", tk), token);
+		await page.goto("/notifications");
+		await expect(page.locator("body")).toContainText("有人在评论中提到了你", {
+			timeout: 10000,
+		});
+		const rowLink = page.locator(`a[href="/posts/mention-post-${uid}#comment-${commentId}"]`);
+		await expect(rowLink).toBeVisible({ timeout: 10000 });
+		await rowLink.click();
+		await page.waitForURL(`**/posts/mention-post-${uid}#comment-${commentId}`, {
+			timeout: 10000,
+		});
+		await expect(page.locator(`#comment-${commentId}`)).toBeVisible({ timeout: 10000 });
+	});
 });
