@@ -9,6 +9,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- **Moderated-comment surfacing fix (DEC-310)**: on a moderated deployment
+  (auto-approve off — the default) the create endpoint returns the pending
+  comment but the list only serves approved rows, so after submitting, the
+  thread surfacing code used to jump pages and walk the whole thread hunting a
+  comment that structurally could not render — silent scroll flailing that read
+  as a failed post and invited double-submitting. The comment list now sees
+  `is_approved === false` from the create response and skips the jump/page-walk
+  entirely, keeping the truthful "awaiting review" confirmation; an approved
+  comment (auto-approve reader tier) still surfaces and scrolls as before.
+  Frontend-only; the pending comment's moderation result appears when the
+  reader revisits the post. Covered by unit tests (pending skips fetch/scroll,
+  approved still surfaces) and an e2e asserting no post-submit paging requests.
 - **Comment-image lightbox (DEC-308)**: clicking an image inside a comment
   opens the same fullscreen viewer that post images use (DEC-302) — full
   resolution, Escape/backdrop/close to dismiss, arrow keys browse THAT

@@ -74,4 +74,42 @@ test.describe("Comment live preview (DEC-306)", () => {
 		const executed = await page.evaluate(() => (window as { __pv?: number }).__pv);
 		expect(executed).toBeUndefined();
 	});
+
+	test("submitting a moderated comment does not page through the thread (DEC-310)", async ({
+		page,
+	}) => {
+		// On the default moderated config the create endpoint returns the
+		// PENDING comment (is_approved=false) and the list serves only approved
+		// rows, so post-submit surfacing has no row to find. Before the fix the
+		// surfaceComment walk issued fetch-after-fetch hunting it; now the
+		// awaiting-review feedback is the truth and NO refresh/paging GETs fire.
+		await page.goto("/");
+		const postLink = page.locator("main a[href*='/posts/']").first();
+		await postLink.waitFor({ state: "visible" });
+		const postHref = (await postLink.getAttribute("href")) as string;
+		await page.goto(postHref);
+
+		const contentInput = page.locator("[id^='comment-content']");
+		await contentInput.waitFor({ state: "visible", timeout: 10000 });
+
+		// Track comment-API network activity from here on (the initial list load
+		// has already settled).
+		const commentApiRequests: string[] = [];
+		page.on("request", (req) => {
+			if (req.url().includes("/api/comments")) commentApiRequests.push(req.url());
+		});
+
+		// Anonymous submit (moderation path).
+		await page.locator('input[autocomplete="nickname"]').fill("ModGuest");
+		await page.locator('input[type="email"]').fill("modguest@example.com");
+		await contentInput.fill("posting through the moderation queue");
+		await page.locator('button[type="submit"]').first().click();
+		await expect(page.locator("text=评论提交成功，等待审核中！")).toBeVisible({ timeout: 5000 });
+		await page.waitForTimeout(700);
+
+		// Exactly ONE comment-API request fired since the click: the POST.
+		// A post-submit paging walk (the pre-DEC-310 bug) would add GETs.
+		expect(commentApiRequests.length).toBe(1);
+		expect(commentApiRequests[0]).toMatch(/\/api\/comments\/post\/\d+$/);
+	});
 });

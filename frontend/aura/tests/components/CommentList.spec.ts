@@ -1967,3 +1967,79 @@ describe("Comment image lightbox (DEC-308/TASK-382)", () => {
 		wrapper.unmount();
 	});
 });
+
+describe("Moderated-comment surfacing (DEC-310/TASK-383)", () => {
+	// On a moderated deployment (AUTO_APPROVE_READER_COMMENTS off, the default)
+	// the create endpoint returns the PENDING comment (is_approved=false) but
+	// the list endpoint only serves approved rows — so a post-comment
+	// surfaceComment that jumps pages / walks the thread is hunting a row that
+	// structurally cannot render. It must skip the jump+walk entirely and keep
+	// the awaiting-review feedback as the truth.
+	it("does not jump pages or walk the thread for a pending comment", async () => {
+		const original = Element.prototype.scrollIntoView;
+		const scrollIntoView = vi.fn();
+		Element.prototype.scrollIntoView =
+			scrollIntoView as unknown as typeof Element.prototype.scrollIntoView;
+		try {
+			const { wrapper } = await mountCommentList({
+				comments: mockComments,
+				attachToBody: true,
+			});
+			const vm = wrapper.findComponent(CommentList).vm as unknown as {
+				surfaceComment: (c: unknown) => Promise<void>;
+			};
+			const getCommentsBefore = mockGetComments.mock.calls.length;
+			const pending = {
+				...mockComments.items[0],
+				id: 501,
+				nickname: "Pending",
+				content: "awaiting review",
+				is_approved: false,
+			};
+			await vm.surfaceComment(pending);
+			await flushPromises();
+
+			// No refresh fetch was triggered by the pending surfacing, and no
+			// scroll happened (the row rendered nowhere).
+			expect(mockGetComments.mock.calls.length).toBe(getCommentsBefore);
+			expect(scrollIntoView).not.toHaveBeenCalled();
+		} finally {
+			Element.prototype.scrollIntoView = original;
+		}
+	});
+
+	it("still surfaces an approved comment: scrolls to its row after a refresh", async () => {
+		const original = Element.prototype.scrollIntoView;
+		const scrollIntoView = vi.fn();
+		Element.prototype.scrollIntoView =
+			scrollIntoView as unknown as typeof Element.prototype.scrollIntoView;
+		try {
+			const { wrapper } = await mountCommentList({
+				comments: mockComments,
+				attachToBody: true,
+			});
+			const vm = wrapper.findComponent(CommentList).vm as unknown as {
+				surfaceComment: (c: unknown) => Promise<void>;
+			};
+			const fresh = {
+				...mockComments.items[0],
+				id: 502,
+				nickname: "Fresh",
+				content: "hello world",
+				is_approved: true,
+			};
+			mockGetComments.mockResolvedValue({
+				...mockComments,
+				items: [fresh, ...mockComments.items],
+			});
+			await vm.surfaceComment(fresh);
+			await flushPromises();
+
+			// The approved fresh row rendered and was scrolled into view.
+			expect(wrapper.find('li[id="comment-502"]').exists()).toBe(true);
+			expect(scrollIntoView).toHaveBeenCalled();
+		} finally {
+			Element.prototype.scrollIntoView = original;
+		}
+	});
+});

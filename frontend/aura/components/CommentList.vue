@@ -1019,6 +1019,16 @@ function retryRefresh(): void {
  * post (ISS-384 fixed newest; round 278 closes likes + the top-level form).
  */
 async function surfaceComment(created: Comment | undefined): Promise<void> {
+	// Moderated deployment (AUTO_APPROVE_READER_COMMENTS off — the default):
+	// the create endpoint returns the PENDING comment (is_approved=false) but
+	// the list endpoint only serves approved rows, so a jump + page-walk here
+	// would hunt a row that structurally cannot render — silent scroll flailing
+	// that reads as failure and invites a double-post. Skip it entirely; the
+	// form's "awaiting review" confirmation is the truthful feedback. An
+	// approved comment (auto-approve tier) falls through to the normal flow.
+	if (created && created.is_approved === false) {
+		return;
+	}
 	const newId = created?.id;
 	// Under the newest sort a fresh comment (newest timestamp) sorts to page 1;
 	// under oldest AND most-helpful a 0-like new comment sorts to the tail, so
