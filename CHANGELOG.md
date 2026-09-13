@@ -9,6 +9,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- **@-mention notifications (DEC-322)**: when an approved comment names a
+  reader's display name (e.g. `@Riki`), that reader now gets an inbox
+  notification deep-linking to the exact comment. Before this there was no way
+  to call a specific person into a discussion — you could only reply to a
+  comment or hope a reader followed the thread/category. The fan-out runs at
+  moderation time (a pending comment notifies nobody), skips the commenter
+  themselves, respects the reader's per-kind opt-out, and matches names at word
+  boundaries (`@Riki` never notifies a reader named `Ri`). The new kind is
+  `mention`: an opt-out inbox/`@`-mention preference on by default like the
+  other in-app kinds (consistent with DEC-171), backed by an additive
+  `mention` column on `reader_notification_prefs` (DEC-009 DDL-preserving; the
+  `ReaderNotification.kind` field is a `String`, so the new kind needs no
+  notification-table DDL). Backend contract tests (dispatch, self-mention skip,
+  disabled preference, deactivated reader, boundary matching, batched scan),
+  frontend page tests (kind label + preference toggle), and an e2e journey (a
+  guest comment `@<name>` → admin approve → the named reader's inbox shows the
+  `mention` row and its `#comment-<id>` link lands).
 - **Comment-history deep links (DEC-321)**: the /comments page and public reader
   profiles linked each comment back to its post's HEADLINE, so a reader hunting
   their own (or a profile's) comment landed at the top of the thread. The "on
