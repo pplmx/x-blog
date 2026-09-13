@@ -9,6 +9,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- **@-mention autocomplete (DEC-324)**: an approved comment could @-mention a
+  reader (DEC-322), but the commenter had to type the exact display name from
+  memory — zero discovery, so the capability was near-unusable in practice.
+  Typing `@` in the comment box now opens a suggestion list of active readers
+  whose display name matches what follows (prefix matches ranked first,
+  substring after, bounded to 8 results), served by a new public
+  `GET /api/readers/suggest` returning only id + display name + avatar (never
+  the email). Arrow/Enter/Escape and click all work; picking a suggestion
+  inserts `@<display name>` at the caret so the submitted comment really
+  mentions that reader. Backend contract tests (substring + prefix ranking,
+  LIKE wildcard escaping, inactive/nameless readers excluded, bounded results,
+  no email/PII), CommentForm picker unit tests (open/move/insert/escape/no-
+  results), and an e2e (type `@pick` → picker → pick → submit → approve → the
+  named reader's inbox gains the mention row). No DDL.
 - **@-mention notifications (DEC-322)**: when an approved comment names a
   reader's display name (e.g. `@Riki`), that reader now gets an inbox
   notification deep-linking to the exact comment. Before this there was no way
