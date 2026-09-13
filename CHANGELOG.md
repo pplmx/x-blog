@@ -9,6 +9,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- **Comment-history deep links (DEC-321)**: the /comments page and public reader
+  profiles linked each comment back to its post's HEADLINE, so a reader hunting
+  their own (or a profile's) comment landed at the top of the thread. The "on
+  post" jump now carries the `#comment-<id>` anchor — the post page's comment
+  list landing machinery (already proven by reply-notification deep links,
+  DEC-072) scrolls the reader to the exact comment. Frontend-only: two `NuxtLink`
+  targets (`app/pages/comments.vue`, `app/pages/readers/[id].vue`); page unit
+  tests + an e2e journey (comment → approve → `/comments` → click → lands on
+  `#comment-<id>`).
 - **Sitemap completeness: series + every post, no silent cap (DEC-318)**: the
   sitemap omitted series entirely — `/series/[slug]` pages are indexable but
   were unreachable-by-sitemap — and fetched posts with a hard `limit=1000` and
