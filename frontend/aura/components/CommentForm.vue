@@ -78,7 +78,51 @@
           :for="fieldId('comment-content')"
           class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5"
         >{{ t('components.commentForm.content') }}</label>
+        <!-- Write/Preview toggle (DEC-306/TASK-381): the comment form advertises
+             sanitized-Markdown rendering (DEC-088) and comments wait in the
+             moderation queue (DEC-066), so a commenter must see their draft
+             render BEFORE submitting — a malformed markup draft would otherwise
+             burn an approval cycle with no feedback. Both tabs reuse the exact
+             pipeline the comment list ships (commentMarkdownToHtml + lazy
+             highlight.js), so "what you see here" IS "what gets posted". -->
+        <div
+          role="tablist"
+          aria-label="Comment markdown preview"
+          class="flex items-center border-b border-gray-200 dark:border-gray-700 mb-2"
+        >
+          <button
+            type="button"
+            role="tab"
+            data-tab="write"
+            :aria-selected="!previewing"
+            :tabindex="previewing ? -1 : 0"
+            class="px-3 py-1.5 text-sm transition-colors border-b-2 -mb-px"
+            :class="
+              !previewing
+                ? 'border-blue-500 text-blue-600 dark:text-blue-400 font-medium'
+                : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
+            "
+            @click="previewing = false"
+          >{{ t('components.commentForm.write') }}</button>
+          <button
+            type="button"
+            role="tab"
+            data-tab="preview"
+            :aria-selected="previewing"
+            :tabindex="previewing ? 0 : -1"
+            class="px-3 py-1.5 text-sm transition-colors border-b-2 -mb-px"
+            :class="
+              previewing
+                ? 'border-blue-500 text-blue-600 dark:text-blue-400 font-medium'
+                : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
+            "
+            @click="previewing = true"
+          >{{ t('components.commentForm.preview') }}</button>
+        </div>
+
+        <!-- Write tab: the live editor ctrl/⌘+Enter submits (keyboard parity). -->
         <textarea
+          v-if="!previewing"
           :id="fieldId('comment-content')"
           ref="contentRef"
           v-model="form.content"
@@ -91,6 +135,23 @@
           @keydown.ctrl.enter.prevent="submitWithShortcut()"
           @keydown.meta.enter.prevent="submitWithShortcut()"
         />
+
+        <!-- Preview tab (role="tabpanel"): the same commentMarkdownToHtml the
+             list uses, so a draft renders byte-for-byte as the shipped comment
+             would. Empty drafts show a hint instead of a blank box. -->
+        <div
+          v-if="previewing"
+          :id="fieldId('comment-preview')"
+          role="tabpanel"
+          ref="previewEl"
+          class="comment-body comment-preview min-h-16 px-3 py-2 border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50 rounded-lg text-sm text-gray-700 dark:text-gray-300"
+        >
+          <p v-if="!form.content.trim()" class="text-gray-400 dark:text-gray-500">
+            {{ t('components.commentForm.previewEmpty') }}
+          </p>
+          <div v-else v-html="previewHtml"></div>
+        </div>
+
         <!-- Markdown hint (DEC-088): comments render as sanitized Markdown. -->
         <p class="mt-1 text-xs text-gray-400 dark:text-gray-500">
           <Icon icon="lucide:braces" class="w-3 h-3 inline mr-0.5" />
@@ -121,6 +182,8 @@
 import { computed, nextTick, onMounted, ref, useId, watch } from "vue";
 import type { Comment } from "~~/api/contracts/shared";
 import { createComment } from "~~/api/public/comments";
+import { highlightCode, loadHighlighter } from "~~/composables/useCodeHighlight";
+import { commentMarkdownToHtml } from "~~/composables/useMarkdown";
 import { useReaderAuth } from "~~/composables/useReaderAuth";
 
 // A post page mounts TWO CommentForms at once — the standalone bottom-of-page
@@ -209,6 +272,32 @@ const submitting = ref(false);
 const error = ref("");
 const success = ref("");
 
+// --- Markdown live preview (DEC-306/TASK-381) ---
+// The Write/Preview toggle owns a `previewing` flag; the preview pane reuses
+// commentMarkdownToHtml — the exact renderer the comment list ships — so the
+// draft renders byte-for-byte as the posted comment will. `previewHtml` is
+// recomputed on every keystroke (cheap: one marked pass over a comment-sized
+// body), keeping the two tabs in lock-step.
+const previewing = ref(false);
+const previewEl = ref<HTMLElement | null>(null);
+const previewHtml = computed(() => commentMarkdownToHtml(form.value.content));
+
+// Lazy syntax highlighting for fenced code in the preview (same loadHighlighter
+// + highlightCode path as CommentList DEC-090/TASK-157): once the preview pane
+// becomes visible (or the draft changes under it), tokenize any .comment-body
+// pre code blocks it holds. highlightCode escapes its source, so installing the
+// highlighted HTML never weakens the v-html XSS guarantees (TASK-156).
+watch([previewing, () => form.value.content], async () => {
+	if (!previewing.value || !previewEl.value) return;
+	await nextTick();
+	const h = await loadHighlighter();
+	const blocks = previewEl.value.querySelectorAll<HTMLElement>(".comment-body pre code");
+	for (const el of blocks) {
+		const lang = (el.className.match(/language-([\w-]+)/)?.[1] ?? "").trim();
+		el.innerHTML = highlightCode(h, lang, el.textContent ?? "");
+	}
+});
+
 // Dirty = the reader has typed something unsent. Used to guard reply-target
 // switches so an in-progress draft is never silently discarded. The parent
 // (CommentList) owns the reply target transition and asks for confirmation;
@@ -253,6 +342,9 @@ async function handleSubmit() {
 		});
 		success.value = t("components.commentForm.submitSuccess");
 		form.value = { nickname: "", email: "", content: "", website: "" };
+		// Back to a clean Write tab: the emptied draft renders an empty-state
+		// hint in preview, but a cleared editor is the clearer next action.
+		previewing.value = false;
 		emit("update:dirty", false);
 		emit("submitted", created);
 	} catch (e: any) {

@@ -28,7 +28,11 @@
 			"replyingTo": "Replying to {name}",
 			"asReader": "Submitting as {name}",
 			"asReaderHint": "Your verified reader identity is used automatically.",
-			"markdownHint": "Supports Markdown — code blocks, bold and links render."
+			"markdownHint": "Supports Markdown — code blocks, bold and links render.",
+			"write": "Write",
+			"preview": "Preview",
+			"previewEmpty": "Nothing to preview yet — type something and it will render as Markdown here.",
+			"previewError": "Couldn't render a preview."
 		},
 		"commentList": {
 			"loadError": "Couldn't load comments. Please try again.",
