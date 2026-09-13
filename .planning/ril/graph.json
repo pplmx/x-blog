@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 324,
+  "round": 325,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-13T13:25:01+00:00",
+  "updated_at": "2026-09-13T15:35:32+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -22,7 +22,7 @@
       "version": 1,
       "created_at": "2026-08-06T13:23:41+00:00",
       "updated_at": "2026-08-06T13:23:41+00:00",
-      "touched_round": 305,
+      "touched_round": 324,
       "title": "frontend-aura",
       "description": "Nuxt 4 Vue 3 TypeScript frontend at frontend/aura; composables; admin pages; e2e Playwright; biome lint"
     },
@@ -23769,6 +23769,84 @@
       "touched_round": 323,
       "rationale": "Round 322 feature delivery: @-mention notifications (DEC-322/TASK-389) closed by CHG-516/517/518 (test/feat/docs). An approved comment naming a reader via @<display name> now fans out a kind=mention inbox notification with a #comment-<id> deep link (landing machinery DEC-321), respecting the reader per-kind opt-out (additive mention column on reader_notification_prefs, DEC-009), skipping the commenter and inactive readers, matching at word boundaries, dispatches at approval only (pending notifies nobody), scan bounded (MENTION_SCAN_LIMIT + re.escape). One-sentence acceptance verifiable in the e2e: guest comment @<name> -> admin approve -> named reader inbox shows the mention row and the deep link lands. VERIFY green: backend 1462 tests (cov 93.7%, ruff+pyright clean), frontend 2043 unit tests, typecheck exit 0, biome clean; reader-notifications e2e 3/3 through the Nuxt origin. Feature mode continues.",
       "alternatives_rejected": "@-mention autocomplete, styled mention rendering, and a mention email channel remain deferred as later slices. Admin items still deferred: comment-moderation context nav, category/tag delete reassign, backup-coverage warning, analytics window preset, admin reader drill-down, dashboard draft-inflated ratio (combined admin cleanup round)."
+    },
+    "DEC-324": {
+      "id": "DEC-324",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-13T13:31:14+00:00",
+      "updated_at": "2026-09-13T13:31:14+00:00",
+      "touched_round": 324,
+      "rationale": "Round 323 feature selection: @-mention autocomplete in the comment box. Target user: a signed-in or guest commenter who wants to draw a specific reader into a discussion. Problem: DEC-322 shipped @-mention fan-out but with zero discoverability — the commenter must type the reader exact display name from memory or the mention silently misses (word-boundary match). One-sentence acceptance: typing @ in the comment box opens a reader-suggestion picker; selecting one inserts @<display name> followed by a space, and the submitted comment mentions that reader. Why now: DEC-322 (round 322) made mentions possible but friction-full; this slice completes the capability rather than a new surface. Net-additive vertical slice: a bounded public suggest endpoint (active readers with display names, prefix/contains match, ~10 results, id+name only) plus a keyboard-navigable picker in the comment form; unit tests + e2e (type @ window -> picker -> insert -> submit -> named reader notified). Backend kind/DDL untouched.",
+      "alternatives_rejected": "Styled mention rendering (cosmetic; no behavioral value until discovery exists). Mention email channel (reaches a smaller audience; DEC-197 email opt-in base still gated). Admin comment-moderation context nav / category-tag delete reassign / backup-coverage warning / analytics window preset / admin reader drill-down / dashboard draft-inflated ratio (all still deferred admin items from prior rounds, none above the value gate)."
+    },
+    "TASK-390": {
+      "id": "TASK-390",
+      "type": "task",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-13T13:33:14+00:00",
+      "updated_at": "2026-09-13T15:34:19+00:00",
+      "touched_round": 324,
+      "category": "core-feature",
+      "severity": 3,
+      "confidence": 0.9,
+      "effort": "medium",
+      "priority_score": 24,
+      "title": "@-mention autocomplete in comment form (DEC-324)"
+    },
+    "ISS-504": {
+      "id": "ISS-504",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-13T13:33:15+00:00",
+      "updated_at": "2026-09-13T15:34:19+00:00",
+      "touched_round": 324,
+      "severity": "high",
+      "title": "@-mention feature has no discovery: commenters cannot find reader display names"
+    },
+    "CHG-519": {
+      "id": "CHG-519",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-13T15:33:05+00:00",
+      "updated_at": "2026-09-13T15:33:05+00:00",
+      "touched_round": 324,
+      "commit": "f190ca5"
+    },
+    "CHG-520": {
+      "id": "CHG-520",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-13T15:33:05+00:00",
+      "updated_at": "2026-09-13T15:33:05+00:00",
+      "touched_round": 324,
+      "commit": "0fc2af4"
+    },
+    "CHG-521": {
+      "id": "CHG-521",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-13T15:33:05+00:00",
+      "updated_at": "2026-09-13T15:33:05+00:00",
+      "touched_round": 324,
+      "commit": "97fe31a"
+    },
+    "DEC-325": {
+      "id": "DEC-325",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-13T15:35:32+00:00",
+      "updated_at": "2026-09-13T15:35:32+00:00",
+      "touched_round": 324,
+      "rationale": "Round 323 feature delivery: @-mention autocomplete (DEC-324/TASK-390) closed by CHG-519/520/521 (test/feat/docs). Typing @ in the comment box now opens a bounded, prefix-ranked picker of active readers (public GET /api/readers/suggest — id + display name + avatar, never email), keyboard + click selectable, inserting @<display name> at the caret so the DEC-322 word-boundary fan-out really fires. Complements DEC-322 (round 322) which shipped mentions with zero discoverability; this slice makes the capability usable — a one-sentence acceptance verified end to end (type @pick -> pick -> submit -> approve -> named reader inbox gains the mention row). VERIFY green: backend 1469 (cov 93.76%, ruff + pyright clean), frontend 2048 unit tests, typecheck exit 0, biome clean, reader-notifications e2e 4/4 through the Nuxt origin. Feature mode continues.",
+      "alternatives_rejected": "Styled mention rendering and a mention email channel remain deferred. Admin items still deferred: comment-moderation context nav, category/tag delete reassign, backup-coverage warning, analytics window preset, admin reader drill-down, dashboard draft-inflated ratio (combined admin cleanup round)."
     }
   },
   "edges": [
@@ -35637,6 +35715,54 @@
       "to": "DEC-322",
       "type": "supersedes",
       "created_at": "2026-09-13T13:23:23+00:00"
+    },
+    {
+      "from": "DEC-324",
+      "to": "TASK-390",
+      "type": "governs",
+      "created_at": "2026-09-13T13:34:40+00:00"
+    },
+    {
+      "from": "TASK-390",
+      "to": "ISS-504",
+      "type": "addresses",
+      "created_at": "2026-09-13T13:34:40+00:00"
+    },
+    {
+      "from": "ISS-504",
+      "to": "COMP-002",
+      "type": "located_in",
+      "created_at": "2026-09-13T13:42:10+00:00"
+    },
+    {
+      "from": "CHG-519",
+      "to": "TASK-390",
+      "type": "implements",
+      "created_at": "2026-09-13T15:34:18+00:00"
+    },
+    {
+      "from": "CHG-520",
+      "to": "TASK-390",
+      "type": "implements",
+      "created_at": "2026-09-13T15:34:19+00:00"
+    },
+    {
+      "from": "CHG-521",
+      "to": "TASK-390",
+      "type": "implements",
+      "created_at": "2026-09-13T15:34:19+00:00"
+    },
+    {
+      "from": "CHG-520",
+      "to": "ISS-504",
+      "type": "resolves",
+      "created_at": "2026-09-13T15:34:19+00:00"
+    },
+    {
+      "from": "DEC-325",
+      "to": "DEC-324",
+      "type": "supersedes",
+      "created_at": "2026-09-13T15:35:32+00:00"
     }
   ]
 }
