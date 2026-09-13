@@ -47,7 +47,7 @@
 		"katex": "^0.18.4",
 		"marked": "^16.4.2",
 		"mermaid": "^11.17.2",
-		"typescript": "6.0.3",
+		"typescript": "7.0.2",
 		"unplugin-auto-import": "^21.1.0",
 		"vitest": "^4.1.11",
 		"vue-tsc": "^3.3.11"
