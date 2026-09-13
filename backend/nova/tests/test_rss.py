@@ -408,6 +408,55 @@ def test_sitemap_includes_categories_and_tags(client, auth_headers):
     assert "tag_id=" in content
 
 
+def test_sitemap_pages_through_all_published_posts(client, auth_headers, monkeypatch):
+    """The sitemap must page through EVERY published post.
+
+    get_sitemap used a hard ``limit=1000`` with no loop, so a blog past 1000
+    posts silently lost every older post from the sitemap (and thus from
+    search). The page size is shrunk and get_posts capped to it, so the loop
+    is exercised with a handful of posts: a single-fetch implementation only
+    ever sees the first page and the final posts fail to appear, while the
+    fixed loop keeps fetching until a short page (DEC-318/TASK-387)."""
+    from app import crud as crud_module
+    from app.routers import rss as rss_module
+
+    real_get_posts = crud_module.get_posts
+
+    def capped_get_posts(db, skip=0, limit=1000, **kwargs):
+        return real_get_posts(db, skip=skip, limit=min(limit, 3), **kwargs)
+
+    monkeypatch.setattr(rss_module, "SITEMAP_POST_PAGE", 3)
+    monkeypatch.setattr(crud_module, "get_posts", capped_get_posts)
+
+    slugs = [f"sitemap-page-{i}" for i in range(6)]
+    for slug in slugs:
+        resp = client.post(
+            "/api/posts",
+            json={"title": f"Sitemap page {slug}", "slug": slug, "content": "x", "published": True},
+            headers=auth_headers,
+        )
+        assert resp.status_code == 201, resp.text
+
+    content = client.get("/sitemap.xml").text
+    for slug in slugs:
+        assert f"/posts/{slug}" in content
+
+
+def test_sitemap_includes_series(client, auth_headers):
+    """Series detail pages are indexable, so each series must appear in the
+    sitemap as /series/{slug} — the URL shape crawlers can reach; the old
+    sitemap emitted zero series entries (DEC-318/TASK-387)."""
+    resp = client.post(
+        "/api/series",
+        json={"title": "Sitemap Manga", "slug": "sitemap-manga", "description": "series desc"},
+        headers=auth_headers,
+    )
+    assert resp.status_code == 201, resp.text
+
+    content = client.get("/sitemap.xml").text
+    assert "/series/sitemap-manga" in content
+
+
 def test_robots_txt(client):
     """robots.txt should return valid plain text with sitemap directive."""
     response = client.get("/robots.txt")
