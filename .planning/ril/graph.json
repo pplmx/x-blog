@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 326,
+  "round": 328,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-13T16:45:07+00:00",
+  "updated_at": "2026-09-13T16:50:54+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -23925,6 +23925,39 @@
       "touched_round": 325,
       "rationale": "Round 324 feature delivery: email copy of @-mentions (DEC-326/TASK-391) closed by CHG-522/523/524 (test/feat/docs). The mention family now reaches opted-in email readers: a new additive email_mention pref (off by default like the other email_* kinds, DEC-009) gates a mention EmailItem that carries the exact inbox-row title/body/deep link, independently of the in-app mention toggle (an inbox opt-out does not mute an opted email and vice versa). One-sentence acceptance verified end to end through the real SMTP sink: register -> opt in email_mention -> guest comment @<name> -> admin approve -> the sink holds the mention email with the deep link AND the inbox row lands. VERIFY green: backend 1473 (cov 93.81%, ruff + pyright clean, migration w2d4e6f8a0b3 round-trips), frontend 2049 unit tests, typecheck exit 0, biome clean; reader-notifications e2e 4/4 + the SMTP-sink mention-email journey. Feature mode continues.",
       "alternatives_rejected": "Styled mention rendering remains deferred (cosmetic). Admin items still deferred: comment-moderation context nav, category/tag delete reassign, backup-coverage warning, analytics window preset, admin reader drill-down, dashboard draft-inflated ratio (combined admin cleanup round)."
+    },
+    "DEC-328": {
+      "id": "DEC-328",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-13T16:49:32+00:00",
+      "updated_at": "2026-09-13T16:49:32+00:00",
+      "touched_round": 326,
+      "rationale": "Round 325 sourcing: rejected — no gate-passing reader-facing candidate. Full sweep over the reader surface: the mention family is now complete (DEC-322 fan-out, DEC-324 autocomplete, DEC-326 email); remaining reader candidates were each assessed against the value gate (real user-perceivable problem + one-sentence acceptance + net-additive slice, not a polish patch). Styled mention rendering (render @Name as a clickable identity chip linking to the reader profile) — presentation-only: the notify/autocomplete/email rounds already deliver the capability; the visual chip adds scannability but no behavior, and would need name->id resolution on the comment serialization hot path for marginal readability. Copy-link/share buttons — QoL, not a capability gap. All other reader surfaces (search, bookmarks, history, follows, comments, notifications, profiles, avatars, series, push, email, data export, recommendations) already ship. No task created.",
+      "alternatives_rejected": "Styled mention rendering, post share/copy-link, reader profile recent-activity strip, per-series RSS, notification unread-only tab."
+    },
+    "DEC-329": {
+      "id": "DEC-329",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-13T16:50:11+00:00",
+      "updated_at": "2026-09-13T16:50:11+00:00",
+      "touched_round": 327,
+      "rationale": "Round 326 sourcing: rejected — no gate-passing admin-facing candidate. Second consecutive rejection (condition 11.5.3 trigger). Each deferred admin item was re-checked against the value gate: comment-moderation context nav and admin reader drill-down (navigation conveniences), analytics window preset (a control), backup-coverage/coverage warning (an edge-case banner), dashboard draft-inflated ratio (a metric display), category/tag delete-reassign (pure QoL — deletion already refuses when referenced, verified in crud.delete_category/delete_tag, so there is no data-integrity gap to close). Each is below the bar individually, and the skill explicitly forbids coalescing them into one round (patch-stacking). No task created.",
+      "alternatives_rejected": "Admin comment-moderation context nav, admin reader drill-down, analytics window preset, backup-coverage warning, dashboard draft-inflated ratio, category/tag delete-reassign (patch-stacking if combined)."
+    },
+    "DEC-330": {
+      "id": "DEC-330",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-13T16:50:54+00:00",
+      "updated_at": "2026-09-13T16:50:54+00:00",
+      "touched_round": 328,
+      "rationale": "converged-idle (QUIESCE). Stop conditions met: (1) no active core-feature task above threshold — backlog empty (TASK-389/390/391 all resolved); (2) no high-severity open issues with deliverable resolution; (3) VERIFY green at last close (backend 1473 @93.81%, frontend 2049, typecheck/biome/ruff/pyright clean, e2e 4/4 + SMTP-sink mention email); (4) two consecutive feature-sourcing rounds rejected at the value gate (DEC-328 reader sweep, DEC-329 admin sweep); (5) graph consistent (ril.py check: 1982 nodes / 1987 edges). Feature-evolution mode pauses: the mention family (DEC-322/324/326) is the delivered run — fan-out, autocomplete, email — with rounds 319-321 (timezone streak, complete sitemap, comment deep links) also closed. Reactivation awaits a NEW operator direction (supersedes decision), a real user-reported issue, or a substantive repo change; the first round after reactivation re-runs VERIFY to confirm a green baseline before any change is claimed.",
+      "alternatives_rejected": "Shipping styled mention rendering (below gate), an admin cleanup round (patch-stacking), or inventing low-value reader/presentation churn to keep emitting feature commits (explicitly what QUIESCE exists to prevent)."
     }
   },
   "edges": [
