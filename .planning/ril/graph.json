@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 313,
+  "round": 315,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-12T20:25:25+00:00",
+  "updated_at": "2026-09-13T01:01:34+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -23143,10 +23143,81 @@
       "version": 1,
       "created_at": "2026-09-12T20:25:25+00:00",
       "updated_at": "2026-09-12T20:25:25+00:00",
-      "touched_round": 313,
+      "touched_round": 314,
       "title": "converged-idle: no further value-gate feature candidate after live-code re-sourcing (round 313)",
       "rationale": "Feature-evolution re-sourcing with the DEC-304 lesson (verify against live routers/crud, not the surface list) swept the shipping surface again: reader account deletion ALREADY exists (DEC-106) and the only residual gap (avatar file not reaped on delete) was fixed this round (CHG-494) with a full contract test; email change does not exist but is a security-shaped confirmation flow (account-takeover vector without new-address verification), not a clean vertical slice; comment top-sort is a weak anonymous-like signal on low-volume comments; ~~~ fences already render via marked (only chrome differs); site branding is author-facing and SSR/SEO-coupled. Two consecutive sourcing rounds (DEC-301, DEC-303→DEC-304) produced no candidate passing the user-value + net-slice gate. §11.5.1 backlog empty (TASK-379 resolved, TASK-380 abandoned), §11.5.3 met. Round delivered a real quality change (avatar reap) so this is a pausing decision, not a report of no work. Re-activation: new operator direction (supersedes) or a real external signal; first round back re-runs full VERIFY.",
       "alternatives_rejected": "Email-change (heavy identity confirmation flow), comment top-sort (weak signal), ~~~ fence chrome (cosmetic), site-branding settings (author-facing, SSR-coupled, modest value) — all below the value gate."
+    },
+    "DEC-306": {
+      "id": "DEC-306",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-13T00:23:00+00:00",
+      "updated_at": "2026-09-13T00:23:00+00:00",
+      "touched_round": 314,
+      "rationale": "Operator re-activated feature-exploration mode (supersedes DEC-305 converged-idle). Fresh gap sweep verified against live code: reader comment edit/delete (DEC-096), series-scoped RSS (DEC-130), reader profiles w/ comment history (DEC-294), avatars (DEC-299), lightbox (DEC-302), notification inbox+prefs (DEC-160/171/197/201) all ship. The genuinely fresh gap: the comment form advertises sanitized-Markdown rendering (DEC-088) but offers no way to see the draft render before submit — and comments go through the moderation queue (DEC-066), so a malformed markdown draft wastes an approval cycle with zero feedback. Real user-perceivable problem; acceptance in one sentence: a commenter toggles Write/Preview in the comment form and sees their draft rendered exactly as the comment list renders it (same commentMarkdownToHtml + lazy highlight). Net additive frontend slice, no backend/DDL.",
+      "alternatives_rejected": "Custom branded error.vue 404 page (guest convenience polish, below the real-user-problem line); post font-size control (a11y nicety, same 'minor convenience' class DEC-302 rejected reading-progress bar for); post emoji reactions (same-kind risk vs existing anonymous comment likes, weak signal); comment top-sort (already rejected DEC-302)."
+    },
+    "TASK-381": {
+      "id": "TASK-381",
+      "type": "task",
+      "status": "resolved",
+      "version": 3,
+      "created_at": "2026-09-13T00:23:18+00:00",
+      "updated_at": "2026-09-13T01:00:18+00:00",
+      "touched_round": 314,
+      "category": "core-feature",
+      "severity": 3,
+      "title": "Comment live preview: Write/Preview toggle in comment form, rendered by commentMarkdownToHtml",
+      "description": "Add a Preview toggle to CommentForm.vue. Write tab = current textarea; Preview tab = renders draft via commentMarkdownToHtml (same sanitized pipeline as the comment list, DEC-088) + lazy highlight.js for fences. Reuse from useMarkdown. No backend change.",
+      "confidence": 1.0,
+      "effort": 2,
+      "unlock_factor": 1.5
+    },
+    "CHG-495": {
+      "id": "CHG-495",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-13T00:59:58+00:00",
+      "updated_at": "2026-09-13T00:59:58+00:00",
+      "touched_round": 314,
+      "commit": "41e9d1d",
+      "description": "Comment live preview unit + e2e tests (CommentForm.spec preview describe, comment-preview.spec)"
+    },
+    "CHG-496": {
+      "id": "CHG-496",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-13T00:59:58+00:00",
+      "updated_at": "2026-09-13T00:59:58+00:00",
+      "touched_round": 314,
+      "commit": "baab833",
+      "description": "CommentForm Write/Preview toggle wired to commentMarkdownToHtml + lazy highlight; zh/en i18n"
+    },
+    "CHG-497": {
+      "id": "CHG-497",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-13T00:59:58+00:00",
+      "updated_at": "2026-09-13T00:59:58+00:00",
+      "touched_round": 314,
+      "commit": "8ab54bd",
+      "description": "CHANGELOG/README record comment live preview (both langs)"
+    },
+    "DEC-307": {
+      "id": "DEC-307",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-13T01:01:05+00:00",
+      "updated_at": "2026-09-13T01:01:05+00:00",
+      "touched_round": 314,
+      "rationale": "Round 314: feature-evolution re-activation (supersedes DEC-305 converged-idle per operator directive). Fresh gap sweep verified against live code found the comment form advertised sanitized-Markdown (DEC-088) with no way to preview a draft before the moderation queue (DEC-066) — delivered DEC-306/TASK-381 as a net-additive frontend slice (CHG-495/496/497), a second real change this re-activation wave beyond the avatar reap (CHG-494). VERIFY baseline fully green after the feature (regression guard): backend 1441 tests @ 93.78%, pyright/ruff/rumdl/biome clean, frontend 2029 unit tests, nuxt typecheck clean, e2e comment-preview + related comment suites all pass. Feature mode continues; next round re-sources from the fresh surface.",
+      "alternatives_rejected": "Stopping here would leave the documented comment-surface gap unfixed; the feature is small but genuinely user-visible (GitHub-style draft preview) and the cross-pipeline reuse keeps it low-risk."
     }
   },
   "edges": [
@@ -34643,6 +34714,42 @@
       "to": "TASK-380",
       "type": "implements",
       "created_at": "2026-09-12T20:16:52+00:00"
+    },
+    {
+      "from": "DEC-306",
+      "to": "TASK-381",
+      "type": "governs",
+      "created_at": "2026-09-13T00:26:08+00:00"
+    },
+    {
+      "from": "DEC-306",
+      "to": "DEC-305",
+      "type": "supersedes",
+      "created_at": "2026-09-13T00:26:08+00:00"
+    },
+    {
+      "from": "CHG-495",
+      "to": "TASK-381",
+      "type": "implements",
+      "created_at": "2026-09-13T01:00:18+00:00"
+    },
+    {
+      "from": "CHG-496",
+      "to": "TASK-381",
+      "type": "implements",
+      "created_at": "2026-09-13T01:00:18+00:00"
+    },
+    {
+      "from": "CHG-497",
+      "to": "TASK-381",
+      "type": "implements",
+      "created_at": "2026-09-13T01:00:18+00:00"
+    },
+    {
+      "from": "DEC-307",
+      "to": "DEC-306",
+      "type": "supersedes",
+      "created_at": "2026-09-13T01:01:34+00:00"
     }
   ]
 }
