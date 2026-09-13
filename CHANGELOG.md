@@ -9,6 +9,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- **Sitemap completeness: series + every post, no silent cap (DEC-318)**: the
+  sitemap omitted series entirely — `/series/[slug]` pages are indexable but
+  were unreachable-by-sitemap — and fetched posts with a hard `limit=1000` and
+  no pagination, so a blog past 1000 published posts silently lost every older
+  post from the sitemap (and thus from search). `sitemap.xml` now page-walks
+  ALL published posts (one page per fetch, bounded memory, no cap) and emits a
+  `/series/{slug}` entry for every series; creating a series now busts the
+  rendered sitemap cache immediately instead of waiting out the TTL. Backend
+  contract tests (pagination loop exercised with a paged stub; series entries)
+  and an e2e fetching the sitemap through the Nuxt origin after creating a
+  series. No DDL.
 - **Reader-local reading streak & heatmap (DEC-316)**: the `/history` reading
   streak and 52-week activity heatmap used to bucket every read in UTC while
   rendering in the browser's local time, so for any reader outside UTC the
