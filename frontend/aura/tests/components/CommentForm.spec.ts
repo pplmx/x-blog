@@ -425,3 +425,92 @@ describe("CommentForm", () => {
 		});
 	});
 });
+
+describe("Markdown live preview (DEC-306/TASK-381)", () => {
+	it("renders the Write/Preview tab switch with a preview panel", async () => {
+		const wrapper = await mountCommentForm();
+		const textarea = () => wrapper.find("textarea");
+		expect(textarea().exists()).toBe(true);
+
+		// Defaults to the write tab; preview pane is not rendered yet.
+		expect(wrapper.find(".comment-preview").exists()).toBe(false);
+
+		// Switch to Preview with nothing typed → empty-state message.
+		await wrapper.find('button[role="tab"][data-tab="preview"]').trigger("click");
+		await flushPromises();
+		expect(textarea().exists()).toBe(false);
+		expect(wrapper.find(".comment-preview").exists()).toBe(true);
+		expect(wrapper.find(".comment-preview p").text()).toContain("Markdown");
+	});
+
+	it("renders the draft as sanitized Markdown: bold, links and fenced code", async () => {
+		const wrapper = await mountCommentForm();
+		await (wrapper.find("textarea") as any).setValue(
+			"**bold** and [a link](https://example.com) and a fence:\n\n```ts\nconst x = 1;\n```",
+		);
+		await wrapper.find('button[role="tab"][data-tab="preview"]').trigger("click");
+		await flushPromises();
+
+		const preview = wrapper.find(".comment-preview");
+		expect(preview.find("strong").text()).toBe("bold");
+		expect(preview.find('a[href="https://example.com"]').exists()).toBe(true);
+		// The fence renders as a code block (highlighting is a lazy, visual
+		// pass — the <pre><code> structure comes straight from the markdown
+		// pipeline and must already exist).
+		expect(preview.find("pre code.language-ts").exists()).toBe(true);
+		expect(preview.find("pre code.language-ts").text()).toContain("const x = 1;");
+	});
+
+	it("keeps the draft in the textarea when toggling back to Write", async () => {
+		const wrapper = await mountCommentForm();
+		const draft = "**kept** after toggle";
+		await (wrapper.find("textarea") as any).setValue(draft);
+		await wrapper.find('button[role="tab"][data-tab="preview"]').trigger("click");
+		await flushPromises();
+		await wrapper.find('button[role="tab"][data-tab="write"]').trigger("click");
+		await flushPromises();
+
+		const textarea = wrapper.find("textarea");
+		expect(textarea.exists()).toBe(true);
+		expect((textarea.element as HTMLTextAreaElement).value).toBe(draft);
+	});
+
+	it("sanitizes XSS payloads in the preview (same pipeline as the list)", async () => {
+		const wrapper = await mountCommentForm();
+		const payload = 'hello <script>window.__xss=1</script> <img src=x onerror="alert(1)">';
+		await (wrapper.find("textarea") as any).setValue(payload);
+		await wrapper.find('button[role="tab"][data-tab="preview"]').trigger("click");
+		await flushPromises();
+
+		const preview = wrapper.find(".comment-preview");
+		expect(preview.find("script").exists()).toBe(false);
+		expect(preview.find("[onerror]").exists()).toBe(false);
+		expect(wrapper.element.querySelector("script")).toBeNull();
+		// The safe text survives the sanitizer (happy-dom normalizes attribute
+		// quoting, so assert on text + absence of live handlers, not bytes).
+		expect(preview.text()).toContain("hello");
+		// The preview is driven by the SAME renderer the list ships — the
+		// component feeds commentMarkdownToHtml, so hand a hostile payload and
+		// confirm the headless function also strips it (no drifting pipelines).
+		const { commentMarkdownToHtml } = await import("~~/composables/useMarkdown");
+		const sanitized = commentMarkdownToHtml(payload);
+		expect(sanitized).not.toContain("<script");
+		expect(sanitized).not.toContain("onerror");
+	});
+
+	it("a successful submit while previewing switches back to a clean Write tab", async () => {
+		const wrapper = await mountCommentForm();
+		await wrapper.find('input[autocomplete="nickname"]').setValue("n");
+		await wrapper.find('input[type="email"]').setValue("a@b.c");
+		await (wrapper.find("textarea") as any).setValue("nice post");
+		await wrapper.find('button[role="tab"][data-tab="preview"]').trigger("click");
+		await flushPromises();
+
+		await wrapper.find('button[type="submit"]').trigger("submit");
+		await flushPromises();
+		expect(mockCreateComment).toHaveBeenCalledTimes(1);
+		// Form cleared and back on the Write tab.
+		expect(wrapper.find("textarea").exists()).toBe(true);
+		expect((wrapper.find("textarea").element as HTMLTextAreaElement).value).toBe("");
+	});
+});
