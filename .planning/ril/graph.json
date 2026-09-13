@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 319,
+  "round": 320,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-13T06:58:07+00:00",
+  "updated_at": "2026-09-13T08:43:37+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -23469,6 +23469,81 @@
       "touched_round": 318,
       "rationale": "Round 318: tag-scoped RSS through the Nuxt proxy fixed (DEC-314/TASK-385 via CHG-505/506). This round CORRECTS DEC-312's assessment that the tags-page query feed URL was 'cosmetic, both forms work server-side' — DEC-312 evaluated the backend alone; the frontend feed proxy (server/utils/proxyFeed.ts) was the unexamined edge and it stripped the query, silently serving the global feed to a tag subscriber in the default compose/nuxt-preview topology. Lesson re-affirmed (as in DEC-304): verify against the LIVE request path (server routes + proxy), not just routers. Two rounds of error-correcting fixes (DEC-310 moderated surfacing, DEC-314 feed proxy) found by sweep agents at the frontend/backend seam. VERIFY green: frontend 2037 unit tests, typecheck exit 0, biome/rumdl clean, rss-scope e2e (4, incl. tag-scope-through-proxy) passes. Feature mode continues.",
       "alternatives_rejected": "Rejected-comment edit (sweep finding #2): real gap on /comments but a larger surface (inline edit + resubmit semantics + re-approval), and delete-only is a defensible minimal moderation UX; deferred, not rejected outright. Compose SITE_URL localhost:3000 (#3): deploy-config not a frontend slice; flagged for docs. Admin reader-count drill-down (#4): operator nicety, below gate. Unused reactive reader wrappers (#5): dead code, cleanup pass."
+    },
+    "DEC-316": {
+      "id": "DEC-316",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-13T07:42:33+00:00",
+      "updated_at": "2026-09-13T07:42:33+00:00",
+      "touched_round": 319,
+      "rationale": "Round 319 feature selection: reading-streak/heatmap timezone correctness fix. Fresh dual-sweep (reader-facing + admin/platform) on an empty backlog. Winner: /history streak + 52-week heatmap bucket reads in UTC (crud.py record_reading_history now(UTC) -> .date() bucketing, _current_streak anchored to UTC today) while the face the reader sees renders those UTC buckets in local time with no timeZone (history.vue heatCellLabel parses 'YYYY-MM-DDT00:00:00Z' then formats local) — so for any reader outside UTC the streak credits the wrong calendar day and the tooltip/today column disagree with the reader's own calendar (an 11pm local read counts as tomorrow; Americas tooltips label the prior local day). Existing reading-streak e2e never pins timezone, so it went unflagged. Fix: backend history-stats gains tz_offset_minutes, bucket/viewed_at shifted before .date() (naive-UTC storage untouched), streak today anchored to local now; frontend sends -getTimezoneOffset() and labels cells from the already-local bucket keys (no double-shift); e2e pins a negative-offset TZ. No DDL. Correctness-bug line consistent with the loop's frontend/backend-seam error corrections (DEC-310, DEC-314).",
+      "alternatives_rejected": "Admin sweep: admin reader drill-down (#2) re-rejected (prior-round value-gate rejection — operator aggregate page is a nicety, below gate); comment-moderation context nav (#1) real but multi-surface, defer; sitemap series+>1000-post pagination (#3) real backend-only SEO gap, defer; backup-coverage warning (#4) acceptance fuzzy ('warn OR v2'), defer; analytics window preset (#5) is one control below the gate; category/tag delete reassign (#6) multi-surface, defer; dashboard draft-inflated ratio (bonus) small math bug — logged as a candidate for a combined admin cleanup round. Reader sweep: @-mentions (#3) is the largest slice (DDL + notif kind + pref row + autocomplete + reader search), nice-to-have, defer; comment-history deep links (#2) real tiny frontend-only gap, defer; density off/reset (#4) unverified by sweep, dropped."
+    },
+    "TASK-386": {
+      "id": "TASK-386",
+      "type": "task",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-13T07:43:29+00:00",
+      "updated_at": "2026-09-13T08:42:48+00:00",
+      "touched_round": 319,
+      "category": "correctness",
+      "severity": 4,
+      "confidence": 0.8,
+      "effort": "medium"
+    },
+    "ISS-500": {
+      "id": "ISS-500",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-13T07:43:29+00:00",
+      "updated_at": "2026-09-13T08:42:49+00:00",
+      "touched_round": 319,
+      "description": "reading streak/heatmap bucketed in UTC but rendered in local time"
+    },
+    "CHG-507": {
+      "id": "CHG-507",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-13T08:42:05+00:00",
+      "updated_at": "2026-09-13T08:42:05+00:00",
+      "touched_round": 319,
+      "commit": "0308460"
+    },
+    "CHG-508": {
+      "id": "CHG-508",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-13T08:42:05+00:00",
+      "updated_at": "2026-09-13T08:42:05+00:00",
+      "touched_round": 319,
+      "commit": "169e84c"
+    },
+    "CHG-509": {
+      "id": "CHG-509",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-13T08:42:05+00:00",
+      "updated_at": "2026-09-13T08:42:05+00:00",
+      "touched_round": 319,
+      "commit": "40cef82"
+    },
+    "DEC-317": {
+      "id": "DEC-317",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-13T08:43:16+00:00",
+      "updated_at": "2026-09-13T08:43:16+00:00",
+      "touched_round": 319,
+      "rationale": "Round 319 feature delivery: reader-local reading streak + 52-week heatmap (DEC-316/TASK-386) closed by CHG-507/508/509. Fresh dual-sweep (reader-facing + admin/platform) from an empty backlog; the reader sweep's #1 (streak/heatmap bucketed in UTC but rendered in local time — every non-UTC reader's streak credited the wrong calendar day and tooltip/today disagreed with their own calendar) was the only candidate that cleared the value gate as a corrective line at the frontend/backend seam (pattern of DEC-310/314). VERIFY green: backend 1451 tests (incl. 5 new tz contract/unit tests), pyright/ruff clean; frontend 2040 unit tests (incl. 3 new), typecheck exit 0, biome/rumdl clean; e2e reading-streak (incl. the UTC-1 timezone-pinned journey that deterministically fails a reverted UTC-only implementation) + history/history-sync/history-search pass. Also hardened the deploy: backend image pins tzdata so ZoneInfo resolves in production once the page always declares a timezone. Feature mode continues.",
+      "alternatives_rejected": "Admin sweep: reader drill-down re-rejected (prior value-gate rejection); comment-moderation context nav real but multi-surface, deferred; sitemap series+>1000 pagination real backend-only SEO gap, deferred; backup-coverage warning acceptance fuzzy, deferred; analytics window preset below gate, deferred; category/tag delete reassign multi-surface, deferred; dashboard draft-inflated ratio logged for a combined admin cleanup round. Reader sweep: @-mentions largest slice (DDL + notif kind + autocomplete), deferred; comment-history deep links real tiny frontend-only gap, deferred; reading-density off/reset unverified by sweep, dropped."
     }
   },
   "edges": [
@@ -35133,6 +35208,60 @@
       "to": "DEC-312",
       "type": "supersedes",
       "created_at": "2026-09-13T06:58:04+00:00"
+    },
+    {
+      "from": "TASK-386",
+      "to": "ISS-500",
+      "type": "addresses",
+      "created_at": "2026-09-13T07:44:25+00:00"
+    },
+    {
+      "from": "DEC-316",
+      "to": "TASK-386",
+      "type": "governs",
+      "created_at": "2026-09-13T07:44:25+00:00"
+    },
+    {
+      "from": "CHG-507",
+      "to": "TASK-386",
+      "type": "implements",
+      "created_at": "2026-09-13T08:42:27+00:00"
+    },
+    {
+      "from": "CHG-508",
+      "to": "TASK-386",
+      "type": "implements",
+      "created_at": "2026-09-13T08:42:27+00:00"
+    },
+    {
+      "from": "CHG-509",
+      "to": "TASK-386",
+      "type": "implements",
+      "created_at": "2026-09-13T08:42:27+00:00"
+    },
+    {
+      "from": "CHG-507",
+      "to": "ISS-500",
+      "type": "resolves",
+      "created_at": "2026-09-13T08:42:27+00:00"
+    },
+    {
+      "from": "CHG-508",
+      "to": "ISS-500",
+      "type": "resolves",
+      "created_at": "2026-09-13T08:42:27+00:00"
+    },
+    {
+      "from": "CHG-509",
+      "to": "ISS-500",
+      "type": "resolves",
+      "created_at": "2026-09-13T08:42:27+00:00"
+    },
+    {
+      "from": "DEC-317",
+      "to": "DEC-316",
+      "type": "supersedes",
+      "created_at": "2026-09-13T08:43:37+00:00"
     }
   ]
 }
