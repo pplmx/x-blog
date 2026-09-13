@@ -64,3 +64,73 @@ test.describe("Reading streak + activity (TASK-201)", () => {
 		await expect(litCell).toBeVisible({ timeout: 5000 });
 	});
 });
+
+// Timezone-pinned journey (DEC-316/TASK-386): the streak and 52-week heatmap
+// previously bucketed reads in UTC while the page rendered them in local time,
+// so every non-UTC reader's "today" and tooltip dates disagreed with their own
+// calendar. Now the stats fetch declares the browser's timezone and the backend
+// anchors to the reader's local day.
+//
+// The discriminator is subtle: the OLD pipeline showed, for a read in zone Z,
+// the local rendition of the UTC bucket's midnight — and that can COINCIDE with
+// the read's local date (the label re-shift mirrors the bucket shift in some
+// zones/hours). For a west zone with offset −k, the old label is always
+// utcDate−−1 whenever the read's UTC time is ≥ k hours, while the new label is
+// the read's local date (utcDate). So **UTC−1 ("Etc/GMT+1") discriminates for
+// any run time past 01:00 UTC**: old shows utcDate−1, new shows utcDate. Only
+// the exact first minute of the UTC day (00:00–01:00) has no discriminating
+// offset, so the test skips there (1/1440 odds).
+const now = new Date();
+const utcDate = now.toISOString().slice(0, 10);
+const utcHourFraction = (now.getTime() / 3_600_000) % 24;
+const pinnedZone = utcHourFraction >= 1 ? "Etc/GMT+1" : null;
+
+test.describe("Reading streak + activity, timezone-pinned (DEC-316/TASK-386)", () => {
+	test.use({ timezoneId: pinnedZone ?? "UTC" });
+	if (!pinnedZone) {
+		test.skip("inside the 00:00–01:00 UTC window where no offset discriminates");
+	}
+
+	test("a read today is credited to the reader's LOCAL calendar day, not UTC", async ({
+		page,
+		request,
+	}) => {
+		const token = await registerReader(request, freshEmail());
+		await page.addInitScript((tk) => {
+			localStorage.setItem("reader_token", tk);
+		}, token);
+
+		// View a post so "now" gets a server-backed read.
+		await page.goto("/");
+		const postLink = page.locator("main a[href*='/posts/']").first();
+		await postLink.waitFor({ state: "visible" });
+		await page.goto((await postLink.getAttribute("href")) ?? "");
+		await page.waitForURL(/\/posts\//);
+
+		await page.goto("/history");
+		await expect(page.locator("h1").first()).toBeVisible({ timeout: 10000 });
+
+		// The last heatmap cell is today (the backend window ends at local
+		// today). In UTC−1 the read's local date is the UTC date, so the
+		// expected LOCAL label is utcDate rendered in the pinned zone — and the
+		// stale UTC-only implementation would show utcDate−1 instead.
+		const readTime = new Date();
+		const labelFmt = new Intl.DateTimeFormat("zh-CN", {
+			timeZone: pinnedZone,
+			year: "numeric",
+			month: "short",
+			day: "numeric",
+		});
+		const localLabel = labelFmt.format(readTime); // utcDate (the read's local day)
+		const utcOnlyLabel = labelFmt.format(new Date(`${utcDate}T00:00:00Z`)); // utcDate−1
+
+		const todayCell = page.locator('[title*="篇"]').last();
+		await expect(todayCell).toBeVisible({ timeout: 5000 });
+		const title = (await todayCell.getAttribute("title")) ?? "";
+		expect(title).toContain(localLabel);
+		// The rigorous half: the UTC-only label (utcDate−1) must NOT appear in
+		// today's cell — the bucket (and thus the tooltip) must be the reader's
+		// local day, and a reverted UTC-bucketing fails this deterministically.
+		expect(title).not.toContain(utcOnlyLabel);
+	});
+});

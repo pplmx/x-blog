@@ -439,8 +439,9 @@ class TestActivityStreak:
 
         return [datetime.now(UTC) - timedelta(days=o) for o in offsets]
 
-    def _stats(self, client, token):
-        return client.get(f"{HISTORY}/stats", headers=_auth(token)).json()
+    def _stats(self, client, token, tz=None):
+        params = {"tz": tz} if tz is not None else None
+        return client.get(f"{HISTORY}/stats", params=params, headers=_auth(token)).json()
 
     def test_empty_stats_have_zero_streaks_and_zeroed_activity(self, client, db_session):
         token = _token(client)
@@ -518,3 +519,90 @@ class TestActivityStreak:
         body = self._stats(client, token)
         assert body["current_streak"] == 0
         assert body["activity"][-1]["count"] == 0
+
+    # --- timezone-aware bucketing (round 319, DEC-316/TASK-386) ---------------
+    # The pre-fix endpoint bucketed every day in UTC while the face the reader
+    # sees renders those buckets in local time, so for every non-UTC reader the
+    # streak and heatmap disagreed with their own calendar. The stats endpoint
+    # now accepts an IANA ``tz`` and buckets reads (and anchors the streak +
+    # activity window) to the reader's local calendar day.
+
+    def test_tz_query_shifts_bucket_dates_to_the_reader_local_calendar(self, client, db_session):
+        """A read whose UTC date differs from its Honolulu local date must be
+        bucketed (and thus shown on the heatmap) under the LOCAL calendar day
+        when ``tz`` is sent. The 2026-06-01T00:30Z instant is 2026-05-31 14:30
+        in Pacific/Honolulu — the fixed instant makes this deterministic
+        regardless of when the suite runs."""
+        from datetime import datetime
+
+        token = _token(client)
+        reader_id = self._reader_id(db_session)
+        post = _create_post(db_session)
+        self._seed(db_session, reader_id, [post.id], [datetime(2026, 6, 1, 0, 30)])
+
+        def lit_dates(body):
+            return sorted(a["date"] for a in body["activity"] if a["count"])
+
+        assert lit_dates(self._stats(client, token)) == ["2026-06-01"]  # UTC default
+        assert lit_dates(self._stats(client, token, tz="Pacific/Honolulu")) == ["2026-05-31"]
+
+    def test_unknown_tz_is_rejected_with_a_422(self, client):
+        token = _token(client)
+        resp = client.get(f"{HISTORY}/stats", params={"tz": "Not\\A/Timezone"}, headers=_auth(token))
+        assert resp.status_code == 422
+
+    def test_streak_and_activity_anchor_to_the_reader_local_today(self, client, db_session):
+        """The current streak and the heatmap's final (today) cell must align to
+        the reader's LOCAL calendar day, not UTC. We pick the test zone so its
+        local date is guaranteed to differ from the UTC date at this instant
+        (UTC−10 and UTC+14 straddle the date line such that at least one always
+        differs at any UTC hour), seed a read "right now", and require the
+        server to credit it to that local today — the pre-fix response credited
+        UTC today instead and failed on every non-UTC reader."""
+        from datetime import UTC, datetime
+        from zoneinfo import ZoneInfo
+
+        utc_now = datetime.now(UTC)
+        utc_today = utc_now.date()
+        tz_id = None
+        for candidate in ("Pacific/Kiritimati", "Pacific/Honolulu"):
+            if utc_now.astimezone(ZoneInfo(candidate)).date() != utc_today:
+                tz_id = candidate
+                break
+        assert tz_id is not None  # at least one straddles the date line at any instant
+
+        token = _token(client)
+        reader_id = self._reader_id(db_session)
+        post = _create_post(db_session)
+        self._seed(db_session, reader_id, [post.id], [utc_now])
+
+        body = self._stats(client, token, tz=tz_id)
+        local_today = utc_now.astimezone(ZoneInfo(tz_id)).date().isoformat()
+        assert body["activity"][-1]["date"] == local_today
+        assert body["activity"][-1]["count"] == 1
+        assert body["current_streak"] >= 1
+
+    def test_day_activity_window_ends_at_the_supplied_local_today(self):
+        from datetime import date, timedelta
+
+        from app.crud import ACTIVITY_DAYS, _day_activity
+
+        out = _day_activity({date(2026, 9, 13): 2}, today=date(2026, 9, 13))
+        assert len(out) == ACTIVITY_DAYS
+        assert out[-1] == {"date": "2026-09-13", "count": 2}
+        assert out[0]["date"] == (date(2026, 9, 13) - timedelta(days=ACTIVITY_DAYS - 1)).isoformat()
+
+    def test_current_streak_uses_the_supplied_local_today(self):
+        from datetime import date
+
+        from app.crud import _current_streak
+
+        dates = {date(2026, 9, 12), date(2026, 9, 13)}
+        assert _current_streak(dates, today=date(2026, 9, 13)) == 2  # today active
+        # Today idle → the anchor falls back to yesterday (the "hasn't read
+        # *yet* today" grace), so the run still counts 13+12 = 2.
+        assert _current_streak(dates, today=date(2026, 9, 14)) == 2
+        # Neither today nor yesterday active under the *supplied* anchor → 0,
+        # even if another wall-clock yearns for "today" (the tz anchor is
+        # authoritative, DEC-316).
+        assert _current_streak(dates, today=date(2026, 9, 15)) == 0

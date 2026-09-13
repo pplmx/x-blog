@@ -296,6 +296,34 @@ describe("useReadingHistory (TASK-170)", () => {
 		});
 	});
 
+	it("forwards the browser timezone with the stats fetch so the streak is the reader's own calendar (DEC-316)", async () => {
+		authRef.value = true;
+		fetchHistory.mockResolvedValue({ items: [], total: 0, page: 1, limit: 100, total_pages: 1 });
+		const { load } = useReadingHistory();
+		await load();
+		expect(fetchStats).toHaveBeenCalledTimes(1);
+		// The client timezone is whatever this environment resolves (deterministic
+		// because we compute it the same way the composable does).
+		expect(fetchStats.mock.calls[0]?.[0]).toBe(Intl.DateTimeFormat().resolvedOptions().timeZone);
+	});
+
+	it("omits the timezone when the environment cannot resolve one (systemdefault guard)", async () => {
+		authRef.value = true;
+		fetchHistory.mockResolvedValue({ items: [], total: 0, page: 1, limit: 100, total_pages: 1 });
+		const spy = vi
+			.spyOn(Intl.DateTimeFormat.prototype, "resolvedOptions")
+			.mockReturnValue({ timeZone: "systemdefault" } as Intl.ResolvedDateTimeFormatOptions);
+		try {
+			const { load } = useReadingHistory();
+			await load();
+			// A degenerate embedder must not send a bogus tz that 422s the
+			// backend — omit it and let the backend fall back to UTC.
+			expect(fetchStats).toHaveBeenCalledWith(undefined);
+		} finally {
+			spy.mockRestore();
+		}
+	});
+
 	it("pendingDeviceCount is 0 for guests even with a local trail", async () => {
 		localRecent.value = [{ slug: "a", title: "A", viewedAt: 1 }];
 		const { load, pendingDeviceCount } = useReadingHistory();

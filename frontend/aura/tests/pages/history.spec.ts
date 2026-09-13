@@ -264,6 +264,27 @@ describe("Reading-history page (TASK-170)", () => {
 		expect(tooltipCells[0].attributes("title")).toContain("篇");
 	});
 
+	it("labels heatmap cells with the LOCAL calendar date (DEC-316)", () => {
+		// The backend buckets the heatmap by the reader's local calendar
+		// days, so a cell's date string is already local — the label must
+		// show it as-is and never re-shift it by the browser offset (the
+		// pre-fix UTC-midnight parse displayed the prior local day in every
+		// negative-offset zone). Local-midnight parsing makes this assertion
+		// hold in ANY timezone, not just the test env.
+		mockStats.value = {
+			totalPosts: 4,
+			totalReadingMinutes: 37,
+			activity: [{ date: "2026-08-22", count: 1 }],
+		};
+		const wrapper = mountHistory();
+		const tooltip = wrapper
+			.findAll("[title]")
+			.map((el) => el.attributes("title") ?? "")
+			.find((t) => t.includes("篇"));
+		expect(tooltip).toBeDefined();
+		expect(tooltip).toContain("2026年8月22日");
+	});
+
 	it("hides the heatmap when there is no activity data (TASK-201)", () => {
 		mockStats.value = { totalPosts: 0, totalReadingMinutes: 0 };
 		const wrapper = mountHistory();
