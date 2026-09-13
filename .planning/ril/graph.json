@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 322,
+  "round": 324,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-13T10:10:03+00:00",
+  "updated_at": "2026-09-13T13:25:01+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -23694,6 +23694,81 @@
       "touched_round": 321,
       "rationale": "Round 321 feature delivery: comment-history deep links (DEC-320/TASK-388) closed by CHG-513/514/515 — /comments and reader-profile 'on post' jumps now carry #comment-<id> so the reader lands on the exact comment (landing machinery predates, DEC-072). Chosen from the reader-sweep backlog (the smallest clean value-gate slice: real gap, one-sentence acceptance, net-additive frontend-only). VERIFY green: frontend 2041 unit tests (2 specs, incl. the updated reader-profile contract), typecheck exit 0, biome clean; reader-comments e2e 3/3 incl. the new full journey (comment -> approve -> /comments -> anchored click -> landed) through the Nuxt origin. Backend untouched. Feature mode continues.",
       "alternatives_rejected": "@-mentions (largest slice: DDL + notif kind + pref row + autocomplete) still deferred. Admin items still deferred: comment-moderation context nav, category/tag delete reassign, backup-coverage warning, analytics window preset, admin reader drill-down (prior rejection), dashboard draft-inflated ratio (combined admin cleanup round)."
+    },
+    "DEC-322": {
+      "id": "DEC-322",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-13T10:20:45+00:00",
+      "updated_at": "2026-09-13T10:20:45+00:00",
+      "touched_round": 323,
+      "rationale": "Round 322 feature selection (marquee reader backlog item, first slice): @-mention notifications. When an approved comment contains a reader's exact display name as @<name>, that reader gets a durable inbox notification (kind=mention) with a #comment-<id> deep link (which DEC-321 now lands). Real user capability — drawing a third-party reader into a discussion by name, missing entirely from the comment surface. One-sentence acceptance: typing @<reader display name> in a comment notifies that reader (respecting their per-kind mention preference) with a deep-link to the comment. Vertically sliced to stay net-additive and self-contained: backend @-resolution + batched mention notification at approval (mirrors thread_comment fan-out), additive 'mention' pref column + toggle (DEC-171 invariant: every kind is opt-out-able; DEC-009 DDL-preserving), frontend prefs row + list kind label. Deliberately OUT of scope this round (deferred): @ autocomplete, styled mention rendering, mention email channel — later slices. Sanity: kind is a plain String(32) and prefs use per-column bools, so the ONLY schema change is one additive column.",
+      "alternatives_rejected": "Admin items still deferred (multi-surface or below gate): comment-moderation context nav, category/tag delete reassign, backup-coverage warning, analytics window preset, admin reader drill-down (prior rejection), dashboard draft-inflated ratio (combined admin cleanup round). Reader: nothing else above gate."
+    },
+    "TASK-389": {
+      "id": "TASK-389",
+      "type": "task",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-13T10:20:45+00:00",
+      "updated_at": "2026-09-13T13:21:27+00:00",
+      "touched_round": 323,
+      "category": "core-feature",
+      "severity": 3,
+      "confidence": 0.95,
+      "effort": "medium"
+    },
+    "ISS-503": {
+      "id": "ISS-503",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-13T10:20:45+00:00",
+      "updated_at": "2026-09-13T13:21:27+00:00",
+      "touched_round": 323,
+      "description": "no way to draw a third-party reader into a comment thread by name"
+    },
+    "CHG-516": {
+      "id": "CHG-516",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-13T13:18:50+00:00",
+      "updated_at": "2026-09-13T13:18:50+00:00",
+      "touched_round": 323,
+      "commit": "114bfa2"
+    },
+    "CHG-517": {
+      "id": "CHG-517",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-13T13:18:50+00:00",
+      "updated_at": "2026-09-13T13:18:50+00:00",
+      "touched_round": 323,
+      "commit": "3726a72"
+    },
+    "CHG-518": {
+      "id": "CHG-518",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-13T13:18:50+00:00",
+      "updated_at": "2026-09-13T13:18:50+00:00",
+      "touched_round": 323,
+      "commit": "5a31a1d"
+    },
+    "DEC-323": {
+      "id": "DEC-323",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-13T13:23:22+00:00",
+      "updated_at": "2026-09-13T13:23:22+00:00",
+      "touched_round": 323,
+      "rationale": "Round 322 feature delivery: @-mention notifications (DEC-322/TASK-389) closed by CHG-516/517/518 (test/feat/docs). An approved comment naming a reader via @<display name> now fans out a kind=mention inbox notification with a #comment-<id> deep link (landing machinery DEC-321), respecting the reader per-kind opt-out (additive mention column on reader_notification_prefs, DEC-009), skipping the commenter and inactive readers, matching at word boundaries, dispatches at approval only (pending notifies nobody), scan bounded (MENTION_SCAN_LIMIT + re.escape). One-sentence acceptance verifiable in the e2e: guest comment @<name> -> admin approve -> named reader inbox shows the mention row and the deep link lands. VERIFY green: backend 1462 tests (cov 93.7%, ruff+pyright clean), frontend 2043 unit tests, typecheck exit 0, biome clean; reader-notifications e2e 3/3 through the Nuxt origin. Feature mode continues.",
+      "alternatives_rejected": "@-mention autocomplete, styled mention rendering, and a mention email channel remain deferred as later slices. Admin items still deferred: comment-moderation context nav, category/tag delete reassign, backup-coverage warning, analytics window preset, admin reader drill-down, dashboard draft-inflated ratio (combined admin cleanup round)."
     }
   },
   "edges": [
@@ -35520,6 +35595,48 @@
       "to": "DEC-320",
       "type": "supersedes",
       "created_at": "2026-09-13T10:10:03+00:00"
+    },
+    {
+      "from": "TASK-389",
+      "to": "ISS-503",
+      "type": "addresses",
+      "created_at": "2026-09-13T10:21:26+00:00"
+    },
+    {
+      "from": "DEC-322",
+      "to": "TASK-389",
+      "type": "governs",
+      "created_at": "2026-09-13T10:21:26+00:00"
+    },
+    {
+      "from": "CHG-516",
+      "to": "TASK-389",
+      "type": "implements",
+      "created_at": "2026-09-13T13:20:41+00:00"
+    },
+    {
+      "from": "CHG-517",
+      "to": "TASK-389",
+      "type": "implements",
+      "created_at": "2026-09-13T13:20:41+00:00"
+    },
+    {
+      "from": "CHG-518",
+      "to": "TASK-389",
+      "type": "implements",
+      "created_at": "2026-09-13T13:20:41+00:00"
+    },
+    {
+      "from": "CHG-517",
+      "to": "ISS-503",
+      "type": "resolves",
+      "created_at": "2026-09-13T13:20:41+00:00"
+    },
+    {
+      "from": "DEC-323",
+      "to": "DEC-322",
+      "type": "supersedes",
+      "created_at": "2026-09-13T13:23:23+00:00"
     }
   ]
 }
