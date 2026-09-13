@@ -9,6 +9,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- **Comment live preview (DEC-306)**: the comment form advertises
+  sanitized-Markdown rendering (DEC-088) and every comment waits in the
+  moderation queue (DEC-066), but a commenter had no way to see their draft
+  render before submitting — a malformed markup draft would burn an approval
+  cycle with zero feedback. The form now has a Write/Preview toggle: the
+  Preview tab renders the draft through the exact `commentMarkdownToHtml`
+  pipeline the comment list ships (same sanitizer, same lazy highlight.js for
+  fenced code), so "what you see here" IS "what gets posted". A successful
+  submit returns to a clean Write tab; empty drafts show a hint instead of a
+  blank box. Net-additive frontend slice (no backend/DDL), with unit tests
+  (rendering, XSS-inert preview, draft preserved on toggle, submit-reset) and
+  Playwright e2e (markdown render + script/event-handler payloads never reach
+  the DOM) and zh/en i18n.
 - **Markdown image lightbox (DEC-302)**: clicking any image inside a post
   opens it at full resolution in a dark fullscreen viewer — Escape, a backdrop
   click or the close button dismisses it, arrow keys (or on-screen arrows)
