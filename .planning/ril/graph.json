@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 317,
+  "round": 318,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-13T02:29:51+00:00",
+  "updated_at": "2026-09-13T04:47:01+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -23335,9 +23335,80 @@
       "version": 1,
       "created_at": "2026-09-13T02:29:15+00:00",
       "updated_at": "2026-09-13T02:29:15+00:00",
-      "touched_round": 316,
+      "touched_round": 317,
       "rationale": "Round 316: the fresh surface sweep (Explore) surfaced one user-facing correctness gap that passed the value gate: moderated deployments default to auto-approve OFF, where a submitted comment is returned pending but the thread only serves approved rows — post-submit screen surfacing jumped pages and walked the thread hunting a comment that structurally cannot render (silent scroll flailing, double-post risk). Delivered as CHG-501 (fix commit 81bc955), closing TASK-383. Remaining sweep findings rejected at the value gate: inline category-follow (DEC-301 already rejected the third follow control), bookmark-folder-at-save (button-level control stitching, DEC-302 pattern), tag-feed stable URL (cosmetic), unused asReaderHint key (dead copy, not user-visible — tracked for a cleanup pass, not a feature). VERIFY green: frontend 2033 unit tests, typecheck exit 0, biome/rumdl clean, comment e2e (preview incl. the new no-paging assertion + 6 related comment suites) all pass; backend untouched this round. Feature mode continues.",
       "alternatives_rejected": "None for the shipped fix (the only candidate that cleared the gate). The four remaining sweep findings were each below the user-value line (see rationale) and are recorded as rejected rather than built."
+    },
+    "DEC-312": {
+      "id": "DEC-312",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-13T02:41:51+00:00",
+      "updated_at": "2026-09-13T02:41:51+00:00",
+      "touched_round": 317,
+      "rationale": "Round 317 feature sourcing (fresh surface sweep, Explore-verified). The reader notification inbox is otherwise complete (DEC-160 list + read/unread, DEC-171 per-kind prefs, DEC-197 email, DEC-201 digest) but a notification ROW can never be removed: the list only marks read/read-all, so a reader subscribed to several series/categories accumulates an ever-growing archive of consumed notifications with no way to prune it (mark-all-read clears the badge, not the list). Real user-perceivable problem (data hygiene on a durable inbox, like clearing read mail); acceptance in one sentence: from /notifications a signed-in reader deletes any individual consumed notification and the list updates in place. Net additive vertical slice: DELETE /api/reader/me/notifications/{notification_id} (404 on unknown, deletes the reader's own row only — scoped by reader_id like every reader table), a delete button on each row, backend contract tests + frontend tests + e2e. Not a same-kind patch (no deletion exists anywhere in the inbox).",
+      "alternatives_rejected": "Inline category-follow on the post page (already rejected at DEC-290/292/297/301 — third near-identical follow control, value gate = button-level patch). Bookmark-folder-at-save (folder pick in the save button — control stitching, DEC-302 pattern). Tag-feed stable URL (cosmetic, both forms work server-side). asReaderHint dead i18n key (dead copy, not user-visible — cleanup not a feature; noted for a later refactor pass)."
+    },
+    "TASK-384": {
+      "id": "TASK-384",
+      "type": "task",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-13T02:42:25+00:00",
+      "updated_at": "2026-09-13T04:44:38+00:00",
+      "touched_round": 317,
+      "category": "core-feature",
+      "severity": 3,
+      "confidence": 1.0,
+      "effort": 3,
+      "unlock_factor": 1.1,
+      "title": "Delete individual notifications from /notifications (DEC-312)",
+      "description": "Backend: DELETE /api/reader/me/notifications/{id} scoped by reader_id (404 for unknown/other-reader), returns 204. Frontend: delete button per notification row in notifications.vue, removes the row optimistically + decrements unread if it was unread. Tests: backend contract test (own row deleted, other reader 404, unknown 404), frontend unit, e2e journey."
+    },
+    "CHG-502": {
+      "id": "CHG-502",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-13T04:34:29+00:00",
+      "updated_at": "2026-09-13T04:34:29+00:00",
+      "touched_round": 317,
+      "commit": "2dcbc62",
+      "description": "DELETE /api/reader/me/notifications/{id} + crud + contract tests"
+    },
+    "CHG-503": {
+      "id": "CHG-503",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-13T04:34:29+00:00",
+      "updated_at": "2026-09-13T04:34:29+00:00",
+      "touched_round": 317,
+      "commit": "4af999b",
+      "description": "CHANGELOG/README record delete-notification (both langs)"
+    },
+    "CHG-504": {
+      "id": "CHG-504",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-13T04:42:18+00:00",
+      "updated_at": "2026-09-13T04:42:18+00:00",
+      "touched_round": 317,
+      "commit": "357e662",
+      "description": "notifications.vue per-row delete UI + API + page tests + e2e + i18n"
+    },
+    "DEC-313": {
+      "id": "DEC-313",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-13T04:45:41+00:00",
+      "updated_at": "2026-09-13T04:45:41+00:00",
+      "touched_round": 317,
+      "rationale": "Round 317 feature delivery: delete individual notifications (DEC-312/TASK-384) closed by CHG-502/503/504 — the durable inbox (DEC-160) could never be pruned (mark-read/read-all only clear the badge). VERIFY green: backend 1446 tests @ 93.79% (incl. 5 new delete contract tests), pyright/ruff clean, frontend 2035 unit tests, typecheck exit 0, biome/rumdl clean, e2e reader-notifications (delete journey) + account/bookmarks regression all pass. Explore-sweep alternatives rejected at the value gate: inline category-follow (already rejected DEC-290/292/297/301 as a third near-identical follow control), bookmark-folder-at-save (control stitching, DEC-302 pattern), tag-feed stable URL (cosmetic), asReaderHint dead i18n key (not user-visible). Feature mode continues.",
+      "alternatives_rejected": "Same as rationale — only the notification-delete candidate cleared the user-value + net-slice gate; the four other sweep findings are below the line and recorded as rejected."
     }
   },
   "edges": [
@@ -34930,6 +35001,42 @@
       "to": "DEC-310",
       "type": "supersedes",
       "created_at": "2026-09-13T02:29:51+00:00"
+    },
+    {
+      "from": "DEC-312",
+      "to": "TASK-384",
+      "type": "governs",
+      "created_at": "2026-09-13T02:42:25+00:00"
+    },
+    {
+      "from": "DEC-312",
+      "to": "DEC-311",
+      "type": "supersedes",
+      "created_at": "2026-09-13T02:42:26+00:00"
+    },
+    {
+      "from": "CHG-502",
+      "to": "TASK-384",
+      "type": "implements",
+      "created_at": "2026-09-13T04:44:37+00:00"
+    },
+    {
+      "from": "CHG-503",
+      "to": "TASK-384",
+      "type": "implements",
+      "created_at": "2026-09-13T04:44:37+00:00"
+    },
+    {
+      "from": "CHG-504",
+      "to": "TASK-384",
+      "type": "implements",
+      "created_at": "2026-09-13T04:44:37+00:00"
+    },
+    {
+      "from": "DEC-313",
+      "to": "DEC-312",
+      "type": "supersedes",
+      "created_at": "2026-09-13T04:47:01+00:00"
     }
   ]
 }
