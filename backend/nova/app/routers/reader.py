@@ -1967,6 +1967,27 @@ def mark_notification_read(
     )
 
 
+@router.delete("/me/notifications/{notification_id}", status_code=204)
+@limiter.limit(f"{RATE_LIMIT_WRITE}/minute")
+def delete_notification(
+    request: Request,  # noqa: ARG001
+    notification_id: IdInt,
+    current_reader: auth.ReaderAccount = Depends(auth.get_current_reader),
+    db: Session = Depends(get_db),
+):
+    """Delete one of the reader's inbox rows. 404 if not theirs.
+
+    The inbox is durable (DEC-160) but consumers had no way to prune it — mark
+    read/read-all clear the badge, rows accumulate forever. This removes exactly
+    one of the reader's own notifications (reader_id-scoped like every reader
+    table), so an unknown or another reader's id is a 404, never a cross-reader
+    delete. (DEC-312, TASK-384)
+    """
+    ok = crud.delete_reader_notification(db, current_reader.id, notification_id)
+    if not ok:
+        raise HTTPException(status_code=404, detail="Notification not found")
+
+
 @router.post("/me/notifications/read-all", response_model=dict[str, int])
 @limiter.limit(f"{RATE_LIMIT_WRITE}/minute")
 def mark_all_notifications_read(

@@ -3667,6 +3667,30 @@ def mark_all_reader_notifications_read(db: Session, reader_id: int) -> int:
     return updated
 
 
+def delete_reader_notification(db: Session, reader_id: int, notification_id: int) -> bool:
+    """Delete one of the reader's inbox rows. Returns False if not theirs.
+
+    The inbox is durable (DEC-160) but had no pruning path — mark-read/read-all
+    only clear the badge, so consumed notification rows accumulate forever.
+    Delete is scoped by reader_id like every reader table: a reader removes
+    exactly their own row, and an unknown/foreign id is a miss (404), never a
+    cross-reader delete. (DEC-312, TASK-384)
+    """
+    row = (
+        db.query(models.ReaderNotification)
+        .filter(
+            models.ReaderNotification.id == notification_id,
+            models.ReaderNotification.reader_id == reader_id,
+        )
+        .first()
+    )
+    if row is None:
+        return False
+    db.delete(row)
+    db.commit()
+    return True
+
+
 def get_site_setting(db: Session, key: str) -> str | None:
     """Read a persisted site setting by key, or None if it has never been set."""
     row = db.get(models.SiteSetting, key)

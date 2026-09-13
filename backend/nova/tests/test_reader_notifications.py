@@ -172,6 +172,62 @@ class TestListAndMarkRead:
         assert response.status_code == 422
 
 
+class TestDeleteNotification:
+    """Deleting a single inbox row (DEC-312, TASK-384).
+
+    The inbox is durable (DEC-160) but the reader could never prune it — mark
+    read/read-all only clears the badge, rows accumulate forever. DELETE removes
+    exactly one of the reader's own rows (404 for unknown or another reader's).
+    """
+
+    def test_delete_requires_reader_token(self, client):
+        assert client.delete(f"{NOTIFS}/1").status_code == 401
+
+    def test_delete_own_notification(self, client, db_session):
+        reg = _register(client, email="del@example.com")
+        token = reg.json()["access_token"]
+        rid = reg.json()["reader"]["id"]
+        headers = _auth(token)
+        from app import models
+
+        db_session.add(models.ReaderNotification(reader_id=rid, kind="reply", title="k1"))
+        db_session.add(models.ReaderNotification(reader_id=rid, kind="new_post", title="k2"))
+        db_session.commit()
+        nid = db_session.query(models.ReaderNotification).filter_by(title="k1").one().id
+
+        resp = client.delete(f"{NOTIFS}/{nid}", headers=headers)
+        assert resp.status_code == 204
+
+        data = client.get(NOTIFS, headers=headers).json()
+        assert [i["title"] for i in data["items"]] == ["k2"]
+        assert data["total"] == 1
+        # The row is gone from the table, not merely hidden.
+        assert db_session.get(models.ReaderNotification, nid) is None
+
+    def test_delete_other_reader_notification_is_404(self, client, db_session):
+        from app import models
+
+        owner = _register(client, email="owner@example.com").json()
+        owner_id = owner["reader"]["id"]
+        token_b = _register(client, email="otherdel@example.com").json()["access_token"]
+        db_session.add(models.ReaderNotification(reader_id=owner_id, kind="reply", title="theirs"))
+        db_session.commit()
+        nid = db_session.query(models.ReaderNotification).filter_by(reader_id=owner_id).one().id
+
+        assert client.delete(f"{NOTIFS}/{nid}", headers=_auth(token_b)).status_code == 404
+        # Still present for its owner.
+        assert db_session.get(models.ReaderNotification, nid) is not None
+
+    def test_delete_unknown_is_404(self, client):
+        token = _register(client, email="noid@example.com").json()["access_token"]
+        assert client.delete(f"{NOTIFS}/999999", headers=_auth(token)).status_code == 404
+
+    def test_delete_oversized_id_is_422_not_500(self, client):
+        token = _register(client, email="bigdel@example.com").json()["access_token"]
+        response = client.delete(f"{NOTIFS}/99999999999999999999", headers=_auth(token))
+        assert response.status_code == 422
+
+
 class TestPersistenceHooks:
     def test_deactivated_follower_gets_no_inbox_row(self, client, db_session, auth_headers):
         """Deactivation is a moderation action: a deactivated reader keeps their
