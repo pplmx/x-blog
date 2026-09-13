@@ -7,6 +7,7 @@
 		"emptyDesc": "When something you follow updates, or someone replies to you, it will show up here.",
 		"markAllRead": "Mark all as read",
 		"markRead": "Mark as read",
+		"deleteRow": "Delete this notification",
 		"read": "Read",
 		"unread": "Unread",
 		"unreadBadge": "unread",

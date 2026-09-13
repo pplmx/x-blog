@@ -42,6 +42,7 @@ const mockMarkRead = vi.fn(async (id: number) => ({
 	read: true,
 }));
 const mockMarkAllRead = vi.fn(async () => ({ updated: 2 }));
+const mockDeleteRow = vi.fn(async (_id: number) => undefined);
 const mockFetchPrefs = vi.fn(
 	async (): Promise<ReaderNotificationPrefs> => ({
 		new_post: true,
@@ -72,6 +73,7 @@ vi.mock("../../api/reader/notifications", () => ({
 	getReaderNotifications: mockFetch,
 	markReaderNotificationRead: mockMarkRead,
 	markAllReaderNotificationsRead: mockMarkAllRead,
+	deleteReaderNotification: mockDeleteRow,
 	getReaderNotificationPrefs: mockFetchPrefs,
 	updateReaderNotificationPref: mockUpdatePref,
 }));
@@ -125,6 +127,7 @@ describe("Notifications page (TASK-192)", () => {
 		mockFetch.mockReset();
 		mockMarkRead.mockClear();
 		mockMarkAllRead.mockClear();
+		mockDeleteRow.mockClear();
 		mockFetchPrefs.mockReset();
 		mockUpdatePref.mockClear();
 		mockLogout.mockClear();
@@ -221,8 +224,14 @@ describe("Notifications page (TASK-192)", () => {
 			limit: 100,
 			total_pages: 1,
 		});
-		const buttons = wrapper.findAll("button");
-		await buttons[buttons.length - 1].trigger("click");
+		// Target the mark-read control by its aria-label (not a positional
+		// index — the row gained a delete sibling, so the last button is no
+		// longer unambiguously mark-read, DEC-312).
+		const markReadBtn = wrapper
+			.findAll("button")
+			.find((b) => b.attributes("aria-label") === "标为已读");
+		expect(markReadBtn).toBeDefined();
+		await markReadBtn?.trigger("click");
 		await flushPromises();
 		expect(mockMarkRead).toHaveBeenCalledWith(5);
 		expect(badge.unreadCount.value).toBe(0);
@@ -504,6 +513,73 @@ describe("Notifications page (TASK-192)", () => {
 		expect(mockReplace).toHaveBeenCalledWith("/login");
 		expect(wrapper.text()).not.toContain("私有通知");
 		expect(wrapper.text()).not.toContain("通知偏好");
+	});
+
+	it("deletes one notification row and updates the list and badge (DEC-312)", async () => {
+		mockFetch.mockResolvedValue({
+			items: [makeNotif({ id: 1, title: "第一条通知" }), makeNotif({ id: 2, title: "第二条通知" })],
+			total: 2,
+			unread: 2,
+			page: 1,
+			limit: 100,
+			total_pages: 1,
+		});
+		const wrapper = await mountPage();
+		const badge = await badgeApi();
+		expect(badge.unreadCount.value).toBe(2);
+
+		// The per-row delete button lives outside the row's link/anchor
+		// (sibling, like mark-read), so it is a real clickable button. There
+		// are two rows → two delete controls (aria-label disambiguates).
+		const delButtons = wrapper
+			.findAll("button")
+			.filter((b) => b.attributes("aria-label") === "删除这条通知");
+		expect(delButtons.length).toBe(2);
+
+		// Post-delete the badge re-fetches from the server like mark-read does
+		// (KEEP the post-action server truth), so the next GET reflects the drop.
+		mockFetch.mockResolvedValue({
+			items: [makeNotif({ id: 2, title: "第二条通知" })],
+			total: 1,
+			unread: 1,
+			page: 1,
+			limit: 100,
+			total_pages: 1,
+		});
+
+		await delButtons[0]?.trigger("click");
+		await flushPromises();
+		expect(mockDeleteRow).toHaveBeenCalledWith(1);
+
+		// The row left the list and the unread badge dropped with it.
+		expect(wrapper.text()).not.toContain("第一条通知");
+		expect(wrapper.text()).toContain("第二条通知");
+		expect(badge.unreadCount.value).toBe(1);
+	});
+
+	it("surfaces a failure and keeps the row when deleting fails", async () => {
+		mockFetch.mockResolvedValue({
+			items: [makeNotif({ id: 7, title: "第七条通知" })],
+			total: 1,
+			unread: 0,
+			page: 1,
+			limit: 100,
+			total_pages: 1,
+		});
+		mockDeleteRow.mockRejectedValueOnce(new Error("boom"));
+		const wrapper = await mountPage();
+
+		const del = wrapper
+			.findAll("button")
+			.find((b) => b.attributes("aria-label") === "删除这条通知");
+		expect(del).toBeDefined();
+		await del?.trigger("click");
+		await flushPromises();
+
+		// Failure is surfaced, row stays, button is enabled again for retry.
+		expect(wrapper.text()).toContain("网络错误");
+		expect(wrapper.text()).toContain("第七条通知");
+		expect(del?.attributes("disabled")).toBeUndefined();
 	});
 
 	it("offers a retry on preference-load failure and reloads on click (deep-dive finding)", async () => {

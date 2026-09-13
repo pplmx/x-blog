@@ -10,6 +10,7 @@
  */
 import { computed, onMounted, ref, watch } from "vue";
 import {
+	deleteReaderNotification,
 	getReaderNotificationPrefs,
 	getReaderNotifications,
 	markAllReaderNotificationsRead,
@@ -298,6 +299,33 @@ async function markAllRead() {
 	}
 }
 
+// Deleting an inbox row (DEC-312/TASK-384): the durable inbox had no prune
+// path (mark read/read-all only clear the badge), so consumed rows accumulated
+// forever. Delete removes exactly one row with the same in-flight/failure
+// discipline as mark-read — the row leaves the list optimistically on success
+// (with an unread decrement if it was unread, so the badge stays truthful) and
+// a failure is surfaced, never silent.
+const deletingIds = ref<Set<number>>(new Set());
+const deleteFailed = ref(false);
+
+async function deleteRow(item: ReaderNotification) {
+	if (deletingIds.value.has(item.id)) return;
+	deletingIds.value = new Set(deletingIds.value).add(item.id);
+	deleteFailed.value = false;
+	try {
+		await deleteReaderNotification(item.id);
+		if (!item.read && unread.value > 0) unread.value -= 1;
+		items.value = items.value.filter((i) => i.id !== item.id);
+		void refreshBadge();
+	} catch {
+		deleteFailed.value = true;
+	} finally {
+		const s = new Set(deletingIds.value);
+		s.delete(item.id);
+		deletingIds.value = s;
+	}
+}
+
 function kindLabel(item: ReaderNotification): string {
 	const key = `notifications.kind.${item.kind}`;
 	return t(key) === key ? item.title : t(key);
@@ -349,7 +377,7 @@ function kindIcon(kind: string): string {
       </button>
     </div>
 
-    <div v-if="error || markActionFailed" class="mb-4 flex flex-wrap items-center gap-3 text-sm text-red-600 dark:text-red-400">
+    <div v-if="error || markActionFailed || deleteFailed" class="mb-4 flex flex-wrap items-center gap-3 text-sm text-red-600 dark:text-red-400">
       <p>{{ t('common.errors.network') }}</p>
       <button
         v-if="error"
@@ -499,6 +527,26 @@ function kindIcon(kind: string): string {
               <Icon icon="lucide:loader-2" class="w-3 h-3 animate-spin" aria-hidden="true" role="presentation" />
             </span>
             <template v-else>{{ t('notifications.markRead') }}</template>
+          </button>
+          <!-- Delete the row (DEC-312/TASK-384): the durable inbox had no prune
+               path, so consumed rows accumulated forever. A sibling to the link
+               (like mark-read) so it never nests in invalid HTML; scoped
+               in-flight state disables it while deleting. -->
+          <button
+            type="button"
+            :disabled="deletingIds.has(item.id)"
+            :aria-label="t('notifications.deleteRow')"
+            class="shrink-0 self-center p-4 text-xs font-medium whitespace-nowrap text-gray-400 dark:text-gray-500 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/40 rounded-r-xl disabled:opacity-60 disabled:cursor-not-allowed transition-colors focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:outline-none"
+            @click.stop="deleteRow(item)"
+          >
+            <Icon
+              v-if="deletingIds.has(item.id)"
+              icon="lucide:loader-2"
+              class="w-3 h-3 animate-spin"
+              aria-hidden="true"
+              role="presentation"
+            />
+            <Icon v-else icon="lucide:trash-2" class="w-3.5 h-3.5" aria-hidden="true" role="presentation" />
           </button>
         </div>
       </li>

@@ -48,6 +48,14 @@ export function markAllReaderNotificationsRead(): Promise<{ updated: number }> {
 	});
 }
 
+/** Delete one inbox row (204; 404 if it isn't the reader's). DEC-312/TASK-384. */
+export function deleteReaderNotification(notificationId: number): Promise<void> {
+	return command<void>(`/api/reader/me/notifications/${notificationId}`, {
+		method: "DELETE",
+		headers: readerAuthHeaders(),
+	});
+}
+
 /** A reader's per-kind notification opt-outs. Every true = all kinds on. */
 export interface ReaderNotificationPrefs {
 	new_post: boolean;

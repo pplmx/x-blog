@@ -7,6 +7,7 @@
 		"emptyDesc": "当你关注的内容有新动态、有人回复你时，会显示在这里。",
 		"markAllRead": "全部标为已读",
 		"markRead": "标为已读",
+		"deleteRow": "删除这条通知",
 		"read": "已读",
 		"unread": "未读",
 		"unreadBadge": "未读",
