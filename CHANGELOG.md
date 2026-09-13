@@ -9,6 +9,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- **Email copy of @-mentions (DEC-326)**: the @-mention fan-out (DEC-322) only
+  reached the durable inbox and the browser push, so a reader who relies on the
+  opt-in email channel (DEC-197) never heard about the single most personal
+  notification — being called out by name. Mention dispatch now also sends the
+  email when the reader opted into the new per-kind `email_mention` preference
+  (off by default like the other email kinds), gated independently of the
+  in-app mention toggle (a reader can mute the inbox row and still get the
+  email, or vice versa); the email carries the same title/body/deep link as the
+  inbox row. Additive `email_mention` column on `reader_notification_prefs`
+  (DEC-009). Backend contract tests (email off by default but inbox still
+  lands; email on sends to the registered address; email survives an in-app
+  mention opt-out; pref toggle round-trip; prefs surface exposes the new kind)
+    - a frontend page test for the new preferences row.
 - **@-mention autocomplete (DEC-324)**: an approved comment could @-mention a
   reader (DEC-322), but the commenter had to type the exact display name from
   memory — zero discovery, so the capability was near-unusable in practice.
