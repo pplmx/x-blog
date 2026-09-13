@@ -126,3 +126,46 @@ test.describe("Scoped category feed", () => {
 		expect(response.status()).toBe(404);
 	});
 });
+
+test.describe("Tag-scoped feed through the Nuxt origin (DEC-314/TASK-385)", () => {
+	test("the tag page's ?tag_id feed URL stays tag-scoped via the proxy", async ({
+		page,
+		request,
+	}) => {
+		// tags.vue emits /rss/feed.xml?tag_id={id} (autodiscovery + subscribe).
+		// Before the fix the Nuxt origin stripped the query, so a reader who
+		// subscribed to one tag silently received the GLOBAL feed. This fetches
+		// THROUGH the Nuxt origin (baseURL), the path the browser uses, and
+		// proves the scope survives the proxy.
+		const tagName = unique("RSS 标签");
+		const token = await adminToken(request);
+		const tagResp = await request.post("/api/tags", {
+			data: { name: tagName },
+			headers: { Authorization: `Bearer ${token}` },
+		});
+		expect(tagResp.status()).toBe(201);
+		const tagId = (await tagResp.json()).id as number;
+
+		await createPost(request, "RSS 标签内文章", { tags: [tagName] });
+		await createPost(request, "RSS 无关文章");
+
+		// The tag page advertises the query-scoped feed URL.
+		await page.goto(`/tags?tag_id=${tagId}`);
+		const feedUrl = `/rss/feed.xml?tag_id=${tagId}`;
+		const alternates = await page.evaluate(() =>
+			Array.from(
+				document.querySelectorAll('link[rel="alternate"][type="application/rss+xml"]'),
+			).map((node) => node.getAttribute("href")),
+		);
+		expect(alternates).toContain(feedUrl);
+
+		// Fetch at the Nuxt origin (the fix's path) — the feed must be scoped.
+		const feed = await request.get(feedUrl);
+		expect(feed.status()).toBe(200);
+		const body = await feed.text();
+		expect(body).toContain("RSS 标签内文章");
+		expect(body).not.toContain("RSS 无关文章");
+		// The channel self-links the same query-scoped URL (not the global feed).
+		expect(body).toContain(`tag_id=${tagId}`);
+	});
+});

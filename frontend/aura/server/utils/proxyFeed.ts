@@ -21,13 +21,28 @@ export async function proxyConditionalFeed(
 
 	const ifNoneMatch = getRequestHeader(event, "if-none-match");
 
+	// Forward the inbound query string, mirroring the API proxy: tags.vue
+	// scopes its feed as /rss/feed.xml?tag_id={id} (autodiscovery + subscribe
+	// link), so dropping the query here silently served the GLOBAL feed to a
+	// reader who subscribed to one tag — the sibling category/series feeds are
+	// path-form and proxy correctly, making this the only broken scope on the
+	// Nuxt origin (DEC-314/TASK-385). The backend keeps its strong ETag per
+	// scoped body, so 304 revalidation stays correct across scopes.
+	const query = getQuery(event);
+	const qs = new URLSearchParams();
+	for (const [key, value] of Object.entries(query)) {
+		if (typeof value === "string") qs.append(key, value);
+	}
+	const qsSuffix = qs.toString();
+	const target = `${apiUrl}${apiPath}${qsSuffix ? `?${qsSuffix}` : ""}`;
+
 	// $fetch here is the nitro auto-import (a free global; the vitest spec
 	// stubs it). `any` keeps the assignment readable — the router-typed return
 	// type otherwise trips TS's stack-depth check — and only status/headers/
 	// _data are consumed below.
 	let response: any; // eslint-disable-line
 	try {
-		response = await $fetch.raw(`${apiUrl}${apiPath}`, {
+		response = await $fetch.raw(target, {
 			method: "GET",
 			responseType: "text",
 			headers: {

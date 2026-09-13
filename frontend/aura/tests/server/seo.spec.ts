@@ -59,9 +59,13 @@ function mockRawResponse(
 }
 
 /** A mock H3 event that records response status/headers set by the handler. */
-function makeEvent(requestHeaders: Record<string, string> = {}) {
+function makeEvent(
+	requestHeaders: Record<string, string> = {},
+	query: Record<string, string> = {},
+) {
 	return {
 		headers: { ...requestHeaders },
+		query,
 		status: undefined as number | undefined,
 		responseHeaders: {} as Record<string, string>,
 	};
@@ -79,6 +83,7 @@ beforeEach(() => {
 		(event: Record<string, unknown>, name: string) =>
 			((event.headers as Record<string, string>)?.[name] as string | undefined) ?? null,
 	);
+	vi.stubGlobal("getQuery", (event: { query?: Record<string, string> }) => event.query ?? {});
 	vi.stubGlobal("setResponseStatus", (event: { status?: number }, status: number) => {
 		event.status = status;
 	});
@@ -246,4 +251,25 @@ describe("conditional feed/sitemap proxy routes", () => {
 			});
 		});
 	}
+});
+
+describe("scoped feed query forwarding (DEC-314/TASK-385)", () => {
+	it("forwards the tag_id query so a tag-scoped feed stays scoped through the proxy", async () => {
+		// tags.vue autodiscovery + subscribe emit /rss/feed.xml?tag_id={id};
+		// before the fix the proxy stripped it and the reader silently got the
+		// GLOBAL feed (the sibling category/series feeds use path form and
+		// proxy correctly — this is the one broken scope on the Nuxt origin).
+		const handler = await loadProxyHandler("rss/feed.xml");
+		const event = makeEvent({}, { tag_id: "42" });
+		await handler(event);
+		expect(fetchCalls).toHaveLength(1);
+		expect(fetchCalls[0].url).toBe(`${apiUrl}/rss/feed.xml?tag_id=42`);
+	});
+
+	it("keeps the plain global feed URL when no query is present", async () => {
+		const handler = await loadProxyHandler("rss/feed.xml");
+		await callRoute(handler);
+		expect(fetchCalls).toHaveLength(1);
+		expect(fetchCalls[0].url).toBe(`${apiUrl}/rss/feed.xml`);
+	});
 });
