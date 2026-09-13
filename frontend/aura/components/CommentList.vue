@@ -456,11 +456,15 @@
         {{ pg }}
       </button>
     </nav>
+
+    <!-- Comment-image lightbox (DEC-308/TASK-382): the same fullscreen viewer
+         the post body opens, driven by the delegated click above. -->
+    <MarkdownLightbox :images="lightboxImages" v-model:index="lightboxIndex" />
   </section>
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, onMounted, ref, watch } from "vue";
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import type { Comment } from "~~/api/contracts/shared";
 import {
 	type CommentSort,
@@ -472,11 +476,13 @@ import {
 import { deleteMyComment, updateMyComment } from "~~/api/reader/comments";
 import { parseApiDate } from "~~/composables/apiDate";
 import { highlightCode, loadHighlighter } from "~~/composables/useCodeHighlight";
-import { commentMarkdownToHtml, loadPurify } from "~~/composables/useMarkdown";
+import { commentMarkdownToHtml, loadPurify, sanitizeUrl } from "~~/composables/useMarkdown";
 import { paginationPages } from "~~/composables/usePagination";
 import { useReaderAuth } from "~~/composables/useReaderAuth";
 // biome-ignore lint/correctness/noUnusedImports: CommentForm is rendered in the SFC <template> (lines 59/105).
 import CommentForm from "./CommentForm.vue";
+// biome-ignore lint/correctness/noUnusedImports: rendered as <MarkdownLightbox> in the template — biome cannot resolve Vue template bindings (vue-tsc verifies).
+import MarkdownLightbox, { type LightboxImage } from "./MarkdownLightbox.vue";
 
 // Upgrade the comments already on screen to DOMPurify once it finishes loading
 // (same pattern as MarkdownContent): the regex fallback guarantees XSS-safety
@@ -515,6 +521,67 @@ async function highlightCommentCode(): Promise<void> {
 		el.innerHTML = highlightCode(h, lang, el.textContent ?? "");
 	}
 }
+
+// --- Comment-image lightbox (DEC-308/TASK-382) ---
+// The post body opens MarkdownLightbox for its images (DEC-302) but the
+// comment body — same marked+sanitizer pipeline, rendered as plain v-html —
+// never did, so a commenter pasting a screenshot/diagram gets a column-width
+// image that cannot be scrutinised. Click delegation on the list root: find
+// the clicked .comment-body <img>, COLLECT every image inside the clicked
+// comment bubble (its <li> holds the comment + all its descendants) as the
+// browse set, and open the shared viewer. srcs pass through the same
+// sanitizeUrl the inline render uses, so a dangerous/empty src never opens
+// (matches the post viewer's own safety filter).
+const lightboxIndex = ref<number | null>(null);
+const lightboxImages = ref<LightboxImage[]>([]);
+
+/** Collect the loadable images inside a comment bubble (same sanitizeUrl the
+ * inline render uses, so a dead src never opens). `.comment-preview` (the
+ * comment form's own Write/Preview pane, which also carries the .comment-body
+ * style class) is excluded — only POSTED comment bodies populate the viewer. */
+function commentBubbleImages(bubble: HTMLElement): LightboxImage[] {
+	const srcs: LightboxImage[] = [];
+	for (const el of Array.from(
+		bubble.querySelectorAll<HTMLImageElement>(".comment-body:not(.comment-preview) img"),
+	)) {
+		const src = sanitizeUrl(el.getAttribute("src") ?? "");
+		// sanitizeUrl maps javascript:/data:/empty to "#"; non-http(s) schemes
+		// beyond mailto:/tel: are likewise not loadable images — neither may
+		// occupy a viewer slot or open anything.
+		if (src === "#" || src === "") continue;
+		if (/^(?!https?:)[a-z][a-z0-9+.-]*:/i.test(src)) continue;
+		srcs.push({ src, alt: el.getAttribute("alt") ?? "" });
+	}
+	return srcs;
+}
+
+function onCommentListClick(event: MouseEvent): void {
+	const target = event.target as Element | null;
+	if (!target?.closest) return;
+	// .comment-preview (the form's own Write/Preview pane) shares the
+	// .comment-body style class but is a draft, not a posted comment — a click
+	// in it must not open the thread viewer.
+	const img = target.closest<HTMLImageElement>(".comment-body:not(.comment-preview) img");
+	if (!img || !listEl.value) return;
+	// Scope the browse set to the clicked comment's bubble — the <li> wraps
+	// the comment body AND all nested replies, so arrows walk that comment's
+	// images, not the whole thread's. A stray .comment-body elsewhere (e.g.
+	// the form's own preview) has no such li and must not open the viewer.
+	const bubble = img.closest<HTMLElement>('li[id^="comment-"]');
+	if (!bubble) return;
+	const srcs = commentBubbleImages(bubble);
+	if (srcs.length === 0) return;
+	const clicked = srcs.findIndex((s) => s.src === img.getAttribute("src"));
+	lightboxImages.value = srcs;
+	lightboxIndex.value = clicked >= 0 ? clicked : 0;
+}
+
+onMounted(() => {
+	listEl.value?.addEventListener("click", onCommentListClick);
+});
+onBeforeUnmount(() => {
+	listEl.value?.removeEventListener("click", onCommentListClick);
+});
 
 interface Props {
 	postId: number;
