@@ -9,6 +9,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- **Tag-scoped RSS works through the Nuxt proxy (DEC-314)**: the tags page
+  scopes its feed as `/rss/feed.xml?tag_id={id}` (autodiscovery + subscribe
+  button), but the Nuxt origin's feed proxy stripped the query string — in the
+  default compose/`nuxt preview` stack (no nginx in front) a reader who
+  subscribed to one tag silently received the GLOBAL feed with no error. The
+  sibling scoped feeds (category/series, path-form) always proxied correctly,
+  making the tag feed the one broken scope. `proxyConditionalFeed` now forwards
+  the inbound query to the backend (mirroring the API proxy), so a tag-scoped
+  subscribe stays scoped; the backend's per-body ETag keeps 304 revalidation
+  correct across scopes. Covered by a server unit test (the proxied URL carries
+  `tag_id`, and the plain global URL stays query-less) and a Playwright e2e
+  that fetches the tag-scoped feed THROUGH the Nuxt origin (where the browser
+  actually goes) and verifies only that tag's posts appear.
 - **Delete individual notifications (DEC-312)**: the reader notification
   inbox (DEC-160) is durable but had no prune path — mark read / mark-all-read
   only clear the badge, so consumed rows accumulated forever for a reader
