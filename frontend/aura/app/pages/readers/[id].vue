@@ -188,7 +188,7 @@ const paginationTokens = computed(() =>
 					<div class="flex items-center gap-2 text-xs text-gray-400 mb-2">
 						<NuxtLink
 							v-if="comment.post"
-							:to="`/posts/${comment.post.slug}`"
+							:to="`/posts/${comment.post.slug}#comment-${comment.id}`"
 							class="inline-flex items-center gap-1 text-blue-600 dark:text-blue-400 hover:underline"
 						>
 							<Icon icon="lucide:file-text" class="w-3.5 h-3.5" />

@@ -330,7 +330,7 @@ function formatDate(dateStr: string): string {
         <div class="flex items-center justify-between">
           <NuxtLink
             v-if="comment.post"
-            :to="`/posts/${comment.post.slug}`"
+            :to="`/posts/${comment.post.slug}#comment-${comment.id}`"
             class="text-xs text-blue-500 hover:text-blue-700 dark:hover:text-blue-300 transition-colors truncate"
           >
             {{ t('myComments.onPost', { title: comment.post.title }) }}
