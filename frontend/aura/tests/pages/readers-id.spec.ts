@@ -114,11 +114,13 @@ describe("Reader profile page", () => {
 		expect(wrapper.text()).toContain("R"); // first letter of display_name
 	});
 
-	it("renders a comment with a link to its post", async () => {
+	it("renders a comment with a deep link to that comment on its post", async () => {
 		mockPayload = samplePage;
 		const wrapper = await mountPage();
 		expect(wrapper.text()).toContain("a comment on a post");
-		expect(wrapper.find('.nuxt-link-stub[href="/posts/the-post"]').exists()).toBe(true);
+		// DEC-321: comment-history surfaces must land ON the comment, not the
+		// post headline — the post page's CommentList lands #comment-<id>.
+		expect(wrapper.find('.nuxt-link-stub[href="/posts/the-post#comment-1"]').exists()).toBe(true);
 		expect(wrapper.text()).toContain("The Post");
 	});
 

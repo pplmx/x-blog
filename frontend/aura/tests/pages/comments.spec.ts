@@ -58,7 +58,8 @@ const stubs = {
 		template: '<svg class="icon-stub" />',
 	},
 	NuxtLink: {
-		template: '<a class="nuxt-link-stub"><slot/></a>',
+		props: ["to"],
+		template: '<a class="nuxt-link-stub" :href="to"><slot/></a>',
 	},
 };
 
@@ -161,6 +162,23 @@ describe("My comments page", () => {
 		mockData.value = { items: [makeComment()], total: 1 };
 		const wrapper = await mountPage();
 		expect(wrapper.text()).toContain("共 1 条评论");
+	});
+
+	it("deep-links the 'on post' jump to the exact comment, not the headline (DEC-321)", async () => {
+		isAuthenticated.value = true;
+		mockData.value = {
+			items: [makeComment({ id: 42, post: { id: 1, title: "Test Post", slug: "test-post" } })],
+			total: 1,
+		};
+		const wrapper = await mountPage();
+		await flushPromises();
+		const onPost = wrapper
+			.findAll("a.nuxt-link-stub[href]")
+			.map((el) => (el.attributes("href") as string) ?? "")
+			.find((href) => href.startsWith("/posts/test-post"));
+		// The post page's CommentList lands #comment-<id>; the history jump must
+		// carry the anchor so a reader lands ON their comment, not the headline.
+		expect(onPost).toBe("/posts/test-post#comment-42");
 	});
 
 	it("shows a pending status badge with the moderation copy", async () => {

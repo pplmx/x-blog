@@ -114,4 +114,74 @@ test.describe("Reader-attributed comments", () => {
 			)
 			.toBe(true);
 	});
+
+	test("a jump from /comments deep-links to the exact comment (DEC-321)", async ({
+		page,
+		request,
+	}) => {
+		// /comments (and the reader profile) used to link to the post headline;
+		// the jump must now carry the #comment-<id> anchor and land on the
+		// comment itself (the comment list's landOnDeepLink scroll machinery).
+		const email = freshEmail();
+		const reg = await request.post("/api/reader/register", {
+			data: { email, password: PASSWORD, display_name: DISPLAY_NAME },
+		});
+		expect(reg.status()).toBe(201);
+		const { access_token } = (await reg.json()) as { access_token: string };
+
+		// Capture the first post link, then sign in through the real /login flow
+		// (it persists reader_token AND reader_profile — the comment form's
+		// signedIn gate needs the cached profile, so a token-only addInitScript
+		// would leave the anonymous form up and the submit would 422).
+		await page.goto("/");
+		const postLink = page.locator("main a[href*='/posts/']").first();
+		await postLink.waitFor({ state: "visible" });
+		const postHref = (await postLink.getAttribute("href")) as string;
+		await page.goto("/login");
+		await page.locator('input[type="email"]').fill(email);
+		await page.locator('input[type="password"]').fill(PASSWORD);
+		await page.locator("form").press("Enter");
+		// After login the default route is /bookmarks; navigate to the post.
+		await page.waitForURL("**/bookmarks");
+		await page.goto(postHref);
+
+		// Post a signed-in comment on the post (the identity flip is the proof
+		// the verified form is showing).
+		await expect(page.locator("[id^='comment-content']")).toBeVisible({ timeout: 10000 });
+		await expect(page.locator("#reader-comment-identity")).toBeVisible({ timeout: 10000 });
+		await page.locator("[id^='comment-content']").fill("deep-link me from /comments");
+		await page.locator("button[type='submit']").first().click();
+		await expect(page.locator("text=评论提交成功，等待审核中！")).toBeVisible({ timeout: 5000 });
+
+		// Grab the new comment's id + post slug from the reader's own list.
+		const mine = await request.get("/api/reader/me/comments", {
+			headers: { Authorization: `Bearer ${access_token}` },
+		});
+		expect(mine.status()).toBe(200);
+		const { items } = (await mine.json()) as {
+			items: { id: number; post: { slug: string } }[];
+		};
+		const comment = items[0];
+		expect(comment).toBeTruthy();
+
+		// Approve it (the `form:` pattern the reply-links test uses) so the
+		// comment renders on the post page — the deep-link target must exist.
+		const admin = await request.post("/api/admin/login", {
+			form: { username: "admin", password: "admin123" },
+		});
+		const adminToken = ((await admin.json()) as { access_token: string }).access_token;
+		const approved = await request.patch(`/api/comments/${comment.id}/approve`, {
+			data: { approved: true },
+			headers: { Authorization: `Bearer ${adminToken}` },
+		});
+		expect(approved.status()).toBe(200);
+
+		// From /comments the "on post" jump carries the anchor and lands on it.
+		await page.goto("/comments");
+		const jump = page.locator(`a[href*="/posts/${comment.post.slug}#comment-${comment.id}"]`);
+		await expect(jump).toBeVisible({ timeout: 10000 });
+		await jump.click();
+		await page.waitForURL(`**/posts/${comment.post.slug}#comment-${comment.id}`);
+		await expect(page.locator(`#comment-${comment.id}`)).toBeVisible({ timeout: 10000 });
+	});
 });
