@@ -258,4 +258,92 @@ test.describe("Reader notification inbox (TASK-192)", () => {
 		});
 		await expect(page.locator(`#comment-${commentId}`)).toBeVisible({ timeout: 10000 });
 	});
+
+	test("the comment '@' picker suggests readers and the inserted mention lands (DEC-324)", async ({
+		page,
+		request,
+	}) => {
+		const adminTok = await adminToken(request);
+		const adminH = { Authorization: `Bearer ${adminTok}` };
+
+		const uid = Date.now();
+
+		// The reader the picker must suggest.
+		const targetName = `PickerBob${uid}`;
+		const targetEmail = freshEmail();
+		const reg = await request.post("/api/reader/register", {
+			data: { email: targetEmail, password, display_name: targetName },
+		});
+		expect(reg.status()).toBe(201);
+		const targetToken = ((await reg.json()) as { access_token: string }).access_token;
+		const targetH = { Authorization: `Bearer ${targetToken}` };
+
+		// A post to open the comment form on.
+		const postRes = await request.post("/api/posts", {
+			headers: adminH,
+			data: {
+				title: `Pick Post ${uid}`,
+				slug: `pick-post-${uid}`,
+				content: "# Hi",
+				published: true,
+			},
+		});
+		expect(postRes.status()).toBe(201);
+		const postId = ((await postRes.json()) as { id: number; slug: string }).id;
+		const postSlug = `pick-post-${uid}`;
+
+		// Type "@pick" in the bottom comment box -> the picker suggests the
+		// reader (substring/prefix match on the display name).
+		await page.goto(`/posts/${postSlug}`);
+		const box = page.locator("[id^='comment-content']").first();
+		await box.click();
+		await box.type("@pick");
+		const option = page.locator('[data-testid="mention-option"]').filter({ hasText: targetName });
+		await expect(option.first()).toBeVisible({ timeout: 10000 });
+
+		// Selecting the suggestion inserts "@<display name> " at the caret.
+		await option.first().click();
+		await expect(box).toHaveValue(`@${targetName} `);
+		await expect(page.locator('[data-testid="mention-option"]')).toHaveCount(0);
+
+		// Submit as a guest with the picker-inserted content.
+		await page.locator("[id^='comment-nickname']").fill("PickerUser");
+		await page.locator("[id^='comment-email']").fill(freshEmail());
+		await page.locator("button[type='submit']").first().click();
+		await expect(page.locator("text=评论提交成功，等待审核中！")).toBeVisible({
+			timeout: 10000,
+		});
+
+		// Find the pending comment by its exact inserted content, then approve.
+		const pending = await request.get("/api/admin/comments", {
+			headers: adminH,
+			params: { post_id: String(postId) },
+		});
+		expect(pending.status()).toBe(200);
+		const pendingData = (await pending.json()) as {
+			items: Array<{ id: number; content: string }>;
+		};
+		// The backend strips the picker's trailing space (CommentCreate
+		// strip_whitespace) — the stored boundary is "@Name" without it.
+		const comment = pendingData.items.find((c) => c.content === `@${targetName}`);
+		expect(comment).toBeDefined();
+		const commentId = comment?.id;
+
+		const approved = await request.patch(`/api/comments/${commentId}/approve`, {
+			data: { approved: true },
+			headers: adminH,
+		});
+		expect(approved.status()).toBe(200);
+
+		// The named reader's inbox gains the mention row (the UI-inserted
+		// "@Name " really resolved the DEC-322 fan-out).
+		const inbox = await request.get("/api/reader/me/notifications", { headers: targetH });
+		expect(inbox.status()).toBe(200);
+		const inboxData = (await inbox.json()) as {
+			items: Array<{ kind: string; url: string | null }>;
+		};
+		const mention = inboxData.items.find((i) => i.kind === "mention");
+		expect(mention).toBeDefined();
+		expect(mention?.url).toBe(`/posts/${postSlug}#comment-${commentId}`);
+	});
 });

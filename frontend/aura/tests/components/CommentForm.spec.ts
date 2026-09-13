@@ -11,11 +11,15 @@ import { flushPromises, mount } from "@vue/test-utils";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 // Mock the API module before importing the component.
-const { mockCreateComment } = vi.hoisted(() => ({
+const { mockCreateComment, mockSuggest } = vi.hoisted(() => ({
 	mockCreateComment: vi.fn(),
+	mockSuggest: vi.fn(),
 }));
 vi.mock("~~/api/public/comments", () => ({
 	createComment: mockCreateComment,
+}));
+vi.mock("~~/api/public/readers", () => ({
+	suggestMentionReaders: mockSuggest,
 }));
 
 import CommentForm from "../../components/CommentForm.vue";
@@ -512,5 +516,80 @@ describe("Markdown live preview (DEC-306/TASK-381)", () => {
 		// Form cleared and back on the Write tab.
 		expect(wrapper.find("textarea").exists()).toBe(true);
 		expect((wrapper.find("textarea").element as HTMLTextAreaElement).value).toBe("");
+	});
+
+	describe("@-mention picker (DEC-324)", () => {
+		const riki = { id: 1, display_name: "Riki", avatar_url: null };
+		const aria = { id: 2, display_name: "Aria", avatar_url: null };
+
+		beforeEach(() => {
+			mockSuggest.mockReset();
+			mockSuggest.mockResolvedValue([riki, aria]);
+			vi.useFakeTimers();
+		});
+		afterEach(() => {
+			vi.useRealTimers();
+		});
+
+		async function openPicker(value = "Hey @") {
+			const wrapper = await mountCommentForm();
+			const ta = wrapper.find("textarea");
+			await ta.setValue(value);
+			await vi.advanceTimersByTimeAsync(250);
+			await flushPromises();
+			return wrapper;
+		}
+
+		it("shows reader suggestions + the typed query when '@' is typed", async () => {
+			const wrapper = await openPicker("See @ri");
+			expect(mockSuggest).toHaveBeenCalledWith("ri");
+			const ta = wrapper.find("textarea");
+			expect(ta.attributes("aria-expanded")).toBe("true");
+			const options = wrapper.findAll('[data-testid="mention-option"]');
+			expect(options.map((o) => o.find('[data-testid="mention-name"]').text())).toEqual([
+				"Riki",
+				"Aria",
+			]);
+		});
+
+		it("keeps the picker closed when no reader matches", async () => {
+			mockSuggest.mockResolvedValue([]);
+			const wrapper = await mountCommentForm();
+			await wrapper.find("textarea").setValue("Hey @zz");
+			await vi.advanceTimersByTimeAsync(250);
+			await flushPromises();
+			expect(wrapper.findAll('[data-testid="mention-option"]')).toHaveLength(0);
+			expect(wrapper.find("textarea").attributes("aria-expanded")).toBe("false");
+		});
+
+		it("inserts the highlighted suggestion on Enter with a trailing space", async () => {
+			const wrapper = await openPicker();
+			const ta = wrapper.find("textarea");
+			// ArrowDown highlights "Aria" (index 1), Enter inserts it.
+			await ta.trigger("keydown", { key: "ArrowDown" });
+			await ta.trigger("keydown", { key: "Enter" });
+			await flushPromises();
+			// openPicker() typed "Hey @" so the insertion lands mid-draft.
+			expect((ta.element as HTMLTextAreaElement).value).toBe("Hey @Aria ");
+			expect(wrapper.findAll('[data-testid="mention-option"]')).toHaveLength(0);
+			// The picker must not swallow the Enter that should not submit a form.
+			expect(mockCreateComment).not.toHaveBeenCalled();
+		});
+
+		it("inserts on a click without losing the input caret", async () => {
+			const wrapper = await openPicker("Hi @ri");
+			const option = wrapper.findAll('[data-testid="mention-option"]')[0];
+			await option.trigger("mousedown");
+			await flushPromises();
+			expect((wrapper.find("textarea").element as HTMLTextAreaElement).value).toBe("Hi @Riki ");
+		});
+
+		it("Escape closes the picker without cancelling the whole form", async () => {
+			const wrapper = await openPicker();
+			await wrapper.find("textarea").trigger("keydown", { key: "Escape" });
+			await flushPromises();
+			expect(wrapper.findAll('[data-testid="mention-option"]')).toHaveLength(0);
+			expect(wrapper.emitted("cancel")).toBeUndefined();
+		});
 	});
 });

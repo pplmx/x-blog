@@ -145,3 +145,77 @@ class TestReaderProfile:
         assert body["profile"]["id"] == reader.id
         assert body["items"] == []
         assert body["pagination"]["total"] == 0
+
+
+SUGGEST = "/api/readers/suggest"
+
+
+def _register_named(client, name, email):
+    resp = client.post(
+        "/api/reader/register",
+        json={"email": email, "password": "readerpass123", "display_name": name},
+    )
+    assert resp.status_code == 201, resp.text
+    return resp.json()["reader"]["id"]
+
+
+class TestMentionSuggest:
+    """GET /api/readers/suggest — the '@'-mention picker's public reader
+    suggestions (DEC-324, TASK-390)."""
+
+    def test_empty_query_returns_named_active_readers_without_email(self, client, db_session):
+        rid = _register_named(client, "Riki", "suggest-a@example.com")
+        _register_named(client, "Bob", "suggest-b@example.com")
+        body = client.get(SUGGEST).json()
+        names = {s["display_name"] for s in body}
+        assert names == {"Riki", "Bob"}
+        assert all("email" not in s for s in body)
+        assert {s["id"] for s in body} >= {rid}
+
+    def test_query_filters_display_name_substring_case_insensitive(self, client):
+        _register_named(client, "Riki", "suggest-c@example.com")
+        _register_named(client, "Rikito", "suggest-d@example.com")
+        _register_named(client, "Bob", "suggest-e@example.com")
+        body = client.get(SUGGEST, params={"query": "rik"}).json()
+        names = {s["display_name"] for s in body}
+        assert names == {"Riki", "Rikito"}
+        assert "Bob" not in names
+
+    def test_prefix_matches_rank_first(self, client, auth_headers):
+        _register_named(client, "Naria", "suggest-prefix-1@example.com")
+        _register_named(client, "Aria", "suggest-prefix-2@example.com")
+        body = client.get(SUGGEST, params={"query": "aria"}).json()
+        # query 'aria' is a prefix of 'Aria' (rank 0) but only a substring of
+        # 'Naria' (rank 1) — the picker must put the prefix match first.
+        assert [s["display_name"] for s in body] == ["Aria", "Naria"]
+
+    def test_inactive_reader_excluded(self, client, db_session):
+        rid = _register_named(client, "Ghost", "suggest-ghost@example.com")
+        reader = db_session.get(ReaderAccount, rid)
+        reader.is_active = False
+        db_session.commit()
+        body = client.get(SUGGEST).json()
+        assert all(s["display_name"] != "Ghost" for s in body)
+
+    def test_reader_without_display_name_excluded(self, client, db_session):
+        # register without display_name -> the reader account exists but is anonymous.
+        token = _token(client, email="suggest-nameless@example.com")
+        assert token  # registration succeeded
+        readers = db_session.query(ReaderAccount).filter_by(email="suggest-nameless@example.com").all()
+        assert readers and readers[0].display_name is None
+        body = client.get(SUGGEST).json()
+        assert all(s["display_name"] not in (None, "") for s in body)
+
+    def test_like_wildcards_are_escaped(self, client, auth_headers):
+        _register_named(client, "Percent", "suggest-p@example.com")
+        # '%' must match no reader literally named '%' rather than everything.
+        assert client.get(SUGGEST, params={"query": "%"}).json() == []
+        assert client.get(SUGGEST, params={"query": "_"}).json() == []
+
+    def test_results_are_bounded(self, client, auth_headers):
+        for i in range(12):
+            _register_named(client, f"ManyReader{i}", f"suggest-many-{i}@example.com")
+        body = client.get(SUGGEST, params={"query": "Many"}).json()
+        # 'i' single digit keeps the sweep bounded... 12 names match; assert a
+        # hard ceiling so a broad picker query cannot dump the reader table.
+        assert 1 <= len(body) <= 8
