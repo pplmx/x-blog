@@ -193,7 +193,49 @@ describe("CommentForm", () => {
 				content: "Great post!",
 				parent_id: null,
 				website: "",
+				// Guest reply-email consent defaults OFF (DEC-332): a guest who
+				// doesn't tick the box is never emailed about replies.
+				reply_notify_email: false,
 			});
+		});
+	});
+
+	describe("Guest reply-email consent (DEC-332)", () => {
+		const checkbox = (wrapper: ReturnType<typeof mountCommentForm>) =>
+			wrapper.find('input[type="checkbox"]') as any;
+
+		it("renders an unchecked opt-in checkbox in the guest form", async () => {
+			const wrapper = await mountCommentForm();
+			expect(checkbox(wrapper).exists()).toBe(true);
+			expect((checkbox(wrapper).element as HTMLInputElement).checked).toBe(false);
+		});
+
+		it("submits reply_notify_email=true when the box is ticked", async () => {
+			const wrapper = await mountCommentForm();
+			await (wrapper.find('input[autocomplete="nickname"]') as any).setValue("Alice");
+			await (wrapper.find('input[type="email"]') as any).setValue("alice@test.com");
+			await checkbox(wrapper).setValue(true);
+			await (wrapper.find("textarea") as any).setValue("Great post!");
+			await wrapper.find("form").trigger("submit.prevent");
+			await flushPromises();
+
+			expect(mockCreateComment).toHaveBeenCalledTimes(1);
+			expect(mockCreateComment).toHaveBeenCalledWith(
+				1,
+				expect.objectContaining({ reply_notify_email: true }),
+			);
+		});
+
+		it("resets the box after a successful submit", async () => {
+			const wrapper = await mountCommentForm();
+			await (wrapper.find('input[autocomplete="nickname"]') as any).setValue("Alice");
+			await (wrapper.find('input[type="email"]') as any).setValue("alice@test.com");
+			await checkbox(wrapper).setValue(true);
+			await (wrapper.find("textarea") as any).setValue("Great post!");
+			await wrapper.find("form").trigger("submit.prevent");
+			await flushPromises();
+
+			expect((checkbox(wrapper).element as HTMLInputElement).checked).toBe(false);
 		});
 	});
 

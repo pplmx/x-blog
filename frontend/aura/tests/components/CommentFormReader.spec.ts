@@ -60,6 +60,9 @@ describe("CommentForm reader identity", () => {
 			content: "A signed-in comment",
 			parent_id: null,
 			website: "",
+			// Guest reply-email consent is never sent for signed-in readers:
+			// their reply email comes from the account-level pref (DEC-197).
+			reply_notify_email: false,
 		});
 	});
 
