@@ -2,7 +2,7 @@
   "ril_version": 1,
   "round": 331,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-14T05:59:38+00:00",
+  "updated_at": "2026-09-14T06:09:18+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -23990,7 +23990,7 @@
       "version": 2,
       "created_at": "2026-09-13T23:49:57+00:00",
       "updated_at": "2026-09-14T05:03:54+00:00",
-      "touched_round": 329,
+      "touched_round": 331,
       "category": "core-feature",
       "severity": 0.6,
       "confidence": 1.0,
@@ -24120,6 +24120,16 @@
       "title": "close round 330: complete reader data export (DEC-334 delivered)",
       "rationale": "Round 330 delivery: complete reader data export (DEC-334/TASK-393 by CHG-529/530/531). GET /api/reader/me/export (DEC-126/TASK-175) shipped only account/bookmarks/comments/history; the bundle now adds follows (categories/tags/series with notify flags), notification_prefs (null when defaults), durable inbox rows, and push-subscription device summaries (endpoint + created_at only, never the cryptographic keys) — covering every reader-owned dataset. Cross-reader + draft-leakage invariants unchanged. VERIFY green: backend 1486 (cov 93.81%, ruff/pyright clean), export suites pass on both SQLite and dev PostgreSQL 10.112.9.49:13310. Feature mode continues; next round re-sources from the fresh surface.",
       "alternatives_rejected": "Sweep #3 (home staleness) rejected under verification — Nuxt has no keep-alive, index.vue re-mounts on SPA navigation, so follows/recommendations refetch on every visit; the staleness claim only holds with page caching this app does not use. Sweep #1 (guest reply-email) already delivered round 329."
+    },
+    "CHG-532": {
+      "id": "CHG-532",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-14T06:09:18+00:00",
+      "updated_at": "2026-09-14T06:09:18+00:00",
+      "touched_round": 331,
+      "commit": "23a94d6"
     }
   },
   "edges": [
@@ -36174,6 +36184,12 @@
       "to": "DEC-334",
       "type": "supersedes",
       "created_at": "2026-09-14T05:59:37+00:00"
+    },
+    {
+      "from": "CHG-532",
+      "to": "TASK-392",
+      "type": "implements",
+      "created_at": "2026-09-14T06:09:18+00:00"
     }
   ]
 }
