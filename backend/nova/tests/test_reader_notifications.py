@@ -815,8 +815,7 @@ class TestFanOutPrune:
         crud.record_thread_comment_notifications(
             db_session,
             [1, 2, 3],
-            title="你订阅的讨论有新评论",
-            body="《T》有新评论",
+            post_title="T",
             url="/posts/t#comment-9",
         )
 
