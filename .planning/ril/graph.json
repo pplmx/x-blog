@@ -2,7 +2,7 @@
   "ril_version": 1,
   "round": 333,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-14T10:40:57+00:00",
+  "updated_at": "2026-09-14T10:45:23+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -24434,6 +24434,34 @@
       "title": "close round 334: site-language guest + recovery emails (DEC-342 delivered)",
       "rationale": "Round 334 delivery: site-language guest + recovery emails (DEC-342/TASK-397 by CHG-542/543/544). The reader-side fan-out emails localize per reader (DEC-338/DEC-340), but the sender-side emails were hardcoded Chinese: the guest reply email (DEC-332) was fully zh for a visitor with no account, and the password reset email (DEC-286) was a bilingual-subject hack with a fully Chinese body and the site name hardcoded as 'X-Blog'. Both now render in SITE_LANGUAGE (default zh-CN preserves today's copy byte-for-byte) via emailer._is_en_site() lazy per-call reads matching the emailer's lazy-config style, and the reset email substitutes the configured SITE_TITLE. This completes the notification-email i18n story: reader fan-outs (inbox/email/digest) by reader locale, guest/recovery emails by site language, and push payloads by operator env. VERIFY green: backend 1512 (cov 93.91%, ruff/pyright clean), email/reset suites pass on dev PostgreSQL 10.112.9.49:13310, no migration (no schema change), frontend untouched.",
       "alternatives_rejected": "A per-guest language memory (cookie/localStorage-driven) was rejected: the guest has no account, the email is generated server-side at approval time with no live request to read a cookie from, and SITE_LANGUAGE is the only stable signal. Localizing the reader fan-out push payloads by reader browser was again rejected (single payload per dispatch group)."
+    },
+    "DEC-344": {
+      "id": "DEC-344",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-14T10:45:23+00:00",
+      "updated_at": "2026-09-14T10:45:23+00:00",
+      "touched_round": 333,
+      "title": "feature round 335: fire the scheduled-post sweep on every remaining public read surface",
+      "rationale": "Round 335 sourcing (gap analysis on round 331's DEC-336/'never zero' acceptance): the fire-on-read sweep crud.maybe_notify_due_scheduled_posts was wired into post list, post detail, and the sitewide RSS/Atom feeds (CHG-534), but several public read paths that ALSO surface a crossed scheduled post do NOT fire it — a follower who consumes ONLY those surfaces never triggers the fan-out and loses the notification, violating the DEC-336 'never zero' guarantee exactly for the target audience. Uncovered: /api/reader/me/follows-feed (the follower's own aggregated feed — the most natural surface for the intended recipients), search (/api/search surfaces published posts), the category/series-scoped RSS/Atom feeds, and the sitemap. Real user-perceivable gap: a reader who follows a category and watches it via /follows sees the scheduled post appear with no push/inbox/email — every other surface triggers it. One-sentence acceptance: every public read path that can surface a crossed scheduled post fires the exactly-once fan-out, so no follower loses the notification regardless of which surface they actually use. Tiny net-additive backend slice: one-line sweep at each uncovered handler start (cheap indexed no-op when nothing crossed; the durable stamp makes multi-surface fan-out exactly-once).",
+      "alternatives_rejected": "A background scheduler was again rejected (DEC-076 'no background scheduler today' is a standing constraint; fire-on-read is the whole design). Firing the sweep inside crud.get_posts / crud.get_post / crud.follows_feed_posts themselves was rejected: those are called in loops (sitemap/related pagination) and from admin/backfill paths where a commit-on-read would be surprising; one line per public HANDLER keeps the sweep exactly once per request."
+    },
+    "TASK-398": {
+      "id": "TASK-398",
+      "type": "task",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-14T10:45:23+00:00",
+      "updated_at": "2026-09-14T10:45:23+00:00",
+      "touched_round": 333,
+      "category": "core-feature",
+      "severity": 0.5,
+      "confidence": 1.0,
+      "effort": 1.5,
+      "tracked_title": "Fire the scheduled-post sweep on /follows, search, scoped feeds, sitemap",
+      "title": "Complete scheduled-post sweep surface coverage (DEC-344)",
+      "description": "Round 331 wired the fire-on-read sweep into post list/detail + sitewide RSS/Atom only; add crud.maybe_notify_due_scheduled_posts(db) at the start of the remaining public handlers that surface crossed scheduled posts: reader.py /me/follows-feed, search.py /api/search, rss.py category/atom/series feeds + sitemap. Each is a one-line cheap indexed no-op; the durable stamp keeps it exactly-once across surfaces. Tests: a crossed scheduled post + a category-following reader — hitting ONLY /follows (and separately search, and the category feed) fires the fan-out exactly once with no duplicate from subsequent reads. Backend-only."
     }
   },
   "edges": [
@@ -36632,6 +36660,18 @@
       "to": "DEC-342",
       "type": "supersedes",
       "created_at": "2026-09-14T10:40:57+00:00"
+    },
+    {
+      "from": "DEC-344",
+      "to": "DEC-343",
+      "type": "supersedes",
+      "created_at": "2026-09-14T10:45:23+00:00"
+    },
+    {
+      "from": "DEC-344",
+      "to": "TASK-398",
+      "type": "governs",
+      "created_at": "2026-09-14T10:45:23+00:00"
     }
   ]
 }
