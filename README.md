@@ -45,6 +45,7 @@ A modern full-stack blog application built with FastAPI + Nuxt
 - 💾 **Backup & Restore** - download the whole blog as one portable JSON snapshot (categories, tags, series, posts, comments) and restore it into an empty instance (DEC-082)
 - 📡 **RSS & Atom Feeds** - Subscribe to the site-wide feed or a single category/tag via scoped feeds with autodiscovery (DEC-074); tag-scoped feeds stay scoped through the Nuxt origin (DEC-314)
 - 🔔 **New-post Web Push** - Follow a category (or all new posts) and get a browser push when the author publishes (DEC-076)
+- ⏰ **Scheduled-post fan-out** - a post saved as published-but-future `publish_at` (editorial calendar) announces itself the moment it goes live: followers of its series/category/tags get exactly one new-post notification (inbox + push + email where opted in), fired on the first public read after publish-time crosses — exactly-once, even across workers (DEC-336)
 - 💬 **Comment-thread subscription** - Follow a post's discussion; a push lands when a new comment is approved (DEC-078)
 - 🔔 **Moderation alerts** - admins get a push the moment a new comment awaits approval, deep-linking to the moderation queue (DEC-080)
 - 🔔 **Reader notification inbox** - signed-in readers get a durable in-app list (read/unread) of new posts in followed series/categories, replies to their comments, new comments on followed threads, and @-mentions of their display name — even when the browser push is missed or Web Push is off (DEC-160)

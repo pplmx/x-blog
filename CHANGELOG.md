@@ -9,6 +9,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- **Scheduled posts notify followers when they go live (DEC-336)**: a post
+  written as published-but-future `publish_at` is a first-class editorial-calendar
+  affordance, but the new-post fan-out only ran at WRITE time when the post was
+  already visible — so the moment the clock crossed `publish_at` and the post
+  became public, nobody got a push, durable inbox row, or email for it (there is
+  no background scheduler to notice the crossing). A new fire-on-read sweep
+  (`crud.maybe_notify_due_scheduled_posts`) announces every crossed-but-unannounced
+  post exactly once, on the first public read that surfaces it (post list, post
+  detail, RSS/Atom feeds — an external feed poller is the most reliable trigger);
+  the same durable `new_post_notified_at` stamp is set by the write-time paths
+  (create/update/restore/admin editor), so a post can never be notified twice.
+  Exactly-once even under concurrent workers, and retroactive: a scheduled post
+  that already crossed before this shipped is announced on its next public read.
 - **Complete reader data export (DEC-334)**: `GET /api/reader/me/export` is the
   GDPR-style "download my data" bundle, but it shipped only
   account/bookmarks/comments/history — a reader couldn't recover their follows,
