@@ -2,7 +2,7 @@
   "ril_version": 1,
   "round": 333,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-14T10:26:35+00:00",
+  "updated_at": "2026-09-14T10:40:57+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -24374,10 +24374,10 @@
     "TASK-397": {
       "id": "TASK-397",
       "type": "task",
-      "status": "active",
-      "version": 1,
+      "status": "resolved",
+      "version": 2,
       "created_at": "2026-09-14T10:26:35+00:00",
-      "updated_at": "2026-09-14T10:26:35+00:00",
+      "updated_at": "2026-09-14T10:40:57+00:00",
       "touched_round": 333,
       "category": "core-feature",
       "severity": 0.4,
@@ -24386,6 +24386,54 @@
       "tracked_title": "Site-language guest reply + password reset email copy",
       "title": "Site-language guest + recovery emails (DEC-342)",
       "description": "send_guest_reply_email and send_password_reset_email are hardcoded Chinese (the reset subject is a bilingual hack and the body hardcodes 'X-Blog' instead of site_title). Render both in the site's configured language (SITE_LANGUAGE, default zh preserving today's copy) and use SITE_TITLE for the site name. Lazy os.getenv reads match the emailer's lazy-config style (no settings import). No schema change, no frontend change; default zh keeps all existing tests."
+    },
+    "CHG-542": {
+      "id": "CHG-542",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-14T10:40:13+00:00",
+      "updated_at": "2026-09-14T10:40:13+00:00",
+      "touched_round": 333,
+      "commit": "7a23dc6",
+      "title": "test(notif): site-language guest + recovery email contract tests (DEC-342/TASK-397)",
+      "description": "4 contract tests via FakeSMTP: guest reply email zh default + en SITE_LANGUAGE; password reset zh (site_title substituted) + en (subject/body + site_title + the reset link)."
+    },
+    "CHG-543": {
+      "id": "CHG-543",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-14T10:40:13+00:00",
+      "updated_at": "2026-09-14T10:40:13+00:00",
+      "touched_round": 333,
+      "commit": "4afa100",
+      "title": "feat(notif): site-language guest reply + password reset emails (DEC-342/TASK-397)",
+      "description": "emailer._is_en_site() lazy SITE_LANGUAGE check; send_guest_reply_email + send_password_reset_email render en/zh copy (zh byte-identical to today) and the reset email uses configured SITE_TITLE."
+    },
+    "CHG-544": {
+      "id": "CHG-544",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-14T10:40:13+00:00",
+      "updated_at": "2026-09-14T10:40:13+00:00",
+      "touched_round": 333,
+      "commit": "cf818c3",
+      "title": "docs(notif): record site-language guest + recovery emails (DEC-342) in CHANGELOG + README",
+      "description": "en/zh CHANGELOG + README entries for the sender-side email localization."
+    },
+    "DEC-343": {
+      "id": "DEC-343",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-14T10:40:57+00:00",
+      "updated_at": "2026-09-14T10:40:57+00:00",
+      "touched_round": 333,
+      "title": "close round 334: site-language guest + recovery emails (DEC-342 delivered)",
+      "rationale": "Round 334 delivery: site-language guest + recovery emails (DEC-342/TASK-397 by CHG-542/543/544). The reader-side fan-out emails localize per reader (DEC-338/DEC-340), but the sender-side emails were hardcoded Chinese: the guest reply email (DEC-332) was fully zh for a visitor with no account, and the password reset email (DEC-286) was a bilingual-subject hack with a fully Chinese body and the site name hardcoded as 'X-Blog'. Both now render in SITE_LANGUAGE (default zh-CN preserves today's copy byte-for-byte) via emailer._is_en_site() lazy per-call reads matching the emailer's lazy-config style, and the reset email substitutes the configured SITE_TITLE. This completes the notification-email i18n story: reader fan-outs (inbox/email/digest) by reader locale, guest/recovery emails by site language, and push payloads by operator env. VERIFY green: backend 1512 (cov 93.91%, ruff/pyright clean), email/reset suites pass on dev PostgreSQL 10.112.9.49:13310, no migration (no schema change), frontend untouched.",
+      "alternatives_rejected": "A per-guest language memory (cookie/localStorage-driven) was rejected: the guest has no account, the email is generated server-side at approval time with no live request to read a cookie from, and SITE_LANGUAGE is the only stable signal. Localizing the reader fan-out push payloads by reader browser was again rejected (single payload per dispatch group)."
     }
   },
   "edges": [
@@ -36560,6 +36608,30 @@
       "to": "TASK-397",
       "type": "governs",
       "created_at": "2026-09-14T10:26:35+00:00"
+    },
+    {
+      "from": "CHG-542",
+      "to": "TASK-397",
+      "type": "implements",
+      "created_at": "2026-09-14T10:40:56+00:00"
+    },
+    {
+      "from": "CHG-543",
+      "to": "TASK-397",
+      "type": "implements",
+      "created_at": "2026-09-14T10:40:56+00:00"
+    },
+    {
+      "from": "CHG-544",
+      "to": "TASK-397",
+      "type": "implements",
+      "created_at": "2026-09-14T10:40:57+00:00"
+    },
+    {
+      "from": "DEC-343",
+      "to": "DEC-342",
+      "type": "supersedes",
+      "created_at": "2026-09-14T10:40:57+00:00"
     }
   ]
 }
