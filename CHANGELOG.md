@@ -9,6 +9,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- **Guest commenter reply-email (DEC-332)**: the comment form REQUIRES an
+  anonymous commenter to leave an email, and that email was stored on the
+  comment row but never used — the reply-notify guard was
+  `parent.reader_id is not None`, so a reply to an anonymous comment notified
+  nobody, in every channel. A guest who ticks the new "email me when someone
+  replies" consent (default off) now receives one email when a reply to their
+  comment is approved, deep-linking to the exact reply and carrying a
+  per-comment unsubscribe link; a guest who never opted in (or later
+  unsubscribed) is never emailed, and approval still succeeds when SMTP is
+  unconfigured (best effort, like every other notification path). Additive —
+  `reply_notify_email` + `reply_notify_token` on `comments` (DEC-009) — with a
+  public `POST /api/comments/reply-notify/unsubscribe` (idempotent; unknown
+  token 404; the landing page tells a spent/unknown link apart from a network
+  outage, so the holder of a still-valid token isn't told their link is dead)
+  and a `/comment-reply-unsubscribe?token=` landing page. Backend contract
+  tests (opt-in email fires on approval with deep link + token; no consent /
+  no email / reader-parent → reader fan-out only; self-reply skip; unsubscribe
+  stops later mail; unknown token 404; unconfigured SMTP no-op; token/consent
+  never on the public thread list), CommentForm checkbox unit tests, the
+  unsubscribe page test, and an e2e journey through the SMTP sink.
 - **Email copy of @-mentions (DEC-326)**: the @-mention fan-out (DEC-322) only
   reached the durable inbox and the browser push, so a reader who relies on the
   opt-in email channel (DEC-197) never heard about the single most personal
