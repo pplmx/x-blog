@@ -2123,3 +2123,30 @@ def set_my_notification_pref(
         email_mention=prefs.email_mention,
         email_weekly_digest=prefs.email_weekly_digest,
     )
+
+
+class ReaderLocaleUpdate(BaseModel):
+    """Body for PUT /me/locale: the reader's notification-copy language.
+
+    Only the two frontend locale codes are accepted (DEC-338/TASK-395); anything
+    else is a 422 rather than a silently-stored unknown value.
+    """
+
+    locale: Literal["en", "zh"]
+
+
+@router.put("/me/locale", response_model=ReaderLocaleUpdate)
+def set_my_reader_locale(
+    payload: ReaderLocaleUpdate,
+    current_reader: auth.ReaderAccount = Depends(auth.get_current_reader),
+    db: Session = Depends(get_db),
+):
+    """Set the reader's notification-copy language (DEC-338, TASK-395).
+
+    The fan-out picks the reader's durable inbox titles + email copy from this
+    stored value (default zh when never set). The UI language switcher calls
+    this when a signed-in reader changes their language, so an English reader
+    stops receiving 新文章发布 / 系列更新 rows and emails immediately.
+    """
+    crud.set_reader_locale(db, current_reader.id, payload.locale)
+    return payload

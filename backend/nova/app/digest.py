@@ -149,9 +149,17 @@ def build_digest_message(
     base_url: str,
     window_start: datetime,
     now_naive: datetime,
+    locale: str = "zh",
 ) -> EmailMessage:
-    """One aggregated digest: text + HTML parts, zh copy consistent with the
-    per-event emailer (the backend has no i18n; the site default locale is zh)."""
+    """One aggregated digest: text + HTML parts in the reader's language.
+
+    ``locale`` selects the copy (DEC-338/TASK-395) — ``zh`` (the default and
+    today's behavior) keeps the original 本周精选 copy, ``en`` renders an
+    English digest. The reader's stored locale is threaded through by
+    ``send_weekly_digest`` (NULL reads as zh), so an English reader's digest
+    arrives in English while a zh reader's stays untouched.
+    """
+    en = locale in ("en", "en-US")
     posts = list(posts)
     base = base_url.rstrip("/")
     # display_name is user-controlled. Escape it for the HTML part so markup
@@ -159,11 +167,68 @@ def build_digest_message(
     # TEXT part uses the RAW name — HTML entities like &amp; are meaningless in
     # plain text and previously displayed literally as "A&amp;B" to the reader
     # in text-only mail clients (ISS-447).
-    html_greeting = f"{html.escape(display_name or '')}，" if display_name else "你好，"
-    text_greeting = f"{display_name or ''}，" if display_name else "你好，"
-    subject = f"本周精选：{len(posts)} 篇新文章"
+    html_name_zh = f"{html.escape(display_name or '')}，" if display_name else None
+    text_name_zh = f"{display_name or ''}，" if display_name else None
+    if en:
+        html_greeting = f"{html.escape(display_name or '')}, " if display_name else "Hello,"
+        text_greeting = f"{display_name or ''}, " if display_name else "Hello,"
+        subject = f"Weekly digest: {len(posts)} new post{'s' if len(posts) != 1 else ''}"
+        window = f"{_format_date(window_start)} ~ {_format_date(now_naive)}"
+        text = (
+            f"{text_greeting}\n"
+            f"Here are the {len(posts)} new post{'s' if len(posts) != 1 else ''} "
+            f"published this week ({window}):\n\n"
+            + "\n".join(_digest_lines(posts, now_naive, base))
+            + "\n\n—\nManage or turn off the weekly digest: "
+            f"{base}/notifications"
+        )
+        html_body = (
+            '<div style="font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;'
+            'max-width:640px;margin:0 auto;padding:24px">'
+            f'<h1 style="font-size:20px">This week\'s digest · {len(posts)} new post{"s" if len(posts) != 1 else ""}</h1>'
+            f"<p>{html_greeting} here are the {len(posts)} new post{'s' if len(posts) != 1 else ''} "
+            f"published this week ({window}):</p>"
+            f'<ol style="line-height:1.6">{_digest_items(posts, now_naive, base)}</ol>'
+            f'<p style="color:#888;font-size:13px">Don\'t want the weekly digest? '
+            f'<a href="{base}/notifications">Turn it off in your notification preferences</a>.</p>'
+            "</div>"
+        )
+    else:
+        html_greeting = html_name_zh or "你好，"
+        text_greeting = text_name_zh or "你好，"
+        subject = f"本周精选：{len(posts)} 篇新文章"
+        text = (
+            f"{text_greeting}\n"
+            f"本周精选（{_format_date(window_start)} ~ {_format_date(now_naive)}）共 {len(posts)} 篇新文章：\n\n"
+            + "\n".join(_digest_lines(posts, now_naive, base))
+            + "\n\n—\n管理或关闭每周精选："
+            f"{base}/notifications"
+        )
+        html_body = (
+            '<div style="font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;'
+            'max-width:640px;margin:0 auto;padding:24px">'
+            f'<h1 style="font-size:20px">本周精选 · {len(posts)} 篇新文章</h1>'
+            f"<p>{html_greeting}这是过去一周发布的新文章"
+            f"（{_format_date(window_start)} ~ {_format_date(now_naive)}）：</p>"
+            f'<ol style="line-height:1.6">{_digest_items(posts, now_naive, base)}</ol>'
+            f'<p style="color:#888;font-size:13px">不想再收到每周精选？'
+            f'<a href="{base}/notifications">在通知偏好中关闭</a>。</p>'
+            "</div>"
+        )
 
-    lines = []
+    msg = EmailMessage()
+    msg["From"] = from_addr
+    msg["To"] = to_email
+    msg["Subject"] = subject
+    msg.set_content(text)
+    msg.add_alternative(html_body, subtype="html")
+    return msg
+
+
+def _digest_lines(posts: Iterable[models.Post], now_naive: datetime, base: str) -> list[str]:
+    """Plain-text bullet lines for one digest (shared structure between the en
+    and zh copies — only the surrounding copy is localized)."""
+    lines: list[str] = []
     for post in posts:
         ts = _effective_publish_ts(post, now_naive)
         date = _format_date(ts)
@@ -173,16 +238,12 @@ def build_digest_message(
         lines.append(f"- {post.title}（{label}）{base}/posts/{post.slug}")
         if excerpt:
             lines.append(f"    {excerpt}")
+    return lines
 
-    text = (
-        f"{text_greeting}\n"
-        f"本周精选（{_format_date(window_start)} ~ {_format_date(now_naive)}）共 {len(posts)} 篇新文章：\n\n"
-        + "\n".join(lines)
-        + "\n\n—\n管理或关闭每周精选："
-        f"{base}/notifications"
-    )
 
-    items = []
+def _digest_items(posts: Iterable[models.Post], now_naive: datetime, base: str) -> str:
+    """HTML list items (shared between locales; copy lives in the callers)."""
+    items: list[str] = []
     for post in posts:
         ts = _effective_publish_ts(post, now_naive)
         date = _format_date(ts)
@@ -196,27 +257,7 @@ def build_digest_message(
         if excerpt:
             item += f'<p style="margin:4px 0 12px;color:#555">{html.escape(excerpt)}</p>'
         items.append(item + "</li>")
-
-    rows = "\n".join(items)
-    html_body = (
-        '<div style="font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;'
-        'max-width:640px;margin:0 auto;padding:24px">'
-        f'<h1 style="font-size:20px">本周精选 · {len(posts)} 篇新文章</h1>'
-        f"<p>{html_greeting}这是过去一周发布的新文章"
-        f"（{_format_date(window_start)} ~ {_format_date(now_naive)}）：</p>"
-        f'<ol style="line-height:1.6">{rows}</ol>'
-        f'<p style="color:#888;font-size:13px">不想再收到每周精选？'
-        f'<a href="{base}/notifications">在通知偏好中关闭</a>。</p>'
-        "</div>"
-    )
-
-    msg = EmailMessage()
-    msg["From"] = from_addr
-    msg["To"] = to_email
-    msg["Subject"] = subject
-    msg.set_content(text)
-    msg.add_alternative(html_body, subtype="html")
-    return msg
+    return "\n".join(items)
 
 
 def _acquire_digest_lock(db: Session) -> bool:
@@ -301,6 +342,7 @@ def send_weekly_digest(db: Session, *, now_naive: datetime | None = None, logger
                 base_url=base_url,
                 window_start=window_start,
                 now_naive=now,
+                locale=acct.locale,
             )
             built.append((pref, msg))
 

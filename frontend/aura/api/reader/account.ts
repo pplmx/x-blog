@@ -53,6 +53,17 @@ export function updateReaderProfile(body: { display_name?: string }): Promise<Re
 	});
 }
 
+/** Persist the reader's notification-copy language (DEC-338/TASK-395): the
+ * durable inbox titles and emails are generated with this locale once the
+ * language switcher calls it for a signed-in reader. */
+export function setReaderLocale(locale: "en" | "zh"): Promise<{ locale: "en" | "zh" }> {
+	return command<{ locale: "en" | "zh" }>("/api/reader/me/locale", {
+		method: "PUT",
+		headers: { ...readerAuthHeaders(), "Content-Type": "application/json" },
+		body: { locale },
+	});
+}
+
 /** Change the reader's password (verifies current). Returns a fresh session
  * whose token supersedes the stored one (token_version bump). */
 export function changeReaderPassword(body: {

@@ -1,11 +1,14 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref } from "vue";
 
+import { setReaderLocale } from "~~/api/reader/account";
 import { type Locale } from "~~/composables/i18n";
 import { useLang } from "~~/composables/useLang";
+import { useReaderAuth } from "~~/composables/useReaderAuth";
 import { nextFocusable } from "~~/utils/focusRing";
 
 const { locale, setLocale, locales } = useLang();
+const { isAuthenticated } = useReaderAuth();
 
 // Current language label shown on the trigger button.
 const currentLabel = computed(
@@ -30,6 +33,13 @@ function closeMenu() {
 
 function onSelect(code: Locale) {
 	setLocale(code);
+	// Persist the reader's notification-copy language (DEC-338/TASK-395): the
+	// durable inbox titles and emails are generated server-side in this locale,
+	// so a signed-in reader's switch is pushed to their account. Fire-and-forget
+	// — a failed sync must never block the UI switch or throw.
+	if (isAuthenticated.value) {
+		void setReaderLocale(code).catch(() => {});
+	}
 	closeMenu();
 }
 

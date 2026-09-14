@@ -123,6 +123,12 @@ class ReaderAccount(Base):
     # public profile page and comments. Nullable — an avatar is optional, and
     # existing readers start without one (rendered as a placeholder/initial).
     avatar_url: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    # Reader UI language (DEC-338, TASK-395): selects the language of the
+    # reader's durable inbox notification titles and email copy. NULL means
+    # "not chosen" and reads as the site default (zh), preserving existing
+    # behavior for readers who never touch the language switcher while signed
+    # in. Values are the frontend locale codes ("en", "zh").
+    locale: Mapped[str | None] = mapped_column(String(8), nullable=True)
     token_version: Mapped[int | None] = mapped_column(Integer, default=0)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, server_default="true", nullable=False)
     last_login_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)

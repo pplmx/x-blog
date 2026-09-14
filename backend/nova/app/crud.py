@@ -3510,6 +3510,42 @@ def record_reader_notification(
     return row
 
 
+def notification_copy(kind: str, post_title: str, locale: str | None) -> tuple[str, str]:
+    """Localized (title, body) for a new-post notification kind (DEC-338/TASK-395).
+
+    The tuple feeds both the durable inbox row and the email channel (email
+    Subject = title, body = body), so one switch localizes every channel.
+    ``zh`` is the site default and the behavior for a reader who never set a
+    locale (NULL) — exactly today's hardcoded copy, preserving all existing
+    behavior. ``en`` is the English surface ("New post" / "Series update" with
+    the plain post title instead of ``《title》`` book-title brackets).
+    """
+    if locale in ("en", "en-US"):
+        return (
+            "Series update" if kind == "series_new_part" else "New post",
+            post_title,
+        )
+    return (
+        "系列更新" if kind == "series_new_part" else "新文章发布",
+        f"《{post_title}》",
+    )
+
+
+def set_reader_locale(db: Session, reader_id: int, locale: str) -> str:
+    """Persist a reader's notification-copy language (DEC-338, TASK-395).
+
+    Stores the frontend locale code ("en" / "zh"); the fan-out's
+    ``notification_copy`` reads it back at dispatch time. Returns the stored
+    value. ``locale`` is validated by the router (Literal["en", "zh"]).
+    """
+    acct = db.get(auth.ReaderAccount, reader_id)
+    if acct is None:
+        raise ValueError("Reader not found")
+    acct.locale = locale
+    db.commit()
+    return locale
+
+
 def maybe_notify_due_scheduled_posts(db: Session) -> int:
     """Fire the new-post fan-out for scheduled posts whose ``publish_at`` has
     now passed but that were never announced (DEC-336, TASK-394).
@@ -3653,6 +3689,14 @@ def record_new_post_notifications(db: Session, post: models.Post) -> None:
         # per-reader SELECT-recent-200 + DELETE + commit (O(2n) queries per
         # publish on a heavily followed post). The single commit also makes the
         # fan-out atomic: either every follower's inbox row lands or none does.
+        # Reader language for the copy (DEC-338, TASK-395): one batch query for
+        # every target's stored locale (NULL reads as the zh site default). Locale
+        # lives on the account, separate from the prefs row, so load it once here.
+        locale_of = dict(
+            db.query(auth.ReaderAccount.id, auth.ReaderAccount.locale)
+            .filter(auth.ReaderAccount.id.in_(target_reader_ids))
+            .all()
+        ) if target_reader_ids else {}
         rows: list[models.ReaderNotification] = []
         email_items: list[EmailItem] = []
         for reader_id in target_reader_ids:
@@ -3660,25 +3704,27 @@ def record_new_post_notifications(db: Session, post: models.Post) -> None:
                 continue
             is_series_part = reader_id in series_reader_ids
             kind = "series_new_part" if is_series_part else "new_post"
-            title = "系列更新" if is_series_part else "新文章发布"
+            title, body = notification_copy(kind, post.title or "", locale_of.get(reader_id))
             rows.append(
                 models.ReaderNotification(
                     reader_id=reader_id,
                     kind=kind,
                     title=title,
-                    body=f"《{post.title or ''}》",
+                    body=body,
                     url=f"/posts/{post.slug}",
                 )
             )
             # Email channel (DEC-197, TASK-217): a best-effort off-site copy of
-            # the same fan-out, only for readers who opted into email for the kind.
+            # the same fan-out, only for readers who opted into email for the
+            # kind. The email Subject is item.title and the body is item.body,
+            # so the localized copy carries straight through to email.
             if email_channel_enabled(prefs.get(reader_id), kind):
                 email_items.append(
                     EmailItem(
                         reader_id=reader_id,
                         kind=kind,
                         title=title,
-                        body=f"《{post.title or ''}》",
+                        body=body,
                         url=f"/posts/{post.slug}",
                     )
                 )
