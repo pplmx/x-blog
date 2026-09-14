@@ -1588,6 +1588,30 @@ def list_reading_history(
     )
 
 
+@router.get("/me/history/in-progress", response_model=ReadingHistoryListResponse)
+def list_in_progress(
+    current_reader: auth.ReaderAccount = Depends(auth.get_current_reader),
+    limit: int = Query(6, ge=1, le=20),
+    db: Session = Depends(get_db),
+):
+    """The reader's posts with a saved resume position, newest-first (DEC-348,
+    TASK-400) — the cross-device "Continue reading" trail for the home page.
+
+    Declared BEFORE ``/me/history/{post_id}`` so the literal path is not
+    captured by the parameterized route (same ordering rule as the ``import``
+    below). Same auth + non-leak invariants as the history list: guests/admin
+    tokens 401, a post that went dark stops appearing (row kept).
+    """
+    rows, total = crud.list_reader_in_progress(db, current_reader.id, limit=limit)
+    return ReadingHistoryListResponse(
+        items=[ReadingHistoryItem.from_post(p, viewed_at) for p, viewed_at in rows],
+        total=total,
+        page=1,
+        limit=limit,
+        total_pages=(total + limit - 1) // limit if limit > 0 else 0,
+    )
+
+
 @router.get("/me/history/stats", response_model=ReadingStatsResponse)
 def reading_history_stats(
     current_reader: auth.ReaderAccount = Depends(auth.get_current_reader),

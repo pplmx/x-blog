@@ -2164,6 +2164,49 @@ def list_reader_history(
     return page_items, total
 
 
+def list_reader_in_progress(
+    db: Session, reader_id: int, limit: int = 6
+) -> tuple[list[tuple[models.Post, datetime]], int]:
+    """The reader's posts with a saved resume position, newest-first (DEC-348,
+    TASK-400).
+
+    Feeds the home "Continue reading" row: the cross-device SERVER trail
+    (``ReadingHistory.scroll_position``, DEC-167; ``scroll_fraction`` DEC-346)
+    surfaced outside /history — the existing home row is a localStorage-only
+    trail (DEC-104), so a signed-in reader on a new device sees nothing of what
+    they left. "In progress" = a saved, POSITIVE position: plain views (no
+    position saved) and rows cleared back to the top (0) are not. Same non-leak
+    invariant as the list: a post that went dark stops appearing (row kept).
+    Returns ``(rows, total)`` like ``list_reader_history``; ``limit`` bounds the
+    home slice (the list endpoint is the paginated browse surface).
+    """
+    filters = [
+        models.ReadingHistory.reader_id == reader_id,
+        models.ReadingHistory.viewed_at.is_not(None),
+        models.ReadingHistory.scroll_position.is_not(None),
+        models.ReadingHistory.scroll_position > 0,
+        models.Post.published.is_(True),
+        or_(models.Post.publish_at.is_(None), models.Post.publish_at <= utc_now_naive()),
+    ]
+    total = int(
+        db.query(func.count(models.ReadingHistory.id))
+        .join(models.Post, models.ReadingHistory.post_id == models.Post.id)
+        .filter(*filters)
+        .scalar()
+        or 0
+    )
+    rows = (
+        db.query(models.Post, models.ReadingHistory.viewed_at)
+        .join(models.ReadingHistory, models.ReadingHistory.post_id == models.Post.id)
+        .filter(*filters)
+        .options(joinedload(models.Post.category), joinedload(models.Post.tags))
+        .order_by(models.ReadingHistory.viewed_at.desc(), models.ReadingHistory.post_id.desc())
+        .limit(limit)
+        .all()
+    )
+    return [(post, viewed_at) for post, viewed_at in rows if viewed_at is not None], total
+
+
 def clear_reader_history(db: Session, reader_id: int) -> int:
     """Delete every history row for a reader; returns the number removed."""
     deleted = db.query(models.ReadingHistory).filter(models.ReadingHistory.reader_id == reader_id).delete()
