@@ -2,7 +2,7 @@
   "ril_version": 1,
   "round": 339,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-14T18:04:14+00:00",
+  "updated_at": "2026-09-14T19:36:11+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -24785,11 +24785,11 @@
       "id": "CHG-560",
       "type": "change",
       "status": "active",
-      "version": 1,
+      "version": 2,
       "created_at": "2026-09-14T18:03:12+00:00",
-      "updated_at": "2026-09-14T18:03:12+00:00",
+      "updated_at": "2026-09-14T18:11:09+00:00",
       "touched_round": 339,
-      "commit": "PENDING",
+      "commit": "0c594246",
       "title": "feat(newsletter): guest email newsletter double opt-in subscribe/confirm/unsubscribe + new-post fan-out (DEC-351/TASK-401; resolves ISS-507)"
     },
     "EV-246": {
@@ -24802,6 +24802,30 @@
       "touched_round": 339,
       "source": "pytest: 1539 passed cov 93.81% (backend), 2076 (frontend), dev PG 1549, pyright 0, ruff clean, typecheck 0, biome clean, migration round-trip SQLite + dev PG",
       "confidence": 1.0
+    },
+    "DEC-352": {
+      "id": "DEC-352",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-14T18:11:09+00:00",
+      "updated_at": "2026-09-14T18:11:09+00:00",
+      "touched_round": 339,
+      "title": "close round 339: guest email newsletter delivered (DEC-351/TASK-401 by CHG-560; resolves ISS-507) — VERIFY green: backend 1539 (cov 93.81%, ruff clean, pyright 0, dev PG 1549 incl. email/scheduled suites, migration round-trips SQLite + dev PG), frontend 2076 (122->125 files), typecheck exit 0, biome clean, rumdl clean; e2e authored for CI (env-limited sandbox)",
+      "rationale": "Feature round 339 completes DEC-351: anonymous 'email me new posts' on-ramp via footer form + double opt-in confirm + per-subscriber unsubscribe + new-post fan-out at all dispatch sites. Resolves ISS-507. Next round candidates re-evaluated under the value gate.",
+      "alternatives_rejected": "(none this round — single focused slice)"
+    },
+    "DEC-353": {
+      "id": "DEC-353",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-14T19:33:46+00:00",
+      "updated_at": "2026-09-14T19:33:46+00:00",
+      "touched_round": 339,
+      "title": "newsletter token: keep permanent (no rotation) — matches DEC-332 guest-reply precedent",
+      "rationale": "Round-339 backend review (python-reviewer) rated 'token never rotated across subscribe->unsubscribe->resubscribe' LOW-to-MEDIUM and explicitly called it a trade-off worth a conscious revisit, not a bug. Chosen posture: the row + token stay on unsubscribe so a stale emailed link keeps working and confirm/unsubscribe stay idempotent (second click = 200), exactly like Comment.reply_notify_token (DEC-332). Rotation would invalidate previously-emailed links (worse UX); the residual risk (a leaked token can later re-confirm/re-unsubscribe) is bounded because tokens are 32-byte url-safe secrets never returned by any read surface.",
+      "alternatives_rejected": "Rotate on each subscribe (breaks idempotency + stale links); rotate on unsubscribe (breaks idempotent second-click 200); rotate on confirmed-resubscribe (an already confirmed address has nothing new to confirm)"
     }
   },
   "edges": [
@@ -37180,6 +37204,18 @@
       "to": "TASK-401",
       "type": "implements",
       "created_at": "2026-09-14T18:04:14+00:00"
+    },
+    {
+      "from": "DEC-352",
+      "to": "DEC-351",
+      "type": "supersedes",
+      "created_at": "2026-09-14T18:12:12+00:00"
+    },
+    {
+      "from": "DEC-353",
+      "to": "TASK-401",
+      "type": "governs",
+      "created_at": "2026-09-14T19:36:11+00:00"
     }
   ]
 }
