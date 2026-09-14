@@ -1,7 +1,7 @@
 import os
 import re
 import secrets
-from collections.abc import Iterable
+from collections.abc import Collection, Iterable
 from datetime import UTC, date, datetime, timedelta, tzinfo
 from typing import Any, cast
 
@@ -1946,7 +1946,12 @@ def get_reading_history(db: Session, reader_id: int, post_id: int) -> models.Rea
 
 
 def record_reading_history(
-    db: Session, reader_id: int, post_id: int, scroll_position: int | None = None
+    db: Session,
+    reader_id: int,
+    post_id: int,
+    scroll_position: int | None = None,
+    *,
+    scroll_fraction: float | None = None,
 ) -> tuple[models.ReadingHistory, bool]:
     """Upsert a view into the reader's history; returns (row, created).
 
@@ -1955,10 +1960,11 @@ def record_reading_history(
     a reader revisiting a post bumps it, mirroring read-trail semantics
     (DEC-116, TASK-170).
 
-    ``scroll_position`` (per-post resume, DEC-167/TASK-200) is updated in place
-    *only* when the caller passes an explicit value: a plain view (None)
-    preserves whatever position was last saved, so reopening a post does not
-    wipe the reader's place. ``0`` is meaningful (scrolled back to the very
+    ``scroll_position`` (per-post resume, DEC-167/TASK-200) and
+    ``scroll_fraction`` (cross-viewport resume, DEC-346/TASK-399) are updated
+    in place *only* when the caller passes an explicit value: a plain view
+    (None) preserves whatever position was last saved, so reopening a post does
+    not wipe the reader's place. ``0`` is meaningful (scrolled back to the very
     top) and clears the saved offset.
     """
     existing = get_reading_history(db, reader_id, post_id)
@@ -1966,6 +1972,8 @@ def record_reading_history(
         existing.viewed_at = datetime.now(UTC)
         if scroll_position is not None:
             existing.scroll_position = scroll_position
+        if scroll_fraction is not None:
+            existing.scroll_fraction = scroll_fraction
         db.add(existing)
         db.commit()
         db.refresh(existing)
@@ -1975,6 +1983,7 @@ def record_reading_history(
         post_id=post_id,
         viewed_at=datetime.now(UTC),
         scroll_position=scroll_position,
+        scroll_fraction=scroll_fraction,
     )
     db.add(row)
     if _commit_reader_upsert(db):
@@ -3572,6 +3581,23 @@ def notification_copy(
     return "Notification", post_title
 
 
+def reader_locale_map(db: Session, reader_ids: Collection[int]) -> dict[int, str | None]:
+    """``ReaderAccount.id`` → stored copy locale for the given readers
+    (DEC-338, TASK-395), NULL left as the zh site default for callers.
+
+    Loads reader language for a notification fan-out in ONE batch query (the
+    locale lives on the account, separate from the prefs row). Indexed by row
+    index rather than ``dict(Row(...))`` so pyright sees ``dict[int, str]``
+    instead of modeling a SQLAlchemy ``Row`` (which it types as bytes).
+    """
+    if not reader_ids:
+        return {}
+    rows = (
+        db.query(auth.ReaderAccount.id, auth.ReaderAccount.locale).filter(auth.ReaderAccount.id.in_(reader_ids)).all()
+    )
+    return {int(row[0]): row[1] for row in rows}
+
+
 def set_reader_locale(db: Session, reader_id: int, locale: str) -> str:
     """Persist a reader's notification-copy language (DEC-338, TASK-395).
 
@@ -3733,15 +3759,7 @@ def record_new_post_notifications(db: Session, post: models.Post) -> None:
         # Reader language for the copy (DEC-338, TASK-395): one batch query for
         # every target's stored locale (NULL reads as the zh site default). Locale
         # lives on the account, separate from the prefs row, so load it once here.
-        locale_of = (
-            dict(
-                db.query(auth.ReaderAccount.id, auth.ReaderAccount.locale)
-                .filter(auth.ReaderAccount.id.in_(target_reader_ids))
-                .all()
-            )
-            if target_reader_ids
-            else {}
-        )
+        locale_of = reader_locale_map(db, target_reader_ids)
         rows: list[models.ReaderNotification] = []
         email_items: list[EmailItem] = []
         for reader_id in target_reader_ids:
@@ -3878,15 +3896,7 @@ def _notification_rows(
     batch — one flush, one prune, one commit. ``commenter`` supplies the
     mention body's acting reader label.
     """
-    locale_of = (
-        dict(
-            db.query(auth.ReaderAccount.id, auth.ReaderAccount.locale)
-            .filter(auth.ReaderAccount.id.in_(reader_ids))
-            .all()
-        )
-        if reader_ids
-        else {}
-    )
+    locale_of = reader_locale_map(db, reader_ids)
     return [
         models.ReaderNotification(
             reader_id=rid,

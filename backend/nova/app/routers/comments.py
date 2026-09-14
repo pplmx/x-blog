@@ -113,15 +113,7 @@ def _notify_thread_subscribers(
     # followers who opted into email for the kind — localized per reader the
     # same way as the inbox rows (DEC-340/TASK-396). One locale query for the
     # whole target set, then per-reader copy.
-    email_locales = (
-        dict(
-            db.query(auth.ReaderAccount.id, auth.ReaderAccount.locale)
-            .filter(auth.ReaderAccount.id.in_(target_ids))
-            .all()
-        )
-        if target_ids
-        else {}
-    )
+    email_locales = crud.reader_locale_map(db, target_ids)
     dispatch_notification_emails(
         db,
         [
@@ -370,15 +362,7 @@ def _notify_mentions(
     # Email copy (DEC-326, TASK-391): same values as the inbox row so both
     # channels agree — localized per reader (DEC-340/TASK-396). One locale
     # query for the whole email target set, then per-reader copy.
-    email_locales = (
-        dict(
-            db.query(auth.ReaderAccount.id, auth.ReaderAccount.locale)
-            .filter(auth.ReaderAccount.id.in_(email_ids))
-            .all()
-        )
-        if email_ids
-        else {}
-    )
+    email_locales = crud.reader_locale_map(db, email_ids)
     if email_ids:
         dispatch_notification_emails(
             db,

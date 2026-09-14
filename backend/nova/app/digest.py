@@ -342,7 +342,9 @@ def send_weekly_digest(db: Session, *, now_naive: datetime | None = None, logger
                 base_url=base_url,
                 window_start=window_start,
                 now_naive=now,
-                locale=acct.locale,
+                # NULL locale reads as the zh site default (build_digest_message
+                # defaults to "zh" and notification_copy treats non-en as zh).
+                locale=acct.locale or "zh",
             )
             built.append((pref, msg))
 
