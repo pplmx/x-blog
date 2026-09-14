@@ -62,6 +62,11 @@ export function useResumeReading(postId: () => number | undefined): ResumeReadin
 
 	let lastSaved = -1;
 	let pendingPos: number | null = null;
+	// Cross-viewport resume fraction pending alongside the pixel (DEC-346/
+	// TASK-399): captured at save time from the current document height so a
+	// continuation on a differently-sized viewport restores at the same place.
+	// Null when the save had no measurable scroll range.
+	let pendingFraction: number | null = null;
 	// The post a pending save belongs to. Kept alongside the offset so a later
 	// `flush()`/`reset()` still writes to the post the reader was actually on —
 	// recomputing the id via the `activePostId()` getter after an SPA post
@@ -90,13 +95,37 @@ export function useResumeReading(postId: () => number | undefined): ResumeReadin
 		return postId();
 	}
 
+	/** Current vertical scroll range in px (0 when there is no scrolling room). */
+	function scrollRange(): number {
+		if (typeof document === "undefined" || typeof window === "undefined") return 0;
+		return Math.max(0, document.documentElement.scrollHeight - window.innerHeight);
+	}
+
+	/** Clamp into [0, 1]; undefined when the document has no scrollable range. */
+	function pixelToFraction(px: number): number | undefined {
+		const range = scrollRange();
+		return range > 0 ? Math.min(1, Math.max(0, px / range)) : undefined;
+	}
+
+	/** Convert a saved fraction into pixels for the CURRENT viewport. */
+	function fractionToPixel(fraction: number): number {
+		return Math.max(0, Math.round(fraction * scrollRange()));
+	}
+
 	async function restore(): Promise<number | null> {
 		const id = activePostId();
 		if (!id) return null;
 		restoring.value = true;
 		try {
 			const data = await getReaderReadingPosition(id);
-			const pos = data?.scroll_position ?? null;
+			// Prefer the cross-viewport fraction (DEC-346/TASK-399): it restores
+			// at the same place on any viewport. Fall back to the pixel for
+			// pre-feature rows (null fraction) — today's exact behavior.
+			let pos: number | null = null;
+			if (data?.scroll_fraction != null && data.scroll_fraction > 0) {
+				pos = fractionToPixel(data.scroll_fraction);
+			}
+			if (pos == null) pos = data?.scroll_position ?? null;
 			if (pos != null && pos >= MIN_SAVE_PX) {
 				applyScroll(id, pos);
 				restoredPosition.value = pos;
@@ -174,14 +203,20 @@ export function useResumeReading(postId: () => number | undefined): ResumeReadin
 		const pos = Math.max(0, Math.floor(position));
 		if (pos < MIN_SAVE_PX || pos === lastSaved) return;
 		pendingPos = pos;
+		// Fraction computed NOW (the document layout the reader is positioned
+		// against) so a different-device continuation restores proportionally.
+		pendingFraction = pixelToFraction(pos) ?? null;
 		pendingId = id;
 		if (saveTimer) clearTimeout(saveTimer);
 		saveTimer = setTimeout(() => {
 			saveTimer = null;
 			if (pendingPos == null || pendingPos === lastSaved) return;
 			lastSaved = pendingPos;
-			recordReaderHistory(pendingId ?? id, pendingPos).catch(() => {});
+			recordReaderHistory(pendingId ?? id, pendingPos, pendingFraction ?? undefined).catch(
+				() => {},
+			);
 			pendingPos = null;
+			pendingFraction = null;
 			pendingId = null;
 		}, SAVE_DEBOUNCE_MS);
 	}
@@ -193,7 +228,9 @@ export function useResumeReading(postId: () => number | undefined): ResumeReadin
 		// id would corrupt the resume trail.
 		const id = pendingId ?? activePostId();
 		const pos = pendingPos;
+		const frac = pendingFraction;
 		pendingPos = null;
+		pendingFraction = null;
 		pendingId = null;
 		if (saveTimer) {
 			clearTimeout(saveTimer);
@@ -201,7 +238,7 @@ export function useResumeReading(postId: () => number | undefined): ResumeReadin
 		}
 		if (!id || pos == null || pos < MIN_SAVE_PX || pos === lastSaved) return;
 		lastSaved = pos;
-		recordReaderHistory(id, pos).catch(() => {});
+		recordReaderHistory(id, pos, frac ?? undefined).catch(() => {});
 	}
 
 	function jumpToTop(): void {
@@ -217,7 +254,10 @@ export function useResumeReading(postId: () => number | undefined): ResumeReadin
 			// would restore to a stale ~100px (and show a bogus chip) instead
 			// of the top. `0` is the documented "clear" value (DEC-167).
 			lastSaved = 0;
-			recordReaderHistory(id, 0).catch(() => {});
+			// The fraction must be cleared too or a later cross-device restore
+			// would prefer the stale nonzero fraction over the cleared pixel
+			// (DEC-346/TASK-399).
+			recordReaderHistory(id, 0, 0).catch(() => {});
 			// The smooth scroll still fires scroll events for ~a second; ignore
 			// them so an intermediate offset cannot write over the clear.
 			suppressSavesUntil = Date.now() + 1500;
@@ -228,6 +268,7 @@ export function useResumeReading(postId: () => number | undefined): ResumeReadin
 	 * back to the top, where the residual offset is intentionally stale). */
 	function clearPendingSave(): void {
 		pendingPos = null;
+		pendingFraction = null;
 		pendingId = null;
 		if (saveTimer) {
 			clearTimeout(saveTimer);

@@ -73,13 +73,23 @@ export function getReaderHistory(
  *
  * ``scrollPosition`` (optional, DEC-167/TASK-200) saves the reader's resume
  * offset in one write with the same endpoint. Omit it for a plain view that
- * preserves an already-saved position; ``0`` clears it.
+ * preserves an already-saved position; ``0`` clears it. ``scrollFraction``
+ * (optional, DEC-346/TASK-399) is the same position as a 0..1 fraction of the
+ * scrollable document height, so a cross-device continuation restores at the
+ * right place on a differently-sized viewport.
  */
 export function recordReaderHistory(
 	postId: number,
 	scrollPosition?: number,
+	scrollFraction?: number,
 ): Promise<{ post_id: number; already_existed: boolean }> {
-	const body = scrollPosition !== undefined ? { scroll_position: scrollPosition } : undefined;
+	const body =
+		scrollPosition !== undefined
+			? {
+					scroll_position: scrollPosition,
+					...(scrollFraction !== undefined ? { scroll_fraction: scrollFraction } : {}),
+				}
+			: undefined;
 	return command<{ post_id: number; already_existed: boolean }>(
 		`/api/reader/me/history/${postId}`,
 		{
@@ -94,14 +104,17 @@ export function recordReaderHistory(
 	);
 }
 
-/** The reader's saved resume offset for a post, if any (DEC-167/TASK-200). */
+/** The reader's saved resume offset for a post, if any (DEC-167/TASK-200);
+ * ``scroll_fraction`` (DEC-346/TASK-399) is the cross-viewport fraction, null
+ * for pre-feature rows. */
 export function getReaderReadingPosition(
 	postId: number,
-): Promise<{ post_id: number; scroll_position: number | null }> {
-	return command<{ post_id: number; scroll_position: number | null }>(
-		`/api/reader/me/history/${postId}`,
-		{ headers: readerAuthHeaders() },
-	);
+): Promise<{ post_id: number; scroll_position: number | null; scroll_fraction: number | null }> {
+	return command<{
+		post_id: number;
+		scroll_position: number | null;
+		scroll_fraction: number | null;
+	}>(`/api/reader/me/history/${postId}`, { headers: readerAuthHeaders() });
 }
 
 /**
