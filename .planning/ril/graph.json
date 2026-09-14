@@ -2,7 +2,7 @@
   "ril_version": 1,
   "round": 333,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-14T10:45:23+00:00",
+  "updated_at": "2026-09-14T11:08:43+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -24450,10 +24450,10 @@
     "TASK-398": {
       "id": "TASK-398",
       "type": "task",
-      "status": "active",
-      "version": 1,
+      "status": "resolved",
+      "version": 2,
       "created_at": "2026-09-14T10:45:23+00:00",
-      "updated_at": "2026-09-14T10:45:23+00:00",
+      "updated_at": "2026-09-14T11:08:43+00:00",
       "touched_round": 333,
       "category": "core-feature",
       "severity": 0.5,
@@ -24462,6 +24462,54 @@
       "tracked_title": "Fire the scheduled-post sweep on /follows, search, scoped feeds, sitemap",
       "title": "Complete scheduled-post sweep surface coverage (DEC-344)",
       "description": "Round 331 wired the fire-on-read sweep into post list/detail + sitewide RSS/Atom only; add crud.maybe_notify_due_scheduled_posts(db) at the start of the remaining public handlers that surface crossed scheduled posts: reader.py /me/follows-feed, search.py /api/search, rss.py category/atom/series feeds + sitemap. Each is a one-line cheap indexed no-op; the durable stamp keeps it exactly-once across surfaces. Tests: a crossed scheduled post + a category-following reader — hitting ONLY /follows (and separately search, and the category feed) fires the fan-out exactly once with no duplicate from subsequent reads. Backend-only."
+    },
+    "CHG-545": {
+      "id": "CHG-545",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-14T11:07:51+00:00",
+      "updated_at": "2026-09-14T11:07:51+00:00",
+      "touched_round": 333,
+      "commit": "1daa0e3",
+      "title": "test(notif): scheduled-post sweep fires from /follows, search, scoped feeds (DEC-344/TASK-398)",
+      "description": "3 contract tests: /me/follows-feed, /api/search, and category RSS each fire the exactly-once fan-out on a crossed scheduled post; follows-feed + search repeat reads assert no duplicate."
+    },
+    "CHG-546": {
+      "id": "CHG-546",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-14T11:07:51+00:00",
+      "updated_at": "2026-09-14T11:07:51+00:00",
+      "touched_round": 333,
+      "commit": "6b604f1",
+      "title": "feat(notif): scheduled-post sweep on every remaining public read surface (DEC-344/TASK-398)",
+      "description": "one-line crud.maybe_notify_due_scheduled_posts(db) at the start of reader /me/follows-feed, /api/search, category RSS, series RSS, and sitemap handlers (cheap indexed no-op; exactly-once via the durable stamp)."
+    },
+    "CHG-547": {
+      "id": "CHG-547",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-14T11:07:52+00:00",
+      "updated_at": "2026-09-14T11:07:52+00:00",
+      "touched_round": 333,
+      "commit": "3b6e0ce",
+      "title": "docs(notif): record the scheduled-post sweep surface completion (DEC-344) in CHANGELOG + README",
+      "description": "en/zh CHANGELOG + README entry covering the /follows, search, scoped-feed, sitemap sweep coverage."
+    },
+    "DEC-345": {
+      "id": "DEC-345",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-14T11:08:43+00:00",
+      "updated_at": "2026-09-14T11:08:43+00:00",
+      "touched_round": 333,
+      "title": "close round 335: scheduled-post sweep surface completion (DEC-344 delivered)",
+      "rationale": "Round 335 delivery: fire the scheduled-post sweep on every remaining public read surface (DEC-344/TASK-398 by CHG-545/546/547). Round 331 wired crud.maybe_notify_due_scheduled_posts into post list/detail + sitewide RSS/Atom, but /me/follows-feed (the follower's own aggregate feed), search, scoped category/series feeds, and the sitemap surfaced a crossed scheduled post WITHOUT firing it — a follower consuming only /follows would see the post appear with no notification, breaking DEC-336's 'never zero' guarantee exactly for the intended audience. Each uncovered handler now fires the one-line sweep at its start (cheap indexed no-op; the durable stamp keeps the fan-out exactly-once across surfaces). VERIFY green: backend 1515 (cov 93.91%, ruff/pyright clean), scheduled/search/rss suites pass on dev PostgreSQL 10.112.9.49:13310, no schema change, frontend untouched.",
+      "alternatives_rejected": "Firing the sweep inside crud.get_posts/get_post/follows_feed_posts was rejected: those are called in loops (sitemap/related pagination) and from admin/backfill paths where a commit-on-read would be surprising; one line per public handler keeps it exactly once per request. A background scheduler remains rejected per DEC-076."
     }
   },
   "edges": [
@@ -36672,6 +36720,30 @@
       "to": "TASK-398",
       "type": "governs",
       "created_at": "2026-09-14T10:45:23+00:00"
+    },
+    {
+      "from": "CHG-545",
+      "to": "TASK-398",
+      "type": "implements",
+      "created_at": "2026-09-14T11:08:43+00:00"
+    },
+    {
+      "from": "CHG-546",
+      "to": "TASK-398",
+      "type": "implements",
+      "created_at": "2026-09-14T11:08:43+00:00"
+    },
+    {
+      "from": "CHG-547",
+      "to": "TASK-398",
+      "type": "implements",
+      "created_at": "2026-09-14T11:08:43+00:00"
+    },
+    {
+      "from": "DEC-345",
+      "to": "DEC-344",
+      "type": "supersedes",
+      "created_at": "2026-09-14T11:08:43+00:00"
     }
   ]
 }
