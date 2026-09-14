@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 328,
+  "round": 330,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-13T16:50:54+00:00",
+  "updated_at": "2026-09-14T05:05:42+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -23866,7 +23866,7 @@
       "version": 2,
       "created_at": "2026-09-13T15:46:07+00:00",
       "updated_at": "2026-09-13T16:44:25+00:00",
-      "touched_round": 325,
+      "touched_round": 329,
       "category": "core-feature",
       "severity": 3,
       "confidence": 0.9,
@@ -23955,9 +23955,101 @@
       "version": 1,
       "created_at": "2026-09-13T16:50:54+00:00",
       "updated_at": "2026-09-13T16:50:54+00:00",
-      "touched_round": 328,
+      "touched_round": 329,
       "rationale": "converged-idle (QUIESCE). Stop conditions met: (1) no active core-feature task above threshold — backlog empty (TASK-389/390/391 all resolved); (2) no high-severity open issues with deliverable resolution; (3) VERIFY green at last close (backend 1473 @93.81%, frontend 2049, typecheck/biome/ruff/pyright clean, e2e 4/4 + SMTP-sink mention email); (4) two consecutive feature-sourcing rounds rejected at the value gate (DEC-328 reader sweep, DEC-329 admin sweep); (5) graph consistent (ril.py check: 1982 nodes / 1987 edges). Feature-evolution mode pauses: the mention family (DEC-322/324/326) is the delivered run — fan-out, autocomplete, email — with rounds 319-321 (timezone streak, complete sitemap, comment deep links) also closed. Reactivation awaits a NEW operator direction (supersedes decision), a real user-reported issue, or a substantive repo change; the first round after reactivation re-runs VERIFY to confirm a green baseline before any change is claimed.",
       "alternatives_rejected": "Shipping styled mention rendering (below gate), an admin cleanup round (patch-stacking), or inventing low-value reader/presentation churn to keep emitting feature commits (explicitly what QUIESCE exists to prevent)."
+    },
+    "DEC-331": {
+      "id": "DEC-331",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-13T22:18:42+00:00",
+      "updated_at": "2026-09-13T22:18:42+00:00",
+      "touched_round": 329,
+      "rationale": "Operator re-activated feature-exploration/evaluation mode (supersedes DEC-330 converged-idle). New operator directive: '调用 skill graph-engineering, 进入功能探索开发模式' with the dev pgsql confirmed at 10.112.9.49:13310 (postgres/postgres/postgres) for backend/Postgres verification. This re-activation wave follows the established pattern (DEC-306/307): fresh gap sweep against the live code first, VERIFY baseline must be green before any change is claimed. Delivery history closed: rounds 319-324 (timezone streak, complete sitemap, comment deep links, @-mention fan-out DEC-322, autocomplete DEC-324, mention-email DEC-326); DEC-328/329 rejected two consecutive sourcing sweeps, and DEC-330 quiesced. This directive restarts the sourcing loop with a fresh surface sweep.",
+      "alternatives_rejected": "Remaining in converged-idle despite an explicit operator re-activation directive; shipping below-gate polish (styled mention chips, share/copy-link) that DEC-328/329 already rejected.",
+      "title": "feature-evolution re-activation (operator directive)"
+    },
+    "DEC-332": {
+      "id": "DEC-332",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-13T23:49:02+00:00",
+      "updated_at": "2026-09-13T23:49:02+00:00",
+      "touched_round": 329,
+      "title": "feature selection round 329: guest commenter reply-email",
+      "rationale": "Re-activation round 329 (supersedes DEC-330 converged-idle per operator directive). Fresh surface sweep (Explore, verified against live code) ranked: #1 guest commenter reply-email — CommentForm.vue requires a guest to leave an email (components/CommentForm.vue:64-71, type=email required), create_comment persists it onto the comments row (crud.py:864-871, models.py:251 Comment.email), yet ZERO dispatch paths consume it: the reply-notify guard is `parent.reader_id is not None` (routers/comments.py:220) and the only readers of Comment.email are admin search (admin.py:821) and CSV export (export.py:183). So the single contact channel the system collects from anonymous commenters is dead in every channel (inbox/push/email) — a guest who leaves an email to hear back about replies hears nothing, ever. Real user-perceivable problem; one-sentence acceptance: a guest who leaves a comment with an email and opts into reply notification receives one email when a reply to their comment is approved, with a working unsubscribe, and a guest with no stored email (or who opted out) is never emailed — covered by a backend test that approves a reply to an anonymous comment. Net-additive full-stack slice: additive `reply_notify_email` bool (consent, server-default false, strictly opt-in like DEC-197 email) + `reply_notify_token` str (unsubscribe) columns on comments (DEC-009 DDL-preserving); _notify_comment_approved dispatches a best-effort email to the guest's stored address with a deep link to #comment-<id> and the unsubscribe link; public POST unsubscribe endpoint validates the token and flips consent off; CommentForm guest block gains an opt-in checkbox (i18n en/zh); backend contract tests + frontend page test + e2e journey through the SMTP sink.",
+      "alternatives_rejected": "#2 reader data export completeness (adds follows/prefs/inbox/push to /me/export — genuine but backend-only completeness polish, small slice; deferred behind the stronger user-visible gap), #3 home personalized sections staleness after in-session follow changes (frontend-only fetch-once staleness — real but minor, defer; can be addressed reactively), styled mention rendering / share-copy / profile activity strip (prior value-gate rejections DEC-328/329 stand)."
+    },
+    "TASK-392": {
+      "id": "TASK-392",
+      "type": "task",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-13T23:49:57+00:00",
+      "updated_at": "2026-09-14T05:03:54+00:00",
+      "touched_round": 329,
+      "category": "core-feature",
+      "severity": 0.6,
+      "confidence": 1.0,
+      "effort": 5.0,
+      "tracked_title": "Guest commenter reply-email: notify the guest by email when a reply to their comment is approved",
+      "title": "Guest commenter reply-email (DEC-332)",
+      "description": "CommentForm requires a guest to leave an email (stored on comments.email) but no dispatch path uses it; replies to anonymous comments reach nobody. Additive reply_notify_email bool + reply_notify_token str on comments (DEC-009 DDL-preserving); CommentCreate accepts reply_notify_email (ignored for signed-in readers, stamped from account identity); _notify_comment_approved dispatches a best-effort email to the guest's stored address when a reply is approved (deep link #comment-<id> + unsubscribe link with token); public POST /api/comments/reply-notify/unsubscribe validates the token and flips consent off (idempotent); CommentForm guest block gains an opt-in checkbox (i18n en/zh); backend contract tests (approve reply -> email to guest; no email without consent; unsubscribe stops future mail; missing SMTP no-ops) + frontend page test + e2e journey via the SMTP sink. tl;dr: guest who opts in gets one email per approved reply with a working opt-out."
+    },
+    "CHG-525": {
+      "id": "CHG-525",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-14T05:03:15+00:00",
+      "updated_at": "2026-09-14T05:03:15+00:00",
+      "touched_round": 329,
+      "commit": "67fa3e2"
+    },
+    "CHG-526": {
+      "id": "CHG-526",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-14T05:03:15+00:00",
+      "updated_at": "2026-09-14T05:03:15+00:00",
+      "touched_round": 329,
+      "commit": "eac32ce"
+    },
+    "CHG-527": {
+      "id": "CHG-527",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-14T05:03:15+00:00",
+      "updated_at": "2026-09-14T05:03:15+00:00",
+      "touched_round": 329,
+      "commit": "bf778d5"
+    },
+    "CHG-528": {
+      "id": "CHG-528",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-14T05:03:15+00:00",
+      "updated_at": "2026-09-14T05:03:15+00:00",
+      "touched_round": 329,
+      "commit": "2ce6f13"
+    },
+    "DEC-333": {
+      "id": "DEC-333",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-14T05:04:47+00:00",
+      "updated_at": "2026-09-14T05:04:47+00:00",
+      "touched_round": 329,
+      "title": "close round 329: guest commenter reply-email (DEC-332 delivered)",
+      "rationale": "Round 329 delivery: guest commenter reply-email (DEC-332/TASK-392 by CHG-525/526/527/528). The comment form requires an anonymous commenter to leave an email, create_comment stores it, but no dispatch path ever used it (the reply-notify guard was parent.reader_id is not None) — the one contact channel collected from guests was dead in every channel. Delivered: a guest who opts in (checkbox, default off) gets one best-effort email when a reply to their comment is approved, deep-linked to the exact reply and carrying a per-comment unsubscribe token; POST /api/comments/reply-notify/unsubscribe flips consent off idempotently (unknown token 404); the /comment-reply-unsubscribe?token= page posts the token once and tells a spent link from a network outage apart. Additive reply_notify_email/reply_notify_token on comments (DEC-009), honored only for anonymous comments (reader reply email stays the DEC-197 account pref); self-reply skip; best-effort SMTP. VERIFY green: backend 1481 (cov 93.80%, ruff/pyright clean, migration round-trips on both SQLite and dev PostgreSQL 10.112.9.49:13310), frontend 2056, typecheck exit 0, biome clean, comment-reply-email e2e 1/1 through the SMTP sink (incl. the unsubscribe-stops-later-mail step). Feature mode continues; next round re-sources.",
+      "alternatives_rejected": "Reader data-export completeness (#2 sweep candidate) and home-feed staleness after in-session follow changes (#3) — deferred behind the stronger user-visible gap; styled mention chips / share-copy again below the gate (DEC-328/329)."
     }
   },
   "edges": [
@@ -35922,6 +36014,60 @@
       "to": "DEC-326",
       "type": "supersedes",
       "created_at": "2026-09-13T16:45:07+00:00"
+    },
+    {
+      "from": "DEC-331",
+      "to": "DEC-330",
+      "type": "supersedes",
+      "created_at": "2026-09-13T22:18:58+00:00"
+    },
+    {
+      "from": "DEC-332",
+      "to": "DEC-331",
+      "type": "supersedes",
+      "created_at": "2026-09-13T23:53:49+00:00"
+    },
+    {
+      "from": "DEC-332",
+      "to": "TASK-392",
+      "type": "governs",
+      "created_at": "2026-09-13T23:53:49+00:00"
+    },
+    {
+      "from": "TASK-392",
+      "to": "TASK-391",
+      "type": "depends_on",
+      "created_at": "2026-09-13T23:53:49+00:00"
+    },
+    {
+      "from": "CHG-525",
+      "to": "TASK-392",
+      "type": "implements",
+      "created_at": "2026-09-14T05:03:53+00:00"
+    },
+    {
+      "from": "CHG-526",
+      "to": "TASK-392",
+      "type": "implements",
+      "created_at": "2026-09-14T05:03:53+00:00"
+    },
+    {
+      "from": "CHG-527",
+      "to": "TASK-392",
+      "type": "implements",
+      "created_at": "2026-09-14T05:03:53+00:00"
+    },
+    {
+      "from": "CHG-528",
+      "to": "TASK-392",
+      "type": "implements",
+      "created_at": "2026-09-14T05:03:54+00:00"
+    },
+    {
+      "from": "DEC-333",
+      "to": "DEC-332",
+      "type": "supersedes",
+      "created_at": "2026-09-14T05:05:42+00:00"
     }
   ]
 }
