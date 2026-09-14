@@ -66,6 +66,14 @@ def _env(name: str) -> str:
     return os.getenv(name, "").strip()
 
 
+def _is_en_site() -> bool:
+    """True when the site is configured for English (SITE_LANGUAGE starts with
+    "en"). The default zh-CN (or any non-en value) keeps today's Chinese copy.
+    Lazy per-call like the other site config reads, so tests can vary it
+    (DEC-342/TASK-397)."""
+    return os.getenv("SITE_LANGUAGE", "").strip().lower().startswith("en")
+
+
 def is_email_configured() -> bool:
     """True when an SMTP host is configured. Missing config fails closed: no
     SMTP host -> the fan-out skips email entirely (best effort, silent)."""
@@ -251,17 +259,34 @@ def send_guest_reply_email(
     base_url = _env("SITE_URL") or "http://localhost:3000"
     link = f"{base_url.rstrip('/')}{reply_url}"
     unsubscribe = f"{base_url.rstrip('/')}{unsubscribe_url}"
-    subject = "有人回复了你的评论"
-    text = (
-        f"《{post_title}》有一条新回复。\n"
-        f"查看回复：{link}\n\n"
-        f"如果你不想再收到这类邮件，请点击下面的链接取消订阅：\n{unsubscribe}"
-    )
-    html_body = (
-        f"<p>《{html.escape(post_title)}》有一条新回复。</p>"
-        f'<p><a href="{html.escape(link, quote=True)}">查看回复</a></p>'
-        f'<p><a href="{html.escape(unsubscribe, quote=True)}">取消订阅此类邮件</a></p>'
-    )
+    # Sender-side copy follows the site's configured language (DEC-342/TASK-397):
+    # a guest has no account/locale, so SITE_LANGUAGE is the only signal; the
+    # default zh copy is byte-for-byte today's text. The post title is
+    # user-controlled, so escape it in the HTML part (already done via html.escape).
+    if _is_en_site():
+        subject = "Someone replied to your comment"
+        text = (
+            f"There is a new reply to your comment on {post_title}.\n"
+            f"View the reply: {link}\n\n"
+            f"If you no longer want these emails, click the link below to unsubscribe:\n{unsubscribe}"
+        )
+        html_body = (
+            f"<p>There is a new reply to your comment on {html.escape(post_title)}.</p>"
+            f'<p><a href="{html.escape(link, quote=True)}">View the reply</a></p>'
+            f'<p><a href="{html.escape(unsubscribe, quote=True)}">Unsubscribe from these emails</a></p>'
+        )
+    else:
+        subject = "有人回复了你的评论"
+        text = (
+            f"《{post_title}》有一条新回复。\n"
+            f"查看回复：{link}\n\n"
+            f"如果你不想再收到这类邮件，请点击下面的链接取消订阅：\n{unsubscribe}"
+        )
+        html_body = (
+            f"<p>《{html.escape(post_title)}》有一条新回复。</p>"
+            f'<p><a href="{html.escape(link, quote=True)}">查看回复</a></p>'
+            f'<p><a href="{html.escape(unsubscribe, quote=True)}">取消订阅此类邮件</a></p>'
+        )
     msg = EmailMessage()
     msg["From"] = from_addr
     msg["To"] = to_addr
@@ -287,20 +312,39 @@ def send_password_reset_email(to_addr: str, reset_token: str) -> bool:
     """
     from_addr = _env("SMTP_FROM") or "no-reply@localhost"
     base_url = _env("SITE_URL") or "http://localhost:3000"
+    site_title = _env("SITE_TITLE") or "X-Blog"
     link = f"{base_url.rstrip('/')}/reset-password?token={reset_token}"
-    subject = "重置密码 / Reset password"
-    body = (
-        "我们收到了重置你 X-Blog 账号密码的请求。\n"
-        "点击下面的链接设置新密码（30 分钟内有效，使用一次后失效）：\n\n"
-        f"{link}\n\n"
-        "如果你没有请求重置密码，请忽略这封邮件，你的密码不会被更改。"
-    )
-    html_body = (
-        "<p>我们收到了重置你 X-Blog 账号密码的请求。</p>"
-        "<p>点击下面的链接设置新密码（30 分钟内有效，使用一次后失效）：</p>"
-        f'<p><a href="{html.escape(link, quote=True)}">重新设置密码</a></p>'
-        "<p>如果你没有请求重置密码，请忽略这封邮件，你的密码不会被更改。</p>"
-    )
+    # Recovery email follows the site's configured language + identity
+    # (DEC-342/TASK-397): en sites get English copy, zh keeps today's copy, and
+    # both use the configured SITE_TITLE instead of a hardcoded name.
+    if _is_en_site():
+        subject = f"Reset your {site_title} password"
+        body = (
+            f"We received a request to reset the password for your {site_title} account.\n"
+            "Click the link below to set a new password (valid for 30 minutes, single use):\n\n"
+            f"{link}\n\n"
+            "If you didn't request a password reset, you can ignore this email — your password won't change."
+        )
+        html_body = (
+            f"<p>We received a request to reset the password for your {html.escape(site_title)} account.</p>"
+            "<p>Click the link below to set a new password (valid for 30 minutes, single use):</p>"
+            f'<p><a href="{html.escape(link, quote=True)}">Set a new password</a></p>'
+            "<p>If you didn't request a password reset, you can ignore this email — your password won't change.</p>"
+        )
+    else:
+        subject = "重置密码 / Reset password"
+        body = (
+            f"我们收到了重置你 {site_title} 账号密码的请求。\n"
+            "点击下面的链接设置新密码（30 分钟内有效，使用一次后失效）：\n\n"
+            f"{link}\n\n"
+            "如果你没有请求重置密码，请忽略这封邮件，你的密码不会被更改。"
+        )
+        html_body = (
+            f"<p>我们收到了重置你 {html.escape(site_title)} 账号密码的请求。</p>"
+            "<p>点击下面的链接设置新密码（30 分钟内有效，使用一次后失效）：</p>"
+            f'<p><a href="{html.escape(link, quote=True)}">重新设置密码</a></p>'
+            "<p>如果你没有请求重置密码，请忽略这封邮件，你的密码不会被更改。</p>"
+        )
     msg = EmailMessage()
     msg["From"] = from_addr
     msg["To"] = to_addr
