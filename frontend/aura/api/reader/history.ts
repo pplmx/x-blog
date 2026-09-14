@@ -118,6 +118,21 @@ export function getReaderReadingPosition(
 }
 
 /**
+ * The reader's posts with a saved resume position, newest-first (DEC-348,
+ * TASK-400) — the cross-device "Continue reading" trail for the home page. The
+ * home row was localStorage-only (DEC-104), invisible to a signed-in reader on
+ * a NEW device; this surfaces the server trail (DEC-167/DEC-346) outside
+ * /history. Imperative seam — a lifecycle-hook loader must never run a useFetch
+ * query (ISS-110/111/117/118).
+ */
+export function getReaderInProgress(limit = 6): Promise<ReaderHistoryListResponse> {
+	return command<ReaderHistoryListResponse>("/api/reader/me/history/in-progress", {
+		query: { limit },
+		headers: readerAuthHeaders(),
+	});
+}
+
+/**
  * Reader reading-summary stats derived from their history (requires reader token).
  *
  * ``tz`` (optional, DEC-316/TASK-386) is the browser's IANA timezone id, e.g.

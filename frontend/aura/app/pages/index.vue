@@ -5,8 +5,12 @@ import { useBlogStats } from "~~/api/public/stats";
 import { useCategories, useTags } from "~~/api/public/taxonomy";
 import type { FollowedSeriesItem } from "~~/api/reader/follows";
 import { getReaderFollowsFeed, getReaderSeriesFollows } from "~~/api/reader/follows";
-import type { SeriesProgress } from "~~/api/reader/history";
-import { getReaderRecommendations, getReaderSeriesProgress } from "~~/api/reader/history";
+import type { ReaderHistoryListResponse, SeriesProgress } from "~~/api/reader/history";
+import {
+	getReaderInProgress,
+	getReaderRecommendations,
+	getReaderSeriesProgress,
+} from "~~/api/reader/history";
 import { paginationPages } from "~~/composables/usePagination";
 import { useRecentlyViewed } from "~~/composables/useRecentlyViewed";
 import { useSeo } from "~~/composables/useSeo";
@@ -104,6 +108,7 @@ onMounted(async () => {
 	}
 	await loadFollowedSeries();
 	await loadFollowsFeed();
+	await loadInProgress();
 });
 
 // "Latest from your follows" (DEC-142, TASK-183; paginated DEC-292/TASK-375):
@@ -215,6 +220,33 @@ useSeo(() => ({
 // as a compact row on the home page when the visitor has read something.
 const { recent: recentPosts } = useRecentlyViewed();
 
+// Server-trail Continue reading (DEC-348, TASK-400): the row above is a purely
+// LOCALSTORAGE trail, so a signed-in reader on a NEW device sees an empty row
+// even though the server-side reading trail holds the resume positions they
+// left on another device. Signed-in readers therefore prefer the server trail
+// (posts with a saved resume position, newest-first); each link opens the post,
+// which restores the saved spot via useResumeReading on mount. Guests keep the
+// lightweight device-local row. Deliberate: the server trail is authoritative
+// for a signed-in reader (the cloud trace outlives any one device), so it wins
+// over this device's local recent rather than merging.
+const serverInProgress = ref<ReaderHistoryListResponse["items"]>([]);
+// Signed-in readers see the server resume trail (cross-device, authoritative);
+// guests keep the device-local row. Both capped at the 6-item row.
+const continueItems = computed(() =>
+	recSignedIn.value ? serverInProgress.value.slice(0, 6) : recentPosts.value.slice(0, 6),
+);
+const continueVisible = computed(() => continueItems.value.length > 0);
+
+async function loadInProgress() {
+	if (!recSignedIn.value) return;
+	try {
+		const res = await getReaderInProgress(6);
+		serverInProgress.value = res?.items ?? [];
+	} catch {
+		serverInProgress.value = [];
+	}
+}
+
 // Windowed, ellipsis-aware pagination buttons (RIL TASK-083, ISS-052): render
 // the first, current±window and last page joined by "…" instead of one button
 // per page, so large blogs don't overflow the layout.
@@ -303,8 +335,10 @@ const stats = computed(() => {
       </div>
     </section>
 
-    <!-- Continue reading (DEC-104, TASK-164): recently viewed posts -->
-    <section v-if="recentPosts.length" class="mb-10">
+    <!-- Continue reading (DEC-104, TASK-164; server trail DEC-348, TASK-400):
+         guests see the device-local recent row; signed-in readers see the
+         server resume trail, newest-first -->
+    <section v-if="continueVisible" class="mb-10">
       <div class="flex items-center justify-between mb-4">
         <h2 class="text-lg font-bold text-gray-900 dark:text-gray-100 flex items-center gap-2">
           <Icon icon="lucide:history" class="w-5 h-5 text-violet-500" />
@@ -320,7 +354,7 @@ const stats = computed(() => {
       </div>
       <div class="flex flex-wrap gap-3">
         <NuxtLink
-          v-for="item in recentPosts.slice(0, 6)"
+          v-for="item in continueItems"
           :key="item.slug"
           :to="`/posts/${item.slug}`"
           class="group flex items-center gap-2 px-4 py-2 rounded-xl border border-gray-100 dark:border-gray-800 hover:border-violet-200 dark:hover:border-violet-800 hover:shadow-md transition-all duration-200"
