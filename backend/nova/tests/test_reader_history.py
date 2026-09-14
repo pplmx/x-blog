@@ -489,6 +489,124 @@ class TestScrollFraction:
         assert got["scroll_fraction"] is None
 
 
+class TestInProgress:
+    """Server-trail continue reading (DEC-348, TASK-400).
+
+    The home page's "Continue reading" row is localStorage-only today, so a
+    signed-in reader on a new device sees nothing even though the server trail
+    holds their resume positions. This endpoint surfaces the cross-device trail
+    outside /history: posts with a saved, POSITIVE resume position
+    (``scroll_position > 0``) exposed newest-first. Plain views (no saved
+    position) and rows cleared back to the top (0) are not "in progress";
+    drafts/scheduled posts stay hidden (same non-leak invariant as the list).
+    """
+
+    def test_requires_reader_token(self, client):
+        assert client.get(f"{HISTORY}/in-progress").status_code == 401
+
+    def test_literal_route_does_not_collide_with_post_id(self, client, db_session):
+        token = _token(client)
+        post = _create_post(db_session, slug="ip-collide")
+        client.post(f"{HISTORY}/{post.id}", json={"scroll_position": 500}, headers=_auth(token))
+        # A numeric id must NOT be routed to the literal in-progress endpoint.
+        assert client.get(f"{HISTORY}/in-progress", headers=_auth(token)).status_code == 200
+
+    def test_only_saved_positions_are_in_progress(self, client, db_session):
+        token = _token(client)
+        plain = _create_post(db_session, slug="ip-plain")  # viewed, no position saved
+        started = _create_post(db_session, slug="ip-started")  # scrolled into
+        cleared = _create_post(db_session, slug="ip-cleared")  # jumped back to top = 0
+        for p in (plain, started, cleared):
+            client.post(f"{HISTORY}/{p.id}", headers=_auth(token))
+        client.post(
+            f"{HISTORY}/{started.id}",
+            json={"scroll_position": 800, "scroll_fraction": 0.1},
+            headers=_auth(token),
+        )
+        client.post(
+            f"{HISTORY}/{cleared.id}",
+            json={"scroll_position": 0, "scroll_fraction": 0.0},
+            headers=_auth(token),
+        )
+
+        body = client.get(f"{HISTORY}/in-progress?limit=10", headers=_auth(token)).json()
+        assert [i["id"] for i in body["items"]] == [started.id]
+        assert body["total"] == 1
+        item = body["items"][0]
+        assert item["slug"] == "ip-started"
+        assert item["viewed_at"] is not None
+        assert "content" not in item
+
+    def test_legacy_row_without_fraction_is_in_progress(self, client, db_session):
+        """Rows saved before the fraction existed carry a pixel only; the
+        predicate is on scroll_position, so they still count as in-progress."""
+        token = _token(client)
+        post = _create_post(db_session, slug="ip-legacy")
+        client.post(f"{HISTORY}/{post.id}", json={"scroll_position": 1200}, headers=_auth(token))
+        body = client.get(f"{HISTORY}/in-progress", headers=_auth(token)).json()
+        assert [i["id"] for i in body["items"]] == [post.id]
+
+    def test_newest_first_and_revisit_bumps_to_front(self, client, db_session):
+        token = _token(client)
+        older = _create_post(db_session, slug="ip-older")
+        newer = _create_post(db_session, slug="ip-newer")
+        client.post(f"{HISTORY}/{older.id}", json={"scroll_position": 300}, headers=_auth(token))
+        client.post(f"{HISTORY}/{newer.id}", json={"scroll_position": 600}, headers=_auth(token))
+        assert [i["id"] for i in client.get(f"{HISTORY}/in-progress", headers=_auth(token)).json()["items"]] == [
+            newer.id,
+            older.id,
+        ]
+        # Re-reading the older post bumps its viewed_at to the front.
+        client.post(f"{HISTORY}/{older.id}", json={"scroll_position": 300}, headers=_auth(token))
+        assert [i["id"] for i in client.get(f"{HISTORY}/in-progress", headers=_auth(token)).json()["items"]] == [
+            older.id,
+            newer.id,
+        ]
+
+    def test_limit_is_respected(self, client, db_session):
+        token = _token(client)
+        posts = [_create_post(db_session, slug=f"ip-limit-{i}") for i in range(3)]
+        for p in posts:
+            client.post(f"{HISTORY}/{p.id}", json={"scroll_position": 400}, headers=_auth(token))
+        body = client.get(f"{HISTORY}/in-progress?limit=2", headers=_auth(token)).json()
+        assert [i["id"] for i in body["items"]] == [posts[2].id, posts[1].id]
+        assert body["total"] == 3
+
+    def test_empty_when_nothing_in_progress(self, client, db_session):
+        token = _token(client)
+        post = _create_post(db_session, slug="ip-empty")
+        client.post(f"{HISTORY}/{post.id}", headers=_auth(token))  # plain view only
+        body = client.get(f"{HISTORY}/in-progress", headers=_auth(token)).json()
+        assert body == {"items": [], "total": 0, "page": 1, "limit": 6, "total_pages": 0}
+
+    def test_draft_and_reader_isolated(self, client, db_session):
+        """A post that went dark (draft/scheduled) with a saved position must
+        not leak; another reader's positions are not in progress for this
+        reader."""
+        from app import models
+        from app.auth import ReaderAccount
+        from app.crud import utc_now_naive
+
+        token = _token(client, email="ip-iso@example.com")
+        rid = db_session.query(ReaderAccount).filter(ReaderAccount.email == "ip-iso@example.com").one().id
+        draft = _create_post(db_session, draft=True, slug="ip-dark")
+        db_session.add(
+            models.ReadingHistory(
+                reader_id=rid,
+                post_id=draft.id,
+                viewed_at=utc_now_naive(),
+                scroll_position=500,
+            )
+        )
+        db_session.commit()
+        assert [i["id"] for i in client.get(f"{HISTORY}/in-progress", headers=_auth(token)).json()["items"]] == []
+
+        other = _create_post(db_session, slug="ip-other")
+        other_token = _token(client, email="ip-other@example.com")
+        client.post(f"{HISTORY}/{other.id}", json={"scroll_position": 500}, headers=_auth(other_token))
+        assert [i["id"] for i in client.get(f"{HISTORY}/in-progress", headers=_auth(token)).json()["items"]] == []
+
+
 class TestActivityStreak:
     """Reading-streak + daily-activity stats (DEC-169, TASK-201).
 
