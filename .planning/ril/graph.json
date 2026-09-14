@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 330,
+  "round": 331,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-14T05:05:42+00:00",
+  "updated_at": "2026-09-14T05:59:38+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -24046,10 +24046,80 @@
       "version": 1,
       "created_at": "2026-09-14T05:04:47+00:00",
       "updated_at": "2026-09-14T05:04:47+00:00",
-      "touched_round": 329,
+      "touched_round": 330,
       "title": "close round 329: guest commenter reply-email (DEC-332 delivered)",
       "rationale": "Round 329 delivery: guest commenter reply-email (DEC-332/TASK-392 by CHG-525/526/527/528). The comment form requires an anonymous commenter to leave an email, create_comment stores it, but no dispatch path ever used it (the reply-notify guard was parent.reader_id is not None) — the one contact channel collected from guests was dead in every channel. Delivered: a guest who opts in (checkbox, default off) gets one best-effort email when a reply to their comment is approved, deep-linked to the exact reply and carrying a per-comment unsubscribe token; POST /api/comments/reply-notify/unsubscribe flips consent off idempotently (unknown token 404); the /comment-reply-unsubscribe?token= page posts the token once and tells a spent link from a network outage apart. Additive reply_notify_email/reply_notify_token on comments (DEC-009), honored only for anonymous comments (reader reply email stays the DEC-197 account pref); self-reply skip; best-effort SMTP. VERIFY green: backend 1481 (cov 93.80%, ruff/pyright clean, migration round-trips on both SQLite and dev PostgreSQL 10.112.9.49:13310), frontend 2056, typecheck exit 0, biome clean, comment-reply-email e2e 1/1 through the SMTP sink (incl. the unsubscribe-stops-later-mail step). Feature mode continues; next round re-sources.",
       "alternatives_rejected": "Reader data-export completeness (#2 sweep candidate) and home-feed staleness after in-session follow changes (#3) — deferred behind the stronger user-visible gap; styled mention chips / share-copy again below the gate (DEC-328/329)."
+    },
+    "DEC-334": {
+      "id": "DEC-334",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-14T05:16:42+00:00",
+      "updated_at": "2026-09-14T05:16:42+00:00",
+      "touched_round": 330,
+      "title": "feature selection round 330: complete reader data export",
+      "rationale": "Round 330 sourcing (sweep ranked candidate #2; #3 discarded under verification). The GDPR-style bundle GET /api/reader/me/export (DEC-126/TASK-175) ships only account/exported_at/bookmarks/comments/history (crud.export_reader_data return dict crud.py:2405-2413; DataExportResponse reader.py:214-221) — but a reader's follows (category/tag/series), notification prefs (incl. the per-kind email flags), durable inbox rows, and push device subscriptions are all reader-owned data the endpoint omits. A reader who downloads their data cannot recover what they follow, their notification preferences, their notification history, or how their devices are registered — the export's promise ('your data, portable') is incomplete. Real user-perceivable gap (data portability completeness, same class as the DEC-318 sitemap completeness fix); one-sentence acceptance: GET /me/export returns the five existing sections PLUS follows (categories/tags/series with notify flags), notification-prefs, inbox notifications, and push-subscription device summaries, deterministically covered by contract tests that create a fully-populated reader and assert each new section. Net-additive backend-only slice (thin/no frontend — the bundle is JSON; nothing to render). Excluding PII: prefs are the reader's own (no third-party data); push summaries are endpoints+created_at only, never keys.",
+      "alternatives_rejected": "Sweep candidate #3 (home personalized sections stale after in-session follow changes) FAILED verification: Nuxt has no keep-alive and re-mounts index.vue on SPA route changes, so onMounted re-runs and re-fetches follows/recommendations on every navigation to / — the staleness claim only holds under keep-alive/cache, which this app does not use. Sweep candidate #1 (guest reply-email) shipped in round 329 (DEC-332)."
+    },
+    "TASK-393": {
+      "id": "TASK-393",
+      "type": "task",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-14T05:17:40+00:00",
+      "updated_at": "2026-09-14T05:59:37+00:00",
+      "touched_round": 330,
+      "category": "core-feature",
+      "severity": 0.6,
+      "confidence": 1.0,
+      "effort": 3.0,
+      "tracked_title": "Complete reader data export with follows/prefs/inbox/push",
+      "description": "GET /api/reader/me/export (DEC-126/TASK-175) omits reader-owned follows (category/tag/series), notification prefs, inbox rows, and push subscriptions. Add them to crud.export_reader_data + DataExportResponse: follows (category/tag/series with notify flags), notification-prefs, inbox notifications (kind/title/url/read/created), push-subscription summaries (endpoint/created, never keys). Keep the PII invariants: no cross-reader data, no draft/post leakage, push summaries carry no cryptographic keys. Contract tests in test_reader_data_export.py: a fully-populated reader (follows a category+tag+series, flips prefs, has an inbox row, registers a push device) exports all five existing + four new sections deterministically; schema round-trips; works on SQLite + PG.",
+      "title": "Reader data export completeness (DEC-334)"
+    },
+    "CHG-529": {
+      "id": "CHG-529",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-14T05:58:40+00:00",
+      "updated_at": "2026-09-14T05:58:40+00:00",
+      "touched_round": 330,
+      "commit": "aa70ba7"
+    },
+    "CHG-530": {
+      "id": "CHG-530",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-14T05:58:40+00:00",
+      "updated_at": "2026-09-14T05:58:40+00:00",
+      "touched_round": 330,
+      "commit": "121acf9"
+    },
+    "CHG-531": {
+      "id": "CHG-531",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-14T05:58:40+00:00",
+      "updated_at": "2026-09-14T05:58:40+00:00",
+      "touched_round": 330,
+      "commit": "a3befe4"
+    },
+    "DEC-335": {
+      "id": "DEC-335",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-14T05:58:41+00:00",
+      "updated_at": "2026-09-14T05:58:41+00:00",
+      "touched_round": 330,
+      "title": "close round 330: complete reader data export (DEC-334 delivered)",
+      "rationale": "Round 330 delivery: complete reader data export (DEC-334/TASK-393 by CHG-529/530/531). GET /api/reader/me/export (DEC-126/TASK-175) shipped only account/bookmarks/comments/history; the bundle now adds follows (categories/tags/series with notify flags), notification_prefs (null when defaults), durable inbox rows, and push-subscription device summaries (endpoint + created_at only, never the cryptographic keys) — covering every reader-owned dataset. Cross-reader + draft-leakage invariants unchanged. VERIFY green: backend 1486 (cov 93.81%, ruff/pyright clean), export suites pass on both SQLite and dev PostgreSQL 10.112.9.49:13310. Feature mode continues; next round re-sources from the fresh surface.",
+      "alternatives_rejected": "Sweep #3 (home staleness) rejected under verification — Nuxt has no keep-alive, index.vue re-mounts on SPA navigation, so follows/recommendations refetch on every visit; the staleness claim only holds with page caching this app does not use. Sweep #1 (guest reply-email) already delivered round 329."
     }
   },
   "edges": [
@@ -36068,6 +36138,42 @@
       "to": "DEC-332",
       "type": "supersedes",
       "created_at": "2026-09-14T05:05:42+00:00"
+    },
+    {
+      "from": "DEC-334",
+      "to": "DEC-333",
+      "type": "supersedes",
+      "created_at": "2026-09-14T05:17:40+00:00"
+    },
+    {
+      "from": "DEC-334",
+      "to": "TASK-393",
+      "type": "governs",
+      "created_at": "2026-09-14T05:17:40+00:00"
+    },
+    {
+      "from": "CHG-529",
+      "to": "TASK-393",
+      "type": "implements",
+      "created_at": "2026-09-14T05:59:37+00:00"
+    },
+    {
+      "from": "CHG-530",
+      "to": "TASK-393",
+      "type": "implements",
+      "created_at": "2026-09-14T05:59:37+00:00"
+    },
+    {
+      "from": "CHG-531",
+      "to": "TASK-393",
+      "type": "implements",
+      "created_at": "2026-09-14T05:59:37+00:00"
+    },
+    {
+      "from": "DEC-335",
+      "to": "DEC-334",
+      "type": "supersedes",
+      "created_at": "2026-09-14T05:59:37+00:00"
     }
   ]
 }
