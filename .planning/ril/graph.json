@@ -2,7 +2,7 @@
   "ril_version": 1,
   "round": 333,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-14T10:21:51+00:00",
+  "updated_at": "2026-09-14T10:26:35+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -24358,6 +24358,34 @@
       "title": "close round 333: reader-locale reply/thread/mention copy (DEC-340 delivered)",
       "rationale": "Round 333 delivery: reader-locale reply/thread/mention notification copy (DEC-340/TASK-396 by CHG-539/540/541). Round 332 localized only new_post/series_new_part; the reply / thread_comment / @-mention inbox rows and emails were still hardcoded Chinese (env-overridable via REPLY/THREAD/MENTION_NOTIFICATION_*), so an English reader got an English 'New post' email but a Chinese 'Someone replied to your comment'.notification_copy now covers all five kinds (+ commenter label for mentions); the env-overridable zh constants moved into crud so the copy lives with the localization; the reply path computes per-reader copy from the replied-to reader's locale and both batched fan-outs load each target's locale once and build per-reader-localized rows in the same batch; email dispatch builds per-reader EmailItems. Server-generated push payloads keep the operator-global env copy (one payload per browser). A no-locale reader (NULL) still gets exactly today's zh copy. VERIFY green: backend 1508 (cov 93.90%, ruff/pyright clean), locale/reply/thread suites replay green on dev PostgreSQL 10.112.9.49:13310, no schema change (no migration), frontend untouched (round-332 switcher sync persists the locale). Feature mode continues; next round re-sources.",
       "alternatives_rejected": "Per-reader browser-push localization was rejected: a single push payload is dispatched to a whole group (one payload per browser request), so it cannot vary per reader; operators keep localizing push copy via env (POST_NOTIFICATION_TITLE / REPLY_NOTIFICATION_TITLE / THREAD_/* / MENTION_/*). The guest reply email / password reset (sender-side, site_language) stayed out of scope for the same reason as in round 332 — deferred as a later half-round if the operator wants it."
+    },
+    "DEC-342": {
+      "id": "DEC-342",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-14T10:25:57+00:00",
+      "updated_at": "2026-09-14T10:25:57+00:00",
+      "touched_round": 333,
+      "title": "feature round 334: site-language guest + recovery email templates",
+      "rationale": "Round 334 sourcing (fresh sweep, following rounds 332/333's i18n story): the remaining hardcoded-Chinese emails are the SENDER-SIDE ones named for a guest or recovery, not a reader. send_guest_reply_email (emailer.py:231)is fully Chinese (subject '有人回复了你的评论', body '《{post}》有一条新回复') for an anonymous commenter whose only tie to the blog is the visit — on an English-configured site (site_language=en) the guest gets a Chinese reply email. send_password_reset_email (emailer.py:275) is bilingual-subject hack ('重置密码 / Reset password') with a fully Chinese body AND hardcodes 'X-Blog' as the site name instead of the configured site_title. Both are operator-site-language surfaces where the site's configured SITE_LANGUAGE + SITE_TITLE should render the copy. Real user-perceivable defect for an English install and the last all-Chinese email surface besides the reader fan-outs already localized (rounds 332/333). One-sentence acceptance: the guest reply email and the password reset email render in the site's configured language (SITE_LANGUAGE, default zh preserving today's copy) and the reset email uses the configured site_title instead of a hardcoded name. Net-additive backend slice; no schema change; default zh keeps every existing test/assertion exactly.",
+      "alternatives_rejected": "Routing these through the per-reader locale machinery was rejected: a guest has no account and the reset email targets an email address with no reader identity, so the reader-localized fan-out (rounds 332/333) cannot apply; the site's configured language is the only stable signal. Frontend work was not in scope: no UI change is needed (the emails are server-generated and the reset/guest flows already exist)."
+    },
+    "TASK-397": {
+      "id": "TASK-397",
+      "type": "task",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-14T10:26:35+00:00",
+      "updated_at": "2026-09-14T10:26:35+00:00",
+      "touched_round": 333,
+      "category": "core-feature",
+      "severity": 0.4,
+      "confidence": 1.0,
+      "effort": 1.5,
+      "tracked_title": "Site-language guest reply + password reset email copy",
+      "title": "Site-language guest + recovery emails (DEC-342)",
+      "description": "send_guest_reply_email and send_password_reset_email are hardcoded Chinese (the reset subject is a bilingual hack and the body hardcodes 'X-Blog' instead of site_title). Render both in the site's configured language (SITE_LANGUAGE, default zh preserving today's copy) and use SITE_TITLE for the site name. Lazy os.getenv reads match the emailer's lazy-config style (no settings import). No schema change, no frontend change; default zh keeps all existing tests."
     }
   },
   "edges": [
@@ -36520,6 +36548,18 @@
       "to": "DEC-340",
       "type": "supersedes",
       "created_at": "2026-09-14T10:21:51+00:00"
+    },
+    {
+      "from": "DEC-342",
+      "to": "DEC-341",
+      "type": "supersedes",
+      "created_at": "2026-09-14T10:26:35+00:00"
+    },
+    {
+      "from": "DEC-342",
+      "to": "TASK-397",
+      "type": "governs",
+      "created_at": "2026-09-14T10:26:35+00:00"
     }
   ]
 }
