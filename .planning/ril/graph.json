@@ -2,7 +2,7 @@
   "ril_version": 1,
   "round": 335,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-14T11:16:45+00:00",
+  "updated_at": "2026-09-14T11:18:20+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -24375,9 +24375,9 @@
       "id": "TASK-397",
       "type": "task",
       "status": "resolved",
-      "version": 3,
+      "version": 4,
       "created_at": "2026-09-14T10:26:35+00:00",
-      "updated_at": "2026-09-14T11:15:09+00:00",
+      "updated_at": "2026-09-14T11:18:20+00:00",
       "touched_round": 335,
       "category": "core-feature",
       "severity": 0.4,
