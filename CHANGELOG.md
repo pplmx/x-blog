@@ -9,6 +9,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- **Guest email newsletter (DEC-351)**: the blog's entire email surface (weekly
+  digest, per-event emails, guest reply emails) was gated behind a reader
+  account or a comment, so an anonymous visitor who just wanted "email me new
+  posts" had no on-ramp other than RSS (a tool for technical readers). A
+  footer form is now that on-ramp: any visitor enters an email address, gets a
+  double opt-in confirmation link (the address receives NOTHING until it is
+  clicked), and a confirmed subscriber is emailed once per new published post —
+  deep-linked to the post, carrying a working per-subscriber unsubscribe link,
+  in the site's configured language. The email is never an existence oracle
+  (subscribe always answers with the same generic message, mirroring reader
+  register), confirm/unsubscribe are idempotent with an unknown token 404
+  (mirroring reply-notify), scheduled posts that cross publish_at surface the
+  same exactly-once email via the fire-on-read sweep, and a mail failure never
+  breaks the publish that triggered it (best effort, fail-closed without SMTP).
 - **Server-trail "Continue reading" on the home page (DEC-348)**: the home
   Continue-reading row was a purely device-local localStorage trail — a signed-in
   reader on a new device saw an empty row even though the server-side reading

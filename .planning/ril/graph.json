@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 338,
+  "round": 339,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-14T14:29:46+00:00",
+  "updated_at": "2026-09-14T18:04:14+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -24740,10 +24740,68 @@
       "version": 1,
       "created_at": "2026-09-14T14:29:46+00:00",
       "updated_at": "2026-09-14T14:29:46+00:00",
-      "touched_round": 338,
+      "touched_round": 339,
       "title": "converged-idle: feature-evolution mode quiesced (surface saturated, round 338)",
       "rationale": "converged-idle: feature-evolution mode quiesced (round 338). CONVERGENCE EVIDENCE: every round-338 candidate probed already exists (TOC with scroll-spy and mobile FAB, related posts, comment like buttons w/ per-source dedup, account deletion incl. GDPR DELETE /me, reading-time estimate, standalone-posts prev/next via /posts/{id}/adjacent, admin media library browser, popular-posts home widget, notification unread badge, print view, RSS autodiscovery) and the previous rounds already delivered server-trail continue reading (DEC-348) and cross-device resume (DEC-346). An independent full-inventory sweep (37 pages, 17 components, 31 composables, 20 routers) found NO substantial missing capability; the only residuals are three patch-level items that fail the value gate. The core-feature backlog is empty (TASK-400 resolved). Last VERIFY green: backend 1529 (cov 93.94%, ruff clean, pyright 0, migrations round-trip SQLite + dev PG), frontend 2064, typecheck exit 0, biome clean. RESUMPTION: a new operator direction (supersedes decision), a real user issue, or a substantive repo change re-activates; the first re-activated round re-runs VERIFY before continuing.",
       "alternatives_rejected": "Round-338 candidates rejected at the value gate (section 11.2: 'a missing option / missing button' patches are rejected, not built): (1) native Web Share / navigator.share on ShareButtons - convenience above the existing copy-link + social row, not a real problem; (2) comment-sort persistence (localStorage / route.query) - a setting-persistence polish, not a capability; (3) IndexNow / sitemap ping on publish - infra only valuable for frequent publishers, unclear payoff for this blog; (4) /likes page - post likes are deliberately anonymous counters with no reader-owned record; a page would need a new table + sign-in sync slice disproportionate to its value; (5) 3-state theme toggle - refines an already-working binary toggle with a system default; cosmetic; (6) comment upvote/downvote - already implemented (CommentLike + UI + per-source dedup); (7) per-post TOC / related posts / account deletion - verified ALREADY implemented, not re-proposed. Force-building any of these would be patch accumulation, the exact anti-pattern the value gate exists to stop."
+    },
+    "DEC-351": {
+      "id": "DEC-351",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-14T16:16:11+00:00",
+      "updated_at": "2026-09-14T16:16:11+00:00",
+      "touched_round": 339,
+      "title": "reactivate feature-evolution mode: guest email newsletter (supersedes DEC-350 quiesce)",
+      "rationale": "Operator re-activated feature-evolution mode on round 339 (goal: feature exploration dev). Full baseline VERIFY re-run green (backend 1529/cov 93.94%, pyright 0, ruff clean, frontend 2064, typecheck 0, biome clean) per the quiesce resumption contract. Gap analysis over the entire surface: all email channels (weekly digest, per-event emails, guest reply emails) require a reader account or a comment; an anonymous visitor has no 'email me new posts' on-ramp — RSS only serves technical readers. Newsletter slice is net-additive (new table + public subscribe/confirm/unsubscribe endpoints + footer form + fan-out integration into the 4 existing new-post dispatch sites) and reuses proven token-consent (DEC-332 reply_notify_token), site-language copy (DEC-342) and single-SMTP-session delivery (send_messages_flags). Not a missing-button patch: it is a real capability gap with a user-visible funnel.",
+      "alternatives_rejected": "Rejected: (1) comment-author edit/delete — already fully implemented (PATCH/DELETE /api/reader/me/comments/{id} + edited_at marker + CommentList UI); (2) search filters — already implemented (category/tag/date_from/date_to/sort + filter UI); (3) comment sort — already implemented (newest/oldest/likes + in-flight feedback); (4) bulk admin comment moderation — already implemented (batch-approve/batch-delete); (5) PWA/offline reading — large refactor surface, unclear user value for a read-on-demand blog; (6) admin 'unread badge' etc. — already delivered or patch-level."
+    },
+    "TASK-401": {
+      "id": "TASK-401",
+      "type": "task",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-14T16:16:46+00:00",
+      "updated_at": "2026-09-14T18:03:12+00:00",
+      "touched_round": 339,
+      "category": "core-feature",
+      "title": "Guest email newsletter: public subscribe (double opt-in confirm) + token unsubscribe + new-post fan-out to confirmed subscribers (footer form, confirm/unsubscribe pages, zh/en i18n)",
+      "severity": 3,
+      "effort": "medium"
+    },
+    "ISS-507": {
+      "id": "ISS-507",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-14T16:17:28+00:00",
+      "updated_at": "2026-09-14T18:03:12+00:00",
+      "touched_round": 339,
+      "title": "No email newsletter for anonymous visitors: every email channel (digest, per-event, guest reply) requires an account or a comment; RSS-only on-ramp leaves non-technical readers no 'email me new posts' path",
+      "severity": "medium"
+    },
+    "CHG-560": {
+      "id": "CHG-560",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-14T18:03:12+00:00",
+      "updated_at": "2026-09-14T18:03:12+00:00",
+      "touched_round": 339,
+      "commit": "PENDING",
+      "title": "feat(newsletter): guest email newsletter double opt-in subscribe/confirm/unsubscribe + new-post fan-out (DEC-351/TASK-401; resolves ISS-507)"
+    },
+    "EV-246": {
+      "id": "EV-246",
+      "type": "evidence",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-14T18:04:14+00:00",
+      "updated_at": "2026-09-14T18:04:14+00:00",
+      "touched_round": 339,
+      "source": "pytest: 1539 passed cov 93.81% (backend), 2076 (frontend), dev PG 1549, pyright 0, ruff clean, typecheck 0, biome clean, migration round-trip SQLite + dev PG",
+      "confidence": 1.0
     }
   },
   "edges": [
@@ -37092,6 +37150,36 @@
       "to": "DEC-349",
       "type": "supersedes",
       "created_at": "2026-09-14T14:29:46+00:00"
+    },
+    {
+      "from": "TASK-401",
+      "to": "ISS-507",
+      "type": "addresses",
+      "created_at": "2026-09-14T16:17:29+00:00"
+    },
+    {
+      "from": "DEC-351",
+      "to": "TASK-401",
+      "type": "governs",
+      "created_at": "2026-09-14T16:17:29+00:00"
+    },
+    {
+      "from": "DEC-351",
+      "to": "DEC-350",
+      "type": "supersedes",
+      "created_at": "2026-09-14T16:17:29+00:00"
+    },
+    {
+      "from": "CHG-560",
+      "to": "ISS-507",
+      "type": "resolves",
+      "created_at": "2026-09-14T18:04:14+00:00"
+    },
+    {
+      "from": "CHG-560",
+      "to": "TASK-401",
+      "type": "implements",
+      "created_at": "2026-09-14T18:04:14+00:00"
     }
   ]
 }
