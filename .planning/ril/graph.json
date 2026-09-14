@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 336,
+  "round": 337,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-14T11:42:25+00:00",
+  "updated_at": "2026-09-14T13:12:50+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -11,7 +11,7 @@
       "version": 1,
       "created_at": "2026-08-06T13:23:41+00:00",
       "updated_at": "2026-08-06T13:23:41+00:00",
-      "touched_round": 325,
+      "touched_round": 337,
       "title": "backend-nova",
       "description": "FastAPI Python 3.14 backend at backend/nova; SQLAlchemy ORM; routers in app/routers, crud.py business logic, 656 lines"
     },
@@ -19270,7 +19270,7 @@
       "version": 2,
       "created_at": "2026-09-07T05:44:41+00:00",
       "updated_at": "2026-09-07T05:48:15+00:00",
-      "touched_round": 276,
+      "touched_round": 337,
       "title": "Media-library uploaded_at and export exported_at use server-local / aware UTC while every other timestamp is naive UTC — 8h off on UTC+8 hosts, mixed tz semantics in one bundle",
       "severity": "low",
       "confidence": 0.9,
@@ -24518,7 +24518,7 @@
       "version": 1,
       "created_at": "2026-09-14T11:41:29+00:00",
       "updated_at": "2026-09-14T11:41:29+00:00",
-      "touched_round": 336,
+      "touched_round": 337,
       "title": "feature round 336: cross-viewport resume reading via scroll fraction",
       "rationale": "Round 336 sourcing (fresh sweep): resume reading (DEC-167/TASK-200) saves an absolute scroll PIXEL offset server-side so a signed-in reader can continue where they left off — the whole reason it is server-side rather than localStorage is CROSS-DEVICE continuation. But a pixel offset is viewport-dependent: a position a third of the way down an article on a phone (docHeight 30000px) restores to a tiny fraction of the same article on a desktop (docHeight 60000px), dropping the reader at the wrong place. Same-device resume (the common case) works, which is why this was deferred twice as 'medium-confidence', but cross-device restore is the feature's core promise and it is currently wrong for every layout change. Real user-perceivable defect. One-sentence acceptance: continuing a post on a different viewport restores at the correct scroll FRACTION of the document, falling back to the stored pixel for pre-feature rows. Net-additive full-stack slice: additive nullable scroll_fraction (0..1) on reading_history (DEC-009), sent alongside the pixel by the reader's save and preferred at restore; older rows (null fraction) keep today's exact pixel behavior.",
       "alternatives_rejected": "Storing only the fraction and dropping the pixel was rejected: same-device precision and all existing rows/API consumers depend on the pixel value; the fraction is additive and backward compatible. A document-height snapshot column was rejected in favor of the normalized 0..1 fraction (viewport-independent, no units to interpret). Moving resume to localStorage was rejected: it would forfeit the cross-device server trail DEC-167 deliberately built."
@@ -24526,11 +24526,11 @@
     "TASK-399": {
       "id": "TASK-399",
       "type": "task",
-      "status": "active",
-      "version": 1,
+      "status": "resolved",
+      "version": 2,
       "created_at": "2026-09-14T11:42:25+00:00",
-      "updated_at": "2026-09-14T11:42:25+00:00",
-      "touched_round": 336,
+      "updated_at": "2026-09-14T13:12:49+00:00",
+      "touched_round": 337,
       "category": "core-feature",
       "severity": 0.5,
       "confidence": 1.0,
@@ -24538,6 +24538,94 @@
       "tracked_title": "Cross-viewport resume reading via scroll fraction",
       "title": "Cross-viewport resume reading (DEC-346)",
       "description": "Resume reading saves an absolute scroll pixel offset (ReadingHistory.scroll_position) that is viewport-dependent — a phone->desktop continue lands at the wrong scroll fraction. Add additive nullable scroll_fraction (0..1, DEC-009) on reading_history, send it alongside the pixel from the reader's save, prefer it at restore (convert fraction x current scroll range), fall back to the pixel for pre-feature (null fraction) rows. Backend: model + migration + RecordHistoryRequest/ReadingPositionResponse + crud.record_reading_history upsert-in-place semantics. Frontend: useResumeReading save computes fraction, restore prefers it. Tests: backend round-trip/bounds/null-preserve (SQLite + PG), frontend save/restore/fallback units."
+    },
+    "CHG-548": {
+      "id": "CHG-548",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-14T13:09:16+00:00",
+      "updated_at": "2026-09-14T13:09:16+00:00",
+      "touched_round": 337,
+      "commit": "fa13763",
+      "title": "test(history): cross-viewport resume fraction coverage (DEC-346/TASK-399)"
+    },
+    "CHG-549": {
+      "id": "CHG-549",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-14T13:09:16+00:00",
+      "updated_at": "2026-09-14T13:09:16+00:00",
+      "touched_round": 337,
+      "commit": "d3892314",
+      "title": "feat(history): add scroll_fraction to the reader resume trail (DEC-346/TASK-399)"
+    },
+    "CHG-550": {
+      "id": "CHG-550",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-14T13:09:16+00:00",
+      "updated_at": "2026-09-14T13:09:16+00:00",
+      "touched_round": 337,
+      "commit": "bebcde66",
+      "title": "test(resume): cross-viewport fraction behavior for useResumeReading (DEC-346/TASK-399)"
+    },
+    "CHG-551": {
+      "id": "CHG-551",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-14T13:09:17+00:00",
+      "updated_at": "2026-09-14T13:09:17+00:00",
+      "touched_round": 337,
+      "commit": "4fb2d835",
+      "title": "feat(resume): cross-device resume via a saved scroll fraction (DEC-346/TASK-399)"
+    },
+    "CHG-552": {
+      "id": "CHG-552",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-14T13:09:17+00:00",
+      "updated_at": "2026-09-14T13:09:17+00:00",
+      "touched_round": 337,
+      "commit": "2ebeac13",
+      "title": "docs(resume): record cross-device resume position (DEC-346) in CHANGELOG + README"
+    },
+    "CHG-553": {
+      "id": "CHG-553",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-14T13:09:37+00:00",
+      "updated_at": "2026-09-14T13:09:37+00:00",
+      "touched_round": 337,
+      "commit": "ec7c4f18",
+      "title": "fix(notify): restore pyright-clean gate for locale fan-out (reader_locale_map)"
+    },
+    "ISS-506": {
+      "id": "ISS-506",
+      "type": "issue",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-14T13:11:50+00:00",
+      "updated_at": "2026-09-14T13:11:50+00:00",
+      "touched_round": 337,
+      "title": "pyright gate red (17 errors): dict(Row) locale maps typed as bytes in notification fan-outs (R331-335 regression)"
+    },
+    "DEC-347": {
+      "id": "DEC-347",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-14T13:12:50+00:00",
+      "updated_at": "2026-09-14T13:12:50+00:00",
+      "touched_round": 337,
+      "title": "close round 336: cross-viewport resume reading delivered (DEC-346)",
+      "rationale": "close round 336: cross-viewport resume reading (DEC-346 delivered). ReadingHistory.scroll_fraction (0..1) saved alongside the pixel and preferred at restore, converted for the current viewport; pre-feature rows fall back to the pixel; jumpToTop clears both. VERIFY green: backend 1521 (cov 93.93%, ruff clean, pyright 0 errors after restoring the gate with reader_locale_map — CHG-553 resolves ISS-506, a R331-335 dict(Row) typing regression; migration round-trips on SQLite + dev PG 10.112.9.49; reader-history suite 54/54 on PG dialect), frontend 2061 (vitest), typecheck exit 0, biome clean. Delivered by CHG-548/549/550/551/552 -> TASK-399.",
+      "alternatives_rejected": "None this round: a quality-convergence item surfaced during VERIFY (pyright gate red) was fixed inline (CHG-553) rather than deferred, keeping the regression guard green."
     }
   },
   "edges": [
@@ -36784,6 +36872,54 @@
       "to": "TASK-399",
       "type": "governs",
       "created_at": "2026-09-14T11:42:25+00:00"
+    },
+    {
+      "from": "CHG-548",
+      "to": "TASK-399",
+      "type": "implements",
+      "created_at": "2026-09-14T13:09:36+00:00"
+    },
+    {
+      "from": "CHG-549",
+      "to": "TASK-399",
+      "type": "implements",
+      "created_at": "2026-09-14T13:09:36+00:00"
+    },
+    {
+      "from": "CHG-550",
+      "to": "TASK-399",
+      "type": "implements",
+      "created_at": "2026-09-14T13:09:36+00:00"
+    },
+    {
+      "from": "CHG-551",
+      "to": "TASK-399",
+      "type": "implements",
+      "created_at": "2026-09-14T13:09:36+00:00"
+    },
+    {
+      "from": "CHG-552",
+      "to": "TASK-399",
+      "type": "implements",
+      "created_at": "2026-09-14T13:09:36+00:00"
+    },
+    {
+      "from": "ISS-506",
+      "to": "COMP-001",
+      "type": "located_in",
+      "created_at": "2026-09-14T13:11:50+00:00"
+    },
+    {
+      "from": "CHG-553",
+      "to": "ISS-506",
+      "type": "resolves",
+      "created_at": "2026-09-14T13:11:51+00:00"
+    },
+    {
+      "from": "DEC-347",
+      "to": "DEC-346",
+      "type": "supersedes",
+      "created_at": "2026-09-14T13:12:50+00:00"
     }
   ]
 }
