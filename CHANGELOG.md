@@ -9,6 +9,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- **Scheduled-post sweep on every surface (DEC-344)**: the fire-on-read
+  announcement for crossed scheduled posts (DEC-336) covered the post list,
+  post detail, and sitewide feeds — but other surfaces that show a just-live
+  post (`/follows`, the follower's own aggregate feed; search; category/series
+  feeds; the sitemap) did not trigger it, so a follower who watches `/follows`
+  could see the post appear with no push/inbox/email. Every such surface now
+  fires the same exactly-once fan-out, so no follower loses the notification
+  no matter where they look.
 - **Site-language guest & recovery emails (DEC-342)**: the reader-side emails
   were localized per reader (DEC-338/DEC-340), but the sender-side ones were
   still hardcoded Chinese — the guest reply email (a visitor with no account
