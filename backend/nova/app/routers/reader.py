@@ -213,13 +213,23 @@ class SeriesProgressResponse(BaseModel):
 
 
 class DataExportResponse(BaseModel):
-    """A reader's portable data bundle (DEC-126/TASK-175)."""
+    """A reader's portable data bundle (DEC-126/TASK-175; completed DEC-334).
+
+    Now covers every reader-owned dataset: profile, bookmarks, comments,
+    history, follows (category/tag/series), notification preferences, the
+    durable inbox rows, and push-subscription device summaries (endpoints +
+    created_at only — never the cryptographic keys). Nothing cross-reader.
+    """
 
     account: dict
     exported_at: str | None = None
     bookmarks: list[dict] = []
     comments: list[dict] = []
     history: list[dict] = []
+    follows: dict = {}
+    notification_prefs: dict | None = None
+    notifications: list[dict] = []
+    push_subscriptions: list[dict] = []
 
 
 class FollowedSeriesItem(BaseModel):

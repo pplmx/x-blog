@@ -2389,6 +2389,102 @@ def export_reader_data(db: Session, reader_id: int) -> dict:
             }
         )
 
+    # Reader-owned follow rows (DEC-140/TASK-182, DEC-138/TASK-181,
+    # DEC-195/TASK-215): the categories/tags/series this reader follows, with
+    # the notify flag that couples a follow to push fan-out. Join names/slugs
+    # in one query each so the bundle stays portable (a follow is dead weight
+    # without the name of the thing followed).
+    follows = {"categories": [], "tags": [], "series": []}
+    cat_rows = (
+        db.query(models.CategoryFollow, models.Category.name)
+        .join(models.Category, models.CategoryFollow.category_id == models.Category.id)
+        .filter(models.CategoryFollow.reader_id == reader_id)
+        .order_by(models.CategoryFollow.id)
+        .all()
+    )
+    follows["categories"] = [
+        {"category_id": row.category_id, "name": name, "notify": row.notify} for row, name in cat_rows
+    ]
+    tag_rows = (
+        db.query(models.TagFollow, models.Tag.name)
+        .join(models.Tag, models.TagFollow.tag_id == models.Tag.id)
+        .filter(models.TagFollow.reader_id == reader_id)
+        .order_by(models.TagFollow.id)
+        .all()
+    )
+    follows["tags"] = [{"tag_id": row.tag_id, "name": name, "notify": row.notify} for row, name in tag_rows]
+    series_rows = (
+        db.query(models.SeriesFollow, models.Series.title, models.Series.slug)
+        .join(models.Series, models.SeriesFollow.series_id == models.Series.id)
+        .filter(models.SeriesFollow.reader_id == reader_id)
+        .order_by(models.SeriesFollow.id)
+        .all()
+    )
+    follows["series"] = [
+        {"series_id": row.series_id, "title": title, "slug": slug, "notify": row.notify}
+        for row, title, slug in series_rows
+    ]
+
+    # Notification preferences (DEC-171/TASK-202, DEC-197/TASK-217): one row per
+    # reader holding every push/inbox/email kind toggle. A missing row reads as
+    # all-defaults — export None so the client can distinguish "no prefs set"
+    # from explicit values.
+    pref = db.query(models.ReaderNotificationPref).filter(models.ReaderNotificationPref.reader_id == reader_id).first()
+    notification_prefs = (
+        {
+            "new_post": pref.new_post,
+            "reply": pref.reply,
+            "thread_comment": pref.thread_comment,
+            "mention": pref.mention,
+            "email_new_post": pref.email_new_post,
+            "email_reply": pref.email_reply,
+            "email_thread_comment": pref.email_thread_comment,
+            "email_mention": pref.email_mention,
+            "email_weekly_digest": pref.email_weekly_digest,
+        }
+        if pref is not None
+        else None
+    )
+
+    # Durable inbox rows (DEC-160/TASK-192): the reader's own notification
+    # history — kind, title, deep link, read state. No cross-reader data.
+    notification_rows = (
+        db.query(models.ReaderNotification)
+        .filter(models.ReaderNotification.reader_id == reader_id)
+        .order_by(models.ReaderNotification.created_at)
+        .all()
+    )
+    notifications = [
+        {
+            "notification_id": n.id,
+            "kind": n.kind,
+            "title": n.title,
+            "body": n.body,
+            "url": n.url,
+            "read_at": (n.read_at.isoformat() if n.read_at else None),
+            "created_at": (n.created_at.isoformat() if n.created_at else None),
+        }
+        for n in notification_rows
+    ]
+
+    # Push subscriptions (DEC-055/TASK-117): which browsers/endpoints this
+    # reader registered. The endpoint + created_at identify the device;
+    # p256dh/auth are the encryption keys and must NOT ride a data bundle
+    # (same PII-adjacent bar as a comment's reply-notify token).
+    push_rows = (
+        db.query(models.PushSubscription)
+        .filter(models.PushSubscription.reader_id == reader_id)
+        .order_by(models.PushSubscription.id)
+        .all()
+    )
+    push_subscriptions = [
+        {
+            "endpoint": p.endpoint,
+            "created_at": (p.created_at.isoformat() if p.created_at else None),
+        }
+        for p in push_rows
+    ]
+
     return {
         "account": account_data,
         # Naive UTC, matching every other timestamp in the bundle (DEC-213):
@@ -2399,6 +2495,10 @@ def export_reader_data(db: Session, reader_id: int) -> dict:
         "bookmarks": bookmarks,
         "comments": comments,
         "history": history,
+        "follows": follows,
+        "notification_prefs": notification_prefs,
+        "notifications": notifications,
+        "push_subscriptions": push_subscriptions,
     }
 
 
