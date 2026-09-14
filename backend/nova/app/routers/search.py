@@ -7,7 +7,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
-from .. import models
+from .. import crud, models
 from ..crud import _has_cjk, _has_searchable_token, log_search_query, search_posts
 from ..database import get_db
 from ..dates import inclusive_end_of_day, parse_bound
@@ -167,6 +167,11 @@ def search(
         raise HTTPException(status_code=422, detail="q must be a non-blank search term")
     if sort not in VALID_SORTS:
         raise HTTPException(status_code=422, detail=f"sort must be one of {list(VALID_SORTS)}")
+    # Fire the scheduled-post publish-time fan-out (DEC-344/TASK-398): search
+    # surfaces a crossed scheduled post like any public surface, so it must
+    # trigger the same exactly-once announce. Cheap indexed no-op when nothing
+    # crossed; the durable stamp prevents duplicates.
+    crud.maybe_notify_due_scheduled_posts(db)
     is_postgres = db.get_bind().dialect.name == "postgresql"
     # date-only "to" bounds are inclusive of the picked day (see
     # dates.inclusive_end_of_day); parse both raw strings back to naive-UTC

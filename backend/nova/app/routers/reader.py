@@ -1285,6 +1285,12 @@ def my_follows_feed(
     Paginated (DEC-142/TASK-183, pagination DEC-292/TASK-375): the home section
     uses page 1, the dedicated /follows page pages through all of them.
     """
+    # Fire the scheduled-post publish-time fan-out (DEC-344/TASK-398): this is
+    # the follower's OWN aggregation surface — the most likely place they
+    # notice a crossed scheduled post — so it must trigger the same exactly-
+    # once announce as the other public surfaces (round-331 sweep). Cheap
+    # indexed no-op when nothing crossed; the durable stamp prevents duplicates.
+    crud.maybe_notify_due_scheduled_posts(db)
     posts, total = crud.follows_feed_posts(db, current_reader.id, limit=limit, offset=(page - 1) * limit)
     total_pages = (total + limit - 1) // limit
     return schemas.PostListResponse.model_validate(

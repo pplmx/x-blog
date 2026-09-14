@@ -421,6 +421,10 @@ def get_category_rss_feed(
     category = crud.get_category_by_name(db, name)
     if not category:
         raise HTTPException(status_code=404, detail="Category not found")
+    # Scheduled-post publish-time fan-out (DEC-344/TASK-398): a scoped feed is
+    # a polled surface that surfaces crossed posts — fire the exactly-once
+    # sweep like the sitewide feeds. Cheap indexed no-op when nothing crossed.
+    crud.maybe_notify_due_scheduled_posts(db)
     key = ("rss-category", name, full)
     cached = feed_cache.get(key)
     if cached is not None:
@@ -462,6 +466,10 @@ def get_series_rss_feed(
     series = crud.get_series_by_slug(db, slug)
     if not series:
         raise HTTPException(status_code=404, detail="Series not found")
+    # Scheduled-post publish-time fan-out (DEC-344/TASK-398): same sweep as the
+    # other polled feed surfaces; a series feed poller is a reliable crossing
+    # trigger. Exactly-once by the durable stamp.
+    crud.maybe_notify_due_scheduled_posts(db)
     key = ("rss-series", slug, full)
     cached = feed_cache.get(key)
     if cached is not None:
@@ -501,6 +509,9 @@ SITEMAP_POST_PAGE = 1000
 @seo_router.get("/sitemap.xml")
 def get_sitemap(request: Request = None, db: Session = Depends(get_db)) -> Response:  # type: ignore[assignment]
     """Get XML sitemap of the site."""
+    # Scheduled-post publish-time fan-out (DEC-344/TASK-398): the sitemap's
+    # crawl hit surfaces a crossed post — fire the exactly-once sweep too.
+    crud.maybe_notify_due_scheduled_posts(db)
     cached = feed_cache.get("sitemap")
     if cached is not None:
         return _feed_response(cached, "application/xml", request)
