@@ -16,10 +16,28 @@ import { flushPromises, mount } from "@vue/test-utils";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { type Ref, ref } from "vue";
 
+const { authState, setReaderLocale } = vi.hoisted(() => {
+	// Plain ref-shaped object (no vue import inside the hoisted factory — the
+	// hoist runs before module imports resolve); the component only reads .value.
+	const authState = { value: false } as { value: boolean };
+	// Returns a thenable so the component's `.catch(() => {})` fire-and-forget
+	// never throws on a successful (or failed) sync.
+	const setReaderLocale = vi.fn(() => Promise.resolve());
+	return { authState, setReaderLocale };
+});
+
 const locale: Ref<string> = ref("zh-Hans");
 const setLocale = vi.fn((l: string) => {
 	locale.value = l;
 });
+
+// Reader auth state is a shared ref so tests can flip it (guest vs signed-in)
+// and assert the locale-sync branch of onSelect (DEC-338/TASK-395).
+vi.mock("~~/composables/useReaderAuth", () => ({
+	useReaderAuth: () => ({ isAuthenticated: authState }),
+}));
+
+vi.mock("~~/api/reader/account", () => ({ setReaderLocale }));
 
 vi.mock("~~/composables/useLang", () => ({
 	useLang: () => ({
@@ -55,7 +73,9 @@ const ALL_NATIVES = ["简体中文", "繁體中文", "English", "日本語", "�
 describe("LanguageSwitcher", () => {
 	beforeEach(() => {
 		locale.value = "zh-Hans";
+		authState.value = false;
 		setLocale.mockClear();
+		setReaderLocale.mockClear();
 	});
 
 	it("renders the current locale as a compact, fixed-width trigger", () => {
@@ -102,6 +122,29 @@ describe("LanguageSwitcher", () => {
 		expect(setLocale).toHaveBeenCalledWith("ja");
 		expect(locale.value).toBe("ja");
 		expect(wrapper.find('[role="menu"]').exists()).toBe(false);
+	});
+
+	it("guest switch never calls the locale-sync API", async () => {
+		const wrapper = mountSwitcher();
+		await wrapper.get('button[aria-haspopup="menu"]').trigger("click");
+		await flushPromises();
+		// A guest has no stored locale to persist; the switch must not fire any
+		// authenticated API call (DEC-338/TASK-395).
+		await wrapper.get('[role="menuitem"]:nth-child(4)').trigger("click");
+		await flushPromises();
+		expect(setReaderLocale).not.toHaveBeenCalled();
+	});
+
+	it("signed-in switch persists the new locale to the account", async () => {
+		authState.value = true;
+		const wrapper = mountSwitcher();
+		await wrapper.get('button[aria-haspopup="menu"]').trigger("click");
+		await flushPromises();
+		await wrapper.get('[role="menuitem"]:nth-child(3)').trigger("click"); // en
+		await flushPromises();
+		expect(setReaderLocale).toHaveBeenCalledTimes(1);
+		expect(setReaderLocale).toHaveBeenCalledWith("en");
+		expect(setLocale).toHaveBeenCalledWith("en");
 	});
 
 	it("closes the menu on an outside click", async () => {
