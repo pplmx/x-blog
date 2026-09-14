@@ -1,3 +1,4 @@
+import os
 import re
 import secrets
 from collections.abc import Iterable
@@ -3510,25 +3511,65 @@ def record_reader_notification(
     return row
 
 
-def notification_copy(kind: str, post_title: str, locale: str | None) -> tuple[str, str]:
-    """Localized (title, body) for a new-post notification kind (DEC-338/TASK-395).
+# Reply / thread-comment / @-mention copy (DEC-340, TASK-396): moved here from
+# the comments router so the per-reader localization lives with the fan-out
+# copy, still operator-overridable via the same env vars (the zh site default
+# reads them exactly as before; the English copy is static for now).
+REPLY_NOTIF_TITLE = os.getenv("REPLY_NOTIFICATION_TITLE", "有人回复了你的评论")
+REPLY_NOTIF_BODY = os.getenv("REPLY_NOTIFICATION_BODY", "《{post_title}》有新回复")
+THREAD_NOTIF_TITLE = os.getenv("THREAD_NOTIFICATION_TITLE", "你订阅的讨论有新评论")
+THREAD_NOTIF_BODY = os.getenv("THREAD_NOTIFICATION_BODY", "《{post_title}》有新评论")
+MENTION_NOTIF_TITLE = os.getenv("MENTION_NOTIFICATION_TITLE", "有人在评论中提到了你")
+MENTION_NOTIF_BODY = os.getenv("MENTION_NOTIFICATION_BODY", "{commenter} 在《{post_title}》中提到了你")
 
-    The tuple feeds both the durable inbox row and the email channel (email
+
+def notification_copy(
+    kind: str,
+    post_title: str,
+    locale: str | None,
+    *,
+    commenter: str | None = None,
+) -> tuple[str, str]:
+    """Localized (title, body) for one reader notification kind.
+
+    Covers every kind the fan-out produces (DEC-338/TASK-395 new_post +
+    series_new_part; DEC-340/TASK-396 reply, thread_comment, mention). The
+    tuple feeds both the durable inbox row and the email channel (email
     Subject = title, body = body), so one switch localizes every channel.
     ``zh`` is the site default and the behavior for a reader who never set a
     locale (NULL) — exactly today's hardcoded copy, preserving all existing
-    behavior. ``en`` is the English surface ("New post" / "Series update" with
-    the plain post title instead of ``《title》`` book-title brackets).
+    behavior (and the operator env overrides for the reply/thread/mention zh
+    text). ``en`` is the English surface: plain post titles instead of
+    ``《title》`` book-title brackets and English titles/bodies. ``commenter``
+    is only meaningful for the ``mention`` kind's body.
     """
     if locale in ("en", "en-US"):
+        if kind == "series_new_part":
+            return "Series update", post_title
+        if kind == "new_post":
+            return "New post", post_title
+        if kind == "reply":
+            return "Someone replied to your comment", f"New reply on {post_title}"
+        if kind == "thread_comment":
+            return "New comment in a thread you follow", f"New comment on {post_title}"
+        if kind == "mention":
+            who = commenter or "Someone"
+            return "You were mentioned in a comment", f"{who} mentioned you in {post_title}"
+        return "New notification", post_title
+    if kind == "series_new_part":
+        return "系列更新", f"《{post_title}》"
+    if kind == "new_post":
+        return "新文章发布", f"《{post_title}》"
+    if kind == "reply":
+        return REPLY_NOTIF_TITLE, REPLY_NOTIF_BODY.replace("{post_title}", post_title)
+    if kind == "thread_comment":
+        return THREAD_NOTIF_TITLE, THREAD_NOTIF_BODY.replace("{post_title}", post_title)
+    if kind == "mention":
         return (
-            "Series update" if kind == "series_new_part" else "New post",
-            post_title,
+            MENTION_NOTIF_TITLE,
+            MENTION_NOTIF_BODY.replace("{commenter}", commenter or "").replace("{post_title}", post_title),
         )
-    return (
-        "系列更新" if kind == "series_new_part" else "新文章发布",
-        f"《{post_title}》",
-    )
+    return "Notification", post_title
 
 
 def set_reader_locale(db: Session, reader_id: int, locale: str) -> str:
@@ -3692,11 +3733,15 @@ def record_new_post_notifications(db: Session, post: models.Post) -> None:
         # Reader language for the copy (DEC-338, TASK-395): one batch query for
         # every target's stored locale (NULL reads as the zh site default). Locale
         # lives on the account, separate from the prefs row, so load it once here.
-        locale_of = dict(
-            db.query(auth.ReaderAccount.id, auth.ReaderAccount.locale)
-            .filter(auth.ReaderAccount.id.in_(target_reader_ids))
-            .all()
-        ) if target_reader_ids else {}
+        locale_of = (
+            dict(
+                db.query(auth.ReaderAccount.id, auth.ReaderAccount.locale)
+                .filter(auth.ReaderAccount.id.in_(target_reader_ids))
+                .all()
+            )
+            if target_reader_ids
+            else {}
+        )
         rows: list[models.ReaderNotification] = []
         email_items: list[EmailItem] = []
         for reader_id in target_reader_ids:
@@ -3816,11 +3861,51 @@ def suggest_mention_readers(
     return [{"id": rid, "display_name": name or "", "avatar_url": avatar} for (rid, name, avatar) in rows[:limit]]
 
 
+def _notification_rows(
+    db: Session,
+    reader_ids: list[int],
+    *,
+    kind: str,
+    post_title: str,
+    url: str,
+    commenter: str | None = None,
+) -> list[models.ReaderNotification]:
+    """Per-reader-localized ReaderNotification rows for a batched fan-out.
+
+    Loads each target's stored locale once (DEC-340/TASK-396, same batch
+    pattern as the new-post fan-out in round 332) so an English reader's row
+    carries English copy alongside a zh reader's Chinese copy in the SAME
+    batch — one flush, one prune, one commit. ``commenter`` supplies the
+    mention body's acting reader label.
+    """
+    locale_of = (
+        dict(
+            db.query(auth.ReaderAccount.id, auth.ReaderAccount.locale)
+            .filter(auth.ReaderAccount.id.in_(reader_ids))
+            .all()
+        )
+        if reader_ids
+        else {}
+    )
+    return [
+        models.ReaderNotification(
+            reader_id=rid,
+            kind=kind,
+            title=title,
+            body=body,
+            url=url,
+        )
+        for rid in reader_ids
+        for (title, body) in [notification_copy(kind, post_title, locale_of.get(rid), commenter=commenter)]
+    ]
+
+
 def record_mention_notifications(
     db: Session,
     reader_ids: list[int],
-    title: str,
-    body: str,
+    *,
+    post_title: str,
+    commenter: str,
     url: str,
 ) -> None:
     """Persist an @-mention inbox row for every mentioned reader at once.
@@ -3828,12 +3913,17 @@ def record_mention_notifications(
     Batched counterpart of record_thread_comment_notifications for the
     mention approval fan-out (DEC-322, TASK-389): build every row, flush once,
     prune once, commit once — atomic and failure-proof like the other fan-outs.
+    Copy is localized per reader (DEC-340/TASK-396).
     """
     try:
-        rows = [
-            models.ReaderNotification(reader_id=rid, kind="mention", title=title, body=body, url=url)
-            for rid in reader_ids
-        ]
+        rows = _notification_rows(
+            db,
+            reader_ids,
+            kind="mention",
+            post_title=post_title,
+            commenter=commenter,
+            url=url,
+        )
         if not rows:
             return
         db.add_all(rows)
@@ -3847,8 +3937,8 @@ def record_mention_notifications(
 def record_thread_comment_notifications(
     db: Session,
     reader_ids: list[int],
-    title: str,
-    body: str,
+    *,
+    post_title: str,
     url: str,
 ) -> None:
     """Persist a thread-comment inbox row for every follower at once.
@@ -3860,14 +3950,18 @@ def record_thread_comment_notifications(
     for one approved comment on a heavily subscribed thread. Build every row,
     flush once, prune once, commit once (the same batched pattern
     record_new_post_notifications introduced for new-post fan-out, ISS-113).
-    The single commit also makes the fan-out atomic. Best effort: never raises
-    so a notify path cannot break the approving write.
+    The single commit also makes the fan-out atomic. Copy is localized per
+    reader (DEC-340/TASK-396). Best effort: never raises so a notify path
+    cannot break the approving write.
     """
     try:
-        rows = [
-            models.ReaderNotification(reader_id=rid, kind="thread_comment", title=title, body=body, url=url)
-            for rid in reader_ids
-        ]
+        rows = _notification_rows(
+            db,
+            reader_ids,
+            kind="thread_comment",
+            post_title=post_title,
+            url=url,
+        )
         if not rows:
             return
         db.add_all(rows)

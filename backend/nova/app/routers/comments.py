@@ -6,6 +6,13 @@ from sqlalchemy.orm import Session
 
 from app import auth, crud, models, schemas
 from app.auth import User, get_current_admin
+from app.crud import (
+    REPLY_NOTIF_BODY,
+    REPLY_NOTIF_TITLE,
+    THREAD_NOTIF_BODY,
+    THREAD_NOTIF_TITLE,
+    notification_copy,
+)
 from app.database import get_db
 from app.emailer import (
     EmailItem,
@@ -27,20 +34,11 @@ logger = get_logger(__name__)
 
 router = APIRouter(prefix="/api/comments", tags=["comments"])
 
-# Reply-notification copy (server-generated push, so not i18n-able per browser;
-# operators can localize via env). Defaults match the site's zh-first posture.
-REPLY_NOTIF_TITLE = os.getenv("REPLY_NOTIFICATION_TITLE", "有人回复了你的评论")
-REPLY_NOTIF_BODY = os.getenv("REPLY_NOTIFICATION_BODY", "《{post_title}》有新回复")
-
-# Thread-follow notification copy (DEC-078/TASK-150): a new comment was
-# approved on a thread the reader follows.
-THREAD_NOTIF_TITLE = os.getenv("THREAD_NOTIFICATION_TITLE", "你订阅的讨论有新评论")
-THREAD_NOTIF_BODY = os.getenv("THREAD_NOTIFICATION_BODY", "《{post_title}》有新评论")
-# @-mention notifications (DEC-322, TASK-389): an approved comment that names a
-# reader's display name as @<name> notifies that reader with a #comment deep
-# link. Like the reply/thread copy, overridable via env.
-MENTION_NOTIF_TITLE = os.getenv("MENTION_NOTIFICATION_TITLE", "有人在评论中提到了你")
-MENTION_NOTIF_BODY = os.getenv("MENTION_NOTIFICATION_BODY", "{commenter} 在《{post_title}》中提到了你")
+# Reply-ish notification copy now lives in crud (notification_copy, DEC-340/
+# TASK-396) so the durable inbox rows + emails localize per reader; the env-
+# overridable zh constants are IMPORTED from there. The constants below remain
+# for the server-generated PUSH payloads only (a single push payload can't
+# vary per reader browser, and operators keep localizing via env).
 
 
 # Sort orders accepted by GET /api/comments/post/{id} (DEC-094, TASK-159).
@@ -108,20 +106,29 @@ def _notify_thread_subscribers(
     crud.record_thread_comment_notifications(
         db,
         target_ids,
-        title=THREAD_NOTIF_TITLE,
-        body=THREAD_NOTIF_BODY.replace("{post_title}", post.title or ""),
+        post_title=post.title or "",
         url=f"/posts/{post.slug}#comment-{new_comment_id}",
     )
     # Email channel (DEC-197, TASK-217): best-effort off-site copy for thread
-    # followers who opted into email for the kind.
+    # followers who opted into email for the kind — localized per reader the
+    # same way as the inbox rows (DEC-340/TASK-396). One locale query for the
+    # whole target set, then per-reader copy.
+    email_locales = (
+        dict(
+            db.query(auth.ReaderAccount.id, auth.ReaderAccount.locale)
+            .filter(auth.ReaderAccount.id.in_(target_ids))
+            .all()
+        )
+        if target_ids
+        else {}
+    )
     dispatch_notification_emails(
         db,
         [
             EmailItem(
                 rid,
                 "thread_comment",
-                THREAD_NOTIF_TITLE,
-                THREAD_NOTIF_BODY.replace("{post_title}", post.title or ""),
+                *notification_copy("thread_comment", post.title or "", email_locales.get(rid)),
                 f"/posts/{post.slug}#comment-{new_comment_id}",
             )
             for rid in target_ids
@@ -166,14 +173,18 @@ def _notify_replied_to(
     target_prefs = crud.reader_notification_prefs_for(db, [parent_reader.id])
     if not crud.notification_kind_enabled(target_prefs.get(parent_reader.id), "reply"):
         return
+    # Localized copy for THIS reader (DEC-340/TASK-396): the durable inbox row
+    # and email both carry the reader's language; the push payload below stays
+    # the server-global env copy (one payload per browser, not per reader).
+    reply_title, reply_body = notification_copy("reply", post.title or "", parent_reader.locale)
     # Persist to the durable reader inbox (independent of VAPID) so the replied-to
     # reader sees the reply in-app even if the browser push is missed/unconfigured.
     crud.record_reader_notification(
         db,
         parent_reader.id,
         kind="reply",
-        title=REPLY_NOTIF_TITLE,
-        body=REPLY_NOTIF_BODY.replace("{post_title}", post.title or ""),
+        title=reply_title,
+        body=reply_body,
         url=f"/posts/{post.slug}#comment-{parent_comment_id}",
     )
     # Email channel (DEC-197, TASK-217): best-effort off-site copy for the
@@ -185,8 +196,8 @@ def _notify_replied_to(
                 EmailItem(
                     parent_reader.id,
                     "reply",
-                    REPLY_NOTIF_TITLE,
-                    REPLY_NOTIF_BODY.replace("{post_title}", post.title or ""),
+                    reply_title,
+                    reply_body,
                     f"/posts/{post.slug}#comment-{parent_comment_id}",
                 )
             ],
@@ -346,23 +357,45 @@ def _notify_mentions(
             commenter_label = comment.nickname
     elif comment.nickname:
         commenter_label = comment.nickname
-    body = MENTION_NOTIF_BODY.replace("{commenter}", commenter_label).replace("{post_title}", post.title or "")
     url = f"/posts/{post.slug}#comment-{comment.id}"
     if inbox_ids:
         crud.record_mention_notifications(
             db,
             inbox_ids,
-            title=MENTION_NOTIF_TITLE,
-            body=body,
             # DEC-321 anchor: the landing machinery scrolls to the exact comment.
+            post_title=post.title or "",
+            commenter=commenter_label,
             url=url,
         )
     # Email copy (DEC-326, TASK-391): same values as the inbox row so both
-    # channels agree.
+    # channels agree — localized per reader (DEC-340/TASK-396). One locale
+    # query for the whole email target set, then per-reader copy.
+    email_locales = (
+        dict(
+            db.query(auth.ReaderAccount.id, auth.ReaderAccount.locale)
+            .filter(auth.ReaderAccount.id.in_(email_ids))
+            .all()
+        )
+        if email_ids
+        else {}
+    )
     if email_ids:
         dispatch_notification_emails(
             db,
-            [EmailItem(rid, "mention", MENTION_NOTIF_TITLE, body, url) for rid in email_ids],
+            [
+                EmailItem(
+                    rid,
+                    "mention",
+                    *notification_copy(
+                        "mention",
+                        post.title or "",
+                        email_locales.get(rid),
+                        commenter=commenter_label,
+                    ),
+                    url,
+                )
+                for rid in email_ids
+            ],
             logger,
         )
 
