@@ -2,7 +2,7 @@
   "ril_version": 1,
   "round": 331,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-14T08:18:47+00:00",
+  "updated_at": "2026-09-14T08:48:10+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -24146,10 +24146,10 @@
     "TASK-394": {
       "id": "TASK-394",
       "type": "task",
-      "status": "active",
-      "version": 1,
+      "status": "resolved",
+      "version": 2,
       "created_at": "2026-09-14T08:18:34+00:00",
-      "updated_at": "2026-09-14T08:18:34+00:00",
+      "updated_at": "2026-09-14T08:47:28+00:00",
       "touched_round": 331,
       "category": "core-feature",
       "severity": 0.6,
@@ -24158,6 +24158,54 @@
       "tracked_title": "Scheduled posts notify followers at publish-time crossing",
       "title": "Scheduled post publish-time fan-out (DEC-336)",
       "description": "Posts saved as published-but-future publish_at (DEC-162 editorial calendar) become publicly visible when the clock crosses publish_at, yet no follower receives a push/inbox/email for them. create_post fans out only if is_publicly_visible at WRITE time (future publish_at => False, branch skipped); update_post is gated on not was_visible AND is_publicly_visible (once crossed, was_visible=True so editing never fires). DEC-076: no in-process scheduler. Plan: additive new_post_notified_at (naive UTC, nullable) on posts (DEC-009); stamp at create/update when visibly-published at write time; maybe_notify_due_scheduled_posts(db) fired from read paths (get_posts, get_post/get_post_by_slug) finds now-visible-but-unstamped posts and calls record_new_post_notifications + dispatch_new_post once (atomic stamp => exactly-once). Contract tests: scheduled post crossing fires exactly one notification per follower; no duplicate on second read; not-yet-crossed fires none; draft/private never. Runs on SQLite + dev PG."
+    },
+    "CHG-533": {
+      "id": "CHG-533",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-14T08:47:10+00:00",
+      "updated_at": "2026-09-14T08:47:10+00:00",
+      "touched_round": 331,
+      "commit": "51895b3",
+      "title": "test(notif): scheduled-post publish-time fan-out contract tests (DEC-336/TASK-394)",
+      "description": "8 contract tests for crud.maybe_notify_due_scheduled_posts + admin-editor no-double test: crossing fires exactly once per follower (inbox + push), no duplicate on repeat reads, no premature fire, no double fire for write-time-announced posts (create/update/admin-editor/restore stamp)."
+    },
+    "CHG-534": {
+      "id": "CHG-534",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-14T08:47:10+00:00",
+      "updated_at": "2026-09-14T08:47:10+00:00",
+      "touched_round": 331,
+      "commit": "bd18bcb",
+      "title": "feat(notif): announce crossed scheduled posts via fire-on-read sweep (DEC-336/TASK-394)",
+      "description": "new_post_notified_at column (DEC-009) + maybe_notify_due_scheduled_posts (atomic conditional stamp, exactly-once across workers DEC-004) wired into post list/detail + RSS/Atom; write-time fan-out paths (create/update/restore/admin editor) stamp too."
+    },
+    "CHG-535": {
+      "id": "CHG-535",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-14T08:47:10+00:00",
+      "updated_at": "2026-09-14T08:47:10+00:00",
+      "touched_round": 331,
+      "commit": "319d7b0",
+      "title": "docs(notif): record scheduled-post fan-out (DEC-336) in CHANGELOG + README",
+      "description": "en/zh CHANGELOG + README feature bullets for the scheduled-post publish-time fan-out."
+    },
+    "DEC-337": {
+      "id": "DEC-337",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-14T08:47:53+00:00",
+      "updated_at": "2026-09-14T08:47:53+00:00",
+      "touched_round": 331,
+      "title": "close round 331: scheduled-post publish-time fan-out (DEC-336 delivered)",
+      "rationale": "Round 331 delivery: scheduled-post publish-time fan-out (DEC-336/TASK-394 by CHG-533/534/535). A post created as published-but-future publish_at crossed its publish_at with no write-time trigger (create/update fan-outs gated on visibility AT WRITE TIME; DEC-076 has no scheduler), so followers of its series/category/tags got no push, inbox row, or email for it. The additive `new_post_notified_at` column (DEC-009) is the exactly-once stamp: set by every write-time fan-out path (create_post, update_post, restore_post_revision, admin editor PUT) and claimed by the new fire-on-read sweep crud.maybe_notify_due_scheduled_posts with an atomic conditional UPDATE (safe across uvicorn workers, DEC-004), wired into post list/detail + RSS/Atom feeds (an external feed poller is the most reliable crossing trigger; the <=5-min list/feed cache staleness stays the documented safety net, cache.py:37-40). 8+1 contract tests prove exactly-once per follower, no premature fire for future/draft posts, and no double fire for write-time-announced posts. VERIFY green: backend 1495 (cov 93.84%, ruff/pyright clean), migration round-trip on SQLite + dev PostgreSQL 10.112.9.49:13310, and the new suites pass against the PG dialect directly. Feature mode continues; next round re-sources from the fresh surface.",
+      "alternatives_rejected": "A real in-process scheduler (cron-like) was rejected: DEC-076 is a documented 'no background scheduler' constraint, and fire-on-read needs no new process or ops surface. Sending the fan-out from the write side only (stamp-and-defer) was rejected because the crossing happens AFTER the write that created the scheduled post — the write side has no future moment to hook. Frontend work was not in scope: the notification simply arrives through the existing inbox/push/email channels, so no UI change is needed."
     }
   },
   "edges": [
@@ -36230,6 +36278,30 @@
       "to": "TASK-394",
       "type": "governs",
       "created_at": "2026-09-14T08:18:47+00:00"
+    },
+    {
+      "from": "CHG-533",
+      "to": "TASK-394",
+      "type": "implements",
+      "created_at": "2026-09-14T08:47:28+00:00"
+    },
+    {
+      "from": "CHG-534",
+      "to": "TASK-394",
+      "type": "implements",
+      "created_at": "2026-09-14T08:47:28+00:00"
+    },
+    {
+      "from": "CHG-535",
+      "to": "TASK-394",
+      "type": "implements",
+      "created_at": "2026-09-14T08:47:28+00:00"
+    },
+    {
+      "from": "DEC-337",
+      "to": "DEC-336",
+      "type": "supersedes",
+      "created_at": "2026-09-14T08:48:10+00:00"
     }
   ]
 }
