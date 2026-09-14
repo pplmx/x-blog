@@ -2,7 +2,7 @@
   "ril_version": 1,
   "round": 338,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-14T14:04:58+00:00",
+  "updated_at": "2026-09-14T14:29:46+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -24732,6 +24732,18 @@
       "title": "close round 337: server-trail continue reading delivered (DEC-348)",
       "rationale": "close round 337: server-trail continue reading on the home page (DEC-348 delivered). Signed-in readers' home Continue-reading row now sources their posts with a saved resume position from the server trail (GET /api/reader/me/history/in-progress, newest-first, same non-leak visibility gate), so a reader on a NEW device sees what they left; guests keep the localStorage row. VERIFY green: backend 1529 (cov 93.94%, ruff clean, pyright 0 errors, history suite 62/62 incl. the new endpoint on SQLite AND dev-PG dialect), frontend 2064 (vitest), typecheck exit 0, biome clean. An e2e journey (home row shows the saved post, drops it after back-to-top clears) was authored for CI (just e2e) but NOT run in this sandbox — the sandbox has documented load-flakiness on the resume spec and the heavy stack needs DB seeding; acceptance rests on the backend integration + DOM page + API seam tests above. Delivered by CHG-554/555/556/557/558/559 -> TASK-400.",
       "alternatives_rejected": "Deferring the e2e run to CI instead of forcing the heavy DB-seeding stack in a known-flaky sandbox; the round still satisfies section-11.4 coverage through integration + page + API seam tests."
+    },
+    "DEC-350": {
+      "id": "DEC-350",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-14T14:29:46+00:00",
+      "updated_at": "2026-09-14T14:29:46+00:00",
+      "touched_round": 338,
+      "title": "converged-idle: feature-evolution mode quiesced (surface saturated, round 338)",
+      "rationale": "converged-idle: feature-evolution mode quiesced (round 338). CONVERGENCE EVIDENCE: every round-338 candidate probed already exists (TOC with scroll-spy and mobile FAB, related posts, comment like buttons w/ per-source dedup, account deletion incl. GDPR DELETE /me, reading-time estimate, standalone-posts prev/next via /posts/{id}/adjacent, admin media library browser, popular-posts home widget, notification unread badge, print view, RSS autodiscovery) and the previous rounds already delivered server-trail continue reading (DEC-348) and cross-device resume (DEC-346). An independent full-inventory sweep (37 pages, 17 components, 31 composables, 20 routers) found NO substantial missing capability; the only residuals are three patch-level items that fail the value gate. The core-feature backlog is empty (TASK-400 resolved). Last VERIFY green: backend 1529 (cov 93.94%, ruff clean, pyright 0, migrations round-trip SQLite + dev PG), frontend 2064, typecheck exit 0, biome clean. RESUMPTION: a new operator direction (supersedes decision), a real user issue, or a substantive repo change re-activates; the first re-activated round re-runs VERIFY before continuing.",
+      "alternatives_rejected": "Round-338 candidates rejected at the value gate (section 11.2: 'a missing option / missing button' patches are rejected, not built): (1) native Web Share / navigator.share on ShareButtons - convenience above the existing copy-link + social row, not a real problem; (2) comment-sort persistence (localStorage / route.query) - a setting-persistence polish, not a capability; (3) IndexNow / sitemap ping on publish - infra only valuable for frequent publishers, unclear payoff for this blog; (4) /likes page - post likes are deliberately anonymous counters with no reader-owned record; a page would need a new table + sign-in sync slice disproportionate to its value; (5) 3-state theme toggle - refines an already-working binary toggle with a system default; cosmetic; (6) comment upvote/downvote - already implemented (CommentLike + UI + per-source dedup); (7) per-post TOC / related posts / account deletion - verified ALREADY implemented, not re-proposed. Force-building any of these would be patch accumulation, the exact anti-pattern the value gate exists to stop."
     }
   },
   "edges": [
@@ -37074,6 +37086,12 @@
       "to": "DEC-348",
       "type": "supersedes",
       "created_at": "2026-09-14T14:04:58+00:00"
+    },
+    {
+      "from": "DEC-350",
+      "to": "DEC-349",
+      "type": "supersedes",
+      "created_at": "2026-09-14T14:29:46+00:00"
     }
   ]
 }
