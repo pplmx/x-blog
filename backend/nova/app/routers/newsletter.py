@@ -26,13 +26,14 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field, field_validator
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app import models, schemas
 from app.crud import utc_now_naive
 from app.database import get_db
 from app.emailer import send_newsletter_confirm_email
-from app.limiter import RATE_LIMIT_WRITE, limiter
+from app.limiter import RATE_LIMIT_NEWSLETTER, RATE_LIMIT_WRITE, limiter
 from app.middleware import get_logger
 from app.schemas import NonNulStr
 
@@ -62,7 +63,7 @@ class NewsletterTokenBody(BaseModel):
 
 
 @router.post("/subscribe", status_code=202)
-@limiter.limit(f"{RATE_LIMIT_WRITE}/minute")
+@limiter.limit(f"{RATE_LIMIT_NEWSLETTER}/minute")
 def newsletter_subscribe(
     request: Request,  # noqa: ARG001 — slowapi injects for the rate-limit key
     body: NewsletterSubscribeBody,
@@ -74,11 +75,19 @@ def newsletter_subscribe(
     confirmation email carries a fresh per-subscriber token; a resubscribed or
     already-existing address keeps its row (unique constraint) — no duplicate
     rows can ever be created.
+
+    Anti-abuse (security review): the confirmation email fires ONLY when a NEW
+    row is created. A resubscribed address (pending or confirmed) is never
+    re-emailed, so a single attacker cannot turn each of N subscribe calls into
+    N outbound mails to a victim address — the unauthenticated entry is also on
+    a dedicated tight per-IP bucket (``RATE_LIMIT_NEWSLETTER``), not the looser
+    write bucket.
     """
     email = body.email.strip().lower()
 
     row = db.query(models.NewsletterSubscriber).filter(models.NewsletterSubscriber.email == email).first()
-    if row is None:
+    is_new = row is None
+    if is_new:
         row = models.NewsletterSubscriber(
             email=email,
             token=token_urlsafe(32),
@@ -87,18 +96,25 @@ def newsletter_subscribe(
         db.add(row)
         try:
             db.commit()
-        except Exception:  # noqa: BLE001 — concurrent insert lost the unique race
+        except IntegrityError:
+            # A concurrent subscribe won the unique-email race; reuse the row
+            # that other request created (it is pending, and it will be the
+            # one to send its own confirmation — so this request must NOT also
+            # mail, or the address gets two confirmation links).
             db.rollback()
             row = db.query(models.NewsletterSubscriber).filter(models.NewsletterSubscriber.email == email).first()
             if row is None:  # shared-unique race with no winner observable here — treat as transient failure
                 raise
+            is_new = False
         db.refresh(row)
-    # Best-effort confirmation email. A failure is swallowed (never an error
-    # to the subscriber); SMTP unconfigured -> the address just stays pending.
-    try:
-        send_newsletter_confirm_email(email, row.token)
-    except Exception:  # noqa: BLE001
-        logger.exception("newsletter confirmation email failed for %s", email)
+    # Best-effort confirmation email, sent only for a NEWLY created row (see
+    # the anti-abuse note above). A failure is swallowed (never an error to the
+    # subscriber); SMTP unconfigured -> the address just stays pending.
+    if is_new:
+        try:
+            send_newsletter_confirm_email(email, row.token)
+        except Exception:  # noqa: BLE001
+            logger.exception("newsletter confirmation email failed for %s", email)
     return {"subscribed": True, "message": "If this email is new, a confirmation link is on its way"}
 
 

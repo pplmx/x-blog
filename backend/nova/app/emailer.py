@@ -410,6 +410,21 @@ def send_newsletter_confirm_email(to_addr: str, token: str) -> bool:
     return bool(flags and flags[0])
 
 
+def _header_safe_title(title: str | None) -> str:
+    """The post title as a safe email-header value.
+
+    Email headers may not contain CR/LF (RFC 5322); Python's ``email`` package
+    raises ``ValueError`` when a header value does, and ``Post.title`` is
+    ``NonNulStr`` (NUL-only rejection) — so a title pasted/stored with a line
+    break would otherwise make ``msg["Subject"] = ...`` raise inside the
+    best-effort fan-out, turning a publish (or a public read that fires the
+    scheduled-post sweep) into a 500. Both CR and LF collapse to an ASCII space
+    for the Subject; the body/HTML keep the original title (a line break there
+    is harmless text).
+    """
+    return (title or "").replace("\r", " ").replace("\n", " ")
+
+
 def dispatch_newsletter_new_post(db: Session, post: models.Post, logger) -> int:
     """Email every confirmed newsletter subscriber once about a new post (DEC-351).
 
@@ -420,67 +435,69 @@ def dispatch_newsletter_new_post(db: Session, post: models.Post, logger) -> int:
     recipients, each message deep-linking to the post and carrying that
     subscriber's own unsubscribe link (``/newsletter/unsubscribe?token=...``)
     so consent stays revocable without an account (mirrors DEC-332). Returns
-    how many messages SMTP accepted; never raises — a mail failure must never
-    break the publish that triggered it.
+    how many messages SMTP accepted; never raises — a mail failure (or a
+    title that a header can't carry) must never break the publish/fan-out that
+    triggered it, so the whole build + send sits inside the catch.
     """
     if not is_email_configured():
         return 0
-    subs = db.query(models.NewsletterSubscriber).filter(models.NewsletterSubscriber.is_confirmed.is_(True)).all()
-    if not subs or not post.slug:
-        return 0
-    from_addr = _env("SMTP_FROM") or "no-reply@localhost"
-    base_url = _env("SITE_URL") or "http://localhost:3000"
-    site_title = _env("SITE_TITLE") or "X-Blog"
-    post_url = f"{base_url.rstrip('/')}/posts/{post.slug}"
-    messages: list[EmailMessage] = []
-    for sub in subs:
-        unsubscribe = f"{base_url.rstrip('/')}/newsletter/unsubscribe?token={sub.token}"
-        if _is_en_site():
-            subject = f"New post: {post.title}"
-            text = (
-                f"A new post is live on {site_title}:\n\n{post.title}\n\n"
-                f"Read it: {post_url}\n\n"
-                f"If you no longer want these emails, click here to unsubscribe:\n{unsubscribe}"
-            )
-            html_body = (
-                "<p>A new post is live on "
-                + html.escape(site_title)
-                + ":</p>"
-                + f"<p><strong>{html.escape(post.title or '')}</strong></p>"
-                + '<p><a href="'
-                + html.escape(post_url, quote=True)
-                + '">Read the post</a></p>'
-                + '<p><a href="'
-                + html.escape(unsubscribe, quote=True)
-                + '">Unsubscribe from these emails</a></p>'
-            )
-        else:
-            subject = f"新文章发布：{post.title}"
-            text = (
-                f"{site_title} 发布了新文章：\n\n{post.title}\n\n"
-                f"阅读：{post_url}\n\n"
-                f"如果不想再收到这类邮件，请点击下面的链接取消订阅：\n{unsubscribe}"
-            )
-            html_body = (
-                f"<p>{html.escape(site_title)} 发布了新文章：</p>"
-                + f"<p><strong>{html.escape(post.title or '')}</strong></p>"
-                + '<p><a href="'
-                + html.escape(post_url, quote=True)
-                + '">阅读文章</a></p>'
-                + '<p><a href="'
-                + html.escape(unsubscribe, quote=True)
-                + '">取消订阅此类邮件</a></p>'
-            )
-        msg = EmailMessage()
-        msg["From"] = from_addr
-        msg["To"] = sub.email
-        msg["Subject"] = subject
-        msg.set_content(text)
-        msg.add_alternative(html_body, subtype="html")
-        messages.append(msg)
-    if not messages:
-        return 0
     try:
+        subs = db.query(models.NewsletterSubscriber).filter(models.NewsletterSubscriber.is_confirmed.is_(True)).all()
+        if not subs or not post.slug:
+            return 0
+        from_addr = _env("SMTP_FROM") or "no-reply@localhost"
+        base_url = _env("SITE_URL") or "http://localhost:3000"
+        site_title = _env("SITE_TITLE") or "X-Blog"
+        post_url = f"{base_url.rstrip('/')}/posts/{post.slug}"
+        header_title = _header_safe_title(post.title)
+        messages: list[EmailMessage] = []
+        for sub in subs:
+            unsubscribe = f"{base_url.rstrip('/')}/newsletter/unsubscribe?token={sub.token}"
+            if _is_en_site():
+                subject = f"New post: {header_title}"
+                text = (
+                    f"A new post is live on {site_title}:\n\n{post.title}\n\n"
+                    f"Read it: {post_url}\n\n"
+                    f"If you no longer want these emails, click here to unsubscribe:\n{unsubscribe}"
+                )
+                html_body = (
+                    "<p>A new post is live on "
+                    + html.escape(site_title)
+                    + ":</p>"
+                    + f"<p><strong>{html.escape(post.title or '')}</strong></p>"
+                    + '<p><a href="'
+                    + html.escape(post_url, quote=True)
+                    + '">Read the post</a></p>'
+                    + '<p><a href="'
+                    + html.escape(unsubscribe, quote=True)
+                    + '">Unsubscribe from these emails</a></p>'
+                )
+            else:
+                subject = f"新文章发布：{header_title}"
+                text = (
+                    f"{site_title} 发布了新文章：\n\n{post.title}\n\n"
+                    f"阅读：{post_url}\n\n"
+                    f"如果不想再收到这类邮件，请点击下面的链接取消订阅：\n{unsubscribe}"
+                )
+                html_body = (
+                    f"<p>{html.escape(site_title)} 发布了新文章：</p>"
+                    + f"<p><strong>{html.escape(post.title or '')}</strong></p>"
+                    + '<p><a href="'
+                    + html.escape(post_url, quote=True)
+                    + '">阅读文章</a></p>'
+                    + '<p><a href="'
+                    + html.escape(unsubscribe, quote=True)
+                    + '">取消订阅此类邮件</a></p>'
+                )
+            msg = EmailMessage()
+            msg["From"] = from_addr
+            msg["To"] = sub.email
+            msg["Subject"] = subject
+            msg.set_content(text)
+            msg.add_alternative(html_body, subtype="html")
+            messages.append(msg)
+        if not messages:
+            return 0
         return sum(send_messages_flags(messages))
     except Exception:  # noqa: BLE001 — best effort, never fail the caller
         logger.exception("newsletter new-post dispatch failed")

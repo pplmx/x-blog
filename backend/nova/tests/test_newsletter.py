@@ -144,10 +144,11 @@ def test_subscribe_returns_generic_message_and_sends_confirmation(client, db_ses
     assert sub.token in _plain_text(msg)
 
 
-def test_subscribe_idempotent_no_oracle(client, db_session):
+def test_subscribe_idempotent_no_oracle(client, db_session, smtp_sink):
     """Resubscribing the same address returns the SAME generic message (no
-    oracle) and does not create a duplicate row; the confirmation token may
-    rotate only on the pending row."""
+    oracle), does not create a duplicate row, and — critically for the
+    mail-bombing surface — does NOT re-send a second confirmation email (the
+    confirmation fires only on a freshly created row)."""
     a = client.post("/api/newsletter/subscribe", json={"email": "dup@example.com"}).json()
     b = client.post("/api/newsletter/subscribe", json={"email": "dup@example.com"}).json()
     assert a == b
@@ -157,6 +158,9 @@ def test_subscribe_idempotent_no_oracle(client, db_session):
         .all()
     )
     assert len(rows) == 1
+    # Exactly one confirmation email total (the first subscribe), even though
+    # the address was subscribed twice.
+    assert len(_all_messages_to(smtp_sink, "dup@example.com")) == 1
 
 
 def test_pending_subscriber_not_emailed_new_posts(client, db_session, smtp_sink):
@@ -230,6 +234,44 @@ def test_unsubscribe_stops_new_post_emails(client, db_session, smtp_sink):
 
     _create_post(db_session)
     assert len(smtp_sink.sent) == before
+
+
+def test_newline_in_title_does_not_break_publish(client, db_session, smtp_sink):
+    """A post title containing a line break must not make the newsletter
+    fan-out raise (the email library rejects CR/LF in headers). The publish —
+    and, worse, the fire-on-read sweep that runs inside public reads — must
+    survive it; the header title collapses the newline to a space."""
+    client.post("/api/newsletter/subscribe", json={"email": "nl@example.com"})
+    token = _confirm_token(smtp_sink, "nl@example.com")
+    client.post("/api/newsletter/confirm", json={"token": token})
+    before = len(smtp_sink.sent)
+
+    # A title with a real line break (allowed: Post title is NonNulStr, which
+    # only rejects NUL bytes — an admin can paste one in from a document).
+    # Built directly (not through create_post) so the write-time fan-out does
+    # not fire: this isolates the single dispatch we are testing.
+    from datetime import UTC, datetime
+
+    post = models.Post(
+        title="Line one\nLine two",
+        slug="nl-post",
+        content="# Hi",
+        published=True,
+        created_at=datetime.now(UTC),
+    )
+    db_session.add(post)
+    db_session.commit()
+    db_session.refresh(post)
+
+    from app.emailer import dispatch_newsletter_new_post
+    from app.middleware import get_logger
+
+    # The fan-out replica of the publish path; must not raise on a CRLF title.
+    assert dispatch_newsletter_new_post(db_session, post, logger=get_logger("test")) >= 0
+
+    delivered = [m for m in smtp_sink.sent[before:] if m["To"] == "nl@example.com"]
+    assert len(delivered) == 1
+    assert "Line one Line two" in delivered[0]["Subject"]
 
 
 def test_multiple_subscribers_one_smtp_session(client, db_session, smtp_sink):

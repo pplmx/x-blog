@@ -797,7 +797,9 @@ class NewsletterSubscriber(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     email: Mapped[str] = mapped_column(String(254), unique=True, nullable=False, index=True)
-    token: Mapped[str] = mapped_column(String(64), nullable=False)
+    # Looked up by confirm/unsubscribe links, so indexed (unique — a token must
+    # be unique, otherwise two subscribers could share one unsubscribe secret).
+    token: Mapped[str] = mapped_column(String(64), unique=True, nullable=False, index=True)
     is_confirmed: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default=false())
     confirmed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     created_at: Mapped[datetime | None] = mapped_column(

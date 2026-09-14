@@ -10,6 +10,7 @@ os.environ.setdefault("RATE_LIMIT_READ_PER_MINUTE", "9999")
 os.environ.setdefault("RATE_LIMIT_SEARCH_PER_MINUTE", "9999")
 os.environ.setdefault("RATE_LIMIT_COMMENT_PER_MINUTE", "9999")
 os.environ.setdefault("RATE_LIMIT_EXPORT_PER_MINUTE", "9999")
+os.environ.setdefault("RATE_LIMIT_NEWSLETTER_PER_MINUTE", "9999")
 
 # Web Push VAPID keypair for tests — a real ES256 (P-256) pair so the public
 # key is a valid 65-byte EC point and pywebpush can build an authenticated
