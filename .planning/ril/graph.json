@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 332,
+  "round": 333,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-14T09:36:00+00:00",
+  "updated_at": "2026-09-14T10:21:51+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -24282,6 +24282,82 @@
       "title": "close round 332: reader-language notification copy (DEC-338 delivered)",
       "rationale": "Round 332 delivery: reader-language notification copy (DEC-338/TASK-395 by CHG-536/537/538). Notification copy was hardcoded Chinese for every reader -- durable inbox titles (系列更新/新文章发布/《…》), per-event email Subject+body, and the weekly digest were all zh regardless of the reader's UI language or site_language (the site ships en + zh). Additive nullable locale column on reader_accounts (DEC-009, NULL => zh site default so existing readers are unaffected); PUT /api/reader/me/locale (en/zh, 422 otherwise, auth-scoped); crud.notification_copy selects (title, body) per target reader's locale in record_new_post_notifications, feeding both the durable inbox row and the email channel (EmailItem title/body); build_digest_message + send_weekly_digest localize the weekly digest per recipient; LanguageSwitcher persists the selected locale when signed in (fire-and-forget). VERIFY green: backend 1504 (cov 93.87%, ruff/pyright clean), migration round-trips on SQLite + dev PostgreSQL 10.112.9.49:13310, locale/digest/emailer suites pass on the PG dialect (serial; digest xdist on one PG server contends on the server-global advisory lock — a pre-existing single-process-job property, DEC-201), frontend typecheck exit 0, biome clean, vitest 2058. Feature mode continues; next round re-sources from the fresh surface.",
       "alternatives_rejected": "Localizing the guest reply email / password reset (sender-side templates by site_language) was deliberately left out of this round: those target a guest with no stored locale, and the primary reader-facing seam (inbox + email + digest for readers) is the higher-impact half; they can be a later half-round if the operator wants them. Accept-Language-driven server locale was rejected (the fan-out runs at dispatch time, not request time, so there is no live Accept-Language to read). An admin UI to change the reader's locale from their profile was rejected as scope creep — the language switcher is the natural, already-existing place the reader expresses this."
+    },
+    "CHG-539": {
+      "id": "CHG-539",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-14T10:18:25+00:00",
+      "updated_at": "2026-09-14T10:18:25+00:00",
+      "touched_round": 333,
+      "commit": "ce98355",
+      "title": "test(notif): reply/thread/mention reader-locale copy contract tests (DEC-340/TASK-396)",
+      "description": "notification_copy matrix (all 5 kinds x zh-default/NULL/en) + end-to-end approval flows (reply/thread/mention) proving en readers get English rows + localized emails while zh readers keep Chinese copy in the same batch; batched thread test updated to per-reader signature."
+    },
+    "CHG-540": {
+      "id": "CHG-540",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-14T10:18:26+00:00",
+      "updated_at": "2026-09-14T10:18:26+00:00",
+      "touched_round": 333,
+      "commit": "d9dcf2a",
+      "title": "feat(notif): reader-locale reply/thread/mention copy (DEC-340/TASK-396)",
+      "description": "notification_copy extended to reply/thread_comment/mention (+commenter label); env-overridable zh constants moved into crud; reply path + both batched fan-outs (record_thread_comment_notifications / record_mention_notifications) build per-reader-localized rows; email dispatch per-reader; push payloads stay operator-global."
+    },
+    "CHG-541": {
+      "id": "CHG-541",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-14T10:18:26+00:00",
+      "updated_at": "2026-09-14T10:18:26+00:00",
+      "touched_round": 333,
+      "commit": "a74e355",
+      "title": "docs(notif): record reader-locale reply/thread/mention copy (DEC-340) in CHANGELOG + README",
+      "description": "en/zh CHANGELOG + README entry for the remaining-kind reader-locale copy."
+    },
+    "DEC-340": {
+      "id": "DEC-340",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-14T10:19:15+00:00",
+      "updated_at": "2026-09-14T10:19:15+00:00",
+      "touched_round": 333,
+      "title": "close round 333: reader-locale reply/thread/mention copy (DEC-340 delivered)",
+      "rationale": "Round 333 delivery: reader-locale reply/thread/mention notification copy (DEC-340/TASK-396 by CHG-539/540/541). Round 332 localized only new_post/series_new_part; the reply / thread_comment / @-mention inbox rows and emails were still hardcoded Chinese (env-overridable via REPLY/THREAD/MENTION_NOTIFICATION_*), so an English reader got an English 'New post' email but a Chinese 'Someone replied to your comment'.notification_copy now covers all five kinds (+ commenter label for mentions); the env-overridable zh constants moved into crud so the copy lives with the localization; the reply path computes per-reader copy from the replied-to reader's locale and both batched fan-outs load each target's locale once and build per-reader-localized rows in the same batch; email dispatch builds per-reader EmailItems. Server-generated push payloads keep the operator-global env copy (one payload per browser). A no-locale reader (NULL) still gets exactly today's zh copy. VERIFY green: backend 1508 (cov 93.90%, ruff/pyright clean), locale/reply/thread suites replay green on dev PostgreSQL 10.112.9.49:13310, no schema change (no migration), frontend untouched (round-332 switcher sync persists the locale). Feature mode continues; next round re-sources.",
+      "alternatives_rejected": "Per-reader browser-push localization was rejected: a single push payload is dispatched to a whole group (one payload per browser request), so it cannot vary per reader; operators keep localizing push copy via env (POST_NOTIFICATION_TITLE / REPLY_NOTIFICATION_TITLE / THREAD_/* / MENTION_/*). The guest reply email / password reset (sender-side, site_language) stayed out of scope for the same reason as in round 332 — deferred as a later half-round if the operator wants it."
+    },
+    "TASK-396": {
+      "id": "TASK-396",
+      "type": "task",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-14T10:20:38+00:00",
+      "updated_at": "2026-09-14T10:21:13+00:00",
+      "touched_round": 333,
+      "category": "core-feature",
+      "severity": 0.5,
+      "confidence": 1.0,
+      "effort": 2.0,
+      "tracked_title": "Reader-locale reply/thread/mention notification copy",
+      "title": "Reader-locale remaining-kind notification copy (DEC-340)",
+      "description": "Round 332 localized only new_post/series_new_part; the reply, thread_comment, and @-mention inbox rows + emails are still hardcoded Chinese (env-overridable REPLY/THREAD/MENTION_NOTIFICATION_*), so an English reader gets an English 'New post' email but a Chinese 'Someone replied to your comment'. Extend notification_copy to all five kinds (+ commenter label for mentions), move the env-overridable zh constants into crud, make the reply path + both batched fan-outs build per-reader-localized rows (one locale query per batch), per-reader EmailItems; push payloads stay operator-global. No-locale readers keep today's zh copy. Backend-only; no schema change."
+    },
+    "DEC-341": {
+      "id": "DEC-341",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-14T10:21:51+00:00",
+      "updated_at": "2026-09-14T10:21:51+00:00",
+      "touched_round": 333,
+      "title": "close round 333: reader-locale reply/thread/mention copy (DEC-340 delivered)",
+      "rationale": "Round 333 delivery: reader-locale reply/thread/mention notification copy (DEC-340/TASK-396 by CHG-539/540/541). Round 332 localized only new_post/series_new_part; the reply / thread_comment / @-mention inbox rows and emails were still hardcoded Chinese (env-overridable via REPLY/THREAD/MENTION_NOTIFICATION_*), so an English reader got an English 'New post' email but a Chinese 'Someone replied to your comment'.notification_copy now covers all five kinds (+ commenter label for mentions); the env-overridable zh constants moved into crud so the copy lives with the localization; the reply path computes per-reader copy from the replied-to reader's locale and both batched fan-outs load each target's locale once and build per-reader-localized rows in the same batch; email dispatch builds per-reader EmailItems. Server-generated push payloads keep the operator-global env copy (one payload per browser). A no-locale reader (NULL) still gets exactly today's zh copy. VERIFY green: backend 1508 (cov 93.90%, ruff/pyright clean), locale/reply/thread suites replay green on dev PostgreSQL 10.112.9.49:13310, no schema change (no migration), frontend untouched (round-332 switcher sync persists the locale). Feature mode continues; next round re-sources.",
+      "alternatives_rejected": "Per-reader browser-push localization was rejected: a single push payload is dispatched to a whole group (one payload per browser request), so it cannot vary per reader; operators keep localizing push copy via env (POST_NOTIFICATION_TITLE / REPLY_NOTIFICATION_TITLE / THREAD_/* / MENTION_/*). The guest reply email / password reset (sender-side, site_language) stayed out of scope for the same reason as in round 332 — deferred as a later half-round if the operator wants it."
     }
   },
   "edges": [
@@ -36414,6 +36490,36 @@
       "to": "DEC-338",
       "type": "supersedes",
       "created_at": "2026-09-14T09:36:00+00:00"
+    },
+    {
+      "from": "CHG-539",
+      "to": "TASK-396",
+      "type": "implements",
+      "created_at": "2026-09-14T10:21:12+00:00"
+    },
+    {
+      "from": "CHG-540",
+      "to": "TASK-396",
+      "type": "implements",
+      "created_at": "2026-09-14T10:21:12+00:00"
+    },
+    {
+      "from": "CHG-541",
+      "to": "TASK-396",
+      "type": "implements",
+      "created_at": "2026-09-14T10:21:12+00:00"
+    },
+    {
+      "from": "DEC-340",
+      "to": "TASK-396",
+      "type": "governs",
+      "created_at": "2026-09-14T10:21:12+00:00"
+    },
+    {
+      "from": "DEC-341",
+      "to": "DEC-340",
+      "type": "supersedes",
+      "created_at": "2026-09-14T10:21:51+00:00"
     }
   ]
 }
