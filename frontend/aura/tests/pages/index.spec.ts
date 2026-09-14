@@ -72,6 +72,15 @@ const { mockState } = vi.hoisted(() => ({
 		// resolves-in-one-microtask real default makes it unobservable).
 		followsPending: false,
 		seriesPending: false,
+		// Server-trail continue reading (DEC-348, TASK-400): the in-progress
+		// posts the signed-in reader left partway on any device.
+		inProgress: [] as Array<{
+			id: number;
+			title: string;
+			slug: string;
+			excerpt: string | null;
+			viewed_at: string | null;
+		}>,
 	},
 }));
 
@@ -117,6 +126,13 @@ vi.mock("../../api/public/stats", () => ({
 vi.mock("../../api/reader/history", () => ({
 	getReaderRecommendations: async () => mockState.recommended,
 	getReaderSeriesProgress: async (slug: string) => mockState.seriesProgress[slug] ?? null,
+	getReaderInProgress: async () => ({
+		items: mockState.inProgress,
+		total: mockState.inProgress.length,
+		page: 1,
+		limit: 6,
+		total_pages: 1,
+	}),
 }));
 vi.mock("../../api/reader/follows", () => ({
 	getReaderFollowsFeed: async () => {
@@ -288,6 +304,7 @@ function resetMockState() {
 	mockState.followsFeed = [];
 	mockState.followsPending = false;
 	mockState.seriesPending = false;
+	mockState.inProgress = [];
 	try {
 		window.localStorage.removeItem("reader_token");
 	} catch {
@@ -781,6 +798,39 @@ describe("Index Page", () => {
 			await wrapper.vm.$nextTick();
 			expect(wrapper.text()).toContain("继续阅读");
 			expect(wrapper.text()).toContain("Made Post");
+		});
+
+		it("signed-in reader sees the SERVER resume trail, not the device-local row (DEC-348, TASK-400)", async () => {
+			// A signed-in reader on a NEW device has no local trail (localStorage
+			// is empty / contains a different device's reads) — the server
+			// in-progress list is authoritative and cross-device.
+			window.localStorage.setItem("reader_token", "token");
+			mockState.posts = mockPostsData;
+			mockState.inProgress = [
+				{ id: 10, title: "Left on Desktop", slug: "left-desktop", excerpt: null, viewed_at: null },
+				{ id: 11, title: "Half of Series", slug: "half-series", excerpt: null, viewed_at: null },
+			];
+			// Even with a populated local recent row, the server trail wins.
+			const recentRef = mockRecentState.recentRef as { value: unknown[] };
+			recentRef.value = [{ slug: "local-only", title: "Local Only" }];
+			const wrapper = await mountIndexPage();
+
+			expect(wrapper.text()).toContain("继续阅读");
+			expect(wrapper.text()).toContain("Left on Desktop");
+			expect(wrapper.text()).toContain("Half of Series");
+			expect(wrapper.text()).not.toContain("Local Only");
+		});
+
+		it("hides the section for a signed-in reader with nothing in progress", async () => {
+			// Empty server trail — the cloud row must not render an orphan
+			// heading even though the device-local trail has entries.
+			window.localStorage.setItem("reader_token", "token");
+			mockState.posts = mockPostsData;
+			mockState.inProgress = [];
+			const recentRef = mockRecentState.recentRef as { value: unknown[] };
+			recentRef.value = [{ slug: "local-only", title: "Local Only" }];
+			const wrapper = await mountIndexPage();
+			expect(wrapper.text()).not.toContain("继续阅读");
 		});
 	});
 

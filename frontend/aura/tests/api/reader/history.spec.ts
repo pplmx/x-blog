@@ -4,6 +4,7 @@ import {
 	clearReaderHistory,
 	getReaderHistory,
 	getReaderHistoryStats,
+	getReaderInProgress,
 	getReaderReadingPosition,
 	importReaderHistory,
 	recordReaderHistory,
@@ -97,6 +98,14 @@ describe("reader history commands", () => {
 		await getReaderHistoryStats();
 
 		expect(commandCalls[0].path).toBe("/api/reader/me/history/stats");
+		expect(commandCalls[0].options.headers).toEqual({ Authorization: "Bearer reader-jwt" });
+	});
+
+	it("fetches the in-progress continue-reading trail with a bounded limit", async () => {
+		await getReaderInProgress(6);
+
+		expect(commandCalls[0].path).toBe("/api/reader/me/history/in-progress");
+		expect(commandCalls[0].options.query).toEqual({ limit: 6 });
 		expect(commandCalls[0].options.headers).toEqual({ Authorization: "Bearer reader-jwt" });
 	});
 
