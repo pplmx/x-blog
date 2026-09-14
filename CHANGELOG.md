@@ -9,6 +9,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- **Reader-language reply/thread/mention copy (DEC-340)**: the reader-locale
+  story (DEC-338) covered only new-post notifications — an English reader got
+  an English "New post" email while the reply / followed-thread / @-mention
+  rows and emails stayed hardcoded Chinese. The remaining kinds are now
+  localized per reader too: an English reader gets "Someone replied to your
+  comment", "New comment in a thread you follow", and "You were mentioned in a
+  comment" (with the commenter's label) inbox rows and emails the moment they
+  switch, in the same batch as a Chinese reader keeping 有人回复了你的评论 /
+  你订阅的讨论有新评论 / 有人在评论中提到了你. Browser-push payloads stay the
+  operator-global copy (a single payload can't vary per reader browser).
 - **Reader-language notification copy (DEC-338)**: notification copy was
   hardcoded Chinese for every reader — durable inbox titles (系列更新 /
   新文章发布 / 《…》), the per-event email Subject + body, and the weekly digest
