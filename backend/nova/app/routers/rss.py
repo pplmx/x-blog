@@ -309,6 +309,12 @@ def get_rss_feed(
     (RIL TASK-085, ISS-054).
     """
     category, tag = _resolve_feed_scope(db, category_id, tag_id)
+    # Fire the scheduled-post publish-time fan-out (DEC-336/TASK-394): an RSS
+    # poller is the most reliable read surface for a crossing scheduled post
+    # (external cron hits the feed continuously), and the crossing has no
+    # write-time trigger to announce it. Cheap indexed no-op when nothing
+    # crossed; exactly-once per post by the durable stamp.
+    crud.maybe_notify_due_scheduled_posts(db)
     key = ("feed", full, category_id, tag_id)
     cached = feed_cache.get(key)
     if cached is not None:
@@ -348,6 +354,10 @@ def get_atom_feed(
     """Get Atom feed of published posts, optionally scoped to a category/tag
     (DEC-074, TASK-146; same semantics as the RSS feed)."""
     category, tag = _resolve_feed_scope(db, category_id, tag_id)
+    # Same scheduled-post publish-time fan-out as the RSS feed (DEC-336/
+    # TASK-394): the crossing has no write-time trigger, so the Atom read path
+    # is one of the surfaces that notice it. Exactly-once by durable stamp.
+    crud.maybe_notify_due_scheduled_posts(db)
     key = ("atom", category_id, tag_id)
     cached = feed_cache.get(key)
     if cached is not None:

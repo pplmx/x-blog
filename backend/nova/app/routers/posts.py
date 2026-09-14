@@ -39,6 +39,11 @@ def list_posts(
     month: int | None = Query(None, ge=1, le=12),
     db: Session = Depends(get_db),
 ):
+    # Fire the scheduled-post publish-time fan-out (DEC-336/TASK-394) even on
+    # a cache hit: the crossing has no write-time trigger, so the list read is
+    # one of the first public surfaces to notice it. Cheap indexed no-op when
+    # nothing crossed; exactly-once per post by the durable stamp.
+    crud.maybe_notify_due_scheduled_posts(db)
     cache_key = (page, limit, category_id, tag_id, year, month)
     cached = posts_list_cache.get(cache_key)
     if cached is not None:
@@ -98,6 +103,11 @@ def get_post(
     # Drafts and not-yet-published scheduled posts are invisible to the public.
     if not post or not crud.is_publicly_visible(post):
         raise HTTPException(status_code=404, detail="Post not found")
+    # A scheduled post that crossed its publish_at since it was written needs
+    # its first public read to fire the new-post fan-out (DEC-336/TASK-394 —
+    # no background scheduler, DEC-076). Sweep the whole late set: cheap
+    # indexed no-op when nothing crossed, exactly-once per post by stamp.
+    crud.maybe_notify_due_scheduled_posts(db)
     return post
 
 

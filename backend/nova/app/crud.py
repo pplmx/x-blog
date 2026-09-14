@@ -324,7 +324,13 @@ def create_post(db: Session, post: schemas.PostCreate) -> models.Post:
 
     # A post created as immediately visible is a new post — fan out the
     # new-post push (DEC-076, TASK-147). Best effort, no-op when unconfigured.
+    # The exactly-once stamp (DEC-336, TASK-394) is set before dispatch so a
+    # later fire-on-read sweep (maybe_notify_due_scheduled_posts) skips a post
+    # that was already announced at write time — even a backdated publish_at
+    # post that is visible the instant it is created must never double-fire.
     if is_publicly_visible(db_post):
+        db_post.new_post_notified_at = utc_now_naive()
+        db.commit()
         record_new_post_notifications(db, db_post)
         dispatch_new_post(db, db_post, logger)
     return db_post
@@ -376,7 +382,12 @@ def update_post(db: Session, post_id: int, post: schemas.PostUpdate) -> models.P
     clear_posts_list_cache()
 
     # Only the draft/scheduled -> published transition notifies (see above).
+    # Stamp before dispatch (DEC-336, TASK-394) so the fire-on-read sweep
+    # (maybe_notify_due_scheduled_posts) never re-announces this post — the
+    # stamp is the exactly-once guard shared by both fan-out paths.
     if not was_visible and is_publicly_visible(db_post):
+        db_post.new_post_notified_at = utc_now_naive()
+        db.commit()
         record_new_post_notifications(db, db_post)
         dispatch_new_post(db, db_post, logger)
     return db_post
@@ -515,6 +526,11 @@ def restore_post_revision(
     clear_posts_list_cache()
 
     if not was_visible and is_publicly_visible(db_post):
+        # Exactly-once stamp (DEC-336/TASK-394), same as create/update: the
+        # fire-on-read sweep must never re-announce a post the restore path
+        # already announced.
+        db_post.new_post_notified_at = utc_now_naive()
+        db.commit()
         record_new_post_notifications(db, db_post)
         dispatch_new_post(db, db_post, logger)
     return db_post
@@ -3492,6 +3508,67 @@ def record_reader_notification(
     except Exception:  # noqa: BLE001 — best effort, never fail the caller
         db.rollback()
     return row
+
+
+def maybe_notify_due_scheduled_posts(db: Session) -> int:
+    """Fire the new-post fan-out for scheduled posts whose ``publish_at`` has
+    now passed but that were never announced (DEC-336, TASK-394).
+
+    A post created as published-but-future ``publish_at`` becomes publicly
+    visible the moment the clock crosses it, but both write-time fan-outs are
+    gated on visibility AT WRITE TIME: create_post skips a still-future
+    publish_at and update_post only fires on a draft->visible transition, so
+    the crossing itself has no trigger — there is no background scheduler
+    (DEC-076). This helper is the fire-on-read sweep: called from the public
+    read paths that surface a post after its crossing (post list, post detail,
+    RSS/Atom feeds), it claims every crossed-but-unannounced post atomically
+    and runs the same batched fan-out as an immediate publish.
+
+    Exactly-once: the ``new_post_notified_at`` stamp is written with an atomic
+    conditional UPDATE (``... WHERE id = ? AND stamp IS NULL``), so concurrent
+    sweep calls across uvicorn workers (DEC-004) cannot both claim the same
+    post; the stamp is committed before any dispatch, so even a crash mid-fan-
+    out cannot cause a duplicate. Best effort by construction — the fan-out
+    helpers never raise — and a claim already stamped is skipped. Returns the
+    number of posts newly claimed (0 when nothing crossed).
+    """
+    now = utc_now_naive()
+    due_ids = [
+        pid
+        for (pid,) in db.query(models.Post.id)
+        .filter(
+            models.Post.published.is_(True),
+            models.Post.publish_at.isnot(None),
+            models.Post.publish_at <= now,
+            models.Post.new_post_notified_at.is_(None),
+        )
+        .all()
+    ]
+    if not due_ids:
+        return 0
+    claimed: list[int] = []
+    for pid in due_ids:
+        won = (
+            db.query(models.Post)
+            .filter(
+                models.Post.id == pid,
+                models.Post.new_post_notified_at.is_(None),
+            )
+            .update({"new_post_notified_at": now}, synchronize_session=False)
+        )
+        if won:
+            claimed.append(pid)
+    if claimed:
+        db.commit()
+    # Dispatch after the stamp commit so a best-effort send failure can never
+    # be retried as a duplicate (the stamp already proves the claim happened).
+    for pid in claimed:
+        post = db.get(models.Post, pid)
+        if post is None:
+            continue
+        record_new_post_notifications(db, post)
+        dispatch_new_post(db, post, logger)
+    return len(claimed)
 
 
 def record_new_post_notifications(db: Session, post: models.Post) -> None:

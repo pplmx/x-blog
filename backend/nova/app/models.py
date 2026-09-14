@@ -57,6 +57,13 @@ class Post(Base):
     published: Mapped[bool | None] = mapped_column(Boolean, default=False, index=True)
     pinned: Mapped[bool | None] = mapped_column(Boolean, default=False)
     publish_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True, index=True)
+    # Durable exactly-once stamp for the new-post fan-out (DEC-336, TASK-394):
+    # set the moment a post that became publicly visible without ever being
+    # announced is claimed by the fire-on-read sweep (or immediately at write
+    # time when created/updated already-visible). NULL before first claim;
+    # a non-NULL value means followers were already notified, so the sweep and
+    # the write-time fan-out never double-fire.
+    new_post_notified_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     created_at: Mapped[datetime | None] = mapped_column(
         DateTime,
         default=lambda: datetime.now(UTC),

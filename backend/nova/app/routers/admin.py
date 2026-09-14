@@ -528,6 +528,13 @@ def admin_update_post(
     # frontmost publish path is the admin editor's PUT /posts/{id}, which used
     # to skip both — a follower/subscriber count that never moved.
     if not was_visible and crud.is_publicly_visible(post):
+        # Exactly-once stamp (DEC-336/TASK-394): this editor path fans out
+        # directly (it does not route through crud.update_post), so it must set
+        # the same durable stamp the fire-on-read sweep (maybe_notify_due_...)
+        # checks — otherwise the first public read of a crossed scheduled post
+        # edited here would re-announce it.
+        post.new_post_notified_at = crud.utc_now_naive()
+        db.commit()
         crud.record_new_post_notifications(db, post)
         dispatch_new_post(db, post, logger)
     return {"id": post.id}
