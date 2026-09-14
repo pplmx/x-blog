@@ -9,6 +9,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- **Reader-language notification copy (DEC-338)**: notification copy was
+  hardcoded Chinese for every reader — durable inbox titles (系列更新 /
+  新文章发布 / 《…》), the per-event email Subject + body, and the weekly digest
+  were all zh regardless of the reader's UI language or the site's. A signed-in
+  reader's language switcher now persists their locale (new `PUT
+  /api/reader/me/locale`), and the fan-out renders each reader's copy in their
+  language: an English reader gets English "New post" / "Series update" inbox
+  rows, emails, and digest from the moment they switch, while a reader who
+  never switches (or any existing reader) keeps the zh copy unchanged — the
+  locale column is additive and NULL reads as the site default.
 - **Scheduled posts notify followers when they go live (DEC-336)**: a post
   written as published-but-future `publish_at` is a first-class editorial-calendar
   affordance, but the new-post fan-out only ran at WRITE time when the post was
