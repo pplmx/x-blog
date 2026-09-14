@@ -9,6 +9,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- **Admin newsletter management (DEC-354)**: the guest newsletter (DEC-351) had
+  no operator surface — an admin could not see who was subscribed, how many were
+  confirmed vs pending, or remove an address. The admin section now lists every
+  subscriber (email, confirmed/pending chip, subscription date) with a status
+  filter, case-insensitive email search, pagination, and a per-row remove action
+  (row + token gone, so a subsequently posted unsubscribe token is a 404 —
+  indistinguishable from never-subscribed, no oracle). A newsletter with no
+  management loop cannot serve an address someone else subscribed, a dead
+  mailbox, or a subscriber who asked to be removed and lost their token — this
+  page closes that loop.
 - **Guest email newsletter (DEC-351)**: the blog's entire email surface (weekly
   digest, per-event emails, guest reply emails) was gated behind a reader
   account or a comment, so an anonymous visitor who just wanted "email me new

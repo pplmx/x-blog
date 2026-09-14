@@ -21,19 +21,20 @@ Security posture (mirroring existing no-oracle patterns):
   so a mail client that re-opens the link can never error.
 """
 
+from datetime import datetime
 from secrets import token_urlsafe
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, Request
-from pydantic import BaseModel, Field, field_validator
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from app import models, schemas
-from app.crud import utc_now_naive
+from app import auth, models, schemas
+from app.crud import escape_like_pattern, utc_now_naive
 from app.database import get_db
 from app.emailer import send_newsletter_confirm_email
-from app.limiter import RATE_LIMIT_NEWSLETTER, RATE_LIMIT_WRITE, limiter
+from app.limiter import RATE_LIMIT_NEWSLETTER, RATE_LIMIT_READ, RATE_LIMIT_WRITE, limiter
 from app.middleware import get_logger
 from app.schemas import NonNulStr
 
@@ -86,8 +87,7 @@ def newsletter_subscribe(
     email = body.email.strip().lower()
 
     row = db.query(models.NewsletterSubscriber).filter(models.NewsletterSubscriber.email == email).first()
-    is_new = row is None
-    if is_new:
+    if row is None:
         row = models.NewsletterSubscriber(
             email=email,
             token=token_urlsafe(32),
@@ -98,23 +98,24 @@ def newsletter_subscribe(
             db.commit()
         except IntegrityError:
             # A concurrent subscribe won the unique-email race; reuse the row
-            # that other request created (it is pending, and it will be the
-            # one to send its own confirmation — so this request must NOT also
-            # mail, or the address gets two confirmation links).
+            # that other request created (it is pending, and it is the one to
+            # send its own confirmation — so this request must NOT also mail,
+            # or the address gets two confirmation links).
             db.rollback()
             row = db.query(models.NewsletterSubscriber).filter(models.NewsletterSubscriber.email == email).first()
             if row is None:  # shared-unique race with no winner observable here — treat as transient failure
                 raise
-            is_new = False
-        db.refresh(row)
-    # Best-effort confirmation email, sent only for a NEWLY created row (see
-    # the anti-abuse note above). A failure is swallowed (never an error to the
-    # subscriber); SMTP unconfigured -> the address just stays pending.
-    if is_new:
-        try:
-            send_newsletter_confirm_email(email, row.token)
-        except Exception:  # noqa: BLE001
-            logger.exception("newsletter confirmation email failed for %s", email)
+        else:
+            # Our insert won the race — this is the ONE confirmation email to
+            # send. Firing only here keeps the anti-abuse guarantee (a newly
+            # created row is mailed once; a resubscribed address never is).
+            # Best-effort: a failure is swallowed (never an error to the
+            # subscriber); SMTP unconfigured -> the address just stays pending.
+            db.refresh(row)
+            try:
+                send_newsletter_confirm_email(email, row.token)
+            except Exception:  # noqa: BLE001
+                logger.exception("newsletter confirmation email failed for %s", email)
     return {"subscribed": True, "message": "If this email is new, a confirmation link is on its way"}
 
 
@@ -161,3 +162,97 @@ def newsletter_unsubscribe(
         row.confirmed_at = None
         db.commit()
     return {"unsubscribed": True}
+
+
+# Admin subscriber management (DEC-354, TASK-402)
+# ---------------------------------------------------------------------------
+# The public surface (subscribe/confirm/unsubscribe) has no operator view: an
+# admin cannot see who is on the list, how many are confirmed vs pending, or
+# remove an address. These admin-scoped endpoints fill that gap. Additive and
+# separate from the public token flow — DELETE removes the row AND its token,
+# so a subsequently posted token is a 404 (indistinguishable from
+# never-subscribed, no oracle).
+
+admin_router = APIRouter(prefix="/api/admin/newsletter", tags=["newsletter"])
+
+
+class AdminSubscriberItem(BaseModel):
+    """One newsletter subscriber as the admin list serializes it."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    email: str
+    is_confirmed: bool
+    created_at: datetime | None = None
+    confirmed_at: datetime | None = None
+
+
+class AdminSubscriberListResponse(BaseModel):
+    items: list[AdminSubscriberItem]
+    pagination: dict[str, int]
+
+
+@admin_router.get("/subscribers", response_model=AdminSubscriberListResponse)
+@limiter.limit(f"{RATE_LIMIT_READ}/minute")
+def admin_list_subscribers(
+    request: Request,  # noqa: ARG001
+    status: str | None = Query(None, pattern="^(confirmed|pending)$", description="filter by confirmation state"),
+    q: Annotated[NonNulStr | None, Query(max_length=254, description="case-insensitive email substring")] = None,
+    page: int = Query(1, ge=1),
+    limit: int = Query(20, ge=1, le=100),
+    _current_user: auth.User = Depends(auth.get_current_admin),
+    db: Session = Depends(get_db),
+):
+    """List newsletter subscribers, newest first, with status/search filters."""
+    query = db.query(models.NewsletterSubscriber)
+    if status == "confirmed":
+        query = query.filter(models.NewsletterSubscriber.is_confirmed.is_(True))
+    elif status == "pending":
+        query = query.filter(models.NewsletterSubscriber.is_confirmed.is_(False))
+    if q:
+        # Literal substring match: % and _ in the term must not act as
+        # wildcards (readers-list convention, crud.escape_like_pattern) —
+        # unescaped they would degenerate into full-table matches.
+        query = query.filter(models.NewsletterSubscriber.email.ilike(f"%{escape_like_pattern(q)}%", escape="\\"))
+    total = query.count()
+    rows = (
+        query.order_by(
+            models.NewsletterSubscriber.created_at.desc(),
+            models.NewsletterSubscriber.id.desc(),
+        )
+        .offset((page - 1) * limit)
+        .limit(limit)
+        .all()
+    )
+    return {
+        "items": [AdminSubscriberItem.model_validate(r) for r in rows],
+        "pagination": {
+            "page": page,
+            "limit": limit,
+            "total": total,
+            "total_pages": (total + limit - 1) // limit if total else 0,
+        },
+    }
+
+
+@admin_router.delete("/subscribers/{subscriber_id}", status_code=204)
+@limiter.limit(f"{RATE_LIMIT_WRITE}/minute")
+def admin_delete_subscriber(
+    request: Request,  # noqa: ARG001
+    subscriber_id: int,
+    _current_user: auth.User = Depends(auth.get_current_admin),
+    db: Session = Depends(get_db),
+):
+    """Remove a newsletter subscriber (row + token) entirely.
+
+    For a subscriber who asked to be removed (and lost their token) or an
+    address someone else subscribed. The row is gone, so that address is never
+    re-emailed new posts and a subsequently posted token is a 404.
+    """
+    row = db.get(models.NewsletterSubscriber, subscriber_id)
+    if row is None:
+        raise HTTPException(status_code=404, detail="Subscriber not found")
+    db.delete(row)
+    db.commit()
+    return None

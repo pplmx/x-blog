@@ -12,7 +12,8 @@
 			"users": "用户",
 			"calendar": "日历",
 			"media": "媒体库",
-			"readers": "读者"
+			"readers": "读者",
+			"newsletter": "订阅"
 		},
 		"settings": {
 			"title": "设置",
@@ -78,6 +79,34 @@
 			"activate": "启用",
 			"confirmDeactivate": "要停用 {email} 吗？该账号将立即被登出并锁定。",
 			"confirmActivate": "要重新启用 {email} 吗？读者需重新登录。"
+		},
+		"newsletter": {
+			"seoTitle": "邮件订阅者 — X-Blog",
+			"title": "邮件订阅者",
+			"description": "订阅了游客邮件通讯的所有邮箱，含确认状态。",
+			"searchPlaceholder": "按邮箱搜索…",
+			"filterLabel": "按状态筛选",
+			"filter": {
+				"all": "全部",
+				"confirmed": "已确认",
+				"pending": "待确认"
+			},
+			"total": "{count} 位订阅者",
+			"empty": "还没有人订阅。",
+			"emptyFilter": "该状态下暂无订阅者。",
+			"loadFailed": "无法加载订阅者列表。",
+			"colEmail": "邮箱",
+			"colStatus": "状态",
+			"colSubscribed": "订阅时间",
+			"colActions": "操作",
+			"status": {
+				"confirmed": "已确认",
+				"pending": "待确认"
+			},
+			"delete": "移除",
+			"deleteAria": "将 {email} 从邮件订阅中移除",
+			"confirmDelete": "要把 {email} 从邮件订阅中移除吗？移除后不再收到新文章邮件。",
+			"deleteFailed": "移除失败，请重试。"
 		}
 	}
 }

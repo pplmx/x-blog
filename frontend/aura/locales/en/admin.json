@@ -12,7 +12,8 @@
 			"users": "Users",
 			"calendar": "Calendar",
 			"media": "Media",
-			"readers": "Readers"
+			"readers": "Readers",
+			"newsletter": "Newsletter"
 		},
 		"settings": {
 			"title": "Settings",
@@ -78,6 +79,34 @@
 			"activate": "Activate",
 			"confirmDeactivate": "Deactivate {email}? They will be signed out and locked out immediately.",
 			"confirmActivate": "Reactivate {email}? The reader will need to log in again."
+		},
+		"newsletter": {
+			"seoTitle": "Newsletter subscribers — X-Blog",
+			"title": "Newsletter subscribers",
+			"description": "Everyone subscribed to the guest email newsletter, with their confirmation state.",
+			"searchPlaceholder": "Search by email…",
+			"filterLabel": "Filter by status",
+			"filter": {
+				"all": "All",
+				"confirmed": "Confirmed",
+				"pending": "Pending"
+			},
+			"total": "{count} subscribers",
+			"empty": "No one has subscribed yet.",
+			"emptyFilter": "No subscribers in this state.",
+			"loadFailed": "Couldn't load subscribers.",
+			"colEmail": "Email",
+			"colStatus": "Status",
+			"colSubscribed": "Subscribed",
+			"colActions": "Actions",
+			"status": {
+				"confirmed": "Confirmed",
+				"pending": "Pending"
+			},
+			"delete": "Remove",
+			"deleteAria": "Remove {email} from the newsletter",
+			"confirmDelete": "Remove {email} from the newsletter? They will stop receiving new-post emails.",
+			"deleteFailed": "Couldn't remove the subscriber — please try again."
 		}
 	}
 }

@@ -257,6 +257,9 @@ const navItems = computed(() => {
 		// Reader accounts (DEC-194): a moderation surface, so available to every
 		// admin role — unlike /admin/users provisioning (superuser-only).
 		{ href: "/admin/readers", labelKey: "admin.nav.readers", icon: "lucide:user-check" },
+		// Newsletter subscribers (DEC-354): the guest newsletter's operator
+		// management loop — also a moderation surface, available to every role.
+		{ href: "/admin/newsletter", labelKey: "admin.nav.newsletter", icon: "lucide:mail" },
 	];
 	if (currentRole.value === "superuser") {
 		items.push({ href: "/admin/users", labelKey: "admin.nav.users", icon: "lucide:users" });

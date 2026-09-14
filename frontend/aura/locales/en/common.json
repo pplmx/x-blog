@@ -31,7 +31,9 @@
 			"backHome": "Back to home",
 			"backToList": "Back to list",
 			"retry": "Retry",
-			"close": "Close"
+			"close": "Close",
+			"prev": "Previous",
+			"next": "Next"
 		},
 		"state": {
 			"loading": "Loading",
