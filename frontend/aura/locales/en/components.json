@@ -20,6 +20,7 @@
 			"nickname": "Nickname",
 			"email": "Email (won't be published)",
 			"content": "Write something...",
+			"replyNotify": "Email me when someone replies",
 			"submitting": "Submitting...",
 			"submit": "Post comment",
 			"submitFailed": "Failed to submit comment. Please try again.",

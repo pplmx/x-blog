@@ -68,6 +68,17 @@
 			"errors": {
 				"network": "网络错误，请重试。"
 			}
+		},
+		"replyUnsubscribe": {
+			"seoTitle": "取消订阅回复邮件",
+			"seoDesc": "停止接收访客评论的回复通知邮件。",
+			"title": "已取消订阅",
+			"success": "你以后将不再收到该评论有新回复时的邮件通知。",
+			"invalid": "这个退订链接无效，或已经被使用过。",
+			"processing": "正在取消订阅…",
+			"errors": {
+				"network": "网络错误，请稍后重试。"
+			}
 		}
 	}
 }

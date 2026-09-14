@@ -20,6 +20,7 @@
 			"nickname": "昵称",
 			"email": "邮箱（不会公开）",
 			"content": "写点什么吧...",
+			"replyNotify": "有人回复我的评论时邮件通知我",
 			"submitting": "提交中...",
 			"submit": "提交评论",
 			"submitFailed": "评论提交失败，请重试。",

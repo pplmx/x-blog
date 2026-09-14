@@ -68,6 +68,17 @@
 			"errors": {
 				"network": "A network error occurred. Please try again."
 			}
+		},
+		"replyUnsubscribe": {
+			"seoTitle": "Unsubscribe from reply emails",
+			"seoDesc": "Stop receiving reply-notification emails for a guest comment.",
+			"title": "Unsubscribed",
+			"success": "You will no longer receive email updates when someone replies to that comment.",
+			"invalid": "This unsubscribe link is not valid or has already been used.",
+			"processing": "Unsubscribing…",
+			"errors": {
+				"network": "A network error occurred. Please try again."
+			}
 		}
 	}
 }
