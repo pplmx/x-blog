@@ -9,6 +9,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- **Cross-device resume reading (DEC-346)**: the resume position was an
+  absolute pixel offset saved against one device's layout — a reader who left
+  off at 900px on a desktop returns and instantly finds themselves "900px" is
+  a different place on their phone. The post page now also saves the position
+  as a 0..1 fraction of the scrollable document height (`scroll_fraction`,
+  alongside `scroll_position`) and prefers it on restore, converting it for
+  the current viewport — so a phone→desktop (or any size) continuation lands
+  at the same spot. Pre-feature rows keep working via the pixel fallback, and
+  the back-to-top clear wipes both values.
 - **Scheduled-post sweep on every surface (DEC-344)**: the fire-on-read
   announcement for crossed scheduled posts (DEC-336) covered the post list,
   post detail, and sitewide feeds — but other surfaces that show a just-live

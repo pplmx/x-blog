@@ -57,7 +57,7 @@ A modern full-stack blog application built with FastAPI + Nuxt
 - 📧 **Email notifications + weekly digest** - opted-in readers get per-event emails (new posts / replies / thread comments / @-mentions) and, optionally, one email per week summarizing everything newly published — both straight from the /notifications page (DEC-197, DEC-201, DEC-326)
 - 🌏 **Site-language guest & recovery emails** - the guest reply email and the password reset email render in the site's configured language (`SITE_LANGUAGE`) and name (`SITE_TITLE`), so an English-configured site never sends Chinese or misnamed mail (DEC-342)
 - 📧 **Guest reply emails** - an anonymous commenter who ticks "email me when someone replies" gets one email when a reply to their comment is approved (deep-linked to the exact reply, with a working unsubscribe link) — the same off-site channel readers get, now honoring the email guests must leave (DEC-332)
-- 📖 **Resume Reading** - signed-in readers pick up right where they left off: the post page remembers their scroll position server-side and drops them back on return, with a resume chip offering back-to-top (DEC-167)
+- 📖 **Resume Reading** - signed-in readers pick up right where they left off: the post page remembers their scroll position server-side and drops them back on return, with a resume chip offering back-to-top (DEC-167); the position is also saved as a fraction of the scrollable height so a phone→desktop continuation lands at the same spot (DEC-346)
 - 🔥 **Reading streaks & activity heatmap** - /history shows a signed-in reader's current/longest consecutive-day streak and a GitHub-style 52-week heatmap of days they read (DEC-169)
 - 🖼️ **Media Library** - admins browse every uploaded image (grid, preview, copy URL, in-use badge), delete unreferenced uploads (referenced ones are refused server-side), and insert a previously uploaded image straight from the post editor toolbar (DEC-183)
 
@@ -232,31 +232,31 @@ Reader accounts are the identity layer for cloud-synced bookmarks (audience-
 separated from admin JWTs; see `docs/security.md`). Registration is rate-
 limited (default 5/min/IP).
 
-| Method | Endpoint                                  | Description                                                                                  |
-| ------ | ----------------------------------------- | -------------------------------------------------------------------------------------------- |
-| POST   | `/api/reader/register`                    | Create a reader account (returns a reader JWT, auto-login)                                   |
-| POST   | `/api/reader/login`                       | Reader login (email + password)                                                              |
-| GET    | `/api/reader/me`                          | Current reader profile                                                                       |
-| GET    | `/api/reader/me/bookmarks`                | Cloud-synced bookmark list (publicly-visible posts only)                                     |
-| PUT    | `/api/reader/me/bookmarks/{id}`           | Add a bookmark (idempotent: 201 new / 200 already)                                           |
-| DELETE | `/api/reader/me/bookmarks/{id}`           | Remove a bookmark (idempotent 204)                                                           |
-| GET    | `/api/reader/me/comments`                 | Reader's own comments across statuses (DEC-066)                                              |
-| DELETE | `/api/reader/me/comments/{id}`            | Delete one of the reader's own comments (any status)                                         |
-| PATCH  | `/api/reader/me`                          | Update display name (email immutable) (DEC-067)                                              |
-| POST   | `/api/reader/me/avatar`                   | Upload/replace the reader's profile picture (DEC-299)                                        |
-| DELETE | `/api/reader/me/avatar`                   | Remove the reader's profile picture (DEC-299)                                                |
-| POST   | `/api/reader/me/password`                 | Change password (revokes other sessions, returns fresh token)                                |
-| POST   | `/api/reader/password-reset/request`      | Email a password-reset link (generic 202; 503 only if email unconfigured) (DEC-286)          |
-| POST   | `/api/reader/password-reset/confirm`      | Redeem the reset token: set a new password, revoke all sessions, auto-login (DEC-286)        |
-| GET    | `/api/reader/me/push-subscriptions`       | Reader's push devices (no keys) (DEC-067)                                                    |
-| DELETE | `/api/reader/me/push-subscriptions/{id}`  | Revoke one push device (DEC-067)                                                             |
-| GET    | `/api/reader/me/notifications`            | Reader's durable notification inbox (read/unread) (DEC-160)                                  |
-| POST   | `/api/reader/me/notifications/{id}/read`  | Mark one notification read (DEC-160)                                                         |
-| POST   | `/api/reader/me/notifications/read-all`   | Mark all notifications read (DEC-160)                                                        |
-| GET    | `/api/reader/me/notification-preferences` | Read the reader's per-kind notification switches (DEC-171)                                   |
-| PATCH  | `/api/reader/me/notification-preferences` | Toggle one notification kind on/off (DEC-171)                                                |
-| GET    | `/api/reader/me/history/{post_id}`        | Reader's saved resume offset for a post (null if never read) (DEC-167)                       |
-| POST   | `/api/reader/me/history/{post_id}`        | Record a view; optional body `{scroll_position}` saves the resume offset (DEC-167, TASK-200) |
+| Method | Endpoint                                  | Description                                                                                                            |
+| ------ | ----------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| POST   | `/api/reader/register`                    | Create a reader account (returns a reader JWT, auto-login)                                                             |
+| POST   | `/api/reader/login`                       | Reader login (email + password)                                                                                        |
+| GET    | `/api/reader/me`                          | Current reader profile                                                                                                 |
+| GET    | `/api/reader/me/bookmarks`                | Cloud-synced bookmark list (publicly-visible posts only)                                                               |
+| PUT    | `/api/reader/me/bookmarks/{id}`           | Add a bookmark (idempotent: 201 new / 200 already)                                                                     |
+| DELETE | `/api/reader/me/bookmarks/{id}`           | Remove a bookmark (idempotent 204)                                                                                     |
+| GET    | `/api/reader/me/comments`                 | Reader's own comments across statuses (DEC-066)                                                                        |
+| DELETE | `/api/reader/me/comments/{id}`            | Delete one of the reader's own comments (any status)                                                                   |
+| PATCH  | `/api/reader/me`                          | Update display name (email immutable) (DEC-067)                                                                        |
+| POST   | `/api/reader/me/avatar`                   | Upload/replace the reader's profile picture (DEC-299)                                                                  |
+| DELETE | `/api/reader/me/avatar`                   | Remove the reader's profile picture (DEC-299)                                                                          |
+| POST   | `/api/reader/me/password`                 | Change password (revokes other sessions, returns fresh token)                                                          |
+| POST   | `/api/reader/password-reset/request`      | Email a password-reset link (generic 202; 503 only if email unconfigured) (DEC-286)                                    |
+| POST   | `/api/reader/password-reset/confirm`      | Redeem the reset token: set a new password, revoke all sessions, auto-login (DEC-286)                                  |
+| GET    | `/api/reader/me/push-subscriptions`       | Reader's push devices (no keys) (DEC-067)                                                                              |
+| DELETE | `/api/reader/me/push-subscriptions/{id}`  | Revoke one push device (DEC-067)                                                                                       |
+| GET    | `/api/reader/me/notifications`            | Reader's durable notification inbox (read/unread) (DEC-160)                                                            |
+| POST   | `/api/reader/me/notifications/{id}/read`  | Mark one notification read (DEC-160)                                                                                   |
+| POST   | `/api/reader/me/notifications/read-all`   | Mark all notifications read (DEC-160)                                                                                  |
+| GET    | `/api/reader/me/notification-preferences` | Read the reader's per-kind notification switches (DEC-171)                                                             |
+| PATCH  | `/api/reader/me/notification-preferences` | Toggle one notification kind on/off (DEC-171)                                                                          |
+| GET    | `/api/reader/me/history/{post_id}`        | Reader's saved resume offset for a post — pixel and scrollable-height fraction (null if never read) (DEC-167, DEC-346) |
+| POST   | `/api/reader/me/history/{post_id}`        | Record a view; optional body `{scroll_position, scroll_fraction}` saves the resume offset (DEC-167/346, TASK-200/399)  |
 
 Bookmarks are stored localStorage-first on the browser and merged to the cloud
 when a reader signs in — offline changes survive and re-concile on the next
