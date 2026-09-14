@@ -112,6 +112,14 @@
 		"postCard": {
 			"pinned": "置顶",
 			"readingTime": "{count} 分钟"
+		},
+		"newsletter": {
+			"label": "邮箱",
+			"placeholder": "you@example.com",
+			"subscribe": "订阅",
+			"submitting": "订阅中…",
+			"done": "请查收邮件，点击链接完成订阅。",
+			"error": "订阅失败，请稍后重试。"
 		}
 	}
 }

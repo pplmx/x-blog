@@ -27,6 +27,7 @@ from app.routers import (
     backup,
     categories,
     comments,
+    newsletter,
     posts,
     push,
     reader,
@@ -253,6 +254,7 @@ app.include_router(categories.router)
 app.include_router(tags.router)
 app.include_router(series.router)
 app.include_router(comments.router)
+app.include_router(newsletter.router)
 app.include_router(search.router)
 app.include_router(admin.router)
 app.include_router(upload.router)

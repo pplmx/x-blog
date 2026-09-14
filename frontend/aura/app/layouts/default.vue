@@ -303,6 +303,12 @@ onMounted(initTheme);
     <!-- Footer -->
     <footer class="border-t border-gray-100 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-900/50">
       <div class="page-shell px-4 sm:px-6 lg:px-8 py-8">
+        <!-- Guest newsletter on-ramp (DEC-351/TASK-401): the anonymous "email me
+             new posts" entry that sits beside the RSS link for readers who don't
+             use feed readers. -->
+        <div class="mb-6 w-full sm:max-w-sm">
+          <NewsletterSubscribe />
+        </div>
         <div class="flex flex-col sm:flex-row items-center justify-between gap-4">
           <div class="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
             <span>© 2026 X-Blog.</span>

@@ -20,7 +20,12 @@ from app.cache import (
     clear_tags_cache,
     tags_cache,
 )
-from app.emailer import EmailItem, dispatch_notification_emails, email_channel_enabled
+from app.emailer import (
+    EmailItem,
+    dispatch_newsletter_new_post,
+    dispatch_notification_emails,
+    email_channel_enabled,
+)
 from app.middleware import get_logger
 from app.webpush import dispatch_new_post
 
@@ -334,6 +339,7 @@ def create_post(db: Session, post: schemas.PostCreate) -> models.Post:
         db.commit()
         record_new_post_notifications(db, db_post)
         dispatch_new_post(db, db_post, logger)
+        dispatch_newsletter_new_post(db, db_post, logger)
     return db_post
 
 
@@ -391,6 +397,7 @@ def update_post(db: Session, post_id: int, post: schemas.PostUpdate) -> models.P
         db.commit()
         record_new_post_notifications(db, db_post)
         dispatch_new_post(db, db_post, logger)
+        dispatch_newsletter_new_post(db, db_post, logger)
     return db_post
 
 
@@ -534,6 +541,7 @@ def restore_post_revision(
         db.commit()
         record_new_post_notifications(db, db_post)
         dispatch_new_post(db, db_post, logger)
+        dispatch_newsletter_new_post(db, db_post, logger)
     return db_post
 
 
@@ -3714,6 +3722,7 @@ def maybe_notify_due_scheduled_posts(db: Session) -> int:
             continue
         record_new_post_notifications(db, post)
         dispatch_new_post(db, post, logger)
+        dispatch_newsletter_new_post(db, post, logger)
     return len(claimed)
 
 

@@ -353,3 +353,135 @@ def send_password_reset_email(to_addr: str, reset_token: str) -> bool:
     msg.add_alternative(html_body, subtype="html")
     flags = send_messages_flags([msg])
     return bool(flags and flags[0])
+
+
+def send_newsletter_confirm_email(to_addr: str, token: str) -> bool:
+    """Double opt-in confirmation for a guest newsletter subscription (DEC-351).
+
+    ``subscribe`` only records the address and emails this confirm link — the
+    address receives nothing (not even the confirmation's target) until the
+    token link is clicked. Direct SMTP send (the guest has no reader account,
+    so the prefs-gated ``dispatch_notification_emails`` does not apply),
+    mirroring ``send_guest_reply_email``/``send_password_reset_email``: built
+    here, delivered through the single configured SMTP path, gated on
+    ``is_email_configured()`` (a missing config fails closed — separate from
+    the endpoint's own error handling, which keeps subscribe a 202 no-oracle
+    response). Site-language sender-side copy like the other guest emails
+    (DEC-342). Returns whether SMTP accepted it; connection-level errors raise
+    for the caller to swallow (best effort).
+    """
+    from_addr = _env("SMTP_FROM") or "no-reply@localhost"
+    base_url = _env("SITE_URL") or "http://localhost:3000"
+    site_title = _env("SITE_TITLE") or "X-Blog"
+    link = f"{base_url.rstrip('/')}/newsletter/confirm?token={token}"
+    if _is_en_site():
+        subject = f"Confirm your {site_title} newsletter subscription"
+        text = (
+            f"You asked to receive an email whenever a new post is published on {site_title}.\n"
+            "Click the link below to confirm (no confirmation, no emails):\n\n"
+            f"{link}\n\n"
+            "If you didn't ask for this, you can ignore this email — your address won't be used."
+        )
+        html_body = (
+            f"<p>You asked to receive an email whenever a new post is published on {html.escape(site_title)}.</p>"
+            '<p><a href="' + html.escape(link, quote=True) + '">Confirm my subscription</a></p>'
+            "<p>If you didn't ask for this, you can ignore this email — your address won't be used.</p>"
+        )
+    else:
+        subject = f"确认订阅 {site_title} 新文章通知"
+        text = (
+            f"你申请在 {site_title} 有新文章发布时收到邮件。\n"
+            "点击下面的链接确认订阅（不确认则不会收到任何邮件）：\n\n"
+            f"{link}\n\n"
+            "如果你没有发起这个申请，请忽略这封邮件，你的邮箱不会被使用。"
+        )
+        html_body = (
+            f"<p>你申请在 {html.escape(site_title)} 有新文章发布时收到邮件。</p>"
+            '<p><a href="' + html.escape(link, quote=True) + '">确认订阅</a></p>'
+            "<p>如果你没有发起这个申请，请忽略这封邮件，你的邮箱不会被使用。</p>"
+        )
+    msg = EmailMessage()
+    msg["From"] = from_addr
+    msg["To"] = to_addr
+    msg["Subject"] = subject
+    msg.set_content(f"{subject}\n\n{text}")
+    msg.add_alternative(html_body, subtype="html")
+    flags = send_messages_flags([msg])
+    return bool(flags and flags[0])
+
+
+def dispatch_newsletter_new_post(db: Session, post: models.Post, logger) -> int:
+    """Email every confirmed newsletter subscriber once about a new post (DEC-351).
+
+    Called at the same fan-out points that fire the new-post push/reader emails:
+    after a write makes a post immediately visible and when a scheduled post
+    crosses publish_at. Only ``is_confirmed`` rows (their double opt-in was
+    completed) are emailed; pending rows stay silent. One SMTP session for all
+    recipients, each message deep-linking to the post and carrying that
+    subscriber's own unsubscribe link (``/newsletter/unsubscribe?token=...``)
+    so consent stays revocable without an account (mirrors DEC-332). Returns
+    how many messages SMTP accepted; never raises — a mail failure must never
+    break the publish that triggered it.
+    """
+    if not is_email_configured():
+        return 0
+    subs = db.query(models.NewsletterSubscriber).filter(models.NewsletterSubscriber.is_confirmed.is_(True)).all()
+    if not subs or not post.slug:
+        return 0
+    from_addr = _env("SMTP_FROM") or "no-reply@localhost"
+    base_url = _env("SITE_URL") or "http://localhost:3000"
+    site_title = _env("SITE_TITLE") or "X-Blog"
+    post_url = f"{base_url.rstrip('/')}/posts/{post.slug}"
+    messages: list[EmailMessage] = []
+    for sub in subs:
+        unsubscribe = f"{base_url.rstrip('/')}/newsletter/unsubscribe?token={sub.token}"
+        if _is_en_site():
+            subject = f"New post: {post.title}"
+            text = (
+                f"A new post is live on {site_title}:\n\n{post.title}\n\n"
+                f"Read it: {post_url}\n\n"
+                f"If you no longer want these emails, click here to unsubscribe:\n{unsubscribe}"
+            )
+            html_body = (
+                "<p>A new post is live on "
+                + html.escape(site_title)
+                + ":</p>"
+                + f"<p><strong>{html.escape(post.title or '')}</strong></p>"
+                + '<p><a href="'
+                + html.escape(post_url, quote=True)
+                + '">Read the post</a></p>'
+                + '<p><a href="'
+                + html.escape(unsubscribe, quote=True)
+                + '">Unsubscribe from these emails</a></p>'
+            )
+        else:
+            subject = f"新文章发布：{post.title}"
+            text = (
+                f"{site_title} 发布了新文章：\n\n{post.title}\n\n"
+                f"阅读：{post_url}\n\n"
+                f"如果不想再收到这类邮件，请点击下面的链接取消订阅：\n{unsubscribe}"
+            )
+            html_body = (
+                f"<p>{html.escape(site_title)} 发布了新文章：</p>"
+                + f"<p><strong>{html.escape(post.title or '')}</strong></p>"
+                + '<p><a href="'
+                + html.escape(post_url, quote=True)
+                + '">阅读文章</a></p>'
+                + '<p><a href="'
+                + html.escape(unsubscribe, quote=True)
+                + '">取消订阅此类邮件</a></p>'
+            )
+        msg = EmailMessage()
+        msg["From"] = from_addr
+        msg["To"] = sub.email
+        msg["Subject"] = subject
+        msg.set_content(text)
+        msg.add_alternative(html_body, subtype="html")
+        messages.append(msg)
+    if not messages:
+        return 0
+    try:
+        return sum(send_messages_flags(messages))
+    except Exception:  # noqa: BLE001 — best effort, never fail the caller
+        logger.exception("newsletter new-post dispatch failed")
+        return 0

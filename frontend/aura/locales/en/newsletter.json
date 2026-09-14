@@ -1,0 +1,26 @@
+{
+	"newsletter": {
+		"confirm": {
+			"seoTitle": "Confirm newsletter — X-Blog",
+			"seoDesc": "Confirm your email newsletter subscription.",
+			"title": "Confirm your subscription",
+			"processing": "Confirming…",
+			"success": "You're subscribed! You'll get an email when a new post is published.",
+			"invalid": "This confirmation link is invalid or has already been used.",
+			"errors": {
+				"network": "Couldn't reach the server right now. Please try clicking the link again."
+			}
+		},
+		"unsubscribe": {
+			"seoTitle": "Unsubscribe from newsletter — X-Blog",
+			"seoDesc": "Unsubscribe from the email newsletter.",
+			"title": "Unsubscribe from the newsletter",
+			"processing": "Unsubscribing…",
+			"success": "You've been unsubscribed. You won't receive any more newsletter emails.",
+			"invalid": "This unsubscribe link is invalid or has already been used.",
+			"errors": {
+				"network": "Couldn't reach the server right now. Please try clicking the link again."
+			}
+		}
+	}
+}

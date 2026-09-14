@@ -72,6 +72,11 @@ function mountLayout() {
 				RateLimitNotice: {
 					template: '<div class="rate-limit-stub" />',
 				},
+				// Footer newsletter form (DEC-351): auto-imported by Nuxt but not
+				// in vitest, so stub it out of the layout snapshot.
+				NewsletterSubscribe: {
+					template: '<div class="newsletter-stub" />',
+				},
 			},
 		},
 	});

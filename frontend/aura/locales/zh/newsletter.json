@@ -1,0 +1,26 @@
+{
+	"newsletter": {
+		"confirm": {
+			"seoTitle": "确认订阅 — X-Blog",
+			"seoDesc": "确认邮件订阅。",
+			"title": "确认订阅",
+			"processing": "正在确认…",
+			"success": "订阅成功！以后有新文章发布时会邮件通知你。",
+			"invalid": "这个确认链接无效，或已经被使用过。",
+			"errors": {
+				"network": "暂时无法连接服务器，请重新点击邮件中的链接。"
+			}
+		},
+		"unsubscribe": {
+			"seoTitle": "取消订阅 — X-Blog",
+			"seoDesc": "取消邮件订阅。",
+			"title": "取消订阅",
+			"processing": "正在退订…",
+			"success": "已取消订阅，你不会再收到订阅邮件。",
+			"invalid": "这个退订链接无效，或已经被使用过。",
+			"errors": {
+				"network": "暂时无法连接服务器，请重新点击邮件中的链接。"
+			}
+		}
+	}
+}

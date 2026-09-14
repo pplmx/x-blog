@@ -112,6 +112,14 @@
 		"postCard": {
 			"pinned": "Pinned",
 			"readingTime": "{count} min read"
+		},
+		"newsletter": {
+			"label": "Email",
+			"placeholder": "you@example.com",
+			"subscribe": "Subscribe",
+			"submitting": "Subscribing…",
+			"done": "Check your inbox to confirm your subscription.",
+			"error": "Couldn't subscribe right now. Please try again."
 		}
 	}
 }

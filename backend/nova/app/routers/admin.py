@@ -537,6 +537,7 @@ def admin_update_post(
         db.commit()
         crud.record_new_post_notifications(db, post)
         dispatch_new_post(db, post, logger)
+        crud.dispatch_newsletter_new_post(db, post, logger)
     return {"id": post.id}
 
 

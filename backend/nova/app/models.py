@@ -771,3 +771,37 @@ class SiteSetting(Base):
         default=lambda: datetime.now(UTC),
         onupdate=lambda: datetime.now(UTC),
     )
+
+
+class NewsletterSubscriber(Base):
+    """An anonymous email address on the guest newsletter (DEC-351, TASK-401).
+
+    The blog's email surface (weekly digest, per-event emails, guest reply
+    emails) was gated behind a reader account or a comment, so an anonymous
+    visitor who just wants "email me new posts" had no on-ramp other than RSS.
+    This table is that on-ramp: one row per subscribed address, double opt-in
+    (``is_confirmed`` flips only after the emailed token link is clicked) so a
+    row never receives new-post email until its owner proved the address.
+
+    ``token`` is the per-subscriber secret the confirmation/unsubscribe links
+    carry — mirroring Comment.reply_notify_token (DEC-332), it is stored as a
+    random opaque string (not a JWT) and never returned by any read surface, so
+    an unknown token is indistinguishable from a never-existing subscription
+    (no enumeration oracle). Additive table, no DB-level FK (SQLite alembic
+    can't add FK-carrying columns to existing tables, DEC-009); \"email\" is
+    normalized to lowercase at the API boundary and unique so re-subscribing
+    can never create a duplicate row.
+    """
+
+    __tablename__ = "newsletter_subscribers"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    email: Mapped[str] = mapped_column(String(254), unique=True, nullable=False, index=True)
+    token: Mapped[str] = mapped_column(String(64), nullable=False)
+    is_confirmed: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default=false())
+    confirmed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    created_at: Mapped[datetime | None] = mapped_column(
+        DateTime,
+        default=lambda: datetime.now(UTC),
+        index=True,
+    )
