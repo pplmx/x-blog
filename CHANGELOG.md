@@ -9,6 +9,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- **Complete reader data export (DEC-334)**: `GET /api/reader/me/export` is the
+  GDPR-style "download my data" bundle, but it shipped only
+  account/bookmarks/comments/history — a reader couldn't recover their follows,
+  notification preferences, inbox history, or device registrations. The bundle
+  now adds `follows` (categories/tags/series with their notify flags),
+  `notification_prefs`, `notifications` (the durable inbox rows), and
+  `push_subscriptions` (endpoints + created_at — never the cryptographic keys).
+  Cross-reader data and draft/scheduled-post leakage invariants unchanged;
+  contract tests cover a fully-populated reader through the real API.
 - **Guest commenter reply-email (DEC-332)**: the comment form REQUIRES an
   anonymous commenter to leave an email, and that email was stored on the
   comment row but never used — the reply-notify guard was

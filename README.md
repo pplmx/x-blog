@@ -40,7 +40,7 @@ A modern full-stack blog application built with FastAPI + Nuxt
 - 🖼️ **Reader Avatars** - readers set a profile picture from `/account` (upload or remove); it renders on their public profile and beside their verified name on every comment, falling back to an initial-letter placeholder when unset (DEC-299)
 - 🎯 **SEO Optimized** - Open Graph, JSON-LD structured data, and a complete sitemap covering every published post (no cap) and every series (DEC-318)
 - ⬆️ **Pinned Posts** - Pin important posts to top
-- 📤 **Data Export** - Export posts/comments as CSV
+- 📤 **Data Export** - Export posts/comments as CSV; signed-in readers get a complete GDPR-style "download my data" bundle (profile, bookmarks, comments, history, follows, notification prefs, inbox rows, push devices — DEC-126, DEC-334)
 - 🗓️ **Editorial Calendar** - admins see the publishing plan at a glance — live / scheduled / draft posts placed on their date in a month grid, click into the editor (DEC-162)
 - 💾 **Backup & Restore** - download the whole blog as one portable JSON snapshot (categories, tags, series, posts, comments) and restore it into an empty instance (DEC-082)
 - 📡 **RSS & Atom Feeds** - Subscribe to the site-wide feed or a single category/tag via scoped feeds with autodiscovery (DEC-074); tag-scoped feeds stay scoped through the Nuxt origin (DEC-314)
