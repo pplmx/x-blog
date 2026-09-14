@@ -124,7 +124,7 @@ describe("useResumeReading (TASK-200)", () => {
 		vi.advanceTimersByTime(2500);
 
 		expect(recordHistory).toHaveBeenCalledTimes(1);
-		expect(recordHistory).toHaveBeenCalledWith(7, 900);
+		expect(recordHistory).toHaveBeenCalledWith(7, 900, undefined);
 
 		wrapper.unmount();
 	});
@@ -151,7 +151,7 @@ describe("useResumeReading (TASK-200)", () => {
 		wrapper.unmount();
 
 		expect(recordHistory).toHaveBeenCalledTimes(1);
-		expect(recordHistory).toHaveBeenCalledWith(7, 800);
+		expect(recordHistory).toHaveBeenCalledWith(7, 800, undefined);
 	});
 
 	it("jumpToTop scrolls back to the top, clears the marker, and wipes the saved position", async () => {
@@ -166,8 +166,10 @@ describe("useResumeReading (TASK-200)", () => {
 		expect(window.scrollTo).toHaveBeenCalledWith({ top: 0, behavior: "smooth" });
 		expect(api.restoredPosition.value).toBeNull();
 		// The `0` below the save threshold would never be persisted by the
-		// debounced save; jumpToTop must send an explicit clear (DEC-167).
-		expect(recordHistory).toHaveBeenCalledWith(7, 0);
+		// debounced save; jumpToTop must send an explicit clear (DEC-167). The
+		// fraction is cleared too so a later cross-device restore can't prefer
+		// a stale nonzero fraction over the cleared pixel (DEC-346/TASK-399).
+		expect(recordHistory).toHaveBeenCalledWith(7, 0, 0);
 
 		wrapper.unmount();
 	});
@@ -180,9 +182,11 @@ describe("useResumeReading (TASK-200)", () => {
 		api.jumpToTop();
 		vi.advanceTimersByTime(5000);
 
-		// Only the explicit clear was sent — the pending 2000 never landed.
+		// Only the explicit clear was sent — the pending 2000 never landed. The
+		// clear also wipes the fraction (third arg 0) so a cross-device restore
+		// can't prefer a stale nonzero fraction (DEC-346/TASK-399).
 		expect(recordHistory).toHaveBeenCalledTimes(1);
-		expect(recordHistory).toHaveBeenCalledWith(7, 0);
+		expect(recordHistory).toHaveBeenCalledWith(7, 0, 0);
 
 		wrapper.unmount();
 	});
@@ -203,7 +207,7 @@ describe("useResumeReading (TASK-200)", () => {
 		// reader's end-of-article position lost on every SPA post hop); reset()
 		// now flushes it immediately so the previous post keeps its resume point.
 		expect(recordHistory).toHaveBeenCalledTimes(1);
-		expect(recordHistory).toHaveBeenCalledWith(7, 900);
+		expect(recordHistory).toHaveBeenCalledWith(7, 900, undefined);
 		vi.advanceTimersByTime(5000);
 		// The flushed write ate the pending slot — nothing double-sends later.
 		expect(recordHistory).toHaveBeenCalledTimes(1);
@@ -231,7 +235,7 @@ describe("useResumeReading (TASK-200)", () => {
 		api.reset();
 
 		expect(recordHistory).toHaveBeenCalledTimes(1);
-		expect(recordHistory).toHaveBeenCalledWith(7, 900);
+		expect(recordHistory).toHaveBeenCalledWith(7, 900, undefined);
 
 		wrapper.unmount();
 	});
@@ -254,7 +258,7 @@ describe("useResumeReading (TASK-200)", () => {
 
 		api.save(1200); // pending for post 7
 		api.reset(); // flushes 1200 → lastSaved = 1200
-		expect(recordHistory).toHaveBeenCalledWith(7, 1200);
+		expect(recordHistory).toHaveBeenCalledWith(7, 1200, undefined);
 
 		// SPA switch to post 8; scroll to the exact same pixel — must not be
 		// dropped by post 7's flushed register.
@@ -263,7 +267,7 @@ describe("useResumeReading (TASK-200)", () => {
 		vi.advanceTimersByTime(2500);
 
 		expect(recordHistory).toHaveBeenCalledTimes(2);
-		expect(recordHistory).toHaveBeenLastCalledWith(8, 1200);
+		expect(recordHistory).toHaveBeenLastCalledWith(8, 1200, undefined);
 
 		wrapper.unmount();
 	});
@@ -342,7 +346,7 @@ describe("useResumeReading (TASK-200)", () => {
 		authRef.value = true;
 		const { api, wrapper } = mountResume(7);
 		api.jumpToTop();
-		expect(recordHistory).toHaveBeenCalledWith(7, 0);
+		expect(recordHistory).toHaveBeenCalledWith(7, 0, 0);
 
 		api.save(1000); // inside the suppression window — must be dropped
 		vi.advanceTimersByTime(5000);
@@ -388,6 +392,72 @@ describe("useResumeReading (TASK-200)", () => {
 		vi.advanceTimersByTime(5000);
 		window.dispatchEvent(new Event("load"));
 		expect(window.scrollTo).toHaveBeenCalledTimes(1); // never re-applied
+
+		wrapper.unmount();
+	});
+});
+
+describe("useResumeReading cross-viewport fraction (DEC-346/TASK-399)", () => {
+	/** Pin the document to a known scroll range so fraction math is exact. */
+	let prevScrollHeight: number;
+	let prevInnerHeight: number;
+	beforeEach(() => {
+		vi.useFakeTimers();
+		window.scrollTo = vi.fn();
+		fetchPosition.mockReset();
+		recordHistory.mockReset();
+		prevScrollHeight = document.documentElement.scrollHeight;
+		prevInnerHeight = window.innerHeight;
+		Object.defineProperty(document.documentElement, "scrollHeight", {
+			value: 10000,
+			configurable: true,
+		});
+		Object.defineProperty(window, "innerHeight", { value: 768, configurable: true });
+	});
+	afterEach(() => {
+		Object.defineProperty(document.documentElement, "scrollHeight", {
+			value: prevScrollHeight,
+			configurable: true,
+		});
+		Object.defineProperty(window, "innerHeight", { value: prevInnerHeight, configurable: true });
+		vi.useRealTimers();
+	});
+
+	it("restore prefers the fraction, converting it for the current viewport", async () => {
+		authRef.value = true;
+		// range = 10000 - 768 = 9232; fraction 0.5 -> ~4616px, not the stale 500px.
+		fetchPosition.mockResolvedValue({ post_id: 7, scroll_position: 500, scroll_fraction: 0.5 });
+		const { api, wrapper } = mountResume(7);
+
+		await api.restore();
+		expect(api.restoredPosition.value).toBe(4616);
+		expect(window.scrollTo).toHaveBeenCalledWith({ top: 4616, behavior: "auto" });
+
+		wrapper.unmount();
+	});
+
+	it("restore falls back to the pixel for a legacy (null fraction) row", async () => {
+		authRef.value = true;
+		fetchPosition.mockResolvedValue({ post_id: 7, scroll_position: 1200, scroll_fraction: null });
+		const { api, wrapper } = mountResume(7);
+
+		await api.restore();
+		expect(api.restoredPosition.value).toBe(1200);
+
+		wrapper.unmount();
+	});
+
+	it("save sends the fraction it computed from the current document range", async () => {
+		authRef.value = true;
+		const { api, wrapper } = mountResume(7);
+
+		api.save(900); // 900 / 9232 ≈ 0.0975
+		vi.advanceTimersByTime(3000);
+
+		const [id, pos, frac] = recordHistory.mock.calls[0] as [number, number, number];
+		expect(id).toBe(7);
+		expect(pos).toBe(900);
+		expect(frac).toBeCloseTo(900 / 9232, 3);
 
 		wrapper.unmount();
 	});
