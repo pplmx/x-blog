@@ -113,6 +113,60 @@ class TestScheduledCrossing:
         assert client.get("/api/posts", params={"limit": 10}).status_code == 200
         assert _inbox_total(client, token) == 1
 
+    def test_follows_feed_path_also_fires_the_sweep(self, client, db_session, auth_headers):
+        """The follower's own aggregation surface (/follows) is the most likely
+        place a follower notices a crossed post — it must fire the fan-out too
+        (DEC-344/TASK-398), not silently surface the post with no notification."""
+        token = _register(client, "sched-follows@example.com").json()["access_token"]
+        cat = client.post("/api/categories", json={"name": "SchedFF"}, headers=auth_headers)
+        cat_id = cat.json()["id"]
+        _follow_category(client, token, cat_id)
+
+        future = (datetime.now(UTC) + timedelta(days=1)).replace(tzinfo=None)
+        post = _create_scheduled_post(client, auth_headers, "sched-follows", future, category_id=cat_id)
+        _cross_now(db_session, post["id"])
+
+        assert client.get("/api/reader/me/follows-feed", headers=_auth(token)).status_code == 200
+        assert _inbox_total(client, token) == 1
+        # Repeat read after the stamp does not duplicate.
+        assert client.get("/api/reader/me/follows-feed", headers=_auth(token)).status_code == 200
+        assert _inbox_total(client, token) == 1
+
+    def test_search_path_also_fires_the_sweep(self, client, db_session, auth_headers):
+        from app import models
+
+        token = _register(client, "sched-search@example.com").json()["access_token"]
+        cat = client.post("/api/categories", json={"name": "SchedS"}, headers=auth_headers)
+        cat_id = cat.json()["id"]
+        _follow_category(client, token, cat_id)
+
+        future = (datetime.now(UTC) + timedelta(days=1)).replace(tzinfo=None)
+        post = _create_scheduled_post(client, auth_headers, "sched-search-me", future, category_id=cat_id)
+        _cross_now(db_session, post["id"])
+
+        resp = client.get("/api/search", params={"q": "sched-search-me"})
+        assert resp.status_code == 200, resp.text
+        assert _inbox_total(client, token) == 1
+        assert db_session.get(models.Post, post["id"]).new_post_notified_at is not None
+        # The exact search term 'sched-search-me' also appears in the post's
+        # slug so a tokenized search matches; a second search fires nothing.
+        assert client.get("/api/search", params={"q": "sched-search-me"}).status_code == 200
+        assert _inbox_total(client, token) == 1
+
+    def test_category_feed_path_also_fires_the_sweep(self, client, db_session, auth_headers):
+        token = _register(client, "sched-rsscat@example.com").json()["access_token"]
+        cat = client.post("/api/categories", json={"name": "SchedRC", "slug": "sched-rc"}, headers=auth_headers)
+        cat_id = cat.json()["id"]
+        _follow_category(client, token, cat_id)
+
+        future = (datetime.now(UTC) + timedelta(days=1)).replace(tzinfo=None)
+        post = _create_scheduled_post(client, auth_headers, "sched-rsscat", future, category_id=cat_id)
+        _cross_now(db_session, post["id"])
+
+        resp = client.get("/rss/category/SchedRC.xml")
+        assert resp.status_code == 200, resp.text
+        assert _inbox_total(client, token) == 1
+
     def test_series_follow_gets_series_new_part_kind(self, client, db_session, auth_headers):
         token = _register(client, "sched-series@example.com").json()["access_token"]
         series = client.post(
