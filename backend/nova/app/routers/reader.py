@@ -406,17 +406,26 @@ class RecordHistoryRequest(BaseModel):
     the client sends an explicit value only when updating the reader's resume
     position. ``0`` is a valid offset (scrolled to the very top) and clears the
     saved position. Bounded so a misbehaving client cannot store absurd pixels.
+    ``scroll_fraction`` (DEC-346/TASK-399) is the cross-viewport resume
+    position as a 0..1 fraction of the document height, saved alongside the
+    pixel; bounded to the unit interval.
     """
 
     scroll_position: int | None = Field(default=None, ge=0, le=10_000_000)
+    scroll_fraction: float | None = Field(default=None, ge=0, le=1)
 
 
 class ReadingPositionResponse(BaseModel):
     """A reader's saved resume offset for a post, for the post page to restore
-    on return (null when the post has never been viewed)."""
+    on return (null when the post has never been viewed).
+
+    ``scroll_fraction`` is the cross-viewport fraction (DEC-346, TASK-399),
+    null for pre-feature rows — the client falls back to ``scroll_position``.
+    """
 
     post_id: int
     scroll_position: int | None = None
+    scroll_fraction: float | None = None
 
 
 class DayActivity(BaseModel):
@@ -1706,7 +1715,11 @@ def reading_position(
     if not post or not crud.is_publicly_visible(post):
         raise HTTPException(status_code=404, detail="Post not found")
     row = crud.get_reading_history(db, current_reader.id, post.id)
-    return ReadingPositionResponse(post_id=post_id, scroll_position=row.scroll_position if row else None)
+    return ReadingPositionResponse(
+        post_id=post_id,
+        scroll_position=row.scroll_position if row else None,
+        scroll_fraction=row.scroll_fraction if row else None,
+    )
 
 
 @router.post("/me/history/{post_id}", response_model=RecordHistoryResponse)
@@ -1723,14 +1736,22 @@ def record_reading_view(
     ``body`` is optional: omit it (or send ``scroll_position: null``) for a
     plain view that refreshes ``viewed_at`` without touching the saved resume
     position; send an explicit ``scroll_position`` to update it (DEC-167).
-    Drafts/scheduled/unknown posts are uniformly 404 — no draft-existence
-    oracle (same guard as the bookmark/comment paths).
+    ``scroll_fraction`` (DEC-346/TASK-399) updates the cross-viewport resume
+    fraction the same way. Drafts/scheduled/unknown posts are uniformly 404 —
+    no draft-existence oracle (same guard as the bookmark/comment paths).
     """
     post = db.get(models.Post, post_id)
     if not post or not crud.is_publicly_visible(post):
         raise HTTPException(status_code=404, detail="Post not found")
     scroll_position = body.scroll_position if body is not None else None
-    row, created = crud.record_reading_history(db, current_reader.id, post.id, scroll_position)
+    scroll_fraction = body.scroll_fraction if body is not None else None
+    row, created = crud.record_reading_history(
+        db,
+        current_reader.id,
+        post.id,
+        scroll_position,
+        scroll_fraction=scroll_fraction,
+    )
     return RecordHistoryResponse(post_id=row.post_id, already_existed=not created)
 
 

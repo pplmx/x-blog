@@ -18,6 +18,7 @@ from sqlalchemy import (
     Column,
     Date,
     DateTime,
+    Float,
     ForeignKey,
     Index,
     Integer,
@@ -453,6 +454,13 @@ class ReadingHistory(Base):
     # off. Nullable + additive. Updated in place by the record endpoint only
     # when the client sends an explicit value (plain views preserve it).
     scroll_position: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    # Cross-viewport resume fraction (DEC-346, TASK-399): the same position as
+    # a 0..1 fraction of the scrollable document height, saved alongside the
+    # pixel so a continuation on a DIFFERENT viewport (phone -> desktop) lands
+    # at the same place instead of an absolute-pixel offset that means a
+    # different fraction on the new layout. NULL for pre-feature rows — the
+    # client falls back to ``scroll_position`` exactly as before.
+    scroll_fraction: Mapped[float | None] = mapped_column(Float, nullable=True)
 
     __table_args__ = (
         UniqueConstraint("reader_id", "post_id", name="uq_reading_history_reader_post"),
