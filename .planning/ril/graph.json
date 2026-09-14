@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 337,
+  "round": 338,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-14T13:12:50+00:00",
+  "updated_at": "2026-09-14T14:04:58+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -24626,6 +24626,112 @@
       "title": "close round 336: cross-viewport resume reading delivered (DEC-346)",
       "rationale": "close round 336: cross-viewport resume reading (DEC-346 delivered). ReadingHistory.scroll_fraction (0..1) saved alongside the pixel and preferred at restore, converted for the current viewport; pre-feature rows fall back to the pixel; jumpToTop clears both. VERIFY green: backend 1521 (cov 93.93%, ruff clean, pyright 0 errors after restoring the gate with reader_locale_map — CHG-553 resolves ISS-506, a R331-335 dict(Row) typing regression; migration round-trips on SQLite + dev PG 10.112.9.49; reader-history suite 54/54 on PG dialect), frontend 2061 (vitest), typecheck exit 0, biome clean. Delivered by CHG-548/549/550/551/552 -> TASK-399.",
       "alternatives_rejected": "None this round: a quality-convergence item surfaced during VERIFY (pyright gate red) was fixed inline (CHG-553) rather than deferred, keeping the regression guard green."
+    },
+    "DEC-348": {
+      "id": "DEC-348",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-14T13:21:53+00:00",
+      "updated_at": "2026-09-14T13:21:53+00:00",
+      "touched_round": 338,
+      "title": "feature round 337: server-trail continue reading on the home page",
+      "rationale": "Round 337 sourcing (fresh sweep after R336 resumed the cross-device trail): the home page 'Continue reading' row (DEC-104/TASK-164) is a purely LOCALSTORAGE trail (useRecentlyViewed) - a signed-in reader on a new device sees an empty row even though the server-side reading trail (ReadingHistory + scroll_position, now cross-device via scroll_fraction, DEC-346) holds exactly what they left. The server trail is only reachable via /history; the home row never surfaces it, so the cross-device resume investment is invisible until the reader explicitly browses history. Real user-perceivable gap: continue-reading on device B shows nothing from device A's in-progress reads. One-sentence acceptance: a signed-in reader's home 'continue reading' row lists their posts with a saved resume position (newest-first), each deep-linking into the post that restores the spot; guests keep the current localStorage row. Net-additive vertical slice: GET /api/reader/me/history/in-progress (reuses ReadingHistoryItem/ReadingHistoryListResponse; declared before the {post_id} literal route; same non-leak visibility gate) + home page fusion (signed-in -> server in-progress, guest -> local recent).",
+      "alternatives_rejected": "Comment upvote/like: heavier slice (abuse/moderation surface) with no existing infra - deferred. 3-state theme toggle: only refines an already-working binary toggle with system default - cosmetic, fails the value gate. Share/copy-link button: button-level patch (section 11.2 rejects). Reusing getReaderHistory list + client-side filter: bloats the list API for /history with resume fields no other consumer needs; a dedicated in-progress endpoint is self-documenting."
+    },
+    "TASK-400": {
+      "id": "TASK-400",
+      "type": "task",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-14T13:21:53+00:00",
+      "updated_at": "2026-09-14T14:04:00+00:00",
+      "touched_round": 338,
+      "category": "core-feature",
+      "severity": 0.4,
+      "confidence": 1.0,
+      "effort": 3.0,
+      "tracked_title": "Server-trail continue reading on the home page",
+      "title": "Server-trail continue reading home widget (DEC-348)",
+      "description": "Backend: GET /api/reader/me/history/in-progress (limit 6) - posts the reader left partway (ReadingHistory.scroll_position > 0), newest-first, publicly-visible only, declared before the literal /me/history/{post_id} route. Frontend: home continue-reading section sources server in-progress when signed in (getReaderInProgress), guests keep the localStorage row; post-page resume applies the saved spot automatically. Tests: auth/order/visibility/limit/empty + no route collision; home page test signed-in vs guest."
+    },
+    "CHG-554": {
+      "id": "CHG-554",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-14T14:03:59+00:00",
+      "updated_at": "2026-09-14T14:03:59+00:00",
+      "touched_round": 338,
+      "commit": "343cd0b5",
+      "title": "test(history): in-progress continue-reading endpoint coverage"
+    },
+    "CHG-555": {
+      "id": "CHG-555",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-14T14:03:59+00:00",
+      "updated_at": "2026-09-14T14:03:59+00:00",
+      "touched_round": 338,
+      "commit": "debe73ea",
+      "title": "feat(history): GET /me/history/in-progress — the server continue-reading trail"
+    },
+    "CHG-556": {
+      "id": "CHG-556",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-14T14:03:59+00:00",
+      "updated_at": "2026-09-14T14:03:59+00:00",
+      "touched_round": 338,
+      "commit": "5edc8328",
+      "title": "test(resume): home continue-reading fusion + API seam coverage"
+    },
+    "CHG-557": {
+      "id": "CHG-557",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-14T14:03:59+00:00",
+      "updated_at": "2026-09-14T14:03:59+00:00",
+      "touched_round": 338,
+      "commit": "1e92eff9",
+      "title": "feat(resume): home page continue-reading row sources the server trail"
+    },
+    "CHG-558": {
+      "id": "CHG-558",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-14T14:03:59+00:00",
+      "updated_at": "2026-09-14T14:03:59+00:00",
+      "touched_round": 338,
+      "commit": "7a5be380",
+      "title": "test(e2e): home continue-reading journey for the server resume trail"
+    },
+    "CHG-559": {
+      "id": "CHG-559",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-14T14:04:00+00:00",
+      "updated_at": "2026-09-14T14:04:00+00:00",
+      "touched_round": 338,
+      "commit": "2f729118",
+      "title": "docs(resume): record the home continue-reading row (DEC-348) in docs"
+    },
+    "DEC-349": {
+      "id": "DEC-349",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-14T14:04:58+00:00",
+      "updated_at": "2026-09-14T14:04:58+00:00",
+      "touched_round": 338,
+      "title": "close round 337: server-trail continue reading delivered (DEC-348)",
+      "rationale": "close round 337: server-trail continue reading on the home page (DEC-348 delivered). Signed-in readers' home Continue-reading row now sources their posts with a saved resume position from the server trail (GET /api/reader/me/history/in-progress, newest-first, same non-leak visibility gate), so a reader on a NEW device sees what they left; guests keep the localStorage row. VERIFY green: backend 1529 (cov 93.94%, ruff clean, pyright 0 errors, history suite 62/62 incl. the new endpoint on SQLite AND dev-PG dialect), frontend 2064 (vitest), typecheck exit 0, biome clean. An e2e journey (home row shows the saved post, drops it after back-to-top clears) was authored for CI (just e2e) but NOT run in this sandbox — the sandbox has documented load-flakiness on the resume spec and the heavy stack needs DB seeding; acceptance rests on the backend integration + DOM page + API seam tests above. Delivered by CHG-554/555/556/557/558/559 -> TASK-400.",
+      "alternatives_rejected": "Deferring the e2e run to CI instead of forcing the heavy DB-seeding stack in a known-flaky sandbox; the round still satisfies section-11.4 coverage through integration + page + API seam tests."
     }
   },
   "edges": [
@@ -36920,6 +37026,54 @@
       "to": "DEC-346",
       "type": "supersedes",
       "created_at": "2026-09-14T13:12:50+00:00"
+    },
+    {
+      "from": "DEC-348",
+      "to": "TASK-400",
+      "type": "governs",
+      "created_at": "2026-09-14T13:21:53+00:00"
+    },
+    {
+      "from": "CHG-554",
+      "to": "TASK-400",
+      "type": "implements",
+      "created_at": "2026-09-14T14:03:59+00:00"
+    },
+    {
+      "from": "CHG-555",
+      "to": "TASK-400",
+      "type": "implements",
+      "created_at": "2026-09-14T14:03:59+00:00"
+    },
+    {
+      "from": "CHG-556",
+      "to": "TASK-400",
+      "type": "implements",
+      "created_at": "2026-09-14T14:03:59+00:00"
+    },
+    {
+      "from": "CHG-557",
+      "to": "TASK-400",
+      "type": "implements",
+      "created_at": "2026-09-14T14:03:59+00:00"
+    },
+    {
+      "from": "CHG-558",
+      "to": "TASK-400",
+      "type": "implements",
+      "created_at": "2026-09-14T14:03:59+00:00"
+    },
+    {
+      "from": "CHG-559",
+      "to": "TASK-400",
+      "type": "implements",
+      "created_at": "2026-09-14T14:04:00+00:00"
+    },
+    {
+      "from": "DEC-349",
+      "to": "DEC-348",
+      "type": "supersedes",
+      "created_at": "2026-09-14T14:04:58+00:00"
     }
   ]
 }
