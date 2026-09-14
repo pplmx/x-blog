@@ -140,4 +140,56 @@ test.describe("Per-post resume reading (TASK-200)", () => {
 		const cleared = await waitForPosition(request, token, postId, (p) => p === 0);
 		expect(cleared).toBe(0);
 	});
+
+	test("the saved position surfaces on the home page's continue-reading row until cleared (DEC-348, TASK-400)", async ({
+		page,
+		request,
+	}) => {
+		// 1. Seed a long published post and a fresh signed-in reader.
+		const headers = await adminHeaders(request);
+		const title = `Resume Home Row ${stamp}`;
+		const slug = `resume-home-${stamp}`;
+		const created = await request.post("/api/admin/posts", {
+			data: { title, slug, content: longMarkdown(), excerpt: "resume e2e", published: true },
+			headers,
+		});
+		expect(created.ok()).toBe(true);
+		const postId = ((await created.json()) as { id: number }).id;
+		const token = await registerReader(request, freshEmail());
+		await page.addInitScript((tk) => {
+			localStorage.setItem("reader_token", tk);
+		}, token);
+
+		// 2. The reader scrolls partway and the server persists the position.
+		const url = `/posts/${slug}`;
+		await page.goto(url);
+		await expect(page.locator("h1").first()).toBeVisible({ timeout: 10000 });
+		await page.waitForFunction(() => document.body.scrollHeight > 2000, undefined, {
+			timeout: 10000,
+		});
+		await page.evaluate(() => window.scrollTo({ top: 1500, behavior: "instant" }));
+		await page.waitForFunction(() => window.scrollY > 500, undefined, { timeout: 5000 });
+		const saved = await waitForPosition(request, token, postId, (p) => p !== null && p >= 1400);
+		expect(saved).toBeGreaterThanOrEqual(1400);
+
+		// 3. On a "fresh" landing (this browser session), the home Continue
+		// reading row is fed from the SERVER trail — the post must appear there
+		// even though this device's localStorage trail was never populated.
+		await page.goto("/");
+		const rowLink = page.getByRole("link", { name: title, exact: true }).first();
+		await expect(rowLink).toBeVisible({ timeout: 10000 });
+
+		// 4. Back-to-top clears the resume position (scroll_position 0), so the
+		// post is no longer "in progress" and drops off the home row.
+		await page.goto(url);
+		await page.waitForFunction(() => window.scrollY > 300, undefined, { timeout: 6000 });
+		await page.locator('[data-testid="resume-back-to-top"]').click();
+		const cleared = await waitForPosition(request, token, postId, (p) => p === 0);
+		expect(cleared).toBe(0);
+
+		await page.goto("/");
+		await expect(page.getByRole("link", { name: title, exact: true })).toHaveCount(0, {
+			timeout: 10000,
+		});
+	});
 });
