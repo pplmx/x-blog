@@ -57,7 +57,7 @@ A modern full-stack blog application built with FastAPI + Nuxt
 - 📧 **Email notifications + weekly digest** - opted-in readers get per-event emails (new posts / replies / thread comments / @-mentions) and, optionally, one email per week summarizing everything newly published — both straight from the /notifications page (DEC-197, DEC-201, DEC-326)
 - 🌏 **Site-language guest & recovery emails** - the guest reply email and the password reset email render in the site's configured language (`SITE_LANGUAGE`) and name (`SITE_TITLE`), so an English-configured site never sends Chinese or misnamed mail (DEC-342)
 - 📧 **Guest reply emails** - an anonymous commenter who ticks "email me when someone replies" gets one email when a reply to their comment is approved (deep-linked to the exact reply, with a working unsubscribe link) — the same off-site channel readers get, now honoring the email guests must leave (DEC-332)
-- 📖 **Resume Reading** - signed-in readers pick up right where they left off: the post page remembers their scroll position server-side and drops them back on return, with a resume chip offering back-to-top (DEC-167); the position is also saved as a fraction of the scrollable height so a phone→desktop continuation lands at the same spot (DEC-346)
+- 📖 **Resume Reading** - signed-in readers pick up right where they left off: the post page remembers their scroll position server-side and drops them back on return, with a resume chip offering back-to-top (DEC-167); the position is also saved as a fraction of the scrollable height so a phone→desktop continuation lands at the same spot (DEC-346); the home page's Continue-reading row is fed from that server trail for signed-in readers, so the posts they left partway surface on any device (DEC-348)
 - 🔥 **Reading streaks & activity heatmap** - /history shows a signed-in reader's current/longest consecutive-day streak and a GitHub-style 52-week heatmap of days they read (DEC-169)
 - 🖼️ **Media Library** - admins browse every uploaded image (grid, preview, copy URL, in-use badge), delete unreferenced uploads (referenced ones are refused server-side), and insert a previously uploaded image straight from the post editor toolbar (DEC-183)
 
@@ -255,6 +255,7 @@ limited (default 5/min/IP).
 | POST   | `/api/reader/me/notifications/read-all`   | Mark all notifications read (DEC-160)                                                                                  |
 | GET    | `/api/reader/me/notification-preferences` | Read the reader's per-kind notification switches (DEC-171)                                                             |
 | PATCH  | `/api/reader/me/notification-preferences` | Toggle one notification kind on/off (DEC-171)                                                                          |
+| GET    | `/api/reader/me/history/in-progress`      | Posts with a saved resume position, newest-first — the home Continue-reading trail (DEC-348)                           |
 | GET    | `/api/reader/me/history/{post_id}`        | Reader's saved resume offset for a post — pixel and scrollable-height fraction (null if never read) (DEC-167, DEC-346) |
 | POST   | `/api/reader/me/history/{post_id}`        | Record a view; optional body `{scroll_position, scroll_fraction}` saves the resume offset (DEC-167/346, TASK-200/399)  |
 

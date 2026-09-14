@@ -9,6 +9,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- **Server-trail "Continue reading" on the home page (DEC-348)**: the home
+  Continue-reading row was a purely device-local localStorage trail — a signed-in
+  reader on a new device saw an empty row even though the server-side reading
+  trail held exactly what they left. The row now sources a signed-in reader's
+  posts with a saved resume position from the server (newest-first), each link
+  opening the post at the restored spot, so continue-reading works across
+  devices exactly where the resume trail lives. The server trail wins over the
+  device-local row; guests keep the lightweight local trail unchanged.
 - **Cross-device resume reading (DEC-346)**: the resume position was an
   absolute pixel offset saved against one device's layout — a reader who left
   off at 900px on a desktop returns and instantly finds themselves "900px" is
