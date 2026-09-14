@@ -228,6 +228,50 @@ def _build_message(item: EmailItem, from_addr: str, to_addr: str, base_url: str)
     return msg
 
 
+def send_guest_reply_email(
+    to_addr: str,
+    *,
+    post_title: str,
+    reply_url: str,
+    unsubscribe_url: str,
+) -> bool:
+    """Notify an ANONYMOUS commenter that a reply to their comment is live.
+
+    ``dispatch_notification_emails`` is keyed to reader accounts and their
+    per-kind email prefs — a guest has no account, so this is a direct SMTP
+    send (mirrors ``send_password_reset_email``): built here, delivered through
+    the single configured SMTP path, gated on ``is_email_configured()`` and
+    best-effort (a mail failure must never break the comment approval that
+    triggered it). The message carries the same deep link the reader push/inbox
+    paths use plus a per-comment unsubscribe link so the guest's consent
+    (DEC-332) stays revocable without an account. Returns whether SMTP accepted
+    it; connection-level errors raise for the caller to swallow (best effort).
+    """
+    from_addr = _env("SMTP_FROM") or "no-reply@localhost"
+    base_url = _env("SITE_URL") or "http://localhost:3000"
+    link = f"{base_url.rstrip('/')}{reply_url}"
+    unsubscribe = f"{base_url.rstrip('/')}{unsubscribe_url}"
+    subject = "有人回复了你的评论"
+    text = (
+        f"《{post_title}》有一条新回复。\n"
+        f"查看回复：{link}\n\n"
+        f"如果你不想再收到这类邮件，请点击下面的链接取消订阅：\n{unsubscribe}"
+    )
+    html_body = (
+        f"<p>《{html.escape(post_title)}》有一条新回复。</p>"
+        f'<p><a href="{html.escape(link, quote=True)}">查看回复</a></p>'
+        f'<p><a href="{html.escape(unsubscribe, quote=True)}">取消订阅此类邮件</a></p>'
+    )
+    msg = EmailMessage()
+    msg["From"] = from_addr
+    msg["To"] = to_addr
+    msg["Subject"] = subject
+    msg.set_content(text)
+    msg.add_alternative(html_body, subtype="html")
+    flags = send_messages_flags([msg])
+    return bool(flags and flags[0])
+
+
 def send_password_reset_email(to_addr: str, reset_token: str) -> bool:
     """Send a reader's password-reset mail with its single-use reset link.
 

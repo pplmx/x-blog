@@ -71,6 +71,24 @@
             class="px-3 py-2 w-full border border-gray-200 dark:border-gray-700 dark:bg-gray-800 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
           >
         </div>
+        <!-- Guest reply-email consent (DEC-332/TASK-392): an anonymous
+             commenter's email is otherwise collected and stored but never used;
+             this checkbox opts them into a best-effort email when a reply to
+             their comment is approved. Signed-in readers get reply email from
+             their account-level preference (DEC-197), so the control only
+             renders in the guest form (this grid is the v-else of signedIn). -->
+        <div class="flex items-start gap-2 text-sm text-gray-600 dark:text-gray-400 sm:col-span-2">
+          <input
+            :id="fieldId('comment-reply-notify')"
+            v-model="form.replyNotifyEmail"
+            type="checkbox"
+            class="mt-0.5 h-4 w-4 rounded border-gray-300 dark:border-gray-600 text-blue-500 focus:ring-blue-500"
+          >
+          <label
+            :for="fieldId('comment-reply-notify')"
+            class="font-normal"
+          >{{ t('components.commentForm.replyNotify') }}</label>
+        </div>
       </div>
 
       <div>
@@ -317,6 +335,9 @@ const form = ref({
 	email: "",
 	content: "",
 	website: "", // anti-spam honeypot — hidden, humans never fill it
+	// Guest reply-email consent (DEC-332/TASK-392): default off — the backend
+	// only emails an anonymous commenter who explicitly opted in.
+	replyNotifyEmail: false,
 });
 
 const submitting = ref(false);
@@ -529,9 +550,13 @@ async function handleSubmit() {
 			content: form.value.content,
 			parent_id: props.parentId ?? null,
 			website: form.value.website,
+			// Consent is only meaningful for anonymous commenters; the backend
+			// discards it for signed-in readers (their reply email comes from
+			// the account-level DEC-197 preference).
+			reply_notify_email: signedIn.value ? false : form.value.replyNotifyEmail,
 		});
 		success.value = t("components.commentForm.submitSuccess");
-		form.value = { nickname: "", email: "", content: "", website: "" };
+		form.value = { nickname: "", email: "", content: "", website: "", replyNotifyEmail: false };
 		// Back to a clean Write tab: the emptied draft renders an empty-state
 		// hint in preview, but a cleared editor is the clearer next action.
 		previewing.value = false;

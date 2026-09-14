@@ -487,6 +487,12 @@ class CommentCreate(CommentBase):
     # doesn't reach the moderation queue (ISS-145) — enforced by the validator
     # below, which still lets the signed-in "" placeholder through.
     email: Annotated[NonNulStr, Field(max_length=100)]
+    # Guest reply-email consent (DEC-332): True means the commenter wants a
+    # best-effort email when a reply to this comment is approved. Only honored
+    # for ANONYMOUS comments — a signed-in reader's reply email is the
+    # account-level per-kind pref (DEC-197), so this field is ignored when a
+    # reader JWT stamps the row (the same rule as nickname/email).
+    reply_notify_email: bool = False
     # Anti-spam honeypot: a hidden field real humans never see or fill, but
     # naive spam bots do. The frontend submits an empty string; any non-empty
     # value means the submitter is a bot, so the comment is rejected.

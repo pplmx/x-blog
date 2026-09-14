@@ -1,4 +1,5 @@
 import re
+import secrets
 from collections.abc import Iterable
 from datetime import UTC, date, datetime, timedelta, tzinfo
 from typing import Any, cast
@@ -864,6 +865,12 @@ def create_comment(
         comment_email = comment.email
         reader_id = None
 
+    # Guest reply-email consent (DEC-332): honored ONLY for anonymous comments
+    # AND only when there is an address to deliver to (a consent with no email
+    # is stored as off — nothing to send, no token). A signed-in reader's
+    # reply email is the account-level per-kind pref (DEC-197), never this
+    # comment-row consent, so their value is discarded here.
+    reply_notify_email = bool(reader_id is None and comment.reply_notify_email and comment_email)
     db_comment = models.Comment(
         post_id=post_id,
         parent_id=comment.parent_id,
@@ -872,6 +879,10 @@ def create_comment(
         content=comment.content,
         ip_address=ip_address,
         reader_id=reader_id,
+        reply_notify_email=reply_notify_email,
+        # The unsubscribe token lives only while consent is on: it is emailed to
+        # the guest, so a comment that never consented has no token to send.
+        reply_notify_token=(secrets.token_urlsafe(32) if reply_notify_email else None),
         # Moderation: comments are never auto-approved; an admin must approve
         # them via the approve/batch-approve endpoints. The client's value is
         # ignored (CommentCreate no longer accepts is_approved).

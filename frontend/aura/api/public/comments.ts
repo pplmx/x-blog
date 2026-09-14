@@ -63,6 +63,21 @@ export function flagComment(commentId: number): Promise<CommentFlagResult> {
 }
 
 /**
+ * Flip a guest comment's reply-email consent off via its emailed token
+ * (POST /api/comments/reply-notify/unsubscribe, DEC-332/TASK-392). The
+ * per-comment token comes from the unsubscribe link in the guest reply email;
+ * posting it proves the address holder owns the comment. 404 = unknown token.
+ */
+export function unsubscribeGuestReplyNotify(token: string): Promise<{
+	unsubscribed: boolean;
+}> {
+	return command<{ unsubscribed: boolean }>("/api/comments/reply-notify/unsubscribe", {
+		method: "POST",
+		body: { token },
+	});
+}
+
+/**
  * Create a comment for a post (POST /api/comments/post/{post_id}).
  * A signed-in reader comments under their account: the reader JWT is sent so
  * the backend stamps identity from the token (client-supplied nickname is
@@ -77,6 +92,10 @@ export function createComment(
 		content: string;
 		parent_id?: number | null;
 		website?: string;
+		/** Guest reply-email consent (DEC-332): a guest ticks "email me when
+		 * someone replies" and the backend emails their stored address when a
+		 * reply to this comment is approved. Ignored for signed-in readers. */
+		reply_notify_email?: boolean;
 	},
 ): Promise<Comment> {
 	return command<Comment>(`/api/comments/post/${postId}`, {

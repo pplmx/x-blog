@@ -275,6 +275,17 @@ class Comment(Base):
     # stored here: it lives on reader_accounts; anonymous comments keep their
     # free-text email column.
     reader_id: Mapped[int | None] = mapped_column(Integer, nullable=True, index=True)
+    # Guest reply-email consent (DEC-332, TASK-392): True when an ANONYMOUS
+    # commenter ticked "email me when someone replies" in the comment form. The
+    # consent is only ever set for anonymous comments — a signed-in reader's
+    # reply email is the account-level per-kind pref (DEC-197), never this
+    # comment-row field. Default False keeps the channel strictly opt-in.
+    reply_notify_email: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=false(), default=False)
+    # Per-comment unsubscribe token for the guest reply email (DEC-332). Set
+    # only when reply_notify_email is True; the emailed unsubscribe link carries
+    # this token so a guest can flip their own consent off without an account.
+    # Null = no consent on this comment (no token to send).
+    reply_notify_token: Mapped[str | None] = mapped_column(String(64), nullable=True)
     # Idempotency anchor for full-blog restore (DEC-082): the backup export
     # stamps each comment with "{post_slug}#{export-ordinal}" and restore
     # upserts by (post_id, import_key), so re-importing the same snapshot never

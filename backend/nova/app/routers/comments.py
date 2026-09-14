@@ -7,7 +7,13 @@ from sqlalchemy.orm import Session
 from app import auth, crud, models, schemas
 from app.auth import User, get_current_admin
 from app.database import get_db
-from app.emailer import EmailItem, dispatch_notification_emails, email_channel_enabled
+from app.emailer import (
+    EmailItem,
+    dispatch_notification_emails,
+    email_channel_enabled,
+    is_email_configured,
+    send_guest_reply_email,
+)
 from app.limiter import RATE_LIMIT_COMMENT, RATE_LIMIT_READ, client_rate_key, limiter
 from app.middleware import get_logger
 from app.schemas import IdInt, PageInt
@@ -202,6 +208,46 @@ def _notify_replied_to(
         dispatch_to_subscriptions(subs, payload, db, logger)
 
 
+def _maybe_notify_guest_replied_to(
+    parent: models.Comment,
+    comment: models.Comment,
+    post: models.Post,
+) -> None:
+    """Best-effort guest reply-email (DEC-332/TASK-392): an approved reply to an
+    ANONYMOUS comment that consented notifies the guest at their stored address.
+
+    ``dispatch_notification_emails`` cannot carry this (it targets reader
+    accounts + per-kind prefs), so we send straight through the SMTP path. The
+    email deep-links to the reply and carries a per-comment token that flips
+    ``reply_notify_email`` off (the unsubscribe endpoint), keeping the consent
+    revocable without an account. Never raises — the approve that fired this
+    must not break on a mail failure (best effort, mirrors every other channel).
+    """
+    # Only anonymous parents that consented AND have an address qualify
+    # (consent with no email is stored off at create time, DEC-332).
+    if parent.reader_id is not None or not parent.reply_notify_email or not parent.email:
+        return
+    # A guest replying to their own comment (same address) is not "someone
+    # replied to me" — skip, mirroring the reader branch's self-reply guard.
+    if (
+        comment.reader_id is None
+        and comment.email
+        and comment.email.strip().casefold() == parent.email.strip().casefold()
+    ):
+        return
+    if not is_email_configured() or parent.reply_notify_token is None:
+        return
+    try:
+        send_guest_reply_email(
+            parent.email,
+            post_title=post.title or "",
+            reply_url=f"/posts/{post.slug}#comment-{comment.id}",
+            unsubscribe_url=f"/comment-reply-unsubscribe?token={parent.reply_notify_token}",
+        )
+    except Exception:  # noqa: BLE001 — best effort, never fail the approval
+        logger.exception("guest reply-email dispatch failed")
+
+
 def _notify_comment_approved(db: Session, comment: models.Comment) -> None:
     """Fire the notifications for a comment that just became public.
 
@@ -221,6 +267,12 @@ def _notify_comment_approved(db: Session, comment: models.Comment) -> None:
         parent_reader = db.get(auth.ReaderAccount, parent.reader_id)
         if post is not None and parent_reader is not None and parent_reader.is_active:
             _notify_replied_to(parent_reader, post, parent.id, db)
+
+    # Guest reply-email (DEC-332, TASK-392): an approved REPLY to an anonymous
+    # comment that consented emails the guest, independent of the reader
+    # fan-out above (which only ever sees reader-attributed parents).
+    if post is not None and parent is not None:
+        _maybe_notify_guest_replied_to(parent, comment, post)
 
     # Any approved comment notifies the thread's followers (DEC-078), excluding
     # the comment's own author and — on a reply — the replied-to reader, who
@@ -443,6 +495,38 @@ def approve_comment(
         # transition into approved fires the fan-out.
         _notify_comment_approved(db, comment)
     return comment
+
+
+class ReplyNotifyUnsubscribeBody(BaseModel):
+    """Unsubscribe token from a guest reply-email (DEC-332, TASK-392)."""
+
+    token: str = Field(min_length=1, max_length=128)
+
+
+@router.post("/reply-notify/unsubscribe", status_code=200)
+@limiter.limit(f"{RATE_LIMIT_COMMENT}/minute")
+def reply_notify_unsubscribe(
+    request: Request,  # noqa: ARG001
+    body: ReplyNotifyUnsubscribeBody,
+    db: Session = Depends(get_db),
+):
+    """Flip a guest comment's reply-email consent off via its emailed token.
+
+    ``reply_notify_token`` is the per-comment secret only the guest reply-email
+    carries, so posting the right value proves the guest (or an address they
+    control) holds the mail. Idempotent: a second post with an already-used
+    token is a success (200), so an unsubscribe link can be clicked twice. An
+    unknown token is 404 — indistinguishable from "already unsubscribed" for a
+    random guess, so this never reveals which comments opted in.
+    """
+    comment = db.query(models.Comment).filter(models.Comment.reply_notify_token == body.token).first()
+    if comment is None:
+        raise HTTPException(status_code=404, detail="Invalid unsubscribe token")
+    # The consent flips off; the token stays (a second click stays idempotent,
+    # and unlistening once does not make a stale email link start 404ing).
+    comment.reply_notify_email = False
+    db.commit()
+    return {"unsubscribed": True}
 
 
 class CommentLikeBody(BaseModel):
