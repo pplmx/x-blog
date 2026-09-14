@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 335,
+  "round": 336,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-14T11:18:20+00:00",
+  "updated_at": "2026-09-14T11:42:25+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -24506,10 +24506,38 @@
       "version": 1,
       "created_at": "2026-09-14T11:08:43+00:00",
       "updated_at": "2026-09-14T11:08:43+00:00",
-      "touched_round": 333,
+      "touched_round": 336,
       "title": "close round 335: scheduled-post sweep surface completion (DEC-344 delivered)",
       "rationale": "Round 335 delivery: fire the scheduled-post sweep on every remaining public read surface (DEC-344/TASK-398 by CHG-545/546/547). Round 331 wired crud.maybe_notify_due_scheduled_posts into post list/detail + sitewide RSS/Atom, but /me/follows-feed (the follower's own aggregate feed), search, scoped category/series feeds, and the sitemap surfaced a crossed scheduled post WITHOUT firing it — a follower consuming only /follows would see the post appear with no notification, breaking DEC-336's 'never zero' guarantee exactly for the intended audience. Each uncovered handler now fires the one-line sweep at its start (cheap indexed no-op; the durable stamp keeps the fan-out exactly-once across surfaces). VERIFY green: backend 1515 (cov 93.91%, ruff/pyright clean), scheduled/search/rss suites pass on dev PostgreSQL 10.112.9.49:13310, no schema change, frontend untouched.",
       "alternatives_rejected": "Firing the sweep inside crud.get_posts/get_post/follows_feed_posts was rejected: those are called in loops (sitemap/related pagination) and from admin/backfill paths where a commit-on-read would be surprising; one line per public handler keeps it exactly once per request. A background scheduler remains rejected per DEC-076."
+    },
+    "DEC-346": {
+      "id": "DEC-346",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-14T11:41:29+00:00",
+      "updated_at": "2026-09-14T11:41:29+00:00",
+      "touched_round": 336,
+      "title": "feature round 336: cross-viewport resume reading via scroll fraction",
+      "rationale": "Round 336 sourcing (fresh sweep): resume reading (DEC-167/TASK-200) saves an absolute scroll PIXEL offset server-side so a signed-in reader can continue where they left off — the whole reason it is server-side rather than localStorage is CROSS-DEVICE continuation. But a pixel offset is viewport-dependent: a position a third of the way down an article on a phone (docHeight 30000px) restores to a tiny fraction of the same article on a desktop (docHeight 60000px), dropping the reader at the wrong place. Same-device resume (the common case) works, which is why this was deferred twice as 'medium-confidence', but cross-device restore is the feature's core promise and it is currently wrong for every layout change. Real user-perceivable defect. One-sentence acceptance: continuing a post on a different viewport restores at the correct scroll FRACTION of the document, falling back to the stored pixel for pre-feature rows. Net-additive full-stack slice: additive nullable scroll_fraction (0..1) on reading_history (DEC-009), sent alongside the pixel by the reader's save and preferred at restore; older rows (null fraction) keep today's exact pixel behavior.",
+      "alternatives_rejected": "Storing only the fraction and dropping the pixel was rejected: same-device precision and all existing rows/API consumers depend on the pixel value; the fraction is additive and backward compatible. A document-height snapshot column was rejected in favor of the normalized 0..1 fraction (viewport-independent, no units to interpret). Moving resume to localStorage was rejected: it would forfeit the cross-device server trail DEC-167 deliberately built."
+    },
+    "TASK-399": {
+      "id": "TASK-399",
+      "type": "task",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-14T11:42:25+00:00",
+      "updated_at": "2026-09-14T11:42:25+00:00",
+      "touched_round": 336,
+      "category": "core-feature",
+      "severity": 0.5,
+      "confidence": 1.0,
+      "effort": 3.0,
+      "tracked_title": "Cross-viewport resume reading via scroll fraction",
+      "title": "Cross-viewport resume reading (DEC-346)",
+      "description": "Resume reading saves an absolute scroll pixel offset (ReadingHistory.scroll_position) that is viewport-dependent — a phone->desktop continue lands at the wrong scroll fraction. Add additive nullable scroll_fraction (0..1, DEC-009) on reading_history, send it alongside the pixel from the reader's save, prefer it at restore (convert fraction x current scroll range), fall back to the pixel for pre-feature (null fraction) rows. Backend: model + migration + RecordHistoryRequest/ReadingPositionResponse + crud.record_reading_history upsert-in-place semantics. Frontend: useResumeReading save computes fraction, restore prefers it. Tests: backend round-trip/bounds/null-preserve (SQLite + PG), frontend save/restore/fallback units."
     }
   },
   "edges": [
@@ -36744,6 +36772,18 @@
       "to": "DEC-344",
       "type": "supersedes",
       "created_at": "2026-09-14T11:08:43+00:00"
+    },
+    {
+      "from": "DEC-346",
+      "to": "DEC-345",
+      "type": "supersedes",
+      "created_at": "2026-09-14T11:42:25+00:00"
+    },
+    {
+      "from": "DEC-346",
+      "to": "TASK-399",
+      "type": "governs",
+      "created_at": "2026-09-14T11:42:25+00:00"
     }
   ]
 }
