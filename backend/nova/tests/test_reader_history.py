@@ -342,7 +342,7 @@ class TestScrollPosition:
         assert resp.status_code == 200, resp.text
         got = client.get(f"{HISTORY}/{post.id}", headers=_auth(token))
         assert got.status_code == 200
-        assert got.json() == {"post_id": post.id, "scroll_position": 420}
+        assert got.json() == {"post_id": post.id, "scroll_position": 420, "scroll_fraction": None}
 
     def test_plain_view_preserves_existing_position(self, client, db_session):
         """Re-opening a post (no body) must not wipe the saved position."""
@@ -387,7 +387,7 @@ class TestScrollPosition:
         post = _create_post(db_session, slug="pos-unviewed")
         got = client.get(f"{HISTORY}/{post.id}", headers=_auth(token))
         assert got.status_code == 200
-        assert got.json() == {"post_id": post.id, "scroll_position": None}
+        assert got.json() == {"post_id": post.id, "scroll_position": None, "scroll_fraction": None}
 
     def test_position_read_draft_rejected(self, client, db_session):
         token = _token(client)
@@ -406,6 +406,87 @@ class TestScrollPosition:
         """Anonymous visitors cannot read a reader's saved position."""
         post = _create_post(db_session, slug="pos-public")
         assert client.get(f"{HISTORY}/{post.id}").status_code == 401
+
+
+class TestScrollFraction:
+    """Cross-viewport resume fraction (DEC-346, TASK-399).
+
+    ``scroll_fraction`` (0..1, nullable) is the reader's resume position as a
+    fraction of the scrollable document height, saved alongside the pixel
+    offset so a phone->desktop continuation restores at the same place. The
+    record endpoint accepts it in the same optional body as ``scroll_position``
+    (saved/updated in place, preserved on a plain view); ``GET`` returns both.
+    Like the pixel, it must be bounded, reader-isolated, never public, and
+    rejected out of range.
+    """
+
+    def test_fraction_saved_and_read_back(self, client, db_session):
+        token = _token(client)
+        post = _create_post(db_session, slug="fr-saved")
+        resp = client.post(
+            f"{HISTORY}/{post.id}",
+            json={"scroll_position": 3000, "scroll_fraction": 0.25},
+            headers=_auth(token),
+        )
+        assert resp.status_code == 200, resp.text
+        got = client.get(f"{HISTORY}/{post.id}", headers=_auth(token)).json()
+        assert got == {"post_id": post.id, "scroll_position": 3000, "scroll_fraction": 0.25}
+
+    def test_plain_view_preserves_existing_fraction(self, client, db_session):
+        token = _token(client)
+        post = _create_post(db_session, slug="fr-preserve")
+        client.post(f"{HISTORY}/{post.id}", json={"scroll_fraction": 0.75}, headers=_auth(token))
+        client.post(f"{HISTORY}/{post.id}", headers=_auth(token))
+        assert client.get(f"{HISTORY}/{post.id}", headers=_auth(token)).json()["scroll_fraction"] == 0.75
+
+    def test_fraction_zero_is_valid(self, client, db_session):
+        token = _token(client)
+        post = _create_post(db_session, slug="fr-zero")
+        client.post(f"{HISTORY}/{post.id}", json={"scroll_position": 500, "scroll_fraction": 0.5}, headers=_auth(token))
+        client.post(f"{HISTORY}/{post.id}", json={"scroll_position": 0, "scroll_fraction": 0.0}, headers=_auth(token))
+        got = client.get(f"{HISTORY}/{post.id}", headers=_auth(token)).json()
+        assert got["scroll_fraction"] == 0.0
+
+    def test_fraction_updated_in_place(self, client, db_session):
+        token = _token(client)
+        post = _create_post(db_session, slug="fr-update")
+        client.post(f"{HISTORY}/{post.id}", json={"scroll_fraction": 0.25}, headers=_auth(token))
+        client.post(f"{HISTORY}/{post.id}", json={"scroll_fraction": 0.9}, headers=_auth(token))
+        assert client.get(f"{HISTORY}/{post.id}", headers=_auth(token)).json()["scroll_fraction"] == 0.9
+
+    def test_out_of_range_fraction_rejected(self, client, db_session):
+        token = _token(client)
+        post = _create_post(db_session, slug="fr-oob")
+        for bad in (-0.1, 1.5):
+            resp = client.post(f"{HISTORY}/{post.id}", json={"scroll_fraction": bad}, headers=_auth(token))
+            assert resp.status_code == 422, resp.text
+        assert client.get(f"{HISTORY}/{post.id}", headers=_auth(token)).json()["scroll_fraction"] is None
+
+    def test_legacy_row_reads_back_null_fraction(self, client, db_session):
+        """Rows saved before the fraction existed keep null fraction + pixel —
+        the client falls back to the pixel, so old data still resumes."""
+        from app import models
+
+        token = _token(client, email="fr-legacy@example.com")
+        post = _create_post(db_session, slug="fr-legacy")
+        # Simulate a pre-feature row: pixel only, no fraction.
+        from app.auth import ReaderAccount
+
+        rid = db_session.query(ReaderAccount).filter(ReaderAccount.email == "fr-legacy@example.com").one().id
+        from app.crud import utc_now_naive
+
+        db_session.add(
+            models.ReadingHistory(
+                reader_id=rid,
+                post_id=post.id,
+                viewed_at=utc_now_naive(),
+                scroll_position=1200,
+            )
+        )
+        db_session.commit()
+        got = client.get(f"{HISTORY}/{post.id}", headers=_auth(token)).json()
+        assert got["scroll_position"] == 1200
+        assert got["scroll_fraction"] is None
 
 
 class TestActivityStreak:
