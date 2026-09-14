@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 331,
+  "round": 332,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-14T08:48:10+00:00",
+  "updated_at": "2026-09-14T08:58:46+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -24202,10 +24202,38 @@
       "version": 1,
       "created_at": "2026-09-14T08:47:53+00:00",
       "updated_at": "2026-09-14T08:47:53+00:00",
-      "touched_round": 331,
+      "touched_round": 332,
       "title": "close round 331: scheduled-post publish-time fan-out (DEC-336 delivered)",
       "rationale": "Round 331 delivery: scheduled-post publish-time fan-out (DEC-336/TASK-394 by CHG-533/534/535). A post created as published-but-future publish_at crossed its publish_at with no write-time trigger (create/update fan-outs gated on visibility AT WRITE TIME; DEC-076 has no scheduler), so followers of its series/category/tags got no push, inbox row, or email for it. The additive `new_post_notified_at` column (DEC-009) is the exactly-once stamp: set by every write-time fan-out path (create_post, update_post, restore_post_revision, admin editor PUT) and claimed by the new fire-on-read sweep crud.maybe_notify_due_scheduled_posts with an atomic conditional UPDATE (safe across uvicorn workers, DEC-004), wired into post list/detail + RSS/Atom feeds (an external feed poller is the most reliable crossing trigger; the <=5-min list/feed cache staleness stays the documented safety net, cache.py:37-40). 8+1 contract tests prove exactly-once per follower, no premature fire for future/draft posts, and no double fire for write-time-announced posts. VERIFY green: backend 1495 (cov 93.84%, ruff/pyright clean), migration round-trip on SQLite + dev PostgreSQL 10.112.9.49:13310, and the new suites pass against the PG dialect directly. Feature mode continues; next round re-sources from the fresh surface.",
       "alternatives_rejected": "A real in-process scheduler (cron-like) was rejected: DEC-076 is a documented 'no background scheduler' constraint, and fire-on-read needs no new process or ops surface. Sending the fan-out from the write side only (stamp-and-defer) was rejected because the crossing happens AFTER the write that created the scheduled post — the write side has no future moment to hook. Frontend work was not in scope: the notification simply arrives through the existing inbox/push/email channels, so no UI change is needed."
+    },
+    "DEC-338": {
+      "id": "DEC-338",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-14T08:58:20+00:00",
+      "updated_at": "2026-09-14T08:58:20+00:00",
+      "touched_round": 332,
+      "title": "feature round 332: reader-language notification copy (locale-aware inbox titles + emails + digest)",
+      "rationale": "Round 332 sourcing (fresh sweep): notification copy is hardcoded Chinese for every reader regardless of UI language or site_language. crud.record_new_post_notifications builds inbox titles/body as '系列更新'/'新文章发布'/'《{title}》' (crud.py ~3586) which also become the email Subject/body (emailer.py:220-223, item.title/item.body); app/digest.py:143-219 builds the weekly digest with a hardcoded zh greeting/subject/body and even documents 'the backend has no i18n; the site default locale is zh'. The site ships en + zh locales (frontend useLang: 'en'/'zh', LanguageSwitcher), so an English-UI reader or an en site_language install gets fully Chinese inbox rows and every notification email. Real user-perceivable defect for the en audience (internationalization is a first-class functional surface). One-sentence acceptance: a reader's stored locale (default zh) selects the language of their durable inbox titles and per-event emails (and weekly digest), with a new PUT /api/reader/me/locale wired from the UI language switcher — an en reader gets English 'New post'/'Series update' rows and emails from the moment they switch, a zh reader keeps 新文章发布/系列更新. Net-additive: a nullable locale column on reader_accounts (DEC-009) + locale-aware copy selection; no existing behavior changes for readers who never set one (falls back to zh, preserving all existing tests/assertions).",
+      "alternatives_rejected": "Site-widening the whole email surface to site_language was rejected: it would not fix the reader-facing inbox (which is keyed to each reader, not the site) and would silently change copy for existing zh readers on any en-configured install. An Accept-Language-driven server locale was rejected: the durable inbox rows and emails are generated at fan-out time, not request time, so there is no live request to read Accept-Language from; a stored per-reader locale is the only stable signal. Later half-rounds can extend the same locale to guest reply email / password reset (sender-side, site_language) if the operator wants."
+    },
+    "TASK-395": {
+      "id": "TASK-395",
+      "type": "task",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-14T08:58:46+00:00",
+      "updated_at": "2026-09-14T08:58:46+00:00",
+      "touched_round": 332,
+      "category": "core-feature",
+      "severity": 0.5,
+      "confidence": 1.0,
+      "effort": 4.0,
+      "tracked_title": "Locale-aware notification copy (inbox titles + emails + digest)",
+      "title": "Reader-language notification copy (DEC-338)",
+      "description": "Reader notification copy is hardcoded Chinese regardless of UI language. Add a nullable `locale` column on reader_accounts (DEC-009, values en/zh, default NULL => zh fallback preserving current behavior); PUT /api/reader/me/locale to set it (Literal['en','zh'], 422 otherwise, auth-scoped); make crud.record_new_post_notifications pick (title, body) per target reader's locale (zh keeps 系列更新/新文章发布/《{t}》, en gets 'Series update'/'New post'/plain title) — the same tuple becomes the email Subject/body via EmailItem; localize app/digest.build_digest_message per recipient locale (en/zh greeting/subject/body). Frontend: LanguageSwitcher persists the selected language to the account when signed in (fire-and-forget PUT). Contract tests in backend tests/test_reader_locale.py (auth/422/set-get, default zh, en inbox + email + series kind, switching locale affects subsequent fan-outs only) + frontend switcher test. VERIFY: backend suite + PG, frontend tests/typecheck/biome, migration round-trips."
     }
   },
   "edges": [
@@ -36302,6 +36330,18 @@
       "to": "DEC-336",
       "type": "supersedes",
       "created_at": "2026-09-14T08:48:10+00:00"
+    },
+    {
+      "from": "DEC-338",
+      "to": "DEC-337",
+      "type": "supersedes",
+      "created_at": "2026-09-14T08:58:46+00:00"
+    },
+    {
+      "from": "DEC-338",
+      "to": "TASK-395",
+      "type": "governs",
+      "created_at": "2026-09-14T08:58:46+00:00"
     }
   ]
 }
