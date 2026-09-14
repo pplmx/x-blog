@@ -9,6 +9,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- **Newsletter digest cadence (DEC-355)**: the guest newsletter (DEC-351) had
+  exactly one cadence — one email per new post, so a high-volume blog filled a
+  subscriber's inbox daily with no lighter option (reader accounts already had
+  both per-event mail and a weekly digest, DEC-201/DEC-326). A guest subscriber
+  can now choose the weekly digest instead: opt in at the footer form (a
+  checkbox) or from the confirm page, and the weekly digest job — the same one
+  that serves readers (one advisory lock, one SMTP session, the same rolling
+  7-day window, after-delivery idempotency stamping) — sends one aggregated,
+  site-language summary per week, deep-linked posts with the subscriber's own
+  token unsubscribe footer. A digest subscriber is excluded from the per-post
+  fan-out, so they get exactly the cadence they chose, never both. Per-post
+  stays the default; the digest is opt-in like the reader schema.
 - **Admin newsletter management (DEC-354)**: the guest newsletter (DEC-351) had
   no operator surface — an admin could not see who was subscribed, how many were
   confirmed vs pending, or remove an address. The admin section now lists every

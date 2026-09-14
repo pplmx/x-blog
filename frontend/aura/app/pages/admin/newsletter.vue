@@ -198,6 +198,15 @@ async function removeSubscriber(id: number, email: string) {
               >
                 {{ t(sub.is_confirmed ? "admin.newsletter.status.confirmed" : "admin.newsletter.status.pending") }}
               </span>
+              <!-- Weekly-digest cadence marker (DEC-355): a confirmed address
+                   with this flag is served by the weekly digest, not the
+                   per-post fan-out — the operator can see the split at a glance. -->
+              <span
+                v-if="sub.digest_weekly"
+                class="ml-1 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400"
+              >
+                {{ t("admin.newsletter.digestWeekly") }}
+              </span>
             </td>
             <td class="px-4 py-3 text-gray-500 dark:text-gray-400 hidden sm:table-cell">
               {{ formatDate(sub.created_at) }}

@@ -125,4 +125,45 @@ test.describe("Guest newsletter (DEC-351)", () => {
 		const after = messagesFromSink(address).filter((m) => m.subject.startsWith("新文章发布"));
 		expect(after).toHaveLength(1); // still just the first
 	});
+
+	test("digest cadence: a weekly subscriber gets no per-post email", async ({ page, request }) => {
+		test.skip(!(await smtpIsUp(request)), "requires the e2e SMTP sink");
+
+		const adminTok = await adminToken(request);
+		const adminH = { Authorization: `Bearer ${adminTok}` };
+		const uid = Date.now();
+		const address = freshEmail();
+
+		// Subscribe opting into the weekly digest from the footer form.
+		await page.goto("/");
+		const form = page.locator("form", { has: page.locator("#newsletter-email") });
+		await form.locator("#newsletter-email").fill(address);
+		await form.locator("input[type=checkbox]").check();
+		await form.locator("button[type=submit]").click();
+		await expect(form.locator("#newsletter-email")).toHaveValue("", { timeout: 10000 });
+
+		// Confirm; the cadence box shows the server-truth (checked = weekly).
+		const [confirmMail] = messagesFromSink(address);
+		const confirmToken = /newsletter\/confirm\?token=([A-Za-z0-9_-]+)/.exec(
+			confirmMail?.text ?? "",
+		);
+		expect(confirmToken).not.toBeNull();
+		await page.goto(`/newsletter/confirm?token=${String(confirmToken?.[1] ?? "")}`);
+		await expect(page.locator("body")).toContainText("订阅成功", { timeout: 10000 });
+		await expect(page.locator("input[type=checkbox]")).toBeChecked({ timeout: 5000 });
+
+		// A publish emails the per-post subscriber but never this weekly one.
+		const post = await request.post("/api/posts", {
+			headers: adminH,
+			data: {
+				title: `Newsletter weekly ${uid}`,
+				slug: `newsletter-weekly-${uid}`,
+				content: "# Weekly",
+				published: true,
+			},
+		});
+		expect(post.status()).toBe(201);
+		const newsletters = messagesFromSink(address).filter((m) => m.subject.startsWith("新文章发布"));
+		expect(newsletters).toHaveLength(0);
+	});
 });

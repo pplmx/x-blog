@@ -119,7 +119,8 @@
 			"subscribe": "Subscribe",
 			"submitting": "Subscribing…",
 			"done": "Check your inbox to confirm your subscription.",
-			"error": "Couldn't subscribe right now. Please try again."
+			"error": "Couldn't subscribe right now. Please try again.",
+			"digestWeekly": "Send me one weekly summary instead of an email per post"
 		}
 	}
 }

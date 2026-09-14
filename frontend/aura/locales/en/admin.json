@@ -106,7 +106,8 @@
 			"delete": "Remove",
 			"deleteAria": "Remove {email} from the newsletter",
 			"confirmDelete": "Remove {email} from the newsletter? They will stop receiving new-post emails.",
-			"deleteFailed": "Couldn't remove the subscriber — please try again."
+			"deleteFailed": "Couldn't remove the subscriber — please try again.",
+			"digestWeekly": "Weekly digest"
 		}
 	}
 }

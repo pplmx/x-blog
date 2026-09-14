@@ -186,6 +186,21 @@ def test_email_search_escapes_like_wildcards(client, admin_token):
     assert body["items"][0]["email"] == "tricky_dup@example.com"
 
 
+def test_admin_list_exposes_cadence(client, admin_token):
+    """The admin list reports each subscriber's cadence so an operator can see
+    why a confirmed address is NOT in the per-post fan-out (it opted into the
+    weekly digest) — DEC-355."""
+    client.post(
+        "/api/newsletter/subscribe",
+        json={"email": "weekly@example.com", "digest_weekly": True},
+    )
+    headers = {"Authorization": f"Bearer {admin_token}"}
+    r = client.get("/api/admin/newsletter/subscribers", headers=headers)
+    assert r.status_code == 200
+    item = next(i for i in r.json()["items"] if i["email"] == "weekly@example.com")
+    assert item["digest_weekly"] is True
+
+
 def test_list_rejects_invalid_query_params(client, admin_token):
     """Boundary-refusing query params are 422 (status pattern, q length/NUL,
     page/limit bounds)."""

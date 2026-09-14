@@ -438,11 +438,22 @@ def dispatch_newsletter_new_post(db: Session, post: models.Post, logger) -> int:
     how many messages SMTP accepted; never raises — a mail failure (or a
     title that a header can't carry) must never break the publish/fan-out that
     triggered it, so the whole build + send sits inside the catch.
+
+    Only PER-POST subscribers are emailed here: a confirmed ``digest_weekly``
+    address is served by the weekly digest job instead, so a subscriber gets the
+    cadence they chose and never both (DEC-355, TASK-403).
     """
     if not is_email_configured():
         return 0
     try:
-        subs = db.query(models.NewsletterSubscriber).filter(models.NewsletterSubscriber.is_confirmed.is_(True)).all()
+        subs = (
+            db.query(models.NewsletterSubscriber)
+            .filter(
+                models.NewsletterSubscriber.is_confirmed.is_(True),
+                models.NewsletterSubscriber.digest_weekly.is_(False),
+            )
+            .all()
+        )
         if not subs or not post.slug:
             return 0
         from_addr = _env("SMTP_FROM") or "no-reply@localhost"

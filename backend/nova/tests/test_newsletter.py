@@ -178,6 +178,9 @@ def test_confirm_activates_subscriber(client, db_session, smtp_sink):
 
     r = client.post("/api/newsletter/confirm", json={"token": token})
     assert r.status_code == 200
+    # The response reports the real cadence so the confirm page can show it
+    # (per-post default here; a subscribe-time digest opt-in shows as such).
+    assert r.json() == {"confirmed": True, "digest_weekly": False}
     sub = (
         db_session.query(models.NewsletterSubscriber)
         .filter(models.NewsletterSubscriber.email == "confirmme@example.com")
@@ -214,6 +217,119 @@ def test_confirmed_subscriber_gets_one_email_per_new_post(client, db_session, sm
     # in the sink before `before`).
     _create_post(db_session, slug="newsletter-post-2")
     assert len(_new_post_messages(smtp_sink, "happy@example.com")) == 2
+
+
+def test_subscribe_carries_digest_weekly_choice(client, db_session):
+    """The opt-in weekly-digest preference is stored at subscribe time; the
+    default (no field) stays per-post."""
+    r = client.post(
+        "/api/newsletter/subscribe",
+        json={"email": "digest-choice@example.com", "digest_weekly": True},
+    )
+    assert r.status_code == 202
+    sub = (
+        db_session.query(models.NewsletterSubscriber)
+        .filter(models.NewsletterSubscriber.email == "digest-choice@example.com")
+        .one()
+    )
+    assert sub.digest_weekly is True
+
+    client.post("/api/newsletter/subscribe", json={"email": "per-post-default@example.com"})
+    default = (
+        db_session.query(models.NewsletterSubscriber)
+        .filter(models.NewsletterSubscriber.email == "per-post-default@example.com")
+        .one()
+    )
+    assert default.digest_weekly is False
+
+
+def test_digest_toggle_via_token(client, db_session, smtp_sink):
+    """POST /api/newsletter/digest flips one address's cadence off/on by its
+    token; idempotent (repeat 200), unknown token 404 (no oracle), malformed
+    body 422 at the pydantic boundary."""
+    client.post("/api/newsletter/subscribe", json={"email": "toggle@example.com"})
+    token = _confirm_token(smtp_sink, "toggle@example.com")
+    client.post("/api/newsletter/confirm", json={"token": token})
+
+    assert client.post("/api/newsletter/digest", json={"token": token, "enabled": True}).status_code == 200
+    row = (
+        db_session.query(models.NewsletterSubscriber)
+        .filter(models.NewsletterSubscriber.email == "toggle@example.com")
+        .one()
+    )
+    assert row.digest_weekly is True
+
+    # Idempotent: repeating the enabled toggle is a 200, not an error.
+    assert client.post("/api/newsletter/digest", json={"token": token, "enabled": True}).status_code == 200
+
+    # The confirm response reports the new cadence to the token holder.
+    r = client.post("/api/newsletter/confirm", json={"token": token})
+    assert r.status_code == 200
+    assert r.json()["digest_weekly"] is True
+
+    # Back to per-post.
+    assert client.post("/api/newsletter/digest", json={"token": token, "enabled": False}).status_code == 200
+    db_session.expire_all()
+    row = (
+        db_session.query(models.NewsletterSubscriber)
+        .filter(models.NewsletterSubscriber.email == "toggle@example.com")
+        .one()
+    )
+    assert row.digest_weekly is False
+    r = client.post("/api/newsletter/confirm", json={"token": token})
+    assert r.status_code == 200
+    assert r.json()["digest_weekly"] is False
+
+    # Unknown token -> 404; missing / NUL token -> 422.
+    assert (
+        client.post(
+            "/api/newsletter/digest",
+            json={"token": "x" * 40, "enabled": True},
+        ).status_code
+        == 404
+    )
+    assert client.post("/api/newsletter/digest", json={"enabled": True}).status_code == 422
+    assert client.post("/api/newsletter/digest", json={"token": "a\x00b", "enabled": True}).status_code == 422
+
+
+def test_fanout_skips_digest_subscriber(client, db_session, smtp_sink):
+    """A confirmed digest_weekly subscriber is excluded from the per-post
+    fan-out (their cadence is the weekly digest); a per-post subscriber still
+    gets exactly one new-post email."""
+    client.post("/api/newsletter/subscribe", json={"email": "per-post@example.com"})
+    per_post_token = _confirm_token(smtp_sink, "per-post@example.com")
+    client.post("/api/newsletter/confirm", json={"token": per_post_token})
+
+    client.post(
+        "/api/newsletter/subscribe",
+        json={"email": "weekly@example.com", "digest_weekly": True},
+    )
+    weekly_token = _confirm_token(smtp_sink, "weekly@example.com")
+    client.post("/api/newsletter/confirm", json={"token": weekly_token})
+
+    _create_post(db_session)
+
+    assert len(_new_post_messages(smtp_sink, "per-post@example.com")) == 1
+    assert not _new_post_messages(smtp_sink, "weekly@example.com")
+
+
+def test_toggling_back_to_per_post_resumes_fanout(client, db_session, smtp_sink):
+    """A subscriber who opts into the weekly digest and then back out resumes
+    receiving per-post mail — the cadence toggle round-trips without stranding
+    the address silently on either side."""
+    client.post("/api/newsletter/subscribe", json={"email": "roundtrip@example.com"})
+    token = _confirm_token(smtp_sink, "roundtrip@example.com")
+    client.post("/api/newsletter/confirm", json={"token": token})
+
+    # Into weekly: per-post fan-out stops.
+    assert client.post("/api/newsletter/digest", json={"token": token, "enabled": True}).status_code == 200
+    _create_post(db_session)
+    assert not _new_post_messages(smtp_sink, "roundtrip@example.com")
+
+    # Back to per-post: the next publish emails again.
+    assert client.post("/api/newsletter/digest", json={"token": token, "enabled": False}).status_code == 200
+    _create_post(db_session, slug="newsletter-resume-post")
+    assert len(_new_post_messages(smtp_sink, "roundtrip@example.com")) == 1
 
 
 def test_unsubscribe_stops_new_post_emails(client, db_session, smtp_sink):

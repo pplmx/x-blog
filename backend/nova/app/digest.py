@@ -44,7 +44,7 @@ from sqlalchemy.orm import Session
 from app import models
 from app.auth import ReaderAccount
 from app.crud import effective_publish_ts, utc_now_naive
-from app.emailer import _env, is_email_configured, send_messages_flags
+from app.emailer import _env, _is_en_site, is_email_configured, send_messages_flags
 from app.middleware import get_logger
 
 #: Rolling window: a reader never receives more than the last 7 days of posts,
@@ -136,6 +136,34 @@ def collect_digest_recipients(
     return [(pref, acct, digest_window_start(pref, now_naive)) for pref, acct in rows]
 
 
+def newsletter_digest_window_start(sub: models.NewsletterSubscriber, now_naive: datetime) -> datetime:
+    """Where a guest subscriber's digest window begins: their last guest digest
+    if one was ever sent, else the rolling 7-day cut — the mirror of
+    ``digest_window_start`` for the reader prefs, so a backlog never floods a
+    guest either (DEC-355, TASK-403)."""
+    if sub.digest_sent_at is None:
+        return now_naive - timedelta(days=WEEKLY_WINDOW_DAYS)
+    return max(sub.digest_sent_at, now_naive - timedelta(days=WEEKLY_WINDOW_DAYS))
+
+
+def collect_newsletter_digest_recipients(
+    db: Session, now_naive: datetime
+) -> list[tuple[models.NewsletterSubscriber, datetime]]:
+    """Guest subscribers on the weekly cadence: double opt-in complete AND
+    ``digest_weekly`` set. ``digest_weekly`` defaults false, so every existing
+    address stays per-post until it opts in; a pending address is never mailed
+    (the confirm link must complete first — same gate as the per-post fan-out)."""
+    subs = (
+        db.query(models.NewsletterSubscriber)
+        .filter(
+            models.NewsletterSubscriber.is_confirmed.is_(True),
+            models.NewsletterSubscriber.digest_weekly.is_(True),
+        )
+        .all()
+    )
+    return [(sub, newsletter_digest_window_start(sub, now_naive)) for sub in subs]
+
+
 def _format_date(ts: datetime) -> str:
     return ts.strftime("%Y-%m-%d")
 
@@ -150,6 +178,8 @@ def build_digest_message(
     window_start: datetime,
     now_naive: datetime,
     locale: str = "zh",
+    manage_url: str | None = None,
+    is_guest: bool = False,
 ) -> EmailMessage:
     """One aggregated digest: text + HTML parts in the reader's language.
 
@@ -158,10 +188,30 @@ def build_digest_message(
     English digest. The reader's stored locale is threaded through by
     ``send_weekly_digest`` (NULL reads as zh), so an English reader's digest
     arrives in English while a zh reader's stays untouched.
+
+    ``manage_url`` overrides the footer's "manage / turn off" target — guest
+    newsletter subscribers (DEC-355, TASK-403) get their token unsubscribe
+    page instead of the reader /notifications prefs page; readers keep the
+    default. ``is_guest`` picks the matching footer COPY (a guest has no
+    notification-preferences page, so the label describes the unsubscribe
+    link, not "preferences").
     """
     en = locale in ("en", "en-US")
     posts = list(posts)
     base = base_url.rstrip("/")
+    manage = manage_url or f"{base}/notifications"
+    # Guest vs reader footer copy: a guest has no notification-preferences
+    # page, so the manage link must read as plain cancellation, not prefs.
+    if is_guest:
+        en_manage_text = "Don't want the weekly digest? Unsubscribe from this newsletter"
+        en_unsubscribe_label = "Unsubscribe from this newsletter"
+        zh_manage_text = "不想再收到每周精选？退订订阅"
+        zh_unsubscribe_label = "退订这个订阅"
+    else:
+        en_manage_text = "Manage or turn off the weekly digest"
+        en_unsubscribe_label = "Turn it off in your notification preferences"
+        zh_manage_text = "管理或关闭每周精选"
+        zh_unsubscribe_label = "在通知偏好中关闭"
     # display_name is user-controlled. Escape it for the HTML part so markup
     # can never render (A&B -> A&amp;B in HTML source, displayed as A&B); the
     # TEXT part uses the RAW name — HTML entities like &amp; are meaningless in
@@ -179,8 +229,9 @@ def build_digest_message(
             f"Here are the {len(posts)} new post{'s' if len(posts) != 1 else ''} "
             f"published this week ({window}):\n\n"
             + "\n".join(_digest_lines(posts, now_naive, base))
-            + "\n\n—\nManage or turn off the weekly digest: "
-            f"{base}/notifications"
+            + "\n\n—\n"
+            + en_manage_text
+            + f": {manage}"
         )
         html_body = (
             '<div style="font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;'
@@ -190,7 +241,7 @@ def build_digest_message(
             f"published this week ({window}):</p>"
             f'<ol style="line-height:1.6">{_digest_items(posts, now_naive, base)}</ol>'
             f'<p style="color:#888;font-size:13px">Don\'t want the weekly digest? '
-            f'<a href="{base}/notifications">Turn it off in your notification preferences</a>.</p>'
+            f'<a href="{manage}">{en_unsubscribe_label}</a>.</p>'
             "</div>"
         )
     else:
@@ -201,8 +252,9 @@ def build_digest_message(
             f"{text_greeting}\n"
             f"本周精选（{_format_date(window_start)} ~ {_format_date(now_naive)}）共 {len(posts)} 篇新文章：\n\n"
             + "\n".join(_digest_lines(posts, now_naive, base))
-            + "\n\n—\n管理或关闭每周精选："
-            f"{base}/notifications"
+            + "\n\n—\n"
+            + zh_manage_text
+            + f"：{manage}"
         )
         html_body = (
             '<div style="font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;'
@@ -212,7 +264,7 @@ def build_digest_message(
             f"（{_format_date(window_start)} ~ {_format_date(now_naive)}）：</p>"
             f'<ol style="line-height:1.6">{_digest_items(posts, now_naive, base)}</ol>'
             f'<p style="color:#888;font-size:13px">不想再收到每周精选？'
-            f'<a href="{base}/notifications">在通知偏好中关闭</a>。</p>'
+            f'<a href="{manage}">{zh_unsubscribe_label}</a>。</p>'
             "</div>"
         )
 
@@ -292,10 +344,19 @@ def send_weekly_digest(db: Session, *, now_naive: datetime | None = None, logger
     now = now_naive or utc_now_naive()
     if not _acquire_digest_lock(db):
         log.info("weekly_digest_locked")
-        return {"locked": True, "readers": 0, "emails_sent": 0, "posts": 0, "skipped": 0, "reason": "locked"}
+        return {
+            "locked": True,
+            "readers": 0,
+            "subscribers": 0,
+            "emails_sent": 0,
+            "posts": 0,
+            "skipped": 0,
+            "reason": "locked",
+        }
     try:
         posts = collect_digest_posts(db, now)
         deliveries: list[tuple[models.ReaderNotificationPref, ReaderAccount, datetime, list[models.Post]]] = []
+        guest_deliveries: list[tuple[models.NewsletterSubscriber, datetime, list[models.Post]]] = []
         skipped = 0
         for pref, acct, window_start in collect_digest_recipients(db, now):
             if not acct.email:
@@ -306,6 +367,14 @@ def send_weekly_digest(db: Session, *, now_naive: datetime | None = None, logger
                 skipped += 1
                 continue
             deliveries.append((pref, acct, window_start, eligible))
+        # Guest subscribers on the weekly cadence run through the SAME job (one
+        # advisory lock, one SMTP session, the same window stamping) — DEC-355.
+        for sub, window_start in collect_newsletter_digest_recipients(db, now):
+            eligible = [p for p in posts if _effective_publish_ts(p, now) >= window_start]
+            if not eligible:
+                skipped += 1
+                continue
+            guest_deliveries.append((sub, window_start, eligible))
 
         if dry_run:
             # No SMTP, no stamping — report exactly who/what would go out
@@ -315,15 +384,17 @@ def send_weekly_digest(db: Session, *, now_naive: datetime | None = None, logger
                 "locked": False,
                 "dry_run": True,
                 "readers": len(deliveries),
+                "subscribers": len(guest_deliveries),
                 "emails_sent": 0,
                 "posts": len(posts),
                 "skipped": skipped,
             }
 
-        if not deliveries:
+        if not deliveries and not guest_deliveries:
             return {
                 "locked": False,
                 "readers": 0,
+                "subscribers": 0,
                 "emails_sent": 0,
                 "posts": len(posts),
                 "skipped": skipped,
@@ -332,58 +403,90 @@ def send_weekly_digest(db: Session, *, now_naive: datetime | None = None, logger
 
         base_url = _env("SITE_URL") or "http://localhost:3000"
         from_addr = _env("SMTP_FROM") or "no-reply@localhost"
-        built: list[tuple[models.ReaderNotificationPref, EmailMessage]] = []
+        guest_locale = "en" if _is_en_site() else "zh"
+        built: list[EmailMessage] = []
+        reader_targets: list[models.ReaderNotificationPref] = []
+        guest_targets: list[models.NewsletterSubscriber] = []
         for pref, acct, window_start, eligible in deliveries:
-            msg = build_digest_message(
-                from_addr=from_addr,
-                to_email=acct.email,
-                display_name=acct.display_name,
-                posts=eligible,
-                base_url=base_url,
-                window_start=window_start,
-                now_naive=now,
-                # NULL locale reads as the zh site default (build_digest_message
-                # defaults to "zh" and notification_copy treats non-en as zh).
-                locale=acct.locale or "zh",
+            built.append(
+                build_digest_message(
+                    from_addr=from_addr,
+                    to_email=acct.email,
+                    display_name=acct.display_name,
+                    posts=eligible,
+                    base_url=base_url,
+                    window_start=window_start,
+                    now_naive=now,
+                    # NULL locale reads as the zh site default (build_digest_message
+                    # defaults to "zh" and notification_copy treats non-en as zh).
+                    locale=acct.locale or "zh",
+                )
             )
-            built.append((pref, msg))
+            reader_targets.append(pref)
+        for sub, window_start, eligible in guest_deliveries:
+            # Guests have no account or stored locale — the digest renders in
+            # the site's configured language (DEC-342 parity) and its "manage /
+            # turn off" footer is the token unsubscribe page, not reader prefs.
+            built.append(
+                build_digest_message(
+                    from_addr=from_addr,
+                    to_email=sub.email,
+                    display_name=None,
+                    posts=eligible,
+                    base_url=base_url,
+                    window_start=window_start,
+                    now_naive=now,
+                    locale=guest_locale,
+                    manage_url=f"{base_url.rstrip('/')}/newsletter/unsubscribe?token={sub.token}",
+                    is_guest=True,
+                )
+            )
+            guest_targets.append(sub)
 
         if not is_email_configured():
             return {
                 "locked": False,
                 "readers": 0,
+                "subscribers": 0,
                 "emails_sent": 0,
                 "posts": len(posts),
-                "skipped": len(deliveries),
+                "skipped": skipped + len(deliveries) + len(guest_deliveries),
                 "reason": "smtp_not_configured",
             }
 
         try:
             # Per-message flags: a mid-batch failure (one refused recipient)
             # must not stall the rest — and only messages the server accepted
-            # stamp digest_sent_at, so a partial delivery never re-mails readers
+            # stamp digest_sent_at, so a partial delivery never re-mails anyone
             # who already got theirs on the next run (RIL ISS-280).
-            delivered = send_messages_flags([msg for _, msg in built])
+            delivered = send_messages_flags(built)
         except Exception:  # noqa: BLE001 — best effort, retryable
             log.exception("weekly digest SMTP delivery failed")
             return {
                 "locked": False,
                 "readers": 0,
+                "subscribers": 0,
                 "emails_sent": 0,
                 "posts": len(posts),
-                "skipped": len(deliveries),
+                "skipped": skipped + len(deliveries) + len(guest_deliveries),
                 "reason": "smtp_error",
             }
 
-        # Stamp idempotency ONLY on delivered readers, after SMTP accepted the
-        # specific message (never a batch-wide assumption).
-        for (pref, _msg), was_sent in zip(built, delivered, strict=True):
+        # Stamp idempotency ONLY on delivered recipients, after SMTP accepted
+        # the specific message (never a batch-wide assumption) — readers and
+        # guests stamped from their own slices of the acceptance flags.
+        reader_flags, guest_flags = delivered[: len(reader_targets)], delivered[len(reader_targets) :]
+        for pref, was_sent in zip(reader_targets, reader_flags, strict=True):
             if was_sent:
                 pref.digest_sent_at = now
+        for sub, was_sent in zip(guest_targets, guest_flags, strict=True):
+            if was_sent:
+                sub.digest_sent_at = now
         db.commit()
         return {
             "locked": False,
             "readers": len(deliveries),
+            "subscribers": len(guest_deliveries),
             "emails_sent": sum(delivered),
             "posts": len(posts),
             "skipped": skipped,

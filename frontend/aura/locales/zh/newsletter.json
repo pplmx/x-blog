@@ -6,6 +6,9 @@
 			"title": "确认订阅",
 			"processing": "正在确认…",
 			"success": "订阅成功！以后有新文章发布时会邮件通知你。",
+			"digestWeekly": "改为每周收到一次汇总邮件，而不是每篇都发",
+			"digestSaving": "保存中…",
+			"digestError": "切换失败，请重试。",
 			"invalid": "这个确认链接无效，或已经被使用过。",
 			"errors": {
 				"network": "暂时无法连接服务器，请重新点击邮件中的链接。"

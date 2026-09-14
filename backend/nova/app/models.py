@@ -802,6 +802,15 @@ class NewsletterSubscriber(Base):
     token: Mapped[str] = mapped_column(String(64), unique=True, nullable=False, index=True)
     is_confirmed: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default=false())
     confirmed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    # Weekly-digest cadence (DEC-355, TASK-403): opt-in — a subscriber who
+    # prefers one weekly summary to per-post mail flips ``digest_weekly`` (the
+    # default stays per-post, mirroring ``ReaderNotificationPref``).
+    # ``digest_sent_at`` is the idempotency stamp of the guest digest job (same
+    # semantics as the reader prefs stamp): the digest window starts there,
+    # bounded to the rolling 7 days, and it is stamped ONLY after SMTP accepts
+    # that subscriber's message, so a failed send leaves the window open.
+    digest_weekly: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default=false())
+    digest_sent_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     created_at: Mapped[datetime | None] = mapped_column(
         DateTime,
         default=lambda: datetime.now(UTC),

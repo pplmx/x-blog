@@ -51,10 +51,37 @@ describe("NewsletterSubscribe", () => {
 		await flushPromises();
 
 		expect(subscribeNewsletter).toHaveBeenCalledTimes(1);
-		expect(subscribeNewsletter).toHaveBeenCalledWith("reader@example.com");
+		expect(subscribeNewsletter).toHaveBeenCalledWith("reader@example.com", false);
 		expect(wrapper.text()).toContain("components.newsletter.done");
 		// The field clears after a successful submit.
 		expect((wrapper.find("#newsletter-email").element as HTMLInputElement).value).toBe("");
+	});
+
+	it("passes the weekly-digest choice when the checkbox is ticked", async () => {
+		subscribeNewsletter.mockResolvedValue({ subscribed: true, message: "..." });
+		const wrapper = await mountForm("weekly@example.com");
+
+		await wrapper.find('input[type="checkbox"]').setValue(true);
+		await wrapper.find("form").trigger("submit");
+		await flushPromises();
+
+		expect(subscribeNewsletter).toHaveBeenCalledWith("weekly@example.com", true);
+		expect(subscribeNewsletter).toHaveBeenCalledTimes(1);
+	});
+
+	it("disables the cadence checkbox while a submit is in flight", async () => {
+		let resolveFn: ((v: unknown) => void) | undefined;
+		subscribeNewsletter.mockImplementation(() => new Promise((resolve) => (resolveFn = resolve)));
+		const wrapper = await mountForm("slow@example.com");
+
+		await wrapper.find("form").trigger("submit");
+		await flushPromises();
+		expect((wrapper.find('input[type="checkbox"]').element as HTMLInputElement).disabled).toBe(
+			true,
+		);
+
+		resolveFn?.({ subscribed: true, message: "" });
+		await flushPromises();
 	});
 
 	it("does not submit an empty email", async () => {

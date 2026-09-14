@@ -49,6 +49,10 @@ EMAIL_PATTERN = schemas.EMAIL_PATTERN
 
 class NewsletterSubscribeBody(BaseModel):
     email: Annotated[NonNulStr, Field(min_length=3, max_length=254, pattern=EMAIL_PATTERN)]
+    # Optional cadence (DEC-355, TASK-403): True chooses the weekly digest over
+    # per-post mail, stored on the new row. Default stays per-post; a resubscribed
+    # existing address keeps whatever cadence it already had (never re-flipped).
+    digest_weekly: bool = False
 
     @field_validator("email", mode="before")
     @classmethod
@@ -61,6 +65,11 @@ class NewsletterSubscribeBody(BaseModel):
 
 class NewsletterTokenBody(BaseModel):
     token: Annotated[NonNulStr, Field(max_length=64)]
+
+
+class NewsletterDigestBody(BaseModel):
+    token: Annotated[NonNulStr, Field(max_length=64)]
+    enabled: bool
 
 
 @router.post("/subscribe", status_code=202)
@@ -92,6 +101,7 @@ def newsletter_subscribe(
             email=email,
             token=token_urlsafe(32),
             is_confirmed=False,
+            digest_weekly=body.digest_weekly,
         )
         db.add(row)
         try:
@@ -138,7 +148,11 @@ def newsletter_confirm(
         row.is_confirmed = True
         row.confirmed_at = utc_now_naive()
         db.commit()
-    return {"confirmed": True}
+    # The cadence is returned so the confirm page can show the address's real
+    # state (a digest_weekly opt-in at subscribe time shows as such, not as an
+    # unchecked per-post default) — not an oracle: only the token holder sees
+    # it (DEC-355, TASK-403).
+    return {"confirmed": True, "digest_weekly": row.digest_weekly}
 
 
 @router.post("/unsubscribe", status_code=200)
@@ -164,6 +178,30 @@ def newsletter_unsubscribe(
     return {"unsubscribed": True}
 
 
+@router.post("/digest", status_code=200)
+@limiter.limit(f"{RATE_LIMIT_WRITE}/minute")
+def newsletter_digest(
+    request: Request,  # noqa: ARG001
+    body: NewsletterDigestBody,
+    db: Session = Depends(get_db),
+):
+    """Flip one address's cadence between per-post mail and the weekly digest.
+
+    Token-gated exactly like confirm/unsubscribe — an unknown token is 404
+    (indistinguishable from never-subscribed, no oracle) and the toggle is
+    idempotent (a twice-clicked link is a 200). ``enabled=False`` returns the
+    address to the per-post channel; ``digest_weekly`` subscribers are served
+    by the weekly digest job instead of the per-post fan-out (DEC-355).
+    """
+    row = db.query(models.NewsletterSubscriber).filter(models.NewsletterSubscriber.token == body.token).first()
+    if row is None:
+        raise HTTPException(status_code=404, detail="Invalid token")
+    if row.digest_weekly != body.enabled:
+        row.digest_weekly = body.enabled
+        db.commit()
+    return {"digest_weekly": body.enabled}
+
+
 # Admin subscriber management (DEC-354, TASK-402)
 # ---------------------------------------------------------------------------
 # The public surface (subscribe/confirm/unsubscribe) has no operator view: an
@@ -184,6 +222,9 @@ class AdminSubscriberItem(BaseModel):
     id: int
     email: str
     is_confirmed: bool
+    # Exposed so an operator can see why a confirmed address is NOT in the
+    # per-post fan-out (it chose the weekly digest) — DEC-355.
+    digest_weekly: bool = False
     created_at: datetime | None = None
     confirmed_at: datetime | None = None
 

@@ -27,6 +27,7 @@ function fakeSubscriber(overrides: Partial<Record<string, unknown>> = {}) {
 		id: 1,
 		email: "alice@example.com",
 		is_confirmed: true,
+		digest_weekly: false,
 		created_at: "2026-07-01T00:00:00Z",
 		confirmed_at: "2026-07-01T00:00:01Z",
 		...overrides,
@@ -68,6 +69,7 @@ describe("Admin Newsletter page", () => {
 			fakeListing([
 				fakeSubscriber({ email: "alice@example.com" }),
 				fakeSubscriber({ id: 2, email: "bob@example.com", is_confirmed: false }),
+				fakeSubscriber({ id: 3, email: "weekly@example.com", digest_weekly: true }),
 			]),
 		);
 		const wrapper = await mountPage();
@@ -76,6 +78,8 @@ describe("Admin Newsletter page", () => {
 		expect(wrapper.text()).toContain("bob@example.com");
 		expect(wrapper.text()).toContain("已确认"); // confirmed chip (zh default locale)
 		expect(wrapper.text()).toContain("待确认"); // pending chip
+		// Weekly-digest cadence marker (DEC-355).
+		expect(wrapper.text()).toContain("每周摘要");
 		// The subscribed date renders (parseApiDate feeds a locale date).
 		expect(wrapper.text()).toContain("2026");
 	});

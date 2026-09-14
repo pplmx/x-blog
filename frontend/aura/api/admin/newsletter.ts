@@ -9,6 +9,10 @@ export interface AdminNewsletterSubscriber {
 	id: number;
 	email: string;
 	is_confirmed: boolean;
+	// True when the address chose the weekly digest instead of per-post mail
+	// (DEC-355) — shown so an operator sees why a confirmed address is not in
+	// the per-post fan-out.
+	digest_weekly: boolean;
 	created_at: string | null;
 	confirmed_at: string | null;
 }

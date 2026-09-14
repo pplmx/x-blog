@@ -6,6 +6,9 @@
 			"title": "Confirm your subscription",
 			"processing": "Confirming…",
 			"success": "You're subscribed! You'll get an email when a new post is published.",
+			"digestWeekly": "Instead, email me one weekly summary, not one per post",
+			"digestSaving": "Saving…",
+			"digestError": "Couldn't switch — please try again.",
 			"invalid": "This confirmation link is invalid or has already been used.",
 			"errors": {
 				"network": "Couldn't reach the server right now. Please try clicking the link again."

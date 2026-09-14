@@ -282,6 +282,112 @@ class TestSend:
         assert pref.digest_sent_at is None
 
 
+def _newsletter_subscriber(
+    db,
+    email: str,
+    *,
+    confirmed: bool = True,
+    digest_weekly: bool = True,
+) -> int:
+    from secrets import token_urlsafe
+
+    row = models.NewsletterSubscriber(
+        email=email,
+        token=token_urlsafe(32),
+        is_confirmed=confirmed,
+        digest_weekly=digest_weekly,
+    )
+    db.add(row)
+    db.flush()
+    return row.id
+
+
+def _plain_text(msg: EmailMessage) -> str:
+    """Text/plain payload of a multipart message (or the whole message)."""
+    parts = [p for p in msg.walk() if p.get_content_type() == "text/plain"]
+    if not parts:
+        return str(msg.get_payload()) if not msg.is_multipart() else ""
+    return "\n".join(p.get_payload(decode=True).decode("utf-8", "replace") for p in parts)
+
+
+class TestNewsletterDigest:
+    """The guest side of the weekly digest (DEC-355, TASK-403): a CONFIRMED
+    newsletter subscriber who opted into the weekly digest is collected by the
+    same job that serves readers, gets a site-language digest whose footer is
+    their token-based unsubscribe link (never the reader /notifications page),
+    and is stamped idempotently per delivered message — never double-mailed
+    within the window. Per-post-only and still-pending subscribers stay out."""
+
+    def test_collects_only_confirmed_opt_in_guests(self, db_session):
+        _newsletter_subscriber(db_session, "a@example.com", confirmed=True, digest_weekly=True)
+        _newsletter_subscriber(db_session, "b@example.com", confirmed=True, digest_weekly=False)
+        _newsletter_subscriber(db_session, "c@example.com", confirmed=False, digest_weekly=True)
+
+        from app.digest import collect_newsletter_digest_recipients
+
+        rows = collect_newsletter_digest_recipients(db_session, datetime.now())
+        assert [sub.email for sub, _ in rows] == ["a@example.com"]
+
+    def test_delivers_guest_digest_with_token_footer_and_stamps(self, db_session, smtp_sink):
+        _make_post(db_session, "In window", "in-window")
+        sub_id = _newsletter_subscriber(db_session, "guest@example.com", confirmed=True, digest_weekly=True)
+
+        summary = send_weekly_digest(db_session)
+        assert summary["subscribers"] == 1
+
+        msgs = [m for m in smtp_sink.sent if m["To"] == "guest@example.com"]
+        assert len(msgs) == 1
+        body = _plain_text(msgs[0])
+        assert "In window" in body
+        # Guest footer is the token unsubscribe page, not the reader prefs page —
+        # and the copy says "unsubscribe", never "notification preferences" (a
+        # guest has no prefs page).
+        assert "newsletter/unsubscribe" in body
+        assert "/notifications" not in body
+        assert "退订订阅" in body
+        assert "通知偏好" not in body
+
+        sub = db_session.get(models.NewsletterSubscriber, sub_id)
+        assert sub.digest_sent_at is not None
+
+    def test_no_double_send_within_window(self, db_session, smtp_sink):
+        _make_post(db_session, "In window", "in-window")
+        _newsletter_subscriber(db_session, "guest@example.com", confirmed=True, digest_weekly=True)
+
+        send_weekly_digest(db_session)
+        first = len([m for m in smtp_sink.sent if m["To"] == "guest@example.com"])
+        # A same-day second run re-stamps nothing (window still open) — guest
+        # still gets exactly one message.
+        send_weekly_digest(db_session)
+        second = len([m for m in smtp_sink.sent if m["To"] == "guest@example.com"])
+        assert first == 1
+        assert second == first
+
+    def test_guest_digest_uses_site_language(self, db_session, smtp_sink, monkeypatch):
+        monkeypatch.setenv("SITE_LANGUAGE", "en")
+        _make_post(db_session, "In window", "in-window")
+        _newsletter_subscriber(db_session, "guest@example.com", confirmed=True, digest_weekly=True)
+
+        send_weekly_digest(db_session)
+        msg = next(m for m in smtp_sink.sent if m["To"] == "guest@example.com")
+        assert msg["Subject"].startswith("Weekly digest")
+        # English guest footer reads as plain cancellation, not "preferences".
+        body = _plain_text(msg)
+        assert "Unsubscribe from this newsletter" in body
+        assert "preferences" not in body.lower()
+
+    def test_per_post_and_pending_guests_not_digested(self, db_session, smtp_sink):
+        _make_post(db_session, "In window", "in-window")
+        _newsletter_subscriber(db_session, "weekly@example.com", confirmed=True, digest_weekly=True)
+        _newsletter_subscriber(db_session, "perpost@example.com", confirmed=True, digest_weekly=False)
+        _newsletter_subscriber(db_session, "pending@example.com", confirmed=False, digest_weekly=True)
+
+        send_weekly_digest(db_session)
+        assert any(m["To"] == "weekly@example.com" for m in smtp_sink.sent)
+        assert not any(m["To"] == "perpost@example.com" for m in smtp_sink.sent)
+        assert not any(m["To"] == "pending@example.com" for m in smtp_sink.sent)
+
+
 class TestBuilder:
     def _msg(self, **kw) -> EmailMessage:
         now = datetime(2026, 8, 28, 12, 0, 0)
