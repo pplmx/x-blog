@@ -9,6 +9,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- **Site-language guest & recovery emails (DEC-342)**: the reader-side emails
+  were localized per reader (DEC-338/DEC-340), but the sender-side ones were
+  still hardcoded Chinese — the guest reply email (a visitor with no account
+  got 有人回复了你的评论) and the password reset email (a bilingual subject with
+  a fully Chinese body, and a hardcoded "X-Blog" instead of the site's name).
+  Both now render in the site's configured language (`SITE_LANGUAGE`, default
+  zh preserves the existing copy) and the reset email uses the configured
+  `SITE_TITLE` — an English-configured site now sends English, correctly-named
+  guest and recovery emails everywhere.
 - **Reader-language reply/thread/mention copy (DEC-340)**: the reader-locale
   story (DEC-338) covered only new-post notifications — an English reader got
   an English "New post" email while the reply / followed-thread / @-mention
