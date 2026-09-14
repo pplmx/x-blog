@@ -80,7 +80,9 @@ test.describe("Guest newsletter (DEC-351)", () => {
 		await expect(form.locator("#newsletter-email")).toHaveValue("", { timeout: 10000 });
 		const [confirmMail] = messagesFromSink(address);
 		expect(confirmMail).toBeDefined();
-		const confirmToken = /newsletter\/confirm\?token=([A-Za-z0-9_-]+)/.exec(confirmMail?.text ?? "");
+		const confirmToken = /newsletter\/confirm\?token=([A-Za-z0-9_-]+)/.exec(
+			confirmMail?.text ?? "",
+		);
 		expect(confirmToken).not.toBeNull();
 
 		// Clicking the confirmation link activates the address (UI journey).
@@ -104,9 +106,7 @@ test.describe("Guest newsletter (DEC-351)", () => {
 		expect(newsletters[0].text).toContain(`/posts/newsletter-e2e-${uid}`);
 
 		// Unsubscribing via the emailed link flips consent off idempotently.
-		const unsubToken = /newsletter\/unsubscribe\?token=([A-Za-z0-9_-]+)/.exec(
-			newsletters[0].text,
-		);
+		const unsubToken = /newsletter\/unsubscribe\?token=([A-Za-z0-9_-]+)/.exec(newsletters[0].text);
 		expect(unsubToken).not.toBeNull();
 		await page.goto(`/newsletter/unsubscribe?token=${String(unsubToken?.[1] ?? "")}`);
 		await expect(page.locator("body")).toContainText("已取消订阅", { timeout: 10000 });

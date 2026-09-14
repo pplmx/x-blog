@@ -9,13 +9,23 @@
  * Success state is deliberately generic ("check your inbox") so subscribing
  * someone else's address is never distinguishable from subscribing your own.
  */
-import { ref } from "vue";
+import { ref, watch } from "vue";
 
 const { t } = useLang();
 const email = ref("");
 const state = ref<"idle" | "submitting" | "done" | "error">("idle");
 const submitting = ref(false);
 let submitSeq = 0;
+
+// A terminal state (done/error) belongs to the address that produced it; the
+// moment the user edits the field that state is stale. Reset so a corrected
+// address doesn't sit under a leftover "check your inbox" / failure message.
+// An empty new value is the programmatic post-success clear, not a user edit —
+// keep the success message; only a newly typed address resets the state.
+watch(email, (value) => {
+	if (!value) return;
+	if (state.value === "done" || state.value === "error") state.value = "idle";
+});
 
 async function submit() {
 	const value = email.value.trim();

@@ -77,6 +77,20 @@ describe("NewsletterSubscribe", () => {
 		);
 	});
 
+	it("clears a stale done/error state when the address is re-edited", async () => {
+		subscribeNewsletter.mockRejectedValue(new Error("boom"));
+		const wrapper = await mountForm("retry@example.com");
+
+		await wrapper.find("form").trigger("submit");
+		await flushPromises();
+		expect(wrapper.text()).toContain("components.newsletter.error");
+
+		// Editing the field resets the terminal state so the corrected address
+		// isn't shown under the old failure message.
+		await wrapper.find("#newsletter-email").setValue("retry2@example.com");
+		expect(wrapper.text()).not.toContain("components.newsletter.error");
+	});
+
 	it("prevents a second submit while a submit is in flight", async () => {
 		let resolveFn: ((v: unknown) => void) | undefined;
 		subscribeNewsletter.mockImplementation(() => new Promise((resolve) => (resolveFn = resolve)));
