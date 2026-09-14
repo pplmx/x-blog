@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 339,
+  "round": 340,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-14T19:36:11+00:00",
+  "updated_at": "2026-09-14T21:00:34+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -24810,7 +24810,7 @@
       "version": 1,
       "created_at": "2026-09-14T18:11:09+00:00",
       "updated_at": "2026-09-14T18:11:09+00:00",
-      "touched_round": 339,
+      "touched_round": 340,
       "title": "close round 339: guest email newsletter delivered (DEC-351/TASK-401 by CHG-560; resolves ISS-507) — VERIFY green: backend 1539 (cov 93.81%, ruff clean, pyright 0, dev PG 1549 incl. email/scheduled suites, migration round-trips SQLite + dev PG), frontend 2076 (122->125 files), typecheck exit 0, biome clean, rumdl clean; e2e authored for CI (env-limited sandbox)",
       "rationale": "Feature round 339 completes DEC-351: anonymous 'email me new posts' on-ramp via footer form + double opt-in confirm + per-subscriber unsubscribe + new-post fan-out at all dispatch sites. Resolves ISS-507. Next round candidates re-evaluated under the value gate.",
       "alternatives_rejected": "(none this round — single focused slice)"
@@ -24826,6 +24826,64 @@
       "title": "newsletter token: keep permanent (no rotation) — matches DEC-332 guest-reply precedent",
       "rationale": "Round-339 backend review (python-reviewer) rated 'token never rotated across subscribe->unsubscribe->resubscribe' LOW-to-MEDIUM and explicitly called it a trade-off worth a conscious revisit, not a bug. Chosen posture: the row + token stay on unsubscribe so a stale emailed link keeps working and confirm/unsubscribe stay idempotent (second click = 200), exactly like Comment.reply_notify_token (DEC-332). Rotation would invalidate previously-emailed links (worse UX); the residual risk (a leaked token can later re-confirm/re-unsubscribe) is bounded because tokens are 32-byte url-safe secrets never returned by any read surface.",
       "alternatives_rejected": "Rotate on each subscribe (breaks idempotency + stale links); rotate on unsubscribe (breaks idempotent second-click 200); rotate on confirmed-resubscribe (an already confirmed address has nothing new to confirm)"
+    },
+    "ISS-508": {
+      "id": "ISS-508",
+      "type": "issue",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-14T20:21:34+00:00",
+      "updated_at": "2026-09-14T20:21:34+00:00",
+      "touched_round": 340,
+      "severity": "medium",
+      "title": "Admin has no operator surface for the newsletter: an admin cannot see who is subscribed, how many are confirmed vs pending, or remove an address (a newsletter with no management cannot serve an unsubscribed-away / dead-mailbox / wrongly-subscribed address)"
+    },
+    "TASK-402": {
+      "id": "TASK-402",
+      "type": "task",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-14T20:21:35+00:00",
+      "updated_at": "2026-09-14T21:00:02+00:00",
+      "touched_round": 340,
+      "category": "core-feature",
+      "severity": 3,
+      "effort": "medium",
+      "title": "Admin newsletter subscriber management: admin-only subscribers list (status filter + case-insensitive email search + pagination) plus row removal, backed by new admin API + admin page + zh/en i18n + tests"
+    },
+    "CHG-561": {
+      "id": "CHG-561",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-14T21:00:01+00:00",
+      "updated_at": "2026-09-14T21:00:01+00:00",
+      "touched_round": 340,
+      "commit": "31b7138d",
+      "title": "feat(admin): newsletter subscriber management — admin list (status filter, literal email search, pagination) + row removal; resolves ISS-508 (DEC-354/TASK-402)"
+    },
+    "EV-247": {
+      "id": "EV-247",
+      "type": "evidence",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-14T21:00:02+00:00",
+      "updated_at": "2026-09-14T21:00:02+00:00",
+      "touched_round": 340,
+      "source": "pytest: 1547 passed cov 93.85% (ruff clean, pyright 0; dev PG newsletter+admin 18 passed), frontend 2087, typecheck exit 0, biome 429 files clean, page coverage 89.47%/84.21%",
+      "confidence": 1.0
+    },
+    "DEC-354": {
+      "id": "DEC-354",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-14T21:00:34+00:00",
+      "updated_at": "2026-09-14T21:00:34+00:00",
+      "touched_round": 340,
+      "title": "close round 340: admin newsletter subscriber management delivered (TASK-402 by CHG-561, resolves ISS-508; supersedes DEC-352) — VERIFY green: backend 1547 (cov 93.85%, ruff clean, pyright 0, dev PG newsletter+admin 18 passed), frontend 2087, typecheck exit 0, biome 429 files clean, page coverage 89.47%/84.21%, e2e admin journey authored",
+      "rationale": "Feature round 340 completes the DEC-351 newsletter story with its operator surface: an admin can now see every subscriber (email, confirmed/pending chip, date), filter by status, search by email literally (LIKE wildcards escaped), paginate deterministically, and remove an address row+token. Net-additive vertical slice (new admin API + page + i18n + tests + e2e) reusing DEC-189 reactive-path, admin auth (get_current_admin 401/403), rate-limit tiers, and no-oracle stance (admin delete drops the token so a later posted token is 404). Both reviews' findings folded in before merge: python-reviewer MEDIUMs (wildcard escape, (created_at,id) tiebreaker, authz/pagination/validation/wildcard test gaps) + LOWs (pagination typing, refresh-before-send); frontend review H1 (common.action.prev/next were missing -> raw-key pagination text) + M1-M4 (aria-pressed/aria-busy/role=status, coverage 70.42->89.47%) + L1-L3 (onUnmounted debounce clear, 404-as-already-gone refetch, Ref|number page param) all fixed with tests.",
+      "alternatives_rejected": "Rejected: (1) a CSV/export of subscribers — patch-level nicety, no user-visible problem yet; (2) bulk multi-row subscriber delete — destructive without a concrete dead-mailbox use case at this scale; (3) adding advisory unsubscribe links in the admin list — the public unsubscribe already exists per-subscriber, no duplicate surface needed; (4) letting editors modify subscriber state (mark pending/confirmed) — operator-only, no demonstrated need."
     }
   },
   "edges": [
@@ -37216,6 +37274,30 @@
       "to": "TASK-401",
       "type": "governs",
       "created_at": "2026-09-14T19:36:11+00:00"
+    },
+    {
+      "from": "TASK-402",
+      "to": "ISS-508",
+      "type": "addresses",
+      "created_at": "2026-09-14T20:21:35+00:00"
+    },
+    {
+      "from": "CHG-561",
+      "to": "TASK-402",
+      "type": "implements",
+      "created_at": "2026-09-14T21:00:01+00:00"
+    },
+    {
+      "from": "CHG-561",
+      "to": "ISS-508",
+      "type": "resolves",
+      "created_at": "2026-09-14T21:00:01+00:00"
+    },
+    {
+      "from": "DEC-354",
+      "to": "DEC-352",
+      "type": "supersedes",
+      "created_at": "2026-09-14T21:00:34+00:00"
     }
   ]
 }
