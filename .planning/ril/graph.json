@@ -2,7 +2,7 @@
   "ril_version": 1,
   "round": 332,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-14T08:58:46+00:00",
+  "updated_at": "2026-09-14T09:36:00+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -24222,10 +24222,10 @@
     "TASK-395": {
       "id": "TASK-395",
       "type": "task",
-      "status": "active",
-      "version": 1,
+      "status": "resolved",
+      "version": 2,
       "created_at": "2026-09-14T08:58:46+00:00",
-      "updated_at": "2026-09-14T08:58:46+00:00",
+      "updated_at": "2026-09-14T09:36:00+00:00",
       "touched_round": 332,
       "category": "core-feature",
       "severity": 0.5,
@@ -24234,6 +24234,54 @@
       "tracked_title": "Locale-aware notification copy (inbox titles + emails + digest)",
       "title": "Reader-language notification copy (DEC-338)",
       "description": "Reader notification copy is hardcoded Chinese regardless of UI language. Add a nullable `locale` column on reader_accounts (DEC-009, values en/zh, default NULL => zh fallback preserving current behavior); PUT /api/reader/me/locale to set it (Literal['en','zh'], 422 otherwise, auth-scoped); make crud.record_new_post_notifications pick (title, body) per target reader's locale (zh keeps 系列更新/新文章发布/《{t}》, en gets 'Series update'/'New post'/plain title) — the same tuple becomes the email Subject/body via EmailItem; localize app/digest.build_digest_message per recipient locale (en/zh greeting/subject/body). Frontend: LanguageSwitcher persists the selected language to the account when signed in (fire-and-forget PUT). Contract tests in backend tests/test_reader_locale.py (auth/422/set-get, default zh, en inbox + email + series kind, switching locale affects subsequent fan-outs only) + frontend switcher test. VERIFY: backend suite + PG, frontend tests/typecheck/biome, migration round-trips."
+    },
+    "CHG-536": {
+      "id": "CHG-536",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-14T09:35:14+00:00",
+      "updated_at": "2026-09-14T09:35:14+00:00",
+      "touched_round": 332,
+      "commit": "391a647",
+      "title": "test(notif): reader-language notification copy contract tests (DEC-338/TASK-395)",
+      "description": "9 backend contract tests (locale endpoint auth/422/set-read-back, default zh, en inbox+email+series kind, switch affects only subsequent fan-outs, digest per-locale) + 2 frontend LanguageSwitcher tests (guest never syncs, signed-in syncs once)."
+    },
+    "CHG-537": {
+      "id": "CHG-537",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-14T09:35:15+00:00",
+      "updated_at": "2026-09-14T09:35:15+00:00",
+      "touched_round": 332,
+      "commit": "2804beb",
+      "title": "feat(notif): reader-language notification copy (DEC-338/TASK-395)",
+      "description": "nullable locale on reader_accounts (DEC-009) + PUT /me/locale; notification_copy picks (title,body) per target locale in record_new_post_notifications (inbox + email via EmailItem); build_digest_message/send_weekly_digest localize per recipient; LanguageSwitcher persists locale when signed in."
+    },
+    "CHG-538": {
+      "id": "CHG-538",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-14T09:35:15+00:00",
+      "updated_at": "2026-09-14T09:35:15+00:00",
+      "touched_round": 332,
+      "commit": "34395f2",
+      "title": "docs(notif): record reader-language notification copy (DEC-338) in CHANGELOG + README",
+      "description": "en/zh CHANGELOG + README bullets for the reader-locale notification copy."
+    },
+    "DEC-339": {
+      "id": "DEC-339",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-14T09:36:00+00:00",
+      "updated_at": "2026-09-14T09:36:00+00:00",
+      "touched_round": 332,
+      "title": "close round 332: reader-language notification copy (DEC-338 delivered)",
+      "rationale": "Round 332 delivery: reader-language notification copy (DEC-338/TASK-395 by CHG-536/537/538). Notification copy was hardcoded Chinese for every reader -- durable inbox titles (系列更新/新文章发布/《…》), per-event email Subject+body, and the weekly digest were all zh regardless of the reader's UI language or site_language (the site ships en + zh). Additive nullable locale column on reader_accounts (DEC-009, NULL => zh site default so existing readers are unaffected); PUT /api/reader/me/locale (en/zh, 422 otherwise, auth-scoped); crud.notification_copy selects (title, body) per target reader's locale in record_new_post_notifications, feeding both the durable inbox row and the email channel (EmailItem title/body); build_digest_message + send_weekly_digest localize the weekly digest per recipient; LanguageSwitcher persists the selected locale when signed in (fire-and-forget). VERIFY green: backend 1504 (cov 93.87%, ruff/pyright clean), migration round-trips on SQLite + dev PostgreSQL 10.112.9.49:13310, locale/digest/emailer suites pass on the PG dialect (serial; digest xdist on one PG server contends on the server-global advisory lock — a pre-existing single-process-job property, DEC-201), frontend typecheck exit 0, biome clean, vitest 2058. Feature mode continues; next round re-sources from the fresh surface.",
+      "alternatives_rejected": "Localizing the guest reply email / password reset (sender-side templates by site_language) was deliberately left out of this round: those target a guest with no stored locale, and the primary reader-facing seam (inbox + email + digest for readers) is the higher-impact half; they can be a later half-round if the operator wants them. Accept-Language-driven server locale was rejected (the fan-out runs at dispatch time, not request time, so there is no live Accept-Language to read). An admin UI to change the reader's locale from their profile was rejected as scope creep — the language switcher is the natural, already-existing place the reader expresses this."
     }
   },
   "edges": [
@@ -36342,6 +36390,30 @@
       "to": "TASK-395",
       "type": "governs",
       "created_at": "2026-09-14T08:58:46+00:00"
+    },
+    {
+      "from": "CHG-536",
+      "to": "TASK-395",
+      "type": "implements",
+      "created_at": "2026-09-14T09:36:00+00:00"
+    },
+    {
+      "from": "CHG-537",
+      "to": "TASK-395",
+      "type": "implements",
+      "created_at": "2026-09-14T09:36:00+00:00"
+    },
+    {
+      "from": "CHG-538",
+      "to": "TASK-395",
+      "type": "implements",
+      "created_at": "2026-09-14T09:36:00+00:00"
+    },
+    {
+      "from": "DEC-339",
+      "to": "DEC-338",
+      "type": "supersedes",
+      "created_at": "2026-09-14T09:36:00+00:00"
     }
   ]
 }
