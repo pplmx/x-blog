@@ -2,7 +2,7 @@
   "ril_version": 1,
   "round": 331,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-14T06:09:18+00:00",
+  "updated_at": "2026-09-14T08:18:47+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -24116,7 +24116,7 @@
       "version": 1,
       "created_at": "2026-09-14T05:58:41+00:00",
       "updated_at": "2026-09-14T05:58:41+00:00",
-      "touched_round": 330,
+      "touched_round": 331,
       "title": "close round 330: complete reader data export (DEC-334 delivered)",
       "rationale": "Round 330 delivery: complete reader data export (DEC-334/TASK-393 by CHG-529/530/531). GET /api/reader/me/export (DEC-126/TASK-175) shipped only account/bookmarks/comments/history; the bundle now adds follows (categories/tags/series with notify flags), notification_prefs (null when defaults), durable inbox rows, and push-subscription device summaries (endpoint + created_at only, never the cryptographic keys) — covering every reader-owned dataset. Cross-reader + draft-leakage invariants unchanged. VERIFY green: backend 1486 (cov 93.81%, ruff/pyright clean), export suites pass on both SQLite and dev PostgreSQL 10.112.9.49:13310. Feature mode continues; next round re-sources from the fresh surface.",
       "alternatives_rejected": "Sweep #3 (home staleness) rejected under verification — Nuxt has no keep-alive, index.vue re-mounts on SPA navigation, so follows/recommendations refetch on every visit; the staleness claim only holds with page caching this app does not use. Sweep #1 (guest reply-email) already delivered round 329."
@@ -24130,6 +24130,34 @@
       "updated_at": "2026-09-14T06:09:18+00:00",
       "touched_round": 331,
       "commit": "23a94d6"
+    },
+    "DEC-336": {
+      "id": "DEC-336",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-14T08:05:04+00:00",
+      "updated_at": "2026-09-14T08:05:04+00:00",
+      "touched_round": 331,
+      "title": "feature selection round 331: scheduled posts must notify followers at publish-time cross",
+      "rationale": "Round 331 sourcing (fresh sweep, verified against live code): a post saved as published-but-future-publish_at becomes publicly visible when its clock crosses publish_at, yet no follower ever receives a push, durable inbox row, or email for it. create_post fans out only `if is_publicly_visible(db_post)` at WRITE time (crud.py:326-329) — a future publish_at means is_publicly_visible is False at that instant, so the branch is skipped; update_post's fan-out is gated on `not was_visible and is_publicly_visible(db_post)` (crud.py:379-381), and once publish_at has passed the post is already visible (was_visible=True), so editing it later never fires either. There is no in-process scheduler (webpush.py DEC-076 'no background scheduler today'; the only cron surface is the weekly digest, digest_cli.py). record_new_post_notifications (crud.py:3497+) is a reusable, batched, best-effort fan-out that excludes deactivated readers and per-kind opt-outs; dispatch_new_post mirrors the same targeting for push+email. Real user-perceivable gap (a scheduled post is a first-class editorial-calendar affordance, DEC-162; announcing its arrival is the whole point of publishing/labeling it published). One-sentence acceptance: when a scheduled post crosses its publish_at and becomes publicly visible, every follower of its series/category/tags receives exactly one new-post notification (durable inbox + push + email where opted in) — never zero, never duplicated, guaranteed exactly-once by a durable notify stamp on the post row. Net-additive backend-only slice: additive `new_post_notified_at` timestamp column on posts (DEC-009), a helper that fires the fan-out iff the post is now visible and unstamped, wired into the read paths that surface a scheduled post after its crossing (the ≤5-min cache staleness of a scheduled post appearing in lists/detail is a documented safety net, cache.py:37-40, and the stamp is cleared atomically by the fan-out).",
+      "alternatives_rejected": "Sweep #2 resume-reading pixel-vs-proportion offset (real but frontend-only medium-confidence; the same-device path is fine, so the user impact is confined to cross-device/resize restores — deferred). Sweep #3 hardcoded-Chinese notification emails for English-UI readers (real product-polish seam but full-stack with a per-reader locale column; it reads as zh-primary blog polish rather than a hard correctness bug — deferred). Sweep rejected the previous rounds' items per the value gate."
+    },
+    "TASK-394": {
+      "id": "TASK-394",
+      "type": "task",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-14T08:18:34+00:00",
+      "updated_at": "2026-09-14T08:18:34+00:00",
+      "touched_round": 331,
+      "category": "core-feature",
+      "severity": 0.6,
+      "confidence": 1.0,
+      "effort": 3.0,
+      "tracked_title": "Scheduled posts notify followers at publish-time crossing",
+      "title": "Scheduled post publish-time fan-out (DEC-336)",
+      "description": "Posts saved as published-but-future publish_at (DEC-162 editorial calendar) become publicly visible when the clock crosses publish_at, yet no follower receives a push/inbox/email for them. create_post fans out only if is_publicly_visible at WRITE time (future publish_at => False, branch skipped); update_post is gated on not was_visible AND is_publicly_visible (once crossed, was_visible=True so editing never fires). DEC-076: no in-process scheduler. Plan: additive new_post_notified_at (naive UTC, nullable) on posts (DEC-009); stamp at create/update when visibly-published at write time; maybe_notify_due_scheduled_posts(db) fired from read paths (get_posts, get_post/get_post_by_slug) finds now-visible-but-unstamped posts and calls record_new_post_notifications + dispatch_new_post once (atomic stamp => exactly-once). Contract tests: scheduled post crossing fires exactly one notification per follower; no duplicate on second read; not-yet-crossed fires none; draft/private never. Runs on SQLite + dev PG."
     }
   },
   "edges": [
@@ -36190,6 +36218,18 @@
       "to": "TASK-392",
       "type": "implements",
       "created_at": "2026-09-14T06:09:18+00:00"
+    },
+    {
+      "from": "DEC-336",
+      "to": "DEC-335",
+      "type": "supersedes",
+      "created_at": "2026-09-14T08:18:47+00:00"
+    },
+    {
+      "from": "DEC-336",
+      "to": "TASK-394",
+      "type": "governs",
+      "created_at": "2026-09-14T08:18:47+00:00"
     }
   ]
 }
