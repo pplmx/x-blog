@@ -41,6 +41,9 @@ class ReaderPublicProfile(BaseModel):
 
     id: int
     display_name: str | None = None
+    # Reader-written "about me" (round 352) — plain text, it is their own
+    # public self-description by definition, so it is intentionally public.
+    bio: str | None = None
     # Profile picture (DEC-299/TASK-378) — a public image URL, never PII.
     avatar_url: str | None = None
     created_at: datetime | None = None

@@ -8,7 +8,7 @@ from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from jwt import InvalidTokenError
 from pydantic import BaseModel
-from sqlalchemy import Boolean, DateTime, Integer, String
+from sqlalchemy import Boolean, DateTime, Integer, String, Text
 from sqlalchemy.orm import Mapped, Session, mapped_column
 
 from app.config import is_development
@@ -126,6 +126,11 @@ class ReaderAccount(Base):
     email: Mapped[str] = mapped_column(String(254), unique=True, nullable=False, index=True)
     password: Mapped[str] = mapped_column(String(200), nullable=False)
     display_name: Mapped[str | None] = mapped_column(String(50))
+    # Short self-written "about me" (round 352): a one-paragraph bio the
+    # reader writes on /account and is shown on their public profile page —
+    # completes the identity surface (name + avatar + bio) next to the streak
+    # and approved comments. NULL = no bio; plain text, never markup.
+    bio: Mapped[str | None] = mapped_column(Text, nullable=True)
     # Profile picture (DEC-299, TASK-378): a small image the reader uploads,
     # served from /static/avatars and rendered beside their identity on the
     # public profile page and comments. Nullable — an avatar is optional, and

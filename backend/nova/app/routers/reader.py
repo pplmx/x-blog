@@ -57,6 +57,9 @@ class ReaderProfile(BaseModel):
     id: int
     email: str
     display_name: str | None = None
+    # Short "about me" (round 352): reader-written plain text shown on their
+    # public profile page; None until they write one.
+    bio: str | None = None
     avatar_url: str | None = None
     created_at: datetime | None = None
 
@@ -581,6 +584,9 @@ class ReaderProfileUpdate(BaseModel):
     /me/email/request + /me/email/confirm) rather than a silent reassignment."""
 
     display_name: Annotated[NonNulStr | None, Field(default=None, min_length=1, max_length=50)] = None
+    # Plain-text "about me" (round 352); None = no update, explicit null =
+    # clear. Bounded so one request cannot bloat the account row unbounded.
+    bio: Annotated[NonNulStr | None, Field(default=None, max_length=500)] = None
 
     @field_validator("display_name", mode="before")
     @classmethod
@@ -589,6 +595,14 @@ class ReaderProfileUpdate(BaseModel):
         # display_name that renders as a blank author name (ISS-456). None (no
         # update) passes through untouched — only non-None strings are stripped.
         return schemas._strip_blank(value) if isinstance(value, str) else value
+
+    @field_validator("bio", mode="before")
+    @classmethod
+    def strip_bio(cls, value: object) -> object:
+        # A whitespace-only bio is an empty bio: fold it to None (which under
+        # exclude_unset still counts as an explicit clear on save).
+        stripped = schemas._strip_blank(value) if isinstance(value, str) else value
+        return stripped or None
 
 
 class ReaderPasswordChange(BaseModel):
@@ -686,10 +700,14 @@ def update_my_profile(
     current_reader: auth.ReaderAccount = Depends(auth.get_current_reader),
     db: Session = Depends(get_db),
 ):
-    """Update the reader's own profile (display_name). Email changes are their
-    own verified flow (/me/email/request + /me/email/confirm, DEC-357)."""
+    """Update the reader's own profile (display_name, bio). Email changes are
+    their own verified flow (/me/email/request + /me/email/confirm, DEC-357)."""
     if payload.display_name is not None:
         current_reader.display_name = payload.display_name
+    # Bio is the one field that can be cleared (None), so it follows the
+    # exclude_unset contract: only an explicitly-present key is applied.
+    if "bio" in payload.model_dump(exclude_unset=True):
+        current_reader.bio = payload.bio
     db.commit()
     db.refresh(current_reader)
     return current_reader
