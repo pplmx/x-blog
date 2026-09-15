@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 349,
+  "round": 350,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-15T08:40:15+00:00",
+  "updated_at": "2026-09-15T09:47:04+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -25557,6 +25557,97 @@
       "title": "close round 348: sitemap covers pages + author archives delivered (TASK-410 by CHG-583+CHG-584+CHG-585; supersedes DEC-369) - VERIFY green: backend 1605 (cov 93.88%, ruff clean), frontend 2146 (biome 454 files clean), e2e pages+sitemap journey green",
       "rationale": "Round 348 closes the sitemap gap that opened as the site grew: /pages/{slug} (round 347) and the pen-named /authors/{id} archives + /authors index (rounds 343/346) were real, indexable pages but the cached /sitemap.xml only listed posts/series/categories/tags - a freshly published privacy policy or writer archive was reachable-by-link yet invisible to crawlers. get_sitemap now emits every published page (lastmod from updated_at; drafts stay out) and the /authors index + one entry per pen-named writer (lastmod = latest published-post update; username-only admins stay out - no-oracle preserved), and a new clear_feeds_cache() is wired into every page create/update/delete so a publish reaches the sitemap on the next render instead of after a TTL expiry (post writes still bust feeds via clear_posts_list_cache; counter bumps still keep feeds warm). 3 backend tests cover inclusion/exclusion, the cache-bust on create+publish+delete through the cached endpoint, and a no-pen-name/no-username-leak gate; the e2e pages journey now asserts /sitemap.xml through the Nuxt origin proxy includes the freshly published page. No open follow-ups in the graph.",
       "alternatives_rejected": "Rejected: (1) sitemap-index splitting into sub-sitemaps - overkill at this scale, the paged sitemap already pages all posts; (2) adding author lastmod from created_at - a pen-named writer with no published posts falls back to utc_now_naive() so their archive still carries a deterministic date; (3) pagination of authors/pages sections - both are bounded lists, no paging needed"
+    },
+    "DEC-371": {
+      "id": "DEC-371",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-15T09:45:38+00:00",
+      "updated_at": "2026-09-15T09:45:38+00:00",
+      "touched_round": 349,
+      "title": "round 349 scope: admin 'duplicate post' (TASK-411) - one-click clone of a post into a fresh private draft from the posts list",
+      "rationale": "Feature-evolution continues after round 348 (sitemap). Gap analysis on the admin authoring surface: an editor running repeat-shaped content (weekly digests, release notes, episode templates) hand-copies the previous post for every sibling - the platform has rich create/edit/autosave/revisions but no way to seed a new post from an existing one. Every mature CMS has duplicate; X-Blog did not. This slice adds POST /api/admin/posts/{id}/clone (admin-auth, rate-limited): crud.clone_post copies the content-facing fields verbatim (title/content/excerpt/cover/category/tags/series membership + author attribution), derives a unique {slug}-copy[-N] slug, and clears every publication-metadata field (published False, publish_at None, pinned False, zeroed views/likes) so the copy is a private draft that can neither leak nor announce itself - no comments/notifications copied, no new-post fan-out (always a draft). Frontend: a Duplicate button in each posts-list row that clones and lands straight in the new draft editor. Acceptance (one sentence): from the admin posts list an editor can one-click clone a post into a fresh draft and land in its editor.",
+      "alternatives_rejected": "Rejected: (1) a \"copy into new\" in the editor header too - the list is where you clone, one entry point keeps the slice tight; (2) copying publish metadata - a clone that inherits published/scheduled state could leak a live duplicate or double-announce via fan-out; (3) copying comments/revisions - a fresh draft has none, revisions restart with the copy as its own initial snapshot; (4) keeping the source author on the copy - attribution is content, the editor picker can reassign in one click"
+    },
+    "TASK-411": {
+      "id": "TASK-411",
+      "type": "task",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-15T09:45:38+00:00",
+      "updated_at": "2026-09-15T09:47:04+00:00",
+      "touched_round": 349,
+      "category": "core-feature",
+      "description": "Admin duplicate post: POST /api/admin/posts/{id}/clone -> crud.clone_post (copy content/taxonomy/attribution verbatim, unique {slug}-copy[-N] slug, clear published/publish_at/pinned/views/likes, snapshot initial revision, cache-bust, no fan-out); Duplicate button on the admin posts list rows -> clone + navigateTo the new draft editor; en/zh action + failure strings; backend tests (carryover, slug increment, 404, admin gate) + posts-list unit tests + real-browser e2e"
+    },
+    "CHG-586": {
+      "id": "CHG-586",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-15T09:46:20+00:00",
+      "updated_at": "2026-09-15T09:46:20+00:00",
+      "touched_round": 349,
+      "commit": "6eed4051",
+      "summary": "feat(posts): admin duplicate post -> fresh draft clone (TASK-411)"
+    },
+    "CHG-587": {
+      "id": "CHG-587",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-15T09:46:20+00:00",
+      "updated_at": "2026-09-15T09:46:20+00:00",
+      "touched_round": 349,
+      "commit": "fd8ad82c",
+      "summary": "feat(posts): Duplicate action on the admin posts list (TASK-411)"
+    },
+    "CHG-588": {
+      "id": "CHG-588",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-15T09:46:20+00:00",
+      "updated_at": "2026-09-15T09:46:20+00:00",
+      "touched_round": 349,
+      "commit": "2d689d55",
+      "summary": "test(e2e): admin duplicate-post journey (TASK-411)"
+    },
+    "CHG-589": {
+      "id": "CHG-589",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-15T09:46:20+00:00",
+      "updated_at": "2026-09-15T09:46:20+00:00",
+      "touched_round": 349,
+      "commit": "77968b4a",
+      "summary": "docs(posts): record admin duplicate-post (TASK-411)"
+    },
+    "EV-256": {
+      "id": "EV-256",
+      "type": "evidence",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-15T09:46:21+00:00",
+      "updated_at": "2026-09-15T09:46:21+00:00",
+      "touched_round": 349,
+      "confidence": 1.0,
+      "source": "round 349 full VERIFY",
+      "summary": "Round 349 VERIFY green: backend 1609 passed (10 skipped, cov 93.81%, ruff check+format clean over 192 files), frontend 2148 passed (typecheck exit 0, full-repo biome check clean over 455 files), e2e admin duplicate-post journey green in a real browser (posts list Duplicate -> new draft editor with the same title, copy unpublished with a -copy slug via API, cleanup OK)"
+    },
+    "DEC-372": {
+      "id": "DEC-372",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-15T09:47:03+00:00",
+      "updated_at": "2026-09-15T09:47:03+00:00",
+      "touched_round": 349,
+      "title": "close round 349: admin duplicate-post delivered (TASK-411 by CHG-586..589; supersedes DEC-371) - VERIFY green: backend 1609 (cov 93.81%, ruff clean), frontend 2148 (typecheck 0, biome 455 files clean), e2e duplicate-post journey green in a real browser",
+      "rationale": "Round 349 closes the authoring gap for repeat-shaped content: the admin posts list gains a one-click Duplicate action that clones a post into a fresh private draft (POST /api/admin/posts/{id}/clone -> crud.clone_post) - content/excerpt/cover/category/tags/series membership + attribution copied verbatim, a unique {slug}-copy[-N] slug derived, and every publication-metadata field cleared (unpublished, unscheduled, unpinned, zeroed views/likes) so the copy can neither leak nor announce itself (no new-post fan-out for a draft). No comments/notifications copied; revisions restart with the copy as its own initial snapshot; the editor navigates straight into the new draft. 4 backend tests (content carryover, slug increment on repeated clones, 404, admin gate) + 2 posts-list unit tests (clone+navigate, failure without navigating) + a real-browser e2e (seed published -> list Duplicate -> editor with same title -> copy unpublished with -copy slug via API -> cleanup). No open follow-ups in the graph.",
+      "alternatives_rejected": "Rejected: (1) a second \"copy into new\" in the editor header - the list is the clone surface, one entry point keeps the slice tight; (2) copying publication metadata - a live/scheduled duplicate could leak and double-announce via fan-out; (3) duplicating revisions/comments - a fresh draft has neither"
     }
   },
   "edges": [
@@ -38259,6 +38350,42 @@
       "to": "DEC-369",
       "type": "supersedes",
       "created_at": "2026-09-15T08:40:15+00:00"
+    },
+    {
+      "from": "DEC-371",
+      "to": "TASK-411",
+      "type": "governs",
+      "created_at": "2026-09-15T09:45:38+00:00"
+    },
+    {
+      "from": "CHG-586",
+      "to": "TASK-411",
+      "type": "implements",
+      "created_at": "2026-09-15T09:46:21+00:00"
+    },
+    {
+      "from": "CHG-587",
+      "to": "TASK-411",
+      "type": "implements",
+      "created_at": "2026-09-15T09:46:21+00:00"
+    },
+    {
+      "from": "CHG-588",
+      "to": "TASK-411",
+      "type": "implements",
+      "created_at": "2026-09-15T09:46:21+00:00"
+    },
+    {
+      "from": "CHG-589",
+      "to": "TASK-411",
+      "type": "implements",
+      "created_at": "2026-09-15T09:46:21+00:00"
+    },
+    {
+      "from": "DEC-372",
+      "to": "DEC-371",
+      "type": "supersedes",
+      "created_at": "2026-09-15T09:47:03+00:00"
     }
   ]
 }
