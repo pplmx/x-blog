@@ -401,6 +401,16 @@ class AuthorBrief(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
+class AuthorIndex(BaseModel):
+    """A public writers-index row (DEC-359, round 346): pen name + how many
+    published posts they have, so the /authors page can show contributors with
+    substance (a writer with nothing live yet appears with a zero)."""
+
+    id: int
+    display_name: str
+    post_count: int = 0
+
+
 class PostList(BaseModel):
     id: int
     title: str

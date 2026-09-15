@@ -372,6 +372,41 @@ def test_author_rss_404_for_unknown_or_username_only_author(client, db_session):
     assert client.get(f"/rss/authors/{editor.id}.xml").status_code == 404
 
 
+def test_public_authors_index_lists_pennamed_with_counts(client, admin_token, admin_user, db_session):
+    # GET /api/authors (writer discovery, round 346): every pen-named admin
+    # with their published-post count; never the username; a pen-name-less
+    # admin stays off the list.
+    _set_pen_name(client, _admin_headers(admin_token), admin_user.id, "Index Writer")
+    _create_post(client, _admin_headers(admin_token))
+    _create_post(client, _admin_headers(admin_token))
+    other = auth.User(
+        username=f"wi{uuid4().hex[:6]}",
+        password=auth.get_password_hash("editorpass123"),
+        role="editor",
+        is_superuser=False,
+        display_name="Unpublished Writer",
+    )
+    plain = auth.User(
+        username=f"pwi{uuid4().hex[:6]}",
+        password=auth.get_password_hash("editorpass123"),
+        role="editor",
+        is_superuser=False,
+        display_name=None,
+    )
+    db_session.add_all([other, plain])
+    db_session.flush()
+
+    r = client.get("/api/authors")
+    assert r.status_code == 200
+    by_id = {a["id"]: a for a in r.json()}
+    assert by_id[admin_user.id]["display_name"] == "Index Writer"
+    assert by_id[admin_user.id]["post_count"] == 2
+    assert by_id[other.id]["post_count"] == 0
+    assert other.id in by_id  # pen-named: listed even with nothing published
+    assert plain.id not in by_id  # no pen name: no public presence
+    assert "username" not in json.dumps(r.json())
+
+
 def test_author_archive_envelope_identifies_author_even_when_empty(client, admin_token, admin_user):
     # The archive page must be able to title itself by pen name even before the
     # writer has published anything — the author envelope rides on the (empty)

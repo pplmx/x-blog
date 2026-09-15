@@ -9,14 +9,36 @@ neither enumerate admins nor reveal which usernames exist.
 """
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
-from app import auth, crud, schemas
+from app import auth, crud, models, schemas
 from app.conditional import conditional_json
 from app.database import get_db
 from app.schemas import IdInt, PageInt
 
 router = APIRouter(prefix="/api/authors", tags=["authors"])
+
+
+@router.get("", response_model=list[schemas.AuthorIndex])
+def list_authors(db: Session = Depends(get_db)):
+    """Every public writer (pen-named admin), with their published-post count.
+
+    Writer discovery (DEC-359, round 346): a reader who found one byline can
+    browse every contributor. Only pen names are exposed — an admin with no
+    pen name has no public presence and stays off this list (never the login
+    username, admin login is no-oracle). The count is published posts only, so
+    a writer with nothing live yet still appears with a zero.
+    """
+    writers = db.query(auth.User).filter(auth.User.display_name.isnot(None)).order_by(auth.User.display_name).all()
+    counts = dict(
+        db.query(models.Post.author_id, func.count(models.Post.id))
+        .filter(models.Post.author_id.isnot(None), models.Post.published.is_(True))
+        .group_by(models.Post.author_id)
+        .all()
+    )
+    items = [{"id": u.id, "display_name": u.display_name, "post_count": counts.get(u.id, 0)} for u in writers]
+    return items
 
 
 @router.get("/{author_id}/posts", response_model=schemas.PostListResponse)
