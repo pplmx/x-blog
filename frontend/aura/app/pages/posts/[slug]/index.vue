@@ -33,6 +33,10 @@ const {
 	refresh: refreshPost,
 } = await usePost(() => route.params.slug as string);
 
+// Slug-change redirect (round 350): a re-slugged post's old shared/indexed
+// URL must 301 to the canonical new one (emitted during SSR), not dead-end.
+useSlugRedirect(error.value);
+
 // A failed load/page-miss must not dead-end a reader arriving via a share
 // link — offer Retry and a way back home.
 function retryLoad() {

@@ -149,6 +149,30 @@ describe("API proxy", () => {
 		expect(result).toEqual({ error: "validation failed" });
 	});
 
+	it("forwards backend headers on error responses (X-Redirect-To, round 350)", async () => {
+		// A re-slugged entity 404s with its canonical target on X-Redirect-To;
+		// dropping it at the proxy edge would orphan the old URL (no 301). The
+		// error body passes through AND the header must reach the browser.
+		mockFetchRaw.mockRejectedValue({
+			response: {
+				status: 404,
+				headers: { "x-redirect-to": "/posts/canonical-post" },
+				_data: { error: { code: "NOT_FOUND" } },
+			},
+		});
+
+		const handler = loadHandler();
+		const result = await handler({});
+
+		expect(mockSetResponseStatus).toHaveBeenCalledWith({}, 404);
+		expect(mockSetResponseHeader).toHaveBeenCalledWith(
+			{},
+			"x-redirect-to",
+			"/posts/canonical-post",
+		);
+		expect(result).toEqual({ error: { code: "NOT_FOUND" } });
+	});
+
 	it("returns 502 when the backend is unreachable", async () => {
 		mockFetchRaw.mockRejectedValue(new Error("ECONNREFUSED"));
 

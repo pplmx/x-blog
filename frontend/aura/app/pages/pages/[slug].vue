@@ -22,6 +22,8 @@ const {
 	refresh: refreshPage,
 } = await usePage(() => (slug.value ? slug.value : null));
 
+useSlugRedirect(error.value);
+
 function retry() {
 	void refreshPage();
 }

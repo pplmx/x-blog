@@ -83,6 +83,37 @@ export default defineEventHandler(async (event) => {
 		body = await readRawBody(event, false);
 	}
 
+	/** Framing headers h3/nitro owns; anything else must reach the browser. */
+	const HOP_BY_HOP_HEADERS = [
+		"content-encoding",
+		"transfer-encoding",
+		"connection",
+		"content-length",
+	];
+
+	/**
+	 * Copy a backend response's headers onto the origin response. ofetch exposes
+	 * Headers-like (iterable) headers; iterate entries rather than Object.entries
+	 * (which sees nothing) so backend headers — conditional ETag/Cache-Control
+	 * (TASK-128), rate-limit, and error-path headers like X-Redirect-To (round
+	 * 350) — actually reach the browser.
+	 */
+	function forwardHeaders(event: H3Event, responseHeaders: Headers | Record<string, string>): void {
+		if (!responseHeaders) return;
+		const entries =
+			typeof responseHeaders.entries === "function"
+				? [...responseHeaders.entries()]
+				: Object.entries(responseHeaders);
+		for (const [key, value] of entries) {
+			// Let h3/nitro own framing: content-length must not be forwarded
+			// (re-encoded bodies and bodyless 304s would conflict with it).
+			if (HOP_BY_HOP_HEADERS.includes(key.toLowerCase())) {
+				continue;
+			}
+			setResponseHeader(event, key, String(value));
+		}
+	}
+
 	try {
 		const response = await $fetch.raw(url, {
 			method: method as any,
@@ -91,27 +122,7 @@ export default defineEventHandler(async (event) => {
 		});
 
 		setResponseStatus(event, response.status);
-		// ofetch exposes Headers-like (iterable) headers; iterate entries rather
-		// than Object.entries (which sees nothing) so backend headers — the
-		// conditional ETag/Cache-Control (TASK-128) and rate-limit headers —
-		// actually reach the browser.
-		const responseHeaders = response.headers;
-		const entries =
-			typeof responseHeaders.entries === "function"
-				? [...responseHeaders.entries()]
-				: Object.entries(responseHeaders);
-		for (const [key, value] of entries) {
-			// Let h3/nitro own framing: content-length must not be forwarded
-			// (re-encoded bodies and bodyless 304s would conflict with it).
-			if (
-				["content-encoding", "transfer-encoding", "connection", "content-length"].includes(
-					key.toLowerCase(),
-				)
-			) {
-				continue;
-			}
-			setResponseHeader(event, key, String(value));
-		}
+		forwardHeaders(event, response.headers);
 
 		// Bodyless 304: forward the cache headers above, return no body.
 		if (response.status === 304) return;
@@ -119,6 +130,7 @@ export default defineEventHandler(async (event) => {
 	} catch (err: any) {
 		if (err.response) {
 			setResponseStatus(event, err.response.status);
+			forwardHeaders(event, err.response.headers);
 			return err.response._data;
 		}
 		console.error(

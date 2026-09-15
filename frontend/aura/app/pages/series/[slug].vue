@@ -24,6 +24,8 @@ const {
 	error,
 	refresh: refreshSeries,
 } = await useSeriesBySlug(() => route.params.slug as string);
+// Slug-change redirect (round 350): a re-slugged series' old URL must 301.
+useSlugRedirect(error.value);
 function retryLoad() {
 	void refreshSeries();
 }
