@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 347,
+  "round": 348,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-15T06:57:46+00:00",
+  "updated_at": "2026-09-15T08:10:29+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -25397,6 +25397,86 @@
       "title": "close round 346: public writers index delivered (TASK-408 by CHG-577..579, follows rounds 343/344/345 author attribution; supersedes DEC-365) - VERIFY green: backend 1589 (cov 93.78%, ruff clean), frontend 2131 (typecheck 0, biome clean), e2e author-byline journey incl. /authors index step green in a real browser",
       "rationale": "Round 346 closes the writer-discovery gap opened by rounds 343-345: /authors now lists every pen-named writer with their published-post count, each card linking to that writer archive - the top-level Authors nav finally has a destination, and a reader who found one byline can browse every contributor. The anonymous GET /api/authors only ever exposes pen names (username-only admins stay invisible; no-oracle preserved) with a single grouped published-count query, and the e2e journey asserts the index card renders the count and never leaks a login username. Also hardens the author-assign e2e with generous admin-login timeouts. Frontend index page covers loading/error/empty states and the archive page gains a \"All writers\" back link. Feature rounds 343-346 (author attribution -> assignment -> RSS -> index) form one coherent authorship vertical with no open follow-ups in the graph.",
       "alternatives_rejected": "Rejected: (1) pushing a search author-facet now - /authors already provides the writer list a facet would need, and search filtering is a distinct surface better scoped later; (2) adding author bios/avatars to the index - a bigger identity model not needed for discovery"
+    },
+    "DEC-367": {
+      "id": "DEC-367",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-15T08:07:48+00:00",
+      "updated_at": "2026-09-15T08:07:48+00:00",
+      "touched_round": 347,
+      "title": "round 347 scope: static pages CMS (TASK-409) - admin-managed markdown pages served publicly at /pages/{slug}, published-only no-oracle, footer discovery",
+      "rationale": "Feature-evolution continues after round 346 (public writers index). Gap analysis on the content-management surface: a self-hosted blog is expected to answer for itself (privacy policy, terms, contact, changelog), but the platform had exactly one static page - a hardcoded /about - so a site owner needed a code change + redeploy for every such page. The taxonomy/author verticals all have admin CRUD + a public surface; a \"pages\" vertical is the coherent missing slice: a Page model (markdown content + published flag, unique lowercase-hyphen slug), a public no-oracle read surface (identity-only list for the footer + full body detail; unpublished and unknown slugs both 404 so drafts cannot be enumerated), an any-admin manager (get_current_admin, list incl. drafts with bodies, create/update/delete, publish toggle, 409 on slug collision), a /pages/{slug} public page rendering through the same markdown pipeline as posts, an /admin/pages manager wired into the sidebar, footer links for discoverability, and unit + e2e coverage of the whole journey. Acceptance (one sentence): an admin can publish a curated markdown page and it renders at /pages/{slug}, is linked from the footer, and unpublished/unknown slugs 404.",
+      "alternatives_rejected": "Rejected: (1) site-wide config-driven pages (content in SiteSetting rows) - no edit UI, markdown pipeline, or publish workflow, worse than a real model; (2) folding pages into posts with a \"is_page\" flag - pollutes the feed/archive/search/taxonomies and the posts surface is heavily specialized; (3) skipping footer links - a page feature no visitor can discover is half a feature; (4) a rich rich-text editor - the existing markdown textarea pattern (post editor) is the established editing surface, keep the slice lean"
+    },
+    "TASK-409": {
+      "id": "TASK-409",
+      "type": "task",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-15T08:08:16+00:00",
+      "updated_at": "2026-09-15T08:10:29+00:00",
+      "touched_round": 347,
+      "category": "core-feature",
+      "description": "Static pages CMS: Page model + additive migration (SQLite + PG round-trip); public GET /api/pages (identity list) + GET /api/pages/{slug} (published-only, 404 no-oracle); any-admin manager GET/POST/PATCH/DELETE /api/admin/pages (slug 409, publish toggle); /pages/{slug} public page via MarkdownContent (loading/404/error + SEO); /admin/pages manager (create/inline edit/publish toggle/delete) + sidebar nav; footer PagesFooterLinks (client-side); zh/en locales; backend + frontend tests + real-browser e2e"
+    },
+    "CHG-580": {
+      "id": "CHG-580",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-15T08:08:42+00:00",
+      "updated_at": "2026-09-15T08:08:42+00:00",
+      "touched_round": 347,
+      "commit": "83563ee8",
+      "summary": "feat(pages): admin-curated static pages served at /pages/{slug} (TASK-409)"
+    },
+    "CHG-581": {
+      "id": "CHG-581",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-15T08:08:43+00:00",
+      "updated_at": "2026-09-15T08:08:43+00:00",
+      "touched_round": 347,
+      "commit": "c51468bb",
+      "summary": "feat(pages): public /pages/{slug} + admin Pages manager + footer links (TASK-409)"
+    },
+    "CHG-582": {
+      "id": "CHG-582",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-15T08:08:43+00:00",
+      "updated_at": "2026-09-15T08:08:43+00:00",
+      "touched_round": 347,
+      "commit": "21998fe4",
+      "summary": "docs(pages): record the static pages CMS (TASK-409)"
+    },
+    "EV-254": {
+      "id": "EV-254",
+      "type": "evidence",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-15T08:09:14+00:00",
+      "updated_at": "2026-09-15T08:09:14+00:00",
+      "touched_round": 347,
+      "confidence": 1.0,
+      "source": "round 347 full VERIFY",
+      "summary": "Round 347 VERIFY green: backend 1602 passed (10 skipped, cov 93.88%, ruff check+format clean over 192 files), alembic full chain applies + my-step downgrade/upgrade round-trips on fresh SQLite AND a PostgreSQL scratch schema (pages table with correct columns), frontend 2146 passed (pnpm typecheck exit 0, full-repo biome check clean over 453 files), e2e pages journey green in a real browser (admin create+publish via UI -> /pages/{slug} renders title + markdown body -> footer link)"
+    },
+    "DEC-368": {
+      "id": "DEC-368",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-15T08:09:49+00:00",
+      "updated_at": "2026-09-15T08:09:49+00:00",
+      "touched_round": 347,
+      "title": "close round 347: static pages CMS delivered (TASK-409 by CHG-580..582; supersedes DEC-367) - VERIFY green: backend 1602 (cov 93.88%, ruff clean, alembic chain + round-trip on SQLite and PG scratch schema), frontend 2146 (typecheck 0, biome 453 files clean), e2e pages journey green in a real browser",
+      "rationale": "Round 347 closes the static-content gap: an admin can now publish curated markdown pages at /pages/{slug} from a dedicated /admin/pages manager (create with CJK-safe auto-slug + publish toggle, inline edit, publish/unpublish row toggle, delete with confirm) wired into the sidebar, and the public page renders through the same markdown pipeline as posts (heading ids, code, math, mermaid, images) with loading / no-oracle-404 / error-with-retry states and SEO. The public surface is no-oracle - GET /api/pages exposes published pages identity-only for the footer, GET /api/pages/{slug} serves the full body, and unpublished + unknown slugs both 404 so drafts cannot be enumerated. Published pages are linked from the site footer (client-side PagesFooterLinks) so they are discoverable without a code deploy. The additive Page table + migration round-trips on both SQLite and a PostgreSQL scratch schema; 13 backend tests put pages.py at 100% coverage, 15 new frontend tests (page, manager, footer links, layout) land within 2146 green, and the real-browser e2e journey (create+publish via the UI -> public render -> footer link) passes. No open follow-ups in the graph.",
+      "alternatives_rejected": "Rejected: (1) footering every published page with full content - the footer lists identity only, bodies stay on /pages/{slug}; (2) adding a rich-text editor - the markdown textarea pattern is the established editing surface and keeps the slice lean; (3) sitemap/changelog auto-linking of pages - the sitemap predates pages and will be extended in a later round rather than creeping this one"
     }
   },
   "edges": [
@@ -38039,6 +38119,36 @@
       "to": "DEC-365",
       "type": "supersedes",
       "created_at": "2026-09-15T06:57:46+00:00"
+    },
+    {
+      "from": "DEC-367",
+      "to": "TASK-409",
+      "type": "governs",
+      "created_at": "2026-09-15T08:08:16+00:00"
+    },
+    {
+      "from": "CHG-580",
+      "to": "TASK-409",
+      "type": "implements",
+      "created_at": "2026-09-15T08:09:14+00:00"
+    },
+    {
+      "from": "CHG-581",
+      "to": "TASK-409",
+      "type": "implements",
+      "created_at": "2026-09-15T08:09:14+00:00"
+    },
+    {
+      "from": "CHG-582",
+      "to": "TASK-409",
+      "type": "implements",
+      "created_at": "2026-09-15T08:09:14+00:00"
+    },
+    {
+      "from": "DEC-368",
+      "to": "DEC-367",
+      "type": "supersedes",
+      "created_at": "2026-09-15T08:10:29+00:00"
     }
   ]
 }
