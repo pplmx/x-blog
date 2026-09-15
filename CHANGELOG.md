@@ -9,6 +9,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- **Admin post-editor author assignment (DEC-359/TASK-406)**: the post editor
+  gains an author picker — any admin can attribute a post they wrote to
+  another pen-named writer (or keep the default "the writing admin"); the
+  editor pre-selects a post's stored author, and the public byline/archive
+  follow the assigned writer. A dedicated `/api/admin/authors` endpoint
+  (admin-auth, deliberately not superuser-only) exposes only pen names, so
+  editors can assign authors without ever touching the credential-adjacent
+  `/api/admin/users`.
 - **Post author attribution (DEC-359)**: a multi-editor blog displayed posts,
   categories, series, tags — but never who wrote them: a post carried no
   author identity, no byline, and there was no way to browse one writer's
