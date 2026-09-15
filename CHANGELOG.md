@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- **Per-author RSS feed (DEC-359, round 345)**: RSS consumers can now follow a
+  single writer — `/authors/{id}` emits an autodiscovery `<link>` and a visible
+  subscribe link to `/rss/authors/{id}.xml`, which serves exactly that
+  pen-named writer's published posts on the same scoped-feed contract as the
+  category/series feeds. Unknown ids and username-only admins answer the same
+  404 as the archive page, so the feed cannot enumerate admins.
 - **Admin post-editor author assignment (DEC-359/TASK-406)**: the post editor
   gains an author picker — any admin can attribute a post they wrote to
   another pen-named writer (or keep the default "the writing admin"); the
