@@ -97,9 +97,7 @@ test.describe("Per-post comment control (round 351)", () => {
 			// The admin detail still reflects the closed state on reload.
 			const detail = await request.get(`/api/admin/posts/${postId}`, { headers: adminH });
 			expect(detail.status()).toBe(200);
-			expect(((await detail.json()) as { comments_enabled: boolean }).comments_enabled).toBe(
-				false,
-			);
+			expect(((await detail.json()) as { comments_enabled: boolean }).comments_enabled).toBe(false);
 		} finally {
 			await request.delete(`/api/admin/posts/${postId}`, { headers: adminH });
 		}

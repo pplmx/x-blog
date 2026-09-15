@@ -223,3 +223,59 @@ export function unfollowReaderTag(tagId: number): Promise<null> {
 		headers: readerAuthHeaders(),
 	});
 }
+
+/** The writers the signed-in reader follows (round 353) — pen name only. */
+export interface FollowedAuthorItem {
+	author_id: number;
+	display_name: string;
+	/** Whether new-post notifications are enabled for this follow. */
+	notify: boolean;
+}
+
+export interface FollowedAuthorListResponse {
+	items: FollowedAuthorItem[];
+	total: number;
+}
+
+export interface AuthorFollowState {
+	author_id: number;
+	display_name: string;
+	following: boolean;
+	notify: boolean;
+}
+
+/** Imperative list of the reader's followed authors ($fetch seam, see getReaderSeriesFollows). */
+export function getReaderAuthorFollows(): Promise<FollowedAuthorListResponse> {
+	return command<FollowedAuthorListResponse>("/api/reader/me/author-follows", {
+		headers: readerAuthHeaders(),
+	});
+}
+
+/** Follow a writer for new-post notifications (idempotent). 404 for a
+ * username-only admin — only pen-named authors are followable (no-oracle). */
+export function followReaderAuthor(authorId: number): Promise<AuthorFollowState> {
+	return command<AuthorFollowState>(`/api/reader/me/authors/${authorId}/follow`, {
+		method: "PUT",
+		headers: readerAuthHeaders(),
+	});
+}
+
+/** Toggle new-post notifications on/off for an author the reader follows. */
+export function setAuthorFollowNotify(
+	authorId: number,
+	notify: boolean,
+): Promise<AuthorFollowState> {
+	return command<AuthorFollowState>(`/api/reader/me/authors/${authorId}/follow`, {
+		method: "PATCH",
+		headers: readerAuthHeaders(),
+		body: { notify },
+	});
+}
+
+/** Unfollow a writer (idempotent 204). */
+export function unfollowReaderAuthor(authorId: number): Promise<null> {
+	return command<null>(`/api/reader/me/authors/${authorId}/follow`, {
+		method: "DELETE",
+		headers: readerAuthHeaders(),
+	});
+}

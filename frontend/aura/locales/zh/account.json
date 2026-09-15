@@ -107,6 +107,17 @@
 			"unfollowConfirm": "确定取消关注这个分类吗？之后不再收到它的新文章提醒。",
 			"failed": "操作失败，请稍后再试"
 		},
+		"authors": {
+			"title": "关注的作者",
+			"note": "这些作者发布新文章时，会通过 Web Push 与站内通知提醒你。",
+			"empty": "还没有关注任何作者——打开一篇喜欢的文章，在署名旁点击关注即可。",
+			"notifyTitle": "切换该作者的新文章通知",
+			"notifyOn": "通知已开",
+			"notifyOff": "通知已关",
+			"unfollow": "取消关注",
+			"unfollowConfirm": "确定取消关注这位作者吗？之后不再收到 TA 的新文章提醒。",
+			"failed": "操作失败，请稍后再试"
+		},
 		"tags": {
 			"title": "关注的标签",
 			"note": "这些标签下有新文章发布时，会通过 Web Push 通知你。",

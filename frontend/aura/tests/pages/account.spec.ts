@@ -70,6 +70,9 @@ const mockFetchReaderDataExport = vi.fn();
 const mockUploadReaderAvatar = vi.fn();
 const mockRemoveReaderAvatar = vi.fn();
 const mockFetchReaderSeriesFollows = vi.fn();
+const mockFetchReaderAuthorFollows = vi.fn();
+const mockUnfollowReaderAuthor = vi.fn();
+const mockSetAuthorFollowNotify = vi.fn();
 const mockUnfollowReaderSeries = vi.fn();
 const mockSetSeriesFollowNotify = vi.fn();
 const mockFetchReaderCategoryFollows = vi.fn();
@@ -91,6 +94,9 @@ vi.mock("~~/api/reader/follows", () => ({
 	getReaderTagFollows: mockFetchReaderTagFollows,
 	unfollowReaderTag: mockUnfollowReaderTag,
 	setTagFollowNotify: mockSetTagFollowNotify,
+	getReaderAuthorFollows: mockFetchReaderAuthorFollows,
+	unfollowReaderAuthor: mockUnfollowReaderAuthor,
+	setAuthorFollowNotify: mockSetAuthorFollowNotify,
 }));
 vi.mock("../../api/reader/account", () => ({
 	changeReaderPassword: mockChangeMyPassword,
@@ -1284,6 +1290,74 @@ describe("Account settings page", () => {
 			// single-flight request runs — no clickable-but-silent rows.
 			expect(notifyBtns()[0].attributes("disabled")).toBeDefined();
 			expect(notifyBtns()[1].attributes("disabled")).toBeDefined();
+		});
+	});
+
+	describe("followed writers (round 353, author follows)", () => {
+		function mockWriters(
+			items: Array<{ author_id: number; display_name: string; notify: boolean }> = [],
+		) {
+			mockFetchReaderAuthorFollows.mockResolvedValue({ items, total: items.length });
+		}
+
+		it("shows an empty state when following no writers", async () => {
+			isAuthenticated.value = true;
+			mockFetchPushSubscriptions.mockResolvedValue({ items: [], total: 0 });
+			mockWriters([]);
+			const wrapper = await mountPage();
+			expect(wrapper.text()).toContain("还没有关注任何作者");
+		});
+
+		it("lists followed writers and unfollows after confirmation", async () => {
+			isAuthenticated.value = true;
+			mockFetchPushSubscriptions.mockResolvedValue({ items: [], total: 0 });
+			mockFetchReaderAuthorFollows
+				.mockResolvedValueOnce({
+					items: [{ author_id: 7, display_name: "Pen Author", notify: true }],
+					total: 1,
+				})
+				.mockResolvedValueOnce({ items: [], total: 0 });
+			mockUnfollowReaderAuthor.mockResolvedValue(undefined);
+			vi.stubGlobal("confirm", () => true);
+
+			const wrapper = await mountPage();
+			expect(wrapper.text()).toContain("Pen Author");
+
+			const section = wrapper.findAll("section").find((s) => s.text().includes("关注的作者"));
+			expect(section).toBeDefined();
+			if (!section) throw new Error("writers section not found");
+			const unfollowBtn = section.findAll("button").find((b) => b.text() === "取消关注");
+			expect(unfollowBtn).toBeDefined();
+			if (!unfollowBtn) throw new Error("unfollow button not found");
+			await unfollowBtn.trigger("click");
+			await flushPromises();
+
+			expect(mockUnfollowReaderAuthor).toHaveBeenCalledWith(7);
+			expect(mockFetchReaderAuthorFollows).toHaveBeenCalledTimes(2); // initial + reload
+			expect(wrapper.text()).toContain("还没有关注任何作者");
+			vi.unstubAllGlobals();
+		});
+
+		it("toggles new-post notifications for a followed writer", async () => {
+			isAuthenticated.value = true;
+			mockFetchPushSubscriptions.mockResolvedValue({ items: [], total: 0 });
+			mockFetchReaderAuthorFollows.mockResolvedValue({
+				items: [{ author_id: 7, display_name: "Pen Author", notify: true }],
+				total: 1,
+			});
+			mockSetAuthorFollowNotify.mockResolvedValue({ notify: false });
+			const wrapper = await mountPage();
+
+			const section = wrapper.findAll("section").find((s) => s.text().includes("关注的作者"));
+			if (!section) throw new Error("writers section not found");
+			// Bell toggle for the single writer row.
+			const bell = section.findAll("button").find((b) => b.text()?.includes("通知"));
+			expect(bell).toBeDefined();
+			if (!bell) throw new Error("notify button not found");
+
+			await bell.trigger("click");
+			await flushPromises();
+			expect(mockSetAuthorFollowNotify).toHaveBeenCalledWith(7, false);
 		});
 	});
 

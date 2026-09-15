@@ -107,6 +107,17 @@
 			"unfollowConfirm": "Unfollow this category? You'll stop getting new-post alerts for it.",
 			"failed": "Couldn't do that — please try again"
 		},
+		"authors": {
+			"title": "Followed writers",
+			"note": "You'll be notified (Web Push + inbox) when one of these writers publishes a new post.",
+			"empty": "You're not following any writers yet — open a post you love and hit follow next to the byline.",
+			"notifyTitle": "Toggle new-post notifications for this writer",
+			"notifyOn": "Notifications on",
+			"notifyOff": "Notifications off",
+			"unfollow": "Unfollow",
+			"unfollowConfirm": "Unfollow this writer? You'll stop getting alerts for their new posts.",
+			"failed": "Couldn't do that — please try again"
+		},
 		"tags": {
 			"title": "Followed tags",
 			"note": "You'll be pushed a Web Push when a new post is published carrying these tags.",

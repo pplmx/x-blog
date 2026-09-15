@@ -709,7 +709,9 @@ function handleCommentSubmitted(created: Comment | undefined) {
 
           <div class="flex items-center gap-4 text-sm text-gray-400">
             <!-- Author byline (DEC-359/TASK-405): present only when the writing
-                 admin chose a public pen name; links to their archive. -->
+                 admin chose a public pen name; links to their archive. The
+                 inline follow control (round 353) is the primary surface where
+                 a reader subscribes to this writer's new posts. -->
             <NuxtLink
               v-if="post.author"
               :to="`/authors/${post.author.id}`"
@@ -718,6 +720,11 @@ function handleCommentSubmitted(created: Comment | undefined) {
               <Icon icon="lucide:user" class="w-3.5 h-3.5" />
               {{ post.author.display_name }}
             </NuxtLink>
+            <AuthorFollowButton
+              v-if="post.author"
+              :author-id="post.author.id"
+              :author-name="post.author.display_name"
+            />
             <span class="flex items-center gap-1.5">
               <Icon icon="lucide:calendar" class="w-3.5 h-3.5" />
               {{ parseApiDate(post.publish_at ?? post.created_at)?.toLocaleDateString(locale === "zh" ? "zh-CN" : "en-US", { year: 'numeric', month: 'long', day: 'numeric' }) ?? "" }}

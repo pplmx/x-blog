@@ -21,17 +21,21 @@ import {
 } from "~~/api/reader/account";
 import { requestEmailChange } from "~~/api/reader/auth";
 import type {
+	FollowedAuthorItem,
 	FollowedCategoryItem,
 	FollowedSeriesItem,
 	FollowedTagItem,
 } from "~~/api/reader/follows";
 import {
+	getReaderAuthorFollows,
 	getReaderCategoryFollows,
 	getReaderSeriesFollows,
 	getReaderTagFollows,
+	setAuthorFollowNotify,
 	setCategoryFollowNotify,
 	setSeriesFollowNotify,
 	setTagFollowNotify,
+	unfollowReaderAuthor,
 	unfollowReaderCategory,
 	unfollowReaderSeries,
 	unfollowReaderTag,
@@ -666,6 +670,62 @@ async function toggleTagNotify(item: FollowedTagItem) {
 	}
 }
 
+/* Followed authors for new-post notification (round 353) ---------------- */
+const authorFollows = ref<FollowedAuthorItem[]>([]);
+const authorFollowsLoaded = ref(false);
+const authorFollowsLoadFailed = ref(false);
+const authorUnfollowIds = ref(new Set<number>());
+const authorNotifyId = ref<number | null>(null);
+const authorFollowsError = ref(false);
+
+async function loadAuthorFollows() {
+	if (!isAuthenticated.value) return;
+	authorFollowsLoadFailed.value = false;
+	try {
+		authorFollows.value = (await getReaderAuthorFollows()).items ?? [];
+	} catch (err) {
+		authorFollows.value = [];
+		handleLoadFailure(err, () => {
+			authorFollowsLoadFailed.value = true;
+		});
+	}
+	authorFollowsLoaded.value = true;
+}
+
+async function unfollowFollowedAuthor(item: FollowedAuthorItem) {
+	if (authorUnfollowIds.value.has(item.author_id)) return; // single-flight per row
+	if (!confirm(t("account.authors.unfollowConfirm"))) return;
+	authorUnfollowIds.value.add(item.author_id);
+	authorFollowsError.value = false;
+	try {
+		await unfollowReaderAuthor(item.author_id);
+		await loadAuthorFollows();
+	} catch (err) {
+		handleLoadFailure(err, () => {
+			authorFollowsError.value = true;
+		});
+	} finally {
+		authorUnfollowIds.value.delete(item.author_id);
+	}
+}
+
+async function toggleAuthorNotify(item: FollowedAuthorItem) {
+	if (authorNotifyId.value != null) return;
+	authorNotifyId.value = item.author_id;
+	authorFollowsError.value = false;
+	const next = !item.notify;
+	try {
+		const res = await setAuthorFollowNotify(item.author_id, next);
+		item.notify = res?.notify ?? next;
+	} catch (err) {
+		handleLoadFailure(err, () => {
+			authorFollowsError.value = true;
+		});
+	} finally {
+		authorNotifyId.value = null;
+	}
+}
+
 /* Delete account (DEC-106, TASK-165) ---------------------------------- */
 // Data export (DEC-126, TASK-175): download the reader's portable JSON bundle.
 const exportingData = ref(false);
@@ -744,6 +804,7 @@ onMounted(() => {
 	loadSeriesFollows();
 	loadCategoryFollows();
 	loadTagFollows();
+	loadAuthorFollows();
 	// Keep the name/bio inputs in sync if the header "reader" profile loads
 	// after us.
 	displayName.value = reader.value?.display_name ?? displayName.value;
@@ -1365,6 +1426,78 @@ function shortEndpoint(endpoint: string): string {
         </ul>
         <p v-if="categoryFollowsError" aria-live="polite" class="mt-2 text-sm text-red-500 dark:text-red-400">
           {{ t('account.categories.failed') }}
+        </p>
+      </section>
+
+      <!-- Followed writers (round 353): subscribe to a specific author's
+           new posts — the person-shaped cousin of the topic-shaped
+           category/series/tag follows. -->
+      <section class="border border-gray-100 dark:border-gray-700 rounded-xl p-5">
+        <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-1">
+          {{ t('account.authors.title') }}
+        </h2>
+        <p class="text-xs text-gray-400 mb-4">{{ t('account.authors.note') }}</p>
+
+        <p
+          v-if="!authorFollowsLoaded"
+          class="flex items-center gap-2 text-sm text-gray-400 dark:text-gray-500"
+        >
+          <Icon icon="lucide:loader-2" class="w-4 h-4 animate-spin" aria-hidden="true" role="presentation" />
+          {{ t('account.loading') }}
+        </p>
+        <div v-else-if="authorFollowsLoadFailed" class="flex items-center gap-3 text-sm text-red-500 dark:text-red-400">
+          {{ t('account.loadFailed') }}
+          <button
+            type="button"
+            class="px-2 py-0.5 rounded border border-red-200 dark:border-red-800 hover:bg-red-50 dark:hover:bg-red-900/30 transition-colors"
+            @click="loadAuthorFollows"
+          >
+            {{ t('account.retry') }}
+          </button>
+        </div>
+        <p v-else-if="authorFollows.length === 0" class="text-sm text-gray-500 dark:text-gray-400">
+          {{ t('account.authors.empty') }}
+        </p>
+        <ul v-else class="space-y-3">
+          <li
+            v-for="af in authorFollows"
+            :key="af.author_id"
+            class="border border-gray-100 dark:border-gray-800 rounded-lg p-3"
+          >
+            <div class="flex items-center justify-between gap-3 text-sm">
+              <NuxtLink
+                :to="`/authors/${af.author_id}`"
+                class="min-w-0 truncate text-gray-900 dark:text-gray-100 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+              >
+                {{ af.display_name }}
+              </NuxtLink>
+              <div class="shrink-0 flex items-center gap-3">
+                <button
+                  type="button"
+                  :disabled="authorNotifyId !== null"
+                  :aria-pressed="af.notify ? 'true' : 'false'"
+                  :title="t('account.authors.notifyTitle')"
+                  class="inline-flex items-center gap-1 text-xs text-gray-400 hover:text-emerald-600 transition-colors disabled:opacity-50"
+                  @click="toggleAuthorNotify(af)"
+                >
+                  <Icon :icon="af.notify ? 'lucide:bell' : 'lucide:bell-off'" class="w-3.5 h-3.5" />
+                  {{ t(af.notify ? 'account.authors.notifyOn' : 'account.authors.notifyOff') }}
+                </button>
+                <button
+                  type="button"
+                  :disabled="authorUnfollowIds.has(af.author_id)"
+                  class="inline-flex items-center gap-1 text-xs text-gray-400 hover:text-red-500 transition-colors disabled:opacity-50"
+                  @click="unfollowFollowedAuthor(af)"
+                >
+                  <Icon icon="lucide:x" class="w-3.5 h-3.5" />
+                  {{ t('account.authors.unfollow') }}
+                </button>
+              </div>
+            </div>
+          </li>
+        </ul>
+        <p v-if="authorFollowsError" aria-live="polite" class="mt-2 text-sm text-red-500 dark:text-red-400">
+          {{ t('account.authors.failed') }}
         </p>
       </section>
 

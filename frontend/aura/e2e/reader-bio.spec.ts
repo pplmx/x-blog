@@ -8,7 +8,7 @@
  * by the justfile `e2e` task + the Nuxt dev server.
  */
 
-import { type APIRequestContext, expect, test } from "@playwright/test";
+import { expect, test } from "@playwright/test";
 
 const PASSWORD = "readerpass123";
 
@@ -17,18 +17,13 @@ function freshEmail(): string {
 }
 
 test.describe("Reader profile bio (round 352)", () => {
-	test("write a bio in account -> it renders on the public profile", async ({
-		page,
-		request,
-	}) => {
+	test("write a bio in account -> it renders on the public profile", async ({ page, request }) => {
 		const email = freshEmail();
 		const reg = await request.post("/api/reader/register", {
 			data: { email, password: PASSWORD, display_name: "Bio Writer" },
 		});
 		expect(reg.status()).toBe(201);
-		const readerId = (
-			(await reg.json()) as { reader: { id: number } }
-		).reader.id;
+		const readerId = ((await reg.json()) as { reader: { id: number } }).reader.id;
 
 		// Sign in through the reader UI (the /login page also hosts a
 		// newsletter subscribe form with its own email field — scope to the
