@@ -1,11 +1,11 @@
 {
 	"follows": {
 		"seoTitle": "Your follows — X-Blog",
-		"seoDesc": "Every new post from the categories, series and tags you follow.",
+		"seoDesc": "Every new post from the categories, series, tags and writers you follow.",
 		"title": "Your follows",
-		"subtitle": "New posts from the categories, series and tags you follow",
+		"subtitle": "New posts from the categories, series, tags and writers you follow",
 		"countLabel": "{count} posts",
-		"empty": "You're not following anything yet. Follow categories, series or tags to see their new posts here.",
+		"empty": "You're not following anything yet. Follow categories, series, tags or writers to see their new posts here.",
 		"emptyAction": "Browse categories",
 		"loadFailed": "Couldn't load your follows — check your connection and try again.",
 		"retry": "Retry",

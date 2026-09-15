@@ -120,6 +120,24 @@ describe("Follows page", () => {
 		expect(wrapper.text()).not.toContain("follows.empty");
 	});
 
+	it("renders the author byline on authored follow cards (round 354)", async () => {
+		feedPayload = {
+			items: [{ ...samplePost, author: { id: 9, display_name: "Pen Writer 354" } }],
+			pagination: { total: 1, page: 1, limit: 12, total_pages: 1 },
+		};
+		const wrapper = await mountFollows();
+		expect(wrapper.text()).toContain("Pen Writer 354");
+	});
+
+	it("renders no author chip for an unattributed card", async () => {
+		feedPayload = {
+			items: [samplePost],
+			pagination: { total: 1, page: 1, limit: 12, total_pages: 1 },
+		};
+		const wrapper = await mountFollows();
+		expect(wrapper.text()).not.toContain(".display_name");
+	});
+
 	it("shows pagination controls only when there is more than one page", async () => {
 		feedPayload = {
 			items: [samplePost],

@@ -483,6 +483,10 @@ const stats = computed(() => {
             {{ post.title }}
           </h3>
           <div class="mt-2 flex items-center gap-2 text-xs text-gray-400">
+            <span v-if="post.author" class="inline-flex items-center gap-1">
+              <Icon icon="lucide:user" class="w-3 h-3" />
+              {{ post.author.display_name }}
+            </span>
             <span v-if="post.category" class="inline-flex items-center gap-1">
               <Icon icon="lucide:folder" class="w-3 h-3" />
               {{ post.category.name }}
