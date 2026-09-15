@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 355,
+  "round": 356,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-15T16:54:33+00:00",
+  "updated_at": "2026-09-15T17:33:23+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -26128,6 +26128,97 @@
       "title": "close round 354: followed authors in the follows feed (TASK-416 by CHG-607+CHG-608+CHG-609+CHG-610; supersedes DEC-381) — VERIFY green: backend 1637 (cov 93.80%, ruff clean, pyright 0), frontend 2175 (typecheck 0, biome 463 clean), e2e journey green",
       "rationale": "Round 354 completes the follow model's discovery payoff for the person shape: follows_feed_posts now matches posts by followed author id (same published/effective-publish/visibility rules, deduped with topic matches), the empty-guard honours author-only follows, Post.author is eager-loaded for the byline, and both the /follows page and the home Latest-from-your-follows row (shared endpoint) render a pen-name chip on authored cards. 4 backend + 2 frontend unit tests plus an extended real-browser e2e (the round-353 journey now also asserts the authored posts surface on /follows). No schema change this round.",
       "alternatives_rejected": "Rejected: (1) an authors tab/filter on /follows — a single deduped feed is the review pattern; (2) author-follow email — the reader email-pref/digest machinery is a separate decision and email was not the gap; (3) relying on the notification inbox as the only author surface — it mixes every notification type and has no browse-all shape."
+    },
+    "DEC-383": {
+      "id": "DEC-383",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-15T17:02:33+00:00",
+      "updated_at": "2026-09-15T17:02:33+00:00",
+      "touched_round": 355,
+      "title": "round 355 scope: follow a writer from their public archive page (TASK-417)",
+      "rationale": "Round 353 put the follow button on the post byline and in /account, round 354 in the follows feed — but not on /authors/{id}, the page where a reader actually decides about a writer. The archive header already offers the RSS subscribe link, yet the in-app follow (inbox + Web Push + the round-354 /follows feed) is unreachable there without opening one of the writer's posts. Worse: a writer with zero published posts has no byline buttons anywhere, so the archive page is the ONLY place they can be followed at all. Mount the existing AuthorFollowButton on the archive header (guest-hidden, dead-session and error semantics already built in), reusing the post.* follow labels — a frontend-only slice, the archive envelope already carries the author.",
+      "alternatives_rejected": "Rejected: (1) follow buttons on every /authors directory card — the cards are whole NuxtLinks and nesting an interactive control inside them needs a card restructure for marginal value; (2) an author-follow email — a separate decision; (3) a new author-specific follow key — post.followAuthor/followingAuthor already say exactly what the button does for a pen-named writer."
+    },
+    "TASK-417": {
+      "id": "TASK-417",
+      "type": "task",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-15T17:03:06+00:00",
+      "updated_at": "2026-09-15T17:32:53+00:00",
+      "touched_round": 355,
+      "category": "core-feature",
+      "title": "follow a writer from their public /authors/{id} archive header — the only follow path for writers with no posts yet (round 355)"
+    },
+    "CHG-611": {
+      "id": "CHG-611",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-15T17:32:52+00:00",
+      "updated_at": "2026-09-15T17:32:52+00:00",
+      "touched_round": 355,
+      "commit": "a9a95ba8",
+      "summary": "feat(frontend): follow a writer from their public archive header (DEC-383, TASK-417)"
+    },
+    "CHG-612": {
+      "id": "CHG-612",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-15T17:32:52+00:00",
+      "updated_at": "2026-09-15T17:32:52+00:00",
+      "touched_round": 355,
+      "commit": "a61f2aec",
+      "summary": "test(e2e): follow a writer from their public archive page (DEC-383, TASK-417)"
+    },
+    "CHG-613": {
+      "id": "CHG-613",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-15T17:32:52+00:00",
+      "updated_at": "2026-09-15T17:32:52+00:00",
+      "touched_round": 355,
+      "commit": "4c5a8b44",
+      "summary": "docs(author-follow): record round 355 archive-header follow in README + CHANGELOG (en/zh)"
+    },
+    "CHG-614": {
+      "id": "CHG-614",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-15T17:32:52+00:00",
+      "updated_at": "2026-09-15T17:32:52+00:00",
+      "touched_round": 355,
+      "commit": "eb49cf2e",
+      "summary": "docs(author-follow): rewrap a zh CHANGELOG continuation line the markdown lint re-indented"
+    },
+    "EV-262": {
+      "id": "EV-262",
+      "type": "evidence",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-15T17:32:52+00:00",
+      "updated_at": "2026-09-15T17:32:52+00:00",
+      "touched_round": 355,
+      "title": "round 355 VERIFY green: archive-header follow — signed-in 关注 on /authors/{id}, click follows + flips to 已关注, empty-but-public writers reachable",
+      "source": "frontend 2178 vitest (typecheck 0, biome 463 clean) + e2e 2 journeys green in a real browser (byline fan-out journey + archive follow of a zero-post writer) + no backend/schema change this round",
+      "confidence": 1.0
+    },
+    "DEC-384": {
+      "id": "DEC-384",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-15T17:32:53+00:00",
+      "updated_at": "2026-09-15T17:32:53+00:00",
+      "touched_round": 355,
+      "title": "close round 355: archive-header author follow (TASK-417 by CHG-611+CHG-612+CHG-613+CHG-614; supersedes DEC-383) — VERIFY green: frontend 2178 (typecheck 0, biome 463 clean), e2e 2 journeys green",
+      "rationale": "Round 355 puts the in-app author follow on the person-shaped discovery surface: the AuthorFollowButton (round 353, reused unchanged) now mounts on the /authors/{id} archive header next to the RSS subscribe link, giving signed-in readers the whole follow payoff (inbox + Web Push + round-354 /follows feed) where they decide about a writer — and uniquely, the only follow path for a pen-named writer with zero published posts, who has no byline buttons anywhere. 3 new page tests (signed-in shows 关注 even on an empty writer, click follows and flips to 已关注, guests see none) plus a second real-browser e2e journey. Frontend-only: the archive envelope already carries the author; the byline control brings its own guest-hidden/dead-session/error semantics.",
+      "alternatives_rejected": "Rejected: (1) follow buttons on every /authors directory card — cards are whole NuxtLinks and nesting a control inside needs a card restructure for marginal value; (2) an author-follow email — a separate decision; (3) new author-specific follow labels — post.followAuthor/followingAuthor already express the action for a pen-named writer."
     }
   },
   "edges": [
@@ -39058,6 +39149,42 @@
       "to": "DEC-381",
       "type": "supersedes",
       "created_at": "2026-09-15T16:54:03+00:00"
+    },
+    {
+      "from": "DEC-383",
+      "to": "TASK-417",
+      "type": "governs",
+      "created_at": "2026-09-15T17:03:06+00:00"
+    },
+    {
+      "from": "CHG-611",
+      "to": "TASK-417",
+      "type": "implements",
+      "created_at": "2026-09-15T17:32:52+00:00"
+    },
+    {
+      "from": "CHG-612",
+      "to": "TASK-417",
+      "type": "implements",
+      "created_at": "2026-09-15T17:32:52+00:00"
+    },
+    {
+      "from": "CHG-613",
+      "to": "TASK-417",
+      "type": "implements",
+      "created_at": "2026-09-15T17:32:52+00:00"
+    },
+    {
+      "from": "CHG-614",
+      "to": "TASK-417",
+      "type": "implements",
+      "created_at": "2026-09-15T17:32:52+00:00"
+    },
+    {
+      "from": "DEC-384",
+      "to": "DEC-383",
+      "type": "supersedes",
+      "created_at": "2026-09-15T17:32:53+00:00"
     }
   ]
 }
