@@ -9,6 +9,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- **Sitemap covers pages & authors (round 348)**: the sitemap grew with the
+  site — `/pages/{slug}` (round 347) and the pen-named `/authors/{id}`
+  archives + `/authors` index (rounds 343/346) are real, indexable pages, but
+  the cached `/sitemap.xml` still only listed posts, series, categories and
+  tags, so a freshly published privacy policy or writer archive was
+  reachable-by-link yet invisible to crawlers. The sitemap now emits every
+  published page (with `lastmod`; drafts stay out) and every pen-named
+  writer's archive (username-only admins stay out, preserving no-oracle), and
+  any page create/update/delete busts the feed cache so a publish reaches the
+  sitemap on the next render, not after a TTL expiry.
 - **Static pages CMS (round 347)**: a self-hosted blog is expected to speak
   for itself — privacy policy, terms, contact, changelog — but the only static
   page was a hardcoded `/about`, so a site owner needed a code change +

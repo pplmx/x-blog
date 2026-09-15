@@ -38,7 +38,7 @@ A modern full-stack blog application built with FastAPI + Nuxt
 - 💬 **Reader Comment Management** - a signed-in reader sees their own comments with moderation status (pending / approved / rejected) and can delete them (DEC-066); the "on post" jump deep-links to the exact comment, not the headline (DEC-321)
 - 🪪 **Public Reader Profiles** - an approved signed-in reader's comment name links to their public `/readers/{id}` page (display name, join date, approved comments), no sign-in needed; unknown ids show a "reader not found" state (DEC-294)
 - 🖼️ **Reader Avatars** - readers set a profile picture from `/account` (upload or remove); it renders on their public profile and beside their verified name on every comment, falling back to an initial-letter placeholder when unset (DEC-299)
-- 🎯 **SEO Optimized** - Open Graph, JSON-LD structured data, and a complete sitemap covering every published post (no cap) and every series (DEC-318)
+- 🎯 **SEO Optimized** - Open Graph, JSON-LD structured data, and a complete sitemap covering every published post (no cap), every series (DEC-318), every published static page at `/pages/{slug}` and every pen-named writer's archive at `/authors/{id}` — page writes bust the feed cache so a publish reaches the sitemap immediately (round 348)
 - ⬆️ **Pinned Posts** - Pin important posts to top
 - 📤 **Data Export** - Export posts/comments as CSV; signed-in readers get a complete GDPR-style "download my data" bundle (profile, bookmarks, comments, history, follows, notification prefs, inbox rows, push devices — DEC-126, DEC-334)
 - 🗓️ **Editorial Calendar** - admins see the publishing plan at a glance — live / scheduled / draft posts placed on their date in a month grid, click into the editor (DEC-162)
