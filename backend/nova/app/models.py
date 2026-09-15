@@ -649,6 +649,39 @@ class SeriesFollow(Base):
     )
 
 
+class AuthorFollow(Base):
+    """A reader following a writer's new posts (round 353).
+
+    On a multi-editor blog, a reader who loved one author's posts can now
+    subscribe to JUST that writer — category/series follows are topic-shaped,
+    so there was no way to follow the person. Mirrors CategoryFollow (DEC-140/
+    TASK-182): one row per reader↔author pair, ``notify`` decouples tracking
+    from push fan-out, and the durable new-post fan-out (crud
+    record_new_post_notifications) + the Web Push fan-out (webpush
+    dispatch_new_post) both reach writer followers. Only a pen-named author is
+    followable (the public surface is no-oracle; a username-only admin has no
+    public identity to follow). ``author_id`` is a plain integer with no
+    DB-level FK (SQLite alembic can't add FK-carrying columns to existing
+    tables, DEC-009); referential integrity is enforced at the API layer.
+    """
+
+    __tablename__ = "author_follows"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    reader_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
+    author_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
+    notify: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True, server_default=true())
+    created_at: Mapped[datetime | None] = mapped_column(DateTime, default=lambda: datetime.now(UTC))
+
+    __table_args__ = (UniqueConstraint("reader_id", "author_id", name="uq_author_follows_reader_author"),)
+
+    author: Mapped[User | None] = relationship(
+        "User",
+        primaryjoin="AuthorFollow.author_id == User.id",
+        foreign_keys="AuthorFollow.author_id",
+    )
+
+
 class PushSubscription(Base):
     """A reader's browser Web Push (RFC 8030) subscription.
 

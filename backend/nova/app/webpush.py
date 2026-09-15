@@ -367,6 +367,28 @@ def dispatch_new_post(db, post: models.Post, logger) -> dict[str, int]:
             ):
                 by_endpoint[sub.endpoint] = sub
 
+    # Also notify readers who follow this post's author with notifications on
+    # (round 353): a writer follow is the person-shaped umbrella over the
+    # topic-shaped category/series/tag follows. Unioned by endpoint so a writer
+    # follower already reached via all/category/tag push gets one push.
+    if post.author_id is not None:
+        author_follower_reader_ids = [
+            row.reader_id
+            for row in db.query(models.AuthorFollow.reader_id)
+            .filter(
+                models.AuthorFollow.author_id == post.author_id,
+                models.AuthorFollow.notify.is_(True),
+            )
+            .all()
+        ]
+        if author_follower_reader_ids:
+            for sub in (
+                db.query(models.PushSubscription)
+                .filter(models.PushSubscription.reader_id.in_(author_follower_reader_ids))
+                .all()
+            ):
+                by_endpoint[sub.endpoint] = sub
+
     # Per-kind opt-out (DEC-171, TASK-202): drop push subscriptions whose reader
     # turned 'new_post' off — same reader-level intent as the inbox gating in
     # crud.record_new_post_notifications, so an opted-out reader gets neither the

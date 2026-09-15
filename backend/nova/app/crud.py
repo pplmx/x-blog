@@ -2954,6 +2954,80 @@ def list_category_follow_reader_ids(db: Session, category_id: int) -> list[int]:
     ]
 
 
+def get_author_follow(db: Session, reader_id: int, author_id: int) -> models.AuthorFollow | None:
+    """A single reader→author follow row, or None (author-follow, round 353)."""
+    return (
+        db.query(models.AuthorFollow)
+        .filter(
+            models.AuthorFollow.reader_id == reader_id,
+            models.AuthorFollow.author_id == author_id,
+        )
+        .first()
+    )
+
+
+def add_author_follow(db: Session, reader_id: int, author_id: int) -> tuple[models.AuthorFollow, bool]:
+    """Follow a writer for new-post fan-out; returns (follow, created). Idempotent."""
+    existing = get_author_follow(db, reader_id, author_id)
+    if existing:
+        return existing, False
+    follow = models.AuthorFollow(reader_id=reader_id, author_id=author_id)
+    db.add(follow)
+    if _commit_reader_upsert(db):
+        db.refresh(follow)
+        return follow, True
+    existing = get_author_follow(db, reader_id, author_id)
+    if existing:
+        return existing, False
+    raise RuntimeError("author follow insert lost the unique-key race but no row was found")
+
+
+def remove_author_follow(db: Session, reader_id: int, author_id: int) -> bool:
+    """Unfollow a writer; returns True if a follow was removed. Idempotent."""
+    follow = get_author_follow(db, reader_id, author_id)
+    if not follow:
+        return False
+    db.delete(follow)
+    db.commit()
+    return True
+
+
+def set_author_follow_notify(db: Session, reader_id: int, author_id: int, notify: bool) -> models.AuthorFollow | None:
+    """Toggle whether an author follow pushes new posts. Returns None if not following."""
+    follow = get_author_follow(db, reader_id, author_id)
+    if not follow:
+        return None
+    follow.notify = notify
+    db.commit()
+    db.refresh(follow)
+    return follow
+
+
+def list_reader_author_follows(db: Session, reader_id: int) -> list[models.AuthorFollow]:
+    """The reader's author follow rows (with ``author`` loaded), newest first."""
+    rows = (
+        db.query(models.AuthorFollow)
+        .options(joinedload(models.AuthorFollow.author))
+        .filter(models.AuthorFollow.reader_id == reader_id)
+        .order_by(models.AuthorFollow.created_at.desc(), models.AuthorFollow.id.desc())
+        .all()
+    )
+    return rows
+
+
+def list_author_follow_reader_ids(db: Session, author_id: int) -> list[int]:
+    """Reader ids following an author with notifications on (for new-post dispatch)."""
+    return [
+        reader_id
+        for (reader_id,) in db.query(models.AuthorFollow.reader_id)
+        .filter(
+            models.AuthorFollow.author_id == author_id,
+            models.AuthorFollow.notify.is_(True),
+        )
+        .all()
+    ]
+
+
 def get_tag_follow(db: Session, reader_id: int, tag_id: int) -> models.TagFollow | None:
     """Return the reader's follow for a tag, or None."""
     return (
@@ -3893,6 +3967,7 @@ def record_new_post_notifications(db: Session, post: models.Post) -> None:
         series_reader_ids: set[int] = set()
         category_reader_ids: set[int] = set()
         tag_reader_ids: set[int] = set()
+        author_reader_ids: set[int] = set()
         # Readers who follow this post's series ('new part' notification).
         if post.series_id is not None:
             series_reader_ids.update(
@@ -3920,7 +3995,13 @@ def record_new_post_notifications(db: Session, post: models.Post) -> None:
         tag_ids = [t.id for t in (post.tags or [])]
         if tag_ids:
             tag_reader_ids.update(list_tag_follow_reader_ids(db, tag_ids))
-        target_reader_ids = series_reader_ids | category_reader_ids | tag_reader_ids
+        # Readers who follow this post's AUTHOR with notifications on (round
+        # 353): a writer follow is the person-shaped umbrella over topic-shaped
+        # category/series follows — a reader follows the person, so the person's
+        # new posts (topic regardless) reach them under the same new_post kind.
+        if post.author_id is not None:
+            author_reader_ids.update(list_author_follow_reader_ids(db, post.author_id))
+        target_reader_ids = series_reader_ids | category_reader_ids | tag_reader_ids | author_reader_ids
         # A deactivated reader is a moderation action: they keep their follow
         # rows, but must not still receive the durable inbox row (DEC-194,
         # RIL ISS-278). The email fan-out and push already filter is_active —

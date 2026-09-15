@@ -310,6 +310,36 @@ class TagFollowNotifyUpdate(BaseModel):
     notify: bool
 
 
+class FollowedAuthorItem(BaseModel):
+    """A writer the reader follows (round 353).
+
+    Public identity only: the pen name + follow id + notify state. Never the
+    login username (admin login is no-oracle).
+    """
+
+    author_id: int
+    display_name: str
+    notify: bool
+
+
+class FollowedAuthorListResponse(BaseModel):
+    items: list[FollowedAuthorItem]
+    total: int
+
+
+class AuthorFollowResponse(BaseModel):
+    author_id: int
+    display_name: str
+    following: bool
+    notify: bool
+
+
+class AuthorFollowNotifyUpdate(BaseModel):
+    """Body for toggling per-author new-post notifications (round 353)."""
+
+    notify: bool
+
+
 class AddBookmarkResponse(BaseModel):
     post_id: int
     # True when the bookmark was newly created, False when it already existed
@@ -1778,6 +1808,97 @@ def unfollow_tag(
 ):
     """Unfollow a tag. Idempotent 204."""
     crud.remove_tag_follow(db, current_reader.id, tag_id)
+    return None
+
+
+# Author follows (round 353): subscribe to a writer's new posts, the
+# person-shaped cousin of the topic-shaped category/series/tag follows.
+# ---------------------------------------------------------------------------
+def _get_followable_author(db: Session, author_id: int) -> auth.User:
+    """The pen-named admin a reader may follow; 404 otherwise (no-oracle:
+    a username-only admin has no public identity to follow, so probing ids
+    yields the same 404 as an unknown one)."""
+    author = db.get(auth.User, author_id)
+    if author is None or not author.display_name:
+        raise HTTPException(status_code=404, detail="Author not found")
+    return author
+
+
+@router.get("/me/author-follows", response_model=FollowedAuthorListResponse)
+def list_author_follows(
+    current_reader: auth.ReaderAccount = Depends(auth.get_current_reader),
+    db: Session = Depends(get_db),
+):
+    """The writers the reader follows, with per-follow notification state."""
+    follows = crud.list_reader_author_follows(db, current_reader.id)
+    items = []
+    for f in follows:
+        author = f.author
+        if author is None or not author.display_name:
+            continue  # pen-named only; a username-only admin is invisible
+        items.append(
+            FollowedAuthorItem(
+                author_id=f.author_id,
+                display_name=author.display_name,
+                notify=f.notify,
+            )
+        )
+    return FollowedAuthorListResponse(items=items, total=len(items))
+
+
+@router.put("/me/authors/{author_id}/follow", response_model=AuthorFollowResponse)
+@limiter.limit(f"{RATE_LIMIT_WRITE}/minute")
+def follow_author(
+    request: Request,  # noqa: ARG001
+    author_id: IdInt,
+    response: Response,
+    current_reader: auth.ReaderAccount = Depends(auth.get_current_reader),
+    db: Session = Depends(get_db),
+):
+    """Follow a writer for new-post push (idempotent: 201 on first, 200 on re-follow)."""
+    author = _get_followable_author(db, author_id)
+    follow, created = crud.add_author_follow(db, current_reader.id, author_id)
+    response.status_code = 201 if created else 200
+    return AuthorFollowResponse(
+        author_id=int(author.id),
+        display_name=author.display_name or "",
+        following=True,
+        notify=follow.notify,
+    )
+
+
+@router.patch("/me/authors/{author_id}/follow", response_model=AuthorFollowResponse)
+@limiter.limit(f"{RATE_LIMIT_WRITE}/minute")
+def set_author_follow_notify(
+    request: Request,  # noqa: ARG001
+    author_id: IdInt,
+    payload: AuthorFollowNotifyUpdate,
+    current_reader: auth.ReaderAccount = Depends(auth.get_current_reader),
+    db: Session = Depends(get_db),
+):
+    """Toggle new-post notifications for a followed author. 404 if not following."""
+    author = _get_followable_author(db, author_id)
+    follow = crud.set_author_follow_notify(db, current_reader.id, author_id, payload.notify)
+    if not follow:
+        raise HTTPException(status_code=404, detail="Not following this author")
+    return AuthorFollowResponse(
+        author_id=author_id,
+        display_name=author.display_name or "",
+        following=True,
+        notify=follow.notify,
+    )
+
+
+@router.delete("/me/authors/{author_id}/follow", status_code=204)
+@limiter.limit(f"{RATE_LIMIT_WRITE}/minute")
+def unfollow_author(
+    request: Request,  # noqa: ARG001
+    author_id: IdInt,
+    current_reader: auth.ReaderAccount = Depends(auth.get_current_reader),
+    db: Session = Depends(get_db),
+):
+    """Unfollow a writer. Idempotent 204."""
+    crud.remove_author_follow(db, current_reader.id, author_id)
     return None
 
 
