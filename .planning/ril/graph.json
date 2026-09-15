@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 351,
+  "round": 352,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-15T11:48:58+00:00",
+  "updated_at": "2026-09-15T12:57:31+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -25751,6 +25751,98 @@
       "title": "close round 350: slug-change permanent redirects delivered (TASK-412 by CHG-590..593; supersedes DEC-373) - VERIFY green: backend 1616 (cov 93.83%, ruff clean), frontend 2153 (typecheck 0, biome 458 files), e2e 3 journeys green, migrations SQLite+PG round-trip",
       "rationale": "Round 350 keeps old URLs alive when an operator re-slugs a post, series or page: re-slugging records a permanent redirect (slug_redirects, chain-collapse so A->B then B->C resolves A->C, rename-back deletes the swallowed row so no browser-looping cycle survives), the public get-by-slug routes keep their no-oracle 404 but stamp X-Redirect-To, main.py preserves exc.headers, and the Nuxt layer turns it into a real 301 (SSR) or hard client nav - via useSlugRedirect reading .cause (server) / .response (client) off the fetch error. The e2e surfaced a real proxy bug (headers dropped on 4xx/5xx) which is fixed + locked with a unit test. 7 backend + 4 composable + 1 proxy unit tests plus 3 e2e journeys; SQLite + dev-PG scratch-schema migration round-trips verified. No open follow-ups in the graph.",
       "alternatives_rejected": "Rejected: answering old URLs with an API-level 301 (breaks no-oracle + Nuxt swallows 3xx in useFetch); nginx rewrite table (map belongs with the entities in the DB); keeping a self-loop row on rename-back (would 301-loop a browser after delete/unpublish)"
+    },
+    "DEC-375": {
+      "id": "DEC-375",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-15T12:56:09+00:00",
+      "updated_at": "2026-09-15T12:56:09+00:00",
+      "touched_round": 351,
+      "title": "round 351 scope: per-post comment control (TASK-413)",
+      "rationale": "A blog lives a long time and one post can collect every comment the internet has - high-noise threads, stale evergreen content, privacy-sensitive pieces. The only levers before were global (site-wide auto-approve) or destructive (deleting comments); there was no way to close the door on a SINGLE post. Feature adds posts.comments_enabled (default true, additive BOOLEAN + server_default backfill): an editor checkbox in the post editor, the public post keeps rendering its existing thread but swaps the comment form for a localized \"comments are closed\" notice, and the create-comment endpoint refuses new comments with a clear 403 (after the visibility check, before any reader auto-approve shortcut could run - existing comments stay readable either way).",
+      "alternatives_rejected": "Rejected: (1) a global \"comments off\" site toggle - over-broad, an operator wants to silence one noisy thread not the whole site; (2) deleting/muting the thread - destroys the conversation that is part of the article; (3) 404 on a closed post - the post is public, only writing is gated, 403 keeps cannot-write distinct from no-oracle 404"
+    },
+    "TASK-413": {
+      "id": "TASK-413",
+      "type": "task",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-15T12:56:10+00:00",
+      "updated_at": "2026-09-15T12:56:10+00:00",
+      "touched_round": 351,
+      "category": "core-feature",
+      "description": "Deliver posts.comments_enabled: model column + migration (SQLite+PG round-trip, server_default backfill), schemas (PostBase default True, PostUpdate), create_comment 403 gate, admin editor toggle (persisted via admin_update_post + crud.update_post, loaded via admin_get_post, created via crud.create_post), public detail closed notice + form swap, i18n en/zh, unit + integration + browser e2e.",
+      "severity": "high"
+    },
+    "CHG-594": {
+      "id": "CHG-594",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-15T12:56:53+00:00",
+      "updated_at": "2026-09-15T12:56:53+00:00",
+      "touched_round": 351,
+      "commit": "726609f6",
+      "summary": "feat(backend): posts.comments_enabled (model+migration z7d2c4e6f8a0, create_comment 403 gate, admin toggle + detail + create paths, schemas; 6 tests)"
+    },
+    "CHG-595": {
+      "id": "CHG-595",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-15T12:56:53+00:00",
+      "updated_at": "2026-09-15T12:56:53+00:00",
+      "touched_round": 351,
+      "commit": "91d3afc0",
+      "summary": "feat(frontend): editor comments checkbox + public closed notice (form swap), i18n en/zh, slug.spec mounts real CommentForm; 2 tests"
+    },
+    "CHG-596": {
+      "id": "CHG-596",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-15T12:56:53+00:00",
+      "updated_at": "2026-09-15T12:56:53+00:00",
+      "touched_round": 351,
+      "commit": "5856957e",
+      "summary": "test(e2e): per-post comment control journey (editor toggle -> public notice + thread intact + 403 + detail persists)"
+    },
+    "CHG-597": {
+      "id": "CHG-597",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-15T12:56:53+00:00",
+      "updated_at": "2026-09-15T12:56:53+00:00",
+      "touched_round": 351,
+      "commit": "cc8b350a",
+      "summary": "docs(comments): record round 351 in README + CHANGELOG (en/zh)"
+    },
+    "EV-258": {
+      "id": "EV-258",
+      "type": "evidence",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-15T12:57:30+00:00",
+      "updated_at": "2026-09-15T12:57:30+00:00",
+      "touched_round": 351,
+      "source": "backend 1622 passed (cov 93.84%, ruff clean) + frontend 2155 (typecheck 0, biome 458 clean) + e2e journey green in a real browser (editor toggle -> public zh closed notice + no form -> existing thread visible -> API 403 -> admin detail persists) + alembic z7d2c4e6f8a0 round-trip on fresh SQLite and dev-PG scratch schema r351",
+      "title": "round 351 VERIFY green: closed post keeps its thread, refuses new comments (403, incl. reader auto-approve), advertises the closed state publicly and in the admin detail",
+      "confidence": 1.0
+    },
+    "DEC-376": {
+      "id": "DEC-376",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-15T12:57:30+00:00",
+      "updated_at": "2026-09-15T12:57:30+00:00",
+      "touched_round": 351,
+      "title": "close round 351: per-post comment control delivered (TASK-413 by CHG-594..597; supersedes DEC-375) - VERIFY green: backend 1622 (cov 93.84%, ruff clean), frontend 2155 (typecheck 0, biome 458 clean), e2e journey green, migration z7d2c4e6f8a0 SQLite+PG round-trip",
+      "rationale": "Round 351 closes the single-post comment gap: posts.comments_enabled (default true) with an editor toggle, a public closed-notice that keeps the existing thread readable, and a create-time 403 that even the verified-reader auto-approve shortcut cannot bypass. 6 backend + 2 page unit tests plus a real-browser e2e that drives the whole operator -> reader journey. Migration verified on fresh SQLite and a dev-PG scratch schema. No open follow-ups in the graph.",
+      "alternatives_rejected": "Rejected: global comment kill-switch (too broad), deleting/muting threads (loses the conversation), 404-on-closed (post is public, only writing is gated)"
     }
   },
   "edges": [
@@ -38531,6 +38623,42 @@
       "to": "DEC-373",
       "type": "supersedes",
       "created_at": "2026-09-15T11:48:39+00:00"
+    },
+    {
+      "from": "DEC-375",
+      "to": "TASK-413",
+      "type": "governs",
+      "created_at": "2026-09-15T12:56:10+00:00"
+    },
+    {
+      "from": "CHG-594",
+      "to": "TASK-413",
+      "type": "implements",
+      "created_at": "2026-09-15T12:56:53+00:00"
+    },
+    {
+      "from": "CHG-595",
+      "to": "TASK-413",
+      "type": "implements",
+      "created_at": "2026-09-15T12:56:53+00:00"
+    },
+    {
+      "from": "CHG-596",
+      "to": "TASK-413",
+      "type": "implements",
+      "created_at": "2026-09-15T12:56:54+00:00"
+    },
+    {
+      "from": "CHG-597",
+      "to": "TASK-413",
+      "type": "implements",
+      "created_at": "2026-09-15T12:56:54+00:00"
+    },
+    {
+      "from": "DEC-376",
+      "to": "DEC-375",
+      "type": "supersedes",
+      "created_at": "2026-09-15T12:57:31+00:00"
     }
   ]
 }
