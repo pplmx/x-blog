@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 350,
+  "round": 351,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-15T09:47:04+00:00",
+  "updated_at": "2026-09-15T11:48:58+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -25648,6 +25648,109 @@
       "title": "close round 349: admin duplicate-post delivered (TASK-411 by CHG-586..589; supersedes DEC-371) - VERIFY green: backend 1609 (cov 93.81%, ruff clean), frontend 2148 (typecheck 0, biome 455 files clean), e2e duplicate-post journey green in a real browser",
       "rationale": "Round 349 closes the authoring gap for repeat-shaped content: the admin posts list gains a one-click Duplicate action that clones a post into a fresh private draft (POST /api/admin/posts/{id}/clone -> crud.clone_post) - content/excerpt/cover/category/tags/series membership + attribution copied verbatim, a unique {slug}-copy[-N] slug derived, and every publication-metadata field cleared (unpublished, unscheduled, unpinned, zeroed views/likes) so the copy can neither leak nor announce itself (no new-post fan-out for a draft). No comments/notifications copied; revisions restart with the copy as its own initial snapshot; the editor navigates straight into the new draft. 4 backend tests (content carryover, slug increment on repeated clones, 404, admin gate) + 2 posts-list unit tests (clone+navigate, failure without navigating) + a real-browser e2e (seed published -> list Duplicate -> editor with same title -> copy unpublished with -copy slug via API -> cleanup). No open follow-ups in the graph.",
       "alternatives_rejected": "Rejected: (1) a second \"copy into new\" in the editor header - the list is the clone surface, one entry point keeps the slice tight; (2) copying publication metadata - a live/scheduled duplicate could leak and double-announce via fan-out; (3) duplicating revisions/comments - a fresh draft has neither"
+    },
+    "DEC-373": {
+      "id": "DEC-373",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-15T11:47:18+00:00",
+      "updated_at": "2026-09-15T11:47:18+00:00",
+      "touched_round": 350,
+      "title": "round 350 scope: slug-change permanent redirects (TASK-412)",
+      "rationale": "When an operator re-slugs a post, series or static page, every URL already shared (link-shares, search results, RSS, bookmarks) used to dead-end at a 404. Re-slugging now records a permanent redirect in a new slug_redirects table: the public get-by-slug routes keep answering 404 (no-oracle posture intact) but stamp an X-Redirect-To header naming the canonical /{kind}s/{new} target, preserved through the HTTPException handler so the web layer turns it into a true 301 (SSR, or window.location.replace on an SPA click). Repeated renames collapse (A->B then B->C resolves A->C in one hop); rename-back (A->B then B->A) deletes the swallowed row instead of leaving a browser-looping self-cycle. The Nuxt API proxy dropped every backend header on 4xx/5xx (orphaning X-Redirect-To and stripping content-type off error bodies) - fixed with a shared forwardHeaders on success+error paths.",
+      "alternatives_rejected": "Rejected: (1) answering the old URL with a live 301 at the API - the public surface is no-oracle so unpublished/unknown slugs keep their 404, and Nuxt useFetch follows 3xx before the page sees it, hence the 404 + X-Redirect-To contract with the 301 emitted at the origin; (2) an nginx/rewrite-table redirect - the map lives in the backend DB beside the entities and is reachable from both API and SSR without infra coupling"
+    },
+    "TASK-412": {
+      "id": "TASK-412",
+      "type": "task",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-15T11:47:18+00:00",
+      "updated_at": "2026-09-15T11:47:18+00:00",
+      "touched_round": 350,
+      "category": "core-feature",
+      "description": "Deliver slug-change permanent redirects for posts/series/pages: capture at every re-slug admin path (admin_update_post, crud.update_post, crud.update_series, admin_update_page) into slug_redirects (chain-collapse + rename-back self-loop deletion), resolve in the public get-by-slug routes as 404 + X-Redirect-To, preserve headers through the HTTPException handler, forward headers on proxy error paths, emit SSR 301 + Location (or hard client nav) from useSlugRedirect wired into posts/series/pages pages. Unit + integration + browser e2e; SQLite+PG migration round-trip.",
+      "severity": "high"
+    },
+    "CHG-590": {
+      "id": "CHG-590",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-15T11:47:44+00:00",
+      "updated_at": "2026-09-15T11:47:44+00:00",
+      "touched_round": 350,
+      "commit": "3c7bc7d2",
+      "summary": "feat(backend): slug-change 301 redirects (SlugRedirect model+migration, crud.record/resolve with chain-collapse + rename-back deletion, 404+X-Redirect-To in posts/series/pages get-by-slug, headers through HTTPException handler, 7 tests)"
+    },
+    "CHG-591": {
+      "id": "CHG-591",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-15T11:47:44+00:00",
+      "updated_at": "2026-09-15T11:47:44+00:00",
+      "touched_round": 350,
+      "commit": "81b7e015",
+      "summary": "feat(frontend): useSlugRedirect SSR 301 + hard client nav on 404+X-Redirect-To; Nuxt API proxy forwardHeaders on success+error paths; 5 unit tests"
+    },
+    "CHG-592": {
+      "id": "CHG-592",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-15T11:47:44+00:00",
+      "updated_at": "2026-09-15T11:47:44+00:00",
+      "touched_round": 350,
+      "commit": "05fe49d0",
+      "summary": "test(e2e): slug-change redirect journeys across post/page/series (browser + origin HTTP contract)"
+    },
+    "CHG-593": {
+      "id": "CHG-593",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-15T11:47:45+00:00",
+      "updated_at": "2026-09-15T11:47:45+00:00",
+      "touched_round": 350,
+      "commit": "83f38387",
+      "summary": "docs(slug-redirects): record round 350 in README + CHANGELOG (en/zh)"
+    },
+    "EV-257": {
+      "id": "EV-257",
+      "type": "evidence",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-15T11:47:45+00:00",
+      "updated_at": "2026-09-15T11:47:45+00:00",
+      "touched_round": 350,
+      "source": "backend 1616 passed (cov 93.83%) + frontend 2153 (typecheck 0, biome 458 clean) + e2e 3 journeys green in a real browser (post create->reslug->old URL 404+header->page 301->browser lands canonical, page+series via origin contract) + alembic y9f1b3d5e7f9 round-trip on fresh SQLite and dev-PG scratch schema r350",
+      "title": "round 350 VERIFY green: 404+X-Redirect-To contract holds through the Nuxt origin (proxy error-header forwarding restored), SSR 301 works, chain-collapse and rename-back guarded by unit tests",
+      "confidence": 1.0
+    },
+    "ISS-512": {
+      "id": "ISS-512",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-15T11:48:13+00:00",
+      "updated_at": "2026-09-15T11:48:38+00:00",
+      "touched_round": 350,
+      "description": "Nuxt API proxy /api/[...path] copied status+body on backend 4xx/5xx but dropped every header (only forwarded headers on 2xx): X-Redirect-To was orphaned (re-slugged URLs could not 301 at the origin) and content-type was stripped off JSON error envelopes. Found by the round-350 e2e (old API URL 404 had no x-redirect-to through the origin).",
+      "severity": "high"
+    },
+    "DEC-374": {
+      "id": "DEC-374",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-15T11:48:38+00:00",
+      "updated_at": "2026-09-15T11:48:38+00:00",
+      "touched_round": 350,
+      "title": "close round 350: slug-change permanent redirects delivered (TASK-412 by CHG-590..593; supersedes DEC-373) - VERIFY green: backend 1616 (cov 93.83%, ruff clean), frontend 2153 (typecheck 0, biome 458 files), e2e 3 journeys green, migrations SQLite+PG round-trip",
+      "rationale": "Round 350 keeps old URLs alive when an operator re-slugs a post, series or page: re-slugging records a permanent redirect (slug_redirects, chain-collapse so A->B then B->C resolves A->C, rename-back deletes the swallowed row so no browser-looping cycle survives), the public get-by-slug routes keep their no-oracle 404 but stamp X-Redirect-To, main.py preserves exc.headers, and the Nuxt layer turns it into a real 301 (SSR) or hard client nav - via useSlugRedirect reading .cause (server) / .response (client) off the fetch error. The e2e surfaced a real proxy bug (headers dropped on 4xx/5xx) which is fixed + locked with a unit test. 7 backend + 4 composable + 1 proxy unit tests plus 3 e2e journeys; SQLite + dev-PG scratch-schema migration round-trips verified. No open follow-ups in the graph.",
+      "alternatives_rejected": "Rejected: answering old URLs with an API-level 301 (breaks no-oracle + Nuxt swallows 3xx in useFetch); nginx rewrite table (map belongs with the entities in the DB); keeping a self-loop row on rename-back (would 301-loop a browser after delete/unpublish)"
     }
   },
   "edges": [
@@ -38386,6 +38489,48 @@
       "to": "DEC-371",
       "type": "supersedes",
       "created_at": "2026-09-15T09:47:03+00:00"
+    },
+    {
+      "from": "DEC-373",
+      "to": "TASK-412",
+      "type": "governs",
+      "created_at": "2026-09-15T11:47:44+00:00"
+    },
+    {
+      "from": "CHG-590",
+      "to": "TASK-412",
+      "type": "implements",
+      "created_at": "2026-09-15T11:48:13+00:00"
+    },
+    {
+      "from": "CHG-591",
+      "to": "TASK-412",
+      "type": "implements",
+      "created_at": "2026-09-15T11:48:13+00:00"
+    },
+    {
+      "from": "CHG-592",
+      "to": "TASK-412",
+      "type": "implements",
+      "created_at": "2026-09-15T11:48:13+00:00"
+    },
+    {
+      "from": "CHG-593",
+      "to": "TASK-412",
+      "type": "implements",
+      "created_at": "2026-09-15T11:48:13+00:00"
+    },
+    {
+      "from": "CHG-591",
+      "to": "ISS-512",
+      "type": "resolves",
+      "created_at": "2026-09-15T11:48:13+00:00"
+    },
+    {
+      "from": "DEC-374",
+      "to": "DEC-373",
+      "type": "supersedes",
+      "created_at": "2026-09-15T11:48:39+00:00"
     }
   ]
 }
