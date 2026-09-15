@@ -8,11 +8,12 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import Response
 from sqlalchemy.orm import Session
 
-from app import crud, models
+from app import auth, crud, models
 from app.cache import feed_cache
 from app.conditional import PUBLIC_CACHE_CONTROL, conditional_response
 from app.config import settings
 from app.database import get_db
+from app.schemas import IdInt
 
 # RSS router with /rss prefix
 rss_router = APIRouter(prefix="", tags=["rss"])
@@ -483,6 +484,61 @@ def get_series_rss_feed(
     title = f"{series.title} — {site_title}"
     description = f"{site_description} · series: {series.title}"
     self_url = f"{site_url}/rss/series/{quote(slug)}.xml"
+
+    rss = generate_rss_feed(
+        posts,
+        site_url,
+        title,
+        description,
+        full_content=full,
+        self_url=self_url,
+        language=settings.site_language,
+    )
+    feed_cache[key] = rss
+    return _feed_response(rss, "application/rss+xml", request)
+
+
+@rss_router.get("/authors/{author_id}.xml")
+def get_author_rss_feed(
+    author_id: IdInt,
+    full: bool = True,
+    request: Request = None,  # type: ignore[assignment] — FastAPI injects it
+    db: Session = Depends(get_db),
+) -> Response:
+    """RSS 2.0 feed scoped to one public writer (DEC-359, round 345).
+
+    Subscribing to /rss/authors/{id}.xml delivers exactly that writer's
+    published posts. Same no-oracle boundary as the archive page: a pen-named
+    admin is the author's public identity; an unknown id and a username-only
+    admin answer the SAME 404, so the feed cannot enumerate admins or reveal
+    which usernames exist. Cached under a scoped key.
+    """
+    author = db.query(auth.User).filter(auth.User.id == author_id).first()
+    if author is None or not author.display_name:
+        raise HTTPException(status_code=404, detail="Author not found")
+    # Scheduled-post publish-time fan-out (DEC-344/TASK-398): a scoped feed is
+    # a polled surface — fire the exactly-once sweep like the other feeds.
+    crud.maybe_notify_due_scheduled_posts(db)
+    key = ("rss-author", author_id, full)
+    cached = feed_cache.get(key)
+    if cached is not None:
+        return _feed_response(cached, "application/rss+xml", request)
+
+    posts, _ = crud.get_posts(
+        db,
+        skip=0,
+        limit=20,
+        published=True,
+        author_id=author_id,
+        pinned_first=False,
+    )
+
+    site_url = getattr(settings, "site_url", "http://localhost:3000")
+    site_title = getattr(settings, "site_title", "X-Blog")
+    site_description = getattr(settings, "site_description", "A modern blog built with FastAPI and Next.js")
+    title = f"{author.display_name} — {site_title}"
+    description = f"{site_description} · author: {author.display_name}"
+    self_url = f"{site_url}/rss/authors/{author_id}.xml"
 
     rss = generate_rss_feed(
         posts,

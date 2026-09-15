@@ -324,6 +324,54 @@ def test_admin_update_post_reassigns_author(client, admin_token, admin_user, db_
     _no_username_leak(public)
 
 
+def test_author_rss_feed_scopes_to_one_writer(client, admin_token, admin_user, db_session):
+    # /rss/authors/{id}.xml delivers ONLY that writer's published posts
+    # (round 345): each pen-named writer gets their own scoped feed, no
+    # cross-writer bleed and no username in the payload.
+    _set_pen_name(client, _admin_headers(admin_token), admin_user.id, "Feed Writer")
+    other = auth.User(
+        username=f"fw{uuid4().hex[:6]}",
+        password=auth.get_password_hash("editorpass123"),
+        role="editor",
+        is_superuser=False,
+        display_name="Other Feed Writer",
+    )
+    db_session.add(other)
+    db_session.flush()
+    other_token = _login(client, other.username, "editorpass123")
+
+    _create_post(client, _admin_headers(admin_token), slug=f"mine-feed-{uuid4().hex[:8]}")
+    _create_post(client, _admin_headers(other_token), slug=f"theirs-feed-{uuid4().hex[:8]}")
+
+    r = client.get(f"/rss/authors/{admin_user.id}.xml")
+    assert r.status_code == 200
+    assert "Feed Writer" in r.text
+    assert "mine-feed-" in r.text
+    assert "theirs-feed-" not in r.text
+    assert "username" not in r.text
+
+    r2 = client.get(f"/rss/authors/{other.id}.xml")
+    assert r2.status_code == 200
+    assert "Other Feed Writer" in r2.text
+    assert "theirs-feed-" in r2.text
+    assert "mine-feed-" not in r2.text
+
+
+def test_author_rss_404_for_unknown_or_username_only_author(client, db_session):
+    # Unknown id -> 404 (matches the archive endpoint's no-oracle boundary).
+    assert client.get("/rss/authors/999999.xml").status_code == 404
+    editor = auth.User(
+        username=f"nf{uuid4().hex[:6]}",
+        password=auth.get_password_hash("editorpass123"),
+        role="editor",
+        is_superuser=False,
+        display_name=None,
+    )
+    db_session.add(editor)
+    db_session.flush()
+    assert client.get(f"/rss/authors/{editor.id}.xml").status_code == 404
+
+
 def test_author_archive_envelope_identifies_author_even_when_empty(client, admin_token, admin_user):
     # The archive page must be able to title itself by pen name even before the
     # writer has published anything — the author envelope rides on the (empty)
