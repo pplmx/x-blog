@@ -9,6 +9,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- **Post author attribution (DEC-359)**: a multi-editor blog displayed posts,
+  categories, series, tags — but never who wrote them: a post carried no
+  author identity, no byline, and there was no way to browse one writer's
+  published posts. Posts now carry an author, defaulted at create to the
+  writing admin; admins get a public pen name — deliberately separate from the
+  login username, which stays private (admin login is no-oracle, so publishing
+  usernames would hand out the first half of a credential) — and every
+  published post with a pen-named author shows a byline on the post page and
+  the list cards, linking to `/authors/{id}`: a paginated archive of exactly
+  that writer's published posts, titled by pen name even before they have
+  published anything. Unknown ids and username-only admins answer the same 404,
+  so the surface cannot enumerate admins.
 - **Reader email change (DEC-357)**: the login email was immutable with no
   verification flow, so a reader whose address changed was stranded — per-event
   mail and the weekly digest went to the dead address and the only "fix" was
