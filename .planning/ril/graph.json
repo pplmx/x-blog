@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 353,
+  "round": 354,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-15T13:50:40+00:00",
+  "updated_at": "2026-09-15T15:28:14+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -25935,6 +25935,108 @@
       "title": "close round 352: reader profile bio delivered (TASK-414 by CHG-598..601; supersedes DEC-377) - VERIFY green: backend 1628 (cov 93.85%, ruff clean), frontend 2158 (typecheck 0, biome 458 clean), e2e journey green, migration a1b3c5d7e9f1 SQLite+PG round-trip",
       "rationale": "Round 352 completes the reader identity surface: reader_accounts.bio is set/cleared from /account and renders on the public /readers/{id} profile (plain text, 500-char cap, explicit-null clears, email never leaks). 6 backend + 4 page unit tests plus a real-browser e2e; migration verified on fresh SQLite and a dev-PG scratch schema. No open follow-ups in the graph.",
       "alternatives_rejected": "Rejected: rich/markdown bio (untrusted markup on a public page), separate bio page (duplicates the /account profile form)"
+    },
+    "DEC-379": {
+      "id": "DEC-379",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-15T15:26:59+00:00",
+      "updated_at": "2026-09-15T15:26:59+00:00",
+      "touched_round": 353,
+      "title": "round 353 scope: author follow — follow a specific writer for new-post fan-out (TASK-415)",
+      "rationale": "On a multi-editor blog a reader who loved one writer's posts subscribes to JUST that person — a topic-shaped category/series/tag follow can't express it. Deliver the full lifecycle: an author_follows table (UniqueConstraint(reader_id, author_id) + notify), no-oracle gate (only a pen-named author is followable — a username-only admin and an unknown id both 404), a byline follow button on the post page, a /account followed-writers section with per-author notify toggle + unfollow, and the inbox + Web Push fan-out when that author publishes (respecting notify=off, stopping on unfollow).",
+      "alternatives_rejected": "Rejected: (1) follow-by-topic (categories/series/tags already cover topic-shaped interests — the gap is the person); (2) posting the author's whole profile at /readers/{id} — the follow control belongs on the post byline where the reader discovers the writer; (3) per-author notify off the byline — /account already owns per-follow notification state, keeping the byline a single toggle."
+    },
+    "TASK-415": {
+      "id": "TASK-415",
+      "type": "task",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-15T15:26:59+00:00",
+      "updated_at": "2026-09-15T15:27:52+00:00",
+      "touched_round": 353,
+      "category": "core-feature",
+      "title": "author follow: author_follows table + no-oracle follow endpoints + byline follow button + /account followed-writers + inbox/WebPush fan-out (round 353)"
+    },
+    "CHG-602": {
+      "id": "CHG-602",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-15T15:26:59+00:00",
+      "updated_at": "2026-09-15T15:26:59+00:00",
+      "touched_round": 353,
+      "commit": "d58c618c",
+      "summary": "feat(backend): author follow — follow a writer for new-post fan-out (DEC-379, TASK-415)"
+    },
+    "CHG-603": {
+      "id": "CHG-603",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-15T15:26:59+00:00",
+      "updated_at": "2026-09-15T15:26:59+00:00",
+      "touched_round": 353,
+      "commit": "177ae364",
+      "summary": "chore(backend): restore pyright-clean type checks (repo quality)"
+    },
+    "CHG-604": {
+      "id": "CHG-604",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-15T15:26:59+00:00",
+      "updated_at": "2026-09-15T15:26:59+00:00",
+      "touched_round": 353,
+      "commit": "c0657ee6",
+      "summary": "feat(frontend): author follow — byline button + account followed-writers (DEC-379, TASK-415)"
+    },
+    "CHG-605": {
+      "id": "CHG-605",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-15T15:26:59+00:00",
+      "updated_at": "2026-09-15T15:26:59+00:00",
+      "touched_round": 353,
+      "commit": "c3b9deaf",
+      "summary": "test(e2e): author-follow journey — byline follow -> account -> inbox fan-out (DEC-379, TASK-415)"
+    },
+    "CHG-606": {
+      "id": "CHG-606",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-15T15:26:59+00:00",
+      "updated_at": "2026-09-15T15:26:59+00:00",
+      "touched_round": 353,
+      "commit": "97dad4a8",
+      "summary": "docs(author-follow): record round 353 author follow in README + CHANGELOG (en/zh)"
+    },
+    "EV-260": {
+      "id": "EV-260",
+      "type": "evidence",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-15T15:27:52+00:00",
+      "updated_at": "2026-09-15T15:27:52+00:00",
+      "touched_round": 353,
+      "title": "round 353 VERIFY green: author-follow lifecycle, no-oracle 404, fan-out on publish and on notify-off, unfollow stops the flow",
+      "source": "backend 1633 passed (cov 93.80%, ruff clean, pyright 0 errors) + frontend 2173 (typecheck 0, biome 462 clean) + e2e author-follow journey green in a real browser (byline follow -> /account list -> inbox fan-out -> unfollow stops it) + alembic b2c4d6e8f0a2 round-trip on fresh SQLite and dev-PG scratch schema r353",
+      "confidence": 1.0
+    },
+    "DEC-380": {
+      "id": "DEC-380",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-15T15:27:52+00:00",
+      "updated_at": "2026-09-15T15:27:52+00:00",
+      "touched_round": 353,
+      "title": "close round 353: author follow delivered (TASK-415 by CHG-602+CHG-603+CHG-604+CHG-605+CHG-606; supersedes DEC-379) — VERIFY green: backend 1633 (cov 93.80%, ruff clean, pyright 0), frontend 2173 (typecheck 0, biome 462 clean), e2e journey green, migration b2c4d6e8f0a2 SQLite+dev-PG round-trip",
+      "rationale": "Round 353 closes the person-shaped follow gap: author_follows with a pen-name-only no-oracle gate, idempotent follow/notify/unfollow endpoints, a byline follow button, the /account followed-writers section, and author fan-out to the inbox + Web Push that honours notify=off and stops on unfollow. 5 backend + 15 frontend unit tests plus a real-browser e2e driving the whole reader journey. Migration verified on fresh SQLite and a dev-PG scratch schema (r353). pyright also restored to 0 on two drifted author-attribution aggregations.",
+      "alternatives_rejected": "Rejected: (1) making the /follows topic feed the only consumption surface — an author-shaped subscription deserves its own account section; (2) allowing follow of username-only admins — that would leak admin usernames as public identity (no-oracle posture), so only pen names are followable."
     }
   },
   "edges": [
@@ -38787,6 +38889,48 @@
       "to": "DEC-377",
       "type": "supersedes",
       "created_at": "2026-09-15T13:50:40+00:00"
+    },
+    {
+      "from": "DEC-379",
+      "to": "TASK-415",
+      "type": "governs",
+      "created_at": "2026-09-15T15:26:59+00:00"
+    },
+    {
+      "from": "CHG-602",
+      "to": "TASK-415",
+      "type": "implements",
+      "created_at": "2026-09-15T15:27:51+00:00"
+    },
+    {
+      "from": "CHG-603",
+      "to": "TASK-415",
+      "type": "implements",
+      "created_at": "2026-09-15T15:27:51+00:00"
+    },
+    {
+      "from": "CHG-604",
+      "to": "TASK-415",
+      "type": "implements",
+      "created_at": "2026-09-15T15:27:51+00:00"
+    },
+    {
+      "from": "CHG-605",
+      "to": "TASK-415",
+      "type": "implements",
+      "created_at": "2026-09-15T15:27:52+00:00"
+    },
+    {
+      "from": "CHG-606",
+      "to": "TASK-415",
+      "type": "implements",
+      "created_at": "2026-09-15T15:27:52+00:00"
+    },
+    {
+      "from": "DEC-380",
+      "to": "DEC-379",
+      "type": "supersedes",
+      "created_at": "2026-09-15T15:27:52+00:00"
     }
   ]
 }
