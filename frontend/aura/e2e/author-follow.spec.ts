@@ -38,6 +38,9 @@ test.describe("Author follow (round 353)", () => {
 		page,
 		request,
 	}) => {
+		// Five page loads + two admin interactive steps + API fan-out checks:
+		// a genuinely multi-page journey, comfortably past the 30s default.
+		test.setTimeout(60_000);
 		const uid = Date.now();
 		const authorHandle = `follow-author-${uid}`;
 		const penName = `Pen Writer ${uid}`;
@@ -106,9 +109,9 @@ test.describe("Author follow (round 353)", () => {
 			const followButton = page.getByRole("button", { name: "关注", exact: true });
 			await expect(followButton).toBeVisible({ timeout: 10000 });
 			await followButton.click();
-			await expect(
-				page.getByRole("button", { name: "已关注", exact: true }),
-			).toBeVisible({ timeout: 10000 });
+			await expect(page.getByRole("button", { name: "已关注", exact: true })).toBeVisible({
+				timeout: 10000,
+			});
 
 			// The writer shows up in the /account followed-writers section.
 			await page.goto("/account");
@@ -129,7 +132,23 @@ test.describe("Author follow (round 353)", () => {
 			expect(inbox.status()).toBe(200);
 			expect(((await inbox.json()) as { total: number }).total).toBe(1);
 
-			// Unfollow from the account page (confirm the dialog).
+			// The followed writer's posts now also surface in the /follows feed
+			// (round 354): all three authored posts are by a followed author.
+			await page.goto("/follows");
+			await expect(page.getByRole("heading", { level: 1 })).toContainText("我的关注", {
+				timeout: 15000,
+			});
+			await expect(page.locator("a", { hasText: slugThird })).toBeVisible({
+				timeout: 15000,
+			});
+			await expect(page.locator("a", { hasText: slugFirst })).toBeVisible();
+
+			// Unfollow from the account page (confirm the dialog). The
+			// writersSection locator re-resolves on the fresh /account load.
+			await page.goto("/account");
+			await expect(writersSection.locator("a", { hasText: penName })).toBeVisible({
+				timeout: 15000,
+			});
 			page.on("dialog", (dialog) => dialog.accept());
 			await writersSection.getByRole("button", { name: "取消关注" }).click();
 			await expect(writersSection.getByText("还没有关注任何作者")).toBeVisible({
@@ -138,9 +157,9 @@ test.describe("Author follow (round 353)", () => {
 
 			// The byline flips back to 关注 and the fan-out is stopped.
 			await page.goto(`/posts/${slugFirst}`);
-			await expect(
-				page.getByRole("button", { name: "关注", exact: true }),
-			).toBeVisible({ timeout: 10000 });
+			await expect(page.getByRole("button", { name: "关注", exact: true })).toBeVisible({
+				timeout: 10000,
+			});
 			await expect(page.getByRole("button", { name: "已关注" })).toHaveCount(0);
 		} finally {
 			await request.delete(`/api/admin/posts/${firstPostId}`, { headers: adminH });
