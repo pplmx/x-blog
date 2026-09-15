@@ -259,3 +259,118 @@ class TestFollowsFeed:
         body = client.get(FOLLOWS_FEED + "?limit=2&page=99", headers=_auth(token)).json()
         assert body["items"] == []
         assert body["pagination"]["page"] == 99
+
+
+def _pen_named_author(db, username="feed-author"):
+    """A followable writer: a User with a public pen name (round 353 gate)."""
+    from app.auth import User
+
+    u = User(username=username, password="x", role="editor", display_name=f"Pen {username}")
+    db.add(u)
+    db.commit()
+    db.refresh(u)
+    return u
+
+
+class TestFollowsFeedAuthorScope:
+    """The follows-feed's author dimension (round 354, DEC-381): a reader
+    following a writer sees that writer's public posts, even when none of the
+    post's topics are followed — the person-shaped follow pays the same
+    discovery payoff as the topic follows."""
+
+    def test_author_follow_alone_feeds_posts_without_topic_follows(self, client, db_session, auth_headers):
+        token = _token(client)
+        author = _pen_named_author(db_session, "feed-author-a")
+        post = client.post(
+            "/api/posts",
+            json={
+                "title": "authored",
+                "slug": f"authored-{author.id}",
+                "content": "c",
+                "published": True,
+                "author_id": author.id,
+            },
+            headers=auth_headers,
+        )
+        assert post.status_code == 201, post.text
+        client.put(f"/api/reader/me/authors/{author.id}/follow", headers=_auth(token))
+
+        feed = _items(client.get(FOLLOWS_FEED, headers=_auth(token)))
+        assert len(feed) == 1
+        assert feed[0]["slug"] == f"authored-{author.id}"
+        assert feed[0]["author"]["id"] == author.id
+        assert feed[0]["author"]["display_name"] == "Pen feed-author-a"
+
+    def test_unrelated_author_posts_stay_out(self, client, db_session, auth_headers):
+        token = _token(client)
+        followed = _pen_named_author(db_session, "feed-author-b")
+        other = _pen_named_author(db_session, "feed-author-c")
+        mine = client.post(
+            "/api/posts",
+            json={
+                "title": "mine",
+                "slug": f"mine-{followed.id}",
+                "content": "c",
+                "published": True,
+                "author_id": followed.id,
+            },
+            headers=auth_headers,
+        ).json()["slug"]
+        client.post(
+            "/api/posts",
+            json={
+                "title": "theirs",
+                "slug": f"theirs-{other.id}",
+                "content": "c",
+                "published": True,
+                "author_id": other.id,
+            },
+            headers=auth_headers,
+        )
+        client.put(f"/api/reader/me/authors/{followed.id}/follow", headers=_auth(token))
+
+        feed = _items(client.get(FOLLOWS_FEED, headers=_auth(token)))
+        assert [p["slug"] for p in feed] == [mine]
+
+    def test_dedups_post_matching_author_and_category_follows(self, client, db_session, auth_headers):
+        token = _token(client)
+        author = _pen_named_author(db_session, "feed-author-d")
+        category = _create_category(client, auth_headers, name="CoverBoth")
+        post = client.post(
+            "/api/posts",
+            json={
+                "title": "both-scope",
+                "slug": f"both-scope-{author.id}",
+                "content": "c",
+                "published": True,
+                "author_id": author.id,
+                "category_id": category["id"],
+            },
+            headers=auth_headers,
+        )
+        assert post.status_code == 201, post.text
+        client.put(f"/api/reader/me/authors/{author.id}/follow", headers=_auth(token))
+        client.put(f"/api/reader/me/categories/{category['id']}/follow", headers=_auth(token))
+
+        feed = _items(client.get(FOLLOWS_FEED, headers=_auth(token)))
+        assert len(feed) == 1
+
+    def test_author_follow_still_respects_publish_visibility(self, client, db_session, auth_headers):
+        token = _token(client)
+        author = _pen_named_author(db_session, "feed-author-e")
+        draft = client.post(
+            "/api/posts",
+            json={
+                "title": "draft-authored",
+                "slug": f"draft-authored-{author.id}",
+                "content": "c",
+                "published": False,
+                "author_id": author.id,
+            },
+            headers=auth_headers,
+        )
+        assert draft.status_code == 201, draft.text
+        client.put(f"/api/reader/me/authors/{author.id}/follow", headers=_auth(token))
+
+        feed = _items(client.get(FOLLOWS_FEED, headers=_auth(token)))
+        assert feed == []

@@ -3109,17 +3109,17 @@ def list_tag_follow_reader_ids(db: Session, tag_ids: list[int]) -> list[int]:
 
 
 def follows_feed_posts(db: Session, reader_id: int, limit: int = 12, offset: int = 0) -> tuple[list[models.Post], int]:
-    """Recent public posts from the reader's followed categories + series + tags.
+    """Recent public posts from the reader's followed categories + series + tags + authors.
 
     The discovery payoff of the follow model (DEC-142/TASK-183; tag dimension
-    DEC-195/TASK-215): a post matches if its category is one the reader follows
-    OR its series is one they follow OR it carries a tag they follow
-    (independent of per-follow notify — tracking, not push). Results are
-    public, published, deduped (a post is its own row), newest by effective
-    publish time first (publish_at ?? created_at, matching the global feed),
-    capped at ``limit`` with ``offset`` pagination (round-306, DEC-292). A
-    reader following nothing gets an empty (list, 0) pair (the frontend hides
-    the row).
+    DEC-195/TASK-215; author dimension round 354/DEC-381): a post matches if its
+    category is one the reader follows OR its series is one they follow OR it
+    carries a tag they follow OR its author is one they follow (independent of
+    per-follow notify — tracking, not push). Results are public, published,
+    deduped (a post is its own row), newest by effective publish time first
+    (publish_at ?? created_at, matching the global feed), capped at ``limit``
+    with ``offset`` pagination (round-306, DEC-292). A reader following nothing
+    gets an empty (list, 0) pair (the frontend hides the row).
     """
     category_ids = [
         cid
@@ -3131,10 +3131,14 @@ def follows_feed_posts(db: Session, reader_id: int, limit: int = 12, offset: int
         sid
         for (sid,) in db.query(models.SeriesFollow.series_id).filter(models.SeriesFollow.reader_id == reader_id).all()
     ]
+    author_ids = [
+        aid
+        for (aid,) in db.query(models.AuthorFollow.author_id).filter(models.AuthorFollow.reader_id == reader_id).all()
+    ]
     tag_ids = [
         tid for (tid,) in db.query(models.TagFollow.tag_id).filter(models.TagFollow.reader_id == reader_id).all()
     ]
-    if not category_ids and not series_ids and not tag_ids:
+    if not category_ids and not series_ids and not tag_ids and not author_ids:
         return [], 0
 
     now = utc_now_naive()
@@ -3143,6 +3147,8 @@ def follows_feed_posts(db: Session, reader_id: int, limit: int = 12, offset: int
         scope.append(models.Post.category_id.in_(category_ids))
     if series_ids:
         scope.append(models.Post.series_id.in_(series_ids))
+    if author_ids:
+        scope.append(models.Post.author_id.in_(author_ids))
     if tag_ids:
         scope.append(
             models.Post.id.in_(db.query(models.post_tags.c.post_id).filter(models.post_tags.c.tag_id.in_(tag_ids)))
@@ -3155,7 +3161,11 @@ def follows_feed_posts(db: Session, reader_id: int, limit: int = 12, offset: int
             or_(models.Post.publish_at.is_(None), models.Post.publish_at <= now),
             or_(*scope),
         )
-        .options(joinedload(models.Post.category), joinedload(models.Post.tags))
+        .options(
+            joinedload(models.Post.category),
+            joinedload(models.Post.tags),
+            joinedload(models.Post.author),
+        )
     )
 
     # Count before pagination (the global feed pattern) so the reader can page
