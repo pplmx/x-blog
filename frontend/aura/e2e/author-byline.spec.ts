@@ -87,9 +87,7 @@ test.describe("Author byline + archive (DEC-359)", () => {
 
 			// --- Post page: the byline sits in the header meta, same link.
 			await page.goto(`/posts/${slug}`);
-			const postByline = page
-				.locator(`header a[href="/authors/${admin.id}"]`)
-				.first();
+			const postByline = page.locator(`header a[href="/authors/${admin.id}"]`).first();
 			await expect(postByline).toBeVisible({ timeout: 10000 });
 			await expect(postByline).toContainText(penName);
 

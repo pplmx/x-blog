@@ -238,12 +238,7 @@ def list_pennamed_authors(
     login username never appears (admin login is no-oracle; /users stays
     superuser-only for the credential-adjacent surface).
     """
-    users = (
-        db.query(auth.User)
-        .filter(auth.User.display_name.isnot(None))
-        .order_by(auth.User.display_name)
-        .all()
-    )
+    users = db.query(auth.User).filter(auth.User.display_name.isnot(None)).order_by(auth.User.display_name).all()
     return users
 
 
