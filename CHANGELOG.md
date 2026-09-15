@@ -9,6 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- **Reader profile bio (round 352)**: a reader community is only as good as
+  the people in it, and a profile made of a name, an avatar and a join date
+  has nothing to say. Readers can now write a short "about me" in
+  `/account` — plain text, one paragraph, capped at 500 chars — that renders
+  under their display name on the public `/readers/{id}` page (alongside
+  their approved comments and streak), completing the identity surface of a
+  commenter readers actually get to know.
 - **Per-post comment control (round 351)**: a blog lives a long time, and a
   post that draws every comment the internet has to offer — high-noise
   threads, stale evergreen content, a privacy-sensitive piece — now lets the
