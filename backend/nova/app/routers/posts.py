@@ -123,7 +123,10 @@ def create_post(
     if existing:
         raise HTTPException(status_code=400, detail="Slug already exists")
     try:
-        return crud.create_post(db, post)
+        # Author attribution (DEC-359/TASK-405): default to the writing admin,
+        # the same semantics as the admin-posts route — never a post silently
+        # without an author when the writer is known.
+        return crud.create_post(db, post, author_id=post.author_id or _current_user.id)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 

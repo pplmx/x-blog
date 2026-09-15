@@ -73,6 +73,28 @@ def test_admin_create_defaults_author_to_writing_admin(client, admin_token, admi
     assert row.display_name == "Riki the Writer"
 
 
+def test_admin_create_route_also_authors_to_writing_admin(client, admin_token, admin_user):
+    # The second admin-create route (POST /api/posts) must default author_id to
+    # the writing admin too — a post created there with no explicit author
+    # would otherwise never get a byline (round-343 deep-dive).
+    _set_pen_name(client, _admin_headers(admin_token), admin_user.id, "Route Writer")
+    r = client.post(
+        "/api/posts",
+        headers=_admin_headers(admin_token),
+        json={
+            "title": "Route-authored post",
+            "slug": f"route-author-{uuid4().hex[:10]}",
+            "content": "# hi",
+            "published": True,
+        },
+    )
+    assert r.status_code == 201, r.text
+    pid = r.json()["id"]
+    detail = client.get(f"/api/posts/{pid}").json()
+    assert detail["author"] == {"id": admin_user.id, "display_name": "Route Writer"}
+    _no_username_leak(detail)
+
+
 def test_editor_created_post_is_authored_by_editor(client, db_session):
     editor = auth.User(
         username=f"ed{uuid4().hex[:6]}",
