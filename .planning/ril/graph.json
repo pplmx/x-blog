@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 346,
+  "round": 347,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-15T06:21:00+00:00",
+  "updated_at": "2026-09-15T06:57:46+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -25317,6 +25317,86 @@
       "title": "close round 345: per-author RSS feed delivered (TASK-407 by CHG-574..576, follows rounds 343/344 author attribution; supersedes DEC-363) - VERIFY green: backend 1588 (ruff clean, pyright 0), frontend 2128 (typecheck 0, biome 439 files clean), e2e author-assign + author-byline journeys green in a real browser",
       "rationale": "Round 345 gives every pen-named writer a scoped RSS feed on the established category/series pattern (DEC-130): /rss/authors/{id}.xml serves only that writer's published posts with the same conditional-GET caching, the same no-oracle boundary (unknown ids + username-only admins both 404, no enumeration), and the same scheduled-post fan-out sweep. The /authors/{id} page emits autodiscovery + a visible subscribe link, and the Nuxt origin's rss catch-all proxy fronts the authors kind so the scoped link works in dev/preview and any non-nginx topology - the round caught this proxy gap: without fronting the authors kind, the link 404'd at the Nuxt origin even though the backend served it. Delivery: backend endpoint + 2 contract tests; frontend autodiscovery + subscribe link + proxy allowlist + 1 page test + e2e RSS assertion through the origin. Regression guard held: full backend + full frontend suites, typecheck, full-repo biome, both author e2e journeys green.",
       "alternatives_rejected": "Rejected (preserved from DEC-363): (1) author_id query param on /rss/feed.xml, diverges from the path-based scoped convention; (2) scoped Atom feed; (3) per-author sitemap. Next candidates from DEC-360's board: author filter in search"
+    },
+    "DEC-365": {
+      "id": "DEC-365",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-15T06:54:25+00:00",
+      "updated_at": "2026-09-15T06:54:25+00:00",
+      "touched_round": 346,
+      "title": "round 346 scope: public writers index (TASK-408) - /authors lists every pen-named writer with a published-post count, each card linking to their archive; GET /api/authors is anonymous + caching-friendly and only ever exposes pen names",
+      "rationale": "Feature-evolution continues after round 345 (per-author RSS). Author attribution (rounds 343-345) gave every pen-named writer a byline, archive and RSS feed, but /authors itself was a one-page dead end - a byline or archive link took you to one writer, and there was no surface listing every contributor, so writer-discovery on a multi-editor blog fell back to memory. The top-level Authors nav item (added round 343) had no destination. Gap analysis: this slice adds the missing discovery vertical - an anonymous GET /api/authors listing every pen-named writer with their published-post count (username-only admins stay invisible, preserving the no-oracle posture; a writer with nothing live yet still appears with a zero), an /authors index page of cards linking to each archive, a \"All writers\" back link on the archive page, and cheap unit + e2e coverage of the whole journey. Reuses the existing AuthorBrief surfacing and needs no new columns or migrations.",
+      "alternatives_rejected": "Rejected: (1) author search facet on /search - sprawl, /authors index already gives the list that facet would need and search-filtering is a separate surface; (2) author profile pages with bio/avatar - a bigger identity model not needed for discovery; (3) /api/authors?only_with_posts= filter - post_count=0 already conveys the state and a pen-named writer with nothing published is still a public contributor"
+    },
+    "TASK-408": {
+      "id": "TASK-408",
+      "type": "task",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-15T06:54:39+00:00",
+      "updated_at": "2026-09-15T06:57:46+00:00",
+      "touched_round": 346,
+      "category": "core-feature",
+      "description": "Public writers index: GET /api/authors listing every pen-named writer with published post_count (username-only admins invisible, zero count still listed); /authors index page (cards link to /authors/{id}, loading/error/empty states, SEO); \"All writers\" back link on the archive page; top-level Authors nav now has a destination; backend + frontend tests + e2e"
+    },
+    "CHG-577": {
+      "id": "CHG-577",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-15T06:56:41+00:00",
+      "updated_at": "2026-09-15T06:56:41+00:00",
+      "touched_round": 346,
+      "commit": "01425401",
+      "summary": "feat(authors): public writers index GET /api/authors (TASK-408)"
+    },
+    "CHG-578": {
+      "id": "CHG-578",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-15T06:56:41+00:00",
+      "updated_at": "2026-09-15T06:56:41+00:00",
+      "touched_round": 346,
+      "commit": "2ac3df53",
+      "summary": "feat(authors): public /authors writers index page (TASK-408)"
+    },
+    "CHG-579": {
+      "id": "CHG-579",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-15T06:56:42+00:00",
+      "updated_at": "2026-09-15T06:56:42+00:00",
+      "touched_round": 346,
+      "commit": "98fbb908",
+      "summary": "docs(authors): record the public writers index (TASK-408 / DEC-365)"
+    },
+    "EV-253": {
+      "id": "EV-253",
+      "type": "evidence",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-15T06:57:07+00:00",
+      "updated_at": "2026-09-15T06:57:07+00:00",
+      "touched_round": 346,
+      "confidence": 1.0,
+      "source": "round 346 full VERIFY",
+      "summary": "Round 346 VERIFY green: backend 1589 passed (10 skipped, cov 93.78%, ruff check+format clean, full suite -n auto), frontend 2131 passed (128 page/component specs, pnpm typecheck exit 0, biome clean on changed files), e2e author-byline journey green in a real browser including the new /authors index step (pen-name card links to archive, published-count rendered, login username never leaks)"
+    },
+    "DEC-366": {
+      "id": "DEC-366",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-15T06:57:32+00:00",
+      "updated_at": "2026-09-15T06:57:32+00:00",
+      "touched_round": 346,
+      "title": "close round 346: public writers index delivered (TASK-408 by CHG-577..579, follows rounds 343/344/345 author attribution; supersedes DEC-365) - VERIFY green: backend 1589 (cov 93.78%, ruff clean), frontend 2131 (typecheck 0, biome clean), e2e author-byline journey incl. /authors index step green in a real browser",
+      "rationale": "Round 346 closes the writer-discovery gap opened by rounds 343-345: /authors now lists every pen-named writer with their published-post count, each card linking to that writer archive - the top-level Authors nav finally has a destination, and a reader who found one byline can browse every contributor. The anonymous GET /api/authors only ever exposes pen names (username-only admins stay invisible; no-oracle preserved) with a single grouped published-count query, and the e2e journey asserts the index card renders the count and never leaks a login username. Also hardens the author-assign e2e with generous admin-login timeouts. Frontend index page covers loading/error/empty states and the archive page gains a \"All writers\" back link. Feature rounds 343-346 (author attribution -> assignment -> RSS -> index) form one coherent authorship vertical with no open follow-ups in the graph.",
+      "alternatives_rejected": "Rejected: (1) pushing a search author-facet now - /authors already provides the writer list a facet would need, and search filtering is a distinct surface better scoped later; (2) adding author bios/avatars to the index - a bigger identity model not needed for discovery"
     }
   },
   "edges": [
@@ -37929,6 +38009,36 @@
       "to": "DEC-363",
       "type": "supersedes",
       "created_at": "2026-09-15T06:21:00+00:00"
+    },
+    {
+      "from": "DEC-365",
+      "to": "TASK-408",
+      "type": "governs",
+      "created_at": "2026-09-15T06:54:39+00:00"
+    },
+    {
+      "from": "CHG-577",
+      "to": "TASK-408",
+      "type": "implements",
+      "created_at": "2026-09-15T06:56:53+00:00"
+    },
+    {
+      "from": "CHG-578",
+      "to": "TASK-408",
+      "type": "implements",
+      "created_at": "2026-09-15T06:56:53+00:00"
+    },
+    {
+      "from": "CHG-579",
+      "to": "TASK-408",
+      "type": "implements",
+      "created_at": "2026-09-15T06:56:53+00:00"
+    },
+    {
+      "from": "DEC-366",
+      "to": "DEC-365",
+      "type": "supersedes",
+      "created_at": "2026-09-15T06:57:46+00:00"
     }
   ]
 }
