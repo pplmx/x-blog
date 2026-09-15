@@ -63,7 +63,9 @@ A modern full-stack blog application built with FastAPI + Nuxt
 - ✍️ **Author bylines & archive pages** - on a multi-editor blog every post now says who wrote it: an admin sets a public pen name (deliberately distinct from the login username — admin login is no-oracle, so the username never surfaces), that byline renders on the post page and every list card linking to `/authors/{id}`, and the per-author page lists just that writer's published posts, titled by pen name. The post editor's author picker lets any admin
   attribute a post to another pen-named writer (or the default "me") (DEC-359,
   TASK-406); each writer also has a scoped RSS feed — autodiscovery + subscribe
-  link on `/authors/{id}` serving `/rss/authors/{id}.xml` (round 345)
+  link on `/authors/{id}` serving `/rss/authors/{id}.xml` (round 345), and
+  `/authors` is a writers index now — a card per pen-named writer with their
+  published-post count, each linking to their archive (round 346)
 - 📧 **Guest reply emails** - an anonymous commenter who ticks "email me when someone replies" gets one email when a reply to their comment is approved (deep-linked to the exact reply, with a working unsubscribe link) — the same off-site channel readers get, now honoring the email guests must leave (DEC-332)
 - 📖 **Resume Reading** - signed-in readers pick up right where they left off: the post page remembers their scroll position server-side and drops them back on return, with a resume chip offering back-to-top (DEC-167); the position is also saved as a fraction of the scrollable height so a phone→desktop continuation lands at the same spot (DEC-346); the home page's Continue-reading row is fed from that server trail for signed-in readers, so the posts they left partway surface on any device (DEC-348)
 - 🔥 **Reading streaks & activity heatmap** - /history shows a signed-in reader's current/longest consecutive-day streak and a GitHub-style 52-week heatmap of days they read (DEC-169)

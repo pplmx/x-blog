@@ -9,6 +9,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- **Public writers index (DEC-359, round 346)**: `/authors` was a one-page
+  dead end before — a byline or archive link could take you to one writer, but
+  there was nowhere listing every pen-named writer, so discovery on a
+  multi-editor blog (and the top-level Authors nav item, which previously had
+  no destination) fell back to memory. `/authors` is now an index: one card per
+  pen-named writer with their published-post count, each card linking to that
+  writer's archive — backed by a new anonymous, caching-friendly `GET
+  /api/authors` that only ever lists writers with a public pen name (username-
+  only admins stay invisible, preserving the no-oracle posture), plus a "All
+  writers" back link on the archive page.
 - **Per-author RSS feed (DEC-359, round 345)**: RSS consumers can now follow a
   single writer — `/authors/{id}` emits an autodiscovery `<link>` and a visible
   subscribe link to `/rss/authors/{id}.xml`, which serves exactly that
