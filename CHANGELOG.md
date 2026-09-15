@@ -9,6 +9,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- **Author follow (round 353)**: on a multi-editor blog a reader who loved one
+  writer's posts wants to follow just that person — a topic-shaped
+  category/series/tag follow can't express it. Every post's author byline now
+  carries a follow button (signed-in readers only): one click subscribes the
+  reader to that writer's new posts; the followed-writers list in `/account`
+  shows each author with its own notify toggle and unfollow; and every new
+  post from that writer lands in the follower's inbox as a durable row plus a
+  Web Push — the same fan-out shape as the topic follows, but scoped to a
+  person. Unfollow stops the flow instantly, and only a pen-named writer is
+  followable — a username-only admin answers the same 404 as an unknown id
+  (the no-oracle posture the rest of the site already keeps).
 - **Reader profile bio (round 352)**: a reader community is only as good as
   the people in it, and a profile made of a name, an avatar and a join date
   has nothing to say. Readers can now write a short "about me" in
