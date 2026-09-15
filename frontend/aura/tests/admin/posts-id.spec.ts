@@ -42,6 +42,8 @@ const {
 	mockNotifyPushSubscribers,
 	mockFetchPostRevisions,
 	mockRestorePostRevision,
+	mockAdminAuthors,
+	mockCurrentAdmin,
 } = vi.hoisted(() => ({
 	mockFetchAdminCategories: vi.fn(),
 	mockFetchAdminTags: vi.fn(),
@@ -52,6 +54,8 @@ const {
 	mockNotifyPushSubscribers: vi.fn(),
 	mockFetchPostRevisions: vi.fn(),
 	mockRestorePostRevision: vi.fn(),
+	mockAdminAuthors: vi.fn(),
+	mockCurrentAdmin: vi.fn(),
 }));
 
 vi.mock("~~/api/admin/taxonomy", () => ({
@@ -70,6 +74,12 @@ vi.mock("~~/api/admin/posts", () => ({
 }));
 vi.mock("~~/api/admin/series", () => ({
 	useAdminSeries: mockFetchAdminSeries,
+}));
+// Author attribution picker (DEC-359/TASK-406): the editor reads the pen-named
+// admins + the current admin from /api/admin/users, mock both flat.
+vi.mock("~~/api/admin/users", () => ({
+	useAdminAuthors: mockAdminAuthors,
+	useCurrentAdmin: mockCurrentAdmin,
 }));
 
 vi.stubGlobal("useRuntimeConfig", () => ({
@@ -156,6 +166,26 @@ function setupMocks() {
 	});
 	mockFetchAdminSeries.mockReturnValue({
 		data: ref(mockSeries),
+		pending: ref(false),
+		error: ref(null),
+		refresh: vi.fn(),
+	});
+	// Author attribution (DEC-359/TASK-406): the writing admin (no pen name →
+	// the picker labels them "me") and one other pen-named admin.
+	mockCurrentAdmin.mockReturnValue({
+		data: ref({
+			id: 1,
+			username: "admin",
+			role: "editor",
+			is_superuser: false,
+			display_name: null,
+		}),
+		pending: ref(false),
+		error: ref(null),
+		refresh: vi.fn(),
+	});
+	mockAdminAuthors.mockReturnValue({
+		data: ref([{ id: 2, display_name: "Editor Pen" }]),
 		pending: ref(false),
 		error: ref(null),
 		refresh: vi.fn(),
@@ -905,8 +935,11 @@ describe("Admin Post Editor Page", () => {
 			const wrapper = await mountWithSuspense(PostEditor);
 			await flushPromises();
 
-			const selects = wrapper.findAll("select");
-			await selects[0].setValue(""); // category "unassigned" option
+			// The author select (DEC-359/TASK-406) comes before category in the
+			// form, so target the category picker by id — positional selects[0]
+			// now points at the author.
+			const categorySelect = wrapper.find("#post-category");
+			await categorySelect.setValue(""); // category "unassigned" option
 			await flushPromises();
 
 			const form = wrapper.find("form");
@@ -2034,6 +2067,89 @@ describe("Admin Post Editor Page", () => {
 			await wrapper.find("#pinned").setChecked();
 			await flushPromises();
 			expect(wrapper.text()).toContain("已置顶");
+		});
+	});
+
+	describe("Author attribution (DEC-359, TASK-406)", () => {
+		const authorSelect = (wrapper: VueWrapper) => wrapper.find("#post-author");
+
+		function fillRequired(wrapper: VueWrapper) {
+			const inputs = wrapper.findAll('input[type="text"]');
+			return inputs[0].setValue("Author Post").then(() => inputs[1].setValue("author-post"));
+		}
+
+		it("renders the author picker with 'me' + pen-named admins on create", async () => {
+			setupRoute("new");
+			setupMocks();
+			const PostEditor = await loadPage();
+			const wrapper = await mountWithSuspense(PostEditor);
+
+			expect(wrapper.text()).toContain("我（当前编辑）");
+			expect(wrapper.text()).toContain("Editor Pen");
+			// The writing admin is the default (backend would default it anyway).
+			expect((authorSelect(wrapper).element as HTMLSelectElement).value).toBe("1");
+		});
+
+		it("submits the default author (writing admin) on create", async () => {
+			setupRoute("new");
+			setupMocks();
+			const PostEditor = await loadPage();
+			const wrapper = await mountWithSuspense(PostEditor);
+
+			await fillRequired(wrapper);
+			const textarea = wrapper.find("textarea");
+			await textarea.setValue("# Content");
+			await wrapper.find("form").trigger("submit.prevent");
+			await flushPromises();
+
+			const [payload] = mockCreateAdminPost.mock.calls.at(-1) as any[];
+			expect(payload.author_id).toBe(1);
+		});
+
+		it("submits a different author when one is picked", async () => {
+			setupRoute("new");
+			setupMocks();
+			const PostEditor = await loadPage();
+			const wrapper = await mountWithSuspense(PostEditor);
+
+			await fillRequired(wrapper);
+			const textarea = wrapper.find("textarea");
+			await textarea.setValue("# Content");
+			await authorSelect(wrapper).setValue("2"); // Editor Pen
+			await wrapper.find("form").trigger("submit.prevent");
+			await flushPromises();
+
+			const [payload] = mockCreateAdminPost.mock.calls.at(-1) as any[];
+			expect(payload.author_id).toBe(2);
+		});
+
+		it("pre-selects the stored author when editing an attributed post", async () => {
+			setupRoute("1");
+			// The existing post is attributed to Editor Pen (id 2).
+			mockFetchAdminPost.mockReturnValue({
+				data: ref({ ...mockExistingPost, author_id: 2 }),
+				pending: ref(false),
+				error: ref(null),
+				refresh: vi.fn(),
+			});
+			const PostEditor = await loadPage();
+			const wrapper = await mountWithSuspense(PostEditor);
+
+			expect((authorSelect(wrapper).element as HTMLSelectElement).value).toBe("2");
+		});
+
+		it("defaults a stored-but-authorless post to the writing admin", async () => {
+			setupRoute("1");
+			mockFetchAdminPost.mockReturnValue({
+				data: ref({ ...mockExistingPost, author_id: null }),
+				pending: ref(false),
+				error: ref(null),
+				refresh: vi.fn(),
+			});
+			const PostEditor = await loadPage();
+			const wrapper = await mountWithSuspense(PostEditor);
+
+			expect((authorSelect(wrapper).element as HTMLSelectElement).value).toBe("1");
 		});
 	});
 });

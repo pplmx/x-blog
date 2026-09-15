@@ -17,6 +17,7 @@ import {
 import { notifyPushSubscribers } from "~~/api/admin/push";
 import { useAdminSeries } from "~~/api/admin/series";
 import { useAdminCategories, useAdminTags } from "~~/api/admin/taxonomy";
+import { useAdminAuthors, useCurrentAdmin } from "~~/api/admin/users";
 import { parseApiDate } from "~~/composables/apiDate";
 
 definePageMeta({ layout: "admin" });
@@ -79,6 +80,10 @@ const formData = ref<Partial<PostCreate>>({
 	cover_image: undefined,
 	series_id: undefined,
 	series_order: 0,
+	// Author attribution (DEC-359/TASK-406): undefined until the author
+	// options resolve; the current-admin watcher then defaults new posts to
+	// the writing admin and the postData watcher pre-selects an existing post.
+	author_id: undefined,
 });
 const isSubmitting = ref(false);
 const submitError = ref<string | null>(null);
@@ -226,6 +231,41 @@ function retryTaxonomy() {
 	void refreshSeries();
 }
 
+// Author attribution (DEC-359/TASK-406): any admin can pick who a post is
+// attributed to — the writing admin by default (POST defaults to it anyway),
+// or any admin with a public pen name, the only assignable public writers.
+// Pen-named admins come from /api/admin/authors (admin-auth, deliberately not
+// superuser-only like /users, so editors can attribute posts); the current
+// account is offered as "me" — its own pen name, or a neutral label when it
+// has none, and never the login username (no-oracle posture).
+const {
+	data: adminAuthors,
+	error: authorsError,
+	refresh: refreshAuthors,
+} = await useAdminAuthors();
+const { data: currentAdmin } = await useCurrentAdmin();
+const authorOptions = computed<{ id: number; label: string }[]>(() => {
+	const list = adminAuthors.value ?? [];
+	const self = currentAdmin.value;
+	if (!self) return list.map((a) => ({ id: a.id, label: a.display_name }));
+	const selfLabel = self.display_name ?? t("admin.postEdit.authorSelf");
+	return [
+		{ id: self.id, label: selfLabel },
+		...list.filter((a) => a.id !== self.id).map((a) => ({ id: a.id, label: a.display_name })),
+	];
+});
+// New-post default: the writing admin. Guarded so a late-arriving /me response
+// never stomps an author the operator already chose; for existing posts the
+// postData watcher pre-selects the stored author (author_id ?? me).
+watch(
+	() => currentAdmin.value?.id,
+	(id) => {
+		if (id == null || (formData.value.author_id ?? null) != null) return;
+		formData.value.author_id = id;
+	},
+	{ immediate: true },
+);
+
 watch(
 	() => catsData.value,
 	(val) => {
@@ -280,6 +320,9 @@ watch(
 				cover_image: val.cover_image || undefined,
 				series_id: val.series_id || undefined,
 				series_order: val.series_order ?? 0,
+				// Existing post: pre-select its stored author (fall back to the
+				// writing admin for pre-attribution posts).
+				author_id: val.author_id ?? currentAdmin.value?.id ?? undefined,
 			};
 			loadedSnapshot = snapshot();
 			isDirty.value = false;
@@ -1084,6 +1127,36 @@ function handleFileInput(e: Event) {
       </div>
 
       <div class="grid gap-4 sm:grid-cols-2">
+        <div class="bg-gradient-to-br from-amber-50 dark:from-amber-900/20 to-white dark:to-gray-900 border border-amber-100 dark:border-amber-900/30 rounded-2xl p-5">
+          <label for="post-author" class="flex items-center gap-2 text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">
+            <Icon icon="lucide:user" class="w-4 h-4 text-amber-500" />
+            {{ t("admin.postEdit.author") }}
+          </label>
+          <select
+            id="post-author"
+            v-model="formData.author_id"
+            class="w-full rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-2.5 text-sm disabled:opacity-50 disabled:cursor-not-allowed focus:ring-2 focus:ring-amber-500 focus:border-transparent transition-all"
+            :disabled="!!authorsError || !authorOptions.length"
+          >
+            <!-- Only pen-named admins are assignable (the only public writers);
+                 "me" is always the default. -->
+            <option v-for="a in authorOptions" :key="a.id" :value="a.id">
+              {{ a.label }}
+            </option>
+          </select>
+          <button
+            v-if="authorsError"
+            type="button"
+            class="mt-2 text-xs text-red-500 hover:underline"
+            @click="refreshAuthors()"
+          >
+            {{ t("admin.postEdit.authorLoadFailed") }}
+          </button>
+          <p v-else class="mt-1.5 text-xs text-gray-400 dark:text-gray-500">
+            {{ t("admin.postEdit.authorHint") }}
+          </p>
+        </div>
+
         <div class="bg-gradient-to-br from-purple-50 dark:from-purple-900/20 to-white dark:to-gray-900 border border-purple-100 dark:border-purple-900/30 rounded-2xl p-5">
           <label for="post-category" class="flex items-center gap-2 text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">
             <Icon icon="lucide:folder" class="w-4 h-4 text-purple-500" />

@@ -50,6 +50,9 @@ export interface AdminPostDetail {
 	series_order: number;
 	series_title: string | null;
 	series_slug: string | null;
+	/** Author attribution (DEC-359/TASK-406): current author for the picker's
+	 *  pre-selection; null on pre-attribution posts. */
+	author_id?: number | null;
 	tag_ids: number[];
 	created_at: string;
 	updated_at: string;
@@ -101,6 +104,11 @@ export interface PostCreate {
 	 *  from the series, same exclude_unset distinction as category_id. */
 	series_id?: number | null;
 	series_order?: number;
+	/** Author attribution (DEC-359/TASK-406): the admin the post is attributed
+	 *  to. Omitted/absent on update means "don't change"; the editor always
+	 *  sends an explicit id (the backend defaults create to the writing admin
+	 *  and never clears an author). */
+	author_id?: number | null;
 }
 
 export interface AdminPostsQuery {

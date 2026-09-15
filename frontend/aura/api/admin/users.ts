@@ -1,4 +1,5 @@
 import { adminAuthHeaders } from "../auth";
+import type { AuthorBrief } from "../contracts/shared";
 import { command, query } from "../transport";
 
 export interface AdminUser {
@@ -30,6 +31,17 @@ export function useCurrentAdmin() {
 /** All admin accounts (superuser-only on the backend). */
 export function useAdminUsers() {
 	return query<AdminUser[]>("/api/admin/users", {
+		headers: adminAuthHeaders(),
+		server: false,
+	});
+}
+
+/** Pen-named admins for the post editor's author picker (DEC-359/TASK-406).
+ *  Any admin can read this — exposing pen names leaks nothing (they already
+ *  appear on public bylines) — which is exactly why editors can assign posts
+ *  to another public writer without touching the superuser-only /users. */
+export function useAdminAuthors() {
+	return query<AuthorBrief[]>("/api/admin/authors", {
 		headers: adminAuthHeaders(),
 		server: false,
 	});
