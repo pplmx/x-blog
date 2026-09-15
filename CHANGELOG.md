@@ -9,6 +9,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- **Reader email change (DEC-357)**: the login email was immutable with no
+  verification flow, so a reader whose address changed was stranded — per-event
+  mail and the weekly digest went to the dead address and the only "fix" was
+  deleting the account (total data loss). A signed-in reader can now switch
+  login email from the account settings: enter the new address + current
+  password, get a single-use verification email at the NEW address (60-minute
+  expiry, request repeatable — a new request replaces a pending change), and
+  open the link to swap the email, revoke every pre-change session (token
+  version bump) and auto-sign in under the new address. The old address keeps
+  working until the link is opened, a target taken by another account while
+  pending is a 409, and no endpoint ever reveals whether an address belongs to
+  an account.
 - **Newsletter digest cadence (DEC-355)**: the guest newsletter (DEC-351) had
   exactly one cadence — one email per new post, so a high-volume blog filled a
   subscriber's inbox daily with no lighter option (reader accounts already had
