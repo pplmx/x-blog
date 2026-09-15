@@ -52,6 +52,23 @@ useSeo(() => ({
 	path: `/authors/${authorId.value ?? ""}`,
 }));
 
+// Scoped RSS feed (round 345): subscribe to just this writer's published
+// posts — the same autodiscovery pattern series/tags pages use (DEC-130). The
+// backend answers 404 for unknown/never-public authors, mirroring the archive.
+const feedUrl = computed(() => (authorName.value ? `/rss/authors/${authorId.value}.xml` : ""));
+useHead(() => ({
+	link: feedUrl.value
+		? [
+				{
+					rel: "alternate",
+					type: "application/rss+xml",
+					title: t("authors.subscribeFeed"),
+					href: feedUrl.value,
+				},
+			]
+		: [],
+}));
+
 const paginationTokens = computed(() =>
 	paginationPages(
 		archive.value?.pagination?.total_pages ?? 0,
@@ -134,9 +151,22 @@ watch(
           <Icon icon="lucide:user" class="w-8 h-8 text-gray-400" />
           {{ t("authors.title", { name: authorName }) }}
         </h1>
-        <p class="text-gray-500 dark:text-gray-400">
-          {{ t("authors.desc", { name: authorName }) }}
-        </p>
+        <div class="flex items-center gap-3">
+          <p class="text-gray-500 dark:text-gray-400">
+            {{ t("authors.desc", { name: authorName }) }}
+          </p>
+          <a
+            v-if="feedUrl"
+            :href="feedUrl"
+            target="_blank"
+            rel="noopener"
+            :title="t('authors.subscribeFeed')"
+            class="inline-flex items-center gap-1 text-orange-500 hover:text-orange-700 dark:hover:text-orange-400 transition-colors shrink-0"
+          >
+            <Icon icon="lucide:rss" class="w-4 h-4" />
+            {{ t("authors.subscribeFeed") }}
+          </a>
+        </div>
       </div>
 
       <div v-if="archive?.items?.length" class="space-y-5">

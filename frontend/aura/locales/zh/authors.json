@@ -5,6 +5,7 @@
 		"desc": "X-Blog 上 {name} 的全部已发布文章",
 		"seoDesc": "浏览 X-Blog 上某位作者的已发布文章",
 		"notFound": "作者不存在",
-		"postsEmpty": "这位作者还没有发布任何文章"
+		"postsEmpty": "这位作者还没有发布任何文章",
+		"subscribeFeed": "RSS 订阅"
 	}
 }

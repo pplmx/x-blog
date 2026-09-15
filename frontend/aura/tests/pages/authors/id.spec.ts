@@ -126,6 +126,13 @@ describe("Author archive page (/authors/[id])", () => {
 		expect(wrapper.text()).toContain("Routed Post");
 	});
 
+	it("links the author's scoped RSS feed on a public author page", async () => {
+		const wrapper = await mountAuthorsPage();
+		const feed = wrapper.findAll("a").find((a) => a.attributes("href") === "/rss/authors/7.xml");
+		expect(feed?.exists()).toBe(true);
+		expect(wrapper.text()).toContain("RSS 订阅");
+	});
+
 	it("renders a paginated grid's posts with an author page of posts", async () => {
 		const wrapper = await mountAuthorsPage({
 			archive: {

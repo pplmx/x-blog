@@ -5,6 +5,7 @@
 		"desc": "All published posts by {name} on X-Blog",
 		"seoDesc": "Browse published posts by a writer on X-Blog",
 		"notFound": "Author not found",
-		"postsEmpty": "This author hasn't published any posts yet"
+		"postsEmpty": "This author hasn't published any posts yet",
+		"subscribeFeed": "RSS feed"
 	}
 }

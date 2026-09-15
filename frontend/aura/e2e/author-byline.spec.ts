@@ -99,6 +99,18 @@ test.describe("Author byline + archive (DEC-359)", () => {
 			await expect(archiveCard).toBeVisible();
 			await expect(archiveCard.locator(`a[href="/authors/${admin.id}"]`)).toContainText(penName);
 
+			// --- Scoped RSS feed (round 345): the archive links the writer's
+			// own feed, and that feed actually carries the fresh post (a
+			// genuinely scoped subscription surface, still no username).
+			const feedLink = page.locator(`a[href="/rss/authors/${admin.id}.xml"]`);
+			await expect(feedLink).toBeVisible();
+			const feed = await request.get(`/rss/authors/${admin.id}.xml`);
+			expect(feed.status()).toBe(200);
+			const feedBody = await feed.text();
+			expect(feedBody).toContain(title);
+			expect(feedBody).toContain(penName);
+			expect(feedBody).not.toContain(ADMIN_USERNAME);
+
 			// --- No-oracle gate: the login username must never appear on the
 			// public archive.
 			await expect(page.locator("body")).not.toContainText(ADMIN_USERNAME);
