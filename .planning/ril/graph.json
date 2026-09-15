@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 354,
+  "round": 355,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-15T15:28:14+00:00",
+  "updated_at": "2026-09-15T16:54:33+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -26037,6 +26037,97 @@
       "title": "close round 353: author follow delivered (TASK-415 by CHG-602+CHG-603+CHG-604+CHG-605+CHG-606; supersedes DEC-379) — VERIFY green: backend 1633 (cov 93.80%, ruff clean, pyright 0), frontend 2173 (typecheck 0, biome 462 clean), e2e journey green, migration b2c4d6e8f0a2 SQLite+dev-PG round-trip",
       "rationale": "Round 353 closes the person-shaped follow gap: author_follows with a pen-name-only no-oracle gate, idempotent follow/notify/unfollow endpoints, a byline follow button, the /account followed-writers section, and author fan-out to the inbox + Web Push that honours notify=off and stops on unfollow. 5 backend + 15 frontend unit tests plus a real-browser e2e driving the whole reader journey. Migration verified on fresh SQLite and a dev-PG scratch schema (r353). pyright also restored to 0 on two drifted author-attribution aggregations.",
       "alternatives_rejected": "Rejected: (1) making the /follows topic feed the only consumption surface — an author-shaped subscription deserves its own account section; (2) allowing follow of username-only admins — that would leak admin usernames as public identity (no-oracle posture), so only pen names are followable."
+    },
+    "TASK-416": {
+      "id": "TASK-416",
+      "type": "task",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-15T15:32:52+00:00",
+      "updated_at": "2026-09-15T16:54:03+00:00",
+      "touched_round": 354,
+      "category": "core-feature",
+      "title": "follows feed includes followed authors posts + author byline on feed cards (round 354)"
+    },
+    "DEC-381": {
+      "id": "DEC-381",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-15T15:33:19+00:00",
+      "updated_at": "2026-09-15T15:33:19+00:00",
+      "touched_round": 354,
+      "title": "round 354 scope: followed authors enter the /follows feed (TASK-416)",
+      "rationale": "Round 353 shipped author follow (follow, list, notify, unfollow, inbox/WebPush fan-out) but no consumption surface: a reader who follows a writer still only sees that writer's new posts in the mixed notification inbox — the /follows feed (DEC-292) and the home Latest-from-your-follows row (both served by /me/follows-feed) scope to followed categories + series + tags only, so the person-shaped follow never pays the discovery payoff the topic follows do. Add an author scope to follows_feed_posts (author_id in the reader's followed author ids, matching the same published/effective-publish/visibility rules) plus an author byline on the feed cards so author-followed posts are recognizable; this fixes both the /follows page and the home row at once since they share the endpoint.",
+      "alternatives_rejected": "Rejected: (1) a separate authors tab/filter on /follows — a single deduped newest-first feed is the review pattern and adding chrome buys nothing; (2) per-post email for author follows — the reader email pref + digest machinery is a separate decision and email is not the gap; (3) surfacing author follows only in the inbox — the inbox mixes every notification type and has no browse-all shape."
+    },
+    "CHG-607": {
+      "id": "CHG-607",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-15T16:54:02+00:00",
+      "updated_at": "2026-09-15T16:54:02+00:00",
+      "touched_round": 354,
+      "commit": "e3bbf4c5",
+      "summary": "feat(backend): followed authors enter the follows feed (DEC-381, TASK-416)"
+    },
+    "CHG-608": {
+      "id": "CHG-608",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-15T16:54:02+00:00",
+      "updated_at": "2026-09-15T16:54:02+00:00",
+      "touched_round": 354,
+      "commit": "dda33b17",
+      "summary": "feat(frontend): author byline chip on follows-feed cards + copy covers writers (DEC-381, TASK-416)"
+    },
+    "CHG-609": {
+      "id": "CHG-609",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-15T16:54:02+00:00",
+      "updated_at": "2026-09-15T16:54:02+00:00",
+      "touched_round": 354,
+      "commit": "d5f2d224",
+      "summary": "test(e2e): author follows surface in /follows - extend the round-353 journey (DEC-381, TASK-416)"
+    },
+    "CHG-610": {
+      "id": "CHG-610",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-15T16:54:02+00:00",
+      "updated_at": "2026-09-15T16:54:02+00:00",
+      "touched_round": 354,
+      "commit": "8c9be6cd",
+      "summary": "docs(follows): record round 354 followed-authors-in-feed in README + CHANGELOG (en/zh)"
+    },
+    "EV-261": {
+      "id": "EV-261",
+      "type": "evidence",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-15T16:54:02+00:00",
+      "updated_at": "2026-09-15T16:54:02+00:00",
+      "touched_round": 354,
+      "title": "round 354 VERIFY green: author-followed posts enter /follows (dedup with topics, byline on cards, drafts hidden)",
+      "source": "backend 1637 passed (cov 93.80%, ruff clean, pyright 0 errors) + frontend 2175 (typecheck 0, biome 463 clean) + e2e journey green in a real browser (byline follow -> /account -> inbox fan-out -> /follows shows all three authored posts with pen-name chips -> unfollow stops) + no migration change this round",
+      "confidence": 1.0
+    },
+    "DEC-382": {
+      "id": "DEC-382",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-15T16:54:02+00:00",
+      "updated_at": "2026-09-15T16:54:02+00:00",
+      "touched_round": 354,
+      "title": "close round 354: followed authors in the follows feed (TASK-416 by CHG-607+CHG-608+CHG-609+CHG-610; supersedes DEC-381) — VERIFY green: backend 1637 (cov 93.80%, ruff clean, pyright 0), frontend 2175 (typecheck 0, biome 463 clean), e2e journey green",
+      "rationale": "Round 354 completes the follow model's discovery payoff for the person shape: follows_feed_posts now matches posts by followed author id (same published/effective-publish/visibility rules, deduped with topic matches), the empty-guard honours author-only follows, Post.author is eager-loaded for the byline, and both the /follows page and the home Latest-from-your-follows row (shared endpoint) render a pen-name chip on authored cards. 4 backend + 2 frontend unit tests plus an extended real-browser e2e (the round-353 journey now also asserts the authored posts surface on /follows). No schema change this round.",
+      "alternatives_rejected": "Rejected: (1) an authors tab/filter on /follows — a single deduped feed is the review pattern; (2) author-follow email — the reader email-pref/digest machinery is a separate decision and email was not the gap; (3) relying on the notification inbox as the only author surface — it mixes every notification type and has no browse-all shape."
     }
   },
   "edges": [
@@ -38931,6 +39022,42 @@
       "to": "DEC-379",
       "type": "supersedes",
       "created_at": "2026-09-15T15:27:52+00:00"
+    },
+    {
+      "from": "DEC-381",
+      "to": "TASK-416",
+      "type": "governs",
+      "created_at": "2026-09-15T15:33:19+00:00"
+    },
+    {
+      "from": "CHG-607",
+      "to": "TASK-416",
+      "type": "implements",
+      "created_at": "2026-09-15T16:54:02+00:00"
+    },
+    {
+      "from": "CHG-608",
+      "to": "TASK-416",
+      "type": "implements",
+      "created_at": "2026-09-15T16:54:02+00:00"
+    },
+    {
+      "from": "CHG-609",
+      "to": "TASK-416",
+      "type": "implements",
+      "created_at": "2026-09-15T16:54:02+00:00"
+    },
+    {
+      "from": "CHG-610",
+      "to": "TASK-416",
+      "type": "implements",
+      "created_at": "2026-09-15T16:54:02+00:00"
+    },
+    {
+      "from": "DEC-382",
+      "to": "DEC-381",
+      "type": "supersedes",
+      "created_at": "2026-09-15T16:54:03+00:00"
     }
   ]
 }
