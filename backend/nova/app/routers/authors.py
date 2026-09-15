@@ -31,12 +31,13 @@ def list_authors(db: Session = Depends(get_db)):
     a writer with nothing live yet still appears with a zero.
     """
     writers = db.query(auth.User).filter(auth.User.display_name.isnot(None)).order_by(auth.User.display_name).all()
-    counts = dict(
+    post_counts = (
         db.query(models.Post.author_id, func.count(models.Post.id))
         .filter(models.Post.author_id.isnot(None), models.Post.published.is_(True))
         .group_by(models.Post.author_id)
         .all()
     )
+    counts = {author_id: int(count) for author_id, count in post_counts}
     items = [{"id": u.id, "display_name": u.display_name, "post_count": counts.get(u.id, 0)} for u in writers]
     return items
 

@@ -685,7 +685,7 @@ def get_sitemap(request: Request = None, db: Session = Depends(get_db)) -> Respo
         db.query(auth.User).filter(auth.User.display_name.isnot(None)).order_by(auth.User.display_name.asc()).all()
     )
     if writers:
-        author_lastmod = dict(
+        author_lastmod_rows = (
             db.query(models.Post.author_id, func.max(models.Post.updated_at))
             .filter(
                 models.Post.author_id.isnot(None),
@@ -695,6 +695,7 @@ def get_sitemap(request: Request = None, db: Session = Depends(get_db)) -> Respo
             .group_by(models.Post.author_id)
             .all()
         )
+        author_lastmod = {int(author_id): lastmod for author_id, lastmod in author_lastmod_rows}
         for writer in writers:
             # The admin User has no updated_at column; a writer with no published
             # post yet falls back to "now" (their archive is still a real page).
