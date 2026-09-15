@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { computed, watch } from "vue";
 import { useAuthorPosts } from "~~/api/public/authors";
+// biome-ignore lint/correctness/noUnusedImports: used in <template> (biome can't resolve template bindings)
+import AuthorFollowButton from "~~/components/AuthorFollowButton.vue";
 import { scrollToPageTop } from "~~/composables/scrollToTop";
 import { paginationPages } from "~~/composables/usePagination";
 import { useSeo } from "~~/composables/useSeo";
@@ -162,6 +164,17 @@ watch(
           <p class="text-gray-500 dark:text-gray-400">
             {{ t("authors.desc", { name: authorName }) }}
           </p>
+          <!-- In-app author follow (round 355): the archive is the
+               person-shaped discovery surface — and for a writer with no
+               published posts yet it is the ONLY place that follow exists
+               (no byline buttons anywhere). Reuses the byline control's
+               guest-hidden / dead-session / error semantics. -->
+          <AuthorFollowButton
+            v-if="authorId"
+            :author-id="authorId"
+            :author-name="authorName"
+            class="shrink-0"
+          />
           <a
             v-if="feedUrl"
             :href="feedUrl"

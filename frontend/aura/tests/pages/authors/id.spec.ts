@@ -16,6 +16,17 @@ import { flushPromises, mount } from "@vue/test-utils";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { computed, ref } from "vue";
 
+const { mockFollowsGet, mockFollowReaderAuthor, mockUnfollowReaderAuthor } = vi.hoisted(() => ({
+	mockFollowsGet: vi.fn(),
+	mockFollowReaderAuthor: vi.fn(),
+	mockUnfollowReaderAuthor: vi.fn(),
+}));
+vi.mock("~~/api/reader/follows", () => ({
+	getReaderAuthorFollows: mockFollowsGet,
+	followReaderAuthor: mockFollowReaderAuthor,
+	unfollowReaderAuthor: mockUnfollowReaderAuthor,
+}));
+
 const archiveWithPosts = {
 	items: [
 		{
@@ -98,8 +109,12 @@ async function mountAuthorsPage({
 			"</Suspense>",
 	};
 
+	const { default: AuthorFollowButton } = await import(
+		"../../../components/AuthorFollowButton.vue"
+	);
 	const wrapper = mount(SuspenseWrapper, {
 		global: {
+			components: { AuthorFollowButton },
 			stubs: {
 				NuxtLink: { template: '<a :href="to"><slot/></a>', props: ["to"] },
 				Icon: { template: '<svg class="iconstub" :data-icon="icon"></svg>', props: ["icon"] },
@@ -118,6 +133,10 @@ async function mountAuthorsPage({
 describe("Author archive page (/authors/[id])", () => {
 	afterEach(() => {
 		vi.unstubAllGlobals();
+		mockFollowsGet.mockReset();
+		mockFollowReaderAuthor.mockReset();
+		mockUnfollowReaderAuthor.mockReset();
+		localStorage.clear();
 	});
 
 	it("renders the pen-name header and the author's posts", async () => {
@@ -179,5 +198,39 @@ describe("Author archive page (/authors/[id])", () => {
 			error: { message: "boom", statusCode: 500 },
 		});
 		expect(wrapper.text()).toContain("加载失败");
+	});
+
+	// Author follow on the archive header (round 355): the person-shaped
+	// discovery surface — and for a writer with no published posts it is the
+	// only follow path, so the button must render on an empty-but-public
+	// author and flip through the follow API.
+	it("shows the follow control to a signed-in reader (even for an empty writer)", async () => {
+		localStorage.setItem("reader_token", "tok-1");
+		mockFollowsGet.mockResolvedValue({ items: [], total: 0 });
+		const wrapper = await mountAuthorsPage({ archive: emptyArchive });
+		const follow = wrapper.findAll("button").find((b) => b.text() === "关注");
+		expect(follow).toBeDefined();
+	});
+
+	it("follows the writer in place from the archive header", async () => {
+		localStorage.setItem("reader_token", "tok-1");
+		mockFollowsGet.mockResolvedValue({ items: [], total: 0 });
+		mockFollowReaderAuthor.mockResolvedValue({
+			author_id: 7,
+			display_name: "Riki",
+			following: true,
+			notify: true,
+		});
+		const wrapper = await mountAuthorsPage({ archive: emptyArchive });
+		const follow = wrapper.findAll("button").find((b) => b.text() === "关注");
+		await follow?.trigger("click");
+		await flushPromises();
+		expect(mockFollowReaderAuthor).toHaveBeenCalledWith(7);
+		expect(wrapper.findAll("button").some((b) => b.text() === "已关注")).toBe(true);
+	});
+
+	it("hides the follow control for guests", async () => {
+		const wrapper = await mountAuthorsPage({ archive: emptyArchive });
+		expect(wrapper.findAll("button").some((b) => b.text() === "关注")).toBe(false);
 	});
 });
