@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 341,
+  "round": 342,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-14T22:41:03+00:00",
+  "updated_at": "2026-09-15T00:49:11+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -24954,6 +24954,88 @@
       "title": "close round 341: newsletter digest cadence for guest subscribers delivered (TASK-403 by CHG-562, resolves ISS-509; supersedes DEC-355) — VERIFY green: backend 1557 (cov >=80, ruff clean, pyright 0, dev PG 47 serial, migration SQLite round-trip + PG apply), frontend 2093, typecheck exit 0, biome 429 files, e2e digest journey authored",
       "rationale": "Round 341 completes the guest email story with cadence choice: an opt-in weekly digest (site-language, token unsubscribe footer) replaces per-post mail for guest subscribers who choose it, delivered by the same weekly job that serves readers (one advisory lock, one SMTP batch, rolling-7-day window, stamp-after-accept). Reused the newsletter token posture (token-gated /digest toggle, 404 no-oracle, idempotent), the reader digest builder/SMTP path, and site-language guest copy (DEC-342). SOURCING note: the per-series-RSS candidate was investigated and rejected as already delivered (DEC-130) before building. Both reviews' findings folded before commit: frontend (confirm state-truth MEDIUM -> /confirm returns digest_weekly; a11y live-region cleanup; seeding/in-flight/error specs) and backend (guest footer copy never 'preferences'; subscribers count convention; skipped reporting; admin cadence chip; resume-after-toggle test).",
       "alternatives_rejected": "Rejected: (1) per-series RSS feed as the round's feature — already implemented (rss.py get_series_rss_feed + series autodiscovery, DEC-130/TASK-177), verified before building (research-first rejection); (2) making weekly the newsletter DEFAULT — silently changes mail-volume expectations; opt-in mirrors the reader digest; (3) a dedicated /newsletter/manage page — the confirm-page toggle + footer + token links cover cadence changes without a new surface; (4) admin bulk cadence flipping — no demonstrated operator need; observability (chip) suffices"
+    },
+    "ISS-510": {
+      "id": "ISS-510",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-14T22:50:06+00:00",
+      "updated_at": "2026-09-15T00:48:05+00:00",
+      "touched_round": 342,
+      "severity": "medium",
+      "title": "Reader account email is immutable (no verification-change flow): a reader whose address changed cannot update the login email; display name/avatar/password/locale/account-delete all exist, so an abandoned or company address strands the account"
+    },
+    "TASK-404": {
+      "id": "TASK-404",
+      "type": "task",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-14T22:50:06+00:00",
+      "updated_at": "2026-09-15T00:48:05+00:00",
+      "touched_round": 342,
+      "category": "core-feature",
+      "severity": 3,
+      "effort": "large",
+      "title": "Reader email change with verification: authenticated request (current password + new email; 409 if taken) emails a verification link to the new address; one-time token confirm swaps the login email, revokes stale sessions and re-issues a token; account-page section + confirm page + site-language mail + zh/en i18n + tests"
+    },
+    "DEC-357": {
+      "id": "DEC-357",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-14T22:50:49+00:00",
+      "updated_at": "2026-09-14T22:50:49+00:00",
+      "touched_round": 342,
+      "title": "round 342 scope: reader email change via emailed verification (TASK-404 addresses ISS-510)",
+      "rationale": "Feature-evolution continues after round 341 (newsletter digest cadence). SOURCING: account management is otherwise complete (display name, avatar, password rotation, locale, delete, data export) but email, the login identity, is explicitly immutable with no verification flow (reader.py ReaderProfileUpdate docstring: no email-verification recovery flow). A reader whose address changed (job/ISP/provider, a typo, a school address) is stranded: per-event mail and the weekly digest go to the dead address, and the only fix is deleting the account with total data loss. The slice mirrors the proven password-reset machinery: authenticated request (current password + new email) -> emailed one-time link to the NEW address -> confirm swaps the email, bumps token_version to revoke stale sessions and re-issues a fresh token. Stored opaque one-time token + pending email on the account (newsletter/reply-notify posture); site-language mail (DEC-342). The request endpoint is authenticated, so no existence oracle; 409-on-taken mirrors register.",
+      "alternatives_rejected": "Rejected: (1) making email editable without verification - reassigning the login identity silently would orphan the account (the risk ReaderProfileUpdate documents) and lets a stolen session redirect mail; (2) reusing the password-reset JWT - the pending new email must be stored anyway, so a stored opaque one-time token is simpler and single-use; (3) an admin-only email-change tool - an operator surface cannot prove ownership of a new address; ownership is proven by emailing it."
+    },
+    "EV-249": {
+      "id": "EV-249",
+      "type": "evidence",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-15T00:46:41+00:00",
+      "updated_at": "2026-09-15T00:46:41+00:00",
+      "touched_round": 342,
+      "source": "6b2e6dfc, 423fdfe1 (round-342 commit hashes)",
+      "observation": "VERIFY fully green after round 342 (reader email change, DEC-357/TASK-404): backend 1571 passed cov 93.69% (ruff clean, pyright 0, dev PG email-change+password-reset+digest 47 serial, new migration applies on PG and SQLite), frontend 2108 (nuxt typecheck exit 0, biome 432 files clean); e2e email-change journey authored and SMTP-sink-gated for CI (env-limited sandbox).",
+      "confidence": 1.0
+    },
+    "CHG-563": {
+      "id": "CHG-563",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-15T00:46:41+00:00",
+      "updated_at": "2026-09-15T00:46:41+00:00",
+      "touched_round": 342,
+      "commit": "6b2e6dfc",
+      "summary": "feat(reader): change the login email via an emailed verification link (DEC-357/TASK-404)"
+    },
+    "CHG-564": {
+      "id": "CHG-564",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-15T00:46:41+00:00",
+      "updated_at": "2026-09-15T00:46:41+00:00",
+      "touched_round": 342,
+      "commit": "423fdfe1",
+      "summary": "docs(email-change): record the reader email-change feature (DEC-357) in README + CHANGELOG"
+    },
+    "DEC-358": {
+      "id": "DEC-358",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-15T00:47:23+00:00",
+      "updated_at": "2026-09-15T00:47:23+00:00",
+      "touched_round": 342,
+      "title": "close round 342: reader email change via emailed verification delivered (TASK-404 by CHG-563, resolves ISS-510; supersedes DEC-357) - VERIFY green: backend 1571 (cov 93.69%, ruff clean, pyright 0, dev PG 47 serial, migration applies PG+SQLite), frontend 2108 (typecheck exit 0, biome clean), e2e email-change journey authored (SMTP-sink gated)",
+      "rationale": "Round 342 delivers the reader email change with verification, closing the last immutable-login gap. Both reviews' findings were folded before commit: backend (atomic conditional redeem closes the concurrent double-click / re-request race and the unique-email TOCTOU (IntegrityError -> 409, mirroring register); deactivated readers refused like password reset; case-insensitive occupied checks; last_login_at on auto-login; send-refused + send-exception tests proving nothing persists on 503; old-link-after-rerequest + requested_at-None tests) and frontend (navigateTo kept outside the redemption try so a nav failure never mislabels a spent link; error states clear as the reader edits; 400 same-as-current gets its own copy; section-scoped account.spec selectors; e2e poll pattern; composable make sure updateToken adoption is unit-covered).",
+      "alternatives_rejected": "Rejected during round (preserved from DEC-357): (1) making email editable without verification would silently orphan accounts and let a stolen session redirect mail; (2) reusing the password-reset JWT instead of a stored opaque one-time token; (3) an admin-only email-change tool cannot prove ownership of a new address; (4) skipping the atomic conditional redeem (accepting the races) was rejected after review - a stale link winning or a 500 on a taken target are real defects worth the one-statement update."
     }
   },
   "edges": [
@@ -37392,6 +37474,42 @@
       "to": "DEC-355",
       "type": "supersedes",
       "created_at": "2026-09-14T22:41:03+00:00"
+    },
+    {
+      "from": "TASK-404",
+      "to": "ISS-510",
+      "type": "addresses",
+      "created_at": "2026-09-14T22:50:06+00:00"
+    },
+    {
+      "from": "DEC-357",
+      "to": "TASK-404",
+      "type": "governs",
+      "created_at": "2026-09-14T22:50:49+00:00"
+    },
+    {
+      "from": "CHG-563",
+      "to": "TASK-404",
+      "type": "implements",
+      "created_at": "2026-09-15T00:49:11+00:00"
+    },
+    {
+      "from": "CHG-563",
+      "to": "ISS-510",
+      "type": "resolves",
+      "created_at": "2026-09-15T00:49:11+00:00"
+    },
+    {
+      "from": "CHG-564",
+      "to": "TASK-404",
+      "type": "implements",
+      "created_at": "2026-09-15T00:49:11+00:00"
+    },
+    {
+      "from": "DEC-358",
+      "to": "DEC-357",
+      "type": "supersedes",
+      "created_at": "2026-09-15T00:49:11+00:00"
     }
   ]
 }
