@@ -9,6 +9,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- **Per-post comment control (round 351)**: a blog lives a long time, and a
+  post that draws every comment the internet has to offer — high-noise
+  threads, stale evergreen content, a privacy-sensitive piece — now lets the
+  operator close the door on that one post without deleting the conversation
+  or disabling comments site-wide. A "Comments open / Comments closed" toggle
+  in the post editor flips `posts.comments_enabled`; the public post keeps
+  rendering its existing thread but replaces the comment form with a
+  "Comments are closed" note, and the API refuses new comments with a clear
+  403 (existing comments stay readable either way).
 - **Slug-change redirects (round 350)**: when an operator re-slugs a post,
   series or static page, every URL that was already out in the wild — shared
   links, search results, RSS feeds, in-app bookmarks — used to dead-end at a
