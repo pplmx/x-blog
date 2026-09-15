@@ -104,8 +104,20 @@ const date = computed(
          discoverable: the category chip (once a dead pill that looked clickable
          but did nothing, deep-dive ISS-375) now goes to /?category_id=, and
          tag chips go to /?tag_id= — exactly the sidebar/jump pattern. -->
-    <div v-if="post.category || post.tags?.length" class="px-6 pb-6">
+    <div v-if="post.author || post.category || post.tags?.length" class="px-6 pb-6">
       <div class="flex flex-wrap gap-2 pt-2 border-t border-gray-50 dark:border-gray-800">
+        <!-- Author byline chip (DEC-359/TASK-405): who wrote this, linking to
+             that writer's archive. Like the category chip it lives OUTSIDE the
+             card NuxtLink (nested interactive elements are invalid HTML,
+             DEC-196) and is itself a link to the per-writer surface. -->
+        <NuxtLink
+          v-if="post.author"
+          :to="`/authors/${post.author.id}`"
+          class="text-xs px-3 py-1.5 bg-gradient-to-r from-gray-50 dark:from-gray-800 to-gray-100 dark:to-gray-700 text-gray-600 dark:text-gray-300 rounded-full font-medium hover:from-gray-100 dark:hover:from-gray-700 hover:to-gray-200 dark:hover:to-gray-600 hover:text-blue-600 dark:hover:text-blue-400 transition-colors duration-200"
+        >
+          <Icon icon="lucide:user" class="w-3 h-3 inline mr-0.5" />
+          {{ post.author.display_name }}
+        </NuxtLink>
         <NuxtLink
           v-if="post.category"
           :to="{ path: '/', query: { category_id: String(post.category.id) } }"

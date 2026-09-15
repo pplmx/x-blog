@@ -12,6 +12,14 @@ export interface SeriesBrief {
 	slug: string;
 }
 
+/** A post's public author (DEC-359/TASK-405): only the pen name — the login
+ *  username is never exposed (admin login is no-oracle), and an author with no
+ *  pen name is absent from the public surface entirely (author: null). */
+export interface AuthorBrief {
+	id: number;
+	display_name: string;
+}
+
 export interface PostList {
 	id: number;
 	title: string;
@@ -33,6 +41,9 @@ export interface PostList {
 	tags: { id: number; name: string }[];
 	series: SeriesBrief | null;
 	series_order: number;
+	/** Public byline (DEC-359/TASK-405): present only when the writing admin
+	 *  chose a pen name; null/absent keeps the author off the public surface. */
+	author?: AuthorBrief | null;
 }
 
 export interface PostListResponse {

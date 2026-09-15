@@ -704,6 +704,16 @@ function handleCommentSubmitted(created: Comment | undefined) {
           </h1>
 
           <div class="flex items-center gap-4 text-sm text-gray-400">
+            <!-- Author byline (DEC-359/TASK-405): present only when the writing
+                 admin chose a public pen name; links to their archive. -->
+            <NuxtLink
+              v-if="post.author"
+              :to="`/authors/${post.author.id}`"
+              class="flex items-center gap-1.5 hover:text-blue-500 transition-colors"
+            >
+              <Icon icon="lucide:user" class="w-3.5 h-3.5" />
+              {{ post.author.display_name }}
+            </NuxtLink>
             <span class="flex items-center gap-1.5">
               <Icon icon="lucide:calendar" class="w-3.5 h-3.5" />
               {{ parseApiDate(post.publish_at ?? post.created_at)?.toLocaleDateString(locale === "zh" ? "zh-CN" : "en-US", { year: 'numeric', month: 'long', day: 'numeric' }) ?? "" }}

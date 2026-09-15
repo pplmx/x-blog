@@ -3,7 +3,12 @@
   Backs onto the existing /api/admin/users API (TASK-076, ISS-045).
 -->
 <script setup lang="ts">
-import { createAdminUser, deleteAdminUser, useAdminUsers } from "~~/api/admin/users";
+import {
+	createAdminUser,
+	deleteAdminUser,
+	updateAdminUser,
+	useAdminUsers,
+} from "~~/api/admin/users";
 
 definePageMeta({ layout: "admin" });
 
@@ -56,6 +61,11 @@ function getErrorMessage(e: unknown): string {
 	return t("admin.users.operationFailed");
 }
 
+// Public pen name (DEC-359/TASK-405): the byline shown on published posts.
+// Whitespace-only is saved as null (no public identity) — the same boundary
+// discipline the backend applies, so the create form never stores a blank.
+const newDisplayName = ref("");
+
 async function handleCreate() {
 	if (isProcessing.value) return; // single-flight — Enter in the form can fire
 	const username = newUsername.value.trim();
@@ -71,16 +81,56 @@ async function handleCreate() {
 	actionError.value = null;
 	actionSuccess.value = null;
 	try {
-		await createAdminUser({ username, password: newPassword.value });
+		await createAdminUser({
+			username,
+			password: newPassword.value,
+			display_name: newDisplayName.value.trim() || null,
+		});
 		newUsername.value = "";
 		newPassword.value = "";
 		confirmPassword.value = "";
+		newDisplayName.value = "";
 		actionSuccess.value = t("admin.users.created");
 		await refresh();
 	} catch (e) {
 		actionError.value = getErrorMessage(e);
 	} finally {
 		isProcessing.value = false;
+	}
+}
+
+// Inline pen-name editing per row (superuser-only PATCH /users/{id}). One open
+// editor at a time; Save with an empty input clears the pen name (returns the
+// author to no public identity) and Cancel discards the draft.
+const editingPenId = ref<number | null>(null);
+const editingPenValue = ref("");
+const penBusy = ref(false);
+
+function startEditPen(userId: number, current: string | null | undefined) {
+	editingPenId.value = userId;
+	editingPenValue.value = current ?? "";
+}
+
+function cancelEditPen() {
+	editingPenId.value = null;
+	editingPenValue.value = "";
+}
+
+async function savePenName(userId: number) {
+	if (penBusy.value || editingPenId.value !== userId) return; // single-flight
+	penBusy.value = true;
+	actionError.value = null;
+	actionSuccess.value = null;
+	try {
+		const pen = editingPenValue.value.trim();
+		await updateAdminUser(userId, { display_name: pen || null });
+		actionSuccess.value = pen ? t("admin.users.penUpdated") : t("admin.users.penCleared");
+		cancelEditPen();
+		await refresh();
+	} catch (e) {
+		actionError.value = getErrorMessage(e);
+	} finally {
+		penBusy.value = false;
 	}
 }
 
@@ -187,6 +237,17 @@ async function handleDelete(id: number) {
           minlength="8"
           class="px-4 py-3 border border-gray-200 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
         >
+        <!-- Public pen name (DEC-359/TASK-405): optional at create — the byline
+             the new account will show on published posts. Leave empty for no
+             public identity (the login username stays private). -->
+        <input
+          v-model="newDisplayName"
+          type="text"
+          :placeholder="t('admin.users.penNamePlaceholder')"
+          :aria-label="t('admin.users.penNamePlaceholder')"
+          maxlength="50"
+          class="px-4 py-3 border border-gray-200 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
+        >
         <button
           type="submit"
           :disabled="isProcessing"
@@ -233,9 +294,9 @@ async function handleDelete(id: number) {
         :key="user.id"
         class="flex items-center justify-between p-4 bg-white dark:bg-gray-900 rounded-xl border border-gray-100 dark:border-gray-800"
       >
-        <div class="flex items-center gap-3">
-          <Icon icon="lucide:user" class="w-5 h-5 text-gray-400" />
-          <div>
+        <div class="flex items-center gap-3 min-w-0">
+          <Icon icon="lucide:user" class="w-5 h-5 text-gray-400 shrink-0" />
+          <div class="min-w-0">
             <span class="text-gray-900 dark:text-gray-100 font-medium inline-flex items-center gap-2">
               {{ user.username }}
               <span
@@ -251,6 +312,63 @@ async function handleDelete(id: number) {
                 {{ t("admin.users.editor") }}
               </span>
             </span>
+
+            <!-- Public pen name (DEC-359/TASK-405): shown when set; an inline
+                 editor sets/clears it. An admin with no pen name has no byline
+                 on the public site — the login username must never surface. -->
+            <div
+              v-if="editingPenId === user.id"
+              class="mt-2 flex items-center gap-2"
+            >
+              <input
+                v-model="editingPenValue"
+                type="text"
+                :placeholder="t('admin.users.penNamePlaceholder')"
+                :aria-label="t('admin.users.penNamePlaceholder')"
+                maxlength="50"
+                @keyup.enter="savePenName(user.id)"
+                @keyup.esc="cancelEditPen"
+                class="px-2.5 py-1.5 text-sm border border-gray-200 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
+              >
+              <button
+                type="button"
+                :disabled="penBusy"
+                class="px-2.5 py-1.5 text-sm font-medium bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:opacity-50 transition-colors"
+                @click="savePenName(user.id)"
+              >
+                {{ t("admin.users.penSave") }}
+              </button>
+              <button
+                type="button"
+                :disabled="penBusy"
+                class="px-2.5 py-1.5 text-sm text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
+                @click="cancelEditPen"
+              >
+                {{ t("admin.users.penCancel") }}
+              </button>
+            </div>
+            <div
+              v-else
+              class="mt-0.5 flex items-center gap-1.5 text-sm"
+            >
+              <Icon icon="lucide:file-pen" class="w-3.5 h-3.5 text-gray-400" />
+              <span
+                :class="user.display_name
+                  ? 'text-gray-600 dark:text-gray-300'
+                  : 'text-gray-400 dark:text-gray-500'"
+              >
+                {{ user.display_name || t("admin.users.noPenName") }}
+              </span>
+              <button
+                type="button"
+                class="inline-flex items-center gap-1 text-xs text-gray-400 hover:text-blue-500 transition-colors"
+                :aria-label="t('admin.users.editPenName')"
+                @click="startEditPen(user.id, user.display_name)"
+              >
+                <Icon icon="lucide:pencil" class="w-3 h-3" />
+                {{ t("admin.users.editPenName") }}
+              </button>
+            </div>
           </div>
         </div>
 

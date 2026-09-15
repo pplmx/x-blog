@@ -30,7 +30,8 @@ const stubs = {
 		template: '<svg class="icon-stub" />',
 	},
 	NuxtLink: {
-		template: '<a class="nuxt-link-stub"><slot/></a>',
+		template: '<a class="nuxt-link-stub" :href="to"><slot/></a>',
+		props: ["to"],
 	},
 	BookmarkButton: {
 		template:
@@ -99,6 +100,27 @@ describe("PostCard", () => {
 			const wrapper = mountPostCard(postNoCategory);
 			// Category span should not be present when category is null
 			expect(wrapper.text()).not.toContain("Technology");
+		});
+	});
+
+	describe("author byline (DEC-359/TASK-405)", () => {
+		it("renders the author's pen name when the post has a public author", () => {
+			const wrapper = mountPostCard({ ...mockPost, author: { id: 7, display_name: "Riki" } });
+			expect(wrapper.text()).toContain("Riki");
+		});
+
+		it("links the author chip to the writer's archive page", () => {
+			const wrapper = mountPostCard({ ...mockPost, author: { id: 7, display_name: "Riki" } });
+			// The chip lives OUTSIDE the title link, so the pen name appears
+			// only in its own anchor (DEC-359/TASK-405, DEC-196).
+			const chip = wrapper.findAll("a").find((a) => a.text().includes("Riki"));
+			expect(chip?.exists()).toBe(true);
+			expect(chip?.attributes("href")).toBe("/authors/7");
+		});
+
+		it("renders no author chip when the post has no public author", () => {
+			const wrapper = mountPostCard({ ...mockPost, author: null });
+			expect(wrapper.text()).not.toContain("Riki");
 		});
 	});
 

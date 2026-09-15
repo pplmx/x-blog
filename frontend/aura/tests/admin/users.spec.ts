@@ -10,21 +10,24 @@
  * <script setup>.
  */
 
-import { flushPromises } from "@vue/test-utils";
+import { flushPromises, type VueWrapper } from "@vue/test-utils";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ref } from "vue";
 import { mountWithSuspense } from "./helpers.ts";
 
-const { mockFetchAdminUsers, mockCreateAdminUser, mockDeleteAdminUser } = vi.hoisted(() => ({
-	mockFetchAdminUsers: vi.fn(),
-	mockCreateAdminUser: vi.fn(),
-	mockDeleteAdminUser: vi.fn(),
-}));
+const { mockFetchAdminUsers, mockCreateAdminUser, mockDeleteAdminUser, mockUpdateAdminUser } =
+	vi.hoisted(() => ({
+		mockFetchAdminUsers: vi.fn(),
+		mockCreateAdminUser: vi.fn(),
+		mockDeleteAdminUser: vi.fn(),
+		mockUpdateAdminUser: vi.fn(),
+	}));
 
 vi.mock("~~/api/admin/users", () => ({
 	useAdminUsers: mockFetchAdminUsers,
 	createAdminUser: mockCreateAdminUser,
 	deleteAdminUser: mockDeleteAdminUser,
+	updateAdminUser: mockUpdateAdminUser,
 }));
 
 vi.stubGlobal("useRuntimeConfig", () => ({
@@ -141,13 +144,36 @@ describe("Admin Users Page", () => {
 			await inputs[0].setValue("newadmin");
 			await inputs[1].setValue("secretpass1");
 			await inputs[2].setValue("secretpass1");
-			// Third input is the submit button (there are 3 inputs + 1 button)
+			// Fourth input is the optional pen name (DEC-359/TASK-405); the
+			// submit button follows (4 inputs + 1 button).
 			await wrapper.find("button[type=submit]").trigger("submit");
 			await flushPromises();
 
 			expect(mockCreateAdminUser).toHaveBeenCalledWith({
 				username: "newadmin",
 				password: "secretpass1",
+				display_name: null,
+			});
+		});
+
+		it("passes the public pen name when provided at create", async () => {
+			mockCreateAdminUser.mockResolvedValue({});
+
+			const UsersPage = await loadPage();
+			const wrapper = await mountWithSuspense(UsersPage);
+
+			const inputs = wrapper.findAll("input");
+			await inputs[0].setValue("newadmin");
+			await inputs[1].setValue("secretpass1");
+			await inputs[2].setValue("secretpass1");
+			await inputs[3].setValue("Riki the Writer");
+			await wrapper.find("button[type=submit]").trigger("submit");
+			await flushPromises();
+
+			expect(mockCreateAdminUser).toHaveBeenCalledWith({
+				username: "newadmin",
+				password: "secretpass1",
+				display_name: "Riki the Writer",
 			});
 		});
 
@@ -233,6 +259,87 @@ describe("Admin Users Page", () => {
 			expect(deleteButtons[0].attributes("disabled")).toBeDefined();
 			// editor (id 2) is still deletable.
 			expect(deleteButtons[1].attributes("disabled")).toBeUndefined();
+		});
+
+		describe("public pen name (DEC-359/TASK-405)", () => {
+			const editButtons = (wrapper: VueWrapper) => wrapper.findAll("button[aria-label='编辑笔名']");
+			// After the editor opens, the row's pen-name input is the last
+			// <input> in the DOM. Guard with explicit throws (not `!`) so the
+			// non-null assertions neither appear in the test nor fail the gate.
+			function editorInput(wrapper: VueWrapper) {
+				const inputs = wrapper.findAll("input");
+				const input = inputs[inputs.length - 1];
+				if (!input) throw new Error("expected the pen-name editor input");
+				return input;
+			}
+			function findButton(wrapper: VueWrapper, text: string) {
+				const button = wrapper.findAll("button").find((b) => b.text().includes(text));
+				if (!button) throw new Error(`expected a button containing "${text}"`);
+				return button;
+			}
+
+			it("shows an existing pen name under the username", async () => {
+				mockFetchAdminUsers.mockReturnValue({
+					data: ref([
+						{ id: 1, username: "admin", is_superuser: true, display_name: "Riki" },
+						{ id: 2, username: "editor", is_superuser: false },
+					]),
+					pending: ref(false),
+					error: ref(null),
+					refresh: vi.fn(),
+				});
+
+				const UsersPage = await loadPage();
+				const wrapper = await mountWithSuspense(UsersPage);
+				expect(wrapper.text()).toContain("Riki");
+				expect(wrapper.text()).toContain("未设置公开笔名");
+			});
+
+			it("saves a new pen name inline via PATCH", async () => {
+				mockUpdateAdminUser.mockResolvedValue({});
+
+				const UsersPage = await loadPage();
+				const wrapper = await mountWithSuspense(UsersPage);
+
+				// Open the editor on the first (admin) row.
+				await editButtons(wrapper)[0].trigger("click");
+				await editorInput(wrapper).setValue("New Pen");
+				// The inline Save button lives in the editing row.
+				await findButton(wrapper, "保存").trigger("click");
+				await flushPromises();
+
+				expect(mockUpdateAdminUser).toHaveBeenCalledWith(1, { display_name: "New Pen" });
+			});
+
+			it("clears the pen name with an empty save (back to no public identity)", async () => {
+				mockUpdateAdminUser.mockResolvedValue({});
+
+				const UsersPage = await loadPage();
+				const wrapper = await mountWithSuspense(UsersPage);
+
+				await editButtons(wrapper)[0].trigger("click");
+				await editorInput(wrapper).setValue("   ");
+				await findButton(wrapper, "保存").trigger("click");
+				await flushPromises();
+
+				expect(mockUpdateAdminUser).toHaveBeenCalledWith(1, { display_name: null });
+			});
+
+			it("cancel discards the draft without calling PATCH", async () => {
+				mockUpdateAdminUser.mockResolvedValue({});
+
+				const UsersPage = await loadPage();
+				const wrapper = await mountWithSuspense(UsersPage);
+
+				await editButtons(wrapper)[0].trigger("click");
+				await editorInput(wrapper).setValue("Discarded");
+				// "取消" only appears on the inline cancel — the create form has
+				// no cancel button, so the filter needs no further disambiguation.
+				await findButton(wrapper, "取消").trigger("click");
+				await flushPromises();
+
+				expect(mockUpdateAdminUser).not.toHaveBeenCalled();
+			});
 		});
 	});
 });
