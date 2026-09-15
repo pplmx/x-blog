@@ -229,3 +229,14 @@ def test_author_archive_404_for_unknown_or_username_only_admin(client, db_sessio
     db_session.add(editor)
     db_session.flush()
     assert client.get(f"/api/authors/{editor.id}/posts").status_code == 404
+
+
+def test_author_archive_envelope_identifies_author_even_when_empty(client, admin_token, admin_user):
+    # The archive page must be able to title itself by pen name even before the
+    # writer has published anything — the author envelope rides on the (empty)
+    # list rather than being derived from a post that may not exist yet.
+    _set_pen_name(client, _admin_headers(admin_token), admin_user.id, "Nobody Yet")
+    body = client.get(f"/api/authors/{admin_user.id}/posts").json()
+    assert body["items"] == []
+    assert body["author"] == {"id": admin_user.id, "display_name": "Nobody Yet"}
+    _no_username_leak(body)

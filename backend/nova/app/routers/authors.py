@@ -44,7 +44,9 @@ def get_author_posts(
 
     posts, total = crud.get_posts(db, skip=(page - 1) * limit, limit=limit, author_id=author_id)
     total_pages = (total + limit - 1) // limit
-    response = schemas.PostListResponse.model_validate(
+    # The top-level author envelope lets the archive page title itself by pen
+    # name even when the writer has no published posts yet (DEC-359/TASK-405).
+    response = schemas.AuthorPostsResponse.model_validate(
         {
             "items": posts,
             "pagination": {
@@ -53,6 +55,7 @@ def get_author_posts(
                 "limit": limit,
                 "total_pages": total_pages,
             },
+            "author": author,
         }
     )
     return conditional_json(response.model_dump(mode="json"), request)

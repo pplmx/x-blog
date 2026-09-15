@@ -448,6 +448,19 @@ class PostListResponse(BaseModel):
     pagination: PaginationMeta
 
 
+class AuthorPostsResponse(PostListResponse):
+    """A public author's archive (DEC-359, TASK-405).
+
+    Adds the author's identity on top of a plain post list so the archive page
+    can title itself by pen name even when the writer has published no posts
+    yet (the list itself is empty). ``author`` is always the resolved pen-name
+    author — this endpoint 404s when there is no public author — and never
+    carries the login username.
+    """
+
+    author: AuthorBrief
+
+
 class PostRevisionSummary(BaseModel):
     """A lightweight row in the version-history list (DEC-158, TASK-191)."""
 
