@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 348,
+  "round": 349,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-15T08:10:29+00:00",
+  "updated_at": "2026-09-15T08:40:15+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -25477,6 +25477,86 @@
       "title": "close round 347: static pages CMS delivered (TASK-409 by CHG-580..582; supersedes DEC-367) - VERIFY green: backend 1602 (cov 93.88%, ruff clean, alembic chain + round-trip on SQLite and PG scratch schema), frontend 2146 (typecheck 0, biome 453 files clean), e2e pages journey green in a real browser",
       "rationale": "Round 347 closes the static-content gap: an admin can now publish curated markdown pages at /pages/{slug} from a dedicated /admin/pages manager (create with CJK-safe auto-slug + publish toggle, inline edit, publish/unpublish row toggle, delete with confirm) wired into the sidebar, and the public page renders through the same markdown pipeline as posts (heading ids, code, math, mermaid, images) with loading / no-oracle-404 / error-with-retry states and SEO. The public surface is no-oracle - GET /api/pages exposes published pages identity-only for the footer, GET /api/pages/{slug} serves the full body, and unpublished + unknown slugs both 404 so drafts cannot be enumerated. Published pages are linked from the site footer (client-side PagesFooterLinks) so they are discoverable without a code deploy. The additive Page table + migration round-trips on both SQLite and a PostgreSQL scratch schema; 13 backend tests put pages.py at 100% coverage, 15 new frontend tests (page, manager, footer links, layout) land within 2146 green, and the real-browser e2e journey (create+publish via the UI -> public render -> footer link) passes. No open follow-ups in the graph.",
       "alternatives_rejected": "Rejected: (1) footering every published page with full content - the footer lists identity only, bodies stay on /pages/{slug}; (2) adding a rich-text editor - the markdown textarea pattern is the established editing surface and keeps the slice lean; (3) sitemap/changelog auto-linking of pages - the sitemap predates pages and will be extended in a later round rather than creeping this one"
+    },
+    "DEC-369": {
+      "id": "DEC-369",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-15T08:37:17+00:00",
+      "updated_at": "2026-09-15T08:37:17+00:00",
+      "touched_round": 348,
+      "title": "round 348 scope: sitemap covers published pages + pen-named author archives (TASK-410) - the cached sitemap predates /pages and /authors surfaces, so their urls are invisible to crawlers",
+      "rationale": "Feature-evolution continues after round 347 (static pages CMS). The cached /sitemap.xml still lists only posts/series/categories/tags, but rounds 343-347 added two new indexable surface families: /pages/{slug} (admin-published static pages, round 347) and /authors/{id} archives + the /authors index (rounds 343/346). A freshly published privacy policy or writer archive was reachable-by-link yet invisible to search engines. This slice makes the sitemap complete and fresh: emit every published page (lastmod, drafts stay out) and every pen-named writer archive (lastmod = latest published-post update; username-only admins stay out - no-oracle preserved), include the /authors index, and bust the feed cache on any page create/update/delete (new clear_feeds_cache()) so a publish reaches the sitemap on the next render instead of after a TTL expiry. Backend-only SEO change: unit tests for inclusion/exclusion/cache-bust plus a cross-stack e2e assertion of /sitemap.xml through the Nuxt origin proxy.",
+      "alternatives_rejected": "Rejected: (1) also adding /about and /search to a dynamic list - they are already hardcoded in the sitemap; (2) author lastmod from created_at when no posts - use utc_now_naive() so an empty author archive still gets a deterministic date; (3) splitting the sitemap index into multiple sub-sitemaps - overkill at this scale, the single paged sitemap already pages all posts"
+    },
+    "TASK-410": {
+      "id": "TASK-410",
+      "type": "task",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-15T08:37:17+00:00",
+      "updated_at": "2026-09-15T08:40:15+00:00",
+      "touched_round": 348,
+      "category": "core-feature",
+      "description": "Sitemap completeness: include published /pages/{slug} (lastmod, drafts out) and pen-named /authors/{id} + /authors index (username-only admins out) in get_sitemap; add clear_feeds_cache() and call it on page create/update/delete so writes reach the sitemap immediately; backend tests (inclusion/exclusion/cache-bust/no-leak) + e2e assertion through the origin proxy"
+    },
+    "CHG-583": {
+      "id": "CHG-583",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-15T08:38:00+00:00",
+      "updated_at": "2026-09-15T08:38:00+00:00",
+      "touched_round": 348,
+      "commit": "2f3df480",
+      "summary": "test(e2e): published page in /sitemap.xml via origin proxy (TASK-410)"
+    },
+    "CHG-584": {
+      "id": "CHG-584",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-15T08:38:00+00:00",
+      "updated_at": "2026-09-15T08:38:00+00:00",
+      "touched_round": 348,
+      "commit": "54847f6c",
+      "summary": "docs(seo): record sitemap coverage of pages + author archives (TASK-410)"
+    },
+    "CHG-585": {
+      "id": "CHG-585",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-15T08:39:35+00:00",
+      "updated_at": "2026-09-15T08:39:35+00:00",
+      "touched_round": 348,
+      "commit": "6032e572",
+      "summary": "feat(seo): sitemap covers published pages + pen-named author archives (TASK-410)"
+    },
+    "EV-255": {
+      "id": "EV-255",
+      "type": "evidence",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-15T08:39:35+00:00",
+      "updated_at": "2026-09-15T08:39:35+00:00",
+      "touched_round": 348,
+      "confidence": 1.0,
+      "source": "round 348 full VERIFY",
+      "summary": "Round 348 VERIFY green: backend 1605 passed (10 skipped, cov 93.88%, ruff check+format clean over 192 files), frontend 2146 unchanged (full-repo biome check clean over 454 files), e2e pages+sitemap journey green in a real browser (published page appears in /sitemap.xml through the Nuxt origin proxy after the cache bust)"
+    },
+    "DEC-370": {
+      "id": "DEC-370",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-15T08:40:15+00:00",
+      "updated_at": "2026-09-15T08:40:15+00:00",
+      "touched_round": 348,
+      "title": "close round 348: sitemap covers pages + author archives delivered (TASK-410 by CHG-583+CHG-584+CHG-585; supersedes DEC-369) - VERIFY green: backend 1605 (cov 93.88%, ruff clean), frontend 2146 (biome 454 files clean), e2e pages+sitemap journey green",
+      "rationale": "Round 348 closes the sitemap gap that opened as the site grew: /pages/{slug} (round 347) and the pen-named /authors/{id} archives + /authors index (rounds 343/346) were real, indexable pages but the cached /sitemap.xml only listed posts/series/categories/tags - a freshly published privacy policy or writer archive was reachable-by-link yet invisible to crawlers. get_sitemap now emits every published page (lastmod from updated_at; drafts stay out) and the /authors index + one entry per pen-named writer (lastmod = latest published-post update; username-only admins stay out - no-oracle preserved), and a new clear_feeds_cache() is wired into every page create/update/delete so a publish reaches the sitemap on the next render instead of after a TTL expiry (post writes still bust feeds via clear_posts_list_cache; counter bumps still keep feeds warm). 3 backend tests cover inclusion/exclusion, the cache-bust on create+publish+delete through the cached endpoint, and a no-pen-name/no-username-leak gate; the e2e pages journey now asserts /sitemap.xml through the Nuxt origin proxy includes the freshly published page. No open follow-ups in the graph.",
+      "alternatives_rejected": "Rejected: (1) sitemap-index splitting into sub-sitemaps - overkill at this scale, the paged sitemap already pages all posts; (2) adding author lastmod from created_at - a pen-named writer with no published posts falls back to utc_now_naive() so their archive still carries a deterministic date; (3) pagination of authors/pages sections - both are bounded lists, no paging needed"
     }
   },
   "edges": [
@@ -38149,6 +38229,36 @@
       "to": "DEC-367",
       "type": "supersedes",
       "created_at": "2026-09-15T08:10:29+00:00"
+    },
+    {
+      "from": "DEC-369",
+      "to": "TASK-410",
+      "type": "governs",
+      "created_at": "2026-09-15T08:37:17+00:00"
+    },
+    {
+      "from": "CHG-585",
+      "to": "TASK-410",
+      "type": "implements",
+      "created_at": "2026-09-15T08:39:35+00:00"
+    },
+    {
+      "from": "CHG-583",
+      "to": "TASK-410",
+      "type": "implements",
+      "created_at": "2026-09-15T08:39:35+00:00"
+    },
+    {
+      "from": "CHG-584",
+      "to": "TASK-410",
+      "type": "implements",
+      "created_at": "2026-09-15T08:39:35+00:00"
+    },
+    {
+      "from": "DEC-370",
+      "to": "DEC-369",
+      "type": "supersedes",
+      "created_at": "2026-09-15T08:40:15+00:00"
     }
   ]
 }
