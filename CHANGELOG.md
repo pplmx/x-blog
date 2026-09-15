@@ -9,6 +9,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- **More from this author (round 356)**: a reader who just finished and loved
+  one post used to have no in-place path to the writer's other work — the
+  related-posts block is topic-shaped (category/tags), and the archive was a
+  click away but left the article. Every post by a pen-named writer now ends
+  with a "More from {author}" strip: up to four of the writer's other recent
+  posts (newest-first, the post being read excluded so it never re-links
+  under itself) with a "All posts by {author}" door to the archive. Built on
+  the existing public author-archive endpoint (no backend change) — the
+  person-shaped discovery surface that rounds 353-355 followed, made
+  browsable at the very moment of enjoyment.
 - **Follow a writer from their archive (round 355)**: the author follow
   (round 353) lived on post bylines and in `/account`, but not on the page
   where a reader actually decides about a writer — the public `/authors/{id}`
