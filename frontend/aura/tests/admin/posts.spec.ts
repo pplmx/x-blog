@@ -4,14 +4,16 @@ import { ref } from "vue";
 import { resetAdminPostListState } from "../../composables/adminPostListState";
 import { mountWithSuspense } from "./helpers.ts";
 
-const { mockFetchAdminPosts, mockDeleteAdminPost } = vi.hoisted(() => ({
+const { mockFetchAdminPosts, mockDeleteAdminPost, mockCloneAdminPost } = vi.hoisted(() => ({
 	mockFetchAdminPosts: vi.fn(),
 	mockDeleteAdminPost: vi.fn(),
+	mockCloneAdminPost: vi.fn(),
 }));
 
 vi.mock("~~/api/admin/posts", () => ({
 	useAdminPosts: mockFetchAdminPosts,
 	deleteAdminPost: mockDeleteAdminPost,
+	cloneAdminPost: mockCloneAdminPost,
 }));
 
 vi.stubGlobal("useRuntimeConfig", () => ({
@@ -440,6 +442,45 @@ describe("Admin Posts Page", () => {
 			await flushPromises();
 
 			expect(wrapper.text()).toContain("boom");
+		});
+	});
+
+	describe("Duplicate (round 349)", () => {
+		beforeEach(() => {
+			mockCloneAdminPost.mockReset();
+			vi.mocked(navigateTo).mockClear();
+		});
+
+		it("clones the row's post and navigates into the new draft editor", async () => {
+			mockCloneAdminPost.mockResolvedValue({ id: 99 });
+			const PostsPage = await loadPage();
+			const wrapper = await mountWithSuspense(PostsPage);
+
+			const duplicateButton = wrapper.findAll("button").find((b) => {
+				const svg = b.find('svg[data-icon="lucide:copy"]');
+				return svg.exists();
+			});
+			expect(duplicateButton).toBeDefined();
+			await duplicateButton?.trigger("click");
+			await flushPromises();
+
+			expect(mockCloneAdminPost).toHaveBeenCalledWith(1);
+			expect(navigateTo).toHaveBeenCalledWith("/admin/posts/99");
+		});
+
+		it("surfaces a clone failure instead of silently doing nothing", async () => {
+			mockCloneAdminPost.mockRejectedValue(new Error("boom"));
+			const PostsPage = await loadPage();
+			const wrapper = await mountWithSuspense(PostsPage);
+
+			const duplicateButton = wrapper
+				.findAll("button")
+				.find((b) => b.find('svg[data-icon="lucide:copy"]').exists());
+			await duplicateButton?.trigger("click");
+			await flushPromises();
+
+			expect(wrapper.text()).toContain("boom");
+			expect(navigateTo).not.toHaveBeenCalled();
 		});
 	});
 

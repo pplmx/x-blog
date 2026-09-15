@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { AdminPost } from "~~/api/admin/posts";
-import { deleteAdminPost, useAdminPosts } from "~~/api/admin/posts";
+import { cloneAdminPost, deleteAdminPost, useAdminPosts } from "~~/api/admin/posts";
 import { parseApiDate } from "~~/composables/apiDate";
 
 definePageMeta({ layout: "admin" });
@@ -40,6 +40,7 @@ const total = computed(() => data.value?.pagination?.total ?? 0);
 const totalPages = computed(() => Math.ceil(total.value / pageSize));
 
 const isDeleting = ref(false);
+const isCloningId = ref<number | null>(null);
 const deleteError = ref<string | null>(null);
 const debounceTimer = ref<ReturnType<typeof setTimeout> | null>(null);
 
@@ -74,6 +75,23 @@ function goToPage(page: number) {
 	const last = Math.max(0, totalPages.value - 1);
 	if (page < 0 || page > last) return;
 	currentPage.value = page;
+}
+
+async function handleClone(id: number) {
+	if (isCloningId.value !== null) return; // single-flight across rows
+	isCloningId.value = id;
+	deleteError.value = null;
+	try {
+		const { id: newId } = await cloneAdminPost(id);
+		// Land straight in the new draft's editor — the whole point is to
+		// rework the copy, and the fresh slug means no conflict.
+		await navigateTo(`/admin/posts/${newId}`);
+	} catch (e) {
+		// A silent failure looks like "nothing happened" — surface it.
+		deleteError.value = e instanceof Error ? e.message : t("admin.postsList.cloneFailed");
+	} finally {
+		isCloningId.value = null;
+	}
 }
 
 async function handleDelete(id: number) {
@@ -316,6 +334,23 @@ function displayDate(post: AdminPost): string {
                   >
                     <Icon icon="lucide:pencil" class="h-4 w-4" />
                   </NuxtLink>
+                  <!-- Duplicate (round 349): seed a sibling draft from this post
+                       (same content/taxonomy, fresh slug, metadata cleared) and
+                       jump straight into its editor. -->
+                  <button
+                    type="button"
+                    :disabled="isCloningId !== null"
+                    :title="t('admin.postsList.duplicate')"
+                    :aria-label="t('admin.postsList.duplicate')"
+                    class="h-8 w-8 p-0 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 dark:hover:bg-emerald-900/30 rounded-lg transition-colors"
+                    @click="handleClone(post.id)"
+                  >
+                    <Icon
+                      :icon="isCloningId === post.id ? 'lucide:loader' : 'lucide:copy'"
+                      class="h-4 w-4"
+                      :class="isCloningId === post.id ? 'animate-spin' : ''"
+                    />
+                  </button>
                   <button
                     type="button"
                     :disabled="isDeleting"

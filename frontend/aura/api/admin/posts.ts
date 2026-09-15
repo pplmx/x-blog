@@ -222,3 +222,13 @@ export function deleteAdminPost(id: number): Promise<void> {
 		headers: adminAuthHeaders(),
 	});
 }
+
+/** Duplicate a post into a fresh draft (round 349): same content + taxonomy,
+ *  a new unique slug, publication metadata cleared. Returns the new draft's
+ *  id so the list can jump straight into the editor. */
+export function cloneAdminPost(id: number): Promise<{ id: number }> {
+	return command<{ id: number }>(`/api/admin/posts/${id}/clone`, {
+		method: "POST",
+		headers: adminAuthHeaders(),
+	});
+}
