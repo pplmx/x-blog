@@ -2,6 +2,7 @@
 	"post": {
 		"notFound": "文章不存在",
 		"related": "相关文章",
+		"commentsClosed": "这篇文章的评论已关闭。",
 		"views": "{count} 次阅读",
 		"readingTime": "{count} 分钟",
 		"likes": "喜欢",

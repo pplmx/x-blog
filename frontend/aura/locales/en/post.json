@@ -2,6 +2,7 @@
 	"post": {
 		"notFound": "Post not found",
 		"related": "Related Posts",
+		"commentsClosed": "Comments are closed on this post.",
 		"views": "{count} views",
 		"readingTime": "{count} min read",
 		"likes": "Like",

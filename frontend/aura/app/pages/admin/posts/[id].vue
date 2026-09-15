@@ -74,6 +74,9 @@ const formData = ref<Partial<PostCreate>>({
 	excerpt: "",
 	published: false,
 	pinned: false,
+	// Round 351: posts open their comments by default; the editor can close a
+	// post's comments without removing existing ones or disabling site-wide.
+	comments_enabled: true,
 	publish_at: null,
 	category_id: undefined,
 	tag_ids: [],
@@ -314,6 +317,7 @@ watch(
 				excerpt: val.excerpt || "",
 				published: val.published,
 				pinned: val.pinned,
+				comments_enabled: val.comments_enabled ?? true,
 				publish_at: toLocalInputValue(val.publish_at),
 				category_id: val.category_id || undefined,
 				tag_ids: val.tag_ids || [],
@@ -1392,6 +1396,23 @@ function handleFileInput(e: Event) {
           <label for="pinned" class="cursor-pointer">
             <span class="text-sm font-medium text-gray-700 dark:text-gray-300">
               {{ formData.pinned ? t('admin.postEdit.pinned') : t('admin.postEdit.pin') }}
+            </span>
+          </label>
+        </div>
+
+        <!-- Per-post comments toggle (round 351): closing the door keeps the
+             existing conversation visible but stops new comments on this post
+             (privacy, stale content, high-noise threads). -->
+        <div class="flex items-start gap-3">
+          <input
+            id="comments-enabled"
+            v-model="formData.comments_enabled"
+            type="checkbox"
+            class="w-5 h-5 rounded border-gray-300 text-emerald-600 focus:ring-emerald-500 mt-0.5"
+          >
+          <label for="comments-enabled" class="cursor-pointer">
+            <span class="text-sm font-medium text-gray-700 dark:text-gray-300">
+              {{ formData.comments_enabled ? t('admin.postEdit.commentsEnabled') : t('admin.postEdit.commentsDisabled') }}
             </span>
           </label>
         </div>

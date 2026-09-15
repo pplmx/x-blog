@@ -42,6 +42,9 @@ export interface AdminPostDetail {
 	excerpt: string;
 	published: boolean;
 	pinned: boolean;
+	/** Per-post comments toggle (round 351): false closes a post's comments
+	 *  without removing existing ones or disabling comments site-wide. */
+	comments_enabled: boolean;
 	publish_at: string | null;
 	cover_image: string | null;
 	category_id: number | null;
@@ -89,6 +92,8 @@ export interface PostCreate {
 	excerpt?: string;
 	published: boolean;
 	pinned?: boolean;
+	/** Round 351: close a post's comments at create/update (default open). */
+	comments_enabled?: boolean;
 	publish_at?: string | null;
 	/** null (not just absent) clears the category on update — the backend's
 	 *  exclude_unset contract distinguishes "unchanged" from "cleared". */

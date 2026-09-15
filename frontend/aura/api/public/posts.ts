@@ -21,6 +21,9 @@ export interface ArchiveEntry {
 export interface Post extends PostList {
 	content: string;
 	likes: number;
+	/** Round 351: false means the post's comments are closed (form hidden).
+	 *  Absent on list cards — only the public detail serializes it. */
+	comments_enabled?: boolean;
 	updated_at: string;
 	/** Scheduled publication time (the backend detail Post serializes it, RIL
 	 *  ISS-264); null/absent for immediately-published posts. */

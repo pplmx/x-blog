@@ -817,9 +817,19 @@ function handleCommentSubmitted(created: Comment | undefined) {
              article's comments (deep-dive finding). -->
         <section v-if="post.id" class="mt-12 pt-8 border-t border-gray-100 dark:border-gray-800">
           <CommentList :key="post.id" ref="commentListRef" :post-id="post.id" />
-          <div class="mt-10 pt-8 border-t border-gray-100 dark:border-gray-800" :class="{ 'opacity-60': pending }">
+          <!-- Round 351: a closed post keeps its existing conversation but
+               stops new comments — the form is replaced by a notice. -->
+          <div v-if="post.comments_enabled !== false" class="mt-10 pt-8 border-t border-gray-100 dark:border-gray-800" :class="{ 'opacity-60': pending }">
             <CommentForm :key="post.id" :post-id="post.id" :disabled="pending" @submitted="handleCommentSubmitted" />
           </div>
+          <p
+            v-else
+            role="note"
+            class="mt-10 pt-8 border-t border-gray-100 dark:border-gray-800 text-sm text-gray-400 dark:text-gray-500 flex items-center gap-2"
+          >
+            <Icon icon="lucide:message-square-off" class="w-4 h-4" />
+            {{ t('post.commentsClosed') }}
+          </p>
         </section>
 
         <!-- Related Posts (gated on its own pending; on SPA nav it refetches for

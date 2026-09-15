@@ -15,6 +15,7 @@ import { flushPromises, mount } from "@vue/test-utils";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { type Ref, ref } from "vue";
 
+import CommentForm from "~~/components/CommentForm.vue";
 import SeriesFollowButton from "~~/components/SeriesFollowButton.vue";
 
 // Mock post data matching the Post interface
@@ -196,6 +197,10 @@ async function mountPostPage({
 			// in-series follow control actually mounts under test.
 			components: {
 				SeriesFollowButton,
+				// Round 351: the closed-comments notice swaps the comment form out,
+				// so the tests must mount the REAL form (Nuxt auto-imports resolve
+				// nothing in vue-test-utils) to assert form-present/form-absent.
+				CommentForm,
 			},
 			stubs: {
 				NuxtLink: {
@@ -1868,6 +1873,24 @@ describe("Post Detail Page", () => {
 			await flushPromises();
 			expect(wrapper.text()).not.toContain("点赞失败，请稍后重试。");
 			wrapper.unmount();
+		});
+	});
+
+	describe("Comments closed (round 351)", () => {
+		it("shows the closed notice and hides the comment form when disabled", async () => {
+			const wrapper = await mountPostPage({
+				post: { ...mockPost, comments_enabled: false },
+			});
+			expect(wrapper.text()).toContain("这篇文章的评论已关闭。");
+			expect(wrapper.find("textarea[role='combobox']").exists()).toBe(false);
+		});
+
+		it("keeps the comment form when comments are enabled", async () => {
+			const wrapper = await mountPostPage({
+				post: { ...mockPost, comments_enabled: true },
+			});
+			expect(wrapper.text()).not.toContain("这篇文章的评论已关闭。");
+			expect(wrapper.find("textarea[role='combobox']").exists()).toBe(true);
 		});
 	});
 });
