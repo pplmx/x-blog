@@ -16,7 +16,7 @@ frontend renders through the same pipeline as posts.
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.orm import Session
 
-from app import models, schemas
+from app import crud, models, schemas
 from app.auth import User, get_current_admin
 from app.cache import clear_feeds_cache
 from app.conditional import conditional_json
@@ -44,6 +44,15 @@ def get_page(request: Request, slug: str, db: Session = Depends(get_db)):
     (no-oracle): a draft is indistinguishable from a never-published page."""
     page = db.query(models.Page).filter(models.Page.slug == slug, models.Page.published.is_(True)).first()
     if not page:
+        # Slug-change redirect (round 350): a re-slugged page's old URL points
+        # at the canonical target (round 347 lets an operator swap a page slug).
+        redirect_target = crud.resolve_slug_redirect(db, "page", slug)
+        if redirect_target:
+            raise HTTPException(
+                status_code=404,
+                detail="Page not found",
+                headers={"X-Redirect-To": f"/pages/{redirect_target}"},
+            )
         raise HTTPException(status_code=404, detail="Page not found")
     return conditional_json(
         schemas.PagePublic.model_validate(page).model_dump(mode="json"),
@@ -103,6 +112,9 @@ def admin_update_page(
         clash = db.query(models.Page).filter(models.Page.slug == data["slug"]).first()
         if clash:
             raise HTTPException(status_code=409, detail="Slug already in use")
+        # Slug-change redirect (round 350): the old page URL that was shared/
+        # linked keeps pointing at this page after the rename.
+        crud.record_slug_redirect(db, "page", page.slug, data["slug"])
     for field, value in data.items():
         setattr(page, field, value)
     db.commit()

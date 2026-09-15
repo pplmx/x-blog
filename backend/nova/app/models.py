@@ -802,6 +802,30 @@ class Page(Base):
     )
 
 
+class SlugRedirect(Base):
+    """A 301 redirect map from an old public slug to the current one (round 350).
+
+    The admin editors let an operator re-slug posts, series and static pages
+    freely, but the old URL then answered 404 — orphaning every inbound link,
+    shared URL and search ranking that pointed at it. This table captures the
+    OLD slug at rename time so the read routes can tell the web layer to emit
+    a permanent (SEO-correct) 301 to the new location instead of a soft 404.
+
+    ``kind`` scopes the map (post | series | page); ``(kind, old_slug)`` is
+    unique — one canonical redirect per old URL. Additive table, no DB-level
+    FK (DEC-009).
+    """
+
+    __tablename__ = "slug_redirects"
+    __table_args__ = (UniqueConstraint("kind", "old_slug", name="uq_slug_redirects_kind_old_slug"),)
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    kind: Mapped[str] = mapped_column(String(20), nullable=False)
+    old_slug: Mapped[str] = mapped_column(String(200), nullable=False)
+    new_slug: Mapped[str] = mapped_column(String(200), nullable=False)
+    created_at: Mapped[datetime | None] = mapped_column(DateTime, default=lambda: datetime.now(UTC))
+
+
 class SiteSetting(Base):
     """Operator-controlled runtime settings, stored as key/value (DEC-100, TASK-162).
 

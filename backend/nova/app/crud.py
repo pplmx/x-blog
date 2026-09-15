@@ -276,6 +276,68 @@ def get_post_by_slug(db: Session, slug: str) -> models.Post | None:
     )
 
 
+def record_slug_redirect(db: Session, kind: str, old_slug: str, new_slug: str) -> None:
+    """Capture an old slug -> new slug after a rename (round 350).
+
+    The read routes use this to redirect old URLs to the current location. The
+    map is kept acyclic and one-hop: any existing redirect that TARGETS the
+    slug being renamed is retargeted at its new home (A->B joined with B->C
+    becomes A->C), so an old link always resolves in exactly one hop no matter
+    how many times the slug moved. No commit — the caller owns the transaction
+    (the admin update that changed the slug commits right after).
+    """
+    if not old_slug or old_slug == new_slug:
+        return
+    # Chain collapse: redirects pointing AT the renamed slug now point at its
+    # new home (B renames to C: the persisted A->B row becomes A->C). A
+    # retarget that would point a row back at its own origin (renaming B back
+    # to A makes A->B into the self-loop A->A) means the old slug's meaning was
+    # superseded by the rename-back — the stale row is deleted rather than kept
+    # (a kept self-loop, or an A->B + B->A pair, would loop a browser forever
+    # once the entity is deleted or unpublished).
+    for stale in (
+        db.query(models.SlugRedirect)
+        .filter(
+            models.SlugRedirect.kind == kind,
+            models.SlugRedirect.new_slug == old_slug,
+        )
+        .all()
+    ):
+        if stale.old_slug == new_slug:
+            db.delete(stale)
+            continue
+        stale.new_slug = new_slug
+    # Upsert the direct rename, superseding any older redirect from this slug.
+    row = (
+        db.query(models.SlugRedirect)
+        .filter(models.SlugRedirect.kind == kind, models.SlugRedirect.old_slug == old_slug)
+        .first()
+    )
+    if row is not None:
+        row.new_slug = new_slug
+    else:
+        db.add(models.SlugRedirect(kind=kind, old_slug=old_slug, new_slug=new_slug))
+    db.flush()
+
+
+def resolve_slug_redirect(db: Session, kind: str, old_slug: str) -> str | None:
+    """The current slug an old ``old_slug`` now lives at, or None (no redirect).
+
+    A self-referential row (old_slug == new_slug) resolves to None: it can
+    never forward anywhere useful, and redirecting a URL to itself would loop
+    the browser. (Such a row can only exist if an old row survived a
+    rename-back; live entities take precedence in the read routes anyway.)
+    """
+    row = (
+        db.query(models.SlugRedirect)
+        .filter(models.SlugRedirect.kind == kind, models.SlugRedirect.old_slug == old_slug)
+        .first()
+    )
+    if row is None or row.new_slug == old_slug:
+        return None
+    return row.new_slug
+
+
 def create_post(db: Session, post: schemas.PostCreate, author_id: int | None = None) -> models.Post:
     category = None
     if post.category_id:
@@ -435,6 +497,11 @@ def update_post(db: Session, post_id: int, post: schemas.PostUpdate) -> models.P
         tag_id_list = update_data.pop("tag_ids")
         tags = db.query(models.Tag).filter(models.Tag.id.in_(tag_id_list)).all() if tag_id_list else []
         db_post.tags = tags
+
+    if "slug" in update_data and update_data["slug"] != db_post.slug:
+        # Slug-change redirect (round 350): an old URL that was shared/indexed
+        # must keep pointing at this post after the rename.
+        record_slug_redirect(db, "post", db_post.slug, update_data["slug"])
 
     for field, value in update_data.items():
         setattr(db_post, field, value)
@@ -1897,7 +1964,12 @@ def update_series(db: Session, series_id: int, data: schemas.SeriesUpdate) -> mo
     db_series = get_series(db, series_id)
     if not db_series:
         return None
-    for field, value in data.model_dump(exclude_unset=True).items():
+    update_data = data.model_dump(exclude_unset=True)
+    if "slug" in update_data and update_data["slug"] != db_series.slug:
+        # Slug-change redirect (round 350): an old series URL that was shared/
+        # indexed must keep pointing at this series after the rename.
+        record_slug_redirect(db, "series", db_series.slug, update_data["slug"])
+    for field, value in update_data.items():
         setattr(db_series, field, value)
     try:
         db.commit()

@@ -41,6 +41,15 @@ def get_series(request: Request, slug: str, db: Session = Depends(get_db)):
 
     series = crud.get_series_by_slug(db, slug)
     if not series:
+        # Slug-change redirect (round 350): a re-slugged series' old URL points
+        # at the canonical target so the web layer can emit a 301 (see posts).
+        redirect_target = crud.resolve_slug_redirect(db, "series", slug)
+        if redirect_target:
+            raise HTTPException(
+                status_code=404,
+                detail="Series not found",
+                headers={"X-Redirect-To": f"/series/{redirect_target}"},
+            )
         raise HTTPException(status_code=404, detail="Series not found")
 
     posts = crud.get_series_visible_posts(db, series)

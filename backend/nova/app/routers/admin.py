@@ -555,7 +555,10 @@ def admin_update_post(
 
     if post_data.title is not None:
         post.title = post_data.title
-    if post_data.slug is not None:
+    if post_data.slug is not None and post_data.slug != post.slug:
+        # Slug-change redirect (round 350): an old URL that was shared/indexed
+        # must keep pointing at this post after the rename (see crud.record_*).
+        crud.record_slug_redirect(db, "post", post.slug, post_data.slug)
         post.slug = post_data.slug
     if post_data.content is not None:
         post.content = post_data.content

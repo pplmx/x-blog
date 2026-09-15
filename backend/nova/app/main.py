@@ -206,6 +206,9 @@ async def http_exception_handler(_request: Request, exc: HTTPException):
     error_code = code_map.get(exc.status_code, "ERROR")
     message = exc.detail if isinstance(exc.detail, str) else "An error occurred"
 
+    # Preserve any custom headers the exception carries (round 350): the
+    # slug-change 404 marks its canonical target via ``X-Redirect-To``, which
+    # the web layer reads to emit a 301 — dropping it would orphan old URLs.
     return JSONResponse(
         status_code=exc.status_code,
         content={
@@ -215,6 +218,7 @@ async def http_exception_handler(_request: Request, exc: HTTPException):
                 "details": {},
             }
         },
+        headers=exc.headers,
     )
 
 

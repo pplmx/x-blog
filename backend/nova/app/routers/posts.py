@@ -102,6 +102,18 @@ def get_post(
         post = crud.get_post_by_slug(db, post_id)
     # Drafts and not-yet-published scheduled posts are invisible to the public.
     if not post or not crud.is_publicly_visible(post):
+        # Slug-change redirect (round 350): when a post was re-slugged after
+        # this slug lived publicly, surface the canonical target so the web
+        # layer can emit a permanent 301 instead of a soft 404 — old links
+        # keep working. The 404 contract is unchanged (detail untouched); the
+        # redirect rides a response header the frontend reads.
+        redirect_target = crud.resolve_slug_redirect(db, "post", post_id)
+        if redirect_target:
+            raise HTTPException(
+                status_code=404,
+                detail="Post not found",
+                headers={"X-Redirect-To": f"/posts/{redirect_target}"},
+            )
         raise HTTPException(status_code=404, detail="Post not found")
     # A scheduled post that crossed its publish_at since it was written needs
     # its first public read to fire the new-post fan-out (DEC-336/TASK-394 —
