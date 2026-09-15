@@ -5,6 +5,8 @@ export interface ReaderProfile {
 	id: number;
 	email: string;
 	display_name: string | null;
+	/** Short "about me" (round 352); null until the reader writes one. */
+	bio: string | null;
 	avatar_url: string | null;
 	created_at: string | null;
 }

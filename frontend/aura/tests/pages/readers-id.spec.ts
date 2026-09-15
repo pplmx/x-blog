@@ -114,6 +114,23 @@ describe("Reader profile page", () => {
 		expect(wrapper.text()).toContain("R"); // first letter of display_name
 	});
 
+	it("renders the reader's bio when one is set (round 352)", async () => {
+		mockPayload = {
+			...samplePage,
+			profile: { ...samplePage.profile, bio: "I write about small self-hosted things." },
+		};
+		const wrapper = await mountPage();
+		expect(wrapper.text()).toContain("I write about small self-hosted things.");
+	});
+
+	it("omits the bio block when the reader has none (round 352)", async () => {
+		mockPayload = { ...samplePage, profile: { ...samplePage.profile, bio: null } };
+		const wrapper = await mountPage();
+		// The bio is the page's only whitespace-pre-wrap paragraph — nothing
+		// to render when the reader hasn't written one.
+		expect(wrapper.find("p.whitespace-pre-wrap").exists()).toBe(false);
+	});
+
 	it("renders a comment with a deep link to that comment on its post", async () => {
 		mockPayload = samplePage;
 		const wrapper = await mountPage();

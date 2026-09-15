@@ -20,6 +20,9 @@
 		"profile": {
 			"title": "Profile",
 			"displayNameLabel": "Display name",
+			"bioLabel": "About me",
+			"bioPlaceholder": "A sentence or two about yourself, shown on your public profile…",
+			"bioHint": "Plain text shown on your profile page; leave empty to remove.",
 			"emailNote": "Sign-in email:",
 			"emailChangeHint": "change it below",
 			"save": "Save",

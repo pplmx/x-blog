@@ -20,6 +20,9 @@
 		"profile": {
 			"title": "个人资料",
 			"displayNameLabel": "显示名称",
+			"bioLabel": "关于我",
+			"bioPlaceholder": "用一两句话介绍自己，将显示在你的公开主页上……",
+			"bioHint": "公开主页上的纯文本简介；留空则移除。",
 			"emailNote": "登录邮箱：",
 			"emailChangeHint": "可在下方修改",
 			"save": "保存",

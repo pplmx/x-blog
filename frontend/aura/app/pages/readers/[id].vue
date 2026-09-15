@@ -167,6 +167,14 @@ const paginationTokens = computed(() =>
 					<p class="text-sm text-gray-500 dark:text-gray-400 mt-1">
 						{{ t("readerProfile.joined", { date: parseApiDate(data.profile.created_at)?.toLocaleDateString(locale === "zh" ? "zh-CN" : "en-US") ?? "" }) }}
 					</p>
+					<!-- Reader-written "about me" (round 352): plain text under the
+						 name when the reader wrote one. -->
+					<p
+						v-if="data.profile.bio"
+						class="mt-3 whitespace-pre-wrap text-sm text-gray-700 dark:text-gray-300 leading-relaxed"
+					>
+						{{ data.profile.bio }}
+					</p>
 				</div>
 			</div>
 

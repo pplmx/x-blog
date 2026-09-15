@@ -6,6 +6,9 @@ export interface ReaderProfile {
 	id: number;
 	email: string;
 	display_name: string | null;
+	/** Short "about me" (round 352): reader-written plain text on the public
+	 *  profile page; null until the reader writes one. */
+	bio: string | null;
 	avatar_url: string | null;
 	created_at: string | null;
 }
@@ -44,8 +47,12 @@ export function getReaderDataExport(): Promise<Record<string, unknown>> {
 	});
 }
 
-/** Update the reader's own profile (currently display_name; email immutable). */
-export function updateReaderProfile(body: { display_name?: string }): Promise<ReaderProfile> {
+/** Update the reader's own profile (display_name, bio; email immutable —
+ * explicit null bio clears it). */
+export function updateReaderProfile(body: {
+	display_name?: string;
+	bio?: string | null;
+}): Promise<ReaderProfile> {
 	return command<ReaderProfile>("/api/reader/me", {
 		method: "PATCH",
 		headers: { ...readerAuthHeaders(), "Content-Type": "application/json" },

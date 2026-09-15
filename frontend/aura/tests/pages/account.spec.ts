@@ -501,9 +501,45 @@ describe("Account settings page", () => {
 		await wrapper.get("form").trigger("submit");
 		await flushPromises();
 
-		expect(mockUpdateMyProfile).toHaveBeenCalledWith({ display_name: "NewName" });
+		// The bio textarea ships with the same save (empty -> empty string).
+		expect(mockUpdateMyProfile).toHaveBeenCalledWith({ display_name: "NewName", bio: "" });
 		expect(setProfile).toHaveBeenCalledWith(expect.objectContaining({ display_name: "NewName" }));
 		expect(wrapper.text()).toContain("已保存");
+	});
+
+	it("saves the profile bio with the display name and shows it in the textarea", async () => {
+		isAuthenticated.value = true;
+		reader.value = {
+			id: 1,
+			email: "r@example.com",
+			display_name: "Existing",
+			bio: "I like charts.",
+			avatar_url: null,
+			created_at: "2024-01-01T00:00:00Z",
+		} as ReaderProfile;
+		mockUpdateMyProfile.mockResolvedValue({
+			id: 1,
+			email: "r@example.com",
+			display_name: "Existing",
+			bio: "I like charts and lists.",
+		} as ReaderProfile);
+		const wrapper = await mountPage();
+
+		// The loaded bio pre-fills the textarea.
+		const textarea = wrapper.get("textarea");
+		expect((textarea.element as HTMLTextAreaElement).value).toBe("I like charts.");
+
+		await textarea.setValue("I like charts and lists.");
+		await wrapper.get("form").trigger("submit");
+		await flushPromises();
+
+		expect(mockUpdateMyProfile).toHaveBeenCalledWith({
+			display_name: "Existing",
+			bio: "I like charts and lists.",
+		});
+		expect(setProfile).toHaveBeenCalledWith(
+			expect.objectContaining({ bio: "I like charts and lists." }),
+		);
 	});
 
 	it("clearing the display name does not disable Save (ISS-127)", async () => {
@@ -527,7 +563,7 @@ describe("Account settings page", () => {
 		await input.setValue("NewName");
 		await wrapper.get("form").trigger("submit");
 		await flushPromises();
-		expect(mockUpdateMyProfile).toHaveBeenCalledWith({ display_name: "NewName" });
+		expect(mockUpdateMyProfile).toHaveBeenCalledWith({ display_name: "NewName", bio: "" });
 	});
 
 	it("explains an empty-name submit instead of silently doing nothing (round 264)", async () => {

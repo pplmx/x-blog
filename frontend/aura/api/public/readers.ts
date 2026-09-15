@@ -5,6 +5,8 @@ import { command } from "../transport";
 export interface ReaderPublicProfile {
 	id: number;
 	display_name: string | null;
+	/** Reader-written "about me" (round 352) — plain text, null until set. */
+	bio: string | null;
 	// Profile picture (DEC-299/TASK-378) — a public image URL, never PII.
 	avatar_url: string | null;
 	created_at: string | null;
