@@ -170,4 +170,62 @@ test.describe("Author follow (round 353)", () => {
 			await request.delete(`/api/admin/users/${authorId}`, { headers: adminH });
 		}
 	});
+
+	// Round 355: the archive page is the person-shaped discovery surface — and
+	// for a pen-named writer with nothing published yet it is the ONLY follow
+	// path (no byline buttons exist anywhere). Follow from /authors/{id}, the
+	// writer lands in /account, then clean up.
+	test("follow a writer from their public archive page", async ({ page, request }) => {
+		test.setTimeout(60_000);
+		const uid = Date.now();
+		const authorHandle = `arch-author-${uid}`;
+		const penName = `Arch Writer ${uid}`;
+
+		const token = await adminToken(request);
+		const adminH = { "Content-Type": "application/json", Authorization: `Bearer ${token}` };
+		const authorRes = await request.post("/api/admin/users", {
+			headers: adminH,
+			data: { username: authorHandle, password: "authorpass123", display_name: penName },
+		});
+		expect(authorRes.status()).toBe(200);
+		const authorId = ((await authorRes.json()) as { id: number }).id;
+
+		try {
+			const email = freshEmail();
+			const reg = await request.post("/api/reader/register", {
+				data: { email, password: READER_PASSWORD },
+			});
+			expect(reg.status()).toBe(201);
+			await page.goto("/login");
+			const loginForm = page.locator('form:has(input[type="password"])');
+			await loginForm.locator('input[type="email"]').fill(email);
+			await loginForm.locator('input[type="password"]').fill(READER_PASSWORD);
+			await loginForm.press("Enter");
+			await page.waitForURL("**/bookmarks");
+
+			// The empty-but-public writer's archive renders its pen-name header,
+			// and the in-place follow button is right there next to the RSS link.
+			await page.goto(`/authors/${authorId}`);
+			await expect(page.getByRole("heading", { level: 1 })).toContainText(penName, {
+				timeout: 15000,
+			});
+			const followButton = page.getByRole("button", { name: "关注", exact: true });
+			await expect(followButton).toBeVisible({ timeout: 10000 });
+			await followButton.click();
+			await expect(page.getByRole("button", { name: "已关注", exact: true })).toBeVisible({
+				timeout: 10000,
+			});
+
+			// /account lists the followed writer.
+			await page.goto("/account");
+			const writersSection = page.locator("section", {
+				has: page.getByRole("heading", { name: "关注的作者" }),
+			});
+			await expect(writersSection.locator("a", { hasText: penName })).toBeVisible({
+				timeout: 10000,
+			});
+		} finally {
+			await request.delete(`/api/admin/users/${authorId}`, { headers: adminH });
+		}
+	});
 });
