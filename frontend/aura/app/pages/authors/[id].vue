@@ -145,6 +145,13 @@ watch(
            comes from the archive envelope, so it renders even when the writer
            has published nothing yet. -->
       <div class="mb-4">
+        <NuxtLink
+          to="/authors"
+          class="inline-flex items-center gap-1.5 text-sm text-gray-400 hover:text-blue-500 transition-colors mb-4"
+        >
+          <Icon icon="lucide:arrow-left" class="w-3.5 h-3.5" />
+          {{ t("authors.backToIndex") }}
+        </NuxtLink>
         <h1
           class="text-3xl font-bold bg-gradient-to-r from-gray-900 dark:from-gray-100 to-gray-600 dark:to-gray-400 bg-clip-text text-transparent mb-2 flex items-center gap-3"
         >

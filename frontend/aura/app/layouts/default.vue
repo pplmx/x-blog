@@ -10,6 +10,7 @@ const { isAuthenticated, logout } = useReaderAuth();
 const navLinks = [
 	{ to: "/", labelKey: "common.nav.home", icon: "lucide:home" },
 	{ to: "/about", labelKey: "common.nav.about", icon: "lucide:user" },
+	{ to: "/authors", labelKey: "common.nav.authors", icon: "lucide:users" },
 	{ to: "/categories", labelKey: "common.nav.categories", icon: "lucide:folder-open" },
 	{ to: "/series", labelKey: "common.nav.series", icon: "lucide:layers" },
 	{ to: "/archive", labelKey: "common.nav.archive", icon: "lucide:archive" },

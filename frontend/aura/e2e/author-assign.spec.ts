@@ -70,12 +70,14 @@ test.describe("Admin editor author assignment (DEC-359)", () => {
 
 		let postId = 0;
 		try {
-			// Login and create the post through the editor UI.
-			await page.goto("/admin/login");
+			// Login and create the post through the editor UI (generous timeout:
+			// the sandbox's first post-build admin nav has a known slow-load
+			// habit, and the login redirect is page-request-bound).
+			await page.goto("/admin/login", { timeout: 20000 });
 			await page.fill('input[type="text"]', ADMIN_USERNAME);
 			await page.fill('input[type="password"]', ADMIN_PASSWORD);
 			await page.click('button[type="submit"]');
-			await page.waitForURL("**/admin/posts");
+			await page.waitForURL("**/admin/posts", { timeout: 20000 });
 
 			await page.goto("/admin/posts/new");
 			await page.fill('input[placeholder="输入文章标题"]', title);

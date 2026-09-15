@@ -114,6 +114,15 @@ test.describe("Author byline + archive (DEC-359)", () => {
 			// --- No-oracle gate: the login username must never appear on the
 			// public archive.
 			await expect(page.locator("body")).not.toContainText(ADMIN_USERNAME);
+
+			// --- Writers index (round 346): /authors lists the pen-named writer
+			// with a published-count card linking back to this archive, so a
+			// reader who found one byline can browse every contributor.
+			await page.goto("/authors");
+			const indexCard = page.locator(`a[href="/authors/${admin.id}"]`).first();
+			await expect(indexCard).toContainText(penName, { timeout: 10000 });
+			await expect(indexCard).toContainText("1");
+			await expect(page.locator("body")).not.toContainText(ADMIN_USERNAME);
 		} finally {
 			// Clean the created post so the seeded e2e DB stays tidy.
 			const del = await request.delete(`/api/admin/posts/${postId}`, {

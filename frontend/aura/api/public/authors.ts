@@ -18,6 +18,19 @@ export interface AuthorPostsResponse extends PostListResponse {
 	author?: AuthorBrief | null;
 }
 
+/** A writers-index row (round 346): pen name + published-post count. */
+export interface AuthorIndex {
+	id: number;
+	display_name: string;
+	post_count: number;
+}
+
+/** Every public writer, pen name + published-post count (round 346) — powers
+ *  the /authors index page. Anonymous + caching-friendly. */
+export function useAuthors() {
+	return query<AuthorIndex[]>("/api/authors");
+}
+
 export interface AuthorPostFilters {
 	page?: number;
 	limit?: number;

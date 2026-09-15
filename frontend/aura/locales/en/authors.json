@@ -6,6 +6,11 @@
 		"seoDesc": "Browse published posts by a writer on X-Blog",
 		"notFound": "Author not found",
 		"postsEmpty": "This author hasn't published any posts yet",
-		"subscribeFeed": "RSS feed"
+		"subscribeFeed": "RSS feed",
+		"indexTitle": "Authors",
+		"indexDesc": "Browse every writer contributing to X-Blog",
+		"indexEmpty": "No author has a public pen name yet",
+		"postCount": "{count} {count, plural, one {post} other {posts}}",
+		"backToIndex": "All writers"
 	}
 }
