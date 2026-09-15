@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 352,
+  "round": 353,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-15T12:57:31+00:00",
+  "updated_at": "2026-09-15T13:50:40+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -25843,6 +25843,98 @@
       "title": "close round 351: per-post comment control delivered (TASK-413 by CHG-594..597; supersedes DEC-375) - VERIFY green: backend 1622 (cov 93.84%, ruff clean), frontend 2155 (typecheck 0, biome 458 clean), e2e journey green, migration z7d2c4e6f8a0 SQLite+PG round-trip",
       "rationale": "Round 351 closes the single-post comment gap: posts.comments_enabled (default true) with an editor toggle, a public closed-notice that keeps the existing thread readable, and a create-time 403 that even the verified-reader auto-approve shortcut cannot bypass. 6 backend + 2 page unit tests plus a real-browser e2e that drives the whole operator -> reader journey. Migration verified on fresh SQLite and a dev-PG scratch schema. No open follow-ups in the graph.",
       "alternatives_rejected": "Rejected: global comment kill-switch (too broad), deleting/muting threads (loses the conversation), 404-on-closed (post is public, only writing is gated)"
+    },
+    "DEC-377": {
+      "id": "DEC-377",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-15T13:50:01+00:00",
+      "updated_at": "2026-09-15T13:50:01+00:00",
+      "touched_round": 352,
+      "title": "round 352 scope: reader profile bio (TASK-414)",
+      "rationale": "A reader community is only as good as the people in it, and a profile made of a name, an avatar and a join date has nothing to say. Readers can now write a short about-me in /account (plain text, 500-char cap, explicit-null clears) that renders under their display name on the public /readers/{id} page next to their approved comments and streak - completing the identity surface so a commenter becomes someone readers actually know.",
+      "alternatives_rejected": "Rejected: (1) markdown/rich bio - plain text matches the profile surface convention (name/avatar), and rendering untrusted markup on a public page is an XSS surface that buys nothing; (2) a separate bio page - /account already hosts the profile section, one form keeps the save flow single"
+    },
+    "TASK-414": {
+      "id": "TASK-414",
+      "type": "task",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-15T13:50:01+00:00",
+      "updated_at": "2026-09-15T13:50:02+00:00",
+      "touched_round": 352,
+      "category": "core-feature",
+      "description": "Deliver reader_accounts.bio: additive nullable TEXT migration (SQLite+PG round-trip), ReaderProfile/ReaderProfileUpdate/ReaderPublicProfile carry it, PATCH /me set+clear (exclude_unset, whitespace->None, 500 cap), /account bio textarea saved with the profile, /readers/{id} renders it; unit + integration + browser e2e.",
+      "severity": "high"
+    },
+    "CHG-598": {
+      "id": "CHG-598",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-15T13:50:02+00:00",
+      "updated_at": "2026-09-15T13:50:02+00:00",
+      "touched_round": 352,
+      "commit": "d98e501d",
+      "summary": "feat(backend): reader_accounts.bio (migration a1b3c5d7e9f1, PATCH /me set+clear, ReaderPublicProfile carries bio, email no-leak; 6 tests)"
+    },
+    "CHG-599": {
+      "id": "CHG-599",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-15T13:50:02+00:00",
+      "updated_at": "2026-09-15T13:50:02+00:00",
+      "touched_round": 352,
+      "commit": "144bd444",
+      "summary": "feat(frontend): /account bio textarea + /readers/{id} bio rendering, i18n en/zh; 4 unit tests"
+    },
+    "CHG-600": {
+      "id": "CHG-600",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-15T13:50:02+00:00",
+      "updated_at": "2026-09-15T13:50:02+00:00",
+      "touched_round": 352,
+      "commit": "4c014719",
+      "summary": "test(e2e): reader bio journey (account textarea -> public profile renders)"
+    },
+    "CHG-601": {
+      "id": "CHG-601",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-15T13:50:02+00:00",
+      "updated_at": "2026-09-15T13:50:02+00:00",
+      "touched_round": 352,
+      "commit": "e980a127",
+      "summary": "docs(bio): record round 352 in README + CHANGELOG (en/zh)"
+    },
+    "EV-259": {
+      "id": "EV-259",
+      "type": "evidence",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-15T13:50:40+00:00",
+      "updated_at": "2026-09-15T13:50:40+00:00",
+      "touched_round": 352,
+      "source": "backend 1628 passed (cov 93.85%, ruff clean) + frontend 2158 (typecheck 0, biome 458 clean) + e2e journey green in a real browser (register -> /account bio textarea save -> public /readers/{id} renders it) + alembic a1b3c5d7e9f1 round-trip on fresh SQLite and dev-PG scratch schema r352",
+      "title": "round 352 VERIFY green: bio set/clear/persist through PATCH /me, carried on the public profile, email still no-leak, capped at 500 chars",
+      "confidence": 1.0
+    },
+    "DEC-378": {
+      "id": "DEC-378",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-15T13:50:40+00:00",
+      "updated_at": "2026-09-15T13:50:40+00:00",
+      "touched_round": 352,
+      "title": "close round 352: reader profile bio delivered (TASK-414 by CHG-598..601; supersedes DEC-377) - VERIFY green: backend 1628 (cov 93.85%, ruff clean), frontend 2158 (typecheck 0, biome 458 clean), e2e journey green, migration a1b3c5d7e9f1 SQLite+PG round-trip",
+      "rationale": "Round 352 completes the reader identity surface: reader_accounts.bio is set/cleared from /account and renders on the public /readers/{id} profile (plain text, 500-char cap, explicit-null clears, email never leaks). 6 backend + 4 page unit tests plus a real-browser e2e; migration verified on fresh SQLite and a dev-PG scratch schema. No open follow-ups in the graph.",
+      "alternatives_rejected": "Rejected: rich/markdown bio (untrusted markup on a public page), separate bio page (duplicates the /account profile form)"
     }
   },
   "edges": [
@@ -38659,6 +38751,42 @@
       "to": "DEC-375",
       "type": "supersedes",
       "created_at": "2026-09-15T12:57:31+00:00"
+    },
+    {
+      "from": "DEC-377",
+      "to": "TASK-414",
+      "type": "governs",
+      "created_at": "2026-09-15T13:50:02+00:00"
+    },
+    {
+      "from": "CHG-598",
+      "to": "TASK-414",
+      "type": "implements",
+      "created_at": "2026-09-15T13:50:02+00:00"
+    },
+    {
+      "from": "CHG-599",
+      "to": "TASK-414",
+      "type": "implements",
+      "created_at": "2026-09-15T13:50:02+00:00"
+    },
+    {
+      "from": "CHG-600",
+      "to": "TASK-414",
+      "type": "implements",
+      "created_at": "2026-09-15T13:50:02+00:00"
+    },
+    {
+      "from": "CHG-601",
+      "to": "TASK-414",
+      "type": "implements",
+      "created_at": "2026-09-15T13:50:02+00:00"
+    },
+    {
+      "from": "DEC-378",
+      "to": "DEC-377",
+      "type": "supersedes",
+      "created_at": "2026-09-15T13:50:40+00:00"
     }
   ]
 }
