@@ -58,6 +58,11 @@ class Post(Base):
     excerpt: Mapped[str | None] = mapped_column(String(500))
     published: Mapped[bool | None] = mapped_column(Boolean, default=False, index=True)
     pinned: Mapped[bool | None] = mapped_column(Boolean, default=False)
+    # Per-post comments on/off (round 351): an operator closes the door on a
+    # post's comments (stale content, privacy, high-noise threads) without
+    # deleting the conversation or disabling comments site-wide. Existing
+    # comments stay visible; only new comment creation is gated (comments.py).
+    comments_enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True, server_default=true())
     publish_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True, index=True)
     # Durable exactly-once stamp for the new-post fan-out (DEC-336, TASK-394):
     # set the moment a post that became publicly visible without ever being

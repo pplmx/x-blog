@@ -455,6 +455,14 @@ def create_comment(
     if not post or not crud.is_publicly_visible(post):
         raise HTTPException(status_code=404, detail="Post not found")
 
+    # Per-post comment control (round 351): a closed post still renders its
+    # existing comments (the conversation is part of the article) but refuses
+    # new ones — the UI hides the form; this is the second line of defense for
+    # stale clients / direct API callers. 403 keeps "you can read, you cannot
+    # write" distinct from the 404 (unknown/invisible post).
+    if not post.comments_enabled:
+        raise HTTPException(status_code=403, detail="Comments are closed on this post")
+
     # Use the same proxy-aware resolver as the rate limiter so the stored IP
     # matches the bucket key (X-Forwarded-For behind a trusted proxy), instead
     # of the immediate TCP peer which every client behind the proxy would share.

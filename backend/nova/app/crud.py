@@ -366,6 +366,7 @@ def create_post(db: Session, post: schemas.PostCreate, author_id: int | None = N
         excerpt=post.excerpt,
         published=post.published,
         pinned=post.pinned,
+        comments_enabled=post.comments_enabled,
         publish_at=post.publish_at,
         category_id=post.category_id,
         series_id=post.series_id,

@@ -274,6 +274,9 @@ class PostBase(BaseModel):
     excerpt: Annotated[NonNulStr | None, Field(default=None, max_length=500)]
     published: bool = False
     pinned: bool = False
+    # Comments on/off for this post (round 351); existing comments stay
+    # visible either way — only new comment creation is gated.
+    comments_enabled: bool = True
     publish_at: datetime | None = None
     category_id: int | None = None
     series_id: int | None = None
@@ -332,6 +335,8 @@ class PostUpdate(BaseModel):
         return _strip_blank(value) if isinstance(value, str) else value
 
     pinned: bool | None = None
+    # Per-post comments toggle (round 351); None = "don't change".
+    comments_enabled: bool | None = None
     publish_at: datetime | None = None
     category_id: int | None = None
     # series_id: int = assign/change, null = clear the series membership

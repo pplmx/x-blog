@@ -477,6 +477,7 @@ def admin_get_post(
         "excerpt": post.excerpt,
         "published": post.published,
         "pinned": post.pinned,
+        "comments_enabled": post.comments_enabled,
         "publish_at": post.publish_at.isoformat() if post.publish_at else None,
         "cover_image": post.cover_image,
         "category_id": post.category_id,
@@ -568,6 +569,10 @@ def admin_update_post(
         post.published = post_data.published
     if post_data.pinned is not None:
         post.pinned = post_data.pinned
+    if post_data.comments_enabled is not None:
+        # Per-post comments toggle (round 351): explicit value, never cleared
+        # to None (the column is non-nullable).
+        post.comments_enabled = post_data.comments_enabled
     if post_data.author_id is not None:
         # Author reassignment (DEC-359/TASK-405): null is never sent (authors
         # aren't cleared), so any non-null value is an explicit reassignment.
