@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 345,
+  "round": 346,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-15T05:29:53+00:00",
+  "updated_at": "2026-09-15T06:21:00+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -25238,6 +25238,85 @@
       "title": "close round 344: admin post-editor author assign delivered (TASK-406 by CHG-571..573, completes DEC-359's attribution intent; supersedes DEC-361) - VERIFY green: backend 1586 (cov 93.75%, ruff clean, pyright 0), frontend 2127 (typecheck 0, biome 439 files clean), e2e author-assign + author-byline journeys green in a real browser",
       "rationale": "Round 344 closes the attribution loop DEC-359 called out but left undelivered: any admin can now attribute a post to another pen-named writer through the editor, or keep the default writing admin. The new /api/admin/authors endpoint (admin-auth, not superuser-only) exposes only pen names, so editors can assign authors without touching the credential-adjacent /api/admin/users - the no-oracle posture holds (tests assert no username in any payload). Editor picker defaults to the writing admin on create, pre-selects the stored author on edit (falling back to the writer for pre-attribution posts), and every payload carries an explicit author_id so the byline and archive follow the assigned writer. Delivery: backend endpoint + detail author_id + 2 contract tests; frontend picker + i18n + 5 unit tests + a full Playwright journey (editor create with another author -> public byline -> archive -> edit pre-selects). Regression guard held: full backend + full frontend suites, typecheck, full-repo biome, both author e2e journeys green.",
       "alternatives_rejected": "Rejected (preserved from DEC-361): (1) recycling superuser-only /api/admin/users for the picker; (2) free-text author input; (3) restricting attribution to the writing admin. Next-round candidates already on the board from DEC-360: per-author RSS feed, author filter in search"
+    },
+    "TASK-407": {
+      "id": "TASK-407",
+      "type": "task",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-15T06:13:50+00:00",
+      "updated_at": "2026-09-15T06:21:00+00:00",
+      "touched_round": 345,
+      "category": "core-feature",
+      "description": "Per-author RSS feed: GET /rss/authors/{id}.xml serving only that pen-named writer's published posts (404 same no-oracle boundary as the archive); /authors/{id} emits autodiscovery + a visible subscribe link; the Nuxt origin's rss catch-all proxy fronts the authors kind; backend + frontend tests + e2e"
+    },
+    "DEC-363": {
+      "id": "DEC-363",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-15T06:13:50+00:00",
+      "updated_at": "2026-09-15T06:13:50+00:00",
+      "touched_round": 345,
+      "title": "round 345 scope: per-author RSS feed (TASK-407) - follow one writer's published posts via /rss/authors/{id}.xml, autodiscovery + visible subscribe on /authors/{id}, frontend origin proxies the authors feed like category/series",
+      "rationale": "Author attribution (rounds 343/344) gave every pen-named writer a public byline + archive, but RSS consumers could only subscribe site-wide or per category/series - a reader who wants exactly one writer's posts had no scoped feed. RSS is the blog's core off-site channel, and the scoped-feed pattern (DEC-130) is already established: this slice adds the author dimension with the same no-oracle boundary (pen-named only, unknown/username-only admins both 404), the same conditional-GET feed caching, autodiscovery + a visible subscribe link on /authors/{id}, and the Nuxt origin fronting the authors feed exactly like category/series.",
+      "alternatives_rejected": "Rejected: (1) author filter in /rss/feed.xml?author_id= query - diverges from the path-based scoped-feed URL convention category/series use and muddies the sitewide feed's cache key; (2) an Atom author feed - category/series have no scoped Atom either, consistency wins; (3) touching the sitemap for authors - no established per-author sitemap need"
+    },
+    "CHG-574": {
+      "id": "CHG-574",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-15T06:14:36+00:00",
+      "updated_at": "2026-09-15T06:14:36+00:00",
+      "touched_round": 345,
+      "commit": "c0c5b60d",
+      "summary": "feat(rss): /rss/authors/{id}.xml per-author feed (TASK-407)"
+    },
+    "CHG-575": {
+      "id": "CHG-575",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-15T06:15:23+00:00",
+      "updated_at": "2026-09-15T06:15:23+00:00",
+      "touched_round": 345,
+      "commit": "13dba9d8",
+      "summary": "feat(authors): author-page RSS autodiscovery + subscribe link + origin proxy (TASK-407)"
+    },
+    "CHG-576": {
+      "id": "CHG-576",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-15T06:18:52+00:00",
+      "updated_at": "2026-09-15T06:18:52+00:00",
+      "touched_round": 345,
+      "commit": "ec367eb5",
+      "summary": "docs(post): record per-author RSS feed (TASK-407)"
+    },
+    "EV-252": {
+      "id": "EV-252",
+      "type": "evidence",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-15T06:21:00+00:00",
+      "updated_at": "2026-09-15T06:21:00+00:00",
+      "touched_round": 345,
+      "source": "pytest: backend 1588 passed (10 skipped) cov >=80 (ruff clean, pyright 0); frontend 2128 passed (typecheck exit 0, biome 439 files clean); e2e author-assign + author-byline (incl. new author-feed assertion through the Nuxt origin) green in a real browser",
+      "confidence": 1.0
+    },
+    "DEC-364": {
+      "id": "DEC-364",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-15T06:21:00+00:00",
+      "updated_at": "2026-09-15T06:21:00+00:00",
+      "touched_round": 345,
+      "title": "close round 345: per-author RSS feed delivered (TASK-407 by CHG-574..576, follows rounds 343/344 author attribution; supersedes DEC-363) - VERIFY green: backend 1588 (ruff clean, pyright 0), frontend 2128 (typecheck 0, biome 439 files clean), e2e author-assign + author-byline journeys green in a real browser",
+      "rationale": "Round 345 gives every pen-named writer a scoped RSS feed on the established category/series pattern (DEC-130): /rss/authors/{id}.xml serves only that writer's published posts with the same conditional-GET caching, the same no-oracle boundary (unknown ids + username-only admins both 404, no enumeration), and the same scheduled-post fan-out sweep. The /authors/{id} page emits autodiscovery + a visible subscribe link, and the Nuxt origin's rss catch-all proxy fronts the authors kind so the scoped link works in dev/preview and any non-nginx topology - the round caught this proxy gap: without fronting the authors kind, the link 404'd at the Nuxt origin even though the backend served it. Delivery: backend endpoint + 2 contract tests; frontend autodiscovery + subscribe link + proxy allowlist + 1 page test + e2e RSS assertion through the origin. Regression guard held: full backend + full frontend suites, typecheck, full-repo biome, both author e2e journeys green.",
+      "alternatives_rejected": "Rejected (preserved from DEC-363): (1) author_id query param on /rss/feed.xml, diverges from the path-based scoped convention; (2) scoped Atom feed; (3) per-author sitemap. Next candidates from DEC-360's board: author filter in search"
     }
   },
   "edges": [
@@ -37820,6 +37899,36 @@
       "to": "DEC-361",
       "type": "supersedes",
       "created_at": "2026-09-15T05:29:53+00:00"
+    },
+    {
+      "from": "DEC-363",
+      "to": "TASK-407",
+      "type": "governs",
+      "created_at": "2026-09-15T06:13:50+00:00"
+    },
+    {
+      "from": "CHG-574",
+      "to": "TASK-407",
+      "type": "implements",
+      "created_at": "2026-09-15T06:14:37+00:00"
+    },
+    {
+      "from": "CHG-575",
+      "to": "TASK-407",
+      "type": "implements",
+      "created_at": "2026-09-15T06:15:23+00:00"
+    },
+    {
+      "from": "CHG-576",
+      "to": "TASK-407",
+      "type": "implements",
+      "created_at": "2026-09-15T06:18:53+00:00"
+    },
+    {
+      "from": "DEC-364",
+      "to": "DEC-363",
+      "type": "supersedes",
+      "created_at": "2026-09-15T06:21:00+00:00"
     }
   ]
 }
