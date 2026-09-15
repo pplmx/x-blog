@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 342,
+  "round": 344,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-15T00:49:11+00:00",
+  "updated_at": "2026-09-15T04:10:25+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -25036,6 +25036,129 @@
       "title": "close round 342: reader email change via emailed verification delivered (TASK-404 by CHG-563, resolves ISS-510; supersedes DEC-357) - VERIFY green: backend 1571 (cov 93.69%, ruff clean, pyright 0, dev PG 47 serial, migration applies PG+SQLite), frontend 2108 (typecheck exit 0, biome clean), e2e email-change journey authored (SMTP-sink gated)",
       "rationale": "Round 342 delivers the reader email change with verification, closing the last immutable-login gap. Both reviews' findings were folded before commit: backend (atomic conditional redeem closes the concurrent double-click / re-request race and the unique-email TOCTOU (IntegrityError -> 409, mirroring register); deactivated readers refused like password reset; case-insensitive occupied checks; last_login_at on auto-login; send-refused + send-exception tests proving nothing persists on 503; old-link-after-rerequest + requested_at-None tests) and frontend (navigateTo kept outside the redemption try so a nav failure never mislabels a spent link; error states clear as the reader edits; 400 same-as-current gets its own copy; section-scoped account.spec selectors; e2e poll pattern; composable make sure updateToken adoption is unit-covered).",
       "alternatives_rejected": "Rejected during round (preserved from DEC-357): (1) making email editable without verification would silently orphan accounts and let a stolen session redirect mail; (2) reusing the password-reset JWT instead of a stored opaque one-time token; (3) an admin-only email-change tool cannot prove ownership of a new address; (4) skipping the atomic conditional redeem (accepting the races) was rejected after review - a stale link winning or a 500 on a taken target are real defects worth the one-statement update."
+    },
+    "DEC-359": {
+      "id": "DEC-359",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-15T01:09:51+00:00",
+      "updated_at": "2026-09-15T01:09:51+00:00",
+      "touched_round": 343,
+      "title": "round 343 scope: post author attribution - author_id on posts with a public byline and a per-author archive page",
+      "rationale": "Feature-evolution continues after round 342 (reader email change). Gap analysis: the blog supports multiple admin editors (superuser/editor roles) but posts carry no author concept at all - no author_id column, no byline, no everything-by-this-writer surface. A visitor cannot see who wrote a post, and writer-discovery is impossible. This slice adds the missing vertical: author_id on posts (additive plain Integer+index, no FK, matching the codebase plain-Integer style), defaulted at create time to the writing admin; AuthorBrief serialized on Post/PostList; a public GET /api/authors/{username}/posts archive (published-only, no oracle); and /authors/[username] page with byline links from the post page and list cards. Acceptance: every published post shows its author username linking to an archive of just that writer's published posts.",
+      "alternatives_rejected": "Rejected: (1) comment-sort control on the post thread, the backend+API already support sort so it is a single-control surface below the value bar; (2) guest-like dedup, changes the meaning of an existing counter; (3) resurfacing related posts, already delivered end-to-end; (4) author profiles with display name and bio, a bigger identity model not needed to solve who wrote this"
+    },
+    "TASK-405": {
+      "id": "TASK-405",
+      "type": "task",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-15T01:10:37+00:00",
+      "updated_at": "2026-09-15T04:07:21+00:00",
+      "touched_round": 343,
+      "category": "core-feature",
+      "description": "Post author attribution: additive author_id on posts defaulting to the writing admin, AuthorBrief on Post/PostList, public GET /api/authors/{username}/posts published-only archive, byline links on post page and list cards, /authors/[username] page, i18n, backend+frontend tests and e2e"
+    },
+    "ISS-511": {
+      "id": "ISS-511",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-15T01:10:37+00:00",
+      "updated_at": "2026-09-15T04:07:21+00:00",
+      "touched_round": 343,
+      "description": "Posts carry no author identity: no author_id column, so a visitor cannot see who wrote a post or browse a writer's published posts on this multi-editor blog",
+      "severity": "medium"
+    },
+    "CHG-565": {
+      "id": "CHG-565",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-15T02:49:50+00:00",
+      "updated_at": "2026-09-15T02:49:50+00:00",
+      "touched_round": 343,
+      "commit": "ff787f7e",
+      "summary": "feat(post): author attribution backend (DEC-359, TASK-405) — additive author_id, admin pen name, public per-author archive"
+    },
+    "CHG-566": {
+      "id": "CHG-566",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-15T02:53:30+00:00",
+      "updated_at": "2026-09-15T02:53:30+00:00",
+      "touched_round": 343,
+      "commit": "40cd941d",
+      "summary": "feat(authors): AuthorPostsResponse author envelope (DEC-359, TASK-405)"
+    },
+    "CHG-567": {
+      "id": "CHG-567",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-15T03:26:11+00:00",
+      "updated_at": "2026-09-15T03:26:11+00:00",
+      "touched_round": 343,
+      "commit": "2e1d4448",
+      "summary": "fix(post): /api/posts admin-create authors to the writing admin (DEC-359, TASK-405)"
+    },
+    "CHG-568": {
+      "id": "CHG-568",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-15T03:39:13+00:00",
+      "updated_at": "2026-09-15T03:39:13+00:00",
+      "touched_round": 343,
+      "commit": "53de969b",
+      "summary": "feat(author): public byline + /authors/{id} archive page + admin pen-name UI (DEC-359, TASK-405)"
+    },
+    "CHG-569": {
+      "id": "CHG-569",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-15T03:43:49+00:00",
+      "updated_at": "2026-09-15T03:43:49+00:00",
+      "touched_round": 343,
+      "commit": "116f8296",
+      "summary": "style(migration): SIM102 nested-if fix (DEC-359, TASK-405)"
+    },
+    "CHG-570": {
+      "id": "CHG-570",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-15T04:03:03+00:00",
+      "updated_at": "2026-09-15T04:03:03+00:00",
+      "touched_round": 343,
+      "commit": "4ad38608",
+      "summary": "docs(post): record author attribution (DEC-359, TASK-405)"
+    },
+    "EV-250": {
+      "id": "EV-250",
+      "type": "evidence",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-15T04:06:33+00:00",
+      "updated_at": "2026-09-15T04:06:33+00:00",
+      "touched_round": 343,
+      "source": "pytest: backend 1584 passed (10 skipped) cov 93.75% (ruff clean, pyright 0); dev PG: 17 passed + full alembic chain apply + author-columns round-trip on scratch schema; frontend: 2122 passed (typecheck exit 0, biome clean); e2e author-byline journey green in a real browser (localhost stack)",
+      "confidence": 1.0
+    },
+    "DEC-360": {
+      "id": "DEC-360",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-15T04:09:04+00:00",
+      "updated_at": "2026-09-15T04:09:04+00:00",
+      "touched_round": 343,
+      "title": "close round 343: post author attribution delivered (TASK-405 by CHG-565..570, resolves ISS-511; supersedes DEC-359) - VERIFY green: backend 1584 (cov 93.75%, ruff clean, pyright 0, dev PG 17 passed + full alembic chain apply + round-trip on scratch PG schema), frontend 2122 (typecheck exit 0, biome clean), e2e author-byline journey green in a real browser",
+      "rationale": "Round 343 delivers post author attribution: posts carry author_id (defaulted at create to the writing admin on BOTH admin create routes), admins get a public pen name (User.display_name) set/edited/cleared from the admin users page, and the public surface shows bylines on post pages and list cards linking to /authors/[id] - a paginated archive of that writer's published posts titled by pen name even when empty. No-oracle posture held: the login username never appears in any public payload (asserted in tests), and unknown ids + username-only admins answer the same 404 so the surface cannot enumerate admins. A deep-dive catch: POST /api/posts (the second admin create route) was silently creating posts without an author - fixed with the same default and a test. Feature-mode acceptance met: unit/integration (backend + frontend) plus a real-browser Playwright journey (pen name -> card + post bylines -> archive -> no username leak). e2e suite run CI-gated (sandbox env-limits documented, DEC-349 precedent).",
+      "alternatives_rejected": "Rejected for this slice (preserved from DEC-359 round start): (1) comment-sort control, a single control without the value bar; (2) guest-like dedup, changes the meaning of an existing counter; (3) resurfacing related posts, already delivered end-to-end; (4) full author profiles (display name + bio), a bigger identity model not needed for who wrote this. Post-close candidates for next rounds: an admin post-editor author assign (the backend already accepts author_id but no editor surface exposes it - the 'an editor may attribute to another admin via the UI' intent from DEC-359 remains undelivered), per-author RSS feed, author filter in search"
     }
   },
   "edges": [
@@ -37510,6 +37633,84 @@
       "to": "DEC-357",
       "type": "supersedes",
       "created_at": "2026-09-15T00:49:11+00:00"
+    },
+    {
+      "from": "DEC-359",
+      "to": "TASK-405",
+      "type": "governs",
+      "created_at": "2026-09-15T01:10:37+00:00"
+    },
+    {
+      "from": "TASK-405",
+      "to": "ISS-511",
+      "type": "addresses",
+      "created_at": "2026-09-15T01:10:37+00:00"
+    },
+    {
+      "from": "CHG-565",
+      "to": "TASK-405",
+      "type": "implements",
+      "created_at": "2026-09-15T02:49:50+00:00"
+    },
+    {
+      "from": "CHG-566",
+      "to": "TASK-405",
+      "type": "implements",
+      "created_at": "2026-09-15T02:53:30+00:00"
+    },
+    {
+      "from": "CHG-567",
+      "to": "TASK-405",
+      "type": "implements",
+      "created_at": "2026-09-15T03:26:11+00:00"
+    },
+    {
+      "from": "CHG-568",
+      "to": "TASK-405",
+      "type": "implements",
+      "created_at": "2026-09-15T03:39:13+00:00"
+    },
+    {
+      "from": "CHG-569",
+      "to": "TASK-405",
+      "type": "implements",
+      "created_at": "2026-09-15T03:43:49+00:00"
+    },
+    {
+      "from": "CHG-570",
+      "to": "TASK-405",
+      "type": "implements",
+      "created_at": "2026-09-15T04:03:03+00:00"
+    },
+    {
+      "from": "CHG-565",
+      "to": "ISS-511",
+      "type": "resolves",
+      "created_at": "2026-09-15T04:07:20+00:00"
+    },
+    {
+      "from": "CHG-566",
+      "to": "ISS-511",
+      "type": "resolves",
+      "created_at": "2026-09-15T04:07:20+00:00"
+    },
+    {
+      "from": "CHG-567",
+      "to": "ISS-511",
+      "type": "resolves",
+      "created_at": "2026-09-15T04:07:20+00:00"
+    },
+    {
+      "from": "CHG-568",
+      "to": "ISS-511",
+      "type": "resolves",
+      "created_at": "2026-09-15T04:07:20+00:00"
+    },
+    {
+      "from": "DEC-360",
+      "to": "DEC-359",
+      "type": "supersedes",
+      "created_at": "2026-09-15T04:10:25+00:00"
     }
   ]
 }
