@@ -9,6 +9,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- **Follow a writer from their archive (round 355)**: the author follow
+  (round 353) lived on post bylines and in `/account`, but not on the page
+  where a reader actually decides about a writer — the public `/authors/{id}`
+  archive. Its header already offered an RSS subscribe link; now signed-in
+  readers get the same in-app follow (new-post inbox + Web Push + a place in
+  the `/follows` feed) right next to it, one click, with the full
+  guest-hidden / stale-session / failure semantics the byline control already
+  has. Reusing that component also fixes a genuine dead end: a writer with
+  nothing published yet has no byline buttons anywhere, so the archive was
+  the only place that follow could exist at all.
 - **Followed authors enter the follows feed (round 354)**: round 353 let a
   reader follow a writer, but that follow had no browsing surface — only the
   mixed notification inbox showed the writer's new posts. Now the author
