@@ -113,6 +113,15 @@ test.describe("Author follow (round 353)", () => {
 				timeout: 10000,
 			});
 
+			// Round 356: the "More from this author" strip surfaces the writer's
+			// other work in place (slugSecond is by the same pen-named author).
+			const moreFrom = page.locator("section", {
+				has: page.getByText(`${penName} 的更多文章`),
+			});
+			await expect(moreFrom.locator("a", { hasText: slugSecond })).toBeVisible({
+				timeout: 10000,
+			});
+
 			// The writer shows up in the /account followed-writers section.
 			await page.goto("/account");
 			const writersSection = page.locator("section", {
