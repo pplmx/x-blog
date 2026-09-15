@@ -348,6 +348,69 @@ def create_post(db: Session, post: schemas.PostCreate, author_id: int | None = N
     return db_post
 
 
+def clone_post(db: Session, source: models.Post) -> models.Post:
+    """Duplicate a post into a fresh draft (round 349).
+
+    An editor running repeat-shaped content (weekly digests, release notes,
+    episode templates) hand-copies the previous post for every sibling —
+    tedious and error-prone. Clone copies the content-facing fields verbatim
+    (title/content/excerpt/cover/category/tags/series membership + author
+    attribution) into a NEW post, derives a unique ``{slug}-copy[-N]`` slug,
+    and clears every publication-metadata field (published False, publish_at
+    None, pinned False, zeroed views/likes) so the copy is a private draft
+    that can neither leak nor announce itself. No comments/notifications are
+    copied — a fresh draft has none.
+    """
+    base = source.slug
+    slug = f"{base}-copy"
+    n = 2
+    while db.query(models.Post).filter(models.Post.slug == slug).first():
+        slug = f"{base}-copy-{n}"
+        n += 1
+
+    db_post = models.Post(
+        title=source.title,
+        slug=slug,
+        content=source.content,
+        excerpt=source.excerpt,
+        published=False,
+        pinned=False,
+        publish_at=None,
+        category_id=source.category_id,
+        series_id=source.series_id,
+        series_order=source.series_order,
+        cover_image=source.cover_image,
+        author_id=source.author_id,
+        views=0,
+        likes=0,
+    )
+    # Reuse the source's tag objects so the copy carries the same taxonomy
+    # without creating shadow duplicates.
+    db_post.tags = list(source.tags)
+    db.add(db_post)
+    try:
+        # Same single-commit shape as create_post: flush for the id, snapshot
+        # the initial revision in the same transaction, commit once.
+        db.flush()
+        _snapshot_revision(db, db_post)
+        db.commit()
+        db.refresh(db_post)
+    except IntegrityError:
+        db.rollback()
+        raise ValueError(f"Slug '{slug}' already exists")
+    except Exception:
+        db.rollback()
+        raise
+
+    clear_tags_cache()
+    clear_categories_cache()
+    clear_posts_list_cache()
+
+    # The copy is always a draft — no new-post fan-out (unlike create_post,
+    # which announces an immediately-visible post).
+    return db_post
+
+
 def update_post(db: Session, post_id: int, post: schemas.PostUpdate) -> models.Post | None:
     db_post = get_post(db, post_id)
     if not db_post:

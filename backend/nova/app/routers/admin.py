@@ -512,6 +512,29 @@ def admin_create_post(
 
 
 @limiter.limit(f"{RATE_LIMIT_WRITE}/minute")
+@router.post("/posts/{post_id}/clone", response_model=dict)
+def admin_clone_post(
+    request: Request,  # noqa: ARG001
+    post_id: IdInt,
+    _current_user: auth.User = Depends(get_current_admin),
+    db: Session = Depends(get_db),
+):
+    """Duplicate a post into a fresh draft (round 349): same content +
+    taxonomy + attribution, a new unique slug, and every publication-
+    metadata field cleared (unpublished, unscheduled, unpinned, zeroed
+    views/likes) — so an editor can seed a sibling post from a template
+    without the copy-paste dance and without leaking a live post."""
+    source = db.query(models.Post).filter(models.Post.id == post_id).first()
+    if not source:
+        raise HTTPException(status_code=404, detail="Post not found")
+    try:
+        post = crud.clone_post(db, source)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    return {"id": post.id}
+
+
+@limiter.limit(f"{RATE_LIMIT_WRITE}/minute")
 @router.put("/posts/{post_id}", response_model=dict)
 def admin_update_post(
     request: Request,  # noqa: ARG001

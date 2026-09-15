@@ -406,6 +406,67 @@ class TestAdminPosts:
         response = client.get("/api/admin/posts")
         assert response.status_code == 401
 
+    # --- Clone (round 349) -----------------------------------------------------
+
+    def _seeded_post(self, db_session, slug):
+        post = models.Post(
+            title="Seed Post",
+            slug=slug,
+            content="# Hello\n\nbody",
+            excerpt="short",
+            published=True,
+            publish_at=None,
+            views=42,
+            likes=7,
+        )
+        db_session.add(post)
+        db_session.flush()
+        tag = models.Tag(name=f"tag-{slug}")
+        db_session.add(tag)
+        db_session.flush()
+        post.tags = [tag]
+        db_session.commit()
+        return post
+
+    def test_clone_creates_a_fresh_draft_with_same_content(self, client, auth_headers, db_session):
+        source = self._seeded_post(db_session, "clone-base")
+        resp = client.post(f"/api/admin/posts/{source.id}/clone", headers=auth_headers)
+        assert resp.status_code == 200, resp.text
+        clone_id = resp.json()["id"]
+        clone = db_session.get(models.Post, clone_id)
+        assert clone is not None
+        # Same content-facing fields.
+        assert clone.title == source.title
+        assert clone.content == source.content
+        assert clone.excerpt == source.excerpt
+        assert clone.category_id == source.category_id
+        assert [t.name for t in clone.tags] == [t.name for t in source.tags]
+        # Fresh slug, unpublished + unscheduled + unpinned, zeroed counters.
+        assert clone.slug == "clone-base-copy"
+        assert clone.published is False
+        assert clone.publish_at is None
+        assert clone.pinned is False
+        assert clone.views == 0
+        assert clone.likes == 0
+        # The source stays untouched and public.
+        assert source.slug == "clone-base"
+        assert source.published is True
+        assert db_session.get(models.Post, source.id) is not None
+
+    def test_clone_slug_increment_when_copy_exists(self, client, auth_headers, db_session):
+        source = self._seeded_post(db_session, "clone-twice")
+        first = client.post(f"/api/admin/posts/{source.id}/clone", headers=auth_headers).json()["id"]
+        assert db_session.get(models.Post, first).slug == "clone-twice-copy"
+        second = client.post(f"/api/admin/posts/{source.id}/clone", headers=auth_headers).json()["id"]
+        assert db_session.get(models.Post, second).slug == "clone-twice-copy-2"
+
+    def test_clone_missing_post_404(self, client, auth_headers):
+        resp = client.post("/api/admin/posts/999999/clone", headers=auth_headers)
+        assert resp.status_code == 404
+
+    def test_clone_requires_admin(self, client):
+        assert client.post("/api/admin/posts/1/clone").status_code == 401
+
 
 class TestAdminCategories:
     def test_list_categories(self, client, auth_headers, db_session):
