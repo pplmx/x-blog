@@ -9,6 +9,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- **Slug-change redirects (round 350)**: when an operator re-slugs a post,
+  series or static page, every URL that was already out in the wild — shared
+  links, search results, RSS feeds, in-app bookmarks — used to dead-end at a
+  404. Re-slugging now records a permanent redirect: the old URL keeps
+  answering 404 through the API (the public surface stays no-oracle) but
+  carries an `X-Redirect-To` header naming the canonical target, and the
+  public site turns that into a true HTTP 301 — crawlers transfer link equity
+  instead of wasting it, link-shares and bookmarks land on the new slug, and
+  repeated renames never chain: A→B then B→C resolves A→C in one hop.
 - **Admin "duplicate post" (round 349)**: an editor running repeat-shaped
   content (weekly digests, release notes, episode templates) had to hand-copy
   the previous post for every sibling. A "Duplicate" action on the admin posts
