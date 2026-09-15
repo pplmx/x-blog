@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 344,
+  "round": 345,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-15T04:10:25+00:00",
+  "updated_at": "2026-09-15T05:29:53+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -25159,6 +25159,85 @@
       "title": "close round 343: post author attribution delivered (TASK-405 by CHG-565..570, resolves ISS-511; supersedes DEC-359) - VERIFY green: backend 1584 (cov 93.75%, ruff clean, pyright 0, dev PG 17 passed + full alembic chain apply + round-trip on scratch PG schema), frontend 2122 (typecheck exit 0, biome clean), e2e author-byline journey green in a real browser",
       "rationale": "Round 343 delivers post author attribution: posts carry author_id (defaulted at create to the writing admin on BOTH admin create routes), admins get a public pen name (User.display_name) set/edited/cleared from the admin users page, and the public surface shows bylines on post pages and list cards linking to /authors/[id] - a paginated archive of that writer's published posts titled by pen name even when empty. No-oracle posture held: the login username never appears in any public payload (asserted in tests), and unknown ids + username-only admins answer the same 404 so the surface cannot enumerate admins. A deep-dive catch: POST /api/posts (the second admin create route) was silently creating posts without an author - fixed with the same default and a test. Feature-mode acceptance met: unit/integration (backend + frontend) plus a real-browser Playwright journey (pen name -> card + post bylines -> archive -> no username leak). e2e suite run CI-gated (sandbox env-limits documented, DEC-349 precedent).",
       "alternatives_rejected": "Rejected for this slice (preserved from DEC-359 round start): (1) comment-sort control, a single control without the value bar; (2) guest-like dedup, changes the meaning of an existing counter; (3) resurfacing related posts, already delivered end-to-end; (4) full author profiles (display name + bio), a bigger identity model not needed for who wrote this. Post-close candidates for next rounds: an admin post-editor author assign (the backend already accepts author_id but no editor surface exposes it - the 'an editor may attribute to another admin via the UI' intent from DEC-359 remains undelivered), per-author RSS feed, author filter in search"
+    },
+    "CHG-571": {
+      "id": "CHG-571",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-15T05:12:44+00:00",
+      "updated_at": "2026-09-15T05:12:44+00:00",
+      "touched_round": 344,
+      "commit": "8061bf81",
+      "summary": "feat(admin): pen-named authors endpoint + author_id in post detail (DEC-359, TASK-406)"
+    },
+    "TASK-406": {
+      "id": "TASK-406",
+      "type": "task",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-15T05:13:32+00:00",
+      "updated_at": "2026-09-15T05:29:53+00:00",
+      "touched_round": 344,
+      "category": "core-feature",
+      "description": "Admin post-editor author assignment: the editor's author picker lists the writing admin (default) + every pen-named admin from GET /api/admin/authors (admin-auth, not superuser-only), pre-selects a post's stored author, sends author_id on create/update; i18n + unit + e2e"
+    },
+    "DEC-361": {
+      "id": "DEC-361",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-15T05:13:32+00:00",
+      "updated_at": "2026-09-15T05:13:32+00:00",
+      "touched_round": 344,
+      "title": "round 344 scope: admin post-editor author assignment — complete DEC-359's explicit 'an editor may attribute to another admin via the UI' intent (TASK-406) via GET /api/admin/authors (pen-named only, any admin) + author_id on post detail + an editor picker; bylines/archives follow the assigned writer",
+      "rationale": "Round-343 shipped author attribution end to end but left DEC-359's stated attribution control undelivered: the backend accepted author_id on create/update but the editor had no author picker, so a post written for another public writer always defaulted to the writing admin - the byline, and the writer's archive, silently missed the real author. This slice adds the missing control. Key design: editors must be able to attribute, so the author-list endpoint is admin-auth (not superuser-only like /users) and exposes ONLY pen names (already public on bylines) - no username, preserving the no-oracle posture. Editor picker defaults to the writing admin, pre-selects the stored author on edit; payloads always carry an explicit author_id.",
+      "alternatives_rejected": "Rejected: (1) recycling /api/admin/users for the picker - superuser-only, forcing editors to be superusers and leaking username adjacency; (2) a free-text author input - breaks the admin-identity link and invites name drift; (3) restricting attribution to the writing admin - leaves the orphaned byline problem DEC-359 called out"
+    },
+    "CHG-572": {
+      "id": "CHG-572",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-15T05:17:04+00:00",
+      "updated_at": "2026-09-15T05:17:04+00:00",
+      "touched_round": 344,
+      "commit": "72fbd76e",
+      "summary": "feat(admin): post-editor author picker (DEC-359, TASK-406)"
+    },
+    "CHG-573": {
+      "id": "CHG-573",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-15T05:18:48+00:00",
+      "updated_at": "2026-09-15T05:18:48+00:00",
+      "touched_round": 344,
+      "commit": "e5e34388",
+      "summary": "docs(post): record editor author-assign picker (DEC-359, TASK-406)"
+    },
+    "EV-251": {
+      "id": "EV-251",
+      "type": "evidence",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-15T05:29:08+00:00",
+      "updated_at": "2026-09-15T05:29:08+00:00",
+      "touched_round": 344,
+      "source": "pytest: backend 1586 passed (10 skipped) cov 93.75% (ruff clean, pyright 0); frontend 2127 passed (typecheck exit 0, biome 439 files clean); e2e author-assign + author-byline journeys green in a real browser (fresh dev stack)",
+      "confidence": 1.0
+    },
+    "DEC-362": {
+      "id": "DEC-362",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-15T05:29:53+00:00",
+      "updated_at": "2026-09-15T05:29:53+00:00",
+      "touched_round": 344,
+      "title": "close round 344: admin post-editor author assign delivered (TASK-406 by CHG-571..573, completes DEC-359's attribution intent; supersedes DEC-361) - VERIFY green: backend 1586 (cov 93.75%, ruff clean, pyright 0), frontend 2127 (typecheck 0, biome 439 files clean), e2e author-assign + author-byline journeys green in a real browser",
+      "rationale": "Round 344 closes the attribution loop DEC-359 called out but left undelivered: any admin can now attribute a post to another pen-named writer through the editor, or keep the default writing admin. The new /api/admin/authors endpoint (admin-auth, not superuser-only) exposes only pen names, so editors can assign authors without touching the credential-adjacent /api/admin/users - the no-oracle posture holds (tests assert no username in any payload). Editor picker defaults to the writing admin on create, pre-selects the stored author on edit (falling back to the writer for pre-attribution posts), and every payload carries an explicit author_id so the byline and archive follow the assigned writer. Delivery: backend endpoint + detail author_id + 2 contract tests; frontend picker + i18n + 5 unit tests + a full Playwright journey (editor create with another author -> public byline -> archive -> edit pre-selects). Regression guard held: full backend + full frontend suites, typecheck, full-repo biome, both author e2e journeys green.",
+      "alternatives_rejected": "Rejected (preserved from DEC-361): (1) recycling superuser-only /api/admin/users for the picker; (2) free-text author input; (3) restricting attribution to the writing admin. Next-round candidates already on the board from DEC-360: per-author RSS feed, author filter in search"
     }
   },
   "edges": [
@@ -37711,6 +37790,36 @@
       "to": "DEC-359",
       "type": "supersedes",
       "created_at": "2026-09-15T04:10:25+00:00"
+    },
+    {
+      "from": "DEC-361",
+      "to": "TASK-406",
+      "type": "governs",
+      "created_at": "2026-09-15T05:14:06+00:00"
+    },
+    {
+      "from": "CHG-571",
+      "to": "TASK-406",
+      "type": "implements",
+      "created_at": "2026-09-15T05:14:06+00:00"
+    },
+    {
+      "from": "CHG-572",
+      "to": "TASK-406",
+      "type": "implements",
+      "created_at": "2026-09-15T05:17:04+00:00"
+    },
+    {
+      "from": "CHG-573",
+      "to": "TASK-406",
+      "type": "implements",
+      "created_at": "2026-09-15T05:18:48+00:00"
+    },
+    {
+      "from": "DEC-362",
+      "to": "DEC-361",
+      "type": "supersedes",
+      "created_at": "2026-09-15T05:29:53+00:00"
     }
   ]
 }
