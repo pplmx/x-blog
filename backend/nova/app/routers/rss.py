@@ -6,6 +6,7 @@ from xml.sax.saxutils import escape
 import markdown as md
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import Response
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app import auth, crud, models
@@ -667,6 +668,55 @@ def get_sitemap(request: Request = None, db: Session = Depends(get_db)) -> Respo
     <loc>{site_url}/?tag_id={tag["id"]}</loc>
     <changefreq>weekly</changefreq>
     <priority>0.6</priority>
+</url>""")
+
+    # Authors (round 348): the /authors index and every pen-named writer's
+    # archive are indexable /authors/{id} pages — before this they were
+    # reachable-by-link but unknown to crawlers. The index is unconditional
+    # (it renders an empty state, still a real page); each writer's lastmod is
+    # their most recent published post's update, so the archive freshness
+    # tracks the content it lists.
+    urls.append(f"""<url>
+    <loc>{site_url}/authors</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.4</priority>
+</url>""")
+    writers = (
+        db.query(auth.User).filter(auth.User.display_name.isnot(None)).order_by(auth.User.display_name.asc()).all()
+    )
+    if writers:
+        author_lastmod = dict(
+            db.query(models.Post.author_id, func.max(models.Post.updated_at))
+            .filter(
+                models.Post.author_id.isnot(None),
+                models.Post.published.is_(True),
+                models.Post.author_id.in_([w.id for w in writers]),
+            )
+            .group_by(models.Post.author_id)
+            .all()
+        )
+        for writer in writers:
+            # The admin User has no updated_at column; a writer with no published
+            # post yet falls back to "now" (their archive is still a real page).
+            updated = author_lastmod.get(writer.id) or crud.utc_now_naive()
+            urls.append(f"""<url>
+    <loc>{escape(site_url)}/authors/{writer.id}</loc>
+    <lastmod>{updated.strftime("%Y-%m-%d")}</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.5</priority>
+</url>""")
+
+    # Static pages (round 347): a published /pages/{slug} is a real indexable
+    # page (privacy policy / terms / contact), so it belongs in the sitemap;
+    # drafts are unpublished and must stay out.
+    published_pages = db.query(models.Page).filter(models.Page.published.is_(True)).all()
+    for page in published_pages:
+        updated = page.updated_at or crud.utc_now_naive()
+        urls.append(f"""<url>
+    <loc>{escape(site_url)}/pages/{escape(page.slug)}</loc>
+    <lastmod>{updated.strftime("%Y-%m-%d")}</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.4</priority>
 </url>""")
 
     sitemap = f"""<?xml version="1.0" encoding="UTF-8"?>

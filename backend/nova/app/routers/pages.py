@@ -18,6 +18,7 @@ from sqlalchemy.orm import Session
 
 from app import models, schemas
 from app.auth import User, get_current_admin
+from app.cache import clear_feeds_cache
 from app.conditional import conditional_json
 from app.database import get_db
 from app.limiter import RATE_LIMIT_READ, RATE_LIMIT_WRITE, limiter
@@ -79,6 +80,9 @@ def admin_create_page(
     db.add(page)
     db.commit()
     db.refresh(page)
+    # A page write changes what the sitemap must list (round 348): the cached
+    # sitemap derives from the published page set, so bust just the feed cache.
+    clear_feeds_cache()
     return page
 
 
@@ -103,6 +107,9 @@ def admin_update_page(
         setattr(page, field, value)
     db.commit()
     db.refresh(page)
+    # A page write changes what the sitemap must list (round 348): the cached
+    # sitemap derives from the published page set, so bust just the feed cache.
+    clear_feeds_cache()
     return page
 
 
@@ -119,3 +126,5 @@ def admin_delete_page(
         raise HTTPException(status_code=404, detail="Page not found")
     db.delete(page)
     db.commit()
+    # A page delete removes a sitemap URL (round 348) — bust the feed cache.
+    clear_feeds_cache()

@@ -79,6 +79,20 @@ def cache_clear():
     logger.info("cache_cleared")
 
 
+def clear_feeds_cache():
+    """Clear the rendered RSS/Atom/sitemap cache.
+
+    Post writes bust feeds via clear_posts_list_cache, but page writes (round
+    347) only change the sitemap (they never surface in RSS/Atom), so they bust
+    just the feed cache — NOT the posts list / series / upload-refs caches a
+    post write invalidates. A page create/update/delete must re-render the
+    sitemap so a newly published page reaches crawlers within a write, not a
+    TTL expiry.
+    """
+    feed_cache.clear()
+    logger.info("feeds_cache_cleared")
+
+
 def clear_categories_cache():
     """Clear categories cache."""
     categories_cache.clear()

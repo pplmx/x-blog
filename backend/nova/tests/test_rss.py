@@ -457,6 +457,70 @@ def test_sitemap_includes_series(client, auth_headers):
     assert "/series/sitemap-manga" in content
 
 
+def test_sitemap_includes_published_pages_not_drafts(client, auth_headers):
+    """Published static pages are indexable /pages/{slug} URLs (round 347/348);
+    drafts are unpublished and must stay out of the sitemap entirely."""
+    client.post(
+        "/api/admin/pages",
+        json={"slug": "privacy", "title": "Privacy Policy", "content": "## Data", "published": True},
+        headers=auth_headers,
+    )
+    client.post(
+        "/api/admin/pages",
+        json={"slug": "draft", "title": "Draft", "content": "unfinished", "published": False},
+        headers=auth_headers,
+    )
+    content = client.get("/sitemap.xml").text
+    assert "/pages/privacy" in content
+    assert "lastmod" in content
+    assert "/pages/draft" not in content
+
+
+def test_sitemap_page_write_busts_cache(client, auth_headers):
+    """A newly published page must reach crawlers after the write, not after a
+    feed-cache TTL: the sitemap is cached, so creating/publishing a page has to
+    invalidate it (round 348)."""
+    # Sitemap warmed with no pages.
+    assert "/pages/privacy" not in client.get("/sitemap.xml").text
+    client.post(
+        "/api/admin/pages",
+        json={"slug": "privacy", "title": "Privacy Policy", "content": "## Data", "published": True},
+        headers=auth_headers,
+    )
+    # The page write busted the feed cache, so the sitemap reflects it now.
+    assert "/pages/privacy" in client.get("/sitemap.xml").text
+    # A delete removes the URL on the next render.
+    pid = client.get("/api/admin/pages", headers=auth_headers).json()[0]["id"]
+    client.delete(f"/api/admin/pages/{pid}", headers=auth_headers)
+    content = client.get("/sitemap.xml").text
+    assert "/pages/privacy" not in content
+
+
+def test_sitemap_includes_author_archives(client, db_session):
+    """Each pen-named writer's /authors/{id} archive (round 343) and the
+    /authors index (round 346) are indexable pages; username-only admins have
+    no public archive and must not appear (no-oracle)."""
+    from app import auth
+
+    # A pen-named admin via the model (the display_name PATCH goes through auth).
+    target = auth.User(id=900001, username="writer", password="x", role="editor")
+    target.display_name = "Public Writer"
+    db_session.add(target)
+    db_session.commit()
+
+    content = client.get("/sitemap.xml").text
+    assert "/authors" in content
+    assert "/authors/900001" in content
+
+    # Another admin, no pen name → no archive URL, no username leak.
+    anon = auth.User(id=900002, username="anon-admin", password="x", role="editor")
+    db_session.add(anon)
+    db_session.commit()
+    content = client.get("/sitemap.xml").text
+    assert "/authors/900002" not in content
+    assert "anon-admin" not in content
+
+
 def test_robots_txt(client):
     """robots.txt should return valid plain text with sitemap directive."""
     response = client.get("/robots.txt")
