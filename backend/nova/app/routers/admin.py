@@ -5,7 +5,7 @@ from typing import Annotated, Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from fastapi.security import OAuth2PasswordRequestForm
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 from sqlalchemy import and_, func, or_
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, joinedload
@@ -54,6 +54,19 @@ class UserCreate(BaseModel):
         description="3-50 chars: letters, digits, underscore, dot, hyphen",
     )
     password: str = Field(min_length=8, description="Password must be at least 8 characters")
+    # Public pen name (DEC-359/TASK-405): the byline shown on published posts.
+    # NULL means no public identity — the username stays private (admin login
+    # is no-oracle) but the author gets no byline/archive until one is chosen.
+    display_name: Annotated[NonNulStr | None, Field(default=None, min_length=1, max_length=50)] = None
+
+    @field_validator("display_name", mode="before")
+    @classmethod
+    def strip_display_name(cls, value: object) -> object:
+        # Whitespace-only display_name passes min_length=1 (Pydantic counts raw
+        # chars) and would become a blank public byline — strip before length
+        # validation so "   " becomes None (no public identity), the same
+        # boundary discipline as the reader profile name fields (ISS-456).
+        return (value.strip() or None) if isinstance(value, str) else value
 
 
 class NameRequest(BaseModel):
@@ -70,6 +83,7 @@ class UserResponse(BaseModel):
     username: str
     role: str
     is_superuser: bool
+    display_name: str | None = None
 
 
 # A valid bcrypt hash of a random throwaway password, at the same cost as a
@@ -144,6 +158,7 @@ def create_user(
         password=hashed_password,
         role=ROLE_EDITOR,
         is_superuser=False,
+        display_name=user_data.display_name,
     )
     db.add(user)
     try:
@@ -151,6 +166,49 @@ def create_user(
     except IntegrityError:
         db.rollback()
         raise HTTPException(status_code=400, detail="Username already exists")
+    db.refresh(user)
+    return user
+
+
+class UserUpdate(BaseModel):
+    """Editable admin-user fields (DEC-359, TASK-405).
+
+    Currently just the public pen name; the login username, role and password
+    all have their own gates. ``display_name`` distinguishes "omitted" (don't
+    change) from an explicit null (clear the byline / return to no public
+    identity).
+    """
+
+    display_name: Annotated[NonNulStr, Field(min_length=1, max_length=50)] | None = Field(default=None)
+
+    @field_validator("display_name", mode="before")
+    @classmethod
+    def strip_display_name(cls, value: object) -> object:
+        return (value.strip() or None) if isinstance(value, str) else value
+
+
+@limiter.limit(f"{RATE_LIMIT_WRITE}/minute")
+@router.patch("/users/{user_id}", response_model=UserResponse)
+def update_user(
+    request: Request,  # noqa: ARG001
+    user_id: IdInt,
+    user_data: UserUpdate,
+    db: Session = Depends(get_db),
+    _current_user: auth.User = Depends(get_current_superuser),
+):
+    """Edit an admin user's public pen name (superuser).
+
+    Without this the byline feature would only work for users created after
+    the fact — the seeded admin (or any pre-existing editor) could never gain
+    a public identity. An explicit ``display_name: null`` clears it.
+    """
+    user = db.query(auth.User).filter(auth.User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    updates = user_data.model_dump(exclude_unset=True)
+    if "display_name" in updates:
+        user.display_name = updates["display_name"]
+    db.commit()
     db.refresh(user)
     return user
 
@@ -421,7 +479,9 @@ def admin_create_post(
     _current_user: auth.User = Depends(get_current_admin),
 ):
     try:
-        post = crud.create_post(db, post_data)
+        # Author attribution (DEC-359/TASK-405): default to the writing admin;
+        # an editor may explicitly attribute the post to another admin.
+        post = crud.create_post(db, post_data, author_id=post_data.author_id or _current_user.id)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     return {"id": post.id}
@@ -458,6 +518,10 @@ def admin_update_post(
         post.published = post_data.published
     if post_data.pinned is not None:
         post.pinned = post_data.pinned
+    if post_data.author_id is not None:
+        # Author reassignment (DEC-359/TASK-405): null is never sent (authors
+        # aren't cleared), so any non-null value is an explicit reassignment.
+        post.author_id = post_data.author_id
 
     # Fields that support explicit clearing (null) are handled via
     # model_dump(exclude_unset=True), which distinguishes "omitted" from

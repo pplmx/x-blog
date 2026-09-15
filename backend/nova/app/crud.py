@@ -149,6 +149,7 @@ def get_posts(
     published: bool = True,
     category_id: int | None = None,
     tag_id: int | None = None,
+    author_id: int | None = None,
     year: int | None = None,
     month: int | None = None,
     pinned_first: bool = True,
@@ -167,6 +168,9 @@ def get_posts(
 
     if tag_id:
         query = query.join(models.Post.tags).filter(models.Tag.id == tag_id).distinct()
+
+    if author_id:
+        query = query.filter(models.Post.author_id == author_id)
 
     # Year/month filters key off the effective publish time, matching the
     # archive buckets and feed ordering — a scheduled post appears under the
@@ -272,7 +276,7 @@ def get_post_by_slug(db: Session, slug: str) -> models.Post | None:
     )
 
 
-def create_post(db: Session, post: schemas.PostCreate) -> models.Post:
+def create_post(db: Session, post: schemas.PostCreate, author_id: int | None = None) -> models.Post:
     category = None
     if post.category_id:
         category = db.query(models.Category).filter(models.Category.id == post.category_id).first()
@@ -305,6 +309,7 @@ def create_post(db: Session, post: schemas.PostCreate) -> models.Post:
         series_id=post.series_id,
         series_order=post.series_order,
         cover_image=post.cover_image,
+        author_id=author_id,
     )
     db_post.tags = tags
     db.add(db_post)

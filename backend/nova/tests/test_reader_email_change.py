@@ -95,7 +95,6 @@ def _assert_not_persisted(db_session, email: str) -> None:
     assert acct.email_change_requested_at is None
 
 
-
 @pytest.fixture()
 def smtp_sink(monkeypatch: pytest.MonkeyPatch) -> type[FakeSMTP]:
     """Point SMTP at the fake sink and reset its capture per test."""

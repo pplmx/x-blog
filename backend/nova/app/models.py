@@ -34,10 +34,11 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.database import Base
 
 if TYPE_CHECKING:
-    # ReaderAccount lives in app.auth (deliberately, next to the other account
-    # model); import only for type checking so the string-based relationship
-    # annotation resolves under pyright without a runtime import cycle.
-    from app.auth import ReaderAccount
+    # ReaderAccount and the admin User live in app.auth (deliberately, next to
+    # the other account models); import only for type checking so the
+    # string-based relationship annotations resolve under pyright without a
+    # runtime import cycle.
+    from app.auth import ReaderAccount, User
 
 post_tags = Table(
     "post_tags",
@@ -88,6 +89,25 @@ class Post(Base):
     # delete), so the join below is declared explicitly instead.
     series_id: Mapped[int | None] = mapped_column(Integer, index=True)
     series_order: Mapped[int] = mapped_column(Integer, nullable=False, server_default="0", default=0)
+    # Author attribution (DEC-359, TASK-405): the admin user who wrote the post.
+    # Plain integer + ORM-level relationship, no DB-level FK — the same DEC-009
+    # additive rationale as series_id (SQLite alembic can't add FK-carrying
+    # columns to existing tables, enforced at the ORM layer). NULL on
+    # pre-attribution posts; the public byline only renders when the author has
+    # chosen a public pen name (User.display_name), so admin login usernames
+    # never reach the public surface.
+    author_id: Mapped[int | None] = mapped_column(Integer, index=True)
+    # lazy="selectin" so list serialization loads every row's author in one
+    # extra query (WHERE id IN (...)) instead of N+1 per post — no joinedload
+    # bookkeeping needed at the ~a dozen PostList-producing query sites. The
+    # explicit primaryjoin is required (like series_id) because author_id is a
+    # plain integer with no DB-level FK (DEC-009).
+    author: Mapped[User | None] = relationship(
+        "User",
+        primaryjoin="Post.author_id == User.id",
+        foreign_keys="Post.author_id",
+        lazy="selectin",
+    )
 
     category: Mapped[Category | None] = relationship("Category", back_populates="posts")
     tags: Mapped[list[Tag]] = relationship("Tag", secondary=post_tags, back_populates="posts")

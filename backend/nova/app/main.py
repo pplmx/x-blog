@@ -24,6 +24,7 @@ from app.routers import (
     admin,
     admin_push,
     analytics,
+    authors,
     backup,
     categories,
     comments,
@@ -250,6 +251,7 @@ async def unhandled_exception_handler(request: Request, exc: Exception):
 app.include_router(health_router)
 app.include_router(stats_router)
 app.include_router(posts.router)
+app.include_router(authors.router)
 app.include_router(categories.router)
 app.include_router(tags.router)
 app.include_router(series.router)

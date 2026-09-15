@@ -96,6 +96,14 @@ class User(Base):
     password: Mapped[str] = mapped_column(String(200), nullable=False)
     role: Mapped[str] = mapped_column(String(20), nullable=False, default=ROLE_EDITOR)
     is_superuser: Mapped[bool | None] = mapped_column(Boolean, default=False)
+    # Public pen name (DEC-359, TASK-405): the byline shown on published posts
+    # and the author archive. Deliberately NOT the login username — admin login
+    # is no-oracle (login.py timing-equalizes unknown usernames), so publishing
+    # the username would hand out the first half of a credential. NULL means
+    # "no public identity": such an author's posts render without a byline and
+    # /authors/{id} answers 404, keeping the username fully private until the
+    # operator chooses a pen name.
+    display_name: Mapped[str | None] = mapped_column(String(50))
     # Bumped on password change so previously-issued JWTs are invalidated
     # immediately (checked in get_current_user). (RIL round 16 security audit)
     token_version: Mapped[int | None] = mapped_column(Integer, default=0)

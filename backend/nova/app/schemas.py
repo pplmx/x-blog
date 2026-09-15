@@ -244,6 +244,9 @@ class PostCreate(PostBase):
     # create arbitrary rows, and an over-length name would hit the PostgreSQL
     # VARCHAR overflow -> uncaught DataError 500 (round-297 deep-dive).
     tags: list[Annotated[str, StringConstraints(max_length=50)]] = Field(default_factory=list, max_length=50)
+    # The writing admin (DEC-359/TASK-405): defaults to the authenticated admin
+    # at create; an editor may attribute to another admin via the UI.
+    author_id: int | None = None
 
     @field_validator("cover_image")
     @classmethod
@@ -275,6 +278,9 @@ class PostUpdate(BaseModel):
     # series_id: int = assign/change, null = clear the series membership
     # (mirrors category_id semantics under model_dump(exclude_unset=True)).
     series_id: int | None = None
+    # Author attribution (DEC-359, TASK-405): the admin user who owns the post.
+    # None = "don't change" (the UI never sends null — authors aren't cleared).
+    author_id: int | None = None
     # Negative order would sort an episode ahead of its peers in the public
     # series detail (order_by series_order, id) — reject rather than persist
     # a wrong-visible-state edge (RIL ISS-294).
@@ -306,7 +312,15 @@ class Post(PostBase):
     category: Category | None = None
     tags: list[Tag] = []
     series: SeriesBrief | None = None
+    author: AuthorBrief | None = None
     model_config = ConfigDict(from_attributes=True)
+
+    @field_validator("author", mode="before")
+    @classmethod
+    def no_author_without_pen_name(cls, value: object) -> object:
+        if value is None or getattr(value, "display_name", None) is None:
+            return None
+        return value
 
 
 # CJK ranges (Han unified ideographs + extension A + compatibility) count as one
@@ -370,6 +384,23 @@ class UploadBatchDeleteRequest(BaseModel):
     urls: list[str] = Field(default_factory=list, max_length=50)
 
 
+class AuthorBrief(BaseModel):
+    """A post's author as shown publicly (DEC-359, TASK-405).
+
+    Deliberately excludes the login username: admin login is no-oracle, so
+    publishing the username would leak the first half of an admin credential.
+    Only the public pen name (display_name) is exposed, and only when the
+    operator chose one — an author without a pen name is absent from the
+    public surface entirely.
+    """
+
+    id: int
+    display_name: str
+    # Validated out of the ORM User row (post.author); Pydantic v2 does not
+    # inherit the parent's from_attributes for nested models.
+    model_config = ConfigDict(from_attributes=True)
+
+
 class PostList(BaseModel):
     id: int
     title: str
@@ -391,7 +422,18 @@ class PostList(BaseModel):
     tags: list[Tag] = []
     series: SeriesBrief | None = None
     series_order: int = 0
+    author: AuthorBrief | None = None
     model_config = ConfigDict(from_attributes=True)
+
+    @field_validator("author", mode="before")
+    @classmethod
+    def no_author_without_pen_name(cls, value: object) -> object:
+        # A User row with no display_name is not a public author: don't emit an
+        # AuthorBrief whose name would be null (and never leak the login
+        # username). (DEC-359/TASK-405)
+        if value is None or getattr(value, "display_name", None) is None:
+            return None
+        return value
 
 
 class PaginationMeta(BaseModel):
