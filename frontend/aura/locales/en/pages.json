@@ -1,0 +1,9 @@
+{
+	"pages": {
+		"seoTitle": "Pages",
+		"seoDesc": "A static page on X-Blog",
+		"notFound": "This page doesn't exist",
+		"updatedAt": "Last updated {date}",
+		"footerLabel": "Pages"
+	}
+}

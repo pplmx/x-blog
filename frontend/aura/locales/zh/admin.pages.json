@@ -1,0 +1,31 @@
+{
+	"admin": {
+		"pages": {
+			"seoTitle": "静态页面",
+			"title": "静态页面",
+			"summary": "共 {n} 个页面",
+			"createTitle": "新建页面",
+			"titleLabel": "标题",
+			"titlePlaceholder": "隐私政策",
+			"slugLabel": "别名",
+			"slugPlaceholder": "privacy",
+			"contentLabel": "内容（Markdown）",
+			"contentPlaceholder": "## 我们收集哪些数据\n\n我们只存储…",
+			"publishLabel": "已发布（可见于 /pages/{slug}）",
+			"create": "创建页面",
+			"published": "已发布",
+			"draft": "草稿",
+			"publish": "发布",
+			"unpublish": "下架",
+			"edit": "编辑",
+			"save": "保存",
+			"cancel": "取消",
+			"delete": "删除",
+			"confirmDelete": "删除此页面？公开链接将立即失效。",
+			"loading": "正在加载页面…",
+			"loadFailed": "页面加载失败",
+			"empty": "还没有页面——在上方创建一个",
+			"operationFailed": "操作失败，请重试。"
+		}
+	}
+}

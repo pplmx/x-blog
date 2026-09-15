@@ -260,6 +260,8 @@ const navItems = computed(() => {
 		// Newsletter subscribers (DEC-354): the guest newsletter's operator
 		// management loop — also a moderation surface, available to every role.
 		{ href: "/admin/newsletter", labelKey: "admin.nav.newsletter", icon: "lucide:mail" },
+		// Static pages CMS (round 347): content curation, available to every role.
+		{ href: "/admin/pages", labelKey: "admin.nav.pages", icon: "lucide:scroll-text" },
 	];
 	if (currentRole.value === "superuser") {
 		items.push({ href: "/admin/users", labelKey: "admin.nav.users", icon: "lucide:users" });

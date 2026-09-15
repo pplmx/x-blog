@@ -1,0 +1,9 @@
+{
+	"pages": {
+		"seoTitle": "静态页面",
+		"seoDesc": "X-Blog 上的一个静态页面",
+		"notFound": "这个页面不存在",
+		"updatedAt": "最后更新于 {date}",
+		"footerLabel": "页面"
+	}
+}

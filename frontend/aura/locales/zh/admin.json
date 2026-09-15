@@ -13,7 +13,8 @@
 			"calendar": "日历",
 			"media": "媒体库",
 			"readers": "读者",
-			"newsletter": "订阅"
+			"newsletter": "订阅",
+			"pages": "页面"
 		},
 		"settings": {
 			"title": "设置",

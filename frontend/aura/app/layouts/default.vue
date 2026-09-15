@@ -310,6 +310,9 @@ onMounted(initTheme);
         <div class="mb-6 w-full sm:max-w-sm">
           <NewsletterSubscribe />
         </div>
+        <!-- Static pages (round 347): the published /pages/{slug} links so an
+             admin-curated privacy policy / terms / contact is discoverable. -->
+        <PagesFooterLinks />
         <div class="flex flex-col sm:flex-row items-center justify-between gap-4">
           <div class="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
             <span>© 2026 X-Blog.</span>

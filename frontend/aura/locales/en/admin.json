@@ -13,7 +13,8 @@
 			"calendar": "Calendar",
 			"media": "Media",
 			"readers": "Readers",
-			"newsletter": "Newsletter"
+			"newsletter": "Newsletter",
+			"pages": "Pages"
 		},
 		"settings": {
 			"title": "Settings",

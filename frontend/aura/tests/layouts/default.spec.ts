@@ -77,6 +77,11 @@ function mountLayout() {
 				NewsletterSubscribe: {
 					template: '<div class="newsletter-stub" />',
 				},
+				// Footer static-pages links (round 347): client-side fetch, so
+				// stub it out of the layout test just like the newsletter form.
+				PagesFooterLinks: {
+					template: '<div class="pages-footer-links-stub" />',
+				},
 			},
 		},
 	});
