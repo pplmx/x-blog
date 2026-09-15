@@ -9,6 +9,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- **Admin "duplicate post" (round 349)**: an editor running repeat-shaped
+  content (weekly digests, release notes, episode templates) had to hand-copy
+  the previous post for every sibling. A "Duplicate" action on the admin posts
+  list clones a post into a fresh draft — same content, excerpt, cover,
+  category, tags, series membership and author attribution carried over, a new
+  unique `{slug}-copy[-N]` slug derived, and every publication-metadata field
+  cleared (unpublished, unscheduled, unpinned, zeroed views/likes) so the copy
+  is a private draft that can neither leak nor announce itself — then the
+  editor jumps straight into the new draft. No comments or notifications are
+  copied.
 - **Sitemap covers pages & authors (round 348)**: the sitemap grew with the
   site — `/pages/{slug}` (round 347) and the pen-named `/authors/{id}`
   archives + `/authors` index (rounds 343/346) are real, indexable pages, but

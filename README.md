@@ -42,6 +42,7 @@ A modern full-stack blog application built with FastAPI + Nuxt
 - ⬆️ **Pinned Posts** - Pin important posts to top
 - 📤 **Data Export** - Export posts/comments as CSV; signed-in readers get a complete GDPR-style "download my data" bundle (profile, bookmarks, comments, history, follows, notification prefs, inbox rows, push devices — DEC-126, DEC-334)
 - 🗓️ **Editorial Calendar** - admins see the publishing plan at a glance — live / scheduled / draft posts placed on their date in a month grid, click into the editor (DEC-162)
+- 📋 **Duplicate post** - an editor running repeat-shaped content (weekly digests, release notes, episode templates) seeds a sibling draft from the posts list with one click: same content + taxonomy + attribution, a new unique slug, and every publication-metadata field cleared (unpublished, unscheduled, unpinned, zeroed views/likes) — a private template that can never leak or announce itself (round 349)
 - 💾 **Backup & Restore** - download the whole blog as one portable JSON snapshot (categories, tags, series, posts, comments) and restore it into an empty instance (DEC-082)
 - 📡 **RSS & Atom Feeds** - Subscribe to the site-wide feed or a single category/tag via scoped feeds with autodiscovery (DEC-074); tag-scoped feeds stay scoped through the Nuxt origin (DEC-314)
 - 🔔 **New-post Web Push** - Follow a category (or all new posts) and get a browser push when the author publishes (DEC-076)
