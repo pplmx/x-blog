@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, nextTick, ref, watch, watchEffect } from "vue";
 import type { Comment } from "~~/api/contracts/shared";
+import { useAuthorPosts } from "~~/api/public/authors";
 import {
 	likePost,
 	recordPostView,
@@ -98,6 +99,23 @@ const coverImageUrl = computed(() => {
 const postId = computed(() => post.value?.id);
 const { data: relatedPosts, pending: relatedPending } = await useRelatedPosts(() => postId.value);
 const { data: adjacent, pending: adjacentPending } = await useAdjacentPosts(() => postId.value);
+
+// "More from this author" (round 356): the person-shaped discovery strip.
+// The author archive endpoint is public + paginated newest-first; we fetch the
+// first page and drop the post being read so the strip never re-links the
+// article under itself. Refetches on SPA nav like related/adjacent (the
+// getter follows post.author → a new post by a different writer swaps the set).
+const authorIdForStrip = computed(() => post.value?.author?.id ?? null);
+const { data: authorArchive, pending: authorArchivePending } = await useAuthorPosts(
+	() => authorIdForStrip.value,
+	{ limit: 6 },
+);
+const moreByAuthor = computed(() =>
+	(authorArchive.value?.items ?? []).filter((p) => p.id !== postId.value).slice(0, 4),
+);
+const moreByAuthorVisible = computed(
+	() => authorArchivePending.value !== true && moreByAuthor.value.length > 0,
+);
 
 // In-series navigation (DEC-056): when this post belongs to a series, load the
 // series' ordered posts and locate this post so we can render a series chip and
@@ -862,6 +880,50 @@ function handleCommentSubmitted(created: Comment | undefined) {
               <div class="flex items-center gap-3 mt-3 text-xs text-gray-400">
                 <span>{{ rp.category?.name }}</span>
                 <span>{{ t('post.views', { count: rp.views }) }}</span>
+              </div>
+            </NuxtLink>
+          </div>
+        </section>
+
+        <!-- More from this author (round 356): the person-shaped discovery strip.
+             Related Posts is topic-shaped; this is the writer's own recent work,
+             so a reader who just enjoyed one post can browse the author in place.
+             Hidden when the writer has nothing else public (or no pen name). -->
+        <section
+          v-if="post.author && moreByAuthorVisible"
+          class="mt-12 pt-8 border-t border-gray-100 dark:border-gray-800"
+        >
+          <h2
+            class="text-xl font-bold text-gray-900 dark:text-gray-100 mb-6 flex items-center gap-2"
+          >
+            <Icon icon="lucide:user" class="w-5 h-5 text-fuchsia-500" />
+            {{ t('post.moreFromAuthor', { author: post.author.display_name }) }}
+            <NuxtLink
+              :to="`/authors/${post.author.id}`"
+              class="ml-auto inline-flex items-center gap-1 text-xs font-medium text-fuchsia-600 dark:text-fuchsia-400 hover:text-fuchsia-700 dark:hover:text-fuchsia-300 transition-colors"
+            >
+              {{ t('post.moreFromAuthorAll') }}
+              <Icon icon="lucide:arrow-right" class="w-3.5 h-3.5" />
+            </NuxtLink>
+          </h2>
+          <div class="grid gap-4 sm:grid-cols-2">
+            <NuxtLink
+              v-for="ap in moreByAuthor"
+              :key="ap.id"
+              :to="`/posts/${ap.slug}`"
+              class="group relative p-5 rounded-2xl border border-gray-100 dark:border-gray-800 hover:border-fuchsia-200 dark:hover:border-fuchsia-800 hover:shadow-lg transition-all duration-200"
+            >
+              <h3
+                class="font-semibold text-gray-900 dark:text-gray-100 group-hover:text-fuchsia-600 dark:group-hover:text-fuchsia-400 transition-colors line-clamp-2"
+              >
+                {{ ap.title }}
+              </h3>
+              <p v-if="ap.excerpt" class="text-sm text-gray-500 mt-2 line-clamp-2">
+                {{ ap.excerpt }}
+              </p>
+              <div class="flex items-center gap-3 mt-3 text-xs text-gray-400">
+                <span v-if="ap.category">{{ ap.category.name }}</span>
+                <span>{{ t('post.views', { count: ap.views }) }}</span>
               </div>
             </NuxtLink>
           </div>

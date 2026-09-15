@@ -20,6 +20,8 @@
 		"liked": "Liked",
 		"previousPost": "Previous post",
 		"nextPost": "Next post",
+		"moreFromAuthor": "More from {author}",
+		"moreFromAuthorAll": "All posts by {author}",
 		"navigation": "Post navigation",
 		"printPdf": "Print / PDF",
 		"backToArticle": "Back to article",

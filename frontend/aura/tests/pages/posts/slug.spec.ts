@@ -102,6 +102,7 @@ async function mountPostPage({
 	relatedPosts = mockRelatedPosts,
 	adjacentPosts = mockAdjacentPosts,
 	seriesDetail = null,
+	authorArchive = null,
 	$fetchImpl,
 	attachToDoc = false,
 }: {
@@ -112,6 +113,8 @@ async function mountPostPage({
 	relatedPosts?: typeof mockRelatedPosts | null;
 	adjacentPosts?: typeof mockAdjacentPosts | null;
 	seriesDetail?: Record<string, unknown> | null;
+	/** Author archive payload for the round-356 "More from this author" strip. */
+	authorArchive?: Record<string, unknown> | null;
 	/** Override the global $fetch mock (e.g. to serve a saved resume position). */
 	$fetchImpl?: (url: string, opts?: Record<string, unknown>) => Promise<unknown>;
 	/** Attach to document.body so document.getElementById resolves rendered nodes
@@ -157,6 +160,14 @@ async function mountPostPage({
 			if (typeof url === "string" && url.includes("/api/series/")) {
 				return {
 					data: ref(seriesDetail),
+					pending: ref(false),
+					error: ref(null),
+					refresh: vi.fn(),
+				};
+			}
+			if (typeof url === "string" && url.includes("/api/authors/")) {
+				return {
+					data: ref(authorArchive),
 					pending: ref(false),
 					error: ref(null),
 					refresh: vi.fn(),
@@ -1891,6 +1902,81 @@ describe("Post Detail Page", () => {
 			});
 			expect(wrapper.text()).not.toContain("这篇文章的评论已关闭。");
 			expect(wrapper.find("textarea[role='combobox']").exists()).toBe(true);
+		});
+	});
+
+	describe("More from this author (round 356)", () => {
+		const authored = { ...mockPost, id: 1, author: { id: 7, display_name: "Riki" } };
+		const archiveItems = [
+			{
+				id: 21,
+				title: "Older Post One",
+				slug: "older-one",
+				excerpt: "An older piece.",
+				published: true,
+				created_at: "2024-05-01T10:00:00Z",
+				views: 9,
+				cover_image: null,
+				category: { id: 1, name: "Tech" },
+				tags: [],
+				series: null,
+				series_order: 0,
+				author: { id: 7, display_name: "Riki" },
+			},
+			{
+				id: 22,
+				title: "Older Post Two",
+				slug: "older-two",
+				excerpt: "Another older piece.",
+				published: true,
+				created_at: "2024-04-01T10:00:00Z",
+				views: 3,
+				cover_image: null,
+				category: { id: 2, name: "Science" },
+				tags: [],
+				series: null,
+				series_order: 0,
+				author: { id: 7, display_name: "Riki" },
+			},
+		];
+		const archive = {
+			items: archiveItems,
+			pagination: { total: 2, page: 1, limit: 6, total_pages: 1 },
+			author: { id: 7, display_name: "Riki" },
+		};
+
+		it("renders the writer's other posts, excluding the post being read", async () => {
+			const wrapper = await mountPostPage({ post: authored, authorArchive: archive });
+			expect(wrapper.text()).toContain("Riki 的更多文章");
+			expect(wrapper.text()).toContain("Older Post One");
+			expect(wrapper.text()).toContain("Older Post Two");
+			// The current post must never re-link under its own article.
+			expect(wrapper.findAll("a[href='/posts/test-article-post']").length).toBe(0);
+			// A view-all door to the full archive.
+			const all = wrapper.findAll("a").find((a) => a.attributes("href") === "/authors/7");
+			expect(all).toBeDefined();
+		});
+
+		it("hides the strip when the only authored post is the one being read", async () => {
+			const wrapper = await mountPostPage({
+				post: authored,
+				// The archive's only hit is the same article (id 1): filtered out,
+				// nothing left to show → the strip must not render at all.
+				authorArchive: {
+					items: [
+						{ ...archiveItems[0], id: 1, title: "Test Article Post", slug: "test-article-post" },
+					],
+					pagination: { total: 1, page: 1, limit: 6, total_pages: 1 },
+					author: { id: 7, display_name: "Riki" },
+				},
+			});
+			expect(wrapper.text()).not.toContain("Riki 的更多文章");
+		});
+
+		it("hides the strip for a post with no author or an unattributed one", async () => {
+			const wrapper = await mountPostPage({ post: mockPost, authorArchive: archive });
+			expect(wrapper.text()).not.toContain("Riki 的更多文章");
+			expect(wrapper.text()).not.toContain("Older Post One");
 		});
 	});
 });
