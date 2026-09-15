@@ -28,9 +28,9 @@ def _cols(table: str) -> set[str]:
 
 def upgrade() -> None:
     """Upgrade schema."""
-    if sa.inspect(op.get_bind()).has_table("users"):
-        if "display_name" not in _cols("users"):
-            op.add_column("users", sa.Column("display_name", sa.String(50), nullable=True))
+    # `and` short-circuits: the column probe only runs when the table exists.
+    if sa.inspect(op.get_bind()).has_table("users") and "display_name" not in _cols("users"):
+        op.add_column("users", sa.Column("display_name", sa.String(50), nullable=True))
     if sa.inspect(op.get_bind()).has_table("posts"):
         if "author_id" not in _cols("posts"):
             op.add_column("posts", sa.Column("author_id", sa.Integer(), nullable=True))
@@ -49,6 +49,5 @@ def downgrade() -> None:
             op.drop_index(ix, table_name="posts")
         if "author_id" in _cols("posts"):
             op.drop_column("posts", "author_id")
-    if sa.inspect(op.get_bind()).has_table("users"):
-        if "display_name" in _cols("users"):
-            op.drop_column("users", "display_name")
+    if sa.inspect(op.get_bind()).has_table("users") and "display_name" in _cols("users"):
+        op.drop_column("users", "display_name")
