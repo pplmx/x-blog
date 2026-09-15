@@ -773,8 +773,42 @@ class Series(Base):
     )
 
 
+class Page(Base):
+    """An admin-curated static page served publicly at ``/pages/{slug}`` (round 347).
+
+    A self-hosted blog is expected to answer for itself — privacy policy,
+    terms, contact, changelog — but X-Blog only had a hardcoded ``/about``, so
+    a site owner needed a code change + redeploy for every such page. This is
+    the CMS slice: one row per page, markdown ``content`` rendered through the
+    same public pipeline as posts, and a ``published`` flag gating the public
+    route — an unpublished or unknown slug answers the same 404, so the
+    surface cannot enumerate drafts. ``slug`` is unique and follows the same
+    slug pattern as posts/series so page URLs stay stable and shareable.
+    Additive table, no DB-level FK (DEC-009).
+    """
+
+    __tablename__ = "pages"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    slug: Mapped[str] = mapped_column(String(200), unique=True, index=True, nullable=False)
+    title: Mapped[str] = mapped_column(String(200), nullable=False)
+    content: Mapped[str] = mapped_column(Text, default="", nullable=False)
+    published: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    created_at: Mapped[datetime | None] = mapped_column(DateTime, default=lambda: datetime.now(UTC))
+    updated_at: Mapped[datetime | None] = mapped_column(
+        DateTime,
+        default=lambda: datetime.now(UTC),
+        onupdate=lambda: datetime.now(UTC),
+    )
+
+
 class SiteSetting(Base):
     """Operator-controlled runtime settings, stored as key/value (DEC-100, TASK-162).
+
+    The only current key is ``auto_approve_reader_comments`` (a boolean flag
+    persisted as "true"/"false") which the comment-create path resolves with an
+    env fallback, so an admin can flip the moderation trust tier at runtime
+    without a redeploy. Additive table — no changes to existing tables (DEC-009).
 
     The only current key is ``auto_approve_reader_comments`` (a boolean flag
     persisted as "true"/"false") which the comment-create path resolves with an

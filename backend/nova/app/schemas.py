@@ -203,6 +203,65 @@ class SeriesUpdate(BaseModel):
         return _strip_blank(value) if isinstance(value, str) else value
 
 
+class PageLink(BaseModel):
+    """Public page list row (footer/links): identity only, no body."""
+
+    slug: str
+    title: str
+    model_config = ConfigDict(from_attributes=True)
+
+
+class PagePublic(PageLink):
+    """Public page detail (round 347): rendered via the post markdown pipeline."""
+
+    content: str
+    updated_at: datetime | None = None
+    model_config = ConfigDict(from_attributes=True)
+
+
+class AdminPageRow(PageLink):
+    """Admin pages-manager row: everything a manager needs to list/curate."""
+
+    id: int
+    published: bool
+    created_at: datetime | None = None
+    updated_at: datetime | None = None
+    model_config = ConfigDict(from_attributes=True)
+
+
+class AdminPageDetail(AdminPageRow):
+    """Admin page detail: the row plus the full markdown body for editing."""
+
+    content: str = ""
+    model_config = ConfigDict(from_attributes=True)
+
+
+class PageCreate(BaseModel):
+    # max_length matches the Page VARCHAR columns; slug follows the shared
+    # lowercase-hyphen pattern so page URLs stay canonical and shareable.
+    title: Annotated[NonNulStr, Field(min_length=1, max_length=200)]
+    slug: Annotated[NonNulStr, Field(max_length=200, pattern=SLUG_PATTERN.pattern)]
+    content: str = ""
+    published: bool = False
+
+    @field_validator("title", mode="before")
+    @classmethod
+    def strip_title(cls, value: object) -> object:
+        return _strip_blank(value) if isinstance(value, str) else value
+
+
+class PageUpdate(BaseModel):
+    title: Annotated[NonNulStr | None, Field(default=None, min_length=1, max_length=200)]
+    slug: Annotated[NonNulStr | None, Field(default=None, max_length=200, pattern=SLUG_PATTERN.pattern)]
+    content: str | None = None
+    published: bool | None = None
+
+    @field_validator("title", mode="before")
+    @classmethod
+    def strip_title(cls, value: object) -> object:
+        return _strip_blank(value) if isinstance(value, str) else value
+
+
 class PostBase(BaseModel):
     # max_length values match the Post VARCHAR columns (title/slug 200,
     # excerpt/cover_image 500) so PostgreSQL rejects over-length input with
