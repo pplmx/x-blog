@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 356,
+  "round": 357,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-15T17:33:23+00:00",
+  "updated_at": "2026-09-15T18:22:32+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -26219,6 +26219,86 @@
       "title": "close round 355: archive-header author follow (TASK-417 by CHG-611+CHG-612+CHG-613+CHG-614; supersedes DEC-383) — VERIFY green: frontend 2178 (typecheck 0, biome 463 clean), e2e 2 journeys green",
       "rationale": "Round 355 puts the in-app author follow on the person-shaped discovery surface: the AuthorFollowButton (round 353, reused unchanged) now mounts on the /authors/{id} archive header next to the RSS subscribe link, giving signed-in readers the whole follow payoff (inbox + Web Push + round-354 /follows feed) where they decide about a writer — and uniquely, the only follow path for a pen-named writer with zero published posts, who has no byline buttons anywhere. 3 new page tests (signed-in shows 关注 even on an empty writer, click follows and flips to 已关注, guests see none) plus a second real-browser e2e journey. Frontend-only: the archive envelope already carries the author; the byline control brings its own guest-hidden/dead-session/error semantics.",
       "alternatives_rejected": "Rejected: (1) follow buttons on every /authors directory card — cards are whole NuxtLinks and nesting a control inside needs a card restructure for marginal value; (2) an author-follow email — a separate decision; (3) new author-specific follow labels — post.followAuthor/followingAuthor already express the action for a pen-named writer."
+    },
+    "DEC-385": {
+      "id": "DEC-385",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-15T17:46:40+00:00",
+      "updated_at": "2026-09-15T17:46:40+00:00",
+      "touched_round": 356,
+      "title": "round 356 scope: More from this author strip on the post page (TASK-418)",
+      "rationale": "Rounds 343-346 established author attribution, round 353 the author follow, 354 the follows-feed author dimension, 355 the archive-header follow — but the top of the funnel is still bare: a reader who just finished and loved ONE post has no in-place path to the writer's other work. The related-posts block is topic-shaped (category/tags); the author archive is one click away but leaves the post. Add a More-from-{author} strip under the article: up to 4 recent posts by the same pen-named writer (reusing the public /api/authors/{id}/posts endpoint, current post filtered out), with a header that carries the byline follow control so the reader can subscribe right where they discover the writer's voice. Backend unchanged (the endpoint exists and is public).",
+      "alternatives_rejected": "Rejected: (1) merging author posts into the topic-shaped related block — related is about the subject, an author strip is about the person; (2) a new dedicated endpoint — /api/authors/{id}/posts already returns the archive envelope, a small limit + client-side exclusion is enough; (3) making the whole strip a follow-first surface — the byline already owns follow; the strip is for discovery, not a second follow button (the header carries a compact one for convenience)."
+    },
+    "TASK-418": {
+      "id": "TASK-418",
+      "type": "task",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-15T17:47:16+00:00",
+      "updated_at": "2026-09-15T18:21:52+00:00",
+      "touched_round": 356,
+      "category": "core-feature",
+      "title": "More from this author strip on the post page — up to 4 recent posts by the same writer + follow control in place (round 356)"
+    },
+    "CHG-615": {
+      "id": "CHG-615",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-15T18:21:51+00:00",
+      "updated_at": "2026-09-15T18:21:51+00:00",
+      "touched_round": 356,
+      "commit": "7c4ee772",
+      "summary": "feat(frontend): More from this author strip on the post page (DEC-385, TASK-418)"
+    },
+    "CHG-616": {
+      "id": "CHG-616",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-15T18:21:52+00:00",
+      "updated_at": "2026-09-15T18:21:52+00:00",
+      "touched_round": 356,
+      "commit": "5974718e",
+      "summary": "test(e2e): assert the More-from-this-author strip in the byline journey (DEC-385, TASK-418)"
+    },
+    "CHG-617": {
+      "id": "CHG-617",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-15T18:21:52+00:00",
+      "updated_at": "2026-09-15T18:21:52+00:00",
+      "touched_round": 356,
+      "commit": "429f803e",
+      "summary": "docs(author-follow): record round 356 More-from-this-author strip in README + CHANGELOG (en/zh)"
+    },
+    "EV-263": {
+      "id": "EV-263",
+      "type": "evidence",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-15T18:21:52+00:00",
+      "updated_at": "2026-09-15T18:21:52+00:00",
+      "touched_round": 356,
+      "title": "round 356 VERIFY green: More-from-this-author strip renders other posts (current excluded, view-all door), hides when none left or unattributed",
+      "source": "frontend 2181 vitest (typecheck 0, biome 463 clean) + e2e byline journey now also asserts the strip lists the writer's other post in a real browser + none backend/schema change (reuses the public author archive endpoint)",
+      "confidence": 1.0
+    },
+    "DEC-386": {
+      "id": "DEC-386",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-15T18:21:52+00:00",
+      "updated_at": "2026-09-15T18:21:52+00:00",
+      "touched_round": 356,
+      "title": "close round 356: More from this author strip on the post page (TASK-418 by CHG-615+CHG-616+CHG-617; supersedes DEC-385) — VERIFY green: frontend 2181 (typecheck 0, biome 463 clean), e2e 2 journeys green",
+      "rationale": "Round 356 closes the author arc's top of the funnel: a reader who just enjoyed a post can browse the writer's other work in place via a More-from-{author} strip (up to 4 recent posts, current excluded, view-all door), built on the existing public author archive endpoint — no backend or schema change. 3 page tests (render/exclude, empty-after-filter, unattributed hiding) plus an e2e assertion in the byline journey. The person-shaped follow surface (byline -> archive -> feed -> archive follow) now has its discovery block where the reader actually is.",
+      "alternatives_rejected": "Rejected: merging author posts into the topic-shaped related block; a new dedicated endpoint (the archive already returns the envelope); a duplicate follow button in the strip header (the byline owns follow)."
     }
   },
   "edges": [
@@ -39185,6 +39265,36 @@
       "to": "DEC-383",
       "type": "supersedes",
       "created_at": "2026-09-15T17:32:53+00:00"
+    },
+    {
+      "from": "DEC-385",
+      "to": "TASK-418",
+      "type": "governs",
+      "created_at": "2026-09-15T17:47:16+00:00"
+    },
+    {
+      "from": "CHG-615",
+      "to": "TASK-418",
+      "type": "implements",
+      "created_at": "2026-09-15T18:21:51+00:00"
+    },
+    {
+      "from": "CHG-616",
+      "to": "TASK-418",
+      "type": "implements",
+      "created_at": "2026-09-15T18:21:52+00:00"
+    },
+    {
+      "from": "CHG-617",
+      "to": "TASK-418",
+      "type": "implements",
+      "created_at": "2026-09-15T18:21:52+00:00"
+    },
+    {
+      "from": "DEC-386",
+      "to": "DEC-385",
+      "type": "supersedes",
+      "created_at": "2026-09-15T18:21:52+00:00"
     }
   ]
 }
