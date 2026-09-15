@@ -73,6 +73,13 @@ test.describe("Static pages CMS (round 347)", () => {
 			await expect(footerPage).toBeVisible({ timeout: 10000 });
 			await expect(footerPage).toContainText(title.replace(/\s+\d+$/, ""));
 
+			// Reachable through the origin's /sitemap.xml proxy (round 348): the
+			// published page is a real indexable URL, so it must appear for
+			// crawlers after the page write busts the feed cache.
+			const sitemap = await request.get("/sitemap.xml");
+			expect(sitemap.status()).toBe(200);
+			expect(await sitemap.text()).toContain(`/pages/${slug}`);
+
 			// Grab the id for cleanup.
 			const token = await adminToken(request);
 			const list = await request.get("/api/admin/pages", {
