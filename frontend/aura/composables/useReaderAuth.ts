@@ -146,6 +146,23 @@ export function useReaderAuth() {
 	};
 
 	/**
+	 * Redeem an emailed email-change token and adopt the fresh session
+	 * (DEC-357, TASK-404). The backend swaps the email and bumps token_version,
+	 * so the returned token supersedes the stored one — updateToken (like
+	 * password reset / change) is the right persistence path. Business-level
+	 * rejection statuses (400 = used/expired/invalid link, 409 = target taken
+	 * while pending) ride the thrown error so the page can distinguish an
+	 * invalid link from a network failure.
+	 */
+	const confirmEmailChange = async (token: string): Promise<ReaderLoginResponse> => {
+		const { completeEmailChange } = await import("~~/api/reader/auth");
+		// command() rethrows the FetchError (statusCode/status preserved).
+		const session = await completeEmailChange(token);
+		updateToken(session);
+		return session;
+	};
+
+	/**
 	 * Persist a (possibly rotated) session without clearing the rest — used
 	 * after a password change returns a fresh token whose version supersedes
 	 * the stored one (DEC-067, TASK-141). Login/register use setSession.
@@ -171,6 +188,7 @@ export function useReaderAuth() {
 		login,
 		register,
 		resetPassword,
+		confirmEmailChange,
 		logout,
 		updateToken,
 		setProfile,

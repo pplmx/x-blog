@@ -20,7 +20,8 @@
 		"profile": {
 			"title": "个人资料",
 			"displayNameLabel": "显示名称",
-			"emailNote": "登录邮箱（不可修改）：",
+			"emailNote": "登录邮箱：",
+			"emailChangeHint": "可在下方修改",
 			"save": "保存",
 			"saved": "已保存",
 			"saveFailed": "保存失败，请稍后再试",
@@ -31,6 +32,20 @@
 			"avatarSaved": "头像已保存",
 			"avatarFailed": "头像更新失败，请稍后再试",
 			"avatarHint": "支持 PNG、JPEG、GIF 或 WebP，最大 5&nbsp;MB"
+		},
+		"email": {
+			"title": "修改登录邮箱",
+			"note": "更换登录邮箱分两步：先在这里发起验证，再打开发往新邮箱的验证链接。",
+			"currentEmailLabel": "当前邮箱",
+			"newEmailLabel": "新邮箱",
+			"newEmailPlaceholder": "you@newexample.com",
+			"currentPasswordLabel": "当前密码",
+			"request": "发送验证链接",
+			"success": "验证链接已发送——请查收新邮箱，并在 60 分钟内打开（完成前当前邮箱仍可正常登录）。",
+			"wrongPassword": "当前密码不正确",
+			"taken": "该邮箱已被其他账号使用",
+			"same": "这就是你的当前邮箱——请填写想要换成的地址",
+			"failed": "发送失败，请稍后再试"
 		},
 		"password": {
 			"title": "修改密码",

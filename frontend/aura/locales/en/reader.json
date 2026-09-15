@@ -79,6 +79,20 @@
 			"errors": {
 				"network": "A network error occurred. Please try again."
 			}
+		},
+		"emailChange": {
+			"seoTitle": "Verify your new email",
+			"seoDesc": "Confirm the new sign-in email for your X-Blog reader account via the emailed link.",
+			"title": "Confirm your new email",
+			"subtitle": "Open this page in the browser where you want to stay signed in.",
+			"processing": "Verifying…",
+			"success": "Your sign-in email is now updated. Signing you in…",
+			"invalid": "This link is invalid or has expired. Please request a new change from your account settings.",
+			"taken": "That email is already used by another account, so this request was cancelled. Please pick a different address in your account settings.",
+			"errors": {
+				"network": "A network error occurred. Please try again."
+			},
+			"backToAccount": "Back to account settings"
 		}
 	}
 }

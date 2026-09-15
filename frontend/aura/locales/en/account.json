@@ -20,7 +20,8 @@
 		"profile": {
 			"title": "Profile",
 			"displayNameLabel": "Display name",
-			"emailNote": "Sign-in email (cannot be changed): ",
+			"emailNote": "Sign-in email:",
+			"emailChangeHint": "change it below",
 			"save": "Save",
 			"saved": "Saved",
 			"saveFailed": "Couldn't save — please try again",
@@ -31,6 +32,20 @@
 			"avatarSaved": "Picture saved",
 			"avatarFailed": "Couldn't update picture — please try again",
 			"avatarHint": "PNG, JPEG, GIF or WebP, up to 5&nbsp;MB"
+		},
+		"email": {
+			"title": "Change sign-in email",
+			"note": "Switching to a new address is a two-step change: request a link here, then open the link we email to the new address.",
+			"currentEmailLabel": "Current email",
+			"newEmailLabel": "New email",
+			"newEmailPlaceholder": "you@newexample.com",
+			"currentPasswordLabel": "Current password",
+			"request": "Send verification link",
+			"success": "Verification link sent — check the new address's inbox and open it within 60 minutes (your current email keeps working until you do).",
+			"wrongPassword": "Current password is incorrect",
+			"taken": "That email is already used by another account",
+			"same": "That's already your current email — pick an address you want to switch to",
+			"failed": "Couldn't send the link — please try again"
 		},
 		"password": {
 			"title": "Change password",

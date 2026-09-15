@@ -1,4 +1,5 @@
-import { query } from "../transport";
+import { readerAuthHeaders } from "../auth";
+import { command, query } from "../transport";
 
 export interface ReaderProfile {
 	id: number;
@@ -63,5 +64,37 @@ export function confirmPasswordReset(body: { token: string; new_password: string
 		headers: { "Content-Type": "application/json" },
 		body,
 		server: false,
+	});
+}
+
+/**
+ * Start a reader email change (DEC-357, TASK-404): the current password proves
+ * control of the account now, and the backend emails a one-time verification
+ * link to the NEW address. 202 on success (a link is on its way); wrong
+ * password (401), same as current (400), already used by another account (409)
+ * and SMTP unavailable (503) all throw. Not an existence oracle — the endpoint
+ * is authenticated, so it is never anonymously reachable.
+ */
+export function requestEmailChange(body: { new_email: string; current_password: string }) {
+	return command<{ message: string }>("/api/reader/me/email/request", {
+		method: "POST",
+		headers: { ...readerAuthHeaders(), "Content-Type": "application/json" },
+		body,
+	});
+}
+
+/**
+ * Redeem the emailed email-change token (DEC-357, TASK-404). NO auth header —
+ * the emailed link is the credential. On success the backend swaps the email,
+ * bumps token_version (revoking every prior session) and returns a fresh
+ * auto-login session. Business-level rejections throw with their status: 400 =
+ * invalid / already-used / expired link, 409 = the target address got taken
+ * by another account while the link sat pending.
+ */
+export function completeEmailChange(token: string) {
+	return command<ReaderLoginResponse>("/api/reader/me/email/confirm", {
+		method: "POST",
+		headers: { "Content-Type": "application/json" },
+		body: { token },
 	});
 }

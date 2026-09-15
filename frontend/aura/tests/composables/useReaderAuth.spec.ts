@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const readerLoginMock = vi.fn();
 const readerRegisterMock = vi.fn();
+const completeEmailChangeMock = vi.fn();
 
 vi.mock("~~/api/reader/auth", async (importOriginal) => {
 	const actual = await importOriginal<typeof import("../../api/reader/auth")>();
@@ -11,6 +12,7 @@ vi.mock("~~/api/reader/auth", async (importOriginal) => {
 		...actual,
 		readerLogin: readerLoginMock,
 		readerRegister: readerRegisterMock,
+		completeEmailChange: completeEmailChangeMock,
 	};
 });
 
@@ -29,6 +31,7 @@ beforeEach(() => {
 	useReaderAuth().logout();
 	readerLoginMock.mockReset();
 	readerRegisterMock.mockReset();
+	completeEmailChangeMock.mockReset();
 });
 
 afterEach(() => {
@@ -193,6 +196,46 @@ describe("useReaderAuth", () => {
 			email: "new@example.com",
 		});
 		expect(localStorage.getItem("reader_token")).toBeNull();
+	});
+
+	describe("confirmEmailChange (DEC-357, TASK-404)", () => {
+		const rotated = {
+			access_token: "rotated.jwt.token",
+			token_type: "bearer",
+			reader: { id: 1, email: "new@example.com", display_name: null, created_at: null },
+		};
+
+		it("adopts the fresh session from the emailed-link redemption", async () => {
+			completeEmailChangeMock.mockResolvedValue(rotated);
+			const { confirmEmailChange, isAuthenticated, reader } = useReaderAuth();
+			expect(isAuthenticated.value).toBe(false);
+
+			const res = await confirmEmailChange("abcd.efgh.ijkl");
+
+			expect(completeEmailChangeMock).toHaveBeenCalledWith("abcd.efgh.ijkl");
+			expect(res.reader.email).toBe("new@example.com");
+			// The returned (rotated) session supersedes any stored one — the
+			// version bump revoked every pre-change token.
+			expect(isAuthenticated.value).toBe(true);
+			expect(reader.value?.email).toBe("new@example.com");
+			expect(localStorage.getItem("reader_token")).toBe("rotated.jwt.token");
+		});
+
+		it("preserves the business-level status on a spent/invalid link", async () => {
+			// 400 = invalid / already-used / expired link — NOT a network
+			// failure. The status must ride the rethrown error so the confirm
+			// page can tell "spent link" from "outage" (round-342 review).
+			const spent = Object.assign(new Error("Invalid or expired verification link"), {
+				statusCode: 400,
+			});
+			completeEmailChangeMock.mockRejectedValue(spent);
+			const { confirmEmailChange, isAuthenticated } = useReaderAuth();
+
+			const err = await confirmEmailChange("spent.token").catch((e: unknown) => e);
+			expect((err as { statusCode?: number }).statusCode).toBe(400);
+			expect(isAuthenticated.value).toBe(false);
+			expect(localStorage.getItem("reader_token")).toBeNull();
+		});
 	});
 
 	describe("isStaleSession (dual-401 disambiguation, deep-dive)", () => {

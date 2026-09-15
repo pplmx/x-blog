@@ -8,8 +8,9 @@ endpoints (enforced in auth.get_current_user / get_current_reader).
 """
 
 import re
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
+from secrets import token_urlsafe
 from typing import Annotated, Literal
 from uuid import uuid4
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
@@ -575,9 +576,9 @@ def me(_current_reader: auth.ReaderAccount = Depends(auth.get_current_reader)):
 
 
 class ReaderProfileUpdate(BaseModel):
-    """Editable reader profile fields. Email is deliberately immutable (it is
-    the login identity and there is no email-verification recovery flow, so
-    reassigning it silently would orphan the account)."""
+    """Editable reader profile fields. Email is NOT editable here: it is the
+    login identity, so it lives on its own verified flow (DEC-357,
+    /me/email/request + /me/email/confirm) rather than a silent reassignment."""
 
     display_name: Annotated[NonNulStr | None, Field(default=None, min_length=1, max_length=50)] = None
 
@@ -599,6 +600,28 @@ class ReaderPasswordChange(BaseModel):
 
     current_password: str = Field(min_length=1, max_length=72)
     new_password: str = Field(min_length=8, max_length=72)
+
+
+class ReaderEmailChangeRequest(BaseModel):
+    """Start an email change: the new login address + the current password.
+
+    The password proves control of the account now; ownership of the NEW
+    address is proven separately by the emailed verification link
+    (DEC-357/TASK-404). Same email shape/bounds as registration."""
+
+    new_email: Annotated[NonNulStr, Field(min_length=3, max_length=254, pattern=_EMAIL_PATTERN)]
+    current_password: str = Field(min_length=1, max_length=254)
+
+    @field_validator("new_email", mode="before")
+    @classmethod
+    def strip_new_email(cls, value: object) -> object:
+        # Whitespace-only / padded input is normalized before pattern+length
+        # validation (same blank guard as registration).
+        return schemas._strip_blank(value) if isinstance(value, str) else value
+
+
+class ReaderEmailChangeConfirm(BaseModel):
+    token: Annotated[NonNulStr, Field(max_length=128)]
 
 
 class ReaderPasswordChangeResponse(BaseModel):
@@ -663,7 +686,8 @@ def update_my_profile(
     current_reader: auth.ReaderAccount = Depends(auth.get_current_reader),
     db: Session = Depends(get_db),
 ):
-    """Update the reader's own profile (display_name). Email is immutable."""
+    """Update the reader's own profile (display_name). Email changes are their
+    own verified flow (/me/email/request + /me/email/confirm, DEC-357)."""
     if payload.display_name is not None:
         current_reader.display_name = payload.display_name
     db.commit()
@@ -796,6 +820,192 @@ def change_my_password(
         "access_token": access_token,
         "token_type": "bearer",
         "reader": ReaderProfile.model_validate(current_reader),
+    }
+
+
+#: Time-to-live of an email-change verification link (mirrors the password-reset
+#: window: long enough to reach the new inbox, short enough to expire stale
+#: links). The pending change is cleared when it lapses (DEC-357, TASK-404).
+EMAIL_CHANGE_TTL_MINUTES = 60
+
+
+@router.post("/me/email/request", status_code=202)
+@limiter.limit(f"{RATE_LIMIT_AUTH}/minute")
+def request_email_change(
+    request: Request,  # noqa: ARG001
+    payload: ReaderEmailChangeRequest,
+    current_reader: auth.ReaderAccount = Depends(auth.get_current_reader),
+    db: Session = Depends(get_db),
+):
+    """Start an email change: prove the account, then email a link to the NEW
+    address.
+
+    This is the authenticated half (DEC-357/TASK-404): the requester must prove
+    control of the account via the current password (401 otherwise) and the NEW
+    address is proven by the emailed verification link. Not an existence oracle
+    — the endpoint is behind ``get_current_reader``, so it is never anonymously
+    reachable. A new address already used by another account is 409 (mirroring
+    register). SMTP unconfigured / send failed is a 503 (a change without the
+    verification mail cannot complete), and nothing is persisted then. A repeat
+    request replaces the previous pending change (single active flow).
+    """
+    if not auth.verify_password(payload.current_password, current_reader.password):
+        raise HTTPException(status_code=401, detail="Incorrect current password")
+    new_email = payload.new_email.strip().lower()
+    if new_email == current_reader.email:
+        raise HTTPException(status_code=400, detail="New email must differ from the current email")
+    occupied = (
+        db.query(auth.ReaderAccount)
+        .filter(func.lower(auth.ReaderAccount.email) == new_email, auth.ReaderAccount.id != current_reader.id)
+        .first()
+    )
+    if occupied is not None:
+        raise HTTPException(status_code=409, detail="That email is already in use by another account")
+    if not emailer.is_email_configured():
+        raise HTTPException(status_code=503, detail="Email service is not configured on this server")
+
+    token = token_urlsafe(32)
+    current_reader.email_change_token = token
+    current_reader.email_change_pending = new_email
+    current_reader.email_change_requested_at = crud.utc_now_naive()
+    try:
+        accepted = emailer.send_email_change_email(new_email, token)
+        if not accepted:
+            # RFC-level refusal (e.g. the address provably bounces): the change
+            # cannot complete without the mail, so nothing is persisted.
+            raise HTTPException(
+                status_code=503,
+                detail="Could not send the verification email, please try again later",
+            )
+    except HTTPException:
+        raise
+    except Exception:
+        logger.exception("email-change verification send raised")
+        raise HTTPException(
+            status_code=503,
+            detail="Could not send the verification email, please try again later",
+        ) from None
+    db.commit()
+    return {"message": "A verification link is on its way to the new address"}
+
+
+@router.post("/me/email/confirm", response_model=ReaderLoginResponse)
+@limiter.limit(f"{RATE_LIMIT_AUTH}/minute")
+def confirm_email_change(
+    request: Request,  # noqa: ARG001
+    payload: ReaderEmailChangeConfirm,
+    db: Session = Depends(get_db),
+):
+    """Redeem the emailed verification token: swap the reader's login email.
+
+    No auth — the emailed link IS the credential. One-time: the pending state
+    is cleared on success, so a second click finds nothing and answers 400,
+    indistinguishable from an invalid/expired link (mirroring password-reset
+    confirm). On success the email is swapped, ``token_version`` is bumped
+    (revoking every pre-change session, mirroring password change) and a
+    fresh auto-login session is returned. If the target address was taken by
+    another account while the link sat pending, the stale change is cleared and
+    confirm answers 409 (the reader re-requests the change).
+
+    The redeem itself is an atomic conditional UPDATE (WHERE the stored token
+    is still the one presented), so concurrent confirms of the same link and a
+    confirm racing a re-request cannot both win: the loser's UPDATE matches no
+    row and answers 400 like any spent link. A target registered in the few
+    microseconds after the occupied check trips the unique email index, which
+    is caught and surfaced as the business 409 (register uses the same
+    IntegrityError -> conflict pattern) instead of a 500 (round-342 review).
+    """
+    reader = db.query(auth.ReaderAccount).filter(auth.ReaderAccount.email_change_token == payload.token).first()
+    if reader is None or reader.email_change_pending is None:
+        raise HTTPException(status_code=400, detail="Invalid or expired verification link")
+
+    now = crud.utc_now_naive()
+    if reader.email_change_requested_at is None or now - reader.email_change_requested_at > timedelta(
+        minutes=EMAIL_CHANGE_TTL_MINUTES
+    ):
+        # Expired — clear the stale pending so a re-request starts clean.
+        reader.email_change_token = None
+        reader.email_change_pending = None
+        reader.email_change_requested_at = None
+        db.commit()
+        raise HTTPException(status_code=400, detail="Invalid or expired verification link")
+
+    # Account moderation (DEC-194, TASK-214): a deactivated reader must not
+    # redeem a pending change — the operator disabled the account, so swapping
+    # its email (or minting a fresh auto-login token) would contradict that.
+    # Mirrors password reset, which refuses inactive readers. The stale pending
+    # is cleared so a re-request (impossible for them, but consistent) would
+    # start clean.
+    if reader.is_active is False:
+        reader.email_change_token = None
+        reader.email_change_pending = None
+        reader.email_change_requested_at = None
+        db.commit()
+        raise HTTPException(status_code=400, detail="Invalid or expired verification link")
+
+    target = reader.email_change_pending
+    # Case-insensitive occupied check (the login path matches emails the same
+    # defensive way): current writers always store lowercase, but a legacy
+    # mixed-case address must trip a clean 409 rather than a unique-index 500.
+    occupied = (
+        db.query(auth.ReaderAccount)
+        .filter(func.lower(auth.ReaderAccount.email) == target, auth.ReaderAccount.id != reader.id)
+        .first()
+    )
+    if occupied is not None:
+        reader.email_change_token = None
+        reader.email_change_pending = None
+        reader.email_change_requested_at = None
+        db.commit()
+        raise HTTPException(status_code=409, detail="That email is already in use; please request a new change")
+
+    # Atomic single-statement redeem (see docstring): both the swap and the
+    # clear are conditional on the stored token still being the presented one,
+    # so a concurrent double-click or a replaced pending token returns 400
+    # (rowcount 0) instead of a second 200 / a lost newer pending.
+    redeemed = (
+        db.query(auth.ReaderAccount)
+        .filter(
+            auth.ReaderAccount.id == reader.id,
+            auth.ReaderAccount.email_change_token == payload.token,
+        )
+        .update(
+            {
+                "email": target,
+                "email_change_token": None,
+                "email_change_pending": None,
+                "email_change_requested_at": None,
+                "token_version": (reader.token_version or 0) + 1,
+                "last_login_at": now,
+            },
+            synchronize_session=False,
+        )
+    )
+    if redeemed == 0:
+        db.rollback()
+        raise HTTPException(status_code=400, detail="Invalid or expired verification link")
+    try:
+        db.commit()
+    except IntegrityError:
+        # The target address got taken (concurrent register/change) after the
+        # occupied check — surface the business 409 and clear the stale pending
+        # so the reader's next request starts clean, never a 500.
+        db.rollback()
+        reader = db.query(auth.ReaderAccount).filter(auth.ReaderAccount.id == reader.id).first()
+        if reader is not None:
+            reader.email_change_token = None
+            reader.email_change_pending = None
+            reader.email_change_requested_at = None
+            db.commit()
+        raise HTTPException(
+            status_code=409, detail="That email is already in use; please request a new change"
+        ) from None
+    db.refresh(reader)
+    access_token = auth.create_reader_token({"sub": reader.id}, token_version=reader.token_version or 0)
+    return {
+        "access_token": access_token,
+        "token_type": "bearer",
+        "reader": ReaderProfile.model_validate(reader),
     }
 
 

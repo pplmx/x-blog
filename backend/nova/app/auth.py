@@ -129,6 +129,14 @@ class ReaderAccount(Base):
     # behavior for readers who never touch the language switcher while signed
     # in. Values are the frontend locale codes ("en", "zh").
     locale: Mapped[str | None] = mapped_column(String(8), nullable=True)
+    # Email-change verification (DEC-357, TASK-404): an email change is proven
+    # by the emailed one-time link, so the pending NEW address + its opaque
+    # token + the request time live on the account (all cleared on confirm or
+    # expiry). The token is unique so two accounts can never share a pending
+    # secret (NULLs never collide on either backend).
+    email_change_pending: Mapped[str | None] = mapped_column(String(254), nullable=True)
+    email_change_token: Mapped[str | None] = mapped_column(String(64), unique=True, nullable=True, index=True)
+    email_change_requested_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     token_version: Mapped[int | None] = mapped_column(Integer, default=0)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, server_default="true", nullable=False)
     last_login_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)

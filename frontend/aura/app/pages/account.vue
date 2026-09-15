@@ -1,10 +1,12 @@
 <script setup lang="ts">
 import { parseApiDate } from "~~/composables/apiDate";
+
 /**
- * Reader account settings (DEC-067, TASK-142): edit display name, rotate the
- * password (verifying the current one; the fresh token keeps this session
- * alive while the version bump signs other sessions out), and see/revoke the
- * browser push devices bound to the account.
+ * Reader account settings (DEC-067, TASK-142): edit the display name, switch
+ * the sign-in email (current password + new address; the emailed link swaps
+ * it, DEC-357/TASK-404), rotate the password (verifying the current one; the
+ * fresh token keeps this session alive while the version bump signs other
+ * sessions out), and see/revoke the browser push devices bound to the account.
  */
 
 import type { Category } from "~~/api/contracts/shared";
@@ -17,6 +19,7 @@ import {
 	updateReaderProfile,
 	uploadReaderAvatar,
 } from "~~/api/reader/account";
+import { requestEmailChange } from "~~/api/reader/auth";
 import type {
 	FollowedCategoryItem,
 	FollowedSeriesItem,
@@ -226,6 +229,62 @@ async function submitPassword() {
 		passwordState.value = statusOf(err) === 401 ? "wrong" : "failed";
 	}
 }
+
+/* Email change (DEC-357, TASK-404) -------------------------------------- */
+const em = ref({ newEmail: "", current: "" });
+const emailState = ref<"idle" | "busy" | "success" | "wrong" | "taken" | "same" | "failed">("idle");
+
+async function submitEmailChange() {
+	// Re-entry guard, mirroring submitPassword: `busy` disables the submit
+	// button but Enter in either email-section input fires the form submit
+	// regardless. A rapid second submit would repeat the request — harmless
+	// (a repeat replaces the pending change) but it mails twice, so drop it.
+	if (emailState.value === "busy") return;
+	if (!em.value.newEmail.trim() || !em.value.current) return;
+	emailState.value = "busy";
+	try {
+		await requestEmailChange({
+			new_email: em.value.newEmail.trim(),
+			current_password: em.value.current,
+		});
+		em.value = { newEmail: "", current: "" };
+		emailState.value = "success";
+	} catch (err) {
+		// Same dual-401 as the password change: an expired/revoked token (auth
+		// dependency — a dead session must send the reader back to sign-in, NOT
+		// claim their current password was wrong) and an incorrect current
+		// password (a form-level error). isStaleSession tells them apart.
+		if (isStaleSession(err)) {
+			logout();
+			void navigateTo("/login");
+			return;
+		}
+		const status = statusOf(err);
+		if (status === 401) emailState.value = "wrong";
+		else if (status === 409) emailState.value = "taken";
+		else if (status === 400) emailState.value = "same";
+		else emailState.value = "failed";
+	}
+}
+
+// Clear a stale ERROR as soon as the reader edits either field, so a previous
+// "wrong password / taken / same / failed" doesn't nag over a now-fixed input
+// (mirrors the display-name section's nameError watch, round-342 review). Only
+// error states are cleared: a freshly-set success must not be wiped by the
+// watcher firing on the field-clear that follows the success.
+watch(
+	() => [em.value.newEmail, em.value.current] as const,
+	() => {
+		if (
+			emailState.value === "wrong" ||
+			emailState.value === "taken" ||
+			emailState.value === "same" ||
+			emailState.value === "failed"
+		) {
+			emailState.value = "idle";
+		}
+	},
+);
 
 /* Push devices ---------------------------------------------------------- */
 const devices = ref<ReaderPushSubscription[]>([]);
@@ -823,7 +882,7 @@ function shortEndpoint(endpoint: string): string {
               {{ t('account.profile.nameRequired') }}
             </span>
           </label>
-          <span class="text-xs text-gray-400">{{ t('account.profile.emailNote') }}{{ reader?.email }}</span>
+          <span class="text-xs text-gray-400">{{ t('account.profile.emailNote') }} {{ reader?.email }} — {{ t('account.profile.emailChangeHint') }}</span>
           <div class="flex items-center gap-3">
             <button
               type="submit"
@@ -839,6 +898,79 @@ function shortEndpoint(endpoint: string): string {
               {{ t('account.profile.saveFailed') }}
             </span>
           </div>
+        </form>
+      </section>
+
+      <!-- Sign-in email: changing it is proven by a link mailed to the NEW
+           address, mirroring password reset — the old address keeps
+           authenticating until the linked confirm page swaps it (DEC-357,
+           TASK-404). -->
+      <section class="border border-gray-100 dark:border-gray-700 rounded-xl p-5">
+        <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-1">
+          {{ t('account.email.title') }}
+        </h2>
+        <p class="text-xs text-gray-400 mb-4">{{ t('account.email.note') }}</p>
+        <form class="flex flex-col gap-4 max-w-sm" @submit.prevent="submitEmailChange">
+          <label class="flex flex-col gap-1.5 text-sm">
+            <span class="text-gray-600 dark:text-gray-400">{{ t('account.email.currentEmailLabel') }}</span>
+            <input
+              :value="reader?.email ?? ''"
+              type="email"
+              readonly
+              class="rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 px-3 py-2 text-gray-500 dark:text-gray-400 cursor-not-allowed"
+            />
+          </label>
+          <label class="flex flex-col gap-1.5 text-sm">
+            <span class="text-gray-600 dark:text-gray-400">{{ t('account.email.newEmailLabel') }}</span>
+            <input
+              v-model="em.newEmail"
+              type="email"
+              autocomplete="email"
+              :placeholder="t('account.email.newEmailPlaceholder')"
+              class="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-2 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </label>
+          <label class="flex flex-col gap-1.5 text-sm">
+            <span class="text-gray-600 dark:text-gray-400">{{ t('account.email.currentPasswordLabel') }}</span>
+            <input
+              v-model="em.current"
+              type="password"
+              autocomplete="current-password"
+              class="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-2 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </label>
+          <div class="flex items-center gap-3">
+            <button
+              type="submit"
+              :disabled="emailState === 'busy'"
+              class="px-4 py-2 rounded-lg text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 transition-colors disabled:opacity-50"
+            >
+              {{ t('account.email.request') }}
+            </button>
+            <span
+              v-if="emailState === 'success'"
+              class="text-sm text-emerald-600 dark:text-emerald-400"
+              role="status"
+            >
+              {{ t('account.email.success') }}
+            </span>
+          </div>
+          <p
+            v-if="emailState === 'wrong'"
+            class="text-sm text-red-500 dark:text-red-400"
+          >{{ t('account.email.wrongPassword') }}</p>
+          <p
+            v-if="emailState === 'taken'"
+            class="text-sm text-red-500 dark:text-red-400"
+          >{{ t('account.email.taken') }}</p>
+          <p
+            v-if="emailState === 'same'"
+            class="text-sm text-red-500 dark:text-red-400"
+          >{{ t('account.email.same') }}</p>
+          <p
+            v-if="emailState === 'failed'"
+            class="text-sm text-red-500 dark:text-red-400"
+          >{{ t('account.email.failed') }}</p>
         </form>
       </section>
 

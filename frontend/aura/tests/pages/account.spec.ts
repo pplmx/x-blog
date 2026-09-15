@@ -1,12 +1,18 @@
 /**
  * Account settings page tests (DEC-067, TASK-142).
  *
- * Three sections: edit display name (PATCH + setProfile), rotate password
- * (POST + updateToken with the fresh session), and push-device management
- * (list + revoke with confirm). Logged-out visitors see a sign-in prompt.
+ * Four sections: edit display name (PATCH + setProfile), change sign-in email
+ * (POST request + emailed link, DEC-357/TASK-404), rotate password (POST +
+ * updateToken with the fresh session), and push-device management (list +
+ * revoke with confirm). Logged-out visitors see a sign-in prompt.
+ *
+ * Several tests used global input/form/button indices (e.g. form[1] for the
+ * password section); the email section added more inputs/forms/buttons, so the
+ * affected selectors are section-scoped (find the section by its title) rather
+ * than fragile whole-page indices.
  */
 
-import { flushPromises, mount } from "@vue/test-utils";
+import { flushPromises, mount, type VueWrapper } from "@vue/test-utils";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { ref } from "vue";
 import type { ReaderProfile } from "../../api/reader/auth";
@@ -53,6 +59,7 @@ vi.mock("../../composables/useSeo", () => ({
 }));
 
 const mockUpdateMyProfile = vi.fn();
+const mockRequestEmailChange = vi.fn();
 const mockChangeMyPassword = vi.fn();
 const mockFetchPushSubscriptions = vi.fn();
 const mockRevokePushSubscription = vi.fn();
@@ -93,6 +100,9 @@ vi.mock("../../api/reader/account", () => ({
 	uploadReaderAvatar: mockUploadReaderAvatar,
 	removeReaderAvatar: mockRemoveReaderAvatar,
 }));
+vi.mock("../../api/reader/auth", () => ({
+	requestEmailChange: mockRequestEmailChange,
+}));
 vi.mock("../../api/reader/notifications", () => ({
 	getMyPushSubscriptions: mockFetchPushSubscriptions,
 	revokeMyPushSubscription: mockRevokePushSubscription,
@@ -123,6 +133,15 @@ async function mountPage() {
 	const wrapper = mount(Account as never, { global: { stubs } });
 	await flushPromises();
 	return wrapper;
+}
+
+/** Scope a whole section by its h2-title text so per-section selector work is
+ * independent of how many inputs/forms/buttons other sections add to the page
+ * (the email section added more of all three; whole-page indices are brittle). */
+function sectionByText(wrapper: VueWrapper, text: string) {
+	const section = wrapper.findAll("section").find((s) => s.text().includes(text));
+	if (!section) throw new Error(`section containing "${text}" not found`);
+	return section;
 }
 
 function makeDevice(overrides: Partial<ReaderPushSubscription> = {}): ReaderPushSubscription {
@@ -656,11 +675,12 @@ describe("Account settings page", () => {
 	it("rejects a short new password without calling the API", async () => {
 		isAuthenticated.value = true;
 		const wrapper = await mountPage();
-		const inputs = wrapper.findAll("input[type='password']");
+		const section = sectionByText(wrapper, "修改密码");
+		const inputs = section.findAll("input[type='password']");
 		await inputs[0].setValue("currentpass");
 		await inputs[1].setValue("short");
 		await inputs[2].setValue("short");
-		await wrapper.findAll("form")[1].trigger("submit");
+		await section.find("form").trigger("submit");
 		await flushPromises();
 
 		expect(mockChangeMyPassword).not.toHaveBeenCalled();
@@ -670,11 +690,12 @@ describe("Account settings page", () => {
 	it("rejects a password mismatch without calling the API", async () => {
 		isAuthenticated.value = true;
 		const wrapper = await mountPage();
-		const inputs = wrapper.findAll("input[type='password']");
+		const section = sectionByText(wrapper, "修改密码");
+		const inputs = section.findAll("input[type='password']");
 		await inputs[0].setValue("currentpass");
 		await inputs[1].setValue("newpass456");
 		await inputs[2].setValue("newpass000");
-		await wrapper.findAll("form")[1].trigger("submit");
+		await section.find("form").trigger("submit");
 		await flushPromises();
 
 		expect(mockChangeMyPassword).not.toHaveBeenCalled();
@@ -689,11 +710,12 @@ describe("Account settings page", () => {
 			reader: { id: 1, email: "r@example.com", display_name: "R" },
 		});
 		const wrapper = await mountPage();
-		const inputs = wrapper.findAll("input[type='password']");
+		const section = sectionByText(wrapper, "修改密码");
+		const inputs = section.findAll("input[type='password']");
 		await inputs[0].setValue("currentpass123");
 		await inputs[1].setValue("newpass456");
 		await inputs[2].setValue("newpass456");
-		await wrapper.findAll("form")[1].trigger("submit");
+		await section.find("form").trigger("submit");
 		await flushPromises();
 
 		expect(mockChangeMyPassword).toHaveBeenCalledWith({
@@ -720,11 +742,12 @@ describe("Account settings page", () => {
 				}),
 		);
 		const wrapper = await mountPage();
-		const inputs = wrapper.findAll("input[type='password']");
+		const section = sectionByText(wrapper, "修改密码");
+		const inputs = section.findAll("input[type='password']");
 		await inputs[0].setValue("currentpass123");
 		await inputs[1].setValue("newpass456");
 		await inputs[2].setValue("newpass456");
-		const form = wrapper.findAll("form")[1];
+		const form = section.find("form");
 		await form.trigger("submit");
 		await form.trigger("submit"); // rapid second submit before the first resolves
 		await form.trigger("submit");
@@ -744,11 +767,12 @@ describe("Account settings page", () => {
 		isAuthenticated.value = true;
 		mockChangeMyPassword.mockRejectedValue({ status: 401 });
 		const wrapper = await mountPage();
-		const inputs = wrapper.findAll("input[type='password']");
+		const section = sectionByText(wrapper, "修改密码");
+		const inputs = section.findAll("input[type='password']");
 		await inputs[0].setValue("nope");
 		await inputs[1].setValue("newpass456");
 		await inputs[2].setValue("newpass456");
-		await wrapper.findAll("form")[1].trigger("submit");
+		await section.find("form").trigger("submit");
 		await flushPromises();
 
 		expect(wrapper.text()).toContain("当前密码不正确");
@@ -768,17 +792,155 @@ describe("Account settings page", () => {
 		vi.stubGlobal("navigateTo", navigateTo);
 
 		const wrapper = await mountPage();
-		const inputs = wrapper.findAll("input[type='password']");
+		const section = sectionByText(wrapper, "修改密码");
+		const inputs = section.findAll("input[type='password']");
 		await inputs[0].setValue("whatever123");
 		await inputs[1].setValue("newpass456");
 		await inputs[2].setValue("newpass456");
-		await wrapper.findAll("form")[1].trigger("submit");
+		await section.find("form").trigger("submit");
 		await flushPromises();
 
 		expect(logout).toHaveBeenCalled();
 		expect(navigateTo).toHaveBeenCalledWith("/login");
 		expect(wrapper.text()).not.toContain("当前密码不正确");
 		vi.unstubAllGlobals();
+	});
+
+	describe("email change (DEC-357, TASK-404)", () => {
+		function emailSection(wrapper: VueWrapper) {
+			return sectionByText(wrapper, "修改登录邮箱");
+		}
+
+		it("sends a verification link to the new address and reports success", async () => {
+			isAuthenticated.value = true;
+			mockRequestEmailChange.mockResolvedValue({ message: "A verification link is on its way" });
+			const wrapper = await mountPage();
+			const section = emailSection(wrapper);
+			const em = section.findAll("input[type='email']");
+			await em[1].setValue("new@example.com"); // [0] is the readonly current email
+			await section.findAll("input[type='password']")[0].setValue("readerpass123");
+			await section.find("form").trigger("submit");
+			await flushPromises();
+
+			expect(mockRequestEmailChange).toHaveBeenCalledWith({
+				new_email: "new@example.com",
+				current_password: "readerpass123",
+			});
+			expect(wrapper.text()).toContain("验证链接已发送");
+		});
+
+		it("does not call the API until a new address and current password are given", async () => {
+			isAuthenticated.value = true;
+			const wrapper = await mountPage();
+			const section = emailSection(wrapper);
+			await section.findAll("input[type='email']")[1].setValue("new@example.com");
+			await section.find("form").trigger("submit");
+			await flushPromises();
+			expect(mockRequestEmailChange).not.toHaveBeenCalled();
+		});
+
+		it("shows a wrong-current-password error on a 401 from the request", async () => {
+			isAuthenticated.value = true;
+			mockRequestEmailChange.mockRejectedValue({
+				status: 401,
+				response: { status: 401, _data: { detail: "Incorrect current password" } },
+			});
+			const wrapper = await mountPage();
+			const section = emailSection(wrapper);
+			await section.findAll("input[type='email']")[1].setValue("new@example.com");
+			await section.findAll("input[type='password']")[0].setValue("nope");
+			await section.find("form").trigger("submit");
+			await flushPromises();
+
+			expect(wrapper.text()).toContain("当前密码不正确");
+			expect(wrapper.text()).not.toContain("验证链接已发送");
+		});
+
+		it("returns a stale session to sign-in instead of a wrong-password error", async () => {
+			// Same dual-401 as the password change: a dead token has detail
+			// "Could not validate credentials" — isStaleSession must send the
+			// reader to /login, not claim the current password was wrong.
+			isAuthenticated.value = true;
+			mockRequestEmailChange.mockRejectedValue({
+				statusCode: 401,
+				response: { status: 401, _data: { detail: "Could not validate credentials" } },
+			});
+			const navigateTo = vi.fn();
+			vi.stubGlobal("navigateTo", navigateTo);
+			const wrapper = await mountPage();
+			const section = emailSection(wrapper);
+			await section.findAll("input[type='email']")[1].setValue("new@example.com");
+			await section.findAll("input[type='password']")[0].setValue("whatever123");
+			await section.find("form").trigger("submit");
+			await flushPromises();
+
+			expect(logout).toHaveBeenCalled();
+			expect(navigateTo).toHaveBeenCalledWith("/login");
+			expect(wrapper.text()).not.toContain("当前密码不正确");
+			vi.unstubAllGlobals();
+		});
+
+		it("explains an address already used by another account (409)", async () => {
+			isAuthenticated.value = true;
+			mockRequestEmailChange.mockRejectedValue({ status: 409 });
+			const wrapper = await mountPage();
+			const section = emailSection(wrapper);
+			await section.findAll("input[type='email']")[1].setValue("taken@example.com");
+			await section.findAll("input[type='password']")[0].setValue("readerpass123");
+			await section.find("form").trigger("submit");
+			await flushPromises();
+
+			expect(wrapper.text()).toContain("该邮箱已被其他账号使用");
+		});
+
+		it("shows a generic failure when the request fails with a non-auth error", async () => {
+			isAuthenticated.value = true;
+			mockRequestEmailChange.mockRejectedValue(new Error("network down"));
+			const wrapper = await mountPage();
+			const section = emailSection(wrapper);
+			await section.findAll("input[type='email']")[1].setValue("new@example.com");
+			await section.findAll("input[type='password']")[0].setValue("readerpass123");
+			await section.find("form").trigger("submit");
+			await flushPromises();
+
+			expect(wrapper.text()).toContain("发送失败，请稍后再试");
+		});
+
+		it("explains when the typed address is the current one (backend 400)", async () => {
+			// The backend answers 400 ("new email must differ from the current")
+			// when the reader typed their own address — that must not be billed as
+			// SMTP/infrastructure trouble (round-342 review).
+			isAuthenticated.value = true;
+			mockRequestEmailChange.mockRejectedValue({ status: 400 });
+			const wrapper = await mountPage();
+			const section = emailSection(wrapper);
+			await section.findAll("input[type='email']")[1].setValue("r@example.com");
+			await section.findAll("input[type='password']")[0].setValue("readerpass123");
+			await section.find("form").trigger("submit");
+			await flushPromises();
+
+			expect(wrapper.text()).toContain("这就是你的当前邮箱");
+			expect(wrapper.text()).not.toContain("发送失败");
+		});
+
+		it("clears a surfaced error as soon as the reader edits the fields", async () => {
+			isAuthenticated.value = true;
+			mockRequestEmailChange.mockRejectedValue({ status: 409 });
+			const wrapper = await mountPage();
+			const section = emailSection(wrapper);
+			const newEmail = section.findAll("input[type='email']")[1];
+			await newEmail.setValue("taken@example.com");
+			await section.findAll("input[type='password']")[0].setValue("readerpass123");
+			await section.find("form").trigger("submit");
+			await flushPromises();
+			expect(wrapper.text()).toContain("该邮箱已被其他账号使用");
+
+			// A stale error must not nag over a now-fixed input (mirrors the
+			// display-name nameError watch, round-342 review).
+			await newEmail.setValue("free@example.com");
+			await flushPromises();
+			expect(wrapper.text()).not.toContain("该邮箱已被其他账号使用");
+		});
 	});
 
 	describe("delete account (DEC-106, TASK-165)", () => {
@@ -1294,11 +1456,12 @@ describe("Account settings page", () => {
 			isAuthenticated.value = true;
 			mockChangeMyPassword.mockRejectedValue(new Error("network down"));
 			const wrapper = await mountPage();
-			const inputs = wrapper.findAll("input[type='password']");
+			const section = sectionByText(wrapper, "修改密码");
+			const inputs = section.findAll("input[type='password']");
 			await inputs[0].setValue("currentpass123");
 			await inputs[1].setValue("newpass456");
 			await inputs[2].setValue("newpass456");
-			await wrapper.findAll("form")[1].trigger("submit");
+			await section.find("form").trigger("submit");
 			await flushPromises();
 			expect(wrapper.text()).toContain("修改失败，请稍后再试");
 		});
@@ -1310,7 +1473,14 @@ describe("Account settings page", () => {
 			mockFetchPushSubscriptions.mockResolvedValue({ items: [makeDevice()], total: 1 });
 			vi.stubGlobal("confirm", () => false);
 			const wrapper = await mountPage();
-			await wrapper.findAll("button")[2].trigger("click");
+			// Scope to the device row's revoke control rather than a whole-page
+			// button index (the email section added buttons before this section).
+			// Fail loudly if the control isn't located so a mis-scoped selector
+			// can't make the assertion pass vacuously (round-342 review).
+			const devices = sectionByText(wrapper, "推送设备");
+			const revokeBtn = devices.findAll("button").find((b) => b.text() === "移除");
+			if (revokeBtn === undefined) throw new Error("device revoke button not found");
+			await revokeBtn.trigger("click");
 			await flushPromises();
 			expect(mockRevokePushSubscription).not.toHaveBeenCalled();
 			vi.unstubAllGlobals();

@@ -355,6 +355,57 @@ def send_password_reset_email(to_addr: str, reset_token: str) -> bool:
     return bool(flags and flags[0])
 
 
+def send_email_change_email(new_addr: str, token: str) -> bool:
+    """Mail the verification link for a reader email change to the NEW address.
+
+    Same delivery contract as the password-reset mail (DEC-357, TASK-404): a
+    security-recovery delivery the reader explicitly requested, built here and
+    delivered via the single configured SMTP path; requires SMTP (the request
+    endpoint 503s on a missing config), follows the site's configured language
+    + SITE_TITLE (DEC-342). The link is single-use and 60-minute-bound; the
+    reader's OWN email is never mailed (the change is about leaving it).
+    """
+    from_addr = _env("SMTP_FROM") or "no-reply@localhost"
+    base_url = _env("SITE_URL") or "http://localhost:3000"
+    site_title = _env("SITE_TITLE") or "X-Blog"
+    link = f"{base_url.rstrip('/')}/email-change?token={token}"
+    if _is_en_site():
+        subject = f"Verify your new {site_title} email"
+        body = (
+            f"Click the link below to verify the new email for your {site_title} account "
+            "(valid for 60 minutes, single use):\n\n"
+            f"{link}\n\n"
+            "If you didn't request this email change, you can ignore this email — nothing will change."
+        )
+        html_body = (
+            f"<p>Click the link below to verify the new email for your {html.escape(site_title)} account "
+            "(valid for 60 minutes, single use):</p>"
+            f'<p><a href="{html.escape(link, quote=True)}">Verify the new email</a></p>'
+            "<p>If you didn't request this email change, you can ignore this email — nothing will change.</p>"
+        )
+    else:
+        subject = f"确认你新的 {site_title} 邮箱"
+        body = (
+            f"点击下方链接，确认 {site_title} 账号的新邮箱（60 分钟内有效，仅一次）：\n\n"
+            f"{link}\n\n"
+            "如果你没有请求修改邮箱，请忽略这封邮件——不会有任何变化。"
+        )
+        html_body = (
+            f"<p>点击下方链接，确认 {html.escape(site_title)} 账号的新邮箱"
+            "（60 分钟内有效，仅一次）：</p>"
+            f'<p><a href="{html.escape(link, quote=True)}">确认新邮箱</a></p>'
+            "<p>如果你没有请求修改邮箱，请忽略这封邮件——不会有任何变化。</p>"
+        )
+    msg = EmailMessage()
+    msg["From"] = from_addr
+    msg["To"] = new_addr
+    msg["Subject"] = subject
+    msg.set_content(f"{subject}\n\n{body}")
+    msg.add_alternative(html_body, subtype="html")
+    flags = send_messages_flags([msg])
+    return bool(flags and flags[0])
+
+
 def send_newsletter_confirm_email(to_addr: str, token: str) -> bool:
     """Double opt-in confirmation for a guest newsletter subscription (DEC-351).
 
