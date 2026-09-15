@@ -23,6 +23,7 @@ from app.dates import inclusive_end_of_day, parse_bound
 from app.limiter import RATE_LIMIT_AUTH, RATE_LIMIT_WRITE, client_rate_key, limiter
 from app.routers.comments import AUTO_APPROVE_READER_COMMENTS, _notify_comment_approved
 from app.schemas import (
+    AuthorBrief,
     Comment,
     IdInt,
     NonNulStr,
@@ -219,6 +220,30 @@ def list_users(
     _current_user: auth.User = Depends(get_current_superuser),
 ):
     users = db.query(auth.User).all()
+    return users
+
+
+@router.get("/authors", response_model=list[AuthorBrief])
+def list_pennamed_authors(
+    db: Session = Depends(get_db),
+    _current_user: auth.User = Depends(get_current_admin),
+):
+    """The post editor's author picker (DEC-359, TASK-406).
+
+    Every admin with a public pen name, so any editor can attribute a post
+    they wrote to another public writer — deliberately NOT superuser-only like
+    /users: an editor must be able to assign authors, and exposing pen names
+    leaks nothing (they already appear on every byline). Admins without a pen
+    name are excluded — they have no public identity to attribute to — and the
+    login username never appears (admin login is no-oracle; /users stays
+    superuser-only for the credential-adjacent surface).
+    """
+    users = (
+        db.query(auth.User)
+        .filter(auth.User.display_name.isnot(None))
+        .order_by(auth.User.display_name)
+        .all()
+    )
     return users
 
 
@@ -464,6 +489,10 @@ def admin_get_post(
         "series_order": post.series_order,
         "series_title": post.series.title if post.series else None,
         "series_slug": post.series.slug if post.series else None,
+        # Author attribution (DEC-359/TASK-406): the editor loads the current
+        # author of a post from the admin detail so it can pre-select the
+        # author picker (admin-only surface, so no no-oracle concern).
+        "author_id": post.author_id,
         "tag_ids": [t.id for t in post.tags],
         "created_at": post.created_at.isoformat() if post.created_at else None,
         "updated_at": post.updated_at.isoformat() if post.updated_at else None,

@@ -253,6 +253,77 @@ def test_author_archive_404_for_unknown_or_username_only_admin(client, db_sessio
     assert client.get(f"/api/authors/{editor.id}/posts").status_code == 404
 
 
+def test_admin_authors_endpoint_lists_pennamed_only_for_any_admin(client, db_session, admin_token):
+    # The post editor's author picker: every admin with a pen name, reachable by
+    # ANY admin (editor included) — not superuser-only like /users. Pen names
+    # are already public on bylines; the login username must not appear here.
+    admin = db_session.query(auth.User).filter(auth.User.role == "superuser").first()
+    admin.display_name = "Super Pen"
+    editor = auth.User(
+        username=f"pa{uuid4().hex[:6]}",
+        password=auth.get_password_hash("editorpass123"),
+        role="editor",
+        is_superuser=False,
+        display_name="Editor Pen",
+    )
+    plain = auth.User(
+        username=f"np_{uuid4().hex[:6]}",
+        password=auth.get_password_hash("editorpass123"),
+        role="editor",
+        is_superuser=False,
+        display_name=None,
+    )
+    db_session.add_all([editor, plain])
+    db_session.flush()
+
+    # A superuser sees all pen-named admins.
+    r = client.get("/api/admin/authors", headers=_admin_headers(admin_token))
+    assert r.status_code == 200
+    names = {u["display_name"] for u in r.json()}
+    assert names == {"Super Pen", "Editor Pen"}
+    assert "username" not in json.dumps(r.json())
+
+    # An editor can reach the same endpoint (that is the point — editors must
+    # be able to attribute a post to another public writer).
+    editor_token = _login(client, editor.username, "editorpass123")
+    r = client.get("/api/admin/authors", headers=_admin_headers(editor_token))
+    assert r.status_code == 200
+    assert {u["display_name"] for u in r.json()} == {"Super Pen", "Editor Pen"}
+
+
+def test_admin_update_post_reassigns_author(client, admin_token, admin_user, db_session):
+    # The editor's author picker: PUT /posts/{id} with a new author_id moves the
+    # post to another writer; the admin detail reflects it.
+    _set_pen_name(client, _admin_headers(admin_token), admin_user.id, "Original Writer")
+    editor = auth.User(
+        username=f"re{uuid4().hex[:6]}",
+        password=auth.get_password_hash("editorpass123"),
+        role="editor",
+        is_superuser=False,
+        display_name="Reassigned Writer",
+    )
+    db_session.add(editor)
+    db_session.flush()
+
+    pid = _create_post(client, _admin_headers(admin_token))
+    # Admin detail exposes author_id for the picker's pre-selection.
+    detail = client.get(f"/api/admin/posts/{pid}", headers=_admin_headers(admin_token)).json()
+    assert detail["author_id"] == admin_user.id
+
+    r = client.put(
+        f"/api/admin/posts/{pid}",
+        headers=_admin_headers(admin_token),
+        json={"author_id": editor.id},
+    )
+    assert r.status_code == 200, r.text
+
+    public = client.get(f"/api/posts/{pid}").json()
+    assert public["author"] == {"id": editor.id, "display_name": "Reassigned Writer"}
+    detail = client.get(f"/api/admin/posts/{pid}", headers=_admin_headers(admin_token)).json()
+    assert detail["author_id"] == editor.id
+    _no_username_leak(public)
+
+
 def test_author_archive_envelope_identifies_author_even_when_empty(client, admin_token, admin_user):
     # The archive page must be able to title itself by pen name even before the
     # writer has published anything — the author envelope rides on the (empty)
