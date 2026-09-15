@@ -9,6 +9,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- **Static pages CMS (round 347)**: a self-hosted blog is expected to speak
+  for itself — privacy policy, terms, contact, changelog — but the only static
+  page was a hardcoded `/about`, so a site owner needed a code change +
+  redeploy for every such page. Admins can now create, publish and manage
+  curated markdown pages from a dedicated `/admin/pages` manager (title +
+  CJK-safe auto-slug + markdown body + published toggle, inline edit,
+  publish/unpublish row toggle, delete with confirm) and they render publicly
+  at `/pages/{slug}` through the same markdown pipeline as posts (code, math,
+  mermaid, images). The public surface is no-oracle — an unpublished or
+  unknown slug answers the same 404, so drafts can't be enumerated — and
+  published pages are linked from the site footer, so a privacy policy or
+  terms page is discoverable without a code deploy.
 - **Public writers index (DEC-359, round 346)**: `/authors` was a one-page
   dead end before — a byline or archive link could take you to one writer, but
   there was nowhere listing every pen-named writer, so discovery on a
