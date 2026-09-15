@@ -9,6 +9,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- **Followed authors enter the follows feed (round 354)**: round 353 let a
+  reader follow a writer, but that follow had no browsing surface — only the
+  mixed notification inbox showed the writer's new posts. Now the author
+  follow pays the same discovery payoff as the topic follows: the `/follows`
+  feed and the home "Latest from your follows" row (they share the same
+  endpoint) include every recent post from a followed writer, deduped with the
+  category/series/tag matches, newest-first as always, and authored cards
+  carry the writer's pen-name byline (a `lucide:user` chip) so you can see at
+  a glance which posts you got for the person and which for the topic.
 - **Author follow (round 353)**: on a multi-editor blog a reader who loved one
   writer's posts wants to follow just that person — a topic-shaped
   category/series/tag follow can't express it. Every post's author byline now
