@@ -9,6 +9,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- **Public "Liked posts" profiles (round 360)**: round 359 made a reader's
+  likes durable cloud rows, but the only surface was the reader's own private
+  `/liked` page — the likes were invisible to everyone else. Now a reader can
+  opt in on `/account` (a checkbox beside the bio/avatar, off by default) to
+  publish a "Liked posts" tab on their public `/readers/{id}` profile, fed by
+  a public `GET /api/readers/{id}/likes` that anyone can browse — the first
+  reader-to-reader discovery axis. Privacy posture is unchanged: the flag
+  defaults OFF, a reader who never opts in has no tab at all, and the public
+  endpoint 404s for both unknown readers and readers who chose not to publish
+  (one indistinguishable answer — no oracle for "does this reader exist" or
+  "what do they like"). The flag rides `/account` PATCH, the `/me` + public
+  profile envelopes, and the portable data export (likes + flag join the
+  bundle, DEC-334). Additive `public_likes` column (migration f6h8j0l2n4p6),
+  no cache interaction (per-reader, served no-store).
 - **Cloud-synced likes + liked-posts list (round 359)**: a like used to be a
   localStorage marker that a reader could only ever add — one-shot, device-
   local, no list, no way back. A signed-in reader's like is now a durable,
