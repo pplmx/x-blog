@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 361,
+  "round": 362,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-16T04:48:24+00:00",
+  "updated_at": "2026-09-16T07:00:17+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -26571,6 +26571,100 @@
       "title": "close round 359: cloud-synced reader likes + liked-posts list (TASK-421 by CHG-624+CHG-627+CHG-626, EV-266; CHG-625 resolves ISS-513; DEC-392 supersedes DEC-391)",
       "rationale": "Round 359 upgrades a reader like from a localStorage-only marker (ISS-038) to a durable cross-device cloud row. Backend: additive reader_post_likes table (reader_id/post_id UNIQUE, migration e5g7i9k1m3o5 verified on dev-PG with up/down), authenticated GET/POST/DELETE /api/reader/me/likes (idempotent POST bumps the public count once; DELETE decrements only on a real removal), paginated newest-like-first list reusing the PostListResponse contract. Frontend: useLikeSync mirrors useBookmarkSync - per-post chained mirrors preserve like->unlike ordering, like()/unlike() await their cloud write so a count refetch cannot race the mutation, mergeLocalToCloud (login + /liked mount, once) pushes local up then pulls the server union with live-intent remove protection so an unlike during a merge is never resurrected; the post-page heart is a real toggle for signed-in readers (guests keep the anonymous client-deduped POST /like); new auth-gated /liked page with merge-once-on-mount, pagination, stale-session logout and a dismissable dead-session warning mirroring bookmarks. Verified: frontend 2200 vitest, typecheck 0, biome 470 clean, browser e2e reader-likes (guest->login promotion + signed-in toggle) and the full login-flow e2e set green; backend green on committed 406ded5b. Verification surfaced a pre-existing e2e gate break (ISS-513: newsletter footer selector collisions) fixed by CHG-625. Documented trade-off: a guest like later promoted to a reader row counts twice (distinct actors) - intentional, the count is a popularity badge.",
       "alternatives_rejected": "Rejected: (1) stay device-local (status quo, ISS-038) - no cross-device persistence, no real unlike or surface; (2) server-side like with anonymous reader identity - no account binding, cannot power a liked-posts list or single-actor unlike; (3) porting bookmarks' clear-all/epoch machinery wholesale - likes have no clear-all, so only per-post chaining + remove-reconciliation were ported."
+    },
+    "DEC-393": {
+      "id": "DEC-393",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-16T05:01:27+00:00",
+      "updated_at": "2026-09-16T05:01:27+00:00",
+      "touched_round": 362,
+      "title": "round 360 scope: opt-in public liked-posts on reader profiles (reader-to-reader taste discovery)",
+      "rationale": "Round 360 ships the first reader-to-reader discovery axis: a signed-in reader can opt in (public_likes toggle on /account, default off) to publish a public Liked tab on their readers/{id} profile listing their publicly-visible liked posts, browsable by anyone. Extends round-359 cloud likes (reader_post_likes already exists) into a public surface without weakening the current private posture - opt-in only, flag off or unknown reader answers 404 (no oracle). DEC-009-clean additive public_likes bool on reader_accounts; the public likes list is per-reader and small and embeds live counters, so it is served no-store/bypassing the multi-worker cache (DEC-004) rather than invalidation plumbing. Acceptance: a reader who opts in sees their liked posts on their profile; a guest browsing the profile reads them; opting out removes the tab and 404s the endpoint.",
+      "alternatives_rejected": "Rejected: (1) public bookmarks tab (folders are organizing clutter, likes are the taste signal); (2) default-public likes (privacy regression - likes reveal non-consensual taste); (3) reader-to-reader follow (a social-graph step beyond this round's scope); (4) collab 'readers who liked this also liked' rail (needs public likes + scale, follow-up optionality)."
+    },
+    "TASK-422": {
+      "id": "TASK-422",
+      "type": "task",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-16T05:02:31+00:00",
+      "updated_at": "2026-09-16T07:00:17+00:00",
+      "touched_round": 362,
+      "category": "core-feature",
+      "severity": 6,
+      "confidence": 1,
+      "effort": "medium",
+      "title": "opt-in public liked-posts tab on reader profiles: public_likes bool (additive migration) + GET /api/readers/{id}/likes (public, gated, paginated PostListResponse) + /me PATCH public_likes + profile tab on readers/[id] + /account toggle + export + en/zh locales + tests + e2e + docs (DEC-393)",
+      "summary": "Add public_likes (default off) to reader_accounts (additive, DEC-009); public GET /api/readers/{id}/likes returns the reader's publicly-visible liked posts (PostListResponse, no-store, 404 when flag off / reader unknown); /me gains public_likes via PATCH; /api/readers/{id} profile exposes the flag so the page can render a Likes tab that guests browse; /account toggle besides bio/avatar; export bundle includes likes + flag (DEC-334); backend + frontend + e2e tests; README/CHANGELOG"
+    },
+    "CHG-628": {
+      "id": "CHG-628",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-16T06:58:04+00:00",
+      "updated_at": "2026-09-16T06:58:04+00:00",
+      "touched_round": 362,
+      "commit": "2bf3aaca",
+      "title": "backend: public_likes additive column (f6h8j0l2n4p6) + GET /api/readers/{id}/likes (gated public) + /me PATCH + profile/export + tests"
+    },
+    "CHG-629": {
+      "id": "CHG-629",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-16T06:58:04+00:00",
+      "updated_at": "2026-09-16T06:58:04+00:00",
+      "touched_round": 362,
+      "commit": "af6d5579",
+      "title": "frontend: public_likes on profile accounts API + readers/[id] Likes tab (?view=likes deep link) + /account opt-in toggle + locales + unit tests"
+    },
+    "CHG-630": {
+      "id": "CHG-630",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-16T06:58:05+00:00",
+      "updated_at": "2026-09-16T06:58:05+00:00",
+      "touched_round": 362,
+      "commit": "676a883a",
+      "title": "e2e: reader-profile-likes journeys (opt-in via /account, guest browse, opt-out removal, never-opted-in no tab) + sole-tab ARIA"
+    },
+    "CHG-631": {
+      "id": "CHG-631",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-16T06:58:05+00:00",
+      "updated_at": "2026-09-16T06:58:05+00:00",
+      "touched_round": 362,
+      "commit": "6bc87d03",
+      "title": "docs: round 360 public liked-posts profile tab in README + CHANGELOG (en/zh)"
+    },
+    "EV-267": {
+      "id": "EV-267",
+      "type": "evidence",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-16T06:58:47+00:00",
+      "updated_at": "2026-09-16T06:58:47+00:00",
+      "touched_round": 362,
+      "source": "VERIFY green: backend pytest 1670 (cov 93.76%, ruff clean, pyright 0); migration f6h8j0l2n4p6 up/down on dev-PG + SQLite; frontend 2204 vitest + typecheck/lint clean; browser e2e reader-profile-likes (opt-in via /account, guest browse, opt-out removal, never-opted-in) + reader-likes journeys green",
+      "confidence": 1.0
+    },
+    "DEC-394": {
+      "id": "DEC-394",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-16T06:59:34+00:00",
+      "updated_at": "2026-09-16T06:59:34+00:00",
+      "touched_round": 362,
+      "title": "close round 360: opt-in public liked-posts on reader profiles (TASK-422 by CHG-628+CHG-629+CHG-630+CHG-631, EV-267; DEC-394 supersedes DEC-393)",
+      "rationale": "Round 360 ships the first reader-to-reader discovery axis: a reader who opts in (public_likes on /account, default off) publishes a public Liked-posts tab on their readers/{id} profile listing their publicly-visible liked posts, browseable by anyone. Backend: additive public_likes bool (migration f6h8j0l2n4p6, round-tripped on dev-PG + SQLite up/down), public GET /api/readers/{id}/likes (paginated PostListResponse via the existing publicly-visible list_reader_post_likes; 404 for both unknown readers and non-opted-in readers - one indistinguishable answer, no oracle), /me PATCH + /me + public profile envelopes carry the flag, and the portable export gains the likes list + flag (DEC-334). Frontend: readers/[id] comments/likes tablist (deep-linkable ?view=likes, guest-browseable), /account checkbox saved with the profile, API + en/zh locales. Verified: backend 1670 (cov 93.76%, ruff clean, pyright 0), frontend 2204 + typecheck/lint clean, real-browser e2e (opt-in via the /account UI, guest browse, opt-out removes the tab + 404s the endpoint, never-opted-in reader has no tab). Privacy posture preserved: default off, no tab and no endpoint for readers who never publish.",
+      "alternatives_rejected": "Rejected: (1) public bookmarks tab (folders are organizing clutter, likes are the taste signal); (2) default-public likes (privacy regression - taste must stay opt-in); (3) reader-to-reader follow (a social-graph step beyond this round, follows stay content-scoped); (4) collab 'readers who liked this also liked' rail (needs public likes + scale, noted as optionality)."
     }
   },
   "edges": [
@@ -39663,6 +39757,42 @@
       "to": "DEC-391",
       "type": "supersedes",
       "created_at": "2026-09-16T04:48:24+00:00"
+    },
+    {
+      "from": "DEC-393",
+      "to": "TASK-422",
+      "type": "governs",
+      "created_at": "2026-09-16T05:02:59+00:00"
+    },
+    {
+      "from": "CHG-628",
+      "to": "TASK-422",
+      "type": "implements",
+      "created_at": "2026-09-16T06:58:05+00:00"
+    },
+    {
+      "from": "CHG-629",
+      "to": "TASK-422",
+      "type": "implements",
+      "created_at": "2026-09-16T06:58:05+00:00"
+    },
+    {
+      "from": "CHG-630",
+      "to": "TASK-422",
+      "type": "implements",
+      "created_at": "2026-09-16T06:58:05+00:00"
+    },
+    {
+      "from": "CHG-631",
+      "to": "TASK-422",
+      "type": "implements",
+      "created_at": "2026-09-16T06:58:05+00:00"
+    },
+    {
+      "from": "DEC-394",
+      "to": "DEC-393",
+      "type": "supersedes",
+      "created_at": "2026-09-16T07:00:17+00:00"
     }
   ]
 }
