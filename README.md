@@ -25,7 +25,7 @@ A modern full-stack blog application built with FastAPI + Nuxt
 - 🔒 **Admin Panel** - Built-in admin dashboard for content management
 - 🧪 **Well Tested** - 2500+ tests (1243 backend + 1317 Nuxt), 93.5% backend coverage
 - ✅ **Type Safe** - Full TypeScript support + Pydantic validation
-- 🔍 **Full-text Search** - Post search functionality
+- 🔍 **Full-text Search** - Post search, plus comment search (the Comments mode on `/search`, round 366)
 - 🌙 **Dark Mode** - System preference aware dark mode
 - 📊 **Reading Analytics** - View counts, like counts, reading progress, and a per-day readership trend with hot posts for the operator (DEC-086)
 - 💬 **Comments** - Nested comment support with replies
@@ -227,15 +227,16 @@ badge. Anonymous commenters keep the free-text nickname/email path.
 
 ### Search, SEO & Stats
 
-| Method | Endpoint         | Description                           |
-| ------ | ---------------- | ------------------------------------- |
-| GET    | `/api/search?q=` | Full-text search (CJK-aware, DEC-070) |
-| GET    | `/api/stats`     | Blog statistics                       |
-| GET    | `/rss/feed.xml`  | RSS 2.0 feed                          |
-| GET    | `/rss/atom.xml`  | Atom feed                             |
-| GET    | `/sitemap.xml`   | XML sitemap                           |
-| GET    | `/robots.txt`    | robots.txt                            |
-| GET    | `/health`        | Health check                          |
+| Method | Endpoint                  | Description                                                                         |
+| ------ | ------------------------- | ----------------------------------------------------------------------------------- |
+| GET    | `/api/search?q=`          | Full-text search (CJK-aware, DEC-070)                                               |
+| GET    | `/api/search/comments?q=` | Comment search — approved comments with highlighted snippets + post brief (DEC-405) |
+| GET    | `/api/stats`              | Blog statistics                                                                     |
+| GET    | `/rss/feed.xml`           | RSS 2.0 feed                                                                        |
+| GET    | `/rss/atom.xml`           | Atom feed                                                                           |
+| GET    | `/sitemap.xml`            | XML sitemap                                                                         |
+| GET    | `/robots.txt`             | robots.txt                                                                          |
+| GET    | `/health`                 | Health check                                                                        |
 
 ### Web Push (optional, needs VAPID keys)
 

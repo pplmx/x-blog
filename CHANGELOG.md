@@ -9,6 +9,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- **Public comment search (round 366)**: the search box could find articles,
+  but the discussion — the blog's second content asset — was unsearchable.
+  `/search` now gains a Comments mode (a search-scope tablist, living in the
+  URL as `?type=comments` so a comment-search share link lands straight in that
+  mode): it matches approved comments by content (every term must hit, newest
+  first), and each hit carries a highlighted snippet (escaped before `<mark>`,
+  so XSS-safe) plus the post brief, with the card deep-linking ONTO the comment
+  (`#comment-{id}`, DEC-321) instead of just the post headline. The
+  visibility gate mirrors article search: pending/rejected comments and
+  comments on draft or not-yet-published posts never match; emails/IPs never
+  leave the backend. Posts-only filters (category/tag/sort/date range) hide in
+  comment mode, and paging or refining the term keeps the active mode; LIKE
+  metacharacters like `%`/`_` are matched literally (review feedback). 93.69%
+  coverage; 1734 backend tests, 58 frontend search tests, and 2 comment-search
+  e2e journeys all green.
 - **Reader-to-reader follow (round 365)**: the follow wheel — categories,
   series, tags and authors all already had a "tell me when this speaks" axis —
   finally gains its person-to-person entry: a signed-in reader can follow
