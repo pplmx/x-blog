@@ -9,6 +9,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- **Latest discussion feed (round 367)**: round 366 made the discussion
+  findable, but a visitor who wants to see what the site is talking about right
+  now still had no entry point — the thread is the blog's second content
+  asset, with no "what's happening" surface beyond each post's comment list and
+  the search box. The new public `/discussion` page (also linked from the
+  footer) streams the newest approved comments site-wide, newest first: each
+  card carries the commenter identity (display name for signed-in commenters),
+  the comment content, and the title of the post it lives on, and clicking
+  deep-links ONTO that exact comment (`#comment-{id}`, DEC-321) rather than
+  just the post headline. The visibility gate matches comment search exactly:
+  pending/rejected comments and comments on draft or not-yet-published posts
+  never appear; emails/IPs never leave the backend. Public, no auth,
+  paginated, SEO'd. 93.71% coverage; 1741 backend tests, 13 frontend tests,
+  and 2 discussion-feed e2e journeys all green.
 - **Public comment search (round 366)**: the search box could find articles,
   but the discussion — the blog's second content asset — was unsearchable.
   `/search` now gains a Comments mode (a search-scope tablist, living in the

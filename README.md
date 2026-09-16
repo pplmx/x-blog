@@ -26,6 +26,7 @@ A modern full-stack blog application built with FastAPI + Nuxt
 - 🧪 **Well Tested** - 2500+ tests (1243 backend + 1317 Nuxt), 93.5% backend coverage
 - ✅ **Type Safe** - Full TypeScript support + Pydantic validation
 - 🔍 **Full-text Search** - Post search, plus comment search (the Comments mode on `/search`, round 366)
+- 💬 **Latest Discussion** - the public `/discussion` page streams the newest approved comments across the whole site — each card carries the commenter, the content, and the post brief, and clicks straight through to that comment on its post (round 367)
 - 🌙 **Dark Mode** - System preference aware dark mode
 - 📊 **Reading Analytics** - View counts, like counts, reading progress, and a per-day readership trend with hot posts for the operator (DEC-086)
 - 💬 **Comments** - Nested comment support with replies
@@ -231,6 +232,7 @@ badge. Anonymous commenters keep the free-text nickname/email path.
 | ------ | ------------------------- | ----------------------------------------------------------------------------------- |
 | GET    | `/api/search?q=`          | Full-text search (CJK-aware, DEC-070)                                               |
 | GET    | `/api/search/comments?q=` | Comment search — approved comments with highlighted snippets + post brief (DEC-405) |
+| GET    | `/api/comments/feed`      | Latest discussion — newest approved comments across the site + post brief (DEC-407) |
 | GET    | `/api/stats`              | Blog statistics                                                                     |
 | GET    | `/rss/feed.xml`           | RSS 2.0 feed                                                                        |
 | GET    | `/rss/atom.xml`           | Atom feed                                                                           |
