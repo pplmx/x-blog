@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 370,
+  "round": 371,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-16T21:30:00+00:00",
+  "updated_at": "2026-09-16T21:39:11+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -27388,6 +27388,31 @@
       "title": "close round 368: discussion RSS/Atom delivered (DEC-409 superseded)",
       "rationale": "The discussion is findable (comment search, DEC-405), browsable (/discussion, DEC-407) and now SUBSCRIBABLE: /rss/comments.xml (RSS 2.0) and /rss/comments.atom.xml (Atom) stream the newest approved comments site-wide, one item per comment carrying the commenter (display name/nickname) + post title and a perma link ON the comment (#comment-id, DEC-321). Same public-visibility gate as the feed/search: pending/rejected comments and comments on draft/scheduled posts never appear; content never carries email/ip. Feeds cached under scoped keys with ETag/conditional responses (same contract as the post feeds). The /discussion page surfaces a subscribe link + RSS/Atom auto-discovery tags, fronted by dedicated Nuxt proxy routes (the rss catch-all only allows category/series/authors). Delivered by CHG-656 (backend) + CHG-657 (frontend page) + CHG-658 (proxy + e2e) + CHG-659 (docs), verified by EV-276 (backend 1748 + frontend 2280 + typecheck/lint + browser e2e discussion-rss 2/2).",
       "alternatives_rejected": "Per-post comment RSS (a feed per discussion): a narrower variant of the site-wide conversation feed - the site-wide stream is the /discussion analogue and serves the broadest reader need; per-post comment feeds can be layered later if usage shows demand (defer). Reading-report page: covered in DEC-407 alternatives. Email digest per post: existing thread-subscribe + weekly digest surfaces already cover it."
+    },
+    "DEC-411": {
+      "id": "DEC-411",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-16T21:38:58+00:00",
+      "updated_at": "2026-09-16T21:38:58+00:00",
+      "touched_round": 371,
+      "title": "Dedicated local keyword search in my-comments (DEC-411)",
+      "rationale": "Bookmarks (DEC-124) and history (DEC-148) both gained recall search, but the reader own comment history /comments still only filters by status and paginates. Readers with long comment histories cannot find a specific comment they left. Add a server-side q filter to GET /api/reader/me/comments (LIKE on comment content, escape aware) plus a debounced search box on /comments, mirroring history recall-search (DEC-148) and the round-366 keyword precedent.",
+      "alternatives_rejected": "Client-side page filter (bookmarks DEC-124 pattern) rejected: /comments paginates at limit 20 so a client filter would only search the loaded window, missing the rest of the history. No new DB index: histories are reader scoped already filtered by reader_id, matching the existing history q filter; LIKE over the reader own rows is bounded by that volume."
+    },
+    "TASK-431": {
+      "id": "TASK-431",
+      "type": "task",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-16T21:39:10+00:00",
+      "updated_at": "2026-09-16T21:39:10+00:00",
+      "touched_round": 371,
+      "category": "core-feature",
+      "severity": "medium",
+      "title": "Keyword search over the reader own comment history (TASK-431)",
+      "detail": "Add q filter to get_reader_comments (crud.py 3844) and GET /me/comments (reader.py 2614), escape aware LIKE on Comment.content. Frontend: debounced search box on /comments passing q to getMyComments, clearing resets page to 1, searching-aware empty state, zh+en locale keys. Vertical slice: backend + tests + frontend + page tests + e2e + docs."
     }
   },
   "edges": [
@@ -40810,6 +40835,12 @@
       "to": "DEC-409",
       "type": "supersedes",
       "created_at": "2026-09-16T21:29:19+00:00"
+    },
+    {
+      "from": "DEC-411",
+      "to": "TASK-431",
+      "type": "governs",
+      "created_at": "2026-09-16T21:39:11+00:00"
     }
   ]
 }
