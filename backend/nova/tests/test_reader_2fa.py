@@ -61,9 +61,7 @@ def _enable(client, token, secret, code=None, password="readerpass123"):
     DEC-401)."""
     if code is None:
         code = pyotp.TOTP(secret).now()
-    return client.post(
-        ENABLE, json={"current_password": password, "code": code}, headers=_auth(token)
-    )
+    return client.post(ENABLE, json={"current_password": password, "code": code}, headers=_auth(token))
 
 
 def _enable_ok(client, token, secret):
