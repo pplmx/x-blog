@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 362,
+  "round": 364,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-16T07:00:17+00:00",
+  "updated_at": "2026-09-16T09:14:23+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -26665,6 +26665,114 @@
       "title": "close round 360: opt-in public liked-posts on reader profiles (TASK-422 by CHG-628+CHG-629+CHG-630+CHG-631, EV-267; DEC-394 supersedes DEC-393)",
       "rationale": "Round 360 ships the first reader-to-reader discovery axis: a reader who opts in (public_likes on /account, default off) publishes a public Liked-posts tab on their readers/{id} profile listing their publicly-visible liked posts, browseable by anyone. Backend: additive public_likes bool (migration f6h8j0l2n4p6, round-tripped on dev-PG + SQLite up/down), public GET /api/readers/{id}/likes (paginated PostListResponse via the existing publicly-visible list_reader_post_likes; 404 for both unknown readers and non-opted-in readers - one indistinguishable answer, no oracle), /me PATCH + /me + public profile envelopes carry the flag, and the portable export gains the likes list + flag (DEC-334). Frontend: readers/[id] comments/likes tablist (deep-linkable ?view=likes, guest-browseable), /account checkbox saved with the profile, API + en/zh locales. Verified: backend 1670 (cov 93.76%, ruff clean, pyright 0), frontend 2204 + typecheck/lint clean, real-browser e2e (opt-in via the /account UI, guest browse, opt-out removes the tab + 404s the endpoint, never-opted-in reader has no tab). Privacy posture preserved: default off, no tab and no endpoint for readers who never publish.",
       "alternatives_rejected": "Rejected: (1) public bookmarks tab (folders are organizing clutter, likes are the taste signal); (2) default-public likes (privacy regression - taste must stay opt-in); (3) reader-to-reader follow (a social-graph step beyond this round, follows stay content-scoped); (4) collab 'readers who liked this also liked' rail (needs public likes + scale, noted as optionality)."
+    },
+    "DEC-395": {
+      "id": "DEC-395",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-16T07:03:08+00:00",
+      "updated_at": "2026-09-16T07:03:08+00:00",
+      "touched_round": 364,
+      "title": "round 361 scope: read-later vs done bookmark states (queue pruning on /bookmarks)",
+      "rationale": "The /bookmarks page conflates 'saved to read later' with 'already read / keep this': folders classify by topic but nothing tracks which saved post is still pending in the queue. Round 361 adds a done flag to ReaderBookmark (additive DEC-009 bool, default false): a signed-in reader marks a saved post Done (or back To-read) from the bookmarks row, and /bookmarks filters All / To-read / Done so 'save for later' stops silently merging with 'already read'. Status rides the bookmark list + export (DEC-334 completes with the new field). Acceptance: a reader can move a saved post between To-read and Done and filter the page by that state.",
+      "alternatives_rejected": "Rejected: (1) auto-move Done entries to a separate archive tab (a status filter chips the same list instead of splitting navigation); (2) derive 'done' from reading history (a post is 'read' in the trail but may still be bookmarked to re-read; the explicit marker is the reader's intent); (3) a nullable status enum (boolean done with a default false is sufficient and simpler than a three-state column)."
+    },
+    "TASK-423": {
+      "id": "TASK-423",
+      "type": "task",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-16T07:03:55+00:00",
+      "updated_at": "2026-09-16T09:14:22+00:00",
+      "touched_round": 364,
+      "category": "core-feature",
+      "severity": 5,
+      "confidence": 1,
+      "effort": "small",
+      "title": "read-later vs done bookmark states: additive reader_bookmarks.done bool (migration) + GET /me/bookmarks done filter + PATCH /me/bookmarks/{id}/done + done in serializer/export + /bookmarks All/To-read/Done chips + per-row mark control + en/zh locales + tests + e2e + docs (DEC-395)",
+      "summary": "Add reader_bookmarks.done (default false, additive, DEC-009); GET /me/bookmarks gains a done filter (true/false); PATCH /me/bookmarks/{id}/done sets/clears it (auth-scoped); done rides the bookmark list serializer + reader data export; /bookmarks page gets All/To-read/Done filter chips + a per-card mark-done/to-read control; backend + frontend + e2e tests; README/CHANGELOG"
+    },
+    "CHG-632": {
+      "id": "CHG-632",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-16T07:58:56+00:00",
+      "updated_at": "2026-09-16T07:58:56+00:00",
+      "touched_round": 363,
+      "title": "add ReaderBookmark.done queue state backend (models/crud/router/migration/tests)",
+      "commit": "2dbdebca"
+    },
+    "EV-268": {
+      "id": "EV-268",
+      "type": "evidence",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-16T08:30:31+00:00",
+      "updated_at": "2026-09-16T08:30:31+00:00",
+      "touched_round": 364,
+      "source": "python-reviewer aca04c3ad453763b0",
+      "summary": "review HIGH: server_default literal 'false' compiles to TEXT DEFAULT 'false' on SQLite; bool('false')==True makes pre-existing bookmarks read Done and the integer-bound .is_() done filter misses them entirely. Fixed to sa.false()/false() in models.py/auth.py + both migrations; regression tests now pin SELECT done == 0 on a pre-existing row.",
+      "confidence": 1.0
+    },
+    "HYP-021": {
+      "id": "HYP-021",
+      "type": "hypothesis",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-16T08:31:19+00:00",
+      "updated_at": "2026-09-16T08:31:19+00:00",
+      "touched_round": 364,
+      "confidence": 1,
+      "title": "server_default literal 'false' is dialect-unsafe: SQLite stores TEXT 'false' -> pre-existing rows read back True",
+      "description": "The new done column (and sibling round-360 public_likes) used server_default=\"false\". On SQLite that compiles to DEFAULT 'false' (TEXT), so bool('false')==True for pre-existing rows and the integer-bound .is_() done filter never matches -> those rows invisible in both filtered views. Fix: sa.false()/false() which compile to DEFAULT 0 on SQLite and DEFAULT false on PG."
+    },
+    "CHG-633": {
+      "id": "CHG-633",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-16T09:03:24+00:00",
+      "updated_at": "2026-09-16T09:03:24+00:00",
+      "touched_round": 364,
+      "title": "frontend /bookmarks To-read/Done queue (chips + per-row toggle, setDone sync, i18n, tests, e2e)",
+      "commit": "a2f2ad43"
+    },
+    "CHG-634": {
+      "id": "CHG-634",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-16T09:13:26+00:00",
+      "updated_at": "2026-09-16T09:13:26+00:00",
+      "touched_round": 364,
+      "title": "README/CHANGELOG round 361 bookmark To-read/Done queue docs",
+      "commit": "c67c090a"
+    },
+    "EV-269": {
+      "id": "EV-269",
+      "type": "evidence",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-16T09:13:27+00:00",
+      "updated_at": "2026-09-16T09:13:27+00:00",
+      "touched_round": 364,
+      "source": "e2e bookmark-done.spec.ts + full verifies",
+      "summary": "Round 361 VERIFY green: backend 1681 passed (cov 93.78%, ruff/pyright clean), migration g1h3i5k7m9n1 round-trip dev-PG+SQLite with dialect-safe sa.false defaults, frontend 2223 vitest + typecheck + lint, browser e2e 2/2 journeys passed (mark Done -> prune queue -> reload persistence; flip back to To-read).",
+      "confidence": 1.0
+    },
+    "DEC-396": {
+      "id": "DEC-396",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-16T09:14:22+00:00",
+      "updated_at": "2026-09-16T09:14:22+00:00",
+      "touched_round": 364,
+      "title": "close round 361: read-later vs done bookmark queue states delivered (DEC-395 superseded)",
+      "rationale": "The /bookmarks conflation is resolved: reader_bookmarks.done (additive, DEC-009) marks To-read vs Done; GET /me/bookmarks filters by done; idempotent PATCH /me/bookmarks/{id}/done; done rides the serializer + portable export; /bookmarks has All/To-read/Done chips + per-row toggle; cloud-synced and merge-preserved (local logged-out Done survives the pull). Review HIGH (SQLite TEXT 'false' default) fixed dialect-safe with sa.false() in both done and sibling public_likes. VERIFY green end-to-end.",
+      "alternatives_rejected": "Marking done implicitly by simply having the bookmark exist (no explicit queue state) would keep the conflation. A DB-level FK on reader_bookmarks.done was not added (DEC-009 additive rule). Server-side auto-done on read-completion would surprise readers who save for later reference; manual toggle is explicit and predictable."
     }
   },
   "edges": [
@@ -39793,6 +39901,54 @@
       "to": "DEC-393",
       "type": "supersedes",
       "created_at": "2026-09-16T07:00:17+00:00"
+    },
+    {
+      "from": "DEC-395",
+      "to": "TASK-423",
+      "type": "governs",
+      "created_at": "2026-09-16T07:03:55+00:00"
+    },
+    {
+      "from": "CHG-632",
+      "to": "TASK-423",
+      "type": "implements",
+      "created_at": "2026-09-16T07:59:11+00:00"
+    },
+    {
+      "from": "EV-268",
+      "to": "HYP-021",
+      "type": "validates",
+      "created_at": "2026-09-16T08:31:20+00:00"
+    },
+    {
+      "from": "CHG-633",
+      "to": "TASK-423",
+      "type": "implements",
+      "created_at": "2026-09-16T09:03:24+00:00"
+    },
+    {
+      "from": "CHG-634",
+      "to": "TASK-423",
+      "type": "implements",
+      "created_at": "2026-09-16T09:13:26+00:00"
+    },
+    {
+      "from": "EV-269",
+      "to": "HYP-021",
+      "type": "validates",
+      "created_at": "2026-09-16T09:13:52+00:00"
+    },
+    {
+      "from": "DEC-396",
+      "to": "DEC-395",
+      "type": "supersedes",
+      "created_at": "2026-09-16T09:14:23+00:00"
+    },
+    {
+      "from": "DEC-396",
+      "to": "TASK-423",
+      "type": "governs",
+      "created_at": "2026-09-16T09:14:23+00:00"
     }
   ]
 }
