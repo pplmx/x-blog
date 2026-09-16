@@ -297,6 +297,75 @@ def _notify_comment_approved(db: Session, comment: models.Comment) -> None:
         if mentioned_ids:
             _notify_mentions(post, comment, mentioned_ids, db)
 
+    # Reader-to-reader follow fan-out (round 365, DEC-403): an approved comment
+    # from a reader notifies everyone following that READER (the person-shaped
+    # axis of the follow wheel — distinct from the thread followers above,
+    # whose subscription is to the POST). The commenter cannot follow themself
+    # (enforced at follow time), so no self-exclusion is needed beyond the
+    # replied-to reader already notified above — skip them to avoid a double
+    # push when the parent reader also follows the commenter.
+    if post is not None and comment.reader_id is not None:
+        _notify_reader_followers(post, comment, db)
+
+
+def _notify_reader_followers(post: models.Post, comment: models.Comment, db: Session) -> None:
+    """Inbox 'reader you follow commented' fan-out (round 365, DEC-403).
+
+    Followers of the COMMENT's reader (not the thread's subscribers — that is
+    the separate post-shaped fan-out above) learn the commenter said something
+    new. Best-effort like every fan-out: never fails the approving write, syncs
+    only the durable inbox (a browser push for this social gesture is a
+    follow-up, like email for thread news). The replied-to reader is excluded
+    when the comment is a reply — they already got the targeted reply
+    notification above, and a double push for the same comment is noise.
+    """
+    try:
+        target_ids = crud.list_reader_follower_ids(db, comment.reader_id or 0)
+        if not target_ids:
+            return
+        if comment.parent_id is not None:
+            parent = db.get(models.Comment, comment.parent_id)
+            if parent is not None and parent.reader_id is not None:
+                target_ids = [rid for rid in target_ids if rid != parent.reader_id]
+        if not target_ids:
+            return
+        # Deactivation silences every channel (DEC-194) and the per-kind opt-out
+        # (DEC-171) applies to this kind like any other: reader_comment is a
+        # NOTIFICATION_KINDS member with its own ReaderNotificationPref column
+        # (round 365), so an opted-out follower is dropped here — and a missing
+        # pref row reads enabled.
+        active_ids = {
+            rid
+            for (rid,) in db.query(auth.ReaderAccount.id)
+            .filter(auth.ReaderAccount.id.in_(target_ids), auth.ReaderAccount.is_active.is_(True))
+            .all()
+        }
+        prefs = crud.reader_notification_prefs_for(db, target_ids)
+        target_ids = [
+            rid
+            for rid in target_ids
+            if rid in active_ids and crud.notification_kind_enabled(prefs.get(rid), "reader_comment")
+        ]
+        if not target_ids:
+            return
+        commenter = db.get(auth.ReaderAccount, comment.reader_id)
+        who = commenter.display_name if commenter is not None and commenter.display_name else "Reader"
+        crud.record_reader_follow_notifications(
+            db,
+            target_ids,
+            commenter=who,
+            post_title=post.title or "",
+            url=f"/posts/{post.slug}#comment-{comment.id}",
+        )
+    except Exception:  # noqa: BLE001 — best effort, never fail the caller
+        # Log, never rollback: record_reader_follow_notifications is itself
+        # best-effort (it swallows its own errors), so anything reaching here is
+        # a query-level surprise — and a Session.rollback() here would expire
+        # the just-approved Comment mid-request and 500 the approval (the other
+        # fan-out helpers log-without-rollback for the same reason; the session
+        # dies at request end anyway, so no partial rows leak).
+        logger.exception("reader-follow comment fan-out failed")
+
 
 def _notify_mentions(
     post: models.Post,

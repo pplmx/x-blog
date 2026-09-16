@@ -581,8 +581,9 @@ class ReaderNotification(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     reader_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
-    # kind ∈ {new_post, series_new_part, reply, thread_comment}; distinguishes
-    # the event source for iconography/filtering on the frontend.
+    # kind ∈ {new_post, series_new_part, reply, thread_comment, reader_comment,
+    # mention}; distinguishes the event source for iconography/filtering on the
+    # frontend. reader_comment is the reader-to-reader follow fan-out (round 365).
     kind: Mapped[str] = mapped_column(String(32), nullable=False, default="new_post")
     title: Mapped[str] = mapped_column(String(200), nullable=False)
     body: Mapped[str | None] = mapped_column(String(500))
@@ -621,6 +622,11 @@ class ReaderNotificationPref(Base):
     # comment names this reader's display name as @<name>. On by default like
     # the other push/inbox kinds; additive column (DEC-009).
     mention: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True, server_default=true())
+    # Reader-to-reader follow (round 365, DEC-403): a durable inbox row when
+    # an approved comment by a reader the reader FOLLOWS lands. On by default
+    # like the other inbox kinds; additive column (DEC-009). Per-follow fine
+    # control (ReaderFollow.notify) is a separate, reserved axis.
+    reader_comment: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True, server_default=true())
     # Email channel (DEC-197, TASK-217): a per-kind *opt-in* copy of the fan-out,
     # delivered over SMTP to the reader's registered address. Off by default —
     # email must never arrive unless the reader explicitly asked for it — and
@@ -712,6 +718,41 @@ class AuthorFollow(Base):
         "User",
         primaryjoin="AuthorFollow.author_id == User.id",
         foreign_keys="AuthorFollow.author_id",
+    )
+
+
+class ReaderFollow(Base):
+    """A reader following another READER's approved comments (round 365).
+
+    The reader-to-reader follow axis: authors, tags, series and categories were
+    followable, but a commenter whose takes a reader enjoys had no way to
+    subscribe to the person. Mirrors AuthorFollow (round 353): one row per
+    reader↔followed pair, ``notify`` decouples tracking from push fan-out, and
+    the fan-out happens when a followed reader's comment is approved
+    (comments.py _notify_comment_approved → a durable inbox row, unlike the
+    author-follow new-post fan-out). Only an active reader is followable (the
+    public surface is no-oracle); a reader cannot follow themself.
+    ``followed_id`` is a plain integer without a DB-level FK (SQLite alembic
+    can't add FK-carrying columns to existing tables, DEC-009); integrity is
+    enforced at the API layer.
+    """
+
+    __tablename__ = "reader_follows"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    reader_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
+    followed_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
+    # Decouples "following the person" from "being notified": a reader can keep
+    # following after muting push, and a mute never disturbs the relationship.
+    notify: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True, server_default=true())
+    created_at: Mapped[datetime | None] = mapped_column(DateTime, default=lambda: datetime.now(UTC))
+
+    __table_args__ = (UniqueConstraint("reader_id", "followed_id", name="uq_reader_follows_reader_followed"),)
+
+    followed: Mapped[ReaderAccount | None] = relationship(
+        "ReaderAccount",
+        primaryjoin="ReaderFollow.followed_id == ReaderAccount.id",
+        foreign_keys="ReaderFollow.followed_id",
     )
 
 

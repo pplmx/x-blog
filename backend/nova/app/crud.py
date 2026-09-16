@@ -3214,6 +3214,81 @@ def list_author_follow_reader_ids(db: Session, author_id: int) -> list[int]:
     ]
 
 
+# Reader → reader follow (round 365, DEC-403): the person-shaped axis of the
+# follow wheel. Mirrors AuthorFollow exactly — unique (reader_id, followed_id),
+# notify decouples tracking from fan-out, list-by-relationship for management.
+def get_reader_follow(db: Session, reader_id: int, followed_id: int) -> models.ReaderFollow | None:
+    """A single reader→reader follow row, or None (reader-follow, round 365)."""
+    return (
+        db.query(models.ReaderFollow)
+        .filter(
+            models.ReaderFollow.reader_id == reader_id,
+            models.ReaderFollow.followed_id == followed_id,
+        )
+        .first()
+    )
+
+
+def add_reader_follow(db: Session, reader_id: int, followed_id: int) -> tuple[models.ReaderFollow, bool]:
+    """Follow another reader; returns (follow, created). Idempotent (201/200)."""
+    existing = get_reader_follow(db, reader_id, followed_id)
+    if existing:
+        return existing, False
+    follow = models.ReaderFollow(reader_id=reader_id, followed_id=followed_id)
+    db.add(follow)
+    if _commit_reader_upsert(db):
+        db.refresh(follow)
+        return follow, True
+    existing = get_reader_follow(db, reader_id, followed_id)
+    if existing:
+        return existing, False
+    raise RuntimeError("reader follow insert lost the unique-key race but no row was found")
+
+
+def remove_reader_follow(db: Session, reader_id: int, followed_id: int) -> bool:
+    """Unfollow a reader; returns True if a follow was removed. Idempotent 204."""
+    follow = get_reader_follow(db, reader_id, followed_id)
+    if not follow:
+        return False
+    db.delete(follow)
+    db.commit()
+    return True
+
+
+def list_reader_follows(db: Session, reader_id: int) -> list[models.ReaderFollow]:
+    """The reader's reader-follow rows (with the followed account loaded), newest first."""
+    return (
+        db.query(models.ReaderFollow)
+        .options(joinedload(models.ReaderFollow.followed))
+        .filter(models.ReaderFollow.reader_id == reader_id)
+        .order_by(models.ReaderFollow.created_at.desc(), models.ReaderFollow.id.desc())
+        .all()
+    )
+
+
+def list_reader_follower_ids(db: Session, followed_id: int) -> list[int]:
+    """Reader ids following this reader (for the comment-approval fan-out)."""
+    return [
+        reader_id
+        for (reader_id,) in db.query(models.ReaderFollow.reader_id)
+        .filter(
+            models.ReaderFollow.followed_id == followed_id,
+            models.ReaderFollow.notify.is_(True),
+        )
+        .all()
+    ]
+
+
+def count_reader_followers(db: Session, followed_id: int) -> int:
+    """How many readers follow this reader (public profile surface)."""
+    return db.query(models.ReaderFollow.reader_id).filter(models.ReaderFollow.followed_id == followed_id).count()
+
+
+def is_following_reader(db: Session, reader_id: int, followed_id: int) -> bool:
+    """Whether ``reader_id`` follows ``followed_id`` (auth-gated profile field)."""
+    return get_reader_follow(db, reader_id, followed_id) is not None
+
+
 def get_tag_follow(db: Session, reader_id: int, tag_id: int) -> models.TagFollow | None:
     """Return the reader's follow for a tag, or None."""
     return (
@@ -4048,6 +4123,9 @@ def notification_copy(
         if kind == "mention":
             who = commenter or "Someone"
             return "You were mentioned in a comment", f"{who} mentioned you in {post_title}"
+        if kind == "reader_comment":
+            who = commenter or "A reader you follow"
+            return "A reader you follow commented", f"{who} commented on {post_title}"
         return "New notification", post_title
     if kind == "series_new_part":
         return "系列更新", f"《{post_title}》"
@@ -4062,6 +4140,9 @@ def notification_copy(
             MENTION_NOTIF_TITLE,
             MENTION_NOTIF_BODY.replace("{commenter}", commenter or "").replace("{post_title}", post_title),
         )
+    if kind == "reader_comment":
+        who = commenter or "你关注的读者"
+        return "你关注的读者发表了评论", f"{who} 在《{post_title}》下发表了评论"
     return "Notification", post_title
 
 
@@ -4402,6 +4483,41 @@ def _notification_rows(
     ]
 
 
+def record_reader_follow_notifications(
+    db: Session,
+    reader_ids: list[int],
+    *,
+    commenter: str,
+    post_title: str,
+    url: str,
+) -> None:
+    """Persist a 'reader you follow commented' inbox row for every follower at
+    once (round 365, DEC-403).
+
+    Same batched, atomic, best-effort contract as the thread-comment and
+    mention fan-outs: build every row (localized per reader), flush once, prune
+    once, commit once; never raises so an approving comment cannot break on
+    notification persistence.
+    """
+    try:
+        rows = _notification_rows(
+            db,
+            reader_ids,
+            kind="reader_comment",
+            post_title=post_title,
+            url=url,
+            commenter=commenter,
+        )
+        if not rows:
+            return
+        db.add_all(rows)
+        db.flush()
+        _prune_notifications_for_readers(db, set(reader_ids))
+        db.commit()
+    except Exception:  # noqa: BLE001 — best effort, never fail the caller
+        db.rollback()
+
+
 def record_mention_notifications(
     db: Session,
     reader_ids: list[int],
@@ -4479,7 +4595,7 @@ def record_thread_comment_notifications(
 # label refinement of new_post (ISS-114, DEC-181) — it is never a separate
 # toggle because a series update IS a new post; the new_post kill-switch gates
 # it.
-NOTIFICATION_KINDS: tuple[str, ...] = ("new_post", "reply", "thread_comment", "mention")
+NOTIFICATION_KINDS: tuple[str, ...] = ("new_post", "reply", "thread_comment", "mention", "reader_comment")
 # Email channel (DEC-197, TASK-217): per-kind opt-ins accepted by the same
 # PATCH endpoint. The fan-out gating for these lives in emailer.email_channel_enabled.
 # email_weekly_digest (DEC-201, TASK-222) is the recurring digest opt-in — same

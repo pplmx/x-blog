@@ -425,6 +425,31 @@ class AuthorFollowNotifyUpdate(BaseModel):
     notify: bool
 
 
+class FollowedReaderItem(BaseModel):
+    """A reader the reader follows (round 365).
+
+    Public identity only, like the author-follow item: display name + avatar,
+    never the email. ``display_name`` may be null (a reader who never set one)
+    — the account page falls back to the anonymous label the profile shows."""
+
+    reader_id: int
+    display_name: str | None = None
+    avatar_url: str | None = None
+    notify: bool
+
+
+class FollowedReaderListResponse(BaseModel):
+    items: list[FollowedReaderItem]
+    total: int
+
+
+class ReaderFollowResponse(BaseModel):
+    reader_id: int
+    display_name: str | None = None
+    following: bool
+    notify: bool
+
+
 class AddBookmarkResponse(BaseModel):
     post_id: int
     # True when the bookmark was newly created, False when it already existed
@@ -2241,6 +2266,83 @@ def unfollow_author(
     return None
 
 
+# Reader → reader follow (round 365, DEC-403): the person-shaped axis of the
+# follow wheel — a reader can subscribe to another commenter's approved
+# comments. Mirrors the author-follow endpoints (idempotent, self-follow and
+# unknown/inactive targets rejected, never the email).
+def _get_followable_reader(db: Session, reader_id: int) -> auth.ReaderAccount | None:
+    """An active reader that can be followed (not-deleted, exists), else None."""
+    return db.query(auth.ReaderAccount).filter(auth.ReaderAccount.id == reader_id).first()
+
+
+@router.get("/me/follows/readers", response_model=FollowedReaderListResponse)
+def list_reader_follows(
+    current_reader: auth.ReaderAccount = Depends(auth.get_current_reader),
+    db: Session = Depends(get_db),
+):
+    """The readers the reader follows, newest first, for /account management."""
+    rows = crud.list_reader_follows(db, current_reader.id)
+    items = []
+    for f in rows:
+        followed = f.followed
+        if followed is None or followed.is_active is False:
+            # A deactivated-reader follow is like a username-only author: it has
+            # no usable public identity, so it is dropped from the management
+            # list rather than surfacing a dead row.
+            continue
+        items.append(
+            FollowedReaderItem(
+                reader_id=f.followed_id,
+                display_name=followed.display_name,
+                avatar_url=followed.avatar_url,
+                notify=f.notify,
+            )
+        )
+    return FollowedReaderListResponse(items=items, total=len(items))
+
+
+@router.put("/me/follows/readers/{reader_id}", response_model=ReaderFollowResponse)
+@limiter.limit(f"{RATE_LIMIT_WRITE}/minute")
+def follow_reader(
+    request: Request,  # noqa: ARG001
+    reader_id: IdInt,
+    response: Response,
+    current_reader: auth.ReaderAccount = Depends(auth.get_current_reader),
+    db: Session = Depends(get_db),
+):
+    """Follow another reader for comment fan-out. Idempotent: 201/200.
+
+    Self-follow is rejected (a reader cannot subscribe to themself) and an
+    unknown/deactivated target is a uniform 404 — no followability oracle.
+    """
+    if reader_id == current_reader.id:
+        raise HTTPException(status_code=400, detail="You cannot follow yourself")
+    target = _get_followable_reader(db, reader_id)
+    if target is None or target.is_active is False:
+        raise HTTPException(status_code=404, detail="Reader not found")
+    follow, created = crud.add_reader_follow(db, current_reader.id, reader_id)
+    response.status_code = 201 if created else 200
+    return ReaderFollowResponse(
+        reader_id=reader_id,
+        display_name=target.display_name,
+        following=True,
+        notify=follow.notify,
+    )
+
+
+@router.delete("/me/follows/readers/{reader_id}", status_code=204)
+@limiter.limit(f"{RATE_LIMIT_WRITE}/minute")
+def unfollow_reader(
+    request: Request,  # noqa: ARG001
+    reader_id: IdInt,
+    current_reader: auth.ReaderAccount = Depends(auth.get_current_reader),
+    db: Session = Depends(get_db),
+):
+    """Unfollow a reader. Idempotent 204."""
+    crud.remove_reader_follow(db, current_reader.id, reader_id)
+    return None
+
+
 # Server-backed reading history (DEC-116/TASK-170)
 # ---------------------------------------------------------------------------
 
@@ -2793,6 +2895,9 @@ class NotificationPrefs(BaseModel):
     # @-mentions (DEC-322, TASK-389): durable inbox rows when an approved
     # comment names this reader's display name as @<name>.
     mention: bool
+    # Reader-to-reader follow (round 365, DEC-403): durable inbox rows when
+    # an approved comment by a reader the reader FOLLOWS lands.
+    reader_comment: bool
     email_new_post: bool
     email_reply: bool
     email_thread_comment: bool
@@ -2828,6 +2933,7 @@ def get_my_notification_prefs(
         reply=prefs.reply,
         thread_comment=prefs.thread_comment,
         mention=prefs.mention,
+        reader_comment=prefs.reader_comment,
         email_new_post=prefs.email_new_post,
         email_reply=prefs.email_reply,
         email_thread_comment=prefs.email_thread_comment,
@@ -2856,6 +2962,7 @@ def set_my_notification_pref(
         reply=prefs.reply,
         thread_comment=prefs.thread_comment,
         mention=prefs.mention,
+        reader_comment=prefs.reader_comment,
         email_new_post=prefs.email_new_post,
         email_reply=prefs.email_reply,
         email_thread_comment=prefs.email_thread_comment,

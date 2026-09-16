@@ -16,7 +16,7 @@ from fastapi import APIRouter, Depends, HTTPException, Path, Query, Request
 from pydantic import BaseModel, ConfigDict, field_validator
 from sqlalchemy.orm import Session
 
-from app import crud, schemas
+from app import auth, crud, schemas
 from app.database import get_db
 from app.limiter import RATE_LIMIT_READ, limiter
 from app.schemas import PageInt
@@ -55,6 +55,12 @@ class ReaderPublicProfile(BaseModel):
     # renders the tab only when the reader chose to publish their bookmarks
     # (the endpoint 404s otherwise — same no-oracle stance as public_likes).
     public_bookmarks: bool = False
+    # Reader-to-reader follow (round 365, DEC-403): how many readers follow
+    # this one — public, like an author-follow count. ``is_following`` is the
+    # SIGNED-IN caller's own stance (false for guests / a caller not following),
+    # so the profile header can render a Follow/Following button.
+    follower_count: int = 0
+    is_following: bool = False
     created_at: datetime | None = None
 
     @field_validator("created_at", mode="before")
@@ -119,6 +125,7 @@ def reader_profile(
     request: Request,  # noqa: ARG001 — keyed by the rate limiter (RATE_LIMIT_READ)
     page: PageInt = 1,
     limit: int = Query(20, ge=1, le=100),
+    current_reader: auth.ReaderAccount | None = Depends(auth.get_optional_reader),
     db: Session = Depends(get_db),
 ):
     """A reader's public homepage: display name, join date, and their approved
@@ -126,6 +133,8 @@ def reader_profile(
 
     Unknown reader -> 404 (a profile is only reachable by id that a comment
     actually carried, so a missing id is a broken link, not an empty page).
+    The optional auth resolution is what lets the header render the caller's
+    own Follow/Following state (round 365) while the page stays fully public.
     """
     reader = crud.get_reader_public_profile(db, reader_id)
     if reader is None:
@@ -143,8 +152,13 @@ def reader_profile(
                 post=(schemas.CommentPostBrief(id=post.id, title=post.title, slug=post.slug) if post else None),
             )
         )
+    profile_data = ReaderPublicProfile.model_validate(reader).model_dump()
+    profile_data["follower_count"] = crud.count_reader_followers(db, reader_id)
+    profile_data["is_following"] = current_reader is not None and crud.is_following_reader(
+        db, current_reader.id, reader_id
+    )
     return ReaderProfilePage(
-        profile=ReaderPublicProfile.model_validate(reader),
+        profile=ReaderPublicProfile(**profile_data),
         items=items,
         pagination=ReaderProfilePagination(
             total=total,
