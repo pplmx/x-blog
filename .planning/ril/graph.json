@@ -2,7 +2,7 @@
   "ril_version": 1,
   "round": 372,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-16T22:15:28+00:00",
+  "updated_at": "2026-09-16T22:17:52+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -27481,6 +27481,31 @@
       "title": "Round 369 my-comments keyword search closed (DEC-412)",
       "rationale": "TASK-431 delivered end-to-end: backend q filter, frontend debounced search box, 9 backend tests + 7 page tests, e2e journey, docs; all VERIFY gates green (1757 backend @93.72%, 2286 vitest, e2e 3/3).",
       "alternatives_rejected": "None - closed as planned; no scope change."
+    },
+    "DEC-413": {
+      "id": "DEC-413",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-16T22:17:52+00:00",
+      "updated_at": "2026-09-16T22:17:52+00:00",
+      "touched_round": 372,
+      "title": "Recall search over the reader liked posts (DEC-413)",
+      "rationale": "Every reader-owned content surface has recall search except the liked-posts list: bookmarks (DEC-124), history (DEC-148), and my-comments (round 369) all let a reader find a specific item by keyword, but the /liked page (round 359) still only paginates. A reader who liked many posts over a year cannot find the one they now recall. Add a server-side q filter to GET /api/reader/me/likes matching Post.title/excerpt (escape aware, composes with pagination) plus a debounced search box on /liked, mirroring the history recall-search pattern.",
+      "alternatives_rejected": "Client-side page filter rejected for the same reason as my-comments: /liked paginates at limit 20 so a client filter misses the rest of the list; SQL-side filter searches the whole liked set. No new index: reader scoped rows joined on ReaderPostLike + visibility, bounded by that reader volume (same as history/search)."
+    },
+    "TASK-432": {
+      "id": "TASK-432",
+      "type": "task",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-16T22:17:52+00:00",
+      "updated_at": "2026-09-16T22:17:52+00:00",
+      "touched_round": 372,
+      "category": "core-feature",
+      "severity": "medium",
+      "title": "Keyword search over the reader liked posts (TASK-432)",
+      "detail": "Add q to list_reader_post_likes (crud.py 2156) and GET /me/likes (reader.py 1674); title/excerpt escape-aware LIKE. Frontend: debounced search box on /liked passing q to getReaderLikes, clears reset page 1, searching-aware empty state, zh+en keys. Vertical slice: backend + tests + frontend + page tests + e2e + docs."
     }
   },
   "edges": [
@@ -40939,6 +40964,12 @@
       "to": "DEC-411",
       "type": "supersedes",
       "created_at": "2026-09-16T22:15:10+00:00"
+    },
+    {
+      "from": "DEC-413",
+      "to": "TASK-432",
+      "type": "governs",
+      "created_at": "2026-09-16T22:17:52+00:00"
     }
   ]
 }
