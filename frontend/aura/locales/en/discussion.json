@@ -1,0 +1,16 @@
+{
+	"discussion": {
+		"seo": {
+			"title": "Latest Discussion",
+			"description": "Browse the latest reader discussion on X-Blog"
+		},
+		"header": "Latest Discussion",
+		"subtitle": "The newest comments across the site, jumping to their post and comment",
+		"empty": "No public discussion yet",
+		"emptyHint": "The first approved comment on the first post will appear here",
+		"loadFailed": "Couldn't load the discussion — please try again",
+		"jumpTo": "Jump to the discussion",
+		"meta": "comment",
+		"readerLabel": "Commenter"
+	}
+}

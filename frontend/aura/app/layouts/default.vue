@@ -314,6 +314,17 @@ onMounted(initTheme);
         <!-- Static pages (round 347): the published /pages/{slug} links so an
              admin-curated privacy policy / terms / contact is discoverable. -->
         <PagesFooterLinks />
+        <!-- Site-wide discussion feed (round 367, DEC-407): the conversation's
+             public entry point, beside the content links. -->
+        <nav class="mb-6" :aria-label="t('common.footer.discussion')">
+          <NuxtLink
+            to="/discussion"
+            class="inline-flex items-center gap-1 text-sm text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+          >
+            <Icon icon="lucide:messages-square" class="w-3.5 h-3.5" />
+            {{ t('common.footer.discussion') }}
+          </NuxtLink>
+        </nav>
         <div class="flex flex-col sm:flex-row items-center justify-between gap-4">
           <div class="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
             <span>© 2026 X-Blog.</span>

@@ -1,5 +1,6 @@
+import { type MaybeRefOrGetter, toValue } from "vue";
 import { readerAuthHeaders } from "../auth";
-import type { Comment } from "../contracts/shared";
+import type { Comment, PaginationInfo } from "../contracts/shared";
 import { command, query } from "../transport";
 
 export type CommentSort = "newest" | "oldest" | "likes";
@@ -75,6 +76,37 @@ export function unsubscribeGuestReplyNotify(token: string): Promise<{
 		method: "POST",
 		body: { token },
 	});
+}
+
+/** One entry on the site-wide discussion feed (round 367, DEC-407). */
+export interface DiscussionFeedItem {
+	id: number;
+	nickname: string;
+	content: string;
+	likes: number;
+	created_at: string;
+	reader: Comment["reader"];
+	/** The post the comment lives on (for the deep link onto the comment). */
+	post: { id: number; title: string; slug: string } | null;
+}
+
+export interface DiscussionFeedResponse {
+	items: DiscussionFeedItem[];
+	pagination: PaginationInfo;
+}
+
+/**
+ * Site-wide discussion feed (GET /api/comments/feed, round 367 / DEC-407).
+ *
+ * The newest approved comments on publicly-visible posts, each with the
+ * commenter identity and the post brief so a card can deep-link onto the exact
+ * comment. Search (DEC-405) made the discussion FINDABLE; the feed makes it
+ * BROWSABLE. Public, no auth, paginated.
+ */
+export function useDiscussionFeed(page: MaybeRefOrGetter<number> = 1, limit = 20) {
+	return query<DiscussionFeedResponse>(
+		() => `/api/comments/feed?page=${toValue(page)}&limit=${limit}`,
+	);
 }
 
 /**

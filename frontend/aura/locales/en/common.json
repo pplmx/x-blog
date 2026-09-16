@@ -23,7 +23,8 @@
 		"footer": {
 			"madeWith": "Made with",
 			"forDevelopers": "for developers",
-			"subscribeRss": "Subscribe"
+			"subscribeRss": "Subscribe",
+			"discussion": "Discussion"
 		},
 		"action": {
 			"back": "Back",

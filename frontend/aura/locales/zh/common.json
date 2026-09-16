@@ -23,7 +23,8 @@
 		"footer": {
 			"madeWith": "用",
 			"forDevelopers": "为开发者打造",
-			"subscribeRss": "订阅"
+			"subscribeRss": "订阅",
+			"discussion": "最新讨论"
 		},
 		"action": {
 			"back": "返回",

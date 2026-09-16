@@ -1,0 +1,16 @@
+{
+	"discussion": {
+		"seo": {
+			"title": "最新讨论",
+			"description": "浏览 X-Blog 上最新的读者讨论"
+		},
+		"header": "最新讨论",
+		"subtitle": "站点里最近的评论，跳转到对应的文章与评论",
+		"empty": "还没有公开的讨论",
+		"emptyHint": "第一篇文章下第一条通过审核的评论会出现在这里",
+		"loadFailed": "讨论加载失败，请稍后重试",
+		"jumpTo": "跳到讨论",
+		"meta": "评论",
+		"readerLabel": "评论者"
+	}
+}

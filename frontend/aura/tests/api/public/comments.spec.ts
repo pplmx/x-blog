@@ -6,6 +6,7 @@ import {
 	getComments,
 	likeComment,
 	useComments,
+	useDiscussionFeed,
 } from "../../../api/public/comments.ts";
 
 let queryCalls: Array<{ path: unknown; options: Record<string, unknown> }>;
@@ -36,6 +37,16 @@ afterEach(() => {
 });
 
 describe("public comments queries", () => {
+	it("builds the site-wide discussion feed URL from a reactive page", () => {
+		let page = 1;
+		useDiscussionFeed(() => page, 20);
+
+		const path = queryCalls[0].path as () => string;
+		expect(path()).toBe("/api/comments/feed?page=1&limit=20");
+		page = 3;
+		expect(path()).toBe("/api/comments/feed?page=3&limit=20");
+	});
+
 	it("fetches the comment thread with page, limit, and sort for setup usage", () => {
 		useComments(12, 2, 20, "likes");
 
