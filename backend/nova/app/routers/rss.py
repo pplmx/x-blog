@@ -288,6 +288,162 @@ def generate_rss_feed(
     return rss
 
 
+def _comment_permalink(site_url: str, comment: models.Comment) -> str:
+    """Deep link for a comment feed item — ON the comment (#comment-{id}),
+    matching the /discussion page and DEC-321, not just the post headline."""
+    slug = comment.post.slug if comment.post else ""
+    return f"{site_url}/posts/{slug}#comment-{comment.id}"
+
+
+def _comment_display_name(comment: models.Comment) -> str:
+    """The commenter label for a feed item: the verified display name when the
+    comment is reader-attributed, else the stored nickname (same fallback as
+    the discussion page)."""
+    if comment.reader is not None and comment.reader.display_name:
+        return comment.reader.display_name
+    return comment.nickname or "commenter"
+
+
+def generate_comments_rss_feed(
+    comments: list,
+    site_url: str,
+    title: str,
+    description: str,
+    self_url: str,
+    language: str = "zh-CN",
+) -> str:
+    """Generate an RSS 2.0 feed of the latest approved comments (round 368,
+    DEC-409). One item per comment: the post title as the entry title, the
+    comment content as the description, and a perma link ON the comment."""
+    items = []
+    for c in comments:
+        pub_date = c.created_at.strftime("%a, %d %b %Y %H:%M:%S GMT") if c.created_at else ""
+        link = _comment_permalink(site_url, c)
+        post_title = c.post.title if c.post else "Comment"
+        who = _comment_display_name(c)
+        items.append(f"""<item>
+        <title>{_cdata(f"{who} · {post_title}")}</title>
+        <link>{escape(link)}</link>
+        <guid isPermaLink="true">{escape(link)}</guid>
+        <pubDate>{pub_date}</pubDate>
+        <description>{_cdata(c.content or "")}</description>
+    </item>""")
+    rss = f"""<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+<channel>
+    <title>{escape(title)}</title>
+    <link>{escape(site_url)}</link>
+    <description>{escape(description)}</description>
+    <language>{escape(language)}</language>
+    <lastBuildDate>{datetime.now(UTC).strftime("%a, %d %b %Y %H:%M:%S GMT")}</lastBuildDate>
+    <atom:link href="{escape(self_url)}" rel="self" type="application/rss+xml"/>
+    {"".join(items)}
+</channel>
+</rss>"""
+    return rss
+
+
+def generate_comments_atom_feed(
+    comments: list,
+    site_url: str,
+    title: str,
+    description: str,
+    self_url: str,
+    language: str = "zh-CN",
+) -> str:
+    """Atom feed variant of the discussion feed (round 368, DEC-409)."""
+    items = []
+    for c in comments:
+        updated = (c.created_at or datetime.now(UTC)).strftime("%Y-%m-%dT%H:%M:%SZ")
+        link = _comment_permalink(site_url, c)
+        post_title = c.post.title if c.post else "Comment"
+        who = _comment_display_name(c)
+        items.append(f"""<entry>
+        <title>{escape(f"{who} · {post_title}")}</title>
+        <link href="{escape(link)}"/>
+        <id>{escape(link)}</id>
+        <updated>{updated}</updated>
+        <published>{updated}</published>
+        <summary>{_cdata(c.content or "")}</summary>
+        <content type="html">{_cdata(c.content or "")}</content>
+    </entry>""")
+    atom = f"""<?xml version="1.0" encoding="UTF-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom" xml:lang="{escape(language)}">
+    <title>{escape(title)}</title>
+    <link href="{escape(site_url)}"/>
+    <link href="{escape(self_url)}" rel="self"/>
+    <id>{escape(self_url)}</id>
+    <subtitle>{escape(description)}</subtitle>
+    <updated>{datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")}</updated>
+    {"".join(items)}
+</feed>"""
+    return atom
+
+
+@rss_router.get("/comments.xml")
+def get_comments_rss_feed(
+    request: Request = None,  # type: ignore[assignment] — FastAPI injects it; never None at runtime
+    db: Session = Depends(get_db),
+) -> Response:
+    """RSS 2.0 feed of the latest approved comments site-wide (round 368, DEC-409).
+
+    The conversation is findable (comment search, DEC-405), browsable
+    (/discussion, DEC-407) — this makes it SUBSCRIBABLE: a reader who wants the
+    discussion as a stream in their feed reader gets the newest approved
+    comments with the same public-visibility gate (pending/rejected and
+    draft/scheduled-post comments never appear; content never carries email/ip).
+    Cached under a scoped key like the post feeds.
+    """
+    key = ("rss-comments",)
+    cached = feed_cache.get(key)
+    if cached is not None:
+        return _feed_response(cached, "application/rss+xml", request)
+
+    comments, _ = crud.list_public_comment_feed(db, page=1, limit=20)
+    site_url = getattr(settings, "site_url", "http://localhost:3000")
+    site_title = getattr(settings, "site_title", "X-Blog")
+    site_description = getattr(settings, "site_description", "A modern blog built with FastAPI and Next.js")
+    self_url = f"{site_url}/rss/comments.xml"
+    rss = generate_comments_rss_feed(
+        comments,
+        site_url,
+        f"{site_title} · Discussion",
+        f"{site_description} · latest approved comments",
+        self_url,
+        language=settings.site_language,
+    )
+    feed_cache[key] = rss
+    return _feed_response(rss, "application/rss+xml", request)
+
+
+@rss_router.get("/comments.atom.xml")
+def get_comments_atom_feed(
+    request: Request = None,  # type: ignore[assignment] — FastAPI injects it; never None at runtime
+    db: Session = Depends(get_db),
+) -> Response:
+    """Atom feed variant of the discussion feed (round 368, DEC-409)."""
+    key = ("atom-comments",)
+    cached = feed_cache.get(key)
+    if cached is not None:
+        return _feed_response(cached, "application/atom+xml", request)
+
+    comments, _ = crud.list_public_comment_feed(db, page=1, limit=20)
+    site_url = getattr(settings, "site_url", "http://localhost:3000")
+    site_title = getattr(settings, "site_title", "X-Blog")
+    site_description = getattr(settings, "site_description", "A modern blog built with FastAPI and Next.js")
+    self_url = f"{site_url}/rss/comments.atom.xml"
+    atom = generate_comments_atom_feed(
+        comments,
+        site_url,
+        f"{site_title} · Discussion",
+        f"{site_description} · latest approved comments",
+        self_url,
+        language=settings.site_language,
+    )
+    feed_cache[key] = atom
+    return _feed_response(atom, "application/atom+xml", request)
+
+
 @rss_router.get("/feed.xml")
 def get_rss_feed(
     full: bool = True,
