@@ -9,6 +9,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- **Reader-to-reader follow (round 365)**: the follow wheel — categories,
+  series, tags and authors all already had a "tell me when this speaks" axis —
+  finally gains its person-to-person entry: a signed-in reader can follow
+  ANOTHER READER (the commenter behind a public profile) from their
+  `/readers/{id}` profile header. Every visitor sees the public follower count
+  (like an author-follow count); a signed-in non-self reader gets a
+  Follow/Following toggle that subscribes them to that reader's approved
+  comments. Whenever a moderator approves a comment from someone you follow, a
+  deep-linked `reader_comment` inbox row lands under 通知 — replies still
+  notify the replied-to reader, and a parent who also follows the commenter is
+  never double-pushed for the same comment. Deactivated followers and anyone
+  who turned the kind off are skipped, and a notification-write failure can
+  never break the approval. `/account` gains a "Followed readers" section for
+  one-click unfollow (which stops the fan-out), `reader_comment` is a real
+  per-kind opt-out on /notifications (DEC-171) like the other inbox kinds, and
+  the new follower count + the caller's own follow stance ride the public
+  profile payload (no new endpoint, no PII). Self-follow is rejected and an
+  unknown/deactivated target is a uniform 404 — no followability oracle.
+  Additive `reader_follows` table (unique per pair, `notify` reserved for
+  future per-follow control) + a `reader_notification_prefs.reader_comment`
+  column (migrations l5n7p9r1t3v5, m7d9f1a3b5c7; round-trip SQLite + Postgres).
 - **Reader two-factor authentication (round 364)**: reader accounts have
   accumulated durable private data over rounds 358–363 — cloud-synced
   bookmarks/likes/history, the GDPR export bundle, email, follows, notification
