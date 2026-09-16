@@ -14,10 +14,15 @@ export function useReaderLikes() {
 }
 
 /** Imperative liked-posts fetch for sync/merge handlers that need the data
- *  directly (bounded paging via the page/limit contract, like bookmarks). */
-export function getReaderLikes(page?: number, limit?: number): Promise<PostListResponse> {
+ *  directly (bounded paging via the page/limit contract, like bookmarks).
+ *  `q` (optional) filters to liked posts matching title/excerpt (DEC-413). */
+export function getReaderLikes(
+	page?: number,
+	limit?: number,
+	q?: string,
+): Promise<PostListResponse> {
 	return command<PostListResponse>("/api/reader/me/likes", {
-		query: { page, limit },
+		query: { page, limit, q: q?.trim() || undefined },
 		headers: readerAuthHeaders(),
 	});
 }

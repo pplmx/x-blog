@@ -9,7 +9,7 @@
  * Auth-scoped like the follows feed: guests are redirected to /login, and a
  * stale session drops back to the same sign-in route.
  */
-import { computed, onMounted, watch } from "vue";
+import { computed, onMounted, onUnmounted, watch } from "vue";
 import type { PaginationInfo, PostList } from "~~/api/contracts/shared";
 import { getReaderLikes } from "~~/api/reader/likes";
 import { scrollToPageTop } from "~~/composables/scrollToTop";
@@ -42,6 +42,42 @@ const pending = ref(true);
 const loadFailed = ref(false);
 const pagination = ref<PaginationInfo | null>(null);
 
+// Recall search over the reader's liked posts (DEC-413, TASK-432): the last
+// reader-owned surface without keyword search — bookmarks (DEC-124), history
+// (DEC-148) and my-comments (round 369) all let a reader find a specific item.
+// Server-side `q` (title/excerpt) is debounced like history's recall-search so
+// fast typing doesn't fire a request per keystroke.
+const searchQuery = ref("");
+const searching = computed(() => searchQuery.value.trim() !== "");
+let searchTimer: ReturnType<typeof setTimeout> | null = null;
+async function applySearch() {
+	// A new term restarts from page 1 — a search from a deep page would
+	// overshoot the (smaller) filtered total. The page lives in the URL, so a
+	// term change drops back there and the watch([page]) picks up the reload.
+	if (page.value !== 1) {
+		void navigateTo({ query: { page: undefined } }, { replace: true });
+		return;
+	}
+	void load();
+}
+function onSearch() {
+	if (searchTimer) clearTimeout(searchTimer);
+	searchTimer = setTimeout(() => void applySearch(), 300);
+}
+function clearSearch() {
+	searchQuery.value = "";
+	if (searchTimer) clearTimeout(searchTimer);
+	void applySearch();
+}
+// Clear the pending debounce on unmount so a delayed search can't fire against
+// an unmounted component after the reader left (wasted server call).
+onUnmounted(() => {
+	if (searchTimer) {
+		clearTimeout(searchTimer);
+		searchTimer = null;
+	}
+});
+
 const paginationTokens = computed(() =>
 	paginationPages(pagination.value?.total_pages ?? 0, page.value),
 );
@@ -64,7 +100,7 @@ async function load() {
 	pending.value = true;
 	loadFailed.value = false;
 	try {
-		const res = await getReaderLikes(page.value, 12);
+		const res = await getReaderLikes(page.value, 12, searchQuery.value);
 		items.value = res?.items ?? [];
 		pagination.value = res?.pagination ?? null;
 		const p = res?.pagination;
@@ -188,6 +224,32 @@ function retry() {
 		</div>
 
 		<template v-else>
+			<!-- Recall search over the liked posts (DEC-413, TASK-432): debounced,
+			     server-side, matches title/excerpt. -->
+			<div class="relative mb-4 max-w-sm">
+				<Icon
+					icon="lucide:search"
+					class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none"
+				/>
+				<input
+					v-model="searchQuery"
+					type="search"
+					:placeholder="t('liked.searchPlaceholder')"
+					:aria-label="t('liked.searchAria')"
+					class="w-full pl-9 pr-9 py-2 rounded-xl text-sm border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-pink-500"
+					@input="onSearch"
+				>
+				<button
+					v-if="searchQuery"
+					type="button"
+					:aria-label="t('liked.searchClear')"
+					class="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors"
+					@click="clearSearch"
+				>
+					<Icon icon="lucide:x" class="w-4 h-4" />
+				</button>
+			</div>
+
 			<p v-if="pagination" class="text-sm text-gray-400 mb-4">
 				{{ t("liked.countLabel", { count: pagination.total }) }}
 			</p>
@@ -222,17 +284,34 @@ function retry() {
 				</NuxtLink>
 			</div>
 
-			<!-- Empty state -->
+			<!-- Empty state: a search with no matches names the term and offers a
+			     one-click clear-search reset; a genuinely empty list browses posts. -->
 			<div v-else class="text-center py-12">
-				<Icon icon="lucide:heart" class="w-10 h-10 text-gray-300 dark:text-gray-600 mx-auto mb-3" />
-				<p class="text-gray-500">{{ t("liked.empty") }}</p>
-				<NuxtLink
-					to="/"
-					class="mt-4 inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
-				>
-					<Icon icon="lucide:home" class="w-4 h-4" />
-					{{ t("liked.emptyAction") }}
-				</NuxtLink>
+				<Icon
+					:icon="searching ? 'lucide:search-x' : 'lucide:heart'"
+					class="w-10 h-10 text-gray-300 dark:text-gray-600 mx-auto mb-3"
+				/>
+				<template v-if="searching">
+					<p class="text-gray-500">{{ t("liked.emptySearch", { q: searchQuery.trim() }) }}</p>
+					<button
+						type="button"
+						class="mt-4 inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+						@click="clearSearch"
+					>
+						<Icon icon="lucide:x" class="w-4 h-4" />
+						{{ t("liked.clearSearch") }}
+					</button>
+				</template>
+				<template v-else>
+					<p class="text-gray-500">{{ t("liked.empty") }}</p>
+					<NuxtLink
+						to="/"
+						class="mt-4 inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+					>
+						<Icon icon="lucide:home" class="w-4 h-4" />
+						{{ t("liked.emptyAction") }}
+					</NuxtLink>
+				</template>
 			</div>
 
 			<!-- Pagination (windowed with ellipsis, follows/home pattern) -->
