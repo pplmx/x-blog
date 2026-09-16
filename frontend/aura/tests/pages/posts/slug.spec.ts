@@ -17,6 +17,21 @@ import { type Ref, ref } from "vue";
 
 import CommentForm from "~~/components/CommentForm.vue";
 import SeriesFollowButton from "~~/components/SeriesFollowButton.vue";
+import { useReaderAuth } from "~~/composables/useReaderAuth";
+
+// Round 362, DEC-397: the post page loads personalized recommendations iff the
+// reader is signed in. The real getReaderRecommendations resolves through the
+// spec's global $fetch stub, which returns a single post object (not the array
+// the page's .slice(0,6) expects), so override just that call — recordReaderHistory
+// stays the real implementation for the resume tests that assert on it.
+const mockGetReaderRecommendations = vi.fn(async () => []);
+vi.mock("~~/api/reader/history", async (importOriginal) => {
+	const actual = await importOriginal<typeof import("../../../api/reader/history")>();
+	return {
+		...actual,
+		getReaderRecommendations: mockGetReaderRecommendations,
+	};
+});
 
 // Mock post data matching the Post interface
 const mockPost = {
@@ -1044,6 +1059,91 @@ describe("Post Detail Page", () => {
 			const wrapper = await mountPostPage();
 			const links = wrapper.findAll('a[href^="/posts/related"]');
 			expect(links.length).toBeGreaterThanOrEqual(2);
+		});
+	});
+
+	describe("Recommended for you (round 362, DEC-397)", () => {
+		const recPosts = [
+			{
+				id: 20,
+				title: "Recommended Post One",
+				slug: "recommended-post-one",
+				excerpt: "A personalized rec.",
+				published: true,
+				created_at: "2024-06-01T10:00:00Z",
+				views: 88,
+				cover_image: null,
+				category: { id: 2, name: "Science" },
+				tags: [],
+			},
+			{
+				id: 21,
+				title: "Recommended Post Two",
+				slug: "recommended-post-two",
+				excerpt: "Another rec.",
+				published: true,
+				created_at: "2024-06-02T10:00:00Z",
+				views: 77,
+				cover_image: null,
+				category: { id: 3, name: "Math" },
+				tags: [],
+			},
+		];
+
+		afterEach(() => {
+			localStorage.removeItem("reader_token");
+		});
+
+		it("is hidden for guests (no reader token → no API call, no heading)", async () => {
+			localStorage.removeItem("reader_token");
+			mockGetReaderRecommendations.mockClear();
+			const wrapper = await mountPostPage();
+			expect(wrapper.text()).not.toContain("猜你喜欢");
+			expect(wrapper.text()).not.toContain("Recommended Post One");
+			expect(mockGetReaderRecommendations).not.toHaveBeenCalled();
+		});
+
+		it("renders personalized recommendations for a signed-in reader", async () => {
+			localStorage.setItem("reader_token", "test-recs-token");
+			mockGetReaderRecommendations.mockResolvedValue(recPosts);
+			const wrapper = await mountPostPage();
+			await flushPromises();
+			expect(mockGetReaderRecommendations).toHaveBeenCalled();
+			expect(wrapper.text()).toContain("猜你喜欢");
+			expect(wrapper.text()).toContain("Recommended Post One");
+			expect(wrapper.text()).toContain("Recommended Post Two");
+		});
+
+		it("renders links to the recommended posts", async () => {
+			localStorage.setItem("reader_token", "test-recs-token");
+			mockGetReaderRecommendations.mockResolvedValue(recPosts);
+			const wrapper = await mountPostPage();
+			await flushPromises();
+			const links = wrapper.findAll('a[href="/posts/recommended-post-one"]');
+			expect(links.length).toBe(1);
+		});
+
+		it("disappears on sign-out while the page is mounted", async () => {
+			localStorage.setItem("reader_token", "test-recs-token");
+			mockGetReaderRecommendations.mockResolvedValue(recPosts);
+			const wrapper = await mountPostPage();
+			await flushPromises();
+			expect(wrapper.text()).toContain("猜你喜欢");
+
+			// logout() flips the shared isAuthenticated ref (the page watches it),
+			// which clears the strip without a reload.
+			useReaderAuth().logout();
+			await flushPromises();
+			expect(wrapper.text()).not.toContain("猜你喜欢");
+			expect(wrapper.text()).not.toContain("Recommended Post One");
+		});
+
+		it("stays quiet when recommendations come back empty (no orphaned heading)", async () => {
+			localStorage.setItem("reader_token", "test-recs-token");
+			mockGetReaderRecommendations.mockResolvedValue([]);
+			const wrapper = await mountPostPage();
+			await flushPromises();
+			expect(wrapper.text()).not.toContain("猜你喜欢");
 		});
 	});
 

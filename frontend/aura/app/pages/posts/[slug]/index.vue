@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, nextTick, ref, watch, watchEffect } from "vue";
-import type { Comment } from "~~/api/contracts/shared";
+import type { Comment, PostList } from "~~/api/contracts/shared";
 import { useAuthorPosts } from "~~/api/public/authors";
 import {
 	likePost,
@@ -10,7 +10,7 @@ import {
 	useRelatedPosts,
 } from "~~/api/public/posts";
 import { useSeriesBySlug } from "~~/api/public/series";
-import { recordReaderHistory } from "~~/api/reader/history";
+import { getReaderRecommendations, recordReaderHistory } from "~~/api/reader/history";
 // biome-ignore lint/correctness/noUnusedImports: used from the template — biome cannot resolve Vue script-setup template bindings (vue-tsc verifies).
 import { parseApiDate } from "~~/composables/apiDate";
 import { coverImageSrc } from "~~/composables/useCoverImage";
@@ -373,6 +373,39 @@ function beginReadingSession(postId: number) {
 	}
 }
 
+// Personalized "Recommended for you" (round 362, DEC-397): the homepage has
+// the affinity-based strip (DEC-128, TASK-176) but the post page — the
+// highest-intent "what should I read next?" moment — only offered topic-similar
+// Related Posts and person-shaped More-from-this-author. A signed-in reader who
+// finishes an article now gets posts scored from THEIR history/bookmark
+// affinity, reusing the same /api/reader/me/recommendations endpoint the
+// homepage calls. Guests and signed-out readers see nothing. Recommendations
+// are reader-affinity (not post-specific), so they load once on mount and clear
+// on sign-out — no per-post refetch.
+const personalRecs = ref<PostList[]>([]);
+const personalRecsLoading = ref(false);
+async function loadPersonalRecs() {
+	if (!isAuthenticated.value) {
+		personalRecs.value = [];
+		return;
+	}
+	personalRecsLoading.value = true;
+	try {
+		const recs = await getReaderRecommendations(6);
+		personalRecs.value = recs ?? [];
+	} catch {
+		personalRecs.value = [];
+	} finally {
+		personalRecsLoading.value = false;
+	}
+}
+watch(isAuthenticated, (authed) => {
+	if (!authed) {
+		personalRecs.value = [];
+		personalRecsLoading.value = false;
+	}
+});
+
 // SPA navigation between posts (prev/next, related, TOC) reuses this component
 // instance, so onMounted never re-fires for the new post. Watch the loaded id:
 // reset the previous post's resume state (stale chip included) and start a
@@ -404,6 +437,9 @@ onMounted(() => {
 	if (postId) {
 		beginReadingSession(postId);
 	}
+	// Personalized recommendations (round 362, DEC-397): affinity-based strip
+	// at the article end for signed-in readers; loads once per mount.
+	void loadPersonalRecs();
 	// A heading deep link (#section-id, as opposed to CommentList's
 	// #comment-<id>) must land the reader ON the section, not at the article
 	// top with a dead hash in the address bar (TASK-324).
@@ -976,6 +1012,44 @@ function handleCommentSubmitted(created: Comment | undefined) {
               <div class="flex items-center gap-3 mt-3 text-xs text-gray-400">
                 <span v-if="ap.category">{{ ap.category.name }}</span>
                 <span>{{ t('post.views', { count: ap.views }) }}</span>
+              </div>
+            </NuxtLink>
+          </div>
+        </section>
+
+        <!-- Recommended for you (round 362, DEC-397): personalized, signed-in
+             only, affinity-scored from this reader's history/bookmarks. Related
+             Posts is topic-similar to THIS article; this strip is keyed to what
+             the reader actually likes across the whole site — the article-end
+             "what should I read next?" moment. Hidden for guests and when the
+             response is empty/loading (no orphaned heading, ISS-134 pattern). -->
+        <section
+          v-if="isAuthenticated && (personalRecsLoading || personalRecs.length)"
+          class="mt-12 pt-8 border-t border-gray-100 dark:border-gray-800"
+        >
+          <h2 class="text-xl font-bold text-gray-900 dark:text-gray-100 mb-6 flex items-center gap-2">
+            <Icon icon="lucide:sparkles" class="w-5 h-5 text-fuchsia-500" />
+            {{ t('post.recommendedForYou') }}
+          </h2>
+          <div v-if="personalRecsLoading" class="grid gap-4 sm:grid-cols-2">
+            <div v-for="i in 2" :key="i" class="h-28 rounded-2xl border border-gray-100 dark:border-gray-800 animate-pulse" />
+          </div>
+          <div v-else class="grid gap-4 sm:grid-cols-2">
+            <NuxtLink
+              v-for="rp in personalRecs.slice(0, 6)"
+              :key="rp.id"
+              :to="`/posts/${rp.slug}`"
+              class="group relative p-5 rounded-2xl border border-gray-100 dark:border-gray-800 hover:border-fuchsia-200 dark:hover:border-fuchsia-800 hover:shadow-lg transition-all duration-200"
+            >
+              <h3 class="font-semibold text-gray-900 dark:text-gray-100 group-hover:text-fuchsia-600 dark:group-hover:text-fuchsia-400 transition-colors line-clamp-2">
+                {{ rp.title }}
+              </h3>
+              <p v-if="rp.excerpt" class="text-sm text-gray-500 mt-2 line-clamp-2">
+                {{ rp.excerpt }}
+              </p>
+              <div class="flex items-center gap-3 mt-3 text-xs text-gray-400">
+                <span>{{ rp.category?.name }}</span>
+                <span>{{ t('post.views', { count: rp.views }) }}</span>
               </div>
             </NuxtLink>
           </div>
