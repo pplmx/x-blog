@@ -15,6 +15,9 @@ export interface AdminUser {
 	 *  author's /authors/{id} archive header; null until a superuser writes
 	 *  one (whitespace-only folds to null, same as display_name). */
 	bio?: string | null;
+	/** Public profile picture (round 358): a /static URL after a superuser
+	 *  uploads one (admin avatar endpoint), else absent. */
+	avatar_url?: string | null;
 }
 
 export interface CreateAdminUserInput {
@@ -65,6 +68,27 @@ export function createAdminUser(data: CreateAdminUserInput): Promise<AdminUser> 
 /** Disable an admin account (superuser only; 404 for an unknown id). */
 export function deleteAdminUser(id: number): Promise<void> {
 	return command<void>(`/api/admin/users/${id}`, {
+		method: "DELETE",
+		headers: adminAuthHeaders(),
+	});
+}
+
+/** Upload (or replace) a writer's public profile picture (superuser only,
+ *  round 358) — the face half of the admin/users identity row (pen name + bio
+ *  + avatar). Same multipart shape as the reader avatar (DEC-299). */
+export function uploadAdminUserAvatar(id: number, file: File): Promise<AdminUser> {
+	const formData = new FormData();
+	formData.append("file", file);
+	return command<AdminUser>(`/api/admin/users/${id}/avatar`, {
+		method: "POST",
+		headers: adminAuthHeaders(),
+		body: formData,
+	});
+}
+
+/** Remove the writer's public profile picture (superuser only, round 358). */
+export function removeAdminUserAvatar(id: number): Promise<AdminUser> {
+	return command<AdminUser>(`/api/admin/users/${id}/avatar`, {
 		method: "DELETE",
 		headers: adminAuthHeaders(),
 	});

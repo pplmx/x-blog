@@ -118,6 +118,18 @@ describe("PostCard", () => {
 			expect(chip?.attributes("href")).toBe("/authors/7");
 		});
 
+		it("renders the writer's avatar on the byline when set (round 358)", () => {
+			const wrapper = mountPostCard({
+				...mockPost,
+				author: { id: 7, display_name: "Riki", avatar_url: "/static/avatars/a1.png" },
+			});
+			// Scope by the author chip so the post's cover image doesn't count.
+			const chip = wrapper.findAll("a").find((a) => a.text().includes("Riki"));
+			const img = chip?.find("img");
+			expect(img?.attributes("src")).toBe("/static/avatars/a1.png");
+			expect(img?.attributes("alt")).toBe("Riki");
+		});
+
 		it("renders no author chip when the post has no public author", () => {
 			const wrapper = mountPostCard({ ...mockPost, author: null });
 			expect(wrapper.text()).not.toContain("Riki");

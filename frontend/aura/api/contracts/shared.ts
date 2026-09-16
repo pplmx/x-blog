@@ -19,6 +19,11 @@ export interface SeriesBrief {
 export interface AuthorBrief {
 	id: number;
 	display_name: string;
+	/** Public profile picture (round 358): a /static URL when a superuser set
+	 *  one, else absent/null. Rides on the slim per-post author (unlike the
+	 *  bio, which stays off list payloads) because a byline needs the face and
+	 *  a URL is one small string, not repeated text. */
+	avatar_url?: string | null;
 }
 
 /** A public author on their archive header (round 357): the slim AuthorBrief

@@ -62,7 +62,14 @@ function retry() {
         :to="`/authors/${a.id}`"
         class="group flex items-center gap-4 p-5 bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 hover:border-blue-200 dark:hover:border-blue-800 hover:shadow-lg transition-all duration-200"
       >
+        <img
+          v-if="a.avatar_url"
+          :src="a.avatar_url"
+          :alt="a.display_name"
+          class="w-12 h-12 shrink-0 rounded-full object-cover"
+        >
         <span
+          v-else
           class="w-12 h-12 shrink-0 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 text-white flex items-center justify-center text-lg font-bold"
         >
           {{ a.display_name.slice(0, 1) }}

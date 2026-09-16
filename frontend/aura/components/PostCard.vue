@@ -115,7 +115,13 @@ const date = computed(
           :to="`/authors/${post.author.id}`"
           class="text-xs px-3 py-1.5 bg-gradient-to-r from-gray-50 dark:from-gray-800 to-gray-100 dark:to-gray-700 text-gray-600 dark:text-gray-300 rounded-full font-medium hover:from-gray-100 dark:hover:from-gray-700 hover:to-gray-200 dark:hover:to-gray-600 hover:text-blue-600 dark:hover:text-blue-400 transition-colors duration-200"
         >
-          <Icon icon="lucide:user" class="w-3 h-3 inline mr-0.5" />
+          <img
+            v-if="post.author.avatar_url"
+            :src="post.author.avatar_url"
+            :alt="post.author.display_name"
+            class="w-3.5 h-3.5 inline rounded-full object-cover mr-0.5 -mt-0.5"
+          >
+          <Icon v-else icon="lucide:user" class="w-3 h-3 inline mr-0.5" />
           {{ post.author.display_name }}
         </NuxtLink>
         <NuxtLink

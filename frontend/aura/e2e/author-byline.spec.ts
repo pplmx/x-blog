@@ -44,21 +44,39 @@ test.describe("Author byline + archive (DEC-359)", () => {
 	test("pen name -> card & post bylines -> author archive", async ({ page, request }) => {
 		const uid = Date.now();
 		const penName = `Byline Writer ${uid}`;
+		const bio = `About this writer ${uid}`;
 		const title = `Author byline post ${uid}`;
 		const slug = `author-byline-e2e-${uid}`;
 
-		// Superuser sets the writing admin's public pen name (the feature has
-		// no public surface until a pen name exists — the username must stay
-		// private, admin login is no-oracle).
+		// Superuser sets the writing admin's public pen name + "about this
+		// writer" bio (round 357): neither has a public surface until a pen
+		// name exists — the username must stay private, admin login is
+		// no-oracle.
 		const token = await adminToken(request);
 		const adminH = { Authorization: `Bearer ${token}` };
 		const [admin] = (await fetchUsers(request, token)).filter((u) => u.username === ADMIN_USERNAME);
 		expect(admin).toBeDefined();
 		const patch = await request.patch(`/api/admin/users/${admin.id}`, {
 			headers: { "Content-Type": "application/json", ...adminH },
-			data: { display_name: penName },
+			data: { display_name: penName, bio },
 		});
 		expect(patch.status()).toBe(200);
+		// Give the writer a face too (round 358): a tiny PNG uploaded through
+		// the same pipeline the reader avatars use.
+		const avatar = await request.post(`/api/admin/users/${admin.id}/avatar`, {
+			headers: adminH,
+			multipart: {
+				file: {
+					name: "face.png",
+					mimeType: "image/png",
+					buffer: Buffer.from(
+						"iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAIAAAD91JpzAAAAFklEQVR4nGM8ISfHwMDAxMDAwMDAAAANBAEIfXHKZgAAAABJRU5ErkJggg==",
+						"base64",
+					),
+				},
+			},
+		});
+		expect(avatar.status()).toBe(200);
 
 		// Publish a fresh post authored by the writing admin (defaults to the
 		// authenticated admin).
@@ -95,6 +113,13 @@ test.describe("Author byline + archive (DEC-359)", () => {
 			// the byline on the card inside it links back to the same archive.
 			await page.goto(`/authors/${admin.id}`);
 			await expect(page.locator("h1")).toContainText(penName, { timeout: 10000 });
+			// The writer's public bio (round 357) renders under the header —
+			// the person-shaped surface now introduces the person.
+			await expect(page.locator("body")).toContainText(bio, { timeout: 10000 });
+			// And the writer's face (round 358): the header carries the
+			// uploaded avatar image.
+			const headerAvatar = page.locator("h1 img");
+			await expect(headerAvatar).toBeVisible({ timeout: 10000 });
 			const archiveCard = page.locator(`article:has-text("${title}")`).first();
 			await expect(archiveCard).toBeVisible();
 			await expect(archiveCard.locator(`a[href="/authors/${admin.id}"]`)).toContainText(penName);
@@ -122,6 +147,10 @@ test.describe("Author byline + archive (DEC-359)", () => {
 			const indexCard = page.locator(`a[href="/authors/${admin.id}"]`).first();
 			await expect(indexCard).toContainText(penName, { timeout: 10000 });
 			await expect(indexCard).toContainText("1");
+			// The index card shows a one-line window of the bio (round 357) and
+			// the writer's avatar (round 358).
+			await expect(indexCard).toContainText(bio);
+			await expect(indexCard.locator("img")).toBeVisible();
 			await expect(page.locator("body")).not.toContainText(ADMIN_USERNAME);
 		} finally {
 			// Clean the created post so the seeded e2e DB stays tidy.
@@ -129,12 +158,17 @@ test.describe("Author byline + archive (DEC-359)", () => {
 				headers: adminHRef,
 			});
 			expect([200, 204, 404]).toContain(del.status());
-			// Restore the admin to no public identity (empty pen name) — the
-			// seeded admin starts anonymous; other journeys don't expect one.
+			// Restore the admin to no public identity (empty pen name + bio +
+			// avatar) — the seeded admin starts anonymous; other journeys
+			// don't expect either.
 			await request.patch(`/api/admin/users/${admin.id}`, {
 				headers: { "Content-Type": "application/json", ...adminH },
-				data: { display_name: null },
+				data: { display_name: null, bio: null },
 			});
+			const delAvatar = await request.delete(`/api/admin/users/${admin.id}/avatar`, {
+				headers: adminH,
+			});
+			expect([200, 404]).toContain(delAvatar.status());
 		}
 	});
 });

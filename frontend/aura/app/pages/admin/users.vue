@@ -6,7 +6,9 @@
 import {
 	createAdminUser,
 	deleteAdminUser,
+	removeAdminUserAvatar,
 	updateAdminUser,
+	uploadAdminUserAvatar,
 	useAdminUsers,
 } from "~~/api/admin/users";
 
@@ -172,6 +174,51 @@ async function saveBio(userId: number) {
 		actionError.value = getErrorMessage(e);
 	} finally {
 		penBusy.value = false;
+	}
+}
+
+// Public profile picture (round 358): the face half of the identity row. A
+// superuser picks a file (hidden <input type=file> per row), uploaded raw
+// (backend re-encodes), or removes the current one. Mirrors the reader avatar
+// pattern from /account (DEC-299).
+const avatarBusyId = ref<number | null>(null);
+
+async function handleAvatarPick(userId: number, event: Event) {
+	const input = event.target as HTMLInputElement;
+	const file = input.files?.[0];
+	input.value = ""; // reset so re-picking the SAME file re-fires change
+	if (!file) return;
+	if (!file.type.startsWith("image/")) {
+		actionError.value = t("admin.users.avatarBadType");
+		return;
+	}
+	avatarBusyId.value = userId;
+	actionError.value = null;
+	actionSuccess.value = null;
+	try {
+		await uploadAdminUserAvatar(userId, file);
+		actionSuccess.value = t("admin.users.avatarUpdated");
+		await refresh();
+	} catch (e) {
+		actionError.value = getErrorMessage(e);
+	} finally {
+		avatarBusyId.value = null;
+	}
+}
+
+async function handleAvatarRemove(userId: number) {
+	if (avatarBusyId.value !== null) return; // single-flight
+	avatarBusyId.value = userId;
+	actionError.value = null;
+	actionSuccess.value = null;
+	try {
+		await removeAdminUserAvatar(userId);
+		actionSuccess.value = t("admin.users.avatarRemoved");
+		await refresh();
+	} catch (e) {
+		actionError.value = getErrorMessage(e);
+	} finally {
+		avatarBusyId.value = null;
 	}
 }
 
@@ -477,6 +524,51 @@ async function handleDelete(id: number) {
               >
                 <Icon icon="lucide:pencil" class="w-3 h-3" />
                 {{ t("admin.users.editBio") }}
+              </button>
+            </div>
+
+            <!-- Public profile picture (round 358): a small avatar a
+                 superuser uploads/removes — the face of the pen-named writer,
+                 rendered on bylines, the /authors index card and the archive
+                 header. Mirrors the reader avatar in /account: raw upload,
+                 backend re-encodes; remove is idempotent. -->
+            <div class="mt-2 flex items-center gap-2">
+              <img
+                v-if="user.avatar_url"
+                :src="user.avatar_url"
+                :alt="t('admin.users.avatarAlt', { name: user.display_name || user.username })"
+                class="w-8 h-8 rounded-full object-cover bg-gray-100 dark:bg-gray-800"
+              >
+              <Icon
+                v-else
+                icon="lucide:user-round"
+                class="w-8 h-8 text-gray-300 dark:text-gray-600"
+              />
+              <label
+                class="inline-flex items-center gap-1 text-xs text-gray-400 hover:text-blue-500 transition-colors cursor-pointer"
+              >
+                <Icon icon="lucide:image-plus" class="w-3 h-3" />
+                <span v-if="!user.avatar_url">{{ t("admin.users.avatarUpload") }}</span>
+                <span v-else>{{ t("admin.users.avatarReplace") }}</span>
+                <input
+                  type="file"
+                  accept="image/jpeg,image/png,image/gif,image/webp"
+                  class="hidden"
+                  :disabled="avatarBusyId !== null"
+                  :aria-label="t('admin.users.avatarUpload')"
+                  @change="handleAvatarPick(user.id, $event)"
+                >
+              </label>
+              <button
+                v-if="user.avatar_url"
+                type="button"
+                :disabled="avatarBusyId !== null"
+                class="inline-flex items-center gap-1 text-xs text-gray-400 hover:text-red-500 transition-colors"
+                :aria-label="t('admin.users.avatarRemove')"
+                @click="handleAvatarRemove(user.id)"
+              >
+                <Icon icon="lucide:trash-2" class="w-3 h-3" />
+                {{ t("admin.users.avatarRemove") }}
               </button>
             </div>
           </div>

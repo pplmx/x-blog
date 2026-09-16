@@ -735,7 +735,13 @@ function handleCommentSubmitted(created: Comment | undefined) {
               :to="`/authors/${post.author.id}`"
               class="flex items-center gap-1.5 hover:text-blue-500 transition-colors"
             >
-              <Icon icon="lucide:user" class="w-3.5 h-3.5" />
+              <img
+                v-if="post.author.avatar_url"
+                :src="post.author.avatar_url"
+                :alt="post.author.display_name"
+                class="w-4 h-4 rounded-full object-cover"
+              >
+              <Icon v-else icon="lucide:user" class="w-3.5 h-3.5" />
               {{ post.author.display_name }}
             </NuxtLink>
             <AuthorFollowButton
@@ -896,7 +902,13 @@ function handleCommentSubmitted(created: Comment | undefined) {
           <h2
             class="text-xl font-bold text-gray-900 dark:text-gray-100 mb-6 flex items-center gap-2"
           >
-            <Icon icon="lucide:user" class="w-5 h-5 text-fuchsia-500" />
+            <img
+              v-if="post.author.avatar_url"
+              :src="post.author.avatar_url"
+              :alt="post.author.display_name"
+              class="w-6 h-6 rounded-full object-cover"
+            >
+            <Icon v-else icon="lucide:user" class="w-5 h-5 text-fuchsia-500" />
             {{ t('post.moreFromAuthor', { author: post.author.display_name }) }}
             <NuxtLink
               :to="`/authors/${post.author.id}`"

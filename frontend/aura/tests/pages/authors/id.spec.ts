@@ -191,6 +191,18 @@ describe("Author archive page (/authors/[id])", () => {
 		expect(wrapper.text()).toContain("Writes about type systems and long-form essays.");
 	});
 
+	it("renders the writer's avatar in the header when set (round 358)", async () => {
+		const wrapper = await mountAuthorsPage({
+			archive: {
+				...archiveWithPosts,
+				author: { id: 7, display_name: "Riki", avatar_url: "/static/avatars/w1.png" },
+			},
+		});
+		const img = wrapper.find("img");
+		expect(img.attributes("src")).toBe("/static/avatars/w1.png");
+		expect(img.attributes("alt")).toBe("Riki");
+	});
+
 	it("omits the bio block when the writer has none (round 357)", async () => {
 		const wrapper = await mountAuthorsPage({ archive: archiveWithPosts });
 		expect(wrapper.text()).not.toContain("Writes about");

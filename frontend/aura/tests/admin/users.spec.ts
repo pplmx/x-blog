@@ -15,19 +15,29 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ref } from "vue";
 import { mountWithSuspense } from "./helpers.ts";
 
-const { mockFetchAdminUsers, mockCreateAdminUser, mockDeleteAdminUser, mockUpdateAdminUser } =
-	vi.hoisted(() => ({
-		mockFetchAdminUsers: vi.fn(),
-		mockCreateAdminUser: vi.fn(),
-		mockDeleteAdminUser: vi.fn(),
-		mockUpdateAdminUser: vi.fn(),
-	}));
+const {
+	mockFetchAdminUsers,
+	mockCreateAdminUser,
+	mockDeleteAdminUser,
+	mockUpdateAdminUser,
+	mockUploadAdminUserAvatar,
+	mockRemoveAdminUserAvatar,
+} = vi.hoisted(() => ({
+	mockFetchAdminUsers: vi.fn(),
+	mockCreateAdminUser: vi.fn(),
+	mockDeleteAdminUser: vi.fn(),
+	mockUpdateAdminUser: vi.fn(),
+	mockUploadAdminUserAvatar: vi.fn(),
+	mockRemoveAdminUserAvatar: vi.fn(),
+}));
 
 vi.mock("~~/api/admin/users", () => ({
 	useAdminUsers: mockFetchAdminUsers,
 	createAdminUser: mockCreateAdminUser,
 	deleteAdminUser: mockDeleteAdminUser,
 	updateAdminUser: mockUpdateAdminUser,
+	uploadAdminUserAvatar: mockUploadAdminUserAvatar,
+	removeAdminUserAvatar: mockRemoveAdminUserAvatar,
 }));
 
 vi.stubGlobal("useRuntimeConfig", () => ({
@@ -270,7 +280,9 @@ describe("Admin Users Page", () => {
 			// <input> in the DOM. Guard with explicit throws (not `!`) so the
 			// non-null assertions neither appear in the test nor fail the gate.
 			function editorInput(wrapper: VueWrapper) {
-				const inputs = wrapper.findAll("input");
+				// The last non-file input in the DOM is the inline pen-name
+				// editor (avatar rows add type=file inputs after it).
+				const inputs = wrapper.findAll("input").filter((i) => i.attributes("type") !== "file");
 				const input = inputs[inputs.length - 1];
 				if (!input) throw new Error("expected the pen-name editor input");
 				return input;
@@ -412,6 +424,110 @@ describe("Admin Users Page", () => {
 				await flushPromises();
 
 				expect(mockUpdateAdminUser).toHaveBeenCalledWith(1, { bio: null });
+			});
+		});
+
+		describe("public profile picture (round 358)", () => {
+			function avatarInputs(wrapper: VueWrapper) {
+				return wrapper.findAll("input[type=file]");
+			}
+			function findButton(wrapper: VueWrapper, text: string) {
+				const button = wrapper.findAll("button").find((b) => b.text().includes(text));
+				if (!button) throw new Error(`expected a button containing "${text}"`);
+				return button;
+			}
+
+			it("renders the existing avatar thumbnail and the upload control", async () => {
+				mockFetchAdminUsers.mockReturnValue({
+					data: ref([
+						{ id: 1, username: "admin", is_superuser: true, avatar_url: "/static/avatars/a1.png" },
+						{ id: 2, username: "editor", is_superuser: false },
+					]),
+					pending: ref(false),
+					error: ref(null),
+					refresh: vi.fn(),
+				});
+
+				const UsersPage = await loadPage();
+				const wrapper = await mountWithSuspense(UsersPage);
+				// The avatar thumbnail only exists on the row that has one.
+				const avatars = wrapper.findAll("img");
+				expect(avatars.length).toBe(1);
+				expect(avatars[0].attributes("src")).toBe("/static/avatars/a1.png");
+				// Upload control available; no remove button on the avatar-less row.
+				expect(avatarInputs(wrapper).length).toBe(2);
+			});
+
+			it("uploads a chosen image for the writer", async () => {
+				mockUploadAdminUserAvatar.mockResolvedValue({});
+				mockFetchAdminUsers.mockReturnValue({
+					data: ref([
+						{ id: 1, username: "admin", is_superuser: true },
+						{ id: 2, username: "editor", is_superuser: false },
+					]),
+					pending: ref(false),
+					error: ref(null),
+					refresh: vi.fn(),
+				});
+
+				const UsersPage = await loadPage();
+				const wrapper = await mountWithSuspense(UsersPage);
+
+				// Simulate the browser setting a File on the hidden input.
+				const file = new File(["x"], "face.png", { type: "image/png" });
+				const input = avatarInputs(wrapper)[0];
+				Object.defineProperty(input.element, "files", {
+					configurable: true,
+					value: [file],
+				});
+				await input.trigger("change");
+				await flushPromises();
+
+				expect(mockUploadAdminUserAvatar).toHaveBeenCalledWith(1, file);
+			});
+
+			it("rejects a non-image pick without calling upload", async () => {
+				mockFetchAdminUsers.mockReturnValue({
+					data: ref([{ id: 1, username: "admin", is_superuser: true }]),
+					pending: ref(false),
+					error: ref(null),
+					refresh: vi.fn(),
+				});
+
+				const UsersPage = await loadPage();
+				const wrapper = await mountWithSuspense(UsersPage);
+
+				const input = avatarInputs(wrapper)[0];
+				const file = new File(["x"], "note.txt", { type: "text/plain" });
+				Object.defineProperty(input.element, "files", {
+					configurable: true,
+					value: [file],
+				});
+				await input.trigger("change");
+				await flushPromises();
+
+				expect(mockUploadAdminUserAvatar).not.toHaveBeenCalled();
+				expect(wrapper.text()).toContain("请选择图片文件");
+			});
+
+			it("removes the writer's avatar with the remove button", async () => {
+				mockRemoveAdminUserAvatar.mockResolvedValue({});
+				mockFetchAdminUsers.mockReturnValue({
+					data: ref([
+						{ id: 1, username: "admin", is_superuser: true, avatar_url: "/static/avatars/a1.png" },
+					]),
+					pending: ref(false),
+					error: ref(null),
+					refresh: vi.fn(),
+				});
+
+				const UsersPage = await loadPage();
+				const wrapper = await mountWithSuspense(UsersPage);
+
+				await findButton(wrapper, "移除").trigger("click");
+				await flushPromises();
+
+				expect(mockRemoveAdminUserAvatar).toHaveBeenCalledWith(1);
 			});
 		});
 	});

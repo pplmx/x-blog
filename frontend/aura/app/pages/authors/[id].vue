@@ -157,7 +157,13 @@ watch(
         <h1
           class="text-3xl font-bold bg-gradient-to-r from-gray-900 dark:from-gray-100 to-gray-600 dark:to-gray-400 bg-clip-text text-transparent mb-2 flex items-center gap-3"
         >
-          <Icon icon="lucide:user" class="w-8 h-8 text-gray-400" />
+          <img
+            v-if="archive?.author?.avatar_url"
+            :src="archive.author.avatar_url"
+            :alt="authorName"
+            class="w-9 h-9 rounded-full object-cover ring-2 ring-white dark:ring-gray-800"
+          >
+          <Icon v-else icon="lucide:user" class="w-8 h-8 text-gray-400" />
           {{ t("authors.title", { name: authorName }) }}
         </h1>
         <!-- Public "about this writer" (round 357): the bio a superuser sets

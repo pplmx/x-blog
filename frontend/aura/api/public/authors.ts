@@ -20,13 +20,15 @@ export interface AuthorPostsResponse extends PostListResponse {
 	author?: AuthorArchive | null;
 }
 
-/** A writers-index row (rounds 346/357): pen name + published-post count +
- *  the public "about this writer" bio (null until a superuser writes one). */
+/** A writers-index row (rounds 346/357/358): pen name + published-post count +
+ *  the public "about this writer" bio (null until a superuser writes one) and
+ *  the writer's public avatar (null until a superuser uploads one). */
 export interface AuthorIndex {
 	id: number;
 	display_name: string;
 	post_count: number;
 	bio?: string | null;
+	avatar_url?: string | null;
 }
 
 /** Every public writer, pen name + published-post count (round 346) — powers
