@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 373,
+  "round": 374,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-16T22:57:39+00:00",
+  "updated_at": "2026-09-16T23:20:28+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -27590,15 +27590,72 @@
     "TASK-433": {
       "id": "TASK-433",
       "type": "task",
-      "status": "active",
-      "version": 1,
+      "status": "resolved",
+      "version": 2,
       "created_at": "2026-09-16T22:57:39+00:00",
-      "updated_at": "2026-09-16T22:57:39+00:00",
+      "updated_at": "2026-09-16T23:20:27+00:00",
       "touched_round": 373,
       "category": "core-feature",
       "severity": "medium",
       "title": "Per-card unlike control on /liked (TASK-433)",
       "detail": "Add an unlike button to each /liked card calling unlikeReaderPost; optimistic in-place row removal + total decrement, single-flight per row, restore + error copy on failure; disabled state while in flight. zh+en locale keys. Backend untouched (DELETE /me/likes/{post_id} exists). Vertical slice: frontend + page tests + e2e + docs."
+    },
+    "CHG-668": {
+      "id": "CHG-668",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-16T23:20:01+00:00",
+      "updated_at": "2026-09-16T23:20:01+00:00",
+      "touched_round": 373,
+      "commit": "f78452be",
+      "detail": "Frontend per-card unlike on /liked via useLikeSync.unlike (local marker + DELETE mirror), optimistic card/count removal, single-flight + failure restore, drain-clamp, sibling-button card restructure"
+    },
+    "CHG-669": {
+      "id": "CHG-669",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-16T23:20:01+00:00",
+      "updated_at": "2026-09-16T23:20:01+00:00",
+      "touched_round": 373,
+      "commit": "b31c4e50",
+      "detail": "e2e journey: unlike from the /liked card removes it, empty state follows, post-page heart back to un-liked"
+    },
+    "CHG-670": {
+      "id": "CHG-670",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-16T23:20:01+00:00",
+      "updated_at": "2026-09-16T23:20:01+00:00",
+      "touched_round": 373,
+      "commit": "7a9fe674",
+      "detail": "README + CHANGELOG (en/zh) liked bullet + round-371 entry"
+    },
+    "EV-279": {
+      "id": "EV-279",
+      "type": "evidence",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-16T23:20:02+00:00",
+      "updated_at": "2026-09-16T23:20:02+00:00",
+      "touched_round": 373,
+      "source": "vitest 2300; typecheck+lint clean; e2e liked-unlike 1/1 + reader-likes 2/2 + liked-search 1/1; backend 1767 @93.72% untouched (DEC-415, TASK-433)",
+      "detail": "round 371 verify gates",
+      "confidence": 1.0
+    },
+    "DEC-416": {
+      "id": "DEC-416",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-16T23:20:27+00:00",
+      "updated_at": "2026-09-16T23:20:27+00:00",
+      "touched_round": 373,
+      "title": "Round 371 in-place unlike on /liked closed (DEC-416)",
+      "rationale": "TASK-433 delivered end-to-end: frontend per-card unlike + 4 page tests + e2e + docs; all VERIFY gates green (2300 vitest, e2e 4/4 incl regression, backend untouched 1767).",
+      "alternatives_rejected": "None - closed as planned; no scope change."
     }
   },
   "edges": [
@@ -41099,6 +41156,30 @@
       "to": "TASK-433",
       "type": "governs",
       "created_at": "2026-09-16T22:57:39+00:00"
+    },
+    {
+      "from": "CHG-668",
+      "to": "TASK-433",
+      "type": "implements",
+      "created_at": "2026-09-16T23:20:01+00:00"
+    },
+    {
+      "from": "CHG-669",
+      "to": "TASK-433",
+      "type": "implements",
+      "created_at": "2026-09-16T23:20:01+00:00"
+    },
+    {
+      "from": "CHG-670",
+      "to": "TASK-433",
+      "type": "implements",
+      "created_at": "2026-09-16T23:20:02+00:00"
+    },
+    {
+      "from": "DEC-416",
+      "to": "DEC-415",
+      "type": "supersedes",
+      "created_at": "2026-09-16T23:20:27+00:00"
     }
   ]
 }
