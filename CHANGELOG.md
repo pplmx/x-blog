@@ -9,6 +9,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- **Discussion RSS/Atom (round 368)**: the conversation is findable (round 366)
+  and browsable (round 367) — now it's SUBSCRIBABLE too, since the RSS/Atom
+  line-up previously covered posts only (site/category/tag/author/series).
+  New `/rss/comments.xml` (RSS 2.0) and `/rss/comments.atom.xml` (Atom) stream
+  the newest approved comments site-wide: one item per comment carrying the
+  commenter (display name/nickname) + post title, with a perma link ON the
+  comment (`#comment-{id}`, DEC-321) rather than just the post headline. The
+  visibility gate matches the discussion feed/search exactly — pending/rejected
+  comments and comments on draft or not-yet-published posts never appear, and
+  the content never carries email/ip — and the feeds are cached under scoped
+  keys and served with ETags/conditional responses like the post feeds. The
+  `/discussion` page now has a "Subscribe to the discussion RSS" link and
+  RSS/Atom auto-discovery tags, fronted by dedicated Nuxt proxy routes. 93.72%
+  coverage; 1748 backend tests, 7 frontend tests, and 2 discussion-RSS e2e
+  journeys all green.
 - **Latest discussion feed (round 367)**: round 366 made the discussion
   findable, but a visitor who wants to see what the site is talking about right
   now still had no entry point — the thread is the blog's second content

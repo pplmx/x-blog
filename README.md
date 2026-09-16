@@ -27,6 +27,7 @@ A modern full-stack blog application built with FastAPI + Nuxt
 - ✅ **Type Safe** - Full TypeScript support + Pydantic validation
 - 🔍 **Full-text Search** - Post search, plus comment search (the Comments mode on `/search`, round 366)
 - 💬 **Latest Discussion** - the public `/discussion` page streams the newest approved comments across the whole site — each card carries the commenter, the content, and the post brief, and clicks straight through to that comment on its post (round 367)
+- 📡 **Discussion RSS/Atom** - the conversation is findable (round 366) and browsable (round 367) — now it's subscribable too: `/rss/comments.xml` (RSS 2.0) and `/rss/comments.atom.xml` (Atom) stream the newest approved comments site-wide, one item per comment carrying the commenter + post title and deep-linking onto that comment, with a subscribe link + auto-discovery tags on `/discussion` (round 368)
 - 🌙 **Dark Mode** - System preference aware dark mode
 - 📊 **Reading Analytics** - View counts, like counts, reading progress, and a per-day readership trend with hot posts for the operator (DEC-086)
 - 💬 **Comments** - Nested comment support with replies
@@ -228,17 +229,19 @@ badge. Anonymous commenters keep the free-text nickname/email path.
 
 ### Search, SEO & Stats
 
-| Method | Endpoint                  | Description                                                                         |
-| ------ | ------------------------- | ----------------------------------------------------------------------------------- |
-| GET    | `/api/search?q=`          | Full-text search (CJK-aware, DEC-070)                                               |
-| GET    | `/api/search/comments?q=` | Comment search — approved comments with highlighted snippets + post brief (DEC-405) |
-| GET    | `/api/comments/feed`      | Latest discussion — newest approved comments across the site + post brief (DEC-407) |
-| GET    | `/api/stats`              | Blog statistics                                                                     |
-| GET    | `/rss/feed.xml`           | RSS 2.0 feed                                                                        |
-| GET    | `/rss/atom.xml`           | Atom feed                                                                           |
-| GET    | `/sitemap.xml`            | XML sitemap                                                                         |
-| GET    | `/robots.txt`             | robots.txt                                                                          |
-| GET    | `/health`                 | Health check                                                                        |
+| Method | Endpoint                  | Description                                                                                |
+| ------ | ------------------------- | ------------------------------------------------------------------------------------------ |
+| GET    | `/api/search?q=`          | Full-text search (CJK-aware, DEC-070)                                                      |
+| GET    | `/api/search/comments?q=` | Comment search — approved comments with highlighted snippets + post brief (DEC-405)        |
+| GET    | `/api/comments/feed`      | Latest discussion — newest approved comments across the site + post brief (DEC-407)        |
+| GET    | `/rss/comments.xml`       | Discussion RSS — newest approved comments site-wide, deep-linked to each comment (DEC-409) |
+| GET    | `/rss/comments.atom.xml`  | Discussion Atom — newest approved comments site-wide (DEC-409)                             |
+| GET    | `/api/stats`              | Blog statistics                                                                            |
+| GET    | `/rss/feed.xml`           | RSS 2.0 feed                                                                               |
+| GET    | `/rss/atom.xml`           | Atom feed                                                                                  |
+| GET    | `/sitemap.xml`            | XML sitemap                                                                                |
+| GET    | `/robots.txt`             | robots.txt                                                                                 |
+| GET    | `/health`                 | Health check                                                                               |
 
 ### Web Push (optional, needs VAPID keys)
 

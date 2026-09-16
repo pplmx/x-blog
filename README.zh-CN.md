@@ -27,6 +27,7 @@
 - ✅ **类型安全** - 完整 TypeScript 支持 + Pydantic 验证
 - 🔍 **全文搜索** - 文章搜索 + 评论搜索（`/search` 的「评论」模式，round 366）
 - 💬 **最新讨论流** - `/discussion` 公开页按时间倒序浏览全站最新已审核评论：每张卡片带评论者身份、内容与帖子简介，点击即可深链跳到对应文章里的那条评论（round 367）
+- 📡 **讨论 RSS/Atom** - 讨论不仅能找（round 366）、能逛（round 367），还能订阅：`/rss/comments.xml`（RSS 2.0）与 `/rss/comments.atom.xml`（Atom）流式推送全站最新已审核评论，每条条目携带评论者 + 帖子标题并深链到具体那条评论，`/discussion` 页上提供订阅链接与自动发现标签（round 368）
 - 🌙 **深色模式** - 跟随系统偏好的深色模式
 - 📊 **阅读统计** - 浏览量、点赞数、阅读进度
 - 💬 **评论系统** - 支持楼中楼回复
@@ -218,17 +219,19 @@ token）、更换登录邮箱（DEC-357：填新邮箱 + 当前密码，向新�
 
 ### 搜索、SEO 与统计
 
-| 方法 | 路径                      | 说明                                                 |
-| ---- | ------------------------- | ---------------------------------------------------- |
-| GET  | `/api/search?q=`          | 全文搜索（中文感知，DEC-070）                        |
-| GET  | `/api/search/comments?q=` | 评论搜索——已审核评论 + 高亮片段与帖子简介（DEC-405） |
-| GET  | `/api/comments/feed`      | 最新讨论流——全站最新已审核评论 + 帖子简介（DEC-407） |
-| GET  | `/api/stats`              | 博客统计                                             |
-| GET  | `/rss/feed.xml`           | RSS 2.0 订阅源                                       |
-| GET  | `/rss/atom.xml`           | Atom 订阅源                                          |
-| GET  | `/sitemap.xml`            | XML 站点地图                                         |
-| GET  | `/robots.txt`             | robots.txt                                           |
-| GET  | `/health`                 | 健康检查                                             |
+| 方法 | 路径                      | 说明                                                    |
+| ---- | ------------------------- | ------------------------------------------------------- |
+| GET  | `/api/search?q=`          | 全文搜索（中文感知，DEC-070）                           |
+| GET  | `/api/search/comments?q=` | 评论搜索——已审核评论 + 高亮片段与帖子简介（DEC-405）    |
+| GET  | `/api/comments/feed`      | 最新讨论流——全站最新已审核评论 + 帖子简介（DEC-407）    |
+| GET  | `/rss/comments.xml`       | 讨论 RSS——全站最新已审核评论，深链到每条评论（DEC-409） |
+| GET  | `/rss/comments.atom.xml`  | 讨论 Atom——全站最新已审核评论（DEC-409）                |
+| GET  | `/api/stats`              | 博客统计                                                |
+| GET  | `/rss/feed.xml`           | RSS 2.0 订阅源                                          |
+| GET  | `/rss/atom.xml`           | Atom 订阅源                                             |
+| GET  | `/sitemap.xml`            | XML 站点地图                                            |
+| GET  | `/robots.txt`             | robots.txt                                              |
+| GET  | `/health`                 | 健康检查                                                |
 
 ### 读者账号与云端收藏
 
