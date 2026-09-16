@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 372,
+  "round": 373,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-16T22:17:52+00:00",
+  "updated_at": "2026-09-16T22:55:14+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -27497,15 +27497,83 @@
     "TASK-432": {
       "id": "TASK-432",
       "type": "task",
-      "status": "active",
-      "version": 1,
+      "status": "resolved",
+      "version": 2,
       "created_at": "2026-09-16T22:17:52+00:00",
-      "updated_at": "2026-09-16T22:17:52+00:00",
+      "updated_at": "2026-09-16T22:55:14+00:00",
       "touched_round": 372,
       "category": "core-feature",
       "severity": "medium",
       "title": "Keyword search over the reader liked posts (TASK-432)",
       "detail": "Add q to list_reader_post_likes (crud.py 2156) and GET /me/likes (reader.py 1674); title/excerpt escape-aware LIKE. Frontend: debounced search box on /liked passing q to getReaderLikes, clears reset page 1, searching-aware empty state, zh+en keys. Vertical slice: backend + tests + frontend + page tests + e2e + docs."
+    },
+    "CHG-664": {
+      "id": "CHG-664",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-16T22:54:48+00:00",
+      "updated_at": "2026-09-16T22:54:48+00:00",
+      "touched_round": 372,
+      "commit": "9a232a8c",
+      "detail": "Backend q filter on list_reader_post_likes / GET /api/reader/me/likes: escape-aware LIKE on Post.title/excerpt, composes with public-visibility gate + pagination"
+    },
+    "CHG-665": {
+      "id": "CHG-665",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-16T22:54:48+00:00",
+      "updated_at": "2026-09-16T22:54:48+00:00",
+      "touched_round": 372,
+      "commit": "31d84926",
+      "detail": "Frontend debounced recall-search box on /liked + q through getReaderLikes; deep-page search resets to page 1 via URL; search-aware empty state; zh/en locale keys"
+    },
+    "CHG-666": {
+      "id": "CHG-666",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-16T22:54:48+00:00",
+      "updated_at": "2026-09-16T22:54:48+00:00",
+      "touched_round": 372,
+      "commit": "a46ac1d8",
+      "detail": "e2e journey: narrow the /liked grid by term, search-aware empty state, clear-search reset restores full grid"
+    },
+    "CHG-667": {
+      "id": "CHG-667",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-16T22:54:48+00:00",
+      "updated_at": "2026-09-16T22:54:48+00:00",
+      "touched_round": 372,
+      "commit": "e6386b50",
+      "detail": "README + CHANGELOG (en/zh) liked-likes feature bullet notes the recall-search box + q filter"
+    },
+    "EV-278": {
+      "id": "EV-278",
+      "type": "evidence",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-16T22:54:49+00:00",
+      "updated_at": "2026-09-16T22:54:49+00:00",
+      "touched_round": 372,
+      "source": "pytest 1767 passed 93.72%; vitest 2296; typecheck+lint clean; e2e liked-search + reader-likes 3/3; backend ruff gate green (DEC-413, TASK-432)",
+      "detail": "round 370 verify gates",
+      "confidence": 1.0
+    },
+    "DEC-414": {
+      "id": "DEC-414",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-16T22:55:14+00:00",
+      "updated_at": "2026-09-16T22:55:14+00:00",
+      "touched_round": 372,
+      "title": "Round 370 liked-posts recall search closed (DEC-414)",
+      "rationale": "TASK-432 delivered end-to-end: backend q filter, frontend debounced search box, 10 backend tests + 10 page tests, e2e journey, docs; all VERIFY gates green (1767 backend @93.72%, 2296 vitest, e2e 3/3).",
+      "alternatives_rejected": "None - closed as planned; no scope change."
     }
   },
   "edges": [
@@ -40970,6 +41038,36 @@
       "to": "TASK-432",
       "type": "governs",
       "created_at": "2026-09-16T22:17:52+00:00"
+    },
+    {
+      "from": "CHG-664",
+      "to": "TASK-432",
+      "type": "implements",
+      "created_at": "2026-09-16T22:54:49+00:00"
+    },
+    {
+      "from": "CHG-665",
+      "to": "TASK-432",
+      "type": "implements",
+      "created_at": "2026-09-16T22:54:49+00:00"
+    },
+    {
+      "from": "CHG-666",
+      "to": "TASK-432",
+      "type": "implements",
+      "created_at": "2026-09-16T22:54:49+00:00"
+    },
+    {
+      "from": "CHG-667",
+      "to": "TASK-432",
+      "type": "implements",
+      "created_at": "2026-09-16T22:54:49+00:00"
+    },
+    {
+      "from": "DEC-414",
+      "to": "DEC-413",
+      "type": "supersedes",
+      "created_at": "2026-09-16T22:55:14+00:00"
     }
   ]
 }
