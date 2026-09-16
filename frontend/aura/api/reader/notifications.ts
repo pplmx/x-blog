@@ -63,6 +63,9 @@ export interface ReaderNotificationPrefs {
 	thread_comment: boolean;
 	/** In-app at-mention fan-out (DEC-322/TASK-389): opt-out per-kind, on by default. */
 	mention: boolean;
+	/** In-app reader-follow fan-out (round 365, DEC-403): an inbox row when a
+	 *  reader you follow gets a comment approved; opt-out per-kind, on by default. */
+	reader_comment: boolean;
 	/** Email channel (DEC-197, TASK-217): per-kind opt-in SMTP copy of the fan-out. */
 	email_new_post: boolean;
 	email_reply: boolean;

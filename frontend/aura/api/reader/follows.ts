@@ -279,3 +279,56 @@ export function unfollowReaderAuthor(authorId: number): Promise<null> {
 		headers: readerAuthHeaders(),
 	});
 }
+
+// Reader-to-reader follow (round 365, DEC-403): subscribe to another COMMENT
+// READER's approved comments. The person-to-person cousin of the author-follow
+// wheel — given the profile surfaces a commenter's history, following them
+// means "tell me when this person comments next" (comment fan-out on approve).
+// Public identity only, never the email; display_name may be null (a reader
+// who never set one) — the UI falls back to the anonymous label the profile
+// shows.
+/** A reader the signed-in reader follows (public identity only). */
+export interface FollowedReaderItem {
+	reader_id: number;
+	display_name: string | null;
+	// Profile picture (DEC-299/TASK-378) — a public image URL, never PII.
+	avatar_url: string | null;
+	/** Whether comment fan-out is enabled for this follow (always true today). */
+	notify: boolean;
+}
+
+export interface FollowedReaderListResponse {
+	items: FollowedReaderItem[];
+	total: number;
+}
+
+export interface ReaderFollowState {
+	reader_id: number;
+	display_name: string | null;
+	following: boolean;
+	notify: boolean;
+}
+
+/** Imperative list of the reader's followed readers ($fetch seam, see getReaderSeriesFollows). */
+export function getReaderFollows(): Promise<FollowedReaderListResponse> {
+	return command<FollowedReaderListResponse>("/api/reader/me/follows/readers", {
+		headers: readerAuthHeaders(),
+	});
+}
+
+/** Follow another reader for comment fan-out (idempotent, 201/200). 400 for
+ *  self-follow, uniform 404 for unknown/deactivated readers (no oracle). */
+export function followReader(readerId: number): Promise<ReaderFollowState> {
+	return command<ReaderFollowState>(`/api/reader/me/follows/readers/${readerId}`, {
+		method: "PUT",
+		headers: readerAuthHeaders(),
+	});
+}
+
+/** Unfollow a reader (idempotent 204). */
+export function unfollowReader(readerId: number): Promise<null> {
+	return command<null>(`/api/reader/me/follows/readers/${readerId}`, {
+		method: "DELETE",
+		headers: readerAuthHeaders(),
+	});
+}

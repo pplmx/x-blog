@@ -122,6 +122,14 @@
 			"unfollowConfirm": "Unfollow this writer? You'll stop getting alerts for their new posts.",
 			"failed": "Couldn't do that — please try again"
 		},
+		"readers": {
+			"title": "Followed readers",
+			"note": "You'll be notified (inbox + Web Push) when one of these readers posts an approved comment.",
+			"empty": "You're not following any readers yet — open a commenter's profile and hit Follow.",
+			"unfollow": "Unfollow",
+			"unfollowConfirm": "Unfollow this reader? You'll stop getting notified about their comments.",
+			"failed": "Couldn't do that — please try again"
+		},
 		"tags": {
 			"title": "Followed tags",
 			"note": "You'll be pushed a Web Push when a new post is published carrying these tags.",

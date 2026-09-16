@@ -17,6 +17,13 @@ export interface ReaderPublicProfile {
 	 *  profile may render a Saved tab fed by getReaderPublicBookmarks; false
 	 *  for readers who chose not to publish their curated reading list. */
 	public_bookmarks: boolean;
+	/** How many readers follow this one (round 365, DEC-403) — public, like an
+	 *  author-follow count; every visitor sees it in the profile header. */
+	follower_count: number;
+	/** The SIGNED-IN caller's own stance (round 365): true when the caller
+	 *  follows this reader, always false for guests — the header renders the
+	 *  Follow/Following button off this. Not an oracle for anyone else. */
+	is_following: boolean;
 	created_at: string | null;
 }
 

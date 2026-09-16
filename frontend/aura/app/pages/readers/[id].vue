@@ -280,6 +280,16 @@ const paginationTokens = computed(() =>
 						{{ data.profile.bio }}
 					</p>
 				</div>
+				<!-- Reader-to-reader follow (round 365, DEC-403): the follower
+					 count is public; a signed-in reader who isn't viewing their own
+					 profile gets a Follow/Following toggle that subscribes them to
+					 this commenter's approved-comment fan-out. -->
+				<ReaderFollowButton
+					class="ml-auto shrink-0"
+					:reader-id="data.profile.id"
+					:initial-following="data.profile.is_following"
+					:initial-follower-count="data.profile.follower_count"
+				/>
 			</div>
 
 			<!-- Tabs: comments always; "Liked posts" only when the reader opted in

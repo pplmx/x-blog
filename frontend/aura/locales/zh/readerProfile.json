@@ -20,6 +20,13 @@
 		"savedLoadFailed": "加载这位读者的收藏列表失败，请检查网络后重试。",
 		"loadFailed": "加载读者主页失败，请检查网络后重试。",
 		"notFoundTitle": "读者不存在",
-		"notFoundDesc": "该读者不存在或账号已被删除。"
+		"notFoundDesc": "该读者不存在或账号已被删除。",
+		"follow": "关注",
+		"following": "已关注",
+		"followTitle": "关注这位读者，TA 发表新评论时通知你",
+		"followingTitle": "取消关注这位读者",
+		"followFailed": "更新关注状态失败，请稍后再试",
+		"followerCountOne": "{count} 位粉丝",
+		"followerCountMany": "{count} 位粉丝"
 	}
 }

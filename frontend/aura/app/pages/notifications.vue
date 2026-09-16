@@ -204,6 +204,13 @@ const prefRows = computed(() => {
 			on: prefs.value.mention,
 		},
 		{
+			key: "reader_comment",
+			icon: "lucide:user-plus",
+			label: t("notifications.prefs.kind.reader_comment.label"),
+			desc: t("notifications.prefs.kind.reader_comment.desc"),
+			on: prefs.value.reader_comment,
+		},
+		{
 			key: "email_new_post",
 			icon: "lucide:mail",
 			label: t("notifications.prefs.kind.email_new_post.label"),
@@ -364,6 +371,9 @@ function kindIcon(kind: string): string {
 	if (kind === "thread_comment") return "lucide:message-circle";
 	if (kind === "mention") return "lucide:at-sign";
 	if (kind === "series_new_part") return "lucide:layers";
+	// Reader-to-reader follow fan-out (round 365, DEC-403): a followed reader
+	// posted a comment — visually distinct from the thread/reply icons.
+	if (kind === "reader_comment") return "lucide:user-plus";
 	return "lucide:file-text";
 }
 </script>

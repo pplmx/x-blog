@@ -76,6 +76,10 @@ const mockFetchReaderSeriesFollows = vi.fn();
 const mockFetchReaderAuthorFollows = vi.fn();
 const mockUnfollowReaderAuthor = vi.fn();
 const mockSetAuthorFollowNotify = vi.fn();
+// Reader-to-reader follow (round 365, DEC-403) — no notify toggle yet, so
+// only the list + unfollow are wired.
+const mockFetchReaderFollows = vi.fn();
+const mockUnfollowReader = vi.fn();
 const mockUnfollowReaderSeries = vi.fn();
 const mockSetSeriesFollowNotify = vi.fn();
 const mockFetchReaderCategoryFollows = vi.fn();
@@ -100,6 +104,8 @@ vi.mock("~~/api/reader/follows", () => ({
 	getReaderAuthorFollows: mockFetchReaderAuthorFollows,
 	unfollowReaderAuthor: mockUnfollowReaderAuthor,
 	setAuthorFollowNotify: mockSetAuthorFollowNotify,
+	getReaderFollows: mockFetchReaderFollows,
+	unfollowReader: mockUnfollowReader,
 }));
 vi.mock("../../api/reader/account", () => ({
 	changeReaderPassword: mockChangeMyPassword,
@@ -1463,6 +1469,74 @@ describe("Account settings page", () => {
 			await bell.trigger("click");
 			await flushPromises();
 			expect(mockSetAuthorFollowNotify).toHaveBeenCalledWith(7, false);
+		});
+	});
+
+	describe("followed readers (round 365, DEC-403)", () => {
+		function mockReaders(
+			items: Array<{
+				reader_id: number;
+				display_name: string | null;
+				avatar_url: string | null;
+				notify: boolean;
+			}> = [],
+		) {
+			mockFetchReaderFollows.mockResolvedValue({ items, total: items.length });
+		}
+
+		it("shows an empty state when following no readers", async () => {
+			isAuthenticated.value = true;
+			mockFetchPushSubscriptions.mockResolvedValue({ items: [], total: 0 });
+			mockReaders([]);
+			const wrapper = await mountPage();
+			expect(wrapper.text()).toContain("还没有关注任何读者");
+		});
+
+		it("lists followed readers and unfollows after confirmation", async () => {
+			isAuthenticated.value = true;
+			mockFetchPushSubscriptions.mockResolvedValue({ items: [], total: 0 });
+			mockFetchReaderFollows
+				.mockResolvedValueOnce({
+					items: [{ reader_id: 12, display_name: "Riki", avatar_url: null, notify: true }],
+					total: 1,
+				})
+				.mockResolvedValueOnce({ items: [], total: 0 });
+			mockUnfollowReader.mockResolvedValue(undefined);
+			vi.stubGlobal("confirm", () => true);
+
+			const wrapper = await mountPage();
+			expect(wrapper.text()).toContain("Riki");
+
+			const section = wrapper.findAll("section").find((s) => s.text().includes("关注的读者"));
+			expect(section).toBeDefined();
+			if (!section) throw new Error("readers section not found");
+			const unfollowBtn = section.findAll("button").find((b) => b.text() === "取消关注");
+			expect(unfollowBtn).toBeDefined();
+			if (!unfollowBtn) throw new Error("reader unfollow button not found");
+			await unfollowBtn.trigger("click");
+			await flushPromises();
+
+			expect(mockUnfollowReader).toHaveBeenCalledWith(12);
+			expect(mockFetchReaderFollows).toHaveBeenCalledTimes(2); // initial + reload
+			expect(wrapper.text()).toContain("还没有关注任何读者");
+			vi.unstubAllGlobals();
+		});
+
+		it("skips the unfollow when the confirmation is cancelled", async () => {
+			isAuthenticated.value = true;
+			mockFetchPushSubscriptions.mockResolvedValue({ items: [], total: 0 });
+			mockReaders([{ reader_id: 12, display_name: "Riki", avatar_url: null, notify: true }]);
+			vi.stubGlobal("confirm", () => false);
+
+			const wrapper = await mountPage();
+			const section = wrapper.findAll("section").find((s) => s.text().includes("关注的读者"));
+			if (!section) throw new Error("readers section not found");
+			const unfollowBtn = section.findAll("button").find((b) => b.text() === "取消关注");
+			await unfollowBtn?.trigger("click");
+			await flushPromises();
+
+			expect(mockUnfollowReader).not.toHaveBeenCalled();
+			vi.unstubAllGlobals();
 		});
 	});
 

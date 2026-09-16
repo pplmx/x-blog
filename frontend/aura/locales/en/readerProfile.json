@@ -20,6 +20,13 @@
 		"savedLoadFailed": "Couldn't load this reader's saved posts — check your connection and try again.",
 		"loadFailed": "Couldn't load this reader's profile — check your connection and try again.",
 		"notFoundTitle": "Reader not found",
-		"notFoundDesc": "This reader doesn't exist or their account was deleted."
+		"notFoundDesc": "This reader doesn't exist or their account was deleted.",
+		"follow": "Follow",
+		"following": "Following",
+		"followTitle": "Follow this reader to see when they comment next",
+		"followingTitle": "Unfollow this reader",
+		"followFailed": "Couldn't update your follow — please try again",
+		"followerCountOne": "{count} follower",
+		"followerCountMany": "{count} followers"
 	}
 }

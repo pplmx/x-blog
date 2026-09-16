@@ -49,6 +49,7 @@ const mockFetchPrefs = vi.fn(
 		reply: true,
 		thread_comment: true,
 		mention: true,
+		reader_comment: true,
 		email_new_post: false,
 		email_reply: false,
 		email_thread_comment: false,
@@ -65,6 +66,7 @@ const mockUpdatePref = vi.fn(
 		reply: kind === "reply" ? enabled : true,
 		thread_comment: kind === "thread_comment" ? enabled : true,
 		mention: kind === "mention" ? enabled : true,
+		reader_comment: kind === "reader_comment" ? enabled : true,
 		email_new_post: kind === "email_new_post" ? enabled : false,
 		email_reply: kind === "email_reply" ? enabled : false,
 		email_thread_comment: kind === "email_thread_comment" ? enabled : false,
@@ -149,6 +151,7 @@ describe("Notifications page (TASK-192)", () => {
 			reply: true,
 			thread_comment: true,
 			mention: true,
+			reader_comment: true,
 			email_new_post: false,
 			email_reply: false,
 			email_thread_comment: false,
@@ -339,11 +342,13 @@ describe("Notifications page (TASK-192)", () => {
 		expect(wrapper.text()).toContain("通知偏好");
 		expect(wrapper.text()).toContain("被提及");
 		const switches = wrapper.findAll('button[role="switch"]');
-		expect(switches).toHaveLength(9);
-		for (let i = 0; i < 4; i += 1) {
+		expect(switches).toHaveLength(10);
+		// Five on-by-default in-app kinds (incl. reader_comment, round 365)…
+		for (let i = 0; i < 5; i += 1) {
 			expect(switches[i].attributes("aria-checked")).toBe("true");
 		}
-		for (let i = 4; i < 9; i += 1) {
+		// …then the five opt-in email kinds, all off.
+		for (let i = 5; i < 10; i += 1) {
 			expect(switches[i].attributes("aria-checked")).toBe("false");
 		}
 	});
@@ -351,12 +356,13 @@ describe("Notifications page (TASK-192)", () => {
 	it("toggles an email kind on via updateReaderNotificationPref (DEC-197)", async () => {
 		const wrapper = await mountPage();
 		const switches = wrapper.findAll('button[role="switch"]');
-		// Order: new_post, reply, thread_comment, mention, email_new_post, email_reply, email_thread_comment, email_weekly_digest.
-		await switches[4].trigger("click");
+		// Order: new_post, reply, thread_comment, mention, reader_comment,
+		// email_new_post, email_reply, email_thread_comment, email_weekly_digest.
+		await switches[5].trigger("click");
 		await flushPromises();
 		expect(mockUpdatePref).toHaveBeenCalledWith("email_new_post", true);
-		expect(switches[4].attributes("aria-checked")).toBe("true");
-		expect(switches[5].attributes("aria-checked")).toBe("false");
+		expect(switches[5].attributes("aria-checked")).toBe("true");
+		expect(switches[6].attributes("aria-checked")).toBe("false");
 	});
 
 	it("toggles the weekly digest on via updateReaderNotificationPref (DEC-201)", async () => {
@@ -364,12 +370,12 @@ describe("Notifications page (TASK-192)", () => {
 		const switches = wrapper.findAll('button[role="switch"]');
 		// Last toggle = the weekly-digest email opt-in, independent of per-event kinds.
 		expect(wrapper.text()).toContain("每周精选");
-		await switches[8].trigger("click");
+		await switches[9].trigger("click");
 		await flushPromises();
 		expect(mockUpdatePref).toHaveBeenCalledWith("email_weekly_digest", true);
-		expect(switches[8].attributes("aria-checked")).toBe("true");
+		expect(switches[9].attributes("aria-checked")).toBe("true");
 		// Per-event email kinds stay off.
-		expect(switches[7].attributes("aria-checked")).toBe("false");
+		expect(switches[8].attributes("aria-checked")).toBe("false");
 	});
 
 	it("toggles a kind off and persists via updateReaderNotificationPref", async () => {
@@ -402,17 +408,32 @@ describe("Notifications page (TASK-192)", () => {
 		expect(switches[2].attributes("aria-checked")).toBe("true");
 	});
 
+	it("toggles the reader-follow kind off via updateReaderNotificationPref (round 365, DEC-403)", async () => {
+		const wrapper = await mountPage();
+		const switches = wrapper.findAll('button[role="switch"]');
+		// reader_comment is the 5th in-app kind (index 4), right after mention.
+		expect(wrapper.text()).toContain("关注读者的新评论");
+		expect(switches[4].attributes("aria-checked")).toBe("true");
+		await switches[4].trigger("click");
+		await flushPromises();
+		expect(mockUpdatePref).toHaveBeenCalledWith("reader_comment", false);
+		expect(switches[4].attributes("aria-checked")).toBe("false");
+		// Sibling in-app kinds are untouched by the opt-out.
+		expect(switches[3].attributes("aria-checked")).toBe("true");
+	});
+
 	it("toggles the email copy for @-mentions (DEC-326)", async () => {
 		const wrapper = await mountPage();
 		const switches = wrapper.findAll('button[role="switch"]');
 		// Order: ... email_new_post, email_reply, email_thread_comment,
-		// email_mention, email_weekly_digest.
+		// email_mention, email_weekly_digest (reader_comment sits before the
+		// email block, so email_mention moved to index 8).
 		expect(wrapper.text()).toContain("邮件：被提及");
-		expect(switches[7].attributes("aria-checked")).toBe("false");
-		await switches[7].trigger("click");
+		expect(switches[8].attributes("aria-checked")).toBe("false");
+		await switches[8].trigger("click");
 		await flushPromises();
 		expect(mockUpdatePref).toHaveBeenCalledWith("email_mention", true);
-		expect(switches[7].attributes("aria-checked")).toBe("true");
+		expect(switches[8].attributes("aria-checked")).toBe("true");
 		// The in-app mention toggle (index 3) is untouched — the channels are
 		// independent.
 		expect(switches[3].attributes("aria-checked")).toBe("true");
@@ -668,7 +689,7 @@ describe("Notifications page (TASK-192)", () => {
 		expect(retry).toBeDefined();
 		await retry?.trigger("click");
 		await flushPromises();
-		expect(wrapper.findAll('button[role="switch"]')).toHaveLength(9);
+		expect(wrapper.findAll('button[role="switch"]')).toHaveLength(10);
 		expect(wrapper.text()).not.toContain("网络错误");
 	});
 });

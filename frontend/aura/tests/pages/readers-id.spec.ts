@@ -55,6 +55,18 @@ vi.mock("~~/composables/useLang", () => ({
 	useLang: () => ({ t: (k: string) => k, locale: ref("zh") }),
 }));
 
+// Reader-to-reader follow (round 365, DEC-403): the header's ReaderFollowButton
+// calls the follow/unfollow seams directly (the profile payload already carries
+// is_following, so there is no initial follow-state GET to mock).
+const { mockFollowReader, mockUnfollowReader } = vi.hoisted(() => ({
+	mockFollowReader: vi.fn(),
+	mockUnfollowReader: vi.fn(),
+}));
+vi.mock("~~/api/reader/follows", () => ({
+	followReader: mockFollowReader,
+	unfollowReader: mockUnfollowReader,
+}));
+
 const stubs = {
 	Icon: { template: "<svg class='icon-stub' :data-icon='icon' />", props: ["icon"] },
 	NuxtLink: { template: "<a class='nuxt-link-stub' :href='to'><slot/></a>", props: ["to"] },
@@ -67,6 +79,10 @@ const samplePage = {
 		avatar_url: null,
 		public_likes: false,
 		public_bookmarks: false,
+		// Round 365 (DEC-403): the public follower count + the caller's own
+		// follow stance ride on the profile payload.
+		follower_count: 3,
+		is_following: false,
 		created_at: "2024-01-01T00:00:00Z",
 	},
 	items: [
@@ -134,10 +150,13 @@ beforeEach(() => {
 	mockSavedReject = null;
 	mockReaderId = "5";
 	mockQuery = {};
+	mockFollowReader.mockClear();
+	mockUnfollowReader.mockClear();
 });
 
 afterEach(() => {
 	vi.unstubAllGlobals();
+	localStorage.clear();
 });
 
 async function mountPage() {
@@ -146,9 +165,18 @@ async function mountPage() {
 		query: mockQuery,
 	}));
 	vi.stubGlobal("navigateTo", vi.fn());
-	const wrapper = mount(SuspenseWrapper(ReaderProfilePage), { global: { stubs } });
+	const { default: ReaderFollowButton } = await import("../../components/ReaderFollowButton.vue");
+	const wrapper = mount(SuspenseWrapper(ReaderProfilePage), {
+		global: { components: { ReaderFollowButton }, stubs },
+	});
 	await flushPromises();
 	return wrapper;
+}
+
+/** Sign in a reader (reader_token) with an optional stored profile. */
+function signIn(profile?: { id?: number }) {
+	localStorage.setItem("reader_token", "reader-jwt");
+	if (profile) localStorage.setItem("reader_profile", JSON.stringify(profile));
 }
 
 describe("Reader profile page", () => {
@@ -325,5 +353,96 @@ describe("Reader profile page", () => {
 		expect(wrapper.text()).not.toContain("readerProfile.savedTab");
 		expect(wrapper.text()).not.toContain("Kept post");
 		expect(wrapper.text()).toContain("a comment on a post");
+	});
+});
+
+describe("Reader follow on the profile header (round 365, DEC-403)", () => {
+	function scaledPayload(is_following: boolean, follower_count = 3) {
+		return {
+			...samplePage,
+			profile: { ...samplePage.profile, is_following, follower_count },
+		};
+	}
+
+	it("shows every visitor the follower count, with no button for guests", async () => {
+		mockPayload = samplePage; // follower_count 3, is_following false
+		const wrapper = await mountPage();
+		// The public count is rendered (aria-label carries the translated label)…
+		expect(wrapper.text()).toContain("readerProfile.followerCountMany");
+		// …but a signed-out visitor gets no Follow control. Match probe on the
+		// exact toggle keys (a substring would trip on followerCount*).
+		const buttonTexts = wrapper.findAll("button").map((b) => b.text());
+		expect(buttonTexts).not.toContain("readerProfile.follow");
+		expect(buttonTexts).not.toContain("readerProfile.following");
+	});
+
+	it("lets a signed-in reader follow another reader from the header", async () => {
+		mockPayload = scaledPayload(false);
+		mockFollowReader.mockResolvedValue({
+			reader_id: 5,
+			display_name: "Riki",
+			following: true,
+			notify: true,
+		});
+		signIn(); // signed in, but viewing reader 5 — not themself
+
+		const wrapper = await mountPage();
+		const followBtn = wrapper.findAll("button").find((b) => b.text() === "readerProfile.follow");
+		expect(followBtn).toBeDefined();
+		if (!followBtn) throw new Error("follow button not found");
+		expect(followBtn.attributes("aria-pressed")).toBe("false");
+
+		await followBtn.trigger("click");
+		await flushPromises();
+
+		expect(mockFollowReader).toHaveBeenCalledWith(5);
+		const followingBtn = wrapper
+			.findAll("button")
+			.find((b) => b.text() === "readerProfile.following");
+		expect(followingBtn).toBeDefined();
+		expect(followingBtn?.attributes("aria-pressed")).toBe("true");
+	});
+
+	it("seeds the button already-following from the profile's own stance", async () => {
+		mockPayload = scaledPayload(true, 9);
+		signIn();
+
+		const wrapper = await mountPage();
+		const followingBtn = wrapper
+			.findAll("button")
+			.find((b) => b.text() === "readerProfile.following");
+		expect(followingBtn).toBeDefined();
+		expect(followingBtn?.attributes("aria-pressed")).toBe("true");
+		expect(mockFollowReader).not.toHaveBeenCalled();
+	});
+
+	it("hides the follow button on the reader's OWN profile", async () => {
+		mockPayload = scaledPayload(false);
+		signIn({ id: 5 }); // the profile id — viewing themself
+
+		const wrapper = await mountPage();
+		const buttonTexts = wrapper.findAll("button").map((b) => b.text());
+		expect(buttonTexts).not.toContain("readerProfile.follow");
+		expect(buttonTexts).not.toContain("readerProfile.following");
+		// The public count still renders.
+		expect(wrapper.text()).toContain("readerProfile.followerCountMany");
+	});
+
+	it("drops a dead session and offers sign-in instead of a failed follow", async () => {
+		mockPayload = scaledPayload(false);
+		mockFollowReader.mockRejectedValue({
+			response: { status: 401, _data: { detail: "Could not validate credentials" } },
+		});
+		signIn();
+
+		const wrapper = await mountPage();
+		const followBtn = wrapper.findAll("button").find((b) => b.text() === "readerProfile.follow");
+		await followBtn?.trigger("click");
+		await flushPromises();
+
+		// The expired token is dropped → the control flips back to guest…
+		expect(wrapper.findAll("button").some((b) => b.text() === "readerProfile.follow")).toBe(false);
+		// …and the sign-in prompt replaces the generic failure bubble.
+		expect(wrapper.text()).toContain("common.sessionExpired");
 	});
 });

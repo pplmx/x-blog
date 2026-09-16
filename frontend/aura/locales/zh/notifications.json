@@ -17,7 +17,8 @@
 			"series_new_part": "系列更新",
 			"reply": "收到回复",
 			"thread_comment": "讨论有新评论",
-			"mention": "有人在评论中提到了你"
+			"mention": "有人在评论中提到了你",
+			"reader_comment": "你关注的读者发表了评论"
 		},
 		"prefs": {
 			"title": "通知偏好",
@@ -40,6 +41,10 @@
 				"mention": {
 					"label": "被提及",
 					"desc": "有人在评论里 @ 提到我的显示名时通知我。"
+				},
+				"reader_comment": {
+					"label": "关注读者的新评论",
+					"desc": "我关注的读者发表通过审核的评论时通知我。"
 				},
 				"email_new_post": {
 					"label": "邮件：新文章",

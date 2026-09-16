@@ -1,15 +1,18 @@
 import { afterEach, beforeEach, describe, expect, it, type Mock, vi } from "vitest";
 
 import {
+	followReader,
 	followReaderCategory,
 	followReaderSeries,
 	followReaderTag,
 	getReaderCategoryFollows,
+	getReaderFollows,
 	getReaderSeriesFollows,
 	getReaderTagFollows,
 	setCategoryFollowNotify,
 	setSeriesFollowNotify,
 	setTagFollowNotify,
+	unfollowReader,
 	unfollowReaderCategory,
 	unfollowReaderSeries,
 	unfollowReaderTag,
@@ -171,6 +174,31 @@ describe("reader follow GET commands ($fetch seam for onMounted, ISS-110/111 pat
 		await getReaderTagFollows();
 
 		expect(commandCalls[0].path).toBe("/api/reader/me/tag-follows");
+		expect(commandCalls[0].options.headers).toEqual({ Authorization: "Bearer reader-jwt" });
+	});
+});
+
+describe("reader-to-reader follow API (round 365, DEC-403)", () => {
+	it("fetches the followed readers imperatively", async () => {
+		await getReaderFollows();
+
+		expect(commandCalls[0].path).toBe("/api/reader/me/follows/readers");
+		expect(commandCalls[0].options.headers).toEqual({ Authorization: "Bearer reader-jwt" });
+	});
+
+	it("follows a reader with PUT", async () => {
+		await followReader(12);
+
+		expect(commandCalls[0].path).toBe("/api/reader/me/follows/readers/12");
+		expect(commandCalls[0].options.method).toBe("PUT");
+		expect(commandCalls[0].options.headers).toEqual({ Authorization: "Bearer reader-jwt" });
+	});
+
+	it("unfollows a reader with DELETE", async () => {
+		await unfollowReader(12);
+
+		expect(commandCalls[0].path).toBe("/api/reader/me/follows/readers/12");
+		expect(commandCalls[0].options.method).toBe("DELETE");
 		expect(commandCalls[0].options.headers).toEqual({ Authorization: "Bearer reader-jwt" });
 	});
 });

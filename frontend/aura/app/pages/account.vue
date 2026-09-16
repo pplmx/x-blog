@@ -26,18 +26,21 @@ import { requestEmailChange } from "~~/api/reader/auth";
 import type {
 	FollowedAuthorItem,
 	FollowedCategoryItem,
+	FollowedReaderItem,
 	FollowedSeriesItem,
 	FollowedTagItem,
 } from "~~/api/reader/follows";
 import {
 	getReaderAuthorFollows,
 	getReaderCategoryFollows,
+	getReaderFollows,
 	getReaderSeriesFollows,
 	getReaderTagFollows,
 	setAuthorFollowNotify,
 	setCategoryFollowNotify,
 	setSeriesFollowNotify,
 	setTagFollowNotify,
+	unfollowReader,
 	unfollowReaderAuthor,
 	unfollowReaderCategory,
 	unfollowReaderSeries,
@@ -923,6 +926,47 @@ function statusOf(err: unknown): number | undefined {
 	return e?.status ?? e?.statusCode;
 }
 
+/* Followed readers (round 365, DEC-403): subscribe to another commenter's
+   approved comments — the person-to-person cousin of the followed-writers
+   section below. No per-follow notify toggle yet: the fan-out is on as long
+   as the follow exists, so each row is just identity + unfollow. */
+const readerFollows = ref<FollowedReaderItem[]>([]);
+const readerFollowsLoaded = ref(false);
+const readerFollowsLoadFailed = ref(false);
+const readerUnfollowIds = ref(new Set<number>());
+const readerFollowsError = ref(false);
+
+async function loadReaderFollows() {
+	if (!isAuthenticated.value) return;
+	readerFollowsLoadFailed.value = false;
+	try {
+		readerFollows.value = (await getReaderFollows()).items ?? [];
+	} catch (err) {
+		readerFollows.value = [];
+		handleLoadFailure(err, () => {
+			readerFollowsLoadFailed.value = true;
+		});
+	}
+	readerFollowsLoaded.value = true;
+}
+
+async function unfollowFollowedReader(item: FollowedReaderItem) {
+	if (readerUnfollowIds.value.has(item.reader_id)) return; // single-flight per row
+	if (!confirm(t("account.readers.unfollowConfirm"))) return;
+	readerUnfollowIds.value.add(item.reader_id);
+	readerFollowsError.value = false;
+	try {
+		await unfollowReader(item.reader_id);
+		await loadReaderFollows();
+	} catch (err) {
+		handleLoadFailure(err, () => {
+			readerFollowsError.value = true;
+		});
+	} finally {
+		readerUnfollowIds.value.delete(item.reader_id);
+	}
+}
+
 onMounted(() => {
 	loadDevices();
 	loadCategories();
@@ -931,6 +975,7 @@ onMounted(() => {
 	loadCategoryFollows();
 	loadTagFollows();
 	loadAuthorFollows();
+	loadReaderFollows();
 	// Keep the name/bio inputs in sync if the header "reader" profile loads
 	// after us.
 	displayName.value = reader.value?.display_name ?? displayName.value;
@@ -1784,6 +1829,79 @@ function shortEndpoint(endpoint: string): string {
         </ul>
         <p v-if="authorFollowsError" aria-live="polite" class="mt-2 text-sm text-red-500 dark:text-red-400">
           {{ t('account.authors.failed') }}
+        </p>
+      </section>
+
+      <!-- Followed readers (round 365, DEC-403): subscribe to another
+           commenter's approved comments — the person-to-person cousin of the
+           followed-writers section. -->
+      <section class="border border-gray-100 dark:border-gray-700 rounded-xl p-5">
+        <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-1">
+          {{ t('account.readers.title') }}
+        </h2>
+        <p class="text-xs text-gray-400 mb-4">{{ t('account.readers.note') }}</p>
+
+        <p
+          v-if="!readerFollowsLoaded"
+          class="flex items-center gap-2 text-sm text-gray-400 dark:text-gray-500"
+        >
+          <Icon icon="lucide:loader-2" class="w-4 h-4 animate-spin" aria-hidden="true" role="presentation" />
+          {{ t('account.loading') }}
+        </p>
+        <div v-else-if="readerFollowsLoadFailed" class="flex items-center gap-3 text-sm text-red-500 dark:text-red-400">
+          {{ t('account.loadFailed') }}
+          <button
+            type="button"
+            class="px-2 py-0.5 rounded border border-red-200 dark:border-red-800 hover:bg-red-50 dark:hover:bg-red-900/30 transition-colors"
+            @click="loadReaderFollows"
+          >
+            {{ t('account.retry') }}
+          </button>
+        </div>
+        <p v-else-if="readerFollows.length === 0" class="text-sm text-gray-500 dark:text-gray-400">
+          {{ t('account.readers.empty') }}
+        </p>
+        <ul v-else class="space-y-3">
+          <li
+            v-for="rf in readerFollows"
+            :key="rf.reader_id"
+            class="border border-gray-100 dark:border-gray-800 rounded-lg p-3"
+          >
+            <div class="flex items-center justify-between gap-3 text-sm">
+              <div class="flex min-w-0 items-center gap-3">
+                <img
+                  v-if="rf.avatar_url"
+                  :src="rf.avatar_url"
+                  :alt="rf.display_name || 'avatar'"
+                  class="shrink-0 w-8 h-8 rounded-full object-cover border border-gray-100 dark:border-gray-800"
+                />
+                <span
+                  v-else
+                  class="shrink-0 flex items-center justify-center w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 text-white text-sm font-bold"
+                >
+                  {{ (rf.display_name || "R").charAt(0).toUpperCase() }}
+                </span>
+                <NuxtLink
+                  :to="`/readers/${rf.reader_id}`"
+                  class="min-w-0 truncate text-gray-900 dark:text-gray-100 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+                >
+                  {{ rf.display_name || t('readerProfile.anonymousName') }}
+                </NuxtLink>
+              </div>
+              <button
+                type="button"
+                :disabled="readerUnfollowIds.has(rf.reader_id)"
+                class="shrink-0 inline-flex items-center gap-1 text-xs text-gray-400 hover:text-red-500 transition-colors disabled:opacity-50"
+                @click="unfollowFollowedReader(rf)"
+              >
+                <Icon icon="lucide:x" class="w-3.5 h-3.5" />
+                {{ t('account.readers.unfollow') }}
+              </button>
+            </div>
+          </li>
+        </ul>
+        <p v-if="readerFollowsError" aria-live="polite" class="mt-2 text-sm text-red-500 dark:text-red-400">
+          {{ t('account.readers.failed') }}
         </p>
       </section>
 
