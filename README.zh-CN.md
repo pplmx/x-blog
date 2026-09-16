@@ -36,6 +36,7 @@
 - 🖼️ **作者头像** -「人」形作者面如今也有了面孔：超级管理员可以在用户管理里（笔名旁）上传一张小型头像（与读者头像相同的校验、压缩管线与 `static/avatars` 存储，前者见 DEC-299），它会渲染在作者的每一处公开展示——文章卡片署名、文章页署名、「该作者的其他文章」模块、`/authors` 索引卡片以及归档页头部——读者一眼就能认出某位作者，而不是一个通用的用户图标（round 358）
 - 📰 **关注流** - 已登录读者可在 `/follows` 分页浏览其关注的分类、系列、标签与作者下的所有新文章（突破首页 12 篇封顶），有作者署名的卡片会显示笔名，首页还提供"查看全部"入口（DEC-292，作者维度 round 354）
 - 🔖 **云端收藏同步** - 读者账号让收藏跨设备同步（登录后本地收藏自动合并到云端）
+- 📚 **收藏「待读 / 已读」队列** - 已保存的文章要么在待读队列里，要么已标记为已读（round 361）：`/bookmarks` 页面提供「全部 / 待读 / 已读」筛选行（带实时计数）和每行的切换按钮，「存着以后读」不再与「已经读完想留着」混为一谈——该状态与收藏本身一样支持云端同步
 - ❤️ **云端同步的点赞与喜欢列表** - 已登录读者的点赞是持久的跨设备云端记录（round 359）：文章页爱心变真正开关（再点一下取消并递减计数）、登录前点的赞在登录时提升为云端记录、新的带鉴权 `/liked` 页面（「我欣赏的文章」视图，与收藏和阅读历史并列）挂载时合并服务器喜欢集——一台设备点的赞在另一台设备也出现
 - 👥 **公开「喜欢的文章」主页标签** - 第一个读者对读者的发现界面（round 360）：读者可在 `/account` 选择公开（默认关闭）后在公开的 `/readers/{id}` 主页发布「喜欢的文章」标签页，任何人无需登录即可浏览其点赞的文章。默认关闭，读者不主动分享则点赞始终是私密喜好；未开启的读者没有任何标签页与公开接口（无可泄露内容）
 - 📖 **跨设备续读位置** - 已登录读者回到文章时从上一次离开的地方继续：文章页在服务端记住滚动位置（DEC-167），并把位置同时存成可滚动高度的比例，手机↔桌面之间继续阅读落在同一处（DEC-346）；首页"继续阅读"行对已登录读者直接取这条服务端记录，换任何设备都能看到上次没读完的文章（DEC-348）
@@ -227,20 +228,21 @@ token）、更换登录邮箱（DEC-357：填新邮箱 + 当前密码，向新�
 读者账号是云端收藏同步的 identity 层（与 admin JWT 通过 `aud` 严格隔离，见
 `docs/security.md`）；注册默认限流 5/min/IP。
 
-| 方法   | 路径                                      | 说明                                       |
-| ------ | ----------------------------------------- | ------------------------------------------ |
-| POST   | `/api/reader/register`                    | 创建读者账号（返回读者 JWT，自动登录）     |
-| POST   | `/api/reader/login`                       | 读者登录（邮箱 + 密码）                    |
-| GET    | `/api/reader/me`                          | 当前读者资料                               |
-| GET    | `/api/reader/me/bookmarks`                | 云端收藏列表（仅公开可见的文章）           |
-| PUT    | `/api/reader/me/bookmarks/{id}`           | 添加收藏（幂等：新建 201 / 已存在 200）    |
-| DELETE | `/api/reader/me/bookmarks/{id}`           | 移除收藏（幂等 204）                       |
-| GET    | `/api/reader/me/comments`                 | 读者自己的已审核评论历史（DEC-062）        |
-| GET    | `/api/reader/me/notifications`            | 读者的持久通知中心（已读/未读）（DEC-160） |
-| POST   | `/api/reader/me/notifications/{id}/read`  | 将某条通知标为已读（DEC-160）              |
-| POST   | `/api/reader/me/notifications/read-all`   | 将全部通知标为已读（DEC-160）              |
-| GET    | `/api/reader/me/notification-preferences` | 读取读者各类通知开关（DEC-171）            |
-| PATCH  | `/api/reader/me/notification-preferences` | 切换某一类通知开关（DEC-171）              |
+| 方法   | 路径                                      | 说明                                                                  |
+| ------ | ----------------------------------------- | --------------------------------------------------------------------- |
+| POST   | `/api/reader/register`                    | 创建读者账号（返回读者 JWT，自动登录）                                |
+| POST   | `/api/reader/login`                       | 读者登录（邮箱 + 密码）                                               |
+| GET    | `/api/reader/me`                          | 当前读者资料                                                          |
+| GET    | `/api/reader/me/bookmarks`                | 云端收藏列表（仅公开可见的文章；可带 `folder_id` 与 `done` 队列筛选） |
+| PUT    | `/api/reader/me/bookmarks/{id}`           | 添加收藏（幂等：新建 201 / 已存在 200）                               |
+| PATCH  | `/api/reader/me/bookmarks/{id}/done`      | 在「待读 / 已读」之间切换（幂等；未收藏返回 404）（DEC-395）          |
+| DELETE | `/api/reader/me/bookmarks/{id}`           | 移除收藏（幂等 204）                                                  |
+| GET    | `/api/reader/me/comments`                 | 读者自己的已审核评论历史（DEC-062）                                   |
+| GET    | `/api/reader/me/notifications`            | 读者的持久通知中心（已读/未读）（DEC-160）                            |
+| POST   | `/api/reader/me/notifications/{id}/read`  | 将某条通知标为已读（DEC-160）                                         |
+| POST   | `/api/reader/me/notifications/read-all`   | 将全部通知标为已读（DEC-160）                                         |
+| GET    | `/api/reader/me/notification-preferences` | 读取读者各类通知开关（DEC-171）                                       |
+| PATCH  | `/api/reader/me/notification-preferences` | 切换某一类通知开关（DEC-171）                                         |
 
 收藏在浏览器端以 localStorage 为主，登录时合并到云端——离线操作不丢失，下次
 登录时自动对账。读者收藏数据不出现在共享缓存（`Cache-Control: no-store`）。

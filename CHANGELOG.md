@@ -9,6 +9,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- **Bookmark To-read vs Done queue (round 361)**: a saved post used to be a
+  single undifferentiated concept — bookmarks were "things to read later" and
+  also "things I've already read and want to keep", conflated in one list with
+  no way to tell them apart. The `/bookmarks` page now separates them: a new
+  All / To-read / Done chip row (with live counts, composing with the folder
+  and search filters) and a per-row toggle that marks a saved post Done (pruned
+  from the To-read queue) or moves it back To-read, with a green "Done" badge
+  on read rows. The state is a first-class reader-owned field: additive
+  `reader_bookmarks.done` column (migration g1h3i5k7m9n1, defaults off so every
+  existing bookmark reads as To-read), `GET /api/reader/me/bookmarks?done=…`
+  filter, idempotent `PATCH /api/reader/me/bookmarks/{id}/done`, per-bookmark
+  `done` in the list serializer and the portable data export (DEC-334), and
+  cloud-synced for signed-in readers — the flip is PATCHed up immediately and
+  the merge preserves a Done mark made while logged out (the PUT push can't
+  carry done, so a freshly-pushed server row must not clobber it). Also fixes a
+  latent SQLite dialect bug the migration review surfaced: `done`/`public_likes`
+  now default via `sa.false()` so pre-existing rows read back `false` on both
+  engines (the string form stored TEXT `'false'` that SQLite read back True).
 - **Public "Liked posts" profiles (round 360)**: round 359 made a reader's
   likes durable cloud rows, but the only surface was the reader's own private
   `/liked` page — the likes were invisible to everyone else. Now a reader can
