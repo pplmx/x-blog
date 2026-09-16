@@ -9,6 +9,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- 🔍 **My-comments keyword search (round 369)**: a reader with a long comment
+  history can now find a single comment by what it says — recall-search for the
+  comment you left, the last reader-owned surface still without it (bookmarks
+  and `/history` gained theirs in DEC-124/DEC-148). The `/comments` page gains
+  a debounced (300 ms) search box, and `GET /api/reader/me/comments` takes an
+  optional `q` that matches comment content case-insensitively (escape-aware
+  LIKE, so `%`/`_` match literally), composes with the status filter, and stays
+  scoped to the caller's own comments. A new search restarts at page 1; a term
+  with no match shows a "no matching comments" empty state with a one-click
+  clear-search reset rather than the misleading "you haven't commented yet".
+  The filter runs in SQL, so the whole history is searched, not just the loaded
+  page. 93.72% coverage; 1757 backend tests, 28 frontend page tests, and a new
+  my-comments-search e2e journey all green.
 - **Discussion RSS/Atom (round 368)**: the conversation is findable (round 366)
   and browsable (round 367) — now it's SUBSCRIBABLE too, since the RSS/Atom
   line-up previously covered posts only (site/category/tag/author/series).

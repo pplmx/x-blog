@@ -28,6 +28,7 @@ A modern full-stack blog application built with FastAPI + Nuxt
 - 🔍 **Full-text Search** - Post search, plus comment search (the Comments mode on `/search`, round 366)
 - 💬 **Latest Discussion** - the public `/discussion` page streams the newest approved comments across the whole site — each card carries the commenter, the content, and the post brief, and clicks straight through to that comment on its post (round 367)
 - 📡 **Discussion RSS/Atom** - the conversation is findable (round 366) and browsable (round 367) — now it's subscribable too: `/rss/comments.xml` (RSS 2.0) and `/rss/comments.atom.xml` (Atom) stream the newest approved comments site-wide, one item per comment carrying the commenter + post title and deep-linking onto that comment, with a subscribe link + auto-discovery tags on `/discussion` (round 368)
+- 🔍 **My-comments keyword search** - a reader with a long comment history can find a single comment by what it says: the `/comments` page now has a debounced recall-search box, and `GET /api/reader/me/comments` takes an optional `q` matching comment content (escape-aware, composes with the status filter) — searched server-side, so the whole history is covered, not just the loaded page (round 369)
 - 🌙 **Dark Mode** - System preference aware dark mode
 - 📊 **Reading Analytics** - View counts, like counts, reading progress, and a per-day readership trend with hot posts for the operator (DEC-086)
 - 💬 **Comments** - Nested comment support with replies
@@ -209,7 +210,9 @@ reader** comments under their verified account identity (DEC-062): the form
 omits name/email, the backend stamps the account's display name (client-supplied
 identity is ignored — no spoofing), and the comment list shows a verified-reader
 badge. Anonymous commenters keep the free-text nickname/email path.
-`GET /api/reader/me/comments` lists a reader's own approved comment history.
+`GET /api/reader/me/comments` lists a reader's own comment history across
+statuses, with an optional `q` content keyword filter (escape-aware, composes
+with the status filter — DEC-411, round 369).
 
 ### Admin
 
@@ -278,7 +281,7 @@ limited (default 5/min/IP).
 | PUT    | `/api/reader/me/bookmarks/{id}`           | Add a bookmark (idempotent: 201 new / 200 already)                                                                                                     |
 | PATCH  | `/api/reader/me/bookmarks/{id}/done`      | Move a bookmark between To-read and Done (idempotent; 404 if not saved) (DEC-395)                                                                      |
 | DELETE | `/api/reader/me/bookmarks/{id}`           | Remove a bookmark (idempotent 204)                                                                                                                     |
-| GET    | `/api/reader/me/comments`                 | Reader's own comments across statuses (DEC-066)                                                                                                        |
+| GET    | `/api/reader/me/comments`                 | Reader's own comments across statuses, with optional `q` content keyword filter (DEC-066; q DEC-411)                                                   |
 | DELETE | `/api/reader/me/comments/{id}`            | Delete one of the reader's own comments (any status)                                                                                                   |
 | PATCH  | `/api/reader/me`                          | Update display name (bookmarks/email live on their own endpoints) (DEC-067)                                                                            |
 | POST   | `/api/reader/me/avatar`                   | Upload/replace the reader's profile picture (DEC-299)                                                                                                  |

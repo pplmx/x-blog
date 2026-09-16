@@ -28,6 +28,7 @@
 - 🔍 **全文搜索** - 文章搜索 + 评论搜索（`/search` 的「评论」模式，round 366）
 - 💬 **最新讨论流** - `/discussion` 公开页按时间倒序浏览全站最新已审核评论：每张卡片带评论者身份、内容与帖子简介，点击即可深链跳到对应文章里的那条评论（round 367）
 - 📡 **讨论 RSS/Atom** - 讨论不仅能找（round 366）、能逛（round 367），还能订阅：`/rss/comments.xml`（RSS 2.0）与 `/rss/comments.atom.xml`（Atom）流式推送全站最新已审核评论，每条条目携带评论者 + 帖子标题并深链到具体那条评论，`/discussion` 页上提供订阅链接与自动发现标签（round 368）
+- 🔍 **我的评论关键字搜索** - 评论历史很长的读者，现在可以按正文找到想找的那一条：「我的评论」页新增带防抖的回忆式搜索框，`GET /api/reader/me/comments` 新增可选 `q` 参数按评论正文匹配（已转义、可与状态筛选叠加）——在后端执行，因此覆盖全部历史而非仅当前加载页（round 369）
 - 🌙 **深色模式** - 跟随系统偏好的深色模式
 - 📊 **阅读统计** - 浏览量、点赞数、阅读进度
 - 💬 **评论系统** - 支持楼中楼回复
@@ -195,7 +196,8 @@ docker-compose logs -f
 昵称/邮箱，后端盖章账号昵称（客户端伪造的身份一律忽略，杜绝冒名），评论区显示
 “已认证读者”徽标；匿名评论者仍走自由填写的昵称/邮箱路径。**我的评论**页面
 （DEC-066，`/comments`）向本人展示全部评论及其审核状态（待审核 / 已发布 /
-未通过），并可删除自己的评论（`GET /api/reader/me/comments`、
+未通过），并可删除自己的评论（`GET /api/reader/me/comments` 支持可选 `q`
+正文关键字筛选，已转义、可与状态筛选叠加，
 `DELETE /api/reader/me/comments/{id}`）。**账号设置**页面（DEC-067，`/account`）
 允许读者修改显示名、设置/移除个人头像（DEC-299，`POST /api/reader/me/avatar`、
 `DELETE /api/reader/me/avatar`）、修改密码（验证当前密码、登出其他会话、签发新
@@ -238,21 +240,21 @@ token）、更换登录邮箱（DEC-357：填新邮箱 + 当前密码，向新�
 读者账号是云端收藏同步的 identity 层（与 admin JWT 通过 `aud` 严格隔离，见
 `docs/security.md`）；注册默认限流 5/min/IP。
 
-| 方法   | 路径                                      | 说明                                                                  |
-| ------ | ----------------------------------------- | --------------------------------------------------------------------- |
-| POST   | `/api/reader/register`                    | 创建读者账号（返回读者 JWT，自动登录）                                |
-| POST   | `/api/reader/login`                       | 读者登录（邮箱 + 密码）                                               |
-| GET    | `/api/reader/me`                          | 当前读者资料                                                          |
-| GET    | `/api/reader/me/bookmarks`                | 云端收藏列表（仅公开可见的文章；可带 `folder_id` 与 `done` 队列筛选） |
-| PUT    | `/api/reader/me/bookmarks/{id}`           | 添加收藏（幂等：新建 201 / 已存在 200）                               |
-| PATCH  | `/api/reader/me/bookmarks/{id}/done`      | 在「待读 / 已读」之间切换（幂等；未收藏返回 404）（DEC-395）          |
-| DELETE | `/api/reader/me/bookmarks/{id}`           | 移除收藏（幂等 204）                                                  |
-| GET    | `/api/reader/me/comments`                 | 读者自己的已审核评论历史（DEC-062）                                   |
-| GET    | `/api/reader/me/notifications`            | 读者的持久通知中心（已读/未读）（DEC-160）                            |
-| POST   | `/api/reader/me/notifications/{id}/read`  | 将某条通知标为已读（DEC-160）                                         |
-| POST   | `/api/reader/me/notifications/read-all`   | 将全部通知标为已读（DEC-160）                                         |
-| GET    | `/api/reader/me/notification-preferences` | 读取读者各类通知开关（DEC-171）                                       |
-| PATCH  | `/api/reader/me/notification-preferences` | 切换某一类通知开关（DEC-171）                                         |
+| 方法   | 路径                                      | 说明                                                                             |
+| ------ | ----------------------------------------- | -------------------------------------------------------------------------------- |
+| POST   | `/api/reader/register`                    | 创建读者账号（返回读者 JWT，自动登录）                                           |
+| POST   | `/api/reader/login`                       | 读者登录（邮箱 + 密码）                                                          |
+| GET    | `/api/reader/me`                          | 当前读者资料                                                                     |
+| GET    | `/api/reader/me/bookmarks`                | 云端收藏列表（仅公开可见的文章；可带 `folder_id` 与 `done` 队列筛选）            |
+| PUT    | `/api/reader/me/bookmarks/{id}`           | 添加收藏（幂等：新建 201 / 已存在 200）                                          |
+| PATCH  | `/api/reader/me/bookmarks/{id}/done`      | 在「待读 / 已读」之间切换（幂等；未收藏返回 404）（DEC-395）                     |
+| DELETE | `/api/reader/me/bookmarks/{id}`           | 移除收藏（幂等 204）                                                             |
+| GET    | `/api/reader/me/comments`                 | 读者自己的评论历史（分状态），支持可选 `q` 正文关键字筛选（DEC-062；q：DEC-411） |
+| GET    | `/api/reader/me/notifications`            | 读者的持久通知中心（已读/未读）（DEC-160）                                       |
+| POST   | `/api/reader/me/notifications/{id}/read`  | 将某条通知标为已读（DEC-160）                                                    |
+| POST   | `/api/reader/me/notifications/read-all`   | 将全部通知标为已读（DEC-160）                                                    |
+| GET    | `/api/reader/me/notification-preferences` | 读取读者各类通知开关（DEC-171）                                                  |
+| PATCH  | `/api/reader/me/notification-preferences` | 切换某一类通知开关（DEC-171）                                                    |
 
 收藏在浏览器端以 localStorage 为主，登录时合并到云端——离线操作不丢失，下次
 登录时自动对账。读者收藏数据不出现在共享缓存（`Cache-Control: no-store`）。
