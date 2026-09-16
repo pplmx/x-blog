@@ -140,6 +140,27 @@
 			"confirm": "将你的个人数据下载为 JSON 文件？",
 			"done": "数据已导出，请查看下载。",
 			"failed": "导出失败，请重试。"
+		},
+		"twoFactor": {
+			"title": "两步验证",
+			"note": "为你的账号多加一层保护：开启两步验证后，每次登录都需要输入身份验证器 App 中的 6 位验证码。",
+			"enabledBadge": "已开启",
+			"disablePasswordLabel": "你的密码",
+			"disableCodeLabel": "6 位验证码",
+			"codePlaceholder": "••••••",
+			"disable": "关闭两步验证",
+			"scanHint": "用身份验证器 App（Google Authenticator、Aegis、1Password 等）扫描此二维码，或手动输入下方密钥。",
+			"secretLabel": "备用密钥（base32）",
+			"enableCodeLabel": "输入身份验证器中的当前 6 位验证码",
+			"enable": "确认开启",
+			"cancel": "取消",
+			"offHint": "开启两步验证，每次登录时都需要输入身份验证器 App 的验证码。",
+			"enableStart": "开启两步验证",
+			"setupFailed": "无法开始配置——请检查网络后重试。",
+			"invalidCode": "验证码不正确。请输入身份验证器 App 中显示的当前 6 位验证码。",
+			"disableFailed": "无法关闭两步验证——请检查密码和验证码后重试。",
+			"enablePasswordLabel": "你的密码",
+			"enablePasswordHint": "开启两步验证需要验证你的密码，防止仅凭被盗的会话就把你锁在账号外。"
 		}
 	}
 }

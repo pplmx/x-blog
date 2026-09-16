@@ -33,6 +33,13 @@ const displayName = ref("");
 const error = ref<string | null>(null);
 const isPending = ref(false);
 
+// Second step of a 2FA login (round 364, DEC-401): after the password proves
+// the account, a 2FA-enabled reader is handed a short-lived mfa_token and must
+// present a 6-digit authenticator code before any session is stored.
+const twoFactorStep = ref(false);
+const mfaToken = ref("");
+const totpCode = ref("");
+
 // Mode toggle announced to AT (aria-pressed) and, on switching to register,
 // focus moves into the newly revealed display-name field so keyboard/AT users
 // aren't left wondering where the extra input appeared.
@@ -72,7 +79,14 @@ async function handleSubmit() {
 		if (mode.value === "register") {
 			await readerAuth.register(email.value, password.value, displayName.value || undefined);
 		} else {
-			await readerAuth.login(email.value, password.value);
+			const res = await readerAuth.login(email.value, password.value);
+			// 2FA reader: password accepted, but hold at the code step — no
+			// navigation, no session yet. The mfa_token powers the second step.
+			if (res?.two_factor_required && res.mfa_token) {
+				mfaToken.value = res.mfa_token;
+				twoFactorStep.value = true;
+				return;
+			}
 		}
 		// Once authenticated, push any local bookmarks up and adopt the merged
 		// server list so /bookmarks is consistent post-login. (TASK-134)
@@ -89,6 +103,34 @@ async function handleSubmit() {
 		isPending.value = false;
 	}
 }
+
+async function handle2faSubmit() {
+	if (isPending.value) return;
+	if (!mfaToken.value || !totpCode.value) return;
+	error.value = null;
+	isPending.value = true;
+	try {
+		await readerAuth.login2FA(mfaToken.value, totpCode.value);
+		await mergeLocalToCloud();
+		const { useLikeSync } = await import("~~/composables/useLikeSync");
+		await useLikeSync().mergeLocalToCloud();
+		navigateTo(redirectTarget.value, { replace: true });
+	} catch (e) {
+		error.value = e instanceof Error ? e.message : t("reader.login.errors.network");
+	} finally {
+		isPending.value = false;
+	}
+}
+
+// Back out of the code step to re-enter the password (a wrong code leaves the
+// challenge open server-side for a few minutes, but a fresh password submit
+// always issues a fresh challenge token).
+function cancel2fa() {
+	twoFactorStep.value = false;
+	mfaToken.value = "";
+	totpCode.value = "";
+	error.value = null;
+}
 </script>
 
 <template>
@@ -101,16 +143,27 @@ async function handleSubmit() {
           <Icon icon="lucide:bookmark" class="w-8 h-8 text-white" />
         </div>
         <h1 class="text-2xl font-bold text-gray-900 dark:text-gray-100">
-          {{ mode === "login" ? t("reader.login.title") : t("reader.login.registerTitle") }}
+          {{ twoFactorStep
+            ? t("reader.login.twoFactorTitle")
+            : mode === "login"
+              ? t("reader.login.title")
+              : t("reader.login.registerTitle") }}
         </h1>
         <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">
-          {{ mode === "login" ? t("reader.login.subtitle") : t("reader.login.registerSubtitle") }}
+          {{ twoFactorStep
+            ? t("reader.login.twoFactorSubtitle", { email })
+            : mode === "login"
+              ? t("reader.login.subtitle")
+              : t("reader.login.registerSubtitle") }}
         </p>
       </div>
 
       <!-- Mode toggle (disabled mid-request so an in-flight register/login
            result can't land while the form has already switched modes) -->
-      <div class="grid grid-cols-2 gap-1 p-1 bg-gray-100 dark:bg-gray-900 rounded-xl mb-6">
+      <div
+        v-if="!twoFactorStep"
+        class="grid grid-cols-2 gap-1 p-1 bg-gray-100 dark:bg-gray-900 rounded-xl mb-6"
+      >
         <button
           type="button"
           :disabled="isPending"
@@ -137,7 +190,7 @@ async function handleSubmit() {
         </button>
       </div>
 
-      <form @submit.prevent="handleSubmit" class="space-y-5">
+      <form v-if="!twoFactorStep" @submit.prevent="handleSubmit" class="space-y-5">
         <div v-if="mode === 'register'">
           <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
             {{ t("reader.login.displayName") }}
@@ -210,6 +263,59 @@ async function handleSubmit() {
           <span v-else>
             {{ mode === "login" ? t("reader.login.login") : t("reader.login.registerAction") }}
           </span>
+        </button>
+      </form>
+
+      <!-- Second step for a 2FA-enabled reader (round 364, DEC-401): the
+           password was accepted; enter the authenticator's 6-digit code. -->
+      <form v-else @submit.prevent="handle2faSubmit" class="space-y-5">
+        <div>
+          <label
+            class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
+          >{{ t("reader.login.twoFactorCodeLabel") }}
+          </label>
+          <input
+            v-model="totpCode"
+            type="text"
+            inputmode="numeric"
+            autocomplete="one-time-code"
+            maxlength="8"
+            :placeholder="t('reader.login.twoFactorCodePlaceholder')"
+            required
+            class="w-full px-4 py-3 border border-gray-200 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors text-center tracking-[0.5em] font-mono text-lg"
+          >
+          <p class="text-xs text-gray-500 dark:text-gray-400 mt-2">
+            {{ t("reader.login.twoFactorHint") }}
+          </p>
+        </div>
+
+        <div
+          v-if="error"
+          role="alert"
+          class="p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg"
+        >
+          <p class="text-sm text-red-600 dark:text-red-400">{{ error }}</p>
+        </div>
+
+        <button
+          type="submit"
+          :disabled="isPending || !totpCode"
+          class="w-full py-3 px-4 bg-gradient-to-r from-blue-500 to-indigo-500 text-white rounded-xl font-medium hover:from-blue-600 hover:to-indigo-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-md shadow-blue-500/20"
+        >
+          <span v-if="isPending" class="flex items-center justify-center gap-2">
+            <Icon icon="lucide:loader-2" class="w-4 h-4 animate-spin" />
+            {{ t("reader.login.verifying") }}
+          </span>
+          <span v-else>{{ t("reader.login.verify") }}</span>
+        </button>
+
+        <button
+          type="button"
+          :disabled="isPending"
+          class="w-full text-center text-sm text-gray-500 hover:text-blue-600 transition-colors"
+          @click="cancel2fa"
+        >
+          {{ t("reader.login.twoFactorBack") }}
         </button>
       </form>
 

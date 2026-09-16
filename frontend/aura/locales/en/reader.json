@@ -22,7 +22,15 @@
 			"backToBookmarks": "Back to bookmarks",
 			"errors": {
 				"network": "A network error occurred. Please try again."
-			}
+			},
+			"twoFactorTitle": "Enter your authentication code",
+			"twoFactorSubtitle": "It's you, {email} — now prove it with a code from your authenticator app.",
+			"twoFactorCodeLabel": "6-digit code",
+			"twoFactorCodePlaceholder": "••••••",
+			"twoFactorHint": "Open your authenticator app (Google Authenticator, Aegis, 1Password…) and enter the current 6-digit code for X-Blog.",
+			"verifying": "Verifying…",
+			"verify": "Verify & sign in",
+			"twoFactorBack": "← Use a different account"
 		},
 		"nav": {
 			"signIn": "Sign in",

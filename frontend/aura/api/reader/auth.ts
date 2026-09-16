@@ -14,13 +14,21 @@ export interface ReaderProfile {
 	/** Opt-in public "Saved posts" profile tab (round 363, DEC-399) — false by
 	 *  default; the reader's curated bookmarks stay private unless published. */
 	public_bookmarks: boolean;
+	/** TOTP 2FA flag (round 364, DEC-401): true when login demands a second
+	 *  step. Present on the authenticated /me envelope only — the secret itself
+	 *  is never exposed by any endpoint. */
+	two_factor_enabled: boolean;
 	created_at: string | null;
 }
 
 export interface ReaderLoginResponse {
-	access_token: string;
-	token_type: string;
-	reader: ReaderProfile;
+	/** Null when the reader has 2FA enabled (round 364, DEC-401) — login then
+	 *  carries only `two_factor_required` + `mfa_token` for the second step. */
+	access_token: string | null;
+	token_type: string | null;
+	reader: ReaderProfile | null;
+	two_factor_required?: boolean;
+	mfa_token?: string | null;
 }
 
 /**
@@ -41,6 +49,21 @@ export function readerRegister(body: { email: string; password: string; display_
 /** Reader login (email + password). Same ref-based contract as register. */
 export function readerLogin(body: { email: string; password: string }) {
 	return query<ReaderLoginResponse>("/api/reader/login", {
+		method: "POST",
+		headers: { "Content-Type": "application/json" },
+		body,
+		server: false,
+	});
+}
+
+/**
+ * Second step of a 2FA login (round 364, DEC-401): exchange the short-lived
+ * `mfa_token` a 2FA-enabled login returned, plus the authenticator's 6-digit
+ * code, for the real reader session. Only ever reached when
+ * `readerLogin` reported `two_factor_required`.
+ */
+export function readerLogin2FA(body: { mfa_token: string; code: string }) {
+	return query<ReaderLoginResponse>("/api/reader/login/2fa", {
 		method: "POST",
 		headers: { "Content-Type": "application/json" },
 		body,

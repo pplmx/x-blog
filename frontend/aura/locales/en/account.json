@@ -140,6 +140,27 @@
 			"confirm": "Download your personal data as a JSON file?",
 			"done": "Data exported. Check your downloads.",
 			"failed": "Export failed. Please try again."
+		},
+		"twoFactor": {
+			"title": "Two-factor authentication",
+			"note": "Extra protection for your account: with 2FA on, every login asks for a 6-digit code from your authenticator app.",
+			"enabledBadge": "Enabled",
+			"disablePasswordLabel": "Your password",
+			"disableCodeLabel": "6-digit code",
+			"codePlaceholder": "••••••",
+			"disable": "Turn off 2FA",
+			"scanHint": "Scan this QR code with your authenticator app (Google Authenticator, Aegis, 1Password…), or enter the secret below manually.",
+			"secretLabel": "Backup secret (base32)",
+			"enableCodeLabel": "Enter the current 6-digit code from your authenticator",
+			"enable": "Confirm & enable",
+			"cancel": "Cancel",
+			"offHint": "Turn on two-factor authentication to require a code from your authenticator app at every sign-in.",
+			"enableStart": "Enable 2FA",
+			"setupFailed": "Couldn't start enrollment — check your connection and try again.",
+			"invalidCode": "That code isn't right. Enter the current 6-digit code displayed in your authenticator app.",
+			"disableFailed": "Couldn't turn off 2FA — check your password and code and try again.",
+			"enablePasswordLabel": "Your password",
+			"enablePasswordHint": "Your password is required to enable 2FA — so a stolen session alone can't lock you out."
 		}
 	}
 }

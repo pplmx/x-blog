@@ -59,6 +59,9 @@ vi.mock("../../composables/useSeo", () => ({
 }));
 
 const mockUpdateMyProfile = vi.fn();
+const mockSetupReader2FA = vi.fn();
+const mockEnableReader2FA = vi.fn();
+const mockDisableReader2FA = vi.fn();
 const mockRequestEmailChange = vi.fn();
 const mockChangeMyPassword = vi.fn();
 const mockFetchPushSubscriptions = vi.fn();
@@ -105,6 +108,16 @@ vi.mock("../../api/reader/account", () => ({
 	updateReaderProfile: mockUpdateMyProfile,
 	uploadReaderAvatar: mockUploadReaderAvatar,
 	removeReaderAvatar: mockRemoveReaderAvatar,
+	setupReader2FA: mockSetupReader2FA,
+	enableReader2FA: mockEnableReader2FA,
+	disableReader2FA: mockDisableReader2FA,
+}));
+
+// account.vue renders the enrollment QR client-side from the provisioning URI
+// with the `qrcode` package (dynamic import inside startTwoFactorSetup) — mock a
+// tiny data URL so the happy path is deterministic and does no real work.
+vi.mock("qrcode", () => ({
+	default: { toDataURL: vi.fn(() => Promise.resolve("data:image/png;base64,QUJD")) },
 }));
 vi.mock("../../api/reader/auth", () => ({
 	requestEmailChange: mockRequestEmailChange,
@@ -2049,5 +2062,122 @@ describe("Account settings page", () => {
 			expect(mockFetchReaderDataExport).toHaveBeenCalled();
 			expect(wrapper.text()).toContain("导出失败，请重试。");
 		});
+	});
+});
+
+describe("two-factor authentication section (round 364, DEC-401)", () => {
+	const baseReader = {
+		id: 1,
+		email: "r@example.com",
+		display_name: "Existing",
+		bio: null,
+		avatar_url: null,
+		public_likes: false,
+		public_bookmarks: false,
+		two_factor_enabled: false,
+		created_at: "2024-01-01T00:00:00Z",
+	};
+
+	it("shows the enable trigger when 2FA is off", async () => {
+		isAuthenticated.value = true;
+		reader.value = { ...baseReader } as ReaderProfile;
+		const wrapper = await mountPage();
+		expect(wrapper.text()).toContain("两步验证");
+		const enableBtn = wrapper.findAll("button").find((b) => b.text() === "开启两步验证");
+		expect(enableBtn).toBeTruthy();
+	});
+
+	it("walks the enrollment flow to a QR + secret and enables with a code", async () => {
+		isAuthenticated.value = true;
+		reader.value = { ...baseReader } as ReaderProfile;
+		mockSetupReader2FA.mockResolvedValue({
+			secret: "JBSWY3DPEHPK3PXP",
+			otpauth_uri: "otpauth://totp/X-Blog:r@example.com?secret=JBSWY3DPEHPK3PXP&issuer=X-Blog",
+		});
+		mockEnableReader2FA.mockResolvedValue({
+			...baseReader,
+			two_factor_enabled: true,
+		} as ReaderProfile);
+
+		const wrapper = await mountPage();
+		const enableBtn = wrapper.findAll("button").find((b) => b.text() === "开启两步验证");
+		await enableBtn?.trigger("click");
+		await flushPromises();
+
+		// Enrollment view: QR + the backup secret + password + code fields.
+		expect(wrapper.find("img").exists()).toBe(true);
+		expect(wrapper.text()).toContain("JBSWY3DPEHPK3PXP");
+
+		// The password field ships in the enrollment view too — a session alone
+		// must not be able to register a factor (security review, DEC-401).
+		// Scoped to the 2FA section: the password-change section above also has
+		// a current-password input.
+		const twoFactorSection = wrapper.findAll("section").find((s) => s.text().includes("两步验证"));
+		await twoFactorSection
+			?.find('input[autocomplete="current-password"]')
+			.setValue("readerpass123");
+		await twoFactorSection?.find('input[inputmode="numeric"]').setValue("123456");
+		const confirmBtn = twoFactorSection?.findAll("button").find((b) => b.text() === "确认开启");
+		await confirmBtn?.trigger("click");
+		await flushPromises();
+
+		expect(mockEnableReader2FA).toHaveBeenCalledWith("readerpass123", "123456");
+		expect(setProfile).toHaveBeenCalledWith(expect.objectContaining({ two_factor_enabled: true }));
+		// Back to the enabled state with the disable form.
+		expect(wrapper.text()).toContain("已开启");
+	});
+
+	it("keeps the enrollment view on a wrong code with an error", async () => {
+		isAuthenticated.value = true;
+		reader.value = { ...baseReader } as ReaderProfile;
+		mockSetupReader2FA.mockResolvedValue({
+			secret: "JBSWY3DPEHPK3PXP",
+			otpauth_uri: "otpauth://totp/X-Blog:r@example.com?secret=JBSWY3DPEHPK3PXP&issuer=X-Blog",
+		});
+		mockEnableReader2FA.mockRejectedValue(new Error("Invalid authentication code"));
+
+		const wrapper = await mountPage();
+		const enableBtn = wrapper.findAll("button").find((b) => b.text() === "开启两步验证");
+		await enableBtn?.trigger("click");
+		await flushPromises();
+
+		const twoFactorSection = wrapper.findAll("section").find((s) => s.text().includes("两步验证"));
+		await twoFactorSection
+			?.find('input[autocomplete="current-password"]')
+			.setValue("readerpass123");
+		await twoFactorSection?.find('input[inputmode="numeric"]').setValue("000000");
+		const confirmBtn = twoFactorSection?.findAll("button").find((b) => b.text() === "确认开启");
+		await confirmBtn?.trigger("click");
+		await flushPromises();
+
+		expect(wrapper.text()).toContain("验证码不正确");
+		// Still enrolling so a fresh code can be read from the authenticator.
+		expect(wrapper.text()).toContain("JBSWY3DPEHPK3PXP");
+	});
+
+	it("turning 2FA off needs the password AND a code", async () => {
+		isAuthenticated.value = true;
+		reader.value = { ...baseReader, two_factor_enabled: true } as ReaderProfile;
+		mockDisableReader2FA.mockResolvedValue({
+			...baseReader,
+			two_factor_enabled: false,
+		} as ReaderProfile);
+
+		const wrapper = await mountPage();
+		expect(wrapper.text()).toContain("已开启");
+		const passwordInput = wrapper.findAll('input[type="password"]');
+		// The password section has its own fields; the 2FA disable row is the
+		// one sibling to the one-time-code field — scope via the section.
+		const twoFactorSection = wrapper.findAll("section").find((s) => s.text().includes("两步验证"));
+		const passwordsInSection = twoFactorSection?.findAll('input[type="password"]');
+		await passwordsInSection?.[0].setValue("readerpass123");
+		await twoFactorSection?.find('input[inputmode="numeric"]').setValue("654321");
+		// The disable control is a real <form> submit (like the password row);
+		// VTU doesn't auto-submit on a button click, so fire the submit event.
+		await twoFactorSection?.find("form").trigger("submit");
+		await flushPromises();
+
+		expect(mockDisableReader2FA).toHaveBeenCalledWith("readerpass123", "654321");
+		expect(setProfile).toHaveBeenCalledWith(expect.objectContaining({ two_factor_enabled: false }));
 	});
 });

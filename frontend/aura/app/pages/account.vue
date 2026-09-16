@@ -14,8 +14,11 @@ import { getCategories } from "~~/api/public/taxonomy";
 import {
 	changeReaderPassword,
 	deleteReaderAccount,
+	disableReader2FA,
+	enableReader2FA,
 	getReaderDataExport,
 	removeReaderAvatar,
+	setupReader2FA,
 	updateReaderProfile,
 	uploadReaderAvatar,
 } from "~~/api/reader/account";
@@ -249,6 +252,116 @@ async function submitPassword() {
 			return;
 		}
 		passwordState.value = statusOf(err) === 401 ? "wrong" : "failed";
+	}
+}
+
+/* Two-factor authentication (round 364, DEC-401) ------------------------ */
+// Enabling is a two-phase flow: /me/2fa/setup hands back a base32 secret + an
+// otpauth provisioning URI (nothing enabled yet), the reader scans/adds it in
+// their authenticator, then /me/2fa/enable proves possession with one code and
+// flips the flag. Disabling — turning OFF protection — demands the current
+// password AND a valid code, so neither a stolen session nor a stolen password
+// alone can drop the second factor.
+const twoFactorEnabled = computed(() => reader.value?.two_factor_enabled ?? false);
+const twoFactorBusy = ref(false);
+const twoFactorError = ref<string | null>(null);
+const twoFactorEnrolling = ref(false);
+const twoFactorSetupSecret = ref("");
+const twoFactorSetupUri = ref("");
+const twoFactorQrDataUrl = ref("");
+const twoFactorSetupPw = ref("");
+const twoFactorSetupCode = ref("");
+const twoFactorDisablePw = ref("");
+const twoFactorDisableCode = ref("");
+
+/** Run the same dual-401 routing as the password/email sections: an expired
+ *  token is a dead session (sign the reader out), anything else is a form
+ *  error rendered in the section. */
+function routeTwoFactorSessionError(err: unknown): boolean {
+	if (isStaleSession(err)) {
+		logout();
+		void navigateTo("/login");
+		return true;
+	}
+	return false;
+}
+
+async function startTwoFactorSetup() {
+	if (twoFactorBusy.value || twoFactorEnabled.value) return;
+	twoFactorBusy.value = true;
+	twoFactorError.value = null;
+	try {
+		const setup = await setupReader2FA();
+		twoFactorSetupSecret.value = setup.secret;
+		twoFactorSetupUri.value = setup.otpauth_uri;
+		// Rendered client-side from the provisioning URI (never persisted): a
+		// tiny data-URL image the reader scans into their authenticator app.
+		const { default: QRCode } = await import("qrcode");
+		twoFactorQrDataUrl.value = await QRCode.toDataURL(setup.otpauth_uri, { margin: 1, width: 192 });
+		twoFactorSetupPw.value = "";
+		twoFactorSetupCode.value = "";
+		twoFactorEnrolling.value = true;
+	} catch (err) {
+		routeTwoFactorSessionError(err);
+		twoFactorError.value = t("account.twoFactor.setupFailed");
+	} finally {
+		twoFactorBusy.value = false;
+	}
+}
+
+function cancelTwoFactorEnroll() {
+	twoFactorEnrolling.value = false;
+	twoFactorSetupSecret.value = "";
+	twoFactorSetupUri.value = "";
+	twoFactorQrDataUrl.value = "";
+	twoFactorSetupCode.value = "";
+	twoFactorError.value = null;
+}
+
+async function submitTwoFactorEnable() {
+	// Enrollment requires the current password too (security review MEDIUM,
+	// DEC-401): a stolen session must not be able to register a factor.
+	if (twoFactorBusy.value || !twoFactorSetupPw.value || !twoFactorSetupCode.value) return;
+	twoFactorBusy.value = true;
+	twoFactorError.value = null;
+	try {
+		const profile = await enableReader2FA(twoFactorSetupPw.value, twoFactorSetupCode.value.trim());
+		setProfile(profile);
+		twoFactorEnrolling.value = false;
+		twoFactorSetupSecret.value = "";
+		twoFactorSetupUri.value = "";
+		twoFactorQrDataUrl.value = "";
+		twoFactorSetupPw.value = "";
+		twoFactorSetupCode.value = "";
+	} catch (err) {
+		if (routeTwoFactorSessionError(err)) return;
+		// The backend rejects a wrong code with 400; the QR/secret stay up so the
+		// reader can re-read a fresh code without restarting enrollment.
+		twoFactorError.value = t("account.twoFactor.invalidCode");
+	} finally {
+		twoFactorBusy.value = false;
+	}
+}
+
+async function submitTwoFactorDisable() {
+	if (twoFactorBusy.value || !twoFactorDisablePw.value || !twoFactorDisableCode.value) return;
+	twoFactorBusy.value = true;
+	twoFactorError.value = null;
+	try {
+		const profile = await disableReader2FA(
+			twoFactorDisablePw.value,
+			twoFactorDisableCode.value.trim(),
+		);
+		setProfile(profile);
+		twoFactorDisablePw.value = "";
+		twoFactorDisableCode.value = "";
+	} catch (err) {
+		if (routeTwoFactorSessionError(err)) return;
+		// A wrong password (400) and a wrong code (400) both land here — the
+		// backend deliberately doesn't distinguish which half failed.
+		twoFactorError.value = t("account.twoFactor.disableFailed");
+	} finally {
+		twoFactorBusy.value = false;
 	}
 }
 
@@ -1158,6 +1271,137 @@ function shortEndpoint(endpoint: string): string {
             class="text-sm text-red-500 dark:text-red-400"
           >{{ t('account.password.failed') }}</p>
         </form>
+      </section>
+
+      <!-- Two-factor authentication (round 364, DEC-401) -->
+      <section class="border border-gray-100 dark:border-gray-700 rounded-xl p-5">
+        <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-1">
+          {{ t('account.twoFactor.title') }}
+        </h2>
+        <p class="text-xs text-gray-400 mb-4">{{ t('account.twoFactor.note') }}</p>
+
+        <p
+          v-if="twoFactorError"
+          role="alert"
+          class="mb-4 text-sm text-red-600 dark:text-red-400"
+        >{{ twoFactorError }}</p>
+
+        <!-- Enabled: status + the disable form (password AND code) -->
+        <div v-if="twoFactorEnabled">
+          <p class="mb-3 inline-flex items-center gap-1.5 rounded-full bg-emerald-100 dark:bg-emerald-900/40 px-3 py-1 text-sm text-emerald-700 dark:text-emerald-300">
+            <Icon icon="lucide:shield-check" class="w-4 h-4" aria-hidden="true" role="presentation" />
+            {{ t('account.twoFactor.enabledBadge') }}
+          </p>
+          <form
+            class="flex flex-col gap-4 max-w-sm"
+            @submit.prevent="submitTwoFactorDisable"
+          >
+            <label class="flex flex-col gap-1.5 text-sm">
+              <span class="text-gray-600 dark:text-gray-400">{{ t('account.twoFactor.disablePasswordLabel') }}</span>
+              <input
+                v-model="twoFactorDisablePw"
+                type="password"
+                autocomplete="current-password"
+                class="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-2 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </label>
+            <label class="flex flex-col gap-1.5 text-sm">
+              <span class="text-gray-600 dark:text-gray-400">{{ t('account.twoFactor.disableCodeLabel') }}</span>
+              <input
+                v-model="twoFactorDisableCode"
+                type="text"
+                inputmode="numeric"
+                autocomplete="one-time-code"
+                maxlength="8"
+                :placeholder="t('account.twoFactor.codePlaceholder')"
+                class="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-2 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 text-center tracking-[0.5em] font-mono"
+              />
+            </label>
+            <div>
+              <button
+                type="submit"
+                :disabled="twoFactorBusy || !twoFactorDisablePw || !twoFactorDisableCode"
+                class="px-4 py-2 rounded-lg text-sm font-medium text-white bg-red-600 hover:bg-red-700 transition-colors disabled:opacity-50"
+              >
+                {{ t('account.twoFactor.disable') }}
+              </button>
+            </div>
+          </form>
+        </div>
+
+        <!-- Enrolling: QR + secret + verify code -->
+        <div v-else-if="twoFactorEnrolling">
+          <div class="flex flex-col gap-4 max-w-sm">
+            <p class="text-sm text-gray-600 dark:text-gray-400">{{ t('account.twoFactor.scanHint') }}</p>
+            <div class="mx-auto">
+              <img
+                v-if="twoFactorQrDataUrl"
+                :src="twoFactorQrDataUrl"
+                alt=""
+                class="rounded-lg border border-gray-200 dark:border-gray-700"
+              />
+            </div>
+            <div class="rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 p-3">
+              <p class="text-xs text-gray-500 dark:text-gray-400 mb-1">{{ t('account.twoFactor.secretLabel') }}</p>
+              <code class="block break-all font-mono text-sm text-gray-800 dark:text-gray-100">
+                {{ twoFactorSetupSecret }}
+              </code>
+            </div>
+            <label class="flex flex-col gap-1.5 text-sm">
+              <span class="text-gray-600 dark:text-gray-400">{{ t('account.twoFactor.enablePasswordLabel') }}</span>
+              <input
+                v-model="twoFactorSetupPw"
+                type="password"
+                autocomplete="current-password"
+                class="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-2 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+              <span class="text-xs text-gray-400">{{ t('account.twoFactor.enablePasswordHint') }}</span>
+            </label>
+            <label class="flex flex-col gap-1.5 text-sm">
+              <span class="text-gray-600 dark:text-gray-400">{{ t('account.twoFactor.enableCodeLabel') }}</span>
+              <input
+                v-model="twoFactorSetupCode"
+                type="text"
+                inputmode="numeric"
+                autocomplete="one-time-code"
+                maxlength="8"
+                :placeholder="t('account.twoFactor.codePlaceholder')"
+                class="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-2 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 text-center tracking-[0.5em] font-mono"
+              />
+            </label>
+            <div class="flex items-center gap-3">
+              <button
+                type="button"
+                :disabled="twoFactorBusy || !twoFactorSetupPw || !twoFactorSetupCode"
+                class="px-4 py-2 rounded-lg text-sm font-medium text-white bg-emerald-600 hover:bg-emerald-700 transition-colors disabled:opacity-50"
+                @click="submitTwoFactorEnable"
+              >
+                {{ t('account.twoFactor.enable') }}
+              </button>
+              <button
+                type="button"
+                :disabled="twoFactorBusy"
+                class="text-sm text-gray-500 hover:text-blue-600 transition-colors"
+                @click="cancelTwoFactorEnroll"
+              >
+                {{ t('account.twoFactor.cancel') }}
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Off: the enable trigger -->
+        <div v-else>
+          <p class="mb-4 text-sm text-gray-600 dark:text-gray-400">{{ t('account.twoFactor.offHint') }}</p>
+          <button
+            type="button"
+            :disabled="twoFactorBusy"
+            class="px-4 py-2 rounded-lg text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 transition-colors disabled:opacity-50"
+            @click="startTwoFactorSetup"
+          >
+            {{ t('account.twoFactor.enableStart') }}
+          </button>
+        </div>
       </section>
 
       <!-- Push devices -->

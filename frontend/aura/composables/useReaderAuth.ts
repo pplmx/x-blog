@@ -75,6 +75,10 @@ export function useReaderAuth() {
 
 	/** Store the auth session from a /api/reader/{login,register} response. */
 	const setSession = (session: ReaderLoginResponse): void => {
+		// A complete session (token + reader) is the whole contract; a 2FA
+		// challenge response (round 364) never reaches here — login() short-
+		// circuits on two_factor_required before it is passed.
+		if (!session.access_token || !session.reader) return;
 		if (hasLocalStorage()) {
 			localStorage.setItem(READER_TOKEN_KEY, session.access_token);
 		}
@@ -86,6 +90,28 @@ export function useReaderAuth() {
 	const login = async (email: string, password: string): Promise<ReaderLoginResponse> => {
 		const { readerLogin } = await import("~~/api/reader/auth");
 		const { data, error } = await readerLogin({ email, password });
+		if (error.value) {
+			throw new Error(error.value?.message || "Login failed");
+		}
+		// 2FA readers (round 364, DEC-401): the first step only proves the
+		// password, so no session is stored here — the caller sees
+		// two_factor_required and drives the second step via login2FA().
+		if (data.value?.two_factor_required) {
+			return data.value;
+		}
+		if (!data.value?.access_token) {
+			throw new Error("Login failed");
+		}
+		setSession(data.value);
+		return data.value;
+	};
+
+	/** Complete a 2FA login: exchange the challenge token + authenticator code
+	 *  for the real session (round 364, DEC-401). Caller must hold an mfa_token
+	 *  from a prior `login()` that reported `two_factor_required`. */
+	const login2FA = async (mfaToken: string, code: string): Promise<ReaderLoginResponse> => {
+		const { readerLogin2FA } = await import("~~/api/reader/auth");
+		const { data, error } = await readerLogin2FA({ mfa_token: mfaToken, code });
 		if (error.value || !data.value?.access_token) {
 			throw new Error(error.value?.message || "Login failed");
 		}
@@ -168,6 +194,9 @@ export function useReaderAuth() {
 	 * the stored one (DEC-067, TASK-141). Login/register use setSession.
 	 */
 	const updateToken = (session: ReaderLoginResponse): void => {
+		// Same completeness guard as setSession — a fresh rotated token is the
+		// only path here (password change / email confirm), which always has one.
+		if (!session.access_token || !session.reader) return;
 		if (hasLocalStorage()) {
 			localStorage.setItem(READER_TOKEN_KEY, session.access_token);
 		}
@@ -186,6 +215,7 @@ export function useReaderAuth() {
 		isAuthenticated,
 		reader,
 		login,
+		login2FA,
 		register,
 		resetPassword,
 		confirmEmailChange,

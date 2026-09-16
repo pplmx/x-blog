@@ -16,6 +16,10 @@ export interface ReaderProfile {
 	/** Opt-in public "Saved posts" profile tab (round 363, DEC-399) — false by
 	 *  default; the reader's curated bookmarks stay private unless published. */
 	public_bookmarks: boolean;
+	/** TOTP 2FA flag (round 364, DEC-401): true when login demands a second
+	 *  step. Present on the authenticated /me envelope only — the secret itself
+	 *  is never exposed by any endpoint. */
+	two_factor_enabled: boolean;
 	created_at: string | null;
 }
 
@@ -67,6 +71,41 @@ export function updateReaderProfile(body: {
 		method: "PATCH",
 		headers: { ...readerAuthHeaders(), "Content-Type": "application/json" },
 		body,
+	});
+}
+
+/**
+ * TOTP 2FA management (round 364, DEC-401). setup returns the base32 secret +
+ * otpauth URI (nothing is enabled yet); enable proves possession with one
+ * 6-digit code and flips the flag; disable requires the current password AND a
+ * valid code. The flag rides the returned ReaderProfile so /account can adopt
+ * the fresh state; the secret itself is never returned after setup.
+ */
+export interface TwoFactorSetup {
+	secret: string;
+	otpauth_uri: string;
+}
+
+export function setupReader2FA(): Promise<TwoFactorSetup> {
+	return command<TwoFactorSetup>("/api/reader/me/2fa/setup", {
+		method: "POST",
+		headers: readerAuthHeaders(),
+	});
+}
+
+export function enableReader2FA(current_password: string, code: string): Promise<ReaderProfile> {
+	return command<ReaderProfile>("/api/reader/me/2fa/enable", {
+		method: "POST",
+		headers: { ...readerAuthHeaders(), "Content-Type": "application/json" },
+		body: { current_password, code },
+	});
+}
+
+export function disableReader2FA(current_password: string, code: string): Promise<ReaderProfile> {
+	return command<ReaderProfile>("/api/reader/me/2fa/disable", {
+		method: "POST",
+		headers: { ...readerAuthHeaders(), "Content-Type": "application/json" },
+		body: { current_password, code },
 	});
 }
 

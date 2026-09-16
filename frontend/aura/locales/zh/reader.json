@@ -22,7 +22,15 @@
 			"backToBookmarks": "返回收藏",
 			"errors": {
 				"network": "网络错误，请重试。"
-			}
+			},
+			"twoFactorTitle": "输入你的验证码",
+			"twoFactorSubtitle": "是你本人，{email}——请输入身份验证器 App 中的验证码以确认。",
+			"twoFactorCodeLabel": "6 位验证码",
+			"twoFactorCodePlaceholder": "••••••",
+			"twoFactorHint": "打开你的身份验证器 App（Google Authenticator、Aegis、1Password 等），输入 X-Blog 对应的当前 6 位验证码。",
+			"verifying": "验证中…",
+			"verify": "验证并登录",
+			"twoFactorBack": "← 使用其他账号"
 		},
 		"nav": {
 			"signIn": "登录",

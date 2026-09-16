@@ -5,6 +5,7 @@ import { describe, expect, it, vi } from "vitest";
 import { ref } from "vue";
 
 const loginMock = vi.fn();
+const login2FAMock = vi.fn();
 const registerMock = vi.fn();
 const isAuthenticated = ref(false);
 
@@ -12,6 +13,7 @@ vi.mock("~~/composables/useReaderAuth", () => ({
 	useReaderAuth: () => ({
 		isAuthenticated,
 		login: loginMock,
+		login2FA: login2FAMock,
 		register: registerMock,
 		logout: vi.fn(),
 	}),
@@ -141,6 +143,85 @@ describe("login redirect (deep-dive fix)", () => {
 		await flushPromises();
 		// See the ?redirect= test above: wait for the (post-merge) navigation.
 		await vi.waitFor(() => expect(navMock).toHaveBeenCalledWith("/bookmarks", { replace: true }));
+		vi.unstubAllGlobals();
+	});
+});
+
+describe("two-factor login step (round 364, DEC-401)", () => {
+	const challenge = {
+		access_token: null,
+		token_type: null,
+		reader: null,
+		two_factor_required: true,
+		mfa_token: "mfa-xyz",
+	};
+	const full = {
+		access_token: "token2",
+		token_type: "bearer",
+		reader: { id: 1, email: "r@example.com", display_name: null, created_at: null },
+	};
+
+	it("holds at the code step when login reports two_factor_required", async () => {
+		vi.stubGlobal("useRoute", () => ({ query: {} }));
+		loginMock.mockResolvedValue(challenge);
+		const navMock = vi.fn();
+		vi.stubGlobal("navigateTo", navMock);
+		const wrapper = mountLogin();
+		await wrapper.find('input[type="email"]').setValue("r@example.com");
+		await wrapper.find('input[type="password"]').setValue("secret123");
+		await wrapper.find("form").trigger("submit.prevent");
+		await flushPromises();
+
+		// No session yet, no navigation — just the 6-digit code input.
+		expect(navMock).not.toHaveBeenCalled();
+		expect(login2FAMock).not.toHaveBeenCalled();
+		const codeInput = wrapper.find('input[autocomplete="one-time-code"]');
+		expect(codeInput.exists()).toBe(true);
+		// The password form is replaced by the code step.
+		expect(wrapper.find('input[type="password"]').exists()).toBe(false);
+		vi.unstubAllGlobals();
+	});
+
+	it("exchanges the code for a real session via login2FA", async () => {
+		vi.stubGlobal("useRoute", () => ({ query: {} }));
+		loginMock.mockResolvedValue(challenge);
+		login2FAMock.mockResolvedValue(full);
+		vi.stubGlobal("useBookmarkSync", () => ({ mergeLocalToCloud: vi.fn(() => Promise.resolve()) }));
+		const navMock = vi.fn();
+		vi.stubGlobal("navigateTo", navMock);
+
+		const wrapper = mountLogin();
+		await wrapper.find('input[type="email"]').setValue("r@example.com");
+		await wrapper.find('input[type="password"]').setValue("secret123");
+		await wrapper.find("form").trigger("submit.prevent");
+		await flushPromises();
+
+		await wrapper.find('input[autocomplete="one-time-code"]').setValue("123456");
+		await wrapper.find("form").trigger("submit.prevent");
+		// Same post-authentication merge as the single-step path, so wait for it.
+		await vi.waitFor(() => expect(navMock).toHaveBeenCalled());
+		expect(login2FAMock).toHaveBeenCalledWith("mfa-xyz", "123456");
+		vi.unstubAllGlobals();
+	});
+
+	it("surfaces a rejected code and stays on the code step", async () => {
+		vi.stubGlobal("useRoute", () => ({ query: {} }));
+		loginMock.mockResolvedValue(challenge);
+		login2FAMock.mockRejectedValue(new Error("Invalid authentication code"));
+		const navMock = vi.fn();
+		vi.stubGlobal("navigateTo", navMock);
+		const wrapper = mountLogin();
+		await wrapper.find('input[type="email"]').setValue("r@example.com");
+		await wrapper.find('input[type="password"]').setValue("secret123");
+		await wrapper.find("form").trigger("submit.prevent");
+		await flushPromises();
+
+		await wrapper.find('input[autocomplete="one-time-code"]').setValue("000000");
+		await wrapper.find("form").trigger("submit.prevent");
+		expect(login2FAMock).toHaveBeenCalledWith("mfa-xyz", "000000");
+		expect(navMock).not.toHaveBeenCalled();
+		// Still on the step so a fresh code can be tried.
+		expect(wrapper.find('input[autocomplete="one-time-code"]').exists()).toBe(true);
 		vi.unstubAllGlobals();
 	});
 });

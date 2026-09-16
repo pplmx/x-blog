@@ -3,6 +3,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const readerLoginMock = vi.fn();
+const readerLogin2FAMock = vi.fn();
 const readerRegisterMock = vi.fn();
 const completeEmailChangeMock = vi.fn();
 
@@ -11,6 +12,7 @@ vi.mock("~~/api/reader/auth", async (importOriginal) => {
 	return {
 		...actual,
 		readerLogin: readerLoginMock,
+		readerLogin2FA: readerLogin2FAMock,
 		readerRegister: readerRegisterMock,
 		completeEmailChange: completeEmailChangeMock,
 	};
@@ -30,6 +32,7 @@ beforeEach(() => {
 	// order-independent (isAuthenticated/reader persist across tests otherwise).
 	useReaderAuth().logout();
 	readerLoginMock.mockReset();
+	readerLogin2FAMock.mockReset();
 	readerRegisterMock.mockReset();
 	completeEmailChangeMock.mockReset();
 });
@@ -271,5 +274,42 @@ describe("useReaderAuth", () => {
 				}),
 			).toBe(false);
 		});
+	});
+});
+
+describe("two-factor login (round 364, DEC-401)", () => {
+	const challenge = {
+		access_token: null,
+		token_type: null,
+		reader: null,
+		two_factor_required: true,
+		mfa_token: "mfa-x",
+	};
+
+	it("holds at a 2FA challenge without storing a session", async () => {
+		readerLoginMock.mockResolvedValue(ok({ ...challenge })).mockClear();
+		const { isAuthenticated, reader, login } = useReaderAuth();
+		const res = await login("r@example.com", "secret123");
+		expect(res.two_factor_required).toBe(true);
+		expect(res.mfa_token).toBe("mfa-x");
+		// No session was adopted until the code is proven.
+		expect(isAuthenticated.value).toBe(false);
+		expect(reader.value).toBe(null);
+	});
+
+	it("login2FA exchanges the code for the real session", async () => {
+		readerLogin2FAMock.mockResolvedValue(ok({ ...session })).mockClear();
+		const { isAuthenticated, reader, login2FA } = useReaderAuth();
+		await login2FA("mfa-x", "123456");
+		expect(readerLogin2FAMock).toHaveBeenCalledWith({ mfa_token: "mfa-x", code: "123456" });
+		expect(isAuthenticated.value).toBe(true);
+		expect(reader.value?.email).toBe("r@example.com");
+	});
+
+	it("login2FA rejects when the API refuses the code", async () => {
+		readerLogin2FAMock.mockResolvedValue(err("Invalid authentication code")).mockClear();
+		const { isAuthenticated, login2FA } = useReaderAuth();
+		await expect(login2FA("mfa-x", "000000")).rejects.toThrow("Invalid authentication code");
+		expect(isAuthenticated.value).toBe(false);
 	});
 });
