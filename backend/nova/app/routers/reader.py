@@ -2615,6 +2615,7 @@ VALID_READER_COMMENT_STATUSES = ("all", "pending", "approved", "rejected")
 def list_my_comments(
     current_reader: auth.ReaderAccount = Depends(auth.get_current_reader),
     status: str = Query("all", description="all | pending | approved | rejected"),
+    q: str | None = Query(None, max_length=200, description="content keyword filter"),
     page: PageInt = 1,
     limit: int = Query(20, ge=1, le=100),
     db: Session = Depends(get_db),
@@ -2625,11 +2626,13 @@ def list_my_comments(
     author; this endpoint shows the caller's own comments with a derived
     status (pending / approved / rejected) plus the post they were left on so
     the frontend can link back. Anonymous readers have no history. ``status``
-    is whitelisted and unknown values are rejected with 422 (DEC-102/TASK-163).
+    is whitelisted and unknown values are rejected with 422 (DEC-102/TASK-163);
+    ``q`` (optional) filters to comments whose content matches the term
+    (escape-aware — DEC-411/TASK-431, same pattern as history recall-search).
     """
     if status not in VALID_READER_COMMENT_STATUSES:
         raise HTTPException(status_code=422, detail=f"status must be one of {list(VALID_READER_COMMENT_STATUSES)}")
-    comments, total = crud.get_reader_comments(db, current_reader.id, status=status, page=page, limit=limit)
+    comments, total = crud.get_reader_comments(db, current_reader.id, status=status, page=page, limit=limit, q=q)
     total_pages = (total + limit - 1) // limit if limit > 0 else 0
     # Batch-load the posts once in a single query instead of db.get per comment
     # (many comments share a post; ISS-140) — one in_() query, not up to 100.

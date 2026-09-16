@@ -3847,13 +3847,17 @@ def get_reader_comments(
     status: str = "all",
     page: int = 1,
     limit: int = 20,
+    q: str | None = None,
 ) -> tuple[list[models.Comment], int]:
     """A reader's own comments, newest first, with status filter + pagination.
 
     DEC-066/TASK-139 showed pending/rejected comments to their author (with a
     derived status); DEC-102/TASK-163 adds a status filter (all|pending|
     approved|rejected) and pagination so a reader with a long history can find
-    pending/rejected items and page through. Public read paths still filter to
+    pending/rejected items and page through. ``q`` (optional) filters to the
+    reader's own comments whose content matches the term (case-insensitive,
+    escape-aware — DEC-411/TASK-431) so a reader can recall a specific comment;
+    it composes with the status filter. Public read paths still filter to
     approved only.
 
     Returns:
@@ -3873,6 +3877,9 @@ def get_reader_comments(
             models.Comment.reviewed_at.is_(None),
         )
     # "all" -> no filter
+    if q and q.strip():
+        term = f"%{escape_like_pattern(q.strip())}%"
+        query = query.filter(models.Comment.content.ilike(term, escape="\\"))
 
     total = query.count()
     # joinedload(reader) — matching get_comments_paginated's ISS-139 fix: the
