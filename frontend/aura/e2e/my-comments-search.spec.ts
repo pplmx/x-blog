@@ -66,12 +66,16 @@ test.describe("My Comments search (DEC-411)", () => {
 		await expect(searchBox).toBeVisible({ timeout: 10000 });
 
 		// Both comments visible before searching.
-		await expect(page.locator(`text=rust borrow checker tips ${stamp}`)).toBeVisible({ timeout: 10000 });
+		await expect(page.locator(`text=rust borrow checker tips ${stamp}`)).toBeVisible({
+			timeout: 10000,
+		});
 		await expect(page.locator(`text=a cake recipe ${stamp}`)).toBeVisible();
 
 		// Search narrows to the matching comment only (debounced server-side).
 		await searchBox.fill("borrow");
-		await expect(page.locator(`text=rust borrow checker tips ${stamp}`)).toBeVisible({ timeout: 10000 });
+		await expect(page.locator(`text=rust borrow checker tips ${stamp}`)).toBeVisible({
+			timeout: 10000,
+		});
 		await expect(page.locator(`text=a cake recipe ${stamp}`)).not.toBeVisible();
 
 		// A non-matching term shows the search-aware empty state, not the
@@ -84,7 +88,9 @@ test.describe("My Comments search (DEC-411)", () => {
 		// Clear search restores the full history. Exact match: the box's own
 		// x-button (aria-label "清除搜索词") would otherwise collide in strict mode.
 		await page.getByRole("button", { name: "清除搜索", exact: true }).click();
-		await expect(page.locator(`text=rust borrow checker tips ${stamp}`)).toBeVisible({ timeout: 10000 });
+		await expect(page.locator(`text=rust borrow checker tips ${stamp}`)).toBeVisible({
+			timeout: 10000,
+		});
 		await expect(page.locator(`text=a cake recipe ${stamp}`)).toBeVisible();
 	});
 });
