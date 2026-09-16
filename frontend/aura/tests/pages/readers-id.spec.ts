@@ -27,6 +27,8 @@ let mockPayload: unknown = null;
 let mockReject: unknown = null;
 let mockLikesPayload: unknown = null;
 let mockLikesReject: unknown = null;
+let mockSavedPayload: unknown = null;
+let mockSavedReject: unknown = null;
 let mockReaderId = "5";
 let mockQuery: Record<string, string> = {};
 
@@ -38,6 +40,10 @@ vi.mock("~~/api/public/readers", () => ({
 	getReaderPublicLikes: async () => {
 		if (mockLikesReject) throw mockLikesReject;
 		return mockLikesPayload;
+	},
+	getReaderPublicBookmarks: async () => {
+		if (mockSavedReject) throw mockSavedReject;
+		return mockSavedPayload;
 	},
 }));
 
@@ -55,7 +61,14 @@ const stubs = {
 };
 
 const samplePage = {
-	profile: { id: 5, display_name: "Riki", avatar_url: null, created_at: "2024-01-01T00:00:00Z" },
+	profile: {
+		id: 5,
+		display_name: "Riki",
+		avatar_url: null,
+		public_likes: false,
+		public_bookmarks: false,
+		created_at: "2024-01-01T00:00:00Z",
+	},
 	items: [
 		{
 			id: 1,
@@ -92,11 +105,33 @@ const sampleLikes = {
 	pagination: { total: 1, page: 1, limit: 20, total_pages: 1 },
 };
 
+// A reader who also opts into the curated "Saved posts" tab (round 363,
+// DEC-399): public_bookmarks true → the profile gains a third tab.
+const sampleSaverPage = {
+	...samplePage,
+	profile: { ...samplePage.profile, public_bookmarks: true },
+};
+
+const sampleSaved = {
+	items: [
+		{
+			id: 40,
+			title: "Kept post",
+			slug: "kept-post",
+			category: { id: 2, name: "Science" },
+			views: 9,
+		},
+	],
+	pagination: { total: 1, page: 1, limit: 20, total_pages: 1 },
+};
+
 beforeEach(() => {
 	mockPayload = null;
 	mockReject = null;
 	mockLikesPayload = null;
 	mockLikesReject = null;
+	mockSavedPayload = null;
+	mockSavedReject = null;
 	mockReaderId = "5";
 	mockQuery = {};
 });
@@ -251,5 +286,44 @@ describe("Reader profile page", () => {
 		expect(wrapper.text()).toContain("Tech");
 		// The comment tab is not rendered on the likes view.
 		expect(wrapper.text()).not.toContain("a comment on a post");
+	});
+
+	it("hides the Saved tab unless the reader opted in (public_bookmarks false)", async () => {
+		mockPayload = samplePage;
+		// A ?view=saved deep link on a private reader falls back to comments —
+		// the deep link can't force a tab the reader never published.
+		mockQuery = { view: "saved" };
+		const wrapper = await mountPage();
+		expect(wrapper.text()).not.toContain("readerProfile.savedTab");
+		expect(wrapper.text()).toContain("a comment on a post");
+	});
+
+	it("renders the Saved tab for an opted-in reader (round 363)", async () => {
+		mockPayload = sampleSaverPage;
+		const wrapper = await mountPage();
+		expect(wrapper.text()).toContain("readerProfile.savedTab");
+		expect(wrapper.text()).toContain("a comment on a post");
+	});
+
+	it("lists the reader's published saved posts when deep-linked to ?view=saved", async () => {
+		mockPayload = sampleSaverPage;
+		mockSavedPayload = sampleSaved;
+		mockQuery = { view: "saved" };
+		const wrapper = await mountPage();
+		expect(wrapper.text()).toContain("Kept post");
+		expect(wrapper.text()).toContain("Science");
+		// The comment tab is not rendered on the saved view.
+		expect(wrapper.text()).not.toContain("a comment on a post");
+	});
+
+	it("treats ?view=saved on a likes-only reader as the comments tab", async () => {
+		// public_likes true but public_bookmarks false: ?view=saved has no tab
+		// to land on, so it falls back (and the Saved data is never fetched).
+		mockPayload = sampleLikerPage;
+		mockQuery = { view: "saved" };
+		const wrapper = await mountPage();
+		expect(wrapper.text()).not.toContain("readerProfile.savedTab");
+		expect(wrapper.text()).not.toContain("Kept post");
+		expect(wrapper.text()).toContain("a comment on a post");
 	});
 });

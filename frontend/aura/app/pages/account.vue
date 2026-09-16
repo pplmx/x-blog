@@ -85,6 +85,9 @@ const bio = ref(reader.value?.bio ?? "");
 // Opt-in public "Liked posts" tab (round 360, DEC-393): saved with the
 // profile; off by default so a reader who never touches it stays private.
 const publicLikes = ref(reader.value?.public_likes ?? false);
+// Opt-in public "Saved posts" tab (round 363, DEC-399): saved with the
+// profile; off by default (the curated bookmark list stays private too).
+const publicBookmarks = ref(reader.value?.public_bookmarks ?? false);
 const savingProfile = ref(false);
 const profileSaved = ref(false);
 const profileFailed = ref(false);
@@ -115,11 +118,13 @@ async function saveProfileName() {
 			display_name: name,
 			bio: trimmedBio,
 			public_likes: publicLikes.value,
+			public_bookmarks: publicBookmarks.value,
 		});
 		setProfile(updated);
 		displayName.value = updated.display_name ?? "";
 		bio.value = updated.bio ?? "";
 		publicLikes.value = updated.public_likes ?? false;
+		publicBookmarks.value = updated.public_bookmarks ?? false;
 		profileSaved.value = true;
 	} catch {
 		profileFailed.value = true;
@@ -983,6 +988,19 @@ function shortEndpoint(endpoint: string): string {
                 {{ t('account.profile.publicLikesLabel') }}
               </span>
               <span class="text-xs text-gray-400">{{ t('account.profile.publicLikesHint') }}</span>
+            </span>
+          </label>
+          <label class="flex items-start gap-3 text-sm cursor-pointer">
+            <input
+              v-model="publicBookmarks"
+              type="checkbox"
+              class="mt-0.5 w-4 h-4 accent-fuchsia-600"
+            />
+            <span class="flex flex-col gap-1">
+              <span class="text-gray-700 dark:text-gray-300 font-medium">
+                {{ t('account.profile.publicBmarksLabel') }}
+              </span>
+              <span class="text-xs text-gray-400">{{ t('account.profile.publicBmarksHint') }}</span>
             </span>
           </label>
           <span class="text-xs text-gray-400">{{ t('account.profile.emailNote') }} {{ reader?.email }} — {{ t('account.profile.emailChangeHint') }}</span>

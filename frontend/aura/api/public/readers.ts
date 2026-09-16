@@ -13,6 +13,10 @@ export interface ReaderPublicProfile {
 	 *  profile may render a Likes tab fed by getReaderPublicLikes; false for
 	 *  readers who chose not to publish (their likes stay private). */
 	public_likes: boolean;
+	/** Opt-in public "Saved posts" tab (round 363, DEC-399): when true the
+	 *  profile may render a Saved tab fed by getReaderPublicBookmarks; false
+	 *  for readers who chose not to publish their curated reading list. */
+	public_bookmarks: boolean;
 	created_at: string | null;
 }
 
@@ -59,6 +63,24 @@ export function getReaderPublicLikes(
 	limit = 20,
 ): Promise<PostListResponse | null> {
 	return command<PostListResponse | null>(`/api/readers/${readerId}/likes`, {
+		query: { page, limit },
+	});
+}
+
+/**
+ * A reader's published saved posts (GET /api/readers/{id}/bookmarks, round 363).
+ * Public like the profile — anyone can browse a reader who opted in to the
+ * "Saved posts" tab (their curated reading list, an intentional signal).
+ * 404 (undefined) for unknown readers OR readers who never opted in: one
+ * indistinguishable answer, so the surface leaks neither whether the reader
+ * exists nor what they saved.
+ */
+export function getReaderPublicBookmarks(
+	readerId: number,
+	page = 1,
+	limit = 20,
+): Promise<PostListResponse | null> {
+	return command<PostListResponse | null>(`/api/readers/${readerId}/bookmarks`, {
 		query: { page, limit },
 	});
 }

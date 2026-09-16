@@ -11,6 +11,9 @@ export interface ReaderProfile {
 	/** Opt-in public "Liked posts" profile tab (round 360, DEC-393) — false by
 	 *  default; the reader's likes stay private unless they choose to publish. */
 	public_likes: boolean;
+	/** Opt-in public "Saved posts" profile tab (round 363, DEC-399) — false by
+	 *  default; the reader's curated bookmarks stay private unless published. */
+	public_bookmarks: boolean;
 	created_at: string | null;
 }
 

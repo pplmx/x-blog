@@ -13,6 +13,11 @@
 		"likesCountWord": "likes",
 		"likesEmpty": "This reader hasn't shared any liked posts yet.",
 		"likesLoadFailed": "Couldn't load this reader's liked posts — check your connection and try again.",
+		"savedTab": "Saved posts",
+		"savedCountLabel": "{count} posts",
+		"savedViewsWord": "views",
+		"savedEmpty": "This reader hasn't shared any saved posts yet.",
+		"savedLoadFailed": "Couldn't load this reader's saved posts — check your connection and try again.",
 		"loadFailed": "Couldn't load this reader's profile — check your connection and try again.",
 		"notFoundTitle": "Reader not found",
 		"notFoundDesc": "This reader doesn't exist or their account was deleted."

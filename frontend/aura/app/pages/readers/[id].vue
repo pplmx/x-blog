@@ -14,7 +14,11 @@
  */
 import { computed, ref, watch } from "vue";
 import type { PaginationInfo, PostList, PostListResponse } from "~~/api/contracts/shared";
-import { getReaderProfile, getReaderPublicLikes } from "~~/api/public/readers";
+import {
+	getReaderProfile,
+	getReaderPublicBookmarks,
+	getReaderPublicLikes,
+} from "~~/api/public/readers";
 // biome-ignore lint/correctness/noUnusedImports: used from the template — biome cannot resolve Vue script-setup template bindings (vue-tsc verifies).
 import { parseApiDate } from "~~/composables/apiDate";
 import { scrollToPageTop } from "~~/composables/scrollToTop";
@@ -33,12 +37,15 @@ useSeo(() => ({
 
 const page = computed(() => (route.query.page ? Number.parseInt(String(route.query.page), 10) : 1));
 
-// Active tab; "likes" only renders for readers who opted in (public_likes) —
-// otherwise the URL's ?view=likes silently falls back to the comments tab.
-type ProfileView = "comments" | "likes";
-const view = computed<ProfileView>(() =>
-	route.query.view === "likes" && data.value?.profile.public_likes ? "likes" : "comments",
-);
+// Active tab; "likes"/"saved" only render for readers who opted in
+// (public_likes / public_bookmarks) — otherwise the URL's ?view=likes or
+// ?view=saved silently falls back to the comments tab.
+type ProfileView = "comments" | "likes" | "saved";
+const view = computed<ProfileView>(() => {
+	if (route.query.view === "likes" && data.value?.profile.public_likes) return "likes";
+	if (route.query.view === "saved" && data.value?.profile.public_bookmarks) return "saved";
+	return "comments";
+});
 
 const loading = ref(true);
 const loadFailed = ref(false);
@@ -72,6 +79,36 @@ async function loadLikes() {
 	}
 }
 
+// Saved-posts tab state (round 363, DEC-399): same lazy pattern as likes —
+// the curated bookmark list is fetched only when the tab is active.
+const savedLoading = ref(false);
+const savedFailed = ref(false);
+const savedPosts = ref<PostList[]>([]);
+const savedPagination = ref<PaginationInfo | null>(null);
+
+async function loadSaved() {
+	if (!data.value?.profile.public_bookmarks) return;
+	savedLoading.value = true;
+	savedFailed.value = false;
+	try {
+		const res: PostListResponse | null = await getReaderPublicBookmarks(
+			readerId.value,
+			page.value,
+			20,
+		);
+		savedPosts.value = res?.items ?? [];
+		savedPagination.value = res?.pagination ?? null;
+	} catch (cause) {
+		// 404 = lost race (reader just opted out), not a load failure.
+		const status = (cause as { response?: { status?: number } } | undefined)?.response?.status;
+		if (status !== 404) savedFailed.value = true;
+		savedPosts.value = [];
+		savedPagination.value = null;
+	} finally {
+		savedLoading.value = false;
+	}
+}
+
 async function load() {
 	loading.value = true;
 	loadFailed.value = false;
@@ -87,9 +124,10 @@ async function load() {
 	try {
 		const res = await getReaderProfile(readerId.value, page.value);
 		data.value = res;
-		// Refresh the liked tab when it is active (its paging rides the same
-		// ?page= parameter the comments tab pages).
+		// Refresh the active discovery tab when it is active (its paging rides
+		// the same ?page= parameter the comments tab pages).
 		if (view.value === "likes") await loadLikes();
+		if (view.value === "saved") await loadSaved();
 	} catch (cause) {
 		// 404 from the API → the reader doesn't exist (or never had a public
 		// identity); render the not-found state, not a "couldn't load" retry.
@@ -111,29 +149,34 @@ watch([readerId, page, () => route.query.view], () => {
 // Page-clamp: an out-of-range deep link (e.g. ?page=99) has an empty page but
 // real total_pages — send the reader back to the last real page (home/search/
 // archive pattern, deep-dive finding ISS-308).
-watch(
-	() => (view.value === "likes" ? likedPagination.value : data.value?.pagination),
-	(p) => {
-		const requested = page.value;
-		if (!p || Number.isNaN(requested) || requested < 2) return;
-		const last = p.total_pages ?? 1;
-		// Keep the active tab in the URL while clamping; an empty profile
-		// (total_pages 0) drops the page param entirely (ISS-308 pattern).
-		if (requested > last) {
-			const query: Record<string, string> = {};
-			if (last >= 1) query.page = String(last);
-			if (view.value === "likes") query.view = "likes";
-			void navigateTo({ query }, { replace: true });
-		}
-	},
+const activePagination = computed(() =>
+	view.value === "likes"
+		? likedPagination.value
+		: view.value === "saved"
+			? savedPagination.value
+			: data.value?.pagination,
 );
+watch(activePagination, (p) => {
+	const requested = page.value;
+	if (!p || Number.isNaN(requested) || requested < 2) return;
+	const last = p.total_pages ?? 1;
+	// Keep the active tab in the URL while clamping; an empty profile
+	// (total_pages 0) drops the page param entirely (ISS-308 pattern).
+	if (requested > last) {
+		const query: Record<string, string> = {};
+		if (last >= 1) query.page = String(last);
+		if (view.value === "likes") query.view = "likes";
+		if (view.value === "saved") query.view = "saved";
+		void navigateTo({ query }, { replace: true });
+	}
+});
 
-/** Switch tabs through the URL so both the tab and the page stay
- *  deep-linkable (a shared ?view=likes link lands straight on the taste tab). */
+/** Switch tabs through the URL so the tab AND the page stay deep-linkable
+ *  (a shared ?view=likes / ?view=saved link lands straight on that tab). */
 function setView(next: ProfileView) {
 	void navigateTo({
 		query: {
-			view: next === "likes" ? "likes" : undefined,
+			view: next === "likes" ? "likes" : next === "saved" ? "saved" : undefined,
 			page: undefined,
 		},
 	});
@@ -144,7 +187,7 @@ function goToPage(pg: number | string) {
 	void navigateTo({
 		query: {
 			page: pg === 1 ? undefined : String(pg),
-			view: view.value === "likes" ? "likes" : undefined,
+			view: view.value === "likes" ? "likes" : view.value === "saved" ? "saved" : undefined,
 		},
 	});
 	scrollToPageTop();
@@ -157,12 +200,7 @@ function retry() {
 await load();
 
 const paginationTokens = computed(() =>
-	paginationPages(
-		view.value === "likes"
-			? (likedPagination.value?.total_pages ?? 0)
-			: (data.value?.pagination?.total_pages ?? 0),
-		page.value,
-	),
+	paginationPages(activePagination.value?.total_pages ?? 0, page.value),
 );
 </script>
 
@@ -281,6 +319,21 @@ const paginationTokens = computed(() =>
 					<Icon icon="lucide:heart" class="w-4 h-4 inline-block mr-1" />
 					{{ t("readerProfile.likesTab") }}
 				</button>
+				<button
+					v-if="data.profile.public_bookmarks"
+					type="button"
+					:aria-pressed="view === 'saved'"
+					role="tab"
+					:aria-selected="view === 'saved'"
+					class="py-2 px-4 text-sm font-medium rounded-lg transition-colors"
+					:class="view === 'saved'
+						? 'bg-white dark:bg-gray-700 text-fuchsia-600 dark:text-fuchsia-400 shadow-sm'
+						: 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'"
+					@click="view !== 'saved' && setView('saved')"
+				>
+					<Icon icon="lucide:bookmark" class="w-4 h-4 inline-block mr-1" />
+					{{ t("readerProfile.savedTab") }}
+				</button>
 			</div>
 
 			<!-- Comments tab -->
@@ -326,7 +379,7 @@ const paginationTokens = computed(() =>
 			</template>
 
 			<!-- Liked-posts tab (round 360, DEC-393) -->
-			<template v-else>
+			<template v-else-if="view === 'likes'">
 				<div v-if="likedLoading" class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
 					<div v-for="i in 3" :key="i" class="h-24 rounded-xl bg-gray-100 dark:bg-gray-800 animate-pulse" />
 				</div>
@@ -370,12 +423,57 @@ const paginationTokens = computed(() =>
 				</template>
 			</template>
 
+			<!-- Saved-posts tab (round 363, DEC-399) -->
+			<template v-else>
+				<div v-if="savedLoading" class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+					<div v-for="i in 3" :key="i" class="h-24 rounded-xl bg-gray-100 dark:bg-gray-800 animate-pulse" />
+				</div>
+
+				<p
+					v-else-if="savedFailed"
+					class="text-center py-12 text-gray-500"
+					role="alert"
+				>
+					{{ t("readerProfile.savedLoadFailed") }}
+				</p>
+
+				<template v-else>
+					<p v-if="savedPagination" class="text-sm text-gray-400 mb-4">
+						{{ t("readerProfile.savedCountLabel", { count: savedPagination.total }) }}
+					</p>
+
+					<div v-if="savedPosts.length" class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+						<NuxtLink
+							v-for="post in savedPosts"
+							:key="post.id"
+							:to="`/posts/${post.slug}`"
+							class="group p-4 rounded-xl border border-gray-100 dark:border-gray-800 hover:border-fuchsia-200 dark:hover:border-fuchsia-800 hover:shadow-md transition-all duration-200"
+						>
+							<h3 class="text-sm font-semibold text-gray-900 dark:text-gray-100 group-hover:text-fuchsia-600 dark:group-hover:text-fuchsia-400 transition-colors line-clamp-2">
+								{{ post.title }}
+							</h3>
+							<div class="mt-2 flex items-center gap-2 text-xs text-gray-400">
+								<span v-if="post.category" class="inline-flex items-center gap-1">
+									<Icon icon="lucide:folder" class="w-3 h-3" />
+									{{ post.category.name }}
+								</span>
+								<span>{{ post.views }} {{ t("readerProfile.savedViewsWord") }}</span>
+							</div>
+						</NuxtLink>
+					</div>
+
+					<div v-else class="text-center py-12 text-gray-500">
+						{{ t("readerProfile.savedEmpty") }}
+					</div>
+				</template>
+			</template>
+
 			<!-- Pagination (windowed with ellipsis, matching home/search/archive) -->
 			<div
-				v-if="(view === 'likes' ? (likedPagination?.total_pages ?? 0) : (data.pagination?.total_pages ?? 0)) > 1"
+				v-if="activePagination?.total_pages && activePagination.total_pages > 1"
 				class="flex items-center justify-center gap-2 mt-8"
 				role="navigation"
-				:aria-label="view === 'likes' ? t('readerProfile.likesTab') : t('readerProfile.commentsTitle')"
+				:aria-label="view === 'likes' ? t('readerProfile.likesTab') : view === 'saved' ? t('readerProfile.savedTab') : t('readerProfile.commentsTitle')"
 			>
 				<button
 					v-for="(pg, i) in paginationTokens"

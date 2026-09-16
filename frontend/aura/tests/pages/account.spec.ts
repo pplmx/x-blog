@@ -351,7 +351,10 @@ describe("Account settings page", () => {
 		);
 
 		const wrapper = await mountPage();
-		const checkboxes = wrapper.findAll("input[type='checkbox']");
+		// Scope to the push-devices section — the profile section above also has
+		// privacy opt-in checkboxes, so whole-page checkbox indices are brittle.
+		const devices = wrapper.findAll("section").find((s) => s.text().includes("推送设备"));
+		const checkboxes = devices?.findAll("input[type='checkbox']") ?? [];
 		await checkboxes[0].setValue(true); // device 1 — in flight
 		await flushPromises();
 		// Device 2's checkbox is now `:disabled="savingPrefsId !== null"` — VTU
@@ -512,6 +515,7 @@ describe("Account settings page", () => {
 			display_name: "NewName",
 			bio: "",
 			public_likes: false,
+			public_bookmarks: false,
 		});
 		expect(setProfile).toHaveBeenCalledWith(expect.objectContaining({ display_name: "NewName" }));
 		expect(wrapper.text()).toContain("已保存");
@@ -547,6 +551,7 @@ describe("Account settings page", () => {
 			display_name: "Existing",
 			bio: "I like charts and lists.",
 			public_likes: false,
+			public_bookmarks: false,
 		});
 		expect(setProfile).toHaveBeenCalledWith(
 			expect.objectContaining({ bio: "I like charts and lists." }),
@@ -562,6 +567,7 @@ describe("Account settings page", () => {
 			bio: null,
 			avatar_url: null,
 			public_likes: false,
+			public_bookmarks: false,
 			created_at: "2024-01-01T00:00:00Z",
 		} as ReaderProfile;
 		mockUpdateMyProfile.mockResolvedValue({
@@ -570,11 +576,13 @@ describe("Account settings page", () => {
 			display_name: "Existing",
 			bio: null,
 			public_likes: true,
+			public_bookmarks: false,
 		} as ReaderProfile);
 		const wrapper = await mountPage();
 
-		// The opt-in checkbox ships with the profile save (off by default).
-		const checkbox = wrapper.get('input[type="checkbox"]');
+		// Both privacy opt-ins ship with the profile save; the likes checkbox
+		// comes first in the profile section.
+		const checkbox = wrapper.findAll('input[type="checkbox"]')[0];
 		expect((checkbox.element as HTMLInputElement).checked).toBe(false);
 		await checkbox.setValue(true);
 		await wrapper.get("form").trigger("submit");
@@ -584,8 +592,47 @@ describe("Account settings page", () => {
 			display_name: "Existing",
 			bio: "",
 			public_likes: true,
+			public_bookmarks: false,
 		});
 		expect(setProfile).toHaveBeenCalledWith(expect.objectContaining({ public_likes: true }));
+	});
+
+	it("opts the reader into the public saved-posts tab (round 363)", async () => {
+		isAuthenticated.value = true;
+		reader.value = {
+			id: 1,
+			email: "r@example.com",
+			display_name: "Existing",
+			bio: null,
+			avatar_url: null,
+			public_likes: false,
+			public_bookmarks: false,
+			created_at: "2024-01-01T00:00:00Z",
+		} as ReaderProfile;
+		mockUpdateMyProfile.mockResolvedValue({
+			id: 1,
+			email: "r@example.com",
+			display_name: "Existing",
+			bio: null,
+			public_likes: false,
+			public_bookmarks: true,
+		} as ReaderProfile);
+		const wrapper = await mountPage();
+
+		// The saved-posts opt-in is the second profile checkbox (off by default).
+		const checkbox = wrapper.findAll('input[type="checkbox"]')[1];
+		expect((checkbox.element as HTMLInputElement).checked).toBe(false);
+		await checkbox.setValue(true);
+		await wrapper.get("form").trigger("submit");
+		await flushPromises();
+
+		expect(mockUpdateMyProfile).toHaveBeenCalledWith({
+			display_name: "Existing",
+			bio: "",
+			public_likes: false,
+			public_bookmarks: true,
+		});
+		expect(setProfile).toHaveBeenCalledWith(expect.objectContaining({ public_bookmarks: true }));
 	});
 
 	it("clearing the display name does not disable Save (ISS-127)", async () => {
@@ -613,6 +660,7 @@ describe("Account settings page", () => {
 			display_name: "NewName",
 			bio: "",
 			public_likes: false,
+			public_bookmarks: false,
 		});
 	});
 
